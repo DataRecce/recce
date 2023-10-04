@@ -5,6 +5,7 @@ import os
 import click
 import sqlalchemy as sa
 
+from piti.dbt import load_dbt_manifest
 from piti.impact import inspect_model_summary
 
 
@@ -31,9 +32,9 @@ def inspect(resource_name):
         print("no connection string")
         return 0
 
-    with open('target/manifest.json', 'r') as file:
-        data = json.load(file)
-    selected_node = find_model_by_name(data, resource_name)
+    manifest = load_dbt_manifest('target/manifest.json')
+
+    selected_node = manifest.find_model_by_name(resource_name)
     if selected_node is None:
         print(f"resource not found: {resource_name}")
         return 0
@@ -41,17 +42,6 @@ def inspect(resource_name):
     engine = sa.create_engine(conn_str)
     with engine.connect() as conn:
         print(inspect_model_summary(conn, selected_node))
-
-
-def find_model_by_name(data, resource_name):
-    for key, node in data.get("nodes", {}).items():
-        if node.get("name") == resource_name and node.get("resource_type") == "model":
-            selected_node = {
-                "name": node.get("name"),
-                "schema": node.get("schema"),
-            }
-            break
-    return selected_node
 
 @cli.command()
 @click.argument('resource_name')
@@ -65,21 +55,22 @@ def diff(resource_name):
         print("no connection string")
         return 0
 
-    with open('target/manifest.json', 'r') as file:
-        target = json.load(file)
-    target_node = find_model_by_name(target, resource_name)
-
-    with open('target-base/manifest.json', 'r') as file:
-        base = json.load(file)
-    base_node = find_model_by_name(base, resource_name)
+    base_node = load_dbt_manifest('target-base/manifest.json').find_model_by_name(resource_name)
+    target_node = load_dbt_manifest('target/manifest.json').find_model_by_name(resource_name)
 
     engine = sa.create_engine(conn_str)
     with engine.connect() as conn:
         base_output = inspect_model_summary(conn, base_node)
         target_output = inspect_model_summary(conn, target_node)
 
-    diff_output = difflib.unified_diff(base_output.splitlines(), target_output.splitlines(), "base", "target", n=999,
-                                       lineterm="")
+    diff_output = difflib.unified_diff(
+        base_output.splitlines(),
+        target_output.splitlines(),
+        "base",
+        "target",
+        n=999,
+        lineterm=""
+    )
     for line in diff_output:
         print(line)
 
