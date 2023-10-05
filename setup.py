@@ -20,6 +20,7 @@ setup(name='piti',
       install_requires=[
           'sqlalchemy>=1.4',
           'click>=7.1',
+          'dbt-core>=1.3',
       ],
       tests_require=['pytest'],
       extras_require={

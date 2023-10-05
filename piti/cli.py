@@ -1,11 +1,10 @@
 import difflib
-import json
 import os
 
 import click
 import sqlalchemy as sa
 
-from piti.dbt import load_dbt_manifest
+from piti.dbt import load_dbt_manifest, test_connection
 from piti.impact import inspect_model_summary
 
 
@@ -78,7 +77,7 @@ def diff(resource_name):
 @cli.command()
 def analyze():
     """Analyze the impact between before and after."""
-    click.echo("Hello, World!")
+    test_connection()
 
 
 if __name__ == "__main__":
