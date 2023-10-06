@@ -8,6 +8,7 @@
 
    ```
    git clone git@github.com:InfuseAI/piti.git
+   cd piti
    pip install -e .
    ```
 
