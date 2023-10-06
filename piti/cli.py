@@ -15,8 +15,8 @@ def cli(ctx, **kwargs):
 @cli.command()
 @click.argument('resource_name', required=False)
 @click.argument('method', default='summary')
-@click.option('sql', '--sql', help='Sql to query')
-def inspect(resource_name, method):
+@click.option('--sql', help='Sql to query', required=False)
+def inspect(resource_name, method, **kwargs):
     """
     Inspect a resource or run a query
     """
@@ -32,8 +32,8 @@ def inspect(resource_name, method):
 @cli.command()
 @click.argument('resource_name', required=False)
 @click.argument('method', default='summary')
-@click.option('sql', '--sql', help='Sql to query')
-def diff(resource_name, method):
+@click.option('--sql', help='Sql to query', required=False)
+def diff(resource_name, method, **kwargs):
     """
     Diff a resource or run a query between two states.
     """
