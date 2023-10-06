@@ -1,83 +1,76 @@
 import difflib
-import os
 
 import click
-import sqlalchemy as sa
 
-from piti.dbt import load_dbt_manifest, test_connection
+from piti.dbt import DBTContext
 from piti.impact import inspect_model_summary
 
 
 @click.group()
-def cli():
+@click.pass_context
+def cli(ctx, **kwargs):
     """The impact analysis tool for DBT"""
 
 
 @cli.command()
-@click.argument('resource_name')
-def inspect(resource_name):
-    """Inspect the resource.
-
-    Examples:
-
-        piti inspect <resource>
-
-        piti inspect <resource> <method>
-
+@click.argument('resource_name', required=False)
+@click.argument('method', default='summary')
+@click.option('sql', '--sql', help='Sql to query')
+def inspect(resource_name, method):
     """
-
-    conn_str = os.environ['CONNECTION_STRING']
-    if not os.environ['CONNECTION_STRING']:
-        print("no connection string")
-        return 0
-
-    manifest = load_dbt_manifest('target/manifest.json')
-
-    selected_node = manifest.find_model_by_name(resource_name)
+    Inspect a resource or run a query
+    """
+    dbtContext = DBTContext.load()
+    selected_node = dbtContext.find_model_by_name(resource_name)
     if selected_node is None:
         print(f"resource not found: {resource_name}")
         return 0
 
-    engine = sa.create_engine(conn_str)
-    with engine.connect() as conn:
-        print(inspect_model_summary(conn, selected_node))
-
-@cli.command()
-@click.argument('resource_name')
-def diff(resource_name):
-    """
-    A simple CLI tool that says hello.
-    """
-
-    conn_str = os.environ['CONNECTION_STRING']
-    if not os.environ['CONNECTION_STRING']:
-        print("no connection string")
-        return 0
-
-    base_node = load_dbt_manifest('target-base/manifest.json').find_model_by_name(resource_name)
-    target_node = load_dbt_manifest('target/manifest.json').find_model_by_name(resource_name)
-
-    engine = sa.create_engine(conn_str)
-    with engine.connect() as conn:
-        base_output = inspect_model_summary(conn, base_node)
-        target_output = inspect_model_summary(conn, target_node)
-
-    diff_output = difflib.unified_diff(
-        base_output.splitlines(),
-        target_output.splitlines(),
-        "base",
-        "target",
-        n=999,
-        lineterm=""
-    )
-    for line in diff_output:
-        print(line)
+    print(inspect_model_summary(dbtContext, selected_node))
 
 
 @cli.command()
-def analyze():
-    """Analyze the impact between before and after."""
-    test_connection()
+@click.argument('resource_name', required=False)
+@click.argument('method', default='summary')
+@click.option('sql', '--sql', help='Sql to query')
+def diff(resource_name, method):
+    """
+    Diff a resource or run a query between two states.
+    """
+
+    dbtContext = DBTContext.load()
+    node = dbtContext.find_model_by_name(resource_name)
+    if node is None:
+        print(f"resource not found: {resource_name}")
+        return
+
+    base_node = dbtContext.find_model_by_name(resource_name, base=True)
+
+    before = inspect_model_summary(dbtContext, base_node)
+    after = inspect_model_summary(dbtContext, node)
+
+    if before == after:
+        print(before)
+        return
+    else:
+        diff_output = difflib.unified_diff(
+            before.splitlines(),
+            after.splitlines(),
+            "base",
+            "current",
+            n=999,
+            lineterm=""
+        )
+        for line in diff_output:
+            print(line)
+
+
+@cli.command()
+@click.pass_context
+@click.option('--impact-file', '-f', default='impact.yml', help='The impact configuration file. Default: impact.yml')
+def analyze(ctx, **kwargs):
+    """Analyze the impact between two states."""
+    print("Not implemented yet.")
 
 
 if __name__ == "__main__":

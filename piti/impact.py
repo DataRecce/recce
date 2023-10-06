@@ -1,22 +1,28 @@
-import sqlalchemy as sa
+from piti.dbt import DBTContext
+from dbt.contracts.graph.manifest import ModelNode
+from dbt.adapters.base import BaseRelation
 
-def inspect_model_summary(conn, model: dict):
-    inspector = sa.inspect(conn)
-    name = model.get('name')
-    schema = model.get('schema')
-
+def inspect_model_summary(dbtContext:DBTContext, model:ModelNode):
+    adapter = dbtContext.adapter
+    relation = BaseRelation.create(identifier=model.identifier, schema=model.schema)
     output = ''
-    metadata = sa.MetaData()
-    table = sa.Table(name, metadata, schema=schema)
-    stmt = sa.select(sa.func.count()).select_from(table)
-    row = conn.execute(stmt).one()
-    output += f"name: {name}\n"
-    output += f"schema: {schema}\n"
-    output += f"rows: {row[0]}\n"
 
-    columns = inspector.get_columns(name, schema=schema)
-    output += f"columns: {len(columns)}\n"
-    for column in columns:
-        output += f"  {column.get('name')} {column.get('type')}\n"
+    with dbtContext.adapter.connection_named('test'):
+        columns = dbtContext.adapter.execute_macro(
+            'get_columns_in_relation',
+            kwargs={"relation": relation},
+            manifest=dbtContext.manifest)
+
+
+        stmt = f"select count(*) from {adapter.quote(model.schema)}.{adapter.quote(model.identifier)}"
+        response, result = adapter.execute(stmt, fetch=True, auto_begin=True)
+        row_count = result[0][0]
+
+        output += f"identity: {model.identifier}\n"
+        output += f"schema: {model.schema}\n"
+        output += f"rows: {row_count}\n"
+        output += f"columns:\n"
+        for column in columns:
+            output += f"  {column.name} {column.dtype}\n"
 
     return output
