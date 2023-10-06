@@ -31,28 +31,6 @@ class DBTContext:
         return cls(profile=profile, project=profile, adapter=adapter, manifest=manifest, base_manifest=base_manifest)
 
 
-    def test_connection(self):
-        relation = BaseRelation.create(identifier='orders')
-        with self.adapter.connection_named('test'):
-            columns = self.adapter.execute_macro('get_columns_in_relation', kwargs={"relation": relation}, manifest=self.manifest)
-            print(columns)
-
-        print(self.adapter.config.credentials.schema)
-
-        # columns = adapter.get_columns_in_relation(table)
-        # for col in columns:
-        #     print(col)
-
-        with self.adapter.connection_named('test'):
-            response, result = self.adapter.execute('select * from orders', fetch=True, auto_begin=True)
-            print(response)
-            print(result)
-            for col in result.column_names:
-                print(col)
-
-            for row in result:
-                print(row)
-
     def find_model_by_name(self, resource_name, base=False) -> ModelNode:
         if base is True:
             manifest = self.base_manifest
@@ -61,7 +39,6 @@ class DBTContext:
 
         for key, node in manifest.nodes.items():
             if node.name == resource_name and node.resource_type == "model":
-                selected_node:ModelNode = node
-                break
+                return node
 
-        return selected_node
+        return None

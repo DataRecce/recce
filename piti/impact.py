@@ -1,3 +1,6 @@
+import csv
+import io
+
 from piti.dbt import DBTContext
 from dbt.contracts.graph.manifest import ModelNode
 from dbt.adapters.base import BaseRelation
@@ -26,3 +29,29 @@ def inspect_model_summary(dbtContext:DBTContext, model:ModelNode):
             output += f"  {column.name} {column.dtype}\n"
 
     return output
+
+def inspect_sql(dbtContext:DBTContext, sqlTemplate:str, base=False):
+    from jinja2 import Template
+
+    def ref(model_name):
+        node = dbtContext.find_model_by_name(model_name, base)
+        if node is not None:
+            return f"{node.schema}.{node.identifier}"
+
+        raise Exception(f"model not found: {model_name}")
+
+    template = Template(sqlTemplate)
+    sql = template.render(ref=ref)
+
+    adapter = dbtContext.adapter
+    csv_output = io.StringIO()
+    csv_writer = csv.writer(csv_output)
+
+    with dbtContext.adapter.connection_named('test'):
+        response, result = adapter.execute(sql, fetch=True, auto_begin=True)
+        csv_writer.writerow(result.column_names)
+        for row in result.rows:
+            csv_writer.writerow(row)
+        output = csv_output.getvalue()
+        csv_output.close()
+        return output

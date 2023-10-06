@@ -22,7 +22,7 @@
           type: duckdb
           path: jaffle_shop.duckdb
           schema: main
-        prod:
+        base:
           type: duckdb
           path: jaffle_shop.duckdb
           schema: base
@@ -60,7 +60,7 @@ Diff a resource from base state.
     ```
    piti diff top_10_products_last_week
    ```
-1. (todo) Diff with adhoc query
+1. Diff with adhoc query
    ```
    piti diff --sql 'select sum(amounts) as revenue from {{ ref("orders") }}'
    ```
@@ -77,7 +77,7 @@ piti analyze -f impact.yml
 
 ### Q: How `piti` connect to my data warehouse? Does piti support my data warehouse?
 
-`piti` use the [dbt adapter](https://docs.getdbt.com/docs/connect-adapters) to connect o your warehouse. So it should work for your data warehouse.
+`piti` use the [dbt adapter](https://docs.getdbt.com/docs/connect-adapters) to connect to your warehouse. So it should work for your data warehouse.
 
 ### Q: What credential does `piti` connect to the two schemas?
 
