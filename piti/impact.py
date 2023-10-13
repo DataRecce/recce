@@ -34,7 +34,6 @@ def inspect_model_summary(dbtContext:DBTContext, model:ModelNode):
         row_count = result[0][0]
 
         output += f"identity: {model.identifier}\n"
-        output += f"schema: {model.schema}\n"
         output += f"rows: {row_count}\n"
         output += f"columns:\n"
         for column in columns:
