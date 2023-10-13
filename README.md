@@ -65,12 +65,27 @@ Diff a resource from base state.
    piti diff --sql 'select sum(amounts) as revenue from {{ ref("orders") }}'
    ```
 
-## Analyze (TODO)
+## Analyze
 
 Analyze the critical impacts you care in your project. (e.g. revenue, order count). It allows you to assess if the change is expected.
    
 ```
-piti analyze -f impact.yml
+piti analyze
+```
+
+You should put the impact definition in the `impacts.yml`
+
+```
+impacts:
+- name: 'order'
+  resource_name: 'orders'
+- name: 'order_preview'
+  resource_name: 'orders'
+  method: 'preview'  
+- name: 'order_count'
+  resource_name: 'impact_order_count'
+- name: 'revenue'
+  resource_name: 'impact_revenue'
 ```
 
 # Q&A
