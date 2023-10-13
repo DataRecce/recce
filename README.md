@@ -52,11 +52,11 @@ Diff a resource from base state.
    ```
    piti diff orders
    ```
-1. (todo) Diff a resource with other methods. Preview is to query the top 100 rows in the table
+1. Diff a resource with other methods. Preview is to query the top 100 rows in the table
    ```
    piti diff orders preview
    ```   
-1. (todo) Diff a [analysis](https://docs.getdbt.com/docs/build/analyses), which is a source-controled analytical sql.
+1. Diff a [analysis](https://docs.getdbt.com/docs/build/analyses), which is a source-controlled analytical sql.
     ```
    piti diff top_10_products_last_week
    ```

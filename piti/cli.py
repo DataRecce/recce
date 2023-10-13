@@ -3,7 +3,7 @@ import difflib
 import click
 
 from piti.dbt import DBTContext
-from piti.impact import inspect_model_summary, inspect_sql
+from piti.impact import inspect_sql, get_inspector
 
 
 @click.group()
@@ -25,12 +25,15 @@ def inspect(resource_name, method, sql, **kwargs):
         print(inspect_sql(dbtContext, sql))
         return
 
-    selected_node = dbtContext.find_model_by_name(resource_name)
-    if selected_node is None:
+    resource = dbtContext.find_resource_by_name(resource_name)
+    if resource is None:
         print(f"resource not found: {resource_name}")
         return 0
-    selected_node = dbtContext.find_model_by_name(resource_name)
-    print(inspect_model_summary(dbtContext, selected_node))
+
+    resource = dbtContext.find_resource_by_name(resource_name)
+    inspector = get_inspector(resource.resource_type, method)
+    output = inspector(dbtContext, resource)
+    print(output)
 
 @cli.command()
 @click.argument('resource_name', required=False)
@@ -49,18 +52,19 @@ def diff(resource_name, method, sql, **kwargs):
         after = inspect_sql(dbtContext, sql, base=True)
     else:
 
-        node = dbtContext.find_model_by_name(resource_name)
+        node = dbtContext.find_resource_by_name(resource_name)
         if node is None:
             print(f"resource not found: {resource_name}")
             return
 
-        base_node = dbtContext.find_model_by_name(resource_name, base=True)
+        base_node = dbtContext.find_resource_by_name(resource_name, base=True)
+        inspector = get_inspector(node.resource_type, method)
 
-        before = inspect_model_summary(dbtContext, base_node)
-        after = inspect_model_summary(dbtContext, node)
+        before = inspector(dbtContext, base_node) if base_node is not None else ''
+        after = inspector(dbtContext, node) if node is not None else ''
 
     if before == after:
-        print(before)
+        print('no changes')
         return
     else:
         diff_output = difflib.unified_diff(
