@@ -4,8 +4,7 @@ import agate
 
 from piti.dbt import DBTContext
 from dbt.contracts.graph.nodes import ModelNode, AnalysisNode
-from dbt.adapters.base import BaseRelation
-from dbt.contracts.connection import AdapterResponse
+
 
 def _dump_result(result: agate.Table):
     csv_output = io.StringIO()
@@ -17,9 +16,10 @@ def _dump_result(result: agate.Table):
     csv_output.close()
     return output
 
-def inspect_model_summary(dbtContext:DBTContext, model:ModelNode):
+
+def inspect_model_summary(dbtContext: DBTContext, model: ModelNode):
     adapter = dbtContext.adapter
-    relation = BaseRelation.create(identifier=model.identifier, schema=model.schema)
+    relation = adapter.Relation.create_from(dbtContext.project, model)
     output = ''
 
     with dbtContext.adapter.connection_named('test'):
@@ -28,8 +28,7 @@ def inspect_model_summary(dbtContext:DBTContext, model:ModelNode):
             kwargs={"relation": relation},
             manifest=dbtContext.manifest)
 
-
-        stmt = f"select count(*) from {adapter.quote(model.schema)}.{adapter.quote(model.identifier)}"
+        stmt = f"select count(*) from {relation}"
         response, result = adapter.execute(stmt, fetch=True, auto_begin=True)
         row_count = result[0][0]
 
@@ -41,40 +40,49 @@ def inspect_model_summary(dbtContext:DBTContext, model:ModelNode):
 
     return output
 
-def inspect_model_preview(dbtContext:DBTContext, model:ModelNode):
+
+def inspect_model_preview(dbtContext: DBTContext, model: ModelNode):
     adapter = dbtContext.adapter
+    relation = adapter.Relation.create_from(dbtContext.project, model)
+
     with dbtContext.adapter.connection_named('test'):
-        stmt = f"select * from {adapter.quote(model.schema)}.{adapter.quote(model.identifier)} limit 100"
+        stmt = f"select * from {relation} limit 100"
         response, result = adapter.execute(stmt, fetch=True, auto_begin=True)
         return _dump_result(result)
 
 
-def inspect_analysis_summary(dbtContext:DBTContext, analysis:AnalysisNode):
+def inspect_analysis_summary(dbtContext: DBTContext, analysis: AnalysisNode):
     adapter = dbtContext.adapter
+
+    if analysis.compiled_code is None:
+        raise Exception("compiled_code is None. Please  run `dbt compile`")
+
     with dbtContext.adapter.connection_named('test'):
         response, result = adapter.execute(analysis.compiled_code, fetch=True, auto_begin=True)
         return _dump_result(result)
 
-def inspect_sql(dbtContext:DBTContext, sqlTemplate:str, base=False):
+
+def inspect_sql(dbtContext: DBTContext, sqlTemplate: str, base=False):
     from jinja2 import Template
 
     def ref(model_name):
-        node = dbtContext.find_model_by_name(model_name, base)
-        if node is not None:
-            return f"{node.schema}.{node.identifier}"
+        node = dbtContext.find_resource_by_name(model_name, base)
+        if node is None:
+            raise Exception(f"model not found: {model_name}")
 
-        raise Exception(f"model not found: {model_name}")
+        relation = dbtContext.adapter.Relation.create_from(dbtContext.project, node)
+        return str(relation)
 
     template = Template(sqlTemplate)
     sql = template.render(ref=ref)
 
     adapter = dbtContext.adapter
-
     with dbtContext.adapter.connection_named('test'):
         response, result = adapter.execute(sql, fetch=True, auto_begin=True)
         return _dump_result(result)
 
-def get_inspector(resource_type:str, method:str):
+
+def get_inspector(resource_type: str, method: str):
     if resource_type == 'model':
         if method == 'summary':
             return inspect_model_summary

@@ -5,7 +5,7 @@ from dataclasses import dataclass
 from dbt.adapters.factory import get_adapter_by_type
 from dbt.adapters.sql import SQLAdapter
 from dbt.cli.main import dbtRunner
-from dbt.config.runtime import load_profile
+from dbt.config.runtime import load_profile, load_project
 from dbt.contracts.graph.manifest import WritableManifest, Manifest
 from dbt.config.project import Project
 from dbt.config.profile import Profile
@@ -29,6 +29,7 @@ class DBTContext:
 
         manifest = parseResult.result
         profile = load_profile(project_path, {}, target_override=target)
+        project = load_project(project_path, False, profile)
         adapter: SQLAdapter = get_adapter_by_type(profile.credentials.type)
 
         # To overwrite the manfiest because we need the compiled analysis code
@@ -36,7 +37,7 @@ class DBTContext:
         base_manifest = WritableManifest.read_and_check_versions('target-base/manifest.json')
 
         return cls(profile=profile,
-                   project=profile,
+                   project=project,
                    adapter=adapter,
                    manifest=manifest,
                    curr_manifest=curr_manifest,
