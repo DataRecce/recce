@@ -49,8 +49,8 @@ def diff(resource_name, method, sql, **kwargs):
 
 
     if sql is not None:
-        before = inspect_sql(dbtContext, sql, base=False)
-        after = inspect_sql(dbtContext, sql, base=True)
+        before = inspect_sql(dbtContext, sql, base=True)
+        after = inspect_sql(dbtContext, sql, base=False)
     else:
 
         node = dbtContext.find_resource_by_name(resource_name)
