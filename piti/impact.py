@@ -1,6 +1,7 @@
 import csv
 import io
 import agate
+import pandas as pd
 
 from piti.dbt import DBTContext
 from dbt.contracts.graph.nodes import ModelNode, AnalysisNode
@@ -62,7 +63,7 @@ def inspect_analysis_summary(dbtContext: DBTContext, analysis: AnalysisNode):
         return _dump_result(result)
 
 
-def inspect_sql(dbtContext: DBTContext, sqlTemplate: str, base=False):
+def inspect_sql(dbtContext: DBTContext, sqlTemplate: str, base=False) -> pd.DataFrame:
     from jinja2 import Template
 
     def ref(model_name):
@@ -79,7 +80,9 @@ def inspect_sql(dbtContext: DBTContext, sqlTemplate: str, base=False):
     adapter = dbtContext.adapter
     with dbtContext.adapter.connection_named('test'):
         response, result = adapter.execute(sql, fetch=True, auto_begin=True)
-        return _dump_result(result)
+        table: agate.Table = result
+        df = pd.DataFrame([row.values() for row in table.rows], columns=table.column_names)
+        return df
 
 
 def get_inspector(resource_type: str, method: str):

@@ -62,8 +62,10 @@ Diff a resource from base state.
    ```
 1. Diff with adhoc query
    ```
-   piti diff --sql 'select sum(amounts) as revenue from {{ ref("orders") }}'
+   piti diff --sql 'select date_week, sum(amounts) as revenue from {{ ref("orders") }} group by 1'
    ```
+
+   Please place the index column as the first column in your query. We will treat the data in this column as the same record during the diff. In the future, we will support allowing users to specify the index column.
 
 ## Analyze
 

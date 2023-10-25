@@ -19,6 +19,7 @@ setup(name='piti',
       install_requires=[
           'click>=7.1',
           'dbt-core>=1.3',
+          'pandas',
       ],
       tests_require=['pytest'],
       extras_require={
