@@ -4,6 +4,7 @@ import click
 import yaml
 
 from piti.dbt import DBTContext
+from piti.diff import diff_text, diff_dataframe
 from piti.impact import inspect_sql, get_inspector
 
 
@@ -23,7 +24,7 @@ def inspect(resource_name, method, sql, **kwargs):
     """
     dbtContext = DBTContext.load()
     if sql is not None:
-        print(inspect_sql(dbtContext, sql))
+        print(inspect_sql(dbtContext, sql).to_string(index=False))
         return
 
     resource = dbtContext.find_resource_by_name(resource_name)
@@ -51,6 +52,7 @@ def diff(resource_name, method, sql, **kwargs):
     if sql is not None:
         before = inspect_sql(dbtContext, sql, base=True)
         after = inspect_sql(dbtContext, sql, base=False)
+        diff_dataframe(before, after)
     else:
 
         node = dbtContext.find_resource_by_name(resource_name)
@@ -59,23 +61,7 @@ def diff(resource_name, method, sql, **kwargs):
 
         before = inspector(dbtContext, base_node) if base_node is not None else ''
         after = inspector(dbtContext, node) if node is not None else ''
-
-    if before is None and after is None:
-        print('not found in both states')
-        return
-    elif before == after:
-        print('no changes')
-        return
-
-    diff_output = difflib.unified_diff(
-        before.splitlines(),
-        after.splitlines(),
-        "base",
-        "current",
-        lineterm=""
-    )
-    for line in diff_output:
-        print(line)
+        diff_text(before, after)
 
 
 @cli.command()
