@@ -1,6 +1,7 @@
 import difflib
 
 import click
+import requests
 import yaml
 
 from piti.dbt import DBTContext
@@ -68,9 +69,9 @@ def diff(resource_name, method, sql, **kwargs):
 @click.pass_context
 @click.option('--impact-file', '-f', default='impact.yml', help='The impact configuration file. Default: impact.yml')
 def analyze(ctx, **kwargs):
+    """Analyze the impact between two states."""
     dbtContext = DBTContext.load()
 
-    """Analyze the impact between two states."""
     with open('impacts.yml', 'r') as yaml_file:
         parsed_data = yaml.safe_load(yaml_file)
 
@@ -98,6 +99,25 @@ def analyze(ctx, **kwargs):
         else:
             print(f'! {name}')
 
+
+@cli.command()
+def lineagediff():
+    """
+    Show the lineage diff in the piperider cloud.
+    """
+
+    files = [
+        ('files', ('base.json', open('target-base/manifest.json', 'rb'))),
+        ('files', ('current.json', open('target/manifest.json', 'rb'))),
+    ]
+
+    print("uploading...")
+    response = requests.post("https://cloud.piperider.io/api/v2/manifest/upload", files=files)
+    result = response.json()
+    url = f"https://cloud.piperider.io/quick-look/comparisons/{result.get('comparison_id')}?utm_source=piti#/?g_v=1"
+    print("report url: ", url)
+    import webbrowser
+    webbrowser.open(url)
 
 if __name__ == "__main__":
     cli()
