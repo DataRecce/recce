@@ -67,6 +67,15 @@ Diff a resource from base state.
 
    Please place the index column as the first column in your query. We will treat the data in this column as the same record during the diff. In the future, we will support allowing users to specify the index column.
 
+
+## Lineage Diff
+Upload the manifests to piperider cloud and see the lineage diff
+
+```
+piti lineagediff
+```
+
+
 ## Analyze
 
 Analyze the critical impacts you care in your project. (e.g. revenue, order count). It allows you to assess if the change is expected.
