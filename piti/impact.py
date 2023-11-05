@@ -66,6 +66,13 @@ def inspect_analysis_summary(dbtContext: DBTContext, analysis: AnalysisNode):
 def inspect_sql(dbtContext: DBTContext, sqlTemplate: str, base=False) -> pd.DataFrame:
     from jinja2 import Template
 
+    config_settings = {}
+
+    def config(primary_key=None):
+        if primary_key is not None:
+            config_settings['primary_key'] = primary_key
+        return ''
+
     def ref(model_name):
         node = dbtContext.find_resource_by_name(model_name, base)
         if node is None:
@@ -75,13 +82,15 @@ def inspect_sql(dbtContext: DBTContext, sqlTemplate: str, base=False) -> pd.Data
         return str(relation)
 
     template = Template(sqlTemplate)
-    sql = template.render(ref=ref)
+    sql = template.render(ref=ref, config=config)
 
     adapter = dbtContext.adapter
     with dbtContext.adapter.connection_named('test'):
         response, result = adapter.execute(sql, fetch=True, auto_begin=True)
         table: agate.Table = result
         df = pd.DataFrame([row.values() for row in table.rows], columns=table.column_names)
+        if 'primary_key' in config_settings:
+            df.set_index(config_settings['primary_key'], inplace=True)
         return df
 
 

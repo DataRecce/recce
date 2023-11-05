@@ -1,3 +1,5 @@
+from typing import Optional
+
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
@@ -29,6 +31,10 @@ async def health_check(request: Request):
 class QueryDiffInput(BaseModel):
     sql_template: str
 
+class QueryInput(BaseModel):
+    base: Optional[bool] = False
+    sql_template: str
+
 @app.post("/api/querydiff")
 async def query_diff(input: QueryDiffInput):
     # sql = 'select * from {{ref("mymodel")}} order by 1 desc limit 20'
@@ -44,6 +50,16 @@ async def query_diff(input: QueryDiffInput):
 
     import json
     return json.loads(diff_json)
+
+@app.post("/api/query")
+async def query(input: QueryInput):
+    sql = input.sql_template
+    dbtContext = DBTContext.load()
+    result = inspect_sql(dbtContext, sql, base=input.base)
+    result_json = result.to_json(orient='table')
+
+    import json
+    return json.loads(result_json)
 
 static_folder_path = Path(__file__).parent / 'data'
 app.mount("/", StaticFiles(directory=static_folder_path), name="static")
