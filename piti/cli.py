@@ -1,5 +1,3 @@
-import difflib
-
 import click
 import requests
 import yaml
@@ -118,6 +116,14 @@ def lineagediff():
     print("report url: ", url)
     import webbrowser
     webbrowser.open(url)
+
+
+@cli.command()
+def server():
+    import uvicorn
+    from piti.server import app
+    uvicorn.run(app, host="0.0.0.0", port=8000)
+
 
 if __name__ == "__main__":
     cli()
