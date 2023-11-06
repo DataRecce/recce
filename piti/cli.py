@@ -121,8 +121,22 @@ def lineagediff():
 @cli.command()
 def server():
     import uvicorn
+    import webbrowser
+    import threading
+    import time
     from piti.server import app
+    def run_browser():
+        time.sleep(2)
+        url = 'http://localhost:8000/index.html'
+        webbrowser.open(url)
+
+    # Start the server in a new thread
+    thread = threading.Thread(target=run_browser)
+    thread.start()
+
     uvicorn.run(app, host="0.0.0.0", port=8000)
+
+
 
 
 if __name__ == "__main__":

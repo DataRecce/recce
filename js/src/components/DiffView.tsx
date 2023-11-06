@@ -3,12 +3,11 @@ import React, { useState, useEffect, useCallback } from "react";
 import DataGrid, { ColumnOrColumnGroup } from "react-data-grid";
 import axios from "axios";
 import { queryDiff } from "@/querydiff";
+import { PUBLIC_API_URL } from "@/const";
 
 const healthCheck = async () => {
   try {
-    const response = await axios.get(
-      `${process.env.NEXT_PUBLIC_API_URL}/api/health`
-    );
+    const response = await axios.get(`${PUBLIC_API_URL}/api/health`);
     return response.data;
   } catch (error) {
     console.error("Error fetching data:", error);
@@ -71,40 +70,17 @@ const DiffView = () => {
   const executeQuery = useCallback(async () => {
     try {
       setLoading(true);
-      // const response = await axios.post(
-      //   `${process.env.NEXT_PUBLIC_API_URL}/api/querydiff`,
-      //   {
-      //     sql_template: query,
-      //   }
-      // );
-
-      // if (response.status !== 200) {
-      //   throw new Error("error");
-      // }
-
-      // const data = response.data;
-      // if (data) {
-      //   const transformedData = transformDataToGridFormat(data);
-      //   setGridData(transformedData);
-      // }
-
-      const current = await axios.post(
-        `${process.env.NEXT_PUBLIC_API_URL}/api/query`,
-        {
-          sql_template: query,
-        }
-      );
+      const current = await axios.post(`${PUBLIC_API_URL}/api/query`, {
+        sql_template: query,
+      });
       if (current.status !== 200) {
         throw new Error("error");
       }
 
-      const base = await axios.post(
-        `${process.env.NEXT_PUBLIC_API_URL}/api/query`,
-        {
-          sql_template: query,
-          base: true,
-        }
-      );
+      const base = await axios.post(`${PUBLIC_API_URL}/api/query`, {
+        sql_template: query,
+        base: true,
+      });
       if (base.status !== 200) {
         throw new Error("error");
       }
