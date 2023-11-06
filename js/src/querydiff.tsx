@@ -1,5 +1,6 @@
 import { ColumnOrColumnGroup } from "react-data-grid";
 import _ from "lodash";
+import "./styles/diff.css";
 
 interface DataFrameField {
   name: string;
@@ -59,18 +60,29 @@ export function queryDiff(base: DataFrame, current: DataFrame) {
       pkColumns.push({
         key: `${name}`,
         name: name,
+        frozen: true,
       });
     } else {
+      const cellClass = (row: any) => {
+        if (!_.isEqual(row[`base__${name}`], row[`current__${name}`])) {
+          return "diff-cell";
+        }
+
+        return undefined;
+      };
+
       columns.push({
         name: name,
         children: [
           {
             key: `base__${name}`,
             name: "Base",
+            cellClass,
           },
           {
             key: `current__${name}`,
             name: "Current",
+            cellClass,
           },
         ],
       });
