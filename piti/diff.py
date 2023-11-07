@@ -26,8 +26,6 @@ def diff_dataframe(before: pd.DataFrame, after: pd.DataFrame):
         print('not found in both states')
         return
 
-    before.set_index(before.columns[0], inplace=True)
-    after.set_index(after.columns[0], inplace=True)
     before_aligned, after_aligned = before.align(after)
     diff = before_aligned.compare(after_aligned,  result_names=('base', 'current'))
     print(diff.to_string(na_rep='-'))

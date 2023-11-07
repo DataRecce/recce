@@ -18,16 +18,16 @@ def _dump_result(result: agate.Table):
     return output
 
 
-def inspect_model_summary(dbtContext: DBTContext, model: ModelNode):
-    adapter = dbtContext.adapter
-    relation = adapter.Relation.create_from(dbtContext.project, model)
+def inspect_model_summary(dbt_context: DBTContext, model: ModelNode):
+    adapter = dbt_context.adapter
+    relation = adapter.Relation.create_from(dbt_context.project, model)
     output = ''
 
-    with dbtContext.adapter.connection_named('test'):
-        columns = dbtContext.adapter.execute_macro(
+    with dbt_context.adapter.connection_named('test'):
+        columns = dbt_context.adapter.execute_macro(
             'get_columns_in_relation',
             kwargs={"relation": relation},
-            manifest=dbtContext.manifest)
+            manifest=dbt_context.manifest)
 
         stmt = f"select count(*) from {relation}"
         response, result = adapter.execute(stmt, fetch=True, auto_begin=True)
@@ -42,46 +42,55 @@ def inspect_model_summary(dbtContext: DBTContext, model: ModelNode):
     return output
 
 
-def inspect_model_preview(dbtContext: DBTContext, model: ModelNode):
-    adapter = dbtContext.adapter
-    relation = adapter.Relation.create_from(dbtContext.project, model)
+def inspect_model_preview(dbt_context: DBTContext, model: ModelNode):
+    adapter = dbt_context.adapter
+    relation = adapter.Relation.create_from(dbt_context.project, model)
 
-    with dbtContext.adapter.connection_named('test'):
+    with dbt_context.adapter.connection_named('test'):
         stmt = f"select * from {relation} limit 100"
         response, result = adapter.execute(stmt, fetch=True, auto_begin=True)
         return _dump_result(result)
 
 
-def inspect_analysis_summary(dbtContext: DBTContext, analysis: AnalysisNode):
-    adapter = dbtContext.adapter
+def inspect_analysis_summary(dbt_context: DBTContext, analysis: AnalysisNode):
+    adapter = dbt_context.adapter
 
     if analysis.compiled_code is None:
         raise Exception("compiled_code is None. Please  run `dbt compile`")
 
-    with dbtContext.adapter.connection_named('test'):
+    with dbt_context.adapter.connection_named('test'):
         response, result = adapter.execute(analysis.compiled_code, fetch=True, auto_begin=True)
         return _dump_result(result)
 
 
-def inspect_sql(dbtContext: DBTContext, sqlTemplate: str, base=False) -> pd.DataFrame:
+def inspect_sql(dbt_context: DBTContext, sqlTemplate: str, base=False) -> pd.DataFrame:
     from jinja2 import Template
 
+    config_settings = {}
+
+    def config(primary_key=None):
+        if primary_key is not None:
+            config_settings['primary_key'] = primary_key
+        return ''
+
     def ref(model_name):
-        node = dbtContext.find_resource_by_name(model_name, base)
+        node = dbt_context.find_resource_by_name(model_name, base)
         if node is None:
             raise Exception(f"model not found: {model_name}")
 
-        relation = dbtContext.adapter.Relation.create_from(dbtContext.project, node)
+        relation = dbt_context.adapter.Relation.create_from(dbt_context.project, node)
         return str(relation)
 
     template = Template(sqlTemplate)
-    sql = template.render(ref=ref)
+    sql = template.render(ref=ref, config=config)
 
-    adapter = dbtContext.adapter
-    with dbtContext.adapter.connection_named('test'):
+    adapter = dbt_context.adapter
+    with dbt_context.adapter.connection_named('test'):
         response, result = adapter.execute(sql, fetch=True, auto_begin=True)
         table: agate.Table = result
         df = pd.DataFrame([row.values() for row in table.rows], columns=table.column_names)
+        if 'primary_key' in config_settings:
+            df.set_index(config_settings['primary_key'], inplace=True)
         return df
 
 

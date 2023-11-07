@@ -1,5 +1,3 @@
-import difflib
-
 import click
 import requests
 import yaml
@@ -23,19 +21,19 @@ def inspect(resource_name, method, sql, **kwargs):
     """
     Inspect a resource or run a query
     """
-    dbtContext = DBTContext.load()
+    dbt_context = DBTContext.load()
     if sql is not None:
-        print(inspect_sql(dbtContext, sql).to_string(index=False))
+        print(inspect_sql(dbt_context, sql).to_string(index=False))
         return
 
-    resource = dbtContext.find_resource_by_name(resource_name)
+    resource = dbt_context.find_resource_by_name(resource_name)
     if resource is None:
         print(f"resource not found: {resource_name}")
         return 0
 
-    resource = dbtContext.find_resource_by_name(resource_name)
+    resource = dbt_context.find_resource_by_name(resource_name)
     inspector = get_inspector(resource.resource_type, method)
-    output = inspector(dbtContext, resource)
+    output = inspector(dbt_context, resource)
     print(output)
 
 @cli.command()
@@ -47,58 +45,22 @@ def diff(resource_name, method, sql, **kwargs):
     Diff a resource or run a query between two states.
     """
 
-    dbtContext = DBTContext.load()
+    dbt_context = DBTContext.load()
 
 
     if sql is not None:
-        before = inspect_sql(dbtContext, sql, base=True)
-        after = inspect_sql(dbtContext, sql, base=False)
+        before = inspect_sql(dbt_context, sql, base=True)
+        after = inspect_sql(dbt_context, sql, base=False)
         diff_dataframe(before, after)
     else:
 
-        node = dbtContext.find_resource_by_name(resource_name)
-        base_node = dbtContext.find_resource_by_name(resource_name, base=True)
+        node = dbt_context.find_resource_by_name(resource_name)
+        base_node = dbt_context.find_resource_by_name(resource_name, base=True)
         inspector = get_inspector(node.resource_type, method)
 
-        before = inspector(dbtContext, base_node) if base_node is not None else ''
-        after = inspector(dbtContext, node) if node is not None else ''
+        before = inspector(dbt_context, base_node) if base_node is not None else ''
+        after = inspector(dbt_context, node) if node is not None else ''
         diff_text(before, after)
-
-
-@cli.command()
-@click.pass_context
-@click.option('--impact-file', '-f', default='impact.yml', help='The impact configuration file. Default: impact.yml')
-def analyze(ctx, **kwargs):
-    """Analyze the impact between two states."""
-    dbtContext = DBTContext.load()
-
-    with open('impacts.yml', 'r') as yaml_file:
-        parsed_data = yaml.safe_load(yaml_file)
-
-    impacts = parsed_data.get("impacts", [])
-    for impact in impacts:
-        name = impact.get("name")
-        resource_name = impact.get("resource_name")
-        method = impact.get("method", "summary")
-
-        node = dbtContext.find_resource_by_name(resource_name)
-        base_node = dbtContext.find_resource_by_name(resource_name, base=True)
-        inspector = get_inspector(node.resource_type, method)
-
-        before = inspector(dbtContext, base_node) if base_node is not None else None
-        after = inspector(dbtContext, node) if node is not None else None
-
-        if before is None and after is None:
-            print(f'? {name}')
-        elif before is None:
-            print(f'+ {name}')
-        elif after is None:
-            print(f'- {name}')
-        elif before == after:
-            print(f'= {name}')
-        else:
-            print(f'! {name}')
-
 
 @cli.command()
 def lineagediff():
@@ -118,6 +80,31 @@ def lineagediff():
     print("report url: ", url)
     import webbrowser
     webbrowser.open(url)
+
+
+@cli.command()
+def server():
+    import uvicorn
+    import webbrowser
+    import threading
+    import time
+    from .server import app
+
+    DBTContext.load()
+
+    def run_browser():
+        time.sleep(2)
+        url = 'http://localhost:8000'
+        webbrowser.open(url)
+
+    # Start the server in a new thread
+    thread = threading.Thread(target=run_browser)
+    thread.start()
+
+    uvicorn.run(app, host="0.0.0.0", port=8000)
+
+
+
 
 if __name__ == "__main__":
     cli()
