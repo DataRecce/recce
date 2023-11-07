@@ -62,42 +62,6 @@ def diff(resource_name, method, sql, **kwargs):
         after = inspector(dbt_context, node) if node is not None else ''
         diff_text(before, after)
 
-
-@cli.command()
-@click.pass_context
-@click.option('--impact-file', '-f', default='impact.yml', help='The impact configuration file. Default: impact.yml')
-def analyze(ctx, **kwargs):
-    """Analyze the impact between two states."""
-    dbt_context = DBTContext.load()
-
-    with open('impacts.yml', 'r') as yaml_file:
-        parsed_data = yaml.safe_load(yaml_file)
-
-    impacts = parsed_data.get("impacts", [])
-    for impact in impacts:
-        name = impact.get("name")
-        resource_name = impact.get("resource_name")
-        method = impact.get("method", "summary")
-
-        node = dbt_context.find_resource_by_name(resource_name)
-        base_node = dbt_context.find_resource_by_name(resource_name, base=True)
-        inspector = get_inspector(node.resource_type, method)
-
-        before = inspector(dbt_context, base_node) if base_node is not None else None
-        after = inspector(dbt_context, node) if node is not None else None
-
-        if before is None and after is None:
-            print(f'? {name}')
-        elif before is None:
-            print(f'+ {name}')
-        elif after is None:
-            print(f'- {name}')
-        elif before == after:
-            print(f'= {name}')
-        else:
-            print(f'! {name}')
-
-
 @cli.command()
 def lineagediff():
     """
