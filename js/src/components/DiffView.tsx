@@ -1,20 +1,10 @@
 import "react-data-grid/lib/styles.css";
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect, useCallback, useMemo } from "react";
 import DataGrid, { ColumnOrColumnGroup } from "react-data-grid";
 import axios from "axios";
-import { queryDiff } from "@/querydiff";
+import { DataFrame, queryDiff } from "@/querydiff";
 import { PUBLIC_API_URL } from "@/const";
 import { Box, Button, Flex, Textarea } from "@chakra-ui/react";
-
-const healthCheck = async () => {
-  try {
-    const response = await axios.get(`${PUBLIC_API_URL}/api/health`);
-    return response.data;
-  } catch (error) {
-    console.error("Error fetching data:", error);
-    return null;
-  }
-};
 
 interface DiffViewDataGridProps {
   loading: boolean;
@@ -58,31 +48,38 @@ const DiffView = () => {
 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string>();
-  const [gridData, setGridData] = useState<{ columns: any; rows: any }>({
-    columns: [],
-    rows: [],
-  });
+  // const [gridData, setGridData] = useState<{ columns: any; rows: any }>({
+  //   columns: [],
+  //   rows: [],
+  // });
+
+  const [base, setBase] = useState<DataFrame>();
+  const [current, setCurrent] = useState<DataFrame>();
+  const [primaryKeys, setPrimaryKeys] = useState<String[]>([]);
 
   const executeQuery = useCallback(async () => {
     try {
       setLoading(true);
-      const current = await axios.post(`${PUBLIC_API_URL}/api/query`, {
+      const responseCurrent = await axios.post(`${PUBLIC_API_URL}/api/query`, {
         sql_template: query,
+        base: false,
       });
-      if (current.status !== 200) {
+      if (responseCurrent.status !== 200) {
         throw new Error("error");
       }
 
-      const base = await axios.post(`${PUBLIC_API_URL}/api/query`, {
+      const responseBase = await axios.post(`${PUBLIC_API_URL}/api/query`, {
         sql_template: query,
         base: true,
       });
-      if (base.status !== 200) {
+      if (responseBase.status !== 200) {
         throw new Error("error");
       }
 
-      const transformedData = queryDiff(current.data, base.data);
-      setGridData(transformedData);
+      setBase(responseBase.data);
+      setCurrent(responseCurrent.data);
+      setPrimaryKeys([]);
+      setError(undefined);
     } catch (err: any) {
       setError(err?.message);
     } finally {
@@ -90,9 +87,15 @@ const DiffView = () => {
     }
   }, [query]);
 
-  useEffect(() => {
-    healthCheck();
-  }, []);
+  const gridData = useMemo(() => {
+    if (!base || !current) {
+      return { rows: [], columns: [] };
+    }
+
+    return queryDiff(base, current, primaryKeys, (newPrinaryKeys) => {
+      setPrimaryKeys(newPrinaryKeys);
+    });
+  }, [base, current, primaryKeys]);
 
   return (
     <Flex direction="column" height="100vh">

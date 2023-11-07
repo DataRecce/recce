@@ -1,6 +1,8 @@
 import { ColumnOrColumnGroup } from "react-data-grid";
 import _ from "lodash";
 import "./styles/diff.css";
+import { Box, Flex, Icon } from "@chakra-ui/react";
+import { VscClose, VscKey } from "react-icons/vsc";
 
 interface DataFrameField {
   name: string;
@@ -9,7 +11,7 @@ interface DataFrameField {
 
 type DataFrameRow = Record<string, any>;
 
-interface DataFrame {
+export interface DataFrame {
   schema: {
     fields: Array<DataFrameField>;
     primaryKey: string[];
@@ -26,7 +28,61 @@ function _getPrimaryKeyValue(row: DataFrameRow, primaryKeys: string[]): string {
   return JSON.stringify(result);
 }
 
-export function queryDiff(base: DataFrame, current: DataFrame) {
+interface DataFrameColumnGroupHeaderProps {
+  name: string;
+  primaryKeys: string[];
+  onPrimaryKeyChange: (primaryKeys: string[]) => void;
+}
+
+function DataFrameColumnGroupHeader({
+  name,
+  primaryKeys,
+  onPrimaryKeyChange,
+}: DataFrameColumnGroupHeaderProps) {
+  if (name === "index") {
+    return <></>;
+  }
+
+  if (primaryKeys.includes(name)) {
+    return (
+      <Flex alignItems="center">
+        <Box flex={1}>{name}</Box>
+        <Icon
+          cursor="pointer"
+          as={VscClose}
+          onClick={() => {
+            const newPrimaryKeys = primaryKeys.filter((item) => item !== name);
+            onPrimaryKeyChange(newPrimaryKeys);
+          }}
+        />
+      </Flex>
+    );
+  } else {
+    return (
+      <Flex alignItems="center">
+        <Box flex={1}>{name}</Box>
+        <Icon
+          cursor="pointer"
+          as={VscKey}
+          onClick={() => {
+            const newPrimaryKeys = [
+              ...primaryKeys.filter((item) => item !== "index"),
+              name,
+            ];
+            onPrimaryKeyChange(newPrimaryKeys);
+          }}
+        />
+      </Flex>
+    );
+  }
+}
+
+export function queryDiff(
+  base: DataFrame,
+  current: DataFrame,
+  primaryKeys: string[],
+  onPrimaryKeyChange: (primaryKeys: string[]) => void
+) {
   const columns: ColumnOrColumnGroup<any, any>[] = [];
   const pkColumns: ColumnOrColumnGroup<any, any>[] = [];
   const columnMap: Record<
@@ -41,7 +97,10 @@ export function queryDiff(base: DataFrame, current: DataFrame) {
       `primary key mismatch! ${base.schema.primaryKey} != ${current.schema.primaryKey}`
     );
   }
-  const primaryKeys = base.schema.primaryKey;
+
+  if (primaryKeys.length === 0) {
+    primaryKeys = base.schema.primaryKey;
+  }
 
   current.schema.fields.forEach((field) => {
     columnMap[field.name] = {};
@@ -59,10 +118,20 @@ export function queryDiff(base: DataFrame, current: DataFrame) {
     if (primaryKeys.includes(name)) {
       pkColumns.push({
         key: `${name}`,
-        name: name,
+        name: (
+          <DataFrameColumnGroupHeader
+            name={name}
+            primaryKeys={primaryKeys}
+            onPrimaryKeyChange={onPrimaryKeyChange}
+          ></DataFrameColumnGroupHeader>
+        ),
         frozen: true,
       });
     } else {
+      if (name === "index") {
+        return;
+      }
+
       const cellClass = (row: any) => {
         if (!_.isEqual(row[`base__${name}`], row[`current__${name}`])) {
           return "diff-cell";
@@ -72,7 +141,16 @@ export function queryDiff(base: DataFrame, current: DataFrame) {
       };
 
       columns.push({
-        name: name,
+        name: (
+          <DataFrameColumnGroupHeader
+            name={name}
+            primaryKeys={primaryKeys}
+            onPrimaryKeyChange={onPrimaryKeyChange}
+          ></DataFrameColumnGroupHeader>
+        ),
+        renderGroupCell: ({ column }) => {
+          return <>${`==${column.name}==`}</>;
+        },
         children: [
           {
             key: `base__${name}`,

@@ -91,7 +91,7 @@ test("query diff", () => {
     ],
   };
 
-  const result = queryDiff(base, current);
+  const result = queryDiff(base, current, [], () => {});
 
   expect(result?.rows).toStrictEqual([
     {
@@ -122,49 +122,6 @@ test("query diff", () => {
       current__value: 350,
     },
   ]);
-  expect(result?.columns).toStrictEqual([
-    {
-      key: "index",
-      name: "index",
-    },
-    {
-      name: "id",
-      children: [
-        {
-          key: "base__id",
-          name: "Base",
-        },
-        {
-          key: "current__id",
-          name: "Current",
-        },
-      ],
-    },
-    {
-      name: "name",
-      children: [
-        {
-          key: "base__name",
-          name: "Base",
-        },
-        {
-          key: "current__name",
-          name: "Current",
-        },
-      ],
-    },
-    {
-      name: "value",
-      children: [
-        {
-          key: "base__value",
-          name: "Base",
-        },
-        {
-          key: "current__value",
-          name: "Current",
-        },
-      ],
-    },
-  ]);
+
+  expect(result?.columns.length).toBe(4);
 });

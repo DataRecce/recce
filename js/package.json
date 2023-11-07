@@ -20,7 +20,8 @@
     "next": "14.0.1",
     "react": "^18",
     "react-data-grid": "7.0.0-beta.40",
-    "react-dom": "^18"
+    "react-dom": "^18",
+    "react-icons": "^4.11.0"
   },
   "devDependencies": {
     "@testing-library/dom": "^9.3.3",
