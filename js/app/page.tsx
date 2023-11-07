@@ -1,7 +1,7 @@
-'use client'
+"use client";
 
-import DiffView from '@/components/DiffView'
+import DiffView from "@/components/DiffView";
 
 export default function Home() {
-  return <DiffView/>
+  return <DiffView />;
 }

@@ -4,6 +4,7 @@ import DataGrid, { ColumnOrColumnGroup } from "react-data-grid";
 import axios from "axios";
 import { queryDiff } from "@/querydiff";
 import { PUBLIC_API_URL } from "@/const";
+import { Box, Button, Flex, Textarea } from "@chakra-ui/react";
 
 const healthCheck = async () => {
   try {
@@ -15,44 +16,39 @@ const healthCheck = async () => {
   }
 };
 
-const transformDataToGridFormat = (data: any) => {
-  const columns: ColumnOrColumnGroup<any, any>[] = [
-    { key: "id", name: "date_week" },
-  ];
+interface DiffViewDataGridProps {
+  loading: boolean;
+  error?: string;
+  columns: any;
+  rows: any;
+}
+const DiffViewDataGrid = ({
+  loading,
+  error,
+  columns,
+  rows,
+}: DiffViewDataGridProps) => {
+  if (loading) {
+    return <>Loading...</>;
+  }
 
-  data.columns.forEach(([columnName, side]: [string, string]) => {
-    if (side === "base") {
-      return;
-    }
+  if (error) {
+    return <>Error: {error}</>;
+  }
 
-    columns.push({
-      name: columnName,
-      children: [
-        {
-          key: `${columnName}_base`,
-          name: "Base",
-        },
-        {
-          key: `${columnName}_current`,
-          name: "Current",
-        },
-      ],
-    });
-  }, {});
+  if (columns.length === 0) {
+    return <>No data</>;
+  }
 
-  const rows = data.index.map((timestamp: string, idx: number) => {
-    const rowData = data.data[idx];
-    const row: Record<string, any> = { id: timestamp };
-    data.columns.forEach(
-      ([columnName, side]: [string, string], columnIdx: number) => {
-        const key = `${columnName}_${side}`;
-        row[key] = rowData[columnIdx];
-      }
-    );
-    return row;
-  });
-
-  return { columns, rows };
+  return (
+    <DataGrid
+      style={{ height: "100%" }}
+      columns={columns}
+      rows={rows}
+      className="fill-grid"
+      defaultColumnOptions={{ resizable: true }}
+    />
+  );
 };
 
 const DiffView = () => {
@@ -61,7 +57,7 @@ const DiffView = () => {
   );
 
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState(null);
+  const [error, setError] = useState<string>();
   const [gridData, setGridData] = useState<{ columns: any; rows: any }>({
     columns: [],
     rows: [],
@@ -99,28 +95,41 @@ const DiffView = () => {
   }, []);
 
   return (
-    <div>
-      <textarea
+    <Flex direction="column" height="100vh">
+      <Flex justifyContent="right" padding="5px">
+        <Button
+          colorScheme="blue"
+          onClick={executeQuery}
+          disabled={loading}
+          size="sm"
+        >
+          Run
+        </Button>
+      </Flex>
+      <Textarea
+        flex="1"
+        height="200px"
         value={query}
         onChange={(e) => setQuery(e.target.value)}
+        onKeyDown={(e) => {
+          if (e.key === "Enter" && (e.ctrlKey || e.metaKey)) {
+            executeQuery();
+            e.preventDefault();
+          }
+        }}
         placeholder="Enter your SQL query here"
         rows={20}
         style={{ width: "100%" }}
       />
-      <br />
-      <button onClick={executeQuery} disabled={loading}>
-        Execute Query
-      </button>
-      {loading && <p>Loading...</p>}
-      {error && <p>Error: {error}</p>}
-
-      <DataGrid
-        columns={gridData.columns}
-        rows={gridData.rows}
-        className="fill-grid"
-        defaultColumnOptions={{ resizable: true }}
-      />
-    </div>
+      <Box backgroundColor="gray.100" height="50vh">
+        <DiffViewDataGrid
+          loading={loading}
+          error={error}
+          rows={gridData.rows}
+          columns={gridData.columns}
+        />
+      </Box>
+    </Flex>
   );
 };
 
