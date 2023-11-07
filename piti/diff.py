@@ -29,6 +29,3 @@ def diff_dataframe(before: pd.DataFrame, after: pd.DataFrame):
     before_aligned, after_aligned = before.align(after)
     diff = before_aligned.compare(after_aligned,  result_names=('base', 'current'))
     print(diff.to_string(na_rep='-'))
-
-    diff = before_aligned.compare(after_aligned, result_names=('base', 'current'), keep_equal=True, keep_shape=True)
-    diff.to_json('diff.json', orient='split', date_format='iso')
