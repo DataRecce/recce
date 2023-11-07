@@ -1,11 +1,10 @@
 from typing import Optional
 
-from fastapi import FastAPI, Request
+from fastapi import FastAPI, Request, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from pathlib import Path
 from piti.dbt import DBTContext
-from piti.diff import diff_dataframe
 from piti.impact import inspect_sql
 from pydantic import BaseModel
 
@@ -53,13 +52,21 @@ async def query_diff(input: QueryDiffInput):
 
 @app.post("/api/query")
 async def query(input: QueryInput):
-    sql = input.sql_template
-    dbtContext = DBTContext.load()
-    result = inspect_sql(dbtContext, sql, base=input.base)
-    result_json = result.to_json(orient='table')
+    from jinja2.exceptions import TemplateSyntaxError
 
-    import json
-    return json.loads(result_json)
+    try:
+        sql = input.sql_template
+        dbtContext = DBTContext.load()
+        result = inspect_sql(dbtContext, sql, base=input.base)
+        result_json = result.to_json(orient='table')
+
+        import json
+        return json.loads(result_json)
+    except TemplateSyntaxError as e:
+        raise HTTPException(status_code=400, detail=f'Jinja template error: line {e.lineno}: {str(e)}')
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
 
 static_folder_path = Path(__file__).parent / 'data'
 app.mount("/", StaticFiles(directory=static_folder_path), name="static")

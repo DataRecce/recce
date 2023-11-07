@@ -23,6 +23,7 @@ setup(name='piti',
           'fastapi',
           'uvicorn',
           'pydantic',
+          'jinja2',
       ],
       tests_require=['pytest'],
       extras_require={

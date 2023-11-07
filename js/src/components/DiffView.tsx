@@ -1,7 +1,7 @@
 import "react-data-grid/lib/styles.css";
 import React, { useState, useEffect, useCallback, useMemo } from "react";
 import DataGrid, { ColumnOrColumnGroup } from "react-data-grid";
-import axios from "axios";
+import axios, { AxiosError } from "axios";
 import { DataFrame, queryDiff } from "@/querydiff";
 import { PUBLIC_API_URL } from "@/const";
 import { Box, Button, Flex, Textarea } from "@chakra-ui/react";
@@ -9,12 +9,14 @@ import { Box, Button, Flex, Textarea } from "@chakra-ui/react";
 interface DiffViewDataGridProps {
   loading: boolean;
   error?: string;
+  errorStep: string;
   columns: any;
   rows: any;
 }
 const DiffViewDataGrid = ({
   loading,
   error,
+  errorStep,
   columns,
   rows,
 }: DiffViewDataGridProps) => {
@@ -23,7 +25,11 @@ const DiffViewDataGrid = ({
   }
 
   if (error) {
-    return <>Error: {error}</>;
+    return (
+      <>
+        Error({errorStep}): {error}
+      </>
+    );
   }
 
   if (columns.length === 0) {
@@ -35,7 +41,6 @@ const DiffViewDataGrid = ({
       style={{ height: "100%" }}
       columns={columns}
       rows={rows}
-      className="fill-grid"
       defaultColumnOptions={{ resizable: true }}
     />
   );
@@ -48,6 +53,7 @@ const DiffView = () => {
 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string>();
+  const [errorStep, setErrorStep] = useState<string>();
   // const [gridData, setGridData] = useState<{ columns: any; rows: any }>({
   //   columns: [],
   //   rows: [],
@@ -55,9 +61,11 @@ const DiffView = () => {
 
   const [base, setBase] = useState<DataFrame>();
   const [current, setCurrent] = useState<DataFrame>();
-  const [primaryKeys, setPrimaryKeys] = useState<String[]>([]);
+  const [primaryKeys, setPrimaryKeys] = useState<string[]>([]);
 
   const executeQuery = useCallback(async () => {
+    let step = "current";
+
     try {
       setLoading(true);
       const responseCurrent = await axios.post(`${PUBLIC_API_URL}/api/query`, {
@@ -68,6 +76,7 @@ const DiffView = () => {
         throw new Error("error");
       }
 
+      step = "base";
       const responseBase = await axios.post(`${PUBLIC_API_URL}/api/query`, {
         sql_template: query,
         base: true,
@@ -80,8 +89,19 @@ const DiffView = () => {
       setCurrent(responseCurrent.data);
       setPrimaryKeys([]);
       setError(undefined);
+      setErrorStep(undefined);
     } catch (err: any) {
-      setError(err?.message);
+      if (err instanceof AxiosError) {
+        const detail = err?.response?.data?.detail;
+        if (detail) {
+          setError(detail);
+        } else {
+          setError(err?.message);
+        }
+      } else {
+        setError(err?.message);
+      }
+      setErrorStep(step);
     } finally {
       setLoading(false);
     }
@@ -128,6 +148,7 @@ const DiffView = () => {
         <DiffViewDataGrid
           loading={loading}
           error={error}
+          errorStep={errorStep}
           rows={gridData.rows}
           columns={gridData.columns}
         />

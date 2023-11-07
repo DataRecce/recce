@@ -148,9 +148,6 @@ export function queryDiff(
             onPrimaryKeyChange={onPrimaryKeyChange}
           ></DataFrameColumnGroupHeader>
         ),
-        renderGroupCell: ({ column }) => {
-          return <>${`==${column.name}==`}</>;
-        },
         children: [
           {
             key: `base__${name}`,
