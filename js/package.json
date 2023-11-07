@@ -2,9 +2,12 @@
   "name": "recce",
   "version": "0.1.0",
   "private": true,
+  "engines": {
+    "node": ">=18"
+  },
   "scripts": {
     "dev": "next dev",
-    "build": "next build && mv out ../piti/data",
+    "build": "npm run clean && next build && mv out ../piti/data",
     "start": "next start",
     "lint": "next lint",
     "test": "jest --watch",

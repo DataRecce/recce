@@ -9,7 +9,7 @@ import { Box, Button, Flex, Textarea } from "@chakra-ui/react";
 interface DiffViewDataGridProps {
   loading: boolean;
   error?: string;
-  errorStep: string;
+  errorStep?: string;
   columns: any;
   rows: any;
 }
@@ -27,7 +27,7 @@ const DiffViewDataGrid = ({
   if (error) {
     return (
       <>
-        Error({errorStep}): {error}
+        Error while querying {errorStep} environment: {error}
       </>
     );
   }
@@ -48,7 +48,7 @@ const DiffViewDataGrid = ({
 
 const DiffView = () => {
   const [query, setQuery] = useState(
-    'select * from {{ ref("kpi") }} order by 1 desc limit 20'
+    'select * from {{ ref("mymodel") }} limit 1000'
   );
 
   const [loading, setLoading] = useState(false);
