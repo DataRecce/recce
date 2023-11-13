@@ -9,6 +9,11 @@ from piti.impact import inspect_sql
 from pydantic import BaseModel
 
 app = FastAPI()
+dbt_context:DBTContext = None
+
+def load_dbt_context():
+    global dbt_context
+    dbt_context = DBTContext.load()
 
 origins = [
     "http://localhost:3000",
@@ -39,7 +44,6 @@ async def query(input: QueryInput):
 
     try:
         sql = input.sql_template
-        dbt_context = DBTContext.load()
         result = inspect_sql(dbt_context, sql, base=input.base)
         result_json = result.to_json(orient='table')
 
@@ -47,6 +51,21 @@ async def query(input: QueryInput):
         return json.loads(result_json)
     except TemplateSyntaxError as e:
         raise HTTPException(status_code=400, detail=f'Jinja template error: line {e.lineno}: {str(e)}')
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+
+@app.get("/api/lineage")
+async def get_lineage(base: Optional[bool] = False):
+    try:
+        import json
+        import dbt.utils
+
+        manifest = dbt_context.curr_manifest if base is False else dbt_context.base_manifest
+
+        parent_map = json.loads(json.dumps(manifest.parent_map, cls=dbt.utils.JSONEncoder))
+
+        return dict(parent_map=parent_map)
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))
 
