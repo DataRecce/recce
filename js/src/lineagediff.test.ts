@@ -1,8 +1,9 @@
-import { buildLineageGraph, lineageGraph } from "./lineagediff";
+import { LineageData, LineageGraph, buildLineageGraph } from "./lineagediff";
 import { queryDiff } from "./querydiff";
 
 test("lineage diff", () => {
   const base = {
+    nodes: {},
     parent_map: {
       a: [],
       b: ["a"],
@@ -12,6 +13,7 @@ test("lineage diff", () => {
   };
 
   const current = {
+    nodes: {},
     parent_map: {
       a: [],
       b: ["a"],
@@ -32,6 +34,16 @@ test("lineage diff", () => {
 
 test("lineage diff 2", () => {
   const base = {
+    nodes: {
+      c: {
+        unique_id: "c",
+        name: "c",
+        checksum: {
+          name: "sha1",
+          checksum: "c#v1",
+        },
+      },
+    },
     parent_map: {
       a: [],
       b: ["a"],
@@ -39,7 +51,17 @@ test("lineage diff 2", () => {
     },
   };
 
-  const current = {
+  const current: LineageData = {
+    nodes: {
+      c: {
+        unique_id: "c",
+        name: "c",
+        checksum: {
+          name: "sha1",
+          checksum: "c#v2",
+        },
+      },
+    },
     parent_map: {
       a2: [],
       b: ["a2"],
@@ -51,10 +73,11 @@ test("lineage diff 2", () => {
 
   expect(Object.keys(nodes).length).toBe(4);
   expect(Object.keys(edges).length).toBe(3);
-  expect(nodes["a"].from).toBe("base");
-  expect(nodes["b"].from).toBe("both");
+  expect(nodes["a"].changeStatus).toBe("removed");
+  expect(nodes["b"].changeStatus).toBeUndefined;
+  expect(nodes["c"].changeStatus).toBe("modified");
 
-  expect(nodes["b"].parents["a"].from).toBe("base");
-  expect(nodes["b"].parents["a2"].from).toBe("current");
-  expect(nodes["b"].children["c"].from).toBe("both");
+  expect(nodes["b"].parents["a"].changeStatus).toBe("removed");
+  expect(nodes["b"].parents["a2"].changeStatus).toBe("added");
+  expect(nodes["b"].children["c"].changeStatus).toBeUndefined;
 });

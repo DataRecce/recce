@@ -5,7 +5,20 @@ import { Node, Edge, Position } from "reactflow";
 /**
  * The data from the API
  */
-interface LineageData {
+interface NodeData {
+  unique_id: string;
+  name: string;
+  checksum?: {
+    name: string;
+    checksum: string;
+  };
+  raw_code?: string;
+}
+
+export interface LineageData {
+  nodes?: {
+    [key: string]: NodeData;
+  };
   parent_map: {
     [key: string]: string[];
   };
@@ -19,6 +32,11 @@ export interface LineageGraphNode {
   id: string;
   name: string;
   from: "both" | "base" | "current";
+  data: {
+    base?: NodeData;
+    current?: NodeData;
+  };
+  changeStatus?: "added" | "removed" | "modified";
   resourceType?: string;
   packageName?: string;
   parents: {
@@ -32,6 +50,7 @@ export interface LineageGraphNode {
 interface LineageGraphEdge {
   id: string;
   from: "both" | "base" | "current";
+  changeStatus?: "added" | "removed";
   parent: LineageGraphNode;
   child: LineageGraphNode;
 }
@@ -59,6 +78,7 @@ export function buildLineageGraph(
     return {
       id: key,
       name: key,
+      data: {},
       from,
       parents: {},
       children: {},
@@ -67,6 +87,11 @@ export function buildLineageGraph(
 
   for (const [key, parents] of Object.entries(base.parent_map)) {
     nodes[key] = buildNode(key, "base");
+    const nodeData = base.nodes && base.nodes[key];
+    if (nodeData) {
+      nodes[key].data.base = nodeData;
+      nodes[key].name = nodeData?.name;
+    }
   }
 
   for (const [key, parents] of Object.entries(current.parent_map)) {
@@ -74,6 +99,11 @@ export function buildLineageGraph(
       nodes[key].from = "both";
     } else {
       nodes[key] = buildNode(key, "current");
+    }
+    const nodeData = current.nodes && current.nodes[key];
+    if (nodeData) {
+      nodes[key].data.current = current.nodes && current.nodes[key];
+      nodes[key].name = nodeData?.name;
     }
   }
 
@@ -118,6 +148,29 @@ export function buildLineageGraph(
     }
   }
 
+  for (const [key, node] of Object.entries(nodes)) {
+    if (node.from === "base") {
+      node.changeStatus = "removed";
+    } else if (node.from === "current") {
+      node.changeStatus = "added";
+    } else {
+      const checksum1 = node?.data?.base?.checksum?.checksum;
+      const checksum2 = node?.data?.current?.checksum?.checksum;
+
+      if (checksum1 && checksum2 && checksum1 !== checksum2) {
+        node.changeStatus = "modified";
+      }
+    }
+  }
+
+  for (const [key, edge] of Object.entries(edges)) {
+    if (edge.from === "base") {
+      edge.changeStatus = "removed";
+    } else if (edge.from === "current") {
+      edge.changeStatus = "added";
+    }
+  }
+
   return {
     nodes,
     edges,
@@ -128,15 +181,13 @@ export function toReactflow(lineageGraph: LineageGraph): [Node[], Edge[]] {
   const nodes: Node[] = [];
   const edges: Edge[] = [];
   const backgroundColorMap = {
-    both: "white",
-    base: "red",
-    current: "green",
+    removed: "red",
+    added: "green",
     modified: "orange",
   };
   const strokeColorMap = {
-    both: "black",
-    base: "red",
-    current: "green",
+    removed: "red",
+    added: "green",
   };
 
   for (const [key, node] of Object.entries(lineageGraph.nodes)) {
@@ -147,7 +198,10 @@ export function toReactflow(lineageGraph: LineageGraph): [Node[], Edge[]] {
       id: node.id,
       position: { x: 0, y: 0 },
       data: { label: node.name },
-      style: { backgroundColor: backgroundColorMap[node.from] },
+      style: {
+        backgroundColor:
+          node.changeStatus && backgroundColorMap[node.changeStatus],
+      },
       targetPosition: Position.Left,
       sourcePosition: Position.Right,
     });
@@ -158,7 +212,7 @@ export function toReactflow(lineageGraph: LineageGraph): [Node[], Edge[]] {
       id: edge.id,
       source: edge.parent.id,
       target: edge.child.id,
-      style: { stroke: strokeColorMap[edge.from] },
+      style: { stroke: edge.changeStatus && strokeColorMap[edge.changeStatus] },
     });
   }
 
