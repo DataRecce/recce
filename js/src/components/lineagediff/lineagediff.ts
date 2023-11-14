@@ -1,6 +1,7 @@
 import _ from "lodash";
-import "./styles/diff.css";
+import "@/styles/diff.css";
 import { Node, Edge, Position } from "reactflow";
+import { getNeighborSet } from "./graph";
 
 /**
  * The data from the API
@@ -13,6 +14,8 @@ interface NodeData {
     checksum: string;
   };
   raw_code?: string;
+  resource_type?: string;
+  package_name?: string;
 }
 
 export interface LineageData {
@@ -36,7 +39,7 @@ export interface LineageGraphNode {
     base?: NodeData;
     current?: NodeData;
   };
-  changeStatus?: "added" | "removed" | "modified";
+  changeStatus?: "added" | "removed" | "modified" | "impacted";
   resourceType?: string;
   packageName?: string;
   parents: {
@@ -45,6 +48,8 @@ export interface LineageGraphNode {
   children: {
     [key: string]: LineageGraphEdge;
   };
+
+  isHighlighted?: boolean;
 }
 
 interface LineageGraphEdge {
@@ -53,9 +58,10 @@ interface LineageGraphEdge {
   changeStatus?: "added" | "removed";
   parent: LineageGraphNode;
   child: LineageGraphNode;
+  isHighlighted?: boolean;
 }
 
-interface LineageGraph {
+export interface LineageGraph {
   nodes: {
     [key: string]: LineageGraphNode;
   };
@@ -91,6 +97,8 @@ export function buildLineageGraph(
     if (nodeData) {
       nodes[key].data.base = nodeData;
       nodes[key].name = nodeData?.name;
+      nodes[key].resourceType = nodeData?.resource_type;
+      nodes[key].packageName = nodeData?.package_name;
     }
   }
 
@@ -104,6 +112,8 @@ export function buildLineageGraph(
     if (nodeData) {
       nodes[key].data.current = current.nodes && current.nodes[key];
       nodes[key].name = nodeData?.name;
+      nodes[key].resourceType = nodeData?.resource_type;
+      nodes[key].packageName = nodeData?.package_name;
     }
   }
 
@@ -148,18 +158,31 @@ export function buildLineageGraph(
     }
   }
 
+  const modifiedSet: string[] = [];
   for (const [key, node] of Object.entries(nodes)) {
     if (node.from === "base") {
       node.changeStatus = "removed";
+      modifiedSet.push(node.id);
     } else if (node.from === "current") {
       node.changeStatus = "added";
+      modifiedSet.push(node.id);
     } else {
       const checksum1 = node?.data?.base?.checksum?.checksum;
       const checksum2 = node?.data?.current?.checksum?.checksum;
 
       if (checksum1 && checksum2 && checksum1 !== checksum2) {
         node.changeStatus = "modified";
+        modifiedSet.push(node.id);
       }
+    }
+  }
+
+  const impactedSet = getNeighborSet(modifiedSet, (id: string) => {
+    return Object.keys(nodes[id].children);
+  });
+  for (const impacted of Array.from(impactedSet)) {
+    if (!nodes[impacted].changeStatus) {
+      nodes[impacted].changeStatus = "impacted";
     }
   }
 
@@ -184,6 +207,7 @@ export function toReactflow(lineageGraph: LineageGraph): [Node[], Edge[]] {
     removed: "red",
     added: "green",
     modified: "orange",
+    impacted: "yellow",
   };
   const strokeColorMap = {
     removed: "red",
@@ -197,11 +221,12 @@ export function toReactflow(lineageGraph: LineageGraph): [Node[], Edge[]] {
     nodes.push({
       id: node.id,
       position: { x: 0, y: 0 },
-      data: { label: node.name },
+      data: node,
       style: {
         backgroundColor:
           node.changeStatus && backgroundColorMap[node.changeStatus],
       },
+      type: "customNode",
       targetPosition: Position.Left,
       sourcePosition: Position.Right,
     });
@@ -217,4 +242,58 @@ export function toReactflow(lineageGraph: LineageGraph): [Node[], Edge[]] {
   }
 
   return [nodes, edges];
+}
+
+export function highlightPath(
+  lineageGraph: LineageGraph,
+  nodes: Node<LineageGraphNode>[],
+  edges: Edge[],
+  id: string | null
+): [Node<LineageGraphNode>[], Edge[]] {
+  function union(...sets: Set<string>[]) {
+    const unionSet = new Set<string>();
+
+    sets.forEach((set) => {
+      set.forEach((key) => {
+        unionSet.add(key);
+      });
+    });
+
+    return unionSet;
+  }
+
+  const relatedNodes =
+    id !== null
+      ? union(
+          getNeighborSet([id], (key) =>
+            Object.keys(lineageGraph.nodes[key].parents)
+          ),
+          getNeighborSet([id], (key) =>
+            Object.keys(lineageGraph.nodes[key].children)
+          )
+        )
+      : new Set<string>();
+
+  const relatedEdges = new Set(
+    edges
+      .filter((edge) => {
+        return relatedNodes.has(edge.source) && relatedNodes.has(edge.target);
+      })
+      .map((edge) => edge.id)
+  );
+
+  const newEdges = edges.map((edge) => {
+    // edge.data.isHighlighted = relatedEdges.has(edge.id);
+    return {
+      ...edge,
+    };
+  });
+  const newNodes = nodes.map((node) => {
+    node.data.isHighlighted = relatedNodes.has(node.id);
+    return {
+      ...node,
+    };
+  });
+
+  return [newNodes, newEdges];
 }

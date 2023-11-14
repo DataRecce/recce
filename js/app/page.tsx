@@ -1,7 +1,7 @@
 "use client";
 
 import DiffView from "@/components/DiffView";
-import LineageView from "@/components/LineageView";
+import LineageView from "@/components/lineagediff/LineageView";
 import { Tabs, TabList, Tab, TabPanels, TabPanel } from "@chakra-ui/react";
 
 export default function Home() {

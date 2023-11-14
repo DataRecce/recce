@@ -1,5 +1,10 @@
 import { PUBLIC_API_URL } from "@/const";
-import { buildLineageGraph, toReactflow } from "@/lineagediff";
+import {
+  LineageGraph,
+  buildLineageGraph,
+  highlightPath,
+  toReactflow,
+} from "./lineagediff";
 import { Box } from "@chakra-ui/react";
 import axios, { AxiosError } from "axios";
 import React, { useCallback, useEffect, useState } from "react";
@@ -9,15 +14,19 @@ import ReactFlow, {
   useEdgesState,
   useNodesState,
   Position,
+  Controls,
+  Panel,
+  MiniMap,
 } from "reactflow";
 import dagre from "dagre";
 import "reactflow/dist/style.css";
+import { GraphNode } from "./GraphNode";
 
 const layout = (nodes: Node[], edges: Edge[], direction = "LR") => {
   const dagreGraph = new dagre.graphlib.Graph();
   dagreGraph.setDefaultEdgeLabel(() => ({}));
 
-  const nodeWidth = 172;
+  const nodeWidth = 300;
   const nodeHeight = 36;
 
   const isHorizontal = direction === "LR";
@@ -47,9 +56,18 @@ const layout = (nodes: Node[], edges: Edge[], direction = "LR") => {
   });
 };
 
+const nodeTypes = {
+  customNode: GraphNode,
+};
+const edgeTypes = {};
+const nodeColor = (node: Node) => {
+  return node?.style?.backgroundColor || ("lightgray" as string);
+};
+
 export default function LineageView() {
   const [nodes, setNodes, onNodesChange] = useNodesState([]);
   const [edges, setEdges, onEdgesChange] = useEdgesState([]);
+  const [lineageGraph, setLineageGraph] = useState<LineageGraph>();
 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string>();
@@ -87,6 +105,7 @@ export default function LineageView() {
       );
       const [nodes, edges] = toReactflow(lineagGraph);
       layout(nodes, edges);
+      setLineageGraph(lineagGraph);
       setNodes(nodes);
       setEdges(edges);
 
@@ -113,14 +132,54 @@ export default function LineageView() {
     queryLineage();
   }, []);
 
+  const onNodeMouseEnter = useCallback(
+    (event: React.MouseEvent, node: Node) => {
+      if (lineageGraph) {
+        const [newNodes, newEdges] = highlightPath(
+          lineageGraph,
+          nodes,
+          edges,
+          node.id
+        );
+        setNodes(newNodes);
+        setEdges(newEdges);
+      }
+    },
+    [lineageGraph, nodes, edges]
+  );
+
+  const onNodeMouseLeave = useCallback(
+    (event: React.MouseEvent, node: Node) => {
+      if (lineageGraph) {
+        const [newNodes, newEdges] = highlightPath(
+          lineageGraph,
+          nodes,
+          edges,
+          null
+        );
+        setNodes(newNodes);
+        setEdges(newEdges);
+      }
+    },
+    [lineageGraph, nodes, edges]
+  );
+
   return (
     <Box width="100%" height="calc(100vh - 74px)">
       <ReactFlow
+        nodeTypes={nodeTypes}
+        edgeTypes={edgeTypes}
         nodes={nodes}
         edges={edges}
         onNodesChange={onNodesChange}
         onEdgesChange={onEdgesChange}
-      />
+        onNodeMouseEnter={onNodeMouseEnter}
+        onNodeMouseLeave={onNodeMouseLeave}
+      >
+        <Controls showInteractive={false} />
+
+        <MiniMap nodeColor={nodeColor} nodeStrokeWidth={3} />
+      </ReactFlow>
     </Box>
   );
 }
