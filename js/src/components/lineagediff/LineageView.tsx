@@ -76,7 +76,7 @@ function ChangeStatusLegend() {
     added: ["Added", "Added resource"],
     removed: ["Removed", "Removed resource"],
     modified: ["Modified", "Modified resource"],
-    impacted: ["Impacted", "Down-streams of added, removed, modified"],
+    impacted: ["Modified+", "Down-streams of added, removed, modified"],
   };
 
   return (
