@@ -1,12 +1,12 @@
 # piti
 
-`piti` is a query diff tool for dbt
+`piti` is a environment diff tool for dbt
 
 ## Features
 
 1. Support the same dbt adapter framework as dbt.
 2. Support both Web UI & CLI
-3. Lineage diff (coming soon)
+3. Lineage diff
 
 ## Use cases
 
@@ -58,7 +58,8 @@ jaffle_shop:
    piti server
    ```
 
-1. Write and run a query
+1. Review the linage diff.
+1. Switch to query tab, Write and run a query
 
    ```sql
    select * from {{ ref('mymodel') }}
