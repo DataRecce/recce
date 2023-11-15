@@ -47,4 +47,5 @@ setup(name='recce',
           "License :: OSI Approved :: Apache Software License",
           "Operating System :: OS Independent",
           "Development Status :: 4 - Beta"
-      ])
+      ],
+      package_data={"recce": ['VERSION', 'data/**']})

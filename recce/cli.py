@@ -1,6 +1,4 @@
 import click
-import requests
-import yaml
 
 from .dbt import DBTContext
 from .diff import diff_text, diff_dataframe
@@ -10,7 +8,16 @@ from .impact import inspect_sql, get_inspector
 @click.group()
 @click.pass_context
 def cli(ctx, **kwargs):
-    """The impact analysis tool for DBT"""
+    """Environment diff tool for DBT"""
+
+
+@cli.command()
+def version():
+    """
+    Show version information
+    """
+    from recce import __version__
+    print(__version__)
 
 
 @cli.command()
@@ -36,6 +43,7 @@ def inspect(resource_name, method, sql, **kwargs):
     output = inspector(dbt_context, resource)
     print(output)
 
+
 @cli.command()
 @click.argument('resource_name', required=False)
 @click.argument('method', default='summary')
@@ -46,7 +54,6 @@ def diff(resource_name, method, sql, **kwargs):
     """
 
     dbt_context = DBTContext.load()
-
 
     if sql is not None:
         before = inspect_sql(dbt_context, sql, base=True)
@@ -65,6 +72,10 @@ def diff(resource_name, method, sql, **kwargs):
 
 @cli.command()
 def server():
+    """
+    Launch the local server
+    """
+
     import uvicorn
     import webbrowser
     import threading
@@ -83,8 +94,6 @@ def server():
     thread.start()
 
     uvicorn.run(app, host="0.0.0.0", port=8000)
-
-
 
 
 if __name__ == "__main__":
