@@ -1,16 +1,23 @@
 import click
-import requests
-import yaml
 
-from piti.dbt import DBTContext
-from piti.diff import diff_text, diff_dataframe
-from piti.impact import inspect_sql, get_inspector
+from .dbt import DBTContext
+from .diff import diff_text, diff_dataframe
+from .impact import inspect_sql, get_inspector
 
 
 @click.group()
 @click.pass_context
 def cli(ctx, **kwargs):
-    """The impact analysis tool for DBT"""
+    """Environment diff tool for DBT"""
+
+
+@cli.command()
+def version():
+    """
+    Show version information
+    """
+    from recce import __version__
+    print(__version__)
 
 
 @cli.command()
@@ -36,6 +43,7 @@ def inspect(resource_name, method, sql, **kwargs):
     output = inspector(dbt_context, resource)
     print(output)
 
+
 @cli.command()
 @click.argument('resource_name', required=False)
 @click.argument('method', default='summary')
@@ -46,7 +54,6 @@ def diff(resource_name, method, sql, **kwargs):
     """
 
     dbt_context = DBTContext.load()
-
 
     if sql is not None:
         before = inspect_sql(dbt_context, sql, base=True)
@@ -62,28 +69,13 @@ def diff(resource_name, method, sql, **kwargs):
         after = inspector(dbt_context, node) if node is not None else ''
         diff_text(before, after)
 
-@cli.command()
-def lineagediff():
-    """
-    Show the lineage diff in the piperider cloud.
-    """
-
-    files = [
-        ('files', ('base.json', open('target-base/manifest.json', 'rb'))),
-        ('files', ('current.json', open('target/manifest.json', 'rb'))),
-    ]
-
-    print("uploading...")
-    response = requests.post("https://cloud.piperider.io/api/v2/manifest/upload", files=files)
-    result = response.json()
-    url = f"https://cloud.piperider.io/quick-look/comparisons/{result.get('comparison_id')}?utm_source=piti#/?g_v=1"
-    print("report url: ", url)
-    import webbrowser
-    webbrowser.open(url)
-
 
 @cli.command()
 def server():
+    """
+    Launch the local server
+    """
+
     import uvicorn
     import webbrowser
     import threading
@@ -102,8 +94,6 @@ def server():
     thread.start()
 
     uvicorn.run(app, host="0.0.0.0", port=8000)
-
-
 
 
 if __name__ == "__main__":

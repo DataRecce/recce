@@ -4,8 +4,8 @@ from fastapi import FastAPI, Request, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from pathlib import Path
-from piti.dbt import DBTContext
-from piti.impact import inspect_sql
+from .dbt import DBTContext
+from .impact import inspect_sql
 from pydantic import BaseModel
 
 app = FastAPI()

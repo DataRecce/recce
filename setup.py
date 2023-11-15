@@ -3,16 +3,16 @@ from distutils.core import setup
 
 from setuptools import find_packages  # type: ignore
 
-setup(name='piti',
+setup(name='recce',
       version='0.1.0-dev',
-      description='Piti',
+      description='Environment diff tool for dbt',
       long_description=open('README.md').read(),
       long_description_content_type='text/markdown',
       author='InfuseAI Dev Team',
       author_email='dev@infuseai.io',
-      url='https://github.com/InfuseAI/piti',
+      url='https://github.com/InfuseAI/recce',
       entry_points={
-          'console_scripts': ['piti = piti.cli:cli']
+          'console_scripts': ['recce = recce.cli:cli']
       },
       python_requires=">=3.8",
       packages=find_packages(),
@@ -37,7 +37,7 @@ setup(name='piti',
           ],
       },
       project_urls={
-          "Bug Tracker": "https://github.com/InfuseAI/piti/issues",
+          "Bug Tracker": "https://github.com/InfuseAI/recce/issues",
       },
       classifiers=[
           "Programming Language :: Python :: 3.8",
@@ -47,4 +47,5 @@ setup(name='piti',
           "License :: OSI Approved :: Apache Software License",
           "Operating System :: OS Independent",
           "Development Status :: 4 - Beta"
-      ])
+      ],
+      package_data={"recce": ['VERSION', 'data/**']})
