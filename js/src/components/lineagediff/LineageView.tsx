@@ -111,9 +111,6 @@ export default function LineageView() {
   const [error, setError] = useState<string>();
   const [errorStep, setErrorStep] = useState<string>();
 
-  const [base, setBase] = useState<any>();
-  const [current, setCurrent] = useState<any>();
-
   const queryLineage = useCallback(async () => {
     let step = "current";
 
@@ -133,10 +130,6 @@ export default function LineageView() {
       if (responseBase.status !== 200) {
         throw new Error("error");
       }
-
-      setBase(responseBase.data);
-      setCurrent(responseCurrent.data);
-
       const lineagGraph = buildLineageGraph(
         responseBase.data,
         responseCurrent.data
@@ -196,6 +189,14 @@ export default function LineageView() {
       setEdges(newEdges);
     }
   };
+
+  if (loading) {
+    return <>Loading lineage data</>;
+  }
+
+  if (error) {
+    return <>Fail to load lineage data: {error}</>;
+  }
 
   return (
     <Box width="100%" height="calc(100vh - 74px)">
