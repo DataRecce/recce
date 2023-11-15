@@ -5,7 +5,7 @@ import {
   highlightPath,
   toReactflow,
 } from "./lineagediff";
-import { Box } from "@chakra-ui/react";
+import { Box, Flex, Icon, Tooltip } from "@chakra-ui/react";
 import axios, { AxiosError } from "axios";
 import React, { useCallback, useEffect, useState } from "react";
 import ReactFlow, {
@@ -13,14 +13,17 @@ import ReactFlow, {
   Edge,
   useEdgesState,
   useNodesState,
-  Position,
   Controls,
-  Panel,
   MiniMap,
+  Panel,
+  Background,
+  BackgroundVariant,
 } from "reactflow";
 import dagre from "dagre";
 import "reactflow/dist/style.css";
 import { GraphNode } from "./GraphNode";
+import GraphEdge from "./GraphEdge";
+import { getIconForChangeStatus } from "./styles";
 
 const layout = (nodes: Node[], edges: Edge[], direction = "LR") => {
   const dagreGraph = new dagre.graphlib.Graph();
@@ -59,10 +62,45 @@ const layout = (nodes: Node[], edges: Edge[], direction = "LR") => {
 const nodeTypes = {
   customNode: GraphNode,
 };
-const edgeTypes = {};
+const edgeTypes = {
+  customEdge: GraphEdge,
+};
 const nodeColor = (node: Node) => {
   return node?.style?.backgroundColor || ("lightgray" as string);
 };
+
+function ChangeStatusLegend() {
+  const CHANGE_STATUS_MSGS: {
+    [key: string]: [string, string];
+  } = {
+    added: ["Added", "Added resource"],
+    removed: ["Removed", "Removed resource"],
+    modified: ["Modified", "Modified resource"],
+    impacted: ["Impacted", "Down-streams of added, removed, modified"],
+  };
+
+  return (
+    <Box
+      bg="white"
+      padding="12px"
+      borderWidth="1px"
+      borderColor="gray.200"
+      fontSize="sm"
+    >
+      {Object.entries(CHANGE_STATUS_MSGS).map(([key, [label, tip]]) => {
+        const { icon, color } = getIconForChangeStatus(key as any);
+
+        return (
+          <Tooltip label={tip}>
+            <Flex alignItems="center" gap="6px" marginBottom="2px">
+              <Icon color={color} as={icon} /> {label}
+            </Flex>
+          </Tooltip>
+        );
+      })}
+    </Box>
+  );
+}
 
 export default function LineageView() {
   const [nodes, setNodes, onNodesChange] = useNodesState([]);
@@ -132,37 +170,32 @@ export default function LineageView() {
     queryLineage();
   }, []);
 
-  const onNodeMouseEnter = useCallback(
-    (event: React.MouseEvent, node: Node) => {
-      if (lineageGraph) {
-        const [newNodes, newEdges] = highlightPath(
-          lineageGraph,
-          nodes,
-          edges,
-          node.id
-        );
-        setNodes(newNodes);
-        setEdges(newEdges);
-      }
-    },
-    [lineageGraph, nodes, edges]
-  );
+  const onNodeMouseEnter = (event: React.MouseEvent, node: Node) => {
+    if (lineageGraph) {
+      const [newNodes, newEdges] = highlightPath(
+        lineageGraph,
+        nodes,
+        edges,
+        node.id
+      );
 
-  const onNodeMouseLeave = useCallback(
-    (event: React.MouseEvent, node: Node) => {
-      if (lineageGraph) {
-        const [newNodes, newEdges] = highlightPath(
-          lineageGraph,
-          nodes,
-          edges,
-          null
-        );
-        setNodes(newNodes);
-        setEdges(newEdges);
-      }
-    },
-    [lineageGraph, nodes, edges]
-  );
+      setNodes(newNodes);
+      setEdges(newEdges);
+    }
+  };
+
+  const onNodeMouseLeave = (event: React.MouseEvent, node: Node) => {
+    if (lineageGraph) {
+      const [newNodes, newEdges] = highlightPath(
+        lineageGraph,
+        nodes,
+        edges,
+        null
+      );
+      setNodes(newNodes);
+      setEdges(newEdges);
+    }
+  };
 
   return (
     <Box width="100%" height="calc(100vh - 74px)">
@@ -176,8 +209,11 @@ export default function LineageView() {
         onNodeMouseEnter={onNodeMouseEnter}
         onNodeMouseLeave={onNodeMouseLeave}
       >
-        <Controls showInteractive={false} />
-
+        <Background color="#ccc" />
+        <Controls showInteractive={false} position="top-right" />
+        <Panel position="bottom-left">
+          <ChangeStatusLegend />
+        </Panel>
         <MiniMap nodeColor={nodeColor} nodeStrokeWidth={3} />
       </ReactFlow>
     </Box>

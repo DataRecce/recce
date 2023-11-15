@@ -1,6 +1,5 @@
 import { Box, Flex, Icon, Text, Tooltip } from "@chakra-ui/react";
 import React from "react";
-import { TbCube } from "react-icons/tb";
 
 import { Handle, NodeProps, Position, useStore } from "reactflow";
 import { LineageGraphNode } from "./lineagediff";

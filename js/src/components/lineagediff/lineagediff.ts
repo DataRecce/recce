@@ -52,7 +52,7 @@ export interface LineageGraphNode {
   isHighlighted?: boolean;
 }
 
-interface LineageGraphEdge {
+export interface LineageGraphEdge {
   id: string;
   from: "both" | "base" | "current";
   changeStatus?: "added" | "removed";
@@ -222,10 +222,6 @@ export function toReactflow(lineageGraph: LineageGraph): [Node[], Edge[]] {
       id: node.id,
       position: { x: 0, y: 0 },
       data: node,
-      style: {
-        backgroundColor:
-          node.changeStatus && backgroundColorMap[node.changeStatus],
-      },
       type: "customNode",
       targetPosition: Position.Left,
       sourcePosition: Position.Right,
@@ -235,9 +231,10 @@ export function toReactflow(lineageGraph: LineageGraph): [Node[], Edge[]] {
   for (const [key, edge] of Object.entries(lineageGraph.edges)) {
     edges.push({
       id: edge.id,
+      type: "customEdge",
       source: edge.parent.id,
       target: edge.child.id,
-      style: { stroke: edge.changeStatus && strokeColorMap[edge.changeStatus] },
+      data: edge,
     });
   }
 
@@ -282,16 +279,19 @@ export function highlightPath(
       .map((edge) => edge.id)
   );
 
-  const newEdges = edges.map((edge) => {
-    // edge.data.isHighlighted = relatedEdges.has(edge.id);
-    return {
-      ...edge,
-    };
-  });
   const newNodes = nodes.map((node) => {
     node.data.isHighlighted = relatedNodes.has(node.id);
     return {
       ...node,
+    };
+  });
+  const newEdges = edges.map((edge) => {
+    return {
+      ...edge,
+      data: {
+        ...edge.data,
+        isHighlighted: relatedEdges.has(edge.id),
+      },
     };
   });
 

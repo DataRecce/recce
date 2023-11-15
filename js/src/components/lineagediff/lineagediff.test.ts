@@ -121,4 +121,6 @@ test("hightlight", () => {
   expect(edges.length).toBe(edges2.length);
   expect(g.nodes["a"].isHighlighted).toBe(true);
   expect(g.nodes["a2"].isHighlighted).toBe(false);
+  expect(g.edges["a_b"].isHighlighted).toBe(true);
+  expect(g.edges["a2_b"].isHighlighted).toBe(false);
 });
