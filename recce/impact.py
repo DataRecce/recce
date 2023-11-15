@@ -3,7 +3,7 @@ import io
 import agate
 import pandas as pd
 
-from piti.dbt import DBTContext
+from .dbt import DBTContext
 from dbt.contracts.graph.nodes import ModelNode, AnalysisNode
 
 

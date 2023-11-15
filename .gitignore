@@ -3,3 +3,5 @@ venv
 *.egg-info/
 __pycache__/
 .vscode/
+
+dbt.log

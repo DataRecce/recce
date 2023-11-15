@@ -1,6 +1,6 @@
-# piti
+# recce
 
-`piti` is a environment diff tool for dbt
+`recce` is a environment diff tool for dbt
 
 ## Features
 
@@ -39,8 +39,8 @@ jaffle_shop:
 1. Installation
 
    ```
-   git clone git@github.com:InfuseAI/piti.git
-   cd piti
+   git clone git@github.com:InfuseAI/recce.git
+   cd recce
    pip install -e .
    ```
 
@@ -52,10 +52,10 @@ jaffle_shop:
    dbt run
    ```
 
-1. Run the piti command
+1. Run the recce command
 
    ```
-   piti server
+   recce server
    ```
 
 1. Review the linage diff.
@@ -67,20 +67,20 @@ jaffle_shop:
 
    where `ref` is a Jinja macro to reference a model name.
 
-> Under the hood, piti uses the `manifest.json` under `target/` and `target-base/` to geenrate query and execute.
+> Under the hood, recce uses the `manifest.json` under `target/` and `target-base/` to geenrate query and execute.
 
 ## Run Query Diff
 
 You can either run in Web UI
 
 ```
-piti server
+recce server
 ```
 
 or run in CLI
 
 ```
-piti diff --sql 'select * from {{ ref('mymodel') }}'
+recce diff --sql 'select * from {{ ref('mymodel') }}'
 ```
 
 ## Specify the primary key columns
@@ -103,10 +103,10 @@ There are two ways to specify the primary key
 
 # Q&A
 
-### Q: How `piti` connect to my data warehouse? Does piti support my data warehouse?
+### Q: How `recce` connect to my data warehouse? Does recce support my data warehouse?
 
-`piti` use the [dbt adapter](https://docs.getdbt.com/docs/connect-adapters) to connect to your warehouse. So it should work for your data warehouse.
+`recce` use the [dbt adapter](https://docs.getdbt.com/docs/connect-adapters) to connect to your warehouse. So it should work for your data warehouse.
 
-### Q: What credential does `piti` connect to the two environments?
+### Q: What credential does `recce` connect to the two environments?
 
-Piti uses the same target in the profile to connect your warehouse. If you use the default target `dev`, it use the credentials to connect to both environments. So please make sure that the credential able to access both environments.
+Recce uses the same target in the profile to connect your warehouse. If you use the default target `dev`, it use the credentials to connect to both environments. So please make sure that the credential able to access both environments.

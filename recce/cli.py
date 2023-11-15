@@ -2,9 +2,9 @@ import click
 import requests
 import yaml
 
-from piti.dbt import DBTContext
-from piti.diff import diff_text, diff_dataframe
-from piti.impact import inspect_sql, get_inspector
+from .dbt import DBTContext
+from .diff import diff_text, diff_dataframe
+from .impact import inspect_sql, get_inspector
 
 
 @click.group()
@@ -61,25 +61,6 @@ def diff(resource_name, method, sql, **kwargs):
         before = inspector(dbt_context, base_node) if base_node is not None else ''
         after = inspector(dbt_context, node) if node is not None else ''
         diff_text(before, after)
-
-@cli.command()
-def lineagediff():
-    """
-    Show the lineage diff in the piperider cloud.
-    """
-
-    files = [
-        ('files', ('base.json', open('target-base/manifest.json', 'rb'))),
-        ('files', ('current.json', open('target/manifest.json', 'rb'))),
-    ]
-
-    print("uploading...")
-    response = requests.post("https://cloud.piperider.io/api/v2/manifest/upload", files=files)
-    result = response.json()
-    url = f"https://cloud.piperider.io/quick-look/comparisons/{result.get('comparison_id')}?utm_source=piti#/?g_v=1"
-    print("report url: ", url)
-    import webbrowser
-    webbrowser.open(url)
 
 
 @cli.command()

@@ -7,11 +7,11 @@
   },
   "scripts": {
     "dev": "next dev",
-    "build": "npm run clean && next build && mv out ../piti/data",
+    "build": "npm run clean && next build && mv out ../recce/data",
     "start": "next start",
     "lint": "next lint",
     "test": "jest --watch",
-    "clean": "rimraf ../piti/data"
+    "clean": "rimraf ../recee/data"
   },
   "dependencies": {
     "@chakra-ui/react": "^2.8.1",

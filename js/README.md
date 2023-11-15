@@ -16,7 +16,7 @@
 
    ```bash
    cd my-dbt-project/
-   piti server
+   recce server
    ```
 
    The api server is run at http://localhost:8000/api
@@ -31,6 +31,6 @@
 
 ```bash
 pnpm build
-cd ../piti/data
+cd ../recce/data
 git add .
 ```
