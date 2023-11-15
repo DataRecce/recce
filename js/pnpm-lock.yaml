@@ -58,6 +58,9 @@ devDependencies:
   '@testing-library/user-event':
     specifier: 14.4.3
     version: 14.4.3(@testing-library/dom@9.3.3)
+  '@types/dagre':
+    specifier: ^0.7.52
+    version: 0.7.52
   '@types/jest':
     specifier: 29.5.5
     version: 29.5.5
@@ -2519,6 +2522,10 @@ packages:
       '@types/d3-transition': 3.0.8
       '@types/d3-zoom': 3.0.8
     dev: false
+
+  /@types/dagre@0.7.52:
+    resolution: {integrity: sha512-XKJdy+OClLk3hketHi9Qg6gTfe1F3y+UFnHxKA2rn9Dw+oXa4Gb378Ztz9HlMgZKSxpPmn4BNVh9wgkpvrK1uw==}
+    dev: true
 
   /@types/geojson@7946.0.13:
     resolution: {integrity: sha512-bmrNrgKMOhM3WsafmbGmC+6dsF2Z308vLFsQ3a/bT8X8Sv5clVYpPars/UPq+sAaJP+5OoLAYgwbkS5QEJdLUQ==}

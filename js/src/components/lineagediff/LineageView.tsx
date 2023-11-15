@@ -91,7 +91,7 @@ function ChangeStatusLegend() {
         const { icon, color } = getIconForChangeStatus(key as any);
 
         return (
-          <Tooltip label={tip}>
+          <Tooltip label={tip} key={key}>
             <Flex alignItems="center" gap="6px" marginBottom="2px">
               <Icon color={color} as={icon} /> {label}
             </Flex>
@@ -157,11 +157,11 @@ export default function LineageView() {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [setNodes, setEdges]);
 
   useEffect(() => {
     queryLineage();
-  }, []);
+  }, [queryLineage]);
 
   const onNodeMouseEnter = (event: React.MouseEvent, node: Node) => {
     if (lineageGraph) {
