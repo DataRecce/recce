@@ -1,12 +1,13 @@
+from pathlib import Path
 from typing import Optional
 
 from fastapi import FastAPI, Request, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
-from pathlib import Path
+from pydantic import BaseModel
+
 from .dbt import DBTContext
 from .impact import inspect_sql
-from pydantic import BaseModel
 
 app = FastAPI()
 dbt_context: DBTContext = None
@@ -65,9 +66,8 @@ async def get_lineage(base: Optional[bool] = False):
 
         manifest = dbt_context.curr_manifest if base is False else dbt_context.base_manifest
 
-        parent_map = json.loads(json.dumps(manifest.parent_map, cls=dbt.utils.JSONEncoder))
-
-
+        parent_map: dict = json.loads(json.dumps(manifest.parent_map, cls=dbt.utils.JSONEncoder))
+        parent_map = {k: v for k, v in parent_map.items() if not k.startswith('test.')}
 
         nodes = {}
 
@@ -98,6 +98,21 @@ async def get_lineage(base: Optional[bool] = False):
                 'name': exposure['name'],
                 'resource_type': exposure['resource_type'],
                 'package_name': exposure['package_name'],
+            }
+        for metric in json.loads(json.dumps(manifest.metrics, cls=dbt.utils.JSONEncoder)).values():
+            nodes[metric['unique_id']] = {
+                'id': metric['unique_id'],
+                'name': metric['name'],
+                'resource_type': metric['resource_type'],
+                'package_name': metric['package_name'],
+            }
+
+        for semantic_models in json.loads(json.dumps(manifest.semantic_models, cls=dbt.utils.JSONEncoder)).values():
+            nodes[semantic_models['unique_id']] = {
+                'id': semantic_models['unique_id'],
+                'name': semantic_models['name'],
+                'resource_type': semantic_models['resource_type'],
+                'package_name': semantic_models['package_name'],
             }
 
         return dict(parent_map=parent_map, nodes=nodes)

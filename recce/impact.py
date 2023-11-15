@@ -1,10 +1,11 @@
 import csv
 import io
+
 import agate
 import pandas as pd
+from dbt.contracts.graph.nodes import ModelNode, AnalysisNode
 
 from .dbt import DBTContext
-from dbt.contracts.graph.nodes import ModelNode, AnalysisNode
 
 
 def _dump_result(result: agate.Table):
@@ -35,7 +36,7 @@ def inspect_model_summary(dbt_context: DBTContext, model: ModelNode):
 
         output += f"identity: {model.identifier}\n"
         output += f"rows: {row_count}\n"
-        output += f"columns:\n"
+        output += "columns:\n"
         for column in columns:
             output += f"  {column.name} {column.dtype}\n"
 
