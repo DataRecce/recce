@@ -118,7 +118,7 @@ const DiffView = () => {
   }, [base, current, primaryKeys]);
 
   return (
-    <Flex direction="column" height="100vh">
+    <Flex direction="column" height="calc(100vh - 74px)">
       <Flex justifyContent="right" padding="5px">
         <Button
           colorScheme="blue"

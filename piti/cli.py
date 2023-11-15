@@ -88,9 +88,9 @@ def server():
     import webbrowser
     import threading
     import time
-    from .server import app
+    from .server import load_dbt_context, app
 
-    DBTContext.load()
+    load_dbt_context()
 
     def run_browser():
         time.sleep(2)

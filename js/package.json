@@ -18,19 +18,22 @@
     "@emotion/react": "^11.11.1",
     "@emotion/styled": "^11.11.0",
     "axios": "^1.6.0",
+    "dagre": "^0.8.5",
     "framer-motion": "^10.16.4",
     "lodash": "^4.17.21",
     "next": "14.0.1",
     "react": "^18",
     "react-data-grid": "7.0.0-beta.40",
     "react-dom": "^18",
-    "react-icons": "^4.11.0"
+    "react-icons": "^4.11.0",
+    "reactflow": "^11.9.4"
   },
   "devDependencies": {
     "@testing-library/dom": "^9.3.3",
     "@testing-library/jest-dom": "6.1.2",
     "@testing-library/react": "14.0.0",
     "@testing-library/user-event": "14.4.3",
+    "@types/dagre": "^0.7.52",
     "@types/jest": "29.5.5",
     "@types/lodash": "^4.14.200",
     "@types/node": "^20",
