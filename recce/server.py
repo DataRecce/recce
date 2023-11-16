@@ -67,8 +67,6 @@ async def get_lineage(base: Optional[bool] = False):
 
         parent_map = json.loads(json.dumps(manifest.parent_map, cls=dbt.utils.JSONEncoder))
 
-
-
         nodes = {}
 
         for node in json.loads(json.dumps(manifest.nodes, cls=dbt.utils.JSONEncoder)).values():

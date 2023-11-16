@@ -1,0 +1,9 @@
+[flake8]
+# ignore = W605, F401, E501, E125, E126
+max-line-length = 120
+exclude = 
+    .git, 
+    .venv, 
+    venv, 
+    dist, 
+    *.egg-info
