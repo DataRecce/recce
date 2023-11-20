@@ -77,22 +77,9 @@ def server():
     """
 
     import uvicorn
-    import webbrowser
-    import threading
-    import time
     from .server import load_dbt_context, app
 
     load_dbt_context()
-
-    def run_browser():
-        time.sleep(2)
-        url = 'http://localhost:8000'
-        webbrowser.open(url)
-
-    # Start the server in a new thread
-    thread = threading.Thread(target=run_browser)
-    thread.start()
-
     uvicorn.run(app, host="0.0.0.0", port=8000)
 
 

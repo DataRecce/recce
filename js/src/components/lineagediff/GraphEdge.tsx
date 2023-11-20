@@ -2,6 +2,8 @@ import { BaseEdge, EdgeProps, getBezierPath } from "reactflow";
 import { LineageGraphEdge } from "./lineagediff";
 import { getIconForChangeStatus } from "./styles";
 
+import "./lineagediff.css";
+
 interface GraphEdgeProps extends EdgeProps<LineageGraphEdge> {}
 
 export default function GraphEdge(props: GraphEdgeProps) {
@@ -26,8 +28,8 @@ export default function GraphEdge(props: GraphEdgeProps) {
     style.strokeDasharray = "5";
   }
 
-  if (data?.isHighlighted) {
-    style.stroke = "orange";
+  if (data?.isHighlighted === false) {
+    style.filter = "opacity(0.2) grayscale(50%)";
   }
 
   const [edgePath] = getBezierPath({

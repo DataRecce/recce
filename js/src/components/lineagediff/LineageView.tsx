@@ -18,6 +18,8 @@ import ReactFlow, {
   Panel,
   Background,
   BackgroundVariant,
+  ReactFlowProvider,
+  useReactFlow,
 } from "reactflow";
 import dagre from "dagre";
 import "reactflow/dist/style.css";
@@ -76,7 +78,6 @@ function ChangeStatusLegend() {
     added: ["Added", "Added resource"],
     removed: ["Removed", "Removed resource"],
     modified: ["Modified", "Modified resource"],
-    impacted: ["Impacted", "Down-streams of added, removed, modified"],
   };
 
   return (
@@ -102,7 +103,8 @@ function ChangeStatusLegend() {
   );
 }
 
-export default function LineageView() {
+function _LineageView() {
+  const reactflow = useReactFlow();
   const [nodes, setNodes, onNodesChange] = useNodesState([]);
   const [edges, setEdges, onEdgesChange] = useEdgesState([]);
   const [lineageGraph, setLineageGraph] = useState<LineageGraph>();
@@ -157,11 +159,11 @@ export default function LineageView() {
     } finally {
       setLoading(false);
     }
-  }, [setNodes, setEdges]);
+  }, [setNodes, setEdges, reactflow]);
 
   useEffect(() => {
     queryLineage();
-  }, [queryLineage]);
+  }, []);
 
   const onNodeMouseEnter = (event: React.MouseEvent, node: Node) => {
     if (lineageGraph) {
@@ -209,6 +211,7 @@ export default function LineageView() {
         onEdgesChange={onEdgesChange}
         onNodeMouseEnter={onNodeMouseEnter}
         onNodeMouseLeave={onNodeMouseLeave}
+        fitView={true}
       >
         <Background color="#ccc" />
         <Controls showInteractive={false} position="top-right" />
@@ -218,5 +221,13 @@ export default function LineageView() {
         <MiniMap nodeColor={nodeColor} nodeStrokeWidth={3} />
       </ReactFlow>
     </Box>
+  );
+}
+
+export default function LineageView() {
+  return (
+    <ReactFlowProvider>
+      <_LineageView />
+    </ReactFlowProvider>
   );
 }

@@ -1,4 +1,5 @@
 import difflib
+
 import pandas as pd
 
 
@@ -27,5 +28,5 @@ def diff_dataframe(before: pd.DataFrame, after: pd.DataFrame):
         return
 
     before_aligned, after_aligned = before.align(after)
-    diff = before_aligned.compare(after_aligned,  result_names=('base', 'current'))
+    diff = before_aligned.compare(after_aligned, result_names=('base', 'current'))
     print(diff.to_string(na_rep='-'))
