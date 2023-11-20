@@ -1,5 +1,4 @@
 import os
-import tempfile
 from dataclasses import dataclass
 from typing import Optional
 
@@ -42,9 +41,8 @@ class DBTContext:
         # We need to run the dbt parse command because
         # 1. load the dbt profiles by dbt-core rule
         # 2. initialize the adapter
-        with tempfile.TemporaryDirectory() as temp_dir:
-            parseResult = dbtRunner().invoke(["-q", "parse"])
-            manifest = parseResult.result
+        parseResult = dbtRunner().invoke(["-q", "parse"])
+        manifest = parseResult.result
 
         project_path = os.getcwd()
         profile = load_profile(project_path, {}, target_override=target)
