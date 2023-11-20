@@ -5,6 +5,8 @@ import { Handle, NodeProps, Position, useStore } from "reactflow";
 import { LineageGraphNode } from "./lineagediff";
 import { getIconForChangeStatus, getIconForResourceType } from "./styles";
 
+import "./lineagediff.css";
+
 interface GraphNodeProps extends NodeProps<LineageGraphNode> {}
 
 export function GraphNode({ data }: GraphNodeProps) {
@@ -29,11 +31,15 @@ export function GraphNode({ data }: GraphNodeProps) {
   let backgroundColor = "white";
   let boxShadow = "unset";
 
-  if (isHighlighted) {
-    borderWidth = 1;
-    borderColor = "orange";
-    boxShadow = "0px 5px 15px #00000040";
-  }
+  // if (isHighlighted === true) {
+  //   borderWidth = 1;
+  //   borderColor = "orange";
+  //   boxShadow = "0px 5px 15px #00000040";
+  // } else if (isHighlighted === false) {
+  //   borderWidth = 1;
+  //   borderColor = "red";
+  //   boxShadow = "0px 5px 15px #00000040";
+  // }
 
   const name = data?.name;
 
@@ -52,6 +58,13 @@ export function GraphNode({ data }: GraphNodeProps) {
         borderRadius={3}
         boxShadow={boxShadow}
         padding={0}
+        className={
+          isHighlighted === true
+            ? "node-highlight"
+            : isHighlighted === false
+            ? "node-unhighlight"
+            : undefined
+        }
       >
         <Flex
           backgroundColor={color}

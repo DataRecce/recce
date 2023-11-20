@@ -39,7 +39,7 @@ export interface LineageGraphNode {
     base?: NodeData;
     current?: NodeData;
   };
-  changeStatus?: "added" | "removed" | "modified" | "impacted";
+  changeStatus?: "added" | "removed" | "modified";
   resourceType?: string;
   packageName?: string;
   parents: {
@@ -69,6 +69,8 @@ export interface LineageGraph {
   edges: {
     [key: string]: LineageGraphEdge;
   };
+
+  modifiedSet: string[];
 }
 
 export function buildLineageGraph(
@@ -177,15 +179,6 @@ export function buildLineageGraph(
     }
   }
 
-  const impactedSet = getNeighborSet(modifiedSet, (id: string) => {
-    return Object.keys(nodes[id].children);
-  });
-  for (const impacted of Array.from(impactedSet)) {
-    if (!nodes[impacted].changeStatus) {
-      nodes[impacted].changeStatus = "impacted";
-    }
-  }
-
   for (const [key, edge] of Object.entries(edges)) {
     if (edge.from === "base") {
       edge.changeStatus = "removed";
@@ -197,6 +190,7 @@ export function buildLineageGraph(
   return {
     nodes,
     edges,
+    modifiedSet,
   };
 }
 
@@ -207,7 +201,6 @@ export function toReactflow(lineageGraph: LineageGraph): [Node[], Edge[]] {
     removed: "red",
     added: "green",
     modified: "orange",
-    impacted: "yellow",
   };
   const strokeColorMap = {
     removed: "red",
@@ -215,9 +208,6 @@ export function toReactflow(lineageGraph: LineageGraph): [Node[], Edge[]] {
   };
 
   for (const [key, node] of Object.entries(lineageGraph.nodes)) {
-    // node.targetPosition = isHorizontal ? Position.Left : Position.Top;
-    // node.sourcePosition = isHorizontal ? Position.Right : Position.Bottom;
-
     nodes.push({
       id: node.id,
       position: { x: 0, y: 0 },
@@ -238,7 +228,7 @@ export function toReactflow(lineageGraph: LineageGraph): [Node[], Edge[]] {
     });
   }
 
-  return [nodes, edges];
+  return highlightPath(lineageGraph, nodes, edges, null);
 }
 
 export function highlightPath(
@@ -269,7 +259,9 @@ export function highlightPath(
             Object.keys(lineageGraph.nodes[key].children)
           )
         )
-      : new Set<string>();
+      : getNeighborSet(lineageGraph.modifiedSet, (key) =>
+          Object.keys(lineageGraph.nodes[key].children)
+        );
 
   const relatedEdges = new Set(
     edges
@@ -280,9 +272,12 @@ export function highlightPath(
   );
 
   const newNodes = nodes.map((node) => {
-    node.data.isHighlighted = relatedNodes.has(node.id);
     return {
       ...node,
+      data: {
+        ...node.data,
+        isHighlighted: relatedNodes.has(node.id),
+      },
     };
   });
   const newEdges = edges.map((edge) => {

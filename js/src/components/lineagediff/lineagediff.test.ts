@@ -1,10 +1,15 @@
 import {
   LineageData,
   LineageGraph,
+  LineageGraphEdge,
+  LineageGraphNode,
   buildLineageGraph,
   highlightPath,
   toReactflow,
 } from "./lineagediff";
+import { Node, Edge } from "reactflow";
+
+import { find } from "lodash";
 import { queryDiff } from "../../querydiff";
 
 test("lineage diff", () => {
@@ -83,9 +88,9 @@ test("lineage diff 2", () => {
   expect(Object.keys(edges).length).toBe(4);
   expect(nodes["a"].changeStatus).toBe("removed");
   expect(nodes["a2"].changeStatus).toBe("added");
-  expect(nodes["b"].changeStatus).toBe("impacted");
+  expect(nodes["b"].changeStatus).toBeUndefined;
   expect(nodes["c"].changeStatus).toBe("modified");
-  expect(nodes["d"].changeStatus).toBe("impacted");
+  expect(nodes["d"].changeStatus).toBeUndefined;
 
   expect(nodes["b"].parents["a"].changeStatus).toBe("removed");
   expect(nodes["b"].parents["a2"].changeStatus).toBe("added");
@@ -119,8 +124,14 @@ test("hightlight", () => {
 
   expect(nodes.length).toBe(nodes2.length);
   expect(edges.length).toBe(edges2.length);
-  expect(g.nodes["a"].isHighlighted).toBe(true);
-  expect(g.nodes["a2"].isHighlighted).toBe(false);
-  expect(g.edges["a_b"].isHighlighted).toBe(true);
-  expect(g.edges["a2_b"].isHighlighted).toBe(false);
+
+  const n = (nodes: Node<LineageGraphNode>[], id: string) =>
+    find(nodes, (node) => node.id === id)?.data;
+  const e = (edges: Edge<LineageGraphEdge>[], id: string) =>
+    find(edges, (edge) => edge.id === id)?.data;
+
+  expect(n(nodes2, "a")?.isHighlighted).toBe(true);
+  expect(n(nodes2, "a2")?.isHighlighted).toBe(false);
+  expect(e(edges2, "a_b")?.isHighlighted).toBe(true);
+  expect(e(edges2, "a2_b")?.isHighlighted).toBe(false);
 });

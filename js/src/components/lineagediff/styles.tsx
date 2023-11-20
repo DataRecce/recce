@@ -28,7 +28,7 @@ export const IconChanged = (props: any) => {
   );
 };
 
-export const IconImpacted = (props: any) => {
+export const IconModifiedDownstream = (props: any) => {
   return (
     <svg
       stroke="currentColor"
@@ -57,7 +57,7 @@ export const IconImpacted = (props: any) => {
 };
 
 export function getIconForChangeStatus(
-  changeStatus?: "added" | "removed" | "modified" | "impacted"
+  changeStatus?: "added" | "removed" | "modified"
 ): {
   color: string;
   icon: any; //IconType not provided
@@ -65,11 +65,9 @@ export function getIconForChangeStatus(
   if (changeStatus === "added") {
     return { color: "#1dce00", icon: IconAdded };
   } else if (changeStatus === "removed") {
-    return { color: "#ff067e", icon: IconRemoved };
+    return { color: "#ff4444", icon: IconRemoved };
   } else if (changeStatus === "modified") {
     return { color: "#ffa502", icon: IconModified };
-  } else if (changeStatus === "impacted") {
-    return { color: "#fd6136", icon: IconImpacted };
   }
 
   return { color: "inherit", icon: undefined };

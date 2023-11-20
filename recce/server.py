@@ -1,3 +1,4 @@
+from contextlib import asynccontextmanager
 from pathlib import Path
 from typing import Optional
 
@@ -9,14 +10,22 @@ from pydantic import BaseModel
 from .dbt import DBTContext
 from .impact import inspect_sql
 
-app = FastAPI()
 dbt_context: DBTContext = None
 
 
 def load_dbt_context():
     global dbt_context
-    dbt_context = DBTContext.load()
+    if dbt_context is None:
+        dbt_context = DBTContext.load()
 
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    load_dbt_context()
+    yield
+
+
+app = FastAPI(lifespan=lifespan)
 
 origins = [
     "http://localhost:3000",
@@ -61,61 +70,7 @@ async def query(input: QueryInput):
 @app.get("/api/lineage")
 async def get_lineage(base: Optional[bool] = False):
     try:
-        import json
-        import dbt.utils
-
-        manifest = dbt_context.curr_manifest if base is False else dbt_context.base_manifest
-
-        parent_map: dict = json.loads(json.dumps(manifest.parent_map, cls=dbt.utils.JSONEncoder))
-        parent_map = {k: v for k, v in parent_map.items() if not k.startswith('test.')}
-
-        nodes = {}
-
-        for node in json.loads(json.dumps(manifest.nodes, cls=dbt.utils.JSONEncoder)).values():
-            if node['resource_type'] == 'test':
-                continue
-
-            nodes[node['unique_id']] = {
-                'id': node['unique_id'],
-                'name': node['name'],
-                'resource_type': node['resource_type'],
-                'package_name': node['package_name'],
-                'checksum': node['checksum'],
-                'raw_code': node['raw_code'],
-            }
-
-        for source in json.loads(json.dumps(manifest.sources, cls=dbt.utils.JSONEncoder)).values():
-            nodes[source['unique_id']] = {
-                'id': source['unique_id'],
-                'name': source['name'],
-                'resource_type': source['resource_type'],
-                'package_name': source['package_name'],
-            }
-
-        for exposure in json.loads(json.dumps(manifest.exposures, cls=dbt.utils.JSONEncoder)).values():
-            nodes[exposure['unique_id']] = {
-                'id': exposure['unique_id'],
-                'name': exposure['name'],
-                'resource_type': exposure['resource_type'],
-                'package_name': exposure['package_name'],
-            }
-        for metric in json.loads(json.dumps(manifest.metrics, cls=dbt.utils.JSONEncoder)).values():
-            nodes[metric['unique_id']] = {
-                'id': metric['unique_id'],
-                'name': metric['name'],
-                'resource_type': metric['resource_type'],
-                'package_name': metric['package_name'],
-            }
-
-        for semantic_models in json.loads(json.dumps(manifest.semantic_models, cls=dbt.utils.JSONEncoder)).values():
-            nodes[semantic_models['unique_id']] = {
-                'id': semantic_models['unique_id'],
-                'name': semantic_models['name'],
-                'resource_type': semantic_models['resource_type'],
-                'package_name': semantic_models['package_name'],
-            }
-
-        return dict(parent_map=parent_map, nodes=nodes)
+        return dbt_context.get_lineage(base)
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))
 
