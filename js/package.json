@@ -11,7 +11,7 @@
     "start": "next start",
     "lint": "next lint",
     "test": "jest --watch",
-    "clean": "rimraf ../recee/data"
+    "clean": "rimraf ../recce/data"
   },
   "dependencies": {
     "@chakra-ui/react": "^2.8.1",
