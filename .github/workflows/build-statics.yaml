@@ -1,0 +1,51 @@
+
+name: Node.js - Build & Auto-Commit to CLI data/report/**
+
+on:
+  pull_request:
+    types:
+      - closed
+      # Trigger when PR is closed
+    paths:
+      - "js/**"
+      # Trigger when diffs detected in js sources
+    branches:
+      - main
+      # Only PR target is `main`
+
+jobs:
+  if_merged_build:
+    if: github.event.pull_request.merged == true
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ./js
+
+    steps:
+    - uses: actions/checkout@v3
+
+    - name: Use Node.js ${{ matrix.node-version }}
+      uses: actions/setup-node@v3
+      with:
+        node-version: 20
+
+    - uses: pnpm/action-setup@v2.2.2
+      with:
+        version: 8
+
+    - name: Install dependencies
+      working-directory: ./js
+      run: pnpm install --frozen-lockfile
+
+
+    - name: Build Apps
+      run: pnpm run build
+
+    - name: Pull Remote Changes (before AC)
+      run: git pull origin main
+
+    - uses: stefanzweifel/git-auto-commit-action@v4
+      with:
+        commit_message: AUTO-COMMIT - build js statics to recce data/
+        branch: ${{ github.base_ref }}
+        # Auto-commits to target merge branch
