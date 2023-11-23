@@ -47,6 +47,10 @@ def init():
     sentry_sdk.set_tag('is_ci_env', is_ci_env())
 
 
+def get_user_id():
+    return load_user_profile().get('user_id')
+
+
 def _get_sentry_dns():
     dns_file = os.path.normpath(os.path.join(os.path.dirname(__file__), 'SENTRY_DNS'))
     with open(dns_file) as f:

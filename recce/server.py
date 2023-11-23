@@ -1,3 +1,4 @@
+import uuid
 from contextlib import asynccontextmanager
 from pathlib import Path
 from typing import Optional
@@ -6,7 +7,9 @@ from fastapi import FastAPI, Request, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
+from starlette.middleware.sessions import SessionMiddleware
 
+from . import event
 from .dbt import DBTContext
 from .impact import inspect_sql
 
@@ -38,6 +41,19 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+app.add_middleware(
+    SessionMiddleware,
+    secret_key=uuid.uuid4(),
+)
+
+
+@app.middleware("http")
+async def set_context_by_cookie(request: Request, call_next):
+    response = await call_next(request)
+    if request.cookies.get('recce_user_id') is None:
+        user_id = event.get_user_id()
+        response.set_cookie(key='recce_user_id', value=user_id)
+    return response
 
 
 @app.get("/api/health")
