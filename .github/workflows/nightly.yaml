@@ -97,7 +97,7 @@ jobs:
         env:
           SENTRY_AUTH_TOKEN: ${{ secrets.SENTRY_AUTH_TOKEN }}
           SENTRY_ORG: infuseai
-          SENTRY_PROJECT: piperider
+          SENTRY_PROJECT: recce
         with:
           environment: nightly
           ignore_empty: true
