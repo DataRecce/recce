@@ -5,7 +5,7 @@ import {
   highlightPath,
   toReactflow,
 } from "./lineagediff";
-import { Box, Flex, Icon, Tooltip } from "@chakra-ui/react";
+import { Box, Flex, Icon, Tooltip, useDisclosure } from "@chakra-ui/react";
 import axios, { AxiosError } from "axios";
 import React, { useCallback, useEffect, useState } from "react";
 import ReactFlow, {
@@ -26,6 +26,7 @@ import "reactflow/dist/style.css";
 import { GraphNode } from "./GraphNode";
 import GraphEdge from "./GraphEdge";
 import { getIconForChangeStatus } from "./styles";
+import { NodeView } from "./NodeView";
 
 const layout = (nodes: Node[], edges: Edge[], direction = "LR") => {
   const dagreGraph = new dagre.graphlib.Graph();
@@ -113,6 +114,8 @@ function _LineageView() {
   const [error, setError] = useState<string>();
   const [errorStep, setErrorStep] = useState<string>();
 
+  const [selected, setSelected] = useState<string>();
+
   const queryLineage = useCallback(async () => {
     let step = "current";
 
@@ -192,6 +195,10 @@ function _LineageView() {
     }
   };
 
+  const onNodeClick = (event: React.MouseEvent, node: Node) => {
+    setSelected(node.id);
+  };
+
   if (loading) {
     return <>Loading lineage data</>;
   }
@@ -201,26 +208,35 @@ function _LineageView() {
   }
 
   return (
-    <Box width="100%" height="calc(100vh - 74px)">
-      <ReactFlow
-        nodeTypes={nodeTypes}
-        edgeTypes={edgeTypes}
-        nodes={nodes}
-        edges={edges}
-        onNodesChange={onNodesChange}
-        onEdgesChange={onEdgesChange}
-        onNodeMouseEnter={onNodeMouseEnter}
-        onNodeMouseLeave={onNodeMouseLeave}
-        fitView={true}
-      >
-        <Background color="#ccc" />
-        <Controls showInteractive={false} position="top-right" />
-        <Panel position="bottom-left">
-          <ChangeStatusLegend />
-        </Panel>
-        <MiniMap nodeColor={nodeColor} nodeStrokeWidth={3} />
-      </ReactFlow>
-    </Box>
+    <Flex width="100%" height="calc(100vh - 42px)">
+      <Box flex="1 0 0px">
+        <ReactFlow
+          nodeTypes={nodeTypes}
+          edgeTypes={edgeTypes}
+          nodes={nodes}
+          edges={edges}
+          onNodesChange={onNodesChange}
+          onEdgesChange={onEdgesChange}
+          onNodeClick={onNodeClick}
+          onNodeMouseEnter={onNodeMouseEnter}
+          onNodeMouseLeave={onNodeMouseLeave}
+          fitView={true}
+        >
+          <Background color="#ccc" />
+          <Controls showInteractive={false} position="top-right" />
+          <Panel position="bottom-left">
+            <ChangeStatusLegend />
+          </Panel>
+          <MiniMap nodeColor={nodeColor} nodeStrokeWidth={3} />
+        </ReactFlow>
+      </Box>
+
+      {selected && lineageGraph?.nodes[selected] && (
+        <Box flex="0 0 400px" borderLeft="solid 1px lightgray" p="16px">
+          <NodeView node={lineageGraph?.nodes[selected]}></NodeView>
+        </Box>
+      )}
+    </Flex>
   );
 }
 

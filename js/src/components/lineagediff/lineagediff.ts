@@ -6,7 +6,7 @@ import { getNeighborSet } from "./graph";
 /**
  * The data from the API
  */
-interface NodeColumnData {
+export interface NodeColumnData {
   name: string;
   type: string;
 }
