@@ -220,6 +220,7 @@ function _LineageView() {
           onNodeClick={onNodeClick}
           onNodeMouseEnter={onNodeMouseEnter}
           onNodeMouseLeave={onNodeMouseLeave}
+          minZoom={0.1}
           fitView={true}
         >
           <Background color="#ccc" />
@@ -232,7 +233,7 @@ function _LineageView() {
       </Box>
 
       {selected && lineageGraph?.nodes[selected] && (
-        <Box flex="0 0 400px" borderLeft="solid 1px lightgray" p="16px">
+        <Box flex="0 0 500px" borderLeft="solid 1px lightgray" height="100%">
           <NodeView node={lineageGraph?.nodes[selected]}></NodeView>
         </Box>
       )}

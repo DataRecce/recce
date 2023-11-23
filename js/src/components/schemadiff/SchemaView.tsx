@@ -17,7 +17,13 @@ export function SchemaView({ base, current }: SchemaViewProps) {
 
   return (
     <DataGrid
-      style={{ height: "100%", fontSize: "10pt", borderWidth: 1 }}
+      style={{
+        height: "100%",
+
+        fontSize: "10pt",
+        borderWidth: 1,
+        overflowY: "auto",
+      }}
       columns={columns}
       rows={rows}
       className="fill-grid"
