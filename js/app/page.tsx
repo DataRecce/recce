@@ -19,7 +19,9 @@ export default function Home() {
     if (userId && process.env.AMPLITUDE_API_KEY) {
       try {
         // Initialize Amplitude
-        amplitude.init(process.env.AMPLITUDE_API_KEY, userId);
+        amplitude.init(process.env.AMPLITUDE_API_KEY, userId, {
+            defaultTracking: true,
+        });
       } catch (e) {
         console.error(e);
       }
