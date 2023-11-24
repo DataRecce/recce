@@ -54,15 +54,17 @@ jobs:
         id: patch_version
         run: |
           # Patch version
-          echo "Nightly build version: $(date '+%Y%m%d')"
           if [ "$ALPHA_VERSION" != "" ]; then
             echo "Manually alpha version serial number: $ALPHA_VERSION"
-            sed -i.bak "s/\.dev\$/\.$(date '+%Y%m%d')a$ALPHA_VERSION/" recce/VERSION
+            sed -i.bak "s/\.dev.*\$/\.$(date '+%Y%m%d')a$ALPHA_VERSION/" recce/VERSION
           else
-            sed -i.bak "s/\.dev\$/\.$(date '+%Y%m%d')/" recce/VERSION
+            echo "Nightly build version number: $(date '+%Y%m%d')"
+            sed -i.bak "s/\.dev.*\$/\.$(date '+%Y%m%d')/" recce/VERSION
           fi
-          echo "Nightly build version: $(cat recce/VERSION)"
+          echo "Nightly version: $(cat recce/VERSION)"
           echo "nightly_version=$(cat recce/VERSION)" >> $GITHUB_OUTPUT
+        env:
+          ALPHA_VERSION: ${{ inputs.alpha_version || '' }}
 
       - name: Patch Event API Key
         run: |
@@ -89,7 +91,7 @@ jobs:
           sed -i.bak "s/name='recce'/name='recce-nightly'/" setup.py
 
           # build and upload to pypi
-          pip install build
+          pip install build twine
           python -m build
           python -m twine upload dist/*
         env:
