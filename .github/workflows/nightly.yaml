@@ -1,0 +1,105 @@
+name: Recce Nightly Build
+on:
+  schedule:
+    - cron: '0 18 * * 0,1,2,3,4' # run at 2 AM (UTC + 8) every working day
+  workflow_dispatch:
+    inputs:
+      alpha_version:
+        description: 'Alpha version serial number'
+        required: true
+        type: number
+        default: '0'
+
+jobs:
+  build-nightly-relase:
+    name: Build Recce Nightly Release
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Python 3.10
+        uses: actions/setup-python@v2
+        with:
+          python-version: '3.10'
+
+      - name: Setup Node 20
+        uses: actions/setup-node@v2
+        with:
+          node-version: '20'
+
+      - uses: pnpm/action-setup@v2.2.2
+        with:
+          version: 7
+
+      - name: Install dependencies
+        run: |
+          # Install Python dependencies
+          python -m pip install --upgrade pip
+          pip install -e .
+
+          # Install Node dependencies
+          pushd js
+          pnpm install --frozen-lockfile
+          popd
+
+      - name: Patch Recce Version
+        id: patch_version
+        run: |
+          # Patch version
+          echo "Nightly build version: $(date '+%Y%m%d')"
+          if [ "$ALPHA_VERSION" != "" ]; then
+            echo "Manually alpha version serial number: $ALPHA_VERSION"
+            sed -i.bak "s/\.dev\$/\.$(date '+%Y%m%d')a$ALPHA_VERSION/" recce/VERSION
+          else
+            sed -i.bak "s/\.dev\$/\.$(date '+%Y%m%d')/" recce/VERSION
+          fi
+          echo "Nightly build version: $(cat recce/VERSION)"
+          echo "nightly_version=$(cat recce/VERSION)" >> $GITHUB_OUTPUT
+
+      - name: Patch Event API Key
+        run: |
+          # Patch Event API Key
+          sed -i.bak "s/<API_KEY>/${EVENT_API_KEY}/" recce/event/CONFIG
+        env:
+          EVENT_API_KEY: ${{ secrets.AMPLITUDE_NIGHTLY_API_KEY }}
+
+      - name: Build Front-end Static Files
+        run: |
+          # Build static files
+          pushd js
+          pnpm build
+          popd
+        env:
+          AMPLITUDE_API_KEY: ${{ secrets.AMPLITUDE_NIGHTLY_API_KEY }}
+
+      - name: Release to Pypi
+        run: |
+          # generate pypirc
+          echo "$PYPIRC" > $HOME/.pypirc
+
+          # change package name to recce-nightly
+          sed -i.bak "s/name='recce'/name='recce-nightly'/" setup.py
+
+          # build and upload to pypi
+          pip install build
+          python -m build
+          python -m twine upload dist/*
+        env:
+          PYPIRC: ${{ secrets.PYPI_NIGHTLY }}
+
+      - name: Mark Sentry Release
+        uses: getsentry/action-release@v1
+        env:
+          SENTRY_AUTH_TOKEN: ${{ secrets.SENTRY_AUTH_TOKEN }}
+          SENTRY_ORG: infuseai
+          SENTRY_PROJECT: recce
+        with:
+          environment: nightly
+          ignore_empty: true
+          ignore_missing: true
+          version: ${{ steps.patch_version.outputs.nightly_version }}

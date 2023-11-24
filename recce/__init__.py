@@ -1,4 +1,21 @@
 import os
+import sys
+
+
+def is_ci_env():
+    # some CI service puts the "CI" var
+    if os.environ.get('CI', 'false') == 'true':
+        return True
+
+    # For CiecleCI exceptions
+    if os.environ.get('CIRCLECI', 'false') == 'true':
+        return True
+
+    # if not tty, it probably runs automatically
+    if not sys.stdout.isatty():
+        return True
+
+    return False
 
 
 def get_version():

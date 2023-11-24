@@ -1,8 +1,12 @@
 import click
 
+from recce import event
 from .dbt import DBTContext
 from .diff import diff_text, diff_dataframe
+from .event.track import TrackCommand
 from .impact import inspect_sql, get_inspector
+
+event.init()
 
 
 @click.group()
@@ -11,7 +15,7 @@ def cli(ctx, **kwargs):
     """Environment diff tool for DBT"""
 
 
-@cli.command()
+@cli.command(cls=TrackCommand)
 def version():
     """
     Show version information
@@ -20,7 +24,7 @@ def version():
     print(__version__)
 
 
-@cli.command()
+@cli.command(cls=TrackCommand)
 @click.argument('resource_name', required=False)
 @click.argument('method', default='summary')
 @click.option('--sql', help='Sql to query', required=False)
@@ -44,7 +48,7 @@ def inspect(resource_name, method, sql, **kwargs):
     print(output)
 
 
-@cli.command()
+@cli.command(cls=TrackCommand)
 @click.argument('resource_name', required=False)
 @click.argument('method', default='summary')
 @click.option('--sql', help='Sql to query', required=False)
@@ -70,7 +74,7 @@ def diff(resource_name, method, sql, **kwargs):
         diff_text(before, after)
 
 
-@cli.command()
+@cli.command(cls=TrackCommand)
 def server():
     """
     Launch the local server
