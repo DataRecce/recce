@@ -105,7 +105,6 @@ function ChangeStatusLegend() {
 }
 
 function _LineageView() {
-  const reactflow = useReactFlow();
   const [nodes, setNodes, onNodesChange] = useNodesState([]);
   const [edges, setEdges, onEdgesChange] = useEdgesState([]);
   const [lineageGraph, setLineageGraph] = useState<LineageGraph>();
@@ -162,11 +161,11 @@ function _LineageView() {
     } finally {
       setLoading(false);
     }
-  }, [setNodes, setEdges, reactflow]);
+  }, [setNodes, setEdges]);
 
   useEffect(() => {
     queryLineage();
-  }, []);
+  }, [queryLineage]);
 
   const onNodeMouseEnter = (event: React.MouseEvent, node: Node) => {
     if (lineageGraph) {
