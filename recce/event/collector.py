@@ -44,7 +44,7 @@ class Collector:
         created_at = datetime.now()
         python_version = f'{sys.version_info.major}.{sys.version_info.minor}'
 
-        # when the piperider is running in automation use cases
+        # when the recce is running in automation use cases
         # replace the user id with project_id to avoid so many unique user id
         user_id = self._user_id
         if self._is_ci is True:
