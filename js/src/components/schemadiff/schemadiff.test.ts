@@ -40,6 +40,7 @@ test("column diff", () => {
   ]);
 
   expect(result["id"]).toStrictEqual({
+    name: "id",
     reordered: false,
     baseIndex: 1,
     baseType: "INT",
@@ -47,6 +48,7 @@ test("column diff", () => {
     currentType: "INT",
   });
   expect(result["name"]).toStrictEqual({
+    name: "name",
     reordered: true,
     baseIndex: 3,
     baseType: "VARCHAR",
@@ -54,6 +56,7 @@ test("column diff", () => {
     currentType: "VARCHAR",
   });
   expect(result["age"]).toStrictEqual({
+    name: "age",
     reordered: false,
     baseIndex: 4,
     baseType: "INT",
