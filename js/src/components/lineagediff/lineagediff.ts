@@ -6,7 +6,11 @@ import { getNeighborSet } from "./graph";
 /**
  * The data from the API
  */
-interface NodeData {
+export interface NodeColumnData {
+  name: string;
+  type: string;
+}
+export interface NodeData {
   unique_id: string;
   name: string;
   checksum?: {
@@ -16,6 +20,7 @@ interface NodeData {
   raw_code?: string;
   resource_type?: string;
   package_name?: string;
+  columns?: { [key: string]: NodeColumnData };
 }
 
 export interface LineageData {

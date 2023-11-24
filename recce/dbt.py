@@ -120,7 +120,7 @@ class DBTContext:
                 nodes[unique_id]['columns'] = catalog.nodes[unique_id].columns
 
         for source in manifest_dict['sources'].values():
-            unique_id = node['unique_id']
+            unique_id = source['unique_id']
 
             nodes[unique_id] = {
                 'id': source['unique_id'],

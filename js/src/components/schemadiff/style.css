@@ -1,0 +1,40 @@
+.column-index-added {
+    text-align: right;
+    background-color: rgb(204, 255, 216);
+}
+
+.column-body-added {
+    background-color: rgb(230, 255, 236)
+}
+
+.column-index-removed {
+    text-align: right;
+    background-color: rgb(255, 215, 213)
+}
+
+.column-body-removed {
+    background-color: rgb(255, 235, 233)
+}
+
+.column-index-reordered {
+    text-align: right;
+    background-color: rgb(255, 173, 21);
+}
+
+.column-body-reordered {    
+    background-color: white;
+    /* background-color: rgb(255, 238, 205); */
+}
+
+.column-index-normal {
+    text-align: right;
+    background-color: rgb(249, 249, 249);
+}
+
+.column-body-normal {
+    background-color: white
+}
+
+.column-body-type-changed {    
+    background-color: rgb(255, 215, 213)
+}

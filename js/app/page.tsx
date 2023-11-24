@@ -36,10 +36,10 @@ export default function Home() {
       </TabList>
 
       <TabPanels>
-        <TabPanel>
+        <TabPanel p={0}>
           <LineageView />
         </TabPanel>
-        <TabPanel>
+        <TabPanel p={0}>
           <DiffView />
         </TabPanel>
       </TabPanels>
