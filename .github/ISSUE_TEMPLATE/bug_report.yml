@@ -44,12 +44,14 @@ body:
         - recce: 0.1.0 (`recce version`)
         - OS: MacOS 13.2.1
         - Python: 3.9.12 (`python3 --version`)
+        - Data Warehouse: snowflake or postgresql 14.10
         - dbt: (`dbt --version`)
 
       value: |
         - recce: 
         - OS: 
         - Python: 
+        - Data Warehouse:
         - dbt: 
   - type: textarea
     attributes:
