@@ -41,20 +41,16 @@ body:
       label: Environment
       description: |
         examples:
-        - **recce**: 0.1.0 (`recce version`)
-        - **OS**: MacOS 13.2.1
-        - **Python**: 3.9.12 (`python3 --version`)
-        - **dbt**:(`dbt --version`)
+        - recce: 0.1.0 (`recce version`)
+        - OS: MacOS 13.2.1
+        - Python: 3.9.12 (`python3 --version`)
+        - dbt: (`dbt --version`)
 
       value: |
-        - **recce**: 
-        - **OS**: 
-        - **Python**:          
-        - **dbt**: 
-        ```
-        ```
-
-      render: markdown
+        - recce: 
+        - OS: 
+        - Python: 
+        - dbt: 
   - type: textarea
     attributes:
       label: Additional Context
