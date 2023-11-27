@@ -1,6 +1,6 @@
 name: 🐞 Bug Report
 description: Report a bug or an issue you've found with recce
-title: "[Bug] "
+title: "[Bug] <title>"
 labels: ["bug", "triage"]
 body:
   - type: markdown
@@ -47,12 +47,12 @@ body:
         - **dbt**:(`dbt --version`)
 
       value: |
+        - **recce**: 
         - **OS**: 
-        - **Python**: 
-        - **recce:**: 
+        - **Python**:          
         - **dbt**: 
-          ```
-          ```
+        ```
+        ```
 
       render: markdown
   - type: textarea
