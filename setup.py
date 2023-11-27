@@ -63,4 +63,4 @@ setup(name='recce',
           "Operating System :: OS Independent",
           "Development Status :: 4 - Beta"
       ],
-      package_data={"recce": ['VERSION', 'data/**']})
+      package_data={"recce": ['VERSION', 'data/**', 'event/SENTRY_DNS', 'event/CONFIG']})
