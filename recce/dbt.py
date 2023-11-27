@@ -2,6 +2,7 @@ import os
 from dataclasses import dataclass
 from typing import Optional
 
+import pandas as pd
 from dbt.adapters.factory import get_adapter_by_type
 from dbt.adapters.sql import SQLAdapter
 from dbt.cli.main import dbtRunner
@@ -90,6 +91,28 @@ class DBTContext:
                 return node
 
         return None
+
+    def execute_sql(self, sql_template, base=False) -> pd.DataFrame:
+        from jinja2 import Template
+        import agate
+
+        def ref(model_name):
+            node = self.find_resource_by_name(model_name, base)
+            if node is None:
+                raise Exception(f"model not found: {model_name}")
+
+            relation = self.adapter.Relation.create_from(self.project, node)
+            return str(relation)
+
+        template = Template(sql_template)
+        sql = template.render(ref=ref)
+
+        adapter = self.adapter
+        with adapter.connection_named('test'):
+            response, result = adapter.execute(sql, fetch=True, auto_begin=True)
+            table: agate.Table = result
+            df = pd.DataFrame([row.values() for row in table.rows], columns=table.column_names)
+            return df
 
     def get_lineage(self, base: Optional[bool] = False):
 

@@ -1,10 +1,10 @@
+from typing import List
+
 import click
 
 from recce import event
 from .dbt import DBTContext
-from .diff import diff_text, diff_dataframe
 from .event.track import TrackCommand
-from .impact import inspect_sql, get_inspector
 
 event.init()
 
@@ -25,59 +25,62 @@ def version():
 
 
 @cli.command(cls=TrackCommand)
-@click.argument('resource_name', required=False)
-@click.argument('method', default='summary')
-@click.option('--sql', help='Sql to query', required=False)
-def inspect(resource_name, method, sql, **kwargs):
+@click.option('--sql', help='Sql template to query', required=True)
+def query(sql):
     """
-    Inspect a resource or run a query
+    Run a query on the current environment
+
+    Examples:\n
+
+    - run an adhoc query\n
+        recce query --sql 'select * from {{ ref("mymodel") }} order by 1'
     """
     dbt_context = DBTContext.load()
-    if sql is not None:
-        print(inspect_sql(dbt_context, sql).to_string(index=False))
-        return
+    result = dbt_context.execute_sql(sql)
+    print(result.to_string(na_rep='-', index=False))
 
-    resource = dbt_context.find_resource_by_name(resource_name)
-    if resource is None:
-        print(f"resource not found: {resource_name}")
-        return 0
 
-    resource = dbt_context.find_resource_by_name(resource_name)
-    inspector = get_inspector(resource.resource_type, method)
-    output = inspector(dbt_context, resource)
-    print(output)
+def _split_comma_separated(ctx, param, value):
+    return value.split(',') if value else None
 
 
 @cli.command(cls=TrackCommand)
-@click.argument('resource_name', required=False)
-@click.argument('method', default='summary')
-@click.option('--sql', help='Sql to query', required=False)
-def diff(resource_name, method, sql, **kwargs):
+@click.option('--sql', help='Sql template to query.', required=True)
+@click.option('--primary-keys', type=click.STRING, help='Comma-separated list of primary key columns.',
+              callback=_split_comma_separated)
+@click.option('--keep-shape', is_flag=True, help='Keep unchanged columns. Otherwise, unchanged columns are hidden.')
+@click.option('--keep-equal', is_flag=True,
+              help='Keep values that are equal. Otherwise, equal values are shown as "-".')
+def diff(sql, primary_keys: List[str] = None, keep_shape: bool = False, keep_equal: bool = False):
     """
-    Diff a resource or run a query between two states.
+    Run queries on base and current environments and diff the results
+
+    Examples:\n
+
+    - run adhoc queries and diff teh results\n
+        recce diff --sql 'select * from {{ ref("mymodel") }} order by 1'
     """
 
     dbt_context = DBTContext.load()
+    before = dbt_context.execute_sql(sql, base=True)
+    if primary_keys is not None:
+        before.set_index(primary_keys, inplace=True)
+    after = dbt_context.execute_sql(sql, base=False)
+    if primary_keys is not None:
+        after.set_index(primary_keys, inplace=True)
 
-    if sql is not None:
-        before = inspect_sql(dbt_context, sql, base=True)
-        after = inspect_sql(dbt_context, sql, base=False)
-        diff_dataframe(before, after)
-    else:
-
-        node = dbt_context.find_resource_by_name(resource_name)
-        base_node = dbt_context.find_resource_by_name(resource_name, base=True)
-        inspector = get_inspector(node.resource_type, method)
-
-        before = inspector(dbt_context, base_node) if base_node is not None else ''
-        after = inspector(dbt_context, node) if node is not None else ''
-        diff_text(before, after)
+    before_aligned, after_aligned = before.align(after)
+    diff = before_aligned.compare(after_aligned,
+                                  result_names=('base', 'current'),
+                                  keep_equal=keep_equal,
+                                  keep_shape=keep_shape)
+    print(diff.to_string(na_rep='-') if not diff.empty else 'no changes')
 
 
 @cli.command(cls=TrackCommand)
 def server():
     """
-    Launch the local server
+    Launch the recce server
     """
 
     import uvicorn

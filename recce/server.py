@@ -11,7 +11,6 @@ from starlette.middleware.sessions import SessionMiddleware
 
 from . import event
 from .dbt import DBTContext
-from .impact import inspect_sql
 
 dbt_context: DBTContext = None
 
@@ -72,7 +71,7 @@ async def query(input: QueryInput):
 
     try:
         sql = input.sql_template
-        result = inspect_sql(dbt_context, sql, base=input.base)
+        result = dbt_context.execute_sql(sql, base=input.base)
         result_json = result.to_json(orient='table')
 
         import json
