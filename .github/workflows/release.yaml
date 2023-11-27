@@ -1,19 +1,13 @@
-name: Recce Nightly Build
+name: Official Recce Release
 on:
-  schedule:
-    - cron: '0 18 * * 0,1,2,3,4' # run at 2 AM (UTC + 8) every working day
-  workflow_dispatch:
-    inputs:
-      alpha_version:
-        description: 'Alpha version serial number'
-        required: true
-        type: number
-        default: 0
+  push:
+    tags: 'v*'
 
 jobs:
-  build-nightly-release:
-    name: Build Recce Nightly Release
+  build:
+    name: Build Recce Official Release
     runs-on: ubuntu-latest
+
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -49,24 +43,17 @@ jobs:
         id: patch_version
         run: |
           # Patch version
-          if [ "$ALPHA_VERSION" != "" ]; then
-            echo "Manually alpha version serial number: $ALPHA_VERSION"
-            sed -i.bak "s/\.dev.*\$/\.$(date '+%Y%m%d')a$ALPHA_VERSION/" recce/VERSION
-          else
-            echo "Nightly build version number: $(date '+%Y%m%d')"
-            sed -i.bak "s/\.dev.*\$/\.$(date '+%Y%m%d')/" recce/VERSION
-          fi
-          echo "Nightly version: $(cat recce/VERSION)"
-          echo "nightly_version=$(cat recce/VERSION)" >> $GITHUB_OUTPUT
-        env:
-          ALPHA_VERSION: ${{ inputs.alpha_version || '' }}
+          echo "${GITHUB_REF:11}" > ./recce/VERSION
+
+          echo "Release Version: $(cat recce/VERSION)"
+          echo "release_version=$(cat recce/VERSION)" >> $GITHUB_OUTPUT
 
       - name: Patch Event API Key
         run: |
           # Patch Event API Key
           sed -i.bak "s/<API_KEY>/${EVENT_API_KEY}/" recce/event/CONFIG
         env:
-          EVENT_API_KEY: ${{ secrets.AMPLITUDE_NIGHTLY_API_KEY }}
+          EVENT_API_KEY: ${{ secrets.AMPLITUDE_API_KEY }}
 
       - name: Build Front-end Static Files
         run: |
@@ -75,15 +62,12 @@ jobs:
           pnpm build
           popd
         env:
-          AMPLITUDE_API_KEY: ${{ secrets.AMPLITUDE_NIGHTLY_API_KEY }}
+          AMPLITUDE_API_KEY: ${{ secrets.AMPLITUDE_API_KEY }}
 
       - name: Release to Pypi
         run: |
           # generate pypirc
           echo "$PYPIRC" > $HOME/.pypirc
-
-          # change package name to recce-nightly
-          sed -i.bak "s/name='recce'/name='recce-nightly'/" setup.py
 
           # build and upload to pypi
           pip install build twine
@@ -99,7 +83,7 @@ jobs:
           SENTRY_ORG: infuseai
           SENTRY_PROJECT: recce
         with:
-          environment: nightly
+          environment: production
           ignore_empty: true
           ignore_missing: true
-          version: ${{ steps.patch_version.outputs.nightly_version }}
+          version: ${{ steps.patch_version.outputs.release_version }}
