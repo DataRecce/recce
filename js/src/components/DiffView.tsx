@@ -26,14 +26,14 @@ const DiffViewDataGrid = ({
 
   if (error) {
     return (
-      <>
+      <Box p="16px">
         Error while querying {errorStep} environment: {error}
-      </>
+      </Box>
     );
   }
 
   if (columns.length === 0) {
-    return <>No data</>;
+    return <Box p="16px">No data</Box>;
   }
 
   return (
@@ -42,14 +42,13 @@ const DiffViewDataGrid = ({
       columns={columns}
       rows={rows}
       defaultColumnOptions={{ resizable: true }}
+      className="rdg-light"
     />
   );
 };
 
 const DiffView = () => {
-  const [query, setQuery] = useState(
-    'select * from {{ ref("mymodel") }} limit 1000'
-  );
+  const [query, setQuery] = useState('select * from {{ ref("mymodel") }}');
 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string>();
@@ -118,7 +117,7 @@ const DiffView = () => {
   }, [base, current, primaryKeys]);
 
   return (
-    <Flex direction="column" height="calc(100vh - 74px)">
+    <Flex direction="column" height="calc(100vh - 42px)">
       <Flex justifyContent="right" padding="5px">
         <Button
           colorScheme="blue"

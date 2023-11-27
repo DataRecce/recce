@@ -26,15 +26,7 @@ export function SchemaView({ base, current }: SchemaViewProps) {
       }}
       columns={columns}
       rows={rows}
-      className="fill-grid"
+      className="rdg-light"
     ></DataGrid>
   );
-
-  //   return (
-  //     <List>
-  //       {Object.entries(merged).map(([name, column]) => {
-  //         return <ListItem>{name}</ListItem>;
-  //       })}
-  //     </List>
-  //   );
 }
