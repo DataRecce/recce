@@ -90,7 +90,7 @@ jobs:
           python -m build
           python -m twine upload dist/*
         env:
-          PYPIRC: ${{ secrets.PYPI_NIGHTLY }}
+          PYPIRC: ${{ secrets.PYPI }}
 
       - name: Mark Sentry Release
         uses: getsentry/action-release@v1
