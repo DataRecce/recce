@@ -1,6 +1,6 @@
 import { useMemo } from "react";
-import { NodeColumnData } from "../lineagediff/lineagediff";
-import { mergeColumns, toDataGrid } from "./schemadiff";
+import { NodeColumnData } from "../lineage/lineage";
+import { mergeColumns, toDataGrid } from "./schema";
 import "react-data-grid/lib/styles.css";
 import DataGrid from "react-data-grid";
 

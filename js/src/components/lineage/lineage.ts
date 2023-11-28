@@ -1,5 +1,4 @@
 import _ from "lodash";
-import "@/styles/diff.css";
 import { Node, Edge, Position } from "reactflow";
 import { getNeighborSet } from "./graph";
 

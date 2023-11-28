@@ -1,8 +1,8 @@
 import { BaseEdge, EdgeProps, getBezierPath } from "reactflow";
-import { LineageGraphEdge } from "./lineagediff";
+import { LineageGraphEdge } from "./lineage";
 import { getIconForChangeStatus } from "./styles";
 
-import "./lineagediff.css";
+import "./styles.css";
 
 interface GraphEdgeProps extends EdgeProps<LineageGraphEdge> {}
 

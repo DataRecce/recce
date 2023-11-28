@@ -2,24 +2,24 @@ import "react-data-grid/lib/styles.css";
 import React, { useState, useEffect, useCallback, useMemo } from "react";
 import DataGrid, { ColumnOrColumnGroup } from "react-data-grid";
 import axios, { AxiosError } from "axios";
-import { DataFrame, queryDiff } from "@/querydiff";
-import { PUBLIC_API_URL } from "@/const";
+import { DataFrame, queryDiff } from "@/components/query/query";
+import { PUBLIC_API_URL } from "../../lib/const";
 import { Box, Button, Flex, Textarea } from "@chakra-ui/react";
 
-interface DiffViewDataGridProps {
+interface QueryViewDataGridProps {
   loading: boolean;
   error?: string;
   errorStep?: string;
   columns: any;
   rows: any;
 }
-const DiffViewDataGrid = ({
+const QueryViewDataGrid = ({
   loading,
   error,
   errorStep,
   columns,
   rows,
-}: DiffViewDataGridProps) => {
+}: QueryViewDataGridProps) => {
   if (loading) {
     return <>Loading...</>;
   }
@@ -47,7 +47,7 @@ const DiffViewDataGrid = ({
   );
 };
 
-const DiffView = () => {
+const QueryView = () => {
   const [query, setQuery] = useState('select * from {{ ref("mymodel") }}');
 
   const [loading, setLoading] = useState(false);
@@ -144,7 +144,7 @@ const DiffView = () => {
         style={{ width: "100%" }}
       />
       <Box backgroundColor="gray.100" height="50vh">
-        <DiffViewDataGrid
+        <QueryViewDataGrid
           loading={loading}
           error={error}
           errorStep={errorStep}
@@ -156,4 +156,4 @@ const DiffView = () => {
   );
 };
 
-export default DiffView;
+export default QueryView;

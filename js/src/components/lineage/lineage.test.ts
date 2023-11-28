@@ -1,16 +1,14 @@
 import {
   LineageData,
-  LineageGraph,
   LineageGraphEdge,
   LineageGraphNode,
   buildLineageGraph,
   highlightPath,
   toReactflow,
-} from "./lineagediff";
+} from "./lineage";
 import { Node, Edge } from "reactflow";
 
 import { find } from "lodash";
-import { queryDiff } from "../../querydiff";
 
 test("lineage diff", () => {
   const base = {
