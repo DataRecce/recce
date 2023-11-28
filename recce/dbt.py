@@ -82,13 +82,23 @@ class DBTContext:
         self.base_manifest = base_manifest
         self.base_catalog = base_catalog
 
-    def find_resource_by_name(self, resource_name, base=False):
+    def find_node_by_name(self, node_name, base=False):
 
         manifest = self.curr_manifest if base is False else self.base_manifest
 
         for key, node in manifest.nodes.items():
-            if node.name == resource_name:
+            if node.name == node_name:
                 return node
+
+        return None
+
+    def find_source_by_name(self, source_name, table_name, base=False):
+
+        manifest = self.curr_manifest if base is False else self.base_manifest
+
+        for key, source in manifest.sources.items():
+            if source.source_name == source_name and source.name == table_name:
+                return source
 
         return None
 
@@ -96,16 +106,26 @@ class DBTContext:
         from jinja2 import Template
         import agate
 
-        def ref(model_name):
-            node = self.find_resource_by_name(model_name, base)
+        def ref(node_name):
+            node = self.find_node_by_name(node_name, base)
             if node is None:
-                raise Exception(f"model not found: {model_name}")
+                raise Exception(f"ref not found: {node_name}")
+            if node.resource_type != 'model' and node.resource_type != 'seed':
+                raise Exception(f"ref is not a model or seed: {node_name}")
 
             relation = self.adapter.Relation.create_from(self.project, node)
             return str(relation)
 
+        def source(source_name, table_name):
+            source = self.find_source_by_name(source_name, table_name, base)
+            if source is None:
+                raise Exception(f"source not found: {source_name}.{table_name}")
+
+            relation = self.adapter.Relation.create_from(self.project, source)
+            return str(relation)
+
         template = Template(sql_template)
-        sql = template.render(ref=ref)
+        sql = template.render(ref=ref, source=source)
 
         adapter = self.adapter
         with adapter.connection_named('test'):
