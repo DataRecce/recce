@@ -41,7 +41,7 @@ const DiffViewDataGrid = ({
       style={{ height: "100%" }}
       columns={columns}
       rows={rows}
-      defaultColumnOptions={{ resizable: true }}
+      defaultColumnOptions={{ resizable: true, maxWidth: 800, width: 100 }}
       className="rdg-light"
     />
   );
