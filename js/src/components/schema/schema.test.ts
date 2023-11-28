@@ -1,5 +1,5 @@
-import { NodeData } from "../lineagediff/lineagediff";
-import { mergeColumns } from "./schemadiff";
+import { NodeData } from "../lineage/lineage";
+import { mergeColumns } from "./schema";
 
 function _schema(columns: { [key: string]: string }): NodeData["columns"] {
   const result: ReturnType<typeof _schema> = {};

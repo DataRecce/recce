@@ -1,10 +1,10 @@
-import { PUBLIC_API_URL } from "@/const";
+import { PUBLIC_API_URL } from "@/lib/const";
 import {
   LineageGraph,
   buildLineageGraph,
   highlightPath,
   toReactflow,
-} from "./lineagediff";
+} from "./lineage";
 import { Box, Flex, Icon, Tooltip, useDisclosure } from "@chakra-ui/react";
 import axios, { AxiosError } from "axios";
 import React, { useCallback, useEffect, useState } from "react";
@@ -17,9 +17,7 @@ import ReactFlow, {
   MiniMap,
   Panel,
   Background,
-  BackgroundVariant,
   ReactFlowProvider,
-  useReactFlow,
 } from "reactflow";
 import dagre from "dagre";
 import "reactflow/dist/style.css";

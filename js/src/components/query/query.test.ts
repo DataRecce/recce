@@ -1,4 +1,4 @@
-import { queryDiff } from "./querydiff";
+import { queryDiff } from "./query";
 
 test("query diff", () => {
   const base = {

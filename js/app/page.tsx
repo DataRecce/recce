@@ -1,12 +1,10 @@
 "use client";
 
-import DiffView from "@/components/DiffView";
-import LineageView from "@/components/lineagediff/LineageView";
+import QueryView from "@/components/query/QueryView";
+import LineageView from "@/components/lineage/LineageView";
 import { Tabs, TabList, Tab, TabPanels, TabPanel } from "@chakra-ui/react";
 import { useLayoutEffect } from "react";
-import * as amplitude from '@amplitude/analytics-browser';
-
-
+import * as amplitude from "@amplitude/analytics-browser";
 
 function getCookie(key: string) {
   var b = document.cookie.match("(^|;)\\s*" + key + "\\s*=\\s*([^;]+)");
@@ -20,7 +18,7 @@ export default function Home() {
       try {
         // Initialize Amplitude
         amplitude.init(process.env.AMPLITUDE_API_KEY, userId, {
-            defaultTracking: true,
+          defaultTracking: true,
         });
       } catch (e) {
         console.error(e);
@@ -40,7 +38,7 @@ export default function Home() {
           <LineageView />
         </TabPanel>
         <TabPanel p={0}>
-          <DiffView />
+          <QueryView />
         </TabPanel>
       </TabPanels>
     </Tabs>

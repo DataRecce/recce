@@ -2,10 +2,10 @@ import { Box, Flex, Icon, Text, Tooltip } from "@chakra-ui/react";
 import React from "react";
 
 import { Handle, NodeProps, Position, useStore } from "reactflow";
-import { LineageGraphNode } from "./lineagediff";
+import { LineageGraphNode } from "./lineage";
 import { getIconForChangeStatus, getIconForResourceType } from "./styles";
 
-import "./lineagediff.css";
+import "./styles.css";
 
 interface GraphNodeProps extends NodeProps<LineageGraphNode> {}
 

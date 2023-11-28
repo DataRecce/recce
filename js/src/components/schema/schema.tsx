@@ -1,5 +1,5 @@
-import { mergeKeysWithStatus } from "@/mergeKeys";
-import { NodeData } from "../lineagediff/lineagediff";
+import { mergeKeysWithStatus } from "@/lib/mergeKeys";
+import { NodeData } from "../lineage/lineage";
 import { Column, ColumnOrColumnGroup, RenderCellProps } from "react-data-grid";
 
 import "./style.css";

@@ -10,8 +10,8 @@ import {
   Tabs,
   VStack,
 } from "@chakra-ui/react";
-import { LineageGraphNode, NodeData } from "./lineagediff";
-import { SchemaView } from "../schemadiff/SchemaView";
+import { LineageGraphNode } from "./lineage";
+import { SchemaView } from "../schema/SchemaView";
 
 interface NodeViewProps {
   node: LineageGraphNode;

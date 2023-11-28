@@ -1,6 +1,6 @@
 import { ColumnOrColumnGroup, textEditor } from "react-data-grid";
 import _ from "lodash";
-import "./styles/diff.css";
+import "./styles.css";
 import { Box, Flex, Icon } from "@chakra-ui/react";
 import { VscClose, VscKey } from "react-icons/vsc";
 
