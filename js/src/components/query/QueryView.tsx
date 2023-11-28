@@ -5,6 +5,7 @@ import axios, { AxiosError } from "axios";
 import { DataFrame, queryDiff } from "@/components/query/query";
 import { PUBLIC_API_URL } from "../../lib/const";
 import { Box, Button, Flex, Textarea } from "@chakra-ui/react";
+import SqlEditor from "./SqlEditor";
 
 interface QueryViewDataGridProps {
   loading: boolean;
@@ -48,7 +49,7 @@ const QueryViewDataGrid = ({
 };
 
 const QueryView = () => {
-  const [query, setQuery] = useState('select * from {{ ref("mymodel") }}');
+  const [query, setQuery] = useState('-- Enter your SQL query here ---\nselect * from {{ ref("mymodel") }}');
 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string>();
@@ -128,21 +129,19 @@ const QueryView = () => {
           Run
         </Button>
       </Flex>
-      <Textarea
-        flex="1"
-        height="200px"
-        value={query}
-        onChange={(e) => setQuery(e.target.value)}
-        onKeyDown={(e) => {
-          if (e.key === "Enter" && (e.ctrlKey || e.metaKey)) {
-            executeQuery();
-            e.preventDefault();
-          }
-        }}
-        placeholder="Enter your SQL query here"
-        rows={20}
+      <Box
+        flex='1'
+        border={'1px solid #CBD5E0'}
+        height='200px'
         style={{ width: "100%" }}
-      />
+        >
+        <SqlEditor
+          language="sql"
+          theme="vs"
+          value={query}
+          onChange={(value) => setQuery(value)}
+        />
+      </Box>
       <Box backgroundColor="gray.100" height="50vh">
         <QueryViewDataGrid
           loading={loading}
