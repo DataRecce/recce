@@ -7,8 +7,8 @@ import uuid
 import sentry_sdk
 
 from recce import is_ci_env, get_version
+from recce import yaml as pyml
 from recce.event.collector import Collector
-from recce.yaml import yaml as pyml
 
 USER_HOME = os.path.expanduser('~')
 RECCE_USER_HOME = os.path.join(USER_HOME, '.recce')
