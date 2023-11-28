@@ -50,8 +50,15 @@ app.add_middleware(
 @app.middleware("http")
 async def set_context_by_cookie(request: Request, call_next):
     response = await call_next(request)
-    if request.cookies.get('recce_user_id') is None:
-        user_id = event.get_user_id()
+
+    user_id_in_cookie = request.cookies.get('recce_user_id')
+    user_id = event.get_user_id()
+
+    if event.is_anonymous_tracking() is False:
+        # Disable anonymous tracking
+        user_id = None
+
+    if user_id_in_cookie is None or user_id_in_cookie != user_id:
         response.set_cookie(key='recce_user_id', value=user_id)
     return response
 

@@ -51,6 +51,10 @@ def get_user_id():
     return load_user_profile().get('user_id')
 
 
+def is_anonymous_tracking():
+    return load_user_profile().get('anonymous_tracking', False)
+
+
 def _get_sentry_dns():
     dns_file = os.path.normpath(os.path.join(os.path.dirname(__file__), 'SENTRY_DNS'))
     with open(dns_file) as f:
