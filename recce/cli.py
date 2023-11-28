@@ -26,17 +26,21 @@ def version():
 
 @cli.command(cls=TrackCommand)
 @click.option('--sql', help='Sql template to query', required=True)
-def query(sql):
+@click.option('--base', is_flag=True, help='Run the query on the base environment')
+def query(sql, base: bool = False):
     """
-    Run a query on the current environment
+    Run a query on the current or base environment
 
     Examples:\n
 
     - run an adhoc query\n
         recce query --sql 'select * from {{ ref("mymodel") }} order by 1'
+
+    - run an adhoc query on base environment\n
+        recce query --base --sql 'select * from {{ ref("mymodel") }} order by 1'
     """
     dbt_context = DBTContext.load()
-    result = dbt_context.execute_sql(sql)
+    result = dbt_context.execute_sql(sql, base=base)
     print(result.to_string(na_rep='-', index=False))
 
 
@@ -57,7 +61,7 @@ def diff(sql, primary_keys: List[str] = None, keep_shape: bool = False, keep_equ
 
     Examples:\n
 
-    - run adhoc queries and diff teh results\n
+    - run adhoc queries and diff the results\n
         recce diff --sql 'select * from {{ ref("mymodel") }} order by 1'
     """
 
@@ -78,7 +82,9 @@ def diff(sql, primary_keys: List[str] = None, keep_shape: bool = False, keep_equ
 
 
 @cli.command(cls=TrackCommand)
-def server():
+@click.option('--host', default='0.0.0.0', show_default=True, help='The host to bind to.')
+@click.option('--port', default=8000, show_default=True, help='The port to bind to.', type=int)
+def server(host, port):
     """
     Launch the recce server
     """
@@ -87,7 +93,7 @@ def server():
     from .server import load_dbt_context, app
 
     load_dbt_context()
-    uvicorn.run(app, host="0.0.0.0", port=8000)
+    uvicorn.run(app, host=host, port=port)
 
 
 if __name__ == "__main__":
