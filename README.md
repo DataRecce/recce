@@ -4,15 +4,15 @@
 
 ## Features
 
-1. Support the same dbt adapter framework as dbt.
-2. Support both Web UI & CLI
-3. Lineage diff
+1. Support both Web UI & CLI
+1. Multiple diff tools, including lineage diff, schema diff, and query diff. And more in the future.
+1. Use the dbt-core adapter framework to connect to your data warehouse. No additional configuration required.
 
 ## Use cases
 
-1. When developing, we can check the new result by comparing against the production one.
-2. When reviewing PR, you can understand the change impacts.
-3. When trouble shooting, you can run adhoc dif query to find the root causes.
+1. During development, we can verify new results by contrasting them with those from production prior to pushing the changes.
+2. While reviewing PR, you can grasp the extent of the changes and their impact before merge.
+3. For troubleshooting, you can execute ad-hoc diff queries to pinpoint the root causes.
 
 # Usage
 
@@ -39,67 +39,80 @@ jaffle_shop:
 1. Installation
 
    ```
-   git clone git@github.com:InfuseAI/recce.git
-   cd recce
-   pip install -e .
+   pip install recce
    ```
 
-1. Put the `manifest.json` of production (or any environment you would like to diff) in the `target-base/` folder. `manifest.json` is one of the generated artifacts for each dbt command execution. You can find it in `target/` folder by default.
+1. Recce use [dbt artifacts](https://docs.getdbt.com/reference/artifacts/dbt-artifacts) to interact with your dbt project. You need to prepare the artifacts for the base environment.
+
+   ```shell
+   # transform the data to data warehouse
+   dbt run --target prod
+
+   # generate the catalog.json
+   dbt docs generate --target prod
+   ```
+
+   The artifacts are generated within the `target/` directory. Copy these artifacts into the `target-base/` directory as the base state to diff.
+
+   ```
+   mkdir -p target-base/
+   cp -R target/ target-base/
+   ```
 
 1. Develop your awesome features
 
-   ```
+   ```shell
+   # transform the data to data warehouse
    dbt run
+
+   # generate the catalog.json
+   dbt docs generate
    ```
 
-1. Run the recce command
+1. Run the recce server
 
    ```
    recce server
    ```
 
-1. Review the linage diff.
-1. Switch to query tab, Write and run a query
+   and open the url link
 
-   ```sql
-   select * from {{ ref('mymodel') }}
+1. Check the lineage diff to see the modified node. Click one node to see the schema difference.
+1. Switch to **query** tab, Write and run a query diff. It would query on the both side and diff the query results.
+
+   ```jinja
+   select * from {{ ref("mymodel") }}
    ```
 
-   where `ref` is a Jinja macro to reference a model name.
+   where `ref` is a Jinja function to reference a model name.
 
-> Under the hood, recce uses the `manifest.json` under `target/` and `target-base/` to geenrate query and execute.
+## Query Diff
 
-## Run Query Diff
+You can run query diff in both Web UI and CLI
 
-You can either run in Web UI
+- **Web UI**: Go to **Query** tab
 
-```
-recce server
-```
+  ```jinja
+  select * from {{ ref("mymodel") }}
+  ```
 
-or run in CLI
+- **CLI**:
 
-```
-recce diff --sql 'select * from {{ ref('mymodel') }}'
-```
+  ```shell
+  recce diff --sql 'select * from {{ ref("mymodel") }}'
+  ```
 
-## Specify the primary key columns
+### Primay key
 
-In the query diff, we use primary key columns as the basis for identifying the same record on both sides.
+In the query diff, primary key columns serve as the fundamental identifiers for distinguishing each record uniquely across both sides.
 
-There are two ways to specify the primary key
+- **Web UI**: In the query result, click the _key_ icons in the column headers to toggle if it is in the primary key list.
 
-1. **Define in the SQL:** Add the `config` macro in your sql.
+- **CLI**: Use the option `--primary-keys` to specify the primary keys. Use comma to separate the columns if it is a compound key.
 
-   ```
-   {{
-      config( primary_key=['DATE_WEEK', 'COUNTRY'])
-   }}
-
-   select ...
-   ```
-
-1. **Select in the query result:** In the Web UI, you can click the key icons in the column headers to toggle if a column is a primary key.
+  ```shell
+  recce diff --primary-keys event_id --sql 'select * from {{ ref("events") }} order by 1'
+  ```
 
 # Q&A
 
