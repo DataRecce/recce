@@ -141,10 +141,6 @@ def log_event(prop, event_type, **kwargs):
     if not _collector.is_ready():
         return
 
-    ds = None
-    if kwargs.get('params'):
-        ds = kwargs.get('params').get('datasource')
-
     payload = dict(
         **prop,
     )

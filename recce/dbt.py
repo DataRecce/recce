@@ -2,6 +2,7 @@ import os
 from dataclasses import dataclass
 from typing import Optional
 
+import pandas as pd
 from dbt.adapters.factory import get_adapter_by_type
 from dbt.adapters.sql import SQLAdapter
 from dbt.cli.main import dbtRunner
@@ -9,6 +10,7 @@ from dbt.config.profile import Profile
 from dbt.config.project import Project
 from dbt.config.runtime import load_profile, load_project
 from dbt.contracts.graph.manifest import WritableManifest, Manifest
+from dbt.contracts.graph.nodes import ResultNode, SourceDefinition, ManifestNode
 from dbt.contracts.results import CatalogArtifact
 
 
@@ -63,6 +65,13 @@ class DBTContext:
 
         return dbt_context
 
+    def get_columns(self, node: ResultNode):
+        relation = self.adapter.Relation.create_from(self.project, node)
+        return self.adapter.execute_macro(
+            'get_columns_in_relation',
+            kwargs={"relation": relation},
+            manifest=self.manifest)
+
     def load_artifacts(self):
         """
         Load the artifacts from the 'target' and 'target-base' directory
@@ -81,15 +90,57 @@ class DBTContext:
         self.base_manifest = base_manifest
         self.base_catalog = base_catalog
 
-    def find_resource_by_name(self, resource_name, base=False):
+    def find_node_by_name(self, node_name, base=False) -> Optional[ManifestNode]:
 
         manifest = self.curr_manifest if base is False else self.base_manifest
 
         for key, node in manifest.nodes.items():
-            if node.name == resource_name:
+            if node.name == node_name:
                 return node
 
         return None
+
+    def find_source_by_name(self, source_name, table_name, base=False) -> Optional[SourceDefinition]:
+
+        manifest = self.curr_manifest if base is False else self.base_manifest
+
+        for key, source in manifest.sources.items():
+            if source.source_name == source_name and source.name == table_name:
+                return source
+
+        return None
+
+    def execute_sql(self, sql_template, base=False) -> pd.DataFrame:
+        from jinja2 import Template
+        import agate
+
+        def ref(node_name):
+            node = self.find_node_by_name(node_name, base)
+            if node is None:
+                raise Exception(f"ref not found: {node_name}")
+            if node.resource_type != 'model' and node.resource_type != 'seed':
+                raise Exception(f"ref is not a model or seed: {node_name}")
+
+            relation = self.adapter.Relation.create_from(self.project, node)
+            return str(relation)
+
+        def source(source_name, table_name):
+            source = self.find_source_by_name(source_name, table_name, base)
+            if source is None:
+                raise Exception(f"source not found: {source_name}.{table_name}")
+
+            relation = self.adapter.Relation.create_from(self.project, source)
+            return str(relation)
+
+        template = Template(sql_template)
+        sql = template.render(ref=ref, source=source)
+
+        adapter = self.adapter
+        with adapter.connection_named('test'):
+            response, result = adapter.execute(sql, fetch=True, auto_begin=True)
+            table: agate.Table = result
+            df = pd.DataFrame([row.values() for row in table.rows], columns=table.column_names)
+            return df
 
     def get_lineage(self, base: Optional[bool] = False):
 

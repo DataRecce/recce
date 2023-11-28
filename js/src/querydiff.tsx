@@ -1,4 +1,4 @@
-import { ColumnOrColumnGroup } from "react-data-grid";
+import { ColumnOrColumnGroup, textEditor } from "react-data-grid";
 import _ from "lodash";
 import "./styles/diff.css";
 import { Box, Flex, Icon } from "@chakra-ui/react";
@@ -152,11 +152,13 @@ export function queryDiff(
           {
             key: `base__${name}`,
             name: "Base",
+            renderEditCell: textEditor,
             cellClass,
           },
           {
             key: `current__${name}`,
             name: "Current",
+            renderEditCell: textEditor,
             cellClass,
           },
         ],
