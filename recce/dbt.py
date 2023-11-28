@@ -10,6 +10,7 @@ from dbt.config.profile import Profile
 from dbt.config.project import Project
 from dbt.config.runtime import load_profile, load_project
 from dbt.contracts.graph.manifest import WritableManifest, Manifest
+from dbt.contracts.graph.nodes import ResultNode, SourceDefinition, ManifestNode
 from dbt.contracts.results import CatalogArtifact
 
 
@@ -64,6 +65,13 @@ class DBTContext:
 
         return dbt_context
 
+    def get_columns(self, node: ResultNode):
+        relation = self.adapter.Relation.create_from(self.project, node)
+        return self.adapter.execute_macro(
+            'get_columns_in_relation',
+            kwargs={"relation": relation},
+            manifest=self.manifest)
+
     def load_artifacts(self):
         """
         Load the artifacts from the 'target' and 'target-base' directory
@@ -82,7 +90,7 @@ class DBTContext:
         self.base_manifest = base_manifest
         self.base_catalog = base_catalog
 
-    def find_node_by_name(self, node_name, base=False):
+    def find_node_by_name(self, node_name, base=False) -> Optional[ManifestNode]:
 
         manifest = self.curr_manifest if base is False else self.base_manifest
 
@@ -92,7 +100,7 @@ class DBTContext:
 
         return None
 
-    def find_source_by_name(self, source_name, table_name, base=False):
+    def find_source_by_name(self, source_name, table_name, base=False) -> Optional[SourceDefinition]:
 
         manifest = self.curr_manifest if base is False else self.base_manifest
 
