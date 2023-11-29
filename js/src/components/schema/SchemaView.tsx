@@ -37,18 +37,20 @@ export function SchemaView({ base, current }: SchemaViewProps) {
         </Alert>
       )}
 
-      <DataGrid
-        style={{
-          height: "100%",
+      {rows.length > 0 && (
+        <DataGrid
+          style={{
+            height: "100%",
 
-          fontSize: "10pt",
-          borderWidth: 1,
-          overflowY: "auto",
-        }}
-        columns={columns}
-        rows={rows}
-        className="rdg-light"
-      ></DataGrid>
+            fontSize: "10pt",
+            borderWidth: 1,
+            overflowY: "auto",
+          }}
+          columns={columns}
+          rows={rows}
+          className="rdg-light"
+        />
+      )}
     </Flex>
   );
 }
