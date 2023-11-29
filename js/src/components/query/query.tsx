@@ -52,7 +52,9 @@ function DataFrameColumnGroupHeader({
           as={VscClose}
           onClick={() => {
             const newPrimaryKeys = primaryKeys.filter((item) => item !== name);
-            onPrimaryKeyChange(newPrimaryKeys);
+            if (onPrimaryKeyChange) {
+              onPrimaryKeyChange(newPrimaryKeys);
+            }
           }}
         />
       </Flex>
@@ -69,7 +71,9 @@ function DataFrameColumnGroupHeader({
               ...primaryKeys.filter((item) => item !== "index"),
               name,
             ];
-            onPrimaryKeyChange(newPrimaryKeys);
+            if (onPrimaryKeyChange) {
+              onPrimaryKeyChange(newPrimaryKeys);
+            }
           }}
         />
       </Flex>
