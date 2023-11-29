@@ -1,4 +1,4 @@
-import { PUBLIC_API_URL } from "@/lib/const";
+import { PUBLIC_API_URL } from "../../lib/const";
 import {
   LineageGraph,
   buildLineageGraph,

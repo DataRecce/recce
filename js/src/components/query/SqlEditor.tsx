@@ -1,18 +1,25 @@
-import React from 'react';
-import MonacoEditor from '@monaco-editor/react';
-
+import React, { useEffect, useRef } from "react";
+import MonacoEditor from "@monaco-editor/react";
 
 interface SqlEditorProps {
   language?: string;
   theme?: string;
   value: string;
-  onChange: (e: any) => void;
+  onChange: (value: string) => void;
+  onRun: () => void;
 }
 
-const SqlEditor: React.FC<SqlEditorProps> = ({ value, onChange, ...props}: SqlEditorProps) => {
+const SqlEditor: React.FC<SqlEditorProps> = ({
+  value,
+  onChange,
+  onRun,
+  ...props
+}: SqlEditorProps) => {
+  const editorRef = useRef(null);
+
   const handleEditorChange = (value: string | undefined) => {
     if (value !== undefined) {
-    onChange(value);
+      onChange(value);
     }
   };
 
@@ -22,14 +29,17 @@ const SqlEditor: React.FC<SqlEditorProps> = ({ value, onChange, ...props}: SqlEd
       theme={props.theme || "vs"}
       defaultValue={value}
       onChange={handleEditorChange}
+      onMount={(editor, monaco) => {
+        editor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyCode.Enter, onRun);
+      }}
       options={{
         tabSize: 2,
         fontSize: 16,
-        lineNumbers: "off",
+        lineNumbers: "on",
         automaticLayout: true,
         minimap: { enabled: false },
         wordWrap: "on",
-        wrappingIndent: 'indent',
+        wrappingIndent: "indent",
         // Additional options as needed
       }}
     />

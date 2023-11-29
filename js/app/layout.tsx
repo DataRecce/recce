@@ -1,6 +1,4 @@
 import type { Metadata } from "next";
-import "./globals.css";
-import { ChakraProvider } from "@chakra-ui/react";
 
 export const metadata: Metadata = {
   title: "recce",
@@ -14,9 +12,7 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en">
-      <body suppressHydrationWarning={true}>
-        <ChakraProvider>{children}</ChakraProvider>
-      </body>
+      <body suppressHydrationWarning={true}>{children}</body>
     </html>
   );
 }
