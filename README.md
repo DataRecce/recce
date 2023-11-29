@@ -36,55 +36,34 @@ jaffle_shop:
 
 ## Getting Started
 
+[5 minutes walkthrough by jaffle shop example](./docs/get-started-jaffle-shop.md)
+
 1. Installation
 
    ```
    pip install recce
    ```
 
-1. Recce use [dbt artifacts](https://docs.getdbt.com/reference/artifacts/dbt-artifacts) to interact with your dbt project. You need to prepare the artifacts for the base environment.
-
-   ```shell
-   # transform the data to data warehouse
-   dbt run --target prod
-
-   # generate the catalog.json
-   dbt docs generate --target prod
+1. Go to your dbt project
    ```
-
-   The artifacts are generated within the `target/` directory. Copy these artifacts into the `target-base/` directory as the base state to diff.
-
+   cd your-dbt-project/
    ```
-   mkdir -p target-base/
-   cp -R target/ target-base/
-   ```
+1. **Prepare base artifacts**: DBT generates [artifacts](https://docs.getdbt.com/reference/artifacts/dbt-artifacts) when every invocation. You can find these files in the `target/` folder.
 
-1. Develop your awesome features
+   | artifacts               | dbt command                |
+   | ----------------------- | -------------------------- |
+   | manifest.json           | `dbt run`, `dbt build`, .. |
+   | catalog.json (optional) | `dbt docs generate`        |
 
-   ```shell
-   # transform the data to data warehouse
-   dbt run
+   Copy the artifacts for base environment to `target-base/`
 
-   # generate the catalog.json
-   dbt docs generate
-   ```
-
-1. Run the recce server
+1. Run the recce server.
 
    ```
    recce server
    ```
 
-   and open the url link
-
-1. Check the lineage diff to see the modified node. Click one node to see the schema difference.
-1. Switch to **query** tab, Write and run a query diff. It would query on the both side and diff the query results.
-
-   ```jinja
-   select * from {{ ref("mymodel") }}
-   ```
-
-   where `ref` is a Jinja function to reference a model name.
+   Recce would diff environments between `target/` and `target-base/`
 
 ## Query Diff
 
