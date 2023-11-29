@@ -1,5 +1,6 @@
 import {
   Box,
+  CloseButton,
   Flex,
   Grid,
   Heading,
@@ -8,16 +9,17 @@ import {
   TabPanel,
   TabPanels,
   Tabs,
-  VStack,
+  HStack,
 } from "@chakra-ui/react";
 import { LineageGraphNode } from "./lineage";
 import { SchemaView } from "../schema/SchemaView";
 
 interface NodeViewProps {
   node: LineageGraphNode;
+  onClose: () => void;
 }
 
-export function NodeView({ node }: NodeViewProps) {
+export function NodeView({ node, onClose }: NodeViewProps) {
   const withColumns =
     node.resourceType === "model" ||
     node.resourceType === "seed" ||
@@ -25,10 +27,15 @@ export function NodeView({ node }: NodeViewProps) {
 
   return (
     <Grid height="100%" templateRows="auto 1fr">
-      <Box flex="0 0" p="16px">
-        <Heading size="sm">{node.name}</Heading>
-        <Box color="gray">{node.resourceType}</Box>
-      </Box>
+      <HStack>
+        <Box flex="0 0 88%" p="16px">
+          <Heading size="sm">{node.name}</Heading>
+          <Box color="gray">{node.resourceType}</Box>
+        </Box>
+        <Box flex="0 0 10%" p="16px">
+          <CloseButton onClick={onClose}/>
+        </Box>
+      </HStack>
 
       {withColumns && (
         <Tabs overflow="auto" as={Flex}>
