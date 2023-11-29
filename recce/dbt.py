@@ -117,9 +117,9 @@ class DBTContext:
         def ref(node_name):
             node = self.find_node_by_name(node_name, base)
             if node is None:
-                raise Exception(f"ref not found: {node_name}")
+                raise Exception(f"reference not found: \"{node_name}\"")
             if node.resource_type != 'model' and node.resource_type != 'seed':
-                raise Exception(f"ref is not a model or seed: {node_name}")
+                raise Exception(f"reference is not a model or seed: \"{node_name}\"")
 
             relation = self.adapter.Relation.create_from(self.project, node)
             return str(relation)
@@ -127,7 +127,7 @@ class DBTContext:
         def source(source_name, table_name):
             source = self.find_source_by_name(source_name, table_name, base)
             if source is None:
-                raise Exception(f"source not found: {source_name}.{table_name}")
+                raise Exception(f"source not found: \"{source_name}.{table_name}\"")
 
             relation = self.adapter.Relation.create_from(self.project, source)
             return str(relation)

@@ -1,17 +1,25 @@
 import "react-data-grid/lib/styles.css";
-import React, { useState, useEffect, useCallback, useMemo } from "react";
-import DataGrid, { ColumnOrColumnGroup } from "react-data-grid";
-import axios, { AxiosError } from "axios";
-import { DataFrame, toDataGrid } from "@/components/query/query";
-import { PUBLIC_API_URL } from "../../lib/const";
-import { Box, Button, Flex, Textarea } from "@chakra-ui/react";
+import React, { useState, useCallback, useMemo } from "react";
+import DataGrid from "react-data-grid";
+import { AxiosError } from "axios";
+import { toDataGrid } from "@/components/query/query";
+import {
+  Alert,
+  AlertIcon,
+  Box,
+  Button,
+  Center,
+  Flex,
+  Spinner,
+  Textarea,
+} from "@chakra-ui/react";
 import SqlEditor from "./SqlEditor";
 import { useRunQuery } from "@/lib/api/runQuery";
 
 interface QueryViewDataGridProps {
   loading: boolean;
-  baseError?: string;
-  currentError?: string;
+  baseError?: Error | null;
+  currentError?: Error | null;
   columns: any;
   rows: any;
 }
@@ -22,26 +30,62 @@ const QueryViewDataGrid = ({
   columns,
   rows,
 }: QueryViewDataGridProps) => {
+  const isPartialSuccess =
+    (baseError && !currentError) || (!baseError && currentError);
+
+  const getErrorMessage = (err: Error) => {
+    if (err instanceof AxiosError) {
+      const detail = err?.response?.data?.detail;
+      if (detail) {
+        return detail;
+      } else {
+        return err?.message;
+      }
+    } else {
+      return err?.message;
+    }
+  };
+
   if (loading) {
-    return <>Loading...</>;
+    return (
+      <Center p="16px" height="100%">
+        <Spinner size="sm" mr="8px" />
+        Loading...
+      </Center>
+    );
   }
 
   if (baseError && currentError) {
-    return <Box p="16px">Error: {currentError}</Box>;
+    // return <Box p="16px">Error: {getErrorMessage(currentError)}</Box>;
+    return (
+      <Alert status="error">
+        <AlertIcon />
+        Error: {getErrorMessage(currentError)}
+      </Alert>
+    );
   }
 
   if (columns.length === 0) {
-    return <Box p="16px">No data</Box>;
+    return <Center height="100%">No data</Center>;
   }
 
   return (
-    <DataGrid
-      style={{ height: "100%" }}
-      columns={columns}
-      rows={rows}
-      defaultColumnOptions={{ resizable: true, maxWidth: 800, width: 100 }}
-      className="rdg-light"
-    />
+    <Flex direction="column" height="100%" overflow="auto">
+      {isPartialSuccess && (
+        <Alert status="error">
+          <AlertIcon />
+          {baseError && `Error[Base]: ${getErrorMessage(baseError)}`}
+          {currentError && `Error[Current]: ${getErrorMessage(currentError)}`}
+        </Alert>
+      )}
+      <DataGrid
+        style={{ height: "100%" }}
+        columns={columns}
+        rows={rows}
+        defaultColumnOptions={{ resizable: true, maxWidth: 800, width: 100 }}
+        className="rdg-light"
+      />
+    </Flex>
   );
 };
 
@@ -69,7 +113,7 @@ const QueryView = () => {
   }, [queryBase, queryCurrent]);
 
   const isFetching =
-    baseQueryResult.isFetching && currentQueryResult.isFetching;
+    baseQueryResult.isFetching || currentQueryResult.isFetching;
   const gridData = useMemo(() => {
     if (isFetching) {
       return { rows: [], columns: [] };
@@ -86,7 +130,7 @@ const QueryView = () => {
         <Button
           colorScheme="blue"
           onClick={executeQuery}
-          disabled={isFetching}
+          isDisabled={isFetching}
           size="sm"
         >
           Run
@@ -104,8 +148,8 @@ const QueryView = () => {
       <Box backgroundColor="gray.100" height="50vh">
         <QueryViewDataGrid
           loading={isFetching}
-          baseError={baseQueryResult.error?.message}
-          currentError={currentQueryResult.error?.message}
+          baseError={baseQueryResult.error}
+          currentError={currentQueryResult.error}
           rows={gridData.rows}
           columns={gridData.columns}
         />
