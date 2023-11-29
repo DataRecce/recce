@@ -37,10 +37,7 @@ export function NodeView({ node }: NodeViewProps) {
           </TabList>
           <TabPanels overflow="auto" height="calc(100% - 42px)">
             <TabPanel p={0} overflowY="auto" height="100%">
-              <SchemaView
-                base={node.data.base?.columns}
-                current={node.data.current?.columns}
-              />
+              <SchemaView base={node.data.base} current={node.data.current} />
             </TabPanel>
           </TabPanels>
         </Tabs>

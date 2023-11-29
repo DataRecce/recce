@@ -59,9 +59,9 @@ class DBTContext:
         dbt_context.load_artifacts()
 
         if not dbt_context.curr_manifest:
-            raise Exception('Cannot load manifest.json')
-        if not dbt_context.curr_manifest:
-            raise Exception('Cannot load manifest.json for target-base')
+            raise Exception('Cannot load "target/manifest.json"')
+        if not dbt_context.base_manifest:
+            raise Exception('Cannot load "target-base/manifest.json"')
 
         return dbt_context
 
