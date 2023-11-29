@@ -217,6 +217,7 @@ function _LineageView() {
           onNodeClick={onNodeClick}
           onNodeMouseEnter={onNodeMouseEnter}
           onNodeMouseLeave={onNodeMouseLeave}
+          maxZoom={1}
           minZoom={0.1}
           fitView={true}
         >
