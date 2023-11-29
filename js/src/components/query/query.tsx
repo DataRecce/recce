@@ -31,7 +31,7 @@ function _getPrimaryKeyValue(row: DataFrameRow, primaryKeys: string[]): string {
 interface DataFrameColumnGroupHeaderProps {
   name: string;
   primaryKeys: string[];
-  onPrimaryKeyChange: (primaryKeys: string[]) => void;
+  onPrimaryKeyChange?: (primaryKeys: string[]) => void;
 }
 
 function DataFrameColumnGroupHeader({
@@ -77,12 +77,46 @@ function DataFrameColumnGroupHeader({
   }
 }
 
-export function queryDiff(
-  base: DataFrame,
-  current: DataFrame,
-  primaryKeys: string[],
-  onPrimaryKeyChange: (primaryKeys: string[]) => void
+export function toDataGrid(
+  base?: DataFrame,
+  current?: DataFrame,
+  primaryKeys: string[] = [],
+  onPrimaryKeyChange?: (primaryKeys: string[]) => void
 ) {
+  const empty: DataFrame = {
+    schema: {
+      fields: [],
+      primaryKey: [],
+    },
+    data: [],
+  };
+
+  if (!base && current) {
+    base = empty;
+
+    if (primaryKeys.length === 0) {
+      primaryKeys = current.schema.primaryKey;
+    }
+  } else if (!current && base) {
+    current = empty;
+
+    if (primaryKeys.length === 0) {
+      primaryKeys = base.schema.primaryKey;
+    }
+  } else if (base && current) {
+    if (!_.isEqual(base.schema.primaryKey, current.schema.primaryKey)) {
+      throw new Error(
+        `primary key mismatch! ${base.schema.primaryKey} != ${current.schema.primaryKey}`
+      );
+    }
+
+    if (primaryKeys.length === 0) {
+      primaryKeys = base.schema.primaryKey;
+    }
+  } else {
+    return { rows: [], columns: [] };
+  }
+
   const columns: ColumnOrColumnGroup<any, any>[] = [];
   const pkColumns: ColumnOrColumnGroup<any, any>[] = [];
   const columnMap: Record<
@@ -91,16 +125,6 @@ export function queryDiff(
   > = {};
   const rowMap: Record<any, { base?: DataFrameRow; current?: DataFrameRow }> =
     {};
-
-  if (!_.isEqual(base.schema.primaryKey, current.schema.primaryKey)) {
-    throw new Error(
-      `primary key mismatch! ${base.schema.primaryKey} != ${current.schema.primaryKey}`
-    );
-  }
-
-  if (primaryKeys.length === 0) {
-    primaryKeys = base.schema.primaryKey;
-  }
 
   current.schema.fields.forEach((field) => {
     columnMap[field.name] = {};
@@ -210,6 +234,4 @@ export function queryDiff(
     columns: [...pkColumns, ...columns],
     rows,
   };
-
-  // return base;
 }

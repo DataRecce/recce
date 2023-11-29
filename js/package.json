@@ -19,6 +19,7 @@
     "@emotion/react": "^11.11.1",
     "@emotion/styled": "^11.11.0",
     "@monaco-editor/react": "^4.6.0",
+    "@tanstack/react-query": "^5.8.9",
     "axios": "^1.6.0",
     "dagre": "^0.8.5",
     "framer-motion": "^10.16.4",
