@@ -64,7 +64,6 @@ jaffle_shop:
 
    Copy the artifacts for the base environment to `target-base/` folder.
 
-   ```
 1. Run the recce server.
 
    ```
