@@ -109,4 +109,4 @@ In the query diff, primary key columns serve as the fundamental identifiers for 
 
 ### Q: What credential does `recce` connect to the two environments?
 
-Recce uses the same target in the profile to connect your warehouse. If you use the default target `dev, it uses the credentials to connect to both environments. So please make sure that the credential can access both environments.
+Recce uses the same target in the profile to connect your warehouse. If you use the default target `dev`, it uses the credentials to connect to both environments. So please make sure that the credential can access both environments.
