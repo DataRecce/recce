@@ -232,7 +232,11 @@ function _LineageView() {
 
       {selected && lineageGraph?.nodes[selected] && (
         <Box flex="0 0 500px" borderLeft="solid 1px lightgray" height="100%">
-          <NodeView node={lineageGraph?.nodes[selected]}></NodeView>
+          <NodeView
+            node={lineageGraph?.nodes[selected]}
+            onClose={() => {
+            setSelected(undefined);
+          }} />
         </Box>
       )}
     </Flex>
