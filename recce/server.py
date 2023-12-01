@@ -3,13 +3,13 @@ from contextlib import asynccontextmanager
 from pathlib import Path
 from typing import Optional
 
-from fastapi import FastAPI, Request, HTTPException
+from fastapi import FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 from starlette.middleware.sessions import SessionMiddleware
 
-from . import event
+from . import __version__, event
 from .dbt import DBTContext
 
 dbt_context: DBTContext = None
@@ -93,6 +93,14 @@ async def query(input: QueryInput):
 async def get_lineage(base: Optional[bool] = False):
     try:
         return dbt_context.get_lineage(base)
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+
+@app.get("/api/version")
+async def version():
+    try:
+        return __version__
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))
 

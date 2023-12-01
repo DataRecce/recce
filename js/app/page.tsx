@@ -8,26 +8,29 @@ import {
   Tab,
   TabPanels,
   TabPanel,
-  ChakraProvider,
+  ChakraProvider, Box
 } from "@chakra-ui/react";
 import { useLayoutEffect } from "react";
 import * as amplitude from "@amplitude/analytics-browser";
 import { QueryClientProvider } from "@tanstack/react-query";
 import { reactQueryClient } from "@/lib/api/axiosClient";
+import { useVersionNumber } from "@/lib/api/useVersion";
 
 function getCookie(key: string) {
   var b = document.cookie.match("(^|;)\\s*" + key + "\\s*=\\s*([^;]+)");
   return b ? b.pop() : "";
 }
 
+
 export default function Home() {
+  const version = useVersionNumber();
   useLayoutEffect(() => {
     const userId = getCookie("recce_user_id");
     if (userId && process.env.AMPLITUDE_API_KEY) {
       try {
         // Initialize Amplitude
         amplitude.init(process.env.AMPLITUDE_API_KEY, userId, {
-          defaultTracking: true,
+          defaultTracking: true
         });
       } catch (e) {
         console.error(e);
@@ -42,6 +45,9 @@ export default function Home() {
           <TabList>
             <Tab>Lineage</Tab>
             <Tab>Query</Tab>
+            <Box position="absolute" right="0" top="0" p="2" color="gray.500">
+              {version}
+            </Box>
           </TabList>
 
           <TabPanels>
