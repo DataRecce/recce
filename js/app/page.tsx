@@ -8,12 +8,12 @@ import {
   Tab,
   TabPanels,
   TabPanel,
-  ChakraProvider, Box,
+  ChakraProvider, Box
 } from "@chakra-ui/react";
 import { useLayoutEffect } from "react";
 import * as amplitude from "@amplitude/analytics-browser";
 import { QueryClientProvider } from "@tanstack/react-query";
-import {axiosClient, reactQueryClient} from "@/lib/api/axiosClient";
+import { reactQueryClient } from "@/lib/api/axiosClient";
 import { useVersionNumber } from "@/lib/api/useVersion";
 
 function getCookie(key: string) {
@@ -30,7 +30,7 @@ export default function Home() {
       try {
         // Initialize Amplitude
         amplitude.init(process.env.AMPLITUDE_API_KEY, userId, {
-          defaultTracking: true,
+          defaultTracking: true
         });
       } catch (e) {
         console.error(e);
