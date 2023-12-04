@@ -1,7 +1,7 @@
 import { PUBLIC_API_URL } from "../../lib/const";
 import {
   LineageGraph,
-  buildLineageGraph,
+  buildDefaultLineageGraphSets,
   highlightPath,
   toReactflow,
 } from "./lineage";
@@ -106,6 +106,7 @@ function _LineageView() {
   const [nodes, setNodes, onNodesChange] = useNodesState([]);
   const [edges, setEdges, onEdgesChange] = useEdgesState([]);
   const [lineageGraph, setLineageGraph] = useState<LineageGraph>();
+  const [modifiedSet, setModifiedSet] = useState<string[]>();
 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string>();
@@ -132,13 +133,16 @@ function _LineageView() {
       if (responseBase.status !== 200) {
         throw new Error("error");
       }
-      const lineagGraph = buildLineageGraph(
+      const defaultLineageGraphs = buildDefaultLineageGraphSets(
         responseBase.data,
         responseCurrent.data
       );
-      const [nodes, edges] = toReactflow(lineagGraph);
+      const lineageGraph = defaultLineageGraphs.changed;
+      const modifiedSet = defaultLineageGraphs.modifiedSet;
+      const [nodes, edges] = toReactflow(lineageGraph, defaultLineageGraphs.modifiedSet);
       layout(nodes, edges);
-      setLineageGraph(lineagGraph);
+      setLineageGraph(lineageGraph);
+      setModifiedSet(modifiedSet);
       setNodes(nodes);
       setEdges(edges);
 
@@ -166,9 +170,10 @@ function _LineageView() {
   }, [queryLineage]);
 
   const onNodeMouseEnter = (event: React.MouseEvent, node: Node) => {
-    if (lineageGraph) {
+    if (lineageGraph && modifiedSet !== undefined) {
       const [newNodes, newEdges] = highlightPath(
         lineageGraph,
+        modifiedSet,
         nodes,
         edges,
         node.id
@@ -180,9 +185,10 @@ function _LineageView() {
   };
 
   const onNodeMouseLeave = (event: React.MouseEvent, node: Node) => {
-    if (lineageGraph) {
+    if (lineageGraph && modifiedSet !== undefined) {
       const [newNodes, newEdges] = highlightPath(
         lineageGraph,
+        modifiedSet,
         nodes,
         edges,
         null

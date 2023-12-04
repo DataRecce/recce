@@ -2,7 +2,7 @@ import {
   LineageData,
   LineageGraphEdge,
   LineageGraphNode,
-  buildLineageGraph,
+  buildDefaultLineageGraphSets,
   highlightPath,
   toReactflow,
 } from "./lineage";
@@ -31,7 +31,9 @@ test("lineage diff", () => {
     },
   };
 
-  const { nodes, edges } = buildLineageGraph(base, current);
+  const { all } = buildDefaultLineageGraphSets(base, current);
+  const nodes = all.nodes;
+  const edges = all.edges;
 
   expect(Object.keys(nodes).length).toBe(4);
   expect(Object.keys(edges).length).toBe(4);
@@ -80,7 +82,9 @@ test("lineage diff 2", () => {
     },
   };
 
-  const { nodes, edges } = buildLineageGraph(base, current);
+  const { all } = buildDefaultLineageGraphSets(base, current);
+  const nodes = all.nodes;
+  const edges = all.edges;
 
   expect(Object.keys(nodes).length).toBe(5);
   expect(Object.keys(edges).length).toBe(4);
@@ -116,9 +120,9 @@ test("hightlight", () => {
     },
   };
 
-  const g = buildLineageGraph(base, current);
-  const [nodes, edges] = toReactflow(g);
-  const [nodes2, edges2] = highlightPath(g, nodes, edges, "a");
+  const { all, modifiedSet } = buildDefaultLineageGraphSets(base, current);
+  const [nodes, edges] = toReactflow(all, modifiedSet);
+  const [nodes2, edges2] = highlightPath(all, modifiedSet, nodes, edges, "a");
 
   expect(nodes.length).toBe(nodes2.length);
   expect(edges.length).toBe(edges2.length);
