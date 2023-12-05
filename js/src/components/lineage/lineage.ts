@@ -188,8 +188,8 @@ export function buildDefaultLineageGraphSets(
     // Select all downstream sets of modified nodes
     const downstreamSet = selectDownstream(all, modifiedSet);
 
-    // Select all upstream sets of modified nodes
-    const upstreamSet = selectUpstream(all, modifiedSet);
+    // Select a single upstream layer of modified nodes
+    const upstreamSet = selectUpstream(all, modifiedSet, 1);
 
     // Union of upstream and downstream nodes
     const modifiedSets = union(downstreamSet, upstreamSet);
@@ -251,24 +251,22 @@ export function buildDefaultLineageGraphSets(
 
 }
 
-export function selectUpstream(lineageGraph: LineageGraph, nodeIds: string[]) {
+export function selectUpstream(lineageGraph: LineageGraph, nodeIds: string[], degree: number = 1000) {
   return getNeighborSet(nodeIds, (key) => {
       if (lineageGraph.nodes[key] === undefined) {
         return [];
       }
       return Object.keys(lineageGraph.nodes[key].parents);
-    }
-  );
+    }, degree);
 }
 
-export function selectDownstream(lineageGraph: LineageGraph, nodeIds: string[]) {
+export function selectDownstream(lineageGraph: LineageGraph, nodeIds: string[], degree: number = 1000) {
   return getNeighborSet(nodeIds, (key) => {
       if (lineageGraph.nodes[key] === undefined) {
         return [];
       }
       return Object.keys(lineageGraph.nodes[key].children)
-    }
-  );
+    }, degree);
 }
 
 export function toReactflow(lineageGraph: LineageGraph, modifiedSet: string[]): [Node[], Edge[]] {
