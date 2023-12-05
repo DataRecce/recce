@@ -177,13 +177,13 @@ class DBTContext:
     def execute_sql(self, sql_template, base=False) -> pd.DataFrame:
         adapter = self.adapter
         with adapter.connection_named('test'):
-            sql = self.generate_sql(sql_template)
+            sql = self.generate_sql(sql_template, base)
             response, result = adapter.execute(sql, fetch=True, auto_begin=True)
             table: agate.Table = result
             df = pd.DataFrame([row.values() for row in table.rows], columns=table.column_names)
             return df
 
-    def generate_sql(self, sql_template, base=False):
+    def generate_sql(self, sql_template, base):
         try:
             return generate_compiled_sql(self.get_manifest(base), self.adapter, sql_template, {})
         except BaseException as e:
