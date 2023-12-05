@@ -193,7 +193,6 @@ export function buildDefaultLineageGraphSets(
 
     // Union of upstream and downstream nodes
     const modifiedSets = union(downstreamSet, upstreamSet);
-    console.log("modifiedSets", modifiedSets);
 
     Object.entries(all.nodes).forEach(([key, node]) => {
       if (modifiedSets.has(key)) {
