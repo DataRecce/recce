@@ -2,6 +2,7 @@ import os
 from dataclasses import dataclass
 from typing import Optional
 
+import agate
 import pandas as pd
 from dbt.adapters.factory import get_adapter_by_type
 from dbt.adapters.sql import SQLAdapter
@@ -9,8 +10,8 @@ from dbt.cli.main import dbtRunner
 from dbt.config.profile import Profile
 from dbt.config.project import Project
 from dbt.config.runtime import load_profile, load_project
-from dbt.contracts.graph.manifest import WritableManifest, Manifest
-from dbt.contracts.graph.nodes import ResultNode, SourceDefinition, ManifestNode
+from dbt.contracts.graph.manifest import Manifest, WritableManifest
+from dbt.contracts.graph.nodes import ManifestNode, ResultNode, SourceDefinition
 from dbt.contracts.results import CatalogArtifact
 
 
@@ -111,8 +112,17 @@ class DBTContext:
         return None
 
     def execute_sql(self, sql_template, base=False) -> pd.DataFrame:
+        sql = self.generate_sql(sql_template)
+
+        adapter = self.adapter
+        with adapter.connection_named('test'):
+            response, result = adapter.execute(sql, fetch=True, auto_begin=True)
+            table: agate.Table = result
+            df = pd.DataFrame([row.values() for row in table.rows], columns=table.column_names)
+            return df
+
+    def generate_sql(self, sql_template, base=False):
         from jinja2 import Template
-        import agate
 
         def ref(node_name):
             node = self.find_node_by_name(node_name, base)
@@ -132,15 +142,7 @@ class DBTContext:
             relation = self.adapter.Relation.create_from(self.project, source)
             return str(relation)
 
-        template = Template(sql_template)
-        sql = template.render(ref=ref, source=source)
-
-        adapter = self.adapter
-        with adapter.connection_named('test'):
-            response, result = adapter.execute(sql, fetch=True, auto_begin=True)
-            table: agate.Table = result
-            df = pd.DataFrame([row.values() for row in table.rows], columns=table.column_names)
-            return df
+        return Template(sql_template).render(ref=ref, source=source)
 
     def get_lineage(self, base: Optional[bool] = False):
 

@@ -7,3 +7,4 @@ dist/
 
 dbt.log
 .coverage
+build
