@@ -14,6 +14,8 @@ from dbt.contracts.graph.manifest import Manifest, WritableManifest
 from dbt.contracts.graph.nodes import ManifestNode, ResultNode, SourceDefinition
 from dbt.contracts.results import CatalogArtifact
 
+from recce.dbt_compiler import generate_compiled_sql
+
 
 def load_manifest(path):
     if not os.path.isfile(path):
@@ -101,6 +103,9 @@ class DBTContext:
 
         return None
 
+    def get_manifest(self, base: bool):
+        return self.curr_manifest if base is False else self.base_manifest
+
     def find_source_by_name(self, source_name, table_name, base=False) -> Optional[SourceDefinition]:
 
         manifest = self.curr_manifest if base is False else self.base_manifest
@@ -122,6 +127,22 @@ class DBTContext:
             return df
 
     def generate_sql(self, sql_template, base=False):
+        mode = os.environ.get('recce_sql_engine', 'default')
+        if mode == 'dbt':
+            return self.generate_sql_by_dbt(sql_template, base)
+        return self.generate_sql_by_simple_implementation(sql_template, base)
+
+    def generate_sql_by_dbt(self, sql_template, base=False):
+        try:
+            return generate_compiled_sql(self.get_manifest(base), self.adapter, sql_template, {})
+        except BaseException as e:
+            if hasattr(e, 'msg'):
+                if 'depends on' in e.msg:
+                    message_from = e.msg.index('depends on')
+                    raise Exception(e.msg[message_from:])
+            raise e
+
+    def generate_sql_by_simple_implementation(self, sql_template, base=False):
         from jinja2 import Template
 
         def ref(node_name):
