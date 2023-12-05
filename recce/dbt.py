@@ -15,7 +15,7 @@ from dbt.config.project import Project
 from dbt.config.runtime import load_profile, load_project
 from dbt.contracts.files import FileHash
 from dbt.contracts.graph.manifest import Manifest, WritableManifest
-from dbt.contracts.graph.model_config import ContractConfig, NodeConfig, OnConfigurationChangeOption
+from dbt.contracts.graph.model_config import ContractConfig, NodeConfig
 from dbt.contracts.graph.nodes import Contract, DependsOn, ManifestNode, ModelNode, ResultNode, SourceDefinition
 from dbt.contracts.graph.unparsed import Docs
 from dbt.contracts.results import CatalogArtifact
@@ -23,12 +23,26 @@ from dbt.node_types import AccessType, ModelLanguage, NodeType
 
 
 def _fake_node(package_name: str, raw_code: str, depends_nodes: List):
-    node_config = NodeConfig(_extra={}, enabled=True, alias=None, schema=None, database=None, tags=[], meta={},
-                             group=None, materialized='view', incremental_strategy=None, persist_docs={}, post_hook=[],
-                             pre_hook=[], quoting={}, column_types={}, full_refresh=None, unique_key=None,
-                             on_schema_change='ignore',
-                             on_configuration_change=OnConfigurationChangeOption.Apply, grants={}, packages=[],
-                             docs=Docs(show=True, node_color=None), contract=ContractConfig(enforced=False))
+    def has_field(field_name):
+        return field_name in {f.name for f in fields(NodeConfig)}
+
+    node_config = None
+    if has_field('on_configuration_change'):
+        from dbt.contracts.graph.model_config import OnConfigurationChangeOption
+        node_config = NodeConfig(_extra={}, enabled=True, alias=None, schema=None, database=None, tags=[], meta={},
+                                 group=None, materialized='view', incremental_strategy=None, persist_docs={},
+                                 post_hook=[],
+                                 pre_hook=[], quoting={}, column_types={}, full_refresh=None, unique_key=None,
+                                 on_schema_change='ignore',
+                                 on_configuration_change=OnConfigurationChangeOption.Apply, grants={}, packages=[],
+                                 docs=Docs(show=True, node_color=None), contract=ContractConfig(enforced=False))
+    else:
+        node_config = NodeConfig(_extra={}, enabled=True, alias=None, schema=None, database=None, tags=[], meta={},
+                                 group=None, materialized='view', incremental_strategy=None, persist_docs={},
+                                 post_hook=[],
+                                 pre_hook=[], quoting={}, column_types={}, full_refresh=None, unique_key=None,
+                                 on_schema_change='ignore', grants={}, packages=[],
+                                 docs=Docs(show=True, node_color=None), contract=ContractConfig(enforced=False))
 
     sha256 = hashlib.sha256(package_name.encode())
     file_hash = FileHash(name='sha256', checksum=sha256.hexdigest())
