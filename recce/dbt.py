@@ -1,6 +1,9 @@
+import hashlib
 import os
-from dataclasses import dataclass
-from typing import Optional
+import time
+import traceback
+from dataclasses import dataclass, fields
+from typing import Dict, List, Optional, Union
 
 import agate
 import pandas as pd
@@ -10,11 +13,66 @@ from dbt.cli.main import dbtRunner
 from dbt.config.profile import Profile
 from dbt.config.project import Project
 from dbt.config.runtime import load_profile, load_project
+from dbt.contracts.files import FileHash
 from dbt.contracts.graph.manifest import Manifest, WritableManifest
-from dbt.contracts.graph.nodes import ManifestNode, ResultNode, SourceDefinition
+from dbt.contracts.graph.model_config import ContractConfig, NodeConfig, OnConfigurationChangeOption
+from dbt.contracts.graph.nodes import Contract, DependsOn, ManifestNode, ModelNode, ResultNode, SourceDefinition
+from dbt.contracts.graph.unparsed import Docs
 from dbt.contracts.results import CatalogArtifact
+from dbt.node_types import AccessType, ModelLanguage, NodeType
 
-from recce.dbt_compiler import generate_compiled_sql
+
+def _fake_node(package_name: str, raw_code: str, depends_nodes: List):
+    node_config = NodeConfig(_extra={}, enabled=True, alias=None, schema=None, database=None, tags=[], meta={},
+                             group=None, materialized='view', incremental_strategy=None, persist_docs={}, post_hook=[],
+                             pre_hook=[], quoting={}, column_types={}, full_refresh=None, unique_key=None,
+                             on_schema_change='ignore',
+                             on_configuration_change=OnConfigurationChangeOption.Apply, grants={}, packages=[],
+                             docs=Docs(show=True, node_color=None), contract=ContractConfig(enforced=False))
+
+    sha256 = hashlib.sha256(package_name.encode())
+    file_hash = FileHash(name='sha256', checksum=sha256.hexdigest())
+    return ModelNode(database='', schema='', name='',
+                     resource_type=NodeType.Model, package_name=package_name, path=f'generated/{package_name}.sql',
+                     original_file_path=f'models/generated/{package_name}.sql',
+                     unique_id=f'model.recce.generated.{package_name}',
+                     fqn=['reccee', 'staging', package_name],
+                     alias=package_name, checksum=file_hash,
+                     config=node_config, _event_status={}, tags=[], description='', columns={}, meta={}, group=None,
+                     patch_path=None, build_path=None, deferred=False, unrendered_config={},
+                     created_at=time.time(), config_call_dict={},
+                     relation_name=None,
+                     raw_code=raw_code,
+                     language=ModelLanguage.sql, refs=[], sources=[], metrics=[],
+                     depends_on=DependsOn(macros=[], nodes=depends_nodes),
+                     compiled_path=None, compiled=False,
+                     compiled_code=None, extra_ctes_injected=False, extra_ctes=[], _pre_injected_sql=None,
+                     contract=Contract(
+                         enforced=False,
+                         checksum=None), access=AccessType.Protected, constraints=[], version=None, latest_version=None,
+                     deprecation_date=None, defer_relation=None)
+
+
+def generate_compiled_sql(manifest: Union[Manifest, WritableManifest], adapter, sql, context: Dict = None):
+    if context is None:
+        context = {}
+
+    package_names = [x.package_name for x in manifest.nodes.values() if isinstance(x, ModelNode)]
+    possible_useful_nodes = [x for x in manifest.nodes if x.startswith('model.')]
+    node = _fake_node(package_names[0], sql, possible_useful_nodes)
+    compiler = adapter.get_compiler()
+
+    def as_manifest(m):
+        if not isinstance(m, WritableManifest):
+            return m
+
+        data = m.__dict__
+        all_fields = set([x.name for x in fields(Manifest)])
+        new_data = {k: v for k, v in data.items() if k in all_fields}
+        return Manifest(**new_data)
+
+    x: ModelNode = compiler.compile_node(node, as_manifest(manifest), context)
+    return x.compiled_code
 
 
 def load_manifest(path):
@@ -117,22 +175,15 @@ class DBTContext:
         return None
 
     def execute_sql(self, sql_template, base=False) -> pd.DataFrame:
-        sql = self.generate_sql(sql_template)
-
         adapter = self.adapter
         with adapter.connection_named('test'):
+            sql = self.generate_sql(sql_template)
             response, result = adapter.execute(sql, fetch=True, auto_begin=True)
             table: agate.Table = result
             df = pd.DataFrame([row.values() for row in table.rows], columns=table.column_names)
             return df
 
     def generate_sql(self, sql_template, base=False):
-        mode = os.environ.get('recce_sql_engine', 'default')
-        if mode == 'dbt':
-            return self.generate_sql_by_dbt(sql_template, base)
-        return self.generate_sql_by_simple_implementation(sql_template, base)
-
-    def generate_sql_by_dbt(self, sql_template, base=False):
         try:
             return generate_compiled_sql(self.get_manifest(base), self.adapter, sql_template, {})
         except BaseException as e:
@@ -141,29 +192,6 @@ class DBTContext:
                     message_from = e.msg.index('depends on')
                     raise Exception(e.msg[message_from:])
             raise e
-
-    def generate_sql_by_simple_implementation(self, sql_template, base=False):
-        from jinja2 import Template
-
-        def ref(node_name):
-            node = self.find_node_by_name(node_name, base)
-            if node is None:
-                raise Exception(f"reference not found: \"{node_name}\"")
-            if node.resource_type != 'model' and node.resource_type != 'seed':
-                raise Exception(f"reference is not a model or seed: \"{node_name}\"")
-
-            relation = self.adapter.Relation.create_from(self.project, node)
-            return str(relation)
-
-        def source(source_name, table_name):
-            source = self.find_source_by_name(source_name, table_name, base)
-            if source is None:
-                raise Exception(f"source not found: \"{source_name}.{table_name}\"")
-
-            relation = self.adapter.Relation.create_from(self.project, source)
-            return str(relation)
-
-        return Template(sql_template).render(ref=ref, source=source)
 
     def get_lineage(self, base: Optional[bool] = False):
 
