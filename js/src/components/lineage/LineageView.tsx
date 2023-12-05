@@ -1,11 +1,11 @@
 import { PUBLIC_API_URL } from "../../lib/const";
 import {
   LineageGraph,
-  buildLineageGraph,
+  buildDefaultLineageGraphSets,
   highlightPath,
   toReactflow,
 } from "./lineage";
-import { Box, Flex, Icon, Tooltip, useDisclosure } from "@chakra-ui/react";
+import { Box, Flex, Icon, Tooltip, Text, Spinner } from "@chakra-ui/react";
 import axios, { AxiosError } from "axios";
 import React, { useCallback, useEffect, useState } from "react";
 import ReactFlow, {
@@ -18,12 +18,14 @@ import ReactFlow, {
   Panel,
   Background,
   ReactFlowProvider,
+  ControlButton,
 } from "reactflow";
 import dagre from "dagre";
 import "reactflow/dist/style.css";
 import { GraphNode } from "./GraphNode";
 import GraphEdge from "./GraphEdge";
 import { getIconForChangeStatus } from "./styles";
+import { FaSync } from "react-icons/fa";
 import { NodeView } from "./NodeView";
 
 const layout = (nodes: Node[], edges: Edge[], direction = "LR") => {
@@ -70,6 +72,11 @@ const nodeColor = (node: Node) => {
   return node?.style?.backgroundColor || ("lightgray" as string);
 };
 
+const viewModeTitle = {
+  all: "All",
+  changed_models: "Changed Models",
+}
+
 function ChangeStatusLegend() {
   const CHANGE_STATUS_MSGS: {
     [key: string]: [string, string];
@@ -106,12 +113,14 @@ function _LineageView() {
   const [nodes, setNodes, onNodesChange] = useNodesState([]);
   const [edges, setEdges, onEdgesChange] = useEdgesState([]);
   const [lineageGraph, setLineageGraph] = useState<LineageGraph>();
+  const [modifiedSet, setModifiedSet] = useState<string[]>();
 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string>();
   const [errorStep, setErrorStep] = useState<string>();
 
   const [selected, setSelected] = useState<string>();
+  const [viewMode, setViewMode] = useState<"changed_models" | "all">("changed_models");
 
   const queryLineage = useCallback(async () => {
     let step = "current";
@@ -132,13 +141,16 @@ function _LineageView() {
       if (responseBase.status !== 200) {
         throw new Error("error");
       }
-      const lineagGraph = buildLineageGraph(
+      const defaultLineageGraphs = buildDefaultLineageGraphSets(
         responseBase.data,
         responseCurrent.data
       );
-      const [nodes, edges] = toReactflow(lineagGraph);
+      const lineageGraph = (viewMode === 'changed_models') ? defaultLineageGraphs.changed : defaultLineageGraphs.all;
+      const modifiedSet = defaultLineageGraphs.modifiedSet;
+      const [nodes, edges] = toReactflow(lineageGraph, defaultLineageGraphs.modifiedSet);
       layout(nodes, edges);
-      setLineageGraph(lineagGraph);
+      setLineageGraph(lineageGraph);
+      setModifiedSet(modifiedSet);
       setNodes(nodes);
       setEdges(edges);
 
@@ -159,16 +171,17 @@ function _LineageView() {
     } finally {
       setLoading(false);
     }
-  }, [setNodes, setEdges]);
+  }, [setNodes, setEdges, viewMode]);
 
   useEffect(() => {
     queryLineage();
   }, [queryLineage]);
 
   const onNodeMouseEnter = (event: React.MouseEvent, node: Node) => {
-    if (lineageGraph) {
+    if (lineageGraph && modifiedSet !== undefined) {
       const [newNodes, newEdges] = highlightPath(
         lineageGraph,
+        modifiedSet,
         nodes,
         edges,
         node.id
@@ -180,9 +193,10 @@ function _LineageView() {
   };
 
   const onNodeMouseLeave = (event: React.MouseEvent, node: Node) => {
-    if (lineageGraph) {
+    if (lineageGraph && modifiedSet !== undefined) {
       const [newNodes, newEdges] = highlightPath(
         lineageGraph,
+        modifiedSet,
         nodes,
         edges,
         null
@@ -197,7 +211,11 @@ function _LineageView() {
   };
 
   if (loading) {
-    return <>Loading lineage data</>;
+    return (
+      <Flex width="100%" height="calc(100vh - 42px)" alignItems="center" justifyContent="center">
+        <Spinner size='xl' />
+      </Flex>
+      );
   }
 
   if (error) {
@@ -222,9 +240,18 @@ function _LineageView() {
           fitView={true}
         >
           <Background color="#ccc" />
-          <Controls showInteractive={false} position="top-right" />
+          <Controls showInteractive={false} position="top-right" >
+            <ControlButton title="switch mode" onClick={() => {
+              setViewMode(viewMode === "all" ? "changed_models" : "all");
+            }}>
+              <FaSync />
+            </ControlButton>
+          </Controls>
           <Panel position="bottom-left">
             <ChangeStatusLegend />
+          </Panel>
+          <Panel position="top-left">
+            <Text fontSize='xl' color="grey" opacity={0.5}>{viewModeTitle[viewMode]}</Text>
           </Panel>
           <MiniMap nodeColor={nodeColor} nodeStrokeWidth={3} />
         </ReactFlow>

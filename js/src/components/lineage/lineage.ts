@@ -1,4 +1,3 @@
-import _ from "lodash";
 import { Node, Edge, Position } from "reactflow";
 import { getNeighborSet } from "./graph";
 
@@ -73,96 +72,144 @@ export interface LineageGraph {
   edges: {
     [key: string]: LineageGraphEdge;
   };
+}
 
+export interface DefaultLineageGraphSets {
+  all: LineageGraph;
+  changed: LineageGraph;
   modifiedSet: string[];
 }
 
-export function buildLineageGraph(
+export function buildDefaultLineageGraphSets(
   base: LineageData,
   current: LineageData
-): LineageGraph {
-  const nodes: { [key: string]: LineageGraphNode } = {};
-  const edges: { [key: string]: LineageGraphEdge } = {};
-  const buildNode = (
-    key: string,
-    from: "base" | "current"
-  ): LineageGraphNode => {
-    return {
-      id: key,
-      name: key,
-      data: {},
-      from,
-      parents: {},
-      children: {},
-    };
-  };
-
-  for (const [key, parents] of Object.entries(base.parent_map)) {
-    nodes[key] = buildNode(key, "base");
-    const nodeData = base.nodes && base.nodes[key];
-    if (nodeData) {
-      nodes[key].data.base = nodeData;
-      nodes[key].name = nodeData?.name;
-      nodes[key].resourceType = nodeData?.resource_type;
-      nodes[key].packageName = nodeData?.package_name;
-    }
-  }
-
-  for (const [key, parents] of Object.entries(current.parent_map)) {
-    if (nodes[key]) {
-      nodes[key].from = "both";
-    } else {
-      nodes[key] = buildNode(key, "current");
-    }
-    const nodeData = current.nodes && current.nodes[key];
-    if (nodeData) {
-      nodes[key].data.current = current.nodes && current.nodes[key];
-      nodes[key].name = nodeData?.name;
-      nodes[key].resourceType = nodeData?.resource_type;
-      nodes[key].packageName = nodeData?.package_name;
-    }
-  }
-
-  for (const [child, parents] of Object.entries(base.parent_map)) {
-    for (const parent of parents) {
-      const childNode = nodes[child];
-      const parentNode = nodes[parent];
-      const id = `${parent}_${child}`;
-      edges[id] = {
-        id,
-        from: "base",
-        parent: parentNode,
-        child: childNode,
+): DefaultLineageGraphSets {
+  function buildAllLineageGraph(base: LineageData, current: LineageData): LineageGraph {
+    const nodes: { [key: string]: LineageGraphNode } = {};
+    const edges: { [key: string]: LineageGraphEdge } = {};
+    const buildNode = (
+      key: string,
+      from: "base" | "current"
+    ): LineageGraphNode => {
+      return {
+        id: key,
+        name: key,
+        data: {},
+        from,
+        parents: {},
+        children: {},
       };
-      const edge = edges[id];
+    };
 
-      childNode.parents[parent] = edge;
-      parentNode.children[child] = edge;
+    for (const [key, parents] of Object.entries(base.parent_map)) {
+      nodes[key] = buildNode(key, "base");
+      const nodeData = base.nodes && base.nodes[key];
+      if (nodeData) {
+        nodes[key].data.base = nodeData;
+        nodes[key].name = nodeData?.name;
+        nodes[key].resourceType = nodeData?.resource_type;
+        nodes[key].packageName = nodeData?.package_name;
+      }
     }
-  }
 
-  for (const [child, parents] of Object.entries(current.parent_map)) {
-    for (const parent of parents) {
-      const childNode = nodes[child];
-      const parentNode = nodes[parent];
-      const id = `${parent}_${child}`;
-
-      if (edges[id]) {
-        edges[id].from = "both";
+    for (const [key, parents] of Object.entries(current.parent_map)) {
+      if (nodes[key]) {
+        nodes[key].from = "both";
       } else {
+        nodes[key] = buildNode(key, "current");
+      }
+      const nodeData = current.nodes && current.nodes[key];
+      if (nodeData) {
+        nodes[key].data.current = current.nodes && current.nodes[key];
+        nodes[key].name = nodeData?.name;
+        nodes[key].resourceType = nodeData?.resource_type;
+        nodes[key].packageName = nodeData?.package_name;
+      }
+    }
+
+    for (const [child, parents] of Object.entries(base.parent_map)) {
+      for (const parent of parents) {
+        const childNode = nodes[child];
+        const parentNode = nodes[parent];
+        const id = `${parent}_${child}`;
         edges[id] = {
           id,
-          from: "current",
+          from: "base",
           parent: parentNode,
           child: childNode,
         };
-      }
-      const edge = edges[id];
+        const edge = edges[id];
 
-      childNode.parents[parent] = edge;
-      parentNode.children[child] = edge;
+        childNode.parents[parent] = edge;
+        parentNode.children[child] = edge;
+      }
     }
+
+    for (const [child, parents] of Object.entries(current.parent_map)) {
+      for (const parent of parents) {
+        const childNode = nodes[child];
+        const parentNode = nodes[parent];
+        const id = `${parent}_${child}`;
+
+        if (edges[id]) {
+          edges[id].from = "both";
+        } else {
+          edges[id] = {
+            id,
+            from: "current",
+            parent: parentNode,
+            child: childNode,
+          };
+        }
+        const edge = edges[id];
+
+        childNode.parents[parent] = edge;
+        parentNode.children[child] = edge;
+      }
+    }
+
+    return { edges, nodes };
   }
+  function buildChangedOnlyLineageGraph(all: LineageGraph, modifiedSet: string[]): LineageGraph {
+    const nodes: { [key: string]: LineageGraphNode } = {};
+    const edges: { [key: string]: LineageGraphEdge } = {};
+    function union(...sets: Set<string>[]) {
+      const unionSet = new Set<string>();
+
+      sets.forEach((set) => {
+        set.forEach((key) => {
+          unionSet.add(key);
+        });
+      });
+      return unionSet;
+    }
+
+
+    // Select all downstream sets of modified nodes
+    const downstreamSet = selectDownstream(all, modifiedSet);
+
+    // Select a single upstream layer of modified nodes
+    const upstreamSet = selectUpstream(all, modifiedSet, 1);
+
+    // Union of upstream and downstream nodes
+    const modifiedSets = union(downstreamSet, upstreamSet);
+
+    Object.entries(all.nodes).forEach(([key, node]) => {
+      if (modifiedSets.has(key)) {
+        nodes[key] = node;
+      }
+    });
+
+    Object.entries(all.edges).forEach(([key, edge]) => {
+      if (modifiedSets.has(edge.parent.id) && modifiedSets.has(edge.child.id)) {
+        edges[key] = edge;
+      }
+    });
+
+    return { nodes, edges }
+  }
+
+  const { nodes, edges } = buildAllLineageGraph(base, current);
 
   const modifiedSet: string[] = [];
   for (const [key, node] of Object.entries(nodes)) {
@@ -192,13 +239,36 @@ export function buildLineageGraph(
   }
 
   return {
-    nodes,
-    edges,
+    all: {
+      nodes,
+      edges,
+    },
+    changed: buildChangedOnlyLineageGraph({ nodes, edges }, modifiedSet),
     modifiedSet,
   };
+
+
 }
 
-export function toReactflow(lineageGraph: LineageGraph): [Node[], Edge[]] {
+export function selectUpstream(lineageGraph: LineageGraph, nodeIds: string[], degree: number = 1000) {
+  return getNeighborSet(nodeIds, (key) => {
+      if (lineageGraph.nodes[key] === undefined) {
+        return [];
+      }
+      return Object.keys(lineageGraph.nodes[key].parents);
+    }, degree);
+}
+
+export function selectDownstream(lineageGraph: LineageGraph, nodeIds: string[], degree: number = 1000) {
+  return getNeighborSet(nodeIds, (key) => {
+      if (lineageGraph.nodes[key] === undefined) {
+        return [];
+      }
+      return Object.keys(lineageGraph.nodes[key].children)
+    }, degree);
+}
+
+export function toReactflow(lineageGraph: LineageGraph, modifiedSet: string[]): [Node[], Edge[]] {
   const nodes: Node[] = [];
   const edges: Edge[] = [];
   const backgroundColorMap = {
@@ -232,14 +302,15 @@ export function toReactflow(lineageGraph: LineageGraph): [Node[], Edge[]] {
     });
   }
 
-  return highlightPath(lineageGraph, nodes, edges, null);
+  return highlightPath(lineageGraph, modifiedSet, nodes, edges, null);
 }
 
 export function highlightPath(
   lineageGraph: LineageGraph,
+  modifiedSet: string[],
   nodes: Node<LineageGraphNode>[],
   edges: Edge[],
-  id: string | null
+  id: string | null,
 ): [Node<LineageGraphNode>[], Edge[]] {
   function union(...sets: Set<string>[]) {
     const unionSet = new Set<string>();
@@ -256,15 +327,13 @@ export function highlightPath(
   const relatedNodes =
     id !== null
       ? union(
-          getNeighborSet([id], (key) =>
-            Object.keys(lineageGraph.nodes[key].parents)
-          ),
-          getNeighborSet([id], (key) =>
-            Object.keys(lineageGraph.nodes[key].children)
-          )
+          selectUpstream(lineageGraph, [id]),
+          selectDownstream(lineageGraph, [id]),
         )
-      : getNeighborSet(lineageGraph.modifiedSet, (key) =>
-          Object.keys(lineageGraph.nodes[key].children)
+      : getNeighborSet(modifiedSet, (key) => {
+          if (lineageGraph.nodes[key] === undefined) return [];
+          return Object.keys(lineageGraph.nodes[key].children)
+        }
         );
 
   const relatedEdges = new Set(
