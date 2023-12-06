@@ -27,7 +27,7 @@ const SqlEditor: React.FC<SqlEditorProps> = ({
     <MonacoEditor
       language={props.language || "sql"}
       theme={props.theme || "vs"}
-      defaultValue={value}
+      value={value}
       onChange={handleEditorChange}
       onMount={(editor, monaco) => {
         editor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyCode.Enter, onRun);
