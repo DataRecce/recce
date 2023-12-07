@@ -71,7 +71,7 @@ const edgeTypes = {
   customEdge: GraphEdge,
 };
 const nodeColor = (node: Node) => {
-  return node?.style?.backgroundColor || ("lightgray" as string);
+  return (node?.data?.changeStatus) ? getIconForChangeStatus(node?.data?.changeStatus).color : ("lightgray" as string);
 };
 
 const viewModeTitle = {
