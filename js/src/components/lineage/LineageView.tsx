@@ -19,14 +19,16 @@ import ReactFlow, {
   Background,
   ReactFlowProvider,
   ControlButton,
+  useReactFlow,
 } from "reactflow";
 import dagre from "dagre";
 import "reactflow/dist/style.css";
 import { GraphNode } from "./GraphNode";
 import GraphEdge from "./GraphEdge";
 import { getIconForChangeStatus } from "./styles";
-import { FaSync } from "react-icons/fa";
+import { FiDownloadCloud, FiRefreshCw } from "react-icons/fi";
 import { NodeView } from "./NodeView";
+import { toPng } from 'html-to-image';
 
 const layout = (nodes: Node[], edges: Edge[], direction = "LR") => {
   const dagreGraph = new dagre.graphlib.Graph();
@@ -121,6 +123,8 @@ function _LineageView() {
 
   const [selected, setSelected] = useState<string>();
   const [viewMode, setViewMode] = useState<"changed_models" | "all">("changed_models");
+
+  const { getViewport } = useReactFlow();
 
   const queryLineage = useCallback(async () => {
     let step = "current";
@@ -218,6 +222,32 @@ function _LineageView() {
       );
   }
 
+  const onDownloadImage = () => {
+    // const { x, y, zoom } = getViewport();
+    const reactFlowViewport = document.querySelector('.react-flow__viewport');
+    if (reactFlowViewport?.parentElement) {
+      toPng(
+        reactFlowViewport?.parentElement, {
+        backgroundColor: '#ffffff00',
+        width: reactFlowViewport?.parentElement.clientWidth,
+        height: reactFlowViewport?.parentElement.clientHeight,
+        style: {
+          width: `${reactFlowViewport?.parentElement.clientWidth}`,
+          height: `${reactFlowViewport?.parentElement.clientHeight}`,
+          // transform: `translate(${x}px, ${y}px) scale(${zoom})`,
+        },
+      }).then((dataUrl) => {
+        const a = document.createElement('a');
+        a.setAttribute('download', 'recce-lineage.png');
+        // a.setAttribute('filename', 'recce-lineage.png');
+        a.setAttribute('target', '_blank')
+        a.setAttribute('href', dataUrl);
+        a.click();
+      });
+    }
+
+  };
+
   if (error) {
     return <>Fail to load lineage data: {error}</>;
   }
@@ -244,7 +274,10 @@ function _LineageView() {
             <ControlButton title="switch mode" onClick={() => {
               setViewMode(viewMode === "all" ? "changed_models" : "all");
             }}>
-              <FaSync />
+              <Icon as={FiRefreshCw} />
+            </ControlButton>
+            <ControlButton title="download image" onClick={onDownloadImage}>
+              <Icon as={FiDownloadCloud} />
             </ControlButton>
           </Controls>
           <Panel position="bottom-left">
