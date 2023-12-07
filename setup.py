@@ -49,6 +49,7 @@ setup(name='recce',
               'pytest-mypy',
               'pytest-cov',
               'twine',
+              'tox',
           ],
       },
       project_urls={
