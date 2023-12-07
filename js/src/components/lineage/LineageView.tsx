@@ -261,7 +261,7 @@ function _LineageView() {
         <Box flex="0 0 500px" borderLeft="solid 1px lightgray" height="100%">
           <NodeView
             node={lineageGraph?.nodes[selected]}
-            onClose={() => {
+            onCloseNode={() => {
             setSelected(undefined);
           }} />
         </Box>

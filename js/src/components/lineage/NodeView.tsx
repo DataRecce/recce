@@ -12,35 +12,71 @@ import {
   HStack,
   Button,
   Spacer,
+  useDisclosure,
+  Modal,
+  ModalOverlay,
+  ModalContent,
+  ModalHeader,
+  ModalBody,
+  ModalCloseButton,
 } from "@chakra-ui/react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { FaCode } from "react-icons/fa";
 import { LineageGraphNode } from "./lineage";
 import { SchemaView } from "../schema/SchemaView";
 import { useRecceQueryContext } from "@/lib/hooks/RecceQueryContext";
+import { SqlDiffView } from "../schema/SqlDiffView";
 
 interface NodeViewProps {
   node: LineageGraphNode;
-  onClose: () => void;
+  onCloseNode: () => void;
 }
 
-export function NodeView({ node, onClose }: NodeViewProps) {
+export function NodeView({ node, onCloseNode }: NodeViewProps) {
   const router = useRouter();
   const { setSqlQuery } = useRecceQueryContext();
   const withColumns =
     node.resourceType === "model" ||
     node.resourceType === "seed" ||
     node.resourceType === "source";
+  const { isOpen, onOpen, onClose } = useDisclosure();
 
   return (
     <Grid height="100%" templateRows="auto 1fr">
       <HStack>
-        <Box flex="0 0 88%" p="16px">
+        <Box flex="0 1 20%" p="16px">
           <Heading size="sm">{node.name}</Heading>
           <Box color="gray">{node.resourceType}</Box>
         </Box>
-        <Box flex="0 0 10%" p="16px">
-          <CloseButton onClick={onClose}/>
+        <Spacer />
+        {node.changeStatus === "modified" && (
+          <Box>
+            <Button
+              onClick={onOpen}
+              leftIcon={<FaCode />}
+              colorScheme="orange"
+              variant="solid"
+            >
+              Diff
+            </Button>
+            <Modal isOpen={isOpen} onClose={onClose} size="6xl">
+              <ModalOverlay />
+              <ModalContent overflowY="auto" height="75%">
+                <ModalHeader>Model Raw Code Diff</ModalHeader>
+                <ModalCloseButton />
+                <ModalBody>
+                  <SqlDiffView
+                    base={node.data.base}
+                    current={node.data.current}
+                  />
+                </ModalBody>
+              </ModalContent>
+            </Modal>
+          </Box>
+        )}
+        <Box flex="0 1 1%" p="16px">
+          <CloseButton onClick={onCloseNode} />
         </Box>
       </HStack>
 
@@ -57,15 +93,19 @@ export function NodeView({ node, onClose }: NodeViewProps) {
         </Tabs>
       )}
       {node.resourceType === "model" && (
-      <HStack p="16px">
-        <Spacer />
-          <Button colorScheme="blue" size="sm" onClick={() => {
-            setSqlQuery(`select * from {{ ref("${node.name}") }}`);
-            router.push('/#query');
-          }}>
+        <HStack p="16px">
+          <Spacer />
+          <Button
+            colorScheme="blue"
+            size="sm"
+            onClick={() => {
+              setSqlQuery(`select * from {{ ref("${node.name}") }}`);
+              router.push("/#query");
+            }}
+          >
             Query
           </Button>
-      </HStack>
+        </HStack>
       )}
     </Grid>
   );
