@@ -46,25 +46,34 @@ def _fake_node(package_name: str, raw_code: str, depends_nodes: List):
 
     sha256 = hashlib.sha256(package_name.encode())
     file_hash = FileHash(name='sha256', checksum=sha256.hexdigest())
-    return ModelNode(database='', schema='', name='',
-                     resource_type=NodeType.Model, package_name=package_name, path=f'generated/{package_name}.sql',
-                     original_file_path=f'models/generated/{package_name}.sql',
-                     unique_id=f'model.recce.generated.{package_name}',
-                     fqn=['reccee', 'staging', package_name],
-                     alias=package_name, checksum=file_hash,
-                     config=node_config, _event_status={}, tags=[], description='', columns={}, meta={}, group=None,
-                     patch_path=None, build_path=None, deferred=False, unrendered_config={},
-                     created_at=time.time(), config_call_dict={},
-                     relation_name=None,
-                     raw_code=raw_code,
-                     language=ModelLanguage.sql, refs=[], sources=[], metrics=[],
-                     depends_on=DependsOn(macros=[], nodes=depends_nodes),
-                     compiled_path=None, compiled=False,
-                     compiled_code=None, extra_ctes_injected=False, extra_ctes=[], _pre_injected_sql=None,
-                     contract=Contract(
-                         enforced=False,
-                         checksum=None), access=AccessType.Protected, constraints=[], version=None, latest_version=None,
-                     defer_relation=None)
+    return _build_model(depends_nodes, file_hash, node_config, package_name, raw_code)
+
+
+def _build_model(depends_nodes, file_hash, node_config, package_name, raw_code):
+    data = dict(database='', schema='', name='',
+                resource_type=NodeType.Model, package_name=package_name, path=f'generated/{package_name}.sql',
+                original_file_path=f'models/generated/{package_name}.sql',
+                unique_id=f'model.recce.generated.{package_name}',
+                fqn=['reccee', 'staging', package_name],
+                alias=package_name, checksum=file_hash,
+                config=node_config, _event_status={}, tags=[], description='', columns={}, meta={}, group=None,
+                patch_path=None, build_path=None, deferred=False, unrendered_config={},
+                created_at=time.time(), config_call_dict={},
+                relation_name=None,
+                raw_code=raw_code,
+                language=ModelLanguage.sql, refs=[], sources=[], metrics=[],
+                depends_on=DependsOn(macros=[], nodes=depends_nodes),
+                compiled_path=None, compiled=False,
+                compiled_code=None, extra_ctes_injected=False, extra_ctes=[], _pre_injected_sql=None,
+                contract=Contract(
+                    enforced=False,
+                    checksum=None), access=AccessType.Protected, constraints=[], version=None, latest_version=None,
+                defer_relation=None)
+
+    model_fields = {field.name for field in fields(ModelNode)}
+    filtered_data = {k: v for k, v in data.items() if k in model_fields}
+
+    return ModelNode(**filtered_data)
 
 
 def generate_compiled_sql(manifest: Union[Manifest, WritableManifest], adapter, sql, context: Dict = None):
