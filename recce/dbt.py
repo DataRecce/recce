@@ -64,7 +64,7 @@ def _fake_node(package_name: str, raw_code: str, depends_nodes: List):
                      contract=Contract(
                          enforced=False,
                          checksum=None), access=AccessType.Protected, constraints=[], version=None, latest_version=None,
-                     deprecation_date=None, defer_relation=None)
+                     defer_relation=None)
 
 
 def generate_compiled_sql(manifest: Union[Manifest, WritableManifest], adapter, sql, context: Dict = None):
