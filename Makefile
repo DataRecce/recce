@@ -7,3 +7,4 @@ flake8:
 
 test: dev-requires
 	@python3 -m pytest tests
+	@tox
