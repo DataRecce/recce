@@ -22,6 +22,7 @@ import {
 } from "@chakra-ui/react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { FaCode } from "react-icons/fa";
 import { LineageGraphNode } from "./lineage";
 import { SchemaView } from "../schema/SchemaView";
 import { useRecceQueryContext } from "@/lib/hooks/RecceQueryContext";
@@ -44,16 +45,24 @@ export function NodeView({ node, onCloseNode }: NodeViewProps) {
   return (
     <Grid height="100%" templateRows="auto 1fr">
       <HStack>
-        <Box flex="0 0 60%" p="16px">
+        <Box flex="0 1 20%" p="16px">
           <Heading size="sm">{node.name}</Heading>
           <Box color="gray">{node.resourceType}</Box>
         </Box>
+        <Spacer />
         {node.changeStatus === "modified" && (
-          <>
-            <Button onClick={onOpen}>Code Diff</Button>
+          <Box>
+            <Button
+              onClick={onOpen}
+              leftIcon={<FaCode />}
+              colorScheme="orange"
+              variant="solid"
+            >
+              Diff
+            </Button>
             <Modal isOpen={isOpen} onClose={onClose} size="6xl">
               <ModalOverlay />
-              <ModalContent>
+              <ModalContent overflowY="auto" height="75%">
                 <ModalHeader>Model Raw Code Diff</ModalHeader>
                 <ModalCloseButton />
                 <ModalBody>
@@ -64,9 +73,9 @@ export function NodeView({ node, onCloseNode }: NodeViewProps) {
                 </ModalBody>
               </ModalContent>
             </Modal>
-          </>
+          </Box>
         )}
-        <Box flex="0 0 5%" p="16px">
+        <Box flex="0 1 1%" p="16px">
           <CloseButton onClick={onCloseNode} />
         </Box>
       </HStack>
