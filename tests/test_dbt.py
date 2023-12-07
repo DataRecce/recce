@@ -1,10 +1,14 @@
 import os
 
+import pytest
+
 import recce.dbt as dbt
+from packaging import version
 
 current_dir = os.path.dirname(os.path.abspath(__file__))
 
 
+@pytest.mark.skipif(dbt.dbt_version < version.parse('v1.6'), reason='skip manifest test before dbt-core 1.6')
 def test_load_lineage():
     manifest = dbt.load_manifest(os.path.join(current_dir, 'manifest.json'))
     assert manifest is not None
