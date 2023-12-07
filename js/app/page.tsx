@@ -10,20 +10,26 @@ import {
   TabPanel,
   ChakraProvider, Box
 } from "@chakra-ui/react";
-import { useLayoutEffect } from "react";
+import { useParams } from "next/navigation";
+import { useEffect, useLayoutEffect, useState } from "react";
 import * as amplitude from "@amplitude/analytics-browser";
 import { QueryClientProvider } from "@tanstack/react-query";
 import { reactQueryClient } from "@/lib/api/axiosClient";
 import { useVersionNumber } from "@/lib/api/useVersion";
+import { setLocationHash, getLocationHash } from "@/lib/UrlHash";
+import { RecceQueryContextProvider } from "@/lib/hooks/RecceQueryContext";
 
 function getCookie(key: string) {
   var b = document.cookie.match("(^|;)\\s*" + key + "\\s*=\\s*([^;]+)");
   return b ? b.pop() : "";
 }
 
-
 export default function Home() {
   const version = useVersionNumber();
+  const params = useParams();
+  const [urlHash, setUrlHash] = useState(getLocationHash());
+  const [tabIndex, setTabIndex] = useState(0);
+
   useLayoutEffect(() => {
     const userId = getCookie("recce_user_id");
     if (userId && process.env.AMPLITUDE_API_KEY) {
@@ -38,28 +44,54 @@ export default function Home() {
     }
   }, []);
 
+  const handleTabsChange = (index: number) => {
+    if (index === 0) {
+      setLocationHash("lineage");
+    } else if (index === 1) {
+      setLocationHash("query");
+    }
+    setTabIndex(index);
+  }
+
+  useEffect(() => {
+    const hash = getLocationHash();
+    setUrlHash(hash);
+
+    if (hash !== urlHash) return;
+
+    if (hash === 'query') {
+      setTabIndex(1);
+    } else if (hash === 'lineage') {
+      setTabIndex(0);
+    } else {
+      setTabIndex(0);
+    }
+  }, [params, urlHash]);
+
   return (
     <ChakraProvider>
-      <QueryClientProvider client={reactQueryClient}>
-        <Tabs>
-          <TabList>
-            <Tab>Lineage</Tab>
-            <Tab>Query</Tab>
-            <Box position="absolute" right="0" top="0" p="2" color="gray.500">
-              {version}
-            </Box>
-          </TabList>
+      <RecceQueryContextProvider>
+        <QueryClientProvider client={reactQueryClient}>
+          <Tabs index={tabIndex} onChange={handleTabsChange}>
+            <TabList>
+              <Tab>Lineage</Tab>
+              <Tab>Query</Tab>
+              <Box position="absolute" right="0" top="0" p="2" color="gray.500">
+                {version}
+              </Box>
+            </TabList>
 
-          <TabPanels>
-            <TabPanel p={0}>
-              <LineageView />
-            </TabPanel>
-            <TabPanel p={0}>
-              <QueryView />
-            </TabPanel>
-          </TabPanels>
-        </Tabs>
-      </QueryClientProvider>
+            <TabPanels>
+              <TabPanel p={0}>
+                <LineageView />
+              </TabPanel>
+              <TabPanel p={0}>
+                <QueryView />
+              </TabPanel>
+            </TabPanels>
+          </Tabs>
+        </QueryClientProvider>
+      </RecceQueryContextProvider>
     </ChakraProvider>
   );
 }

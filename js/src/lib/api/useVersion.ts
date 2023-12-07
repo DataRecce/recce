@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import axios from "axios";
+import { axiosClient } from "./axiosClient";
 
 
 export function useVersionNumber() {
@@ -8,7 +8,7 @@ export function useVersionNumber() {
   useEffect(() => {
     async function fetchVersion() {
       try {
-        const response = await axios.get("/api/version");
+        const response = await axiosClient.get("/api/version");
         setVersion(response.data);
       } catch (error) {
         console.error("Error fetching version number:", error);

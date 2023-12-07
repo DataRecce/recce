@@ -10,9 +10,14 @@ import {
   TabPanels,
   Tabs,
   HStack,
+  Button,
+  Spacer,
 } from "@chakra-ui/react";
+import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { LineageGraphNode } from "./lineage";
 import { SchemaView } from "../schema/SchemaView";
+import { useRecceQueryContext } from "@/lib/hooks/RecceQueryContext";
 
 interface NodeViewProps {
   node: LineageGraphNode;
@@ -20,6 +25,8 @@ interface NodeViewProps {
 }
 
 export function NodeView({ node, onClose }: NodeViewProps) {
+  const router = useRouter();
+  const { setSqlQuery } = useRecceQueryContext();
   const withColumns =
     node.resourceType === "model" ||
     node.resourceType === "seed" ||
@@ -48,6 +55,17 @@ export function NodeView({ node, onClose }: NodeViewProps) {
             </TabPanel>
           </TabPanels>
         </Tabs>
+      )}
+      {node.resourceType === "model" && (
+      <HStack p="16px">
+        <Spacer />
+          <Button colorScheme="blue" size="sm" onClick={() => {
+            setSqlQuery(`select * from {{ ref("${node.name}") }}`);
+            router.push('/#query');
+          }}>
+            Query
+          </Button>
+      </HStack>
       )}
     </Grid>
   );

@@ -15,6 +15,8 @@ import {
 } from "@chakra-ui/react";
 import SqlEditor from "./SqlEditor";
 import { useRunQuery } from "@/lib/api/runQuery";
+import { useRecceQueryContext } from "@/lib/hooks/RecceQueryContext";
+
 
 interface QueryViewDataGridProps {
   loading: boolean;
@@ -90,20 +92,18 @@ const QueryViewDataGrid = ({
 };
 
 const QueryView = () => {
-  const [sqlTemplate, setSqlTemplate] = useState(
-    'select * from {{ ref("mymodel") }}'
-  );
+  const { sqlQuery, setSqlQuery } = useRecceQueryContext();
 
   const {
     data: base,
     refetch: queryBase,
     ...baseQueryResult
-  } = useRunQuery({ sql_template: sqlTemplate, base: true });
+  } = useRunQuery({ sql_template: sqlQuery, base: true });
   const {
     data: current,
     refetch: queryCurrent,
     ...currentQueryResult
-  } = useRunQuery({ sql_template: sqlTemplate, base: false });
+  } = useRunQuery({ sql_template: sqlQuery, base: false });
   const [primaryKeys, setPrimaryKeys] = useState<string[]>([]);
 
   const executeQuery = useCallback(() => {
@@ -140,8 +140,8 @@ const QueryView = () => {
         <SqlEditor
           language="sql"
           theme="vs"
-          value={sqlTemplate}
-          onChange={(value) => setSqlTemplate(value)}
+          value={sqlQuery}
+          onChange={(value) => setSqlQuery(value)}
           onRun={() => executeQuery()}
         />
       </Box>
