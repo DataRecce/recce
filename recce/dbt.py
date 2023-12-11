@@ -1,7 +1,6 @@
 import hashlib
 import os
 import time
-import traceback
 from dataclasses import dataclass, fields
 from typing import Dict, List, Optional, Union
 
@@ -163,16 +162,36 @@ class DBTContext:
     base_catalog: CatalogArtifact = None
 
     @classmethod
-    def load(cls, target=None):
+    def load(cls, **kwargs):
 
         # We need to run the dbt parse command because
         # 1. load the dbt profiles by dbt-core rule
         # 2. initialize the adapter
-        parseResult = dbtRunner().invoke(["-q", "parse"])
-        manifest = parseResult.result
+        cmd = ["-q", "parse"]
+        target = kwargs.get('target')
+        profile_name = kwargs.get('profile')
+        project_dir = kwargs.get('project_dir')
+        profiles_dir = kwargs.get('profiles_dir')
 
-        project_path = os.getcwd()
-        profile = load_profile(project_path, {}, target_override=target)
+        if target:
+            cmd.extend(["--target", target])
+        if profile_name:
+            cmd.extend(["--profile", profile_name])
+        if project_dir:
+            cmd.extend(["--project-dir", project_dir])
+        if profiles_dir:
+            cmd.extend(["--profiles-dir", profiles_dir])
+        parse_result = dbtRunner().invoke(cmd)
+        manifest = parse_result.result
+
+        if project_dir is None:
+            project_path = os.getcwd()
+        else:
+            project_path = project_dir
+
+        # The option 'profiles_dir' will be added into dbt global flags when we invoke dbt parse.
+        # The function 'load_profile' will use the global flags to load the profile.
+        profile = load_profile(project_path, {}, profile_name_override=profile_name, target_override=target)
         project = load_project(project_path, False, profile)
 
         adapter: SQLAdapter = get_adapter_by_type(profile.credentials.type)
