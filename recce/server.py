@@ -15,16 +15,19 @@ from .dbt import DBTContext
 dbt_context: DBTContext = None
 
 
-def load_dbt_context(**kwargs):
+def load_dbt_context(**kwargs) -> DBTContext:
     global dbt_context
     if dbt_context is None:
         dbt_context = DBTContext.load(**kwargs)
+    return dbt_context
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    load_dbt_context()
+    ctx = load_dbt_context()
+    ctx.start_monitor_artifacts()
     yield
+    ctx.stop_monitor_artifacts()
 
 
 app = FastAPI(lifespan=lifespan)

@@ -39,6 +39,7 @@ setup(name='recce',
           'requests>=2.28.1',
           'rich>=12.0.0',
           'sentry-sdk',
+          'watchdog',
       ],
       tests_require=['pytest'],
       extras_require={
