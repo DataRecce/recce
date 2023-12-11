@@ -15,10 +15,10 @@ from .dbt import DBTContext
 dbt_context: DBTContext = None
 
 
-def load_dbt_context():
+def load_dbt_context(**kwargs):
     global dbt_context
     if dbt_context is None:
-        dbt_context = DBTContext.load()
+        dbt_context = DBTContext.load(**kwargs)
 
 
 @asynccontextmanager
