@@ -14,8 +14,8 @@ import {
   Textarea,
 } from "@chakra-ui/react";
 import SqlEditor from "./SqlEditor";
-import { useRunQueryDiff } from "@/lib/api/adhocQuery";
 import { useRecceQueryContext } from "@/lib/hooks/RecceQueryContext";
+import { useSubmitRun } from "@/lib/api/runs";
 
 interface QueryViewDataGridProps {
   loading: boolean;
@@ -79,13 +79,20 @@ const QueryViewDataGrid = ({
 
 const QueryView = () => {
   const { sqlQuery, setSqlQuery } = useRecceQueryContext();
+  const cacheKey = ["adhoc_query"];
 
   const {
     data,
     refetch: runQuery,
     isFetching,
     ...baseQueryResult
-  } = useRunQueryDiff(sqlQuery, ["adhoc_query"]);
+  } = useSubmitRun(
+    {
+      type: "query_diff",
+      params: { sql_template: sqlQuery },
+    },
+    cacheKey
+  );
   const [primaryKeys, setPrimaryKeys] = useState<string[]>([]);
 
   const executeQuery = useCallback(() => {

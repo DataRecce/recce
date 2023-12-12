@@ -2,34 +2,24 @@ import { useQuery } from "@tanstack/react-query";
 import { axiosClient } from "./axiosClient";
 import { AxiosError } from "axios";
 
-interface RunQueryInput {
+interface QueryParams {
   sql_template: string;
   base?: boolean;
 }
 
-interface RunQueryWithErrorOutput {
+interface QueryOutput {
   error?: string;
   data?: any;
 }
 
-interface RunQueryDiffOutput {
-  run_id?: string;
-  result: {
-    base?: any;
-    current?: any;
-    base_error?: string;
-    current_error?: string;
-  };
-}
-
-export async function runQuery(params: RunQueryInput) {
+export async function runQuery(params: QueryParams) {
   const response = await axiosClient.post("/api/query", params);
   return response.data;
 }
 
 export async function runQueryWithError(
-  params: RunQueryInput
-): Promise<RunQueryWithErrorOutput> {
+  params: QueryParams
+): Promise<QueryOutput> {
   try {
     const data = await runQuery(params);
     return { data };
@@ -47,34 +37,31 @@ export async function runQueryWithError(
   }
 }
 
+export interface QueryDiffParams {
+  sql_template: string;
+}
+
+export interface QueryDiffResult {
+  base?: any;
+  current?: any;
+  base_error?: string;
+  current_error?: string;
+}
+
 export async function runQueryDiff(
-  sql_template: string
-): Promise<RunQueryDiffOutput> {
+  params: QueryDiffParams
+): Promise<QueryDiffResult> {
+  const sql_template = params.sql_template;
+
   const [base, current] = await Promise.all([
     runQueryWithError({ sql_template, base: true }),
     runQueryWithError({ sql_template, base: false }),
   ]);
 
-  const run_id = Math.random()
-    .toString(36)
-    .substring(2, 16 + 2);
-
   return {
-    run_id,
-    result: {
-      base: base.data,
-      current: current.data,
-      base_error: base.error,
-      current_error: current.error,
-    },
+    base: base.data,
+    current: current.data,
+    base_error: base.error,
+    current_error: current.error,
   };
-}
-
-export function useRunQueryDiff(sql_template: string, queryKey: any[]) {
-  return useQuery({
-    queryKey,
-    queryFn: () => runQueryDiff(sql_template),
-    retry: false,
-    enabled: false, // never auto run
-  });
 }
