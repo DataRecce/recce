@@ -16,6 +16,8 @@ import {
 import SqlEditor from "./SqlEditor";
 import { useRecceQueryContext } from "@/lib/hooks/RecceQueryContext";
 import { useSubmitRun } from "@/lib/api/runs";
+import { createCheckByRun } from "@/lib/api/checks";
+import { useRouter } from "next/navigation";
 
 interface QueryViewDataGridProps {
   loading: boolean;
@@ -80,6 +82,7 @@ const QueryViewDataGrid = ({
 const QueryView = () => {
   const { sqlQuery, setSqlQuery } = useRecceQueryContext();
   const cacheKey = ["adhoc_query"];
+  const router = useRouter();
 
   const {
     data,
@@ -100,6 +103,15 @@ const QueryView = () => {
     runQuery();
   }, [runQuery]);
 
+  const addToChecklist = useCallback(async () => {
+    if (!data?.run_id) {
+      return;
+    }
+
+    await createCheckByRun(data.run_id);
+    router.push("#checks");
+  }, [data?.run_id, router]);
+
   const gridData = useMemo(() => {
     if (isFetching) {
       return { rows: [], columns: [] };
@@ -116,11 +128,11 @@ const QueryView = () => {
   }, [data?.result?.base, data?.result?.current, isFetching, primaryKeys]);
 
   return (
-    <Flex direction="column" height="calc(100vh - 42px)">
+    <Flex direction="column" height="100%">
       <Flex justifyContent="right" padding="5px" gap="5px">
         <Button
           colorScheme="blue"
-          onClick={() => {}}
+          onClick={addToChecklist}
           isDisabled={isFetching || !data?.run_id}
           size="sm"
         >

@@ -21,6 +21,10 @@ interface SubmitRunInput {
   params?: RunParams;
 }
 
+export async function getRun(runId: string) {
+  return _.find(runs, (run) => run.run_id === runId);
+}
+
 export async function submitRun(input: SubmitRunInput) {
   const type = input.type;
   const run_id = Math.random()
@@ -64,8 +68,4 @@ export function useSubmitRun(input: SubmitRunInput, queryKey: any[]) {
     retry: false,
     enabled: false, // never auto run
   });
-}
-
-export async function getRun(runId: string) {
-  return _.find(runs, (run) => run.run_id === runId);
 }

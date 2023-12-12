@@ -19,6 +19,7 @@ import { reactQueryClient } from "@/lib/api/axiosClient";
 import { useVersionNumber } from "@/lib/api/version";
 import { setLocationHash, getLocationHash } from "@/lib/UrlHash";
 import { RecceQueryContextProvider } from "@/lib/hooks/RecceQueryContext";
+import { CheckView } from "@/components/check/CheckView";
 
 function getCookie(key: string) {
   var b = document.cookie.match("(^|;)\\s*" + key + "\\s*=\\s*([^;]+)");
@@ -50,6 +51,8 @@ export default function Home() {
       setLocationHash("lineage");
     } else if (index === 1) {
       setLocationHash("query");
+    } else if (index === 2) {
+      setLocationHash("checks");
     }
     setTabIndex(index);
   };
@@ -60,14 +63,18 @@ export default function Home() {
 
     if (hash !== urlHash) return;
 
-    if (hash === "query") {
-      setTabIndex(1);
-    } else if (hash === "lineage") {
+    if (hash === "lineage") {
       setTabIndex(0);
+    } else if (hash === "query") {
+      setTabIndex(1);
+    } else if (hash === "checks") {
+      setTabIndex(2);
     } else {
       setTabIndex(0);
     }
   }, [params, urlHash]);
+
+  const pageHeight = "calc(100vh - 42px)";
 
   return (
     <ChakraProvider>
@@ -77,17 +84,21 @@ export default function Home() {
             <TabList>
               <Tab>Lineage</Tab>
               <Tab>Query</Tab>
+              <Tab>Checks</Tab>
               <Box position="absolute" right="0" top="0" p="2" color="gray.500">
                 {version}
               </Box>
             </TabList>
 
             <TabPanels>
-              <TabPanel p={0}>
+              <TabPanel p={0} h={pageHeight}>
                 <LineageView />
               </TabPanel>
-              <TabPanel p={0}>
+              <TabPanel p={0} h={pageHeight}>
                 <QueryView />
+              </TabPanel>
+              <TabPanel p={0} h={pageHeight}>
+                <CheckView />
               </TabPanel>
             </TabPanels>
           </Tabs>

@@ -1,3 +1,4 @@
+import { useQuery } from "@tanstack/react-query";
 import { Run, RunParams, RunType, getRun } from "./runs";
 import _ from "lodash";
 
@@ -24,7 +25,7 @@ export async function createCheckByRun(runId: string) {
 
   const check: Check = {
     check_id: checkId,
-    name: `Check ${new Date().toString}`,
+    name: `Query ${new Date().toLocaleString()}`,
     type: run.type,
     params: run.params,
     last_run: run,
@@ -45,4 +46,11 @@ export async function getCheck(checkId: string) {
 
 export async function deleteCheck(checkId: string) {
   _.remove(checks, (check) => check.check_id === checkId);
+}
+
+export function useListChecks() {
+  return useQuery({
+    queryKey: ["checks", "list"],
+    queryFn: () => listChecks(),
+  });
 }

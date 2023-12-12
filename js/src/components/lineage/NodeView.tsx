@@ -104,7 +104,7 @@ export function NodeView({ node, onCloseNode }: NodeViewProps) {
             size="sm"
             onClick={() => {
               setSqlQuery(`select * from {{ ref("${node.name}") }}`);
-              router.push("/#query");
+              router.push("#query");
             }}
           >
             Query
