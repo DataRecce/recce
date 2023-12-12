@@ -14,6 +14,8 @@ from starlette.middleware.sessions import SessionMiddleware
 from starlette.websockets import WebSocketDisconnect
 
 from . import __version__, event
+from .apis.check_api import check_router
+from .apis.run_api import run_router
 from .dbt import DBTContext
 
 logger = logging.getLogger('uvicorn')
@@ -170,6 +172,11 @@ async def websocket_endpoint(websocket: WebSocket):
 async def broadcast(data: str):
     for client in clients:
         await client.send_text(data)
+
+
+api_prefix = '/api'
+app.include_router(check_router, prefix=api_prefix)
+app.include_router(run_router, prefix=api_prefix)
 
 
 static_folder_path = Path(__file__).parent / 'data'
