@@ -8,14 +8,15 @@ import {
   Tab,
   TabPanels,
   TabPanel,
-  ChakraProvider, Box
+  ChakraProvider,
+  Box,
 } from "@chakra-ui/react";
 import { useParams } from "next/navigation";
 import { useEffect, useLayoutEffect, useState } from "react";
 import * as amplitude from "@amplitude/analytics-browser";
 import { QueryClientProvider } from "@tanstack/react-query";
 import { reactQueryClient } from "@/lib/api/axiosClient";
-import { useVersionNumber } from "@/lib/api/useVersion";
+import { useVersionNumber } from "@/lib/api/version";
 import { setLocationHash, getLocationHash } from "@/lib/UrlHash";
 import { RecceQueryContextProvider } from "@/lib/hooks/RecceQueryContext";
 
@@ -36,7 +37,7 @@ export default function Home() {
       try {
         // Initialize Amplitude
         amplitude.init(process.env.AMPLITUDE_API_KEY, userId, {
-          defaultTracking: true
+          defaultTracking: true,
         });
       } catch (e) {
         console.error(e);
@@ -51,7 +52,7 @@ export default function Home() {
       setLocationHash("query");
     }
     setTabIndex(index);
-  }
+  };
 
   useEffect(() => {
     const hash = getLocationHash();
@@ -59,9 +60,9 @@ export default function Home() {
 
     if (hash !== urlHash) return;
 
-    if (hash === 'query') {
+    if (hash === "query") {
       setTabIndex(1);
-    } else if (hash === 'lineage') {
+    } else if (hash === "lineage") {
       setTabIndex(0);
     } else {
       setTabIndex(0);

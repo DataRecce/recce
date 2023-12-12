@@ -14,14 +14,13 @@ import {
   Textarea,
 } from "@chakra-ui/react";
 import SqlEditor from "./SqlEditor";
-import { useRunQuery } from "@/lib/api/runQuery";
+import { useRunQueryDiff } from "@/lib/api/adhocQuery";
 import { useRecceQueryContext } from "@/lib/hooks/RecceQueryContext";
-
 
 interface QueryViewDataGridProps {
   loading: boolean;
-  baseError?: Error | null;
-  currentError?: Error | null;
+  baseError?: string | null;
+  currentError?: string | null;
   columns: any;
   rows: any;
 }
@@ -34,19 +33,6 @@ const QueryViewDataGrid = ({
 }: QueryViewDataGridProps) => {
   const isPartialSuccess =
     (baseError && !currentError) || (!baseError && currentError);
-
-  const getErrorMessage = (err: Error) => {
-    if (err instanceof AxiosError) {
-      const detail = err?.response?.data?.detail;
-      if (detail) {
-        return detail;
-      } else {
-        return err?.message;
-      }
-    } else {
-      return err?.message;
-    }
-  };
 
   if (loading) {
     return (
@@ -62,7 +48,7 @@ const QueryViewDataGrid = ({
     return (
       <Alert status="error">
         <AlertIcon />
-        Error: {getErrorMessage(currentError)}
+        Error: {currentError}
       </Alert>
     );
   }
@@ -76,8 +62,8 @@ const QueryViewDataGrid = ({
       {isPartialSuccess && (
         <Alert status="error">
           <AlertIcon />
-          {baseError && `Error[Base]: ${getErrorMessage(baseError)}`}
-          {currentError && `Error[Current]: ${getErrorMessage(currentError)}`}
+          {baseError && `Error[Base]: ${baseError}`}
+          {currentError && `Error[Current]: ${currentError}`}
         </Alert>
       )}
       <DataGrid
@@ -95,38 +81,44 @@ const QueryView = () => {
   const { sqlQuery, setSqlQuery } = useRecceQueryContext();
 
   const {
-    data: base,
-    refetch: queryBase,
+    data,
+    refetch: runQuery,
+    isFetching,
     ...baseQueryResult
-  } = useRunQuery({ sql_template: sqlQuery, base: true });
-  const {
-    data: current,
-    refetch: queryCurrent,
-    ...currentQueryResult
-  } = useRunQuery({ sql_template: sqlQuery, base: false });
+  } = useRunQueryDiff(sqlQuery, ["adhoc_query"]);
   const [primaryKeys, setPrimaryKeys] = useState<string[]>([]);
 
   const executeQuery = useCallback(() => {
     setPrimaryKeys([]);
-    queryBase();
-    queryCurrent();
-  }, [queryBase, queryCurrent]);
+    runQuery();
+  }, [runQuery]);
 
-  const isFetching =
-    baseQueryResult.isFetching || currentQueryResult.isFetching;
   const gridData = useMemo(() => {
     if (isFetching) {
       return { rows: [], columns: [] };
     }
 
-    return toDataGrid(base, current, primaryKeys, (newPrinaryKeys) => {
-      setPrimaryKeys(newPrinaryKeys);
-    });
-  }, [base, current, isFetching, primaryKeys]);
+    return toDataGrid(
+      data?.result?.base,
+      data?.result?.current,
+      primaryKeys,
+      (newPrimaryKeys) => {
+        setPrimaryKeys(newPrimaryKeys);
+      }
+    );
+  }, [data?.result?.base, data?.result?.current, isFetching, primaryKeys]);
 
   return (
     <Flex direction="column" height="calc(100vh - 42px)">
-      <Flex justifyContent="right" padding="5px">
+      <Flex justifyContent="right" padding="5px" gap="5px">
+        <Button
+          colorScheme="blue"
+          onClick={() => {}}
+          isDisabled={isFetching || !data?.run_id}
+          size="sm"
+        >
+          Add to Checklist
+        </Button>
         <Button
           colorScheme="blue"
           onClick={executeQuery}
@@ -148,8 +140,8 @@ const QueryView = () => {
       <Box backgroundColor="gray.100" height="50vh">
         <QueryViewDataGrid
           loading={isFetching}
-          baseError={baseQueryResult.error}
-          currentError={currentQueryResult.error}
+          baseError={data?.result?.base_error}
+          currentError={data?.result?.current_error}
           rows={gridData.rows}
           columns={gridData.columns}
         />
