@@ -5,7 +5,7 @@ import {
   highlightPath,
   toReactflow,
 } from "./lineage";
-import { Box, Flex, Icon, Tooltip, Text, Spinner } from "@chakra-ui/react";
+import { Box, Flex, Icon, Tooltip, Text, Spinner, useToast } from "@chakra-ui/react";
 import axios, { AxiosError } from "axios";
 import React, { useCallback, useEffect, useState } from "react";
 import ReactFlow, {
@@ -29,6 +29,8 @@ import { getIconForChangeStatus } from "./styles";
 import { FiDownloadCloud, FiRefreshCw } from "react-icons/fi";
 import { NodeView } from "./NodeView";
 import { toPng } from 'html-to-image';
+import { set } from "lodash";
+import path from "path";
 
 const layout = (nodes: Node[], edges: Edge[], direction = "LR") => {
   const dagreGraph = new dagre.graphlib.Graph();
@@ -112,6 +114,7 @@ function ChangeStatusLegend() {
 }
 
 function _LineageView() {
+  const [webSocket, setWebSocket] = useState<WebSocket>();
   const [nodes, setNodes, onNodesChange] = useNodesState([]);
   const [edges, setEdges, onEdgesChange] = useEdgesState([]);
   const [lineageGraph, setLineageGraph] = useState<LineageGraph>();
@@ -125,6 +128,8 @@ function _LineageView() {
   const [viewMode, setViewMode] = useState<"changed_models" | "all">("changed_models");
 
   const { getViewport } = useReactFlow();
+  const artifactsUpdatedToast = useToast();
+
 
   const queryLineage = useCallback(async () => {
     let step = "current";
@@ -180,6 +185,46 @@ function _LineageView() {
   useEffect(() => {
     queryLineage();
   }, [queryLineage]);
+
+  useEffect(() => {
+    function httpUrlToWebSocketUrl(url: string) : string {
+      return url.replace(/(http)(s)?\:\/\//, "ws$2://");
+    }
+    const ws = new WebSocket(`${httpUrlToWebSocketUrl(PUBLIC_API_URL)}/api/ws`);
+    setWebSocket(ws);
+    ws.onopen = () => {
+      ws.send('ping'); // server will respond with 'pong'
+    };
+    ws.onmessage = (event) => {
+      if (event.data === 'pong') {
+        return;
+      }
+      try {
+        const data = JSON.parse(event.data);
+        if (data.command === 'refresh') {
+          const { eventType, srcPath } = data.event;
+          const [targetName, fileName] = srcPath.split('/').slice(-2);
+          const name = path.parse(fileName).name;
+          artifactsUpdatedToast({
+            description: `Detected ${targetName} ${name} ${eventType}`,
+            status: 'info',
+            variant: 'left-accent',
+            position: 'bottom-right',
+            duration: 5000,
+            isClosable: true,
+          });
+          queryLineage();
+        }
+      } catch (err) {
+        console.error(err);
+      }
+    };
+    return () => {
+      if (ws) {
+        ws.close();
+      }
+    };
+  }, [artifactsUpdatedToast, queryLineage])
 
   const onNodeMouseEnter = (event: React.MouseEvent, node: Node) => {
     if (lineageGraph && modifiedSet !== undefined) {
@@ -251,6 +296,8 @@ function _LineageView() {
   if (error) {
     return <>Fail to load lineage data: {error}</>;
   }
+
+
 
   return (
     <Flex width="100%" height="calc(100vh - 42px)">

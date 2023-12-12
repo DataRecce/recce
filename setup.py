@@ -40,6 +40,7 @@ setup(name='recce',
           'rich>=12.0.0',
           'sentry-sdk',
           'watchdog',
+          'websockets',
       ],
       tests_require=['pytest'],
       extras_require={
