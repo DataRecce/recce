@@ -7,7 +7,6 @@ from pydantic import BaseModel
 from recce.apis import runs_db, checks_db, Check
 
 check_router = APIRouter(tags=['check'])
-# checks_db: list[Check] = []
 
 
 class CreateCheckIn(BaseModel):
@@ -16,9 +15,12 @@ class CreateCheckIn(BaseModel):
     run_id: str
 
 
-class CreateCheckOut(BaseModel):
-    success: bool
-    message: str
+class CheckOut(BaseModel):
+    id: UUID
+    name: str
+    description: str
+    params: dict
+    last_run: Optional[UUID]
 
 
 def create_check_from_run(name, description, run_id):
@@ -29,7 +31,7 @@ def create_check_from_run(name, description, run_id):
     return check_record
 
 
-@check_router.post("/checks", status_code=201, response_model=CreateCheckOut)
+@check_router.post("/checks", status_code=201, response_model=CheckOut)
 async def create(check: CreateCheckIn):
     if check.run_id is None:
         raise HTTPException(501, "Not Implemented")
@@ -39,15 +41,13 @@ async def create(check: CreateCheckIn):
             raise HTTPException(status_code=404, detail=f"Run ID '{check.run_id}' not found")
         checks_db.append(check_record)
 
-    return {"success": True, "message": "Check created"}
-
-
-class CheckOut(BaseModel):
-    id: UUID
-    name: str
-    description: str
-    params: dict
-    last_run: Optional[UUID]
+    return {
+        'id': check_record.id,
+        'name': check_record.name,
+        'description': check_record.description,
+        'params': check_record.params,
+        'last_run': check.run_id
+    }
 
 
 @check_router.get("/checks", status_code=200, response_model=list[CheckOut], response_model_exclude_none=True)
