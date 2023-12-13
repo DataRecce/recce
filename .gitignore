@@ -9,3 +9,4 @@ dbt.log
 .coverage
 build
 .tox
+.noai
