@@ -1,33 +1,59 @@
+import asyncio
+import json
+import logging
 import uuid
 from contextlib import asynccontextmanager
 from pathlib import Path
-from typing import Optional
+from typing import Optional, Any
 
-from fastapi import FastAPI, HTTPException, Request
+from fastapi import FastAPI, HTTPException, Request, WebSocket
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 from starlette.middleware.sessions import SessionMiddleware
+from starlette.websockets import WebSocketDisconnect
 
 from . import __version__, event
 from .dbt import DBTContext
 
-dbt_context: DBTContext = None
+logger = logging.getLogger('uvicorn')
+dbt_context: DBTContext | None = None
 
 
-def load_dbt_context(**kwargs):
+def load_dbt_context(**kwargs) -> DBTContext:
     global dbt_context
     if dbt_context is None:
         dbt_context = DBTContext.load(**kwargs)
+    return dbt_context
 
 
 @asynccontextmanager
-async def lifespan(app: FastAPI):
-    load_dbt_context()
+async def lifespan(fastapi_app: FastAPI):
+    ctx = load_dbt_context()
+    ctx.start_monitor_artifacts(callback=dbt_artifacts_updated_callback)
     yield
+    ctx.stop_monitor_artifacts()
+
+
+def dbt_artifacts_updated_callback(file_changed_event: Any):
+    target_type, file_name = file_changed_event.src_path.split("/")[-2:]
+    logger.info(
+        f'Detect {target_type} file {file_changed_event.event_type}: {file_name}')
+    ctx = load_dbt_context()
+    ctx.refresh(file_changed_event.src_path)
+    broadcast_command = {
+        'command': 'refresh',
+        'event': {
+            'eventType': file_changed_event.event_type,
+            'srcPath': file_changed_event.src_path
+        }
+    }
+    payload = json.dumps(broadcast_command)
+    asyncio.run(broadcast(payload))
 
 
 app = FastAPI(lifespan=lifespan)
+clients = set()
 
 origins = [
     "http://localhost:3000",
@@ -103,6 +129,24 @@ async def version():
         return __version__
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))
+
+
+@app.websocket("/api/ws")
+async def websocket_endpoint(websocket: WebSocket):
+    await websocket.accept()
+    clients.add(websocket)
+    try:
+        while True:
+            data = await websocket.receive_text()
+            if data == 'ping':
+                await websocket.send_text('pong')
+    except WebSocketDisconnect:
+        clients.remove(websocket)
+
+
+async def broadcast(data: str):
+    for client in clients:
+        await client.send_text(data)
 
 
 static_folder_path = Path(__file__).parent / 'data'

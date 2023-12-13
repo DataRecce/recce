@@ -1,8 +1,9 @@
 import hashlib
+import logging
 import os
 import time
 from dataclasses import dataclass, fields
-from typing import Dict, List, Optional, Union
+from typing import Dict, List, Optional, Union, Callable
 
 import agate
 import pandas as pd
@@ -19,6 +20,33 @@ from dbt.contracts.graph.nodes import Contract, DependsOn, ManifestNode, ModelNo
 from dbt.contracts.graph.unparsed import Docs
 from dbt.contracts.results import CatalogArtifact
 from dbt.node_types import AccessType, ModelLanguage, NodeType
+from watchdog.events import FileSystemEventHandler
+from watchdog.observers import Observer
+
+logger = logging.getLogger('uvicorn')
+
+
+class ArtifactsEventHandler(FileSystemEventHandler):
+    def __init__(self, watch_files: List[str], callback: Callable = None):
+        super().__init__()
+        self.watch_files = watch_files
+        self.callback = callback
+
+    def on_modified(self, event):
+        if event.is_directory:
+            return None
+
+        if event.src_path in self.watch_files:
+            if callable(self.callback):
+                self.callback(event)
+
+    def on_created(self, event):
+        if event.is_directory:
+            return None
+
+        if event.src_path in self.watch_files:
+            if callable(self.callback):
+                self.callback(event)
 
 
 class DbtVersionTool:
@@ -156,10 +184,14 @@ class DBTContext:
     project: Project = None
     adapter: SQLAdapter = None
     manifest: Manifest = None
+    target_path: str = None
     curr_manifest: WritableManifest = None
     curr_catalog: CatalogArtifact = None
+    base_path: str = None
     base_manifest: WritableManifest = None
     base_catalog: CatalogArtifact = None
+    artifacts_observer = Observer()
+    artifacts_files = []
 
     @classmethod
     def load(cls, **kwargs):
@@ -220,19 +252,31 @@ class DBTContext:
         """
         Load the artifacts from the 'target' and 'target-base' directory
         """
+        project_root = self.project.project_root
         target_path = self.project.target_path
         target_base_path = 'target-base'
+        self.target_path = os.path.join(project_root, target_path)
+        self.base_path = os.path.join(project_root, target_base_path)
 
-        curr_manifest = load_manifest(os.path.join(target_path, 'manifest.json'))
-        curr_catalog = load_catalog(os.path.join(target_path, 'catalog.json'))
-        base_manifest = load_manifest(os.path.join(target_base_path, 'manifest.json'))
-        base_catalog = load_catalog(os.path.join(target_base_path, 'catalog.json'))
+        # load the artifacts
+        curr_manifest = load_manifest(os.path.join(project_root, target_path, 'manifest.json'))
+        curr_catalog = load_catalog(os.path.join(project_root, target_path, 'catalog.json'))
+        base_manifest = load_manifest(os.path.join(project_root, target_base_path, 'manifest.json'))
+        base_catalog = load_catalog(os.path.join(project_root, target_base_path, 'catalog.json'))
 
         # set the value if all the artifacts are loaded successfully
         self.curr_manifest = curr_manifest
         self.curr_catalog = curr_catalog
         self.base_manifest = base_manifest
         self.base_catalog = base_catalog
+
+        # set the file paths to watch
+        self.artifacts_files = [
+            os.path.join(project_root, target_path, 'manifest.json'),
+            os.path.join(project_root, target_path, 'catalog.json'),
+            os.path.join(project_root, target_base_path, 'manifest.json'),
+            os.path.join(project_root, target_base_path, 'catalog.json'),
+        ]
 
     def find_node_by_name(self, node_name, base=False) -> Optional[ManifestNode]:
 
@@ -342,3 +386,31 @@ class DBTContext:
                 }
 
         return dict(parent_map=parent_map, nodes=nodes)
+
+    def start_monitor_artifacts(self, callback: Callable = None):
+        event_handler = ArtifactsEventHandler(self.artifacts_files, callback=callback)
+        self.artifacts_observer.schedule(event_handler, self.target_path, recursive=False)
+        self.artifacts_observer.schedule(event_handler, self.base_path, recursive=False)
+        self.artifacts_observer.start()
+        logger.info('Started monitoring dbt artifacts')
+
+    def stop_monitor_artifacts(self):
+        self.artifacts_observer.stop()
+        self.artifacts_observer.join()
+        logger.info('Stopped monitoring artifacts')
+
+    def refresh(self, refresh_file_path: str = None):
+        if refresh_file_path is None:
+            return self.load_artifacts()
+
+        target_type = refresh_file_path.split('/')[-2]
+        if target_type == os.path.basename(self.target_path):
+            if refresh_file_path.endswith('manifest.json'):
+                self.curr_manifest = load_manifest(refresh_file_path)
+            elif refresh_file_path.endswith('catalog.json'):
+                self.curr_catalog = load_catalog(refresh_file_path)
+        elif target_type == os.path.basename(self.base_path):
+            if refresh_file_path.endswith('manifest.json'):
+                self.base_manifest = load_manifest(refresh_file_path)
+            elif refresh_file_path.endswith('catalog.json'):
+                self.base_catalog = load_catalog(refresh_file_path)

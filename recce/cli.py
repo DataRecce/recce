@@ -115,7 +115,7 @@ def server(host, port, **kwargs):
     from .server import load_dbt_context, app
 
     load_dbt_context(**kwargs)
-    uvicorn.run(app, host=host, port=port)
+    uvicorn.run(app, host=host, port=port, lifespan='on')
 
 
 if __name__ == "__main__":
