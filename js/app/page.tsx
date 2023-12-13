@@ -1,6 +1,5 @@
 "use client";
 
-import QueryView from "@/components/query/QueryView";
 import LineageView from "@/components/lineage/LineageView";
 import {
   Tabs,
@@ -20,11 +19,26 @@ import { useVersionNumber } from "@/lib/api/version";
 import { setLocationHash, getLocationHash } from "@/lib/UrlHash";
 import { RecceQueryContextProvider } from "@/lib/hooks/RecceQueryContext";
 import { CheckView } from "@/components/check/CheckView";
+import { QueryPage } from "@/components/query/QueryPage";
 
 function getCookie(key: string) {
   var b = document.cookie.match("(^|;)\\s*" + key + "\\s*=\\s*([^;]+)");
   return b ? b.pop() : "";
 }
+
+const TabContainer = ({
+  children,
+  pageHeight,
+}: {
+  children: React.ReactNode;
+  pageHeight: string;
+}) => {
+  return (
+    <TabPanel p={0} h={pageHeight} maxH={pageHeight} overflow="auto">
+      {children}
+    </TabPanel>
+  );
+};
 
 export default function Home() {
   const version = useVersionNumber();
@@ -91,15 +105,15 @@ export default function Home() {
             </TabList>
 
             <TabPanels>
-              <TabPanel p={0} h={pageHeight}>
+              <TabContainer pageHeight={pageHeight}>
                 <LineageView />
-              </TabPanel>
-              <TabPanel p={0} h={pageHeight}>
-                <QueryView />
-              </TabPanel>
-              <TabPanel p={0} h={pageHeight}>
+              </TabContainer>
+              <TabContainer pageHeight={pageHeight}>
+                <QueryPage />
+              </TabContainer>
+              <TabContainer pageHeight={pageHeight}>
                 <CheckView />
-              </TabPanel>
+              </TabContainer>
             </TabPanels>
           </Tabs>
         </QueryClientProvider>

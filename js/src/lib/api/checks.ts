@@ -2,7 +2,7 @@ import { useQuery } from "@tanstack/react-query";
 import { Run, RunParams, RunType, getRun } from "./runs";
 import _ from "lodash";
 
-interface Check {
+export interface Check {
   check_id: string;
   name: string;
   description?: string;
@@ -46,6 +46,13 @@ export async function getCheck(checkId: string) {
 
 export async function deleteCheck(checkId: string) {
   _.remove(checks, (check) => check.check_id === checkId);
+}
+
+export function useCheck(checkId: string) {
+  return useQuery({
+    queryKey: ["checks", checkId],
+    queryFn: () => getCheck(checkId),
+  });
 }
 
 export function useListChecks() {
