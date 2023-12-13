@@ -98,6 +98,29 @@ class QueryInput(BaseModel):
     sql_template: str
 
 
+class CompareColumnValuesInput(BaseModel):
+    model: str
+    primary_key: str
+    exclude_columns: Optional[list]
+
+
+@app.post("/api/compare_column_values")
+async def compare_column_values(input: CompareColumnValuesInput):
+    try:
+        # TODO support exclude columns
+        print(input)
+        result = dbt_context.compare_all_columns(input.primary_key, input.model)
+        result_json = result.to_json(orient='table')
+
+        import json
+        return json.loads(result_json)
+
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        raise HTTPException(status_code=400, detail=str(e))
+
+
 @app.post("/api/query")
 async def query(input: QueryInput):
     from jinja2.exceptions import TemplateSyntaxError

@@ -3,7 +3,7 @@ import logging
 import os
 import time
 from dataclasses import dataclass, fields
-from typing import Dict, List, Optional, Union, Callable
+from typing import Callable, Dict, List, Optional, Union
 
 import agate
 import pandas as pd
@@ -11,7 +11,8 @@ from dbt.adapters.factory import get_adapter_by_type
 from dbt.adapters.sql import SQLAdapter
 from dbt.cli.main import dbtRunner
 from dbt.config.profile import Profile
-from dbt.config.project import Project
+from dbt.config.project import Project, package_config_from_data
+from dbt.config.renderer import PackageRenderer
 from dbt.config.runtime import load_profile, load_project
 from dbt.contracts.files import FileHash
 from dbt.contracts.graph.manifest import Manifest, WritableManifest
@@ -19,6 +20,8 @@ from dbt.contracts.graph.model_config import ContractConfig, NodeConfig
 from dbt.contracts.graph.nodes import Contract, DependsOn, ManifestNode, ModelNode, ResultNode, SourceDefinition
 from dbt.contracts.graph.unparsed import Docs
 from dbt.contracts.results import CatalogArtifact
+from dbt.deps.base import downloads_directory
+from dbt.deps.resolver import resolve_packages
 from dbt.node_types import AccessType, ModelLanguage, NodeType
 from watchdog.events import FileSystemEventHandler
 from watchdog.observers import Observer
@@ -194,8 +197,25 @@ class DBTContext:
     artifacts_files = []
 
     @classmethod
-    def load(cls, **kwargs):
+    def packages_downloader(cls, project: Project):
+        # reference from dbt-core tasks/deps.py
 
+        os.environ["DBT_MACRO_DEBUGGING"] = "false"
+        os.environ["DBT_VERSION_CHECK"] = "false"
+
+        renderer = PackageRenderer({})
+        packages_lock_dict = {'packages': [{'package': 'dbt-labs/audit_helper', 'version': '0.9.0'}]}
+        packages_lock_config = package_config_from_data(
+            renderer.render_data(packages_lock_dict), packages_lock_dict
+        ).packages
+
+        lock_defined_deps = resolve_packages(packages_lock_config, project, {})
+        with downloads_directory():
+            for package in lock_defined_deps:
+                package.install(project, renderer)
+
+    @classmethod
+    def load(cls, **kwargs):
         # We need to run the dbt parse command because
         # 1. load the dbt profiles by dbt-core rule
         # 2. initialize the adapter
@@ -225,6 +245,11 @@ class DBTContext:
         # The function 'load_profile' will use the global flags to load the profile.
         profile = load_profile(project_path, {}, profile_name_override=profile_name, target_override=target)
         project = load_project(project_path, False, profile)
+
+        packages = [x.package for x in project.packages.packages]
+        if not kwargs.get('skip_download', False) and 'dbt-labs/audit_helper' not in packages:
+            cls.packages_downloader(project)
+            return cls.load(**dict(skip_download=True, **kwargs))
 
         adapter: SQLAdapter = get_adapter_by_type(profile.credentials.type)
 
@@ -414,3 +439,28 @@ class DBTContext:
                 self.base_manifest = load_manifest(refresh_file_path)
             elif refresh_file_path.endswith('catalog.json'):
                 self.base_catalog = load_catalog(refresh_file_path)
+
+    def compare_all_columns(self, primary_key: str, model: str):
+        # find the relation names
+        base_relation = self.generate_sql(f'{{{{ ref("{model}")  }}}}', True)
+
+        # https://github.com/dbt-labs/dbt-audit-helper/tree/0.9.0/#compare_column_values-source
+        #   {{
+        #     audit_helper.compare_all_columns(
+        #       a_relation=ref('stg_customers'),
+        #       b_relation=api.Relation.create(database='dbt_db', schema='analytics_prod', identifier='stg_customers'),
+        #       exclude_columns=['updated_at'],
+        #       primary_key='id'
+        #     )
+        #   }}
+
+        sql_template = f"""
+        {{{{
+            audit_helper.compare_all_columns(
+                a_relation=ref('{model}'),
+                b_relation='{base_relation}',
+                primary_key='{primary_key}'
+            )
+        }}}}
+        """
+        return self.execute_sql(sql_template, False)
