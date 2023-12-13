@@ -1,3 +1,4 @@
 {
-  "bracketSpacing": true
+  "bracketSpacing": true,
+  "trailingComma": "es5"
 }

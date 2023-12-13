@@ -27,6 +27,7 @@ import { LineageGraphNode } from "./lineage";
 import { SchemaView } from "../schema/SchemaView";
 import { useRecceQueryContext } from "@/lib/hooks/RecceQueryContext";
 import { SqlDiffView } from "../schema/SqlDiffView";
+import useMismatchSummaryModal from "./MismatchSummary";
 
 interface NodeViewProps {
   node: LineageGraphNode;
@@ -41,6 +42,8 @@ export function NodeView({ node, onCloseNode }: NodeViewProps) {
     node.resourceType === "seed" ||
     node.resourceType === "source";
   const { isOpen, onOpen, onClose } = useDisclosure();
+  const { MismatchSummaryModal } = useMismatchSummaryModal();
+
 
   return (
     <Grid height="100%" templateRows="auto 1fr">
@@ -95,6 +98,7 @@ export function NodeView({ node, onCloseNode }: NodeViewProps) {
       {node.resourceType === "model" && (
         <HStack p="16px">
           <Spacer />
+          <MismatchSummaryModal node={node} />
           <Button
             colorScheme="blue"
             size="sm"
