@@ -1,3 +1,4 @@
+from datetime import datetime
 from typing import Optional
 from uuid import UUID
 
@@ -10,8 +11,8 @@ check_router = APIRouter(tags=['check'])
 
 
 class CreateCheckIn(BaseModel):
-    name: str
-    description: str = ''
+    name: Optional[str] = f"Check-{datetime.utcnow().isoformat()}"
+    description: Optional[str] = ''
     run_id: str
 
 
@@ -84,4 +85,30 @@ async def get(check_id: UUID):
         'description': found.description,
         'params': found.params,
         'last_run': last_run
+    }
+
+
+class PatchCheckIn(BaseModel):
+    name: Optional[str] = None
+    description: Optional[str] = None
+
+
+@check_router.patch("/checks/{check_id}", status_code=200, response_model=CheckOut, response_model_exclude_none=True)
+async def get(check_id: UUID, patch: PatchCheckIn):
+    found = None
+    for check in checks_db:
+        if check.id == check_id:
+            found = check
+            check.name = patch.name if patch.name else check.name
+            check.description = patch.description if patch.description else check.description
+            break
+
+    if found is None:
+        raise HTTPException(status_code=404, detail='Not Found')
+
+    return {
+        'id': found.id,
+        'name': found.name,
+        'description': found.description,
+        'params': found.params,
     }
