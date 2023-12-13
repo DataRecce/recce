@@ -17,7 +17,7 @@ from . import __version__, event
 from .dbt import DBTContext
 
 logger = logging.getLogger('uvicorn')
-dbt_context: DBTContext | None = None
+dbt_context: Optional[DBTContext] = None
 
 
 def load_dbt_context(**kwargs) -> DBTContext:
