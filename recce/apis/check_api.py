@@ -42,30 +42,18 @@ async def create(check: CreateCheckIn):
             raise HTTPException(status_code=404, detail=f"Run ID '{check.run_id}' not found")
         checks_db.append(check_record)
 
-    return {
-        'id': check_record.id,
-        'name': check_record.name,
-        'description': check_record.description,
-        'type': check_record.type.value,
-        'params': check_record.params,
-    }
-
-
-def create_run_from_check(check: Check):
-    from recce.apis.run_func import ExecutorManager
-
-    executor = ExecutorManager.get_executor(check.type, check.params)
-
-    result = executor.execute()
-    run_record = Run(check.type, check.params, check_id=check.id, result=result)
-    runs_db.append(run_record)
-
-    return run_record
+    return CreateCheckOut(id=check_record.id,
+                          name=check_record.name,
+                          description=check_record.description,
+                          type=check_record.type.value,
+                          params=check_record.params).dict()
 
 
 class CreateRunOut(BaseModel):
-    id: str
+    id: UUID
     run_at: str
+    type: str
+    params: dict
     result: dict
 
 
@@ -79,7 +67,7 @@ async def create(check_id: UUID):
         if check.id == check_id:
             found = True
             try:
-                executor = ExecutorManager.get_executor(check.type, check.params)
+                executor = ExecutorManager.create_executor(check.type, check.params)
             except NotImplementedError:
                 raise HTTPException(status_code=400, detail=f"Run type '{check.type.value}' not supported")
 
@@ -90,11 +78,11 @@ async def create(check_id: UUID):
     if not found:
         raise HTTPException(status_code=404, detail=f"Check ID '{check_id}' not found")
 
-    return {
-        'id': str(run_record.id),
-        'run_at': run_record.run_at,
-        'result': run_record.result
-    }
+    return CreateRunOut(id=run_record.id,
+                        run_at=run_record.run_at,
+                        type=run_record.type.value,
+                        params=run_record.params,
+                        result=run_record.result).dict()
 
 
 class CheckOut(BaseModel):
@@ -103,18 +91,21 @@ class CheckOut(BaseModel):
     description: str
     type: str
     params: dict
-    last_run: Optional[dict] = None
+    last_run: Optional[CreateRunOut] = None
 
 
 @check_router.get("/checks", status_code=200, response_model=list[CheckOut], response_model_exclude_none=True)
 async def list_checks():
-    checks = [{
-        'id': check.id,
-        'name': check.name,
-        'description': check.description,
-        'type': check.type.value,
-        'params': check.params,
-    } for check in checks_db]
+    checks = []
+
+    for check in checks_db:
+        checks.append(
+            CheckOut(id=check.id,
+                     name=check.name,
+                     description=check.description,
+                     type=check.type.value,
+                     params=check.params).dict()
+        )
 
     return checks
 
@@ -133,19 +124,18 @@ async def get(check_id: UUID):
     last_run = None
     runs = [run for run in runs_db if run.check_id == check_id]
     if runs:
-        last_run = runs[-1]
+        last_run = CreateRunOut(id=runs[-1].id,
+                                run_at=runs[-1].run_at,
+                                type=runs[-1].type.value,
+                                params=runs[-1].params,
+                                result=runs[-1].result).dict()
 
-    return {
-        'id': found.id,
-        'name': found.name,
-        'description': found.description,
-        'type': found.type.value,
-        'params': found.params,
-        'last_run': {
-            'id': last_run.id,
-            'run_at': last_run.run_at,
-        } if last_run else None
-    }
+    return CheckOut(id=found.id,
+                    name=found.name,
+                    description=found.description,
+                    type=found.type.value,
+                    params=found.params,
+                    last_run=last_run).dict()
 
 
 class PatchCheckIn(BaseModel):
@@ -166,10 +156,8 @@ async def get(check_id: UUID, patch: PatchCheckIn):
     if found is None:
         raise HTTPException(status_code=404, detail='Not Found')
 
-    return {
-        'id': found.id,
-        'name': found.name,
-        'description': found.description,
-        'type': found.type.value,
-        'params': found.params,
-    }
+    return CheckOut(id=found.id,
+                    name=found.name,
+                    description=found.description,
+                    type=found.type.value,
+                    params=found.params).dict()

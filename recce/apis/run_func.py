@@ -1,5 +1,5 @@
 from abc import ABC, abstractmethod
-from typing import TypedDict, Optional
+from typing import TypedDict
 
 from recce.apis.types import RunType
 from recce.server import dbt_context
@@ -11,7 +11,7 @@ class QueryDiffParams(TypedDict):
 
 class ExecutorManager:
     @staticmethod
-    def get_executor(run_type: RunType, params: dict):
+    def create_executor(run_type: RunType, params: dict):
         if run_type == RunType.QUERY_DIFF:
             return QueryDiffExecutor(params)
         else:

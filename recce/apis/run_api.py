@@ -1,4 +1,5 @@
 from typing import Optional
+from uuid import UUID
 
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
@@ -16,8 +17,10 @@ class CreateRunIn(BaseModel):
 
 
 class CreateRunOut(BaseModel):
-    id: str
+    id: UUID
     run_at: str
+    type: str
+    params: dict
     result: dict
 
 
@@ -31,7 +34,7 @@ async def create(run: CreateRunIn):
         raise HTTPException(status_code=400, detail=f"Run type '{run.type}' not supported")
 
     try:
-        executor = ExecutorManager.get_executor(run_type, run.params)
+        executor = ExecutorManager.create_executor(run_type, run.params)
     except NotImplementedError:
         raise HTTPException(status_code=400, detail=f"Run type '{run_type.value}' not supported")
 
@@ -40,11 +43,11 @@ async def create(run: CreateRunIn):
     run_record = Run(run_type, run.params, result=result)
     runs_db.append(run_record)
 
-    return {
-        'id': str(run_record.id),
-        'run_at': run_record.run_at,
-        'result': result
-    }
+    return CreateRunOut(id=run_record.id,
+                        run_at=run_record.run_at,
+                        type=run_record.type.value,
+                        params=run_record.params,
+                        result=result).dict()
 
 
 @run_router.get("/runs", status_code=200)
