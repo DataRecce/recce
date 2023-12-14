@@ -10,6 +10,8 @@ import { QueryDiffDataGrid } from "./QueryDiffDataGrid";
 
 export const QueryPage = () => {
   const { sqlQuery, setSqlQuery } = useRecceQueryContext();
+  const [submittedQuery, setSubmittedQuery] = useState<string>();
+
   const cacheKey = ["adhoc_query"];
   const router = useRouter();
 
@@ -28,8 +30,9 @@ export const QueryPage = () => {
 
   const executeQuery = useCallback(() => {
     setPrimaryKeys([]);
+    setSubmittedQuery(sqlQuery);
     runQuery();
-  }, [runQuery]);
+  }, [sqlQuery, runQuery]);
 
   const addToChecklist = useCallback(async () => {
     if (!data?.run_id) {
@@ -37,6 +40,7 @@ export const QueryPage = () => {
     }
 
     await createCheckByRun(data.run_id);
+    setSubmittedQuery(undefined);
     router.push("#checks");
   }, [data?.run_id, router]);
 
@@ -46,7 +50,7 @@ export const QueryPage = () => {
         <Button
           colorScheme="blue"
           onClick={addToChecklist}
-          isDisabled={isFetching || !data?.run_id}
+          isDisabled={isFetching || !data?.run_id || sqlQuery != submittedQuery}
           size="sm"
         >
           Add to Checklist
