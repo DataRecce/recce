@@ -13,7 +13,7 @@ interface SchemaViewProps {
 export function SchemaView({ base, current }: SchemaViewProps) {
   const { columns, rows } = useMemo(
     () => toDataGrid(mergeColumns(base?.columns, current?.columns)),
-    [base, current]
+    [base, current],
   );
 
   const noCatalogBase = base && base.columns === undefined;

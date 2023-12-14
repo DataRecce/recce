@@ -119,21 +119,5 @@ def server(host, port, **kwargs):
     uvicorn.run(app, host=host, port=port, lifespan='on')
 
 
-@cli.command(cls=TrackCommand)
-@click.argument("primary_key", type=str, required=True)
-@click.argument("model", type=str, required=True)
-def compare_all_columns(primary_key: str, model: str):
-    """
-    Compare all columns for a specified model.
-    """
-    try:
-        dbt_context = DBTContext.load()
-        df = dbt_context.compare_all_columns(primary_key, model)
-        print(df.to_string(max_rows=None, max_colwidth=None))
-    except:
-        traceback.print_exc()
-        pass
-
-
 if __name__ == "__main__":
     cli()

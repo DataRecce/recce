@@ -1,8 +1,10 @@
 import hashlib
+import json
 import logging
 import os
 import time
 from dataclasses import dataclass, fields
+from pathlib import Path
 from typing import Callable, Dict, List, Optional, Union
 
 import agate
@@ -203,6 +205,10 @@ class DBTContext:
         os.environ["DBT_MACRO_DEBUGGING"] = "false"
         os.environ["DBT_VERSION_CHECK"] = "false"
 
+        pkgs = Path(project.project_root) / project.packages_install_path / "audit_helper"
+        if pkgs.exists():
+            return
+
         renderer = PackageRenderer({})
         packages_lock_dict = {'packages': [{'package': 'dbt-labs/audit_helper', 'version': '0.9.0'}]}
         packages_lock_config = package_config_from_data(
@@ -335,9 +341,9 @@ class DBTContext:
             df = pd.DataFrame([row.values() for row in table.rows], columns=table.column_names)
             return df
 
-    def generate_sql(self, sql_template, base):
+    def generate_sql(self, sql_template, base, context: Dict = None):
         try:
-            return generate_compiled_sql(self.get_manifest(base), self.adapter, sql_template, {})
+            return generate_compiled_sql(self.get_manifest(base), self.adapter, sql_template, context)
         except BaseException as e:
             if hasattr(e, 'msg'):
                 if 'depends on' in e.msg:
@@ -444,16 +450,6 @@ class DBTContext:
         # find the relation names
         base_relation = self.generate_sql(f'{{{{ ref("{model}")  }}}}', True)
 
-        # https://github.com/dbt-labs/dbt-audit-helper/tree/0.9.0/#compare_column_values-source
-        #   {{
-        #     audit_helper.compare_all_columns(
-        #       a_relation=ref('stg_customers'),
-        #       b_relation=api.Relation.create(database='dbt_db', schema='analytics_prod', identifier='stg_customers'),
-        #       exclude_columns=['updated_at'],
-        #       primary_key='id'
-        #     )
-        #   }}
-
         sql_template = f"""
         {{{{
             audit_helper.compare_all_columns(
@@ -464,3 +460,51 @@ class DBTContext:
         }}}}
         """
         return self.execute_sql(sql_template, False)
+
+    def compare_relations(self, primary_key: str, model: str):
+        relation_holder = dict()
+        with self.adapter.connection_named('test'):
+            def callback(x):
+                relation_holder['relation'] = x
+
+            tmp = f"""{{{{ config_base_relation(ref("{model}")) }}}}"""
+            self.generate_sql(tmp, True, dict(config_base_relation=callback))
+
+        sql_template = f"""
+        {{{{ audit_helper.compare_relations(
+            a_relation=base_relation,
+            b_relation=ref('{model}'),
+            primary_key="{primary_key}"
+        ) }}}}
+        """
+        sql_template = self.generate_sql(sql_template, False, dict(base_relation=relation_holder['relation']))
+        return self.execute_sql(sql_template, False)
+
+    def columns_value_mismatched_summary(self, primary_key: str, model: str):
+        df = self.compare_relations(primary_key, model)
+        total = int(df['count'].sum())
+        added_df = df[(df['in_a'] == False) & (df['in_b'] == True)]
+        added = int(added_df['count'].iloc[0]) if not added_df.empty else 0
+
+        removed_df = df[(df['in_a'] == True) & (df['in_b'] == False)]
+        removed = int(removed_df['count'].iloc[0]) if not removed_df.empty else 0
+
+        df = self.compare_all_columns(primary_key, model)
+        df['perfect_match_rate'] = df[['perfect_match']] / total
+        df = df[['column_name', 'perfect_match', 'perfect_match_rate']]
+
+        def to_percentage(x):
+            return f'{x * 100:.2f}'
+
+        df['perfect_match_rate'] = df['perfect_match_rate'].apply(to_percentage)
+
+        df_renamed = df.rename(columns={
+            'column_name': 'Column',
+            'perfect_match': 'Matched',
+            'perfect_match_rate': 'Matched %'
+        })
+        result = dict(
+            summary=dict(total=total, added=added, removed=removed),
+            data=json.loads(df_renamed.to_json(orient='table', index=False))
+        )
+        return result

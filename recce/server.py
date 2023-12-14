@@ -98,22 +98,17 @@ class QueryInput(BaseModel):
     sql_template: str
 
 
-class CompareColumnValuesInput(BaseModel):
+class CompareAllColumnsInput(BaseModel):
     model: str
     primary_key: str
     exclude_columns: Optional[list]
 
 
-@app.post("/api/compare_column_values")
-async def compare_column_values(input: CompareColumnValuesInput):
+@app.post("/api/columns_value_mismatched_summary")
+async def compare_column_values(input: CompareAllColumnsInput):
     try:
-        # TODO support exclude columns
-        print(input)
-        result = dbt_context.compare_all_columns(input.primary_key, input.model)
-        result_json = result.to_json(orient='table')
-
-        import json
-        return json.loads(result_json)
+        result = dbt_context.columns_value_mismatched_summary(input.primary_key, input.model)
+        return result
 
     except Exception as e:
         import traceback
