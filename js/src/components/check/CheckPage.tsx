@@ -9,6 +9,7 @@ import {
   Divider,
   useMediaQuery,
   Center,
+  Checkbox,
 } from "@chakra-ui/react";
 import { CheckDetail } from "./CheckDetail";
 
@@ -21,19 +22,21 @@ const ChecklistItem = ({
   selected: boolean;
   onSelect: (check: Check) => void;
 }) => (
-  <Box
+  <Flex
     width="100%"
     p="10px 20px"
     cursor="pointer"
     _hover={{ bg: "gray.200" }}
     bg={selected ? "gray.100" : "inherit"}
     onClick={() => onSelect(check)}
+    gap="5px"
   >
+    <Checkbox checked></Checkbox>
     {check.name}
-  </Box>
+  </Flex>
 );
 
-export const CheckView = () => {
+export const CheckPage = () => {
   const [selectedItem, setSelectedItem] = useState<Check | null>(null);
   const [isLargerThan768px] = useMediaQuery("(min-width: 768px)");
   const checks = useListChecks();

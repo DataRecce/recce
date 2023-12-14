@@ -18,7 +18,7 @@ import { reactQueryClient } from "@/lib/api/axiosClient";
 import { useVersionNumber } from "@/lib/api/version";
 import { setLocationHash, getLocationHash } from "@/lib/UrlHash";
 import { RecceQueryContextProvider } from "@/lib/hooks/RecceQueryContext";
-import { CheckView } from "@/components/check/CheckView";
+import { CheckPage } from "@/components/check/CheckPage";
 import { QueryPage } from "@/components/query/QueryPage";
 
 function getCookie(key: string) {
@@ -98,7 +98,7 @@ export default function Home() {
             <TabList>
               <Tab>Lineage</Tab>
               <Tab>Query</Tab>
-              <Tab>Checks</Tab>
+              <Tab>Checklist</Tab>
               <Box position="absolute" right="0" top="0" p="2" color="gray.500">
                 {version}
               </Box>
@@ -112,7 +112,7 @@ export default function Home() {
                 <QueryPage />
               </TabContainer>
               <TabContainer pageHeight={pageHeight}>
-                <CheckView />
+                <CheckPage />
               </TabContainer>
             </TabPanels>
           </Tabs>

@@ -2,10 +2,11 @@ import "react-data-grid/lib/styles.css";
 import DataGrid from "react-data-grid";
 import { QueryDiffResult } from "@/lib/api/adhocQuery";
 import { Alert, AlertIcon, Center, Flex, Spinner } from "@chakra-ui/react";
-import { useMemo } from "react";
+import { CSSProperties, useMemo } from "react";
 import { toDataGrid } from "./query";
 
 interface QueryDiffDataGridProps {
+  style?: CSSProperties;
   isFetching: boolean;
   result?: QueryDiffResult;
   primaryKeys: string[];
@@ -13,6 +14,7 @@ interface QueryDiffDataGridProps {
 }
 
 export const QueryDiffDataGrid = ({
+  style,
   isFetching,
   result,
   primaryKeys,
@@ -60,21 +62,31 @@ export const QueryDiffDataGrid = ({
   }
 
   return (
-    <Flex direction="column" height="100%" overflow="auto">
-      {isPartialSuccess && (
-        <Alert status="error">
-          <AlertIcon />
-          {baseError && `Error[Base]: ${baseError}`}
-          {currentError && `Error[Current]: ${currentError}`}
-        </Alert>
-      )}
-      <DataGrid
-        style={{ height: "100%" }}
-        columns={gridData.columns}
-        rows={gridData.rows}
-        defaultColumnOptions={{ resizable: true, maxWidth: 800, width: 100 }}
-        className="rdg-light"
-      />
-    </Flex>
+    <DataGrid
+      style={{ blockSize: "100%" }}
+      columns={gridData.columns}
+      rows={gridData.rows}
+      defaultColumnOptions={{ resizable: true, maxWidth: 800, width: 100 }}
+      className="rdg-light"
+    />
   );
+
+  // return (
+  //   <Flex direction="column" height="100%">
+  //     {isPartialSuccess && (
+  //       <Alert status="error">
+  //         <AlertIcon />
+  //         {baseError && `Error[Base]: ${baseError}`}
+  //         {currentError && `Error[Current]: ${currentError}`}
+  //       </Alert>
+  //     )}
+  //     <DataGrid
+  //       style={style}
+  //       columns={gridData.columns}
+  //       rows={gridData.rows}
+  //       defaultColumnOptions={{ resizable: true, maxWidth: 800, width: 100 }}
+  //       className="rdg-light"
+  //     />
+  //   </Flex>
+  // );
 };
