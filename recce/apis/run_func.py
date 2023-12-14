@@ -1,29 +1,46 @@
-from typing import TypedDict
+from abc import ABC, abstractmethod
+from typing import TypedDict, Optional
 
-from recce.apis.types import RunType, RunResultType
+from recce.apis.types import RunType
 from recce.server import dbt_context
 
 
-class SqlQueryParams(TypedDict):
+class QueryDiffParams(TypedDict):
     sql_template: str
 
 
-class RunExecutor:
+class ExecutorManager:
     @staticmethod
-    def get_executor(executor_type: RunType):
-        if executor_type == RunType.QUERY_DIFF:
-            return SqlQueryExecutor()
+    def get_executor(run_type: RunType, params: dict):
+        if run_type == RunType.QUERY_DIFF:
+            return QueryDiffExecutor(params)
         else:
-            raise ValueError("Invalid executor type")
+            return NotImplementedError
 
 
-class SqlQueryExecutor:
-    @staticmethod
-    def execute(params: SqlQueryParams, base=False):
+class RunExecutor(ABC):
+    @abstractmethod
+    def execute(self):
+        raise NotImplementedError
+
+
+class QueryDiffExecutor(RunExecutor):
+    def __init__(self, params: QueryDiffParams):
+        self.params = params
+
+    def execute(self):
+        result = {}
+
+        result['base'], result['base_error'] = self.execute_sql(base=True)
+        result['current'], result['current_error'] = self.execute_sql(base=False)
+
+        return result
+
+    def execute_sql(self, base: bool = False):
         from jinja2.exceptions import TemplateSyntaxError
 
         try:
-            sql = params.get('sql_template')
+            sql = self.params.get('sql_template')
             result = dbt_context.execute_sql(sql, base=base)
             result_json = result.to_json(orient='table')
 
@@ -33,7 +50,3 @@ class SqlQueryExecutor:
             return None, f"Jinja template error: line {e.lineno}: {str(e)}"
         except Exception as e:
             return None, str(e)
-
-    @staticmethod
-    def get_result_type():
-        return RunResultType.DF_DIFF

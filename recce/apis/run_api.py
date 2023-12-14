@@ -3,8 +3,8 @@ from typing import Optional
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 
-from recce.apis import Run, checks_db, runs_db
-from recce.apis.types import RunType
+from recce.apis.db import runs_db
+from recce.apis.types import Run, RunType
 
 run_router = APIRouter(tags=['run'])
 
@@ -15,55 +15,34 @@ class CreateRunIn(BaseModel):
     check_id: Optional[str]
 
 
-@run_router.post("/runs", status_code=201)
+class CreateRunOut(BaseModel):
+    id: str
+    run_at: str
+    result: dict
+
+
+@run_router.post("/runs", status_code=201, response_model=CreateRunOut)
 async def create(run: CreateRunIn):
-    from recce.apis.run_func import RunExecutor
+    from recce.apis.run_func import ExecutorManager
 
-    run_record = None
-    result_type = None
-    result = {
-        'current': None,
-        'base': None,
-        'current_error': None,
-        'base_error': None
-    }
-
-    if run.check_id is None:
+    try:
         run_type = RunType(run.type)
-        executor = RunExecutor().get_executor(run_type)
+    except ValueError:
+        raise HTTPException(status_code=400, detail=f"Run type '{run.type}' not supported")
 
-        result['base'], result['base_error'] = executor.execute(run.params, base=True)
-        result['current'], result['current_error'] = executor.execute(run.params, base=False)
-        result_type = executor.get_result_type()
+    try:
+        executor = ExecutorManager.get_executor(run_type, run.params)
+    except NotImplementedError:
+        raise HTTPException(status_code=400, detail=f"Run type '{run_type.value}' not supported")
 
-        run_record = Run(run_type, run.params)
-    else:
-        found = False
-        for check in checks_db:
-            if str(check.id) == run.check_id:
-                executor = RunExecutor().get_executor(check.type)
+    result = executor.execute()
 
-                result['base'], result['base_error'] = executor.execute(check.params, base=True)
-                result['current'], result['current_error'] = executor.execute(check.params, base=False)
-                result_type = executor.get_result_type()
-
-                run_record = Run(check.type, check.params, check.id)
-                found = True
-                break
-
-        if not found:
-            raise HTTPException(status_code=404, detail=f"Check ID '{run.check_id}' not found")
-
-    if result['current_error'] and result['base_error']:
-        raise HTTPException(status_code=400, detail=f"base: {result['base_error']}, current: {result['current_error']}")
-
-    if run_record:
-        runs_db.append(run_record)
+    run_record = Run(run_type, run.params, result=result)
+    runs_db.append(run_record)
 
     return {
-        'run_id': run_record.id,
+        'id': str(run_record.id),
         'run_at': run_record.run_at,
-        'result_type': result_type,
         'result': result
     }
 

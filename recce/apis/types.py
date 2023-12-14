@@ -11,12 +11,6 @@ class RunType(Enum):
     QUERY_DIFF = 'query_diff'
 
 
-class RunResultType(Enum):
-    DF = 'df'
-    DF_DIFF = 'df_diff'
-    JSON = 'json'
-
-
 class DataFrameDiff:
     def __init__(self):
         self.primary_keys: [str]
@@ -26,18 +20,17 @@ class DataFrameDiff:
 
 class RunResult:
     def __init__(self):
-        self.type: RunResultType
         self.data: Union[DataFrame, DataFrameDiff]
 
 
 class Run:
-    def __init__(self, run_type: RunType, params, check_id: Optional[UUID] = None):
+    def __init__(self, run_type: RunType, params, check_id: Optional[UUID] = None, result: Optional[dict] = None):
         self.id: UUID = uuid.uuid4()
         self.run_at: str = datetime.utcnow().isoformat()
         self.check_id: Optional[UUID] = check_id
         self.type: RunType = run_type
         self.params = params
-        self.result: RunResult
+        self.result = result
 
 
 class Check:

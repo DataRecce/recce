@@ -5,7 +5,8 @@ from uuid import UUID
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 
-from recce.apis import runs_db, checks_db, Check
+from recce.apis.db import checks_db, runs_db
+from recce.apis.types import Run, Check
 
 check_router = APIRouter(tags=['check'])
 
@@ -16,23 +17,22 @@ class CreateCheckIn(BaseModel):
     run_id: str
 
 
-class CheckOut(BaseModel):
+class CreateCheckOut(BaseModel):
     id: UUID
     name: str
     description: str
+    type: str
     params: dict
-    last_run: Optional[UUID]
 
 
 def create_check_from_run(name, description, run_id):
-    check_record = None
     for run in runs_db:
         if run_id == str(run.id):
             return Check(name, description, run.type, run.params)
-    return check_record
+    return None
 
 
-@check_router.post("/checks", status_code=201, response_model=CheckOut)
+@check_router.post("/checks", status_code=201, response_model=CreateCheckOut)
 async def create(check: CreateCheckIn):
     if check.run_id is None:
         raise HTTPException(501, "Not Implemented")
@@ -46,9 +46,64 @@ async def create(check: CreateCheckIn):
         'id': check_record.id,
         'name': check_record.name,
         'description': check_record.description,
+        'type': check_record.type.value,
         'params': check_record.params,
-        'last_run': check.run_id
     }
+
+
+def create_run_from_check(check: Check):
+    from recce.apis.run_func import ExecutorManager
+
+    executor = ExecutorManager.get_executor(check.type, check.params)
+
+    result = executor.execute()
+    run_record = Run(check.type, check.params, check_id=check.id, result=result)
+    runs_db.append(run_record)
+
+    return run_record
+
+
+class CreateRunOut(BaseModel):
+    id: str
+    run_at: str
+    result: dict
+
+
+@check_router.post("/checks/{check_id}/run", status_code=201, response_model=CreateRunOut)
+async def create(check_id: UUID):
+    from recce.apis.run_func import ExecutorManager
+
+    run_record = None
+    found = False
+    for check in checks_db:
+        if check.id == check_id:
+            found = True
+            try:
+                executor = ExecutorManager.get_executor(check.type, check.params)
+            except NotImplementedError:
+                raise HTTPException(status_code=400, detail=f"Run type '{check.type.value}' not supported")
+
+            result = executor.execute()
+            run_record = Run(check.type, check.params, check_id=check.id, result=result)
+            runs_db.append(run_record)
+
+    if not found:
+        raise HTTPException(status_code=404, detail=f"Check ID '{check_id}' not found")
+
+    return {
+        'id': str(run_record.id),
+        'run_at': run_record.run_at,
+        'result': run_record.result
+    }
+
+
+class CheckOut(BaseModel):
+    id: UUID
+    name: str
+    description: str
+    type: str
+    params: dict
+    last_run: Optional[dict] = None
 
 
 @check_router.get("/checks", status_code=200, response_model=list[CheckOut], response_model_exclude_none=True)
@@ -57,6 +112,7 @@ async def list_checks():
         'id': check.id,
         'name': check.name,
         'description': check.description,
+        'type': check.type.value,
         'params': check.params,
     } for check in checks_db]
 
@@ -77,14 +133,18 @@ async def get(check_id: UUID):
     last_run = None
     runs = [run for run in runs_db if run.check_id == check_id]
     if runs:
-        last_run = runs[-1].id
+        last_run = runs[-1]
 
     return {
         'id': found.id,
         'name': found.name,
         'description': found.description,
+        'type': found.type.value,
         'params': found.params,
-        'last_run': last_run
+        'last_run': {
+            'id': last_run.id,
+            'run_at': last_run.run_at,
+        } if last_run else None
     }
 
 
@@ -110,5 +170,6 @@ async def get(check_id: UUID, patch: PatchCheckIn):
         'id': found.id,
         'name': found.name,
         'description': found.description,
+        'type': found.type.value,
         'params': found.params,
     }
