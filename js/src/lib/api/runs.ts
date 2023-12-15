@@ -49,6 +49,11 @@ export async function submitRun(input: SubmitRunInput) {
   }
 }
 
+export async function submitQueryDiff(params: QueryDiffParams) {
+  const type = "query_diff";
+  return submitRun({ type, params });
+}
+
 export async function submitRunFromCheck(checkId: string): Promise<Run> {
   const check = await getCheck(checkId);
   if (!check) {
@@ -59,13 +64,4 @@ export async function submitRunFromCheck(checkId: string): Promise<Run> {
   run.check_id = checkId;
   check.last_run = run;
   return run;
-}
-
-export function useSubmitRun(input: SubmitRunInput, queryKey: any[]) {
-  return useQuery({
-    queryKey,
-    queryFn: () => submitRun(input),
-    retry: false,
-    enabled: false, // never auto run
-  });
 }

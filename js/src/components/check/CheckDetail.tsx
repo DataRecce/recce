@@ -1,4 +1,3 @@
-import { useCheck } from "@/lib/api/checks";
 import {
   Accordion,
   AccordionButton,
@@ -29,15 +28,34 @@ interface CheckDetailProps {
 import { DeleteIcon } from "@chakra-ui/icons";
 import { CheckBreadcrumb } from "./CheckBreadcrumb";
 import { VscKebabVertical } from "react-icons/vsc";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { cacheKeys } from "@/lib/api/cacheKeys";
+import { getCheck, updateCheck } from "@/lib/api/checks";
 
 export const CheckDetail = ({ checkId }: CheckDetailProps) => {
-  const { isLoading, error, data: check } = useCheck(checkId);
+  const queryClient = useQueryClient();
+  const {
+    isLoading,
+    error,
+    data: check,
+  } = useQuery({
+    queryKey: cacheKeys.check(checkId),
+    queryFn: () => getCheck(checkId),
+  });
+
+  const { mutate } = useMutation({
+    mutationKey: cacheKeys.check(checkId),
+    mutationFn: updateCheck,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: cacheKeys.checks() });
+    },
+  });
+
   const [primaryKeys, setPrimaryKeys] = useState<string[]>([]);
-  const [name, setName] = useState<string>();
+
   useEffect(() => {
-    setName(check?.name);
     setPrimaryKeys([]);
-  }, [check?.name]);
+  }, [check?.check_id]);
 
   if (isLoading) {
     return <Center h="100%">Loading</Center>;
@@ -50,7 +68,12 @@ export const CheckDetail = ({ checkId }: CheckDetailProps) => {
   return (
     <Flex height="100%" width="100%" maxHeight="100%" direction="column">
       <Flex p="8px 16px" alignItems="center">
-        <CheckBreadcrumb name={name || ""} setName={setName} />
+        <CheckBreadcrumb
+          name={check?.name || ""}
+          setName={(name) => {
+            mutate({ check_id: check?.check_id, name });
+          }}
+        />
         <Menu>
           <MenuButton
             as={IconButton}

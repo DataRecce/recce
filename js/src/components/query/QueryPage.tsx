@@ -1,38 +1,33 @@
 import React, { useState, useCallback, useMemo } from "react";
-import { toDataGrid } from "@/components/query/query";
 import { Box, Button, Flex } from "@chakra-ui/react";
 import SqlEditor from "./SqlEditor";
 import { useRecceQueryContext } from "@/lib/hooks/RecceQueryContext";
-import { useSubmitRun } from "@/lib/api/runs";
+import { submitQueryDiff } from "@/lib/api/runs";
 import { createCheckByRun } from "@/lib/api/checks";
 import { useRouter } from "next/navigation";
 import { QueryDiffDataGrid } from "./QueryDiffDataGrid";
+import { useMutation } from "@tanstack/react-query";
+import { cacheKeys } from "@/lib/api/cacheKeys";
 
 export const QueryPage = () => {
   const { sqlQuery, setSqlQuery } = useRecceQueryContext();
   const [submittedQuery, setSubmittedQuery] = useState<string>();
 
-  const cacheKey = ["adhoc_query"];
   const router = useRouter();
+  const [primaryKeys, setPrimaryKeys] = useState<string[]>([]);
 
   const {
     data,
-    refetch: runQuery,
-    isFetching,
-  } = useSubmitRun(
-    {
-      type: "query_diff",
-      params: { sql_template: sqlQuery },
+    mutate: runQuery,
+    isPending,
+  } = useMutation({
+    mutationKey: cacheKeys.adhocQuery(),
+    mutationFn: () => submitQueryDiff({ sql_template: sqlQuery }),
+    onSuccess: () => {
+      setPrimaryKeys([]);
+      setSubmittedQuery(sqlQuery);
     },
-    cacheKey
-  );
-  const [primaryKeys, setPrimaryKeys] = useState<string[]>([]);
-
-  const executeQuery = useCallback(() => {
-    setPrimaryKeys([]);
-    setSubmittedQuery(sqlQuery);
-    runQuery();
-  }, [sqlQuery, runQuery]);
+  });
 
   const addToChecklist = useCallback(async () => {
     if (!data?.run_id) {
@@ -50,15 +45,15 @@ export const QueryPage = () => {
         <Button
           colorScheme="blue"
           onClick={addToChecklist}
-          isDisabled={isFetching || !data?.run_id || sqlQuery != submittedQuery}
+          isDisabled={isPending || !data?.run_id || sqlQuery != submittedQuery}
           size="sm"
         >
           Add to Checklist
         </Button>
         <Button
           colorScheme="blue"
-          onClick={executeQuery}
-          isDisabled={isFetching}
+          onClick={() => runQuery()}
+          isDisabled={isPending}
           size="sm"
         >
           Run
@@ -68,12 +63,12 @@ export const QueryPage = () => {
         <SqlEditor
           value={sqlQuery}
           onChange={(value) => setSqlQuery(value)}
-          onRun={() => executeQuery()}
+          onRun={() => runQuery()}
         />
       </Box>
       <Box backgroundColor="gray.100" height="50vh">
         <QueryDiffDataGrid
-          isFetching={isFetching}
+          isFetching={isPending}
           result={data?.result}
           primaryKeys={primaryKeys}
           setPrimaryKeys={setPrimaryKeys}

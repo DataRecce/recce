@@ -1,4 +1,4 @@
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Run, RunParams, RunType, getRun } from "./runs";
 import _ from "lodash";
 
@@ -44,20 +44,18 @@ export async function getCheck(checkId: string) {
   return _.find(checks, (check) => check.check_id === checkId);
 }
 
+export async function updateCheck(check: Partial<Check>) {
+  if (!check?.check_id) {
+    throw Error(`No check_Ii`);
+  }
+
+  const oldCheck = await getCheck(check?.check_id);
+  if (!oldCheck) {
+    throw Error(`check not found: ${check.check_id}`);
+  }
+  Object.assign(oldCheck, check);
+}
+
 export async function deleteCheck(checkId: string) {
   _.remove(checks, (check) => check.check_id === checkId);
-}
-
-export function useCheck(checkId: string) {
-  return useQuery({
-    queryKey: ["checks", checkId],
-    queryFn: () => getCheck(checkId),
-  });
-}
-
-export function useListChecks() {
-  return useQuery({
-    queryKey: ["checks", "list"],
-    queryFn: () => listChecks(),
-  });
 }

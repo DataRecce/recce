@@ -1,17 +1,10 @@
 import "react-data-grid/lib/styles.css";
 import React, { useState } from "react";
-import { Check, useListChecks } from "@/lib/api/checks";
-import {
-  Box,
-  Flex,
-  VStack,
-  Text,
-  Divider,
-  useMediaQuery,
-  Center,
-  Checkbox,
-} from "@chakra-ui/react";
+import { Check, listChecks } from "@/lib/api/checks";
+import { Box, Flex, VStack, Center, Checkbox } from "@chakra-ui/react";
 import { CheckDetail } from "./CheckDetail";
+import { cacheKeys } from "@/lib/api/cacheKeys";
+import { useQuery } from "@tanstack/react-query";
 
 const ChecklistItem = ({
   check,
@@ -38,18 +31,25 @@ const ChecklistItem = ({
 
 export const CheckPage = () => {
   const [selectedItem, setSelectedItem] = useState<Check | null>(null);
-  const [isLargerThan768px] = useMediaQuery("(min-width: 768px)");
-  const checks = useListChecks();
+  const {
+    isFetching,
+    error,
+    data: checks,
+  } = useQuery({
+    queryKey: cacheKeys.checks(),
+    queryFn: listChecks,
+    refetchOnMount: true,
+  });
 
-  if (checks.isFetching) {
+  if (isFetching) {
     return <>Loading</>;
   }
 
-  if (checks.isError) {
-    return <>Error: {checks.error.message}</>;
+  if (error) {
+    return <>Error: {error.message}</>;
   }
 
-  if (checks.data === undefined || (checks.data && checks.data.length == 0)) {
+  if (!checks?.length) {
     return <Center h="100%">No checks</Center>;
   }
 
@@ -61,7 +61,7 @@ export const CheckPage = () => {
     <Flex height="100%">
       <Box flex="0 0 400px" borderRight="lightgray solid 1px" height="100%">
         <VStack spacing={0}>
-          {checks.data.map((check) => (
+          {checks.map((check) => (
             <ChecklistItem
               key={check.check_id}
               check={check}
