@@ -21,11 +21,10 @@ export const QueryPage = () => {
     mutate: runQuery,
     isPending,
   } = useMutation({
-    mutationKey: cacheKeys.adhocQuery(),
-    mutationFn: submitQueryDiff,
-    onSuccess: (run, variables) => {
+    mutationFn: () => submitQueryDiff({ sql_template: sqlQuery }),
+    onSuccess: (run) => {
       setPrimaryKeys([]);
-      setSubmittedQuery(variables.sql_template);
+      setSubmittedQuery(sqlQuery);
     },
   });
 
@@ -58,7 +57,7 @@ export const QueryPage = () => {
         </Button>
         <Button
           colorScheme="blue"
-          onClick={() => runQuery({ sql_template: sqlQuery })}
+          onClick={() => runQuery()}
           isDisabled={isPending}
           size="sm"
         >
@@ -68,8 +67,8 @@ export const QueryPage = () => {
       <Box flex="1" border={"1px solid #CBD5E0"} height="200px" width="100%">
         <SqlEditor
           value={sqlQuery}
-          onChange={(value) => setSqlQuery(value)}
-          onRun={() => runQuery({ sql_template: sqlQuery })}
+          onChange={setSqlQuery}
+          onRun={() => runQuery()}
         />
       </Box>
       <Box backgroundColor="gray.100" height="50vh">

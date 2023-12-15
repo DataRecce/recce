@@ -35,9 +35,6 @@ export const QueryDiffDataGrid = ({
 
   const { base_error: baseError, current_error: currentError } = result || {};
 
-  const isPartialSuccess =
-    (baseError && !currentError) || (!baseError && currentError);
-
   if (isFetching) {
     return (
       <Center p="16px" height="100%">
@@ -70,23 +67,4 @@ export const QueryDiffDataGrid = ({
       className="rdg-light"
     />
   );
-
-  // return (
-  //   <Flex direction="column" height="100%">
-  //     {isPartialSuccess && (
-  //       <Alert status="error">
-  //         <AlertIcon />
-  //         {baseError && `Error[Base]: ${baseError}`}
-  //         {currentError && `Error[Current]: ${currentError}`}
-  //       </Alert>
-  //     )}
-  //     <DataGrid
-  //       style={style}
-  //       columns={gridData.columns}
-  //       rows={gridData.rows}
-  //       defaultColumnOptions={{ resizable: true, maxWidth: 800, width: 100 }}
-  //       className="rdg-light"
-  //     />
-  //   </Flex>
-  // );
 };
