@@ -52,15 +52,6 @@ export const CheckDetail = ({ checkId }: CheckDetailProps) => {
     },
   });
 
-  const [primaryKeys, setPrimaryKeys] = useState<string[]>([]);
-
-  useEffect(() => {
-    if (check?.type === "query_diff") {
-      const primaryKeys = (check?.params as QueryDiffResult).primary_keys || [];
-      setPrimaryKeys(primaryKeys);
-    }
-  }, [check?.check_id, check?.params]);
-
   if (isLoading) {
     return <Center h="100%">Loading</Center>;
   }
@@ -68,6 +59,11 @@ export const CheckDetail = ({ checkId }: CheckDetailProps) => {
   if (error) {
     return <Center h="100%">Error: {error.message}</Center>;
   }
+
+  const handleCheck: React.ChangeEventHandler = (event) => {
+    const isChecked: boolean = (event.target as any).checked;
+    mutate({ check_id: check?.check_id, isChecked });
+  };
 
   return (
     <Flex height="100%" width="100%" maxHeight="100%" direction="column">
@@ -89,7 +85,9 @@ export const CheckDetail = ({ checkId }: CheckDetailProps) => {
           </MenuList>
         </Menu>
         <Spacer />
-        <Checkbox>Check</Checkbox>
+        <Checkbox isChecked={check?.isChecked} onChange={handleCheck}>
+          Check
+        </Checkbox>
       </Flex>
 
       <Accordion defaultIndex={[]} allowToggle>
@@ -124,8 +122,7 @@ export const CheckDetail = ({ checkId }: CheckDetailProps) => {
         <QueryDiffDataGrid
           isFetching={false}
           result={check?.last_run?.result}
-          primaryKeys={primaryKeys}
-          setPrimaryKeys={setPrimaryKeys}
+          primaryKeys={(check?.params as QueryDiffResult).primary_keys || []}
         />
       </Box>
     </Flex>

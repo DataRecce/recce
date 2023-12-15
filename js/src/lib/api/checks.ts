@@ -8,6 +8,7 @@ export interface Check {
   description?: string;
   type: RunType;
   params?: RunParams;
+  isChecked?: boolean;
   last_run?: Run;
 }
 

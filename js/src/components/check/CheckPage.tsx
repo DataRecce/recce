@@ -1,10 +1,10 @@
 import "react-data-grid/lib/styles.css";
 import React, { useState } from "react";
-import { Check, listChecks } from "@/lib/api/checks";
+import { Check, listChecks, updateCheck } from "@/lib/api/checks";
 import { Box, Flex, VStack, Center, Checkbox } from "@chakra-ui/react";
 import { CheckDetail } from "./CheckDetail";
 import { cacheKeys } from "@/lib/api/cacheKeys";
-import { useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
 const ChecklistItem = ({
   check,
@@ -14,20 +14,42 @@ const ChecklistItem = ({
   check: Check;
   selected: boolean;
   onSelect: (check: Check) => void;
-}) => (
-  <Flex
-    width="100%"
-    p="10px 20px"
-    cursor="pointer"
-    _hover={{ bg: "gray.200" }}
-    bg={selected ? "gray.100" : "inherit"}
-    onClick={() => onSelect(check)}
-    gap="5px"
-  >
-    <Checkbox checked></Checkbox>
-    {check.name}
-  </Flex>
-);
+}) => {
+  const queryClient = useQueryClient();
+  const { mutate } = useMutation({
+    mutationKey: cacheKeys.check(check.check_id),
+    mutationFn: updateCheck,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: cacheKeys.checks() });
+    },
+  });
+
+  const handleChange: React.ChangeEventHandler = (event) => {
+    const isChecked: boolean = (event.target as any).checked;
+    mutate({ check_id: check.check_id, isChecked });
+  };
+
+  return (
+    <Flex
+      width="100%"
+      p="10px 20px"
+      cursor="pointer"
+      _hover={{ bg: "gray.200" }}
+      bg={selected ? "gray.100" : "inherit"}
+      onClick={() => onSelect(check)}
+      gap="5px"
+    >
+      <Center
+        onClick={(e) => {
+          e.stopPropagation;
+        }}
+      >
+        <Checkbox isChecked={check.isChecked} onChange={handleChange} />
+      </Center>
+      {check.name}
+    </Flex>
+  );
+};
 
 export const CheckPage = () => {
   const [selectedItem, setSelectedItem] = useState<Check | null>(null);
