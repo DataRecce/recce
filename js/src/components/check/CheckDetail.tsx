@@ -31,6 +31,7 @@ import { VscKebabVertical } from "react-icons/vsc";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { cacheKeys } from "@/lib/api/cacheKeys";
 import { getCheck, updateCheck } from "@/lib/api/checks";
+import { QueryDiffResult } from "@/lib/api/adhocQuery";
 
 export const CheckDetail = ({ checkId }: CheckDetailProps) => {
   const queryClient = useQueryClient();
@@ -54,8 +55,11 @@ export const CheckDetail = ({ checkId }: CheckDetailProps) => {
   const [primaryKeys, setPrimaryKeys] = useState<string[]>([]);
 
   useEffect(() => {
-    setPrimaryKeys([]);
-  }, [check?.check_id]);
+    if (check?.type === "query_diff") {
+      const primaryKeys = (check?.params as QueryDiffResult).primary_keys || [];
+      setPrimaryKeys(primaryKeys);
+    }
+  }, [check?.check_id, check?.params]);
 
   if (isLoading) {
     return <Center h="100%">Loading</Center>;

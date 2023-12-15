@@ -1,4 +1,3 @@
-import { useQuery } from "@tanstack/react-query";
 import { axiosClient } from "./axiosClient";
 import { AxiosError } from "axios";
 
@@ -39,9 +38,11 @@ export async function runQueryWithError(
 
 export interface QueryDiffParams {
   sql_template: string;
+  primary_keys?: string[];
 }
 
 export interface QueryDiffResult {
+  primary_keys?: string[];
   base?: any;
   current?: any;
   base_error?: string;
@@ -59,6 +60,7 @@ export async function runQueryDiff(
   ]);
 
   return {
+    primary_keys: params.primary_keys,
     base: base.data,
     current: current.data,
     base_error: base.error,
