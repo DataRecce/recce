@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from "react";
+import React, { useCallback, useEffect, useRef, useState } from "react";
 import {
   Breadcrumb,
   BreadcrumbItem,
@@ -22,10 +22,10 @@ export function CheckBreadcrumb({ name, setName }: CheckBreadcrumbProps) {
     setIsEditing(true);
   };
 
-  const handleCommit = () => {
+  const handleCommit = useCallback(() => {
     setName(editValue);
     setIsEditing(false);
-  };
+  }, [setName, setIsEditing, editValue]);
 
   const handleKeyDown: React.KeyboardEventHandler = (event) => {
     if (event.key === "Enter") {
@@ -58,7 +58,7 @@ export function CheckBreadcrumb({ name, setName }: CheckBreadcrumbProps) {
     return () => {
       document.removeEventListener("mousedown", handleClickOutside);
     };
-  }, [isEditing, editInputRef]);
+  }, [isEditing, editInputRef, handleCommit]);
 
   return (
     <Breadcrumb

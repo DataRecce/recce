@@ -10,7 +10,7 @@ interface QueryDiffDataGridProps {
   isFetching: boolean;
   result?: QueryDiffResult;
   primaryKeys: string[];
-  setPrimaryKeys: (primaryKeys: string[]) => void;
+  setPrimaryKeys?: (primaryKeys: string[]) => void;
 }
 
 export const QueryDiffDataGrid = ({
@@ -31,7 +31,7 @@ export const QueryDiffDataGrid = ({
       primaryKeys,
       setPrimaryKeys
     );
-  }, [result?.base, result?.current, isFetching, primaryKeys, setPrimaryKeys]);
+  }, [result, isFetching, primaryKeys, setPrimaryKeys]);
 
   const { base_error: baseError, current_error: currentError } = result || {};
 
