@@ -47,35 +47,39 @@ function DataFrameColumnGroupHeader({
     return (
       <Flex alignItems="center">
         <Box flex={1}>{name}</Box>
-        <Icon
-          cursor="pointer"
-          as={VscClose}
-          onClick={() => {
-            const newPrimaryKeys = primaryKeys.filter((item) => item !== name);
-            if (onPrimaryKeyChange) {
+        {onPrimaryKeyChange && (
+          <Icon
+            cursor="pointer"
+            as={VscClose}
+            onClick={() => {
+              const newPrimaryKeys = primaryKeys.filter(
+                (item) => item !== name
+              );
+
               onPrimaryKeyChange(newPrimaryKeys);
-            }
-          }}
-        />
+            }}
+          />
+        )}
       </Flex>
     );
   } else {
     return (
       <Flex alignItems="center">
         <Box flex={1}>{name}</Box>
-        <Icon
-          cursor="pointer"
-          as={VscKey}
-          onClick={() => {
-            const newPrimaryKeys = [
-              ...primaryKeys.filter((item) => item !== "index"),
-              name,
-            ];
-            if (onPrimaryKeyChange) {
+        {onPrimaryKeyChange && (
+          <Icon
+            cursor="pointer"
+            as={VscKey}
+            onClick={() => {
+              const newPrimaryKeys = [
+                ...primaryKeys.filter((item) => item !== "index"),
+                name,
+              ];
+
               onPrimaryKeyChange(newPrimaryKeys);
-            }
-          }}
-        />
+            }}
+          />
+        )}
       </Flex>
     );
   }

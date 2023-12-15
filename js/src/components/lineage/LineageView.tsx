@@ -5,7 +5,15 @@ import {
   highlightPath,
   toReactflow,
 } from "./lineage";
-import { Box, Flex, Icon, Tooltip, Text, Spinner, useToast } from "@chakra-ui/react";
+import {
+  Box,
+  Flex,
+  Icon,
+  Tooltip,
+  Text,
+  Spinner,
+  useToast,
+} from "@chakra-ui/react";
 import axios, { AxiosError } from "axios";
 import React, { useCallback, useEffect, useState } from "react";
 import ReactFlow, {
@@ -28,7 +36,7 @@ import GraphEdge from "./GraphEdge";
 import { getIconForChangeStatus } from "./styles";
 import { FiDownloadCloud, FiRefreshCw } from "react-icons/fi";
 import { NodeView } from "./NodeView";
-import { toPng } from 'html-to-image';
+import { toPng } from "html-to-image";
 import { set } from "lodash";
 import path from "path";
 
@@ -73,13 +81,15 @@ const edgeTypes = {
   customEdge: GraphEdge,
 };
 const nodeColor = (node: Node) => {
-  return (node?.data?.changeStatus) ? getIconForChangeStatus(node?.data?.changeStatus).color : ("lightgray" as string);
+  return node?.data?.changeStatus
+    ? getIconForChangeStatus(node?.data?.changeStatus).color
+    : ("lightgray" as string);
 };
 
 const viewModeTitle = {
   all: "All",
   changed_models: "Changed Models",
-}
+};
 
 function ChangeStatusLegend() {
   const CHANGE_STATUS_MSGS: {
@@ -125,11 +135,12 @@ function _LineageView() {
   const [errorStep, setErrorStep] = useState<string>();
 
   const [selected, setSelected] = useState<string>();
-  const [viewMode, setViewMode] = useState<"changed_models" | "all">("changed_models");
+  const [viewMode, setViewMode] = useState<"changed_models" | "all">(
+    "changed_models"
+  );
 
   const { getViewport } = useReactFlow();
   const artifactsUpdatedToast = useToast();
-
 
   const queryLineage = useCallback(async () => {
     let step = "current";
@@ -154,9 +165,15 @@ function _LineageView() {
         responseBase.data,
         responseCurrent.data
       );
-      const lineageGraph = (viewMode === 'changed_models') ? defaultLineageGraphs.changed : defaultLineageGraphs.all;
+      const lineageGraph =
+        viewMode === "changed_models"
+          ? defaultLineageGraphs.changed
+          : defaultLineageGraphs.all;
       const modifiedSet = defaultLineageGraphs.modifiedSet;
-      const [nodes, edges] = toReactflow(lineageGraph, defaultLineageGraphs.modifiedSet);
+      const [nodes, edges] = toReactflow(
+        lineageGraph,
+        defaultLineageGraphs.modifiedSet
+      );
       layout(nodes, edges);
       setLineageGraph(lineageGraph);
       setModifiedSet(modifiedSet);
@@ -187,29 +204,29 @@ function _LineageView() {
   }, [queryLineage]);
 
   useEffect(() => {
-    function httpUrlToWebSocketUrl(url: string) : string {
+    function httpUrlToWebSocketUrl(url: string): string {
       return url.replace(/(http)(s)?\:\/\//, "ws$2://");
     }
     const ws = new WebSocket(`${httpUrlToWebSocketUrl(PUBLIC_API_URL)}/api/ws`);
     setWebSocket(ws);
     ws.onopen = () => {
-      ws.send('ping'); // server will respond with 'pong'
+      ws.send("ping"); // server will respond with 'pong'
     };
     ws.onmessage = (event) => {
-      if (event.data === 'pong') {
+      if (event.data === "pong") {
         return;
       }
       try {
         const data = JSON.parse(event.data);
-        if (data.command === 'refresh') {
+        if (data.command === "refresh") {
           const { eventType, srcPath } = data.event;
-          const [targetName, fileName] = srcPath.split('/').slice(-2);
+          const [targetName, fileName] = srcPath.split("/").slice(-2);
           const name = path.parse(fileName).name;
           artifactsUpdatedToast({
             description: `Detected ${targetName} ${name} ${eventType}`,
-            status: 'info',
-            variant: 'left-accent',
-            position: 'bottom-right',
+            status: "info",
+            variant: "left-accent",
+            position: "bottom-right",
             duration: 5000,
             isClosable: true,
           });
@@ -224,7 +241,7 @@ function _LineageView() {
         ws.close();
       }
     };
-  }, [artifactsUpdatedToast, queryLineage])
+  }, [artifactsUpdatedToast, queryLineage]);
 
   const onNodeMouseEnter = (event: React.MouseEvent, node: Node) => {
     if (lineageGraph && modifiedSet !== undefined) {
@@ -261,19 +278,23 @@ function _LineageView() {
 
   if (loading) {
     return (
-      <Flex width="100%" height="calc(100vh - 42px)" alignItems="center" justifyContent="center">
-        <Spinner size='xl' />
+      <Flex
+        width="100%"
+        height="100%"
+        alignItems="center"
+        justifyContent="center"
+      >
+        <Spinner size="xl" />
       </Flex>
-      );
+    );
   }
 
   const onDownloadImage = () => {
     // const { x, y, zoom } = getViewport();
-    const reactFlowViewport = document.querySelector('.react-flow__viewport');
+    const reactFlowViewport = document.querySelector(".react-flow__viewport");
     if (reactFlowViewport?.parentElement) {
-      toPng(
-        reactFlowViewport?.parentElement, {
-        backgroundColor: '#ffffff00',
+      toPng(reactFlowViewport?.parentElement, {
+        backgroundColor: "#ffffff00",
         width: reactFlowViewport?.parentElement.clientWidth,
         height: reactFlowViewport?.parentElement.clientHeight,
         style: {
@@ -282,25 +303,22 @@ function _LineageView() {
           // transform: `translate(${x}px, ${y}px) scale(${zoom})`,
         },
       }).then((dataUrl) => {
-        const a = document.createElement('a');
-        a.setAttribute('download', 'recce-lineage.png');
+        const a = document.createElement("a");
+        a.setAttribute("download", "recce-lineage.png");
         // a.setAttribute('filename', 'recce-lineage.png');
-        a.setAttribute('target', '_blank')
-        a.setAttribute('href', dataUrl);
+        a.setAttribute("target", "_blank");
+        a.setAttribute("href", dataUrl);
         a.click();
       });
     }
-
   };
 
   if (error) {
     return <>Fail to load lineage data: {error}</>;
   }
 
-
-
   return (
-    <Flex width="100%" height="calc(100vh - 42px)">
+    <Flex width="100%" height="100%">
       <Box flex="1 0 0px">
         <ReactFlow
           nodeTypes={nodeTypes}
@@ -317,10 +335,13 @@ function _LineageView() {
           fitView={true}
         >
           <Background color="#ccc" />
-          <Controls showInteractive={false} position="top-right" >
-            <ControlButton title="switch mode" onClick={() => {
-              setViewMode(viewMode === "all" ? "changed_models" : "all");
-            }}>
+          <Controls showInteractive={false} position="top-right">
+            <ControlButton
+              title="switch mode"
+              onClick={() => {
+                setViewMode(viewMode === "all" ? "changed_models" : "all");
+              }}
+            >
               <Icon as={FiRefreshCw} />
             </ControlButton>
             <ControlButton title="download image" onClick={onDownloadImage}>
@@ -331,7 +352,9 @@ function _LineageView() {
             <ChangeStatusLegend />
           </Panel>
           <Panel position="top-left">
-            <Text fontSize='xl' color="grey" opacity={0.5}>{viewModeTitle[viewMode]}</Text>
+            <Text fontSize="xl" color="grey" opacity={0.5}>
+              {viewModeTitle[viewMode]}
+            </Text>
           </Panel>
           <MiniMap nodeColor={nodeColor} nodeStrokeWidth={3} />
         </ReactFlow>
@@ -342,8 +365,9 @@ function _LineageView() {
           <NodeView
             node={lineageGraph?.nodes[selected]}
             onCloseNode={() => {
-            setSelected(undefined);
-          }} />
+              setSelected(undefined);
+            }}
+          />
         </Box>
       )}
     </Flex>

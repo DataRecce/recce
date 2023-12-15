@@ -1,6 +1,5 @@
 "use client";
 
-import QueryView from "@/components/query/QueryView";
 import LineageView from "@/components/lineage/LineageView";
 import {
   Tabs,
@@ -8,21 +7,38 @@ import {
   Tab,
   TabPanels,
   TabPanel,
-  ChakraProvider, Box
+  ChakraProvider,
+  Box,
 } from "@chakra-ui/react";
 import { useParams } from "next/navigation";
 import { useEffect, useLayoutEffect, useState } from "react";
 import * as amplitude from "@amplitude/analytics-browser";
 import { QueryClientProvider } from "@tanstack/react-query";
 import { reactQueryClient } from "@/lib/api/axiosClient";
-import { useVersionNumber } from "@/lib/api/useVersion";
+import { useVersionNumber } from "@/lib/api/version";
 import { setLocationHash, getLocationHash } from "@/lib/UrlHash";
 import { RecceQueryContextProvider } from "@/lib/hooks/RecceQueryContext";
+import { CheckPage } from "@/components/check/CheckPage";
+import { QueryPage } from "@/components/query/QueryPage";
 
 function getCookie(key: string) {
   var b = document.cookie.match("(^|;)\\s*" + key + "\\s*=\\s*([^;]+)");
   return b ? b.pop() : "";
 }
+
+const TabContainer = ({
+  children,
+  pageHeight,
+}: {
+  children: React.ReactNode;
+  pageHeight: string;
+}) => {
+  return (
+    <TabPanel p={0} h={pageHeight} maxH={pageHeight} overflow="auto">
+      {children}
+    </TabPanel>
+  );
+};
 
 export default function Home() {
   const version = useVersionNumber();
@@ -36,7 +52,7 @@ export default function Home() {
       try {
         // Initialize Amplitude
         amplitude.init(process.env.AMPLITUDE_API_KEY, userId, {
-          defaultTracking: true
+          defaultTracking: true,
         });
       } catch (e) {
         console.error(e);
@@ -49,9 +65,11 @@ export default function Home() {
       setLocationHash("lineage");
     } else if (index === 1) {
       setLocationHash("query");
+    } else if (index === 2) {
+      setLocationHash("checks");
     }
     setTabIndex(index);
-  }
+  };
 
   useEffect(() => {
     const hash = getLocationHash();
@@ -59,14 +77,18 @@ export default function Home() {
 
     if (hash !== urlHash) return;
 
-    if (hash === 'query') {
-      setTabIndex(1);
-    } else if (hash === 'lineage') {
+    if (hash === "lineage") {
       setTabIndex(0);
+    } else if (hash === "query") {
+      setTabIndex(1);
+    } else if (hash === "checks") {
+      setTabIndex(2);
     } else {
       setTabIndex(0);
     }
   }, [params, urlHash]);
+
+  const pageHeight = "calc(100vh - 42px)";
 
   return (
     <ChakraProvider>
@@ -76,18 +98,22 @@ export default function Home() {
             <TabList>
               <Tab>Lineage</Tab>
               <Tab>Query</Tab>
+              <Tab>Checklist</Tab>
               <Box position="absolute" right="0" top="0" p="2" color="gray.500">
                 {version}
               </Box>
             </TabList>
 
             <TabPanels>
-              <TabPanel p={0}>
+              <TabContainer pageHeight={pageHeight}>
                 <LineageView />
-              </TabPanel>
-              <TabPanel p={0}>
-                <QueryView />
-              </TabPanel>
+              </TabContainer>
+              <TabContainer pageHeight={pageHeight}>
+                <QueryPage />
+              </TabContainer>
+              <TabContainer pageHeight={pageHeight}>
+                <CheckPage />
+              </TabContainer>
             </TabPanels>
           </Tabs>
         </QueryClientProvider>
