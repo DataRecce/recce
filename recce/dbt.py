@@ -341,6 +341,11 @@ class DBTContext:
             df = pd.DataFrame([row.values() for row in table.rows], columns=table.column_names)
             return df
 
+    def execute_sql_lower_columns(self, sql_template, base=False) -> pd.DataFrame:
+        df = self.execute_sql(sql_template, base)
+        df.columns = df.columns.str.lower()
+        return df
+
     def generate_sql(self, sql_template, base, context: Dict = None):
         try:
             return generate_compiled_sql(self.get_manifest(base), self.adapter, sql_template, context)
@@ -459,7 +464,7 @@ class DBTContext:
             )
         }}}}
         """
-        return self.execute_sql(sql_template, False)
+        return self.execute_sql_lower_columns(sql_template, False)
 
     def compare_relations(self, primary_key: str, model: str):
         relation_holder = dict()
@@ -478,7 +483,7 @@ class DBTContext:
         ) }}}}
         """
         sql_template = self.generate_sql(sql_template, False, dict(base_relation=relation_holder['relation']))
-        return self.execute_sql(sql_template, False)
+        return self.execute_sql_lower_columns(sql_template, False)
 
     def columns_value_mismatched_summary(self, primary_key: str, model: str):
         df = self.compare_relations(primary_key, model)
