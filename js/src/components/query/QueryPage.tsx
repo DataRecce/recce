@@ -45,7 +45,7 @@ export const QueryPage = () => {
 
     queryClient.invalidateQueries({ queryKey: cacheKeys.checks() });
     router.push("#checks");
-  }, [queryResult?.run_id, router, primaryKeys]);
+  }, [queryResult?.run_id, router, primaryKeys, queryClient]);
 
   return (
     <Flex direction="column" height="100%">
