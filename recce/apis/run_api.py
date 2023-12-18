@@ -17,7 +17,7 @@ class CreateRunIn(BaseModel):
 
 
 class CreateRunOut(BaseModel):
-    id: UUID
+    run_id: UUID
     run_at: str
     type: str
     params: dict
@@ -25,7 +25,7 @@ class CreateRunOut(BaseModel):
 
 
 @run_router.post("/runs", status_code=201, response_model=CreateRunOut)
-async def create(run: CreateRunIn):
+async def create_run(run: CreateRunIn):
     from recce.apis.run_func import ExecutorManager
 
     try:
@@ -43,7 +43,7 @@ async def create(run: CreateRunIn):
     run_record = Run(run_type, run.params, result=result)
     runs_db.append(run_record)
 
-    return CreateRunOut(id=run_record.id,
+    return CreateRunOut(run_id=run_record.run_id,
                         run_at=run_record.run_at,
                         type=run_record.type.value,
                         params=run_record.params,
@@ -53,7 +53,7 @@ async def create(run: CreateRunIn):
 @run_router.get("/runs", status_code=200)
 async def list_run():
     runs = [{
-        'id': run.id,
+        'run_id': run.run_id,
         'run_at': run.run_at,
         'type': run.type,
         'params': run.params

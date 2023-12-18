@@ -1,5 +1,6 @@
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import {
+  Box,
   Breadcrumb,
   BreadcrumbItem,
   BreadcrumbLink,
@@ -62,13 +63,14 @@ export function CheckBreadcrumb({ name, setName }: CheckBreadcrumbProps) {
 
   return (
     <Breadcrumb
+      flex="0 1"
       fontSize="12pt"
       separator={<ChevronRightIcon color="gray.500" />}
     >
       <BreadcrumbItem>
         <BreadcrumbLink>Checks</BreadcrumbLink>
       </BreadcrumbItem>
-      <BreadcrumbItem>
+      <BreadcrumbItem flex="0 1">
         <BreadcrumbLink href="#" isCurrentPage>
           {isEditing ? (
             <Input
@@ -82,7 +84,14 @@ export function CheckBreadcrumb({ name, setName }: CheckBreadcrumbProps) {
               maxW="600px"
             />
           ) : (
-            <span onClick={handleClick}>{name}</span>
+            <Box
+              onClick={handleClick}
+              textOverflow="ellipsis"
+              whiteSpace="nowrap"
+              overflow="hidden"
+            >
+              {name}
+            </Box>
           )}
         </BreadcrumbLink>
       </BreadcrumbItem>

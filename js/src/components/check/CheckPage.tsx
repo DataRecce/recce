@@ -16,17 +16,18 @@ const ChecklistItem = ({
   onSelect: (check: Check) => void;
 }) => {
   const queryClient = useQueryClient();
+  const checkId = check.check_id!;
   const { mutate } = useMutation({
-    mutationKey: cacheKeys.check(check.check_id),
-    mutationFn: updateCheck,
+    mutationFn: (check: Partial<Check>) => updateCheck(checkId, check),
     onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: cacheKeys.check(checkId) });
       queryClient.invalidateQueries({ queryKey: cacheKeys.checks() });
     },
   });
 
   const handleChange: React.ChangeEventHandler = (event) => {
     const isChecked: boolean = (event.target as any).checked;
-    mutate({ check_id: check.check_id, isChecked });
+    mutate({ is_checked: isChecked });
   };
 
   return (
@@ -39,14 +40,15 @@ const ChecklistItem = ({
       onClick={() => onSelect(check)}
       gap="5px"
     >
-      <Center
-        onClick={(e) => {
-          e.stopPropagation;
-        }}
+      <Box
+        flex="1"
+        textOverflow="ellipsis"
+        whiteSpace="nowrap"
+        overflow="hidden"
       >
-        <Checkbox isChecked={check.isChecked} onChange={handleChange} />
-      </Center>
-      {check.name}
+        {check.name}
+      </Box>
+      <Checkbox isChecked={check.is_checked} onChange={handleChange}></Checkbox>
     </Flex>
   );
 };
@@ -54,7 +56,7 @@ const ChecklistItem = ({
 export const CheckPage = () => {
   const [selectedItem, setSelectedItem] = useState<Check | null>(null);
   const {
-    isFetching,
+    isLoading,
     error,
     data: checks,
   } = useQuery({
@@ -63,7 +65,7 @@ export const CheckPage = () => {
     refetchOnMount: true,
   });
 
-  if (isFetching) {
+  if (isLoading) {
     return <>Loading</>;
   }
 
@@ -81,7 +83,12 @@ export const CheckPage = () => {
 
   return (
     <Flex height="100%">
-      <Box flex="0 0 400px" borderRight="lightgray solid 1px" height="100%">
+      <Box
+        flex="0 0 400px"
+        borderRight="lightgray solid 1px"
+        height="100%"
+        style={{ contain: "size" }}
+      >
         <VStack spacing={0}>
           {checks.map((check) => (
             <ChecklistItem

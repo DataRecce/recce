@@ -1,7 +1,7 @@
-import { useQuery } from "@tanstack/react-query";
-import { QueryDiffParams, QueryDiffResult, runQueryDiff } from "./adhocQuery";
+import { QueryDiffParams, QueryDiffResult } from "./adhocQuery";
 import _ from "lodash";
 import { getCheck } from "./checks";
+import { axiosClient } from "./axiosClient";
 
 export type RunType = "query_diff";
 export type RunParams = object;
@@ -14,34 +14,22 @@ export interface Run {
   result: QueryDiffResult;
 }
 
-const runs: Run[] = [];
-
 interface SubmitRunInput {
   type: RunType;
   params?: RunParams;
 }
 
-export async function getRun(runId: string) {
-  return _.find(runs, (run) => run.run_id === runId);
-}
-
 export async function submitRun(input: SubmitRunInput) {
   const type = input.type;
-  const run_id = Math.random()
-    .toString(36)
-    .substring(2, 16 + 2);
+  const params = input.params;
 
   if (type === "query_diff") {
-    const result = await runQueryDiff(input.params as QueryDiffParams);
+    const response = await axiosClient.post("/api/runs", {
+      type: "query_diff",
+      params,
+    });
 
-    const run: Run = {
-      run_id,
-      type,
-      params: input.params,
-      result,
-    };
-
-    runs.push(run);
+    const run: Run = response.data;
 
     return run;
   } else {
@@ -49,9 +37,9 @@ export async function submitRun(input: SubmitRunInput) {
   }
 }
 
-export async function submitQueryDiff(params: QueryDiffParams) {
+export async function submitQueryDiff(params: QueryDiffParams): Promise<Run> {
   const type = "query_diff";
-  return submitRun({ type, params });
+  return await submitRun({ type, params });
 }
 
 export async function submitRunFromCheck(checkId: string): Promise<Run> {

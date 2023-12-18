@@ -6,7 +6,7 @@ import { submitQueryDiff } from "@/lib/api/runs";
 import { createCheckByRun, updateCheck } from "@/lib/api/checks";
 import { useRouter } from "next/navigation";
 import { QueryDiffDataGrid } from "./QueryDiffDataGrid";
-import { useMutation } from "@tanstack/react-query";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { cacheKeys } from "@/lib/api/cacheKeys";
 
 export const QueryPage = () => {
@@ -16,9 +16,12 @@ export const QueryPage = () => {
   const router = useRouter();
   const [primaryKeys, setPrimaryKeys] = useState<string[]>([]);
 
+  const queryClient = useQueryClient();
+
   const {
     data: queryResult,
     mutate: runQuery,
+    error: error,
     isPending,
   } = useMutation({
     mutationFn: () => submitQueryDiff({ sql_template: sqlQuery }),
@@ -34,11 +37,13 @@ export const QueryPage = () => {
     }
 
     const check = await createCheckByRun(queryResult.run_id);
-    await updateCheck({
-      check_id: check.check_id,
+    await updateCheck(check.check_id, {
       params: { ...check.params, primary_keys: primaryKeys },
     });
-    await setSubmittedQuery(undefined);
+
+    setSubmittedQuery(undefined);
+
+    queryClient.invalidateQueries({ queryKey: cacheKeys.checks() });
     router.push("#checks");
   }, [queryResult?.run_id, router, primaryKeys]);
 
@@ -75,6 +80,7 @@ export const QueryPage = () => {
         <QueryDiffDataGrid
           isFetching={isPending}
           result={queryResult?.result}
+          error={error}
           primaryKeys={primaryKeys}
           setPrimaryKeys={setPrimaryKeys}
         />

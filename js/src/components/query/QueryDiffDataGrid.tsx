@@ -9,14 +9,15 @@ interface QueryDiffDataGridProps {
   style?: CSSProperties;
   isFetching: boolean;
   result?: QueryDiffResult;
+  error?: Error | null; // error from submit
   primaryKeys: string[];
   setPrimaryKeys?: (primaryKeys: string[]) => void;
 }
 
 export const QueryDiffDataGrid = ({
-  style,
   isFetching,
   result,
+  error,
   primaryKeys,
   setPrimaryKeys,
 }: QueryDiffDataGridProps) => {
@@ -44,12 +45,12 @@ export const QueryDiffDataGrid = ({
     );
   }
 
-  if (baseError && currentError) {
+  if (error || (baseError && currentError)) {
     // return <Box p="16px">Error: {getErrorMessage(currentError)}</Box>;
     return (
       <Alert status="error">
         <AlertIcon />
-        Error: {currentError}
+        Error: {error?.message || currentError}
       </Alert>
     );
   }
