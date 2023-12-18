@@ -423,6 +423,29 @@ class DBTContext:
 
         return dict(parent_map=parent_map, nodes=nodes)
 
+    def get_row_count(self, model_name):
+        base_row_count = None
+        curr_row_count = None
+
+        try:
+            base = self.execute_sql('select count(*) as row_count from {{ ref("' + model_name + '") }}',
+                                    base=True)
+        except Exception as e:
+            base = None
+
+        try:
+            curr = self.execute_sql('select count(*) as row_count from {{ ref("' + model_name + '") }}',
+                                    base=False)
+        except Exception as e:
+            curr = None
+
+        if base is not None:
+            base_row_count = int(base['row_count'].iloc[0])
+        if curr is not None:
+            curr_row_count = int(curr['row_count'].iloc[0])
+
+        return dict(base=base_row_count, curr=curr_row_count)
+
     def start_monitor_artifacts(self, callback: Callable = None):
         event_handler = ArtifactsEventHandler(self.artifacts_files, callback=callback)
         self.artifacts_observer.schedule(event_handler, self.target_path, recursive=False)

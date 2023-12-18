@@ -125,6 +125,14 @@ async def get_lineage(base: Optional[bool] = False):
         raise HTTPException(status_code=400, detail=str(e))
 
 
+@app.get("/api/models/{model_name}/row_count")
+async def get_row_count(model_name: str):
+    try:
+        return dbt_context.get_row_count(model_name)
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+
 @app.get("/api/version")
 async def version():
     try:
