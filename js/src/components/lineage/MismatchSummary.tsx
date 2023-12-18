@@ -33,7 +33,7 @@ interface MismatchSummary {
 
 function extractColumnNames(node: LineageGraphNode) {
   function getNames(nodeData: NodeData) {
-    return nodeData.columns ? Object.values(nodeData.columns).map(column => column.name) : [];
+    return nodeData && nodeData.columns ? Object.values(nodeData.columns).map(column => column.name) : [];
   }
 
   const baseColumns = getNames(node.data.base!!);

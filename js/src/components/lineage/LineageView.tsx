@@ -13,6 +13,13 @@ import {
   Text,
   Spinner,
   useToast,
+  Modal,
+  useDisclosure,
+  ModalOverlay,
+  ModalContent,
+  ModalHeader,
+  ModalCloseButton,
+  ModalBody,
 } from "@chakra-ui/react";
 import axios, { AxiosError } from "axios";
 import React, { useCallback, useEffect, useState } from "react";
@@ -34,11 +41,12 @@ import "reactflow/dist/style.css";
 import { GraphNode } from "./GraphNode";
 import GraphEdge from "./GraphEdge";
 import { getIconForChangeStatus } from "./styles";
-import { FiDownloadCloud, FiRefreshCw } from "react-icons/fi";
+import { FiDownloadCloud, FiRefreshCw, FiList } from "react-icons/fi";
 import { NodeView } from "./NodeView";
 import { toPng } from "html-to-image";
-import { set } from "lodash";
 import path from "path";
+import { useLineageGraphsContext } from "@/lib/hooks/LineageGraphContext";
+import SummaryView from "../summary/SummaryView";
 
 const layout = (nodes: Node[], edges: Edge[], direction = "LR") => {
   const dagreGraph = new dagre.graphlib.Graph();
@@ -129,6 +137,9 @@ function _LineageView() {
   const [edges, setEdges, onEdgesChange] = useEdgesState([]);
   const [lineageGraph, setLineageGraph] = useState<LineageGraph>();
   const [modifiedSet, setModifiedSet] = useState<string[]>();
+  const { setLineageGraphSets } = useLineageGraphsContext();
+  const { isOpen, onOpen, onClose } = useDisclosure();
+
 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string>();
@@ -165,6 +176,8 @@ function _LineageView() {
         responseBase.data,
         responseCurrent.data
       );
+      setLineageGraphSets(defaultLineageGraphs);
+
       const lineageGraph =
         viewMode === "changed_models"
           ? defaultLineageGraphs.changed
@@ -197,7 +210,7 @@ function _LineageView() {
     } finally {
       setLoading(false);
     }
-  }, [setNodes, setEdges, viewMode]);
+  }, [setNodes, setEdges, viewMode, setLineageGraphSets]);
 
   useEffect(() => {
     queryLineage();
@@ -347,6 +360,9 @@ function _LineageView() {
             <ControlButton title="download image" onClick={onDownloadImage}>
               <Icon as={FiDownloadCloud} />
             </ControlButton>
+            <ControlButton title="summary" onClick={onOpen}>
+              <Icon as={FiList} />
+            </ControlButton>
           </Controls>
           <Panel position="bottom-left">
             <ChangeStatusLegend />
@@ -359,7 +375,15 @@ function _LineageView() {
           <MiniMap nodeColor={nodeColor} nodeStrokeWidth={3} />
         </ReactFlow>
       </Box>
-
+      <Modal isOpen={isOpen} onClose={onClose} size="6xl">
+        <ModalOverlay />
+        <ModalContent overflowY="auto" height="80%">
+          <ModalCloseButton />
+          <ModalBody>
+            <SummaryView />
+          </ModalBody>
+        </ModalContent>
+      </Modal>
       {selected && lineageGraph?.nodes[selected] && (
         <Box flex="0 0 500px" borderLeft="solid 1px lightgray" height="100%">
           <NodeView
