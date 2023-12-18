@@ -10,6 +10,7 @@ from pandas import DataFrame
 
 class RunType(Enum):
     QUERY_DIFF = 'query_diff'
+    VALUE_DIFF = 'value_diff'
 
 
 class DataFrameDiff:
