@@ -37,8 +37,8 @@ import { getIconForChangeStatus } from "./styles";
 import { FiDownloadCloud, FiRefreshCw } from "react-icons/fi";
 import { NodeView } from "./NodeView";
 import { toPng } from "html-to-image";
-import { set } from "lodash";
 import path from "path";
+import { useLineageGraphsContext } from "@/lib/hooks/LineageGraphContext";
 
 const layout = (nodes: Node[], edges: Edge[], direction = "LR") => {
   const dagreGraph = new dagre.graphlib.Graph();
@@ -129,6 +129,8 @@ function _LineageView() {
   const [edges, setEdges, onEdgesChange] = useEdgesState([]);
   const [lineageGraph, setLineageGraph] = useState<LineageGraph>();
   const [modifiedSet, setModifiedSet] = useState<string[]>();
+  const { setLineageGraphSets } = useLineageGraphsContext();
+
 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string>();
@@ -165,6 +167,8 @@ function _LineageView() {
         responseBase.data,
         responseCurrent.data
       );
+      setLineageGraphSets(defaultLineageGraphs);
+
       const lineageGraph =
         viewMode === "changed_models"
           ? defaultLineageGraphs.changed
@@ -197,7 +201,7 @@ function _LineageView() {
     } finally {
       setLoading(false);
     }
-  }, [setNodes, setEdges, viewMode]);
+  }, [setNodes, setEdges, viewMode, setLineageGraphSets]);
 
   useEffect(() => {
     queryLineage();
