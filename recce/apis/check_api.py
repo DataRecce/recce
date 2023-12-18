@@ -183,3 +183,23 @@ async def update_check(check_id: UUID, patch: PatchCheckIn):
                     params=found.params,
                     is_checked=found.is_checked,
                     ).dict()
+
+
+class DeleteCheckOut(BaseModel):
+    check_id: UUID
+
+
+@check_router.delete("/checks/{check_id}", status_code=200, response_model=DeleteCheckOut)
+async def delete(check_id: UUID):
+    found = None
+    for check in checks_db:
+        if check.check_id == check_id:
+            found = check
+            break
+
+    if found is None:
+        raise HTTPException(status_code=404, detail='Not Found')
+
+    checks_db.remove(found)
+
+    return DeleteCheckOut(check_id=check_id).dict()
