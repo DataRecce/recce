@@ -212,7 +212,7 @@ class DBTContext:
         renderer = PackageRenderer({})
         packages_lock_dict = {'packages': [{'package': 'dbt-labs/audit_helper', 'version': '0.9.0'}]}
         packages_lock_config = package_config_from_data(
-            renderer.render_data(packages_lock_dict), packages_lock_dict
+            renderer.render_data(packages_lock_dict)
         ).packages
 
         lock_defined_deps = resolve_packages(packages_lock_config, project, {})
