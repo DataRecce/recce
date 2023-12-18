@@ -95,7 +95,7 @@ export function NodeView({ node, onCloseNode }: NodeViewProps) {
           </TabPanels>
         </Tabs>
       )}
-      {node.resourceType === "model" && (
+      {node.resourceType === "model" && node.changeStatus === "modified" && (
         <HStack p="16px">
           <Spacer />
           <MismatchSummaryModal node={node} />
