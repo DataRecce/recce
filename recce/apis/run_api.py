@@ -40,7 +40,7 @@ async def create_run(run: CreateRunIn):
 
     result = executor.execute()
 
-    run_record = Run(run_type, run.params, result=result)
+    run_record = Run(type=run_type, params=run.params, result=result)
     runs_db.append(run_record)
 
     return CreateRunOut(run_id=run_record.run_id,

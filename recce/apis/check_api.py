@@ -14,7 +14,7 @@ check_router = APIRouter(tags=['check'])
 class CreateCheckIn(BaseModel):
     name: Optional[str] = f"Check-{datetime.utcnow().isoformat()}"
     description: Optional[str] = ''
-    run_id: str
+    run_id: Optional[str] = None
 
 
 class CreateCheckOut(BaseModel):
@@ -29,7 +29,7 @@ class CreateCheckOut(BaseModel):
 def create_check_from_run(name, description, run_id):
     for run in runs_db:
         if run_id == str(run.run_id):
-            check = Check(name, description, run.type, run.params)
+            check = Check(name=name, description=description, type=run.type, params=run.params)
             run.check_id = check.check_id
             return check
     return None
@@ -77,7 +77,7 @@ async def run_check(check_id: UUID):
                 raise HTTPException(status_code=400, detail=f"Run type '{check.type.value}' not supported")
 
             result = executor.execute()
-            run_record = Run(check.type, check.params, check_id=check.check_id, result=result)
+            run_record = Run(type=check.type, params=check.params, check_id=check.check_id, result=result)
             runs_db.append(run_record)
 
     if not found:
