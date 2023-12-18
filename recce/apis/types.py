@@ -1,4 +1,5 @@
 import uuid
+from dataclasses import dataclass, field
 from datetime import datetime
 from enum import Enum
 from typing import Optional, Union
@@ -23,20 +24,21 @@ class RunResult:
         self.data: Union[DataFrame, DataFrameDiff]
 
 
+@dataclass
 class Run:
-    def __init__(self, run_type: RunType, params, check_id: Optional[UUID] = None, result: Optional[dict] = None):
-        self.id: UUID = uuid.uuid4()
-        self.run_at: str = datetime.utcnow().isoformat()
-        self.check_id: Optional[UUID] = check_id
-        self.type: RunType = run_type
-        self.params = params
-        self.result = result
+    type: RunType
+    params: Optional[dict] = None
+    check_id: Optional[UUID] = None
+    result: Optional[dict] = None
+    run_id: UUID = field(default_factory=uuid.uuid4)
+    run_at: str = field(default_factory=lambda: datetime.utcnow().isoformat())
 
 
+@dataclass
 class Check:
-    def __init__(self, name, description, run_type, params):
-        self.id: UUID = uuid.uuid4()
-        self.name: str = name
-        self.description: str = description
-        self.type: RunType = run_type
-        self.params = params
+    name: str
+    description: str
+    type: RunType
+    params: Optional[dict] = None
+    check_id: UUID = field(default_factory=uuid.uuid4)
+    is_checked: bool = False

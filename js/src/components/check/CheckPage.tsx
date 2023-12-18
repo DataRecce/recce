@@ -1,10 +1,11 @@
 import "react-data-grid/lib/styles.css";
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { Check, listChecks, updateCheck } from "@/lib/api/checks";
 import { Box, Flex, VStack, Center, Checkbox } from "@chakra-ui/react";
 import { CheckDetail } from "./CheckDetail";
 import { cacheKeys } from "@/lib/api/cacheKeys";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import _ from "lodash";
 
 const ChecklistItem = ({
   check,
@@ -13,20 +14,21 @@ const ChecklistItem = ({
 }: {
   check: Check;
   selected: boolean;
-  onSelect: (check: Check) => void;
+  onSelect: (checkId: string) => void;
 }) => {
   const queryClient = useQueryClient();
+  const checkId = check.check_id!;
   const { mutate } = useMutation({
-    mutationKey: cacheKeys.check(check.check_id),
-    mutationFn: updateCheck,
+    mutationFn: (check: Partial<Check>) => updateCheck(checkId, check),
     onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: cacheKeys.check(checkId) });
       queryClient.invalidateQueries({ queryKey: cacheKeys.checks() });
     },
   });
 
   const handleChange: React.ChangeEventHandler = (event) => {
     const isChecked: boolean = (event.target as any).checked;
-    mutate({ check_id: check.check_id, isChecked });
+    mutate({ is_checked: isChecked });
   };
 
   return (
@@ -36,25 +38,26 @@ const ChecklistItem = ({
       cursor="pointer"
       _hover={{ bg: "gray.200" }}
       bg={selected ? "gray.100" : "inherit"}
-      onClick={() => onSelect(check)}
+      onClick={() => onSelect(check.check_id)}
       gap="5px"
     >
-      <Center
-        onClick={(e) => {
-          e.stopPropagation;
-        }}
+      <Box
+        flex="1"
+        textOverflow="ellipsis"
+        whiteSpace="nowrap"
+        overflow="hidden"
       >
-        <Checkbox isChecked={check.isChecked} onChange={handleChange} />
-      </Center>
-      {check.name}
+        {check.name}
+      </Box>
+      <Checkbox isChecked={check.is_checked} onChange={handleChange}></Checkbox>
     </Flex>
   );
 };
 
 export const CheckPage = () => {
-  const [selectedItem, setSelectedItem] = useState<Check | null>(null);
+  const [selectedItem, setSelectedItem] = useState<string | null>(null);
   const {
-    isFetching,
+    isLoading,
     error,
     data: checks,
   } = useQuery({
@@ -63,7 +66,18 @@ export const CheckPage = () => {
     refetchOnMount: true,
   });
 
-  if (isFetching) {
+  useEffect(() => {
+    if (!checks) {
+      return;
+    }
+
+    const found = _.find(checks, (check) => check.check_id === selectedItem);
+    if (!found) {
+      setSelectedItem(checks.length > 0 ? checks[0].check_id : null);
+    }
+  }, [selectedItem, setSelectedItem, checks]);
+
+  if (isLoading) {
     return <>Loading</>;
   }
 
@@ -75,26 +89,31 @@ export const CheckPage = () => {
     return <Center h="100%">No checks</Center>;
   }
 
-  const handleSelectItem = (check: Check) => {
-    setSelectedItem(check);
+  const handleSelectItem = (checkId: string) => {
+    setSelectedItem(checkId);
   };
 
   return (
     <Flex height="100%">
-      <Box flex="0 0 400px" borderRight="lightgray solid 1px" height="100%">
+      <Box
+        flex="0 0 400px"
+        borderRight="lightgray solid 1px"
+        height="100%"
+        style={{ contain: "size" }}
+      >
         <VStack spacing={0}>
           {checks.map((check) => (
             <ChecklistItem
               key={check.check_id}
               check={check}
-              selected={check === selectedItem}
+              selected={check.check_id === selectedItem}
               onSelect={handleSelectItem}
             />
           ))}
         </VStack>
       </Box>
       <Box flex="1" height="100%" width="calc(100% - 400px)">
-        {selectedItem && <CheckDetail checkId={selectedItem.check_id} />}
+        {selectedItem && <CheckDetail checkId={selectedItem} />}
       </Box>
     </Flex>
   );

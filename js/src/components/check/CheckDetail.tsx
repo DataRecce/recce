@@ -30,7 +30,7 @@ import { CheckBreadcrumb } from "./CheckBreadcrumb";
 import { VscKebabVertical } from "react-icons/vsc";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { cacheKeys } from "@/lib/api/cacheKeys";
-import { getCheck, updateCheck } from "@/lib/api/checks";
+import { Check, deleteCheck, getCheck, updateCheck } from "@/lib/api/checks";
 import { QueryDiffResult } from "@/lib/api/adhocQuery";
 
 export const CheckDetail = ({ checkId }: CheckDetailProps) => {
@@ -45,8 +45,15 @@ export const CheckDetail = ({ checkId }: CheckDetailProps) => {
   });
 
   const { mutate } = useMutation({
-    mutationKey: cacheKeys.check(checkId),
-    mutationFn: updateCheck,
+    mutationFn: (check: Partial<Check>) => updateCheck(checkId, check),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: cacheKeys.check(checkId) });
+      queryClient.invalidateQueries({ queryKey: cacheKeys.checks() });
+    },
+  });
+
+  const { mutate: handleDelete } = useMutation({
+    mutationFn: () => deleteCheck(checkId),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: cacheKeys.checks() });
     },
@@ -62,7 +69,7 @@ export const CheckDetail = ({ checkId }: CheckDetailProps) => {
 
   const handleCheck: React.ChangeEventHandler = (event) => {
     const isChecked: boolean = (event.target as any).checked;
-    mutate({ check_id: check?.check_id, isChecked });
+    mutate({ is_checked: isChecked });
   };
 
   return (
@@ -71,7 +78,7 @@ export const CheckDetail = ({ checkId }: CheckDetailProps) => {
         <CheckBreadcrumb
           name={check?.name || ""}
           setName={(name) => {
-            mutate({ check_id: check?.check_id, name });
+            mutate({ name });
           }}
         />
         <Menu>
@@ -81,11 +88,13 @@ export const CheckDetail = ({ checkId }: CheckDetailProps) => {
             variant="ghost"
           />
           <MenuList>
-            <MenuItem icon={<DeleteIcon />}>Delete</MenuItem>
+            <MenuItem icon={<DeleteIcon />} onClick={() => handleDelete()}>
+              Delete
+            </MenuItem>
           </MenuList>
         </Menu>
         <Spacer />
-        <Checkbox isChecked={check?.isChecked} onChange={handleCheck}>
+        <Checkbox isChecked={check?.is_checked} onChange={handleCheck}>
           Check
         </Checkbox>
       </Flex>

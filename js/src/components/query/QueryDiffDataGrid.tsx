@@ -9,14 +9,15 @@ interface QueryDiffDataGridProps {
   style?: CSSProperties;
   isFetching: boolean;
   result?: QueryDiffResult;
+  error?: Error | null; // error from submit
   primaryKeys: string[];
   setPrimaryKeys?: (primaryKeys: string[]) => void;
 }
 
 export const QueryDiffDataGrid = ({
-  style,
   isFetching,
   result,
+  error,
   primaryKeys,
   setPrimaryKeys,
 }: QueryDiffDataGridProps) => {
@@ -35,9 +36,6 @@ export const QueryDiffDataGrid = ({
 
   const { base_error: baseError, current_error: currentError } = result || {};
 
-  const isPartialSuccess =
-    (baseError && !currentError) || (!baseError && currentError);
-
   if (isFetching) {
     return (
       <Center p="16px" height="100%">
@@ -47,12 +45,12 @@ export const QueryDiffDataGrid = ({
     );
   }
 
-  if (baseError && currentError) {
+  if (error || (baseError && currentError)) {
     // return <Box p="16px">Error: {getErrorMessage(currentError)}</Box>;
     return (
       <Alert status="error">
         <AlertIcon />
-        Error: {currentError}
+        Error: {error?.message || currentError}
       </Alert>
     );
   }
@@ -70,23 +68,4 @@ export const QueryDiffDataGrid = ({
       className="rdg-light"
     />
   );
-
-  // return (
-  //   <Flex direction="column" height="100%">
-  //     {isPartialSuccess && (
-  //       <Alert status="error">
-  //         <AlertIcon />
-  //         {baseError && `Error[Base]: ${baseError}`}
-  //         {currentError && `Error[Current]: ${currentError}`}
-  //       </Alert>
-  //     )}
-  //     <DataGrid
-  //       style={style}
-  //       columns={gridData.columns}
-  //       rows={gridData.rows}
-  //       defaultColumnOptions={{ resizable: true, maxWidth: 800, width: 100 }}
-  //       className="rdg-light"
-  //     />
-  //   </Flex>
-  // );
 };

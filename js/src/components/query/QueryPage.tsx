@@ -6,7 +6,7 @@ import { submitQueryDiff } from "@/lib/api/runs";
 import { createCheckByRun, updateCheck } from "@/lib/api/checks";
 import { useRouter } from "next/navigation";
 import { QueryDiffDataGrid } from "./QueryDiffDataGrid";
-import { useMutation } from "@tanstack/react-query";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { cacheKeys } from "@/lib/api/cacheKeys";
 
 export const QueryPage = () => {
@@ -16,16 +16,18 @@ export const QueryPage = () => {
   const router = useRouter();
   const [primaryKeys, setPrimaryKeys] = useState<string[]>([]);
 
+  const queryClient = useQueryClient();
+
   const {
     data: queryResult,
     mutate: runQuery,
+    error: error,
     isPending,
   } = useMutation({
-    mutationKey: cacheKeys.adhocQuery(),
-    mutationFn: submitQueryDiff,
-    onSuccess: (run, variables) => {
+    mutationFn: () => submitQueryDiff({ sql_template: sqlQuery }),
+    onSuccess: (run) => {
       setPrimaryKeys([]);
-      setSubmittedQuery(variables.sql_template);
+      setSubmittedQuery(sqlQuery);
     },
   });
 
@@ -35,13 +37,15 @@ export const QueryPage = () => {
     }
 
     const check = await createCheckByRun(queryResult.run_id);
-    await updateCheck({
-      check_id: check.check_id,
+    await updateCheck(check.check_id, {
       params: { ...check.params, primary_keys: primaryKeys },
     });
-    await setSubmittedQuery(undefined);
+
+    setSubmittedQuery(undefined);
+
+    queryClient.invalidateQueries({ queryKey: cacheKeys.checks() });
     router.push("#checks");
-  }, [queryResult?.run_id, router, primaryKeys]);
+  }, [queryResult?.run_id, router, primaryKeys, queryClient]);
 
   return (
     <Flex direction="column" height="100%">
@@ -58,7 +62,7 @@ export const QueryPage = () => {
         </Button>
         <Button
           colorScheme="blue"
-          onClick={() => runQuery({ sql_template: sqlQuery })}
+          onClick={() => runQuery()}
           isDisabled={isPending}
           size="sm"
         >
@@ -68,14 +72,15 @@ export const QueryPage = () => {
       <Box flex="1" border={"1px solid #CBD5E0"} height="200px" width="100%">
         <SqlEditor
           value={sqlQuery}
-          onChange={(value) => setSqlQuery(value)}
-          onRun={() => runQuery({ sql_template: sqlQuery })}
+          onChange={setSqlQuery}
+          onRun={() => runQuery()}
         />
       </Box>
       <Box backgroundColor="gray.100" height="50vh">
         <QueryDiffDataGrid
           isFetching={isPending}
           result={queryResult?.result}
+          error={error}
           primaryKeys={primaryKeys}
           setPrimaryKeys={setPrimaryKeys}
         />
