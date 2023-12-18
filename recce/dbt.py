@@ -428,21 +428,21 @@ class DBTContext:
         curr_row_count = None
 
         try:
-            base = self.execute_sql('select count(*) as row_count from {{ ref("' + model_name + '") }}',
+            base = self.execute_sql('select count(*) as ROW_COUNT from {{ ref("' + model_name + '") }}',
                                     base=True)
         except Exception as e:
             base = None
 
         try:
-            curr = self.execute_sql('select count(*) as row_count from {{ ref("' + model_name + '") }}',
+            curr = self.execute_sql('select count(*) as ROW_COUNT from {{ ref("' + model_name + '") }}',
                                     base=False)
         except Exception as e:
             curr = None
 
         if base is not None:
-            base_row_count = int(base['row_count'].iloc[0])
+            base_row_count = int(base['ROW_COUNT'].iloc[0])
         if curr is not None:
-            curr_row_count = int(curr['row_count'].iloc[0])
+            curr_row_count = int(curr['ROW_COUNT'].iloc[0])
 
         return dict(base=base_row_count, curr=curr_row_count)
 
