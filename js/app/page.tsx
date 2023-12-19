@@ -77,8 +77,8 @@ export default function Home() {
 
   return (
     <ChakraProvider>
-      <RecceContextProvider>
-        <QueryClientProvider client={reactQueryClient}>
+      <QueryClientProvider client={reactQueryClient}>
+        <RecceContextProvider>
           <Router hook={useHashLocation}>
             <NavBar />
 
@@ -96,14 +96,17 @@ export default function Home() {
                 <Route path="/summary">
                   <SummaryView />
                 </Route>
+                <Route path="/ssr">
+                  <>Loading</>
+                </Route>
                 <Route>
                   <Redirect to="/lineage" />
                 </Route>
               </Switch>
             </Box>
           </Router>
-        </QueryClientProvider>
-      </RecceContextProvider>
+        </RecceContextProvider>
+      </QueryClientProvider>
     </ChakraProvider>
   );
 }
