@@ -67,9 +67,9 @@ function listChangedNodes(lineageGraphSets: DefaultLineageGraphSets) {
     const node = allNodes[nodeId];
     const columnDiffStatus = mergeKeysWithStatus( Object.keys(node.data.base?.columns || {}),  Object.keys(node.data.current?.columns || {}));
     const isSchemaChanged = !Object.values(columnDiffStatus).every(el => el === undefined);
-
-    // We only want to show nodes that have schema changes
-    if (isSchemaChanged)
+    // We only want to show nodes that have real schema changes.
+    // It doesn't include added or deleted model.
+    if (isSchemaChanged && node.data.base && node.data.current)
       changedNodes.push(node);
   })
   return changedNodes;
