@@ -26,10 +26,12 @@ import {
   TagLeftIcon,
   TagLabel,
   Icon,
+  IconButton,
 } from "@chakra-ui/react";
 
 import { FaCode } from "react-icons/fa";
 import { FiAlignLeft, FiTrendingUp, FiTrendingDown, FiFrown } from "react-icons/fi";
+import { MdQueryStats } from "react-icons/md";
 import { LineageGraphNode } from "./lineage";
 import { SchemaView } from "../schema/SchemaView";
 import { useRecceQueryContext } from "@/lib/hooks/RecceQueryContext";
@@ -39,7 +41,7 @@ import { useLocation } from "wouter";
 import { getIconForResourceType } from "./styles";
 import { useQuery } from "@tanstack/react-query";
 import { cacheKeys } from "@/lib/api/cacheKeys";
-import { fetchModelRowCount as queryModelRowCount } from "@/lib/api/models";
+import { fetchModelRowCount } from "@/lib/api/models";
 
 
 interface ModelRowCount {
@@ -51,7 +53,7 @@ interface ModelRowCountProps {
   rowCount?: ModelRowCount;
 }
 
-function ModelRowCount({ rowCount }: ModelRowCountProps ) {
+export function ModelRowCount({ rowCount }: ModelRowCountProps ) {
   if (!rowCount) {
     return (
       <HStack>
@@ -93,7 +95,7 @@ interface NodeViewProps {
 }
 
 export function NodeView({ node, onCloseNode }: NodeViewProps) {
-  const [, setLocation] = useLocation();
+  const [ ,setLocation] = useLocation();
   const { setSqlQuery } = useRecceQueryContext();
   const withColumns =
     node.resourceType === "model" ||
@@ -102,10 +104,10 @@ export function NodeView({ node, onCloseNode }: NodeViewProps) {
   const { isOpen, onOpen, onClose } = useDisclosure();
   const { MismatchSummaryModal } = useMismatchSummaryModal();
   const { icon: resourceTypeIcon } = getIconForResourceType(node.resourceType);
-  const { isLoading, data: rowCount } = useQuery({
+  const { isLoading, data: rowCount, refetch: invokeRowCountQuery , isFetched, isFetching } = useQuery({
     queryKey: cacheKeys.rowCount(node.name),
-    queryFn:  () => queryModelRowCount(node.name),
-    enabled: node.resourceType === "model",
+    queryFn:  () => fetchModelRowCount(node.name),
+    enabled: false,
   });
 
   return (
@@ -156,15 +158,27 @@ export function NodeView({ node, onCloseNode }: NodeViewProps) {
             </Tag>
           </Tooltip>
           {node.resourceType === "model" && (
-            <Tooltip hasArrow label="Number of row">
+            <Tooltip hasArrow label={isFetched || isFetching?"Number of row":"Query the number of row"}>
               <Tag>
                 <TagLeftIcon as={FiAlignLeft} />
-                <TagLabel>
-                  <SkeletonText isLoaded={!isLoading} noOfLines={1} skeletonHeight={2} minWidth={'30px'}>
-                    <ModelRowCount rowCount={rowCount} />
-                  </SkeletonText>
-                </TagLabel>
+                {isFetched || isFetching ? (
+                  <TagLabel>
+                    <SkeletonText isLoaded={!isLoading} noOfLines={1} skeletonHeight={2} minWidth={'30px'}>
+                      <ModelRowCount rowCount={rowCount} />
+                    </SkeletonText>
+                  </TagLabel>
+                ) :
+                  <IconButton
+                    aria-label="Query Row Count"
+                    icon={<MdQueryStats />}
+                    size="xs"
+                    onClick={() => {
+                      invokeRowCountQuery()
+                    }}
+                    />
+                }
               </Tag>
+
             </Tooltip>
           )}
         </HStack>
