@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from "react";
+import { BaseLocationHook } from "wouter";
 
 function getWindow(): Window | undefined {
   if (typeof window === "undefined") {
@@ -36,7 +37,7 @@ function useHash(defaultValue?: string): [string, (location: string) => void] {
 
 // This is used by wouter Router
 // <Router hook={useHashLocation}>
-export function useHashLocation() {
+export const useHashLocation: BaseLocationHook = () => {
   const [hash, setHash] = useHash("#!/ssr");
 
   // replace '#!/path/to/resource?foo=bar' with '/path/to/resource'
@@ -46,9 +47,9 @@ export function useHashLocation() {
   }
 
   return [location, setHash];
-}
+};
 
-export function useHashParams() {
+export const useHashParams = () => {
   const [hash] = useHash();
 
   if (hash.includes("?")) {
@@ -57,4 +58,4 @@ export function useHashParams() {
   } else {
     return new URLSearchParams("");
   }
-}
+};

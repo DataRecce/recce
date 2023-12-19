@@ -11,7 +11,7 @@ import { useVersionNumber } from "@/lib/api/version";
 import { CheckPage } from "@/components/check/CheckPage";
 import { QueryPage } from "@/components/query/QueryPage";
 import SummaryView from "@/components/summary/SummaryView";
-import { Route, Router, Switch, useLocation } from "wouter";
+import { Redirect, Route, Router, Switch, useLocation } from "wouter";
 
 import _ from "lodash";
 import { useHashLocation } from "@/lib/hooks/useHashLocation";
@@ -95,6 +95,9 @@ export default function Home() {
                 </Route>
                 <Route path="/summary">
                   <SummaryView />
+                </Route>
+                <Route>
+                  <Redirect to="/lineage" />
                 </Route>
               </Switch>
             </Box>
