@@ -1,10 +1,5 @@
 import { PUBLIC_API_URL } from "../../lib/const";
-import {
-  LineageGraph,
-  buildDefaultLineageGraphSets,
-  highlightPath,
-  toReactflow,
-} from "./lineage";
+import { LineageGraph, highlightPath, toReactflow } from "./lineage";
 import {
   Box,
   Flex,
@@ -12,12 +7,10 @@ import {
   Tooltip,
   Text,
   Spinner,
-  useToast,
   Modal,
   useDisclosure,
   ModalOverlay,
   ModalContent,
-  ModalHeader,
   ModalCloseButton,
   ModalBody,
 } from "@chakra-ui/react";
@@ -44,7 +37,6 @@ import { getIconForChangeStatus } from "./styles";
 import { FiDownloadCloud, FiRefreshCw, FiList } from "react-icons/fi";
 import { NodeView } from "./NodeView";
 import { toPng } from "html-to-image";
-import path from "path";
 import { useLineageGraphsContext } from "@/lib/hooks/LineageGraphContext";
 import SummaryView from "../summary/SummaryView";
 
@@ -132,18 +124,12 @@ function ChangeStatusLegend() {
 }
 
 function _LineageView() {
-  const [webSocket, setWebSocket] = useState<WebSocket>();
   const [nodes, setNodes, onNodesChange] = useNodesState([]);
   const [edges, setEdges, onEdgesChange] = useEdgesState([]);
   const [lineageGraph, setLineageGraph] = useState<LineageGraph>();
   const [modifiedSet, setModifiedSet] = useState<string[]>();
-  const { setLineageGraphSets } = useLineageGraphsContext();
+  const { lineageGraphSets, isLoading, error } = useLineageGraphsContext();
   const { isOpen, onOpen, onClose } = useDisclosure();
-
-
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string>();
-  const [errorStep, setErrorStep] = useState<string>();
 
   const [selected, setSelected] = useState<string>();
   const [viewMode, setViewMode] = useState<"changed_models" | "all">(
@@ -151,110 +137,27 @@ function _LineageView() {
   );
 
   const { getViewport } = useReactFlow();
-  const artifactsUpdatedToast = useToast();
-
-  const queryLineage = useCallback(async () => {
-    let step = "current";
-
-    try {
-      setLoading(true);
-      const responseCurrent = await axios.get(
-        `${PUBLIC_API_URL}/api/lineage?base=0`
-      );
-      if (responseCurrent.status !== 200) {
-        throw new Error("error");
-      }
-
-      step = "base";
-      const responseBase = await axios.get(
-        `${PUBLIC_API_URL}/api/lineage?base=1`
-      );
-      if (responseBase.status !== 200) {
-        throw new Error("error");
-      }
-      const defaultLineageGraphs = buildDefaultLineageGraphSets(
-        responseBase.data,
-        responseCurrent.data
-      );
-      setLineageGraphSets(defaultLineageGraphs);
-
-      const lineageGraph =
-        viewMode === "changed_models"
-          ? defaultLineageGraphs.changed
-          : defaultLineageGraphs.all;
-      const modifiedSet = defaultLineageGraphs.modifiedSet;
-      const [nodes, edges] = toReactflow(
-        lineageGraph,
-        defaultLineageGraphs.modifiedSet
-      );
-      layout(nodes, edges);
-      setLineageGraph(lineageGraph);
-      setModifiedSet(modifiedSet);
-      setNodes(nodes);
-      setEdges(edges);
-
-      setError(undefined);
-      setErrorStep(undefined);
-    } catch (err: any) {
-      if (err instanceof AxiosError) {
-        const detail = err?.response?.data?.detail;
-        if (detail) {
-          setError(detail);
-        } else {
-          setError(err?.message);
-        }
-      } else {
-        setError(err?.message);
-      }
-      setErrorStep(step);
-    } finally {
-      setLoading(false);
-    }
-  }, [setNodes, setEdges, viewMode, setLineageGraphSets]);
 
   useEffect(() => {
-    queryLineage();
-  }, [queryLineage]);
-
-  useEffect(() => {
-    function httpUrlToWebSocketUrl(url: string): string {
-      return url.replace(/(http)(s)?\:\/\//, "ws$2://");
+    if (!lineageGraphSets) {
+      return;
     }
-    const ws = new WebSocket(`${httpUrlToWebSocketUrl(PUBLIC_API_URL)}/api/ws`);
-    setWebSocket(ws);
-    ws.onopen = () => {
-      ws.send("ping"); // server will respond with 'pong'
-    };
-    ws.onmessage = (event) => {
-      if (event.data === "pong") {
-        return;
-      }
-      try {
-        const data = JSON.parse(event.data);
-        if (data.command === "refresh") {
-          const { eventType, srcPath } = data.event;
-          const [targetName, fileName] = srcPath.split("/").slice(-2);
-          const name = path.parse(fileName).name;
-          artifactsUpdatedToast({
-            description: `Detected ${targetName} ${name} ${eventType}`,
-            status: "info",
-            variant: "left-accent",
-            position: "bottom-right",
-            duration: 5000,
-            isClosable: true,
-          });
-          queryLineage();
-        }
-      } catch (err) {
-        console.error(err);
-      }
-    };
-    return () => {
-      if (ws) {
-        ws.close();
-      }
-    };
-  }, [artifactsUpdatedToast, queryLineage]);
+
+    const lineageGraph =
+      viewMode === "changed_models"
+        ? lineageGraphSets.changed
+        : lineageGraphSets.all;
+    const modifiedSet = lineageGraphSets.modifiedSet;
+    const [nodes, edges] = toReactflow(
+      lineageGraph,
+      lineageGraphSets.modifiedSet
+    );
+    layout(nodes, edges);
+    setLineageGraph(lineageGraph);
+    setModifiedSet(modifiedSet);
+    setNodes(nodes);
+    setEdges(edges);
+  }, [setNodes, setEdges, viewMode, lineageGraphSets]);
 
   const onNodeMouseEnter = (event: React.MouseEvent, node: Node) => {
     if (lineageGraph && modifiedSet !== undefined) {
@@ -289,7 +192,7 @@ function _LineageView() {
     setSelected(node.id);
   };
 
-  if (loading) {
+  if (isLoading) {
     return (
       <Flex
         width="100%"
