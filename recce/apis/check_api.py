@@ -12,8 +12,8 @@ check_router = APIRouter(tags=['check'])
 
 
 class CreateCheckIn(BaseModel):
-    name: Optional[str] = f"Check-{datetime.utcnow().isoformat()}"
-    description: Optional[str] = ''
+    name: Optional[str] = None
+    description: str = ''
     run_id: Optional[str] = None
 
 
@@ -27,6 +27,9 @@ class CreateCheckOut(BaseModel):
 
 
 def create_check_from_run(name, description, run_id):
+    if name is None:
+        name = f"Check {datetime.utcnow().isoformat()}"
+
     for run in runs_db:
         if run_id == str(run.run_id):
             check = Check(name=name, description=description, type=run.type, params=run.params)
