@@ -58,13 +58,15 @@ function extractColumnNames(node: LineageGraphNode) {
 
 async function fetchColumnValuesComparison(model: string, primaryKey: string) {
   try {
-    const response = await axiosClient.post("/api/columns_value_mismatched_summary", {
-      model: model,
-      primary_key: primaryKey,
-      // TODO support exclude_columns later
-      // exclude_columns: [...]
-    });
-    return response.data;
+    const data = {
+      type: "value_diff",
+      params: {
+        model: model,
+        primary_key: primaryKey,
+      },
+    };
+    const response = await axiosClient.post("/api/runs", data);
+    return response.data.result;
   } catch (error) {
     console.error("Error fetching column values comparison:", error);
   }
@@ -117,7 +119,7 @@ function useMismatchSummaryModal() {
         <Modal isOpen={isOpen} onClose={onClose} size="6xl">
           <ModalOverlay />
           <ModalContent overflowY="auto" height="75%">
-            <ModalHeader>Mismatched Summary</ModalHeader>
+            <ModalHeader>Value Diff Summary</ModalHeader>
             <ModalCloseButton />
             <ModalBody>
               {isLoading ? (
@@ -174,7 +176,7 @@ function useMismatchSummaryModal() {
           size="sm"
           onClick={onOpen}
         >
-          Mismatch Summary
+          Value Diff Summary
         </Button>
       </>
     )
