@@ -12,6 +12,13 @@ export interface Check {
   last_run?: Run;
 }
 
+export async function createCheck(): Promise<Check> {
+  const response = await axiosClient.post("/api/checks", {});
+  const check = response.data;
+
+  return check;
+}
+
 export async function createCheckByRun(runId: string): Promise<Check> {
   const response = await axiosClient.post("/api/checks", { run_id: runId });
   const check = response.data;

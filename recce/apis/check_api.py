@@ -6,7 +6,7 @@ from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 
 from recce.apis.db import checks_db, runs_db
-from recce.apis.types import Run, Check
+from recce.apis.types import Run, Check, RunType
 
 check_router = APIRouter(tags=['check'])
 
@@ -22,7 +22,7 @@ class CreateCheckOut(BaseModel):
     name: str
     description: str
     type: str
-    params: dict
+    params: Optional[dict] = None
     is_checked: bool = False
 
 
@@ -41,7 +41,8 @@ def create_check_from_run(name, description, run_id):
 @check_router.post("/checks", status_code=201, response_model=CreateCheckOut)
 async def create_check(check: CreateCheckIn):
     if check.run_id is None:
-        raise HTTPException(501, "Not Implemented")
+        check_record = Check(name=f"Check {datetime.utcnow().isoformat()}", description=check.description, type=RunType.SIMPLE)
+        checks_db.append(check_record)
     else:
         check_record = create_check_from_run(check.name, check.description, check.run_id)
         if not check_record:
@@ -98,7 +99,7 @@ class CheckOut(BaseModel):
     name: str
     description: str
     type: str
-    params: dict
+    params: Optional[dict] = None
     is_checked: bool = False
     last_run: Optional[CreateRunOut] = None
 

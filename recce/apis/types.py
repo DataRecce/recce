@@ -9,6 +9,7 @@ from pandas import DataFrame
 
 
 class RunType(Enum):
+    SIMPLE = 'simple'
     QUERY_DIFF = 'query_diff'
     VALUE_DIFF = 'value_diff'
 

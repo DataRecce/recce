@@ -5,6 +5,7 @@ import {
   AccordionItem,
   AccordionPanel,
   Box,
+  Button,
   Center,
   Checkbox,
   Flex,
@@ -19,7 +20,7 @@ import {
 } from "@chakra-ui/react";
 import SqlEditor from "../query/SqlEditor";
 import { QueryDiffDataGrid } from "../query/QueryDiffDataGrid";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 interface CheckDetailProps {
   checkId: string;
@@ -127,7 +128,7 @@ export const CheckDetail = ({ checkId }: CheckDetailProps) => {
 
           <AccordionPanel>
             <Box height="400px" width="100%" border="lightgray 1px solid ">
-              <SqlEditor value={(check?.params as any).sql_template} />
+              <SqlEditor value={(check?.params as any)?.sql_template || ""} />
             </Box>
           </AccordionPanel>
         </AccordionItem>
@@ -137,7 +138,7 @@ export const CheckDetail = ({ checkId }: CheckDetailProps) => {
         <QueryDiffDataGrid
           isFetching={false}
           result={check?.last_run?.result}
-          primaryKeys={(check?.params as QueryDiffResult).primary_keys || []}
+          primaryKeys={(check?.params as QueryDiffResult)?.primary_keys || []}
         />
       </Box>
     </Flex>

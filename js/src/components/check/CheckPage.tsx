@@ -1,7 +1,15 @@
 import "react-data-grid/lib/styles.css";
 import React, { useCallback, useEffect, useState } from "react";
-import { Check, listChecks, updateCheck } from "@/lib/api/checks";
-import { Box, Flex, VStack, Center, Checkbox } from "@chakra-ui/react";
+import { Check, createCheck, listChecks, updateCheck } from "@/lib/api/checks";
+import {
+  Box,
+  Flex,
+  VStack,
+  Center,
+  Checkbox,
+  Button,
+  Spacer,
+} from "@chakra-ui/react";
 import { CheckDetail } from "./CheckDetail";
 import { cacheKeys } from "@/lib/api/cacheKeys";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
@@ -58,6 +66,7 @@ const ChecklistItem = ({
 export const CheckPage = () => {
   const [, setLocation] = useLocation();
   const [, params] = useRoute("/checks/:checkId");
+  const queryClient = useQueryClient();
   const selectedItem = params?.checkId;
 
   const {
@@ -70,6 +79,17 @@ export const CheckPage = () => {
     refetchOnMount: false,
   });
 
+  const handleSelectItem = (checkId: string) => {
+    setLocation(`/checks/${checkId}`);
+  };
+
+  const addToChecklist = useCallback(async () => {
+    const check = await createCheck();
+    queryClient.invalidateQueries({ queryKey: cacheKeys.checks() });
+
+    handleSelectItem(check.check_id);
+  }, [queryClient]);
+
   if (isLoading) {
     return <>Loading</>;
   }
@@ -79,12 +99,17 @@ export const CheckPage = () => {
   }
 
   if (!checks?.length) {
-    return <Center h="100%">No checks</Center>;
+    return (
+      <Center h="100%">
+        <VStack>
+          <Box>No checks</Box>
+          <Button colorScheme="blue" onClick={addToChecklist}>
+            Create a simple check
+          </Button>
+        </VStack>
+      </Center>
+    );
   }
-
-  const handleSelectItem = (checkId: string) => {
-    setLocation(`/checks/${checkId}`);
-  };
 
   return (
     <Flex height="100%">
@@ -104,6 +129,11 @@ export const CheckPage = () => {
             />
           ))}
         </VStack>
+        <Box>
+          <Button colorScheme="blue" onClick={addToChecklist}>
+            Create a simple check
+          </Button>
+        </Box>
       </Box>
       <Box flex="1" height="100%" width="calc(100% - 400px)">
         <Switch>
