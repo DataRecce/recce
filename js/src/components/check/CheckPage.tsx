@@ -1,24 +1,12 @@
 import "react-data-grid/lib/styles.css";
-import React, { useCallback, useEffect, useState } from "react";
+import React, { useCallback, useEffect } from "react";
 import { Check, createCheck, listChecks, updateCheck } from "@/lib/api/checks";
-import {
-  Box,
-  Flex,
-  VStack,
-  Center,
-  Checkbox,
-  Button,
-  Spacer,
-  Icon,
-  Divider,
-  IconButton,
-  Tooltip,
-} from "@chakra-ui/react";
+import { Box, Button, Center, Divider, Flex, Icon, IconButton, Tooltip, VStack } from "@chakra-ui/react";
 import { CheckDetail } from "./CheckDetail";
 import { cacheKeys } from "@/lib/api/cacheKeys";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import _ from "lodash";
-import { Redirect, Route, Switch, useLocation, useRoute } from "wouter";
+import { Route, Switch, useLocation, useRoute } from "wouter";
 import { FaCheckCircle } from "react-icons/fa";
 import { TbChecklist, TbSql } from "react-icons/tb";
 import { IconType } from "react-icons";

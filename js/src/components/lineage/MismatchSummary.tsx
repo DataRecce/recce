@@ -1,7 +1,6 @@
 import React, { useEffect, useState } from "react";
 import {
-  Box,
-  Button, Divider,
+  Button,
   FormControl,
   FormLabel,
   Modal,
@@ -17,19 +16,14 @@ import {
 } from "@chakra-ui/react";
 import { LineageGraphNode, NodeData } from "./lineage";
 import { axiosClient } from "@/lib/api/axiosClient";
-import DataGrid, { ColumnOrColumnGroup } from "react-data-grid";
+import { ValueDiffPanel, ValueDiffSummary } from "@/components/check/ValueDiffView";
+import { useLocation } from "wouter";
 
 
 interface MismatchSummaryProp {
   node: LineageGraphNode;
 }
 
-interface MismatchSummary {
-  columns: ColumnOrColumnGroup<any, any>[];
-  summary: Record<string, any>;
-  model: string;
-  data: any;
-}
 
 function extractColumnNames(node: LineageGraphNode) {
   function getNames(nodeData: NodeData) {
@@ -66,23 +60,35 @@ async function fetchColumnValuesComparison(model: string, primaryKey: string) {
       },
     };
     const response = await axiosClient.post("/api/runs", data);
-    return response.data.result;
+    return response.data;
   } catch (error) {
     console.error("Error fetching column values comparison:", error);
   }
+}
+
+async function handleAddToCheck(valueDiff: ValueDiffSummary) {
+  if (!valueDiff.runId) {
+    return null;
+  }
+  const data = {
+    run_id: valueDiff.runId,
+  };
+  const response = await axiosClient.post("/api/checks", data);
+  return response.data.check_id;
 }
 
 
 function useMismatchSummaryModal() {
   const { isOpen, onOpen, onClose } = useDisclosure();
   const [isLoading, setIsLoading] = useState(false);
-  const [mismatchSummary, setMismatchSummary] = useState<MismatchSummary | null>(null);
+  const [mismatchSummary, setMismatchSummary] = useState<ValueDiffSummary | null>(null);
 
   const MismatchSummaryModal = ({ node }: MismatchSummaryProp) => {
 
     const withColumns = node.resourceType === "model" || node.resourceType === "seed" || node.resourceType === "source";
     const constNames = extractColumnNames(node);
     const [selectedPrimaryKey, setSelectedPrimaryKey] = useState("");
+    const [, setLocation] = useLocation();
 
     const handleExecute = async () => {
       if (isLoading || selectedPrimaryKey === "") {
@@ -92,10 +98,18 @@ function useMismatchSummaryModal() {
       setIsLoading(true);
       try {
         const data = await fetchColumnValuesComparison(node.name, selectedPrimaryKey);
-        const columns = data.data.schema.fields.map((field: { name: string }) => {
+        const result = data.result;
+        const columns = result.data.schema.fields.map((field: { name: string }) => {
           return { "name": field.name, "key": field.name };
         });
-        setMismatchSummary({ columns, data: data.data.data, summary: data.summary, model: node.name });
+
+        setMismatchSummary({
+          columns,
+          data: result.data.data,
+          summary: result.summary,
+          params: { model: node.name, primary_key: selectedPrimaryKey },
+          runId: data.run_id,
+        });
       } catch (error) {
         console.error("Error fetching column values comparison:", error);
       } finally {
@@ -104,7 +118,7 @@ function useMismatchSummaryModal() {
     };
 
     useEffect(() => {
-      if (mismatchSummary?.model != node.name) {
+      if (mismatchSummary?.params?.model != node.name) {
         setMismatchSummary(null);
       }
     }, [node.name]);
@@ -140,32 +154,24 @@ function useMismatchSummaryModal() {
                   </FormControl>
                 </>
               ) : (
-                <>
-                  <Box mb={1}>
-                    {mismatchSummary.summary.total} rows
-                    ({mismatchSummary.summary.added} added, {mismatchSummary.summary.removed} removed)
-                  </Box>
-                  <Divider mb={1} mt={1} />
-                  <DataGrid
-                    style={{ height: "100%", width: "100%" }}
-                    columns={mismatchSummary.columns.map(column => ({
-                      ...column,
-                      width: undefined,
-                      resizable: true,
-                      flexGrow: 1,
-                    }))}
-                    rows={mismatchSummary.data}
-                    defaultColumnOptions={{ resizable: true }}
-                    className="rdg-light"
-                  />
-                </>
+                <ValueDiffPanel valueDiffSummary={mismatchSummary} />
               )}
             </ModalBody>
             <ModalFooter>
               {mismatchSummary &&
-                <Button mr={3} colorScheme="blue" onClick={() => {
-                  setMismatchSummary(null);
-                }}>Clear</Button>}
+                <>
+                  <Button mr={3} colorScheme="blue" onClick={() => {
+                    setMismatchSummary(null);
+                  }}>Clear</Button>
+                  <Button mr={3} colorScheme="blue" onClick={async () => {
+                    const checkId = await handleAddToCheck(mismatchSummary);
+                    if (checkId) {
+                      setLocation(`/checks/${checkId}`);
+                    }
+                  }}>Add to check</Button>
+                </>
+              }
+
               <Button colorScheme="blue" onClick={handleExecute}>Execute</Button>
 
             </ModalFooter>
