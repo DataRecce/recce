@@ -28,6 +28,8 @@ from dbt.node_types import AccessType, ModelLanguage, NodeType
 from watchdog.events import FileSystemEventHandler
 from watchdog.observers import Observer
 
+from recce.util.cache import LRUCache
+
 logger = logging.getLogger('uvicorn')
 
 
@@ -197,6 +199,7 @@ class DBTContext:
     base_catalog: CatalogArtifact = None
     artifacts_observer = Observer()
     artifacts_files = []
+    row_count_cache = LRUCache(32)
 
     @classmethod
     def packages_downloader(cls, project: Project):
@@ -424,18 +427,20 @@ class DBTContext:
         return dict(parent_map=parent_map, nodes=nodes)
 
     def get_row_count(self, model_name):
+        row_count = self.row_count_cache.get(model_name)
+        if row_count is not None:
+            return row_count
+
+        # Cache miss, query the row count
         base_row_count = None
         curr_row_count = None
-
+        sql_query = 'select count(*) as ROW_COUNT from {{ ref("' + model_name + '") }}'
         try:
-            base = self.execute_sql('select count(*) as ROW_COUNT from {{ ref("' + model_name + '") }}',
-                                    base=True)
+            base = self.execute_sql(sql_query, base=True)
         except Exception as e:
             base = None
-
         try:
-            curr = self.execute_sql('select count(*) as ROW_COUNT from {{ ref("' + model_name + '") }}',
-                                    base=False)
+            curr = self.execute_sql(sql_query, base=False)
         except Exception as e:
             curr = None
 
@@ -444,7 +449,10 @@ class DBTContext:
         if curr is not None:
             curr_row_count = int(curr['ROW_COUNT'].iloc[0])
 
-        return dict(base=base_row_count, curr=curr_row_count)
+        # Cache the row_count result
+        row_count = dict(base=base_row_count, curr=curr_row_count)
+        self.row_count_cache.put(model_name, row_count)
+        return row_count
 
     def start_monitor_artifacts(self, callback: Callable = None):
         event_handler = ArtifactsEventHandler(self.artifacts_files, callback=callback)
@@ -459,6 +467,10 @@ class DBTContext:
         logger.info('Stopped monitoring artifacts')
 
     def refresh(self, refresh_file_path: str = None):
+        # clear the cache
+        self.row_count_cache.clear()
+
+        # Refresh the artifacts
         if refresh_file_path is None:
             return self.load_artifacts()
 
