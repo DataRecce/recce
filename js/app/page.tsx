@@ -40,6 +40,7 @@ function NavBar() {
         {tabs.map(([name, href]) => {
           return (
             <Tab
+              key={name}
               onClick={() => {
                 setLocation(href);
               }}
