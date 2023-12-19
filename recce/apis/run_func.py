@@ -1,5 +1,5 @@
 from abc import ABC, abstractmethod
-from typing import TypedDict
+from typing import Callable, Dict, List, Optional, TypedDict
 
 from recce.apis.types import RunType
 from recce.server import dbt_context
@@ -9,13 +9,21 @@ class QueryDiffParams(TypedDict):
     sql_template: str
 
 
+class ValueDiffParams(TypedDict):
+    primary_key: str
+    model: str
+    exclude_columns: Optional[List[str]]
+
+
 class ExecutorManager:
     @staticmethod
     def create_executor(run_type: RunType, params: dict):
-        if run_type == RunType.QUERY_DIFF:
-            return QueryDiffExecutor(params)
-        else:
+        executors: Dict[RunType, Callable] = {RunType.QUERY_DIFF: QueryDiffExecutor,
+                                              RunType.VALUE_DIFF: ValueDiffExecutor}
+        executor = executors.get(run_type)
+        if not executor:
             return NotImplementedError
+        return executor(params)
 
 
 class RunExecutor(ABC):
@@ -50,3 +58,12 @@ class QueryDiffExecutor(RunExecutor):
             return None, f"Jinja template error: line {e.lineno}: {str(e)}"
         except Exception as e:
             return None, str(e)
+
+
+class ValueDiffExecutor(RunExecutor):
+
+    def __init__(self, params: ValueDiffParams):
+        self.params = params
+
+    def execute(self):
+        return dbt_context.columns_value_mismatched_summary(self.params['primary_key'], self.params['model'])

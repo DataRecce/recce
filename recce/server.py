@@ -100,24 +100,6 @@ class QueryInput(BaseModel):
     sql_template: str
 
 
-class CompareAllColumnsInput(BaseModel):
-    model: str
-    primary_key: str
-    exclude_columns: Optional[list]
-
-
-@app.post("/api/columns_value_mismatched_summary")
-async def compare_column_values(input: CompareAllColumnsInput):
-    try:
-        result = dbt_context.columns_value_mismatched_summary(input.primary_key, input.model)
-        return result
-
-    except Exception as e:
-        import traceback
-        traceback.print_exc()
-        raise HTTPException(status_code=400, detail=str(e))
-
-
 @app.post("/api/query")
 async def query(input: QueryInput):
     from jinja2.exceptions import TemplateSyntaxError
@@ -172,7 +154,6 @@ async def broadcast(data: str):
 api_prefix = '/api'
 app.include_router(check_router, prefix=api_prefix)
 app.include_router(run_router, prefix=api_prefix)
-
 
 static_folder_path = Path(__file__).parent / 'data'
 app.mount("/", StaticFiles(directory=static_folder_path, html=True), name="static")
