@@ -27,7 +27,6 @@ import {
   TagLabel,
   Icon,
 } from "@chakra-ui/react";
-import Link from "next/link";
 
 import { FaCode } from "react-icons/fa";
 import { FiAlignLeft, FiTrendingUp, FiTrendingDown, FiFrown } from "react-icons/fi";
@@ -38,8 +37,7 @@ import { SqlDiffView } from "../schema/SqlDiffView";
 import useMismatchSummaryModal from "./MismatchSummary";
 import { useLocation } from "wouter";
 import { getIconForResourceType } from "./styles";
-import { useEffect, useState } from "react";
-import { useMutation } from "@tanstack/react-query";
+import { useQuery } from "@tanstack/react-query";
 import { cacheKeys } from "@/lib/api/cacheKeys";
 import { fetchModelRowCount as queryModelRowCount } from "@/lib/api/models";
 
@@ -96,8 +94,6 @@ interface NodeViewProps {
 
 export function NodeView({ node, onCloseNode }: NodeViewProps) {
   const [, setLocation] = useLocation();
-  const [rowCount, setRowCount] = useState<ModelRowCount>();
-  const [isRowCountLoaded, setRowCountIsLoaded] = useState(false);
   const { setSqlQuery } = useRecceQueryContext();
   const withColumns =
     node.resourceType === "model" ||
@@ -106,28 +102,11 @@ export function NodeView({ node, onCloseNode }: NodeViewProps) {
   const { isOpen, onOpen, onClose } = useDisclosure();
   const { MismatchSummaryModal } = useMismatchSummaryModal();
   const { icon: resourceTypeIcon } = getIconForResourceType(node.resourceType);
-  const { mutate: queryRowCount } = useMutation({
-    mutationKey: cacheKeys.rowCount(node.name),
-    mutationFn: queryModelRowCount,
-    onMutate: () => {
-      setRowCountIsLoaded(false);
-    },
-    onSuccess: (data: ModelRowCount) => {
-      setRowCountIsLoaded(true);
-      setRowCount(data);
-    },
-    onError: (error) => {
-      console.error(error);
-      setRowCountIsLoaded(true);
-      setRowCount(undefined);
-    },
+  const { isLoading, data: rowCount } = useQuery({
+    queryKey: cacheKeys.rowCount(node.name),
+    queryFn:  () => queryModelRowCount(node.name),
+    enabled: node.resourceType === "model",
   });
-
-  useEffect(() => {
-    if (node.resourceType === "model") {
-      queryRowCount(node.name);
-    }
-  }, [node, queryRowCount])
 
   return (
     <Grid height="100%" templateRows="auto auto 1fr">
@@ -181,7 +160,7 @@ export function NodeView({ node, onCloseNode }: NodeViewProps) {
               <Tag>
                 <TagLeftIcon as={FiAlignLeft} />
                 <TagLabel>
-                  <SkeletonText isLoaded={isRowCountLoaded} noOfLines={1} skeletonHeight={2} minWidth={'30px'}>
+                  <SkeletonText isLoaded={!isLoading} noOfLines={1} skeletonHeight={2} minWidth={'30px'}>
                     <ModelRowCount rowCount={rowCount} />
                   </SkeletonText>
                 </TagLabel>
