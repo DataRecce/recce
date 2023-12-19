@@ -1,11 +1,12 @@
 import "react-data-grid/lib/styles.css";
-import React, { useEffect, useState } from "react";
+import React, { useCallback, useEffect, useState } from "react";
 import { Check, listChecks, updateCheck } from "@/lib/api/checks";
 import { Box, Flex, VStack, Center, Checkbox } from "@chakra-ui/react";
 import { CheckDetail } from "./CheckDetail";
 import { cacheKeys } from "@/lib/api/cacheKeys";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import _ from "lodash";
+import { Redirect, Route, Switch, useLocation, useRoute } from "wouter";
 
 const ChecklistItem = ({
   check,
@@ -55,7 +56,10 @@ const ChecklistItem = ({
 };
 
 export const CheckPage = () => {
-  const [selectedItem, setSelectedItem] = useState<string | null>(null);
+  const [, setLocation] = useLocation();
+  const [, params] = useRoute("/checks/:checkId");
+  const selectedItem = params?.checkId;
+
   const {
     isLoading,
     error,
@@ -63,19 +67,8 @@ export const CheckPage = () => {
   } = useQuery({
     queryKey: cacheKeys.checks(),
     queryFn: listChecks,
-    refetchOnMount: true,
+    refetchOnMount: false,
   });
-
-  useEffect(() => {
-    if (!checks) {
-      return;
-    }
-
-    const found = _.find(checks, (check) => check.check_id === selectedItem);
-    if (!found) {
-      setSelectedItem(checks.length > 0 ? checks[0].check_id : null);
-    }
-  }, [selectedItem, setSelectedItem, checks]);
 
   if (isLoading) {
     return <>Loading</>;
@@ -90,7 +83,7 @@ export const CheckPage = () => {
   }
 
   const handleSelectItem = (checkId: string) => {
-    setSelectedItem(checkId);
+    setLocation(`/checks/${checkId}`);
   };
 
   return (
@@ -113,7 +106,16 @@ export const CheckPage = () => {
         </VStack>
       </Box>
       <Box flex="1" height="100%" width="calc(100% - 400px)">
-        {selectedItem && <CheckDetail checkId={selectedItem} />}
+        <Switch>
+          <Route path="/checks/:checkId">
+            {(params) => {
+              return <CheckDetail checkId={params.checkId} />;
+            }}
+          </Route>
+          <Route>
+            <Redirect to={`/checks/${checks[0].check_id}`} />
+          </Route>
+        </Switch>
       </Box>
     </Flex>
   );

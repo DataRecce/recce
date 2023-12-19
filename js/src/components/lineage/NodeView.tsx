@@ -21,13 +21,14 @@ import {
   ModalCloseButton,
 } from "@chakra-ui/react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+
 import { FaCode } from "react-icons/fa";
 import { LineageGraphNode } from "./lineage";
 import { SchemaView } from "../schema/SchemaView";
 import { useRecceQueryContext } from "@/lib/hooks/RecceQueryContext";
 import { SqlDiffView } from "../schema/SqlDiffView";
 import useMismatchSummaryModal from "./MismatchSummary";
+import { useLocation } from "wouter";
 
 interface NodeViewProps {
   node: LineageGraphNode;
@@ -35,7 +36,7 @@ interface NodeViewProps {
 }
 
 export function NodeView({ node, onCloseNode }: NodeViewProps) {
-  const router = useRouter();
+  const [, setLocation] = useLocation();
   const { setSqlQuery } = useRecceQueryContext();
   const withColumns =
     node.resourceType === "model" ||
@@ -43,7 +44,6 @@ export function NodeView({ node, onCloseNode }: NodeViewProps) {
     node.resourceType === "source";
   const { isOpen, onOpen, onClose } = useDisclosure();
   const { MismatchSummaryModal } = useMismatchSummaryModal();
-
 
   return (
     <Grid height="100%" templateRows="auto 1fr">
@@ -104,7 +104,7 @@ export function NodeView({ node, onCloseNode }: NodeViewProps) {
             size="sm"
             onClick={() => {
               setSqlQuery(`select * from {{ ref("${node.name}") }}`);
-              router.push("#query");
+              setLocation("/query");
             }}
           >
             Query

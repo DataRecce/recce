@@ -4,19 +4,19 @@ import SqlEditor from "./SqlEditor";
 import { useRecceQueryContext } from "@/lib/hooks/RecceQueryContext";
 import { submitQueryDiff } from "@/lib/api/runs";
 import { createCheckByRun, updateCheck } from "@/lib/api/checks";
-import { useRouter } from "next/navigation";
 import { QueryDiffDataGrid } from "./QueryDiffDataGrid";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { cacheKeys } from "@/lib/api/cacheKeys";
+import { useLocation, useRouter } from "wouter";
 
 export const QueryPage = () => {
   const { sqlQuery, setSqlQuery } = useRecceQueryContext();
   const [submittedQuery, setSubmittedQuery] = useState<string>();
 
-  const router = useRouter();
   const [primaryKeys, setPrimaryKeys] = useState<string[]>([]);
 
   const queryClient = useQueryClient();
+  const [, setLocation] = useLocation();
 
   const {
     data: queryResult,
@@ -44,8 +44,8 @@ export const QueryPage = () => {
     setSubmittedQuery(undefined);
 
     queryClient.invalidateQueries({ queryKey: cacheKeys.checks() });
-    router.push("#checks");
-  }, [queryResult?.run_id, router, primaryKeys, queryClient]);
+    setLocation(`/checks/${check.check_id}`);
+  }, [queryResult?.run_id, setLocation, primaryKeys, queryClient]);
 
   return (
     <Flex direction="column" height="100%">

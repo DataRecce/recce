@@ -62,6 +62,9 @@ dependencies:
   reactflow:
     specifier: ^11.10.1
     version: 11.10.1(@types/react@18.2.34)(react-dom@18.2.0)(react@18.2.0)
+  wouter:
+    specifier: ^2.12.1
+    version: 2.12.1(react@18.2.0)
 
 devDependencies:
   '@testing-library/dom':
@@ -7087,6 +7090,15 @@ packages:
     dependencies:
       isexe: 2.0.0
     dev: true
+
+  /wouter@2.12.1(react@18.2.0):
+    resolution: {integrity: sha512-G7a6JMSLSNcu6o8gdOfIzqxuo8Qx1qs+9rpVnlurH69angsSFPZP5gESNuVNeJct/MGpQg191pDo4HUjTx7IIQ==}
+    peerDependencies:
+      react: '>=16.8.0'
+    dependencies:
+      react: 18.2.0
+      use-sync-external-store: 1.2.0(react@18.2.0)
+    dev: false
 
   /wrap-ansi@7.0.0:
     resolution: {integrity: sha512-YVGIj2kamLSTxw6NsZjoBxfSwsn0ycdesmc4p+Q21c5zPuZ1pl+NfxVdxPtdHvmNVOQ6XSYG4AUtyt/Fi7D16Q==}

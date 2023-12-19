@@ -68,32 +68,30 @@ export function CheckBreadcrumb({ name, setName }: CheckBreadcrumbProps) {
       separator={<ChevronRightIcon color="gray.500" />}
     >
       <BreadcrumbItem>
-        <BreadcrumbLink>Checks</BreadcrumbLink>
+        <Box>Checks</Box>
       </BreadcrumbItem>
-      <BreadcrumbItem flex="0 1">
-        <BreadcrumbLink href="#" isCurrentPage>
-          {isEditing ? (
-            <Input
-              ref={editInputRef}
-              value={editValue}
-              onChange={handleChange}
-              onKeyDown={handleKeyDown}
-              size="sm"
-              w="auto"
-              minW="100px"
-              maxW="600px"
-            />
-          ) : (
-            <Box
-              onClick={handleClick}
-              textOverflow="ellipsis"
-              whiteSpace="nowrap"
-              overflow="hidden"
-            >
-              {name}
-            </Box>
-          )}
-        </BreadcrumbLink>
+      <BreadcrumbItem flex="0 1" cursor="pointer">
+        {isEditing ? (
+          <Input
+            ref={editInputRef}
+            value={editValue}
+            onChange={handleChange}
+            onKeyDown={handleKeyDown}
+            size="sm"
+            w="auto"
+            minW="100px"
+            maxW="600px"
+          />
+        ) : (
+          <Box
+            onClick={handleClick}
+            textOverflow="ellipsis"
+            whiteSpace="nowrap"
+            overflow="hidden"
+          >
+            {name}
+          </Box>
+        )}
       </BreadcrumbItem>
     </Breadcrumb>
   );

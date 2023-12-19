@@ -32,9 +32,12 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { cacheKeys } from "@/lib/api/cacheKeys";
 import { Check, deleteCheck, getCheck, updateCheck } from "@/lib/api/checks";
 import { QueryDiffResult } from "@/lib/api/adhocQuery";
+import { useLocation } from "wouter";
 
 export const CheckDetail = ({ checkId }: CheckDetailProps) => {
   const queryClient = useQueryClient();
+  const [, setLocation] = useLocation();
+
   const {
     isLoading,
     error,
@@ -42,6 +45,8 @@ export const CheckDetail = ({ checkId }: CheckDetailProps) => {
   } = useQuery({
     queryKey: cacheKeys.check(checkId),
     queryFn: () => getCheck(checkId),
+    refetchOnMount: false,
+    staleTime: 5 * 60 * 1000,
   });
 
   const { mutate } = useMutation({
@@ -56,6 +61,7 @@ export const CheckDetail = ({ checkId }: CheckDetailProps) => {
     mutationFn: () => deleteCheck(checkId),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: cacheKeys.checks() });
+      setLocation("/checks");
     },
   });
 
