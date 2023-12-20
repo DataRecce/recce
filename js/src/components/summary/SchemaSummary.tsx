@@ -1,9 +1,15 @@
-import { Card, CardProps, CardBody, CardHeader, Flex, Heading, SimpleGrid, Text } from "@chakra-ui/react";
+import { Card, CardProps, CardBody, CardHeader, Flex, Heading, SimpleGrid, Text, HStack, Tooltip, Tag, TagLeftIcon, TagLabel, SkeletonText } from "@chakra-ui/react";
 import { DefaultLineageGraphSets, LineageGraphNode } from "../lineage/lineage";
 import { SchemaView } from "../schema/SchemaView";
 import { mergeColumns } from "../schema/schema";
 import { mergeKeysWithStatus } from "@/lib/mergeKeys";
 import { useEffect, useState } from "react";
+import { getIconForResourceType } from "../lineage/styles";
+import { FiAlignLeft } from "react-icons/fi";
+import { cacheKeys } from "@/lib/api/cacheKeys";
+import { fetchModelRowCount } from "@/lib/api/models";
+import { useQuery } from "@tanstack/react-query";
+import { ModelRowCount } from "../lineage/NodeView";
 
 interface SchemaDiffCardProps {
   node: LineageGraphNode;
@@ -13,11 +19,37 @@ function SchemaDiffCard({
   node,
   ...props
  }: CardProps & SchemaDiffCardProps) {
+  const { icon: resourceTypeIcon } = getIconForResourceType(node.resourceType);
+  const { isLoading, data: rowCount } = useQuery({
+    queryKey: cacheKeys.rowCount(node.name),
+    queryFn: () => fetchModelRowCount(node.name),
+    enabled: node.resourceType === "model",
+  });
+
   return (
   <Card maxWidth={'500px'}>
     <CardHeader>
       <Heading fontSize={18}>{props.title}</Heading>
-      <Text fontSize={14} color={'gray'}>{node.resourceType}</Text>
+      <HStack spacing={"8px"} p={"16px"}>
+        <Tooltip hasArrow label="Type of resource">
+          <Tag>
+            <TagLeftIcon as={resourceTypeIcon} />
+            <TagLabel>{node.resourceType}</TagLabel>
+          </Tag>
+        </Tooltip>
+        {node.resourceType === "model" && (
+            <Tooltip hasArrow label="Number of row">
+              <Tag>
+                <TagLeftIcon as={FiAlignLeft} />
+                <TagLabel>
+                  <SkeletonText isLoaded={!isLoading} noOfLines={1} skeletonHeight={2} minWidth={'30px'}>
+                    <ModelRowCount rowCount={rowCount} />
+                  </SkeletonText>
+                </TagLabel>
+              </Tag>
+            </Tooltip>
+          )}
+      </HStack>
     </CardHeader>
     <CardBody>
       <Flex>
@@ -67,7 +99,7 @@ export function SchemaSummary({ lineageGraphSets }: Props) {
       <>
 
         <SimpleGrid
-          minChildWidth='500px'
+          minChildWidth='400px'
           spacing={'2vw'}
           padding={'2.5vw'}
           width={'100%'}
