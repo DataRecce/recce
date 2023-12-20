@@ -437,11 +437,11 @@ class DBTContext:
         sql_query = 'select count(*) as ROW_COUNT from {{ ref("' + model_name + '") }}'
         try:
             base = self.execute_sql(sql_query, base=True)
-        except Exception as e:
+        except Exception:
             base = None
         try:
             curr = self.execute_sql(sql_query, base=False)
-        except Exception as e:
+        except Exception:
             curr = None
 
         if base is not None:
@@ -523,10 +523,10 @@ class DBTContext:
     def columns_value_mismatched_summary(self, primary_key: str, model: str):
         df = self.compare_relations(primary_key, model)
         total = int(df['count'].sum())
-        added_df = df[(df['in_a'] == False) & (df['in_b'] == True)]
+        added_df = df[(df['in_a'] == False) & (df['in_b'] == True)]  # noqa: E712, it's panda syntax
         added = int(added_df['count'].iloc[0]) if not added_df.empty else 0
 
-        removed_df = df[(df['in_a'] == True) & (df['in_b'] == False)]
+        removed_df = df[(df['in_a'] == True) & (df['in_b'] == False)]  # noqa: E712, it's panda syntax
         removed = int(removed_df['count'].iloc[0]) if not removed_df.empty else 0
 
         df = self.compare_all_columns(primary_key, model)
