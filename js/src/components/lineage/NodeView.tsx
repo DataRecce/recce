@@ -42,6 +42,8 @@ import { getIconForResourceType } from "./styles";
 import { useQuery } from "@tanstack/react-query";
 import { cacheKeys } from "@/lib/api/cacheKeys";
 import { fetchModelRowCount } from "@/lib/api/models";
+import { useCallback } from "react";
+import { createCheckBySchema } from "@/lib/api/checks";
 
 
 interface ModelRowCount {
@@ -109,6 +111,14 @@ export function NodeView({ node, onCloseNode }: NodeViewProps) {
     queryFn:  () => fetchModelRowCount(node.name),
     enabled: false,
   });
+
+  const addToChecklist = useCallback(async () => {
+    const nodeID = node.id;
+    console.log("Add schema check:", nodeID);
+    const check = await createCheckBySchema(nodeID);
+    console.log("Created check:", check);
+    setLocation(`/checks/${check.check_id}`);
+  }, [node, setLocation]);
 
   return (
     <Grid height="100%" templateRows="auto auto 1fr">
@@ -197,6 +207,13 @@ export function NodeView({ node, onCloseNode }: NodeViewProps) {
       )}
       {node.resourceType === "model" && node.changeStatus === "modified" && (
         <HStack p="16px">
+          <Button
+            colorScheme="blue"
+            size="sm"
+            onClick={addToChecklist}
+            >
+            Add schema check
+          </Button>
           <Spacer />
           <MismatchSummaryModal node={node} />
           <Button

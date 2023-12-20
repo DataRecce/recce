@@ -16,6 +16,7 @@ class CreateCheckIn(BaseModel):
     description: str = ''
     type: Optional[str] = None
     run_id: Optional[str] = None
+    model_id: Optional[str] = None
 
 
 class CreateCheckOut(BaseModel):
@@ -39,9 +40,42 @@ def create_check_from_run(name, description, run_id):
     return None
 
 
+def create_check_from_schema(name, description, model_id):
+    def get_manifests_by_id(unique_id):
+        from recce.server import dbt_context
+        curr_manifest = dbt_context.get_manifest(base=False)
+        base_manifest = dbt_context.get_manifest(base=True)
+        if unique_id in curr_manifest.nodes.keys() or unique_id in base_manifest.nodes.keys():
+            return {
+                'current': curr_manifest.nodes.get(unique_id),
+                'base': base_manifest.nodes.get(unique_id)
+            }
+        return None
+
+    manifests = get_manifests_by_id(model_id)
+    if manifests is None:
+        return None
+
+    node = manifests['current'] or manifests['base']
+    if name is None:
+        name = f"Schema for model {node.name} {datetime.utcnow().isoformat()}"
+    params = {
+        "model_id": model_id,
+        "model_name": node.name,
+    }
+
+    check = Check(name=name, description=description, type=RunType.SCHEMA_DIFF, params=params)
+    return check
+
+
 @check_router.post("/checks", status_code=201, response_model=CreateCheckOut)
 async def create_check(check: CreateCheckIn):
-    if check.run_id is None:
+    if check.model_id:
+        # Create check from schema
+        check_record = create_check_from_schema(check.name, check.description, check.model_id)
+        if not check_record:
+            raise HTTPException(status_code=404, detail=f"Model ID '{check.model_id}' not found")
+    elif check.run_id is None:
         if check.type is None:
             check_record = Check(name=f"Check {datetime.utcnow().isoformat()}", description=check.description,
                                  type=RunType.SIMPLE)

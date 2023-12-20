@@ -26,6 +26,15 @@ export async function createCheckByRun(runId: string): Promise<Check> {
   return check;
 }
 
+export async function createCheckBySchema(modelId: string): Promise<Check> {
+  const response = await axiosClient.post("/api/checks", {
+    model_id: modelId,
+  });
+  const check = response.data;
+
+  return check;
+}
+
 export async function listChecks(): Promise<Check[]> {
   const response = await axiosClient.get("/api/checks");
   return response.data;

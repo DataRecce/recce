@@ -25,10 +25,13 @@ import { CheckDescription } from "./CheckDescription";
 interface CheckDetailProps {
   checkId: string;
 }
+import { useLineageGraphsContext } from "@/lib/hooks/LineageGraphContext";
+import { SchemaDiffView } from "./SchemaDiffView";
 
 export const CheckDetail = ({ checkId }: CheckDetailProps) => {
   const queryClient = useQueryClient();
   const [, setLocation] = useLocation();
+  const { lineageGraphSets } = useLineageGraphsContext();
 
   const {
     isLoading,
@@ -111,9 +114,9 @@ export const CheckDetail = ({ checkId }: CheckDetailProps) => {
         />
       </Box>
 
-
       {check && check.type == "query_diff" && <QueryDiffView check={check} />}
       {check && check.type == "value_diff" && <ValueDiffView check={check} />}
+      {check && check.type == "schema_diff" && <SchemaDiffView check={check} />}
 
     </Flex>
   );

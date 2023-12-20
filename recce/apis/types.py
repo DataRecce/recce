@@ -12,6 +12,7 @@ class RunType(Enum):
     SIMPLE = 'simple'
     QUERY_DIFF = 'query_diff'
     VALUE_DIFF = 'value_diff'
+    SCHEMA_DIFF = 'schema_diff'
 
 
 class DataFrameDiff:
