@@ -6,7 +6,7 @@ from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 
 from recce.apis.db import checks_db, runs_db
-from recce.apis.types import Run, Check
+from recce.apis.types import Run, Check, RunType
 
 check_router = APIRouter(tags=['check'])
 
@@ -14,6 +14,7 @@ check_router = APIRouter(tags=['check'])
 class CreateCheckIn(BaseModel):
     name: Optional[str] = None
     description: str = ''
+    type: Optional[str] = None
     run_id: Optional[str] = None
 
 
@@ -22,7 +23,7 @@ class CreateCheckOut(BaseModel):
     name: str
     description: str
     type: str
-    params: dict
+    params: Optional[dict] = None
     is_checked: bool = False
 
 
@@ -41,12 +42,23 @@ def create_check_from_run(name, description, run_id):
 @check_router.post("/checks", status_code=201, response_model=CreateCheckOut)
 async def create_check(check: CreateCheckIn):
     if check.run_id is None:
-        raise HTTPException(501, "Not Implemented")
+        if check.type is None:
+            check_record = Check(name=f"Check {datetime.utcnow().isoformat()}", description=check.description,
+                                 type=RunType.SIMPLE)
+        else:
+            try:
+                run_type = RunType(check.type)
+            except ValueError:
+                raise HTTPException(status_code=400, detail=f"Run type '{check.type}' not supported")
+
+            check_record = Check(name=f"Check {datetime.utcnow().isoformat()}", description=check.description,
+                                 type=run_type)
     else:
         check_record = create_check_from_run(check.name, check.description, check.run_id)
         if not check_record:
             raise HTTPException(status_code=404, detail=f"Run ID '{check.run_id}' not found")
-        checks_db.append(check_record)
+
+    checks_db.append(check_record)
 
     return CreateCheckOut(check_id=check_record.check_id,
                           name=check_record.name,
@@ -98,7 +110,7 @@ class CheckOut(BaseModel):
     name: str
     description: str
     type: str
-    params: dict
+    params: Optional[dict] = None
     is_checked: bool = False
     last_run: Optional[CreateRunOut] = None
 

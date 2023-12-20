@@ -1,12 +1,28 @@
 import "react-data-grid/lib/styles.css";
 import React, { useCallback, useEffect, useState } from "react";
-import { Check, listChecks, updateCheck } from "@/lib/api/checks";
-import { Box, Flex, VStack, Center, Checkbox } from "@chakra-ui/react";
+import { Check, createCheck, listChecks, updateCheck } from "@/lib/api/checks";
+import {
+  Box,
+  Flex,
+  VStack,
+  Center,
+  Checkbox,
+  Button,
+  Spacer,
+  Icon,
+  Divider,
+  IconButton,
+  Tooltip,
+} from "@chakra-ui/react";
 import { CheckDetail } from "./CheckDetail";
 import { cacheKeys } from "@/lib/api/cacheKeys";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import _ from "lodash";
 import { Redirect, Route, Switch, useLocation, useRoute } from "wouter";
+import { FaCheckCircle } from "react-icons/fa";
+import { TbChecklist, TbSql } from "react-icons/tb";
+import { IconType } from "react-icons";
+import { AddIcon } from "@chakra-ui/icons";
 
 const ChecklistItem = ({
   check,
@@ -32,6 +48,8 @@ const ChecklistItem = ({
     mutate({ is_checked: isChecked });
   };
 
+  const icon: IconType = check.type === "query_diff" ? TbSql : TbChecklist;
+
   return (
     <Flex
       width="100%"
@@ -40,8 +58,10 @@ const ChecklistItem = ({
       _hover={{ bg: "gray.200" }}
       bg={selected ? "gray.100" : "inherit"}
       onClick={() => onSelect(check.check_id)}
+      alignItems="center"
       gap="5px"
     >
+      <Icon as={icon} />
       <Box
         flex="1"
         textOverflow="ellipsis"
@@ -50,7 +70,8 @@ const ChecklistItem = ({
       >
         {check.name}
       </Box>
-      <Checkbox isChecked={check.is_checked} onChange={handleChange}></Checkbox>
+
+      {check.is_checked && <Icon color="green" as={FaCheckCircle} />}
     </Flex>
   );
 };
@@ -58,17 +79,52 @@ const ChecklistItem = ({
 export const CheckPage = () => {
   const [, setLocation] = useLocation();
   const [, params] = useRoute("/checks/:checkId");
+  const queryClient = useQueryClient();
   const selectedItem = params?.checkId;
 
   const {
     isLoading,
     error,
     data: checks,
+    status,
   } = useQuery({
     queryKey: cacheKeys.checks(),
     queryFn: listChecks,
-    refetchOnMount: false,
+    refetchOnMount: true,
   });
+
+  const handleSelectItem = useCallback(
+    (checkId: string) => {
+      setLocation(`/checks/${checkId}`);
+    },
+    [setLocation]
+  );
+
+  const addToChecklist = useCallback(async () => {
+    const check = await createCheck();
+    queryClient.invalidateQueries({ queryKey: cacheKeys.checks() });
+
+    handleSelectItem(check.check_id);
+  }, [queryClient, handleSelectItem]);
+
+  useEffect(() => {
+    if (status !== "success") {
+      return;
+    }
+
+    if (checks.length > 0)
+      if (selectedItem) {
+        const found = _.find(
+          checks,
+          (check) => check.check_id === selectedItem
+        );
+        if (!found) {
+          setLocation(`/checks/${checks[0].check_id}`);
+        }
+      } else {
+        setLocation(`/checks/${checks[0].check_id}`);
+      }
+  }, [status, selectedItem, checks, setLocation]);
 
   if (isLoading) {
     return <>Loading</>;
@@ -79,12 +135,17 @@ export const CheckPage = () => {
   }
 
   if (!checks?.length) {
-    return <Center h="100%">No checks</Center>;
+    return (
+      <Center h="100%">
+        <VStack>
+          <Box>No checks</Box>
+          <Button colorScheme="blue" onClick={addToChecklist}>
+            Create a simple check
+          </Button>
+        </VStack>
+      </Center>
+    );
   }
-
-  const handleSelectItem = (checkId: string) => {
-    setLocation(`/checks/${checkId}`);
-  };
 
   return (
     <Flex height="100%">
@@ -94,7 +155,18 @@ export const CheckPage = () => {
         height="100%"
         style={{ contain: "size" }}
       >
-        <VStack spacing={0}>
+        <VStack spacing={0} align="flex-end">
+          <Tooltip label="Create a simple check">
+            <IconButton
+              mr="10px"
+              variant="unstyled"
+              aria-label="Create a simple check"
+              onClick={addToChecklist}
+              icon={<AddIcon />}
+            />
+          </Tooltip>
+
+          <Divider mb="8px" />
           {checks.map((check) => (
             <ChecklistItem
               key={check.check_id}
@@ -111,9 +183,6 @@ export const CheckPage = () => {
             {(params) => {
               return <CheckDetail checkId={params.checkId} />;
             }}
-          </Route>
-          <Route>
-            <Redirect to={`/checks/${checks[0].check_id}`} />
           </Route>
         </Switch>
       </Box>
