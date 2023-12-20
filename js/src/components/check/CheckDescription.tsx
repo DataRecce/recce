@@ -1,5 +1,10 @@
-import { Button, Flex, Text, Textarea } from "@chakra-ui/react";
-import { ChangeEventHandler, KeyboardEventHandler, useState } from "react";
+import { Button, Flex, Link, Text, Textarea } from "@chakra-ui/react";
+import {
+  ChangeEventHandler,
+  KeyboardEventHandler,
+  useEffect,
+  useState,
+} from "react";
 
 interface CheckDescriptionProps {
   value?: string;
@@ -9,9 +14,6 @@ interface CheckDescriptionProps {
 export function CheckDescription({ value, onChange }: CheckDescriptionProps) {
   const [editing, setEditing] = useState(false);
   const [tempValue, setTempValue] = useState<string>();
-
-  if (editing) {
-  }
 
   const handleEdit = () => {
     setTempValue(value || "");
@@ -24,7 +26,7 @@ export function CheckDescription({ value, onChange }: CheckDescriptionProps) {
     }
   };
 
-  const handleBlur = () => {
+  const handleCancel = () => {
     setTimeout(() => {
       setEditing(false);
     }, 100);
@@ -33,6 +35,7 @@ export function CheckDescription({ value, onChange }: CheckDescriptionProps) {
   const handleUpdate = () => {
     if (onChange) {
       onChange(tempValue);
+      setEditing(false);
     }
   };
 
@@ -48,17 +51,24 @@ export function CheckDescription({ value, onChange }: CheckDescriptionProps) {
           value={tempValue}
           onChange={handleChange}
           onKeyDown={handleKeyDown}
-          onBlur={handleBlur}
         ></Textarea>
-        <Button mt="8px" size="sm" colorScheme="blue" onClick={handleUpdate}>
-          Update
-        </Button>
+        <Flex gap="12px" alignItems="flex-end">
+          <Link onClick={handleCancel} colorScheme="blue">
+            cancel
+          </Link>
+          <Button mt="8px" size="sm" colorScheme="blue" onClick={handleUpdate}>
+            Update
+          </Button>
+        </Flex>
       </Flex>
     );
   }
 
   return (
     <Text
+      maxHeight="400px"
+      overflow="auto"
+      fontSize="11pt"
       onClick={handleEdit}
       whiteSpace="pre-line"
       color={!value ? "lightgray" : "inherit"}

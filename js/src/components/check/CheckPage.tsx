@@ -9,12 +9,20 @@ import {
   Checkbox,
   Button,
   Spacer,
+  Icon,
+  Divider,
+  IconButton,
+  Tooltip,
 } from "@chakra-ui/react";
 import { CheckDetail } from "./CheckDetail";
 import { cacheKeys } from "@/lib/api/cacheKeys";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import _ from "lodash";
 import { Redirect, Route, Switch, useLocation, useRoute } from "wouter";
+import { FaCheckCircle } from "react-icons/fa";
+import { TbChecklist, TbSql } from "react-icons/tb";
+import { IconType } from "react-icons";
+import { AddIcon } from "@chakra-ui/icons";
 
 const ChecklistItem = ({
   check,
@@ -40,6 +48,8 @@ const ChecklistItem = ({
     mutate({ is_checked: isChecked });
   };
 
+  const icon: IconType = check.type === "query_diff" ? TbSql : TbChecklist;
+
   return (
     <Flex
       width="100%"
@@ -48,8 +58,10 @@ const ChecklistItem = ({
       _hover={{ bg: "gray.200" }}
       bg={selected ? "gray.100" : "inherit"}
       onClick={() => onSelect(check.check_id)}
+      alignItems="center"
       gap="5px"
     >
+      <Icon as={icon} />
       <Box
         flex="1"
         textOverflow="ellipsis"
@@ -58,7 +70,8 @@ const ChecklistItem = ({
       >
         {check.name}
       </Box>
-      <Checkbox isChecked={check.is_checked} onChange={handleChange}></Checkbox>
+
+      {check.is_checked && <Icon color="green" as={FaCheckCircle} />}
     </Flex>
   );
 };
@@ -119,7 +132,18 @@ export const CheckPage = () => {
         height="100%"
         style={{ contain: "size" }}
       >
-        <VStack spacing={0}>
+        <VStack spacing={0} align="flex-end">
+          <Tooltip label="Create a simple check">
+            <IconButton
+              mr="10px"
+              variant="unstyled"
+              aria-label="Create a simple check"
+              onClick={addToChecklist}
+              icon={<AddIcon />}
+            />
+          </Tooltip>
+
+          <Divider mb="8px" />
           {checks.map((check) => (
             <ChecklistItem
               key={check.check_id}
@@ -129,11 +153,6 @@ export const CheckPage = () => {
             />
           ))}
         </VStack>
-        <Box>
-          <Button colorScheme="blue" onClick={addToChecklist}>
-            Create a simple check
-          </Button>
-        </Box>
       </Box>
       <Box flex="1" height="100%" width="calc(100% - 400px)">
         <Switch>

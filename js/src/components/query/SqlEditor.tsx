@@ -1,4 +1,4 @@
-import MonacoEditor from "@monaco-editor/react";
+import MonacoEditor, { EditorProps } from "@monaco-editor/react";
 
 interface SqlEditorProps {
   language?: string;
@@ -6,12 +6,14 @@ interface SqlEditorProps {
   value: string;
   onChange?: (value: string) => void;
   onRun?: () => void;
+  options?: EditorProps["options"];
 }
 
 const SqlEditor: React.FC<SqlEditorProps> = ({
   value,
   onChange,
   onRun,
+  options = {},
   ...props
 }: SqlEditorProps) => {
   const handleEditorChange = (value: string | undefined) => {
@@ -43,6 +45,7 @@ const SqlEditor: React.FC<SqlEditorProps> = ({
         wordWrap: "on",
         wrappingIndent: "indent",
         // Additional options as needed
+        ...options,
       }}
     />
   );

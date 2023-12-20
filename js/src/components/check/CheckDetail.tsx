@@ -7,6 +7,7 @@ import {
   Box,
   Center,
   Checkbox,
+  Divider,
   Flex,
   Icon,
   IconButton,
@@ -83,7 +84,7 @@ export const CheckDetail = ({ checkId }: CheckDetailProps) => {
 
   return (
     <Flex height="100%" width="100%" maxHeight="100%" direction="column">
-      <Flex p="8px 16px" alignItems="center">
+      <Flex p="0px 16px" alignItems="center">
         <CheckBreadcrumb
           name={check?.name || ""}
           setName={(name) => {
@@ -108,8 +109,11 @@ export const CheckDetail = ({ checkId }: CheckDetailProps) => {
         </Checkbox>
       </Flex>
 
-      <Box p="0px 16px 8px 16px">
+      {/* <Divider /> */}
+
+      <Box p="8px 16px" minHeight="100px">
         <CheckDescription
+          key={check?.check_id}
           value={check?.description}
           onChange={handleUpdateDescription}
         />
@@ -125,7 +129,10 @@ export const CheckDetail = ({ checkId }: CheckDetailProps) => {
 
             <AccordionPanel>
               <Box height="400px" width="100%" border="lightgray 1px solid ">
-                <SqlEditor value={(check?.params as any)?.sql_template || ""} />
+                <SqlEditor
+                  value={(check?.params as any)?.sql_template || ""}
+                  options={{ readOnly: true }}
+                />
               </Box>
             </AccordionPanel>
           </AccordionItem>
