@@ -93,16 +93,19 @@ export const CheckPage = () => {
     refetchOnMount: true,
   });
 
-  const handleSelectItem = (checkId: string) => {
-    setLocation(`/checks/${checkId}`);
-  };
+  const handleSelectItem = useCallback(
+    (checkId: string) => {
+      setLocation(`/checks/${checkId}`);
+    },
+    [setLocation]
+  );
 
   const addToChecklist = useCallback(async () => {
     const check = await createCheck();
     queryClient.invalidateQueries({ queryKey: cacheKeys.checks() });
 
     handleSelectItem(check.check_id);
-  }, [queryClient]);
+  }, [queryClient, handleSelectItem]);
 
   useEffect(() => {
     if (status !== "success") {
@@ -121,7 +124,7 @@ export const CheckPage = () => {
       } else {
         setLocation(`/checks/${checks[0].check_id}`);
       }
-  }, [status, selectedItem, checks]);
+  }, [status, selectedItem, checks, setLocation]);
 
   if (isLoading) {
     return <>Loading</>;
