@@ -86,10 +86,11 @@ export const CheckPage = () => {
     isLoading,
     error,
     data: checks,
+    status,
   } = useQuery({
     queryKey: cacheKeys.checks(),
     queryFn: listChecks,
-    refetchOnMount: false,
+    refetchOnMount: true,
   });
 
   const handleSelectItem = (checkId: string) => {
@@ -102,6 +103,25 @@ export const CheckPage = () => {
 
     handleSelectItem(check.check_id);
   }, [queryClient]);
+
+  useEffect(() => {
+    if (status !== "success") {
+      return;
+    }
+
+    if (checks.length > 0)
+      if (selectedItem) {
+        const found = _.find(
+          checks,
+          (check) => check.check_id === selectedItem
+        );
+        if (!found) {
+          setLocation(`/checks/${checks[0].check_id}`);
+        }
+      } else {
+        setLocation(`/checks/${checks[0].check_id}`);
+      }
+  }, [status, selectedItem, checks]);
 
   if (isLoading) {
     return <>Loading</>;
@@ -160,9 +180,6 @@ export const CheckPage = () => {
             {(params) => {
               return <CheckDetail checkId={params.checkId} />;
             }}
-          </Route>
-          <Route>
-            <Redirect to={`/checks/${checks[0].check_id}`} />
           </Route>
         </Switch>
       </Box>
