@@ -71,21 +71,6 @@ export function ValueDiffView({ check }: ValueDiffViewProp) {
 
 
   return <>
-    <Accordion defaultIndex={[]} allowToggle>
-      <AccordionItem>
-        <AccordionButton>
-          <Box as="span" textAlign="left">
-            description
-          </Box>
-          <AccordionIcon />
-        </AccordionButton>
-
-        <AccordionPanel pb={4}>
-          <Textarea width="100%" height="400px"></Textarea>
-        </AccordionPanel>
-      </AccordionItem>
-    </Accordion>
-
     <Box p={5}>
       {summary && <ValueDiffPanel valueDiffSummary={summary} />}
     </Box>

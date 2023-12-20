@@ -26,10 +26,6 @@ interface CheckDetailProps {
   checkId: string;
 }
 
-interface CheckDetailProps {
-  checkId: string;
-}
-
 export const CheckDetail = ({ checkId }: CheckDetailProps) => {
   const queryClient = useQueryClient();
   const [, setLocation] = useLocation();

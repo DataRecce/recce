@@ -486,22 +486,7 @@ class DBTContext:
             elif refresh_file_path.endswith('catalog.json'):
                 self.base_catalog = load_catalog(refresh_file_path)
 
-    def compare_all_columns(self, primary_key: str, model: str):
-        # find the relation names
-        base_relation = self.generate_sql(f'{{{{ ref("{model}")  }}}}', True)
-
-        sql_template = f"""
-        {{{{
-            audit_helper.compare_all_columns(
-                a_relation=ref('{model}'),
-                b_relation='{base_relation}',
-                primary_key='{primary_key}'
-            )
-        }}}}
-        """
-        return self.execute_sql_lower_columns(sql_template, False)
-
-    def compare_relations(self, primary_key: str, model: str):
+    def get_base_relation(self, model):
         relation_holder = dict()
         with self.adapter.connection_named('test'):
             def callback(x):
@@ -509,42 +494,82 @@ class DBTContext:
 
             tmp = f"""{{{{ config_base_relation(ref("{model}")) }}}}"""
             self.generate_sql(tmp, True, dict(config_base_relation=callback))
-
-        sql_template = f"""
-        {{{{ audit_helper.compare_relations(
-            a_relation=base_relation,
-            b_relation=ref('{model}'),
-            primary_key="{primary_key}"
-        ) }}}}
-        """
-        sql_template = self.generate_sql(sql_template, False, dict(base_relation=relation_holder['relation']))
-        return self.execute_sql_lower_columns(sql_template, False)
+        return relation_holder.get('relation')
 
     def columns_value_mismatched_summary(self, primary_key: str, model: str):
-        df = self.compare_relations(primary_key, model)
-        total = int(df['count'].sum())
-        added_df = df[(df['in_a'] == False) & (df['in_b'] == True)]  # noqa: E712, it's panda syntax
-        added = int(added_df['count'].iloc[0]) if not added_df.empty else 0
+        column_results = []
+        primary_key_result = []
 
-        removed_df = df[(df['in_a'] == True) & (df['in_b'] == False)]  # noqa: E712, it's panda syntax
-        removed = int(removed_df['count'].iloc[0]) if not removed_df.empty else 0
+        def log_callback(data, info=False):
+            if isinstance(data, tuple) and len(data) == 4 and 'perfect match' in data[1]:
+                column_results.append(data)
 
-        df = self.compare_all_columns(primary_key, model)
-        df['perfect_match_rate'] = df[['perfect_match']] / total
-        df = df[['column_name', 'perfect_match', 'perfect_match_rate']]
+                # full data for primary key to make added and removed
+                if data[0].lower() == primary_key.lower():
+                    primary_key_result.append(data)
 
-        def to_percentage(x):
-            return f'{x * 100:.2f}'
+        sql_template = r"""
+        {%- set columns_to_compare=adapter.get_columns_in_relation(ref(':model:'))  -%}
 
-        df['perfect_match_rate'] = df['perfect_match_rate'].apply(to_percentage)
+        {% set old_etl_relation_query %}
+            select * from :base_relation:
+        {% endset %}
 
-        df_renamed = df.rename(columns={
-            'column_name': 'Column',
-            'perfect_match': 'Matched',
-            'perfect_match_rate': 'Matched %'
-        })
-        result = dict(
-            summary=dict(total=total, added=added, removed=removed),
-            data=json.loads(df_renamed.to_json(orient='table', index=False))
-        )
-        return result
+        {% set new_etl_relation_query %}
+            select * from {{ ref(':model:') }}
+        {% endset %}
+
+        {% if execute %}
+            {% for column in columns_to_compare %}
+                {{ log_callback('Comparing column "' ~ column.name ~'"', info=True) }}
+                {% set audit_query = audit_helper.compare_column_values(
+                        a_query=old_etl_relation_query,
+                        b_query=new_etl_relation_query,
+                        primary_key=":primary_key:",
+                        column_to_compare=column.name
+                ) %}
+
+                {% set audit_results = run_query(audit_query) %}
+
+                {% do log_callback(audit_results.column_names, info=True) %}
+                    {% for row in audit_results.rows %}
+                          {% do log_callback(row.values(), info=True) %}
+                    {% endfor %}
+            {% endfor %}
+        {% endif %}
+
+
+        """
+
+        sql_template = sql_template.replace(':model:', model)
+        sql_template = sql_template.replace(':primary_key:', primary_key)
+        sql_template = sql_template.replace(':base_relation:', str(self.get_base_relation(model)))
+
+        with self.adapter.connection_named('test'):
+            self.generate_sql(sql_template, False, dict(log_callback=log_callback))
+
+            # make added and removed from primary_key_result
+            # sample data like this:
+            # ('_column_name_', '✅: perfect match', 21796238, Decimal('13.74'))
+            # ('_column_name_', '✅: both are null', 38217746, Decimal('24.10'))
+            # ('_column_name_', '🤷: value is null in a only', 34664015, Decimal('21.86'))
+            # ('_column_name_', '🤷: value is null in b only', 34664015, Decimal('21.86'))
+            # ('_column_name_', '🙅: \u200dvalues do not match', 29259496, Decimal('18.45'))
+            #
+            # There must be not "values do not match" and "both are null" for primary key
+            # "added" is "value is null in a only"
+            # "removed" is "value is null in b only"
+            total = sum([x[2] for x in primary_key_result])
+            added = sum([x[2] for x in primary_key_result if 'value is null in a only' in x[1]])
+            removed = sum([x[2] for x in primary_key_result if 'value is null in b only' in x[1]])
+
+            data = [(x[0], x[2], float(x[3])) for x in column_results]
+
+            columns = ['Column', 'Matched', 'Matched %']
+            df = pd.DataFrame(data, columns=columns)
+
+            result = dict(
+                summary=dict(total=total, added=added, removed=removed),
+                data=json.loads(df.to_json(orient='table', index=False))
+            )
+            return result
