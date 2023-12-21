@@ -607,7 +607,9 @@ class DBTContext:
             for k, v in column_groups.items():
                 matched = v['matched']
                 mismatched = v['mismatched']
-                record = [k, matched, 100 * (matched / (matched + mismatched))]
+                rate_base = matched + mismatched
+                rate = None if rate_base == 0 else 100 * (matched / rate_base)
+                record = [k, matched, rate]
                 data.append(record)
 
             pk = [v for k, v in column_groups.items() if k.lower() == primary_key.lower()][0]
