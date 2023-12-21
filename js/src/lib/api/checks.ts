@@ -21,7 +21,7 @@ export async function createSimpleCheck(): Promise<Check> {
   return check;
 }
 
-export async function createCheckByRun(runId: string): Promise<Check> {
+export async function createQueryDiffCheck(runId: string): Promise<Check> {
   const response = await axiosClient.post("/api/checks", {
     type: "query_diff",
     run_id: runId

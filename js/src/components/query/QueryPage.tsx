@@ -3,7 +3,7 @@ import { Box, Button, Flex } from "@chakra-ui/react";
 import SqlEditor from "./SqlEditor";
 import { useRecceQueryContext } from "@/lib/hooks/RecceQueryContext";
 import { submitQueryDiff } from "@/lib/api/runs";
-import { createCheckByRun as createQueryDiffCheck, updateCheck } from "@/lib/api/checks";
+import { createQueryDiffCheck, updateCheck } from "@/lib/api/checks";
 import { QueryDiffDataGrid } from "./QueryDiffDataGrid";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { cacheKeys } from "@/lib/api/cacheKeys";
