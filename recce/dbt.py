@@ -498,6 +498,7 @@ class DBTContext:
 
     def columns_value_mismatched_summary(self, primary_key: str, model: str):
         column_groups = {}
+        errors = self.verify_primary_key(primary_key, model)
 
         def log_callback(data, info=False):
 
@@ -623,6 +624,52 @@ class DBTContext:
             result = dict(
                 summary=dict(total=total, added=added, removed=removed),
                 data=json.loads(df.to_json(orient='table', index=False)),
-                raw=column_groups
+                raw=column_groups,
+                errors=errors
             )
             return result
+
+    def verify_primary_key(self, primary_key: str, model: str):
+        errors = []
+
+        def callback(check_name, executor, sql, is_base: bool):
+            table = executor(sql)
+            invalids = len(table.rows)
+            if invalids > 0:
+                errors.append(dict(
+                    test=check_name,
+                    invalids=invalids,
+                    sql=sql,
+                    model=model,
+                    column_name=primary_key,
+                    base=is_base))
+
+        not_null_query = r"""
+        {% set test_not_null_query %}
+            {{ adapter.dispatch('test_not_null', 'dbt')(ref(model), column_name) }}
+        {% endset %}
+        {{ callback(check_name, run_query, test_not_null_query, base) }}
+        """
+
+        unique_query = r"""
+        {% set test_unique_query %}
+            {{ adapter.dispatch('test_unique', 'dbt')(ref(model), column_name) }}
+        {% endset %}
+        {{ callback(check_name, run_query, test_unique_query, base) }}
+        """
+
+        for base in [True, False]:
+            for check_name, query in [('not_null', not_null_query), ('unique', unique_query)]:
+                context = dict(
+                    model=model,
+                    column_name=primary_key,
+                    base_relation=self.get_base_relation(model),
+                    callback=callback,
+                    base=base,
+                    check_name=check_name
+                )
+
+                with self.adapter.connection_named('test'):
+                    self.generate_sql(query, base, context)
+
+        return errors
