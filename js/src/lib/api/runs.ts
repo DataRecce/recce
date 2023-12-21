@@ -1,9 +1,9 @@
-import { QueryDiffParams, QueryDiffResult } from "./adhocQuery";
+import { QueryDiffParams, QueryDiffResult, ValueDiffResult } from "./adhocQuery";
 import _ from "lodash";
 import { getCheck } from "./checks";
 import { axiosClient } from "./axiosClient";
 
-export type RunType = "query_diff";
+export type RunType = "query_diff" | "value_diff";
 export type RunParams = object;
 
 export interface Run {
@@ -11,7 +11,7 @@ export interface Run {
   check_id?: string;
   type: RunType;
   params?: RunParams;
-  result: QueryDiffResult;
+  result: QueryDiffResult | ValueDiffResult;
 }
 
 interface SubmitRunInput {

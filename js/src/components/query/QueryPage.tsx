@@ -8,6 +8,7 @@ import { QueryDiffDataGrid } from "./QueryDiffDataGrid";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { cacheKeys } from "@/lib/api/cacheKeys";
 import { useLocation, useRouter } from "wouter";
+import { QueryDiffResult } from "@/lib/api/adhocQuery";
 
 export const QueryPage = () => {
   const { sqlQuery, setSqlQuery } = useRecceQueryContext();
@@ -79,7 +80,7 @@ export const QueryPage = () => {
       <Box backgroundColor="gray.100" height="50vh">
         <QueryDiffDataGrid
           isFetching={isPending}
-          result={queryResult?.result}
+          result={queryResult?.result as QueryDiffResult}
           error={error}
           primaryKeys={primaryKeys}
           setPrimaryKeys={setPrimaryKeys}

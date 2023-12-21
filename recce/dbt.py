@@ -486,22 +486,7 @@ class DBTContext:
             elif refresh_file_path.endswith('catalog.json'):
                 self.base_catalog = load_catalog(refresh_file_path)
 
-    def compare_all_columns(self, primary_key: str, model: str):
-        # find the relation names
-        base_relation = self.generate_sql(f'{{{{ ref("{model}")  }}}}', True)
-
-        sql_template = f"""
-        {{{{
-            audit_helper.compare_all_columns(
-                a_relation=ref('{model}'),
-                b_relation='{base_relation}',
-                primary_key='{primary_key}'
-            )
-        }}}}
-        """
-        return self.execute_sql_lower_columns(sql_template, False)
-
-    def compare_relations(self, primary_key: str, model: str):
+    def get_base_relation(self, model):
         relation_holder = dict()
         with self.adapter.connection_named('test'):
             def callback(x):
@@ -509,42 +494,135 @@ class DBTContext:
 
             tmp = f"""{{{{ config_base_relation(ref("{model}")) }}}}"""
             self.generate_sql(tmp, True, dict(config_base_relation=callback))
-
-        sql_template = f"""
-        {{{{ audit_helper.compare_relations(
-            a_relation=base_relation,
-            b_relation=ref('{model}'),
-            primary_key="{primary_key}"
-        ) }}}}
-        """
-        sql_template = self.generate_sql(sql_template, False, dict(base_relation=relation_holder['relation']))
-        return self.execute_sql_lower_columns(sql_template, False)
+        return relation_holder.get('relation')
 
     def columns_value_mismatched_summary(self, primary_key: str, model: str):
-        df = self.compare_relations(primary_key, model)
-        total = int(df['count'].sum())
-        added_df = df[(df['in_a'] == False) & (df['in_b'] == True)]  # noqa: E712, it's panda syntax
-        added = int(added_df['count'].iloc[0]) if not added_df.empty else 0
+        column_groups = {}
 
-        removed_df = df[(df['in_a'] == True) & (df['in_b'] == False)]  # noqa: E712, it's panda syntax
-        removed = int(removed_df['count'].iloc[0]) if not removed_df.empty else 0
+        def log_callback(data, info=False):
 
-        df = self.compare_all_columns(primary_key, model)
-        df['perfect_match_rate'] = df[['perfect_match']] / total
-        df = df[['column_name', 'perfect_match', 'perfect_match_rate']]
+            if isinstance(data, tuple) and len(data) == 4:
+                # data example:
+                # ('COLUMN_NAME', 'MATCH_STATUS', 'COUNT_RECORDS', 'PERCENT_OF_TOTAL')
+                # ('EVENT_ID', '✅: perfect match', 158601510, Decimal('100.00'))
+                column_name, column_state, row_count, total_rate = data
+                if 'column_name' == data[0].lower():
+                    # skip column names
+                    return
 
-        def to_percentage(x):
-            return f'{x * 100:.2f}'
+                # sample data like this:
+                # case
+                #     when a_query.{{ column_to_compare }} = b_query.{{ column_to_compare }} then '✅: perfect match' -- -> matched
+                #     when a_query.{{ column_to_compare }} is null and b_query.{{ column_to_compare }} is null then '✅: both are null' -- -> matched
+                #     when a_query.{{ primary_key }} is null then '🤷: ‍missing from a' -- -> row added
+                #     when b_query.{{ primary_key }} is null then '🤷: missing from b'    -- -> row removed
+                #     when a_query.{{ column_to_compare }} is null then '🤷: value is null in a only' -- -> mismatched
+                #     when b_query.{{ column_to_compare }} is null then '🤷: value is null in b only' -- -> mismatched
+                #     when a_query.{{ column_to_compare }} != b_query.{{ column_to_compare }} then '🙅: ‍values do not match' -- -> mismatched
+                #     else 'unknown' -- this should never happen
+                # end as match_status,
 
-        df['perfect_match_rate'] = df['perfect_match_rate'].apply(to_percentage)
+                if column_name not in column_groups:
+                    column_groups[column_name] = dict(matched=0, added=0, removed=0, mismatched=0, raw=[])
+                if 'perfect match' in column_state:
+                    column_groups[column_name]['matched'] += row_count
+                if 'both are null' in column_state:
+                    column_groups[column_name]['matched'] += row_count
+                if 'missing from a' in column_state:
+                    column_groups[column_name]['added'] += row_count
+                if 'missing from b' in column_state:
+                    column_groups[column_name]['removed'] += row_count
+                if 'value is null in a only' in column_state:
+                    column_groups[column_name]['mismatched'] += row_count
+                if 'value is null in b only' in column_state:
+                    column_groups[column_name]['mismatched'] += row_count
+                if 'values do not match' in column_state:
+                    column_groups[column_name]['mismatched'] += row_count
+                column_groups[column_name]['raw'].append((column_state, row_count))
 
-        df_renamed = df.rename(columns={
-            'column_name': 'Column',
-            'perfect_match': 'Matched',
-            'perfect_match_rate': 'Matched %'
-        })
-        result = dict(
-            summary=dict(total=total, added=added, removed=removed),
-            data=json.loads(df_renamed.to_json(orient='table', index=False))
-        )
-        return result
+        def pick_columns_to_compare(c1, c2):
+            stat = {}
+            for c in c1 + c2:
+                if c.name not in stat:
+                    stat[c.name] = 1
+                else:
+                    stat[c.name] = stat[c.name] + 1
+
+            # only check the column both existing
+            for c in c1 + c2:
+                if c.name not in stat:
+                    continue
+
+                both_existing = stat[c.name] == 2
+                del stat[c.name]
+                if both_existing:
+                    yield c
+                else:
+                    continue
+
+        sql_template = r"""
+        {%- set columns_to_compare=pick_columns_to_compare(
+            adapter.get_columns_in_relation(ref(model)), adapter.get_columns_in_relation(base_relation))
+        -%}
+
+        {% set old_etl_relation_query %}
+            select * from {{ base_relation }}
+        {% endset %}
+
+        {% set new_etl_relation_query %}
+            select * from {{ ref(model) }}
+        {% endset %}
+
+        {% if execute %}
+            {% for column in columns_to_compare %}
+                {{ log_callback('Comparing column "' ~ column.name ~'"', info=True) }}
+                {% set audit_query = audit_helper.compare_column_values(
+                        a_query=old_etl_relation_query,
+                        b_query=new_etl_relation_query,
+                        primary_key=primary_key,
+                        column_to_compare=column.name
+                ) %}
+
+                {% set audit_results = run_query(audit_query) %}
+
+                {% do log_callback(audit_results.column_names, info=True) %}
+                    {% for row in audit_results.rows %}
+                          {% do log_callback(row.values(), info=True) %}
+                    {% endfor %}
+            {% endfor %}
+        {% endif %}
+        """
+
+        with self.adapter.connection_named('test'):
+            self.generate_sql(sql_template, False,
+                              dict(
+                                  model=model,
+                                  primary_key=primary_key,
+                                  log_callback=log_callback,
+                                  base_relation=self.get_base_relation(model),
+                                  pick_columns_to_compare=pick_columns_to_compare)
+                              )
+
+            data = []
+            for k, v in column_groups.items():
+                matched = v['matched']
+                mismatched = v['mismatched']
+                rate_base = matched + mismatched
+                rate = None if rate_base == 0 else 100 * (matched / rate_base)
+                record = [k, matched, rate]
+                data.append(record)
+
+            pk = [v for k, v in column_groups.items() if k.lower() == primary_key.lower()][0]
+            added = pk['added']
+            removed = pk['removed']
+            total = pk['matched'] + added + removed
+
+            columns = ['Column', 'Matched', 'Matched %']
+            df = pd.DataFrame(data, columns=columns)
+
+            result = dict(
+                summary=dict(total=total, added=added, removed=removed),
+                data=json.loads(df.to_json(orient='table', index=False)),
+                raw=column_groups
+            )
+            return result

@@ -17,7 +17,7 @@ export async function runQuery(params: QueryParams) {
 }
 
 export async function runQueryWithError(
-  params: QueryParams
+  params: QueryParams,
 ): Promise<QueryOutput> {
   try {
     const data = await runQuery(params);
@@ -50,7 +50,7 @@ export interface QueryDiffResult {
 }
 
 export async function runQueryDiff(
-  params: QueryDiffParams
+  params: QueryDiffParams,
 ): Promise<QueryDiffResult> {
   const sql_template = params.sql_template;
 
@@ -67,3 +67,21 @@ export async function runQueryDiff(
     current_error: current.error,
   };
 }
+
+
+export type ValueDiffResult = {
+  summary: {
+    total: number;
+    added: number;
+    removed: number;
+  };
+  data: {
+    schema: {
+      fields: Array<{
+        name: string;
+        type: string;
+      }>;
+    };
+    data: any;
+  };
+};

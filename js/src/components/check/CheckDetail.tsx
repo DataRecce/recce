@@ -1,13 +1,7 @@
 import {
-  Accordion,
-  AccordionButton,
-  AccordionIcon,
-  AccordionItem,
-  AccordionPanel,
   Box,
   Center,
   Checkbox,
-  Divider,
   Flex,
   Icon,
   IconButton,
@@ -17,22 +11,20 @@ import {
   MenuList,
   Spacer,
 } from "@chakra-ui/react";
-import SqlEditor from "../query/SqlEditor";
-import { QueryDiffDataGrid } from "../query/QueryDiffDataGrid";
-
-interface CheckDetailProps {
-  checkId: string;
-}
-
 import { DeleteIcon } from "@chakra-ui/icons";
 import { CheckBreadcrumb } from "./CheckBreadcrumb";
 import { VscKebabVertical } from "react-icons/vsc";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { cacheKeys } from "@/lib/api/cacheKeys";
 import { Check, deleteCheck, getCheck, updateCheck } from "@/lib/api/checks";
-import { QueryDiffResult } from "@/lib/api/adhocQuery";
+import { QueryDiffView } from "@/components/check/QueryDiffView";
+import { ValueDiffView } from "@/components/check/ValueDiffView";
 import { useLocation } from "wouter";
 import { CheckDescription } from "./CheckDescription";
+
+interface CheckDetailProps {
+  checkId: string;
+}
 
 export const CheckDetail = ({ checkId }: CheckDetailProps) => {
   const queryClient = useQueryClient();
@@ -119,35 +111,10 @@ export const CheckDetail = ({ checkId }: CheckDetailProps) => {
         />
       </Box>
 
-      <Accordion defaultIndex={[]} allowToggle>
-        {check?.type === "query_diff" && (
-          <AccordionItem>
-            <AccordionButton>
-              query
-              <AccordionIcon />
-            </AccordionButton>
 
-            <AccordionPanel>
-              <Box height="400px" width="100%" border="lightgray 1px solid ">
-                <SqlEditor
-                  value={(check?.params as any)?.sql_template || ""}
-                  options={{ readOnly: true }}
-                />
-              </Box>
-            </AccordionPanel>
-          </AccordionItem>
-        )}
-      </Accordion>
+      {check && check.type == "query_diff" && <QueryDiffView check={check} />}
+      {check && check.type == "value_diff" && <ValueDiffView check={check} />}
 
-      <Box flex="1" style={{ contain: "size" }}>
-        {check?.type === "query_diff" && (
-          <QueryDiffDataGrid
-            isFetching={false}
-            result={check?.last_run?.result}
-            primaryKeys={(check?.params as QueryDiffResult)?.primary_keys || []}
-          />
-        )}
-      </Box>
     </Flex>
   );
 };
