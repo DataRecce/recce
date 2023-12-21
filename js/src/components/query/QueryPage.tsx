@@ -1,8 +1,8 @@
-import React, { useState, useCallback, useMemo } from "react";
+import React, { useState, useCallback } from "react";
 import { Box, Button, Flex } from "@chakra-ui/react";
 import SqlEditor from "./SqlEditor";
 import { useRecceQueryContext } from "@/lib/hooks/RecceQueryContext";
-import { submitQueryDiff } from "@/lib/api/runs";
+import { submitQuery } from "@/lib/api/runs";
 import { createQueryDiffCheck, updateCheck } from "@/lib/api/checks";
 import { QueryDiffDataGrid } from "./QueryDiffDataGrid";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
@@ -25,7 +25,8 @@ export const QueryPage = () => {
     error: error,
     isPending,
   } = useMutation({
-    mutationFn: () => submitQueryDiff({ sql_template: sqlQuery }),
+    mutationFn: (queryType: "query_diff" | "query_current") =>
+      submitQuery({ queryType, params: { sql_template: sqlQuery } }),
     onSuccess: (run) => {
       setPrimaryKeys([]);
       setSubmittedQuery(sqlQuery);
@@ -63,18 +64,26 @@ export const QueryPage = () => {
         </Button>
         <Button
           colorScheme="blue"
-          onClick={() => runQuery()}
+          onClick={() => runQuery("query_diff")}
           isDisabled={isPending}
           size="sm"
         >
           Run
+        </Button>
+        <Button
+          colorScheme="blue"
+          onClick={() => runQuery("query_current")}
+          isDisabled={isPending}
+          size="sm"
+        >
+          Run on Current
         </Button>
       </Flex>
       <Box flex="1" border={"1px solid #CBD5E0"} height="200px" width="100%">
         <SqlEditor
           value={sqlQuery}
           onChange={setSqlQuery}
-          onRun={() => runQuery()}
+          onRun={() => runQuery("query_diff")}
         />
       </Box>
       <Box backgroundColor="gray.100" height="50vh">

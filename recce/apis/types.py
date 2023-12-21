@@ -11,6 +11,7 @@ from pandas import DataFrame
 class RunType(Enum):
     SIMPLE = 'simple'
     QUERY_DIFF = 'query_diff'
+    QUERY_CURRENT = "query_current"
     VALUE_DIFF = 'value_diff'
     SCHEMA_DIFF = 'schema_diff'
 

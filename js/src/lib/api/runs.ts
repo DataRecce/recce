@@ -1,9 +1,9 @@
-import { QueryDiffParams, QueryDiffResult, ValueDiffResult } from "./adhocQuery";
+import { QueryParams, QueryDiffResult, QueryCurrentResult, ValueDiffResult } from "./adhocQuery";
 import _ from "lodash";
 import { getCheck } from "./checks";
 import { axiosClient } from "./axiosClient";
 
-export type RunType = "query_diff" | "value_diff" | "schema_diff" | "simple";
+export type RunType = "query_diff" | 'query_current' | "value_diff" | "schema_diff" | "simple";
 export type RunParams = object;
 
 export interface Run {
@@ -11,7 +11,7 @@ export interface Run {
   check_id?: string;
   type: RunType;
   params?: RunParams;
-  result: QueryDiffResult | ValueDiffResult;
+  result: QueryDiffResult | QueryCurrentResult | ValueDiffResult;
 }
 
 interface SubmitRunInput {
@@ -23,11 +23,11 @@ export async function submitRun(input: SubmitRunInput) {
   const type = input.type;
   const params = input.params;
 
-  if (type === "query_diff") {
+  if (type === "query_diff" || type === "query_current") {
     const response = await axiosClient.post("/api/runs", {
-      type: "query_diff",
+      type,
       params,
-    });
+    })
 
     const run: Run = response.data;
 
@@ -37,9 +37,9 @@ export async function submitRun(input: SubmitRunInput) {
   }
 }
 
-export async function submitQueryDiff(params: QueryDiffParams): Promise<Run> {
-  const type = "query_diff";
-  return await submitRun({ type, params });
+
+export async function submitQuery(query: QueryParams): Promise<Run> {
+    return await submitRun({ type: query.queryType, params: query.params });
 }
 
 export async function submitRunFromCheck(checkId: string): Promise<Run> {
