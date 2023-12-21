@@ -44,7 +44,9 @@ export async function createValueDiffCheck(runId: string): Promise<Check> {
 export async function createCheckByNodeSchema(nodeId: string): Promise<Check> {
   const response = await axiosClient.post("/api/checks", {
     type: "schema_diff",
-    node_id: nodeId,
+    params: {
+      node_id: nodeId,
+    },
   });
   const check = response.data;
 

@@ -16,7 +16,7 @@ class CreateCheckIn(BaseModel):
     name: Optional[str] = None
     description: str = ''
     run_id: Optional[str] = None
-    node_id: Optional[str] = None
+    params: Optional[dict] = None
 
 
 class CreateCheckOut(BaseModel):
@@ -89,11 +89,12 @@ def create_check_dispatcher(check: CreateCheckIn):
         if check_record is None:
             raise HTTPException(status_code=404, detail=f'Run ID {check.run_id} not found')
     elif check.type == RunType.SCHEMA_DIFF:
-        if check.node_id is None:
-            raise HTTPException(status_code=400, detail='Node ID is required')
-        check_record = create_check_from_schema(check.name, check.description, check.node_id)
+        if isinstance(check.params, dict) is False or check.params.get('node_id') is None:
+            raise HTTPException(status_code=400, detail='Node ID is required in params')
+        node_id = check.params.get('node_id')
+        check_record = create_check_from_schema(check.name, check.description, node_id)
         if check_record is None:
-            raise HTTPException(status_code=404, detail=f'Node ID {check.node_id} not found')
+            raise HTTPException(status_code=404, detail=f'Node ID {node_id} not found')
     elif check.type == RunType.SIMPLE:
         check_record = Check(name=f"Check - {datetime.utcnow().isoformat()}", description=check.description,
                              type=RunType.SIMPLE)
