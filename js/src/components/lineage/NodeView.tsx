@@ -191,7 +191,7 @@ export function NodeView({ node, onCloseNode }: NodeViewProps) {
           )}
         </HStack>
       </Box>
-      {withColumns && (
+      {withColumns && (<>
         <Tabs overflow="auto" as={Flex}>
           <TabList>
             <Tab>Columns</Tab>
@@ -202,31 +202,30 @@ export function NodeView({ node, onCloseNode }: NodeViewProps) {
             </TabPanel>
           </TabPanels>
         </Tabs>
-      )}
-
-      <HStack p="16px">
-        <Button
-          colorScheme="blue"
-          size="sm"
-          onClick={addToChecklist}
-          >
-          Add schema check
-        </Button>
-        <Spacer />
-        {node.resourceType === "model" && node.changeStatus === "modified" && (<>
-          <MismatchSummaryModal node={node} />
+        <HStack p="16px">
           <Button
             colorScheme="blue"
             size="sm"
-            onClick={() => {
-              setSqlQuery(`select * from {{ ref("${node.name}") }}`);
-              setLocation("/query");
-            }}
-          >
-            Query
+            onClick={addToChecklist}
+            >
+            Add schema check
           </Button>
-        </>)}
-      </HStack>
+          <Spacer />
+          {node.resourceType === "model" && node.changeStatus === "modified" && (<>
+            <MismatchSummaryModal node={node} />
+            <Button
+              colorScheme="blue"
+              size="sm"
+              onClick={() => {
+                setSqlQuery(`select * from {{ ref("${node.name}") }}`);
+                setLocation("/query");
+              }}
+            >
+              Query
+            </Button>
+          </>)}
+        </HStack>
+      </>)}
     </Grid>
   );
 }
