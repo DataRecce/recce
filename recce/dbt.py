@@ -497,26 +497,80 @@ class DBTContext:
         return relation_holder.get('relation')
 
     def columns_value_mismatched_summary(self, primary_key: str, model: str):
-        column_results = []
-        primary_key_result = []
+        column_groups = {}
 
         def log_callback(data, info=False):
-            if isinstance(data, tuple) and len(data) == 4 and 'perfect match' in data[1]:
-                column_results.append(data)
 
-                # full data for primary key to make added and removed
-                if data[0].lower() == primary_key.lower():
-                    primary_key_result.append(data)
+            if isinstance(data, tuple) and len(data) == 4:
+                # data example:
+                # ('COLUMN_NAME', 'MATCH_STATUS', 'COUNT_RECORDS', 'PERCENT_OF_TOTAL')
+                # ('EVENT_ID', '✅: perfect match', 158601510, Decimal('100.00'))
+                column_name, column_state, row_count, total_rate = data
+                if 'column_name' == data[0].lower():
+                    # skip column names
+                    return
+
+                # sample data like this:
+                # case
+                #     when a_query.{{ column_to_compare }} = b_query.{{ column_to_compare }} then '✅: perfect match' -- -> matched
+                #     when a_query.{{ column_to_compare }} is null and b_query.{{ column_to_compare }} is null then '✅: both are null' -- -> matched
+                #     when a_query.{{ primary_key }} is null then '🤷: ‍missing from a' -- -> row added
+                #     when b_query.{{ primary_key }} is null then '🤷: missing from b'    -- -> row removed
+                #     when a_query.{{ column_to_compare }} is null then '🤷: value is null in a only' -- -> mismatched
+                #     when b_query.{{ column_to_compare }} is null then '🤷: value is null in b only' -- -> mismatched
+                #     when a_query.{{ column_to_compare }} != b_query.{{ column_to_compare }} then '🙅: ‍values do not match' -- -> mismatched
+                #     else 'unknown' -- this should never happen
+                # end as match_status,
+
+                if column_name not in column_groups:
+                    column_groups[column_name] = dict(matched=0, added=0, removed=0, mismatched=0, raw=[])
+                if 'perfect match' in column_state:
+                    column_groups[column_name]['matched'] += row_count
+                if 'both are null' in column_state:
+                    column_groups[column_name]['matched'] += row_count
+                if 'missing from a' in column_state:
+                    column_groups[column_name]['added'] += row_count
+                if 'missing from b' in column_state:
+                    column_groups[column_name]['removed'] += row_count
+                if 'value is null in a only' in column_state:
+                    column_groups[column_name]['mismatched'] += row_count
+                if 'value is null in b only' in column_state:
+                    column_groups[column_name]['mismatched'] += row_count
+                if 'values do not match' in column_state:
+                    column_groups[column_name]['mismatched'] += row_count
+                column_groups[column_name]['raw'].append((column_state, row_count))
+
+        def pick_columns_to_compare(c1, c2):
+            stat = {}
+            for c in c1 + c2:
+                if c.name not in stat:
+                    stat[c.name] = 1
+                else:
+                    stat[c.name] = stat[c.name] + 1
+
+            # only check the column both existing
+            for c in c1 + c2:
+                if c.name not in stat:
+                    continue
+
+                both_existing = stat[c.name] == 2
+                del stat[c.name]
+                if both_existing:
+                    yield c
+                else:
+                    continue
 
         sql_template = r"""
-        {%- set columns_to_compare=adapter.get_columns_in_relation(ref(':model:'))  -%}
+        {%- set columns_to_compare=pick_columns_to_compare(
+            adapter.get_columns_in_relation(ref(model)), adapter.get_columns_in_relation(base_relation))
+        -%}
 
         {% set old_etl_relation_query %}
-            select * from :base_relation:
+            select * from {{ base_relation }}
         {% endset %}
 
         {% set new_etl_relation_query %}
-            select * from {{ ref(':model:') }}
+            select * from {{ ref(model) }}
         {% endset %}
 
         {% if execute %}
@@ -525,7 +579,7 @@ class DBTContext:
                 {% set audit_query = audit_helper.compare_column_values(
                         a_query=old_etl_relation_query,
                         b_query=new_etl_relation_query,
-                        primary_key=":primary_key:",
+                        primary_key=primary_key,
                         column_to_compare=column.name
                 ) %}
 
@@ -537,39 +591,36 @@ class DBTContext:
                     {% endfor %}
             {% endfor %}
         {% endif %}
-
-
         """
 
-        sql_template = sql_template.replace(':model:', model)
-        sql_template = sql_template.replace(':primary_key:', primary_key)
-        sql_template = sql_template.replace(':base_relation:', str(self.get_base_relation(model)))
-
         with self.adapter.connection_named('test'):
-            self.generate_sql(sql_template, False, dict(log_callback=log_callback))
+            self.generate_sql(sql_template, False,
+                              dict(
+                                  model=model,
+                                  primary_key=primary_key,
+                                  log_callback=log_callback,
+                                  base_relation=self.get_base_relation(model),
+                                  pick_columns_to_compare=pick_columns_to_compare)
+                              )
 
-            # make added and removed from primary_key_result
-            # sample data like this:
-            # ('_column_name_', '✅: perfect match', 21796238, Decimal('13.74'))
-            # ('_column_name_', '✅: both are null', 38217746, Decimal('24.10'))
-            # ('_column_name_', '🤷: value is null in a only', 34664015, Decimal('21.86'))
-            # ('_column_name_', '🤷: value is null in b only', 34664015, Decimal('21.86'))
-            # ('_column_name_', '🙅: \u200dvalues do not match', 29259496, Decimal('18.45'))
-            #
-            # There must be not "values do not match" and "both are null" for primary key
-            # "added" is "value is null in a only"
-            # "removed" is "value is null in b only"
-            total = sum([x[2] for x in primary_key_result])
-            added = sum([x[2] for x in primary_key_result if 'value is null in a only' in x[1]])
-            removed = sum([x[2] for x in primary_key_result if 'value is null in b only' in x[1]])
+            data = []
+            for k, v in column_groups.items():
+                matched = v['matched']
+                mismatched = v['mismatched']
+                record = [k, matched, 100 * (matched / (matched + mismatched))]
+                data.append(record)
 
-            data = [(x[0], x[2], float(x[3])) for x in column_results]
+            pk = [v for k, v in column_groups.items() if k.lower() == primary_key.lower()][0]
+            added = pk['added']
+            removed = pk['removed']
+            total = pk['matched'] + added + removed
 
             columns = ['Column', 'Matched', 'Matched %']
             df = pd.DataFrame(data, columns=columns)
 
             result = dict(
                 summary=dict(total=total, added=added, removed=removed),
-                data=json.loads(df.to_json(orient='table', index=False))
+                data=json.loads(df.to_json(orient='table', index=False)),
+                raw=column_groups
             )
             return result
