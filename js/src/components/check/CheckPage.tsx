@@ -1,6 +1,6 @@
 import "react-data-grid/lib/styles.css";
 import React, { useCallback, useEffect } from "react";
-import { Check, createCheck, listChecks, updateCheck } from "@/lib/api/checks";
+import { Check, createSimpleCheck, listChecks, updateCheck } from "@/lib/api/checks";
 import { Box, Button, Center, Divider, Flex, Icon, IconButton, Tooltip, VStack } from "@chakra-ui/react";
 import { CheckDetail } from "./CheckDetail";
 import { cacheKeys } from "@/lib/api/cacheKeys";
@@ -8,7 +8,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import _ from "lodash";
 import { Route, Switch, useLocation, useRoute } from "wouter";
 import { FaCheckCircle } from "react-icons/fa";
-import { TbChecklist, TbSql } from "react-icons/tb";
+import { TbChecklist, TbSql, TbSchema, TbAlignBoxLeftStretch } from "react-icons/tb";
 import { IconType } from "react-icons";
 import { AddIcon } from "@chakra-ui/icons";
 
@@ -36,7 +36,19 @@ const ChecklistItem = ({
     mutate({ is_checked: isChecked });
   };
 
-  const icon: IconType = check.type === "query_diff" ? TbSql : TbChecklist;
+
+  const icon: IconType = ((type) => {
+    switch (type) {
+      case "schema_diff":
+        return TbSchema;
+      case "query_diff":
+        return TbSql;
+      case "value_diff":
+        return TbAlignBoxLeftStretch;
+      default:
+        return TbChecklist;
+    }
+  })(check.type);
 
   return (
     <Flex
@@ -89,7 +101,7 @@ export const CheckPage = () => {
   );
 
   const addToChecklist = useCallback(async () => {
-    const check = await createCheck();
+    const check = await createSimpleCheck();
     queryClient.invalidateQueries({ queryKey: cacheKeys.checks() });
 
     handleSelectItem(check.check_id);

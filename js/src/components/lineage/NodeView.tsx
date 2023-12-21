@@ -42,6 +42,8 @@ import { getIconForResourceType } from "./styles";
 import { useQuery } from "@tanstack/react-query";
 import { cacheKeys } from "@/lib/api/cacheKeys";
 import { fetchModelRowCount } from "@/lib/api/models";
+import { useCallback } from "react";
+import { createCheckByNodeSchema } from "@/lib/api/checks";
 
 
 interface ModelRowCount {
@@ -109,6 +111,12 @@ export function NodeView({ node, onCloseNode }: NodeViewProps) {
     queryFn:  () => fetchModelRowCount(node.name),
     enabled: false,
   });
+
+  const addToChecklist = useCallback(async () => {
+    const nodeID = node.id;
+    const check = await createCheckByNodeSchema(nodeID);
+    setLocation(`/checks/${check.check_id}`);
+  }, [node, setLocation]);
 
   return (
     <Grid height="100%" templateRows="auto auto 1fr">
@@ -183,7 +191,7 @@ export function NodeView({ node, onCloseNode }: NodeViewProps) {
           )}
         </HStack>
       </Box>
-      {withColumns && (
+      {withColumns && (<>
         <Tabs overflow="auto" as={Flex}>
           <TabList>
             <Tab>Columns</Tab>
@@ -194,23 +202,30 @@ export function NodeView({ node, onCloseNode }: NodeViewProps) {
             </TabPanel>
           </TabPanels>
         </Tabs>
-      )}
-      {node.resourceType === "model" && node.changeStatus === "modified" && (
         <HStack p="16px">
-          <Spacer />
-          <MismatchSummaryModal node={node} />
           <Button
             colorScheme="blue"
             size="sm"
-            onClick={() => {
-              setSqlQuery(`select * from {{ ref("${node.name}") }}`);
-              setLocation("/query");
-            }}
-          >
-            Query
+            onClick={addToChecklist}
+            >
+            Add schema check
           </Button>
+          <Spacer />
+          {node.resourceType === "model" && node.changeStatus === "modified" && (<>
+            <MismatchSummaryModal node={node} />
+            <Button
+              colorScheme="blue"
+              size="sm"
+              onClick={() => {
+                setSqlQuery(`select * from {{ ref("${node.name}") }}`);
+                setLocation("/query");
+              }}
+            >
+              Query
+            </Button>
+          </>)}
         </HStack>
-      )}
+      </>)}
     </Grid>
   );
 }

@@ -12,10 +12,11 @@ check_router = APIRouter(tags=['check'])
 
 
 class CreateCheckIn(BaseModel):
+    type: RunType
     name: Optional[str] = None
     description: str = ''
-    type: Optional[str] = None
     run_id: Optional[str] = None
+    node_id: Optional[str] = None
 
 
 class CreateCheckOut(BaseModel):
@@ -28,35 +29,86 @@ class CreateCheckOut(BaseModel):
 
 
 def create_check_from_run(name, description, run_id):
-    if name is None:
-        name = f"Check {datetime.utcnow().isoformat()}"
+    def generate_name_by_run(r):
+        now = datetime.utcnow().isoformat()
+        if r.type == RunType.QUERY_DIFF:
+            return f"check query - {now}".capitalize()
+        elif r.type == RunType.VALUE_DIFF:
+            model = r.params.get('model')
+            return f"value diff of {model} - {now}".capitalize()
+        else:
+            return f"check - {now}".capitalize()
+
+    if run_id is None:
+        return None
 
     for run in runs_db:
         if run_id == str(run.run_id):
+            if name is None:
+                name = generate_name_by_run(run)
             check = Check(name=name, description=description, type=run.type, params=run.params)
             run.check_id = check.check_id
             return check
     return None
 
 
+def create_check_from_schema(name, description, node_id):
+    def get_manifests_by_id(unique_id):
+        from recce.server import dbt_context
+        curr_manifest = dbt_context.get_manifest(base=False)
+        base_manifest = dbt_context.get_manifest(base=True)
+        if unique_id in curr_manifest.nodes.keys() or unique_id in base_manifest.nodes.keys():
+            return {
+                'current': curr_manifest.nodes.get(unique_id),
+                'base': base_manifest.nodes.get(unique_id)
+            }
+        return None
+
+    manifests = get_manifests_by_id(node_id)
+    if manifests is None:
+        return None
+
+    node = manifests['current'] or manifests['base']
+    if name is None:
+        name = f"{node.resource_type} schema of {node.name} - {datetime.utcnow().isoformat()}".capitalize()
+
+    params = {
+        "node_id": node_id,
+    }
+
+    check = Check(name=name, description=description, type=RunType.SCHEMA_DIFF, params=params)
+    return check
+
+
+def create_check_dispatcher(check: CreateCheckIn):
+    check_record = None
+    if check.type == RunType.QUERY_DIFF or check.type == RunType.VALUE_DIFF:
+        if check.run_id is None:
+            raise HTTPException(status_code=400, detail='Run ID is required')
+        check_record = create_check_from_run(check.name, check.description, check.run_id)
+        if check_record is None:
+            raise HTTPException(status_code=404, detail=f'Run ID {check.run_id} not found')
+    elif check.type == RunType.SCHEMA_DIFF:
+        if check.node_id is None:
+            raise HTTPException(status_code=400, detail='Node ID is required')
+        check_record = create_check_from_schema(check.name, check.description, check.node_id)
+        if check_record is None:
+            raise HTTPException(status_code=404, detail=f'Node ID {check.node_id} not found')
+    elif check.type == RunType.SIMPLE:
+        check_record = Check(name=f"Check - {datetime.utcnow().isoformat()}", description=check.description,
+                             type=RunType.SIMPLE)
+    else:
+        run_type = RunType(check.type)
+        check_record = Check(name=f"Check - {datetime.utcnow().isoformat()}", description=check.description,
+                             type=run_type)
+    return check_record
+
+
 @check_router.post("/checks", status_code=201, response_model=CreateCheckOut)
 async def create_check(check: CreateCheckIn):
-    if check.run_id is None:
-        if check.type is None:
-            check_record = Check(name=f"Check {datetime.utcnow().isoformat()}", description=check.description,
-                                 type=RunType.SIMPLE)
-        else:
-            try:
-                run_type = RunType(check.type)
-            except ValueError:
-                raise HTTPException(status_code=400, detail=f"Run type '{check.type}' not supported")
-
-            check_record = Check(name=f"Check {datetime.utcnow().isoformat()}", description=check.description,
-                                 type=run_type)
-    else:
-        check_record = create_check_from_run(check.name, check.description, check.run_id)
-        if not check_record:
-            raise HTTPException(status_code=404, detail=f"Run ID '{check.run_id}' not found")
+    check_record = create_check_dispatcher(check)
+    if check_record is None:
+        raise HTTPException(status_code=400, detail='Invalid check type')
 
     checks_db.append(check_record)
 
