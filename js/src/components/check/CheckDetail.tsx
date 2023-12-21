@@ -19,19 +19,17 @@ import { cacheKeys } from "@/lib/api/cacheKeys";
 import { Check, deleteCheck, getCheck, updateCheck } from "@/lib/api/checks";
 import { QueryDiffView } from "@/components/check/QueryDiffView";
 import { ValueDiffView } from "@/components/check/ValueDiffView";
+import { SchemaDiffView } from "./SchemaDiffView";
 import { useLocation } from "wouter";
 import { CheckDescription } from "./CheckDescription";
 
 interface CheckDetailProps {
   checkId: string;
 }
-import { useLineageGraphsContext } from "@/lib/hooks/LineageGraphContext";
-import { SchemaDiffView } from "./SchemaDiffView";
 
 export const CheckDetail = ({ checkId }: CheckDetailProps) => {
   const queryClient = useQueryClient();
   const [, setLocation] = useLocation();
-  const { lineageGraphSets } = useLineageGraphsContext();
 
   const {
     isLoading,
