@@ -18,6 +18,7 @@ import { LineageGraphNode, NodeData } from "./lineage";
 import { axiosClient } from "@/lib/api/axiosClient";
 import { ValueDiffPanel, ValueDiffSummary } from "@/components/check/ValueDiffView";
 import { useLocation } from "wouter";
+import { createValueDiffCheck } from "@/lib/api/checks";
 
 
 interface MismatchSummaryProp {
@@ -70,11 +71,8 @@ async function handleAddToCheck(valueDiff: ValueDiffSummary) {
   if (!valueDiff.runId) {
     return null;
   }
-  const data = {
-    run_id: valueDiff.runId,
-  };
-  const response = await axiosClient.post("/api/checks", data);
-  return response.data.check_id;
+  const check = await createValueDiffCheck(valueDiff.runId);
+  return check.check_id;
 }
 
 

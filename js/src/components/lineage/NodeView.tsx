@@ -43,7 +43,7 @@ import { useQuery } from "@tanstack/react-query";
 import { cacheKeys } from "@/lib/api/cacheKeys";
 import { fetchModelRowCount } from "@/lib/api/models";
 import { useCallback } from "react";
-import { createCheckBySchema } from "@/lib/api/checks";
+import { createCheckByNodeSchema } from "@/lib/api/checks";
 
 
 interface ModelRowCount {
@@ -114,9 +114,7 @@ export function NodeView({ node, onCloseNode }: NodeViewProps) {
 
   const addToChecklist = useCallback(async () => {
     const nodeID = node.id;
-    console.log("Add schema check:", nodeID);
-    const check = await createCheckBySchema(nodeID);
-    console.log("Created check:", check);
+    const check = await createCheckByNodeSchema(nodeID);
     setLocation(`/checks/${check.check_id}`);
   }, [node, setLocation]);
 
@@ -205,16 +203,17 @@ export function NodeView({ node, onCloseNode }: NodeViewProps) {
           </TabPanels>
         </Tabs>
       )}
-      {node.resourceType === "model" && node.changeStatus === "modified" && (
-        <HStack p="16px">
-          <Button
-            colorScheme="blue"
-            size="sm"
-            onClick={addToChecklist}
-            >
-            Add schema check
-          </Button>
-          <Spacer />
+
+      <HStack p="16px">
+        <Button
+          colorScheme="blue"
+          size="sm"
+          onClick={addToChecklist}
+          >
+          Add schema check
+        </Button>
+        <Spacer />
+        {node.resourceType === "model" && node.changeStatus === "modified" && (<>
           <MismatchSummaryModal node={node} />
           <Button
             colorScheme="blue"
@@ -226,8 +225,8 @@ export function NodeView({ node, onCloseNode }: NodeViewProps) {
           >
             Query
           </Button>
-        </HStack>
-      )}
+        </>)}
+      </HStack>
     </Grid>
   );
 }

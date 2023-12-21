@@ -6,11 +6,18 @@ interface SchemaDiffViewProps {
   check: Check;
 }
 
+export interface SchemaDiffParams {
+  node_id: string;
+}
+
 export function SchemaDiffView({ check }: SchemaDiffViewProps)  {
   const { lineageGraphSets } = useLineageGraphsContext();
-  const id = check.type === "schema_diff" ? (check.params as any).model_id : undefined;
+  const params = check.params as SchemaDiffParams;
+  const id = params.node_id;
   const node = id ? lineageGraphSets?.all.nodes[id] : undefined;
   if (node) {
     return <SchemaView base={node.data.base} current={node.data.current} />;
   }
+  // TODO: handle the edge case where the node is not found
+  return <></>;
 }

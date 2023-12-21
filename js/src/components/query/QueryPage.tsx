@@ -3,7 +3,7 @@ import { Box, Button, Flex } from "@chakra-ui/react";
 import SqlEditor from "./SqlEditor";
 import { useRecceQueryContext } from "@/lib/hooks/RecceQueryContext";
 import { submitQueryDiff } from "@/lib/api/runs";
-import { createCheckByRun, updateCheck } from "@/lib/api/checks";
+import { createCheckByRun as createQueryDiffCheck, updateCheck } from "@/lib/api/checks";
 import { QueryDiffDataGrid } from "./QueryDiffDataGrid";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { cacheKeys } from "@/lib/api/cacheKeys";
@@ -37,7 +37,7 @@ export const QueryPage = () => {
       return;
     }
 
-    const check = await createCheckByRun(queryResult.run_id);
+    const check = await createQueryDiffCheck(queryResult.run_id);
     await updateCheck(check.check_id, {
       params: { ...check.params, primary_keys: primaryKeys },
     });

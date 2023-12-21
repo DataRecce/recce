@@ -3,7 +3,7 @@ import _ from "lodash";
 import { getCheck } from "./checks";
 import { axiosClient } from "./axiosClient";
 
-export type RunType = "query_diff" | "value_diff" | "schema_diff";
+export type RunType = "query_diff" | "value_diff" | "schema_diff" | "simple";
 export type RunParams = object;
 
 export interface Run {
