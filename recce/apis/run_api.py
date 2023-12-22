@@ -13,7 +13,7 @@ run_router = APIRouter(tags=['run'])
 class CreateRunIn(BaseModel):
     type: str
     params: dict
-    check_id: Optional[str]
+    check_id: Optional[str] = None
 
 
 class CreateRunOut(BaseModel):
