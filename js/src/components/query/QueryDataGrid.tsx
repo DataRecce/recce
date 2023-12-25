@@ -1,40 +1,43 @@
 import "react-data-grid/lib/styles.css";
-import DataGrid from "react-data-grid";
-import { QueryDiffResult } from "@/lib/api/adhocQuery";
+import DataGrid, { Column } from "react-data-grid";
+import { QueryResult } from "@/lib/api/adhocQuery";
 import { Alert, AlertIcon, Center, Flex, Spinner } from "@chakra-ui/react";
 import { CSSProperties, useMemo } from "react";
 import { toDataDiffGrid } from "./querydiff";
+import { DataFrame } from "@/lib/api/types";
 
-interface QueryDiffDataGridProps {
+interface QueryDataGridProps {
   style?: CSSProperties;
   isFetching: boolean;
-  result?: QueryDiffResult;
+  result?: QueryResult;
   error?: Error | null; // error from submit
-  primaryKeys: string[];
-  setPrimaryKeys?: (primaryKeys: string[]) => void;
 }
 
-export const QueryDiffDataGrid = ({
+function toDataGrid(result: DataFrame) {
+  const columns: Column<any, any>[] = result.schema.fields.map((field) => {
+    return {
+      key: field.name,
+      name: field.name === "index" ? "" : field.name,
+      width: field.name === "index" ? 10 : "auto",
+    };
+  });
+
+  return { columns, rows: result.data };
+}
+
+export const QueryDataGrid = ({
   isFetching,
   result,
   error,
-  primaryKeys,
-  setPrimaryKeys,
-}: QueryDiffDataGridProps) => {
+}: QueryDataGridProps) => {
+  const dataframe = result?.result;
   const gridData = useMemo(() => {
-    if (isFetching) {
+    if (isFetching || !dataframe) {
       return { rows: [], columns: [] };
     }
 
-    return toDataDiffGrid(
-      result?.base,
-      result?.current,
-      primaryKeys,
-      setPrimaryKeys
-    );
-  }, [result, isFetching, primaryKeys, setPrimaryKeys]);
-
-  const { base_error: baseError, current_error: currentError } = result || {};
+    return toDataGrid(dataframe);
+  }, [isFetching, dataframe]);
 
   if (isFetching) {
     return (
@@ -45,12 +48,12 @@ export const QueryDiffDataGrid = ({
     );
   }
 
-  if (error || (baseError && currentError)) {
+  if (error || result?.error) {
     // return <Box p="16px">Error: {getErrorMessage(currentError)}</Box>;
     return (
       <Alert status="error">
         <AlertIcon />
-        Error: {error?.message || currentError}
+        Error: {error?.message || result?.error}
       </Alert>
     );
   }

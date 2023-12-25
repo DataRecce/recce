@@ -1,15 +1,13 @@
-export interface QueryParams {
-  queryType: "query_current" | "query_diff"
-  params: QueryCurrentParams | QueryDiffParams;
-}
+import { submitRun } from "./runs";
+import { DataFrame } from "./types";
 
-export interface QueryCurrentParams {
+export interface QueryParams {
   sql_template: string;
 }
 
-export interface QueryCurrentResult {
-  current?: any;
-  current_error?: string;
+export interface QueryResult {
+  result?: DataFrame;
+  error?: string;
 }
 
 export interface QueryDiffParams {
@@ -19,25 +17,19 @@ export interface QueryDiffParams {
 
 export interface QueryDiffResult {
   primary_keys?: string[];
-  base?: any;
-  current?: any;
+  base?: DataFrame;
+  current?: DataFrame;
   base_error?: string;
   current_error?: string;
 }
 
-export type ValueDiffResult = {
-  summary: {
-    total: number;
-    added: number;
-    removed: number;
-  };
-  data: {
-    schema: {
-      fields: Array<{
-        name: string;
-        type: string;
-      }>;
-    };
-    data: any;
-  };
-};
+export async function submitQuery(params: QueryParams) {
+  return await submitRun<QueryParams, QueryResult>("query", params);
+}
+
+export async function submitQueryDiff(params: QueryDiffParams) {
+  return await submitRun<QueryDiffResult, QueryDiffResult>(
+    "query_diff",
+    params
+  );
+}

@@ -60,6 +60,7 @@ const ChecklistItem = ({
     switch (type) {
       case "schema_diff":
         return TbSchema;
+      case "query":
       case "query_diff":
         return TbSql;
       case "value_diff":
