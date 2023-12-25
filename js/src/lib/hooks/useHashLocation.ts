@@ -1,61 +1,11 @@
-import { useState, useEffect, useCallback } from "react";
-import { BaseLocationHook } from "wouter";
+import { navigate, useLocationProperty } from "wouter/use-location";
 
-function getWindow(): Window | undefined {
-  if (typeof window === "undefined") {
-    return undefined;
-  }
+const hashNavigate = (to: string) => navigate("#!" + to);
 
-  return window;
-}
-
-function useHash(defaultValue?: string): [string, (location: string) => void] {
-  const _window = getWindow();
-  const [hash, setHash] = useState(defaultValue ?? "");
-
-  useEffect(() => {
-    if (!_window) {
-      return;
-    }
-
-    setHash(_window!.location.hash);
-    const handler = () => setHash(_window!.location.hash);
-    _window.addEventListener("hashchange", handler);
-
-    return () => window.removeEventListener("hashchange", handler);
-  }, [_window]);
-
-  const navigate = useCallback(
-    (to: string | null) => {
-      _window!.location.hash = `!${to}` || "";
-    },
-    [_window]
+export const useHashLocation = () => {
+  const location = useLocationProperty(
+    () => window.location.hash.replace(/^#!/, "") || "/",
+    () => "/ssr"
   );
-
-  return [hash, navigate];
-}
-
-// This is used by wouter Router
-// <Router hook={useHashLocation}>
-export const useHashLocation: BaseLocationHook = () => {
-  const [hash, setHash] = useHash("#!/ssr");
-
-  // replace '#!/path/to/resource?foo=bar' with '/path/to/resource'
-  let location = hash.replace(/^#!/, "") || "/";
-  if (location.includes("?")) {
-    location = location.split("?")[0];
-  }
-
-  return [location, setHash];
-};
-
-export const useHashParams = () => {
-  const [hash] = useHash();
-
-  if (hash.includes("?")) {
-    const [, search] = hash.split("?");
-    return new URLSearchParams(search);
-  } else {
-    return new URLSearchParams("");
-  }
+  return [location, hashNavigate];
 };
