@@ -1,14 +1,34 @@
 import "react-data-grid/lib/styles.css";
 import React, { useCallback, useEffect } from "react";
-import { Check, createSimpleCheck, listChecks, updateCheck } from "@/lib/api/checks";
-import { Box, Button, Center, Divider, Flex, Icon, IconButton, Tooltip, VStack } from "@chakra-ui/react";
+import {
+  Check,
+  createSimpleCheck,
+  listChecks,
+  updateCheck,
+} from "@/lib/api/checks";
+import {
+  Box,
+  Button,
+  Center,
+  Divider,
+  Flex,
+  Icon,
+  IconButton,
+  Tooltip,
+  VStack,
+} from "@chakra-ui/react";
 import { CheckDetail } from "./CheckDetail";
 import { cacheKeys } from "@/lib/api/cacheKeys";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import _ from "lodash";
 import { Route, Switch, useLocation, useRoute } from "wouter";
 import { FaCheckCircle } from "react-icons/fa";
-import { TbChecklist, TbSql, TbSchema, TbAlignBoxLeftStretch } from "react-icons/tb";
+import {
+  TbChecklist,
+  TbSql,
+  TbSchema,
+  TbAlignBoxLeftStretch,
+} from "react-icons/tb";
 import { IconType } from "react-icons";
 import { AddIcon } from "@chakra-ui/icons";
 
@@ -35,7 +55,6 @@ const ChecklistItem = ({
     const isChecked: boolean = (event.target as any).checked;
     mutate({ is_checked: isChecked });
   };
-
 
   const icon: IconType = ((type) => {
     switch (type) {
@@ -112,18 +131,9 @@ export const CheckPage = () => {
       return;
     }
 
-    if (checks.length > 0)
-      if (selectedItem) {
-        const found = _.find(
-          checks,
-          (check) => check.check_id === selectedItem
-        );
-        if (!found) {
-          setLocation(`/checks/${checks[0].check_id}`);
-        }
-      } else {
-        setLocation(`/checks/${checks[0].check_id}`);
-      }
+    if (!selectedItem && checks.length > 0) {
+      setLocation(`/checks/${checks[0].check_id}`);
+    }
   }, [status, selectedItem, checks, setLocation]);
 
   if (isLoading) {
