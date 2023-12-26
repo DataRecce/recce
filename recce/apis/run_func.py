@@ -5,20 +5,11 @@ from recce.apis.types import RunType
 from recce.server import dbt_context
 
 
-class QueryDiffParams(TypedDict):
-    sql_template: str
-
-
-class ValueDiffParams(TypedDict):
-    primary_key: str
-    model: str
-    exclude_columns: Optional[List[str]]
-
-
 class ExecutorManager:
     @staticmethod
     def create_executor(run_type: RunType, params: dict):
-        executors: Dict[RunType, Callable] = {RunType.QUERY_DIFF: QueryDiffExecutor,
+        executors: Dict[RunType, Callable] = {RunType.QUERY: QueryExecutor,
+                                              RunType.QUERY_DIFF: QueryDiffExecutor,
                                               RunType.VALUE_DIFF: ValueDiffExecutor}
         executor = executors.get(run_type)
         if not executor:
@@ -30,6 +21,34 @@ class RunExecutor(ABC):
     @abstractmethod
     def execute(self):
         raise NotImplementedError
+
+
+class QueryParams(TypedDict):
+    sql_template: str
+
+
+class QueryExecutor(RunExecutor):
+    def __init__(self, params: QueryParams):
+        self.params = params
+
+    def execute(self):
+        from jinja2.exceptions import TemplateSyntaxError
+
+        try:
+            sql = self.params.get('sql_template')
+            result = dbt_context.execute_sql(sql, base=False)
+            result_json = result.to_json(orient='table')
+
+            import json
+            return dict(result=json.loads(result_json))
+        except TemplateSyntaxError as e:
+            return dict(error=f"Jinja template error: line {e.lineno}: {str(e)}")
+        except Exception as e:
+            return dict(error=str(e))
+
+
+class QueryDiffParams(TypedDict):
+    sql_template: str
 
 
 class QueryDiffExecutor(RunExecutor):
@@ -58,6 +77,12 @@ class QueryDiffExecutor(RunExecutor):
             return None, f"Jinja template error: line {e.lineno}: {str(e)}"
         except Exception as e:
             return None, str(e)
+
+
+class ValueDiffParams(TypedDict):
+    primary_key: str
+    model: str
+    exclude_columns: Optional[List[str]]
 
 
 class ValueDiffExecutor(RunExecutor):

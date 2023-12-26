@@ -1,4 +1,4 @@
-import { toDataGrid } from "./query";
+import { toDataDiffGrid } from "./querydiff";
 
 test("query diff", () => {
   const base = {
@@ -91,7 +91,7 @@ test("query diff", () => {
     ],
   };
 
-  const result = toDataGrid(base, current, [], () => {});
+  const result = toDataDiffGrid(base, current, [], () => {});
 
   expect(result?.rows).toStrictEqual([
     {

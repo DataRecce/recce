@@ -17,11 +17,13 @@ import { VscKebabVertical } from "react-icons/vsc";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { cacheKeys } from "@/lib/api/cacheKeys";
 import { Check, deleteCheck, getCheck, updateCheck } from "@/lib/api/checks";
+
 import { QueryDiffView } from "@/components/check/QueryDiffView";
 import { ValueDiffView } from "@/components/check/ValueDiffView";
 import { SchemaDiffView } from "./SchemaDiffView";
 import { useLocation } from "wouter";
 import { CheckDescription } from "./CheckDescription";
+import { QueryView } from "./QueryView";
 
 interface CheckDetailProps {
   checkId: string;
@@ -112,10 +114,10 @@ export const CheckDetail = ({ checkId }: CheckDetailProps) => {
         />
       </Box>
 
+      {check && check.type == "query" && <QueryView check={check} />}
       {check && check.type == "query_diff" && <QueryDiffView check={check} />}
       {check && check.type == "value_diff" && <ValueDiffView check={check} />}
       {check && check.type == "schema_diff" && <SchemaDiffView check={check} />}
-
     </Flex>
   );
 };

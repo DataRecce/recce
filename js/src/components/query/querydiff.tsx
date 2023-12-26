@@ -3,22 +3,7 @@ import _ from "lodash";
 import "./styles.css";
 import { Box, Flex, Icon } from "@chakra-ui/react";
 import { VscClose, VscKey } from "react-icons/vsc";
-
-interface DataFrameField {
-  name: string;
-  type: string;
-}
-
-type DataFrameRow = Record<string, any>;
-
-export interface DataFrame {
-  schema: {
-    fields: Array<DataFrameField>;
-    primaryKey: string[];
-  };
-  pandas_version?: string;
-  data: Array<DataFrameRow>;
-}
+import { DataFrame, DataFrameField, DataFrameRow } from "@/lib/api/types";
 
 function _getPrimaryKeyValue(row: DataFrameRow, primaryKeys: string[]): string {
   const result: Record<string, any> = {};
@@ -85,7 +70,7 @@ function DataFrameColumnGroupHeader({
   }
 }
 
-export function toDataGrid(
+export function toDataDiffGrid(
   base?: DataFrame,
   current?: DataFrame,
   primaryKeys: string[] = [],
@@ -158,6 +143,7 @@ export function toDataGrid(
           ></DataFrameColumnGroupHeader>
         ),
         frozen: true,
+        cellClass: name === "index" ? "index-column" : undefined,
       });
     } else {
       if (name === "index") {

@@ -1,40 +1,20 @@
-import { Run, RunParams, RunType } from "./runs";
 import _ from "lodash";
 import { axiosClient } from "./axiosClient";
+import { Run, RunType } from "./types";
 
-export interface Check {
+export interface Check<PT = any, RT = any> {
   check_id: string;
   name: string;
   description?: string;
   type: RunType;
-  params?: RunParams;
+  params?: PT;
   is_checked?: boolean;
-  last_run?: Run;
+  last_run?: Run<PT, RT>;
 }
 
 export async function createSimpleCheck(): Promise<Check> {
   const response = await axiosClient.post("/api/checks", {
     type: "simple",
-  });
-  const check = response.data;
-
-  return check;
-}
-
-export async function createQueryDiffCheck(runId: string): Promise<Check> {
-  const response = await axiosClient.post("/api/checks", {
-    type: "query_diff",
-    run_id: runId
-  });
-  const check = response.data;
-
-  return check;
-}
-
-export async function createValueDiffCheck(runId: string): Promise<Check> {
-  const response = await axiosClient.post("/api/checks", {
-    type: "value_diff",
-    run_id: runId,
   });
   const check = response.data;
 
@@ -48,6 +28,13 @@ export async function createCheckByNodeSchema(nodeId: string): Promise<Check> {
       node_id: nodeId,
     },
   });
+  const check = response.data;
+
+  return check;
+}
+
+export async function createCheckByRun(runId: string): Promise<Check> {
+  const response = await axiosClient.post("/api/checks", { run_id: runId });
   const check = response.data;
 
   return check;

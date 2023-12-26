@@ -1,39 +1,13 @@
-import { axiosClient } from "./axiosClient";
-import { AxiosError } from "axios";
+import { submitRun } from "./runs";
+import { DataFrame } from "./types";
 
-interface QueryParams {
+export interface QueryParams {
   sql_template: string;
-  base?: boolean;
 }
 
-interface QueryOutput {
+export interface QueryResult {
+  result?: DataFrame;
   error?: string;
-  data?: any;
-}
-
-export async function runQuery(params: QueryParams) {
-  const response = await axiosClient.post("/api/query", params);
-  return response.data;
-}
-
-export async function runQueryWithError(
-  params: QueryParams,
-): Promise<QueryOutput> {
-  try {
-    const data = await runQuery(params);
-    return { data };
-  } catch (err: any) {
-    if (err instanceof AxiosError) {
-      const detail = err?.response?.data?.detail;
-      if (detail) {
-        return { error: detail };
-      } else {
-        return { error: err?.message };
-      }
-    } else {
-      return { error: err?.message };
-    }
-  }
 }
 
 export interface QueryDiffParams {
@@ -43,45 +17,19 @@ export interface QueryDiffParams {
 
 export interface QueryDiffResult {
   primary_keys?: string[];
-  base?: any;
-  current?: any;
+  base?: DataFrame;
+  current?: DataFrame;
   base_error?: string;
   current_error?: string;
 }
 
-export async function runQueryDiff(
-  params: QueryDiffParams,
-): Promise<QueryDiffResult> {
-  const sql_template = params.sql_template;
-
-  const [base, current] = await Promise.all([
-    runQueryWithError({ sql_template, base: true }),
-    runQueryWithError({ sql_template, base: false }),
-  ]);
-
-  return {
-    primary_keys: params.primary_keys,
-    base: base.data,
-    current: current.data,
-    base_error: base.error,
-    current_error: current.error,
-  };
+export async function submitQuery(params: QueryParams) {
+  return await submitRun<QueryParams, QueryResult>("query", params);
 }
 
-
-export type ValueDiffResult = {
-  summary: {
-    total: number;
-    added: number;
-    removed: number;
-  };
-  data: {
-    schema: {
-      fields: Array<{
-        name: string;
-        type: string;
-      }>;
-    };
-    data: any;
-  };
-};
+export async function submitQueryDiff(params: QueryDiffParams) {
+  return await submitRun<QueryDiffResult, QueryDiffResult>(
+    "query_diff",
+    params
+  );
+}

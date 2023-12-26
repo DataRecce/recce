@@ -1,14 +1,20 @@
-import React, { useState, useCallback, useMemo } from "react";
+import React, { useState, useCallback } from "react";
 import { Box, Button, Flex } from "@chakra-ui/react";
 import SqlEditor from "./SqlEditor";
 import { useRecceQueryContext } from "@/lib/hooks/RecceQueryContext";
-import { submitQueryDiff } from "@/lib/api/runs";
-import { createQueryDiffCheck, updateCheck } from "@/lib/api/checks";
+
+import { createCheckByRun, updateCheck } from "@/lib/api/checks";
 import { QueryDiffDataGrid } from "./QueryDiffDataGrid";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { cacheKeys } from "@/lib/api/cacheKeys";
 import { useLocation, useRouter } from "wouter";
-import { QueryDiffResult } from "@/lib/api/adhocQuery";
+import {
+  QueryDiffResult,
+  QueryResult,
+  submitQuery,
+  submitQueryDiff,
+} from "@/lib/api/adhocQuery";
+import { QueryDataGrid } from "./QueryDataGrid";
 
 export const QueryPage = () => {
   const { sqlQuery, setSqlQuery } = useRecceQueryContext();
@@ -18,6 +24,13 @@ export const QueryPage = () => {
 
   const queryClient = useQueryClient();
   const [, setLocation] = useLocation();
+  const queryFn = async (type: "query" | "query_diff") => {
+    if (type === "query") {
+      return submitQuery({ sql_template: sqlQuery });
+    } else {
+      return submitQueryDiff({ sql_template: sqlQuery });
+    }
+  };
 
   const {
     data: queryResult,
@@ -25,7 +38,7 @@ export const QueryPage = () => {
     error: error,
     isPending,
   } = useMutation({
-    mutationFn: () => submitQueryDiff({ sql_template: sqlQuery }),
+    mutationFn: queryFn,
     onSuccess: (run) => {
       setPrimaryKeys([]);
       setSubmittedQuery(sqlQuery);
@@ -37,16 +50,25 @@ export const QueryPage = () => {
       return;
     }
 
-    const check = await createQueryDiffCheck(queryResult.run_id);
-    await updateCheck(check.check_id, {
-      params: { ...check.params, primary_keys: primaryKeys },
-    });
+    const check = await createCheckByRun(queryResult.run_id);
+
+    if (queryResult.type === "query_diff") {
+      await updateCheck(check.check_id, {
+        params: { ...check.params, primary_keys: primaryKeys },
+      });
+    }
 
     setSubmittedQuery(undefined);
 
     queryClient.invalidateQueries({ queryKey: cacheKeys.checks() });
     setLocation(`/checks/${check.check_id}`);
-  }, [queryResult?.run_id, setLocation, primaryKeys, queryClient]);
+  }, [
+    queryResult?.run_id,
+    queryResult?.type,
+    setLocation,
+    primaryKeys,
+    queryClient,
+  ]);
 
   return (
     <Flex direction="column" height="100%">
@@ -63,7 +85,15 @@ export const QueryPage = () => {
         </Button>
         <Button
           colorScheme="blue"
-          onClick={() => runQuery()}
+          onClick={() => runQuery("query_diff")}
+          isDisabled={isPending}
+          size="sm"
+        >
+          Run Diff
+        </Button>
+        <Button
+          colorScheme="blue"
+          onClick={() => runQuery("query")}
           isDisabled={isPending}
           size="sm"
         >
@@ -74,17 +104,25 @@ export const QueryPage = () => {
         <SqlEditor
           value={sqlQuery}
           onChange={setSqlQuery}
-          onRun={() => runQuery()}
+          onRun={() => runQuery("query_diff")}
         />
       </Box>
       <Box backgroundColor="gray.100" height="50vh">
-        <QueryDiffDataGrid
-          isFetching={isPending}
-          result={queryResult?.result as QueryDiffResult}
-          error={error}
-          primaryKeys={primaryKeys}
-          setPrimaryKeys={setPrimaryKeys}
-        />
+        {queryResult?.type === "query" ? (
+          <QueryDataGrid
+            isFetching={isPending}
+            result={queryResult?.result as QueryResult}
+            error={error}
+          />
+        ) : (
+          <QueryDiffDataGrid
+            isFetching={isPending}
+            result={queryResult?.result as QueryDiffResult}
+            error={error}
+            primaryKeys={primaryKeys}
+            setPrimaryKeys={setPrimaryKeys}
+          />
+        )}
       </Box>
     </Flex>
   );
