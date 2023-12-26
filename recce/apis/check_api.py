@@ -30,13 +30,15 @@ class CreateCheckOut(BaseModel):
 
 def _generate_default_name(type, params):
     now = datetime.utcnow().isoformat()
-    if type == RunType.QUERY_DIFF:
-        return f"check query - {now}".capitalize()
+    if type == RunType.QUERY:
+        return f"query {now}".capitalize()
+    elif type == RunType.QUERY_DIFF:
+        return f"query diff {now}".capitalize()
     elif type == RunType.VALUE_DIFF:
         model = params.get('model')
-        return f"value diff of {model} - {now}".capitalize()
+        return f"value diff of {model}".capitalize()
     else:
-        return f"check - {now}".capitalize()
+        return f"check".capitalize()
 
 
 def _validate_check(type, params):
