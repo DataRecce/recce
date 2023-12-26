@@ -5,6 +5,8 @@ import { Alert, AlertIcon, Center, Flex, Spinner } from "@chakra-ui/react";
 import { CSSProperties, useMemo } from "react";
 import { toDataDiffGrid } from "./querydiff";
 
+import "./styles.css";
+
 interface QueryDiffDataGridProps {
   style?: CSSProperties;
   isFetching: boolean;

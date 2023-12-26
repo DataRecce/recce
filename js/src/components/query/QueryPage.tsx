@@ -108,14 +108,13 @@ export const QueryPage = () => {
         />
       </Box>
       <Box backgroundColor="gray.100" height="50vh">
-        {queryResult?.type === "query" && (
+        {queryResult?.type === "query" ? (
           <QueryDataGrid
             isFetching={isPending}
             result={queryResult?.result as QueryResult}
             error={error}
           />
-        )}
-        {queryResult?.type === "query_diff" && (
+        ) : (
           <QueryDiffDataGrid
             isFetching={isPending}
             result={queryResult?.result as QueryDiffResult}

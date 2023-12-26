@@ -1,4 +1,11 @@
 .diff-cell {
-    background-color: #ff6666;
-    color: white;
-  }
+  background-color: #ff6666;
+  color: white;
+}
+
+
+.rdg-cell {
+  border-width: 0px 1px 1px 0px;
+  border-style: solid;
+  border-color: var(--rdg-border-color);
+}
