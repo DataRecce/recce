@@ -38,7 +38,7 @@ def _generate_default_name(type, params):
         model = params.get('model')
         return f"value diff of {model}".capitalize()
     else:
-        return f"check".capitalize()
+        return f"check - {now}".capitalize()
 
 
 def _validate_check(type, params):
