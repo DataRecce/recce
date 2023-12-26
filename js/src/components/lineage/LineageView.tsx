@@ -13,9 +13,9 @@ import {
   ModalContent,
   ModalCloseButton,
   ModalBody,
+  HStack,
 } from "@chakra-ui/react";
-import axios, { AxiosError } from "axios";
-import React, { useCallback, useEffect, useState } from "react";
+import React, { useEffect, useState } from "react";
 import ReactFlow, {
   Node,
   Edge,
@@ -27,7 +27,6 @@ import ReactFlow, {
   Background,
   ReactFlowProvider,
   ControlButton,
-  useReactFlow,
 } from "reactflow";
 import dagre from "dagre";
 import "reactflow/dist/style.css";
@@ -39,6 +38,7 @@ import { NodeView } from "./NodeView";
 import { toPng } from "html-to-image";
 import { useLineageGraphsContext } from "@/lib/hooks/LineageGraphContext";
 import SummaryView from "../summary/SummaryView";
+import { FetchRowCountsButton } from "./NodeTag";
 
 const layout = (nodes: Node[], edges: Edge[], direction = "LR") => {
   const dagreGraph = new dagre.graphlib.Graph();
@@ -135,8 +135,6 @@ function _LineageView() {
   const [viewMode, setViewMode] = useState<"changed_models" | "all">(
     "changed_models"
   );
-
-  const { getViewport } = useReactFlow();
 
   useEffect(() => {
     if (!lineageGraphSets) {
@@ -267,8 +265,15 @@ function _LineageView() {
               <Icon as={FiList} />
             </ControlButton>
           </Controls>
-          <Panel position="bottom-left">
-            <ChangeStatusLegend />
+          <Panel position="bottom-left" >
+            <HStack>
+              <ChangeStatusLegend />
+              { nodes.length > 0 && (
+              <FetchRowCountsButton
+                nodes={nodes.map((node) => node.data)}
+              />)
+              }
+            </HStack>
           </Panel>
           <Panel position="top-left">
             <Text fontSize="xl" color="grey" opacity={0.5}>
