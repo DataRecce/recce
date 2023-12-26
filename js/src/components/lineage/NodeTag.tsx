@@ -118,7 +118,12 @@ export function RowCountTag(
 
 
   return (
-    <Tooltip hasArrow label={isFetched || isFetching || !isInteractive ?"Number of row":"Query the number of row"}>
+    <Tooltip
+      hasArrow
+      label={isFetched || isFetching || !isInteractive ?"Number of row":"Query the number of row"}
+      openDelay={500}
+      closeDelay={200}
+    >
       <Tag>
         <TagLeftIcon as={FiAlignLeft} />
         {isFetched || isFetching ? (

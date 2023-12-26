@@ -104,7 +104,12 @@ export function GraphNode({ data }: GraphNodeProps) {
             )}
           </Flex>
           {data.resourceType === "model" && (
-          <Flex flex='1 0 auto' mx="1" direction="column" paddingBottom="1">
+          <Flex
+            flex='1 0 auto'
+            mx="1" direction="column"
+            paddingBottom="1"
+            visibility={showContent ? "inherit" : "hidden"}
+          >
             <HStack spacing={"8px"}>
               <Spacer />
               <RowCountTag node={data} isInteractive={false}/>

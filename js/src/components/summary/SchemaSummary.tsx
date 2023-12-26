@@ -22,7 +22,7 @@ function SchemaDiffCard({
       <HStack spacing={"8px"} p={"16px"}>
         <ResourceTypeTag node={node} />
         {node.resourceType === "model" && (
-          <RowCountTag node={node} />
+          <RowCountTag node={node} isAutoFetching={true}/>
         )}
       </HStack>
     </CardHeader>
