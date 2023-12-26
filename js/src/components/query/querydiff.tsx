@@ -143,6 +143,7 @@ export function toDataDiffGrid(
           ></DataFrameColumnGroupHeader>
         ),
         frozen: true,
+        cellClass: name === "index" ? "index-column" : undefined,
       });
     } else {
       if (name === "index") {

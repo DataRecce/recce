@@ -1,8 +1,11 @@
+.index-column {
+  color: rgb(128, 128, 128);
+  text-align: right;
+}
 .diff-cell {
   background-color: #ff6666;
   color: white;
 }
-
 
 .rdg-cell {
   border-width: 0px 1px 1px 0px;

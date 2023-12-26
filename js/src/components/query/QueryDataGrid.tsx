@@ -3,7 +3,6 @@ import DataGrid, { Column } from "react-data-grid";
 import { QueryResult } from "@/lib/api/adhocQuery";
 import { Alert, AlertIcon, Center, Flex, Spinner } from "@chakra-ui/react";
 import { CSSProperties, useMemo } from "react";
-import { toDataDiffGrid } from "./querydiff";
 import { DataFrame } from "@/lib/api/types";
 
 interface QueryDataGridProps {
@@ -19,6 +18,7 @@ function toDataGrid(result: DataFrame) {
       key: field.name,
       name: field.name === "index" ? "" : field.name,
       width: field.name === "index" ? 10 : "auto",
+      cellClass: field.name === "index" ? "index-column" : undefined,
     };
   });
 
