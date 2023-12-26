@@ -111,6 +111,12 @@ export function RowCountTag(
         />;
   }
 
+  if (isInteractive === false && isFetched === false && isFetching === false) {
+    // Don't show anything if the row count is not fetched and is not interactive.
+    return null;
+  }
+
+
   return (
     <Tooltip hasArrow label={isFetched || isFetching || !isInteractive ?"Number of row":"Query the number of row"}>
       <Tag>
