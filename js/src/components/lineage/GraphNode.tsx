@@ -1,4 +1,4 @@
-import { Box, Flex, Icon, Text, Tooltip } from "@chakra-ui/react";
+import { Box, Flex, HStack, Icon, Spacer, Text, Tooltip } from "@chakra-ui/react";
 import React from "react";
 
 import { Handle, NodeProps, Position, useStore } from "reactflow";
@@ -6,6 +6,7 @@ import { LineageGraphNode } from "./lineage";
 import { getIconForChangeStatus, getIconForResourceType } from "./styles";
 
 import "./styles.css";
+import { RowCountTag } from "./NodeTag";
 
 interface GraphNodeProps extends NodeProps<LineageGraphNode> {}
 
@@ -102,6 +103,14 @@ export function GraphNode({ data }: GraphNodeProps) {
               </Flex>
             )}
           </Flex>
+          {data.resourceType === "model" && (
+          <Flex flex='1 0 auto' mx="1" direction="column" paddingBottom="1">
+            <HStack spacing={"8px"}>
+              <Spacer />
+              <RowCountTag node={data} isInteractive={false}/>
+            </HStack>
+          </Flex>
+          )}
         </Flex>
 
         {Object.keys(data?.parents ?? {}).length > 0 && (

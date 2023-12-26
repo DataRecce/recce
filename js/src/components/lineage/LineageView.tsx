@@ -13,8 +13,13 @@ import {
   ModalContent,
   ModalCloseButton,
   ModalBody,
+  Button,
+  HStack,
+  Menu,
+  MenuButton,
+  MenuList,
+  MenuItem,
 } from "@chakra-ui/react";
-import axios, { AxiosError } from "axios";
 import React, { useCallback, useEffect, useState } from "react";
 import ReactFlow, {
   Node,
@@ -35,10 +40,14 @@ import { GraphNode } from "./GraphNode";
 import GraphEdge from "./GraphEdge";
 import { getIconForChangeStatus } from "./styles";
 import { FiDownloadCloud, FiRefreshCw, FiList } from "react-icons/fi";
+import { MdQueryStats } from "react-icons/md";
 import { NodeView } from "./NodeView";
 import { toPng } from "html-to-image";
 import { useLineageGraphsContext } from "@/lib/hooks/LineageGraphContext";
 import SummaryView from "../summary/SummaryView";
+import { ChevronUpIcon } from "@chakra-ui/icons";
+import { FetchRowCountsButton, fetchRowCountsByNodes } from "./NodeTag";
+import { useQueries } from "@tanstack/react-query";
 
 const layout = (nodes: Node[], edges: Edge[], direction = "LR") => {
   const dagreGraph = new dagre.graphlib.Graph();
@@ -123,6 +132,60 @@ function ChangeStatusLegend() {
   );
 }
 
+const statNames : {
+  [key: string]: string
+} = {
+  '': 'No Stat',
+  row_count: 'Row Count',
+}
+
+function StatMenu({ stat, setStat }: { stat: string, setStat: (stat: string) => void }) {
+  const statName = statNames[stat] || 'No Stat';
+  return (
+    <Box p={2} flex="0 1 160px" fontSize="14px">
+      <Text color="gray" mb="2px">
+        Stat
+      </Text>
+      <Menu >
+        <MenuButton as={Box}>
+          <Flex alignItems="center" fontSize="sm" gap={2}>
+            {statName}
+            <ChevronUpIcon />
+          </Flex>
+        </MenuButton>
+        <MenuList>
+          {Object.entries(statNames).map(([key, name]) => {
+            return (
+              <MenuItem key={key}>{name}</MenuItem>
+            );
+          })}
+        </MenuList>
+      </Menu>
+    </Box>
+  );
+}
+
+// function FetchRowCountsButton({ onClick }: {onClick: () => void }) {
+//   const [enabled, setEnabled] = useState<boolean>(false);
+//   const [index, setIndex] = useState<number>(0);
+
+//   return (
+//     <Box p={2} flex="0 1 160px" fontSize="14px">
+//       <Text color="gray" mb="2px">
+//         Actions
+//       </Text>
+//       <Button
+//         size="xs"
+//         variant="outline"
+//         title="Query Row Counts"
+//         onClick={onClick}
+//       >
+//         <Icon as={MdQueryStats} mr={1} />
+//         Row Counts
+//       </Button>
+//     </Box>);
+// }
+
 function _LineageView() {
   const [nodes, setNodes, onNodesChange] = useNodesState([]);
   const [edges, setEdges, onEdgesChange] = useEdgesState([]);
@@ -135,6 +198,7 @@ function _LineageView() {
   const [viewMode, setViewMode] = useState<"changed_models" | "all">(
     "changed_models"
   );
+  const [stat, setStat] = useState<string>('' as string);
 
   const { getViewport } = useReactFlow();
 
@@ -158,6 +222,11 @@ function _LineageView() {
     setNodes(nodes);
     setEdges(edges);
   }, [setNodes, setEdges, viewMode, lineageGraphSets]);
+
+  const fetchAllRowCounts = useCallback(async () => {
+    fetchRowCountsByNodes(nodes.map((node) => node.data));
+  },[nodes]);
+
 
   const onNodeMouseEnter = (event: React.MouseEvent, node: Node) => {
     if (lineageGraph && modifiedSet !== undefined) {
@@ -267,8 +336,15 @@ function _LineageView() {
               <Icon as={FiList} />
             </ControlButton>
           </Controls>
-          <Panel position="bottom-left">
-            <ChangeStatusLegend />
+          <Panel position="bottom-left" >
+            <HStack>
+              <ChangeStatusLegend />
+              {/* <StatMenu stat={stat} setStat={setStat}/> */}
+              { nodes.length > 0 && (
+              <FetchRowCountsButton
+                nodes={nodes.map((node) => node.data)}
+              />)}
+            </HStack>
           </Panel>
           <Panel position="top-left">
             <Text fontSize="xl" color="grey" opacity={0.5}>
