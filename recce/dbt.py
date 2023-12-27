@@ -2,6 +2,7 @@ import hashlib
 import json
 import logging
 import os
+import sys
 import time
 from dataclasses import dataclass, fields
 from pathlib import Path
@@ -24,6 +25,7 @@ from dbt.contracts.graph.unparsed import Docs
 from dbt.contracts.results import CatalogArtifact
 from dbt.deps.base import downloads_directory
 from dbt.deps.resolver import resolve_packages
+from dbt.exceptions import UndefinedMacroError
 from dbt.node_types import AccessType, ModelLanguage, NodeType
 from watchdog.events import FileSystemEventHandler
 from watchdog.observers import Observer
@@ -202,28 +204,6 @@ class DBTContext:
     row_count_cache = LRUCache(32)
 
     @classmethod
-    def packages_downloader(cls, project: Project):
-        # reference from dbt-core tasks/deps.py
-
-        os.environ["DBT_MACRO_DEBUGGING"] = "false"
-        os.environ["DBT_VERSION_CHECK"] = "false"
-
-        pkgs = Path(project.project_root) / project.packages_install_path / "audit_helper"
-        if pkgs.exists():
-            return
-
-        renderer = PackageRenderer({})
-        packages_lock_dict = {'packages': [{'package': 'dbt-labs/audit_helper', 'version': '0.9.0'}]}
-        packages_lock_config = package_config_from_data(
-            renderer.render_data(packages_lock_dict)
-        ).packages
-
-        lock_defined_deps = resolve_packages(packages_lock_config, project, {})
-        with downloads_directory():
-            for package in lock_defined_deps:
-                package.install(project, renderer)
-
-    @classmethod
     def load(cls, **kwargs):
         # We need to run the dbt parse command because
         # 1. load the dbt profiles by dbt-core rule
@@ -245,6 +225,9 @@ class DBTContext:
         parse_result = dbtRunner().invoke(cmd)
         manifest = parse_result.result
 
+        if not parse_result.success:
+            sys.exit(1)
+
         if project_dir is None:
             project_path = os.getcwd()
         else:
@@ -254,11 +237,6 @@ class DBTContext:
         # The function 'load_profile' will use the global flags to load the profile.
         profile = load_profile(project_path, {}, profile_name_override=profile_name, target_override=target)
         project = load_project(project_path, False, profile)
-
-        packages = [x.package for x in project.packages.packages]
-        if not kwargs.get('skip_download', False) and 'dbt-labs/audit_helper' not in packages:
-            cls.packages_downloader(project)
-            return cls.load(**dict(skip_download=True, **kwargs))
 
         adapter: SQLAdapter = get_adapter_by_type(profile.credentials.type)
 
@@ -672,6 +650,25 @@ class DBTContext:
         {% endset %}
         {{ callback(check_name, run_query, test_unique_query, base) }}
         """
+
+        def validate_audit_helper():
+            check_audit_helper = "{{ audit_helper.compare_column_values }}"
+
+            with self.adapter.connection_named('test'):
+                try:
+                    self.generate_sql(check_audit_helper, False, {})
+                except BaseException as e:
+                    last_line = str(e).split("\n")[-1].strip()
+                    errors.append(dict(
+                        test='check_audit_helper',
+                        sql=last_line,
+                        model='',
+                        column_name='',
+                        base=False))
+
+        validate_audit_helper()
+        if errors:
+            return errors
 
         for base in [True, False]:
             for check_name, query in [('not_null', not_null_query), ('unique', unique_query)]:
