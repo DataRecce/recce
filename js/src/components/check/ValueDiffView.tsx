@@ -4,15 +4,18 @@ import {
   AccordionIcon,
   AccordionItem,
   AccordionPanel,
+  Alert,
+  AlertIcon,
+  AlertTitle,
   Box,
-  Divider,
-  Textarea,
+  Code,
 } from "@chakra-ui/react";
+
 
 import { Check } from "@/lib/api/checks";
 import DataGrid, { ColumnOrColumnGroup } from "react-data-grid";
 import React from "react";
-import { ValueDiffResult } from "@/lib/api/valuediff";
+import { ValueDiffError, ValueDiffResult } from "@/lib/api/valuediff";
 
 interface ValueDiffViewProp {
   check: Check;
@@ -29,24 +32,61 @@ export interface ValueDiffSummary {
   params: ValueDiffParams;
   data: any;
   runId?: string;
+  errors: ValueDiffError[];
 }
 
-export function ValueDiffPanel({
-  valueDiffSummary,
-}: {
-  valueDiffSummary: ValueDiffSummary;
-}) {
-  return (
-    <>
-      <Box mb={1}>
-        Model: <b>{valueDiffSummary.params.model}</b>, Primary Key:{" "}
-        <b>{valueDiffSummary.params.primary_key}</b>
-      </Box>
-      <Box mb={1}>
-        {valueDiffSummary.summary.total} rows ({valueDiffSummary.summary.added}{" "}
-        added, {valueDiffSummary.summary.removed} removed)
-      </Box>
-      <Divider mb={1} mt={1} />
+
+function ValueDiffErrorHints({ errors }: { errors: ValueDiffError[] }) {
+  if (!errors) {
+    return <></>;
+  }
+  for (let error of errors) {
+    console.log(error);
+  }
+
+  const ErrorEntry = ({ error }: { error: ValueDiffError }) => {
+    return <AccordionItem>
+      <AccordionButton>
+        <Box flex="1" textAlign="left">
+          <Alert status="error" rounded={5}>
+            <AlertIcon />
+            <AlertTitle fontSize="sm" mr={2}>Test column [{error.column_name}] {error.test} failed
+              on {error.base ? "base" : "current"}</AlertTitle>
+          </Alert>
+        </Box>
+        <AccordionIcon />
+      </AccordionButton>
+      <AccordionPanel pb={4}>
+        <Box>
+          <Box>
+            There are invalid data. You can check it with this query:
+          </Box>
+          <Code m={2} p={1}>{error.sql}</Code>
+        </Box>
+      </AccordionPanel>
+    </AccordionItem>;
+  };
+
+  return <>
+    <Accordion allowToggle mt={5} mb={5}>
+      {errors.map(e => <ErrorEntry key={`${e.base}_${e.test}_${e.column_name}`} error={e} />)}
+    </Accordion>
+  </>;
+}
+
+export function ValueDiffPanel({ valueDiffSummary }: { valueDiffSummary: ValueDiffSummary }) {
+  return <>
+
+    <Box mb={1}>
+      Model: <b>{valueDiffSummary.params.model}</b>, Primary Key: <b>{valueDiffSummary.params.primary_key}</b>
+    </Box>
+    <Box mb={1}>
+      {valueDiffSummary.summary.total} rows
+      ({valueDiffSummary.summary.added} added, {valueDiffSummary.summary.removed} removed)
+    </Box>
+    <ValueDiffErrorHints errors={valueDiffSummary.errors} />
+
+    {valueDiffSummary.errors.length === 0 &&
       <DataGrid
         style={{ height: "100%", width: "100%" }}
         columns={valueDiffSummary.columns.map((column: any) => ({
@@ -59,25 +99,23 @@ export function ValueDiffPanel({
         defaultColumnOptions={{ resizable: true }}
         className="rdg-light"
       />
-    </>
-  );
+    }
+
+  </>;
 }
 
 export function ValueDiffView({ check }: ValueDiffViewProp) {
   const result = check.last_run?.result as ValueDiffResult;
   const params = check.params as ValueDiffParams;
 
+
   let summary: ValueDiffSummary | null = null;
   if (result) {
     const columns = result.data.schema.fields.map((field: { name: string }) => {
       return { name: field.name, key: field.name };
     });
-    summary = {
-      columns,
-      data: result.data.data,
-      summary: result.summary,
-      params,
-    };
+
+    summary = { columns, data: result.data.data, summary: result.summary, params, errors: result.errors };
   }
 
   return (

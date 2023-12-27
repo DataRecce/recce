@@ -19,6 +19,7 @@ import { axiosClient } from "@/lib/api/axiosClient";
 import { ValueDiffPanel, ValueDiffSummary } from "@/components/check/ValueDiffView";
 import { useLocation } from "wouter";
 import { createCheckByRun } from "@/lib/api/checks";
+import { ValueDiffResult } from "@/lib/api/valuediff";
 
 
 interface MismatchSummaryProp {
@@ -96,7 +97,7 @@ function useMismatchSummaryModal() {
       setIsLoading(true);
       try {
         const data = await fetchColumnValuesComparison(node.name, selectedPrimaryKey);
-        const result = data.result;
+        const result = data.result as ValueDiffResult;
         const columns = result.data.schema.fields.map((field: { name: string }) => {
           return { "name": field.name, "key": field.name };
         });
@@ -107,6 +108,7 @@ function useMismatchSummaryModal() {
           summary: result.summary,
           params: { model: node.name, primary_key: selectedPrimaryKey },
           runId: data.run_id,
+          errors: result.errors,
         });
       } catch (error) {
         console.error("Error fetching column values comparison:", error);

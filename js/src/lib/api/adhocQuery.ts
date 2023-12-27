@@ -30,6 +30,6 @@ export async function submitQuery(params: QueryParams) {
 export async function submitQueryDiff(params: QueryDiffParams) {
   return await submitRun<QueryDiffResult, QueryDiffResult>(
     "query_diff",
-    params
+    params,
   );
 }

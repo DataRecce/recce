@@ -500,6 +500,17 @@ class DBTContext:
         column_groups = {}
         errors = self.verify_primary_key(primary_key, model)
 
+        if errors:
+            columns = ['Column', 'Matched', 'Matched %']
+            df = pd.DataFrame([], columns=columns)
+            result = dict(
+                summary=dict(total=0, added=0, removed=0),
+                data=json.loads(df.to_json(orient='table', index=False)),
+                raw=column_groups,
+                errors=errors
+            )
+            return result
+
         def log_callback(data, info=False):
 
             if isinstance(data, tuple) and len(data) == 4:
@@ -635,25 +646,29 @@ class DBTContext:
         def callback(check_name, executor, sql, is_base: bool):
             table = executor(sql)
             invalids = len(table.rows)
-            if invalids > 0:
-                errors.append(dict(
-                    test=check_name,
-                    invalids=invalids,
-                    sql=sql,
-                    model=model,
-                    column_name=primary_key,
-                    base=is_base))
+            if invalids == 1:
+                values = [r.values() for r in table.rows][0]
+                if values != (0,):
+                    errors.append(dict(
+                        test=check_name,
+                        sql=sql,
+                        model=model,
+                        column_name=primary_key,
+                        base=is_base))
+            else:
+                # it will never happen unless we use a wrong check sql
+                raise BaseException('Cannot verify primary key')
 
         not_null_query = r"""
         {% set test_not_null_query %}
-            {{ adapter.dispatch('test_not_null', 'dbt')(ref(model), column_name) }}
+            SELECT COUNT(*) AS INVALIDS FROM ({{ adapter.dispatch('test_not_null', 'dbt')(ref(model), column_name) }})
         {% endset %}
         {{ callback(check_name, run_query, test_not_null_query, base) }}
         """
 
         unique_query = r"""
         {% set test_unique_query %}
-            {{ adapter.dispatch('test_unique', 'dbt')(ref(model), column_name) }}
+            SELECT COUNT(*) AS INVALIDS FROM ({{ adapter.dispatch('test_unique', 'dbt')(ref(model), column_name) }})
         {% endset %}
         {{ callback(check_name, run_query, test_unique_query, base) }}
         """
