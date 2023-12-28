@@ -105,10 +105,11 @@ class ProfileExecutor(RunExecutor):
         self.params = params
 
     def execute(self):
-        result = {
-            'base': self.execute_profile(base=True),
-            'target': self.execute_profile(base=False)
-        }
+        result = {}
+
+        result['base'], result['base_error'] = self.execute_profile(base=True)
+        result['current'], result['current_error'] = self.execute_profile(base=False)
+
         return result
 
     def execute_profile(self, base: bool = False):
@@ -120,8 +121,8 @@ class ProfileExecutor(RunExecutor):
             result_json = result.to_json(orient='table')
 
             import json
-            return json.loads(result_json)
+            return json.loads(result_json), None
         except TemplateSyntaxError as e:
-            return dict(error=f"Jinja template error: line {e.lineno}: {str(e)}")
+            return None, f"Jinja template error: line {e.lineno}: {str(e)}"
         except Exception as e:
-            return dict(error=str(e))
+            return None, str(e)
