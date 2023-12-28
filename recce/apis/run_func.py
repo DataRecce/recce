@@ -101,15 +101,22 @@ class ProfileParams(TypedDict):
 
 class ProfileExecutor(RunExecutor):
 
-    def __init__(self, params: ValueDiffParams):
+    def __init__(self, params: ProfileParams):
         self.params = params
 
     def execute(self):
+        result = {
+            'base': self.execute_profile(base=True),
+            'target': self.execute_profile(base=False)
+        }
+        return result
+
+    def execute_profile(self, base: bool = False):
         from jinja2.exceptions import TemplateSyntaxError
 
         try:
             model = self.params.get('model')
-            result = dbt_context.model_profile(model)
+            result = dbt_context.model_profile(model, base=base)
             result_json = result.to_json(orient='table')
 
             import json
