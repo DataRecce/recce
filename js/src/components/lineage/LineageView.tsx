@@ -1,5 +1,5 @@
 import { PUBLIC_API_URL } from "../../lib/const";
-import { LineageGraph, highlightPath, toReactflow } from "./lineage";
+import { LineageGraph, cleanUpSelectedNodes, highlightPath, selectNode, toReactflow } from "./lineage";
 import {
   Box,
   Flex,
@@ -14,6 +14,9 @@ import {
   ModalCloseButton,
   ModalBody,
   HStack,
+  Button,
+  VStack,
+  Switch,
 } from "@chakra-ui/react";
 import React, { useEffect, useState } from "react";
 import ReactFlow, {
@@ -34,11 +37,13 @@ import { GraphNode } from "./GraphNode";
 import GraphEdge from "./GraphEdge";
 import { getIconForChangeStatus } from "./styles";
 import { FiDownloadCloud, FiRefreshCw, FiList } from "react-icons/fi";
+import { MdAdd } from "react-icons/md";
 import { NodeView } from "./NodeView";
 import { toPng } from "html-to-image";
 import { useLineageGraphsContext } from "@/lib/hooks/LineageGraphContext";
 import SummaryView from "../summary/SummaryView";
 import { FetchRowCountsButton } from "./NodeTag";
+import { NodeSelector } from "./NodeSelector";
 
 const layout = (nodes: Node[], edges: Edge[], direction = "LR") => {
   const dagreGraph = new dagre.graphlib.Graph();
@@ -131,7 +136,8 @@ function _LineageView() {
   const { lineageGraphSets, isLoading, error } = useLineageGraphsContext();
   const { isOpen, onOpen, onClose } = useDisclosure();
 
-  const [selected, setSelected] = useState<string>();
+  const [selectMode, setSelectMode] = useState<"detail" | "action">("detail");
+const [selected, setSelected] = useState<string>();
   const [viewMode, setViewMode] = useState<"changed_models" | "all">(
     "changed_models"
   );
@@ -187,7 +193,12 @@ function _LineageView() {
   };
 
   const onNodeClick = (event: React.MouseEvent, node: Node) => {
-    setSelected(node.id);
+    if (selectMode === "action") {
+      const newNodes = selectNode(node, nodes);
+      setNodes(newNodes);
+    } else {
+      setSelected(node.id);
+    }
   };
 
   if (isLoading) {
@@ -254,6 +265,7 @@ function _LineageView() {
               title="switch mode"
               onClick={() => {
                 setViewMode(viewMode === "all" ? "changed_models" : "all");
+                cleanUpSelectedNodes(nodes);
               }}
             >
               <Icon as={FiRefreshCw} />
@@ -268,17 +280,41 @@ function _LineageView() {
           <Panel position="bottom-left" >
             <HStack>
               <ChangeStatusLegend />
-              { nodes.length > 0 && (
-              <FetchRowCountsButton
-                nodes={nodes.map((node) => node.data)}
-              />)
-              }
+              <Box p={2} flex="0 1 160px" fontSize="14px">
+                <Text color="gray" mb="2px">
+                  Actions
+                </Text>
+                  <VStack spacing={1} align="baseline">
+                    <Button
+                      size="xs"
+                      variant="outline"
+                      isDisabled={selectMode === "action"}
+                      onClick={() => {
+                        const newMode = selectMode === "detail" ? "action" : "detail";
+                        const newNodes = cleanUpSelectedNodes(nodes);
+                        setNodes(newNodes);
+                        setSelectMode(newMode);
+                      }}
+                      >
+                      Select Models
+                    </Button>
+                  </VStack>
+              </Box>
             </HStack>
           </Panel>
           <Panel position="top-left">
             <Text fontSize="xl" color="grey" opacity={0.5}>
               {viewModeTitle[viewMode]}
             </Text>
+          </Panel>
+          <Panel position="bottom-center">
+            <NodeSelector
+              nodes={nodes.map((node) => node.data)}
+              isOpen={selectMode === "action"}
+              onClose={() => {
+                setSelectMode("detail");
+                cleanUpSelectedNodes(nodes);
+              }} />
           </Panel>
           <MiniMap nodeColor={nodeColor} nodeStrokeWidth={3} />
         </ReactFlow>
@@ -292,7 +328,7 @@ function _LineageView() {
           </ModalBody>
         </ModalContent>
       </Modal>
-      {selected && lineageGraph?.nodes[selected] && (
+      {selectMode === 'detail' && selected && lineageGraph?.nodes[selected] && (
         <Box flex="0 0 500px" borderLeft="solid 1px lightgray" height="100%">
           <NodeView
             node={lineageGraph?.nodes[selected]}

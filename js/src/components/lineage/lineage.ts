@@ -52,6 +52,7 @@ export interface LineageGraphNode {
     [key: string]: LineageGraphEdge;
   };
 
+  isSelected: boolean;
   isHighlighted?: boolean;
 }
 
@@ -98,6 +99,7 @@ export function buildDefaultLineageGraphSets(
         from,
         parents: {},
         children: {},
+        isSelected: false,
       };
     };
 
@@ -364,4 +366,43 @@ export function highlightPath(
   });
 
   return [newNodes, newEdges];
+}
+
+export function selectNode(
+  node: Node<LineageGraphNode>,
+  nodes: Node<LineageGraphNode>[],
+) {
+  const newNodes = nodes.map((n) => {
+    const isMatch = n.id === node.id;
+    return {
+      ...n,
+      data: {
+        ...n.data,
+        isSelected: n.data.isSelected !== isMatch,
+      },
+    };
+  });
+  return newNodes;
+}
+
+export function cleanUpSelectedNodes(
+  nodes: Node<LineageGraphNode>[],
+) {
+  const newNodes = nodes.map((n) => {
+    return {
+      ...n,
+      data: {
+        ...n.data,
+        isSelected: false,
+      },
+    };
+  });
+  return newNodes;
+}
+
+export function getSelectedNodes(
+  nodes: Node<LineageGraphNode>[],
+) {
+  const selectedNodes = nodes.filter((n) => n.data.isSelected);
+  return selectedNodes;
 }
