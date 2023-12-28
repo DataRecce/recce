@@ -33,6 +33,20 @@ export async function createCheckByNodeSchema(nodeId: string): Promise<Check> {
   return check;
 }
 
+export async function createCheckByMultipleNodesSchema(
+  nodeIds: string[]
+): Promise<Check> {
+  const response = await axiosClient.post("/api/checks", {
+    type: "schema_diff",
+    params: {
+      node_ids: nodeIds,
+    },
+  });
+  const check = response.data;
+
+  return check;
+}
+
 export async function createCheckByRun(runId: string): Promise<Check> {
   const response = await axiosClient.post("/api/checks", { run_id: runId });
   const check = response.data;

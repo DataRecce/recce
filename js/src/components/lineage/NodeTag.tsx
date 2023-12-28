@@ -171,22 +171,16 @@ export function FetchRowCountsButton({ nodes }: { nodes: LineageGraphNode[] }) {
     }
   }, [isFetched, index, nodes]);
 
-
-
   return (
-    <Box p={2} flex="0 1 160px" fontSize="14px">
-      <Text color="gray" mb="2px">
-        Actions
-      </Text>
-      <Button
-        size="xs"
-        variant="outline"
-        title= "Query Row Counts"
-        onClick={() => {setIndex(0); setEnabled(true);}}
-        isDisabled={isLoading}
-      >
-        <Icon as={MdQueryStats} mr={1} />
-        {isLoading ? "Loading" : "Row Counts"}
-      </Button>
-    </Box>);
+    <Button
+      size="xs"
+      variant="outline"
+      title= "Query Row Counts"
+      onClick={() => {setIndex(0); setEnabled(true);}}
+      isDisabled={isLoading}
+    >
+      <Icon as={MdQueryStats} mr={1} />
+      {isLoading ? "Querying" : "Query Row Counts"}
+    </Button>
+  );
 }
