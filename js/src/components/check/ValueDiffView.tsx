@@ -4,7 +4,7 @@ import {
   AccordionIcon,
   AccordionItem,
   AccordionPanel,
-  Alert,
+  Alert, AlertDescription,
   AlertIcon,
   AlertTitle,
   Box,
@@ -45,6 +45,18 @@ function ValueDiffErrorHints({ errors }: { errors: ValueDiffError[] }) {
   }
 
   const ErrorEntry = ({ error }: { error: ValueDiffError }) => {
+    if (error.model === "" && error.column_name === "") {
+      return <>
+        <Box flex="1" textAlign="left">
+          <Alert status="error" rounded={5} flexDirection="column">
+            <AlertIcon boxSize="40px" />
+            <AlertTitle fontSize="lg" mr={2}>Can not execute value-diff</AlertTitle>
+            <AlertDescription>{error.sql}</AlertDescription>
+          </Alert>
+        </Box>
+      </>;
+    }
+
     return <AccordionItem>
       <AccordionButton>
         <Box flex="1" textAlign="left">
