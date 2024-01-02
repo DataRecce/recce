@@ -3,14 +3,14 @@ import DataGrid, { ColumnOrColumnGroup, textEditor } from "react-data-grid";
 import { Alert, AlertIcon, Center, Spinner } from "@chakra-ui/react";
 import { CSSProperties, useMemo } from "react";
 import { DataFrame, DataFrameField, DataFrameRow } from "@/lib/api/types";
-import { ProfileResult } from "@/lib/api/profile";
+import { ProfileDiffResult } from "@/lib/api/profile";
 import { VscClose, VscKey } from "react-icons/vsc";
 import _ from "lodash";
 
 interface ProfileDataGridProps {
   style?: CSSProperties;
   isFetching: boolean;
-  result?: ProfileResult;
+  result?: ProfileDiffResult;
   error?: Error | null; // error from submit
 }
 
@@ -146,7 +146,7 @@ function toDataDiffGrid(base?: DataFrame, current?: DataFrame) {
   };
 }
 
-export const ProfileDataGrid = ({
+export const ProfileDiffDataGrid = ({
   isFetching,
   result,
   error,

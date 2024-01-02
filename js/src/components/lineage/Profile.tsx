@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useCallback } from "react";
 import {
   Button,
   Modal,
@@ -14,9 +14,10 @@ import { LineageGraphNode, NodeData } from "./lineage";
 import { ValueDiffSummary } from "@/components/check/ValueDiffView";
 import { useLocation } from "wouter";
 import { createCheckByRun } from "@/lib/api/checks";
-import { useMutation } from "@tanstack/react-query";
-import { ProfileResult, submitProfile } from "@/lib/api/profile";
-import { ProfileDataGrid } from "./ProfileDataGrid";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { ProfileDiffResult, submitProfile } from "@/lib/api/profile";
+import { ProfileDiffDataGrid } from "./ProfileDiffGrid";
+import { cacheKeys } from "@/lib/api/cacheKeys";
 
 interface ProfileProp {
   node: LineageGraphNode;
@@ -31,6 +32,7 @@ async function handleAddToCheck(valueDiff: ValueDiffSummary) {
 }
 
 export const ProfileModal = ({ node }: ProfileProp) => {
+  const queryClient = useQueryClient();
   const { isOpen, onOpen, onClose } = useDisclosure();
   const [, setLocation] = useLocation();
 
@@ -43,11 +45,15 @@ export const ProfileModal = ({ node }: ProfileProp) => {
     mutationFn: submitProfile,
   });
 
-  // useEffect(() => {
-  //   if (mismatchSummary?.params?.model != node.name) {
-  //     setMismatchSummary(null);
-  //   }
-  // }, [node.name]);
+  const addToChecklist = useCallback(async () => {
+    if (!profileResult?.run_id) {
+      return;
+    }
+
+    const check = await createCheckByRun(profileResult.run_id);
+    queryClient.invalidateQueries({ queryKey: cacheKeys.checks() });
+    setLocation(`/checks/${check.check_id}`);
+  }, [profileResult?.run_id, setLocation, queryClient]);
 
   return (
     <>
@@ -57,23 +63,14 @@ export const ProfileModal = ({ node }: ProfileProp) => {
           <ModalHeader>Model Profile</ModalHeader>
           <ModalCloseButton />
           <ModalBody>
-            <ProfileDataGrid
+            <ProfileDiffDataGrid
               isFetching={isPending}
-              result={profileResult?.result as ProfileResult}
+              result={profileResult?.result as ProfileDiffResult}
               error={error}
             />
           </ModalBody>
           <ModalFooter>
-            <Button
-              mr={3}
-              colorScheme="blue"
-              // onClick={async () => {
-              //   const checkId = await handleAddToCheck(mismatchSummary);
-              //   if (checkId) {
-              //     setLocation(`/checks/${checkId}`);
-              //   }
-              // }}
-            >
+            <Button mr={3} colorScheme="blue" onClick={addToChecklist}>
               Add to check
             </Button>
           </ModalFooter>

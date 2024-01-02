@@ -5,7 +5,7 @@ export interface ProfileParams {
   model: string;
 }
 
-export interface ProfileResult {
+export interface ProfileDiffResult {
   base?: DataFrame;
   current?: DataFrame;
   base_error?: string;
@@ -13,5 +13,5 @@ export interface ProfileResult {
 }
 
 export async function submitProfile(params: ProfileParams) {
-  return await submitRun<ProfileParams, ProfileResult>("profile", params);
+  return await submitRun<ProfileParams, ProfileDiffResult>("profile", params);
 }
