@@ -6,6 +6,7 @@ interface SqlEditorProps {
   value: string;
   onChange?: (value: string) => void;
   onRun?: () => void;
+  onRunDiff?: () => void;
   options?: EditorProps["options"];
 }
 
@@ -13,6 +14,7 @@ const SqlEditor: React.FC<SqlEditorProps> = ({
   value,
   onChange,
   onRun,
+  onRunDiff,
   options = {},
   ...props
 }: SqlEditorProps) => {
@@ -33,6 +35,13 @@ const SqlEditor: React.FC<SqlEditorProps> = ({
           editor.addCommand(
             monaco.KeyMod.CtrlCmd | monaco.KeyCode.Enter,
             onRun
+          );
+        }
+
+        if (onRunDiff) {
+          editor.addCommand(
+            monaco.KeyMod.CtrlCmd | monaco.KeyMod.Shift | monaco.KeyCode.Enter,
+            onRunDiff
           );
         }
       }}

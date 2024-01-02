@@ -1,4 +1,11 @@
-import { Accordion, AccordionButton, AccordionIcon, AccordionItem, AccordionPanel, Box } from "@chakra-ui/react";
+import {
+  Accordion,
+  AccordionButton,
+  AccordionIcon,
+  AccordionItem,
+  AccordionPanel,
+  Box,
+} from "@chakra-ui/react";
 import SqlEditor from "@/components/query/SqlEditor";
 import { QueryDiffDataGrid } from "@/components/query/QueryDiffDataGrid";
 import { QueryDiffResult } from "@/lib/api/adhocQuery";
@@ -9,10 +16,9 @@ interface QueryDiffViewProp {
 }
 
 export function QueryDiffView({ check }: QueryDiffViewProp) {
-
-  return <>
-    <Accordion defaultIndex={[]} allowToggle>
-      {check?.type === "query_diff" && (
+  return (
+    <>
+      <Accordion defaultIndex={[]} allowToggle>
         <AccordionItem>
           <AccordionButton>
             query
@@ -28,18 +34,17 @@ export function QueryDiffView({ check }: QueryDiffViewProp) {
             </Box>
           </AccordionPanel>
         </AccordionItem>
-      )}
-    </Accordion>
+      </Accordion>
 
-    <Box flex="1" style={{ contain: "size" }}>
-      {check?.type === "query_diff" && (
-        <QueryDiffDataGrid
-          isFetching={false}
-          result={check?.last_run?.result as QueryDiffResult}
-          primaryKeys={(check?.params as QueryDiffResult)?.primary_keys || []}
-        />
-      )}
-    </Box>
-  </>;
-
+      <Box flex="1" style={{ contain: "size" }}>
+        {check?.type === "query_diff" && (
+          <QueryDiffDataGrid
+            isFetching={false}
+            result={check?.last_run?.result as QueryDiffResult}
+            primaryKeys={(check?.params as QueryDiffResult)?.primary_keys || []}
+          />
+        )}
+      </Box>
+    </>
+  );
 }

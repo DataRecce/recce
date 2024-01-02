@@ -104,7 +104,8 @@ export const QueryPage = () => {
         <SqlEditor
           value={sqlQuery}
           onChange={setSqlQuery}
-          onRun={() => runQuery("query_diff")}
+          onRun={() => runQuery("query")}
+          onRunDiff={() => runQuery("query_diff")}
         />
       </Box>
       <Box backgroundColor="gray.100" height="50vh">

@@ -20,23 +20,21 @@ export function QueryView({ check }: QueryViewProp) {
   return (
     <>
       <Accordion defaultIndex={[]} allowToggle>
-        {check?.type === "query_diff" && (
-          <AccordionItem>
-            <AccordionButton>
-              query
-              <AccordionIcon />
-            </AccordionButton>
+        <AccordionItem>
+          <AccordionButton>
+            query
+            <AccordionIcon />
+          </AccordionButton>
 
-            <AccordionPanel>
-              <Box height="400px" width="100%" border="lightgray 1px solid ">
-                <SqlEditor
-                  value={(check?.params as any)?.sql_template || ""}
-                  options={{ readOnly: true }}
-                />
-              </Box>
-            </AccordionPanel>
-          </AccordionItem>
-        )}
+          <AccordionPanel>
+            <Box height="400px" width="100%" border="lightgray 1px solid ">
+              <SqlEditor
+                value={(check?.params as any)?.sql_template || ""}
+                options={{ readOnly: true }}
+              />
+            </Box>
+          </AccordionPanel>
+        </AccordionItem>
       </Accordion>
 
       <Box flex="1" style={{ contain: "size" }}>
