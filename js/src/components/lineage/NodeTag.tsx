@@ -150,7 +150,12 @@ export async function fetchRowCountsByNodes(nodes: LineageGraphNode[]) {
   });
 }
 
-export function FetchRowCountsButton({ nodes }: { nodes: LineageGraphNode[] }) {
+export function FetchRowCountsButton({
+    nodes,
+    onFinish,
+  }: {
+    nodes: LineageGraphNode[],
+    onFinish?: () => void }) {
   const [enabled, setEnabled] = useState<boolean>(false);
   const [index, setIndex] = useState<number>(0);
   const name = (index < nodes.length) ? nodes[index].name : "";
@@ -167,17 +172,23 @@ export function FetchRowCountsButton({ nodes }: { nodes: LineageGraphNode[] }) {
         setIndex(index + 1);
       } else{
         setEnabled(false);
+        if (onFinish) {
+          onFinish();
+        }
       }
     }
-  }, [isFetched, index, nodes]);
+  }, [isFetched, index, nodes, onFinish]);
 
   return (
     <Button
       size="xs"
       variant="outline"
       title= "Query Row Counts"
-      onClick={() => {setIndex(0); setEnabled(true);}}
-      isDisabled={isLoading}
+      onClick={() => {
+        setIndex(0);
+        setEnabled(true);
+      }}
+      isDisabled={isLoading || nodes.length === 0}
     >
       <Icon as={MdQueryStats} mr={1} />
       {isLoading ? "Querying" : "Query Row Counts"}

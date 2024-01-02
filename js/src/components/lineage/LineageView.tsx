@@ -16,7 +16,6 @@ import {
   HStack,
   Button,
   VStack,
-  Switch,
 } from "@chakra-ui/react";
 import React, { useEffect, useState } from "react";
 import ReactFlow, {
@@ -37,13 +36,12 @@ import { GraphNode } from "./GraphNode";
 import GraphEdge from "./GraphEdge";
 import { getIconForChangeStatus } from "./styles";
 import { FiDownloadCloud, FiRefreshCw, FiList } from "react-icons/fi";
-import { MdAdd } from "react-icons/md";
 import { NodeView } from "./NodeView";
 import { toPng } from "html-to-image";
 import { useLineageGraphsContext } from "@/lib/hooks/LineageGraphContext";
 import SummaryView from "../summary/SummaryView";
-import { FetchRowCountsButton } from "./NodeTag";
 import { NodeSelector } from "./NodeSelector";
+import { set } from "lodash";
 
 const layout = (nodes: Node[], edges: Edge[], direction = "LR") => {
   const dagreGraph = new dagre.graphlib.Graph();
@@ -137,7 +135,7 @@ function _LineageView() {
   const { isOpen, onOpen, onClose } = useDisclosure();
 
   const [selectMode, setSelectMode] = useState<"detail" | "action">("detail");
-const [selected, setSelected] = useState<string>();
+  const [selected, setSelected] = useState<string>();
   const [viewMode, setViewMode] = useState<"changed_models" | "all">(
     "changed_models"
   );
@@ -259,13 +257,16 @@ const [selected, setSelected] = useState<string>();
           minZoom={0.1}
           fitView={true}
         >
-          <Background color="#ccc" />
+          <Background
+            color="#ccc"
+          />
           <Controls showInteractive={false} position="top-right">
             <ControlButton
               title="switch mode"
               onClick={() => {
                 setViewMode(viewMode === "all" ? "changed_models" : "all");
-                cleanUpSelectedNodes(nodes);
+                const newNodes = cleanUpSelectedNodes(nodes);
+                setNodes(newNodes);
               }}
             >
               <Icon as={FiRefreshCw} />
@@ -313,7 +314,8 @@ const [selected, setSelected] = useState<string>();
               isOpen={selectMode === "action"}
               onClose={() => {
                 setSelectMode("detail");
-                cleanUpSelectedNodes(nodes);
+                const newNodes = cleanUpSelectedNodes(nodes);
+                setNodes(newNodes);
               }} />
           </Panel>
           <MiniMap nodeColor={nodeColor} nodeStrokeWidth={3} />

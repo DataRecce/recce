@@ -3,6 +3,8 @@ import { Box, Button, ButtonGroup, Divider, HStack, Icon, IconButton, SlideFade,
 import { LineageGraphNode } from "./lineage";
 import { FetchRowCountsButton } from "./NodeTag";
 import { MdOutlineSchema } from "react-icons/md";
+import { createCheckByNodeSchema } from "@/lib/api/checks";
+import { useLocation } from "wouter";
 
 export interface NodeSelectorProps {
   nodes: LineageGraphNode[];
@@ -10,12 +12,42 @@ export interface NodeSelectorProps {
   onClose: () => void;
 }
 
+function AddSchemaChangesCheckButton({ nodes, onFinish }: { nodes: LineageGraphNode[], onFinish: () => void }) {
+  const [, setLocation] = useLocation();
+  return (
+    <Button
+      size="xs"
+      variant="outline"
+      isDisabled={nodes.length === 0}
+      onClick={async () => {
+        // TODO: Add schema changes
+        let check;
+        if (nodes.length === 1) {
+          check = await createCheckByNodeSchema(nodes[0].id);
+        } else {
+          // TODO: Implement new type of check for multiple schema changes (RC-102)
+          await Promise.all(nodes.map(async (node) => {
+            await createCheckByNodeSchema(node.id);
+          }));
+        }
+        onFinish();
+        if (check) {
+          setLocation(`/checks/${check.check_id}`);
+        } else {
+          setLocation(`/checks`);
+        }
+      }}>
+      <Icon as={MdOutlineSchema} />
+      Add schema check
+    </Button>
+  );
+}
+
 export function NodeSelector({ nodes, isOpen, onClose }: NodeSelectorProps) {
   function countSelectedNodes(nodes: LineageGraphNode[]) {
     return nodes.filter((node) => node.isSelected).length;
   }
   const selectedNodes = nodes.filter((node) => node.isSelected);
-  console.log(selectedNodes.length > 0 ? selectedNodes: nodes);
   return (<>
     <SlideFade in={isOpen} style={{ zIndex: 10 }}>
       <Box
@@ -35,20 +67,13 @@ export function NodeSelector({ nodes, isOpen, onClose }: NodeSelectorProps) {
           </ButtonGroup>
           <HStack>
             <FetchRowCountsButton
-              nodes={selectedNodes.length > 0 ? selectedNodes: nodes}
+              nodes={selectedNodes.length > 0 ? selectedNodes: []}
+              onFinish={onClose}
             />
-            <Button
-              size="xs"
-              variant="outline"
-              onClick={() => {
-                // TODO: Add schema changes check
-                onClose();
-                // TODO: Redirect to checks page
-              }}
-            >
-              <Icon as={MdOutlineSchema} />
-              Add schema check
-            </Button>
+            <AddSchemaChangesCheckButton
+              nodes={selectedNodes.length > 0 ? selectedNodes: []}
+              onFinish={onClose}
+            />
           </HStack>
         </HStack>
       </Box>
