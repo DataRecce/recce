@@ -315,7 +315,7 @@ class DBTContext:
 
     def execute_sql(self, sql_template, base=False) -> pd.DataFrame:
         adapter = self.adapter
-        with adapter.connection_named('test'):
+        with adapter.connection_named('recce'):
             sql = self.generate_sql(sql_template, base)
             response, result = adapter.execute(sql, fetch=True, auto_begin=True)
             table: agate.Table = result

@@ -23,6 +23,9 @@ class RunExecutor(ABC):
     def execute(self):
         raise NotImplementedError
 
+    def cancel(self):
+        raise NotImplementedError
+
 
 class QueryParams(TypedDict):
     sql_template: str
@@ -31,21 +34,42 @@ class QueryParams(TypedDict):
 class QueryExecutor(RunExecutor):
     def __init__(self, params: QueryParams):
         self.params = params
+        self.connection = None
 
     def execute(self):
         from jinja2.exceptions import TemplateSyntaxError
 
         try:
-            sql = self.params.get('sql_template')
-            result = dbt_context.execute_sql(sql, base=False)
-            result_json = result.to_json(orient='table')
+            sql_template = self.params.get('sql_template')
 
-            import json
-            return dict(result=json.loads(result_json))
+            from dbt.adapters.sql import SQLAdapter
+            adapter: SQLAdapter = dbt_context.adapter
+
+            with adapter.connection_named("query"):
+                self.connection = adapter.connections.get_thread_connection()
+
+                sql = dbt_context.generate_sql(sql_template, base=False)
+                response, result = adapter.execute(sql, fetch=True, auto_begin=True)
+                self.connection = None
+
+                import agate
+                import pandas as pd
+                table: agate.Table = result
+                df = pd.DataFrame([row.values() for row in table.rows], columns=table.column_names)
+                result_json = df.to_json(orient='table')
+                import json
+                return dict(result=json.loads(result_json))
         except TemplateSyntaxError as e:
             return dict(error=f"Jinja template error: line {e.lineno}: {str(e)}")
         except Exception as e:
             return dict(error=str(e))
+
+    def cancel(self):
+        from dbt.adapters.sql import SQLAdapter
+        adapter: SQLAdapter = dbt_context.adapter
+        with adapter.connection_named("cancel query"):
+            if self.connection:
+                adapter.connections.cancel(self.connection)
 
 
 class QueryDiffParams(TypedDict):

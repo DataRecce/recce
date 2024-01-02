@@ -1,3 +1,4 @@
+import asyncio
 from typing import Optional
 from uuid import UUID
 
@@ -38,7 +39,15 @@ async def create_run(run: CreateRunIn):
     except NotImplementedError:
         raise HTTPException(status_code=400, detail=f"Run type '{run_type.value}' not supported")
 
-    result = executor.execute()
+    loop = asyncio.get_running_loop()
+    loop.run_in_executor(None, lambda: print('hello'))
+
+    future = loop.run_in_executor(None, lambda: executor.execute())
+    try:
+        result = await asyncio.wait_for(future, timeout=5.0)
+    except asyncio.TimeoutError:
+        executor.cancel()
+        raise HTTPException(status_code=400, detail=f"Run type '{run_type.value}' timeout")
 
     run_record = Run(type=run_type, params=run.params, result=result)
     runs_db.append(run_record)
