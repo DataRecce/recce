@@ -84,7 +84,12 @@ export const QueryPage = () => {
         <Button
           colorScheme="blue"
           onClick={addToChecklist}
-          isDisabled={isPending || !run?.run_id || sqlQuery != submittedQuery}
+          isDisabled={
+            isPending ||
+            !run?.run_id ||
+            !!run?.error ||
+            sqlQuery != submittedQuery
+          }
           size="sm"
         >
           Add to Checklist

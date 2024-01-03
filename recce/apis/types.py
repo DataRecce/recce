@@ -16,6 +16,9 @@ class RunType(Enum):
     SCHEMA_DIFF = 'schema_diff'
     PROFILE_DIFF = 'profile_diff'
 
+    def __str__(self):
+        return self.value
+
 
 class DataFrameDiff:
     def __init__(self):

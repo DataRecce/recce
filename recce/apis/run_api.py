@@ -19,15 +19,7 @@ class CreateRunIn(BaseModel):
     nowait: Optional[bool] = False
 
 
-class CreateRunOut(BaseModel):
-    run_id: UUID
-    run_at: str
-    type: str
-    params: dict
-    result: Optional[dict] = None
-
-
-@run_router.post("/runs", status_code=201, response_model=CreateRunOut)
+@run_router.post("/runs", status_code=201)
 async def create_run_handler(input: CreateRunIn):
     try:
         run, future = submit_run(input.type, input.params)
@@ -35,27 +27,10 @@ async def create_run_handler(input: CreateRunIn):
         raise HTTPException(status_code=400, detail=str(e))
 
     if input.nowait:
-        return CreateRunOut(run_id=run.run_id,
-                            run_at=run.run_at,
-                            type=run.type.value,
-                            params=run.params).dict()
-
-    timeout = 30 * 60  # 30 minutes
-    try:
-        result = await asyncio.wait_for(future, timeout=timeout)
-    except asyncio.TimeoutError:
-        try:
-            cancel_run(run.run_id)
-        except NotImplementedError:
-            pass
-
-        raise HTTPException(status_code=400, detail=f"Query timeout (timoeout={timeout}s)")
-
-    return CreateRunOut(run_id=run.run_id,
-                        run_at=run.run_at,
-                        type=run.type.value,
-                        params=run.params,
-                        result=result).dict()
+        return run
+    else:
+        run.result = await asyncio.wait(future)
+        return run
 
 
 @run_router.post("/runs/{run_id}/cancel")
