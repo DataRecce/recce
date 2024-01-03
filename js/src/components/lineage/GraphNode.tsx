@@ -11,7 +11,7 @@ import { RowCountTag } from "./NodeTag";
 interface GraphNodeProps extends NodeProps<LineageGraphNode> {}
 
 export function GraphNode({ data }: GraphNodeProps) {
-  const { isHighlighted, resourceType, changeStatus } = data;
+  const { isHighlighted, isSelected, resourceType, changeStatus } = data;
   const showContent = useStore((s) => s.transform[2] > 0.3);
 
   const { icon: resourceIcon } = getIconForResourceType(resourceType);
@@ -30,7 +30,7 @@ export function GraphNode({ data }: GraphNodeProps) {
   let borderWidth = 1;
   let borderColor = color;
   let backgroundColor = "white";
-  let boxShadow = "unset";
+  let boxShadow = data.isSelected ? "outline" : "unset";
 
   // if (isHighlighted === true) {
   //   borderWidth = 1;
@@ -43,6 +43,15 @@ export function GraphNode({ data }: GraphNodeProps) {
   // }
 
   const name = data?.name;
+
+  const highlightClassName = isHighlighted === true
+                              ? "node-highlight"
+                              : isSelected === true
+                              ? "node-highlight"
+                              : isHighlighted === false
+                              ? "node-unhighlight"
+                              : undefined
+
 
   return (
     <Tooltip
@@ -59,13 +68,7 @@ export function GraphNode({ data }: GraphNodeProps) {
         borderRadius={3}
         boxShadow={boxShadow}
         padding={0}
-        className={
-          isHighlighted === true
-            ? "node-highlight"
-            : isHighlighted === false
-            ? "node-unhighlight"
-            : undefined
-        }
+        className={highlightClassName}
       >
         <Flex
           backgroundColor={color}

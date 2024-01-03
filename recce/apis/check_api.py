@@ -5,6 +5,7 @@ from uuid import UUID
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 
+from recce.apis.check_func import get_node_by_id, validate_schema_diff_check
 from recce.apis.db import checks_db, runs_db
 from recce.apis.types import Run, Check, RunType
 
@@ -28,23 +29,28 @@ class CreateCheckOut(BaseModel):
     is_checked: bool = False
 
 
-def _generate_default_name(type, params):
+def _generate_default_name(check_type, params):
     now = datetime.utcnow().isoformat()
-    if type == RunType.QUERY:
+    if check_type == RunType.QUERY:
         return f"query {now}".capitalize()
-    elif type == RunType.QUERY_DIFF:
+    elif check_type == RunType.QUERY_DIFF:
         return f"query diff {now}".capitalize()
-    elif type == RunType.VALUE_DIFF:
+    elif check_type == RunType.VALUE_DIFF:
         model = params.get('model')
         return f"value diff of {model}".capitalize()
-    elif type == RunType.PROFILE_DIFF:
+    elif check_type == RunType.SCHEMA_DIFF:
+        node = get_node_by_id(params.get('node_id'))
+        return f"{node.resource_type} schema of {node.name} - {now}".capitalize()
+    elif check_type == RunType.PROFILE_DIFF:
         model = params.get('model')
         return f"profile diff of {model}".capitalize()
     else:
         return f"check - {now}".capitalize()
 
 
-def _validate_check(type, params):
+def _validate_check(check_type, params):
+    if check_type == RunType.SCHEMA_DIFF:
+        validate_schema_diff_check(params)
     pass
 
 

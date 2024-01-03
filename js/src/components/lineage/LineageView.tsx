@@ -1,5 +1,5 @@
 import { PUBLIC_API_URL } from "../../lib/const";
-import { LineageGraph, highlightPath, toReactflow } from "./lineage";
+import { LineageGraph, cleanUpSelectedNodes, highlightPath, selectDownstream, selectNode, selectNodes, selectUpstream, toReactflow } from "./lineage";
 import {
   Box,
   Flex,
@@ -14,6 +14,11 @@ import {
   ModalCloseButton,
   ModalBody,
   HStack,
+  Button,
+  VStack,
+  Menu,
+  MenuList,
+  MenuItem,
 } from "@chakra-ui/react";
 import React, { useEffect, useState } from "react";
 import ReactFlow, {
@@ -34,11 +39,12 @@ import { GraphNode } from "./GraphNode";
 import GraphEdge from "./GraphEdge";
 import { getIconForChangeStatus } from "./styles";
 import { FiDownloadCloud, FiRefreshCw, FiList } from "react-icons/fi";
+import { BiArrowFromBottom, BiArrowToBottom } from "react-icons/bi";
 import { NodeView } from "./NodeView";
 import { toPng } from "html-to-image";
 import { useLineageGraphsContext } from "@/lib/hooks/LineageGraphContext";
 import SummaryView from "../summary/SummaryView";
-import { FetchRowCountsButton } from "./NodeTag";
+import { NodeSelector } from "./NodeSelector";
 
 const layout = (nodes: Node[], edges: Edge[], direction = "LR") => {
   const dagreGraph = new dagre.graphlib.Graph();
@@ -131,10 +137,18 @@ function _LineageView() {
   const { lineageGraphSets, isLoading, error } = useLineageGraphsContext();
   const { isOpen, onOpen, onClose } = useDisclosure();
 
+  const [selectMode, setSelectMode] = useState<"detail" | "action">("detail");
   const [selected, setSelected] = useState<string>();
   const [viewMode, setViewMode] = useState<"changed_models" | "all">(
     "changed_models"
   );
+
+  const [isContextMenuRendered, setIsContextMenuRendered] = useState(false);
+  const [contextMenuPosition, setContextMenuPosition] = useState<{
+    x: number;
+    y: number;
+    selectedNode?: Node;
+  }>({ x: 0, y: 0 });
 
   useEffect(() => {
     if (!lineageGraphSets) {
@@ -187,7 +201,13 @@ function _LineageView() {
   };
 
   const onNodeClick = (event: React.MouseEvent, node: Node) => {
-    setSelected(node.id);
+    closeContextMenu();
+    if (selectMode === "action") {
+      const newNodes = selectNode(node.id, nodes);
+      setNodes(newNodes);
+    } else {
+      setSelected(node.id);
+    }
   };
 
   if (isLoading) {
@@ -202,6 +222,42 @@ function _LineageView() {
       </Flex>
     );
   }
+
+  const selectParentNodes = () => {
+    const selectedNode = contextMenuPosition.selectedNode;
+    if (selectMode !== "action" || selectedNode === undefined || lineageGraph === undefined) return;
+
+    const selectedNodeId = selectedNode.id;
+    const upstream = selectUpstream(lineageGraph, [selectedNodeId]);
+    const newNodes = selectNodes([...upstream], nodes);
+    setNodes(newNodes);
+  };
+
+  const selectChildNodes = () => {
+    const selectedNode = contextMenuPosition.selectedNode;
+    if (selectMode !== "action" || selectedNode === undefined || lineageGraph === undefined) return;
+
+    const selectedNodeId = selectedNode.id;
+    const downstream = selectDownstream(lineageGraph, [selectedNodeId]);
+    const newNodes = selectNodes([...downstream], nodes);
+    setNodes(newNodes);
+  };
+
+  const closeContextMenu = () => {
+    setIsContextMenuRendered(false);
+    setContextMenuPosition({ x: 0, y: 0 });
+  };
+
+  const onNodeContextMenu = (event: React.MouseEvent, node: Node) => {
+    if (selectMode !== "action") {
+      return;
+    }
+    // Only show context menu when selectMode is action
+    // Prevent native context menu from showing
+    event.preventDefault();
+    setContextMenuPosition({ x: event.clientX, y: event.clientY , selectedNode: node });
+    setIsContextMenuRendered(true);
+  };
 
   const onDownloadImage = () => {
     // const { x, y, zoom } = getViewport();
@@ -244,16 +300,22 @@ function _LineageView() {
           onNodeClick={onNodeClick}
           onNodeMouseEnter={onNodeMouseEnter}
           onNodeMouseLeave={onNodeMouseLeave}
+          onNodeContextMenu={onNodeContextMenu}
+          onClick={closeContextMenu}
           maxZoom={1}
           minZoom={0.1}
           fitView={true}
         >
-          <Background color="#ccc" />
+          <Background
+            color="#ccc"
+          />
           <Controls showInteractive={false} position="top-right">
             <ControlButton
               title="switch mode"
               onClick={() => {
                 setViewMode(viewMode === "all" ? "changed_models" : "all");
+                const newNodes = cleanUpSelectedNodes(nodes);
+                setNodes(newNodes);
               }}
             >
               <Icon as={FiRefreshCw} />
@@ -268,17 +330,42 @@ function _LineageView() {
           <Panel position="bottom-left" >
             <HStack>
               <ChangeStatusLegend />
-              { nodes.length > 0 && (
-              <FetchRowCountsButton
-                nodes={nodes.map((node) => node.data)}
-              />)
-              }
+              <Box p={2} flex="0 1 160px" fontSize="14px">
+                <Text color="gray" mb="2px">
+                  Actions
+                </Text>
+                  <VStack spacing={1} align="baseline">
+                    <Button
+                      size="xs"
+                      variant="outline"
+                      isDisabled={selectMode === "action"}
+                      onClick={() => {
+                        const newMode = selectMode === "detail" ? "action" : "detail";
+                        const newNodes = cleanUpSelectedNodes(nodes);
+                        setNodes(newNodes);
+                        setSelectMode(newMode);
+                      }}
+                      >
+                      Select Models
+                    </Button>
+                  </VStack>
+              </Box>
             </HStack>
           </Panel>
           <Panel position="top-left">
             <Text fontSize="xl" color="grey" opacity={0.5}>
               {viewModeTitle[viewMode]}
             </Text>
+          </Panel>
+          <Panel position="bottom-center">
+            <NodeSelector
+              nodes={nodes.map((node) => node.data)}
+              isOpen={selectMode === "action"}
+              onClose={() => {
+                setSelectMode("detail");
+                const newNodes = cleanUpSelectedNodes(nodes);
+                setNodes(newNodes);
+              }} />
           </Panel>
           <MiniMap nodeColor={nodeColor} nodeStrokeWidth={3} />
         </ReactFlow>
@@ -292,7 +379,7 @@ function _LineageView() {
           </ModalBody>
         </ModalContent>
       </Modal>
-      {selected && lineageGraph?.nodes[selected] && (
+      {selectMode === 'detail' && selected && lineageGraph?.nodes[selected] && (
         <Box flex="0 0 500px" borderLeft="solid 1px lightgray" height="100%">
           <NodeView
             node={lineageGraph?.nodes[selected]}
@@ -301,6 +388,25 @@ function _LineageView() {
             }}
           />
         </Box>
+      )}
+      {isContextMenuRendered && (
+        // Only render context menu when select mode is action
+        <Menu isOpen={true} onClose={closeContextMenu}>
+          <MenuList
+            style={{
+              position: "absolute",
+              left: `${contextMenuPosition.x}px`,
+              top: `${contextMenuPosition.y}px`
+            }}
+          >
+              <MenuItem icon={<BiArrowFromBottom/>} onClick={selectParentNodes}>
+                Select parent nodes
+              </MenuItem>
+              <MenuItem icon={<BiArrowToBottom/>} onClick={selectChildNodes}>
+                Select child nodes
+              </MenuItem>
+          </MenuList>
+        </Menu>
       )}
     </Flex>
   );
