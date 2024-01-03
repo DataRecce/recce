@@ -37,6 +37,9 @@ def _generate_default_name(type, params):
     elif type == RunType.VALUE_DIFF:
         model = params.get('model')
         return f"value diff of {model}".capitalize()
+    elif type == RunType.PROFILE_DIFF:
+        model = params.get('model')
+        return f"profile diff of {model}".capitalize()
     else:
         return f"check - {now}".capitalize()
 

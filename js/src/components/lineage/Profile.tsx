@@ -15,23 +15,15 @@ import { ValueDiffSummary } from "@/components/check/ValueDiffView";
 import { useLocation } from "wouter";
 import { createCheckByRun } from "@/lib/api/checks";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { ProfileDiffResult, submitProfile } from "@/lib/api/profile";
+import { ProfileDiffResult, submitProfileDiff } from "@/lib/api/profile";
 import { ProfileDiffDataGrid } from "./ProfileDiffGrid";
 import { cacheKeys } from "@/lib/api/cacheKeys";
 
-interface ProfileProp {
+interface ProfileDiffProp {
   node: LineageGraphNode;
 }
 
-async function handleAddToCheck(valueDiff: ValueDiffSummary) {
-  if (!valueDiff.runId) {
-    return null;
-  }
-  const check = await createCheckByRun(valueDiff.runId);
-  return check.check_id;
-}
-
-export const ProfileModal = ({ node }: ProfileProp) => {
+export const ProfileDiffModal = ({ node }: ProfileDiffProp) => {
   const queryClient = useQueryClient();
   const { isOpen, onOpen, onClose } = useDisclosure();
   const [, setLocation] = useLocation();
@@ -42,7 +34,7 @@ export const ProfileModal = ({ node }: ProfileProp) => {
     error: error,
     isPending,
   } = useMutation({
-    mutationFn: submitProfile,
+    mutationFn: submitProfileDiff,
   });
 
   const addToChecklist = useCallback(async () => {
@@ -60,7 +52,7 @@ export const ProfileModal = ({ node }: ProfileProp) => {
       <Modal isOpen={isOpen} onClose={onClose} size="6xl">
         <ModalOverlay />
         <ModalContent overflowY="auto" height="75%">
-          <ModalHeader>Model Profile</ModalHeader>
+          <ModalHeader>Model Profile Diff</ModalHeader>
           <ModalCloseButton />
           <ModalBody>
             <ProfileDiffDataGrid
@@ -84,7 +76,7 @@ export const ProfileModal = ({ node }: ProfileProp) => {
           runProfile({ model: node.name });
         }}
       >
-        Model Profile
+        Profile Diff
       </Button>
     </>
   );

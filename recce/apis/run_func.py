@@ -11,7 +11,7 @@ class ExecutorManager:
         executors: Dict[RunType, Callable] = {RunType.QUERY: QueryExecutor,
                                               RunType.QUERY_DIFF: QueryDiffExecutor,
                                               RunType.VALUE_DIFF: ValueDiffExecutor,
-                                              RunType.PROFILE: ProfileExecutor}
+                                              RunType.PROFILE_DIFF: ProfileExecutor}
         executor = executors.get(run_type)
         if not executor:
             return NotImplementedError

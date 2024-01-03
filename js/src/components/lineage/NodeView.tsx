@@ -31,7 +31,7 @@ import { useLocation } from "wouter";
 import { ResourceTypeTag, RowCountTag } from "./NodeTag";
 import { useCallback } from "react";
 import { createCheckByNodeSchema } from "@/lib/api/checks";
-import { ProfileModal } from "./Profile";
+import { ProfileDiffModal } from "./Profile";
 
 interface NodeViewProps {
   node: LineageGraphNode;
@@ -113,7 +113,7 @@ export function NodeView({ node, onCloseNode }: NodeViewProps) {
             </Button>
             {node.resourceType === "model" && (
               <>
-                <ProfileModal node={node} />
+                <ProfileDiffModal node={node} />
                 {node.changeStatus !== "added" &&
                   node.changeStatus !== "removed" && (
                     <MismatchSummaryModal node={node} />

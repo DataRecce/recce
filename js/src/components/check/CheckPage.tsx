@@ -66,7 +66,7 @@ const ChecklistItem = ({
         return TbSql;
       case "value_diff":
         return TbAlignBoxLeftStretch;
-      case "profile":
+      case "profile_diff":
         return TbChartHistogram;
       default:
         return TbChecklist;

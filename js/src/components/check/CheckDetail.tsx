@@ -119,7 +119,9 @@ export const CheckDetail = ({ checkId }: CheckDetailProps) => {
       {check && check.type == "query_diff" && <QueryDiffView check={check} />}
       {check && check.type == "value_diff" && <ValueDiffView check={check} />}
       {check && check.type == "schema_diff" && <SchemaDiffView check={check} />}
-      {check && check.type == "profile" && <ProfileDiffView check={check} />}
+      {check && check.type == "profile_diff" && (
+        <ProfileDiffView check={check} />
+      )}
     </Flex>
   );
 };

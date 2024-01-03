@@ -691,29 +691,34 @@ class DBTContext:
 
     def model_profile(self, model: str, base: bool = False):
         sql_template = r"""
-        {% if base %}
-            -- depends_on: {{ base_relation }}
-        {% else %}
-            -- depends_on: {{ ref(model) }}
-        {% endif %}
+        -- depends_on: {{ ref(model) }}
 
         {% if execute %}
-            {% if base %}
-                {{ dbt_profiler.get_profile(relation=base_relation, exclude_measures=["std_dev_population", "std_dev_sample"]) }}
-            {% else %}
-                {{ dbt_profiler.get_profile(relation=ref(model), exclude_measures=["std_dev_population", "std_dev_sample"]) }}
-            {% endif %}
+            {{ dbt_profiler.get_profile(relation=ref(model), exclude_measures=["std_dev_population", "std_dev_sample"]) }}
+        {% endif %}
+        """
+
+        base_sql_template = r"""
+        -- depends_on: {{ base_relation }}
+
+        {% if execute %}
+            {{ dbt_profiler.get_profile(relation=base_relation, exclude_measures=["std_dev_population", "std_dev_sample"]) }}
         {% endif %}
         """
 
         self.get_base_relation(model)
         adapter = self.adapter
         with self.adapter.connection_named('test'):
-            sql = self.generate_sql(sql_template, False,
-                                    dict(model=model,
-                                         base=base,
-                                         base_relation=self.get_base_relation(model))
-                                    )
+            if base:
+                sql = self.generate_sql(base_sql_template, False,
+                                        dict(model=model,
+                                             base_relation=self.get_base_relation(model))
+                                        )
+            else:
+                sql = self.generate_sql(sql_template, False,
+                                        dict(model=model,
+                                             base_relation=self.get_base_relation(model))
+                                        )
 
             response, result = adapter.execute(sql, fetch=True, auto_begin=True)
             table: agate.Table = result

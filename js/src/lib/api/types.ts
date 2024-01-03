@@ -22,7 +22,7 @@ export type RunType =
   | "query_diff"
   | "value_diff"
   | "schema_diff"
-  | "profile";
+  | "profile_diff";
 
 export interface Run<PT = any, RT = any> {
   run_id: string;
