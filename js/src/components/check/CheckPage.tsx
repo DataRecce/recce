@@ -12,10 +12,13 @@ import {
   Center,
   Divider,
   Flex,
+  HStack,
   Icon,
   IconButton,
+  Spacer,
   Tooltip,
   VStack,
+  useToast,
 } from "@chakra-ui/react";
 import { CheckDetail } from "./CheckDetail";
 import { cacheKeys } from "@/lib/api/cacheKeys";
@@ -103,6 +106,7 @@ export const CheckPage = () => {
   const [, setLocation] = useLocation();
   const [, params] = useRoute("/checks/:checkId");
   const queryClient = useQueryClient();
+  const exportChecksToast = useToast();
   const selectedItem = params?.checkId;
 
   const {
@@ -170,15 +174,35 @@ export const CheckPage = () => {
         style={{ contain: "size" }}
       >
         <VStack spacing={0} align="flex-end">
-          <Tooltip label="Create a simple check">
-            <IconButton
+          <HStack>
+            <Tooltip label="Create a simple check">
+              <IconButton
+                variant="unstyled"
+                aria-label="Create a simple check"
+                onClick={addToChecklist}
+                icon={<AddIcon />}
+              />
+            </Tooltip>
+            <Button
+              colorScheme="green"
+              size="sm"
               mr="10px"
-              variant="unstyled"
-              aria-label="Create a simple check"
-              onClick={addToChecklist}
-              icon={<AddIcon />}
-            />
-          </Tooltip>
+              onClick={() => {
+                const markdown = exportChecks(checks);
+                navigator.clipboard.writeText(markdown);
+                exportChecksToast({
+                  description: `Copied ${checks.length} checks to clipboard`,
+                  status: "info",
+                  variant: "left-accent",
+                  position: "bottom",
+                  duration: 5000,
+                  isClosable: true,
+                });
+              }}
+            >
+              Export
+            </Button>
+          </HStack>
 
           <Divider mb="8px" />
           {checks.map((check) => (
@@ -203,3 +227,13 @@ export const CheckPage = () => {
     </Flex>
   );
 };
+
+function exportChecks(checks: Check[]) {
+  const checkItems = checks.map((check) => {
+    return `<details><summary>${check.is_checked ? "✅ " : ""}${
+      check.name
+    }</summary>${check.description}</details>`;
+  });
+
+  return checkItems.join("\n\n");
+}
