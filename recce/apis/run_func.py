@@ -10,7 +10,8 @@ class ExecutorManager:
     def create_executor(run_type: RunType, params: dict):
         executors: Dict[RunType, Callable] = {RunType.QUERY: QueryExecutor,
                                               RunType.QUERY_DIFF: QueryDiffExecutor,
-                                              RunType.VALUE_DIFF: ValueDiffExecutor}
+                                              RunType.VALUE_DIFF: ValueDiffExecutor,
+                                              RunType.PROFILE_DIFF: ProfileExecutor}
         executor = executors.get(run_type)
         if not executor:
             return NotImplementedError
@@ -92,3 +93,36 @@ class ValueDiffExecutor(RunExecutor):
 
     def execute(self):
         return dbt_context.columns_value_mismatched_summary(self.params['primary_key'], self.params['model'])
+
+
+class ProfileParams(TypedDict):
+    model: str
+
+
+class ProfileExecutor(RunExecutor):
+
+    def __init__(self, params: ProfileParams):
+        self.params = params
+
+    def execute(self):
+        result = {}
+
+        result['base'], result['base_error'] = self.execute_profile(base=True)
+        result['current'], result['current_error'] = self.execute_profile(base=False)
+
+        return result
+
+    def execute_profile(self, base: bool = False):
+        from jinja2.exceptions import TemplateSyntaxError
+
+        try:
+            model = self.params.get('model')
+            result = dbt_context.model_profile(model, base=base)
+            result_json = result.to_json(orient='table')
+
+            import json
+            return json.loads(result_json), None
+        except TemplateSyntaxError as e:
+            return None, f"Jinja template error: line {e.lineno}: {str(e)}"
+        except Exception as e:
+            return None, str(e)

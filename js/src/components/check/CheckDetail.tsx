@@ -24,6 +24,7 @@ import { SchemaDiffView } from "./SchemaDiffView";
 import { useLocation } from "wouter";
 import { CheckDescription } from "./CheckDescription";
 import { QueryView } from "./QueryView";
+import { ProfileDiffView } from "./ProfileDiffView";
 
 interface CheckDetailProps {
   checkId: string;
@@ -118,6 +119,9 @@ export const CheckDetail = ({ checkId }: CheckDetailProps) => {
       {check && check.type == "query_diff" && <QueryDiffView check={check} />}
       {check && check.type == "value_diff" && <ValueDiffView check={check} />}
       {check && check.type == "schema_diff" && <SchemaDiffView check={check} />}
+      {check && check.type == "profile_diff" && (
+        <ProfileDiffView check={check} />
+      )}
     </Flex>
   );
 };

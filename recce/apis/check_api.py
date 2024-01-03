@@ -41,6 +41,9 @@ def _generate_default_name(check_type, params):
     elif check_type == RunType.SCHEMA_DIFF:
         node = get_node_by_id(params.get('node_id'))
         return f"{node.resource_type} schema of {node.name} - {now}".capitalize()
+    elif check_type == RunType.PROFILE_DIFF:
+        model = params.get('model')
+        return f"profile diff of {model}".capitalize()
     else:
         return f"check - {now}".capitalize()
 

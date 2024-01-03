@@ -28,6 +28,7 @@ import {
   TbSql,
   TbSchema,
   TbAlignBoxLeftStretch,
+  TbChartHistogram,
 } from "react-icons/tb";
 import { IconType } from "react-icons";
 import { AddIcon } from "@chakra-ui/icons";
@@ -65,6 +66,8 @@ const ChecklistItem = ({
         return TbSql;
       case "value_diff":
         return TbAlignBoxLeftStretch;
+      case "profile_diff":
+        return TbChartHistogram;
       default:
         return TbChecklist;
     }

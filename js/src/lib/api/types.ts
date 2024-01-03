@@ -11,8 +11,8 @@ export interface DataFrame {
   schema: {
     fields: Array<DataFrameField>;
     primaryKey: string[];
+    pandas_version?: string;
   };
-  pandas_version?: string;
   data: Array<DataFrameRow>;
 }
 
@@ -21,7 +21,8 @@ export type RunType =
   | "query"
   | "query_diff"
   | "value_diff"
-  | "schema_diff";
+  | "schema_diff"
+  | "profile_diff";
 
 export interface Run<PT = any, RT = any> {
   run_id: string;
