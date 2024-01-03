@@ -92,23 +92,6 @@ class QueryInput(BaseModel):
     sql_template: str
 
 
-@app.post("/api/query")
-async def query(input: QueryInput):
-    from jinja2.exceptions import TemplateSyntaxError
-
-    try:
-        sql = input.sql_template
-        result = default_dbt_context().execute_sql(sql, base=input.base)
-        result_json = result.to_json(orient='table')
-
-        import json
-        return json.loads(result_json)
-    except TemplateSyntaxError as e:
-        raise HTTPException(status_code=400, detail=f'Jinja template error: line {e.lineno}: {str(e)}')
-    except Exception as e:
-        raise HTTPException(status_code=400, detail=str(e))
-
-
 @app.get("/api/lineage")
 async def get_lineage(base: Optional[bool] = False):
     try:

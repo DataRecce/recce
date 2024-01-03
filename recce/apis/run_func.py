@@ -111,20 +111,28 @@ def cancel_run(run_id):
 
 
 class QueryMixin:
-    def execute_sql(self, sql_template, base: bool = False):
+    @staticmethod
+    def execute_sql(sql_template, base: bool = False):
         from jinja2.exceptions import TemplateSyntaxError
-
+        import agate
+        import pandas as pd
+        import json
+        dbt_context = default_dbt_context()
+        adapter = dbt_context.adapter
         try:
-            result = default_dbt_context().execute_sql(sql_template, base=base)
-            result_json = result.to_json(orient='table')
-            import json
+            sql = dbt_context.generate_sql(sql_template, base)
+            response, result = adapter.execute(sql, fetch=True, auto_begin=True)
+            table: agate.Table = result
+            df = pd.DataFrame([row.values() for row in table.rows], columns=table.column_names)
+            result_json = df.to_json(orient='table')
             return json.loads(result_json), None
         except TemplateSyntaxError as e:
             return None, f"Jinja template error: line {e.lineno}: {str(e)}"
         except Exception as e:
             return None, str(e)
 
-    def close_connection(self, connection):
+    @staticmethod
+    def close_connection(connection):
         adapter: SQLAdapter = default_dbt_context().adapter
         with adapter.connection_named("cancel query"):
             adapter.connections.cancel(connection)

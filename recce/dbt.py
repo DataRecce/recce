@@ -310,23 +310,12 @@ class DBTContext:
 
     def execute_sql(self, sql_template, base=False) -> pd.DataFrame:
         adapter = self.adapter
-
-        connection = adapter.connections.get_thread_connection()
-        if connection is None:
-            with adapter.connection_named('execute_sql'):
-                sql = self.generate_sql(sql_template, base)
-                response, result = adapter.execute(sql, fetch=True, auto_begin=True)
-        else:
+        with adapter.connection_named('recce'):
             sql = self.generate_sql(sql_template, base)
             response, result = adapter.execute(sql, fetch=True, auto_begin=True)
-        table: agate.Table = result
-        df = pd.DataFrame([row.values() for row in table.rows], columns=table.column_names)
-        return df
-
-    def execute_sql_lower_columns(self, sql_template, base=False) -> pd.DataFrame:
-        df = self.execute_sql(sql_template, base)
-        df.columns = df.columns.str.lower()
-        return df
+            table: agate.Table = result
+            df = pd.DataFrame([row.values() for row in table.rows], columns=table.column_names)
+            return df
 
     def generate_sql(self, sql_template: str, base: bool, context: Dict = None):
         try:
@@ -416,7 +405,8 @@ class DBTContext:
         sql_query = 'select count(*) as ROW_COUNT from {{ ref("' + model_name + '") }}'
         try:
             base = self.execute_sql(sql_query, base=True)
-        except Exception:
+        except Exception as e:
+            print(e)
             base = None
         try:
             curr = self.execute_sql(sql_query, base=False)
