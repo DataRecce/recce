@@ -31,6 +31,7 @@ import { useLocation } from "wouter";
 import { ResourceTypeTag, RowCountTag } from "./NodeTag";
 import { useCallback } from "react";
 import { createCheckByNodeSchema } from "@/lib/api/checks";
+import { ProfileDiffModal } from "./Profile";
 
 interface NodeViewProps {
   node: LineageGraphNode;
@@ -91,9 +92,7 @@ export function NodeView({ node, onCloseNode }: NodeViewProps) {
       <Box color="gray" paddingLeft={"16px"}>
         <HStack spacing={"8px"}>
           <ResourceTypeTag node={node} />
-          {node.resourceType === "model" && (
-            <RowCountTag node={node} />
-          )}
+          {node.resourceType === "model" && <RowCountTag node={node} />}
         </HStack>
       </Box>
       {withColumns && (
@@ -112,9 +111,9 @@ export function NodeView({ node, onCloseNode }: NodeViewProps) {
             <Button colorScheme="blue" size="sm" onClick={addToChecklist}>
               Add schema check
             </Button>
-            <Spacer />
             {node.resourceType === "model" && (
               <>
+                <ProfileDiffModal node={node} />
                 {node.changeStatus !== "added" &&
                   node.changeStatus !== "removed" && (
                     <MismatchSummaryModal node={node} />
