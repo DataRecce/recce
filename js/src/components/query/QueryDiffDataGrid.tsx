@@ -14,6 +14,7 @@ interface QueryDiffDataGridProps {
   error?: Error | null; // error from submit
   primaryKeys: string[];
   setPrimaryKeys?: (primaryKeys: string[]) => void;
+  onCancel?: () => void;
 }
 
 export const QueryDiffDataGrid = ({

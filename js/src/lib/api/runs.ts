@@ -2,18 +2,22 @@ import _ from "lodash";
 import { axiosClient } from "./axiosClient";
 import { Run, RunType } from "./types";
 
+export interface SubmitOptions {
+  nowait?: boolean;
+}
+
 export async function submitRun<PT = any, RT = any>(
   type: RunType,
   params?: PT,
-  nowait?: boolean
+  options?: SubmitOptions
 ) {
   const response = await axiosClient.post("/api/runs", {
     type,
     params,
-    nowait,
+    nowait: options?.nowait,
   });
 
-  const run: Run<PT, RT> = response.data;
+  const run: Run<PT, RT> | Pick<Run, "run_id"> = response.data;
 
   return run;
 }

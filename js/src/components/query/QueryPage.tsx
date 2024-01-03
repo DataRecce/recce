@@ -15,21 +15,27 @@ import {
   submitQueryDiff,
 } from "@/lib/api/adhocQuery";
 import { QueryDataGrid } from "./QueryDataGrid";
+import { cancelRun, waitRun } from "@/lib/api/runs";
 
 export const QueryPage = () => {
   const { sqlQuery, setSqlQuery } = useRecceQueryContext();
   const [submittedQuery, setSubmittedQuery] = useState<string>();
 
   const [primaryKeys, setPrimaryKeys] = useState<string[]>([]);
+  const [runType, setRunType] = useState<string>();
+  const [runId, setRunId] = useState<string>();
 
   const queryClient = useQueryClient();
   const [, setLocation] = useLocation();
   const queryFn = async (type: "query" | "query_diff") => {
-    if (type === "query") {
-      return submitQuery({ sql_template: sqlQuery });
-    } else {
-      return submitQueryDiff({ sql_template: sqlQuery });
-    }
+    setRunType(type);
+    const { run_id } =
+      type === "query"
+        ? await submitQuery({ sql_template: sqlQuery }, { nowait: true })
+        : await submitQueryDiff({ sql_template: sqlQuery }, { nowait: true });
+    setRunId(run_id);
+
+    return await waitRun(run_id);
   };
 
   const {
@@ -44,6 +50,14 @@ export const QueryPage = () => {
       setSubmittedQuery(sqlQuery);
     },
   });
+
+  const handleCancel = useCallback(async () => {
+    if (!runId) {
+      return;
+    }
+
+    return await cancelRun(runId);
+  }, [runId]);
 
   const addToChecklist = useCallback(async () => {
     if (!queryResult?.run_id) {
@@ -109,14 +123,17 @@ export const QueryPage = () => {
         />
       </Box>
       <Box backgroundColor="gray.100" height="50vh">
-        {queryResult?.type === "query" ? (
+        {runType === "query" ? (
           <QueryDataGrid
+            key={runId}
             isFetching={isPending}
             result={queryResult?.result as QueryResult}
             error={error}
+            onCancel={handleCancel}
           />
         ) : (
           <QueryDiffDataGrid
+            key={runId}
             isFetching={isPending}
             result={queryResult?.result as QueryDiffResult}
             error={error}

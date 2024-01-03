@@ -24,12 +24,29 @@ class ExecutorManager:
 
 
 class RunExecutor(ABC):
+    def __init__(self):
+        self.isCancel = False
+
     @abstractmethod
     def execute(self):
+        """
+        Execute the run.
+        """
         raise NotImplementedError()
 
     def cancel(self):
-        raise NotImplementedError()
+        """
+        Cancel the run.
+        """
+        self.isCancel = True
+
+    def check_cancel(self):
+        """
+        Check if the run is canceled. If so, raise an exception.
+        """
+
+        if self.isCancel:
+            raise RecceException("Run is canceled")
 
 
 def submit_run(type, params):
@@ -97,6 +114,7 @@ class QueryParams(TypedDict):
 
 class QueryExecutor(RunExecutor):
     def __init__(self, params: QueryParams):
+        super().__init__()
         self.params = params
         self.connection = None
 
@@ -142,6 +160,7 @@ class QueryDiffParams(TypedDict):
 
 class QueryDiffExecutor(RunExecutor):
     def __init__(self, params: QueryDiffParams):
+        super().__init__()
         self.params = params
 
     def execute(self):
@@ -158,6 +177,7 @@ class QueryDiffExecutor(RunExecutor):
         try:
             sql = self.params.get('sql_template')
             result = default_dbt_context().execute_sql(sql, base=base)
+
             result_json = result.to_json(orient='table')
 
             import json
@@ -177,6 +197,7 @@ class ValueDiffParams(TypedDict):
 class ValueDiffExecutor(RunExecutor):
 
     def __init__(self, params: ValueDiffParams):
+        super().__init__()
         self.params = params
 
     def execute(self):

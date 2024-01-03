@@ -1,8 +1,15 @@
 import "react-data-grid/lib/styles.css";
 import DataGrid, { Column } from "react-data-grid";
 import { QueryResult } from "@/lib/api/adhocQuery";
-import { Alert, AlertIcon, Center, Flex, Spinner } from "@chakra-ui/react";
-import { CSSProperties, useMemo } from "react";
+import {
+  Alert,
+  AlertIcon,
+  Button,
+  Center,
+  Flex,
+  Spinner,
+} from "@chakra-ui/react";
+import { CSSProperties, useMemo, useState } from "react";
 import { DataFrame } from "@/lib/api/types";
 
 interface QueryDataGridProps {
@@ -10,6 +17,7 @@ interface QueryDataGridProps {
   isFetching: boolean;
   result?: QueryResult;
   error?: Error | null; // error from submit
+  onCancel?: () => void;
 }
 
 function toDataGrid(result: DataFrame) {
@@ -29,7 +37,9 @@ export const QueryDataGrid = ({
   isFetching,
   result,
   error,
+  onCancel,
 }: QueryDataGridProps) => {
+  const [isAborting, setAborting] = useState(false);
   const dataframe = result?.result;
   const gridData = useMemo(() => {
     if (isFetching || !dataframe) {
@@ -39,11 +49,25 @@ export const QueryDataGrid = ({
     return toDataGrid(dataframe);
   }, [isFetching, dataframe]);
 
+  const handleCancel = () => {
+    setAborting(true);
+    if (onCancel) {
+      onCancel();
+    }
+  };
+
   if (isFetching) {
     return (
       <Center p="16px" height="100%">
         <Spinner size="sm" mr="8px" />
-        Loading...
+        {isAborting ? (
+          <>Aborting...</>
+        ) : (
+          <>
+            Loading...
+            {onCancel && <Button onClick={handleCancel}>Cancel</Button>}
+          </>
+        )}
       </Center>
     );
   }
