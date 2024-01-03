@@ -39,8 +39,7 @@ export function QueryDiffView({ check }: QueryDiffViewProp) {
       <Box flex="1" style={{ contain: "size" }}>
         {check?.type === "query_diff" && (
           <QueryDiffDataGrid
-            isFetching={false}
-            result={check?.last_run?.result as QueryDiffResult}
+            run={check?.last_run}
             primaryKeys={(check?.params as QueryDiffResult)?.primary_keys || []}
           />
         )}

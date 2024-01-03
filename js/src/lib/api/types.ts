@@ -30,4 +30,5 @@ export interface Run<PT = any, RT = any> {
   type: RunType;
   params?: PT;
   result?: RT;
+  error?: string;
 }

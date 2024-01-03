@@ -38,12 +38,7 @@ export function QueryView({ check }: QueryViewProp) {
       </Accordion>
 
       <Box flex="1" style={{ contain: "size" }}>
-        {check?.type === "query" && (
-          <QueryDataGrid
-            isFetching={false}
-            result={check?.last_run?.result as QueryResult}
-          />
-        )}
+        {check?.type === "query" && <QueryDataGrid run={check?.last_run} />}
       </Box>
     </>
   );

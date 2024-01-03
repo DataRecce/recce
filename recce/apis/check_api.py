@@ -1,3 +1,4 @@
+import asyncio
 from datetime import datetime
 from typing import Optional
 from uuid import UUID
@@ -7,7 +8,9 @@ from pydantic import BaseModel
 
 from recce.apis.check_func import get_node_by_id, validate_schema_diff_check
 from recce.apis.db import checks_db, runs_db
+from recce.apis.run_func import submit_run
 from recce.apis.types import Run, Check, RunType
+from recce.exceptions import RecceException
 
 check_router = APIRouter(tags=['check'])
 
@@ -90,40 +93,23 @@ async def create_check(checkIn: CreateCheckIn):
                           ).dict()
 
 
-class CreateRunOut(BaseModel):
-    run_id: UUID
-    run_at: str
-    type: str
-    params: dict
-    result: dict
+@check_router.post("/checks/{check_id}/run", status_code=201, response_model=Run)
+async def run_check_handler(check_id: UUID):
+    check = None
+    for _check in checks_db:
+        if _check.check_id == check_id:
+            check = _check
+            break
 
-
-@check_router.post("/checks/{check_id}/run", status_code=201, response_model=CreateRunOut)
-async def run_check(check_id: UUID):
-    from recce.apis.run_func import ExecutorManager
-
-    run_record = None
-    found = False
-    for check in checks_db:
-        if check.check_id == check_id:
-            found = True
-            try:
-                executor = ExecutorManager.create_executor(check.type, check.params)
-            except NotImplementedError:
-                raise HTTPException(status_code=400, detail=f"Run type '{check.type.value}' not supported")
-
-            result = executor.execute()
-            run_record = Run(type=check.type, params=check.params, check_id=check.check_id, result=result)
-            runs_db.append(run_record)
-
-    if not found:
+    if not check:
         raise HTTPException(status_code=404, detail=f"Check ID '{check_id}' not found")
 
-    return CreateRunOut(run_id=run_record.run_id,
-                        run_at=run_record.run_at,
-                        type=run_record.type.value,
-                        params=run_record.params,
-                        result=run_record.result).dict()
+    try:
+        run, future = submit_run(check.type, check.params)
+        run.result = asyncio.wait(future)
+        return run
+    except RecceException as e:
+        raise HTTPException(status_code=400, detail=str(e))
 
 
 class CheckOut(BaseModel):
@@ -133,11 +119,11 @@ class CheckOut(BaseModel):
     type: str
     params: Optional[dict] = None
     is_checked: bool = False
-    last_run: Optional[CreateRunOut] = None
+    last_run: Optional[Run] = None
 
 
 @check_router.get("/checks", status_code=200, response_model=list[CheckOut], response_model_exclude_none=True)
-async def list_checks():
+async def list_checks_handler():
     checks = []
 
     for check in checks_db:
@@ -156,7 +142,7 @@ async def list_checks():
 
 
 @check_router.get("/checks/{check_id}", status_code=200, response_model=CheckOut)
-async def get_check(check_id: UUID):
+async def get_check_handler(check_id: UUID):
     found = None
     for check in checks_db:
         if check.check_id == check_id:
@@ -169,12 +155,7 @@ async def get_check(check_id: UUID):
     last_run = None
     runs = [run for run in runs_db if run.check_id == check_id]
     if runs:
-        last = runs[-1]
-        last_run = CreateRunOut(run_id=last.run_id,
-                                run_at=last.run_at,
-                                type=last.type.value,
-                                params=last.params,
-                                result=last.result).dict()
+        last_run = runs[-1]
 
     return CheckOut(check_id=found.check_id,
                     name=found.name,
@@ -194,7 +175,7 @@ class PatchCheckIn(BaseModel):
 
 
 @check_router.patch("/checks/{check_id}", status_code=200, response_model=CheckOut, response_model_exclude_none=True)
-async def update_check(check_id: UUID, patch: PatchCheckIn):
+async def update_check_handler(check_id: UUID, patch: PatchCheckIn):
     found = None
     for check in checks_db:
         if check.check_id == check_id:
@@ -226,7 +207,7 @@ class DeleteCheckOut(BaseModel):
 
 
 @check_router.delete("/checks/{check_id}", status_code=200, response_model=DeleteCheckOut)
-async def delete(check_id: UUID):
+async def delete_handler(check_id: UUID):
     found = None
     for check in checks_db:
         if check.check_id == check_id:
