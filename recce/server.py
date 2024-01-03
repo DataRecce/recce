@@ -16,17 +16,9 @@ from starlette.websockets import WebSocketDisconnect
 from . import __version__, event
 from .apis.check_api import check_router
 from .apis.run_api import run_router
-from .dbt import DBTContext
+from .dbt import load_dbt_context, dbt_context, default_dbt_context
 
 logger = logging.getLogger('uvicorn')
-dbt_context: Optional[DBTContext] = None
-
-
-def load_dbt_context(**kwargs) -> DBTContext:
-    global dbt_context
-    if dbt_context is None:
-        dbt_context = DBTContext.load(**kwargs)
-    return dbt_context
 
 
 @asynccontextmanager
@@ -119,6 +111,7 @@ async def query(input: QueryInput):
 
 @app.get("/api/lineage")
 async def get_lineage(base: Optional[bool] = False):
+    dbt_context = default_dbt_context()
     try:
         return dbt_context.get_lineage(base)
     except Exception as e:

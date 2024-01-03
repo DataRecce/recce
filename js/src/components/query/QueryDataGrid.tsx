@@ -53,7 +53,10 @@ export const QueryDataGrid = ({
     return (
       <Alert status="error">
         <AlertIcon />
-        Error: {error?.message || result?.error}
+        Error:{" "}
+        {(error as any)?.response?.data?.detail ||
+          error?.message ||
+          result?.error}
       </Alert>
     );
   }

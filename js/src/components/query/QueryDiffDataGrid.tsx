@@ -52,7 +52,10 @@ export const QueryDiffDataGrid = ({
     return (
       <Alert status="error">
         <AlertIcon />
-        Error: {error?.message || currentError}
+        Error:{" "}
+        {(error as any)?.response?.data?.detail ||
+          error?.message ||
+          currentError}
       </Alert>
     );
   }

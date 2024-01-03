@@ -1,8 +1,13 @@
+import asyncio
 from abc import ABC, abstractmethod
 from typing import Callable, Dict, List, Optional, TypedDict
 
-from recce.apis.types import RunType
-from recce.server import dbt_context
+from recce.apis.db import runs_db
+from recce.apis.types import RunType, Run
+from recce.dbt import default_dbt_context
+from recce.exceptions import RecceException
+
+running_tasks = {}
 
 
 class ExecutorManager:
@@ -14,17 +19,76 @@ class ExecutorManager:
                                               RunType.PROFILE_DIFF: ProfileExecutor}
         executor = executors.get(run_type)
         if not executor:
-            return NotImplementedError
+            raise NotImplementedError()
         return executor(params)
 
 
 class RunExecutor(ABC):
     @abstractmethod
     def execute(self):
-        raise NotImplementedError
+        raise NotImplementedError()
 
     def cancel(self):
-        raise NotImplementedError
+        raise NotImplementedError()
+
+
+def submit_run(type, params):
+    try:
+        run_type = RunType(type)
+    except ValueError:
+        raise RecceException(f"Run type '{type}' not supported")
+
+    try:
+        task = ExecutorManager.create_executor(run_type, params)
+    except NotImplementedError:
+        raise RecceException(f"Run type '{type}' not supported")
+
+    run = Run(type=run_type, params=params)
+    runs_db.append(run)
+    loop = asyncio.get_running_loop()
+    running_tasks[run.run_id] = task
+
+    async def update_run_result(run_id, result, error):
+        if run is None:
+            return
+        if result is not None:
+            run.result = result
+        if error is not None:
+            run.error = str(error)
+
+    def fn():
+        try:
+            result = task.execute()
+            print(f"{run.run_id} completed")
+            asyncio.run_coroutine_threadsafe(update_run_result(run.run_id, result, None), loop)
+            return result
+        except BaseException as e:
+            print(f"{run.run_id} failed")
+            asyncio.run_coroutine_threadsafe(update_run_result(run.run_id, None, e), loop)
+            raise e
+
+    future = loop.run_in_executor(None, fn)
+    return run, future
+
+
+def get_run(run_id):
+    for _run in runs_db:
+        if str(run_id) == str(_run.run_id):
+            return _run
+
+    return None
+
+
+def cancel_run(run_id):
+    run = get_run(run_id)
+    if run is None:
+        raise RecceException(f"Run ID '{run_id}' not found")
+
+    task = running_tasks.get(run_id)
+    if task is None:
+        raise RecceException(f"Run task for Run ID '{run_id}' not found")
+
+    task.cancel()
 
 
 class QueryParams(TypedDict):
@@ -43,12 +107,12 @@ class QueryExecutor(RunExecutor):
             sql_template = self.params.get('sql_template')
 
             from dbt.adapters.sql import SQLAdapter
-            adapter: SQLAdapter = dbt_context.adapter
+            adapter: SQLAdapter = default_dbt_context().adapter
 
             with adapter.connection_named("query"):
                 self.connection = adapter.connections.get_thread_connection()
 
-                sql = dbt_context.generate_sql(sql_template, base=False)
+                sql = default_dbt_context().generate_sql(sql_template, base=False)
                 response, result = adapter.execute(sql, fetch=True, auto_begin=True)
                 self.connection = None
 
@@ -66,7 +130,7 @@ class QueryExecutor(RunExecutor):
 
     def cancel(self):
         from dbt.adapters.sql import SQLAdapter
-        adapter: SQLAdapter = dbt_context.adapter
+        adapter: SQLAdapter = default_dbt_context().adapter
         with adapter.connection_named("cancel query"):
             if self.connection:
                 adapter.connections.cancel(self.connection)
@@ -93,7 +157,7 @@ class QueryDiffExecutor(RunExecutor):
 
         try:
             sql = self.params.get('sql_template')
-            result = dbt_context.execute_sql(sql, base=base)
+            result = default_dbt_context().execute_sql(sql, base=base)
             result_json = result.to_json(orient='table')
 
             import json
@@ -116,7 +180,7 @@ class ValueDiffExecutor(RunExecutor):
         self.params = params
 
     def execute(self):
-        return dbt_context.columns_value_mismatched_summary(self.params['primary_key'], self.params['model'])
+        return default_dbt_context().columns_value_mismatched_summary(self.params['primary_key'], self.params['model'])
 
 
 class ProfileParams(TypedDict):
@@ -141,7 +205,7 @@ class ProfileExecutor(RunExecutor):
 
         try:
             model = self.params.get('model')
-            result = dbt_context.model_profile(model, base=base)
+            result = default_dbt_context().model_profile(model, base=base)
             result_json = result.to_json(orient='table')
 
             import json

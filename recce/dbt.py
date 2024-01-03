@@ -5,7 +5,6 @@ import os
 import sys
 import time
 from dataclasses import dataclass, fields
-from pathlib import Path
 from typing import Callable, Dict, List, Optional, Union
 
 import agate
@@ -14,8 +13,7 @@ from dbt.adapters.factory import get_adapter_by_type
 from dbt.adapters.sql import SQLAdapter
 from dbt.cli.main import dbtRunner
 from dbt.config.profile import Profile
-from dbt.config.project import Project, package_config_from_data
-from dbt.config.renderer import PackageRenderer
+from dbt.config.project import Project
 from dbt.config.runtime import load_profile, load_project
 from dbt.contracts.files import FileHash
 from dbt.contracts.graph.manifest import Manifest, WritableManifest
@@ -23,9 +21,6 @@ from dbt.contracts.graph.model_config import ContractConfig, NodeConfig
 from dbt.contracts.graph.nodes import Contract, DependsOn, ManifestNode, ModelNode, ResultNode, SourceDefinition
 from dbt.contracts.graph.unparsed import Docs
 from dbt.contracts.results import CatalogArtifact
-from dbt.deps.base import downloads_directory
-from dbt.deps.resolver import resolve_packages
-from dbt.exceptions import UndefinedMacroError
 from dbt.node_types import AccessType, ModelLanguage, NodeType
 from watchdog.events import FileSystemEventHandler
 from watchdog.observers import Observer
@@ -721,3 +716,18 @@ class DBTContext:
             table: agate.Table = result
             df = pd.DataFrame([row.values() for row in table.rows], columns=table.column_names)
             return df
+
+
+dbt_context: Optional[DBTContext] = None
+
+
+def load_dbt_context(**kwargs) -> DBTContext:
+    global dbt_context
+    if dbt_context is None:
+        dbt_context = DBTContext.load(**kwargs)
+    return dbt_context
+
+
+def default_dbt_context() -> DBTContext:
+    global dbt_context
+    return dbt_context
