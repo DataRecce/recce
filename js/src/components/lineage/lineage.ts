@@ -369,16 +369,33 @@ export function highlightPath(
 }
 
 export function selectNode(
-  node: Node<LineageGraphNode>,
+  nodeId: string,
   nodes: Node<LineageGraphNode>[],
 ) {
   const newNodes = nodes.map((n) => {
-    const isMatch = n.id === node.id;
+    const isMatch = n.id === nodeId;
     return {
       ...n,
       data: {
         ...n.data,
         isSelected: n.data.isSelected !== isMatch,
+      },
+    };
+  });
+  return newNodes;
+}
+
+export function selectNodes(
+  nodeIds: string[],
+  nodes: Node<LineageGraphNode>[],
+) {
+  const newNodes = nodes.map((n) => {
+    const isMatch = nodeIds.includes(n.id);
+    return {
+      ...n,
+      data: {
+        ...n.data,
+        isSelected: n.data.isSelected || isMatch,
       },
     };
   });

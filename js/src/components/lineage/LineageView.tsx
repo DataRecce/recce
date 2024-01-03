@@ -1,5 +1,5 @@
 import { PUBLIC_API_URL } from "../../lib/const";
-import { LineageGraph, cleanUpSelectedNodes, highlightPath, selectNode, toReactflow } from "./lineage";
+import { LineageGraph, cleanUpSelectedNodes, highlightPath, selectDownstream, selectNode, selectNodes, selectUpstream, toReactflow } from "./lineage";
 import {
   Box,
   Flex,
@@ -16,6 +16,9 @@ import {
   HStack,
   Button,
   VStack,
+  Menu,
+  MenuList,
+  MenuItem,
 } from "@chakra-ui/react";
 import React, { useEffect, useState } from "react";
 import ReactFlow, {
@@ -36,12 +39,12 @@ import { GraphNode } from "./GraphNode";
 import GraphEdge from "./GraphEdge";
 import { getIconForChangeStatus } from "./styles";
 import { FiDownloadCloud, FiRefreshCw, FiList } from "react-icons/fi";
+import { BiArrowFromBottom, BiArrowToBottom } from "react-icons/bi";
 import { NodeView } from "./NodeView";
 import { toPng } from "html-to-image";
 import { useLineageGraphsContext } from "@/lib/hooks/LineageGraphContext";
 import SummaryView from "../summary/SummaryView";
 import { NodeSelector } from "./NodeSelector";
-import { set } from "lodash";
 
 const layout = (nodes: Node[], edges: Edge[], direction = "LR") => {
   const dagreGraph = new dagre.graphlib.Graph();
@@ -140,6 +143,13 @@ function _LineageView() {
     "changed_models"
   );
 
+  const [isContextMenuRendered, setIsContextMenuRendered] = useState(false);
+  const [contextMenuPosition, setContextMenuPosition] = useState<{
+    x: number;
+    y: number;
+    selectedNode?: Node;
+  }>({ x: 0, y: 0 });
+
   useEffect(() => {
     if (!lineageGraphSets) {
       return;
@@ -191,8 +201,9 @@ function _LineageView() {
   };
 
   const onNodeClick = (event: React.MouseEvent, node: Node) => {
+    closeContextMenu();
     if (selectMode === "action") {
-      const newNodes = selectNode(node, nodes);
+      const newNodes = selectNode(node.id, nodes);
       setNodes(newNodes);
     } else {
       setSelected(node.id);
@@ -211,6 +222,42 @@ function _LineageView() {
       </Flex>
     );
   }
+
+  const selectParentNodes = () => {
+    const selectedNode = contextMenuPosition.selectedNode;
+    if (selectMode !== "action" || selectedNode === undefined || lineageGraph === undefined) return;
+
+    const selectedNodeId = selectedNode.id;
+    const upstream = selectUpstream(lineageGraph, [selectedNodeId]);
+    const newNodes = selectNodes([...upstream], nodes);
+    setNodes(newNodes);
+  };
+
+  const selectChildNodes = () => {
+    const selectedNode = contextMenuPosition.selectedNode;
+    if (selectMode !== "action" || selectedNode === undefined || lineageGraph === undefined) return;
+
+    const selectedNodeId = selectedNode.id;
+    const downstream = selectDownstream(lineageGraph, [selectedNodeId]);
+    const newNodes = selectNodes([...downstream], nodes);
+    setNodes(newNodes);
+  };
+
+  const closeContextMenu = () => {
+    setIsContextMenuRendered(false);
+    setContextMenuPosition({ x: 0, y: 0 });
+  };
+
+  const onNodeContextMenu = (event: React.MouseEvent, node: Node) => {
+    if (selectMode !== "action") {
+      return;
+    }
+    // Only show context menu when selectMode is action
+    // Prevent native context menu from showing
+    event.preventDefault();
+    setContextMenuPosition({ x: event.clientX, y: event.clientY , selectedNode: node });
+    setIsContextMenuRendered(true);
+  };
 
   const onDownloadImage = () => {
     // const { x, y, zoom } = getViewport();
@@ -253,6 +300,8 @@ function _LineageView() {
           onNodeClick={onNodeClick}
           onNodeMouseEnter={onNodeMouseEnter}
           onNodeMouseLeave={onNodeMouseLeave}
+          onNodeContextMenu={onNodeContextMenu}
+          onClick={closeContextMenu}
           maxZoom={1}
           minZoom={0.1}
           fitView={true}
@@ -339,6 +388,25 @@ function _LineageView() {
             }}
           />
         </Box>
+      )}
+      {isContextMenuRendered && (
+        // Only render context menu when select mode is action
+        <Menu isOpen={true} onClose={closeContextMenu}>
+          <MenuList
+            style={{
+              position: "absolute",
+              left: `${contextMenuPosition.x}px`,
+              top: `${contextMenuPosition.y}px`
+            }}
+          >
+              <MenuItem icon={<BiArrowFromBottom/>} onClick={selectParentNodes}>
+                Select parent nodes
+              </MenuItem>
+              <MenuItem icon={<BiArrowToBottom/>} onClick={selectChildNodes}>
+                Select child nodes
+              </MenuItem>
+          </MenuList>
+        </Menu>
       )}
     </Flex>
   );
