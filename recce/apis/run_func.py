@@ -7,7 +7,7 @@ from dbt.adapters.sql import SQLAdapter
 from recce.apis.db import runs_db
 from recce.apis.types import RunType, Run
 from recce.dbt import default_dbt_context
-from recce.exceptions import RecceException
+from recce.exceptions import RecceException, RecceCancelException
 
 running_tasks = {}
 
@@ -48,7 +48,7 @@ class RunExecutor(ABC):
         """
 
         if self.isCancelled:
-            raise RecceException("Run is cancelled")
+            raise RecceCancelException()
 
 
 def submit_run(type, params):
@@ -78,12 +78,12 @@ def submit_run(type, params):
     def fn():
         try:
             result = task.execute()
-            print(f"{run.run_id} completed")
             asyncio.run_coroutine_threadsafe(update_run_result(run.run_id, result, None), loop)
             return result
         except BaseException as e:
-            print(f"{run.run_id} failed")
             asyncio.run_coroutine_threadsafe(update_run_result(run.run_id, None, e), loop)
+            if isinstance(e, RecceCancelException):
+                return None
             raise e
 
     future = loop.run_in_executor(None, fn)
@@ -144,9 +144,11 @@ class QueryExecutor(RunExecutor, QueryMixin):
         adapter: SQLAdapter = default_dbt_context().adapter
         with adapter.connection_named("query"):
             self.connection = adapter.connections.get_thread_connection()
-            
+
             sql_template = self.params.get('sql_template')
             result, error = self.execute_sql(sql_template, base=True)
+            self.check_cancel()
+
             return dict(result=result, error=error)
 
     def cancel(self):
@@ -177,10 +179,11 @@ class QueryDiffExecutor(RunExecutor, QueryMixin):
 
             # Query base
             result['base'], result['base_error'] = self.execute_sql(sql_template, base=True)
+            self.check_cancel()
 
             # Query current
-            self.check_cancel()
             result['current'], result['current_error'] = self.execute_sql(sql_template, base=False)
+            self.check_cancel()
 
         return result
 

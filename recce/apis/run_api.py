@@ -40,7 +40,7 @@ async def create_run_handler(input: CreateRunIn):
                             type=run.type.value,
                             params=run.params).dict()
 
-    timeout = 1
+    timeout = 30 * 60  # 30 minutes
     try:
         result = await asyncio.wait_for(future, timeout=timeout)
     except asyncio.TimeoutError:
@@ -60,12 +60,14 @@ async def create_run_handler(input: CreateRunIn):
 
 @run_router.post("/runs/{run_id}/cancel")
 async def cancel_run_handler(run_id: UUID):
-    cancel_run(run_id)
+    try:
+        cancel_run(run_id)
+    except NotImplementedError:
+        pass
 
 
 @run_router.get("/runs/{run_id}/wait")
 async def wait_run_handler(run_id: UUID):
-    print(f"wait {run_id}")
     run = get_run(run_id)
     # wait every 1 second
     while run.result is None and run.error is None:

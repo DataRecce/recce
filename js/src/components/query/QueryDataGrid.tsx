@@ -4,10 +4,12 @@ import { QueryParams, QueryResult } from "@/lib/api/adhocQuery";
 import {
   Alert,
   AlertIcon,
+  Box,
   Button,
   Center,
   Flex,
   Spinner,
+  VStack,
 } from "@chakra-ui/react";
 import { CSSProperties, useMemo, useState } from "react";
 import { DataFrame, Run } from "@/lib/api/types";
@@ -59,15 +61,18 @@ export const QueryDataGrid = ({
   if (isFetching) {
     return (
       <Center p="16px" height="100%">
-        <Spinner size="sm" mr="8px" />
-        {isAborting ? (
-          <>Aborting...</>
-        ) : (
-          <>
-            Loading...
-            {onCancel && <Button onClick={handleCancel}>Cancel</Button>}
-          </>
-        )}
+        <VStack>
+          <Box>
+            <Spinner size="sm" mr="8px" />
+
+            {isAborting ? <>Aborting...</> : <>Loading...</>}
+          </Box>
+          {!isAborting && onCancel && (
+            <Button onClick={handleCancel} colorScheme="blue" size="sm">
+              Cancel
+            </Button>
+          )}
+        </VStack>
       </Center>
     );
   }
