@@ -1,16 +1,24 @@
 import "react-data-grid/lib/styles.css";
 import DataGrid from "react-data-grid";
-import { QueryDiffResult } from "@/lib/api/adhocQuery";
-import { Alert, AlertIcon, Center, Flex, Spinner } from "@chakra-ui/react";
-import { CSSProperties, useMemo } from "react";
+import { QueryDiffParams, QueryDiffResult } from "@/lib/api/adhocQuery";
+import {
+  Alert,
+  AlertIcon,
+  Button,
+  Center,
+  Flex,
+  Spinner,
+} from "@chakra-ui/react";
+import { CSSProperties, useMemo, useState } from "react";
 import { toDataDiffGrid } from "./querydiff";
 
 import "./styles.css";
+import { Run } from "@/lib/api/types";
 
 interface QueryDiffDataGridProps {
   style?: CSSProperties;
-  isFetching: boolean;
-  result?: QueryDiffResult;
+  isFetching?: boolean;
+  run?: Run<QueryDiffParams, QueryDiffResult>;
   error?: Error | null; // error from submit
   primaryKeys: string[];
   setPrimaryKeys?: (primaryKeys: string[]) => void;
@@ -19,44 +27,60 @@ interface QueryDiffDataGridProps {
 
 export const QueryDiffDataGrid = ({
   isFetching,
-  result,
+  run,
   error,
   primaryKeys,
   setPrimaryKeys,
+  onCancel,
 }: QueryDiffDataGridProps) => {
+  const [isAborting, setAborting] = useState(false);
   const gridData = useMemo(() => {
     if (isFetching) {
       return { rows: [], columns: [] };
     }
 
     return toDataDiffGrid(
-      result?.base,
-      result?.current,
+      run?.result?.base,
+      run?.result?.current,
       primaryKeys,
       setPrimaryKeys
     );
-  }, [result, isFetching, primaryKeys, setPrimaryKeys]);
+  }, [run, isFetching, primaryKeys, setPrimaryKeys]);
 
-  const { base_error: baseError, current_error: currentError } = result || {};
+  const handleCancel = () => {
+    setAborting(true);
+    if (onCancel) {
+      onCancel();
+    }
+  };
 
   if (isFetching) {
     return (
       <Center p="16px" height="100%">
         <Spinner size="sm" mr="8px" />
-        Loading...
+        {isAborting ? (
+          <>Aborting...</>
+        ) : (
+          <>
+            Loading...
+            {onCancel && <Button onClick={handleCancel}>Cancel</Button>}
+          </>
+        )}
       </Center>
     );
   }
 
-  if (error || (baseError && currentError)) {
-    // return <Box p="16px">Error: {getErrorMessage(currentError)}</Box>;
+  const errorMessage =
+    (error as any)?.response?.data?.detail ||
+    error?.message ||
+    run?.error ||
+    run?.result?.current_error ||
+    run?.result?.base_error;
+  if (errorMessage) {
     return (
       <Alert status="error">
         <AlertIcon />
-        Error:{" "}
-        {(error as any)?.response?.data?.detail ||
-          error?.message ||
-          currentError}
+        Error: {errorMessage}
       </Alert>
     );
   }

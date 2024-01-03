@@ -2,6 +2,8 @@ import asyncio
 from abc import ABC, abstractmethod
 from typing import Callable, Dict, List, Optional, TypedDict
 
+from dbt.adapters.sql import SQLAdapter
+
 from recce.apis.db import runs_db
 from recce.apis.types import RunType, Run
 from recce.dbt import default_dbt_context
@@ -25,7 +27,7 @@ class ExecutorManager:
 
 class RunExecutor(ABC):
     def __init__(self):
-        self.isCancel = False
+        self.isCancelled = False
 
     @abstractmethod
     def execute(self):
@@ -36,17 +38,17 @@ class RunExecutor(ABC):
 
     def cancel(self):
         """
-        Cancel the run.
+        Cancel the run. Subclass should override this method to implement the cancellation logic.
         """
-        self.isCancel = True
+        self.isCancelled = True
 
     def check_cancel(self):
         """
         Check if the run is canceled. If so, raise an exception.
         """
 
-        if self.isCancel:
-            raise RecceException("Run is canceled")
+        if self.isCancelled:
+            raise RecceException("Run is cancelled")
 
 
 def submit_run(type, params):
@@ -108,84 +110,84 @@ def cancel_run(run_id):
     task.cancel()
 
 
-class QueryParams(TypedDict):
-    sql_template: str
-
-
-class QueryExecutor(RunExecutor):
-    def __init__(self, params: QueryParams):
-        super().__init__()
-        self.params = params
-        self.connection = None
-
-    def execute(self):
+class QueryMixin:
+    def execute_sql(self, sql_template, base: bool = False):
         from jinja2.exceptions import TemplateSyntaxError
 
         try:
-            sql_template = self.params.get('sql_template')
-
-            from dbt.adapters.sql import SQLAdapter
-            adapter: SQLAdapter = default_dbt_context().adapter
-
-            with adapter.connection_named("query"):
-                self.connection = adapter.connections.get_thread_connection()
-
-                sql = default_dbt_context().generate_sql(sql_template, base=False)
-                response, result = adapter.execute(sql, fetch=True, auto_begin=True)
-                self.connection = None
-
-                import agate
-                import pandas as pd
-                table: agate.Table = result
-                df = pd.DataFrame([row.values() for row in table.rows], columns=table.column_names)
-                result_json = df.to_json(orient='table')
-                import json
-                return dict(result=json.loads(result_json))
-        except TemplateSyntaxError as e:
-            return dict(error=f"Jinja template error: line {e.lineno}: {str(e)}")
-        except Exception as e:
-            return dict(error=str(e))
-
-    def cancel(self):
-        from dbt.adapters.sql import SQLAdapter
-        adapter: SQLAdapter = default_dbt_context().adapter
-        with adapter.connection_named("cancel query"):
-            if self.connection:
-                adapter.connections.cancel(self.connection)
-
-
-class QueryDiffParams(TypedDict):
-    sql_template: str
-
-
-class QueryDiffExecutor(RunExecutor):
-    def __init__(self, params: QueryDiffParams):
-        super().__init__()
-        self.params = params
-
-    def execute(self):
-        result = {}
-
-        result['base'], result['base_error'] = self.execute_sql(base=True)
-        result['current'], result['current_error'] = self.execute_sql(base=False)
-
-        return result
-
-    def execute_sql(self, base: bool = False):
-        from jinja2.exceptions import TemplateSyntaxError
-
-        try:
-            sql = self.params.get('sql_template')
-            result = default_dbt_context().execute_sql(sql, base=base)
-
+            result = default_dbt_context().execute_sql(sql_template, base=base)
             result_json = result.to_json(orient='table')
-
             import json
             return json.loads(result_json), None
         except TemplateSyntaxError as e:
             return None, f"Jinja template error: line {e.lineno}: {str(e)}"
         except Exception as e:
             return None, str(e)
+
+    def close_connection(self, connection):
+        adapter: SQLAdapter = default_dbt_context().adapter
+        with adapter.connection_named("cancel query"):
+            adapter.connections.cancel(connection)
+
+
+class QueryParams(TypedDict):
+    sql_template: str
+
+
+class QueryExecutor(RunExecutor, QueryMixin):
+    def __init__(self, params: QueryParams):
+        super().__init__()
+        self.params = params
+        self.connection = None
+
+    def execute(self):
+        adapter: SQLAdapter = default_dbt_context().adapter
+        with adapter.connection_named("query"):
+            self.connection = adapter.connections.get_thread_connection()
+            
+            sql_template = self.params.get('sql_template')
+            result, error = self.execute_sql(sql_template, base=True)
+            return dict(result=result, error=error)
+
+    def cancel(self):
+        super().cancel()
+        if self.connection:
+            self.close_connection(self.connection)
+
+
+class QueryDiffParams(TypedDict):
+    sql_template: str
+
+
+class QueryDiffExecutor(RunExecutor, QueryMixin):
+    def __init__(self, params: QueryDiffParams):
+        super().__init__()
+        self.params = params
+        self.connection = None
+
+    def execute(self):
+        result = {}
+
+        from dbt.adapters.sql import SQLAdapter
+        adapter: SQLAdapter = default_dbt_context().adapter
+
+        with adapter.connection_named("query"):
+            sql_template = self.params.get('sql_template')
+            self.connection = adapter.connections.get_thread_connection()
+
+            # Query base
+            result['base'], result['base_error'] = self.execute_sql(sql_template, base=True)
+
+            # Query current
+            self.check_cancel()
+            result['current'], result['current_error'] = self.execute_sql(sql_template, base=False)
+
+        return result
+
+    def cancel(self):
+        super().cancel()
+        if self.connection:
+            self.close_connection(self.connection)
 
 
 class ValueDiffParams(TypedDict):

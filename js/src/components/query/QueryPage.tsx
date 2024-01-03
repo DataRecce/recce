@@ -39,7 +39,7 @@ export const QueryPage = () => {
   };
 
   const {
-    data: queryResult,
+    data: run,
     mutate: runQuery,
     error: error,
     isPending,
@@ -60,13 +60,13 @@ export const QueryPage = () => {
   }, [runId]);
 
   const addToChecklist = useCallback(async () => {
-    if (!queryResult?.run_id) {
+    if (!run?.run_id) {
       return;
     }
 
-    const check = await createCheckByRun(queryResult.run_id);
+    const check = await createCheckByRun(run.run_id);
 
-    if (queryResult.type === "query_diff") {
+    if (run.type === "query_diff") {
       await updateCheck(check.check_id, {
         params: { ...check.params, primary_keys: primaryKeys },
       });
@@ -76,13 +76,7 @@ export const QueryPage = () => {
 
     queryClient.invalidateQueries({ queryKey: cacheKeys.checks() });
     setLocation(`/checks/${check.check_id}`);
-  }, [
-    queryResult?.run_id,
-    queryResult?.type,
-    setLocation,
-    primaryKeys,
-    queryClient,
-  ]);
+  }, [run?.run_id, run?.type, setLocation, primaryKeys, queryClient]);
 
   return (
     <Flex direction="column" height="100%">
@@ -90,9 +84,7 @@ export const QueryPage = () => {
         <Button
           colorScheme="blue"
           onClick={addToChecklist}
-          isDisabled={
-            isPending || !queryResult?.run_id || sqlQuery != submittedQuery
-          }
+          isDisabled={isPending || !run?.run_id || sqlQuery != submittedQuery}
           size="sm"
         >
           Add to Checklist
@@ -127,7 +119,7 @@ export const QueryPage = () => {
           <QueryDataGrid
             key={runId}
             isFetching={isPending}
-            result={queryResult?.result as QueryResult}
+            run={run}
             error={error}
             onCancel={handleCancel}
           />
@@ -135,10 +127,11 @@ export const QueryPage = () => {
           <QueryDiffDataGrid
             key={runId}
             isFetching={isPending}
-            result={queryResult?.result as QueryDiffResult}
+            run={run}
             error={error}
             primaryKeys={primaryKeys}
             setPrimaryKeys={setPrimaryKeys}
+            onCancel={handleCancel}
           />
         )}
       </Box>

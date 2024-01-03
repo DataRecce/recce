@@ -310,12 +310,18 @@ class DBTContext:
 
     def execute_sql(self, sql_template, base=False) -> pd.DataFrame:
         adapter = self.adapter
-        with adapter.connection_named('recce'):
+
+        connection = adapter.connections.get_thread_connection()
+        if connection is None:
+            with adapter.connection_named('execute_sql'):
+                sql = self.generate_sql(sql_template, base)
+                response, result = adapter.execute(sql, fetch=True, auto_begin=True)
+        else:
             sql = self.generate_sql(sql_template, base)
             response, result = adapter.execute(sql, fetch=True, auto_begin=True)
-            table: agate.Table = result
-            df = pd.DataFrame([row.values() for row in table.rows], columns=table.column_names)
-            return df
+        table: agate.Table = result
+        df = pd.DataFrame([row.values() for row in table.rows], columns=table.column_names)
+        return df
 
     def execute_sql_lower_columns(self, sql_template, base=False) -> pd.DataFrame:
         df = self.execute_sql(sql_template, base)

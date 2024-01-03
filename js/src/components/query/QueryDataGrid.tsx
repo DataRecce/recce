@@ -1,6 +1,6 @@
 import "react-data-grid/lib/styles.css";
 import DataGrid, { Column } from "react-data-grid";
-import { QueryResult } from "@/lib/api/adhocQuery";
+import { QueryParams, QueryResult } from "@/lib/api/adhocQuery";
 import {
   Alert,
   AlertIcon,
@@ -10,12 +10,12 @@ import {
   Spinner,
 } from "@chakra-ui/react";
 import { CSSProperties, useMemo, useState } from "react";
-import { DataFrame } from "@/lib/api/types";
+import { DataFrame, Run } from "@/lib/api/types";
 
 interface QueryDataGridProps {
   style?: CSSProperties;
-  isFetching: boolean;
-  result?: QueryResult;
+  isFetching?: boolean;
+  run?: Run<QueryParams, QueryResult>;
   error?: Error | null; // error from submit
   onCancel?: () => void;
 }
@@ -35,12 +35,12 @@ function toDataGrid(result: DataFrame) {
 
 export const QueryDataGrid = ({
   isFetching,
-  result,
+  run,
   error,
   onCancel,
 }: QueryDataGridProps) => {
   const [isAborting, setAborting] = useState(false);
-  const dataframe = result?.result;
+  const dataframe = run?.result?.result;
   const gridData = useMemo(() => {
     if (isFetching || !dataframe) {
       return { rows: [], columns: [] };
@@ -72,15 +72,15 @@ export const QueryDataGrid = ({
     );
   }
 
-  if (error || result?.error) {
+  const errorMessage =
+    (error as any)?.response?.data?.detail || run?.error || run?.result?.error;
+
+  if (errorMessage) {
     // return <Box p="16px">Error: {getErrorMessage(currentError)}</Box>;
     return (
       <Alert status="error">
         <AlertIcon />
-        Error:{" "}
-        {(error as any)?.response?.data?.detail ||
-          error?.message ||
-          result?.error}
+        Error: {errorMessage}
       </Alert>
     );
   }

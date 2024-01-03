@@ -16,7 +16,7 @@ from starlette.websockets import WebSocketDisconnect
 from . import __version__, event
 from .apis.check_api import check_router
 from .apis.run_api import run_router
-from .dbt import load_dbt_context, dbt_context, default_dbt_context
+from .dbt import load_dbt_context, default_dbt_context
 
 logger = logging.getLogger('uvicorn')
 
@@ -98,7 +98,7 @@ async def query(input: QueryInput):
 
     try:
         sql = input.sql_template
-        result = dbt_context.execute_sql(sql, base=input.base)
+        result = default_dbt_context().execute_sql(sql, base=input.base)
         result_json = result.to_json(orient='table')
 
         import json
@@ -111,9 +111,8 @@ async def query(input: QueryInput):
 
 @app.get("/api/lineage")
 async def get_lineage(base: Optional[bool] = False):
-    dbt_context = default_dbt_context()
     try:
-        return dbt_context.get_lineage(base)
+        return default_dbt_context().get_lineage(base)
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))
 
@@ -121,7 +120,7 @@ async def get_lineage(base: Optional[bool] = False):
 @app.get("/api/models/{model_name}/row_count")
 async def get_row_count(model_name: str):
     try:
-        return dbt_context.get_row_count(model_name)
+        return default_dbt_context().get_row_count(model_name)
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))
 
