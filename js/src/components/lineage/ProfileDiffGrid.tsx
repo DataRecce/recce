@@ -1,7 +1,15 @@
 import "react-data-grid/lib/styles.css";
 import DataGrid, { ColumnOrColumnGroup, textEditor } from "react-data-grid";
-import { Alert, AlertIcon, Center, Spinner, Stack } from "@chakra-ui/react";
-import { CSSProperties, useMemo } from "react";
+import {
+  Alert,
+  AlertIcon,
+  Button,
+  Center,
+  Spinner,
+  Stack,
+  VStack,
+} from "@chakra-ui/react";
+import { CSSProperties, useMemo, useState } from "react";
 import { DataFrame, DataFrameField, DataFrameRow } from "@/lib/api/types";
 import { ProfileDiffResult } from "@/lib/api/profile";
 import _ from "lodash";
@@ -11,6 +19,7 @@ interface ProfileDataGridProps {
   isFetching: boolean;
   result?: ProfileDiffResult;
   error?: Error | null; // error from submit
+  onCancel?: () => void;
 }
 
 function _getPrimaryKeyValue(row: DataFrameRow, primaryKey: string): string {
@@ -149,7 +158,9 @@ export const ProfileDiffDataGrid = ({
   isFetching,
   result,
   error,
+  onCancel,
 }: ProfileDataGridProps) => {
+  const [isAborting, setAborting] = useState(false);
   const gridData = useMemo(() => {
     if (isFetching) {
       return { rows: [], columns: [] };
@@ -158,11 +169,25 @@ export const ProfileDiffDataGrid = ({
     return toDataDiffGrid(result?.base, result?.current);
   }, [result, isFetching]);
 
+  const handleCancel = () => {
+    setAborting(true);
+    if (onCancel) {
+      onCancel();
+    }
+  };
+
   if (isFetching) {
     return (
       <Center p="16px" height="100%">
-        <Spinner size="sm" mr="8px" />
-        Loading...
+        <VStack>
+          <Spinner size="sm" mr="8px" />
+          {isAborting ? <>Aborting...</> : <>Loading...</>}
+          {!isAborting && onCancel && (
+            <Button onClick={handleCancel} colorScheme="blue" size="sm">
+              Cancel
+            </Button>
+          )}
+        </VStack>
       </Center>
     );
   }

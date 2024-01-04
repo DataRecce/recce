@@ -17,7 +17,7 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { ProfileDiffResult, submitProfileDiff } from "@/lib/api/profile";
 import { ProfileDiffDataGrid } from "./ProfileDiffGrid";
 import { cacheKeys } from "@/lib/api/cacheKeys";
-import { waitRun } from "@/lib/api/runs";
+import { cancelRun, waitRun } from "@/lib/api/runs";
 
 interface ProfileDiffProp {
   node: LineageGraphNode;
@@ -45,6 +45,14 @@ export const ProfileDiffModal = ({ node }: ProfileDiffProp) => {
     mutationFn: profileDiffFn,
   });
 
+  const handleCancel = useCallback(async () => {
+    if (!runId) {
+      return;
+    }
+
+    return await cancelRun(runId);
+  }, [runId]);
+
   const addToChecklist = useCallback(async () => {
     if (!profileResult?.run_id) {
       return;
@@ -67,6 +75,7 @@ export const ProfileDiffModal = ({ node }: ProfileDiffProp) => {
               isFetching={isPending}
               result={profileResult?.result as ProfileDiffResult}
               error={error}
+              onCancel={handleCancel}
             />
           </ModalBody>
           <ModalFooter>
