@@ -1,4 +1,4 @@
-import { submitRun } from "./runs";
+import { SubmitOptions, submitRun } from "./runs";
 import { DataFrame } from "./types";
 
 export interface ProfileDiffParams {
@@ -12,6 +12,6 @@ export interface ProfileDiffResult {
   current_error?: string;
 }
 
-export async function submitProfileDiff(params: ProfileDiffParams) {
-  return await submitRun<ProfileDiffParams, ProfileDiffResult>("profile_diff", params);
+export async function submitProfileDiff(params: ProfileDiffParams,   options?: SubmitOptions) {
+  return await submitRun<ProfileDiffParams, ProfileDiffResult>("profile_diff", params, options);
 }

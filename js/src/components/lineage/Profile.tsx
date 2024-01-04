@@ -1,4 +1,4 @@
-import React, { useCallback } from "react";
+import React, { useCallback, useState } from "react";
 import {
   Button,
   Modal,
@@ -10,14 +10,14 @@ import {
   ModalOverlay,
   useDisclosure,
 } from "@chakra-ui/react";
-import { LineageGraphNode, NodeData } from "./lineage";
-import { ValueDiffSummary } from "@/components/check/ValueDiffView";
+import { LineageGraphNode } from "./lineage";
 import { useLocation } from "wouter";
 import { createCheckByRun } from "@/lib/api/checks";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { ProfileDiffResult, submitProfileDiff } from "@/lib/api/profile";
 import { ProfileDiffDataGrid } from "./ProfileDiffGrid";
 import { cacheKeys } from "@/lib/api/cacheKeys";
+import { waitRun } from "@/lib/api/runs";
 
 interface ProfileDiffProp {
   node: LineageGraphNode;
@@ -27,14 +27,22 @@ export const ProfileDiffModal = ({ node }: ProfileDiffProp) => {
   const queryClient = useQueryClient();
   const { isOpen, onOpen, onClose } = useDisclosure();
   const [, setLocation] = useLocation();
+  const [runId, setRunId] = useState<string>();
+
+  const profileDiffFn = async (model: string) => {
+    const { run_id } = await submitProfileDiff({ model }, { nowait: true });
+    setRunId(run_id);
+
+    return await waitRun(run_id);
+  };
 
   const {
     data: profileResult,
-    mutate: runProfile,
+    mutate: runProfileDiff,
     error: error,
     isPending,
   } = useMutation({
-    mutationFn: submitProfileDiff,
+    mutationFn: profileDiffFn,
   });
 
   const addToChecklist = useCallback(async () => {
@@ -73,7 +81,7 @@ export const ProfileDiffModal = ({ node }: ProfileDiffProp) => {
         size="sm"
         onClick={() => {
           onOpen();
-          runProfile({ model: node.name });
+          runProfileDiff(node.name);
         }}
       >
         Profile Diff

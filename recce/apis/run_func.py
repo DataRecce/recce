@@ -224,13 +224,24 @@ class ProfileParams(TypedDict):
 class ProfileExecutor(RunExecutor):
 
     def __init__(self, params: ProfileParams):
+        super().__init__()
         self.params = params
+        self.connection = None
 
     def execute(self):
         result = {}
 
-        result['base'], result['base_error'] = self.execute_profile(base=True)
-        result['current'], result['current_error'] = self.execute_profile(base=False)
+        from dbt.adapters.sql import SQLAdapter
+        adapter: SQLAdapter = default_dbt_context().adapter
+
+        with adapter.connection_named("profile"):
+            self.connection = adapter.connections.get_thread_connection()
+
+            result['base'], result['base_error'] = self.execute_profile(base=True)
+            self.check_cancel()
+
+            result['current'], result['current_error'] = self.execute_profile(base=False)
+            self.check_cancel()
 
         return result
 
@@ -248,3 +259,13 @@ class ProfileExecutor(RunExecutor):
             return None, f"Jinja template error: line {e.lineno}: {str(e)}"
         except Exception as e:
             return None, str(e)
+
+    def cancel(self):
+        super().cancel()
+        if self.connection:
+            self.close_connection()
+
+    def close_connection(self):
+        adapter: SQLAdapter = default_dbt_context().adapter
+        with adapter.connection_named("cancel profile"):
+            adapter.connections.cancel(self.connection)
