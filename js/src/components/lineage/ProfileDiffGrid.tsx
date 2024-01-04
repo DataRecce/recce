@@ -1,10 +1,9 @@
 import "react-data-grid/lib/styles.css";
 import DataGrid, { ColumnOrColumnGroup, textEditor } from "react-data-grid";
-import { Alert, AlertIcon, Center, Spinner } from "@chakra-ui/react";
+import { Alert, AlertIcon, Center, Spinner, Stack } from "@chakra-ui/react";
 import { CSSProperties, useMemo } from "react";
 import { DataFrame, DataFrameField, DataFrameRow } from "@/lib/api/types";
 import { ProfileDiffResult } from "@/lib/api/profile";
-import { VscClose, VscKey } from "react-icons/vsc";
 import _ from "lodash";
 
 interface ProfileDataGridProps {
@@ -166,6 +165,32 @@ export const ProfileDiffDataGrid = ({
         Loading...
       </Center>
     );
+  }
+
+  if (result?.base_error || result?.current_error) {
+    if (result?.base_error === result?.current_error) {
+      return (
+        <Alert status="error">
+          <AlertIcon />
+          Error: {result?.current_error}
+        </Alert>
+      );
+    } else {
+      const renderAlert = (env: string, message: string) => (
+        <Alert status="error">
+          <AlertIcon />
+          {env} Environment Error: {message}
+        </Alert>
+      );
+
+      return (
+        <Stack spacing={3}>
+          {result?.base_error && renderAlert("Base", result.base_error)}
+          {result?.current_error &&
+            renderAlert("Current", result.current_error)}
+        </Stack>
+      );
+    }
   }
 
   if (error) {
