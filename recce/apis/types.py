@@ -17,6 +17,9 @@ class RunType(Enum):
     PROFILE_DIFF = 'profile_diff'
     ROW_COUNT_DIFF = 'row_count_diff'
 
+    def __str__(self):
+        return self.value
+
 
 class DataFrameDiff:
     def __init__(self):
@@ -36,6 +39,7 @@ class Run:
     params: Optional[dict] = None
     check_id: Optional[UUID] = None
     result: Optional[dict] = None
+    error: Optional[str] = None
     run_id: UUID = field(default_factory=uuid.uuid4)
     run_at: str = field(default_factory=lambda: datetime.utcnow().isoformat())
 

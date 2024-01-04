@@ -12,10 +12,12 @@ import {
   Center,
   Divider,
   Flex,
+  HStack,
   Icon,
   IconButton,
   Tooltip,
   VStack,
+  useToast,
 } from "@chakra-ui/react";
 import { CheckDetail } from "./CheckDetail";
 import { cacheKeys } from "@/lib/api/cacheKeys";
@@ -31,8 +33,8 @@ import {
   TbChartHistogram,
 } from "react-icons/tb";
 import { IconType } from "react-icons";
-import { AddIcon } from "@chakra-ui/icons";
 import { FiAlignLeft } from "react-icons/fi";
+import { AddIcon, CopyIcon } from "@chakra-ui/icons";
 
 const ChecklistItem = ({
   check,
@@ -106,6 +108,7 @@ export const CheckPage = () => {
   const [, setLocation] = useLocation();
   const [, params] = useRoute("/checks/:checkId");
   const queryClient = useQueryClient();
+  const exportChecksToast = useToast();
   const selectedItem = params?.checkId;
 
   const {
@@ -173,15 +176,36 @@ export const CheckPage = () => {
         style={{ contain: "size" }}
       >
         <VStack spacing={0} align="flex-end">
-          <Tooltip label="Create a simple check">
-            <IconButton
-              mr="10px"
-              variant="unstyled"
-              aria-label="Create a simple check"
-              onClick={addToChecklist}
-              icon={<AddIcon />}
-            />
-          </Tooltip>
+          <HStack>
+            <Tooltip label="Create a simple check">
+              <IconButton
+                variant="unstyled"
+                aria-label="Create a simple check"
+                onClick={addToChecklist}
+                icon={<AddIcon />}
+              />
+            </Tooltip>
+            <Tooltip label="Copy checklist to the clipboard">
+              <IconButton
+                variant="unstyled"
+                aria-label="Copy checklist to the clipboard"
+                mr="10px"
+                onClick={() => {
+                  const markdown = buildMarkdown(checks);
+                  navigator.clipboard.writeText(markdown);
+                  exportChecksToast({
+                    description: `Copied ${checks.length} checks to the clipboard`,
+                    status: "info",
+                    variant: "left-accent",
+                    position: "bottom",
+                    duration: 5000,
+                    isClosable: true,
+                  });
+                }}
+                icon={<CopyIcon />}
+              />
+            </Tooltip>
+          </HStack>
 
           <Divider mb="8px" />
           {checks.map((check) => (
@@ -206,3 +230,21 @@ export const CheckPage = () => {
     </Flex>
   );
 };
+
+function buildMarkdown(checks: Check[]) {
+  const checkItems = checks.map((check) => {
+    return `<details><summary>${buildTitle(
+      check
+    )}</summary>\n\n${buildDescription(check)}\n\n</details>`;
+  });
+
+  return checkItems.join("\n\n");
+}
+
+function buildTitle(check: Check) {
+  return `${check.is_checked ? "✅ " : ""}${check.name}`;
+}
+
+function buildDescription(check: Check) {
+  return check.description ? check.description : "_(no description)_";
+}

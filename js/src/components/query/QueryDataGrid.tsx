@@ -1,15 +1,25 @@
 import "react-data-grid/lib/styles.css";
 import DataGrid, { Column } from "react-data-grid";
-import { QueryResult } from "@/lib/api/adhocQuery";
-import { Alert, AlertIcon, Center, Flex, Spinner } from "@chakra-ui/react";
-import { CSSProperties, useMemo } from "react";
-import { DataFrame } from "@/lib/api/types";
+import { QueryParams, QueryResult } from "@/lib/api/adhocQuery";
+import {
+  Alert,
+  AlertIcon,
+  Box,
+  Button,
+  Center,
+  Flex,
+  Spinner,
+  VStack,
+} from "@chakra-ui/react";
+import { CSSProperties, useMemo, useState } from "react";
+import { DataFrame, Run } from "@/lib/api/types";
 
 interface QueryDataGridProps {
   style?: CSSProperties;
-  isFetching: boolean;
-  result?: QueryResult;
+  isFetching?: boolean;
+  run?: Run<QueryParams, QueryResult>;
   error?: Error | null; // error from submit
+  onCancel?: () => void;
 }
 
 function toDataGrid(result: DataFrame) {
@@ -27,10 +37,12 @@ function toDataGrid(result: DataFrame) {
 
 export const QueryDataGrid = ({
   isFetching,
-  result,
+  run,
   error,
+  onCancel,
 }: QueryDataGridProps) => {
-  const dataframe = result?.result;
+  const [isAborting, setAborting] = useState(false);
+  const dataframe = run?.result?.result;
   const gridData = useMemo(() => {
     if (isFetching || !dataframe) {
       return { rows: [], columns: [] };
@@ -39,21 +51,41 @@ export const QueryDataGrid = ({
     return toDataGrid(dataframe);
   }, [isFetching, dataframe]);
 
+  const handleCancel = () => {
+    setAborting(true);
+    if (onCancel) {
+      onCancel();
+    }
+  };
+
   if (isFetching) {
     return (
       <Center p="16px" height="100%">
-        <Spinner size="sm" mr="8px" />
-        Loading...
+        <VStack>
+          <Box>
+            <Spinner size="sm" mr="8px" />
+
+            {isAborting ? <>Aborting...</> : <>Loading...</>}
+          </Box>
+          {!isAborting && onCancel && (
+            <Button onClick={handleCancel} colorScheme="blue" size="sm">
+              Cancel
+            </Button>
+          )}
+        </VStack>
       </Center>
     );
   }
 
-  if (error || result?.error) {
+  const errorMessage =
+    (error as any)?.response?.data?.detail || run?.error || run?.result?.error;
+
+  if (errorMessage) {
     // return <Box p="16px">Error: {getErrorMessage(currentError)}</Box>;
     return (
       <Alert status="error">
         <AlertIcon />
-        Error: {error?.message || result?.error}
+        Error: {errorMessage}
       </Alert>
     );
   }

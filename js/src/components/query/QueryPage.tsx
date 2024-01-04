@@ -15,25 +15,31 @@ import {
   submitQueryDiff,
 } from "@/lib/api/adhocQuery";
 import { QueryDataGrid } from "./QueryDataGrid";
+import { cancelRun, waitRun } from "@/lib/api/runs";
 
 export const QueryPage = () => {
   const { sqlQuery, setSqlQuery } = useRecceQueryContext();
   const [submittedQuery, setSubmittedQuery] = useState<string>();
 
   const [primaryKeys, setPrimaryKeys] = useState<string[]>([]);
+  const [runType, setRunType] = useState<string>();
+  const [runId, setRunId] = useState<string>();
 
   const queryClient = useQueryClient();
   const [, setLocation] = useLocation();
   const queryFn = async (type: "query" | "query_diff") => {
-    if (type === "query") {
-      return submitQuery({ sql_template: sqlQuery });
-    } else {
-      return submitQueryDiff({ sql_template: sqlQuery });
-    }
+    setRunType(type);
+    const { run_id } =
+      type === "query"
+        ? await submitQuery({ sql_template: sqlQuery }, { nowait: true })
+        : await submitQueryDiff({ sql_template: sqlQuery }, { nowait: true });
+    setRunId(run_id);
+
+    return await waitRun(run_id);
   };
 
   const {
-    data: queryResult,
+    data: run,
     mutate: runQuery,
     error: error,
     isPending,
@@ -45,14 +51,22 @@ export const QueryPage = () => {
     },
   });
 
-  const addToChecklist = useCallback(async () => {
-    if (!queryResult?.run_id) {
+  const handleCancel = useCallback(async () => {
+    if (!runId) {
       return;
     }
 
-    const check = await createCheckByRun(queryResult.run_id);
+    return await cancelRun(runId);
+  }, [runId]);
 
-    if (queryResult.type === "query_diff") {
+  const addToChecklist = useCallback(async () => {
+    if (!run?.run_id) {
+      return;
+    }
+
+    const check = await createCheckByRun(run.run_id);
+
+    if (run.type === "query_diff") {
       await updateCheck(check.check_id, {
         params: { ...check.params, primary_keys: primaryKeys },
       });
@@ -62,13 +76,7 @@ export const QueryPage = () => {
 
     queryClient.invalidateQueries({ queryKey: cacheKeys.checks() });
     setLocation(`/checks/${check.check_id}`);
-  }, [
-    queryResult?.run_id,
-    queryResult?.type,
-    setLocation,
-    primaryKeys,
-    queryClient,
-  ]);
+  }, [run?.run_id, run?.type, setLocation, primaryKeys, queryClient]);
 
   return (
     <Flex direction="column" height="100%">
@@ -77,7 +85,10 @@ export const QueryPage = () => {
           colorScheme="blue"
           onClick={addToChecklist}
           isDisabled={
-            isPending || !queryResult?.run_id || sqlQuery != submittedQuery
+            isPending ||
+            !run?.run_id ||
+            !!run?.error ||
+            sqlQuery != submittedQuery
           }
           size="sm"
         >
@@ -109,19 +120,23 @@ export const QueryPage = () => {
         />
       </Box>
       <Box backgroundColor="gray.100" height="50vh">
-        {queryResult?.type === "query" ? (
+        {runType === "query" ? (
           <QueryDataGrid
+            key={runId}
             isFetching={isPending}
-            result={queryResult?.result as QueryResult}
+            run={run}
             error={error}
+            onCancel={handleCancel}
           />
         ) : (
           <QueryDiffDataGrid
+            key={runId}
             isFetching={isPending}
-            result={queryResult?.result as QueryDiffResult}
+            run={run}
             error={error}
             primaryKeys={primaryKeys}
             setPrimaryKeys={setPrimaryKeys}
+            onCancel={handleCancel}
           />
         )}
       </Box>

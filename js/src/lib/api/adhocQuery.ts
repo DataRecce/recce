@@ -1,4 +1,4 @@
-import { submitRun } from "./runs";
+import { SubmitOptions, submitRun } from "./runs";
 import { DataFrame } from "./types";
 
 export interface QueryParams {
@@ -23,13 +23,20 @@ export interface QueryDiffResult {
   current_error?: string;
 }
 
-export async function submitQuery(params: QueryParams) {
-  return await submitRun<QueryParams, QueryResult>("query", params);
+export async function submitQuery(
+  params: QueryParams,
+  options?: SubmitOptions
+) {
+  return await submitRun<QueryParams, QueryResult>("query", params, options);
 }
 
-export async function submitQueryDiff(params: QueryDiffParams) {
+export async function submitQueryDiff(
+  params: QueryDiffParams,
+  options?: SubmitOptions
+) {
   return await submitRun<QueryDiffResult, QueryDiffResult>(
     "query_diff",
     params,
+    options
   );
 }

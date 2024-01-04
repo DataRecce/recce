@@ -1,4 +1,3 @@
-import traceback
 from typing import List
 
 import click
@@ -113,7 +112,8 @@ def server(host, port, **kwargs):
     """
 
     import uvicorn
-    from .server import load_dbt_context, app
+    from .server import app
+    from .dbt import load_dbt_context
 
     load_dbt_context(**kwargs)
     uvicorn.run(app, host=host, port=port, lifespan='on')
