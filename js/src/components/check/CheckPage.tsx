@@ -15,7 +15,6 @@ import {
   HStack,
   Icon,
   IconButton,
-  Spacer,
   Tooltip,
   VStack,
   useToast,
@@ -34,7 +33,7 @@ import {
   TbChartHistogram,
 } from "react-icons/tb";
 import { IconType } from "react-icons";
-import { AddIcon } from "@chakra-ui/icons";
+import { AddIcon, CopyIcon } from "@chakra-ui/icons";
 
 const ChecklistItem = ({
   check,
@@ -183,25 +182,26 @@ export const CheckPage = () => {
                 icon={<AddIcon />}
               />
             </Tooltip>
-            <Button
-              colorScheme="green"
-              size="sm"
-              mr="10px"
-              onClick={() => {
-                const markdown = exportChecks(checks);
-                navigator.clipboard.writeText(markdown);
-                exportChecksToast({
-                  description: `Copied ${checks.length} checks to clipboard`,
-                  status: "info",
-                  variant: "left-accent",
-                  position: "bottom",
-                  duration: 5000,
-                  isClosable: true,
-                });
-              }}
-            >
-              Export
-            </Button>
+            <Tooltip label="Copy checklist to the clipboard">
+              <IconButton
+                variant="unstyled"
+                aria-label="Copy checklist to the clipboard"
+                mr="10px"
+                onClick={() => {
+                  const markdown = buildMarkdown(checks);
+                  navigator.clipboard.writeText(markdown);
+                  exportChecksToast({
+                    description: `Copied ${checks.length} checks to the clipboard`,
+                    status: "info",
+                    variant: "left-accent",
+                    position: "bottom",
+                    duration: 5000,
+                    isClosable: true,
+                  });
+                }}
+                icon={<CopyIcon />}
+              />
+            </Tooltip>
           </HStack>
 
           <Divider mb="8px" />
@@ -228,12 +228,20 @@ export const CheckPage = () => {
   );
 };
 
-function exportChecks(checks: Check[]) {
+function buildMarkdown(checks: Check[]) {
   const checkItems = checks.map((check) => {
-    return `<details><summary>${check.is_checked ? "✅ " : ""}${
-      check.name
-    }</summary>${check.description}</details>`;
+    return `<details><summary>${buildTitle(
+      check
+    )}</summary>\n\n${buildDescription(check)}\n\n</details>`;
   });
 
   return checkItems.join("\n\n");
+}
+
+function buildTitle(check: Check) {
+  return `${check.is_checked ? "✅ " : ""}${check.name}`;
+}
+
+function buildDescription(check: Check) {
+  return check.description ? check.description : "_(no description)_";
 }
