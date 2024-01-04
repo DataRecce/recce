@@ -25,6 +25,7 @@ import { useLocation } from "wouter";
 import { CheckDescription } from "./CheckDescription";
 import { QueryView } from "./QueryView";
 import { ProfileDiffView } from "./ProfileDiffView";
+import { RowCountDiffView } from "./RowCountDiffView";
 
 interface CheckDetailProps {
   checkId: string;
@@ -115,13 +116,14 @@ export const CheckDetail = ({ checkId }: CheckDetailProps) => {
         />
       </Box>
 
-      {check && check.type == "query" && <QueryView check={check} />}
-      {check && check.type == "query_diff" && <QueryDiffView check={check} />}
-      {check && check.type == "value_diff" && <ValueDiffView check={check} />}
-      {check && check.type == "schema_diff" && <SchemaDiffView check={check} />}
-      {check && check.type == "profile_diff" && (
+      {check && check.type === "query" && <QueryView check={check} />}
+      {check && check.type === "query_diff" && <QueryDiffView check={check} />}
+      {check && check.type === "value_diff" && <ValueDiffView check={check} />}
+      {check && check.type === "schema_diff" && <SchemaDiffView check={check} />}
+      {check && check.type === "profile_diff" && (
         <ProfileDiffView check={check} />
       )}
+      {check && check.type === "row_count_diff" && <RowCountDiffView check={check} />}
     </Flex>
   );
 };

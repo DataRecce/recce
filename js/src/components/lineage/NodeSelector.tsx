@@ -1,10 +1,11 @@
-import { AddIcon, SmallCloseIcon } from "@chakra-ui/icons";
-import { Box, Button, ButtonGroup, Divider, HStack, Icon, IconButton, SlideFade, StackDivider, Text } from "@chakra-ui/react";
+import { SmallCloseIcon } from "@chakra-ui/icons";
+import { Box, Button, ButtonGroup, HStack, Icon, IconButton, SlideFade, StackDivider } from "@chakra-ui/react";
 import { LineageGraphNode } from "./lineage";
 import { FetchRowCountsButton } from "./NodeTag";
 import { MdOutlineSchema } from "react-icons/md";
-import { createCheckByNodeSchema } from "@/lib/api/checks";
+import { createCheckByNodeSchema, createCheckByRowCounts } from "@/lib/api/checks";
 import { useLocation } from "wouter";
+import { FiAlignLeft } from "react-icons/fi";
 
 export interface NodeSelectorProps {
   nodes: LineageGraphNode[];
@@ -43,6 +44,29 @@ function AddSchemaChangesCheckButton({ nodes, onFinish }: { nodes: LineageGraphN
   );
 }
 
+function AddRowCountCheckButton({ nodes, onFinish }: { nodes: LineageGraphNode[], onFinish: () => void }) {
+  const [, setLocation] = useLocation();
+  return (
+    <Button
+      size="xs"
+      variant="outline"
+      isDisabled={nodes.length === 0}
+      onClick={async () => {
+        const check = await createCheckByRowCounts(nodes.map((node) => node.id));
+        onFinish();
+        if (check) {
+          setLocation(`/checks/${check.check_id}`);
+        } else {
+          setLocation(`/checks`);
+        }
+      }}
+    >
+      <Icon as={FiAlignLeft} />
+      Add row count check
+    </Button>
+  );
+}
+
 export function NodeSelector({ nodes, isOpen, onClose }: NodeSelectorProps) {
   function countSelectedNodes(nodes: LineageGraphNode[]) {
     return nodes.filter((node) => node.isSelected).length;
@@ -71,6 +95,10 @@ export function NodeSelector({ nodes, isOpen, onClose }: NodeSelectorProps) {
               onFinish={onClose}
             />
             <AddSchemaChangesCheckButton
+              nodes={selectedNodes.length > 0 ? selectedNodes: []}
+              onFinish={onClose}
+            />
+            <AddRowCountCheckButton
               nodes={selectedNodes.length > 0 ? selectedNodes: []}
               onFinish={onClose}
             />

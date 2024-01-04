@@ -44,6 +44,8 @@ def _generate_default_name(check_type, params):
     elif check_type == RunType.PROFILE_DIFF:
         model = params.get('model')
         return f"profile diff of {model}".capitalize()
+    elif check_type == RunType.ROW_COUNT_DIFF:
+        return f"row count".capitalize()
     else:
         return f"check - {now}".capitalize()
 

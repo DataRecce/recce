@@ -19,6 +19,11 @@ import {
   ModalHeader,
   ModalBody,
   ModalCloseButton,
+  ButtonGroup,
+  Menu,
+  MenuButton,
+  MenuList,
+  MenuItem,
 } from "@chakra-ui/react";
 
 import { FaCode } from "react-icons/fa";
@@ -30,8 +35,8 @@ import useMismatchSummaryModal from "./MismatchSummary";
 import { useLocation } from "wouter";
 import { ResourceTypeTag, RowCountTag } from "./NodeTag";
 import { useCallback } from "react";
-import { createCheckByNodeSchema } from "@/lib/api/checks";
 import { ProfileDiffModal } from "./Profile";
+import { createCheckByNodeSchema, createCheckByRowCounts } from "@/lib/api/checks";
 
 interface NodeViewProps {
   node: LineageGraphNode;
@@ -47,11 +52,19 @@ export function NodeView({ node, onCloseNode }: NodeViewProps) {
     node.resourceType === "source";
   const { isOpen, onOpen, onClose } = useDisclosure();
   const { MismatchSummaryModal } = useMismatchSummaryModal();
-  const addToChecklist = useCallback(async () => {
-    const nodeID = node.id;
-    const check = await createCheckByNodeSchema(nodeID);
+
+  const addSchemaCheck = useCallback(async () => {
+    const nodeId = node.id;
+    const check = await createCheckByNodeSchema(nodeId);
     setLocation(`/checks/${check.check_id}`);
   }, [node, setLocation]);
+
+  const addRowCountCheck = useCallback(async () => {
+    const nodeId = node.id;
+    const check = await createCheckByRowCounts([nodeId]);
+    setLocation(`/checks/${check.check_id}`);
+  }, [node, setLocation]);
+
 
   return (
     <Grid height="100%" templateRows="auto auto 1fr">
@@ -108,9 +121,16 @@ export function NodeView({ node, onCloseNode }: NodeViewProps) {
             </TabPanels>
           </Tabs>
           <HStack p="16px">
-            <Button colorScheme="blue" size="sm" onClick={addToChecklist}>
-              Add schema check
-            </Button>
+            <Menu>
+              <MenuButton as={Button} size="sm" colorScheme="blue">
+                Add check
+              </MenuButton>
+              <MenuList>
+                <MenuItem onClick={addSchemaCheck}>Schema Check</MenuItem>
+                <MenuItem onClick={addRowCountCheck} >Row Count Check</MenuItem>
+              </MenuList>
+            </Menu>
+            <Spacer />
             {node.resourceType === "model" && (
               <>
                 <ProfileDiffModal node={node} />
