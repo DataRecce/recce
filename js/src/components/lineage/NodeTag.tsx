@@ -34,13 +34,13 @@ export function ModelRowCount({ rowCount }: ModelRowCountProps ) {
 
 
   if (base === current) {
-    return <Text>{base}</Text>;
+    return <Text>{base} rows</Text>;
   } else if (base < current) {
     return (
       <HStack>
         <Text>{baseLabel}</Text>
         <Icon as={FiTrendingUp} color="green.500" />
-        <Text>{currentLabel}</Text>
+        <Text>{currentLabel} rows</Text>
       </HStack>
     );
   } else {
@@ -48,7 +48,8 @@ export function ModelRowCount({ rowCount }: ModelRowCountProps ) {
       <HStack>
         <Text>{baseLabel}</Text>
         <Icon as={FiTrendingDown} color="red.500" />
-        <Text>{currentLabel}</Text>
+        <Text>{currentLabel} rows</Text>
+        rows
       </HStack>
     );
   }

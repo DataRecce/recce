@@ -15,6 +15,7 @@ class RunType(Enum):
     VALUE_DIFF = 'value_diff'
     SCHEMA_DIFF = 'schema_diff'
     PROFILE_DIFF = 'profile_diff'
+    ROW_COUNT_DIFF = 'row_count_diff'
 
     def __str__(self):
         return self.value

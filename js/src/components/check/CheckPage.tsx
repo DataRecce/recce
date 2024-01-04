@@ -33,6 +33,7 @@ import {
   TbChartHistogram,
 } from "react-icons/tb";
 import { IconType } from "react-icons";
+import { FiAlignLeft } from "react-icons/fi";
 import { AddIcon, CopyIcon } from "@chakra-ui/icons";
 
 const ChecklistItem = ({
@@ -70,6 +71,8 @@ const ChecklistItem = ({
         return TbAlignBoxLeftStretch;
       case "profile_diff":
         return TbChartHistogram;
+      case "row_count_diff":
+        return FiAlignLeft;
       default:
         return TbChecklist;
     }
