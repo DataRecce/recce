@@ -1,54 +1,25 @@
 import asyncio
-from abc import ABC, abstractmethod
-from typing import Callable, Dict, List, Optional, TypedDict
-
-from dbt.adapters.sql import SQLAdapter
+from typing import Callable, Dict
 
 from recce.apis.db import runs_db
 from recce.apis.types import RunType, Run
-from recce.dbt import default_dbt_context
 from recce.exceptions import RecceException, RecceCancelException
+from recce.tasks import QueryTask, ProfileDiffTask, ValueDiffTask, QueryDiffTask
 
 running_tasks = {}
+registry: Dict[RunType, Callable] = {
+    RunType.QUERY: QueryTask,
+    RunType.QUERY_DIFF: QueryDiffTask,
+    RunType.VALUE_DIFF: ValueDiffTask,
+    RunType.PROFILE_DIFF: ProfileDiffTask
+}
 
 
-class ExecutorManager:
-    @staticmethod
-    def create_executor(run_type: RunType, params: dict):
-        executors: Dict[RunType, Callable] = {RunType.QUERY: QueryExecutor,
-                                              RunType.QUERY_DIFF: QueryDiffExecutor,
-                                              RunType.VALUE_DIFF: ValueDiffExecutor,
-                                              RunType.PROFILE_DIFF: ProfileExecutor}
-        executor = executors.get(run_type)
-        if not executor:
-            raise NotImplementedError()
-        return executor(params)
-
-
-class RunExecutor(ABC):
-    def __init__(self):
-        self.isCancelled = False
-
-    @abstractmethod
-    def execute(self):
-        """
-        Execute the run.
-        """
+def create_task(run_type: RunType, params: dict):
+    taskClz = registry.get(run_type)
+    if not taskClz:
         raise NotImplementedError()
-
-    def cancel(self):
-        """
-        Cancel the run. Subclass should override this method to implement the cancellation logic.
-        """
-        self.isCancelled = True
-
-    def check_cancel(self):
-        """
-        Check if the run is canceled. If so, raise an exception.
-        """
-
-        if self.isCancelled:
-            raise RecceCancelException()
+    return taskClz(params)
 
 
 def submit_run(type, params):
@@ -58,7 +29,7 @@ def submit_run(type, params):
         raise RecceException(f"Run type '{type}' not supported")
 
     try:
-        task = ExecutorManager.create_executor(run_type, params)
+        task = create_task(run_type, params)
     except NotImplementedError:
         raise RecceException(f"Run type '{type}' not supported")
 
@@ -108,164 +79,3 @@ def cancel_run(run_id):
         raise RecceException(f"Run task for Run ID '{run_id}' not found")
 
     task.cancel()
-
-
-class QueryMixin:
-    @staticmethod
-    def execute_sql(sql_template, base: bool = False):
-        from jinja2.exceptions import TemplateSyntaxError
-        import agate
-        import pandas as pd
-        import json
-        dbt_context = default_dbt_context()
-        adapter = dbt_context.adapter
-        try:
-            sql = dbt_context.generate_sql(sql_template, base)
-            response, result = adapter.execute(sql, fetch=True, auto_begin=True)
-            table: agate.Table = result
-            df = pd.DataFrame([row.values() for row in table.rows], columns=table.column_names)
-            result_json = df.to_json(orient='table')
-            return json.loads(result_json), None
-        except TemplateSyntaxError as e:
-            return None, f"Jinja template error: line {e.lineno}: {str(e)}"
-        except Exception as e:
-            return None, str(e)
-
-    @staticmethod
-    def close_connection(connection):
-        adapter: SQLAdapter = default_dbt_context().adapter
-        with adapter.connection_named("cancel query"):
-            adapter.connections.cancel(connection)
-
-
-class QueryParams(TypedDict):
-    sql_template: str
-
-
-class QueryExecutor(RunExecutor, QueryMixin):
-    def __init__(self, params: QueryParams):
-        super().__init__()
-        self.params = params
-        self.connection = None
-
-    def execute(self):
-        adapter: SQLAdapter = default_dbt_context().adapter
-        with adapter.connection_named("query"):
-            self.connection = adapter.connections.get_thread_connection()
-
-            sql_template = self.params.get('sql_template')
-            result, error = self.execute_sql(sql_template, base=True)
-            self.check_cancel()
-
-            return dict(result=result, error=error)
-
-    def cancel(self):
-        super().cancel()
-        if self.connection:
-            self.close_connection(self.connection)
-
-
-class QueryDiffParams(TypedDict):
-    sql_template: str
-
-
-class QueryDiffExecutor(RunExecutor, QueryMixin):
-    def __init__(self, params: QueryDiffParams):
-        super().__init__()
-        self.params = params
-        self.connection = None
-
-    def execute(self):
-        result = {}
-
-        from dbt.adapters.sql import SQLAdapter
-        adapter: SQLAdapter = default_dbt_context().adapter
-
-        with adapter.connection_named("query"):
-            sql_template = self.params.get('sql_template')
-            self.connection = adapter.connections.get_thread_connection()
-
-            # Query base
-            result['base'], result['base_error'] = self.execute_sql(sql_template, base=True)
-            self.check_cancel()
-
-            # Query current
-            result['current'], result['current_error'] = self.execute_sql(sql_template, base=False)
-            self.check_cancel()
-
-        return result
-
-    def cancel(self):
-        super().cancel()
-        if self.connection:
-            self.close_connection(self.connection)
-
-
-class ValueDiffParams(TypedDict):
-    primary_key: str
-    model: str
-    exclude_columns: Optional[List[str]]
-
-
-class ValueDiffExecutor(RunExecutor):
-
-    def __init__(self, params: ValueDiffParams):
-        super().__init__()
-        self.params = params
-
-    def execute(self):
-        return default_dbt_context().columns_value_mismatched_summary(self.params['primary_key'], self.params['model'])
-
-
-class ProfileParams(TypedDict):
-    model: str
-
-
-class ProfileExecutor(RunExecutor):
-
-    def __init__(self, params: ProfileParams):
-        super().__init__()
-        self.params = params
-        self.connection = None
-
-    def execute(self):
-        result = {}
-
-        from dbt.adapters.sql import SQLAdapter
-        adapter: SQLAdapter = default_dbt_context().adapter
-
-        with adapter.connection_named("profile"):
-            self.connection = adapter.connections.get_thread_connection()
-
-            result['base'], result['base_error'] = self.execute_profile(base=True)
-            self.check_cancel()
-
-            result['current'], result['current_error'] = self.execute_profile(base=False)
-            self.check_cancel()
-
-        return result
-
-    def execute_profile(self, base: bool = False):
-        from jinja2.exceptions import TemplateSyntaxError
-
-        try:
-            model = self.params.get('model')
-            result = default_dbt_context().model_profile(model, base=base)
-            result_json = result.to_json(orient='table')
-
-            import json
-            return json.loads(result_json), None
-        except TemplateSyntaxError as e:
-            return None, f"Jinja template error: line {e.lineno}: {str(e)}"
-        except Exception as e:
-            return None, str(e)
-
-    def cancel(self):
-        super().cancel()
-        if self.connection:
-            self.close_connection()
-
-    def close_connection(self):
-        adapter: SQLAdapter = default_dbt_context().adapter
-        with adapter.connection_named("cancel profile"):
-            adapter.connections.cancel(self.connection)
