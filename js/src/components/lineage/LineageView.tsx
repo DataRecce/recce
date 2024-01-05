@@ -325,7 +325,7 @@ function _LineageView() {
               setViewMode("all");
             }}
           >
-            Continue to show models lineage
+            Show all nodes
           </Button>
         </VStack>
       </Center>
