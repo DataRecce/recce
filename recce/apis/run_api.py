@@ -29,7 +29,7 @@ async def create_run_handler(input: CreateRunIn):
     if input.nowait:
         return run
     else:
-        run.result = await asyncio.wait(future)
+        run.result = await future
         return run
 
 
