@@ -28,6 +28,7 @@ import {
   Menu,
   MenuList,
   MenuItem,
+  Center,
 } from "@chakra-ui/react";
 import React, { useEffect, useState } from "react";
 import ReactFlow, {
@@ -308,6 +309,27 @@ function _LineageView() {
 
   if (error) {
     return <>Fail to load lineage data: {error}</>;
+  }
+
+  if (
+    viewMode === "changed_models" &&
+    (modifiedSet === undefined || modifiedSet?.length === 0)
+  ) {
+    return (
+      <Center h="100%">
+        <VStack>
+          <>No change detected</>
+          <Button
+            colorScheme="blue"
+            onClick={() => {
+              setViewMode("all");
+            }}
+          >
+            Continue to show models lineage
+          </Button>
+        </VStack>
+      </Center>
+    );
   }
 
   return (
