@@ -131,7 +131,8 @@ function toDataDiffGrid(base?: DataFrame, current?: DataFrame) {
         if (key === primaryKey) {
           return;
         }
-        row[`base__${key}`] = base[key];
+        row[`base__${key}`] =
+          typeof base[key] === "boolean" ? base[key].toString() : base[key];
       });
     }
 
@@ -141,7 +142,10 @@ function toDataDiffGrid(base?: DataFrame, current?: DataFrame) {
           return;
         }
 
-        row[`current__${key}`] = current[key];
+        row[`current__${key}`] =
+          typeof current[key] === "boolean"
+            ? current[key].toString()
+            : current[key];
       });
     }
 
