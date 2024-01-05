@@ -720,7 +720,8 @@ class DBTContext:
 
             response, result = adapter.execute(sql, fetch=True, auto_begin=True)
             table: agate.Table = result
-            df = pd.DataFrame([row.values() for row in table.rows], columns=table.column_names)
+            column_names = [c.lower() for c in table.column_names]
+            df = pd.DataFrame([row.values() for row in table.rows], columns=column_names)
             return df
 
 
