@@ -63,6 +63,17 @@ export const ProfileDiffModal = ({ node }: ProfileDiffProp) => {
     setLocation(`/checks/${check.check_id}`);
   }, [profileResult?.run_id, setLocation, queryClient]);
 
+  const isAddCheckDisabled = () => {
+    const result = profileResult?.result as ProfileDiffResult;
+    if (error || !result) {
+      return true;
+    }
+    if (result.base_error || result.current_error) {
+      return true;
+    }
+    return false;
+  };
+
   return (
     <>
       <Modal isOpen={isOpen} onClose={onClose} size="6xl">
@@ -79,7 +90,12 @@ export const ProfileDiffModal = ({ node }: ProfileDiffProp) => {
             />
           </ModalBody>
           <ModalFooter>
-            <Button mr={3} colorScheme="blue" onClick={addToChecklist}>
+            <Button
+              mr={3}
+              colorScheme="blue"
+              onClick={addToChecklist}
+              isDisabled={isAddCheckDisabled()}
+            >
               Add to check
             </Button>
           </ModalFooter>
