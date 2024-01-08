@@ -1,5 +1,14 @@
 import { PUBLIC_API_URL } from "../../lib/const";
-import { LineageGraph, cleanUpSelectedNodes, highlightPath, selectDownstream, selectNode, selectNodes, selectUpstream, toReactflow } from "./lineage";
+import {
+  LineageGraph,
+  cleanUpSelectedNodes,
+  highlightPath,
+  selectDownstream,
+  selectNode,
+  selectNodes,
+  selectUpstream,
+  toReactflow,
+} from "./lineage";
 import {
   Box,
   Flex,
@@ -19,6 +28,7 @@ import {
   Menu,
   MenuList,
   MenuItem,
+  Center,
 } from "@chakra-ui/react";
 import React, { useEffect, useState } from "react";
 import ReactFlow, {
@@ -225,7 +235,12 @@ function _LineageView() {
 
   const selectParentNodes = () => {
     const selectedNode = contextMenuPosition.selectedNode;
-    if (selectMode !== "action" || selectedNode === undefined || lineageGraph === undefined) return;
+    if (
+      selectMode !== "action" ||
+      selectedNode === undefined ||
+      lineageGraph === undefined
+    )
+      return;
 
     const selectedNodeId = selectedNode.id;
     const upstream = selectUpstream(lineageGraph, [selectedNodeId]);
@@ -235,7 +250,12 @@ function _LineageView() {
 
   const selectChildNodes = () => {
     const selectedNode = contextMenuPosition.selectedNode;
-    if (selectMode !== "action" || selectedNode === undefined || lineageGraph === undefined) return;
+    if (
+      selectMode !== "action" ||
+      selectedNode === undefined ||
+      lineageGraph === undefined
+    )
+      return;
 
     const selectedNodeId = selectedNode.id;
     const downstream = selectDownstream(lineageGraph, [selectedNodeId]);
@@ -255,7 +275,11 @@ function _LineageView() {
     // Only show context menu when selectMode is action
     // Prevent native context menu from showing
     event.preventDefault();
-    setContextMenuPosition({ x: event.clientX, y: event.clientY , selectedNode: node });
+    setContextMenuPosition({
+      x: event.clientX,
+      y: event.clientY,
+      selectedNode: node,
+    });
     setIsContextMenuRendered(true);
   };
 
@@ -287,6 +311,27 @@ function _LineageView() {
     return <>Fail to load lineage data: {error}</>;
   }
 
+  if (
+    viewMode === "changed_models" &&
+    (modifiedSet === undefined || modifiedSet?.length === 0)
+  ) {
+    return (
+      <Center h="100%">
+        <VStack>
+          <>No change detected</>
+          <Button
+            colorScheme="blue"
+            onClick={() => {
+              setViewMode("all");
+            }}
+          >
+            Show all nodes
+          </Button>
+        </VStack>
+      </Center>
+    );
+  }
+
   return (
     <Flex width="100%" height="100%">
       <Box flex="1 0 0px">
@@ -306,9 +351,7 @@ function _LineageView() {
           minZoom={0.1}
           fitView={true}
         >
-          <Background
-            color="#ccc"
-          />
+          <Background color="#ccc" />
           <Controls showInteractive={false} position="top-right">
             <ControlButton
               title="switch mode"
@@ -327,28 +370,29 @@ function _LineageView() {
               <Icon as={FiList} />
             </ControlButton>
           </Controls>
-          <Panel position="bottom-left" >
+          <Panel position="bottom-left">
             <HStack>
               <ChangeStatusLegend />
               <Box p={2} flex="0 1 160px" fontSize="14px">
                 <Text color="gray" mb="2px">
                   Actions
                 </Text>
-                  <VStack spacing={1} align="baseline">
-                    <Button
-                      size="xs"
-                      variant="outline"
-                      isDisabled={selectMode === "action"}
-                      onClick={() => {
-                        const newMode = selectMode === "detail" ? "action" : "detail";
-                        const newNodes = cleanUpSelectedNodes(nodes);
-                        setNodes(newNodes);
-                        setSelectMode(newMode);
-                      }}
-                      >
-                      Select Models
-                    </Button>
-                  </VStack>
+                <VStack spacing={1} align="baseline">
+                  <Button
+                    size="xs"
+                    variant="outline"
+                    isDisabled={selectMode === "action"}
+                    onClick={() => {
+                      const newMode =
+                        selectMode === "detail" ? "action" : "detail";
+                      const newNodes = cleanUpSelectedNodes(nodes);
+                      setNodes(newNodes);
+                      setSelectMode(newMode);
+                    }}
+                  >
+                    Select Models
+                  </Button>
+                </VStack>
               </Box>
             </HStack>
           </Panel>
@@ -365,7 +409,8 @@ function _LineageView() {
                 setSelectMode("detail");
                 const newNodes = cleanUpSelectedNodes(nodes);
                 setNodes(newNodes);
-              }} />
+              }}
+            />
           </Panel>
           <MiniMap nodeColor={nodeColor} nodeStrokeWidth={3} />
         </ReactFlow>
@@ -379,7 +424,7 @@ function _LineageView() {
           </ModalBody>
         </ModalContent>
       </Modal>
-      {selectMode === 'detail' && selected && lineageGraph?.nodes[selected] && (
+      {selectMode === "detail" && selected && lineageGraph?.nodes[selected] && (
         <Box flex="0 0 500px" borderLeft="solid 1px lightgray" height="100%">
           <NodeView
             node={lineageGraph?.nodes[selected]}
@@ -396,15 +441,15 @@ function _LineageView() {
             style={{
               position: "absolute",
               left: `${contextMenuPosition.x}px`,
-              top: `${contextMenuPosition.y}px`
+              top: `${contextMenuPosition.y}px`,
             }}
           >
-              <MenuItem icon={<BiArrowFromBottom/>} onClick={selectParentNodes}>
-                Select parent nodes
-              </MenuItem>
-              <MenuItem icon={<BiArrowToBottom/>} onClick={selectChildNodes}>
-                Select child nodes
-              </MenuItem>
+            <MenuItem icon={<BiArrowFromBottom />} onClick={selectParentNodes}>
+              Select parent nodes
+            </MenuItem>
+            <MenuItem icon={<BiArrowToBottom />} onClick={selectChildNodes}>
+              Select child nodes
+            </MenuItem>
           </MenuList>
         </Menu>
       )}
