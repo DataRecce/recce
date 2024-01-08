@@ -54,7 +54,6 @@ function toDataDiffGrid(base?: DataFrame, current?: DataFrame) {
     key: primaryKey,
     name: primaryKey,
     frozen: true,
-    cellClass: "index-column",
   };
 
   const columnMap: Record<
