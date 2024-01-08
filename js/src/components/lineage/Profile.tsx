@@ -17,7 +17,7 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { ProfileDiffResult, submitProfileDiff } from "@/lib/api/profile";
 import { ProfileDiffDataGrid } from "./ProfileDiffGrid";
 import { cacheKeys } from "@/lib/api/cacheKeys";
-import { waitRun } from "@/lib/api/runs";
+import { cancelRun, waitRun } from "@/lib/api/runs";
 
 interface ProfileDiffProp {
   node: LineageGraphNode;
@@ -45,6 +45,14 @@ export const ProfileDiffModal = ({ node }: ProfileDiffProp) => {
     mutationFn: profileDiffFn,
   });
 
+  const handleCancel = useCallback(async () => {
+    if (!runId) {
+      return;
+    }
+
+    return await cancelRun(runId);
+  }, [runId]);
+
   const addToChecklist = useCallback(async () => {
     if (!profileResult?.run_id) {
       return;
@@ -54,6 +62,17 @@ export const ProfileDiffModal = ({ node }: ProfileDiffProp) => {
     queryClient.invalidateQueries({ queryKey: cacheKeys.checks() });
     setLocation(`/checks/${check.check_id}`);
   }, [profileResult?.run_id, setLocation, queryClient]);
+
+  const isAddCheckDisabled = () => {
+    const result = profileResult?.result as ProfileDiffResult;
+    if (error || !result) {
+      return true;
+    }
+    if (result.base_error || result.current_error) {
+      return true;
+    }
+    return false;
+  };
 
   return (
     <>
@@ -67,10 +86,16 @@ export const ProfileDiffModal = ({ node }: ProfileDiffProp) => {
               isFetching={isPending}
               result={profileResult?.result as ProfileDiffResult}
               error={error}
+              onCancel={handleCancel}
             />
           </ModalBody>
           <ModalFooter>
-            <Button mr={3} colorScheme="blue" onClick={addToChecklist}>
+            <Button
+              mr={3}
+              colorScheme="blue"
+              onClick={addToChecklist}
+              isDisabled={isAddCheckDisabled()}
+            >
               Add to check
             </Button>
           </ModalFooter>

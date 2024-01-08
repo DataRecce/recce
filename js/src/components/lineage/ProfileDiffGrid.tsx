@@ -1,10 +1,17 @@
 import "react-data-grid/lib/styles.css";
 import DataGrid, { ColumnOrColumnGroup, textEditor } from "react-data-grid";
-import { Alert, AlertIcon, Center, Spinner } from "@chakra-ui/react";
-import { CSSProperties, useMemo } from "react";
+import {
+  Alert,
+  AlertIcon,
+  Button,
+  Center,
+  Spinner,
+  Stack,
+  VStack,
+} from "@chakra-ui/react";
+import { CSSProperties, useMemo, useState } from "react";
 import { DataFrame, DataFrameField, DataFrameRow } from "@/lib/api/types";
 import { ProfileDiffResult } from "@/lib/api/profile";
-import { VscClose, VscKey } from "react-icons/vsc";
 import _ from "lodash";
 
 interface ProfileDataGridProps {
@@ -12,6 +19,7 @@ interface ProfileDataGridProps {
   isFetching: boolean;
   result?: ProfileDiffResult;
   error?: Error | null; // error from submit
+  onCancel?: () => void;
 }
 
 function _getPrimaryKeyValue(row: DataFrameRow, primaryKey: string): string {
@@ -46,7 +54,6 @@ function toDataDiffGrid(base?: DataFrame, current?: DataFrame) {
     key: primaryKey,
     name: primaryKey,
     frozen: true,
-    cellClass: "index-column",
   };
 
   const columnMap: Record<
@@ -123,7 +130,8 @@ function toDataDiffGrid(base?: DataFrame, current?: DataFrame) {
         if (key === primaryKey) {
           return;
         }
-        row[`base__${key}`] = base[key];
+        row[`base__${key}`] =
+          typeof base[key] === "boolean" ? base[key].toString() : base[key];
       });
     }
 
@@ -133,7 +141,10 @@ function toDataDiffGrid(base?: DataFrame, current?: DataFrame) {
           return;
         }
 
-        row[`current__${key}`] = current[key];
+        row[`current__${key}`] =
+          typeof current[key] === "boolean"
+            ? current[key].toString()
+            : current[key];
       });
     }
 
@@ -150,7 +161,9 @@ export const ProfileDiffDataGrid = ({
   isFetching,
   result,
   error,
+  onCancel,
 }: ProfileDataGridProps) => {
+  const [isAborting, setAborting] = useState(false);
   const gridData = useMemo(() => {
     if (isFetching) {
       return { rows: [], columns: [] };
@@ -159,13 +172,53 @@ export const ProfileDiffDataGrid = ({
     return toDataDiffGrid(result?.base, result?.current);
   }, [result, isFetching]);
 
+  const handleCancel = () => {
+    setAborting(true);
+    if (onCancel) {
+      onCancel();
+    }
+  };
+
   if (isFetching) {
     return (
       <Center p="16px" height="100%">
-        <Spinner size="sm" mr="8px" />
-        Loading...
+        <VStack>
+          <Spinner size="sm" mr="8px" />
+          {isAborting ? <>Aborting...</> : <>Loading...</>}
+          {!isAborting && onCancel && (
+            <Button onClick={handleCancel} colorScheme="blue" size="sm">
+              Cancel
+            </Button>
+          )}
+        </VStack>
       </Center>
     );
+  }
+
+  if (result?.base_error || result?.current_error) {
+    if (result?.base_error === result?.current_error) {
+      return (
+        <Alert status="error">
+          <AlertIcon />
+          Error: {result?.current_error}
+        </Alert>
+      );
+    } else {
+      const renderAlert = (env: string, message: string) => (
+        <Alert status="error">
+          <AlertIcon />
+          {env} Environment Error: {message}
+        </Alert>
+      );
+
+      return (
+        <Stack spacing={3}>
+          {result?.base_error && renderAlert("Base", result.base_error)}
+          {result?.current_error &&
+            renderAlert("Current", result.current_error)}
+        </Stack>
+      );
+    }
   }
 
   if (error) {
