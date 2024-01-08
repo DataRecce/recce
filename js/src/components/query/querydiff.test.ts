@@ -96,6 +96,7 @@ test("query diff", () => {
   expect(result?.rows).toStrictEqual([
     {
       index: 0,
+      status: "modified",
       base__id: 1,
       base__name: "Alice",
       base__value: 100,
@@ -105,6 +106,7 @@ test("query diff", () => {
     },
     {
       index: 1,
+      status: "modified",
       base__id: 2,
       base__name: "Bob",
       base__value: 200,
@@ -114,6 +116,7 @@ test("query diff", () => {
     },
     {
       index: 2,
+      status: "modified",
       base__id: 3,
       base__name: "Charlie",
       base__value: 300,

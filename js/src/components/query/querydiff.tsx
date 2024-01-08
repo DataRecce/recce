@@ -4,6 +4,7 @@ import "./styles.css";
 import { Box, Flex, Icon } from "@chakra-ui/react";
 import { VscClose, VscKey } from "react-icons/vsc";
 import { DataFrame, DataFrameField, DataFrameRow } from "@/lib/api/types";
+import { mergeKeysWithStatus } from "@/lib/mergeKeys";
 
 function _getPrimaryKeyValue(row: DataFrameRow, primaryKeys: string[]): string {
   const result: Record<string, any> = {};
@@ -112,26 +113,89 @@ export function toDataDiffGrid(
 
   const columns: ColumnOrColumnGroup<any, any>[] = [];
   const pkColumns: ColumnOrColumnGroup<any, any>[] = [];
-  const columnMap: Record<
-    string,
-    { base?: DataFrameField; current?: DataFrameField }
-  > = {};
-  const rowMap: Record<any, { base?: DataFrameRow; current?: DataFrameRow }> =
-    {};
+  const columnMap = mergeKeysWithStatus(
+    base.schema.fields.map((field) => field.name),
+    current.schema.fields.map((field) => field.name)
+  ) as Record<string, string>;
 
-  current.schema.fields.forEach((field) => {
-    columnMap[field.name] = {};
-    columnMap[field.name].current = field;
+  // merge row
+  const baseMap: Record<string, any> = {};
+  base.data.forEach((row) => {
+    baseMap[_getPrimaryKeyValue(row, primaryKeys)] = row;
   });
 
-  base.schema.fields.forEach((field) => {
-    if (!columnMap[field.name]) {
-      columnMap[field.name] = {};
-    }
-    columnMap[field.name].base = field;
+  const currentMap: Record<string, any> = {};
+  current.data.forEach((row) => {
+    currentMap[_getPrimaryKeyValue(row, primaryKeys)] = row;
   });
 
-  Object.entries(columnMap).forEach(([name, { base, current }]) => {
+  const mergedMap = mergeKeysWithStatus(
+    Object.keys(baseMap),
+    Object.keys(currentMap)
+  );
+
+  const rows = Object.entries(mergedMap)
+    .map(([key, status]) => {
+      const base = baseMap[key];
+      const current = currentMap[key];
+      const row = JSON.parse(key);
+
+      if (base) {
+        Object.keys(base).forEach((key) => {
+          if (primaryKeys.includes(key)) {
+            return;
+          }
+          row[`base__${key}`] = base[key];
+        });
+      }
+
+      if (current) {
+        Object.keys(current).forEach((key) => {
+          if (primaryKeys.includes(key)) {
+            return;
+          }
+
+          row[`current__${key}`] = current[key];
+        });
+      }
+
+      // Check if row is added, removed, or modified
+      if (!base) {
+        row["status"] = "added";
+      } else if (!current) {
+        row["status"] = "removed";
+      } else {
+        for (const [column, columnStatus] of Object.entries(columnMap)) {
+          if (column === "index") {
+            continue;
+          }
+
+          if (primaryKeys.includes(column)) {
+            continue;
+          }
+
+          if (columnStatus === "added" || columnStatus === "removed") {
+            continue;
+          }
+
+          if (!_.isEqual(base[column], current[column])) {
+            row["status"] = "modified";
+            columnMap[column] = "modified";
+          }
+        }
+      }
+
+      return row;
+    })
+    .filter(
+      (row) =>
+        row["status"] === "added" ||
+        row["status"] === "removed" ||
+        row["status"] === "modified"
+    );
+
+  // merge columns
+  Object.entries(columnMap).forEach(([name, columnStatus]) => {
     if (primaryKeys.includes(name)) {
       pkColumns.push({
         key: `${name}`,
@@ -143,27 +207,64 @@ export function toDataDiffGrid(
           ></DataFrameColumnGroupHeader>
         ),
         frozen: true,
-        cellClass: name === "index" ? "index-column" : undefined,
+        cellClass: (row: any) => {
+          if (name === "index") {
+            return "index-column";
+          }
+
+          if (row["status"]) {
+            return `diff-header-${row["status"]}`;
+          }
+
+          return undefined;
+        },
       });
     } else {
       if (name === "index") {
         return;
       }
 
+      if (
+        columnStatus !== "added" &&
+        columnStatus !== "removed" &&
+        columnStatus !== "modified"
+      ) {
+        return;
+      }
+
+      const headerCellClass =
+        columnStatus === "added"
+          ? "diff-header-added"
+          : columnStatus === "removed"
+          ? "diff-header-removed"
+          : undefined;
+
       const cellClass = (row: any) => {
-        if (!_.isEqual(row[`base__${name}`], row[`current__${name}`])) {
-          return "diff-cell";
+        const rowStatus = row["status"];
+        if (rowStatus === "removed") {
+          return "diff-cell-removed";
+        } else if (rowStatus === "added") {
+          return "diff-cell-added";
+        } else if (columnStatus === "added") {
+          return undefined;
+        } else if (columnStatus === "removed") {
+          return undefined;
+        } else if (!_.isEqual(row[`base__${name}`], row[`current__${name}`])) {
+          return "diff-cell-modified";
         }
 
         return undefined;
       };
 
+      const canBePk = columnStatus !== "added" && columnStatus !== "removed";
+
       columns.push({
+        headerCellClass,
         name: (
           <DataFrameColumnGroupHeader
             name={name}
             primaryKeys={primaryKeys}
-            onPrimaryKeyChange={onPrimaryKeyChange}
+            onPrimaryKeyChange={canBePk ? onPrimaryKeyChange : undefined}
           ></DataFrameColumnGroupHeader>
         ),
         children: [
@@ -171,57 +272,19 @@ export function toDataDiffGrid(
             key: `base__${name}`,
             name: "Base",
             renderEditCell: textEditor,
+            headerCellClass,
             cellClass,
           },
           {
             key: `current__${name}`,
             name: "Current",
             renderEditCell: textEditor,
+            headerCellClass,
             cellClass,
           },
         ],
       });
     }
-  });
-
-  // merge row
-  current.data.forEach((row) => {
-    const key = _getPrimaryKeyValue(row, primaryKeys);
-    rowMap[key] = {};
-    rowMap[key].current = row;
-  });
-
-  base.data.forEach((row) => {
-    const key = _getPrimaryKeyValue(row, primaryKeys);
-    if (!rowMap[key]) {
-      rowMap[key] = {};
-    }
-    rowMap[key].base = row;
-  });
-
-  const rows = Object.entries(rowMap).map(([key, { base, current }]) => {
-    const row = JSON.parse(key);
-
-    if (base) {
-      Object.keys(base).forEach((key) => {
-        if (primaryKeys.includes(key)) {
-          return;
-        }
-        row[`base__${key}`] = base[key];
-      });
-    }
-
-    if (current) {
-      Object.keys(current).forEach((key) => {
-        if (primaryKeys.includes(key)) {
-          return;
-        }
-
-        row[`current__${key}`] = current[key];
-      });
-    }
-
-    return row;
   });
 
   return {
