@@ -36,7 +36,10 @@ import { useLocation } from "wouter";
 import { ResourceTypeTag, RowCountTag } from "./NodeTag";
 import { useCallback } from "react";
 import { ProfileDiffModal } from "./Profile";
-import { createCheckByNodeSchema, createCheckByRowCounts } from "@/lib/api/checks";
+import {
+  createCheckByNodeSchema,
+  createCheckByRowCounts,
+} from "@/lib/api/checks";
 
 interface NodeViewProps {
   node: LineageGraphNode;
@@ -64,7 +67,6 @@ export function NodeView({ node, onCloseNode }: NodeViewProps) {
     const check = await createCheckByRowCounts([nodeId]);
     setLocation(`/checks/${check.check_id}`);
   }, [node, setLocation]);
-
 
   return (
     <Grid height="100%" templateRows="auto auto 1fr">
@@ -127,16 +129,18 @@ export function NodeView({ node, onCloseNode }: NodeViewProps) {
               </MenuButton>
               <MenuList>
                 <MenuItem onClick={addSchemaCheck}>Schema Check</MenuItem>
-                <MenuItem onClick={addRowCountCheck} >Row Count Check</MenuItem>
+                <MenuItem onClick={addRowCountCheck}>Row Count Check</MenuItem>
               </MenuList>
             </Menu>
             <Spacer />
             {node.resourceType === "model" && (
               <>
-                <ProfileDiffModal node={node} />
                 {node.changeStatus !== "added" &&
                   node.changeStatus !== "removed" && (
-                    <MismatchSummaryModal node={node} />
+                    <>
+                      <ProfileDiffModal node={node} />
+                      <MismatchSummaryModal node={node} />
+                    </>
                   )}
                 <Button
                   colorScheme="blue"
