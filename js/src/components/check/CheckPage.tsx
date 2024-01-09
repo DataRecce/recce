@@ -192,7 +192,18 @@ export const CheckPage = () => {
                 mr="10px"
                 onClick={() => {
                   const markdown = buildMarkdown(checks);
-                  navigator.clipboard.writeText(markdown);
+                  if (navigator.clipboard !== undefined) {
+                    navigator.clipboard.writeText(markdown);
+                  } else {
+                    const textArea = document.createElement("textarea");
+                    textArea.value = markdown;
+                    textArea.style.opacity = "0";
+                    document.body.appendChild(textArea);
+                    textArea.focus();
+                    textArea.select();
+                    document.execCommand("copy");
+                    document.body.removeChild(textArea);
+                  }
                   exportChecksToast({
                     description: `Copied ${checks.length} checks to the clipboard`,
                     status: "info",
