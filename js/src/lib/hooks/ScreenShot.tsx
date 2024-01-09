@@ -7,7 +7,8 @@ export const highlightBoxShadow = "rgba(0, 0, 0, 0.25) 0px 54px 55px, rgba(0, 0,
 
 export interface HookOptions {
   imageType?: "png" | "jpeg";
-  isBorder?: boolean;
+  boardEffect?: boolean;
+  shadowEffect?: boolean;
   borderStyle?: string;
   borderRadius?: string;
   onSuccess?: (blob: Blob) => void;
@@ -25,7 +26,8 @@ export interface BlobHookReturn {
 
 export function useToBlob({
   imageType = "png",
-  isBorder = true,
+  boardEffect = true,
+  shadowEffect = false,
   borderStyle = "solid 1px #ccc",
   borderRadius = "10px",
   onSuccess,
@@ -56,13 +58,33 @@ export function useToBlob({
     try {
 
       nodeToUse.style.overflow = "hidden";
-      nodeToUse.style.border = isBorder ? borderStyle : "";
-      nodeToUse.style.borderRadius = isBorder ? borderRadius : "";
+      nodeToUse.style.border = boardEffect ? borderStyle : "";
+      nodeToUse.style.borderRadius = boardEffect ? borderRadius : "";
       setStatus("loading");
       const canvas = await html2canvas(nodeToUse, {
         backgroundColor: null });
+      const outputCanvas = (shadowEffect) ? document.createElement('canvas') : canvas;
 
-      canvas.toBlob(async (blob) => {
+      if (shadowEffect) {
+        // Add shadow effect
+        outputCanvas.width = canvas.width + 80;
+        outputCanvas.height = canvas.height + 80;
+        const ctx = outputCanvas.getContext("2d");
+        if (ctx) {
+          ctx.shadowColor = 'rgba(0, 0, 0, 0.5)';
+          ctx.shadowBlur = 20;
+          ctx.shadowOffsetX = 10;
+          ctx.shadowOffsetY = 10;
+          ctx.drawImage(canvas, 40, 40);
+        } else {
+          console.error('Error getting canvas context');
+          setStatus("error");
+          onError && onError(new Error("Error getting canvas context to add shadow effect"));
+          return;
+        }
+      }
+
+      outputCanvas.toBlob(async (blob) => {
         // Reset styles
         setStatus("success");
         onSuccess && blob && await onSuccess(blob);
@@ -138,6 +160,7 @@ export function useCopyToClipboardButton() {
 
   const { isLoading, toImage, ref } = useToBlob({
     imageType: "png",
+    shadowEffect: true,
     onSuccess: async (blob) => {
       try {
         copyBlobToClipboard(blob);
