@@ -2,10 +2,10 @@ import { cacheKeys } from "@/lib/api/cacheKeys";
 import { Check } from "@/lib/api/checks";
 import { fetchModelRowCount } from "@/lib/api/models";
 import { useLineageGraphsContext } from "@/lib/hooks/LineageGraphContext";
-import { useCopyToClipboardButton } from "@/lib/hooks/ScreenShot";
 import { Flex } from "@chakra-ui/react";
 import { useQueries } from "@tanstack/react-query";
 import DataGrid from "react-data-grid";
+import { ScreenshotBox } from "../screenshot/ScreenshotBox";
 
 
 interface RowCountDiffViewProps {
@@ -27,7 +27,6 @@ export function RowCountDiffView({ check }: RowCountDiffViewProps) {
   const params = check.params as RowCountDiffParams;
   const nodeIds = params.node_ids;
   const nodes = nodeIds.map((id) => lineageGraphSets?.all.nodes[id]);
-  const { ref, CopyToClipboardButton } = useCopyToClipboardButton();
 
   const rowCountResults = useQueries({
     queries: nodes.map((node) => ({
@@ -64,20 +63,20 @@ export function RowCountDiffView({ check }: RowCountDiffViewProps) {
   return (
     <Flex direction="column">
       {rowCountResults.length > 0 && (<>
-        <DataGrid
-          ref={ref}
-          style={{
-            height: "100%",
+        <ScreenshotBox style={{ maxHeight: "100%", overflow: "auto" }}>
+          <DataGrid
+            style={{
+              height: "100%",
 
-            fontSize: "10pt",
-            borderWidth: 1,
-            overflowY: "auto",
-          }}
-          columns={columns}
-          rows={rows}
-          className="rdg-light"
-        />
-        <CopyToClipboardButton imageType="png" />
+              fontSize: "10pt",
+              borderWidth: 1,
+              overflowY: "auto",
+            }}
+            columns={columns}
+            rows={rows}
+            className="rdg-light"
+          />
+        </ScreenshotBox>
       </>)}
     </Flex>
   );

@@ -15,7 +15,7 @@ import {
 import { Check } from "@/lib/api/checks";
 import DataGrid, { ColumnOrColumnGroup } from "react-data-grid";
 import { ValueDiffError, ValueDiffResult } from "@/lib/api/valuediff";
-import { useCopyToClipboardButton } from "@/lib/hooks/ScreenShot";
+import { ScreenshotBox } from "../screenshot/ScreenshotBox";
 
 interface ValueDiffViewProp {
   check: Check;
@@ -87,12 +87,10 @@ function ValueDiffErrorHints({ errors }: { errors: ValueDiffError[] }) {
 }
 
 export function ValueDiffPanel({
-  valueDiffSummary,
-  enableScreenShot=false
- }: {
-  valueDiffSummary: ValueDiffSummary,
-  enableScreenShot?: boolean }) {
-  const { ref, CopyToClipboardButton } = useCopyToClipboardButton();
+  valueDiffSummary
+}: {
+  valueDiffSummary: ValueDiffSummary
+}) {
 
   return <>
     <Box mb={1}>
@@ -104,9 +102,9 @@ export function ValueDiffPanel({
     </Box>
     <ValueDiffErrorHints errors={valueDiffSummary.errors} />
 
-    {valueDiffSummary.errors.length === 0 &&(<Box>
+    {valueDiffSummary.errors.length === 0 &&(
+    <ScreenshotBox style={{ maxHeight: "100%", overflow: "auto" }}>
       <DataGrid
-        ref={ref}
         style={{ height: "100%", width: "100%" }}
         columns={valueDiffSummary.columns.map((column: any) => ({
           ...column,
@@ -118,8 +116,7 @@ export function ValueDiffPanel({
         defaultColumnOptions={{ resizable: true }}
         className="rdg-light"
       />
-    </Box>)}
-    {enableScreenShot && <CopyToClipboardButton imageType="png"/>}
+    </ScreenshotBox>)}
   </>;
 }
 
@@ -140,7 +137,7 @@ export function ValueDiffView({ check }: ValueDiffViewProp) {
   return (
     <>
       <Box p={5}>
-        {summary && <ValueDiffPanel valueDiffSummary={summary} enableScreenShot={true} />}
+        {summary && <ValueDiffPanel valueDiffSummary={summary} />}
       </Box>
     </>
   );

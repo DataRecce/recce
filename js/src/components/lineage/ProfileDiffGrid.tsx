@@ -13,7 +13,6 @@ import { CSSProperties, useMemo, useState } from "react";
 import { DataFrame, DataFrameField, DataFrameRow } from "@/lib/api/types";
 import { ProfileDiffResult } from "@/lib/api/profile";
 import _ from "lodash";
-import { useCopyToClipboardButton } from "@/lib/hooks/ScreenShot";
 
 interface ProfileDataGridProps {
   style?: CSSProperties;
@@ -21,7 +20,6 @@ interface ProfileDataGridProps {
   result?: ProfileDiffResult;
   error?: Error | null; // error from submit
   onCancel?: () => void;
-  enableScreenShot?: boolean;
 }
 
 function _getPrimaryKeyValue(row: DataFrameRow, primaryKey: string): string {
@@ -164,10 +162,8 @@ export const ProfileDiffDataGrid = ({
   result,
   error,
   onCancel,
-  enableScreenShot = false,
 }: ProfileDataGridProps) => {
   const [isAborting, setAborting] = useState(false);
-  const { ref, CopyToClipboardButton } = useCopyToClipboardButton();
   const gridData = useMemo(() => {
     if (isFetching) {
       return { rows: [], columns: [] };
@@ -240,13 +236,11 @@ export const ProfileDiffDataGrid = ({
 
   return (<>
     <DataGrid
-      ref={ref}
       style={{ blockSize: "100%" }}
       columns={gridData.columns}
       rows={gridData.rows}
       defaultColumnOptions={{ resizable: true, maxWidth: 800, minWidth: 35 }}
       className="rdg-light"
     />
-  {enableScreenShot && <CopyToClipboardButton imageType="png"/>}
   </>);
 };

@@ -15,7 +15,6 @@ import { toDataDiffGrid } from "./querydiff";
 
 import "./styles.css";
 import { Run } from "@/lib/api/types";
-import { useCopyToClipboardButton } from "@/lib/hooks/ScreenShot";
 
 interface QueryDiffDataGridProps {
   style?: CSSProperties;
@@ -26,7 +25,6 @@ interface QueryDiffDataGridProps {
   primaryKeys: string[];
   setPrimaryKeys?: (primaryKeys: string[]) => void;
   onCancel?: () => void;
-  enableScreenShot?: boolean;
 }
 
 export const QueryDiffDataGrid = ({
@@ -37,9 +35,7 @@ export const QueryDiffDataGrid = ({
   primaryKeys,
   setPrimaryKeys,
   onCancel,
-  enableScreenShot=false
 }: QueryDiffDataGridProps) => {
-  const { ref, CopyToClipboardButton } = useCopyToClipboardButton();
   const [isAborting, setAborting] = useState(false);
   const gridData = useMemo(() => {
     if (isFetching) {
@@ -104,13 +100,11 @@ export const QueryDiffDataGrid = ({
 
   return (<>
     <DataGrid
-      ref={ref}
       style={{ blockSize: "100%" }}
       columns={gridData.columns}
       rows={gridData.rows}
       defaultColumnOptions={{ resizable: true, maxWidth: 800, minWidth: 35 }}
       className="rdg-light"
     />
-    {enableScreenShot &&<CopyToClipboardButton imageType="png"/>}
   </>);
 };

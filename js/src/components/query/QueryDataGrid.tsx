@@ -12,7 +12,6 @@ import {
 } from "@chakra-ui/react";
 import { CSSProperties, useMemo, useState } from "react";
 import { DataFrame, Run } from "@/lib/api/types";
-import { useCopyToClipboardButton } from "@/lib/hooks/ScreenShot";
 
 interface QueryDataGridProps {
   style?: CSSProperties;
@@ -20,7 +19,6 @@ interface QueryDataGridProps {
   run?: Run<QueryParams, QueryResult>;
   error?: Error | null; // error from submit
   onCancel?: () => void;
-  enableScreenShot?: boolean;
 }
 
 function toDataGrid(result: DataFrame) {
@@ -41,9 +39,7 @@ export const QueryDataGrid = ({
   run,
   error,
   onCancel,
-  enableScreenShot=false
 }: QueryDataGridProps) => {
-  const { ref, CopyToClipboardButton } = useCopyToClipboardButton();
   const [isAborting, setAborting] = useState(false);
   const dataframe = run?.result?.result;
   const gridData = useMemo(() => {
@@ -97,15 +93,13 @@ export const QueryDataGrid = ({
     return <Center height="100%">No data</Center>;
   }
 
-  return (<Box>
+  return (<>
     <DataGrid
-      ref={ref}
       style={{ blockSize: "100%" }}
       columns={gridData.columns}
       rows={gridData.rows}
       defaultColumnOptions={{ resizable: true, maxWidth: 800, minWidth: 35 }}
       className="rdg-light"
     />
-    {enableScreenShot && <CopyToClipboardButton imageType="png"/>}
-  </Box>);
+  </>);
 };
