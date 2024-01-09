@@ -10,6 +10,7 @@ import SqlEditor from "@/components/query/SqlEditor";
 import { QueryDiffDataGrid } from "@/components/query/QueryDiffDataGrid";
 import { QueryDiffResult } from "@/lib/api/adhocQuery";
 import { Check } from "@/lib/api/checks";
+import { ScreenshotBox } from "@//components/screenshot/ScreenshotBox";
 
 interface QueryDiffViewProp {
   check: Check;
@@ -38,11 +39,14 @@ export function QueryDiffView({ check }: QueryDiffViewProp) {
 
       <Box flex="1" style={{ contain: "size" }}>
         {check?.type === "query_diff" && (
-          <QueryDiffDataGrid
-            run={check?.last_run}
-            primaryKeys={(check?.params as QueryDiffResult)?.primary_keys || []}
-            enableScreenShot={true}
-          />
+          <ScreenshotBox height="100%">
+            <QueryDiffDataGrid
+              run={check?.last_run}
+              primaryKeys={
+                (check?.params as QueryDiffResult)?.primary_keys || []
+              }
+            />
+          </ScreenshotBox>
         )}
       </Box>
     </>
