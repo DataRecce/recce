@@ -97,7 +97,7 @@ export const QueryDataGrid = ({
     return <Center height="100%">No data</Center>;
   }
 
-  return (<>
+  return (<Box>
     <DataGrid
       ref={ref}
       style={{ blockSize: "100%" }}
@@ -107,5 +107,5 @@ export const QueryDataGrid = ({
       className="rdg-light"
     />
     {enableScreenShot && <CopyToClipboardButton imageType="png"/>}
-  </>);
+  </Box>);
 };
