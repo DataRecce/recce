@@ -95,9 +95,13 @@ export const QueryDiffDataGrid = ({
     return <Center height="100%">No data</Center>;
   }
 
+  if (changedOnly && gridData.rows.length === 0) {
+    return <Center height="100%">No change</Center>;
+  }
+
   return (
     <DataGrid
-      style={{ flex: 1 }}
+      style={{ blockSize: "100%" }}
       columns={gridData.columns}
       rows={gridData.rows}
       defaultColumnOptions={{ resizable: true, maxWidth: 800, width: 100 }}
