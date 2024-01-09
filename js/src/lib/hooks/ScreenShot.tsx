@@ -162,6 +162,7 @@ export function useCopyToClipboardButton() {
       if (ref.current) {
         const nodeToUse = ((ref.current as any).element || ref.current) as HTMLElement;
         nodeToUse.style.boxShadow = highlightBoxShadow;
+        nodeToUse.style.transition = "box-shadow 0.5s ease-in-out";
       }
     }}
     onMouseLeave={() => {

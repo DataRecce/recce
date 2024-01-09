@@ -13,7 +13,7 @@ import { CSSProperties, useMemo, useState } from "react";
 import { DataFrame, DataFrameField, DataFrameRow } from "@/lib/api/types";
 import { ProfileDiffResult } from "@/lib/api/profile";
 import _ from "lodash";
-import { highlightBoxShadow, useCopyToClipboardButton } from "@/lib/hooks/ScreenShot";
+import { useCopyToClipboardButton } from "@/lib/hooks/ScreenShot";
 
 interface ProfileDataGridProps {
   style?: CSSProperties;
@@ -238,17 +238,15 @@ export const ProfileDiffDataGrid = ({
     return <Center height="100%">No data</Center>;
   }
 
-  return (
-    <>
+  return (<>
     <DataGrid
       ref={ref}
       style={{ blockSize: "100%" }}
       columns={gridData.columns}
       rows={gridData.rows}
-      defaultColumnOptions={{ resizable: true, maxWidth: 800, width: 100 }}
+      defaultColumnOptions={{ resizable: true, maxWidth: 800, minWidth: 35 }}
       className="rdg-light"
     />
   {enableScreenShot && <CopyToClipboardButton imageType="png"/>}
-  </>
-  );
+  </>);
 };

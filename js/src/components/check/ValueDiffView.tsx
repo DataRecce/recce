@@ -15,7 +15,7 @@ import {
 import { Check } from "@/lib/api/checks";
 import DataGrid, { ColumnOrColumnGroup } from "react-data-grid";
 import { ValueDiffError, ValueDiffResult } from "@/lib/api/valuediff";
-import { useCopyToClipboardButton, highlightBoxShadow } from "@/lib/hooks/ScreenShot";
+import { useCopyToClipboardButton } from "@/lib/hooks/ScreenShot";
 
 interface ValueDiffViewProp {
   check: Check;
@@ -105,14 +105,10 @@ export function ValueDiffPanel({
     </Box>
     <ValueDiffErrorHints errors={valueDiffSummary.errors} />
 
-    {valueDiffSummary.errors.length === 0 &&(
-    <>
+    {valueDiffSummary.errors.length === 0 &&(<>
       <DataGrid
         ref={ref}
-        style={{
-          height: "100%",
-          width: "100%",
-         }}
+        style={{ height: "100%", width: "100%" }}
         columns={valueDiffSummary.columns.map((column: any) => ({
           ...column,
           width: undefined,

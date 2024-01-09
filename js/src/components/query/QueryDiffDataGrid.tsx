@@ -9,15 +9,13 @@ import {
   Center,
   Spinner,
   VStack,
-  useToast,
 } from "@chakra-ui/react";
-import { CSSProperties, useEffect, useMemo, useRef, useState } from "react";
+import { CSSProperties, useMemo, useState } from "react";
 import { toDataDiffGrid } from "./querydiff";
 
 import "./styles.css";
 import { Run } from "@/lib/api/types";
-import { highlightBoxShadow, useCopyToClipboardButton } from "@/lib/hooks/ScreenShot";
-import { CopyIcon } from "@chakra-ui/icons";
+import { useCopyToClipboardButton } from "@/lib/hooks/ScreenShot";
 
 interface QueryDiffDataGridProps {
   style?: CSSProperties;
@@ -104,20 +102,15 @@ export const QueryDiffDataGrid = ({
     return <Center height="100%">No change</Center>;
   }
 
-  return (
-    <>
-      <DataGrid
-        ref={ref}
-        style={{
-          blockSize: "100%",
-          overflow: "auto",
-        }}
-        columns={gridData.columns}
-        rows={gridData.rows}
-        defaultColumnOptions={{ resizable: true, maxWidth: 800, minWidth: 35 }}
-        className="rdg-light"
-      />
-      {enableScreenShot &&<CopyToClipboardButton imageType="png"/>}
-    </>
-  );
+  return (<>
+    <DataGrid
+      ref={ref}
+      style={{ blockSize: "100%" }}
+      columns={gridData.columns}
+      rows={gridData.rows}
+      defaultColumnOptions={{ resizable: true, maxWidth: 800, minWidth: 35 }}
+      className="rdg-light"
+    />
+    {enableScreenShot &&<CopyToClipboardButton imageType="png"/>}
+  </>);
 };

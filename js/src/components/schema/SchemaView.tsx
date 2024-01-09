@@ -4,7 +4,7 @@ import { mergeColumns, toDataGrid } from "./schema";
 import "react-data-grid/lib/styles.css";
 import DataGrid from "react-data-grid";
 import { Flex, Alert, AlertIcon } from "@chakra-ui/react";
-import { highlightBoxShadow, useCopyToClipboardButton } from "@/lib/hooks/ScreenShot";
+import { useCopyToClipboardButton } from "@/lib/hooks/ScreenShot";
 
 interface SchemaViewProps {
   base?: NodeData;
@@ -39,8 +39,7 @@ export function SchemaView({ base, current , enableScreenShot=false }: SchemaVie
         </Alert>
       )}
 
-      {rows.length > 0 && (
-        <>
+      {rows.length > 0 && (<>
         <DataGrid
           ref={ref}
           style={{
@@ -55,8 +54,7 @@ export function SchemaView({ base, current , enableScreenShot=false }: SchemaVie
           className="rdg-light"
         />
         {enableScreenShot && <CopyToClipboardButton imageType="png" />}
-        </>
-      )}
+    </>)}
     </Flex>
   );
 }

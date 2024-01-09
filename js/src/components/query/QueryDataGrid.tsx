@@ -7,15 +7,12 @@ import {
   Box,
   Button,
   Center,
-  Flex,
   Spinner,
   VStack,
-  useToast,
 } from "@chakra-ui/react";
 import { CSSProperties, useMemo, useState } from "react";
 import { DataFrame, Run } from "@/lib/api/types";
-import { CopyIcon } from "@chakra-ui/icons";
-import { highlightBoxShadow, useCopyToClipboardButton } from "@/lib/hooks/ScreenShot";
+import { useCopyToClipboardButton } from "@/lib/hooks/ScreenShot";
 
 interface QueryDataGridProps {
   style?: CSSProperties;
@@ -100,19 +97,15 @@ export const QueryDataGrid = ({
     return <Center height="100%">No data</Center>;
   }
 
-  return (
-    <>
+  return (<>
     <DataGrid
       ref={ref}
-      style={{
-        blockSize: "100%",
-      }}
+      style={{ blockSize: "100%" }}
       columns={gridData.columns}
       rows={gridData.rows}
-      defaultColumnOptions={{ resizable: true, maxWidth: 800, width: 100 }}
+      defaultColumnOptions={{ resizable: true, maxWidth: 800, minWidth: 35 }}
       className="rdg-light"
     />
     {enableScreenShot && <CopyToClipboardButton imageType="png"/>}
-    </>
-  );
+  </>);
 };
