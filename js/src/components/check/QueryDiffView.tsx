@@ -1,4 +1,3 @@
-import { RefObject, useEffect, useRef, useState } from "react";
 import {
   Accordion,
   AccordionButton,
@@ -6,29 +5,15 @@ import {
   AccordionItem,
   AccordionPanel,
   Box,
-  HStack,
-  Spacer,
-  Button,
-  useToast,
 } from "@chakra-ui/react";
 import SqlEditor from "@/components/query/SqlEditor";
 import { QueryDiffDataGrid } from "@/components/query/QueryDiffDataGrid";
 import { QueryDiffResult } from "@/lib/api/adhocQuery";
 import { Check } from "@/lib/api/checks";
-import { toPng } from "html-to-image";
 
 interface QueryDiffViewProp {
   check: Check;
 }
-
-const convertToImage = async (ref: any) => {
-  try {
-    const dataUrl = await toPng(ref.current);
-    return dataUrl;
-  } catch (error) {
-    console.error('Error converting to image', error);
-  }
-};
 
 export function QueryDiffView({ check }: QueryDiffViewProp) {
   return (
@@ -51,11 +36,7 @@ export function QueryDiffView({ check }: QueryDiffViewProp) {
         </AccordionItem>
       </Accordion>
 
-      <Box
-        flex="1"
-        style={{ contain: "size" }}
-        transition="box-shadow 0.5s ease-in-out"
-      >
+      <Box flex="1" style={{ contain: "size" }}>
         {check?.type === "query_diff" && (
           <QueryDiffDataGrid
             run={check?.last_run}
