@@ -5,7 +5,7 @@ import { useLineageGraphsContext } from "@/lib/hooks/LineageGraphContext";
 import { Flex } from "@chakra-ui/react";
 import { useQueries } from "@tanstack/react-query";
 import DataGrid from "react-data-grid";
-import { ScreenshotBox } from "../screenshot/ScreenshotBox";
+import { ScreenshotDataGrid } from "../data-grid/ScreenshotDataGrid";
 
 
 interface RowCountDiffViewProps {
@@ -63,20 +63,20 @@ export function RowCountDiffView({ check }: RowCountDiffViewProps) {
   return (
     <Flex direction="column">
       {rowCountResults.length > 0 && (<>
-        <ScreenshotBox style={{ maxHeight: "100%", overflow: "auto" }}>
-          <DataGrid
+          <ScreenshotDataGrid
             style={{
-              height: "100%",
+              blockSize: "auto",
+              maxHeight: "100%",
+              overflow: "auto",
 
               fontSize: "10pt",
               borderWidth: 1,
-              overflowY: "auto",
             }}
             columns={columns}
             rows={rows}
             className="rdg-light"
+            enableScreenshot={true}
           />
-        </ScreenshotBox>
       </>)}
     </Flex>
   );

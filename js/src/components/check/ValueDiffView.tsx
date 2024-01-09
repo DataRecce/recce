@@ -16,6 +16,7 @@ import { Check } from "@/lib/api/checks";
 import DataGrid, { ColumnOrColumnGroup } from "react-data-grid";
 import { ValueDiffError, ValueDiffResult } from "@/lib/api/valuediff";
 import { ScreenshotBox } from "../screenshot/ScreenshotBox";
+import { ScreenshotDataGrid } from "../data-grid/ScreenshotDataGrid";
 
 interface ValueDiffViewProp {
   check: Check;
@@ -103,9 +104,8 @@ export function ValueDiffPanel({
     <ValueDiffErrorHints errors={valueDiffSummary.errors} />
 
     {valueDiffSummary.errors.length === 0 &&(
-    <ScreenshotBox style={{ maxHeight: "100%", overflow: "auto" }}>
-      <DataGrid
-        style={{ height: "100%", width: "100%" }}
+      <ScreenshotDataGrid
+        style={{ blockSize: "auto", maxHeight: "100%", overflow: "auto" }}
         columns={valueDiffSummary.columns.map((column: any) => ({
           ...column,
           width: undefined,
@@ -115,8 +115,8 @@ export function ValueDiffPanel({
         rows={valueDiffSummary.data}
         defaultColumnOptions={{ resizable: true }}
         className="rdg-light"
-      />
-    </ScreenshotBox>)}
+        enableScreenshot={true}
+      />)}
   </>;
 }
 

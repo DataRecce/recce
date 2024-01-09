@@ -1,7 +1,6 @@
 import { Check } from "@/lib/api/checks";
 import { useLineageGraphsContext } from "@/lib/hooks/LineageGraphContext";
 import { SchemaView } from "../schema/SchemaView";
-import { ScreenshotBox } from "../screenshot/ScreenshotBox";
 
 interface SchemaDiffViewProps {
   check: Check;
@@ -18,9 +17,7 @@ export function SchemaDiffView({ check }: SchemaDiffViewProps)  {
   const node = id ? lineageGraphSets?.all.nodes[id] : undefined;
   if (node) {
     return (
-      <ScreenshotBox style={{ maxHeight: "100%", overflow: "auto" }}>
-        <SchemaView base={node.data.base} current={node.data.current} />
-      </ScreenshotBox>
+      <SchemaView base={node.data.base} current={node.data.current} enableScreenshot={true}/>
     );
   }
   // TODO: handle the edge case where the node is not found

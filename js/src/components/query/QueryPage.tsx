@@ -160,6 +160,7 @@ export const QueryPage = () => {
             run={run}
             error={error}
             onCancel={handleCancel}
+            enableScreenshot={false}
           />
         ) : (
           <QueryDiffDataGrid
@@ -171,6 +172,7 @@ export const QueryPage = () => {
             primaryKeys={primaryKeys}
             setPrimaryKeys={setPrimaryKeys}
             onCancel={handleCancel}
+            enableScreenshot={false}
           />
         )}
       </Flex>

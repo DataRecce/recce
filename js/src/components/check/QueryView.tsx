@@ -7,11 +7,8 @@ import {
   Box,
 } from "@chakra-ui/react";
 import SqlEditor from "@/components/query/SqlEditor";
-import { QueryDiffDataGrid } from "@/components/query/QueryDiffDataGrid";
-import { QueryDiffResult, QueryResult } from "@/lib/api/adhocQuery";
 import { Check } from "@/lib/api/checks";
 import { QueryDataGrid } from "../query/QueryDataGrid";
-import { ScreenshotBox } from "../screenshot/ScreenshotBox";
 
 interface QueryViewProp {
   check: Check;
@@ -39,10 +36,8 @@ export function QueryView({ check }: QueryViewProp) {
       </Accordion>
 
       <Box flex="1" style={{ contain: "size" }}>
-        {check?.type === "query" &&
-        <ScreenshotBox style={{ maxHeight: '100%', overflow: 'auto' }}>
-          <QueryDataGrid run={check?.last_run} />
-        </ScreenshotBox>}
+        {check?.type === "query" && <QueryDataGrid run={check?.last_run} enableScreenshot={true}/>
+      }
       </Box>
     </>
   );

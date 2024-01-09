@@ -15,6 +15,7 @@ import { toDataDiffGrid } from "./querydiff";
 
 import "./styles.css";
 import { Run } from "@/lib/api/types";
+import { ScreenshotDataGrid } from "../data-grid/ScreenshotDataGrid";
 
 interface QueryDiffDataGridProps {
   style?: CSSProperties;
@@ -25,6 +26,7 @@ interface QueryDiffDataGridProps {
   primaryKeys: string[];
   setPrimaryKeys?: (primaryKeys: string[]) => void;
   onCancel?: () => void;
+  enableScreenshot?: boolean;
 }
 
 export const QueryDiffDataGrid = ({
@@ -35,6 +37,7 @@ export const QueryDiffDataGrid = ({
   primaryKeys,
   setPrimaryKeys,
   onCancel,
+  enableScreenshot,
 }: QueryDiffDataGridProps) => {
   const [isAborting, setAborting] = useState(false);
   const gridData = useMemo(() => {
@@ -99,12 +102,13 @@ export const QueryDiffDataGrid = ({
   }
 
   return (<>
-    <DataGrid
-      style={{ blockSize: "100%" }}
+    <ScreenshotDataGrid
+      style={{ blockSize: "auto", maxHeight: "100%", overflow: "auto" }}
       columns={gridData.columns}
       rows={gridData.rows}
       defaultColumnOptions={{ resizable: true, maxWidth: 800, minWidth: 35 }}
       className="rdg-light"
+      enableScreenshot={enableScreenshot}
     />
   </>);
 };

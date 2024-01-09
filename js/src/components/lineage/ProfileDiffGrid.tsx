@@ -13,6 +13,7 @@ import { CSSProperties, useMemo, useState } from "react";
 import { DataFrame, DataFrameField, DataFrameRow } from "@/lib/api/types";
 import { ProfileDiffResult } from "@/lib/api/profile";
 import _ from "lodash";
+import { ScreenshotDataGrid } from "../data-grid/ScreenshotDataGrid";
 
 interface ProfileDataGridProps {
   style?: CSSProperties;
@@ -20,6 +21,7 @@ interface ProfileDataGridProps {
   result?: ProfileDiffResult;
   error?: Error | null; // error from submit
   onCancel?: () => void;
+  enableScreenshot?: boolean;
 }
 
 function _getPrimaryKeyValue(row: DataFrameRow, primaryKey: string): string {
@@ -162,6 +164,7 @@ export const ProfileDiffDataGrid = ({
   result,
   error,
   onCancel,
+  enableScreenshot,
 }: ProfileDataGridProps) => {
   const [isAborting, setAborting] = useState(false);
   const gridData = useMemo(() => {
@@ -235,12 +238,13 @@ export const ProfileDiffDataGrid = ({
   }
 
   return (<>
-    <DataGrid
-      style={{ blockSize: "100%" }}
+    <ScreenshotDataGrid
+      style={{ blockSize: "auto", maxHeight: "100%", overflow: "auto" }}
       columns={gridData.columns}
       rows={gridData.rows}
       defaultColumnOptions={{ resizable: true, maxWidth: 800, minWidth: 35 }}
       className="rdg-light"
+      enableScreenshot={enableScreenshot}
     />
   </>);
 };

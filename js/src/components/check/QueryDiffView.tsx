@@ -39,18 +39,15 @@ export function QueryDiffView({ check }: QueryDiffViewProp) {
 
       <Box flex="1" style={{ contain: "size" }}>
         {check?.type === "query_diff" && (
-
-          <ScreenshotBox style={{ maxHeight: '100%', overflow: 'auto' }}>
-            <QueryDiffDataGrid
-              run={check?.last_run}
-              primaryKeys={
-                (check?.params as QueryDiffResult)?.primary_keys || []
-              }
-              changedOnly={
-                (check?.params as QueryDiffResult)?.changed_only || false
-              }
-            />
-          </ScreenshotBox>
+          <QueryDiffDataGrid
+            run={check?.last_run}
+            primaryKeys={
+              (check?.params as QueryDiffResult)?.primary_keys || []
+            }
+            changedOnly={
+              (check?.params as QueryDiffResult)?.changed_only || false
+            }
+          />
         )}
       </Box>
     </>
