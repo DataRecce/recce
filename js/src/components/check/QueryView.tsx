@@ -38,7 +38,7 @@ export function QueryView({ check }: QueryViewProp) {
       </Accordion>
 
       <Box flex="1" style={{ contain: "size" }}>
-        {check?.type === "query" && <QueryDataGrid run={check?.last_run} />}
+        {check?.type === "query" && <QueryDataGrid run={check?.last_run} enableScreenShot={true} />}
       </Box>
     </>
   );

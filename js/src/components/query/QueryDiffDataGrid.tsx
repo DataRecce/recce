@@ -7,15 +7,17 @@ import {
   Box,
   Button,
   Center,
-  Flex,
   Spinner,
   VStack,
+  useToast,
 } from "@chakra-ui/react";
-import { CSSProperties, useMemo, useState } from "react";
+import { CSSProperties, useEffect, useMemo, useRef, useState } from "react";
 import { toDataDiffGrid } from "./querydiff";
 
 import "./styles.css";
 import { Run } from "@/lib/api/types";
+import { highlightBoxShadow, useCopyToClipboardButton } from "@/lib/hooks/ScreenShot";
+import { CopyIcon } from "@chakra-ui/icons";
 
 interface QueryDiffDataGridProps {
   style?: CSSProperties;
@@ -25,6 +27,7 @@ interface QueryDiffDataGridProps {
   primaryKeys: string[];
   setPrimaryKeys?: (primaryKeys: string[]) => void;
   onCancel?: () => void;
+  enableScreenShot?: boolean;
 }
 
 export const QueryDiffDataGrid = ({
@@ -34,7 +37,9 @@ export const QueryDiffDataGrid = ({
   primaryKeys,
   setPrimaryKeys,
   onCancel,
+  enableScreenShot=false
 }: QueryDiffDataGridProps) => {
+  const { ref, CopyToClipboardButton } = useCopyToClipboardButton();
   const [isAborting, setAborting] = useState(false);
   const gridData = useMemo(() => {
     if (isFetching) {
@@ -93,14 +98,20 @@ export const QueryDiffDataGrid = ({
   if (gridData.columns.length === 0) {
     return <Center height="100%">No data</Center>;
   }
-
   return (
-    <DataGrid
-      style={{ blockSize: "100%" }}
-      columns={gridData.columns}
-      rows={gridData.rows}
-      defaultColumnOptions={{ resizable: true, maxWidth: 800, width: 100 }}
-      className="rdg-light"
-    />
+    <>
+      <DataGrid
+        ref={ref}
+        style={{
+          blockSize: "100%",
+          overflow: "auto",
+        }}
+        columns={gridData.columns}
+        rows={gridData.rows}
+        defaultColumnOptions={{ resizable: true, maxWidth: 800, minWidth: 35 }}
+        className="rdg-light"
+      />
+      {enableScreenShot &&<CopyToClipboardButton imageType="png"/>}
+    </>
   );
 };

@@ -16,7 +16,7 @@ export function SchemaDiffView({ check }: SchemaDiffViewProps)  {
   const id = params.node_id;
   const node = id ? lineageGraphSets?.all.nodes[id] : undefined;
   if (node) {
-    return <SchemaView base={node.data.base} current={node.data.current} />;
+    return <SchemaView base={node.data.base} current={node.data.current} enableScreenShot={true} />;
   }
   // TODO: handle the edge case where the node is not found
   return <></>;
