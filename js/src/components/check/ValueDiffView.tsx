@@ -95,7 +95,6 @@ export function ValueDiffPanel({
   const { ref, CopyToClipboardButton } = useCopyToClipboardButton();
 
   return <>
-
     <Box mb={1}>
       Model: <b>{valueDiffSummary.params.model}</b>, Primary Key: <b>{valueDiffSummary.params.primary_key}</b>
     </Box>
@@ -105,7 +104,7 @@ export function ValueDiffPanel({
     </Box>
     <ValueDiffErrorHints errors={valueDiffSummary.errors} />
 
-    {valueDiffSummary.errors.length === 0 &&(<>
+    {valueDiffSummary.errors.length === 0 &&(<Box>
       <DataGrid
         ref={ref}
         style={{ height: "100%", width: "100%" }}
@@ -119,8 +118,8 @@ export function ValueDiffPanel({
         defaultColumnOptions={{ resizable: true }}
         className="rdg-light"
       />
-      {enableScreenShot && <CopyToClipboardButton imageType="png"/>}
-    </>)}
+    </Box>)}
+    {enableScreenShot && <CopyToClipboardButton imageType="png"/>}
   </>;
 }
 
@@ -141,7 +140,7 @@ export function ValueDiffView({ check }: ValueDiffViewProp) {
   return (
     <>
       <Box p={5}>
-        {summary && <ValueDiffPanel valueDiffSummary={summary} />}
+        {summary && <ValueDiffPanel valueDiffSummary={summary} enableScreenShot={true} />}
       </Box>
     </>
   );
