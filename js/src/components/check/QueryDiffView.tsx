@@ -41,6 +41,9 @@ export function QueryDiffView({ check }: QueryDiffViewProp) {
           <QueryDiffDataGrid
             run={check?.last_run}
             primaryKeys={(check?.params as QueryDiffResult)?.primary_keys || []}
+            changedOnly={
+              (check?.params as QueryDiffResult)?.changed_only || false
+            }
           />
         )}
       </Box>

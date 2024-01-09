@@ -22,6 +22,7 @@ interface QueryDiffDataGridProps {
   isFetching?: boolean;
   run?: Run<QueryDiffParams, QueryDiffResult>;
   error?: Error | null; // error from submit
+  changedOnly?: boolean;
   primaryKeys: string[];
   setPrimaryKeys?: (primaryKeys: string[]) => void;
   onCancel?: () => void;
@@ -31,6 +32,7 @@ export const QueryDiffDataGrid = ({
   isFetching,
   run,
   error,
+  changedOnly,
   primaryKeys,
   setPrimaryKeys,
   onCancel,
@@ -41,13 +43,12 @@ export const QueryDiffDataGrid = ({
       return { rows: [], columns: [] };
     }
 
-    return toDataDiffGrid(
-      run?.result?.base,
-      run?.result?.current,
+    return toDataDiffGrid(run?.result?.base, run?.result?.current, {
+      changedOnly,
       primaryKeys,
-      setPrimaryKeys
-    );
-  }, [run, isFetching, primaryKeys, setPrimaryKeys]);
+      onPrimaryKeyChange: setPrimaryKeys,
+    });
+  }, [run, isFetching, primaryKeys, setPrimaryKeys, changedOnly]);
 
   const handleCancel = () => {
     setAborting(true);
@@ -96,7 +97,7 @@ export const QueryDiffDataGrid = ({
 
   return (
     <DataGrid
-      style={{ blockSize: "100%" }}
+      style={{ flex: 1 }}
       columns={gridData.columns}
       rows={gridData.rows}
       defaultColumnOptions={{ resizable: true, maxWidth: 800, width: 100 }}

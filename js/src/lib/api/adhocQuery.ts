@@ -17,6 +17,7 @@ export interface QueryDiffParams {
 
 export interface QueryDiffResult {
   primary_keys?: string[];
+  changed_only?: boolean;
   base?: DataFrame;
   current?: DataFrame;
   base_error?: string;

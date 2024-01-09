@@ -91,7 +91,7 @@ test("query diff", () => {
     ],
   };
 
-  const result = toDataDiffGrid(base, current, [], () => {});
+  const result = toDataDiffGrid(base, current);
 
   expect(result?.rows).toStrictEqual([
     {

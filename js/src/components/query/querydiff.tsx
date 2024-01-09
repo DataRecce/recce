@@ -3,7 +3,7 @@ import _ from "lodash";
 import "./styles.css";
 import { Box, Flex, Icon } from "@chakra-ui/react";
 import { VscClose, VscKey } from "react-icons/vsc";
-import { DataFrame, DataFrameField, DataFrameRow } from "@/lib/api/types";
+import { DataFrame, DataFrameRow } from "@/lib/api/types";
 import { mergeKeysWithStatus } from "@/lib/mergeKeys";
 
 function _getPrimaryKeyValue(row: DataFrameRow, primaryKeys: string[]): string {
@@ -74,9 +74,15 @@ function DataFrameColumnGroupHeader({
 export function toDataDiffGrid(
   base?: DataFrame,
   current?: DataFrame,
-  primaryKeys: string[] = [],
-  onPrimaryKeyChange?: (primaryKeys: string[]) => void
+  options?: {
+    primaryKeys?: string[];
+    onPrimaryKeyChange?: (primaryKeys: string[]) => void;
+    changedOnly?: boolean;
+  }
 ) {
+  let primaryKeys = options?.primaryKeys || [];
+  const changedOnly = options?.changedOnly || false;
+
   const empty: DataFrame = {
     schema: {
       fields: [],
@@ -134,65 +140,67 @@ export function toDataDiffGrid(
     Object.keys(currentMap)
   );
 
-  const rows = Object.entries(mergedMap)
-    .map(([key, status]) => {
-      const base = baseMap[key];
-      const current = currentMap[key];
-      const row = JSON.parse(key);
+  let rows = Object.entries(mergedMap).map(([key, status]) => {
+    const base = baseMap[key];
+    const current = currentMap[key];
+    const row = JSON.parse(key);
 
-      if (base) {
-        Object.keys(base).forEach((key) => {
-          if (primaryKeys.includes(key)) {
-            return;
-          }
-          row[`base__${key}`] = base[key];
-        });
-      }
+    if (base) {
+      Object.keys(base).forEach((key) => {
+        if (primaryKeys.includes(key)) {
+          return;
+        }
+        row[`base__${key}`] = base[key];
+      });
+    }
 
-      if (current) {
-        Object.keys(current).forEach((key) => {
-          if (primaryKeys.includes(key)) {
-            return;
-          }
+    if (current) {
+      Object.keys(current).forEach((key) => {
+        if (primaryKeys.includes(key)) {
+          return;
+        }
 
-          row[`current__${key}`] = current[key];
-        });
-      }
+        row[`current__${key}`] = current[key];
+      });
+    }
 
-      // Check if row is added, removed, or modified
-      if (!base) {
-        row["status"] = "added";
-      } else if (!current) {
-        row["status"] = "removed";
-      } else {
-        for (const [column, columnStatus] of Object.entries(columnMap)) {
-          if (column === "index") {
-            continue;
-          }
+    // Check if row is added, removed, or modified
+    if (!base) {
+      row["status"] = "added";
+    } else if (!current) {
+      row["status"] = "removed";
+    } else {
+      for (const [column, columnStatus] of Object.entries(columnMap)) {
+        if (column === "index") {
+          continue;
+        }
 
-          if (primaryKeys.includes(column)) {
-            continue;
-          }
+        if (primaryKeys.includes(column)) {
+          continue;
+        }
 
-          if (columnStatus === "added" || columnStatus === "removed") {
-            continue;
-          }
+        if (columnStatus === "added" || columnStatus === "removed") {
+          continue;
+        }
 
-          if (!_.isEqual(base[column], current[column])) {
-            row["status"] = "modified";
-            columnMap[column] = "modified";
-          }
+        if (!_.isEqual(base[column], current[column])) {
+          row["status"] = "modified";
+          columnMap[column] = "modified";
         }
       }
+    }
 
-      return row;
-    })
-    .filter(
+    return row;
+  });
+
+  if (changedOnly) {
+    rows = rows.filter(
       (row) =>
         row["status"] === "added" ||
         row["status"] === "removed" ||
         row["status"] === "modified"
     );
+  }
 
   // merge columns
   Object.entries(columnMap).forEach(([name, columnStatus]) => {
@@ -203,7 +211,7 @@ export function toDataDiffGrid(
           <DataFrameColumnGroupHeader
             name={name}
             primaryKeys={primaryKeys}
-            onPrimaryKeyChange={onPrimaryKeyChange}
+            onPrimaryKeyChange={options?.onPrimaryKeyChange}
           ></DataFrameColumnGroupHeader>
         ),
         frozen: true,
@@ -224,12 +232,14 @@ export function toDataDiffGrid(
         return;
       }
 
-      if (
-        columnStatus !== "added" &&
-        columnStatus !== "removed" &&
-        columnStatus !== "modified"
-      ) {
-        return;
+      if (changedOnly) {
+        if (
+          columnStatus !== "added" &&
+          columnStatus !== "removed" &&
+          columnStatus !== "modified"
+        ) {
+          return;
+        }
       }
 
       const headerCellClass =
@@ -264,7 +274,9 @@ export function toDataDiffGrid(
           <DataFrameColumnGroupHeader
             name={name}
             primaryKeys={primaryKeys}
-            onPrimaryKeyChange={canBePk ? onPrimaryKeyChange : undefined}
+            onPrimaryKeyChange={
+              canBePk ? options?.onPrimaryKeyChange : undefined
+            }
           ></DataFrameColumnGroupHeader>
         ),
         children: [
