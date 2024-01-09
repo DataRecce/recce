@@ -1,5 +1,5 @@
 import "react-data-grid/lib/styles.css";
-import React, { useCallback, useEffect } from "react";
+import React, { useCallback, useEffect, useState } from "react";
 import {
   Check,
   createSimpleCheck,
@@ -35,6 +35,12 @@ import {
 import { IconType } from "react-icons";
 import { FiAlignLeft } from "react-icons/fi";
 import { AddIcon, CopyIcon } from "@chakra-ui/icons";
+import {
+  DragDropContext,
+  Draggable,
+  DropResult,
+  Droppable,
+} from "@hello-pangea/dnd";
 
 const ChecklistItem = ({
   check,
@@ -136,6 +142,20 @@ export const CheckPage = () => {
     handleSelectItem(check.check_id);
   }, [queryClient, handleSelectItem]);
 
+  const [orderedChecks, setOrderedChecks] = useState<Check[]>([]);
+
+  const handleDragEnd = (result: DropResult) => {
+    if (!result.destination) {
+      return; // Dragged outside the list
+    }
+
+    const updatedItems = [...orderedChecks];
+    const [reorderedItem] = updatedItems.splice(result.source.index, 1);
+    updatedItems.splice(result.destination.index, 0, reorderedItem);
+
+    setOrderedChecks(updatedItems);
+  };
+
   useEffect(() => {
     if (status !== "success") {
       return;
@@ -144,6 +164,7 @@ export const CheckPage = () => {
     if (!selectedItem && checks.length > 0) {
       setLocation(`/checks/${checks[0].check_id}`);
     }
+    setOrderedChecks(checks);
   }, [status, selectedItem, checks, setLocation]);
 
   if (isLoading) {
@@ -217,14 +238,43 @@ export const CheckPage = () => {
           </HStack>
 
           <Divider mb="8px" />
-          {checks.map((check) => (
-            <ChecklistItem
-              key={check.check_id}
-              check={check}
-              selected={check.check_id === selectedItem}
-              onSelect={handleSelectItem}
-            />
-          ))}
+          <DragDropContext onDragEnd={handleDragEnd}>
+            <Droppable droppableId="checklist">
+              {(provided) => (
+                <VStack
+                  {...provided.droppableProps}
+                  ref={provided.innerRef}
+                  w="full"
+                  spacing="0"
+                >
+                  {orderedChecks.map((check, index) => (
+                    <Draggable
+                      key={check.check_id}
+                      draggableId={check.check_id}
+                      index={index}
+                    >
+                      {(provided) => (
+                        <Flex
+                          ref={provided.innerRef}
+                          {...provided.draggableProps}
+                          {...provided.dragHandleProps}
+                          w="full"
+                        >
+                          <ChecklistItem
+                            key={check.check_id}
+                            check={check}
+                            selected={check.check_id === selectedItem}
+                            onSelect={handleSelectItem}
+                          />
+                        </Flex>
+                      )}
+                    </Draggable>
+                  ))}
+                  {provided.placeholder}
+                </VStack>
+              )}
+            </Droppable>
+          </DragDropContext>
         </VStack>
       </Box>
       <Box flex="1" height="100%" width="calc(100% - 400px)">
