@@ -39,7 +39,7 @@ export function QueryDiffView({ check }: QueryDiffViewProp) {
 
       <Box flex="1" style={{ contain: "size" }}>
         {check?.type === "query_diff" && (
-          <ScreenshotBox height="100%">
+          <ScreenshotBox style={{ maxHeight: '100%', overflow: 'auto' }}>
             <QueryDiffDataGrid
               run={check?.last_run}
               primaryKeys={
