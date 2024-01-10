@@ -241,4 +241,3 @@ async def reorder_handler(order: ReorderChecksIn):
                     params=check_to_move.params,
                     is_checked=check_to_move.is_checked,
                     ).dict()
-
