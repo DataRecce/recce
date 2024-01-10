@@ -35,6 +35,7 @@ import {
 import { IconType } from "react-icons";
 import { FiAlignLeft } from "react-icons/fi";
 import { AddIcon, CopyIcon } from "@chakra-ui/icons";
+import copy from "copy-to-clipboard";
 
 const ChecklistItem = ({
   check,
@@ -191,7 +192,8 @@ export const CheckPage = () => {
                 aria-label="Copy checklist to the clipboard"
                 mr="10px"
                 onClick={() => {
-                  if (copyCheckList(checks)) {
+                  const markdown = buildMarkdown(checks);
+                  if (copy(markdown)) {
                     exportChecksToast({
                       description: `Copied ${checks.length} checks to the clipboard`,
                       status: "info",
@@ -230,27 +232,6 @@ export const CheckPage = () => {
     </Flex>
   );
 };
-
-function copyCheckList(checks: Check[]) {
-  const markdown = buildMarkdown(checks);
-  let success = true;
-  if (navigator.clipboard !== undefined) {
-    navigator.clipboard.writeText(markdown).catch((err) => {
-      success = false;
-    });
-  } else {
-    const textArea = document.createElement("textarea");
-    textArea.value = markdown;
-    textArea.style.opacity = "0";
-    document.body.appendChild(textArea);
-    textArea.focus();
-    textArea.select();
-    success = document.execCommand("copy");
-    document.body.removeChild(textArea);
-  }
-
-  return success;
-}
 
 function buildMarkdown(checks: Check[]) {
   const checkItems = checks.map((check) => {
