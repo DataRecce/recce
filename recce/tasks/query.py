@@ -4,6 +4,7 @@ from dbt.adapters.sql import SQLAdapter
 
 from recce.dbt import default_dbt_context
 from .core import Task
+from ..exceptions import RecceException
 
 
 class QueryMixin:
@@ -21,11 +22,9 @@ class QueryMixin:
             table: agate.Table = result
             df = pd.DataFrame([row.values() for row in table.rows], columns=table.column_names)
             result_json = df.to_json(orient='table')
-            return json.loads(result_json), None
+            return json.loads(result_json)
         except TemplateSyntaxError as e:
-            return None, f"Jinja template error: line {e.lineno}: {str(e)}"
-        except Exception as e:
-            return None, str(e)
+            raise RecceException(f"Jinja template error: line {e.lineno}: {str(e)}")
 
     @staticmethod
     def close_connection(connection):
@@ -54,10 +53,10 @@ class QueryTask(Task, QueryMixin):
             self.connection = adapter.connections.get_thread_connection()
 
             sql_template = self.params.get('sql_template')
-            result, error = self.execute_sql(sql_template, base=True)
+            result = self.execute_sql(sql_template, base=True)
             self.check_cancel()
 
-            return dict(result=result, error=error)
+            return dict(result=result)
 
     def cancel(self):
         super().cancel()
@@ -82,11 +81,11 @@ class QueryDiffTask(Task, QueryMixin):
             self.connection = adapter.connections.get_thread_connection()
 
             # Query base
-            result['base'], result['base_error'] = self.execute_sql(sql_template, base=True)
+            result['base'] = self.execute_sql(sql_template, base=True)
             self.check_cancel()
 
             # Query current
-            result['current'], result['current_error'] = self.execute_sql(sql_template, base=False)
+            result['current'] = self.execute_sql(sql_template, base=False)
             self.check_cancel()
 
         return result

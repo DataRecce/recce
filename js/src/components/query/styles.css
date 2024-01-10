@@ -2,9 +2,31 @@
   color: rgb(128, 128, 128);
   text-align: right;
 }
-.diff-cell {
+
+
+.diff-header-added {
+  background-color: #3aa53a;
+  color: white;
+}
+
+.diff-cell-added {
+  background-color: #cefece;
+  color: black;
+}
+
+.diff-header-removed {
   background-color: #ff6666;
   color: white;
+}
+
+.diff-cell-removed {
+  background-color: #ffc5c5;
+  color: black;
+}
+
+.diff-cell-modified {
+  background-color: #ffc5c5;
+  color: black;
 }
 
 .rdg-cell {

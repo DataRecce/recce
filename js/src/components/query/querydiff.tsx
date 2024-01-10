@@ -3,7 +3,8 @@ import _ from "lodash";
 import "./styles.css";
 import { Box, Flex, Icon } from "@chakra-ui/react";
 import { VscClose, VscKey } from "react-icons/vsc";
-import { DataFrame, DataFrameField, DataFrameRow } from "@/lib/api/types";
+import { DataFrame, DataFrameRow } from "@/lib/api/types";
+import { mergeKeysWithStatus } from "@/lib/mergeKeys";
 
 function _getPrimaryKeyValue(row: DataFrameRow, primaryKeys: string[]): string {
   const result: Record<string, any> = {};
@@ -73,9 +74,15 @@ function DataFrameColumnGroupHeader({
 export function toDataDiffGrid(
   base?: DataFrame,
   current?: DataFrame,
-  primaryKeys: string[] = [],
-  onPrimaryKeyChange?: (primaryKeys: string[]) => void
+  options?: {
+    primaryKeys?: string[];
+    onPrimaryKeyChange?: (primaryKeys: string[]) => void;
+    changedOnly?: boolean;
+  }
 ) {
+  let primaryKeys = options?.primaryKeys || [];
+  const changedOnly = options?.changedOnly || false;
+
   const empty: DataFrame = {
     schema: {
       fields: [],
@@ -112,94 +119,30 @@ export function toDataDiffGrid(
 
   const columns: ColumnOrColumnGroup<any, any>[] = [];
   const pkColumns: ColumnOrColumnGroup<any, any>[] = [];
-  const columnMap: Record<
-    string,
-    { base?: DataFrameField; current?: DataFrameField }
-  > = {};
-  const rowMap: Record<any, { base?: DataFrameRow; current?: DataFrameRow }> =
-    {};
-
-  current.schema.fields.forEach((field) => {
-    columnMap[field.name] = {};
-    columnMap[field.name].current = field;
-  });
-
-  base.schema.fields.forEach((field) => {
-    if (!columnMap[field.name]) {
-      columnMap[field.name] = {};
-    }
-    columnMap[field.name].base = field;
-  });
-
-  Object.entries(columnMap).forEach(([name, { base, current }]) => {
-    if (primaryKeys.includes(name)) {
-      pkColumns.push({
-        key: `${name}`,
-        name: (
-          <DataFrameColumnGroupHeader
-            name={name}
-            primaryKeys={primaryKeys}
-            onPrimaryKeyChange={onPrimaryKeyChange}
-          ></DataFrameColumnGroupHeader>
-        ),
-        frozen: true,
-        cellClass: name === "index" ? "index-column" : undefined,
-      });
-    } else {
-      if (name === "index") {
-        return;
-      }
-
-      const cellClass = (row: any) => {
-        if (!_.isEqual(row[`base__${name}`], row[`current__${name}`])) {
-          return "diff-cell";
-        }
-
-        return undefined;
-      };
-
-      columns.push({
-        name: (
-          <DataFrameColumnGroupHeader
-            name={name}
-            primaryKeys={primaryKeys}
-            onPrimaryKeyChange={onPrimaryKeyChange}
-          ></DataFrameColumnGroupHeader>
-        ),
-        children: [
-          {
-            key: `base__${name}`,
-            name: "Base",
-            renderEditCell: textEditor,
-            cellClass,
-          },
-          {
-            key: `current__${name}`,
-            name: "Current",
-            renderEditCell: textEditor,
-            cellClass,
-          },
-        ],
-      });
-    }
-  });
+  const columnMap = mergeKeysWithStatus(
+    base.schema.fields.map((field) => field.name),
+    current.schema.fields.map((field) => field.name)
+  ) as Record<string, string>;
 
   // merge row
-  current.data.forEach((row) => {
-    const key = _getPrimaryKeyValue(row, primaryKeys);
-    rowMap[key] = {};
-    rowMap[key].current = row;
-  });
-
+  const baseMap: Record<string, any> = {};
   base.data.forEach((row) => {
-    const key = _getPrimaryKeyValue(row, primaryKeys);
-    if (!rowMap[key]) {
-      rowMap[key] = {};
-    }
-    rowMap[key].base = row;
+    baseMap[_getPrimaryKeyValue(row, primaryKeys)] = row;
   });
 
-  const rows = Object.entries(rowMap).map(([key, { base, current }]) => {
+  const currentMap: Record<string, any> = {};
+  current.data.forEach((row) => {
+    currentMap[_getPrimaryKeyValue(row, primaryKeys)] = row;
+  });
+
+  const mergedMap = mergeKeysWithStatus(
+    Object.keys(baseMap),
+    Object.keys(currentMap)
+  );
+
+  let rows = Object.entries(mergedMap).map(([key, status]) => {
+    const base = baseMap[key];
+    const current = currentMap[key];
     const row = JSON.parse(key);
 
     if (base) {
@@ -221,7 +164,139 @@ export function toDataDiffGrid(
       });
     }
 
+    // Check if row is added, removed, or modified
+    if (!base) {
+      row["status"] = "added";
+    } else if (!current) {
+      row["status"] = "removed";
+    } else {
+      for (const [column, columnStatus] of Object.entries(columnMap)) {
+        if (column === "index") {
+          continue;
+        }
+
+        if (primaryKeys.includes(column)) {
+          continue;
+        }
+
+        if (columnStatus === "added" || columnStatus === "removed") {
+          continue;
+        }
+
+        if (!_.isEqual(base[column], current[column])) {
+          row["status"] = "modified";
+          columnMap[column] = "modified";
+        }
+      }
+    }
+
     return row;
+  });
+
+  if (changedOnly) {
+    rows = rows.filter(
+      (row) =>
+        row["status"] === "added" ||
+        row["status"] === "removed" ||
+        row["status"] === "modified"
+    );
+  }
+
+  // merge columns
+  Object.entries(columnMap).forEach(([name, columnStatus]) => {
+    if (primaryKeys.includes(name)) {
+      pkColumns.push({
+        key: `${name}`,
+        name: (
+          <DataFrameColumnGroupHeader
+            name={name}
+            primaryKeys={primaryKeys}
+            onPrimaryKeyChange={options?.onPrimaryKeyChange}
+          ></DataFrameColumnGroupHeader>
+        ),
+        frozen: true,
+        cellClass: (row: any) => {
+          if (name === "index") {
+            return "index-column";
+          }
+
+          if (row["status"]) {
+            return `diff-header-${row["status"]}`;
+          }
+
+          return undefined;
+        },
+      });
+    } else {
+      if (name === "index") {
+        return;
+      }
+
+      if (changedOnly) {
+        if (
+          columnStatus !== "added" &&
+          columnStatus !== "removed" &&
+          columnStatus !== "modified"
+        ) {
+          return;
+        }
+      }
+
+      const headerCellClass =
+        columnStatus === "added"
+          ? "diff-header-added"
+          : columnStatus === "removed"
+          ? "diff-header-removed"
+          : undefined;
+
+      const cellClass = (row: any) => {
+        const rowStatus = row["status"];
+        if (rowStatus === "removed") {
+          return "diff-cell-removed";
+        } else if (rowStatus === "added") {
+          return "diff-cell-added";
+        } else if (columnStatus === "added") {
+          return undefined;
+        } else if (columnStatus === "removed") {
+          return undefined;
+        } else if (!_.isEqual(row[`base__${name}`], row[`current__${name}`])) {
+          return "diff-cell-modified";
+        }
+
+        return undefined;
+      };
+
+      const canBePk = columnStatus !== "added" && columnStatus !== "removed";
+
+      columns.push({
+        headerCellClass,
+        name: (
+          <DataFrameColumnGroupHeader
+            name={name}
+            primaryKeys={primaryKeys}
+            onPrimaryKeyChange={
+              canBePk ? options?.onPrimaryKeyChange : undefined
+            }
+          ></DataFrameColumnGroupHeader>
+        ),
+        children: [
+          {
+            key: `base__${name}`,
+            name: "Base",
+            renderEditCell: textEditor,
+            headerCellClass,
+            cellClass,
+          },
+          {
+            key: `current__${name}`,
+            name: "Current",
+            renderEditCell: textEditor,
+            headerCellClass,
+            cellClass,
+          },
+        ],
+      });
+    }
   });
 
   return {

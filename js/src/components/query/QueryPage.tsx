@@ -1,5 +1,13 @@
 import React, { useState, useCallback } from "react";
-import { Box, Button, Flex } from "@chakra-ui/react";
+import {
+  Box,
+  Button,
+  Checkbox,
+  Flex,
+  IconButton,
+  Spacer,
+  Tooltip,
+} from "@chakra-ui/react";
 import SqlEditor from "./SqlEditor";
 import { useRecceQueryContext } from "@/lib/hooks/RecceQueryContext";
 
@@ -16,14 +24,15 @@ import {
 } from "@/lib/api/adhocQuery";
 import { QueryDataGrid } from "./QueryDataGrid";
 import { cancelRun, waitRun } from "@/lib/api/runs";
+import { AddIcon } from "@chakra-ui/icons";
 
 export const QueryPage = () => {
   const { sqlQuery, setSqlQuery } = useRecceQueryContext();
-  const [submittedQuery, setSubmittedQuery] = useState<string>();
 
   const [primaryKeys, setPrimaryKeys] = useState<string[]>([]);
   const [runType, setRunType] = useState<string>();
   const [runId, setRunId] = useState<string>();
+  const [changedOnly, setChangedOnly] = useState(false);
 
   const queryClient = useQueryClient();
   const [, setLocation] = useLocation();
@@ -38,6 +47,10 @@ export const QueryPage = () => {
     return await waitRun(run_id);
   };
 
+  const handleCheckboxChange = () => {
+    setChangedOnly(!changedOnly);
+  };
+
   const {
     data: run,
     mutate: runQuery,
@@ -47,7 +60,7 @@ export const QueryPage = () => {
     mutationFn: queryFn,
     onSuccess: (run) => {
       setPrimaryKeys([]);
-      setSubmittedQuery(sqlQuery);
+      setChangedOnly(false);
     },
   });
 
@@ -68,32 +81,30 @@ export const QueryPage = () => {
 
     if (run.type === "query_diff") {
       await updateCheck(check.check_id, {
-        params: { ...check.params, primary_keys: primaryKeys },
+        params: {
+          ...check.params,
+          primary_keys: primaryKeys,
+          changed_only: changedOnly,
+        },
       });
     }
 
-    setSubmittedQuery(undefined);
-
     queryClient.invalidateQueries({ queryKey: cacheKeys.checks() });
     setLocation(`/checks/${check.check_id}`);
-  }, [run?.run_id, run?.type, setLocation, primaryKeys, queryClient]);
+  }, [
+    run?.run_id,
+    run?.type,
+    setLocation,
+    primaryKeys,
+    queryClient,
+    changedOnly,
+  ]);
+
+  const hasResult = !isPending && run?.run_id && !run?.error;
 
   return (
     <Flex direction="column" height="100%">
       <Flex justifyContent="right" padding="5px" gap="5px">
-        <Button
-          colorScheme="blue"
-          onClick={addToChecklist}
-          isDisabled={
-            isPending ||
-            !run?.run_id ||
-            !!run?.error ||
-            sqlQuery != submittedQuery
-          }
-          size="sm"
-        >
-          Add to Checklist
-        </Button>
         <Button
           colorScheme="blue"
           onClick={() => runQuery("query_diff")}
@@ -119,7 +130,29 @@ export const QueryPage = () => {
           onRunDiff={() => runQuery("query_diff")}
         />
       </Box>
-      <Box backgroundColor="gray.100" height="50vh">
+      <Flex backgroundColor="rgb(249,249,249)" height="50vh" direction="column">
+        {hasResult && (
+          <Flex
+            borderBottom="1px solid lightgray"
+            justifyContent="flex-end"
+            gap="5px"
+          >
+            {runType === "query_diff" && (
+              <Checkbox isChecked={changedOnly} onChange={handleCheckboxChange}>
+                Changed only
+              </Checkbox>
+            )}
+            <Tooltip label="Add to Checklist">
+              <IconButton
+                variant="unstyled"
+                size="sm"
+                aria-label="Add"
+                icon={<AddIcon />}
+                onClick={addToChecklist}
+              />
+            </Tooltip>
+          </Flex>
+        )}
         {runType === "query" ? (
           <QueryDataGrid
             key={runId}
@@ -134,12 +167,13 @@ export const QueryPage = () => {
             isFetching={isPending}
             run={run}
             error={error}
+            changedOnly={changedOnly}
             primaryKeys={primaryKeys}
             setPrimaryKeys={setPrimaryKeys}
             onCancel={handleCancel}
           />
         )}
-      </Box>
+      </Flex>
     </Flex>
   );
 };
