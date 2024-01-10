@@ -10,10 +10,11 @@ interface ProfileDiffViewProps {
 export function ProfileDiffView({ check }: ProfileDiffViewProps) {
   return (
     <Box flex="1" style={{ contain: "size" }}>
-      <ProfileDiffDataGrid
-        isFetching={false}
-        result={check?.last_run?.result as ProfileDiffResult}
-      />
+        <ProfileDiffDataGrid
+          isFetching={false}
+          result={check?.last_run?.result as ProfileDiffResult}
+          enableScreenshot={true}
+        />
     </Box>
   );
 }

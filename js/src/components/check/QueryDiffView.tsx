@@ -10,6 +10,7 @@ import SqlEditor from "@/components/query/SqlEditor";
 import { QueryDiffDataGrid } from "@/components/query/QueryDiffDataGrid";
 import { QueryDiffResult } from "@/lib/api/adhocQuery";
 import { Check } from "@/lib/api/checks";
+import { ScreenshotBox } from "@//components/screenshot/ScreenshotBox";
 
 interface QueryDiffViewProp {
   check: Check;
@@ -40,7 +41,9 @@ export function QueryDiffView({ check }: QueryDiffViewProp) {
         {check?.type === "query_diff" && (
           <QueryDiffDataGrid
             run={check?.last_run}
-            primaryKeys={(check?.params as QueryDiffResult)?.primary_keys || []}
+            primaryKeys={
+              (check?.params as QueryDiffResult)?.primary_keys || []
+            }
             changedOnly={
               (check?.params as QueryDiffResult)?.changed_only || false
             }

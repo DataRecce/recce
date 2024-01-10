@@ -4,18 +4,19 @@ import { mergeColumns, toDataGrid } from "./schema";
 import "react-data-grid/lib/styles.css";
 import DataGrid from "react-data-grid";
 import { Flex, Alert, AlertIcon } from "@chakra-ui/react";
+import { ScreenshotDataGrid } from "../data-grid/ScreenshotDataGrid";
 
 interface SchemaViewProps {
   base?: NodeData;
   current?: NodeData;
+  enableScreenshot?: boolean;
 }
 
-export function SchemaView({ base, current }: SchemaViewProps) {
+export function SchemaView({ base, current, enableScreenshot }: SchemaViewProps) {
   const { columns, rows } = useMemo(
     () => toDataGrid(mergeColumns(base?.columns, current?.columns)),
     [base, current],
   );
-
   const noCatalogBase = base && base.columns === undefined;
   const noCatalogCurrent = current && current.columns === undefined;
   let catalogMissingMessage = undefined;
@@ -37,20 +38,21 @@ export function SchemaView({ base, current }: SchemaViewProps) {
         </Alert>
       )}
 
-      {rows.length > 0 && (
-        <DataGrid
+      {rows.length > 0 && (<>
+        <ScreenshotDataGrid
           style={{
-            height: "100%",
+            blockSize: "auto",
+            maxHeight: "100%",
+            overflow: "auto",
 
             fontSize: "10pt",
             borderWidth: 1,
-            overflowY: "auto",
           }}
           columns={columns}
           rows={rows}
           className="rdg-light"
         />
-      )}
+    </>)}
     </Flex>
   );
 }

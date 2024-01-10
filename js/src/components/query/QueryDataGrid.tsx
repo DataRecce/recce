@@ -7,12 +7,12 @@ import {
   Box,
   Button,
   Center,
-  Flex,
   Spinner,
   VStack,
 } from "@chakra-ui/react";
 import { CSSProperties, useMemo, useState } from "react";
 import { DataFrame, Run } from "@/lib/api/types";
+import { ScreenshotDataGrid } from "../data-grid/ScreenshotDataGrid";
 
 interface QueryDataGridProps {
   style?: CSSProperties;
@@ -20,6 +20,7 @@ interface QueryDataGridProps {
   run?: Run<QueryParams, QueryResult>;
   error?: Error | null; // error from submit
   onCancel?: () => void;
+  enableScreenshot?: boolean;
 }
 
 function toDataGrid(result: DataFrame) {
@@ -40,6 +41,7 @@ export const QueryDataGrid = ({
   run,
   error,
   onCancel,
+  enableScreenshot,
 }: QueryDataGridProps) => {
   const [isAborting, setAborting] = useState(false);
   const dataframe = run?.result?.result;
@@ -94,13 +96,13 @@ export const QueryDataGrid = ({
     return <Center height="100%">No data</Center>;
   }
 
-  return (
-    <DataGrid
-      style={{ blockSize: "100%" }}
+  return (<>
+    <ScreenshotDataGrid
+      style={{ blockSize: "auto", maxHeight: "100%", overflow: "auto" }}
       columns={gridData.columns}
       rows={gridData.rows}
-      defaultColumnOptions={{ resizable: true, maxWidth: 800, width: 100 }}
+      defaultColumnOptions={{ resizable: true, maxWidth: 800, minWidth: 35 }}
       className="rdg-light"
-    />
-  );
+      enableScreenshot={enableScreenshot}/>
+  </>);
 };
