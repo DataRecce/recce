@@ -191,27 +191,16 @@ export const CheckPage = () => {
                 aria-label="Copy checklist to the clipboard"
                 mr="10px"
                 onClick={() => {
-                  const markdown = buildMarkdown(checks);
-                  if (navigator.clipboard !== undefined) {
-                    navigator.clipboard.writeText(markdown);
-                  } else {
-                    const textArea = document.createElement("textarea");
-                    textArea.value = markdown;
-                    textArea.style.opacity = "0";
-                    document.body.appendChild(textArea);
-                    textArea.focus();
-                    textArea.select();
-                    document.execCommand("copy");
-                    document.body.removeChild(textArea);
+                  if (copyCheckList(checks)) {
+                    exportChecksToast({
+                      description: `Copied ${checks.length} checks to the clipboard`,
+                      status: "info",
+                      variant: "left-accent",
+                      position: "bottom",
+                      duration: 5000,
+                      isClosable: true,
+                    });
                   }
-                  exportChecksToast({
-                    description: `Copied ${checks.length} checks to the clipboard`,
-                    status: "info",
-                    variant: "left-accent",
-                    position: "bottom",
-                    duration: 5000,
-                    isClosable: true,
-                  });
                 }}
                 icon={<CopyIcon />}
               />
@@ -241,6 +230,27 @@ export const CheckPage = () => {
     </Flex>
   );
 };
+
+function copyCheckList(checks: Check[]) {
+  const markdown = buildMarkdown(checks);
+  let success = true;
+  if (navigator.clipboard !== undefined) {
+    navigator.clipboard.writeText(markdown).catch((err) => {
+      success = false;
+    });
+  } else {
+    const textArea = document.createElement("textarea");
+    textArea.value = markdown;
+    textArea.style.opacity = "0";
+    document.body.appendChild(textArea);
+    textArea.focus();
+    textArea.select();
+    success = document.execCommand("copy");
+    document.body.removeChild(textArea);
+  }
+
+  return success;
+}
 
 function buildMarkdown(checks: Check[]) {
   const checkItems = checks.map((check) => {
