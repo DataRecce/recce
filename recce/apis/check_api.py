@@ -222,3 +222,23 @@ async def delete_handler(check_id: UUID):
     checks_db.remove(found)
 
     return DeleteCheckOut(check_id=check_id).dict()
+
+
+class ReorderChecksIn(BaseModel):
+    source: int
+    destination: int
+
+
+@check_router.post("/checks/reorder", status_code=200)
+async def reorder_handler(order: ReorderChecksIn):
+    check_to_move = checks_db.pop(order.source)
+    checks_db.insert(order.destination, check_to_move)
+
+    return CheckOut(check_id=check_to_move.check_id,
+                    name=check_to_move.name,
+                    description=check_to_move.description,
+                    type=check_to_move.type.value,
+                    params=check_to_move.params,
+                    is_checked=check_to_move.is_checked,
+                    ).dict()
+
