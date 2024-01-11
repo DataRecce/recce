@@ -12,7 +12,7 @@ interface SchemaViewProps {
   enableScreenshot?: boolean;
 }
 
-export function SchemaView({ base, current, enableScreenshot }: SchemaViewProps) {
+export function SchemaView({ base, current, enableScreenshot=false }: SchemaViewProps) {
   const { columns, rows } = useMemo(
     () => toDataGrid(mergeColumns(base?.columns, current?.columns)),
     [base, current],
@@ -51,6 +51,7 @@ export function SchemaView({ base, current, enableScreenshot }: SchemaViewProps)
           columns={columns}
           rows={rows}
           className="rdg-light"
+          enableScreenshot={enableScreenshot}
         />
     </>)}
     </Flex>
