@@ -171,14 +171,12 @@ export function FetchRowCountsButton({
       if (index + 1 < nodes.length) {
         // TODO: Use BFS to walk though all the changed nodes first.
         setIndex(index + 1);
-      } else{
+      } else if (enabled === true) {
         setEnabled(false);
-        if (onFinish) {
-          onFinish();
-        }
+        onFinish && onFinish();
       }
     }
-  }, [isFetched, index, nodes, onFinish]);
+  }, [isFetched, index, nodes, onFinish, enabled]);
 
   return (
     <Button

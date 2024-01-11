@@ -105,7 +105,6 @@ export function NodeSelector({ nodes, isOpen, onClose }: NodeSelectorProps) {
           </HStack>
         </HStack>
       </Box>
-
     </SlideFade>
   </>);
 }
