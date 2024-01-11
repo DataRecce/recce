@@ -35,6 +35,7 @@ import {
 import { IconType } from "react-icons";
 import { FiAlignLeft } from "react-icons/fi";
 import { AddIcon, CopyIcon } from "@chakra-ui/icons";
+import copy from "copy-to-clipboard";
 
 const ChecklistItem = ({
   check,
@@ -192,15 +193,16 @@ export const CheckPage = () => {
                 mr="10px"
                 onClick={() => {
                   const markdown = buildMarkdown(checks);
-                  navigator.clipboard.writeText(markdown);
-                  exportChecksToast({
-                    description: `Copied ${checks.length} checks to the clipboard`,
-                    status: "info",
-                    variant: "left-accent",
-                    position: "bottom",
-                    duration: 5000,
-                    isClosable: true,
-                  });
+                  if (copy(markdown)) {
+                    exportChecksToast({
+                      description: `Copied ${checks.length} checks to the clipboard`,
+                      status: "info",
+                      variant: "left-accent",
+                      position: "bottom",
+                      duration: 5000,
+                      isClosable: true,
+                    });
+                  }
                 }}
                 icon={<CopyIcon />}
               />

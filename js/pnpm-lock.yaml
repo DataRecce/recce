@@ -29,6 +29,9 @@ dependencies:
   axios:
     specifier: ^1.6.0
     version: 1.6.0
+  copy-to-clipboard:
+    specifier: ^3.3.3
+    version: 3.3.3
   dagre:
     specifier: ^0.8.5
     version: 0.8.5
