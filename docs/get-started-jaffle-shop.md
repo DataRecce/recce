@@ -88,6 +88,12 @@
    select * from {{ ref("orders") }} order by 1
    ```
 
+   Click the `Run Diff` or press `Cmd + Shift + Enter`
+
    Click on the 🔑 icon next to the `order_id` column to compare records that are uniquely identified by their `order_id`.
 
    ![](assets/jaffle_shop_query.png)
+
+1. Click the `+` to add the query result to checklist
+
+   ![](assets/jaffle_shop_check.png)
