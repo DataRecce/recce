@@ -84,7 +84,7 @@ function toDataDiffGrid(base?: DataFrame, current?: DataFrame) {
 
     const cellClass = (row: any) => {
       if (!_.isEqual(row[`base__${name}`], row[`current__${name}`])) {
-        return "diff-cell";
+        return "diff-cell-modified";
       }
 
       return undefined;
@@ -237,14 +237,16 @@ export const ProfileDiffDataGrid = ({
     return <Center height="100%">No data</Center>;
   }
 
-  return (<>
-    <ScreenshotDataGrid
-      style={{ blockSize: "auto", maxHeight: "100%", overflow: "auto" }}
-      columns={gridData.columns}
-      rows={gridData.rows}
-      defaultColumnOptions={{ resizable: true, maxWidth: 800, minWidth: 35 }}
-      className="rdg-light"
-      enableScreenshot={enableScreenshot}
-    />
-  </>);
+  return (
+    <>
+      <ScreenshotDataGrid
+        style={{ blockSize: "auto", maxHeight: "100%", overflow: "auto" }}
+        columns={gridData.columns}
+        rows={gridData.rows}
+        defaultColumnOptions={{ resizable: true, maxWidth: 800, minWidth: 35 }}
+        className="rdg-light"
+        enableScreenshot={enableScreenshot}
+      />
+    </>
+  );
 };
