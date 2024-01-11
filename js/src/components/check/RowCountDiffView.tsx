@@ -36,7 +36,9 @@ export function RowCountDiffView({ check }: RowCountDiffViewProps) {
   });
 
   function columnCellClass(row: RowCountDiffRow) {
-    if (row.base < row.current || row.base === "N/A") {
+    if (row.base === row.current) {
+      return "column-body-normal";
+    } else if (row.base < row.current || row.base === "N/A") {
       return "column-body-added";
     } else if (row.base > row.current || row.current === "N/A"){
       return "column-body-removed";
