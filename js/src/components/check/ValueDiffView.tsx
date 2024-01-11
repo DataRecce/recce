@@ -88,9 +88,11 @@ function ValueDiffErrorHints({ errors }: { errors: ValueDiffError[] }) {
 }
 
 export function ValueDiffPanel({
-  valueDiffSummary
+  valueDiffSummary,
+  enableScreenshot = false,
 }: {
-  valueDiffSummary: ValueDiffSummary
+  valueDiffSummary: ValueDiffSummary,
+  enableScreenshot?: boolean
 }) {
 
   return <>
@@ -115,7 +117,7 @@ export function ValueDiffPanel({
         rows={valueDiffSummary.data}
         defaultColumnOptions={{ resizable: true }}
         className="rdg-light"
-        enableScreenshot={true}
+        enableScreenshot={enableScreenshot}
       />)}
   </>;
 }
@@ -137,7 +139,7 @@ export function ValueDiffView({ check }: ValueDiffViewProp) {
   return (
     <>
       <Box p={5}>
-        {summary && <ValueDiffPanel valueDiffSummary={summary} />}
+        {summary && <ValueDiffPanel valueDiffSummary={summary} enableScreenshot={true} />}
       </Box>
     </>
   );
