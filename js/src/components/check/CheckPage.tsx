@@ -192,12 +192,13 @@ export const CheckPage = () => {
                 mr="10px"
                 onClick={() => {
                   const markdown = buildMarkdown(checks);
-                  if (navigator.clipboard === undefined) {
+                  if (!navigator.clipboard) {
                     failToast(
                       new Error(
                         "Copy to clipboard is available only in secure contexts (HTTPS)"
                       )
                     );
+                    return;
                   }
                   navigator.clipboard
                     .writeText(markdown)
