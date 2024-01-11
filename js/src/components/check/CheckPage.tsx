@@ -35,7 +35,6 @@ import {
 import { IconType } from "react-icons";
 import { FiAlignLeft } from "react-icons/fi";
 import { AddIcon, CopyIcon } from "@chakra-ui/icons";
-import copy from "copy-to-clipboard";
 
 const ChecklistItem = ({
   check,
@@ -109,7 +108,7 @@ export const CheckPage = () => {
   const [, setLocation] = useLocation();
   const [, params] = useRoute("/checks/:checkId");
   const queryClient = useQueryClient();
-  const exportChecksToast = useToast();
+  const { successToast, failToast } = useClipBoardToast();
   const selectedItem = params?.checkId;
 
   const {
@@ -193,16 +192,23 @@ export const CheckPage = () => {
                 mr="10px"
                 onClick={() => {
                   const markdown = buildMarkdown(checks);
-                  if (copy(markdown)) {
-                    exportChecksToast({
-                      description: `Copied ${checks.length} checks to the clipboard`,
-                      status: "info",
-                      variant: "left-accent",
-                      position: "bottom",
-                      duration: 5000,
-                      isClosable: true,
-                    });
+                  if (navigator.clipboard === undefined) {
+                    failToast(
+                      new Error(
+                        "Copy to clipboard is available only in secure contexts (HTTPS)"
+                      )
+                    );
                   }
+                  navigator.clipboard
+                    .writeText(markdown)
+                    .then(() => {
+                      successToast(
+                        `Copied ${checks.length} checks to the clipboard`
+                      );
+                    })
+                    .catch((err) => {
+                      failToast(err);
+                    });
                 }}
                 icon={<CopyIcon />}
               />
@@ -249,4 +255,36 @@ function buildTitle(check: Check) {
 
 function buildDescription(check: Check) {
   return check.description ? check.description : "_(no description)_";
+}
+
+function useClipBoardToast() {
+  const clipboardToast = useToast();
+
+  function successToast(message: string) {
+    clipboardToast({
+      description: message,
+      status: "info",
+      variant: "left-accent",
+      position: "bottom",
+      duration: 5000,
+      isClosable: true,
+    });
+  }
+
+  function failToast(error: any) {
+    clipboardToast({
+      title: "Failed to copy checklist to clipboard",
+      description: `${error}`,
+      status: "error",
+      variant: "left-accent",
+      position: "bottom",
+      duration: 5000,
+      isClosable: true,
+    });
+  }
+
+  return {
+    successToast,
+    failToast,
+  };
 }
