@@ -103,7 +103,7 @@ def diff(sql, primary_keys: List[str] = None, keep_shape: bool = False, keep_equ
 
 
 @cli.command(cls=TrackCommand)
-@click.option('--host', default='0.0.0.0', show_default=True, help='The host to bind to.')
+@click.option('--host', default='localhost', show_default=True, help='The host to bind to.')
 @click.option('--port', default=8000, show_default=True, help='The port to bind to.', type=int)
 @add_options(dbt_related_options)
 def server(host, port, **kwargs):
