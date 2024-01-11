@@ -62,27 +62,19 @@ export const CheckPage = () => {
   });
 
   const handleDragEnd = useCallback(
-    (result: DropResult) => {
-      if (!result.destination) {
-        return; // Dragged outside the list
-      }
-      if (!orderedChecks || orderedChecks.length === 0) {
-        return;
-      }
-
+    (source: number, destination: number) => {
       const updatedItems = [...orderedChecks];
-      const [reorderedItem] = updatedItems.splice(result.source.index, 1);
-      updatedItems.splice(result.destination.index, 0, reorderedItem);
+      const [reorderedItem] = updatedItems.splice(source, 1);
+      updatedItems.splice(destination, 0, reorderedItem);
 
       changeChecksOrder({
-        source: result.source.index,
-        destination: result.destination.index,
+        source,
+        destination,
       });
 
       setOrderedChecks(updatedItems);
-      setLocation(`/checks/${updatedItems[result.destination.index].check_id}`);
     },
-    [orderedChecks, setOrderedChecks, setLocation, changeChecksOrder]
+    [orderedChecks, setOrderedChecks, changeChecksOrder]
   );
 
   const addToChecklist = useCallback(async () => {
@@ -133,7 +125,7 @@ export const CheckPage = () => {
         height="100%"
         style={{ contain: "size" }}
       >
-        <VStack spacing={0} align="flex-end">
+        <VStack spacing={0} align="flex-end" h="100%">
           <HStack>
             <Tooltip label="Create a simple check">
               <IconButton

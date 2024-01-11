@@ -99,10 +99,18 @@ export const CheckList = ({
   checks: Check[];
   selectedItem?: string;
   onCheckSelected: (checkId: string) => void;
-  onChecksReordered: (result: DropResult) => void;
+  onChecksReordered: (source: number, destination: number) => void;
 }) => {
+  const onDragEnd = (result: DropResult) => {
+    if (!result.destination) {
+      return;
+    }
+
+    onChecksReordered(result.source.index, result.destination.index);
+  };
+
   return (
-    <DragDropContext onDragEnd={onChecksReordered}>
+    <DragDropContext onDragEnd={onDragEnd}>
       <Droppable droppableId="checklist">
         {(provided) => (
           <VStack
@@ -110,6 +118,7 @@ export const CheckList = ({
             ref={provided.innerRef}
             w="full"
             spacing="0"
+            flex="1"
           >
             {checks.map((check, index) => (
               <Draggable
