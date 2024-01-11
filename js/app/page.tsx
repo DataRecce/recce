@@ -10,7 +10,6 @@ import { reactQueryClient } from "@/lib/api/axiosClient";
 import { useVersionNumber } from "@/lib/api/version";
 import { CheckPage } from "@/components/check/CheckPage";
 import { QueryPage } from "@/components/query/QueryPage";
-import SummaryView from "@/components/summary/SummaryView";
 import { Redirect, Route, Router, Switch, useLocation } from "wouter";
 
 import _ from "lodash";
@@ -29,7 +28,6 @@ function NavBar() {
     ["Lineage", "/lineage"],
     ["Query", "/query"],
     ["Checklist", "/checks"],
-    ["Summary", "/summary"],
   ];
 
   const tabIndex = _.findIndex(tabs, ([, href]) => location.startsWith(href));
@@ -92,9 +90,6 @@ export default function Home() {
                 </Route>
                 <Route path="/checks/:slug*">
                   <CheckPage />
-                </Route>
-                <Route path="/summary">
-                  <SummaryView />
                 </Route>
                 <Route path="/ssr">
                   <>Loading</>

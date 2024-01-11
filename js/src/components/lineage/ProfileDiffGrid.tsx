@@ -164,7 +164,7 @@ export const ProfileDiffDataGrid = ({
   result,
   error,
   onCancel,
-  enableScreenshot,
+  enableScreenshot=false,
 }: ProfileDataGridProps) => {
   const [isAborting, setAborting] = useState(false);
   const gridData = useMemo(() => {
