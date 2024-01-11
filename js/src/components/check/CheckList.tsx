@@ -1,6 +1,6 @@
 import "react-data-grid/lib/styles.css";
-import React, { useEffect, useState } from "react";
-import { Check, reorderChecks, updateCheck } from "@/lib/api/checks";
+import React from "react";
+import { Check, updateCheck } from "@/lib/api/checks";
 import { Box, Flex, Icon, VStack } from "@chakra-ui/react";
 import { cacheKeys } from "@/lib/api/cacheKeys";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
@@ -93,45 +93,16 @@ const ChecklistItem = ({
 export const CheckList = ({
   checks,
   selectedItem,
-  onSelectHandler,
+  onCheckSelected,
+  onChecksReordered,
 }: {
   checks: Check[];
   selectedItem?: string;
-  onSelectHandler: (checkId: string) => void;
+  onCheckSelected: (checkId: string) => void;
+  onChecksReordered: (result: DropResult) => void;
 }) => {
-  const queryClient = useQueryClient();
-  const [orderedChecks, setOrderedChecks] = useState<Check[]>(checks);
-  const { mutate } = useMutation({
-    mutationFn: (order: { source: number; destination: number }) =>
-      reorderChecks(order),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: cacheKeys.checks() });
-    },
-  });
-
-  useEffect(() => {
-    setOrderedChecks(checks);
-  }, [checks, setOrderedChecks]);
-
-  const handleDragEnd = (result: DropResult) => {
-    if (!result.destination) {
-      return; // Dragged outside the list
-    }
-
-    const updatedItems = [...orderedChecks];
-    const [reorderedItem] = updatedItems.splice(result.source.index, 1);
-    updatedItems.splice(result.destination.index, 0, reorderedItem);
-
-    mutate({
-      source: result.source.index,
-      destination: result.destination.index,
-    });
-
-    setOrderedChecks(updatedItems);
-  };
-
   return (
-    <DragDropContext onDragEnd={handleDragEnd}>
+    <DragDropContext onDragEnd={onChecksReordered}>
       <Droppable droppableId="checklist">
         {(provided) => (
           <VStack
@@ -140,7 +111,7 @@ export const CheckList = ({
             w="full"
             spacing="0"
           >
-            {orderedChecks.map((check, index) => (
+            {checks.map((check, index) => (
               <Draggable
                 key={check.check_id}
                 draggableId={check.check_id}
@@ -157,7 +128,7 @@ export const CheckList = ({
                       key={check.check_id}
                       check={check}
                       selected={check.check_id === selectedItem}
-                      onSelect={onSelectHandler}
+                      onSelect={onCheckSelected}
                     />
                   </Flex>
                 )}

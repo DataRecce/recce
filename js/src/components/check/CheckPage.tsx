@@ -1,6 +1,11 @@
 import "react-data-grid/lib/styles.css";
-import React, { useCallback, useEffect } from "react";
-import { Check, createSimpleCheck, listChecks } from "@/lib/api/checks";
+import React, { useCallback, useEffect, useState } from "react";
+import {
+  Check,
+  createSimpleCheck,
+  listChecks,
+  reorderChecks,
+} from "@/lib/api/checks";
 import {
   Box,
   Button,
@@ -15,11 +20,12 @@ import {
 } from "@chakra-ui/react";
 import { CheckDetail } from "./CheckDetail";
 import { cacheKeys } from "@/lib/api/cacheKeys";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import _ from "lodash";
 import { Route, Switch, useLocation, useRoute } from "wouter";
 import { AddIcon, CopyIcon } from "@chakra-ui/icons";
 import { CheckList } from "./CheckList";
+import { DropResult } from "@hello-pangea/dnd";
 
 export const CheckPage = () => {
   const [, setLocation] = useLocation();
@@ -46,6 +52,39 @@ export const CheckPage = () => {
     [setLocation]
   );
 
+  const [orderedChecks, setOrderedChecks] = useState(checks || []);
+  const { mutate: changeChecksOrder } = useMutation({
+    mutationFn: (order: { source: number; destination: number }) =>
+      reorderChecks(order),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: cacheKeys.checks() });
+    },
+  });
+
+  const handleDragEnd = useCallback(
+    (result: DropResult) => {
+      if (!result.destination) {
+        return; // Dragged outside the list
+      }
+      if (!orderedChecks || orderedChecks.length === 0) {
+        return;
+      }
+
+      const updatedItems = [...orderedChecks];
+      const [reorderedItem] = updatedItems.splice(result.source.index, 1);
+      updatedItems.splice(result.destination.index, 0, reorderedItem);
+
+      changeChecksOrder({
+        source: result.source.index,
+        destination: result.destination.index,
+      });
+
+      setOrderedChecks(updatedItems);
+      setLocation(`/checks/${updatedItems[result.destination.index].check_id}`);
+    },
+    [orderedChecks, setOrderedChecks, setLocation, changeChecksOrder]
+  );
+
   const addToChecklist = useCallback(async () => {
     const check = await createSimpleCheck();
     queryClient.invalidateQueries({ queryKey: cacheKeys.checks() });
@@ -61,7 +100,9 @@ export const CheckPage = () => {
     if (!selectedItem && checks.length > 0) {
       setLocation(`/checks/${checks[0].check_id}`);
     }
-  }, [status, selectedItem, checks, setLocation]);
+
+    setOrderedChecks(checks);
+  }, [status, selectedItem, checks, setOrderedChecks, setLocation]);
 
   if (isLoading) {
     return <>Loading</>;
@@ -135,9 +176,10 @@ export const CheckPage = () => {
 
           <Divider mb="8px" />
           <CheckList
-            checks={checks}
+            checks={orderedChecks}
             selectedItem={selectedItem}
-            onSelectHandler={handleSelectItem}
+            onCheckSelected={handleSelectItem}
+            onChecksReordered={handleDragEnd}
           />
         </VStack>
       </Box>
