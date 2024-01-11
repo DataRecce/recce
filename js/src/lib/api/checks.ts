@@ -74,3 +74,7 @@ export async function deleteCheck(checkId: string) {
   const response = await axiosClient.delete(`/api/checks/${checkId}`);
   return response.data;
 }
+
+export async function reorderChecks(order: {source: number, destination: number}) {
+  return await axiosClient.post("/api/checks/reorder", order);
+}

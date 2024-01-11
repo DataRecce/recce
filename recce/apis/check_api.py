@@ -222,3 +222,17 @@ async def delete_handler(check_id: UUID):
     checks_db.remove(found)
 
     return DeleteCheckOut(check_id=check_id).dict()
+
+
+class ReorderChecksIn(BaseModel):
+    source: int
+    destination: int
+
+
+@check_router.post("/checks/reorder", status_code=200)
+async def reorder_handler(order: ReorderChecksIn):
+    if 0 <= order.source < len(checks_db) and 0 <= order.destination < len(checks_db):
+        check_to_move = checks_db.pop(order.source)
+        checks_db.insert(order.destination, check_to_move)
+    else:
+        raise HTTPException(status_code=400, detail='Failed to reorder checks')

@@ -1,10 +1,10 @@
 import "react-data-grid/lib/styles.css";
-import React, { useCallback, useEffect } from "react";
+import React, { useCallback, useEffect, useState } from "react";
 import {
   Check,
   createSimpleCheck,
   listChecks,
-  updateCheck,
+  reorderChecks,
 } from "@/lib/api/checks";
 import {
   Box,
@@ -13,7 +13,6 @@ import {
   Divider,
   Flex,
   HStack,
-  Icon,
   IconButton,
   Tooltip,
   VStack,
@@ -24,85 +23,9 @@ import { cacheKeys } from "@/lib/api/cacheKeys";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import _ from "lodash";
 import { Route, Switch, useLocation, useRoute } from "wouter";
-import { FaCheckCircle } from "react-icons/fa";
-import {
-  TbChecklist,
-  TbSql,
-  TbSchema,
-  TbAlignBoxLeftStretch,
-  TbChartHistogram,
-} from "react-icons/tb";
-import { IconType } from "react-icons";
-import { FiAlignLeft } from "react-icons/fi";
 import { AddIcon, CopyIcon } from "@chakra-ui/icons";
-
-const ChecklistItem = ({
-  check,
-  selected,
-  onSelect,
-}: {
-  check: Check;
-  selected: boolean;
-  onSelect: (checkId: string) => void;
-}) => {
-  const queryClient = useQueryClient();
-  const checkId = check.check_id!;
-  const { mutate } = useMutation({
-    mutationFn: (check: Partial<Check>) => updateCheck(checkId, check),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: cacheKeys.check(checkId) });
-      queryClient.invalidateQueries({ queryKey: cacheKeys.checks() });
-    },
-  });
-
-  const handleChange: React.ChangeEventHandler = (event) => {
-    const isChecked: boolean = (event.target as any).checked;
-    mutate({ is_checked: isChecked });
-  };
-
-  const icon: IconType = ((type) => {
-    switch (type) {
-      case "schema_diff":
-        return TbSchema;
-      case "query":
-      case "query_diff":
-        return TbSql;
-      case "value_diff":
-        return TbAlignBoxLeftStretch;
-      case "profile_diff":
-        return TbChartHistogram;
-      case "row_count_diff":
-        return FiAlignLeft;
-      default:
-        return TbChecklist;
-    }
-  })(check.type);
-
-  return (
-    <Flex
-      width="100%"
-      p="10px 20px"
-      cursor="pointer"
-      _hover={{ bg: "gray.200" }}
-      bg={selected ? "gray.100" : "inherit"}
-      onClick={() => onSelect(check.check_id)}
-      alignItems="center"
-      gap="5px"
-    >
-      <Icon as={icon} />
-      <Box
-        flex="1"
-        textOverflow="ellipsis"
-        whiteSpace="nowrap"
-        overflow="hidden"
-      >
-        {check.name}
-      </Box>
-
-      {check.is_checked && <Icon color="green" as={FaCheckCircle} />}
-    </Flex>
-  );
-};
+import { CheckList } from "./CheckList";
+import { DropResult } from "@hello-pangea/dnd";
 
 export const CheckPage = () => {
   const [, setLocation] = useLocation();
@@ -129,6 +52,31 @@ export const CheckPage = () => {
     [setLocation]
   );
 
+  const [orderedChecks, setOrderedChecks] = useState(checks || []);
+  const { mutate: changeChecksOrder } = useMutation({
+    mutationFn: (order: { source: number; destination: number }) =>
+      reorderChecks(order),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: cacheKeys.checks() });
+    },
+  });
+
+  const handleDragEnd = useCallback(
+    (source: number, destination: number) => {
+      const updatedItems = [...orderedChecks];
+      const [reorderedItem] = updatedItems.splice(source, 1);
+      updatedItems.splice(destination, 0, reorderedItem);
+
+      changeChecksOrder({
+        source,
+        destination,
+      });
+
+      setOrderedChecks(updatedItems);
+    },
+    [orderedChecks, setOrderedChecks, changeChecksOrder]
+  );
+
   const addToChecklist = useCallback(async () => {
     const check = await createSimpleCheck();
     queryClient.invalidateQueries({ queryKey: cacheKeys.checks() });
@@ -144,7 +92,9 @@ export const CheckPage = () => {
     if (!selectedItem && checks.length > 0) {
       setLocation(`/checks/${checks[0].check_id}`);
     }
-  }, [status, selectedItem, checks, setLocation]);
+
+    setOrderedChecks(checks);
+  }, [status, selectedItem, checks, setOrderedChecks, setLocation]);
 
   if (isLoading) {
     return <>Loading</>;
@@ -175,7 +125,7 @@ export const CheckPage = () => {
         height="100%"
         style={{ contain: "size" }}
       >
-        <VStack spacing={0} align="flex-end">
+        <VStack spacing={0} align="flex-end" h="100%">
           <HStack>
             <Tooltip label="Create a simple check">
               <IconButton
@@ -217,14 +167,12 @@ export const CheckPage = () => {
           </HStack>
 
           <Divider mb="8px" />
-          {checks.map((check) => (
-            <ChecklistItem
-              key={check.check_id}
-              check={check}
-              selected={check.check_id === selectedItem}
-              onSelect={handleSelectItem}
-            />
-          ))}
+          <CheckList
+            checks={orderedChecks}
+            selectedItem={selectedItem}
+            onCheckSelected={handleSelectItem}
+            onChecksReordered={handleDragEnd}
+          />
         </VStack>
       </Box>
       <Box flex="1" height="100%" width="calc(100% - 400px)">
