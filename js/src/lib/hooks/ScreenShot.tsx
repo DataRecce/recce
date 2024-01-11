@@ -163,7 +163,7 @@ export function useCopyToClipboardButton() {
     shadowEffect: true,
     onSuccess: async (blob) => {
       try {
-        copyBlobToClipboard(blob);
+        await copyBlobToClipboard(blob);
         successToast();
       } catch (error) {
         failToast(error);
