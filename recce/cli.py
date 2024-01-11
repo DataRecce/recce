@@ -43,7 +43,7 @@ def version():
     print(__version__)
 
 
-@cli.command(cls=TrackCommand)
+@cli.command(hidden=True, cls=TrackCommand)
 @click.option('--sql', help='Sql template to query', required=True)
 @click.option('--base', is_flag=True, help='Run the query on the base environment')
 @add_options(dbt_related_options)
@@ -68,7 +68,7 @@ def _split_comma_separated(ctx, param, value):
     return value.split(',') if value else None
 
 
-@cli.command(cls=TrackCommand)
+@cli.command(hidden=True, cls=TrackCommand)
 @click.option('--sql', help='Sql template to query.', required=True)
 @click.option('--primary-keys', type=click.STRING, help='Comma-separated list of primary key columns.',
               callback=_split_comma_separated)
