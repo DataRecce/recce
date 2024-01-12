@@ -29,6 +29,7 @@ import {
   MenuList,
   MenuItem,
   Center,
+  useToast,
 } from "@chakra-ui/react";
 import React, { useEffect, useState } from "react";
 import ReactFlow, {
@@ -42,19 +43,23 @@ import ReactFlow, {
   Background,
   ReactFlowProvider,
   ControlButton,
+  useReactFlow,
+  getRectOfNodes,
+  getTransformForBounds,
 } from "reactflow";
 import dagre from "dagre";
 import "reactflow/dist/style.css";
 import { GraphNode } from "./GraphNode";
 import GraphEdge from "./GraphEdge";
 import { getIconForChangeStatus } from "./styles";
-import { FiDownloadCloud, FiRefreshCw, FiList } from "react-icons/fi";
+import { FiRefreshCw, FiList, FiCopy } from "react-icons/fi";
 import { BiArrowFromBottom, BiArrowToBottom } from "react-icons/bi";
 import { NodeView } from "./NodeView";
-import { toPng } from "html-to-image";
+import { toBlob } from "html-to-image";
 import { useLineageGraphsContext } from "@/lib/hooks/LineageGraphContext";
 import SummaryView from "../summary/SummaryView";
 import { NodeSelector } from "./NodeSelector";
+
 
 const layout = (nodes: Node[], edges: Edge[], direction = "LR") => {
   const dagreGraph = new dagre.graphlib.Graph();
@@ -140,6 +145,8 @@ function ChangeStatusLegend() {
 }
 
 function _LineageView() {
+  const { getNodes } = useReactFlow();
+  const clipboardToast = useToast();
   const [nodes, setNodes, onNodesChange] = useNodesState([]);
   const [edges, setEdges, onEdgesChange] = useEdgesState([]);
   const [lineageGraph, setLineageGraph] = useState<LineageGraph>();
@@ -283,27 +290,53 @@ function _LineageView() {
     setIsContextMenuRendered(true);
   };
 
-  const onDownloadImage = () => {
-    // const { x, y, zoom } = getViewport();
+  const onCopyImage = async () => {
+    const imageWidth = 1024, imageHeight = 768;
+    const nodesBounds = getRectOfNodes(getNodes());
+    const transform = getTransformForBounds(nodesBounds, imageWidth, imageHeight, 0.1, 2);
+
     const reactFlowViewport = document.querySelector(".react-flow__viewport");
-    if (reactFlowViewport?.parentElement) {
-      toPng(reactFlowViewport?.parentElement, {
-        backgroundColor: "#ffffff00",
-        width: reactFlowViewport?.parentElement.clientWidth,
-        height: reactFlowViewport?.parentElement.clientHeight,
-        style: {
-          width: `${reactFlowViewport?.parentElement.clientWidth}`,
-          height: `${reactFlowViewport?.parentElement.clientHeight}`,
-          // transform: `translate(${x}px, ${y}px) scale(${zoom})`,
-        },
-      }).then((dataUrl) => {
-        const a = document.createElement("a");
-        a.setAttribute("download", "recce-lineage.png");
-        // a.setAttribute('filename', 'recce-lineage.png');
-        a.setAttribute("target", "_blank");
-        a.setAttribute("href", dataUrl);
-        a.click();
-      });
+    if (reactFlowViewport) {
+      try {
+        const blob = await toBlob(reactFlowViewport as HTMLElement, {
+          backgroundColor: "#ffffff00",
+          width: imageWidth,
+          height: imageHeight,
+          style: {
+            width: `${imageWidth}`,
+            height: `${imageHeight}`,
+            transform: `translate(${transform[0]}px, ${transform[1]}px) scale(${transform[2]})`,
+          },
+        });
+
+        if (blob === null) {
+          console.error("Fail to convert react flow to image");
+          return;
+        }
+        await navigator.clipboard.write([
+          new ClipboardItem({
+            [blob.type]: blob
+          })
+        ]);
+        clipboardToast({
+          description: "Copied the Lineage View as an image to clipboard",
+          status: "info",
+          variant: "left-accent",
+          position: "bottom",
+          duration: 2000,
+          isClosable: true,
+        });
+      } catch (e) {
+        clipboardToast({
+          title: "Failed to copy image to clipboard",
+          description: `${e}`,
+          status: "error",
+          variant: "left-accent",
+          position: "bottom",
+          duration: 5000,
+          isClosable: true,
+        });
+      }
     }
   };
 
@@ -363,8 +396,10 @@ function _LineageView() {
             >
               <Icon as={FiRefreshCw} />
             </ControlButton>
-            <ControlButton title="download image" onClick={onDownloadImage}>
-              <Icon as={FiDownloadCloud} />
+            <ControlButton
+              title="copy image"
+              onClick={onCopyImage}>
+              <Icon as={FiCopy} />
             </ControlButton>
             <ControlButton title="summary" onClick={onOpen}>
               <Icon as={FiList} />
