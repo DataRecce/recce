@@ -8,6 +8,7 @@ from typing import Callable, Dict, List, Optional, Union
 
 import agate
 import pandas as pd
+from dbt.adapters.base import Column
 from dbt.adapters.factory import get_adapter_by_type
 from dbt.adapters.sql import SQLAdapter
 from dbt.cli.main import dbtRunner
@@ -17,7 +18,7 @@ from dbt.config.runtime import load_profile, load_project
 from dbt.contracts.files import FileHash
 from dbt.contracts.graph.manifest import Manifest, WritableManifest
 from dbt.contracts.graph.model_config import ContractConfig, NodeConfig
-from dbt.contracts.graph.nodes import Contract, DependsOn, ManifestNode, ModelNode, ResultNode, SourceDefinition
+from dbt.contracts.graph.nodes import Contract, DependsOn, ManifestNode, ModelNode, SourceDefinition
 from dbt.contracts.graph.unparsed import Docs
 from dbt.contracts.results import CatalogArtifact
 from dbt.node_types import AccessType, ModelLanguage, NodeType
@@ -247,8 +248,9 @@ class DBTContext:
 
         return dbt_context
 
-    def get_columns(self, node: ResultNode):
-        relation = self.adapter.Relation.create_from(self.project, node)
+    def get_columns(self, model: str, base=False) -> List[Column]:
+        relation = self.create_relation(model, base)
+
         return self.adapter.execute_macro(
             'get_columns_in_relation',
             kwargs={"relation": relation},
@@ -316,7 +318,7 @@ class DBTContext:
             df = pd.DataFrame([row.values() for row in table.rows], columns=table.column_names)
             return df
 
-    def generate_sql(self, sql_template: str, base: bool, context: Dict = None):
+    def generate_sql(self, sql_template: str, base: bool = False, context: Dict = None):
         try:
             return generate_compiled_sql(self.get_manifest(base), self.adapter, sql_template, context)
         except BaseException as e:
@@ -466,6 +468,9 @@ class DBTContext:
 
     def get_base_relation(self, model):
         return self.adapter.Relation.create_from(self.project, self.find_node_by_name(model, base=True))
+
+    def create_relation(self, model, base=False):
+        return self.adapter.Relation.create_from(self.project, self.find_node_by_name(model, base))
 
     def model_profile(self, model: str, base: bool = False):
         sql_template = r"""
