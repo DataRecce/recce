@@ -465,14 +465,7 @@ class DBTContext:
                 self.base_catalog = load_catalog(refresh_file_path)
 
     def get_base_relation(self, model):
-        relation_holder = dict()
-        with self.adapter.connection_named('test'):
-            def callback(x):
-                relation_holder['relation'] = x
-
-            tmp = f"""{{{{ config_base_relation(ref("{model}")) }}}}"""
-            self.generate_sql(tmp, True, dict(config_base_relation=callback))
-        return relation_holder.get('relation')
+        return self.adapter.Relation.create_from(self.project, self.find_node_by_name(model, base=True))
 
     def model_profile(self, model: str, base: bool = False):
         sql_template = r"""

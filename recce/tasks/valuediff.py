@@ -5,6 +5,7 @@ import pandas as pd
 
 from recce.dbt import default_dbt_context
 from .core import Task
+from ..exceptions import RecceException
 
 
 class ValueDiffParams(TypedDict):
@@ -22,22 +23,21 @@ class ValueDiffTask(Task):
     def execute(self):
         dbt_context = default_dbt_context()
         adapter = dbt_context.adapter
-        primary_key: str = self.params['primary_key']
-        model: str = self.params['model']
 
+        with adapter.connection_named("valuediff"):
+            primary_key: str = self.params['primary_key']
+            model: str = self.params['model']
+
+            self._verify_audit_helper(dbt_context)
+            self.check_cancel()
+
+            self._verify_primary_key(dbt_context, primary_key, model)
+            self.check_cancel()
+
+            return self._query_value_diff(dbt_context, primary_key, model)
+
+    def _query_value_diff(self, dbt_context, primary_key: str, model: str):
         column_groups = {}
-        errors = self.verify_primary_key(primary_key, model)
-
-        if errors:
-            columns = ['Column', 'Matched', 'Matched %']
-            df = pd.DataFrame([], columns=columns)
-            result = dict(
-                summary=dict(total=0, added=0, removed=0),
-                data=json.loads(df.to_json(orient='table', index=False)),
-                raw=column_groups,
-                errors=errors
-            )
-            return result
 
         def log_callback(data, info=False):
 
@@ -133,44 +133,41 @@ class ValueDiffTask(Task):
         {% endif %}
         """
 
-        with adapter.connection_named('test'):
-            dbt_context.generate_sql(sql_template, False,
-                                     dict(
-                                         model=model,
-                                         primary_key=primary_key,
-                                         log_callback=log_callback,
-                                         base_relation=dbt_context.get_base_relation(model),
-                                         pick_columns_to_compare=pick_columns_to_compare)
-                                     )
+        dbt_context.generate_sql(sql_template, False,
+                                 dict(
+                                     model=model,
+                                     primary_key=primary_key,
+                                     log_callback=log_callback,
+                                     base_relation=dbt_context.get_base_relation(model),
+                                     pick_columns_to_compare=pick_columns_to_compare)
+                                 )
 
-            data = []
-            for k, v in column_groups.items():
-                matched = v['matched']
-                mismatched = v['mismatched']
-                rate_base = matched + mismatched
-                rate = None if rate_base == 0 else 100 * (matched / rate_base)
-                record = [k, matched, rate]
-                data.append(record)
+        data = []
+        for k, v in column_groups.items():
+            matched = v['matched']
+            mismatched = v['mismatched']
+            rate_base = matched + mismatched
+            rate = None if rate_base == 0 else 100 * (matched / rate_base)
+            record = [k, matched, rate]
+            data.append(record)
 
-            pk = [v for k, v in column_groups.items() if k.lower() == primary_key.lower()][0]
-            added = pk['added']
-            removed = pk['removed']
-            total = pk['matched'] + added + removed
+        pk = [v for k, v in column_groups.items() if k.lower() == primary_key.lower()][0]
+        added = pk['added']
+        removed = pk['removed']
+        total = pk['matched'] + added + removed
 
-            columns = ['Column', 'Matched', 'Matched %']
-            df = pd.DataFrame(data, columns=columns)
+        columns = ['Column', 'Matched', 'Matched %']
+        df = pd.DataFrame(data, columns=columns)
 
-            result = dict(
-                summary=dict(total=total, added=added, removed=removed),
-                data=json.loads(df.to_json(orient='table', index=False)),
-                raw=column_groups,
-                errors=errors
-            )
-            return result
+        result = dict(
+            summary=dict(total=total, added=added, removed=removed),
+            data=json.loads(df.to_json(orient='table', index=False)),
+            raw=column_groups,
+            errors=None
+        )
+        return result
 
-    def verify_primary_key(self, primary_key: str, model: str):
-        dbt_context = default_dbt_context()
-        errors = []
+    def _verify_primary_key(self, dbt_context, primary_key: str, model: str):
 
         def callback(check_name, executor, sql, is_base: bool):
             table = executor(sql)
@@ -178,12 +175,8 @@ class ValueDiffTask(Task):
             if invalids == 1:
                 values = [r.values() for r in table.rows][0]
                 if values != (0,):
-                    errors.append(dict(
-                        test=check_name,
-                        sql=sql,
-                        model=model,
-                        column_name=primary_key,
-                        base=is_base))
+                    raise RecceException(
+                        f"Invalid primary key: {primary_key}. The column should be not null and unique")
             else:
                 # it will never happen unless we use a wrong check sql
                 raise BaseException('Cannot verify primary key')
@@ -202,25 +195,7 @@ class ValueDiffTask(Task):
         {{ callback(check_name, run_query, test_unique_query, base) }}
         """
 
-        def validate_audit_helper():
-            check_audit_helper = "{{ audit_helper.compare_column_values }}"
-
-            with dbt_context.adapter.connection_named('test'):
-                try:
-                    dbt_context.generate_sql(check_audit_helper, False, {})
-                except BaseException as e:
-                    last_line = str(e).split("\n")[-1].strip()
-                    errors.append(dict(
-                        test='check_audit_helper',
-                        sql=last_line,
-                        model='',
-                        column_name='',
-                        base=False))
-
-        validate_audit_helper()
-        if errors:
-            return errors
-
+        # check primary keys
         for base in [True, False]:
             for check_name, query in [('not_null', not_null_query), ('unique', unique_query)]:
                 context = dict(
@@ -232,7 +207,12 @@ class ValueDiffTask(Task):
                     check_name=check_name
                 )
 
-                with dbt_context.adapter.connection_named('test'):
-                    dbt_context.generate_sql(query, base, context)
+                dbt_context.generate_sql(query, base, context)
 
-        return errors
+    def _verify_audit_helper(self, dbt_context):
+        # Check if compare_column_values macro exists
+        for macro_name, macro in dbt_context.manifest.macros.items():
+            if 'compare_column_values' in macro_name:
+                break
+        else:
+            raise RecceException(f"Cannot find macro compare_column_values")
