@@ -27,3 +27,6 @@ class Task(ABC):
 
         if self.isCancelled:
             raise RecceCancelException()
+
+    def update_progress(self, message):
+        print(f"progress: {message}")

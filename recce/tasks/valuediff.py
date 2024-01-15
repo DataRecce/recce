@@ -30,7 +30,6 @@ class ValueDiffTask(Task):
             raise RecceException(f"Cannot find macro compare_column_values")
 
     def _verify_primary_key(self, dbt_context: DBTContext, primary_key: str, model: str):
-
         query = r"""
             SELECT COUNT(*) AS INVALIDS FROM (
                 {{ adapter.dispatch('test_unique_combination_of_columns', 'dbt_utils')(
@@ -43,6 +42,7 @@ class ValueDiffTask(Task):
 
         # check primary keys
         for base in [True, False]:
+            self.update_progress(f"Verify primary key: {primary_key} for {'base' if base is True else 'current'}")
 
             relation = dbt_context.create_relation(model, base)
             context = dict(
@@ -70,6 +70,7 @@ class ValueDiffTask(Task):
         common_columns = [column for column in base_columns if column in curr_columns]
 
         for column in common_columns:
+            self.update_progress(f"Diff column: {column}")
             sql_template = r"""
             {% set a_query %}
                 select * from {{ base_relation }}
@@ -157,6 +158,7 @@ class ValueDiffTask(Task):
         result = dict(
             summary=dict(total=total, added=added, removed=removed),
             data=json.loads(df.to_json(orient='table', index=False)),
+            errors=[],
         )
         return result
 
