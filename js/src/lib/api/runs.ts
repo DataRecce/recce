@@ -22,8 +22,15 @@ export async function submitRun<PT = any, RT = any>(
   return run;
 }
 
-export async function waitRun<PT = any, RT = any>(runId: string) {
-  const response = await axiosClient.get(`/api/runs/${runId}/wait`);
+export async function waitRun<PT = any, RT = any>(
+  runId: string,
+  timeout?: number
+) {
+  const response = await axiosClient.get(`/api/runs/${runId}/wait`, {
+    params: {
+      timeout,
+    },
+  });
 
   const run: Run<PT, RT> = response.data;
 

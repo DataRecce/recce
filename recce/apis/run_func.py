@@ -1,13 +1,14 @@
 import asyncio
-from typing import Callable, Dict
+from typing import Dict, Type
 
 from recce.apis.db import runs_db
 from recce.apis.types import RunType, Run
 from recce.exceptions import RecceException, RecceCancelException
-from recce.tasks import QueryTask, ProfileDiffTask, ValueDiffTask, QueryDiffTask
+from recce.tasks import QueryTask, ProfileDiffTask, ValueDiffTask, QueryDiffTask, Task
 
 running_tasks = {}
-registry: Dict[RunType, Callable] = {
+
+registry: Dict[RunType, Type[Task]] = {
     RunType.QUERY: QueryTask,
     RunType.QUERY_DIFF: QueryDiffTask,
     RunType.VALUE_DIFF: ValueDiffTask,
@@ -37,6 +38,11 @@ def submit_run(type, params):
     runs_db.append(run)
     loop = asyncio.get_running_loop()
     running_tasks[run.run_id] = task
+
+    def progress_listener(message=None, percentage=None):
+        run.progress = {'message': message, 'percentage': percentage}
+
+    task.progress_listener = progress_listener
 
     async def update_run_result(run_id, result, error):
         if run is None:

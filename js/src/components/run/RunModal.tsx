@@ -9,6 +9,7 @@ import {
   Box,
   Button,
   Center,
+  CircularProgress,
   Flex,
   IconButton,
   Modal,
@@ -58,13 +59,20 @@ export const RunModal = <PT, RT>({
   const [runId, setRunId] = useState<string>();
   const [params, setParams] = useState<PT>(defaultParams);
   const [isAborting, setAborting] = useState(false);
+  const [progress, setProgress] = useState<Run["progress"]>();
 
   const submitRunFn = async () => {
     const { run_id } = await submitRun<PT, RT>(type, params, { nowait: true });
 
     setRunId(run_id);
 
-    return await waitRun(run_id);
+    while (true) {
+      const run = await waitRun(run_id, 2);
+      setProgress(run.progress);
+      if (run.result || run.error) {
+        return run;
+      }
+    }
   };
 
   const {
@@ -96,6 +104,7 @@ export const RunModal = <PT, RT>({
   const handleReset = () => {
     setAborting(false);
     setParams(defaultParams);
+    setProgress(undefined);
     reset();
   };
 
@@ -132,14 +141,25 @@ export const RunModal = <PT, RT>({
     }
 
     if (isPending) {
+      let loadingMessage = progress?.message ? progress?.message : "Loading...";
+
       return (
         <Center p="16px" height="100%">
           <VStack>
-            <Box>
-              <Spinner size="sm" mr="8px" />
+            <Flex alignItems="center">
+              {progress?.percentage === undefined ||
+              progress?.percentage === null ? (
+                <CircularProgress isIndeterminate size="20px" mr="8px" />
+              ) : (
+                <CircularProgress
+                  size="20px"
+                  value={progress.percentage * 100}
+                  mr="8px"
+                />
+              )}
 
-              {isAborting ? <>Aborting...</> : <>Loading...</>}
-            </Box>
+              {isAborting ? <>Aborting...</> : <>{loadingMessage}</>}
+            </Flex>
             {!isAborting && (
               <Button onClick={handleCancel} colorScheme="blue" size="sm">
                 Cancel

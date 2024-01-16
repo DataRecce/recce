@@ -34,12 +34,19 @@ class RunResult:
 
 
 @dataclass
+class RunProgress:
+    message: str
+    percentage: float
+
+
+@dataclass
 class Run:
     type: RunType
     params: Optional[dict] = None
     check_id: Optional[UUID] = None
     result: Optional[dict] = None
     error: Optional[str] = None
+    progress: Optional[RunProgress] = None
     run_id: UUID = field(default_factory=uuid.uuid4)
     run_at: str = field(default_factory=lambda: datetime.utcnow().isoformat())
 

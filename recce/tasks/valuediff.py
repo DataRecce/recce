@@ -33,7 +33,8 @@ class ValueDiffTask(Task):
 
         # check primary keys
         for base in [True, False]:
-            self.update_progress(f"Verify primary key: {primary_key} for {'base' if base is True else 'current'}")
+            self.update_progress(
+                message=f"Verify primary key: {primary_key} for {'base' if base is True else 'current'}")
 
             relation = dbt_context.create_relation(model, base)
             context = dict(
@@ -69,9 +70,10 @@ class ValueDiffTask(Task):
         base_columns = [column.column for column in dbt_context.get_columns(model, base=True)]
         curr_columns = [column.column for column in dbt_context.get_columns(model, base=False)]
         common_columns = [column for column in base_columns if column in curr_columns]
+        completed = 0
 
         for column in common_columns:
-            self.update_progress(f"Diff column: {column}")
+            self.update_progress(message=f"Diff column: {column}", percentage=completed / len(common_columns))
             sql_template = r"""
             {% set a_query %}
                 select * from {{ base_relation }}
@@ -138,6 +140,8 @@ class ValueDiffTask(Task):
 
                 # Cancel as early as possible
                 self.check_cancel()
+
+            completed = completed + 1
 
         pk = [v for k, v in column_groups.items() if k.lower() == primary_key.lower()][0]
         added = pk['added']
