@@ -1,130 +1,65 @@
-import {
-  Accordion,
-  AccordionButton,
-  AccordionIcon,
-  AccordionItem,
-  AccordionPanel,
-  Alert,
-  AlertDescription,
-  AlertIcon,
-  AlertTitle,
-  Box,
-  Code,
-} from "@chakra-ui/react";
+import { Box, Center, Flex, Icon } from "@chakra-ui/react";
 
 import { Check } from "@/lib/api/checks";
 import DataGrid, { ColumnOrColumnGroup } from "react-data-grid";
-import {
-  ValueDiffError,
-  ValueDiffParams,
-  ValueDiffResult,
-} from "@/lib/api/valuediff";
+import { ValueDiffParams, ValueDiffResult } from "@/lib/api/valuediff";
 import { ScreenshotBox } from "../screenshot/ScreenshotBox";
 import { ScreenshotDataGrid } from "../data-grid/ScreenshotDataGrid";
 import { Run } from "@/lib/api/types";
+import { RunResultViewProps } from "../run/RunModal";
+import { VscKey } from "react-icons/vsc";
 
-interface ValueDiffResultViewProp {
-  run: Run;
-}
+interface ValueDiffResultViewProp
+  extends RunResultViewProps<ValueDiffParams, ValueDiffResult> {}
 
-function ValueDiffErrorHints({ errors }: { errors: ValueDiffError[] }) {
-  if (!errors) {
-    return <></>;
-  }
-  for (let error of errors) {
-    console.log(error);
-  }
-
-  const ErrorEntry = ({ error }: { error: ValueDiffError }) => {
-    if (error.model === "" && error.column_name === "") {
-      return (
-        <>
-          <Box flex="1" textAlign="left">
-            <Alert status="error" rounded={5} flexDirection="column">
-              <AlertIcon boxSize="40px" />
-              <AlertTitle fontSize="lg" mr={2}>
-                Can not execute value-diff
-              </AlertTitle>
-              <AlertDescription>{error.sql}</AlertDescription>
-            </Alert>
-          </Box>
-        </>
-      );
-    }
-
-    return (
-      <AccordionItem>
-        <AccordionButton>
-          <Box flex="1" textAlign="left">
-            <Alert status="error" rounded={5}>
-              <AlertIcon />
-              <AlertTitle fontSize="sm" mr={2}>
-                Test column [{error.column_name}] {error.test} failed on{" "}
-                {error.base ? "base" : "current"}
-              </AlertTitle>
-            </Alert>
-          </Box>
-          <AccordionIcon />
-        </AccordionButton>
-        <AccordionPanel pb={4}>
-          <Box>
-            <Box>There are invalid data. You can check it with this query:</Box>
-            <Code m={2} p={1}>
-              {error.sql}
-            </Code>
-          </Box>
-        </AccordionPanel>
-      </AccordionItem>
-    );
-  };
-
-  return (
-    <>
-      <Accordion allowToggle mt={5} mb={5}>
-        {errors.map((e) => (
-          <ErrorEntry key={`${e.base}_${e.test}_${e.column_name}`} error={e} />
-        ))}
-      </Accordion>
-    </>
-  );
-}
 export function ValueDiffResultView({ run }: ValueDiffResultViewProp) {
   const result = run.result as ValueDiffResult;
   const params = run.params as ValueDiffParams;
 
-  const columns = result.data.schema.fields.map((field: { name: string }) => {
-    return { name: field.name, key: field.name };
+  const columns: ColumnOrColumnGroup<any, any>[] = [];
+
+  columns.push({
+    key: "name",
+    name: "",
+    maxWidth: 30,
+    renderCell: ({ column, row }) => {
+      return (
+        <Center height="100%">
+          {row.Column === params.primary_key && <Icon as={VscKey}></Icon>}
+        </Center>
+      );
+    },
+  });
+  result.data.schema.fields.forEach((field: { name: string }) => {
+    columns.push({
+      name: field.name,
+      key: field.name,
+      width: undefined,
+      resizable: true,
+    });
   });
 
   return (
-    <>
-      <Box p={5}>
-        <>
-          <Box mb={1}>
-            Model: <b>{params.model}</b>, Primary Key:{" "}
-            <b>{params.primary_key}</b>
-          </Box>
-          <Box mb={1}>
-            {result.summary.total} rows ({result.summary.added} added,{" "}
-            {result.summary.removed} removed)
-          </Box>
-          {/* <ValueDiffErrorHints errors={valueDiffSummary.errors} /> */}
-
-          <ScreenshotDataGrid
-            style={{ blockSize: "auto", maxHeight: "100%", overflow: "auto" }}
-            columns={columns.map((column: any) => ({
-              ...column,
-              width: undefined,
-              resizable: true,
-              flexGrow: 1,
-            }))}
-            rows={result.data.data}
-            defaultColumnOptions={{ resizable: true }}
-            className="rdg-light"
-            enableScreenshot={true}
-          />
-        </>
+    <Flex direction="column" gap="5px" pt="5px" height="100%">
+      <Box px="16px">
+        Model: {params.model}, {result.summary.total} total (
+        {result.summary.total - result.summary.added - result.summary.removed}{" "}
+        common, {result.summary.added} added, {result.summary.removed} removed)
       </Box>
-    </>
+
+      <ScreenshotDataGrid
+        style={{
+          blockSize: "auto",
+          maxHeight: "100%",
+          overflow: "auto",
+          borderBlock: "1px solid lightgray",
+        }}
+        columns={columns}
+        rows={result.data.data}
+        defaultColumnOptions={{ resizable: true }}
+        className="rdg-light"
+        enableScreenshot={true}
+      />
+    </Flex>
   );
 }

@@ -1,0 +1,217 @@
+import { cacheKeys } from "@/lib/api/cacheKeys";
+import { createCheckByRun } from "@/lib/api/checks";
+import { cancelRun, submitRun, waitRun } from "@/lib/api/runs";
+import { Run, RunType } from "@/lib/api/types";
+import { AddIcon } from "@chakra-ui/icons";
+import {
+  Alert,
+  AlertIcon,
+  Box,
+  Button,
+  Center,
+  Flex,
+  IconButton,
+  Modal,
+  ModalBody,
+  ModalCloseButton,
+  ModalContent,
+  ModalFooter,
+  ModalHeader,
+  ModalOverlay,
+  Progress,
+  Spinner,
+  Tooltip,
+  VStack,
+  useDisclosure,
+} from "@chakra-ui/react";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { set } from "lodash";
+import { useCallback, useState } from "react";
+import { useLocation } from "wouter";
+
+export interface RunEditViewProps<PT> {
+  params: PT;
+  onParamsChanged: (params: PT) => void;
+}
+
+export interface RunResultViewProps<PT, RT> {
+  run: Run<PT, RT>;
+}
+
+interface RunModalProps<PT, RT> {
+  title: string;
+  type: RunType;
+  params: PT;
+  RunEditView: React.ComponentType<RunEditViewProps<PT>>;
+  RunResultView: React.ComponentType<RunResultViewProps<PT, RT>>;
+}
+
+export const RunModal = <PT, RT>({
+  type,
+  title,
+  params: defaultParams,
+  RunEditView,
+  RunResultView,
+}: RunModalProps<PT, RT>) => {
+  const [, setLocation] = useLocation();
+  const { isOpen, onOpen, onClose } = useDisclosure();
+  const [runId, setRunId] = useState<string>();
+  const [params, setParams] = useState<PT>(defaultParams);
+  const [isAborting, setAborting] = useState(false);
+
+  const submitRunFn = async () => {
+    const { run_id } = await submitRun<PT, RT>(type, params, { nowait: true });
+
+    setRunId(run_id);
+
+    return await waitRun(run_id);
+  };
+
+  const {
+    data: run,
+    mutate: execute,
+    reset,
+    error: error,
+    isPending,
+  } = useMutation({
+    mutationFn: submitRunFn,
+    onSuccess: (run) => {},
+  });
+
+  const queryClient = useQueryClient();
+
+  const handleCancel = useCallback(async () => {
+    setAborting(true);
+    if (!runId) {
+      return;
+    }
+
+    return await cancelRun(runId);
+  }, [runId]);
+
+  const handleExecute = useCallback(() => {
+    execute();
+  }, [execute]);
+
+  const handleReset = () => {
+    setAborting(false);
+    setParams(defaultParams);
+    reset();
+  };
+
+  const handleAddToChecklist = useCallback(async () => {
+    if (!run?.run_id) {
+      return;
+    }
+
+    const check = await createCheckByRun(run.run_id);
+
+    queryClient.invalidateQueries({ queryKey: cacheKeys.checks() });
+    setLocation(`/checks/${check.check_id}`);
+  }, [run?.run_id, run?.type, setLocation, queryClient]);
+
+  const handleClose = () => {
+    onClose();
+    handleReset();
+
+    if (isPending) {
+      handleCancel();
+    }
+  };
+
+  const RunModalBody = () => {
+    const errorMessage = (error as any)?.response?.data?.detail || run?.error;
+
+    if (errorMessage) {
+      return (
+        <Alert status="error">
+          <AlertIcon />
+          Error: {errorMessage}
+        </Alert>
+      );
+    }
+
+    if (isPending) {
+      return (
+        <Center p="16px" height="100%">
+          <VStack>
+            <Box>
+              <Spinner size="sm" mr="8px" />
+
+              {isAborting ? <>Aborting...</> : <>Loading...</>}
+            </Box>
+            {!isAborting && (
+              <Button onClick={handleCancel} colorScheme="blue" size="sm">
+                Cancel
+              </Button>
+            )}
+          </VStack>
+        </Center>
+      );
+    }
+
+    if (!run) {
+      return (
+        <Box style={{ contain: "size" }}>
+          <RunEditView params={params} onParamsChanged={setParams} />
+        </Box>
+      );
+    }
+
+    return (
+      <Box h="100%" style={{ contain: "size" }}>
+        <RunResultView run={run} />
+      </Box>
+    );
+  };
+
+  return (
+    <>
+      <Modal isOpen={isOpen} onClose={handleClose} size="6xl">
+        <ModalOverlay />
+        <ModalContent overflowY="auto" height="75%">
+          <ModalHeader>{title}</ModalHeader>
+          <ModalCloseButton />
+          <ModalBody
+            p="0px"
+            h="100%"
+            overflow="auto"
+            borderY="1px solid lightgray"
+          >
+            <RunModalBody />
+          </ModalBody>
+          <ModalFooter>
+            <Flex gap="10px">
+              {run && (
+                <Button colorScheme="blue" onClick={handleReset}>
+                  Reset
+                </Button>
+              )}
+
+              {run?.result && (
+                <>
+                  <Button colorScheme="blue" onClick={handleAddToChecklist}>
+                    Add to checklist
+                  </Button>
+                </>
+              )}
+
+              {!run && (
+                <Button
+                  isDisabled={isPending}
+                  colorScheme="blue"
+                  onClick={handleExecute}
+                >
+                  Execute
+                </Button>
+              )}
+            </Flex>
+          </ModalFooter>
+        </ModalContent>
+      </Modal>
+      <Button colorScheme="blue" size="sm" onClick={onOpen}>
+        {title}
+      </Button>
+    </>
+  );
+};

@@ -39,7 +39,7 @@ import {
   createCheckByNodeSchema,
   createCheckByRowCounts,
 } from "@/lib/api/checks";
-import { ValueDiffModal } from "./ValueDiff";
+import { ValueDiffModal } from "../valuediff/ValueDiffModal";
 
 interface NodeViewProps {
   node: LineageGraphNode;
@@ -138,7 +138,7 @@ export function NodeView({ node, onCloseNode }: NodeViewProps) {
                   node.changeStatus !== "removed" && (
                     <>
                       <ProfileDiffModal node={node} />
-                      <ValueDiffModal node={node} />
+                      <ValueDiffModal key={node?.id} node={node} />
                     </>
                   )}
                 <Button

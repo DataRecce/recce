@@ -30,15 +30,6 @@ class ValueDiffTask(Task):
             raise RecceException(f"Cannot find macro compare_column_values")
 
     def _verify_primary_key(self, dbt_context: DBTContext, primary_key: str, model: str):
-        query = r"""
-            SELECT COUNT(*) AS INVALIDS FROM (
-                {{ adapter.dispatch('test_unique_combination_of_columns', 'dbt_utils')(
-                     relation,
-                     combination_of_columns=[column_name]
-                   )
-                }}
-            )
-        """
 
         # check primary keys
         for base in [True, False]:
@@ -50,13 +41,23 @@ class ValueDiffTask(Task):
                 column_name=primary_key,
             )
 
+            query = r"""
+            {{ adapter.dispatch('test_unique_combination_of_columns', 'dbt_utils')(
+                 relation,
+                 combination_of_columns=[column_name]
+               )
+            }}
+            """
+
             sql = dbt_context.generate_sql(query, base=False, context=context)
-            response, table = dbt_context.adapter.execute(sql, fetch=True)
+            sql_test = f"""SELECT COUNT(*) AS INVALIDS FROM ({sql})"""
+
+            response, table = dbt_context.adapter.execute(sql_test, fetch=True)
             for row in table.rows:
                 invalids = row[0]
                 if invalids > 0:
                     raise RecceException(
-                        f"Invalid primary key: {primary_key}. The column should be unique")
+                        f"Invalid primary key: {primary_key}. The column should be unique. Please check by this sql: '{sql}'")
                 break
             else:
                 # it will never happen unless we use a wrong check sql
