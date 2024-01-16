@@ -1,11 +1,8 @@
 import { Box, Center, Flex, Icon } from "@chakra-ui/react";
 
-import { Check } from "@/lib/api/checks";
-import DataGrid, { ColumnOrColumnGroup } from "react-data-grid";
+import { ColumnOrColumnGroup } from "react-data-grid";
 import { ValueDiffParams, ValueDiffResult } from "@/lib/api/valuediff";
-import { ScreenshotBox } from "../screenshot/ScreenshotBox";
 import { ScreenshotDataGrid } from "../data-grid/ScreenshotDataGrid";
-import { Run } from "@/lib/api/types";
 import { RunResultViewProps } from "../run/RunModal";
 import { VscKey } from "react-icons/vsc";
 
@@ -15,29 +12,48 @@ interface ValueDiffResultViewProp
 export function ValueDiffResultView({ run }: ValueDiffResultViewProp) {
   const result = run.result as ValueDiffResult;
   const params = run.params as ValueDiffParams;
+  const cellClass = (row: any) => {
+    const value: number | undefined = row["Matched %"];
+    return value && value < 100 ? "diff-cell-modified" : "";
+  };
 
-  const columns: ColumnOrColumnGroup<any, any>[] = [];
-
-  columns.push({
-    key: "name",
-    name: "",
-    maxWidth: 30,
-    renderCell: ({ column, row }) => {
-      return (
-        <Center height="100%">
-          {row.Column === params.primary_key && <Icon as={VscKey}></Icon>}
-        </Center>
-      );
+  const columns: ColumnOrColumnGroup<any, any>[] = [
+    {
+      key: "name",
+      name: "",
+      maxWidth: 30,
+      renderCell: ({ row }) => {
+        return (
+          <Center height="100%">
+            {row.Column === params.primary_key && <Icon as={VscKey}></Icon>}
+          </Center>
+        );
+      },
     },
-  });
-  result.data.schema.fields.forEach((field: { name: string }) => {
-    columns.push({
-      name: field.name,
-      key: field.name,
-      width: undefined,
+    {
+      key: "Column",
+      name: "Column",
       resizable: true,
-    });
-  });
+    },
+    {
+      key: "Matched",
+      name: "Matched",
+      resizable: true,
+      cellClass,
+    },
+    {
+      key: "Matched %",
+      name: "Matched %",
+      resizable: true,
+      renderCell: ({ column, row }) => {
+        const value: number | undefined = row[column.key];
+        return (
+          <Box textAlign="end">{value ? `${value.toFixed(2)} %` : "N/A"}</Box>
+        );
+      },
+      cellClass,
+    },
+  ];
 
   return (
     <Flex direction="column" gap="5px" pt="5px" height="100%">
