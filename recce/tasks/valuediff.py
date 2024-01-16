@@ -139,19 +139,21 @@ class ValueDiffTask(Task):
                 # Cancel as early as possible
                 self.check_cancel()
 
-        row = []
-        for k, v in column_groups.items():
-            matched = v['matched']
-            mismatched = v['mismatched']
-            rate_base = matched + mismatched
-            rate = None if rate_base == 0 else 100 * (matched / rate_base)
-            record = [k, matched, rate]
-            row.append(record)
-
         pk = [v for k, v in column_groups.items() if k.lower() == primary_key.lower()][0]
         added = pk['added']
         removed = pk['removed']
-        total = pk['matched'] + added + removed
+        common = pk['matched'] + pk['mismatched']
+        total = common + added + removed
+
+        row = []
+        for k, v in column_groups.items():
+            # This is incorrect when there are one side null
+            # https://github.com/dbt-labs/dbt-audit-helper/blob/main/macros/compare_column_values.sql#L20-L23
+            # matched = v['matched']
+            matched = common - v['mismatched']
+            rate = None if common == 0 else 100 * (matched / common)
+            record = [k, matched, rate]
+            row.append(record)
 
         columns = ['Column', 'Matched', 'Matched %']
         df = pd.DataFrame(row, columns=columns)
