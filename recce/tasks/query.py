@@ -92,6 +92,7 @@ class QueryDiffTask(Task, QueryMixin):
             try:
                 result['current'] = self.execute_sql(sql_template, base=False)
             except Exception as e:
+                print(e)
                 result['current'] = None
             self.check_cancel()
 

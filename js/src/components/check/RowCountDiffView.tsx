@@ -6,14 +6,11 @@ import { Flex } from "@chakra-ui/react";
 import { useQueries } from "@tanstack/react-query";
 import DataGrid from "react-data-grid";
 import { ScreenshotDataGrid } from "../data-grid/ScreenshotDataGrid";
+import { RowCountDiffParams } from "@/lib/api/adhocQuery";
 
 
 interface RowCountDiffViewProps {
   check: Check;
-}
-
-export interface RowCountDiffParams {
-  node_ids: string[];
 }
 
 interface RowCountDiffRow {
@@ -23,18 +20,6 @@ interface RowCountDiffRow {
 }
 
 export function RowCountDiffView({ check }: RowCountDiffViewProps) {
-  const { lineageGraphSets } = useLineageGraphsContext();
-  const params = check.params as RowCountDiffParams;
-  const nodeIds = params.node_ids;
-  const nodes = nodeIds.map((id) => lineageGraphSets?.all.nodes[id]);
-
-  const rowCountResults = useQueries({
-    queries: nodes.map((node) => ({
-      queryKey: cacheKeys.rowCount(node?.name!),
-      queryFn: () => fetchModelRowCount(node?.name!),
-    })),
-  });
-
   function columnCellClass(row: RowCountDiffRow) {
     if (row.base === row.current) {
       return "column-body-normal";
@@ -51,12 +36,13 @@ export function RowCountDiffView({ check }: RowCountDiffViewProps) {
     { key: "base", name: "Base Rows", cellClass: columnCellClass },
     { key: "current", name: "Current Rows", cellClass: columnCellClass },
   ];
-  const rows : RowCountDiffRow[] = rowCountResults.map((result, index) => {
-    const node = nodes[index];
-    const base = result.data?.base || null;
-    const current = result.data?.curr || null;
+
+  const rows: RowCountDiffRow[] = Object.keys(check.last_run?.result || {}).map((key) => {
+    const result = check.last_run?.result[key];
+    const base = result?.base || null;
+    const current = result?.curr || null;
     return {
-      name: node?.name || "",
+      name: key,
       base: base === null ? "N/A" : Number(base),
       current: current === null ? "N/A" : Number(current),
     };
@@ -64,7 +50,7 @@ export function RowCountDiffView({ check }: RowCountDiffViewProps) {
 
   return (
     <Flex direction="column">
-      {rowCountResults.length > 0 && (<>
+      {Object.keys(check.last_run?.result).length > 0 && (<>
           <ScreenshotDataGrid
             style={{
               blockSize: "auto",

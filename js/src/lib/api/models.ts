@@ -5,11 +5,17 @@ import { waitRun } from "./runs";
 import { cacheKeys } from "./cacheKeys";
 import { useState } from "react";
 import { useRowCountStateContext } from "../hooks/RecceQueryContext";
+import { setegid } from "process";
 
 export interface RowCount {
   name?: string;
   base: number | null;
   curr: number | null;
+}
+
+export interface QueryRowCountResult {
+  runId: string;
+  result: RowCountDiffResult;
 }
 
 export async function fetchModelRowCount(modelName: string) : Promise<RowCount> {
@@ -19,19 +25,22 @@ export async function fetchModelRowCount(modelName: string) : Promise<RowCount> 
 
 
 export async function queryModelRowCount(modelName: string) : Promise<RowCount> {
-  const result = await queryModelsRowCount([modelName]);
+  const { result } = await queryRowCount([modelName]);
   return result[modelName];
 }
 
-export async function queryModelsRowCount(modelNames: string[]) : Promise<RowCountDiffResult> {
+export async function queryRowCount(modelNames: string[]) : Promise<QueryRowCountResult> {
   if (modelNames.length === 0) {
-    return {};
+    throw new Error("No model names provided");
   }
 
   const { run_id } = await submitRowCountDiff({ node_names: modelNames }, { nowait: true });
   const run = await waitRun(run_id);
 
-  return run.result;
+  return {
+    runId: run_id,
+    result: run.result,
+  };
 }
 
 
@@ -63,7 +72,7 @@ export function useModelsRowCount(modelNames: string[]) {
     setIsLoading(true);
     setIsNodesFetching(fetchCandidates);
 
-    const queryResponses = await queryModelsRowCount(fetchCandidates);
+    const { runId, result: queryResponses } = await queryRowCount(fetchCandidates);
     Object.keys(queryResponses).forEach((name) => {
       const modelName = name as string;
       const queryResponse = queryResponses[modelName];
@@ -74,6 +83,7 @@ export function useModelsRowCount(modelNames: string[]) {
     });
     setIsLoading(false);
     setIsNodesFetching([]);
+    return runId;
   }
 
   return {

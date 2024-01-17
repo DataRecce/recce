@@ -38,8 +38,10 @@ import { ProfileDiffModal } from "./Profile";
 import {
   createCheckByNodeSchema,
   createCheckByRowCounts,
+  createCheckByRun,
 } from "@/lib/api/checks";
 import { ValueDiffModal } from "../valuediff/ValueDiffModal";
+import { queryRowCount, useModelsRowCount } from "@/lib/api/models";
 
 interface NodeViewProps {
   node: LineageGraphNode;
@@ -49,6 +51,7 @@ interface NodeViewProps {
 export function NodeView({ node, onCloseNode }: NodeViewProps) {
   const [, setLocation] = useLocation();
   const { setSqlQuery } = useRecceQueryContext();
+  const { fetchFn: fetchRowCountFn } = useModelsRowCount([node.name]);
   const withColumns =
     node.resourceType === "model" ||
     node.resourceType === "seed" ||
@@ -62,10 +65,11 @@ export function NodeView({ node, onCloseNode }: NodeViewProps) {
   }, [node, setLocation]);
 
   const addRowCountCheck = useCallback(async () => {
-    const nodeId = node.id;
-    const check = await createCheckByRowCounts([nodeId]);
+    const runId = await fetchRowCountFn();
+    const check = await createCheckByRun(runId);
+
     setLocation(`/checks/${check.check_id}`);
-  }, [node, setLocation]);
+  }, [setLocation, fetchRowCountFn]);
 
   return (
     <Grid height="100%" templateRows="auto auto 1fr">

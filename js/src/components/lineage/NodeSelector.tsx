@@ -3,9 +3,11 @@ import { Box, Button, ButtonGroup, HStack, Icon, IconButton, SlideFade, StackDiv
 import { LineageGraphNode } from "./lineage";
 import { FetchRowCountsButton, FetchSelectedNodesRowCountButton } from "./NodeTag";
 import { MdOutlineSchema } from "react-icons/md";
-import { createCheckByNodeSchema, createCheckByRowCounts } from "@/lib/api/checks";
+import { createCheckByNodeSchema, createCheckByRowCounts, createCheckByRun } from "@/lib/api/checks";
 import { useLocation } from "wouter";
 import { FiAlignLeft } from "react-icons/fi";
+import { queryRowCount, useModelsRowCount } from "@/lib/api/models";
+import { useCallback } from "react";
 
 export interface NodeSelectorProps {
   nodes: LineageGraphNode[];
@@ -46,23 +48,26 @@ function AddSchemaChangesCheckButton({ nodes, onFinish }: { nodes: LineageGraphN
 
 function AddRowCountCheckButton({ nodes, onFinish }: { nodes: LineageGraphNode[], onFinish: () => void }) {
   const [, setLocation] = useLocation();
+  const { isLoading, fetchFn } = useModelsRowCount(nodes.map((node) => node.name));
+
   return (
     <Button
       size="xs"
       variant="outline"
-      isDisabled={nodes.length === 0}
+      isDisabled={isLoading || nodes.length === 0}
       onClick={async () => {
-        const check = await createCheckByRowCounts(nodes.map((node) => node.id));
-        onFinish();
+        const runId = await fetchFn();
+        const check = await createCheckByRun(runId);
         if (check) {
           setLocation(`/checks/${check.check_id}`);
         } else {
           setLocation(`/checks`);
         }
+        onFinish();
       }}
     >
       <Icon as={FiAlignLeft} />
-      Add row count check
+      {isLoading? "Adding row count check" : "Add row count check"}
     </Button>
   );
 }
