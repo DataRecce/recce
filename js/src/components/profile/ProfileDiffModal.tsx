@@ -14,7 +14,6 @@ export const ProfileDiffModal = ({ node }: ProfileDiffModalProp) => {
       title="Profile Diff"
       type="profile_diff"
       params={{ model: node.name }}
-      RunEditView={ProfileDiffEditView}
       RunResultView={ProfileDiffResultView}
     ></RunModal>
   );

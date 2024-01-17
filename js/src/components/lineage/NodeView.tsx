@@ -137,7 +137,7 @@ export function NodeView({ node, onCloseNode }: NodeViewProps) {
                 {node.changeStatus !== "added" &&
                   node.changeStatus !== "removed" && (
                     <>
-                      <ProfileDiffModal node={node} />
+                      <ProfileDiffModal key={node?.id} node={node} />
                       <ValueDiffModal key={node?.id} node={node} />
                     </>
                   )}
