@@ -2,13 +2,12 @@ import { HStack, SkeletonText, Tag, TagLabel, TagLeftIcon, Tooltip, Text, Icon, 
 import { getIconForResourceType } from "./styles";
 import { FiAlignLeft, FiFrown, FiTrendingDown, FiTrendingUp } from "react-icons/fi";
 import { MdQueryStats, MdOutlineQuestionMark } from "react-icons/md";
-import { queryModelRowCount, RowCount, useModelsRowCount } from "@/lib/api/models";
+import { queryModelRowCount, RowCount, useRowCountQueries } from "@/lib/api/models";
 import { cacheKeys } from "@/lib/api/cacheKeys";
 import { LineageGraphNode } from "./lineage";
 import { useEffect, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useRowCountStateContext } from "@/lib/hooks/RecceQueryContext";
-import { isNode } from "reactflow";
 
 
 interface ModelRowCountProps {
@@ -201,7 +200,7 @@ export function FetchSelectedNodesRowCountButton({
   }: {
     selectedNodes: LineageGraphNode[],
     onFinish?: () => void }) {
-  const { isLoading, fetchFn } = useModelsRowCount(selectedNodes.map((node) => node.name));
+  const { isLoading, fetchFn } = useRowCountQueries(selectedNodes.map((node) => node.name));
   return (
     <Button
       size="xs"

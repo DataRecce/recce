@@ -1,11 +1,10 @@
-import { useQueries, useQueryClient } from "@tanstack/react-query";
-import { RowCountDiffResult, submitQueryDiff, submitRowCountDiff } from "./adhocQuery";
+import { useQueryClient } from "@tanstack/react-query";
+import { RowCountDiffResult, submitRowCountDiff } from "./adhocQuery";
 import { axiosClient } from "./axiosClient";
 import { waitRun } from "./runs";
 import { cacheKeys } from "./cacheKeys";
 import { useState } from "react";
 import { useRowCountStateContext } from "../hooks/RecceQueryContext";
-import { setegid } from "process";
 
 export interface RowCount {
   name?: string;
@@ -44,7 +43,7 @@ export async function queryRowCount(modelNames: string[]) : Promise<QueryRowCoun
 }
 
 
-export function useModelsRowCount(modelNames: string[]) {
+export function useRowCountQueries(modelNames: string[]) {
   const [isLoading, setIsLoading] = useState(false);
   const queryClient = useQueryClient();
   const { setIsNodesFetching } = useRowCountStateContext();

@@ -1,12 +1,6 @@
-import { cacheKeys } from "@/lib/api/cacheKeys";
 import { Check } from "@/lib/api/checks";
-import { fetchModelRowCount } from "@/lib/api/models";
-import { useLineageGraphsContext } from "@/lib/hooks/LineageGraphContext";
 import { Flex } from "@chakra-ui/react";
-import { useQueries } from "@tanstack/react-query";
-import DataGrid from "react-data-grid";
 import { ScreenshotDataGrid } from "../data-grid/ScreenshotDataGrid";
-import { RowCountDiffParams } from "@/lib/api/adhocQuery";
 
 
 interface RowCountDiffViewProps {

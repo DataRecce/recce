@@ -1,13 +1,12 @@
 import { SmallCloseIcon } from "@chakra-ui/icons";
 import { Box, Button, ButtonGroup, HStack, Icon, IconButton, SlideFade, StackDivider } from "@chakra-ui/react";
 import { LineageGraphNode } from "./lineage";
-import { FetchRowCountsButton, FetchSelectedNodesRowCountButton } from "./NodeTag";
+import { FetchSelectedNodesRowCountButton } from "./NodeTag";
 import { MdOutlineSchema } from "react-icons/md";
-import { createCheckByNodeSchema, createCheckByRowCounts, createCheckByRun } from "@/lib/api/checks";
+import { createCheckByNodeSchema, createCheckByRun } from "@/lib/api/checks";
 import { useLocation } from "wouter";
 import { FiAlignLeft } from "react-icons/fi";
-import { queryRowCount, useModelsRowCount } from "@/lib/api/models";
-import { useCallback } from "react";
+import { useRowCountQueries } from "@/lib/api/models";
 
 export interface NodeSelectorProps {
   nodes: LineageGraphNode[];
@@ -48,7 +47,7 @@ function AddSchemaChangesCheckButton({ nodes, onFinish }: { nodes: LineageGraphN
 
 function AddRowCountCheckButton({ nodes, onFinish }: { nodes: LineageGraphNode[], onFinish: () => void }) {
   const [, setLocation] = useLocation();
-  const { isLoading, fetchFn } = useModelsRowCount(nodes.map((node) => node.name));
+  const { isLoading, fetchFn } = useRowCountQueries(nodes.map((node) => node.name));
 
   return (
     <Button

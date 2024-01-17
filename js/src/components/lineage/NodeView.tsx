@@ -19,7 +19,6 @@ import {
   ModalHeader,
   ModalBody,
   ModalCloseButton,
-  ButtonGroup,
   Menu,
   MenuButton,
   MenuList,
@@ -37,11 +36,10 @@ import { useCallback } from "react";
 import { ProfileDiffModal } from "./Profile";
 import {
   createCheckByNodeSchema,
-  createCheckByRowCounts,
   createCheckByRun,
 } from "@/lib/api/checks";
 import { ValueDiffModal } from "../valuediff/ValueDiffModal";
-import { queryRowCount, useModelsRowCount } from "@/lib/api/models";
+import { useRowCountQueries } from "@/lib/api/models";
 
 interface NodeViewProps {
   node: LineageGraphNode;
@@ -51,7 +49,7 @@ interface NodeViewProps {
 export function NodeView({ node, onCloseNode }: NodeViewProps) {
   const [, setLocation] = useLocation();
   const { setSqlQuery } = useRecceQueryContext();
-  const { fetchFn: fetchRowCountFn } = useModelsRowCount([node.name]);
+  const { fetchFn: fetchRowCountFn } = useRowCountQueries([node.name]);
   const withColumns =
     node.resourceType === "model" ||
     node.resourceType === "seed" ||
