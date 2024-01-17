@@ -22,7 +22,6 @@ class ValueDiffTask(Task):
         self.connection = None
 
     def _verify_audit_helper(self, dbt_context):
-        # Check if compare_column_values macro exists
         for macro_name, macro in dbt_context.manifest.macros.items():
             if macro.package_name == 'audit_helper':
                 break

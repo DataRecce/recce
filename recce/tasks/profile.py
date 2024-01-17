@@ -5,6 +5,7 @@ import agate
 from recce.dbt import default_dbt_context, DBTContext
 from .core import Task
 from .query import QueryMixin
+from ..exceptions import RecceException
 
 
 class ProfileParams(TypedDict):
@@ -25,6 +26,8 @@ class ProfileDiffTask(Task, QueryMixin):
         adapter = dbt_context.adapter
 
         model: str = self.params['model']
+
+        self._verify_dbt_profiler(dbt_context)
 
         with adapter.connection_named("query"):
             self.connection = adapter.connections.get_thread_connection()
@@ -63,6 +66,14 @@ class ProfileDiffTask(Task, QueryMixin):
 
         return result
 
+    def _verify_dbt_profiler(self, dbt_context):
+        for macro_name, macro in dbt_context.manifest.macros.items():
+            if macro.package_name == 'dbt_profiler':
+                break
+        else:
+            raise RecceException(
+                r"Package 'dbt_profiler' not found. Please refer to the link to install: https://hub.getdbt.com/data-mie/dbt_profiler/")
+
     def _profile_column(self, dbt_context: DBTContext, relation, column):
 
         sql_template = r"""
@@ -73,7 +84,6 @@ class ProfileDiffTask(Task, QueryMixin):
         select
         '{{column.name}}' as column_name,
         nullif('{{column.dtype}}', '') as data_type,
-        {{ dbt_profiler.measure_row_count(column.name, column_type) }} as row_count,
         {{ dbt_profiler.measure_row_count(column.name, column_type) }} as row_count,
         {{ dbt_profiler.measure_not_null_proportion(column.name, column_type) }} as not_null_proportion,
         {{ dbt_profiler.measure_distinct_proportion(column.name, column_type) }} as distinct_proportion,
