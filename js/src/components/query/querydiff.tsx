@@ -1,4 +1,8 @@
-import { ColumnOrColumnGroup, textEditor } from "react-data-grid";
+import {
+  ColumnOrColumnGroup,
+  RenderCellProps,
+  textEditor,
+} from "react-data-grid";
 import _ from "lodash";
 import "./styles.css";
 import { Box, Flex, Icon } from "@chakra-ui/react";
@@ -70,6 +74,15 @@ function DataFrameColumnGroupHeader({
     );
   }
 }
+
+export const defaultRenderCell = ({
+  row,
+  column,
+}: RenderCellProps<any, any>) => {
+  // workaround for https://github.com/adazzle/react-data-grid/issues/882
+  const value = row[column.key];
+  return <>{typeof value === "boolean" ? value.toString() : value}</>;
+};
 
 export function toDataDiffGrid(
   base?: DataFrame,
@@ -286,6 +299,7 @@ export function toDataDiffGrid(
             renderEditCell: textEditor,
             headerCellClass,
             cellClass,
+            renderCell: defaultRenderCell,
           },
           {
             key: `current__${name}`,
@@ -293,6 +307,7 @@ export function toDataDiffGrid(
             renderEditCell: textEditor,
             headerCellClass,
             cellClass,
+            renderCell: defaultRenderCell,
           },
         ],
       });

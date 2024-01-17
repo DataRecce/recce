@@ -13,6 +13,7 @@ import {
 import { CSSProperties, useMemo, useState } from "react";
 import { DataFrame, Run } from "@/lib/api/types";
 import { ScreenshotDataGrid } from "../data-grid/ScreenshotDataGrid";
+import { defaultRenderCell } from "./querydiff";
 
 interface QueryDataGridProps {
   style?: CSSProperties;
@@ -30,6 +31,7 @@ function toDataGrid(result: DataFrame) {
       name: field.name === "index" ? "" : field.name,
       width: field.name === "index" ? 10 : "auto",
       cellClass: field.name === "index" ? "index-column" : undefined,
+      renderCell: defaultRenderCell,
     };
   });
 
@@ -96,13 +98,16 @@ export const QueryDataGrid = ({
     return <Center height="100%">No data</Center>;
   }
 
-  return (<>
-    <ScreenshotDataGrid
-      style={{ blockSize: "auto", maxHeight: "100%", overflow: "auto" }}
-      columns={gridData.columns}
-      rows={gridData.rows}
-      defaultColumnOptions={{ resizable: true, maxWidth: 800, minWidth: 35 }}
-      className="rdg-light"
-      enableScreenshot={enableScreenshot}/>
-  </>);
+  return (
+    <>
+      <ScreenshotDataGrid
+        style={{ blockSize: "auto", maxHeight: "100%", overflow: "auto" }}
+        columns={gridData.columns}
+        rows={gridData.rows}
+        defaultColumnOptions={{ resizable: true, maxWidth: 800, minWidth: 35 }}
+        className="rdg-light"
+        enableScreenshot={enableScreenshot}
+      />
+    </>
+  );
 };

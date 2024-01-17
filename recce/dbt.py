@@ -466,48 +466,8 @@ class DBTContext:
             elif refresh_file_path.endswith('catalog.json'):
                 self.base_catalog = load_catalog(refresh_file_path)
 
-    def get_base_relation(self, model):
-        return self.adapter.Relation.create_from(self.project, self.find_node_by_name(model, base=True))
-
     def create_relation(self, model, base=False):
         return self.adapter.Relation.create_from(self.project, self.find_node_by_name(model, base))
-
-    def model_profile(self, model: str, base: bool = False):
-        sql_template = r"""
-        -- depends_on: {{ ref(model) }}
-
-        {% if execute %}
-            {{ dbt_profiler.get_profile(relation=ref(model), exclude_measures=["std_dev_population", "std_dev_sample"]) }}
-        {% endif %}
-        """
-
-        base_sql_template = r"""
-        -- depends_on: {{ base_relation }}
-
-        {% if execute %}
-            {{ dbt_profiler.get_profile(relation=base_relation, exclude_measures=["std_dev_population", "std_dev_sample"]) }}
-        {% endif %}
-        """
-
-        self.get_base_relation(model)
-        adapter = self.adapter
-        with self.adapter.connection_named('test'):
-            if base:
-                sql = self.generate_sql(base_sql_template, False,
-                                        dict(model=model,
-                                             base_relation=self.get_base_relation(model))
-                                        )
-            else:
-                sql = self.generate_sql(sql_template, False,
-                                        dict(model=model,
-                                             base_relation=self.get_base_relation(model))
-                                        )
-
-            response, result = adapter.execute(sql, fetch=True, auto_begin=True)
-            table: agate.Table = result
-            column_names = [c.lower() for c in table.column_names]
-            df = pd.DataFrame([row.values() for row in table.rows], columns=column_names)
-            return df
 
 
 dbt_context: Optional[DBTContext] = None

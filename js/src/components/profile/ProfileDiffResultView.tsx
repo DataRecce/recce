@@ -5,7 +5,7 @@ import { RunResultViewProps } from "../run/RunModal";
 
 import { ProfileDiffParams, ProfileDiffResult } from "@/lib/api/profile";
 import { useMemo } from "react";
-import { toDataDiffGrid } from "./profilediff";
+import { toDataDiffGrid } from "../query/querydiff";
 
 interface ProfileDiffResultViewProp
   extends RunResultViewProps<ProfileDiffParams, ProfileDiffResult> {}
@@ -14,9 +14,16 @@ export function ProfileDiffResultView({ run }: ProfileDiffResultViewProp) {
   const result = run.result;
   const params = run.params;
 
+  const field = (result?.current?.schema.fields || []).find(
+    (f) => f.name.toLowerCase() === "column_name"
+  );
+  const primaryKey = field?.name || "column_name";
+
   const gridData = useMemo(() => {
-    return toDataDiffGrid(result?.base, result?.current);
-  }, [result]);
+    return toDataDiffGrid(result?.base, result?.current, {
+      primaryKeys: [primaryKey],
+    });
+  }, [result, primaryKey]);
 
   if (gridData.columns.length === 0) {
     return <Center height="100%">No data</Center>;
