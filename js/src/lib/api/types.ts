@@ -29,6 +29,10 @@ export interface Run<PT = any, RT = any> {
   run_id: string;
   check_id?: string;
   type: RunType;
+  progress?: {
+    message?: string;
+    percentage?: number;
+  };
   params?: PT;
   result?: RT;
   error?: string;

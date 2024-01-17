@@ -1,5 +1,5 @@
+import { SubmitOptions, submitRun } from "./runs";
 import { DataFrame } from "./types";
-
 
 export type ValueDiffError = {
   test: string;
@@ -10,7 +10,6 @@ export type ValueDiffError = {
   base: boolean;
 };
 
-
 export type ValueDiffResult = {
   summary: {
     total: number;
@@ -20,3 +19,19 @@ export type ValueDiffResult = {
   data: DataFrame;
   errors: ValueDiffError[];
 };
+
+export interface ValueDiffParams {
+  model: string;
+  primary_key: string;
+}
+
+export async function submitValueDiff(
+  params: ValueDiffParams,
+  options?: SubmitOptions
+) {
+  return await submitRun<ValueDiffParams, ValueDiffResult>(
+    "value_diff",
+    params,
+    options
+  );
+}

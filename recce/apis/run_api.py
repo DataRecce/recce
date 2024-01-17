@@ -2,7 +2,7 @@ import asyncio
 from typing import Optional
 from uuid import UUID
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Query
 from pydantic import BaseModel
 
 from recce.apis.db import runs_db
@@ -42,11 +42,13 @@ async def cancel_run_handler(run_id: UUID):
 
 
 @run_router.get("/runs/{run_id}/wait")
-async def wait_run_handler(run_id: UUID):
+async def wait_run_handler(run_id: UUID, timeout: int = Query(None, description="Maximum number of seconds to wait")):
     run = get_run(run_id)
-    # wait every 1 second
+    start_time = asyncio.get_event_loop().time()
     while run.result is None and run.error is None:
         await asyncio.sleep(1)
+        if timeout is not None and (asyncio.get_event_loop().time() - start_time) > timeout:
+            break
     return run
 
 

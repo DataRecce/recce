@@ -19,7 +19,7 @@ import { cacheKeys } from "@/lib/api/cacheKeys";
 import { Check, deleteCheck, getCheck, updateCheck } from "@/lib/api/checks";
 
 import { QueryDiffView } from "@/components/check/QueryDiffView";
-import { ValueDiffView } from "@/components/check/ValueDiffView";
+import { ValueDiffResultView } from "@/components/valuediff/ValueDiffResultView";
 import { SchemaDiffView } from "./SchemaDiffView";
 import { useLocation } from "wouter";
 import { CheckDescription } from "./CheckDescription";
@@ -118,12 +118,18 @@ export const CheckDetail = ({ checkId }: CheckDetailProps) => {
 
       {check && check.type === "query" && <QueryView check={check} />}
       {check && check.type === "query_diff" && <QueryDiffView check={check} />}
-      {check && check.type === "value_diff" && <ValueDiffView check={check} />}
-      {check && check.type === "schema_diff" && <SchemaDiffView check={check} />}
+      {check && check.type === "value_diff" && check?.last_run && (
+        <ValueDiffResultView run={check.last_run} />
+      )}
+      {check && check.type === "schema_diff" && (
+        <SchemaDiffView check={check} />
+      )}
       {check && check.type === "profile_diff" && (
         <ProfileDiffView check={check} />
       )}
-      {check && check.type === "row_count_diff" && <RowCountDiffView check={check} />}
+      {check && check.type === "row_count_diff" && (
+        <RowCountDiffView check={check} />
+      )}
     </Flex>
   );
 };

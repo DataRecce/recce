@@ -31,7 +31,6 @@ import { LineageGraphNode } from "./lineage";
 import { SchemaView } from "../schema/SchemaView";
 import { useRecceQueryContext } from "@/lib/hooks/RecceQueryContext";
 import { SqlDiffView } from "../schema/SqlDiffView";
-import useMismatchSummaryModal from "./MismatchSummary";
 import { useLocation } from "wouter";
 import { ResourceTypeTag, RowCountTag } from "./NodeTag";
 import { useCallback } from "react";
@@ -40,6 +39,7 @@ import {
   createCheckByNodeSchema,
   createCheckByRowCounts,
 } from "@/lib/api/checks";
+import { ValueDiffModal } from "../valuediff/ValueDiffModal";
 
 interface NodeViewProps {
   node: LineageGraphNode;
@@ -54,7 +54,6 @@ export function NodeView({ node, onCloseNode }: NodeViewProps) {
     node.resourceType === "seed" ||
     node.resourceType === "source";
   const { isOpen, onOpen, onClose } = useDisclosure();
-  const { MismatchSummaryModal } = useMismatchSummaryModal();
 
   const addSchemaCheck = useCallback(async () => {
     const nodeId = node.id;
@@ -139,7 +138,7 @@ export function NodeView({ node, onCloseNode }: NodeViewProps) {
                   node.changeStatus !== "removed" && (
                     <>
                       <ProfileDiffModal node={node} />
-                      <MismatchSummaryModal node={node} />
+                      <ValueDiffModal key={node?.id} node={node} />
                     </>
                   )}
                 <Button
