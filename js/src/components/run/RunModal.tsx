@@ -71,6 +71,8 @@ export const RunModal = <PT, RT>({
       const run = await waitRun(run_id, 2);
       setProgress(run.progress);
       if (run.result || run.error) {
+        setAborting(false);
+        setProgress(undefined);
         return run;
       }
     }
