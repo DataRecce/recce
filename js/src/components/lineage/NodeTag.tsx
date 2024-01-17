@@ -2,20 +2,17 @@ import { HStack, SkeletonText, Tag, TagLabel, TagLeftIcon, Tooltip, Text, Icon, 
 import { getIconForResourceType } from "./styles";
 import { FiAlignLeft, FiFrown, FiTrendingDown, FiTrendingUp } from "react-icons/fi";
 import { MdQueryStats, MdOutlineQuestionMark } from "react-icons/md";
-import { fetchModelRowCount } from "@/lib/api/models";
+import { queryModelRowCount, RowCount, useModelsRowCount } from "@/lib/api/models";
 import { cacheKeys } from "@/lib/api/cacheKeys";
 import { LineageGraphNode } from "./lineage";
 import { useEffect, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
+import { useRowCountStateContext } from "@/lib/hooks/RecceQueryContext";
+import { isNode } from "reactflow";
 
-
-interface ModelRowCount {
-  base: number | null;
-  curr: number | null;
-}
 
 interface ModelRowCountProps {
-  rowCount?: ModelRowCount;
+  rowCount?: RowCount;
 }
 
 export function ModelRowCount({ rowCount }: ModelRowCountProps ) {
@@ -79,14 +76,17 @@ export function RowCountTag(
     isAutoFetching = false,
     isInteractive = true,
   }: RowCountTagProps) {
+  const { isNodesFetching } = useRowCountStateContext();
   const { isLoading, data: rowCount, refetch: invokeRowCountQuery , isFetched, isFetching } = useQuery({
     queryKey: cacheKeys.rowCount(node.name),
-    queryFn:  () => fetchModelRowCount(node.name),
+    queryFn:  () => queryModelRowCount(node.name),
     enabled: node.resourceType === "model" && isAutoFetching,
   });
+  const isTagFetching = isFetching || (isNodesFetching.includes(node.name));
+  const isTagLoading = isLoading || (isNodesFetching.includes(node.name));
 
   function ProcessedRowCountTag(
-    { isLoading, rowCount }: {isLoading: boolean, rowCount: ModelRowCount}) {
+    { isLoading, rowCount }: {isLoading: boolean, rowCount?: RowCount}) {
     return (<TagLabel>
               <SkeletonText isLoaded={!isLoading} noOfLines={1} skeletonHeight={2} minWidth={'30px'}>
                 <ModelRowCount rowCount={rowCount} />
@@ -112,7 +112,7 @@ export function RowCountTag(
         />;
   }
 
-  if (isInteractive === false && isFetched === false && isFetching === false) {
+  if (isInteractive === false && isFetched === false && isTagFetching === false) {
     // Don't show anything if the row count is not fetched and is not interactive.
     return null;
   }
@@ -121,15 +121,15 @@ export function RowCountTag(
   return (
     <Tooltip
       hasArrow
-      label={isFetched || isFetching || !isInteractive ?"Number of row":"Query the number of row"}
+      label={isFetched || isTagFetching || !isInteractive ?"Number of row":"Query the number of row"}
       openDelay={500}
       closeDelay={200}
     >
       <Tag>
         <TagLeftIcon as={FiAlignLeft} />
-        {isFetched || isFetching ? (
+        {isFetched || isTagFetching ? (
           <ProcessedRowCountTag
-            isLoading={isLoading}
+            isLoading={isTagLoading}
             rowCount={rowCount}
           />
         ) : (
@@ -162,7 +162,7 @@ export function FetchRowCountsButton({
   const name = (index < nodes.length) ? nodes[index].name : "";
   const { isLoading, isFetched } = useQuery({
     queryKey: cacheKeys.rowCount(name),
-    queryFn:  () => fetchModelRowCount(name),
+    queryFn:  () => queryModelRowCount(name),
     enabled: enabled,
   });
 
@@ -188,6 +188,30 @@ export function FetchRowCountsButton({
         setEnabled(true);
       }}
       isDisabled={isLoading || nodes.length === 0}
+    >
+      <Icon as={MdQueryStats} mr={1} />
+      {isLoading ? "Querying" : "Query Row Counts"}
+    </Button>
+  );
+}
+
+export function FetchSelectedNodesRowCountButton({
+    selectedNodes,
+    onFinish,
+  }: {
+    selectedNodes: LineageGraphNode[],
+    onFinish?: () => void }) {
+  const { isLoading, fetchFn } = useModelsRowCount(selectedNodes.map((node) => node.name));
+  return (
+    <Button
+      size="xs"
+      variant="outline"
+      title= "Query Row Counts"
+      onClick={async () => {
+        await fetchFn();
+        onFinish && onFinish();
+      }}
+      isDisabled={isLoading || selectedNodes.length === 0}
     >
       <Icon as={MdQueryStats} mr={1} />
       {isLoading ? "Querying" : "Query Row Counts"}

@@ -1,7 +1,7 @@
 import { SmallCloseIcon } from "@chakra-ui/icons";
 import { Box, Button, ButtonGroup, HStack, Icon, IconButton, SlideFade, StackDivider } from "@chakra-ui/react";
 import { LineageGraphNode } from "./lineage";
-import { FetchRowCountsButton } from "./NodeTag";
+import { FetchRowCountsButton, FetchSelectedNodesRowCountButton } from "./NodeTag";
 import { MdOutlineSchema } from "react-icons/md";
 import { createCheckByNodeSchema, createCheckByRowCounts } from "@/lib/api/checks";
 import { useLocation } from "wouter";
@@ -90,8 +90,8 @@ export function NodeSelector({ nodes, isOpen, onClose }: NodeSelectorProps) {
             <IconButton aria-label='Exit select Mode' icon={<SmallCloseIcon />} />
           </ButtonGroup>
           <HStack>
-            <FetchRowCountsButton
-              nodes={selectedNodes.length > 0 ? selectedNodes: []}
+            <FetchSelectedNodesRowCountButton
+              selectedNodes={selectedNodes.length > 0 ? selectedNodes: []}
               onFinish={onClose}
             />
             <AddSchemaChangesCheckButton

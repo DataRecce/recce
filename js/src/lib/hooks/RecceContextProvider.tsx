@@ -1,6 +1,6 @@
 import React from 'react';
 
-import { RecceQueryContextProvider } from './RecceQueryContext';
+import { RecceQueryContextProvider, RowCountStateContextProvider } from './RecceQueryContext';
 import { LineageGraphsContextProvider } from './LineageGraphContext';
 
 interface RecceContextProps {
@@ -12,7 +12,9 @@ export default function RecceContextProvider({ children }: RecceContextProps) {
     <>
       <RecceQueryContextProvider>
         <LineageGraphsContextProvider>
-          {children}
+          <RowCountStateContextProvider>
+            {children}
+          </RowCountStateContextProvider>
         </LineageGraphsContextProvider>
       </RecceQueryContextProvider>
     </>
