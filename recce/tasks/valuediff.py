@@ -24,17 +24,17 @@ class ValueDiffTask(Task):
     def _verify_audit_helper(self, dbt_context):
         # Check if compare_column_values macro exists
         for macro_name, macro in dbt_context.manifest.macros.items():
-            if 'compare_column_values' in macro_name:
+            if macro.package_name == 'audit_helper':
                 break
         else:
-            raise RecceException(f"Cannot find macro compare_column_values")
+            raise RecceException(
+                r"Package 'audit_helper' not found. Please refer to the link to install: https://hub.getdbt.com/dbt-labs/audit_helper/")
 
     def _verify_primary_key(self, dbt_context: DBTContext, primary_key: str, model: str):
+        self.update_progress(message=f"Verify primary key: {primary_key}")
 
         # check primary keys
         for base in [True, False]:
-            self.update_progress(
-                message=f"Verify primary key: {primary_key} for {'base' if base is True else 'current'}")
 
             relation = dbt_context.create_relation(model, base)
             context = dict(
@@ -42,14 +42,7 @@ class ValueDiffTask(Task):
                 column_name=primary_key,
             )
 
-            query = r"""
-            {{ adapter.dispatch('test_unique_combination_of_columns', 'dbt_utils')(
-                 relation,
-                 combination_of_columns=[column_name]
-               )
-            }}
-            """
-
+            query = r"""{{ adapter.dispatch('test_unique', 'dbt')(relation, column_name) }}"""
             sql = dbt_context.generate_sql(query, base=False, context=context)
             sql_test = f"""SELECT COUNT(*) AS INVALIDS FROM ({sql})"""
 

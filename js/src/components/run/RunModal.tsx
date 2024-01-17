@@ -117,7 +117,7 @@ export const RunModal = <PT, RT>({
 
     queryClient.invalidateQueries({ queryKey: cacheKeys.checks() });
     setLocation(`/checks/${check.check_id}`);
-  }, [run?.run_id, run?.type, setLocation, queryClient]);
+  }, [run?.run_id, setLocation, queryClient]);
 
   const handleClose = () => {
     onClose();
