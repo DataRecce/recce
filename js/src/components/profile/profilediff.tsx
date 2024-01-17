@@ -1,28 +1,7 @@
 import "react-data-grid/lib/styles.css";
 import DataGrid, { ColumnOrColumnGroup, textEditor } from "react-data-grid";
-import {
-  Alert,
-  AlertIcon,
-  Button,
-  Center,
-  Spinner,
-  Stack,
-  VStack,
-} from "@chakra-ui/react";
-import { CSSProperties, useMemo, useState } from "react";
 import { DataFrame, DataFrameField, DataFrameRow } from "@/lib/api/types";
-import { ProfileDiffResult } from "@/lib/api/profile";
 import _ from "lodash";
-import { ScreenshotDataGrid } from "../data-grid/ScreenshotDataGrid";
-
-interface ProfileDataGridProps {
-  style?: CSSProperties;
-  isFetching: boolean;
-  result?: ProfileDiffResult;
-  error?: Error | null; // error from submit
-  onCancel?: () => void;
-  enableScreenshot?: boolean;
-}
 
 function _getPrimaryKeyValue(row: DataFrameRow, primaryKey: string): string {
   const result: Record<string, any> = {};
@@ -30,7 +9,7 @@ function _getPrimaryKeyValue(row: DataFrameRow, primaryKey: string): string {
   return JSON.stringify(result);
 }
 
-function toDataDiffGrid(base?: DataFrame, current?: DataFrame) {
+export function toDataDiffGrid(base?: DataFrame, current?: DataFrame) {
   // primary key: "column_name" is per dbt_profiler package design
   const primaryKey: string = "column_name";
   const empty: DataFrame = {
@@ -158,95 +137,3 @@ function toDataDiffGrid(base?: DataFrame, current?: DataFrame) {
     rows,
   };
 }
-
-export const ProfileDiffDataGrid = ({
-  isFetching,
-  result,
-  error,
-  onCancel,
-  enableScreenshot=false,
-}: ProfileDataGridProps) => {
-  const [isAborting, setAborting] = useState(false);
-  const gridData = useMemo(() => {
-    if (isFetching) {
-      return { rows: [], columns: [] };
-    }
-
-    return toDataDiffGrid(result?.base, result?.current);
-  }, [result, isFetching]);
-
-  const handleCancel = () => {
-    setAborting(true);
-    if (onCancel) {
-      onCancel();
-    }
-  };
-
-  if (isFetching) {
-    return (
-      <Center p="16px" height="100%">
-        <VStack>
-          <Spinner size="sm" mr="8px" />
-          {isAborting ? <>Aborting...</> : <>Loading...</>}
-          {!isAborting && onCancel && (
-            <Button onClick={handleCancel} colorScheme="blue" size="sm">
-              Cancel
-            </Button>
-          )}
-        </VStack>
-      </Center>
-    );
-  }
-
-  if (result?.base_error || result?.current_error) {
-    if (result?.base_error === result?.current_error) {
-      return (
-        <Alert status="error">
-          <AlertIcon />
-          Error: {result?.current_error}
-        </Alert>
-      );
-    } else {
-      const renderAlert = (env: string, message: string) => (
-        <Alert status="error">
-          <AlertIcon />
-          {env} Environment Error: {message}
-        </Alert>
-      );
-
-      return (
-        <Stack spacing={3}>
-          {result?.base_error && renderAlert("Base", result.base_error)}
-          {result?.current_error &&
-            renderAlert("Current", result.current_error)}
-        </Stack>
-      );
-    }
-  }
-
-  if (error) {
-    return (
-      <Alert status="error">
-        <AlertIcon />
-        Error: {error?.message}
-      </Alert>
-    );
-  }
-
-  if (gridData.columns.length === 0) {
-    return <Center height="100%">No data</Center>;
-  }
-
-  return (
-    <>
-      <ScreenshotDataGrid
-        style={{ blockSize: "auto", maxHeight: "100%", overflow: "auto" }}
-        columns={gridData.columns}
-        rows={gridData.rows}
-        defaultColumnOptions={{ resizable: true, maxWidth: 800, minWidth: 35 }}
-        className="rdg-light"
-        enableScreenshot={enableScreenshot}
-      />
-    </>
-  );
-};

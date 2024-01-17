@@ -34,7 +34,7 @@ import { SqlDiffView } from "../schema/SqlDiffView";
 import { useLocation } from "wouter";
 import { ResourceTypeTag, RowCountTag } from "./NodeTag";
 import { useCallback } from "react";
-import { ProfileDiffModal } from "./Profile";
+import { ProfileDiffModal } from "../profile/ProfileDiffModal";
 import {
   createCheckByNodeSchema,
   createCheckByRowCounts,
