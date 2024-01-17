@@ -129,13 +129,12 @@ export const RunModal = <PT, RT>({
     setLocation(`/checks/${check.check_id}`);
   }, [run?.run_id, setLocation, queryClient]);
 
-  const handleClose = () => {
+  const handleClose = async () => {
     onClose();
-    handleReset();
-
-    if (isPending) {
-      handleCancel();
+    if (isPending && runId) {
+      await cancelRun(runId);
     }
+    handleReset();
   };
 
   const RunModalBody = () => {
