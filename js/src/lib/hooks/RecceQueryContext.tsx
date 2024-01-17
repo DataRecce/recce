@@ -28,3 +28,31 @@ export function RecceQueryContextProvider({ children }: QueryContextProps) {
 }
 
 export const useRecceQueryContext = () => useContext(RecceQueryContext);
+
+
+export interface RowCountStateContext {
+  isNodesFetching: string[];
+  setIsNodesFetching: (nodes: string[]) => void;
+}
+
+const defaultRowCountStateContext: RowCountStateContext = {
+  isNodesFetching: [],
+  setIsNodesFetching: () => {},
+};
+
+const RowCountStateContext = createContext(defaultRowCountStateContext);
+
+interface RowCountStateContextProps {
+  children: React.ReactNode;
+}
+
+export function RowCountStateContextProvider({ children }: RowCountStateContextProps) {
+  const [isNodesFetching, setIsNodesFetching] = React.useState<string[]>([]);
+  return (
+    <RowCountStateContext.Provider value={{ isNodesFetching , setIsNodesFetching }}>
+      {children}
+    </RowCountStateContext.Provider>
+  );
+}
+
+export const useRowCountStateContext = () => useContext(RowCountStateContext);
