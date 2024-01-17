@@ -72,6 +72,8 @@ class ProfileDiffTask(Task, QueryMixin):
 
         select
         '{{column.name}}' as column_name,
+        nullif('{{column.dtype}}', '') as data_type,
+        {{ dbt_profiler.measure_row_count(column.name, column_type) }} as row_count,
         {{ dbt_profiler.measure_row_count(column.name, column_type) }} as row_count,
         {{ dbt_profiler.measure_not_null_proportion(column.name, column_type) }} as not_null_proportion,
         {{ dbt_profiler.measure_distinct_proportion(column.name, column_type) }} as distinct_proportion,
