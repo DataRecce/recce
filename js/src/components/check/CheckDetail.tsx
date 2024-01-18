@@ -24,7 +24,6 @@ import { SchemaDiffView } from "./SchemaDiffView";
 import { useLocation } from "wouter";
 import { CheckDescription } from "./CheckDescription";
 import { QueryView } from "./QueryView";
-import { ProfileDiffView } from "./ProfileDiffView";
 import { RowCountDiffView } from "./RowCountDiffView";
 import { ProfileDiffResultView } from "../profile/ProfileDiffResultView";
 
