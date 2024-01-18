@@ -1,10 +1,10 @@
 from typing import TypedDict
 
 import agate
+from dbt.adapters.sql import SQLAdapter
 
 from recce.dbt import default_dbt_context, DBTContext
 from .core import Task
-from .query import QueryMixin
 from ..exceptions import RecceException
 
 
@@ -12,7 +12,7 @@ class ProfileParams(TypedDict):
     model: str
 
 
-class ProfileDiffTask(Task, QueryMixin):
+class ProfileDiffTask(Task):
 
     def __init__(self, params: ProfileParams):
         super().__init__()
@@ -110,10 +110,16 @@ class ProfileDiffTask(Task, QueryMixin):
         import json
 
         df = pd.DataFrame([row.values() for row in table.rows], columns=table.column_names)
+
+        for column_name, column_type in zip(table.column_names, table.column_types):
+            if column_name.lower() == 'not_null_proportion':
+                df[column_name] = df[column_name].astype('float')
+            if column_name.lower() == 'distinct_proportion':
+                df[column_name] = df[column_name].astype('float')
         result_json = df.to_json(orient='table')
         return json.loads(result_json)
 
-    def cancel(self):
-        super().cancel()
-        if self.connection:
-            self.close_connection(self.connection)
+    def close_connection(self):
+        adapter: SQLAdapter = default_dbt_context().adapter
+        with adapter.connection_named("cancel profile"):
+            adapter.connections.cancel(self.connection)
