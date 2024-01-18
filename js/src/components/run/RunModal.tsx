@@ -92,7 +92,8 @@ export const RunModal = <PT, RT>({
     if (isOpen && RunEditView === undefined) {
       execute();
     }
-  }, [isOpen, RunEditView]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isOpen]);
 
   const queryClient = useQueryClient();
 
