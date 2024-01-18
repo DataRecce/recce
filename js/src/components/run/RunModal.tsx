@@ -27,7 +27,8 @@ import {
 } from "@chakra-ui/react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { set } from "lodash";
-import { useCallback, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
+import { useEdges } from "reactflow";
 import { useLocation } from "wouter";
 
 export interface RunEditViewProps<PT> {
@@ -43,7 +44,7 @@ interface RunModalProps<PT, RT> {
   title: string;
   type: RunType;
   params: PT;
-  RunEditView: React.ComponentType<RunEditViewProps<PT>>;
+  RunEditView?: React.ComponentType<RunEditViewProps<PT>>;
   RunResultView: React.ComponentType<RunResultViewProps<PT, RT>>;
 }
 
@@ -70,6 +71,8 @@ export const RunModal = <PT, RT>({
       const run = await waitRun(run_id, 2);
       setProgress(run.progress);
       if (run.result || run.error) {
+        setAborting(false);
+        setProgress(undefined);
         return run;
       }
     }
@@ -83,8 +86,14 @@ export const RunModal = <PT, RT>({
     isPending,
   } = useMutation({
     mutationFn: submitRunFn,
-    onSuccess: (run) => {},
   });
+
+  useEffect(() => {
+    if (isOpen && RunEditView === undefined) {
+      execute();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isOpen]);
 
   const queryClient = useQueryClient();
 
@@ -98,6 +107,10 @@ export const RunModal = <PT, RT>({
   }, [runId]);
 
   const handleExecute = useCallback(() => {
+    execute();
+  }, [execute]);
+
+  const handleRerun = useCallback(() => {
     execute();
   }, [execute]);
 
@@ -119,13 +132,12 @@ export const RunModal = <PT, RT>({
     setLocation(`/checks/${check.check_id}`);
   }, [run?.run_id, setLocation, queryClient]);
 
-  const handleClose = () => {
+  const handleClose = async () => {
     onClose();
-    handleReset();
-
-    if (isPending) {
-      handleCancel();
+    if (isPending && runId) {
+      await cancelRun(runId);
     }
+    handleReset();
   };
 
   const RunModalBody = () => {
@@ -172,14 +184,16 @@ export const RunModal = <PT, RT>({
 
     if (!run) {
       return (
-        <Box style={{ contain: "size" }}>
-          <RunEditView params={params} onParamsChanged={setParams} />
+        <Box style={{ contain: "size layout" }}>
+          {RunEditView && (
+            <RunEditView params={params} onParamsChanged={setParams} />
+          )}
         </Box>
       );
     }
 
     return (
-      <Box h="100%" style={{ contain: "size" }}>
+      <Box h="100%" style={{ contain: "size layout" }}>
         <RunResultView run={run} />
       </Box>
     );
@@ -202,7 +216,7 @@ export const RunModal = <PT, RT>({
           </ModalBody>
           <ModalFooter>
             <Flex gap="10px">
-              {run && (
+              {run && RunEditView && (
                 <Button colorScheme="blue" onClick={handleReset}>
                   Reset
                 </Button>
@@ -216,13 +230,29 @@ export const RunModal = <PT, RT>({
                 </>
               )}
 
-              {!run && (
+              {isPending && (
+                <Button
+                  onClick={handleCancel}
+                  isDisabled={isAborting}
+                  colorScheme="blue"
+                >
+                  Cancel
+                </Button>
+              )}
+
+              {!run && !isPending && (
                 <Button
                   isDisabled={isPending}
                   colorScheme="blue"
                   onClick={handleExecute}
                 >
                   Execute
+                </Button>
+              )}
+
+              {run && !RunEditView && (
+                <Button colorScheme="blue" onClick={handleRerun}>
+                  Rerun
                 </Button>
               )}
             </Flex>

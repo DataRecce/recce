@@ -33,7 +33,7 @@ import { SqlDiffView } from "../schema/SqlDiffView";
 import { useLocation } from "wouter";
 import { ResourceTypeTag, RowCountTag } from "./NodeTag";
 import { useCallback } from "react";
-import { ProfileDiffModal } from "./Profile";
+import { ProfileDiffModal } from "../profile/ProfileDiffModal";
 import {
   createCheckByNodeSchema,
   createCheckByRun,
@@ -139,8 +139,14 @@ export function NodeView({ node, onCloseNode }: NodeViewProps) {
                 {node.changeStatus !== "added" &&
                   node.changeStatus !== "removed" && (
                     <>
-                      <ProfileDiffModal node={node} />
-                      <ValueDiffModal key={node?.id} node={node} />
+                      <ProfileDiffModal
+                        key={`profile_diff_${node?.id}`}
+                        node={node}
+                      />
+                      <ValueDiffModal
+                        key={`value_diff_${node?.id}`}
+                        node={node}
+                      />
                     </>
                   )}
                 <Button

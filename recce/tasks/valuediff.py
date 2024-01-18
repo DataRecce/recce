@@ -22,7 +22,6 @@ class ValueDiffTask(Task):
         self.connection = None
 
     def _verify_audit_helper(self, dbt_context):
-        # Check if compare_column_values macro exists
         for macro_name, macro in dbt_context.manifest.macros.items():
             if macro.package_name == 'audit_helper':
                 break
@@ -32,6 +31,9 @@ class ValueDiffTask(Task):
 
     def _verify_primary_key(self, dbt_context: DBTContext, primary_key: str, model: str):
         self.update_progress(message=f"Verify primary key: {primary_key}")
+
+        if primary_key is None or len(primary_key) == 0:
+            raise RecceException("Primary key cannot be empty")
 
         # check primary keys
         for base in [True, False]:
@@ -167,6 +169,8 @@ class ValueDiffTask(Task):
         adapter = dbt_context.adapter
 
         with adapter.connection_named("value diff"):
+            self.connection = adapter.connections.get_thread_connection()
+
             primary_key: str = self.params['primary_key']
             model: str = self.params['model']
 

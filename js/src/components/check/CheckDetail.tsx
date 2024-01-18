@@ -24,8 +24,8 @@ import { SchemaDiffView } from "./SchemaDiffView";
 import { useLocation } from "wouter";
 import { CheckDescription } from "./CheckDescription";
 import { QueryView } from "./QueryView";
-import { ProfileDiffView } from "./ProfileDiffView";
 import { RowCountDiffView } from "./RowCountDiffView";
+import { ProfileDiffResultView } from "../profile/ProfileDiffResultView";
 
 interface CheckDetailProps {
   checkId: string;
@@ -124,8 +124,8 @@ export const CheckDetail = ({ checkId }: CheckDetailProps) => {
       {check && check.type === "schema_diff" && (
         <SchemaDiffView check={check} />
       )}
-      {check && check.type === "profile_diff" && (
-        <ProfileDiffView check={check} />
+      {check && check.type === "profile_diff" && check?.last_run && (
+        <ProfileDiffResultView run={check.last_run} />
       )}
       {check && check.type === "row_count_diff" && (
         <RowCountDiffView check={check} />
