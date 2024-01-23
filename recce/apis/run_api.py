@@ -5,9 +5,9 @@ from uuid import UUID
 from fastapi import APIRouter, HTTPException, Query
 from pydantic import BaseModel
 
-from recce.apis.db import runs_db
-from recce.apis.run_func import submit_run, cancel_run, get_run
+from recce.apis.run_func import submit_run, cancel_run
 from recce.exceptions import RecceException
+from recce.models import RunDAO
 
 run_router = APIRouter(tags=['run'])
 
@@ -43,7 +43,10 @@ async def cancel_run_handler(run_id: UUID):
 
 @run_router.get("/runs/{run_id}/wait")
 async def wait_run_handler(run_id: UUID, timeout: int = Query(None, description="Maximum number of seconds to wait")):
-    run = get_run(run_id)
+    run = RunDAO().find_run_by_id(run_id)
+    if run is None:
+        raise HTTPException(status_code=404, detail='Not Found')
+    
     start_time = asyncio.get_event_loop().time()
     while run.result is None and run.error is None:
         await asyncio.sleep(1)
@@ -54,11 +57,13 @@ async def wait_run_handler(run_id: UUID, timeout: int = Query(None, description=
 
 @run_router.get("/runs", status_code=200)
 async def list_run_handler():
-    runs = [{
+    runs = RunDAO().list()
+
+    result = [{
         'run_id': run.run_id,
         'run_at': run.run_at,
         'type': run.type,
         'params': run.params
-    } for run in runs_db]
+    } for run in runs]
 
-    return runs
+    return result

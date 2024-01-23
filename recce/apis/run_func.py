@@ -1,9 +1,8 @@
 import asyncio
 from typing import Dict, Type
 
-from recce.apis.db import runs_db
-from recce.apis.types import RunType, Run
 from recce.exceptions import RecceException, RecceCancelException
+from recce.models import RunType, Run, RunDAO
 from recce.tasks import QueryTask, ProfileDiffTask, ValueDiffTask, QueryDiffTask, Task, RowCountDiffTask
 
 running_tasks = {}
@@ -36,7 +35,8 @@ def submit_run(type, params):
         raise RecceException(f"Run type '{type}' not supported")
 
     run = Run(type=run_type, params=params)
-    runs_db.append(run)
+    RunDAO().create(run)
+
     loop = asyncio.get_running_loop()
     running_tasks[run.run_id] = task
 
@@ -68,16 +68,8 @@ def submit_run(type, params):
     return run, future
 
 
-def get_run(run_id):
-    for _run in runs_db:
-        if str(run_id) == str(_run.run_id):
-            return _run
-
-    return None
-
-
 def cancel_run(run_id):
-    run = get_run(run_id)
+    run = RunDAO().find_run_by_id(run_id)
     if run is None:
         raise RecceException(f"Run ID '{run_id}' not found")
 

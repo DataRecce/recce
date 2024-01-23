@@ -7,10 +7,9 @@ from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 
 from recce.apis.check_func import get_node_by_id, validate_schema_diff_check
-from recce.apis.db import checks_db, runs_db
 from recce.apis.run_func import submit_run
-from recce.apis.types import Run, Check, RunType
 from recce.exceptions import RecceException
+from recce.models import RunType, RunDAO, Check, CheckDAO, Run
 
 check_router = APIRouter(tags=['check'])
 
@@ -63,11 +62,7 @@ def _validate_check(check_type, params):
 async def create_check(checkIn: CreateCheckIn):
     run = None
     if checkIn.run_id is not None:
-        for _run in runs_db:
-            if checkIn.run_id == str(_run.run_id):
-                run = _run
-                break
-
+        run = RunDAO().find_run_by_id(checkIn.run_id)
         if run is None:
             raise HTTPException(status_code=404, detail='Run Not Found')
 
@@ -81,7 +76,7 @@ async def create_check(checkIn: CreateCheckIn):
 
     name = checkIn.name if checkIn.name is not None else _generate_default_name(type, params)
     check = Check(name=name, description=checkIn.description, type=type, params=params)
-    checks_db.append(check)
+    CheckDAO().create(check)
 
     if run is not None:
         run.check_id = check.check_id
@@ -97,12 +92,7 @@ async def create_check(checkIn: CreateCheckIn):
 
 @check_router.post("/checks/{check_id}/run", status_code=201, response_model=Run)
 async def run_check_handler(check_id: UUID):
-    check = None
-    for _check in checks_db:
-        if _check.check_id == check_id:
-            check = _check
-            break
-
+    check = CheckDAO().find_check_by_id(check_id)
     if not check:
         raise HTTPException(status_code=404, detail=f"Check ID '{check_id}' not found")
 
@@ -128,7 +118,7 @@ class CheckOut(BaseModel):
 async def list_checks_handler():
     checks = []
 
-    for check in checks_db:
+    for check in CheckDAO().list():
         checks.append(
             CheckOut(check_id=check.check_id,
                      name=check.name,
@@ -145,27 +135,20 @@ async def list_checks_handler():
 
 @check_router.get("/checks/{check_id}", status_code=200, response_model=CheckOut)
 async def get_check_handler(check_id: UUID):
-    found = None
-    for check in checks_db:
-        if check.check_id == check_id:
-            found = check
-            break
-
-    if found is None:
+    check = CheckDAO().find_check_by_id(check_id)
+    if check is None:
         raise HTTPException(status_code=404, detail='Not Found')
 
-    last_run = None
-    runs = [run for run in runs_db if run.check_id == check_id]
-    if runs:
-        last_run = runs[-1]
+    runs = RunDAO().list_by_check_id(check_id)
+    last_run = runs[-1] if len(runs) > 0 else None
 
-    return CheckOut(check_id=found.check_id,
-                    name=found.name,
-                    description=found.description,
-                    type=found.type.value,
-                    params=found.params,
+    return CheckOut(check_id=check.check_id,
+                    name=check.name,
+                    description=check.description,
+                    type=check.type.value,
+                    params=check.params,
                     last_run=last_run,
-                    is_checked=found.is_checked,
+                    is_checked=check.is_checked,
                     ).dict()
 
 
@@ -178,29 +161,25 @@ class PatchCheckIn(BaseModel):
 
 @check_router.patch("/checks/{check_id}", status_code=200, response_model=CheckOut, response_model_exclude_none=True)
 async def update_check_handler(check_id: UUID, patch: PatchCheckIn):
-    found = None
-    for check in checks_db:
-        if check.check_id == check_id:
-            found = check
-            if patch.name is not None:
-                check.name = patch.name
-            if patch.description is not None:
-                check.description = patch.description
-            if patch.params is not None:
-                check.params = patch.params
-            if patch.is_checked is not None:
-                check.is_checked = patch.is_checked
-            break
-
-    if found is None:
+    check = CheckDAO().find_check_by_id(check_id)
+    if check is None:
         raise HTTPException(status_code=404, detail='Not Found')
 
-    return CheckOut(check_id=found.check_id,
-                    name=found.name,
-                    description=found.description,
-                    type=found.type.value,
-                    params=found.params,
-                    is_checked=found.is_checked,
+    if patch.name is not None:
+        check.name = patch.name
+    if patch.description is not None:
+        check.description = patch.description
+    if patch.params is not None:
+        check.params = patch.params
+    if patch.is_checked is not None:
+        check.is_checked = patch.is_checked
+
+    return CheckOut(check_id=check.check_id,
+                    name=check.name,
+                    description=check.description,
+                    type=check.type.value,
+                    params=check.params,
+                    is_checked=check.is_checked,
                     ).dict()
 
 
@@ -210,16 +189,7 @@ class DeleteCheckOut(BaseModel):
 
 @check_router.delete("/checks/{check_id}", status_code=200, response_model=DeleteCheckOut)
 async def delete_handler(check_id: UUID):
-    found = None
-    for check in checks_db:
-        if check.check_id == check_id:
-            found = check
-            break
-
-    if found is None:
-        raise HTTPException(status_code=404, detail='Not Found')
-
-    checks_db.remove(found)
+    CheckDAO().delete(check_id)
 
     return DeleteCheckOut(check_id=check_id).dict()
 
@@ -231,8 +201,7 @@ class ReorderChecksIn(BaseModel):
 
 @check_router.post("/checks/reorder", status_code=200)
 async def reorder_handler(order: ReorderChecksIn):
-    if 0 <= order.source < len(checks_db) and 0 <= order.destination < len(checks_db):
-        check_to_move = checks_db.pop(order.source)
-        checks_db.insert(order.destination, check_to_move)
-    else:
-        raise HTTPException(status_code=400, detail='Failed to reorder checks')
+    try:
+        CheckDAO().reorder(order.source, order.destination)
+    except RecceException as e:
+        raise HTTPException(status_code=400, detail=e.message)

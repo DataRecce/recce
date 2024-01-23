@@ -2,10 +2,8 @@ import uuid
 from dataclasses import dataclass, field
 from datetime import datetime
 from enum import Enum
-from typing import Optional, Union
+from typing import Optional
 from uuid import UUID
-
-from pandas import DataFrame
 
 
 class RunType(Enum):
@@ -19,18 +17,6 @@ class RunType(Enum):
 
     def __str__(self):
         return self.value
-
-
-class DataFrameDiff:
-    def __init__(self):
-        self.primary_keys: [str]
-        self.base: DataFrame
-        self.current: DataFrame
-
-
-class RunResult:
-    def __init__(self):
-        self.data: Union[DataFrame, DataFrameDiff]
 
 
 @dataclass
