@@ -1,9 +1,9 @@
 import uuid
-from dataclasses import dataclass, field
 from datetime import datetime
 from enum import Enum
 from typing import Optional
-from uuid import UUID
+
+from pydantic import BaseModel, UUID4, Field
 
 
 class RunType(Enum):
@@ -19,29 +19,26 @@ class RunType(Enum):
         return self.value
 
 
-@dataclass
-class RunProgress:
+class RunProgress(BaseModel):
     message: str
     percentage: float
 
 
-@dataclass
-class Run:
+class Run(BaseModel):
     type: RunType
     params: Optional[dict] = None
-    check_id: Optional[UUID] = None
+    check_id: Optional[UUID4] = None
     result: Optional[dict] = None
     error: Optional[str] = None
     progress: Optional[RunProgress] = None
-    run_id: UUID = field(default_factory=uuid.uuid4)
-    run_at: str = field(default_factory=lambda: datetime.utcnow().isoformat())
+    run_id: UUID4 = Field(default_factory=uuid.uuid4)
+    run_at: str = Field(default_factory=lambda: datetime.utcnow().isoformat())
 
 
-@dataclass
-class Check:
+class Check(BaseModel):
     name: str
     description: str
     type: RunType
     params: Optional[dict] = None
-    check_id: UUID = field(default_factory=uuid.uuid4)
+    check_id: UUID4 = Field(default_factory=uuid.uuid4)
     is_checked: bool = False

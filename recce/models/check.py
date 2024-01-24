@@ -1,34 +1,38 @@
 from typing import Optional, List
 
 from recce.exceptions import RecceException
-from recce.models.state import recce_state
+from .state import RecceState
 from .types import Check
 
 
 class CheckDAO:
+    def __init__(self, state: RecceState = None):
+        from .state import recce_state
+        self.state = state if state else recce_state
+
     def create(self, check) -> None:
-        recce_state.checks.append(check)
+        self.state.checks.append(check)
 
     def find_check_by_id(self, check_id) -> Optional[Check]:
-        for _check in recce_state.checks:
+        for _check in self.state.checks:
             if str(check_id) == str(_check.check_id):
                 return _check
 
         return None
 
     def delete(self, check_id) -> bool:
-        for _check in recce_state.checks:
+        for _check in self.state.checks:
             if str(check_id) == str(_check.check_id):
-                recce_state.checks.remove(_check)
+                self.state.checks.remove(_check)
                 return True
 
         return False
 
     def list(self) -> List[Check]:
-        return recce_state.checks
+        return self.state.checks
 
     def reorder(self, source: int, destination: int):
-        checks = recce_state.checks
+        checks = self.state.checks
 
         if source < 0 or source > len(checks):
             raise RecceException(f'Failed to reorder checks. Source index out of range')
