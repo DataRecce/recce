@@ -40,6 +40,7 @@ export const QueryDiffDataGrid = ({
   enableScreenshot,
 }: QueryDiffDataGridProps) => {
   const [isAborting, setAborting] = useState(false);
+  const [pinnedColumns, setPinnedColumns] = useState<string[]>([]);
   const gridData = useMemo(() => {
     if (isFetching) {
       return { rows: [], columns: [] };
@@ -49,8 +50,18 @@ export const QueryDiffDataGrid = ({
       changedOnly,
       primaryKeys,
       onPrimaryKeyChange: setPrimaryKeys,
+      pinnedColumns,
+      onPinnedColumnsChange: setPinnedColumns,
     });
-  }, [run, isFetching, primaryKeys, setPrimaryKeys, changedOnly]);
+  }, [
+    run,
+    isFetching,
+    primaryKeys,
+    setPrimaryKeys,
+    pinnedColumns,
+    setPinnedColumns,
+    changedOnly,
+  ]);
 
   const handleCancel = () => {
     setAborting(true);
@@ -101,14 +112,16 @@ export const QueryDiffDataGrid = ({
     return <Center height="100%">No change</Center>;
   }
 
-  return (<>
-    <ScreenshotDataGrid
-      style={{ blockSize: "auto", maxHeight: "100%", overflow: "auto" }}
-      columns={gridData.columns}
-      rows={gridData.rows}
-      defaultColumnOptions={{ resizable: true, maxWidth: 800, minWidth: 35 }}
-      className="rdg-light"
-      enableScreenshot={enableScreenshot}
-    />
-  </>);
+  return (
+    <>
+      <ScreenshotDataGrid
+        style={{ blockSize: "auto", maxHeight: "100%", overflow: "auto" }}
+        columns={gridData.columns}
+        rows={gridData.rows}
+        defaultColumnOptions={{ resizable: true, maxWidth: 800, minWidth: 35 }}
+        className="rdg-light"
+        enableScreenshot={enableScreenshot}
+      />
+    </>
+  );
 };

@@ -57,7 +57,7 @@ function DataFrameColumnHeader({
 
       <Icon
         className={isPinned ? "unpin-icon" : "pin-icon"}
-        visibility={isPinned ? "visible" : "hidden"}
+        display={isPinned ? "block" : "none"}
         cursor="pointer"
         as={isPinned ? VscPinned : VscPin}
         onClick={isPinned ? handleUnpin : handlePin}

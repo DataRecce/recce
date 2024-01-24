@@ -30,7 +30,11 @@
 }
 
 .grid-header:hover .pin-icon {
-  visibility: visible;
+  display: block;
+}
+
+.grid-header:hover .key-icon {
+  display: block;
 }
 
 .rdg-cell {
