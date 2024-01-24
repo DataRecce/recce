@@ -29,6 +29,10 @@
   color: black;
 }
 
+.grid-header:hover .pin-icon {
+  visibility: visible;
+}
+
 .rdg-cell {
   border-width: 0px 1px 1px 0px;
   border-style: solid;
