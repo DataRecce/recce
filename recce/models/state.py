@@ -14,7 +14,7 @@ logger = logging.getLogger('uvicorn')
 
 
 class RecceStateMetadata(BaseModel):
-    version: str = 'v0'
+    schema_version: str = 'v0'
     recce_version: str = Field(default_factory=lambda: get_version())
     generated_at: str = Field(default_factory=lambda: datetime.now().isoformat(timespec='seconds'))
 
@@ -49,12 +49,12 @@ class RecceState(BaseModel):
         metadata = state.metadata
         if metadata:
             # logger.info(metadata)
-            if metadata.version is None:
+            if metadata.schema_version is None:
                 pass
-            if metadata.version == 'v0':
+            if metadata.schema_version == 'v0':
                 pass
             else:
-                raise Exception(f"Unsupported state file version: {metadata.version}")
+                raise Exception(f"Unsupported state file version: {metadata.schema_version}")
 
         return state
 
