@@ -20,7 +20,7 @@ from .apis.run_api import run_router
 from .dbt import load_dbt_context, default_dbt_context
 from .models.state import load_default_state, default_recce_state
 
-logger = logging.getLogger(__name__)
+logger = logging.getLogger('uvicorn')
 
 
 @dataclass
