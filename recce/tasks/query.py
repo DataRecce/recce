@@ -79,21 +79,10 @@ class QueryDiffTask(Task, QueryMixin):
         with adapter.connection_named("query"):
             sql_template = self.params.get('sql_template')
             self.connection = adapter.connections.get_thread_connection()
-
-            # Query base
-            try:
-                result['base'] = self.execute_sql(sql_template, base=True)
-            except Exception as e:
-                print(e)
-                result['base'] = None
+            result['base'] = self.execute_sql(sql_template, base=True)
             self.check_cancel()
 
-            # Query current
-            try:
-                result['current'] = self.execute_sql(sql_template, base=False)
-            except Exception as e:
-                print(e)
-                result['current'] = None
+            result['current'] = self.execute_sql(sql_template, base=False)
             self.check_cancel()
 
         return result
