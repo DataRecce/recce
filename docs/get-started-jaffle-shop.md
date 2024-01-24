@@ -78,6 +78,12 @@
    recce server
    ```
 
+   or the following command if you would like to persist the recce state.
+
+   ```bash
+   recce server issue-123.json
+   ```
+
    Open the link http://0.0.0.0:8000, you can see the lineage diff
 
    ![](assets/jaffle_shop_lineage.png)

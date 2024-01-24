@@ -110,6 +110,11 @@ def diff(sql, primary_keys: List[str] = None, keep_shape: bool = False, keep_equ
 def server(host, port, state_file=None, **kwargs):
     """
     Launch the recce server
+
+    Arguments:\n
+
+    STATE_FILE: The path to the recce state file. Defaults=None, which will be no persistent state.
+
     """
     import uvicorn
     from .server import app, AppState
