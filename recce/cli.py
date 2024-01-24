@@ -103,19 +103,28 @@ def diff(sql, primary_keys: List[str] = None, keep_shape: bool = False, keep_equ
 
 
 @cli.command(cls=TrackCommand)
+@click.argument('state_file', required=False)
 @click.option('--host', default='localhost', show_default=True, help='The host to bind to.')
 @click.option('--port', default=8000, show_default=True, help='The port to bind to.', type=int)
 @add_options(dbt_related_options)
-def server(host, port, **kwargs):
+def server(host, port, state_file=None, **kwargs):
     """
     Launch the recce server
-    """
 
+    Arguments:\n
+
+    STATE_FILE: The path to the recce state file. Defaults=None, which will be no persistent state.
+
+    """
     import uvicorn
-    from .server import app
+    from .server import app, AppState
     from .dbt import load_dbt_context
 
     load_dbt_context(**kwargs)
+
+    state = AppState(state_file=state_file)
+    app.state = state
+
     uvicorn.run(app, host=host, port=port, lifespan='on')
 
 

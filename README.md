@@ -74,7 +74,7 @@ jaffle_shop:
 1. Run the recce server.
 
    ```
-   recce server
+   recce server issue-123.json
    ```
 
    Recce would diff environments between `target/` and `target-base/`

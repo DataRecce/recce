@@ -3,6 +3,7 @@ import json
 import logging
 import uuid
 from contextlib import asynccontextmanager
+from dataclasses import dataclass
 from pathlib import Path
 from typing import Optional, Any
 
@@ -17,16 +18,34 @@ from . import __version__, event
 from .apis.check_api import check_router
 from .apis.run_api import run_router
 from .dbt import load_dbt_context, default_dbt_context
+from .models.state import load_default_state, default_recce_state
 
 logger = logging.getLogger('uvicorn')
 
 
+@dataclass
+class AppState:
+    state_file: Optional[str] = None
+
+
 @asynccontextmanager
-async def lifespan(fastapi_app: FastAPI):
-    ctx = load_dbt_context()
+async def lifespan(fastapi: FastAPI):
+    state: AppState = app.state
+
+    state_file = state.state_file
+    load_default_state(state_file)
+
+    ctx = default_dbt_context()
     ctx.start_monitor_artifacts(callback=dbt_artifacts_updated_callback)
+
     yield
+    if state_file:
+        default_recce_state().store(state_file)
+
     ctx.stop_monitor_artifacts()
+
+
+app = FastAPI(lifespan=lifespan)
 
 
 def dbt_artifacts_updated_callback(file_changed_event: Any):
@@ -46,7 +65,6 @@ def dbt_artifacts_updated_callback(file_changed_event: Any):
     asyncio.run(broadcast(payload))
 
 
-app = FastAPI(lifespan=lifespan)
 clients = set()
 
 origins = [
