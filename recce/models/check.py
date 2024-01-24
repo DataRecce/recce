@@ -35,7 +35,7 @@ class CheckDAO:
         checks = self.state.checks
 
         if source < 0 or source > len(checks):
-            raise RecceException(f'Failed to reorder checks. Source index out of range')
+            raise RecceException('Failed to reorder checks. Source index out of range')
 
         if destination < 0 or destination > len(checks):
             raise RecceException('Failed to reorder checks. Destination index out of range')

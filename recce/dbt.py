@@ -439,12 +439,12 @@ class DBTContext:
         self.artifacts_observer.schedule(event_handler, self.target_path, recursive=False)
         self.artifacts_observer.schedule(event_handler, self.base_path, recursive=False)
         self.artifacts_observer.start()
-        logger.info('Started monitoring dbt artifacts')
+        logger.info('Start monitoring dbt artifacts')
 
     def stop_monitor_artifacts(self):
         self.artifacts_observer.stop()
         self.artifacts_observer.join()
-        logger.info('Stopped monitoring artifacts')
+        logger.info('Stop monitoring artifacts')
 
     def refresh(self, refresh_file_path: str = None):
         # clear the cache

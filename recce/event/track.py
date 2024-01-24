@@ -40,8 +40,9 @@ class TrackCommand(Command):
         if params.get('debug'):
             console.print_exception(show_locals=True)
         else:
-            console.print('[bold red]Error:[/bold red] ', end='')
-            console.out(msg, highlight=False)
+            print(traceback.format_exc())
+            # console.print('[bold red]Error:[/bold red] ', end='')
+            # console.out(msg, highlight=False)
 
     def _show_hint_message(self, hint):
         console.print(f'[bold yellow]Hint[/bold yellow]:\n  {escape(hint)}')
@@ -67,24 +68,9 @@ class TrackCommand(Command):
             reason = 'aborted'
             raise e
         except Exception as e:
-            if _enable_traceback:
-                print(traceback.format_exc())
-
-            ignored = False
-            if isinstance(e, EOFError):
-                ignored = True
-                self._show_error_message(
-                    f"The '{ctx.command.name}' command could not be executed "
-                    f"due to the unavailability of STDIN, which is required to receive user input.", ctx.params)
-            else:
-                ignored = False
-                self._show_error_message(e, ctx.params)
-
-            if not ignored:
-                event.capture_exception(e)
-                reason = 'fatal'
-            else:
-                reason = 'error'
+            self._show_error_message(str(e), ctx.params)
+            event.capture_exception(e)
+            reason = 'fatal'
             event.flush_exceptions()
             sys.exit(1)
         finally:

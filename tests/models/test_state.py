@@ -1,3 +1,5 @@
+import json
+
 from recce.models import RunType, Run, RunDAO, CheckDAO, Check
 from recce.models.state import RecceState
 
@@ -11,8 +13,8 @@ def test_load():
     RunDAO(state).create(run)
     CheckDAO(state).create(check)
 
-    data = state.to_json()
-    new_state = RecceState.from_json(data)
+    json_data = state.json()
+    new_state = RecceState(**json.loads(json_data))
 
     run_loaded = new_state.runs[0]
     check_loaded = new_state.checks[0]

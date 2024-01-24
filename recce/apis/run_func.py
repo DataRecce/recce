@@ -52,6 +52,7 @@ def submit_run(type, params):
             run.result = result
         if error is not None:
             run.error = str(error)
+        run.progress = None
 
     def fn():
         try:

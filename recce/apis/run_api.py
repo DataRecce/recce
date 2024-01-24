@@ -46,7 +46,7 @@ async def wait_run_handler(run_id: UUID, timeout: int = Query(None, description=
     run = RunDAO().find_run_by_id(run_id)
     if run is None:
         raise HTTPException(status_code=404, detail='Not Found')
-    
+
     start_time = asyncio.get_event_loop().time()
     while run.result is None and run.error is None:
         await asyncio.sleep(1)
