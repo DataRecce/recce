@@ -34,10 +34,10 @@ class CheckDAO:
     def reorder(self, source: int, destination: int):
         checks = self.state.checks
 
-        if source < 0 or source > len(checks):
+        if source < 0 or source >= len(checks):
             raise RecceException('Failed to reorder checks. Source index out of range')
 
-        if destination < 0 or destination > len(checks):
+        if destination < 0 or destination >= len(checks):
             raise RecceException('Failed to reorder checks. Destination index out of range')
 
         check_to_move = checks.pop(source)
