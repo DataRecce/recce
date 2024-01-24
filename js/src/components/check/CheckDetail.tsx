@@ -10,8 +10,9 @@ import {
   MenuItem,
   MenuList,
   Spacer,
+  useToast,
 } from "@chakra-ui/react";
-import { DeleteIcon } from "@chakra-ui/icons";
+import { CopyIcon, DeleteIcon } from "@chakra-ui/icons";
 import { CheckBreadcrumb } from "./CheckBreadcrumb";
 import { VscKebabVertical } from "react-icons/vsc";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
@@ -34,6 +35,7 @@ interface CheckDetailProps {
 export const CheckDetail = ({ checkId }: CheckDetailProps) => {
   const queryClient = useQueryClient();
   const [, setLocation] = useLocation();
+  const { successToast, failToast } = useClipBoardToast();
 
   const {
     isLoading,
@@ -70,6 +72,28 @@ export const CheckDetail = ({ checkId }: CheckDetailProps) => {
     return <Center h="100%">Error: {error.message}</Center>;
   }
 
+  const handleCopy = () => {
+    if (check) {
+      const markdown = buildMarkdown(check);
+      if (!navigator.clipboard) {
+        failToast(
+          new Error(
+            "Copy to clipboard is available only in secure contexts (HTTPS)"
+          )
+        );
+        return;
+      }
+      navigator.clipboard
+        .writeText(markdown)
+        .then(() => {
+          successToast("Copied the check to the clipboard");
+        })
+        .catch((err) => {
+          failToast(err);
+        });
+    }
+  };
+
   const handleCheck: React.ChangeEventHandler = (event) => {
     const isChecked: boolean = (event.target as any).checked;
     mutate({ is_checked: isChecked });
@@ -95,6 +119,9 @@ export const CheckDetail = ({ checkId }: CheckDetailProps) => {
             variant="ghost"
           />
           <MenuList>
+            <MenuItem icon={<CopyIcon />} onClick={() => handleCopy()}>
+              Copy markdown
+            </MenuItem>
             <MenuItem icon={<DeleteIcon />} onClick={() => handleDelete()}>
               Delete
             </MenuItem>
@@ -133,3 +160,61 @@ export const CheckDetail = ({ checkId }: CheckDetailProps) => {
     </Flex>
   );
 };
+
+function buildMarkdown(check: Check) {
+  return `<details><summary>${buildTitle(check)}</summary>\n\n${buildBody(
+    check
+  )}\n\n</details>`;
+}
+
+function buildTitle(check: Check) {
+  return `${check.is_checked ? "✅ " : ""}${check.name}`;
+}
+
+function buildBody(check: Check) {
+  if (check.type === "query" || check.type === "query_diff") {
+    return `${buildDescription(check)}\n\n${buildQuery(check)}`;
+  }
+
+  return buildDescription(check);
+}
+
+function buildDescription(check: Check) {
+  return check.description ? check.description : "_(no description)_";
+}
+
+function buildQuery(check: Check) {
+  return `- SQL query\n` + `\`\`\`sql\n${check.params?.sql_template}\n\`\`\``;
+}
+
+function useClipBoardToast() {
+  const clipboardToast = useToast();
+
+  function successToast(message: string) {
+    clipboardToast({
+      description: message,
+      status: "info",
+      variant: "left-accent",
+      position: "bottom",
+      duration: 5000,
+      isClosable: true,
+    });
+  }
+
+  function failToast(error: any) {
+    clipboardToast({
+      title: "Failed to copy the check to clipboard",
+      description: `${error}`,
+      status: "error",
+      variant: "left-accent",
+      position: "bottom",
+      duration: 5000,
+      isClosable: true,
+    });
+  }
+
+  return {
+    successToast,
+    failToast,
+  };
+}
