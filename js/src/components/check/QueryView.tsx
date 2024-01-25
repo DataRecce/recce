@@ -8,7 +8,7 @@ import {
 } from "@chakra-ui/react";
 import SqlEditor from "@/components/query/SqlEditor";
 import { Check } from "@/lib/api/checks";
-import { QueryDataGrid } from "../query/QueryDataGrid";
+import { QueryDataGrid } from "../query/QueryResultView";
 
 interface QueryViewProp {
   check: Check;
@@ -36,8 +36,9 @@ export function QueryView({ check }: QueryViewProp) {
       </Accordion>
 
       <Box flex="1" style={{ contain: "size" }}>
-        {check?.type === "query" && <QueryDataGrid run={check?.last_run} enableScreenshot={true}/>
-      }
+        {check?.type === "query" && (
+          <QueryDataGrid run={check?.last_run} enableScreenshot={true} />
+        )}
       </Box>
     </>
   );

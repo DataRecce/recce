@@ -1,31 +1,16 @@
 import "react-data-grid/lib/styles.css";
-import DataGrid, { Column } from "react-data-grid";
+import { Column } from "react-data-grid";
 import { QueryParams, QueryResult } from "@/lib/api/adhocQuery";
-import {
-  Alert,
-  AlertIcon,
-  Box,
-  Button,
-  Center,
-  Flex,
-  Icon,
-  Spinner,
-  VStack,
-} from "@chakra-ui/react";
+import { Box, Center, Flex, Icon } from "@chakra-ui/react";
 import { CSSProperties, useMemo, useState } from "react";
 import { DataFrame, Run } from "@/lib/api/types";
 import { ScreenshotDataGrid } from "../data-grid/ScreenshotDataGrid";
 import { defaultRenderCell } from "./querydiff";
 import { VscPin, VscPinned } from "react-icons/vsc";
+import { RunResultViewProps } from "../run/RunModal";
 
-interface QueryDataGridProps {
-  style?: CSSProperties;
-  isFetching?: boolean;
-  run?: Run<QueryParams, QueryResult>;
-  error?: Error | null; // error from submit
-  onCancel?: () => void;
-  enableScreenshot?: boolean;
-}
+interface QueryResultViewProp
+  extends RunResultViewProps<QueryParams, QueryResult> {}
 
 interface QueryDataGridOptions {
   pinnedColumns?: string[];
@@ -98,18 +83,11 @@ function toDataGrid(result: DataFrame, options: QueryDataGridOptions) {
   return { columns, rows: result.data };
 }
 
-export const QueryDataGrid = ({
-  isFetching,
-  run,
-  error,
-  onCancel,
-  enableScreenshot,
-}: QueryDataGridProps) => {
-  const [isAborting, setAborting] = useState(false);
+export const QueryResultView = ({ run }: QueryResultViewProp) => {
   const [pinnedColumns, setPinnedColumns] = useState<string[]>([]);
   const dataframe = run?.result?.result;
   const gridData = useMemo(() => {
-    if (isFetching || !dataframe) {
+    if (!dataframe) {
       return { rows: [], columns: [] };
     }
 
@@ -117,46 +95,7 @@ export const QueryDataGrid = ({
       pinnedColumns,
       onPinnedColumnsChange: setPinnedColumns,
     });
-  }, [isFetching, dataframe, pinnedColumns, setPinnedColumns]);
-
-  const handleCancel = () => {
-    setAborting(true);
-    if (onCancel) {
-      onCancel();
-    }
-  };
-
-  if (isFetching) {
-    return (
-      <Center p="16px" height="100%">
-        <VStack>
-          <Box>
-            <Spinner size="sm" mr="8px" />
-
-            {isAborting ? <>Aborting...</> : <>Loading...</>}
-          </Box>
-          {!isAborting && onCancel && (
-            <Button onClick={handleCancel} colorScheme="blue" size="sm">
-              Cancel
-            </Button>
-          )}
-        </VStack>
-      </Center>
-    );
-  }
-
-  const errorMessage =
-    (error as any)?.response?.data?.detail || run?.error || run?.result?.error;
-
-  if (errorMessage) {
-    // return <Box p="16px">Error: {getErrorMessage(currentError)}</Box>;
-    return (
-      <Alert status="error">
-        <AlertIcon />
-        Error: {errorMessage}
-      </Alert>
-    );
-  }
+  }, [dataframe, pinnedColumns, setPinnedColumns]);
 
   if (gridData.columns.length === 0) {
     return <Center height="100%">No data</Center>;
@@ -170,7 +109,7 @@ export const QueryDataGrid = ({
         rows={gridData.rows}
         defaultColumnOptions={{ resizable: true, maxWidth: 800, minWidth: 35 }}
         className="rdg-light"
-        enableScreenshot={enableScreenshot}
+        enableScreenshot={true}
       />
     </>
   );

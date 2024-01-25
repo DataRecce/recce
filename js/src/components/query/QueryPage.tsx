@@ -15,16 +15,12 @@ import { createCheckByRun, updateCheck } from "@/lib/api/checks";
 import { QueryDiffDataGrid } from "./QueryDiffDataGrid";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { cacheKeys } from "@/lib/api/cacheKeys";
-import { useLocation, useRouter } from "wouter";
-import {
-  QueryDiffResult,
-  QueryResult,
-  submitQuery,
-  submitQueryDiff,
-} from "@/lib/api/adhocQuery";
-import { QueryDataGrid } from "./QueryDataGrid";
+import { useLocation } from "wouter";
+import { submitQuery, submitQueryDiff } from "@/lib/api/adhocQuery";
+import { QueryResultView } from "./QueryResultView";
 import { cancelRun, waitRun } from "@/lib/api/runs";
 import { AddIcon } from "@chakra-ui/icons";
+import { RunView } from "../run/RunView";
 
 export const QueryPage = () => {
   const { sqlQuery, setSqlQuery } = useRecceQueryContext();
@@ -153,14 +149,14 @@ export const QueryPage = () => {
             </Tooltip>
           </Flex>
         )}
+
         {runType === "query" ? (
-          <QueryDataGrid
+          <RunView
             key={runId}
-            isFetching={isPending}
             run={run}
-            error={error}
+            isPending={isPending}
             onCancel={handleCancel}
-            enableScreenshot={false}
+            RunResultView={QueryResultView}
           />
         ) : (
           <QueryDiffDataGrid
