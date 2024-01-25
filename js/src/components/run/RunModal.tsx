@@ -64,7 +64,7 @@ export const RunModal = <PT, RT>({
     data: run,
     mutate: execute,
     reset,
-    error: error,
+    error,
     isPending,
   } = useMutation({
     mutationFn: submitRunFn,
@@ -135,7 +135,7 @@ export const RunModal = <PT, RT>({
             overflow="auto"
             borderY="1px solid lightgray"
           >
-            {!run ? (
+            {!isPending && !run && !error ? (
               <Box style={{ contain: "size layout" }}>
                 {RunEditView && (
                   <RunEditView params={params} onParamsChanged={setParams} />
@@ -146,6 +146,7 @@ export const RunModal = <PT, RT>({
                 isPending={isPending}
                 isAborting={isAborting}
                 run={run}
+                error={error}
                 progress={progress}
                 onCancel={handleCancel}
                 RunResultView={RunResultView}
