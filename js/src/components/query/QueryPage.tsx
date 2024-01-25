@@ -1,13 +1,5 @@
 import React, { useState, useCallback } from "react";
-import {
-  Box,
-  Button,
-  Checkbox,
-  Flex,
-  IconButton,
-  Spacer,
-  Tooltip,
-} from "@chakra-ui/react";
+import { Box, Button, Flex } from "@chakra-ui/react";
 import SqlEditor from "./SqlEditor";
 import { useRecceQueryContext } from "@/lib/hooks/RecceQueryContext";
 
@@ -22,7 +14,6 @@ import { useLocation } from "wouter";
 import { submitQuery, submitQueryDiff } from "@/lib/api/adhocQuery";
 import { QueryResultView } from "./QueryResultView";
 import { cancelRun, waitRun } from "@/lib/api/runs";
-import { AddIcon } from "@chakra-ui/icons";
 import { RunView } from "../run/RunView";
 import { Run } from "@/lib/api/types";
 
@@ -83,6 +74,7 @@ export const QueryPage = () => {
             ...check.params,
             primary_keys: viewOptions?.primaryKeys,
             changed_only: viewOptions?.changedOnly,
+            pinned_columns: viewOptions?.pinnedColumns,
           },
         });
       }

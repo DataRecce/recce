@@ -26,6 +26,7 @@ import { AddIcon } from "@chakra-ui/icons";
 export interface QueryDiffResultViewOptions {
   changedOnly?: boolean;
   primaryKeys?: string[];
+  pinnedColumns?: string[];
 }
 export interface QueryDiffResultViewProps
   extends RunResultViewProps<
@@ -44,10 +45,9 @@ export const QueryDiffResultView = ({
 }: QueryDiffResultViewProps) => {
   const primaryKeys = viewOptions?.primaryKeys || [];
   const changedOnly = viewOptions?.changedOnly || false;
+  const pinnedColumns = viewOptions?.pinnedColumns || [];
 
-  const [pinnedColumns, setPinnedColumns] = useState<string[]>([]);
-
-  const handlePrimaryKeyChange = (primaryKeys: string[]) => {
+  const handlePrimaryKeyChanged = (primaryKeys: string[]) => {
     if (onViewOptionsChanged) {
       onViewOptionsChanged({
         ...viewOptions,
@@ -56,22 +56,24 @@ export const QueryDiffResultView = ({
     }
   };
 
+  const handlePinnedColumnsChanged = (pinnedColumns: string[]) => {
+    if (onViewOptionsChanged) {
+      onViewOptionsChanged({
+        ...viewOptions,
+        pinnedColumns,
+      });
+    }
+  };
+
   const gridData = useMemo(() => {
     return toDataDiffGrid(run?.result?.base, run?.result?.current, {
       changedOnly,
       primaryKeys,
-      onPrimaryKeyChange: handlePrimaryKeyChange,
+      onPrimaryKeyChange: handlePrimaryKeyChanged,
       pinnedColumns,
-      onPinnedColumnsChange: setPinnedColumns,
+      onPinnedColumnsChange: handlePinnedColumnsChanged,
     });
-  }, [
-    run,
-    primaryKeys,
-    onViewOptionsChanged,
-    pinnedColumns,
-    setPinnedColumns,
-    changedOnly,
-  ]);
+  }, [run, primaryKeys, pinnedColumns, changedOnly, onViewOptionsChanged]);
 
   if (gridData.columns.length === 0) {
     return <Center height="100%">No data</Center>;

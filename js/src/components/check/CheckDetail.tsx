@@ -59,6 +59,7 @@ export const CheckDetail = ({ checkId }: CheckDetailProps) => {
         setViewOptions({
           changedOnly: check?.params?.changed_only,
           primaryKeys: check?.params?.primary_keys,
+          pinnedColumns: check?.params?.pinned_columns,
         });
       } else {
         setViewOptions({});
