@@ -16,7 +16,6 @@ import {
   IconButton,
   Tooltip,
   VStack,
-  useToast,
 } from "@chakra-ui/react";
 import { CheckDetail } from "./CheckDetail";
 import { cacheKeys } from "@/lib/api/cacheKeys";
@@ -26,6 +25,9 @@ import { Route, Switch, useLocation, useRoute } from "wouter";
 import { AddIcon, CopyIcon } from "@chakra-ui/icons";
 import { CheckList } from "./CheckList";
 import { DropResult } from "@hello-pangea/dnd";
+import { useClipBoardToast } from "@/lib/hooks/useClipBoardToast";
+import { buildDescription, buildTitle } from "./check";
+import { stripIndent } from "common-tags";
 
 export const CheckPage = () => {
   const [, setLocation] = useLocation();
@@ -140,26 +142,25 @@ export const CheckPage = () => {
                 variant="unstyled"
                 aria-label="Copy checklist to the clipboard"
                 mr="10px"
-                onClick={() => {
+                onClick={async () => {
                   const markdown = buildMarkdown(checks);
                   if (!navigator.clipboard) {
                     failToast(
+                      "Failed to copy checklist to clipboard",
                       new Error(
                         "Copy to clipboard is available only in secure contexts (HTTPS)"
                       )
                     );
                     return;
                   }
-                  navigator.clipboard
-                    .writeText(markdown)
-                    .then(() => {
-                      successToast(
-                        `Copied ${checks.length} checks to the clipboard`
-                      );
-                    })
-                    .catch((err) => {
-                      failToast(err);
-                    });
+                  try {
+                    await navigator.clipboard.writeText(markdown);
+                    successToast(
+                      `Copied ${checks.length} checks to the clipboard`
+                    );
+                  } catch (err) {
+                    failToast("Failed to copy checklist to clipboard", err);
+                  }
                 }}
                 icon={<CopyIcon />}
               />
@@ -190,50 +191,13 @@ export const CheckPage = () => {
 
 function buildMarkdown(checks: Check[]) {
   const checkItems = checks.map((check) => {
-    return `<details><summary>${buildTitle(
-      check
-    )}</summary>\n\n${buildDescription(check)}\n\n</details>`;
+    return stripIndent`
+    <details><summary>${buildTitle(check)}</summary>
+
+    ${buildDescription(check)}
+
+    </details>`;
   });
 
   return checkItems.join("\n\n");
-}
-
-function buildTitle(check: Check) {
-  return `${check.is_checked ? "✅ " : ""}${check.name}`;
-}
-
-function buildDescription(check: Check) {
-  return check.description ? check.description : "_(no description)_";
-}
-
-function useClipBoardToast() {
-  const clipboardToast = useToast();
-
-  function successToast(message: string) {
-    clipboardToast({
-      description: message,
-      status: "info",
-      variant: "left-accent",
-      position: "bottom",
-      duration: 5000,
-      isClosable: true,
-    });
-  }
-
-  function failToast(error: any) {
-    clipboardToast({
-      title: "Failed to copy checklist to clipboard",
-      description: `${error}`,
-      status: "error",
-      variant: "left-accent",
-      position: "bottom",
-      duration: 5000,
-      isClosable: true,
-    });
-  }
-
-  return {
-    successToast,
-    failToast,
-  };
 }

@@ -32,6 +32,9 @@ dependencies:
   axios:
     specifier: ^1.6.0
     version: 1.6.0
+  common-tags:
+    specifier: ^1.8.2
+    version: 1.8.2
   dagre:
     specifier: ^0.8.5
     version: 0.8.5
@@ -85,6 +88,9 @@ devDependencies:
   '@testing-library/user-event':
     specifier: 14.4.3
     version: 14.4.3(@testing-library/dom@9.3.3)
+  '@types/common-tags':
+    specifier: ^1.8.4
+    version: 1.8.4
   '@types/dagre':
     specifier: ^0.7.52
     version: 0.7.52
@@ -2498,6 +2504,10 @@ packages:
       '@babel/types': 7.23.0
     dev: true
 
+  /@types/common-tags@1.8.4:
+    resolution: {integrity: sha512-S+1hLDJPjWNDhcGxsxEbepzaxWqURP/o+3cP4aa2w7yBXgdcmKGQtZzP8JbyfOd0m+33nh+8+kvxYE2UJtBDkg==}
+    dev: true
+
   /@types/d3-array@3.2.1:
     resolution: {integrity: sha512-Y2Jn2idRrLzUfAKV2LyRImR+y4oa2AntrgID95SHJxuMUrkNXmanDSed71sRNZysveJVt1hLLemQZIady0FpEg==}
     dev: false
@@ -3427,6 +3437,11 @@ packages:
     resolution: {integrity: sha512-NOKm8xhkzAjzFx8B2v5OAHT+u5pRQc2UCa2Vq9jYL/31o2wi9mxBA7LIFs3sV5VSC49z6pEhfbMULvShKj26WA==}
     engines: {node: '>= 6'}
     dev: true
+
+  /common-tags@1.8.2:
+    resolution: {integrity: sha512-gk/Z852D2Wtb//0I+kRFNKKE9dIIVirjoqPoA1wJU+XePVXZfGeBpk45+A1rKO4Q43prqWBNY/MiIeRLbPWUaA==}
+    engines: {node: '>=4.0.0'}
+    dev: false
 
   /compute-scroll-into-view@3.0.3:
     resolution: {integrity: sha512-nadqwNxghAGTamwIqQSG433W6OADZx2vCo3UXHNrzTRHK/htu+7+L0zhjEoaeaQVNAi3YgqWDv8+tzf0hRfR+A==}

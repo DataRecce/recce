@@ -11,7 +11,7 @@ import {
   MenuList,
   Spacer,
 } from "@chakra-ui/react";
-import { DeleteIcon } from "@chakra-ui/icons";
+import { CopyIcon, DeleteIcon } from "@chakra-ui/icons";
 import { CheckBreadcrumb } from "./CheckBreadcrumb";
 import { VscKebabVertical } from "react-icons/vsc";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
@@ -26,6 +26,9 @@ import { CheckDescription } from "./CheckDescription";
 import { QueryView } from "./QueryView";
 import { RowCountDiffView } from "./RowCountDiffView";
 import { ProfileDiffResultView } from "../profile/ProfileDiffResultView";
+import { stripIndent } from "common-tags";
+import { useClipBoardToast } from "@/lib/hooks/useClipBoardToast";
+import { buildTitle, buildDescription, buildQuery } from "./check";
 
 interface CheckDetailProps {
   checkId: string;
@@ -34,6 +37,7 @@ interface CheckDetailProps {
 export const CheckDetail = ({ checkId }: CheckDetailProps) => {
   const queryClient = useQueryClient();
   const [, setLocation] = useLocation();
+  const { successToast, failToast } = useClipBoardToast();
 
   const {
     isLoading,
@@ -70,6 +74,30 @@ export const CheckDetail = ({ checkId }: CheckDetailProps) => {
     return <Center h="100%">Error: {error.message}</Center>;
   }
 
+  const handleCopy = async () => {
+    if (!check) {
+      return;
+    }
+
+    const markdown = buildMarkdown(check);
+    if (!navigator.clipboard) {
+      failToast(
+        "Failed to copy the check to clipboard",
+        new Error(
+          "Copy to clipboard is available only in secure contexts (HTTPS)"
+        )
+      );
+      return;
+    }
+
+    try {
+      await navigator.clipboard.writeText(markdown);
+      successToast("Copied the check to the clipboard");
+    } catch (err) {
+      failToast("Failed to copy the check to clipboard", err);
+    }
+  };
+
   const handleCheck: React.ChangeEventHandler = (event) => {
     const isChecked: boolean = (event.target as any).checked;
     mutate({ is_checked: isChecked });
@@ -95,6 +123,9 @@ export const CheckDetail = ({ checkId }: CheckDetailProps) => {
             variant="ghost"
           />
           <MenuList>
+            <MenuItem icon={<CopyIcon />} onClick={() => handleCopy()}>
+              Copy markdown
+            </MenuItem>
             <MenuItem icon={<DeleteIcon />} onClick={() => handleDelete()}>
               Delete
             </MenuItem>
@@ -133,3 +164,20 @@ export const CheckDetail = ({ checkId }: CheckDetailProps) => {
     </Flex>
   );
 };
+
+function buildMarkdown(check: Check) {
+  return stripIndent`
+  <details><summary>${buildTitle(check)}</summary>
+
+  ${buildBody(check)}
+
+  </details>`;
+}
+
+function buildBody(check: Check) {
+  if (check.type === "query" || check.type === "query_diff") {
+    return `${buildDescription(check)}\n\n${buildQuery(check)}`;
+  }
+
+  return buildDescription(check);
+}
