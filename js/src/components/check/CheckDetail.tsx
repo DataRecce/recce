@@ -73,25 +73,26 @@ export const CheckDetail = ({ checkId }: CheckDetailProps) => {
     return <Center h="100%">Error: {error.message}</Center>;
   }
 
-  const handleCopy = () => {
-    if (check) {
-      const markdown = buildMarkdown(check);
-      if (!navigator.clipboard) {
-        failToast(
-          new Error(
-            "Copy to clipboard is available only in secure contexts (HTTPS)"
-          )
-        );
-        return;
-      }
-      navigator.clipboard
-        .writeText(markdown)
-        .then(() => {
-          successToast("Copied the check to the clipboard");
-        })
-        .catch((err) => {
-          failToast(err);
-        });
+  const handleCopy = async () => {
+    if (!check) {
+      return;
+    }
+
+    const markdown = buildMarkdown(check);
+    if (!navigator.clipboard) {
+      failToast(
+        new Error(
+          "Copy to clipboard is available only in secure contexts (HTTPS)"
+        )
+      );
+      return;
+    }
+
+    try {
+      await navigator.clipboard.writeText(markdown);
+      successToast("Copied the check to the clipboard");
+    } catch (err) {
+      failToast(err);
     }
   };
 
