@@ -43,29 +43,38 @@ export const QueryDiffResultView = ({
   viewOptions,
   onViewOptionsChanged,
 }: QueryDiffResultViewProps) => {
-  const primaryKeys = viewOptions?.primaryKeys || [];
-  const changedOnly = viewOptions?.changedOnly || false;
-  const pinnedColumns = viewOptions?.pinnedColumns || [];
-
-  const handlePrimaryKeyChanged = (primaryKeys: string[]) => {
-    if (onViewOptionsChanged) {
-      onViewOptionsChanged({
-        ...viewOptions,
-        primaryKeys,
-      });
-    }
-  };
-
-  const handlePinnedColumnsChanged = (pinnedColumns: string[]) => {
-    if (onViewOptionsChanged) {
-      onViewOptionsChanged({
-        ...viewOptions,
-        pinnedColumns,
-      });
-    }
-  };
+  const primaryKeys = useMemo(
+    () => viewOptions?.primaryKeys || [],
+    [viewOptions]
+  );
+  const changedOnly = useMemo(
+    () => viewOptions?.changedOnly || false,
+    [viewOptions]
+  );
+  const pinnedColumns = useMemo(
+    () => viewOptions?.pinnedColumns || [],
+    [viewOptions]
+  );
 
   const gridData = useMemo(() => {
+    const handlePrimaryKeyChanged = (primaryKeys: string[]) => {
+      if (onViewOptionsChanged) {
+        onViewOptionsChanged({
+          ...viewOptions,
+          primaryKeys,
+        });
+      }
+    };
+
+    const handlePinnedColumnsChanged = (pinnedColumns: string[]) => {
+      if (onViewOptionsChanged) {
+        onViewOptionsChanged({
+          ...viewOptions,
+          pinnedColumns,
+        });
+      }
+    };
+
     return toDataDiffGrid(run?.result?.base, run?.result?.current, {
       changedOnly,
       primaryKeys,
@@ -73,7 +82,14 @@ export const QueryDiffResultView = ({
       pinnedColumns,
       onPinnedColumnsChange: handlePinnedColumnsChanged,
     });
-  }, [run, primaryKeys, pinnedColumns, changedOnly, onViewOptionsChanged]);
+  }, [
+    run,
+    viewOptions,
+    changedOnly,
+    primaryKeys,
+    pinnedColumns,
+    onViewOptionsChanged,
+  ]);
 
   if (gridData.columns.length === 0) {
     return <Center height="100%">No data</Center>;
