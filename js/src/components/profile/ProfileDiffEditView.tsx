@@ -1,5 +1,5 @@
 import { ProfileDiffParams } from "@/lib/api/profile";
-import { RunEditViewProps } from "../run/RunModal";
+import { RunEditViewProps } from "../run/types";
 
 interface ProfileDiffEditViewProp extends RunEditViewProps<ProfileDiffParams> {}
 

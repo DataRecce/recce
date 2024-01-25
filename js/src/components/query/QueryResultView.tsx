@@ -7,7 +7,7 @@ import { DataFrame, Run } from "@/lib/api/types";
 import { ScreenshotDataGrid } from "../data-grid/ScreenshotDataGrid";
 import { defaultRenderCell } from "./querydiff";
 import { VscPin, VscPinned } from "react-icons/vsc";
-import { RunResultViewProps } from "../run/RunModal";
+import { RunResultViewProps } from "../run/types";
 
 interface QueryResultViewProp
   extends RunResultViewProps<QueryParams, QueryResult> {}

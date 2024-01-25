@@ -12,7 +12,10 @@ import SqlEditor from "./SqlEditor";
 import { useRecceQueryContext } from "@/lib/hooks/RecceQueryContext";
 
 import { createCheckByRun, updateCheck } from "@/lib/api/checks";
-import { QueryDiffDataGrid } from "./QueryDiffDataGrid";
+import {
+  QueryDiffResultView,
+  QueryDiffResultViewOptions,
+} from "./QueryDiffResultView";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { cacheKeys } from "@/lib/api/cacheKeys";
 import { useLocation } from "wouter";
@@ -25,10 +28,12 @@ import { RunView } from "../run/RunView";
 export const QueryPage = () => {
   const { sqlQuery, setSqlQuery } = useRecceQueryContext();
 
-  const [primaryKeys, setPrimaryKeys] = useState<string[]>([]);
   const [runType, setRunType] = useState<string>();
   const [runId, setRunId] = useState<string>();
-  const [changedOnly, setChangedOnly] = useState(false);
+
+  const [viewOptions, setViewOptions] = useState<QueryDiffResultViewOptions>(
+    {}
+  );
 
   const queryClient = useQueryClient();
   const [, setLocation] = useLocation();
@@ -44,19 +49,19 @@ export const QueryPage = () => {
   };
 
   const handleCheckboxChange = () => {
-    setChangedOnly(!changedOnly);
+    const changedOnly = !viewOptions?.changedOnly;
+    setViewOptions({ ...viewOptions, changedOnly });
   };
 
   const {
     data: run,
     mutate: runQuery,
-    error: error,
+    error,
     isPending,
   } = useMutation({
     mutationFn: queryFn,
     onSuccess: (run) => {
-      setPrimaryKeys([]);
-      setChangedOnly(false);
+      setViewOptions({});
     },
   });
 
@@ -79,22 +84,15 @@ export const QueryPage = () => {
       await updateCheck(check.check_id, {
         params: {
           ...check.params,
-          primary_keys: primaryKeys,
-          changed_only: changedOnly,
+          primary_keys: viewOptions?.primaryKeys,
+          changed_only: viewOptions?.changedOnly,
         },
       });
     }
 
     queryClient.invalidateQueries({ queryKey: cacheKeys.checks() });
     setLocation(`/checks/${check.check_id}`);
-  }, [
-    run?.run_id,
-    run?.type,
-    setLocation,
-    primaryKeys,
-    queryClient,
-    changedOnly,
-  ]);
+  }, [run?.run_id, run?.type, setLocation, viewOptions, queryClient]);
 
   const hasResult = !isPending && run?.run_id && !run?.error;
 
@@ -134,7 +132,10 @@ export const QueryPage = () => {
             gap="5px"
           >
             {runType === "query_diff" && (
-              <Checkbox isChecked={changedOnly} onChange={handleCheckboxChange}>
+              <Checkbox
+                isChecked={viewOptions?.changedOnly}
+                onChange={handleCheckboxChange}
+              >
                 Changed only
               </Checkbox>
             )}
@@ -159,16 +160,14 @@ export const QueryPage = () => {
             RunResultView={QueryResultView}
           />
         ) : (
-          <QueryDiffDataGrid
+          <RunView
             key={runId}
-            isFetching={isPending}
+            isPending={isPending}
             run={run}
-            error={error}
-            changedOnly={changedOnly}
-            primaryKeys={primaryKeys}
-            setPrimaryKeys={setPrimaryKeys}
+            viewOptions={viewOptions}
+            onViewOptionsChanged={setViewOptions}
             onCancel={handleCancel}
-            enableScreenshot={false}
+            RunResultView={QueryDiffResultView}
           />
         )}
       </Flex>

@@ -3,7 +3,7 @@ import { Box, Center, Flex, Icon } from "@chakra-ui/react";
 import { ColumnOrColumnGroup } from "react-data-grid";
 import { ValueDiffParams, ValueDiffResult } from "@/lib/api/valuediff";
 import { ScreenshotDataGrid } from "../data-grid/ScreenshotDataGrid";
-import { RunResultViewProps } from "../run/RunModal";
+import { RunResultViewProps } from "../run/types";
 import { VscKey } from "react-icons/vsc";
 
 interface ValueDiffResultViewProp

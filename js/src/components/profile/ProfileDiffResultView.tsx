@@ -1,7 +1,7 @@
 import { Box, Center, Flex, Icon } from "@chakra-ui/react";
 
 import { ScreenshotDataGrid } from "../data-grid/ScreenshotDataGrid";
-import { RunResultViewProps } from "../run/RunModal";
+import { RunResultViewProps } from "../run/types";
 
 import { ProfileDiffParams, ProfileDiffResult } from "@/lib/api/profile";
 import { useMemo } from "react";

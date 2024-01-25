@@ -9,27 +9,32 @@ import {
   Flex,
   VStack,
 } from "@chakra-ui/react";
-import { RunResultViewProps } from "./RunModal";
+import { RunResultViewProps } from "./types";
 
-interface RunViewProps<PT, RT> {
+interface RunViewProps<PT, RT, VO = any> {
   isPending?: boolean;
   run?: Run<PT, RT>;
   error?: Error;
+  progress?: Run["progress"];
   isAborting?: boolean;
   onCancel: () => void;
-  RunResultView: React.ComponentType<RunResultViewProps<PT, RT>>;
+  viewOptions?: VO;
+  onViewOptionsChanged?: (viewOptions: VO) => void;
+  RunResultView: React.ComponentType<RunResultViewProps<PT, RT, VO>>;
 }
 
 export const RunView = <PT, RT>({
   isPending,
   isAborting,
+  progress,
   error,
   run,
   onCancel,
+  viewOptions,
+  onViewOptionsChanged,
   RunResultView,
 }: RunViewProps<PT, RT>) => {
   const errorMessage = (error as any)?.response?.data?.detail || run?.error;
-  const progress = run?.progress;
 
   if (errorMessage) {
     return (
@@ -76,7 +81,11 @@ export const RunView = <PT, RT>({
 
   return (
     <Box h="100%" style={{ contain: "size layout" }}>
-      <RunResultView run={run} />
+      <RunResultView
+        run={run}
+        viewOptions={viewOptions}
+        onViewOptionsChanged={onViewOptionsChanged}
+      />
     </Box>
   );
 };
