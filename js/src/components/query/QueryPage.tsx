@@ -24,6 +24,7 @@ import { QueryResultView } from "./QueryResultView";
 import { cancelRun, waitRun } from "@/lib/api/runs";
 import { AddIcon } from "@chakra-ui/icons";
 import { RunView } from "../run/RunView";
+import { Run } from "@/lib/api/types";
 
 export const QueryPage = () => {
   const { sqlQuery, setSqlQuery } = useRecceQueryContext();
@@ -48,11 +49,6 @@ export const QueryPage = () => {
     return await waitRun(run_id);
   };
 
-  const handleCheckboxChange = () => {
-    const changedOnly = !viewOptions?.changedOnly;
-    setViewOptions({ ...viewOptions, changedOnly });
-  };
-
   const {
     data: run,
     mutate: runQuery,
@@ -73,26 +69,29 @@ export const QueryPage = () => {
     return await cancelRun(runId);
   }, [runId]);
 
-  const addToChecklist = useCallback(async () => {
-    if (!run?.run_id) {
-      return;
-    }
+  const addToChecklist = useCallback(
+    async (run: Run<any, any>) => {
+      if (!run?.run_id) {
+        return;
+      }
 
-    const check = await createCheckByRun(run.run_id);
+      const check = await createCheckByRun(run.run_id);
 
-    if (run.type === "query_diff") {
-      await updateCheck(check.check_id, {
-        params: {
-          ...check.params,
-          primary_keys: viewOptions?.primaryKeys,
-          changed_only: viewOptions?.changedOnly,
-        },
-      });
-    }
+      if (run.type === "query_diff") {
+        await updateCheck(check.check_id, {
+          params: {
+            ...check.params,
+            primary_keys: viewOptions?.primaryKeys,
+            changed_only: viewOptions?.changedOnly,
+          },
+        });
+      }
 
-    queryClient.invalidateQueries({ queryKey: cacheKeys.checks() });
-    setLocation(`/checks/${check.check_id}`);
-  }, [run?.run_id, run?.type, setLocation, viewOptions, queryClient]);
+      queryClient.invalidateQueries({ queryKey: cacheKeys.checks() });
+      setLocation(`/checks/${check.check_id}`);
+    },
+    [setLocation, viewOptions, queryClient]
+  );
 
   const hasResult = !isPending && run?.run_id && !run?.error;
 
@@ -124,41 +123,18 @@ export const QueryPage = () => {
           onRunDiff={() => runQuery("query_diff")}
         />
       </Box>
-      <Flex backgroundColor="rgb(249,249,249)" height="50vh" direction="column">
-        {hasResult && (
-          <Flex
-            borderBottom="1px solid lightgray"
-            justifyContent="flex-end"
-            gap="5px"
-          >
-            {runType === "query_diff" && (
-              <Checkbox
-                isChecked={viewOptions?.changedOnly}
-                onChange={handleCheckboxChange}
-              >
-                Changed only
-              </Checkbox>
-            )}
-            <Tooltip label="Add to Checklist">
-              <IconButton
-                variant="unstyled"
-                size="sm"
-                aria-label="Add"
-                icon={<AddIcon />}
-                onClick={addToChecklist}
-              />
-            </Tooltip>
-          </Flex>
-        )}
-
+      <Flex height="50vh" direction="column">
         {runType === "query" ? (
           <RunView
             key={runId}
             run={run}
             isPending={isPending}
             onCancel={handleCancel}
-            RunResultView={QueryResultView}
-          />
+          >
+            {(props) => (
+              <QueryResultView {...props} onAddToChecklist={addToChecklist} />
+            )}
+          </RunView>
         ) : (
           <RunView
             key={runId}
@@ -167,8 +143,14 @@ export const QueryPage = () => {
             viewOptions={viewOptions}
             onViewOptionsChanged={setViewOptions}
             onCancel={handleCancel}
-            RunResultView={QueryDiffResultView}
-          />
+          >
+            {(props) => (
+              <QueryDiffResultView
+                {...props}
+                onAddToChecklist={addToChecklist}
+              />
+            )}
+          </RunView>
         )}
       </Flex>
     </Flex>

@@ -10,6 +10,7 @@ import {
   VStack,
 } from "@chakra-ui/react";
 import { RunResultViewProps } from "./types";
+import { Children } from "react";
 
 interface RunViewProps<PT, RT, VO = any> {
   isPending?: boolean;
@@ -20,7 +21,10 @@ interface RunViewProps<PT, RT, VO = any> {
   onCancel: () => void;
   viewOptions?: VO;
   onViewOptionsChanged?: (viewOptions: VO) => void;
-  RunResultView: React.ComponentType<RunResultViewProps<PT, RT, VO>>;
+  RunResultView?: React.ComponentType<RunResultViewProps<PT, RT, VO>>;
+  children?: <T extends RunResultViewProps<PT, RT, VO>>(
+    params: T
+  ) => React.ReactNode;
 }
 
 export const RunView = <PT, RT>({
@@ -33,7 +37,19 @@ export const RunView = <PT, RT>({
   viewOptions,
   onViewOptionsChanged,
   RunResultView,
+  children,
 }: RunViewProps<PT, RT>) => {
+  if (children && RunResultView) {
+    throw new Error(
+      "RunView requires either a children or a RunResultView prop, but not both."
+    );
+  }
+  if (!children && !RunResultView) {
+    throw new Error(
+      "RunView requires at least one of children or RunResultView prop."
+    );
+  }
+
   const errorMessage = (error as any)?.response?.data?.detail || run?.error;
 
   if (errorMessage) {
@@ -81,11 +97,14 @@ export const RunView = <PT, RT>({
 
   return (
     <Box h="100%" style={{ contain: "size layout" }}>
-      <RunResultView
-        run={run}
-        viewOptions={viewOptions}
-        onViewOptionsChanged={onViewOptionsChanged}
-      />
+      {RunResultView && (
+        <RunResultView
+          run={run}
+          viewOptions={viewOptions}
+          onViewOptionsChanged={onViewOptionsChanged}
+        />
+      )}
+      {children && children({ run, viewOptions, onViewOptionsChanged })}
     </Box>
   );
 };
