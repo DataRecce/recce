@@ -28,6 +28,7 @@ import { RowCountDiffView } from "./RowCountDiffView";
 import { ProfileDiffResultView } from "../profile/ProfileDiffResultView";
 import { stripIndent } from "common-tags";
 import { useClipBoardToast } from "@/lib/hooks/useClipBoardToast";
+import { buildTitle, buildDescription, buildQuery } from "./check";
 
 interface CheckDetailProps {
   checkId: string;
@@ -165,13 +166,12 @@ export const CheckDetail = ({ checkId }: CheckDetailProps) => {
 };
 
 function buildMarkdown(check: Check) {
-  return `<details><summary>${buildTitle(check)}</summary>\n\n${buildBody(
-    check
-  )}\n\n</details>`;
-}
+  return stripIndent`
+  <details><summary>${buildTitle(check)}</summary>
 
-function buildTitle(check: Check) {
-  return `${check.is_checked ? "✅ " : ""}${check.name}`;
+  ${buildBody(check)}
+
+  </details>`;
 }
 
 function buildBody(check: Check) {
@@ -180,18 +180,4 @@ function buildBody(check: Check) {
   }
 
   return buildDescription(check);
-}
-
-function buildDescription(check: Check) {
-  return check.description ? check.description : "_(no description)_";
-}
-
-function buildQuery(check: Check) {
-  return stripIndent`
-  **SQL**
-
-  \`\`\`sql
-  ${check.params?.sql_template}
-  \`\`\`
-  `;
 }

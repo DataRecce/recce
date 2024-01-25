@@ -26,6 +26,8 @@ import { AddIcon, CopyIcon } from "@chakra-ui/icons";
 import { CheckList } from "./CheckList";
 import { DropResult } from "@hello-pangea/dnd";
 import { useClipBoardToast } from "@/lib/hooks/useClipBoardToast";
+import { buildDescription, buildTitle } from "./check";
+import { stripIndent } from "common-tags";
 
 export const CheckPage = () => {
   const [, setLocation] = useLocation();
@@ -189,18 +191,13 @@ export const CheckPage = () => {
 
 function buildMarkdown(checks: Check[]) {
   const checkItems = checks.map((check) => {
-    return `<details><summary>${buildTitle(
-      check
-    )}</summary>\n\n${buildDescription(check)}\n\n</details>`;
+    return stripIndent`
+    <details><summary>${buildTitle(check)}</summary>
+
+    ${buildDescription(check)}
+
+    </details>`;
   });
 
   return checkItems.join("\n\n");
-}
-
-function buildTitle(check: Check) {
-  return `${check.is_checked ? "✅ " : ""}${check.name}`;
-}
-
-function buildDescription(check: Check) {
-  return check.description ? check.description : "_(no description)_";
 }
