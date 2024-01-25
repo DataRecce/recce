@@ -4,7 +4,7 @@ import { ScreenshotDataGrid } from "../data-grid/ScreenshotDataGrid";
 import { RunResultViewProps } from "../run/types";
 
 import { ProfileDiffParams, ProfileDiffResult } from "@/lib/api/profile";
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { toDataDiffGrid } from "../query/querydiff";
 
 interface ProfileDiffResultViewProp
@@ -13,6 +13,7 @@ interface ProfileDiffResultViewProp
 export function ProfileDiffResultView({ run }: ProfileDiffResultViewProp) {
   const result = run.result;
   const params = run.params;
+  const [pinnedColumns, setPinnedColumns] = useState<string[]>([]);
 
   const field = (result?.current?.schema.fields || []).find(
     (f) => f.name.toLowerCase() === "column_name"
@@ -22,8 +23,10 @@ export function ProfileDiffResultView({ run }: ProfileDiffResultViewProp) {
   const gridData = useMemo(() => {
     return toDataDiffGrid(result?.base, result?.current, {
       primaryKeys: [primaryKey],
+      pinnedColumns,
+      onPinnedColumnsChange: setPinnedColumns,
     });
-  }, [result, primaryKey]);
+  }, [result, primaryKey, pinnedColumns, setPinnedColumns]);
 
   if (gridData.columns.length === 0) {
     return <Center height="100%">No data</Center>;
