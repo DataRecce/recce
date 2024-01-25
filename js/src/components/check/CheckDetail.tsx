@@ -27,6 +27,7 @@ import { CheckDescription } from "./CheckDescription";
 import { QueryView } from "./QueryView";
 import { RowCountDiffView } from "./RowCountDiffView";
 import { ProfileDiffResultView } from "../profile/ProfileDiffResultView";
+import { stripIndent } from "common-tags";
 
 interface CheckDetailProps {
   checkId: string;
@@ -184,7 +185,13 @@ function buildDescription(check: Check) {
 }
 
 function buildQuery(check: Check) {
-  return `- SQL query\n` + `\`\`\`sql\n${check.params?.sql_template}\n\`\`\``;
+  return stripIndent`
+  **SQL**
+
+  \`\`\`sql
+  ${check.params?.sql_template}
+  \`\`\`
+  `;
 }
 
 function useClipBoardToast() {
