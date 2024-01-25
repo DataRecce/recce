@@ -1,5 +1,5 @@
 import { ValueDiffParams } from "@/lib/api/valuediff";
-import { RunEditViewProps } from "../run/RunModal";
+import { RunEditViewProps } from "../run/types";
 import { Box, FormControl, FormLabel, Select } from "@chakra-ui/react";
 import { useLineageGraphsContext } from "@/lib/hooks/LineageGraphContext";
 import { LineageGraphNode, NodeData } from "../lineage/lineage";

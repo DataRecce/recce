@@ -6,7 +6,7 @@ import {
 import _ from "lodash";
 import "./styles.css";
 import { Box, Flex, Icon } from "@chakra-ui/react";
-import { VscClose, VscKey } from "react-icons/vsc";
+import { VscClose, VscKey, VscPin, VscPinned } from "react-icons/vsc";
 import { DataFrame, DataFrameRow } from "@/lib/api/types";
 import { mergeKeysWithStatus } from "@/lib/mergeKeys";
 
@@ -18,61 +18,96 @@ function _getPrimaryKeyValue(row: DataFrameRow, primaryKeys: string[]): string {
   return JSON.stringify(result);
 }
 
-interface DataFrameColumnGroupHeaderProps {
-  name: string;
-  primaryKeys: string[];
+interface QueryDataDiffGridOptions {
+  primaryKeys?: string[];
   onPrimaryKeyChange?: (primaryKeys: string[]) => void;
+  pinnedColumns?: string[];
+  onPinnedColumnsChange?: (pinnedColumns: string[]) => void;
+  changedOnly?: boolean;
 }
 
 function DataFrameColumnGroupHeader({
   name,
-  primaryKeys,
+  columnStatus,
   onPrimaryKeyChange,
-}: DataFrameColumnGroupHeaderProps) {
+  onPinnedColumnsChange,
+  ...options
+}: { name: string; columnStatus: string } & QueryDataDiffGridOptions) {
+  const primaryKeys = options.primaryKeys || [];
+  const pinnedColumns = options.pinnedColumns || [];
+  const isPK = primaryKeys.includes(name);
+  const isPinned = pinnedColumns.includes(name);
+  const canBePk = columnStatus !== "added" && columnStatus !== "removed";
+
   if (name === "index") {
     return <></>;
   }
 
-  if (primaryKeys.includes(name)) {
-    return (
-      <Flex alignItems="center">
-        <Box flex={1}>{name}</Box>
-        {onPrimaryKeyChange && (
-          <Icon
-            cursor="pointer"
-            as={VscClose}
-            onClick={() => {
-              const newPrimaryKeys = primaryKeys.filter(
-                (item) => item !== name
-              );
+  const handleRemovePk = () => {
+    const newPrimaryKeys = primaryKeys.filter((item) => item !== name);
 
-              onPrimaryKeyChange(newPrimaryKeys);
-            }}
-          />
-        )}
-      </Flex>
-    );
-  } else {
-    return (
-      <Flex alignItems="center">
-        <Box flex={1}>{name}</Box>
-        {onPrimaryKeyChange && (
-          <Icon
-            cursor="pointer"
-            as={VscKey}
-            onClick={() => {
-              const newPrimaryKeys = [
-                ...primaryKeys.filter((item) => item !== "index"),
-                name,
-              ];
+    if (onPrimaryKeyChange) {
+      onPrimaryKeyChange(newPrimaryKeys);
+    }
+  };
 
-              onPrimaryKeyChange(newPrimaryKeys);
-            }}
-          />
-        )}
-      </Flex>
-    );
-  }
+  const handleAddPk = () => {
+    const newPrimaryKeys = [
+      ...primaryKeys.filter((item) => item !== "index"),
+      name,
+    ];
+
+    if (onPrimaryKeyChange) {
+      onPrimaryKeyChange(newPrimaryKeys);
+    }
+  };
+
+  const handleUnpin = () => {
+    const newPinnedColumns = pinnedColumns.filter((item) => item !== name);
+
+    if (onPinnedColumnsChange) {
+      onPinnedColumnsChange(newPinnedColumns);
+    }
+  };
+
+  const handlePin = () => {
+    const newPinnedColumns = [...pinnedColumns, name];
+
+    if (onPinnedColumnsChange) {
+      onPinnedColumnsChange(newPinnedColumns);
+    }
+  };
+
+  return (
+    <Flex alignItems="center" gap="10px" className="grid-header">
+      <Box
+        flex={1}
+        overflow="hidden"
+        textOverflow="ellipsis"
+        whiteSpace="nowrap"
+      >
+        {name}
+      </Box>
+      {canBePk && onPrimaryKeyChange && (
+        <Icon
+          className={isPK ? "close-icon" : "key-icon"}
+          display={isPK ? "block" : "none"}
+          cursor="pointer"
+          as={isPK ? VscClose : VscKey}
+          onClick={isPK ? handleRemovePk : handleAddPk}
+        />
+      )}
+      {!isPK && onPinnedColumnsChange && (
+        <Icon
+          className={isPinned ? "unpin-icon" : "pin-icon"}
+          display={isPinned ? "block" : "none"}
+          cursor="pointer"
+          as={isPinned ? VscPinned : VscPin}
+          onClick={isPinned ? handleUnpin : handlePin}
+        />
+      )}
+    </Flex>
+  );
 }
 
 export const defaultRenderCell = ({
@@ -87,13 +122,10 @@ export const defaultRenderCell = ({
 export function toDataDiffGrid(
   base?: DataFrame,
   current?: DataFrame,
-  options?: {
-    primaryKeys?: string[];
-    onPrimaryKeyChange?: (primaryKeys: string[]) => void;
-    changedOnly?: boolean;
-  }
+  options?: QueryDataDiffGridOptions
 ) {
   let primaryKeys = options?.primaryKeys || [];
+  const pinnedColumns = options?.pinnedColumns || [];
   const changedOnly = options?.changedOnly || false;
 
   const empty: DataFrame = {
@@ -131,7 +163,6 @@ export function toDataDiffGrid(
   }
 
   const columns: ColumnOrColumnGroup<any, any>[] = [];
-  const pkColumns: ColumnOrColumnGroup<any, any>[] = [];
   const columnMap = mergeKeysWithStatus(
     base.schema.fields.map((field) => field.name),
     current.schema.fields.map((field) => field.name)
@@ -216,106 +247,138 @@ export function toDataDiffGrid(
   }
 
   // merge columns
-  Object.entries(columnMap).forEach(([name, columnStatus]) => {
-    if (primaryKeys.includes(name)) {
-      pkColumns.push({
-        key: `${name}`,
-        name: (
-          <DataFrameColumnGroupHeader
-            name={name}
-            primaryKeys={primaryKeys}
-            onPrimaryKeyChange={options?.onPrimaryKeyChange}
-          ></DataFrameColumnGroupHeader>
-        ),
-        frozen: true,
-        cellClass: (row: any) => {
-          if (name === "index") {
-            return "index-column";
-          }
+  const toColumn = (name: string, columnStatus: string) => {
+    const headerCellClass =
+      columnStatus === "added"
+        ? "diff-header-added"
+        : columnStatus === "removed"
+        ? "diff-header-removed"
+        : undefined;
 
-          if (row["status"]) {
-            return `diff-header-${row["status"]}`;
-          }
+    const cellClass = (row: any) => {
+      const rowStatus = row["status"];
+      if (rowStatus === "removed") {
+        return "diff-cell-removed";
+      } else if (rowStatus === "added") {
+        return "diff-cell-added";
+      } else if (columnStatus === "added") {
+        return undefined;
+      } else if (columnStatus === "removed") {
+        return undefined;
+      } else if (!_.isEqual(row[`base__${name}`], row[`current__${name}`])) {
+        return "diff-cell-modified";
+      }
 
-          return undefined;
+      return undefined;
+    };
+
+    return {
+      headerCellClass,
+      name: (
+        <DataFrameColumnGroupHeader
+          name={name}
+          columnStatus={columnStatus}
+          {...options}
+        ></DataFrameColumnGroupHeader>
+      ),
+      children: [
+        {
+          key: `base__${name}`,
+          name: "Base",
+          renderEditCell: textEditor,
+          headerCellClass,
+          cellClass,
+          renderCell: defaultRenderCell,
+          size: "auto",
         },
-      });
-    } else {
-      if (name === "index") {
-        return;
-      }
+        {
+          key: `current__${name}`,
+          name: "Current",
+          renderEditCell: textEditor,
+          headerCellClass,
+          cellClass,
+          renderCell: defaultRenderCell,
+          size: "auto",
+        },
+      ],
+    };
+  };
 
-      if (changedOnly) {
-        if (
-          columnStatus !== "added" &&
-          columnStatus !== "removed" &&
-          columnStatus !== "modified"
-        ) {
-          return;
+  // merges columns: primary keys
+  primaryKeys.forEach((name) => {
+    const columnStatus = columnMap[name];
+
+    if (!primaryKeys.includes(name)) {
+      return;
+    }
+
+    columns.push({
+      key: `${name}`,
+      name: (
+        <DataFrameColumnGroupHeader
+          name={name}
+          columnStatus={columnStatus}
+          {...options}
+        ></DataFrameColumnGroupHeader>
+      ),
+      frozen: true,
+      cellClass: (row: any) => {
+        if (name === "index") {
+          return "index-column";
         }
-      }
 
-      const headerCellClass =
-        columnStatus === "added"
-          ? "diff-header-added"
-          : columnStatus === "removed"
-          ? "diff-header-removed"
-          : undefined;
-
-      const cellClass = (row: any) => {
-        const rowStatus = row["status"];
-        if (rowStatus === "removed") {
-          return "diff-cell-removed";
-        } else if (rowStatus === "added") {
-          return "diff-cell-added";
-        } else if (columnStatus === "added") {
-          return undefined;
-        } else if (columnStatus === "removed") {
-          return undefined;
-        } else if (!_.isEqual(row[`base__${name}`], row[`current__${name}`])) {
-          return "diff-cell-modified";
+        if (row["status"]) {
+          return `diff-header-${row["status"]}`;
         }
 
         return undefined;
-      };
+      },
+    });
+  });
 
-      const canBePk = columnStatus !== "added" && columnStatus !== "removed";
+  // merges columns: pinned columns
+  pinnedColumns.forEach((name) => {
+    const columnStatus = columnMap[name];
 
-      columns.push({
-        headerCellClass,
-        name: (
-          <DataFrameColumnGroupHeader
-            name={name}
-            primaryKeys={primaryKeys}
-            onPrimaryKeyChange={
-              canBePk ? options?.onPrimaryKeyChange : undefined
-            }
-          ></DataFrameColumnGroupHeader>
-        ),
-        children: [
-          {
-            key: `base__${name}`,
-            name: "Base",
-            renderEditCell: textEditor,
-            headerCellClass,
-            cellClass,
-            renderCell: defaultRenderCell,
-          },
-          {
-            key: `current__${name}`,
-            name: "Current",
-            renderEditCell: textEditor,
-            headerCellClass,
-            cellClass,
-            renderCell: defaultRenderCell,
-          },
-        ],
-      });
+    if (name === "index") {
+      return;
     }
+
+    if (primaryKeys.includes(name)) {
+      return;
+    }
+
+    columns.push(toColumn(name, columnStatus));
+  });
+
+  // merges columns: other columns
+  Object.entries(columnMap).forEach(([name, columnStatus]) => {
+    if (name === "index") {
+      return;
+    }
+
+    if (primaryKeys.includes(name)) {
+      return;
+    }
+
+    if (pinnedColumns.includes(name)) {
+      return;
+    }
+
+    if (changedOnly) {
+      if (
+        columnStatus !== "added" &&
+        columnStatus !== "removed" &&
+        columnStatus !== "modified"
+      ) {
+        return;
+      }
+    }
+    columns.push(toColumn(name, columnStatus));
   });
 
   return {
-    columns: [...pkColumns, ...columns],
+    columns,
     rows,
   };
 }

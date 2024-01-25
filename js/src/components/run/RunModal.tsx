@@ -2,16 +2,11 @@ import { cacheKeys } from "@/lib/api/cacheKeys";
 import { createCheckByRun } from "@/lib/api/checks";
 import { cancelRun, submitRun, waitRun } from "@/lib/api/runs";
 import { Run, RunType } from "@/lib/api/types";
-import { AddIcon } from "@chakra-ui/icons";
+
 import {
-  Alert,
-  AlertIcon,
   Box,
   Button,
-  Center,
-  CircularProgress,
   Flex,
-  IconButton,
   Modal,
   ModalBody,
   ModalCloseButton,
@@ -19,26 +14,13 @@ import {
   ModalFooter,
   ModalHeader,
   ModalOverlay,
-  Progress,
-  Spinner,
-  Tooltip,
-  VStack,
   useDisclosure,
 } from "@chakra-ui/react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { set } from "lodash";
 import { useCallback, useEffect, useState } from "react";
-import { useEdges } from "reactflow";
 import { useLocation } from "wouter";
-
-export interface RunEditViewProps<PT> {
-  params: PT;
-  onParamsChanged: (params: PT) => void;
-}
-
-export interface RunResultViewProps<PT, RT> {
-  run: Run<PT, RT>;
-}
+import { RunView } from "./RunView";
+import { RunEditViewProps, RunResultViewProps } from "./types";
 
 interface RunModalProps<PT, RT> {
   title: string;
@@ -82,7 +64,7 @@ export const RunModal = <PT, RT>({
     data: run,
     mutate: execute,
     reset,
-    error: error,
+    error,
     isPending,
   } = useMutation({
     mutationFn: submitRunFn,
@@ -140,65 +122,6 @@ export const RunModal = <PT, RT>({
     handleReset();
   };
 
-  const RunModalBody = () => {
-    const errorMessage = (error as any)?.response?.data?.detail || run?.error;
-
-    if (errorMessage) {
-      return (
-        <Alert status="error">
-          <AlertIcon />
-          Error: {errorMessage}
-        </Alert>
-      );
-    }
-
-    if (isPending) {
-      let loadingMessage = progress?.message ? progress?.message : "Loading...";
-
-      return (
-        <Center p="16px" height="100%">
-          <VStack>
-            <Flex alignItems="center">
-              {progress?.percentage === undefined ||
-              progress?.percentage === null ? (
-                <CircularProgress isIndeterminate size="20px" mr="8px" />
-              ) : (
-                <CircularProgress
-                  size="20px"
-                  value={progress.percentage * 100}
-                  mr="8px"
-                />
-              )}
-
-              {isAborting ? <>Aborting...</> : <>{loadingMessage}</>}
-            </Flex>
-            {!isAborting && (
-              <Button onClick={handleCancel} colorScheme="blue" size="sm">
-                Cancel
-              </Button>
-            )}
-          </VStack>
-        </Center>
-      );
-    }
-
-    if (!run) {
-      return (
-        <Box style={{ contain: "size layout" }}>
-          {RunEditView && (
-            <RunEditView params={params} onParamsChanged={setParams} />
-          )}
-        </Box>
-      );
-    }
-
-    return (
-      <Box h="100%" style={{ contain: "size layout" }}>
-        <RunResultView run={run} />
-      </Box>
-    );
-  };
-
   return (
     <>
       <Modal isOpen={isOpen} onClose={handleClose} size="6xl">
@@ -212,7 +135,23 @@ export const RunModal = <PT, RT>({
             overflow="auto"
             borderY="1px solid lightgray"
           >
-            <RunModalBody />
+            {!isPending && !run && !error ? (
+              <Box style={{ contain: "size layout" }}>
+                {RunEditView && (
+                  <RunEditView params={params} onParamsChanged={setParams} />
+                )}
+              </Box>
+            ) : (
+              <RunView
+                isPending={isPending}
+                isAborting={isAborting}
+                run={run}
+                error={error}
+                progress={progress}
+                onCancel={handleCancel}
+                RunResultView={RunResultView}
+              />
+            )}
           </ModalBody>
           <ModalFooter>
             <Flex gap="10px">

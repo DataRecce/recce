@@ -1,4 +1,9 @@
 import {
+  Accordion,
+  AccordionButton,
+  AccordionIcon,
+  AccordionItem,
+  AccordionPanel,
   Box,
   Center,
   Checkbox,
@@ -18,17 +23,19 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { cacheKeys } from "@/lib/api/cacheKeys";
 import { Check, deleteCheck, getCheck, updateCheck } from "@/lib/api/checks";
 
-import { QueryDiffView } from "@/components/check/QueryDiffView";
 import { ValueDiffResultView } from "@/components/valuediff/ValueDiffResultView";
 import { SchemaDiffView } from "./SchemaDiffView";
 import { useLocation } from "wouter";
 import { CheckDescription } from "./CheckDescription";
-import { QueryView } from "./QueryView";
 import { RowCountDiffView } from "./RowCountDiffView";
 import { ProfileDiffResultView } from "../profile/ProfileDiffResultView";
 import { stripIndent } from "common-tags";
 import { useClipBoardToast } from "@/lib/hooks/useClipBoardToast";
 import { buildTitle, buildDescription, buildQuery } from "./check";
+import SqlEditor from "../query/SqlEditor";
+import { QueryResultView } from "../query/QueryResultView";
+import { QueryDiffResultView } from "../query/QueryDiffResultView";
+import { useState } from "react";
 
 interface CheckDetailProps {
   checkId: string;
@@ -38,6 +45,7 @@ export const CheckDetail = ({ checkId }: CheckDetailProps) => {
   const queryClient = useQueryClient();
   const [, setLocation] = useLocation();
   const { successToast, failToast } = useClipBoardToast();
+  const [viewOptions, setViewOptions] = useState({});
 
   const {
     isLoading,
@@ -45,7 +53,20 @@ export const CheckDetail = ({ checkId }: CheckDetailProps) => {
     data: check,
   } = useQuery({
     queryKey: cacheKeys.check(checkId),
-    queryFn: () => getCheck(checkId),
+    queryFn: async () => {
+      const check = await getCheck(checkId);
+      if (check?.type === "query_diff") {
+        setViewOptions({
+          changedOnly: check?.params?.changed_only,
+          primaryKeys: check?.params?.primary_keys,
+          pinnedColumns: check?.params?.pinned_columns,
+        });
+      } else {
+        setViewOptions({});
+      }
+
+      return check;
+    },
     refetchOnMount: false,
     staleTime: 5 * 60 * 1000,
   });
@@ -147,20 +168,50 @@ export const CheckDetail = ({ checkId }: CheckDetailProps) => {
         />
       </Box>
 
-      {check && check.type === "query" && <QueryView check={check} />}
-      {check && check.type === "query_diff" && <QueryDiffView check={check} />}
-      {check && check.type === "value_diff" && check?.last_run && (
-        <ValueDiffResultView run={check.last_run} />
+      {(check?.type === "query" || check?.type === "query_diff") && (
+        <Accordion defaultIndex={[]} allowToggle>
+          <AccordionItem>
+            <AccordionButton>
+              query
+              <AccordionIcon />
+            </AccordionButton>
+
+            <AccordionPanel>
+              <Box height="400px" width="100%" border="lightgray 1px solid ">
+                <SqlEditor
+                  value={(check?.params as any)?.sql_template || ""}
+                  options={{ readOnly: true }}
+                />
+              </Box>
+            </AccordionPanel>
+          </AccordionItem>
+        </Accordion>
       )}
-      {check && check.type === "schema_diff" && (
-        <SchemaDiffView check={check} />
-      )}
-      {check && check.type === "profile_diff" && check?.last_run && (
-        <ProfileDiffResultView run={check.last_run} />
-      )}
-      {check && check.type === "row_count_diff" && (
-        <RowCountDiffView check={check} />
-      )}
+
+      <Box style={{ contain: "size" }} flex="1 1 0%">
+        {check && check.type === "query" && check?.last_run && (
+          <QueryResultView run={check?.last_run} />
+        )}
+        {check && check.type === "query_diff" && check?.last_run && (
+          <QueryDiffResultView
+            run={check.last_run}
+            viewOptions={viewOptions}
+            onViewOptionsChanged={setViewOptions}
+          />
+        )}
+        {check && check.type === "value_diff" && check?.last_run && (
+          <ValueDiffResultView run={check.last_run} />
+        )}
+        {check && check.type === "profile_diff" && check?.last_run && (
+          <ProfileDiffResultView run={check.last_run} />
+        )}
+        {check && check.type === "schema_diff" && (
+          <SchemaDiffView check={check} />
+        )}
+        {check && check.type === "row_count_diff" && (
+          <RowCountDiffView check={check} />
+        )}
+      </Box>
     </Flex>
   );
 };

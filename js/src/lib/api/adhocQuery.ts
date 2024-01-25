@@ -25,8 +25,6 @@ export interface QueryDiffResult {
   changed_only?: boolean;
   base?: DataFrame;
   current?: DataFrame;
-  base_error?: string;
-  current_error?: string;
 }
 
 export interface RowCountDiffResult {

@@ -1,38 +1,31 @@
 import React, { useState, useCallback } from "react";
-import {
-  Box,
-  Button,
-  Checkbox,
-  Flex,
-  IconButton,
-  Spacer,
-  Tooltip,
-} from "@chakra-ui/react";
+import { Box, Button, Flex } from "@chakra-ui/react";
 import SqlEditor from "./SqlEditor";
 import { useRecceQueryContext } from "@/lib/hooks/RecceQueryContext";
 
 import { createCheckByRun, updateCheck } from "@/lib/api/checks";
-import { QueryDiffDataGrid } from "./QueryDiffDataGrid";
+import {
+  QueryDiffResultView,
+  QueryDiffResultViewOptions,
+} from "./QueryDiffResultView";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { cacheKeys } from "@/lib/api/cacheKeys";
-import { useLocation, useRouter } from "wouter";
-import {
-  QueryDiffResult,
-  QueryResult,
-  submitQuery,
-  submitQueryDiff,
-} from "@/lib/api/adhocQuery";
-import { QueryDataGrid } from "./QueryDataGrid";
+import { useLocation } from "wouter";
+import { submitQuery, submitQueryDiff } from "@/lib/api/adhocQuery";
+import { QueryResultView } from "./QueryResultView";
 import { cancelRun, waitRun } from "@/lib/api/runs";
-import { AddIcon } from "@chakra-ui/icons";
+import { RunView } from "../run/RunView";
+import { Run } from "@/lib/api/types";
 
 export const QueryPage = () => {
   const { sqlQuery, setSqlQuery } = useRecceQueryContext();
 
-  const [primaryKeys, setPrimaryKeys] = useState<string[]>([]);
   const [runType, setRunType] = useState<string>();
   const [runId, setRunId] = useState<string>();
-  const [changedOnly, setChangedOnly] = useState(false);
+
+  const [viewOptions, setViewOptions] = useState<QueryDiffResultViewOptions>(
+    {}
+  );
 
   const queryClient = useQueryClient();
   const [, setLocation] = useLocation();
@@ -47,20 +40,15 @@ export const QueryPage = () => {
     return await waitRun(run_id);
   };
 
-  const handleCheckboxChange = () => {
-    setChangedOnly(!changedOnly);
-  };
-
   const {
     data: run,
     mutate: runQuery,
-    error: error,
+    error,
     isPending,
   } = useMutation({
     mutationFn: queryFn,
     onSuccess: (run) => {
-      setPrimaryKeys([]);
-      setChangedOnly(false);
+      setViewOptions({});
     },
   });
 
@@ -72,33 +60,30 @@ export const QueryPage = () => {
     return await cancelRun(runId);
   }, [runId]);
 
-  const addToChecklist = useCallback(async () => {
-    if (!run?.run_id) {
-      return;
-    }
+  const addToChecklist = useCallback(
+    async (run: Run<any, any>) => {
+      if (!run?.run_id) {
+        return;
+      }
 
-    const check = await createCheckByRun(run.run_id);
+      const check = await createCheckByRun(run.run_id);
 
-    if (run.type === "query_diff") {
-      await updateCheck(check.check_id, {
-        params: {
-          ...check.params,
-          primary_keys: primaryKeys,
-          changed_only: changedOnly,
-        },
-      });
-    }
+      if (run.type === "query_diff") {
+        await updateCheck(check.check_id, {
+          params: {
+            ...check.params,
+            primary_keys: viewOptions?.primaryKeys,
+            changed_only: viewOptions?.changedOnly,
+            pinned_columns: viewOptions?.pinnedColumns,
+          },
+        });
+      }
 
-    queryClient.invalidateQueries({ queryKey: cacheKeys.checks() });
-    setLocation(`/checks/${check.check_id}`);
-  }, [
-    run?.run_id,
-    run?.type,
-    setLocation,
-    primaryKeys,
-    queryClient,
-    changedOnly,
-  ]);
+      queryClient.invalidateQueries({ queryKey: cacheKeys.checks() });
+      setLocation(`/checks/${check.check_id}`);
+    },
+    [setLocation, viewOptions, queryClient]
+  );
 
   const hasResult = !isPending && run?.run_id && !run?.error;
 
@@ -130,50 +115,36 @@ export const QueryPage = () => {
           onRunDiff={() => runQuery("query_diff")}
         />
       </Box>
-      <Flex backgroundColor="rgb(249,249,249)" height="50vh" direction="column">
-        {hasResult && (
-          <Flex
-            borderBottom="1px solid lightgray"
-            justifyContent="flex-end"
-            gap="5px"
-          >
-            {runType === "query_diff" && (
-              <Checkbox isChecked={changedOnly} onChange={handleCheckboxChange}>
-                Changed only
-              </Checkbox>
-            )}
-            <Tooltip label="Add to Checklist">
-              <IconButton
-                variant="unstyled"
-                size="sm"
-                aria-label="Add"
-                icon={<AddIcon />}
-                onClick={addToChecklist}
-              />
-            </Tooltip>
-          </Flex>
-        )}
+      <Flex height="50vh" direction="column">
         {runType === "query" ? (
-          <QueryDataGrid
+          <RunView
             key={runId}
-            isFetching={isPending}
             run={run}
             error={error}
+            isPending={isPending}
             onCancel={handleCancel}
-            enableScreenshot={false}
-          />
+          >
+            {(props) => (
+              <QueryResultView {...props} onAddToChecklist={addToChecklist} />
+            )}
+          </RunView>
         ) : (
-          <QueryDiffDataGrid
+          <RunView
             key={runId}
-            isFetching={isPending}
+            isPending={isPending}
             run={run}
             error={error}
-            changedOnly={changedOnly}
-            primaryKeys={primaryKeys}
-            setPrimaryKeys={setPrimaryKeys}
+            viewOptions={viewOptions}
+            onViewOptionsChanged={setViewOptions}
             onCancel={handleCancel}
-            enableScreenshot={false}
-          />
+          >
+            {(props) => (
+              <QueryDiffResultView
+                {...props}
+                onAddToChecklist={addToChecklist}
+              />
+            )}
+          </RunView>
         )}
       </Flex>
     </Flex>
