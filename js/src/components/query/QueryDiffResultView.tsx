@@ -107,12 +107,16 @@ export const QueryDiffResultView = ({
   };
 
   return (
-    <Flex direction="column" backgroundColor="rgb(249, 249, 249)">
+    <Flex
+      direction="column"
+      backgroundColor="rgb(249, 249, 249)"
+      height={"100%"}
+    >
       <Flex
         borderBottom="1px solid lightgray"
         justifyContent="flex-end"
         gap="5px"
-        height="32px"
+        minHeight="32px"
       >
         <Checkbox
           isChecked={viewOptions?.changedOnly}

@@ -120,6 +120,7 @@ export const QueryPage = () => {
           <RunView
             key={runId}
             run={run}
+            error={error}
             isPending={isPending}
             onCancel={handleCancel}
           >
@@ -132,6 +133,7 @@ export const QueryPage = () => {
             key={runId}
             isPending={isPending}
             run={run}
+            error={error}
             viewOptions={viewOptions}
             onViewOptionsChanged={setViewOptions}
             onCancel={handleCancel}

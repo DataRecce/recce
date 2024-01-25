@@ -24,7 +24,6 @@ function DataFrameColumnHeader({
   name,
   pinnedColumns = [],
   onPinnedColumnsChange = () => {},
-  onAddToChecklist,
 }: { name: string } & QueryDataGridOptions) {
   const isPinned = pinnedColumns.includes(name);
 
@@ -109,7 +108,7 @@ export const QueryResultView = ({
   }
 
   return (
-    <Flex direction="column" backgroundColor="rgb(249, 249, 249)">
+    <Flex direction="column" backgroundColor="rgb(249, 249, 249)" height="100%">
       {onAddToChecklist && (
         <Flex
           borderBottom="1px solid lightgray"

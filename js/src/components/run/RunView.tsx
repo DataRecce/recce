@@ -15,7 +15,7 @@ import { Children } from "react";
 interface RunViewProps<PT, RT, VO = any> {
   isPending?: boolean;
   run?: Run<PT, RT>;
-  error?: Error;
+  error?: Error | null;
   progress?: Run["progress"];
   isAborting?: boolean;
   onCancel: () => void;
@@ -65,7 +65,7 @@ export const RunView = <PT, RT>({
     let loadingMessage = progress?.message ? progress?.message : "Loading...";
 
     return (
-      <Center p="16px" height="100%">
+      <Center p="16px" height="100%" bg="rgb(249,249,249)">
         <VStack>
           <Flex alignItems="center">
             {progress?.percentage === undefined ||
@@ -92,7 +92,11 @@ export const RunView = <PT, RT>({
   }
 
   if (!run) {
-    return <>No data</>;
+    return (
+      <Center bg="rgb(249,249,249)" height="100%">
+        No data
+      </Center>
+    );
   }
 
   return (

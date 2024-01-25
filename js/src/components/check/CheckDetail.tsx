@@ -188,28 +188,30 @@ export const CheckDetail = ({ checkId }: CheckDetailProps) => {
         </Accordion>
       )}
 
-      {check && check.type === "query" && check?.last_run && (
-        <QueryResultView run={check?.last_run} />
-      )}
-      {check && check.type === "query_diff" && check?.last_run && (
-        <QueryDiffResultView
-          run={check.last_run}
-          viewOptions={viewOptions}
-          onViewOptionsChanged={setViewOptions}
-        />
-      )}
-      {check && check.type === "value_diff" && check?.last_run && (
-        <ValueDiffResultView run={check.last_run} />
-      )}
-      {check && check.type === "profile_diff" && check?.last_run && (
-        <ProfileDiffResultView run={check.last_run} />
-      )}
-      {check && check.type === "schema_diff" && (
-        <SchemaDiffView check={check} />
-      )}
-      {check && check.type === "row_count_diff" && (
-        <RowCountDiffView check={check} />
-      )}
+      <Box style={{ contain: "size" }} flex="1 1 0%">
+        {check && check.type === "query" && check?.last_run && (
+          <QueryResultView run={check?.last_run} />
+        )}
+        {check && check.type === "query_diff" && check?.last_run && (
+          <QueryDiffResultView
+            run={check.last_run}
+            viewOptions={viewOptions}
+            onViewOptionsChanged={setViewOptions}
+          />
+        )}
+        {check && check.type === "value_diff" && check?.last_run && (
+          <ValueDiffResultView run={check.last_run} />
+        )}
+        {check && check.type === "profile_diff" && check?.last_run && (
+          <ProfileDiffResultView run={check.last_run} />
+        )}
+        {check && check.type === "schema_diff" && (
+          <SchemaDiffView check={check} />
+        )}
+        {check && check.type === "row_count_diff" && (
+          <RowCountDiffView check={check} />
+        )}
+      </Box>
     </Flex>
   );
 };
