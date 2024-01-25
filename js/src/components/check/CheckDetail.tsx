@@ -10,7 +10,6 @@ import {
   MenuItem,
   MenuList,
   Spacer,
-  useToast,
 } from "@chakra-ui/react";
 import { CopyIcon, DeleteIcon } from "@chakra-ui/icons";
 import { CheckBreadcrumb } from "./CheckBreadcrumb";
@@ -28,6 +27,7 @@ import { QueryView } from "./QueryView";
 import { RowCountDiffView } from "./RowCountDiffView";
 import { ProfileDiffResultView } from "../profile/ProfileDiffResultView";
 import { stripIndent } from "common-tags";
+import { useClipBoardToast } from "@/lib/hooks/useClipBoardToast";
 
 interface CheckDetailProps {
   checkId: string;
@@ -81,6 +81,7 @@ export const CheckDetail = ({ checkId }: CheckDetailProps) => {
     const markdown = buildMarkdown(check);
     if (!navigator.clipboard) {
       failToast(
+        "Failed to copy the check to clipboard",
         new Error(
           "Copy to clipboard is available only in secure contexts (HTTPS)"
         )
@@ -92,7 +93,7 @@ export const CheckDetail = ({ checkId }: CheckDetailProps) => {
       await navigator.clipboard.writeText(markdown);
       successToast("Copied the check to the clipboard");
     } catch (err) {
-      failToast(err);
+      failToast("Failed to copy the check to clipboard", err);
     }
   };
 
@@ -193,36 +194,4 @@ function buildQuery(check: Check) {
   ${check.params?.sql_template}
   \`\`\`
   `;
-}
-
-function useClipBoardToast() {
-  const clipboardToast = useToast();
-
-  function successToast(message: string) {
-    clipboardToast({
-      description: message,
-      status: "info",
-      variant: "left-accent",
-      position: "bottom",
-      duration: 5000,
-      isClosable: true,
-    });
-  }
-
-  function failToast(error: any) {
-    clipboardToast({
-      title: "Failed to copy the check to clipboard",
-      description: `${error}`,
-      status: "error",
-      variant: "left-accent",
-      position: "bottom",
-      duration: 5000,
-      isClosable: true,
-    });
-  }
-
-  return {
-    successToast,
-    failToast,
-  };
 }
