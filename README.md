@@ -62,7 +62,9 @@ jaffle_shop:
    ```
    cd your-dbt-project/
    ```
-1. **Prepare base artifacts**: DBT generates [artifacts](https://docs.getdbt.com/reference/artifacts/dbt-artifacts) when every invocation. You can find these files in the `target/` folder.
+1. Prepare base artifacts
+
+   DBT generates [artifacts](https://docs.getdbt.com/reference/artifacts/dbt-artifacts) when every invocation. You can find these files in the `target/` folder.
 
    | artifacts     | DBT command                        |
    | ------------- | ---------------------------------- |
@@ -71,7 +73,7 @@ jaffle_shop:
 
    Copy the artifacts for the base environment to `target-base/` folder.
 
-1. **Prepare artifacts for working environment**
+1. Prepare artifacts for current working environment
 
    ```
    dbt run
