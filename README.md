@@ -67,16 +67,16 @@ jaffle_shop:
    ```shell
    git checkout main
 
-   # Generate artifacts to 'target-base'
+   # Generate artifacts for base environment to 'target-base'
    dbt docs generate --target prod --target-path target-base/
    ```
 
 1. Prepare artifacts for current working environment
 
-   ```
+   ```shell
    git checkout feature/my-awesome-feature
 
-   # Generate artifacts to 'target-base'
+   # Run dbt and generate artifacts for current working environments
    dbt run
    dbt docs generate
    ```
@@ -100,7 +100,7 @@ Recce use dbt [artifacts](https://docs.getdbt.com/reference/artifacts/dbt-artifa
 | catalog.json  | `dbt docs generate`                |
 
 > [!TIP]
-> The regeneration of the `catalog.json` file is not required after every `dbt run``; it is only required to regenerate this file when models or columns are added or updated.
+> The regeneration of the `catalog.json` file is not required after every `dbt run`. it is only required to regenerate this file when models or columns are added or updated.
 
 ## Lineage Diff
 
