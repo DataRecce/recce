@@ -48,7 +48,11 @@ export function ValueDiffResultView({ run }: ValueDiffResultViewProp) {
       renderCell: ({ column, row }) => {
         const value: number | undefined = row[column.key];
         return (
-          <Box textAlign="end">{value ? `${value.toFixed(2)} %` : "N/A"}</Box>
+          <Box textAlign="end">
+            {value != undefined && value !== null
+              ? `${value.toFixed(2)} %`
+              : "N/A"}
+          </Box>
         );
       },
       cellClass,
