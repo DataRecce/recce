@@ -64,20 +64,50 @@ jaffle_shop:
    ```
 1. **Prepare base artifacts**: DBT generates [artifacts](https://docs.getdbt.com/reference/artifacts/dbt-artifacts) when every invocation. You can find these files in the `target/` folder.
 
-   | artifacts               | DBT command                |
-   | ----------------------- | -------------------------- |
-   | manifest.json           | `dbt run`, `dbt build`, .. |
-   | catalog.json (optional) | `dbt docs generate`        |
+   | artifacts     | DBT command                        |
+   | ------------- | ---------------------------------- |
+   | manifest.json | `dbt docs generate`, `dbt run`, .. |
+   | catalog.json  | `dbt docs generate`                |
 
    Copy the artifacts for the base environment to `target-base/` folder.
 
-1. Run the recce server.
+1. **Prepare artifacts for working environment**
 
    ```
-   recce server issue-123.json
+   dbt run
+   dbt docs generate
+   ```
+
+   make sure that the `target/` folder contains the current working environment's `manifest.json` and `catalog.json`
+
+1. Run the recce server.
+
+   ```shell
+   recce server
+
+   # or with persistent state
+   # recce server issue-123.json
    ```
 
    Recce would diff environments between `target/` and `target-base/`
+
+> [!TIP]
+> When developing a new feature, you can consider following these steps:
+>
+> ```
+> # generate the artifacts for base environment
+> git checkout main
+> dbt docs generate --target prod --target-path target-base/
+>
+> # start developing
+> git checkout feature/my-awesome-feature
+> ...
+> dbt run
+> dbt docs generate
+>
+> # Recce
+> recce server
+> ```
 
 ## Lineage Diff
 
