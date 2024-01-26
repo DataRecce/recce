@@ -54,33 +54,32 @@ jaffle_shop:
 
 1. Installation
 
-   ```
+   ```shell
    pip install recce
    ```
 
 1. Go to your DBT project
-   ```
+   ```shell
    cd your-dbt-project/
    ```
-1. Prepare base artifacts
+1. Prepare artifacts for base environment in `target-base/` folder
 
-   DBT generates [artifacts](https://docs.getdbt.com/reference/artifacts/dbt-artifacts) when every invocation. You can find these files in the `target/` folder.
+   ```shell
+   git checkout main
 
-   | artifacts     | DBT command                        |
-   | ------------- | ---------------------------------- |
-   | manifest.json | `dbt docs generate`, `dbt run`, .. |
-   | catalog.json  | `dbt docs generate`                |
-
-   Copy the artifacts for the base environment to `target-base/` folder.
+   # Generate artifacts to 'target-base'
+   dbt docs generate --target prod --target-path target-base/
+   ```
 
 1. Prepare artifacts for current working environment
 
    ```
+   git checkout feature/my-awesome-feature
+
+   # Generate artifacts to 'target-base'
    dbt run
    dbt docs generate
    ```
-
-   make sure that the `target/` folder contains the current working environment's `manifest.json` and `catalog.json`
 
 1. Run the recce server.
 
@@ -93,23 +92,15 @@ jaffle_shop:
 
    Recce would diff environments between `target/` and `target-base/`
 
+Recce use dbt [artifacts](https://docs.getdbt.com/reference/artifacts/dbt-artifacts), which is generated when every invocation. You can find these files in the `target/` folder.
+
+| artifacts     | DBT command                        |
+| ------------- | ---------------------------------- |
+| manifest.json | `dbt docs generate`, `dbt run`, .. |
+| catalog.json  | `dbt docs generate`                |
+
 > [!TIP]
-> When developing a new feature, you can consider following these steps:
->
-> ```
-> # generate the artifacts for base environment
-> git checkout main
-> dbt docs generate --target prod --target-path target-base/
->
-> # start developing
-> git checkout feature/my-awesome-feature
-> ...
-> dbt run
-> dbt docs generate
->
-> # Recce
-> recce server
-> ```
+> The regeneration of the `catalog.json` file is not required after every `dbt run``; it is only required to regenerate this file when models or columns are added or updated.
 
 ## Lineage Diff
 
