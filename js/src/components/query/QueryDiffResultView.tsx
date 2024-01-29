@@ -1,20 +1,12 @@
 import "react-data-grid/lib/styles.css";
-import DataGrid from "react-data-grid";
-import { QueryDiffParams, QueryDiffResult } from "@/lib/api/adhocQuery";
+
 import {
-  Alert,
-  AlertIcon,
-  Box,
-  Button,
-  Center,
-  Checkbox,
-  Flex,
-  IconButton,
-  Spinner,
-  Tooltip,
-  VStack,
-} from "@chakra-ui/react";
-import { CSSProperties, useMemo, useState } from "react";
+  QueryDiffParams,
+  QueryDiffResult,
+  QueryDiffViewOptions,
+} from "@/lib/api/adhocQuery";
+import { Center, Checkbox, Flex, IconButton, Tooltip } from "@chakra-ui/react";
+import { useMemo } from "react";
 import { toDataDiffGrid } from "./querydiff";
 
 import "./styles.css";
@@ -23,16 +15,11 @@ import { ScreenshotDataGrid } from "../data-grid/ScreenshotDataGrid";
 import { RunResultViewProps } from "../run/types";
 import { AddIcon } from "@chakra-ui/icons";
 
-export interface QueryDiffResultViewOptions {
-  changedOnly?: boolean;
-  primaryKeys?: string[];
-  pinnedColumns?: string[];
-}
 export interface QueryDiffResultViewProps
   extends RunResultViewProps<
     QueryDiffParams,
     QueryDiffResult,
-    QueryDiffResultViewOptions
+    QueryDiffViewOptions
   > {
   onAddToChecklist?: (run: Run<QueryDiffParams, QueryDiffResult>) => void;
 }
@@ -44,15 +31,15 @@ export const QueryDiffResultView = ({
   onViewOptionsChanged,
 }: QueryDiffResultViewProps) => {
   const primaryKeys = useMemo(
-    () => viewOptions?.primaryKeys || [],
+    () => viewOptions?.primary_keys || [],
     [viewOptions]
   );
   const changedOnly = useMemo(
-    () => viewOptions?.changedOnly || false,
+    () => viewOptions?.changed_only || false,
     [viewOptions]
   );
   const pinnedColumns = useMemo(
-    () => viewOptions?.pinnedColumns || [],
+    () => viewOptions?.pinned_columns || [],
     [viewOptions]
   );
 
@@ -61,7 +48,7 @@ export const QueryDiffResultView = ({
       if (onViewOptionsChanged) {
         onViewOptionsChanged({
           ...viewOptions,
-          primaryKeys,
+          primary_keys: primaryKeys,
         });
       }
     };
@@ -70,7 +57,7 @@ export const QueryDiffResultView = ({
       if (onViewOptionsChanged) {
         onViewOptionsChanged({
           ...viewOptions,
-          pinnedColumns,
+          pinned_columns: pinnedColumns,
         });
       }
     };
@@ -100,9 +87,9 @@ export const QueryDiffResultView = ({
   }
 
   const toggleChangedOnly = () => {
-    const changedOnly = !viewOptions?.changedOnly;
+    const changedOnly = !viewOptions?.changed_only;
     if (onViewOptionsChanged) {
-      onViewOptionsChanged({ ...viewOptions, changedOnly });
+      onViewOptionsChanged({ ...viewOptions, changed_only: changedOnly });
     }
   };
 
@@ -119,7 +106,7 @@ export const QueryDiffResultView = ({
         minHeight="32px"
       >
         <Checkbox
-          isChecked={viewOptions?.changedOnly}
+          isChecked={viewOptions?.changed_only}
           onChange={toggleChangedOnly}
         >
           Changed only

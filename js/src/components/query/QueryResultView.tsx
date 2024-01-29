@@ -1,8 +1,12 @@
 import "react-data-grid/lib/styles.css";
 import { Column } from "react-data-grid";
-import { QueryParams, QueryResult } from "@/lib/api/adhocQuery";
+import {
+  QueryParams,
+  QueryResult,
+  QueryViewOptions,
+} from "@/lib/api/adhocQuery";
 import { Box, Center, Flex, Icon, IconButton, Tooltip } from "@chakra-ui/react";
-import { CSSProperties, useMemo, useState } from "react";
+import { useMemo } from "react";
 import { DataFrame, Run } from "@/lib/api/types";
 import { ScreenshotDataGrid } from "../data-grid/ScreenshotDataGrid";
 import { defaultRenderCell } from "./querydiff";
@@ -11,7 +15,7 @@ import { RunResultViewProps } from "../run/types";
 import { AddIcon } from "@chakra-ui/icons";
 
 interface QueryResultViewProp
-  extends RunResultViewProps<QueryParams, QueryResult> {
+  extends RunResultViewProps<QueryParams, QueryResult, QueryViewOptions> {
   onAddToChecklist?: (run: Run<QueryParams, QueryResult>) => void;
 }
 
@@ -88,20 +92,35 @@ function toDataGrid(result: DataFrame, options: QueryDataGridOptions) {
 
 export const QueryResultView = ({
   run,
+  viewOptions,
+  onViewOptionsChanged,
   onAddToChecklist,
 }: QueryResultViewProp) => {
-  const [pinnedColumns, setPinnedColumns] = useState<string[]>([]);
+  const pinnedColumns = useMemo(
+    () => viewOptions?.pinned_columns || [],
+    [viewOptions]
+  );
+
   const dataframe = run?.result?.result;
   const gridData = useMemo(() => {
     if (!dataframe) {
       return { rows: [], columns: [] };
     }
 
+    const handlePinnedColumnsChanged = (pinnedColumns: string[]) => {
+      if (onViewOptionsChanged) {
+        onViewOptionsChanged({
+          ...viewOptions,
+          pinned_columns: pinnedColumns,
+        });
+      }
+    };
+
     return toDataGrid(dataframe, {
       pinnedColumns,
-      onPinnedColumnsChange: setPinnedColumns,
+      onPinnedColumnsChange: handlePinnedColumnsChanged,
     });
-  }, [dataframe, pinnedColumns, setPinnedColumns]);
+  }, [dataframe, pinnedColumns, viewOptions, onViewOptionsChanged]);
 
   if (gridData.columns.length === 0) {
     return <Center height="100%">No data</Center>;

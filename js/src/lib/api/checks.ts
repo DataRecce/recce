@@ -2,12 +2,13 @@ import _ from "lodash";
 import { axiosClient } from "./axiosClient";
 import { Run, RunType } from "./types";
 
-export interface Check<PT = any, RT = any> {
+export interface Check<PT = any, RT = any, VO = any> {
   check_id: string;
   name: string;
   description?: string;
   type: RunType;
   params?: PT;
+  view_options?: VO;
   is_checked?: boolean;
   last_run?: Run<PT, RT>;
 }
@@ -33,8 +34,14 @@ export async function createCheckByNodeSchema(nodeId: string): Promise<Check> {
   return check;
 }
 
-export async function createCheckByRun(runId: string): Promise<Check> {
-  const response = await axiosClient.post("/api/checks", { run_id: runId });
+export async function createCheckByRun(
+  runId: string,
+  viewOptions?: any
+): Promise<Check> {
+  const response = await axiosClient.post("/api/checks", {
+    run_id: runId,
+    view_options: viewOptions,
+  });
   const check = response.data;
 
   return check;
@@ -63,6 +70,9 @@ export async function deleteCheck(checkId: string) {
   return response.data;
 }
 
-export async function reorderChecks(order: {source: number, destination: number}) {
+export async function reorderChecks(order: {
+  source: number;
+  destination: number;
+}) {
   return await axiosClient.post("/api/checks/reorder", order);
 }

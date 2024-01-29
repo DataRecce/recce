@@ -22,27 +22,28 @@ import { useLocation } from "wouter";
 import { RunView } from "./RunView";
 import { RunEditViewProps, RunResultViewProps } from "./types";
 
-interface RunModalProps<PT, RT> {
+interface RunModalProps<PT, RT, VO> {
   title: string;
   type: RunType;
   params: PT;
   RunEditView?: React.ComponentType<RunEditViewProps<PT>>;
-  RunResultView: React.ComponentType<RunResultViewProps<PT, RT>>;
+  RunResultView: React.ComponentType<RunResultViewProps<PT, RT, VO>>;
 }
 
-export const RunModal = <PT, RT>({
+export const RunModal = <PT, RT, VO>({
   type,
   title,
   params: defaultParams,
   RunEditView,
   RunResultView,
-}: RunModalProps<PT, RT>) => {
+}: RunModalProps<PT, RT, VO>) => {
   const [, setLocation] = useLocation();
   const { isOpen, onOpen, onClose } = useDisclosure();
   const [runId, setRunId] = useState<string>();
   const [params, setParams] = useState<PT>(defaultParams);
   const [isAborting, setAborting] = useState(false);
   const [progress, setProgress] = useState<Run["progress"]>();
+  const [viewOptions, setViewOptions] = useState<VO>();
 
   const submitRunFn = async () => {
     const { run_id } = await submitRun<PT, RT>(type, params, { nowait: true });
@@ -108,11 +109,11 @@ export const RunModal = <PT, RT>({
       return;
     }
 
-    const check = await createCheckByRun(run.run_id);
+    const check = await createCheckByRun(run.run_id, viewOptions);
 
     queryClient.invalidateQueries({ queryKey: cacheKeys.checks() });
     setLocation(`/checks/${check.check_id}`);
-  }, [run?.run_id, setLocation, queryClient]);
+  }, [run?.run_id, setLocation, queryClient, viewOptions]);
 
   const handleClose = async () => {
     onClose();
@@ -149,6 +150,8 @@ export const RunModal = <PT, RT>({
                 error={error}
                 progress={progress}
                 onCancel={handleCancel}
+                viewOptions={viewOptions}
+                onViewOptionsChanged={setViewOptions}
                 RunResultView={RunResultView}
               />
             )}

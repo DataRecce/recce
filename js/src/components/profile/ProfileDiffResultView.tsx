@@ -3,17 +3,32 @@ import { Box, Center, Flex, Icon } from "@chakra-ui/react";
 import { ScreenshotDataGrid } from "../data-grid/ScreenshotDataGrid";
 import { RunResultViewProps } from "../run/types";
 
-import { ProfileDiffParams, ProfileDiffResult } from "@/lib/api/profile";
+import {
+  ProfileDiffParams,
+  ProfileDiffResult,
+  ProfileDiffViewOptions,
+} from "@/lib/api/profile";
 import { useMemo, useState } from "react";
 import { toDataDiffGrid } from "../query/querydiff";
 
 interface ProfileDiffResultViewProp
-  extends RunResultViewProps<ProfileDiffParams, ProfileDiffResult> {}
+  extends RunResultViewProps<
+    ProfileDiffParams,
+    ProfileDiffResult,
+    ProfileDiffViewOptions
+  > {}
 
-export function ProfileDiffResultView({ run }: ProfileDiffResultViewProp) {
+export function ProfileDiffResultView({
+  run,
+  viewOptions,
+  onViewOptionsChanged,
+}: ProfileDiffResultViewProp) {
   const result = run.result;
   const params = run.params;
-  const [pinnedColumns, setPinnedColumns] = useState<string[]>([]);
+  const pinnedColumns = useMemo(
+    () => viewOptions?.pinned_columns || [],
+    [viewOptions]
+  );
 
   const field = (result?.current?.schema.fields || []).find(
     (f) => f.name.toLowerCase() === "column_name"
@@ -21,12 +36,21 @@ export function ProfileDiffResultView({ run }: ProfileDiffResultViewProp) {
   const primaryKey = field?.name || "column_name";
 
   const gridData = useMemo(() => {
+    const handlePinnedColumnsChanged = (pinnedColumns: string[]) => {
+      if (onViewOptionsChanged) {
+        onViewOptionsChanged({
+          ...viewOptions,
+          pinned_columns: pinnedColumns,
+        });
+      }
+    };
+
     return toDataDiffGrid(result?.base, result?.current, {
       primaryKeys: [primaryKey],
       pinnedColumns,
-      onPinnedColumnsChange: setPinnedColumns,
+      onPinnedColumnsChange: handlePinnedColumnsChanged,
     });
-  }, [result, primaryKey, pinnedColumns, setPinnedColumns]);
+  }, [result, primaryKey, pinnedColumns, viewOptions, onViewOptionsChanged]);
 
   if (gridData.columns.length === 0) {
     return <Center height="100%">No data</Center>;
