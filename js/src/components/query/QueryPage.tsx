@@ -4,14 +4,16 @@ import SqlEditor from "./SqlEditor";
 import { useRecceQueryContext } from "@/lib/hooks/RecceQueryContext";
 
 import { createCheckByRun, updateCheck } from "@/lib/api/checks";
-import {
-  QueryDiffResultView,
-  QueryDiffResultViewOptions,
-} from "./QueryDiffResultView";
+import { QueryDiffResultView } from "./QueryDiffResultView";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { cacheKeys } from "@/lib/api/cacheKeys";
 import { useLocation } from "wouter";
-import { submitQuery, submitQueryDiff } from "@/lib/api/adhocQuery";
+import {
+  QueryDiffViewOptions,
+  QueryViewOptions,
+  submitQuery,
+  submitQueryDiff,
+} from "@/lib/api/adhocQuery";
 import { QueryResultView } from "./QueryResultView";
 import { cancelRun, waitRun } from "@/lib/api/runs";
 import { RunView } from "../run/RunView";
@@ -23,9 +25,9 @@ export const QueryPage = () => {
   const [runType, setRunType] = useState<string>();
   const [runId, setRunId] = useState<string>();
 
-  const [viewOptions, setViewOptions] = useState<QueryDiffResultViewOptions>(
-    {}
-  );
+  const [viewOptions, setViewOptions] = useState<
+    QueryDiffViewOptions | QueryViewOptions
+  >({});
 
   const queryClient = useQueryClient();
   const [, setLocation] = useLocation();

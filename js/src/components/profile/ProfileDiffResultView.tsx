@@ -3,12 +3,20 @@ import { Box, Center, Flex, Icon } from "@chakra-ui/react";
 import { ScreenshotDataGrid } from "../data-grid/ScreenshotDataGrid";
 import { RunResultViewProps } from "../run/types";
 
-import { ProfileDiffParams, ProfileDiffResult } from "@/lib/api/profile";
+import {
+  ProfileDiffParams,
+  ProfileDiffResult,
+  ProfileDiffViewOptions,
+} from "@/lib/api/profile";
 import { useMemo, useState } from "react";
 import { toDataDiffGrid } from "../query/querydiff";
 
 interface ProfileDiffResultViewProp
-  extends RunResultViewProps<ProfileDiffParams, ProfileDiffResult> {}
+  extends RunResultViewProps<
+    ProfileDiffParams,
+    ProfileDiffResult,
+    ProfileDiffViewOptions
+  > {}
 
 export function ProfileDiffResultView({
   run,
@@ -18,7 +26,7 @@ export function ProfileDiffResultView({
   const result = run.result;
   const params = run.params;
   const pinnedColumns = useMemo(
-    () => viewOptions?.pinnedColumns || [],
+    () => viewOptions?.pinned_columns || [],
     [viewOptions]
   );
 
@@ -32,7 +40,7 @@ export function ProfileDiffResultView({
       if (onViewOptionsChanged) {
         onViewOptionsChanged({
           ...viewOptions,
-          pinnedColumns,
+          pinned_columns: pinnedColumns,
         });
       }
     };

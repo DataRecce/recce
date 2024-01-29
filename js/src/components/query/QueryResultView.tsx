@@ -1,8 +1,12 @@
 import "react-data-grid/lib/styles.css";
 import { Column } from "react-data-grid";
-import { QueryParams, QueryResult } from "@/lib/api/adhocQuery";
+import {
+  QueryParams,
+  QueryResult,
+  QueryViewOptions,
+} from "@/lib/api/adhocQuery";
 import { Box, Center, Flex, Icon, IconButton, Tooltip } from "@chakra-ui/react";
-import { CSSProperties, useMemo, useState } from "react";
+import { useMemo } from "react";
 import { DataFrame, Run } from "@/lib/api/types";
 import { ScreenshotDataGrid } from "../data-grid/ScreenshotDataGrid";
 import { defaultRenderCell } from "./querydiff";
@@ -10,12 +14,8 @@ import { VscPin, VscPinned } from "react-icons/vsc";
 import { RunResultViewProps } from "../run/types";
 import { AddIcon } from "@chakra-ui/icons";
 
-interface QueryResultViewOptions {
-  pinnedColumns?: string[];
-}
-
 interface QueryResultViewProp
-  extends RunResultViewProps<QueryParams, QueryResult> {
+  extends RunResultViewProps<QueryParams, QueryResult, QueryViewOptions> {
   onAddToChecklist?: (run: Run<QueryParams, QueryResult>) => void;
 }
 
@@ -97,7 +97,7 @@ export const QueryResultView = ({
   onAddToChecklist,
 }: QueryResultViewProp) => {
   const pinnedColumns = useMemo(
-    () => viewOptions?.pinnedColumns || [],
+    () => viewOptions?.pinned_columns || [],
     [viewOptions]
   );
 
@@ -111,7 +111,7 @@ export const QueryResultView = ({
       if (onViewOptionsChanged) {
         onViewOptionsChanged({
           ...viewOptions,
-          pinnedColumns,
+          pinned_columns: pinnedColumns,
         });
       }
     };

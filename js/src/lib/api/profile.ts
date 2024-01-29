@@ -12,6 +12,17 @@ export interface ProfileDiffResult {
   current_error?: string;
 }
 
-export async function submitProfileDiff(params: ProfileDiffParams,   options?: SubmitOptions) {
-  return await submitRun<ProfileDiffParams, ProfileDiffResult>("profile_diff", params, options);
+export interface ProfileDiffViewOptions {
+  pinned_columns?: string[];
+}
+
+export async function submitProfileDiff(
+  params: ProfileDiffParams,
+  options?: SubmitOptions
+) {
+  return await submitRun<ProfileDiffParams, ProfileDiffResult>(
+    "profile_diff",
+    params,
+    options
+  );
 }

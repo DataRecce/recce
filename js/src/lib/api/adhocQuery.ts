@@ -6,6 +6,10 @@ export interface QueryParams {
   sql_template: string;
 }
 
+export interface QueryViewOptions {
+  pinned_columns?: string[];
+}
+
 export interface QueryResult {
   result?: DataFrame;
   error?: string;
@@ -29,6 +33,12 @@ export interface QueryDiffResult {
 
 export interface RowCountDiffResult {
   [key: string]: RowCount;
+}
+
+export interface QueryDiffViewOptions {
+  changed_only?: boolean;
+  primary_keys?: string[];
+  pinned_columns?: string[];
 }
 
 export async function submitQuery(
