@@ -27,10 +27,11 @@ export function GraphNode({ data }: GraphNodeProps) {
   }
 
   // border width and color
+  const selectedNodeShadowBox = "rgba(3, 102, 214, 0.5) 5px 5px 10px 3px";
   let borderWidth = 1;
   let borderColor = color;
   let backgroundColor = "white";
-  let boxShadow = data.isSelected ? "outline" : "unset";
+  let boxShadow = data.isSelected ? selectedNodeShadowBox : "unset";
 
   // if (isHighlighted === true) {
   //   borderWidth = 1;
@@ -52,7 +53,6 @@ export function GraphNode({ data }: GraphNodeProps) {
                               ? "node-unhighlight"
                               : undefined
 
-
   return (
     <Tooltip
       label={resourceType === "model" ? name : `${name} (${resourceType})`}
@@ -67,6 +67,7 @@ export function GraphNode({ data }: GraphNodeProps) {
         backgroundColor={showContent ? backgroundColor : color}
         borderRadius={3}
         boxShadow={boxShadow}
+        transition="box-shadow 0.2s ease-in-out"
         padding={0}
         className={highlightClassName}
       >
