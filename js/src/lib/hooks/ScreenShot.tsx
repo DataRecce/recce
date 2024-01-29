@@ -4,17 +4,21 @@ import html2canvas from "html2canvas";
 import { RefObject, useRef, useState } from "react";
 import { useClipBoardToast } from "./useClipBoardToast";
 
+export const IGNORE_SCREENSHOT_CLASS = 'ignore-screenshot';
+
 export const highlightBoxShadow =
   "rgba(0, 0, 0, 0.25) 0px 54px 55px, rgba(0, 0, 0, 0.12) 0px -12px 30px, rgba(0, 0, 0, 0.12) 0px 4px 6px, rgba(0, 0, 0, 0.17) 0px 12px 13px, rgba(0, 0, 0, 0.09) 0px -3px 5px";
 
 export interface HookOptions {
   imageType?: "png" | "jpeg";
+  backgroundColor?: string | null;
   boardEffect?: boolean;
   shadowEffect?: boolean;
   borderStyle?: string;
   borderRadius?: string;
   onSuccess?: (blob: Blob) => void;
   onError?: (error: unknown) => void;
+  ignoreElements?: (element: Element) => boolean;
 }
 
 export interface BlobHookReturn {
@@ -28,12 +32,14 @@ export interface BlobHookReturn {
 
 export function useToBlob({
   imageType = "png",
+  backgroundColor = null,
   boardEffect = true,
   shadowEffect = false,
   borderStyle = "solid 1px #ccc",
   borderRadius = "10px",
   onSuccess,
   onError,
+  ignoreElements,
 }: HookOptions) {
   const [status, setStatus] = useState<
     "idle" | "loading" | "success" | "error"
@@ -53,21 +59,34 @@ export function useToBlob({
     const overflow = nodeToUse.style.overflow;
     const border = nodeToUse.style.border;
     const radius = nodeToUse.style.borderRadius;
+    const background = nodeToUse.style.backgroundColor;
 
     function resetStyles() {
       nodeToUse.style.overflow = overflow;
       nodeToUse.style.border = border;
       nodeToUse.style.borderRadius = radius;
+      nodeToUse.style.backgroundColor = background;
     }
 
     try {
       nodeToUse.style.overflow = "hidden";
       nodeToUse.style.border = boardEffect ? borderStyle : "";
       nodeToUse.style.borderRadius = boardEffect ? borderRadius : "";
+      nodeToUse.style.backgroundColor = backgroundColor || "";
+
+      // Add style to make images inline-block
+      // ref: https://github.com/niklasvh/html2canvas/issues/2107#issuecomment-1316354455
+      const style = document.createElement('style');
+      document.head.appendChild(style);
+      style.sheet?.insertRule('body > div:last-child img { display: inline-block; }');
+
       setStatus("loading");
       const canvas = await html2canvas(nodeToUse, {
+        logging: false,
         backgroundColor: null,
+        ignoreElements: ignoreElements,
       });
+      style.remove();
       const outputCanvas = shadowEffect
         ? document.createElement("canvas")
         : canvas;
