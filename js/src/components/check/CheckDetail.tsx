@@ -45,7 +45,6 @@ export const CheckDetail = ({ checkId }: CheckDetailProps) => {
   const queryClient = useQueryClient();
   const [, setLocation] = useLocation();
   const { successToast, failToast } = useClipBoardToast();
-  const [viewOptions, setViewOptions] = useState({});
 
   const {
     isLoading,
@@ -53,20 +52,7 @@ export const CheckDetail = ({ checkId }: CheckDetailProps) => {
     data: check,
   } = useQuery({
     queryKey: cacheKeys.check(checkId),
-    queryFn: async () => {
-      const check = await getCheck(checkId);
-      if (check?.type === "query_diff") {
-        setViewOptions({
-          changedOnly: check?.params?.changed_only,
-          primaryKeys: check?.params?.primary_keys,
-          pinnedColumns: check?.params?.pinned_columns,
-        });
-      } else {
-        setViewOptions({});
-      }
-
-      return check;
-    },
+    queryFn: async () => getCheck(checkId),
     refetchOnMount: false,
     staleTime: 5 * 60 * 1000,
   });
@@ -122,6 +108,10 @@ export const CheckDetail = ({ checkId }: CheckDetailProps) => {
   const handleCheck: React.ChangeEventHandler = (event) => {
     const isChecked: boolean = (event.target as any).checked;
     mutate({ is_checked: isChecked });
+  };
+
+  const handelUpdateViewOptions = (viewOptions: any) => {
+    mutate({ view_options: viewOptions });
   };
 
   const handleUpdateDescription = (description?: string) => {
@@ -190,13 +180,17 @@ export const CheckDetail = ({ checkId }: CheckDetailProps) => {
 
       <Box style={{ contain: "size" }} flex="1 1 0%">
         {check && check.type === "query" && check?.last_run && (
-          <QueryResultView run={check?.last_run} />
+          <QueryResultView
+            run={check.last_run}
+            viewOptions={check.view_options}
+            onViewOptionsChanged={handelUpdateViewOptions}
+          />
         )}
         {check && check.type === "query_diff" && check?.last_run && (
           <QueryDiffResultView
             run={check.last_run}
-            viewOptions={viewOptions}
-            onViewOptionsChanged={setViewOptions}
+            viewOptions={check.view_options}
+            onViewOptionsChanged={handelUpdateViewOptions}
           />
         )}
         {check && check.type === "value_diff" && check?.last_run && (

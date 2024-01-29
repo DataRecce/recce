@@ -10,6 +10,10 @@ import { VscPin, VscPinned } from "react-icons/vsc";
 import { RunResultViewProps } from "../run/types";
 import { AddIcon } from "@chakra-ui/icons";
 
+interface QueryResultViewOptions {
+  pinnedColumns?: string[];
+}
+
 interface QueryResultViewProp
   extends RunResultViewProps<QueryParams, QueryResult> {
   onAddToChecklist?: (run: Run<QueryParams, QueryResult>) => void;
@@ -88,20 +92,35 @@ function toDataGrid(result: DataFrame, options: QueryDataGridOptions) {
 
 export const QueryResultView = ({
   run,
+  viewOptions,
+  onViewOptionsChanged,
   onAddToChecklist,
 }: QueryResultViewProp) => {
-  const [pinnedColumns, setPinnedColumns] = useState<string[]>([]);
+  const pinnedColumns = useMemo(
+    () => viewOptions?.pinnedColumns || [],
+    [viewOptions]
+  );
+
   const dataframe = run?.result?.result;
   const gridData = useMemo(() => {
     if (!dataframe) {
       return { rows: [], columns: [] };
     }
 
+    const handlePinnedColumnsChanged = (pinnedColumns: string[]) => {
+      if (onViewOptionsChanged) {
+        onViewOptionsChanged({
+          ...viewOptions,
+          pinnedColumns,
+        });
+      }
+    };
+
     return toDataGrid(dataframe, {
       pinnedColumns,
-      onPinnedColumnsChange: setPinnedColumns,
+      onPinnedColumnsChange: handlePinnedColumnsChanged,
     });
-  }, [dataframe, pinnedColumns, setPinnedColumns]);
+  }, [dataframe, pinnedColumns, onViewOptionsChanged]);
 
   if (gridData.columns.length === 0) {
     return <Center height="100%">No data</Center>;

@@ -66,19 +66,7 @@ export const QueryPage = () => {
         return;
       }
 
-      const check = await createCheckByRun(run.run_id);
-
-      if (run.type === "query_diff") {
-        await updateCheck(check.check_id, {
-          params: {
-            ...check.params,
-            primary_keys: viewOptions?.primaryKeys,
-            changed_only: viewOptions?.changedOnly,
-            pinned_columns: viewOptions?.pinnedColumns,
-          },
-        });
-      }
-
+      const check = await createCheckByRun(run.run_id, viewOptions);
       queryClient.invalidateQueries({ queryKey: cacheKeys.checks() });
       setLocation(`/checks/${check.check_id}`);
     },
