@@ -20,15 +20,29 @@ class CreateCheckIn(BaseModel):
     run_id: Optional[str] = None
     type: Optional[RunType] = None,
     params: Optional[dict] = None
+    view_options: Optional[dict] = None
 
 
-class CreateCheckOut(BaseModel):
+class CheckOut(BaseModel):
     check_id: UUID
     name: str
     description: str
     type: str
     params: Optional[dict] = None
+    view_options: Optional[dict] = None
     is_checked: bool = False
+    last_run: Optional[Run] = None
+
+    @classmethod
+    def from_check(cls, check: Check):
+        return CheckOut(check_id=check.check_id,
+                        name=check.name,
+                        description=check.description,
+                        type=check.type.value,
+                        params=check.params,
+                        view_options=check.view_options,
+                        is_checked=check.is_checked,
+                        )
 
 
 def _generate_default_name(check_type, params):
@@ -58,7 +72,7 @@ def _validate_check(check_type, params):
     pass
 
 
-@check_router.post("/checks", status_code=201, response_model=CreateCheckOut)
+@check_router.post("/checks", status_code=201, response_model=CheckOut)
 async def create_check(checkIn: CreateCheckIn):
     run = None
     if checkIn.run_id is not None:
@@ -75,19 +89,17 @@ async def create_check(checkIn: CreateCheckIn):
     _validate_check(type, params)
 
     name = checkIn.name if checkIn.name is not None else _generate_default_name(type, params)
-    check = Check(name=name, description=checkIn.description, type=type, params=params)
+    check = Check(name=name,
+                  description=checkIn.description,
+                  type=type,
+                  params=params,
+                  view_options=checkIn.view_options)
     CheckDAO().create(check)
 
     if run is not None:
         run.check_id = check.check_id
 
-    return CreateCheckOut(check_id=check.check_id,
-                          name=check.name,
-                          description=check.description,
-                          type=check.type.value,
-                          params=check.params,
-                          is_checked=check.is_checked,
-                          ).dict()
+    return CheckOut.from_check(check)
 
 
 @check_router.post("/checks/{check_id}/run", status_code=201, response_model=Run)
@@ -104,31 +116,12 @@ async def run_check_handler(check_id: UUID):
         raise HTTPException(status_code=400, detail=str(e))
 
 
-class CheckOut(BaseModel):
-    check_id: UUID
-    name: str
-    description: str
-    type: str
-    params: Optional[dict] = None
-    is_checked: bool = False
-    last_run: Optional[Run] = None
-
-
 @check_router.get("/checks", status_code=200, response_model=list[CheckOut], response_model_exclude_none=True)
 async def list_checks_handler():
     checks = []
 
     for check in CheckDAO().list():
-        checks.append(
-            CheckOut(check_id=check.check_id,
-                     name=check.name,
-                     description=check.description,
-                     type=check.type.value,
-                     params=check.params,
-                     is_checked=check.is_checked,
-                     ).dict()
-
-        )
+        checks.append(CheckOut.from_check(check))
 
     return checks
 
@@ -142,20 +135,16 @@ async def get_check_handler(check_id: UUID):
     runs = RunDAO().list_by_check_id(check_id)
     last_run = runs[-1] if len(runs) > 0 else None
 
-    return CheckOut(check_id=check.check_id,
-                    name=check.name,
-                    description=check.description,
-                    type=check.type.value,
-                    params=check.params,
-                    last_run=last_run,
-                    is_checked=check.is_checked,
-                    ).dict()
+    out = CheckOut.from_check(check)
+    out.last_run = last_run
+    return out
 
 
 class PatchCheckIn(BaseModel):
     name: Optional[str] = None
     description: Optional[str] = None
     params: Optional[dict] = None
+    view_options: Optional[dict] = None
     is_checked: Optional[bool] = None
 
 
@@ -171,16 +160,12 @@ async def update_check_handler(check_id: UUID, patch: PatchCheckIn):
         check.description = patch.description
     if patch.params is not None:
         check.params = patch.params
+    if patch.view_options is not None:
+        check.view_options = patch.view_options
     if patch.is_checked is not None:
         check.is_checked = patch.is_checked
 
-    return CheckOut(check_id=check.check_id,
-                    name=check.name,
-                    description=check.description,
-                    type=check.type.value,
-                    params=check.params,
-                    is_checked=check.is_checked,
-                    ).dict()
+    return CheckOut.from_check(check)
 
 
 class DeleteCheckOut(BaseModel):
@@ -191,7 +176,7 @@ class DeleteCheckOut(BaseModel):
 async def delete_handler(check_id: UUID):
     CheckDAO().delete(check_id)
 
-    return DeleteCheckOut(check_id=check_id).dict()
+    return DeleteCheckOut(check_id=check_id)
 
 
 class ReorderChecksIn(BaseModel):
