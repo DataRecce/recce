@@ -14,7 +14,9 @@ export function ValueDiffResultView({ run }: ValueDiffResultViewProp) {
   const params = run.params as ValueDiffParams;
   const cellClass = (row: any) => {
     const value: number | undefined = row["Matched %"];
-    return value && value < 100 ? "diff-cell-modified" : "";
+    return value !== undefined && value !== null && value < 100
+      ? "diff-cell-modified"
+      : "";
   };
 
   const columns: ColumnOrColumnGroup<any, any>[] = [
