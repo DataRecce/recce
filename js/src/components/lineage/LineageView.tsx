@@ -43,8 +43,6 @@ import ReactFlow, {
   Background,
   ReactFlowProvider,
   ControlButton,
-  useReactFlow,
-  getRectOfNodes,
   getTransformForBounds,
 } from "reactflow";
 import dagre from "dagre";
@@ -59,6 +57,8 @@ import { toBlob } from "html-to-image";
 import { useLineageGraphsContext } from "@/lib/hooks/LineageGraphContext";
 import SummaryView from "../summary/SummaryView";
 import { NodeSelector } from "./NodeSelector";
+import { IGNORE_SCREENSHOT_CLASS, copyBlobToClipboard, useToBlob } from "@/lib/hooks/ScreenShot";
+import { useClipBoardToast } from "@/lib/hooks/useClipBoardToast";
 
 
 const layout = (nodes: Node[], edges: Edge[], direction = "LR") => {
@@ -145,7 +145,31 @@ function ChangeStatusLegend() {
 }
 
 function _LineageView() {
-  const { getNodes } = useReactFlow();
+  const { successToast, failToast } = useClipBoardToast();
+  const { toImage, ref } = useToBlob({
+    imageType: "png",
+    shadowEffect: true,
+    backgroundColor: "white",
+    ignoreElements: (element: Element) => {
+      const className = element.className;
+      if (typeof className === 'string' && className.includes(IGNORE_SCREENSHOT_CLASS)){
+        return true;
+      }
+      return false;
+    },
+    onSuccess: async (blob) => {
+      try {
+        await copyBlobToClipboard(blob);
+        successToast("Copied the Lineage View as an image to clipboard");
+      } catch (error) {
+        failToast("Failed to copy image to clipboard", error);
+      }
+    },
+    onError: (error) => {
+      console.error("Error taking screenshot", error);
+      failToast("Failed to copy image to clipboard", error);
+    },
+  });
   const clipboardToast = useToast();
   const [nodes, setNodes, onNodesChange] = useNodesState([]);
   const [edges, setEdges, onEdgesChange] = useEdgesState([]);
@@ -290,56 +314,6 @@ function _LineageView() {
     setIsContextMenuRendered(true);
   };
 
-  const onCopyImage = async () => {
-    const imageWidth = 1024, imageHeight = 768;
-    const nodesBounds = getRectOfNodes(getNodes());
-    const transform = getTransformForBounds(nodesBounds, imageWidth, imageHeight, 0.1, 2);
-
-    const reactFlowViewport = document.querySelector(".react-flow__viewport");
-    if (reactFlowViewport) {
-      try {
-        const blob = await toBlob(reactFlowViewport as HTMLElement, {
-          backgroundColor: "#ffffff00",
-          width: imageWidth,
-          height: imageHeight,
-          style: {
-            width: `${imageWidth}`,
-            height: `${imageHeight}`,
-            transform: `translate(${transform[0]}px, ${transform[1]}px) scale(${transform[2]})`,
-          },
-        });
-
-        if (blob === null) {
-          console.error("Fail to convert react flow to image");
-          return;
-        }
-        await navigator.clipboard.write([
-          new ClipboardItem({
-            [blob.type]: blob
-          })
-        ]);
-        clipboardToast({
-          description: "Copied the Lineage View as an image to clipboard",
-          status: "info",
-          variant: "left-accent",
-          position: "bottom",
-          duration: 2000,
-          isClosable: true,
-        });
-      } catch (e) {
-        clipboardToast({
-          title: "Failed to copy image to clipboard",
-          description: `${e}`,
-          status: "error",
-          variant: "left-accent",
-          position: "bottom",
-          duration: 5000,
-          isClosable: true,
-        });
-      }
-    }
-  };
-
   if (error) {
     return <>Fail to load lineage data: {error}</>;
   }
@@ -383,9 +357,10 @@ function _LineageView() {
           maxZoom={1}
           minZoom={0.1}
           fitView={true}
+          ref={ref}
         >
-          <Background color="#ccc" />
-          <Controls showInteractive={false} position="top-right">
+          <Background color="#ccc"/>
+          <Controls showInteractive={false} position="top-right" className={IGNORE_SCREENSHOT_CLASS}>
             <ControlButton
               title="switch mode"
               onClick={() => {
@@ -398,7 +373,7 @@ function _LineageView() {
             </ControlButton>
             <ControlButton
               title="copy image"
-              onClick={onCopyImage}>
+              onClick={() => {toImage()}}>
               <Icon as={FiCopy} />
             </ControlButton>
             <ControlButton title="summary" onClick={onOpen}>
@@ -408,7 +383,7 @@ function _LineageView() {
           <Panel position="bottom-left">
             <HStack>
               <ChangeStatusLegend />
-              <Box p={2} flex="0 1 160px" fontSize="14px">
+              <Box p={2} flex="0 1 160px" fontSize="14px" className={IGNORE_SCREENSHOT_CLASS}>
                 <Text color="gray" mb="2px">
                   Actions
                 </Text>
@@ -436,7 +411,7 @@ function _LineageView() {
               {viewModeTitle[viewMode]}
             </Text>
           </Panel>
-          <Panel position="bottom-center">
+          <Panel position="bottom-center" className={IGNORE_SCREENSHOT_CLASS}>
             <NodeSelector
               nodes={nodes.map((node) => node.data)}
               isOpen={selectMode === "action"}
