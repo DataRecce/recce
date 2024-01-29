@@ -42,7 +42,7 @@ export function ProfileDiffResultView({
       pinnedColumns,
       onPinnedColumnsChange: handlePinnedColumnsChanged,
     });
-  }, [result, primaryKey, pinnedColumns, onViewOptionsChanged]);
+  }, [result, primaryKey, pinnedColumns, viewOptions, onViewOptionsChanged]);
 
   if (gridData.columns.length === 0) {
     return <Center height="100%">No data</Center>;

@@ -120,7 +120,7 @@ export const QueryResultView = ({
       pinnedColumns,
       onPinnedColumnsChange: handlePinnedColumnsChanged,
     });
-  }, [dataframe, pinnedColumns, onViewOptionsChanged]);
+  }, [dataframe, pinnedColumns, viewOptions, onViewOptionsChanged]);
 
   if (gridData.columns.length === 0) {
     return <Center height="100%">No data</Center>;
