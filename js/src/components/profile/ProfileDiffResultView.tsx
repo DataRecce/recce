@@ -10,10 +10,17 @@ import { toDataDiffGrid } from "../query/querydiff";
 interface ProfileDiffResultViewProp
   extends RunResultViewProps<ProfileDiffParams, ProfileDiffResult> {}
 
-export function ProfileDiffResultView({ run }: ProfileDiffResultViewProp) {
+export function ProfileDiffResultView({
+  run,
+  viewOptions,
+  onViewOptionsChanged,
+}: ProfileDiffResultViewProp) {
   const result = run.result;
   const params = run.params;
-  const [pinnedColumns, setPinnedColumns] = useState<string[]>([]);
+  const pinnedColumns = useMemo(
+    () => viewOptions?.pinnedColumns || [],
+    [viewOptions]
+  );
 
   const field = (result?.current?.schema.fields || []).find(
     (f) => f.name.toLowerCase() === "column_name"
@@ -21,12 +28,21 @@ export function ProfileDiffResultView({ run }: ProfileDiffResultViewProp) {
   const primaryKey = field?.name || "column_name";
 
   const gridData = useMemo(() => {
+    const handlePinnedColumnsChanged = (pinnedColumns: string[]) => {
+      if (onViewOptionsChanged) {
+        onViewOptionsChanged({
+          ...viewOptions,
+          pinnedColumns,
+        });
+      }
+    };
+
     return toDataDiffGrid(result?.base, result?.current, {
       primaryKeys: [primaryKey],
       pinnedColumns,
-      onPinnedColumnsChange: setPinnedColumns,
+      onPinnedColumnsChange: handlePinnedColumnsChanged,
     });
-  }, [result, primaryKey, pinnedColumns, setPinnedColumns]);
+  }, [result, primaryKey, pinnedColumns, onViewOptionsChanged]);
 
   if (gridData.columns.length === 0) {
     return <Center height="100%">No data</Center>;

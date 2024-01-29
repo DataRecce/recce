@@ -197,7 +197,11 @@ export const CheckDetail = ({ checkId }: CheckDetailProps) => {
           <ValueDiffResultView run={check.last_run} />
         )}
         {check && check.type === "profile_diff" && check?.last_run && (
-          <ProfileDiffResultView run={check.last_run} />
+          <ProfileDiffResultView
+            run={check.last_run}
+            viewOptions={check.view_options}
+            onViewOptionsChanged={handelUpdateViewOptions}
+          />
         )}
         {check && check.type === "schema_diff" && (
           <SchemaDiffView check={check} />
