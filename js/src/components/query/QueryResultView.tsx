@@ -7,7 +7,7 @@ import {
 } from "@/lib/api/adhocQuery";
 import { Box, Center, Flex, Icon, IconButton, Tooltip } from "@chakra-ui/react";
 import { useMemo } from "react";
-import { DataFrame, PandasDataFrame, Run } from "@/lib/api/types";
+import { DataFrame, Run } from "@/lib/api/types";
 import { ScreenshotDataGrid } from "../data-grid/ScreenshotDataGrid";
 import { defaultRenderCell } from "./querydiff";
 import { VscPin, VscPinned } from "react-icons/vsc";

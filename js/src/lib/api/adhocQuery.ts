@@ -1,6 +1,6 @@
 import { RowCount } from "./models";
 import { SubmitOptions, submitRun } from "./runs";
-import { DataFrame, PandasDataFrame } from "./types";
+import { DataFrame } from "./types";
 
 export interface QueryParams {
   sql_template: string;
@@ -11,7 +11,7 @@ export interface QueryViewOptions {
 }
 
 export interface QueryResult {
-  result?: PandasDataFrame;
+  result?: DataFrame;
   error?: string;
 }
 
@@ -50,7 +50,7 @@ export async function submitQueryDiff(
   params: QueryDiffParams,
   options?: SubmitOptions
 ) {
-  return await submitRun<QueryDiffResult, QueryDiffResult>(
+  return await submitRun<QueryDiffParams, QueryDiffResult>(
     "query_diff",
     params,
     options

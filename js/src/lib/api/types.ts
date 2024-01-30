@@ -14,24 +14,6 @@ export interface DataFrame {
   data: Array<Array<number | string | null>>;
 }
 
-export interface PandasDataFrameField {
-  name: string;
-  type: string;
-}
-
-export type PandasDataFrameRow = Record<string, any>;
-
-// The result from pandas DataFrame..to_json(orient='table')
-// see https://pandas.pydata.org/docs/reference/api/pandas.DataFrame.to_json.html#pandas-dataframe-to-json
-export interface PandasDataFrame {
-  schema: {
-    fields: Array<PandasDataFrameField>;
-    primaryKey: string[];
-    pandas_version?: string;
-  };
-  data: Array<PandasDataFrameRow>;
-}
-
 export type RunType =
   | "simple"
   | "query"
