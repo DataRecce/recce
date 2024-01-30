@@ -33,20 +33,20 @@ class DataFrame(BaseModel):
             import dbt.clients.agate_helper
             has_integer = hasattr(dbt.clients.agate_helper, 'Integer')
 
-            if isinstance(col_type, agate.data_types.Number):
+            if isinstance(col_type, agate.Number):
                 col_type = DataFrameColumnType.NUMBER
+            elif isinstance(col_type, agate.Text):
+                col_type = DataFrameColumnType.TEXT
+            elif isinstance(col_type, agate.Boolean):
+                col_type = DataFrameColumnType.BOOLEAN
+            elif isinstance(col_type, agate.Date):
+                col_type = DataFrameColumnType.DATE
+            elif isinstance(col_type, agate.DateTime):
+                col_type = DataFrameColumnType.DATETIME
+            elif isinstance(col_type, agate.TimeDelta):
+                col_type = DataFrameColumnType.TIMEDELTA
             elif has_integer and isinstance(col_type, dbt.clients.agate_helper.Integer):
                 col_type = DataFrameColumnType.INTEGER
-            elif isinstance(col_type, agate.data_types.Text):
-                col_type = DataFrameColumnType.TEXT
-            elif isinstance(col_type, agate.data_types.Boolean):
-                col_type = DataFrameColumnType.BOOLEAN
-            elif isinstance(col_type, agate.data_types.Date):
-                col_type = DataFrameColumnType.DATE
-            elif isinstance(col_type, agate.data_types.DateTime):
-                col_type = DataFrameColumnType.DATETIME
-            elif isinstance(col_type, agate.data_types.TimeDelta):
-                col_type = DataFrameColumnType.TIMEDELTA
             else:
                 col_type = DataFrameColumnType.UNKNOWN
             columns.append(DataFrameColumn(name=col_name, type=col_type))

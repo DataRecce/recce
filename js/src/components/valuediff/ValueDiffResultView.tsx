@@ -13,38 +13,38 @@ export function ValueDiffResultView({ run }: ValueDiffResultViewProp) {
   const result = run.result as ValueDiffResult;
   const params = run.params as ValueDiffParams;
   const cellClass = (row: any) => {
-    const value: number | undefined = row["Matched %"];
-    return value !== undefined && value !== null && value < 100
+    const value: number | undefined = row[2];
+    return value !== undefined && value !== null && value < 1
       ? "diff-cell-modified"
       : "";
   };
 
   const columns: ColumnOrColumnGroup<any, any>[] = [
     {
-      key: "name",
+      key: "__is_pk__",
       name: "",
       maxWidth: 30,
       renderCell: ({ row }) => {
         return (
           <Center height="100%">
-            {row.Column === params.primary_key && <Icon as={VscKey}></Icon>}
+            {row[0] === params.primary_key && <Icon as={VscKey}></Icon>}
           </Center>
         );
       },
     },
     {
-      key: "Column",
+      key: "0",
       name: "Column",
       resizable: true,
     },
     {
-      key: "Matched",
+      key: "1",
       name: "Matched",
       resizable: true,
       cellClass,
     },
     {
-      key: "Matched %",
+      key: "2",
       name: "Matched %",
       resizable: true,
       renderCell: ({ column, row }) => {
@@ -52,7 +52,7 @@ export function ValueDiffResultView({ run }: ValueDiffResultViewProp) {
         return (
           <Box textAlign="end">
             {value != undefined && value !== null
-              ? `${value.toFixed(2)} %`
+              ? `${(value * 100).toFixed(2)} %`
               : "N/A"}
           </Box>
         );

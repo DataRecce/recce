@@ -1,10 +1,11 @@
-import json
 from typing import TypedDict, Optional, List
 
-import pandas as pd
+import agate
+from pydantic import BaseModel
 
 from recce.dbt import default_dbt_context, DBTContext
 from .core import Task
+from .dataframe import DataFrame
 from ..exceptions import RecceException
 
 
@@ -12,6 +13,17 @@ class ValueDiffParams(TypedDict):
     primary_key: str
     model: str
     exclude_columns: Optional[List[str]]
+
+
+class ValueDiffResultSummary(BaseModel):
+    total: int
+    added: int
+    removed: int
+
+
+class ValueDiffResult(BaseModel):
+    summary: ValueDiffResultSummary
+    data: DataFrame
 
 
 class ValueDiffTask(Task):
@@ -150,19 +162,18 @@ class ValueDiffTask(Task):
             # https://github.com/dbt-labs/dbt-audit-helper/blob/main/macros/compare_column_values.sql#L20-L23
             # matched = v['matched']
             matched = common - v['mismatched']
-            rate = None if common == 0 else 100 * (matched / common)
+            rate = None if common == 0 else matched / common
             record = [k, matched, rate]
             row.append(record)
 
-        columns = ['Column', 'Matched', 'Matched %']
-        df = pd.DataFrame(row, columns=columns)
+        columns = ['column', 'matched', 'matched_p']
+        column_types = [agate.Text, agate.Number, agate.Number]
+        table = agate.Table(row, columns)
 
-        result = dict(
-            summary=dict(total=total, added=added, removed=removed),
-            data=json.loads(df.to_json(orient='table', index=False)),
-            errors=[],
+        return ValueDiffResult(
+            summary=ValueDiffResultSummary(total=total, added=added, removed=removed),
+            data=DataFrame.from_agate(table),
         )
-        return result
 
     def execute(self):
         dbt_context = default_dbt_context()
