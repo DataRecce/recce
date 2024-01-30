@@ -1,13 +1,13 @@
 import { SubmitOptions, submitRun } from "./runs";
-import { DataFrame } from "./types";
+import { PandasDataFrame } from "./types";
 
 export interface ProfileDiffParams {
   model: string;
 }
 
 export interface ProfileDiffResult {
-  base?: DataFrame;
-  current?: DataFrame;
+  base?: PandasDataFrame;
+  current?: PandasDataFrame;
   base_error?: string;
   current_error?: string;
 }

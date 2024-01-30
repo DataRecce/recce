@@ -1,19 +1,35 @@
-export interface DataFrameField {
+export interface DataFrame {
+  columns: Array<{
+    name: string;
+    type:
+      | "number"
+      | "integer"
+      | "text"
+      | "boolean"
+      | "date"
+      | "datetime"
+      | "timedelta"
+      | "unknown";
+  }>;
+  data: Array<Array<number | string | null>>;
+}
+
+export interface PandasDataFrameField {
   name: string;
   type: string;
 }
 
-export type DataFrameRow = Record<string, any>;
+export type PandasDataFrameRow = Record<string, any>;
 
 // The result from pandas DataFrame..to_json(orient='table')
 // see https://pandas.pydata.org/docs/reference/api/pandas.DataFrame.to_json.html#pandas-dataframe-to-json
-export interface DataFrame {
+export interface PandasDataFrame {
   schema: {
-    fields: Array<DataFrameField>;
+    fields: Array<PandasDataFrameField>;
     primaryKey: string[];
     pandas_version?: string;
   };
-  data: Array<DataFrameRow>;
+  data: Array<PandasDataFrameRow>;
 }
 
 export type RunType =

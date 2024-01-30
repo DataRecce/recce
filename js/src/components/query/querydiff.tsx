@@ -7,10 +7,13 @@ import _ from "lodash";
 import "./styles.css";
 import { Box, Flex, Icon } from "@chakra-ui/react";
 import { VscClose, VscKey, VscPin, VscPinned } from "react-icons/vsc";
-import { DataFrame, DataFrameRow } from "@/lib/api/types";
+import { PandasDataFrame, PandasDataFrameRow } from "@/lib/api/types";
 import { mergeKeysWithStatus } from "@/lib/mergeKeys";
 
-function _getPrimaryKeyValue(row: DataFrameRow, primaryKeys: string[]): string {
+function _getPrimaryKeyValue(
+  row: PandasDataFrameRow,
+  primaryKeys: string[]
+): string {
   const result: Record<string, any> = {};
   for (const key of primaryKeys) {
     result[key] = row[key];
@@ -120,15 +123,15 @@ export const defaultRenderCell = ({
 };
 
 export function toDataDiffGrid(
-  base?: DataFrame,
-  current?: DataFrame,
+  base?: PandasDataFrame,
+  current?: PandasDataFrame,
   options?: QueryDataDiffGridOptions
 ) {
   let primaryKeys = options?.primaryKeys || [];
   const pinnedColumns = options?.pinnedColumns || [];
   const changedOnly = options?.changedOnly || false;
 
-  const empty: DataFrame = {
+  const empty: PandasDataFrame = {
     schema: {
       fields: [],
       primaryKey: [],

@@ -1,5 +1,5 @@
 import { SubmitOptions, submitRun } from "./runs";
-import { DataFrame } from "./types";
+import { PandasDataFrame } from "./types";
 
 export type ValueDiffError = {
   test: string;
@@ -16,7 +16,7 @@ export type ValueDiffResult = {
     added: number;
     removed: number;
   };
-  data: DataFrame;
+  data: PandasDataFrame;
   errors: ValueDiffError[];
 };
 

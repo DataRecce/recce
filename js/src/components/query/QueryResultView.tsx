@@ -7,12 +7,13 @@ import {
 } from "@/lib/api/adhocQuery";
 import { Box, Center, Flex, Icon, IconButton, Tooltip } from "@chakra-ui/react";
 import { useMemo } from "react";
-import { DataFrame, Run } from "@/lib/api/types";
+import { DataFrame, PandasDataFrame, Run } from "@/lib/api/types";
 import { ScreenshotDataGrid } from "../data-grid/ScreenshotDataGrid";
 import { defaultRenderCell } from "./querydiff";
 import { VscPin, VscPinned } from "react-icons/vsc";
 import { RunResultViewProps } from "../run/types";
 import { AddIcon } from "@chakra-ui/icons";
+import _ from "lodash";
 
 interface QueryResultViewProp
   extends RunResultViewProps<QueryParams, QueryResult, QueryViewOptions> {
@@ -61,31 +62,41 @@ function DataFrameColumnHeader({
 function toDataGrid(result: DataFrame, options: QueryDataGridOptions) {
   const columns: Column<any, any>[] = [];
   const pinnedColumns = options.pinnedColumns || [];
-  const fields = result.schema.fields;
-  const toColumn = (name: string) => ({
-    key: name,
+  const toColumn = (key: number, name: string) => ({
+    key: String(key),
     name: <DataFrameColumnHeader name={name} {...options} />,
     width: "auto",
     renderCell: defaultRenderCell,
   });
 
   columns.push({
-    key: "index",
+    key: "_index",
     name: "",
     width: 10,
     cellClass: "index-column",
   });
 
   pinnedColumns.forEach((name) => {
-    columns.push(toColumn(name));
+    const i = _.findIndex(result.columns, (col) => col.name === name);
+    if (i < 0) {
+      return;
+    }
+
+    columns.push(toColumn(i, name));
   });
 
-  fields
-    .filter((field) => field.name !== "index")
-    .filter((field) => !pinnedColumns.includes(field.name))
-    .forEach(({ name }) => {
-      columns.push(toColumn(name));
-    });
+  result.columns.forEach((col, index) => {
+    if (pinnedColumns.includes(col.name)) {
+      return;
+    }
+
+    columns.push(toColumn(index, col.name));
+  });
+
+  result.data.forEach((row, index) => {
+    const row_data = row as any;
+    row_data["_index"] = index + 1;
+  });
 
   return { columns, rows: result.data };
 }
@@ -101,7 +112,7 @@ export const QueryResultView = ({
     [viewOptions]
   );
 
-  const dataframe = run?.result?.result;
+  const dataframe = run?.result as DataFrame;
   const gridData = useMemo(() => {
     if (!dataframe) {
       return { rows: [], columns: [] };
