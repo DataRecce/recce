@@ -395,35 +395,6 @@ class DBTContext:
 
         return dict(parent_map=parent_map, nodes=nodes)
 
-    def get_row_count(self, model_name):
-        row_count = self.row_count_cache.get(model_name)
-        if row_count is not None:
-            return row_count
-
-        # Cache miss, query the row count
-        base_row_count = None
-        curr_row_count = None
-        sql_query = 'select count(*) as ROW_COUNT from {{ ref("' + model_name + '") }}'
-        try:
-            base = self.execute_sql(sql_query, base=True)
-        except Exception as e:
-            print(e)
-            base = None
-        try:
-            curr = self.execute_sql(sql_query, base=False)
-        except Exception:
-            curr = None
-
-        if base is not None:
-            base_row_count = int(base['ROW_COUNT'].iloc[0])
-        if curr is not None:
-            curr_row_count = int(curr['ROW_COUNT'].iloc[0])
-
-        # Cache the row_count result
-        row_count = dict(base=base_row_count, curr=curr_row_count)
-        self.row_count_cache.put(model_name, row_count)
-        return row_count
-
     def get_manifests_by_id(self, unique_id: str):
         curr_manifest = self.get_manifest(base=False)
         base_manifest = self.get_manifest(base=True)
