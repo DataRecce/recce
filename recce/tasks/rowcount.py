@@ -52,9 +52,9 @@ class RowCountDiffTask(Task, QueryMixin):
                     curr = None
                 self.check_cancel()
                 if base is not None:
-                    base_row_count = int(base['data'][0].get('ROW_COUNT'))
+                    base_row_count = int(base.rows[0][0])
                 if curr is not None:
-                    curr_row_count = int(curr['data'][0].get('ROW_COUNT'))
+                    curr_row_count = int(curr.rows[0][0])
 
                 # Cache the row_count result
                 row_count = dict(base=base_row_count, curr=curr_row_count)
