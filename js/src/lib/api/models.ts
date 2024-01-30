@@ -67,11 +67,12 @@ export function useRowCountQueries(modelNames: string[]) {
     }
   });
 
-  async function fetchModelsRowCount() {
+  async function fetchModelsRowCount(options: { skipCache?: boolean } = {}) {
+    const fetchNodes = (options && options.skipCache) ? modelNames : fetchCandidates;
     setIsLoading(true);
-    setIsNodesFetching(fetchCandidates);
+    setIsNodesFetching(fetchNodes);
 
-    const { runId, result: queryResponses } = await queryRowCount(fetchCandidates);
+    const { runId, result: queryResponses } = await queryRowCount(fetchNodes);
     Object.keys(queryResponses).forEach((name) => {
       const modelName = name as string;
       const queryResponse = queryResponses[modelName];

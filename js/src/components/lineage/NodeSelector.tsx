@@ -47,7 +47,7 @@ function AddSchemaChangesCheckButton({ nodes, onFinish }: { nodes: LineageGraphN
 
 function AddRowCountCheckButton({ nodes, onFinish }: { nodes: LineageGraphNode[], onFinish: () => void }) {
   const [, setLocation] = useLocation();
-  const { isLoading, fetchFn } = useRowCountQueries(nodes.map((node) => node.name));
+  const { isLoading, fetchFn: fetchRowCountFn } = useRowCountQueries(nodes.map((node) => node.name));
 
   return (
     <Button
@@ -55,7 +55,7 @@ function AddRowCountCheckButton({ nodes, onFinish }: { nodes: LineageGraphNode[]
       variant="outline"
       isDisabled={isLoading || nodes.length === 0}
       onClick={async () => {
-        const runId = await fetchFn();
+        const runId = await fetchRowCountFn({ skipCache: true });
         const check = await createCheckByRun(runId);
         if (check) {
           setLocation(`/checks/${check.check_id}`);

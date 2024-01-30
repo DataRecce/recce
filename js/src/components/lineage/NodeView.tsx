@@ -63,7 +63,7 @@ export function NodeView({ node, onCloseNode }: NodeViewProps) {
   }, [node, setLocation]);
 
   const addRowCountCheck = useCallback(async () => {
-    const runId = await fetchRowCountFn();
+    const runId = await fetchRowCountFn({ skipCache: true });
     const check = await createCheckByRun(runId);
 
     setLocation(`/checks/${check.check_id}`);
