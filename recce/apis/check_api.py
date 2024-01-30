@@ -45,25 +45,47 @@ class CheckOut(BaseModel):
                         )
 
 
+def _get_ref_model(sql_template: str) -> Optional[str]:
+    import re
+
+    pattern = r'\bref\(["\']?(\w+)["\']?\)\s*}}'
+    matches = re.findall(pattern, sql_template)
+    if len(matches) == 1:
+        ref = matches[0]
+        return ref
+
+    return None
+
+
 def _generate_default_name(check_type, params):
-    now = datetime.utcnow().isoformat()
+    now = datetime.utcnow().strftime("%d %b %Y")
     if check_type == RunType.QUERY:
-        return f"query {now}".capitalize()
+        ref = _get_ref_model(params.get('sql_template'))
+        if ref:
+            return f"query of {ref}".capitalize()
+        return f"{'query'.capitalize()} - {now}"
     elif check_type == RunType.QUERY_DIFF:
-        return f"query diff {now}".capitalize()
+        ref = _get_ref_model(params.get('sql_template'))
+        if ref:
+            return f"query diff of {ref}".capitalize()
+        return f"{'query diff'.capitalize()} - {now}"
     elif check_type == RunType.VALUE_DIFF:
         model = params.get('model')
         return f"value diff of {model}".capitalize()
     elif check_type == RunType.SCHEMA_DIFF:
         node = get_node_by_id(params.get('node_id'))
-        return f"{node.resource_type} schema of {node.name} - {now}".capitalize()
+        return f"{node.resource_type} schema of {node.name}".capitalize()
     elif check_type == RunType.PROFILE_DIFF:
         model = params.get('model')
         return f"profile diff of {model}".capitalize()
     elif check_type == RunType.ROW_COUNT_DIFF:
-        return f"row count - {now}".capitalize()
+        nodes = params.get('node_names')
+        if len(nodes) == 1:
+            node = nodes[0]
+            return f"row count of {node}".capitalize()
+        return f"{'row count'.capitalize()} - {now}"
     else:
-        return f"check - {now}".capitalize()
+        return f"{'check'.capitalize()} - {now}"
 
 
 def _validate_check(check_type, params):
