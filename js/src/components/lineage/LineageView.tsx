@@ -6,6 +6,7 @@ import {
   selectDownstream,
   selectNode,
   selectNodes,
+  selectSingleNode,
   selectUpstream,
   toReactflow,
 } from "./lineage";
@@ -179,7 +180,7 @@ function _LineageView() {
   const { isOpen, onOpen, onClose } = useDisclosure();
 
   const [selectMode, setSelectMode] = useState<"detail" | "action">("detail");
-  const [selected, setSelected] = useState<string>();
+  const [detailViewSelected, setDetailViewSelected] = useState<string>();
   const [viewMode, setViewMode] = useState<"changed_models" | "all">(
     "changed_models"
   );
@@ -243,11 +244,11 @@ function _LineageView() {
 
   const onNodeClick = (event: React.MouseEvent, node: Node) => {
     closeContextMenu();
-    if (selectMode === "action") {
-      const newNodes = selectNode(node.id, nodes);
-      setNodes(newNodes);
+    if (selectMode === "detail") {
+      setDetailViewSelected(node.id);
+      setNodes(selectSingleNode(node.id, nodes));
     } else {
-      setSelected(node.id);
+      setNodes(selectNode(node.id, nodes));
     }
   };
 
@@ -434,12 +435,13 @@ function _LineageView() {
           </ModalBody>
         </ModalContent>
       </Modal>
-      {selectMode === "detail" && selected && lineageGraph?.nodes[selected] && (
+      {selectMode === "detail" && detailViewSelected && lineageGraph?.nodes[detailViewSelected] && (
         <Box flex="0 0 500px" borderLeft="solid 1px lightgray" height="100%">
           <NodeView
-            node={lineageGraph?.nodes[selected]}
+            node={lineageGraph?.nodes[detailViewSelected]}
             onCloseNode={() => {
-              setSelected(undefined);
+              setDetailViewSelected(undefined);
+              setNodes(cleanUpSelectedNodes(nodes));
             }}
           />
         </Box>

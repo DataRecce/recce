@@ -368,6 +368,23 @@ export function highlightPath(
   return [newNodes, newEdges];
 }
 
+export function selectSingleNode(
+  nodeId: string,
+  nodes: Node<LineageGraphNode>[],
+) {
+  const newNodes = nodes.map((n) => {
+    const isMatch = n.id === nodeId;
+    return {
+      ...n,
+      data: {
+        ...n.data,
+        isSelected: isMatch,
+      },
+    };
+  });
+  return newNodes;
+}
+
 export function selectNode(
   nodeId: string,
   nodes: Node<LineageGraphNode>[],
