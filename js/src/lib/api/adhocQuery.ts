@@ -1,6 +1,6 @@
 import { RowCount } from "./models";
 import { SubmitOptions, submitRun } from "./runs";
-import { PandasDataFrame } from "./types";
+import { DataFrame, PandasDataFrame } from "./types";
 
 export interface QueryParams {
   sql_template: string;
@@ -25,10 +25,8 @@ export interface RowCountDiffParams {
 }
 
 export interface QueryDiffResult {
-  primary_keys?: string[];
-  changed_only?: boolean;
-  base?: PandasDataFrame;
-  current?: PandasDataFrame;
+  base?: DataFrame;
+  current?: DataFrame;
 }
 
 export interface RowCountDiffResult {

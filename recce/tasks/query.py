@@ -2,6 +2,7 @@ from typing import TypedDict
 
 import agate
 from dbt.adapters.sql import SQLAdapter
+from pydantic import BaseModel
 
 from recce.dbt import default_dbt_context
 from .core import Task
@@ -64,6 +65,11 @@ class QueryTask(Task, QueryMixin):
             self.close_connection(self.connection)
 
 
+class QueryDiffResult(BaseModel):
+    base: DataFrame
+    current: DataFrame
+
+
 class QueryDiffTask(Task, QueryMixin):
     def __init__(self, params: QueryDiffParams):
         super().__init__()
@@ -71,21 +77,22 @@ class QueryDiffTask(Task, QueryMixin):
         self.connection = None
 
     def execute(self):
-        result = {}
-
         from dbt.adapters.sql import SQLAdapter
         adapter: SQLAdapter = default_dbt_context().adapter
 
         with adapter.connection_named("query"):
             sql_template = self.params.get('sql_template')
             self.connection = adapter.connections.get_thread_connection()
-            result['base'] = self.execute_sql(sql_template, base=True)
+            base = self.execute_sql(sql_template, base=True)
             self.check_cancel()
 
-            result['current'] = self.execute_sql(sql_template, base=False)
+            current = self.execute_sql(sql_template, base=False)
             self.check_cancel()
 
-        return result
+            return QueryDiffResult(
+                base=DataFrame.from_agate(base),
+                current=DataFrame.from_agate(current)
+            )
 
     def cancel(self):
         super().cancel()
