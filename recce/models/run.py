@@ -18,7 +18,7 @@ class RunDAO:
         return None
 
     def list(self):
-        return self.stat.runs
+        return self.state.runs
 
     def list_by_check_id(self, check_id):
         runs = []
