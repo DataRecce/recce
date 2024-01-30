@@ -95,27 +95,27 @@ def _validate_check(check_type, params):
 
 
 @check_router.post("/checks", status_code=201, response_model=CheckOut)
-async def create_check(checkIn: CreateCheckIn):
+async def create_check(check_in: CreateCheckIn):
     run = None
-    if checkIn.run_id is not None:
-        run = RunDAO().find_run_by_id(checkIn.run_id)
+    if check_in.run_id is not None:
+        run = RunDAO().find_run_by_id(check_in.run_id)
         if run is None:
             raise HTTPException(status_code=404, detail='Run Not Found')
 
         type = run.type
         params = run.params
     else:
-        type = checkIn.type
-        params = checkIn.params
+        type = check_in.type
+        params = check_in.params
 
     _validate_check(type, params)
 
-    name = checkIn.name if checkIn.name is not None else _generate_default_name(type, params)
+    name = check_in.name if check_in.name is not None else _generate_default_name(type, params)
     check = Check(name=name,
-                  description=checkIn.description,
+                  description=check_in.description,
                   type=type,
                   params=params,
-                  view_options=checkIn.view_options)
+                  view_options=check_in.view_options)
     CheckDAO().create(check)
 
     if run is not None:
