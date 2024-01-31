@@ -54,7 +54,7 @@ class QueryTask(Task, QueryMixin):
             self.connection = adapter.connections.get_thread_connection()
 
             sql_template = self.params.get('sql_template')
-            table = self.execute_sql(sql_template, base=True)
+            table = self.execute_sql(sql_template, base=False)
             self.check_cancel()
 
             return DataFrame.from_agate(table)
