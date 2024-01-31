@@ -166,9 +166,9 @@ class ValueDiffTask(Task):
             record = [k, matched, rate]
             row.append(record)
 
-        columns = ['column', 'matched', 'matched_p']
-        column_types = [agate.Text, agate.Number, agate.Number]
-        table = agate.Table(row, columns)
+        column_names = ['column', 'matched', 'matched_p']
+        column_types = [agate.Text(), agate.Number(), agate.Number()]
+        table = agate.Table(row, column_names=column_names, column_types=column_types)
 
         return ValueDiffResult(
             summary=ValueDiffResultSummary(total=total, added=added, removed=removed),
