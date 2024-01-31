@@ -317,6 +317,12 @@ class DBTContext:
                     raise Exception(e.msg[message_from:])
             raise e
 
+    def execute(self, sql: str, auto_begin: bool = False, fetch: bool = False, limit: Optional[int] = None):
+        if dbt_version < dbt_version.parse('v1.6'):
+            return self.adapter.execute(sql, auto_begin=auto_begin, fetch=fetch)
+        
+        return self.adapter.execute(sql, auto_begin=auto_begin, fetch=fetch, limit=limit)
+
     def get_lineage(self, base: Optional[bool] = False):
 
         manifest = self.curr_manifest if base is False else self.base_manifest

@@ -1,4 +1,4 @@
-from typing import TypedDict
+from typing import TypedDict, Optional
 
 import agate
 from dbt.adapters.sql import SQLAdapter
@@ -12,13 +12,16 @@ from ..exceptions import RecceException
 
 class QueryMixin:
     @staticmethod
-    def execute_sql(sql_template, base: bool = False) -> agate.Table:
+    def execute_sql(sql_template, base: bool = False, limit: Optional[int] = 2000) -> agate.Table:
         from jinja2.exceptions import TemplateSyntaxError
         dbt_context = default_dbt_context()
         adapter = dbt_context.adapter
         try:
             sql = dbt_context.generate_sql(sql_template, base)
-            _, result = adapter.execute(sql, fetch=True, auto_begin=True)
+            _, result = dbt_context.execute(sql, fetch=True, auto_begin=True, limit=limit + 1)
+            if len(result.rows) > limit:
+                raise RecceException(
+                    f"Query result exceeds the limit of {limit:,} rows. Please use limit clause in your query.")
             return result
 
         except TemplateSyntaxError as e:
