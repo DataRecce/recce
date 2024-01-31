@@ -6,8 +6,6 @@ import time
 from dataclasses import dataclass, fields
 from typing import Callable, Dict, List, Optional, Union
 
-import agate
-import pandas as pd
 from dbt.adapters.base import Column
 from dbt.adapters.factory import get_adapter_by_type
 from dbt.adapters.sql import SQLAdapter
@@ -308,15 +306,6 @@ class DBTContext:
                 return source
 
         return None
-
-    def execute_sql(self, sql_template, base=False) -> pd.DataFrame:
-        adapter = self.adapter
-        with adapter.connection_named('recce'):
-            sql = self.generate_sql(sql_template, base)
-            response, result = adapter.execute(sql, fetch=True, auto_begin=True)
-            table: agate.Table = result
-            df = pd.DataFrame([row.values() for row in table.rows], columns=table.column_names)
-            return df
 
     def generate_sql(self, sql_template: str, base: bool = False, context: Dict = None):
         try:
