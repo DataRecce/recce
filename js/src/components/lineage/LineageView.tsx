@@ -1,6 +1,8 @@
 import { PUBLIC_API_URL } from "../../lib/const";
 import {
   LineageGraph,
+  LineageGraphEdge,
+  LineageGraphNode,
   cleanUpSelectedNodes,
   highlightPath,
   selectDownstream,
@@ -60,6 +62,14 @@ import SummaryView from "../summary/SummaryView";
 import { NodeSelector } from "./NodeSelector";
 import { IGNORE_SCREENSHOT_CLASS, copyBlobToClipboard, useToBlob } from "@/lib/hooks/ScreenShot";
 import { useClipBoardToast } from "@/lib/hooks/useClipBoardToast";
+
+export interface LineageViewProps {
+  viewMode?: "changed_models" | "all";
+  interactive?: boolean;
+  weight?: number;
+  height?: number;
+  filterNodes?: (key: string, node: LineageGraphNode) => boolean;
+}
 
 
 const layout = (nodes: Node[], edges: Edge[], direction = "LR") => {
@@ -145,7 +155,7 @@ function ChangeStatusLegend() {
   );
 }
 
-function _LineageView() {
+function _LineageView({ ...props }: LineageViewProps) {
   const { successToast, failToast } = useClipBoardToast();
   const { toImage, ref } = useToBlob({
     imageType: "png",
@@ -171,7 +181,6 @@ function _LineageView() {
       failToast("Failed to copy image to clipboard", error);
     },
   });
-  const clipboardToast = useToast();
   const [nodes, setNodes, onNodesChange] = useNodesState([]);
   const [edges, setEdges, onEdgesChange] = useEdgesState([]);
   const [lineageGraph, setLineageGraph] = useState<LineageGraph>();
@@ -182,7 +191,7 @@ function _LineageView() {
   const [selectMode, setSelectMode] = useState<"detail" | "action">("detail");
   const [detailViewSelected, setDetailViewSelected] = useState<string>();
   const [viewMode, setViewMode] = useState<"changed_models" | "all">(
-    "changed_models"
+    props.viewMode || "changed_models"
   );
 
   const [isContextMenuRendered, setIsContextMenuRendered] = useState(false);
@@ -199,9 +208,15 @@ function _LineageView() {
 
     const lineageGraph =
       viewMode === "changed_models"
-        ? lineageGraphSets.changed
-        : lineageGraphSets.all;
+        ? { ...lineageGraphSets.changed }
+        : { ...lineageGraphSets.all };
     const modifiedSet = lineageGraphSets.modifiedSet;
+
+    if (typeof props.filterNodes === "function") {
+      const filterFn = props.filterNodes ? props.filterNodes : () => true;
+      lineageGraph.nodes = Object.fromEntries(Object.entries(lineageGraph.nodes).filter(([key, node]) => filterFn(key, node)));
+    }
+
     const [nodes, edges] = toReactflow(
       lineageGraph,
       lineageGraphSets.modifiedSet
@@ -211,7 +226,7 @@ function _LineageView() {
     setModifiedSet(modifiedSet);
     setNodes(nodes);
     setEdges(edges);
-  }, [setNodes, setEdges, viewMode, lineageGraphSets]);
+  }, [setNodes, setEdges, viewMode, lineageGraphSets, props.filterNodes]);
 
   const onNodeMouseEnter = (event: React.MouseEvent, node: Node) => {
     if (lineageGraph && modifiedSet !== undefined) {
@@ -243,6 +258,7 @@ function _LineageView() {
   };
 
   const onNodeClick = (event: React.MouseEvent, node: Node) => {
+    if (props.interactive === false) return;
     closeContextMenu();
     if (selectMode === "detail") {
       setDetailViewSelected(node.id);
@@ -358,53 +374,58 @@ function _LineageView() {
           maxZoom={1}
           minZoom={0.1}
           fitView={true}
+          nodesDraggable={props.interactive}
           ref={ref}
         >
           <Background color="#ccc"/>
           <Controls showInteractive={false} position="top-right" className={IGNORE_SCREENSHOT_CLASS}>
-            <ControlButton
-              title="switch mode"
-              onClick={() => {
-                setViewMode(viewMode === "all" ? "changed_models" : "all");
-                const newNodes = cleanUpSelectedNodes(nodes);
-                setNodes(newNodes);
-              }}
-            >
-              <Icon as={FiRefreshCw} />
-            </ControlButton>
-            <ControlButton
-              title="copy image"
-              onClick={() => {toImage()}}>
-              <Icon as={FiCopy} />
-            </ControlButton>
-            <ControlButton title="summary" onClick={onOpen}>
-              <Icon as={FiList} />
-            </ControlButton>
+            {props.interactive && (<>
+              <ControlButton
+                title="switch mode"
+                onClick={() => {
+                  setViewMode(viewMode === "all" ? "changed_models" : "all");
+                  const newNodes = cleanUpSelectedNodes(nodes);
+                  setNodes(newNodes);
+                }}
+              >
+                <Icon as={FiRefreshCw} />
+              </ControlButton>
+              <ControlButton
+                title="copy image"
+                onClick={() => {toImage()}}>
+                <Icon as={FiCopy} />
+              </ControlButton>
+              <ControlButton title="summary" onClick={onOpen}>
+                <Icon as={FiList} />
+              </ControlButton>
+            </>)}
           </Controls>
           <Panel position="bottom-left">
             <HStack>
               <ChangeStatusLegend />
-              <Box p={2} flex="0 1 160px" fontSize="14px" className={IGNORE_SCREENSHOT_CLASS}>
-                <Text color="gray" mb="2px">
-                  Actions
-                </Text>
-                <VStack spacing={1} align="baseline">
-                  <Button
-                    size="xs"
-                    variant="outline"
-                    isDisabled={selectMode === "action"}
-                    onClick={() => {
-                      const newMode =
-                        selectMode === "detail" ? "action" : "detail";
-                      const newNodes = cleanUpSelectedNodes(nodes);
-                      setNodes(newNodes);
-                      setSelectMode(newMode);
-                    }}
-                  >
-                    Select Models
-                  </Button>
-                </VStack>
-              </Box>
+              {props.interactive && (
+                <Box p={2} flex="0 1 160px" fontSize="14px" className={IGNORE_SCREENSHOT_CLASS}>
+                  <Text color="gray" mb="2px">
+                    Actions
+                  </Text>
+                  <VStack spacing={1} align="baseline">
+                    <Button
+                      size="xs"
+                      variant="outline"
+                      isDisabled={selectMode === "action"}
+                      onClick={() => {
+                        const newMode =
+                          selectMode === "detail" ? "action" : "detail";
+                        const newNodes = cleanUpSelectedNodes(nodes);
+                        setNodes(newNodes);
+                        setSelectMode(newMode);
+                      }}
+                    >
+                      Select Models
+                    </Button>
+                  </VStack>
+                </Box>
+              )}
             </HStack>
           </Panel>
           <Panel position="top-left">
@@ -414,6 +435,7 @@ function _LineageView() {
           </Panel>
           <Panel position="bottom-center" className={IGNORE_SCREENSHOT_CLASS}>
             <NodeSelector
+              viewMode={viewMode}
               nodes={nodes.map((node) => node.data)}
               isOpen={selectMode === "action"}
               onClose={() => {
@@ -469,10 +491,17 @@ function _LineageView() {
   );
 }
 
-export default function LineageView() {
+export default function LineageView({ ...props }: LineageViewProps) {
+  // Set default value for interactive
+  if (props.interactive === undefined) {
+    props.interactive = true;
+  }
+  if (props.viewMode === undefined) {
+    props.viewMode = "changed_models";
+  }
   return (
     <ReactFlowProvider>
-      <_LineageView />
+      <_LineageView {...props}/>
     </ReactFlowProvider>
   );
 }

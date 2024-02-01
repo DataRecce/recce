@@ -48,6 +48,7 @@ import { cancelRun, submitRunFromCheck, waitRun } from "@/lib/api/runs";
 import { Run } from "@/lib/api/types";
 import { RunView } from "../run/RunView";
 import { formatDistanceToNow } from "date-fns";
+import LineageView from "../lineage/LineageView";
 
 interface CheckDetailProps {
   checkId: string;
@@ -335,6 +336,18 @@ export const CheckDetail = ({ checkId }: CheckDetailProps) => {
         )}
         {check && check.type === "schema_diff" && (
           <SchemaDiffView check={check} />
+        )}
+        {check && check.type === "row_count_diff" && (
+          <RowCountDiffView check={check} />
+        )}
+        {check && check.type === "lineage_diff" && (
+          <LineageView
+            viewMode={check.params?.view_mode}
+            interactive={false}
+            filterNodes={(nodeId) => {
+              return check.params?.node_ids?.includes(nodeId);
+            }}
+          />
         )}
       </Box>
     </Flex>

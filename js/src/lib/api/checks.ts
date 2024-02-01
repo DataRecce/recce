@@ -22,6 +22,19 @@ export async function createSimpleCheck(): Promise<Check> {
   return check;
 }
 
+export async function createLineageDiffCheck(viewMode: string, nodeIds: string[]): Promise<Check> {
+  const response = await axiosClient.post("/api/checks", {
+    type: "lineage_diff",
+    params: {
+      view_mode: viewMode,
+      node_ids: nodeIds,
+    },
+  });
+  const check = response.data;
+
+  return check;
+}
+
 export async function createCheckByNodeSchema(nodeId: string): Promise<Check> {
   const response = await axiosClient.post("/api/checks", {
     type: "schema_diff",
