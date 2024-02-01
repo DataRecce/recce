@@ -332,6 +332,7 @@ class DBTContext:
 
         manifest = self.curr_manifest if base is False else self.base_manifest
         catalog = self.curr_catalog if base is False else self.base_catalog
+        catalog_metadata = catalog.metadata if catalog is not None else None
 
         manifest_dict = manifest.to_dict()
 
@@ -393,7 +394,7 @@ class DBTContext:
                     'package_name': semantic_models['package_name'],
                 }
 
-        return dict(parent_map=parent_map, nodes=nodes)
+        return dict(parent_map=parent_map, nodes=nodes, catalog_metadata=catalog_metadata)
 
     def get_row_count(self, model_name):
         row_count = self.row_count_cache.get(model_name)
