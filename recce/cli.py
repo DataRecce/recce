@@ -28,6 +28,22 @@ dbt_related_options = [
 ]
 
 
+def _execute_sql(dbt_context, sql_template, base=False):
+    try:
+        import pandas as pd
+    except ImportError:
+        print("'pandas' package not found. You can install it using the command: 'pip install pandas'.")
+        exit(1)
+
+    adapter = dbt_context.adapter
+    with adapter.connection_named('recce'):
+        sql = dbt_context.generate_sql(sql_template, base)
+        response, result = adapter.execute(sql, fetch=True, auto_begin=True)
+        table = result
+        df = pd.DataFrame([row.values() for row in table.rows], columns=table.column_names)
+        return df
+
+
 @click.group()
 @click.pass_context
 def cli(ctx, **kwargs):
@@ -60,7 +76,7 @@ def query(sql, base: bool = False, **kwargs):
         recce query --base --sql 'select * from {{ ref("mymodel") }} order by 1'
     """
     dbt_context = DBTContext.load(**kwargs)
-    result = dbt_context.execute_sql(sql, base=base)
+    result = _execute_sql(dbt_context, sql, base=base)
     print(result.to_string(na_rep='-', index=False))
 
 
@@ -87,10 +103,10 @@ def diff(sql, primary_keys: List[str] = None, keep_shape: bool = False, keep_equ
     """
 
     dbt_context = DBTContext.load(**kwargs)
-    before = dbt_context.execute_sql(sql, base=True)
+    before = _execute_sql(dbt_context, sql, base=True)
     if primary_keys is not None:
         before.set_index(primary_keys, inplace=True)
-    after = dbt_context.execute_sql(sql, base=False)
+    after = _execute_sql(dbt_context, sql, base=False)
     if primary_keys is not None:
         after.set_index(primary_keys, inplace=True)
 

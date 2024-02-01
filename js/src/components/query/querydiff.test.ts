@@ -1,101 +1,56 @@
+import { DataFrame } from "@/lib/api/types";
 import { toDataDiffGrid } from "./querydiff";
 
 test("query diff", () => {
-  const base = {
-    schema: {
-      fields: [
-        {
-          name: "index",
-          type: "integer",
-        },
-        {
-          name: "id",
-          type: "integer",
-        },
-        {
-          name: "name",
-          type: "string",
-        },
-        {
-          name: "value",
-          type: "integer",
-        },
-      ],
-      primaryKey: ["index"],
-      pandas_version: "1.4.0",
-    },
+  const base: DataFrame = {
+    columns: [
+      {
+        name: "id",
+        type: "integer",
+      },
+      {
+        name: "name",
+        type: "text",
+      },
+      {
+        name: "value",
+        type: "integer",
+      },
+    ],
     data: [
-      {
-        index: 0,
-        id: 1,
-        name: "Alice",
-        value: 100,
-      },
-      {
-        index: 1,
-        id: 2,
-        name: "Bob",
-        value: 200,
-      },
-      {
-        index: 2,
-        id: 3,
-        name: "Charlie",
-        value: 300,
-      },
+      [1, "Alice", 100],
+      [2, "Bob", 200],
+      [3, "Charlie", 300],
     ],
   };
 
-  const current = {
-    schema: {
-      fields: [
-        {
-          name: "index",
-          type: "integer",
-        },
-        {
-          name: "id",
-          type: "integer",
-        },
-        {
-          name: "name",
-          type: "string",
-        },
-        {
-          name: "value",
-          type: "integer",
-        },
-      ],
-      primaryKey: ["index"],
-      pandas_version: "1.4.0",
-    },
+  const current: DataFrame = {
+    columns: [
+      {
+        name: "id",
+        type: "integer",
+      },
+      {
+        name: "name",
+        type: "text",
+      },
+      {
+        name: "value",
+        type: "integer",
+      },
+    ],
+
     data: [
-      {
-        index: 0,
-        id: 1,
-        name: "Alice",
-        value: 150,
-      },
-      {
-        index: 1,
-        id: 2,
-        name: "Bob",
-        value: 200,
-      },
-      {
-        index: 2,
-        id: 3,
-        name: "Charlie",
-        value: 350,
-      },
+      [1, "Alice", 150],
+      [2, "Bob", 200],
+      [3, "Charlie", 350],
     ],
   };
 
-  const result = toDataDiffGrid(base, current);
-
+  let result = toDataDiffGrid(base, current);
   expect(result?.rows).toStrictEqual([
     {
-      index: 0,
+      _index: 1,
       status: "modified",
       base__id: 1,
       base__name: "Alice",
@@ -105,8 +60,7 @@ test("query diff", () => {
       current__value: 150,
     },
     {
-      index: 1,
-      status: "modified",
+      _index: 2,
       base__id: 2,
       base__name: "Bob",
       base__value: 200,
@@ -115,7 +69,7 @@ test("query diff", () => {
       current__value: 200,
     },
     {
-      index: 2,
+      _index: 3,
       status: "modified",
       base__id: 3,
       base__name: "Charlie",
@@ -125,6 +79,33 @@ test("query diff", () => {
       current__value: 350,
     },
   ]);
-
   expect(result?.columns.length).toBe(4);
+
+  result = toDataDiffGrid(base, current, { primaryKeys: ["id"] });
+  expect(result?.rows).toStrictEqual([
+    {
+      id: 1,
+      status: "modified",
+      base__name: "Alice",
+      base__value: 100,
+      current__name: "Alice",
+      current__value: 150,
+    },
+    {
+      id: 2,
+      base__name: "Bob",
+      base__value: 200,
+      current__name: "Bob",
+      current__value: 200,
+    },
+    {
+      status: "modified",
+      id: 3,
+      base__name: "Charlie",
+      base__value: 300,
+      current__name: "Charlie",
+      current__value: 350,
+    },
+  ]);
+  expect(result?.columns.length).toBe(3);
 });

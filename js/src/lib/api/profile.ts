@@ -8,8 +8,6 @@ export interface ProfileDiffParams {
 export interface ProfileDiffResult {
   base?: DataFrame;
   current?: DataFrame;
-  base_error?: string;
-  current_error?: string;
 }
 
 export interface ProfileDiffViewOptions {

@@ -6,8 +6,6 @@ import time
 from dataclasses import dataclass, fields
 from typing import Callable, Dict, List, Optional, Union
 
-import agate
-import pandas as pd
 from dbt.adapters.base import Column
 from dbt.adapters.factory import get_adapter_by_type
 from dbt.adapters.sql import SQLAdapter
@@ -309,15 +307,6 @@ class DBTContext:
 
         return None
 
-    def execute_sql(self, sql_template, base=False) -> pd.DataFrame:
-        adapter = self.adapter
-        with adapter.connection_named('recce'):
-            sql = self.generate_sql(sql_template, base)
-            response, result = adapter.execute(sql, fetch=True, auto_begin=True)
-            table: agate.Table = result
-            df = pd.DataFrame([row.values() for row in table.rows], columns=table.column_names)
-            return df
-
     def generate_sql(self, sql_template: str, base: bool = False, context: Dict = None):
         try:
             return generate_compiled_sql(self.get_manifest(base), self.adapter, sql_template, context)
@@ -394,35 +383,6 @@ class DBTContext:
                 }
 
         return dict(parent_map=parent_map, nodes=nodes)
-
-    def get_row_count(self, model_name):
-        row_count = self.row_count_cache.get(model_name)
-        if row_count is not None:
-            return row_count
-
-        # Cache miss, query the row count
-        base_row_count = None
-        curr_row_count = None
-        sql_query = 'select count(*) as ROW_COUNT from {{ ref("' + model_name + '") }}'
-        try:
-            base = self.execute_sql(sql_query, base=True)
-        except Exception as e:
-            print(e)
-            base = None
-        try:
-            curr = self.execute_sql(sql_query, base=False)
-        except Exception:
-            curr = None
-
-        if base is not None:
-            base_row_count = int(base['ROW_COUNT'].iloc[0])
-        if curr is not None:
-            curr_row_count = int(curr['ROW_COUNT'].iloc[0])
-
-        # Cache the row_count result
-        row_count = dict(base=base_row_count, curr=curr_row_count)
-        self.row_count_cache.put(model_name, row_count)
-        return row_count
 
     def get_manifests_by_id(self, unique_id: str):
         curr_manifest = self.get_manifest(base=False)

@@ -25,8 +25,6 @@ export interface RowCountDiffParams {
 }
 
 export interface QueryDiffResult {
-  primary_keys?: string[];
-  changed_only?: boolean;
   base?: DataFrame;
   current?: DataFrame;
 }
@@ -52,7 +50,7 @@ export async function submitQueryDiff(
   params: QueryDiffParams,
   options?: SubmitOptions
 ) {
-  return await submitRun<QueryDiffResult, QueryDiffResult>(
+  return await submitRun<QueryDiffParams, QueryDiffResult>(
     "query_diff",
     params,
     options

@@ -1,15 +1,23 @@
-from typing import TypedDict
+from typing import TypedDict, List
 
 import agate
 from dbt.adapters.sql import SQLAdapter
+from dbt.clients.agate_helper import merge_tables
+from pydantic import BaseModel
 
 from recce.dbt import default_dbt_context, DBTContext
 from .core import Task
+from .dataframe import DataFrame
 from ..exceptions import RecceException
 
 
 class ProfileParams(TypedDict):
     model: str
+
+
+class ProfileResult(BaseModel):
+    base: DataFrame
+    current: DataFrame
 
 
 class ProfileDiffTask(Task):
@@ -20,8 +28,6 @@ class ProfileDiffTask(Task):
         self.connection = None
 
     def execute(self):
-        result = {}
-
         dbt_context = default_dbt_context()
         adapter = dbt_context.adapter
 
@@ -37,34 +43,28 @@ class ProfileDiffTask(Task):
             total = len(base_columns) + len(curr_columns)
             completed = 0
 
-            rows: agate.Row = []
-            column_names = []
+            tables: List[agate.Table] = []
 
             for column in base_columns:
                 self.update_progress(message=f'[Base] Profile column: {column.name}', percentage=completed / total)
                 relation = dbt_context.create_relation(model, base=True)
                 response, table = self._profile_column(dbt_context, relation, column)
-                rows.append(table.rows[0])
-                column_names = table.column_names
-
+                tables.append(table)
                 completed = completed + 1
                 self.check_cancel()
-            result['base'] = self._to_dataframe(agate.Table(rows, column_names=column_names))
+            base = DataFrame.from_agate(merge_tables(tables))
 
-            rows: agate.Row = []
-            column_names = []
+            tables: List[agate.Table] = []
             for column in curr_columns:
                 self.update_progress(message=f'[Current] Profile column: {column.column}', percentage=completed / total)
                 relation = dbt_context.create_relation(model, base=False)
                 response, table = self._profile_column(dbt_context, relation, column)
-                rows.append(table.rows[0])
-                column_names = table.column_names
-
+                tables.append(table)
                 completed = completed + 1
                 self.check_cancel()
-            result['current'] = self._to_dataframe(agate.Table(rows, column_names=column_names))
+            current = DataFrame.from_agate(merge_tables(tables))
 
-        return result
+            return ProfileResult(base=base, current=current)
 
     def _verify_dbt_profiler(self, dbt_context):
         for macro_name, macro in dbt_context.manifest.macros.items():

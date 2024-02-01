@@ -7,15 +7,68 @@ import _ from "lodash";
 import "./styles.css";
 import { Box, Flex, Icon } from "@chakra-ui/react";
 import { VscClose, VscKey, VscPin, VscPinned } from "react-icons/vsc";
-import { DataFrame, DataFrameRow } from "@/lib/api/types";
+import { DataFrame } from "@/lib/api/types";
 import { mergeKeysWithStatus } from "@/lib/mergeKeys";
 
-function _getPrimaryKeyValue(row: DataFrameRow, primaryKeys: string[]): string {
-  const result: Record<string, any> = {};
+function _getColumnMap(base: DataFrame, current: DataFrame) {
+  const result: {
+    [key: string]: {
+      baseColumnIndex: number;
+      currentColumnIndex: number;
+      status?: string;
+    };
+  } = {};
+
+  const mapStatus = mergeKeysWithStatus(
+    base.columns.map((col) => col.name),
+    current.columns.map((col) => col.name)
+  ) as Record<string, string>;
+
+  Object.entries(mapStatus).map(([key, status]) => {
+    result[key] = {
+      status,
+      baseColumnIndex: base.columns.findIndex((col) => col.name === key),
+      currentColumnIndex: current.columns.findIndex((col) => col.name === key),
+    };
+  });
+
+  return result;
+}
+
+function _getPrimaryKeyIndexes(
+  columns: DataFrame["columns"],
+  primaryKeys: string[]
+) {
+  const indexes: number[] = [];
   for (const key of primaryKeys) {
-    result[key] = row[key];
+    const index = columns.findIndex((col) => col.name === key);
+    if (index < 0) {
+      throw new Error(`Column ${key} not found`);
+    }
+
+    indexes.push(index);
   }
-  return JSON.stringify(result);
+  return indexes;
+}
+
+function _getPrimaryKeyValue(
+  columns: DataFrame["columns"],
+  primaryIndexes: number[],
+  row: DataFrame["data"][number]
+): string {
+  const result: Record<string, any> = {};
+
+  if (primaryIndexes.length === 0) {
+    const row_data = row as any;
+
+    return JSON.stringify({ _index: row_data["_index"] });
+  } else {
+    for (const index of primaryIndexes) {
+      const col = columns[index];
+      result[col.name] = row[index];
+    }
+    return JSON.stringify(result);
+  }
 }
 
 interface QueryDataDiffGridOptions {
@@ -120,64 +173,49 @@ export const defaultRenderCell = ({
 };
 
 export function toDataDiffGrid(
-  base?: DataFrame,
-  current?: DataFrame,
+  _base?: DataFrame,
+  _current?: DataFrame,
   options?: QueryDataDiffGridOptions
 ) {
+  const base = _base || { columns: [], data: [] };
+  const current = _current || { columns: [], data: [] };
   let primaryKeys = options?.primaryKeys || [];
   const pinnedColumns = options?.pinnedColumns || [];
   const changedOnly = options?.changedOnly || false;
 
-  const empty: DataFrame = {
-    schema: {
-      fields: [],
-      primaryKey: [],
-    },
-    data: [],
-  };
-
-  if (!base && current) {
-    base = empty;
-
-    if (primaryKeys.length === 0) {
-      primaryKeys = current.schema.primaryKey;
-    }
-  } else if (!current && base) {
-    current = empty;
-
-    if (primaryKeys.length === 0) {
-      primaryKeys = base.schema.primaryKey;
-    }
-  } else if (base && current) {
-    if (!_.isEqual(base.schema.primaryKey, current.schema.primaryKey)) {
-      throw new Error(
-        `primary key mismatch! ${base.schema.primaryKey} != ${current.schema.primaryKey}`
-      );
-    }
-
-    if (primaryKeys.length === 0) {
-      primaryKeys = base.schema.primaryKey;
-    }
-  } else {
-    return { rows: [], columns: [] };
-  }
-
   const columns: ColumnOrColumnGroup<any, any>[] = [];
-  const columnMap = mergeKeysWithStatus(
-    base.schema.fields.map((field) => field.name),
-    current.schema.fields.map((field) => field.name)
-  ) as Record<string, string>;
+  const columnMap = _getColumnMap(base, current);
 
   // merge row
   const baseMap: Record<string, any> = {};
-  base.data.forEach((row) => {
-    baseMap[_getPrimaryKeyValue(row, primaryKeys)] = row;
-  });
-
   const currentMap: Record<string, any> = {};
-  current.data.forEach((row) => {
-    currentMap[_getPrimaryKeyValue(row, primaryKeys)] = row;
-  });
+
+  if (primaryKeys.length === 0) {
+    base.data.forEach((row, index) => {
+      const row_data = row as any;
+      row_data["_index"] = index + 1;
+      baseMap[JSON.stringify({ _index: index + 1 })] = row;
+    });
+
+    current.data.forEach((row, index) => {
+      const row_data = row as any;
+      row_data["_index"] = index + 1;
+      currentMap[JSON.stringify({ _index: index + 1 })] = row;
+    });
+  } else {
+    let primaryIndexes = _getPrimaryKeyIndexes(base.columns, primaryKeys);
+
+    base.data.forEach((row, index) => {
+      const key = _getPrimaryKeyValue(base.columns, primaryIndexes, row);
+      baseMap[key] = row;
+    });
+
+    primaryIndexes = _getPrimaryKeyIndexes(current.columns, primaryKeys);
+    current.data.forEach((row, index) => {
+      const key = _getPrimaryKeyValue(current.columns, primaryIndexes, row);
+      currentMap[key] = row;
+    });
+  }
 
   const mergedMap = mergeKeysWithStatus(
     Object.keys(baseMap),
@@ -185,51 +223,58 @@ export function toDataDiffGrid(
   );
 
   let rows = Object.entries(mergedMap).map(([key, status]) => {
-    const base = baseMap[key];
-    const current = currentMap[key];
+    const baseRow = baseMap[key];
+    const currentRow = currentMap[key];
     const row = JSON.parse(key);
 
-    if (base) {
-      Object.keys(base).forEach((key) => {
-        if (primaryKeys.includes(key)) {
+    if (baseRow) {
+      base.columns.forEach((col, index) => {
+        if (primaryKeys.includes(col.name)) {
           return;
         }
-        row[`base__${key}`] = base[key];
+        row[`base__${col.name}`] = baseRow[index];
       });
     }
 
-    if (current) {
-      Object.keys(current).forEach((key) => {
-        if (primaryKeys.includes(key)) {
+    if (currentRow) {
+      current.columns.forEach((col, index) => {
+        if (primaryKeys.includes(col.name)) {
           return;
         }
-
-        row[`current__${key}`] = current[key];
+        row[`current__${col.name}`] = currentRow[index];
       });
     }
 
     // Check if row is added, removed, or modified
-    if (!base) {
+    if (!baseRow) {
       row["status"] = "added";
-    } else if (!current) {
+    } else if (!currentRow) {
       row["status"] = "removed";
     } else {
-      for (const [column, columnStatus] of Object.entries(columnMap)) {
-        if (column === "index") {
+      for (const [name, mergedColumn] of Object.entries(columnMap)) {
+        if (name === "index") {
           continue;
         }
 
-        if (primaryKeys.includes(column)) {
+        if (primaryKeys.includes(name)) {
           continue;
         }
 
-        if (columnStatus === "added" || columnStatus === "removed") {
+        if (
+          mergedColumn.baseColumnIndex < 0 ||
+          mergedColumn.currentColumnIndex < 0
+        ) {
           continue;
         }
 
-        if (!_.isEqual(base[column], current[column])) {
+        if (
+          !_.isEqual(
+            baseRow[mergedColumn.baseColumnIndex],
+            currentRow[mergedColumn.currentColumnIndex]
+          )
+        ) {
           row["status"] = "modified";
-          columnMap[column] = "modified";
+          mergedColumn.status = "modified";
         }
       }
     }
@@ -305,40 +350,38 @@ export function toDataDiffGrid(
   };
 
   // merges columns: primary keys
-  primaryKeys.forEach((name) => {
-    const columnStatus = columnMap[name];
-
-    if (!primaryKeys.includes(name)) {
-      return;
-    }
-
+  if (primaryKeys.length === 0) {
     columns.push({
-      key: `${name}`,
-      name: (
-        <DataFrameColumnGroupHeader
-          name={name}
-          columnStatus={columnStatus}
-          {...options}
-        ></DataFrameColumnGroupHeader>
-      ),
-      frozen: true,
-      cellClass: (row: any) => {
-        if (name === "index") {
-          return "index-column";
-        }
-
-        if (row["status"]) {
-          return `diff-header-${row["status"]}`;
-        }
-
-        return undefined;
-      },
+      key: "_index",
+      name: "",
+      cellClass: "index-column",
     });
-  });
+  } else {
+    primaryKeys.forEach((name) => {
+      const columnStatus = columnMap[name].status || "";
+      columns.push({
+        key: `${name}`,
+        name: (
+          <DataFrameColumnGroupHeader
+            name={name}
+            columnStatus={columnStatus}
+            {...options}
+          ></DataFrameColumnGroupHeader>
+        ),
+        frozen: true,
+        cellClass: (row: any) => {
+          if (row["status"]) {
+            return `diff-header-${row["status"]}`;
+          }
+          return undefined;
+        },
+      });
+    });
+  }
 
   // merges columns: pinned columns
   pinnedColumns.forEach((name) => {
-    const columnStatus = columnMap[name];
+    const columnStatus = columnMap[name].status || "";
 
     if (name === "index") {
       return;
@@ -352,7 +395,9 @@ export function toDataDiffGrid(
   });
 
   // merges columns: other columns
-  Object.entries(columnMap).forEach(([name, columnStatus]) => {
+  Object.entries(columnMap).forEach(([name, mergedColumn]) => {
+    const columnStatus = mergedColumn.status || "";
+
     if (name === "index") {
       return;
     }

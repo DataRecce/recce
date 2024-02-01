@@ -30,7 +30,7 @@ export function ProfileDiffResultView({
     [viewOptions]
   );
 
-  const field = (result?.current?.schema.fields || []).find(
+  const field = (result?.current?.columns || []).find(
     (f) => f.name.toLowerCase() === "column_name"
   );
   const primaryKey = field?.name || "column_name";
