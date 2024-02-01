@@ -5,14 +5,23 @@ import {
   QueryResult,
   QueryViewOptions,
 } from "@/lib/api/adhocQuery";
-import { Box, Center, Flex, Icon, IconButton, Tooltip } from "@chakra-ui/react";
+import {
+  AlertIcon,
+  Box,
+  Center,
+  Flex,
+  Icon,
+  IconButton,
+  Spacer,
+  Tooltip,
+} from "@chakra-ui/react";
 import { useMemo } from "react";
 import { DataFrame, Run } from "@/lib/api/types";
 import { ScreenshotDataGrid } from "../data-grid/ScreenshotDataGrid";
 import { defaultRenderCell } from "./querydiff";
 import { VscPin, VscPinned } from "react-icons/vsc";
 import { RunResultViewProps } from "../run/types";
-import { AddIcon } from "@chakra-ui/icons";
+import { AddIcon, WarningIcon } from "@chakra-ui/icons";
 import _ from "lodash";
 
 interface QueryResultViewProp
@@ -137,6 +146,12 @@ export const QueryResultView = ({
     return <Center height="100%">No data</Center>;
   }
 
+  const limit = dataframe?.limit || 0;
+  const warning =
+    limit > 0 && dataframe?.more
+      ? `Warning: Displayed results are limited to ${limit.toLocaleString()} records. To ensure complete data retrieval, consider applying a LIMIT or WHERE clause to constrain the result set.`
+      : null;
+
   return (
     <Flex direction="column" backgroundColor="rgb(249, 249, 249)" height="100%">
       {onAddToChecklist && (
@@ -144,8 +159,17 @@ export const QueryResultView = ({
           borderBottom="1px solid lightgray"
           justifyContent="flex-end"
           gap="5px"
-          height="32px"
+          alignItems="center"
+          px="10px"
+          bg={warning ? "orange.100" : "inherit"}
         >
+          {warning && (
+            <>
+              <WarningIcon color="orange.600" /> <Box>{warning}</Box>
+            </>
+          )}
+
+          <Spacer />
           <Tooltip label="Add to Checklist">
             <IconButton
               variant="unstyled"

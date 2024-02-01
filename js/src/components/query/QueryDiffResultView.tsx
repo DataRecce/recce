@@ -5,7 +5,15 @@ import {
   QueryDiffResult,
   QueryDiffViewOptions,
 } from "@/lib/api/adhocQuery";
-import { Center, Checkbox, Flex, IconButton, Tooltip } from "@chakra-ui/react";
+import {
+  Box,
+  Center,
+  Checkbox,
+  Flex,
+  IconButton,
+  Spacer,
+  Tooltip,
+} from "@chakra-ui/react";
 import { useMemo } from "react";
 import { toDataDiffGrid } from "./querydiff";
 
@@ -13,7 +21,7 @@ import "./styles.css";
 import { Run } from "@/lib/api/types";
 import { ScreenshotDataGrid } from "../data-grid/ScreenshotDataGrid";
 import { RunResultViewProps } from "../run/types";
-import { AddIcon } from "@chakra-ui/icons";
+import { AddIcon, WarningIcon } from "@chakra-ui/icons";
 
 export interface QueryDiffResultViewProps
   extends RunResultViewProps<
@@ -93,6 +101,12 @@ export const QueryDiffResultView = ({
     }
   };
 
+  const limit = run.result?.current?.limit || 0;
+  const warning =
+    limit > 0 && (run?.result?.current?.more || run?.result?.base?.more)
+      ? `Warning: Displayed results are limited to ${limit.toLocaleString()} records. To ensure complete data retrieval, consider applying a LIMIT or WHERE clause to constrain the result set.`
+      : null;
+
   return (
     <Flex
       direction="column"
@@ -103,8 +117,17 @@ export const QueryDiffResultView = ({
         borderBottom="1px solid lightgray"
         justifyContent="flex-end"
         gap="5px"
-        minHeight="32px"
+        alignItems="center"
+        px="10px"
+        bg={warning ? "orange.100" : "inherit"}
       >
+        {warning && (
+          <>
+            <WarningIcon color="orange.600" /> <Box>{warning}</Box>
+          </>
+        )}
+
+        <Spacer />
         <Checkbox
           isChecked={viewOptions?.changed_only}
           onChange={toggleChangedOnly}

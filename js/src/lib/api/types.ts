@@ -12,6 +12,8 @@ export interface DataFrame {
       | "unknown";
   }>;
   data: Array<Array<number | string | null>>;
+  limit?: number;
+  more?: boolean;
 }
 
 export type RunType =
