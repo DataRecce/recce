@@ -4,8 +4,9 @@ import os
 import sys
 import time
 from dataclasses import dataclass, fields
-from typing import Callable, Dict, List, Optional, Union
+from typing import Callable, Dict, List, Optional, Union, Tuple
 
+import agate
 from dbt.adapters.base import Column
 from dbt.adapters.factory import get_adapter_by_type
 from dbt.adapters.sql import SQLAdapter
@@ -317,10 +318,11 @@ class DBTContext:
                     raise Exception(e.msg[message_from:])
             raise e
 
-    def execute(self, sql: str, auto_begin: bool = False, fetch: bool = False, limit: Optional[int] = None):
+    def execute(self, sql: str, auto_begin: bool = False, fetch: bool = False, limit: Optional[int] = None) -> Tuple[
+        any, agate.Table]:
         if dbt_version < dbt_version.parse('v1.6'):
             return self.adapter.execute(sql, auto_begin=auto_begin, fetch=fetch)
-        
+
         return self.adapter.execute(sql, auto_begin=auto_begin, fetch=fetch, limit=limit)
 
     def get_lineage(self, base: Optional[bool] = False):
