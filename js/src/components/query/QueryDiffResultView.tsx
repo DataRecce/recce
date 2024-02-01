@@ -104,7 +104,7 @@ export const QueryDiffResultView = ({
   const limit = run.result?.current?.limit || 0;
   const warning =
     limit > 0 && (run?.result?.current?.more || run?.result?.base?.more)
-      ? `Warning: Results truncate to the limit of ${limit.toLocaleString()}. Please use LIMIT or WHERE clause to reduce the result size.`
+      ? `Warning: Displayed results are limited to ${limit.toLocaleString()} records. To ensure complete data retrieval, consider applying a LIMIT or WHERE clause to constrain the result set.`
       : null;
 
   return (
@@ -117,7 +117,6 @@ export const QueryDiffResultView = ({
         borderBottom="1px solid lightgray"
         justifyContent="flex-end"
         gap="5px"
-        minHeight="32px"
         alignItems="center"
         px="10px"
         bg={warning ? "orange.100" : "inherit"}

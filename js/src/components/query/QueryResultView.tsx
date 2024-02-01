@@ -146,9 +146,10 @@ export const QueryResultView = ({
     return <Center height="100%">No data</Center>;
   }
 
+  const limit = dataframe?.limit || 0;
   const warning =
-    dataframe?.limit && dataframe?.more
-      ? `Warning: Results truncate to the limit of ${dataframe?.limit.toLocaleString()}. Please use LIMIT or WHERE clause to reduce the result size.`
+    limit > 0 && dataframe?.more
+      ? `Warning: Displayed results are limited to ${limit.toLocaleString()} records. To ensure complete data retrieval, consider applying a LIMIT or WHERE clause to constrain the result set.`
       : null;
 
   return (
@@ -158,7 +159,6 @@ export const QueryResultView = ({
           borderBottom="1px solid lightgray"
           justifyContent="flex-end"
           gap="5px"
-          height="32px"
           alignItems="center"
           px="10px"
           bg={warning ? "orange.100" : "inherit"}
