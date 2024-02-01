@@ -151,34 +151,37 @@ export const QueryResultView = ({
     limit > 0 && dataframe?.more
       ? `Warning: Displayed results are limited to ${limit.toLocaleString()} records. To ensure complete data retrieval, consider applying a LIMIT or WHERE clause to constrain the result set.`
       : null;
+  const showTopBar = onAddToChecklist || warning;
 
   return (
     <Flex direction="column" backgroundColor="rgb(249, 249, 249)" height="100%">
-      {onAddToChecklist && (
+      {showTopBar && (
         <Flex
           borderBottom="1px solid lightgray"
-          justifyContent="flex-end"
-          gap="5px"
           alignItems="center"
+          gap="5px"
           px="10px"
           bg={warning ? "orange.100" : "inherit"}
         >
           {warning && (
             <>
-              <WarningIcon color="orange.600" /> <Box>{warning}</Box>
+              <WarningIcon color="orange.600" alignSelf="center" />{" "}
+              <Box>{warning}</Box>
             </>
           )}
 
-          <Spacer />
-          <Tooltip label="Add to Checklist">
-            <IconButton
-              variant="unstyled"
-              size="sm"
-              aria-label="Add"
-              icon={<AddIcon />}
-              onClick={() => onAddToChecklist(run)}
-            />
-          </Tooltip>
+          <Spacer minHeight="32px" />
+          {onAddToChecklist && (
+            <Tooltip label="Add to Checklist">
+              <IconButton
+                variant="unstyled"
+                size="sm"
+                aria-label="Add"
+                icon={<AddIcon />}
+                onClick={() => onAddToChecklist(run)}
+              />
+            </Tooltip>
+          )}
         </Flex>
       )}
       <ScreenshotDataGrid

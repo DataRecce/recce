@@ -127,7 +127,7 @@ export const QueryDiffResultView = ({
           </>
         )}
 
-        <Spacer />
+        <Spacer minHeight="32px" />
         <Checkbox
           isChecked={viewOptions?.changed_only}
           onChange={toggleChangedOnly}
