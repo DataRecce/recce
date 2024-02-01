@@ -21,6 +21,14 @@ export interface NodeData {
   columns?: { [key: string]: NodeColumnData };
 }
 
+interface CatalogMetadata {
+  dbt_schema_version: string;
+  dbt_version: string;
+  generated_at: string;
+  invocation_id: string;
+  env: Record<string, any>;
+}
+
 export interface LineageData {
   nodes?: {
     [key: string]: NodeData;
@@ -28,6 +36,7 @@ export interface LineageData {
   parent_map: {
     [key: string]: string[];
   };
+  catalog_metadata: CatalogMetadata | null;
 }
 
 /**
@@ -75,10 +84,16 @@ export interface LineageGraph {
   };
 }
 
+export interface CatalogExistence {
+  base: boolean;
+  current: boolean;
+}
+
 export interface DefaultLineageGraphSets {
   all: LineageGraph;
   changed: LineageGraph;
   modifiedSet: string[];
+  catalogExistence: CatalogExistence;
 }
 
 export function buildDefaultLineageGraphSets(
@@ -247,6 +262,10 @@ export function buildDefaultLineageGraphSets(
     },
     changed: buildChangedOnlyLineageGraph({ nodes, edges }, modifiedSet),
     modifiedSet,
+    catalogExistence: {
+      base: !!base.catalog_metadata,
+      current: !!current.catalog_metadata,
+    },
   };
 
 
