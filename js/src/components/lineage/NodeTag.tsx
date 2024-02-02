@@ -1,6 +1,6 @@
 import { HStack, SkeletonText, Tag, TagLabel, TagLeftIcon, Tooltip, Text, Icon, IconButton, Box, Button, StatArrow, VStack, Spacer } from "@chakra-ui/react";
 import { getIconForResourceType } from "./styles";
-import { FiAlignLeft, FiChevronUp, FiFrown, FiTrendingDown, FiTrendingUp } from "react-icons/fi";
+import { FiAlignLeft, FiFrown, FiTrendingDown, FiTrendingUp } from "react-icons/fi";
 import { MdQueryStats, MdOutlineQuestionMark } from "react-icons/md";
 import { queryModelRowCount, RowCount, useRowCountQueries } from "@/lib/api/models";
 import { cacheKeys } from "@/lib/api/cacheKeys";
@@ -8,7 +8,6 @@ import { LineageGraphNode } from "./lineage";
 import { useEffect, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useRowCountStateContext } from "@/lib/hooks/RecceQueryContext";
-import { FaEquals } from "react-icons/fa";
 import { RiArrowDownSFill, RiArrowUpSFill } from "react-icons/ri";
 
 
