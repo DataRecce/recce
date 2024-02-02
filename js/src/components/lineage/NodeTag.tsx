@@ -1,6 +1,6 @@
-import { HStack, SkeletonText, Tag, TagLabel, TagLeftIcon, Tooltip, Text, Icon, IconButton, Box, Button } from "@chakra-ui/react";
+import { HStack, SkeletonText, Tag, TagLabel, TagLeftIcon, Tooltip, Text, Icon, IconButton, Box, Button, StatArrow, VStack, Spacer } from "@chakra-ui/react";
 import { getIconForResourceType } from "./styles";
-import { FiAlignLeft, FiFrown, FiTrendingDown, FiTrendingUp } from "react-icons/fi";
+import { FiAlignLeft, FiChevronUp, FiFrown, FiTrendingDown, FiTrendingUp } from "react-icons/fi";
 import { MdQueryStats, MdOutlineQuestionMark } from "react-icons/md";
 import { queryModelRowCount, RowCount, useRowCountQueries } from "@/lib/api/models";
 import { cacheKeys } from "@/lib/api/cacheKeys";
@@ -8,10 +8,71 @@ import { LineageGraphNode } from "./lineage";
 import { useEffect, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useRowCountStateContext } from "@/lib/hooks/RecceQueryContext";
+import { FaEquals } from "react-icons/fa";
+import { RiArrowDownSFill, RiArrowUpSFill } from "react-icons/ri";
 
 
 interface ModelRowCountProps {
   rowCount?: RowCount;
+}
+
+function RowCountByCompare({ rowCount }: { rowCount: RowCount }) {
+  const base = rowCount.base === null ? -1 : rowCount.base;
+  const current = rowCount.curr === null ? -1 : rowCount.curr;
+  const baseLabel = base === null ? "N/A" : base;
+  const currentLabel = current === null ? "N/A" : current;
+  if (base === current) {
+    return (
+      <HStack>
+        <Text>{baseLabel} == {currentLabel} rows</Text>
+      </HStack>
+    );
+  }
+  else if (base < current) {
+    return (
+      <HStack>
+        <Text>{baseLabel}</Text>
+        <Icon as={FiTrendingUp} color="green.500" />
+        <Text>{currentLabel} rows</Text>
+      </HStack>
+    );
+  }
+  if (current > base) {
+    return (
+      <HStack>
+        <Text>{baseLabel}</Text>
+        <Icon as={FiTrendingDown} color="red.500" />
+        <Text>{currentLabel} row</Text>
+      </HStack>
+    );
+  }
+
+}
+
+function RowCountWiteRate({ rowCount }: { rowCount: RowCount }) {
+  const base = rowCount.base === null ? -1 : rowCount.base;
+  const current = rowCount.curr === null ? -1 : rowCount.curr;
+  if (base <= 0 || current <= 0) {
+    return <RowCountByCompare rowCount={rowCount} />;
+  }
+
+  if (base <= current) {
+    return (
+      <HStack>
+        <Text>{current} rows</Text>
+        <Icon as={RiArrowUpSFill} color="green.500"/>
+        <Text color="green.500">{Math.round((current - base) / base * 100)}%</Text>
+      </HStack>
+    );
+  } else {
+    return (
+      <HStack>
+        <Text>{current} rows</Text>
+        <Icon as={RiArrowDownSFill} color="red.500"/>
+        <Text color="red.500">{Math.round((base - current) / base * 100)}%</Text>
+      </HStack>
+    );
+  }
 }
 
 export function ModelRowCount({ rowCount }: ModelRowCountProps ) {
@@ -23,32 +84,7 @@ export function ModelRowCount({ rowCount }: ModelRowCountProps ) {
       </HStack>
     )
   }
-  const base = rowCount.base === null ? -1 : rowCount.base;
-  const current = rowCount.curr === null ? -1 : rowCount.curr;
-  const baseLabel = base === -1 ? "N/A" : base;
-  const currentLabel = current === -1 ? "N/A" : current;
-
-
-  if (base === current) {
-    return <Text>{base} rows</Text>;
-  } else if (base < current) {
-    return (
-      <HStack>
-        <Text>{baseLabel}</Text>
-        <Icon as={FiTrendingUp} color="green.500" />
-        <Text>{currentLabel} rows</Text>
-      </HStack>
-    );
-  } else {
-    return (
-      <HStack>
-        <Text>{baseLabel}</Text>
-        <Icon as={FiTrendingDown} color="red.500" />
-        <Text>{currentLabel} rows</Text>
-        rows
-      </HStack>
-    );
-  }
+  return <RowCountWiteRate rowCount={rowCount} />;
 }
 
 export function ResourceTypeTag({ node }: { node: LineageGraphNode }) {
@@ -116,11 +152,19 @@ export function RowCountTag(
     return null;
   }
 
+  let label = "Query the number of row";
+  if (isTagFetching) {
+    label = "Querying the number of row";
+  } else if (isFetched) {
+    const base = rowCount?.base === null ? 'N/A' : rowCount?.base;
+    const current = rowCount?.curr === null ? 'N/A' : rowCount?.curr;
+    label = `${base} -> ${current} rows`;
+  }
 
   return (
     <Tooltip
       hasArrow
-      label={isFetched || isTagFetching || !isInteractive ?"Number of row":"Query the number of row"}
+      label={label}
       openDelay={500}
       closeDelay={200}
     >
@@ -203,6 +247,8 @@ export function FetchSelectedNodesRowCountButton({
   const { isLoading, fetchFn } = useRowCountQueries(selectedNodes.map((node) => node.name));
   return (
     <Button
+      isLoading={isLoading}
+      loadingText="Querying"
       size="xs"
       variant="outline"
       title= "Query Row Counts"
@@ -210,10 +256,10 @@ export function FetchSelectedNodesRowCountButton({
         await fetchFn();
         onFinish && onFinish();
       }}
-      isDisabled={isLoading || selectedNodes.length === 0}
+      isDisabled={selectedNodes.length === 0}
     >
       <Icon as={MdQueryStats} mr={1} />
-      {isLoading ? "Querying" : "Query Row Counts"}
+      Query Row Counts
     </Button>
   );
 }

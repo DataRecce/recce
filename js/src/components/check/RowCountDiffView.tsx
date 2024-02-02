@@ -29,16 +29,38 @@ export function RowCountDiffView({ check }: RowCountDiffViewProps) {
     { key: "name", name: "Name", cellClass: columnCellClass },
     { key: "base", name: "Base Rows", cellClass: columnCellClass },
     { key: "current", name: "Current Rows", cellClass: columnCellClass },
+    { key: "delta", name: "Delta", cellClass: columnCellClass },
   ];
 
   const rows: RowCountDiffRow[] = Object.keys(check.last_run?.result || {}).map((key) => {
     const result = check.last_run?.result[key];
     const base = result?.base || null;
     const current = result?.curr || null;
+    let delta = "No Change";
+
+    if (base !== null && current !== null) {
+      if (base < current) {
+        delta = `+ ${Math.round(((current - base) / base) * 100)}%`;
+      } else if (base > current) {
+        delta = `- ${Math.round(((base - current) / base) * 100)}%`;
+      } else {
+        delta = "No Change";
+      }
+    } else {
+      if (base === current) {
+        delta = "N/A";
+      } else if (base === null) {
+        delta = "Added";
+      } else if (current === null) {
+        delta = "Removed";
+      }
+    }
+
     return {
       name: key,
       base: base === null ? "N/A" : Number(base),
       current: current === null ? "N/A" : Number(current),
+      delta: delta,
     };
   });
 

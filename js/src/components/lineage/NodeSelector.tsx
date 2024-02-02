@@ -52,8 +52,10 @@ function AddRowCountCheckButton({ nodes, onFinish }: { nodes: LineageGraphNode[]
   return (
     <Button
       size="xs"
+      isLoading={isLoading}
+      loadingText="Querying"
       variant="outline"
-      isDisabled={isLoading || nodes.length === 0}
+      isDisabled={nodes.length === 0}
       onClick={async () => {
         const runId = await fetchRowCountFn({ skipCache: true });
         const check = await createCheckByRun(runId);
@@ -66,7 +68,7 @@ function AddRowCountCheckButton({ nodes, onFinish }: { nodes: LineageGraphNode[]
       }}
     >
       <Icon as={FiAlignLeft} />
-      {isLoading? "Adding row count check" : "Add row count check"}
+      Add row count check
     </Button>
   );
 }
