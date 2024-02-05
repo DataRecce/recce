@@ -8,7 +8,7 @@ import { LineageGraphNode } from "./lineage";
 import { useEffect, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useRowCountStateContext } from "@/lib/hooks/RecceQueryContext";
-import { RiArrowDownSFill, RiArrowUpSFill } from "react-icons/ri";
+import { RiArrowDownSFill, RiArrowUpSFill, RiSwapLine } from "react-icons/ri";
 
 
 interface ModelRowCountProps {
@@ -55,7 +55,15 @@ function RowCountWiteRate({ rowCount }: { rowCount: RowCount }) {
     return <RowCountByCompare rowCount={rowCount} />;
   }
 
-  if (base <= current) {
+  if(base === current) {
+    return (
+      <HStack>
+        <Text>{current} rows</Text>
+        <Icon as={RiSwapLine} color="gray.500"/>
+        <Text color="gray.500">No Change</Text>
+      </HStack>
+    );
+  } else if (base < current) {
     return (
       <HStack>
         <Text>{current} rows</Text>
