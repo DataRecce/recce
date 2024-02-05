@@ -12,6 +12,7 @@ import {
   IconButton,
   Menu,
   MenuButton,
+  MenuDivider,
   MenuItem,
   MenuList,
   Spacer,
@@ -36,6 +37,8 @@ import SqlEditor from "../query/SqlEditor";
 import { QueryResultView } from "../query/QueryResultView";
 import { QueryDiffResultView } from "../query/QueryDiffResultView";
 import { useState } from "react";
+import { submitRun, submitRunFromCheck, waitRun } from "@/lib/api/runs";
+import { Run } from "@/lib/api/types";
 
 interface CheckDetailProps {
   checkId: string;
@@ -45,10 +48,14 @@ export const CheckDetail = ({ checkId }: CheckDetailProps) => {
   const queryClient = useQueryClient();
   const [, setLocation] = useLocation();
   const { successToast, failToast } = useClipBoardToast();
+  const [runId, setRunId] = useState<string>();
+  const [progress, setProgress] = useState<Run["progress"]>();
+  const [abort, setAborting] = useState(false);
 
   const {
     isLoading,
     error,
+    refetch,
     data: check,
   } = useQuery({
     queryKey: cacheKeys.check(checkId),
@@ -73,6 +80,38 @@ export const CheckDetail = ({ checkId }: CheckDetailProps) => {
     },
   });
 
+  const submitRunFn = async () => {
+    const type = check?.type;
+    if (!type) {
+      return;
+    }
+
+    const { run_id } = await submitRunFromCheck(checkId, { nowait: true });
+
+    setRunId(run_id);
+
+    while (true) {
+      const run = await waitRun(run_id, 2);
+      setProgress(run.progress);
+      if (run.result || run.error) {
+        setAborting(false);
+        setProgress(undefined);
+        return run;
+      }
+    }
+  };
+
+  const {
+    mutate: rerun,
+    error: rerunError,
+    isPending: rerunPending,
+  } = useMutation({
+    mutationFn: submitRunFn,
+    onSuccess: (run) => {
+      refetch();
+    },
+  });
+
   if (isLoading) {
     return <Center h="100%">Loading</Center>;
   }
@@ -80,6 +119,10 @@ export const CheckDetail = ({ checkId }: CheckDetailProps) => {
   if (error) {
     return <Center h="100%">Error: {error.message}</Center>;
   }
+
+  const handleRerun = async () => {
+    rerun();
+  };
 
   const handleCopy = async () => {
     if (!check) {
@@ -134,9 +177,13 @@ export const CheckDetail = ({ checkId }: CheckDetailProps) => {
             variant="ghost"
           />
           <MenuList>
+            <MenuItem icon={<CopyIcon />} onClick={() => handleRerun()}>
+              Rerun
+            </MenuItem>
             <MenuItem icon={<CopyIcon />} onClick={() => handleCopy()}>
               Copy markdown
             </MenuItem>
+            <MenuDivider />
             <MenuItem icon={<DeleteIcon />} onClick={() => handleDelete()}>
               Delete
             </MenuItem>

@@ -1,4 +1,3 @@
-import asyncio
 from datetime import datetime
 from typing import Optional
 from uuid import UUID
@@ -124,18 +123,26 @@ async def create_check(check_in: CreateCheckIn):
     return CheckOut.from_check(check)
 
 
+class RunCheckIn(BaseModel):
+    nowait: Optional[bool] = False
+
+
 @check_router.post("/checks/{check_id}/run", status_code=201, response_model=Run)
-async def run_check_handler(check_id: UUID):
+async def run_check_handler(check_id: UUID, input: RunCheckIn):
     check = CheckDAO().find_check_by_id(check_id)
     if not check:
         raise HTTPException(status_code=404, detail=f"Check ID '{check_id}' not found")
 
     try:
-        run, future = submit_run(check.type, check.params)
-        run.result = asyncio.wait(future)
-        return run
+        run, future = submit_run(check.type, check.params, check_id=check_id)
     except RecceException as e:
         raise HTTPException(status_code=400, detail=str(e))
+
+    if input.nowait:
+        return run
+    else:
+        run.result = await future
+        return run
 
 
 @check_router.get("/checks", status_code=200, response_model=list[CheckOut], response_model_exclude_none=True)

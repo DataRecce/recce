@@ -23,7 +23,7 @@ def create_task(run_type: RunType, params: dict):
     return taskClz(params)
 
 
-def submit_run(type, params):
+def submit_run(type, params, check_id=None):
     try:
         run_type = RunType(type)
     except ValueError:
@@ -34,7 +34,7 @@ def submit_run(type, params):
     except NotImplementedError:
         raise RecceException(f"Run type '{type}' not supported")
 
-    run = Run(type=run_type, params=params)
+    run = Run(type=run_type, params=params, check_id=check_id)
     RunDAO().create(run)
 
     loop = asyncio.get_running_loop()
