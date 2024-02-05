@@ -1,11 +1,11 @@
-import { Check } from "@/lib/api/checks";
 import { Flex } from "@chakra-ui/react";
 import { ScreenshotDataGrid } from "../data-grid/ScreenshotDataGrid";
 
+import { RunResultViewProps } from "../run/types";
+import { RowCountDiffParams, RowCountDiffResult } from "@/lib/api/rowcount";
 
-interface RowCountDiffViewProps {
-  check: Check;
-}
+interface RowCountDiffResultViewProp
+  extends RunResultViewProps<RowCountDiffParams, RowCountDiffResult> {}
 
 interface RowCountDiffRow {
   name: string;
@@ -13,17 +13,19 @@ interface RowCountDiffRow {
   current: number | string;
 }
 
-export function RowCountDiffView({ check }: RowCountDiffViewProps) {
+export function RowCountDiffResultView({ run }: RowCountDiffResultViewProp) {
   function columnCellClass(row: RowCountDiffRow) {
     if (row.base === row.current) {
       return "column-body-normal";
     } else if (row.base < row.current || row.base === "N/A") {
       return "column-body-added";
-    } else if (row.base > row.current || row.current === "N/A"){
+    } else if (row.base > row.current || row.current === "N/A") {
       return "column-body-removed";
     }
     return "column-body-normal";
   }
+
+  const runResult = run.result || {};
 
   const columns = [
     { key: "name", name: "Name", cellClass: columnCellClass },
@@ -32,8 +34,8 @@ export function RowCountDiffView({ check }: RowCountDiffViewProps) {
     { key: "delta", name: "Delta", cellClass: columnCellClass },
   ];
 
-  const rows: RowCountDiffRow[] = Object.keys(check.last_run?.result || {}).map((key) => {
-    const result = check.last_run?.result[key];
+  const rows: RowCountDiffRow[] = Object.keys(run.result || {}).map((key) => {
+    const result = runResult[key];
     const base = result?.base || null;
     const current = result?.curr || null;
     let delta = "No Change";
@@ -66,7 +68,8 @@ export function RowCountDiffView({ check }: RowCountDiffViewProps) {
 
   return (
     <Flex direction="column">
-      {Object.keys(check.last_run?.result).length > 0 && (<>
+      {Object.keys(runResult).length > 0 && (
+        <>
           <ScreenshotDataGrid
             style={{
               blockSize: "auto",
@@ -81,7 +84,8 @@ export function RowCountDiffView({ check }: RowCountDiffViewProps) {
             className="rdg-light"
             enableScreenshot={true}
           />
-      </>)}
+        </>
+      )}
     </Flex>
   );
 }

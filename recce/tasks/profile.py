@@ -119,7 +119,10 @@ class ProfileDiffTask(Task):
         result_json = df.to_json(orient='table')
         return json.loads(result_json)
 
-    def close_connection(self):
-        adapter: SQLAdapter = default_dbt_context().adapter
-        with adapter.connection_named("cancel profile"):
-            adapter.connections.cancel(self.connection)
+    def cancel(self):
+        super().cancel()
+
+        if self.connection:
+            adapter: SQLAdapter = default_dbt_context().adapter
+            with adapter.connection_named("cancel"):
+                adapter.connections.cancel(self.connection)

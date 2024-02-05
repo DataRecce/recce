@@ -1,6 +1,7 @@
 from typing import TypedDict, Optional, List
 
 import agate
+from dbt.adapters.sql import SQLAdapter
 from pydantic import BaseModel
 
 from recce.dbt import default_dbt_context, DBTContext
@@ -194,6 +195,7 @@ class ValueDiffTask(Task):
             return self._query_value_diff(dbt_context, primary_key, model)
 
     def cancel(self):
-        super().cancel()
         if self.connection:
-            self.close_connection(self.connection)
+            adapter: SQLAdapter = default_dbt_context().adapter
+            with adapter.connection_named("cancel"):
+                adapter.connections.cancel(self.connection)

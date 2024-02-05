@@ -180,7 +180,9 @@ export const CheckPage = () => {
         <Switch>
           <Route path="/checks/:checkId">
             {(params) => {
-              return <CheckDetail checkId={params.checkId} />;
+              return (
+                <CheckDetail key={params.checkId} checkId={params.checkId} />
+              );
             }}
           </Route>
         </Switch>

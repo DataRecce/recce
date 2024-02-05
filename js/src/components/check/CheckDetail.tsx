@@ -28,7 +28,7 @@ import { ValueDiffResultView } from "@/components/valuediff/ValueDiffResultView"
 import { SchemaDiffView } from "./SchemaDiffView";
 import { useLocation } from "wouter";
 import { CheckDescription } from "./CheckDescription";
-import { RowCountDiffView } from "./RowCountDiffView";
+import { RowCountDiffResultView } from "../rowcount/RowCountDiffView";
 import { ProfileDiffResultView } from "../profile/ProfileDiffResultView";
 import { stripIndent } from "common-tags";
 import { useClipBoardToast } from "@/lib/hooks/useClipBoardToast";
@@ -36,11 +36,10 @@ import { buildTitle, buildDescription, buildQuery } from "./check";
 import SqlEditor from "../query/SqlEditor";
 import { QueryResultView } from "../query/QueryResultView";
 import { QueryDiffResultView } from "../query/QueryDiffResultView";
-import { useState } from "react";
-import { submitRun, submitRunFromCheck, waitRun } from "@/lib/api/runs";
+import { useCallback, useEffect, useState } from "react";
+import { cancelRun, submitRunFromCheck, waitRun } from "@/lib/api/runs";
 import { Run } from "@/lib/api/types";
 import { RunView } from "../run/RunView";
-import { RunResultViewProps } from "../run/types";
 
 interface CheckDetailProps {
   checkId: string;
@@ -51,6 +50,23 @@ const typeResultViewMap: { [key: string]: any } = {
   query_diff: QueryDiffResultView,
   value_diff: ValueDiffResultView,
   profile_diff: ProfileDiffResultView,
+  row_count_diff: RowCountDiffResultView,
+};
+
+const useCancelOnUnmount = ({
+  runId,
+  isPending,
+}: {
+  runId?: string;
+  isPending?: boolean;
+}) => {
+  useEffect(() => {
+    return () => {
+      if (runId && isPending) {
+        cancelRun(runId);
+      }
+    };
+  }, [isPending, runId]);
 };
 
 export const CheckDetail = ({ checkId }: CheckDetailProps) => {
@@ -127,17 +143,20 @@ export const CheckDetail = ({ checkId }: CheckDetailProps) => {
     },
   });
 
-  if (isLoading) {
-    return <Center h="100%">Loading</Center>;
-  }
-
-  if (error) {
-    return <Center h="100%">Error: {error.message}</Center>;
-  }
-
   const handleRerun = async () => {
     rerun();
   };
+
+  const handleCancel = useCallback(async () => {
+    setAborting(true);
+    if (!runId) {
+      return;
+    }
+
+    return await cancelRun(runId);
+  }, [runId]);
+
+  useCancelOnUnmount({ runId, isPending: rerunPending });
 
   const handleCopy = async () => {
     if (!check) {
@@ -175,6 +194,14 @@ export const CheckDetail = ({ checkId }: CheckDetailProps) => {
   const handleUpdateDescription = (description?: string) => {
     mutate({ description });
   };
+
+  if (isLoading) {
+    return <Center h="100%">Loading</Center>;
+  }
+
+  if (error) {
+    return <Center h="100%">Error: {error.message}</Center>;
+  }
 
   return (
     <Flex height="100%" width="100%" maxHeight="100%" direction="column">
@@ -248,19 +275,15 @@ export const CheckDetail = ({ checkId }: CheckDetailProps) => {
             isPending={rerunPending}
             isAborting={abort}
             run={check?.last_run}
+            progress={progress}
             RunResultView={RunResultView}
             viewOptions={check?.view_options}
             onViewOptionsChanged={handelUpdateViewOptions}
-            onCancel={function (): void {
-              throw new Error("Function not implemented.");
-            }}
+            onCancel={handleCancel}
           />
         )}
         {check && check.type === "schema_diff" && (
           <SchemaDiffView check={check} />
-        )}
-        {check && check.type === "row_count_diff" && (
-          <RowCountDiffView check={check} />
         )}
       </Box>
     </Flex>
