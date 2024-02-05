@@ -39,10 +39,19 @@ import { QueryDiffResultView } from "../query/QueryDiffResultView";
 import { useState } from "react";
 import { submitRun, submitRunFromCheck, waitRun } from "@/lib/api/runs";
 import { Run } from "@/lib/api/types";
+import { RunView } from "../run/RunView";
+import { RunResultViewProps } from "../run/types";
 
 interface CheckDetailProps {
   checkId: string;
 }
+
+const typeResultViewMap: { [key: string]: any } = {
+  query: QueryResultView,
+  query_diff: QueryDiffResultView,
+  value_diff: ValueDiffResultView,
+  profile_diff: ProfileDiffResultView,
+};
 
 export const CheckDetail = ({ checkId }: CheckDetailProps) => {
   const queryClient = useQueryClient();
@@ -63,6 +72,11 @@ export const CheckDetail = ({ checkId }: CheckDetailProps) => {
     refetchOnMount: false,
     staleTime: 5 * 60 * 1000,
   });
+
+  const RunResultView =
+    check && check?.type in typeResultViewMap
+      ? typeResultViewMap[check?.type]
+      : undefined;
 
   const { mutate } = useMutation({
     mutationFn: (check: Partial<Check>) => updateCheck(checkId, check),
@@ -104,6 +118,7 @@ export const CheckDetail = ({ checkId }: CheckDetailProps) => {
   const {
     mutate: rerun,
     error: rerunError,
+    isIdle: rerunIdle,
     isPending: rerunPending,
   } = useMutation({
     mutationFn: submitRunFn,
@@ -177,9 +192,11 @@ export const CheckDetail = ({ checkId }: CheckDetailProps) => {
             variant="ghost"
           />
           <MenuList>
-            <MenuItem icon={<CopyIcon />} onClick={() => handleRerun()}>
-              Rerun
-            </MenuItem>
+            {check && check?.type in typeResultViewMap && (
+              <MenuItem icon={<CopyIcon />} onClick={() => handleRerun()}>
+                Rerun
+              </MenuItem>
+            )}
             <MenuItem icon={<CopyIcon />} onClick={() => handleCopy()}>
               Copy markdown
             </MenuItem>
@@ -226,28 +243,17 @@ export const CheckDetail = ({ checkId }: CheckDetailProps) => {
       )}
 
       <Box style={{ contain: "size" }} flex="1 1 0%">
-        {check && check.type === "query" && check?.last_run && (
-          <QueryResultView
-            run={check.last_run}
-            viewOptions={check.view_options}
+        {RunResultView && (
+          <RunView
+            isPending={rerunPending}
+            isAborting={abort}
+            run={check?.last_run}
+            RunResultView={RunResultView}
+            viewOptions={check?.view_options}
             onViewOptionsChanged={handelUpdateViewOptions}
-          />
-        )}
-        {check && check.type === "query_diff" && check?.last_run && (
-          <QueryDiffResultView
-            run={check.last_run}
-            viewOptions={check.view_options}
-            onViewOptionsChanged={handelUpdateViewOptions}
-          />
-        )}
-        {check && check.type === "value_diff" && check?.last_run && (
-          <ValueDiffResultView run={check.last_run} />
-        )}
-        {check && check.type === "profile_diff" && check?.last_run && (
-          <ProfileDiffResultView
-            run={check.last_run}
-            viewOptions={check.view_options}
-            onViewOptionsChanged={handelUpdateViewOptions}
+            onCancel={function (): void {
+              throw new Error("Function not implemented.");
+            }}
           />
         )}
         {check && check.type === "schema_diff" && (
