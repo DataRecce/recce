@@ -68,7 +68,7 @@ function RowCountWiteRate({ rowCount }: { rowCount: RowCount }) {
       <HStack>
         <Text>{current} rows</Text>
         <Icon as={RiArrowUpSFill} color="green.500"/>
-        <Text color="green.500">{Math.round((current - base) / base * 100)}%</Text>
+        <Text color="green.500">+ {Math.round((current - base) / base * 100)}%</Text>
       </HStack>
     );
   } else {
@@ -76,7 +76,7 @@ function RowCountWiteRate({ rowCount }: { rowCount: RowCount }) {
       <HStack>
         <Text>{current} rows</Text>
         <Icon as={RiArrowDownSFill} color="red.500"/>
-        <Text color="red.500">{Math.round((base - current) / base * 100)}%</Text>
+        <Text color="red.500">- {Math.round((base - current) / base * 100)}%</Text>
       </HStack>
     );
   }
