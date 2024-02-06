@@ -59,7 +59,7 @@ import { NodeView } from "./NodeView";
 import { toBlob } from "html-to-image";
 import { useLineageGraphsContext } from "@/lib/hooks/LineageGraphContext";
 import SummaryView from "../summary/SummaryView";
-import { NodeSelector } from "./NodeSelector";
+import { AddLineageDiffCheckButton, NodeSelector } from "./NodeSelector";
 import { IGNORE_SCREENSHOT_CLASS, copyBlobToClipboard, useToBlob } from "@/lib/hooks/ScreenShot";
 import { useClipBoardToast } from "@/lib/hooks/useClipBoardToast";
 
@@ -423,6 +423,11 @@ function _LineageView({ ...props }: LineageViewProps) {
                     >
                       Select Models
                     </Button>
+                    <AddLineageDiffCheckButton
+                      viewMode={viewMode}
+                      nodes={nodes.map((node) => node.data)}
+                      onFinish={() => setSelectMode("detail")}
+                    />
                   </VStack>
                 </Box>
               )}

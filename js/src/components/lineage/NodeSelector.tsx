@@ -74,7 +74,7 @@ function AddRowCountCheckButton({ nodes, onFinish }: { nodes: LineageGraphNode[]
   );
 }
 
-function AddLineageDiffCheckButton({ viewMode, nodes, onFinish }: { viewMode: string, nodes: LineageGraphNode[], onFinish: () => void }) {
+export function AddLineageDiffCheckButton({ viewMode, nodes, onFinish }: { viewMode: string, nodes: LineageGraphNode[], onFinish: () => void }) {
   const [, setLocation] = useLocation();
   return (
     <Button

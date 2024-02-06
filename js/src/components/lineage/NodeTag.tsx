@@ -263,7 +263,7 @@ export function FetchSelectedNodesRowCountButton({
         await fetchFn();
         onFinish && onFinish();
       }}
-      isDisabled={selectedNodes.length === 0}
+      isDisabled={nodes.length === 0}
     >
       <Icon as={MdQueryStats} mr={1} />
       Query Row Counts
