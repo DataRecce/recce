@@ -27,6 +27,7 @@ export type RunType =
 
 export interface Run<PT = any, RT = any> {
   run_id: string;
+  run_at: string;
   check_id?: string;
   type: RunType;
   progress?: {

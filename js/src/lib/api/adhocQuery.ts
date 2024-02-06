@@ -1,4 +1,3 @@
-import { RowCount } from "./models";
 import { SubmitOptions, submitRun } from "./runs";
 import { DataFrame } from "./types";
 
@@ -20,17 +19,9 @@ export interface QueryDiffParams {
   primary_keys?: string[];
 }
 
-export interface RowCountDiffParams {
-  node_names: string[];
-}
-
 export interface QueryDiffResult {
   base?: DataFrame;
   current?: DataFrame;
-}
-
-export interface RowCountDiffResult {
-  [key: string]: RowCount;
 }
 
 export interface QueryDiffViewOptions {
@@ -52,17 +43,6 @@ export async function submitQueryDiff(
 ) {
   return await submitRun<QueryDiffParams, QueryDiffResult>(
     "query_diff",
-    params,
-    options
-  );
-}
-
-export async function submitRowCountDiff(
-  params: RowCountDiffParams,
-  options?: SubmitOptions
-) {
-  return await submitRun<RowCountDiffParams, RowCountDiffResult>(
-    "row_count_diff",
     params,
     options
   );

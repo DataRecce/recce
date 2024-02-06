@@ -42,7 +42,14 @@ export async function cancelRun(runId: string) {
 }
 
 export async function submitRunFromCheck<PT = any, RT = any>(
-  checkId: string
-): Promise<Run<RT>> {
-  throw new Error("Not implemented yet");
+  checkId: string,
+  options?: SubmitOptions
+) {
+  const response = await axiosClient.post(`/api/checks/${checkId}/run`, {
+    nowait: options?.nowait,
+  });
+
+  const run: Run<PT, RT> | Pick<Run, "run_id"> = response.data;
+
+  return run;
 }

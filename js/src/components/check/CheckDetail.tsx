@@ -5,6 +5,7 @@ import {
   AccordionItem,
   AccordionPanel,
   Box,
+  Button,
   Center,
   Checkbox,
   Flex,
@@ -12,11 +13,18 @@ import {
   IconButton,
   Menu,
   MenuButton,
+  MenuDivider,
   MenuItem,
   MenuList,
   Spacer,
+  Tooltip,
 } from "@chakra-ui/react";
-import { CopyIcon, DeleteIcon } from "@chakra-ui/icons";
+import {
+  CheckCircleIcon,
+  CopyIcon,
+  DeleteIcon,
+  RepeatIcon,
+} from "@chakra-ui/icons";
 import { CheckBreadcrumb } from "./CheckBreadcrumb";
 import { VscKebabVertical } from "react-icons/vsc";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
@@ -27,7 +35,7 @@ import { ValueDiffResultView } from "@/components/valuediff/ValueDiffResultView"
 import { SchemaDiffView } from "./SchemaDiffView";
 import { useLocation } from "wouter";
 import { CheckDescription } from "./CheckDescription";
-import { RowCountDiffView } from "./RowCountDiffView";
+import { RowCountDiffResultView } from "../rowcount/RowCountDiffView";
 import { ProfileDiffResultView } from "../profile/ProfileDiffResultView";
 import { stripIndent } from "common-tags";
 import { useClipBoardToast } from "@/lib/hooks/useClipBoardToast";
@@ -35,20 +43,55 @@ import { buildTitle, buildDescription, buildQuery } from "./check";
 import SqlEditor from "../query/SqlEditor";
 import { QueryResultView } from "../query/QueryResultView";
 import { QueryDiffResultView } from "../query/QueryDiffResultView";
-import { useState } from "react";
+import { useCallback, useEffect, useState } from "react";
+import { cancelRun, submitRunFromCheck, waitRun } from "@/lib/api/runs";
+import { Run } from "@/lib/api/types";
+import { RunView } from "../run/RunView";
+import { formatDistanceToNow } from "date-fns";
 
 interface CheckDetailProps {
   checkId: string;
 }
 
+const typeResultViewMap: { [key: string]: any } = {
+  query: QueryResultView,
+  query_diff: QueryDiffResultView,
+  value_diff: ValueDiffResultView,
+  profile_diff: ProfileDiffResultView,
+  row_count_diff: RowCountDiffResultView,
+};
+
+const useCancelOnUnmount = ({
+  runId,
+  isPending,
+  setAborting,
+}: {
+  runId?: string;
+  isPending?: boolean;
+  setAborting: (aborting: boolean) => void;
+}) => {
+  useEffect(() => {
+    return () => {
+      setAborting(false);
+      if (runId && isPending) {
+        cancelRun(runId);
+      }
+    };
+  }, [isPending, runId, setAborting]);
+};
+
 export const CheckDetail = ({ checkId }: CheckDetailProps) => {
   const queryClient = useQueryClient();
   const [, setLocation] = useLocation();
   const { successToast, failToast } = useClipBoardToast();
+  const [runId, setRunId] = useState<string>();
+  const [progress, setProgress] = useState<Run["progress"]>();
+  const [abort, setAborting] = useState(false);
 
   const {
     isLoading,
     error,
+    refetch,
     data: check,
   } = useQuery({
     queryKey: cacheKeys.check(checkId),
@@ -56,6 +99,11 @@ export const CheckDetail = ({ checkId }: CheckDetailProps) => {
     refetchOnMount: false,
     staleTime: 5 * 60 * 1000,
   });
+
+  const RunResultView =
+    check && check?.type in typeResultViewMap
+      ? typeResultViewMap[check?.type]
+      : undefined;
 
   const { mutate } = useMutation({
     mutationFn: (check: Partial<Check>) => updateCheck(checkId, check),
@@ -73,14 +121,54 @@ export const CheckDetail = ({ checkId }: CheckDetailProps) => {
     },
   });
 
-  if (isLoading) {
-    return <Center h="100%">Loading</Center>;
-  }
+  const submitRunFn = async () => {
+    const type = check?.type;
+    if (!type) {
+      return;
+    }
 
-  if (error) {
-    return <Center h="100%">Error: {error.message}</Center>;
-  }
+    const { run_id } = await submitRunFromCheck(checkId, { nowait: true });
 
+    setRunId(run_id);
+
+    while (true) {
+      const run = await waitRun(run_id, 2);
+      setProgress(run.progress);
+      if (run.result || run.error) {
+        setAborting(false);
+        setProgress(undefined);
+        return run;
+      }
+    }
+  };
+
+  const {
+    data: rerunRun,
+    mutate: rerun,
+    error: rerunError,
+    isIdle: rerunIdle,
+    isPending: rerunPending,
+  } = useMutation({
+    mutationFn: submitRunFn,
+    onSuccess: (run) => {
+      refetch();
+    },
+  });
+
+  const handleRerun = async () => {
+    rerun();
+  };
+
+  const handleCancel = useCallback(async () => {
+    setAborting(true);
+    if (!runId) {
+      return;
+    }
+
+    return await cancelRun(runId);
+  }, [runId]);
+
+  useCancelOnUnmount({ runId, isPending: rerunPending, setAborting });
   const handleCopy = async () => {
     if (!check) {
       return;
@@ -105,10 +193,10 @@ export const CheckDetail = ({ checkId }: CheckDetailProps) => {
     }
   };
 
-  const handleCheck: React.ChangeEventHandler = (event) => {
-    const isChecked: boolean = (event.target as any).checked;
-    mutate({ is_checked: isChecked });
-  };
+  const handleCheck = useCallback(() => {
+    const isChecked = check?.is_checked;
+    mutate({ is_checked: !isChecked });
+  }, [check?.is_checked, mutate]);
 
   const handelUpdateViewOptions = (viewOptions: any) => {
     mutate({ view_options: viewOptions });
@@ -117,6 +205,19 @@ export const CheckDetail = ({ checkId }: CheckDetailProps) => {
   const handleUpdateDescription = (description?: string) => {
     mutate({ description });
   };
+
+  if (isLoading) {
+    return <Center h="100%">Loading</Center>;
+  }
+
+  if (error) {
+    return <Center h="100%">Error: {error.message}</Center>;
+  }
+
+  const run = rerunIdle ? check?.last_run : rerunRun;
+  const relativeTime = run?.run_at
+    ? formatDistanceToNow(new Date(run.run_at), { addSuffix: true })
+    : null;
 
   return (
     <Flex height="100%" width="100%" maxHeight="100%" direction="column">
@@ -127,28 +228,68 @@ export const CheckDetail = ({ checkId }: CheckDetailProps) => {
             mutate({ name });
           }}
         />
+        <Spacer />
         <Menu>
           <MenuButton
+            isRound={true}
             as={IconButton}
             icon={<Icon as={VscKebabVertical} />}
             variant="ghost"
           />
           <MenuList>
-            <MenuItem icon={<CopyIcon />} onClick={() => handleCopy()}>
-              Copy markdown
-            </MenuItem>
             <MenuItem icon={<DeleteIcon />} onClick={() => handleDelete()}>
               Delete
             </MenuItem>
           </MenuList>
         </Menu>
-        <Spacer />
-        <Checkbox isChecked={check?.is_checked} onChange={handleCheck}>
-          Check
-        </Checkbox>
-      </Flex>
 
-      {/* <Divider /> */}
+        {relativeTime && (
+          <Box
+            textOverflow="ellipsis"
+            whiteSpace="nowrap"
+            overflow="hidden"
+            fontSize="10pt"
+          >
+            {relativeTime}
+          </Box>
+        )}
+
+        {check && check?.type in typeResultViewMap && (
+          <Tooltip label="Rerun">
+            <IconButton
+              isRound={true}
+              isLoading={rerunPending}
+              variant="ghost"
+              aria-label="Rerun"
+              icon={<RepeatIcon />}
+              onClick={() => handleRerun()}
+            />
+          </Tooltip>
+        )}
+
+        <Tooltip label="Copy markdown">
+          <IconButton
+            isRound={true}
+            variant="ghost"
+            aria-label="Copy markdown"
+            icon={<CopyIcon />}
+            onClick={() => handleCopy()}
+          />
+        </Tooltip>
+
+        <Tooltip
+          label={check?.is_checked ? "Mark as unchecked" : "Mark as checked"}
+        >
+          <Button
+            size="sm"
+            colorScheme={check?.is_checked ? "green" : "gray"}
+            leftIcon={<CheckCircleIcon />}
+            onClick={() => handleCheck()}
+          >
+            {check?.is_checked ? "Checked" : "Unchecked"}
+          </Button>
+        </Tooltip>
+      </Flex>
 
       <Box p="8px 16px" minHeight="100px">
         <CheckDescription
@@ -179,35 +320,21 @@ export const CheckDetail = ({ checkId }: CheckDetailProps) => {
       )}
 
       <Box style={{ contain: "size" }} flex="1 1 0%">
-        {check && check.type === "query" && check?.last_run && (
-          <QueryResultView
-            run={check.last_run}
-            viewOptions={check.view_options}
+        {RunResultView && (
+          <RunView
+            isPending={rerunPending}
+            isAborting={abort}
+            run={run}
+            error={rerunError}
+            progress={progress}
+            RunResultView={RunResultView}
+            viewOptions={check?.view_options}
             onViewOptionsChanged={handelUpdateViewOptions}
-          />
-        )}
-        {check && check.type === "query_diff" && check?.last_run && (
-          <QueryDiffResultView
-            run={check.last_run}
-            viewOptions={check.view_options}
-            onViewOptionsChanged={handelUpdateViewOptions}
-          />
-        )}
-        {check && check.type === "value_diff" && check?.last_run && (
-          <ValueDiffResultView run={check.last_run} />
-        )}
-        {check && check.type === "profile_diff" && check?.last_run && (
-          <ProfileDiffResultView
-            run={check.last_run}
-            viewOptions={check.view_options}
-            onViewOptionsChanged={handelUpdateViewOptions}
+            onCancel={handleCancel}
           />
         )}
         {check && check.type === "schema_diff" && (
           <SchemaDiffView check={check} />
-        )}
-        {check && check.type === "row_count_diff" && (
-          <RowCountDiffView check={check} />
         )}
       </Box>
     </Flex>

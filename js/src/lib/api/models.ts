@@ -1,5 +1,5 @@
 import { useQueryClient } from "@tanstack/react-query";
-import { RowCountDiffResult, submitRowCountDiff } from "./adhocQuery";
+import { RowCountDiffResult, submitRowCountDiff } from "./rowcount";
 import { axiosClient } from "./axiosClient";
 import { waitRun } from "./runs";
 import { cacheKeys } from "./cacheKeys";
@@ -17,23 +17,27 @@ export interface QueryRowCountResult {
   result: RowCountDiffResult;
 }
 
-export async function fetchModelRowCount(modelName: string) : Promise<RowCount> {
+export async function fetchModelRowCount(modelName: string): Promise<RowCount> {
   const response = await axiosClient.get(`/api/models/${modelName}/row_count`);
   return response.data;
 }
 
-
-export async function queryModelRowCount(modelName: string) : Promise<RowCount> {
+export async function queryModelRowCount(modelName: string): Promise<RowCount> {
   const { result } = await queryRowCount([modelName]);
   return result[modelName];
 }
 
-export async function queryRowCount(modelNames: string[]) : Promise<QueryRowCountResult> {
+export async function queryRowCount(
+  modelNames: string[]
+): Promise<QueryRowCountResult> {
   if (modelNames.length === 0) {
     throw new Error("No model names provided");
   }
 
-  const { run_id } = await submitRowCountDiff({ node_names: modelNames }, { nowait: true });
+  const { run_id } = await submitRowCountDiff(
+    { node_names: modelNames },
+    { nowait: true }
+  );
   const run = await waitRun(run_id);
 
   return {
@@ -42,33 +46,38 @@ export async function queryRowCount(modelNames: string[]) : Promise<QueryRowCoun
   };
 }
 
-
 export function useRowCountQueries(modelNames: string[]) {
   const [isLoading, setIsLoading] = useState(false);
   const queryClient = useQueryClient();
   const { setIsNodesFetching } = useRowCountStateContext();
-  const cachedRowCounts = queryClient.getQueriesData<RowCount[]>({
-    queryKey: cacheKeys.allRowCount()
-  }).filter((cachedData) => {
-    const [queryKey, data] = cachedData;
-    const [key, modelName] = queryKey;
-    return modelNames.includes(modelName as string);
-  }).map((cachedData) => {
-    const [queryKey, data] = cachedData;
-    const [key, modelName] = queryKey;
-    return { modelName, data };
-  });
+  const cachedRowCounts = queryClient
+    .getQueriesData<RowCount[]>({
+      queryKey: cacheKeys.allRowCount(),
+    })
+    .filter((cachedData) => {
+      const [queryKey, data] = cachedData;
+      const [key, modelName] = queryKey;
+      return modelNames.includes(modelName as string);
+    })
+    .map((cachedData) => {
+      const [queryKey, data] = cachedData;
+      const [key, modelName] = queryKey;
+      return { modelName, data };
+    });
 
-  const fetchCandidates : string[] = [];
+  const fetchCandidates: string[] = [];
   modelNames.forEach((modelName) => {
-    const { data } = cachedRowCounts.find((cachedData) => cachedData.modelName === modelName) || { data: undefined, modelName: modelName };
+    const { data } = cachedRowCounts.find(
+      (cachedData) => cachedData.modelName === modelName
+    ) || { data: undefined, modelName: modelName };
     if (data === undefined) {
       fetchCandidates.push(modelName);
     }
   });
 
   async function fetchModelsRowCount(options: { skipCache?: boolean } = {}) {
-    const fetchNodes = (options && options.skipCache) ? modelNames : fetchCandidates;
+    const fetchNodes =
+      options && options.skipCache ? modelNames : fetchCandidates;
     setIsLoading(true);
     setIsNodesFetching(fetchNodes);
 

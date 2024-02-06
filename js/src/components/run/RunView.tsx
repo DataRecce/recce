@@ -18,7 +18,7 @@ interface RunViewProps<PT, RT, VO = any> {
   error?: Error | null;
   progress?: Run["progress"];
   isAborting?: boolean;
-  onCancel: () => void;
+  onCancel?: () => void;
   viewOptions?: VO;
   onViewOptionsChanged?: (viewOptions: VO) => void;
   RunResultView?: React.ComponentType<RunResultViewProps<PT, RT, VO>>;
