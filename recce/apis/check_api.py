@@ -162,6 +162,8 @@ async def get_check_handler(check_id: UUID):
         raise HTTPException(status_code=404, detail='Not Found')
 
     runs = RunDAO().list_by_check_id(check_id)
+    # only get the last with successful result
+    runs = [run for run in runs if run.result is not None]
     last_run = runs[-1] if len(runs) > 0 else None
 
     out = CheckOut.from_check(check)

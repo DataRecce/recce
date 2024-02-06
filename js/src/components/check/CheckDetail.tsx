@@ -40,6 +40,7 @@ import { useCallback, useEffect, useState } from "react";
 import { cancelRun, submitRunFromCheck, waitRun } from "@/lib/api/runs";
 import { Run } from "@/lib/api/types";
 import { RunView } from "../run/RunView";
+import { BiRefresh } from "react-icons/bi";
 
 interface CheckDetailProps {
   checkId: string;
@@ -56,17 +57,20 @@ const typeResultViewMap: { [key: string]: any } = {
 const useCancelOnUnmount = ({
   runId,
   isPending,
+  setAborting,
 }: {
   runId?: string;
   isPending?: boolean;
+  setAborting: (aborting: boolean) => void;
 }) => {
   useEffect(() => {
     return () => {
+      setAborting(false);
       if (runId && isPending) {
         cancelRun(runId);
       }
     };
-  }, [isPending, runId]);
+  }, [isPending, runId, setAborting]);
 };
 
 export const CheckDetail = ({ checkId }: CheckDetailProps) => {
@@ -132,6 +136,7 @@ export const CheckDetail = ({ checkId }: CheckDetailProps) => {
   };
 
   const {
+    data: rerunRun,
     mutate: rerun,
     error: rerunError,
     isIdle: rerunIdle,
@@ -156,8 +161,7 @@ export const CheckDetail = ({ checkId }: CheckDetailProps) => {
     return await cancelRun(runId);
   }, [runId]);
 
-  useCancelOnUnmount({ runId, isPending: rerunPending });
-
+  useCancelOnUnmount({ runId, isPending: rerunPending, setAborting });
   const handleCopy = async () => {
     if (!check) {
       return;
@@ -202,6 +206,8 @@ export const CheckDetail = ({ checkId }: CheckDetailProps) => {
   if (error) {
     return <Center h="100%">Error: {error.message}</Center>;
   }
+
+  const run = rerunIdle ? check?.last_run : rerunRun;
 
   return (
     <Flex height="100%" width="100%" maxHeight="100%" direction="column">
@@ -274,7 +280,8 @@ export const CheckDetail = ({ checkId }: CheckDetailProps) => {
           <RunView
             isPending={rerunPending}
             isAborting={abort}
-            run={check?.last_run}
+            run={run}
+            error={rerunError}
             progress={progress}
             RunResultView={RunResultView}
             viewOptions={check?.view_options}
