@@ -7,13 +7,11 @@ import {
   Box,
   Button,
   Center,
-  Checkbox,
   Flex,
   Icon,
   IconButton,
   Menu,
   MenuButton,
-  MenuDivider,
   MenuItem,
   MenuList,
   Spacer,
@@ -337,9 +335,6 @@ export const CheckDetail = ({ checkId }: CheckDetailProps) => {
         )}
         {check && check.type === "schema_diff" && (
           <SchemaDiffView check={check} />
-        )}
-        {check && check.type === "row_count_diff" && (
-          <RowCountDiffView check={check} />
         )}
         {check && check.type === "lineage_diff" && (
           <LineageDiffView check={check} />
