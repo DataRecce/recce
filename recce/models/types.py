@@ -32,7 +32,7 @@ class Run(BaseModel):
     error: Optional[str] = None
     progress: Optional[RunProgress] = None
     run_id: UUID4 = Field(default_factory=uuid.uuid4)
-    run_at: str = Field(default_factory=lambda: datetime.utcnow().isoformat())
+    run_at: str = Field(default_factory=lambda: datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%SZ"))
 
 
 class Check(BaseModel):

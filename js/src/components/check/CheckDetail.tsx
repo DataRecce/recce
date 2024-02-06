@@ -5,6 +5,7 @@ import {
   AccordionItem,
   AccordionPanel,
   Box,
+  Button,
   Center,
   Checkbox,
   Flex,
@@ -16,8 +17,14 @@ import {
   MenuItem,
   MenuList,
   Spacer,
+  Tooltip,
 } from "@chakra-ui/react";
-import { CopyIcon, DeleteIcon } from "@chakra-ui/icons";
+import {
+  CheckCircleIcon,
+  CopyIcon,
+  DeleteIcon,
+  RepeatIcon,
+} from "@chakra-ui/icons";
 import { CheckBreadcrumb } from "./CheckBreadcrumb";
 import { VscKebabVertical } from "react-icons/vsc";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
@@ -40,7 +47,7 @@ import { useCallback, useEffect, useState } from "react";
 import { cancelRun, submitRunFromCheck, waitRun } from "@/lib/api/runs";
 import { Run } from "@/lib/api/types";
 import { RunView } from "../run/RunView";
-import { BiRefresh } from "react-icons/bi";
+import { formatDistanceToNow } from "date-fns";
 
 interface CheckDetailProps {
   checkId: string;
@@ -186,10 +193,10 @@ export const CheckDetail = ({ checkId }: CheckDetailProps) => {
     }
   };
 
-  const handleCheck: React.ChangeEventHandler = (event) => {
-    const isChecked: boolean = (event.target as any).checked;
-    mutate({ is_checked: isChecked });
-  };
+  const handleCheck = useCallback(() => {
+    const isChecked = check?.is_checked;
+    mutate({ is_checked: !isChecked });
+  }, [check?.is_checked, mutate]);
 
   const handelUpdateViewOptions = (viewOptions: any) => {
     mutate({ view_options: viewOptions });
@@ -208,6 +215,9 @@ export const CheckDetail = ({ checkId }: CheckDetailProps) => {
   }
 
   const run = rerunIdle ? check?.last_run : rerunRun;
+  const relativeTime = run?.run_at
+    ? formatDistanceToNow(new Date(run.run_at), { addSuffix: true })
+    : null;
 
   return (
     <Flex height="100%" width="100%" maxHeight="100%" direction="column">
@@ -218,34 +228,68 @@ export const CheckDetail = ({ checkId }: CheckDetailProps) => {
             mutate({ name });
           }}
         />
+        <Spacer />
         <Menu>
           <MenuButton
+            isRound={true}
             as={IconButton}
             icon={<Icon as={VscKebabVertical} />}
             variant="ghost"
           />
           <MenuList>
-            {check && check?.type in typeResultViewMap && (
-              <MenuItem icon={<CopyIcon />} onClick={() => handleRerun()}>
-                Rerun
-              </MenuItem>
-            )}
-            <MenuItem icon={<CopyIcon />} onClick={() => handleCopy()}>
-              Copy markdown
-            </MenuItem>
-            <MenuDivider />
             <MenuItem icon={<DeleteIcon />} onClick={() => handleDelete()}>
               Delete
             </MenuItem>
           </MenuList>
         </Menu>
-        <Spacer />
-        <Checkbox isChecked={check?.is_checked} onChange={handleCheck}>
-          Check
-        </Checkbox>
-      </Flex>
 
-      {/* <Divider /> */}
+        {relativeTime && (
+          <Box
+            textOverflow="ellipsis"
+            whiteSpace="nowrap"
+            overflow="hidden"
+            fontSize="10pt"
+          >
+            {relativeTime}
+          </Box>
+        )}
+
+        {check && check?.type in typeResultViewMap && (
+          <Tooltip label="Rerun">
+            <IconButton
+              isRound={true}
+              isLoading={rerunPending}
+              variant="ghost"
+              aria-label="Rerun"
+              icon={<RepeatIcon />}
+              onClick={() => handleRerun()}
+            />
+          </Tooltip>
+        )}
+
+        <Tooltip label="Copy markdown">
+          <IconButton
+            isRound={true}
+            variant="ghost"
+            aria-label="Copy markdown"
+            icon={<CopyIcon />}
+            onClick={() => handleCopy()}
+          />
+        </Tooltip>
+
+        <Tooltip
+          label={check?.is_checked ? "Mark as unchecked" : "Mark as checked"}
+        >
+          <Button
+            size="sm"
+            colorScheme={check?.is_checked ? "green" : "gray"}
+            leftIcon={<CheckCircleIcon />}
+            onClick={() => handleCheck()}
+          >
+            {check?.is_checked ? "Checked" : "Unchecked"}
+          </Button>
+        </Tooltip>
+      </Flex>
 
       <Box p="8px 16px" minHeight="100px">
         <CheckDescription

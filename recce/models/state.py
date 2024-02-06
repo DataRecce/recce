@@ -16,7 +16,7 @@ logger = logging.getLogger('uvicorn')
 class RecceStateMetadata(BaseModel):
     schema_version: str = 'v0'
     recce_version: str = Field(default_factory=lambda: get_version())
-    generated_at: str = Field(default_factory=lambda: datetime.now().isoformat(timespec='seconds'))
+    generated_at: str = Field(default_factory=lambda: datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%SZ"))
 
 
 class RecceState(BaseModel):
