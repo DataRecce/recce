@@ -12,6 +12,7 @@ import {
   TbSchema,
   TbAlignBoxLeftStretch,
   TbChartHistogram,
+  TbBrandStackshare,
 } from "react-icons/tb";
 import { IconType } from "react-icons";
 import { FiAlignLeft } from "react-icons/fi";
@@ -59,6 +60,8 @@ const ChecklistItem = ({
         return TbChartHistogram;
       case "row_count_diff":
         return FiAlignLeft;
+      case "lineage_diff":
+        return TbBrandStackshare;
       default:
         return TbChecklist;
     }

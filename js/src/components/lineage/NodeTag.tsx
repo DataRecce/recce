@@ -246,12 +246,12 @@ export function FetchRowCountsButton({
 }
 
 export function FetchSelectedNodesRowCountButton({
-    selectedNodes,
+    nodes,
     onFinish,
   }: {
-    selectedNodes: LineageGraphNode[],
+    nodes: LineageGraphNode[],
     onFinish?: () => void }) {
-  const { isLoading, fetchFn } = useRowCountQueries(selectedNodes.map((node) => node.name));
+  const { isLoading, fetchFn } = useRowCountQueries(nodes.map((node) => node.name));
   return (
     <Button
       isLoading={isLoading}
@@ -263,7 +263,7 @@ export function FetchSelectedNodesRowCountButton({
         await fetchFn();
         onFinish && onFinish();
       }}
-      isDisabled={selectedNodes.length === 0}
+      isDisabled={nodes.length === 0}
     >
       <Icon as={MdQueryStats} mr={1} />
       Query Row Counts

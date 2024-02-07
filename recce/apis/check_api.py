@@ -83,6 +83,9 @@ def _generate_default_name(check_type, params):
             node = nodes[0]
             return f"row count of {node}".capitalize()
         return f"{'row count'.capitalize()} - {now}"
+    elif check_type == RunType.LINEAGE_DIFF:
+        nodes = params.get('node_ids')
+        return f"lineage diff of {len(nodes)} nodes".capitalize()
     else:
         return f"{'check'.capitalize()} - {now}"
 

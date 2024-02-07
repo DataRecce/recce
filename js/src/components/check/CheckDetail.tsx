@@ -7,13 +7,11 @@ import {
   Box,
   Button,
   Center,
-  Checkbox,
   Flex,
   Icon,
   IconButton,
   Menu,
   MenuButton,
-  MenuDivider,
   MenuItem,
   MenuList,
   Spacer,
@@ -48,6 +46,8 @@ import { cancelRun, submitRunFromCheck, waitRun } from "@/lib/api/runs";
 import { Run } from "@/lib/api/types";
 import { RunView } from "../run/RunView";
 import { formatDistanceToNow } from "date-fns";
+import LineageView from "../lineage/LineageView";
+import { LineageDiffView } from "./LineageDiffView";
 
 interface CheckDetailProps {
   checkId: string;
@@ -335,6 +335,9 @@ export const CheckDetail = ({ checkId }: CheckDetailProps) => {
         )}
         {check && check.type === "schema_diff" && (
           <SchemaDiffView check={check} />
+        )}
+        {check && check.type === "lineage_diff" && (
+          <LineageDiffView check={check} />
         )}
       </Box>
     </Flex>

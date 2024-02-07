@@ -3,12 +3,14 @@ import { Box, Button, ButtonGroup, HStack, Icon, IconButton, SlideFade, StackDiv
 import { LineageGraphNode } from "./lineage";
 import { FetchSelectedNodesRowCountButton } from "./NodeTag";
 import { MdOutlineSchema } from "react-icons/md";
-import { createCheckByNodeSchema, createCheckByRun } from "@/lib/api/checks";
+import { createCheckByNodeSchema, createCheckByRun, createLineageDiffCheck } from "@/lib/api/checks";
 import { useLocation } from "wouter";
 import { FiAlignLeft } from "react-icons/fi";
 import { useRowCountQueries } from "@/lib/api/models";
+import { TbBrandStackshare } from "react-icons/tb";
 
 export interface NodeSelectorProps {
+  viewMode: string;
   nodes: LineageGraphNode[];
   isOpen: boolean;
   onClose: () => void;
@@ -73,7 +75,31 @@ function AddRowCountCheckButton({ nodes, onFinish }: { nodes: LineageGraphNode[]
   );
 }
 
-export function NodeSelector({ nodes, isOpen, onClose }: NodeSelectorProps) {
+export function AddLineageDiffCheckButton({ viewMode, nodes, onFinish, withIcon }: { viewMode: string, nodes: LineageGraphNode[], onFinish: () => void, withIcon?: boolean}) {
+  const [, setLocation] = useLocation();
+  return (
+    <Button
+      size="xs"
+      variant="outline"
+      isDisabled={nodes.length === 0}
+      onClick={async () => {
+        const nodeIds = nodes.map((node) => node.id);
+        const check = await createLineageDiffCheck(viewMode, nodeIds);
+        onFinish();
+        if (check) {
+          setLocation(`/checks/${check.check_id}`);
+        } else {
+          setLocation(`/checks`);
+        }
+      }}
+    >
+      {withIcon && <Icon as={TbBrandStackshare}/>}
+      Add lineage diff check
+    </Button>
+  );
+}
+
+export function NodeSelector({ viewMode, nodes, isOpen, onClose }: NodeSelectorProps) {
   function countSelectedNodes(nodes: LineageGraphNode[]) {
     return nodes.filter((node) => node.isSelected).length;
   }
@@ -97,7 +123,7 @@ export function NodeSelector({ nodes, isOpen, onClose }: NodeSelectorProps) {
           </ButtonGroup>
           <HStack>
             <FetchSelectedNodesRowCountButton
-              selectedNodes={selectedNodes.length > 0 ? selectedNodes: []}
+              nodes={selectedNodes.length > 0 ? selectedNodes: []}
               onFinish={onClose}
             />
             <AddSchemaChangesCheckButton
@@ -107,6 +133,12 @@ export function NodeSelector({ nodes, isOpen, onClose }: NodeSelectorProps) {
             <AddRowCountCheckButton
               nodes={selectedNodes.length > 0 ? selectedNodes: []}
               onFinish={onClose}
+            />
+            <AddLineageDiffCheckButton
+              viewMode={viewMode}
+              nodes={selectedNodes.length > 0 ? selectedNodes: []}
+              onFinish={onClose}
+              withIcon={true}
             />
           </HStack>
         </HStack>

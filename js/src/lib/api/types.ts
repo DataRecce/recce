@@ -23,7 +23,8 @@ export type RunType =
   | "value_diff"
   | "schema_diff"
   | "profile_diff"
-  | "row_count_diff";
+  | "row_count_diff"
+  | "lineage_diff";
 
 export interface Run<PT = any, RT = any> {
   run_id: string;
