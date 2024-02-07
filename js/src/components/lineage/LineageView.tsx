@@ -54,7 +54,7 @@ import { GraphNode } from "./GraphNode";
 import GraphEdge from "./GraphEdge";
 import { getIconForChangeStatus } from "./styles";
 import { FiRefreshCw, FiList, FiCopy } from "react-icons/fi";
-import { BiArrowFromBottom, BiArrowToBottom } from "react-icons/bi";
+import { BiArrowFromBottom, BiArrowToBottom, BiSelectMultiple } from "react-icons/bi";
 import { NodeView } from "./NodeView";
 import { toBlob } from "html-to-image";
 import { useLineageGraphsContext } from "@/lib/hooks/LineageGraphContext";

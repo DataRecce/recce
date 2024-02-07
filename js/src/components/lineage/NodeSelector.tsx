@@ -7,6 +7,7 @@ import { createCheckByNodeSchema, createCheckByRun, createLineageDiffCheck } fro
 import { useLocation } from "wouter";
 import { FiAlignLeft } from "react-icons/fi";
 import { useRowCountQueries } from "@/lib/api/models";
+import { TbBrandStackshare } from "react-icons/tb";
 
 export interface NodeSelectorProps {
   viewMode: string;
@@ -74,7 +75,7 @@ function AddRowCountCheckButton({ nodes, onFinish }: { nodes: LineageGraphNode[]
   );
 }
 
-export function AddLineageDiffCheckButton({ viewMode, nodes, onFinish }: { viewMode: string, nodes: LineageGraphNode[], onFinish: () => void }) {
+export function AddLineageDiffCheckButton({ viewMode, nodes, onFinish, withIcon }: { viewMode: string, nodes: LineageGraphNode[], onFinish: () => void, withIcon?: boolean}) {
   const [, setLocation] = useLocation();
   return (
     <Button
@@ -92,6 +93,7 @@ export function AddLineageDiffCheckButton({ viewMode, nodes, onFinish }: { viewM
         }
       }}
     >
+      {withIcon && <Icon as={TbBrandStackshare}/>}
       Add lineage diff check
     </Button>
   );
@@ -136,6 +138,7 @@ export function NodeSelector({ viewMode, nodes, isOpen, onClose }: NodeSelectorP
               viewMode={viewMode}
               nodes={selectedNodes.length > 0 ? selectedNodes: []}
               onFinish={onClose}
+              withIcon={true}
             />
           </HStack>
         </HStack>
