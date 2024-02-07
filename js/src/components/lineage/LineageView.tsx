@@ -1,7 +1,6 @@
 import { PUBLIC_API_URL } from "../../lib/const";
 import {
   LineageGraph,
-  LineageGraphEdge,
   LineageGraphNode,
   cleanUpSelectedNodes,
   highlightPath,
@@ -32,7 +31,6 @@ import {
   MenuList,
   MenuItem,
   Center,
-  useToast,
 } from "@chakra-ui/react";
 import React, { useEffect, useState } from "react";
 import ReactFlow, {
@@ -46,7 +44,7 @@ import ReactFlow, {
   Background,
   ReactFlowProvider,
   ControlButton,
-  getTransformForBounds,
+  useReactFlow,
 } from "reactflow";
 import dagre from "dagre";
 import "reactflow/dist/style.css";
@@ -156,6 +154,7 @@ function ChangeStatusLegend() {
 }
 
 function _LineageView({ ...props }: LineageViewProps) {
+  const { fitView } = useReactFlow();
   const { successToast, failToast } = useClipBoardToast();
   const { toImage, ref } = useToBlob({
     imageType: "png",
@@ -190,6 +189,7 @@ function _LineageView({ ...props }: LineageViewProps) {
 
   const [selectMode, setSelectMode] = useState<"detail" | "action">("detail");
   const [detailViewSelected, setDetailViewSelected] = useState<string>();
+  const [isDetailViewShown, setIsDetailViewShown] = useState(false);
   const [viewMode, setViewMode] = useState<"changed_models" | "all">(
     props.viewMode || "changed_models"
   );
@@ -228,6 +228,17 @@ function _LineageView({ ...props }: LineageViewProps) {
     setEdges(edges);
   }, [setNodes, setEdges, viewMode, lineageGraphSets, props.filterNodes]);
 
+  // Fit view when the container size changes or the detail view is shown/hidden
+  useEffect(() => {
+    const observer = new ResizeObserver(() => {
+      fitView({ padding: 0.2, includeHiddenNodes: true, duration: 300 });
+    });
+    if (ref.current) {
+      observer.observe(ref.current);
+    }
+    return () => observer.disconnect();
+  },[ref, isDetailViewShown, fitView]);
+
   const onNodeMouseEnter = (event: React.MouseEvent, node: Node) => {
     if (lineageGraph && modifiedSet !== undefined) {
       const [newNodes, newEdges] = highlightPath(
@@ -262,6 +273,7 @@ function _LineageView({ ...props }: LineageViewProps) {
     closeContextMenu();
     if (selectMode === "detail") {
       setDetailViewSelected(node.id);
+      if (!isDetailViewShown) { setIsDetailViewShown(true); }
       setNodes(selectSingleNode(node.id, nodes));
     } else {
       setNodes(selectNode(node.id, nodes));
@@ -469,6 +481,7 @@ function _LineageView({ ...props }: LineageViewProps) {
             node={lineageGraph?.nodes[detailViewSelected]}
             onCloseNode={() => {
               setDetailViewSelected(undefined);
+              setIsDetailViewShown(false);
               setNodes(cleanUpSelectedNodes(nodes));
             }}
           />
