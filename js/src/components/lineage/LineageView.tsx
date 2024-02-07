@@ -390,15 +390,16 @@ function _LineageView({ ...props }: LineageViewProps) {
               >
                 <Icon as={FiRefreshCw} />
               </ControlButton>
-              <ControlButton
-                title="copy image"
-                onClick={() => {toImage()}}>
-                <Icon as={FiCopy} />
-              </ControlButton>
+
               <ControlButton title="summary" onClick={onOpen}>
                 <Icon as={FiList} />
               </ControlButton>
             </>)}
+            <ControlButton
+              title="copy image"
+              onClick={() => {toImage()}}>
+              <Icon as={FiCopy} />
+            </ControlButton>
           </Controls>
           <Panel position="bottom-left">
             <HStack>
