@@ -117,7 +117,6 @@ export default function Home() {
   }, []);
 
   const pageHeight = "calc(100vh - 42px)";
-
   const muiDefaultTheme = createTheme({
     components: {
       MuiTooltip: {
@@ -134,9 +133,8 @@ export default function Home() {
     <ThemeProvider theme={muiDefaultTheme}>
       <ChakraProvider>
         <QueryClientProvider client={reactQueryClient}>
-          <RecceContextProvider>
-            <Router hook={useHashLocation}>
-              <TopBar />
+          <Router hook={useHashLocation}>
+            <RecceContextProvider>
               <NavBar />
 
               <Box p={0} h={pageHeight} maxH={pageHeight} overflow="auto">
@@ -158,8 +156,8 @@ export default function Home() {
                   </Route>
                 </Switch>
               </Box>
-            </Router>
-          </RecceContextProvider>
+            </RecceContextProvider>
+          </Router>
         </QueryClientProvider>
       </ChakraProvider>
     </ThemeProvider>

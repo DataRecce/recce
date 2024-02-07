@@ -9,10 +9,7 @@ export interface QueryViewOptions {
   pinned_columns?: string[];
 }
 
-export interface QueryResult {
-  result?: DataFrame;
-  error?: string;
-}
+export interface QueryResult extends DataFrame {}
 
 export interface QueryDiffParams {
   sql_template: string;

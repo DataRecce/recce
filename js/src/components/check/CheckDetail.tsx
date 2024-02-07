@@ -46,9 +46,9 @@ import { cancelRun, submitRunFromCheck, waitRun } from "@/lib/api/runs";
 import { Run } from "@/lib/api/types";
 import { RunView } from "../run/RunView";
 import { formatDistanceToNow } from "date-fns";
-import LineageView from "../lineage/LineageView";
 import { LineageDiffView } from "./LineageDiffView";
 import { TopKDiffResultView } from "../top-k/TopKDiffResultView";
+import { ValueDiffDetailResultView } from "../valuediff/ValueDiffDetailResultView";
 
 interface CheckDetailProps {
   checkId: string;
@@ -58,6 +58,7 @@ const typeResultViewMap: { [key: string]: any } = {
   query: QueryResultView,
   query_diff: QueryDiffResultView,
   value_diff: ValueDiffResultView,
+  value_diff_detail: ValueDiffDetailResultView,
   profile_diff: ProfileDiffResultView,
   row_count_diff: RowCountDiffResultView,
   top_k_diff: TopKDiffResultView,

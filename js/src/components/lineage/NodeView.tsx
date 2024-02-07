@@ -33,14 +33,9 @@ import { SqlDiffView } from "../schema/SqlDiffView";
 import { useLocation } from "wouter";
 import { ResourceTypeTag, RowCountTag } from "./NodeTag";
 import { useCallback } from "react";
-import { ProfileDiffModal } from "../profile/ProfileDiffModal";
-import {
-  createCheckByNodeSchema,
-  createCheckByRun,
-} from "@/lib/api/checks";
-import { ValueDiffModal } from "../valuediff/ValueDiffModal";
+import { createCheckByNodeSchema, createCheckByRun } from "@/lib/api/checks";
 import { useRowCountQueries } from "@/lib/api/models";
-import { TopKDiffModal } from "../top-k/TopKDiffModal";
+import { useRecceActionContext } from "@/lib/hooks/RecceActionContext";
 
 interface NodeViewProps {
   node: LineageGraphNode;
@@ -55,7 +50,12 @@ export function NodeView({ node, onCloseNode }: NodeViewProps) {
     node.resourceType === "model" ||
     node.resourceType === "seed" ||
     node.resourceType === "source";
-  const { isOpen, onOpen, onClose } = useDisclosure();
+  const {
+    isOpen: isCodeDiffOpen,
+    onOpen: onCodeDiffOpen,
+    onClose: onCodeDiffClose,
+  } = useDisclosure();
+  const { runAction } = useRecceActionContext();
 
   const addSchemaCheck = useCallback(async () => {
     const nodeId = node.id;
@@ -80,14 +80,14 @@ export function NodeView({ node, onCloseNode }: NodeViewProps) {
         {node.changeStatus === "modified" && (
           <Box>
             <Button
-              onClick={onOpen}
+              onClick={onCodeDiffOpen}
               leftIcon={<FaCode />}
               colorScheme="orange"
               variant="solid"
             >
               Diff
             </Button>
-            <Modal isOpen={isOpen} onClose={onClose} size="6xl">
+            <Modal isOpen={isCodeDiffOpen} onClose={onCodeDiffClose} size="6xl">
               <ModalOverlay />
               <ModalContent overflowY="auto" height="75%">
                 <ModalHeader>Model Raw Code Diff</ModalHeader>
@@ -145,22 +145,26 @@ export function NodeView({ node, onCloseNode }: NodeViewProps) {
                         <MenuButton as={Button} size="sm" colorScheme="blue">
                           Advanced Diffs
                         </MenuButton>
-                        <MenuList>
-                          <ProfileDiffModal
-                            key={`profile_diff_${node?.id}`}
-                            node={node}
-                            triggerComponentType="MenuItem"
-                          />
-                          <ValueDiffModal
-                            key={`value_diff_${node?.id}`}
-                            node={node}
-                            triggerComponentType="MenuItem"
-                          />
-                          <TopKDiffModal
-                            key={`top_k_diff_${node?.id}`}
-                            node={node}
-                            triggerComponentType="MenuItem"
-                          />
+                          <MenuList>
+                            <MenuItem onClick={() => {
+                            runAction("profile_diff", {
+                              model: node.name,
+                            });
+                          }}>Profile Diff</MenuItem>
+                          <MenuItem
+                          onClick={() => {
+                            runAction(
+                              "value_diff",
+                              {
+                                model: node.name,
+                                primary_key: "",
+                              },
+                              { showForm: true }
+                            );
+                          }}
+                          >
+                            Value Diff
+                          </MenuItem>
                         </MenuList>
                       </Menu>
                     </>

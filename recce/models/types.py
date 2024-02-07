@@ -11,6 +11,7 @@ class RunType(Enum):
     QUERY = "query"
     QUERY_DIFF = 'query_diff'
     VALUE_DIFF = 'value_diff'
+    VALUE_DIFF_DETAIL = 'value_diff_detail'
     SCHEMA_DIFF = 'schema_diff'
     PROFILE_DIFF = 'profile_diff'
     ROW_COUNT_DIFF = 'row_count_diff'

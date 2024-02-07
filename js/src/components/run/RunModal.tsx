@@ -15,33 +15,34 @@ import {
   ModalFooter,
   ModalHeader,
   ModalOverlay,
-  useDisclosure,
 } from "@chakra-ui/react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useCallback, useEffect, useState } from "react";
 import { useLocation } from "wouter";
 import { RunView } from "./RunView";
-import { RunEditViewProps, RunResultViewProps } from "./types";
+import { RunFormProps, RunResultViewProps } from "./types";
 
 interface RunModalProps<PT, RT, VO> {
+  isOpen: boolean;
+  onClose: () => void;
   title: string;
   triggerComponentType?: string;
   type: RunType;
   params: PT;
-  RunEditView?: React.ComponentType<RunEditViewProps<PT>>;
+  RunForm?: React.ComponentType<RunFormProps<PT>>;
   RunResultView: React.ComponentType<RunResultViewProps<PT, RT, VO>>;
 }
 
 export const RunModal = <PT, RT, VO>({
-  triggerComponentType,
+  isOpen,
+  onClose,
   type,
   title,
   params: defaultParams,
-  RunEditView,
+  RunForm,
   RunResultView,
 }: RunModalProps<PT, RT, VO>) => {
   const [, setLocation] = useLocation();
-  const { isOpen, onOpen, onClose } = useDisclosure();
   const [runId, setRunId] = useState<string>();
   const [params, setParams] = useState<PT>(defaultParams);
   const [isAborting, setAborting] = useState(false);
@@ -76,7 +77,7 @@ export const RunModal = <PT, RT, VO>({
   });
 
   useEffect(() => {
-    if (isOpen && RunEditView === undefined) {
+    if (isOpen && RunForm === undefined) {
       execute();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -127,89 +128,95 @@ export const RunModal = <PT, RT, VO>({
     handleReset();
   };
 
-  const TriggerComponent = triggerComponentType === "MenuItem" ? MenuItem : Button;
+  const TriggerComponent =
+    triggerComponentType === "MenuItem" ? MenuItem : Button;
 
   return (
-    <>
-      <Modal isOpen={isOpen} onClose={handleClose} size="6xl" scrollBehavior="inside">
-        <ModalOverlay />
-        <ModalContent overflowY="auto" height="75%">
-          <ModalHeader>{title}</ModalHeader>
-          <ModalCloseButton />
-          <ModalBody
-            p="0px"
-            h="100%"
-            overflow="auto"
-            borderY="1px solid lightgray"
-          >
-            {!isPending && !run && !error ? (
-              <Box style={{ contain: "size layout" }}>
-                {RunEditView && (
-                  <RunEditView params={params} onParamsChanged={setParams} setIsReadyToExecute={setIsReadyToExecute} />
-                )}
-              </Box>
-            ) : (
-              <RunView
-                isPending={isPending}
-                isAborting={isAborting}
-                run={run}
-                error={error}
-                progress={progress}
-                onCancel={handleCancel}
-                viewOptions={viewOptions}
-                onViewOptionsChanged={setViewOptions}
-                RunResultView={RunResultView}
-              />
+    <Modal
+      isOpen={isOpen}
+      onClose={handleClose}
+      size="6xl"
+      scrollBehavior="inside"
+    >
+      <ModalOverlay />
+      <ModalContent overflowY="auto" height="75%">
+        <ModalHeader>{title}</ModalHeader>
+        <ModalCloseButton />
+        <ModalBody
+          p="0px"
+          h="100%"
+          overflow="auto"
+          borderY="1px solid lightgray"
+        >
+          {!isPending && !run && !error ? (
+            <Box style={{ contain: "layout" }}>
+              {RunForm && (
+                <RunForm
+                  params={params}
+                  onParamsChanged={setParams}
+                  setIsReadyToExecute={setIsReadyToExecute}
+                />
+              )}
+            </Box>
+          ) : (
+            <RunView
+              isPending={isPending}
+              isAborting={isAborting}
+              run={run}
+              error={error}
+              progress={progress}
+              onCancel={handleCancel}
+              viewOptions={viewOptions}
+              onViewOptionsChanged={setViewOptions}
+              RunResultView={RunResultView}
+            />
+          )}
+        </ModalBody>
+        <ModalFooter>
+          <Flex gap="10px">
+            {run && RunForm && (
+              <Button colorScheme="blue" onClick={handleReset}>
+                Reset
+              </Button>
             )}
-          </ModalBody>
-          <ModalFooter>
-            <Flex gap="10px">
-              {run && RunEditView && (
-                <Button colorScheme="blue" onClick={handleReset}>
-                  Reset
-                </Button>
-              )}
 
-              {run?.result && (
-                <>
-                  <Button colorScheme="blue" onClick={handleAddToChecklist}>
-                    Add to checklist
-                  </Button>
-                </>
-              )}
-
-              {isPending && (
-                <Button
-                  onClick={handleCancel}
-                  isDisabled={isAborting}
-                  colorScheme="blue"
-                >
-                  Cancel
+            {run?.result && (
+              <>
+                <Button colorScheme="blue" onClick={handleAddToChecklist}>
+                  Add to checklist
                 </Button>
-              )}
+              </>
+            )}
 
-              {!run && !isPending && (
-                <Button
-                  isDisabled={!isReadyToExecute}
-                  colorScheme="blue"
-                  onClick={handleExecute}
-                >
-                  Execute
-                </Button>
-              )}
+            {isPending && (
+              <Button
+                onClick={handleCancel}
+                isDisabled={isAborting}
+                colorScheme="blue"
+              >
+                Cancel
+              </Button>
+            )}
 
-              {run && !RunEditView && (
-                <Button colorScheme="blue" onClick={handleRerun}>
-                  Rerun
-                </Button>
-              )}
-            </Flex>
-          </ModalFooter>
-        </ModalContent>
-      </Modal>
-      <TriggerComponent colorScheme="blue" size="sm" onClick={onOpen}>
-        {title}
-      </TriggerComponent>
-    </>
+            {!run && !isPending && (
+              <Button
+                isDisabled={isPending}
+                // isDisabled={!isReadyToExecute}
+                colorScheme="blue"
+                onClick={handleExecute}
+              >
+                Execute
+              </Button>
+            )}
+
+            {run && !RunForm && (
+              <Button colorScheme="blue" onClick={handleRerun}>
+                Rerun
+              </Button>
+            )}
+          </Flex>
+        </ModalFooter>
+      </ModalContent>
+    </Modal>
   );
 };

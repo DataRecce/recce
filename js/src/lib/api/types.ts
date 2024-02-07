@@ -21,11 +21,13 @@ export type RunType =
   | "query"
   | "query_diff"
   | "value_diff"
+  | "value_diff_detail"
   | "schema_diff"
   | "profile_diff"
   | "row_count_diff"
   | "lineage_diff"
-  | "top_k_diff";
+  | "top_k_diff"
+  | string;
 
 export interface Run<PT = any, RT = any> {
   run_id: string;
