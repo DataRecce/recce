@@ -97,6 +97,22 @@ export const QueryDiffResultView = ({
     onViewOptionsChanged,
   ]);
 
+  const invalidPKeyMessage = useMemo(() => {
+    if (invalidPKey.base.length === 0 && invalidPKey.current.length === 0) {
+      return null;
+    }
+    const base = invalidPKey.base.join(", ");
+    const current = invalidPKey.current.join(", ");
+
+    if (base && current) {
+      return `Warning: The primary key '${base}' is not unique in the base and current environments`;
+    } else if (base) {
+      return `Warning: The primary key '${base}' is not unique in the base environment`;
+    } else if (current) {
+      return `Warning: The primary key '${current}' is not unique in the current environment`;
+    }
+  }, [invalidPKey]);
+
   if (gridData.columns.length === 0) {
     return <Center height="100%">No data</Center>;
   }
@@ -117,22 +133,6 @@ export const QueryDiffResultView = ({
     limit > 0 && (run?.result?.current?.more || run?.result?.base?.more)
       ? `Warning: Displayed results are limited to ${limit.toLocaleString()} records. To ensure complete data retrieval, consider applying a LIMIT or WHERE clause to constrain the result set.`
       : null;
-
-  const invalidPKeyMessage = useMemo(() => {
-    if (invalidPKey.base.length === 0 && invalidPKey.current.length === 0) {
-      return null;
-    }
-    const base = invalidPKey.base.join(", ");
-    const current = invalidPKey.current.join(", ");
-
-    if (base && current) {
-      return `Warning: The primary key '${base}' is not unique in the base and current environments`;
-    } else if (base) {
-      return `Warning: The primary key '${base}' is not unique in the base environment`;
-    } else if (current) {
-      return `Warning: The primary key '${current}' is not unique in the current environment`;
-    }
-  }, [invalidPKey]);
 
   return (
     <Flex
