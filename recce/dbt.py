@@ -1,26 +1,21 @@
-import hashlib
 import logging
 import os
 import sys
-import time
+import uuid
 from dataclasses import dataclass, fields
-from typing import Callable, Dict, List, Optional, Union, Tuple
+from typing import Callable, Dict, List, Optional, Tuple
 
 import agate
 from dbt.adapters.base import Column
 from dbt.adapters.factory import get_adapter_by_type
 from dbt.adapters.sql import SQLAdapter
 from dbt.cli.main import dbtRunner
-from dbt.config.profile import Profile
-from dbt.config.project import Project
-from dbt.config.runtime import load_profile, load_project
-from dbt.contracts.files import FileHash
+from dbt.config.runtime import RuntimeConfig
 from dbt.contracts.graph.manifest import Manifest, WritableManifest
-from dbt.contracts.graph.model_config import ContractConfig, NodeConfig
-from dbt.contracts.graph.nodes import Contract, DependsOn, ManifestNode, ModelNode, SourceDefinition
-from dbt.contracts.graph.unparsed import Docs
+from dbt.contracts.graph.nodes import ManifestNode, SourceDefinition
 from dbt.contracts.results import CatalogArtifact
-from dbt.node_types import AccessType, ModelLanguage, NodeType
+from dbt.parser.manifest import process_node
+from dbt.parser.sql import SqlBlockParser
 from watchdog.events import FileSystemEventHandler
 from watchdog.observers import Observer
 
@@ -93,80 +88,11 @@ class DbtVersionTool:
 dbt_version = DbtVersionTool()
 
 
-def _fake_node(package_name: str, raw_code: str, depends_nodes: List):
-    def has_field(field_name):
-        return field_name in {f.name for f in fields(NodeConfig)}
-
-    node_config = None
-    if has_field('on_configuration_change'):
-        from dbt.contracts.graph.model_config import OnConfigurationChangeOption
-        node_config = NodeConfig(_extra={}, enabled=True, alias=None, schema=None, database=None, tags=[], meta={},
-                                 group=None, materialized='view', incremental_strategy=None, persist_docs={},
-                                 post_hook=[],
-                                 pre_hook=[], quoting={}, column_types={}, full_refresh=None, unique_key=None,
-                                 on_schema_change='ignore',
-                                 on_configuration_change=OnConfigurationChangeOption.Apply, grants={}, packages=[],
-                                 docs=Docs(show=True, node_color=None), contract=ContractConfig(enforced=False))
-    else:
-        node_config = NodeConfig(_extra={}, enabled=True, alias=None, schema=None, database=None, tags=[], meta={},
-                                 group=None, materialized='view', incremental_strategy=None, persist_docs={},
-                                 post_hook=[],
-                                 pre_hook=[], quoting={}, column_types={}, full_refresh=None, unique_key=None,
-                                 on_schema_change='ignore', grants={}, packages=[],
-                                 docs=Docs(show=True, node_color=None), contract=ContractConfig(enforced=False))
-
-    sha256 = hashlib.sha256(package_name.encode())
-    file_hash = FileHash(name='sha256', checksum=sha256.hexdigest())
-    return _build_model(depends_nodes, file_hash, node_config, package_name, raw_code)
-
-
-def _build_model(depends_nodes, file_hash, node_config, package_name, raw_code):
-    data = dict(database='', schema='', name='',
-                resource_type=NodeType.Model, package_name=package_name, path=f'generated/{package_name}.sql',
-                original_file_path=f'models/generated/{package_name}.sql',
-                unique_id=f'model.recce.generated.{package_name}',
-                fqn=['reccee', 'staging', package_name],
-                alias=package_name, checksum=file_hash,
-                config=node_config, _event_status={}, tags=[], description='', columns={}, meta={}, group=None,
-                patch_path=None, build_path=None, deferred=False, unrendered_config={},
-                created_at=time.time(), config_call_dict={},
-                relation_name=None,
-                raw_code=raw_code,
-                language=ModelLanguage.sql, refs=[], sources=[], metrics=[],
-                depends_on=DependsOn(macros=[], nodes=depends_nodes),
-                compiled_path=None, compiled=False,
-                compiled_code=None, extra_ctes_injected=False, extra_ctes=[], _pre_injected_sql=None,
-                contract=Contract(
-                    enforced=False,
-                    checksum=None), access=AccessType.Protected, constraints=[], version=None, latest_version=None,
-                defer_relation=None)
-
-    model_fields = {field.name for field in fields(ModelNode)}
-    filtered_data = {k: v for k, v in data.items() if k in model_fields}
-
-    return ModelNode(**filtered_data)
-
-
-def generate_compiled_sql(manifest: Union[Manifest, WritableManifest], adapter, sql, context: Dict = None):
-    if context is None:
-        context = {}
-
-    package_names = [x.package_name for x in manifest.nodes.values() if isinstance(x, ModelNode)]
-    possible_useful_nodes = [x for x in manifest.nodes if x.startswith('model.')]
-    node = _fake_node(package_names[0], sql, possible_useful_nodes)
-    compiler = adapter.get_compiler()
-
-    def as_manifest(m):
-        if not isinstance(m, WritableManifest):
-            return m
-
-        data = m.__dict__
-        all_fields = set([x.name for x in fields(Manifest)])
-        new_data = {k: v for k, v in data.items() if k in all_fields}
-        return Manifest(**new_data)
-
-    x: ModelNode = compiler.compile_node(node, as_manifest(manifest), context)
-    return x.compiled_code
+def as_manifest(m: WritableManifest) -> Manifest:
+    data = m.__dict__
+    all_fields = set([x.name for x in fields(Manifest)])
+    new_data = {k: v for k, v in data.items() if k in all_fields}
+    return Manifest(**new_data)
 
 
 def load_manifest(path):
@@ -181,10 +107,22 @@ def load_catalog(path):
     return CatalogArtifact.read_and_check_versions(path)
 
 
+@dataclass()
+class DbtArgs:
+    """
+    Used for RuntimeConfig.from_args
+    """
+    threads: Optional[int] = 1,
+    target: Optional[str] = None,
+    profiles_dir: Optional[str] = None,
+    project_dir: Optional[str] = None,
+    profile: Optional[str] = None,
+    target_path: Optional[str] = None,
+
+
 @dataclass
 class DBTContext:
-    profile: Profile = None
-    project: Project = None
+    runtime_config: RuntimeConfig = None
     adapter: SQLAdapter = None
     manifest: Manifest = None
     target_path: str = None
@@ -222,22 +160,20 @@ class DBTContext:
         if not parse_result.success:
             sys.exit(1)
 
-        if project_dir is None:
-            project_path = os.getcwd()
-        else:
-            project_path = project_dir
+        args = DbtArgs(
+            threads=1,
+            target=target,
+            project_dir=project_dir,
+            profiles_dir=profiles_dir,
+            profile=profile_name,
+        )
+        runtime_config = RuntimeConfig.from_args(args)
+        adapter: SQLAdapter = get_adapter_by_type(runtime_config.credentials.type)
 
-        # The option 'profiles_dir' will be added into dbt global flags when we invoke dbt parse.
-        # The function 'load_profile' will use the global flags to load the profile.
-        profile = load_profile(project_path, {}, profile_name_override=profile_name, target_override=target)
-        project = load_project(project_path, False, profile)
-
-        adapter: SQLAdapter = get_adapter_by_type(profile.credentials.type)
-
-        dbt_context = cls(profile=profile,
-                          project=project,
-                          adapter=adapter,
-                          manifest=manifest)
+        dbt_context = cls(
+            runtime_config=runtime_config,
+            adapter=adapter,
+            manifest=manifest)
         dbt_context.load_artifacts()
 
         if not dbt_context.curr_manifest:
@@ -259,8 +195,8 @@ class DBTContext:
         """
         Load the artifacts from the 'target' and 'target-base' directory
         """
-        project_root = self.project.project_root
-        target_path = self.project.target_path
+        project_root = self.runtime_config.project_root
+        target_path = self.runtime_config.target_path
         target_base_path = 'target-base'
         self.target_path = os.path.join(project_root, target_path)
         self.base_path = os.path.join(project_root, target_base_path)
@@ -308,15 +244,17 @@ class DBTContext:
 
         return None
 
-    def generate_sql(self, sql_template: str, base: bool = False, context: Dict = None):
-        try:
-            return generate_compiled_sql(self.get_manifest(base), self.adapter, sql_template, context)
-        except BaseException as e:
-            if hasattr(e, 'msg'):
-                if 'depends on' in e.msg:
-                    message_from = e.msg.index('depends on')
-                    raise Exception(e.msg[message_from:])
-            raise e
+    def generate_sql(self, sql_template: str, base: bool = False, context: Dict = {}):
+        manifest = as_manifest(self.get_manifest(base))
+        parser = SqlBlockParser(self.runtime_config, manifest, self.runtime_config)
+
+        node_id = str("generated_" + uuid.uuid4().hex)
+        node = parser.parse_remote(sql_template, node_id)
+        process_node(self.runtime_config, manifest, node)
+
+        compiler = self.adapter.get_compiler()
+        compiler.compile_node(node, manifest, context)
+        return node.compiled_code
 
     def execute(self, sql: str, auto_begin: bool = False, fetch: bool = False, limit: Optional[int] = None) -> Tuple[
         any, agate.Table]:
@@ -436,7 +374,7 @@ class DBTContext:
                 self.base_catalog = load_catalog(refresh_file_path)
 
     def create_relation(self, model, base=False):
-        return self.adapter.Relation.create_from(self.project, self.find_node_by_name(model, base))
+        return self.adapter.Relation.create_from(self.runtime_config, self.find_node_by_name(model, base))
 
 
 dbt_context: Optional[DBTContext] = None
