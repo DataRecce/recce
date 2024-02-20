@@ -13,8 +13,9 @@ import {
   IconButton,
   Spacer,
   Tooltip,
+  VStack,
 } from "@chakra-ui/react";
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { toDataDiffGrid } from "./querydiff";
 
 import "./styles.css";
@@ -86,6 +87,18 @@ export const QueryDiffResultView = ({
     onViewOptionsChanged,
   ]);
 
+  const warningPKey = useMemo(() => {
+    const pkName = primaryKeys.join(", ");
+
+    if (gridData.invalidPKeyBase && gridData.invalidPKeyCurrent) {
+      return `Warning: The primary key '${pkName}' is not unique in the base and current environments`;
+    } else if (gridData.invalidPKeyBase) {
+      return `Warning: The primary key '${pkName}' is not unique in the base environment`;
+    } else if (gridData.invalidPKeyCurrent) {
+      return `Warning: The primary key '${pkName}' is not unique in the current environment`;
+    }
+  }, [gridData.invalidPKeyBase, gridData.invalidPKeyCurrent, primaryKeys]);
+
   if (gridData.columns.length === 0) {
     return <Center height="100%">No data</Center>;
   }
@@ -102,7 +115,7 @@ export const QueryDiffResultView = ({
   };
 
   const limit = run.result?.current?.limit || 0;
-  const warning =
+  const warningLimit =
     limit > 0 && (run?.result?.current?.more || run?.result?.base?.more)
       ? `Warning: Displayed results are limited to ${limit.toLocaleString()} records. To ensure complete data retrieval, consider applying a LIMIT or WHERE clause to constrain the result set.`
       : null;
@@ -119,14 +132,20 @@ export const QueryDiffResultView = ({
         gap="5px"
         alignItems="center"
         px="10px"
-        bg={warning ? "orange.100" : "inherit"}
+        bg={warningLimit || warningPKey ? "orange.100" : "inherit"}
       >
-        {warning && (
-          <>
-            <WarningIcon color="orange.600" /> <Box>{warning}</Box>
-          </>
-        )}
-
+        <VStack alignItems="flex-start" spacing={0}>
+          {warningPKey && (
+            <Box>
+              <WarningIcon color="orange.600" /> {warningPKey}
+            </Box>
+          )}
+          {warningLimit && (
+            <Box>
+              <WarningIcon color="orange.600" /> {warningLimit}
+            </Box>
+          )}
+        </VStack>
         <Spacer minHeight="32px" />
         <Checkbox
           isChecked={viewOptions?.changed_only}
@@ -134,7 +153,6 @@ export const QueryDiffResultView = ({
         >
           Changed only
         </Checkbox>
-
         {onAddToChecklist && (
           <Tooltip label="Add to Checklist">
             <IconButton

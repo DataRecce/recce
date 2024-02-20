@@ -189,6 +189,8 @@ export function toDataDiffGrid(
   // merge row
   const baseMap: Record<string, any> = {};
   const currentMap: Record<string, any> = {};
+  let invalidPKeyBase: boolean = false;
+  let invalidPKeyCurrent: boolean = false;
 
   if (primaryKeys.length === 0) {
     base.data.forEach((row, index) => {
@@ -207,12 +209,18 @@ export function toDataDiffGrid(
 
     base.data.forEach((row, index) => {
       const key = _getPrimaryKeyValue(base.columns, primaryIndexes, row);
+      if (key in baseMap) {
+        invalidPKeyBase = true;
+      }
       baseMap[key] = row;
     });
 
     primaryIndexes = _getPrimaryKeyIndexes(current.columns, primaryKeys);
     current.data.forEach((row, index) => {
       const key = _getPrimaryKeyValue(current.columns, primaryIndexes, row);
+      if (key in currentMap) {
+        invalidPKeyCurrent = true;
+      }
       currentMap[key] = row;
     });
   }
@@ -425,5 +433,7 @@ export function toDataDiffGrid(
   return {
     columns,
     rows,
+    invalidPKeyBase,
+    invalidPKeyCurrent,
   };
 }
