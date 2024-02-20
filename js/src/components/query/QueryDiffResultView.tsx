@@ -52,11 +52,6 @@ export const QueryDiffResultView = ({
     [viewOptions]
   );
 
-  const [invalidPKey, setInvalidPKey] = useState<{
-    base: string[];
-    current: string[];
-  }>({ base: [], current: [] });
-
   const gridData = useMemo(() => {
     const handlePrimaryKeyChanged = (primaryKeys: string[]) => {
       if (onViewOptionsChanged) {
@@ -76,15 +71,10 @@ export const QueryDiffResultView = ({
       }
     };
 
-    const handleInvalidPrimaryKey = (base: string[], current: string[]) => {
-      setInvalidPKey({ base, current });
-    };
-
     return toDataDiffGrid(run?.result?.base, run?.result?.current, {
       changedOnly,
       primaryKeys,
       onPrimaryKeyChange: handlePrimaryKeyChanged,
-      onInvalidPrimaryKey: handleInvalidPrimaryKey,
       pinnedColumns,
       onPinnedColumnsChange: handlePinnedColumnsChanged,
     });
@@ -97,21 +87,17 @@ export const QueryDiffResultView = ({
     onViewOptionsChanged,
   ]);
 
-  const invalidPKeyMessage = useMemo(() => {
-    if (invalidPKey.base.length === 0 && invalidPKey.current.length === 0) {
-      return null;
-    }
-    const base = invalidPKey.base.join(", ");
-    const current = invalidPKey.current.join(", ");
+  const warningPKey = useMemo(() => {
+    const pkName = primaryKeys.join(", ");
 
-    if (base && current) {
-      return `Warning: The primary key '${base}' is not unique in the base and current environments`;
-    } else if (base) {
-      return `Warning: The primary key '${base}' is not unique in the base environment`;
-    } else if (current) {
-      return `Warning: The primary key '${current}' is not unique in the current environment`;
+    if (gridData.invalidPKeyBase && gridData.invalidPKeyCurrent) {
+      return `Warning: The primary key '${pkName}' is not unique in the base and current environments`;
+    } else if (gridData.invalidPKeyBase) {
+      return `Warning: The primary key '${pkName}' is not unique in the base environment`;
+    } else if (gridData.invalidPKeyCurrent) {
+      return `Warning: The primary key '${pkName}' is not unique in the current environment`;
     }
-  }, [invalidPKey]);
+  }, [gridData.invalidPKeyBase, gridData.invalidPKeyCurrent, primaryKeys]);
 
   if (gridData.columns.length === 0) {
     return <Center height="100%">No data</Center>;
@@ -129,7 +115,7 @@ export const QueryDiffResultView = ({
   };
 
   const limit = run.result?.current?.limit || 0;
-  const warning =
+  const warningLimit =
     limit > 0 && (run?.result?.current?.more || run?.result?.base?.more)
       ? `Warning: Displayed results are limited to ${limit.toLocaleString()} records. To ensure complete data retrieval, consider applying a LIMIT or WHERE clause to constrain the result set.`
       : null;
@@ -146,17 +132,17 @@ export const QueryDiffResultView = ({
         gap="5px"
         alignItems="center"
         px="10px"
-        bg={warning || invalidPKeyMessage ? "orange.100" : "inherit"}
+        bg={warningLimit || warningPKey ? "orange.100" : "inherit"}
       >
         <VStack alignItems="flex-start" spacing={0}>
-          {invalidPKeyMessage && (
+          {warningPKey && (
             <Box>
-              <WarningIcon color="orange.600" /> {invalidPKeyMessage}
+              <WarningIcon color="orange.600" /> {warningPKey}
             </Box>
           )}
-          {warning && (
+          {warningLimit && (
             <Box>
-              <WarningIcon color="orange.600" /> {warning}
+              <WarningIcon color="orange.600" /> {warningLimit}
             </Box>
           )}
         </VStack>

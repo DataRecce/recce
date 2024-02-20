@@ -74,7 +74,6 @@ function _getPrimaryKeyValue(
 interface QueryDataDiffGridOptions {
   primaryKeys?: string[];
   onPrimaryKeyChange?: (primaryKeys: string[]) => void;
-  onInvalidPrimaryKey?: (base: string[], current: string[]) => void;
   pinnedColumns?: string[];
   onPinnedColumnsChange?: (pinnedColumns: string[]) => void;
   changedOnly?: boolean;
@@ -224,13 +223,6 @@ export function toDataDiffGrid(
       }
       currentMap[key] = row;
     });
-  }
-
-  if (options?.onInvalidPrimaryKey) {
-    options.onInvalidPrimaryKey(
-      invalidPKeyBase ? primaryKeys : [],
-      invalidPKeyCurrent ? primaryKeys : []
-    );
   }
 
   const mergedMap = mergeKeysWithStatus(
@@ -441,5 +433,7 @@ export function toDataDiffGrid(
   return {
     columns,
     rows,
+    invalidPKeyBase,
+    invalidPKeyCurrent,
   };
 }
