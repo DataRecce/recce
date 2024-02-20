@@ -1,7 +1,16 @@
 "use client";
 
 import LineageView from "@/components/lineage/LineageView";
-import { Tabs, TabList, Tab, ChakraProvider, Box } from "@chakra-ui/react";
+import {
+  Tabs,
+  TabList,
+  Tab,
+  ChakraProvider,
+  Box,
+  Flex,
+  Link,
+  Text,
+} from "@chakra-ui/react";
 import { useLayoutEffect } from "react";
 import * as amplitude from "@amplitude/analytics-browser";
 import { QueryClientProvider } from "@tanstack/react-query";
@@ -15,10 +24,43 @@ import { Redirect, Route, Router, Switch, useLocation } from "wouter";
 import _ from "lodash";
 import { useHashLocation } from "@/lib/hooks/useHashLocation";
 import { ThemeProvider, createTheme } from "@mui/material";
+import { useLineageGraphsContext } from "@/lib/hooks/LineageGraphContext";
+import { InfoIcon } from "@chakra-ui/icons";
 
 function getCookie(key: string) {
   var b = document.cookie.match("(^|;)\\s*" + key + "\\s*=\\s*([^;]+)");
   return b ? b.pop() : "";
+}
+
+function TopBar() {
+  const { prURL } = useLineageGraphsContext();
+  if (prURL === "" || prURL === undefined) {
+    return <></>;
+  }
+
+  return (
+    <Flex
+      gap="5px"
+      minHeight="35px"
+      alignItems="center"
+      justifyContent="center"
+      bg="orange.300"
+    >
+      <InfoIcon color="orange.600" />
+      <Text>
+        Please check{" "}
+        <Link
+          textDecoration="underline"
+          fontWeight="600"
+          href={prURL}
+          isExternal
+        >
+          this Pull Request
+        </Link>{" "}
+        comment for context about this Recce instance
+      </Text>
+    </Flex>
+  );
 }
 
 function NavBar() {
@@ -83,7 +125,8 @@ export default function Home() {
           },
         },
       },
-  } });
+    },
+  });
 
   return (
     <ThemeProvider theme={muiDefaultTheme}>
@@ -91,6 +134,7 @@ export default function Home() {
         <QueryClientProvider client={reactQueryClient}>
           <RecceContextProvider>
             <Router hook={useHashLocation}>
+              <TopBar />
               <NavBar />
 
               <Box p={0} h={pageHeight} maxH={pageHeight} overflow="auto">

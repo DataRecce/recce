@@ -18,6 +18,7 @@ import path from "path";
 
 export interface LineageGraphsContext {
   lineageGraphSets?: DefaultLineageGraphSets;
+  prURL?: string | undefined;
   isLoading?: boolean;
   error?: string;
 }
@@ -104,6 +105,7 @@ export function LineageGraphsContextProvider({
       <LineageGraphSets.Provider
         value={{
           lineageGraphSets: lineageGraphSets,
+          prURL: data?.current.metadata.pr_url || undefined,
           error: errorMessage,
           isLoading,
         }}
