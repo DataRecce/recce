@@ -33,8 +33,10 @@ function getCookie(key: string) {
 }
 
 function TopBar() {
-  const { prURL } = useLineageGraphsContext();
-  if (prURL === "" || prURL === undefined) {
+  const { metadata } = useLineageGraphsContext();
+  const prURL = metadata?.pr_url;
+
+  if (!!prURL === false) {
     return <></>;
   }
 
