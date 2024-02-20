@@ -36,7 +36,7 @@ function TopBar() {
   const { metadata } = useLineageGraphsContext();
   const prURL = metadata?.pr_url;
 
-  if (!!prURL === false) {
+  if (!prURL || prURL === null) {
     return <></>;
   }
 
