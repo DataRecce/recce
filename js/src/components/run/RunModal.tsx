@@ -6,6 +6,7 @@ import { Run, RunType } from "@/lib/api/types";
 import {
   Box,
   Button,
+  MenuItem,
   Flex,
   Modal,
   ModalBody,
@@ -24,6 +25,7 @@ import { RunEditViewProps, RunResultViewProps } from "./types";
 
 interface RunModalProps<PT, RT, VO> {
   title: string;
+  triggerComponentType?: string;
   type: RunType;
   params: PT;
   RunEditView?: React.ComponentType<RunEditViewProps<PT>>;
@@ -31,6 +33,7 @@ interface RunModalProps<PT, RT, VO> {
 }
 
 export const RunModal = <PT, RT, VO>({
+  triggerComponentType,
   type,
   title,
   params: defaultParams,
@@ -123,9 +126,11 @@ export const RunModal = <PT, RT, VO>({
     handleReset();
   };
 
+  const TriggerComponent = triggerComponentType === "MenuItem" ? MenuItem : Button;
+
   return (
     <>
-      <Modal isOpen={isOpen} onClose={handleClose} size="6xl">
+      <Modal isOpen={isOpen} onClose={handleClose} size="6xl" scrollBehavior="inside">
         <ModalOverlay />
         <ModalContent overflowY="auto" height="75%">
           <ModalHeader>{title}</ModalHeader>
@@ -201,9 +206,9 @@ export const RunModal = <PT, RT, VO>({
           </ModalFooter>
         </ModalContent>
       </Modal>
-      <Button colorScheme="blue" size="sm" onClick={onOpen}>
+      <TriggerComponent colorScheme="blue" size="sm" onClick={onOpen}>
         {title}
-      </Button>
+      </TriggerComponent>
     </>
   );
 };

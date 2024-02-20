@@ -15,6 +15,7 @@ class RunType(Enum):
     PROFILE_DIFF = 'profile_diff'
     ROW_COUNT_DIFF = 'row_count_diff'
     LINEAGE_DIFF = 'lineage_diff'
+    TOP_K_DIFF = 'top_k_diff'
 
     def __str__(self):
         return self.value

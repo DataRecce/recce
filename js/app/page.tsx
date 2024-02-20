@@ -14,6 +14,7 @@ import { Redirect, Route, Router, Switch, useLocation } from "wouter";
 
 import _ from "lodash";
 import { useHashLocation } from "@/lib/hooks/useHashLocation";
+import { ThemeProvider, createTheme } from "@mui/material";
 
 function getCookie(key: string) {
   var b = document.cookie.match("(^|;)\\s*" + key + "\\s*=\\s*([^;]+)");
@@ -73,35 +74,48 @@ export default function Home() {
 
   const pageHeight = "calc(100vh - 42px)";
 
-  return (
-    <ChakraProvider>
-      <QueryClientProvider client={reactQueryClient}>
-        <RecceContextProvider>
-          <Router hook={useHashLocation}>
-            <NavBar />
+  const muiDefaultTheme = createTheme({
+    components: {
+      MuiTooltip: {
+        styleOverrides: {
+          tooltip: {
+            zIndex: 1500,
+          },
+        },
+      },
+  } });
 
-            <Box p={0} h={pageHeight} maxH={pageHeight} overflow="auto">
-              <Switch>
-                <Route path="/lineage">
-                  <LineageView />
-                </Route>
-                <Route path="/query">
-                  <QueryPage />
-                </Route>
-                <Route path="/checks/:slug*">
-                  <CheckPage />
-                </Route>
-                <Route path="/ssr">
-                  <>Loading</>
-                </Route>
-                <Route>
-                  <Redirect to="/lineage" />
-                </Route>
-              </Switch>
-            </Box>
-          </Router>
-        </RecceContextProvider>
-      </QueryClientProvider>
-    </ChakraProvider>
+  return (
+    <ThemeProvider theme={muiDefaultTheme}>
+      <ChakraProvider>
+        <QueryClientProvider client={reactQueryClient}>
+          <RecceContextProvider>
+            <Router hook={useHashLocation}>
+              <NavBar />
+
+              <Box p={0} h={pageHeight} maxH={pageHeight} overflow="auto">
+                <Switch>
+                  <Route path="/lineage">
+                    <LineageView />
+                  </Route>
+                  <Route path="/query">
+                    <QueryPage />
+                  </Route>
+                  <Route path="/checks/:slug*">
+                    <CheckPage />
+                  </Route>
+                  <Route path="/ssr">
+                    <>Loading</>
+                  </Route>
+                  <Route>
+                    <Redirect to="/lineage" />
+                  </Route>
+                </Switch>
+              </Box>
+            </Router>
+          </RecceContextProvider>
+        </QueryClientProvider>
+      </ChakraProvider>
+    </ThemeProvider>
   );
 }

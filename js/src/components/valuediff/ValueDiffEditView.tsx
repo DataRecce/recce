@@ -7,7 +7,7 @@ import _ from "lodash";
 
 interface ValueDiffEditViewProp extends RunEditViewProps<ValueDiffParams> {}
 
-function extractColumnNames(node: LineageGraphNode) {
+export function extractColumnNames(node: LineageGraphNode) {
   function getNames(nodeData: NodeData) {
     return nodeData && nodeData.columns
       ? Object.values(nodeData.columns).map((column) => column.name)
