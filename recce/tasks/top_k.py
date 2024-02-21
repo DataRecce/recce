@@ -36,7 +36,7 @@ class TopKDiffTask(Task, QueryMixin):
                             COUNT(*) as frequency
                         FROM {{{{ ref("{node}") }}}}
                         GROUP BY {column}
-                        ORDER BY frequency DESC
+                        ORDER BY frequency DESC, value ASC
                         LIMIT {k}
                     )
 
