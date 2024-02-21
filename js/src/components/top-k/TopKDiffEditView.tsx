@@ -11,6 +11,7 @@ interface TopKDiffEditViewProps extends RunEditViewProps<TopKDiffParams> {}
 export function TopKDiffEditView({
   params,
   onParamsChanged,
+  setIsReadyToExecute,
 }: TopKDiffEditViewProps) {
   const lineageGraph = useLineageGraphsContext();
   const node = _.find(lineageGraph.lineageGraphSets?.all.nodes, {
@@ -27,6 +28,7 @@ export function TopKDiffEditView({
           value={params?.column_name}
           onChange={(e) => {
             const column = e.target.value;
+            setIsReadyToExecute((!!column) ? true : false);
             onParamsChanged({ ...params, column_name: column });
           }}
         >

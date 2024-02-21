@@ -45,6 +45,7 @@ export const RunModal = <PT, RT, VO>({
   const [runId, setRunId] = useState<string>();
   const [params, setParams] = useState<PT>(defaultParams);
   const [isAborting, setAborting] = useState(false);
+  const [isReadyToExecute, setIsReadyToExecute] = useState(false);
   const [progress, setProgress] = useState<Run["progress"]>();
   const [viewOptions, setViewOptions] = useState<VO>();
 
@@ -144,7 +145,7 @@ export const RunModal = <PT, RT, VO>({
             {!isPending && !run && !error ? (
               <Box style={{ contain: "size layout" }}>
                 {RunEditView && (
-                  <RunEditView params={params} onParamsChanged={setParams} />
+                  <RunEditView params={params} onParamsChanged={setParams} setIsReadyToExecute={setIsReadyToExecute} />
                 )}
               </Box>
             ) : (
@@ -189,7 +190,7 @@ export const RunModal = <PT, RT, VO>({
 
               {!run && !isPending && (
                 <Button
-                  isDisabled={isPending}
+                  isDisabled={!isReadyToExecute}
                   colorScheme="blue"
                   onClick={handleExecute}
                 >

@@ -36,6 +36,7 @@ export function extractColumnNames(node: LineageGraphNode) {
 export function ValueDiffEditView({
   params,
   onParamsChanged,
+  setIsReadyToExecute,
 }: ValueDiffEditViewProp) {
   const lineageGraph = useLineageGraphsContext();
   const node = _.find(lineageGraph.lineageGraphSets?.all.nodes, {
@@ -53,6 +54,7 @@ export function ValueDiffEditView({
           value={params?.primary_key}
           onChange={(e) => {
             const primaryKey = e.target.value;
+            setIsReadyToExecute((!!primaryKey) ? true : false);
             onParamsChanged({ ...params, primary_key: primaryKey });
           }}
         >
