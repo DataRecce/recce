@@ -9,10 +9,10 @@ export const ScreenshotBox = ({
   children,
   ...restProps
 }: ScreenshotBoxProps) => {
-  const { ref, CopyToClipboardButton } = useCopyToClipboardButton();
+  const { ref, CopyToClipboardButton } = useCopyToClipboardButton({backgroundColor: 'white'});
   return (
     <>
-      <Box ref={ref} {...restProps}>
+      <Box ref={ref} {...restProps} overflow='auto'>
         {children}
       </Box>
       <CopyToClipboardButton imageType="png" />
