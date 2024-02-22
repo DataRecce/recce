@@ -329,7 +329,11 @@ class DBTContext:
                     'package_name': semantic_models['package_name'],
                 }
 
-        return dict(parent_map=parent_map, nodes=nodes, catalog_metadata=catalog_metadata)
+        metadata = dict(
+            pr_url=os.environ.get('RECCE_PR_URL')
+        )
+
+        return dict(parent_map=parent_map, nodes=nodes, catalog_metadata=catalog_metadata, metadata=metadata)
 
     def get_manifests_by_id(self, unique_id: str):
         curr_manifest = self.get_manifest(base=False)

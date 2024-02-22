@@ -16,8 +16,13 @@ import { useToast } from "@chakra-ui/react";
 import { PUBLIC_API_URL } from "../const";
 import path from "path";
 
+interface EnvMetadata {
+  pr_url: string | null;
+}
+
 export interface LineageGraphsContext {
   lineageGraphSets?: DefaultLineageGraphSets;
+  metadata?: EnvMetadata;
   isLoading?: boolean;
   error?: string;
 }
@@ -104,6 +109,7 @@ export function LineageGraphsContextProvider({
       <LineageGraphSets.Provider
         value={{
           lineageGraphSets: lineageGraphSets,
+          metadata: data?.current.metadata,
           error: errorMessage,
           isLoading,
         }}
