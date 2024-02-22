@@ -48,6 +48,7 @@ import { RunView } from "../run/RunView";
 import { formatDistanceToNow } from "date-fns";
 import LineageView from "../lineage/LineageView";
 import { LineageDiffView } from "./LineageDiffView";
+import { TopKDiffResultView } from "../top-k/TopKDiffResultView";
 
 interface CheckDetailProps {
   checkId: string;
@@ -59,6 +60,7 @@ const typeResultViewMap: { [key: string]: any } = {
   value_diff: ValueDiffResultView,
   profile_diff: ProfileDiffResultView,
   row_count_diff: RowCountDiffResultView,
+  top_k_diff: TopKDiffResultView,
 };
 
 const useCancelOnUnmount = ({

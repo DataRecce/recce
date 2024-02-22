@@ -6,15 +6,17 @@ import { ProfileDiffResultView } from "./ProfileDiffResultView";
 
 interface ProfileDiffModalProp {
   node: LineageGraphNode;
+  triggerComponentType?: string;
 }
 
-export const ProfileDiffModal = ({ node }: ProfileDiffModalProp) => {
+export const ProfileDiffModal = ({ node , triggerComponentType }: ProfileDiffModalProp) => {
   return (
     <RunModal
       title="Profile Diff"
+      triggerComponentType={triggerComponentType}
       type="profile_diff"
       params={{ model: node.name }}
       RunResultView={ProfileDiffResultView}
-    ></RunModal>
+    />
   );
 };

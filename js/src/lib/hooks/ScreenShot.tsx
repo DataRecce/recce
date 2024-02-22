@@ -151,12 +151,13 @@ export async function copyBlobToClipboard(blob: Blob) {
   }
 }
 
-export function useCopyToClipboardButton() {
+export function useCopyToClipboardButton(options?: HookOptions) {
   const { successToast, failToast } = useClipBoardToast();
 
   const { isLoading, toImage, ref } = useToBlob({
     imageType: "png",
     shadowEffect: true,
+    backgroundColor: options?.backgroundColor || null,
     onSuccess: async (blob) => {
       try {
         await copyBlobToClipboard(blob);

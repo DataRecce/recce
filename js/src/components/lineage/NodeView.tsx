@@ -40,6 +40,7 @@ import {
 } from "@/lib/api/checks";
 import { ValueDiffModal } from "../valuediff/ValueDiffModal";
 import { useRowCountQueries } from "@/lib/api/models";
+import { TopKDiffModal } from "../top-k/TopKDiffModal";
 
 interface NodeViewProps {
   node: LineageGraphNode;
@@ -134,19 +135,34 @@ export function NodeView({ node, onCloseNode }: NodeViewProps) {
               </MenuList>
             </Menu>
             <Spacer />
+
             {node.resourceType === "model" && (
               <>
                 {node.changeStatus !== "added" &&
                   node.changeStatus !== "removed" && (
                     <>
-                      <ProfileDiffModal
-                        key={`profile_diff_${node?.id}`}
-                        node={node}
-                      />
-                      <ValueDiffModal
-                        key={`value_diff_${node?.id}`}
-                        node={node}
-                      />
+                      <Menu>
+                        <MenuButton as={Button} size="sm" colorScheme="blue">
+                          Advanced Diffs
+                        </MenuButton>
+                        <MenuList>
+                          <ProfileDiffModal
+                            key={`profile_diff_${node?.id}`}
+                            node={node}
+                            triggerComponentType="MenuItem"
+                          />
+                          <ValueDiffModal
+                            key={`value_diff_${node?.id}`}
+                            node={node}
+                            triggerComponentType="MenuItem"
+                          />
+                          <TopKDiffModal
+                            key={`top_k_diff_${node?.id}`}
+                            node={node}
+                            triggerComponentType="MenuItem"
+                          />
+                        </MenuList>
+                      </Menu>
                     </>
                   )}
                 <Button

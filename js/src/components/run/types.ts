@@ -3,6 +3,7 @@ import { Run } from "@/lib/api/types";
 export interface RunEditViewProps<PT> {
   params: PT;
   onParamsChanged: (params: PT) => void;
+  setIsReadyToExecute: (isReadyToExecute: boolean) => void;
 }
 
 export interface RunResultViewProps<PT, RT, VO = any> {

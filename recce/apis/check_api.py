@@ -86,6 +86,10 @@ def _generate_default_name(check_type, params):
     elif check_type == RunType.LINEAGE_DIFF:
         nodes = params.get('node_ids')
         return f"lineage diff of {len(nodes)} nodes".capitalize()
+    elif check_type == RunType.TOP_K_DIFF:
+        model = params.get('model')
+        column = params.get('column_name')
+        return f"top-k diff of {model}.{column} ".capitalize()
     else:
         return f"{'check'.capitalize()} - {now}"
 

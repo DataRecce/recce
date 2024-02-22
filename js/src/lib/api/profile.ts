@@ -24,3 +24,20 @@ export async function submitProfileDiff(
     options
   );
 }
+
+export interface TopKDiffParams {
+  model: string;
+  column_name: string;
+  k: number;
+}
+
+export interface TopKResult {
+  values: (string | number)[];
+  counts: number[];
+  valids: number;
+}
+
+export interface TopKDiffResult {
+  base: TopKResult;
+  current: TopKResult;
+}
