@@ -116,7 +116,6 @@ export default function Home() {
     }
   }, []);
 
-  const pageHeight = "calc(100vh - 42px)";
   const muiDefaultTheme = createTheme({
     components: {
       MuiTooltip: {
@@ -135,28 +134,30 @@ export default function Home() {
         <QueryClientProvider client={reactQueryClient}>
           <Router hook={useHashLocation}>
             <RecceContextProvider>
-              <TopBar />
-              <NavBar />
+              <Flex direction="column" height="100vh">
+                <TopBar />
+                <NavBar />
 
-              <Box p={0} h={pageHeight} maxH={pageHeight} overflow="auto">
-                <Switch>
-                  <Route path="/lineage">
-                    <LineageView />
-                  </Route>
-                  <Route path="/query">
-                    <QueryPage />
-                  </Route>
-                  <Route path="/checks/:slug*">
-                    <CheckPage />
-                  </Route>
-                  <Route path="/ssr">
-                    <>Loading</>
-                  </Route>
-                  <Route>
-                    <Redirect to="/lineage" />
-                  </Route>
-                </Switch>
-              </Box>
+                <Box p={0} overflow="auto" flex="1" style={{ contain: "size" }}>
+                  <Switch>
+                    <Route path="/lineage">
+                      <LineageView />
+                    </Route>
+                    <Route path="/query">
+                      <QueryPage />
+                    </Route>
+                    <Route path="/checks/:slug*">
+                      <CheckPage />
+                    </Route>
+                    <Route path="/ssr">
+                      <>Loading</>
+                    </Route>
+                    <Route>
+                      <Redirect to="/lineage" />
+                    </Route>
+                  </Switch>
+                </Box>
+              </Flex>
             </RecceContextProvider>
           </Router>
         </QueryClientProvider>
