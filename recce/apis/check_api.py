@@ -68,7 +68,7 @@ def _generate_default_name(check_type, params):
         if ref:
             return f"query diff of {ref}".capitalize()
         return f"{'query diff'.capitalize()} - {now}"
-    elif check_type == RunType.VALUE_DIFF:
+    elif check_type == RunType.VALUE_DIFF or check_type == RunType.VALUE_DIFF_DETAIL:
         model = params.get('model')
         return f"value diff of {model}".capitalize()
     elif check_type == RunType.SCHEMA_DIFF:

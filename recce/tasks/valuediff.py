@@ -224,44 +224,6 @@ class ValueDiffDetailTask(Task, ValueDiffMixin):
         self.params = params
         self.connection = None
 
-    def _verify_audit_helper(self, dbt_context):
-        for macro_name, macro in dbt_context.manifest.macros.items():
-            if macro.package_name == 'audit_helper':
-                break
-        else:
-            raise RecceException(
-                r"Package 'audit_helper' not found. Please refer to the link to install: https://hub.getdbt.com/dbt-labs/audit_helper/")
-
-    def _verify_primary_key(self, dbt_context: DBTContext, primary_key: str, model: str):
-        self.update_progress(message=f"Verify primary key: {primary_key}")
-
-        if primary_key is None or len(primary_key) == 0:
-            raise RecceException("Primary key cannot be empty")
-
-        # check primary keys
-        for base in [True, False]:
-
-            relation = dbt_context.create_relation(model, base)
-            context = dict(
-                relation=relation,
-                column_name=primary_key,
-            )
-
-            query = r"""{{ adapter.dispatch('test_unique', 'dbt')(relation, column_name) }}"""
-            sql = dbt_context.generate_sql(query, base=False, context=context)
-            sql_test = f"""SELECT COUNT(*) AS INVALIDS FROM ({sql})"""
-
-            response, table = dbt_context.adapter.execute(sql_test, fetch=True)
-            for row in table.rows:
-                invalids = row[0]
-                if invalids > 0:
-                    raise RecceException(
-                        f"Invalid primary key: {primary_key}. The column should be unique. Please check by this sql: '{sql}'")
-                break
-            else:
-                # it will never happen unless we use a wrong check sql
-                raise RecceException('Cannot verify primary key')
-
     def _query_value_diff(self, dbt_context: DBTContext, primary_key: str, model: str, columns: List[str] = None):
         if columns is None or len(columns) == 0:
             base_columns = [column.column for column in dbt_context.get_columns(model, base=True)]
