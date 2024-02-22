@@ -42,11 +42,30 @@ export function extractColumnNames(node: LineageGraphNode) {
   return union;
 }
 
-export function ValueDiffForm({ params, onParamsChanged }: ValueDiffFormProp) {
+export function ValueDiffForm({
+  params,
+  onParamsChanged,
+  setIsReadyToExecute,
+}: ValueDiffFormProp) {
   const lineageGraph = useLineageGraphsContext();
   const [allColumns, setAllColumns] = useState<boolean>(
     !params.columns || params.columns.length === 0
   );
+
+  useEffect(() => {
+    let isReadyToExecute = true;
+
+    if (!params.primary_key) {
+      isReadyToExecute = false;
+    } else if (
+      !allColumns &&
+      (!params.columns || params.columns.length === 0)
+    ) {
+      isReadyToExecute = false;
+    }
+
+    setIsReadyToExecute(isReadyToExecute);
+  }, [params, setIsReadyToExecute, allColumns]);
 
   const node = _.find(lineageGraph.lineageGraphSets?.all.nodes, {
     name: params?.model,

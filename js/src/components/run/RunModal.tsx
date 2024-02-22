@@ -196,8 +196,7 @@ export const RunModal = <PT, RT, VO>({
 
             {!run && !isPending && (
               <Button
-                isDisabled={isPending}
-                // isDisabled={!isReadyToExecute}
+                isDisabled={isPending || !isReadyToExecute}
                 colorScheme="blue"
                 onClick={handleExecute}
               >

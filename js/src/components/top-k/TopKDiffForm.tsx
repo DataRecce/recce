@@ -4,6 +4,7 @@ import { useLineageGraphsContext } from "@/lib/hooks/LineageGraphContext";
 import _ from "lodash";
 import { Box, FormControl, FormLabel, Select } from "@chakra-ui/react";
 import { extractColumnNames } from "../valuediff/ValueDiffForm";
+import { useEffect } from "react";
 
 interface TopKDiffFormProps extends RunFormProps<TopKDiffParams> {}
 
@@ -18,6 +19,10 @@ export function TopKDiffForm({
   });
   const columns = node ? extractColumnNames(node) : [];
 
+  useEffect(() => {
+    setIsReadyToExecute(!!params.column_name);
+  }, [params, setIsReadyToExecute]);
+
   return (
     <Box m="16px">
       <FormControl>
@@ -27,7 +32,6 @@ export function TopKDiffForm({
           value={params?.column_name}
           onChange={(e) => {
             const column = e.target.value;
-            setIsReadyToExecute(!!column ? true : false);
             onParamsChanged({ ...params, column_name: column });
           }}
         >
