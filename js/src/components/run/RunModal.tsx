@@ -26,7 +26,6 @@ interface RunModalProps<PT, RT, VO> {
   isOpen: boolean;
   onClose: () => void;
   title: string;
-  triggerComponentType?: string;
   type: RunType;
   params: PT;
   RunForm?: React.ComponentType<RunFormProps<PT>>;
@@ -127,9 +126,6 @@ export const RunModal = <PT, RT, VO>({
     }
     handleReset();
   };
-
-  const TriggerComponent =
-    triggerComponentType === "MenuItem" ? MenuItem : Button;
 
   return (
     <Modal

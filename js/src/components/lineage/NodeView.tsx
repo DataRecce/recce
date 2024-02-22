@@ -145,25 +145,40 @@ export function NodeView({ node, onCloseNode }: NodeViewProps) {
                         <MenuButton as={Button} size="sm" colorScheme="blue">
                           Advanced Diffs
                         </MenuButton>
-                          <MenuList>
-                            <MenuItem onClick={() => {
-                            runAction("profile_diff", {
-                              model: node.name,
-                            });
-                          }}>Profile Diff</MenuItem>
+                        <MenuList>
                           <MenuItem
-                          onClick={() => {
-                            runAction(
-                              "value_diff",
-                              {
+                            onClick={() => {
+                              runAction("profile_diff", {
                                 model: node.name,
-                                primary_key: "",
-                              },
-                              { showForm: true }
-                            );
-                          }}
+                              });
+                            }}
+                          >
+                            Profile Diff
+                          </MenuItem>
+                          <MenuItem
+                            onClick={() => {
+                              runAction(
+                                "value_diff",
+                                {
+                                  model: node.name,
+                                  primary_key: "",
+                                },
+                                { showForm: true }
+                              );
+                            }}
                           >
                             Value Diff
+                          </MenuItem>
+                          <MenuItem
+                            onClick={() => {
+                              runAction(
+                                "top_k_diff",
+                                { model: node.name, column_name: "", k: 50 },
+                                { showForm: true }
+                              );
+                            }}
+                          >
+                            Top-K Diff
                           </MenuItem>
                         </MenuList>
                       </Menu>

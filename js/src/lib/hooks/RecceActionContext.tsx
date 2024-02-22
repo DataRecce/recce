@@ -13,6 +13,8 @@ import { RunModal } from "@/components/run/RunModal";
 import { useDisclosure } from "@chakra-ui/react";
 import { ValueDiffDetailResultView } from "@/components/valuediff/ValueDiffDetailResultView";
 import { useLocation } from "wouter";
+import { TopKDiffResultView } from "@/components/top-k/TopKDiffResultView";
+import { TopKDiffForm } from "@/components/top-k/TopKDiffForm";
 
 export interface RecceActionOptions {
   showForm: boolean;
@@ -54,6 +56,11 @@ const registry: { [key: string]: RegistryEntry } = {
     title: "Value Diff Detail",
     RunResultView: ValueDiffDetailResultView,
     RunForm: ValueDiffForm,
+  },
+  top_k_diff: {
+    title: "Top-K Diff",
+    RunResultView: TopKDiffResultView,
+    RunForm: TopKDiffForm,
   },
 };
 
