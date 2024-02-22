@@ -135,6 +135,7 @@ export default function Home() {
         <QueryClientProvider client={reactQueryClient}>
           <Router hook={useHashLocation}>
             <RecceContextProvider>
+              <TopBar />
               <NavBar />
 
               <Box p={0} h={pageHeight} maxH={pageHeight} overflow="auto">
