@@ -16,24 +16,17 @@ class ValueDiffParams(TypedDict):
     exclude_columns: Optional[List[str]]
 
 
-class ValueDiffResultSummary(BaseModel):
-    total: int
-    added: int
-    removed: int
-
-
 class ValueDiffResult(BaseModel):
-    summary: ValueDiffResultSummary
+    class Summary(BaseModel):
+        total: int
+        added: int
+        removed: int
+
+    summary: Summary
     data: DataFrame
 
 
-class ValueDiffTask(Task):
-
-    def __init__(self, params: ValueDiffParams):
-        super().__init__()
-        self.params = params
-        self.connection = None
-
+class ValueDiffMixin:
     def _verify_audit_helper(self, dbt_context):
         for macro_name, macro in dbt_context.manifest.macros.items():
             if macro.package_name == 'audit_helper':
@@ -72,16 +65,28 @@ class ValueDiffTask(Task):
                 # it will never happen unless we use a wrong check sql
                 raise RecceException('Cannot verify primary key')
 
-    def _query_value_diff(self, dbt_context: DBTContext, primary_key: str, model: str):
+
+class ValueDiffTask(Task, ValueDiffMixin):
+
+    def __init__(self, params: ValueDiffParams):
+        super().__init__()
+        self.params = params
+        self.connection = None
+
+    def _query_value_diff(self, dbt_context: DBTContext, primary_key: str, model: str, columns: List[str] = None):
         column_groups = {}
 
-        base_columns = [column.column for column in dbt_context.get_columns(model, base=True)]
-        curr_columns = [column.column for column in dbt_context.get_columns(model, base=False)]
-        common_columns = [column for column in base_columns if column in curr_columns]
+        if columns is None or len(columns) == 0:
+            base_columns = [column.column for column in dbt_context.get_columns(model, base=True)]
+            curr_columns = [column.column for column in dbt_context.get_columns(model, base=False)]
+            columns = [column for column in base_columns if column in curr_columns]
         completed = 0
 
-        for column in common_columns:
-            self.update_progress(message=f"Diff column: {column}", percentage=completed / len(common_columns))
+        if primary_key not in columns:
+            columns.insert(0, primary_key)
+
+        for column in columns:
+            self.update_progress(message=f"Diff column: {column}", percentage=completed / len(columns))
             sql_template = r"""
             {% set a_query %}
                 select * from {{ base_relation }}
@@ -172,7 +177,7 @@ class ValueDiffTask(Task):
         table = agate.Table(row, column_names=column_names, column_types=column_types)
 
         return ValueDiffResult(
-            summary=ValueDiffResultSummary(total=total, added=added, removed=removed),
+            summary=ValueDiffResult.Summary(total=total, added=added, removed=removed),
             data=DataFrame.from_agate(table),
         )
 
@@ -185,6 +190,7 @@ class ValueDiffTask(Task):
 
             primary_key: str = self.params['primary_key']
             model: str = self.params['model']
+            columns: List[str] = self.params.get('columns')
 
             self._verify_audit_helper(dbt_context)
             self.check_cancel()
@@ -192,7 +198,95 @@ class ValueDiffTask(Task):
             self._verify_primary_key(dbt_context, primary_key, model)
             self.check_cancel()
 
-            return self._query_value_diff(dbt_context, primary_key, model)
+            return self._query_value_diff(dbt_context, primary_key, model, columns=columns)
+
+    def cancel(self):
+        if self.connection:
+            adapter: SQLAdapter = default_dbt_context().adapter
+            with adapter.connection_named("cancel"):
+                adapter.connections.cancel(self.connection)
+
+
+class ValueDiffDetailParams(TypedDict):
+    primary_key: str
+    model: str
+    columns: List[str]
+
+
+class ValueDiffDetailResult(DataFrame):
+    pass
+
+
+class ValueDiffDetailTask(Task, ValueDiffMixin):
+
+    def __init__(self, params: ValueDiffParams):
+        super().__init__()
+        self.params = params
+        self.connection = None
+
+    def _query_value_diff(self, dbt_context: DBTContext, primary_key: str, model: str, columns: List[str] = None):
+        if columns is None or len(columns) == 0:
+            base_columns = [column.column for column in dbt_context.get_columns(model, base=True)]
+            curr_columns = [column.column for column in dbt_context.get_columns(model, base=False)]
+            columns = [column for column in base_columns if column in curr_columns]
+
+        if primary_key not in columns:
+            columns.insert(0, primary_key)
+
+        sql_template = r"""
+        {% set col_list %}
+            {%- for col in columns %}
+                {{ col|trim }}
+                {%- if not loop.last %},{{ '\n  ' }}{%- endif -%}
+            {%- endfor -%}
+        {% endset %}
+
+        {% set a_query %}
+            select {{col_list}} from {{ base_relation }}
+        {% endset %}
+
+        {% set b_query %}
+            select {{col_list}} from {{ curr_relation }}
+        {% endset %}
+
+        {{ audit_helper.compare_queries(
+            a_query=a_query,
+            b_query=b_query,
+            primary_key=primary_key,
+            summarize=False,
+        ) }} limit {{ limit }}
+        """
+        sql = dbt_context.generate_sql(sql_template, context=dict(
+            base_relation=dbt_context.create_relation(model, base=True),
+            curr_relation=dbt_context.create_relation(model, base=False),
+            primary_key=primary_key,
+            columns=columns,
+            limit=1000,
+        ))
+
+        _, table = dbt_context.adapter.execute(sql, fetch=True)
+        self.check_cancel()
+
+        return DataFrame.from_agate(table)
+
+    def execute(self):
+        dbt_context = default_dbt_context()
+        adapter = dbt_context.adapter
+
+        with adapter.connection_named("value diff"):
+            self.connection = adapter.connections.get_thread_connection()
+
+            primary_key: str = self.params['primary_key']
+            model: str = self.params['model']
+            columns: List[str] = self.params.get('columns')
+
+            self._verify_audit_helper(dbt_context)
+            self.check_cancel()
+
+            self._verify_primary_key(dbt_context, primary_key, model)
+            self.check_cancel()
+
+            return self._query_value_diff(dbt_context, primary_key, model, columns)
 
     def cancel(self):
         if self.connection:

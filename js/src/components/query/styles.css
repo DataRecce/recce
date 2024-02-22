@@ -29,6 +29,10 @@
   color: black;
 }
 
+.cell-show-context-menu {
+  overflow: visible;
+}
+
 .grid-header:hover .pin-icon {
   display: block;
 }
@@ -41,4 +45,9 @@
   border-width: 0px 1px 1px 0px;
   border-style: solid;
   border-color: var(--rdg-border-color);
+}
+
+.rdg-row:hover .row-context-menu {  
+  visibility: visible;
+  width: auto;
 }

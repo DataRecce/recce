@@ -1,23 +1,27 @@
 import { TopKDiffParams } from "@/lib/api/profile";
-import { RunEditViewProps } from "../run/types";
+import { RunFormProps } from "../run/types";
 import { useLineageGraphsContext } from "@/lib/hooks/LineageGraphContext";
 import _ from "lodash";
 import { Box, FormControl, FormLabel, Select } from "@chakra-ui/react";
-import { extractColumnNames } from "../valuediff/ValueDiffEditView";
+import { extractColumnNames } from "../valuediff/ValueDiffForm";
+import { useEffect } from "react";
 
+interface TopKDiffFormProps extends RunFormProps<TopKDiffParams> {}
 
-interface TopKDiffEditViewProps extends RunEditViewProps<TopKDiffParams> {}
-
-export function TopKDiffEditView({
+export function TopKDiffForm({
   params,
   onParamsChanged,
   setIsReadyToExecute,
-}: TopKDiffEditViewProps) {
+}: TopKDiffFormProps) {
   const lineageGraph = useLineageGraphsContext();
   const node = _.find(lineageGraph.lineageGraphSets?.all.nodes, {
     name: params?.model,
   });
   const columns = node ? extractColumnNames(node) : [];
+
+  useEffect(() => {
+    setIsReadyToExecute(!!params.column_name);
+  }, [params, setIsReadyToExecute]);
 
   return (
     <Box m="16px">
@@ -28,7 +32,6 @@ export function TopKDiffEditView({
           value={params?.column_name}
           onChange={(e) => {
             const column = e.target.value;
-            setIsReadyToExecute((!!column) ? true : false);
             onParamsChanged({ ...params, column_name: column });
           }}
         >
@@ -42,4 +45,3 @@ export function TopKDiffEditView({
     </Box>
   );
 }
-

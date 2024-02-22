@@ -1,6 +1,6 @@
 import { Run } from "@/lib/api/types";
 
-export interface RunEditViewProps<PT> {
+export interface RunFormProps<PT> {
   params: PT;
   onParamsChanged: (params: PT) => void;
   setIsReadyToExecute: (isReadyToExecute: boolean) => void;

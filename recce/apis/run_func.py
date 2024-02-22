@@ -3,8 +3,7 @@ from typing import Dict, Type
 
 from recce.exceptions import RecceException, RecceCancelException
 from recce.models import RunType, Run, RunDAO
-from recce.tasks import QueryTask, ProfileDiffTask, ValueDiffTask, QueryDiffTask, Task, RowCountDiffTask
-from recce.tasks.top_k import TopKDiffTask
+from recce.tasks import QueryTask, ProfileDiffTask, ValueDiffTask, QueryDiffTask, Task, RowCountDiffTask, TopKDiffTask, ValueDiffDetailTask
 
 running_tasks = {}
 
@@ -12,6 +11,7 @@ registry: Dict[RunType, Type[Task]] = {
     RunType.QUERY: QueryTask,
     RunType.QUERY_DIFF: QueryDiffTask,
     RunType.VALUE_DIFF: ValueDiffTask,
+    RunType.VALUE_DIFF_DETAIL: ValueDiffDetailTask,
     RunType.PROFILE_DIFF: ProfileDiffTask,
     RunType.ROW_COUNT_DIFF: RowCountDiffTask,
     RunType.TOP_K_DIFF: TopKDiffTask,

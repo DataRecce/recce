@@ -1,23 +1,118 @@
-import { Box, Center, Flex, Icon } from "@chakra-ui/react";
+import {
+  Box,
+  Center,
+  Flex,
+  Icon,
+  IconButton,
+  Menu,
+  MenuButton,
+  MenuGroup,
+  MenuItem,
+  MenuList,
+  Portal,
+  Spacer,
+} from "@chakra-ui/react";
 
 import { ColumnOrColumnGroup } from "react-data-grid";
 import { ValueDiffParams, ValueDiffResult } from "@/lib/api/valuediff";
 import { ScreenshotDataGrid } from "../data-grid/ScreenshotDataGrid";
 import { RunResultViewProps } from "../run/types";
-import { VscKey } from "react-icons/vsc";
+import { VscKebabVertical, VscKey } from "react-icons/vsc";
+import {
+  RecceActionOptions,
+  useRecceActionContext,
+} from "@/lib/hooks/RecceActionContext";
+import { useRef } from "react";
 
 interface ValueDiffResultViewProp
   extends RunResultViewProps<ValueDiffParams, ValueDiffResult> {}
+
+function ColumnNameCell({
+  params,
+  column,
+  containerRef,
+}: {
+  params: ValueDiffParams;
+  column: string;
+  containerRef: React.RefObject<any>;
+}) {
+  const { runAction } = useRecceActionContext();
+  const handleValueDiffDetail = (
+    paramsOverride?: Partial<ValueDiffParams>,
+    options?: RecceActionOptions
+  ) => {
+    const newParams = {
+      ...params,
+      ...paramsOverride,
+    };
+
+    runAction("value_diff_detail", newParams, options);
+  };
+
+  return (
+    <Flex>
+      <Box overflow="hidden" textOverflow="ellipsis" whiteSpace="nowrap">
+        {column}
+      </Box>
+      <Spacer />
+
+      <Menu>
+        {({ isOpen }) => (
+          <>
+            <MenuButton
+              className="row-context-menu"
+              visibility={isOpen ? "visible" : "hidden"}
+              width={isOpen ? "auto" : "0px"}
+              minWidth={isOpen ? "auto" : "0px"}
+              as={IconButton}
+              icon={<Icon as={VscKebabVertical} />}
+              variant="unstyled"
+              size={"sm"}
+            />
+
+            <Portal containerRef={containerRef}>
+              <MenuList lineHeight="20px">
+                <MenuGroup title="Action" as={Box} fontSize="8pt">
+                  <MenuItem
+                    fontSize="10pt"
+                    onClick={() =>
+                      handleValueDiffDetail({}, { showForm: true })
+                    }
+                  >
+                    Show mismatched values...
+                  </MenuItem>
+                  <MenuItem
+                    fontSize="10pt"
+                    onClick={() =>
+                      handleValueDiffDetail(
+                        { columns: [column] },
+                        { showForm: false }
+                      )
+                    }
+                  >
+                    Show mismatched values for &apos;{column}&apos;
+                  </MenuItem>
+                </MenuGroup>
+              </MenuList>
+            </Portal>
+          </>
+        )}
+      </Menu>
+    </Flex>
+  );
+}
 
 export function ValueDiffResultView({ run }: ValueDiffResultViewProp) {
   const result = run.result as ValueDiffResult;
   const params = run.params as ValueDiffParams;
   const cellClass = (row: any) => {
     const value: number | undefined = row[2];
+
     return value !== undefined && value !== null && value < 1
       ? "diff-cell-modified"
       : "";
   };
+  const containerRef = useRef<any>();
 
   const columns: ColumnOrColumnGroup<any, any>[] = [
     {
@@ -36,6 +131,16 @@ export function ValueDiffResultView({ run }: ValueDiffResultViewProp) {
       key: "0",
       name: "Column",
       resizable: true,
+      renderCell: ({ row, column }) => {
+        return (
+          <ColumnNameCell
+            column={row[column.key]}
+            params={params}
+            containerRef={containerRef}
+          />
+        );
+      },
+      cellClass: "cell-show-context-menu",
     },
     {
       key: "1",
@@ -62,7 +167,13 @@ export function ValueDiffResultView({ run }: ValueDiffResultViewProp) {
   ];
 
   return (
-    <Flex direction="column" gap="5px" pt="5px" height="100%">
+    <Flex
+      direction="column"
+      gap="5px"
+      pt="5px"
+      height="100%"
+      ref={containerRef}
+    >
       <Box px="16px">
         Model: {params.model}, {result.summary.total} total (
         {result.summary.total - result.summary.added - result.summary.removed}{" "}
