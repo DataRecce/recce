@@ -41,3 +41,20 @@ export interface TopKDiffResult {
   base: TopKResult;
   current: TopKResult;
 }
+
+export interface HistogramDiffParams {
+  model: string;
+  column_name: string;
+  column_type: string;
+}
+
+export interface HistogramResult {
+  bin_edges: number[];
+  counts: number[];
+  labels: string[];
+}
+
+export interface HistogramDiffResult {
+  base: HistogramResult;
+  current: HistogramResult;
+}

@@ -27,6 +27,7 @@ export type RunType =
   | "row_count_diff"
   | "lineage_diff"
   | "top_k_diff"
+  | "histogram_diff"
   | string;
 
 export interface Run<PT = any, RT = any> {
