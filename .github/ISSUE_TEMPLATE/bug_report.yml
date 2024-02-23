@@ -1,7 +1,7 @@
 name: 🐞 Bug Report
 description: Report a bug or an issue you've found with recce
 title: "[Bug] <title>"
-labels: ["bug", "triage"]
+labels: ["bug", "triage", "linear"]
 body:
   - type: markdown
     attributes:
@@ -48,11 +48,11 @@ body:
         - dbt: (`dbt --version`)
 
       value: |
-        - recce: 
-        - OS: 
-        - Python: 
+        - recce:
+        - OS:
+        - Python:
         - Data Warehouse:
-        - dbt: 
+        - dbt:
   - type: textarea
     attributes:
       label: Additional Context
