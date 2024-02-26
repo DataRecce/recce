@@ -16,12 +16,12 @@ export function HistogramDiffEditView({
   const node = _.find(lineageGraph.lineageGraphSets?.all.nodes, {
     name: params?.model,
   });
-  const columns = node ? extractColumns(node).filter(c => c.type === 'BIGINT' || c.type === 'INTEGER' || c.type === 'DOUBLE') : [];
+  const columns = node ? extractColumns(node).filter(c => c.type === 'BIGINT' || c.type === 'INTEGER' || c.type === 'DOUBLE' || c.type === 'DATE') : [];
 
   return (
     <Box m="16px">
       <FormControl>
-        <FormLabel>Pick a column to show top-k</FormLabel>
+        <FormLabel>Pick a column to show Histogram Diff</FormLabel>
         <Select
           placeholder="Select column"
           value={params?.column_name}
