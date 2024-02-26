@@ -32,8 +32,6 @@ def generate_histogram_sql_integer(node, column, min_value, max_value, num_bins=
     bin_edges AS (
         SELECT
             bin,
-            ANY_VALUE(min_value) + (bin * ANY_VALUE(bin_size)) AS bin_start,
-            ANY_VALUE(min_value) + ((bin + 1) * ANY_VALUE(bin_size)) AS bin_end,
             COUNT(*) AS count
         FROM binned_values, bin_parameters
         GROUP BY bin
@@ -42,6 +40,42 @@ def generate_histogram_sql_integer(node, column, min_value, max_value, num_bins=
 
     SELECT bin, count FROM bin_edges
     """
+    return sql, bin_size
+
+
+def generate_histogram_sql_numeric(node, column, min_value, max_value, num_bins=50):
+    bin_size = (max_value - min_value) / num_bins
+    sql = f"""
+        WITH value_ranges AS (
+            SELECT
+                {min_value} as min_value,
+                {max_value} as max_value,
+        ),
+        bin_parameters AS (
+            SELECT
+                min_value,
+                max_value,
+                {bin_size} AS bin_size
+            FROM value_ranges
+        ),
+        binned_values AS (
+            SELECT
+                {column} as column_value,
+                FLOOR(({column} - (SELECT min_value FROM bin_parameters)) / (SELECT bin_size FROM bin_parameters)) AS bin
+            FROM {{{{ ref("{node}") }}}},
+            bin_parameters
+        ),
+        bin_edges AS (
+            SELECT
+                bin,
+                COUNT(*) AS count
+            FROM binned_values, bin_parameters
+            GROUP BY bin
+            ORDER BY bin
+        )
+
+        SELECT bin, count FROM bin_edges
+        """
     return sql, bin_size
 
 
@@ -66,13 +100,15 @@ class HistogramDiffTask(Task, QueryMixin):
         node = self.params['model']
         column = self.params['column_name']
         num_bins = self.params.get('num_bins', 50)
+        column_type = self.params['column_type']
 
         with adapter.connection_named("query"):
             self.connection = adapter.connections.get_thread_connection()
             min_max_sql = f"""
                 SELECT
                     MIN({column}) as min,
-                    MAX({column}) as max
+                    MAX({column}) as max,
+                    COUNT({column}) as total
                 FROM {{{{ ref("{node}") }}}}
                 """
             # Get the mix/max values from both the base and current environments
@@ -86,18 +122,26 @@ class HistogramDiffTask(Task, QueryMixin):
 
             min_value = None
             max_value = None
+            base_total = 0
+            curr_total = 0
 
             if min_max_base:
                 min_value = min_max_base[0][0]
                 max_value = min_max_base[0][1]
+                base_total = min_max_base[0][2]
             if min_max_curr:
                 min_value = min(min_value, min_max_curr[0][0])
                 max_value = max(max_value, min_max_curr[0][1])
+                curr_total = min_max_curr[0][2]
 
             # Get histogram data from both the base and current environments
-            if max_value - min_value < num_bins:
-                num_bins = int(max_value - min_value + 1)
-            histogram_sql, bin_size = generate_histogram_sql_integer(node, column, min_value, max_value, num_bins)
+
+            if column_type.lower() in ['integer', 'bigint', 'smallint']:
+                if max_value - min_value < num_bins:
+                    num_bins = int(max_value - min_value + 1)
+                histogram_sql, bin_size = generate_histogram_sql_integer(node, column, min_value, max_value, num_bins)
+            else:
+                histogram_sql, bin_size = generate_histogram_sql_numeric(node, column, min_value, max_value, num_bins)
 
             base = None
             if min_max_base:
@@ -117,9 +161,9 @@ class HistogramDiffTask(Task, QueryMixin):
                 finally:
                     self.check_cancel()
 
-            bin_edges = [None] * num_bins
-            labels = [""] * num_bins
-            for i in range(num_bins):
+            bin_edges = [None] * (num_bins + 1)
+            labels = [""] * (num_bins + 1)
+            for i in range(num_bins + 1):
                 val = int(min_value) + i * bin_size
                 bin_edges[i] = val
                 labels[i] = f"{val}-{val + bin_size}"
@@ -131,11 +175,15 @@ class HistogramDiffTask(Task, QueryMixin):
                     count = row[1]
                     if bin is not None:
                         i = int(bin)
-                        counts[i] = count
+                        if i < num_bins:
+                            counts[i] = count
+                        else:
+                            counts[num_bins - 1] += count
                 result['base'] = {
                     'bin_edges': bin_edges,
                     'counts': counts,
                     'labels': labels,
+                    'total': base_total,
                 }
             if curr is not None:
                 counts = [0] * num_bins
@@ -144,12 +192,19 @@ class HistogramDiffTask(Task, QueryMixin):
                     count = row[1]
                     if bin is not None:
                         i = int(bin)
-                        counts[i] = count
+                        if i < num_bins:
+                            counts[i] = count
+                        else:
+                            counts[num_bins - 1] += count
                 result['current'] = {
                     'bin_edges': bin_edges,
                     'counts': counts,
                     'labels': labels,
+                    'total': curr_total,
                 }
+
+            result['min'] = min_value
+            result['max'] = max_value
         return result
 
     def cancel(self):

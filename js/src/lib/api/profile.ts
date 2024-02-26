@@ -52,9 +52,12 @@ export interface HistogramResult {
   bin_edges: number[];
   counts: number[];
   labels: string[];
+  total: number;
 }
 
 export interface HistogramDiffResult {
   base: HistogramResult;
   current: HistogramResult;
+  min: number;
+  max: number;
 }

@@ -9,6 +9,8 @@ interface HistogramDiffResultViewProp extends RunResultViewProps<HistogramDiffPa
 export function HistogramDiffResultView({ run }: HistogramDiffResultViewProp) {
   const base = run.result?.base;
   const current = run.result?.current;
+  const min = run.result?.min;
+  const max = run.result?.max;
 
   if (!base || !current) {
     return <div>Loading...</div>;
@@ -23,6 +25,9 @@ export function HistogramDiffResultView({ run }: HistogramDiffResultViewProp) {
           <HistogramChart data={{
             type: run.params?.column_type || '',
             histogram: base,
+            min: min,
+            max: max,
+            samples: base.total,
           }} />
         </Box>
         <Box w="40%" h="300px" m={4}>
@@ -30,6 +35,9 @@ export function HistogramDiffResultView({ run }: HistogramDiffResultViewProp) {
           <HistogramChart data={{
             type: run.params?.column_type || '',
             histogram: current,
+            min: min,
+            max: max,
+            samples: current.total,
           }} />
         </Box>
         <Spacer />

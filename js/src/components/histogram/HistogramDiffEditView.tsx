@@ -16,7 +16,7 @@ export function HistogramDiffEditView({
   const node = _.find(lineageGraph.lineageGraphSets?.all.nodes, {
     name: params?.model,
   });
-  const columns = node ? extractColumns(node).filter(c => c.type === 'BIGINT' || c.type === 'INTEGER') : [];
+  const columns = node ? extractColumns(node).filter(c => c.type === 'BIGINT' || c.type === 'INTEGER' || c.type === 'DOUBLE') : [];
 
   return (
     <Box m="16px">
