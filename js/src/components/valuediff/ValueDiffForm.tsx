@@ -10,11 +10,36 @@ import {
 
 import { Select } from "chakra-react-select";
 import { useLineageGraphsContext } from "@/lib/hooks/LineageGraphContext";
-import { LineageGraphNode, NodeData } from "../lineage/lineage";
+import { LineageGraphNode, NodeColumnData, NodeData } from "../lineage/lineage";
 import _ from "lodash";
 import { useEffect, useState } from "react";
 
 interface ValueDiffFormProp extends RunFormProps<ValueDiffParams> {}
+
+export function extractColumns(node: LineageGraphNode) {
+  function getColumns(nodeData: NodeData) {
+    return nodeData && nodeData.columns
+      ? Object.values(nodeData.columns)
+      : [];
+  }
+
+  const baseColumns = getColumns(node.data.base!!);
+  const currentColumns = getColumns(node.data.current!!);
+
+  const union: NodeColumnData[] = [];
+  baseColumns.forEach((column) => {
+    if (!union.some( (c) => c.name === column.name)) {
+      union.push(column);
+    }
+  });
+  currentColumns.forEach((column) => {
+    if (!union.some((c) => c.name === column.name)) {
+      union.push(column);
+    }
+  });
+
+  return union;
+}
 
 export function extractColumnNames(node: LineageGraphNode) {
   function getNames(nodeData: NodeData) {

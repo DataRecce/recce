@@ -160,9 +160,9 @@ def query_numeric_histogram(task, node, column, column_type, min_value, max_valu
 
 def query_datetime_histogram(task, node, column, min_value, max_value):
     days_delta = (max_value - min_value).days
-    _type = None
+    # _type = None
     if days_delta > 365 * 4:
-        _type = 'yearly'
+        # _type = 'yearly'
         dmin = date(min_value.year, 1, 1)
         if max_value.year < 3000:
             dmax = date(max_value.year, 1, 1) + relativedelta(years=+1)
@@ -182,7 +182,7 @@ def query_datetime_histogram(task, node, column, min_value, max_value):
         ORDER BY year
         """
     elif days_delta > 60:
-        _type = "monthly"
+        # _type = "monthly"
         interval = relativedelta(months=+1)
         dmin = date(min_value.year, min_value.month, 1)
         if max_value.year < 3000:
@@ -202,7 +202,7 @@ def query_datetime_histogram(task, node, column, min_value, max_value):
         ORDER BY month
         """
     else:
-        _type = "daily"
+        # _type = "daily"
         interval = relativedelta(days=+1)
         dmin = date(min_value.year, min_value.month, min_value.day)
         if max_value.year < 3000:

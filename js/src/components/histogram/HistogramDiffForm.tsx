@@ -1,13 +1,13 @@
 import { HistogramDiffParams } from "@/lib/api/profile"
-import { RunEditViewProps } from "../run/types"
+import { RunFormProps } from "../run/types"
 import { useLineageGraphsContext } from "@/lib/hooks/LineageGraphContext";
 import _ from "lodash";
-import { extractColumns } from "../valuediff/ValueDiffEditView";
+import { extractColumns } from "../valuediff/ValueDiffForm";
 import { Box, FormControl, FormLabel, Select } from "@chakra-ui/react";
 
-interface HistogramDiffEditProps extends RunEditViewProps<HistogramDiffParams> {}
+interface HistogramDiffEditProps extends RunFormProps<HistogramDiffParams> {}
 
-export function HistogramDiffEditView({
+export function HistogramDiffForm({
   params,
   onParamsChanged,
   setIsReadyToExecute,
@@ -16,7 +16,8 @@ export function HistogramDiffEditView({
   const node = _.find(lineageGraph.lineageGraphSets?.all.nodes, {
     name: params?.model,
   });
-  const columns = node ? extractColumns(node).filter(c => c.type === 'BIGINT' || c.type === 'INTEGER' || c.type === 'DOUBLE' || c.type === 'DATE') : [];
+  const columns = node ? extractColumns(node).filter(
+    c => c.type === 'BIGINT' || c.type === 'INTEGER' || c.type === 'DOUBLE' || c.type === 'DATE') : [];
 
   return (
     <Box m="16px">

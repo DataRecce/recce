@@ -49,6 +49,8 @@ import { formatDistanceToNow } from "date-fns";
 import { LineageDiffView } from "./LineageDiffView";
 import { TopKDiffResultView } from "../top-k/TopKDiffResultView";
 import { ValueDiffDetailResultView } from "../valuediff/ValueDiffDetailResultView";
+import { hi } from "date-fns/locale";
+import { HistogramDiffResultView } from "../histogram/HistogramDiffResultView";
 
 interface CheckDetailProps {
   checkId: string;
@@ -62,6 +64,7 @@ const typeResultViewMap: { [key: string]: any } = {
   profile_diff: ProfileDiffResultView,
   row_count_diff: RowCountDiffResultView,
   top_k_diff: TopKDiffResultView,
+  histogram_diff: HistogramDiffResultView,
 };
 
 const useCancelOnUnmount = ({
