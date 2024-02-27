@@ -1,22 +1,49 @@
 import { SmallCloseIcon } from "@chakra-ui/icons";
-import { Box, Button, ButtonGroup, HStack, Icon, IconButton, SlideFade, StackDivider } from "@chakra-ui/react";
+import {
+  Box,
+  Button,
+  ButtonGroup,
+  HStack,
+  Icon,
+  IconButton,
+  SlideFade,
+  StackDivider,
+} from "@chakra-ui/react";
 import { LineageGraphNode } from "./lineage";
 import { FetchSelectedNodesRowCountButton } from "./NodeTag";
 import { MdOutlineSchema } from "react-icons/md";
-import { createCheckByNodeSchema, createCheckByRun, createLineageDiffCheck } from "@/lib/api/checks";
+import {
+  createCheckByNodeSchema,
+  createCheckByRun,
+  createLineageDiffCheck,
+} from "@/lib/api/checks";
 import { useLocation } from "wouter";
 import { FiAlignLeft } from "react-icons/fi";
 import { useRowCountQueries } from "@/lib/api/models";
 import { TbBrandStackshare } from "react-icons/tb";
+import { useLineageViewContext } from "./LineageViewContext";
+import { ValueDiffParams } from "@/lib/api/valuediff";
+import { RunType } from "@/lib/api/types";
 
 export interface NodeSelectorProps {
   viewMode: string;
   nodes: LineageGraphNode[];
   isOpen: boolean;
   onClose: () => void;
+  submitRuns: (
+    nodes: LineageGraphNode[],
+    type: RunType,
+    params: (node: LineageGraphNode) => any
+  ) => Promise<void>;
 }
 
-function AddSchemaChangesCheckButton({ nodes, onFinish }: { nodes: LineageGraphNode[], onFinish: () => void }) {
+function AddSchemaChangesCheckButton({
+  nodes,
+  onFinish,
+}: {
+  nodes: LineageGraphNode[];
+  onFinish: () => void;
+}) {
   const [, setLocation] = useLocation();
   return (
     <Button
@@ -30,9 +57,11 @@ function AddSchemaChangesCheckButton({ nodes, onFinish }: { nodes: LineageGraphN
           check = await createCheckByNodeSchema(nodes[0].id);
         } else {
           // TODO: Implement new type of check for multiple schema changes (RC-102)
-          await Promise.all(nodes.map(async (node) => {
-            await createCheckByNodeSchema(node.id);
-          }));
+          await Promise.all(
+            nodes.map(async (node) => {
+              await createCheckByNodeSchema(node.id);
+            })
+          );
         }
         onFinish();
         if (check) {
@@ -40,16 +69,25 @@ function AddSchemaChangesCheckButton({ nodes, onFinish }: { nodes: LineageGraphN
         } else {
           setLocation(`/checks`);
         }
-      }}>
+      }}
+    >
       <Icon as={MdOutlineSchema} />
       Add schema check
     </Button>
   );
 }
 
-function AddRowCountCheckButton({ nodes, onFinish }: { nodes: LineageGraphNode[], onFinish: () => void }) {
+function AddRowCountCheckButton({
+  nodes,
+  onFinish,
+}: {
+  nodes: LineageGraphNode[];
+  onFinish: () => void;
+}) {
   const [, setLocation] = useLocation();
-  const { isLoading, fetchFn: fetchRowCountFn } = useRowCountQueries(nodes.map((node) => node.name));
+  const { isLoading, fetchFn: fetchRowCountFn } = useRowCountQueries(
+    nodes.map((node) => node.name)
+  );
 
   return (
     <Button
@@ -75,7 +113,17 @@ function AddRowCountCheckButton({ nodes, onFinish }: { nodes: LineageGraphNode[]
   );
 }
 
-export function AddLineageDiffCheckButton({ viewMode, nodes, onFinish, withIcon }: { viewMode: string, nodes: LineageGraphNode[], onFinish: () => void, withIcon?: boolean}) {
+export function AddLineageDiffCheckButton({
+  viewMode,
+  nodes,
+  onFinish,
+  withIcon,
+}: {
+  viewMode: string;
+  nodes: LineageGraphNode[];
+  onFinish: () => void;
+  withIcon?: boolean;
+}) {
   const [, setLocation] = useLocation();
   return (
     <Button
@@ -93,56 +141,120 @@ export function AddLineageDiffCheckButton({ viewMode, nodes, onFinish, withIcon 
         }
       }}
     >
-      {withIcon && <Icon as={TbBrandStackshare}/>}
+      {withIcon && <Icon as={TbBrandStackshare} />}
       Add lineage diff check
     </Button>
   );
 }
 
-export function NodeSelector({ viewMode, nodes, isOpen, onClose }: NodeSelectorProps) {
+export function AddValueDiffButton({
+  viewMode,
+  nodes,
+  onFinish,
+  withIcon,
+  submitRuns,
+}: {
+  viewMode: string;
+  nodes: LineageGraphNode[];
+  onFinish: () => void;
+  withIcon?: boolean;
+  submitRuns: NodeSelectorProps["submitRuns"];
+}) {
+  const [, setLocation] = useLocation();
+
+  return (
+    <Button
+      size="xs"
+      variant="outline"
+      isDisabled={nodes.length === 0}
+      onClick={async () => {
+        try {
+          await submitRuns(nodes, "value_diff", (node) => {
+            const primaryKey = node.data?.current?.columns
+              ? Object.values(node.data.current.columns)[0].name
+              : "";
+            const params: Partial<ValueDiffParams> = {
+              model: node.name,
+              primary_key: primaryKey,
+            };
+
+            return params;
+          });
+        } finally {
+          onFinish();
+        }
+      }}
+    >
+      {withIcon && <Icon as={TbBrandStackshare} />}
+      Add value diff
+    </Button>
+  );
+}
+
+export function NodeSelector({
+  viewMode,
+  nodes,
+  isOpen,
+  onClose,
+  submitRuns,
+}: NodeSelectorProps) {
   function countSelectedNodes(nodes: LineageGraphNode[]) {
     return nodes.filter((node) => node.isSelected).length;
   }
   const selectedNodes = nodes.filter((node) => node.isSelected);
-  return (<>
-    <SlideFade in={isOpen} style={{ zIndex: 10 }}>
-      <Box
-        bg="white"
-        rounded="md"
-        shadow="dark-lg"
-      >
-        <HStack
-        p="5px 15px"
-        mt="4"
-        divider={<StackDivider borderColor='gray.200' />}
-        spacing={4}
-        >
-          <ButtonGroup size="xs" isAttached variant='outline' rounded="xs" onClick={onClose}>
-            <Button >{countSelectedNodes(nodes)} selected</Button>
-            <IconButton aria-label='Exit select Mode' icon={<SmallCloseIcon />} />
-          </ButtonGroup>
-          <HStack>
-            <FetchSelectedNodesRowCountButton
-              nodes={selectedNodes.length > 0 ? selectedNodes: []}
-              onFinish={onClose}
-            />
-            <AddSchemaChangesCheckButton
-              nodes={selectedNodes.length > 0 ? selectedNodes: []}
-              onFinish={onClose}
-            />
-            <AddRowCountCheckButton
-              nodes={selectedNodes.length > 0 ? selectedNodes: []}
-              onFinish={onClose}
-            />
-            <AddLineageDiffCheckButton
-              viewMode={viewMode}
-              nodes={selectedNodes.length > 0 ? selectedNodes: []}
-              onFinish={onClose}
-              withIcon={true}
-            />
+  return (
+    <>
+      <SlideFade in={isOpen} style={{ zIndex: 10 }}>
+        <Box bg="white" rounded="md" shadow="dark-lg">
+          <HStack
+            p="5px 15px"
+            mt="4"
+            divider={<StackDivider borderColor="gray.200" />}
+            spacing={4}
+          >
+            <ButtonGroup
+              size="xs"
+              isAttached
+              variant="outline"
+              rounded="xs"
+              onClick={onClose}
+            >
+              <Button>{countSelectedNodes(nodes)} selected</Button>
+              <IconButton
+                aria-label="Exit select Mode"
+                icon={<SmallCloseIcon />}
+              />
+            </ButtonGroup>
+            <HStack>
+              <FetchSelectedNodesRowCountButton
+                nodes={selectedNodes.length > 0 ? selectedNodes : []}
+                onFinish={onClose}
+              />
+              <AddSchemaChangesCheckButton
+                nodes={selectedNodes.length > 0 ? selectedNodes : []}
+                onFinish={onClose}
+              />
+              <AddRowCountCheckButton
+                nodes={selectedNodes.length > 0 ? selectedNodes : []}
+                onFinish={onClose}
+              />
+              <AddLineageDiffCheckButton
+                viewMode={viewMode}
+                nodes={selectedNodes.length > 0 ? selectedNodes : []}
+                onFinish={onClose}
+                withIcon={true}
+              />
+              <AddValueDiffButton
+                viewMode={viewMode}
+                nodes={selectedNodes.length > 0 ? selectedNodes : []}
+                onFinish={onClose}
+                withIcon={true}
+                submitRuns={submitRuns}
+              />
+            </HStack>
           </HStack>
-        </HStack>
-      </Box>
-    </SlideFade>
-  </>);
+        </Box>
+      </SlideFade>
+    </>
+  );
 }

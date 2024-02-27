@@ -2,6 +2,7 @@ import { PUBLIC_API_URL } from "../../lib/const";
 import {
   LineageGraph,
   LineageGraphNode,
+  LineageGraphNode,
   cleanUpSelectedNodes,
   highlightPath,
   selectDownstream,
@@ -32,7 +33,7 @@ import {
   MenuItem,
   Center,
 } from "@chakra-ui/react";
-import React, { useEffect, useState } from "react";
+import React, { useCallback, useEffect, useState } from "react";
 import ReactFlow, {
   Node,
   Edge,
@@ -52,14 +53,26 @@ import { GraphNode } from "./GraphNode";
 import GraphEdge from "./GraphEdge";
 import { getIconForChangeStatus } from "./styles";
 import { FiRefreshCw, FiList, FiCopy } from "react-icons/fi";
-import { BiArrowFromBottom, BiArrowToBottom, BiSelectMultiple } from "react-icons/bi";
+import {
+  BiArrowFromBottom,
+  BiArrowToBottom,
+  BiSelectMultiple,
+} from "react-icons/bi";
 import { NodeView } from "./NodeView";
 import { toBlob } from "html-to-image";
 import { useLineageGraphsContext } from "@/lib/hooks/LineageGraphContext";
 import SummaryView from "../summary/SummaryView";
 import { AddLineageDiffCheckButton, NodeSelector } from "./NodeSelector";
-import { IGNORE_SCREENSHOT_CLASS, copyBlobToClipboard, useToBlob } from "@/lib/hooks/ScreenShot";
+import {
+  IGNORE_SCREENSHOT_CLASS,
+  copyBlobToClipboard,
+  useToBlob,
+} from "@/lib/hooks/ScreenShot";
 import { useClipBoardToast } from "@/lib/hooks/useClipBoardToast";
+import { LineageViewContext } from "./LineageViewContext";
+import { submitRun } from "@/lib/api/runs";
+import { submitRuns } from "./multi-nodes-runner";
+import { renderRowCountTag } from "./NodeTag";
 
 export interface LineageViewProps {
   viewMode?: "changed_models" | "all";
@@ -68,7 +81,6 @@ export interface LineageViewProps {
   height?: number;
   filterNodes?: (key: string, node: LineageGraphNode) => boolean;
 }
-
 
 const layout = (nodes: Node[], edges: Edge[], direction = "LR") => {
   const dagreGraph = new dagre.graphlib.Graph();
@@ -162,7 +174,10 @@ function _LineageView({ ...props }: LineageViewProps) {
     backgroundColor: "white",
     ignoreElements: (element: Element) => {
       const className = element.className;
-      if (typeof className === 'string' && className.includes(IGNORE_SCREENSHOT_CLASS)){
+      if (
+        typeof className === "string" &&
+        className.includes(IGNORE_SCREENSHOT_CLASS)
+      ) {
         return true;
       }
       return false;
@@ -214,7 +229,11 @@ function _LineageView({ ...props }: LineageViewProps) {
 
     if (typeof props.filterNodes === "function") {
       const filterFn = props.filterNodes ? props.filterNodes : () => true;
-      lineageGraph.nodes = Object.fromEntries(Object.entries(lineageGraph.nodes).filter(([key, node]) => filterFn(key, node)));
+      lineageGraph.nodes = Object.fromEntries(
+        Object.entries(lineageGraph.nodes).filter(([key, node]) =>
+          filterFn(key, node)
+        )
+      );
     }
 
     const [nodes, edges] = toReactflow(
@@ -237,7 +256,7 @@ function _LineageView({ ...props }: LineageViewProps) {
       observer.observe(ref.current);
     }
     return () => observer.disconnect();
-  },[ref, isDetailViewShown, fitView]);
+  }, [ref, isDetailViewShown, fitView]);
 
   const onNodeMouseEnter = (event: React.MouseEvent, node: Node) => {
     if (lineageGraph && modifiedSet !== undefined) {
@@ -273,13 +292,31 @@ function _LineageView({ ...props }: LineageViewProps) {
     closeContextMenu();
     if (selectMode === "detail") {
       setDetailViewSelected(node.id);
-      if (!isDetailViewShown) { setIsDetailViewShown(true); }
+      if (!isDetailViewShown) {
+        setIsDetailViewShown(true);
+      }
       setNodes(selectSingleNode(node.id, nodes));
     } else {
       setNodes(selectNode(node.id, nodes));
     }
   };
 
+  const handleSubmitRuns = useCallback(
+    async (
+      nodes: LineageGraphNode[],
+      type: string,
+      getParams: (node: LineageGraphNode) => any
+    ) => {
+      if (!nodes || nodes.length === 0) {
+        return;
+      }
+
+      await submitRuns(nodes, type, getParams, (node, run) => {
+        console.log(node, run);
+      });
+    },
+    [props]
+  );
   if (isLoading) {
     return (
       <Flex
@@ -389,27 +426,36 @@ function _LineageView({ ...props }: LineageViewProps) {
           nodesDraggable={props.interactive}
           ref={ref}
         >
-          <Background color="#ccc"/>
-          <Controls showInteractive={false} position="top-right" className={IGNORE_SCREENSHOT_CLASS}>
-            {props.interactive && (<>
-              <ControlButton
-                title="switch mode"
-                onClick={() => {
-                  setViewMode(viewMode === "all" ? "changed_models" : "all");
-                  const newNodes = cleanUpSelectedNodes(nodes);
-                  setNodes(newNodes);
-                }}
-              >
-                <Icon as={FiRefreshCw} />
-              </ControlButton>
+          <Background color="#ccc" />
+          <Controls
+            showInteractive={false}
+            position="top-right"
+            className={IGNORE_SCREENSHOT_CLASS}
+          >
+            {props.interactive && (
+              <>
+                <ControlButton
+                  title="switch mode"
+                  onClick={() => {
+                    setViewMode(viewMode === "all" ? "changed_models" : "all");
+                    const newNodes = cleanUpSelectedNodes(nodes);
+                    setNodes(newNodes);
+                  }}
+                >
+                  <Icon as={FiRefreshCw} />
+                </ControlButton>
 
-              <ControlButton title="summary" onClick={onOpen}>
-                <Icon as={FiList} />
-              </ControlButton>
-            </>)}
+                <ControlButton title="summary" onClick={onOpen}>
+                  <Icon as={FiList} />
+                </ControlButton>
+              </>
+            )}
             <ControlButton
               title="copy image"
-              onClick={() => {toImage()}}>
+              onClick={() => {
+                toImage();
+              }}
+            >
               <Icon as={FiCopy} />
             </ControlButton>
           </Controls>
@@ -417,7 +463,12 @@ function _LineageView({ ...props }: LineageViewProps) {
             <HStack>
               <ChangeStatusLegend />
               {props.interactive && (
-                <Box p={2} flex="0 1 160px" fontSize="14px" className={IGNORE_SCREENSHOT_CLASS}>
+                <Box
+                  p={2}
+                  flex="0 1 160px"
+                  fontSize="14px"
+                  className={IGNORE_SCREENSHOT_CLASS}
+                >
                   <Text color="gray" mb="2px">
                     Actions
                   </Text>
@@ -461,6 +512,7 @@ function _LineageView({ ...props }: LineageViewProps) {
                 const newNodes = cleanUpSelectedNodes(nodes);
                 setNodes(newNodes);
               }}
+              submitRuns={handleSubmitRuns}
             />
           </Panel>
           <MiniMap nodeColor={nodeColor} nodeStrokeWidth={3} />
@@ -475,18 +527,20 @@ function _LineageView({ ...props }: LineageViewProps) {
           </ModalBody>
         </ModalContent>
       </Modal>
-      {selectMode === "detail" && detailViewSelected && lineageGraph?.nodes[detailViewSelected] && (
-        <Box flex="0 0 500px" borderLeft="solid 1px lightgray" height="100%">
-          <NodeView
-            node={lineageGraph?.nodes[detailViewSelected]}
-            onCloseNode={() => {
-              setDetailViewSelected(undefined);
-              setIsDetailViewShown(false);
-              setNodes(cleanUpSelectedNodes(nodes));
-            }}
-          />
-        </Box>
-      )}
+      {selectMode === "detail" &&
+        detailViewSelected &&
+        lineageGraph?.nodes[detailViewSelected] && (
+          <Box flex="0 0 500px" borderLeft="solid 1px lightgray" height="100%">
+            <NodeView
+              node={lineageGraph?.nodes[detailViewSelected]}
+              onCloseNode={() => {
+                setDetailViewSelected(undefined);
+                setIsDetailViewShown(false);
+                setNodes(cleanUpSelectedNodes(nodes));
+              }}
+            />
+          </Box>
+        )}
       {isContextMenuRendered && (
         // Only render context menu when select mode is action
         <Menu isOpen={true} onClose={closeContextMenu}>
@@ -520,7 +574,7 @@ export default function LineageView({ ...props }: LineageViewProps) {
   }
   return (
     <ReactFlowProvider>
-      <_LineageView {...props}/>
+      <_LineageView {...props} />
     </ReactFlowProvider>
   );
 }
