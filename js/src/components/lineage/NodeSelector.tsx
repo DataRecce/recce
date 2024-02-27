@@ -129,6 +129,7 @@ export function AddLineageDiffCheckButton({
     <Button
       size="xs"
       variant="outline"
+      backgroundColor="white"
       isDisabled={nodes.length === 0}
       onClick={async () => {
         const nodeIds = nodes.map((node) => node.id);

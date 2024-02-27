@@ -1,7 +1,7 @@
 import { Run } from "@/lib/api/types";
 import { ValueDiffResult } from "@/lib/api/valuediff";
-import { CircularProgress } from "@chakra-ui/react";
-import { Link } from "wouter";
+import { ExternalLinkIcon } from "@chakra-ui/icons";
+import { Box, CircularProgress, Flex, Link } from "@chakra-ui/react";
 
 interface RunTagProps {
   run: Run;
@@ -37,11 +37,23 @@ export const RunTag = ({ run }: RunTagProps) => {
     }
 
     return (
-      <Link href={`/runs/${run_id}`}>
-        {mismatched}/{total}
-      </Link>
+      <Flex
+        fontSize="10pt"
+        color={mismatched > 0 ? "red" : "green"}
+        alignItems="center"
+        gap="3px"
+      >
+        <Box>
+          {mismatched > 0
+            ? `${mismatched} columns mismatched`
+            : "All columns match"}
+        </Box>
+        <Link href={window.location.origin + `#!/runs/${run_id}`}>
+          <ExternalLinkIcon cursor="pointer" />
+        </Link>
+      </Flex>
     );
   }
 
-  return <>{run_id}xx</>;
+  return <>{run_id}</>;
 };

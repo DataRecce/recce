@@ -37,6 +37,8 @@ import { createCheckByNodeSchema, createCheckByRun } from "@/lib/api/checks";
 import { useRowCountQueries } from "@/lib/api/models";
 import { useRecceActionContext } from "@/lib/hooks/RecceActionContext";
 import { RunTag } from "./RunTag";
+import { RunView } from "../run/RunView";
+import { ValueDiffResultView } from "../valuediff/ValueDiffResultView";
 
 interface NodeViewProps {
   node: LineageGraphNode;
@@ -111,16 +113,21 @@ export function NodeView({ node, onCloseNode }: NodeViewProps) {
         <HStack spacing={"8px"}>
           <ResourceTypeTag node={node} />
           {node.resourceType === "model" && <RowCountTag node={node} />}
-          {node.run && <RunTag run={node.run} />}
         </HStack>
       </Box>
       {withColumns && (
         <>
           <Tabs overflow="auto" as={Flex}>
             <TabList>
+              {node.run && <Tab>Run</Tab>}
               <Tab>Columns</Tab>
             </TabList>
             <TabPanels overflow="auto" height="calc(100% - 42px)">
+              {node.run && node.run.type === "value_diff" && (
+                <TabPanel p={0} overflowY="auto" height="100%">
+                  <RunView run={node.run} RunResultView={ValueDiffResultView} />
+                </TabPanel>
+              )}
               <TabPanel p={0} overflowY="auto" height="100%">
                 <SchemaView base={node.data.base} current={node.data.current} />
               </TabPanel>

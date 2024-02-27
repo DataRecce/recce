@@ -312,6 +312,10 @@ function _LineageView({ ...props }: LineageViewProps) {
       }
 
       await submitRuns(nodes, type, getParams, (node, run) => {
+        const n = lineageGraph?.nodes[node.id];
+        if (n) {
+          n.run = run;
+        }
         node.run = run;
 
         setNodes((prevNodes) => {
@@ -490,6 +494,7 @@ function _LineageView({ ...props }: LineageViewProps) {
                     <Button
                       size="xs"
                       variant="outline"
+                      backgroundColor="white"
                       isDisabled={selectMode === "action"}
                       onClick={() => {
                         const newMode =

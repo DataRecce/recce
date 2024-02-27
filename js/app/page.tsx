@@ -26,6 +26,7 @@ import { useHashLocation } from "@/lib/hooks/useHashLocation";
 import { ThemeProvider, createTheme } from "@mui/material";
 import { useLineageGraphsContext } from "@/lib/hooks/LineageGraphContext";
 import { InfoIcon } from "@chakra-ui/icons";
+import { RunPage } from "@/components/run/RunPage";
 
 function getCookie(key: string) {
   var b = document.cookie.match("(^|;)\\s*" + key + "\\s*=\\s*([^;]+)");
@@ -148,6 +149,11 @@ export default function Home() {
                     </Route>
                     <Route path="/checks/:slug*">
                       <CheckPage />
+                    </Route>
+                    <Route path="/runs/:runId">
+                      {({ runId }) => {
+                        return <RunPage runId={runId} />;
+                      }}
                     </Route>
                     <Route path="/ssr">
                       <>Loading</>
