@@ -25,7 +25,9 @@ class RecceState(BaseModel):
     checks: List[Check] = []
 
     def store(self, file_path):
-        self.metadata = RecceStateMetadata()
+        # TODO: show metadata update here?
+        if self.metadata is None:
+            self.metadata = RecceStateMetadata()
         start_time = time.time()
         logger.info(f"Store recce state to '{file_path}'")
         json_data = self.json()

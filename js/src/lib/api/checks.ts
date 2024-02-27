@@ -89,3 +89,8 @@ export async function reorderChecks(order: {
 }) {
   return await axiosClient.post("/api/checks/reorder", order);
 }
+
+export async function exportChecks(): Promise<string> {
+    const response = await axiosClient.post("/api/checks/export");
+    return response.data;
+}

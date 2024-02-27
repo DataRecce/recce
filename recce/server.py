@@ -39,8 +39,8 @@ async def lifespan(fastapi: FastAPI):
     ctx.start_monitor_artifacts(callback=dbt_artifacts_updated_callback)
 
     yield
-    if state_file:
-        default_recce_state().store(state_file)
+    if state.state_file:
+        default_recce_state().store(state.state_file)
 
     ctx.stop_monitor_artifacts()
 

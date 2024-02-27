@@ -3,6 +3,7 @@ import React, { useCallback, useEffect, useState } from "react";
 import {
   Check,
   createSimpleCheck,
+  exportChecks,
   listChecks,
   reorderChecks,
 } from "@/lib/api/checks";
@@ -22,7 +23,12 @@ import { cacheKeys } from "@/lib/api/cacheKeys";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import _ from "lodash";
 import { Route, Switch, useLocation, useRoute } from "wouter";
-import { AddIcon, CopyIcon } from "@chakra-ui/icons";
+import {
+  AddIcon,
+  AttachmentIcon,
+  CopyIcon,
+  DownloadIcon,
+} from "@chakra-ui/icons";
 import { CheckList } from "./CheckList";
 import { DropResult } from "@hello-pangea/dnd";
 import { useClipBoardToast } from "@/lib/hooks/useClipBoardToast";
@@ -141,7 +147,6 @@ export const CheckPage = () => {
               <IconButton
                 variant="unstyled"
                 aria-label="Copy checklist to the clipboard"
-                mr="10px"
                 onClick={async () => {
                   const markdown = buildMarkdown(checks);
                   if (!navigator.clipboard) {
@@ -163,6 +168,26 @@ export const CheckPage = () => {
                   }
                 }}
                 icon={<CopyIcon />}
+              />
+            </Tooltip>
+            <Tooltip label="Export checklist">
+              <IconButton
+                variant="unstyled"
+                aria-label="Export checks"
+                onClick={async () => {
+                  const file = await exportChecks();
+                  successToast(`Export state file '${file}' successfully`);
+                }}
+                icon={<DownloadIcon />}
+              />
+            </Tooltip>
+            <Tooltip label="Load checklist">
+              <IconButton
+                variant="unstyled"
+                aria-label="Load checks"
+                mr="10px"
+                // onClick={}
+                icon={<AttachmentIcon />}
               />
             </Tooltip>
           </HStack>

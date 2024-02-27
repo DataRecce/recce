@@ -228,3 +228,25 @@ async def reorder_handler(order: ReorderChecksIn):
         CheckDAO().reorder(order.source, order.destination)
     except RecceException as e:
         raise HTTPException(status_code=400, detail=e.message)
+
+
+@check_router.post("/checks/export", status_code=200)
+async def export_handler():
+    from ..server import app, AppState
+    from ..models.state import RecceState, recce_state
+
+    try:
+        state = RecceState()
+        state.checks = CheckDAO().state.checks
+        state.runs = RunDAO().state.runs
+        timestamp = datetime.now().strftime("%Y-%m-%d-%H-%M-%S")
+        file_path = f"state_{timestamp}.json"
+        state.store(file_path)
+
+        recce_state = state
+        app_state: AppState = app.state
+        app_state.state_file = file_path
+
+        return file_path
+    except RecceException as e:
+        raise HTTPException(status_code=400, detail=e.message)
