@@ -8,7 +8,7 @@
 
 [![InfuseAI Discord Invite](https://img.shields.io/discord/664381609771925514?color=%237289DA&label=chat&logo=discord&logoColor=white&style=flat-square)](https://discord.com/invite/5zb2aK9KBV)
 
-`Recce` is a PR review tool designed for DBT projects. It facilitates the comparison of results between two environments, such as development and production, and helps in identifying any differences.
+`Recce` is a PR review tool designed for dbt projects. It facilitates the comparison of results between two environments, such as development and production, and helps in identifying any differences.
 
 ## Features
 
@@ -32,7 +32,7 @@ Recce is primarily designed for PR Review purposes. However, it can be expanded 
 
 ## Prerequisites
 
-You have to have at least two [environments](https://docs.getdbt.com/docs/core/dbt-core-environments) in your dbt project. For example, one is for development and another is for production. You can prepare two targets with separate [schemas](https://docs.getdbt.com/docs/core/connect-data-platform/connection-profiles#understanding-target-schemas) in your DBT profile. Here is `profiles.yml` example
+You have to have at least two [environments](https://docs.getdbt.com/docs/core/dbt-core-environments) in your dbt project. For example, one is for development and another is for production. You can prepare two targets with separate [schemas](https://docs.getdbt.com/docs/core/connect-data-platform/connection-profiles#understanding-target-schemas) in your dbt profile. Here is `profiles.yml` example
 
 ```
 jaffle_shop:
@@ -58,7 +58,7 @@ jaffle_shop:
    pip install recce
    ```
 
-1. Go to your DBT project
+1. Go to your dbt project
    ```shell
    cd your-dbt-project/
    ```
@@ -94,7 +94,7 @@ jaffle_shop:
 
 Recce use dbt [artifacts](https://docs.getdbt.com/reference/artifacts/dbt-artifacts), which is generated when every invocation. You can find these files in the `target/` folder.
 
-| artifacts     | DBT command                        |
+| artifacts     | dbt command                        |
 | ------------- | ---------------------------------- |
 | manifest.json | `dbt docs generate`, `dbt run`, .. |
 | catalog.json  | `dbt docs generate`                |
