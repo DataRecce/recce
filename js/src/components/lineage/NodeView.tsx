@@ -36,6 +36,7 @@ import { useCallback } from "react";
 import { createCheckByNodeSchema, createCheckByRun } from "@/lib/api/checks";
 import { useRowCountQueries } from "@/lib/api/models";
 import { useRecceActionContext } from "@/lib/hooks/RecceActionContext";
+import { RunTag } from "./RunTag";
 
 interface NodeViewProps {
   node: LineageGraphNode;
@@ -110,6 +111,7 @@ export function NodeView({ node, onCloseNode }: NodeViewProps) {
         <HStack spacing={"8px"}>
           <ResourceTypeTag node={node} />
           {node.resourceType === "model" && <RowCountTag node={node} />}
+          {node.run && <RunTag run={node.run} />}
         </HStack>
       </Box>
       {withColumns && (

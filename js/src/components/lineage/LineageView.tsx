@@ -312,7 +312,21 @@ function _LineageView({ ...props }: LineageViewProps) {
       }
 
       await submitRuns(nodes, type, getParams, (node, run) => {
-        console.log(node, run);
+        node.run = run;
+
+        setNodes((prevNodes) => {
+          const newNodes = prevNodes.map((n) => {
+            if (n.id === node.id) {
+              return {
+                ...n,
+                data: node,
+              };
+            } else {
+              return n;
+            }
+          });
+          return newNodes;
+        });
       });
     },
     [props]

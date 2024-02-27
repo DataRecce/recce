@@ -16,7 +16,13 @@ export const submitRuns = async (
   for (const node of selectedNodes) {
     const params = getParams(node);
     const { run_id } = await submitRun(type, params, { nowait: true });
-    const run = await waitRun(run_id, 2 * 1000);
-    onRunUpdate(node, run);
+
+    while (true) {
+      const run = await waitRun(run_id, 2);
+      onRunUpdate(node, run);
+      if (run.result || run.error) {
+        break;
+      }
+    }
   }
 };

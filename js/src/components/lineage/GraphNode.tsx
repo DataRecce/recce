@@ -1,4 +1,12 @@
-import { Box, Flex, HStack, Icon, Spacer, Text, Tooltip } from "@chakra-ui/react";
+import {
+  Box,
+  Flex,
+  HStack,
+  Icon,
+  Spacer,
+  Text,
+  Tooltip,
+} from "@chakra-ui/react";
 import React from "react";
 
 import { Handle, NodeProps, Position, useStore } from "reactflow";
@@ -7,6 +15,7 @@ import { getIconForChangeStatus, getIconForResourceType } from "./styles";
 
 import "./styles.css";
 import { RowCountTag } from "./NodeTag";
+import { RunTag } from "./RunTag";
 
 interface GraphNodeProps extends NodeProps<LineageGraphNode> {}
 
@@ -45,13 +54,14 @@ export function GraphNode({ data }: GraphNodeProps) {
 
   const name = data?.name;
 
-  const highlightClassName = isHighlighted === true
-                              ? "node-highlight"
-                              : isSelected === true
-                              ? "node-highlight"
-                              : isHighlighted === false
-                              ? "node-unhighlight"
-                              : undefined
+  const highlightClassName =
+    isHighlighted === true
+      ? "node-highlight"
+      : isSelected === true
+      ? "node-highlight"
+      : isHighlighted === false
+      ? "node-unhighlight"
+      : undefined;
 
   return (
     <Tooltip
@@ -107,19 +117,22 @@ export function GraphNode({ data }: GraphNodeProps) {
               </Flex>
             )}
           </Flex>
-          {data.resourceType === "model" && (
+
           <Flex
-            flex='1 0 auto'
-            mx="1" direction="column"
+            flex="1 0 auto"
+            mx="1"
+            direction="column"
             paddingBottom="1"
             visibility={showContent ? "inherit" : "hidden"}
           >
             <HStack spacing={"8px"}>
               <Spacer />
-              <RowCountTag node={data} isInteractive={false}/>
+              {data.run && <RunTag run={data.run} />}
+              {data.resourceType === "model" && (
+                <RowCountTag node={data} isInteractive={false} />
+              )}
             </HStack>
           </Flex>
-          )}
         </Flex>
 
         {Object.keys(data?.parents ?? {}).length > 0 && (
