@@ -15,25 +15,30 @@ import {
   Flex,
   HStack,
   IconButton,
+  Modal,
+  ModalBody,
+  ModalCloseButton,
+  ModalContent,
+  ModalFooter,
+  ModalHeader,
+  ModalOverlay,
+  Text,
   Tooltip,
   VStack,
+  useDisclosure,
 } from "@chakra-ui/react";
 import { CheckDetail } from "./CheckDetail";
 import { cacheKeys } from "@/lib/api/cacheKeys";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import _ from "lodash";
 import { Route, Switch, useLocation, useRoute } from "wouter";
-import {
-  AddIcon,
-  AttachmentIcon,
-  CopyIcon,
-  DownloadIcon,
-} from "@chakra-ui/icons";
+import { AddIcon, CopyIcon, DownloadIcon } from "@chakra-ui/icons";
 import { CheckList } from "./CheckList";
 import { DropResult } from "@hello-pangea/dnd";
 import { useClipBoardToast } from "@/lib/hooks/useClipBoardToast";
 import { buildDescription, buildTitle } from "./check";
 import { stripIndent } from "common-tags";
+import CheckListUploadDashboard from "./CheckListUploader";
 
 export const CheckPage = () => {
   const [, setLocation] = useLocation();
@@ -41,6 +46,7 @@ export const CheckPage = () => {
   const queryClient = useQueryClient();
   const { successToast, failToast } = useClipBoardToast();
   const selectedItem = params?.checkId;
+  const { isOpen, onOpen, onClose } = useDisclosure();
 
   const {
     isLoading,
@@ -117,10 +123,28 @@ export const CheckPage = () => {
       <Center h="100%">
         <VStack>
           <Box>No checks</Box>
-          <Button colorScheme="blue" onClick={addToChecklist}>
-            Create a simple check
-          </Button>
+          <Flex gap="5">
+            <Button colorScheme="blue" onClick={addToChecklist}>
+              Create a simple check
+            </Button>
+            <Button onClick={onOpen}>Load a checklist</Button>
+          </Flex>
         </VStack>
+        <Modal isOpen={isOpen} onClose={onClose}>
+          <ModalOverlay />
+          <ModalContent>
+            <ModalHeader>Load Checklist</ModalHeader>
+            <ModalCloseButton />
+            <ModalBody>
+              <CheckListUploadDashboard />
+            </ModalBody>
+            <ModalFooter>
+              <Button colorScheme="blue" mr={3} onClick={onClose}>
+                Close
+              </Button>
+            </ModalFooter>
+          </ModalContent>
+        </Modal>
       </Center>
     );
   }
@@ -174,20 +198,12 @@ export const CheckPage = () => {
               <IconButton
                 variant="unstyled"
                 aria-label="Export checks"
+                mr="10px"
                 onClick={async () => {
                   const file = await exportChecks();
                   successToast(`Export state file '${file}' successfully`);
                 }}
                 icon={<DownloadIcon />}
-              />
-            </Tooltip>
-            <Tooltip label="Load checklist">
-              <IconButton
-                variant="unstyled"
-                aria-label="Load checks"
-                mr="10px"
-                // onClick={}
-                icon={<AttachmentIcon />}
               />
             </Tooltip>
           </HStack>
