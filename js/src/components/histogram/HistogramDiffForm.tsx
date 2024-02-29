@@ -5,6 +5,16 @@ import _ from "lodash";
 import { extractColumns } from "../valuediff/ValueDiffForm";
 import { Box, FormControl, FormLabel, Select } from "@chakra-ui/react";
 
+
+function isStringDataType(columnType: string) {
+  const stringDataTypes = [
+    "CHAR", "VARCHAR", "TINYTEXT", "TEXT", "MEDIUMTEXT", "LONGTEXT",
+    "NCHAR", "NVARCHAR", "VARCHAR2", "NVARCHAR2", "CLOB", "NCLOB",
+    "VARCHAR(MAX)", "XML", "JSON"
+  ];
+  return stringDataTypes.includes(columnType.toUpperCase());
+}
+
 interface HistogramDiffEditProps extends RunFormProps<HistogramDiffParams> {}
 
 export function HistogramDiffForm({
@@ -17,7 +27,7 @@ export function HistogramDiffForm({
     name: params?.model,
   });
   const columns = node ? extractColumns(node).filter(
-    c => c.type === 'BIGINT' || c.type === 'INTEGER' || c.type === 'DOUBLE' || c.type === 'DATE') : [];
+    c => !isStringDataType(c.type)) : [];
 
   return (
     <Box m="16px">

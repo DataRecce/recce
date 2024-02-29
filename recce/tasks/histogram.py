@@ -1,5 +1,5 @@
 import math
-from datetime import date
+from datetime import date, datetime
 from typing import TypedDict
 
 from dateutil.relativedelta import relativedelta
@@ -7,6 +7,27 @@ from dateutil.relativedelta import relativedelta
 from recce.dbt import default_dbt_context
 from recce.tasks import Task
 from recce.tasks.query import QueryMixin
+
+sql_datetime_types = [
+    "DATE", "DATETIME", "TIMESTAMP", "TIME",
+    "YEAR",  # Specific to MySQL/MariaDB
+    "DATETIME2", "SMALLDATETIME", "DATETIMEOFFSET",  # Specific to SQL Server
+    "INTERVAL",  # Common in PostgreSQL and Oracle
+    "TIMESTAMPTZ", "TIMETZ",  # Specific to PostgreSQL
+    "TIMESTAMP WITH TIME ZONE", "TIMESTAMP WITH LOCAL TIME ZONE",  # Oracle
+    "TIMESTAMP_LTZ", "TIMESTAMP_NTZ", "TIMESTAMP_TZ",  # Specific to Snowflake
+]
+
+sql_integer_types = [
+    "TINYINT", "SMALLINT", "MEDIUMINT", "INT", "INTEGER", "BIGINT",  # Common across most databases
+    "INT2", "INT4", "INT8",  # PostgreSQL specific aliases
+    "UNSIGNED BIG INT",  # SQLite specific
+    "NUMBER",  # Oracle, can be used as an integer with precision and scale
+    "NUMERIC",  # Generally available in many SQL databases, used with precision and scale
+    "SMALLSERIAL", "SERIAL", "BIGSERIAL",  # PostgreSQL auto-increment types
+    "IDENTITY", "SMALLIDENTITY", "BIGIDENTITY",  # SQL Server specific auto-increment types
+    "BYTEINT",  # Specific to Snowflake, for storing very small integers
+]
 
 
 def generate_histogram_sql_integer(node, column, min_value, max_value, num_bins=50):
@@ -90,7 +111,7 @@ class HistogramDiffParams(TypedDict):
 
 
 def query_numeric_histogram(task, node, column, column_type, min_value, max_value, num_bins=50):
-    if column_type.lower() in ['integer', 'bigint', 'smallint']:
+    if column_type.upper() in sql_integer_types:
         if max_value - min_value < num_bins:
             num_bins = int(max_value - min_value + 1)
         histogram_sql, bin_size = generate_histogram_sql_integer(node, column, min_value, max_value, num_bins)
@@ -160,9 +181,10 @@ def query_numeric_histogram(task, node, column, column_type, min_value, max_valu
 
 def query_datetime_histogram(task, node, column, min_value, max_value):
     days_delta = (max_value - min_value).days
+    print(max_value, min_value, days_delta)
     # _type = None
     if days_delta > 365 * 4:
-        # _type = 'yearly'
+        _type = 'yearly'
         dmin = date(min_value.year, 1, 1)
         if max_value.year < 3000:
             dmax = date(max_value.year, 1, 1) + relativedelta(years=+1)
@@ -171,7 +193,7 @@ def query_datetime_histogram(task, node, column, min_value, max_value):
         interval_years = math.ceil((dmax.year - dmin.year) / 50)
         interval = relativedelta(years=+interval_years)
         num_buckets = math.ceil((dmax.year - dmin.year) / interval.years)
-        bin_edges = [date(dmin.year + i * interval_years, 1, 1) for i in range(num_buckets + 1)]
+        bin_edges = [dmin + relativedelta(year=i) for i in range(num_buckets + 1)]
         sql = f"""
         SELECT
             {{{{ date_trunc("year", "{column}") }}}} as year,
@@ -182,7 +204,7 @@ def query_datetime_histogram(task, node, column, min_value, max_value):
         ORDER BY year
         """
     elif days_delta > 60:
-        # _type = "monthly"
+        _type = "monthly"
         interval = relativedelta(months=+1)
         dmin = date(min_value.year, min_value.month, 1)
         if max_value.year < 3000:
@@ -191,7 +213,7 @@ def query_datetime_histogram(task, node, column, min_value, max_value):
             dmax = date(3000, 1, 1)
         period = relativedelta(dmax, dmin)
         num_buckets = (period.years * 12 + period.months)
-        bin_edges = [date(dmin.year + i // 12, i % 12 + 1, 1) for i in range(num_buckets + 1)]
+        bin_edges = [dmin + relativedelta(months=i) for i in range(num_buckets + 1)]
         sql = f"""
         SELECT
             {{{{ date_trunc("month", "{column}") }}}} as month,
@@ -202,7 +224,7 @@ def query_datetime_histogram(task, node, column, min_value, max_value):
         ORDER BY month
         """
     else:
-        # _type = "daily"
+        _type = "daily"
         interval = relativedelta(days=+1)
         dmin = date(min_value.year, min_value.month, min_value.day)
         if max_value.year < 3000:
@@ -210,7 +232,7 @@ def query_datetime_histogram(task, node, column, min_value, max_value):
         else:
             dmax = date(3000, 1, 1)
         num_buckets = (dmax - dmin).days
-        bin_edges = [dmin + i * interval for i in range(num_buckets + 1)]
+        bin_edges = [dmin + relativedelta(day=i) for i in range(num_buckets + 1)]
         sql = f"""
         SELECT
             {{{{ date_trunc("day", "{column}") }}}} as day,
@@ -237,12 +259,13 @@ def query_datetime_histogram(task, node, column, min_value, max_value):
         task.check_cancel()
 
     base_counts = [0] * num_buckets
+    print(_type)
     for (d, v) in base.rows:
-        i = bin_edges.index(d)
+        i = bin_edges.index(d.date()) if isinstance(d, datetime) else bin_edges.index(d)
         base_counts[i] = v
     curr_counts = [0] * num_buckets
     for (d, v) in curr.rows:
-        i = bin_edges.index(d)
+        i = bin_edges.index(d.date()) if isinstance(d, datetime) else bin_edges.index(d)
         curr_counts[i] = v
     base_result = {
         'bin_edges': bin_edges,
@@ -306,7 +329,7 @@ class HistogramDiffTask(Task, QueryMixin):
 
             # Get histogram data from both the base and current environments
 
-            if column_type.lower() in ['date', 'datetime']:
+            if column_type.upper() in sql_datetime_types:
                 base_result, current_result = query_datetime_histogram(self, node, column, min_value,
                                                                        max_value)
             else:
