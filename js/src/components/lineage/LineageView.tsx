@@ -71,7 +71,7 @@ import {
 import { useClipBoardToast } from "@/lib/hooks/useClipBoardToast";
 import { LineageViewContext } from "./LineageViewContext";
 import { submitRun } from "@/lib/api/runs";
-import { submitRuns } from "./multi-nodes-runner";
+import { GetParamsFn, submitRuns } from "./multi-nodes-runner";
 import { renderRowCountTag } from "./NodeTag";
 
 export interface LineageViewProps {
@@ -302,11 +302,7 @@ function _LineageView({ ...props }: LineageViewProps) {
   };
 
   const handleSubmitRuns = useCallback(
-    async (
-      nodes: LineageGraphNode[],
-      type: string,
-      getParams: (node: LineageGraphNode) => any
-    ) => {
+    async (nodes: LineageGraphNode[], type: string, getParams: GetParamsFn) => {
       if (!nodes || nodes.length === 0) {
         return;
       }

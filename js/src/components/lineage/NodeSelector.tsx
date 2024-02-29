@@ -21,9 +21,9 @@ import { useLocation } from "wouter";
 import { FiAlignLeft } from "react-icons/fi";
 import { useRowCountQueries } from "@/lib/api/models";
 import { TbBrandStackshare } from "react-icons/tb";
-import { useLineageViewContext } from "./LineageViewContext";
 import { ValueDiffParams } from "@/lib/api/valuediff";
 import { RunType } from "@/lib/api/types";
+import { GetParamsFn } from "./multi-nodes-runner";
 
 export interface NodeSelectorProps {
   viewMode: string;
@@ -33,7 +33,7 @@ export interface NodeSelectorProps {
   submitRuns: (
     nodes: LineageGraphNode[],
     type: RunType,
-    params: (node: LineageGraphNode) => any
+    getParams: GetParamsFn
   ) => Promise<void>;
 }
 
@@ -148,7 +148,7 @@ export function AddLineageDiffCheckButton({
   );
 }
 
-export function AddValueDiffButton({
+export function ValueDiffButton({
   viewMode,
   nodes,
   onFinish,
@@ -171,15 +171,19 @@ export function AddValueDiffButton({
       onClick={async () => {
         try {
           await submitRuns(nodes, "value_diff", (node) => {
-            const primaryKey = node.data?.current?.columns
-              ? Object.values(node.data.current.columns)[0].name
-              : "";
+            const primaryKey = node.data?.current?.primary_key;
+            if (!primaryKey) {
+              return {
+                skipReason: "No primary key found",
+              };
+            }
+
             const params: Partial<ValueDiffParams> = {
               model: node.name,
               primary_key: primaryKey,
             };
 
-            return params;
+            return { params };
           });
         } finally {
           onFinish();
@@ -187,7 +191,7 @@ export function AddValueDiffButton({
       }}
     >
       {withIcon && <Icon as={TbBrandStackshare} />}
-      Add value diff
+      Value diff
     </Button>
   );
 }
@@ -245,7 +249,7 @@ export function NodeSelector({
                 onFinish={onClose}
                 withIcon={true}
               />
-              <AddValueDiffButton
+              <ValueDiffButton
                 viewMode={viewMode}
                 nodes={selectedNodes.length > 0 ? selectedNodes : []}
                 onFinish={onClose}

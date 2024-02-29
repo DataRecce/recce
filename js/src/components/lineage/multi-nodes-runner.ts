@@ -2,10 +2,15 @@ import { submitRun, waitRun } from "@/lib/api/runs";
 import { LineageGraphNode } from "./lineage";
 import { Run } from "@/lib/api/types";
 
+export type GetParamsFn = (node: LineageGraphNode) => {
+  params?: any;
+  skipReason?: string;
+};
+
 export const submitRuns = async (
   nodes: LineageGraphNode[],
   type: string,
-  getParams: (node: LineageGraphNode) => any,
+  getParams: GetParamsFn,
   onRunUpdate: (node: LineageGraphNode, run: Run) => void
 ) => {
   const selectedNodes = nodes.filter((node) => node.isSelected);
@@ -14,7 +19,11 @@ export const submitRuns = async (
   }
 
   for (const node of selectedNodes) {
-    const params = getParams(node);
+    const { params, skipReason } = getParams(node);
+    if (skipReason) {
+      continue;
+    }
+
     const { run_id } = await submitRun(type, params, { nowait: true });
 
     while (true) {

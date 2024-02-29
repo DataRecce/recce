@@ -20,6 +20,7 @@ export interface NodeData {
   resource_type?: string;
   package_name?: string;
   columns?: { [key: string]: NodeColumnData };
+  primary_key?: string;
 }
 
 interface CatalogMetadata {

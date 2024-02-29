@@ -72,6 +72,7 @@ export function ValueDiffForm({
   });
 
   const columnNames = node ? extractColumnNames(node) : [];
+  const primaryKey = params?.primary_key || node?.data.current?.primary_key;
 
   return (
     <VStack gap={5} m="8px 24px" paddingBottom="200px">
@@ -84,9 +85,7 @@ export function ValueDiffForm({
         <Select
           placeholder="Select primary key"
           value={
-            params?.primary_key && params?.primary_key !== ""
-              ? { label: params?.primary_key, value: params?.primary_key }
-              : undefined
+            primaryKey ? { label: primaryKey, value: primaryKey } : undefined
           }
           options={(columnNames || []).map((c) => ({ label: c, value: c }))}
           onChange={(option) => {
