@@ -3,7 +3,8 @@ from typing import Optional
 from uuid import UUID
 
 from fastapi import APIRouter, HTTPException, UploadFile
-from pydantic import BaseModel
+from fastapi.responses import PlainTextResponse
+from pydantic import BaseModel, ValidationError
 
 from recce.apis.check_func import get_node_by_id, validate_schema_diff_check
 from recce.apis.run_func import submit_run
@@ -230,27 +231,12 @@ async def reorder_handler(order: ReorderChecksIn):
         raise HTTPException(status_code=400, detail=e.message)
 
 
-@check_router.post("/checks/export", status_code=200)
+@check_router.post("/checks/export", response_class=PlainTextResponse, status_code=200)
 async def export_handler():
-    from ..server import app, AppState
-    from ..models.state import RecceState, recce_state
+    from ..models.state import recce_state
 
     try:
-        # state = RecceState()
-        # state.checks = CheckDAO().state.checks
-        # state.runs = RunDAO().state.runs
-        timestamp = datetime.now().strftime("%Y-%m-%d-%H-%M-%S")
-        file_path = f"state_{timestamp}.json"
-
-        # Export to state file
-        recce_state.store(file_path)
-
-        # Update global recce state and app state
-        # recce_state = state
-        app_state: AppState = app.state
-        app_state.state_file = file_path
-
-        return file_path
+        return recce_state.model_dump_json()
     except RecceException as e:
         raise HTTPException(status_code=400, detail=e.message)
 
@@ -262,15 +248,11 @@ async def load_handler(file: UploadFile):
     try:
         content = await file.read()
         load_state = RecceState().model_validate_json(content)
-
-        # Update global recce state and app state
         recce_state.checks = load_state.checks
         recce_state.runs = load_state.runs
-        # timestamp = datetime.now().strftime("%Y-%m-%d-%H-%M-%S")
-        # file_path = f"state_{timestamp}.json"
-        # app_state: AppState = app.state
-        # app_state.state_file = file_path
 
-        return "abc"
+        return {"runs": len(recce_state.runs), "checks": len(recce_state.checks)}
+    except ValidationError as e:
+        raise HTTPException(status_code=400, detail=str(e))
     except RecceException as e:
         raise HTTPException(status_code=400, detail=e.message)
