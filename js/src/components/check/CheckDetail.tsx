@@ -49,7 +49,6 @@ import { formatDistanceToNow } from "date-fns";
 import { LineageDiffView } from "./LineageDiffView";
 import { TopKDiffResultView } from "../top-k/TopKDiffResultView";
 import { ValueDiffDetailResultView } from "../valuediff/ValueDiffDetailResultView";
-import { hi } from "date-fns/locale";
 import { HistogramDiffResultView } from "../histogram/HistogramDiffResultView";
 
 interface CheckDetailProps {
