@@ -65,7 +65,15 @@ export interface LineageGraphNode {
 
   isSelected: boolean;
   isHighlighted?: boolean;
-  run?: Run;
+
+  /**
+   * The action status for the node which is trigger by action for multiple nodes
+   */
+  action?: {
+    status?: "pending" | "running" | "success" | "failure" | "skipped";
+    skipReason?: string;
+    run?: Run;
+  };
 }
 
 export interface LineageGraphEdge {

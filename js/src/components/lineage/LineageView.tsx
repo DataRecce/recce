@@ -307,12 +307,11 @@ function _LineageView({ ...props }: LineageViewProps) {
         return;
       }
 
-      await submitRuns(nodes, type, getParams, (node, run) => {
+      await submitRuns(nodes, type, getParams, (node) => {
         const n = lineageGraph?.nodes[node.id];
         if (n) {
-          n.run = run;
+          n.action = node.action;
         }
-        node.run = run;
 
         setNodes((prevNodes) => {
           const newNodes = prevNodes.map((n) => {

@@ -15,7 +15,7 @@ import { getIconForChangeStatus, getIconForResourceType } from "./styles";
 
 import "./styles.css";
 import { RowCountTag } from "./NodeTag";
-import { RunTag } from "./RunTag";
+import { ActionTag } from "./ActionTag";
 
 interface GraphNodeProps extends NodeProps<LineageGraphNode> {}
 
@@ -127,7 +127,7 @@ export function GraphNode({ data }: GraphNodeProps) {
           >
             <HStack spacing={"8px"}>
               <Spacer />
-              {data.run && <RunTag run={data.run} />}
+              {data.action && <ActionTag action={data.action} />}
               {data.resourceType === "model" && (
                 <RowCountTag node={data} isInteractive={false} />
               )}

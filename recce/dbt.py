@@ -277,7 +277,9 @@ class DBTContext:
 
         for node in manifest_dict['nodes'].values():
             unique_id = node['unique_id']
-            if node['resource_type'] == 'test':
+            resource_type = node['resource_type']
+
+            if resource_type not in ['model', 'seed', 'exposure']:
                 continue
 
             nodes[unique_id] = {
