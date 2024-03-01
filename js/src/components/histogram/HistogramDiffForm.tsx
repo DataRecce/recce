@@ -20,6 +20,19 @@ function isStringDataType(columnType: string) {
   return stringDataTypes.includes(columnType.toUpperCase());
 }
 
+function isDateTimeType(columnType: string) {
+  const sql_datetime_types = [
+    "DATE", "DATETIME", "TIMESTAMP", "TIME",
+    "YEAR",  // Specific to MySQL/MariaDB
+    "DATETIME2", "SMALLDATETIME", "DATETIMEOFFSET",  // Specific to SQL Server
+    "INTERVAL",  // Common in PostgreSQL and Oracle
+    "TIMESTAMPTZ", "TIMETZ",  // Specific to PostgreSQL
+    "TIMESTAMP WITH TIME ZONE", "TIMESTAMP WITH LOCAL TIME ZONE",  // Oracle
+    "TIMESTAMP_LTZ", "TIMESTAMP_NTZ", "TIMESTAMP_TZ",  // Specific to Snowflake
+  ]
+  return sql_datetime_types.includes(columnType.toUpperCase());
+}
+
 interface HistogramDiffEditProps extends RunFormProps<HistogramDiffParams> {}
 
 export function HistogramDiffForm({
@@ -32,7 +45,7 @@ export function HistogramDiffForm({
     name: params?.model,
   });
   const columns = node ? extractColumns(node).filter(
-    c => !isStringDataType(c.type)) : [];
+    c => !isStringDataType(c.type) && !isDateTimeType(c.type)) : [];
 
   return (
     <Box m="16px">

@@ -167,9 +167,7 @@ def query_numeric_histogram(task, node, column, column_type, min_value, max_valu
                 else:
                     counts[num_bins - 1] += count
         base_result = {
-            'bin_edges': bin_edges,
             'counts': counts,
-            'labels': labels,
         }
     if curr is not None:
         counts = [0] * num_bins
@@ -183,11 +181,9 @@ def query_numeric_histogram(task, node, column, column_type, min_value, max_valu
                 else:
                     counts[num_bins - 1] += count
         curr_result = {
-            'bin_edges': bin_edges,
             'counts': counts,
-            'labels': labels,
         }
-    return base_result, curr_result
+    return base_result, curr_result, bin_edges, labels
 
 
 def query_datetime_histogram(task, node, column, min_value, max_value):
@@ -279,15 +275,13 @@ def query_datetime_histogram(task, node, column, min_value, max_value):
         i = bin_edges.index(d.date()) if isinstance(d, datetime) else bin_edges.index(d)
         curr_counts[i] = v
     base_result = {
-        'bin_edges': bin_edges,
         'counts': base_counts,
     }
     curr_result = {
-        'bin_edges': bin_edges,
         'counts': curr_counts,
     }
 
-    return base_result, curr_result
+    return base_result, curr_result, bin_edges
 
 
 class HistogramDiffTask(Task, QueryMixin):
@@ -342,14 +336,13 @@ class HistogramDiffTask(Task, QueryMixin):
                 curr_total = min_max_curr[0][2]
 
             # Get histogram data from both the base and current environments
-
+            labels = None
             if column_type.upper() in sql_datetime_types:
-                base_result, current_result = query_datetime_histogram(self, node, column, min_value,
-                                                                       max_value)
+                base_result, current_result, bin_edges = query_datetime_histogram(
+                    self, node, column, min_value, max_value)
             else:
-                base_result, current_result = query_numeric_histogram(self, node, column, column_type, min_value,
-                                                                      max_value, num_bins)
-
+                base_result, current_result, bin_edges, labels = query_numeric_histogram(
+                    self, node, column, column_type, min_value, max_value, num_bins)
             if base_result:
                 base_result['total'] = base_total
             if current_result:
@@ -358,6 +351,8 @@ class HistogramDiffTask(Task, QueryMixin):
             result['current'] = current_result
             result['min'] = min_value
             result['max'] = max_value
+            result['bin_edges'] = bin_edges
+            result['labels'] = labels
         return result
 
     def cancel(self):

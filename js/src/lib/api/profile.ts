@@ -49,9 +49,7 @@ export interface HistogramDiffParams {
 }
 
 export interface HistogramResult {
-  bin_edges: number[];
   counts: number[];
-  labels: string[];
   total: number;
 }
 
@@ -60,4 +58,6 @@ export interface HistogramDiffResult {
   current: HistogramResult;
   min: number;
   max: number;
+  bin_edges: number[];
+  labels?: string[];
 }

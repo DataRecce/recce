@@ -33,6 +33,7 @@ type HistogramChartProps = {
     samples?: number;
     min?: string | number;
     max?: string | number;
+    binEdges: number[];
     histogram: HistogramResult;
   },
   animation?: AnimationOptions<'bar'>['animation'];
@@ -72,16 +73,16 @@ export function HistogramChart({
 export function getHistogramChartData(
   data: HistogramChartProps['data'],
 ): ChartData<'bar' | 'scatter'> {
-  const { histogram, type } = data;
+  const { histogram, type, binEdges } = data;
   const isDatetime = type === 'datetime';
-  const { counts = [], bin_edges = [] , labels = [] } = histogram || ({} as HistogramResult);
+  const { counts = [] } = histogram || ({} as HistogramResult);
 
   const newData = isDatetime
-    ? counts.map((v, i) => ({ x: bin_edges[i], y: v }))
+    ? counts.map((v, i) => ({ x: binEdges[i], y: v }))
     : counts;
 
-  const newLabels = bin_edges
-    .map((v, i) => formatDisplayedBinItem(bin_edges, i))
+  const newLabels = binEdges
+    .map((v, i) => formatDisplayedBinItem(binEdges, i))
     .slice(0, -1); // exclude last
 
   return {
@@ -107,8 +108,8 @@ export function getHistogramChartOptions(
   hideAxis = false,
   { ...configOverrides }: ChartOptions<'bar'> = {},
 ): ChartOptions<'bar'> {
-  const { histogram, type, samples = 0 } = data;
-  const { counts = [], bin_edges: binEdges = [] } =
+  const { histogram, type, samples = 0, binEdges } = data;
+  const { counts = [] } =
     histogram || ({} as HistogramResult);
   const isDatetime = type === 'datetime';
   return {
@@ -146,11 +147,11 @@ export function getHistogramChartOptions(
  * get x, y scales for histogram (dynamic based on datetime or not)
  */
 function getScales(
-  { histogram, min = 0, max = 0, type }: HistogramChartProps['data'],
+  { histogram, min = 0, max = 0, type, binEdges }: HistogramChartProps['data'],
   hideAxis = false,
 ) {
   const isDatetime = type === 'datetime';
-  const { counts = [], bin_edges: binEdges = [] } =
+  const { counts = [] } =
     histogram || ({} as HistogramResult);
 
   const newLabels = binEdges
@@ -213,7 +214,7 @@ function getScales(
  * @returns a formatted, abbreviated, histogram bin display text
  */
 function formatDisplayedBinItem(
-  binEdges: HistogramResult['bin_edges'],
+  binEdges: number[],
   currentIndex: number,
 ) {
   const startEdge = binEdges[currentIndex];

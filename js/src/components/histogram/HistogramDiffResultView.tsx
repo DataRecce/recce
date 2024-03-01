@@ -13,6 +13,7 @@ export function HistogramDiffResultView({ run }: HistogramDiffResultViewProp) {
   const current = run.result?.current;
   const min = run.result?.min;
   const max = run.result?.max;
+  const binEdges = run.result?.bin_edges as [];
 
   if (!base || !current) {
     return <div>Loading...</div>;
@@ -32,6 +33,7 @@ export function HistogramDiffResultView({ run }: HistogramDiffResultViewProp) {
               min: min,
               max: max,
               samples: base.total,
+              binEdges: binEdges,
             }} />
           </Box>
           <Box w="40%" h="300px" m="4">
@@ -42,6 +44,7 @@ export function HistogramDiffResultView({ run }: HistogramDiffResultViewProp) {
               min: min,
               max: max,
               samples: current.total,
+              binEdges: binEdges,
             }} />
           </Box>
           <Spacer />
