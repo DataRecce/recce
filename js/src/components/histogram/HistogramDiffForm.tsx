@@ -10,7 +10,12 @@ function isStringDataType(columnType: string) {
   const stringDataTypes = [
     "CHAR", "VARCHAR", "TINYTEXT", "TEXT", "MEDIUMTEXT", "LONGTEXT",
     "NCHAR", "NVARCHAR", "VARCHAR2", "NVARCHAR2", "CLOB", "NCLOB",
-    "VARCHAR(MAX)", "XML", "JSON"
+    "VARCHAR(MAX)", "XML", "JSON",
+    "BOOLEAN", // PostgreSQL, SQLite, and others with native boolean support
+    "TINYINT(1)", // MySQL/MariaDB uses TINYINT(1) to represent boolean values
+    "BIT", // SQL Server and others use BIT to represent boolean values, where 1 is true and 0 is false
+    "NUMBER(1)", // Oracle uses NUMBER(1) where 1 is true and 0 is false, as it does not have a native BOOLEAN type
+    "BOOL", // Snowflake and PostgreSQL also support BOOL as an alias for BOOLEAN
   ];
   return stringDataTypes.includes(columnType.toUpperCase());
 }

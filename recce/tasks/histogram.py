@@ -29,6 +29,17 @@ sql_integer_types = [
     "BYTEINT",  # Specific to Snowflake, for storing very small integers
 ]
 
+sql_not_supported_types = [
+    "CHAR", "VARCHAR", "TINYTEXT", "TEXT", "MEDIUMTEXT", "LONGTEXT",
+    "NCHAR", "NVARCHAR", "VARCHAR2", "NVARCHAR2", "CLOB", "NCLOB",
+    "VARCHAR(MAX)", "XML", "JSON",
+    "BOOLEAN",  # PostgreSQL, SQLite, and others with native boolean support
+    "TINYINT(1)",  # MySQL/MariaDB uses TINYINT(1) to represent boolean values
+    "BIT",  # SQL Server and others use BIT to represent boolean values, where 1 is true and 0 is false
+    "NUMBER(1)",  # Oracle uses NUMBER(1) where 1 is true and 0 is false, as it does not have a native BOOLEAN type
+    "BOOL",  # Snowflake and PostgreSQL also support BOOL as an alias for BOOLEAN
+]
+
 
 def generate_histogram_sql_integer(node, column, min_value, max_value, num_bins=50):
     bin_size = math.ceil((max_value - min_value) / num_bins) or 1
@@ -294,6 +305,9 @@ class HistogramDiffTask(Task, QueryMixin):
         column = self.params['column_name']
         num_bins = self.params.get('num_bins', 50)
         column_type = self.params['column_type']
+
+        if column_type.upper() in sql_not_supported_types:
+            raise ValueError(f"Column type {column_type} is not supported for histogram analysis")
 
         with adapter.connection_named("query"):
             self.connection = adapter.connections.get_thread_connection()
