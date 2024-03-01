@@ -1,7 +1,7 @@
 name: 🐞 Bug Report
 description: Report a bug or an issue you've found with recce
 title: "[Bug] <title>"
-labels: ["bug", "triage", "linear"]
+labels: ["bug", "triage"]
 body:
   - type: markdown
     attributes:
