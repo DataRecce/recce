@@ -180,6 +180,17 @@ export function NodeView({ node, onCloseNode }: NodeViewProps) {
                           >
                             Top-K Diff
                           </MenuItem>
+                          <MenuItem
+                            onClick={() => {
+                              runAction(
+                                "histogram_diff",
+                                { model: node.name, column_name: "", column_type: "" },
+                                { showForm: true }
+                              );
+                            }}
+                          >
+                            Histogram Diff
+                          </MenuItem>
                         </MenuList>
                       </Menu>
                     </>

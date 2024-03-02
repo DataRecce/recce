@@ -90,6 +90,10 @@ def _generate_default_name(check_type, params):
         model = params.get('model')
         column = params.get('column_name')
         return f"top-k diff of {model}.{column} ".capitalize()
+    elif check_type == RunType.HISTOGRAM_DIFF:
+        model = params.get('model')
+        column = params.get('column_name')
+        return f"histogram diff of {model}.{column} ".capitalize()
     else:
         return f"{'check'.capitalize()} - {now}"
 

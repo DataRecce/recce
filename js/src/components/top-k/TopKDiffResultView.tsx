@@ -18,8 +18,8 @@ export function TopKDiffResultView({ run }: TopKDiffResultViewProp) {
 
   return (
     <Flex direction='column' height={'100%'}>
-      <ScreenshotBox>
-        <Heading as="h1" size="md" marginTop={4} textAlign='center'>Model {params.model}.{params.column_name}</Heading>
+      <ScreenshotBox blockSize={'auto'}>
+        <Heading as="h1" size="md" paddingTop={4} textAlign='center'>Model {params.model}.{params.column_name}</Heading>
         <HStack>
           <Spacer />
           <Box>

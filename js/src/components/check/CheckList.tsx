@@ -11,11 +11,13 @@ import {
   TbSql,
   TbSchema,
   TbAlignBoxLeftStretch,
+  TbEyeSearch,
   TbChartHistogram,
   TbBrandStackshare,
 } from "react-icons/tb";
 import { IconType } from "react-icons";
 import { FiAlignLeft } from "react-icons/fi";
+import { LuBarChartHorizontalBig } from "react-icons/lu";
 import {
   DragDropContext,
   Draggable,
@@ -57,11 +59,15 @@ const ChecklistItem = ({
       case "value_diff":
         return TbAlignBoxLeftStretch;
       case "profile_diff":
-        return TbChartHistogram;
+        return TbEyeSearch;
       case "row_count_diff":
         return FiAlignLeft;
       case "lineage_diff":
         return TbBrandStackshare;
+      case "top_k_diff":
+        return LuBarChartHorizontalBig;
+      case "histogram_diff":
+        return TbChartHistogram;
       default:
         return TbChecklist;
     }

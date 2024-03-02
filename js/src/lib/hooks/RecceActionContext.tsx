@@ -15,6 +15,8 @@ import { ValueDiffDetailResultView } from "@/components/valuediff/ValueDiffDetai
 import { useLocation } from "wouter";
 import { TopKDiffResultView } from "@/components/top-k/TopKDiffResultView";
 import { TopKDiffForm } from "@/components/top-k/TopKDiffForm";
+import { HistogramDiffResultView } from "@/components/histogram/HistogramDiffResultView";
+import { HistogramDiffForm } from "@/components/histogram/HistogramDiffForm";
 
 export interface RecceActionOptions {
   showForm: boolean;
@@ -62,6 +64,11 @@ const registry: { [key: string]: RegistryEntry } = {
     RunResultView: TopKDiffResultView,
     RunForm: TopKDiffForm,
   },
+  histogram_diff: {
+    title: "Histogram Diff",
+    RunResultView: HistogramDiffResultView,
+    RunForm: HistogramDiffForm,
+  }
 };
 
 const useCloseModalEffect = (onClose: () => void) => {
