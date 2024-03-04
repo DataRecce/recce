@@ -215,6 +215,10 @@ function _LineageView({ ...props }: LineageViewProps) {
     y: number;
     selectedNode?: Node;
   }>({ x: 0, y: 0 });
+  const [progress, setProgress] = useState<{
+    completed: number;
+    total: number;
+  }>();
 
   useEffect(() => {
     if (!lineageGraphSets) {
@@ -313,7 +317,7 @@ function _LineageView({ ...props }: LineageViewProps) {
         return;
       }
 
-      await submitRuns(nodes, type, getParams, (node) => {
+      const onNodeUpdated = (node: LineageGraphNode) => {
         const n = lineageGraph?.nodes[node.id];
         if (n) {
           n.action = node.action;
@@ -332,7 +336,9 @@ function _LineageView({ ...props }: LineageViewProps) {
           });
           return newNodes;
         });
-      });
+      };
+
+      await submitRuns(nodes, type, getParams, setProgress, onNodeUpdated);
     },
     [props]
   );
@@ -527,6 +533,7 @@ function _LineageView({ ...props }: LineageViewProps) {
               viewMode={viewMode}
               selectMode={selectMode}
               nodes={nodes.map((node) => node.data)}
+              progress={progress}
               onClose={() => {
                 setSelectMode("detail");
                 const newNodes = cleanUpSelectedNodes(nodes);

@@ -1,6 +1,7 @@
 import { submitRun, waitRun } from "@/lib/api/runs";
 import { LineageGraphNode } from "./lineage";
 import { Run } from "@/lib/api/types";
+import { on } from "events";
 
 export type GetParamsFn = (node: LineageGraphNode) => {
   /* params is the input parameters for the run of a node */
@@ -13,7 +14,8 @@ export const submitRuns = async (
   nodes: LineageGraphNode[],
   type: string,
   getParams: GetParamsFn,
-  onNodeUpdate: (node: LineageGraphNode) => void
+  onProgress: (progress: { completed: number; total: number }) => void,
+  onNodeUpdated: (node: LineageGraphNode) => void
 ) => {
   const selectedNodes = nodes.filter((node) => node.isSelected);
   if (!selectedNodes || selectedNodes.length === 0) {
@@ -22,8 +24,12 @@ export const submitRuns = async (
 
   for (const node of selectedNodes) {
     node.action = { status: "pending" };
-    onNodeUpdate(node);
+    onNodeUpdated(node);
   }
+
+  let completed = 0;
+  const total = selectedNodes.length;
+  onProgress({ completed, total });
 
   for (const node of selectedNodes) {
     const { params, skipReason } = getParams(node);
@@ -32,28 +38,37 @@ export const submitRuns = async (
         status: "skipped",
         skipReason,
       };
-      onNodeUpdate(node);
-      continue;
-    }
+      onNodeUpdated(node);
+    } else {
+      try {
+        const { run_id } = await submitRun(type, params, { nowait: true });
+        node.action = {
+          status: "running",
+        };
+        onNodeUpdated(node);
 
-    const { run_id } = await submitRun(type, params, { nowait: true });
-    node.action = {
-      status: "running",
-    };
-    onNodeUpdate(node);
+        while (true) {
+          const run = await waitRun(run_id, 2);
+          const status = run.error
+            ? "failure"
+            : run.result
+            ? "success"
+            : "running";
+          node.action = {
+            status,
+            run,
+          };
+          onNodeUpdated(node);
 
-    while (true) {
-      const run = await waitRun(run_id, 2);
-      const status = run.error ? "failure" : run.result ? "success" : "running";
-      node.action = {
-        status,
-        run,
-      };
-      onNodeUpdate(node);
-
-      if (run.error || run.result) {
-        break;
+          if (run.error || run.result) {
+            break;
+          }
+        }
+      } catch (e) {
+        // don't need to do anything here, the error will be shown in the summary
       }
     }
+    completed++;
+    onProgress({ completed, total });
   }
 };

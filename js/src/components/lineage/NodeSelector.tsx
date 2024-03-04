@@ -8,6 +8,7 @@ import {
   IconButton,
   SlideFade,
   StackDivider,
+  Text,
 } from "@chakra-ui/react";
 import { LineageGraphNode } from "./lineage";
 import { FetchSelectedNodesRowCountButton } from "./NodeTag";
@@ -29,6 +30,7 @@ import { on } from "events";
 export interface NodeSelectorProps {
   viewMode: string;
   selectMode: "detail" | "action" | "action_result";
+  progress?: { completed: number; total: number };
   nodes: LineageGraphNode[];
   onClose: () => void;
   onActionStarted: () => void;
@@ -203,6 +205,7 @@ export function ValueDiffButton({
 export function NodeSelector({
   viewMode,
   selectMode,
+  progress,
   nodes,
   onClose,
   onActionStarted,
@@ -274,6 +277,9 @@ export function NodeSelector({
             divider={<StackDivider borderColor="gray.200" />}
             spacing={4}
           >
+            <Box fontSize="10pt">
+              Progress: {progress?.completed}/{progress?.total}
+            </Box>
             <Button size="xs" variant="outline" onClick={onClose}>
               Close
             </Button>
