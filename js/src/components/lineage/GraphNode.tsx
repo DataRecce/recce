@@ -127,9 +127,12 @@ export function GraphNode({ data }: GraphNodeProps) {
           >
             <HStack spacing={"8px"}>
               <Spacer />
-              {data.action && <ActionTag action={data.action} />}
-              {data.resourceType === "model" && (
+              {data.action ? (
+                <ActionTag action={data.action} />
+              ) : data.resourceType === "model" ? (
                 <RowCountTag node={data} isInteractive={false} />
+              ) : (
+                <></>
               )}
             </HStack>
           </Flex>

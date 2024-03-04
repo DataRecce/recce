@@ -474,6 +474,7 @@ export function cleanUpSelectedNodes(nodes: Node<LineageGraphNode>[]) {
       data: {
         ...n.data,
         isSelected: false,
+        action: undefined,
       },
     };
   });

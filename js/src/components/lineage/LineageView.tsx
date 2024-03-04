@@ -69,10 +69,8 @@ import {
   useToBlob,
 } from "@/lib/hooks/ScreenShot";
 import { useClipBoardToast } from "@/lib/hooks/useClipBoardToast";
-import { LineageViewContext } from "./LineageViewContext";
-import { submitRun } from "@/lib/api/runs";
 import { GetParamsFn, submitRuns } from "./multi-nodes-runner";
-import { renderRowCountTag } from "./NodeTag";
+import { NodeRunView } from "./NodeRunView";
 
 export interface LineageViewProps {
   viewMode?: "changed_models" | "all";
@@ -202,7 +200,9 @@ function _LineageView({ ...props }: LineageViewProps) {
   const { lineageGraphSets, isLoading, error } = useLineageGraphsContext();
   const { isOpen, onOpen, onClose } = useDisclosure();
 
-  const [selectMode, setSelectMode] = useState<"detail" | "action">("detail");
+  const [selectMode, setSelectMode] = useState<
+    "detail" | "action" | "action_result"
+  >("detail");
   const [detailViewSelected, setDetailViewSelected] = useState<string>();
   const [isDetailViewShown, setIsDetailViewShown] = useState(false);
   const [viewMode, setViewMode] = useState<"changed_models" | "all">(
@@ -291,6 +291,12 @@ function _LineageView({ ...props }: LineageViewProps) {
     if (props.interactive === false) return;
     closeContextMenu();
     if (selectMode === "detail") {
+      setDetailViewSelected(node.id);
+      if (!isDetailViewShown) {
+        setIsDetailViewShown(true);
+      }
+      setNodes(selectSingleNode(node.id, nodes));
+    } else if (selectMode === "action_result") {
       setDetailViewSelected(node.id);
       if (!isDetailViewShown) {
         setIsDetailViewShown(true);
@@ -519,12 +525,18 @@ function _LineageView({ ...props }: LineageViewProps) {
           <Panel position="bottom-center" className={IGNORE_SCREENSHOT_CLASS}>
             <NodeSelector
               viewMode={viewMode}
+              selectMode={selectMode}
               nodes={nodes.map((node) => node.data)}
-              isOpen={selectMode === "action"}
               onClose={() => {
                 setSelectMode("detail");
                 const newNodes = cleanUpSelectedNodes(nodes);
                 setNodes(newNodes);
+              }}
+              onActionStarted={() => {
+                setSelectMode("action_result");
+              }}
+              onActionCompleted={() => {
+                setSelectMode("action_result");
               }}
               submitRuns={handleSubmitRuns}
             />
@@ -546,6 +558,20 @@ function _LineageView({ ...props }: LineageViewProps) {
         lineageGraph?.nodes[detailViewSelected] && (
           <Box flex="0 0 500px" borderLeft="solid 1px lightgray" height="100%">
             <NodeView
+              node={lineageGraph?.nodes[detailViewSelected]}
+              onCloseNode={() => {
+                setDetailViewSelected(undefined);
+                setIsDetailViewShown(false);
+                setNodes(cleanUpSelectedNodes(nodes));
+              }}
+            />
+          </Box>
+        )}
+      {selectMode === "action_result" &&
+        detailViewSelected &&
+        lineageGraph?.nodes[detailViewSelected] && (
+          <Box flex="0 0 500px" borderLeft="solid 1px lightgray" height="100%">
+            <NodeRunView
               node={lineageGraph?.nodes[detailViewSelected]}
               onCloseNode={() => {
                 setDetailViewSelected(undefined);

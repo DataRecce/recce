@@ -24,12 +24,15 @@ import { TbBrandStackshare } from "react-icons/tb";
 import { ValueDiffParams } from "@/lib/api/valuediff";
 import { RunType } from "@/lib/api/types";
 import { GetParamsFn } from "./multi-nodes-runner";
+import { on } from "events";
 
 export interface NodeSelectorProps {
   viewMode: string;
+  selectMode: "detail" | "action" | "action_result";
   nodes: LineageGraphNode[];
-  isOpen: boolean;
   onClose: () => void;
+  onActionStarted: () => void;
+  onActionCompleted: () => void;
   submitRuns: (
     nodes: LineageGraphNode[],
     type: RunType,
@@ -149,15 +152,15 @@ export function AddLineageDiffCheckButton({
 }
 
 export function ValueDiffButton({
-  viewMode,
   nodes,
-  onFinish,
+  onActionStarted,
+  onActionCompleted,
   withIcon,
   submitRuns,
 }: {
-  viewMode: string;
   nodes: LineageGraphNode[];
-  onFinish: () => void;
+  onActionStarted: () => void;
+  onActionCompleted: () => void;
   withIcon?: boolean;
   submitRuns: NodeSelectorProps["submitRuns"];
 }) {
@@ -170,6 +173,7 @@ export function ValueDiffButton({
       isDisabled={nodes.length === 0}
       onClick={async () => {
         try {
+          onActionStarted();
           await submitRuns(nodes, "value_diff", (node) => {
             const primaryKey = node.data?.current?.primary_key;
             if (!primaryKey) {
@@ -186,7 +190,7 @@ export function ValueDiffButton({
             return { params };
           });
         } finally {
-          onFinish();
+          onActionCompleted();
         }
       }}
     >
@@ -198,19 +202,23 @@ export function ValueDiffButton({
 
 export function NodeSelector({
   viewMode,
+  selectMode,
   nodes,
-  isOpen,
   onClose,
+  onActionStarted,
+  onActionCompleted,
   submitRuns,
 }: NodeSelectorProps) {
   function countSelectedNodes(nodes: LineageGraphNode[]) {
     return nodes.filter((node) => node.isSelected).length;
   }
   const selectedNodes = nodes.filter((node) => node.isSelected);
+  const isOpen = selectMode === "action" || selectMode === "action_result";
+
   return (
-    <>
-      <SlideFade in={isOpen} style={{ zIndex: 10 }}>
-        <Box bg="white" rounded="md" shadow="dark-lg">
+    <SlideFade in={isOpen} style={{ zIndex: 10 }}>
+      <Box bg="white" rounded="md" shadow="dark-lg">
+        {selectMode === "action" && (
           <HStack
             p="5px 15px"
             mt="4"
@@ -250,16 +258,28 @@ export function NodeSelector({
                 withIcon={true}
               />
               <ValueDiffButton
-                viewMode={viewMode}
                 nodes={selectedNodes.length > 0 ? selectedNodes : []}
-                onFinish={onClose}
+                onActionStarted={onActionStarted}
+                onActionCompleted={onActionCompleted}
                 withIcon={true}
                 submitRuns={submitRuns}
               />
             </HStack>
           </HStack>
-        </Box>
-      </SlideFade>
-    </>
+        )}
+        {selectMode === "action_result" && (
+          <HStack
+            p="5px 15px"
+            mt="4"
+            divider={<StackDivider borderColor="gray.200" />}
+            spacing={4}
+          >
+            <Button size="xs" variant="outline" onClick={onClose}>
+              Close
+            </Button>
+          </HStack>
+        )}
+      </Box>
+    </SlideFade>
   );
 }
