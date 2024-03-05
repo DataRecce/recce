@@ -52,7 +52,7 @@ class ValueDiffMixin:
 
             query = r"""{{ adapter.dispatch('test_unique', 'dbt')(relation, column_name) }}"""
             sql = dbt_context.generate_sql(query, base=False, context=context)
-            sql_test = f"""SELECT COUNT(*) AS INVALIDS FROM ({sql})"""
+            sql_test = f"""SELECT COUNT(*) AS INVALIDS FROM ({sql}) AS T"""
 
             response, table = dbt_context.adapter.execute(sql_test, fetch=True)
             for row in table.rows:
