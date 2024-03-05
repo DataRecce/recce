@@ -8,7 +8,7 @@ import {
   IconButton,
   SlideFade,
   StackDivider,
-  Text,
+  useUnmountEffect,
 } from "@chakra-ui/react";
 import { LineageGraphNode } from "./lineage";
 import { FetchSelectedNodesRowCountButton } from "./NodeTag";
@@ -23,23 +23,19 @@ import { FiAlignLeft } from "react-icons/fi";
 import { useRowCountQueries } from "@/lib/api/models";
 import { TbBrandStackshare } from "react-icons/tb";
 import { ValueDiffParams } from "@/lib/api/valuediff";
-import { RunType } from "@/lib/api/types";
-import { GetParamsFn } from "./multi-nodes-runner";
-import { on } from "events";
+import { GetParamsFn, submitRuns } from "./multi-nodes-runner";
+
+import { useEffect, useState } from "react";
+import { cancelRun, submitRun, waitRun } from "@/lib/api/runs";
 
 export interface NodeSelectorProps {
   viewMode: string;
-  selectMode: "detail" | "action" | "action_result";
-  progress?: { completed: number; total: number };
+
   nodes: LineageGraphNode[];
   onClose: () => void;
   onActionStarted: () => void;
+  onActionNodeUpdated: (node: LineageGraphNode) => void;
   onActionCompleted: () => void;
-  submitRuns: (
-    nodes: LineageGraphNode[],
-    type: RunType,
-    getParams: GetParamsFn
-  ) => Promise<void>;
 }
 
 function AddSchemaChangesCheckButton({
@@ -153,139 +149,208 @@ export function AddLineageDiffCheckButton({
   );
 }
 
-export function ValueDiffButton({
-  nodes,
-  onActionStarted,
-  onActionCompleted,
-  withIcon,
-  submitRuns,
-}: {
-  nodes: LineageGraphNode[];
-  onActionStarted: () => void;
-  onActionCompleted: () => void;
-  withIcon?: boolean;
-  submitRuns: NodeSelectorProps["submitRuns"];
-}) {
-  const [, setLocation] = useLocation();
-
-  return (
-    <Button
-      size="xs"
-      variant="outline"
-      isDisabled={nodes.length === 0}
-      onClick={async () => {
-        try {
-          onActionStarted();
-          await submitRuns(nodes, "value_diff", (node) => {
-            const primaryKey = node.data?.current?.primary_key;
-            if (!primaryKey) {
-              return {
-                skipReason: "No primary key found",
-              };
-            }
-
-            const params: Partial<ValueDiffParams> = {
-              model: node.name,
-              primary_key: primaryKey,
-            };
-
-            return { params };
-          });
-        } finally {
-          onActionCompleted();
-        }
-      }}
-    >
-      {withIcon && <Icon as={TbBrandStackshare} />}
-      Value diff
-    </Button>
-  );
+interface ActionState {
+  status: "pending" | "running" | "canceling" | "canceled" | "completed";
+  currentRunId?: string;
+  completed: number;
+  total: number;
 }
 
 export function NodeSelector({
   viewMode,
-  selectMode,
-  progress,
   nodes,
   onClose,
   onActionStarted,
+  onActionNodeUpdated,
   onActionCompleted,
-  submitRuns,
 }: NodeSelectorProps) {
-  function countSelectedNodes(nodes: LineageGraphNode[]) {
-    return nodes.filter((node) => node.isSelected).length;
-  }
-  const selectedNodes = nodes.filter((node) => node.isSelected);
-  const isOpen = selectMode === "action" || selectMode === "action_result";
+  const [actionState, setActionState] = useState<ActionState>({
+    status: "pending",
+    completed: 0,
+    total: 0,
+  });
+
+  const [runId, setRunId] = useState<string>();
+
+  const submitRuns = async (
+    type: string,
+    getParams: (node: LineageGraphNode) => {
+      /* params is the input parameters for the run of a node */
+      params?: any;
+      /* skipReason is a string that explains why the node is skipped */
+      skipReason?: string;
+    }
+  ) => {
+    actionState.status = "running";
+    onActionStarted();
+
+    for (const node of nodes) {
+      node.action = { status: "pending" };
+      onActionNodeUpdated(node);
+    }
+
+    actionState.completed = 0;
+    actionState.total = nodes.length;
+
+    for (const node of nodes) {
+      const { params, skipReason } = getParams(node);
+      if (skipReason) {
+        node.action = {
+          status: "skipped",
+          skipReason,
+        };
+        onActionNodeUpdated(node);
+      } else {
+        try {
+          const { run_id } = await submitRun(type, params, { nowait: true });
+          node.action = {
+            status: "running",
+          };
+          onActionNodeUpdated(node);
+          setRunId(run_id);
+
+          while (true) {
+            const run = await waitRun(run_id, 2);
+            const status = run.error
+              ? "failure"
+              : run.result
+              ? "success"
+              : "running";
+            node.action = {
+              status,
+              run,
+            };
+            onActionNodeUpdated(node);
+
+            if (run.error || run.result) {
+              break;
+            }
+          }
+        } catch (e) {
+          // don't need to do anything here, the error will be shown in the summary
+        } finally {
+          setRunId(undefined);
+        }
+      }
+      actionState.completed++;
+      if ((actionState.status as string) === "canceling") {
+        actionState.status = "canceled";
+        onActionCompleted();
+        return;
+      }
+    }
+
+    actionState.status = "completed";
+    onActionCompleted();
+  };
+
+  const handleValueDiffClick = async () => {
+    submitRuns("value_diff", (node) => {
+      const primaryKey = node.data?.current?.primary_key;
+      if (!primaryKey) {
+        return {
+          skipReason: "No primary key found",
+        };
+      }
+
+      const params: Partial<ValueDiffParams> = {
+        model: node.name,
+        primary_key: primaryKey,
+      };
+
+      return { params };
+    });
+  };
+
+  const handleCancel = async () => {
+    actionState.status = "canceling";
+    if (runId) {
+      cancelRun(runId);
+    }
+  };
+
+  useUnmountEffect(() => {
+    if (actionState.status === "running") {
+      handleCancel();
+    }
+  });
 
   return (
-    <SlideFade in={isOpen} style={{ zIndex: 10 }}>
-      <Box bg="white" rounded="md" shadow="dark-lg">
-        {selectMode === "action" && (
-          <HStack
-            p="5px 15px"
-            mt="4"
-            divider={<StackDivider borderColor="gray.200" />}
-            spacing={4}
+    <Box bg="white" rounded="md" shadow="dark-lg">
+      {actionState.status === "pending" && (
+        <HStack
+          p="5px 15px"
+          mt="4"
+          divider={<StackDivider borderColor="gray.200" />}
+          spacing={4}
+        >
+          <ButtonGroup
+            size="xs"
+            isAttached
+            variant="outline"
+            rounded="xs"
+            onClick={onClose}
           >
-            <ButtonGroup
+            <Button>{nodes.length} selected</Button>
+            <IconButton
+              aria-label="Exit select Mode"
+              icon={<SmallCloseIcon />}
+            />
+          </ButtonGroup>
+          <HStack>
+            <FetchSelectedNodesRowCountButton
+              nodes={nodes}
+              onFinish={onClose}
+            />
+            <AddSchemaChangesCheckButton nodes={nodes} onFinish={onClose} />
+            <AddRowCountCheckButton nodes={nodes} onFinish={onClose} />
+            <AddLineageDiffCheckButton
+              viewMode={viewMode}
+              nodes={nodes}
+              onFinish={onClose}
+              withIcon={true}
+            />
+            <Button
               size="xs"
-              isAttached
               variant="outline"
-              rounded="xs"
-              onClick={onClose}
+              isDisabled={nodes.length === 0}
+              onClick={handleValueDiffClick}
             >
-              <Button>{countSelectedNodes(nodes)} selected</Button>
-              <IconButton
-                aria-label="Exit select Mode"
-                icon={<SmallCloseIcon />}
-              />
-            </ButtonGroup>
-            <HStack>
-              <FetchSelectedNodesRowCountButton
-                nodes={selectedNodes.length > 0 ? selectedNodes : []}
-                onFinish={onClose}
-              />
-              <AddSchemaChangesCheckButton
-                nodes={selectedNodes.length > 0 ? selectedNodes : []}
-                onFinish={onClose}
-              />
-              <AddRowCountCheckButton
-                nodes={selectedNodes.length > 0 ? selectedNodes : []}
-                onFinish={onClose}
-              />
-              <AddLineageDiffCheckButton
-                viewMode={viewMode}
-                nodes={selectedNodes.length > 0 ? selectedNodes : []}
-                onFinish={onClose}
-                withIcon={true}
-              />
-              <ValueDiffButton
-                nodes={selectedNodes.length > 0 ? selectedNodes : []}
-                onActionStarted={onActionStarted}
-                onActionCompleted={onActionCompleted}
-                withIcon={true}
-                submitRuns={submitRuns}
-              />
-            </HStack>
+              <Icon as={TbBrandStackshare} />
+              Value diff
+            </Button>
           </HStack>
-        )}
-        {selectMode === "action_result" && (
-          <HStack
-            p="5px 15px"
-            mt="4"
-            divider={<StackDivider borderColor="gray.200" />}
-            spacing={4}
-          >
-            <Box fontSize="10pt">
-              Progress: {progress?.completed}/{progress?.total}
-            </Box>
+        </HStack>
+      )}
+      {actionState.status !== "pending" && (
+        <HStack
+          p="5px 15px"
+          mt="4"
+          divider={<StackDivider borderColor="gray.200" />}
+          spacing={4}
+        >
+          <Box fontSize="10pt">
+            Progress: {actionState.completed}/{actionState.total}{" "}
+            {actionState.status === "canceled" ? " (canceled)" : ""}
+          </Box>
+          {actionState.status === "running" ||
+          actionState.status === "canceling" ? (
+            <Button
+              size="xs"
+              variant="outline"
+              onClick={handleCancel}
+              isLoading={actionState.status === "canceling"}
+              loadingText="Canceling"
+            >
+              Cancel
+            </Button>
+          ) : (
             <Button size="xs" variant="outline" onClick={onClose}>
               Close
             </Button>
-          </HStack>
-        )}
-      </Box>
-    </SlideFade>
+          )}
+        </HStack>
+      )}
+    </Box>
   );
 }

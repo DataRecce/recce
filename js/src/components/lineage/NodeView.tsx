@@ -118,18 +118,9 @@ export function NodeView({ node, onCloseNode }: NodeViewProps) {
         <>
           <Tabs overflow="auto" as={Flex}>
             <TabList>
-              {node.action && <Tab>Run</Tab>}
               <Tab>Columns</Tab>
             </TabList>
             <TabPanels overflow="auto" height="calc(100% - 42px)">
-              {node.action && (
-                <TabPanel p={0} overflowY="auto" height="100%">
-                  <RunView
-                    run={node.action?.run}
-                    RunResultView={ValueDiffResultView}
-                  />
-                </TabPanel>
-              )}
               <TabPanel p={0} overflowY="auto" height="100%">
                 <SchemaView base={node.data.base} current={node.data.current} />
               </TabPanel>

@@ -32,6 +32,7 @@ import {
   MenuList,
   MenuItem,
   Center,
+  SlideFade,
 } from "@chakra-ui/react";
 import React, { useCallback, useEffect, useState } from "react";
 import ReactFlow, {
@@ -69,7 +70,6 @@ import {
   useToBlob,
 } from "@/lib/hooks/ScreenShot";
 import { useClipBoardToast } from "@/lib/hooks/useClipBoardToast";
-import { GetParamsFn, submitRuns } from "./multi-nodes-runner";
 import { NodeRunView } from "./NodeRunView";
 
 export interface LineageViewProps {
@@ -200,10 +200,17 @@ function _LineageView({ ...props }: LineageViewProps) {
   const { lineageGraphSets, isLoading, error } = useLineageGraphsContext();
   const { isOpen, onOpen, onClose } = useDisclosure();
 
+  /**
+   * Select mode: the behavior of clicking on nodes
+   * - detail: show node detail view
+   * - action: select nodes for action
+   * - action_result: show node action result view
+   */
   const [selectMode, setSelectMode] = useState<
     "detail" | "action" | "action_result"
   >("detail");
-  const [detailViewSelected, setDetailViewSelected] = useState<string>();
+  const [detailViewSelected, setDetailViewSelected] =
+    useState<LineageGraphNode>();
   const [isDetailViewShown, setIsDetailViewShown] = useState(false);
   const [viewMode, setViewMode] = useState<"changed_models" | "all">(
     props.viewMode || "changed_models"
@@ -215,10 +222,6 @@ function _LineageView({ ...props }: LineageViewProps) {
     y: number;
     selectedNode?: Node;
   }>({ x: 0, y: 0 });
-  const [progress, setProgress] = useState<{
-    completed: number;
-    total: number;
-  }>();
 
   useEffect(() => {
     if (!lineageGraphSets) {
@@ -295,13 +298,13 @@ function _LineageView({ ...props }: LineageViewProps) {
     if (props.interactive === false) return;
     closeContextMenu();
     if (selectMode === "detail") {
-      setDetailViewSelected(node.id);
+      setDetailViewSelected(node.data);
       if (!isDetailViewShown) {
         setIsDetailViewShown(true);
       }
       setNodes(selectSingleNode(node.id, nodes));
     } else if (selectMode === "action_result") {
-      setDetailViewSelected(node.id);
+      setDetailViewSelected(node.data);
       if (!isDetailViewShown) {
         setIsDetailViewShown(true);
       }
@@ -311,37 +314,25 @@ function _LineageView({ ...props }: LineageViewProps) {
     }
   };
 
-  const handleSubmitRuns = useCallback(
-    async (nodes: LineageGraphNode[], type: string, getParams: GetParamsFn) => {
-      if (!nodes || nodes.length === 0) {
-        return;
-      }
-
-      const onNodeUpdated = (node: LineageGraphNode) => {
-        const n = lineageGraph?.nodes[node.id];
-        if (n) {
-          n.action = node.action;
-        }
-
-        setNodes((prevNodes) => {
-          const newNodes = prevNodes.map((n) => {
-            if (n.id === node.id) {
-              return {
-                ...n,
-                data: node,
-              };
-            } else {
-              return n;
-            }
-          });
-          return newNodes;
+  const handleActionNodeUpdated = useCallback(
+    (node: LineageGraphNode) => {
+      setNodes((prevNodes) => {
+        const newNodes = prevNodes.map((n) => {
+          if (n.id === node.id) {
+            return {
+              ...n,
+              data: node,
+            };
+          } else {
+            return n;
+          }
         });
-      };
-
-      await submitRuns(nodes, type, getParams, setProgress, onNodeUpdated);
+        return newNodes;
+      });
     },
-    [props]
+    [lineageGraph, setNodes]
   );
+
   if (isLoading) {
     return (
       <Flex
@@ -529,24 +520,30 @@ function _LineageView({ ...props }: LineageViewProps) {
             </Text>
           </Panel>
           <Panel position="bottom-center" className={IGNORE_SCREENSHOT_CLASS}>
-            <NodeSelector
-              viewMode={viewMode}
-              selectMode={selectMode}
-              nodes={nodes.map((node) => node.data)}
-              progress={progress}
-              onClose={() => {
-                setSelectMode("detail");
-                const newNodes = cleanUpSelectedNodes(nodes);
-                setNodes(newNodes);
-              }}
-              onActionStarted={() => {
-                setSelectMode("action_result");
-              }}
-              onActionCompleted={() => {
-                setSelectMode("action_result");
-              }}
-              submitRuns={handleSubmitRuns}
-            />
+            <SlideFade
+              in={selectMode !== "detail"}
+              unmountOnExit
+              style={{ zIndex: 10 }}
+            >
+              <NodeSelector
+                viewMode={viewMode}
+                nodes={nodes
+                  .map((node) => node.data)
+                  .filter((node) => node.isSelected)}
+                onClose={() => {
+                  setSelectMode("detail");
+                  const newNodes = cleanUpSelectedNodes(nodes);
+                  setNodes(newNodes);
+                }}
+                onActionStarted={() => {
+                  setSelectMode("action_result");
+                }}
+                onActionNodeUpdated={handleActionNodeUpdated}
+                onActionCompleted={() => {
+                  setSelectMode("action_result");
+                }}
+              />
+            </SlideFade>
           </Panel>
           <MiniMap nodeColor={nodeColor} nodeStrokeWidth={3} />
         </ReactFlow>
@@ -560,34 +557,30 @@ function _LineageView({ ...props }: LineageViewProps) {
           </ModalBody>
         </ModalContent>
       </Modal>
-      {selectMode === "detail" &&
-        detailViewSelected &&
-        lineageGraph?.nodes[detailViewSelected] && (
-          <Box flex="0 0 500px" borderLeft="solid 1px lightgray" height="100%">
-            <NodeView
-              node={lineageGraph?.nodes[detailViewSelected]}
-              onCloseNode={() => {
-                setDetailViewSelected(undefined);
-                setIsDetailViewShown(false);
-                setNodes(cleanUpSelectedNodes(nodes));
-              }}
-            />
-          </Box>
-        )}
-      {selectMode === "action_result" &&
-        detailViewSelected &&
-        lineageGraph?.nodes[detailViewSelected] && (
-          <Box flex="0 0 500px" borderLeft="solid 1px lightgray" height="100%">
-            <NodeRunView
-              node={lineageGraph?.nodes[detailViewSelected]}
-              onCloseNode={() => {
-                setDetailViewSelected(undefined);
-                setIsDetailViewShown(false);
-                setNodes(cleanUpSelectedNodes(nodes));
-              }}
-            />
-          </Box>
-        )}
+      {selectMode === "detail" && detailViewSelected && (
+        <Box flex="0 0 500px" borderLeft="solid 1px lightgray" height="100%">
+          <NodeView
+            node={detailViewSelected}
+            onCloseNode={() => {
+              setDetailViewSelected(undefined);
+              setIsDetailViewShown(false);
+              setNodes(cleanUpSelectedNodes(nodes));
+            }}
+          />
+        </Box>
+      )}
+      {selectMode === "action_result" && detailViewSelected && (
+        <Box flex="0 0 500px" borderLeft="solid 1px lightgray" height="100%">
+          <NodeRunView
+            node={detailViewSelected}
+            onCloseNode={() => {
+              setDetailViewSelected(undefined);
+              setIsDetailViewShown(false);
+              setNodes(cleanUpSelectedNodes(nodes));
+            }}
+          />
+        </Box>
+      )}
       {isContextMenuRendered && (
         // Only render context menu when select mode is action
         <Menu isOpen={true} onClose={closeContextMenu}>
