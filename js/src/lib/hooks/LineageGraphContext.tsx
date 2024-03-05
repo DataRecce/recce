@@ -23,6 +23,7 @@ interface EnvMetadata {
 export interface LineageGraphsContext {
   lineageGraphSets?: DefaultLineageGraphSets;
   metadata?: EnvMetadata;
+  isDemoSite?: boolean;
   isLoading?: boolean;
   error?: string;
 }
@@ -110,6 +111,7 @@ export function LineageGraphsContextProvider({
         value={{
           lineageGraphSets: lineageGraphSets,
           metadata: data?.current.metadata,
+          isDemoSite: !!data?.current.metadata.pr_url,
           error: errorMessage,
           isLoading,
         }}

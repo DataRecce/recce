@@ -24,12 +24,15 @@ import _ from "lodash";
 import { Route, Switch, useLocation, useRoute } from "wouter";
 import { AddIcon, CopyIcon } from "@chakra-ui/icons";
 import { CheckList } from "./CheckList";
-import { DropResult } from "@hello-pangea/dnd";
 import { useClipBoardToast } from "@/lib/hooks/useClipBoardToast";
 import { buildDescription, buildTitle } from "./check";
 import { stripIndent } from "common-tags";
+import { CheckListInitLoader, CheckListLoader } from "./CheckListLoader";
+import { CheckListExporter } from "./CheckListExporter";
+import { useLineageGraphsContext } from "@/lib/hooks/LineageGraphContext";
 
 export const CheckPage = () => {
+  const { isDemoSite } = useLineageGraphsContext();
   const [, setLocation] = useLocation();
   const [, params] = useRoute("/checks/:checkId");
   const queryClient = useQueryClient();
@@ -111,9 +114,12 @@ export const CheckPage = () => {
       <Center h="100%">
         <VStack>
           <Box>No checks</Box>
-          <Button colorScheme="blue" onClick={addToChecklist}>
-            Create a simple check
-          </Button>
+          <Flex gap="5">
+            <Button colorScheme="blue" onClick={addToChecklist}>
+              Create a simple check
+            </Button>
+            {!isDemoSite && <CheckListInitLoader />}
+          </Flex>
         </VStack>
       </Center>
     );
@@ -128,7 +134,7 @@ export const CheckPage = () => {
         style={{ contain: "size" }}
       >
         <VStack spacing={0} align="flex-end" h="100%">
-          <HStack>
+          <HStack gap="0px">
             <Tooltip label="Create a simple check">
               <IconButton
                 variant="unstyled"
@@ -141,7 +147,6 @@ export const CheckPage = () => {
               <IconButton
                 variant="unstyled"
                 aria-label="Copy checklist to the clipboard"
-                mr="10px"
                 onClick={async () => {
                   const markdown = buildMarkdown(checks);
                   if (!navigator.clipboard) {
@@ -165,6 +170,12 @@ export const CheckPage = () => {
                 icon={<CopyIcon />}
               />
             </Tooltip>
+            {!isDemoSite && (
+              <>
+                <CheckListExporter />
+                <CheckListLoader />
+              </>
+            )}
           </HStack>
 
           <Divider mb="8px" />

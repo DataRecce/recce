@@ -13,6 +13,11 @@ export interface Check<PT = any, RT = any, VO = any> {
   last_run?: Run<PT, RT>;
 }
 
+export interface LoadedChecks {
+  runs: number;
+  checks: number;
+}
+
 export async function createSimpleCheck(): Promise<Check> {
   const response = await axiosClient.post("/api/checks", {
     type: "simple",
@@ -88,4 +93,17 @@ export async function reorderChecks(order: {
   destination: number;
 }) {
   return await axiosClient.post("/api/checks/reorder", order);
+}
+
+export async function exportChecks(): Promise<string> {
+    const response = await axiosClient.post("/api/checks/export");
+    return response.data;
+}
+
+export async function loadChecks(file: File): Promise<LoadedChecks> {
+  const formData = new FormData();
+  formData.append("file", file);
+
+  const response = await axiosClient.post("/api/checks/load", formData);
+  return response.data;
 }
