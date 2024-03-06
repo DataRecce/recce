@@ -22,7 +22,7 @@ export function TopKDiffResultView({ run }: TopKDiffResultViewProp) {
         <Heading as="h1" size="md" paddingTop={4} textAlign='center'>Model {params.model}.{params.column_name}</Heading>
         <HStack>
           <Spacer />
-          <Box>
+          {/* <Box>
             <Heading as='h3' size="sm" m="2" color='gray'>Base</Heading>
             <Divider />
             <TopKSummaryList
@@ -37,7 +37,12 @@ export function TopKDiffResultView({ run }: TopKDiffResultViewProp) {
               topk={currentTopK}
               valids={currentTopK.valids || 0}
               isDisplayTopTen={isDisplayTopTen} />
-          </Box>
+          </Box> */}
+          <TopKSummaryBarChart
+            topKDiff={result}
+            valids={currentTopK.valids || 0}
+            isDisplayTopTen={isDisplayTopTen}
+          />
           <Spacer />
         </HStack>
       </ScreenshotBox>
