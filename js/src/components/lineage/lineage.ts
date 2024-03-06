@@ -70,6 +70,7 @@ export interface LineageGraphNode {
    * The action status for the node which is trigger by action for multiple nodes
    */
   action?: {
+    mode: "per_node" | "multi_nodes";
     status?: "pending" | "running" | "success" | "failure" | "skipped";
     skipReason?: string;
     run?: Run;

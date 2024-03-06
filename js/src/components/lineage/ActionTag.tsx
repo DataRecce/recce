@@ -1,14 +1,26 @@
 import { Run } from "@/lib/api/types";
 import { ValueDiffResult } from "@/lib/api/valuediff";
 import { ExternalLinkIcon, InfoIcon, WarningIcon } from "@chakra-ui/icons";
-import { Box, CircularProgress, Flex, Link, Tooltip } from "@chakra-ui/react";
+import {
+  Box,
+  CircularProgress,
+  Flex,
+  Link,
+  SkeletonText,
+  Tag,
+  TagLabel,
+  Tooltip,
+} from "@chakra-ui/react";
 import { LineageGraphNode } from "./lineage";
+import { RowCountDiffResult } from "@/lib/api/rowcount";
+import { ModelRowCount } from "./NodeTag";
 
 interface ActionTagProps {
+  node: LineageGraphNode;
   action: Required<LineageGraphNode>["action"];
 }
 
-export const ActionTag = ({ action }: ActionTagProps) => {
+export const ActionTag = ({ node, action }: ActionTagProps) => {
   const { status, skipReason, run } = action;
 
   if (status === "pending") {
@@ -69,21 +81,36 @@ export const ActionTag = ({ action }: ActionTagProps) => {
     }
 
     return (
-      <Flex
-        fontSize="10pt"
-        color={mismatched > 0 ? "red" : "green"}
-        alignItems="center"
-        gap="3px"
-      >
-        <Box>
-          {mismatched > 0
-            ? `${mismatched} columns mismatched`
-            : "All columns match"}
-        </Box>
-        <Link href={window.location.origin + `#!/runs/${run_id}`}>
-          <ExternalLinkIcon cursor="pointer" />
-        </Link>
-      </Flex>
+      <Tag>
+        <TagLabel>
+          <Flex
+            fontSize="10pt"
+            color={mismatched > 0 ? "red" : "green"}
+            alignItems="center"
+            gap="3px"
+          >
+            <Box>
+              {mismatched > 0
+                ? `${mismatched} columns mismatched`
+                : "All columns match"}
+            </Box>
+            <Link href={window.location.origin + `#!/runs/${run_id}`}>
+              <ExternalLinkIcon cursor="pointer" />
+            </Link>
+          </Flex>
+        </TagLabel>
+      </Tag>
+    );
+  }
+
+  if (run.type === "row_count_diff") {
+    const result = run.result as RowCountDiffResult;
+    return (
+      <Tag>
+        <TagLabel>
+          <ModelRowCount rowCount={result[node.name]} />
+        </TagLabel>
+      </Tag>
     );
   }
 

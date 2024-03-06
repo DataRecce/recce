@@ -3,6 +3,7 @@ import {
   Box,
   Button,
   ButtonGroup,
+  CircularProgress,
   HStack,
   Icon,
   IconButton,
@@ -11,8 +12,7 @@ import {
   useUnmountEffect,
 } from "@chakra-ui/react";
 import { LineageGraphNode } from "./lineage";
-import { FetchSelectedNodesRowCountButton } from "./NodeTag";
-import { MdOutlineSchema } from "react-icons/md";
+import { MdOutlineSchema, MdQueryStats } from "react-icons/md";
 import {
   createCheckByNodeSchema,
   createCheckByRun,
@@ -23,10 +23,12 @@ import { FiAlignLeft } from "react-icons/fi";
 import { useRowCountQueries } from "@/lib/api/models";
 import { TbBrandStackshare } from "react-icons/tb";
 import { ValueDiffParams } from "@/lib/api/valuediff";
-import { GetParamsFn, submitRuns } from "./multi-nodes-runner";
-
-import { useEffect, useState } from "react";
+import { useCallback, useState } from "react";
 import { cancelRun, submitRun, waitRun } from "@/lib/api/runs";
+import { Run, RunType } from "@/lib/api/types";
+import { RowCountDiffParams } from "@/lib/api/rowcount";
+import { useQueryClient } from "@tanstack/react-query";
+import { cacheKeys } from "@/lib/api/cacheKeys";
 
 export interface NodeSelectorProps {
   viewMode: string;
@@ -36,6 +38,35 @@ export interface NodeSelectorProps {
   onActionStarted: () => void;
   onActionNodeUpdated: (node: LineageGraphNode) => void;
   onActionCompleted: () => void;
+}
+
+export function FetchSelectedNodesRowCountButton({
+  nodes,
+  onFinish,
+}: {
+  nodes: LineageGraphNode[];
+  onFinish?: () => void;
+}) {
+  const { isLoading, fetchFn } = useRowCountQueries(
+    nodes.map((node) => node.name)
+  );
+  return (
+    <Button
+      isLoading={isLoading}
+      loadingText="Querying"
+      size="xs"
+      variant="outline"
+      title="Query Row Counts"
+      onClick={async () => {
+        await fetchFn();
+        onFinish && onFinish();
+      }}
+      isDisabled={nodes.length === 0}
+    >
+      <Icon as={MdQueryStats} mr={1} />
+      Query Row Counts
+    </Button>
+  );
 }
 
 function AddSchemaChangesCheckButton({
@@ -150,8 +181,9 @@ export function AddLineageDiffCheckButton({
 }
 
 interface ActionState {
+  mode: "per_node" | "multi_nodes";
   status: "pending" | "running" | "canceling" | "canceled" | "completed";
-  currentRunId?: string;
+  currentRun?: Partial<Run>;
   completed: number;
   total: number;
 }
@@ -165,15 +197,89 @@ export function NodeSelector({
   onActionCompleted,
 }: NodeSelectorProps) {
   const [actionState, setActionState] = useState<ActionState>({
+    mode: "per_node",
     status: "pending",
     completed: 0,
     total: 0,
   });
+  const queryClient = useQueryClient();
+  const [, setLocation] = useLocation();
 
-  const [runId, setRunId] = useState<string>();
+  const submitRunForNodes = async (
+    type: RunType,
+    skip: (node: LineageGraphNode) => string | undefined,
+    getParams: (nodes: LineageGraphNode[]) => any
+  ) => {
+    const mode = "multi_nodes";
+    actionState.mode = mode;
+    onActionStarted();
+    actionState.status = "running";
 
-  const submitRuns = async (
-    type: string,
+    const candidates: LineageGraphNode[] = [];
+
+    for (const node of nodes) {
+      const skipReason = skip(node);
+
+      if (skipReason) {
+        node.action = {
+          mode,
+          status: "skipped",
+          skipReason,
+        };
+        onActionNodeUpdated(node);
+      } else {
+        node.action = { mode, status: "pending" };
+        candidates.push(node);
+      }
+    }
+
+    const params = getParams(candidates);
+
+    try {
+      const { run_id } = await submitRun(type, params, { nowait: true });
+      actionState.currentRun = { run_id };
+      actionState.total = 1;
+
+      while (true) {
+        const run = await waitRun(run_id, 2);
+        actionState.currentRun = run;
+
+        const status = run.error
+          ? "failure"
+          : run.result
+          ? "success"
+          : "running";
+
+        for (const node of candidates) {
+          node.action = {
+            mode,
+            status,
+            run,
+          };
+          onActionNodeUpdated(node);
+        }
+
+        if (run.error || run.result) {
+          break;
+        }
+      }
+    } catch (e) {
+      // don't need to do anything here, the error will be shown in the summary
+    }
+
+    actionState.completed = 1;
+    if ((actionState.status as string) === "canceling") {
+      actionState.status = "canceled";
+      onActionCompleted();
+      return;
+    }
+
+    actionState.status = "completed";
+    onActionCompleted();
+  };
+
+  const submitRunsPerNodes = async (
+    type: RunType,
     getParams: (node: LineageGraphNode) => {
       /* params is the input parameters for the run of a node */
       params?: any;
@@ -181,11 +287,13 @@ export function NodeSelector({
       skipReason?: string;
     }
   ) => {
-    actionState.status = "running";
+    const mode = "per_node";
+    actionState.mode = mode;
     onActionStarted();
+    actionState.status = "running";
 
     for (const node of nodes) {
-      node.action = { status: "pending" };
+      node.action = { mode, status: "pending" };
       onActionNodeUpdated(node);
     }
 
@@ -196,6 +304,7 @@ export function NodeSelector({
       const { params, skipReason } = getParams(node);
       if (skipReason) {
         node.action = {
+          mode,
           status: "skipped",
           skipReason,
         };
@@ -203,20 +312,23 @@ export function NodeSelector({
       } else {
         try {
           const { run_id } = await submitRun(type, params, { nowait: true });
+          actionState.currentRun = { run_id };
           node.action = {
+            mode,
             status: "running",
           };
           onActionNodeUpdated(node);
-          setRunId(run_id);
 
           while (true) {
             const run = await waitRun(run_id, 2);
+            actionState.currentRun = run;
             const status = run.error
               ? "failure"
               : run.result
               ? "success"
               : "running";
             node.action = {
+              mode,
               status,
               run,
             };
@@ -229,7 +341,7 @@ export function NodeSelector({
         } catch (e) {
           // don't need to do anything here, the error will be shown in the summary
         } finally {
-          setRunId(undefined);
+          actionState.currentRun = undefined;
         }
       }
       actionState.completed++;
@@ -244,8 +356,39 @@ export function NodeSelector({
     onActionCompleted();
   };
 
+  const handleRowCountDiffClick = async () => {
+    const nodeNames = [];
+    for (const node of nodes) {
+      if (node.resourceType !== "model") {
+        node.action = {
+          mode: "multi_nodes",
+          status: "skipped",
+          skipReason: "Not a model",
+        };
+        onActionNodeUpdated(node);
+      } else {
+        nodeNames.push(node.name);
+      }
+    }
+
+    const skip = (node: LineageGraphNode) => {
+      if (node.resourceType !== "model") {
+        return "Not a model";
+      }
+    };
+    const getParams = (nodes: LineageGraphNode[]) => {
+      const params: RowCountDiffParams = {
+        node_names: nodes.map((node) => node.name),
+      };
+
+      return params;
+    };
+
+    submitRunForNodes("row_count_diff", skip, getParams);
+  };
+
   const handleValueDiffClick = async () => {
-    submitRuns("value_diff", (node) => {
+    submitRunsPerNodes("value_diff", (node) => {
       const primaryKey = node.data?.current?.primary_key;
       if (!primaryKey) {
         return {
@@ -264,16 +407,45 @@ export function NodeSelector({
 
   const handleCancel = async () => {
     actionState.status = "canceling";
-    if (runId) {
-      cancelRun(runId);
+    if (actionState.currentRun?.run_id) {
+      cancelRun(actionState.currentRun.run_id);
     }
   };
+
+  const handleAddToChecklist = useCallback(async () => {
+    const runId = actionState.currentRun?.run_id;
+
+    if (!runId) {
+      return;
+    }
+
+    const check = await createCheckByRun(runId);
+
+    queryClient.invalidateQueries({ queryKey: cacheKeys.checks() });
+    setLocation(`/checks/${check.check_id}`);
+  }, [actionState.currentRun?.run_id, setLocation, queryClient]);
 
   useUnmountEffect(() => {
     if (actionState.status === "running") {
       handleCancel();
     }
   });
+
+  const getProgressMessage = () => {
+    if (actionState.mode === "per_node") {
+      return `${actionState.completed} / ${actionState.total}`;
+    } else {
+      if (actionState.currentRun?.progress?.percentage) {
+        return `${actionState.currentRun.progress.percentage * 100}%`;
+      } else {
+        if (actionState.status === "completed") {
+          return "100%";
+        } else {
+          return "0%";
+        }
+      }
+    }
+  };
 
   return (
     <Box bg="white" rounded="md" shadow="dark-lg">
@@ -314,6 +486,15 @@ export function NodeSelector({
               size="xs"
               variant="outline"
               isDisabled={nodes.length === 0}
+              onClick={handleRowCountDiffClick}
+            >
+              <Icon as={TbBrandStackshare} />
+              Row count diff
+            </Button>
+            <Button
+              size="xs"
+              variant="outline"
+              isDisabled={nodes.length === 0}
               onClick={handleValueDiffClick}
             >
               <Icon as={TbBrandStackshare} />
@@ -330,9 +511,10 @@ export function NodeSelector({
           spacing={4}
         >
           <Box fontSize="10pt">
-            Progress: {actionState.completed}/{actionState.total}{" "}
+            Progress: {getProgressMessage()}{" "}
             {actionState.status === "canceled" ? " (canceled)" : ""}
           </Box>
+
           {actionState.status === "running" ||
           actionState.status === "canceling" ? (
             <Button
@@ -345,9 +527,21 @@ export function NodeSelector({
               Cancel
             </Button>
           ) : (
-            <Button size="xs" variant="outline" onClick={onClose}>
-              Close
-            </Button>
+            <>
+              {actionState.mode === "multi_nodes" &&
+                actionState.currentRun?.result && (
+                  <Button
+                    size="xs"
+                    variant="outline"
+                    onClick={handleAddToChecklist}
+                  >
+                    Add to checklist
+                  </Button>
+                )}
+              <Button size="xs" variant="outline" onClick={onClose}>
+                Close
+              </Button>
+            </>
           )}
         </HStack>
       )}

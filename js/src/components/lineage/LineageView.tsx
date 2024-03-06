@@ -493,7 +493,7 @@ function _LineageView({ ...props }: LineageViewProps) {
                       size="xs"
                       variant="outline"
                       backgroundColor="white"
-                      isDisabled={selectMode === "action"}
+                      isDisabled={selectMode !== "detail"}
                       onClick={() => {
                         const newMode =
                           selectMode === "detail" ? "action" : "detail";
@@ -535,13 +535,11 @@ function _LineageView({ ...props }: LineageViewProps) {
                   const newNodes = cleanUpSelectedNodes(nodes);
                   setNodes(newNodes);
                 }}
-                onActionStarted={() => {
+                onActionStarted={(mode) => {
                   setSelectMode("action_result");
                 }}
                 onActionNodeUpdated={handleActionNodeUpdated}
-                onActionCompleted={() => {
-                  setSelectMode("action_result");
-                }}
+                onActionCompleted={() => {}}
               />
             </SlideFade>
           </Panel>

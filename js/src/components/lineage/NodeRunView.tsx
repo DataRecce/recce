@@ -69,7 +69,7 @@ export function NodeRunView({ node, onCloseNode }: NodeRunViewProps) {
         </TabList>
         <TabPanels overflow="auto" height="calc(100% - 42px)">
           <TabPanel p={0} overflowY="auto" height="100%">
-            {node.action ? (
+            {node.action?.run?.type === "value_diff" ? (
               <RunView
                 run={node.action?.run}
                 RunResultView={ValueDiffResultView}
