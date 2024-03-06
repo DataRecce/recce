@@ -13,6 +13,7 @@ import {
 } from "@chakra-ui/react";
 import { LineageGraphNode } from "./lineage";
 import { MdOutlineSchema, MdQueryStats } from "react-icons/md";
+import { TbAlignBoxLeftStretch } from "react-icons/tb";
 import {
   createCheckByNodeSchema,
   createCheckByRun,
@@ -470,25 +471,27 @@ export function NodeSelector({
             />
           </ButtonGroup>
           <HStack>
-            <FetchSelectedNodesRowCountButton
+            {/* <FetchSelectedNodesRowCountButton
               nodes={nodes}
               onFinish={onClose}
-            />
+            /> */}
             <AddSchemaChangesCheckButton nodes={nodes} onFinish={onClose} />
-            <AddRowCountCheckButton nodes={nodes} onFinish={onClose} />
+            {/* <AddRowCountCheckButton nodes={nodes} onFinish={onClose} /> */}
             <AddLineageDiffCheckButton
               viewMode={viewMode}
               nodes={nodes}
               onFinish={onClose}
               withIcon={true}
             />
+          </HStack>
+          <HStack>
             <Button
               size="xs"
               variant="outline"
               isDisabled={nodes.length === 0}
               onClick={handleRowCountDiffClick}
             >
-              <Icon as={TbBrandStackshare} />
+              <Icon as={FiAlignLeft} />
               Row count diff
             </Button>
             <Button
@@ -497,7 +500,7 @@ export function NodeSelector({
               isDisabled={nodes.length === 0}
               onClick={handleValueDiffClick}
             >
-              <Icon as={TbBrandStackshare} />
+              <Icon as={TbAlignBoxLeftStretch} />
               Value diff
             </Button>
           </HStack>
@@ -527,7 +530,7 @@ export function NodeSelector({
               Cancel
             </Button>
           ) : (
-            <>
+            <HStack>
               {actionState.mode === "multi_nodes" &&
                 actionState.currentRun?.result && (
                   <Button
@@ -541,7 +544,7 @@ export function NodeSelector({
               <Button size="xs" variant="outline" onClick={onClose}>
                 Close
               </Button>
-            </>
+            </HStack>
           )}
         </HStack>
       )}
