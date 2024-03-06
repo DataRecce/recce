@@ -163,7 +163,7 @@ function ChangeStatusLegend() {
 }
 
 function _LineageView({ ...props }: LineageViewProps) {
-  const { fitView } = useReactFlow();
+  const { fitView, setCenter, getZoom } = useReactFlow();
   const { successToast, failToast } = useClipBoardToast();
   const { toImage, ref } = useToBlob({
     imageType: "png",
@@ -253,17 +253,6 @@ function _LineageView({ ...props }: LineageViewProps) {
     setEdges(edges);
   }, [setNodes, setEdges, viewMode, lineageGraphSets, props.filterNodes]);
 
-  // Fit view when the container size changes or the detail view is shown/hidden
-  useEffect(() => {
-    const observer = new ResizeObserver(() => {
-      fitView({ padding: 0.2, includeHiddenNodes: true, duration: 300 });
-    });
-    if (ref.current) {
-      observer.observe(ref.current);
-    }
-    return () => observer.disconnect();
-  }, [ref, isDetailViewShown, fitView]);
-
   const onNodeMouseEnter = (event: React.MouseEvent, node: Node) => {
     if (lineageGraph && modifiedSet !== undefined) {
       const [newNodes, newEdges] = highlightPath(
@@ -293,6 +282,16 @@ function _LineageView({ ...props }: LineageViewProps) {
     }
   };
 
+  const centerNode = (node: Node) => {
+    if (node.width && node.height) {
+      const x = node.position.x + node.width / 2;
+      const y = node.position.y + node.height / 2;
+      const zoom = getZoom();
+
+      setCenter(x, y, { zoom, duration: 200 });
+    }
+  };
+
   const onNodeClick = (event: React.MouseEvent, node: Node) => {
     if (props.interactive === false) return;
     closeContextMenu();
@@ -302,12 +301,14 @@ function _LineageView({ ...props }: LineageViewProps) {
         setIsDetailViewShown(true);
       }
       setNodes(selectSingleNode(node.id, nodes));
+      centerNode(node);
     } else if (selectMode === "action_result") {
       setDetailViewSelected(node.data);
       if (!isDetailViewShown) {
         setIsDetailViewShown(true);
       }
       setNodes(selectSingleNode(node.id, nodes));
+      centerNode(node);
     } else {
       setNodes(selectNode(node.id, nodes));
     }
@@ -496,6 +497,8 @@ function _LineageView({ ...props }: LineageViewProps) {
                       onClick={() => {
                         const newMode =
                           selectMode === "detail" ? "action" : "detail";
+                        setDetailViewSelected(undefined);
+                        setIsDetailViewShown(false);
                         const newNodes = cleanUpSelectedNodes(nodes);
                         setNodes(newNodes);
                         setSelectMode(newMode);
@@ -532,6 +535,8 @@ function _LineageView({ ...props }: LineageViewProps) {
                 onClose={() => {
                   setSelectMode("detail");
                   const newNodes = cleanUpSelectedNodes(nodes);
+                  setDetailViewSelected(undefined);
+                  setIsDetailViewShown(false);
                   setNodes(newNodes);
                 }}
                 onActionStarted={() => {
@@ -573,7 +578,6 @@ function _LineageView({ ...props }: LineageViewProps) {
             onCloseNode={() => {
               setDetailViewSelected(undefined);
               setIsDetailViewShown(false);
-              setNodes(cleanUpSelectedNodes(nodes));
             }}
           />
         </Box>

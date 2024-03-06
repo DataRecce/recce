@@ -47,7 +47,7 @@ export function NodeRunView({ node, onCloseNode }: NodeRunViewProps) {
     setLocation(`/checks/${check.check_id}`);
   }, [run?.run_id, setLocation, queryClient, viewOptions]);
 
-  const RunResultView =
+  const RunResultView: any =
     node.action?.run?.type === "value_diff"
       ? ValueDiffResultView
       : node.action?.run?.type === "row_count_diff"
