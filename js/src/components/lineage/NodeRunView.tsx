@@ -18,7 +18,7 @@ import { LineageGraphNode } from "./lineage";
 import { ResourceTypeTag } from "./NodeTag";
 import { RunView } from "../run/RunView";
 import { ValueDiffResultView } from "../valuediff/ValueDiffResultView";
-import { useCallback } from "react";
+import { useCallback, useState } from "react";
 import { useLocation } from "wouter";
 import { useQueryClient } from "@tanstack/react-query";
 import { cacheKeys } from "@/lib/api/cacheKeys";
@@ -33,7 +33,7 @@ export function NodeRunView({ node, onCloseNode }: NodeRunViewProps) {
   const run = node.action?.run;
   const [, setLocation] = useLocation();
   const queryClient = useQueryClient();
-  const viewOptions = {};
+  const [viewOptions, setViewOptions] = useState();
 
   const handleAddToChecklist = useCallback(async () => {
     if (!run?.run_id) {
@@ -72,6 +72,8 @@ export function NodeRunView({ node, onCloseNode }: NodeRunViewProps) {
             {node.action?.run?.type === "value_diff" ? (
               <RunView
                 run={node.action?.run}
+                viewOptions={viewOptions}
+                onViewOptionsChanged={setViewOptions}
                 RunResultView={ValueDiffResultView}
               />
             ) : (

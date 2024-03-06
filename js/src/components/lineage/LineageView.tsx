@@ -2,7 +2,6 @@ import { PUBLIC_API_URL } from "../../lib/const";
 import {
   LineageGraph,
   LineageGraphNode,
-  LineageGraphNode,
   cleanUpSelectedNodes,
   highlightPath,
   selectDownstream,
@@ -330,7 +329,7 @@ function _LineageView({ ...props }: LineageViewProps) {
         return newNodes;
       });
     },
-    [lineageGraph, setNodes]
+    [setNodes]
   );
 
   if (isLoading) {
@@ -535,7 +534,7 @@ function _LineageView({ ...props }: LineageViewProps) {
                   const newNodes = cleanUpSelectedNodes(nodes);
                   setNodes(newNodes);
                 }}
-                onActionStarted={(mode) => {
+                onActionStarted={() => {
                   setSelectMode("action_result");
                 }}
                 onActionNodeUpdated={handleActionNodeUpdated}
