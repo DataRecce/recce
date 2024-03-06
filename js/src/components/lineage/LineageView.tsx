@@ -566,19 +566,18 @@ function _LineageView({ ...props }: LineageViewProps) {
           />
         </Box>
       )}
-      {selectMode === "action_result" &&
-        detailViewSelected?.action?.mode === "per_node" && (
-          <Box flex="0 0 500px" borderLeft="solid 1px lightgray" height="100%">
-            <NodeRunView
-              node={detailViewSelected}
-              onCloseNode={() => {
-                setDetailViewSelected(undefined);
-                setIsDetailViewShown(false);
-                setNodes(cleanUpSelectedNodes(nodes));
-              }}
-            />
-          </Box>
-        )}
+      {selectMode === "action_result" && detailViewSelected && (
+        <Box flex="0 0 500px" borderLeft="solid 1px lightgray" height="100%">
+          <NodeRunView
+            node={detailViewSelected}
+            onCloseNode={() => {
+              setDetailViewSelected(undefined);
+              setIsDetailViewShown(false);
+              setNodes(cleanUpSelectedNodes(nodes));
+            }}
+          />
+        </Box>
+      )}
       {isContextMenuRendered && (
         // Only render context menu when select mode is action
         <Menu isOpen={true} onClose={closeContextMenu}>

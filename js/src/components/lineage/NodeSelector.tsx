@@ -393,7 +393,8 @@ export function NodeSelector({
       const primaryKey = node.data?.current?.primary_key;
       if (!primaryKey) {
         return {
-          skipReason: "No primary key found",
+          skipReason:
+            "No primary key found. The first unique column is used as primary key.",
         };
       }
 

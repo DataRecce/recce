@@ -23,6 +23,7 @@ import { useLocation } from "wouter";
 import { useQueryClient } from "@tanstack/react-query";
 import { cacheKeys } from "@/lib/api/cacheKeys";
 import { createCheckByRun } from "@/lib/api/checks";
+import { RowCountDiffResultView } from "../rowcount/RowCountDiffView";
 
 interface NodeRunViewProps {
   node: LineageGraphNode;
@@ -45,6 +46,13 @@ export function NodeRunView({ node, onCloseNode }: NodeRunViewProps) {
     queryClient.invalidateQueries({ queryKey: cacheKeys.checks() });
     setLocation(`/checks/${check.check_id}`);
   }, [run?.run_id, setLocation, queryClient, viewOptions]);
+
+  const RunResultView =
+    node.action?.run?.type === "value_diff"
+      ? ValueDiffResultView
+      : node.action?.run?.type === "row_count_diff"
+      ? RowCountDiffResultView
+      : null;
 
   return (
     <Grid height="100%" templateRows="auto auto 1fr">
@@ -69,12 +77,12 @@ export function NodeRunView({ node, onCloseNode }: NodeRunViewProps) {
         </TabList>
         <TabPanels overflow="auto" height="calc(100% - 42px)">
           <TabPanel p={0} overflowY="auto" height="100%">
-            {node.action?.run?.type === "value_diff" ? (
+            {RunResultView ? (
               <RunView
                 run={node.action?.run}
                 viewOptions={viewOptions}
                 onViewOptionsChanged={setViewOptions}
-                RunResultView={ValueDiffResultView}
+                RunResultView={RunResultView}
               />
             ) : (
               <Box p="20px 10px">No run result</Box>
