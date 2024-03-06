@@ -59,3 +59,17 @@ export async function submitRunFromCheck<PT = any, RT = any>(
 
   return run;
 }
+
+export async function searchRuns(
+  type: string,
+  params: any,
+  limit?: number,
+) {
+  const response = await axiosClient.post(`/api/runs/search`, {
+    type,
+    params,
+    limit
+  });
+
+  return response.data;
+}

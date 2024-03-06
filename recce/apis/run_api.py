@@ -67,3 +67,27 @@ async def list_run_handler():
     } for run in runs]
 
     return result
+
+
+class SearchRunsIn(BaseModel):
+    type: str
+    params: dict
+    limit: Optional[int] = None
+
+
+@run_router.post("/runs/search", status_code=200)
+async def search_runs_handler(search: SearchRunsIn):
+    runs = RunDAO().list()
+
+    result = [{
+        'run_id': run.run_id,
+        'run_at': run.run_at,
+        'type': run.type,
+        'params': run.params,
+        'result': run.result
+    } for run in runs if run.type.value == search.type and run.params.get('model') == search.params.get('model')]
+
+    if search.limit:
+        return result[-search.limit:]
+
+    return result
