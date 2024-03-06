@@ -88,7 +88,11 @@ export function CheckListInitLoader() {
   );
 }
 
-export function CheckListLoader() {
+export function CheckListLoader({
+  onLoadComplete,
+}: {
+  onLoadComplete: (item: string | undefined) => void;
+}) {
   const toast = useToast();
   const queryClient = useQueryClient();
   const hiddenFileInput = useRef<HTMLInputElement>(null);
@@ -104,6 +108,7 @@ export function CheckListLoader() {
     try {
       const { checks } = await loadChecks(selectedFile);
       queryClient.invalidateQueries({ queryKey: cacheKeys.checks() });
+      onLoadComplete(undefined);
       toast({
         description: `${checks} checks loaded successfully`,
         status: "info",
@@ -126,7 +131,7 @@ export function CheckListLoader() {
     }
 
     onClose();
-  }, [queryClient, selectedFile, toast, onClose]);
+  }, [queryClient, selectedFile, toast, onClose, onLoadComplete]);
 
   const handleClick = () => {
     if (hiddenFileInput.current) {
