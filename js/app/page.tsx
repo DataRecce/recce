@@ -11,7 +11,7 @@ import {
   Link,
   Text,
 } from "@chakra-ui/react";
-import { useLayoutEffect } from "react";
+import { ReactNode, useLayoutEffect } from "react";
 import * as amplitude from "@amplitude/analytics-browser";
 import { QueryClientProvider } from "@tanstack/react-query";
 import RecceContextProvider from "@/lib/hooks/RecceContextProvider";
@@ -19,18 +19,34 @@ import { reactQueryClient } from "@/lib/api/axiosClient";
 import { useVersionNumber } from "@/lib/api/version";
 import { CheckPage } from "@/components/check/CheckPage";
 import { QueryPage } from "@/components/query/QueryPage";
-import { Redirect, Route, Router, Switch, useLocation } from "wouter";
+import { Redirect, Route, Router, Switch, useLocation, useRoute } from "wouter";
 
 import _ from "lodash";
 import { useHashLocation } from "@/lib/hooks/useHashLocation";
 import { ThemeProvider, createTheme } from "@mui/material";
 import { useLineageGraphsContext } from "@/lib/hooks/LineageGraphContext";
 import { InfoIcon } from "@chakra-ui/icons";
+import { RunPage } from "@/components/run/RunPage";
 
 function getCookie(key: string) {
   var b = document.cookie.match("(^|;)\\s*" + key + "\\s*=\\s*([^;]+)");
   return b ? b.pop() : "";
 }
+
+const RouteAlwaysMount = ({
+  children,
+  path,
+}: {
+  children: ReactNode;
+  path: string;
+}) => {
+  const [match] = useRoute(path);
+  return (
+    <Box display={match ? "block" : "none"} height="100%">
+      {children}
+    </Box>
+  );
+};
 
 function TopBar() {
   const { metadata } = useLineageGraphsContext();
@@ -139,15 +155,21 @@ export default function Home() {
                 <NavBar />
 
                 <Box p={0} overflow="auto" flex="1" style={{ contain: "size" }}>
+                  {/* Prevent the lineage page unmount and lose states */}
+                  <RouteAlwaysMount path="/lineage">
+                    <LineageView />
+                  </RouteAlwaysMount>
                   <Switch>
-                    <Route path="/lineage">
-                      <LineageView />
-                    </Route>
                     <Route path="/query">
                       <QueryPage />
                     </Route>
                     <Route path="/checks/:slug*">
                       <CheckPage />
+                    </Route>
+                    <Route path="/runs/:runId">
+                      {({ runId }) => {
+                        return <RunPage runId={runId} />;
+                      }}
                     </Route>
                     <Route path="/ssr">
                       <>Loading</>

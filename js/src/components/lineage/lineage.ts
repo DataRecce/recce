@@ -1,5 +1,6 @@
 import { Node, Edge, Position } from "reactflow";
 import { getNeighborSet } from "./graph";
+import { Run } from "@/lib/api/types";
 
 /**
  * The data from the API
@@ -19,6 +20,7 @@ export interface NodeData {
   resource_type?: string;
   package_name?: string;
   columns?: { [key: string]: NodeColumnData };
+  primary_key?: string;
 }
 
 interface CatalogMetadata {
@@ -63,6 +65,16 @@ export interface LineageGraphNode {
 
   isSelected: boolean;
   isHighlighted?: boolean;
+
+  /**
+   * The action status for the node which is trigger by action for multiple nodes
+   */
+  action?: {
+    mode: "per_node" | "multi_nodes";
+    status?: "pending" | "running" | "success" | "failure" | "skipped";
+    skipReason?: string;
+    run?: Run;
+  };
 }
 
 export interface LineageGraphEdge {
@@ -100,7 +112,10 @@ export function buildDefaultLineageGraphSets(
   base: LineageData,
   current: LineageData
 ): DefaultLineageGraphSets {
-  function buildAllLineageGraph(base: LineageData, current: LineageData): LineageGraph {
+  function buildAllLineageGraph(
+    base: LineageData,
+    current: LineageData
+  ): LineageGraph {
     const nodes: { [key: string]: LineageGraphNode } = {};
     const edges: { [key: string]: LineageGraphEdge } = {};
     const buildNode = (
@@ -187,7 +202,10 @@ export function buildDefaultLineageGraphSets(
 
     return { edges, nodes };
   }
-  function buildChangedOnlyLineageGraph(all: LineageGraph, modifiedSet: string[]): LineageGraph {
+  function buildChangedOnlyLineageGraph(
+    all: LineageGraph,
+    modifiedSet: string[]
+  ): LineageGraph {
     const nodes: { [key: string]: LineageGraphNode } = {};
     const edges: { [key: string]: LineageGraphEdge } = {};
     function union(...sets: Set<string>[]) {
@@ -200,7 +218,6 @@ export function buildDefaultLineageGraphSets(
       });
       return unionSet;
     }
-
 
     // Select all downstream sets of modified nodes
     const downstreamSet = selectDownstream(all, modifiedSet);
@@ -223,7 +240,7 @@ export function buildDefaultLineageGraphSets(
       }
     });
 
-    return { nodes, edges }
+    return { nodes, edges };
   }
 
   const { nodes, edges } = buildAllLineageGraph(base, current);
@@ -267,29 +284,46 @@ export function buildDefaultLineageGraphSets(
       current: !!current.catalog_metadata,
     },
   };
-
-
 }
 
-export function selectUpstream(lineageGraph: LineageGraph, nodeIds: string[], degree: number = 1000) {
-  return getNeighborSet(nodeIds, (key) => {
+export function selectUpstream(
+  lineageGraph: LineageGraph,
+  nodeIds: string[],
+  degree: number = 1000
+) {
+  return getNeighborSet(
+    nodeIds,
+    (key) => {
       if (lineageGraph.nodes[key] === undefined) {
         return [];
       }
       return Object.keys(lineageGraph.nodes[key].parents);
-    }, degree);
+    },
+    degree
+  );
 }
 
-export function selectDownstream(lineageGraph: LineageGraph, nodeIds: string[], degree: number = 1000) {
-  return getNeighborSet(nodeIds, (key) => {
+export function selectDownstream(
+  lineageGraph: LineageGraph,
+  nodeIds: string[],
+  degree: number = 1000
+) {
+  return getNeighborSet(
+    nodeIds,
+    (key) => {
       if (lineageGraph.nodes[key] === undefined) {
         return [];
       }
-      return Object.keys(lineageGraph.nodes[key].children)
-    }, degree);
+      return Object.keys(lineageGraph.nodes[key].children);
+    },
+    degree
+  );
 }
 
-export function toReactflow(lineageGraph: LineageGraph, modifiedSet: string[]): [Node[], Edge[]] {
+export function toReactflow(
+  lineageGraph: LineageGraph,
+  modifiedSet: string[]
+): [Node[], Edge[]] {
   const nodes: Node[] = [];
   const edges: Edge[] = [];
   const backgroundColorMap = {
@@ -331,7 +365,7 @@ export function highlightPath(
   modifiedSet: string[],
   nodes: Node<LineageGraphNode>[],
   edges: Edge[],
-  id: string | null,
+  id: string | null
 ): [Node<LineageGraphNode>[], Edge[]] {
   function union(...sets: Set<string>[]) {
     const unionSet = new Set<string>();
@@ -349,13 +383,12 @@ export function highlightPath(
     id !== null
       ? union(
           selectUpstream(lineageGraph, [id]),
-          selectDownstream(lineageGraph, [id]),
+          selectDownstream(lineageGraph, [id])
         )
       : getNeighborSet(modifiedSet, (key) => {
           if (lineageGraph.nodes[key] === undefined) return [];
-          return Object.keys(lineageGraph.nodes[key].children)
-        }
-        );
+          return Object.keys(lineageGraph.nodes[key].children);
+        });
 
   const relatedEdges = new Set(
     edges
@@ -389,7 +422,7 @@ export function highlightPath(
 
 export function selectSingleNode(
   nodeId: string,
-  nodes: Node<LineageGraphNode>[],
+  nodes: Node<LineageGraphNode>[]
 ) {
   const newNodes = nodes.map((n) => {
     const isMatch = n.id === nodeId;
@@ -404,10 +437,7 @@ export function selectSingleNode(
   return newNodes;
 }
 
-export function selectNode(
-  nodeId: string,
-  nodes: Node<LineageGraphNode>[],
-) {
+export function selectNode(nodeId: string, nodes: Node<LineageGraphNode>[]) {
   const newNodes = nodes.map((n) => {
     const isMatch = n.id === nodeId;
     return {
@@ -423,7 +453,7 @@ export function selectNode(
 
 export function selectNodes(
   nodeIds: string[],
-  nodes: Node<LineageGraphNode>[],
+  nodes: Node<LineageGraphNode>[]
 ) {
   const newNodes = nodes.map((n) => {
     const isMatch = nodeIds.includes(n.id);
@@ -438,24 +468,21 @@ export function selectNodes(
   return newNodes;
 }
 
-export function cleanUpSelectedNodes(
-  nodes: Node<LineageGraphNode>[],
-) {
+export function cleanUpSelectedNodes(nodes: Node<LineageGraphNode>[]) {
   const newNodes = nodes.map((n) => {
     return {
       ...n,
       data: {
         ...n.data,
         isSelected: false,
+        action: undefined,
       },
     };
   });
   return newNodes;
 }
 
-export function getSelectedNodes(
-  nodes: Node<LineageGraphNode>[],
-) {
+export function getSelectedNodes(nodes: Node<LineageGraphNode>[]) {
   const selectedNodes = nodes.filter((n) => n.data.isSelected);
   return selectedNodes;
 }

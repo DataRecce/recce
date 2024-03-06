@@ -277,7 +277,9 @@ class DBTContext:
 
         for node in manifest_dict['nodes'].values():
             unique_id = node['unique_id']
-            if node['resource_type'] == 'test':
+            resource_type = node['resource_type']
+
+            if resource_type not in ['model', 'seed', 'exposure']:
                 continue
 
             nodes[unique_id] = {
@@ -289,8 +291,42 @@ class DBTContext:
                 'raw_code': node['raw_code'],
             }
 
+            # List of <type>.<package_name>.<node_name>.<hash>
+            # model.jaffle_shop.customer_segments
+            # test.jaffle_shop.not_null_customers_customer_id.5c9bf9911d
+            # test.jaffle_shop.unique_customers_customer_id.c5af1ff4b1
+            child_map: List[str] = manifest_dict['child_map'][unique_id]
+            cols_not_null = []
+            cols_unique = []
+
+            for child in child_map:
+                node_name = node['name']
+                comps = child.split('.')
+                child_type = comps[0]
+                child_name = comps[2]
+
+                not_null_prefix = f'not_null_{node_name}_'
+                if child_type == 'test' and child_name.startswith(not_null_prefix):
+                    cols_not_null.append(child_name[len(not_null_prefix):])
+                unique_prefix = f'unique_{node_name}_'
+                if child_type == 'test' and child_name.startswith(unique_prefix):
+                    cols_unique.append(child_name[len(unique_prefix):])
+
             if catalog is not None and unique_id in catalog.nodes:
-                nodes[unique_id]['columns'] = catalog.nodes[unique_id].columns
+                columns = []
+                primary_key = None
+                for col_name, col in catalog.nodes[unique_id].columns.items():
+                    col = dict(name=col_name, type=col.type)
+                    if col_name in cols_not_null:
+                        col['not_null'] = True
+                    if col_name in cols_unique:
+                        col['unique'] = True
+                        if not primary_key:
+                            primary_key = col_name
+                    columns.append(col)
+                nodes[unique_id]['columns'] = columns
+                if primary_key:
+                    nodes[unique_id]['primary_key'] = primary_key
 
         for source in manifest_dict['sources'].values():
             unique_id = source['unique_id']
