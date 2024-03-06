@@ -89,14 +89,9 @@ export const ActionTag = ({ node, action }: ActionTagProps) => {
             alignItems="center"
             gap="3px"
           >
-            <Box>
-              {mismatched > 0
-                ? `${mismatched} columns mismatched`
-                : "All columns match"}
-            </Box>
-            <Link href={window.location.origin + `#!/runs/${run_id}`}>
-              <ExternalLinkIcon cursor="pointer" />
-            </Link>
+            {mismatched > 0
+              ? `${mismatched} columns mismatched`
+              : "All columns match"}
           </Flex>
         </TagLabel>
       </Tag>
