@@ -112,7 +112,7 @@ export function TopKSummaryBarChart({ topKDiff, isDisplayTopTen }: BarChartProps
               >
                 <Text
                   noOfLines={1}
-                  width={'15%'}
+                  width={'10em'}
                   fontSize={'sm'}
                   color={
                     current.isLastItemOthers || current.label.length === 0
@@ -122,7 +122,7 @@ export function TopKSummaryBarChart({ topKDiff, isDisplayTopTen }: BarChartProps
                 >
                   {current.label}
                 </Text>
-                <Flex width={'75%'} direction={'column'} >
+                <Flex width={'70%'} direction={'column'} >
                   {/* Current Top-K */}
                   <Flex height={'1em'}>
                     <CategoricalBarChart
@@ -135,7 +135,7 @@ export function TopKSummaryBarChart({ topKDiff, isDisplayTopTen }: BarChartProps
                       ml={5}
                       mr={2}
                       fontSize={'sm'}
-                      width={'5%'}
+                      width={'6em'}
                       // noOfLines={1}
                     >
                       {current.displayCount}
@@ -156,7 +156,7 @@ export function TopKSummaryBarChart({ topKDiff, isDisplayTopTen }: BarChartProps
                       ml={5}
                       mr={2}
                       fontSize={'sm'}
-                      width={'5%'}
+                      width={'6em'}
                       // noOfLines={1}
                     >
                       {base.displayCount}
