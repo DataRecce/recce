@@ -18,9 +18,7 @@ interface ValueDiffFormProp extends RunFormProps<ValueDiffParams> {}
 
 export function extractColumns(node: LineageGraphNode) {
   function getColumns(nodeData: NodeData) {
-    return nodeData && nodeData.columns
-      ? Object.values(nodeData.columns)
-      : [];
+    return nodeData && nodeData.columns ? Object.values(nodeData.columns) : [];
   }
 
   const baseColumns = getColumns(node.data.base!!);
@@ -28,7 +26,7 @@ export function extractColumns(node: LineageGraphNode) {
 
   const union: NodeColumnData[] = [];
   baseColumns.forEach((column) => {
-    if (!union.some( (c) => c.name === column.name)) {
+    if (!union.some((c) => c.name === column.name)) {
       union.push(column);
     }
   });
@@ -77,27 +75,17 @@ export function ValueDiffForm({
     !params.columns || params.columns.length === 0
   );
 
-  useEffect(() => {
-    let isReadyToExecute = true;
-
-    if (!params.primary_key) {
-      isReadyToExecute = false;
-    } else if (
-      !allColumns &&
-      (!params.columns || params.columns.length === 0)
-    ) {
-      isReadyToExecute = false;
-    }
-
-    setIsReadyToExecute(isReadyToExecute);
-  }, [params, setIsReadyToExecute, allColumns]);
-
+  const model = params?.model;
   const node = _.find(lineageGraph.lineageGraphSets?.all.nodes, {
     name: params?.model,
   });
+  const primaryKey = params?.primary_key || node?.data.current?.primary_key;
+
+  useEffect(() => {
+    setIsReadyToExecute(primaryKey && model ? true : false);
+  }, [primaryKey, model, setIsReadyToExecute]);
 
   const columnNames = node ? extractColumnNames(node) : [];
-  const primaryKey = params?.primary_key || node?.data.current?.primary_key;
 
   return (
     <VStack gap={5} m="8px 24px" paddingBottom="200px">

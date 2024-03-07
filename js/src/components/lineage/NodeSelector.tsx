@@ -535,6 +535,7 @@ export function NodeSelector({
               {actionState.mode === "multi_nodes" &&
                 actionState.currentRun?.result && (
                   <Button
+                    display="none"
                     size="xs"
                     variant="outline"
                     onClick={handleAddToChecklist}
