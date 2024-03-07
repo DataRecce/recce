@@ -79,13 +79,14 @@ class SearchRunsIn(BaseModel):
 async def search_runs_handler(search: SearchRunsIn):
     runs = RunDAO().list()
 
-    result = [{
-        'run_id': run.run_id,
-        'run_at': run.run_at,
-        'type': run.type,
-        'params': run.params,
-        'result': run.result
-    } for run in runs if run.type.value == search.type and run.params.get('model') == search.params.get('model')]
+    result = []
+    for run in runs:
+        if run.type.value != search.type:
+            continue
+        if not all(search.params[key] == run.params.get(key) for key in search.params.keys()):
+            continue
+
+        result.append(run)
 
     if search.limit:
         return result[-search.limit:]

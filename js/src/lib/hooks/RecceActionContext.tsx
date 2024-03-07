@@ -5,7 +5,7 @@ import React, {
   useEffect,
   useState,
 } from "react";
-import { RunType } from "../api/types";
+import { Run, RunType } from "../api/types";
 import { ValueDiffResultView } from "@/components/valuediff/ValueDiffResultView";
 import { ValueDiffForm } from "@/components/valuediff/ValueDiffForm";
 import { ProfileDiffResultView } from "@/components/profile/ProfileDiffResultView";
@@ -88,7 +88,7 @@ export function RecceActionContextProvider({
     session: string;
     type: RunType;
     params?: any;
-    lastRun?: any;
+    lastRun?: Run;
     options?: RecceActionOptions;
   }>();
   const { isOpen, onOpen, onClose } = useDisclosure();

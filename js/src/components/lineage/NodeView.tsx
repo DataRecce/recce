@@ -167,7 +167,6 @@ export function NodeView({ node, onCloseNode }: NodeViewProps) {
                                 "value_diff",
                                 {
                                   model: node.name,
-                                  primary_key: "",
                                 },
                                 { showForm: true, showLast: true }
                               );
