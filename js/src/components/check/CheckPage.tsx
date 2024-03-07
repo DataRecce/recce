@@ -37,9 +37,7 @@ export const CheckPage = () => {
   const [, params] = useRoute("/checks/:checkId");
   const queryClient = useQueryClient();
   const { successToast, failToast } = useClipBoardToast();
-  const [selectedItem, setSelectedItem] = useState<string | undefined>(
-    params?.checkId
-  );
+  const selectedItem = params?.checkId;
 
   const {
     isLoading,
@@ -90,10 +88,6 @@ export const CheckPage = () => {
 
     handleSelectItem(check.check_id);
   }, [queryClient, handleSelectItem]);
-
-  const onLoadComplete = useCallback((item: string | undefined) => {
-    setSelectedItem(item);
-  }, []);
 
   useEffect(() => {
     if (status !== "success") {
@@ -179,7 +173,7 @@ export const CheckPage = () => {
             {!isDemoSite && (
               <>
                 <CheckListExporter />
-                <CheckListLoader onLoadComplete={onLoadComplete} />
+                <CheckListLoader />
               </>
             )}
           </HStack>
