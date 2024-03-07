@@ -20,6 +20,7 @@ import {
 import { InfoIcon } from "@chakra-ui/icons";
 import { loadChecks } from "@/lib/api/checks";
 import { IoFolderOpenOutline } from "react-icons/io5";
+import { useLocation } from "wouter";
 
 export function CheckListInitLoader() {
   const toast = useToast();
@@ -95,6 +96,7 @@ export function CheckListLoader() {
   const cancelRef = useRef<HTMLButtonElement>(null);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const { isOpen, onOpen, onClose } = useDisclosure();
+  const [, setLocation] = useLocation();
 
   const handleLoad = useCallback(async () => {
     if (!selectedFile) {
@@ -103,7 +105,8 @@ export function CheckListLoader() {
 
     try {
       const { checks } = await loadChecks(selectedFile);
-      queryClient.invalidateQueries({ queryKey: cacheKeys.checks() });
+      await queryClient.invalidateQueries({ queryKey: cacheKeys.checks() });
+      setLocation("/checks");
       toast({
         description: `${checks} checks loaded successfully`,
         status: "info",
@@ -126,7 +129,7 @@ export function CheckListLoader() {
     }
 
     onClose();
-  }, [queryClient, selectedFile, toast, onClose]);
+  }, [queryClient, selectedFile, toast, onClose, setLocation]);
 
   const handleClick = () => {
     if (hiddenFileInput.current) {
