@@ -76,10 +76,20 @@ export function ValueDiffForm({
   );
 
   const model = params?.model;
+  const primaryKey = params?.primary_key;
   const node = _.find(lineageGraph.lineageGraphSets?.all.nodes, {
     name: params?.model,
   });
-  const primaryKey = params?.primary_key || node?.data.current?.primary_key;
+  const nodePrimaryKey = node?.data.current?.primary_key;
+
+  useEffect(() => {
+    if (!primaryKey && nodePrimaryKey) {
+      onParamsChanged({
+        ...params,
+        primary_key: nodePrimaryKey,
+      });
+    }
+  }, [primaryKey, nodePrimaryKey, params, onParamsChanged]);
 
   useEffect(() => {
     setIsReadyToExecute(primaryKey && model ? true : false);
