@@ -14,11 +14,15 @@ import {
 } from 'chart.js';
 import { Chart } from 'react-chartjs-2';
 import { formatAsAbbreviatedNumber, formatIntervalMinMax } from "@/utils/formatters";
+import { Box, Flex, Spacer, Text } from '@chakra-ui/react';
 
 export const INFO_VAL_COLOR = '#63B3ED';
 export const DATE_RANGE = 'Date Range';
 export const TEXTLENGTH = 'Text Length';
 export const VALUE_RANGE = 'Value Range';
+
+export const CURRENT_BAR_COLOR = '#63B3EDCC';
+export const BASE_BAR_COLOR = '#F6AD55CC';
 
 /**
  * Histogram Chart that can display generic data types such as Numeric, Datetime, Integer
@@ -34,11 +38,15 @@ type HistogramChartProps = {
     min?: string | number;
     max?: string | number;
     binEdges: number[];
-    histogram: HistogramResult;
+    datasets: HistogramResult[];
   },
   animation?: AnimationOptions<'bar'>['animation'];
   hideAxis?: boolean;
 };
+
+function SquareIcon({ color }: { color: string }) {
+  return (<Box display="inline-block" w="10px" h="10px" bgColor={color} mr="2" borderRadius="sm"></Box>);
+}
 
 export function HistogramChart({
   data,
@@ -61,25 +69,56 @@ export function HistogramChart({
 
   //infer `any` to allow for union data configurations & options
   return (
-    <Chart
-      type="bar"
-      options={chartOptions}
-      data={chartData as any}
-      plugins={[]}
-    />
+    <>
+      <Flex
+        alignItems={'center'}
+        direction={'row'}
+      >
+        <Spacer />
+        <Text as='h3' size='sm' p='2' color='gray'>
+          <SquareIcon color={BASE_BAR_COLOR}/> Base
+        </Text>
+        <Text as='h3' size='sm' p='2' color='gray'>
+          <SquareIcon color={CURRENT_BAR_COLOR}/> Current
+        </Text>
+        <Spacer />
+      </Flex>
+      <Chart
+        type="bar"
+        options={chartOptions}
+        data={chartData as any}
+        plugins={[]}
+      />
+    </>
   );
+}
+
+function getHistogramChartDataset(type: string, binEdges: number[], label: string, color: string, data: HistogramResult) {
+  const isDatetime = type === 'datetime';
+  const { counts = [] } = data;
+  const newData = isDatetime
+    ? counts.map((v, i) => ({ x: binEdges[i], y: v }))
+    : counts;
+  return {
+    label,
+    data: newData,
+    backgroundColor: color,
+    borderColor: color,//'#4299E1',
+    hoverBackgroundColor: '#002A53',
+    borderWidth: 1,
+    categoryPercentage: 1, // tells bar to fill "bin area"
+    barPercentage: 1, //tells bar to fill "bar area"
+    xAxisID: 'x',
+  };
 }
 
 export function getHistogramChartData(
   data: HistogramChartProps['data'],
 ): ChartData<'bar' | 'scatter'> {
-  const { histogram, type, binEdges } = data;
-  const isDatetime = type === 'datetime';
-  const { counts = [] } = histogram || ({} as HistogramResult);
-
-  const newData = isDatetime
-    ? counts.map((v, i) => ({ x: binEdges[i], y: v }))
-    : counts;
+  const { datasets, type, binEdges } = data;
+  const [base, current] = datasets;
+  const currentDataset = getHistogramChartDataset(type, binEdges, 'Current', CURRENT_BAR_COLOR, current);
+  const baseDataset = getHistogramChartDataset(type, binEdges, 'Base', BASE_BAR_COLOR, base);
 
   const newLabels = binEdges
     .map((v, i) => formatDisplayedBinItem(binEdges, i))
@@ -88,17 +127,7 @@ export function getHistogramChartData(
   return {
     labels: newLabels,
     datasets: [
-      {
-        label: 'counts',
-        data: newData as any, //infer `any` to allow datestring
-        backgroundColor: INFO_VAL_COLOR,
-        borderColor: '#4299E1',
-        hoverBackgroundColor: '#002A53',
-        borderWidth: 1,
-        categoryPercentage: 1, // tells bar to fill "bin area"
-        barPercentage: 1, //tells bar to fill "bar area"
-        xAxisID: 'x',
-      },
+      currentDataset, baseDataset,
     ],
   };
 }
@@ -108,9 +137,8 @@ export function getHistogramChartOptions(
   hideAxis = false,
   { ...configOverrides }: ChartOptions<'bar'> = {},
 ): ChartOptions<'bar'> {
-  const { histogram, type, samples = 0, binEdges } = data;
-  const { counts = [] } =
-    histogram || ({} as HistogramResult);
+  const { datasets, type, samples = 0, binEdges } = data;
+  const [base, current] = datasets;
   const isDatetime = type === 'datetime';
   return {
     responsive: true,
@@ -121,11 +149,11 @@ export function getHistogramChartOptions(
         position: 'nearest',
         intersect: false,
         callbacks: {
-          title([{ dataIndex }]) {
+          title([{ dataIndex, datasetIndex }]) {
             const result = formatDisplayedBinItem(binEdges, dataIndex);
 
             const percentOfTotal = formatIntervalMinMax(
-              counts[dataIndex] / samples,
+              current.counts[dataIndex] / samples,
             );
 
             const prefix = isDatetime
@@ -147,12 +175,12 @@ export function getHistogramChartOptions(
  * get x, y scales for histogram (dynamic based on datetime or not)
  */
 function getScales(
-  { histogram, min = 0, max = 0, type, binEdges }: HistogramChartProps['data'],
+  { datasets, min = 0, max = 0, type, binEdges }: HistogramChartProps['data'],
   hideAxis = false,
 ) {
   const isDatetime = type === 'datetime';
-  const { counts = [] } =
-    histogram || ({} as HistogramResult);
+  const [base, current] = datasets;
+  const maxCount = Math.max(...current.counts, ...base.counts);
 
   const newLabels = binEdges
     .map((v, i) => formatDisplayedBinItem(binEdges, i))
@@ -189,13 +217,14 @@ function getScales(
         return newLabels[index];
       },
     },
+    stacked: true,
   };
   const xScaleBase = isDatetime ? xScaleDate : xScaleCategory;
 
   const yScaleBase: ScaleOptions = {
     display: hideAxis ? false : true,
     type: 'linear',
-    max: Math.max(...counts), //NOTE: do not add `min` since if they are equal nothing gets displayed sometimes
+    max: maxCount, //NOTE: do not add `min` since if they are equal nothing gets displayed sometimes
     border: { dash: [2, 2] },
     grid: {
       color: 'lightgray',
@@ -207,6 +236,7 @@ function getScales(
         return formatAsAbbreviatedNumber(val);
       },
     },
+    beginAtZero: true,
   };
   return { x: xScaleBase, y: yScaleBase };
 }

@@ -25,25 +25,14 @@ export function HistogramDiffResultView({ run }: HistogramDiffResultViewProp) {
         <Heading as="h1" size="md" paddingTop="4" textAlign='center'>Model {params.model}.{params.column_name}</Heading>
         <HStack>
           <Spacer />
-          <Box w="40%" h="300px" m="4">
-            <Heading as='h3' size="sm" m="2" color='gray'>Base</Heading>
+          <Box w="80%" h="300px" m="4">
+            {/* <Heading as='h3' size="sm" m="2" color='gray'>Base</Heading> */}
             <HistogramChart data={{
               type: run.params?.column_type || '',
-              histogram: base,
+              datasets: [current, base],
               min: min,
               max: max,
               samples: base.total,
-              binEdges: binEdges,
-            }} />
-          </Box>
-          <Box w="40%" h="300px" m="4">
-            <Heading as='h3' size="sm" m="2" color='gray'>Current</Heading>
-            <HistogramChart data={{
-              type: run.params?.column_type || '',
-              histogram: current,
-              min: min,
-              max: max,
-              samples: current.total,
               binEdges: binEdges,
             }} />
           </Box>
