@@ -129,7 +129,7 @@ export function CheckListLoader() {
     }
 
     onClose();
-  }, [queryClient, selectedFile, toast, onClose]);
+  }, [queryClient, selectedFile, toast, onClose, setLocation]);
 
   const handleClick = () => {
     if (hiddenFileInput.current) {
