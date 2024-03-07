@@ -6,7 +6,6 @@ import { Run, RunType } from "@/lib/api/types";
 import {
   Box,
   Button,
-  MenuItem,
   Flex,
   Modal,
   ModalBody,
@@ -21,6 +20,7 @@ import { useCallback, useEffect, useState } from "react";
 import { useLocation } from "wouter";
 import { RunView } from "./RunView";
 import { RunFormProps, RunResultViewProps } from "./types";
+import { formatDistanceToNow } from "date-fns";
 
 interface RunModalProps<PT, RT, VO> {
   isOpen: boolean;
@@ -28,6 +28,7 @@ interface RunModalProps<PT, RT, VO> {
   title: string;
   type: RunType;
   params: PT;
+  initialRun?: Run;
   RunForm?: React.ComponentType<RunFormProps<PT>>;
   RunResultView: React.ComponentType<RunResultViewProps<PT, RT, VO>>;
 }
@@ -38,6 +39,7 @@ export const RunModal = <PT, RT, VO>({
   type,
   title,
   params: defaultParams,
+  initialRun,
   RunForm,
   RunResultView,
 }: RunModalProps<PT, RT, VO>) => {
@@ -48,6 +50,7 @@ export const RunModal = <PT, RT, VO>({
   const [isReadyToExecute, setIsReadyToExecute] = useState(false);
   const [progress, setProgress] = useState<Run["progress"]>();
   const [viewOptions, setViewOptions] = useState<VO>();
+  const [lastRun, setLastRun] = useState<Run | undefined>(initialRun);
 
   const submitRunFn = async () => {
     const { run_id } = await submitRun<PT, RT>(type, params, { nowait: true });
@@ -76,7 +79,7 @@ export const RunModal = <PT, RT, VO>({
   });
 
   useEffect(() => {
-    if (isOpen && RunForm === undefined) {
+    if (isOpen && RunForm === undefined && lastRun === undefined) {
       execute();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -99,25 +102,28 @@ export const RunModal = <PT, RT, VO>({
 
   const handleRerun = useCallback(() => {
     execute();
+    setLastRun(undefined);
   }, [execute]);
 
   const handleReset = () => {
     setAborting(false);
     setParams(defaultParams);
     setProgress(undefined);
+    setLastRun(undefined);
     reset();
   };
 
   const handleAddToChecklist = useCallback(async () => {
-    if (!run?.run_id) {
+    const runID = lastRun ? lastRun.run_id : run?.run_id;
+    if (runID === undefined) {
       return;
     }
 
-    const check = await createCheckByRun(run.run_id, viewOptions);
+    const check = await createCheckByRun(runID, viewOptions);
 
     queryClient.invalidateQueries({ queryKey: cacheKeys.checks() });
     setLocation(`/checks/${check.check_id}`);
-  }, [run?.run_id, setLocation, queryClient, viewOptions]);
+  }, [run?.run_id, lastRun, setLocation, queryClient, viewOptions]);
 
   const handleClose = async () => {
     onClose();
@@ -126,6 +132,11 @@ export const RunModal = <PT, RT, VO>({
     }
     handleReset();
   };
+
+  const hasResult = !!lastRun?.result || !!run?.result;
+  const relativeTime = lastRun?.run_at
+    ? formatDistanceToNow(new Date(lastRun.run_at), { addSuffix: true })
+    : null;
 
   return (
     <Modal
@@ -136,7 +147,19 @@ export const RunModal = <PT, RT, VO>({
     >
       <ModalOverlay />
       <ModalContent overflowY="auto" height="75%">
-        <ModalHeader>{title}</ModalHeader>
+        <ModalHeader>
+          {title}
+          {!run && !isPending && relativeTime && (
+            <Box
+              textOverflow="ellipsis"
+              whiteSpace="nowrap"
+              overflow="hidden"
+              fontSize="10pt"
+            >
+              {relativeTime}
+            </Box>
+          )}
+        </ModalHeader>
         <ModalCloseButton />
         <ModalBody
           p="0px"
@@ -144,7 +167,7 @@ export const RunModal = <PT, RT, VO>({
           overflow="auto"
           borderY="1px solid lightgray"
         >
-          {!isPending && !run && !error ? (
+          {!isPending && !run && !error && !lastRun ? (
             <Box style={{ contain: "layout" }}>
               {RunForm && (
                 <RunForm
@@ -158,7 +181,7 @@ export const RunModal = <PT, RT, VO>({
             <RunView
               isPending={isPending}
               isAborting={isAborting}
-              run={run}
+              run={lastRun ? lastRun : run}
               error={error}
               progress={progress}
               onCancel={handleCancel}
@@ -170,13 +193,13 @@ export const RunModal = <PT, RT, VO>({
         </ModalBody>
         <ModalFooter>
           <Flex gap="10px">
-            {run && RunForm && (
+            {hasResult && RunForm && (
               <Button colorScheme="blue" onClick={handleReset}>
                 Reset
               </Button>
             )}
 
-            {run?.result && (
+            {hasResult && (
               <>
                 <Button colorScheme="blue" onClick={handleAddToChecklist}>
                   Add to checklist
@@ -194,7 +217,7 @@ export const RunModal = <PT, RT, VO>({
               </Button>
             )}
 
-            {!run && !isPending && (
+            {!hasResult && !isPending && (
               <Button
                 isDisabled={isPending || !isReadyToExecute}
                 colorScheme="blue"
@@ -204,7 +227,7 @@ export const RunModal = <PT, RT, VO>({
               </Button>
             )}
 
-            {run && !RunForm && (
+            {hasResult && !RunForm && (
               <Button colorScheme="blue" onClick={handleRerun}>
                 Rerun
               </Button>

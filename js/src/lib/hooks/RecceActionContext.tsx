@@ -5,7 +5,7 @@ import React, {
   useEffect,
   useState,
 } from "react";
-import { RunType } from "../api/types";
+import { Run, RunType } from "../api/types";
 import { ValueDiffResultView } from "@/components/valuediff/ValueDiffResultView";
 import { ValueDiffForm } from "@/components/valuediff/ValueDiffForm";
 import { ProfileDiffResultView } from "@/components/profile/ProfileDiffResultView";
@@ -17,9 +17,11 @@ import { TopKDiffResultView } from "@/components/top-k/TopKDiffResultView";
 import { TopKDiffForm } from "@/components/top-k/TopKDiffForm";
 import { HistogramDiffResultView } from "@/components/histogram/HistogramDiffResultView";
 import { HistogramDiffForm } from "@/components/histogram/HistogramDiffForm";
+import { searchRuns } from "../api/runs";
 
 export interface RecceActionOptions {
   showForm: boolean;
+  showLast?: boolean;
 }
 
 export interface RecceActionContextType {
@@ -68,7 +70,7 @@ const registry: { [key: string]: RegistryEntry } = {
     title: "Histogram Diff",
     RunResultView: HistogramDiffResultView,
     RunForm: HistogramDiffForm,
-  }
+  },
 };
 
 const useCloseModalEffect = (onClose: () => void) => {
@@ -86,13 +88,21 @@ export function RecceActionContextProvider({
     session: string;
     type: RunType;
     params?: any;
+    lastRun?: Run;
     options?: RecceActionOptions;
   }>();
   const { isOpen, onOpen, onClose } = useDisclosure();
   const runAction = useCallback(
-    (type: string, params?: any, options?: RecceActionOptions) => {
+    async (type: string, params?: any, options?: RecceActionOptions) => {
       const session = new Date().getTime().toString();
-      setAction({ session, type, params, options });
+      let lastRun = undefined;
+      if (options?.showLast) {
+        const runs = await searchRuns(type, params, 1);
+        if (runs.length === 1) {
+          lastRun = runs[0];
+        }
+      }
+      setAction({ session, type, params, lastRun, options });
       onOpen();
     },
     [setAction, onOpen]
@@ -109,6 +119,7 @@ export function RecceActionContextProvider({
           title={registry[action.type].title}
           type={action.type}
           params={action.params}
+          initialRun={action.lastRun}
           RunResultView={registry[action.type].RunResultView}
           RunForm={
             action.options?.showForm ? registry[action.type].RunForm : undefined

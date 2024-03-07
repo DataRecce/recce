@@ -150,9 +150,13 @@ export function NodeView({ node, onCloseNode }: NodeViewProps) {
                         <MenuList>
                           <MenuItem
                             onClick={() => {
-                              runAction("profile_diff", {
-                                model: node.name,
-                              });
+                              runAction(
+                                "profile_diff",
+                                {
+                                  model: node.name,
+                                },
+                                { showForm: false, showLast: true }
+                              );
                             }}
                           >
                             Profile Diff
@@ -163,9 +167,8 @@ export function NodeView({ node, onCloseNode }: NodeViewProps) {
                                 "value_diff",
                                 {
                                   model: node.name,
-                                  primary_key: "",
                                 },
-                                { showForm: true }
+                                { showForm: true, showLast: true }
                               );
                             }}
                           >
@@ -186,7 +189,11 @@ export function NodeView({ node, onCloseNode }: NodeViewProps) {
                             onClick={() => {
                               runAction(
                                 "histogram_diff",
-                                { model: node.name, column_name: "", column_type: "" },
+                                {
+                                  model: node.name,
+                                  column_name: "",
+                                  column_type: "",
+                                },
                                 { showForm: true }
                               );
                             }}
