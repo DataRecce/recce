@@ -27,6 +27,7 @@ import { ThemeProvider, createTheme } from "@mui/material";
 import { useLineageGraphsContext } from "@/lib/hooks/LineageGraphContext";
 import { InfoIcon } from "@chakra-ui/icons";
 import { RunPage } from "@/components/run/RunPage";
+import { ErrorBoundary } from "@/components/errorboundary/ErrorBoundary";
 
 function getCookie(key: string) {
   var b = document.cookie.match("(^|;)\\s*" + key + "\\s*=\\s*([^;]+)");
@@ -153,32 +154,38 @@ export default function Home() {
               <Flex direction="column" height="100vh">
                 <TopBar />
                 <NavBar />
-
-                <Box p={0} overflow="auto" flex="1" style={{ contain: "size" }}>
-                  {/* Prevent the lineage page unmount and lose states */}
-                  <RouteAlwaysMount path="/lineage">
-                    <LineageView />
-                  </RouteAlwaysMount>
-                  <Switch>
-                    <Route path="/query">
-                      <QueryPage />
-                    </Route>
-                    <Route path="/checks/:slug*">
-                      <CheckPage />
-                    </Route>
-                    <Route path="/runs/:runId">
-                      {({ runId }) => {
-                        return <RunPage runId={runId} />;
-                      }}
-                    </Route>
-                    <Route path="/ssr">
-                      <>Loading</>
-                    </Route>
-                    <Route>
-                      <Redirect to="/lineage" />
-                    </Route>
-                  </Switch>
-                </Box>
+                <ErrorBoundary>
+                  <Box
+                    p={0}
+                    overflow="auto"
+                    flex="1"
+                    style={{ contain: "size" }}
+                  >
+                    {/* Prevent the lineage page unmount and lose states */}
+                    <RouteAlwaysMount path="/lineage">
+                      <LineageView />
+                    </RouteAlwaysMount>
+                    <Switch>
+                      <Route path="/query">
+                        <QueryPage />
+                      </Route>
+                      <Route path="/checks/:slug*">
+                        <CheckPage />
+                      </Route>
+                      <Route path="/runs/:runId">
+                        {({ runId }) => {
+                          return <RunPage runId={runId} />;
+                        }}
+                      </Route>
+                      <Route path="/ssr">
+                        <>Loading</>
+                      </Route>
+                      <Route>
+                        <Redirect to="/lineage" />
+                      </Route>
+                    </Switch>
+                  </Box>
+                </ErrorBoundary>
               </Flex>
             </RecceContextProvider>
           </Router>
