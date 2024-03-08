@@ -184,14 +184,22 @@ export const QueryResultView = ({
           )}
         </Flex>
       )}
-      <ScreenshotDataGrid
-        style={{ blockSize: "auto", maxHeight: "100%", overflow: "auto" }}
-        columns={gridData.columns}
-        rows={gridData.rows}
-        defaultColumnOptions={{ resizable: true, maxWidth: 800, minWidth: 35 }}
-        className="rdg-light"
-        enableScreenshot={true}
-      />
+      {gridData.rows.length === 0 ? (
+        <Center height="100%">No data</Center>
+      ) : (
+        <ScreenshotDataGrid
+          style={{ blockSize: "auto", maxHeight: "100%", overflow: "auto" }}
+          columns={gridData.columns}
+          rows={gridData.rows}
+          defaultColumnOptions={{
+            resizable: true,
+            maxWidth: 800,
+            minWidth: 35,
+          }}
+          className="rdg-light"
+          enableScreenshot={true}
+        />
+      )}
     </Flex>
   );
 };

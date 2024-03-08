@@ -100,7 +100,7 @@ export const RunView = <PT, RT>({
   }
 
   return (
-    <Box h="100%" style={{ contain: "size layout" }} overflow='auto'>
+    <Box h="100%" style={{ contain: "size layout" }} overflow="auto">
       {RunResultView && (
         <RunResultView
           run={run}
