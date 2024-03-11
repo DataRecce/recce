@@ -313,7 +313,7 @@ class DBTContext:
                     cols_unique.append(child_name[len(unique_prefix):])
 
             if catalog is not None and unique_id in catalog.nodes:
-                columns = []
+                columns = {}
                 primary_key = None
                 for col_name, col in catalog.nodes[unique_id].columns.items():
                     col = dict(name=col_name, type=col.type)
@@ -323,7 +323,7 @@ class DBTContext:
                         col['unique'] = True
                         if not primary_key:
                             primary_key = col_name
-                    columns.append(col)
+                    columns[col_name] = col
                 nodes[unique_id]['columns'] = columns
                 if primary_key:
                     nodes[unique_id]['primary_key'] = primary_key
