@@ -381,6 +381,16 @@ class DBTContext:
             }
         return None
 
+    def build_name_to_unique_id_index(self) -> Dict[str, str]:
+        curr_manifest = self.get_manifest(base=False)
+        base_manifest = self.get_manifest(base=True)
+        name_to_unique_id = {}
+        for unique_id, node in base_manifest.nodes.items():
+            name_to_unique_id[node.name] = unique_id
+        for unique_id, node in curr_manifest.nodes.items():
+            name_to_unique_id[node.name] = unique_id
+        return name_to_unique_id
+
     def start_monitor_artifacts(self, callback: Callable = None):
         event_handler = ArtifactsEventHandler(self.artifacts_files, callback=callback)
         self.artifacts_observer.schedule(event_handler, self.target_path, recursive=False)

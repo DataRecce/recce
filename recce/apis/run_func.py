@@ -1,8 +1,10 @@
 import asyncio
-from typing import Dict, Type
+from typing import Dict, Type, List
 
 from dbt.exceptions import DbtDatabaseError
-from recce.exceptions import RecceException, RecceCancelException
+
+from recce.dbt import default_dbt_context
+from recce.exceptions import RecceException
 from recce.models import RunType, Run, RunDAO
 from recce.tasks import QueryTask, ProfileDiffTask, ValueDiffTask, QueryDiffTask, Task, RowCountDiffTask, \
     ValueDiffDetailTask
@@ -90,3 +92,44 @@ def cancel_run(run_id):
         raise RecceException(f"Run task for Run ID '{run_id}' not found")
 
     task.cancel()
+
+
+def materialize_run_results(runs: List[Run]):
+    '''
+    Materialize the run results for nodes. It walks through all runs and get the last results for primary run types.
+
+    The result format
+    {
+       'node_id': {
+          'row_count_diff': {
+            'run_id': '<run_id>',
+            'result': '<result>'
+          },
+          'value_diff': {
+            'run_id': '<run_id>',
+            'result': '<result>'
+          },
+       },
+    }
+    '''
+
+    dbt_context = default_dbt_context()
+    if dbt_context:
+        mame_to_unique_id = dbt_context.build_name_to_unique_id_index()
+    else:
+        mame_to_unique_id = {}
+
+    result = {}
+    for run in runs:
+        if not run.result:
+            continue
+
+        if run.type == RunType.ROW_COUNT_DIFF:
+            for model_name, node_run_result in run.result.items():
+                key = mame_to_unique_id.get(model_name, model_name)
+                if model_name not in result:
+                    node_result = result[key] = {}
+                else:
+                    node_result = result.get(key)
+                node_result['row_count_diff'] = {'run_id': run.run_id, 'result': node_run_result}
+    return result
