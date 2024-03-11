@@ -6,16 +6,12 @@ import {
   QueryViewOptions,
 } from "@/lib/api/adhocQuery";
 import {
-  AlertIcon,
   Box,
   Center,
   Flex,
-  Grid,
-  GridItem,
   Icon,
   IconButton,
   Spacer,
-  Text,
   Tooltip,
 } from "@chakra-ui/react";
 import { useMemo } from "react";
