@@ -94,7 +94,7 @@ def cancel_run(run_id):
     task.cancel()
 
 
-def materialize_run_results(runs: List[Run]):
+def materialize_run_results(runs: List[Run], nodes: List[str] = None):
     '''
     Materialize the run results for nodes. It walks through all runs and get the last results for primary run types.
 
@@ -127,6 +127,11 @@ def materialize_run_results(runs: List[Run]):
         if run.type == RunType.ROW_COUNT_DIFF:
             for model_name, node_run_result in run.result.items():
                 key = mame_to_unique_id.get(model_name, model_name)
+
+                if nodes:
+                    if key not in nodes:
+                        continue
+
                 if model_name not in result:
                     node_result = result[key] = {}
                 else:
