@@ -10,14 +10,20 @@ import {
   Box,
   Center,
   Flex,
+  Grid,
+  GridItem,
   Icon,
   IconButton,
   Spacer,
+  Text,
   Tooltip,
 } from "@chakra-ui/react";
 import { useMemo } from "react";
 import { DataFrame, Run } from "@/lib/api/types";
-import { ScreenshotDataGrid } from "../data-grid/ScreenshotDataGrid";
+import {
+  EmptyRowsRenderer,
+  ScreenshotDataGrid,
+} from "../data-grid/ScreenshotDataGrid";
 import { defaultRenderCell } from "./querydiff";
 import { VscPin, VscPinned } from "react-icons/vsc";
 import { RunResultViewProps } from "../run/types";
@@ -184,22 +190,19 @@ export const QueryResultView = ({
           )}
         </Flex>
       )}
-      {gridData.rows.length === 0 ? (
-        <Center height="100%">No data</Center>
-      ) : (
-        <ScreenshotDataGrid
-          style={{ blockSize: "auto", maxHeight: "100%", overflow: "auto" }}
-          columns={gridData.columns}
-          rows={gridData.rows}
-          defaultColumnOptions={{
-            resizable: true,
-            maxWidth: 800,
-            minWidth: 35,
-          }}
-          className="rdg-light"
-          enableScreenshot={true}
-        />
-      )}
+      <ScreenshotDataGrid
+        style={{ blockSize: "auto", maxHeight: "100%", overflow: "auto" }}
+        columns={gridData.columns}
+        rows={gridData.rows}
+        renderers={{ noRowsFallback: <EmptyRowsRenderer /> }}
+        defaultColumnOptions={{
+          resizable: true,
+          maxWidth: 800,
+          minWidth: 35,
+        }}
+        className="rdg-light"
+        enableScreenshot={true}
+      />
     </Flex>
   );
 };
