@@ -21,8 +21,8 @@ export const DATE_RANGE = 'Date Range';
 export const TEXTLENGTH = 'Text Length';
 export const VALUE_RANGE = 'Value Range';
 
-export const CURRENT_BAR_COLOR = '#63B3EDCC';
-export const BASE_BAR_COLOR = '#F6AD55CC';
+export const CURRENT_BAR_COLOR = '#63B3EDA5';
+export const BASE_BAR_COLOR = '#F6AD55A5';
 
 /**
  * Histogram Chart that can display generic data types such as Numeric, Datetime, Integer
@@ -103,9 +103,9 @@ function getHistogramChartDataset(type: string, binEdges: number[], label: strin
     label,
     data: newData,
     backgroundColor: color,
-    borderColor: color,//'#4299E1',
-    hoverBackgroundColor: '#002A53',
-    borderWidth: 1,
+    borderColor: color,
+    hoverBackgroundColor: color,
+    borderWidth: 0,
     categoryPercentage: 1, // tells bar to fill "bin area"
     barPercentage: 1, //tells bar to fill "bar area"
     xAxisID: 'x',
@@ -146,15 +146,11 @@ export function getHistogramChartOptions(
     plugins: {
       tooltip: {
         mode: 'index',
-        position: 'nearest',
+        // position: 'nearest',
         intersect: false,
         callbacks: {
           title([{ dataIndex, datasetIndex }]) {
             const result = formatDisplayedBinItem(binEdges, dataIndex);
-
-            const percentOfTotal = formatIntervalMinMax(
-              current.counts[dataIndex] / samples,
-            );
 
             const prefix = isDatetime
               ? DATE_RANGE
@@ -162,10 +158,20 @@ export function getHistogramChartOptions(
               ? TEXTLENGTH
               : VALUE_RANGE;
 
-            return `${prefix}\n${result}\n(${percentOfTotal})`;
+            return `${prefix}\n${result}`;
           },
+          label({ datasetIndex, dataIndex, dataset: { label } }) {
+            const counts = datasetIndex === 0 ? current.counts : base.counts;
+            const percentOfTotal = formatIntervalMinMax(
+              counts[dataIndex] / samples,
+            );
+            const count = counts[dataIndex]
+            return `${label}: ${count} (${percentOfTotal})`;
+          }
         },
       },
+
+
     },
     scales: getScales(data, hideAxis),
     ...configOverrides,
