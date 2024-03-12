@@ -8,21 +8,28 @@ interface ScreenshotBoxProps extends BoxProps {
 }
 
 export const ScreenshotBox = ({
-  backgroundColor = 'white',
+  backgroundColor = "white",
   blockSize,
   children,
   ...restProps
 }: ScreenshotBoxProps) => {
-  const { ref, CopyToClipboardButton } = useCopyToClipboardButton({ backgroundColor: backgroundColor });
+  const { ref, CopyToClipboardButton, ImageBoard } = useCopyToClipboardButton({
+    backgroundColor: backgroundColor,
+  });
 
   return (
     <>
-      <Box ref={ref} {...restProps} overflow='auto'>
-        <Box backgroundColor={backgroundColor} height='100%' blockSize={blockSize}>
+      <Box ref={ref} {...restProps} overflow="auto">
+        <Box
+          backgroundColor={backgroundColor}
+          height="100%"
+          blockSize={blockSize}
+        >
           {children}
         </Box>
       </Box>
       <CopyToClipboardButton imageType="png" />
+      <ImageBoard></ImageBoard>
     </>
   );
 };

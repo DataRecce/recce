@@ -11,11 +11,16 @@ export function ScreenshotDataGrid({
   enableScreenshot = true,
   ...props
 }: ScreenshotDataGridProps) {
-  const { ref, CopyToClipboardButton } = useCopyToClipboardButton();
+  const { ref, CopyToClipboardButton, ImageBoard } = useCopyToClipboardButton();
   return (
     <>
       <DataGrid ref={ref} {...props} />
-      {enableScreenshot && <CopyToClipboardButton imageType="png" />}
+      {enableScreenshot && (
+        <>
+          <CopyToClipboardButton imageType="png" />
+          <ImageBoard></ImageBoard>
+        </>
+      )}
     </>
   );
 }
