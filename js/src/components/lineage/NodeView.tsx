@@ -36,8 +36,6 @@ import { useCallback } from "react";
 import { createCheckByNodeSchema, createCheckByRun } from "@/lib/api/checks";
 import { useRowCountQueries } from "@/lib/api/models";
 import { useRecceActionContext } from "@/lib/hooks/RecceActionContext";
-import { RunView } from "../run/RunView";
-import { ValueDiffResultView } from "../valuediff/ValueDiffResultView";
 
 interface NodeViewProps {
   node: LineageGraphNode;

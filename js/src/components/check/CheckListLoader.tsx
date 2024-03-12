@@ -21,12 +21,14 @@ import { InfoIcon } from "@chakra-ui/icons";
 import { loadChecks } from "@/lib/api/checks";
 import { IoFolderOpenOutline } from "react-icons/io5";
 import { useLocation } from "wouter";
+import { useRunsAggregated } from "@/lib/hooks/LineageGraphContext";
 
 export function CheckListInitLoader() {
   const toast = useToast();
   const queryClient = useQueryClient();
   const hiddenFileInput = useRef<HTMLInputElement>(null);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [, refetchRunsAggregated] = useRunsAggregated();
 
   const handleLoad = useCallback(async () => {
     if (!selectedFile) {
@@ -35,6 +37,7 @@ export function CheckListInitLoader() {
 
     try {
       const { checks } = await loadChecks(selectedFile);
+      refetchRunsAggregated();
       queryClient.invalidateQueries({ queryKey: cacheKeys.checks() });
       toast({
         description: `${checks} checks loaded successfully`,
@@ -56,7 +59,7 @@ export function CheckListInitLoader() {
         isClosable: true,
       });
     }
-  }, [queryClient, toast, selectedFile]);
+  }, [queryClient, toast, selectedFile, refetchRunsAggregated]);
 
   useEffect(() => {
     if (selectedFile) {
@@ -97,6 +100,7 @@ export function CheckListLoader() {
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const { isOpen, onOpen, onClose } = useDisclosure();
   const [, setLocation] = useLocation();
+  const [, refetchRunsAggregated] = useRunsAggregated();
 
   const handleLoad = useCallback(async () => {
     if (!selectedFile) {
@@ -105,6 +109,7 @@ export function CheckListLoader() {
 
     try {
       const { checks } = await loadChecks(selectedFile);
+      refetchRunsAggregated();
       await queryClient.invalidateQueries({ queryKey: cacheKeys.checks() });
       setLocation("/checks");
       toast({
@@ -129,7 +134,14 @@ export function CheckListLoader() {
     }
 
     onClose();
-  }, [queryClient, selectedFile, toast, onClose, setLocation]);
+  }, [
+    queryClient,
+    selectedFile,
+    toast,
+    onClose,
+    setLocation,
+    refetchRunsAggregated,
+  ]);
 
   const handleClick = () => {
     if (hiddenFileInput.current) {

@@ -7,7 +7,7 @@ import {
   Text,
   Tooltip,
 } from "@chakra-ui/react";
-import React from "react";
+import React, { useContext } from "react";
 
 import { Handle, NodeProps, Position, useStore } from "reactflow";
 import { LineageGraphNode } from "./lineage";
@@ -16,8 +16,48 @@ import { getIconForChangeStatus, getIconForResourceType } from "./styles";
 import "./styles.css";
 import { RowCountTag } from "./NodeTag";
 import { ActionTag } from "./ActionTag";
+import { useLineageGraphsContext } from "@/lib/hooks/LineageGraphContext";
+import { RowCountDiffResult } from "@/lib/api/rowcount";
+import { MdOutlineQuestionMark } from "react-icons/md";
+import { FiAlignLeft } from "react-icons/fi";
 
 interface GraphNodeProps extends NodeProps<LineageGraphNode> {}
+
+const NodeRunsAggregated = ({ id }: { id: string }) => {
+  const { runsAggregated } = useLineageGraphsContext();
+  const runs = runsAggregated?.[id];
+  if (!runs) {
+    return <></>;
+  }
+
+  let rowCountChanged;
+  if (runs["row_count_diff"]) {
+    const rowCountDiff = runs["row_count_diff"];
+    rowCountChanged = rowCountDiff.result.curr !== rowCountDiff.result.base;
+  }
+
+  return (
+    <Flex>
+      {rowCountChanged !== undefined && (
+        <Tooltip
+          label={`Row count (${rowCountChanged ? "changed" : "no change"})`}
+          openDelay={500}
+        >
+          <Box height="16px">
+            <Icon
+              as={FiAlignLeft}
+              color={
+                rowCountChanged
+                  ? getIconForChangeStatus("modified").color
+                  : getIconForChangeStatus().color
+              }
+            />
+          </Box>
+        </Tooltip>
+      )}
+    </Flex>
+  );
+};
 
 export function GraphNode({ data }: GraphNodeProps) {
   const { isHighlighted, isSelected, resourceType, changeStatus } = data;
@@ -41,16 +81,6 @@ export function GraphNode({ data }: GraphNodeProps) {
   let borderColor = color;
   let backgroundColor = "white";
   let boxShadow = data.isSelected ? selectedNodeShadowBox : "unset";
-
-  // if (isHighlighted === true) {
-  //   borderWidth = 1;
-  //   borderColor = "orange";
-  //   boxShadow = "0px 5px 15px #00000040";
-  // } else if (isHighlighted === false) {
-  //   borderWidth = 1;
-  //   borderColor = "red";
-  //   boxShadow = "0px 5px 15px #00000040";
-  // }
 
   const name = data?.name;
 
@@ -127,10 +157,15 @@ export function GraphNode({ data }: GraphNodeProps) {
           >
             <HStack spacing={"8px"}>
               <Spacer />
-              {data.action ? (
-                <ActionTag node={data} action={data.action} />
+              {data.isActionMode ? (
+                data.action ? (
+                  <ActionTag node={data} action={data.action} />
+                ) : (
+                  <></>
+                )
               ) : data.resourceType === "model" ? (
-                <RowCountTag node={data} isInteractive={false} />
+                // <RowCountTag node={data} isInteractive={false} />
+                <NodeRunsAggregated id={data.id} />
               ) : (
                 <></>
               )}

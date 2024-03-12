@@ -25,6 +25,7 @@ import { useEffect, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useRowCountStateContext } from "@/lib/hooks/RecceQueryContext";
 import { RiArrowDownSFill, RiArrowUpSFill, RiSwapLine } from "react-icons/ri";
+import { useLineageGraphsContext } from "@/lib/hooks/LineageGraphContext";
 
 interface ModelRowCountProps {
   rowCount?: RowCount;
@@ -136,6 +137,10 @@ export function RowCountTag({
   isAutoFetching = false,
   isInteractive = true,
 }: RowCountTagProps) {
+  const { runsAggregated, refetchRunsAggregated } = useLineageGraphsContext();
+  const lastRowCount: RowCount | undefined =
+    runsAggregated?.[node.id]?.["row_count_diff"]?.result;
+
   const { isNodesFetching } = useRowCountStateContext();
   const {
     isLoading,
@@ -150,50 +155,6 @@ export function RowCountTag({
   });
   const isTagFetching = isFetching || isNodesFetching.includes(node.name);
   const isTagLoading = isLoading || isNodesFetching.includes(node.name);
-
-  function ProcessedRowCountTag({
-    isLoading,
-    rowCount,
-  }: {
-    isLoading: boolean;
-    rowCount?: RowCount;
-  }) {
-    return (
-      <TagLabel>
-        <SkeletonText
-          isLoaded={!isLoading}
-          noOfLines={1}
-          skeletonHeight={2}
-          minWidth={"30px"}
-        >
-          <ModelRowCount rowCount={rowCount} />
-        </SkeletonText>
-      </TagLabel>
-    );
-  }
-
-  function UnprocessedRowCountTag({
-    isInteractive,
-    invokeFunction,
-  }: {
-    isInteractive: boolean;
-    invokeFunction: () => void;
-  }) {
-    if (isInteractive) {
-      return (
-        <IconButton
-          aria-label="Query Row Count"
-          icon={<MdQueryStats />}
-          size="xs"
-          onClick={() => {
-            invokeFunction();
-          }}
-        />
-      );
-    }
-
-    return <Icon as={MdOutlineQuestionMark} />;
-  }
 
   if (
     isInteractive === false &&
@@ -215,14 +176,32 @@ export function RowCountTag({
 
   return (
     <Tooltip hasArrow label={label} openDelay={500} closeDelay={200}>
-      <Tag>
+      <Tag
+        cursor={isInteractive ? "pointer" : "default"}
+        onClick={async () => {
+          if (isInteractive) {
+            await invokeRowCountQuery();
+            refetchRunsAggregated?.();
+          }
+        }}
+      >
         <TagLeftIcon as={FiAlignLeft} />
-        {isFetched || isTagFetching ? (
-          <ProcessedRowCountTag isLoading={isTagLoading} rowCount={rowCount} />
+        {isFetched || isTagFetching || lastRowCount ? (
+          <TagLabel>
+            <SkeletonText
+              isLoaded={!isLoading}
+              noOfLines={1}
+              skeletonHeight={2}
+              minWidth={"30px"}
+            >
+              <ModelRowCount rowCount={rowCount || lastRowCount} />
+            </SkeletonText>
+          </TagLabel>
         ) : (
-          <UnprocessedRowCountTag
-            isInteractive={isInteractive}
-            invokeFunction={invokeRowCountQuery}
+          <IconButton
+            aria-label="Query Row Count"
+            icon={<MdQueryStats />}
+            size="xs"
           />
         )}
       </Tag>

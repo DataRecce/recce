@@ -60,16 +60,26 @@ export async function submitRunFromCheck<PT = any, RT = any>(
   return run;
 }
 
-export async function searchRuns(
-  type: string,
-  params: any,
-  limit?: number,
-) {
+export async function searchRuns(type: string, params: any, limit?: number) {
   const response = await axiosClient.post(`/api/runs/search`, {
     type,
     params,
-    limit
+    limit,
   });
+
+  return response.data;
+}
+
+export interface RunsAggregated {
+  [unique_id: string]: {
+    [run_type: string]: {
+      run_id: string;
+      result: any;
+    };
+  };
+}
+export async function aggregateRuns(): Promise<RunsAggregated> {
+  const response = await axiosClient.post(`/api/runs/aggregate`, {});
 
   return response.data;
 }

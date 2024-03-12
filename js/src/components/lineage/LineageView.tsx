@@ -2,7 +2,7 @@ import { PUBLIC_API_URL } from "../../lib/const";
 import {
   LineageGraph,
   LineageGraphNode,
-  cleanUpSelectedNodes,
+  cleanUpNodes,
   highlightPath,
   selectDownstream,
   selectNode,
@@ -207,7 +207,8 @@ function _LineageView({ ...props }: LineageViewProps) {
   const [edges, setEdges, onEdgesChange] = useEdgesState([]);
   const [lineageGraph, setLineageGraph] = useState<LineageGraph>();
   const [modifiedSet, setModifiedSet] = useState<string[]>();
-  const { lineageGraphSets, isLoading, error } = useLineageGraphsContext();
+  const { lineageGraphSets, isLoading, error, refetchRunsAggregated } =
+    useLineageGraphsContext();
   const { isOpen, onOpen, onClose } = useDisclosure();
 
   /**
@@ -466,7 +467,7 @@ function _LineageView({ ...props }: LineageViewProps) {
                   title="switch mode"
                   onClick={() => {
                     setViewMode(viewMode === "all" ? "changed_models" : "all");
-                    const newNodes = cleanUpSelectedNodes(nodes);
+                    const newNodes = cleanUpNodes(nodes);
                     setNodes(newNodes);
                   }}
                 >
@@ -512,7 +513,10 @@ function _LineageView({ ...props }: LineageViewProps) {
                           selectMode === "detail" ? "action" : "detail";
                         setDetailViewSelected(undefined);
                         setIsDetailViewShown(false);
-                        const newNodes = cleanUpSelectedNodes(nodes);
+                        const newNodes = cleanUpNodes(
+                          nodes,
+                          newMode === "action"
+                        );
                         setNodes(newNodes);
                         setSelectMode(newMode);
                       }}
@@ -547,10 +551,11 @@ function _LineageView({ ...props }: LineageViewProps) {
                   .filter((node) => node.isSelected)}
                 onClose={() => {
                   setSelectMode("detail");
-                  const newNodes = cleanUpSelectedNodes(nodes);
+                  const newNodes = cleanUpNodes(nodes);
                   setDetailViewSelected(undefined);
                   setIsDetailViewShown(false);
                   setNodes(newNodes);
+                  refetchRunsAggregated?.();
                 }}
                 onActionStarted={() => {
                   setSelectMode("action_result");
@@ -579,7 +584,7 @@ function _LineageView({ ...props }: LineageViewProps) {
             onCloseNode={() => {
               setDetailViewSelected(undefined);
               setIsDetailViewShown(false);
-              setNodes(cleanUpSelectedNodes(nodes));
+              setNodes(cleanUpNodes(nodes));
             }}
           />
         </Box>
