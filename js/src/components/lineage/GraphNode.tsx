@@ -164,7 +164,6 @@ export function GraphNode({ data }: GraphNodeProps) {
                   <></>
                 )
               ) : data.resourceType === "model" ? (
-                // <RowCountTag node={data} isInteractive={false} />
                 <NodeRunsAggregated id={data.id} />
               ) : (
                 <></>

@@ -26,6 +26,7 @@ import { useQuery } from "@tanstack/react-query";
 import { useRowCountStateContext } from "@/lib/hooks/RecceQueryContext";
 import { RiArrowDownSFill, RiArrowUpSFill, RiSwapLine } from "react-icons/ri";
 import { useLineageGraphsContext } from "@/lib/hooks/LineageGraphContext";
+import { deltaPercentageString } from "../rowcount/delta";
 
 interface ModelRowCountProps {
   rowCount?: RowCount;
@@ -84,9 +85,7 @@ function RowCountWiteRate({ rowCount }: { rowCount: RowCount }) {
       <HStack>
         <Text>{current} rows</Text>
         <Icon as={RiArrowUpSFill} color="green.500" />
-        <Text color="green.500">
-          + {Math.round(((current - base) / base) * 100)}%
-        </Text>
+        <Text color="green.500">{deltaPercentageString(base, current)}</Text>
       </HStack>
     );
   } else {
@@ -94,9 +93,7 @@ function RowCountWiteRate({ rowCount }: { rowCount: RowCount }) {
       <HStack>
         <Text>{current} rows</Text>
         <Icon as={RiArrowDownSFill} color="red.500" />
-        <Text color="red.500">
-          - {Math.round(((base - current) / base) * 100)}%
-        </Text>
+        <Text color="red.500">{deltaPercentageString(base, current)}</Text>
       </HStack>
     );
   }

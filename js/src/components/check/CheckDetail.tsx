@@ -33,7 +33,7 @@ import { ValueDiffResultView } from "@/components/valuediff/ValueDiffResultView"
 import { SchemaDiffView } from "./SchemaDiffView";
 import { useLocation } from "wouter";
 import { CheckDescription } from "./CheckDescription";
-import { RowCountDiffResultView } from "../rowcount/RowCountDiffView";
+import { RowCountDiffResultView } from "../rowcount/RowCountDiffResultView";
 import { ProfileDiffResultView } from "../profile/ProfileDiffResultView";
 import { stripIndent } from "common-tags";
 import { useClipBoardToast } from "@/lib/hooks/useClipBoardToast";

@@ -23,7 +23,7 @@ import { useLocation } from "wouter";
 import { useQueryClient } from "@tanstack/react-query";
 import { cacheKeys } from "@/lib/api/cacheKeys";
 import { createCheckByRun } from "@/lib/api/checks";
-import { RowCountDiffResultView } from "../rowcount/RowCountDiffView";
+import { RowCountDiffResultView } from "../rowcount/RowCountDiffResultView";
 
 interface NodeRunViewProps {
   node: LineageGraphNode;

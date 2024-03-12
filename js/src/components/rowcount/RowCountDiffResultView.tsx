@@ -6,6 +6,7 @@ import {
 
 import { RunResultViewProps } from "../run/types";
 import { RowCountDiffParams, RowCountDiffResult } from "@/lib/api/rowcount";
+import { deltaPercentageString } from "./delta";
 
 interface RowCountDiffResultViewProp
   extends RunResultViewProps<RowCountDiffParams, RowCountDiffResult> {}
@@ -44,13 +45,8 @@ export function RowCountDiffResultView({ run }: RowCountDiffResultViewProp) {
     let delta = "No Change";
 
     if (base !== null && current !== null) {
-      if (base < current) {
-        delta = `+ ${Math.round(((current - base) / base) * 100)}%`;
-      } else if (base > current) {
-        delta = `- ${Math.round(((base - current) / base) * 100)}%`;
-      } else {
-        delta = "No Change";
-      }
+      delta =
+        base !== current ? deltaPercentageString(base, current) : "No Change";
     } else {
       if (base === current) {
         delta = "N/A";
