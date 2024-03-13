@@ -1,5 +1,8 @@
 import { Flex } from "@chakra-ui/react";
-import { ScreenshotDataGrid } from "../data-grid/ScreenshotDataGrid";
+import {
+  EmptyRowsRenderer,
+  ScreenshotDataGrid,
+} from "../data-grid/ScreenshotDataGrid";
 
 import { RunResultViewProps } from "../run/types";
 import { RowCountDiffParams, RowCountDiffResult } from "@/lib/api/rowcount";
@@ -81,6 +84,7 @@ export function RowCountDiffResultView({ run }: RowCountDiffResultViewProp) {
             }}
             columns={columns}
             rows={rows}
+            renderers={{ noRowsFallback: <EmptyRowsRenderer /> }}
             className="rdg-light"
             enableScreenshot={true}
           />

@@ -15,7 +15,10 @@ import {
 
 import { ColumnOrColumnGroup } from "react-data-grid";
 import { ValueDiffParams, ValueDiffResult } from "@/lib/api/valuediff";
-import { ScreenshotDataGrid } from "../data-grid/ScreenshotDataGrid";
+import {
+  EmptyRowsRenderer,
+  ScreenshotDataGrid,
+} from "../data-grid/ScreenshotDataGrid";
 import { RunResultViewProps } from "../run/types";
 import { VscKebabVertical, VscKey } from "react-icons/vsc";
 import {
@@ -189,6 +192,7 @@ export function ValueDiffResultView({ run }: ValueDiffResultViewProp) {
         }}
         columns={columns}
         rows={result.data.data}
+        renderers={{ noRowsFallback: <EmptyRowsRenderer /> }}
         defaultColumnOptions={{ resizable: true }}
         className="rdg-light"
         enableScreenshot={true}
