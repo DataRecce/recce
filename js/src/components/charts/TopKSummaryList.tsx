@@ -1,6 +1,6 @@
 import { TopKDiffResult, TopKResult } from "@/lib/api/profile";
 import { formatAsAbbreviatedNumber, formatIntervalMinMax } from "@/utils/formatters";
-import { Box, Divider, Flex, Link, Text, Tooltip } from "@chakra-ui/react";
+import { Box, Divider, Flex, Heading, Spacer, Text, Tooltip } from "@chakra-ui/react";
 import { Fragment, useState } from "react";
 import {
   ChartOptions,
@@ -12,50 +12,167 @@ import {
   AnimationOptions,
 } from 'chart.js';
 import { Bar } from 'react-chartjs-2';
-import { ThemeProvider, createTheme } from '@mui/material/styles';
-import { BarChart } from '@mui/x-charts/BarChart';
-import zIndex from "@mui/material/styles/zIndex";
 
 export const INFO_VAL_COLOR = '#63B3ED';
+export const CURRENT_BAR_COLOR = INFO_VAL_COLOR;
+export const BASE_BAR_COLOR = '#F6AD55';
 
 interface BarChartProps {
   topKDiff: TopKDiffResult;
   valids: number;
+  isDisplayTopTen: boolean;
 }
 
-export function TopKSummaryBarChart({ topKDiff, valids }: BarChartProps) {
+interface Summary {
+  label: string;
+  count: number;
+  displayCount: string;
+  displayRatio: string;
+  isLastItemOthers: boolean;
+}
+
+function prepareSummaryList(topK: TopKResult, isDisplayTopTen: boolean): Summary[] {
+  const endAtIndex = isDisplayTopTen ? 10 : topK.counts.length;
+  const counts = topK.counts.slice(0, endAtIndex);
+  const remainingSumCount = topK.valids - counts.reduce((accum, curr) => accum + curr, 0);
+  const values = topK.values.slice(0, endAtIndex);
+
+  return values.concat([remainingSumCount]).map((v, index) => {
+    const isLastItemOthers = index === counts.length;
+    const count = isLastItemOthers ? remainingSumCount : counts[index];
+
+    return {
+      isLastItemOthers,
+      label: isLastItemOthers ? '(others)' : String(v) || '(empty)',
+      count: count,
+      displayCount: formatAsAbbreviatedNumber(count),
+      displayRatio: formatIntervalMinMax(count / topK.valids) || 'N/A',
+    };
+  });
+}
+
+function SquareIcon({ color }: { color: string }) {
+  return (<Box display="inline-block" w="10px" h="10px" bgColor={color} mr="2" borderRadius="sm"></Box>);
+}
+
+function TopKChartTooltip({
+    base,
+    current,
+    children
+  }: {base: Summary, current: Summary, children?: React.ReactNode;}){
+  return (
+    <Tooltip label={(
+      <Box>
+        <Text>
+          <SquareIcon color={CURRENT_BAR_COLOR}/>Current: {current.count} ({current.displayRatio})
+        </Text>
+        <Text>
+          <SquareIcon color={BASE_BAR_COLOR}/>Base: {base.count} ({base.displayRatio})
+        </Text>
+      </Box>)} placement="auto" hasArrow>
+      {children}
+    </Tooltip>
+  );
+}
+
+export function TopKSummaryBarChart({ topKDiff, isDisplayTopTen }: BarChartProps) {
   // const [isDisplayTopTen, setIsDisplayTopTen] = useState<boolean>(true);
-  const base = topKDiff.base;
-  const current = topKDiff.current;
+  const currents = prepareSummaryList(topKDiff.current, isDisplayTopTen);
+  const bases = prepareSummaryList(topKDiff.base, isDisplayTopTen);
 
   return (
-    <Flex>
-      <BarChart
-        layout="horizontal"
-        yAxis={[
-          {
-            scaleType: 'band',
-            data: base.values,
-          },
-          {
-            scaleType: 'band',
-            data: current.values,
-          }
-        ]}
-        series={[
-          {
-            data: base.counts,
-            label: 'Base',
-          },
-          {
-            data: current.counts,
-            label: 'Current',
-          }
-        ]}
-        width={800}
-        height={400}
-      />
-    </Flex>
+    <Box w={'100%'} px={20} py={4}>
+      <Flex
+        alignItems={'center'}
+        direction={'row'}
+      >
+        <Spacer />
+        <Text as='h3' size='sm' p='2' color='gray'>
+          <SquareIcon color={BASE_BAR_COLOR}/> Base
+        </Text>
+        <Text as='h3' size='sm' p='2' color='gray'>
+          <SquareIcon color={CURRENT_BAR_COLOR}/> Current
+        </Text>
+        <Spacer />
+      </Flex>
+      {currents.map((current, index) => {
+        const base = bases[index];
+        if (current.isLastItemOthers && current.count === 0 && base.count === 0) {
+          // skip rendering the others if both are empty
+          return <></>;
+        }
+        return (
+          <Fragment key={index}>
+            <TopKChartTooltip base={base} current={current}>
+              <Flex
+                alignItems={'center'}
+                width={'100%'}
+                _hover={{ bg: 'blackAlpha.300' }}
+                px={4}
+              >
+                <Text
+                  noOfLines={1}
+                  width={'10em'}
+                  fontSize={'sm'}
+                  color={
+                    current.isLastItemOthers || current.label.length === 0
+                      ? 'gray.400'
+                      : 'inherit'
+                  }
+                >
+                  {current.label}
+                </Text>
+                <Flex width={'70%'} direction={'column'} >
+                  {/* Current Top-K */}
+                  <Flex height={'1em'}>
+                    <CategoricalBarChart
+                      topkCount={current.count}
+                      topkLabel={current.label}
+                      valids={topKDiff.current.valids}
+                      color={CURRENT_BAR_COLOR}
+                    />
+                    <Text
+                      ml={5}
+                      mr={2}
+                      fontSize={'sm'}
+                      width={'6em'}
+                      // noOfLines={1}
+                    >
+                      {current.displayCount}
+                    </Text>
+                    <Text color={'gray.400'} fontSize={'sm'} width={'4em'}>
+                      {current.displayRatio}
+                    </Text>
+                  </Flex>
+                  {/* Base Top-K */}
+                  <Flex height={'1em'}>
+                    <CategoricalBarChart
+                      topkCount={base.count}
+                      topkLabel={base.label}
+                      valids={topKDiff.base.valids}
+                      color={BASE_BAR_COLOR}
+                    />
+                    <Text
+                      ml={5}
+                      mr={2}
+                      fontSize={'sm'}
+                      width={'6em'}
+                      // noOfLines={1}
+                    >
+                      {base.displayCount}
+                    </Text>
+                    <Text color={'gray.400'} fontSize={'sm'} width={'4em'}>
+                      {base.displayRatio}
+                    </Text>
+                  </Flex>
+                </Flex>
+              </Flex>
+            </TopKChartTooltip>
+            <Divider />
+          </Fragment>
+        );
+      })}
+    </Box>
   );
 }
 
@@ -153,6 +270,7 @@ export interface CategoricalBarChartProps {
   topkLabel: number | string;
   valids: number;
   animation?: AnimationOptions<'bar'>['animation'];
+  color?: string;
 }
 /**
  * A Singular horizontal progress bar chart that visualizes categorical dataset, plotted 1:1 category group
@@ -162,15 +280,17 @@ export function CategoricalBarChart({
   topkLabel,
   valids,
   animation = false,
+  color = INFO_VAL_COLOR,
 }: CategoricalBarChartProps) {
   ChartJS.register(CategoryScale, BarElement, LinearScale);
   const chartOptions = getCatBarChartOptions(topkCount, valids, { animation });
   const chartData = getCatBarChartData({
     topkCount,
     topkLabel,
+    color,
   });
 
-  return <Bar data={chartData} options={chartOptions} plugins={[]} />;
+  return <Bar data={chartData} options={chartOptions} plugins={[]}/>;
 }
 
 /**
@@ -209,6 +329,7 @@ export function getCatBarChartOptions(
 export function getCatBarChartData({
   topkLabel,
   topkCount,
+  color = INFO_VAL_COLOR,
 }: Omit<CategoricalBarChartProps, 'animation' | 'valids'>): ChartData<'bar'> {
   return {
     labels: [topkLabel], // showing top cats
@@ -216,7 +337,7 @@ export function getCatBarChartData({
       {
         indexAxis: 'y',
         data: [topkCount], // showing top cats
-        backgroundColor: INFO_VAL_COLOR,
+        backgroundColor: color,
         hoverBackgroundColor: '#002a53',
         borderWidth: 1,
         borderColor: '#002a53',
