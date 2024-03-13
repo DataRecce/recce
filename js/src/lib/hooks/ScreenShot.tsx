@@ -33,6 +33,7 @@ export interface HookOptions {
   borderRadius?: string;
   onSuccess?: (blob: Blob) => void;
   onError?: (error: unknown) => void;
+  onClipboardNotDefined?: (blob: Blob) => void;
   ignoreElements?: (element: Element) => boolean;
 }
 
@@ -182,9 +183,12 @@ export function useCopyToClipboardButton(options?: HookOptions) {
         await copyBlobToClipboard(blob);
         successToast("Copied the query result as an image to clipboard");
       } catch (error) {
-        if ((error as Error).message === "ClipboardItem is not defined") {
-          setImgBlob(blob);
-          onOpen();
+        const message = (error as Error).message;
+        if (
+          message === "ClipboardItem is not defined" &&
+          options?.onClipboardNotDefined
+        ) {
+          options.onClipboardNotDefined(blob);
         } else {
           failToast("Failed to copy image to clipboard", error);
         }
@@ -234,6 +238,16 @@ export function useCopyToClipboardButton(options?: HookOptions) {
     );
   }
 
+  return {
+    ref,
+    CopyToClipboardButton,
+  };
+}
+
+export function useImageBoard() {
+  const { isOpen, onOpen, onClose } = useDisclosure();
+  const [imgBlob, setImgBlob] = useState<Blob>();
+
   function ImageBoard() {
     const [base64Img, setBase64Img] = useState<string>();
 
@@ -263,17 +277,8 @@ export function useCopyToClipboardButton(options?: HookOptions) {
       onClose();
     };
 
-    const onImgBoardClose = useCallback(() => {
-      if (ref.current) {
-        const nodeToUse = ((ref.current as any).element ||
-          ref.current) as HTMLElement;
-        nodeToUse.style.boxShadow = "";
-      }
-      onClose();
-    }, []);
-
     return (
-      <Modal size="3xl" isOpen={isOpen} onClose={onImgBoardClose}>
+      <Modal size="3xl" isOpen={isOpen} onClose={onClose}>
         <ModalOverlay />
         <ModalContent>
           <ModalHeader>Screenshot Preview</ModalHeader>
@@ -293,7 +298,7 @@ export function useCopyToClipboardButton(options?: HookOptions) {
           </ModalBody>
 
           <ModalFooter>
-            <Button mr={3} onClick={onImgBoardClose}>
+            <Button mr={3} onClick={onClose}>
               Close
             </Button>
             <Button colorScheme="blue" onClick={onDownload}>
@@ -306,8 +311,8 @@ export function useCopyToClipboardButton(options?: HookOptions) {
   }
 
   return {
-    ref,
-    CopyToClipboardButton,
+    onOpen,
+    setImgBlob,
     ImageBoard,
   };
 }

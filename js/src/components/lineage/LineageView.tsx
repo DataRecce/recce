@@ -15,7 +15,6 @@ import {
   Box,
   Flex,
   Icon,
-  Image,
   Tooltip,
   Text,
   Spinner,
@@ -33,8 +32,6 @@ import {
   MenuItem,
   Center,
   SlideFade,
-  ModalHeader,
-  ModalFooter,
 } from "@chakra-ui/react";
 import React, { useCallback, useEffect, useState } from "react";
 import ReactFlow, {
@@ -69,13 +66,11 @@ import { AddLineageDiffCheckButton, NodeSelector } from "./NodeSelector";
 import {
   IGNORE_SCREENSHOT_CLASS,
   copyBlobToClipboard,
+  useImageBoard,
   useToBlob,
 } from "@/lib/hooks/ScreenShot";
 import { useClipBoardToast } from "@/lib/hooks/useClipBoardToast";
 import { NodeRunView } from "./NodeRunView";
-import { InfoIcon } from "@chakra-ui/icons";
-import { format } from "date-fns";
-import saveAs from "file-saver";
 
 export interface LineageViewProps {
   viewMode?: "changed_models" | "all";
@@ -171,13 +166,7 @@ function ChangeStatusLegend() {
 function _LineageView({ ...props }: LineageViewProps) {
   const { fitView, setCenter, getZoom } = useReactFlow();
   const { successToast, failToast } = useClipBoardToast();
-  const [imgBlob, setImgBlob] = useState<Blob>();
-  const [base64Img, setBase64Img] = useState<string>();
-  const {
-    isOpen: isImgBoardOpen,
-    onOpen: onImgBoardOpen,
-    onClose: onImgBoardClose,
-  } = useDisclosure();
+  const { onOpen: onImgBoardOpen, setImgBlob, ImageBoard } = useImageBoard();
   const { toImage, ref } = useToBlob({
     imageType: "png",
     shadowEffect: true,
@@ -265,30 +254,12 @@ function _LineageView({ ...props }: LineageViewProps) {
       lineageGraphSets.modifiedSet
     );
 
-    if (imgBlob) {
-      const reader = new FileReader();
-      reader.readAsDataURL(imgBlob);
-      reader.onloadend = (e) => {
-        if (e.target?.result && e.target?.result !== null) {
-          setBase64Img(e.target.result as string);
-        }
-      };
-    }
-
     layout(nodes, edges);
     setLineageGraph(lineageGraph);
     setModifiedSet(modifiedSet);
     setNodes(nodes);
     setEdges(edges);
-  }, [
-    setNodes,
-    setEdges,
-    viewMode,
-    lineageGraphSets,
-    props.filterNodes,
-    imgBlob,
-    setBase64Img,
-  ]);
+  }, [setNodes, setEdges, viewMode, lineageGraphSets, props.filterNodes]);
 
   const onNodeMouseEnter = (event: React.MouseEvent, node: Node) => {
     if (lineageGraph && modifiedSet !== undefined) {
@@ -369,28 +340,6 @@ function _LineageView({ ...props }: LineageViewProps) {
     },
     [setNodes]
   );
-
-  const onScreenshotDownload = useCallback(() => {
-    if (!imgBlob) {
-      return;
-    }
-    const now = new Date();
-    const fileName = `recce-screenshot-${format(
-      now,
-      "yyyy-MM-dd-HH-mm-ss"
-    )}.png`;
-    saveAs(imgBlob, fileName);
-    onImgBoardClose();
-  }, [imgBlob, onImgBoardClose]);
-
-  const onScreenshotModalClose = useCallback(() => {
-    if (ref.current) {
-      const nodeToUse = ((ref.current as any).element ||
-        ref.current) as HTMLElement;
-      nodeToUse.style.boxShadow = "";
-    }
-    onImgBoardClose();
-  }, [ref, onImgBoardClose]);
 
   if (isLoading) {
     return (
@@ -534,39 +483,7 @@ function _LineageView({ ...props }: LineageViewProps) {
               <Icon as={FiCopy} />
             </ControlButton>
           </Controls>
-          <Modal
-            size="3xl"
-            isOpen={isImgBoardOpen}
-            onClose={onScreenshotModalClose}
-          >
-            <ModalOverlay />
-            <ModalContent>
-              <ModalHeader>Screenshot Preview</ModalHeader>
-              <ModalCloseButton />
-              <ModalBody>
-                <Flex px="10px" gap="10px" direction="column">
-                  <Flex alignItems="center" gap="5px">
-                    <InfoIcon color="red.600" />
-                    <Text fontWeight="500" display="inline">
-                      Copy to the Clipboard
-                    </Text>{" "}
-                    is not supported in the current browser
-                  </Flex>
-                  <Text>Please download it directly</Text>
-                </Flex>
-                <Image src={base64Img} alt="screenshot" />
-              </ModalBody>
-
-              <ModalFooter>
-                <Button mr={3} onClick={onScreenshotModalClose}>
-                  Close
-                </Button>
-                <Button colorScheme="blue" onClick={onScreenshotDownload}>
-                  Download
-                </Button>
-              </ModalFooter>
-            </ModalContent>
-          </Modal>
+          <ImageBoard />
           <Panel position="bottom-left">
             <HStack>
               <ChangeStatusLegend />
