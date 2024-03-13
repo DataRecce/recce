@@ -6,7 +6,6 @@ import {
   QueryViewOptions,
 } from "@/lib/api/adhocQuery";
 import {
-  AlertIcon,
   Box,
   Center,
   Flex,
@@ -17,7 +16,10 @@ import {
 } from "@chakra-ui/react";
 import { useMemo } from "react";
 import { DataFrame, Run } from "@/lib/api/types";
-import { ScreenshotDataGrid } from "../data-grid/ScreenshotDataGrid";
+import {
+  EmptyRowsRenderer,
+  ScreenshotDataGrid,
+} from "../data-grid/ScreenshotDataGrid";
 import { defaultRenderCell } from "./querydiff";
 import { VscPin, VscPinned } from "react-icons/vsc";
 import { RunResultViewProps } from "../run/types";
@@ -188,7 +190,12 @@ export const QueryResultView = ({
         style={{ blockSize: "auto", maxHeight: "100%", overflow: "auto" }}
         columns={gridData.columns}
         rows={gridData.rows}
-        defaultColumnOptions={{ resizable: true, maxWidth: 800, minWidth: 35 }}
+        renderers={{ noRowsFallback: <EmptyRowsRenderer /> }}
+        defaultColumnOptions={{
+          resizable: true,
+          maxWidth: 800,
+          minWidth: 35,
+        }}
         className="rdg-light"
         enableScreenshot={true}
       />

@@ -20,7 +20,10 @@ import { toDataDiffGrid } from "./querydiff";
 
 import "./styles.css";
 import { Run } from "@/lib/api/types";
-import { ScreenshotDataGrid } from "../data-grid/ScreenshotDataGrid";
+import {
+  EmptyRowsRenderer,
+  ScreenshotDataGrid,
+} from "../data-grid/ScreenshotDataGrid";
 import { RunResultViewProps } from "../run/types";
 import { AddIcon, WarningIcon } from "@chakra-ui/icons";
 
@@ -165,12 +168,16 @@ export const QueryDiffResultView = ({
           </Tooltip>
         )}
       </Flex>
-
       <ScreenshotDataGrid
         style={{ blockSize: "auto", maxHeight: "100%", overflow: "auto" }}
         columns={gridData.columns}
         rows={gridData.rows}
-        defaultColumnOptions={{ resizable: true, maxWidth: 800, minWidth: 35 }}
+        renderers={{ noRowsFallback: <EmptyRowsRenderer /> }}
+        defaultColumnOptions={{
+          resizable: true,
+          maxWidth: 800,
+          minWidth: 35,
+        }}
         className="rdg-light"
         enableScreenshot={true}
       />

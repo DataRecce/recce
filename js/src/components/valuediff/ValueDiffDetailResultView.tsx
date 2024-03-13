@@ -13,7 +13,10 @@ import { useMemo } from "react";
 
 import "../query/styles.css";
 import { Run } from "@/lib/api/types";
-import { ScreenshotDataGrid } from "../data-grid/ScreenshotDataGrid";
+import {
+  EmptyRowsRenderer,
+  ScreenshotDataGrid,
+} from "../data-grid/ScreenshotDataGrid";
 import { RunResultViewProps } from "../run/types";
 import { AddIcon, WarningIcon } from "@chakra-ui/icons";
 import { toValueDiffGrid } from "./valuediff";
@@ -140,6 +143,7 @@ export const ValueDiffDetailResultView = ({
         style={{ blockSize: "auto", maxHeight: "100%", overflow: "auto" }}
         columns={gridData.columns}
         rows={gridData.rows}
+        renderers={{ noRowsFallback: <EmptyRowsRenderer /> }}
         defaultColumnOptions={{ resizable: true, maxWidth: 800, minWidth: 35 }}
         className="rdg-light"
         enableScreenshot={true}
