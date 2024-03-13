@@ -1,7 +1,10 @@
 import { TopKDiffResult, TopKResult } from "@/lib/api/profile";
-import { formatAsAbbreviatedNumber, formatIntervalMinMax } from "@/utils/formatters";
-import { Box, Divider, Flex, Heading, Spacer, Text, Tooltip } from "@chakra-ui/react";
-import { Fragment, useState } from "react";
+import {
+  formatAsAbbreviatedNumber,
+  formatIntervalMinMax,
+} from "@/utils/formatters";
+import { Box, Divider, Flex, Spacer, Text, Tooltip } from "@chakra-ui/react";
+import { Fragment } from "react";
 import {
   ChartOptions,
   Chart as ChartJS,
@@ -10,11 +13,11 @@ import {
   BarElement,
   ChartData,
   AnimationOptions,
-} from 'chart.js';
-import { Bar } from 'react-chartjs-2';
+} from "chart.js";
+import { Bar } from "react-chartjs-2";
 import { BASE_BAR_COLOR, CURRENT_BAR_COLOR, SquareIcon } from "./SquareIcon";
 
-export const INFO_VAL_COLOR = '#63B3ED';
+export const INFO_VAL_COLOR = "#63B3ED";
 
 interface BarChartProps {
   topKDiff: TopKDiffResult;
@@ -30,10 +33,14 @@ interface Summary {
   isLastItemOthers: boolean;
 }
 
-function prepareSummaryList(topK: TopKResult, isDisplayTopTen: boolean): Summary[] {
+function prepareSummaryList(
+  topK: TopKResult,
+  isDisplayTopTen: boolean
+): Summary[] {
   const endAtIndex = isDisplayTopTen ? 10 : topK.counts.length;
   const counts = topK.counts.slice(0, endAtIndex);
-  const remainingSumCount = topK.valids - counts.reduce((accum, curr) => accum + curr, 0);
+  const remainingSumCount =
+    topK.valids - counts.reduce((accum, curr) => accum + curr, 0);
   const values = topK.values.slice(0, endAtIndex);
 
   return values.concat([remainingSumCount]).map((v, index) => {
@@ -42,57 +49,72 @@ function prepareSummaryList(topK: TopKResult, isDisplayTopTen: boolean): Summary
 
     return {
       isLastItemOthers,
-      label: isLastItemOthers ? '(others)' : String(v) || '(empty)',
+      label: isLastItemOthers ? "(others)" : String(v) || "(empty)",
       count: count,
       displayCount: formatAsAbbreviatedNumber(count),
-      displayRatio: formatIntervalMinMax(count / topK.valids) || 'N/A',
+      displayRatio: formatIntervalMinMax(count / topK.valids) || "N/A",
     };
   });
 }
 
 function TopKChartTooltip({
-    base,
-    current,
-    children
-  }: {base: Summary, current: Summary, children?: React.ReactNode;}){
+  base,
+  current,
+  children,
+}: {
+  base: Summary;
+  current: Summary;
+  children?: React.ReactNode;
+}) {
   return (
-    <Tooltip label={(
-      <Box>
-        <Text>
-          <SquareIcon color={CURRENT_BAR_COLOR}/>Current: {current.count} ({current.displayRatio})
-        </Text>
-        <Text>
-          <SquareIcon color={BASE_BAR_COLOR}/>Base: {base.count} ({base.displayRatio})
-        </Text>
-      </Box>)} placement="auto" hasArrow>
+    <Tooltip
+      label={
+        <Box>
+          <Text>
+            <SquareIcon color={CURRENT_BAR_COLOR} />
+            Current: {current.count} ({current.displayRatio})
+          </Text>
+          <Text>
+            <SquareIcon color={BASE_BAR_COLOR} />
+            Base: {base.count} ({base.displayRatio})
+          </Text>
+        </Box>
+      }
+      placement="auto"
+      hasArrow
+    >
       {children}
     </Tooltip>
   );
 }
 
-export function TopKSummaryBarChart({ topKDiff, isDisplayTopTen }: BarChartProps) {
+export function TopKSummaryBarChart({
+  topKDiff,
+  isDisplayTopTen,
+}: BarChartProps) {
   // const [isDisplayTopTen, setIsDisplayTopTen] = useState<boolean>(true);
   const currents = prepareSummaryList(topKDiff.current, isDisplayTopTen);
   const bases = prepareSummaryList(topKDiff.base, isDisplayTopTen);
 
   return (
-    <Box w={'100%'} px={20} py={4}>
-      <Flex
-        alignItems={'center'}
-        direction={'row'}
-      >
+    <Box w={"100%"} px={20} py={4}>
+      <Flex alignItems={"center"} direction={"row"}>
         <Spacer />
-        <Text as='h3' size='sm' p='2' color='gray'>
-          <SquareIcon color={BASE_BAR_COLOR}/> Base
+        <Text as="h3" size="sm" p="2" color="gray">
+          <SquareIcon color={BASE_BAR_COLOR} /> Base
         </Text>
-        <Text as='h3' size='sm' p='2' color='gray'>
-          <SquareIcon color={CURRENT_BAR_COLOR}/> Current
+        <Text as="h3" size="sm" p="2" color="gray">
+          <SquareIcon color={CURRENT_BAR_COLOR} /> Current
         </Text>
         <Spacer />
       </Flex>
       {currents.map((current, index) => {
         const base = bases[index];
-        if (current.isLastItemOthers && current.count === 0 && base.count === 0) {
+        if (
+          current.isLastItemOthers &&
+          current.count === 0 &&
+          base.count === 0
+        ) {
           // skip rendering the others if both are empty
           return <></>;
         }
@@ -100,26 +122,26 @@ export function TopKSummaryBarChart({ topKDiff, isDisplayTopTen }: BarChartProps
           <Fragment key={index}>
             <TopKChartTooltip base={base} current={current}>
               <Flex
-                alignItems={'center'}
-                width={'100%'}
-                _hover={{ bg: 'blackAlpha.300' }}
+                alignItems={"center"}
+                width={"100%"}
+                _hover={{ bg: "blackAlpha.300" }}
                 px={4}
               >
                 <Text
                   noOfLines={1}
-                  width={'10em'}
-                  fontSize={'sm'}
+                  width={"10em"}
+                  fontSize={"sm"}
                   color={
                     current.isLastItemOthers || current.label.length === 0
-                      ? 'gray.400'
-                      : 'inherit'
+                      ? "gray.400"
+                      : "inherit"
                   }
                 >
                   {current.label}
                 </Text>
-                <Flex width={'70%'} direction={'column'} >
+                <Flex width={"70%"} direction={"column"}>
                   {/* Current Top-K */}
-                  <Flex height={'1em'}>
+                  <Flex height={"1em"}>
                     <CategoricalBarChart
                       topkCount={current.count}
                       topkLabel={current.label}
@@ -129,18 +151,18 @@ export function TopKSummaryBarChart({ topKDiff, isDisplayTopTen }: BarChartProps
                     <Text
                       ml={5}
                       mr={2}
-                      fontSize={'sm'}
-                      width={'6em'}
+                      fontSize={"sm"}
+                      width={"6em"}
                       // noOfLines={1}
                     >
                       {current.displayCount}
                     </Text>
-                    <Text color={'gray.400'} fontSize={'sm'} width={'4em'}>
+                    <Text color={"gray.400"} fontSize={"sm"} width={"4em"}>
                       {current.displayRatio}
                     </Text>
                   </Flex>
                   {/* Base Top-K */}
-                  <Flex height={'1em'}>
+                  <Flex height={"1em"}>
                     <CategoricalBarChart
                       topkCount={base.count}
                       topkLabel={base.label}
@@ -150,13 +172,13 @@ export function TopKSummaryBarChart({ topKDiff, isDisplayTopTen }: BarChartProps
                     <Text
                       ml={5}
                       mr={2}
-                      fontSize={'sm'}
-                      width={'6em'}
+                      fontSize={"sm"}
+                      width={"6em"}
                       // noOfLines={1}
                     >
                       {base.displayCount}
                     </Text>
-                    <Text color={'gray.400'} fontSize={'sm'} width={'4em'}>
+                    <Text color={"gray.400"} fontSize={"sm"} width={"4em"}>
                       {base.displayRatio}
                     </Text>
                   </Flex>
@@ -188,13 +210,13 @@ export function TopKSummaryList({ topk, valids, isDisplayTopTen }: Props) {
     valids - displayList.reduce((accum, curr) => accum + curr, 0);
 
   return (
-    <Box w={'100%'}>
+    <Box w={"100%"}>
       {displayList.concat([remainingSumCount]).map((v, index) => {
         const isLastItemOthers = index === displayList.length;
         const topkCount = isLastItemOthers ? remainingSumCount : v;
         const catName = String(topk.values[index]);
 
-        const topkLabel = isLastItemOthers ? '(others)' : catName || '(empty)';
+        const topkLabel = isLastItemOthers ? "(others)" : catName || "(empty)";
         const displayTopkCount = formatAsAbbreviatedNumber(topkCount);
         const displayTopkRatio = formatIntervalMinMax(topkCount / valids);
         return (
@@ -202,26 +224,26 @@ export function TopKSummaryList({ topk, valids, isDisplayTopTen }: Props) {
             {!isLastItemOthers || (isLastItemOthers && topkCount > 0) ? (
               <>
                 <Flex
-                  alignItems={'center'}
-                  width={'100%'}
-                  _hover={{ bg: 'blackAlpha.300' }}
+                  alignItems={"center"}
+                  width={"100%"}
+                  _hover={{ bg: "blackAlpha.300" }}
                   px={3}
                 >
                   <Tooltip label={topkLabel} placement="start">
                     <Text
                       noOfLines={1}
-                      width={'14em'}
-                      fontSize={'sm'}
+                      width={"14em"}
+                      fontSize={"sm"}
                       color={
                         isLastItemOthers || catName.length === 0
-                          ? 'gray.400'
-                          : 'inherit'
+                          ? "gray.400"
+                          : "inherit"
                       }
                     >
                       {topkLabel}
                     </Text>
                   </Tooltip>
-                  <Flex height={'2em'} width={'10em'}>
+                  <Flex height={"2em"} width={"10em"}>
                     <CategoricalBarChart
                       topkCount={topkCount}
                       topkLabel={topkLabel}
@@ -232,15 +254,15 @@ export function TopKSummaryList({ topk, valids, isDisplayTopTen }: Props) {
                     <Text
                       ml={5}
                       mr={2}
-                      fontSize={'sm'}
-                      width={'4em'}
+                      fontSize={"sm"}
+                      width={"4em"}
                       noOfLines={1}
                     >
                       {displayTopkCount}
                     </Text>
                   </Tooltip>
                   <Tooltip label={displayTopkRatio} placement="start">
-                    <Text color={'gray.400'} fontSize={'sm'} width={'4em'}>
+                    <Text color={"gray.400"} fontSize={"sm"} width={"4em"}>
                       {displayTopkRatio}
                     </Text>
                   </Tooltip>
@@ -264,7 +286,7 @@ export interface CategoricalBarChartProps {
   topkCount: number;
   topkLabel: number | string;
   valids: number;
-  animation?: AnimationOptions<'bar'>['animation'];
+  animation?: AnimationOptions<"bar">["animation"];
   color?: string;
 }
 /**
@@ -285,21 +307,21 @@ export function CategoricalBarChart({
     color,
   });
 
-  return <Bar data={chartData} options={chartOptions} plugins={[]}/>;
+  return <Bar data={chartData} options={chartOptions} plugins={[]} />;
 }
 
 /**
  * @returns merged Chart.js option object for categorical 'bar'
  */
 export function getCatBarChartOptions(
-  count: CategoricalBarChartProps['topkCount'],
+  count: CategoricalBarChartProps["topkCount"],
   valids: number,
-  { ...configOverrides }: ChartOptions<'bar'> = {},
-): ChartOptions<'bar'> {
+  { ...configOverrides }: ChartOptions<"bar"> = {}
+): ChartOptions<"bar"> {
   return {
     responsive: true,
     maintainAspectRatio: false,
-    indexAxis: 'y',
+    indexAxis: "y",
     scales: {
       x: {
         display: false,
@@ -325,12 +347,12 @@ export function getCatBarChartData({
   topkLabel,
   topkCount,
   color = INFO_VAL_COLOR,
-}: Omit<CategoricalBarChartProps, 'animation' | 'valids'>): ChartData<'bar'> {
+}: Omit<CategoricalBarChartProps, "animation" | "valids">): ChartData<"bar"> {
   return {
     labels: [topkLabel], // showing top cats
     datasets: [
       {
-        indexAxis: 'y',
+        indexAxis: "y",
         data: [topkCount], // showing top cats
         backgroundColor: color,
         hoverBackgroundColor: color,

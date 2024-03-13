@@ -1,11 +1,25 @@
 import { TopKDiffParams, TopKDiffResult } from "@/lib/api/profile";
 import { RunResultViewProps } from "../run/types";
-import { Box, Flex, HStack, Heading, Spacer, Text, VStack , Divider, Link } from "@chakra-ui/react";
-import { TopKSummaryBarChart, TopKSummaryList } from "../charts/TopKSummaryList";
+import {
+  Box,
+  Flex,
+  HStack,
+  Heading,
+  Spacer,
+  Text,
+  VStack,
+  Divider,
+  Link,
+} from "@chakra-ui/react";
+import {
+  TopKSummaryBarChart,
+  TopKSummaryList,
+} from "../charts/TopKSummaryList";
 import { useState } from "react";
 import { ScreenshotBox } from "../screenshot/ScreenshotBox";
 
-interface TopKDiffResultViewProp extends RunResultViewProps<TopKDiffParams, TopKDiffResult> {}
+interface TopKDiffResultViewProp
+  extends RunResultViewProps<TopKDiffParams, TopKDiffResult> {}
 
 export function TopKDiffResultView({ run }: TopKDiffResultViewProp) {
   const [isDisplayTopTen, setIsDisplayTopTen] = useState<boolean>(true);
@@ -17,9 +31,11 @@ export function TopKDiffResultView({ run }: TopKDiffResultViewProp) {
   const currentTopK = result.current;
 
   return (
-    <Flex direction='column' height={'100%'}>
-      <ScreenshotBox blockSize={'auto'}>
-        <Heading as="h1" size="md" paddingTop={4} textAlign='center'>Model {params.model}.{params.column_name}</Heading>
+    <Flex direction="column" height={"100%"}>
+      <ScreenshotBox blockSize={"auto"}>
+        <Heading as="h1" size="md" paddingTop={4} textAlign="center">
+          Model {params.model}.{params.column_name}
+        </Heading>
         <HStack>
           <Spacer />
           <TopKSummaryBarChart
@@ -32,12 +48,12 @@ export function TopKDiffResultView({ run }: TopKDiffResultViewProp) {
       </ScreenshotBox>
       <Spacer />
       {(baseTopK.values.length > 10 || currentTopK.values.length > 10) && (
-        <Flex p={5} justify={'start'}>
+        <Flex p={5} justify={"start"}>
           <Link
             onClick={() => setIsDisplayTopTen((prevState) => !prevState)}
-            textColor={'blue.500'}
+            textColor={"blue.500"}
           >
-            {isDisplayTopTen ? 'View More Items' : 'View Only Top-10'}
+            {isDisplayTopTen ? "View More Items" : "View Only Top-10"}
           </Link>
         </Flex>
       )}

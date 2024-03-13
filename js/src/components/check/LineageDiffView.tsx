@@ -2,7 +2,6 @@ import { Check } from "@/lib/api/checks";
 import LineageView from "../lineage/LineageView";
 import { Flex } from "@chakra-ui/react";
 
-
 export interface LineageDiffViewProps {
   check: Check;
 }
