@@ -14,7 +14,7 @@ import {
   useDisclosure,
 } from "@chakra-ui/react";
 import html2canvas from "html2canvas";
-import { RefObject, useCallback, useEffect, useRef, useState } from "react";
+import { RefObject, useEffect, useRef, useState } from "react";
 import { useClipBoardToast } from "./useClipBoardToast";
 import { format } from "date-fns";
 import saveAs from "file-saver";
@@ -171,8 +171,6 @@ export async function copyBlobToClipboard(blob: Blob) {
 
 export function useCopyToClipboardButton(options?: HookOptions) {
   const { successToast, failToast } = useClipBoardToast();
-  const { isOpen, onOpen, onClose } = useDisclosure();
-  const [imgBlob, setImgBlob] = useState<Blob>();
 
   const { isLoading, toImage, ref } = useToBlob({
     imageType: "png",
@@ -230,6 +228,9 @@ export function useCopyToClipboardButton(options?: HookOptions) {
         onClick={async () => {
           if (ref.current) {
             await toImage();
+            const nodeToUse = ((ref.current as any).element ||
+              ref.current) as HTMLElement;
+            nodeToUse.style.boxShadow = "";
           }
         }}
       >
@@ -244,11 +245,11 @@ export function useCopyToClipboardButton(options?: HookOptions) {
   };
 }
 
-export function useImageBoard() {
+export function useImageBoardModal() {
   const { isOpen, onOpen, onClose } = useDisclosure();
   const [imgBlob, setImgBlob] = useState<Blob>();
 
-  function ImageBoard() {
+  function ImageBoardModal() {
     const [base64Img, setBase64Img] = useState<string>();
 
     useEffect(() => {
@@ -313,6 +314,6 @@ export function useImageBoard() {
   return {
     onOpen,
     setImgBlob,
-    ImageBoard,
+    ImageBoardModal,
   };
 }

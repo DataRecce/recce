@@ -66,7 +66,7 @@ import { AddLineageDiffCheckButton, NodeSelector } from "./NodeSelector";
 import {
   IGNORE_SCREENSHOT_CLASS,
   copyBlobToClipboard,
-  useImageBoard,
+  useImageBoardModal,
   useToBlob,
 } from "@/lib/hooks/ScreenShot";
 import { useClipBoardToast } from "@/lib/hooks/useClipBoardToast";
@@ -166,7 +166,11 @@ function ChangeStatusLegend() {
 function _LineageView({ ...props }: LineageViewProps) {
   const { fitView, setCenter, getZoom } = useReactFlow();
   const { successToast, failToast } = useClipBoardToast();
-  const { onOpen: onImgBoardOpen, setImgBlob, ImageBoard } = useImageBoard();
+  const {
+    onOpen: onImgBoardModalOpen,
+    setImgBlob,
+    ImageBoardModal,
+  } = useImageBoardModal();
   const { toImage, ref } = useToBlob({
     imageType: "png",
     shadowEffect: true,
@@ -188,7 +192,7 @@ function _LineageView({ ...props }: LineageViewProps) {
       } catch (error) {
         if ((error as Error).message === "ClipboardItem is not defined") {
           setImgBlob(blob);
-          onImgBoardOpen();
+          onImgBoardModalOpen();
         } else {
           failToast("Failed to copy image to clipboard", error);
         }
@@ -483,7 +487,7 @@ function _LineageView({ ...props }: LineageViewProps) {
               <Icon as={FiCopy} />
             </ControlButton>
           </Controls>
-          <ImageBoard />
+          <ImageBoardModal />
           <Panel position="bottom-left">
             <HStack>
               <ChangeStatusLegend />
