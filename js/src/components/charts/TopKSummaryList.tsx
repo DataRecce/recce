@@ -12,10 +12,9 @@ import {
   AnimationOptions,
 } from 'chart.js';
 import { Bar } from 'react-chartjs-2';
+import { BASE_BAR_COLOR, CURRENT_BAR_COLOR, SquareIcon } from "./SquareIcon";
 
 export const INFO_VAL_COLOR = '#63B3ED';
-export const CURRENT_BAR_COLOR = INFO_VAL_COLOR;
-export const BASE_BAR_COLOR = '#F6AD55';
 
 interface BarChartProps {
   topKDiff: TopKDiffResult;
@@ -49,10 +48,6 @@ function prepareSummaryList(topK: TopKResult, isDisplayTopTen: boolean): Summary
       displayRatio: formatIntervalMinMax(count / topK.valids) || 'N/A',
     };
   });
-}
-
-function SquareIcon({ color }: { color: string }) {
-  return (<Box display="inline-block" w="10px" h="10px" bgColor={color} mr="2" borderRadius="sm"></Box>);
 }
 
 function TopKChartTooltip({
@@ -338,9 +333,9 @@ export function getCatBarChartData({
         indexAxis: 'y',
         data: [topkCount], // showing top cats
         backgroundColor: color,
-        hoverBackgroundColor: '#002a53',
-        borderWidth: 1,
-        borderColor: '#002a53',
+        hoverBackgroundColor: color,
+        borderWidth: 0,
+        borderColor: color,
         barPercentage: 1,
         categoryPercentage: 0.6,
       },

@@ -15,14 +15,13 @@ import {
 import { Chart } from 'react-chartjs-2';
 import { formatAsAbbreviatedNumber, formatIntervalMinMax } from "@/utils/formatters";
 import { Box, Flex, Spacer, Text } from '@chakra-ui/react';
+import { BASE_BAR_COLOR_WITH_ALPHA, CURRENT_BAR_COLOR_WITH_ALPHA, SquareIcon } from './SquareIcon';
 
 export const INFO_VAL_COLOR = '#63B3ED';
 export const DATE_RANGE = 'Date Range';
 export const TEXTLENGTH = 'Text Length';
 export const VALUE_RANGE = 'Value Range';
 
-export const CURRENT_BAR_COLOR = '#63B3EDA5';
-export const BASE_BAR_COLOR = '#F6AD55A5';
 
 /**
  * Histogram Chart that can display generic data types such as Numeric, Datetime, Integer
@@ -44,9 +43,6 @@ type HistogramChartProps = {
   hideAxis?: boolean;
 };
 
-function SquareIcon({ color }: { color: string }) {
-  return (<Box display="inline-block" w="10px" h="10px" bgColor={color} mr="2" borderRadius="sm"></Box>);
-}
 
 export function HistogramChart({
   data,
@@ -76,10 +72,10 @@ export function HistogramChart({
       >
         <Spacer />
         <Text as='h3' size='sm' p='2' color='gray'>
-          <SquareIcon color={BASE_BAR_COLOR}/> Base
+          <SquareIcon color={BASE_BAR_COLOR_WITH_ALPHA}/> Base
         </Text>
         <Text as='h3' size='sm' p='2' color='gray'>
-          <SquareIcon color={CURRENT_BAR_COLOR}/> Current
+          <SquareIcon color={CURRENT_BAR_COLOR_WITH_ALPHA}/> Current
         </Text>
         <Spacer />
       </Flex>
@@ -117,8 +113,8 @@ export function getHistogramChartData(
 ): ChartData<'bar' | 'scatter'> {
   const { datasets, type, binEdges } = data;
   const [base, current] = datasets;
-  const currentDataset = getHistogramChartDataset(type, binEdges, 'Current', CURRENT_BAR_COLOR, current);
-  const baseDataset = getHistogramChartDataset(type, binEdges, 'Base', BASE_BAR_COLOR, base);
+  const currentDataset = getHistogramChartDataset(type, binEdges, 'Current', CURRENT_BAR_COLOR_WITH_ALPHA, current);
+  const baseDataset = getHistogramChartDataset(type, binEdges, 'Base', BASE_BAR_COLOR_WITH_ALPHA, base);
 
   const newLabels = binEdges
     .map((v, i) => formatDisplayedBinItem(binEdges, i))
