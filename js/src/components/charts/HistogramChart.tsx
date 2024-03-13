@@ -1,5 +1,4 @@
-
-import { HistogramDiffResult, HistogramResult } from '@/lib/api/profile';
+import { HistogramResult } from "@/lib/api/profile";
 import {
   ChartOptions,
   Chart as ChartJS,
@@ -11,18 +10,23 @@ import {
   LinearScale,
   AnimationOptions,
   ScaleOptions,
-} from 'chart.js';
-import { Chart } from 'react-chartjs-2';
-import { formatAsAbbreviatedNumber, formatIntervalMinMax } from "@/utils/formatters";
-import { Box, Flex, Spacer, Text } from '@chakra-ui/react';
+} from "chart.js";
+import { Chart } from "react-chartjs-2";
+import {
+  formatAsAbbreviatedNumber,
+  formatIntervalMinMax,
+} from "@/utils/formatters";
+import { Flex, Spacer, Text } from "@chakra-ui/react";
+import {
+  BASE_BAR_COLOR_WITH_ALPHA,
+  CURRENT_BAR_COLOR_WITH_ALPHA,
+  SquareIcon,
+} from "./SquareIcon";
 
-export const INFO_VAL_COLOR = '#63B3ED';
-export const DATE_RANGE = 'Date Range';
-export const TEXTLENGTH = 'Text Length';
-export const VALUE_RANGE = 'Value Range';
-
-export const CURRENT_BAR_COLOR = '#63B3EDA5';
-export const BASE_BAR_COLOR = '#F6AD55A5';
+export const INFO_VAL_COLOR = "#63B3ED";
+export const DATE_RANGE = "Date Range";
+export const TEXTLENGTH = "Text Length";
+export const VALUE_RANGE = "Value Range";
 
 /**
  * Histogram Chart that can display generic data types such as Numeric, Datetime, Integer
@@ -33,20 +37,16 @@ export const BASE_BAR_COLOR = '#F6AD55A5';
 
 type HistogramChartProps = {
   data: {
-    type: string,
+    type: string;
     samples?: number;
     min?: string | number;
     max?: string | number;
     binEdges: number[];
     datasets: HistogramResult[];
-  },
-  animation?: AnimationOptions<'bar'>['animation'];
+  };
+  animation?: AnimationOptions<"bar">["animation"];
   hideAxis?: boolean;
 };
-
-function SquareIcon({ color }: { color: string }) {
-  return (<Box display="inline-block" w="10px" h="10px" bgColor={color} mr="2" borderRadius="sm"></Box>);
-}
 
 export function HistogramChart({
   data,
@@ -58,7 +58,7 @@ export function HistogramChart({
     TimeSeriesScale,
     LinearScale,
     CategoryScale,
-    Tooltip,
+    Tooltip
   );
 
   const chartOptions = getHistogramChartOptions(data, hideAxis, { animation });
@@ -70,16 +70,13 @@ export function HistogramChart({
   //infer `any` to allow for union data configurations & options
   return (
     <>
-      <Flex
-        alignItems={'center'}
-        direction={'row'}
-      >
+      <Flex alignItems={"center"} direction={"row"}>
         <Spacer />
-        <Text as='h3' size='sm' p='2' color='gray'>
-          <SquareIcon color={BASE_BAR_COLOR}/> Base
+        <Text as="h3" size="sm" p="2" color="gray">
+          <SquareIcon color={BASE_BAR_COLOR_WITH_ALPHA} /> Base
         </Text>
-        <Text as='h3' size='sm' p='2' color='gray'>
-          <SquareIcon color={CURRENT_BAR_COLOR}/> Current
+        <Text as="h3" size="sm" p="2" color="gray">
+          <SquareIcon color={CURRENT_BAR_COLOR_WITH_ALPHA} /> Current
         </Text>
         <Spacer />
       </Flex>
@@ -93,8 +90,14 @@ export function HistogramChart({
   );
 }
 
-function getHistogramChartDataset(type: string, binEdges: number[], label: string, color: string, data: HistogramResult) {
-  const isDatetime = type === 'datetime';
+function getHistogramChartDataset(
+  type: string,
+  binEdges: number[],
+  label: string,
+  color: string,
+  data: HistogramResult
+) {
+  const isDatetime = type === "datetime";
   const { counts = [] } = data;
   const newData = isDatetime
     ? counts.map((v, i) => ({ x: binEdges[i], y: v }))
@@ -108,17 +111,29 @@ function getHistogramChartDataset(type: string, binEdges: number[], label: strin
     borderWidth: 0,
     categoryPercentage: 1, // tells bar to fill "bin area"
     barPercentage: 1, //tells bar to fill "bar area"
-    xAxisID: 'x',
+    xAxisID: "x",
   };
 }
 
 export function getHistogramChartData(
-  data: HistogramChartProps['data'],
-): ChartData<'bar' | 'scatter'> {
+  data: HistogramChartProps["data"]
+): ChartData<"bar" | "scatter"> {
   const { datasets, type, binEdges } = data;
   const [base, current] = datasets;
-  const currentDataset = getHistogramChartDataset(type, binEdges, 'Current', CURRENT_BAR_COLOR, current);
-  const baseDataset = getHistogramChartDataset(type, binEdges, 'Base', BASE_BAR_COLOR, base);
+  const currentDataset = getHistogramChartDataset(
+    type,
+    binEdges,
+    "Current",
+    CURRENT_BAR_COLOR_WITH_ALPHA,
+    current
+  );
+  const baseDataset = getHistogramChartDataset(
+    type,
+    binEdges,
+    "Base",
+    BASE_BAR_COLOR_WITH_ALPHA,
+    base
+  );
 
   const newLabels = binEdges
     .map((v, i) => formatDisplayedBinItem(binEdges, i))
@@ -126,26 +141,24 @@ export function getHistogramChartData(
 
   return {
     labels: newLabels,
-    datasets: [
-      currentDataset, baseDataset,
-    ],
+    datasets: [currentDataset, baseDataset],
   };
 }
 
 export function getHistogramChartOptions(
-  data: HistogramChartProps['data'],
+  data: HistogramChartProps["data"],
   hideAxis = false,
-  { ...configOverrides }: ChartOptions<'bar'> = {},
-): ChartOptions<'bar'> {
+  { ...configOverrides }: ChartOptions<"bar"> = {}
+): ChartOptions<"bar"> {
   const { datasets, type, samples = 0, binEdges } = data;
   const [base, current] = datasets;
-  const isDatetime = type === 'datetime';
+  const isDatetime = type === "datetime";
   return {
     responsive: true,
     maintainAspectRatio: false,
     plugins: {
       tooltip: {
-        mode: 'index',
+        mode: "index",
         // position: 'nearest',
         intersect: false,
         callbacks: {
@@ -154,7 +167,7 @@ export function getHistogramChartOptions(
 
             const prefix = isDatetime
               ? DATE_RANGE
-              : type === 'string'
+              : type === "string"
               ? TEXTLENGTH
               : VALUE_RANGE;
 
@@ -163,15 +176,13 @@ export function getHistogramChartOptions(
           label({ datasetIndex, dataIndex, dataset: { label } }) {
             const counts = datasetIndex === 0 ? current.counts : base.counts;
             const percentOfTotal = formatIntervalMinMax(
-              counts[dataIndex] / samples,
+              counts[dataIndex] / samples
             );
-            const count = counts[dataIndex]
+            const count = counts[dataIndex];
             return `${label}: ${count} (${percentOfTotal})`;
-          }
+          },
         },
       },
-
-
     },
     scales: getScales(data, hideAxis),
     ...configOverrides,
@@ -181,10 +192,10 @@ export function getHistogramChartOptions(
  * get x, y scales for histogram (dynamic based on datetime or not)
  */
 function getScales(
-  { datasets, min = 0, max = 0, type, binEdges }: HistogramChartProps['data'],
-  hideAxis = false,
+  { datasets, min = 0, max = 0, type, binEdges }: HistogramChartProps["data"],
+  hideAxis = false
 ) {
-  const isDatetime = type === 'datetime';
+  const isDatetime = type === "datetime";
   const [base, current] = datasets;
   const maxCount = Math.max(...current.counts, ...base.counts);
 
@@ -195,14 +206,14 @@ function getScales(
   //swap x-scale when histogram is datetime
   const xScaleDate: ScaleOptions = {
     display: hideAxis ? false : true,
-    type: 'timeseries', // each datum is spread w/ equal distance
+    type: "timeseries", // each datum is spread w/ equal distance
     min,
     max,
     adapters: {
       date: {},
     },
     time: {
-      minUnit: 'day',
+      minUnit: "day",
     },
     grid: { display: false },
     ticks: {
@@ -216,7 +227,7 @@ function getScales(
    */
   const xScaleCategory: ScaleOptions = {
     display: hideAxis ? false : true,
-    type: 'category', //Linear doesn't understand bins!
+    type: "category", //Linear doesn't understand bins!
     grid: { display: false },
     ticks: {
       callback(val, index) {
@@ -229,11 +240,11 @@ function getScales(
 
   const yScaleBase: ScaleOptions = {
     display: hideAxis ? false : true,
-    type: 'linear',
+    type: "linear",
     max: maxCount, //NOTE: do not add `min` since if they are equal nothing gets displayed sometimes
     border: { dash: [2, 2] },
     grid: {
-      color: 'lightgray',
+      color: "lightgray",
     },
     ticks: {
       maxTicksLimit: 8,
@@ -249,10 +260,7 @@ function getScales(
 /**
  * @returns a formatted, abbreviated, histogram bin display text
  */
-function formatDisplayedBinItem(
-  binEdges: number[],
-  currentIndex: number,
-) {
+function formatDisplayedBinItem(binEdges: number[], currentIndex: number) {
   const startEdge = binEdges[currentIndex];
   const endEdge = binEdges[currentIndex + 1];
 
