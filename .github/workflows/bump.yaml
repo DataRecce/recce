@@ -1,0 +1,43 @@
+name: Bump Recce Version
+on:
+  push:
+    tags: 'v*'
+
+jobs:
+  build:
+    name: Bump Recce Version
+    runs-on: ubuntu-latest
+
+    permissions:
+      contents: write
+      pull-requests: write
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          ref: main
+
+      - name: Bump Version
+        id: bump_version
+        run: |
+          dev=$(cat ./recce/VERSION | awk -F '[.]' '{print $2}')
+          release=$(echo ${GITHUB_REF:11} | awk -F '[.]' '{print $2}')
+          diff=$((dev - release))
+          new_version=$(( dev + 1 ))
+
+          if (( diff != 0 )); then
+            exit 1
+          else
+            echo "0.${new_version}.0.dev0" > ./recce/VERSION
+            echo "bump_version=0.${new_version}.0" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Create Pull Request
+        uses: peter-evans/create-pull-request@v6
+        with:
+          commit-message: "Bump version to ${{ steps.bump_version.outputs.bump_version }}.dev0"
+          title: "[Release] Bump version to ${{ steps.bump_version.outputs.bump_version }}"
+          body: "- bump dev version to ${{ steps.bump_version.outputs.bump_version }}.dev0 "
+          branch: "release/bump-version-to-${{ steps.bump_version.outputs.bump_version }}"
+          base: main
