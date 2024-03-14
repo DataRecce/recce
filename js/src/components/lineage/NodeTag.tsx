@@ -124,11 +124,9 @@ export function RowCountTag({
     runsAggregated?.[node.id]?.["row_count_diff"]?.result;
 
   const {
-    isLoading,
     data: fetchedRowCount,
-    error,
     refetch: invokeRowCountQuery,
-    isFetched,
+    isFetching,
   } = useQuery({
     queryKey: cacheKeys.rowCount(node.name),
     queryFn: () => queryModelRowCount(node.name),
@@ -156,9 +154,9 @@ export function RowCountTag({
         <TagLeftIcon as={FiAlignLeft} />
 
         <TagLabel>
-          {rowCount || isLoading ? (
+          {rowCount || isFetching ? (
             <SkeletonText
-              isLoaded={!isLoading}
+              isLoaded={!isFetching}
               noOfLines={1}
               skeletonHeight={2}
               minWidth={"30px"}
@@ -172,7 +170,7 @@ export function RowCountTag({
         {isInteractive && (
           <TagRightIcon
             as={IconButton}
-            isLoading={isLoading}
+            isLoading={isFetching}
             aria-label="Query Row Count"
             icon={<RepeatIcon />}
             size="xs"

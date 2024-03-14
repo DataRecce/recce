@@ -25,11 +25,7 @@ class RowCountDiffTask(Task, QueryMixin):
         query_candidates = []
         nodes = self.params.get('node_names')
         for node in nodes:
-            cached_row_count = dbt_context.row_count_cache.get(node)
-            if cached_row_count is not None:
-                result[node] = cached_row_count
-            else:
-                query_candidates.append(node)
+            query_candidates.append(node)
 
         # Query row count for nodes that are not cached
         with adapter.connection_named("query"):
@@ -58,7 +54,6 @@ class RowCountDiffTask(Task, QueryMixin):
 
                 # Cache the row_count result
                 row_count = dict(base=base_row_count, curr=curr_row_count)
-                dbt_context.row_count_cache.put(node, row_count)
                 result[node] = row_count
 
         return result

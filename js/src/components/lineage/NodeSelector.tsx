@@ -3,11 +3,9 @@ import {
   Box,
   Button,
   ButtonGroup,
-  CircularProgress,
   HStack,
   Icon,
   IconButton,
-  SlideFade,
   StackDivider,
   useUnmountEffect,
 } from "@chakra-ui/react";
@@ -21,7 +19,6 @@ import {
 } from "@/lib/api/checks";
 import { useLocation } from "wouter";
 import { FiAlignLeft } from "react-icons/fi";
-import { useRowCountQueries } from "@/lib/api/models";
 import { TbBrandStackshare } from "react-icons/tb";
 import { ValueDiffParams } from "@/lib/api/valuediff";
 import { useCallback, useState } from "react";
@@ -39,35 +36,6 @@ export interface NodeSelectorProps {
   onActionStarted: () => void;
   onActionNodeUpdated: (node: LineageGraphNode) => void;
   onActionCompleted: () => void;
-}
-
-export function FetchSelectedNodesRowCountButton({
-  nodes,
-  onFinish,
-}: {
-  nodes: LineageGraphNode[];
-  onFinish?: () => void;
-}) {
-  const { isLoading, fetchFn } = useRowCountQueries(
-    nodes.map((node) => node.name)
-  );
-  return (
-    <Button
-      isLoading={isLoading}
-      loadingText="Querying"
-      size="xs"
-      variant="outline"
-      title="Query Row Counts"
-      onClick={async () => {
-        await fetchFn();
-        onFinish && onFinish();
-      }}
-      isDisabled={nodes.length === 0}
-    >
-      <Icon as={MdQueryStats} mr={1} />
-      Query Row Counts
-    </Button>
-  );
 }
 
 function AddSchemaChangesCheckButton({
@@ -106,42 +74,6 @@ function AddSchemaChangesCheckButton({
     >
       <Icon as={MdOutlineSchema} />
       Add schema check
-    </Button>
-  );
-}
-
-function AddRowCountCheckButton({
-  nodes,
-  onFinish,
-}: {
-  nodes: LineageGraphNode[];
-  onFinish: () => void;
-}) {
-  const [, setLocation] = useLocation();
-  const { isLoading, fetchFn: fetchRowCountFn } = useRowCountQueries(
-    nodes.map((node) => node.name)
-  );
-
-  return (
-    <Button
-      size="xs"
-      isLoading={isLoading}
-      loadingText="Querying"
-      variant="outline"
-      isDisabled={nodes.length === 0}
-      onClick={async () => {
-        const runId = await fetchRowCountFn({ skipCache: true });
-        const check = await createCheckByRun(runId);
-        if (check) {
-          setLocation(`/checks/${check.check_id}`);
-        } else {
-          setLocation(`/checks`);
-        }
-        onFinish();
-      }}
-    >
-      <Icon as={FiAlignLeft} />
-      Add row count check
     </Button>
   );
 }
@@ -472,12 +404,8 @@ export function NodeSelector({
             />
           </ButtonGroup>
           <HStack>
-            {/* <FetchSelectedNodesRowCountButton
-              nodes={nodes}
-              onFinish={onClose}
-            /> */}
             <AddSchemaChangesCheckButton nodes={nodes} onFinish={onClose} />
-            {/* <AddRowCountCheckButton nodes={nodes} onFinish={onClose} /> */}
+
             <AddLineageDiffCheckButton
               viewMode={viewMode}
               nodes={nodes}

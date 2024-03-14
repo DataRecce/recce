@@ -312,16 +312,16 @@ function _LineageView({ ...props }: LineageViewProps) {
       setDetailViewSelected(node.data);
       if (!isDetailViewShown) {
         setIsDetailViewShown(true);
+        centerNode(node);
       }
       setNodes(selectSingleNode(node.id, nodes));
-      centerNode(node);
     } else if (selectMode === "action_result") {
       setDetailViewSelected(node.data);
       if (!isDetailViewShown) {
         setIsDetailViewShown(true);
+        centerNode(node);
       }
       setNodes(selectSingleNode(node.id, nodes));
-      centerNode(node);
     } else {
       setNodes(selectNode(node.id, nodes));
     }

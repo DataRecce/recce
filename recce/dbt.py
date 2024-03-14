@@ -133,7 +133,6 @@ class DBTContext:
     base_catalog: CatalogArtifact = None
     artifacts_observer = Observer()
     artifacts_files = []
-    row_count_cache = LRUCache(32)
 
     @classmethod
     def load(cls, **kwargs):
@@ -404,9 +403,6 @@ class DBTContext:
         logger.info('Stop monitoring artifacts')
 
     def refresh(self, refresh_file_path: str = None):
-        # clear the cache
-        self.row_count_cache.clear()
-
         # Refresh the artifacts
         if refresh_file_path is None:
             return self.load_artifacts()
