@@ -1,10 +1,25 @@
-import { CopyIcon } from "@chakra-ui/icons";
-import { Button } from "@chakra-ui/react";
+import { CopyIcon, InfoIcon } from "@chakra-ui/icons";
+import {
+  Button,
+  Flex,
+  Image,
+  Modal,
+  ModalBody,
+  ModalCloseButton,
+  ModalContent,
+  ModalFooter,
+  ModalHeader,
+  ModalOverlay,
+  Text,
+  useDisclosure,
+} from "@chakra-ui/react";
 import html2canvas from "html2canvas";
-import { RefObject, useRef, useState } from "react";
+import { RefObject, useEffect, useRef, useState } from "react";
 import { useClipBoardToast } from "./useClipBoardToast";
+import { format } from "date-fns";
+import saveAs from "file-saver";
 
-export const IGNORE_SCREENSHOT_CLASS = 'ignore-screenshot';
+export const IGNORE_SCREENSHOT_CLASS = "ignore-screenshot";
 
 export const highlightBoxShadow =
   "rgba(0, 0, 0, 0.25) 0px 54px 55px, rgba(0, 0, 0, 0.12) 0px -12px 30px, rgba(0, 0, 0, 0.12) 0px 4px 6px, rgba(0, 0, 0, 0.17) 0px 12px 13px, rgba(0, 0, 0, 0.09) 0px -3px 5px";
@@ -18,6 +33,7 @@ export interface HookOptions {
   borderRadius?: string;
   onSuccess?: (blob: Blob) => void;
   onError?: (error: unknown) => void;
+  onClipboardNotDefined?: (blob: Blob) => void;
   ignoreElements?: (element: Element) => boolean;
 }
 
@@ -76,9 +92,11 @@ export function useToBlob({
 
       // Add style to make images inline-block
       // ref: https://github.com/niklasvh/html2canvas/issues/2107#issuecomment-1316354455
-      const style = document.createElement('style');
+      const style = document.createElement("style");
       document.head.appendChild(style);
-      style.sheet?.insertRule('body > div:last-child img { display: inline-block; }');
+      style.sheet?.insertRule(
+        "body > div:last-child img { display: inline-block; }"
+      );
 
       setStatus("loading");
       const canvas = await html2canvas(nodeToUse, {
@@ -163,7 +181,15 @@ export function useCopyToClipboardButton(options?: HookOptions) {
         await copyBlobToClipboard(blob);
         successToast("Copied the query result as an image to clipboard");
       } catch (error) {
-        failToast("Failed to copy image to clipboard", error);
+        const message = (error as Error).message;
+        if (
+          message === "ClipboardItem is not defined" &&
+          options?.onClipboardNotDefined
+        ) {
+          options.onClipboardNotDefined(blob);
+        } else {
+          failToast("Failed to copy image to clipboard", error);
+        }
       }
     },
     onError: (error) => {
@@ -202,6 +228,9 @@ export function useCopyToClipboardButton(options?: HookOptions) {
         onClick={async () => {
           if (ref.current) {
             await toImage();
+            const nodeToUse = ((ref.current as any).element ||
+              ref.current) as HTMLElement;
+            nodeToUse.style.boxShadow = "";
           }
         }}
       >
@@ -213,5 +242,78 @@ export function useCopyToClipboardButton(options?: HookOptions) {
   return {
     ref,
     CopyToClipboardButton,
+  };
+}
+
+export function useImageBoardModal() {
+  const { isOpen, onOpen, onClose } = useDisclosure();
+  const [imgBlob, setImgBlob] = useState<Blob>();
+
+  function ImageBoardModal() {
+    const [base64Img, setBase64Img] = useState<string>();
+
+    useEffect(() => {
+      if (!imgBlob) {
+        return;
+      }
+      const reader = new FileReader();
+      reader.readAsDataURL(imgBlob);
+      reader.onloadend = (e) => {
+        if (e.target?.result && e.target?.result !== null) {
+          setBase64Img(e.target.result as string);
+        }
+      };
+    }, [setBase64Img]);
+
+    const onDownload = () => {
+      if (!imgBlob) {
+        return;
+      }
+      const now = new Date();
+      const fileName = `recce-screenshot-${format(
+        now,
+        "yyyy-MM-dd-HH-mm-ss"
+      )}.png`;
+      saveAs(imgBlob, fileName);
+      onClose();
+    };
+
+    return (
+      <Modal size="3xl" isOpen={isOpen} onClose={onClose}>
+        <ModalOverlay />
+        <ModalContent>
+          <ModalHeader>Screenshot Preview</ModalHeader>
+          <ModalCloseButton />
+          <ModalBody>
+            <Flex px="10px" gap="10px" direction="column">
+              <Flex alignItems="center" gap="5px">
+                <InfoIcon color="red.600" />
+                <Text fontWeight="500" display="inline">
+                  Copy to the Clipboard
+                </Text>{" "}
+                is not supported in the current browser
+              </Flex>
+              <Text>Please download it directly</Text>
+            </Flex>
+            <Image src={base64Img} alt="screenshot" />
+          </ModalBody>
+
+          <ModalFooter>
+            <Button mr={3} onClick={onClose}>
+              Close
+            </Button>
+            <Button colorScheme="blue" onClick={onDownload}>
+              Download
+            </Button>
+          </ModalFooter>
+        </ModalContent>
+      </Modal>
+    );
+  }
+
+  return {
+    onOpen,
+    setImgBlob,
+    ImageBoardModal,
   };
 }

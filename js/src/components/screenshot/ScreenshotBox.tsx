@@ -1,5 +1,9 @@
 import { Box, BoxProps } from "@chakra-ui/react";
-import { useCopyToClipboardButton } from "@/lib/hooks/ScreenShot";
+import {
+  useCopyToClipboardButton,
+  useImageBoardModal,
+} from "@/lib/hooks/ScreenShot";
+import { useCallback } from "react";
 
 interface ScreenshotBoxProps extends BoxProps {
   backgroundColor?: string;
@@ -8,21 +12,38 @@ interface ScreenshotBoxProps extends BoxProps {
 }
 
 export const ScreenshotBox = ({
-  backgroundColor = 'white',
+  backgroundColor = "white",
   blockSize,
   children,
   ...restProps
 }: ScreenshotBoxProps) => {
-  const { ref, CopyToClipboardButton } = useCopyToClipboardButton({ backgroundColor: backgroundColor });
+  const { onOpen, setImgBlob, ImageBoardModal } = useImageBoardModal();
+  const onClipboardNotDefined = useCallback(
+    (blob: Blob) => {
+      setImgBlob(blob);
+      onOpen();
+    },
+    [setImgBlob, onOpen]
+  );
+
+  const { ref, CopyToClipboardButton } = useCopyToClipboardButton({
+    backgroundColor: backgroundColor,
+    onClipboardNotDefined,
+  });
 
   return (
     <>
-      <Box ref={ref} {...restProps} overflow='auto'>
-        <Box backgroundColor={backgroundColor} height='100%' blockSize={blockSize}>
+      <Box ref={ref} {...restProps} overflow="auto">
+        <Box
+          backgroundColor={backgroundColor}
+          height="100%"
+          blockSize={blockSize}
+        >
           {children}
         </Box>
       </Box>
       <CopyToClipboardButton imageType="png" />
+      <ImageBoardModal />
     </>
   );
 };
