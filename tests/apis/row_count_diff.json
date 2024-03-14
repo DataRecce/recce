@@ -1,0 +1,59 @@
+{
+  "metadata": null,
+  "runs": [
+    {
+      "type": "row_count_diff",
+      "params": {
+        "node_names": [
+          "customers",
+          "customer_segments"
+        ]
+      },
+      "check_id": null,
+      "result": {
+        "customers": {
+          "base": 1856,
+          "curr": 1856
+        },
+        "customer_segments": {
+          "base": 1856,
+          "curr": 1856
+        }
+      },
+      "error": null,
+      "progress": null,
+      "run_id": "92f31d63-0758-46af-a674-0e969208ec96",
+      "run_at": "2024-03-11T07:20:31Z"
+    },
+    {
+      "type": "row_count_diff",
+      "params": {
+        "node_names": [
+          "customer_order_pattern"
+        ]
+      },
+      "check_id": null,
+      "result": {
+        "customer_order_pattern": {
+          "base": 1856,
+          "curr": 1856
+        }
+      },
+      "error": null,
+      "progress": null,
+      "run_id": "ecef5ebd-f820-453d-9daf-f4f2f1b06d2e",
+      "run_at": "2024-03-11T07:20:41Z"
+    }
+  ],
+  "checks": [
+    {
+      "name": "Check - 11 Mar 2024",
+      "description": "",
+      "type": "simple",
+      "params": null,
+      "view_options": null,
+      "check_id": "7187e630-f64f-4b14-b1c5-b2e157ab721d",
+      "is_checked": false
+    }
+  ]
+}

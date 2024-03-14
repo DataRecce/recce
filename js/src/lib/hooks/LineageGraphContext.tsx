@@ -5,6 +5,7 @@ import {
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import React, {
   createContext,
+  useCallback,
   useContext,
   useEffect,
   useMemo,
@@ -15,6 +16,7 @@ import { getLineageDiff } from "../api/lineage";
 import { useToast } from "@chakra-ui/react";
 import { PUBLIC_API_URL } from "../const";
 import path from "path";
+import { aggregateRuns, RunsAggregated } from "../api/runs";
 
 interface EnvMetadata {
   pr_url: string | null;
@@ -26,6 +28,9 @@ export interface LineageGraphsContext {
   isDemoSite?: boolean;
   isLoading?: boolean;
   error?: string;
+
+  runsAggregated?: RunsAggregated;
+  refetchRunsAggregated?: () => void;
 }
 
 const defaultLineageGraphsContext: LineageGraphsContext = {};
@@ -93,6 +98,11 @@ export function LineageGraphsContextProvider({
     queryFn: getLineageDiff,
   });
 
+  const { data: runsAggregated, refetch: refetchRunsAggregated } = useQuery({
+    queryKey: cacheKeys.runsAggregated(),
+    queryFn: aggregateRuns,
+  });
+
   const lineageGraphSets = useMemo(() => {
     if (!data) {
       return undefined;
@@ -114,6 +124,10 @@ export function LineageGraphsContextProvider({
           isDemoSite: !!data?.current.metadata.pr_url,
           error: errorMessage,
           isLoading,
+          runsAggregated,
+          refetchRunsAggregated: () => {
+            refetchRunsAggregated();
+          },
         }}
       >
         {children}
@@ -123,3 +137,11 @@ export function LineageGraphsContextProvider({
 }
 
 export const useLineageGraphsContext = () => useContext(LineageGraphSets);
+
+export const useRunsAggregated = () => {
+  const { runsAggregated, refetchRunsAggregated } = useLineageGraphsContext();
+  return [runsAggregated, refetchRunsAggregated] as [
+    RunsAggregated | undefined,
+    () => void
+  ];
+};

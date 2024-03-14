@@ -2,7 +2,7 @@ import { PUBLIC_API_URL } from "../../lib/const";
 import {
   LineageGraph,
   LineageGraphNode,
-  cleanUpSelectedNodes,
+  cleanUpNodes,
   highlightPath,
   selectDownstream,
   selectNode,
@@ -18,12 +18,7 @@ import {
   Tooltip,
   Text,
   Spinner,
-  Modal,
   useDisclosure,
-  ModalOverlay,
-  ModalContent,
-  ModalCloseButton,
-  ModalBody,
   HStack,
   Button,
   VStack,
@@ -207,8 +202,8 @@ function _LineageView({ ...props }: LineageViewProps) {
   const [edges, setEdges, onEdgesChange] = useEdgesState([]);
   const [lineageGraph, setLineageGraph] = useState<LineageGraph>();
   const [modifiedSet, setModifiedSet] = useState<string[]>();
-  const { lineageGraphSets, isLoading, error } = useLineageGraphsContext();
-  const { isOpen, onOpen, onClose } = useDisclosure();
+  const { lineageGraphSets, isLoading, error, refetchRunsAggregated } =
+    useLineageGraphsContext();
 
   /**
    * Select mode: the behavior of clicking on nodes
@@ -311,16 +306,16 @@ function _LineageView({ ...props }: LineageViewProps) {
       setDetailViewSelected(node.data);
       if (!isDetailViewShown) {
         setIsDetailViewShown(true);
+        centerNode(node);
       }
       setNodes(selectSingleNode(node.id, nodes));
-      centerNode(node);
     } else if (selectMode === "action_result") {
       setDetailViewSelected(node.data);
       if (!isDetailViewShown) {
         setIsDetailViewShown(true);
+        centerNode(node);
       }
       setNodes(selectSingleNode(node.id, nodes));
-      centerNode(node);
     } else {
       setNodes(selectNode(node.id, nodes));
     }
@@ -466,15 +461,11 @@ function _LineageView({ ...props }: LineageViewProps) {
                   title="switch mode"
                   onClick={() => {
                     setViewMode(viewMode === "all" ? "changed_models" : "all");
-                    const newNodes = cleanUpSelectedNodes(nodes);
+                    const newNodes = cleanUpNodes(nodes);
                     setNodes(newNodes);
                   }}
                 >
                   <Icon as={FiRefreshCw} />
-                </ControlButton>
-
-                <ControlButton title="summary" onClick={onOpen}>
-                  <Icon as={FiList} />
                 </ControlButton>
               </>
             )}
@@ -512,7 +503,10 @@ function _LineageView({ ...props }: LineageViewProps) {
                           selectMode === "detail" ? "action" : "detail";
                         setDetailViewSelected(undefined);
                         setIsDetailViewShown(false);
-                        const newNodes = cleanUpSelectedNodes(nodes);
+                        const newNodes = cleanUpNodes(
+                          nodes,
+                          newMode === "action"
+                        );
                         setNodes(newNodes);
                         setSelectMode(newMode);
                       }}
@@ -547,10 +541,11 @@ function _LineageView({ ...props }: LineageViewProps) {
                   .filter((node) => node.isSelected)}
                 onClose={() => {
                   setSelectMode("detail");
-                  const newNodes = cleanUpSelectedNodes(nodes);
+                  const newNodes = cleanUpNodes(nodes);
                   setDetailViewSelected(undefined);
                   setIsDetailViewShown(false);
                   setNodes(newNodes);
+                  refetchRunsAggregated?.();
                 }}
                 onActionStarted={() => {
                   setSelectMode("action_result");
@@ -563,15 +558,6 @@ function _LineageView({ ...props }: LineageViewProps) {
           <MiniMap nodeColor={nodeColor} nodeStrokeWidth={3} />
         </ReactFlow>
       </Box>
-      <Modal isOpen={isOpen} onClose={onClose} size="6xl">
-        <ModalOverlay />
-        <ModalContent overflowY="auto" height="80%">
-          <ModalCloseButton />
-          <ModalBody>
-            <SummaryView />
-          </ModalBody>
-        </ModalContent>
-      </Modal>
       {selectMode === "detail" && detailViewSelected && (
         <Box flex="0 0 500px" borderLeft="solid 1px lightgray" height="100%">
           <NodeView
@@ -579,7 +565,7 @@ function _LineageView({ ...props }: LineageViewProps) {
             onCloseNode={() => {
               setDetailViewSelected(undefined);
               setIsDetailViewShown(false);
-              setNodes(cleanUpSelectedNodes(nodes));
+              setNodes(cleanUpNodes(nodes));
             }}
           />
         </Box>

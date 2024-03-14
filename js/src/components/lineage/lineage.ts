@@ -69,6 +69,7 @@ export interface LineageGraphNode {
   /**
    * The action status for the node which is trigger by action for multiple nodes
    */
+  isActionMode?: boolean;
   action?: {
     mode: "per_node" | "multi_nodes";
     status?: "pending" | "running" | "success" | "failure" | "skipped";
@@ -468,13 +469,17 @@ export function selectNodes(
   return newNodes;
 }
 
-export function cleanUpSelectedNodes(nodes: Node<LineageGraphNode>[]) {
+export function cleanUpNodes(
+  nodes: Node<LineageGraphNode>[],
+  isActionMode?: boolean
+) {
   const newNodes = nodes.map((n) => {
     return {
       ...n,
       data: {
         ...n.data,
         isSelected: false,
+        isActionMode,
         action: undefined,
       },
     };

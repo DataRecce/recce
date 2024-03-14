@@ -34,10 +34,7 @@ import { useLocation } from "wouter";
 import { ResourceTypeTag, RowCountTag } from "./NodeTag";
 import { useCallback } from "react";
 import { createCheckByNodeSchema, createCheckByRun } from "@/lib/api/checks";
-import { useRowCountQueries } from "@/lib/api/models";
 import { useRecceActionContext } from "@/lib/hooks/RecceActionContext";
-import { RunView } from "../run/RunView";
-import { ValueDiffResultView } from "../valuediff/ValueDiffResultView";
 
 interface NodeViewProps {
   node: LineageGraphNode;
@@ -47,7 +44,6 @@ interface NodeViewProps {
 export function NodeView({ node, onCloseNode }: NodeViewProps) {
   const [, setLocation] = useLocation();
   const { setSqlQuery } = useRecceQueryContext();
-  const { fetchFn: fetchRowCountFn } = useRowCountQueries([node.name]);
   const withColumns =
     node.resourceType === "model" ||
     node.resourceType === "seed" ||
@@ -64,13 +60,6 @@ export function NodeView({ node, onCloseNode }: NodeViewProps) {
     const check = await createCheckByNodeSchema(nodeId);
     setLocation(`/checks/${check.check_id}`);
   }, [node, setLocation]);
-
-  const addRowCountCheck = useCallback(async () => {
-    const runId = await fetchRowCountFn({ skipCache: true });
-    const check = await createCheckByRun(runId);
-
-    setLocation(`/checks/${check.check_id}`);
-  }, [setLocation, fetchRowCountFn]);
 
   return (
     <Grid height="100%" templateRows="auto auto 1fr">
@@ -111,7 +100,9 @@ export function NodeView({ node, onCloseNode }: NodeViewProps) {
       <Box color="gray" paddingLeft={"16px"}>
         <HStack spacing={"8px"}>
           <ResourceTypeTag node={node} />
-          {node.resourceType === "model" && <RowCountTag node={node} />}
+          {node.resourceType === "model" && (
+            <RowCountTag node={node} isInteractive />
+          )}
         </HStack>
       </Box>
       {withColumns && (
@@ -133,7 +124,6 @@ export function NodeView({ node, onCloseNode }: NodeViewProps) {
               </MenuButton>
               <MenuList>
                 <MenuItem onClick={addSchemaCheck}>Schema Check</MenuItem>
-                <MenuItem onClick={addRowCountCheck}>Row Count Check</MenuItem>
               </MenuList>
             </Menu>
             <Spacer />

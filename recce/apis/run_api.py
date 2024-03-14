@@ -1,11 +1,11 @@
 import asyncio
-from typing import Optional
+from typing import Optional, List
 from uuid import UUID
 
 from fastapi import APIRouter, HTTPException, Query
 from pydantic import BaseModel
 
-from recce.apis.run_func import submit_run, cancel_run
+from recce.apis.run_func import submit_run, cancel_run, materialize_run_results
 from recce.exceptions import RecceException
 from recce.models import RunDAO
 
@@ -91,4 +91,19 @@ async def search_runs_handler(search: SearchRunsIn):
     if search.limit:
         return result[-search.limit:]
 
+    return result
+
+
+class AggregateRunsIn(BaseModel):
+    class AggregateFilter(BaseModel):
+        nodes: Optional[List[str]] = None
+
+    filter: Optional[AggregateFilter] = None
+
+
+@run_router.post("/runs/aggregate", status_code=200)
+async def aggregate_runs_handler(input: AggregateRunsIn):
+    runs = RunDAO().list()
+    nodes = input.filter.nodes if input.filter and input.filter.nodes else None
+    result = materialize_run_results(runs, nodes=nodes)
     return result

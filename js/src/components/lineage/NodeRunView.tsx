@@ -15,7 +15,7 @@ import {
 } from "@chakra-ui/react";
 
 import { LineageGraphNode } from "./lineage";
-import { ResourceTypeTag } from "./NodeTag";
+import { ResourceTypeTag, RowCountTag } from "./NodeTag";
 import { RunView } from "../run/RunView";
 import { ValueDiffResultView } from "../valuediff/ValueDiffResultView";
 import { useCallback, useState } from "react";
@@ -23,7 +23,7 @@ import { useLocation } from "wouter";
 import { useQueryClient } from "@tanstack/react-query";
 import { cacheKeys } from "@/lib/api/cacheKeys";
 import { createCheckByRun } from "@/lib/api/checks";
-import { RowCountDiffResultView } from "../rowcount/RowCountDiffView";
+import { RowCountDiffResultView } from "../rowcount/RowCountDiffResultView";
 
 interface NodeRunViewProps {
   node: LineageGraphNode;
@@ -68,6 +68,9 @@ export function NodeRunView({ node, onCloseNode }: NodeRunViewProps) {
       <Box color="gray" paddingLeft={"16px"}>
         <HStack spacing={"8px"}>
           <ResourceTypeTag node={node} />
+          {run?.type === "row_count_diff" && run.result?.[node.name] && (
+            <RowCountTag rowCount={run.result[node.name] as any} node={node} />
+          )}
         </HStack>
       </Box>
 
