@@ -8,74 +8,62 @@ import {
   Text,
   Icon,
   IconButton,
-  Button,
+  TagRightIcon,
 } from "@chakra-ui/react";
 import { getIconForResourceType } from "./styles";
 import {
   FiAlignLeft,
+  FiArrowRight,
   FiFrown,
   FiTrendingDown,
   FiTrendingUp,
 } from "react-icons/fi";
-import { MdQueryStats, MdOutlineQuestionMark } from "react-icons/md";
 import { queryModelRowCount, RowCount } from "@/lib/api/models";
 import { cacheKeys } from "@/lib/api/cacheKeys";
 import { LineageGraphNode } from "./lineage";
-import { useEffect, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { useRowCountStateContext } from "@/lib/hooks/RecceQueryContext";
 import { RiArrowDownSFill, RiArrowUpSFill, RiSwapLine } from "react-icons/ri";
 import { useLineageGraphsContext } from "@/lib/hooks/LineageGraphContext";
 import { deltaPercentageString } from "../rowcount/delta";
+
+import { RepeatIcon } from "@chakra-ui/icons";
+
+export function ResourceTypeTag({ node }: { node: LineageGraphNode }) {
+  const { icon: resourceTypeIcon } = getIconForResourceType(node.resourceType);
+  return (
+    <Tooltip hasArrow label="Type of resource">
+      <Tag>
+        <TagLeftIcon as={resourceTypeIcon} />
+        <TagLabel>{node.resourceType}</TagLabel>
+      </Tag>
+    </Tooltip>
+  );
+}
 
 interface ModelRowCountProps {
   rowCount?: RowCount;
 }
 
-function RowCountByCompare({ rowCount }: { rowCount: RowCount }) {
-  const base = rowCount.base === null ? -1 : rowCount.base;
-  const current = rowCount.curr === null ? -1 : rowCount.curr;
-  const baseLabel = base === null ? "N/A" : base;
-  const currentLabel = current === null ? "N/A" : current;
-  if (base === current) {
-    return (
-      <HStack>
-        <Text>
-          {baseLabel} == {currentLabel} rows
-        </Text>
-      </HStack>
-    );
-  } else if (base < current) {
+function _RowCountByRate({ rowCount }: { rowCount: RowCount }) {
+  const base = rowCount.base;
+  const current = rowCount.curr;
+  const baseLabel = rowCount.base === null ? "N/A" : `${rowCount.base} rows`;
+  const currentLabel = rowCount.curr === null ? "N/A" : `${rowCount.curr} rows`;
+
+  if (base === null && current === null) {
+    return <> Failed to load</>;
+  } else if (base === null || current === null) {
     return (
       <HStack>
         <Text>{baseLabel}</Text>
-        <Icon as={FiTrendingUp} color="green.500" />
-        <Text>{currentLabel} rows</Text>
+        <Icon as={FiArrowRight} />
+        <Text>{currentLabel}</Text>
       </HStack>
     );
-  }
-  if (current > base) {
+  } else if (base === current) {
     return (
       <HStack>
-        <Text>{baseLabel}</Text>
-        <Icon as={FiTrendingDown} color="red.500" />
-        <Text>{currentLabel} row</Text>
-      </HStack>
-    );
-  }
-}
-
-function RowCountWiteRate({ rowCount }: { rowCount: RowCount }) {
-  const base = rowCount.base === null ? -1 : rowCount.base;
-  const current = rowCount.curr === null ? -1 : rowCount.curr;
-  if (base <= 0 || current <= 0) {
-    return <RowCountByCompare rowCount={rowCount} />;
-  }
-
-  if (base === current) {
-    return (
-      <HStack>
-        <Text>{current} rows</Text>
+        <Text>{currentLabel}</Text>
         <Icon as={RiSwapLine} color="gray.500" />
         <Text color="gray.500">No Change</Text>
       </HStack>
@@ -83,7 +71,7 @@ function RowCountWiteRate({ rowCount }: { rowCount: RowCount }) {
   } else if (base < current) {
     return (
       <HStack>
-        <Text>{current} rows</Text>
+        <Text>{currentLabel}</Text>
         <Icon as={RiArrowUpSFill} color="green.500" />
         <Text color="green.500">{deltaPercentageString(base, current)}</Text>
       </HStack>
@@ -91,7 +79,7 @@ function RowCountWiteRate({ rowCount }: { rowCount: RowCount }) {
   } else {
     return (
       <HStack>
-        <Text>{current} rows</Text>
+        <Text>{currentLabel}</Text>
         <Icon as={RiArrowDownSFill} color="red.500" />
         <Text color="red.500">{deltaPercentageString(base, current)}</Text>
       </HStack>
@@ -108,153 +96,93 @@ export function ModelRowCount({ rowCount }: ModelRowCountProps) {
       </HStack>
     );
   }
-  return <RowCountWiteRate rowCount={rowCount} />;
-}
 
-export function ResourceTypeTag({ node }: { node: LineageGraphNode }) {
-  const { icon: resourceTypeIcon } = getIconForResourceType(node.resourceType);
+  const base = rowCount?.base === null ? "N/A" : rowCount?.base;
+  const current = rowCount?.curr === null ? "N/A" : rowCount?.curr;
+  const label = `${base} -> ${current} rows`;
+
   return (
-    <Tooltip hasArrow label="Type of resource">
-      <Tag>
-        <TagLeftIcon as={resourceTypeIcon} />
-        <TagLabel>{node.resourceType}</TagLabel>
-      </Tag>
+    <Tooltip hasArrow label={label}>
+      <_RowCountByRate rowCount={rowCount} />
     </Tooltip>
   );
 }
 
 export interface RowCountTagProps {
   node: LineageGraphNode;
-  isAutoFetching?: boolean; // if true, automatically fetches row count on mount
+  rowCount?: RowCount;
   isInteractive?: boolean; // if true, allows user to manually fetch row count
 }
 
 export function RowCountTag({
+  rowCount: defaultRowCount,
   node,
-  isAutoFetching = false,
-  isInteractive = true,
+  isInteractive,
 }: RowCountTagProps) {
   const { runsAggregated, refetchRunsAggregated } = useLineageGraphsContext();
   const lastRowCount: RowCount | undefined =
     runsAggregated?.[node.id]?.["row_count_diff"]?.result;
 
-  const { isNodesFetching } = useRowCountStateContext();
   const {
     isLoading,
-    data: rowCount,
+    data: fetchedRowCount,
+    error,
     refetch: invokeRowCountQuery,
     isFetched,
-    isFetching,
   } = useQuery({
     queryKey: cacheKeys.rowCount(node.name),
     queryFn: () => queryModelRowCount(node.name),
-    enabled: node.resourceType === "model" && isAutoFetching,
+    enabled: false,
+    initialData: defaultRowCount,
   });
-  const isTagFetching = isFetching || isNodesFetching.includes(node.name);
-  const isTagLoading = isLoading || isNodesFetching.includes(node.name);
 
-  if (
-    isInteractive === false &&
-    isFetched === false &&
-    isTagFetching === false
-  ) {
-    // Don't show anything if the row count is not fetched and is not interactive.
-    return null;
-  }
+  const rowCount = fetchedRowCount || defaultRowCount || lastRowCount;
 
-  let label = "Query the number of row";
-  if (isTagFetching) {
-    label = "Querying the number of row";
-  } else if (isFetched) {
+  // if (isInteractive === false && isFetched === false) {
+  //   // Don't show anything if the row count is not fetched and is not interactive.
+  //   return null;
+  // }
+
+  let label;
+  if (rowCount) {
     const base = rowCount?.base === null ? "N/A" : rowCount?.base;
     const current = rowCount?.curr === null ? "N/A" : rowCount?.curr;
     label = `${base} -> ${current} rows`;
   }
 
   return (
-    <Tooltip hasArrow label={label} openDelay={500} closeDelay={200}>
-      <Tag
-        cursor={isInteractive ? "pointer" : "default"}
-        onClick={async () => {
-          if (isInteractive) {
-            await invokeRowCountQuery();
-            refetchRunsAggregated?.();
-          }
-        }}
-      >
+    <Tooltip label={label}>
+      <Tag>
         <TagLeftIcon as={FiAlignLeft} />
-        {isFetched || isTagFetching || lastRowCount ? (
-          <TagLabel>
+
+        <TagLabel>
+          {rowCount || isLoading ? (
             <SkeletonText
               isLoaded={!isLoading}
               noOfLines={1}
               skeletonHeight={2}
               minWidth={"30px"}
             >
-              <ModelRowCount rowCount={rowCount || lastRowCount} />
+              {rowCount ? <_RowCountByRate rowCount={rowCount} /> : "row count"}
             </SkeletonText>
-          </TagLabel>
-        ) : (
-          <IconButton
+          ) : (
+            <>row count</>
+          )}
+        </TagLabel>
+        {isInteractive && (
+          <TagRightIcon
+            as={IconButton}
+            isLoading={isLoading}
             aria-label="Query Row Count"
-            icon={<MdQueryStats />}
+            icon={<RepeatIcon />}
             size="xs"
+            onClick={async () => {
+              await invokeRowCountQuery();
+              refetchRunsAggregated?.();
+            }}
           />
         )}
       </Tag>
     </Tooltip>
-  );
-}
-
-export async function fetchRowCountsByNodes(nodes: LineageGraphNode[]) {
-  nodes.forEach((node) => {
-    if (node.resourceType === "model") {
-      console.log("Name", node.name);
-    }
-  });
-}
-
-export function FetchRowCountsButton({
-  nodes,
-  onFinish,
-}: {
-  nodes: LineageGraphNode[];
-  onFinish?: () => void;
-}) {
-  const [enabled, setEnabled] = useState<boolean>(false);
-  const [index, setIndex] = useState<number>(0);
-  const name = index < nodes.length ? nodes[index].name : "";
-  const { isLoading, isFetched } = useQuery({
-    queryKey: cacheKeys.rowCount(name),
-    queryFn: () => queryModelRowCount(name),
-    enabled: enabled,
-  });
-
-  useEffect(() => {
-    if (isFetched) {
-      if (index + 1 < nodes.length) {
-        // TODO: Use BFS to walk though all the changed nodes first.
-        setIndex(index + 1);
-      } else if (enabled === true) {
-        setEnabled(false);
-        onFinish && onFinish();
-      }
-    }
-  }, [isFetched, index, nodes, onFinish, enabled]);
-
-  return (
-    <Button
-      size="xs"
-      variant="outline"
-      title="Query Row Counts"
-      onClick={() => {
-        setIndex(0);
-        setEnabled(true);
-      }}
-      isDisabled={isLoading || nodes.length === 0}
-    >
-      <Icon as={MdQueryStats} mr={1} />
-      {isLoading ? "Querying" : "Query Row Counts"}
-    </Button>
   );
 }

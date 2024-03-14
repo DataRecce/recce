@@ -1,24 +1,15 @@
-import {
-  Box,
-  Flex,
-  HStack,
-  Icon,
-  Spacer,
-  Text,
-  Tooltip,
-} from "@chakra-ui/react";
-import React, { useContext } from "react";
+import { Box, Flex, HStack, Icon, Spacer, Tooltip } from "@chakra-ui/react";
+import React from "react";
 
 import { Handle, NodeProps, Position, useStore } from "reactflow";
 import { LineageGraphNode } from "./lineage";
 import { getIconForChangeStatus, getIconForResourceType } from "./styles";
 
 import "./styles.css";
-import { RowCountTag } from "./NodeTag";
+
 import { ActionTag } from "./ActionTag";
 import { useLineageGraphsContext } from "@/lib/hooks/LineageGraphContext";
-import { RowCountDiffResult } from "@/lib/api/rowcount";
-import { MdOutlineQuestionMark } from "react-icons/md";
+
 import { FiAlignLeft } from "react-icons/fi";
 
 interface GraphNodeProps extends NodeProps<LineageGraphNode> {}

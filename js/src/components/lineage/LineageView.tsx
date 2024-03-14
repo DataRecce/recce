@@ -474,9 +474,9 @@ function _LineageView({ ...props }: LineageViewProps) {
                   <Icon as={FiRefreshCw} />
                 </ControlButton>
 
-                <ControlButton title="summary" onClick={onOpen}>
+                {/* <ControlButton title="summary" onClick={onOpen}>
                   <Icon as={FiList} />
-                </ControlButton>
+                </ControlButton> */}
               </>
             )}
             <ControlButton
@@ -568,7 +568,7 @@ function _LineageView({ ...props }: LineageViewProps) {
           <MiniMap nodeColor={nodeColor} nodeStrokeWidth={3} />
         </ReactFlow>
       </Box>
-      <Modal isOpen={isOpen} onClose={onClose} size="6xl">
+      {/* <Modal isOpen={isOpen} onClose={onClose} size="6xl">
         <ModalOverlay />
         <ModalContent overflowY="auto" height="80%">
           <ModalCloseButton />
@@ -576,7 +576,7 @@ function _LineageView({ ...props }: LineageViewProps) {
             <SummaryView />
           </ModalBody>
         </ModalContent>
-      </Modal>
+      </Modal> */}
       {selectMode === "detail" && detailViewSelected && (
         <Box flex="0 0 500px" borderLeft="solid 1px lightgray" height="100%">
           <NodeView
