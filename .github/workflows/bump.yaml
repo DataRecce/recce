@@ -18,7 +18,7 @@ jobs:
         with:
           ref: main
 
-      - name: Bump Version
+      - name: Bump version
         id: bump_version
         run: |
           dev=$(cat ./recce/VERSION | awk -F '[.]' '{print $2}')
@@ -33,11 +33,8 @@ jobs:
             echo "bump_version=0.${new_version}.0" >> $GITHUB_OUTPUT
           fi
 
-      - name: Create Pull Request
-        uses: peter-evans/create-pull-request@v6
+      - name: Commit bump version
+        uses: stefanzweifel/git-auto-commit-action@v4
         with:
-          commit-message: "Bump version to ${{ steps.bump_version.outputs.bump_version }}.dev0"
-          title: "[Release] Bump version to ${{ steps.bump_version.outputs.bump_version }}"
-          body: "- bump dev version to ${{ steps.bump_version.outputs.bump_version }}.dev0 "
-          branch: "release/bump-version-to-${{ steps.bump_version.outputs.bump_version }}"
-          base: main
+          commit_message: "AUTO-COMMIT - Bump version to ${{ steps.bump_version.outputs.bump_version }}.dev0"
+          branch: main
