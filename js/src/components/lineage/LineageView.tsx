@@ -18,12 +18,7 @@ import {
   Tooltip,
   Text,
   Spinner,
-  Modal,
   useDisclosure,
-  ModalOverlay,
-  ModalContent,
-  ModalCloseButton,
-  ModalBody,
   HStack,
   Button,
   VStack,
@@ -209,7 +204,6 @@ function _LineageView({ ...props }: LineageViewProps) {
   const [modifiedSet, setModifiedSet] = useState<string[]>();
   const { lineageGraphSets, isLoading, error, refetchRunsAggregated } =
     useLineageGraphsContext();
-  const { isOpen, onOpen, onClose } = useDisclosure();
 
   /**
    * Select mode: the behavior of clicking on nodes
@@ -473,10 +467,6 @@ function _LineageView({ ...props }: LineageViewProps) {
                 >
                   <Icon as={FiRefreshCw} />
                 </ControlButton>
-
-                {/* <ControlButton title="summary" onClick={onOpen}>
-                  <Icon as={FiList} />
-                </ControlButton> */}
               </>
             )}
             <ControlButton
@@ -568,15 +558,6 @@ function _LineageView({ ...props }: LineageViewProps) {
           <MiniMap nodeColor={nodeColor} nodeStrokeWidth={3} />
         </ReactFlow>
       </Box>
-      {/* <Modal isOpen={isOpen} onClose={onClose} size="6xl">
-        <ModalOverlay />
-        <ModalContent overflowY="auto" height="80%">
-          <ModalCloseButton />
-          <ModalBody>
-            <SummaryView />
-          </ModalBody>
-        </ModalContent>
-      </Modal> */}
       {selectMode === "detail" && detailViewSelected && (
         <Box flex="0 0 500px" borderLeft="solid 1px lightgray" height="100%">
           <NodeView
