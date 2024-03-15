@@ -1,0 +1,39 @@
+name: Bump Recce Version
+on:
+  push:
+    tags: 'v*'
+
+jobs:
+  build:
+    name: Bump Recce Version
+    runs-on: ubuntu-latest
+
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          ref: main
+
+      - name: Bump version
+        id: bump_version
+        run: |
+          dev=$(cat ./recce/VERSION | awk -F '[.]' '{print $2}')
+          release=$(echo ${GITHUB_REF:11} | awk -F '[.]' '{print $2}')
+          diff=$((dev - release))
+          echo "version_diff=${diff}" >> $GITHUB_OUTPUT
+
+          if [ $diff -eq 0 ]; then
+            new_version=$(( dev + 1 ))
+            echo "0.${new_version}.0.dev0" > ./recce/VERSION
+            echo "bump_version=0.${new_version}.0" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Commit bump version
+        if: steps.bump_version.outputs.version_diff == 0
+        uses: stefanzweifel/git-auto-commit-action@v4
+        with:
+          commit_message: "AUTO-COMMIT - Bump version to ${{ steps.bump_version.outputs.bump_version }}.dev0"
+          branch: main
