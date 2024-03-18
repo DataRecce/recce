@@ -18,7 +18,6 @@ import {
   Tooltip,
   Text,
   Spinner,
-  useDisclosure,
   HStack,
   Button,
   VStack,
@@ -27,6 +26,10 @@ import {
   MenuItem,
   Center,
   SlideFade,
+  MenuButton,
+  MenuDivider,
+  MenuItemOption,
+  MenuOptionGroup,
 } from "@chakra-ui/react";
 import React, { useCallback, useEffect, useState } from "react";
 import ReactFlow, {
@@ -66,6 +69,7 @@ import {
 } from "@/lib/hooks/ScreenShot";
 import { useClipBoardToast } from "@/lib/hooks/useClipBoardToast";
 import { NodeRunView } from "./NodeRunView";
+import { PackageMenu } from "./PackageMenu";
 
 export interface LineageViewProps {
   viewMode?: "changed_models" | "all";
@@ -200,9 +204,10 @@ function _LineageView({ ...props }: LineageViewProps) {
   });
   const [nodes, setNodes, onNodesChange] = useNodesState([]);
   const [edges, setEdges, onEdgesChange] = useEdgesState([]);
-  const [lineageGraph, setLineageGraph] = useState<LineageGraph>();
+  // const [lineageGraph, setLineageGraph] = useState<LineageGraph>();
+  const setLineageGraph = (s: any) => {};
   const [modifiedSet, setModifiedSet] = useState<string[]>();
-  const { lineageGraphSets, isLoading, error, refetchRunsAggregated } =
+  const { lineageGraph, isLoading, error, refetchRunsAggregated } =
     useLineageGraphsContext();
 
   /**
@@ -229,15 +234,15 @@ function _LineageView({ ...props }: LineageViewProps) {
   }>({ x: 0, y: 0 });
 
   useEffect(() => {
-    if (!lineageGraphSets) {
+    if (!lineageGraph) {
       return;
     }
 
-    const lineageGraph =
-      viewMode === "changed_models"
-        ? { ...lineageGraphSets.changed }
-        : { ...lineageGraphSets.all };
-    const modifiedSet = lineageGraphSets.modifiedSet;
+    // const lineageGraph =
+    //   viewMode === "changed_models"
+    //     ? { ...lineageGraphSets.changed }
+    //     : { ...lineageGraphSets.all };
+    const modifiedSet = lineageGraph.modifiedSet;
 
     if (typeof props.filterNodes === "function") {
       const filterFn = props.filterNodes ? props.filterNodes : () => true;
@@ -248,23 +253,19 @@ function _LineageView({ ...props }: LineageViewProps) {
       );
     }
 
-    const [nodes, edges] = toReactflow(
-      lineageGraph,
-      lineageGraphSets.modifiedSet
-    );
+    const [nodes, edges] = toReactflow(lineageGraph);
 
     layout(nodes, edges);
     setLineageGraph(lineageGraph);
     setModifiedSet(modifiedSet);
     setNodes(nodes);
     setEdges(edges);
-  }, [setNodes, setEdges, viewMode, lineageGraphSets, props.filterNodes]);
+  }, [setNodes, setEdges, viewMode, lineageGraph, props.filterNodes]);
 
   const onNodeMouseEnter = (event: React.MouseEvent, node: Node) => {
     if (lineageGraph && modifiedSet !== undefined) {
       const [newNodes, newEdges] = highlightPath(
         lineageGraph,
-        modifiedSet,
         nodes,
         edges,
         node.id
@@ -279,7 +280,6 @@ function _LineageView({ ...props }: LineageViewProps) {
     if (lineageGraph && modifiedSet !== undefined) {
       const [newNodes, newEdges] = highlightPath(
         lineageGraph,
-        modifiedSet,
         nodes,
         edges,
         null

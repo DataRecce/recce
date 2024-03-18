@@ -2,7 +2,7 @@ import {
   LineageData,
   LineageGraphEdge,
   LineageGraphNode,
-  buildDefaultLineageGraphSets,
+  buildLineageGraph,
   highlightPath,
   toReactflow,
 } from "./lineage";
@@ -19,6 +19,7 @@ test("lineage diff", () => {
       c: ["a"],
       d: ["b"],
     },
+    catalog_metadata: null,
   };
 
   const current = {
@@ -29,11 +30,10 @@ test("lineage diff", () => {
       c: ["a"],
       d: ["b", "c"],
     },
+    catalog_metadata: null,
   };
 
-  const { all } = buildDefaultLineageGraphSets(base, current);
-  const nodes = all.nodes;
-  const edges = all.edges;
+  const { nodes, edges } = buildLineageGraph(base, current);
 
   expect(Object.keys(nodes).length).toBe(4);
   expect(Object.keys(edges).length).toBe(4);
@@ -61,6 +61,7 @@ test("lineage diff 2", () => {
       c: ["b"],
       d: ["c"],
     },
+    catalog_metadata: null,
   };
 
   const current: LineageData = {
@@ -80,11 +81,10 @@ test("lineage diff 2", () => {
       c: ["b"],
       d: ["c"],
     },
+    catalog_metadata: null,
   };
 
-  const { all } = buildDefaultLineageGraphSets(base, current);
-  const nodes = all.nodes;
-  const edges = all.edges;
+  const { nodes, edges } = buildLineageGraph(base, current);
 
   expect(Object.keys(nodes).length).toBe(5);
   expect(Object.keys(edges).length).toBe(4);
@@ -108,6 +108,7 @@ test("hightlight", () => {
       c: ["b"],
       d: ["c"],
     },
+    catalog_metadata: null,
   };
 
   const current: LineageData = {
@@ -118,11 +119,12 @@ test("hightlight", () => {
       c: ["b"],
       d: ["c"],
     },
+    catalog_metadata: null,
   };
 
-  const { all, modifiedSet } = buildDefaultLineageGraphSets(base, current);
-  const [nodes, edges] = toReactflow(all, modifiedSet);
-  const [nodes2, edges2] = highlightPath(all, modifiedSet, nodes, edges, "a");
+  const lineageGraph = buildLineageGraph(base, current);
+  const [nodes, edges] = toReactflow(lineageGraph);
+  const [nodes2, edges2] = highlightPath(lineageGraph, nodes, edges, "a");
 
   expect(nodes.length).toBe(nodes2.length);
   expect(edges.length).toBe(edges2.length);

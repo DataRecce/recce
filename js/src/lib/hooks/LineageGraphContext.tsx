@@ -1,7 +1,4 @@
-import {
-  DefaultLineageGraphSets,
-  buildDefaultLineageGraphSets,
-} from "@/components/lineage/lineage";
+import { LineageGraph, buildLineageGraph } from "@/components/lineage/lineage";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import React, {
   createContext,
@@ -23,7 +20,8 @@ interface EnvMetadata {
 }
 
 export interface LineageGraphsContext {
-  lineageGraphSets?: DefaultLineageGraphSets;
+  // lineageGraphSets?: DefaultLineageGraphSets;
+  lineageGraph?: LineageGraph;
   metadata?: EnvMetadata;
   isDemoSite?: boolean;
   isLoading?: boolean;
@@ -103,12 +101,12 @@ export function LineageGraphsContextProvider({
     queryFn: aggregateRuns,
   });
 
-  const lineageGraphSets = useMemo(() => {
+  const lineageGraph = useMemo(() => {
     if (!data) {
       return undefined;
     }
 
-    return buildDefaultLineageGraphSets(data.base, data.current);
+    return buildLineageGraph(data.base, data.current);
   }, [data]);
 
   const errorMessage =
@@ -119,7 +117,7 @@ export function LineageGraphsContextProvider({
       <LineageWatcher refetch={refetch} />
       <LineageGraphSets.Provider
         value={{
-          lineageGraphSets: lineageGraphSets,
+          lineageGraph,
           metadata: data?.current.metadata,
           isDemoSite: !!data?.current.metadata.pr_url,
           error: errorMessage,
