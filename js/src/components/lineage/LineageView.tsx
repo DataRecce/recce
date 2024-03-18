@@ -71,6 +71,7 @@ import { useClipBoardToast } from "@/lib/hooks/useClipBoardToast";
 import { NodeRunView } from "./NodeRunView";
 
 import { union } from "./graph";
+import { SelectPackageMenu } from "./SelectPackageMenu";
 
 export interface LineageViewProps {
   viewMode?: "changed_models" | "all";
@@ -206,6 +207,8 @@ function _LineageView({ ...props }: LineageViewProps) {
   const [nodes, setNodes, onNodesChange] = useNodesState([]);
   const [edges, setEdges, onEdgesChange] = useEdgesState([]);
 
+  const [packages, setPackages] = useState<string[]>();
+
   const { lineageGraph, isLoading, error, refetchRunsAggregated } =
     useLineageGraphContext();
   const modifiedSet = lineageGraph?.modifiedSet;
@@ -253,6 +256,16 @@ function _LineageView({ ...props }: LineageViewProps) {
       lineageNodes = lineageNodes.filter((node) => filterFn(node.id, node));
     }
 
+    if (packages !== undefined) {
+      lineageNodes = lineageNodes.filter((node) => {
+        if (!node.packageName) {
+          return false;
+        }
+
+        return packages.includes(node.packageName);
+      });
+    }
+
     let [_nodes, _edges] = toReactflow(lineageNodes, lineageEdges);
 
     const modifiedDownstream = selectDownstream(
@@ -269,7 +282,7 @@ function _LineageView({ ...props }: LineageViewProps) {
 
     setNodes(nodes);
     setEdges(edges);
-  }, [setNodes, setEdges, viewMode, lineageGraph, props.filterNodes]);
+  }, [setNodes, setEdges, viewMode, packages, lineageGraph, props.filterNodes]);
 
   const onNodeMouseEnter = (event: React.MouseEvent, node: Node) => {
     if (!lineageGraph) {
@@ -532,6 +545,10 @@ function _LineageView({ ...props }: LineageViewProps) {
                     >
                       Select Models
                     </Button>
+                    <SelectPackageMenu
+                      packages={packages}
+                      onPackagesUpdated={setPackages}
+                    />
                     <AddLineageDiffCheckButton
                       viewMode={viewMode}
                       nodes={nodes.map((node) => node.data)}
