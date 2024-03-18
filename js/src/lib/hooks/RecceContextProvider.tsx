@@ -4,7 +4,7 @@ import {
   RecceQueryContextProvider,
   RowCountStateContextProvider,
 } from "./RecceQueryContext";
-import { LineageGraphsContextProvider } from "./LineageGraphContext";
+import { LineageGraphContextProvider } from "./LineageGraphContext";
 import { RecceActionContextProvider } from "./RecceActionContext";
 
 interface RecceContextProps {
@@ -15,11 +15,11 @@ export default function RecceContextProvider({ children }: RecceContextProps) {
   return (
     <>
       <RecceQueryContextProvider>
-        <LineageGraphsContextProvider>
+        <LineageGraphContextProvider>
           <RowCountStateContextProvider>
             <RecceActionContextProvider>{children}</RecceActionContextProvider>
           </RowCountStateContextProvider>
-        </LineageGraphsContextProvider>
+        </LineageGraphContextProvider>
       </RecceQueryContextProvider>
     </>
   );

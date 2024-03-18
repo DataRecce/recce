@@ -30,3 +30,15 @@ export function getNeighborSet(
 
   return neighborSet;
 }
+
+export function union(...sets: Set<string>[]) {
+  const unionSet = new Set<string>();
+
+  sets.forEach((set) => {
+    set.forEach((key) => {
+      unionSet.add(key);
+    });
+  });
+
+  return unionSet;
+}

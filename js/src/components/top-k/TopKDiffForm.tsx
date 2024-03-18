@@ -13,8 +13,8 @@ export function TopKDiffForm({
   onParamsChanged,
   setIsReadyToExecute,
 }: TopKDiffFormProps) {
-  const lineageGraph = useLineageGraphsContext();
-  const node = _.find(lineageGraph.lineageGraphSets?.all.nodes, {
+  const { lineageGraph } = useLineageGraphsContext();
+  const node = _.find(lineageGraph?.nodes, {
     name: params?.model,
   });
   const columns = node ? extractColumnNames(node) : [];

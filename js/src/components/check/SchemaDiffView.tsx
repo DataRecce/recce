@@ -11,10 +11,10 @@ export interface SchemaDiffParams {
 }
 
 export function SchemaDiffView({ check }: SchemaDiffViewProps) {
-  const { lineageGraphSets } = useLineageGraphsContext();
+  const { lineageGraph } = useLineageGraphsContext();
   const params = check.params as SchemaDiffParams;
   const id = params.node_id;
-  const node = id ? lineageGraphSets?.all.nodes[id] : undefined;
+  const node = id ? lineageGraph?.nodes[id] : undefined;
   if (node) {
     return (
       <SchemaView

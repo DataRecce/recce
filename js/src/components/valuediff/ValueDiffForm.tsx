@@ -70,14 +70,14 @@ export function ValueDiffForm({
   onParamsChanged,
   setIsReadyToExecute,
 }: ValueDiffFormProp) {
-  const lineageGraph = useLineageGraphsContext();
+  const { lineageGraph } = useLineageGraphsContext();
   const [allColumns, setAllColumns] = useState<boolean>(
     !params.columns || params.columns.length === 0
   );
 
   const model = params?.model;
   const primaryKey = params?.primary_key;
-  const node = _.find(lineageGraph.lineageGraphSets?.all.nodes, {
+  const node = _.find(lineageGraph?.nodes, {
     name: params?.model,
   });
   const nodePrimaryKey = node?.data.current?.primary_key;

@@ -3,12 +3,15 @@ import {
   LineageGraphEdge,
   LineageGraphNode,
   buildLineageGraph,
-  highlightPath,
+  highlightNodes,
+  selectDownstream,
+  selectUpstream,
   toReactflow,
 } from "./lineage";
 import { Node, Edge } from "reactflow";
 
 import { find } from "lodash";
+import { union } from "./graph";
 
 test("lineage diff", () => {
   const base = {
@@ -123,8 +126,19 @@ test("hightlight", () => {
   };
 
   const lineageGraph = buildLineageGraph(base, current);
-  const [nodes, edges] = toReactflow(lineageGraph);
-  const [nodes2, edges2] = highlightPath(lineageGraph, nodes, edges, "a");
+  const [nodes, edges] = toReactflow(
+    Object.values(lineageGraph.nodes),
+    Object.values(lineageGraph.edges)
+  );
+  const relatedNodes = union(
+    selectUpstream(lineageGraph, ["a"]),
+    selectDownstream(lineageGraph, ["a"])
+  );
+  const [nodes2, edges2] = highlightNodes(
+    Array.from(relatedNodes),
+    nodes,
+    edges
+  );
 
   expect(nodes.length).toBe(nodes2.length);
   expect(edges.length).toBe(edges2.length);

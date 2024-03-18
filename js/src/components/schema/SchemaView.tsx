@@ -25,9 +25,9 @@ export function SchemaView({
     [base, current]
   );
 
-  const { lineageGraphSets } = useLineageGraphsContext();
-  const noCatalogBase = lineageGraphSets?.catalogExistence.base === false;
-  const noCatalogCurrent = lineageGraphSets?.catalogExistence.current === false;
+  const { lineageGraph } = useLineageGraphsContext();
+  const noCatalogBase = lineageGraph?.catalogExistence.base === false;
+  const noCatalogCurrent = lineageGraph?.catalogExistence.current === false;
   let catalogMissingMessage = undefined;
   if (noCatalogBase && noCatalogCurrent) {
     catalogMissingMessage =
