@@ -3,7 +3,7 @@ import {
   LineageGraph,
   LineageGraphNode,
   cleanUpNodes,
-  highlightPath,
+  highlightNodes,
   selectDownstream,
   selectNode,
   selectNodes,
@@ -18,7 +18,6 @@ import {
   Tooltip,
   Text,
   Spinner,
-  useDisclosure,
   HStack,
   Button,
   VStack,
@@ -27,6 +26,10 @@ import {
   MenuItem,
   Center,
   SlideFade,
+  MenuButton,
+  MenuDivider,
+  MenuItemOption,
+  MenuOptionGroup,
 } from "@chakra-ui/react";
 import React, { useCallback, useEffect, useState } from "react";
 import ReactFlow, {
@@ -55,7 +58,7 @@ import {
 } from "react-icons/bi";
 import { NodeView } from "./NodeView";
 import { toBlob } from "html-to-image";
-import { useLineageGraphsContext } from "@/lib/hooks/LineageGraphContext";
+import { useLineageGraphContext } from "@/lib/hooks/LineageGraphContext";
 import SummaryView from "../summary/SummaryView";
 import { AddLineageDiffCheckButton, NodeSelector } from "./NodeSelector";
 import {
@@ -66,6 +69,8 @@ import {
 } from "@/lib/hooks/ScreenShot";
 import { useClipBoardToast } from "@/lib/hooks/useClipBoardToast";
 import { NodeRunView } from "./NodeRunView";
+
+import { union } from "./graph";
 
 export interface LineageViewProps {
   viewMode?: "changed_models" | "all";
@@ -200,10 +205,10 @@ function _LineageView({ ...props }: LineageViewProps) {
   });
   const [nodes, setNodes, onNodesChange] = useNodesState([]);
   const [edges, setEdges, onEdgesChange] = useEdgesState([]);
-  const [lineageGraph, setLineageGraph] = useState<LineageGraph>();
-  const [modifiedSet, setModifiedSet] = useState<string[]>();
-  const { lineageGraphSets, isLoading, error, refetchRunsAggregated } =
-    useLineageGraphsContext();
+
+  const { lineageGraph, isLoading, error, refetchRunsAggregated } =
+    useLineageGraphContext();
+  const modifiedSet = lineageGraph?.modifiedSet;
 
   /**
    * Select mode: the behavior of clicking on nodes
@@ -229,64 +234,78 @@ function _LineageView({ ...props }: LineageViewProps) {
   }>({ x: 0, y: 0 });
 
   useEffect(() => {
-    if (!lineageGraphSets) {
+    if (!lineageGraph) {
       return;
     }
 
-    const lineageGraph =
-      viewMode === "changed_models"
-        ? { ...lineageGraphSets.changed }
-        : { ...lineageGraphSets.all };
-    const modifiedSet = lineageGraphSets.modifiedSet;
+    let lineageNodes = Object.values(lineageGraph.nodes);
+    let lineageEdges = Object.values(lineageGraph.edges);
+
+    if (viewMode === "changed_models") {
+      const u = selectUpstream(lineageGraph, lineageGraph.modifiedSet, 1);
+      const d = selectDownstream(lineageGraph, lineageGraph.modifiedSet);
+      const modified = union(u, d);
+      lineageNodes = lineageNodes.filter((node) => modified.has(node.id));
+    }
 
     if (typeof props.filterNodes === "function") {
       const filterFn = props.filterNodes ? props.filterNodes : () => true;
-      lineageGraph.nodes = Object.fromEntries(
-        Object.entries(lineageGraph.nodes).filter(([key, node]) =>
-          filterFn(key, node)
-        )
-      );
+      lineageNodes = lineageNodes.filter((node) => filterFn(node.id, node));
     }
 
-    const [nodes, edges] = toReactflow(
+    let [_nodes, _edges] = toReactflow(lineageNodes, lineageEdges);
+
+    const modifiedDownstream = selectDownstream(
       lineageGraph,
-      lineageGraphSets.modifiedSet
+      lineageGraph.modifiedSet
     );
 
+    const [nodes, edges] = highlightNodes(
+      Array.from(modifiedDownstream),
+      _nodes,
+      _edges
+    );
     layout(nodes, edges);
-    setLineageGraph(lineageGraph);
-    setModifiedSet(modifiedSet);
+
     setNodes(nodes);
     setEdges(edges);
-  }, [setNodes, setEdges, viewMode, lineageGraphSets, props.filterNodes]);
+  }, [setNodes, setEdges, viewMode, lineageGraph, props.filterNodes]);
 
   const onNodeMouseEnter = (event: React.MouseEvent, node: Node) => {
-    if (lineageGraph && modifiedSet !== undefined) {
-      const [newNodes, newEdges] = highlightPath(
-        lineageGraph,
-        modifiedSet,
-        nodes,
-        edges,
-        node.id
-      );
-
-      setNodes(newNodes);
-      setEdges(newEdges);
+    if (!lineageGraph) {
+      return;
     }
+
+    const nodeSet = union(
+      selectUpstream(lineageGraph, [node.id]),
+      selectDownstream(lineageGraph, [node.id])
+    );
+
+    const [newNodes, newEdges] = highlightNodes(
+      Array.from(nodeSet),
+      nodes,
+      edges
+    );
+
+    setNodes(newNodes);
+    setEdges(newEdges);
   };
 
   const onNodeMouseLeave = (event: React.MouseEvent, node: Node) => {
-    if (lineageGraph && modifiedSet !== undefined) {
-      const [newNodes, newEdges] = highlightPath(
-        lineageGraph,
-        modifiedSet,
-        nodes,
-        edges,
-        null
-      );
-      setNodes(newNodes);
-      setEdges(newEdges);
+    if (!lineageGraph) {
+      return;
     }
+
+    const nodeSet = selectDownstream(lineageGraph, lineageGraph.modifiedSet);
+
+    const [newNodes, newEdges] = highlightNodes(
+      Array.from(nodeSet),
+      nodes,
+      edges
+    );
+
+    setNodes(newNodes);
+    setEdges(newEdges);
   };
 
   const centerNode = (node: Node) => {

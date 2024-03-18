@@ -9,7 +9,7 @@ import {
 } from "@chakra-ui/react";
 
 import { Select } from "chakra-react-select";
-import { useLineageGraphsContext } from "@/lib/hooks/LineageGraphContext";
+import { useLineageGraphContext } from "@/lib/hooks/LineageGraphContext";
 import { LineageGraphNode, NodeColumnData, NodeData } from "../lineage/lineage";
 import _ from "lodash";
 import { useEffect, useState } from "react";
@@ -70,14 +70,14 @@ export function ValueDiffForm({
   onParamsChanged,
   setIsReadyToExecute,
 }: ValueDiffFormProp) {
-  const lineageGraph = useLineageGraphsContext();
+  const { lineageGraph } = useLineageGraphContext();
   const [allColumns, setAllColumns] = useState<boolean>(
     !params.columns || params.columns.length === 0
   );
 
   const model = params?.model;
   const primaryKey = params?.primary_key;
-  const node = _.find(lineageGraph.lineageGraphSets?.all.nodes, {
+  const node = _.find(lineageGraph?.nodes, {
     name: params?.model,
   });
   const nodePrimaryKey = node?.data.current?.primary_key;

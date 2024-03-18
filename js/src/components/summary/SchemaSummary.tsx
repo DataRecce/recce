@@ -14,7 +14,7 @@ import {
   TagLabel,
   SkeletonText,
 } from "@chakra-ui/react";
-import { DefaultLineageGraphSets, LineageGraphNode } from "../lineage/lineage";
+import { LineageGraph, LineageGraphNode } from "../lineage/lineage";
 import { SchemaView } from "../schema/SchemaView";
 import { mergeColumns } from "../schema/schema";
 import { mergeKeysWithStatus } from "@/lib/mergeKeys";
@@ -44,10 +44,10 @@ function SchemaDiffCard({ node, ...props }: CardProps & SchemaDiffCardProps) {
   );
 }
 
-function listChangedNodes(lineageGraphSets: DefaultLineageGraphSets) {
+function listChangedNodes(lineageGraph: LineageGraph) {
   const changedNodes: LineageGraphNode[] = [];
-  const allNodes = lineageGraphSets.all.nodes;
-  lineageGraphSets.modifiedSet.forEach((nodeId) => {
+  const allNodes = lineageGraph.nodes;
+  lineageGraph.modifiedSet.forEach((nodeId) => {
     const node = allNodes[nodeId];
     const columnDiffStatus = mergeKeysWithStatus(
       Object.keys(node.data.base?.columns || {}),
@@ -65,15 +65,15 @@ function listChangedNodes(lineageGraphSets: DefaultLineageGraphSets) {
 }
 
 export interface Props {
-  lineageGraphSets: DefaultLineageGraphSets;
+  lineageGraph: LineageGraph;
 }
 
-export function SchemaSummary({ lineageGraphSets }: Props) {
+export function SchemaSummary({ lineageGraph }: Props) {
   const [changedNodes, setChangedNodes] = useState<LineageGraphNode[]>([]);
 
   useEffect(() => {
-    setChangedNodes(listChangedNodes(lineageGraphSets));
-  }, [lineageGraphSets]);
+    setChangedNodes(listChangedNodes(lineageGraph));
+  }, [lineageGraph]);
 
   return (
     <>

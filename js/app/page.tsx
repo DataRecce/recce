@@ -24,7 +24,7 @@ import { Redirect, Route, Router, Switch, useLocation, useRoute } from "wouter";
 import _ from "lodash";
 import { useHashLocation } from "@/lib/hooks/useHashLocation";
 import { ThemeProvider, createTheme } from "@mui/material";
-import { useLineageGraphsContext } from "@/lib/hooks/LineageGraphContext";
+import { useLineageGraphContext } from "@/lib/hooks/LineageGraphContext";
 import { InfoIcon } from "@chakra-ui/icons";
 import { RunPage } from "@/components/run/RunPage";
 import { ErrorBoundary } from "@/components/errorboundary/ErrorBoundary";
@@ -50,7 +50,7 @@ const RouteAlwaysMount = ({
 };
 
 function TopBar() {
-  const { metadata } = useLineageGraphsContext();
+  const { metadata } = useLineageGraphContext();
   const prURL = metadata?.pr_url;
 
   if (!prURL || prURL === null) {

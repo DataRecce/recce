@@ -1,59 +1,61 @@
 import { Box, Grid, Icon, Tooltip, VStack, Text, Flex } from "@chakra-ui/react";
 import { ReactNode, use } from "react";
 import { FiInfo } from "react-icons/fi";
-import { IconAdded, IconChanged, IconModified, IconRemoved } from "../lineage/styles";
-import { DefaultLineageGraphSets, LineageGraph, NodeData } from "../lineage/lineage";
+import {
+  IconAdded,
+  IconChanged,
+  IconModified,
+  IconRemoved,
+} from "../lineage/styles";
+import { LineageGraph, NodeData } from "../lineage/lineage";
 
 export type ChangeStatus =
   // node change
   // code change (user edit)
-  | 'added'
-  | 'removed'
-  | 'modified'
+  | "added"
+  | "removed"
+  | "modified"
 
   // column change
-  | 'col_added'
-  | 'col_removed'
-  | 'col_changed'
+  | "col_added"
+  | "col_removed"
+  | "col_changed"
 
   // folder change
-  | 'folder_changed'
+  | "folder_changed"
   | null;
 
 export const NODE_CHANGE_STATUS_MSGS = {
-  added: ['Model Added', 'Added resource'],
-  removed: ['Model Removed', 'Removed resource'],
-  modified: ['Model Modified', 'Modified resource'],
-  col_added: ['Column Added', 'Added column'],
-  col_removed: ['Column Removed', 'Removed column'],
-  col_changed: ['Column Modified', 'Modified column'],
-  folder_changed: ['Modified', 'Modified folder'],
+  added: ["Model Added", "Added resource"],
+  removed: ["Model Removed", "Removed resource"],
+  modified: ["Model Modified", "Modified resource"],
+  col_added: ["Column Added", "Added column"],
+  col_removed: ["Column Removed", "Removed column"],
+  col_changed: ["Column Modified", "Modified column"],
+  folder_changed: ["Modified", "Modified folder"],
 };
 
-export function getIconForChangeStatus(
-  changeStatus?: ChangeStatus,
-): {
+export function getIconForChangeStatus(changeStatus?: ChangeStatus): {
   color: string;
   icon: any; //IconType not provided
 } {
-  if (changeStatus === 'added') {
-    return { color: '#1dce00', icon: IconAdded };
-  } else if (changeStatus === 'removed') {
-    return { color: '#ff067e', icon: IconRemoved };
-  } else if (changeStatus === 'modified') {
-    return { color: '#ffa502', icon: IconModified };
-  } else if (changeStatus === 'col_added') {
-    return { color: '#1dce00', icon: IconAdded };
-  } else if (changeStatus === 'col_removed') {
-    return { color: '#ff067e', icon: IconRemoved };
-  } else if (changeStatus === 'col_changed') {
-    return { color: '#ffa502', icon: IconModified };
-  } else if (changeStatus === 'folder_changed') {
-    return { color: '#ffa502', icon: IconChanged };
+  if (changeStatus === "added") {
+    return { color: "#1dce00", icon: IconAdded };
+  } else if (changeStatus === "removed") {
+    return { color: "#ff067e", icon: IconRemoved };
+  } else if (changeStatus === "modified") {
+    return { color: "#ffa502", icon: IconModified };
+  } else if (changeStatus === "col_added") {
+    return { color: "#1dce00", icon: IconAdded };
+  } else if (changeStatus === "col_removed") {
+    return { color: "#ff067e", icon: IconRemoved };
+  } else if (changeStatus === "col_changed") {
+    return { color: "#ffa502", icon: IconModified };
+  } else if (changeStatus === "folder_changed") {
+    return { color: "#ffa502", icon: IconChanged };
   }
 
-
-  return { color: 'inherit', icon: undefined };
+  return { color: "inherit", icon: undefined };
 }
 
 function SummaryText({
@@ -72,7 +74,7 @@ function SummaryText({
         {tip && (
           <Tooltip label={tip}>
             <Box display="inline-block">
-              <Icon mx={'2px'} as={FiInfo} boxSize={3} />
+              <Icon mx={"2px"} as={FiInfo} boxSize={3} />
             </Box>
           </Tooltip>
         )}
@@ -89,7 +91,7 @@ function ChangeStatusCountLabel({
   changeStatus: ChangeStatus;
   value: number;
 }) {
-  const [label] = changeStatus ? NODE_CHANGE_STATUS_MSGS[changeStatus] : [''];
+  const [label] = changeStatus ? NODE_CHANGE_STATUS_MSGS[changeStatus] : [""];
   const { icon, color } = getIconForChangeStatus(changeStatus);
 
   return (
@@ -103,8 +105,10 @@ function ChangeStatusCountLabel({
   );
 }
 
-
-function calculateColumnChange(base: NodeData | undefined, current: NodeData | undefined) {
+function calculateColumnChange(
+  base: NodeData | undefined,
+  current: NodeData | undefined
+) {
   let adds = 0;
   let removes = 0;
   let modifies = 0;
@@ -122,7 +126,7 @@ function calculateColumnChange(base: NodeData | undefined, current: NodeData | u
     Object.keys(base.columns || {}).forEach((col) => {
       if (!current || !current.columns || !current.columns[col]) removes++;
     });
-}
+  }
 
   // Modify columns
   if (current && base) {
@@ -136,7 +140,8 @@ function calculateColumnChange(base: NodeData | undefined, current: NodeData | u
   return { adds, removes, modifies };
 }
 
-function calculateChangeSummary(lineageGraph: LineageGraph, modifiedSet: string[]) {
+function calculateChangeSummary(lineageGraph: LineageGraph) {
+  const modifiedSet = lineageGraph.modifiedSet;
   let adds = 0;
   let removes = 0;
   let modifies = 0;
@@ -145,9 +150,9 @@ function calculateChangeSummary(lineageGraph: LineageGraph, modifiedSet: string[
   let col_changed = 0;
 
   modifiedSet.forEach((nodeId) => {
-    if (lineageGraph.nodes[nodeId].changeStatus === 'added') adds++;
-    else if (lineageGraph.nodes[nodeId].changeStatus === 'removed') removes++;
-    else if (lineageGraph.nodes[nodeId].changeStatus === 'modified') modifies++;
+    if (lineageGraph.nodes[nodeId].changeStatus === "added") adds++;
+    else if (lineageGraph.nodes[nodeId].changeStatus === "removed") removes++;
+    else if (lineageGraph.nodes[nodeId].changeStatus === "modified") modifies++;
 
     const base = lineageGraph.nodes[nodeId].data.base;
     const current = lineageGraph.nodes[nodeId].data.current;
@@ -161,31 +166,27 @@ function calculateChangeSummary(lineageGraph: LineageGraph, modifiedSet: string[
 }
 
 export interface Props {
-  lineageGraphSets: DefaultLineageGraphSets
+  lineageGraph: LineageGraph;
 }
 
-
-export function ChangeSummary({ lineageGraphSets }: Props) {
-  const {
-    adds,
-    removes,
-    modifies,
-    col_added,
-    col_removed,
-    col_changed,
-  } = calculateChangeSummary(lineageGraphSets.all, lineageGraphSets.modifiedSet);
+export function ChangeSummary({ lineageGraph }: Props) {
+  const { adds, removes, modifies, col_added, col_removed, col_changed } =
+    calculateChangeSummary(lineageGraph);
 
   return (
-    <Grid templateColumns="1fr 1fr" mb="10px" borderTop="1px solid lightgray" padding={'2.5vw'}>
-      <Box borderColor='lightgray'>
+    <Grid
+      templateColumns="1fr 1fr"
+      mb="10px"
+      borderTop="1px solid lightgray"
+      padding={"2.5vw"}
+    >
+      <Box borderColor="lightgray">
         <SummaryText
           name="Code Changes"
           value={
             <>
               <Grid templateColumns="1fr 1fr 1fr" width="100%">
-                <ChangeStatusCountLabel
-                  changeStatus="added"
-                  value={adds} />
+                <ChangeStatusCountLabel changeStatus="added" value={adds} />
                 <ChangeStatusCountLabel
                   changeStatus="removed"
                   value={removes}
@@ -199,7 +200,7 @@ export function ChangeSummary({ lineageGraphSets }: Props) {
           }
         />
       </Box>
-      <Box borderLeft="1px" paddingLeft="12px" borderColor='lightgray'>
+      <Box borderLeft="1px" paddingLeft="12px" borderColor="lightgray">
         <SummaryText
           name="Column Changes"
           value={
@@ -207,7 +208,8 @@ export function ChangeSummary({ lineageGraphSets }: Props) {
               <Grid templateColumns="1fr 1fr 1fr" width="100%">
                 <ChangeStatusCountLabel
                   changeStatus="col_added"
-                  value={col_added} />
+                  value={col_added}
+                />
                 <ChangeStatusCountLabel
                   changeStatus="col_removed"
                   value={col_removed}

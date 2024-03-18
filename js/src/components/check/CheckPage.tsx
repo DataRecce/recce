@@ -29,10 +29,10 @@ import { buildDescription, buildTitle } from "./check";
 import { stripIndent } from "common-tags";
 import { CheckListInitLoader, CheckListLoader } from "./CheckListLoader";
 import { CheckListExporter } from "./CheckListExporter";
-import { useLineageGraphsContext } from "@/lib/hooks/LineageGraphContext";
+import { useLineageGraphContext } from "@/lib/hooks/LineageGraphContext";
 
 export const CheckPage = () => {
-  const { isDemoSite } = useLineageGraphsContext();
+  const { isDemoSite } = useLineageGraphContext();
   const [, setLocation] = useLocation();
   const [, params] = useRoute("/checks/:checkId");
   const queryClient = useQueryClient();

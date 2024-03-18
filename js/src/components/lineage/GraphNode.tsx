@@ -8,14 +8,14 @@ import { getIconForChangeStatus, getIconForResourceType } from "./styles";
 import "./styles.css";
 
 import { ActionTag } from "./ActionTag";
-import { useLineageGraphsContext } from "@/lib/hooks/LineageGraphContext";
+import { useLineageGraphContext } from "@/lib/hooks/LineageGraphContext";
 
 import { FiAlignLeft } from "react-icons/fi";
 
 interface GraphNodeProps extends NodeProps<LineageGraphNode> {}
 
 const NodeRunsAggregated = ({ id }: { id: string }) => {
-  const { runsAggregated } = useLineageGraphsContext();
+  const { runsAggregated } = useLineageGraphContext();
   const runs = runsAggregated?.[id];
   if (!runs) {
     return <></>;

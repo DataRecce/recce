@@ -1,11 +1,7 @@
-import {
-  DefaultLineageGraphSets,
-  buildDefaultLineageGraphSets,
-} from "@/components/lineage/lineage";
+import { LineageGraph, buildLineageGraph } from "@/components/lineage/lineage";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import React, {
   createContext,
-  useCallback,
   useContext,
   useEffect,
   useMemo,
@@ -22,8 +18,8 @@ interface EnvMetadata {
   pr_url: string | null;
 }
 
-export interface LineageGraphsContext {
-  lineageGraphSets?: DefaultLineageGraphSets;
+export interface LineageGraphContextType {
+  lineageGraph?: LineageGraph;
   metadata?: EnvMetadata;
   isDemoSite?: boolean;
   isLoading?: boolean;
@@ -33,11 +29,11 @@ export interface LineageGraphsContext {
   refetchRunsAggregated?: () => void;
 }
 
-const defaultLineageGraphsContext: LineageGraphsContext = {};
+const defaultLineageGraphsContext: LineageGraphContextType = {};
 
-const LineageGraphSets = createContext(defaultLineageGraphsContext);
+const LineageGraphContext = createContext(defaultLineageGraphsContext);
 
-interface LineageGraphSetsProps {
+interface LineageGraphProps {
   children: React.ReactNode;
 }
 
@@ -90,9 +86,7 @@ function LineageWatcher({ refetch }: { refetch: () => void }) {
   return <></>;
 }
 
-export function LineageGraphsContextProvider({
-  children,
-}: LineageGraphSetsProps) {
+export function LineageGraphContextProvider({ children }: LineageGraphProps) {
   const { data, isLoading, error, refetch } = useQuery({
     queryKey: cacheKeys.lineage(),
     queryFn: getLineageDiff,
@@ -103,12 +97,12 @@ export function LineageGraphsContextProvider({
     queryFn: aggregateRuns,
   });
 
-  const lineageGraphSets = useMemo(() => {
+  const lineageGraph = useMemo(() => {
     if (!data) {
       return undefined;
     }
 
-    return buildDefaultLineageGraphSets(data.base, data.current);
+    return buildLineageGraph(data.base, data.current);
   }, [data]);
 
   const errorMessage =
@@ -117,9 +111,9 @@ export function LineageGraphsContextProvider({
   return (
     <>
       <LineageWatcher refetch={refetch} />
-      <LineageGraphSets.Provider
+      <LineageGraphContext.Provider
         value={{
-          lineageGraphSets: lineageGraphSets,
+          lineageGraph,
           metadata: data?.current.metadata,
           isDemoSite: !!data?.current.metadata.pr_url,
           error: errorMessage,
@@ -131,15 +125,15 @@ export function LineageGraphsContextProvider({
         }}
       >
         {children}
-      </LineageGraphSets.Provider>
+      </LineageGraphContext.Provider>
     </>
   );
 }
 
-export const useLineageGraphsContext = () => useContext(LineageGraphSets);
+export const useLineageGraphContext = () => useContext(LineageGraphContext);
 
 export const useRunsAggregated = () => {
-  const { runsAggregated, refetchRunsAggregated } = useLineageGraphsContext();
+  const { runsAggregated, refetchRunsAggregated } = useLineageGraphContext();
   return [runsAggregated, refetchRunsAggregated] as [
     RunsAggregated | undefined,
     () => void
