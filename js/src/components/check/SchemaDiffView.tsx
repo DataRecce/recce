@@ -1,5 +1,5 @@
 import { Check } from "@/lib/api/checks";
-import { useLineageGraphsContext } from "@/lib/hooks/LineageGraphContext";
+import { useLineageGraphContext } from "@/lib/hooks/LineageGraphContext";
 import { SchemaView } from "../schema/SchemaView";
 
 interface SchemaDiffViewProps {
@@ -11,7 +11,7 @@ export interface SchemaDiffParams {
 }
 
 export function SchemaDiffView({ check }: SchemaDiffViewProps) {
-  const { lineageGraph } = useLineageGraphsContext();
+  const { lineageGraph } = useLineageGraphContext();
   const params = check.params as SchemaDiffParams;
   const id = params.node_id;
   const node = id ? lineageGraph?.nodes[id] : undefined;

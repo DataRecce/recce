@@ -58,7 +58,7 @@ import {
 } from "react-icons/bi";
 import { NodeView } from "./NodeView";
 import { toBlob } from "html-to-image";
-import { useLineageGraphsContext } from "@/lib/hooks/LineageGraphContext";
+import { useLineageGraphContext } from "@/lib/hooks/LineageGraphContext";
 import SummaryView from "../summary/SummaryView";
 import { AddLineageDiffCheckButton, NodeSelector } from "./NodeSelector";
 import {
@@ -69,7 +69,7 @@ import {
 } from "@/lib/hooks/ScreenShot";
 import { useClipBoardToast } from "@/lib/hooks/useClipBoardToast";
 import { NodeRunView } from "./NodeRunView";
-import { PackageMenu } from "./PackageMenu";
+
 import { union } from "./graph";
 
 export interface LineageViewProps {
@@ -207,7 +207,7 @@ function _LineageView({ ...props }: LineageViewProps) {
   const [edges, setEdges, onEdgesChange] = useEdgesState([]);
 
   const { lineageGraph, isLoading, error, refetchRunsAggregated } =
-    useLineageGraphsContext();
+    useLineageGraphContext();
   const modifiedSet = lineageGraph?.modifiedSet;
 
   /**

@@ -1,6 +1,6 @@
 import { TopKDiffParams } from "@/lib/api/profile";
 import { RunFormProps } from "../run/types";
-import { useLineageGraphsContext } from "@/lib/hooks/LineageGraphContext";
+import { useLineageGraphContext } from "@/lib/hooks/LineageGraphContext";
 import _ from "lodash";
 import { Box, FormControl, FormLabel, Select } from "@chakra-ui/react";
 import { extractColumnNames } from "../valuediff/ValueDiffForm";
@@ -13,7 +13,7 @@ export function TopKDiffForm({
   onParamsChanged,
   setIsReadyToExecute,
 }: TopKDiffFormProps) {
-  const { lineageGraph } = useLineageGraphsContext();
+  const { lineageGraph } = useLineageGraphContext();
   const node = _.find(lineageGraph?.nodes, {
     name: params?.model,
   });

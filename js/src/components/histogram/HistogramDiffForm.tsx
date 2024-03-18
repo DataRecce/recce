@@ -1,6 +1,6 @@
 import { HistogramDiffParams } from "@/lib/api/profile";
 import { RunFormProps } from "../run/types";
-import { useLineageGraphsContext } from "@/lib/hooks/LineageGraphContext";
+import { useLineageGraphContext } from "@/lib/hooks/LineageGraphContext";
 import _ from "lodash";
 import { extractColumns } from "../valuediff/ValueDiffForm";
 import { Box, FormControl, FormLabel, Select } from "@chakra-ui/react";
@@ -60,7 +60,7 @@ export function HistogramDiffForm({
   onParamsChanged,
   setIsReadyToExecute,
 }: HistogramDiffEditProps) {
-  const { lineageGraph } = useLineageGraphsContext();
+  const { lineageGraph } = useLineageGraphContext();
   const node = _.find(lineageGraph?.nodes, {
     name: params?.model,
   });

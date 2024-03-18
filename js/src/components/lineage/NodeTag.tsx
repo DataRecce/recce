@@ -23,7 +23,7 @@ import { cacheKeys } from "@/lib/api/cacheKeys";
 import { LineageGraphNode } from "./lineage";
 import { useQuery } from "@tanstack/react-query";
 import { RiArrowDownSFill, RiArrowUpSFill, RiSwapLine } from "react-icons/ri";
-import { useLineageGraphsContext } from "@/lib/hooks/LineageGraphContext";
+import { useLineageGraphContext } from "@/lib/hooks/LineageGraphContext";
 import { deltaPercentageString } from "../rowcount/delta";
 
 import { RepeatIcon } from "@chakra-ui/icons";
@@ -119,7 +119,7 @@ export function RowCountTag({
   node,
   isInteractive,
 }: RowCountTagProps) {
-  const { runsAggregated, refetchRunsAggregated } = useLineageGraphsContext();
+  const { runsAggregated, refetchRunsAggregated } = useLineageGraphContext();
   const lastRowCount: RowCount | undefined =
     runsAggregated?.[node.id]?.["row_count_diff"]?.result;
 

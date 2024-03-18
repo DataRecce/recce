@@ -1,10 +1,10 @@
 import { Divider, Flex, Heading, Spacer, Text } from "@chakra-ui/react";
-import { useLineageGraphsContext } from "@/lib/hooks/LineageGraphContext";
+import { useLineageGraphContext } from "@/lib/hooks/LineageGraphContext";
 import { ChangeSummary } from "./ChangeSummary";
 import { SchemaSummary } from "./SchemaSummary";
 
 export default function SummaryView() {
-  const { lineageGraph } = useLineageGraphsContext();
+  const { lineageGraph } = useLineageGraphContext();
   return (
     <>
       <Flex direction="column" w={"100%"} minHeight="650px">

@@ -130,10 +130,10 @@ export function LineageGraphContextProvider({ children }: LineageGraphProps) {
   );
 }
 
-export const useLineageGraphsContext = () => useContext(LineageGraphContext);
+export const useLineageGraphContext = () => useContext(LineageGraphContext);
 
 export const useRunsAggregated = () => {
-  const { runsAggregated, refetchRunsAggregated } = useLineageGraphsContext();
+  const { runsAggregated, refetchRunsAggregated } = useLineageGraphContext();
   return [runsAggregated, refetchRunsAggregated] as [
     RunsAggregated | undefined,
     () => void
