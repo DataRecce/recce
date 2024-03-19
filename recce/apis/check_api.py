@@ -10,6 +10,7 @@ from recce.apis.check_func import get_node_by_id, validate_schema_diff_check
 from recce.apis.run_func import submit_run
 from recce.exceptions import RecceException
 from recce.models import RunType, RunDAO, Check, CheckDAO, Run
+from recce.models.util import pydantic_model_json_dump
 
 check_router = APIRouter(tags=['check'])
 
@@ -240,7 +241,7 @@ async def export_handler():
     from ..models.state import recce_state
 
     try:
-        return recce_state.model_dump_json()
+        return pydantic_model_json_dump(recce_state)
     except RecceException as e:
         raise HTTPException(status_code=400, detail=e.message)
 

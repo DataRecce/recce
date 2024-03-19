@@ -8,6 +8,7 @@ from typing import List, Optional
 from pydantic import BaseModel, Field
 
 from .types import Run, Check
+from .util import pydantic_model_json_dump
 from .. import get_version
 
 logger = logging.getLogger('uvicorn')
@@ -28,7 +29,7 @@ class RecceState(BaseModel):
         self.metadata = RecceStateMetadata()
         start_time = time.time()
         logger.info(f"Store recce state to '{file_path}'")
-        json_data = self.model_dump_json()
+        json_data = pydantic_model_json_dump(self)
         with open(file_path, 'w') as f:
             f.write(json_data)
         end_time = time.time()

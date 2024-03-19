@@ -2,6 +2,7 @@ import json
 
 from recce.models import RunType, Run, RunDAO, CheckDAO, Check
 from recce.models.state import RecceState
+from recce.models.util import pydantic_model_json_dump
 
 
 def test_load():
@@ -13,7 +14,7 @@ def test_load():
     RunDAO(state).create(run)
     CheckDAO(state).create(check)
 
-    json_data = state.json()
+    json_data = pydantic_model_json_dump(state)
     new_state = RecceState(**json.loads(json_data))
 
     run_loaded = new_state.runs[0]
