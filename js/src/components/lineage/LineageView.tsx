@@ -204,6 +204,10 @@ function _LineageView({ ...props }: LineageViewProps) {
   const [edges, setEdges, onEdgesChange] = useEdgesState([]);
 
   const [viewOptions, setViewOptions] = useState<LineageDiffViewOptions>({});
+  const viewMode = viewOptions.view_mode || props.viewMode || "changed_models";
+  const setViewMode = (mode: "changed_models" | "all") => {
+    setViewOptions({ ...viewOptions, view_mode: mode });
+  };
 
   const { lineageGraph, isLoading, error, refetchRunsAggregated } =
     useLineageGraphContext();
@@ -229,9 +233,6 @@ function _LineageView({ ...props }: LineageViewProps) {
   const [detailViewSelected, setDetailViewSelected] =
     useState<LineageGraphNode>();
   const [isDetailViewShown, setIsDetailViewShown] = useState(false);
-  const [viewMode, setViewMode] = useState<"changed_models" | "all">(
-    props.viewMode || "changed_models"
-  );
 
   const [isContextMenuRendered, setIsContextMenuRendered] = useState(false);
   const [contextMenuPosition, setContextMenuPosition] = useState<{
@@ -499,20 +500,6 @@ function _LineageView({ ...props }: LineageViewProps) {
             position="top-right"
             className={IGNORE_SCREENSHOT_CLASS}
           >
-            {props.interactive && (
-              <>
-                <ControlButton
-                  title="switch mode"
-                  onClick={() => {
-                    setViewMode(viewMode === "all" ? "changed_models" : "all");
-                    const newNodes = cleanUpNodes(nodes);
-                    setNodes(newNodes);
-                  }}
-                >
-                  <Icon as={FiRefreshCw} />
-                </ControlButton>
-              </>
-            )}
             <ControlButton
               title="copy image"
               onClick={() => {
@@ -582,7 +569,7 @@ function _LineageView({ ...props }: LineageViewProps) {
           </Panel>
           <Panel position="top-left">
             <Text fontSize="xl" color="grey" opacity={0.5}>
-              {viewModeTitle[viewMode]}
+              {nodes.length > 0 ? viewModeTitle[viewMode] : "No nodes"}
             </Text>
           </Panel>
           <MiniMap

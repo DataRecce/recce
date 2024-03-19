@@ -14,6 +14,7 @@ import {
   MenuItem,
   MenuList,
   MenuDivider,
+  StackDivider,
 } from "@chakra-ui/react";
 import _ from "lodash";
 
@@ -24,6 +25,55 @@ interface NodeFilterProps {
   onViewOptionsChanged: (options: LineageDiffViewOptions) => void;
   onClose: () => void;
 }
+
+const ViewModeSelectMenu = ({
+  viewOptions,
+  onViewOptionsChanged,
+}: NodeFilterProps) => {
+  const viewMode = viewOptions.view_mode || "changed_models";
+  const label =
+    viewOptions.view_mode === "changed_models" ? "Changed Models" : "All";
+
+  const handleSelect = (viewMode: LineageDiffViewOptions["view_mode"]) => {
+    onViewOptionsChanged({
+      ...viewOptions,
+      view_mode: viewMode,
+    });
+  };
+
+  return (
+    <Menu>
+      <MenuButton
+        as={Button}
+        w="150px"
+        leftIcon={<Icon as={FiAlignLeft} />}
+        size="xs"
+        variant="outline"
+      >
+        {label}
+      </MenuButton>
+
+      <MenuList title="packages">
+        <MenuItem
+          as={Checkbox}
+          size="sm"
+          isChecked={viewMode === "changed_models"}
+          onChange={() => handleSelect("changed_models")}
+        >
+          Changed Models
+        </MenuItem>
+        <MenuItem
+          as={Checkbox}
+          size="sm"
+          isChecked={viewMode === "all"}
+          onChange={() => handleSelect("all")}
+        >
+          All
+        </MenuItem>
+      </MenuList>
+    </Menu>
+  );
+};
 
 const PackageSelectMenu = ({
   viewOptions,
@@ -124,8 +174,11 @@ export const NodeFilter = (props: NodeFilterProps) => {
 
   return (
     <Box bg="white" rounded="md" shadow="dark-lg">
-      <HStack>
-        <PackageSelectMenu {...props} />
+      <HStack divider={<StackDivider borderColor="gray.200" />}>
+        <HStack>
+          <ViewModeSelectMenu {...props} />
+          <PackageSelectMenu {...props} />
+        </HStack>
 
         <ButtonGroup
           size="xs"
