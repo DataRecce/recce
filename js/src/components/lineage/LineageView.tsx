@@ -46,7 +46,7 @@ import "reactflow/dist/style.css";
 import { GraphNode } from "./GraphNode";
 import GraphEdge from "./GraphEdge";
 import { getIconForChangeStatus } from "./styles";
-import { FiRefreshCw, FiCopy } from "react-icons/fi";
+import { FiCopy } from "react-icons/fi";
 import { BiArrowFromBottom, BiArrowToBottom } from "react-icons/bi";
 import { NodeView } from "./NodeView";
 
@@ -65,6 +65,7 @@ import { NodeRunView } from "./NodeRunView";
 
 import { union } from "./graph";
 import { LineageDiffViewOptions } from "@/lib/api/lineagecheck";
+import { ChangeStatusLegend } from "./ChangeStatusLegend";
 
 export interface LineageViewProps {
   viewOptions?: LineageDiffViewOptions;
@@ -127,38 +128,6 @@ const viewModeTitle = {
   all: "All",
   changed_models: "Changed Models",
 };
-
-function ChangeStatusLegend() {
-  const CHANGE_STATUS_MSGS: {
-    [key: string]: [string, string];
-  } = {
-    added: ["Added", "Added resource"],
-    removed: ["Removed", "Removed resource"],
-    modified: ["Modified", "Modified resource"],
-  };
-
-  return (
-    <Box
-      bg="white"
-      padding="12px"
-      borderWidth="1px"
-      borderColor="gray.200"
-      fontSize="sm"
-    >
-      {Object.entries(CHANGE_STATUS_MSGS).map(([key, [label, tip]]) => {
-        const { icon, color } = getIconForChangeStatus(key as any);
-
-        return (
-          <Tooltip label={tip} key={key}>
-            <Flex alignItems="center" gap="6px" marginBottom="2px">
-              <Icon color={color} as={icon} /> {label}
-            </Flex>
-          </Tooltip>
-        );
-      })}
-    </Box>
-  );
-}
 
 function _LineageView({ ...props }: LineageViewProps) {
   const reactFlow = useReactFlow();
