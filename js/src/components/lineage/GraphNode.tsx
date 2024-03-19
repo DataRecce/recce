@@ -38,7 +38,7 @@ function isSchemaChanged(
 
   // modified
   for (const key of currKeys) {
-    if (!baseSchema[key] || baseSchema[key].type !== currSchema[key].type) {
+    if (!baseSchema[key] && baseSchema[key].type !== currSchema[key].type) {
       return true;
     }
   }
