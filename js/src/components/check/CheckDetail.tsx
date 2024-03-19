@@ -35,7 +35,7 @@ import { useLocation } from "wouter";
 import { CheckDescription } from "./CheckDescription";
 import { RowCountDiffResultView } from "../rowcount/RowCountDiffResultView";
 import { ProfileDiffResultView } from "../profile/ProfileDiffResultView";
-import { stripIndent } from "common-tags";
+import { stripIndents } from "common-tags";
 import { useClipBoardToast } from "@/lib/hooks/useClipBoardToast";
 import { buildTitle, buildDescription, buildQuery } from "./check";
 import SqlEditor from "../query/SqlEditor";
@@ -350,7 +350,7 @@ export const CheckDetail = ({ checkId }: CheckDetailProps) => {
 };
 
 function buildMarkdown(check: Check) {
-  return stripIndent`
+  return stripIndents`
   <details><summary>${buildTitle(check)}</summary>
 
   ${buildBody(check)}
