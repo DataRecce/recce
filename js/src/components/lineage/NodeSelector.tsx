@@ -12,11 +12,7 @@ import {
 import { LineageGraphNode } from "./lineage";
 import { MdOutlineSchema, MdQueryStats } from "react-icons/md";
 import { TbAlignBoxLeftStretch } from "react-icons/tb";
-import {
-  createCheckByNodeSchema,
-  createCheckByRun,
-  createLineageDiffCheck,
-} from "@/lib/api/checks";
+import { createCheckByNodeSchema, createCheckByRun } from "@/lib/api/checks";
 import { useLocation } from "wouter";
 import { FiAlignLeft } from "react-icons/fi";
 import { TbBrandStackshare } from "react-icons/tb";
@@ -27,6 +23,7 @@ import { Run, RunType } from "@/lib/api/types";
 import { RowCountDiffParams } from "@/lib/api/rowcount";
 import { useQueryClient } from "@tanstack/react-query";
 import { cacheKeys } from "@/lib/api/cacheKeys";
+import { createLineageDiffCheck } from "@/lib/api/lineagecheck";
 
 export interface NodeSelectorProps {
   viewMode: string;
@@ -98,7 +95,10 @@ export function AddLineageDiffCheckButton({
       isDisabled={nodes.length === 0}
       onClick={async () => {
         const nodeIds = nodes.map((node) => node.id);
-        const check = await createLineageDiffCheck(viewMode, nodeIds);
+        const check = await createLineageDiffCheck({
+          view_mode: viewMode as any,
+          node_ids: nodeIds,
+        });
         onFinish();
         if (check) {
           setLocation(`/checks/${check.check_id}`);
