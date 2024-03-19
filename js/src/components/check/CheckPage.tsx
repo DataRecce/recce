@@ -26,7 +26,7 @@ import { AddIcon, CopyIcon } from "@chakra-ui/icons";
 import { CheckList } from "./CheckList";
 import { useClipBoardToast } from "@/lib/hooks/useClipBoardToast";
 import { buildDescription, buildTitle } from "./check";
-import { stripIndent } from "common-tags";
+import { stripIndents } from "common-tags";
 import { CheckListInitLoader, CheckListLoader } from "./CheckListLoader";
 import { CheckListExporter } from "./CheckListExporter";
 import { useLineageGraphContext } from "@/lib/hooks/LineageGraphContext";
@@ -204,7 +204,7 @@ export const CheckPage = () => {
 
 function buildMarkdown(checks: Check[]) {
   const checkItems = checks.map((check) => {
-    return stripIndent`
+    return stripIndents`
     <details><summary>${buildTitle(check)}</summary>
 
     ${buildDescription(check)}
