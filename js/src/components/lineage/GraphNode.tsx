@@ -2,7 +2,7 @@ import { Box, Flex, HStack, Icon, Spacer, Tooltip } from "@chakra-ui/react";
 import React from "react";
 
 import { Handle, NodeProps, Position, useStore } from "reactflow";
-import { LineageGraphNode } from "./lineage";
+import { LineageGraphNode, NodeColumnData } from "./lineage";
 import { getIconForChangeStatus, getIconForResourceType } from "./styles";
 
 import "./styles.css";
@@ -10,25 +10,81 @@ import "./styles.css";
 import { ActionTag } from "./ActionTag";
 import { useLineageGraphContext } from "@/lib/hooks/LineageGraphContext";
 
-import { FiAlignLeft } from "react-icons/fi";
+import { MdFormatListNumberedRtl, MdSchema } from "react-icons/md";
 
 interface GraphNodeProps extends NodeProps<LineageGraphNode> {}
 
+function isSchemaChanged(
+  baseSchema: { [key: string]: NodeColumnData } | undefined,
+  currSchema: { [key: string]: NodeColumnData } | undefined
+) {
+  if (!baseSchema || !currSchema) {
+    return undefined;
+  }
+  const baseKeys = Object.keys(baseSchema);
+  const currKeys = Object.keys(currSchema);
+
+  // added, removed
+  if (baseKeys.length !== currKeys.length) {
+    return true;
+  }
+
+  // reordered
+  for (let i = 0; i < baseKeys.length; i++) {
+    if (baseKeys[i] !== currKeys[i]) {
+      return true;
+    }
+  }
+
+  // modified
+  for (const key of currKeys) {
+    if (!baseSchema[key] && baseSchema[key].type !== currSchema[key].type) {
+      return true;
+    }
+  }
+  return false;
+}
+
 const NodeRunsAggregated = ({ id }: { id: string }) => {
-  const { runsAggregated } = useLineageGraphContext();
+  const { lineageGraph, runsAggregated } = useLineageGraphContext();
   const runs = runsAggregated?.[id];
-  if (!runs) {
+  const node = lineageGraph?.nodes[id];
+  if (!runs && !node) {
     return <></>;
   }
 
+  let schemaChanged;
+  if (node?.data.base && node?.data.current) {
+    const baseColumns = node.data.base?.columns;
+    const currColumns = node.data.current?.columns;
+    schemaChanged = isSchemaChanged(baseColumns, currColumns);
+  }
+
   let rowCountChanged;
-  if (runs["row_count_diff"]) {
+  if (runs && runs["row_count_diff"]) {
     const rowCountDiff = runs["row_count_diff"];
     rowCountChanged = rowCountDiff.result.curr !== rowCountDiff.result.base;
   }
 
   return (
-    <Flex>
+    <Flex gap="5px">
+      {schemaChanged !== undefined && (
+        <Tooltip
+          label={`Schema (${schemaChanged ? "changed" : "no change"})`}
+          openDelay={500}
+        >
+          <Box height="16px">
+            <Icon
+              as={MdSchema}
+              color={
+                schemaChanged
+                  ? getIconForChangeStatus("modified").color
+                  : "lightgray"
+              }
+            />
+          </Box>
+        </Tooltip>
+      )}
       {rowCountChanged !== undefined && (
         <Tooltip
           label={`Row count (${rowCountChanged ? "changed" : "no change"})`}
@@ -36,11 +92,11 @@ const NodeRunsAggregated = ({ id }: { id: string }) => {
         >
           <Box height="16px">
             <Icon
-              as={FiAlignLeft}
+              as={MdFormatListNumberedRtl}
               color={
                 rowCountChanged
                   ? getIconForChangeStatus("modified").color
-                  : getIconForChangeStatus().color
+                  : "lightgray"
               }
             />
           </Box>
