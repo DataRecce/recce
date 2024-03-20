@@ -3,45 +3,13 @@ import { getNeighborSet, union } from "./graph";
 import { Run } from "@/lib/api/types";
 import dagre from "dagre";
 import { LineageDiffViewOptions } from "@/lib/api/lineagecheck";
-import { LineageDiffView } from "../check/LineageDiffView";
-/**
- * The data from the API
- */
-export interface NodeColumnData {
-  name: string;
-  type: string;
-}
-export interface NodeData {
-  unique_id: string;
-  name: string;
-  checksum?: {
-    name: string;
-    checksum: string;
-  };
-  raw_code?: string;
-  resource_type?: string;
-  package_name?: string;
-  columns?: { [key: string]: NodeColumnData };
-  primary_key?: string;
-}
-
-interface CatalogMetadata {
-  dbt_schema_version: string;
-  dbt_version: string;
-  generated_at: string;
-  invocation_id: string;
-  env: Record<string, any>;
-}
-
-export interface LineageData {
-  nodes?: {
-    [key: string]: NodeData;
-  };
-  parent_map: {
-    [key: string]: string[];
-  };
-  catalog_metadata: CatalogMetadata | null;
-}
+import {
+  CatalogMetadata,
+  LineageData,
+  ManifestMetadata,
+  NodeData,
+} from "@/lib/api/lineage";
+import { Manifest } from "next/dist/lib/metadata/types/manifest-types";
 
 /**
  * THe types for internal data structures.
@@ -98,6 +66,16 @@ export interface LineageGraph {
     [key: string]: LineageGraphEdge;
   };
   modifiedSet: string[];
+
+  manifestMetadata: {
+    base?: ManifestMetadata;
+    current?: ManifestMetadata;
+  };
+  catalogMetadata: {
+    base?: CatalogMetadata;
+    current?: CatalogMetadata;
+  };
+
   catalogExistence: CatalogExistence;
 }
 
@@ -226,8 +204,8 @@ export function buildLineageGraph(
     edges,
     modifiedSet,
     catalogExistence: {
-      base: !!base.catalog_metadata,
-      current: !!current.catalog_metadata,
+      base: !!base?.catalog_metadata,
+      current: !!current?.catalog_metadata,
     },
   };
 }

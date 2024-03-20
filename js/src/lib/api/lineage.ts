@@ -1,6 +1,56 @@
 import { axiosClient } from "./axiosClient";
 import { AxiosError } from "axios";
 
+/**
+ * The data from the API
+ */
+export interface NodeColumnData {
+  name: string;
+  type: string;
+}
+export interface NodeData {
+  unique_id: string;
+  name: string;
+  checksum?: {
+    name: string;
+    checksum: string;
+  };
+  raw_code?: string;
+  resource_type?: string;
+  package_name?: string;
+  columns?: { [key: string]: NodeColumnData };
+  primary_key?: string;
+}
+
+// https://docs.getdbt.com/reference/artifacts/dbt-artifacts#common-metadata
+interface ArtifactMetadata {
+  dbt_version: string;
+  dbt_schema_version: string;
+  generated_at: string;
+  adapter_type: string;
+  env: Record<string, any>;
+  invocation_id: string;
+}
+export interface ManifestMetadata extends ArtifactMetadata {
+  project_id?: string;
+  project_name?: string;
+  user_id?: string;
+}
+
+export interface CatalogMetadata extends ArtifactMetadata {}
+
+export interface LineageData {
+  nodes: {
+    [key: string]: NodeData;
+  };
+  parent_map: {
+    [key: string]: string[];
+  };
+
+  manifest_metadata?: ManifestMetadata | null;
+  catalog_metadata?: CatalogMetadata | null;
+}
+
 interface LineageOutput {
   error?: string;
   data?: any;
