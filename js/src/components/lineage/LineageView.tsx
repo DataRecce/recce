@@ -3,6 +3,8 @@ import {
   LineageGraph,
   LineageGraphNode,
   cleanUpNodes,
+  filterNodes,
+  hideNodes,
   highlightNodes,
   layout,
   selectDownstream,
@@ -10,6 +12,7 @@ import {
   selectNodes,
   selectSingleNode,
   selectUpstream,
+  selectViewOptions,
   toReactflow,
 } from "./lineage";
 import {
@@ -28,7 +31,12 @@ import {
   Center,
   SlideFade,
 } from "@chakra-ui/react";
-import React, { useCallback, useEffect, useState } from "react";
+import React, {
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useState,
+} from "react";
 import ReactFlow, {
   Node,
   Edge,
@@ -138,7 +146,9 @@ function _LineageView({ ...props }: LineageViewProps) {
   const [nodes, setNodes, onNodesChange] = useNodesState([]);
   const [edges, setEdges, onEdgesChange] = useEdgesState([]);
 
-  const [viewOptions, setViewOptions] = useState<LineageDiffViewOptions>({});
+  const [viewOptions, setViewOptions] = useState<LineageDiffViewOptions>(
+    props.viewOptions || {}
+  );
   const viewMode = viewOptions.view_mode || props.viewMode || "changed_models";
   const setViewMode = (mode: "changed_models" | "all") => {
     setViewOptions({ ...viewOptions, view_mode: mode });
@@ -176,61 +186,19 @@ function _LineageView({ ...props }: LineageViewProps) {
     selectedNode?: Node;
   }>({ x: 0, y: 0 });
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     if (!lineageGraph) {
       return;
     }
 
-    let lineageNodes = Object.values(lineageGraph.nodes);
-    let lineageEdges = Object.values(lineageGraph.edges);
+    const [nodes, edges] = toReactflow(lineageGraph, viewOptions);
 
-    if (viewMode === "changed_models") {
-      const u = selectUpstream(lineageGraph, lineageGraph.modifiedSet, 1);
-      const d = selectDownstream(lineageGraph, lineageGraph.modifiedSet);
-      const modified = union(u, d);
-      lineageNodes = lineageNodes.filter((node) => modified.has(node.id));
-    }
+    // const [nodes, edges] = applyFilter(lineageGraph, viewOptions);
 
-    if (typeof props.filterNodes === "function") {
-      const filterFn = props.filterNodes ? props.filterNodes : () => true;
-      lineageNodes = lineageNodes.filter((node) => filterFn(node.id, node));
-    }
-
-    if (viewOptions.packages !== undefined) {
-      const packages = viewOptions.packages;
-      lineageNodes = lineageNodes.filter((node) => {
-        if (!node.packageName) {
-          return false;
-        }
-
-        return packages.includes(node.packageName);
-      });
-    }
-
-    let [_nodes, _edges] = toReactflow(lineageNodes, lineageEdges);
-
-    const modifiedDownstream = selectDownstream(
-      lineageGraph,
-      lineageGraph.modifiedSet
-    );
-
-    const [nodes, edges] = highlightNodes(
-      Array.from(modifiedDownstream),
-      _nodes,
-      _edges
-    );
     layout(nodes, edges);
-
     setNodes(nodes);
     setEdges(edges);
-  }, [
-    setNodes,
-    setEdges,
-    viewMode,
-    viewOptions,
-    lineageGraph,
-    props.filterNodes,
-  ]);
+  }, [setNodes, setEdges, lineageGraph]);
 
   const onNodeMouseEnter = (event: React.MouseEvent, node: Node) => {
     if (!lineageGraph) {
@@ -269,7 +237,7 @@ function _LineageView({ ...props }: LineageViewProps) {
     setEdges(newEdges);
   };
 
-  const centerNode = (node: Node) => {
+  const centerNode = async (node: Node) => {
     if (node.width && node.height) {
       const x = node.position.x + node.width / 2;
       const y = node.position.y + node.height / 2;
@@ -319,6 +287,18 @@ function _LineageView({ ...props }: LineageViewProps) {
     },
     [setNodes]
   );
+
+  const handleViewOptionsChanged = (newViewOptions: LineageDiffViewOptions) => {
+    if (!lineageGraph) {
+      return;
+    }
+
+    const [newNodes, newEdges] = toReactflow(lineageGraph, newViewOptions);
+    layout(newNodes, newEdges);
+    setNodes(newNodes);
+    setEdges(newEdges);
+    setViewOptions(newViewOptions);
+  };
 
   if (isLoading) {
     return (
@@ -547,9 +527,12 @@ function _LineageView({ ...props }: LineageViewProps) {
             >
               <NodeFilter
                 viewOptions={viewOptions}
-                onViewOptionsChanged={setViewOptions}
-                onClose={() => {
+                onViewOptionsChanged={handleViewOptionsChanged}
+                onClose={(fitView: boolean) => {
                   setControlMode("normal");
+                  if (fitView) {
+                    reactFlow.fitView();
+                  }
                 }}
               />
             </SlideFade>

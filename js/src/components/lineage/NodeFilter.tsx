@@ -23,7 +23,7 @@ import { FiAlignLeft } from "react-icons/fi";
 interface NodeFilterProps {
   viewOptions: LineageDiffViewOptions;
   onViewOptionsChanged: (options: LineageDiffViewOptions) => void;
-  onClose: () => void;
+  onClose: (fitView: boolean) => void;
 }
 
 const ViewModeSelectMenu = ({
@@ -31,8 +31,7 @@ const ViewModeSelectMenu = ({
   onViewOptionsChanged,
 }: NodeFilterProps) => {
   const viewMode = viewOptions.view_mode || "changed_models";
-  const label =
-    viewOptions.view_mode === "changed_models" ? "Changed Models" : "All";
+  const label = viewMode === "changed_models" ? "Changed Models" : "All";
 
   const handleSelect = (viewMode: LineageDiffViewOptions["view_mode"]) => {
     onViewOptionsChanged({
@@ -174,21 +173,23 @@ export const NodeFilter = (props: NodeFilterProps) => {
 
   return (
     <Box bg="white" rounded="md" shadow="dark-lg">
-      <HStack divider={<StackDivider borderColor="gray.200" />}>
+      <HStack
+        p="5px 15px"
+        mt="4"
+        divider={<StackDivider borderColor="gray.200" />}
+      >
         <HStack>
           <ViewModeSelectMenu {...props} />
           <PackageSelectMenu {...props} />
         </HStack>
 
-        <ButtonGroup
-          size="xs"
-          isAttached
-          variant="outline"
-          rounded="xs"
-          onClick={onClose}
-        >
-          <Button>Apply</Button>
-          <IconButton aria-label="Exit filter Mode" icon={<SmallCloseIcon />} />
+        <ButtonGroup size="xs" isAttached variant="outline" rounded="xs">
+          <Button onClick={() => onClose(true)}>Fit and Close</Button>
+          <IconButton
+            aria-label="Exit filter Mode"
+            icon={<SmallCloseIcon />}
+            onClick={() => onClose(false)}
+          />
         </ButtonGroup>
       </HStack>
     </Box>

@@ -126,10 +126,7 @@ test("hightlight", () => {
   };
 
   const lineageGraph = buildLineageGraph(base, current);
-  const [nodes, edges] = toReactflow(
-    Object.values(lineageGraph.nodes),
-    Object.values(lineageGraph.edges)
-  );
+  const [nodes, edges] = toReactflow(lineageGraph);
   const relatedNodes = union(
     selectUpstream(lineageGraph, ["a"]),
     selectDownstream(lineageGraph, ["a"])

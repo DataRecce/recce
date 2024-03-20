@@ -2,6 +2,8 @@ import { Node, Edge, Position } from "reactflow";
 import { getNeighborSet, union } from "./graph";
 import { Run } from "@/lib/api/types";
 import dagre from "dagre";
+import { LineageDiffViewOptions } from "@/lib/api/lineagecheck";
+import { LineageDiffView } from "../check/LineageDiffView";
 /**
  * The data from the API
  */
@@ -263,16 +265,56 @@ export function selectDownstream(
     degree
   );
 }
+export function selectViewOptions(
+  lineageGraph: LineageGraph,
+  viewOptions: LineageDiffViewOptions
+) {
+  let lineageNodes = Object.values(lineageGraph.nodes);
+
+  const viewMode = viewOptions.view_mode || "changed_models";
+
+  if (viewMode === "changed_models") {
+    const u = selectUpstream(lineageGraph, lineageGraph.modifiedSet, 1);
+    const d = selectDownstream(lineageGraph, lineageGraph.modifiedSet);
+    const modified = union(u, d);
+    lineageNodes = lineageNodes.filter((node) => modified.has(node.id));
+  }
+
+  if (viewOptions.node_ids !== undefined) {
+    const nodeIds = new Set(viewOptions.node_ids);
+    lineageNodes = lineageNodes.filter((node) => nodeIds.has(node.id));
+  }
+
+  if (viewOptions.packages !== undefined) {
+    const packages = viewOptions.packages;
+    lineageNodes = lineageNodes.filter((node) => {
+      if (!node.packageName) {
+        return false;
+      }
+
+      return packages.includes(node.packageName);
+    });
+  }
+
+  return new Set(lineageNodes.map((node) => node.id));
+}
 
 export function toReactflow(
-  lineageGraphNodes: LineageGraphNode[],
-  lineageGraphEdges: LineageGraphEdge[]
+  lineageGraph: LineageGraph,
+  viewOptions?: LineageDiffViewOptions
 ): [Node[], Edge[]] {
   const nodes: Node[] = [];
   const edges: Edge[] = [];
-  const nodeSet = new Set<string>();
 
-  for (const node of lineageGraphNodes) {
+  const filterSet = viewOptions
+    ? selectViewOptions(lineageGraph, viewOptions)
+    : undefined;
+
+  for (const [, node] of Object.entries(lineageGraph.nodes)) {
+    if (filterSet && !filterSet.has(node.id)) {
+      continue;
+    }
+
     nodes.push({
       id: node.id,
       position: { x: 0, y: 0 },
@@ -281,11 +323,13 @@ export function toReactflow(
       targetPosition: Position.Left,
       sourcePosition: Position.Right,
     });
-    nodeSet.add(node.id);
   }
 
-  for (const edge of lineageGraphEdges) {
-    if (!nodeSet.has(edge.parent.id) || !nodeSet.has(edge.child.id)) {
+  for (const edge of Object.values(lineageGraph.edges)) {
+    if (
+      filterSet &&
+      (!filterSet.has(edge.parent.id) || !filterSet.has(edge.child.id))
+    ) {
       continue;
     }
 
@@ -298,7 +342,45 @@ export function toReactflow(
     });
   }
 
-  return [nodes, edges];
+  layout(nodes, edges);
+
+  return highlightChanged(lineageGraph, nodes, edges);
+}
+
+export function filterNodes(
+  nodes: Node[],
+  edges: Edge[],
+  nodeIds: Set<string>
+): [Node[], Edge[]] {
+  const newNodes = nodes.filter((node) => nodeIds.has(node.id));
+  const newEdges = edges.filter(
+    (edge) => nodeIds.has(edge.source) && nodeIds.has(edge.target)
+  );
+
+  return [newNodes, newEdges];
+}
+
+export function hideNodes(
+  nodes: Node[],
+  edges: Edge[],
+  nodeIds: Set<string>
+): [Node[], Edge[]] {
+  const newNodes = nodes.map((node) => {
+    return {
+      ...node,
+      hidden: !nodeIds.has(node.id),
+    };
+  });
+
+  const newEdges = edges.map((edge) => {
+    return {
+      ...edge,
+      hidden: !nodeIds.has(edge.source) || !nodeIds.has(edge.target),
+    };
+  });
+
+  layout(newNodes, newEdges);
+  return [newNodes, newEdges];
 }
 
 export const layout = (nodes: Node[], edges: Edge[], direction = "LR") => {
@@ -369,6 +451,19 @@ export function highlightNodes(
   });
 
   return [newNodes, newEdges];
+}
+
+export function highlightChanged(
+  lineageGraph: LineageGraph,
+  nodes: Node<LineageGraphNode>[],
+  edges: Edge[]
+) {
+  const modifiedDownstream = selectDownstream(
+    lineageGraph,
+    lineageGraph.modifiedSet
+  );
+
+  return highlightNodes(Array.from(modifiedDownstream), nodes, edges);
 }
 
 export function selectSingleNode(

@@ -7,17 +7,11 @@ export interface LineageDiffViewProps {
 }
 
 export function LineageDiffView({ check }: LineageDiffViewProps) {
-  const viewMode = check.params?.view_mode || "";
+  const viewOptions = { ...check.params, ...check.view_options };
 
   return (
     <Flex direction="column" height="100%">
-      <LineageView
-        viewMode={viewMode}
-        interactive={false}
-        filterNodes={(nodeId) => {
-          return check.params?.node_ids?.includes(nodeId);
-        }}
-      />
+      <LineageView viewOptions={viewOptions} interactive={false} />
     </Flex>
   );
 }
