@@ -10,9 +10,10 @@ import {
 
 import { Select } from "chakra-react-select";
 import { useLineageGraphContext } from "@/lib/hooks/LineageGraphContext";
-import { LineageGraphNode, NodeColumnData, NodeData } from "../lineage/lineage";
+import { LineageGraphNode } from "../lineage/lineage";
 import _ from "lodash";
 import { useEffect, useState } from "react";
+import { NodeColumnData, NodeData } from "@/lib/api/lineage";
 
 interface ValueDiffFormProp extends RunFormProps<ValueDiffParams> {}
 

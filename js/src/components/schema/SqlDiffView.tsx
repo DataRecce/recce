@@ -1,5 +1,5 @@
+import { NodeData } from "@/lib/api/lineage";
 import { DiffEditor } from "@monaco-editor/react";
-import { NodeData } from "../lineage/lineage";
 
 interface SqlDiffProps {
   base?: NodeData;

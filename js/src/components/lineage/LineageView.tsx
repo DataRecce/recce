@@ -185,11 +185,11 @@ function _LineageView({ ...props }: LineageViewProps) {
 
     const [nodes, edges] = toReactflow(lineageGraph, viewOptions);
 
-    // const [nodes, edges] = applyFilter(lineageGraph, viewOptions);
-
     layout(nodes, edges);
     setNodes(nodes);
     setEdges(edges);
+
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [setNodes, setEdges, lineageGraph]);
 
   const onNodeMouseEnter = (event: React.MouseEvent, node: Node) => {

@@ -2,7 +2,7 @@ import { Box, Flex, HStack, Icon, Spacer, Tooltip } from "@chakra-ui/react";
 import React from "react";
 
 import { Handle, NodeProps, Position, useStore } from "reactflow";
-import { LineageGraphNode, NodeColumnData } from "./lineage";
+import { LineageGraphNode } from "./lineage";
 import { getIconForChangeStatus, getIconForResourceType } from "./styles";
 
 import "./styles.css";
@@ -11,6 +11,7 @@ import { ActionTag } from "./ActionTag";
 import { useLineageGraphContext } from "@/lib/hooks/LineageGraphContext";
 
 import { MdFormatListNumberedRtl, MdSchema } from "react-icons/md";
+import { NodeColumnData } from "@/lib/api/lineage";
 
 interface GraphNodeProps extends NodeProps<LineageGraphNode> {}
 

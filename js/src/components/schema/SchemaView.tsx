@@ -1,5 +1,5 @@
 import { useMemo } from "react";
-import { NodeData, CatalogExistence } from "../lineage/lineage";
+
 import { mergeColumns, toDataGrid } from "./schema";
 import "react-data-grid/lib/styles.css";
 import { Flex, Alert, AlertIcon } from "@chakra-ui/react";
@@ -8,6 +8,7 @@ import {
   ScreenshotDataGrid,
 } from "../data-grid/ScreenshotDataGrid";
 import { useLineageGraphContext } from "@/lib/hooks/LineageGraphContext";
+import { NodeData } from "@/lib/api/lineage";
 
 interface SchemaViewProps {
   base?: NodeData;

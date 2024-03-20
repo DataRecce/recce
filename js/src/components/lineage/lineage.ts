@@ -204,10 +204,6 @@ export function buildLineageGraph(
       base: base.catalog_metadata || undefined,
       current: current.catalog_metadata || undefined,
     },
-    catalogExistence: {
-      base: !!base?.catalog_metadata,
-      current: !!current?.catalog_metadata,
-    },
   };
 }
 
