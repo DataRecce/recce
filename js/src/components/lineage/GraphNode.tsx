@@ -79,7 +79,7 @@ const NodeRunsAggregated = ({ id }: { id: string }) => {
               color={
                 schemaChanged
                   ? getIconForChangeStatus("modified").color
-                  : getIconForChangeStatus().color
+                  : "lightgray"
               }
             />
           </Box>
@@ -96,7 +96,7 @@ const NodeRunsAggregated = ({ id }: { id: string }) => {
               color={
                 rowCountChanged
                   ? getIconForChangeStatus("modified").color
-                  : getIconForChangeStatus().color
+                  : "lightgray"
               }
             />
           </Box>
