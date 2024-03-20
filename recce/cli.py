@@ -3,6 +3,7 @@ from typing import List
 import click
 
 from recce import event
+from recce.run import archive_artifacts
 from .dbt import DBTContext
 from .event.track import TrackCommand
 
@@ -142,6 +143,14 @@ def server(host, port, state_file=None, **kwargs):
     app.state = state
 
     uvicorn.run(app, host=host, port=port, lifespan='on')
+
+
+@cli.command(cls=TrackCommand)
+@click.option('-o', '--output', help='Output file path', type=click.Path(), default='recce.pkl')
+@add_options(dbt_related_options)
+def run(output, **kwargs):
+    archive_artifacts(output)
+    pass
 
 
 if __name__ == "__main__":

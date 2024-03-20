@@ -16,7 +16,7 @@ import * as amplitude from "@amplitude/analytics-browser";
 import { QueryClientProvider } from "@tanstack/react-query";
 import RecceContextProvider from "@/lib/hooks/RecceContextProvider";
 import { reactQueryClient } from "@/lib/api/axiosClient";
-import { useVersionNumber } from "@/lib/api/version";
+import { useRecceContextInfo, useVersionNumber } from "@/lib/api/version";
 import { CheckPage } from "@/components/check/CheckPage";
 import { QueryPage } from "@/components/query/QueryPage";
 import { Redirect, Route, Router, Switch, useLocation, useRoute } from "wouter";
@@ -81,23 +81,29 @@ function TopBar() {
     </Flex>
   );
 }
+interface TabProps {
+  name: string;
+  href: string;
+}
 
 function NavBar() {
   const [location, setLocation] = useLocation();
   const version = useVersionNumber();
+  const recceContextInfo = useRecceContextInfo();
+  const isTabDisabled = recceContextInfo?.adapterType === "recce_run";
 
-  const tabs = [
-    ["Lineage", "/lineage"],
-    ["Query", "/query"],
-    ["Checklist", "/checks"],
+  const tabs: TabProps[] = [
+    { name: "Lineage", href: "/lineage" },
+    { name: "Query", href: "/query" },
+    { name: "Checks", href: "/checks" },
   ];
 
-  const tabIndex = _.findIndex(tabs, ([, href]) => location.startsWith(href));
+  const tabIndex = _.findIndex(tabs, ({ href }) => location.startsWith(href));
 
   return (
     <Tabs index={tabIndex}>
       <TabList>
-        {tabs.map(([name, href]) => {
+        {tabs.map(({ name, href }) => {
           return (
             <Tab
               key={name}

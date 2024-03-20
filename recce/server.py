@@ -126,6 +126,14 @@ async def version():
         raise HTTPException(status_code=400, detail=str(e))
 
 
+@app.get("/api/context_info")
+async def context_info():
+    try:
+        return default_dbt_context().info()
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+
 @app.websocket("/api/ws")
 async def websocket_endpoint(websocket: WebSocket):
     await websocket.accept()
