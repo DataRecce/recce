@@ -1,8 +1,9 @@
 import { mergeKeysWithStatus } from "@/lib/mergeKeys";
-import { NodeData } from "../lineage/lineage";
-import { Column, ColumnOrColumnGroup, RenderCellProps } from "react-data-grid";
+
+import { ColumnOrColumnGroup } from "react-data-grid";
 
 import "./style.css";
+import { NodeData } from "@/lib/api/lineage";
 
 interface SchemaDiffRow {
   name: string;

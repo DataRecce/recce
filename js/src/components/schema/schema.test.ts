@@ -1,4 +1,4 @@
-import { NodeData } from "../lineage/lineage";
+import { NodeData } from "@/lib/api/lineage";
 import { mergeColumns } from "./schema";
 
 function _schema(columns: { [key: string]: string }): NodeData["columns"] {

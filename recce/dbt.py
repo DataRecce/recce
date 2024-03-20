@@ -19,8 +19,6 @@ from dbt.parser.sql import SqlBlockParser
 from watchdog.events import FileSystemEventHandler
 from watchdog.observers import Observer
 
-from recce.util.cache import LRUCache
-
 logger = logging.getLogger('uvicorn')
 
 
@@ -266,6 +264,7 @@ class DBTContext:
 
         manifest = self.curr_manifest if base is False else self.base_manifest
         catalog = self.curr_catalog if base is False else self.base_catalog
+        manifest_metadata = manifest.metadata if manifest is not None else None
         catalog_metadata = catalog.metadata if catalog is not None else None
 
         manifest_dict = manifest.to_dict()
@@ -368,7 +367,13 @@ class DBTContext:
             pr_url=os.environ.get('RECCE_PR_URL')
         )
 
-        return dict(parent_map=parent_map, nodes=nodes, catalog_metadata=catalog_metadata, metadata=metadata)
+        return dict(
+            metadata=metadata,
+            parent_map=parent_map,
+            nodes=nodes,
+            manifest_metadata=manifest_metadata,
+            catalog_metadata=catalog_metadata,
+        )
 
     def get_manifests_by_id(self, unique_id: str):
         curr_manifest = self.get_manifest(base=False)

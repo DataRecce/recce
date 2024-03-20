@@ -1,12 +1,64 @@
 import { axiosClient } from "./axiosClient";
 import { AxiosError } from "axios";
 
-interface LineageOutput {
-  error?: string;
-  data?: any;
+/**
+ * The data from the API
+ */
+export interface NodeColumnData {
+  name: string;
+  type: string;
+}
+export interface NodeData {
+  unique_id: string;
+  name: string;
+  checksum?: {
+    name: string;
+    checksum: string;
+  };
+  raw_code?: string;
+  resource_type?: string;
+  package_name?: string;
+  columns?: { [key: string]: NodeColumnData };
+  primary_key?: string;
 }
 
-export async function getLineage(base: boolean = false) {
+// https://docs.getdbt.com/reference/artifacts/dbt-artifacts#common-metadata
+interface ArtifactMetadata {
+  dbt_version: string;
+  dbt_schema_version: string;
+  generated_at: string;
+  adapter_type: string;
+  env: Record<string, any>;
+  invocation_id: string;
+}
+export interface ManifestMetadata extends ArtifactMetadata {
+  project_id?: string;
+  project_name?: string;
+  user_id?: string;
+}
+
+export interface CatalogMetadata extends ArtifactMetadata {}
+
+export interface LineageData {
+  metadata: {
+    pr_url: string;
+  };
+  nodes: {
+    [key: string]: NodeData;
+  };
+  parent_map: {
+    [key: string]: string[];
+  };
+  manifest_metadata?: ManifestMetadata | null;
+  catalog_metadata?: CatalogMetadata | null;
+}
+
+interface LineageOutput {
+  error?: string;
+  data?: LineageData;
+}
+
+export async function getLineage(base: boolean = false): Promise<LineageData> {
   const response = await axiosClient.get(`/api/lineage?base=${base}`);
   return response.data;
 }
@@ -32,8 +84,8 @@ export async function getLineageWithError(
 }
 
 export interface LineageDiffResult {
-  base?: any;
-  current?: any;
+  base?: LineageData;
+  current?: LineageData;
   base_error?: string;
   current_error?: string;
 }
