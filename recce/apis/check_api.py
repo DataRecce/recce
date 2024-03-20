@@ -57,7 +57,7 @@ def _get_ref_model(sql_template: str) -> Optional[str]:
     return None
 
 
-def _generate_default_name(check_type, params):
+def _generate_default_name(check_type, params, view_options):
     now = datetime.utcnow().strftime("%d %b %Y")
     if check_type == RunType.QUERY:
         ref = _get_ref_model(params.get('sql_template'))
@@ -85,7 +85,7 @@ def _generate_default_name(check_type, params):
             return f"row count of {node}".capitalize()
         return f"{'row count'.capitalize()} - {now}"
     elif check_type == RunType.LINEAGE_DIFF:
-        nodes = params.get('node_ids')
+        nodes = view_options.get('node_ids') if view_options else params.get('node_ids')
         return f"lineage diff of {len(nodes)} nodes".capitalize()
     elif check_type == RunType.TOP_K_DIFF:
         model = params.get('model')
@@ -121,7 +121,7 @@ async def create_check(check_in: CreateCheckIn):
 
     _validate_check(type, params)
 
-    name = check_in.name if check_in.name is not None else _generate_default_name(type, params)
+    name = check_in.name if check_in.name is not None else _generate_default_name(type, params, check_in.view_options)
     check = Check(name=name,
                   description=check_in.description,
                   type=type,

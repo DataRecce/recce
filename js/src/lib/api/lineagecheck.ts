@@ -13,7 +13,7 @@ export async function createLineageDiffCheck(
   const response = await axiosClient.post("/api/checks", {
     type: "lineage_diff",
     params: {},
-    viewOptions: viewOptions,
+    view_options: viewOptions,
   });
   const check = response.data;
 
