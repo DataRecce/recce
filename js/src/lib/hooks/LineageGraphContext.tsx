@@ -98,7 +98,7 @@ export function LineageGraphContextProvider({ children }: LineageGraphProps) {
   });
 
   const lineageGraph = useMemo(() => {
-    if (!data) {
+    if (!data || !data.base || !data.current) {
       return undefined;
     }
 
@@ -114,8 +114,8 @@ export function LineageGraphContextProvider({ children }: LineageGraphProps) {
       <LineageGraphContext.Provider
         value={{
           lineageGraph,
-          metadata: data?.current.metadata,
-          isDemoSite: !!data?.current.metadata.pr_url,
+          metadata: data?.current?.metadata,
+          isDemoSite: !!data?.current?.metadata.pr_url,
           error: errorMessage,
           isLoading,
           runsAggregated,

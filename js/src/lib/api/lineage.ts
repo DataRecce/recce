@@ -40,23 +40,25 @@ export interface ManifestMetadata extends ArtifactMetadata {
 export interface CatalogMetadata extends ArtifactMetadata {}
 
 export interface LineageData {
+  metadata: {
+    pr_url: string;
+  };
   nodes: {
     [key: string]: NodeData;
   };
   parent_map: {
     [key: string]: string[];
   };
-
   manifest_metadata?: ManifestMetadata | null;
   catalog_metadata?: CatalogMetadata | null;
 }
 
 interface LineageOutput {
   error?: string;
-  data?: any;
+  data?: LineageData;
 }
 
-export async function getLineage(base: boolean = false) {
+export async function getLineage(base: boolean = false): Promise<LineageData> {
   const response = await axiosClient.get(`/api/lineage?base=${base}`);
   return response.data;
 }
@@ -82,8 +84,8 @@ export async function getLineageWithError(
 }
 
 export interface LineageDiffResult {
-  base?: any;
-  current?: any;
+  base?: LineageData;
+  current?: LineageData;
   base_error?: string;
   current_error?: string;
 }

@@ -75,13 +75,6 @@ export interface LineageGraph {
     base?: CatalogMetadata;
     current?: CatalogMetadata;
   };
-
-  catalogExistence: CatalogExistence;
-}
-
-export interface CatalogExistence {
-  base: boolean;
-  current: boolean;
 }
 
 export function buildLineageGraph(
@@ -203,6 +196,14 @@ export function buildLineageGraph(
     nodes,
     edges,
     modifiedSet,
+    manifestMetadata: {
+      base: base.manifest_metadata || undefined,
+      current: current.manifest_metadata || undefined,
+    },
+    catalogMetadata: {
+      base: base.catalog_metadata || undefined,
+      current: current.catalog_metadata || undefined,
+    },
     catalogExistence: {
       base: !!base?.catalog_metadata,
       current: !!current?.catalog_metadata,
@@ -263,8 +264,13 @@ export function selectViewOptions(
     lineageNodes = lineageNodes.filter((node) => nodeIds.has(node.id));
   }
 
-  if (viewOptions.packages !== undefined) {
-    const packages = viewOptions.packages;
+  const packages =
+    viewOptions.packages !== undefined
+      ? viewOptions.packages
+      : lineageGraph.manifestMetadata.current?.project_name
+      ? [lineageGraph.manifestMetadata.current.project_name]
+      : undefined;
+  if (packages !== undefined) {
     lineageNodes = lineageNodes.filter((node) => {
       if (!node.packageName) {
         return false;

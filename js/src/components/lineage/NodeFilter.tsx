@@ -90,18 +90,23 @@ const PackageSelectMenu = ({
     }
   }
 
+  const projectName = lineageGraph?.manifestMetadata?.current?.project_name;
+
   const selected = viewOptions.packages
     ? new Set(viewOptions.packages)
+    : projectName
+    ? new Set([projectName])
     : available;
   const isSelectAll = selected.size === available.size;
   const isSelectNone = selected.size === 0;
-  const label = isSelectAll
-    ? "All Packages"
-    : isSelectNone
-    ? "No Package"
-    : selected.size === 1
-    ? Array.from(selected)[0]
-    : `${selected.size} Packages`;
+  const label =
+    selected.size === 1
+      ? Array.from(selected)[0]
+      : isSelectAll
+      ? "All Packages"
+      : isSelectNone
+      ? "No Package"
+      : `${selected.size} Packages`;
 
   const handleSelectAll = () => {
     if (isSelectAll) {
