@@ -79,12 +79,14 @@ export function AddLineageDiffCheckButton({
   viewMode,
   nodes,
   onFinish,
+  isDisabled,
   withIcon,
 }: {
   viewMode: string;
   nodes: LineageGraphNode[];
   onFinish: () => void;
   withIcon?: boolean;
+  isDisabled?: boolean;
 }) {
   const [, setLocation] = useLocation();
   return (
@@ -92,7 +94,7 @@ export function AddLineageDiffCheckButton({
       size="xs"
       variant="outline"
       backgroundColor="white"
-      isDisabled={nodes.length === 0}
+      isDisabled={nodes.length === 0 || isDisabled}
       onClick={async () => {
         const nodeIds = nodes.map((node) => node.id);
         const check = await createLineageDiffCheck({

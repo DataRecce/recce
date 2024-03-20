@@ -1,10 +1,7 @@
 import { PUBLIC_API_URL } from "../../lib/const";
 import {
-  LineageGraph,
   LineageGraphNode,
   cleanUpNodes,
-  filterNodes,
-  hideNodes,
   highlightNodes,
   layout,
   selectDownstream,
@@ -12,14 +9,12 @@ import {
   selectNodes,
   selectSingleNode,
   selectUpstream,
-  selectViewOptions,
   toReactflow,
 } from "./lineage";
 import {
   Box,
   Flex,
   Icon,
-  Tooltip,
   Text,
   Spinner,
   HStack,
@@ -31,15 +26,9 @@ import {
   Center,
   SlideFade,
 } from "@chakra-ui/react";
-import React, {
-  useCallback,
-  useEffect,
-  useLayoutEffect,
-  useState,
-} from "react";
+import React, { useCallback, useLayoutEffect, useState } from "react";
 import ReactFlow, {
   Node,
-  Edge,
   useEdgesState,
   useNodesState,
   Controls,
@@ -149,14 +138,17 @@ function _LineageView({ ...props }: LineageViewProps) {
   const [viewOptions, setViewOptions] = useState<LineageDiffViewOptions>(
     props.viewOptions || {}
   );
-  const viewMode = viewOptions.view_mode || props.viewMode || "changed_models";
-  const setViewMode = (mode: "changed_models" | "all") => {
-    setViewOptions({ ...viewOptions, view_mode: mode });
-  };
 
   const { lineageGraph, isLoading, error, refetchRunsAggregated } =
     useLineageGraphContext();
-  const modifiedSet = lineageGraph?.modifiedSet;
+
+  /**
+   * View mode
+   * - all: show all nodes
+   * - changed_models: show only changed models
+   */
+  const viewMode: "all" | "changed_models" =
+    viewOptions.view_mode || props.viewMode || "changed_models";
 
   /**
    * Select mode: the behavior of clicking on nodes
@@ -367,10 +359,7 @@ function _LineageView({ ...props }: LineageViewProps) {
     return <>Fail to load lineage data: {error}</>;
   }
 
-  if (
-    viewMode === "changed_models" &&
-    (modifiedSet === undefined || modifiedSet?.length === 0)
-  ) {
+  if (viewMode === "changed_models" && !lineageGraph?.modifiedSet?.length) {
     return (
       <Center h="100%">
         <VStack>
@@ -378,7 +367,7 @@ function _LineageView({ ...props }: LineageViewProps) {
           <Button
             colorScheme="blue"
             onClick={() => {
-              setViewMode("all");
+              setViewOptions({ ...viewOptions, view_mode: "all" });
             }}
           >
             Show all nodes
@@ -458,7 +447,7 @@ function _LineageView({ ...props }: LineageViewProps) {
                         setControlMode("selector");
                       }}
                     >
-                      Select Models
+                      Select models
                     </Button>
                     <Button
                       size="xs"
@@ -469,10 +458,11 @@ function _LineageView({ ...props }: LineageViewProps) {
                         setControlMode("filter");
                       }}
                     >
-                      Filter
+                      Filter nodes
                     </Button>
 
                     <AddLineageDiffCheckButton
+                      isDisabled={controlMode !== "normal"}
                       viewMode={viewMode}
                       nodes={nodes.map((node) => node.data)}
                       onFinish={() => setSelectMode("detail")}

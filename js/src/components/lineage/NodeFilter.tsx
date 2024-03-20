@@ -15,6 +15,7 @@ import {
   MenuList,
   MenuDivider,
   StackDivider,
+  MenuGroup,
 } from "@chakra-ui/react";
 import _ from "lodash";
 
@@ -44,7 +45,7 @@ const ViewModeSelectMenu = ({
     <Menu>
       <MenuButton
         as={Button}
-        w="150px"
+        minWidth="150px"
         leftIcon={<Icon as={FiAlignLeft} />}
         size="xs"
         variant="outline"
@@ -94,6 +95,13 @@ const PackageSelectMenu = ({
     : available;
   const isSelectAll = selected.size === available.size;
   const isSelectNone = selected.size === 0;
+  const label = isSelectAll
+    ? "All Package"
+    : isSelectNone
+    ? "No Package"
+    : selected.size === 1
+    ? Array.from(selected)[0]
+    : `${selected.size} Packages`;
 
   const handleSelectAll = () => {
     if (isSelectAll) {
@@ -126,43 +134,46 @@ const PackageSelectMenu = ({
     <Menu closeOnSelect={false}>
       <MenuButton
         as={Button}
+        minWidth="150px"
         leftIcon={<Icon as={FiAlignLeft} />}
         size="xs"
         variant="outline"
       >
-        Packages
+        {label}
       </MenuButton>
 
       <MenuList title="packages">
-        <MenuItem
-          as={Checkbox}
-          size="sm"
-          isIndeterminate={!isSelectAll && !isSelectNone}
-          isChecked={isSelectAll}
-          onChange={handleSelectAll}
-        >
-          Select All
-        </MenuItem>
-        <MenuDivider />
+        <MenuGroup title="Select Packages">
+          <MenuItem
+            as={Checkbox}
+            size="sm"
+            isIndeterminate={!isSelectAll && !isSelectNone}
+            isChecked={isSelectAll}
+            onChange={handleSelectAll}
+          >
+            Select All
+          </MenuItem>
+          <MenuDivider />
 
-        {Array.from(available).map((pkg) => {
-          const thePkg = pkg;
+          {Array.from(available).map((pkg) => {
+            const thePkg = pkg;
 
-          return (
-            <MenuItem
-              key={pkg}
-              as={Checkbox}
-              size="sm"
-              isChecked={selected.has(pkg)}
-              onChange={() => {
-                console.log("selected");
-                handleSelect(thePkg);
-              }}
-            >
-              {pkg}
-            </MenuItem>
-          );
-        })}
+            return (
+              <MenuItem
+                key={pkg}
+                as={Checkbox}
+                size="sm"
+                isChecked={selected.has(pkg)}
+                onChange={() => {
+                  console.log("selected");
+                  handleSelect(thePkg);
+                }}
+              >
+                {pkg}
+              </MenuItem>
+            );
+          })}
+        </MenuGroup>
       </MenuList>
     </Menu>
   );
