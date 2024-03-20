@@ -96,7 +96,7 @@ const PackageSelectMenu = ({
   const isSelectAll = selected.size === available.size;
   const isSelectNone = selected.size === 0;
   const label = isSelectAll
-    ? "All Package"
+    ? "All Packages"
     : isSelectNone
     ? "No Package"
     : selected.size === 1
