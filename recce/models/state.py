@@ -7,7 +7,7 @@ from typing import List, Optional
 
 from pydantic import BaseModel, Field
 
-from .types import Run, Check
+from .types import Run, Check, Lineage
 from .util import pydantic_model_json_dump
 from .. import get_version
 
@@ -24,8 +24,9 @@ class RecceState(BaseModel):
     metadata: Optional[RecceStateMetadata] = None
     runs: List[Run] = []
     checks: List[Check] = []
+    lineage: Optional[Lineage] = None
 
-    def store(self, file_path):
+    def store(self, file_path, file_type='json'):
         self.metadata = RecceStateMetadata()
         start_time = time.time()
         logger.info(f"Store recce state to '{file_path}'")
@@ -73,6 +74,7 @@ def load_default_state(file_path=None):
             recce_state = RecceState()
     else:
         recce_state = RecceState()
+    return recce_state
 
 
 def default_recce_state():

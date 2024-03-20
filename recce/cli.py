@@ -1,10 +1,12 @@
+import asyncio
 from typing import List
 
 import click
 
 from recce import event
+from recce.models.state import load_default_state
 from recce.run import archive_artifacts
-from .dbt import DBTContext
+from .dbt import DBTContext, DBTContextSource
 from .event.track import TrackCommand
 
 event.init()
@@ -137,7 +139,11 @@ def server(host, port, state_file=None, **kwargs):
     from .server import app, AppState
     from .dbt import load_dbt_context
 
-    load_dbt_context(**kwargs)
+    recce_state = load_default_state(state_file)
+    if recce_state.lineage is not None:
+        load_dbt_context(**kwargs, state_file=state_file, context_source=DBTContextSource.RECCE_STATE_FILE)
+    else:
+        load_dbt_context(**kwargs)
 
     state = AppState(state_file=state_file)
     app.state = state
@@ -146,10 +152,13 @@ def server(host, port, state_file=None, **kwargs):
 
 
 @cli.command(cls=TrackCommand)
-@click.option('-o', '--output', help='Output file path', type=click.Path(), default='recce.pkl')
+@click.option('-o', '--output', help='Path of the state file', type=click.Path(), default='recce_state.json')
 @add_options(dbt_related_options)
 def run(output, **kwargs):
-    archive_artifacts(output)
+    from .server import AppState
+    state = AppState(state_file=output)
+    load_default_state(state.state_file)
+    asyncio.run(archive_artifacts(state.state_file))
     pass
 
 

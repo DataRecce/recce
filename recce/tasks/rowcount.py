@@ -1,12 +1,13 @@
-from typing import TypedDict
+from typing import TypedDict, Optional
 
 from recce.dbt import default_dbt_context
 from recce.tasks import Task
 from recce.tasks.query import QueryMixin
 
 
-class RowCountDiffParams(TypedDict):
-    node_names: list[str]
+class RowCountDiffParams(TypedDict, total=False):
+    node_names: Optional[list[str]]
+    node_ids: Optional[list[str]]
 
 
 class RowCountDiffTask(Task, QueryMixin):
@@ -23,8 +24,9 @@ class RowCountDiffTask(Task, QueryMixin):
         adapter: SQLAdapter = dbt_context.adapter
 
         query_candidates = []
-        nodes = self.params.get('node_names')
-        for node in nodes:
+        for node_id in self.params.get('node_ids', []):
+            query_candidates.append(dbt_context.get_node_name_by_id(node_id))
+        for node in self.params.get('node_names', []):
             query_candidates.append(node)
 
         # Query row count for nodes that are not cached

@@ -47,3 +47,8 @@ class Check(BaseModel):
     view_options: Optional[dict] = None
     check_id: UUID4 = Field(default_factory=uuid.uuid4)
     is_checked: bool = False
+
+
+class Lineage(BaseModel):
+    base: dict
+    current: dict
