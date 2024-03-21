@@ -25,7 +25,9 @@ class RowCountDiffTask(Task, QueryMixin):
 
         query_candidates = []
         for node_id in self.params.get('node_ids', []):
-            query_candidates.append(dbt_context.get_node_name_by_id(node_id))
+            name = dbt_context.get_node_name_by_id(node_id)
+            if name:
+                query_candidates.append(name)
         for node in self.params.get('node_names', []):
             query_candidates.append(node)
 
