@@ -286,11 +286,37 @@ export function toReactflow(
   const nodes: Node[] = [];
   const edges: Edge[] = [];
 
+  function getWeight(from: string) {
+    if (from === "base") {
+      return 0;
+    } else if (from === "current") {
+      return 2;
+    } else {
+      return 1;
+    }
+  }
+
+  function compareFn(
+    a: LineageGraphNode | LineageGraphEdge,
+    b: LineageGraphNode | LineageGraphEdge
+  ) {
+    const weightA = getWeight(a.from);
+    const weightB = getWeight(b.from);
+
+    if (weightA < weightB) {
+      return -1;
+    } else if (weightA > weightB) {
+      return 1;
+    }
+    return 0;
+  }
+
   const filterSet = viewOptions
     ? selectViewOptions(lineageGraph, viewOptions)
     : undefined;
 
-  for (const [, node] of Object.entries(lineageGraph.nodes)) {
+  const sortedNodes = Object.values(lineageGraph.nodes).sort(compareFn);
+  for (const node of sortedNodes) {
     if (filterSet && !filterSet.has(node.id)) {
       continue;
     }
@@ -305,7 +331,8 @@ export function toReactflow(
     });
   }
 
-  for (const edge of Object.values(lineageGraph.edges)) {
+  const sortedEdges = Object.values(lineageGraph.edges).sort(compareFn);
+  for (const edge of sortedEdges) {
     if (
       filterSet &&
       (!filterSet.has(edge.parent.id) || !filterSet.has(edge.child.id))
