@@ -139,8 +139,13 @@ function _LineageView({ ...props }: LineageViewProps) {
     props.viewOptions || {}
   );
 
-  const { lineageGraph, isLoading, error, refetchRunsAggregated } =
-    useLineageGraphContext();
+  const {
+    lineageGraph,
+    retchLineageGraph,
+    isLoading,
+    error,
+    refetchRunsAggregated,
+  } = useLineageGraphContext();
 
   /**
    * View mode
@@ -356,7 +361,25 @@ function _LineageView({ ...props }: LineageViewProps) {
   };
 
   if (error) {
-    return <>Fail to load lineage data: {error}</>;
+    return (
+      <Center h="100%">
+        <VStack>
+          <Box>
+            Failed to load lineage data. This could be because the server has
+            been terminated or there is a network error.
+          </Box>
+          <Box>[Reason: {error}]</Box>
+          <Button
+            colorScheme="blue"
+            onClick={() => {
+              retchLineageGraph && retchLineageGraph();
+            }}
+          >
+            Retry
+          </Button>
+        </VStack>
+      </Center>
+    );
   }
 
   if (viewMode === "changed_models" && !lineageGraph?.modifiedSet?.length) {

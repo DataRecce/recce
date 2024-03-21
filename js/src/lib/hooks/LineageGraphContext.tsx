@@ -24,6 +24,7 @@ export interface LineageGraphContextType {
   isDemoSite?: boolean;
   isLoading?: boolean;
   error?: string;
+  retchLineageGraph?: () => void;
 
   runsAggregated?: RunsAggregated;
   refetchRunsAggregated?: () => void;
@@ -114,6 +115,9 @@ export function LineageGraphContextProvider({ children }: LineageGraphProps) {
       <LineageGraphContext.Provider
         value={{
           lineageGraph,
+          retchLineageGraph: () => {
+            refetch();
+          },
           metadata: data?.current?.metadata,
           isDemoSite: !!data?.current?.metadata.pr_url,
           error: errorMessage,
