@@ -131,6 +131,9 @@ class ValueDiffTask(Task, ValueDiffMixin):
         column_groups = {}
         composite = True if isinstance(primary_key, List) else False
 
+        if composite and columns is not None and len(columns) > 0:
+            columns = primary_key + columns
+
         if columns is None or len(columns) == 0:
             base_columns = [column.column for column in dbt_context.get_columns(model, base=True)]
             curr_columns = [column.column for column in dbt_context.get_columns(model, base=False)]
