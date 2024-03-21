@@ -1,4 +1,4 @@
-from typing import TypedDict, Optional, List
+from typing import TypedDict, Optional, List, Union
 
 import agate
 from dbt.adapters.sql import SQLAdapter
@@ -11,7 +11,7 @@ from ..exceptions import RecceException
 
 
 class ValueDiffParams(TypedDict):
-    primary_key: str
+    primary_key: Union[str, List[str]]
     model: str
     exclude_columns: Optional[List[str]]
 
@@ -35,11 +35,27 @@ class ValueDiffMixin:
             raise RecceException(
                 r"Package 'audit_helper' not found. Please refer to the link to install: https://hub.getdbt.com/dbt-labs/audit_helper/")
 
-    def _verify_primary_key(self, dbt_context: DBTContext, primary_key: str, model: str):
+    def _verify_primary_key(self, dbt_context: DBTContext, primary_key: Union[str, List[str]], model: str):
         self.update_progress(message=f"Verify primary key: {primary_key}")
+        composite = True if isinstance(primary_key, List) else False
 
-        if primary_key is None or len(primary_key) == 0:
-            raise RecceException("Primary key cannot be empty")
+        if composite:
+            if len(primary_key) == 0:
+                raise RecceException("Primary key cannot be empty")
+        else:
+            if primary_key is None or len(primary_key) == 0:
+                raise RecceException("Primary key cannot be empty")
+
+        def _get_sql_template(is_composite: bool = False):
+            if composite:
+                return r"""
+                    select {{ dbt_utils.generate_surrogate_key(column_name) }} as unique_field, count(*) as n_records from {{ relation }}
+                    where {{ dbt_utils.generate_surrogate_key(column_name) }} is not null
+                    group by {{ dbt_utils.generate_surrogate_key(column_name) }}
+                    having count(*) > 1
+                """
+
+            return r"""{{ adapter.dispatch('test_unique', 'dbt')(relation, column_name) }}"""
 
         # check primary keys
         for base in [True, False]:
@@ -50,8 +66,8 @@ class ValueDiffMixin:
                 column_name=primary_key,
             )
 
-            query = r"""{{ adapter.dispatch('test_unique', 'dbt')(relation, column_name) }}"""
-            sql = dbt_context.generate_sql(query, base=False, context=context)
+            sql_template = _get_sql_template(is_composite=composite)
+            sql = dbt_context.generate_sql(sql_template, base=base, context=context)
             sql_test = f"""SELECT COUNT(*) AS INVALIDS FROM ({sql}) AS T"""
 
             response, table = dbt_context.adapter.execute(sql_test, fetch=True)
@@ -73,8 +89,46 @@ class ValueDiffTask(Task, ValueDiffMixin):
         self.params = params
         self.connection = None
 
-    def _query_value_diff(self, dbt_context: DBTContext, primary_key: str, model: str, columns: List[str] = None):
+    @staticmethod
+    def _get_sql_template(is_composite: bool = False):
+        if is_composite:
+            return r"""
+        {% set a_query %}
+            select {{ dbt_utils.generate_surrogate_key(composite_key) }} as {{ primary_key }}, * from {{ base_relation }}
+        {% endset %}
+
+        {% set b_query %}
+            select {{ dbt_utils.generate_surrogate_key(composite_key) }} as {{ primary_key }}, * from {{ curr_relation }}
+        {% endset %}
+
+        {{ audit_helper.compare_column_values(
+            a_query=a_query,
+            b_query=b_query,
+            primary_key=primary_key,
+            column_to_compare=column_to_compare
+        ) }}
+        """
+
+        return r"""
+        {% set a_query %}
+            select * from {{ base_relation }}
+        {% endset %}
+
+        {% set b_query %}
+            select * from {{ curr_relation }}
+        {% endset %}
+
+        {{ audit_helper.compare_column_values(
+            a_query=a_query,
+            b_query=b_query,
+            primary_key=primary_key,
+            column_to_compare=column_to_compare
+        ) }}
+        """
+
+    def _query_value_diff(self, dbt_context: DBTContext, primary_key: Union[str, List[str]], model: str, columns: List[str] = None):
         column_groups = {}
+        composite = True if isinstance(primary_key, List) else False
 
         if columns is None or len(columns) == 0:
             base_columns = [column.column for column in dbt_context.get_columns(model, base=True)]
@@ -82,31 +136,24 @@ class ValueDiffTask(Task, ValueDiffMixin):
             columns = [column for column in base_columns if column in curr_columns]
         completed = 0
 
+        composite_key = None
+        if composite:
+            composite_key = primary_key.copy()
+            primary_key = "_".join(primary_key)
+
+        sql_template = self._get_sql_template(is_composite=composite)
+
         if primary_key not in columns:
             columns.insert(0, primary_key)
 
         for column in columns:
             self.update_progress(message=f"Diff column: {column}", percentage=completed / len(columns))
-            sql_template = r"""
-            {% set a_query %}
-                select * from {{ base_relation }}
-            {% endset %}
 
-            {% set b_query %}
-                select * from {{ curr_relation }}
-            {% endset %}
-
-            {{ audit_helper.compare_column_values(
-                a_query=a_query,
-                b_query=b_query,
-                primary_key=primary_key,
-                column_to_compare=column_to_compare
-            ) }}
-            """
             sql = dbt_context.generate_sql(sql_template, context=dict(
                 base_relation=dbt_context.create_relation(model, base=True),
                 curr_relation=dbt_context.create_relation(model, base=False),
                 primary_key=primary_key,
+                composite_key=composite_key,
                 column_to_compare=column,
             ))
 
@@ -188,7 +235,7 @@ class ValueDiffTask(Task, ValueDiffMixin):
         with adapter.connection_named("value diff"):
             self.connection = adapter.connections.get_thread_connection()
 
-            primary_key: str = self.params['primary_key']
+            primary_key: str | List[str] = self.params['primary_key']
             model: str = self.params['model']
             columns: List[str] = self.params.get('columns')
 
