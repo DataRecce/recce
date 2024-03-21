@@ -33,7 +33,7 @@ export const ScreenshotBox = ({
 
   return (
     <>
-      <Box ref={ref} {...restProps} overflow="auto">
+      <Box ref={ref} {...restProps} overflowY="auto" overflowX="hidden">
         <Box
           backgroundColor={backgroundColor}
           height="100%"
