@@ -67,7 +67,7 @@ class ValueDiffMixin:
             )
 
             sql_template = _get_sql_template(is_composite=composite)
-            sql = dbt_context.generate_sql(sql_template, base=base, context=context)
+            sql = dbt_context.generate_sql(sql_template, context=context)
             sql_test = f"""SELECT COUNT(*) AS INVALIDS FROM ({sql}) AS T"""
 
             response, table = dbt_context.adapter.execute(sql_test, fetch=True)
@@ -126,7 +126,8 @@ class ValueDiffTask(Task, ValueDiffMixin):
         ) }}
         """
 
-    def _query_value_diff(self, dbt_context: DBTContext, primary_key: Union[str, List[str]], model: str, columns: List[str] = None):
+    def _query_value_diff(self, dbt_context: DBTContext, primary_key: Union[str, List[str]], model: str,
+                          columns: List[str] = None):
         column_groups = {}
         composite = True if isinstance(primary_key, List) else False
 
@@ -235,7 +236,7 @@ class ValueDiffTask(Task, ValueDiffMixin):
         with adapter.connection_named("value diff"):
             self.connection = adapter.connections.get_thread_connection()
 
-            primary_key: str | List[str] = self.params['primary_key']
+            primary_key: Union[str, List[str]] = self.params['primary_key']
             model: str = self.params['model']
             columns: List[str] = self.params.get('columns')
 
