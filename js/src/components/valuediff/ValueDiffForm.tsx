@@ -98,6 +98,9 @@ export function ValueDiffForm({
 
   const columnNames = node ? extractColumnNames(node) : [];
 
+  // primaryKey can be array or string, map to array
+  const primaryKeys = Array.isArray(primaryKey) ? primaryKey : [primaryKey];
+
   return (
     <VStack gap={5} m="8px 24px" paddingBottom="200px">
       <FormControl>
@@ -108,16 +111,20 @@ export function ValueDiffForm({
         <FormLabel>Primary key</FormLabel>
         <Select
           placeholder="Select primary key"
-          value={
-            primaryKey ? { label: primaryKey, value: primaryKey } : undefined
-          }
+          isMulti
+          closeMenuOnSelect={false}
           options={(columnNames || []).map((c) => ({ label: c, value: c }))}
-          onChange={(option) => {
-            setAllColumns(true);
+          value={(primaryKeys || []).map((c) => ({
+            label: c,
+            value: c,
+          }))}
+          onChange={(options) => {
             onParamsChanged({
               ...params,
-              primary_key: option?.value || "",
-              columns: undefined,
+              primary_key:
+                options.length == 1
+                  ? options[0].value
+                  : options.map((v) => v.value),
             });
           }}
         ></Select>

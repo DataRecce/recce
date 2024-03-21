@@ -116,6 +116,9 @@ export function ValueDiffResultView({ run }: ValueDiffResultViewProp) {
       : "";
   };
   const containerRef = useRef<any>();
+  const primaryKeys = Array.isArray(params.primary_key)
+    ? params.primary_key
+    : [params.primary_key];
 
   const columns: ColumnOrColumnGroup<any, any>[] = [
     {
@@ -125,7 +128,7 @@ export function ValueDiffResultView({ run }: ValueDiffResultViewProp) {
       renderCell: ({ row }) => {
         return (
           <Center height="100%">
-            {row[0] === params.primary_key && <Icon as={VscKey}></Icon>}
+            {primaryKeys.includes(row[0]) && <Icon as={VscKey}></Icon>}
           </Center>
         );
       },

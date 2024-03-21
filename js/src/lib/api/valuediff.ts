@@ -12,7 +12,7 @@ export type ValueDiffResult = {
 
 export interface ValueDiffParams {
   model: string;
-  primary_key: string;
+  primary_key: string | string[];
   columns?: string[];
 }
 
