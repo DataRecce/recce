@@ -1,5 +1,5 @@
 .node-unhighlight {
-  filter: opacity(0.2) grayscale(50%)
+  filter: opacity(0.2) grayscale(50%);
 }
 
 .node-highlight {

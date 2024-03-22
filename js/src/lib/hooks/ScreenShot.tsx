@@ -14,6 +14,7 @@ import {
   useDisclosure,
 } from "@chakra-ui/react";
 import html2canvas from "html2canvas";
+import { toCanvas } from "html-to-image";
 import { RefObject, useEffect, useRef, useState } from "react";
 import { useClipBoardToast } from "./useClipBoardToast";
 import { format } from "date-fns";
@@ -25,6 +26,7 @@ export const highlightBoxShadow =
   "rgba(0, 0, 0, 0.25) 0px 54px 55px, rgba(0, 0, 0, 0.12) 0px -12px 30px, rgba(0, 0, 0, 0.12) 0px 4px 6px, rgba(0, 0, 0, 0.17) 0px 12px 13px, rgba(0, 0, 0, 0.09) 0px -3px 5px";
 
 export interface HookOptions {
+  renderLibrary?: "html2canvas" | "html-to-image";
   imageType?: "png" | "jpeg";
   backgroundColor?: string | null;
   boardEffect?: boolean;
@@ -47,6 +49,7 @@ export interface BlobHookReturn {
 }
 
 export function useToBlob({
+  renderLibrary = "html2canvas",
   imageType = "png",
   backgroundColor = null,
   boardEffect = true,
@@ -97,13 +100,22 @@ export function useToBlob({
       style.sheet?.insertRule(
         "body > div:last-child img { display: inline-block; }"
       );
+      const filter = ignoreElements
+        ? (n: HTMLElement) => !ignoreElements(n)
+        : undefined;
 
       setStatus("loading");
-      const canvas = await html2canvas(nodeToUse, {
-        logging: false,
-        backgroundColor: null,
-        ignoreElements: ignoreElements,
-      });
+      const canvas =
+        renderLibrary === "html2canvas"
+          ? await html2canvas(nodeToUse, {
+              logging: false,
+              backgroundColor: null,
+              ignoreElements: ignoreElements,
+            })
+          : await toCanvas(nodeToUse, {
+              filter: filter,
+            }); // Use html-to-image for copy reactflow graph
+
       style.remove();
       const outputCanvas = shadowEffect
         ? document.createElement("canvas")
