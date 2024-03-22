@@ -88,7 +88,7 @@ export function useToBlob({
     }
 
     try {
-      nodeToUse.style.overflow = "visible";
+      nodeToUse.style.overflow = "hidden";
       nodeToUse.style.border = boardEffect ? borderStyle : "";
       nodeToUse.style.borderRadius = boardEffect ? borderRadius : "";
       nodeToUse.style.backgroundColor = backgroundColor || "";
