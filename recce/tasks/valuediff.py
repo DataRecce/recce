@@ -275,13 +275,20 @@ class ValueDiffDetailTask(Task, ValueDiffMixin):
         self.params = params
         self.connection = None
 
-    def _query_value_diff(self, dbt_context: DBTContext, primary_key: str, model: str, columns: List[str] = None):
+    def _query_value_diff(self, dbt_context: DBTContext, primary_key: Union[str, List[str]], model: str,
+                          columns: List[str] = None):
+
+        composite = True if isinstance(primary_key, List) else False
+
+        if composite and columns is not None and len(columns) > 0:
+            columns = primary_key + columns
+
         if columns is None or len(columns) == 0:
             base_columns = [column.column for column in dbt_context.get_columns(model, base=True)]
             curr_columns = [column.column for column in dbt_context.get_columns(model, base=False)]
             columns = [column for column in base_columns if column in curr_columns]
 
-        if primary_key not in columns:
+        if not composite and primary_key not in columns:
             columns.insert(0, primary_key)
 
         sql_template = r"""
@@ -327,7 +334,7 @@ class ValueDiffDetailTask(Task, ValueDiffMixin):
         with adapter.connection_named("value diff"):
             self.connection = adapter.connections.get_thread_connection()
 
-            primary_key: str = self.params['primary_key']
+            primary_key: Union[str, List[str]] = self.params['primary_key']
             model: str = self.params['model']
             columns: List[str] = self.params.get('columns')
 
