@@ -115,9 +115,6 @@ export const CheckPage = () => {
         <VStack>
           <Box>No checks</Box>
           <Flex gap="5">
-            <Button colorScheme="blue" onClick={addToChecklist}>
-              Create a simple check
-            </Button>
             {!isDemoSite && <CheckListInitLoader />}
           </Flex>
         </VStack>
@@ -135,14 +132,6 @@ export const CheckPage = () => {
       >
         <VStack spacing={0} align="flex-end" h="100%">
           <HStack gap="0px">
-            <Tooltip label="Create a simple check">
-              <IconButton
-                variant="unstyled"
-                aria-label="Create a simple check"
-                onClick={addToChecklist}
-                icon={<AddIcon />}
-              />
-            </Tooltip>
             <Tooltip label="Copy checklist to the clipboard">
               <IconButton
                 variant="unstyled"
