@@ -101,6 +101,7 @@ function _LineageView({ ...props }: LineageViewProps) {
     ImageBoardModal,
   } = useImageBoardModal();
   const { toImage, ref } = useToBlob({
+    renderLibrary: "html-to-image",
     imageType: "png",
     shadowEffect: true,
     backgroundColor: "white",

@@ -3,7 +3,6 @@
   text-align: right;
 }
 
-
 .diff-header-added {
   background-color: #3aa53a;
   color: white;
@@ -47,7 +46,7 @@
   border-color: var(--rdg-border-color);
 }
 
-.rdg-row:hover .row-context-menu {  
+.rdg-row:hover .row-context-menu {
   visibility: visible;
   width: auto;
 }
