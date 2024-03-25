@@ -143,14 +143,14 @@ def server(host, port, state_file=None, **kwargs):
     is_review = kwargs.get('review', False)
 
     if state_file is None and is_review is True:
-        print(f"[Error] Cannot launch server in review mode without a state file")
-        print(f"  Please provide a state file path.")
+        print("[Error] Cannot launch server in review mode without a state file")
+        print("  Please provide a state file path.")
         exit(1)
 
     try:
         load_dbt_context(**kwargs, state_file=state_file)
     except Exception as e:
-        print(f"[Error] Failed to launch server due to:")
+        print("[Error] Failed to launch server due to:")
         print(f"  {e}")
         exit(1)
 
