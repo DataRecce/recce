@@ -107,67 +107,10 @@ class ValueDiffTask(Task, ValueDiffMixin):
         self.connection = None
         self.support_generate_surrogate_key = True
 
-    def _get_sql_template(self, is_composite: bool = False):
-        if is_composite:
-            if not self.support_generate_surrogate_key:
-                return r"""
-                {% set a_query %}
-                    select {{ dbt_utils.surrogate_key(composite_key) }} as {{ primary_key }}, * from {{ base_relation }}
-                {% endset %}
-
-                {% set b_query %}
-                    select {{ dbt_utils.surrogate_key(composite_key) }} as {{ primary_key }}, * from {{ curr_relation }}
-                {% endset %}
-
-                {{ audit_helper.compare_column_values(
-                    a_query=a_query,
-                    b_query=b_query,
-                    primary_key=primary_key,
-                    column_to_compare=column_to_compare
-                ) }}
-                """
-
-            return r"""
-            {% set a_query %}
-                select {{ dbt_utils.generate_surrogate_key(composite_key) }} as {{ primary_key }}, * from {{ base_relation }}
-            {% endset %}
-
-            {% set b_query %}
-                select {{ dbt_utils.generate_surrogate_key(composite_key) }} as {{ primary_key }}, * from {{ curr_relation }}
-            {% endset %}
-
-            {{ audit_helper.compare_column_values(
-                a_query=a_query,
-                b_query=b_query,
-                primary_key=primary_key,
-                column_to_compare=column_to_compare
-            ) }}
-            """
-
-        return r"""
-        {% set a_query %}
-            select * from {{ base_relation }}
-        {% endset %}
-
-        {% set b_query %}
-            select * from {{ curr_relation }}
-        {% endset %}
-
-        {{ audit_helper.compare_column_values(
-            a_query=a_query,
-            b_query=b_query,
-            primary_key=primary_key,
-            column_to_compare=column_to_compare
-        ) }}
-        """
-
     def _query_value_diff(self, dbt_context: DBTContext, primary_key: Union[str, List[str]], model: str,
                           columns: List[str] = None):
         column_groups = {}
         composite = True if isinstance(primary_key, List) else False
-
-        if composite and columns is not None and len(columns) > 0:
-            columns = primary_key + columns
 
         if columns is None or len(columns) == 0:
             base_columns = [column.column for column in dbt_context.get_columns(model, base=True)]
@@ -175,15 +118,32 @@ class ValueDiffTask(Task, ValueDiffMixin):
             columns = [column for column in base_columns if column in curr_columns]
         completed = 0
 
-        composite_key = None
         if composite:
-            composite_key = primary_key.copy()
-            primary_key = "_".join(primary_key)
+            for primary_key_comp in primary_key[::-1]:
+                if primary_key_comp not in columns:
+                    columns.insert(0, primary_key_comp)
+        else:
+            if primary_key not in columns:
+                columns.insert(0, primary_key)
 
-        sql_template = self._get_sql_template(is_composite=composite)
+        sql_template = r"""
+        {% set a_query %}
+            select {{ __PRIMARY_KEY__ }} as _pk, * from {{ base_relation }}
+        {% endset %}
 
-        if primary_key not in columns:
-            columns.insert(0, primary_key)
+        {% set b_query %}
+            select {{ __PRIMARY_KEY__ }} as _pk, * from {{ curr_relation }}
+        {% endset %}
+
+        {{ audit_helper.compare_column_values(
+            a_query=a_query,
+            b_query=b_query,
+            primary_key="_pk",
+            column_to_compare=column_to_compare
+        ) }}
+        """
+        new_primary_key = 'primary_key' if composite is False else 'dbt_utils.generate_surrogate_key(primary_key)'
+        sql_template = sql_template.replace('__PRIMARY_KEY__', new_primary_key)
 
         for column in columns:
             self.update_progress(message=f"Diff column: {column}", percentage=completed / len(columns))
@@ -192,7 +152,6 @@ class ValueDiffTask(Task, ValueDiffMixin):
                 base_relation=dbt_context.create_relation(model, base=True),
                 curr_relation=dbt_context.create_relation(model, base=False),
                 primary_key=primary_key,
-                composite_key=composite_key,
                 column_to_compare=column,
             ))
 
@@ -242,15 +201,15 @@ class ValueDiffTask(Task, ValueDiffMixin):
 
             completed = completed + 1
 
-        pk = [v for k, v in column_groups.items() if k.lower() == primary_key.lower()][0]
-        added = pk['added']
-        removed = pk['removed']
-        common = pk['matched'] + pk['mismatched']
+        first = list(column_groups.values())[0]
+        added = first['added']
+        removed = first['removed']
+        common = first['matched'] + first['mismatched']
         total = common + added + removed
 
         row = []
         for k, v in column_groups.items():
-            if composite and k.lower() == primary_key.lower():
+            if composite and k.lower() == "_pk":
                 continue
             # This is incorrect when there are one side null
             # https://github.com/dbt-labs/dbt-audit-helper/blob/main/macros/compare_column_values.sql#L20-L23
