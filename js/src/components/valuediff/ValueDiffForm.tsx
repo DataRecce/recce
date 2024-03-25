@@ -15,7 +15,13 @@ import _ from "lodash";
 import { useEffect, useState } from "react";
 import { NodeColumnData, NodeData } from "@/lib/api/lineage";
 
-interface ValueDiffFormProp extends RunFormProps<ValueDiffParams> {}
+interface ValueDiffFormParams {
+  model: string;
+  primary_key?: string | (string | undefined)[];
+  columns?: string[];
+}
+
+interface ValueDiffFormProp extends RunFormProps<ValueDiffFormParams> {}
 
 export function extractColumns(node: LineageGraphNode) {
   function getColumns(nodeData: NodeData) {
