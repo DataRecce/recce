@@ -57,10 +57,8 @@ const registry: { [key: string]: RegistryEntry<any, any> } = {
   },
 };
 
-export const findByRunType = (runType: string): RegistryEntry<any, any> => {
-  if (!registry[runType]) {
-    throw new Error(`Run type ${runType} not found in registry`);
-  }
-
+export const findByRunType = (
+  runType: string
+): RegistryEntry<any, any> | undefined => {
   return registry[runType];
 };
