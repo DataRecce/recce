@@ -28,7 +28,7 @@ class ValueDiffResult(BaseModel):
 
 
 class ValueDiffMixin:
-    def _verify_audit_helper(self, dbt_context):
+    def _verify_dbt_packages_deps(self, dbt_context):
         for macro_name, macro in dbt_context.manifest.macros.items():
             if macro.package_name == 'audit_helper':
                 break
@@ -36,13 +36,10 @@ class ValueDiffMixin:
             raise RecceException(
                 r"Package 'audit_helper' not found. Please refer to the link to install: https://hub.getdbt.com/dbt-labs/audit_helper/")
 
-    def _verify_generate_surrogate_key(self, dbt_context: DBTContext):
-        sql_template = r"""{{ adapter.dispatch('generate_surrogate_key', 'dbt_utils')(field_list) }}"""
-
-        try:
-            dbt_context.generate_sql(sql_template, context=dict(field_list=[]))
-        except CompilationError:
-            self.support_generate_surrogate_key = False
+        for macro_name, macro in dbt_context.manifest.macros.items():
+            if macro.package_name == 'dbt_utils' and macro.name == 'generate_surrogate_key':
+                self.legacy_surrogate_key = False
+                break
 
     def _verify_primary_key(self, dbt_context: DBTContext, primary_key: Union[str, List[str]], model: str):
         self.update_progress(message=f"Verify primary key: {primary_key}")
@@ -87,7 +84,7 @@ class ValueDiffTask(Task, ValueDiffMixin):
         super().__init__()
         self.params = params
         self.connection = None
-        self.support_generate_surrogate_key = True
+        self.legacy_surrogate_key = True
 
     def _query_value_diff(self, dbt_context: DBTContext, primary_key: Union[str, List[str]], model: str,
                           columns: List[str] = None):
@@ -124,7 +121,14 @@ class ValueDiffTask(Task, ValueDiffMixin):
             column_to_compare=column_to_compare
         ) }}
         """
-        new_primary_key = 'primary_key' if composite is False else 'dbt_utils.generate_surrogate_key(primary_key)'
+
+        if composite:
+            if self.legacy_surrogate_key:
+                new_primary_key = 'dbt_utils.surrogate_key(primary_key)'
+            else:
+                new_primary_key = 'dbt_utils.generate_surrogate_key(primary_key)'
+        else:
+            new_primary_key = 'primary_key'
         sql_template = sql_template.replace('__PRIMARY_KEY__', new_primary_key)
 
         for column in columns:
@@ -221,10 +225,7 @@ class ValueDiffTask(Task, ValueDiffMixin):
             model: str = self.params['model']
             columns: List[str] = self.params.get('columns')
 
-            self._verify_audit_helper(dbt_context)
-            self.check_cancel()
-
-            self._verify_generate_surrogate_key(dbt_context)
+            self._verify_dbt_packages_deps(dbt_context)
             self.check_cancel()
 
             self._verify_primary_key(dbt_context, primary_key, model)
@@ -255,23 +256,25 @@ class ValueDiffDetailTask(Task, ValueDiffMixin):
         super().__init__()
         self.params = params
         self.connection = None
-        self.support_generate_surrogate_key = True
+        self.legacy_surrogate_key = True
 
     def _query_value_diff(self, dbt_context: DBTContext, primary_key: Union[str, List[str]], model: str,
                           columns: List[str] = None):
 
         composite = True if isinstance(primary_key, List) else False
 
-        if composite and columns is not None and len(columns) > 0:
-            columns = primary_key + columns
-
         if columns is None or len(columns) == 0:
             base_columns = [column.column for column in dbt_context.get_columns(model, base=True)]
             curr_columns = [column.column for column in dbt_context.get_columns(model, base=False)]
             columns = [column for column in base_columns if column in curr_columns]
 
-        if not composite and primary_key not in columns:
-            columns.insert(0, primary_key)
+        if composite:
+            for primary_key_comp in primary_key[::-1]:
+                if primary_key_comp not in columns:
+                    columns.insert(0, primary_key_comp)
+        else:
+            if primary_key not in columns:
+                columns.insert(0, primary_key)
 
         sql_template = r"""
         {% set col_list %}
@@ -297,7 +300,13 @@ class ValueDiffDetailTask(Task, ValueDiffMixin):
         ) }} limit {{ limit }}
         """
 
-        new_primary_key = 'primary_key' if composite is False else 'dbt_utils.generate_surrogate_key(primary_key)'
+        if composite:
+            if self.legacy_surrogate_key:
+                new_primary_key = 'dbt_utils.surrogate_key(primary_key)'
+            else:
+                new_primary_key = 'dbt_utils.generate_surrogate_key(primary_key)'
+        else:
+            new_primary_key = 'primary_key'
         sql_template = sql_template.replace('__PRIMARY_KEY__', new_primary_key)
 
         sql = dbt_context.generate_sql(sql_template, context=dict(
@@ -324,10 +333,7 @@ class ValueDiffDetailTask(Task, ValueDiffMixin):
             model: str = self.params['model']
             columns: List[str] = self.params.get('columns')
 
-            self._verify_audit_helper(dbt_context)
-            self.check_cancel()
-
-            self._verify_generate_surrogate_key(dbt_context)
+            self._verify_dbt_packages_deps(dbt_context)
             self.check_cancel()
 
             self._verify_primary_key(dbt_context, primary_key, model)
