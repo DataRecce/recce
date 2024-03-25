@@ -6,7 +6,7 @@ import {
 import _ from "lodash";
 import "../query/styles.css";
 import { Box, Flex, Icon } from "@chakra-ui/react";
-import { VscClose, VscKey, VscPin, VscPinned } from "react-icons/vsc";
+import { VscPin, VscPinned } from "react-icons/vsc";
 import { DataFrame } from "@/lib/api/types";
 import { mergeKeysWithStatus } from "@/lib/mergeKeys";
 

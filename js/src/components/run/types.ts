@@ -1,8 +1,8 @@
 import { Run } from "@/lib/api/types";
 
 export interface RunFormProps<PT> {
-  params: PT;
-  onParamsChanged: (params: PT) => void;
+  params: Partial<PT>;
+  onParamsChanged: (params: Partial<PT>) => void;
   setIsReadyToExecute: (isReadyToExecute: boolean) => void;
 }
 
