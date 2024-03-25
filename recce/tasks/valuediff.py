@@ -51,28 +51,11 @@ class ValueDiffMixin:
         if composite:
             if len(primary_key) == 0:
                 raise RecceException("Primary key cannot be empty")
+            sql_template = r"""{{ adapter.dispatch('test_unique_combination_of_columns', 'dbt_utils')(relation, primary_key) }}"""
         else:
             if primary_key is None or len(primary_key) == 0:
                 raise RecceException("Primary key cannot be empty")
-
-        def _get_sql_template(is_composite: bool = False):
-            if is_composite:
-                if not self.support_generate_surrogate_key:
-                    return r"""
-                    select {{ dbt_utils.surrogate_key(column_name) }} as unique_field, count(*) as n_records from {{ relation }}
-                    where {{ dbt_utils.surrogate_key(column_name) }} is not null
-                    group by {{ dbt_utils.surrogate_key(column_name) }}
-                    having count(*) > 1
-                    """
-
-                return r"""
-                select {{ dbt_utils.generate_surrogate_key(column_name) }} as unique_field, count(*) as n_records from {{ relation }}
-                where {{ dbt_utils.generate_surrogate_key(column_name) }} is not null
-                group by {{ dbt_utils.generate_surrogate_key(column_name) }}
-                having count(*) > 1
-                """
-
-            return r"""{{ adapter.dispatch('test_unique', 'dbt')(relation, column_name) }}"""
+            sql_template = r"""{{ adapter.dispatch('test_unique', 'dbt')(relation, primary_key) }}"""
 
         # check primary keys
         for base in [True, False]:
@@ -80,10 +63,9 @@ class ValueDiffMixin:
             relation = dbt_context.create_relation(model, base)
             context = dict(
                 relation=relation,
-                column_name=primary_key,
+                primary_key=primary_key,
             )
 
-            sql_template = _get_sql_template(is_composite=composite)
             sql = dbt_context.generate_sql(sql_template, context=context)
             sql_test = f"""SELECT COUNT(*) AS INVALIDS FROM ({sql}) AS T"""
 
