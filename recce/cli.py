@@ -6,7 +6,7 @@ import click
 from recce import event
 from recce.models.state import load_default_state
 from recce.run import archive_artifacts
-from .dbt import DBTContext, DBTContextSource
+from .dbt import DBTContext
 from .event.track import TrackCommand
 
 event.init()
@@ -125,6 +125,7 @@ def diff(sql, primary_keys: List[str] = None, keep_shape: bool = False, keep_equ
 @click.argument('state_file', required=False)
 @click.option('--host', default='localhost', show_default=True, help='The host to bind to.')
 @click.option('--port', default=8000, show_default=True, help='The port to bind to.', type=int)
+@click.option('--review', is_flag=True, help='Open the state file in review mode.')
 @add_options(dbt_related_options)
 def server(host, port, state_file=None, **kwargs):
     """
@@ -139,11 +140,19 @@ def server(host, port, state_file=None, **kwargs):
     from .server import app, AppState
     from .dbt import load_dbt_context
 
-    recce_state = load_default_state(state_file)
-    if recce_state.lineage is not None:
-        load_dbt_context(**kwargs, state_file=state_file, context_source=DBTContextSource.RECCE_STATE_FILE)
-    else:
-        load_dbt_context(**kwargs)
+    is_review = kwargs.get('review', False)
+
+    if state_file is None and is_review is True:
+        print(f"[Error] Cannot launch server in review mode without a state file")
+        print(f"  Please provide a state file path.")
+        exit(1)
+
+    try:
+        load_dbt_context(**kwargs, state_file=state_file)
+    except Exception as e:
+        print(f"[Error] Failed to launch server due to:")
+        print(f"  {e}")
+        exit(1)
 
     state = AppState(state_file=state_file)
     app.state = state
@@ -152,13 +161,14 @@ def server(host, port, state_file=None, **kwargs):
 
 
 @cli.command(cls=TrackCommand)
-@click.option('-o', '--output', help='Path of the state file', type=click.Path(), default='recce_state.json')
+@click.option('-o', '--output', help='Path of the state file.', type=click.Path(), default='recce_state.json')
+@click.option('--skip-query', is_flag=True, help='Skip querying row count for nodes in the lineage.')
 @add_options(dbt_related_options)
 def run(output, **kwargs):
     from .server import AppState
     state = AppState(state_file=output)
     load_default_state(state.state_file)
-    asyncio.run(archive_artifacts(state.state_file))
+    asyncio.run(archive_artifacts(state.state_file, **kwargs))
     pass
 
 

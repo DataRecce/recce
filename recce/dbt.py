@@ -1,9 +1,7 @@
 import logging
 import os
-import sys
 import uuid
 from dataclasses import dataclass, fields
-from enum import Enum
 from typing import Callable, Dict, List, Optional, Tuple
 
 import agate
@@ -108,6 +106,21 @@ def load_catalog(path):
     return CatalogArtifact.read_and_check_versions(path)
 
 
+def execute_dbt_parse(target=None, profile_name=None, project_dir=None, profiles_dir=None):
+    cmd = ["-q", "parse"]
+    if target:
+        cmd.extend(["--target", target])
+    if profile_name:
+        cmd.extend(["--profile", profile_name])
+    if project_dir:
+        cmd.extend(["--project-dir", project_dir])
+    if profiles_dir:
+        cmd.extend(["--profiles-dir", profiles_dir])
+
+    # Check the dbt project to get the database connection information
+    return dbtRunner().invoke(cmd)
+
+
 @dataclass()
 class DbtArgs:
     """
@@ -121,14 +134,9 @@ class DbtArgs:
     target_path: Optional[str] = None,
 
 
-class DBTContextSource(Enum):
-    MANIFEST = 'manifest'
-    RECCE_STATE_FILE = 'recce_state_file'
-
-
 @dataclass
 class DBTContext:
-    source_type: DBTContextSource = DBTContextSource.MANIFEST
+    review_mode: bool = False
     runtime_config: RuntimeConfig = None
     adapter: SQLAdapter = None
     manifest: Manifest = None
@@ -152,78 +160,57 @@ class DBTContext:
         }
 
     @classmethod
-    def load_from_state_file(cls, state_file: str):
-        try:
-            context = cls(
-                source_type=DBTContextSource.RECCE_STATE_FILE,
-                state_file=state_file
-            )
-            context.load_artifacts_from_file()
-            context.artifacts_files = [os.path.abspath(state_file)]
-        except BaseException as e:
-            print(e)
-            sys.exit(1)
-        return context
-
-    @classmethod
     def load(cls, **kwargs):
-        # We need to run the dbt parse command because
-        # 1. load the dbt profiles by dbt-core rule
-        # 2. initialize the adapter
-        cmd = ["-q", "parse"]
+
         target = kwargs.get('target')
         profile_name = kwargs.get('profile')
         project_dir = kwargs.get('project_dir')
         profiles_dir = kwargs.get('profiles_dir')
         state_file = kwargs.get('state_file', 'recce_state.json')
-        context_source = kwargs.get('context_source', DBTContextSource.MANIFEST)
+        is_review_mode = kwargs.get('review', False)
 
-        if target:
-            cmd.extend(["--target", target])
-        if profile_name:
-            cmd.extend(["--profile", profile_name])
-        if project_dir:
-            cmd.extend(["--project-dir", project_dir])
-        if profiles_dir:
-            cmd.extend(["--profiles-dir", profiles_dir])
-        parse_result = dbtRunner().invoke(cmd)
+        # We need to run the dbt parse command because
+        # 1. load the dbt profiles by dbt-core rule
+        # 2. initialize the adapter
+        parse_result = execute_dbt_parse(target=target, profile_name=profile_name, project_dir=project_dir)
         manifest = parse_result.result
 
-        if not parse_result.success:
-            if context_source == DBTContextSource.RECCE_STATE_FILE and os.path.isfile(state_file):
-                print(f"Lineage View only, load from Recce State file '{state_file}'.")
-                return cls.load_from_state_file(state_file)
-            sys.exit(1)
+        if parse_result.success:
+            # Load the dbt context from DBT
+            args = DbtArgs(
+                threads=1,
+                target=target,
+                project_dir=project_dir,
+                profiles_dir=profiles_dir,
+                profile=profile_name,
+            )
+            runtime_config = RuntimeConfig.from_args(args)
+            adapter: SQLAdapter = get_adapter_by_type(runtime_config.credentials.type)
 
-        # Load the dbt context from DBT
-        args = DbtArgs(
-            threads=1,
-            target=target,
-            project_dir=project_dir,
-            profiles_dir=profiles_dir,
-            profile=profile_name,
-        )
-        runtime_config = RuntimeConfig.from_args(args)
-        adapter: SQLAdapter = get_adapter_by_type(runtime_config.credentials.type)
-
-        dbt_context = cls(
-            source_type=context_source,
-            runtime_config=runtime_config,
-            adapter=adapter,
-            manifest=manifest,
-            state_file=state_file
-        )
-        dbt_context.load_artifacts_from_json()
-        if not dbt_context.curr_manifest:
-            raise Exception('Cannot load "target/manifest.json"')
-        if not dbt_context.base_manifest:
-            raise Exception('Cannot load "target-base/manifest.json"')
-
-        if dbt_context.source_type == DBTContextSource.RECCE_STATE_FILE:
-            dbt_context.load_artifacts_from_file()
-            dbt_context.artifacts_files.append(os.path.abspath(state_file))
-            print(f"Load dbt context from Recce State file '{state_file}'")
+            dbt_context = cls(
+                runtime_config=runtime_config,
+                adapter=adapter,
+                manifest=manifest,
+                review_mode=is_review_mode,
+            )
         else:
+            # Load the dbt context from recce state
+            dbt_context = cls(
+                review_mode=is_review_mode,
+            )
+
+        # Load the artifacts from the state file or `target` and `target-base` directory
+        if is_review_mode:
+            dbt_context.load_artifacts_from_state(state_file)
+            print('Load dbt context from Recce State in review mode')
+        else:
+            if parse_result.success is False:
+                raise parse_result.exception
+            dbt_context.load_artifacts_from_manifest()
+            if not dbt_context.curr_manifest:
+                raise Exception('Cannot load "target/manifest.json"')
+            if not dbt_context.base_manifest:
+                raise Exception('Cannot load "target-base/manifest.json"')
             print(f"Load dbt context from '{dbt_context.target_path}'")
 
         return dbt_context
@@ -236,7 +223,7 @@ class DBTContext:
             kwargs={"relation": relation},
             manifest=self.manifest)
 
-    def load_artifacts_from_file(self, state_file: str = None):
+    def load_artifacts_from_state(self, state_file: str = None):
         if state_file:
             self.state_file = state_file
         if self.state_file is None:
@@ -248,10 +235,18 @@ class DBTContext:
             'lineage': recce_state.lineage
         }
 
-    def load_artifacts_from_json(self):
+        # set the file paths to watch
+        self.artifacts_files = [
+            os.path.abspath(self.state_file)
+        ]
+
+    def load_artifacts_from_manifest(self):
         """
         Load the artifacts from the 'target' and 'target-base' directory
         """
+        if self.runtime_config is None:
+            raise Exception('Cannot find the dbt project configuration')
+
         project_root = self.runtime_config.project_root
         target_path = self.runtime_config.target_path
         target_base_path = 'target-base'
@@ -464,7 +459,7 @@ class DBTContext:
 
     def build_name_to_unique_id_index(self) -> Dict[str, str]:
         name_to_unique_id = {}
-        if self.source_type == DBTContextSource.MANIFEST:
+        if self.review_mode is False:
             curr_manifest = self.get_manifest(base=False)
             base_manifest = self.get_manifest(base=True)
 
@@ -472,14 +467,12 @@ class DBTContext:
                 name_to_unique_id[node.name] = unique_id
             for unique_id, node in curr_manifest.nodes.items():
                 name_to_unique_id[node.name] = unique_id
-        elif self.source_type == DBTContextSource.RECCE_STATE_FILE and self.artifact is not None:
+        else:
             lineage = self.artifact.get('lineage')
             for unique_id, node in lineage.base['nodes'].items():
                 name_to_unique_id[node['name']] = unique_id
             for unique_id, node in lineage.current['nodes'].items():
                 name_to_unique_id[node['name']] = unique_id
-        else:
-            raise Exception('The source type is not supported')
         return name_to_unique_id
 
     def start_monitor_artifacts(self, callback: Callable = None):
@@ -504,7 +497,7 @@ class DBTContext:
     def refresh(self, refresh_file_path: str = None):
         # Refresh the artifacts
         if refresh_file_path is None:
-            return self.load_artifacts_from_json()
+            return self.load_artifacts_from_manifest()
 
         target_type = refresh_file_path.split('/')[-2]
         if self.target_path and target_type == os.path.basename(self.target_path):
@@ -518,7 +511,8 @@ class DBTContext:
             elif refresh_file_path.endswith('catalog.json'):
                 self.base_catalog = load_catalog(refresh_file_path)
         else:
-            self.load_artifacts_from_file()
+            # The file is not in the target or target-base directory
+            self.load_artifacts_from_state()
 
     def create_relation(self, model, base=False):
         return self.adapter.Relation.create_from(self.runtime_config, self.find_node_by_name(model, base))
