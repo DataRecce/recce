@@ -6,24 +6,15 @@ import { cacheKeys } from "@/lib/api/cacheKeys";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import _ from "lodash";
 import { FaCheckCircle } from "react-icons/fa";
-import {
-  TbChecklist,
-  TbSql,
-  TbSchema,
-  TbAlignBoxLeftStretch,
-  TbEyeSearch,
-  TbChartHistogram,
-  TbBrandStackshare,
-} from "react-icons/tb";
+import { TbChecklist } from "react-icons/tb";
 import { IconType } from "react-icons";
-import { FiAlignLeft } from "react-icons/fi";
-import { LuBarChartHorizontalBig } from "react-icons/lu";
 import {
   DragDropContext,
   Draggable,
   DropResult,
   Droppable,
 } from "@hello-pangea/dnd";
+import { findByRunType } from "../run/registry";
 
 const ChecklistItem = ({
   check,
@@ -49,29 +40,7 @@ const ChecklistItem = ({
     mutate({ is_checked: isChecked });
   };
 
-  const icon: IconType = ((type) => {
-    switch (type) {
-      case "schema_diff":
-        return TbSchema;
-      case "query":
-      case "query_diff":
-        return TbSql;
-      case "value_diff":
-        return TbAlignBoxLeftStretch;
-      case "profile_diff":
-        return TbEyeSearch;
-      case "row_count_diff":
-        return FiAlignLeft;
-      case "lineage_diff":
-        return TbBrandStackshare;
-      case "top_k_diff":
-        return LuBarChartHorizontalBig;
-      case "histogram_diff":
-        return TbChartHistogram;
-      default:
-        return TbChecklist;
-    }
-  })(check.type);
+  const icon: IconType = findByRunType(check.type)?.icon || TbChecklist;
 
   return (
     <Flex
