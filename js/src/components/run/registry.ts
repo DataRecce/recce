@@ -21,6 +21,7 @@ import { RunFormProps, RunResultViewProps } from "./types";
 import { IconType } from "react-icons";
 import { FiAlignLeft } from "react-icons/fi";
 import { LuBarChartHorizontalBig } from "react-icons/lu";
+import { MdFormatListNumberedRtl, MdSchema } from "react-icons/md";
 
 interface RegistryEntry<PT, RT, VO = any> {
   title: string;
@@ -35,8 +36,8 @@ const registry: { [key: string]: RegistryEntry<any, any> } = {
     icon: TbBrandStackshare,
   },
   schema_diff: {
-    title: "Schem Diff",
-    icon: TbSchema,
+    title: "Schema Diff",
+    icon: MdSchema,
   },
   query: {
     title: "Query",
@@ -50,7 +51,7 @@ const registry: { [key: string]: RegistryEntry<any, any> } = {
   },
   row_count_diff: {
     title: "Row Count Diff",
-    icon: FiAlignLeft,
+    icon: MdFormatListNumberedRtl,
     RunResultView: RowCountDiffResultView,
   },
 
