@@ -10,7 +10,6 @@ import {
   VStack,
 } from "@chakra-ui/react";
 import { RunResultViewProps } from "./types";
-import { Children } from "react";
 
 interface RunViewProps<PT, RT, VO = any> {
   isPending?: boolean;
@@ -39,17 +38,6 @@ export const RunView = <PT, RT>({
   RunResultView,
   children,
 }: RunViewProps<PT, RT>) => {
-  if (children && RunResultView) {
-    throw new Error(
-      "RunView requires either a children or a RunResultView prop, but not both."
-    );
-  }
-  if (!children && !RunResultView) {
-    throw new Error(
-      "RunView requires at least one of children or RunResultView prop."
-    );
-  }
-
   const errorMessage = (error as any)?.response?.data?.detail || run?.error;
 
   if (errorMessage) {
@@ -96,6 +84,17 @@ export const RunView = <PT, RT>({
       <Center bg="rgb(249,249,249)" height="100%">
         No data
       </Center>
+    );
+  }
+
+  if (children && RunResultView) {
+    throw new Error(
+      "RunView requires either a children or a RunResultView prop, but not both."
+    );
+  }
+  if (!children && !RunResultView) {
+    throw new Error(
+      "RunView requires at least one of children or RunResultView prop."
     );
   }
 

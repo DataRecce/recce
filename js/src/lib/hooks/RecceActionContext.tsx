@@ -35,12 +35,6 @@ interface RecceActionContextProviderProps {
   children: React.ReactNode;
 }
 
-interface RegistryEntry {
-  title: string;
-  RunResultView: any;
-  RunForm?: any;
-}
-
 const useCloseModalEffect = (onClose: () => void) => {
   const [location] = useLocation();
 
@@ -66,7 +60,15 @@ function _ActionModal({
   isOpen: boolean;
   onClose: () => void;
 }) {
-  const { title, RunResultView, RunForm } = findByRunType(action.type);
+  const entry = findByRunType(action.type);
+  if (entry === undefined) {
+    throw new Error(`Unknown run type: ${action.type}`);
+  }
+
+  const { title, RunResultView, RunForm } = entry;
+  if (RunResultView === undefined) {
+    throw new Error(`Run type ${action.type} does not have a result view`);
+  }
 
   return (
     <RunModal
