@@ -351,10 +351,14 @@ class ValueDiffDetailTask(Task, ValueDiffMixin):
         {{ audit_helper.compare_queries(
             a_query=a_query,
             b_query=b_query,
-            primary_key=primary_key,
+            primary_key=__PRIMARY_KEY__,
             summarize=False,
         ) }} limit {{ limit }}
         """
+
+        new_primary_key = 'primary_key' if composite is False else 'dbt_utils.generate_surrogate_key(primary_key)'
+        sql_template = sql_template.replace('__PRIMARY_KEY__', new_primary_key)
+
         sql = dbt_context.generate_sql(sql_template, context=dict(
             base_relation=dbt_context.create_relation(model, base=True),
             curr_relation=dbt_context.create_relation(model, base=False),
