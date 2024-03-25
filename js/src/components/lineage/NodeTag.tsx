@@ -11,13 +11,7 @@ import {
   TagRightIcon,
 } from "@chakra-ui/react";
 import { getIconForResourceType } from "./styles";
-import {
-  FiAlignLeft,
-  FiArrowRight,
-  FiFrown,
-  FiTrendingDown,
-  FiTrendingUp,
-} from "react-icons/fi";
+import { FiArrowRight, FiFrown } from "react-icons/fi";
 import { queryModelRowCount, RowCount } from "@/lib/api/models";
 import { cacheKeys } from "@/lib/api/cacheKeys";
 import { LineageGraphNode } from "./lineage";
@@ -27,6 +21,7 @@ import { useLineageGraphContext } from "@/lib/hooks/LineageGraphContext";
 import { deltaPercentageString } from "../rowcount/delta";
 
 import { RepeatIcon } from "@chakra-ui/icons";
+import { findByRunType } from "../run/registry";
 
 export function ResourceTypeTag({ node }: { node: LineageGraphNode }) {
   const { icon: resourceTypeIcon } = getIconForResourceType(node.resourceType);
@@ -135,11 +130,7 @@ export function RowCountTag({
   });
 
   const rowCount = fetchedRowCount || defaultRowCount || lastRowCount;
-
-  // if (isInteractive === false && isFetched === false) {
-  //   // Don't show anything if the row count is not fetched and is not interactive.
-  //   return null;
-  // }
+  const icon = findByRunType("row_count_diff")?.icon;
 
   let label;
   if (rowCount) {
@@ -151,7 +142,7 @@ export function RowCountTag({
   return (
     <Tooltip label={label}>
       <Tag>
-        <TagLeftIcon as={FiAlignLeft} />
+        <TagLeftIcon as={icon} />
 
         <TagLabel>
           {rowCount || isFetching ? (

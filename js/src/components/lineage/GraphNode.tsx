@@ -12,6 +12,7 @@ import { useLineageGraphContext } from "@/lib/hooks/LineageGraphContext";
 
 import { MdFormatListNumberedRtl, MdSchema } from "react-icons/md";
 import { NodeColumnData } from "@/lib/api/lineage";
+import { findByRunType } from "../run/registry";
 
 interface GraphNodeProps extends NodeProps<LineageGraphNode> {}
 
@@ -76,7 +77,7 @@ const NodeRunsAggregated = ({ id }: { id: string }) => {
         >
           <Box height="16px">
             <Icon
-              as={MdSchema}
+              as={findByRunType("schema_diff")?.icon}
               color={
                 schemaChanged
                   ? getIconForChangeStatus("modified").color
@@ -93,7 +94,7 @@ const NodeRunsAggregated = ({ id }: { id: string }) => {
         >
           <Box height="16px">
             <Icon
-              as={MdFormatListNumberedRtl}
+              as={findByRunType("row_count_diff")?.icon}
               color={
                 rowCountChanged
                   ? getIconForChangeStatus("modified").color

@@ -29,42 +29,24 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { cacheKeys } from "@/lib/api/cacheKeys";
 import { Check, deleteCheck, getCheck, updateCheck } from "@/lib/api/checks";
 
-import { ValueDiffResultView } from "@/components/valuediff/ValueDiffResultView";
 import { SchemaDiffView } from "./SchemaDiffView";
 import { useLocation } from "wouter";
 import { CheckDescription } from "./CheckDescription";
-import { RowCountDiffResultView } from "../rowcount/RowCountDiffResultView";
-import { ProfileDiffResultView } from "../profile/ProfileDiffResultView";
 import { stripIndents } from "common-tags";
 import { useClipBoardToast } from "@/lib/hooks/useClipBoardToast";
 import { buildTitle, buildDescription, buildQuery } from "./check";
 import SqlEditor from "../query/SqlEditor";
-import { QueryResultView } from "../query/QueryResultView";
-import { QueryDiffResultView } from "../query/QueryDiffResultView";
 import { useCallback, useEffect, useState } from "react";
 import { cancelRun, submitRunFromCheck, waitRun } from "@/lib/api/runs";
 import { Run } from "@/lib/api/types";
 import { RunView } from "../run/RunView";
 import { formatDistanceToNow } from "date-fns";
 import { LineageDiffView } from "./LineageDiffView";
-import { TopKDiffResultView } from "../top-k/TopKDiffResultView";
-import { ValueDiffDetailResultView } from "../valuediff/ValueDiffDetailResultView";
-import { HistogramDiffResultView } from "../histogram/HistogramDiffResultView";
+import { findByRunType } from "../run/registry";
 
 interface CheckDetailProps {
   checkId: string;
 }
-
-const typeResultViewMap: { [key: string]: any } = {
-  query: QueryResultView,
-  query_diff: QueryDiffResultView,
-  value_diff: ValueDiffResultView,
-  value_diff_detail: ValueDiffDetailResultView,
-  profile_diff: ProfileDiffResultView,
-  row_count_diff: RowCountDiffResultView,
-  top_k_diff: TopKDiffResultView,
-  histogram_diff: HistogramDiffResultView,
-};
 
 const useCancelOnUnmount = ({
   runId,
@@ -105,10 +87,7 @@ export const CheckDetail = ({ checkId }: CheckDetailProps) => {
     staleTime: 5 * 60 * 1000,
   });
 
-  const RunResultView =
-    check && check?.type in typeResultViewMap
-      ? typeResultViewMap[check?.type]
-      : undefined;
+  const runTypeEntry = check?.type ? findByRunType(check?.type) : undefined;
 
   const { mutate } = useMutation({
     mutationFn: (check: Partial<Check>) => updateCheck(checkId, check),
@@ -259,7 +238,7 @@ export const CheckDetail = ({ checkId }: CheckDetailProps) => {
           </Box>
         )}
 
-        {check && check?.type in typeResultViewMap && (
+        {runTypeEntry?.RunResultView && (
           <Tooltip label="Rerun">
             <IconButton
               isRound={true}
@@ -325,14 +304,14 @@ export const CheckDetail = ({ checkId }: CheckDetailProps) => {
       )}
 
       <Box style={{ contain: "size" }} flex="1 1 0%">
-        {RunResultView && (
+        {runTypeEntry?.RunResultView && (
           <RunView
             isPending={rerunPending}
             isAborting={abort}
             run={run}
             error={rerunError}
             progress={progress}
-            RunResultView={RunResultView}
+            RunResultView={runTypeEntry.RunResultView}
             viewOptions={check?.view_options}
             onViewOptionsChanged={handelUpdateViewOptions}
             onCancel={handleCancel}

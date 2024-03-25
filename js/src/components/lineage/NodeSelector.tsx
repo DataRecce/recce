@@ -10,11 +10,11 @@ import {
   useUnmountEffect,
 } from "@chakra-ui/react";
 import { LineageGraphNode } from "./lineage";
-import { MdOutlineSchema, MdQueryStats } from "react-icons/md";
+
 import { TbAlignBoxLeftStretch } from "react-icons/tb";
 import { createCheckByNodeSchema, createCheckByRun } from "@/lib/api/checks";
 import { useLocation } from "wouter";
-import { FiAlignLeft } from "react-icons/fi";
+
 import { TbBrandStackshare } from "react-icons/tb";
 import { ValueDiffParams } from "@/lib/api/valuediff";
 import { useCallback, useState } from "react";
@@ -24,6 +24,7 @@ import { RowCountDiffParams } from "@/lib/api/rowcount";
 import { useQueryClient } from "@tanstack/react-query";
 import { cacheKeys } from "@/lib/api/cacheKeys";
 import { createLineageDiffCheck } from "@/lib/api/lineagecheck";
+import { findByRunType } from "../run/registry";
 
 export interface NodeSelectorProps {
   viewMode: string;
@@ -69,7 +70,7 @@ function AddSchemaChangesCheckButton({
         }
       }}
     >
-      <Icon as={MdOutlineSchema} />
+      <Icon as={findByRunType("schema_diff")?.icon} />
       Add schema check
     </Button>
   );
@@ -109,7 +110,7 @@ export function AddLineageDiffCheckButton({
         }
       }}
     >
-      {withIcon && <Icon as={TbBrandStackshare} />}
+      {withIcon && <Icon as={findByRunType("lineage_diff")?.icon} />}
       Add lineage diff check
     </Button>
   );
@@ -422,7 +423,7 @@ export function NodeSelector({
               isDisabled={nodes.length === 0}
               onClick={handleRowCountDiffClick}
             >
-              <Icon as={FiAlignLeft} />
+              <Icon as={findByRunType("row_count_diff")?.icon} />
               Row count diff
             </Button>
             <Button
@@ -431,7 +432,7 @@ export function NodeSelector({
               isDisabled={nodes.length === 0}
               onClick={handleValueDiffClick}
             >
-              <Icon as={TbAlignBoxLeftStretch} />
+              <Icon as={findByRunType("value_diff")?.icon} />
               Value diff
             </Button>
           </HStack>

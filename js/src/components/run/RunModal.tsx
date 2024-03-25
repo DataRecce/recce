@@ -45,7 +45,7 @@ export const RunModal = <PT, RT, VO>({
 }: RunModalProps<PT, RT, VO>) => {
   const [, setLocation] = useLocation();
   const [runId, setRunId] = useState<string>();
-  const [params, setParams] = useState<PT>(defaultParams);
+  const [params, setParams] = useState<Partial<PT>>(defaultParams);
   const [isAborting, setAborting] = useState(false);
   const [isReadyToExecute, setIsReadyToExecute] = useState(false);
   const [progress, setProgress] = useState<Run["progress"]>();
@@ -53,7 +53,9 @@ export const RunModal = <PT, RT, VO>({
   const [lastRun, setLastRun] = useState<Run | undefined>(initialRun);
 
   const submitRunFn = async () => {
-    const { run_id } = await submitRun<PT, RT>(type, params, { nowait: true });
+    const { run_id } = await submitRun<PT, RT>(type, params as PT, {
+      nowait: true,
+    });
 
     setRunId(run_id);
 

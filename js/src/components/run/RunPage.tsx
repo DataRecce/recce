@@ -1,8 +1,8 @@
 import { cacheKeys } from "@/lib/api/cacheKeys";
-import { getRun, waitRun } from "@/lib/api/runs";
-import { QueryCache, useQuery } from "@tanstack/react-query";
+import { waitRun } from "@/lib/api/runs";
+import { useQuery } from "@tanstack/react-query";
 import { RunView } from "./RunView";
-import { ValueDiffResultView } from "../valuediff/ValueDiffResultView";
+import { findByRunType } from "./registry";
 
 interface RunPageProps {
   runId: string;
@@ -18,12 +18,16 @@ export const RunPage = ({ runId }: RunPageProps) => {
     queryFn: async () => waitRun(runId),
   });
 
+  const RunResultView = run?.type
+    ? findByRunType(run.type)?.RunResultView
+    : undefined;
+
   return (
     <RunView
       isPending={isPending}
       error={error}
       run={run}
-      RunResultView={ValueDiffResultView}
+      RunResultView={RunResultView}
     />
   );
 };

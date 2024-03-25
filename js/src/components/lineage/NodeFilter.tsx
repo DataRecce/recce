@@ -19,7 +19,8 @@ import {
 } from "@chakra-ui/react";
 import _ from "lodash";
 
-import { FiAlignLeft } from "react-icons/fi";
+import { FiAlignLeft, FiPackage } from "react-icons/fi";
+import { getIconForResourceType } from "./styles";
 
 interface NodeFilterProps {
   viewOptions: LineageDiffViewOptions;
@@ -46,7 +47,7 @@ const ViewModeSelectMenu = ({
       <MenuButton
         as={Button}
         minWidth="150px"
-        leftIcon={<Icon as={FiAlignLeft} />}
+        leftIcon={<Icon as={getIconForResourceType("model").icon} />}
         size="xs"
         variant="outline"
       >
@@ -140,7 +141,7 @@ const PackageSelectMenu = ({
       <MenuButton
         as={Button}
         minWidth="150px"
-        leftIcon={<Icon as={FiAlignLeft} />}
+        leftIcon={<Icon as={FiPackage} />}
         size="xs"
         variant="outline"
       >
