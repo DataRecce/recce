@@ -38,6 +38,7 @@ async def archive_artifacts(state_file: str, **kwargs):
         except Exception as e:
             print(f"Failed to submit run: {e}")
 
-    default_recce_state().store(state_file)
+    # Patch metadata
+    default_recce_state().store(state_file, **kwargs)
     print(f'State is stored as {state_file}')
     pass

@@ -163,6 +163,9 @@ def server(host, port, state_file=None, **kwargs):
 @cli.command(cls=TrackCommand)
 @click.option('-o', '--output', help='Path of the state file.', type=click.Path(), default='recce_state.json')
 @click.option('--skip-query', is_flag=True, help='Skip querying row count for nodes in the lineage.')
+@click.option('--git-branch', help='The git branch to use for the lineage.', type=click.STRING)
+@click.option('--github-pull-request-url', help='The github pull request url to use for the lineage.',
+              type=click.STRING)
 @add_options(dbt_related_options)
 def run(output, **kwargs):
     from .server import AppState

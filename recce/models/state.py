@@ -18,6 +18,8 @@ class RecceStateMetadata(BaseModel):
     schema_version: str = 'v0'
     recce_version: str = Field(default_factory=lambda: get_version())
     generated_at: str = Field(default_factory=lambda: datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%SZ"))
+    git_branch: Optional[str] = None
+    github_pull_request_url: Optional[str] = None
 
 
 class RecceState(BaseModel):
@@ -26,8 +28,15 @@ class RecceState(BaseModel):
     checks: List[Check] = []
     lineage: Optional[Lineage] = None
 
-    def store(self, file_path, file_type='json'):
+    def patch_metadata(self, **kwargs):
+        if kwargs.get('git_branch'):
+            self.metadata.git_branch = kwargs['git_branch']
+        if kwargs.get('github_pull_request_url'):
+            self.metadata.github_pull_request_url = kwargs['github_pull_request_url']
+
+    def store(self, file_path, file_type='json', **kwargs):
         self.metadata = RecceStateMetadata()
+        self.patch_metadata(**kwargs)
         start_time = time.time()
         logger.info(f"Store recce state to '{file_path}'")
         json_data = pydantic_model_json_dump(self)
