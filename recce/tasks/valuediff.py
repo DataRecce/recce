@@ -2,6 +2,7 @@ from typing import TypedDict, Optional, List, Union
 
 import agate
 from dbt.adapters.sql import SQLAdapter
+from dbt.exceptions import CompilationError
 from pydantic import BaseModel
 
 from recce.dbt import default_dbt_context, DBTContext
@@ -35,6 +36,14 @@ class ValueDiffMixin:
             raise RecceException(
                 r"Package 'audit_helper' not found. Please refer to the link to install: https://hub.getdbt.com/dbt-labs/audit_helper/")
 
+    def _verify_generate_surrogate_key(self, dbt_context: DBTContext):
+        sql_template = r"""{{ adapter.dispatch('generate_surrogate_key', 'dbt_utils')(field_list) }}"""
+
+        try:
+            dbt_context.generate_sql(sql_template, context=dict(field_list=[]))
+        except CompilationError:
+            self.support_generate_surrogate_key = False
+
     def _verify_primary_key(self, dbt_context: DBTContext, primary_key: Union[str, List[str]], model: str):
         self.update_progress(message=f"Verify primary key: {primary_key}")
         composite = True if isinstance(primary_key, List) else False
@@ -47,12 +56,20 @@ class ValueDiffMixin:
                 raise RecceException("Primary key cannot be empty")
 
         def _get_sql_template(is_composite: bool = False):
-            if composite:
-                return r"""
-                    select {{ dbt_utils.generate_surrogate_key(column_name) }} as unique_field, count(*) as n_records from {{ relation }}
-                    where {{ dbt_utils.generate_surrogate_key(column_name) }} is not null
-                    group by {{ dbt_utils.generate_surrogate_key(column_name) }}
+            if is_composite:
+                if not self.support_generate_surrogate_key:
+                    return r"""
+                    select {{ dbt_utils.surrogate_key(column_name) }} as unique_field, count(*) as n_records from {{ relation }}
+                    where {{ dbt_utils.surrogate_key(column_name) }} is not null
+                    group by {{ dbt_utils.surrogate_key(column_name) }}
                     having count(*) > 1
+                    """
+
+                return r"""
+                select {{ dbt_utils.generate_surrogate_key(column_name) }} as unique_field, count(*) as n_records from {{ relation }}
+                where {{ dbt_utils.generate_surrogate_key(column_name) }} is not null
+                group by {{ dbt_utils.generate_surrogate_key(column_name) }}
+                having count(*) > 1
                 """
 
             return r"""{{ adapter.dispatch('test_unique', 'dbt')(relation, column_name) }}"""
@@ -88,26 +105,44 @@ class ValueDiffTask(Task, ValueDiffMixin):
         super().__init__()
         self.params = params
         self.connection = None
+        self.support_generate_surrogate_key = True
 
-    @staticmethod
-    def _get_sql_template(is_composite: bool = False):
+    def _get_sql_template(self, is_composite: bool = False):
         if is_composite:
+            if not self.support_generate_surrogate_key:
+                return r"""
+                {% set a_query %}
+                    select {{ dbt_utils.surrogate_key(composite_key) }} as {{ primary_key }}, * from {{ base_relation }}
+                {% endset %}
+
+                {% set b_query %}
+                    select {{ dbt_utils.surrogate_key(composite_key) }} as {{ primary_key }}, * from {{ curr_relation }}
+                {% endset %}
+
+                {{ audit_helper.compare_column_values(
+                    a_query=a_query,
+                    b_query=b_query,
+                    primary_key=primary_key,
+                    column_to_compare=column_to_compare
+                ) }}
+                """
+
             return r"""
-        {% set a_query %}
-            select {{ dbt_utils.generate_surrogate_key(composite_key) }} as {{ primary_key }}, * from {{ base_relation }}
-        {% endset %}
+            {% set a_query %}
+                select {{ dbt_utils.generate_surrogate_key(composite_key) }} as {{ primary_key }}, * from {{ base_relation }}
+            {% endset %}
 
-        {% set b_query %}
-            select {{ dbt_utils.generate_surrogate_key(composite_key) }} as {{ primary_key }}, * from {{ curr_relation }}
-        {% endset %}
+            {% set b_query %}
+                select {{ dbt_utils.generate_surrogate_key(composite_key) }} as {{ primary_key }}, * from {{ curr_relation }}
+            {% endset %}
 
-        {{ audit_helper.compare_column_values(
-            a_query=a_query,
-            b_query=b_query,
-            primary_key=primary_key,
-            column_to_compare=column_to_compare
-        ) }}
-        """
+            {{ audit_helper.compare_column_values(
+                a_query=a_query,
+                b_query=b_query,
+                primary_key=primary_key,
+                column_to_compare=column_to_compare
+            ) }}
+            """
 
         return r"""
         {% set a_query %}
@@ -248,6 +283,9 @@ class ValueDiffTask(Task, ValueDiffMixin):
             self._verify_audit_helper(dbt_context)
             self.check_cancel()
 
+            self._verify_generate_surrogate_key(dbt_context)
+            self.check_cancel()
+
             self._verify_primary_key(dbt_context, primary_key, model)
             self.check_cancel()
 
@@ -276,6 +314,7 @@ class ValueDiffDetailTask(Task, ValueDiffMixin):
         super().__init__()
         self.params = params
         self.connection = None
+        self.support_generate_surrogate_key = True
 
     def _query_value_diff(self, dbt_context: DBTContext, primary_key: Union[str, List[str]], model: str,
                           columns: List[str] = None):
@@ -341,6 +380,9 @@ class ValueDiffDetailTask(Task, ValueDiffMixin):
             columns: List[str] = self.params.get('columns')
 
             self._verify_audit_helper(dbt_context)
+            self.check_cancel()
+
+            self._verify_generate_surrogate_key(dbt_context)
             self.check_cancel()
 
             self._verify_primary_key(dbt_context, primary_key, model)
