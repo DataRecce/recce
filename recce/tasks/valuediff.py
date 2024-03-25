@@ -215,6 +215,8 @@ class ValueDiffTask(Task, ValueDiffMixin):
 
         row = []
         for k, v in column_groups.items():
+            if composite and k.lower() == primary_key.lower():
+                continue
             # This is incorrect when there are one side null
             # https://github.com/dbt-labs/dbt-audit-helper/blob/main/macros/compare_column_values.sql#L20-L23
             # matched = v['matched']
