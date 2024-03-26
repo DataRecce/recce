@@ -202,7 +202,6 @@ class DBTContext:
         # Load the artifacts from the state file or `target` and `target-base` directory
         if is_review_mode:
             dbt_context.load_artifacts_from_state(state_file)
-            print('Load dbt context from Recce State in review mode')
         else:
             if parse_result.success is False:
                 raise parse_result.exception
@@ -211,8 +210,6 @@ class DBTContext:
                 raise Exception('Cannot load "target/manifest.json"')
             if not dbt_context.base_manifest:
                 raise Exception('Cannot load "target-base/manifest.json"')
-            print(f"Load dbt context from '{dbt_context.target_path}'")
-
         return dbt_context
 
     def get_columns(self, model: str, base=False) -> List[Column]:

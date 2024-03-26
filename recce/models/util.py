@@ -7,6 +7,6 @@ def pydantic_model_json_dump(model: BaseModel):
     pydantic_major = pydantic_version.split(".")[0]
 
     if pydantic_major == "1":
-        return model.json(exclude_none=True)
+        return model.json(exclude_none=True, exclude_unset=True)
     else:
-        return model.model_dump_json(exclude_none=True)
+        return model.model_dump_json(exclude_none=True, exclude_unset=True)

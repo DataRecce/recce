@@ -2,14 +2,16 @@ import asyncio
 from typing import List
 
 import click
+from rich.console import Console
 
 from recce import event
 from recce.models.state import load_default_state
-from recce.run import archive_artifacts
+from recce.run import archive_artifacts, check_github_ci_env
 from .dbt import DBTContext
 from .event.track import TrackCommand
 
 event.init()
+console = Console()
 
 
 def add_options(options):
@@ -143,17 +145,21 @@ def server(host, port, state_file=None, **kwargs):
     is_review = kwargs.get('review', False)
 
     if state_file is None and is_review is True:
-        print("[Error] Cannot launch server in review mode without a state file")
-        print("  Please provide a state file path.")
+        console.print("[[red]Error[/red]] Cannot launch server in review mode without a state file.")
+        console.print("Please provide a state file in the command argument.")
         exit(1)
 
     try:
         load_dbt_context(**kwargs, state_file=state_file)
     except Exception as e:
-        print("[Error] Failed to launch server due to:")
-        print(f"  {e}")
+        console.print("[[red]Error[/red]] Failed to launch server due to:")
+        console.print(f"{e}")
         exit(1)
 
+    if is_review:
+        console.rule("Recce Server : Review Mode")
+    else:
+        console.rule("Recce Server")
     state = AppState(state_file=state_file)
     app.state = state
 
@@ -163,11 +169,18 @@ def server(host, port, state_file=None, **kwargs):
 @cli.command(cls=TrackCommand)
 @click.option('-o', '--output', help='Path of the state file.', type=click.Path(), default='recce_state.json')
 @click.option('--skip-query', is_flag=True, help='Skip querying row count for nodes in the lineage.')
-@click.option('--git-branch', help='The git branch to use for the lineage.', type=click.STRING)
+@click.option('--git-current-branch', help='The git branch of the current environment.', type=click.STRING,
+              envvar='GITHUB_HEAD_REF')
+@click.option('--git-base-branch', help='The git branch of the base environment.', type=click.STRING,
+              envvar='GITHUB_BASE_REF')
 @click.option('--github-pull-request-url', help='The github pull request url to use for the lineage.',
               type=click.STRING)
 @add_options(dbt_related_options)
 def run(output, **kwargs):
+    is_github_action, pr_url = check_github_ci_env(**kwargs)
+    if is_github_action is True and pr_url is not None:
+        kwargs['github_pull_request_url'] = pr_url
+
     from .server import AppState
     state = AppState(state_file=output)
     load_default_state(state.state_file)
