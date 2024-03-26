@@ -105,7 +105,11 @@ export function ValueDiffForm({
   const columnNames = node ? extractColumnNames(node) : [];
 
   // primaryKey can be array or string, map to array
-  const primaryKeys = Array.isArray(primaryKey) ? primaryKey : [primaryKey];
+  const primaryKeys = Array.isArray(primaryKey)
+    ? primaryKey
+    : !!primaryKey
+    ? [primaryKey]
+    : undefined;
 
   return (
     <VStack gap={5} m="8px 24px" paddingBottom="200px">
