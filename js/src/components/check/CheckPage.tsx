@@ -29,7 +29,6 @@ import { stripIndents } from "common-tags";
 import { useLineageGraphContext } from "@/lib/hooks/LineageGraphContext";
 
 export const CheckPage = () => {
-  const { isDemoSite } = useLineageGraphContext();
   const [, setLocation] = useLocation();
   const [, params] = useRoute("/checks/:checkId");
   const queryClient = useQueryClient();
