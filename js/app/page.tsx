@@ -16,7 +16,7 @@ import * as amplitude from "@amplitude/analytics-browser";
 import { QueryClientProvider } from "@tanstack/react-query";
 import RecceContextProvider from "@/lib/hooks/RecceContextProvider";
 import { reactQueryClient } from "@/lib/api/axiosClient";
-import { useRecceContextInfo, useVersionNumber } from "@/lib/api/version";
+import { useVersionNumber } from "@/lib/api/version";
 import { CheckPage } from "@/components/check/CheckPage";
 import { QueryPage } from "@/components/query/QueryPage";
 import { Redirect, Route, Router, Switch, useLocation, useRoute } from "wouter";
@@ -89,8 +89,6 @@ interface TabProps {
 function NavBar() {
   const [location, setLocation] = useLocation();
   const version = useVersionNumber();
-  const recceContextInfo = useRecceContextInfo();
-  const isTabDisabled = recceContextInfo?.adapterType === "recce_run";
 
   const tabs: TabProps[] = [
     { name: "Lineage", href: "/lineage" },

@@ -43,7 +43,6 @@ export interface LineageData {
   metadata: {
     pr_url: string;
     git_branch?: string;
-    git_commit?: string;
   };
   nodes: {
     [key: string]: NodeData;
