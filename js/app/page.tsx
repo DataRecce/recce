@@ -10,6 +10,7 @@ import {
   Flex,
   Link,
   Text,
+  Spacer,
 } from "@chakra-ui/react";
 import { ReactNode, useLayoutEffect } from "react";
 import * as amplitude from "@amplitude/analytics-browser";
@@ -28,6 +29,8 @@ import { useLineageGraphContext } from "@/lib/hooks/LineageGraphContext";
 import { InfoIcon } from "@chakra-ui/icons";
 import { RunPage } from "@/components/run/RunPage";
 import { ErrorBoundary } from "@/components/errorboundary/ErrorBoundary";
+import { StateExporter } from "@/components/check/StateExporter";
+import { StateLoader } from "@/components/check/StateLoader";
 
 function getCookie(key: string) {
   var b = document.cookie.match("(^|;)\\s*" + key + "\\s*=\\s*([^;]+)");
@@ -87,6 +90,7 @@ interface TabProps {
 }
 
 function NavBar() {
+  const { isDemoSite } = useLineageGraphContext();
   const [location, setLocation] = useLocation();
   const version = useVersionNumber();
 
@@ -113,8 +117,14 @@ function NavBar() {
             </Tab>
           );
         })}
-
-        <Box position="absolute" right="0" top="0" p="2" color="gray.500">
+        <Spacer />
+        {!isDemoSite && (
+          <>
+            <StateExporter />
+            <StateLoader />
+          </>
+        )}
+        <Box p="8px" mr="10px" color="gray.500">
           {version}
         </Box>
       </TabList>

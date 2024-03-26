@@ -18,88 +18,19 @@ import {
   useToast,
 } from "@chakra-ui/react";
 import { InfoIcon } from "@chakra-ui/icons";
-import { loadChecks } from "@/lib/api/checks";
+import { loadState } from "@/lib/api/state";
 import { IoFolderOpenOutline } from "react-icons/io5";
 import { useLocation } from "wouter";
 import { useRunsAggregated } from "@/lib/hooks/LineageGraphContext";
 
-export function CheckListInitLoader() {
-  const toast = useToast();
-  const queryClient = useQueryClient();
-  const hiddenFileInput = useRef<HTMLInputElement>(null);
-  const [selectedFile, setSelectedFile] = useState<File | null>(null);
-  const [, refetchRunsAggregated] = useRunsAggregated();
-
-  const handleLoad = useCallback(async () => {
-    if (!selectedFile) {
-      return;
-    }
-
-    try {
-      const { checks } = await loadChecks(selectedFile);
-      refetchRunsAggregated();
-      queryClient.invalidateQueries({ queryKey: cacheKeys.checks() });
-      toast({
-        description: `${checks} checks loaded successfully`,
-        status: "info",
-        variant: "left-accent",
-        position: "bottom",
-        duration: 5000,
-        isClosable: true,
-      });
-    } catch (error) {
-      console.error("Load failed", error);
-      toast({
-        title: "Load failed",
-        description: `${error}`,
-        status: "error",
-        variant: "left-accent",
-        position: "bottom",
-        duration: 5000,
-        isClosable: true,
-      });
-    }
-  }, [queryClient, toast, selectedFile, refetchRunsAggregated]);
-
-  useEffect(() => {
-    if (selectedFile) {
-      handleLoad();
-    }
-  }, [selectedFile, handleLoad]);
-
-  const handleClick = () => {
-    if (hiddenFileInput.current) {
-      hiddenFileInput.current.click();
-    }
-  };
-
-  const handleFileSelect = (event: ChangeEvent<HTMLInputElement>) => {
-    if (event.target.files?.length === 1) {
-      setSelectedFile(event.target.files[0]);
-    }
-  };
-
-  return (
-    <>
-      <Button onClick={handleClick}>Load a checklist</Button>
-      <input
-        type="file"
-        style={{ display: "none" }}
-        ref={hiddenFileInput}
-        onChange={handleFileSelect}
-      />
-    </>
-  );
-}
-
-export function CheckListLoader() {
+export function StateLoader() {
   const toast = useToast();
   const queryClient = useQueryClient();
   const hiddenFileInput = useRef<HTMLInputElement>(null);
   const cancelRef = useRef<HTMLButtonElement>(null);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const { isOpen, onOpen, onClose } = useDisclosure();
-  const [, setLocation] = useLocation();
+  const [location, setLocation] = useLocation();
   const [, refetchRunsAggregated] = useRunsAggregated();
 
   const handleLoad = useCallback(async () => {
@@ -108,12 +39,14 @@ export function CheckListLoader() {
     }
 
     try {
-      const { checks } = await loadChecks(selectedFile);
+      const { runs, checks } = await loadState(selectedFile);
       refetchRunsAggregated();
       await queryClient.invalidateQueries({ queryKey: cacheKeys.checks() });
-      setLocation("/checks");
+      if (location.includes("/checks")) {
+        setLocation("/checks");
+      }
       toast({
-        description: `${checks} checks loaded successfully`,
+        description: `${runs} runs and ${checks} checks loaded successfully`,
         status: "info",
         variant: "left-accent",
         position: "bottom",
@@ -139,6 +72,7 @@ export function CheckListLoader() {
     selectedFile,
     toast,
     onClose,
+    location,
     setLocation,
     refetchRunsAggregated,
   ]);
@@ -158,11 +92,10 @@ export function CheckListLoader() {
 
   return (
     <>
-      <Tooltip label="Load checklist">
+      <Tooltip label="Load">
         <IconButton
           variant="unstyled"
-          aria-label="Load checks"
-          mr="10px"
+          aria-label="Load state"
           onClick={handleClick}
           icon={<Icon pt="10px" as={IoFolderOpenOutline} boxSize={"2em"} />}
         />
@@ -182,7 +115,7 @@ export function CheckListLoader() {
         <AlertDialogOverlay>
           <AlertDialogContent>
             <AlertDialogHeader fontSize="lg" fontWeight="bold">
-              Load checklist
+              Load state
             </AlertDialogHeader>
 
             <AlertDialogBody>
@@ -195,11 +128,11 @@ export function CheckListLoader() {
                 </Flex>
                 <Flex>
                   <Text>
-                    The checklist will be{" "}
+                    All runs and checks will be{" "}
                     <Text as="span" fontWeight="600">
                       overwritten
                     </Text>{" "}
-                    by the loaded checklist
+                    by the loaded state
                   </Text>
                 </Flex>
               </Flex>
