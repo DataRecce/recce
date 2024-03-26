@@ -12,7 +12,7 @@ export type ValueDiffResult = {
 
 export interface ValueDiffParams {
   model: string;
-  primary_key: string;
+  primary_key: string | string[];
   columns?: string[];
 }
 
@@ -29,10 +29,7 @@ export async function submitValueDiff(
 
 export interface ValueDiffDetailResult extends DataFrame {}
 
-export interface ValueDiffDetailParams {
-  model: string;
-  primary_key: string;
-}
+export type ValueDiffDetailParams = ValueDiffParams;
 
 export interface ValueDiffDetailViewOptions {
   changed_only?: boolean;

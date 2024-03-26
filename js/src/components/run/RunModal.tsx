@@ -136,6 +136,7 @@ export const RunModal = <PT, RT, VO>({
   };
 
   const hasResult = !!lastRun?.result || !!run?.result;
+  const hasError = !!lastRun?.error || !!run?.error || !!error;
   const relativeTime = lastRun?.run_at
     ? formatDistanceToNow(new Date(lastRun.run_at), { addSuffix: true })
     : null;
@@ -195,7 +196,7 @@ export const RunModal = <PT, RT, VO>({
         </ModalBody>
         <ModalFooter>
           <Flex gap="10px">
-            {hasResult && RunForm && (
+            {(hasResult || hasError) && RunForm && (
               <Button colorScheme="blue" onClick={handleReset}>
                 Reset
               </Button>
@@ -219,7 +220,7 @@ export const RunModal = <PT, RT, VO>({
               </Button>
             )}
 
-            {!hasResult && !isPending && (
+            {!hasResult && !hasError && !isPending && (
               <Button
                 isDisabled={isPending || !isReadyToExecute}
                 colorScheme="blue"

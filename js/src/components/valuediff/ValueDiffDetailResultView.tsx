@@ -62,13 +62,13 @@ export const ValueDiffDetailResultView = ({
       }
     };
 
-    if (!run.result) {
+    if (!run.result || !run?.params?.primary_key) {
       return { columns: [], rows: [] };
     }
 
-    const primaryKeys = run?.params?.primary_key
-      ? [run?.params?.primary_key]
-      : [];
+    // primaryKey can be array or string, map to array
+    const primaryKey = run.params.primary_key;
+    const primaryKeys = Array.isArray(primaryKey) ? primaryKey : [primaryKey];
 
     return toValueDiffGrid(run?.result, primaryKeys, {
       changedOnly,

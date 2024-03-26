@@ -1,7 +1,8 @@
-from typing import TypedDict, Optional, List
+from typing import TypedDict, Optional, List, Union
 
 import agate
 from dbt.adapters.sql import SQLAdapter
+from dbt.exceptions import CompilationError
 from pydantic import BaseModel
 
 from recce.dbt import default_dbt_context, DBTContext
@@ -11,7 +12,7 @@ from ..exceptions import RecceException
 
 
 class ValueDiffParams(TypedDict):
-    primary_key: str
+    primary_key: Union[str, List[str]]
     model: str
     exclude_columns: Optional[List[str]]
 
@@ -27,7 +28,7 @@ class ValueDiffResult(BaseModel):
 
 
 class ValueDiffMixin:
-    def _verify_audit_helper(self, dbt_context):
+    def _verify_dbt_packages_deps(self, dbt_context):
         for macro_name, macro in dbt_context.manifest.macros.items():
             if macro.package_name == 'audit_helper':
                 break
@@ -35,11 +36,23 @@ class ValueDiffMixin:
             raise RecceException(
                 r"Package 'audit_helper' not found. Please refer to the link to install: https://hub.getdbt.com/dbt-labs/audit_helper/")
 
-    def _verify_primary_key(self, dbt_context: DBTContext, primary_key: str, model: str):
-        self.update_progress(message=f"Verify primary key: {primary_key}")
+        for macro_name, macro in dbt_context.manifest.macros.items():
+            if macro.package_name == 'dbt_utils' and macro.name == 'generate_surrogate_key':
+                self.legacy_surrogate_key = False
+                break
 
-        if primary_key is None or len(primary_key) == 0:
-            raise RecceException("Primary key cannot be empty")
+    def _verify_primary_key(self, dbt_context: DBTContext, primary_key: Union[str, List[str]], model: str):
+        self.update_progress(message=f"Verify primary key: {primary_key}")
+        composite = True if isinstance(primary_key, List) else False
+
+        if composite:
+            if len(primary_key) == 0:
+                raise RecceException("Primary key cannot be empty")
+            sql_template = r"""{{ adapter.dispatch('test_unique_combination_of_columns', 'dbt_utils')(relation, primary_key) }}"""
+        else:
+            if primary_key is None or len(primary_key) == 0:
+                raise RecceException("Primary key cannot be empty")
+            sql_template = r"""{{ adapter.dispatch('test_unique', 'dbt')(relation, primary_key) }}"""
 
         # check primary keys
         for base in [True, False]:
@@ -47,11 +60,10 @@ class ValueDiffMixin:
             relation = dbt_context.create_relation(model, base)
             context = dict(
                 relation=relation,
-                column_name=primary_key,
+                primary_key=primary_key,
             )
 
-            query = r"""{{ adapter.dispatch('test_unique', 'dbt')(relation, column_name) }}"""
-            sql = dbt_context.generate_sql(query, base=False, context=context)
+            sql = dbt_context.generate_sql(sql_template, context=context)
             sql_test = f"""SELECT COUNT(*) AS INVALIDS FROM ({sql}) AS T"""
 
             response, table = dbt_context.adapter.execute(sql_test, fetch=True)
@@ -72,9 +84,12 @@ class ValueDiffTask(Task, ValueDiffMixin):
         super().__init__()
         self.params = params
         self.connection = None
+        self.legacy_surrogate_key = True
 
-    def _query_value_diff(self, dbt_context: DBTContext, primary_key: str, model: str, columns: List[str] = None):
+    def _query_value_diff(self, dbt_context: DBTContext, primary_key: Union[str, List[str]], model: str,
+                          columns: List[str] = None):
         column_groups = {}
+        composite = True if isinstance(primary_key, List) else False
 
         if columns is None or len(columns) == 0:
             base_columns = [column.column for column in dbt_context.get_columns(model, base=True)]
@@ -82,27 +97,43 @@ class ValueDiffTask(Task, ValueDiffMixin):
             columns = [column for column in base_columns if column in curr_columns]
         completed = 0
 
-        if primary_key not in columns:
-            columns.insert(0, primary_key)
+        if composite:
+            for primary_key_comp in primary_key[::-1]:
+                if primary_key_comp not in columns:
+                    columns.insert(0, primary_key_comp)
+        else:
+            if primary_key not in columns:
+                columns.insert(0, primary_key)
+
+        sql_template = r"""
+        {% set a_query %}
+            select {{ __PRIMARY_KEY__ }} as _pk, * from {{ base_relation }}
+        {% endset %}
+
+        {% set b_query %}
+            select {{ __PRIMARY_KEY__ }} as _pk, * from {{ curr_relation }}
+        {% endset %}
+
+        {{ audit_helper.compare_column_values(
+            a_query=a_query,
+            b_query=b_query,
+            primary_key="_pk",
+            column_to_compare=column_to_compare
+        ) }}
+        """
+
+        if composite:
+            if self.legacy_surrogate_key:
+                new_primary_key = 'dbt_utils.surrogate_key(primary_key)'
+            else:
+                new_primary_key = 'dbt_utils.generate_surrogate_key(primary_key)'
+        else:
+            new_primary_key = 'primary_key'
+        sql_template = sql_template.replace('__PRIMARY_KEY__', new_primary_key)
 
         for column in columns:
             self.update_progress(message=f"Diff column: {column}", percentage=completed / len(columns))
-            sql_template = r"""
-            {% set a_query %}
-                select * from {{ base_relation }}
-            {% endset %}
 
-            {% set b_query %}
-                select * from {{ curr_relation }}
-            {% endset %}
-
-            {{ audit_helper.compare_column_values(
-                a_query=a_query,
-                b_query=b_query,
-                primary_key=primary_key,
-                column_to_compare=column_to_compare
-            ) }}
-            """
             sql = dbt_context.generate_sql(sql_template, context=dict(
                 base_relation=dbt_context.create_relation(model, base=True),
                 curr_relation=dbt_context.create_relation(model, base=False),
@@ -156,14 +187,16 @@ class ValueDiffTask(Task, ValueDiffMixin):
 
             completed = completed + 1
 
-        pk = [v for k, v in column_groups.items() if k.lower() == primary_key.lower()][0]
-        added = pk['added']
-        removed = pk['removed']
-        common = pk['matched'] + pk['mismatched']
+        first = list(column_groups.values())[0]
+        added = first['added']
+        removed = first['removed']
+        common = first['matched'] + first['mismatched']
         total = common + added + removed
 
         row = []
         for k, v in column_groups.items():
+            if composite and k.lower() == "_pk":
+                continue
             # This is incorrect when there are one side null
             # https://github.com/dbt-labs/dbt-audit-helper/blob/main/macros/compare_column_values.sql#L20-L23
             # matched = v['matched']
@@ -188,11 +221,11 @@ class ValueDiffTask(Task, ValueDiffMixin):
         with adapter.connection_named("value diff"):
             self.connection = adapter.connections.get_thread_connection()
 
-            primary_key: str = self.params['primary_key']
+            primary_key: Union[str, List[str]] = self.params['primary_key']
             model: str = self.params['model']
             columns: List[str] = self.params.get('columns')
 
-            self._verify_audit_helper(dbt_context)
+            self._verify_dbt_packages_deps(dbt_context)
             self.check_cancel()
 
             self._verify_primary_key(dbt_context, primary_key, model)
@@ -223,15 +256,25 @@ class ValueDiffDetailTask(Task, ValueDiffMixin):
         super().__init__()
         self.params = params
         self.connection = None
+        self.legacy_surrogate_key = True
 
-    def _query_value_diff(self, dbt_context: DBTContext, primary_key: str, model: str, columns: List[str] = None):
+    def _query_value_diff(self, dbt_context: DBTContext, primary_key: Union[str, List[str]], model: str,
+                          columns: List[str] = None):
+
+        composite = True if isinstance(primary_key, List) else False
+
         if columns is None or len(columns) == 0:
             base_columns = [column.column for column in dbt_context.get_columns(model, base=True)]
             curr_columns = [column.column for column in dbt_context.get_columns(model, base=False)]
             columns = [column for column in base_columns if column in curr_columns]
 
-        if primary_key not in columns:
-            columns.insert(0, primary_key)
+        if composite:
+            for primary_key_comp in primary_key[::-1]:
+                if primary_key_comp not in columns:
+                    columns.insert(0, primary_key_comp)
+        else:
+            if primary_key not in columns:
+                columns.insert(0, primary_key)
 
         sql_template = r"""
         {% set col_list %}
@@ -252,10 +295,20 @@ class ValueDiffDetailTask(Task, ValueDiffMixin):
         {{ audit_helper.compare_queries(
             a_query=a_query,
             b_query=b_query,
-            primary_key=primary_key,
+            primary_key=__PRIMARY_KEY__,
             summarize=False,
         ) }} limit {{ limit }}
         """
+
+        if composite:
+            if self.legacy_surrogate_key:
+                new_primary_key = 'dbt_utils.surrogate_key(primary_key)'
+            else:
+                new_primary_key = 'dbt_utils.generate_surrogate_key(primary_key)'
+        else:
+            new_primary_key = 'primary_key'
+        sql_template = sql_template.replace('__PRIMARY_KEY__', new_primary_key)
+
         sql = dbt_context.generate_sql(sql_template, context=dict(
             base_relation=dbt_context.create_relation(model, base=True),
             curr_relation=dbt_context.create_relation(model, base=False),
@@ -276,11 +329,11 @@ class ValueDiffDetailTask(Task, ValueDiffMixin):
         with adapter.connection_named("value diff"):
             self.connection = adapter.connections.get_thread_connection()
 
-            primary_key: str = self.params['primary_key']
+            primary_key: Union[str, List[str]] = self.params['primary_key']
             model: str = self.params['model']
             columns: List[str] = self.params.get('columns')
 
-            self._verify_audit_helper(dbt_context)
+            self._verify_dbt_packages_deps(dbt_context)
             self.check_cancel()
 
             self._verify_primary_key(dbt_context, primary_key, model)
