@@ -92,7 +92,7 @@ export function StateLoader() {
 
   return (
     <>
-      <Tooltip label="Load state">
+      <Tooltip label="Load">
         <IconButton
           variant="unstyled"
           aria-label="Load state"

@@ -32,7 +32,7 @@ export function StateExporter() {
   };
 
   return (
-    <Tooltip label="Export state">
+    <Tooltip label="Export">
       <IconButton
         variant="unstyled"
         aria-label="Export state"
