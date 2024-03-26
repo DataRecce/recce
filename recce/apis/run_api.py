@@ -103,7 +103,10 @@ class AggregateRunsIn(BaseModel):
 
 @run_router.post("/runs/aggregate", status_code=200)
 async def aggregate_runs_handler(input: AggregateRunsIn):
-    runs = RunDAO().list()
-    nodes = input.filter.nodes if input.filter and input.filter.nodes else None
-    result = materialize_run_results(runs, nodes=nodes)
-    return result
+    try:
+        runs = RunDAO().list()
+        nodes = input.filter.nodes if input.filter and input.filter.nodes else None
+        result = materialize_run_results(runs, nodes=nodes)
+        return result
+    except Exception as e:
+        raise HTTPException(status_code=405, detail=str(e))

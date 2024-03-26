@@ -81,23 +81,27 @@ function TopBar() {
     </Flex>
   );
 }
+interface TabProps {
+  name: string;
+  href: string;
+}
 
 function NavBar() {
   const [location, setLocation] = useLocation();
   const version = useVersionNumber();
 
-  const tabs = [
-    ["Lineage", "/lineage"],
-    ["Query", "/query"],
-    ["Checklist", "/checks"],
+  const tabs: TabProps[] = [
+    { name: "Lineage", href: "/lineage" },
+    { name: "Query", href: "/query" },
+    { name: "Checks", href: "/checks" },
   ];
 
-  const tabIndex = _.findIndex(tabs, ([, href]) => location.startsWith(href));
+  const tabIndex = _.findIndex(tabs, ({ href }) => location.startsWith(href));
 
   return (
     <Tabs index={tabIndex}>
       <TabList>
-        {tabs.map(([name, href]) => {
+        {tabs.map(({ name, href }) => {
           return (
             <Tab
               key={name}

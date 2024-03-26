@@ -42,6 +42,7 @@ export interface CatalogMetadata extends ArtifactMetadata {}
 export interface LineageData {
   metadata: {
     pr_url: string;
+    git_branch?: string;
   };
   nodes: {
     [key: string]: NodeData;

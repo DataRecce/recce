@@ -1,7 +1,6 @@
 import { useState, useEffect } from "react";
 import { axiosClient } from "./axiosClient";
 
-
 export function useVersionNumber() {
   const [version, setVersion] = useState("");
 
