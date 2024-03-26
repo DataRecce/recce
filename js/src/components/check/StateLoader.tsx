@@ -18,12 +18,12 @@ import {
   useToast,
 } from "@chakra-ui/react";
 import { InfoIcon } from "@chakra-ui/icons";
-import { loadChecks } from "@/lib/api/checks";
+import { loadState } from "@/lib/api/state";
 import { IoFolderOpenOutline } from "react-icons/io5";
 import { useLocation } from "wouter";
 import { useRunsAggregated } from "@/lib/hooks/LineageGraphContext";
 
-export function CheckListInitLoader() {
+export function StateInitLoader() {
   const toast = useToast();
   const queryClient = useQueryClient();
   const hiddenFileInput = useRef<HTMLInputElement>(null);
@@ -36,11 +36,11 @@ export function CheckListInitLoader() {
     }
 
     try {
-      const { checks } = await loadChecks(selectedFile);
+      const { runs, checks } = await loadState(selectedFile);
       refetchRunsAggregated();
       queryClient.invalidateQueries({ queryKey: cacheKeys.checks() });
       toast({
-        description: `${checks} checks loaded successfully`,
+        description: `${runs} runs and ${checks} checks loaded successfully`,
         status: "info",
         variant: "left-accent",
         position: "bottom",
@@ -92,7 +92,7 @@ export function CheckListInitLoader() {
   );
 }
 
-export function CheckListLoader() {
+export function StateLoader() {
   const toast = useToast();
   const queryClient = useQueryClient();
   const hiddenFileInput = useRef<HTMLInputElement>(null);
@@ -108,12 +108,12 @@ export function CheckListLoader() {
     }
 
     try {
-      const { checks } = await loadChecks(selectedFile);
+      const { runs, checks } = await loadState(selectedFile);
       refetchRunsAggregated();
       await queryClient.invalidateQueries({ queryKey: cacheKeys.checks() });
-      setLocation("/checks");
+      // setLocation("/checks");
       toast({
-        description: `${checks} checks loaded successfully`,
+        description: `${runs} runs and ${checks} checks loaded successfully`,
         status: "info",
         variant: "left-accent",
         position: "bottom",
@@ -158,11 +158,10 @@ export function CheckListLoader() {
 
   return (
     <>
-      <Tooltip label="Load checklist">
+      <Tooltip label="Load state">
         <IconButton
           variant="unstyled"
-          aria-label="Load checks"
-          mr="10px"
+          aria-label="Load state"
           onClick={handleClick}
           icon={<Icon pt="10px" as={IoFolderOpenOutline} boxSize={"2em"} />}
         />
@@ -182,7 +181,7 @@ export function CheckListLoader() {
         <AlertDialogOverlay>
           <AlertDialogContent>
             <AlertDialogHeader fontSize="lg" fontWeight="bold">
-              Load checklist
+              Load state
             </AlertDialogHeader>
 
             <AlertDialogBody>
@@ -195,11 +194,11 @@ export function CheckListLoader() {
                 </Flex>
                 <Flex>
                   <Text>
-                    The checklist will be{" "}
+                    The runs and checks will be{" "}
                     <Text as="span" fontWeight="600">
                       overwritten
                     </Text>{" "}
-                    by the loaded checklist
+                    by the loaded state
                   </Text>
                 </Flex>
               </Flex>

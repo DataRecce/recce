@@ -12,7 +12,6 @@ import {
   Center,
   Divider,
   Flex,
-  HStack,
   IconButton,
   Tooltip,
   VStack,
@@ -27,8 +26,6 @@ import { CheckList } from "./CheckList";
 import { useClipBoardToast } from "@/lib/hooks/useClipBoardToast";
 import { buildDescription, buildTitle } from "./check";
 import { stripIndents } from "common-tags";
-import { CheckListInitLoader, CheckListLoader } from "./CheckListLoader";
-import { CheckListExporter } from "./CheckListExporter";
 import { useLineageGraphContext } from "@/lib/hooks/LineageGraphContext";
 
 export const CheckPage = () => {
@@ -112,12 +109,7 @@ export const CheckPage = () => {
   if (!checks?.length) {
     return (
       <Center h="100%">
-        <VStack>
-          <Box>No checks</Box>
-          <Flex gap="5">
-            {!isDemoSite && <CheckListInitLoader />}
-          </Flex>
-        </VStack>
+        <Box>No checks</Box>
       </Center>
     );
   }
@@ -131,42 +123,34 @@ export const CheckPage = () => {
         style={{ contain: "size" }}
       >
         <VStack spacing={0} align="flex-end" h="100%">
-          <HStack gap="0px">
-            <Tooltip label="Copy checklist to the clipboard">
-              <IconButton
-                variant="unstyled"
-                aria-label="Copy checklist to the clipboard"
-                onClick={async () => {
-                  const markdown = buildMarkdown(checks);
-                  if (!navigator.clipboard) {
-                    failToast(
-                      "Failed to copy checklist to clipboard",
-                      new Error(
-                        "Copy to clipboard is available only in secure contexts (HTTPS)"
-                      )
-                    );
-                    return;
-                  }
-                  try {
-                    await navigator.clipboard.writeText(markdown);
-                    successToast(
-                      `Copied ${checks.length} checks to the clipboard`
-                    );
-                  } catch (err) {
-                    failToast("Failed to copy checklist to clipboard", err);
-                  }
-                }}
-                icon={<CopyIcon />}
-              />
-            </Tooltip>
-            {!isDemoSite && (
-              <>
-                <CheckListExporter />
-                <CheckListLoader />
-              </>
-            )}
-          </HStack>
-
+          <Tooltip label="Copy checklist to the clipboard">
+            <IconButton
+              mr="10px"
+              variant="unstyled"
+              aria-label="Copy checklist to the clipboard"
+              onClick={async () => {
+                const markdown = buildMarkdown(checks);
+                if (!navigator.clipboard) {
+                  failToast(
+                    "Failed to copy checklist to clipboard",
+                    new Error(
+                      "Copy to clipboard is available only in secure contexts (HTTPS)"
+                    )
+                  );
+                  return;
+                }
+                try {
+                  await navigator.clipboard.writeText(markdown);
+                  successToast(
+                    `Copied ${checks.length} checks to the clipboard`
+                  );
+                } catch (err) {
+                  failToast("Failed to copy checklist to clipboard", err);
+                }
+              }}
+              icon={<CopyIcon />}
+            />
+          </Tooltip>
           <Divider mb="8px" />
           <CheckList
             checks={orderedChecks}
