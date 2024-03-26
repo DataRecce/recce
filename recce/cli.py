@@ -183,7 +183,7 @@ def run(output, **kwargs):
 
     from .server import AppState
     state = AppState(state_file=output)
-    load_default_state(state.state_file)
+    load_default_state()
     asyncio.run(archive_artifacts(state.state_file, **kwargs))
     pass
 
