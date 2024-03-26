@@ -7,19 +7,21 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Optional, Any
 
-from fastapi import FastAPI, HTTPException, Request, WebSocket
+from fastapi import FastAPI, HTTPException, Request, WebSocket, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import PlainTextResponse
 from fastapi.staticfiles import StaticFiles
-from pydantic import BaseModel
+from pydantic import BaseModel, ValidationError
 from starlette.middleware.sessions import SessionMiddleware
 from starlette.websockets import WebSocketDisconnect
 
 from . import __version__, event
 from .apis.check_api import check_router
 from .apis.run_api import run_router
-from .apis.state_api import state_router
 from .dbt import load_dbt_context, default_dbt_context
-from .models.state import load_default_state, default_recce_state
+from .exceptions import RecceException
+from .models.state import load_default_state, default_recce_state, RecceState
+from .models.util import pydantic_model_json_dump
 
 logger = logging.getLogger('uvicorn')
 
@@ -119,6 +121,30 @@ async def get_lineage(base: Optional[bool] = False):
         raise HTTPException(status_code=400, detail=str(e))
 
 
+@app.post("/api/export", response_class=PlainTextResponse, status_code=200)
+async def export_handler():
+    try:
+        return pydantic_model_json_dump(default_recce_state())
+    except RecceException as e:
+        raise HTTPException(status_code=400, detail=e.message)
+
+
+@app.post("/api/load", status_code=200)
+async def load_handler(file: UploadFile):
+    try:
+        content = await file.read()
+        load_state = RecceState().model_validate_json(content)
+        current_state = default_recce_state()
+        current_state.checks = load_state.checks
+        current_state.runs = load_state.runs
+
+        return {"runs": len(current_state.runs), "checks": len(current_state.checks)}
+    except ValidationError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    except RecceException as e:
+        raise HTTPException(status_code=400, detail=e.message)
+
+
 @app.get("/api/version")
 async def version():
     try:
@@ -148,7 +174,6 @@ async def broadcast(data: str):
 api_prefix = '/api'
 app.include_router(check_router, prefix=api_prefix)
 app.include_router(run_router, prefix=api_prefix)
-app.include_router(state_router, prefix=api_prefix)
 
 static_folder_path = Path(__file__).parent / 'data'
 app.mount("/", StaticFiles(directory=static_folder_path, html=True), name="static")

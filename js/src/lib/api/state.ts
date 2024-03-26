@@ -6,7 +6,7 @@ export interface LoadedState {
 }
 
 export async function exportState(): Promise<string> {
-  const response = await axiosClient.post("/api/state/export");
+  const response = await axiosClient.post("/api/export");
   return response.data;
 }
 
@@ -14,6 +14,6 @@ export async function loadState(file: File): Promise<LoadedState> {
   const formData = new FormData();
   formData.append("file", file);
 
-  const response = await axiosClient.post("/api/state/load", formData);
+  const response = await axiosClient.post("/api/load", formData);
   return response.data;
 }
