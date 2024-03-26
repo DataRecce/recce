@@ -26,7 +26,6 @@ import { CheckList } from "./CheckList";
 import { useClipBoardToast } from "@/lib/hooks/useClipBoardToast";
 import { buildDescription, buildTitle } from "./check";
 import { stripIndents } from "common-tags";
-import { useLineageGraphContext } from "@/lib/hooks/LineageGraphContext";
 
 export const CheckPage = () => {
   const [, setLocation] = useLocation();

@@ -17,6 +17,7 @@ from starlette.websockets import WebSocketDisconnect
 from . import __version__, event
 from .apis.check_api import check_router
 from .apis.run_api import run_router
+from .apis.state_api import state_router
 from .dbt import load_dbt_context, default_dbt_context
 from .models.state import load_default_state, default_recce_state
 
@@ -147,6 +148,7 @@ async def broadcast(data: str):
 api_prefix = '/api'
 app.include_router(check_router, prefix=api_prefix)
 app.include_router(run_router, prefix=api_prefix)
+app.include_router(state_router, prefix=api_prefix)
 
 static_folder_path = Path(__file__).parent / 'data'
 app.mount("/", StaticFiles(directory=static_folder_path, html=True), name="static")

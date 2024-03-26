@@ -30,6 +30,7 @@ export function StateLoader() {
   const cancelRef = useRef<HTMLButtonElement>(null);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const { isOpen, onOpen, onClose } = useDisclosure();
+  const [location, setLocation] = useLocation();
   const [, refetchRunsAggregated] = useRunsAggregated();
 
   const handleLoad = useCallback(async () => {
@@ -41,6 +42,9 @@ export function StateLoader() {
       const { runs, checks } = await loadState(selectedFile);
       refetchRunsAggregated();
       await queryClient.invalidateQueries({ queryKey: cacheKeys.checks() });
+      if (location.includes("/checks")) {
+        setLocation("/checks");
+      }
       toast({
         description: `${runs} runs and ${checks} checks loaded successfully`,
         status: "info",
@@ -63,7 +67,15 @@ export function StateLoader() {
     }
 
     onClose();
-  }, [queryClient, selectedFile, toast, onClose, refetchRunsAggregated]);
+  }, [
+    queryClient,
+    selectedFile,
+    toast,
+    onClose,
+    location,
+    setLocation,
+    refetchRunsAggregated,
+  ]);
 
   const handleClick = () => {
     if (hiddenFileInput.current) {
