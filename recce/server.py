@@ -135,10 +135,24 @@ async def load_handler(file: UploadFile):
         content = await file.read()
         load_state = RecceState().model_validate_json(content)
         current_state = default_recce_state()
-        current_state.checks = load_state.checks
-        current_state.runs = load_state.runs
+        current_check_ids = [str(c.check_id) for c in current_state.checks]
+        current_run_ids = [str(r.run_id) for r in current_state.runs]
 
-        return {"runs": len(current_state.runs), "checks": len(current_state.checks)}
+        load_checks = 0
+        for check in load_state.checks:
+            if str(check.check_id) not in current_check_ids:
+                current_state.checks.append(check)
+                load_checks += 1
+
+        load_runs = 0
+        for run in load_state.runs:
+            if str(run.run_id) not in current_run_ids:
+                current_state.runs.append(run)
+                load_runs += 1
+
+        current_state.runs.sort(key=lambda x: x.run_at, reverse=True)
+
+        return {"runs": load_runs, "checks": load_checks}
     except ValidationError as e:
         raise HTTPException(status_code=400, detail=str(e))
     except RecceException as e:

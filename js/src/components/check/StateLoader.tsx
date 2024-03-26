@@ -128,11 +128,11 @@ export function StateLoader() {
                 </Flex>
                 <Flex>
                   <Text>
-                    All runs and checks will be{" "}
+                    Current runs and checks will be{" "}
                     <Text as="span" fontWeight="600">
-                      overwritten
+                      merged
                     </Text>{" "}
-                    by the loaded state
+                    with the loaded state
                   </Text>
                 </Flex>
               </Flex>
