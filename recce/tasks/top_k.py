@@ -34,14 +34,14 @@ class TopKDiffTask(Task, QueryMixin):
         WITH
         BASE_CAT as (
             select
-                coalesce(cast({{column}} as VARCHAR), '__null__') as category,
+                coalesce(cast({{column}} as {{ dbt.type_string() }}), '__null__') as category,
                 count(*) as c
             from {{base_relation}}
             group by category
         ),
         CURR_CAT as (
             select
-                coalesce(cast({{column}} as VARCHAR), '__null__') as category,
+                coalesce(cast({{column}} as {{ dbt.type_string() }}), '__null__') as category,
                 count(*) as c
             from {{cur_relation}}
             group by category
