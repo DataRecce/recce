@@ -16,6 +16,7 @@ import {
 } from "chart.js";
 import { Bar } from "react-chartjs-2";
 import { BASE_BAR_COLOR, CURRENT_BAR_COLOR, SquareIcon } from "./SquareIcon";
+import { is } from "date-fns/locale";
 
 export const INFO_VAL_COLOR = "#63B3ED";
 
@@ -31,6 +32,7 @@ interface Summary {
   displayCount: string;
   displayRatio: string;
   isLastItemOthers: boolean;
+  isSpecialLabel: boolean;
 }
 
 function prepareSummaryList(
@@ -47,9 +49,26 @@ function prepareSummaryList(
     const isLastItemOthers = index === counts.length;
     const count = isLastItemOthers ? remainingSumCount : counts[index];
 
+    let label: string;
+    let isSpecialLabel = false;
+
+    if (isLastItemOthers) {
+      label = "(others)";
+      isSpecialLabel = true;
+    } else if (v === undefined || v === null) {
+      label = "(null)";
+      isSpecialLabel = true;
+    } else if (typeof v === "string" && v.length === 0) {
+      label = "(empty)";
+      isSpecialLabel = true;
+    } else {
+      label = String(v);
+    }
+
     return {
       isLastItemOthers,
-      label: isLastItemOthers ? "(others)" : String(v) || "(empty)",
+      isSpecialLabel,
+      label,
       count: count,
       displayCount: formatAsAbbreviatedNumber(count),
       displayRatio: formatIntervalMinMax(count / topK.valids) || "N/A",
@@ -131,11 +150,7 @@ export function TopKSummaryBarChart({
                   noOfLines={1}
                   width={"10em"}
                   fontSize={"sm"}
-                  color={
-                    current.isLastItemOthers || current.label.length === 0
-                      ? "gray.400"
-                      : "inherit"
-                  }
+                  color={current.isSpecialLabel ? "gray.400" : "inherit"}
                 >
                   {current.label}
                 </Text>
@@ -215,7 +230,6 @@ export function TopKSummaryList({ topk, valids, isDisplayTopTen }: Props) {
         const isLastItemOthers = index === displayList.length;
         const topkCount = isLastItemOthers ? remainingSumCount : v;
         const catName = String(topk.values[index]);
-
         const topkLabel = isLastItemOthers ? "(others)" : catName || "(empty)";
         const displayTopkCount = formatAsAbbreviatedNumber(topkCount);
         const displayTopkRatio = formatIntervalMinMax(topkCount / valids);
