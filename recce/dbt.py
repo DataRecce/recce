@@ -358,6 +358,7 @@ class DBTContext:
                 'name': node['name'],
                 'resource_type': node['resource_type'],
                 'package_name': node['package_name'],
+                'config': node['config'],
                 'checksum': node['checksum'],
                 'raw_code': node['raw_code'],
             }
@@ -407,6 +408,7 @@ class DBTContext:
                 'name': source['name'],
                 'resource_type': source['resource_type'],
                 'package_name': source['package_name'],
+                'config': source['config'],
             }
 
             if catalog is not None and unique_id in catalog.sources:
@@ -418,6 +420,7 @@ class DBTContext:
                 'name': exposure['name'],
                 'resource_type': exposure['resource_type'],
                 'package_name': exposure['package_name'],
+                'config': exposure['config'],
             }
         for metric in manifest_dict['metrics'].values():
             nodes[metric['unique_id']] = {
@@ -425,6 +428,7 @@ class DBTContext:
                 'name': metric['name'],
                 'resource_type': metric['resource_type'],
                 'package_name': metric['package_name'],
+                'config': metric['config'],
             }
 
         if 'semantic_models' in manifest_dict:
@@ -434,6 +438,7 @@ class DBTContext:
                     'name': semantic_models['name'],
                     'resource_type': semantic_models['resource_type'],
                     'package_name': semantic_models['package_name'],
+                    'config': semantic_models['config'],
                 }
 
         metadata = dict(
