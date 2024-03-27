@@ -16,7 +16,6 @@ import {
 } from "chart.js";
 import { Bar } from "react-chartjs-2";
 import { BASE_BAR_COLOR, CURRENT_BAR_COLOR, SquareIcon } from "./SquareIcon";
-import { is } from "date-fns/locale";
 
 export const INFO_VAL_COLOR = "#63B3ED";
 
