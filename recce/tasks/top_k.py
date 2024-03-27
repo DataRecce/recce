@@ -68,6 +68,63 @@ class TopKDiffTask(Task, QueryMixin):
         self.params = params
         self.connection = None
 
+    def _query_row_count(self, dbt_context, relation):
+        sql_template = r"""
+        select count(*) from {{ relation }}
+        """
+        sql = dbt_context.generate_sql(sql_template, context=dict(
+            relation=relation
+        ))
+        _, table = dbt_context.adapter.execute(sql, fetch=True)
+        row_count = table[0][0]
+        return int(row_count)
+
+    def _query_top_k(self, dbt_context, base_relation, cur_relation, column, k):
+        sql_template = r"""
+        WITH
+        BASE_CAT as (
+            select
+                {{column}} as category,
+                count(*) as c
+            from {{base_relation}}
+            group by category
+        ),
+        CURR_CAT as (
+            select
+                {{column}} as category,
+                count(*) as c
+            from {{cur_relation}}
+            group by category
+        )
+        select
+            CURR_CAT.category as category,
+            BASE_CAT.c as base_count,
+            CURR_CAT.c as curr_count
+        from CURR_CAT
+        full outer join BASE_CAT
+        on CURR_CAT.category = BASE_CAT.category
+        order by CURR_CAT.c desc, BASE_CAT.c desc
+        limit {{k}}
+        """
+        sql = dbt_context.generate_sql(sql_template, context=dict(
+            base_relation=base_relation,
+            cur_relation=cur_relation,
+            column=column,
+            k=k,
+        ))
+        _, table = dbt_context.adapter.execute(sql, fetch=True)
+
+        categories = []
+        base_counts = []
+        curr_counts = []
+
+        for row in table:
+            categories.append(row[0])
+            curr_counts.append(int(row[1]))
+            base_counts.append(int(row[2]))
+
+        return categories, curr_counts, base_counts
+
     def execute(self):
         result = {}
         from dbt.adapters.sql import SQLAdapter
@@ -76,53 +133,37 @@ class TopKDiffTask(Task, QueryMixin):
 
         with adapter.connection_named("query"):
             self.connection = adapter.connections.get_thread_connection()
-            node = self.params['model']
+            model = self.params['model']
             column = self.params['column_name']
             k = self.params.get('k', 10)
-            sql_top_k_query = generate_top_k_sql(node, column, k)
-            valid_counts_query = f"""
-                    SELECT COUNT(*) as valid_counts
-                    FROM {{{{ ref("{node}") }}}}
-                    WHERE {column} IS NOT NULL
-                    """
 
-            try:
-                curr = self.execute_sql(sql_top_k_query, base=False)
-                curr_valid_counts = self.execute_sql(valid_counts_query, base=False)
-            except Exception as e:
-                print('Failed to query the CURRENT top-k result', e)
-                curr = None
+            base_relation = dbt_context.create_relation(model, base=True)
+            curr_relation = dbt_context.create_relation(model, base=True)
             self.check_cancel()
-
-            current_catalogs = None
-            if curr is not None:
-                current_catalogs = [row[0] for row in curr.rows]
-                result['current'] = {
-                    'values': current_catalogs,
-                    'counts': [(row[1]) for row in curr.rows],
-                    'valids': curr_valid_counts.rows[0][0] if curr_valid_counts is not None else 0
+            categories, curr_counts, base_counts = self._query_top_k(
+                dbt_context,
+                base_relation,
+                curr_relation,
+                column,
+                k
+            )
+            self.check_cancel()
+            curr_valids = self._query_row_count(dbt_context, curr_relation)
+            self.check_cancel()
+            base_valids = self._query_row_count(dbt_context, base_relation)
+            result = {
+                'current': {
+                    'values': categories,
+                    'counts': curr_counts,
+                    'valids': curr_valids,
+                },
+                'base': {
+                    'values': categories,
+                    'counts': base_counts,
+                    'valids': base_valids,
                 }
-
-            if current_catalogs is not None:
-                try:
-                    sql_selected_values_query = generate_selected_values_sql(node, column, current_catalogs)
-                    base = self.execute_sql(sql_selected_values_query, base=True)
-                    base_valid_counts = self.execute_sql(valid_counts_query, base=True)
-                except Exception as e:
-                    print('Failed to query the BASE top-k result', e)
-                    result = None
-                self.check_cancel()
-
-                if base is not None:
-                    result['base'] = {
-                        'values': [(row[0]) for row in base.rows],
-                        'counts': [(row[1]) for row in base.rows],
-                        'valids': base_valid_counts.rows[0][0] if base_valid_counts is not None else 0
-                    }
-            else:
-                result = None
-
-        return result
+            }
+            return result
 
     def cancel(self):
         super().cancel()
