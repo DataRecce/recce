@@ -79,11 +79,11 @@ async def archive_artifacts(state_file: str, **kwargs):
 
     # Prepare the artifact by collecting the lineage
     console.rule("DBT Artifacts")
-    print(f"Base:")
+    print("Base:")
     print(f"    Manifest: {ctx.base_manifest.metadata.generated_at}")
     print(f"    Catalog:  {ctx.base_catalog.metadata.generated_at if ctx.base_catalog else 'N/A'}")
 
-    print(f"Current:")
+    print("Current:")
     print(f"    Manifest: {ctx.curr_manifest.metadata.generated_at}")
     print(f"    Catalog:  {ctx.curr_catalog.metadata.generated_at if ctx.curr_catalog else 'N/A'}")
     base = ctx.get_lineage(base=True)
