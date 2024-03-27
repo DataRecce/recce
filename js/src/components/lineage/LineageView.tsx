@@ -391,7 +391,8 @@ function _LineageView({ ...props }: LineageViewProps) {
           <Button
             colorScheme="blue"
             onClick={() => {
-              setViewOptions({ ...viewOptions, view_mode: "all" });
+              setControlMode("normal");
+              handleViewOptionsChanged({ ...viewOptions, view_mode: "all" });
             }}
           >
             Show all nodes
