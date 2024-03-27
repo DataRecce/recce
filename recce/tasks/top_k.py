@@ -1,58 +1,8 @@
-from decimal import Decimal
 from typing import TypedDict
 
 from recce.dbt import default_dbt_context
 from recce.tasks import Task
 from recce.tasks.query import QueryMixin
-
-
-def generate_top_k_sql(node, column, k):
-    return f"""
-WITH frequency_counts AS (
-    SELECT
-        {column} as value,
-        COUNT(*) as frequency
-    FROM {{{{ ref("{node}") }}}}
-    GROUP BY {column}
-    ORDER BY frequency DESC, value ASC
-    LIMIT {k}
-)
-
-SELECT * FROM frequency_counts
-"""
-
-
-def generate_selected_values_sql(node, column, values):
-    def formalize(value):
-        if value is None:
-            return 'NULL'
-        if isinstance(value, Decimal):
-            return str(value)
-        return f"'{value}'"
-
-    value_list = ', '.join([formalize(v) for v in values])
-    order_seq = ', '.join(str(i + 1) for i in range(len(values)))
-    return f"""
-WITH value_list AS (
-    SELECT unnest(ARRAY[{value_list}]) AS {column}, -- Replace these with your specific values
-    unnest(ARRAY[{order_seq}]) AS order_seq
-),
-aggregated_data AS (
-    SELECT
-        {column},
-        COUNT(*) AS frequency
-    FROM {{{{ ref("{node}") }}}}
-    WHERE {column} IN ({', '.join([formalize(v) for v in values])}) -- This ensures the aggregation only considers your values
-    GROUP BY {column}
-)
-
-SELECT
-    vl.{column},
-    COALESCE(ad.frequency, 0) AS frequency
-FROM value_list vl
-LEFT JOIN aggregated_data ad ON vl.{column} = ad.{column}
-ORDER BY vl.order_seq
-"""
 
 
 class TopKDiffParams(TypedDict):
