@@ -160,7 +160,7 @@ async def load_handler(file: UploadFile):
                 current_state.runs.append(run)
                 load_runs += 1
 
-        current_state.runs.sort(key=lambda x: x.run_at, reverse=True)
+        current_state.runs.sort(key=lambda x: x.run_at)
 
         return {"runs": load_runs, "checks": load_checks}
     except ValidationError as e:
