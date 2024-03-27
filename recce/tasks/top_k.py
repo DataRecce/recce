@@ -77,33 +77,33 @@ class TopKDiffTask(Task, QueryMixin):
         ))
         _, table = dbt_context.adapter.execute(sql, fetch=True)
         row_count = table[0][0]
-        return int(row_count)
+        return int(row_count) if row_count else 0
 
     def _query_top_k(self, dbt_context, base_relation, cur_relation, column, k):
         sql_template = r"""
         WITH
         BASE_CAT as (
             select
-                {{column}} as category,
+                coalesce(cast({{column}} as VARCHAR), '__null__') as category,
                 count(*) as c
             from {{base_relation}}
             group by category
         ),
         CURR_CAT as (
             select
-                {{column}} as category,
+                coalesce(cast({{column}} as VARCHAR), '__null__') as category,
                 count(*) as c
             from {{cur_relation}}
             group by category
         )
         select
-            CURR_CAT.category as category,
-            BASE_CAT.c as base_count,
-            CURR_CAT.c as curr_count
+            coalesce(CURR_CAT.category, BASE_CAT.category) as category,
+            coalesce(BASE_CAT.c, 0) as base_count,
+            coalesce(CURR_CAT.c, 0) as curr_count
         from CURR_CAT
         full outer join BASE_CAT
         on CURR_CAT.category = BASE_CAT.category
-        order by CURR_CAT.c desc, BASE_CAT.c desc
+        order by curr_count desc, base_count desc
         limit {{k}}
         """
         sql = dbt_context.generate_sql(sql_template, context=dict(
@@ -119,14 +119,13 @@ class TopKDiffTask(Task, QueryMixin):
         curr_counts = []
 
         for row in table:
-            categories.append(row[0])
-            curr_counts.append(int(row[1]))
-            base_counts.append(int(row[2]))
+            categories.append(row[0] if row[0] != '__null__' else None)
+            base_counts.append(int(row[1] if row[1] else 0))
+            curr_counts.append(int(row[2] if row[2] else 0))
 
-        return categories, curr_counts, base_counts
+        return categories, base_counts, curr_counts
 
     def execute(self):
-        result = {}
         from dbt.adapters.sql import SQLAdapter
         dbt_context = default_dbt_context()
         adapter: SQLAdapter = dbt_context.adapter
@@ -138,9 +137,9 @@ class TopKDiffTask(Task, QueryMixin):
             k = self.params.get('k', 10)
 
             base_relation = dbt_context.create_relation(model, base=True)
-            curr_relation = dbt_context.create_relation(model, base=True)
+            curr_relation = dbt_context.create_relation(model, base=False)
             self.check_cancel()
-            categories, curr_counts, base_counts = self._query_top_k(
+            categories, base_counts, curr_counts = self._query_top_k(
                 dbt_context,
                 base_relation,
                 curr_relation,
@@ -148,20 +147,21 @@ class TopKDiffTask(Task, QueryMixin):
                 k
             )
             self.check_cancel()
-            curr_valids = self._query_row_count(dbt_context, curr_relation)
-            self.check_cancel()
             base_valids = self._query_row_count(dbt_context, base_relation)
+            self.check_cancel()
+            curr_valids = self._query_row_count(dbt_context, curr_relation)
+
             result = {
+                'base': {
+                    'values': categories,
+                    'counts': base_counts,
+                    'valids': base_valids,
+                },
                 'current': {
                     'values': categories,
                     'counts': curr_counts,
                     'valids': curr_valids,
                 },
-                'base': {
-                    'values': categories,
-                    'counts': base_counts,
-                    'valids': base_valids,
-                }
             }
             return result
 
