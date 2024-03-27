@@ -20,8 +20,9 @@ from .apis.check_api import check_router
 from .apis.run_api import run_router
 from .dbt import load_dbt_context, default_dbt_context
 from .exceptions import RecceException
+from .models.lineage import LineageDAO
 from .models.state import load_default_state, default_recce_state, RecceState
-from .models.util import pydantic_model_json_dump
+from .models.types import Lineage
 
 logger = logging.getLogger('uvicorn')
 
@@ -124,7 +125,16 @@ async def get_lineage(base: Optional[bool] = False):
 @app.post("/api/export", response_class=PlainTextResponse, status_code=200)
 async def export_handler():
     try:
-        return pydantic_model_json_dump(default_recce_state())
+        ctx = default_dbt_context()
+        base = ctx.get_lineage(base=True)
+        current = ctx.get_lineage(base=False)
+        lineage = Lineage(
+            base=base,
+            current=current,
+        )
+        LineageDAO().set(lineage)
+
+        return default_recce_state().export()
     except RecceException as e:
         raise HTTPException(status_code=400, detail=e.message)
 
