@@ -120,8 +120,8 @@ function NavBar() {
         <Spacer />
         {!isDemoSite && (
           <>
-            <StateExporter />
             <StateImporter />
+            <StateExporter />
           </>
         )}
         <Box p="8px" mr="10px" color="gray.500">

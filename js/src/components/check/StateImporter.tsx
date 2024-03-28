@@ -19,9 +19,9 @@ import {
 } from "@chakra-ui/react";
 import { InfoIcon } from "@chakra-ui/icons";
 import { importState } from "@/lib/api/state";
-import { IoFolderOpenOutline } from "react-icons/io5";
 import { useLocation } from "wouter";
 import { useRunsAggregated } from "@/lib/hooks/LineageGraphContext";
+import { BiImport } from "react-icons/bi";
 
 export function StateImporter() {
   const toast = useToast();
@@ -97,7 +97,7 @@ export function StateImporter() {
           variant="unstyled"
           aria-label="Import state"
           onClick={handleClick}
-          icon={<Icon pt="10px" as={IoFolderOpenOutline} boxSize={"2em"} />}
+          icon={<Icon pt="8px" as={BiImport} boxSize={"2em"} />}
         />
       </Tooltip>
       <input
