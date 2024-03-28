@@ -39,10 +39,6 @@ class RecceState(BaseModel):
         elapsed_time = end_time - start_time
         logger.info(f'Store state completed in {elapsed_time:.2f} seconds')
 
-    def export(self):
-        self.metadata = RecceStateMetadata()
-        return pydantic_model_json_dump(self)
-
     @classmethod
     def load(cls, file_path):
         from pathlib import Path
@@ -65,6 +61,33 @@ class RecceState(BaseModel):
                 raise Exception(f"Unsupported state file version: {metadata.schema_version}")
 
         return state
+
+    def export_state(self):
+        self.metadata = RecceStateMetadata()
+        return pydantic_model_json_dump(self)
+
+    def import_state(self, content):
+        import_state = RecceState.model_validate_json(content)
+        current_check_ids = [str(c.check_id) for c in self.checks]
+        current_run_ids = [str(r.run_id) for r in self.runs]
+
+        # merge checks
+        import_checks = 0
+        for check in import_state.checks:
+            if str(check.check_id) not in current_check_ids:
+                self.checks.append(check)
+                import_checks += 1
+
+        # merge runs
+        import_runs = 0
+        for run in import_state.runs:
+            if str(run.run_id) not in current_run_ids:
+                self.runs.append(run)
+                import_runs += 1
+
+        self.runs.sort(key=lambda x: x.run_at)
+
+        return import_runs, import_checks
 
 
 recce_state: Optional[RecceState] = None

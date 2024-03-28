@@ -134,7 +134,7 @@ async def export_handler():
         )
         LineageDAO().set(lineage)
 
-        return default_recce_state().export()
+        return default_recce_state().export_state()
     except RecceException as e:
         raise HTTPException(status_code=400, detail=e.message)
 
@@ -143,24 +143,7 @@ async def export_handler():
 async def import_handler(file: UploadFile):
     try:
         content = await file.read()
-        import_state = RecceState().model_validate_json(content)
-        current_state = default_recce_state()
-        current_check_ids = [str(c.check_id) for c in current_state.checks]
-        current_run_ids = [str(r.run_id) for r in current_state.runs]
-
-        import_checks = 0
-        for check in import_state.checks:
-            if str(check.check_id) not in current_check_ids:
-                current_state.checks.append(check)
-                import_checks += 1
-
-        import_runs = 0
-        for run in import_state.runs:
-            if str(run.run_id) not in current_run_ids:
-                current_state.runs.append(run)
-                import_runs += 1
-
-        current_state.runs.sort(key=lambda x: x.run_at)
+        import_runs, import_checks = default_recce_state().import_state(content)
 
         return {"runs": import_runs, "checks": import_checks}
     except ValidationError as e:
