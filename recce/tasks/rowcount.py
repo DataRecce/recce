@@ -1,6 +1,6 @@
 from typing import TypedDict, Optional
 
-from recce.dbt import default_dbt_context
+from recce.dbt import default_dbt_context, DBTContext
 from recce.tasks import Task
 from recce.tasks.query import QueryMixin
 
@@ -15,6 +15,26 @@ class RowCountDiffTask(Task, QueryMixin):
         super().__init__()
         self.params = params
         self.connection = None
+
+    def _query_row_count(self, dbt_context: DBTContext, model_name, base=False):
+        node = dbt_context.find_node_by_name(model_name, base=base)
+        if node is None:
+            return None
+
+        if node.resource_type != 'model':
+            return None
+
+        if node.config and node.config.materialized not in ['table', 'view', 'incremental']:
+            return None
+
+        relation = dbt_context.create_relation(model_name, base=base)
+        if relation is None:
+            return None
+
+        sql_template = r"select count(*) from {{ relation }}"
+        sql = dbt_context.generate_sql(sql_template, context=dict(relation=relation))
+        _, table = dbt_context.execute(sql, fetch=True)
+        return int(table[0][0]) if table[0][0] is not None else 0
 
     def execute(self):
         result = {}
@@ -35,30 +55,14 @@ class RowCountDiffTask(Task, QueryMixin):
         with adapter.connection_named("query"):
             self.connection = adapter.connections.get_thread_connection()
             for node in query_candidates:
-                base_row_count = None
-                curr_row_count = None
-                sql_query = 'select count(*) as ROW_COUNT from {{ ref("' + node + '") }}'
-
-                try:
-                    base = self.execute_sql(sql_query, base=True)
-                except Exception as e:
-                    print(e)
-                    base = None
+                base_row_count = self._query_row_count(dbt_context, node, base=True)
                 self.check_cancel()
-
-                try:
-                    curr = self.execute_sql(sql_query, base=False)
-                except Exception:
-                    curr = None
+                curr_row_count = self._query_row_count(dbt_context, node, base=False)
                 self.check_cancel()
-                if base is not None:
-                    base_row_count = int(base.rows[0][0])
-                if curr is not None:
-                    curr_row_count = int(curr.rows[0][0])
-
-                # Cache the row_count result
-                row_count = dict(base=base_row_count, curr=curr_row_count)
-                result[node] = row_count
+                result[node] = {
+                    'base': base_row_count,
+                    'curr': curr_row_count,
+                }
 
         return result
 
