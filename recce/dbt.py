@@ -521,7 +521,11 @@ class DBTContext:
             self.load_artifacts_from_state()
 
     def create_relation(self, model, base=False):
-        return self.adapter.Relation.create_from(self.runtime_config, self.find_node_by_name(model, base))
+        node = self.find_node_by_name(model, base)
+        if node is None:
+            return None
+
+        return self.adapter.Relation.create_from(self.runtime_config, node)
 
 
 dbt_context: Optional[DBTContext] = None

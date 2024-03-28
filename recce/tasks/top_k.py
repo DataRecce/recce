@@ -18,18 +18,30 @@ class TopKDiffTask(Task, QueryMixin):
         self.params = params
         self.connection = None
 
-    def _query_row_count(self, dbt_context, relation):
+    def _query_row_count_diff(self, dbt_context, base_relation, curr_relation, column):
+        """
+        Query the row count of the base and current relations
+
+        :return: [base_total, base_valids, curr_total, curr_valids]
+        """
+
         sql_template = r"""
-        select count(*) from {{ relation }}
+        select count(*), count({{column}}) from {{ base_relation }}
+        UNION ALL
+        select count(*), count({{column}}) from {{ curr_relation }}
         """
         sql = dbt_context.generate_sql(sql_template, context=dict(
-            relation=relation
+            base_relation=base_relation,
+            curr_relation=curr_relation,
+            column=column,
         ))
         _, table = dbt_context.adapter.execute(sql, fetch=True)
-        row_count = table[0][0]
-        return int(row_count) if row_count else 0
 
-    def _query_top_k(self, dbt_context, base_relation, cur_relation, column, k):
+        result = (table[0][0], table[0][1], table[1][0], table[1][1])
+
+        return (int(v) if v is not None else 0 for v in result)
+
+    def _query_top_k(self, dbt_context, base_relation, curr_relation, column, k):
         sql_template = r"""
         WITH
         BASE_CAT as (
@@ -37,13 +49,19 @@ class TopKDiffTask(Task, QueryMixin):
                 coalesce(cast({{column}} as {{ dbt.type_string() }}), '__null__') as category,
                 count(*) as c
             from {{base_relation}}
+            {% if not include_null %}
+            where {{column}} is not null
+            {% endif %}
             group by category
         ),
         CURR_CAT as (
             select
                 coalesce(cast({{column}} as {{ dbt.type_string() }}), '__null__') as category,
                 count(*) as c
-            from {{cur_relation}}
+            from {{curr_relation}}
+            {% if not include_null %}
+            where {{column}} is not null
+            {% endif %}
             group by category
         )
         select
@@ -58,9 +76,10 @@ class TopKDiffTask(Task, QueryMixin):
         """
         sql = dbt_context.generate_sql(sql_template, context=dict(
             base_relation=base_relation,
-            cur_relation=cur_relation,
+            curr_relation=curr_relation,
             column=column,
             k=k,
+            include_null=False,
         ))
         _, table = dbt_context.adapter.execute(sql, fetch=True)
 
@@ -87,7 +106,13 @@ class TopKDiffTask(Task, QueryMixin):
             k = self.params.get('k', 10)
 
             base_relation = dbt_context.create_relation(model, base=True)
+            if base_relation is None:
+                raise ValueError(f"Model '{model}' not found in the manifest")
+
             curr_relation = dbt_context.create_relation(model, base=False)
+            if curr_relation is None:
+                raise ValueError(f"Model '{model}' not found in the manifest")
+
             self.check_cancel()
             categories, base_counts, curr_counts = self._query_top_k(
                 dbt_context,
@@ -97,20 +122,26 @@ class TopKDiffTask(Task, QueryMixin):
                 k
             )
             self.check_cancel()
-            base_valids = self._query_row_count(dbt_context, base_relation)
-            self.check_cancel()
-            curr_valids = self._query_row_count(dbt_context, curr_relation)
+
+            base_total, base_valids, curr_total, curr_valids = self._query_row_count_diff(
+                dbt_context,
+                base_relation,
+                curr_relation,
+                column
+            )
 
             result = {
                 'base': {
                     'values': categories,
                     'counts': base_counts,
                     'valids': base_valids,
+                    'total': base_total,
                 },
                 'current': {
                     'values': categories,
                     'counts': curr_counts,
                     'valids': curr_valids,
+                    'total': curr_total,
                 },
             }
             return result
