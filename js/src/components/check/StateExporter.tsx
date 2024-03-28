@@ -2,7 +2,7 @@ import { exportState } from "@/lib/api/state";
 import { Icon, IconButton, Tooltip, useToast } from "@chakra-ui/react";
 import { format } from "date-fns";
 import saveAs from "file-saver";
-import { TfiExport } from "react-icons/Tfi";
+import { TfiExport } from "react-icons/tfi";
 
 export function StateExporter() {
   const toast = useToast();

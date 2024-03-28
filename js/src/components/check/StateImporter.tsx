@@ -21,7 +21,7 @@ import { InfoIcon } from "@chakra-ui/icons";
 import { importState } from "@/lib/api/state";
 import { useLocation } from "wouter";
 import { useRunsAggregated } from "@/lib/hooks/LineageGraphContext";
-import { TfiImport } from "react-icons/Tfi";
+import { TfiImport } from "react-icons/tfi";
 
 export function StateImporter() {
   const toast = useToast();
