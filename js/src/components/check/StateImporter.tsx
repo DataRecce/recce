@@ -18,12 +18,12 @@ import {
   useToast,
 } from "@chakra-ui/react";
 import { InfoIcon } from "@chakra-ui/icons";
-import { loadState } from "@/lib/api/state";
-import { IoFolderOpenOutline } from "react-icons/io5";
+import { importState } from "@/lib/api/state";
 import { useLocation } from "wouter";
 import { useRunsAggregated } from "@/lib/hooks/LineageGraphContext";
+import { TfiImport } from "react-icons/tfi";
 
-export function StateLoader() {
+export function StateImporter() {
   const toast = useToast();
   const queryClient = useQueryClient();
   const hiddenFileInput = useRef<HTMLInputElement>(null);
@@ -33,20 +33,20 @@ export function StateLoader() {
   const [location, setLocation] = useLocation();
   const [, refetchRunsAggregated] = useRunsAggregated();
 
-  const handleLoad = useCallback(async () => {
+  const handleImport = useCallback(async () => {
     if (!selectedFile) {
       return;
     }
 
     try {
-      const { runs, checks } = await loadState(selectedFile);
+      const { runs, checks } = await importState(selectedFile);
       refetchRunsAggregated();
       await queryClient.invalidateQueries({ queryKey: cacheKeys.checks() });
       if (location.includes("/checks")) {
         setLocation("/checks");
       }
       toast({
-        description: `${runs} runs and ${checks} checks loaded successfully`,
+        description: `${runs} runs and ${checks} checks imported successfully`,
         status: "info",
         variant: "left-accent",
         position: "bottom",
@@ -54,9 +54,9 @@ export function StateLoader() {
         isClosable: true,
       });
     } catch (error) {
-      console.error("Load failed", error);
+      console.error("Import failed", error);
       toast({
-        title: "Load failed",
+        title: "Import failed",
         description: `${error}`,
         status: "error",
         variant: "left-accent",
@@ -92,12 +92,12 @@ export function StateLoader() {
 
   return (
     <>
-      <Tooltip label="Load">
+      <Tooltip label="Import">
         <IconButton
           variant="unstyled"
-          aria-label="Load state"
+          aria-label="Import state"
           onClick={handleClick}
-          icon={<Icon pt="10px" as={IoFolderOpenOutline} boxSize={"2em"} />}
+          icon={<Icon as={TfiImport} boxSize={"1.2em"} />}
         />
       </Tooltip>
       <input
@@ -110,12 +110,12 @@ export function StateLoader() {
         isOpen={isOpen}
         leastDestructiveRef={cancelRef}
         onClose={onClose}
-        size={"lg"}
+        size={"xl"}
       >
         <AlertDialogOverlay>
           <AlertDialogContent>
             <AlertDialogHeader fontSize="lg" fontWeight="bold">
-              Load state
+              Import state
             </AlertDialogHeader>
 
             <AlertDialogBody>
@@ -128,11 +128,11 @@ export function StateLoader() {
                 </Flex>
                 <Flex>
                   <Text>
-                    All runs and checks will be{" "}
+                    The current runs and checks will be{" "}
                     <Text as="span" fontWeight="600">
-                      overwritten
+                      merged
                     </Text>{" "}
-                    by the loaded state
+                    with the imported state
                   </Text>
                 </Flex>
               </Flex>
@@ -142,8 +142,8 @@ export function StateLoader() {
               <Button ref={cancelRef} onClick={onClose}>
                 Cancel
               </Button>
-              <Button colorScheme="blue" onClick={handleLoad} ml="5px">
-                Load
+              <Button colorScheme="blue" onClick={handleImport} ml="5px">
+                Import
               </Button>
             </AlertDialogFooter>
           </AlertDialogContent>

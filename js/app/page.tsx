@@ -30,7 +30,7 @@ import { InfoIcon } from "@chakra-ui/icons";
 import { RunPage } from "@/components/run/RunPage";
 import { ErrorBoundary } from "@/components/errorboundary/ErrorBoundary";
 import { StateExporter } from "@/components/check/StateExporter";
-import { StateLoader } from "@/components/check/StateLoader";
+import { StateImporter } from "@/components/check/StateImporter";
 
 function getCookie(key: string) {
   var b = document.cookie.match("(^|;)\\s*" + key + "\\s*=\\s*([^;]+)");
@@ -120,8 +120,8 @@ function NavBar() {
         <Spacer />
         {!isDemoSite && (
           <>
+            <StateImporter />
             <StateExporter />
-            <StateLoader />
           </>
         )}
         <Box p="8px" mr="10px" color="gray.500">

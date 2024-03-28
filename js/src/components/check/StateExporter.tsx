@@ -1,8 +1,8 @@
 import { exportState } from "@/lib/api/state";
-import { DownloadIcon } from "@chakra-ui/icons";
-import { IconButton, Tooltip, useToast } from "@chakra-ui/react";
+import { Icon, IconButton, Tooltip, useToast } from "@chakra-ui/react";
 import { format } from "date-fns";
 import saveAs from "file-saver";
+import { TfiExport } from "react-icons/tfi";
 
 export function StateExporter() {
   const toast = useToast();
@@ -37,7 +37,7 @@ export function StateExporter() {
         variant="unstyled"
         aria-label="Export state"
         onClick={handleExport}
-        icon={<DownloadIcon />}
+        icon={<Icon as={TfiExport} boxSize={"1.2em"} />}
       />
     </Tooltip>
   );
