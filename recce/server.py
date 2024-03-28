@@ -139,30 +139,30 @@ async def export_handler():
         raise HTTPException(status_code=400, detail=e.message)
 
 
-@app.post("/api/load", status_code=200)
-async def load_handler(file: UploadFile):
+@app.post("/api/import", status_code=200)
+async def import_handler(file: UploadFile):
     try:
         content = await file.read()
-        load_state = RecceState().model_validate_json(content)
+        import_state = RecceState().model_validate_json(content)
         current_state = default_recce_state()
         current_check_ids = [str(c.check_id) for c in current_state.checks]
         current_run_ids = [str(r.run_id) for r in current_state.runs]
 
-        load_checks = 0
-        for check in load_state.checks:
+        import_checks = 0
+        for check in import_state.checks:
             if str(check.check_id) not in current_check_ids:
                 current_state.checks.append(check)
-                load_checks += 1
+                import_checks += 1
 
-        load_runs = 0
-        for run in load_state.runs:
+        import_runs = 0
+        for run in import_state.runs:
             if str(run.run_id) not in current_run_ids:
                 current_state.runs.append(run)
-                load_runs += 1
+                import_runs += 1
 
         current_state.runs.sort(key=lambda x: x.run_at)
 
-        return {"runs": load_runs, "checks": load_checks}
+        return {"runs": import_runs, "checks": import_checks}
     except ValidationError as e:
         raise HTTPException(status_code=400, detail=str(e))
     except RecceException as e:

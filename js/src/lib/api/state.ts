@@ -1,6 +1,6 @@
 import { axiosClient } from "./axiosClient";
 
-export interface LoadedState {
+export interface ImportedState {
   runs: number;
   checks: number;
 }
@@ -10,10 +10,10 @@ export async function exportState(): Promise<string> {
   return response.data;
 }
 
-export async function loadState(file: File): Promise<LoadedState> {
+export async function importState(file: File): Promise<ImportedState> {
   const formData = new FormData();
   formData.append("file", file);
 
-  const response = await axiosClient.post("/api/load", formData);
+  const response = await axiosClient.post("/api/import", formData);
   return response.data;
 }
