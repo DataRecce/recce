@@ -21,7 +21,7 @@ import { InfoIcon } from "@chakra-ui/icons";
 import { importState } from "@/lib/api/state";
 import { useLocation } from "wouter";
 import { useRunsAggregated } from "@/lib/hooks/LineageGraphContext";
-import { BiImport } from "react-icons/bi";
+import { TfiImport } from "react-icons/Tfi";
 
 export function StateImporter() {
   const toast = useToast();
@@ -97,7 +97,7 @@ export function StateImporter() {
           variant="unstyled"
           aria-label="Import state"
           onClick={handleClick}
-          icon={<Icon pt="8px" as={BiImport} boxSize={"2em"} />}
+          icon={<Icon as={TfiImport} boxSize={"1.2em"} />}
         />
       </Tooltip>
       <input
@@ -110,7 +110,7 @@ export function StateImporter() {
         isOpen={isOpen}
         leastDestructiveRef={cancelRef}
         onClose={onClose}
-        size={"lg"}
+        size={"xl"}
       >
         <AlertDialogOverlay>
           <AlertDialogContent>
@@ -128,7 +128,7 @@ export function StateImporter() {
                 </Flex>
                 <Flex>
                   <Text>
-                    Current runs and checks will be{" "}
+                    The current runs and checks will be{" "}
                     <Text as="span" fontWeight="600">
                       merged
                     </Text>{" "}
