@@ -2,7 +2,7 @@ import os
 from uuid import UUID
 
 from recce.apis.run_func import materialize_run_results
-from recce.models.state import RecceState
+from recce.state import RecceState
 
 current_dir = os.path.dirname(os.path.abspath(__file__))
 
