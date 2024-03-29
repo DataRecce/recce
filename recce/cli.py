@@ -184,9 +184,7 @@ def run(output, **kwargs):
     if is_github_action is True and pr_url is not None:
         kwargs['github_pull_request_url'] = pr_url
 
-    load_default_state()
     asyncio.run(cli_run(output, **kwargs))
-    pass
 
 
 if __name__ == "__main__":

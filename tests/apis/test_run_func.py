@@ -9,7 +9,7 @@ current_dir = os.path.dirname(os.path.abspath(__file__))
 
 def test_materialize_run_results():
     path = os.path.join(os.path.join(current_dir, "row_count_diff.json"))
-    state = RecceState.load(path)
+    state = RecceState.from_file(path)
     result = materialize_run_results(state.runs)
 
     node_result = result['customers']['row_count_diff']
