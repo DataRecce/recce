@@ -1,6 +1,7 @@
 from abc import ABC, abstractmethod
 
-from recce.exceptions import RecceCancelException
+from recce.dbt import default_dbt_context
+from recce.exceptions import RecceCancelException, RecceException
 
 
 class Task(ABC):
@@ -15,6 +16,15 @@ class Task(ABC):
     @progress_listener.setter
     def progress_listener(self, value):
         self._progress_listener = value
+
+    def pre_execute(self):
+        """
+        Pre-execute the run. Subclass should override this method to implement the pre-execution logic.
+        """
+        dbt_context = default_dbt_context()
+        if dbt_context.adapter is None:
+            raise RecceException("Recce Server is not launched under DBT project folder.")
+        pass
 
     @abstractmethod
     def execute(self):

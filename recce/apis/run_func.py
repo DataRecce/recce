@@ -65,6 +65,7 @@ def submit_run(type, params, check_id=None):
 
     def fn():
         try:
+            task.pre_execute()
             result = task.execute()
             asyncio.run_coroutine_threadsafe(update_run_result(run.run_id, result, None), loop)
             return result
