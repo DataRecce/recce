@@ -15,14 +15,12 @@ from pydantic import BaseModel, ValidationError
 from starlette.middleware.sessions import SessionMiddleware
 from starlette.websockets import WebSocketDisconnect
 
+from recce.state import import_state, export_state, store_state
 from . import __version__, event
 from .apis.check_api import check_router
 from .apis.run_api import run_router
 from .dbt import load_dbt_context, default_dbt_context
 from .exceptions import RecceException
-from .models.lineage import LineageDAO
-from .models.state import load_default_state, default_recce_state, RecceState
-from .models.types import Lineage
 
 logger = logging.getLogger('uvicorn')
 
@@ -34,17 +32,15 @@ class AppState:
 
 @asynccontextmanager
 async def lifespan(fastapi: FastAPI):
-    state: AppState = app.state
+    app_state: AppState = app.state
 
-    state_file = state.state_file
-    load_default_state(state_file)
-
+    state_file = app_state.state_file
     ctx = default_dbt_context()
     ctx.start_monitor_artifacts(callback=dbt_artifacts_updated_callback)
 
     yield
-    if state_file:
-        default_recce_state().store(state_file)
+    if app_state.state_file:
+        store_state(state_file)
 
     ctx.stop_monitor_artifacts()
 
@@ -125,16 +121,7 @@ async def get_lineage(base: Optional[bool] = False):
 @app.post("/api/export", response_class=PlainTextResponse, status_code=200)
 async def export_handler():
     try:
-        ctx = default_dbt_context()
-        base = ctx.get_lineage(base=True)
-        current = ctx.get_lineage(base=False)
-        lineage = Lineage(
-            base=base,
-            current=current,
-        )
-        LineageDAO().set(lineage)
-
-        return default_recce_state().export_state()
+        return export_state()
     except RecceException as e:
         raise HTTPException(status_code=400, detail=e.message)
 
@@ -143,7 +130,7 @@ async def export_handler():
 async def import_handler(file: UploadFile):
     try:
         content = await file.read()
-        import_runs, import_checks = default_recce_state().import_state(content)
+        import_runs, import_checks = import_state(content)
 
         return {"runs": import_runs, "checks": import_checks}
     except ValidationError as e:

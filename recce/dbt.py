@@ -18,7 +18,7 @@ from dbt.parser.sql import SqlBlockParser
 from watchdog.events import FileSystemEventHandler
 from watchdog.observers import Observer
 
-from recce.models.state import load_default_state
+from recce.state import loaded_state
 
 logger = logging.getLogger('uvicorn')
 
@@ -225,7 +225,11 @@ class DBTContext:
             self.state_file = state_file
         if self.state_file is None:
             raise Exception('The recce state file is not provided')
-        recce_state = load_default_state(self.state_file)
+
+        recce_state = loaded_state()
+        if recce_state is None:
+            raise Exception('Recce state is not loaded from the state file')
+
         if recce_state.lineage is None:
             raise Exception('The lineage is not found in the recce state file')
         self.artifact = {

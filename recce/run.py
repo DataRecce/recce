@@ -5,9 +5,8 @@ from rich.console import Console
 
 from recce.apis.run_func import submit_run
 from recce.dbt import DBTContext
-from recce.models.lineage import LineageDAO
-from recce.models.state import default_recce_state
-from recce.models.types import Lineage, RunType
+from recce.models.types import RunType
+from recce.state import store_state
 
 
 def check_github_ci_env(**kwargs):
@@ -69,8 +68,8 @@ async def execute_default_runs(context: DBTContext):
         raise e
 
 
-async def archive_artifacts(state_file: str, **kwargs):
-    """Archive the artifacts"""
+async def cli_run(state_file: str, **kwargs):
+    """The main function of 'recce run' command. It will execute the default runs and store the state."""
     console = Console()
 
     from recce.dbt import load_dbt_context
@@ -86,13 +85,6 @@ async def archive_artifacts(state_file: str, **kwargs):
     print("Current:")
     print(f"    Manifest: {ctx.curr_manifest.metadata.generated_at}")
     print(f"    Catalog:  {ctx.curr_catalog.metadata.generated_at if ctx.curr_catalog else 'N/A'}")
-    base = ctx.get_lineage(base=True)
-    current = ctx.get_lineage(base=False)
-    lineage = Lineage(
-        base=base,
-        current=current,
-    )
-    LineageDAO().set(lineage)
 
     # patch the metadata
     if 'git_current_branch' in kwargs:
@@ -111,6 +103,6 @@ async def archive_artifacts(state_file: str, **kwargs):
 
     # Store the state
     console.rule("Output the state file")
-    default_recce_state().store(state_file, **kwargs)
+    store_state(state_file, **kwargs)
     print(f'The state file is stored at [{state_file}]')
     pass
