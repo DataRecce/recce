@@ -4,6 +4,8 @@ import time
 from datetime import datetime
 from typing import List, Optional
 
+import pydantic.version
+from pydantic import BaseModel
 from pydantic import Field
 
 from recce import get_version
@@ -13,9 +15,6 @@ from recce.models.run import load_runs
 from recce.models.types import Run, Check, Lineage
 
 logger = logging.getLogger('uvicorn')
-
-import pydantic.version
-from pydantic import BaseModel
 
 
 def pydantic_model_json_dump(model: BaseModel):
@@ -42,35 +41,41 @@ class RecceState(BaseModel):
     checks: List[Check] = []
     lineage: Optional[Lineage] = None
 
+    @staticmethod
+    def from_file(file_path: str):
+        """
+        Load the state from a recce state file.
+        """
+        from pathlib import Path
+
+        logger.info(f"State file: '{file_path}'")
+        if not Path(file_path).is_file():
+            raise FileNotFoundError(f"State file not found: {file_path}")
+
+        with open(file_path, 'r') as f:
+            dict_data = json.loads(f.read())
+            state = RecceState(**dict_data)
+
+        metadata = state.metadata
+        if metadata:
+            if metadata.schema_version is None:
+                pass
+            if metadata.schema_version == 'v0':
+                pass
+            else:
+                raise Exception(f"Unsupported state file version: {metadata.schema_version}")
+
+        return state
+
 
 _loaded_state = None
 
 
-def load_state(file_path=None):
+def load_state(file_path):
     """
     Load the state from a recce state file.
     """
-    from pathlib import Path
-    if not file_path:
-        return
-
-    logger.info(f"State file: '{file_path}'")
-    if not Path(file_path).is_file():
-        logger.info(f"State file not found: {file_path}. Create new state.")
-        return
-
-    with open(file_path, 'r') as f:
-        dict_data = json.loads(f.read())
-        state = RecceState(**dict_data)
-
-    metadata = state.metadata
-    if metadata:
-        if metadata.schema_version is None:
-            pass
-        if metadata.schema_version == 'v0':
-            pass
-        else:
-            raise Exception(f"Unsupported state file version: {metadata.schema_version}")
+    state = RecceState.from_file(file_path)
 
     global _loaded_state
     _loaded_state = state

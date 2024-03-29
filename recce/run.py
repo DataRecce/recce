@@ -87,12 +87,12 @@ async def cli_run(state_file: str, **kwargs):
     print(f"    Catalog:  {ctx.curr_catalog.metadata.generated_at if ctx.curr_catalog else 'N/A'}")
 
     # patch the metadata
-    if 'git_current_branch' in kwargs:
-        current['metadata']['git_branch'] = kwargs.get('git_current_branch')
-    if 'git_base_branch' in kwargs:
-        base['metadata']['git_branch'] = kwargs.get('git_base_branch')
-    if 'github_pull_request_url' in kwargs:
-        current['metadata']['pr_url'] = kwargs.get('github_pull_request_url')
+    # if 'git_current_branch' in kwargs:
+    #     current['metadata']['git_branch'] = kwargs.get('git_current_branch')
+    # if 'git_base_branch' in kwargs:
+    #     base['metadata']['git_branch'] = kwargs.get('git_base_branch')
+    # if 'github_pull_request_url' in kwargs:
+    #     current['metadata']['pr_url'] = kwargs.get('github_pull_request_url')
 
     # Execute the default runs
     console.rule("Default queries")
@@ -103,6 +103,6 @@ async def cli_run(state_file: str, **kwargs):
 
     # Store the state
     console.rule("Output the state file")
-    store_state(state_file, **kwargs)
+    store_state(state_file)
     print(f'The state file is stored at [{state_file}]')
     pass
