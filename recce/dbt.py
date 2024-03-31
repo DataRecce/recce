@@ -242,10 +242,6 @@ class DBTContext:
             'lineage': recce_state.lineage
         }
 
-        # Patch the current metadata pr_url
-        if recce_state.metadata.github_pull_request_url:
-            self.artifact['lineage'].current['metadata']['pr_url'] = recce_state.metadata.github_pull_request_url
-
         # set the file paths to watch
         self.artifacts_files = [
             os.path.abspath(self.state_file)

@@ -9,6 +9,7 @@ from pydantic import BaseModel
 from pydantic import Field
 
 from recce import get_version
+from recce.git import current_branch
 from recce.models import CheckDAO, RunDAO
 from recce.models.check import load_checks
 from recce.models.run import load_runs
@@ -27,12 +28,28 @@ def pydantic_model_json_dump(model: BaseModel):
         return model.model_dump_json(exclude_none=True)
 
 
+class GitMetadata(BaseModel):
+    branch: Optional[str] = None
+
+    @staticmethod
+    def from_current_repositroy():
+        return GitMetadata(branch=current_branch())
+
+
+class PullRequestMetadata(BaseModel):
+    id: Optional[int] = None
+    title: Optional[str] = None
+    url: Optional[str] = None
+    branch: Optional[str] = None
+    base_branch: Optional[str] = None
+
+
 class RecceStateMetadata(BaseModel):
     schema_version: str = 'v0'
     recce_version: str = Field(default_factory=lambda: get_version())
     generated_at: str = Field(default_factory=lambda: datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%SZ"))
-    git_branch: Optional[str] = None
-    github_pull_request_url: Optional[str] = None
+    pull_request: Optional[PullRequestMetadata] = None
+    git: Optional[GitMetadata] = None
 
 
 class RecceState(BaseModel):
@@ -95,6 +112,7 @@ def _create_curr_state():
 
     state = RecceState()
     state.metadata = RecceStateMetadata()
+    state.metadata.git = GitMetadata.from_current_repositroy()
 
     # runs & checks
     state.runs = RunDAO().list()
