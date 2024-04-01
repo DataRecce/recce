@@ -48,15 +48,15 @@ class ArtifactsRoot(BaseModel):
     base: artifacts of the base env. key is file name, value is dict
     current: artifacts of the current env. key is file name, value is dict
     """
-    base: Dict[str, dict]
-    current: Dict[str, dict]
+    base: Dict[str, Optional[dict]]
+    current: Dict[str, Optional[dict]]
 
 
 class RecceState(BaseModel):
     metadata: Optional[RecceStateMetadata] = None
     runs: Optional[List[Run]] = None
     checks: Optional[List[Check]] = None
-    artifacts: Optional[ArtifactsRoot] = None
+    artifacts: ArtifactsRoot = ArtifactsRoot(base={}, current={})
 
     @staticmethod
     def from_json(json_content: str):
