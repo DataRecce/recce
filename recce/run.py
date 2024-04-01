@@ -6,7 +6,7 @@ from rich.console import Console
 from recce.apis.run_func import submit_run
 from recce.dbt import DBTContext
 from recce.models.types import RunType
-from recce.state import RecceState
+from recce.state import RecceState, PullRequestInfo
 
 
 def check_github_ci_env(**kwargs):
@@ -86,14 +86,6 @@ async def cli_run(state_file: str, **kwargs):
     print(f"    Manifest: {ctx.curr_manifest.metadata.generated_at}")
     print(f"    Catalog:  {ctx.curr_catalog.metadata.generated_at if ctx.curr_catalog else 'N/A'}")
 
-    # patch the metadata
-    # if 'git_current_branch' in kwargs:
-    #     current['metadata']['git_branch'] = kwargs.get('git_current_branch')
-    # if 'git_base_branch' in kwargs:
-    #     base['metadata']['git_branch'] = kwargs.get('git_base_branch')
-    # if 'github_pull_request_url' in kwargs:
-    #     current['metadata']['pr_url'] = kwargs.get('github_pull_request_url')
-
     # Execute the default runs
     console.rule("Default queries")
     if not is_skip_query:
@@ -101,10 +93,13 @@ async def cli_run(state_file: str, **kwargs):
     else:
         print("Skip querying row counts")
 
-    # Store the state
-    console.rule("Output the state file")
+    # Export the state
     state: RecceState = ctx.export_state()
-    state.to_state_file(state_file)
+    if 'github_pull_request_url' in kwargs:
+        state.pull_request = PullRequestInfo(
+            url=kwargs.get('github_pull_request_url')
+        )
 
+    state.to_state_file(state_file)
     print(f'The state file is stored at [{state_file}]')
     pass

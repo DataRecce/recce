@@ -109,6 +109,9 @@ export function LineageGraphContextProvider({ children }: LineageGraphProps) {
 
   const errorMessage = error?.message;
   const lineage = data?.lineage;
+  const isDemoSite =
+    !!lineage?.current?.metadata.pr_url &&
+    lineage.current.metadata.pr_url.includes("cloud.datarecce.io");
 
   return (
     <>
@@ -120,7 +123,7 @@ export function LineageGraphContextProvider({ children }: LineageGraphProps) {
             refetch();
           },
           metadata: lineage?.current?.metadata,
-          isDemoSite: !!lineage?.current?.metadata.pr_url,
+          isDemoSite,
           error: errorMessage,
           isLoading,
           runsAggregated,

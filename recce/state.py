@@ -27,12 +27,20 @@ def pydantic_model_json_dump(model: BaseModel):
         return model.model_dump_json(exclude_none=True)
 
 
-class GitMetadata(BaseModel):
+class GitRepoInfo(BaseModel):
     branch: Optional[str] = None
 
     @staticmethod
     def from_current_repositroy():
-        return GitMetadata(branch=current_branch())
+        branch = current_branch()
+        if branch is None:
+            return None
+        
+        return GitRepoInfo(branch=branch)
+
+
+class PullRequestInfo(BaseModel):
+    url: Optional[str] = None
 
 
 class RecceStateMetadata(BaseModel):
@@ -57,6 +65,8 @@ class RecceState(BaseModel):
     runs: Optional[List[Run]] = None
     checks: Optional[List[Check]] = None
     artifacts: ArtifactsRoot = ArtifactsRoot(base={}, current={})
+    git: Optional[GitRepoInfo] = None
+    pull_request: Optional[PullRequestInfo] = None
 
     @staticmethod
     def from_json(json_content: str):

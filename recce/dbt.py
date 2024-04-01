@@ -22,7 +22,7 @@ from watchdog.observers import Observer
 from recce.models import RunDAO, CheckDAO
 from recce.models.check import load_checks
 from recce.models.run import load_runs
-from recce.state import RecceState, RecceStateMetadata
+from recce.state import RecceState, RecceStateMetadata, GitRepoInfo
 
 logger = logging.getLogger('uvicorn')
 
@@ -442,8 +442,12 @@ class DBTContext:
                     'config': semantic_models['config'],
                 }
 
+        pr_url = os.environ.get('RECCE_PR_URL')
+        if self.review_mode and self.review_state.pull_request and self.review_state.pull_request.url:
+            pr_url = self.review_state.pull_request.url
+
         metadata = dict(
-            pr_url=os.environ.get('RECCE_PR_URL')
+            pr_url=pr_url
         )
 
         return dict(
@@ -532,9 +536,11 @@ class DBTContext:
         state.runs = RunDAO().list()
         state.checks = CheckDAO().list()
 
-        # artifacts
+        # artifacts & git & pull_request. If in review mode, use the review state
         if self.review_mode:
             state.artifacts = self.review_state.artifacts
+            state.git = self.review_state.git
+            state.pull_request = self.review_state.pull_request
         else:
             target_path = self.runtime_config.target_path
             target_base_path = 'target-base'
@@ -556,6 +562,10 @@ class DBTContext:
                 'manifest': _load_artifact(os.path.join(project_root, target_path, 'manifest.json')),
                 'catalog': _load_artifact(os.path.join(project_root, target_path, 'catalog.json')),
             }
+
+            git = GitRepoInfo.from_current_repositroy()
+            if git:
+                state.git = git
 
         return state
 
