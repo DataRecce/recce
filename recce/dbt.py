@@ -545,7 +545,7 @@ class DBTContext:
         else:
             target_path = self.runtime_config.target_path
             target_base_path = 'target-base'
-            
+
             def _load_artifact(path):
                 if not os.path.isfile(path):
                     return None
