@@ -35,7 +35,7 @@ class GitRepoInfo(BaseModel):
         branch = current_branch()
         if branch is None:
             return None
-        
+
         return GitRepoInfo(branch=branch)
 
 

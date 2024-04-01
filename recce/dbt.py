@@ -212,7 +212,7 @@ class DBTContext:
             )
 
         # Load the artifacts from the state file or `target` and `target-base` directory
-        if is_review_mode:        
+        if is_review_mode:
             if state_file:
                 dbt_context.review_state_file = state_file
                 dbt_context.load_artifacts_from_state(state_file)
