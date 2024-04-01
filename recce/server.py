@@ -53,7 +53,9 @@ app = FastAPI(lifespan=lifespan)
 
 
 def dbt_artifacts_updated_callback(file_changed_event: Any):
-    target_type, file_name = file_changed_event.src_path.split("/")[-2:]
+    src_path = Path(file_changed_event.src_path)
+    target_type = src_path.parent.name
+    file_name = src_path.name
     logger.info(
         f'Detect {target_type} file {file_changed_event.event_type}: {file_name}')
     ctx = load_dbt_context()
