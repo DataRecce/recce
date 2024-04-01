@@ -279,7 +279,7 @@ class DBTContext:
         self.base_catalog = base_catalog
 
         # set the file paths to watch
-        dbt_context.artifacts_files = [
+        self.artifacts_files = [
             os.path.join(project_root, target_path, 'manifest.json'),
             os.path.join(project_root, target_path, 'catalog.json'),
             os.path.join(project_root, target_base_path, 'manifest.json'),
@@ -466,20 +466,13 @@ class DBTContext:
 
     def build_name_to_unique_id_index(self) -> Dict[str, str]:
         name_to_unique_id = {}
-        if self.review_mode is False:
-            curr_manifest = self.get_manifest(base=False)
-            base_manifest = self.get_manifest(base=True)
+        curr_manifest = self.get_manifest(base=False)
+        base_manifest = self.get_manifest(base=True)
 
-            for unique_id, node in base_manifest.nodes.items():
-                name_to_unique_id[node.name] = unique_id
-            for unique_id, node in curr_manifest.nodes.items():
-                name_to_unique_id[node.name] = unique_id
-        else:
-            lineage = self.artifact.get('lineage')
-            for unique_id, node in lineage.base['nodes'].items():
-                name_to_unique_id[node['name']] = unique_id
-            for unique_id, node in lineage.current['nodes'].items():
-                name_to_unique_id[node['name']] = unique_id
+        for unique_id, node in base_manifest.nodes.items():
+            name_to_unique_id[node.name] = unique_id
+        for unique_id, node in curr_manifest.nodes.items():
+            name_to_unique_id[node.name] = unique_id
         return name_to_unique_id
 
     def start_monitor_artifacts(self, callback: Callable = None):
