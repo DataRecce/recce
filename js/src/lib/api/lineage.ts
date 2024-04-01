@@ -106,17 +106,15 @@ export async function getLineageDiff(): Promise<LineageDiffResult> {
 }
 
 export interface ServerInfoResult {
-  metadata: {
-    git?: {
-      branch?: string;
-    };
-    pull_request?: {
-      id?: string;
-      title?: string;
-      url?: string;
-      branch?: string;
-      base_branch?: string;
-    };
+  git?: {
+    branch?: string;
+  };
+  pull_request?: {
+    id?: string;
+    title?: string;
+    url?: string;
+    branch?: string;
+    base_branch?: string;
   };
   lineage: {
     base: LineageData;

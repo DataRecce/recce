@@ -18,7 +18,10 @@ from dbt.parser.sql import SqlBlockParser
 from watchdog.events import FileSystemEventHandler
 from watchdog.observers import Observer
 
-from recce.state import loaded_state
+from recce.models import RunDAO, CheckDAO
+from recce.models.check import load_checks
+from recce.models.run import load_runs
+from recce.state import RecceState, RecceStateMetadata
 
 logger = logging.getLogger('uvicorn')
 
@@ -232,9 +235,9 @@ class DBTContext:
         if self.state_file is None:
             raise Exception('The recce state file is not provided')
 
-        recce_state = loaded_state()
-        if recce_state is None:
-            raise Exception('Recce state is not loaded from the state file')
+        # recce_state = loaded_state()
+        # if recce_state is None:
+        #     raise Exception('Recce state is not loaded from the state file')
 
         if recce_state.lineage is None:
             raise Exception('The lineage is not found in the recce state file')
@@ -533,6 +536,52 @@ class DBTContext:
             return None
 
         return self.adapter.Relation.create_from(self.runtime_config, node)
+
+    def export_state(self) -> RecceState:
+        """
+        Export the state to a RecceState object.
+        """
+        state = RecceState()
+        state.metadata = RecceStateMetadata()
+
+        # runs & checks
+
+        state.runs = RunDAO().list()
+        state.checks = CheckDAO().list()
+        return state
+
+    def import_state(self, json_content):
+        """
+        Import the state from a JSON string.
+        """
+        import_state = RecceState.model_validate_json(json_content)
+        checks = CheckDAO().list()
+        runs = RunDAO().list()
+        current_check_ids = [str(c.check_id) for c in checks]
+        current_run_ids = [str(r.run_id) for r in runs]
+
+        # merge checks
+        import_checks = 0
+        for check in import_state.checks:
+            if str(check.check_id) not in current_check_ids:
+                checks.append(check)
+                import_checks += 1
+
+        # merge runs
+        import_runs = 0
+        for run in import_state.runs:
+            if str(run.run_id) not in current_run_ids:
+                runs.append(run)
+                import_runs += 1
+
+        runs.sort(key=lambda x: x.run_at)
+
+        # Update to in-memory db
+
+        load_runs(runs)
+        load_checks(checks)
+
+        return runs, checks
 
 
 dbt_context: Optional[DBTContext] = None

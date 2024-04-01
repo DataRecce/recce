@@ -15,7 +15,6 @@ from pydantic import ValidationError
 from starlette.middleware.sessions import SessionMiddleware
 from starlette.websockets import WebSocketDisconnect
 
-from recce.state import import_state, export_state, store_state, create_curr_state
 from . import __version__, event
 from .apis.check_api import check_router
 from .apis.run_api import run_router
@@ -40,7 +39,7 @@ async def lifespan(fastapi: FastAPI):
 
     yield
     if app_state.state_file:
-        store_state(state_file)
+        ctx.export_state().to_state_file(state_file)
 
     ctx.stop_monitor_artifacts()
 
@@ -107,8 +106,14 @@ async def health_check(request: Request):
 
 @app.get("/api/info")
 async def get_info():
+    dbt_context = default_dbt_context()
     try:
-        return create_curr_state(no_runs_and_checks=True).dict(exclude_none=True)
+        return {
+            'lineage': {
+                'base': dbt_context.get_lineage(base=True),
+                'current': dbt_context.get_lineage(base=False),
+            },
+        }
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))
 
@@ -123,17 +128,19 @@ async def get_lineage(base: Optional[bool] = False):
 
 @app.post("/api/export", response_class=PlainTextResponse, status_code=200)
 async def export_handler():
+    dbt_context = default_dbt_context()
     try:
-        return export_state()
+        return dbt_context.export_state().to_json()
     except RecceException as e:
         raise HTTPException(status_code=400, detail=e.message)
 
 
 @app.post("/api/import", status_code=200)
 async def import_handler(file: UploadFile):
+    dbt_context = default_dbt_context()
     try:
         content = await file.read()
-        import_runs, import_checks = import_state(content)
+        import_runs, import_checks = dbt_context.import_state(content)
 
         return {"runs": import_runs, "checks": import_checks}
     except ValidationError as e:

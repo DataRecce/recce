@@ -6,7 +6,6 @@ from rich.console import Console
 
 from recce import event
 from recce.run import cli_run, check_github_ci_env
-from recce.state import load_state
 from .dbt import DBTContext
 from .event.track import TrackCommand
 
@@ -143,9 +142,6 @@ def server(host, port, state_file=None, **kwargs):
     from .dbt import load_dbt_context
 
     is_review = kwargs.get('review', False)
-
-    if state_file:
-        load_state(state_file)
 
     if not state_file and is_review is True:
         console.print("[[red]Error[/red]] Cannot launch server in review mode without a state file.")

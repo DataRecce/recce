@@ -6,7 +6,7 @@ from rich.console import Console
 from recce.apis.run_func import submit_run
 from recce.dbt import DBTContext
 from recce.models.types import RunType
-from recce.state import store_state
+from recce.state import RecceState
 
 
 def check_github_ci_env(**kwargs):
@@ -103,6 +103,8 @@ async def cli_run(state_file: str, **kwargs):
 
     # Store the state
     console.rule("Output the state file")
-    store_state(state_file)
+    state: RecceState = ctx.export_state()
+    state.to_state_file(state_file)
+
     print(f'The state file is stored at [{state_file}]')
     pass
