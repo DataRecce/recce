@@ -201,6 +201,12 @@ class DBTContext:
 
         # Load the artifacts from the state file or `target` and `target-base` directory
         if is_review_mode:
+            if parse_result.success is True:
+                # Try to load the manifest from the target & target-base directory fist.
+                try:
+                    dbt_context.load_artifacts_from_manifest()
+                except Exception:
+                    pass
             dbt_context.load_artifacts_from_state(state_file)
         else:
             if parse_result.success is False:
@@ -324,7 +330,8 @@ class DBTContext:
         return self.adapter.execute(sql, auto_begin=auto_begin, fetch=fetch, limit=limit)
 
     def get_lineage(self, base: Optional[bool] = False):
-        return self._get_lineage_from_artifact(base) if self.artifact else self._get_lineage_from_manifest(base)
+        return self._get_lineage_from_artifact(
+            base) if (self.review_mode is True and self.artifact) else self._get_lineage_from_manifest(base)
 
     def _get_lineage_from_artifact(self, base: Optional[bool] = False):
         if self.artifact is None or self.artifact.get('lineage') is None:

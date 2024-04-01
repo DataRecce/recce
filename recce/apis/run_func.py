@@ -43,6 +43,10 @@ def submit_run(type, params, check_id=None):
     except NotImplementedError:
         raise RecceException(f"Run type '{type}' not supported")
 
+    dbt_context = default_dbt_context()
+    if dbt_context.review_mode is True and dbt_context.adapter is None:
+        raise RecceException("Recce Server is not launched under DBT project folder.")
+
     run = Run(type=run_type, params=params, check_id=check_id)
     RunDAO().create(run)
 
