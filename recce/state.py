@@ -40,7 +40,11 @@ class GitRepoInfo(BaseModel):
 
 
 class PullRequestInfo(BaseModel):
+    id: Optional[str] = None
+    title: Optional[str] = None
     url: Optional[str] = None
+    branch: Optional[str] = None
+    base_branch: Optional[str] = None
 
 
 class RecceStateMetadata(BaseModel):
