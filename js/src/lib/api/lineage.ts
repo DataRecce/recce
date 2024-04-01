@@ -104,3 +104,27 @@ export async function getLineageDiff(): Promise<LineageDiffResult> {
     current_error: current.error,
   };
 }
+
+export interface ServerInfoResult {
+  metadata: {
+    git?: {
+      branch?: string;
+    };
+    pull_request?: {
+      id?: string;
+      title?: string;
+      url?: string;
+      branch?: string;
+      base_branch?: string;
+    };
+  };
+  lineage: {
+    base: LineageData;
+    current: LineageData;
+  };
+}
+
+export async function getServerInfo(): Promise<ServerInfoResult> {
+  const response = await axiosClient.get(`/api/info`);
+  return response.data;
+}

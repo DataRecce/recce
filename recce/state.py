@@ -54,8 +54,8 @@ class RecceStateMetadata(BaseModel):
 
 class RecceState(BaseModel):
     metadata: Optional[RecceStateMetadata] = None
-    runs: List[Run] = []
-    checks: List[Check] = []
+    runs: Optional[List[Run]] = None
+    checks: Optional[List[Check]] = None
     lineage: Optional[Lineage] = None
 
     @staticmethod
@@ -107,7 +107,7 @@ def loaded_state() -> RecceState:
     return _loaded_state
 
 
-def _create_curr_state():
+def create_curr_state(no_runs_and_checks=False):
     from recce.dbt import default_dbt_context
 
     state = RecceState()
@@ -115,8 +115,9 @@ def _create_curr_state():
     state.metadata.git = GitMetadata.from_current_repositroy()
 
     # runs & checks
-    state.runs = RunDAO().list()
-    state.checks = CheckDAO().list()
+    if not no_runs_and_checks:
+        state.runs = RunDAO().list()
+        state.checks = CheckDAO().list()
 
     # lineage
     dbt_context = default_dbt_context()
@@ -134,7 +135,7 @@ def store_state(file_path):
     """
     Store the state to a file. Store happens when terminating the server or run instance.
     """
-    state = _create_curr_state()
+    state = create_curr_state()
 
     start_time = time.time()
     logger.info(f"Store recce state to '{file_path}'")
@@ -150,7 +151,7 @@ def export_state():
     """
     Export the state to a JSON string
     """
-    state = _create_curr_state()
+    state = create_curr_state()
     return pydantic_model_json_dump(state)
 
 

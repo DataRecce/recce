@@ -11,11 +11,11 @@ from fastapi import FastAPI, HTTPException, Request, WebSocket, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import PlainTextResponse
 from fastapi.staticfiles import StaticFiles
-from pydantic import BaseModel, ValidationError
+from pydantic import ValidationError
 from starlette.middleware.sessions import SessionMiddleware
 from starlette.websockets import WebSocketDisconnect
 
-from recce.state import import_state, export_state, store_state
+from recce.state import import_state, export_state, store_state, create_curr_state
 from . import __version__, event
 from .apis.check_api import check_router
 from .apis.run_api import run_router
@@ -105,9 +105,12 @@ async def health_check(request: Request):
     return {"status": "ok"}
 
 
-class QueryInput(BaseModel):
-    base: Optional[bool] = False
-    sql_template: str
+@app.get("/api/info")
+async def get_info():
+    try:
+        return create_curr_state(no_runs_and_checks=True).dict(exclude_none=True)
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=str(e))
 
 
 @app.get("/api/lineage")
