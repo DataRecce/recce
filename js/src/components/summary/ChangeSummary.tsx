@@ -8,7 +8,7 @@ import {
   IconRemoved,
 } from "../lineage/styles";
 import { LineageGraph } from "../lineage/lineage";
-import { NodeData } from "@/lib/api/lineage";
+import { NodeData } from "@/lib/api/info";
 
 export type ChangeStatus =
   // node change

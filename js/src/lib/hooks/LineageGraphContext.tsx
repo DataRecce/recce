@@ -8,7 +8,7 @@ import React, {
   useState,
 } from "react";
 import { cacheKeys } from "../api/cacheKeys";
-import { getLineageDiff } from "../api/lineage";
+import { getLineageDiff, getServerInfo } from "../api/info";
 import { useToast } from "@chakra-ui/react";
 import { PUBLIC_API_URL } from "../const";
 import path from "path";
@@ -90,7 +90,7 @@ function LineageWatcher({ refetch }: { refetch: () => void }) {
 export function LineageGraphContextProvider({ children }: LineageGraphProps) {
   const { data, isLoading, error, refetch } = useQuery({
     queryKey: cacheKeys.lineage(),
-    queryFn: getLineageDiff,
+    queryFn: getServerInfo,
   });
 
   const { data: runsAggregated, refetch: refetchRunsAggregated } = useQuery({
@@ -99,15 +99,19 @@ export function LineageGraphContextProvider({ children }: LineageGraphProps) {
   });
 
   const lineageGraph = useMemo(() => {
-    if (!data || !data.base || !data.current) {
+    const lineage = data?.lineage;
+    if (!lineage || !lineage.base || !lineage.current) {
       return undefined;
     }
 
-    return buildLineageGraph(data.base, data.current);
+    return buildLineageGraph(lineage.base, lineage.current);
   }, [data]);
 
-  const errorMessage =
-    error?.message || data?.current_error || data?.base_error;
+  const errorMessage = error?.message;
+  const lineage = data?.lineage;
+  const isDemoSite =
+    !!lineage?.current?.metadata.pr_url &&
+    lineage.current.metadata.pr_url.includes("cloud.datarecce.io");
 
   return (
     <>
@@ -118,8 +122,8 @@ export function LineageGraphContextProvider({ children }: LineageGraphProps) {
           retchLineageGraph: () => {
             refetch();
           },
-          metadata: data?.current?.metadata,
-          isDemoSite: !!data?.current?.metadata.pr_url,
+          metadata: lineage?.current?.metadata,
+          isDemoSite,
           error: errorMessage,
           isLoading,
           runsAggregated,

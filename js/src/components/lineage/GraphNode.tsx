@@ -11,7 +11,7 @@ import { ActionTag } from "./ActionTag";
 import { useLineageGraphContext } from "@/lib/hooks/LineageGraphContext";
 
 import { MdFormatListNumberedRtl, MdSchema } from "react-icons/md";
-import { NodeColumnData } from "@/lib/api/lineage";
+import { NodeColumnData } from "@/lib/api/info";
 import { findByRunType } from "../run/registry";
 
 interface GraphNodeProps extends NodeProps<LineageGraphNode> {}

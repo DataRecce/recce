@@ -5,8 +5,7 @@ import click
 from rich.console import Console
 
 from recce import event
-from recce.models.state import load_default_state
-from recce.run import archive_artifacts, check_github_ci_env
+from recce.run import cli_run, check_github_ci_env
 from .dbt import DBTContext
 from .event.track import TrackCommand
 
@@ -144,7 +143,7 @@ def server(host, port, state_file=None, **kwargs):
 
     is_review = kwargs.get('review', False)
 
-    if state_file is None and is_review is True:
+    if not state_file and is_review is True:
         console.print("[[red]Error[/red]] Cannot launch server in review mode without a state file.")
         console.print("Please provide a state file in the command argument.")
         exit(1)
@@ -181,11 +180,7 @@ def run(output, **kwargs):
     if is_github_action is True and pr_url is not None:
         kwargs['github_pull_request_url'] = pr_url
 
-    from .server import AppState
-    state = AppState(state_file=output)
-    load_default_state()
-    asyncio.run(archive_artifacts(state.state_file, **kwargs))
-    pass
+    asyncio.run(cli_run(output, **kwargs))
 
 
 if __name__ == "__main__":
