@@ -3,7 +3,7 @@ import { mergeKeysWithStatus } from "@/lib/mergeKeys";
 import { ColumnOrColumnGroup } from "react-data-grid";
 
 import "./style.css";
-import { NodeData } from "@/lib/api/lineage";
+import { NodeData } from "@/lib/api/info";
 
 interface SchemaDiffRow {
   name: string;

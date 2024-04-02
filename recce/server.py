@@ -118,14 +118,6 @@ async def get_info():
         raise HTTPException(status_code=400, detail=str(e))
 
 
-@app.get("/api/lineage")
-async def get_lineage(base: Optional[bool] = False):
-    try:
-        return default_dbt_context().get_lineage(base)
-    except Exception as e:
-        raise HTTPException(status_code=400, detail=str(e))
-
-
 @app.post("/api/export", response_class=PlainTextResponse, status_code=200)
 async def export_handler():
     dbt_context = default_dbt_context()

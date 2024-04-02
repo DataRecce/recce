@@ -13,7 +13,7 @@ import { useLineageGraphContext } from "@/lib/hooks/LineageGraphContext";
 import { LineageGraphNode } from "../lineage/lineage";
 import _ from "lodash";
 import { useEffect, useState } from "react";
-import { NodeColumnData, NodeData } from "@/lib/api/lineage";
+import { NodeColumnData, NodeData } from "@/lib/api/info";
 
 interface ValueDiffFormParams {
   model: string;

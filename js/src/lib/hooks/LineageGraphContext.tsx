@@ -8,7 +8,7 @@ import React, {
   useState,
 } from "react";
 import { cacheKeys } from "../api/cacheKeys";
-import { getLineageDiff, getServerInfo } from "../api/lineage";
+import { getLineageDiff, getServerInfo } from "../api/info";
 import { useToast } from "@chakra-ui/react";
 import { PUBLIC_API_URL } from "../const";
 import path from "path";

@@ -8,7 +8,7 @@ import {
   ScreenshotDataGrid,
 } from "../data-grid/ScreenshotDataGrid";
 import { useLineageGraphContext } from "@/lib/hooks/LineageGraphContext";
-import { NodeData } from "@/lib/api/lineage";
+import { NodeData } from "@/lib/api/info";
 
 interface SchemaViewProps {
   base?: NodeData;

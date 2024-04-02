@@ -8,7 +8,7 @@ import {
   LineageData,
   ManifestMetadata,
   NodeData,
-} from "@/lib/api/lineage";
+} from "@/lib/api/info";
 import { Manifest } from "next/dist/lib/metadata/types/manifest-types";
 
 /**
