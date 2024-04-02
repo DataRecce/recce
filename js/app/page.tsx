@@ -37,6 +37,7 @@ import { StateExporter } from "@/components/check/StateExporter";
 import { StateImporter } from "@/components/check/StateImporter";
 import { FaGithub, FaQuestionCircle, FaSlack } from "react-icons/fa";
 import { IconType } from "react-icons";
+import "@fontsource/montserrat/800.css";
 
 function getCookie(key: string) {
   var b = document.cookie.match("(^|;)\\s*" + key + "\\s*=\\s*([^;]+)");
@@ -88,7 +89,12 @@ function TopBar() {
         src="/logo/recce-logo-white.png"
         alt="recce-logo-white"
       ></Image>
-      <Heading as="h1" size="md" color="white" fontFamily="sans-serif">
+      <Heading
+        as="h1"
+        fontFamily={`"Montserrat", sans-serif`}
+        fontSize="lg"
+        color="white"
+      >
         RECCE
       </Heading>
       <Spacer />
