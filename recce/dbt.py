@@ -216,6 +216,10 @@ class DBTContext:
             if state_file:
                 dbt_context.review_state_file = state_file
                 dbt_context.load_artifacts_from_state(state_file)
+
+            if not dbt_context.curr_manifest or not dbt_context.base_manifest:
+                raise Exception(
+                    'No enough dbt artifacts in the state file. Please use the latest recce to generate the recce state')
         else:
             if parse_result.success is False:
                 raise parse_result.exception
