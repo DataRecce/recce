@@ -2,6 +2,7 @@
 
 import LineageView from "@/components/lineage/LineageView";
 import {
+  Image,
   Tabs,
   TabList,
   Tab,
@@ -11,6 +12,9 @@ import {
   Link,
   Text,
   Spacer,
+  Icon,
+  LinkProps,
+  Heading,
 } from "@chakra-ui/react";
 import { ReactNode, useLayoutEffect } from "react";
 import * as amplitude from "@amplitude/analytics-browser";
@@ -31,6 +35,9 @@ import { RunPage } from "@/components/run/RunPage";
 import { ErrorBoundary } from "@/components/errorboundary/ErrorBoundary";
 import { StateExporter } from "@/components/check/StateExporter";
 import { StateImporter } from "@/components/check/StateImporter";
+import { FaGithub, FaQuestionCircle, FaSlack } from "react-icons/fa";
+import { IconType } from "react-icons";
+import "@fontsource/montserrat/800.css";
 
 function getCookie(key: string) {
   var b = document.cookie.match("(^|;)\\s*" + key + "\\s*=\\s*([^;]+)");
@@ -52,35 +59,73 @@ const RouteAlwaysMount = ({
   );
 };
 
+interface LinkIconProps extends LinkProps {
+  icon: IconType;
+  href: string;
+}
+
+function LinkIcon({ icon, href, ...prob }: LinkIconProps) {
+  return (
+    <Link height="20px" color="white" href={href} isExternal {...prob}>
+      <Icon color="white" boxSize="20px" as={icon} />
+    </Link>
+  );
+}
+
 function TopBar() {
   const { metadata } = useLineageGraphContext();
   const prURL = metadata?.pr_url;
 
-  if (!prURL || prURL === null) {
-    return <></>;
-  }
-
   return (
     <Flex
-      gap="5px"
-      minHeight="35px"
+      gap="10px"
+      minHeight="40px"
       alignItems="center"
-      justifyContent="center"
-      bg="orange.300"
+      bg="rgb(255, 110, 66)"
     >
-      <InfoIcon color="orange.600" />
-      <Text>
-        Please check{" "}
-        <Link
-          textDecoration="underline"
-          fontWeight="600"
-          href={prURL}
-          isExternal
-        >
-          this Pull Request
-        </Link>{" "}
-        comment for context about this Recce instance
-      </Text>
+      <Image
+        boxSize="20px"
+        ml="18px"
+        src="/logo/recce-logo-white.png"
+        alt="recce-logo-white"
+      ></Image>
+      <Heading
+        as="h1"
+        fontFamily={`"Montserrat", sans-serif`}
+        fontSize="lg"
+        color="white"
+      >
+        RECCE
+      </Heading>
+      <Spacer />
+      {prURL && (
+        <>
+          <InfoIcon />
+          <Text>
+            Please check{" "}
+            <Link
+              textDecoration="underline"
+              fontWeight="600"
+              href={prURL}
+              isExternal
+            >
+              this Pull Request
+            </Link>{" "}
+            comment for context about this Recce instance
+          </Text>
+        </>
+      )}
+      <Spacer />
+      <LinkIcon icon={FaGithub} href="https://github.com/DataRecce/recce" />
+      <LinkIcon
+        icon={FaSlack}
+        href="https://getdbt.slack.com/archives/C05C28V7CPP"
+      />
+      <LinkIcon
+        mr="18px"
+        icon={FaQuestionCircle}
+        href="https://datarecce.io/docs"
+      />
     </Flex>
   );
 }

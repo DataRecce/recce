@@ -19,6 +19,7 @@
     "@chakra-ui/react": "^2.8.1",
     "@emotion/react": "^11.11.1",
     "@emotion/styled": "^11.11.0",
+    "@fontsource/montserrat": "^5.0.17",
     "@hello-pangea/dnd": "^16.5.0",
     "@jeromefitz/date-fns-tz": "3.0.0-canary.8",
     "@monaco-editor/react": "^4.6.0",
