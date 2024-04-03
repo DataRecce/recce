@@ -296,6 +296,7 @@ function _LineageView({ ...props }: LineageViewProps) {
     setNodes(newNodes);
     setEdges(newEdges);
     setViewOptions(newViewOptions);
+    reactFlow.fitView({ nodes: newNodes });
   };
 
   if (isLoading) {
