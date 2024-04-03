@@ -131,10 +131,13 @@ async def export_handler():
 
 @app.post("/api/import", status_code=200)
 async def import_handler(file: UploadFile):
+    from recce.state import RecceState
+
     dbt_context = default_dbt_context()
     try:
         content = await file.read()
-        import_runs, import_checks = dbt_context.import_state(content)
+        state = RecceState.from_json(content)
+        import_runs, import_checks = dbt_context.import_state(state)
 
         return {"runs": import_runs, "checks": import_checks}
     except ValidationError as e:
