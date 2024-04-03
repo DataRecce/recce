@@ -211,6 +211,10 @@ class DBTContext:
                 review_mode=is_review_mode,
             )
 
+        if state_file:
+            state = RecceState.from_file(state_file)
+            dbt_context.import_state(state)
+
         # Load the artifacts from the state file or `target` and `target-base` directory
         if is_review_mode:
             if state_file:
@@ -573,14 +577,12 @@ class DBTContext:
 
         return state
 
-    def import_state(self, json_content):
+    def import_state(self, import_state: RecceState):
         """
-        Import the state from a JSON string. It would
-
+        Import the state. It would
         1. Merge runs
         2. Merge checks
         """
-        import_state = RecceState.model_validate_json(json_content)
         checks = CheckDAO().list()
         runs = RunDAO().list()
         current_check_ids = [str(c.check_id) for c in checks]
@@ -607,7 +609,7 @@ class DBTContext:
         load_runs(runs)
         load_checks(checks)
 
-        return runs, checks
+        return import_runs, import_checks
 
 
 dbt_context: Optional[DBTContext] = None
