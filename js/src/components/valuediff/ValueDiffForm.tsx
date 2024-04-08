@@ -1,6 +1,6 @@
-import { ValueDiffParams } from "@/lib/api/valuediff";
 import { RunFormProps } from "../run/types";
 import {
+  Box,
   Checkbox,
   FormControl,
   FormLabel,
@@ -9,11 +9,8 @@ import {
 } from "@chakra-ui/react";
 
 import { Select } from "chakra-react-select";
-import { useLineageGraphContext } from "@/lib/hooks/LineageGraphContext";
-import { LineageGraphNode } from "../lineage/lineage";
-import _ from "lodash";
 import { useEffect, useState } from "react";
-import { NodeColumnData, NodeData } from "@/lib/api/info";
+import useModelColumns from "@/lib/hooks/useModelColumns";
 
 interface ValueDiffFormParams {
   model: string;
@@ -23,71 +20,24 @@ interface ValueDiffFormParams {
 
 interface ValueDiffFormProp extends RunFormProps<ValueDiffFormParams> {}
 
-export function extractColumns(node: LineageGraphNode) {
-  function getColumns(nodeData: NodeData) {
-    return nodeData && nodeData.columns ? Object.values(nodeData.columns) : [];
-  }
-
-  const baseColumns = getColumns(node.data.base!!);
-  const currentColumns = getColumns(node.data.current!!);
-
-  const union: NodeColumnData[] = [];
-  baseColumns.forEach((column) => {
-    if (!union.some((c) => c.name === column.name)) {
-      union.push(column);
-    }
-  });
-  currentColumns.forEach((column) => {
-    if (!union.some((c) => c.name === column.name)) {
-      union.push(column);
-    }
-  });
-
-  return union;
-}
-
-export function extractColumnNames(node: LineageGraphNode) {
-  function getNames(nodeData: NodeData) {
-    return nodeData && nodeData.columns
-      ? Object.values(nodeData.columns).map((column) => column.name)
-      : [];
-  }
-
-  const baseColumns = getNames(node.data.base!!);
-  const currentColumns = getNames(node.data.current!!);
-
-  // keep the columns order
-  const union: string[] = [];
-  baseColumns.forEach((column) => {
-    if (!union.includes(column)) {
-      union.push(column);
-    }
-  });
-  currentColumns.forEach((column) => {
-    if (!union.includes(column)) {
-      union.push(column);
-    }
-  });
-
-  return union;
-}
-
 export function ValueDiffForm({
   params,
   onParamsChanged,
   setIsReadyToExecute,
 }: ValueDiffFormProp) {
-  const { lineageGraph } = useLineageGraphContext();
   const [allColumns, setAllColumns] = useState<boolean>(
     !params.columns || params.columns.length === 0
   );
 
   const model = params?.model;
   const primaryKey = params?.primary_key;
-  const node = _.find(lineageGraph?.nodes, {
-    name: params?.model,
-  });
-  const nodePrimaryKey = node?.data.current?.primary_key;
+
+  const {
+    columns,
+    primaryKey: nodePrimaryKey,
+    isLoading,
+    error,
+  } = useModelColumns(params.model);
 
   useEffect(() => {
     if (!primaryKey && nodePrimaryKey) {
@@ -102,7 +52,7 @@ export function ValueDiffForm({
     setIsReadyToExecute(primaryKey && model ? true : false);
   }, [primaryKey, model, setIsReadyToExecute]);
 
-  const columnNames = node ? extractColumnNames(node) : [];
+  const columnNames = columns.map((c) => c.name);
 
   // primaryKey can be array or string, map to array
   const primaryKeys = Array.isArray(primaryKey)
@@ -110,6 +60,18 @@ export function ValueDiffForm({
     : !!primaryKey
     ? [primaryKey]
     : undefined;
+
+  if (isLoading) {
+    return <Box>Loading...</Box>;
+  }
+
+  if (error) {
+    return (
+      <Box>
+        Error: Please provide the catalog.json to list column candidates
+      </Box>
+    );
+  }
 
   return (
     <VStack gap={5} m="8px 24px" paddingBottom="200px">

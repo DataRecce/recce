@@ -120,6 +120,20 @@ async def get_info():
         raise HTTPException(status_code=400, detail=str(e))
 
 
+@app.get("/api/model/{model_id}")
+async def get_columns(model_id: str):
+    dbt_context = default_dbt_context()
+    try:
+        return {
+            'model': {
+                'base': dbt_context.get_model(model_id, base=True),
+                'current': dbt_context.get_model(model_id, base=False)
+            }
+        }
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+
 @app.post("/api/export", response_class=PlainTextResponse, status_code=200)
 async def export_handler():
     dbt_context = default_dbt_context()

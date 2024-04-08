@@ -1,10 +1,8 @@
 import { TopKDiffParams } from "@/lib/api/profile";
 import { RunFormProps } from "../run/types";
-import { useLineageGraphContext } from "@/lib/hooks/LineageGraphContext";
-import _ from "lodash";
 import { Box, FormControl, FormLabel, Select } from "@chakra-ui/react";
-import { extractColumnNames } from "../valuediff/ValueDiffForm";
 import { useEffect } from "react";
+import useModelColumns from "@/lib/hooks/useModelColumns";
 
 interface TopKDiffFormProps extends RunFormProps<TopKDiffParams> {}
 
@@ -13,15 +11,24 @@ export function TopKDiffForm({
   onParamsChanged,
   setIsReadyToExecute,
 }: TopKDiffFormProps) {
-  const { lineageGraph } = useLineageGraphContext();
-  const node = _.find(lineageGraph?.nodes, {
-    name: params?.model,
-  });
-  const columns = node ? extractColumnNames(node) : [];
+  const { columns, isLoading, error } = useModelColumns(params.model);
+  const columnNames = columns.map((c) => c.name);
 
   useEffect(() => {
     setIsReadyToExecute(!!params.column_name);
   }, [params, setIsReadyToExecute]);
+
+  if (isLoading) {
+    return <Box>Loading...</Box>;
+  }
+
+  if (error) {
+    return (
+      <Box>
+        Error: Please provide the catalog.json to list column candidates
+      </Box>
+    );
+  }
 
   return (
     <Box m="16px">
@@ -35,7 +42,7 @@ export function TopKDiffForm({
             onParamsChanged({ ...params, column_name: column });
           }}
         >
-          {columns.map((c) => (
+          {columnNames.map((c) => (
             <option key={c} value={c}>
               {c}
             </option>

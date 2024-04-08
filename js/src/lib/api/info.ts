@@ -126,3 +126,21 @@ export async function getServerInfo(): Promise<ServerInfoResult> {
   const response = await axiosClient.get(`/api/info`);
   return response.data;
 }
+
+export interface ModelInfoResult {
+  model: {
+    base: {
+      columns?: { [key: string]: NodeColumnData };
+      primary_key?: string;
+    };
+    current: {
+      columns?: { [key: string]: NodeColumnData };
+      primary_key?: string;
+    };
+  };
+}
+
+export async function getModelInfo(model: string): Promise<ModelInfoResult> {
+  const response = await axiosClient.get(`/api/model/${model}`);
+  return response.data;
+}
