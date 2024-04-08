@@ -71,10 +71,11 @@ export function HistogramDiffForm({
     return <Box>Loading...</Box>;
   }
 
-  if (error) {
+  if (columns.length === 0 || error) {
     return (
       <Box>
-        Error: Please provide the catalog.json to list column candidates
+        Error: Please provide the &apos;catalog.json&apos; to list column
+        candidates
       </Box>
     );
   }

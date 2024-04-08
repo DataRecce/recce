@@ -65,10 +65,11 @@ export function ValueDiffForm({
     return <Box>Loading...</Box>;
   }
 
-  if (error) {
+  if (columnNames.length === 0 || error) {
     return (
       <Box>
-        Error: Please provide the catalog.json to list column candidates
+        Error: Please provide the &apos;catalog.json&apos; to list column
+        candidates
       </Box>
     );
   }
