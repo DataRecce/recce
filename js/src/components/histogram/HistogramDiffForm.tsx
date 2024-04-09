@@ -1,9 +1,7 @@
 import { HistogramDiffParams } from "@/lib/api/profile";
 import { RunFormProps } from "../run/types";
-import { useLineageGraphContext } from "@/lib/hooks/LineageGraphContext";
-import _ from "lodash";
-import { extractColumns } from "../valuediff/ValueDiffForm";
 import { Box, FormControl, FormLabel, Select } from "@chakra-ui/react";
+import useModelColumns from "@/lib/hooks/useModelColumns";
 
 function isStringDataType(columnType: string) {
   const stringDataTypes = [
@@ -60,15 +58,27 @@ export function HistogramDiffForm({
   onParamsChanged,
   setIsReadyToExecute,
 }: HistogramDiffEditProps) {
-  const { lineageGraph } = useLineageGraphContext();
-  const node = _.find(lineageGraph?.nodes, {
-    name: params?.model,
-  });
-  const columns = node
-    ? extractColumns(node).filter(
-        (c) => !isStringDataType(c.type) && !isDateTimeType(c.type)
-      )
-    : [];
+  const {
+    columns: allColumns,
+    isLoading,
+    error,
+  } = useModelColumns(params.model);
+  const columns = allColumns.filter(
+    (c) => !isStringDataType(c.type) && !isDateTimeType(c.type)
+  );
+
+  if (isLoading) {
+    return <Box>Loading...</Box>;
+  }
+
+  if (columns.length === 0 || error) {
+    return (
+      <Box>
+        Error: Please provide the &apos;catalog.json&apos; to list column
+        candidates
+      </Box>
+    );
+  }
 
   return (
     <Box m="16px">

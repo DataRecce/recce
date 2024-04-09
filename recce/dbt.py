@@ -243,6 +243,53 @@ class DBTContext:
             kwargs={"relation": relation},
             manifest=self.manifest)
 
+    def get_model(self, model_id: str, base=False):
+        manifest = self.curr_manifest if base is False else self.base_manifest
+        manifest_dict = manifest.to_dict()
+
+        node = manifest_dict['nodes'].get(model_id)
+        if node is None:
+            return {}
+
+        node_name = node['name']
+        with self.adapter.connection_named('model'):
+            columns = [column for column in dbt_context.get_columns(node_name, base=base)]
+
+        child_map: List[str] = manifest_dict['child_map'][model_id]
+        cols_not_null = []
+        cols_unique = []
+
+        for child in child_map:
+            comps = child.split('.')
+            child_type = comps[0]
+            child_name = comps[2]
+
+            not_null_prefix = f'not_null_{node_name}_'
+            if child_type == 'test' and child_name.startswith(not_null_prefix):
+                cols_not_null.append(child_name[len(not_null_prefix):])
+            unique_prefix = f'unique_{node_name}_'
+            if child_type == 'test' and child_name.startswith(unique_prefix):
+                cols_unique.append(child_name[len(unique_prefix):])
+
+        columns_info = {}
+        primary_key = None
+        for c in columns:
+            col_name = c.column
+            col = dict(name=col_name, type=c.dtype)
+            if col_name in cols_not_null:
+                col['not_null'] = True
+            if col_name in cols_unique:
+                col['unique'] = True
+                if not primary_key:
+                    primary_key = col_name
+            columns_info[col_name] = col
+
+        result = dict(columns=columns_info)
+        if primary_key:
+            result['primary_key'] = primary_key
+
+        return result
+
     def load_artifacts_from_state(self, state_file: str = None):
         if state_file is None:
             raise Exception('The recce state file is not provided')
