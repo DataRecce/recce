@@ -4,7 +4,8 @@ from typing import TypedDict
 
 from dateutil.relativedelta import relativedelta
 
-from recce.dbt import default_dbt_context
+from recce.adapter.dbt_adapter import DbtAdapter
+from recce.core import default_context
 from recce.tasks import Task
 from recce.tasks.query import QueryMixin
 
@@ -292,9 +293,8 @@ class HistogramDiffTask(Task, QueryMixin):
 
     def execute(self):
         result = {}
-        from dbt.adapters.sql import SQLAdapter
-        dbt_context = default_dbt_context()
-        adapter: SQLAdapter = dbt_context.adapter
+
+        dbt_adapter: DbtAdapter = default_context().adapter
         node = self.params['model']
         column = self.params['column_name']
         num_bins = self.params.get('num_bins', 50)
@@ -303,8 +303,8 @@ class HistogramDiffTask(Task, QueryMixin):
         if column_type.upper() in sql_not_supported_types:
             raise ValueError(f"Column type {column_type} is not supported for histogram analysis")
 
-        with adapter.connection_named("query"):
-            self.connection = adapter.connections.get_thread_connection()
+        with dbt_adapter.connection_named("query"):
+            self.connection = dbt_adapter.get_thread_connection()
             min_max_sql = f"""
                 SELECT
                     MIN({column}) as min,

@@ -19,7 +19,7 @@ from starlette.websockets import WebSocketDisconnect
 from . import __version__, event
 from .apis.check_api import check_router
 from .apis.run_api import run_router
-from .dbt import load_dbt_context, default_dbt_context
+from .core import load_context, default_context
 from .exceptions import RecceException
 
 logger = logging.getLogger('uvicorn')
@@ -35,7 +35,7 @@ async def lifespan(fastapi: FastAPI):
     app_state: AppState = app.state
 
     state_file = app_state.state_file
-    ctx = default_dbt_context()
+    ctx = default_context()
     ctx.start_monitor_artifacts(callback=dbt_artifacts_updated_callback)
 
     yield
@@ -54,7 +54,7 @@ def dbt_artifacts_updated_callback(file_changed_event: Any):
     file_name = src_path.name
     logger.info(
         f'Detect {target_type} file {file_changed_event.event_type}: {file_name}')
-    ctx = load_dbt_context()
+    ctx = load_context()
     ctx.refresh(file_changed_event.src_path)
     broadcast_command = {
         'command': 'refresh',
@@ -109,13 +109,13 @@ async def health_check(request: Request):
 
 @app.get("/api/info")
 async def get_info():
-    dbt_context = default_dbt_context()
+    context = default_context()
     demo = os.environ.get('DEMO', False)
     try:
         return {
             'lineage': {
-                'base': dbt_context.get_lineage(base=True),
-                'current': dbt_context.get_lineage(base=False),
+                'base': context.get_lineage(base=True),
+                'current': context.get_lineage(base=False),
             },
             'demo': bool(demo)
         }
@@ -125,12 +125,12 @@ async def get_info():
 
 @app.get("/api/model/{model_id}")
 async def get_columns(model_id: str):
-    dbt_context = default_dbt_context()
+    context = default_context()
     try:
         return {
             'model': {
-                'base': dbt_context.get_model(model_id, base=True),
-                'current': dbt_context.get_model(model_id, base=False)
+                'base': context.get_model(model_id, base=True),
+                'current': context.get_model(model_id, base=False)
             }
         }
     except Exception as e:
@@ -139,9 +139,9 @@ async def get_columns(model_id: str):
 
 @app.post("/api/export", response_class=PlainTextResponse, status_code=200)
 async def export_handler():
-    dbt_context = default_dbt_context()
+    context = default_context()
     try:
-        return dbt_context.export_state().to_json()
+        return context.export_state().to_json()
     except RecceException as e:
         raise HTTPException(status_code=400, detail=e.message)
 
@@ -150,11 +150,11 @@ async def export_handler():
 async def import_handler(file: UploadFile):
     from recce.state import RecceState
 
-    dbt_context = default_dbt_context()
+    context = default_context()
     try:
         content = await file.read()
         state = RecceState.from_json(content)
-        import_runs, import_checks = dbt_context.import_state(state)
+        import_runs, import_checks = context.import_state(state)
 
         return {"runs": import_runs, "checks": import_checks}
     except ValidationError as e:

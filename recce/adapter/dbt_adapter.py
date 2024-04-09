@@ -1,24 +1,24 @@
-import hashlib
 import json
 import logging
 import os
 import uuid
+from contextlib import contextmanager
 from dataclasses import dataclass, fields
-from typing import Callable, Dict, List, Optional, Tuple
+from typing import Callable, Dict, List, Optional, Tuple, Iterator
 
 import agate
 import dbt.adapters.factory
 
 # Reference: https://github.com/AltimateAI/vscode-dbt-power-user/blob/master/dbt_core_integration.py
-dbt.adapters.factory.get_adapter = lambda config: config.adapter # noqa E402
+dbt.adapters.factory.get_adapter = lambda config: config.adapter  # noqa E402
 
 from dbt.adapters.base import Column
 from dbt.adapters.factory import get_adapter_class_by_name
 from dbt.adapters.sql import SQLAdapter
-from dbt.cli.main import dbtRunner
 from dbt.config.runtime import RuntimeConfig
+from dbt.contracts.connection import Connection
 from dbt.contracts.graph.manifest import Manifest, WritableManifest
-from dbt.contracts.graph.nodes import ManifestNode, SourceDefinition
+from dbt.contracts.graph.nodes import ManifestNode
 from dbt.contracts.results import CatalogArtifact
 from dbt.flags import set_from_args
 from dbt.parser.manifest import process_node
@@ -26,10 +26,8 @@ from dbt.parser.sql import SqlBlockParser
 from watchdog.events import FileSystemEventHandler
 from watchdog.observers import Observer
 
-from recce.models import RunDAO, CheckDAO, Check
-from recce.models.check import load_checks
-from recce.models.run import load_runs
-from recce.state import RecceState, RecceStateMetadata, GitRepoInfo
+from recce.adapter.base import BaseAdapter
+from recce.state import ArtifactsRoot
 
 logger = logging.getLogger('uvicorn')
 
@@ -148,8 +146,7 @@ class DbtArgs:
 
 
 @dataclass
-class DBTContext:
-    review_mode: bool = False
+class DbtAdapter(BaseAdapter):
     runtime_config: RuntimeConfig = None
     adapter: SQLAdapter = None
     manifest: Manifest = None
@@ -164,25 +161,13 @@ class DBTContext:
     artifacts_observer = Observer()
     artifacts_files = []
 
-    # The state file used for review mode
-    review_state_file: str = None
-    review_state: RecceState = None
-
-    def info(self):
-        dbt_adapter_type = self.runtime_config.credentials.type if self.runtime_config else 'recce_run'
-        return {
-            "adapterType": dbt_adapter_type,
-        }
-
     @classmethod
-    def load(cls, **kwargs):
+    def load(cls, artifacts: ArtifactsRoot = None, **kwargs):
 
         target = kwargs.get('target')
         profile_name = kwargs.get('profile')
         project_dir = kwargs.get('project_dir')
         profiles_dir = kwargs.get('profiles_dir')
-        state_file = kwargs.get('state_file')
-        is_review_mode = kwargs.get('review', False)
 
         if profiles_dir is None:
             profiles_dir = default_profiles_dir()
@@ -205,37 +190,31 @@ class DBTContext:
         adapter.connections.set_connection_name()
         runtime_config.adapter = adapter
 
-        dbt_context = cls(
+        dbt_adapter = cls(
             runtime_config=runtime_config,
             adapter=adapter,
-            review_mode=is_review_mode,
         )
 
-        if state_file:
-            try:
-                state = RecceState.from_file(state_file)
-                dbt_context.import_state(state)
-            except FileNotFoundError:
-                pass
-
         # Load the artifacts from the state file or `target` and `target-base` directory
-        if is_review_mode:
-            if state_file:
-                dbt_context.review_state_file = state_file
-                dbt_context.load_artifacts_from_state(state_file)
-
-            if not dbt_context.curr_manifest or not dbt_context.base_manifest:
-                raise Exception(
-                    'No enough dbt artifacts in the state file. Please use the latest recce to generate the recce state')
+        if artifacts:
+            dbt_adapter.import_artifacts(artifacts)
         else:
-            dbt_context.load_artifacts_from_manifest()
+            dbt_adapter.load_artifacts()
 
-            if not dbt_context.curr_manifest:
-                raise Exception('Cannot load "target/manifest.json"')
-            if not dbt_context.base_manifest:
-                raise Exception('Cannot load "target-base/manifest.json"')
+        if not dbt_adapter.curr_manifest:
+            raise Exception('Cannot load "target/manifest.json"')
+        if not dbt_adapter.base_manifest:
+            raise Exception('Cannot load "target-base/manifest.json"')
+        return dbt_adapter
 
-        return dbt_context
+    def print_lineage_info(self):
+        print("Base:")
+        print(f"    Manifest: {self.base_manifest.metadata.generated_at}")
+        print(f"    Catalog:  {self.base_catalog.metadata.generated_at if self.base_catalog else 'N/A'}")
+
+        print("Current:")
+        print(f"    Manifest: {self.curr_manifest.metadata.generated_at}")
+        print(f"    Catalog:  {self.curr_catalog.metadata.generated_at if self.curr_catalog else 'N/A'}")
 
     def get_columns(self, model: str, base=False) -> List[Column]:
         relation = self.create_relation(model, base)
@@ -255,7 +234,7 @@ class DBTContext:
 
         node_name = node['name']
         with self.adapter.connection_named('model'):
-            columns = [column for column in dbt_context.get_columns(node_name, base=base)]
+            columns = [column for column in self.get_columns(node_name, base=base)]
 
         child_map: List[str] = manifest_dict['child_map'][model_id]
         cols_not_null = []
@@ -292,28 +271,7 @@ class DBTContext:
 
         return result
 
-    def load_artifacts_from_state(self, state_file: str = None):
-        if state_file is None:
-            raise Exception('The recce state file is not provided')
-
-        state = RecceState.from_file(state_file)
-        if state is None:
-            raise Exception('Recce state is not loaded from the state file')
-
-        self.review_state = state
-        self.base_manifest = load_manifest(data=state.artifacts.base.get('manifest'))
-        self.base_catalog = load_catalog(data=state.artifacts.base.get('catalog'))
-        self.curr_manifest = load_manifest(data=state.artifacts.current.get('manifest'))
-        self.curr_catalog = load_catalog(data=state.artifacts.current.get('catalog'))
-
-        # set the manifest
-        self.manifest = as_manifest(self.curr_manifest)
-
-        self.artifacts_files = [
-            os.path.abspath(state_file)
-        ]
-
-    def load_artifacts_from_manifest(self):
+    def load_artifacts(self):
         """
         Load the artifacts from the 'target' and 'target-base' directory
         """
@@ -368,16 +326,6 @@ class DBTContext:
 
     def get_manifest(self, base: bool):
         return self.curr_manifest if base is False else self.base_manifest
-
-    def find_source_by_name(self, source_name, table_name, base=False) -> Optional[SourceDefinition]:
-
-        manifest = self.curr_manifest if base is False else self.base_manifest
-
-        for key, source in manifest.sources.items():
-            if source.source_name == source_name and source.name == table_name:
-                return source
-
-        return None
 
     def generate_sql(self, sql_template: str, base: bool = False, context: Dict = {}):
         manifest = as_manifest(self.get_manifest(base))
@@ -506,9 +454,9 @@ class DBTContext:
                 }
 
         pr_url = os.environ.get('RECCE_PR_URL')
-        if self.review_mode and self.review_state.pull_request and self.review_state.pull_request.url:
-            pr_url = self.review_state.pull_request.url
-
+        # if self.review_mode and self.review_state.pull_request and self.review_state.pull_request.url:
+        #     pr_url = self.review_state.pull_request.url
+        #
         metadata = dict(
             pr_url=pr_url
         )
@@ -549,22 +497,19 @@ class DBTContext:
                 self.artifacts_observer.schedule(event_handler, self.target_path, recursive=False)
             if self.base_path:
                 self.artifacts_observer.schedule(event_handler, self.base_path, recursive=False)
-            if self.review_state_file:
-                self.artifacts_observer.schedule(event_handler, os.path.curdir, recursive=False)
             self.artifacts_observer.start()
             logger.info('Start monitoring dbt artifacts')
-        else:
-            logger.warning('No artifacts to monitor')
 
     def stop_monitor_artifacts(self):
-        self.artifacts_observer.stop()
-        self.artifacts_observer.join()
-        logger.info('Stop monitoring artifacts')
+        if self.artifacts_files:
+            self.artifacts_observer.stop()
+            self.artifacts_observer.join()
+            logger.info('Stop monitoring artifacts')
 
     def refresh(self, refresh_file_path: str = None):
         # Refresh the artifacts
         if refresh_file_path is None:
-            return self.load_artifacts_from_manifest()
+            return self.load_artifacts()
 
         target_type = refresh_file_path.split('/')[-2]
         if self.target_path and target_type == os.path.basename(self.target_path):
@@ -578,9 +523,6 @@ class DBTContext:
                 self.base_manifest = load_manifest(path=refresh_file_path)
             elif refresh_file_path.endswith('catalog.json'):
                 self.base_catalog = load_catalog(path=refresh_file_path)
-        else:
-            # The file is not in the target or target-base directory
-            self.load_artifacts_from_state()
 
     def create_relation(self, model, base=False):
         node = self.find_node_by_name(model, base)
@@ -589,119 +531,47 @@ class DBTContext:
 
         return self.adapter.Relation.create_from(self.runtime_config, node)
 
-    def export_state(self) -> RecceState:
-        """
-        Export the state to a RecceState object.
-        """
-        state = RecceState()
-        state.metadata = RecceStateMetadata()
+    def export_artifacts(self) -> ArtifactsRoot:
+        artifacts = ArtifactsRoot()
+        target_path = self.runtime_config.target_path
+        target_base_path = 'target-base'
 
-        # runs & checks
-        state.runs = RunDAO().list()
-        state.checks = CheckDAO().list()
+        def _load_artifact(path):
+            if not os.path.isfile(path):
+                return None
 
-        # artifacts & git & pull_request. If in review mode, use the review state
-        if self.review_mode:
-            state.artifacts = self.review_state.artifacts
-            state.git = self.review_state.git
-            state.pull_request = self.review_state.pull_request
-        else:
-            target_path = self.runtime_config.target_path
-            target_base_path = 'target-base'
+            with open(path, 'r') as f:
+                json_content = f.read()
+                return json.loads(json_content)
 
-            def _load_artifact(path):
-                if not os.path.isfile(path):
-                    return None
+        project_root = self.runtime_config.project_root
+        artifacts.base = {
+            'manifest': _load_artifact(os.path.join(project_root, target_base_path, 'manifest.json')),
+            'catalog': _load_artifact(os.path.join(project_root, target_base_path, 'catalog.json')),
+        }
+        artifacts.current = {
+            'manifest': _load_artifact(os.path.join(project_root, target_path, 'manifest.json')),
+            'catalog': _load_artifact(os.path.join(project_root, target_path, 'catalog.json')),
+        }
+        return artifacts
 
-                with open(path, 'r') as f:
-                    json_content = f.read()
-                    return json.loads(json_content)
+    def import_artifacts(self, artifacts: ArtifactsRoot):
+        self.base_manifest = load_manifest(data=artifacts.base.get('manifest'))
+        self.base_catalog = load_catalog(data=artifacts.base.get('catalog'))
+        self.curr_manifest = load_manifest(data=artifacts.current.get('manifest'))
+        self.curr_catalog = load_catalog(data=artifacts.current.get('catalog'))
 
-            project_root = self.runtime_config.project_root
-            state.artifacts.base = {
-                'manifest': _load_artifact(os.path.join(project_root, target_base_path, 'manifest.json')),
-                'catalog': _load_artifact(os.path.join(project_root, target_base_path, 'catalog.json')),
-            }
-            state.artifacts.current = {
-                'manifest': _load_artifact(os.path.join(project_root, target_path, 'manifest.json')),
-                'catalog': _load_artifact(os.path.join(project_root, target_path, 'catalog.json')),
-            }
+        if not self.curr_manifest or not self.base_manifest:
+            raise Exception(
+                'No enough dbt artifacts in the state file. Please use the latest recce to generate the recce state')
 
-            git = GitRepoInfo.from_current_repositroy()
-            if git:
-                state.git = git
+    @contextmanager
+    def connection_named(self, name: str) -> Iterator[None]:
+        with self.adapter.connection_named(name):
+            yield
 
-        return state
+    def get_thread_connection(self) -> Connection:
+        return self.adapter.connections.get_thread_connection()
 
-    def import_state(self, import_state: RecceState):
-        """
-        Import the state. It would
-        1. Merge runs
-        2. Merge checks
-            2.1 If both checks are preset, use the new one
-            2.2 If the check is not preset, append the check if not found
-        """
-        checks = CheckDAO().list()
-        runs = RunDAO().list()
-        current_check_ids = [str(c.check_id) for c in checks]
-        current_run_ids = [str(r.run_id) for r in runs]
-
-        def _calculate_checksum(c: Check):
-            payload = json.dumps({
-                'name': c.name.strip(),
-                'description': c.description.strip(),
-                'type': str(c.type),
-                'params': c.params,
-                'view_options': c.view_options,
-            }, sort_keys=True)
-            return hashlib.sha256(payload.encode()).hexdigest()
-
-        current_preset_check_checksums = {_calculate_checksum(c): index for index, c in enumerate(checks) if
-                                          c.is_preset}
-        # merge checks
-        import_checks = 0
-        for check in import_state.checks:
-            if check.is_preset:
-                # Replace the preset check if the checksum is the same
-                check_checksum = _calculate_checksum(check)
-                if check_checksum in current_preset_check_checksums:
-                    index = current_preset_check_checksums[check_checksum]
-                    checks[index] = check
-                else:
-                    checks.append(check)
-                import_checks += 1
-            elif str(check.check_id) not in current_check_ids:
-                # Merge the check
-                checks.append(check)
-                import_checks += 1
-
-        # merge runs
-        import_runs = 0
-        for run in import_state.runs:
-            if str(run.run_id) not in current_run_ids:
-                runs.append(run)
-                import_runs += 1
-
-        runs.sort(key=lambda x: x.run_at)
-
-        # Update to in-memory db
-
-        load_runs(runs)
-        load_checks(checks)
-
-        return import_runs, import_checks
-
-
-dbt_context: Optional[DBTContext] = None
-
-
-def load_dbt_context(**kwargs) -> DBTContext:
-    global dbt_context
-    if dbt_context is None:
-        dbt_context = DBTContext.load(**kwargs)
-    return dbt_context
-
-
-def default_dbt_context() -> DBTContext:
-    global dbt_context
-    return dbt_context
+    def cancel(self, connection: Connection):
+        self.adapter.connections.cancel(connection)

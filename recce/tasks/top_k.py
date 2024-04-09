@@ -1,6 +1,7 @@
 from typing import TypedDict
 
-from recce.dbt import default_dbt_context
+from recce.adapter.dbt_adapter import DbtAdapter
+from recce.core import default_context
 from recce.tasks import Task
 from recce.tasks.query import QueryMixin
 
@@ -18,7 +19,7 @@ class TopKDiffTask(Task, QueryMixin):
         self.params = params
         self.connection = None
 
-    def _query_row_count_diff(self, dbt_context, base_relation, curr_relation, column):
+    def _query_row_count_diff(self, dbt_adapter: DbtAdapter, base_relation, curr_relation, column):
         """
         Query the row count of the base and current relations
 
@@ -30,18 +31,18 @@ class TopKDiffTask(Task, QueryMixin):
         UNION ALL
         select count(*), count({{column}}) from {{ curr_relation }}
         """
-        sql = dbt_context.generate_sql(sql_template, context=dict(
+        sql = dbt_adapter.generate_sql(sql_template, context=dict(
             base_relation=base_relation,
             curr_relation=curr_relation,
             column=column,
         ))
-        _, table = dbt_context.adapter.execute(sql, fetch=True)
+        _, table = dbt_adapter.execute(sql, fetch=True)
 
         result = (table[0][0], table[0][1], table[1][0], table[1][1])
 
         return (int(v) if v is not None else 0 for v in result)
 
-    def _query_top_k(self, dbt_context, base_relation, curr_relation, column, k):
+    def _query_top_k(self, dbt_adapter, base_relation, curr_relation, column, k):
         sql_template = r"""
         WITH
         BASE_CAT as (
@@ -74,14 +75,14 @@ class TopKDiffTask(Task, QueryMixin):
         order by curr_count desc, base_count desc
         limit {{k}}
         """
-        sql = dbt_context.generate_sql(sql_template, context=dict(
+        sql = dbt_adapter.generate_sql(sql_template, context=dict(
             base_relation=base_relation,
             curr_relation=curr_relation,
             column=column,
             k=k,
             include_null=False,
         ))
-        _, table = dbt_context.adapter.execute(sql, fetch=True)
+        _, table = dbt_adapter.execute(sql, fetch=True)
 
         categories = []
         base_counts = []
@@ -95,27 +96,26 @@ class TopKDiffTask(Task, QueryMixin):
         return categories, base_counts, curr_counts
 
     def execute(self):
-        from dbt.adapters.sql import SQLAdapter
-        dbt_context = default_dbt_context()
-        adapter: SQLAdapter = dbt_context.adapter
 
-        with adapter.connection_named("query"):
-            self.connection = adapter.connections.get_thread_connection()
+        dbt_adapter: DbtAdapter = default_context().adapter
+
+        with dbt_adapter.connection_named("query"):
+            self.connection = dbt_adapter.get_thread_connection()
             model = self.params['model']
             column = self.params['column_name']
             k = self.params.get('k', 10)
 
-            base_relation = dbt_context.create_relation(model, base=True)
+            base_relation = dbt_adapter.create_relation(model, base=True)
             if base_relation is None:
                 raise ValueError(f"Model '{model}' not found in the manifest")
 
-            curr_relation = dbt_context.create_relation(model, base=False)
+            curr_relation = dbt_adapter.create_relation(model, base=False)
             if curr_relation is None:
                 raise ValueError(f"Model '{model}' not found in the manifest")
 
             self.check_cancel()
             categories, base_counts, curr_counts = self._query_top_k(
-                dbt_context,
+                dbt_adapter,
                 base_relation,
                 curr_relation,
                 column,
@@ -124,7 +124,7 @@ class TopKDiffTask(Task, QueryMixin):
             self.check_cancel()
 
             base_total, base_valids, curr_total, curr_valids = self._query_row_count_diff(
-                dbt_context,
+                dbt_adapter,
                 base_relation,
                 curr_relation,
                 column

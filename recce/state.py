@@ -60,8 +60,8 @@ class ArtifactsRoot(BaseModel):
     base: artifacts of the base env. key is file name, value is dict
     current: artifacts of the current env. key is file name, value is dict
     """
-    base: Dict[str, Optional[dict]]
-    current: Dict[str, Optional[dict]]
+    base: Dict[str, Optional[dict]] = {}
+    current: Dict[str, Optional[dict]] = {}
 
 
 class RecceState(BaseModel):

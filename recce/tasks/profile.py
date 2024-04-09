@@ -1,13 +1,13 @@
 from typing import TypedDict, List
 
 import agate
-from dbt.adapters.sql import SQLAdapter
 from dbt.clients.agate_helper import merge_tables
 from pydantic import BaseModel
 
-from recce.dbt import default_dbt_context, DBTContext
 from .core import Task
 from .dataframe import DataFrame
+from ..adapter.dbt_adapter import DbtAdapter
+from ..core import default_context
 from ..exceptions import RecceException
 
 
@@ -28,18 +28,17 @@ class ProfileDiffTask(Task):
         self.connection = None
 
     def execute(self):
-        dbt_context = default_dbt_context()
-        adapter = dbt_context.adapter
+        dbt_adapter: DbtAdapter = default_context().adapter
 
         model: str = self.params['model']
 
-        self._verify_dbt_profiler(dbt_context)
+        self._verify_dbt_profiler(dbt_adapter)
 
-        with adapter.connection_named("query"):
-            self.connection = adapter.connections.get_thread_connection()
+        with dbt_adapter.connection_named("query"):
+            self.connection = dbt_adapter.get_thread_connection()
 
-            base_columns = [column for column in dbt_context.get_columns(model, base=True)]
-            curr_columns = [column for column in dbt_context.get_columns(model, base=False)]
+            base_columns = [column for column in dbt_adapter.get_columns(model, base=True)]
+            curr_columns = [column for column in dbt_adapter.get_columns(model, base=False)]
             total = len(base_columns) + len(curr_columns)
             completed = 0
 
@@ -47,8 +46,8 @@ class ProfileDiffTask(Task):
 
             for column in base_columns:
                 self.update_progress(message=f'[Base] Profile column: {column.name}', percentage=completed / total)
-                relation = dbt_context.create_relation(model, base=True)
-                response, table = self._profile_column(dbt_context, relation, column)
+                relation = dbt_adapter.create_relation(model, base=True)
+                response, table = self._profile_column(dbt_adapter, relation, column)
                 tables.append(table)
                 completed = completed + 1
                 self.check_cancel()
@@ -57,8 +56,8 @@ class ProfileDiffTask(Task):
             tables: List[agate.Table] = []
             for column in curr_columns:
                 self.update_progress(message=f'[Current] Profile column: {column.column}', percentage=completed / total)
-                relation = dbt_context.create_relation(model, base=False)
-                response, table = self._profile_column(dbt_context, relation, column)
+                relation = dbt_adapter.create_relation(model, base=False)
+                response, table = self._profile_column(dbt_adapter, relation, column)
                 tables.append(table)
                 completed = completed + 1
                 self.check_cancel()
@@ -66,15 +65,15 @@ class ProfileDiffTask(Task):
 
             return ProfileResult(base=base, current=current)
 
-    def _verify_dbt_profiler(self, dbt_context):
-        for macro_name, macro in dbt_context.manifest.macros.items():
+    def _verify_dbt_profiler(self, dbt_adapter):
+        for macro_name, macro in dbt_adapter.manifest.macros.items():
             if macro.package_name == 'dbt_profiler':
                 break
         else:
             raise RecceException(
                 r"Package 'dbt_profiler' not found. Please refer to the link to install: https://hub.getdbt.com/data-mie/dbt_profiler/")
 
-    def _profile_column(self, dbt_context: DBTContext, relation, column):
+    def _profile_column(self, dbt_adapter: DbtAdapter, relation, column):
 
         sql_template = r"""
         {%
@@ -97,13 +96,13 @@ class ProfileDiffTask(Task):
         {{ relation }}
         """
 
-        sql = dbt_context.generate_sql(
+        sql = dbt_adapter.generate_sql(
             sql_template,
             base=False,  # always false because we use the macro in current manifest
             context=dict(relation=relation, column=column)
         )
 
-        return dbt_context.adapter.execute(sql, fetch=True)
+        return dbt_adapter.execute(sql, fetch=True)
 
     def _to_dataframe(self, table: agate.Table):
         import pandas as pd
@@ -123,6 +122,6 @@ class ProfileDiffTask(Task):
         super().cancel()
 
         if self.connection:
-            adapter: SQLAdapter = default_dbt_context().adapter
-            with adapter.connection_named("cancel"):
-                adapter.connections.cancel(self.connection)
+            dbt_adapter: DbtAdapter = default_context().adapter
+            with dbt_adapter.connection_named("cancel"):
+                dbt_adapter.cancel(self.connection)
