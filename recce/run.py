@@ -73,7 +73,7 @@ async def cli_run(state_file: str, **kwargs):
     console = Console()
 
     from recce.dbt import load_dbt_context
-    ctx = load_dbt_context()
+    ctx = load_dbt_context(**kwargs)
     is_skip_query = kwargs.get('skip_query', False)
 
     # Prepare the artifact by collecting the lineage
