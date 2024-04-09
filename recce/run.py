@@ -4,6 +4,7 @@ import time
 from rich.console import Console
 
 from recce.apis.run_func import submit_run
+from recce.config import RecceConfig
 from recce.dbt import DBTContext
 from recce.models.types import RunType
 from recce.state import RecceState, PullRequestInfo
@@ -68,6 +69,31 @@ async def execute_default_runs(context: DBTContext):
         raise e
 
 
+async def execute_preset_checks(context: DBTContext, checks: list):
+    """
+    Execute the preset checks
+    """
+    for check in checks:
+        print(f"Running check: {check['name']}")
+        try:
+            check_name = check.get('name')
+            check_type = check.get('type')
+            check_description = check.get('description')
+            check_options = check.get('view_options', {})
+            # verify the check
+            if check_type not in [e.value for e in RunType]:
+                raise ValueError(f"Invalid check type: {check_type}")
+
+            start = time.time()
+            run, future = submit_run(check_type, params=check_options)
+            await future
+            end = time.time()
+            print(f"Completed in {end - start:.2f} seconds")
+        except Exception as e:
+            print(f"Failed to run the check due to: {e}")
+    pass
+
+
 async def cli_run(state_file: str, **kwargs):
     """The main function of 'recce run' command. It will execute the default runs and store the state."""
     console = Console()
@@ -92,6 +118,15 @@ async def cli_run(state_file: str, **kwargs):
         await execute_default_runs(ctx)
     else:
         print("Skip querying row counts")
+
+    # Execute the preset checks
+    preset_checks = RecceConfig().get('checks')
+    if is_skip_query or preset_checks is None or len(preset_checks) == 0:
+        # Skip the preset checks
+        pass
+    else:
+        console.rule("Preset checks")
+        await execute_preset_checks(ctx, preset_checks)
 
     # Export the state
     state: RecceState = ctx.export_state()
