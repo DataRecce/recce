@@ -3,6 +3,7 @@ import time
 
 from rich.console import Console
 
+from recce.apis.check_func import create_check_from_run
 from recce.apis.run_func import submit_run
 from recce.config import RecceConfig
 from recce.dbt import DBTContext
@@ -87,6 +88,7 @@ async def execute_preset_checks(context: DBTContext, checks: list):
             start = time.time()
             run, future = submit_run(check_type, params=check_options)
             await future
+            create_check_from_run(run.run_id, check_name, check_description, check_options)
             end = time.time()
             print(f"Completed in {end - start:.2f} seconds")
         except Exception as e:
