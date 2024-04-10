@@ -43,8 +43,8 @@ class RecceConfig(metaclass=SingletonMeta):
 
         return data
 
-    def get(self, key):
-        return self.config.get(key)
+    def get(self, key, default=None):
+        return self.config.get(key, default)
 
     def set(self, key, value):
         self.config[key] = value

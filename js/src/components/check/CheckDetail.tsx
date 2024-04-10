@@ -315,6 +315,7 @@ export const CheckDetail = ({ checkId }: CheckDetailProps) => {
             viewOptions={check?.view_options}
             onViewOptionsChanged={handelUpdateViewOptions}
             onCancel={handleCancel}
+            onExecuteRun={handleRerun}
           />
         )}
         {check && check.type === "schema_diff" && (

@@ -3,7 +3,7 @@ import time
 
 from rich.console import Console
 
-from recce.apis.check_func import create_check_from_run
+from recce.apis.check_func import create_check_from_run, create_check_without_run
 from recce.apis.run_func import submit_run
 from recce.config import RecceConfig
 from recce.dbt import DBTContext
@@ -68,6 +68,15 @@ async def execute_default_runs(context: DBTContext):
     except Exception as e:
         print("Failed to run queries")
         raise e
+
+
+def load_preset_checks(checks: list):
+    for check in checks:
+        name = check.get('name')
+        description = check.get('description', '')
+        check_type = check.get('type')
+        check_options = check.get('view_options', {})
+        create_check_without_run(name, description, check_type, check_options, check_options)
 
 
 async def execute_preset_checks(context: DBTContext, checks: list):

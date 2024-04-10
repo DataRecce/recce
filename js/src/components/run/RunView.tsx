@@ -18,6 +18,7 @@ interface RunViewProps<PT, RT, VO = any> {
   progress?: Run["progress"];
   isAborting?: boolean;
   onCancel?: () => void;
+  onExecuteRun?: () => void;
   viewOptions?: VO;
   onViewOptionsChanged?: (viewOptions: VO) => void;
   RunResultView?: React.ComponentType<RunResultViewProps<PT, RT, VO>>;
@@ -37,6 +38,7 @@ export const RunView = <PT, RT>({
   onViewOptionsChanged,
   RunResultView,
   children,
+  onExecuteRun,
 }: RunViewProps<PT, RT>) => {
   const errorMessage = (error as any)?.response?.data?.detail || run?.error;
 
@@ -77,12 +79,12 @@ export const RunView = <PT, RT>({
         </VStack>
       </Center>
     );
-  }
-
-  if (!run) {
+  } else if (!run) {
     return (
       <Center bg="rgb(249,249,249)" height="100%">
-        No data
+        <Button onClick={onExecuteRun} colorScheme="blue" size="sm">
+          Run Query
+        </Button>
       </Center>
     );
   }

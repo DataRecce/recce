@@ -6,7 +6,7 @@ from rich.console import Console
 
 from recce import event
 from recce.config import RecceConfig, RECCE_CONFIG_FILE
-from recce.run import cli_run, check_github_ci_env
+from recce.run import cli_run, check_github_ci_env, load_preset_checks
 from .dbt import DBTContext
 from .event.track import TrackCommand
 
@@ -163,7 +163,11 @@ def server(host, port, state_file=None, **kwargs):
         exit(1)
 
     # Initialize Recce Config
-    RecceConfig(config_file=kwargs.get('config'))
+    config = RecceConfig(config_file=kwargs.get('config'))
+    preset_checks = config.get('checks', [])
+    if preset_checks:
+        console.print("Loading preset checks...")
+        load_preset_checks(preset_checks)
 
     if is_review:
         console.rule("Recce Server : Review Mode")
