@@ -178,7 +178,7 @@ class DBTContext:
         profile_name = kwargs.get('profile')
         project_dir = kwargs.get('project_dir')
         profiles_dir = kwargs.get('profiles_dir')
-        state_file = kwargs.get('state_file', 'recce_state.json')
+        state_file = kwargs.get('state_file')
         is_review_mode = kwargs.get('review', False)
 
         # We need to run the dbt parse command because

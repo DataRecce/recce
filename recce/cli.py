@@ -181,7 +181,9 @@ def server(host, port, state_file=None, **kwargs):
 
 
 @cli.command(cls=TrackCommand)
-@click.option('-o', '--output', help='Path of the state file.', type=click.Path(), default='recce_state.json')
+@click.option('-o', '--output', help='Path of the output state file.', type=click.Path(), default='recce_state.json',
+              show_default=True)
+@click.option('--state-file', help='Path of the import state file.', type=click.Path())
 @click.option('--skip-query', is_flag=True, help='Skip querying row count for nodes in the lineage.')
 @click.option('--git-current-branch', help='The git branch of the current environment.', type=click.STRING,
               envvar='GITHUB_HEAD_REF')

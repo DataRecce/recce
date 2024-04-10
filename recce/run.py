@@ -92,8 +92,14 @@ async def execute_preset_checks(context: DBTContext, checks: list):
     """
     Execute the preset checks
     """
+    console = Console()
+    table = Table(title='Recce Preset Checks', box=box.HORIZONTALS, title_style='bold dark_orange3')
+    table.add_column('Status')
+    table.add_column('Name')
+    table.add_column('Type')
+    table.add_column('Execution Time')
+    table.add_column('Failed Reason')
     for check in checks:
-        print(f"Running check: {check['name']}")
         try:
             check_name = check.get('name')
             check_type = check.get('type')
@@ -108,9 +114,13 @@ async def execute_preset_checks(context: DBTContext, checks: list):
             await future
             create_check_from_run(run.run_id, check_name, check_description, check_options)
             end = time.time()
-            print(f"Completed in {end - start:.2f} seconds")
+            table.add_row('[[green]Success[/green]]', check_name, check_type.replace('_', ' ').title(),
+                          f'{end - start:.2f} seconds', 'N/A')
         except Exception as e:
-            print(f"Failed to run the check due to: {e}")
+            check_name = check.get('name')
+            check_type = check.get('type')
+            table.add_row('[[red]Failed[/red]]', check_name, check_type.replace('_', ' ').title(), 'N/A', str(e))
+    console.print(table)
     pass
 
 
