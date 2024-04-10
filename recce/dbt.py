@@ -6,14 +6,20 @@ from dataclasses import dataclass, fields
 from typing import Callable, Dict, List, Optional, Tuple
 
 import agate
+import dbt.adapters.factory
+
+# Reference: https://github.com/AltimateAI/vscode-dbt-power-user/blob/master/dbt_core_integration.py
+dbt.adapters.factory.get_adapter = lambda config: config.adapter # noqa E402
+
 from dbt.adapters.base import Column
-from dbt.adapters.factory import get_adapter_by_type
+from dbt.adapters.factory import get_adapter_class_by_name
 from dbt.adapters.sql import SQLAdapter
 from dbt.cli.main import dbtRunner
 from dbt.config.runtime import RuntimeConfig
 from dbt.contracts.graph.manifest import Manifest, WritableManifest
 from dbt.contracts.graph.nodes import ManifestNode, SourceDefinition
 from dbt.contracts.results import CatalogArtifact
+from dbt.flags import set_from_args
 from dbt.parser.manifest import process_node
 from dbt.parser.sql import SqlBlockParser
 from watchdog.events import FileSystemEventHandler
@@ -181,35 +187,32 @@ class DBTContext:
         state_file = kwargs.get('state_file')
         is_review_mode = kwargs.get('review', False)
 
-        # We need to run the dbt parse command because
-        # 1. load the dbt profiles by dbt-core rule
-        # 2. initialize the adapter
-        parse_result = execute_dbt_parse(target=target, profile_name=profile_name, project_dir=project_dir)
-        manifest = parse_result.result
+        if profiles_dir is None:
+            profiles_dir = os.getcwd()
 
-        if parse_result.success:
-            # Load the dbt context from DBT
-            args = DbtArgs(
-                threads=1,
-                target=target,
-                project_dir=project_dir,
-                profiles_dir=profiles_dir,
-                profile=profile_name,
-            )
-            runtime_config = RuntimeConfig.from_args(args)
-            adapter: SQLAdapter = get_adapter_by_type(runtime_config.credentials.type)
+        # runtime_config
+        args = DbtArgs(
+            threads=1,
+            target=target,
+            target_path='target',
+            project_dir=project_dir,
+            profiles_dir=profiles_dir,
+            profile=profile_name,
+        )
+        set_from_args(args, args)
+        runtime_config = RuntimeConfig.from_args(args)
 
-            dbt_context = cls(
-                runtime_config=runtime_config,
-                adapter=adapter,
-                manifest=manifest,
-                review_mode=is_review_mode,
-            )
-        else:
-            # Load the dbt context from recce state
-            dbt_context = cls(
-                review_mode=is_review_mode,
-            )
+        # adapter
+        adapter_name = runtime_config.credentials.type
+        adapter: SQLAdapter = get_adapter_class_by_name(adapter_name)(runtime_config)
+        adapter.connections.set_connection_name()
+        runtime_config.adapter = adapter
+
+        dbt_context = cls(
+            runtime_config=runtime_config,
+            adapter=adapter,
+            review_mode=is_review_mode,
+        )
 
         if state_file:
             state = RecceState.from_file(state_file)
@@ -225,14 +228,14 @@ class DBTContext:
                 raise Exception(
                     'No enough dbt artifacts in the state file. Please use the latest recce to generate the recce state')
         else:
-            if parse_result.success is False:
-                raise parse_result.exception
             dbt_context.load_artifacts_from_manifest()
 
             if not dbt_context.curr_manifest:
                 raise Exception('Cannot load "target/manifest.json"')
             if not dbt_context.base_manifest:
                 raise Exception('Cannot load "target-base/manifest.json"')
+
+        dbt_context.manifest = as_manifest(dbt_context.curr_manifest)
         return dbt_context
 
     def get_columns(self, model: str, base=False) -> List[Column]:
