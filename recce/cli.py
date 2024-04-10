@@ -164,10 +164,11 @@ def server(host, port, state_file=None, **kwargs):
 
     # Initialize Recce Config
     config = RecceConfig(config_file=kwargs.get('config'))
-    preset_checks = config.get('checks', [])
-    if preset_checks:
-        console.print("Loading preset checks...")
-        load_preset_checks(preset_checks)
+    if not state_file:
+        preset_checks = config.get('checks', [])
+        if preset_checks and len(preset_checks) > 0:
+            console.rule("Loading Preset Checks")
+            load_preset_checks(preset_checks)
 
     if is_review:
         console.rule("Recce Server : Review Mode")

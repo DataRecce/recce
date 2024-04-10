@@ -1,7 +1,9 @@
 import os
 import time
 
+from rich import box
 from rich.console import Console
+from rich.table import Table
 
 from recce.apis.check_func import create_check_from_run, create_check_without_run
 from recce.apis.run_func import submit_run
@@ -71,12 +73,19 @@ async def execute_default_runs(context: DBTContext):
 
 
 def load_preset_checks(checks: list):
+    console = Console()
+    table = Table(title='Recce Preset Checks', box=box.HORIZONTALS, title_style='bold dark_orange3')
+    table.add_column('Name')
+    table.add_column('Type')
+    table.add_column('Description')
     for check in checks:
         name = check.get('name')
         description = check.get('description', '')
         check_type = check.get('type')
         check_options = check.get('view_options', {})
         create_check_without_run(name, description, check_type, check_options, check_options)
+        table.add_row(name, check_type.replace('_', ' ').title(), description.strip())
+    console.print(table)
 
 
 async def execute_preset_checks(context: DBTContext, checks: list):

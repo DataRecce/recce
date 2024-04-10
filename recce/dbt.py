@@ -212,8 +212,11 @@ class DBTContext:
             )
 
         if state_file:
-            state = RecceState.from_file(state_file)
-            dbt_context.import_state(state)
+            try:
+                state = RecceState.from_file(state_file)
+                dbt_context.import_state(state)
+            except FileNotFoundError:
+                pass
 
         # Load the artifacts from the state file or `target` and `target-base` directory
         if is_review_mode:
