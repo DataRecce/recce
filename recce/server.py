@@ -1,6 +1,7 @@
 import asyncio
 import json
 import logging
+import os
 import uuid
 from contextlib import asynccontextmanager
 from dataclasses import dataclass
@@ -109,12 +110,14 @@ async def health_check(request: Request):
 @app.get("/api/info")
 async def get_info():
     dbt_context = default_dbt_context()
+    demo = os.environ.get('DEMO', False)
     try:
         return {
             'lineage': {
                 'base': dbt_context.get_lineage(base=True),
                 'current': dbt_context.get_lineage(base=False),
             },
+            'demo': bool(demo)
         }
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))
