@@ -238,10 +238,12 @@ export const CheckDetail = ({ checkId }: CheckDetailProps) => {
         />
         <Spacer />
         {isPresetCheck && (
-          <Tag m="1" size="sm">
-            <TagLeftIcon as={CiBookmark} />
-            Preset
-          </Tag>
+          <Tooltip label="Preset Check defined in recce config">
+            <Tag size="sm">
+              <TagLeftIcon boxSize={"14px"} as={CiBookmark} />
+              Preset
+            </Tag>
+          </Tooltip>
         )}
         <Menu>
           <MenuButton
