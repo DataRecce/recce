@@ -24,7 +24,7 @@ class CheckDAO:
     def delete(self, check_id) -> bool:
         for check in _checks:
             if str(check_id) == str(check.check_id):
-                self.checks.remove(check)
+                _checks.remove(check)
                 return True
 
         return False
