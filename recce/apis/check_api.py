@@ -1,11 +1,10 @@
-from datetime import datetime
 from typing import Optional
 from uuid import UUID
 
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 
-from recce.apis.check_func import get_node_by_id, validate_schema_diff_check
+from recce.apis.check_func import create_check_without_run, create_check_from_run
 from recce.apis.run_func import submit_run
 from recce.exceptions import RecceException
 from recce.models import RunType, RunDAO, Check, CheckDAO, Run
@@ -30,6 +29,7 @@ class CheckOut(BaseModel):
     params: Optional[dict] = None
     view_options: Optional[dict] = None
     is_checked: bool = False
+    is_preset: bool = False
     last_run: Optional[Run] = None
 
     @classmethod
@@ -41,95 +41,32 @@ class CheckOut(BaseModel):
                         params=check.params,
                         view_options=check.view_options,
                         is_checked=check.is_checked,
+                        is_preset=check.is_preset,
                         )
-
-
-def _get_ref_model(sql_template: str) -> Optional[str]:
-    import re
-
-    pattern = r'\bref\(["\']?(\w+)["\']?\)\s*}}'
-    matches = re.findall(pattern, sql_template)
-    if len(matches) == 1:
-        ref = matches[0]
-        return ref
-
-    return None
-
-
-def _generate_default_name(check_type, params, view_options):
-    now = datetime.utcnow().strftime("%d %b %Y")
-    if check_type == RunType.QUERY:
-        ref = _get_ref_model(params.get('sql_template'))
-        if ref:
-            return f"query of {ref}".capitalize()
-        return f"{'query'.capitalize()} - {now}"
-    elif check_type == RunType.QUERY_DIFF:
-        ref = _get_ref_model(params.get('sql_template'))
-        if ref:
-            return f"query diff of {ref}".capitalize()
-        return f"{'query diff'.capitalize()} - {now}"
-    elif check_type == RunType.VALUE_DIFF or check_type == RunType.VALUE_DIFF_DETAIL:
-        model = params.get('model')
-        return f"value diff of {model}".capitalize()
-    elif check_type == RunType.SCHEMA_DIFF:
-        node = get_node_by_id(params.get('node_id'))
-        return f"{node.resource_type} schema of {node.name}".capitalize()
-    elif check_type == RunType.PROFILE_DIFF:
-        model = params.get('model')
-        return f"profile diff of {model}".capitalize()
-    elif check_type == RunType.ROW_COUNT_DIFF:
-        nodes = params.get('node_names')
-        if len(nodes) == 1:
-            node = nodes[0]
-            return f"row count of {node}".capitalize()
-        return f"{'row count'.capitalize()} - {now}"
-    elif check_type == RunType.LINEAGE_DIFF:
-        nodes = view_options.get('node_ids') if view_options else params.get('node_ids')
-        return f"lineage diff of {len(nodes)} nodes".capitalize()
-    elif check_type == RunType.TOP_K_DIFF:
-        model = params.get('model')
-        column = params.get('column_name')
-        return f"top-k diff of {model}.{column} ".capitalize()
-    elif check_type == RunType.HISTOGRAM_DIFF:
-        model = params.get('model')
-        column = params.get('column_name')
-        return f"histogram diff of {model}.{column} ".capitalize()
-    else:
-        return f"{'check'.capitalize()} - {now}"
-
-
-def _validate_check(check_type, params):
-    if check_type == RunType.SCHEMA_DIFF:
-        validate_schema_diff_check(params)
-    pass
 
 
 @check_router.post("/checks", status_code=201, response_model=CheckOut)
 async def create_check(check_in: CreateCheckIn):
-    run = None
-    if check_in.run_id is not None:
-        run = RunDAO().find_run_by_id(check_in.run_id)
-        if run is None:
-            raise HTTPException(status_code=404, detail='Run Not Found')
-
-        type = run.type
-        params = run.params
-    else:
-        type = check_in.type
-        params = check_in.params
-
-    _validate_check(type, params)
-
-    name = check_in.name if check_in.name is not None else _generate_default_name(type, params, check_in.view_options)
-    check = Check(name=name,
-                  description=check_in.description,
-                  type=type,
-                  params=params,
-                  view_options=check_in.view_options)
-    CheckDAO().create(check)
-
-    if run is not None:
-        run.check_id = check.check_id
+    try:
+        if check_in.run_id is not None:
+            check = create_check_from_run(
+                check_in.run_id,
+                check_name=check_in.name,
+                check_description=check_in.description,
+                check_view_options=check_in.view_options
+            )
+        else:
+            check = create_check_without_run(
+                check_name=check_in.name,
+                check_description=check_in.description,
+                check_type=check_in.type,
+                params=check_in.params,
+                check_view_options=check_in.view_options
+            )
+    except NameError as e:
+        raise HTTPException(status_code=404, detail=str(e))
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
 
     return CheckOut.from_check(check)
 

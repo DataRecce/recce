@@ -10,6 +10,7 @@ export interface Check<PT = any, RT = any, VO = any> {
   params?: PT;
   view_options?: VO;
   is_checked?: boolean;
+  is_preset?: boolean;
   last_run?: Run<PT, RT>;
 }
 

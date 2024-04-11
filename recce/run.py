@@ -1,9 +1,13 @@
 import os
 import time
 
+from rich import box
 from rich.console import Console
+from rich.table import Table
 
+from recce.apis.check_func import create_check_from_run, create_check_without_run
 from recce.apis.run_func import submit_run
+from recce.config import RecceConfig
 from recce.dbt import DBTContext
 from recce.models.types import RunType
 from recce.state import RecceState, PullRequestInfo
@@ -68,7 +72,61 @@ async def execute_default_runs(context: DBTContext):
         raise e
 
 
-async def cli_run(state_file: str, **kwargs):
+def load_preset_checks(checks: list):
+    console = Console()
+    table = Table(title='Recce Preset Checks', box=box.HORIZONTALS, title_style='bold dark_orange3')
+    table.add_column('Name')
+    table.add_column('Type')
+    table.add_column('Description')
+    for check in checks:
+        name = check.get('name')
+        description = check.get('description', '')
+        check_type = check.get('type')
+        check_params = check.get('params', {})
+        check_options = check.get('view_options', {})
+        create_check_without_run(name, description, check_type, check_params, check_options, is_preset=True)
+        table.add_row(name, check_type.replace('_', ' ').title(), description.strip())
+    console.print(table)
+
+
+async def execute_preset_checks(context: DBTContext, checks: list):
+    """
+    Execute the preset checks
+    """
+    console = Console()
+    table = Table(title='Recce Preset Checks', box=box.HORIZONTALS, title_style='bold dark_orange3')
+    table.add_column('Status')
+    table.add_column('Name')
+    table.add_column('Type')
+    table.add_column('Execution Time')
+    table.add_column('Failed Reason')
+    for check in checks:
+        try:
+            check_name = check.get('name')
+            check_type = check.get('type')
+            check_description = check.get('description')
+            check_params = check.get('params', {})
+            check_options = check.get('view_options', {})
+            # verify the check
+            if check_type not in [e.value for e in RunType]:
+                raise ValueError(f"Invalid check type: {check_type}")
+
+            start = time.time()
+            run, future = submit_run(check_type, params=check_params)
+            await future
+            create_check_from_run(run.run_id, check_name, check_description, check_options, is_preset=True)
+            end = time.time()
+            table.add_row('[[green]Success[/green]]', check_name, check_type.replace('_', ' ').title(),
+                          f'{end - start:.2f} seconds', 'N/A')
+        except Exception as e:
+            check_name = check.get('name')
+            check_type = check.get('type')
+            table.add_row('[[red]Failed[/red]]', check_name, check_type.replace('_', ' ').title(), 'N/A', str(e))
+    console.print(table)
+    pass
+
+
+async def cli_run(output_state_file: str, **kwargs):
     """The main function of 'recce run' command. It will execute the default runs and store the state."""
     console = Console()
 
@@ -93,6 +151,15 @@ async def cli_run(state_file: str, **kwargs):
     else:
         print("Skip querying row counts")
 
+    # Execute the preset checks
+    preset_checks = RecceConfig().get('checks')
+    if is_skip_query or preset_checks is None or len(preset_checks) == 0:
+        # Skip the preset checks
+        pass
+    else:
+        console.rule("Preset checks")
+        await execute_preset_checks(ctx, preset_checks)
+
     # Export the state
     state: RecceState = ctx.export_state()
     if 'github_pull_request_url' in kwargs:
@@ -100,6 +167,6 @@ async def cli_run(state_file: str, **kwargs):
             url=kwargs.get('github_pull_request_url')
         )
 
-    state.to_state_file(state_file)
-    print(f'The state file is stored at [{state_file}]')
+    state.to_state_file(output_state_file)
+    print(f'The state file is stored at [{output_state_file}]')
     pass

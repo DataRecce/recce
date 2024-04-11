@@ -8,14 +8,25 @@ import {
   Button,
   Center,
   Flex,
+  Heading,
+  Highlight,
   Icon,
   IconButton,
   Menu,
   MenuButton,
   MenuItem,
   MenuList,
+  Modal,
+  ModalBody,
+  ModalCloseButton,
+  ModalContent,
+  ModalHeader,
+  ModalOverlay,
   Spacer,
+  Tag,
+  TagLeftIcon,
   Tooltip,
+  useDisclosure,
 } from "@chakra-ui/react";
 import {
   CheckCircleIcon,
@@ -23,6 +34,8 @@ import {
   DeleteIcon,
   RepeatIcon,
 } from "@chakra-ui/icons";
+import { CiBookmark } from "react-icons/ci";
+import { IoMdCodeWorking } from "react-icons/io";
 import { CheckBreadcrumb } from "./CheckBreadcrumb";
 import { VscKebabVertical } from "react-icons/vsc";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
@@ -43,6 +56,7 @@ import { RunView } from "../run/RunView";
 import { formatDistanceToNow } from "date-fns";
 import { LineageDiffView } from "./LineageDiffView";
 import { findByRunType } from "../run/registry";
+import { PresetCheckTemplateView } from "./PresetCheckTemplateView";
 
 interface CheckDetailProps {
   checkId: string;
@@ -74,6 +88,15 @@ export const CheckDetail = ({ checkId }: CheckDetailProps) => {
   const [runId, setRunId] = useState<string>();
   const [progress, setProgress] = useState<Run["progress"]>();
   const [abort, setAborting] = useState(false);
+  const {
+    isOpen: isPresetCheckTemplateOpen,
+    onOpen: onPresetCheckTemplateOpen,
+    onClose: onPresetCheckTemplateClose,
+  } = useDisclosure();
+  const Overlay = () => (
+    <ModalOverlay bg="blackAlpha.300" backdropFilter="blur(10px) " />
+  );
+  const [overlay, setOverlay] = useState(<Overlay />);
 
   const {
     isLoading,
@@ -88,6 +111,7 @@ export const CheckDetail = ({ checkId }: CheckDetailProps) => {
   });
 
   const runTypeEntry = check?.type ? findByRunType(check?.type) : undefined;
+  const isPresetCheck = check?.is_preset || false;
 
   const { mutate } = useMutation({
     mutationFn: (check: Partial<Check>) => updateCheck(checkId, check),
@@ -213,6 +237,14 @@ export const CheckDetail = ({ checkId }: CheckDetailProps) => {
           }}
         />
         <Spacer />
+        {isPresetCheck && (
+          <Tooltip label="Preset Check defined in recce config">
+            <Tag size="sm">
+              <TagLeftIcon boxSize={"14px"} as={CiBookmark} />
+              Preset
+            </Tag>
+          </Tooltip>
+        )}
         <Menu>
           <MenuButton
             isRound={true}
@@ -221,6 +253,15 @@ export const CheckDetail = ({ checkId }: CheckDetailProps) => {
             variant="ghost"
           />
           <MenuList>
+            <MenuItem
+              icon={<IoMdCodeWorking />}
+              onClick={() => {
+                setOverlay(<Overlay />);
+                onPresetCheckTemplateOpen();
+              }}
+            >
+              Get Preset Check Template
+            </MenuItem>
             <MenuItem icon={<DeleteIcon />} onClick={() => handleDelete()}>
               Delete
             </MenuItem>
@@ -315,6 +356,7 @@ export const CheckDetail = ({ checkId }: CheckDetailProps) => {
             viewOptions={check?.view_options}
             onViewOptionsChanged={handelUpdateViewOptions}
             onCancel={handleCancel}
+            onExecuteRun={handleRerun}
           />
         )}
         {check && check.type === "schema_diff" && (
@@ -324,6 +366,37 @@ export const CheckDetail = ({ checkId }: CheckDetailProps) => {
           <LineageDiffView check={check} />
         )}
       </Box>
+      <Modal
+        isOpen={isPresetCheckTemplateOpen}
+        onClose={onPresetCheckTemplateClose}
+        isCentered
+        size="6xl"
+      >
+        {overlay}
+        <ModalContent overflowY="auto" height="40%" width="60%">
+          <ModalHeader>Preset Check Template</ModalHeader>
+          <ModalCloseButton />
+          <ModalBody>
+            <Heading size="sm" fontWeight="bold">
+              <Highlight
+                query="recce.yml"
+                styles={{ px: "1", py: "0", bg: "red.100" }}
+              >
+                Please copy the following template and paste it into the
+                recce.yml file.
+              </Highlight>
+            </Heading>
+            <br />
+            <PresetCheckTemplateView
+              name={check?.name || ""}
+              description={check?.description || ""}
+              type={check?.type || ""}
+              params={check?.params}
+              viewOptions={check?.view_options}
+            />
+          </ModalBody>
+        </ModalContent>
+      </Modal>
     </Flex>
   );
 };

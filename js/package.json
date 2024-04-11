@@ -46,7 +46,8 @@
     "react-dom": "^18",
     "react-icons": "^4.11.0",
     "reactflow": "^11.10.1",
-    "wouter": "^2.12.1"
+    "wouter": "^2.12.1",
+    "yaml": "^2.4.1"
   },
   "devDependencies": {
     "@testing-library/dom": "^9.3.3",

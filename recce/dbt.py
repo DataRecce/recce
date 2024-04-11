@@ -1,3 +1,4 @@
+import hashlib
 import json
 import logging
 import os
@@ -25,7 +26,7 @@ from dbt.parser.sql import SqlBlockParser
 from watchdog.events import FileSystemEventHandler
 from watchdog.observers import Observer
 
-from recce.models import RunDAO, CheckDAO
+from recce.models import RunDAO, CheckDAO, Check
 from recce.models.check import load_checks
 from recce.models.run import load_runs
 from recce.state import RecceState, RecceStateMetadata, GitRepoInfo
@@ -211,8 +212,11 @@ class DBTContext:
         )
 
         if state_file:
-            state = RecceState.from_file(state_file)
-            dbt_context.import_state(state)
+            try:
+                state = RecceState.from_file(state_file)
+                dbt_context.import_state(state)
+            except FileNotFoundError:
+                pass
 
         # Load the artifacts from the state file or `target` and `target-base` directory
         if is_review_mode:
@@ -634,16 +638,40 @@ class DBTContext:
         Import the state. It would
         1. Merge runs
         2. Merge checks
+            2.1 If both checks are preset, use the new one
+            2.2 If the check is not preset, append the check if not found
         """
         checks = CheckDAO().list()
         runs = RunDAO().list()
         current_check_ids = [str(c.check_id) for c in checks]
         current_run_ids = [str(r.run_id) for r in runs]
 
+        def _calculate_checksum(c: Check):
+            payload = json.dumps({
+                'name': c.name.strip(),
+                'description': c.description.strip(),
+                'type': str(c.type),
+                'params': c.params,
+                'view_options': c.view_options,
+            }, sort_keys=True)
+            return hashlib.sha256(payload.encode()).hexdigest()
+
+        current_preset_check_checksums = {_calculate_checksum(c): index for index, c in enumerate(checks) if
+                                          c.is_preset}
         # merge checks
         import_checks = 0
         for check in import_state.checks:
-            if str(check.check_id) not in current_check_ids:
+            if check.is_preset:
+                # Replace the preset check if the checksum is the same
+                check_checksum = _calculate_checksum(check)
+                if check_checksum in current_preset_check_checksums:
+                    index = current_preset_check_checksums[check_checksum]
+                    checks[index] = check
+                else:
+                    checks.append(check)
+                import_checks += 1
+            elif str(check.check_id) not in current_check_ids:
+                # Merge the check
                 checks.append(check)
                 import_checks += 1
 
