@@ -12,4 +12,5 @@ exclude = tests,
           images,
           js,
           *.egg-info
-
+per-file-ignores =
+    recce/dbt.py: E402
