@@ -587,7 +587,7 @@ class DBTContext:
         1. Merge runs
         2. Merge checks
             2.1 If both checks are preset, use the new one
-            2.2 If the check is not preset, merge the check
+            2.2 If the check is not preset, append the check if not found
         """
         checks = CheckDAO().list()
         runs = RunDAO().list()
