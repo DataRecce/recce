@@ -120,6 +120,7 @@ export interface ServerInfoResult {
     base: LineageData;
     current: LineageData;
   };
+  demo: boolean;
 }
 
 export async function getServerInfo(): Promise<ServerInfoResult> {

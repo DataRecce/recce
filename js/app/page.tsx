@@ -163,12 +163,8 @@ function NavBar() {
           );
         })}
         <Spacer />
-        {!isDemoSite && (
-          <>
-            <StateImporter />
-            <StateExporter />
-          </>
-        )}
+        {!isDemoSite && <StateImporter />}
+        <StateExporter />
         <Box p="8px" mr="10px" color="gray.500">
           {version}
         </Box>
