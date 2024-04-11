@@ -122,19 +122,15 @@ def load_catalog(path: str = None, data: dict = None):
         return CatalogArtifact.upgrade_schema_version(data)
 
 
-def execute_dbt_parse(target=None, profile_name=None, project_dir=None, profiles_dir=None):
-    cmd = ["-q", "parse"]
-    if target:
-        cmd.extend(["--target", target])
-    if profile_name:
-        cmd.extend(["--profile", profile_name])
-    if project_dir:
-        cmd.extend(["--project-dir", project_dir])
-    if profiles_dir:
-        cmd.extend(["--profiles-dir", profiles_dir])
-
-    # Check the dbt project to get the database connection information
-    return dbtRunner().invoke(cmd)
+def default_profiles_dir():
+    # Precedence: DBT_PROFILES_DIR > current working directory > ~/.dbt/
+    # https://docs.getdbt.com/docs/core/connect-data-platform/connection-profiles#advanced-customizing-a-profile-directory
+    if os.getenv('DBT_PROFILES_DIR'):
+        return os.getenv('DBT_PROFILES_DIR')
+    elif os.path.exists(os.path.join(os.getcwd(), 'profiles.yml')):
+        return os.getcwd()
+    else:
+        return os.path.expanduser('~/.dbt/')
 
 
 @dataclass()
@@ -188,7 +184,7 @@ class DBTContext:
         is_review_mode = kwargs.get('review', False)
 
         if profiles_dir is None:
-            profiles_dir = os.getcwd()
+            profiles_dir = default_profiles_dir()
 
         # runtime_config
         args = DbtArgs(
@@ -235,7 +231,6 @@ class DBTContext:
             if not dbt_context.base_manifest:
                 raise Exception('Cannot load "target-base/manifest.json"')
 
-        dbt_context.manifest = as_manifest(dbt_context.curr_manifest)
         return dbt_context
 
     def get_columns(self, model: str, base=False) -> List[Column]:
@@ -307,6 +302,9 @@ class DBTContext:
         self.curr_manifest = load_manifest(data=state.artifacts.current.get('manifest'))
         self.curr_catalog = load_catalog(data=state.artifacts.current.get('catalog'))
 
+        # set the manifest
+        self.manifest = as_manifest(self.curr_manifest)
+
         self.artifacts_files = [
             os.path.abspath(state_file)
         ]
@@ -335,6 +333,9 @@ class DBTContext:
         self.curr_catalog = curr_catalog
         self.base_manifest = base_manifest
         self.base_catalog = base_catalog
+
+        # set the manifest
+        self.manifest = as_manifest(curr_manifest)
 
         # set the file paths to watch
         self.artifacts_files = [
