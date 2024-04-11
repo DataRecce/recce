@@ -5,6 +5,7 @@ interface PresetCheckTemplateViewProps {
   name: string;
   description: string;
   type: string;
+  params: any;
   viewOptions: any;
 }
 
@@ -12,10 +13,15 @@ export function PresetCheckTemplateView({
   name,
   description,
   type,
+  params,
   viewOptions,
 }: PresetCheckTemplateViewProps) {
+  const check: any = { name, description, type, params };
+  if (viewOptions) {
+    check.view_options = viewOptions;
+  }
   const yamlTemplate = YAML.stringify({
-    checks: [{ name, description, type, view_options: viewOptions }],
+    checks: [check],
   });
   return (
     <Editor

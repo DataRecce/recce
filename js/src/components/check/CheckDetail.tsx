@@ -23,6 +23,8 @@ import {
   ModalHeader,
   ModalOverlay,
   Spacer,
+  Tag,
+  TagLeftIcon,
   Tooltip,
   useDisclosure,
 } from "@chakra-ui/react";
@@ -32,6 +34,7 @@ import {
   DeleteIcon,
   RepeatIcon,
 } from "@chakra-ui/icons";
+import { CiBookmark } from "react-icons/ci";
 import { IoMdCodeWorking } from "react-icons/io";
 import { CheckBreadcrumb } from "./CheckBreadcrumb";
 import { VscKebabVertical } from "react-icons/vsc";
@@ -108,6 +111,7 @@ export const CheckDetail = ({ checkId }: CheckDetailProps) => {
   });
 
   const runTypeEntry = check?.type ? findByRunType(check?.type) : undefined;
+  const isPresetCheck = check?.is_preset || false;
 
   const { mutate } = useMutation({
     mutationFn: (check: Partial<Check>) => updateCheck(checkId, check),
@@ -233,6 +237,12 @@ export const CheckDetail = ({ checkId }: CheckDetailProps) => {
           }}
         />
         <Spacer />
+        {isPresetCheck && (
+          <Tag m="1" size="sm">
+            <TagLeftIcon as={CiBookmark} />
+            Preset
+          </Tag>
+        )}
         <Menu>
           <MenuButton
             isRound={true}
@@ -379,7 +389,8 @@ export const CheckDetail = ({ checkId }: CheckDetailProps) => {
               name={check?.name || ""}
               description={check?.description || ""}
               type={check?.type || ""}
-              viewOptions={check?.params || {}}
+              params={check?.params}
+              viewOptions={check?.view_options}
             />
           </ModalBody>
         </ModalContent>

@@ -29,6 +29,7 @@ class CheckOut(BaseModel):
     params: Optional[dict] = None
     view_options: Optional[dict] = None
     is_checked: bool = False
+    is_preset: bool = False
     last_run: Optional[Run] = None
 
     @classmethod
@@ -40,6 +41,7 @@ class CheckOut(BaseModel):
                         params=check.params,
                         view_options=check.view_options,
                         is_checked=check.is_checked,
+                        is_preset=check.is_preset,
                         )
 
 

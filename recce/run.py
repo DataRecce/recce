@@ -82,8 +82,9 @@ def load_preset_checks(checks: list):
         name = check.get('name')
         description = check.get('description', '')
         check_type = check.get('type')
+        check_params = check.get('params', {})
         check_options = check.get('view_options', {})
-        create_check_without_run(name, description, check_type, check_options, check_options)
+        create_check_without_run(name, description, check_type, check_params, check_options, is_preset=True)
         table.add_row(name, check_type.replace('_', ' ').title(), description.strip())
     console.print(table)
 
@@ -104,15 +105,16 @@ async def execute_preset_checks(context: DBTContext, checks: list):
             check_name = check.get('name')
             check_type = check.get('type')
             check_description = check.get('description')
+            check_params = check.get('params', {})
             check_options = check.get('view_options', {})
             # verify the check
             if check_type not in [e.value for e in RunType]:
                 raise ValueError(f"Invalid check type: {check_type}")
 
             start = time.time()
-            run, future = submit_run(check_type, params=check_options)
+            run, future = submit_run(check_type, params=check_params)
             await future
-            create_check_from_run(run.run_id, check_name, check_description, check_options)
+            create_check_from_run(run.run_id, check_name, check_description, check_options, is_preset=True)
             end = time.time()
             table.add_row('[[green]Success[/green]]', check_name, check_type.replace('_', ' ').title(),
                           f'{end - start:.2f} seconds', 'N/A')
@@ -124,7 +126,7 @@ async def execute_preset_checks(context: DBTContext, checks: list):
     pass
 
 
-async def cli_run(state_file: str, **kwargs):
+async def cli_run(output_state_file: str, **kwargs):
     """The main function of 'recce run' command. It will execute the default runs and store the state."""
     console = Console()
 
@@ -165,6 +167,6 @@ async def cli_run(state_file: str, **kwargs):
             url=kwargs.get('github_pull_request_url')
         )
 
-    state.to_state_file(state_file)
-    print(f'The state file is stored at [{state_file}]')
+    state.to_state_file(output_state_file)
+    print(f'The state file is stored at [{output_state_file}]')
     pass
