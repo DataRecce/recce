@@ -6,8 +6,9 @@ from rich.console import Console
 
 from recce import event
 from recce.config import RecceConfig, RECCE_CONFIG_FILE
-from recce.run import cli_run, check_github_ci_env, load_preset_checks
-from .dbt import DBTContext
+from recce.run import cli_run, check_github_ci_env
+from recce.run import load_preset_checks
+from .core import RecceContext
 from .event.track import TrackCommand
 
 event.init()
@@ -38,17 +39,18 @@ recce_options = [
 ]
 
 
-def _execute_sql(dbt_context, sql_template, base=False):
+def _execute_sql(context, sql_template, base=False):
     try:
         import pandas as pd
     except ImportError:
         print("'pandas' package not found. You can install it using the command: 'pip install pandas'.")
         exit(1)
 
-    adapter = dbt_context.adapter
-    with adapter.connection_named('recce'):
-        sql = dbt_context.generate_sql(sql_template, base)
-        response, result = adapter.execute(sql, fetch=True, auto_begin=True)
+    from recce.adapter.dbt_adapter import DbtAdapter
+    dbt_adapter: DbtAdapter = context.adapter
+    with dbt_adapter.connection_named('recce'):
+        sql = dbt_adapter.generate_sql(sql_template, base)
+        response, result = dbt_adapter.execute(sql, fetch=True, auto_begin=True)
         table = result
         df = pd.DataFrame([row.values() for row in table.rows], columns=table.column_names)
         return df
@@ -85,8 +87,8 @@ def query(sql, base: bool = False, **kwargs):
     - run an adhoc query on base environment\n
         recce query --base --sql 'select * from {{ ref("mymodel") }} order by 1'
     """
-    dbt_context = DBTContext.load(**kwargs)
-    result = _execute_sql(dbt_context, sql, base=base)
+    context = RecceContext.load(**kwargs)
+    result = _execute_sql(context, sql, base=base)
     print(result.to_string(na_rep='-', index=False))
 
 
@@ -112,11 +114,11 @@ def diff(sql, primary_keys: List[str] = None, keep_shape: bool = False, keep_equ
         recce diff --sql 'select * from {{ ref("mymodel") }} order by 1'
     """
 
-    dbt_context = DBTContext.load(**kwargs)
-    before = _execute_sql(dbt_context, sql, base=True)
+    context = RecceContext.load(**kwargs)
+    before = _execute_sql(context, sql, base=True)
     if primary_keys is not None:
         before.set_index(primary_keys, inplace=True)
-    after = _execute_sql(dbt_context, sql, base=False)
+    after = _execute_sql(context, sql, base=False)
     if primary_keys is not None:
         after.set_index(primary_keys, inplace=True)
 
@@ -146,7 +148,7 @@ def server(host, port, state_file=None, **kwargs):
     """
     import uvicorn
     from .server import app, AppState
-    from .dbt import load_dbt_context
+    from .core import load_context
 
     is_review = kwargs.get('review', False)
 
@@ -156,7 +158,7 @@ def server(host, port, state_file=None, **kwargs):
         exit(1)
 
     try:
-        load_dbt_context(**kwargs, state_file=state_file)
+        load_context(**kwargs, state_file=state_file)
     except Exception as e:
         console.print("[[red]Error[/red]] Failed to launch server due to:")
         console.print(f"{e}")

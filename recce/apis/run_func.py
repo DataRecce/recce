@@ -3,7 +3,7 @@ from typing import Dict, Type, List
 
 from dbt.exceptions import DbtDatabaseError
 
-from recce.dbt import default_dbt_context
+from recce.core import default_context
 from recce.exceptions import RecceException
 from recce.models import RunType, Run, RunDAO
 from recce.tasks import QueryTask, ProfileDiffTask, ValueDiffTask, QueryDiffTask, Task, RowCountDiffTask, \
@@ -43,9 +43,12 @@ def submit_run(type, params, check_id=None):
     except NotImplementedError:
         raise RecceException(f"Run type '{type}' not supported")
 
-    dbt_context = default_dbt_context()
-    if dbt_context.review_mode is True and dbt_context.adapter is None:
-        raise RecceException("Recce Server is not launched under DBT project folder.")
+    context = default_context()
+    if context.review_mode is True:
+        from recce.adapter.dbt_adapter import DbtAdapter
+        dbt_adaptor: DbtAdapter = context.adapter
+        if dbt_adaptor.adapter is None:
+            raise RecceException("Recce Server is not launched under DBT project folder.")
 
     run = Run(type=run_type, params=params, check_id=check_id)
     RunDAO().create(run)
@@ -117,9 +120,9 @@ def materialize_run_results(runs: List[Run], nodes: List[str] = None):
     }
     '''
 
-    dbt_context = default_dbt_context()
-    if dbt_context:
-        mame_to_unique_id = dbt_context.build_name_to_unique_id_index()
+    context = default_context()
+    if context:
+        mame_to_unique_id = context.build_name_to_unique_id_index()
     else:
         mame_to_unique_id = {}
 

@@ -1,13 +1,12 @@
 from typing import TypedDict, Optional, List, Union
 
 import agate
-from dbt.adapters.sql import SQLAdapter
-from dbt.exceptions import CompilationError
 from pydantic import BaseModel
 
-from recce.dbt import default_dbt_context, DBTContext
 from .core import Task
 from .dataframe import DataFrame
+from ..adapter.dbt_adapter import DbtAdapter
+from ..core import default_context
 from ..exceptions import RecceException
 
 
@@ -28,20 +27,20 @@ class ValueDiffResult(BaseModel):
 
 
 class ValueDiffMixin:
-    def _verify_dbt_packages_deps(self, dbt_context):
-        for macro_name, macro in dbt_context.manifest.macros.items():
+    def _verify_dbt_packages_deps(self, dbt_adapter):
+        for macro_name, macro in dbt_adapter.manifest.macros.items():
             if macro.package_name == 'audit_helper':
                 break
         else:
             raise RecceException(
                 r"Package 'audit_helper' not found. Please refer to the link to install: https://hub.getdbt.com/dbt-labs/audit_helper/")
 
-        for macro_name, macro in dbt_context.manifest.macros.items():
+        for macro_name, macro in dbt_adapter.manifest.macros.items():
             if macro.package_name == 'dbt_utils' and macro.name == 'generate_surrogate_key':
                 self.legacy_surrogate_key = False
                 break
 
-    def _verify_primary_key(self, dbt_context: DBTContext, primary_key: Union[str, List[str]], model: str):
+    def _verify_primary_key(self, dbt_adapter: DbtAdapter, primary_key: Union[str, List[str]], model: str):
         self.update_progress(message=f"Verify primary key: {primary_key}")
         composite = True if isinstance(primary_key, List) else False
 
@@ -57,16 +56,16 @@ class ValueDiffMixin:
         # check primary keys
         for base in [True, False]:
 
-            relation = dbt_context.create_relation(model, base)
+            relation = dbt_adapter.create_relation(model, base)
             context = dict(
                 relation=relation,
                 primary_key=primary_key,
             )
 
-            sql = dbt_context.generate_sql(sql_template, context=context)
+            sql = dbt_adapter.generate_sql(sql_template, context=context)
             sql_test = f"""SELECT COUNT(*) AS INVALIDS FROM ({sql}) AS T"""
 
-            response, table = dbt_context.adapter.execute(sql_test, fetch=True)
+            response, table = dbt_adapter.adapter.execute(sql_test, fetch=True)
             for row in table.rows:
                 invalids = row[0]
                 if invalids > 0:
@@ -86,14 +85,14 @@ class ValueDiffTask(Task, ValueDiffMixin):
         self.connection = None
         self.legacy_surrogate_key = True
 
-    def _query_value_diff(self, dbt_context: DBTContext, primary_key: Union[str, List[str]], model: str,
+    def _query_value_diff(self, dbt_adpter: DbtAdapter, primary_key: Union[str, List[str]], model: str,
                           columns: List[str] = None):
         column_groups = {}
         composite = True if isinstance(primary_key, List) else False
 
         if columns is None or len(columns) == 0:
-            base_columns = [column.column for column in dbt_context.get_columns(model, base=True)]
-            curr_columns = [column.column for column in dbt_context.get_columns(model, base=False)]
+            base_columns = [column.column for column in dbt_adpter.get_columns(model, base=True)]
+            curr_columns = [column.column for column in dbt_adpter.get_columns(model, base=False)]
             columns = [column for column in base_columns if column in curr_columns]
         completed = 0
 
@@ -134,14 +133,14 @@ class ValueDiffTask(Task, ValueDiffMixin):
         for column in columns:
             self.update_progress(message=f"Diff column: {column}", percentage=completed / len(columns))
 
-            sql = dbt_context.generate_sql(sql_template, context=dict(
-                base_relation=dbt_context.create_relation(model, base=True),
-                curr_relation=dbt_context.create_relation(model, base=False),
+            sql = dbt_adpter.generate_sql(sql_template, context=dict(
+                base_relation=dbt_adpter.create_relation(model, base=True),
+                curr_relation=dbt_adpter.create_relation(model, base=False),
                 primary_key=primary_key,
                 column_to_compare=column,
             ))
 
-            _, table = dbt_context.adapter.execute(sql, fetch=True)
+            _, table = dbt_adpter.execute(sql, fetch=True)
             for row in table.rows:
                 # data example:
                 # ('COLUMN_NAME', 'MATCH_STATUS', 'COUNT_RECORDS', 'PERCENT_OF_TOTAL')
@@ -215,29 +214,28 @@ class ValueDiffTask(Task, ValueDiffMixin):
         )
 
     def execute(self):
-        dbt_context = default_dbt_context()
-        adapter = dbt_context.adapter
+        dbt_adapter = default_context().adapter
 
-        with adapter.connection_named("value diff"):
-            self.connection = adapter.connections.get_thread_connection()
+        with dbt_adapter.connection_named("value diff"):
+            self.connection = dbt_adapter.get_thread_connection()
 
             primary_key: Union[str, List[str]] = self.params['primary_key']
             model: str = self.params['model']
             columns: List[str] = self.params.get('columns')
 
-            self._verify_dbt_packages_deps(dbt_context)
+            self._verify_dbt_packages_deps(dbt_adapter)
             self.check_cancel()
 
-            self._verify_primary_key(dbt_context, primary_key, model)
+            self._verify_primary_key(dbt_adapter, primary_key, model)
             self.check_cancel()
 
-            return self._query_value_diff(dbt_context, primary_key, model, columns=columns)
+            return self._query_value_diff(dbt_adapter, primary_key, model, columns=columns)
 
     def cancel(self):
         if self.connection:
-            adapter: SQLAdapter = default_dbt_context().adapter
+            adapter: DbtAdapter = default_context().adapter
             with adapter.connection_named("cancel"):
-                adapter.connections.cancel(self.connection)
+                adapter.cancel(self.connection)
 
 
 class ValueDiffDetailParams(TypedDict):
@@ -258,14 +256,14 @@ class ValueDiffDetailTask(Task, ValueDiffMixin):
         self.connection = None
         self.legacy_surrogate_key = True
 
-    def _query_value_diff(self, dbt_context: DBTContext, primary_key: Union[str, List[str]], model: str,
+    def _query_value_diff(self, dbt_adapter: DbtAdapter, primary_key: Union[str, List[str]], model: str,
                           columns: List[str] = None):
 
         composite = True if isinstance(primary_key, List) else False
 
         if columns is None or len(columns) == 0:
-            base_columns = [column.column for column in dbt_context.get_columns(model, base=True)]
-            curr_columns = [column.column for column in dbt_context.get_columns(model, base=False)]
+            base_columns = [column.column for column in dbt_adapter.get_columns(model, base=True)]
+            curr_columns = [column.column for column in dbt_adapter.get_columns(model, base=False)]
             columns = [column for column in base_columns if column in curr_columns]
 
         if composite:
@@ -309,40 +307,40 @@ class ValueDiffDetailTask(Task, ValueDiffMixin):
             new_primary_key = 'primary_key'
         sql_template = sql_template.replace('__PRIMARY_KEY__', new_primary_key)
 
-        sql = dbt_context.generate_sql(sql_template, context=dict(
-            base_relation=dbt_context.create_relation(model, base=True),
-            curr_relation=dbt_context.create_relation(model, base=False),
+        sql = dbt_adapter.generate_sql(sql_template, context=dict(
+            base_relation=dbt_adapter.create_relation(model, base=True),
+            curr_relation=dbt_adapter.create_relation(model, base=False),
             primary_key=primary_key,
             columns=columns,
             limit=1000,
         ))
 
-        _, table = dbt_context.adapter.execute(sql, fetch=True)
+        _, table = dbt_adapter.execute(sql, fetch=True)
         self.check_cancel()
 
         return DataFrame.from_agate(table)
 
     def execute(self):
-        dbt_context = default_dbt_context()
-        adapter = dbt_context.adapter
 
-        with adapter.connection_named("value diff"):
-            self.connection = adapter.connections.get_thread_connection()
+        dbt_adapter: DbtAdapter = default_context().adapter
+
+        with dbt_adapter.connection_named("value diff"):
+            self.connection = dbt_adapter.get_thread_connection()
 
             primary_key: Union[str, List[str]] = self.params['primary_key']
             model: str = self.params['model']
             columns: List[str] = self.params.get('columns')
 
-            self._verify_dbt_packages_deps(dbt_context)
+            self._verify_dbt_packages_deps(dbt_adapter)
             self.check_cancel()
 
-            self._verify_primary_key(dbt_context, primary_key, model)
+            self._verify_primary_key(dbt_adapter, primary_key, model)
             self.check_cancel()
 
-            return self._query_value_diff(dbt_context, primary_key, model, columns)
+            return self._query_value_diff(dbt_adapter, primary_key, model, columns)
 
     def cancel(self):
         if self.connection:
-            adapter: SQLAdapter = default_dbt_context().adapter
+            adapter: DbtAdapter = default_context().adapter
             with adapter.connection_named("cancel"):
-                adapter.connections.cancel(self.connection)
+                adapter.cancel(self.connection)

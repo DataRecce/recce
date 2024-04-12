@@ -5,10 +5,11 @@ from rich import box
 from rich.console import Console
 from rich.table import Table
 
+from recce.adapter.dbt_adapter import DbtAdapter
 from recce.apis.check_func import create_check_from_run, create_check_without_run
 from recce.apis.run_func import submit_run
 from recce.config import RecceConfig
-from recce.dbt import DBTContext
+from recce.core import RecceContext
 from recce.models.types import RunType
 from recce.state import RecceState, PullRequestInfo
 
@@ -27,33 +28,38 @@ def check_github_ci_env(**kwargs):
     return True, github_pull_request_url
 
 
-async def execute_default_runs(context: DBTContext):
+async def execute_default_runs(context: RecceContext):
     """
     Execute the default runs. It includes
 
     1. Run 'row_count_diff' for all the modified table models
     """
+    curr_lineage = context.get_lineage(base=False)
+    base_lineage = context.get_lineage(base=True)
 
     try:
         # Query the row count of all the nodes in the lineage
         node_ids = []
 
-        for node in context.curr_manifest.nodes.values():
-            if node.resource_type != 'model':
+        for id, node in curr_lineage['nodes'].items():
+            if node.get('resource_type') != 'model':
                 continue
 
-            materialized = node.config.materialized
+            materialized = node.get('config', {}).get('materialized')
             if materialized != 'table' and materialized != 'incremental':
                 continue
 
-            base_node = context.base_manifest.nodes.get(node.unique_id)
-            if not base_node:
+            base_node = base_lineage['nodes'].get(id)
+            if base_node is None:
                 continue
 
-            if not node.checksum or not base_node.checksum or node.checksum.checksum == base_node.checksum.checksum:
+            base_checksum = node.get('checksum', {}).get('checksum')
+            curr_checksum = base_node.get('checksum', {}).get('checksum')
+
+            if base_checksum is None or curr_checksum is None or base_checksum == curr_checksum:
                 continue
 
-            node_ids.append(node.unique_id)
+            node_ids.append(id)
 
         print(f"Querying row count diff for the modified table models. [{len(node_ids)} node(s)]")
         if len(node_ids) == 0:
@@ -89,7 +95,7 @@ def load_preset_checks(checks: list):
     console.print(table)
 
 
-async def execute_preset_checks(context: DBTContext, checks: list):
+async def execute_preset_checks(checks: list):
     """
     Execute the preset checks
     """
@@ -130,19 +136,14 @@ async def cli_run(output_state_file: str, **kwargs):
     """The main function of 'recce run' command. It will execute the default runs and store the state."""
     console = Console()
 
-    from recce.dbt import load_dbt_context
-    ctx = load_dbt_context(**kwargs)
+    from recce.core import load_context
+    ctx = load_context(**kwargs)
     is_skip_query = kwargs.get('skip_query', False)
 
     # Prepare the artifact by collecting the lineage
     console.rule("DBT Artifacts")
-    print("Base:")
-    print(f"    Manifest: {ctx.base_manifest.metadata.generated_at}")
-    print(f"    Catalog:  {ctx.base_catalog.metadata.generated_at if ctx.base_catalog else 'N/A'}")
-
-    print("Current:")
-    print(f"    Manifest: {ctx.curr_manifest.metadata.generated_at}")
-    print(f"    Catalog:  {ctx.curr_catalog.metadata.generated_at if ctx.curr_catalog else 'N/A'}")
+    dbt_adaptor: DbtAdapter = ctx.adapter
+    dbt_adaptor.print_lineage_info()
 
     # Execute the default runs
     console.rule("Default queries")
@@ -158,7 +159,7 @@ async def cli_run(output_state_file: str, **kwargs):
         pass
     else:
         console.rule("Preset checks")
-        await execute_preset_checks(ctx, preset_checks)
+        await execute_preset_checks(preset_checks)
 
     # Export the state
     state: RecceState = ctx.export_state()

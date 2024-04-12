@@ -13,4 +13,4 @@ exclude = tests,
           js,
           *.egg-info
 per-file-ignores =
-    recce/dbt.py: E402
+    recce/adapter/dbt_adapter.py: E402

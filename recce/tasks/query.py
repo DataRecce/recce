@@ -1,12 +1,12 @@
 from typing import TypedDict, Optional, Tuple
 
 import agate
-from dbt.adapters.sql import SQLAdapter
 from pydantic import BaseModel
 
-from recce.dbt import default_dbt_context
 from .core import Task
 from .dataframe import DataFrame
+from ..adapter.dbt_adapter import DbtAdapter
+from ..core import default_context
 from ..exceptions import RecceException
 
 QUERY_LIMIT = 2000
@@ -28,15 +28,15 @@ class QueryMixin:
         :return: Tuple of agate table and whether there are more rows to fetch
         """
         from jinja2.exceptions import TemplateSyntaxError
-        dbt_context = default_dbt_context()
+        dbt_adapter = default_context().adapter
         try:
-            sql = dbt_context.generate_sql(sql_template, base)
+            sql = dbt_adapter.generate_sql(sql_template, base)
 
             if limit is None:
-                _, result = dbt_context.execute(sql, fetch=True, auto_begin=True)
+                _, result = dbt_adapter.execute(sql, fetch=True, auto_begin=True)
                 return result, False
             else:
-                _, result = dbt_context.execute(sql, fetch=True, auto_begin=True, limit=limit + 1)
+                _, result = dbt_adapter.execute(sql, fetch=True, auto_begin=True, limit=limit + 1)
                 if len(result.rows) > limit:
                     return result.limit(limit), True
                 return result, False
@@ -51,9 +51,9 @@ class QueryMixin:
 
     @staticmethod
     def close_connection(connection):
-        adapter: SQLAdapter = default_dbt_context().adapter
-        with adapter.connection_named("cancel query"):
-            adapter.connections.cancel(connection)
+        dbt_adapter = default_context().adapter
+        with dbt_adapter.connection_named("cancel query"):
+            dbt_adapter.cancel(connection)
 
 
 class QueryParams(TypedDict):
@@ -75,10 +75,11 @@ class QueryTask(Task, QueryMixin):
         self.connection = None
 
     def execute(self):
-        adapter: SQLAdapter = default_dbt_context().adapter
+        dbt_adapter: DbtAdapter = default_context().adapter
+
         limit = QUERY_LIMIT
-        with adapter.connection_named("query"):
-            self.connection = adapter.connections.get_thread_connection()
+        with dbt_adapter.connection_named("query"):
+            self.connection = dbt_adapter.get_thread_connection()
 
             sql_template = self.params.get('sql_template')
             table, more = self.execute_sql_with_limit(sql_template, base=False, limit=limit)
@@ -104,12 +105,12 @@ class QueryDiffTask(Task, QueryMixin):
         self.connection = None
 
     def execute(self):
-        adapter: SQLAdapter = default_dbt_context().adapter
+        dbt_adapter: DbtAdapter = default_context().adapter
         limit = QUERY_LIMIT
 
-        with adapter.connection_named("query"):
+        with dbt_adapter.connection_named("query"):
             sql_template = self.params.get('sql_template')
-            self.connection = adapter.connections.get_thread_connection()
+            self.connection = dbt_adapter.get_thread_connection()
             base, base_more = self.execute_sql_with_limit(sql_template, base=True, limit=limit)
             self.check_cancel()
 

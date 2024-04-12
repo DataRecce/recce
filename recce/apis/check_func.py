@@ -3,7 +3,7 @@ from typing import Optional
 
 from fastapi import HTTPException
 
-from recce.dbt import default_dbt_context
+from recce.core import default_context
 from recce.models import RunDAO, RunType, Check, CheckDAO
 
 
@@ -11,16 +11,16 @@ def validate_schema_diff_check(params):
     node_id = params.get('node_id')
     if node_id is None:
         raise HTTPException(status_code=400, detail='node_id is required for schema diff')
-    manifests = default_dbt_context().get_manifests_by_id(node_id)
-    if manifests is None:
+    node_name = default_context().get_node_name_by_id(node_id)
+    if node_name is None:
         raise HTTPException(status_code=400, detail=f"node_id '{node_id}' not found in dbt manifest")
 
 
-def get_node_by_id(node_id):
-    manifests = default_dbt_context().get_manifests_by_id(node_id)
-    if manifests is None:
+def get_node_name_by_id(node_id):
+    node_name = default_context().get_node_name_by_id(node_id)
+    if node_name is None:
         raise HTTPException(status_code=400, detail=f"node_id '{node_id}' not found in dbt manifest")
-    return manifests['current'] or manifests['base']
+    return node_name
 
 
 def _validate_check(check_type, params):
@@ -57,8 +57,8 @@ def _generate_default_name(check_type, params, view_options):
         model = params.get('model')
         return f"value diff of {model}".capitalize()
     elif check_type == RunType.SCHEMA_DIFF:
-        node = get_node_by_id(params.get('node_id'))
-        return f"{node.resource_type} schema of {node.name}".capitalize()
+        node_name = get_node_name_by_id(params.get('node_id'))
+        return f"schema diff of {node_name}".capitalize()
     elif check_type == RunType.PROFILE_DIFF:
         model = params.get('model')
         return f"profile diff of {model}".capitalize()
