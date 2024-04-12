@@ -113,10 +113,12 @@ async def execute_preset_checks(checks: list):
             check_description = check.get('description')
             check_params = check.get('params', {})
             check_options = check.get('view_options', {})
-            start = time.time()
+
             # verify the check
             if check_type not in [e.value for e in RunType]:
                 raise ValueError(f"Invalid check type: {check_type}")
+
+            start = time.time()
             if check_type in ['schema_diff']:
                 create_check_without_run(check_name, check_description, check_type, check_params, check_options,
                                          is_preset=True)
