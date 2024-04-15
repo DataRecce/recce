@@ -182,6 +182,5 @@ def load_context(**kwargs) -> RecceContext:
 
 
 def default_context() -> RecceContext:
-    logger.info("deprecated. Use default_context() instead")
     global recce_context
     return recce_context

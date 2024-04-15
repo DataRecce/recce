@@ -102,6 +102,17 @@ async def set_context_by_cookie(request: Request, call_next):
     return response
 
 
+@app.middleware("http")
+async def disable_cache(request: Request, call_next):
+    response = await call_next(request)
+
+    # disable cache for '/' and '/index.html'
+    if request.url.path in ['/', '/index.html']:
+        response.headers['Cache-Control'] = 'no-cache'
+
+    return response
+
+
 @app.get("/api/health")
 async def health_check(request: Request):
     return {"status": "ok"}
