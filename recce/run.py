@@ -107,14 +107,20 @@ async def execute_preset_checks(context: DBTContext, checks: list):
             check_description = check.get('description')
             check_params = check.get('params', {})
             check_options = check.get('view_options', {})
+
             # verify the check
             if check_type not in [e.value for e in RunType]:
                 raise ValueError(f"Invalid check type: {check_type}")
 
             start = time.time()
-            run, future = submit_run(check_type, params=check_params)
-            await future
-            create_check_from_run(run.run_id, check_name, check_description, check_options, is_preset=True)
+            if check_type in ['schema_diff']:
+                create_check_without_run(check_name, check_description, check_type, check_params, check_options,
+                                         is_preset=True)
+            else:
+                run, future = submit_run(check_type, params=check_params)
+                await future
+                create_check_from_run(run.run_id, check_name, check_description, check_options, is_preset=True)
+
             end = time.time()
             table.add_row('[[green]Success[/green]]', check_name, check_type.replace('_', ' ').title(),
                           f'{end - start:.2f} seconds', 'N/A')

@@ -17,6 +17,7 @@ interface RunViewProps<PT, RT, VO = any> {
   error?: Error | null;
   progress?: Run["progress"];
   isAborting?: boolean;
+  isCheckDetail?: boolean;
   onCancel?: () => void;
   onExecuteRun?: () => void;
   viewOptions?: VO;
@@ -30,6 +31,7 @@ interface RunViewProps<PT, RT, VO = any> {
 export const RunView = <PT, RT>({
   isPending,
   isAborting,
+  isCheckDetail,
   progress,
   error,
   run,
@@ -80,11 +82,18 @@ export const RunView = <PT, RT>({
       </Center>
     );
   } else if (!run) {
+    if (isCheckDetail) {
+      return (
+        <Center bg="rgb(249,249,249)" height="100%">
+          <Button onClick={onExecuteRun} colorScheme="blue" size="sm">
+            Run Query
+          </Button>
+        </Center>
+      );
+    }
     return (
       <Center bg="rgb(249,249,249)" height="100%">
-        <Button onClick={onExecuteRun} colorScheme="blue" size="sm">
-          Run Query
-        </Button>
+        No Data
       </Center>
     );
   }

@@ -10,7 +10,8 @@ on:
       # Trigger when diffs detected in js sources
     branches:
       - main
-      # Only PR target is `main`
+      - release/**
+      # Only PR target are `main` or `release/**` branches
 
 jobs:
   if_merged_build:
@@ -46,7 +47,7 @@ jobs:
         run: pnpm run build
 
       - name: Pull Remote Changes (before AC)
-        run: git pull origin main
+        run: git pull origin ${{ github.base_ref }}
 
       - uses: stefanzweifel/git-auto-commit-action@v4
         with:
