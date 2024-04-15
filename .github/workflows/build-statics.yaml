@@ -47,7 +47,7 @@ jobs:
         run: pnpm run build
 
       - name: Pull Remote Changes (before AC)
-        run: git pull origin main
+        run: git pull origin ${{ github.base_ref }}
 
       - uses: stefanzweifel/git-auto-commit-action@v4
         with:
