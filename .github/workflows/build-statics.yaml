@@ -10,7 +10,8 @@ on:
       # Trigger when diffs detected in js sources
     branches:
       - main
-      # Only PR target is `main`
+      - release/**
+      # Only PR target are `main` or `release/**` branches
 
 jobs:
   if_merged_build:

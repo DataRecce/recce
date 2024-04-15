@@ -349,6 +349,7 @@ export const CheckDetail = ({ checkId }: CheckDetailProps) => {
           <RunView
             isPending={rerunPending}
             isAborting={abort}
+            isCheckDetail={true}
             run={run}
             error={rerunError}
             progress={progress}
