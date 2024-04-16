@@ -47,7 +47,7 @@ class RecceContext:
         return context
 
     def get_model(self, model_id: str, base=False):
-        self.adapter.get_model(model_id, base=base)
+        return self.adapter.get_model(model_id, base=base)
 
     def get_node_name_by_id(self, unique_id: object) -> object:
         return self.adapter.get_node_name_by_id(unique_id)
