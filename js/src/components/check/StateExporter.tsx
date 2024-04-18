@@ -34,6 +34,7 @@ export function StateExporter() {
   return (
     <Tooltip label="Export">
       <IconButton
+        pt="6px"
         variant="unstyled"
         aria-label="Export state"
         onClick={handleExport}

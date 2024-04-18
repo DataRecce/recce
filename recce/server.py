@@ -122,8 +122,17 @@ async def health_check(request: Request):
 async def get_info():
     context = default_context()
     demo = os.environ.get('DEMO', False)
+
+    if demo:
+        state = context.export_demo_state()
+    else:
+        state = context.export_state()
+
     try:
         return {
+            'review_mode': context.review_mode,
+            'git': state.git.to_dict() if state.git else None,
+            'pull_request': state.pull_request.to_dict() if state.pull_request else None,
             'lineage': {
                 'base': context.get_lineage(base=True),
                 'current': context.get_lineage(base=False),

@@ -1,6 +1,7 @@
 import hashlib
 import json
 import logging
+import os
 from dataclasses import dataclass
 from typing import Callable, Dict, Optional, Tuple
 
@@ -11,7 +12,7 @@ from recce.adapter.dbt_adapter import DbtAdapter
 from recce.models import RunDAO, CheckDAO, Check
 from recce.models.check import load_checks
 from recce.models.run import load_runs
-from recce.state import RecceState, RecceStateMetadata, GitRepoInfo
+from recce.state import RecceState, RecceStateMetadata, GitRepoInfo, PullRequestInfo
 
 logger = logging.getLogger('uvicorn')
 
@@ -47,7 +48,7 @@ class RecceContext:
         return context
 
     def get_model(self, model_id: str, base=False):
-        self.adapter.get_model(model_id, base=base)
+        return self.adapter.get_model(model_id, base=base)
 
     def get_node_name_by_id(self, unique_id: object) -> object:
         return self.adapter.get_node_name_by_id(unique_id)
@@ -108,6 +109,26 @@ class RecceContext:
             git = GitRepoInfo.from_current_repositroy()
             if git:
                 state.git = git
+
+        return state
+
+    def export_demo_state(self) -> RecceState:
+        """
+        Export the demo state to a RecceState object for the demo sites.
+        """
+        state = RecceState()
+        state.metadata = RecceStateMetadata()
+
+        # runs & checks
+        state.runs = RunDAO().list()
+        state.checks = CheckDAO().list()
+
+        state.artifacts = self.adapter.export_artifacts()
+        git = GitRepoInfo.from_current_repositroy()
+        if git:
+            state.git = git
+        pr = PullRequestInfo(url=os.getenv('RECCE_PR_URL'))
+        state.pull_request = pr
 
         return state
 

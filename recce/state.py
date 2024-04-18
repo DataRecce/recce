@@ -27,6 +27,16 @@ def pydantic_model_json_dump(model: BaseModel):
         return model.model_dump_json(exclude_none=True)
 
 
+def pydantic_model_dump(model: BaseModel):
+    pydantic_version = pydantic.version.VERSION
+    pydantic_major = pydantic_version.split(".")[0]
+
+    if pydantic_major == "1":
+        return model.dict()
+    else:
+        return model.model_dump()
+
+
 class GitRepoInfo(BaseModel):
     branch: Optional[str] = None
 
@@ -38,6 +48,9 @@ class GitRepoInfo(BaseModel):
 
         return GitRepoInfo(branch=branch)
 
+    def to_dict(self):
+        return pydantic_model_dump(self)
+
 
 class PullRequestInfo(BaseModel):
     id: Optional[str] = None
@@ -45,6 +58,9 @@ class PullRequestInfo(BaseModel):
     url: Optional[str] = None
     branch: Optional[str] = None
     base_branch: Optional[str] = None
+
+    def to_dict(self):
+        return pydantic_model_dump(self)
 
 
 class RecceStateMetadata(BaseModel):

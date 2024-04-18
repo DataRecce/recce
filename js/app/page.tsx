@@ -15,6 +15,7 @@ import {
   Icon,
   LinkProps,
   Heading,
+  Badge,
 } from "@chakra-ui/react";
 import { ReactNode, useLayoutEffect } from "react";
 import * as amplitude from "@amplitude/analytics-browser";
@@ -38,6 +39,7 @@ import { StateImporter } from "@/components/check/StateImporter";
 import { FaGithub, FaQuestionCircle, FaSlack } from "react-icons/fa";
 import { IconType } from "react-icons";
 import "@fontsource/montserrat/800.css";
+import { EnvInfo } from "@/components/env/EnvInfo";
 
 function getCookie(key: string) {
   var b = document.cookie.match("(^|;)\\s*" + key + "\\s*=\\s*([^;]+)");
@@ -73,8 +75,9 @@ function LinkIcon({ icon, href, ...prob }: LinkIconProps) {
 }
 
 function TopBar() {
-  const { metadata } = useLineageGraphContext();
-  const prURL = metadata?.pr_url;
+  const { reviewMode, isDemoSite, envInfo } = useLineageGraphContext();
+  const version = useVersionNumber();
+  const prURL = envInfo?.pullRequest?.url;
 
   return (
     <Flex
@@ -97,8 +100,26 @@ function TopBar() {
       >
         RECCE
       </Heading>
+      <Badge
+        fontSize="sm"
+        color="white"
+        colorScheme="whiteAlpha"
+        variant="outline"
+      >
+        {version}
+      </Badge>
+      {reviewMode && (
+        <Badge
+          fontSize="sm"
+          color="white"
+          colorScheme="whiteAlpha"
+          variant="outline"
+        >
+          review mode
+        </Badge>
+      )}
       <Spacer />
-      {prURL && (
+      {isDemoSite && prURL && (
         <>
           <InfoIcon />
           <Text>
@@ -137,7 +158,6 @@ interface TabProps {
 function NavBar() {
   const { isDemoSite } = useLineageGraphContext();
   const [location, setLocation] = useLocation();
-  const version = useVersionNumber();
 
   const tabs: TabProps[] = [
     { name: "Lineage", href: "/lineage" },
@@ -165,9 +185,7 @@ function NavBar() {
         <Spacer />
         {!isDemoSite && <StateImporter />}
         <StateExporter />
-        <Box p="8px" mr="10px" color="gray.500">
-          {version}
-        </Box>
+        <EnvInfo />
       </TabList>
     </Tabs>
   );

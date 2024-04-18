@@ -94,6 +94,7 @@ export function StateImporter() {
     <>
       <Tooltip label="Import">
         <IconButton
+          pt="6px"
           variant="unstyled"
           aria-label="Import state"
           onClick={handleClick}

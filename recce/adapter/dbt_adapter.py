@@ -370,6 +370,7 @@ class DbtAdapter(BaseAdapter):
                 'name': node['name'],
                 'resource_type': node['resource_type'],
                 'package_name': node['package_name'],
+                'schema': node['schema'],
                 'config': node['config'],
                 'checksum': node['checksum'],
                 'raw_code': node['raw_code'],
@@ -453,16 +454,7 @@ class DbtAdapter(BaseAdapter):
                     'config': semantic_models['config'],
                 }
 
-        pr_url = os.environ.get('RECCE_PR_URL')
-        # if self.review_mode and self.review_state.pull_request and self.review_state.pull_request.url:
-        #     pr_url = self.review_state.pull_request.url
-        #
-        metadata = dict(
-            pr_url=pr_url
-        )
-
         return dict(
-            metadata=metadata,
             parent_map=parent_map,
             nodes=nodes,
             manifest_metadata=manifest_metadata,
