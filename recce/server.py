@@ -110,9 +110,13 @@ async def health_check(request: Request):
 @app.get("/api/info")
 async def get_info():
     context = default_context()
-    state = context.export_state()
-
     demo = os.environ.get('DEMO', False)
+
+    if demo:
+        state = context.export_demo_state()
+    else:
+        state = context.export_state()
+
     try:
         return {
             'review_mode': context.review_mode,

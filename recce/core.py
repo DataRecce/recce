@@ -1,6 +1,7 @@
 import hashlib
 import json
 import logging
+import os
 from dataclasses import dataclass
 from typing import Callable, Dict, Optional, Tuple
 
@@ -108,6 +109,26 @@ class RecceContext:
             git = GitRepoInfo.from_current_repositroy()
             if git:
                 state.git = git
+
+        return state
+
+    def export_demo_state(self) -> RecceState:
+        """
+        Export the demo state to a RecceState object for the demo sites.
+        """
+        state = RecceState()
+        state.metadata = RecceStateMetadata()
+
+        # runs & checks
+        state.runs = RunDAO().list()
+        state.checks = CheckDAO().list()
+
+        state.artifacts = self.adapter.export_artifacts()
+        git = GitRepoInfo.from_current_repositroy()
+        if git:
+            state.git = git
+        pr = PullRequestInfo(url=os.getenv('RECCE_PR_URL'))
+        state.pull_request = pr
 
         return state
 
