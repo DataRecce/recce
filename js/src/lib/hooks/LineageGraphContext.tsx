@@ -8,19 +8,30 @@ import React, {
   useState,
 } from "react";
 import { cacheKeys } from "../api/cacheKeys";
-import { getLineageDiff, getServerInfo } from "../api/info";
+import {
+  ManifestMetadata,
+  getServerInfo,
+  gitInfo,
+  pullRequestInfo,
+} from "../api/info";
 import { useToast } from "@chakra-ui/react";
 import { PUBLIC_API_URL } from "../const";
 import path from "path";
 import { aggregateRuns, RunsAggregated } from "../api/runs";
 
-interface EnvMetadata {
-  pr_url: string | null;
+interface EnvInfo {
+  git?: gitInfo;
+  pullRequest?: pullRequestInfo;
+  dbt?: {
+    base: ManifestMetadata | undefined | null;
+    current: ManifestMetadata | undefined | null;
+  };
 }
 
 export interface LineageGraphContextType {
   lineageGraph?: LineageGraph;
-  metadata?: EnvMetadata;
+  envInfo?: EnvInfo;
+  reviewMode?: boolean;
   isDemoSite?: boolean;
   isLoading?: boolean;
   error?: string;
@@ -110,6 +121,20 @@ export function LineageGraphContextProvider({ children }: LineageGraphProps) {
   const errorMessage = error?.message;
   const lineage = data?.lineage;
   const isDemoSite = data?.demo;
+  const reviewMode = data?.review_mode;
+  const git = data?.git;
+  const pullRequest = data?.pull_request;
+  const dbtBase = lineage?.base?.manifest_metadata;
+  const dbtCurrent = lineage?.current?.manifest_metadata;
+
+  const envInfo: EnvInfo = {
+    git,
+    pullRequest,
+    dbt: {
+      base: dbtBase,
+      current: dbtCurrent,
+    },
+  };
 
   return (
     <>
@@ -120,7 +145,8 @@ export function LineageGraphContextProvider({ children }: LineageGraphProps) {
           retchLineageGraph: () => {
             refetch();
           },
-          metadata: lineage?.current?.metadata,
+          envInfo,
+          reviewMode,
           isDemoSite,
           error: errorMessage,
           isLoading,

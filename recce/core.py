@@ -11,7 +11,7 @@ from recce.adapter.dbt_adapter import DbtAdapter
 from recce.models import RunDAO, CheckDAO, Check
 from recce.models.check import load_checks
 from recce.models.run import load_runs
-from recce.state import RecceState, RecceStateMetadata, GitRepoInfo
+from recce.state import RecceState, RecceStateMetadata, GitRepoInfo, PullRequestInfo
 
 logger = logging.getLogger('uvicorn')
 

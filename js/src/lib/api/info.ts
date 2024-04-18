@@ -11,6 +11,7 @@ export interface NodeColumnData {
 export interface NodeData {
   unique_id: string;
   name: string;
+  schema?: string;
   checksum?: {
     name: string;
     checksum: string;
@@ -105,17 +106,22 @@ export async function getLineageDiff(): Promise<LineageDiffResult> {
   };
 }
 
+export interface gitInfo {
+  branch?: string;
+}
+
+export interface pullRequestInfo {
+  id?: string;
+  title?: string;
+  url?: string;
+  branch?: string;
+  base_branch?: string;
+}
+
 export interface ServerInfoResult {
-  git?: {
-    branch?: string;
-  };
-  pull_request?: {
-    id?: string;
-    title?: string;
-    url?: string;
-    branch?: string;
-    base_branch?: string;
-  };
+  review_mode: boolean;
+  git?: gitInfo;
+  pull_request?: pullRequestInfo;
   lineage: {
     base: LineageData;
     current: LineageData;
