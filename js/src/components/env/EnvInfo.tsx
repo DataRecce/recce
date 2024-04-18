@@ -38,7 +38,11 @@ function formatTimestamp(timestamp: string): string {
 
 function renderInfoEntries(info: Object): JSX.Element[] {
   if (Object.values(info).every((value) => value === null)) {
-    return [<Flex ml="10px">No information</Flex>];
+    return [
+      <Flex key={"no info"} ml="10px">
+        No information
+      </Flex>,
+    ];
   }
 
   return Object.entries(info)
@@ -46,7 +50,7 @@ function renderInfoEntries(info: Object): JSX.Element[] {
       ([key, value]) => key !== "url" && value !== null && value !== undefined
     )
     .map(([key, value]) => (
-      <ListItem ml="10px">
+      <ListItem key={key} ml="10px">
         {key}: {value}
       </ListItem>
     ));
