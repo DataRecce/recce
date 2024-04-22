@@ -4,7 +4,7 @@ import json
 import logging
 import time
 from datetime import datetime
-from typing import List, Optional, Dict
+from typing import List, Optional, Dict, Union
 
 import pydantic.version
 from pydantic import BaseModel
@@ -53,7 +53,7 @@ class GitRepoInfo(BaseModel):
 
 
 class PullRequestInfo(BaseModel):
-    id: Optional[str] = None
+    id: Optional[Union[int, str]] = None
     title: Optional[str] = None
     url: Optional[str] = None
     branch: Optional[str] = None

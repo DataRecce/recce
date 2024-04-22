@@ -1,4 +1,3 @@
-import { pullRequestInfo } from "@/lib/api/info";
 import { useLineageGraphContext } from "@/lib/hooks/LineageGraphContext";
 import {
   Tooltip,
