@@ -553,6 +553,8 @@ class DbtAdapter(BaseAdapter):
         self.curr_manifest = load_manifest(data=artifacts.current.get('manifest'))
         self.curr_catalog = load_catalog(data=artifacts.current.get('catalog'))
 
+        self.manifest = as_manifest(self.curr_manifest)
+
         if not self.curr_manifest or not self.base_manifest:
             raise Exception(
                 'No enough dbt artifacts in the state file. Please use the latest recce to generate the recce state')
