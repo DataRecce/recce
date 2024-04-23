@@ -10,6 +10,7 @@ import agate
 import dbt.adapters.factory
 
 # Reference: https://github.com/AltimateAI/vscode-dbt-power-user/blob/master/dbt_core_integration.py
+
 dbt.adapters.factory.get_adapter = lambda config: config.adapter  # noqa E402
 
 from dbt.adapters.base import Column
@@ -182,18 +183,29 @@ class DbtAdapter(BaseAdapter):
             profile=profile_name,
         )
         set_from_args(args, args)
-        runtime_config = RuntimeConfig.from_args(args)
 
-        # adapter
-        adapter_name = runtime_config.credentials.type
-        adapter: SQLAdapter = get_adapter_class_by_name(adapter_name)(runtime_config)
-        adapter.connections.set_connection_name()
-        runtime_config.adapter = adapter
+        from dbt.exceptions import DbtProjectError
+        try:
+            runtime_config = RuntimeConfig.from_args(args)
 
-        dbt_adapter = cls(
-            runtime_config=runtime_config,
-            adapter=adapter,
-        )
+            # adapter
+            adapter_name = runtime_config.credentials.type
+            adapter: SQLAdapter = get_adapter_class_by_name(adapter_name)(runtime_config)
+            adapter.connections.set_connection_name()
+            runtime_config.adapter = adapter
+
+            dbt_adapter = cls(
+                runtime_config=runtime_config,
+                adapter=adapter,
+            )
+        except DbtProjectError as e:
+            if artifacts is not None:
+                # if artifacts is not None, it is in review mode. Launch server in view only mode.
+                logger.warn(f'Cannot initiate the dbt project. Reason: {e.msg}')
+                logger.warn('Launch recce in view only mode.')
+                dbt_adapter = cls()
+            else:
+                raise e
 
         # Load the artifacts from the state file or `target` and `target-base` directory
         if artifacts:
@@ -285,9 +297,16 @@ class DbtAdapter(BaseAdapter):
         self.base_path = os.path.join(project_root, target_base_path)
 
         # load the artifacts
-        curr_manifest = load_manifest(path=os.path.join(project_root, target_path, 'manifest.json'))
+        path = os.path.join(project_root, target_path, 'manifest.json')
+        curr_manifest = load_manifest(path=path)
+        if curr_manifest is None:
+            raise Exception(f'Cannot load the current manifest: {path}')
+        path = os.path.join(project_root, target_base_path, 'manifest.json')
+        base_manifest = load_manifest(path=path)
+        if base_manifest is None:
+            raise Exception(f'Cannot load the base manifest: {path}')
+
         curr_catalog = load_catalog(path=os.path.join(project_root, target_path, 'catalog.json'))
-        base_manifest = load_manifest(path=os.path.join(project_root, target_base_path, 'manifest.json'))
         base_catalog = load_catalog(path=os.path.join(project_root, target_base_path, 'catalog.json'))
 
         # set the value if all the artifacts are loaded successfully

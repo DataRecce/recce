@@ -2,17 +2,14 @@ import asyncio
 from typing import List
 
 import click
-from rich.console import Console
 
 from recce import event
 from recce.config import RecceConfig, RECCE_CONFIG_FILE
 from recce.run import cli_run, check_github_ci_env
-from recce.run import load_preset_checks
 from .core import RecceContext
 from .event.track import TrackCommand
 
 event.init()
-console = Console()
 
 
 def add_options(options):
@@ -148,35 +145,21 @@ def server(host, port, state_file=None, **kwargs):
     """
     import uvicorn
     from .server import app, AppState
-    from .core import load_context
+    from rich.console import Console
 
     is_review = kwargs.get('review', False)
-
+    console = Console()
     if not state_file and is_review is True:
         console.print("[[red]Error[/red]] Cannot launch server in review mode without a state file.")
         console.print("Please provide a state file in the command argument.")
         exit(1)
 
-    try:
-        load_context(**kwargs, state_file=state_file)
-    except Exception as e:
-        console.print("[[red]Error[/red]] Failed to launch server due to:")
-        console.print(f"{e}")
-        exit(1)
-
-    # Initialize Recce Config
-    config = RecceConfig(config_file=kwargs.get('config'))
-    if not state_file:
-        preset_checks = config.get('checks', [])
-        if preset_checks and len(preset_checks) > 0:
-            console.rule("Loading Preset Checks")
-            load_preset_checks(preset_checks)
-
     if is_review:
         console.rule("Recce Server : Review Mode")
     else:
         console.rule("Recce Server")
-    state = AppState(state_file=state_file)
+
+    state = AppState(state_file=state_file, kwargs=kwargs)
     app.state = state
 
     uvicorn.run(app, host=host, port=port, lifespan='on')

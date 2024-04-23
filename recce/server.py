@@ -19,8 +19,10 @@ from starlette.websockets import WebSocketDisconnect
 from . import __version__, event
 from .apis.check_api import check_router
 from .apis.run_api import run_router
+from .config import RecceConfig
 from .core import load_context, default_context
 from .exceptions import RecceException
+from .run import load_preset_checks
 
 logger = logging.getLogger('uvicorn')
 
@@ -28,17 +30,31 @@ logger = logging.getLogger('uvicorn')
 @dataclass
 class AppState:
     state_file: Optional[str] = None
+    kwargs: Optional[dict] = None
 
 
 @asynccontextmanager
 async def lifespan(fastapi: FastAPI):
-    app_state: AppState = app.state
+    from .core import load_context
+    from rich.console import Console
 
+    console = Console()
+    app_state: AppState = app.state
     state_file = app_state.state_file
-    ctx = default_context()
+    kwargs = app_state.kwargs
+    ctx = load_context(**kwargs, state_file=state_file)
     ctx.start_monitor_artifacts(callback=dbt_artifacts_updated_callback)
 
+    # Initialize Recce Config
+    config = RecceConfig(config_file=kwargs.get('config'))
+    if not state_file:
+        preset_checks = config.get('checks', [])
+        if preset_checks and len(preset_checks) > 0:
+            console.rule("Loading Preset Checks")
+            load_preset_checks(preset_checks)
+
     yield
+
     if app_state.state_file:
         ctx.export_state().to_state_file(state_file)
 
