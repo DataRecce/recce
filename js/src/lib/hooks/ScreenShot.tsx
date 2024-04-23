@@ -79,12 +79,14 @@ export function useToBlob({
     const border = nodeToUse.style.border;
     const radius = nodeToUse.style.borderRadius;
     const background = nodeToUse.style.backgroundColor;
+    const heigh = nodeToUse.style.height;
 
     function resetStyles() {
       nodeToUse.style.overflow = overflow;
       nodeToUse.style.border = border;
       nodeToUse.style.borderRadius = radius;
       nodeToUse.style.backgroundColor = background;
+      nodeToUse.style.height = heigh;
     }
 
     try {
@@ -92,6 +94,8 @@ export function useToBlob({
       nodeToUse.style.border = boardEffect ? borderStyle : "";
       nodeToUse.style.borderRadius = boardEffect ? borderRadius : "";
       nodeToUse.style.backgroundColor = backgroundColor || "";
+      // after firefox v125, html2canvas can't get the correct style height of the element to clone
+      nodeToUse.style.height = nodeToUse.offsetHeight + "px";
 
       // Add style to make images inline-block
       // ref: https://github.com/niklasvh/html2canvas/issues/2107#issuecomment-1316354455
