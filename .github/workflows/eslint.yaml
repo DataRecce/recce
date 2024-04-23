@@ -2,13 +2,11 @@ name: Lint by ESLint
 
 on:
   push:
-    branches:
-      - main
-    # paths:
-    #   - "js/**"
+    paths:
+      - "js/**"
   pull_request:
-    branches:
-      - main
+    paths:
+      - "js/**"
 
 jobs:
   eslint:
