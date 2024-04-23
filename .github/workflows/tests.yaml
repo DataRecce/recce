@@ -2,9 +2,13 @@ name: Run Python Flake8 and Unit Tests
 
 on:
   push:
+    branches:
+      - main
     paths:
       - "recce/**"
   pull_request:
+    branches:
+      - main
     paths:
       - "recce/**"
 
