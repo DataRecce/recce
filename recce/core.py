@@ -3,6 +3,7 @@ import json
 import logging
 import os
 from dataclasses import dataclass
+from pathlib import Path
 from typing import Callable, Dict, Optional, Tuple
 
 import agate
@@ -31,7 +32,7 @@ class RecceContext:
             review_mode=is_review_mode,
         )
 
-        if state_file:
+        if state_file and Path(state_file).exists():
             state = RecceState.from_file(state_file)
             context.import_state(state)
 
