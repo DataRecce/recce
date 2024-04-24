@@ -33,7 +33,7 @@ export interface HookOptions {
   shadowEffect?: boolean;
   borderStyle?: string;
   borderRadius?: string;
-  onSuccess?: (blob: Blob) => void;
+  onSuccess?: () => void;
   onError?: (error: unknown) => void;
   onClipboardNotDefined?: (blob: Blob) => void;
   ignoreElements?: (element: Element) => boolean;
@@ -48,7 +48,7 @@ export interface BlobHookReturn {
   ref: RefObject<HTMLElement>;
 }
 
-export function useToBlob({
+export function useCopyToClipboard({
   renderLibrary = "html2canvas",
   imageType = "png",
   backgroundColor = null,
@@ -65,12 +65,13 @@ export function useToBlob({
   >("idle");
   const ref = useRef(null);
 
+  // ImageDownloadModal is used for browsers that don't support ClipboardItem
+  const { onOpen, setImgBlob, ImageDownloadModal } = useImageDownloadModal();
+
   const toImage = async () => {
     if (!ref.current) {
       console.error("No node to use for screenshot");
-      setStatus("error");
-      onError && onError(new Error("No node to use for screenshot"));
-      return;
+      throw new Error("No node to use for screenshot");
     }
 
     const nodeToUse = ((ref.current as any).element ||
@@ -138,27 +139,38 @@ export function useToBlob({
           ctx.drawImage(canvas, 40, 40);
         } else {
           console.error("Error getting canvas context");
-          setStatus("error");
-          onError &&
-            onError(
-              new Error("Error getting canvas context to add shadow effect")
-            );
-          return;
+          throw new Error("Error getting canvas context to add shadow effect");
         }
       }
 
-      outputCanvas.toBlob(async (blob) => {
-        // Reset styles
-        setStatus("success");
-        onSuccess && blob && (await onSuccess(blob));
-      }, `image/${imageType}`);
+      const response = await fetch(outputCanvas.toDataURL());
+      return await response.blob();
     } catch (error: unknown) {
       console.error("Error converting to image", error);
-      setStatus("error");
-      onError && onError(error);
-      return;
+      throw error;
     } finally {
       resetStyles();
+    }
+  };
+
+  const copyToClipboard = async () => {
+    try {
+      await navigator.clipboard.write([
+        new ClipboardItem({ [`image/${imageType}`]: toImage() }),
+      ]);
+      setStatus("success");
+      onSuccess && onSuccess();
+    } catch (error) {
+      if ((error as Error).message === "ClipboardItem is not defined") {
+        const blob = await toImage();
+        setImgBlob(blob);
+        onOpen();
+        setStatus("success");
+      } else {
+        setStatus("error");
+        console.error("Error copying to clipboard", error);
+        onError && onError(error);
+      }
     }
   };
 
@@ -167,52 +179,28 @@ export function useToBlob({
     isLoading: status === "loading",
     isErrored: status === "error",
     isSuccess: status === "success",
-    toImage,
+    copyToClipboard,
+    ImageDownloadModal,
     ref,
   };
-}
-
-export async function copyBlobToClipboard(blob: Blob) {
-  if (!blob) {
-    throw new Error("No blob to copy to clipboard");
-  }
-
-  try {
-    await navigator.clipboard.write([new ClipboardItem({ [blob.type]: blob })]);
-  } catch (error) {
-    console.error("Error copying to clipboard", error);
-    throw error;
-  }
 }
 
 export function useCopyToClipboardButton(options?: HookOptions) {
   const { successToast, failToast } = useClipBoardToast();
 
-  const { isLoading, toImage, ref } = useToBlob({
-    imageType: "png",
-    shadowEffect: true,
-    backgroundColor: options?.backgroundColor || null,
-    onSuccess: async (blob) => {
-      try {
-        await copyBlobToClipboard(blob);
+  const { isLoading, copyToClipboard, ImageDownloadModal, ref } =
+    useCopyToClipboard({
+      imageType: "png",
+      shadowEffect: true,
+      backgroundColor: options?.backgroundColor || null,
+      onSuccess: () => {
         successToast("Copied the query result as an image to clipboard");
-      } catch (error) {
-        const message = (error as Error).message;
-        if (
-          message === "ClipboardItem is not defined" &&
-          options?.onClipboardNotDefined
-        ) {
-          options.onClipboardNotDefined(blob);
-        } else {
-          failToast("Failed to copy image to clipboard", error);
-        }
-      }
-    },
-    onError: (error) => {
-      console.error("Error taking screenshot", error);
-      failToast("Failed to copy image to clipboard", error);
-    },
-  });
+      },
+      onError: (error) => {
+        console.error("Error taking screenshot", error);
+        failToast("Failed to copy image to clipboard", error);
+      },
+    });
 
   function CopyToClipboardButton({
     imageType = "png",
@@ -221,37 +209,40 @@ export function useCopyToClipboardButton(options?: HookOptions) {
     imageType?: "png" | "jpeg";
   }) {
     return (
-      <Button
-        size="sm"
-        leftIcon={<CopyIcon />}
-        style={{ position: "absolute", bottom: "16px", right: "16px" }}
-        isLoading={isLoading}
-        onMouseEnter={() => {
-          if (ref.current) {
-            const nodeToUse = ((ref.current as any).element ||
-              ref.current) as HTMLElement;
-            nodeToUse.style.boxShadow = highlightBoxShadow;
-            nodeToUse.style.transition = "box-shadow 0.5s ease-in-out";
-          }
-        }}
-        onMouseLeave={() => {
-          if (ref.current) {
-            const nodeToUse = ((ref.current as any).element ||
-              ref.current) as HTMLElement;
-            nodeToUse.style.boxShadow = "";
-          }
-        }}
-        onClick={async () => {
-          if (ref.current) {
-            await toImage();
-            const nodeToUse = ((ref.current as any).element ||
-              ref.current) as HTMLElement;
-            nodeToUse.style.boxShadow = "";
-          }
-        }}
-      >
-        Copy to Clipboard
-      </Button>
+      <>
+        <Button
+          size="sm"
+          leftIcon={<CopyIcon />}
+          style={{ position: "absolute", bottom: "16px", right: "16px" }}
+          isLoading={isLoading}
+          onMouseEnter={() => {
+            if (ref.current) {
+              const nodeToUse = ((ref.current as any).element ||
+                ref.current) as HTMLElement;
+              nodeToUse.style.boxShadow = highlightBoxShadow;
+              nodeToUse.style.transition = "box-shadow 0.5s ease-in-out";
+            }
+          }}
+          onMouseLeave={() => {
+            if (ref.current) {
+              const nodeToUse = ((ref.current as any).element ||
+                ref.current) as HTMLElement;
+              nodeToUse.style.boxShadow = "";
+            }
+          }}
+          onClick={async () => {
+            if (ref.current) {
+              await copyToClipboard();
+              const nodeToUse = ((ref.current as any).element ||
+                ref.current) as HTMLElement;
+              nodeToUse.style.boxShadow = "";
+            }
+          }}
+        >
+          Copy to Clipboard
+        </Button>
+        <ImageDownloadModal />
+      </>
     );
   }
 
@@ -261,11 +252,11 @@ export function useCopyToClipboardButton(options?: HookOptions) {
   };
 }
 
-export function useImageBoardModal() {
+export function useImageDownloadModal() {
   const { isOpen, onOpen, onClose } = useDisclosure();
   const [imgBlob, setImgBlob] = useState<Blob>();
 
-  function ImageBoardModal() {
+  function ImageDownloadModal() {
     const [base64Img, setBase64Img] = useState<string>();
 
     useEffect(() => {
@@ -330,6 +321,6 @@ export function useImageBoardModal() {
   return {
     onOpen,
     setImgBlob,
-    ImageBoardModal,
+    ImageDownloadModal,
   };
 }

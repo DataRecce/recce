@@ -3,7 +3,7 @@ import DataGrid, { DataGridProps } from "react-data-grid";
 import { Flex, Text } from "@chakra-ui/react";
 import {
   useCopyToClipboardButton,
-  useImageBoardModal,
+  useImageDownloadModal,
 } from "@/lib/hooks/ScreenShot";
 import { useCallback } from "react";
 
@@ -15,26 +15,11 @@ export function ScreenshotDataGrid({
   enableScreenshot = true,
   ...props
 }: ScreenshotDataGridProps) {
-  const { onOpen, setImgBlob, ImageBoardModal } = useImageBoardModal();
-  const onClipboardNotDefined = useCallback(
-    (blob: Blob) => {
-      setImgBlob(blob);
-      onOpen();
-    },
-    [setImgBlob, onOpen]
-  );
-  const { ref, CopyToClipboardButton } = useCopyToClipboardButton({
-    onClipboardNotDefined,
-  });
+  const { ref, CopyToClipboardButton } = useCopyToClipboardButton();
   return (
     <>
       <DataGrid ref={ref} {...props} />
-      {enableScreenshot && (
-        <>
-          <CopyToClipboardButton imageType="png" />
-          <ImageBoardModal />
-        </>
-      )}
+      {enableScreenshot && <CopyToClipboardButton imageType="png" />}
     </>
   );
 }

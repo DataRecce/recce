@@ -1,4 +1,3 @@
-import { PUBLIC_API_URL } from "../../lib/const";
 import {
   LineageGraphNode,
   cleanUpNodes,
@@ -53,9 +52,7 @@ import { AddLineageDiffCheckButton, NodeSelector } from "./NodeSelector";
 import { NodeFilter } from "./NodeFilter";
 import {
   IGNORE_SCREENSHOT_CLASS,
-  copyBlobToClipboard,
-  useImageBoardModal,
-  useToBlob,
+  useCopyToClipboard,
 } from "@/lib/hooks/ScreenShot";
 import { useClipBoardToast } from "@/lib/hooks/useClipBoardToast";
 import { NodeRunView } from "./NodeRunView";
@@ -95,12 +92,7 @@ const viewModeTitle = {
 function _LineageView({ ...props }: LineageViewProps) {
   const reactFlow = useReactFlow();
   const { successToast, failToast } = useClipBoardToast();
-  const {
-    onOpen: onImgBoardModalOpen,
-    setImgBlob,
-    ImageBoardModal,
-  } = useImageBoardModal();
-  const { toImage, ref } = useToBlob({
+  const { copyToClipboard, ImageDownloadModal, ref } = useCopyToClipboard({
     renderLibrary: "html-to-image",
     imageType: "png",
     shadowEffect: true,
@@ -115,18 +107,8 @@ function _LineageView({ ...props }: LineageViewProps) {
       }
       return false;
     },
-    onSuccess: async (blob) => {
-      try {
-        await copyBlobToClipboard(blob);
-        successToast("Copied the Lineage View as an image to clipboard");
-      } catch (error) {
-        if ((error as Error).message === "ClipboardItem is not defined") {
-          setImgBlob(blob);
-          onImgBoardModalOpen();
-        } else {
-          failToast("Failed to copy image to clipboard", error);
-        }
-      }
+    onSuccess: () => {
+      successToast("Copied the Lineage View as an image to clipboard");
     },
     onError: (error) => {
       console.error("Error taking screenshot", error);
@@ -432,14 +414,14 @@ function _LineageView({ ...props }: LineageViewProps) {
           >
             <ControlButton
               title="copy image"
-              onClick={() => {
-                toImage();
+              onClick={async () => {
+                copyToClipboard();
               }}
             >
               <Icon as={FiCopy} />
             </ControlButton>
           </Controls>
-          <ImageBoardModal />
+          <ImageDownloadModal />
           <Panel position="bottom-left">
             <HStack>
               <ChangeStatusLegend />
