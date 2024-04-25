@@ -111,7 +111,7 @@ export interface gitInfo {
 }
 
 export interface pullRequestInfo {
-  id?: string;
+  id?: string | number;
   title?: string;
   url?: string;
   branch?: string;
