@@ -95,10 +95,6 @@ class Edge:
         if self.edge_from != edge_from:
             self.edge_from = 'both'
 
-    def __str__(self):
-        parent = self.parent_id
-        child = self.child_id
-
 
 class LineageGraph:
     nodes: Dict[str, Node] = {}
@@ -131,7 +127,6 @@ class LineageGraph:
     def get_edge_str(self, edge_id):
         edge = self.edges[edge_id]
         child = self.nodes[edge.child_id]
-        parent = self.nodes[edge.parent_id]
 
         if child.change_status == 'removed':
             return f'{edge.parent_id}-.->{edge.child_id}\n'
