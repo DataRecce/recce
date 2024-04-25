@@ -6,6 +6,7 @@ import click
 from recce import event
 from recce.config import RecceConfig, RECCE_CONFIG_FILE
 from recce.run import cli_run, check_github_ci_env
+from recce.summary import generate_markdown_summary
 from .core import RecceContext
 from .event.track import TrackCommand
 
@@ -187,6 +188,23 @@ def run(output, **kwargs):
     RecceConfig(config_file=kwargs.get('config'))
 
     asyncio.run(cli_run(output, **kwargs))
+
+
+@cli.command(cls=TrackCommand)
+@click.argument('state_file', required=True)
+def summary(state_file, **kwargs):
+    from rich.console import Console
+    from .core import load_context
+    console = Console()
+    try:
+        ctx = load_context(**kwargs, state_file=state_file)
+    except Exception as e:
+        console.print("[[red]Error[/red]] Failed to generate summary:")
+        console.print(f"{e}")
+        exit(1)
+
+    markdown = generate_markdown_summary(ctx)
+    console.print(markdown)
 
 
 if __name__ == "__main__":
