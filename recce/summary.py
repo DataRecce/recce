@@ -187,13 +187,19 @@ def generate_mermaid_lineage_graph(graph: LineageGraph):
     return content
 
 
-def generate_markdown_summary(ctx):
+def generate_markdown_summary(ctx, summary_format: str = 'markdown'):
     curr_lineage = ctx.get_lineage(base=False)
     base_lineage = ctx.get_lineage(base=True)
     graph = _build_lineage_graph(base_lineage, curr_lineage)
     mermaid_content = generate_mermaid_lineage_graph(graph)
-    return f'''
+
+    if summary_format == 'mermaid':
+        return mermaid_content
+    elif summary_format == 'markdown':
+        return f'''
 # Recce Summary
+
+## Lineage Graph
 ```mermaid
 {mermaid_content}
 ```

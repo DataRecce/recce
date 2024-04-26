@@ -192,6 +192,9 @@ def run(output, **kwargs):
 
 @cli.command(cls=TrackCommand)
 @click.argument('state_file', required=True)
+@click.option('--format', '-f', help='Output format. Currently only markdown is supported.',
+              type=click.Choice(['markdown', 'mermaid'], case_sensitive=False),
+              default='markdown', show_default=True)
 def summary(state_file, **kwargs):
     from rich.console import Console
     from .core import load_context
@@ -203,8 +206,8 @@ def summary(state_file, **kwargs):
         console.print(f"{e}")
         exit(1)
 
-    markdown = generate_markdown_summary(ctx)
-    console.print(markdown)
+    output = generate_markdown_summary(ctx, summary_format=kwargs.get('format'))
+    console.print(output)
 
 
 if __name__ == "__main__":
