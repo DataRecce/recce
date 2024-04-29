@@ -196,6 +196,8 @@ def generate_markdown_summary(ctx, summary_format: str = 'markdown'):
     if summary_format == 'mermaid':
         return mermaid_content
     elif summary_format == 'markdown':
+        # TODO: Check the markdown output content is longer than 65535 characters.
+        # If it is, we should reduce the content length.
         return f'''
 # Recce Summary
 
