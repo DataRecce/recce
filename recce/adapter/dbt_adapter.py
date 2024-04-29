@@ -201,8 +201,8 @@ class DbtAdapter(BaseAdapter):
         except DbtProjectError as e:
             if artifacts is not None:
                 # if artifacts is not None, it is in review mode. Launch server in view only mode.
-                logger.warn(f'Cannot initiate the dbt project. Reason: {e.msg}')
-                logger.warn('Launch recce in view only mode.')
+                logger.warning(f'Cannot initiate the dbt project. Reason: {e.msg}')
+                logger.warning('Launch recce in view only mode.')
                 dbt_adapter = cls()
             else:
                 raise e

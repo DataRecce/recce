@@ -200,7 +200,8 @@ def summary(state_file, **kwargs):
     from .core import load_context
     console = Console()
     try:
-        ctx = load_context(**kwargs, state_file=state_file)
+        # Load context in review mode, won't need to check dbt_project.yml file.
+        ctx = load_context(**kwargs, state_file=state_file, review=True)
     except Exception as e:
         console.print("[[red]Error[/red]] Failed to generate summary:")
         console.print(f"{e}")
