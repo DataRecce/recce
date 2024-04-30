@@ -93,6 +93,8 @@ class SqlmeshAdapter(BaseAdapter):
         else:
             expression = sql
 
+        expression = expression.limit(limit + 1 if limit else None)
+
         env = self.base_env if base else self.curr_env
         if env.name != 'prod':
             for scope in traverse_scope(expression):
