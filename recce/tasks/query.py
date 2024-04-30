@@ -92,19 +92,17 @@ class QueryTask(Task, QueryMixin):
         sqlmesh_adapter: SqlmeshAdapter = default_context().adapter
 
         sql = self.params.get('sql_template')
-        df = sqlmesh_adapter.context.fetchdf(sql)
-        rows = len(df)
-        if rows > QUERY_LIMIT:
-            more = True
-            df = df.head(QUERY_LIMIT)
-        else:
-            more = False
-        df.to_json(orient='values')
         limit = QUERY_LIMIT
+        df, more = sqlmesh_adapter.fetchdf_with_limit(sql, base=False, limit=limit)
         return DataFrame.from_pandas(df, limit=limit, more=more)
 
     def execute(self):
-        return self.execute_sqlmesh()
+        context = default_context()
+
+        if context.adapter_type == 'sqlmesh':
+            return self.execute_sqlmesh()
+        else:
+            return self.execute_dbt()
 
     def cancel(self):
         super().cancel()
@@ -144,27 +142,16 @@ class QueryDiffTask(Task, QueryMixin):
 
     def execute_sqlmesh(self):
         from ..adapter.sqlmesh_adapter import SqlmeshAdapter
-        from sqlglot import parse_one
-        from sqlglot.optimizer import traverse_scope
 
         sqlmesh_adapter: SqlmeshAdapter = default_context().adapter
 
         sql = self.params.get('sql_template')
-        base = sqlmesh_adapter.context.fetchdf(sql)
-
-        env = 'dev'
-        expression = parse_one(sql)
         limit = QUERY_LIMIT
-        base_more = current_more = False
-
-        for scope in traverse_scope(expression):
-            for table in scope.tables:
-                table.args['db'] = f"{table.args['db']}__{env}"
-
-        current = sqlmesh_adapter.context.fetchdf(expression)
+        base, base_more = sqlmesh_adapter.fetchdf_with_limit(sql, base=True, limit=limit)
+        curr, curr_more = sqlmesh_adapter.fetchdf_with_limit(sql, base=False, limit=limit)
         return QueryDiffResult(
             base=DataFrame.from_pandas(base, limit=limit, more=base_more),
-            current=DataFrame.from_pandas(current, limit=limit, more=current_more)
+            current=DataFrame.from_pandas(curr, limit=limit, more=curr_more)
         )
 
     def execute(self):

@@ -66,7 +66,7 @@ class SqlmeshAdapter(BaseAdapter):
     def load(cls, **kwargs):
         sqlmesh_envs = kwargs.get('sqlmesh_envs')
         if sqlmesh_envs is None:
-            raise Exception('sqlmesh_envs is required')
+            raise Exception('\'--sqlmesh-envs SOURCE:TARGET\' is required')
 
         envs = sqlmesh_envs.split(':')
         if len(envs) != 2:

@@ -1,4 +1,4 @@
-from typing import List, Dict, Set
+from typing import List, Dict, Set, Union
 
 ADD_COLOR = '#1dce00'
 MODIFIED_COLOR = '#ffa502'
@@ -83,7 +83,7 @@ class Edge:
     edge_from: str
     child_id: str
     parent_id: str
-    change_status: str | None
+    change_status: Union[str, None]
 
     def __init__(self, edge_id: str, parent_id: str, child_id: str, edge_from: str = 'base'):
         self.id = edge_id
