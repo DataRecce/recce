@@ -1,7 +1,10 @@
+import json
+import typing as t
 from enum import Enum
-from typing import List, Optional
 
-import agate
+if t.TYPE_CHECKING:
+    import agate
+    import pandas
 from pydantic import BaseModel, Field
 
 
@@ -22,13 +25,13 @@ class DataFrameColumn(BaseModel):
 
 
 class DataFrame(BaseModel):
-    columns: List[DataFrameColumn]
-    data: List[tuple]
-    limit: Optional[int] = Field(None, description="Limit the number of rows returned")
-    more: Optional[bool] = Field(None, description="Whether there are more rows to fetch")
+    columns: t.List[DataFrameColumn]
+    data: t.List[tuple]
+    limit: t.Optional[int] = Field(None, description="Limit the number of rows returned")
+    more: t.Optional[bool] = Field(None, description="Whether there are more rows to fetch")
 
     @staticmethod
-    def from_agate(table: agate.Table, limit: Optional[int] = None, more: Optional[bool] = None):
+    def from_agate(table: 'agate.Table', limit: t.Optional[int] = None, more: t.Optional[bool] = None):
         columns = []
 
         for col_name, col_type in zip(table.column_names, table.column_types):
@@ -53,6 +56,34 @@ class DataFrame(BaseModel):
                 col_type = DataFrameColumnType.UNKNOWN
             columns.append(DataFrameColumn(name=col_name, type=col_type))
         data = [row.values() for row in table.rows]
+        df = DataFrame(
+            columns=columns,
+            data=data,
+            limit=limit,
+            more=more,
+        )
+        return df
+
+    @staticmethod
+    def from_pandas(pandas_df: 'pandas.DataFrame', limit: t.Optional[int] = None, more: t.Optional[bool] = None):
+        columns = []
+        for column in pandas_df.columns:
+            dtype = pandas_df[column].dtype
+            if dtype == 'int64':
+                col_type = DataFrameColumnType.INTEGER
+            elif dtype == 'float64':
+                col_type = DataFrameColumnType.NUMBER
+            elif dtype == 'object':
+                col_type = DataFrameColumnType.TEXT
+            elif dtype == 'bool':
+                col_type = DataFrameColumnType.BOOLEAN
+            else:
+                col_type = DataFrameColumnType.UNKNOWN
+            columns.append(DataFrameColumn(name=column, type=col_type))
+
+        s = pandas_df.to_json(orient='values')
+        data = json.loads(s)
+
         df = DataFrame(
             columns=columns,
             data=data,

@@ -5,13 +5,12 @@ from rich import box
 from rich.console import Console
 from rich.table import Table
 
-from recce.adapter.dbt_adapter import DbtAdapter
 from recce.apis.check_func import create_check_from_run, create_check_without_run
 from recce.apis.run_func import submit_run
 from recce.config import RecceConfig
 from recce.core import RecceContext
-from recce.pull_request import fetch_pr_metadata_from_event_path
 from recce.models.types import RunType
+from recce.pull_request import fetch_pr_metadata_from_event_path
 from recce.state import RecceState, PullRequestInfo
 
 
@@ -173,6 +172,7 @@ async def cli_run(output_state_file: str, **kwargs):
 
     # Prepare the artifact by collecting the lineage
     console.rule("DBT Artifacts")
+    from recce.adapter.dbt_adapter import DbtAdapter
     dbt_adaptor: DbtAdapter = ctx.adapter
     dbt_adaptor.print_lineage_info()
 

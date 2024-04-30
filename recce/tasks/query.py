@@ -5,7 +5,6 @@ from pydantic import BaseModel
 
 from .core import Task
 from .dataframe import DataFrame
-from ..adapter.dbt_adapter import DbtAdapter
 from ..core import default_context
 from ..exceptions import RecceException
 
@@ -74,7 +73,8 @@ class QueryTask(Task, QueryMixin):
         self.params = params
         self.connection = None
 
-    def execute(self):
+    def execute_dbt(self):
+        from ..adapter.dbt_adapter import DbtAdapter
         dbt_adapter: DbtAdapter = default_context().adapter
 
         limit = QUERY_LIMIT
@@ -86,6 +86,25 @@ class QueryTask(Task, QueryMixin):
             self.check_cancel()
 
             return DataFrame.from_agate(table, limit=limit, more=more)
+
+    def execute_sqlmesh(self):
+        from ..adapter.sqlmesh_adapter import SqlmeshAdapter
+        sqlmesh_adapter: SqlmeshAdapter = default_context().adapter
+
+        sql = self.params.get('sql_template')
+        df = sqlmesh_adapter.context.fetchdf(sql)
+        rows = len(df)
+        if rows > QUERY_LIMIT:
+            more = True
+            df = df.head(QUERY_LIMIT)
+        else:
+            more = False
+        df.to_json(orient='values')
+        limit = QUERY_LIMIT
+        return DataFrame.from_pandas(df, limit=limit, more=more)
+
+    def execute(self):
+        return self.execute_sqlmesh()
 
     def cancel(self):
         super().cancel()
@@ -104,7 +123,8 @@ class QueryDiffTask(Task, QueryMixin):
         self.params = params
         self.connection = None
 
-    def execute(self):
+    def execute_dbt(self):
+        from ..adapter.dbt_adapter import DbtAdapter
         dbt_adapter: DbtAdapter = default_context().adapter
         limit = QUERY_LIMIT
 
@@ -121,6 +141,34 @@ class QueryDiffTask(Task, QueryMixin):
                 base=DataFrame.from_agate(base, limit=limit, more=base_more),
                 current=DataFrame.from_agate(current, limit=limit, more=current_more)
             )
+
+    def execute_sqlmesh(self):
+        from ..adapter.sqlmesh_adapter import SqlmeshAdapter
+        from sqlglot import parse_one
+        from sqlglot.optimizer import traverse_scope
+
+        sqlmesh_adapter: SqlmeshAdapter = default_context().adapter
+
+        sql = self.params.get('sql_template')
+        base = sqlmesh_adapter.context.fetchdf(sql)
+
+        env = 'dev'
+        expression = parse_one(sql)
+        limit = QUERY_LIMIT
+        base_more = current_more = False
+
+        for scope in traverse_scope(expression):
+            for table in scope.tables:
+                table.args['db'] = f"{table.args['db']}__{env}"
+
+        current = sqlmesh_adapter.context.fetchdf(expression)
+        return QueryDiffResult(
+            base=DataFrame.from_pandas(base, limit=limit, more=base_more),
+            current=DataFrame.from_pandas(current, limit=limit, more=current_more)
+        )
+
+    def execute(self):
+        return self.execute_sqlmesh()
 
     def cancel(self):
         super().cancel()
