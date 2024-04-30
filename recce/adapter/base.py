@@ -10,19 +10,6 @@ logger = logging.getLogger('uvicorn')
 
 
 class BaseAdapter(ABC):
-    # @abstractmethod
-    # def generate_sql(self, sql_template: str, base: bool = False, context: Dict = {}):
-    #     raise NotImplementedError()
-    #
-    # @abstractmethod
-    # def execute(
-    #     self,
-    #     sql: str,
-    #     auto_begin: bool = False,
-    #     fetch: bool = False,
-    #     limit: Optional[int] = None
-    # ) -> Tuple[any, agate.Table]:
-    #     raise NotImplementedError()
     @abstractmethod
     def get_lineage(self, base: Optional[bool] = False):
         raise NotImplementedError()
