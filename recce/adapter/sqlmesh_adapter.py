@@ -1,31 +1,30 @@
+import typing as t
 from dataclasses import dataclass
 from typing import Optional
 
 import pandas as pd
-from sqlglot import parse_one
+from sqlglot import parse_one, Expression
 from sqlglot.optimizer import traverse_scope
 from sqlmesh.core.context import Context as SqlmeshContext
+from sqlmesh.core.environment import Environment
 from sqlmesh.core.state_sync import StateReader
 
 from recce.adapter.base import BaseAdapter
-from recce.state import ArtifactsRoot
 
 
 @dataclass
 class SqlmeshAdapter(BaseAdapter):
     context: SqlmeshContext
+    base_env: Environment
+    curr_env: Environment
 
     def get_lineage(self, base: Optional[bool] = False):
         state_reader: StateReader = self.context.state_reader
-
-        environments = state_reader.get_environments()
-        print("envs", [e.name for e in environments])
-
-        environment = state_reader.get_environment('prod' if base else 'dev')
+        env = self.base_env if base else self.curr_env
         nodes = {}
         parent_map = {}
 
-        for snapshot in state_reader.get_snapshots(environment.snapshots, hydrate_seeds=True).values():
+        for snapshot in state_reader.get_snapshots(env.snapshots, hydrate_seeds=True).values():
 
             if snapshot.node_type.lower() != 'model':
                 continue
@@ -64,16 +63,46 @@ class SqlmeshAdapter(BaseAdapter):
         raise NotImplementedError()
 
     @classmethod
-    def load(cls, artifacts: ArtifactsRoot = None, **kwargs):
+    def load(cls, **kwargs):
+        sqlmesh_envs = kwargs.get('sqlmesh_envs')
+        if sqlmesh_envs is None:
+            raise Exception('sqlmesh_envs is required')
+
+        envs = sqlmesh_envs.split(':')
+        if len(envs) != 2:
+            raise Exception('sqlmesh_envs must be in the format of "SOURCE:TARGET"')
+
         context = SqlmeshContext()
-        return cls(context=context)
+        base_env = context.state_reader.get_environment(envs[0])
+        curr_env = context.state_reader.get_environment(envs[1])
+        if base_env is None:
+            raise Exception(f"Source environment {envs[0]} not found")
+        if curr_env is None:
+            raise Exception(f"Target environment {envs[1]} not found")
 
-    def fetchdf(self, sql, env: Optional[str] = None) -> pd.DataFrame:
-        expression = parse_one(sql)
+        return cls(context=context, base_env=base_env, curr_env=curr_env)
 
-        if env is not None:
+    def fetchdf_with_limit(
+        self,
+        sql: t.Union[Expression, str],
+        base: bool = False,
+        limit: Optional[int] = None
+    ) -> (pd.DataFrame, bool):
+        if isinstance(sql, str):
+            expression = parse_one(sql)
+        else:
+            expression = sql
+
+        env = self.base_env if base else self.curr_env
+        if env.name != 'prod':
             for scope in traverse_scope(expression):
                 for table in scope.tables:
-                    table.args['db'] = f"{table.args['db']}__{env}"
+                    table.args['db'] = f"{table.args['db']}__{env.name}"
 
-        return self.context.fetchdf(expression)
+        df = self.context.fetchdf(expression)
+        if limit and len(df) > limit:
+            df = df.head(limit)
+            more = True
+        else:
+            more = False
+        return df, more
