@@ -146,6 +146,7 @@ async def get_info():
 
     try:
         return {
+            'adapter_type': context.adapter_type,
             'review_mode': context.review_mode,
             'git': state.git.to_dict() if state.git else None,
             'pull_request': state.pull_request.to_dict() if state.pull_request else None,

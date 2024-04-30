@@ -1,17 +1,17 @@
 import os
+import sys
 import time
 
 from rich import box
 from rich.console import Console
 from rich.table import Table
 
-from recce.adapter.dbt_adapter import DbtAdapter
 from recce.apis.check_func import create_check_from_run, create_check_without_run
 from recce.apis.run_func import submit_run
 from recce.config import RecceConfig
 from recce.core import RecceContext
-from recce.pull_request import fetch_pr_metadata_from_event_path
 from recce.models.types import RunType
+from recce.pull_request import fetch_pr_metadata_from_event_path
 from recce.state import RecceState, PullRequestInfo
 
 
@@ -166,13 +166,18 @@ async def execute_preset_checks(checks: list):
 async def cli_run(output_state_file: str, **kwargs):
     """The main function of 'recce run' command. It will execute the default runs and store the state."""
     console = Console()
+    if kwargs.get('sqlmesh', False):
+        console.print("[[red]Error[/red]] SQLMesh adapter is not supported.")
+        sys.exit(1)
 
     from recce.core import load_context
     ctx = load_context(**kwargs)
+
     is_skip_query = kwargs.get('skip_query', False)
 
     # Prepare the artifact by collecting the lineage
     console.rule("DBT Artifacts")
+    from recce.adapter.dbt_adapter import DbtAdapter
     dbt_adaptor: DbtAdapter = ctx.adapter
     dbt_adaptor.print_lineage_info()
 

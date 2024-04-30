@@ -10,8 +10,17 @@ import agate
 import dbt.adapters.factory
 
 # Reference: https://github.com/AltimateAI/vscode-dbt-power-user/blob/master/dbt_core_integration.py
+get_adapter_orig = dbt.adapters.factory.get_adapter
 
-dbt.adapters.factory.get_adapter = lambda config: config.adapter  # noqa E402
+
+def get_adapter(config):
+    if hasattr(config, 'adapter'):
+        return config.adapter
+    else:
+        return get_adapter_orig(config)
+
+
+dbt.adapters.factory.get_adapter = get_adapter
 
 from dbt.adapters.base import Column
 from dbt.adapters.factory import get_adapter_class_by_name

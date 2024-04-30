@@ -5,7 +5,6 @@ from pydantic import BaseModel
 
 from .core import Task
 from .dataframe import DataFrame
-from ..adapter.dbt_adapter import DbtAdapter
 from ..core import default_context
 from ..exceptions import RecceException
 
@@ -74,7 +73,8 @@ class QueryTask(Task, QueryMixin):
         self.params = params
         self.connection = None
 
-    def execute(self):
+    def execute_dbt(self):
+        from ..adapter.dbt_adapter import DbtAdapter
         dbt_adapter: DbtAdapter = default_context().adapter
 
         limit = QUERY_LIMIT
@@ -86,6 +86,23 @@ class QueryTask(Task, QueryMixin):
             self.check_cancel()
 
             return DataFrame.from_agate(table, limit=limit, more=more)
+
+    def execute_sqlmesh(self):
+        from ..adapter.sqlmesh_adapter import SqlmeshAdapter
+        sqlmesh_adapter: SqlmeshAdapter = default_context().adapter
+
+        sql = self.params.get('sql_template')
+        limit = QUERY_LIMIT
+        df, more = sqlmesh_adapter.fetchdf_with_limit(sql, base=False, limit=limit)
+        return DataFrame.from_pandas(df, limit=limit, more=more)
+
+    def execute(self):
+        context = default_context()
+
+        if context.adapter_type == 'sqlmesh':
+            return self.execute_sqlmesh()
+        else:
+            return self.execute_dbt()
 
     def cancel(self):
         super().cancel()
@@ -104,7 +121,8 @@ class QueryDiffTask(Task, QueryMixin):
         self.params = params
         self.connection = None
 
-    def execute(self):
+    def execute_dbt(self):
+        from ..adapter.dbt_adapter import DbtAdapter
         dbt_adapter: DbtAdapter = default_context().adapter
         limit = QUERY_LIMIT
 
@@ -121,6 +139,28 @@ class QueryDiffTask(Task, QueryMixin):
                 base=DataFrame.from_agate(base, limit=limit, more=base_more),
                 current=DataFrame.from_agate(current, limit=limit, more=current_more)
             )
+
+    def execute_sqlmesh(self):
+        from ..adapter.sqlmesh_adapter import SqlmeshAdapter
+
+        sqlmesh_adapter: SqlmeshAdapter = default_context().adapter
+
+        sql = self.params.get('sql_template')
+        limit = QUERY_LIMIT
+        base, base_more = sqlmesh_adapter.fetchdf_with_limit(sql, base=True, limit=limit)
+        curr, curr_more = sqlmesh_adapter.fetchdf_with_limit(sql, base=False, limit=limit)
+        return QueryDiffResult(
+            base=DataFrame.from_pandas(base, limit=limit, more=base_more),
+            current=DataFrame.from_pandas(curr, limit=limit, more=curr_more)
+        )
+
+    def execute(self):
+        context = default_context()
+
+        if context.adapter_type == 'sqlmesh':
+            return self.execute_sqlmesh()
+        else:
+            return self.execute_dbt()
 
     def cancel(self):
         super().cancel()

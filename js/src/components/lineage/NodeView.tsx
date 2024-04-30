@@ -35,6 +35,7 @@ import { ResourceTypeTag, RowCountTag } from "./NodeTag";
 import { useCallback } from "react";
 import { createCheckByNodeSchema, createCheckByRun } from "@/lib/api/checks";
 import { useRecceActionContext } from "@/lib/hooks/RecceActionContext";
+import { useLineageGraphContext } from "@/lib/hooks/LineageGraphContext";
 
 interface NodeViewProps {
   node: LineageGraphNode;
@@ -54,6 +55,7 @@ export function NodeView({ node, onCloseNode }: NodeViewProps) {
     onClose: onCodeDiffClose,
   } = useDisclosure();
   const { runAction } = useRecceActionContext();
+  const { envInfo } = useLineageGraphContext();
 
   const addSchemaCheck = useCallback(async () => {
     const nodeId = node.id;
@@ -198,7 +200,11 @@ export function NodeView({ node, onCloseNode }: NodeViewProps) {
                   colorScheme="blue"
                   size="sm"
                   onClick={() => {
-                    setSqlQuery(`select * from {{ ref("${node.name}") }}`);
+                    if (envInfo?.adapterType === "dbt") {
+                      setSqlQuery(`select * from {{ ref("${node.name}") }}`);
+                    } else if (envInfo?.adapterType === "sqlmesh") {
+                      setSqlQuery(`select * from ${node.name}`);
+                    }
                     setLocation("/query");
                   }}
                 >

@@ -13,7 +13,7 @@ from recce.tasks.top_k import TopKDiffTask
 
 running_tasks = {}
 
-registry: Dict[RunType, Type[Task]] = {
+dbt_registry: Dict[RunType, Type[Task]] = {
     RunType.QUERY: QueryTask,
     RunType.QUERY_DIFF: QueryDiffTask,
     RunType.VALUE_DIFF: ValueDiffTask,
@@ -24,8 +24,15 @@ registry: Dict[RunType, Type[Task]] = {
     RunType.HISTOGRAM_DIFF: HistogramDiffTask,
 }
 
+sqlmesh_registry: Dict[RunType, Type[Task]] = {
+    RunType.QUERY: QueryTask,
+    RunType.QUERY_DIFF: QueryDiffTask,
+    RunType.ROW_COUNT_DIFF: RowCountDiffTask,
+}
+
 
 def create_task(run_type: RunType, params: dict):
+    registry = sqlmesh_registry if default_context().adapter_type == 'sqlmesh' else dbt_registry
     taskClz = registry.get(run_type)
     if not taskClz:
         raise NotImplementedError()

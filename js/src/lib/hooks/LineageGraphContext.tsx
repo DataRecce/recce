@@ -20,6 +20,7 @@ import path from "path";
 import { aggregateRuns, RunsAggregated } from "../api/runs";
 
 interface EnvInfo {
+  adapterType?: string;
   git?: gitInfo;
   pullRequest?: pullRequestInfo;
   dbt?: {
@@ -122,12 +123,14 @@ export function LineageGraphContextProvider({ children }: LineageGraphProps) {
   const lineage = data?.lineage;
   const isDemoSite = data?.demo;
   const reviewMode = data?.review_mode;
+  const adapterType = data?.adapter_type;
   const git = data?.git;
   const pullRequest = data?.pull_request;
   const dbtBase = lineage?.base?.manifest_metadata;
   const dbtCurrent = lineage?.current?.manifest_metadata;
 
   const envInfo: EnvInfo = {
+    adapterType,
     git,
     pullRequest,
     dbt: {
