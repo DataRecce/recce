@@ -12,5 +12,6 @@ exclude = tests,
           images,
           js,
           *.egg-info
+          .tox
 per-file-ignores =
     recce/adapter/dbt_adapter.py: E402

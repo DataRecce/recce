@@ -30,6 +30,15 @@ jobs:
       - name: Run flake8
         run: make flake8
 
+      - name: Cache tox environments
+        uses: actions/cache@v2
+        with:
+          path: .tox
+          key: ${{ runner.os }}-tox-${{ hashFiles('tox.ini') }}-3.11
+          restore-keys: |
+            ${{ runner.os }}-tox-${{ hashFiles('tox.ini') }}-
+            ${{ runner.os }}-tox-
+
       - name: Run tests
         run: |
           make test
