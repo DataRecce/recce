@@ -1,4 +1,5 @@
 import os
+import sys
 import time
 
 from rich import box
@@ -165,9 +166,13 @@ async def execute_preset_checks(checks: list):
 async def cli_run(output_state_file: str, **kwargs):
     """The main function of 'recce run' command. It will execute the default runs and store the state."""
     console = Console()
+    if kwargs.get('sqlmesh', False):
+        console.print("[[red]Error[/red]] SQLMesh adapter is not supported.")
+        sys.exit(1)
 
     from recce.core import load_context
     ctx = load_context(**kwargs)
+
     is_skip_query = kwargs.get('skip_query', False)
 
     # Prepare the artifact by collecting the lineage

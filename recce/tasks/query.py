@@ -168,7 +168,12 @@ class QueryDiffTask(Task, QueryMixin):
         )
 
     def execute(self):
-        return self.execute_sqlmesh()
+        context = default_context()
+
+        if context.adapter_type == 'sqlmesh':
+            return self.execute_sqlmesh()
+        else:
+            return self.execute_dbt()
 
     def cancel(self):
         super().cancel()

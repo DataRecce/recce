@@ -9,7 +9,6 @@ from typing import Callable, Dict, Optional, Tuple
 import agate
 
 from recce.adapter.base import BaseAdapter
-from recce.adapter.dbt_adapter import DbtAdapter
 from recce.models import RunDAO, CheckDAO, Check
 from recce.models.check import load_checks
 from recce.models.run import load_runs
@@ -21,6 +20,7 @@ logger = logging.getLogger('uvicorn')
 @dataclass
 class RecceContext:
     review_mode: bool = False
+    adapter_type: str = None
     adapter: BaseAdapter = None
     review_state: RecceState = None
 
@@ -28,6 +28,7 @@ class RecceContext:
     def load(cls, **kwargs):
         state_file = kwargs.get('state_file')
         is_review_mode = kwargs.get('review', False)
+
         context = cls(
             review_mode=is_review_mode,
         )
@@ -37,14 +38,21 @@ class RecceContext:
             context.import_state(state)
 
         # Load the artifacts from the state file or `target` and `target-base` directory
-        adapter_cls = DbtAdapter
-        if is_review_mode:
-            if not state:
-                raise Exception('The state file is required for review mode')
-            context.review_state = state
-            context.adapter = adapter_cls.load(artifacts=state.artifacts)
+        if kwargs.get('sqlmesh', False):
+            logger.warning('SQLMesh adapter is still in EXPERIMENTAL mode.')
+            from recce.adapter.sqlmesh_adapter import SqlmeshAdapter
+            context.adapter_type = 'sqlmesh'
+            context.adapter = SqlmeshAdapter.load(**kwargs)
         else:
-            context.adapter = adapter_cls.load(**kwargs)
+            from recce.adapter.dbt_adapter import DbtAdapter
+            context.adapter_type = 'dbt'
+            if is_review_mode:
+                if not state:
+                    raise Exception('The state file is required for review mode')
+                context.review_state = state
+                context.adapter = DbtAdapter.load(artifacts=state.artifacts)
+            else:
+                context.adapter = DbtAdapter.load(**kwargs)
 
         return context
 

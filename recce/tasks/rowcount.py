@@ -37,7 +37,7 @@ class RowCountDiffTask(Task, QueryMixin):
         _, table = dbt_adapter.execute(sql, fetch=True)
         return int(table[0][0]) if table[0][0] is not None else 0
 
-    def execute(self):
+    def execute_dbt(self):
         result = {}
 
         dbt_adapter = default_context().adapter
@@ -64,6 +64,50 @@ class RowCountDiffTask(Task, QueryMixin):
                 }
 
         return result
+
+    def execute_sqlmesh(self):
+        result = {}
+
+        query_candidates = []
+
+        for node_id in self.params.get('node_ids', []):
+            query_candidates.append(node_id)
+        for node_name in self.params.get('node_names', []):
+            query_candidates.append(node_name)
+
+        from recce.adapter.sqlmesh_adapter import SqlmeshAdapter
+        sqlmesh_adapter: SqlmeshAdapter = default_context().adapter
+
+        for name in query_candidates:
+            base_row_count = None
+            curr_row_count = None
+
+            try:
+                df = sqlmesh_adapter.fetchdf(f'select count(*) from {name}')
+                base_row_count = int(df.iloc[0, 0])
+            except Exception:
+                pass
+            self.check_cancel()
+
+            try:
+                df = sqlmesh_adapter.fetchdf(f'select count(*) from {name}', env='dev')
+                curr_row_count = int(df.iloc[0, 0])
+            except Exception:
+                pass
+            self.check_cancel()
+            result[name] = {
+                'base': base_row_count,
+                'curr': curr_row_count,
+            }
+
+        return result
+
+    def execute(self):
+        context = default_context()
+        if context.adapter_type == 'dbt':
+            return self.execute_dbt()
+        else:
+            return self.execute_sqlmesh()
 
     def cancel(self):
         super().cancel()

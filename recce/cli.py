@@ -31,6 +31,11 @@ dbt_related_options = [
                  envvar="DBT_PROFILES_DIR"),
 ]
 
+sqlmesh_related_options = [
+    click.option('--sqlmesh', is_flag=True, help='Use sqlmesh as backend', hidden=True),
+    click.option('--sqlmesh-envs', is_flag=False, help='Use sqlmesh as backend', hidden=True),
+]
+
 recce_options = [
     click.option('--config', help='Path to the recce config file.', type=click.Path(), default=RECCE_CONFIG_FILE,
                  show_default=True),
@@ -134,6 +139,7 @@ def diff(sql, primary_keys: List[str] = None, keep_shape: bool = False, keep_equ
 @click.option('--port', default=8000, show_default=True, help='The port to bind to.', type=int)
 @click.option('--review', is_flag=True, help='Open the state file in review mode.')
 @add_options(dbt_related_options)
+@add_options(sqlmesh_related_options)
 @add_options(recce_options)
 def server(host, port, state_file=None, **kwargs):
     """
@@ -178,6 +184,7 @@ def server(host, port, state_file=None, **kwargs):
 @click.option('--github-pull-request-url', help='The github pull request url to use for the lineage.',
               type=click.STRING)
 @add_options(dbt_related_options)
+@add_options(sqlmesh_related_options)
 @add_options(recce_options)
 def run(output, **kwargs):
     is_github_action, pr_url = check_github_ci_env(**kwargs)

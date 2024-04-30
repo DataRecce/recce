@@ -1,6 +1,9 @@
 from dataclasses import dataclass
 from typing import Optional
 
+import pandas as pd
+from sqlglot import parse_one
+from sqlglot.optimizer import traverse_scope
 from sqlmesh.core.context import Context as SqlmeshContext
 from sqlmesh.core.state_sync import StateReader
 
@@ -64,3 +67,13 @@ class SqlmeshAdapter(BaseAdapter):
     def load(cls, artifacts: ArtifactsRoot = None, **kwargs):
         context = SqlmeshContext()
         return cls(context=context)
+
+    def fetchdf(self, sql, env: Optional[str] = None) -> pd.DataFrame:
+        expression = parse_one(sql)
+
+        if env is not None:
+            for scope in traverse_scope(expression):
+                for table in scope.tables:
+                    table.args['db'] = f"{table.args['db']}__{env}"
+
+        return self.context.fetchdf(expression)

@@ -23,7 +23,6 @@ class BaseAdapter(ABC):
     #     limit: Optional[int] = None
     # ) -> Tuple[any, agate.Table]:
     #     raise NotImplementedError()
-
     @abstractmethod
     def get_lineage(self, base: Optional[bool] = False):
         raise NotImplementedError()
