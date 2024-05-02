@@ -98,16 +98,22 @@ export const QueryPage = () => {
     [setLocation, viewOptions, queryClient]
   );
 
+  const runQueryDiff = () => {
+    if (envInfo?.adapterType === "sqlmesh") {
+      return runQuery("query_diff");
+    }
+    if (primaryKeys === undefined || primaryKeys.length === 0) {
+      return runQuery("query_diff");
+    }
+    return runQuery("query_diff_join");
+  };
+
   return (
     <Flex direction="column" height="100%">
       <Flex justifyContent="right" padding="5px" gap="5px">
         <Button
           colorScheme="blue"
-          onClick={() =>
-            primaryKeys === undefined || primaryKeys.length === 0
-              ? runQuery("query_diff")
-              : runQuery("query_diff_join")
-          }
+          onClick={runQueryDiff}
           isDisabled={isPending}
           size="sm"
         >
@@ -128,7 +134,7 @@ export const QueryPage = () => {
             value={sqlQuery}
             onChange={setSqlQuery}
             onRun={() => runQuery("query")}
-            onRunDiff={() => runQuery("query_diff")}
+            onRunDiff={runQueryDiff}
           />
         </Box>
         <QueryForm
