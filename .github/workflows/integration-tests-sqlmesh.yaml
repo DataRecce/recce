@@ -1,4 +1,4 @@
-name: Run Smoke Test (DBT)
+name: Run Smoke Test (SQLMesh)
 
 on:
   push:
@@ -25,14 +25,12 @@ jobs:
           cache: "pip" # caching pip dependencies
       - run: |
           python -m pip install --upgrade pip
-          pip install -r ./integration_tests/dbt/requirements.txt
-
-      - name: Install Recce
-        run: |
+          pip install sqlmesh
           pip install .
-
-      - name: Run smoke test - dbt
+      - name: Run sqlmesh
         run: |
-          ./integration_tests/dbt/smoke_test.sh
-        env:
-          PR_URL: ${{ github.event.pull_request.html_url }}
+          ./integration_tests/sqlmesh/prep_env.sh
+
+      - name: Run smoke test
+        run: |
+          ./integration_tests/sqlmesh/test_server.sh

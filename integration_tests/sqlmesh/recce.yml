@@ -1,0 +1,13 @@
+# [Optional] GitHub settings
+github:
+  repo: ''
+# Recce Preset Checks
+checks:
+  # Example of preset check: 
+  # - name: <Check Name>
+  #   description: <Check Description>
+  #   type: <Type of Check>
+  #     view_options:
+  #       model: xxx
+  #       column: xxx
+  []
