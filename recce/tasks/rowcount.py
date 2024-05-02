@@ -3,6 +3,7 @@ from typing import TypedDict, Optional
 from recce.adapter.dbt_adapter import DbtAdapter
 from recce.core import default_context
 from recce.tasks import Task
+from recce.tasks.core import TaskResultDiffer
 from recce.tasks.query import QueryMixin
 
 
@@ -113,3 +114,15 @@ class RowCountDiffTask(Task, QueryMixin):
         super().cancel()
         if self.connection:
             self.close_connection(self.connection)
+
+
+class RowCountDiffResultDiffer(TaskResultDiffer):
+    def _check_result_changed_fn(self, result):
+        base = {}
+        current = {}
+
+        for node, row_counts in result.items():
+            base[node] = row_counts['base']
+            current[node] = row_counts['curr']
+
+        return TaskResultDiffer.diff(base, current)

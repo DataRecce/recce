@@ -1,4 +1,15 @@
-from typing import List, Dict, Set, Union
+from typing import List, Dict, Set, Union, Type
+from uuid import UUID
+
+from pydantic import BaseModel
+
+from recce.models import CheckDAO, RunDAO, RunType
+from recce.tasks.core import TaskResultDiffer
+from recce.tasks.histogram import HistogramDiffTaskResultDiffer
+from recce.tasks.query import QueryDiffResultDiffer
+from recce.tasks.rowcount import RowCountDiffResultDiffer
+from recce.tasks.top_k import TopKDiffTaskResultDiffer
+from recce.tasks.valuediff import ValueDiffTaskResultDiffer
 
 ADD_COLOR = '#1dce00'
 MODIFIED_COLOR = '#ffa502'
@@ -96,6 +107,30 @@ class Edge:
             self.edge_from = 'both'
 
 
+class CheckSummary(BaseModel):
+    id: UUID
+    type: RunType
+    name: str
+    description: str
+    changes: dict
+
+
+check_result_differ_registry: Dict[RunType, Type[TaskResultDiffer]] = {
+    RunType.VALUE_DIFF: ValueDiffTaskResultDiffer,
+    RunType.ROW_COUNT_DIFF: RowCountDiffResultDiffer,
+    RunType.QUERY_DIFF: QueryDiffResultDiffer,
+    RunType.TOP_K_DIFF: TopKDiffTaskResultDiffer,
+    RunType.HISTOGRAM_DIFF: HistogramDiffTaskResultDiffer,
+}
+
+
+def differ_factory(run_type: RunType, result):
+    differ_clz = check_result_differ_registry.get(run_type)
+    if not differ_clz:
+        raise NotImplementedError()
+    return differ_clz(result)
+
+
 class LineageGraph:
     nodes: Dict[str, Node] = {}
     edges: Dict[str, Edge] = {}
@@ -162,6 +197,54 @@ def _build_lineage_graph(base, current) -> LineageGraph:
     return graph
 
 
+def _build_node_schema(lineage, node_id):
+    return lineage.get('nodes', {}).get(node_id, {}).get('columns', {})
+
+
+def generate_preset_check_summary(base_lineage, curr_lineage) -> List[CheckSummary]:
+    runs = RunDAO().list()
+    preset_checks = [check for check in CheckDAO().list() if check.is_preset is True]
+    preset_checks_summary: List[CheckSummary] = []
+
+    def _find_run_by_check_id(check_id):
+        for r in runs:
+            if str(check_id) == str(r.check_id):
+                return r
+        return None
+
+    for check in preset_checks:
+        run = _find_run_by_check_id(check.check_id)
+        if check.type == RunType.SCHEMA_DIFF:
+            # TODO: Check schema diff of the selected node
+            node_id = check.params.get('node_id')
+            base = _build_node_schema(base_lineage, node_id)
+            current = _build_node_schema(curr_lineage, node_id)
+            changes = TaskResultDiffer.diff(base, current)
+            if changes:
+                preset_checks_summary.append(
+                    CheckSummary(
+                        id=check.check_id,
+                        type=check.type,
+                        name=check.name,
+                        description=check.description,
+                        changes=changes)
+                )
+        elif str(check.type).endswith('_diff') and run is not None:
+            # Check the result is changed or not
+            differ = differ_factory(check.type, run.result)
+            if differ.changes is not None:
+                preset_checks_summary.append(
+                    CheckSummary(
+                        id=check.check_id,
+                        type=check.type,
+                        name=check.name,
+                        description=check.description,
+                        changes=differ.changes)
+                )
+
+    return preset_checks_summary
+
+
 def generate_mermaid_lineage_graph(graph: LineageGraph):
     content = 'graph LR\n'
     # Only show the modified nodes and there children
@@ -191,14 +274,33 @@ def generate_markdown_summary(ctx, summary_format: str = 'markdown'):
     curr_lineage = ctx.get_lineage(base=False)
     base_lineage = ctx.get_lineage(base=True)
     graph = _build_lineage_graph(base_lineage, curr_lineage)
+    preset_checks = generate_preset_check_summary(base_lineage, curr_lineage)
+    preset_content = None
     mermaid_content = generate_mermaid_lineage_graph(graph)
+
+    def _formate_changes(changes):
+        return ",".join([k.replace('_', ' ').title() for k in list(changes.keys())])
+
+    if len(preset_checks) > 0:
+        from py_markdown_table.markdown_table import markdown_table
+        data = []
+        for check in preset_checks:
+            data.append({
+                'Name': check.name,
+                'Type': str(check.type).replace('_', ' ').title(),
+                'Description': check.description or 'N/A',
+                'Type of Changes': _formate_changes(check.changes)
+            })
+        preset_content = markdown_table(data).set_params(quote=False, row_sep='markdown').get_markdown()
 
     if summary_format == 'mermaid':
         return mermaid_content
+    elif summary_format == 'preset':
+        return preset_content
     elif summary_format == 'markdown':
         # TODO: Check the markdown output content is longer than 65535 characters.
         # If it is, we should reduce the content length.
-        return f'''
+        content = f'''
 # Recce Summary
 
 ## Lineage Graph
@@ -206,3 +308,9 @@ def generate_markdown_summary(ctx, summary_format: str = 'markdown'):
 {mermaid_content}
 ```
 '''
+        if preset_content:
+            content += f'''
+## Impacted Preset Checks
+{preset_content}
+'''
+        return content

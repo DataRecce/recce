@@ -3,7 +3,7 @@ from typing import TypedDict, Optional, Tuple
 import agate
 from pydantic import BaseModel
 
-from .core import Task
+from .core import Task, TaskResultDiffer
 from .dataframe import DataFrame
 from ..core import default_context
 from ..exceptions import RecceException
@@ -166,3 +166,11 @@ class QueryDiffTask(Task, QueryMixin):
         super().cancel()
         if self.connection:
             self.close_connection(self.connection)
+
+
+class QueryDiffResultDiffer(TaskResultDiffer):
+    def _check_result_changed_fn(self, result):
+        base = result.get('base')
+        current = result.get('current')
+
+        return TaskResultDiffer.diff(base, current)
