@@ -3,7 +3,7 @@ from dataclasses import dataclass
 from typing import Optional
 
 import pandas as pd
-from sqlglot import parse_one, Expression
+from sqlglot import parse_one, Expression, select
 from sqlglot.optimizer import traverse_scope
 from sqlmesh.core.context import Context as SqlmeshContext
 from sqlmesh.core.environment import Environment
@@ -93,14 +93,22 @@ class SqlmeshAdapter(BaseAdapter):
         else:
             expression = sql
 
-        expression = expression.limit(limit + 1 if limit else None)
-
         env = self.base_env if base else self.curr_env
+        model_names = [model.name for model in self.context.models.values()]
         if env.name != 'prod':
             for scope in traverse_scope(expression):
                 for table in scope.tables:
-                    table.args['db'] = f"{table.args['db']}__{env.name}"
+                    if f'{table.db}.{table.name}' in model_names:
+                        table.args['db'] = f"{table.args['db']}__{env.name}"
 
+        if limit:
+            expression = select(
+                '*'
+            ).from_(
+                '__QUERY'
+            ).with_(
+                '__QUERY', as_=expression
+            ).limit(limit + 1 if limit else None)
         df = self.context.fetchdf(expression)
         if limit and len(df) > limit:
             df = df.head(limit)
