@@ -110,8 +110,6 @@ class Node:
 
     def __str__(self):
         style = None
-        row_count_delta_percentage = self._cal_row_count_delta_percentage()
-        schema_diff = self._get_schema_diff()
 
         if self.change_status == 'added':
             style = f'style {self.id} stroke:{ADD_COLOR}'
