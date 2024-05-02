@@ -83,14 +83,14 @@ class RowCountDiffTask(Task, QueryMixin):
             curr_row_count = None
 
             try:
-                df = sqlmesh_adapter.fetchdf(f'select count(*) from {name}')
+                df, _ = sqlmesh_adapter.fetchdf_with_limit(f'select count(*) from {name}', base=True)
                 base_row_count = int(df.iloc[0, 0])
             except Exception:
                 pass
             self.check_cancel()
 
             try:
-                df = sqlmesh_adapter.fetchdf(f'select count(*) from {name}', env='dev')
+                df, _ = sqlmesh_adapter.fetchdf_with_limit(f'select count(*) from {name}', base=False)
                 curr_row_count = int(df.iloc[0, 0])
             except Exception:
                 pass

@@ -89,7 +89,7 @@ class SqlmeshAdapter(BaseAdapter):
         limit: Optional[int] = None
     ) -> (pd.DataFrame, bool):
         if isinstance(sql, str):
-            expression = parse_one(sql)
+            expression = parse_one(sql, dialect=self.context.default_dialect)
         else:
             expression = sql
 
