@@ -20,6 +20,7 @@ export type RunType =
   | "simple"
   | "query"
   | "query_diff"
+  | "query_diff_join"
   | "value_diff"
   | "value_diff_detail"
   | "schema_diff"

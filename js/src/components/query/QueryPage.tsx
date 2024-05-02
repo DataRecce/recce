@@ -6,7 +6,7 @@ import {
   useRecceQueryContext,
 } from "@/lib/hooks/RecceQueryContext";
 
-import { createCheckByRun, updateCheck } from "@/lib/api/checks";
+import { createCheckByRun } from "@/lib/api/checks";
 import { QueryDiffResultView } from "./QueryDiffResultView";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { cacheKeys } from "@/lib/api/cacheKeys";
@@ -16,12 +16,15 @@ import {
   QueryViewOptions,
   submitQuery,
   submitQueryDiff,
+  submitQueryDiffJoin,
 } from "@/lib/api/adhocQuery";
 import { QueryResultView } from "./QueryResultView";
 import { cancelRun, waitRun } from "@/lib/api/runs";
 import { RunView } from "../run/RunView";
 import { Run } from "@/lib/api/types";
 import { useLineageGraphContext } from "@/lib/hooks/LineageGraphContext";
+import { QueryForm } from "./QueryForm";
+import { QueryDiffJoinResultView } from "./QueryDiffJoinResultView";
 
 export const QueryPage = () => {
   const { sqlQuery: _sqlQuery, setSqlQuery } = useRecceQueryContext();
@@ -34,6 +37,7 @@ export const QueryPage = () => {
 
   const [runType, setRunType] = useState<string>();
   const [runId, setRunId] = useState<string>();
+  const [primaryKeys, setPrimaryKeys] = useState<string[]>([]);
 
   const [viewOptions, setViewOptions] = useState<
     QueryDiffViewOptions | QueryViewOptions
@@ -41,12 +45,17 @@ export const QueryPage = () => {
 
   const queryClient = useQueryClient();
   const [, setLocation] = useLocation();
-  const queryFn = async (type: "query" | "query_diff") => {
+  const queryFn = async (type: "query" | "query_diff" | "query_diff_join") => {
     setRunType(type);
     const { run_id } =
       type === "query"
         ? await submitQuery({ sql_template: sqlQuery }, { nowait: true })
-        : await submitQueryDiff({ sql_template: sqlQuery }, { nowait: true });
+        : type === "query_diff"
+        ? await submitQueryDiff({ sql_template: sqlQuery }, { nowait: true })
+        : await submitQueryDiffJoin(
+            { sql_template: sqlQuery, primary_keys: primaryKeys },
+            { nowait: true }
+          );
     setRunId(run_id);
 
     return await waitRun(run_id);
@@ -92,7 +101,11 @@ export const QueryPage = () => {
       <Flex justifyContent="right" padding="5px" gap="5px">
         <Button
           colorScheme="blue"
-          onClick={() => runQuery("query_diff")}
+          onClick={() =>
+            primaryKeys.length === 0
+              ? runQuery("query_diff")
+              : runQuery("query_diff_join")
+          }
           isDisabled={isPending}
           size="sm"
         >
@@ -107,15 +120,25 @@ export const QueryPage = () => {
           Run
         </Button>
       </Flex>
-      <Box flex="1" border={"1px solid #CBD5E0"} height="200px" width="100%">
-        <SqlEditor
-          value={sqlQuery}
-          onChange={setSqlQuery}
-          onRun={() => runQuery("query")}
-          onRunDiff={() => runQuery("query_diff")}
+      <Flex direction="row" height="300px">
+        <Box flex="1" border={"1px solid #CBD5E0"}>
+          <SqlEditor
+            value={sqlQuery}
+            onChange={setSqlQuery}
+            onRun={() => runQuery("query")}
+            onRunDiff={() => runQuery("query_diff")}
+          />
+        </Box>
+        <QueryForm
+          ml="10px"
+          p="5px"
+          width="30%"
+          border="1px"
+          borderColor="gray.300"
+          onPrimaryKeysChange={setPrimaryKeys}
         />
-      </Box>
-      <Flex height="50vh" direction="column">
+      </Flex>
+      <Flex flex="1" direction="column">
         {runType === "query" ? (
           <RunView
             key={runId}
@@ -138,12 +161,19 @@ export const QueryPage = () => {
             onViewOptionsChanged={setViewOptions}
             onCancel={handleCancel}
           >
-            {(props) => (
-              <QueryDiffResultView
-                {...props}
-                onAddToChecklist={addToChecklist}
-              />
-            )}
+            {(props) =>
+              runType === "query_diff" ? (
+                <QueryDiffResultView
+                  {...props}
+                  onAddToChecklist={addToChecklist}
+                />
+              ) : (
+                <QueryDiffJoinResultView
+                  {...props}
+                  onAddToChecklist={addToChecklist}
+                />
+              )
+            }
           </RunView>
         )}
       </Flex>
