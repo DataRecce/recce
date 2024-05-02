@@ -144,25 +144,25 @@ export function EnvInfo() {
                       <Thead>
                         <Tr>
                           <Th></Th>
-                          <Th>current</Th>
                           <Th>base</Th>
+                          <Th>current</Th>
                         </Tr>
                       </Thead>
                       <Tbody>
                         <Tr>
                           <Td>schema</Td>
-                          <Td>{JSON.stringify(Array.from(currentSchemas))}</Td>
                           <Td>{JSON.stringify(Array.from(baseSchemas))}</Td>
+                          <Td>{JSON.stringify(Array.from(currentSchemas))}</Td>
                         </Tr>
                         <Tr>
                           <Td>version</Td>
-                          <Td>{dbtCurrent?.dbt_version}</Td>
                           <Td>{dbtBase?.dbt_version}</Td>
+                          <Td>{dbtCurrent?.dbt_version}</Td>
                         </Tr>
                         <Tr>
                           <Td>timestamp</Td>
-                          <Td>{currentTime}</Td>
                           <Td>{baseTime}</Td>
+                          <Td>{currentTime}</Td>
                         </Tr>
                       </Tbody>
                     </Table>
@@ -177,8 +177,8 @@ export function EnvInfo() {
                       <Thead>
                         <Tr>
                           <Th></Th>
-                          <Th>current</Th>
                           <Th>base</Th>
+                          <Th>current</Th>
                         </Tr>
                       </Thead>
                       <Tbody>
