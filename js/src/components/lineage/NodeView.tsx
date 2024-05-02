@@ -36,6 +36,7 @@ import { useCallback } from "react";
 import { createCheckByNodeSchema, createCheckByRun } from "@/lib/api/checks";
 import { useRecceActionContext } from "@/lib/hooks/RecceActionContext";
 import { useLineageGraphContext } from "@/lib/hooks/LineageGraphContext";
+import useModelColumns from "@/lib/hooks/useModelColumns";
 
 interface NodeViewProps {
   node: LineageGraphNode;
@@ -44,7 +45,7 @@ interface NodeViewProps {
 
 export function NodeView({ node, onCloseNode }: NodeViewProps) {
   const [, setLocation] = useLocation();
-  const { setSqlQuery } = useRecceQueryContext();
+  const { setSqlQuery, setPrimaryKeys } = useRecceQueryContext();
   const withColumns =
     node.resourceType === "model" ||
     node.resourceType === "seed" ||
@@ -56,6 +57,7 @@ export function NodeView({ node, onCloseNode }: NodeViewProps) {
   } = useDisclosure();
   const { runAction } = useRecceActionContext();
   const { envInfo } = useLineageGraphContext();
+  const { primaryKey } = useModelColumns(node.name);
 
   const addSchemaCheck = useCallback(async () => {
     const nodeId = node.id;
@@ -205,6 +207,9 @@ export function NodeView({ node, onCloseNode }: NodeViewProps) {
                     } else if (envInfo?.adapterType === "sqlmesh") {
                       setSqlQuery(`select * from ${node.name}`);
                     }
+                    setPrimaryKeys(
+                      primaryKey !== undefined ? [primaryKey] : undefined
+                    );
                     setLocation("/query");
                   }}
                 >

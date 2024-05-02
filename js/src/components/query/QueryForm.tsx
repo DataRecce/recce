@@ -18,10 +18,15 @@ import {
 import { useMemo } from "react";
 
 interface QueryFormProps extends FlexProps {
+  defaultPrimaryKeys: string[] | undefined;
   onPrimaryKeysChange: (primaryKeys: string[]) => void;
 }
 
-export const QueryForm = ({ onPrimaryKeysChange, ...prob }: QueryFormProps) => {
+export const QueryForm = ({
+  defaultPrimaryKeys,
+  onPrimaryKeysChange,
+  ...prob
+}: QueryFormProps) => {
   const { lineageGraph } = useLineageGraphContext();
 
   const columns = useMemo(() => {
@@ -55,6 +60,11 @@ export const QueryForm = ({ onPrimaryKeysChange, ...prob }: QueryFormProps) => {
           multiple
           creatable
           onChange={(vals: string[]) => onPrimaryKeysChange(vals)}
+          defaultValue={
+            defaultPrimaryKeys !== undefined && defaultPrimaryKeys.length !== 0
+              ? defaultPrimaryKeys
+              : undefined
+          }
         >
           <AutoCompleteInput placeholder="Search..." variant="filled">
             {({ tags }: { tags: ItemTag[] }) =>

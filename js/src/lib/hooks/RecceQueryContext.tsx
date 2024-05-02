@@ -3,6 +3,8 @@ import React, { createContext, useContext } from "react";
 export interface QueryContext {
   sqlQuery: string;
   setSqlQuery: (sqlQuery: string) => void;
+  primaryKeys: string[] | undefined;
+  setPrimaryKeys: (primaryKeys: string[] | undefined) => void;
 }
 
 export const defaultSqlQuery = 'select * from {{ ref("mymodel") }}';
@@ -10,6 +12,8 @@ export const defaultSqlQuery = 'select * from {{ ref("mymodel") }}';
 const defaultQueryContext: QueryContext = {
   sqlQuery: defaultSqlQuery,
   setSqlQuery: () => {},
+  primaryKeys: undefined,
+  setPrimaryKeys: () => {},
 };
 
 const RecceQueryContext = createContext(defaultQueryContext);
@@ -20,8 +24,11 @@ interface QueryContextProps {
 
 export function RecceQueryContextProvider({ children }: QueryContextProps) {
   const [sqlQuery, setSqlQuery] = React.useState<string>(defaultSqlQuery);
+  const [primaryKeys, setPrimaryKeys] = React.useState<string[] | undefined>();
   return (
-    <RecceQueryContext.Provider value={{ setSqlQuery, sqlQuery }}>
+    <RecceQueryContext.Provider
+      value={{ setSqlQuery, sqlQuery, setPrimaryKeys, primaryKeys }}
+    >
       {children}
     </RecceQueryContext.Provider>
   );

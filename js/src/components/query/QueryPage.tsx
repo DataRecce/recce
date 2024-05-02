@@ -27,7 +27,12 @@ import { QueryForm } from "./QueryForm";
 import { QueryDiffJoinResultView } from "./QueryDiffJoinResultView";
 
 export const QueryPage = () => {
-  const { sqlQuery: _sqlQuery, setSqlQuery } = useRecceQueryContext();
+  const {
+    sqlQuery: _sqlQuery,
+    setSqlQuery,
+    primaryKeys,
+    setPrimaryKeys,
+  } = useRecceQueryContext();
   const { envInfo } = useLineageGraphContext();
 
   let sqlQuery = _sqlQuery;
@@ -37,7 +42,6 @@ export const QueryPage = () => {
 
   const [runType, setRunType] = useState<string>();
   const [runId, setRunId] = useState<string>();
-  const [primaryKeys, setPrimaryKeys] = useState<string[]>([]);
 
   const [viewOptions, setViewOptions] = useState<
     QueryDiffViewOptions | QueryViewOptions
@@ -94,15 +98,13 @@ export const QueryPage = () => {
     [setLocation, viewOptions, queryClient]
   );
 
-  const hasResult = !isPending && run?.run_id && !run?.error;
-
   return (
     <Flex direction="column" height="100%">
       <Flex justifyContent="right" padding="5px" gap="5px">
         <Button
           colorScheme="blue"
           onClick={() =>
-            primaryKeys.length === 0
+            primaryKeys === undefined || primaryKeys.length === 0
               ? runQuery("query_diff")
               : runQuery("query_diff_join")
           }
@@ -135,6 +137,7 @@ export const QueryPage = () => {
           width="30%"
           border="1px"
           borderColor="gray.300"
+          defaultPrimaryKeys={primaryKeys}
           onPrimaryKeysChange={setPrimaryKeys}
         />
       </Flex>
