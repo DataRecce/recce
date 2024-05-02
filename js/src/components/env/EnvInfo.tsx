@@ -136,37 +136,62 @@ export function EnvInfo() {
                 </>
               )}
               <Divider />
-              <Flex justifyContent="left" gap="5px" direction="column">
-                <Heading size="sm">DBT</Heading>
-                <TableContainer>
-                  <Table variant="simple">
-                    <Thead>
-                      <Tr>
-                        <Th></Th>
-                        <Th>current</Th>
-                        <Th>base</Th>
-                      </Tr>
-                    </Thead>
-                    <Tbody>
-                      <Tr>
-                        <Td>schema</Td>
-                        <Td>{JSON.stringify(Array.from(currentSchemas))}</Td>
-                        <Td>{JSON.stringify(Array.from(baseSchemas))}</Td>
-                      </Tr>
-                      <Tr>
-                        <Td>version</Td>
-                        <Td>{dbtCurrent?.dbt_version}</Td>
-                        <Td>{dbtBase?.dbt_version}</Td>
-                      </Tr>
-                      <Tr>
-                        <Td>timestamp</Td>
-                        <Td>{currentTime}</Td>
-                        <Td>{baseTime}</Td>
-                      </Tr>
-                    </Tbody>
-                  </Table>
-                </TableContainer>
-              </Flex>
+              {envInfo?.adapterType === "dbt" && (
+                <Flex justifyContent="left" gap="5px" direction="column">
+                  <Heading size="sm">DBT</Heading>
+                  <TableContainer>
+                    <Table variant="simple">
+                      <Thead>
+                        <Tr>
+                          <Th></Th>
+                          <Th>base</Th>
+                          <Th>current</Th>
+                        </Tr>
+                      </Thead>
+                      <Tbody>
+                        <Tr>
+                          <Td>schema</Td>
+                          <Td>{JSON.stringify(Array.from(baseSchemas))}</Td>
+                          <Td>{JSON.stringify(Array.from(currentSchemas))}</Td>
+                        </Tr>
+                        <Tr>
+                          <Td>version</Td>
+                          <Td>{dbtBase?.dbt_version}</Td>
+                          <Td>{dbtCurrent?.dbt_version}</Td>
+                        </Tr>
+                        <Tr>
+                          <Td>timestamp</Td>
+                          <Td>{baseTime}</Td>
+                          <Td>{currentTime}</Td>
+                        </Tr>
+                      </Tbody>
+                    </Table>
+                  </TableContainer>
+                </Flex>
+              )}
+              {envInfo?.adapterType === "sqlmesh" && (
+                <Flex justifyContent="left" gap="5px" direction="column">
+                  <Heading size="sm">SQLMesh</Heading>
+                  <TableContainer>
+                    <Table variant="simple">
+                      <Thead>
+                        <Tr>
+                          <Th></Th>
+                          <Th>base</Th>
+                          <Th>current</Th>
+                        </Tr>
+                      </Thead>
+                      <Tbody>
+                        <Tr>
+                          <Td>Environment</Td>
+                          <Td>{envInfo?.sqlmesh?.base_env}</Td>
+                          <Td>{envInfo?.sqlmesh?.current_env}</Td>
+                        </Tr>
+                      </Tbody>
+                    </Table>
+                  </TableContainer>
+                </Flex>
+              )}
             </Flex>
           </ModalBody>
           <ModalFooter>

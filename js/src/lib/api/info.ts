@@ -37,6 +37,10 @@ export interface ManifestMetadata extends ArtifactMetadata {
   project_name?: string;
   user_id?: string;
 }
+export interface SQLMeshInfo {
+  base_env: string;
+  current_env: string;
+}
 
 export interface CatalogMetadata extends ArtifactMetadata {}
 
@@ -54,7 +58,6 @@ export interface LineageData {
   manifest_metadata?: ManifestMetadata | null;
   catalog_metadata?: CatalogMetadata | null;
 }
-
 interface LineageOutput {
   error?: string;
   data?: LineageData;
@@ -123,6 +126,7 @@ export interface ServerInfoResult {
   review_mode: boolean;
   git?: gitInfo;
   pull_request?: pullRequestInfo;
+  sqlmesh?: SQLMeshInfo;
   lineage: {
     base: LineageData;
     current: LineageData;

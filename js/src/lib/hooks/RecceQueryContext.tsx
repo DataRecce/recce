@@ -1,34 +1,33 @@
-import React, { createContext, useContext } from 'react';
+import React, { createContext, useContext } from "react";
 
 export interface QueryContext {
-    sqlQuery: string;
-    setSqlQuery: (sqlQuery: string) => void;
+  sqlQuery: string;
+  setSqlQuery: (sqlQuery: string) => void;
 }
 
-const defaultSqlQuery = 'select * from {{ ref("mymodel") }}';
+export const defaultSqlQuery = 'select * from {{ ref("mymodel") }}';
 
 const defaultQueryContext: QueryContext = {
-    sqlQuery: defaultSqlQuery,
-    setSqlQuery: () => {},
+  sqlQuery: defaultSqlQuery,
+  setSqlQuery: () => {},
 };
 
 const RecceQueryContext = createContext(defaultQueryContext);
 
 interface QueryContextProps {
-    children: React.ReactNode;
+  children: React.ReactNode;
 }
 
 export function RecceQueryContextProvider({ children }: QueryContextProps) {
-    const [sqlQuery, setSqlQuery] = React.useState<string>(defaultSqlQuery);
-    return (
-        <RecceQueryContext.Provider value={{ setSqlQuery, sqlQuery }}>
-            {children}
-        </RecceQueryContext.Provider>
-    );
+  const [sqlQuery, setSqlQuery] = React.useState<string>(defaultSqlQuery);
+  return (
+    <RecceQueryContext.Provider value={{ setSqlQuery, sqlQuery }}>
+      {children}
+    </RecceQueryContext.Provider>
+  );
 }
 
 export const useRecceQueryContext = () => useContext(RecceQueryContext);
-
 
 export interface RowCountStateContext {
   isNodesFetching: string[];
@@ -46,10 +45,14 @@ interface RowCountStateContextProps {
   children: React.ReactNode;
 }
 
-export function RowCountStateContextProvider({ children }: RowCountStateContextProps) {
+export function RowCountStateContextProvider({
+  children,
+}: RowCountStateContextProps) {
   const [isNodesFetching, setIsNodesFetching] = React.useState<string[]>([]);
   return (
-    <RowCountStateContext.Provider value={{ isNodesFetching , setIsNodesFetching }}>
+    <RowCountStateContext.Provider
+      value={{ isNodesFetching, setIsNodesFetching }}
+    >
       {children}
     </RowCountStateContext.Provider>
   );
