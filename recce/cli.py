@@ -34,6 +34,7 @@ dbt_related_options = [
 sqlmesh_related_options = [
     click.option('--sqlmesh', is_flag=True, help='Use SQLMesh ', hidden=True),
     click.option('--sqlmesh-envs', is_flag=False, help='SQLMesh envs to compare. SOURCE:TARGET', hidden=True),
+    click.option('--sqlmesh-config', is_flag=False, help='SQLMesh config name to use', hidden=True),
 ]
 
 recce_options = [
