@@ -32,12 +32,12 @@ class DataFrame(BaseModel):
 
     @staticmethod
     def from_agate(table: 'agate.Table', limit: t.Optional[int] = None, more: t.Optional[bool] = None):
+        import dbt.clients.agate_helper
+        import agate
         columns = []
 
         for col_name, col_type in zip(table.column_names, table.column_types):
-            import dbt.clients.agate_helper
-            import agate
-            
+
             has_integer = hasattr(dbt.clients.agate_helper, 'Integer')
 
             if isinstance(col_type, agate.Number):
