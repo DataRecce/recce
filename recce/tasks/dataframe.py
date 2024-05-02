@@ -36,6 +36,8 @@ class DataFrame(BaseModel):
 
         for col_name, col_type in zip(table.column_names, table.column_types):
             import dbt.clients.agate_helper
+            import agate
+            
             has_integer = hasattr(dbt.clients.agate_helper, 'Integer')
 
             if isinstance(col_type, agate.Number):

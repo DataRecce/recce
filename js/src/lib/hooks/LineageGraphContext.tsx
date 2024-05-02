@@ -10,6 +10,7 @@ import React, {
 import { cacheKeys } from "../api/cacheKeys";
 import {
   ManifestMetadata,
+  SQLMeshInfo,
   getServerInfo,
   gitInfo,
   pullRequestInfo,
@@ -27,6 +28,7 @@ interface EnvInfo {
     base: ManifestMetadata | undefined | null;
     current: ManifestMetadata | undefined | null;
   };
+  sqlmesh?: SQLMeshInfo | null;
 }
 
 export interface LineageGraphContextType {
@@ -137,6 +139,7 @@ export function LineageGraphContextProvider({ children }: LineageGraphProps) {
       base: dbtBase,
       current: dbtCurrent,
     },
+    sqlmesh: data?.sqlmesh,
   };
 
   return (

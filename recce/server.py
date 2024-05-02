@@ -145,7 +145,7 @@ async def get_info():
         state = context.export_state()
 
     try:
-        return {
+        info = {
             'adapter_type': context.adapter_type,
             'review_mode': context.review_mode,
             'git': state.git.to_dict() if state.git else None,
@@ -156,6 +156,16 @@ async def get_info():
             },
             'demo': bool(demo)
         }
+
+        if context.adapter_type == 'sqlmesh':
+            from recce.adapter.sqlmesh_adapter import SqlmeshAdapter
+            sqlmesh_adapter: SqlmeshAdapter = context.adapter
+            info['sqlmesh'] = {
+                'base_env': sqlmesh_adapter.base_env.name,
+                'current_env': sqlmesh_adapter.curr_env.name,
+            }
+
+        return info
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))
 

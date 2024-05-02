@@ -1,7 +1,10 @@
 import React, { useState, useCallback } from "react";
 import { Box, Button, Flex } from "@chakra-ui/react";
 import SqlEditor from "./SqlEditor";
-import { useRecceQueryContext } from "@/lib/hooks/RecceQueryContext";
+import {
+  defaultSqlQuery,
+  useRecceQueryContext,
+} from "@/lib/hooks/RecceQueryContext";
 
 import { createCheckByRun, updateCheck } from "@/lib/api/checks";
 import { QueryDiffResultView } from "./QueryDiffResultView";
@@ -18,9 +21,16 @@ import { QueryResultView } from "./QueryResultView";
 import { cancelRun, waitRun } from "@/lib/api/runs";
 import { RunView } from "../run/RunView";
 import { Run } from "@/lib/api/types";
+import { useLineageGraphContext } from "@/lib/hooks/LineageGraphContext";
 
 export const QueryPage = () => {
-  const { sqlQuery, setSqlQuery } = useRecceQueryContext();
+  const { sqlQuery: _sqlQuery, setSqlQuery } = useRecceQueryContext();
+  const { envInfo } = useLineageGraphContext();
+
+  let sqlQuery = _sqlQuery;
+  if (envInfo?.adapterType === "sqlmesh" && _sqlQuery === defaultSqlQuery) {
+    sqlQuery = `select * from db.mymodel`;
+  }
 
   const [runType, setRunType] = useState<string>();
   const [runId, setRunId] = useState<string>();
