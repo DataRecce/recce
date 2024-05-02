@@ -72,7 +72,8 @@ class SqlmeshAdapter(BaseAdapter):
         if len(envs) != 2:
             raise Exception('sqlmesh_envs must be in the format of "SOURCE:TARGET"')
 
-        context = SqlmeshContext()
+        sqlmesh_config = kwargs.get('sqlmesh_config', None)
+        context = SqlmeshContext(config=sqlmesh_config)
         base_env = context.state_reader.get_environment(envs[0])
         curr_env = context.state_reader.get_environment(envs[1])
         if base_env is None:
