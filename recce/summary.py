@@ -75,8 +75,44 @@ class Node:
         if child_id not in self.children:
             self.children.append(child_id)
 
+    def _cal_row_count_delta_percentage(self):
+        row_count_diff, run_result = _get_node_row_count_diff(self.id)
+        if row_count_diff:
+            base = run_result.get('base', 0)
+            current = run_result.get('current', 0)
+            if int(current) > int(base):
+                return f'+{(int(current) - int(base)) / int(current) * 100}%'
+            else:
+                return f'-{(int(base) - int(current)) / int(base) * 100}%'
+        return None
+
+    def _get_schema_diff(self):
+        base_schema = self.base_data.get('columns', {})
+        current_schema = self.current_data.get('columns', {})
+        schema_diff = TaskResultDiffer.diff(base_schema, current_schema)
+        return schema_diff
+
+    def _what_changed(self):
+        changes = []
+        if self.change_status == 'added':
+            return ['Added Node']
+        elif self.change_status == 'removed':
+            return ['Removed Node']
+        elif self.change_status == 'modified':
+            changes.append('Code')
+        row_count_delta_percentage = self._cal_row_count_delta_percentage()
+        if row_count_delta_percentage:
+            changes.append(f'Row Count {row_count_delta_percentage}')
+        schema_diff = self._get_schema_diff()
+        if schema_diff:
+            changes.append('Schema')
+        return changes
+
     def __str__(self):
         style = None
+        row_count_delta_percentage = self._cal_row_count_delta_percentage()
+        schema_diff = self._get_schema_diff()
+
         if self.change_status == 'added':
             style = f'style {self.id} stroke:{ADD_COLOR}'
         elif self.change_status == 'modified':
@@ -85,7 +121,9 @@ class Node:
             style = f'style {self.id} stroke:{REMOVE_COLOR}'
 
         if style:
-            return f'{self.id}["{self.name} [{self.change_status.upper()}]"]\n{style}\n'
+            output = f'{self.id}["{self.name}\n\n[What\'s Changed]\n'
+            changes = self._what_changed()
+            return output + ', '.join(changes) + f'"]\n{style}\n'
         return f'{self.id}["{self.name}"]\n'
 
 
@@ -201,6 +239,19 @@ def _build_node_schema(lineage, node_id):
     return lineage.get('nodes', {}).get(node_id, {}).get('columns', {})
 
 
+def _get_node_row_count_diff(node_id):
+    row_count_runs = RunDAO().list(type_filter=RunType.ROW_COUNT_DIFF)
+    for run in row_count_runs:
+        if run.params.get('node_id') == node_id:
+            result = run.result.items()
+            diff = TaskResultDiffer.diff(result.get('base'), result.get('curr'))
+            return diff, result
+    return None, None
+
+
+# def _get_node_schema_diff(node_id):
+
+
 def generate_preset_check_summary(base_lineage, curr_lineage) -> List[CheckSummary]:
     runs = RunDAO().list()
     preset_checks = [check for check in CheckDAO().list() if check.is_preset is True]
@@ -245,7 +296,7 @@ def generate_preset_check_summary(base_lineage, curr_lineage) -> List[CheckSumma
     return preset_checks_summary
 
 
-def generate_mermaid_lineage_graph(graph: LineageGraph):
+def generate_mermaid_lineage_graph(graph: LineageGraph, preset_checks=None):
     content = 'graph LR\n'
     # Only show the modified nodes and there children
     queue = list(graph.modified_set)
@@ -257,6 +308,7 @@ def generate_mermaid_lineage_graph(graph: LineageGraph):
         if node_id in display_nodes:
             # Skip if already displayed
             continue
+
         display_nodes.add(node_id)
         node = graph.nodes[node_id]
         content += f'{node}'
@@ -275,12 +327,13 @@ def generate_markdown_summary(ctx, summary_format: str = 'markdown'):
     base_lineage = ctx.get_lineage(base=True)
     graph = _build_lineage_graph(base_lineage, curr_lineage)
     preset_checks = generate_preset_check_summary(base_lineage, curr_lineage)
+    mermaid_content = generate_mermaid_lineage_graph(graph, preset_checks)
     preset_content = None
-    mermaid_content = generate_mermaid_lineage_graph(graph)
 
     def _formate_changes(changes):
         return ",".join([k.replace('_', ' ').title() for k in list(changes.keys())])
 
+    # Generate preset check summary if we found any changes
     if len(preset_checks) > 0:
         from py_markdown_table.markdown_table import markdown_table
         data = []
