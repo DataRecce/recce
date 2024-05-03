@@ -77,14 +77,16 @@ class Node:
             self.children.append(child_id)
 
     def _cal_row_count_delta_percentage(self):
-        row_count_diff, run_result = _get_node_row_count_diff(self.id)
+        row_count_diff, run_result = _get_node_row_count_diff(self.id, self.name)
         if row_count_diff:
             base = run_result.get('base', 0)
-            current = run_result.get('current', 0)
+            current = run_result.get('curr', 0)
             if int(current) > int(base):
-                return f'+{(int(current) - int(base)) / int(current) * 100}%'
+                p = (int(current) - int(base)) / int(current) * 100
+                return f'🔼 +{round(p, 2) if p > 0.1 else "<0.1"}%'
             else:
-                return f'-{(int(base) - int(current)) / int(base) * 100}%'
+                p = (int(base) - int(current)) / int(current) * 100
+                return f'🔽 -{round(p, 2) if p > 0.1 else "<0.1"}%'
         return None
 
     def _get_schema_diff(self):
@@ -259,11 +261,15 @@ def _build_node_schema(lineage, node_id):
     return lineage.get('nodes', {}).get(node_id, {}).get('columns', {})
 
 
-def _get_node_row_count_diff(node_id):
+def _get_node_row_count_diff(node_id, node_name):
     row_count_runs = RunDAO().list(type_filter=RunType.ROW_COUNT_DIFF)
     for run in row_count_runs:
-        if run.params.get('node_id') == node_id:
-            result = run.result.items()
+        if node_id in run.params.get('node_ids', []):
+            result = run.result.get(node_name, {})
+            diff = TaskResultDiffer.diff(result.get('base'), result.get('curr'))
+            return diff, result
+        elif run.params.get('node_id') == node_id:
+            result = run.result.get(node_name, {})
             diff = TaskResultDiffer.diff(result.get('base'), result.get('curr'))
             return diff, result
     return None, None
