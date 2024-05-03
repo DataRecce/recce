@@ -39,8 +39,11 @@ class BaseAdapter(ABC):
         for key, node in manifest.nodes.items():
             if node.name == node_name:
                 return node
-
         return None
+
+    def get_node_by_name(self, node_name):
+        node = self.find_node_by_name(node_name) or self.find_node_by_name(node_name, base=True)
+        return node
 
     def get_node_name_by_id(self, unique_id):
         if unique_id in self.curr_manifest.nodes:

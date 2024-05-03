@@ -1,11 +1,12 @@
-from typing import List, Dict, Set, Union, Type
+from typing import List, Dict, Set, Union, Type, Optional
 from uuid import UUID
 
 from pydantic import BaseModel
 
-from recce.models import CheckDAO, RunDAO, RunType
+from recce.models import CheckDAO, RunDAO, RunType, Run
 from recce.tasks.core import TaskResultDiffer
 from recce.tasks.histogram import HistogramDiffTaskResultDiffer
+from recce.tasks.profile import ProfileDiffResultDiffer
 from recce.tasks.query import QueryDiffResultDiffer
 from recce.tasks.rowcount import RowCountDiffResultDiffer
 from recce.tasks.top_k import TopKDiffTaskResultDiffer
@@ -92,7 +93,7 @@ class Node:
         schema_diff = TaskResultDiffer.diff(base_schema, current_schema)
         return schema_diff
 
-    def _what_changed(self):
+    def _what_changed(self, checks=None):
         changes = []
         if self.change_status == 'added':
             return ['Added Node']
@@ -106,23 +107,41 @@ class Node:
         schema_diff = self._get_schema_diff()
         if schema_diff:
             changes.append('Schema')
+
+        if checks:
+            for check in checks:
+                if check.node_ids and self.id in check.node_ids:
+                    changes.append(str(check.type).replace('_', ' ').title())
         return changes
 
-    def __str__(self):
+    def get_node_str(self, checks=None):
+        is_changed = False
         style = None
 
-        if self.change_status == 'added':
-            style = f'style {self.id} stroke:{ADD_COLOR}'
-        elif self.change_status == 'modified':
-            style = f'style {self.id} stroke:{MODIFIED_COLOR}'
-        elif self.change_status == 'removed':
-            style = f'style {self.id} stroke:{REMOVE_COLOR}'
+        if self.change_status is not None:
+            is_changed = True
+            if self.change_status == 'added':
+                style = f'style {self.id} stroke:{ADD_COLOR}'
+            elif self.change_status == 'modified':
+                style = f'style {self.id} stroke:{MODIFIED_COLOR}'
+            elif self.change_status == 'removed':
+                style = f'style {self.id} stroke:{REMOVE_COLOR}'
 
+        if checks:
+            for check in checks:
+                if check.node_ids and self.id in check.node_ids:
+                    is_changed = True
+
+        content_output = f'{self.id}["{self.name}'
+        if is_changed:
+            content_output += '\n\n[What\'s Changed]\n'
+            changes = self._what_changed(checks)
+            content_output += ', '.join(changes)
+
+        content_output += '"]\n'
         if style:
-            output = f'{self.id}["{self.name}\n\n[What\'s Changed]\n'
-            changes = self._what_changed()
-            return output + ', '.join(changes) + f'"]\n{style}\n'
-        return f'{self.id}["{self.name}"]\n'
+            content_output += f'{style}\n'
+        return content_output
 
 
 class Edge:
@@ -149,6 +168,7 @@ class CheckSummary(BaseModel):
     name: str
     description: str
     changes: dict
+    node_ids: Optional[List[str]]
 
 
 check_result_differ_registry: Dict[RunType, Type[TaskResultDiffer]] = {
@@ -157,19 +177,21 @@ check_result_differ_registry: Dict[RunType, Type[TaskResultDiffer]] = {
     RunType.QUERY_DIFF: QueryDiffResultDiffer,
     RunType.TOP_K_DIFF: TopKDiffTaskResultDiffer,
     RunType.HISTOGRAM_DIFF: HistogramDiffTaskResultDiffer,
+    RunType.PROFILE_DIFF: ProfileDiffResultDiffer,
 }
 
 
-def differ_factory(run_type: RunType, result):
-    differ_clz = check_result_differ_registry.get(run_type)
+def differ_factory(run: Run):
+    differ_clz = check_result_differ_registry.get(run.type)
     if not differ_clz:
         raise NotImplementedError()
-    return differ_clz(result)
+    return differ_clz(run)
 
 
 class LineageGraph:
     nodes: Dict[str, Node] = {}
     edges: Dict[str, Edge] = {}
+    checks: List[CheckSummary] = None
 
     def create_node(self, node_id: str, node_data: dict, data_from: str = 'base'):
         if node_id not in self.nodes:
@@ -276,11 +298,16 @@ def generate_preset_check_summary(base_lineage, curr_lineage) -> List[CheckSumma
                         type=check.type,
                         name=check.name,
                         description=check.description,
-                        changes=changes)
+                        changes=changes,
+                        node_ids=[node_id]
+                    )
                 )
-        elif str(check.type).endswith('_diff') and run is not None:
+        elif (check.type in [RunType.ROW_COUNT_DIFF, RunType.QUERY_DIFF,
+                             RunType.VALUE_DIFF, RunType.PROFILE_DIFF,
+                             RunType.TOP_K_DIFF, RunType.HISTOGRAM_DIFF]
+              and run is not None):
             # Check the result is changed or not
-            differ = differ_factory(check.type, run.result)
+            differ = differ_factory(run)
             if differ.changes is not None:
                 preset_checks_summary.append(
                     CheckSummary(
@@ -288,13 +315,14 @@ def generate_preset_check_summary(base_lineage, curr_lineage) -> List[CheckSumma
                         type=check.type,
                         name=check.name,
                         description=check.description,
-                        changes=differ.changes)
+                        changes=differ.changes,
+                        node_ids=differ.related_node_ids)
                 )
 
     return preset_checks_summary
 
 
-def generate_mermaid_lineage_graph(graph: LineageGraph, preset_checks=None):
+def generate_mermaid_lineage_graph(graph: LineageGraph):
     content = 'graph LR\n'
     # Only show the modified nodes and there children
     queue = list(graph.modified_set)
@@ -309,7 +337,7 @@ def generate_mermaid_lineage_graph(graph: LineageGraph, preset_checks=None):
 
         display_nodes.add(node_id)
         node = graph.nodes[node_id]
-        content += f'{node}'
+        content += node.get_node_str(graph.checks)
         for child_id in node.children:
             queue.append(child_id)
             edge_id = f'{node_id}-->{child_id}'
@@ -324,22 +352,22 @@ def generate_markdown_summary(ctx, summary_format: str = 'markdown'):
     curr_lineage = ctx.get_lineage(base=False)
     base_lineage = ctx.get_lineage(base=True)
     graph = _build_lineage_graph(base_lineage, curr_lineage)
-    preset_checks = generate_preset_check_summary(base_lineage, curr_lineage)
-    mermaid_content = generate_mermaid_lineage_graph(graph, preset_checks)
+    graph.checks = generate_preset_check_summary(base_lineage, curr_lineage)
+    mermaid_content = generate_mermaid_lineage_graph(graph)
     preset_content = None
 
     def _formate_changes(changes):
         return ",".join([k.replace('_', ' ').title() for k in list(changes.keys())])
 
     # Generate preset check summary if we found any changes
-    if len(preset_checks) > 0:
+    if len(graph.checks) > 0:
         from py_markdown_table.markdown_table import markdown_table
         data = []
-        for check in preset_checks:
+        for check in graph.checks:
             data.append({
                 'Name': check.name,
                 'Type': str(check.type).replace('_', ' ').title(),
-                'Description': check.description or 'N/A',
+                'Description': check.description.replace('\n', ' ') or 'N/A',
                 'Type of Changes': _formate_changes(check.changes)
             })
         preset_content = markdown_table(data).set_params(quote=False, row_sep='markdown').get_markdown()

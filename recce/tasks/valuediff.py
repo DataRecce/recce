@@ -271,6 +271,9 @@ class ValueDiffTaskResultDiffer(TaskResultDiffer):
 
         return changes if is_changed else None
 
+    def _get_related_node_ids(self, params):
+        return TaskResultDiffer.get_node_ids_by_name(params.get('model'))
+
 
 class ValueDiffDetailParams(TypedDict):
     primary_key: str

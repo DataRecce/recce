@@ -365,3 +365,6 @@ class HistogramDiffTask(Task, QueryMixin):
 class HistogramDiffTaskResultDiffer(TaskResultDiffer):
     def _check_result_changed_fn(self, result):
         return TaskResultDiffer.diff(result['base'], result['current'])
+
+    def _get_related_node_ids(self, params):
+        return TaskResultDiffer.get_node_ids_by_name(params.get('model'))
