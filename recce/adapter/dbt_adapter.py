@@ -4,7 +4,7 @@ import os
 import uuid
 from contextlib import contextmanager
 from dataclasses import dataclass, fields
-from typing import Callable, Dict, List, Optional, Tuple, Iterator
+from typing import Callable, Dict, List, Optional, Tuple, Iterator, Any
 
 import agate
 import dbt.adapters.factory
@@ -153,6 +153,7 @@ class DbtArgs:
     project_dir: Optional[str] = None,
     profile: Optional[str] = None,
     target_path: Optional[str] = None,
+    project_only_flags: Optional[Dict[str, Any]] = None
 
 
 @dataclass
@@ -190,6 +191,7 @@ class DbtAdapter(BaseAdapter):
             project_dir=project_dir,
             profiles_dir=profiles_dir,
             profile=profile_name,
+            project_only_flags={},
         )
         set_from_args(args, args)
 
