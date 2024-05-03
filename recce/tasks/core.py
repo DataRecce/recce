@@ -51,7 +51,7 @@ class TaskResultDiffer(ABC):
     def __init__(self, run: Run):
         self.run = run
         self.changes = self._check_result_changed_fn(run.result)
-        self.related_node_ids = self._get_related_node_ids(run.params)
+        self.related_node_ids = self._get_related_node_ids()
 
     @staticmethod
     def diff(base, current):
@@ -60,9 +60,9 @@ class TaskResultDiffer(ABC):
         return diff if diff else None
 
     @staticmethod
-    def get_node_ids_by_name(name):
+    def get_node_id_by_name(name):
         node = default_context().adapter.get_node_by_name(name)
-        return [node.unique_id] if node else None
+        return node.unique_id if node else None
 
     @abstractmethod
     def _check_result_changed_fn(self, result):
@@ -72,10 +72,17 @@ class TaskResultDiffer(ABC):
         """
         raise NotImplementedError()
 
-    @abstractmethod
-    def _get_related_node_ids(self, params):
+    def _get_related_node_ids(self) -> List[str] | None:
         """
         Get the related node ids.
         Should be implemented by subclass.
         """
-        raise NotImplementedError()
+        params = self.run.params
+        if params.get('model'):
+            return [TaskResultDiffer.get_node_id_by_name(params.get('model'))]
+        elif params.get('node_names'):
+            names = params.get('node_names', [])
+            return [TaskResultDiffer.get_node_id_by_name(name) for name in names]
+        else:
+            # No related node ids in the params
+            return None

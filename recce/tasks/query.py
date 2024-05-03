@@ -174,7 +174,3 @@ class QueryDiffResultDiffer(TaskResultDiffer):
         current = result.get('current')
 
         return TaskResultDiffer.diff(base, current)
-
-    def _get_related_node_ids(self, params):
-        # QueryDiffTask does not have related node ids
-        return None

@@ -126,8 +126,3 @@ class RowCountDiffResultDiffer(TaskResultDiffer):
             current[node] = row_counts['curr']
 
         return TaskResultDiffer.diff(base, current)
-
-    def _get_related_node_ids(self, params):
-        node_names = params.get('node_names', [])
-        nodes = [default_context().adapter.get_node_by_name(node_name) for node_name in node_names]
-        return [node.unique_id for node in nodes]

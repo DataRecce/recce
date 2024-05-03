@@ -159,6 +159,3 @@ class TopKDiffTaskResultDiffer(TaskResultDiffer):
         current = result.get('current')
 
         return TaskResultDiffer.diff(base, current)
-
-    def _get_related_node_ids(self, params):
-        return TaskResultDiffer.get_node_ids_by_name(params.get('model'))
