@@ -304,8 +304,7 @@ def generate_preset_check_summary(base_lineage, curr_lineage) -> List[CheckSumma
                 )
         elif (check.type in [RunType.ROW_COUNT_DIFF, RunType.QUERY_DIFF,
                              RunType.VALUE_DIFF, RunType.PROFILE_DIFF,
-                             RunType.TOP_K_DIFF, RunType.HISTOGRAM_DIFF]
-              and run is not None):
+                             RunType.TOP_K_DIFF, RunType.HISTOGRAM_DIFF] and run is not None):
             # Check the result is changed or not
             differ = differ_factory(run)
             if differ.changes is not None:
