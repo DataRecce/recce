@@ -46,6 +46,7 @@
     "react-data-grid": "7.0.0-beta.40",
     "react-dom": "^18",
     "react-icons": "^4.11.0",
+    "react-split": "^2.0.14",
     "reactflow": "^11.10.1",
     "wouter": "^2.12.1",
     "yaml": "^2.4.1"
