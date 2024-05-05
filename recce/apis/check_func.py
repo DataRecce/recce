@@ -48,7 +48,7 @@ def _generate_default_name(check_type, params, view_options):
         if ref:
             return f"query of {ref}".capitalize()
         return f"{'query'.capitalize()} - {now}"
-    elif check_type == RunType.QUERY_DIFF or check_type == RunType.QUERY_DIFF_JOIN:
+    elif check_type == RunType.QUERY_DIFF:
         ref = _get_ref_model(params.get('sql_template'))
         if ref:
             return f"query diff of {ref}".capitalize()

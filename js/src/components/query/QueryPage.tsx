@@ -16,7 +16,6 @@ import {
   QueryViewOptions,
   submitQuery,
   submitQueryDiff,
-  submitQueryDiffJoin,
 } from "@/lib/api/adhocQuery";
 import { QueryResultView } from "./QueryResultView";
 import { cancelRun, waitRun } from "@/lib/api/runs";
@@ -49,14 +48,12 @@ export const QueryPage = () => {
 
   const queryClient = useQueryClient();
   const [, setLocation] = useLocation();
-  const queryFn = async (type: "query" | "query_diff" | "query_diff_join") => {
+  const queryFn = async (type: "query" | "query_diff") => {
     setRunType(type);
     const { run_id } =
       type === "query"
         ? await submitQuery({ sql_template: sqlQuery }, { nowait: true })
-        : type === "query_diff"
-        ? await submitQueryDiff({ sql_template: sqlQuery }, { nowait: true })
-        : await submitQueryDiffJoin(
+        : await submitQueryDiff(
             { sql_template: sqlQuery, primary_keys: primaryKeys },
             { nowait: true }
           );
@@ -98,22 +95,12 @@ export const QueryPage = () => {
     [setLocation, viewOptions, queryClient]
   );
 
-  const runQueryDiff = () => {
-    if (envInfo?.adapterType === "sqlmesh") {
-      return runQuery("query_diff");
-    }
-    if (primaryKeys === undefined || primaryKeys.length === 0) {
-      return runQuery("query_diff");
-    }
-    return runQuery("query_diff_join");
-  };
-
   return (
     <Flex direction="column" height="100%">
       <Flex justifyContent="right" padding="5px" gap="5px">
         <Button
           colorScheme="blue"
-          onClick={runQueryDiff}
+          onClick={() => runQuery("query_diff")}
           isDisabled={isPending}
           size="sm"
         >
@@ -134,7 +121,7 @@ export const QueryPage = () => {
             value={sqlQuery}
             onChange={setSqlQuery}
             onRun={() => runQuery("query")}
-            onRunDiff={runQueryDiff}
+            onRunDiff={() => runQuery("query_diff")}
           />
         </Box>
         <QueryForm
@@ -171,13 +158,13 @@ export const QueryPage = () => {
             onCancel={handleCancel}
           >
             {(props) =>
-              runType === "query_diff" ? (
-                <QueryDiffResultView
+              run?.result.diff !== null ? (
+                <QueryDiffJoinResultView
                   {...props}
                   onAddToChecklist={addToChecklist}
                 />
               ) : (
-                <QueryDiffJoinResultView
+                <QueryDiffResultView
                   {...props}
                   onAddToChecklist={addToChecklist}
                 />

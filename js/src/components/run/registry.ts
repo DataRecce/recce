@@ -20,7 +20,6 @@ import { RunFormProps, RunResultViewProps } from "./types";
 import { IconType } from "react-icons";
 import { LuBarChartHorizontalBig } from "react-icons/lu";
 import { MdFormatListNumberedRtl, MdSchema } from "react-icons/md";
-import { QueryDiffJoinResultView } from "../query/QueryDiffJoinResultView";
 
 interface RegistryEntry<PT, RT, VO = any> {
   title: string;
@@ -47,11 +46,6 @@ const registry: { [key: string]: RegistryEntry<any, any> } = {
     title: "Query Diff",
     icon: TbSql,
     RunResultView: QueryDiffResultView,
-  },
-  query_diff_join: {
-    title: "Query Diff",
-    icon: TbSql,
-    RunResultView: QueryDiffJoinResultView,
   },
   row_count_diff: {
     title: "Row Count Diff",

@@ -10,7 +10,6 @@ class RunType(Enum):
     SIMPLE = 'simple'
     QUERY = "query"
     QUERY_DIFF = 'query_diff'
-    QUERY_DIFF_JOIN = 'query_diff_join'
     VALUE_DIFF = 'value_diff'
     VALUE_DIFF_DETAIL = 'value_diff_detail'
     SCHEMA_DIFF = 'schema_diff'

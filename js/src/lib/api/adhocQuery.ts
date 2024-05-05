@@ -19,14 +19,8 @@ export interface QueryDiffParams {
 export interface QueryDiffResult {
   base?: DataFrame;
   current?: DataFrame;
+  diff?: DataFrame;
 }
-
-export interface QueryDiffJoinParams {
-  sql_template: string;
-  primary_keys?: string[];
-}
-
-export interface QueryDiffJoinResult extends DataFrame {}
 
 export interface QueryDiffViewOptions {
   changed_only?: boolean;
@@ -47,17 +41,6 @@ export async function submitQueryDiff(
 ) {
   return await submitRun<QueryDiffParams, QueryDiffResult>(
     "query_diff",
-    params,
-    options
-  );
-}
-
-export async function submitQueryDiffJoin(
-  params: QueryDiffParams,
-  options?: SubmitOptions
-) {
-  return await submitRun<QueryDiffJoinParams, QueryDiffJoinResult>(
-    "query_diff_join",
     params,
     options
   );

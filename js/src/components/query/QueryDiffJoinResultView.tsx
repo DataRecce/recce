@@ -1,8 +1,8 @@
 import "react-data-grid/lib/styles.css";
 
 import {
-  QueryDiffJoinResult,
   QueryDiffParams,
+  QueryDiffResult,
   QueryDiffViewOptions,
 } from "@/lib/api/adhocQuery";
 import {
@@ -15,7 +15,7 @@ import {
   Tooltip,
 } from "@chakra-ui/react";
 import { useMemo } from "react";
-import { toQueryDiffJoinGrid } from "./querydiff";
+import { toValueDiffGrid as toQueryDiffJoinGrid } from "../valuediff/valuediff";
 
 import "./styles.css";
 import { Run } from "@/lib/api/types";
@@ -29,10 +29,10 @@ import { AddIcon, WarningIcon } from "@chakra-ui/icons";
 export interface QueryDiffJoinResultViewProps
   extends RunResultViewProps<
     QueryDiffParams,
-    QueryDiffJoinResult,
+    QueryDiffResult,
     QueryDiffViewOptions
   > {
-  onAddToChecklist?: (run: Run<QueryDiffParams, QueryDiffJoinResult>) => void;
+  onAddToChecklist?: (run: Run<QueryDiffParams, QueryDiffResult>) => void;
 }
 
 export const QueryDiffJoinResultView = ({
@@ -60,13 +60,13 @@ export const QueryDiffJoinResultView = ({
       }
     };
 
-    if (!run.result || !run?.params?.primary_keys) {
+    if (!run.result?.diff || !run?.params?.primary_keys) {
       return { columns: [], rows: [] };
     }
 
     const primaryKeys = run.params.primary_keys;
 
-    return toQueryDiffJoinGrid(run?.result, primaryKeys, {
+    return toQueryDiffJoinGrid(run?.result.diff, primaryKeys, {
       changedOnly,
       pinnedColumns,
       onPinnedColumnsChange: handlePinnedColumnsChanged,
@@ -88,9 +88,9 @@ export const QueryDiffJoinResultView = ({
     }
   };
 
-  const limit = run.result?.limit || 0;
+  const limit = run.result?.diff?.limit || 0;
   const warningLimit =
-    limit > 0 && run?.result?.more
+    limit > 0 && run?.result?.diff?.more
       ? `Warning: Displayed results are limited to ${limit.toLocaleString()} records. To ensure complete data retrieval, consider applying a LIMIT or WHERE clause to constrain the result set.`
       : null;
 

@@ -324,9 +324,7 @@ export const CheckDetail = ({ checkId }: CheckDetailProps) => {
         />
       </Box>
 
-      {(check?.type === "query" ||
-        check?.type === "query_diff" ||
-        check?.type === "query_diff_join") && (
+      {(check?.type === "query" || check?.type === "query_diff") && (
         <Accordion defaultIndex={[]} allowToggle>
           <AccordionItem>
             <AccordionButton>
