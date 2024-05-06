@@ -1,7 +1,7 @@
 from typing import TypedDict, List
 
 import agate
-from dbt.clients.agate_helper import merge_tables
+from dbt_common.clients.agate_helper import merge_tables
 from pydantic import BaseModel
 
 from .core import Task, TaskResultDiffer

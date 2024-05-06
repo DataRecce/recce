@@ -1,8 +1,6 @@
 import asyncio
 from typing import Dict, Type, List
 
-from dbt.exceptions import DbtDatabaseError
-
 from recce.core import default_context
 from recce.exceptions import RecceException
 from recce.models import RunType, Run, RunDAO
@@ -83,6 +81,7 @@ def submit_run(type, params, check_id=None):
             asyncio.run_coroutine_threadsafe(update_run_result(run.run_id, result, None), loop)
             return result
         except BaseException as e:
+            from dbt_common.exceptions import DbtDatabaseError
             if isinstance(e, DbtDatabaseError):
                 if str(e).find('100051') and run.type == RunType.PROFILE_DIFF:
                     # Snowflake error '100051 (22012): Division by zero"'

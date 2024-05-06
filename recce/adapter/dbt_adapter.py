@@ -3,13 +3,14 @@ import logging
 import os
 import uuid
 from contextlib import contextmanager
-from dataclasses import dataclass, fields
+from dataclasses import dataclass
 from typing import Callable, Dict, List, Optional, Tuple, Iterator, Any
 
 import agate
 import dbt.adapters.factory
-
 # Reference: https://github.com/AltimateAI/vscode-dbt-power-user/blob/master/dbt_core_integration.py
+from dbt.mp_context import get_mp_context
+
 get_adapter_orig = dbt.adapters.factory.get_adapter
 
 
@@ -26,7 +27,7 @@ from dbt.adapters.base import Column
 from dbt.adapters.factory import get_adapter_class_by_name
 from dbt.adapters.sql import SQLAdapter
 from dbt.config.runtime import RuntimeConfig
-from dbt.contracts.connection import Connection
+from dbt.adapters.contracts.connection import Connection
 from dbt.contracts.graph.manifest import Manifest, WritableManifest
 from dbt.contracts.graph.nodes import ManifestNode
 from dbt.contracts.results import CatalogArtifact
@@ -107,10 +108,11 @@ dbt_version = DbtVersionTool()
 
 
 def as_manifest(m: WritableManifest) -> Manifest:
-    data = m.__dict__
-    all_fields = set([x.name for x in fields(Manifest)])
-    new_data = {k: v for k, v in data.items() if k in all_fields}
-    return Manifest(**new_data)
+    # data = m.__dict__
+    # all_fields = set([x.name for x in fields(Manifest)])
+    # new_data = {k: v for k, v in data.items() if k in all_fields}
+    # return Manifest(**new_data)
+    return Manifest.from_writable_manifest(m)
 
 
 def load_manifest(path: str = None, data: dict = None):
@@ -197,11 +199,16 @@ class DbtAdapter(BaseAdapter):
 
         from dbt.exceptions import DbtProjectError
         try:
+            from dbt_common.context import set_invocation_context, get_invocation_context
+
+            set_invocation_context({})
+            get_invocation_context()._env = dict(os.environ)
             runtime_config = RuntimeConfig.from_args(args)
 
             # adapter
             adapter_name = runtime_config.credentials.type
-            adapter: SQLAdapter = get_adapter_class_by_name(adapter_name)(runtime_config)
+            adapter_cls = get_adapter_class_by_name(adapter_name)
+            adapter: SQLAdapter = adapter_cls(runtime_config, get_mp_context())
             adapter.connections.set_connection_name()
             runtime_config.adapter = adapter
 
@@ -365,9 +372,15 @@ class DbtAdapter(BaseAdapter):
         node = parser.parse_remote(sql_template, node_id)
         process_node(self.runtime_config, manifest, node)
 
-        compiler = self.adapter.get_compiler()
-        compiler.compile_node(node, manifest, context)
-        return node.compiled_code
+        # compiler = self.adapter.get_compiler()
+        # compiler.compile_node(node, manifest, context)
+        from dbt.context.providers import generate_runtime_model_context
+        from dbt.clients import jinja
+        jinja_ctx = generate_runtime_model_context(node, self.runtime_config, manifest)
+        compiled_code = jinja.get_rendered(sql_template, jinja_ctx, node)
+
+        # return node.compiled_code
+        return compiled_code
 
     def execute(self, sql: str, auto_begin: bool = False, fetch: bool = False, limit: Optional[int] = None) -> Tuple[
         any, agate.Table]:
