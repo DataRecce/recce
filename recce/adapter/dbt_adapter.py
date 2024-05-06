@@ -28,7 +28,7 @@ from dbt.adapters.factory import get_adapter_class_by_name
 from dbt.adapters.sql import SQLAdapter
 from dbt.config.runtime import RuntimeConfig
 from dbt.adapters.contracts.connection import Connection
-from dbt.contracts.graph.manifest import Manifest, WritableManifest
+from dbt.contracts.graph.manifest import Manifest, WritableManifest, MacroManifest
 from dbt.contracts.graph.nodes import ManifestNode
 from dbt.contracts.results import CatalogArtifact
 from dbt.flags import set_from_args
@@ -247,12 +247,21 @@ class DbtAdapter(BaseAdapter):
         print(f"    Catalog:  {self.curr_catalog.metadata.generated_at if self.curr_catalog else 'N/A'}")
 
     def get_columns(self, model: str, base=False) -> List[Column]:
+        from dbt.context.providers import generate_runtime_macro_context
+
         relation = self.create_relation(model, base)
 
+        macro_manifest = MacroManifest(self.manifest.macros)
+        self.adapter.set_macro_resolver(macro_manifest)
+        self.adapter.set_macro_context_generator(generate_runtime_macro_context)
         return self.adapter.execute_macro(
             'get_columns_in_relation',
-            kwargs={"relation": relation},
-            manifest=self.manifest)
+            kwargs={"relation": relation})
+
+        # return self.adapter.execute_macro(
+        #     'get_columns_in_relation',
+        #     kwargs={"relation": relation},
+        #     manifest=self.manifest)
 
     def get_model(self, model_id: str, base=False):
         manifest = self.curr_manifest if base is False else self.base_manifest
@@ -377,6 +386,7 @@ class DbtAdapter(BaseAdapter):
         from dbt.context.providers import generate_runtime_model_context
         from dbt.clients import jinja
         jinja_ctx = generate_runtime_model_context(node, self.runtime_config, manifest)
+        jinja_ctx.update(context)
         compiled_code = jinja.get_rendered(sql_template, jinja_ctx, node)
 
         # return node.compiled_code
