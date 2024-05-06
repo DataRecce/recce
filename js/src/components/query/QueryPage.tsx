@@ -116,7 +116,7 @@ export const QueryPage = () => {
         </Button>
       </Flex>
       <Flex direction="row" height="300px">
-        <Box flex="1" border={"1px solid #CBD5E0"}>
+        <Box width="70%" border={"1px solid #CBD5E0"}>
           <SqlEditor
             value={sqlQuery}
             onChange={setSqlQuery}

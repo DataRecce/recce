@@ -1,10 +1,11 @@
 import { useLineageGraphContext } from "@/lib/hooks/LineageGraphContext";
+import { InfoIcon } from "@chakra-ui/icons";
 import {
   Flex,
   FlexProps,
   FormControl,
-  FormHelperText,
   FormLabel,
+  Tooltip,
 } from "@chakra-ui/react";
 import {
   AutoComplete,
@@ -48,25 +49,36 @@ export const QueryForm = ({
         columnSet.add(columnName);
       }
     }
-    return Array.from(columnSet);
+    return Array.from(columnSet).sort();
   }, [lineageGraph]);
+
+  const labelInfo =
+    "When a primary key is present, the query difference is computed in the warehouse through joins. Otherwise, it's computed on the client side.";
 
   return (
     <Flex {...prob}>
-      <FormControl>
-        <FormLabel>Primary Keys</FormLabel>
+      <FormControl m="4px 8px">
+        <FormLabel>
+          Primary key{" "}
+          <Tooltip label={labelInfo}>
+            <InfoIcon color="gray.600" boxSize="3" />
+          </Tooltip>
+        </FormLabel>
         <AutoComplete
-          openOnFocus
+          restoreOnBlurIfEmpty={false}
           multiple
           creatable
           onChange={(vals: string[]) => onPrimaryKeysChange(vals)}
-          defaultValue={
+          defaultValues={
             defaultPrimaryKeys !== undefined && defaultPrimaryKeys.length !== 0
               ? defaultPrimaryKeys
               : undefined
           }
         >
-          <AutoCompleteInput placeholder="Search..." variant="filled">
+          <AutoCompleteInput
+            placeholder="Select primary key..."
+            variant="outline"
+          >
             {({ tags }: { tags: ItemTag[] }) =>
               tags.map((tag, tid) => (
                 <AutoCompleteTag
@@ -88,7 +100,6 @@ export const QueryForm = ({
             </AutoCompleteCreatable>
           </AutoCompleteList>
         </AutoComplete>
-        <FormHelperText>Composite primary key is allowed</FormHelperText>
       </FormControl>
     </Flex>
   );
