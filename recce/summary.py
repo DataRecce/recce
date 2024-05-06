@@ -112,6 +112,10 @@ class Node:
 
         if checks:
             for check in checks:
+                check_type = check.type
+                if check_type == RunType.ROW_COUNT_DIFF or check_type == RunType.SCHEMA_DIFF:
+                    # Skip the row count and schema diff check, since we already have it.
+                    continue
                 if check.node_ids and self.id in check.node_ids:
                     changes.append(str(check.type).replace('_', ' ').title())
         return changes
@@ -278,10 +282,10 @@ def _get_node_row_count_diff(node_id, node_name):
 # def _get_node_schema_diff(node_id):
 
 
-def generate_preset_check_summary(base_lineage, curr_lineage) -> List[CheckSummary]:
+def generate_check_summary(base_lineage, curr_lineage) -> List[CheckSummary]:
     runs = RunDAO().list()
-    preset_checks = [check for check in CheckDAO().list() if check.is_preset is True]
-    preset_checks_summary: List[CheckSummary] = []
+    checks = CheckDAO().list()
+    checks_summary: List[CheckSummary] = []
 
     def _find_run_by_check_id(check_id):
         for r in runs:
@@ -289,7 +293,7 @@ def generate_preset_check_summary(base_lineage, curr_lineage) -> List[CheckSumma
                 return r
         return None
 
-    for check in preset_checks:
+    for check in checks:
         run = _find_run_by_check_id(check.check_id)
         if check.type == RunType.SCHEMA_DIFF:
             # TODO: Check schema diff of the selected node
@@ -298,7 +302,7 @@ def generate_preset_check_summary(base_lineage, curr_lineage) -> List[CheckSumma
             current = _build_node_schema(curr_lineage, node_id)
             changes = TaskResultDiffer.diff(base, current)
             if changes:
-                preset_checks_summary.append(
+                checks_summary.append(
                     CheckSummary(
                         id=check.check_id,
                         type=check.type,
@@ -314,7 +318,7 @@ def generate_preset_check_summary(base_lineage, curr_lineage) -> List[CheckSumma
             # Check the result is changed or not
             differ = differ_factory(run)
             if differ.changes is not None:
-                preset_checks_summary.append(
+                checks_summary.append(
                     CheckSummary(
                         id=check.check_id,
                         type=check.type,
@@ -324,7 +328,7 @@ def generate_preset_check_summary(base_lineage, curr_lineage) -> List[CheckSumma
                         node_ids=differ.related_node_ids)
                 )
 
-    return preset_checks_summary
+    return checks_summary
 
 
 def generate_mermaid_lineage_graph(graph: LineageGraph):
@@ -357,14 +361,14 @@ def generate_markdown_summary(ctx, summary_format: str = 'markdown'):
     curr_lineage = ctx.get_lineage(base=False)
     base_lineage = ctx.get_lineage(base=True)
     graph = _build_lineage_graph(base_lineage, curr_lineage)
-    graph.checks = generate_preset_check_summary(base_lineage, curr_lineage)
+    graph.checks = generate_check_summary(base_lineage, curr_lineage)
     mermaid_content = generate_mermaid_lineage_graph(graph)
-    preset_content = None
+    check_content = None
 
     def _formate_changes(changes):
         return ",".join([k.replace('_', ' ').title() for k in list(changes.keys())])
 
-    # Generate preset check summary if we found any changes
+    # Generate the check summary if we found any changes
     if len(graph.checks) > 0:
         from py_markdown_table.markdown_table import markdown_table
         data = []
@@ -375,12 +379,12 @@ def generate_markdown_summary(ctx, summary_format: str = 'markdown'):
                 'Description': check.description.replace('\n', ' ') or 'N/A',
                 'Type of Changes': _formate_changes(check.changes)
             })
-        preset_content = markdown_table(data).set_params(quote=False, row_sep='markdown').get_markdown()
+        check_content = markdown_table(data).set_params(quote=False, row_sep='markdown').get_markdown()
 
     if summary_format == 'mermaid':
         return mermaid_content
-    elif summary_format == 'preset':
-        return preset_content
+    elif summary_format == 'check':
+        return check_content
     elif summary_format == 'markdown':
         # TODO: Check the markdown output content is longer than 65535 characters.
         # If it is, we should reduce the content length.
@@ -392,9 +396,9 @@ def generate_markdown_summary(ctx, summary_format: str = 'markdown'):
 {mermaid_content}
 ```
 '''
-        if preset_content:
+        if check_content:
             content += f'''
-## Impacted Preset Checks
-{preset_content}
+## Impacted Checks
+{check_content}
 '''
         return content
