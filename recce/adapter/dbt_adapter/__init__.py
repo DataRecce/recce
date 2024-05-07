@@ -3,13 +3,19 @@ import logging
 import os
 import uuid
 from contextlib import contextmanager
-from dataclasses import dataclass
+from dataclasses import dataclass, fields
 from typing import Callable, Dict, List, Optional, Tuple, Iterator, Any
 
 import agate
 import dbt.adapters.factory
+from watchdog.events import FileSystemEventHandler
+from watchdog.observers import Observer
+
+from recce.adapter.base import BaseAdapter
+from recce.state import ArtifactsRoot
+from .dbt_version import DbtVersion
+
 # Reference: https://github.com/AltimateAI/vscode-dbt-power-user/blob/master/dbt_core_integration.py
-from dbt.mp_context import get_mp_context
 
 get_adapter_orig = dbt.adapters.factory.get_adapter
 
@@ -23,22 +29,24 @@ def get_adapter(config):
 
 dbt.adapters.factory.get_adapter = get_adapter
 
-from dbt.adapters.base import Column
-from dbt.adapters.factory import get_adapter_class_by_name
-from dbt.adapters.sql import SQLAdapter
-from dbt.config.runtime import RuntimeConfig
-from dbt.adapters.contracts.connection import Connection
-from dbt.contracts.graph.manifest import Manifest, WritableManifest, MacroManifest
-from dbt.contracts.graph.nodes import ManifestNode
-from dbt.contracts.results import CatalogArtifact
-from dbt.flags import set_from_args
-from dbt.parser.manifest import process_node
-from dbt.parser.sql import SqlBlockParser
-from watchdog.events import FileSystemEventHandler
-from watchdog.observers import Observer
+# All dbt import should after overwriting the get_adapter
+from dbt.adapters.base import Column  # noqa: E402
+from dbt.adapters.factory import get_adapter_class_by_name  # noqa: E402
+from dbt.adapters.sql import SQLAdapter  # noqa: E402
+from dbt.config.runtime import RuntimeConfig  # noqa: E402
+from dbt.contracts.graph.manifest import Manifest, WritableManifest, MacroManifest  # noqa: E402
+from dbt.contracts.graph.nodes import ManifestNode  # noqa: E402
+from dbt.contracts.results import CatalogArtifact  # noqa: E402
+from dbt.flags import set_from_args  # noqa: E402
+from dbt.parser.manifest import process_node  # noqa: E402
+from dbt.parser.sql import SqlBlockParser  # noqa: E402
 
-from recce.adapter.base import BaseAdapter
-from recce.state import ArtifactsRoot
+dbt_version = DbtVersion()
+
+if dbt_version < 'v1.8':
+    from dbt.contracts.connection import Connection
+else:
+    from dbt.adapters.contracts.connection import Connection
 
 logger = logging.getLogger('uvicorn')
 
@@ -66,53 +74,23 @@ class ArtifactsEventHandler(FileSystemEventHandler):
                 self.callback(event)
 
 
-class DbtVersionTool:
-
-    def __init__(self):
-        from dbt import version as dbt_version
-        self.dbt_version = self.parse(dbt_version.__version__)
-
-    @staticmethod
-    def parse(version: str):
-        from packaging import version as v
-        return v.parse(version)
-
-    def as_version(self, other):
-        from packaging.version import Version
-        if isinstance(other, Version):
-            return other
-        if isinstance(other, str):
-            return self.parse(other)
-        return self.parse(str(other))
-
-    def __ge__(self, other):
-        return self.dbt_version >= self.as_version(other)
-
-    def __gt__(self, other):
-        return self.dbt_version > self.as_version(other)
-
-    def __lt__(self, other):
-        return self.dbt_version < self.as_version(other)
-
-    def __le__(self, other):
-        return self.dbt_version <= self.as_version(other)
-
-    def __eq__(self, other):
-        return self.dbt_version.release[:2] == self.as_version(other).release[:2]
-
-    def __str__(self):
-        return ".".join([str(x) for x in list(self.dbt_version.release)])
-
-
-dbt_version = DbtVersionTool()
+def merge_tables(tables: List[agate.Table]) -> agate.Table:
+    if dbt_version < 'v1.8':
+        from dbt.clients.agate_helper import merge_tables
+        return merge_tables(tables)
+    else:
+        from dbt_common.clients.agate_helper import merge_tables
+        return merge_tables(tables)
 
 
 def as_manifest(m: WritableManifest) -> Manifest:
-    # data = m.__dict__
-    # all_fields = set([x.name for x in fields(Manifest)])
-    # new_data = {k: v for k, v in data.items() if k in all_fields}
-    # return Manifest(**new_data)
-    return Manifest.from_writable_manifest(m)
+    if dbt_version < 'v1.8':
+        data = m.__dict__
+        all_fields = set([x.name for x in fields(Manifest)])
+        new_data = {k: v for k, v in data.items() if k in all_fields}
+        return Manifest(**new_data)
+    else:
+        return Manifest.from_writable_manifest(m)
 
 
 def load_manifest(path: str = None, data: dict = None):
@@ -199,16 +177,23 @@ class DbtAdapter(BaseAdapter):
 
         from dbt.exceptions import DbtProjectError
         try:
-            from dbt_common.context import set_invocation_context, get_invocation_context
-
-            set_invocation_context({})
-            get_invocation_context()._env = dict(os.environ)
-            runtime_config = RuntimeConfig.from_args(args)
-
             # adapter
-            adapter_name = runtime_config.credentials.type
-            adapter_cls = get_adapter_class_by_name(adapter_name)
-            adapter: SQLAdapter = adapter_cls(runtime_config, get_mp_context())
+            if dbt_version < 'v1.8':
+                runtime_config = RuntimeConfig.from_args(args)
+                adapter_name = runtime_config.credentials.type
+                adapter_cls = get_adapter_class_by_name(adapter_name)
+                adapter: SQLAdapter = adapter_cls(runtime_config)
+            else:
+                from dbt_common.context import set_invocation_context, get_invocation_context
+                from dbt.mp_context import get_mp_context
+
+                set_invocation_context({})
+                get_invocation_context()._env = dict(os.environ)
+                runtime_config = RuntimeConfig.from_args(args)
+                adapter_name = runtime_config.credentials.type
+                adapter_cls = get_adapter_class_by_name(adapter_name)
+                adapter: SQLAdapter = adapter_cls(runtime_config, get_mp_context())
+
             adapter.connections.set_connection_name()
             runtime_config.adapter = adapter
 
@@ -247,21 +232,20 @@ class DbtAdapter(BaseAdapter):
         print(f"    Catalog:  {self.curr_catalog.metadata.generated_at if self.curr_catalog else 'N/A'}")
 
     def get_columns(self, model: str, base=False) -> List[Column]:
-        from dbt.context.providers import generate_runtime_macro_context
-
         relation = self.create_relation(model, base)
-
-        macro_manifest = MacroManifest(self.manifest.macros)
-        self.adapter.set_macro_resolver(macro_manifest)
-        self.adapter.set_macro_context_generator(generate_runtime_macro_context)
-        return self.adapter.execute_macro(
-            'get_columns_in_relation',
-            kwargs={"relation": relation})
-
-        # return self.adapter.execute_macro(
-        #     'get_columns_in_relation',
-        #     kwargs={"relation": relation},
-        #     manifest=self.manifest)
+        if dbt_version < 'v1.8':
+            return self.adapter.execute_macro(
+                'get_columns_in_relation',
+                kwargs={"relation": relation},
+                manifest=self.manifest)
+        else:
+            from dbt.context.providers import generate_runtime_macro_context
+            macro_manifest = MacroManifest(self.manifest.macros)
+            self.adapter.set_macro_resolver(macro_manifest)
+            self.adapter.set_macro_context_generator(generate_runtime_macro_context)
+            return self.adapter.execute_macro(
+                'get_columns_in_relation',
+                kwargs={"relation": relation})
 
     def get_model(self, model_id: str, base=False):
         manifest = self.curr_manifest if base is False else self.base_manifest
@@ -381,16 +365,17 @@ class DbtAdapter(BaseAdapter):
         node = parser.parse_remote(sql_template, node_id)
         process_node(self.runtime_config, manifest, node)
 
-        # compiler = self.adapter.get_compiler()
-        # compiler.compile_node(node, manifest, context)
-        from dbt.context.providers import generate_runtime_model_context
-        from dbt.clients import jinja
-        jinja_ctx = generate_runtime_model_context(node, self.runtime_config, manifest)
-        jinja_ctx.update(context)
-        compiled_code = jinja.get_rendered(sql_template, jinja_ctx, node)
-
-        # return node.compiled_code
-        return compiled_code
+        if dbt_version < dbt_version.parse('v1.8'):
+            compiler = self.adapter.get_compiler()
+            compiler.compile_node(node, manifest, context)
+            return node.compiled_code
+        else:
+            from dbt.context.providers import generate_runtime_model_context
+            from dbt.clients import jinja
+            jinja_ctx = generate_runtime_model_context(node, self.runtime_config, manifest)
+            jinja_ctx.update(context)
+            compiled_code = jinja.get_rendered(sql_template, jinja_ctx, node)
+            return compiled_code
 
     def execute(self, sql: str, auto_begin: bool = False, fetch: bool = False, limit: Optional[int] = None) -> Tuple[
         any, agate.Table]:

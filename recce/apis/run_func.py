@@ -81,11 +81,6 @@ def submit_run(type, params, check_id=None):
             asyncio.run_coroutine_threadsafe(update_run_result(run.run_id, result, None), loop)
             return result
         except BaseException as e:
-            from dbt_common.exceptions import DbtDatabaseError
-            if isinstance(e, DbtDatabaseError):
-                if str(e).find('100051') and run.type == RunType.PROFILE_DIFF:
-                    # Snowflake error '100051 (22012): Division by zero"'
-                    e = RecceException('No profile diff result due to the model is empty.', False)
             asyncio.run_coroutine_threadsafe(update_run_result(run.run_id, None, e), loop)
             if isinstance(e, RecceException) and e.is_raise is False:
                 return None

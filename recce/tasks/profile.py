@@ -1,12 +1,11 @@
 from typing import TypedDict, List
 
 import agate
-from dbt_common.clients.agate_helper import merge_tables
 from pydantic import BaseModel
 
+from recce.adapter.dbt_adapter import DbtAdapter, merge_tables
 from .core import Task, TaskResultDiffer
 from .dataframe import DataFrame
-from ..adapter.dbt_adapter import DbtAdapter
 from ..core import default_context
 from ..exceptions import RecceException
 
@@ -100,11 +99,22 @@ class ProfileDiffTask(Task):
                 base=False,  # always false because we use the macro in current manifest
                 context=dict(relation=relation, column_name=column_name, column_type=column_type)
             )
-            print(sql)
         except Exception as e:
             raise RecceException(f"Failed to generate SQL for profiling column: {column_name}") from e
 
-        return dbt_adapter.execute(sql, fetch=True)
+        try:
+            return dbt_adapter.execute(sql, fetch=True)
+        except Exception as e:
+            from recce.adapter.dbt_adapter import dbt_version
+            if dbt_version < 'v1.8':
+                from dbt.exceptions import DbtDatabaseError
+            else:
+                from dbt_common.exceptions import DbtDatabaseError
+            if isinstance(e, DbtDatabaseError):
+                if str(e).find('100051'):
+                    # Snowflake error '100051 (22012): Division by zero"'
+                    e = RecceException('No profile diff result due to the model is empty.', False)
+            raise e
 
     def _to_dataframe(self, table: agate.Table):
         import pandas as pd
