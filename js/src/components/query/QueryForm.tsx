@@ -14,6 +14,7 @@ import {
   AutoCompleteItem,
   AutoCompleteList,
   AutoCompleteTag,
+  Item,
   ItemTag,
 } from "@choc-ui/chakra-autocomplete";
 import { useMemo } from "react";
@@ -68,6 +69,9 @@ export const QueryForm = ({
           restoreOnBlurIfEmpty={false}
           multiple
           creatable
+          filter={(query: string, optionValue: Item["value"]) => {
+            return optionValue.startsWith(query);
+          }}
           onChange={(vals: string[]) => onPrimaryKeysChange(vals)}
           defaultValues={
             defaultPrimaryKeys !== undefined && defaultPrimaryKeys.length !== 0
