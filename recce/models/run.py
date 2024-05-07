@@ -1,6 +1,6 @@
 from typing import List
 
-from .types import Run
+from .types import Run, RunType
 
 _runs: List[Run] = []
 
@@ -20,7 +20,9 @@ class RunDAO:
 
         return None
 
-    def list(self):
+    def list(self, type_filter: RunType = None):
+        if type_filter:
+            return list(filter(lambda run: run.type == type_filter, _runs))
         return list(_runs)
 
     def list_by_check_id(self, check_id):

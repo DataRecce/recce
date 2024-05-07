@@ -1,4 +1,16 @@
-from typing import List, Dict, Set, Union
+from typing import List, Dict, Set, Union, Type, Optional
+from uuid import UUID
+
+from pydantic import BaseModel
+
+from recce.models import CheckDAO, RunDAO, RunType, Run
+from recce.tasks.core import TaskResultDiffer
+from recce.tasks.histogram import HistogramDiffTaskResultDiffer
+from recce.tasks.profile import ProfileDiffResultDiffer
+from recce.tasks.query import QueryDiffResultDiffer
+from recce.tasks.rowcount import RowCountDiffResultDiffer
+from recce.tasks.top_k import TopKDiffTaskResultDiffer
+from recce.tasks.valuediff import ValueDiffTaskResultDiffer
 
 ADD_COLOR = '#1dce00'
 MODIFIED_COLOR = '#ffa502'
@@ -64,18 +76,78 @@ class Node:
         if child_id not in self.children:
             self.children.append(child_id)
 
-    def __str__(self):
-        style = None
-        if self.change_status == 'added':
-            style = f'style {self.id} stroke:{ADD_COLOR}'
-        elif self.change_status == 'modified':
-            style = f'style {self.id} stroke:{MODIFIED_COLOR}'
-        elif self.change_status == 'removed':
-            style = f'style {self.id} stroke:{REMOVE_COLOR}'
+    def _cal_row_count_delta_percentage(self):
+        row_count_diff, run_result = _get_node_row_count_diff(self.id, self.name)
+        if row_count_diff:
+            base = run_result.get('base', 0)
+            current = run_result.get('curr', 0)
+            if int(current) > int(base):
+                p = (int(current) - int(base)) / int(current) * 100
+                return f'🔼 +{round(p, 2) if p > 0.1 else "<0.1"}%'
+            else:
+                p = (int(base) - int(current)) / int(current) * 100
+                return f'🔽 -{round(p, 2) if p > 0.1 else "<0.1"}%'
+        return None
 
+    def _get_schema_diff(self):
+        base_schema = self.base_data.get('columns', {})
+        current_schema = self.current_data.get('columns', {})
+        schema_diff = TaskResultDiffer.diff(base_schema, current_schema)
+        return schema_diff
+
+    def _what_changed(self, checks=None):
+        changes = []
+        if self.change_status == 'added':
+            return ['Added Node']
+        elif self.change_status == 'removed':
+            return ['Removed Node']
+        elif self.change_status == 'modified':
+            changes.append('Code')
+        row_count_delta_percentage = self._cal_row_count_delta_percentage()
+        if row_count_delta_percentage:
+            changes.append(f'Row Count {row_count_delta_percentage}')
+        schema_diff = self._get_schema_diff()
+        if schema_diff:
+            changes.append('Schema')
+
+        if checks:
+            for check in checks:
+                check_type = check.type
+                if check_type == RunType.ROW_COUNT_DIFF or check_type == RunType.SCHEMA_DIFF:
+                    # Skip the row count and schema diff check, since we already have it.
+                    continue
+                if check.node_ids and self.id in check.node_ids:
+                    changes.append(str(check.type).replace('_', ' ').title())
+        return changes
+
+    def get_node_str(self, checks=None):
+        is_changed = False
+        style = None
+
+        if self.change_status is not None:
+            is_changed = True
+            if self.change_status == 'added':
+                style = f'style {self.id} stroke:{ADD_COLOR}'
+            elif self.change_status == 'modified':
+                style = f'style {self.id} stroke:{MODIFIED_COLOR}'
+            elif self.change_status == 'removed':
+                style = f'style {self.id} stroke:{REMOVE_COLOR}'
+
+        if checks:
+            for check in checks:
+                if check.node_ids and self.id in check.node_ids:
+                    is_changed = True
+
+        content_output = f'{self.id}["{self.name}'
+        if is_changed:
+            content_output += '\n\n[What\'s Changed]\n'
+            changes = self._what_changed(checks)
+            content_output += ', '.join(changes)
+
+        content_output += '"]\n'
         if style:
-            return f'{self.id}["{self.name} [{self.change_status.upper()}]"]\n{style}\n'
-        return f'{self.id}["{self.name}"]\n'
+            content_output += f'{style}\n'
+        return content_output
 
 
 class Edge:
@@ -96,9 +168,36 @@ class Edge:
             self.edge_from = 'both'
 
 
+class CheckSummary(BaseModel):
+    id: UUID
+    type: RunType
+    name: str
+    description: str
+    changes: dict
+    node_ids: Optional[List[str]]
+
+
+check_result_differ_registry: Dict[RunType, Type[TaskResultDiffer]] = {
+    RunType.VALUE_DIFF: ValueDiffTaskResultDiffer,
+    RunType.ROW_COUNT_DIFF: RowCountDiffResultDiffer,
+    RunType.QUERY_DIFF: QueryDiffResultDiffer,
+    RunType.TOP_K_DIFF: TopKDiffTaskResultDiffer,
+    RunType.HISTOGRAM_DIFF: HistogramDiffTaskResultDiffer,
+    RunType.PROFILE_DIFF: ProfileDiffResultDiffer,
+}
+
+
+def differ_factory(run: Run):
+    differ_clz = check_result_differ_registry.get(run.type)
+    if not differ_clz:
+        raise NotImplementedError()
+    return differ_clz(run)
+
+
 class LineageGraph:
     nodes: Dict[str, Node] = {}
     edges: Dict[str, Edge] = {}
+    checks: List[CheckSummary] = None
 
     def create_node(self, node_id: str, node_data: dict, data_from: str = 'base'):
         if node_id not in self.nodes:
@@ -162,6 +261,76 @@ def _build_lineage_graph(base, current) -> LineageGraph:
     return graph
 
 
+def _build_node_schema(lineage, node_id):
+    return lineage.get('nodes', {}).get(node_id, {}).get('columns', {})
+
+
+def _get_node_row_count_diff(node_id, node_name):
+    row_count_runs = RunDAO().list(type_filter=RunType.ROW_COUNT_DIFF)
+    for run in row_count_runs:
+        if node_id in run.params.get('node_ids', []):
+            result = run.result.get(node_name, {})
+            diff = TaskResultDiffer.diff(result.get('base'), result.get('curr'))
+            return diff, result
+        elif run.params.get('node_id') == node_id:
+            result = run.result.get(node_name, {})
+            diff = TaskResultDiffer.diff(result.get('base'), result.get('curr'))
+            return diff, result
+    return None, None
+
+
+# def _get_node_schema_diff(node_id):
+
+
+def generate_check_summary(base_lineage, curr_lineage) -> List[CheckSummary]:
+    runs = RunDAO().list()
+    checks = CheckDAO().list()
+    checks_summary: List[CheckSummary] = []
+
+    def _find_run_by_check_id(check_id):
+        for r in runs:
+            if str(check_id) == str(r.check_id):
+                return r
+        return None
+
+    for check in checks:
+        run = _find_run_by_check_id(check.check_id)
+        if check.type == RunType.SCHEMA_DIFF:
+            # TODO: Check schema diff of the selected node
+            node_id = check.params.get('node_id')
+            base = _build_node_schema(base_lineage, node_id)
+            current = _build_node_schema(curr_lineage, node_id)
+            changes = TaskResultDiffer.diff(base, current)
+            if changes:
+                checks_summary.append(
+                    CheckSummary(
+                        id=check.check_id,
+                        type=check.type,
+                        name=check.name,
+                        description=check.description,
+                        changes=changes,
+                        node_ids=[node_id]
+                    )
+                )
+        elif (check.type in [RunType.ROW_COUNT_DIFF, RunType.QUERY_DIFF,
+                             RunType.VALUE_DIFF, RunType.PROFILE_DIFF,
+                             RunType.TOP_K_DIFF, RunType.HISTOGRAM_DIFF] and run is not None):
+            # Check the result is changed or not
+            differ = differ_factory(run)
+            if differ.changes is not None:
+                checks_summary.append(
+                    CheckSummary(
+                        id=check.check_id,
+                        type=check.type,
+                        name=check.name,
+                        description=check.description,
+                        changes=differ.changes,
+                        node_ids=differ.related_node_ids)
+                )
+
+    return checks_summary
+
+
 def generate_mermaid_lineage_graph(graph: LineageGraph):
     content = 'graph LR\n'
     # Only show the modified nodes and there children
@@ -174,9 +343,10 @@ def generate_mermaid_lineage_graph(graph: LineageGraph):
         if node_id in display_nodes:
             # Skip if already displayed
             continue
+
         display_nodes.add(node_id)
         node = graph.nodes[node_id]
-        content += f'{node}'
+        content += node.get_node_str(graph.checks)
         for child_id in node.children:
             queue.append(child_id)
             edge_id = f'{node_id}-->{child_id}'
@@ -191,14 +361,34 @@ def generate_markdown_summary(ctx, summary_format: str = 'markdown'):
     curr_lineage = ctx.get_lineage(base=False)
     base_lineage = ctx.get_lineage(base=True)
     graph = _build_lineage_graph(base_lineage, curr_lineage)
+    graph.checks = generate_check_summary(base_lineage, curr_lineage)
     mermaid_content = generate_mermaid_lineage_graph(graph)
+    check_content = None
+
+    def _formate_changes(changes):
+        return ",".join([k.replace('_', ' ').title() for k in list(changes.keys())])
+
+    # Generate the check summary if we found any changes
+    if len(graph.checks) > 0:
+        from py_markdown_table.markdown_table import markdown_table
+        data = []
+        for check in graph.checks:
+            data.append({
+                'Name': check.name,
+                'Type': str(check.type).replace('_', ' ').title(),
+                'Description': check.description.replace('\n', ' ') or 'N/A',
+                'Type of Changes': _formate_changes(check.changes)
+            })
+        check_content = markdown_table(data).set_params(quote=False, row_sep='markdown').get_markdown()
 
     if summary_format == 'mermaid':
         return mermaid_content
+    elif summary_format == 'check':
+        return check_content
     elif summary_format == 'markdown':
         # TODO: Check the markdown output content is longer than 65535 characters.
         # If it is, we should reduce the content length.
-        return f'''
+        content = f'''
 # Recce Summary
 
 ## Lineage Graph
@@ -206,3 +396,9 @@ def generate_markdown_summary(ctx, summary_format: str = 'markdown'):
 {mermaid_content}
 ```
 '''
+        if check_content:
+            content += f'''
+## Impacted Checks
+{check_content}
+'''
+        return content

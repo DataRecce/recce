@@ -4,7 +4,7 @@ import agate
 from dbt.clients.agate_helper import merge_tables
 from pydantic import BaseModel
 
-from .core import Task
+from .core import Task, TaskResultDiffer
 from .dataframe import DataFrame
 from ..adapter.dbt_adapter import DbtAdapter
 from ..core import default_context
@@ -125,3 +125,8 @@ class ProfileDiffTask(Task):
             dbt_adapter: DbtAdapter = default_context().adapter
             with dbt_adapter.connection_named("cancel"):
                 dbt_adapter.cancel(self.connection)
+
+
+class ProfileDiffResultDiffer(TaskResultDiffer):
+    def _check_result_changed_fn(self, result):
+        return self.diff(result['base'], result['current'])

@@ -201,7 +201,7 @@ def run(output, **kwargs):
 @cli.command(cls=TrackCommand)
 @click.argument('state_file', required=True)
 @click.option('--format', '-f', help='Output format. Currently only markdown is supported.',
-              type=click.Choice(['markdown', 'mermaid'], case_sensitive=False),
+              type=click.Choice(['markdown', 'mermaid', 'check'], case_sensitive=False),
               default='markdown', show_default=True)
 def summary(state_file, **kwargs):
     from rich.console import Console

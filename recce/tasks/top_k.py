@@ -3,6 +3,7 @@ from typing import TypedDict
 from recce.adapter.dbt_adapter import DbtAdapter
 from recce.core import default_context
 from recce.tasks import Task
+from recce.tasks.core import TaskResultDiffer
 from recce.tasks.query import QueryMixin
 
 
@@ -150,3 +151,11 @@ class TopKDiffTask(Task, QueryMixin):
         super().cancel()
         if self.connection:
             self.close_connection(self.connection)
+
+
+class TopKDiffTaskResultDiffer(TaskResultDiffer):
+    def _check_result_changed_fn(self, result):
+        base = result.get('base')
+        current = result.get('current')
+
+        return TaskResultDiffer.diff(base, current)

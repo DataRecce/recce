@@ -3,7 +3,7 @@ from typing import TypedDict, Optional, List, Union
 import agate
 from pydantic import BaseModel
 
-from .core import Task
+from .core import Task, TaskResultDiffer
 from .dataframe import DataFrame
 from ..adapter.dbt_adapter import DbtAdapter
 from ..core import default_context
@@ -236,6 +236,40 @@ class ValueDiffTask(Task, ValueDiffMixin):
             adapter: DbtAdapter = default_context().adapter
             with adapter.connection_named("cancel"):
                 adapter.cancel(self.connection)
+
+
+class ValueDiffTaskResultDiffer(TaskResultDiffer):
+
+    def _check_result_changed_fn(self, result):
+        is_changed = False
+        summary = result.get('summary', {})
+        added = summary.get('added', 0)
+        removed = summary.get('removed', 0)
+        changes = {
+            'column_changed': []
+        }
+
+        if added > 0:
+            is_changed = True
+            changes['row_added'] = added
+
+        if removed > 0:
+            is_changed = True
+            changes['row_removed'] = removed
+
+        row_data = result.get('data', {}).get('data', [])
+        for row in row_data:
+            column, matched, matched_p = row
+            if float(matched_p) < 1.0:
+                # if there is any mismatched, we consider it as changed
+                is_changed = True
+                changes['column_changed'].append({
+                    'column': column,
+                    'matched': matched,
+                    'matched_p': matched_p,
+                })
+
+        return changes if is_changed else None
 
 
 class ValueDiffDetailParams(TypedDict):
