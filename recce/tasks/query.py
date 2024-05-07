@@ -1,10 +1,11 @@
-from typing import TypedDict, Optional, Tuple
+from typing import TypedDict, Optional, Tuple, Union, List
 
 import agate
 from pydantic import BaseModel
 
 from .core import Task, TaskResultDiffer
 from .dataframe import DataFrame
+from .valuediff import ValueDiffMixin
 from ..core import default_context
 from ..exceptions import RecceException
 
@@ -65,6 +66,7 @@ class QueryResult(DataFrame):
 
 class QueryDiffParams(TypedDict):
     sql_template: str
+    primary_keys: List[str]
 
 
 class QueryTask(Task, QueryMixin):
@@ -111,34 +113,93 @@ class QueryTask(Task, QueryMixin):
 
 
 class QueryDiffResult(BaseModel):
-    base: DataFrame
-    current: DataFrame
+    base: Optional[DataFrame] = None
+    current: Optional[DataFrame] = None
+    diff: Optional[DataFrame] = None
 
 
-class QueryDiffTask(Task, QueryMixin):
+class QueryDiffTask(Task, QueryMixin, ValueDiffMixin):
     def __init__(self, params: QueryDiffParams):
         super().__init__()
         self.params = params
         self.connection = None
+        self.legacy_surrogate_key = True
+
+    def _query_diff(self, dbt_adapter, sql_template: str):
+        limit = QUERY_LIMIT
+
+        self.connection = dbt_adapter.get_thread_connection()
+        base, base_more = self.execute_sql_with_limit(sql_template, base=True, limit=limit)
+        self.check_cancel()
+
+        current, current_more = self.execute_sql_with_limit(sql_template, base=False, limit=limit)
+        self.check_cancel()
+
+        return QueryDiffResult(
+            base=DataFrame.from_agate(base, limit=limit, more=base_more),
+            current=DataFrame.from_agate(current, limit=limit, more=current_more)
+        )
+
+    def _query_diff_join(self, dbt_adapter, sql_template: str, primary_keys: List[str]):
+
+        query_template = r"""
+            {% set a_query %}
+                {{ base_query }}
+            {% endset %}
+
+            {% set b_query %}
+                {{ current_query }}
+            {% endset %}
+
+            {{ audit_helper.compare_queries(
+                a_query=a_query,
+                b_query=b_query,
+                primary_key=__PRIMARY_KEY__,
+                summarize=False,
+            ) }} limit {{ limit }}
+            """
+
+        if len(primary_keys) > 1:
+            self._verify_dbt_packages_deps(dbt_adapter)
+            self.check_cancel()
+
+            if self.legacy_surrogate_key:
+                new_primary_key = 'dbt_utils.surrogate_key(primary_key)'
+            else:
+                new_primary_key = 'dbt_utils.generate_surrogate_key(primary_key)'
+        else:
+            new_primary_key = 'primary_key'
+        query_template = query_template.replace('__PRIMARY_KEY__', new_primary_key)
+
+        base_query = dbt_adapter.generate_sql(sql_template, base=True)
+        current_query = dbt_adapter.generate_sql(sql_template, base=False)
+
+        sql = dbt_adapter.generate_sql(query_template, context=dict(
+            base_query=base_query,
+            current_query=current_query,
+            primary_key=primary_keys if len(primary_keys) != 1 else primary_keys[0],
+            limit=QUERY_LIMIT,
+        ))
+
+        _, table = dbt_adapter.execute(sql, fetch=True)
+        self.check_cancel()
+
+        return QueryDiffResult(
+            diff=DataFrame.from_agate(table)
+        )
 
     def execute_dbt(self):
         from ..adapter.dbt_adapter import DbtAdapter
         dbt_adapter: DbtAdapter = default_context().adapter
-        limit = QUERY_LIMIT
 
         with dbt_adapter.connection_named("query"):
             sql_template = self.params.get('sql_template')
-            self.connection = dbt_adapter.get_thread_connection()
-            base, base_more = self.execute_sql_with_limit(sql_template, base=True, limit=limit)
-            self.check_cancel()
+            primary_keys = self.params.get('primary_keys')
 
-            current, current_more = self.execute_sql_with_limit(sql_template, base=False, limit=limit)
-            self.check_cancel()
+            if primary_keys:
+                return self._query_diff_join(dbt_adapter, sql_template, primary_keys)
 
-            return QueryDiffResult(
-                base=DataFrame.from_agate(base, limit=limit, more=base_more),
-                current=DataFrame.from_agate(current, limit=limit, more=current_more)
-            )
+            return self._query_diff(dbt_adapter, sql_template)
 
     def execute_sqlmesh(self):
         from ..adapter.sqlmesh_adapter import SqlmeshAdapter

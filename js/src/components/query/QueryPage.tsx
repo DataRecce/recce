@@ -6,7 +6,7 @@ import {
   useRecceQueryContext,
 } from "@/lib/hooks/RecceQueryContext";
 
-import { createCheckByRun, updateCheck } from "@/lib/api/checks";
+import { createCheckByRun } from "@/lib/api/checks";
 import { QueryDiffResultView } from "./QueryDiffResultView";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { cacheKeys } from "@/lib/api/cacheKeys";
@@ -22,9 +22,15 @@ import { cancelRun, waitRun } from "@/lib/api/runs";
 import { RunView } from "../run/RunView";
 import { Run } from "@/lib/api/types";
 import { useLineageGraphContext } from "@/lib/hooks/LineageGraphContext";
+import { QueryForm } from "./QueryForm";
 
 export const QueryPage = () => {
-  const { sqlQuery: _sqlQuery, setSqlQuery } = useRecceQueryContext();
+  const {
+    sqlQuery: _sqlQuery,
+    setSqlQuery,
+    primaryKeys,
+    setPrimaryKeys,
+  } = useRecceQueryContext();
   const { envInfo } = useLineageGraphContext();
 
   let sqlQuery = _sqlQuery;
@@ -46,7 +52,10 @@ export const QueryPage = () => {
     const { run_id } =
       type === "query"
         ? await submitQuery({ sql_template: sqlQuery }, { nowait: true })
-        : await submitQueryDiff({ sql_template: sqlQuery }, { nowait: true });
+        : await submitQueryDiff(
+            { sql_template: sqlQuery, primary_keys: primaryKeys },
+            { nowait: true }
+          );
     setRunId(run_id);
 
     return await waitRun(run_id);
@@ -85,8 +94,6 @@ export const QueryPage = () => {
     [setLocation, viewOptions, queryClient]
   );
 
-  const hasResult = !isPending && run?.run_id && !run?.error;
-
   return (
     <Flex direction="column" height="100%">
       <Flex justifyContent="right" padding="5px" gap="5px">
@@ -107,15 +114,26 @@ export const QueryPage = () => {
           Run
         </Button>
       </Flex>
-      <Box flex="1" border={"1px solid #CBD5E0"} height="200px" width="100%">
-        <SqlEditor
-          value={sqlQuery}
-          onChange={setSqlQuery}
-          onRun={() => runQuery("query")}
-          onRunDiff={() => runQuery("query_diff")}
+      <Flex direction="row" height="300px">
+        <Box width="70%" border={"1px solid #CBD5E0"}>
+          <SqlEditor
+            value={sqlQuery}
+            onChange={setSqlQuery}
+            onRun={() => runQuery("query")}
+            onRunDiff={() => runQuery("query_diff")}
+          />
+        </Box>
+        <QueryForm
+          ml="10px"
+          p="5px"
+          width="30%"
+          border="1px"
+          borderColor="gray.300"
+          defaultPrimaryKeys={primaryKeys}
+          onPrimaryKeysChange={setPrimaryKeys}
         />
-      </Box>
-      <Flex height="50vh" direction="column">
+      </Flex>
+      <Flex flex="1" direction="column">
         {runType === "query" ? (
           <RunView
             key={runId}

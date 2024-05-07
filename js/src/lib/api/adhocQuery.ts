@@ -19,6 +19,7 @@ export interface QueryDiffParams {
 export interface QueryDiffResult {
   base?: DataFrame;
   current?: DataFrame;
+  diff?: DataFrame;
 }
 
 export interface QueryDiffViewOptions {

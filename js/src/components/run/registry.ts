@@ -3,7 +3,6 @@ import {
   TbBrandStackshare,
   TbChartHistogram,
   TbEyeSearch,
-  TbSchema,
   TbSql,
 } from "react-icons/tb";
 import { HistogramDiffForm } from "../histogram/HistogramDiffForm";
@@ -19,7 +18,6 @@ import { ValueDiffForm } from "../valuediff/ValueDiffForm";
 import { ValueDiffResultView } from "../valuediff/ValueDiffResultView";
 import { RunFormProps, RunResultViewProps } from "./types";
 import { IconType } from "react-icons";
-import { FiAlignLeft } from "react-icons/fi";
 import { LuBarChartHorizontalBig } from "react-icons/lu";
 import { MdFormatListNumberedRtl, MdSchema } from "react-icons/md";
 
