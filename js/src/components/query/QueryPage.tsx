@@ -23,7 +23,6 @@ import { RunView } from "../run/RunView";
 import { Run } from "@/lib/api/types";
 import { useLineageGraphContext } from "@/lib/hooks/LineageGraphContext";
 import { QueryForm } from "./QueryForm";
-import { QueryDiffJoinResultView } from "./QueryDiffJoinResultView";
 
 export const QueryPage = () => {
   const {
@@ -157,19 +156,12 @@ export const QueryPage = () => {
             onViewOptionsChanged={setViewOptions}
             onCancel={handleCancel}
           >
-            {(props) =>
-              run?.result.diff !== null ? (
-                <QueryDiffJoinResultView
-                  {...props}
-                  onAddToChecklist={addToChecklist}
-                />
-              ) : (
-                <QueryDiffResultView
-                  {...props}
-                  onAddToChecklist={addToChecklist}
-                />
-              )
-            }
+            {(props) => (
+              <QueryDiffResultView
+                {...props}
+                onAddToChecklist={addToChecklist}
+              />
+            )}
           </RunView>
         )}
       </Flex>
