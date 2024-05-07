@@ -32,13 +32,18 @@ class DataFrame(BaseModel):
 
     @staticmethod
     def from_agate(table: 'agate.Table', limit: t.Optional[int] = None, more: t.Optional[bool] = None):
-        import dbt.clients.agate_helper
+        from recce.adapter.dbt_adapter import dbt_version
+        if dbt_version < 'v1.8':
+            import dbt.clients.agate_helper as agate_helper
+        else:
+            import dbt_common.clients.agate_helper as agate_helper
+
         import agate
         columns = []
 
         for col_name, col_type in zip(table.column_names, table.column_types):
 
-            has_integer = hasattr(dbt.clients.agate_helper, 'Integer')
+            has_integer = hasattr(agate_helper, 'Integer')
 
             if isinstance(col_type, agate.Number):
                 col_type = DataFrameColumnType.NUMBER
@@ -52,7 +57,7 @@ class DataFrame(BaseModel):
                 col_type = DataFrameColumnType.DATETIME
             elif isinstance(col_type, agate.TimeDelta):
                 col_type = DataFrameColumnType.TIMEDELTA
-            elif has_integer and isinstance(col_type, dbt.clients.agate_helper.Integer):
+            elif has_integer and isinstance(col_type, agate_helper.Integer):
                 col_type = DataFrameColumnType.INTEGER
             else:
                 col_type = DataFrameColumnType.UNKNOWN

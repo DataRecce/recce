@@ -1,12 +1,11 @@
 from typing import TypedDict, List
 
 import agate
-from dbt.clients.agate_helper import merge_tables
 from pydantic import BaseModel
 
+from recce.adapter.dbt_adapter import DbtAdapter, merge_tables
 from .core import Task, TaskResultDiffer
 from .dataframe import DataFrame
-from ..adapter.dbt_adapter import DbtAdapter
 from ..core import default_context
 from ..exceptions import RecceException
 
@@ -76,33 +75,46 @@ class ProfileDiffTask(Task):
     def _profile_column(self, dbt_adapter: DbtAdapter, relation, column):
 
         sql_template = r"""
-        {%
-        set column_type = column.dtype | lower
-        %}
-
         select
-        '{{column.name}}' as column_name,
-        nullif('{{column.dtype}}', '') as data_type,
-        {{ dbt_profiler.measure_row_count(column.name, column_type) }} as row_count,
-        {{ dbt_profiler.measure_not_null_proportion(column.name, column_type) }} as not_null_proportion,
-        {{ dbt_profiler.measure_distinct_proportion(column.name, column_type) }} as distinct_proportion,
-        {{ dbt_profiler.measure_distinct_count(column.name, column_type) }} as distinct_count,
-        {{ dbt_profiler.measure_is_unique(column.name, column_type) }} as is_unique,
-        {{ dbt_profiler.measure_min(column.name, column_type) }} as min,
-        {{ dbt_profiler.measure_max(column.name, column_type) }} as max,
-        {{ dbt_profiler.measure_avg(column.name, column_type) }} as avg,
-        {{ dbt_profiler.measure_median(column.name, column_type) }} as median
+        '{{column_name}}' as column_name,
+        nullif('{{column_type}}', '') as data_type,
+        {{ dbt_profiler.measure_row_count(column_name, column_type) }} as row_count,
+        {{ dbt_profiler.measure_not_null_proportion(column_name, column_type) }} as not_null_proportion,
+        {{ dbt_profiler.measure_distinct_proportion(column_name, column_type) }} as distinct_proportion,
+        {{ dbt_profiler.measure_distinct_count(column_name, column_type) }} as distinct_count,
+        {{ dbt_profiler.measure_is_unique(column_name, column_type) }} as is_unique,
+        {{ dbt_profiler.measure_min(column_name, column_type) }} as min,
+        {{ dbt_profiler.measure_max(column_name, column_type) }} as max,
+        {{ dbt_profiler.measure_avg(column_name, column_type) }} as avg,
+        {{ dbt_profiler.measure_median(column_name, column_type) }} as median
         from
         {{ relation }}
         """
+        column_name = column.name
+        column_type = column.dtype.lower()
 
-        sql = dbt_adapter.generate_sql(
-            sql_template,
-            base=False,  # always false because we use the macro in current manifest
-            context=dict(relation=relation, column=column)
-        )
+        try:
+            sql = dbt_adapter.generate_sql(
+                sql_template,
+                base=False,  # always false because we use the macro in current manifest
+                context=dict(relation=relation, column_name=column_name, column_type=column_type)
+            )
+        except Exception as e:
+            raise RecceException(f"Failed to generate SQL for profiling column: {column_name}") from e
 
-        return dbt_adapter.execute(sql, fetch=True)
+        try:
+            return dbt_adapter.execute(sql, fetch=True)
+        except Exception as e:
+            from recce.adapter.dbt_adapter import dbt_version
+            if dbt_version < 'v1.8':
+                from dbt.exceptions import DbtDatabaseError
+            else:
+                from dbt_common.exceptions import DbtDatabaseError
+            if isinstance(e, DbtDatabaseError):
+                if str(e).find('100051'):
+                    # Snowflake error '100051 (22012): Division by zero"'
+                    e = RecceException('No profile diff result due to the model is empty.', False)
+            raise e
 
     def _to_dataframe(self, table: agate.Table):
         import pandas as pd

@@ -1,4 +1,4 @@
-from typing import TypedDict, Optional, Tuple, Union, List
+from typing import TypedDict, Optional, Tuple, List
 
 import agate
 from pydantic import BaseModel
@@ -76,7 +76,7 @@ class QueryTask(Task, QueryMixin):
         self.connection = None
 
     def execute_dbt(self):
-        from ..adapter.dbt_adapter import DbtAdapter
+        from recce.adapter.dbt_adapter import DbtAdapter
         dbt_adapter: DbtAdapter = default_context().adapter
 
         limit = QUERY_LIMIT
@@ -189,7 +189,7 @@ class QueryDiffTask(Task, QueryMixin, ValueDiffMixin):
         )
 
     def execute_dbt(self):
-        from ..adapter.dbt_adapter import DbtAdapter
+        from recce.adapter.dbt_adapter import DbtAdapter
         dbt_adapter: DbtAdapter = default_context().adapter
 
         with dbt_adapter.connection_named("query"):
