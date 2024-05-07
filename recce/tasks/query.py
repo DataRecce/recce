@@ -160,6 +160,9 @@ class QueryDiffTask(Task, QueryMixin, ValueDiffMixin):
             """
 
         if len(primary_keys) > 1:
+            self._verify_dbt_packages_deps(dbt_adapter)
+            self.check_cancel()
+
             if self.legacy_surrogate_key:
                 new_primary_key = 'dbt_utils.surrogate_key(primary_key)'
             else:
