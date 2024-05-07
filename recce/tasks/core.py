@@ -1,5 +1,5 @@
 from abc import ABC, abstractmethod
-from typing import List
+from typing import List, Union
 
 from recce.core import default_context
 from recce.exceptions import RecceCancelException
@@ -72,7 +72,7 @@ class TaskResultDiffer(ABC):
         """
         raise NotImplementedError()
 
-    def _get_related_node_ids(self) -> List[str] | None:
+    def _get_related_node_ids(self) -> Union[List[str], None]:
         """
         Get the related node ids.
         Should be implemented by subclass.
