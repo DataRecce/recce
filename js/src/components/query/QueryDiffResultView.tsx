@@ -300,22 +300,10 @@ const _QueryDiffJoinResultView = ({
   );
 };
 
-export const QueryDiffResultView = ({
-  run,
-  onAddToChecklist,
-  viewOptions,
-  onViewOptionsChanged,
-}: QueryDiffResultViewProps) => {
-  if (run?.result !== undefined && run.result.diff !== null) {
-    return (
-      <_QueryDiffJoinResultView
-        {...{ run, onAddToChecklist, viewOptions, onViewOptionsChanged }}
-      />
-    );
+export const QueryDiffResultView = (props: QueryDiffResultViewProps) => {
+  if (props.run?.result !== undefined && props.run.result.diff !== null) {
+    return <_QueryDiffJoinResultView {...props} />;
+  } else {
+    return <_QueryDiffResultView {...props} />;
   }
-  return (
-    <_QueryDiffResultView
-      {...{ run, onAddToChecklist, viewOptions, onViewOptionsChanged }}
-    />
-  );
 };
