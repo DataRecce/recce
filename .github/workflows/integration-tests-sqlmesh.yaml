@@ -4,13 +4,11 @@ on:
   push:
     branches:
       - main
-    paths:
-      - "recce/**"
+    # paths:
+    #   - "recce/**"
   pull_request:
     branches:
       - main
-    paths:
-      - "recce/**"
 
 jobs:
   build:
@@ -23,6 +21,7 @@ jobs:
         with:
           python-version: 3.11
           cache: "pip" # caching pip dependencies
+          cache-dependency-path: setup.py
       - run: |
           python -m pip install --upgrade pip
           pip install sqlmesh
