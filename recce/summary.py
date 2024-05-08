@@ -333,10 +333,14 @@ def generate_check_summary(base_lineage, curr_lineage) -> List[CheckSummary]:
 
 def generate_mermaid_lineage_graph(graph: LineageGraph):
     content = 'graph LR\n'
+    is_not_modified = False
     # Only show the modified nodes and there children
     queue = list(graph.modified_set)
     display_nodes = set()
     display_edge = set()
+
+    if len(queue) == 0:
+        is_not_modified = True
 
     while len(queue) > 0:
         node_id = queue.pop(0)
@@ -354,7 +358,7 @@ def generate_mermaid_lineage_graph(graph: LineageGraph):
                 display_edge.add(edge_id)
                 content += graph.get_edge_str(edge_id)
 
-    return content
+    return content, is_not_modified
 
 
 def generate_markdown_summary(ctx, summary_format: str = 'markdown'):
@@ -362,7 +366,7 @@ def generate_markdown_summary(ctx, summary_format: str = 'markdown'):
     base_lineage = ctx.get_lineage(base=True)
     graph = _build_lineage_graph(base_lineage, curr_lineage)
     graph.checks = generate_check_summary(base_lineage, curr_lineage)
-    mermaid_content = generate_mermaid_lineage_graph(graph)
+    mermaid_content, is_empty_graph = generate_mermaid_lineage_graph(graph)
     check_content = None
 
     def _formate_changes(changes):
@@ -386,15 +390,20 @@ def generate_markdown_summary(ctx, summary_format: str = 'markdown'):
     elif summary_format == 'check':
         return check_content
     elif summary_format == 'markdown':
-        # TODO: Check the markdown output content is longer than 65535 characters.
-        # If it is, we should reduce the content length.
-        content = f'''
-# Recce Summary
 
+        content = '# Recce Summary\n'
+
+        if is_empty_graph is False:
+            content += f'''
 ## Lineage Graph
 ```mermaid
 {mermaid_content}
 ```
+'''
+        else:
+            content += '''
+## Lineage Graph
+No changed module detected.
 '''
         if check_content:
             content += f'''

@@ -28,6 +28,7 @@ setup(name='recce',
       install_requires=[
           'ruamel.yaml<0.18.0',
           'click>=7.1',
+          'deepdiff',
           'dbt-core>=1.5',
           'portalocker',
           'fastapi',
