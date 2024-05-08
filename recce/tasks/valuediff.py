@@ -384,3 +384,13 @@ class ValueDiffDetailTask(Task, ValueDiffMixin):
             adapter: DbtAdapter = default_context().adapter
             with adapter.connection_named("cancel"):
                 adapter.cancel(self.connection)
+
+
+class ValueDiffDetailTaskResultDiffer(TaskResultDiffer):
+
+    def _check_result_changed_fn(self, result):
+        diff_data = result.get('data')
+        if diff_data is None or len(diff_data) == 0:
+            return None
+
+        return dict(values_changed={})
