@@ -5,16 +5,7 @@ import {
   QueryDiffResult,
   QueryDiffViewOptions,
 } from "@/lib/api/adhocQuery";
-import {
-  Box,
-  Center,
-  Checkbox,
-  Flex,
-  IconButton,
-  Spacer,
-  Tooltip,
-  VStack,
-} from "@chakra-ui/react";
+import { Center, Flex } from "@chakra-ui/react";
 import { useMemo } from "react";
 import { toDataDiffGrid } from "./querydiff";
 import { toValueDiffGrid as toQueryDiffJoinGrid } from "../valuediff/valuediff";
@@ -26,72 +17,7 @@ import {
   ScreenshotDataGrid,
 } from "../data-grid/ScreenshotDataGrid";
 import { RunResultViewProps } from "../run/types";
-import { AddIcon, WarningIcon } from "@chakra-ui/icons";
-
-interface ResultViewPanelProps
-  extends RunResultViewProps<
-    QueryDiffParams,
-    QueryDiffResult,
-    QueryDiffViewOptions
-  > {
-  warnings?: string[];
-  onAddToChecklist?: (run: Run<QueryDiffParams, QueryDiffResult>) => void;
-}
-
-const ResultViewPanel = ({
-  run,
-  warnings,
-  viewOptions,
-  onAddToChecklist,
-  onViewOptionsChanged,
-}: ResultViewPanelProps) => {
-  const toggleChangedOnly = () => {
-    const changedOnly = !viewOptions?.changed_only;
-    if (onViewOptionsChanged) {
-      onViewOptionsChanged({ ...viewOptions, changed_only: changedOnly });
-    }
-  };
-
-  return (
-    <>
-      <Flex
-        borderBottom="1px solid lightgray"
-        justifyContent="flex-end"
-        gap="5px"
-        alignItems="center"
-        px="10px"
-        bg={warnings && warnings.length > 0 ? "orange.100" : "inherit"}
-      >
-        <VStack alignItems="flex-start" spacing={0}>
-          {warnings &&
-            warnings.map((warning, idx) => (
-              <Box key={idx}>
-                <WarningIcon color="orange.600" /> {warning}
-              </Box>
-            ))}
-        </VStack>
-        <Spacer minHeight="32px" />
-        <Checkbox
-          isChecked={viewOptions?.changed_only}
-          onChange={toggleChangedOnly}
-        >
-          Changed only
-        </Checkbox>
-        {onAddToChecklist && (
-          <Tooltip label="Add to Checklist">
-            <IconButton
-              variant="unstyled"
-              size="sm"
-              aria-label="Add"
-              icon={<AddIcon />}
-              onClick={() => onAddToChecklist(run)}
-            />
-          </Tooltip>
-        )}
-      </Flex>
-    </>
-  );
-};
+import { RunToolbar } from "../run/RunToolbar";
 
 export interface QueryDiffResultViewProps
   extends RunResultViewProps<
@@ -174,21 +100,19 @@ const _QueryDiffResultView = ({
 
   if (changedOnly && gridData.rows.length === 0) {
     return (
-      <>
-        <Flex
-          direction="column"
-          backgroundColor="rgb(249, 249, 249)"
-          height={"100%"}
-        >
-          <ResultViewPanel
-            run={run}
-            viewOptions={viewOptions}
-            onAddToChecklist={onAddToChecklist}
-            onViewOptionsChanged={onViewOptionsChanged}
-          />
-          <Center height="100%">No change</Center>;
-        </Flex>
-      </>
+      <Flex
+        direction="column"
+        backgroundColor="rgb(249, 249, 249)"
+        height={"100%"}
+      >
+        <RunToolbar
+          run={run}
+          viewOptions={viewOptions}
+          onAddToChecklist={onAddToChecklist}
+          onViewOptionsChanged={onViewOptionsChanged}
+        />
+        <Center height="100%">No change</Center>;
+      </Flex>
     );
   }
 
@@ -212,7 +136,7 @@ const _QueryDiffResultView = ({
       backgroundColor="rgb(249, 249, 249)"
       height={"100%"}
     >
-      <ResultViewPanel
+      <RunToolbar
         run={run}
         viewOptions={viewOptions}
         onAddToChecklist={onAddToChecklist}
@@ -280,21 +204,19 @@ const _QueryDiffJoinResultView = ({
 
   if (changedOnly && gridData.rows.length === 0) {
     return (
-      <>
-        <Flex
-          direction="column"
-          backgroundColor="rgb(249, 249, 249)"
-          height={"100%"}
-        >
-          <ResultViewPanel
-            run={run}
-            viewOptions={viewOptions}
-            onAddToChecklist={onAddToChecklist}
-            onViewOptionsChanged={onViewOptionsChanged}
-          />
-          <Center height="100%">No change</Center>
-        </Flex>
-      </>
+      <Flex
+        direction="column"
+        backgroundColor="rgb(249, 249, 249)"
+        height={"100%"}
+      >
+        <RunToolbar
+          run={run}
+          viewOptions={viewOptions}
+          onAddToChecklist={onAddToChecklist}
+          onViewOptionsChanged={onViewOptionsChanged}
+        />
+        <Center height="100%">No change</Center>
+      </Flex>
     );
   }
 
@@ -315,7 +237,7 @@ const _QueryDiffJoinResultView = ({
       backgroundColor="rgb(249, 249, 249)"
       height={"100%"}
     >
-      <ResultViewPanel
+      <RunToolbar
         run={run}
         viewOptions={viewOptions}
         onAddToChecklist={onAddToChecklist}
