@@ -244,4 +244,6 @@ class QueryDiffResultDiffer(TaskResultDiffer):
             diff_data = diff.get('data')
             if diff_data is None or len(diff_data) == 0:
                 return None
+
+            # TODO: Implement detailed information of values changed
             return dict(values_changed={})
