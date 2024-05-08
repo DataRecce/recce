@@ -1,6 +1,5 @@
 from typing import TypedDict, Optional
 
-from recce.adapter.dbt_adapter import DbtAdapter
 from recce.core import default_context
 from recce.tasks import Task
 from recce.tasks.core import TaskResultDiffer
@@ -18,7 +17,7 @@ class RowCountDiffTask(Task, QueryMixin):
         self.params = params
         self.connection = None
 
-    def _query_row_count(self, dbt_adapter: DbtAdapter, model_name, base=False):
+    def _query_row_count(self, dbt_adapter, model_name, base=False):
         node = dbt_adapter.find_node_by_name(model_name, base=base)
         if node is None:
             return None

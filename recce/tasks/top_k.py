@@ -1,6 +1,5 @@
 from typing import TypedDict
 
-from recce.adapter.dbt_adapter import DbtAdapter
 from recce.core import default_context
 from recce.tasks import Task
 from recce.tasks.core import TaskResultDiffer
@@ -20,7 +19,7 @@ class TopKDiffTask(Task, QueryMixin):
         self.params = params
         self.connection = None
 
-    def _query_row_count_diff(self, dbt_adapter: DbtAdapter, base_relation, curr_relation, column):
+    def _query_row_count_diff(self, dbt_adapter, base_relation, curr_relation, column):
         """
         Query the row count of the base and current relations
 
@@ -98,6 +97,7 @@ class TopKDiffTask(Task, QueryMixin):
 
     def execute(self):
 
+        from recce.adapter.dbt_adapter import DbtAdapter
         dbt_adapter: DbtAdapter = default_context().adapter
 
         with dbt_adapter.connection_named("query"):

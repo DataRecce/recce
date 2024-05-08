@@ -1,4 +1,4 @@
-name: Run Python Flake8 and Unit Tests
+name: Test Python
 
 on:
   push:
@@ -11,9 +11,10 @@ on:
       - main
     paths:
       - "recce/**"
+      - "setup.py"
 
 jobs:
-  build:
+  test-python:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
@@ -23,6 +24,7 @@ jobs:
         with:
           python-version: 3.11
           cache: "pip" # caching pip dependencies
+          cache-dependency-path: setup.py
 
       - name: Install flake8
         run: pip install flake8
@@ -41,4 +43,4 @@ jobs:
 
       - name: Run tests
         run: |
-          make test
+          make test-tox

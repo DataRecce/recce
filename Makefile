@@ -17,7 +17,9 @@ flake8:
 
 test: install-dev
 	@python3 -m pytest tests
-	@tox
+
+test-tox: install-dev
+	@tox	
 
 install-frontend-requires:
 # Install pnpm if not installed

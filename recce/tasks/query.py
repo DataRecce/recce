@@ -1,6 +1,6 @@
+import typing
 from typing import TypedDict, Optional, Tuple, List
 
-import agate
 from pydantic import BaseModel
 
 from .core import Task, TaskResultDiffer
@@ -11,6 +11,9 @@ from ..exceptions import RecceException
 
 QUERY_LIMIT = 2000
 
+if typing.TYPE_CHECKING:
+    import agate
+
 
 class QueryMixin:
     @classmethod
@@ -19,7 +22,7 @@ class QueryMixin:
         sql_template,
         base: bool = False,
         limit: Optional[int] = None
-    ) -> Tuple[agate.Table, bool]:
+    ) -> Tuple['agate.Table', bool]:
         """
         Execute a SQL template and return the result as an agate table.
         :param sql_template: SQL template to execute
@@ -45,7 +48,7 @@ class QueryMixin:
             raise RecceException(f"Jinja template error: line {e.lineno}: {str(e)}")
 
     @classmethod
-    def execute_sql(cls, sql_template, base: bool = False) -> agate.Table:
+    def execute_sql(cls, sql_template, base: bool = False) -> 'agate.Table':
         result, _ = cls.execute_sql_with_limit(sql_template, base)
         return result
 

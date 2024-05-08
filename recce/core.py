@@ -4,9 +4,7 @@ import logging
 import os
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Callable, Dict, Optional, Tuple
-
-import agate
+from typing import Callable, Dict, Optional
 
 from recce.adapter.base import BaseAdapter
 from recce.models import RunDAO, CheckDAO, Check
@@ -64,15 +62,6 @@ class RecceContext:
 
     def generate_sql(self, sql_template: str, base: bool = False, context: Dict = {}):
         self.adapter.generate_sql(sql_template, base=base, context=context)
-
-    def execute(
-        self,
-        sql: str,
-        auto_begin: bool = False,
-        fetch: bool = False,
-        limit: Optional[int] = None
-    ) -> Tuple[any, agate.Table]:
-        return self.adapter.execute(sql, auto_begin=auto_begin, fetch=fetch, limit=limit)
 
     def get_lineage(self, base: Optional[bool] = False):
         return self.adapter.get_lineage(base=base)
