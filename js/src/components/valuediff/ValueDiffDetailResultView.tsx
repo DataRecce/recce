@@ -1,14 +1,6 @@
 import "react-data-grid/lib/styles.css";
 
-import {
-  Box,
-  Center,
-  Checkbox,
-  Flex,
-  IconButton,
-  Spacer,
-  Tooltip,
-} from "@chakra-ui/react";
+import { Center, Flex } from "@chakra-ui/react";
 import { useMemo } from "react";
 
 import "../query/styles.css";
@@ -18,13 +10,13 @@ import {
   ScreenshotDataGrid,
 } from "../data-grid/ScreenshotDataGrid";
 import { RunResultViewProps } from "../run/types";
-import { AddIcon, WarningIcon } from "@chakra-ui/icons";
 import { toValueDiffGrid } from "./valuediff";
 import {
   ValueDiffDetailParams,
   ValueDiffDetailResult,
   ValueDiffDetailViewOptions,
 } from "@/lib/api/valuediff";
+import { RunToolbar } from "../run/RunToolbar";
 
 export interface ValueDiffDetailResultViewProps
   extends RunResultViewProps<
@@ -82,15 +74,22 @@ export const ValueDiffDetailResultView = ({
   }
 
   if (changedOnly && gridData.rows.length === 0) {
-    return <Center height="100%">No change</Center>;
+    return (
+      <Flex
+        direction="column"
+        backgroundColor="rgb(249, 249, 249)"
+        height={"100%"}
+      >
+        <RunToolbar
+          run={run}
+          viewOptions={viewOptions}
+          onAddToChecklist={onAddToChecklist}
+          onViewOptionsChanged={onViewOptionsChanged}
+        />
+        <Center height="100%">No change</Center>;
+      </Flex>
+    );
   }
-
-  const toggleChangedOnly = () => {
-    const changedOnly = !viewOptions?.changed_only;
-    if (onViewOptionsChanged) {
-      onViewOptionsChanged({ ...viewOptions, changed_only: changedOnly });
-    }
-  };
 
   const limit = run.result?.limit || 0;
   const warning =
@@ -98,47 +97,24 @@ export const ValueDiffDetailResultView = ({
       ? `Warning: Displayed results are limited to ${limit.toLocaleString()} records. To ensure complete data retrieval, consider applying a LIMIT or WHERE clause to constrain the result set.`
       : null;
 
+  const warnings: string[] = [];
+  if (warning) {
+    warnings.push(warning);
+  }
+
   return (
     <Flex
       direction="column"
       backgroundColor="rgb(249, 249, 249)"
       height={"100%"}
     >
-      <Flex
-        borderBottom="1px solid lightgray"
-        justifyContent="flex-end"
-        gap="5px"
-        alignItems="center"
-        px="10px"
-        bg={warning ? "orange.100" : "inherit"}
-      >
-        {warning && (
-          <>
-            <WarningIcon color="orange.600" /> <Box>{warning}</Box>
-          </>
-        )}
-
-        <Spacer minHeight="32px" />
-        <Checkbox
-          isChecked={viewOptions?.changed_only}
-          onChange={toggleChangedOnly}
-        >
-          Changed only
-        </Checkbox>
-
-        {onAddToChecklist && (
-          <Tooltip label="Add to Checklist">
-            <IconButton
-              variant="unstyled"
-              size="sm"
-              aria-label="Add"
-              icon={<AddIcon />}
-              onClick={() => onAddToChecklist(run)}
-            />
-          </Tooltip>
-        )}
-      </Flex>
-
+      <RunToolbar
+        run={run}
+        viewOptions={viewOptions}
+        onAddToChecklist={onAddToChecklist}
+        onViewOptionsChanged={onViewOptionsChanged}
+        warnings={warnings}
+      />
       <ScreenshotDataGrid
         style={{ blockSize: "auto", maxHeight: "100%", overflow: "auto" }}
         columns={gridData.columns}
