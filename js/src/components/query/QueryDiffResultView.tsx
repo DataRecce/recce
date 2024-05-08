@@ -28,6 +28,71 @@ import {
 import { RunResultViewProps } from "../run/types";
 import { AddIcon, WarningIcon } from "@chakra-ui/icons";
 
+interface ResultViewPanelProps
+  extends RunResultViewProps<
+    QueryDiffParams,
+    QueryDiffResult,
+    QueryDiffViewOptions
+  > {
+  warnings?: string[];
+  onAddToChecklist?: (run: Run<QueryDiffParams, QueryDiffResult>) => void;
+}
+
+const ResultViewPanel = ({
+  run,
+  warnings,
+  viewOptions,
+  onAddToChecklist,
+  onViewOptionsChanged,
+}: ResultViewPanelProps) => {
+  const toggleChangedOnly = () => {
+    const changedOnly = !viewOptions?.changed_only;
+    if (onViewOptionsChanged) {
+      onViewOptionsChanged({ ...viewOptions, changed_only: changedOnly });
+    }
+  };
+
+  return (
+    <>
+      <Flex
+        borderBottom="1px solid lightgray"
+        justifyContent="flex-end"
+        gap="5px"
+        alignItems="center"
+        px="10px"
+        bg={warnings && warnings.length > 0 ? "orange.100" : "inherit"}
+      >
+        <VStack alignItems="flex-start" spacing={0}>
+          {warnings &&
+            warnings.map((warning) => (
+              <Box>
+                <WarningIcon color="orange.600" /> {warning}
+              </Box>
+            ))}
+        </VStack>
+        <Spacer minHeight="32px" />
+        <Checkbox
+          isChecked={viewOptions?.changed_only}
+          onChange={toggleChangedOnly}
+        >
+          Changed only
+        </Checkbox>
+        {onAddToChecklist && (
+          <Tooltip label="Add to Checklist">
+            <IconButton
+              variant="unstyled"
+              size="sm"
+              aria-label="Add"
+              icon={<AddIcon />}
+              onClick={() => onAddToChecklist(run)}
+            />
+          </Tooltip>
+        )}
+      </Flex>
+    </>
+  );
+};
+
 export interface QueryDiffResultViewProps
   extends RunResultViewProps<
     QueryDiffParams,
@@ -108,15 +173,24 @@ const _QueryDiffResultView = ({
   }
 
   if (changedOnly && gridData.rows.length === 0) {
-    return <Center height="100%">No change</Center>;
+    return (
+      <>
+        <Flex
+          direction="column"
+          backgroundColor="rgb(249, 249, 249)"
+          height={"100%"}
+        >
+          <ResultViewPanel
+            run={run}
+            viewOptions={viewOptions}
+            onAddToChecklist={onAddToChecklist}
+            onViewOptionsChanged={onViewOptionsChanged}
+          />
+          <Center height="100%">No change</Center>;
+        </Flex>
+      </>
+    );
   }
-
-  const toggleChangedOnly = () => {
-    const changedOnly = !viewOptions?.changed_only;
-    if (onViewOptionsChanged) {
-      onViewOptionsChanged({ ...viewOptions, changed_only: changedOnly });
-    }
-  };
 
   const limit = run.result?.current?.limit || 0;
   const warningLimit =
@@ -124,51 +198,27 @@ const _QueryDiffResultView = ({
       ? `Warning: Displayed results are limited to ${limit.toLocaleString()} records. To ensure complete data retrieval, consider applying a LIMIT or WHERE clause to constrain the result set.`
       : null;
 
+  const warnings: string[] = [];
+  if (warningPKey) {
+    warnings.push(warningPKey);
+  }
+  if (warningLimit) {
+    warnings.push(warningLimit);
+  }
+
   return (
     <Flex
       direction="column"
       backgroundColor="rgb(249, 249, 249)"
       height={"100%"}
     >
-      <Flex
-        borderBottom="1px solid lightgray"
-        justifyContent="flex-end"
-        gap="5px"
-        alignItems="center"
-        px="10px"
-        bg={warningLimit || warningPKey ? "orange.100" : "inherit"}
-      >
-        <VStack alignItems="flex-start" spacing={0}>
-          {warningPKey && (
-            <Box>
-              <WarningIcon color="orange.600" /> {warningPKey}
-            </Box>
-          )}
-          {warningLimit && (
-            <Box>
-              <WarningIcon color="orange.600" /> {warningLimit}
-            </Box>
-          )}
-        </VStack>
-        <Spacer minHeight="32px" />
-        <Checkbox
-          isChecked={viewOptions?.changed_only}
-          onChange={toggleChangedOnly}
-        >
-          Changed only
-        </Checkbox>
-        {onAddToChecklist && (
-          <Tooltip label="Add to Checklist">
-            <IconButton
-              variant="unstyled"
-              size="sm"
-              aria-label="Add"
-              icon={<AddIcon />}
-              onClick={() => onAddToChecklist(run)}
-            />
-          </Tooltip>
-        )}
-      </Flex>
+      <ResultViewPanel
+        run={run}
+        viewOptions={viewOptions}
+        onAddToChecklist={onAddToChecklist}
+        onViewOptionsChanged={onViewOptionsChanged}
+        warnings={warnings}
+      />
       <ScreenshotDataGrid
         style={{ blockSize: "auto", maxHeight: "100%", overflow: "auto" }}
         columns={gridData.columns}
@@ -229,15 +279,24 @@ const _QueryDiffJoinResultView = ({
   }
 
   if (changedOnly && gridData.rows.length === 0) {
-    return <Center height="100%">No change</Center>;
+    return (
+      <>
+        <Flex
+          direction="column"
+          backgroundColor="rgb(249, 249, 249)"
+          height={"100%"}
+        >
+          <ResultViewPanel
+            run={run}
+            viewOptions={viewOptions}
+            onAddToChecklist={onAddToChecklist}
+            onViewOptionsChanged={onViewOptionsChanged}
+          />
+          <Center height="100%">No change</Center>
+        </Flex>
+      </>
+    );
   }
-
-  const toggleChangedOnly = () => {
-    const changedOnly = !viewOptions?.changed_only;
-    if (onViewOptionsChanged) {
-      onViewOptionsChanged({ ...viewOptions, changed_only: changedOnly });
-    }
-  };
 
   const limit = run.result?.diff?.limit || 0;
   const warningLimit =
@@ -245,44 +304,24 @@ const _QueryDiffJoinResultView = ({
       ? `Warning: Displayed results are limited to ${limit.toLocaleString()} records. To ensure complete data retrieval, consider applying a LIMIT or WHERE clause to constrain the result set.`
       : null;
 
+  const warnings: string[] = [];
+  if (warningLimit) {
+    warnings.push(warningLimit);
+  }
+
   return (
     <Flex
       direction="column"
       backgroundColor="rgb(249, 249, 249)"
       height={"100%"}
     >
-      <Flex
-        borderBottom="1px solid lightgray"
-        justifyContent="flex-end"
-        gap="5px"
-        alignItems="center"
-        px="10px"
-        bg={warningLimit ? "orange.100" : "inherit"}
-      >
-        {warningLimit && (
-          <Box>
-            <WarningIcon color="orange.600" /> {warningLimit}
-          </Box>
-        )}
-        <Spacer minHeight="32px" />
-        <Checkbox
-          isChecked={viewOptions?.changed_only}
-          onChange={toggleChangedOnly}
-        >
-          Changed only
-        </Checkbox>
-        {onAddToChecklist && (
-          <Tooltip label="Add to Checklist">
-            <IconButton
-              variant="unstyled"
-              size="sm"
-              aria-label="Add"
-              icon={<AddIcon />}
-              onClick={() => onAddToChecklist(run)}
-            />
-          </Tooltip>
-        )}
-      </Flex>
+      <ResultViewPanel
+        run={run}
+        viewOptions={viewOptions}
+        onAddToChecklist={onAddToChecklist}
+        onViewOptionsChanged={onViewOptionsChanged}
+        warnings={warnings}
+      />
       <ScreenshotDataGrid
         style={{ blockSize: "auto", maxHeight: "100%", overflow: "auto" }}
         columns={gridData.columns}
