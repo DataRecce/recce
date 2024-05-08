@@ -1,4 +1,4 @@
-name: Lint by ESLint
+name: Test JS
 
 on:
   push:
