@@ -1,11 +1,14 @@
+import typing
 from typing import TypedDict, Optional, List, Union
 
-import agate
+if typing.TYPE_CHECKING:
+    import agate
+
 from pydantic import BaseModel
 
 from .core import Task, TaskResultDiffer
 from .dataframe import DataFrame
-from ..adapter.dbt_adapter import DbtAdapter
+
 from ..core import default_context
 from ..exceptions import RecceException
 
@@ -40,7 +43,7 @@ class ValueDiffMixin:
                 self.legacy_surrogate_key = False
                 break
 
-    def _verify_primary_key(self, dbt_adapter: DbtAdapter, primary_key: Union[str, List[str]], model: str):
+    def _verify_primary_key(self, dbt_adapter, primary_key: Union[str, List[str]], model: str):
         self.update_progress(message=f"Verify primary key: {primary_key}")
         composite = True if isinstance(primary_key, List) else False
 
@@ -85,7 +88,7 @@ class ValueDiffTask(Task, ValueDiffMixin):
         self.connection = None
         self.legacy_surrogate_key = True
 
-    def _query_value_diff(self, dbt_adpter: DbtAdapter, primary_key: Union[str, List[str]], model: str,
+    def _query_value_diff(self, dbt_adpter, primary_key: Union[str, List[str]], model: str,
                           columns: List[str] = None):
         column_groups = {}
         composite = True if isinstance(primary_key, List) else False
@@ -232,6 +235,8 @@ class ValueDiffTask(Task, ValueDiffMixin):
             return self._query_value_diff(dbt_adapter, primary_key, model, columns=columns)
 
     def cancel(self):
+        from recce.adapter.dbt_adapter import DbtAdapter
+
         if self.connection:
             adapter: DbtAdapter = default_context().adapter
             with adapter.connection_named("cancel"):
@@ -290,8 +295,7 @@ class ValueDiffDetailTask(Task, ValueDiffMixin):
         self.connection = None
         self.legacy_surrogate_key = True
 
-    def _query_value_diff(self, dbt_adapter: DbtAdapter, primary_key: Union[str, List[str]], model: str,
-                          columns: List[str] = None):
+    def _query_value_diff(self, dbt_adapter, primary_key: Union[str, List[str]], model: str, columns: List[str] = None):
 
         composite = True if isinstance(primary_key, List) else False
 
@@ -356,6 +360,7 @@ class ValueDiffDetailTask(Task, ValueDiffMixin):
 
     def execute(self):
 
+        from recce.adapter.dbt_adapter import DbtAdapter
         dbt_adapter: DbtAdapter = default_context().adapter
 
         with dbt_adapter.connection_named("value diff"):
@@ -374,6 +379,7 @@ class ValueDiffDetailTask(Task, ValueDiffMixin):
             return self._query_value_diff(dbt_adapter, primary_key, model, columns)
 
     def cancel(self):
+        from recce.adapter.dbt_adapter import DbtAdapter
         if self.connection:
             adapter: DbtAdapter = default_context().adapter
             with adapter.connection_named("cancel"):

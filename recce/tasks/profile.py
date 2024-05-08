@@ -1,9 +1,7 @@
 from typing import TypedDict, List
 
-import agate
 from pydantic import BaseModel
 
-from recce.adapter.dbt_adapter import DbtAdapter, merge_tables
 from .core import Task, TaskResultDiffer
 from .dataframe import DataFrame
 from ..core import default_context
@@ -27,6 +25,8 @@ class ProfileDiffTask(Task):
         self.connection = None
 
     def execute(self):
+        import agate
+        from recce.adapter.dbt_adapter import DbtAdapter, merge_tables
         dbt_adapter: DbtAdapter = default_context().adapter
 
         model: str = self.params['model']
@@ -72,7 +72,7 @@ class ProfileDiffTask(Task):
             raise RecceException(
                 r"Package 'dbt_profiler' not found. Please refer to the link to install: https://hub.getdbt.com/data-mie/dbt_profiler/")
 
-    def _profile_column(self, dbt_adapter: DbtAdapter, relation, column):
+    def _profile_column(self, dbt_adapter, relation, column):
 
         sql_template = r"""
         select
@@ -116,24 +116,11 @@ class ProfileDiffTask(Task):
                     e = RecceException('No profile diff result due to the model is empty.', False)
             raise e
 
-    def _to_dataframe(self, table: agate.Table):
-        import pandas as pd
-        import json
-
-        df = pd.DataFrame([row.values() for row in table.rows], columns=table.column_names)
-
-        for column_name, column_type in zip(table.column_names, table.column_types):
-            if column_name.lower() == 'not_null_proportion':
-                df[column_name] = df[column_name].astype('float')
-            if column_name.lower() == 'distinct_proportion':
-                df[column_name] = df[column_name].astype('float')
-        result_json = df.to_json(orient='table')
-        return json.loads(result_json)
-
     def cancel(self):
         super().cancel()
 
         if self.connection:
+            from recce.adapter.dbt_adapter import DbtAdapter
             dbt_adapter: DbtAdapter = default_context().adapter
             with dbt_adapter.connection_named("cancel"):
                 dbt_adapter.cancel(self.connection)

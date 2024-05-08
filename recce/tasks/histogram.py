@@ -4,7 +4,6 @@ from typing import TypedDict
 
 from dateutil.relativedelta import relativedelta
 
-from recce.adapter.dbt_adapter import DbtAdapter
 from recce.core import default_context
 from recce.tasks import Task
 from recce.tasks.core import TaskResultDiffer
@@ -293,6 +292,7 @@ class HistogramDiffTask(Task, QueryMixin):
         self.connection = None
 
     def execute(self):
+        from recce.adapter.dbt_adapter import DbtAdapter
         result = {}
 
         dbt_adapter: DbtAdapter = default_context().adapter
