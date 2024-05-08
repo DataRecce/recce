@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 set -euxo pipefail
 
+PR_URL="${PR_URL:-}"
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 cd "$SCRIPT_DIR"
 pwd
@@ -47,4 +48,4 @@ assert_string_value $run_type "row_count_diff"
 
 # pull request information
 pr_url=$(cat recce_state.json | jq .pull_request.url | tr -d '"')
-assert_string_value $pr_url $PR_URL
+assert_string_value "${pr_url}" "${PR_URL}"
