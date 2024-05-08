@@ -64,8 +64,8 @@ const ResultViewPanel = ({
       >
         <VStack alignItems="flex-start" spacing={0}>
           {warnings &&
-            warnings.map((warning) => (
-              <Box>
+            warnings.map((warning, idx) => (
+              <Box key={idx}>
                 <WarningIcon color="orange.600" /> {warning}
               </Box>
             ))}
