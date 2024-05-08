@@ -241,14 +241,7 @@ class QueryDiffResultDiffer(TaskResultDiffer):
         if diff is None:
             return TaskResultDiffer.diff(base, current)
         else:
-            base = dict(columns=[], data=[])
-            current = dict(columns=[], data=[])
-            base['columns'] = diff['columns'][:-2]
-            current['columns'] = diff['columns'][:-2]
-
-            for data in diff['data']:
-                if data[-2] is True:
-                    base['data'].append(data[:-2])
-                elif data[-1] is True:
-                    current['data'].append(data[:-2])
-            return TaskResultDiffer.diff(base, current)
+            diff_data = diff.get('data')
+            if diff_data is None or len(diff_data) == 0:
+                return None
+            return dict(values_changed={})
