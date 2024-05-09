@@ -187,6 +187,10 @@ export const defaultRenderCell = ({
   row,
   column,
 }: RenderCellProps<any, any>) => {
+  if (!row.hasOwnProperty(column.key)) {
+    return <Text style={{ color: "gray" }}>-</Text>;
+  }
+
   const value = row[column.key];
   const [renderedValue, grayOut] = toRenderedValue(value);
   return (
