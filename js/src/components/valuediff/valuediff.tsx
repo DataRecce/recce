@@ -9,6 +9,7 @@ import { Box, Flex, Icon } from "@chakra-ui/react";
 import { VscPin, VscPinned } from "react-icons/vsc";
 import { DataFrame } from "@/lib/api/types";
 import { mergeKeysWithStatus } from "@/lib/mergeKeys";
+import { defaultRenderCell } from "../query/querydiff";
 
 function _getColumnMap(df: DataFrame) {
   const result: {
@@ -126,15 +127,6 @@ function DataFrameColumnGroupHeader({
     </Flex>
   );
 }
-
-export const defaultRenderCell = ({
-  row,
-  column,
-}: RenderCellProps<any, any>) => {
-  // workaround for https://github.com/adazzle/react-data-grid/issues/882
-  const value = row[column.key];
-  return <>{typeof value === "boolean" ? value.toString() : value}</>;
-};
 
 export function toValueDiffGrid(
   df: DataFrame,
@@ -308,6 +300,7 @@ export function toValueDiffGrid(
         }
         return undefined;
       },
+      renderCell: defaultRenderCell,
     });
   });
 

@@ -5,7 +5,7 @@ import {
 } from "react-data-grid";
 import _ from "lodash";
 import "./styles.css";
-import { Box, Flex, Icon } from "@chakra-ui/react";
+import { Box, Flex, Icon, Text } from "@chakra-ui/react";
 import { VscClose, VscKey, VscPin, VscPinned } from "react-icons/vsc";
 import { DataFrame } from "@/lib/api/types";
 import { mergeKeysWithStatus } from "@/lib/mergeKeys";
@@ -163,13 +163,35 @@ function DataFrameColumnGroupHeader({
   );
 }
 
+const toRenderedValue = (value: any): [any, boolean] => {
+  let renderedValue;
+  let grayOut = false;
+
+  if (typeof value === "boolean") {
+    // workaround for https://github.com/adazzle/react-data-grid/issues/882
+    renderedValue = value.toString();
+  } else if (value === "") {
+    renderedValue = "(empty)";
+    grayOut = true;
+  } else if (value === undefined || value === null) {
+    renderedValue = "(null)";
+    grayOut = true;
+  } else {
+    renderedValue = value;
+  }
+
+  return [renderedValue, grayOut];
+};
+
 export const defaultRenderCell = ({
   row,
   column,
 }: RenderCellProps<any, any>) => {
-  // workaround for https://github.com/adazzle/react-data-grid/issues/882
   const value = row[column.key];
-  return <>{typeof value === "boolean" ? value.toString() : value}</>;
+  const [renderedValue, grayOut] = toRenderedValue(value);
+  return (
+    <Text style={{ color: grayOut ? "gray" : "inherit" }}>{renderedValue}</Text>
+  );
 };
 
 export function toDataDiffGrid(
@@ -383,6 +405,7 @@ export function toDataDiffGrid(
           }
           return undefined;
         },
+        renderCell: defaultRenderCell,
       });
     });
   }
