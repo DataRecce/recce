@@ -1,8 +1,4 @@
-import typing
 from typing import TypedDict, Optional, List, Union
-
-if typing.TYPE_CHECKING:
-    import agate
 
 from pydantic import BaseModel
 
@@ -91,7 +87,7 @@ class ValueDiffTask(Task, ValueDiffMixin):
     def _query_value_diff(self, dbt_adpter, primary_key: Union[str, List[str]], model: str,
                           columns: List[str] = None):
         import agate
-        
+
         column_groups = {}
         composite = True if isinstance(primary_key, List) else False
 
