@@ -51,7 +51,7 @@ test("query diff", () => {
   expect(result?.rows).toStrictEqual([
     {
       _index: 1,
-      status: "modified",
+      __status: "modified",
       base__id: 1,
       base__name: "Alice",
       base__value: 100,
@@ -70,7 +70,7 @@ test("query diff", () => {
     },
     {
       _index: 3,
-      status: "modified",
+      __status: "modified",
       base__id: 3,
       base__name: "Charlie",
       base__value: 300,
@@ -85,7 +85,7 @@ test("query diff", () => {
   expect(result?.rows).toStrictEqual([
     {
       id: 1,
-      status: "modified",
+      __status: "modified",
       base__name: "Alice",
       base__value: 100,
       current__name: "Alice",
@@ -99,7 +99,7 @@ test("query diff", () => {
       current__value: 200,
     },
     {
-      status: "modified",
+      __status: "modified",
       id: 3,
       base__name: "Charlie",
       base__value: 300,
@@ -108,4 +108,54 @@ test("query diff", () => {
     },
   ]);
   expect(result?.columns.length).toBe(3);
+});
+
+test("query diff changed only", () => {
+  const base: DataFrame = {
+    columns: [
+      {
+        name: "status",
+        type: "text",
+      },
+      {
+        name: "c",
+        type: "integer",
+      },
+    ],
+    data: [
+      ["active", 16],
+      ["inactive", 7],
+      [null, 54],
+    ],
+  };
+
+  const current: DataFrame = {
+    columns: [
+      {
+        name: "status",
+        type: "text",
+      },
+      {
+        name: "c",
+        type: "integer",
+      },
+    ],
+    data: [
+      ["active", 16],
+      ["inactive", 7],
+    ],
+  };
+
+  let result = toDataDiffGrid(base, current, {
+    primaryKeys: ["status"],
+    changedOnly: true,
+  });
+  expect(result?.rows).toStrictEqual([
+    {
+      status: null,
+      base__c: 54,
+      __status: "removed",
+    },
+  ]);
+  expect(result?.columns.length).toBe(1);
 });
