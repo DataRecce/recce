@@ -62,6 +62,12 @@ class SqlmeshAdapter(BaseAdapter):
     def get_model(self, model_id: str, base=False):
         raise NotImplementedError()
 
+    def get_node_name_by_id(self, unique_id):
+        model = self.context.models.get(unique_id)
+        if model is None:
+            return None
+        return model.name
+
     @classmethod
     def load(cls, **kwargs):
         sqlmesh_envs = kwargs.get('sqlmesh_envs')
