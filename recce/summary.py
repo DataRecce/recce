@@ -10,7 +10,7 @@ from recce.tasks.profile import ProfileDiffResultDiffer
 from recce.tasks.query import QueryDiffResultDiffer
 from recce.tasks.rowcount import RowCountDiffResultDiffer
 from recce.tasks.top_k import TopKDiffTaskResultDiffer
-from recce.tasks.valuediff import ValueDiffTaskResultDiffer
+from recce.tasks.valuediff import ValueDiffTaskResultDiffer, ValueDiffDetailTaskResultDiffer
 
 ADD_COLOR = '#1dce00'
 MODIFIED_COLOR = '#ffa502'
@@ -179,6 +179,7 @@ class CheckSummary(BaseModel):
 
 check_result_differ_registry: Dict[RunType, Type[TaskResultDiffer]] = {
     RunType.VALUE_DIFF: ValueDiffTaskResultDiffer,
+    RunType.VALUE_DIFF_DETAIL: ValueDiffDetailTaskResultDiffer,
     RunType.ROW_COUNT_DIFF: RowCountDiffResultDiffer,
     RunType.QUERY_DIFF: QueryDiffResultDiffer,
     RunType.TOP_K_DIFF: TopKDiffTaskResultDiffer,
@@ -316,7 +317,7 @@ def generate_check_summary(base_lineage, curr_lineage) -> (List[CheckSummary], D
                     )
                 )
         elif (check.type in [RunType.ROW_COUNT_DIFF, RunType.QUERY_DIFF,
-                             RunType.VALUE_DIFF, RunType.PROFILE_DIFF,
+                             RunType.VALUE_DIFF, RunType.VALUE_DIFF_DETAIL, RunType.PROFILE_DIFF,
                              RunType.TOP_K_DIFF, RunType.HISTOGRAM_DIFF] and run is not None):
             # Check the result is changed or not
             differ = differ_factory(run)

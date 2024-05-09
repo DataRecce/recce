@@ -236,5 +236,14 @@ class QueryDiffResultDiffer(TaskResultDiffer):
     def _check_result_changed_fn(self, result):
         base = result.get('base')
         current = result.get('current')
+        diff = result.get('diff')
 
-        return TaskResultDiffer.diff(base, current)
+        if diff is None:
+            return TaskResultDiffer.diff(base, current)
+        else:
+            diff_data = diff.get('data')
+            if diff_data is None or len(diff_data) == 0:
+                return None
+
+            # TODO: Implement detailed information of values changed
+            return dict(values_changed={})
