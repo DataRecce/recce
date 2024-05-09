@@ -54,7 +54,7 @@ export const QueryForm = ({
   }, [lineageGraph]);
 
   const labelInfo =
-    "When a primary key is present, the query difference is computed in the warehouse through joins. Otherwise, it's computed on the client side.";
+    "When a primary key is present, the query difference is computed in the warehouse. Otherwise, it's computed on the client side.";
 
   return (
     <Flex {...prob}>
