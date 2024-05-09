@@ -204,12 +204,11 @@ class QueryDiffTask(Task, QueryMixin, ValueDiffMixin):
 
             return self._query_diff(dbt_adapter, sql_template)
 
-    def execute_sqlmesh(self):
+    def _sqlmesh_query_diff(self, sql):
         from ..adapter.sqlmesh_adapter import SqlmeshAdapter
 
         sqlmesh_adapter: SqlmeshAdapter = default_context().adapter
 
-        sql = self.params.get('sql_template')
         limit = QUERY_LIMIT
         base, base_more = sqlmesh_adapter.fetchdf_with_limit(sql, base=True, limit=limit)
         curr, curr_more = sqlmesh_adapter.fetchdf_with_limit(sql, base=False, limit=limit)
@@ -217,6 +216,71 @@ class QueryDiffTask(Task, QueryMixin, ValueDiffMixin):
             base=DataFrame.from_pandas(base, limit=limit, more=base_more),
             current=DataFrame.from_pandas(curr, limit=limit, more=curr_more)
         )
+
+    def _sqlmesh_query_diff_join(self, sql, primary_keys):
+        from ..adapter.sqlmesh_adapter import SqlmeshAdapter
+
+        sqlmesh_adapter: SqlmeshAdapter = default_context().adapter
+
+        limit = QUERY_LIMIT
+        expr_base = sqlmesh_adapter.replace_virtual_tables(sql, base=True)
+        expr_curr = sqlmesh_adapter.replace_virtual_tables(sql, base=False)
+        import sqlglot as g
+
+        expr = g.select(
+            '*',
+        ).with_(
+            'a', as_=expr_base
+        ).with_(
+            'b', as_=expr_curr
+        ).with_(
+            'a_interset_b', as_='select * from a intersect select * from b'
+        ).with_(
+            'a_except_b', as_='select * from a except select * from b'
+        ).with_(
+            'b_except_a', as_='select * from b except select * from a'
+        ).with_(
+            'all_records',
+            as_='''
+            SELECT
+              *,
+              TRUE AS in_a,
+              TRUE AS in_b
+            FROM a_interset_b
+            UNION ALL
+            SELECT
+              *,
+              TRUE AS in_a,
+              FALSE AS in_b
+            FROM a_except_b
+            UNION ALL
+            SELECT
+              *,
+              FALSE AS in_a,
+              TRUE AS in_b
+            FROM b_except_a
+            '''
+        ).with_(
+            'final',
+            as_=f'''
+                    select * from all_records
+                    where not (in_a and in_b)
+                    order by {", ".join(primary_keys)}, in_a desc, in_b desc
+                    '''
+        ).from_('final').limit(1000)
+        diff, diff_more = sqlmesh_adapter.fetchdf_with_limit(expr, limit=limit)
+        return QueryDiffResult(
+            diff=DataFrame.from_pandas(diff, limit=limit, more=diff_more)
+        )
+
+    def execute_sqlmesh(self):
+        sql = self.params.get('sql_template')
+        primary_keys = self.params.get('primary_keys')
+
+        if primary_keys:
+            return self._sqlmesh_query_diff_join(sql, primary_keys)
+        else:
+            return self._sqlmesh_query_diff(sql)
 
     def execute(self):
         context = default_context()

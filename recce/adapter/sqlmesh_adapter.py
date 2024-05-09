@@ -83,25 +83,41 @@ class SqlmeshAdapter(BaseAdapter):
 
         return cls(context=context, base_env=base_env, curr_env=curr_env)
 
-    def fetchdf_with_limit(
+    def replace_virtual_tables(
         self,
         sql: t.Union[Expression, str],
-        base: bool = False,
-        limit: Optional[int] = None
-    ) -> (pd.DataFrame, bool):
+        base: bool = None
+    ) -> Expression:
+        '''
+        Replace virtual tables based on the env name.
+
+        Args:
+            sql: SQL expression to replace virtual tables
+            base: True: replace virtual tables with base env, False: replace virtual tables with current env, None: no replacement
+        '''
         if isinstance(sql, str):
             expression = parse_one(sql, dialect=self.context.default_dialect)
         else:
             expression = sql
 
-        env = self.base_env if base else self.curr_env
-        model_names = [model.name for model in self.context.models.values()]
-        if env.name != 'prod':
-            for scope in traverse_scope(expression):
-                for table in scope.tables:
-                    if f'{table.db}.{table.name}' in model_names:
-                        table.args['db'] = f"{table.args['db']}__{env.name}"
+        if base is not None:
+            env = self.base_env if base else self.curr_env
+            if env.name != 'prod':
+                model_names = [model.name for model in self.context.models.values()]
+                for scope in traverse_scope(expression):
+                    for table in scope.tables:
+                        if f'{table.db}.{table.name}' in model_names:
+                            table.args['db'] = f"{table.args['db']}__{env.name}"
 
+        return expression
+
+    def fetchdf_with_limit(
+        self,
+        sql: t.Union[Expression, str],
+        base: Optional[bool] = None,
+        limit: Optional[int] = None
+    ) -> (pd.DataFrame, bool):
+        expression = self.replace_virtual_tables(sql, base=base)
         if limit:
             expression = select(
                 '*'
