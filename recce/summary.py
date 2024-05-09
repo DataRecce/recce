@@ -3,6 +3,7 @@ from uuid import UUID
 
 from pydantic import BaseModel
 
+from recce.apis.check_func import get_node_name_by_id
 from recce.models import CheckDAO, RunDAO, RunType, Run
 from recce.tasks.core import TaskResultDiffer
 from recce.tasks.histogram import HistogramDiffTaskResultDiffer
@@ -176,6 +177,16 @@ class CheckSummary(BaseModel):
     changes: dict
     node_ids: Optional[List[str]]
 
+    @property
+    def related_nodes(self):
+        nodes = []
+
+        for node_id in self.node_ids or []:
+            name = get_node_name_by_id(node_id)
+            nodes.append(name)
+
+        return nodes
+
 
 check_result_differ_registry: Dict[RunType, Type[TaskResultDiffer]] = {
     RunType.VALUE_DIFF: ValueDiffTaskResultDiffer,
@@ -334,7 +345,7 @@ def generate_check_summary(base_lineage, curr_lineage) -> (List[CheckSummary], D
 
     return checks_summary, {
         'total': len(checks),
-        'impacted': len(checks_summary),
+        'mismatch': len(checks_summary),
         # 'failed': failed_checks_count,
     }
 
@@ -370,29 +381,12 @@ def generate_mermaid_lineage_graph(graph: LineageGraph):
 
 
 def generate_markdown_summary(ctx, summary_format: str = 'markdown'):
-    from py_markdown_table.markdown_table import markdown_table
     curr_lineage = ctx.get_lineage(base=False)
     base_lineage = ctx.get_lineage(base=True)
     graph = _build_lineage_graph(base_lineage, curr_lineage)
     graph.checks, check_statistics = generate_check_summary(base_lineage, curr_lineage)
     mermaid_content, is_empty_graph = generate_mermaid_lineage_graph(graph)
-    check_content = None
-
-    def _formate_changes(changes):
-        return ",".join([k.replace('_', ' ').title() for k in list(changes.keys())])
-
-    # Generate the check summary if we found any changes
-    if len(graph.checks) > 0:
-        data = []
-        for check in graph.checks:
-            data.append({
-                'Name': check.name,
-                'Type': str(check.type).replace('_', ' ').title(),
-                'Description': check.description.replace('\n', ' ') or 'N/A',
-                # Temporarily remove the type of changes, until we implement a better way to display it.
-                # 'Type of Changes': _formate_changes(check.changes)
-            })
-        check_content = markdown_table(data).set_params(quote=False, row_sep='markdown').get_markdown()
+    check_content = generate_check_content(graph, check_statistics)
 
     if summary_format == 'mermaid':
         return mermaid_content
@@ -414,19 +408,40 @@ def generate_markdown_summary(ctx, summary_format: str = 'markdown'):
 ## Lineage Graph
 No changed module detected.
 '''
-        if check_statistics.get('total', 0) > 0:
-            check_summary = markdown_table([{
-                'Total Checks': check_statistics.get('total', 0),
-                'Impacted Checks': check_statistics.get('impacted', 0),
-            }]).set_params(quote=False, row_sep='markdown').get_markdown()
-            content += f'''
+        if check_content:
+            content += check_content
+        return content
+
+
+def generate_check_content(graph, check_statistics):
+    from py_markdown_table.markdown_table import markdown_table
+    content = ''
+    check_content = None
+    # Generate the check summary if we found any changes
+    if len(graph.checks) > 0:
+        data = []
+        for check in graph.checks:
+            data.append({
+                'Name': check.name,
+                'Type': str(check.type).replace('_', ' ').title(),
+                'Related Models': ', '.join(check.related_nodes) if check.related_nodes else 'N/A',
+                # Temporarily remove the type of changes, until we implement a better way to display it.
+                # 'Type of Changes': _formate_changes(check.changes)
+            })
+        check_content = markdown_table(data).set_params(quote=False, row_sep='markdown').get_markdown()
+
+    if check_statistics.get('total', 0) > 0:
+        check_summary = markdown_table([{
+            'Total Checks': check_statistics.get('total', 0),
+            'Data Mismatch Detected': check_statistics.get('mismatch', 0),
+        }]).set_params(quote=False, row_sep='markdown').get_markdown()
+        content += f'''
 ## Checks Summary
 {check_summary}
             '''
-
-        if check_content:
-            content += f'''
-## Impacted Checks
+    if check_content:
+        content += f'''
+### Checks of Data Missmatch Detected
 {check_content}
 '''
-        return content
+    return content
