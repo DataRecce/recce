@@ -255,9 +255,9 @@ export function toDataDiffGrid(
 
     // Check if row is added, removed, or modified
     if (!baseRow) {
-      row["status"] = "added";
+      row["__status"] = "added";
     } else if (!currentRow) {
-      row["status"] = "removed";
+      row["__status"] = "removed";
     } else {
       for (const [name, mergedColumn] of Object.entries(columnMap)) {
         if (name === "index") {
@@ -281,7 +281,7 @@ export function toDataDiffGrid(
             currentRow[mergedColumn.currentColumnIndex]
           )
         ) {
-          row["status"] = "modified";
+          row["__status"] = "modified";
           mergedColumn.status = "modified";
         }
       }
@@ -293,9 +293,9 @@ export function toDataDiffGrid(
   if (changedOnly) {
     rows = rows.filter(
       (row) =>
-        row["status"] === "added" ||
-        row["status"] === "removed" ||
-        row["status"] === "modified"
+        row["__status"] === "added" ||
+        row["__status"] === "removed" ||
+        row["__status"] === "modified"
     );
   }
 
@@ -309,7 +309,7 @@ export function toDataDiffGrid(
         : undefined;
 
     const cellClass = (row: any) => {
-      const rowStatus = row["status"];
+      const rowStatus = row["__status"];
       if (rowStatus === "removed") {
         return "diff-cell-removed";
       } else if (rowStatus === "added") {
@@ -378,8 +378,8 @@ export function toDataDiffGrid(
         ),
         frozen: true,
         cellClass: (row: any) => {
-          if (row["status"]) {
-            return `diff-header-${row["status"]}`;
+          if (row["__status"]) {
+            return `diff-header-${row["__status"]}`;
           }
           return undefined;
         },
