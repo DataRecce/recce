@@ -94,6 +94,20 @@ const _QueryDiffResultView = ({
     }
   }, [gridData.invalidPKeyBase, gridData.invalidPKeyCurrent, primaryKeys]);
 
+  const limit = run.result?.current?.limit || 0;
+  const warningLimit =
+    limit > 0 && (run?.result?.current?.more || run?.result?.base?.more)
+      ? `Warning: Displayed results are limited to ${limit.toLocaleString()} records. To ensure complete data retrieval, consider applying a LIMIT or WHERE clause to constrain the result set.`
+      : null;
+
+  const warnings: string[] = [];
+  if (warningPKey) {
+    warnings.push(warningPKey);
+  }
+  if (warningLimit) {
+    warnings.push(warningLimit);
+  }
+
   if (gridData.columns.length === 0) {
     return <Center height="100%">No data</Center>;
   }
@@ -110,24 +124,11 @@ const _QueryDiffResultView = ({
           viewOptions={viewOptions}
           onAddToChecklist={onAddToChecklist}
           onViewOptionsChanged={onViewOptionsChanged}
+          warnings={warnings}
         />
         <Center height="100%">No change</Center>;
       </Flex>
     );
-  }
-
-  const limit = run.result?.current?.limit || 0;
-  const warningLimit =
-    limit > 0 && (run?.result?.current?.more || run?.result?.base?.more)
-      ? `Warning: Displayed results are limited to ${limit.toLocaleString()} records. To ensure complete data retrieval, consider applying a LIMIT or WHERE clause to constrain the result set.`
-      : null;
-
-  const warnings: string[] = [];
-  if (warningPKey) {
-    warnings.push(warningPKey);
-  }
-  if (warningLimit) {
-    warnings.push(warningLimit);
   }
 
   return (
@@ -198,6 +199,17 @@ const _QueryDiffJoinResultView = ({
     });
   }, [run, viewOptions, changedOnly, pinnedColumns, onViewOptionsChanged]);
 
+  const limit = run.result?.diff?.limit || 0;
+  const warningLimit =
+    limit > 0 && run?.result?.diff?.more
+      ? `Warning: Displayed results are limited to ${limit.toLocaleString()} records. To ensure complete data retrieval, consider applying a LIMIT or WHERE clause to constrain the result set.`
+      : null;
+
+  const warnings: string[] = [];
+  if (warningLimit) {
+    warnings.push(warningLimit);
+  }
+
   if (gridData.columns.length === 0) {
     return <Center height="100%">No data</Center>;
   }
@@ -214,21 +226,11 @@ const _QueryDiffJoinResultView = ({
           viewOptions={viewOptions}
           onAddToChecklist={onAddToChecklist}
           onViewOptionsChanged={onViewOptionsChanged}
+          warnings={warnings}
         />
         <Center height="100%">No change</Center>
       </Flex>
     );
-  }
-
-  const limit = run.result?.diff?.limit || 0;
-  const warningLimit =
-    limit > 0 && run?.result?.diff?.more
-      ? `Warning: Displayed results are limited to ${limit.toLocaleString()} records. To ensure complete data retrieval, consider applying a LIMIT or WHERE clause to constrain the result set.`
-      : null;
-
-  const warnings: string[] = [];
-  if (warningLimit) {
-    warnings.push(warningLimit);
   }
 
   return (

@@ -69,6 +69,17 @@ export const ValueDiffDetailResultView = ({
     });
   }, [run, viewOptions, changedOnly, pinnedColumns, onViewOptionsChanged]);
 
+  const limit = run.result?.limit || 0;
+  const warning =
+    limit > 0 && run?.result?.more
+      ? `Warning: Displayed results are limited to ${limit.toLocaleString()} records. To ensure complete data retrieval, consider applying a LIMIT or WHERE clause to constrain the result set.`
+      : null;
+
+  const warnings: string[] = [];
+  if (warning) {
+    warnings.push(warning);
+  }
+
   if (gridData.columns.length === 0) {
     return <Center height="100%">No data</Center>;
   }
@@ -85,21 +96,11 @@ export const ValueDiffDetailResultView = ({
           viewOptions={viewOptions}
           onAddToChecklist={onAddToChecklist}
           onViewOptionsChanged={onViewOptionsChanged}
+          warnings={warnings}
         />
         <Center height="100%">No change</Center>;
       </Flex>
     );
-  }
-
-  const limit = run.result?.limit || 0;
-  const warning =
-    limit > 0 && run?.result?.more
-      ? `Warning: Displayed results are limited to ${limit.toLocaleString()} records. To ensure complete data retrieval, consider applying a LIMIT or WHERE clause to constrain the result set.`
-      : null;
-
-  const warnings: string[] = [];
-  if (warning) {
-    warnings.push(warning);
   }
 
   return (
