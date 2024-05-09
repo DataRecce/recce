@@ -9,6 +9,7 @@ import { Box, Flex, Icon } from "@chakra-ui/react";
 import { VscPin, VscPinned } from "react-icons/vsc";
 import { DataFrame } from "@/lib/api/types";
 import { mergeKeysWithStatus } from "@/lib/mergeKeys";
+import { defaultRenderCell } from "../query/querydiff";
 
 function _getColumnMap(df: DataFrame) {
   const result: {
@@ -127,15 +128,6 @@ function DataFrameColumnGroupHeader({
   );
 }
 
-export const defaultRenderCell = ({
-  row,
-  column,
-}: RenderCellProps<any, any>) => {
-  // workaround for https://github.com/adazzle/react-data-grid/issues/882
-  const value = row[column.key];
-  return <>{typeof value === "boolean" ? value.toString() : value}</>;
-};
-
 export function toValueDiffGrid(
   df: DataFrame,
   primaryKeys: string[],
@@ -199,9 +191,9 @@ export function toValueDiffGrid(
 
     // Check if row is added, removed, or modified
     if (!baseRow) {
-      row["status"] = "added";
+      row["__status"] = "added";
     } else if (!currentRow) {
-      row["status"] = "removed";
+      row["__status"] = "removed";
     } else {
       for (const [name, column] of Object.entries(columnMap)) {
         if (name === "index") {
@@ -213,7 +205,7 @@ export function toValueDiffGrid(
         }
 
         if (!_.isEqual(baseRow[column.index], currentRow[column.index])) {
-          row["status"] = "modified";
+          row["__status"] = "modified";
           column.status = "modified";
         }
       }
@@ -225,9 +217,9 @@ export function toValueDiffGrid(
   if (changedOnly) {
     rows = rows.filter(
       (row) =>
-        row["status"] === "added" ||
-        row["status"] === "removed" ||
-        row["status"] === "modified"
+        row["__status"] === "added" ||
+        row["__status"] === "removed" ||
+        row["__status"] === "modified"
     );
   }
 
@@ -241,7 +233,7 @@ export function toValueDiffGrid(
         : undefined;
 
     const cellClass = (row: any) => {
-      const rowStatus = row["status"];
+      const rowStatus = row["__status"];
       if (rowStatus === "removed") {
         return "diff-cell-removed";
       } else if (rowStatus === "added") {
@@ -303,11 +295,12 @@ export function toValueDiffGrid(
       ),
       frozen: true,
       cellClass: (row: any) => {
-        if (row["status"]) {
-          return `diff-header-${row["status"]}`;
+        if (row["__status"]) {
+          return `diff-header-${row["__status"]}`;
         }
         return undefined;
       },
+      renderCell: defaultRenderCell,
     });
   });
 

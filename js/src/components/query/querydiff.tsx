@@ -5,7 +5,7 @@ import {
 } from "react-data-grid";
 import _ from "lodash";
 import "./styles.css";
-import { Box, Flex, Icon } from "@chakra-ui/react";
+import { Box, Flex, Icon, Text } from "@chakra-ui/react";
 import { VscClose, VscKey, VscPin, VscPinned } from "react-icons/vsc";
 import { DataFrame } from "@/lib/api/types";
 import { mergeKeysWithStatus } from "@/lib/mergeKeys";
@@ -163,13 +163,35 @@ function DataFrameColumnGroupHeader({
   );
 }
 
+const toRenderedValue = (value: any): [any, boolean] => {
+  let renderedValue;
+  let grayOut = false;
+
+  if (typeof value === "boolean") {
+    // workaround for https://github.com/adazzle/react-data-grid/issues/882
+    renderedValue = value.toString();
+  } else if (value === "") {
+    renderedValue = "(empty)";
+    grayOut = true;
+  } else if (value === undefined || value === null) {
+    renderedValue = "(null)";
+    grayOut = true;
+  } else {
+    renderedValue = value;
+  }
+
+  return [renderedValue, grayOut];
+};
+
 export const defaultRenderCell = ({
   row,
   column,
 }: RenderCellProps<any, any>) => {
-  // workaround for https://github.com/adazzle/react-data-grid/issues/882
   const value = row[column.key];
-  return <>{typeof value === "boolean" ? value.toString() : value}</>;
+  const [renderedValue, grayOut] = toRenderedValue(value);
+  return (
+    <Text style={{ color: grayOut ? "gray" : "inherit" }}>{renderedValue}</Text>
+  );
 };
 
 export function toDataDiffGrid(
@@ -255,9 +277,9 @@ export function toDataDiffGrid(
 
     // Check if row is added, removed, or modified
     if (!baseRow) {
-      row["status"] = "added";
+      row["__status"] = "added";
     } else if (!currentRow) {
-      row["status"] = "removed";
+      row["__status"] = "removed";
     } else {
       for (const [name, mergedColumn] of Object.entries(columnMap)) {
         if (name === "index") {
@@ -281,7 +303,7 @@ export function toDataDiffGrid(
             currentRow[mergedColumn.currentColumnIndex]
           )
         ) {
-          row["status"] = "modified";
+          row["__status"] = "modified";
           mergedColumn.status = "modified";
         }
       }
@@ -293,9 +315,9 @@ export function toDataDiffGrid(
   if (changedOnly) {
     rows = rows.filter(
       (row) =>
-        row["status"] === "added" ||
-        row["status"] === "removed" ||
-        row["status"] === "modified"
+        row["__status"] === "added" ||
+        row["__status"] === "removed" ||
+        row["__status"] === "modified"
     );
   }
 
@@ -309,7 +331,7 @@ export function toDataDiffGrid(
         : undefined;
 
     const cellClass = (row: any) => {
-      const rowStatus = row["status"];
+      const rowStatus = row["__status"];
       if (rowStatus === "removed") {
         return "diff-cell-removed";
       } else if (rowStatus === "added") {
@@ -378,11 +400,12 @@ export function toDataDiffGrid(
         ),
         frozen: true,
         cellClass: (row: any) => {
-          if (row["status"]) {
-            return `diff-header-${row["status"]}`;
+          if (row["__status"]) {
+            return `diff-header-${row["__status"]}`;
           }
           return undefined;
         },
+        renderCell: defaultRenderCell,
       });
     });
   }
