@@ -441,7 +441,7 @@ def generate_check_content(graph, check_statistics):
             '''
     if check_content:
         content += f'''
-### Checks of Data Missmatch Detected
+### Checks of Data Mismatch Detected
 {check_content}
 '''
     return content
