@@ -256,6 +256,12 @@ export function toDataDiffGrid(
     Object.keys(currentMap)
   );
 
+  const rowStats = {
+    added: 0,
+    removed: 0,
+    modified: 0,
+  };
+
   let rows = Object.entries(mergedMap).map(([key, status]) => {
     const baseRow = baseMap[key];
     const currentRow = currentMap[key];
@@ -282,8 +288,10 @@ export function toDataDiffGrid(
     // Check if row is added, removed, or modified
     if (!baseRow) {
       row["__status"] = "added";
+      rowStats.added++;
     } else if (!currentRow) {
       row["__status"] = "removed";
+      rowStats.removed++;
     } else {
       for (const [name, mergedColumn] of Object.entries(columnMap)) {
         if (name === "index") {
@@ -310,6 +318,9 @@ export function toDataDiffGrid(
           row["__status"] = "modified";
           mergedColumn.status = "modified";
         }
+      }
+      if (row["__status"] === "modified") {
+        rowStats.modified++;
       }
     }
 
@@ -445,7 +456,7 @@ export function toDataDiffGrid(
       return;
     }
 
-    if (changedOnly) {
+    if (changedOnly && rowStats.modified > 0) {
       if (
         columnStatus !== "added" &&
         columnStatus !== "removed" &&

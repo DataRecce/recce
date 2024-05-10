@@ -166,6 +166,11 @@ export function toValueDiffGrid(
     Object.keys(currentMap)
   );
 
+  const rowStats = {
+    added: 0,
+    removed: 0,
+    modified: 0,
+  };
   let rows = Object.entries(mergedMap).map(([key, status]) => {
     const baseRow = baseMap[key];
     const currentRow = currentMap[key];
@@ -192,8 +197,10 @@ export function toValueDiffGrid(
     // Check if row is added, removed, or modified
     if (!baseRow) {
       row["__status"] = "added";
+      rowStats.added++;
     } else if (!currentRow) {
       row["__status"] = "removed";
+      rowStats.removed++;
     } else {
       for (const [name, column] of Object.entries(columnMap)) {
         if (name === "index") {
@@ -209,6 +216,9 @@ export function toValueDiffGrid(
           column.status = "modified";
         }
       }
+    }
+    if (row["__status"] === "modified") {
+      rowStats.modified++;
     }
 
     return row;
@@ -331,7 +341,7 @@ export function toValueDiffGrid(
       return;
     }
 
-    if (changedOnly) {
+    if (changedOnly && rowStats.modified > 0) {
       if (
         columnStatus !== "added" &&
         columnStatus !== "removed" &&

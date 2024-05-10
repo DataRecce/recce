@@ -121,6 +121,66 @@ test("query diff changed only", () => {
         name: "c",
         type: "integer",
       },
+      {
+        name: "x",
+        type: "integer",
+      },
+    ],
+    data: [
+      ["active", 16, 5],
+      ["inactive", 7, 5],
+    ],
+  };
+
+  const current: DataFrame = {
+    columns: [
+      {
+        name: "status",
+        type: "text",
+      },
+      {
+        name: "c",
+        type: "integer",
+      },
+      {
+        name: "x",
+        type: "integer",
+      },
+    ],
+    data: [
+      ["active", 16, 5],
+      ["inactive", 5, 5],
+    ],
+  };
+
+  let result = toDataDiffGrid(base, current, {
+    primaryKeys: ["status"],
+    changedOnly: true,
+  });
+  expect(result?.rows).toStrictEqual([
+    {
+      status: "inactive",
+      base__c: 7,
+      base__x: 5,
+      current__c: 5,
+      current__x: 5,
+      __status: "modified",
+    },
+  ]);
+  expect(result?.columns.length).toBe(2);
+});
+
+test("query diff changed only: show all columns if there is only removed records", () => {
+  const base: DataFrame = {
+    columns: [
+      {
+        name: "status",
+        type: "text",
+      },
+      {
+        name: "c",
+        type: "integer",
+      },
     ],
     data: [
       ["active", 16],
@@ -157,5 +217,5 @@ test("query diff changed only", () => {
       __status: "removed",
     },
   ]);
-  expect(result?.columns.length).toBe(1);
+  expect(result?.columns.length).toBe(2);
 });
