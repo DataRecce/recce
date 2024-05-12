@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euxo pipefail
 
-PR_URL="${PR_URL:-}"
+PR_URL="${PR_URL:-$GITHUB_SERVER_URL/$GITHUB_REPOSITORY/pull/$GITHUB_REF_NAME}"
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 cd "$SCRIPT_DIR"
 pwd
@@ -14,7 +14,6 @@ dbt docs generate --target-path target-base
 
 # modify model
 echo "where customer_id > 0" >> models/customers.sql
-cat models/customers.sql
 dbt build
 dbt docs generate
 
