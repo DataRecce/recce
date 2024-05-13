@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
 set -euxo pipefail
 
-DEFAULT_PR_URL="${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/pull/${GITHUB_REF_NAME}"
-PR_URL="${PR_URL:-$DEFAULT_PR_URL}"
+FALLBACK_PR_URL="${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/pull/${GITHUB_REF_NAME}"
+PR_URL="${PR_URL:-$FALLBACK_PR_URL}"
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 cd "$SCRIPT_DIR"
 pwd
