@@ -60,6 +60,7 @@ class TrackCommand(Command):
                 reason = 'ok'
             else:
                 reason = 'error'
+                sys.exit(ret)
             return ret
         except SystemExit as e:
             reason = 'error'

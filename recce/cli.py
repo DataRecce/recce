@@ -195,7 +195,7 @@ def run(output, **kwargs):
     # Initialize Recce Config
     RecceConfig(config_file=kwargs.get('config'))
 
-    asyncio.run(cli_run(output, **kwargs))
+    return asyncio.run(cli_run(output, **kwargs))
 
 
 @cli.command(cls=TrackCommand)

@@ -50,7 +50,7 @@ class TaskResultDiffer(ABC):
 
     def __init__(self, run: Run):
         self.run = run
-        self.changes = self._check_result_changed_fn(run.result)
+        self.changes = self._check_result_changed_fn(run.result) if run.result else None
         self.related_node_ids = self._get_related_node_ids()
 
     @staticmethod

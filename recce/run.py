@@ -124,6 +124,7 @@ async def execute_preset_checks(checks: list):
     """
     Execute the preset checks
     """
+    rc = 0
     console = Console()
     table = Table(title='Recce Preset Checks', box=box.HORIZONTALS, title_style='bold dark_orange3')
     table.add_column('Status')
@@ -132,13 +133,14 @@ async def execute_preset_checks(checks: list):
     table.add_column('Execution Time')
     table.add_column('Failed Reason')
     for check in checks:
-        try:
-            check_name = check.get('name')
-            check_type = check.get('type')
-            check_description = check.get('description')
-            check_params = check.get('params', {})
-            check_options = check.get('view_options', {})
+        run = None
+        check_name = check.get('name')
+        check_type = check.get('type')
+        check_description = check.get('description', '')
+        check_params = check.get('params', {})
+        check_options = check.get('view_options', {})
 
+        try:
             # verify the check
             if check_type not in [e.value for e in RunType]:
                 raise ValueError(f"Invalid check type: {check_type}")
@@ -156,11 +158,15 @@ async def execute_preset_checks(checks: list):
             table.add_row('[[green]Success[/green]]', check_name, check_type.replace('_', ' ').title(),
                           f'{end - start:.2f} seconds', 'N/A')
         except Exception as e:
-            check_name = check.get('name')
-            check_type = check.get('type')
-            table.add_row('[[red]Failed[/red]]', check_name, check_type.replace('_', ' ').title(), 'N/A', str(e))
+            rc = 1
+            if run is None:
+                table.add_row('[[red]Error[/red]]', check_name, check_type.replace('_', ' ').title(), 'N/A', str(e))
+            else:
+                create_check_from_run(run.run_id, check_name, check_description, check_options, is_preset=True)
+                table.add_row('[[red]Failed[/red]]', check_name, check_type.replace('_', ' ').title(), 'N/A', run.error)
+
     console.print(table)
-    pass
+    return rc
 
 
 async def cli_run(output_state_file: str, **kwargs):
@@ -189,13 +195,14 @@ async def cli_run(output_state_file: str, **kwargs):
         print("Skip querying row counts")
 
     # Execute the preset checks
+    rc = 0
     preset_checks = RecceConfig().get('checks')
     if is_skip_query or preset_checks is None or len(preset_checks) == 0:
         # Skip the preset checks
         pass
     else:
         console.rule("Preset checks")
-        await execute_preset_checks(preset_checks)
+        rc = await execute_preset_checks(preset_checks)
 
     # Export the state
     state: RecceState = ctx.export_state()
@@ -203,4 +210,4 @@ async def cli_run(output_state_file: str, **kwargs):
 
     state.to_state_file(output_state_file)
     print(f'The state file is stored at [{output_state_file}]')
-    pass
+    return rc
