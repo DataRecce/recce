@@ -3,4 +3,4 @@ recce_test:
   outputs:
     dev:
       type: duckdb
-      path: 'recce_test.duckdb'
+      # path: 'recce_test.duckdb'

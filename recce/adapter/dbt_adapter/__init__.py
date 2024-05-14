@@ -153,11 +153,6 @@ class DbtAdapter(BaseAdapter):
     artifacts_files = []
 
     @classmethod
-    def create_for_test(cls):
-
-        profile_name = 'recce_test'
-
-    @classmethod
     def load(cls, artifacts: ArtifactsRoot = None, **kwargs):
 
         target = kwargs.get('target')
@@ -216,15 +211,15 @@ class DbtAdapter(BaseAdapter):
                 raise e
 
         # Load the artifacts from the state file or `target` and `target-base` directory
-        # if artifacts:
-        #     dbt_adapter.import_artifacts(artifacts)
-        # else:
-        #     dbt_adapter.load_artifacts()
+        if artifacts:
+            dbt_adapter.import_artifacts(artifacts)
+        else:
+            dbt_adapter.load_artifacts()
 
-        # if not dbt_adapter.curr_manifest:
-        #     raise Exception('Cannot load "target/manifest.json"')
-        # if not dbt_adapter.base_manifest:
-        #     raise Exception('Cannot load "target-base/manifest.json"')
+        if not dbt_adapter.curr_manifest:
+            raise Exception('Cannot load "target/manifest.json"')
+        if not dbt_adapter.base_manifest:
+            raise Exception('Cannot load "target-base/manifest.json"')
         return dbt_adapter
 
     def print_lineage_info(self):
