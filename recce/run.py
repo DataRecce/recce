@@ -204,7 +204,6 @@ def process_failed_checks(failed_checks: List[dict], error_log=None):
     content += markdown_table(failed_check_table).set_params(quote=False, row_sep='markdown').get_markdown()
 
     if error_log:
-        console = Console()
         with open(error_log, 'w') as f:
             f.write(content)
         print('The failed checks are stored at [{}]'.format(error_log))
