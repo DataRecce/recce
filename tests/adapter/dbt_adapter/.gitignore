@@ -1,0 +1,3 @@
+recce_test.duckdb
+dbt_packages/
+.user.yml
