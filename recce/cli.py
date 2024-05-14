@@ -4,7 +4,7 @@ from typing import List
 import click
 
 from recce import event
-from recce.config import RecceConfig, RECCE_CONFIG_FILE
+from recce.config import RecceConfig, RECCE_CONFIG_FILE, RECCE_ERROR_LOG_FILE
 from recce.run import cli_run, check_github_ci_env
 from recce.summary import generate_markdown_summary
 from .core import RecceContext
@@ -40,6 +40,8 @@ sqlmesh_related_options = [
 recce_options = [
     click.option('--config', help='Path to the recce config file.', type=click.Path(), default=RECCE_CONFIG_FILE,
                  show_default=True),
+    click.option('--error-log', help='Path to the error log file.', type=click.Path(), default=RECCE_ERROR_LOG_FILE,
+                 hidden=True),
 ]
 
 
