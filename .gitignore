@@ -10,3 +10,4 @@ dbt.log
 build
 .tox
 .noai
+.DS_Store
