@@ -1,6 +1,7 @@
 import os
 import sys
 import time
+from typing import List
 
 from rich import box
 from rich.console import Console
@@ -120,11 +121,13 @@ def load_preset_checks(checks: list):
     console.print(table)
 
 
-async def execute_preset_checks(checks: list):
+async def execute_preset_checks(checks: list) -> (int, List[dict]):
     """
     Execute the preset checks
     """
     console = Console()
+    rc = 0
+    failed_checks = []
     table = Table(title='Recce Preset Checks', box=box.HORIZONTALS, title_style='bold dark_orange3')
     table.add_column('Status')
     table.add_column('Name')
@@ -132,13 +135,14 @@ async def execute_preset_checks(checks: list):
     table.add_column('Execution Time')
     table.add_column('Failed Reason')
     for check in checks:
-        try:
-            check_name = check.get('name')
-            check_type = check.get('type')
-            check_description = check.get('description')
-            check_params = check.get('params', {})
-            check_options = check.get('view_options', {})
+        run = None
+        check_name = check.get('name')
+        check_type = check.get('type')
+        check_description = check.get('description', '')
+        check_params = check.get('params', {})
+        check_options = check.get('view_options', {})
 
+        try:
             # verify the check
             if check_type not in [e.value for e in RunType]:
                 raise ValueError(f"Invalid check type: {check_type}")
@@ -156,16 +160,61 @@ async def execute_preset_checks(checks: list):
             table.add_row('[[green]Success[/green]]', check_name, check_type.replace('_', ' ').title(),
                           f'{end - start:.2f} seconds', 'N/A')
         except Exception as e:
-            check_name = check.get('name')
-            check_type = check.get('type')
-            table.add_row('[[red]Failed[/red]]', check_name, check_type.replace('_', ' ').title(), 'N/A', str(e))
+            rc = 1
+            if run is None:
+                table.add_row('[[red]Error[/red]]', check_name, check_type.replace('_', ' ').title(), 'N/A', str(e))
+                failed_checks.append({
+                    'check_name': check_name,
+                    'check_type': check_type,
+                    'check_description': check_description,
+                    'failed_type': 'error',
+                    'failed_reason': str(e)
+                })
+            else:
+                create_check_from_run(run.run_id, check_name, check_description, check_options, is_preset=True)
+                table.add_row('[[red]Failed[/red]]', check_name, check_type.replace('_', ' ').title(), 'N/A', run.error)
+                failed_checks.append({
+                    'check_name': check_name,
+                    'check_type': check_type,
+                    'check_description': 'N/A',
+                    'failed_type': 'failed',
+                    'failed_reason': run.error
+                })
+
     console.print(table)
-    pass
+    return rc, failed_checks
+
+
+def process_failed_checks(failed_checks: List[dict], error_log=None):
+    from py_markdown_table.markdown_table import markdown_table
+    failed_check_table = []
+    for check in failed_checks:
+        name = check.get('check_name')
+        check_type = check.get('check_type')
+        failed_type = check.get('failed_type')
+        failed_reason = check.get('failed_reason')
+        failed_check_table.append({
+            'Name': name,
+            'Type': check_type,
+            'Kind of Failed': failed_type,
+            'Failed Reason': failed_reason.replace('\n', ' ')
+        })
+
+    content = '# Recce Runc Failed Checks\n'
+    content += markdown_table(failed_check_table).set_params(quote=False, row_sep='markdown').get_markdown()
+
+    if error_log:
+        with open(error_log, 'w') as f:
+            f.write(content)
+        print('The failed checks are stored at [{}]'.format(error_log))
+    else:
+        print(content, file=sys.stderr)
 
 
 async def cli_run(output_state_file: str, **kwargs):
     """The main function of 'recce run' command. It will execute the default runs and store the state."""
     console = Console()
+    error_log = kwargs.get('error_log')
     if kwargs.get('sqlmesh', False):
         console.print("[[red]Error[/red]] SQLMesh adapter is not supported.")
         sys.exit(1)
@@ -189,13 +238,16 @@ async def cli_run(output_state_file: str, **kwargs):
         print("Skip querying row counts")
 
     # Execute the preset checks
+    rc = 0
     preset_checks = RecceConfig().get('checks')
     if is_skip_query or preset_checks is None or len(preset_checks) == 0:
         # Skip the preset checks
         pass
     else:
         console.rule("Preset checks")
-        await execute_preset_checks(preset_checks)
+        rc, failed_checks = await execute_preset_checks(preset_checks)
+        if rc != 0 and failed_checks:
+            process_failed_checks(failed_checks, error_log)
 
     # Export the state
     state: RecceState = ctx.export_state()
@@ -203,4 +255,4 @@ async def cli_run(output_state_file: str, **kwargs):
 
     state.to_state_file(output_state_file)
     print(f'The state file is stored at [{output_state_file}]')
-    pass
+    return rc

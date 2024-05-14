@@ -298,8 +298,8 @@ def generate_check_summary(base_lineage, curr_lineage) -> (List[CheckSummary], D
     runs = RunDAO().list()
     checks = CheckDAO().list()
     checks_summary: List[CheckSummary] = []
+    failed_checks_count = 0
 
-    # failed_checks_count = 0
     # TODO: find a way to count failed checks, currently the state file won't include failed checks
 
     def _find_run_by_check_id(check_id):
@@ -310,7 +310,10 @@ def generate_check_summary(base_lineage, curr_lineage) -> (List[CheckSummary], D
 
     for check in checks:
         run = _find_run_by_check_id(check.check_id)
-        if check.type == RunType.SCHEMA_DIFF:
+        if run is not None and run.error is not None:
+            failed_checks_count += 1
+            continue
+        elif check.type == RunType.SCHEMA_DIFF:
             # TODO: Check schema diff of the selected node
             node_id = check.params.get('node_id')
             base = _build_node_schema(base_lineage, node_id)
@@ -346,7 +349,7 @@ def generate_check_summary(base_lineage, curr_lineage) -> (List[CheckSummary], D
     return checks_summary, {
         'total': len(checks),
         'mismatch': len(checks_summary),
-        # 'failed': failed_checks_count,
+        'failed': failed_checks_count,
     }
 
 
@@ -434,6 +437,7 @@ def generate_check_content(graph, check_statistics):
         check_summary = markdown_table([{
             'Total Checks': check_statistics.get('total', 0),
             'Data Mismatch Detected': check_statistics.get('mismatch', 0),
+            'Failed Checks': check_statistics.get('failed', 0),
         }]).set_params(quote=False, row_sep='markdown').get_markdown()
         content += f'''
 ## Checks Summary

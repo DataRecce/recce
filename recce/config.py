@@ -13,7 +13,7 @@ RECCE_PRESET_CHECK_EXAMPLE = '''
       model: xxx
       column: xxx
 '''
-
+RECCE_ERROR_LOG_FILE = 'recce_error.log'
 console = Console()
 
 
