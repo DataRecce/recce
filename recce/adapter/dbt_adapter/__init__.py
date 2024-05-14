@@ -153,7 +153,7 @@ class DbtAdapter(BaseAdapter):
     artifacts_files = []
 
     @classmethod
-    def load(cls, artifacts: ArtifactsRoot = None, **kwargs):
+    def load(cls, artifacts: ArtifactsRoot = None, no_artifacts=False, **kwargs):
 
         target = kwargs.get('target')
         profile_name = kwargs.get('profile')
@@ -211,15 +211,19 @@ class DbtAdapter(BaseAdapter):
                 raise e
 
         # Load the artifacts from the state file or `target` and `target-base` directory
-        if artifacts:
-            dbt_adapter.import_artifacts(artifacts)
+        if no_artifacts:
+            # this is for testing purpose
+            pass
         else:
-            dbt_adapter.load_artifacts()
+            if artifacts:
+                dbt_adapter.import_artifacts(artifacts)
+            else:
+                dbt_adapter.load_artifacts()
 
-        if not dbt_adapter.curr_manifest:
-            raise Exception('Cannot load "target/manifest.json"')
-        if not dbt_adapter.base_manifest:
-            raise Exception('Cannot load "target-base/manifest.json"')
+            if not dbt_adapter.curr_manifest:
+                raise Exception('Cannot load "target/manifest.json"')
+            if not dbt_adapter.base_manifest:
+                raise Exception('Cannot load "target-base/manifest.json"')
         return dbt_adapter
 
     def print_lineage_info(self):
@@ -540,6 +544,11 @@ class DbtAdapter(BaseAdapter):
             self.artifacts_observer.stop()
             self.artifacts_observer.join()
             logger.info('Stop monitoring artifacts')
+
+    def set_artifacts(self, curr_manifest: Manifest, base_manifest: Manifest):
+        self.manifest = curr_manifest
+        self.curr_manifest = curr_manifest.writable_manifest()
+        self.base_manifest = base_manifest.writable_manifest()
 
     def refresh(self, refresh_file_path: str = None):
         # Refresh the artifacts

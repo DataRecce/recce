@@ -1,0 +1,8 @@
+packages:
+- package: dbt-labs/dbt_utils
+  version: 1.1.1
+- package: data-mie/dbt_profiler
+  version: 0.8.1
+- package: dbt-labs/audit_helper
+  version: 0.11.0
+sha1_hash: 3759eaf120cdd1d41e53b6d3ae99e2361147350a

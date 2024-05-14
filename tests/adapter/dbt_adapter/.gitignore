@@ -1,3 +1,5 @@
 recce_test.duckdb
 dbt_packages/
 .user.yml
+target/
+target-base/
