@@ -1,152 +1,153 @@
+import os
 import textwrap
-from unittest.mock import patch
+import uuid
 
 import pytest
 from dbt.contracts.graph.nodes import ModelNode
 
-from recce.adapter.dbt_adapter import DbtAdapter, load_manifest, as_manifest
-from recce.core import RecceContext
-
-pass
+from recce.adapter.dbt_adapter import DbtAdapter, as_manifest, load_manifest
+from recce.core import RecceContext, set_default_context
+from recce.tasks import QueryDiffTask
 
 
 class DbtTestHelper:
 
     def __init__(self):
-        base_model = {
-            "resource_type": "model",
-            "name": "customers",
-            "package_name": "jaffle_shop",
-            "path": "customers.sql",
-            "original_file_path": "models/customers.sql",
-            "unique_id": "model.jaffle_shop.customers",
-            "fqn": [
-                "jaffle_shop",
-                "customers"
-            ],
-            "schema": "main",
-            "alias": "customers",
-            "checksum": {
-                "name": "sha256",
-                "checksum": ""
-            },
-        }
-        curr_model = {
-            "resource_type": "model",
-            "name": "customers",
-            "package_name": "jaffle_shop",
-            "path": "customers.sql",
-            "original_file_path": "models/customers.sql",
-            "unique_id": "model.jaffle_shop.customers",
-            "fqn": [
-                "jaffle_shop",
-                "customers"
-            ],
-            "schema": "curr",
-            "alias": "customers",
-            "checksum": {
-                "name": "sha256",
-                "checksum": ""
-            },
-        }
+        schema_prefix = "schema_" + uuid.uuid4().hex
+        self.base_schema = f"{schema_prefix}_base"
+        self.curr_schema = f"{schema_prefix}_curr"
 
-        curr_manifest = as_manifest(load_manifest('tests/adapter/dbt_adapter/target/manifest.json'))
-        base_manifest = as_manifest(load_manifest('tests/adapter/dbt_adapter/target-base/manifest.json'))
+        current_dir = os.path.dirname(os.path.abspath(__file__))
+        project_dir = os.path.join(current_dir, '../adapter/dbt_adapter')
+        profiles_dir = project_dir
+        manifest_path = os.path.join(project_dir, 'manifest.json')
 
-        base_manifest.add_node_nofile(ModelNode.from_dict(base_model))
-        curr_manifest.add_node_nofile(ModelNode.from_dict(curr_model))
-
-        from recce.state import ArtifactsRoot
         dbt_adapter = DbtAdapter.load(
-            artifacts=ArtifactsRoot(
-                base={'manifest': base_manifest.writable_manifest().to_dict()},
-                current={'manifest': curr_manifest.writable_manifest().to_dict()}
-            ),
-            project_dir='tests/adapter/dbt_adapter/',
-            profiles_dir='tests/adapter/dbt_adapter/',
+            no_artifacts=True,
+            project_dir=project_dir,
+            profiles_dir=profiles_dir,
         )
 
         context = RecceContext()
         context.adapter_type = 'dbt'
         context.adapter = dbt_adapter
-
-        import pandas as pd
-        csv_data = """
-           customer_id,name,age
-           1,Alice,30
-           2,Bob,25
-           3,Charlie,35
-           """
-
-        csv_data_base = """
-           customer_id,name,age
-           1,Alice,35
-           2,Bob,25
-           3,Charlie,35
-           """
-
-        # 使用 Pandas 读取 CSV 数据
-        from io import StringIO
-        df = pd.read_csv(StringIO(textwrap.dedent(csv_data)))
-        df2 = pd.read_csv(StringIO(textwrap.dedent(csv_data_base)))
-        dbt_adapter.execute("CREATE schema curr")
-        dbt_adapter.execute("CREATE TABLE main.customers AS SELECT * FROM df")
-        dbt_adapter.execute("CREATE TABLE curr.customers AS SELECT * FROM df2")
-        # result, table = dbt_adapter.execute("SELECT * FROM main.customers", auto_begin=True, fetch=True, limit=2000)
-        # agate.table.print_table(table)
-        # result, table = dbt_adapter.execute("SELECT * FROM curr.customers", auto_begin=True, fetch=True, limit=2000)
-        # agate.table.print_table(table)
+        context.schema_prefix = schema_prefix
+        self.adapter = dbt_adapter
+        self.context = context
+        self.curr_manifest = as_manifest(load_manifest(manifest_path))
+        self.base_manifest = as_manifest(load_manifest(manifest_path))
         self.context = context
 
+        self.adapter.execute(f"CREATE schema IF NOT EXISTS {self.base_schema}")
+        self.adapter.execute(f"CREATE schema IF NOT EXISTS {self.curr_schema}")
+        self.adapter.set_artifacts(self.base_manifest, self.curr_manifest)
 
-@pytest.fixture()
-def helper():
-    return DbtTestHelper()
+    def create_model(self, model_name, base_csv, curr_csv):
+        package_name = "recce_test"
+
+        def _add_model_to_manifest(base):
+            if base:
+                schema = self.base_schema
+                manifest = self.base_manifest
+            else:
+                schema = self.curr_schema
+                manifest = self.curr_manifest
+
+            node = ModelNode.from_dict({
+                "resource_type": "model",
+                "name": model_name,
+                "package_name": package_name,
+                "path": "",
+                "original_file_path": "",
+                "unique_id": f"model.{package_name}.{model_name}",
+                "fqn": [
+                    package_name,
+                    model_name,
+                ],
+                "schema": schema,
+                "alias": model_name,
+                "checksum": {
+                    "name": "sha256",
+                    "checksum": ""
+                },
+            })
+            manifest.add_node_nofile(node)
+
+        _add_model_to_manifest(base=True)
+        _add_model_to_manifest(base=False)
+
+        import pandas as pd
+        from io import StringIO
+        df_base = pd.read_csv(StringIO(textwrap.dedent(base_csv)))
+        df_curr = pd.read_csv(StringIO(textwrap.dedent(curr_csv)))
+        dbt_adapter = self.adapter
+        with dbt_adapter.connection_named('create model'):
+            dbt_adapter.execute(f"CREATE TABLE {self.base_schema}.{model_name} AS SELECT * FROM df_base")
+            dbt_adapter.execute(f"CREATE TABLE {self.curr_schema}.{model_name} AS SELECT * FROM df_curr")
+        self.adapter.set_artifacts(self.base_manifest, self.curr_manifest)
+
+    def remove_model(self, model_name):
+        dbt_adapter = self.adapter
+        with dbt_adapter.connection_named('cleanup'):
+            dbt_adapter.execute(f"DROP TABLE IF EXISTS {self.base_schema}.{model_name}")
+            dbt_adapter.execute(f"DROP TABLE IF EXISTS {self.curr_schema}.{model_name} ")
+
+    def cleanup(self):
+        dbt_adapter = self.adapter
+        with dbt_adapter.connection_named('cleanup'):
+            dbt_adapter.execute(f"DROP SCHEMA IF EXISTS {self.base_schema} CASCADE")
+            dbt_adapter.execute(f"DROP SCHEMA IF EXISTS {self.curr_schema} CASCADE")
 
 
 @pytest.fixture
-def mock_default_context(helper):
-    with patch('recce.core.default_context', return_value=helper.context):
-        yield
+def helper():
+    helper = DbtTestHelper()
+    context = helper.context
+    set_default_context(context)
+    yield helper
+    helper.cleanup()
 
 
-def test_query(mock_default_context):
-    from recce.tasks import QueryDiffTask
+def test_query_in_client(helper):
+    csv_data_curr = """
+        customer_id,name,age
+        1,Alice,30
+        2,Bob,25
+        3,Charlie,35
+        """
 
-    params = dict(sql_template='select * from {{ ref("customers") }}')
+    csv_data_base = """
+        customer_id,name,age
+        1,Alice,35
+        2,Bob,25
+        3,Charlie,35
+        """
+
+    helper.create_model("customers", csv_data_base, csv_data_curr)
+    params = dict(sql_template=f'select * from {{{{ ref("customers") }}}}')
     task = QueryDiffTask(params)
     run_result = task.execute()
-    print(run_result)
+    assert len(run_result.base.data) == 3
+    assert len(run_result.current.data) == 3
 
-    params = dict(sql_template='select * from {{ ref("customers") }}', primary_keys=['customer_id'])
+
+def test_query_in_warehouse(helper):
+    csv_data_curr = """
+        customer_id,name,age
+        1,Alice,30
+        2,Bob,25
+        3,Charlie,35
+        """
+
+    csv_data_base = """
+        customer_id,name,age
+        1,Alice,35
+        2,Bob,25
+        3,Charlie,35
+        """
+
+    helper.create_model("customers", csv_data_base, csv_data_curr)
+    params = dict(sql_template=f'select * from {{{{ ref("customers") }}}}', primary_keys=['customer_id'])
     task = QueryDiffTask(params)
     run_result = task.execute()
-    print(run_result)
-
-
-def test_query2(mock_default_context):
-    from recce.tasks import QueryDiffTask
-
-    params = dict(sql_template='select * from {{ ref("customers") }}')
-    task = QueryDiffTask(params)
-    run_result = task.execute()
-    print(run_result)
-
-    params = dict(sql_template='select * from {{ ref("customers") }}', primary_keys=['customer_id'])
-    task = QueryDiffTask(params)
-    run_result = task.execute()
-    print(run_result)
-
-
-def test_query3(mock_default_context):
-    from recce.tasks import QueryDiffTask
-
-    params = dict(sql_template='select * from {{ ref("customers") }}')
-    task = QueryDiffTask(params)
-    run_result = task.execute()
-    print(run_result)
-
-    params = dict(sql_template='select * from {{ ref("customers") }}', primary_keys=['customer_id'])
-    task = QueryDiffTask(params)
-    run_result = task.execute()
-    print(run_result)
+    assert len(run_result.diff.data) == 2

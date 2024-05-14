@@ -203,3 +203,12 @@ def load_context(**kwargs) -> RecceContext:
 def default_context() -> RecceContext:
     global recce_context
     return recce_context
+
+
+def set_default_context(context: RecceContext):
+    """
+    Set the default context for the recce. This is for test purpose.
+    """
+
+    global recce_context
+    recce_context = context
