@@ -144,6 +144,16 @@ def log_event(prop, event_type, **kwargs):
     payload = dict(
         **prop,
     )
+
+    # only 'server' and 'run' commands carry the adapter info
+    params = kwargs.get('params')
+    adapter_type_sqlmesh = None
+    if params is not None:
+        adapter_type_sqlmesh = params.get('sqlmesh')
+
+    if adapter_type_sqlmesh is not None:
+        payload['adapter_type'] = 'SQLMesh' if adapter_type_sqlmesh else 'DBT'
+
     _collector.log_event(payload, event_type)
 
 
