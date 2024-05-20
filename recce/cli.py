@@ -218,7 +218,7 @@ def summary(state_file, **kwargs):
         exit(1)
 
     output = generate_markdown_summary(ctx, summary_format=kwargs.get('format'))
-    console.print(output)
+    print(output)
 
 
 if __name__ == "__main__":

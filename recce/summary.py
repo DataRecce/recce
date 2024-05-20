@@ -409,7 +409,7 @@ def generate_markdown_summary(ctx, summary_format: str = 'markdown'):
         else:
             content += '''
 ## Lineage Graph
-No changed module detected.
+No changed module was detected.
 '''
         if check_content:
             content += check_content
@@ -434,15 +434,23 @@ def generate_check_content(graph, check_statistics):
         check_content = markdown_table(data).set_params(quote=False, row_sep='markdown').get_markdown()
 
     if check_statistics.get('total', 0) > 0:
-        check_summary = markdown_table([{
-            'Total Checks': check_statistics.get('total', 0),
+        warning_message = ''
+        statistics = {
+            'Checks Run': check_statistics.get('total', 0),
             'Data Mismatch Detected': check_statistics.get('mismatch', 0),
-            'Failed Checks': check_statistics.get('failed', 0),
-        }]).set_params(quote=False, row_sep='markdown').get_markdown()
+        }
+        if check_statistics.get('failed', 0) > 0:
+            statistics['Incomplete Checks'] = check_statistics.get('failed', 0)
+            warning_message = '''
+:warning: **Incomplete Checks** refers to checks that did not successfully run due to configuration or SQL errors.
+Please check the output of `recce run` for more information
+'''
+        check_summary = markdown_table([statistics]).set_params(quote=False, row_sep='markdown').get_markdown()
         content += f'''
 ## Checks Summary
 {check_summary}
-            '''
+{warning_message}
+'''
     if check_content:
         content += f'''
 ### Checks of Data Mismatch Detected
