@@ -221,5 +221,21 @@ def summary(state_file, **kwargs):
     print(output)
 
 
+@cli.group('github', short_help='GitHub related commands', hidden=True)
+def github(**kwargs):
+    pass
+
+
+@github.command(cls=TrackCommand,
+                short_help='Download the artifacts from the GitHub repository based on the current Pull Request.')
+@click.option('--github-token', help='The github token to use for accessing GitHub repo.', type=click.STRING,
+              envvar='GITHUB_TOKEN')
+@click.option('--github-repo', help='The github repo to use for accessing GitHub repo.', type=click.STRING,
+              envvar='GITHUB_REPOSITORY')
+def artifact(**kwargs):
+    from recce.github import recce_ci_artifact
+    return recce_ci_artifact(**kwargs)
+
+
 if __name__ == "__main__":
     cli()
