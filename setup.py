@@ -58,6 +58,7 @@ setup(name='recce',
               'pytest-cov',
               'twine',
               'tox',
+              'pandas',
           ],
       },
       project_urls={
