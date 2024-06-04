@@ -10,6 +10,7 @@ from rich.console import Console
 from rich.markup import escape
 
 from recce import event
+from recce.core import load_context
 
 console = Console()
 
@@ -84,6 +85,26 @@ class TrackCommand(Command):
                 reason=reason,
                 duration=duration,
             )
+
+            try:
+                recce_context = load_context()
+            except Exception:
+                # it's not a ready-for-use project
+                recce_context = None
+
+            if recce_context is not None:
+                if recce_context.adapter_type == "dbt":
+                    from recce.adapter.dbt_adapter import DbtAdapter
+
+                    adapter: DbtAdapter = recce_context.adapter
+                    props['adapter_type'] = 'DBT'
+                    props['project_name'] = adapter.runtime_config.project_name
+                elif recce_context.adapter_type == "sqlmesh":
+                    from recce.adapter.sqlmesh_adapter import SqlmeshAdapter
+
+                    adapter: SqlmeshAdapter = recce_context.adapter
+                    props['adapter_type'] = 'SQLMesh'
+                    props['project_name'] = adapter.context.config.project
 
             event.log_event(props, command, params=ctx.params)
             event.flush_events()
