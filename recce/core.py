@@ -48,7 +48,7 @@ class RecceContext:
                 if not state:
                     raise Exception('The state file is required for review mode')
                 context.review_state = state
-                context.adapter = DbtAdapter.load(artifacts=state.artifacts)
+                context.adapter = DbtAdapter.load(artifacts=state.artifacts, **kwargs)
             else:
                 context.adapter = DbtAdapter.load(**kwargs)
 
