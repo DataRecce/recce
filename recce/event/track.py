@@ -9,7 +9,7 @@ from click.core import Command
 from rich.console import Console
 from rich.markup import escape
 
-from recce import event
+from recce import event, get_runner
 from recce.core import load_context
 
 console = Console()
@@ -78,6 +78,7 @@ class TrackCommand(Command):
         finally:
             end_time = time.time()
             duration = end_time - start_time
+            runner = get_runner()
             command = ctx.command.name
             props = dict(
                 command=command,
@@ -85,6 +86,9 @@ class TrackCommand(Command):
                 reason=reason,
                 duration=duration,
             )
+
+            if runner is not None:
+                props['runner_type'] = runner
 
             try:
                 recce_context = load_context()
