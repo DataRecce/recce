@@ -6,11 +6,12 @@ import time
 from contextlib import contextmanager
 from datetime import datetime
 from json import JSONDecodeError
+from typing import Union
 
 import portalocker
 import requests
 
-from recce import __version__, is_ci_env
+from recce import __version__, is_ci_env, get_runner
 
 
 class Collector:
@@ -23,6 +24,7 @@ class Collector:
         self._delete_threshold = 1000
         self._upload_threshold = 10
         self._is_ci: bool = is_ci_env()
+        self._runner: Union[str, None] = get_runner()
 
     def is_ready(self):
         if self._api_key is None or self._user_id is None:
@@ -59,6 +61,7 @@ class Collector:
                 version=__version__,
                 python_version=python_version,
                 is_ci=self._is_ci,
+                runner=self._runner,
             ),
             event_properties=prop,
             platform=sys.platform,
