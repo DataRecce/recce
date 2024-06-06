@@ -18,6 +18,22 @@ def is_ci_env():
     return False
 
 
+def get_runner():
+    # GitHub Action
+    if os.environ.get('GITHUB_ACTIONS', 'false') == 'true':
+        return 'github actions'
+
+    # GitHub Codespace
+    if os.environ.get('CODESPACES', 'false') == 'true':
+        return 'github codespaces'
+
+    # CircleCI
+    if os.environ.get('CIRCLECI', 'false') == 'true':
+        return 'circleci'
+
+    return None
+
+
 def get_version():
     version_file = os.path.normpath(os.path.join(os.path.dirname(__file__), 'VERSION'))
     with open(version_file) as fh:

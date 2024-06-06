@@ -3,13 +3,16 @@ import sys
 import time
 import traceback
 import typing as t
+from hashlib import sha256
 
 from click import Context
 from click.core import Command
 from rich.console import Console
 from rich.markup import escape
 
-from recce import event
+from recce import event, get_runner
+from recce.core import load_context
+from recce.git import hosting_repo
 
 console = Console()
 
@@ -77,6 +80,8 @@ class TrackCommand(Command):
         finally:
             end_time = time.time()
             duration = end_time - start_time
+            runner = get_runner()
+            repo = hosting_repo()
             command = ctx.command.name
             props = dict(
                 command=command,
@@ -84,6 +89,24 @@ class TrackCommand(Command):
                 reason=reason,
                 duration=duration,
             )
+
+            if runner is not None:
+                props['runner_type'] = runner
+
+            if repo is not None:
+                props['repository'] = sha256(repo.encode()).hexdigest()
+
+            try:
+                recce_context = load_context()
+            except Exception:
+                # it's not a ready-for-use project
+                recce_context = None
+
+            if recce_context is not None:
+                if recce_context.adapter_type == "dbt":
+                    props['adapter_type'] = 'DBT'
+                elif recce_context.adapter_type == "sqlmesh":
+                    props['adapter_type'] = 'SQLMesh'
 
             event.log_event(props, command, params=ctx.params)
             event.flush_events()
