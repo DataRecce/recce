@@ -16,10 +16,10 @@ def current_branch():
         return None
 
 
-def hosting_repo():
+def hosting_repo(remote: str = 'origin'):
     try:
         repo = Repo(search_parent_directories=True)
-        origin_url = repo.remote().url
+        origin_url = repo.remote(name=remote).url
         remote_repo = None
 
         if origin_url.startswith('git@'):

@@ -4,7 +4,7 @@ import zipfile
 from typing import List
 
 import requests
-from github import Artifact, Github
+from github import Artifact, Github, Auth, UnknownObjectException, PullRequest
 
 from recce.git import current_branch, hosting_repo
 
@@ -115,13 +115,19 @@ def recce_base_artifact(**kwargs):
 
 
 def get_pull_request(branch, owner, repo_name, github_token=None):
-    g = Github(github_token) if github_token else Github()
-    repo = g.get_repo(f"{owner}/{repo_name}")
-    pulls = repo.get_pulls(state='open')
+    g = Github(auth=Auth.Token(github_token)) if github_token else Github()
 
-    for pr in pulls:
-        if pr.head.ref == branch:
-            return pr
+    try:
+        repo = g.get_repo(f"{owner}/{repo_name}")
+        pulls = repo.get_pulls(state='open')
+
+        for pr in pulls:
+            if pr.head.ref == branch:
+                return pr
+
+    except UnknownObjectException:
+        print(f"Repository {owner}/{repo_name} not found. Please provide '$GITHUB_TOKEN' environment variable.")
+        return None
 
     return None
 
@@ -137,7 +143,7 @@ def recce_pr_information():
     owner, repo_name = repo.split('/')
 
     github_token = os.getenv("GITHUB_TOKEN")
-    pr = get_pull_request(branch, owner, repo_name, github_token)
+    pr: PullRequest = get_pull_request(branch, owner, repo_name, github_token)
 
     if pr:
         return dict(title=pr.title, html_url=pr.html_url, created_at=pr.created_at)
