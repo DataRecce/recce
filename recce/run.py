@@ -12,8 +12,8 @@ from recce.apis.run_func import submit_run
 from recce.config import RecceConfig
 from recce.core import RecceContext
 from recce.models.types import RunType
-from recce.pull_request import fetch_pr_metadata_from_event_path
-from recce.state import RecceState, PullRequestInfo, RecceStateLoader
+from recce.pull_request import fetch_pr_metadata
+from recce.state import RecceState, RecceStateLoader
 
 
 def check_github_ci_env(**kwargs):
@@ -28,30 +28,6 @@ def check_github_ci_env(**kwargs):
     github_pull_request_url = f"{github_server_url}/{github_repository}/pull/{github_ref_name}"
 
     return True, github_pull_request_url
-
-
-def fetch_pr_metadata(**kwargs):
-    pr_info = PullRequestInfo()
-
-    # fetch from github action event path
-    metadata = fetch_pr_metadata_from_event_path()
-    if metadata is not None:
-        pr_info.id = metadata.get('github_pr_id')
-        pr_info.url = metadata.get('github_pr_url')
-        pr_info.title = metadata.get('github_pr_title')
-
-    # fetch from cli arguments
-    if pr_info.url is None and 'github_pull_request_url' in kwargs:
-        pr_info.url = kwargs.get('github_pull_request_url')
-
-    pr_info.branch = kwargs.get('git_current_branch')
-    pr_info.base_branch = kwargs.get('git_base_branch')
-
-    # fetch from env
-    if pr_info.url is None:
-        pr_info.url = os.getenv("RECCE_PR_URL")
-
-    return pr_info
 
 
 async def execute_default_runs(context: RecceContext):
@@ -250,6 +226,7 @@ async def cli_run(output_state_file: str, **kwargs):
             process_failed_checks(failed_checks, error_log)
 
     # Export the state
+    console.rule("Export state")
     state: RecceState = ctx.export_state()
     state.pull_request = fetch_pr_metadata(**kwargs)
 
@@ -260,6 +237,6 @@ async def cli_run(output_state_file: str, **kwargs):
     } if cloud_mode else None
     recce_state = RecceStateLoader(review_mode=False, cloud_mode=cloud_mode, state_file=output_state_file,
                                    cloud_options=cloud_options)
-    recce_state.export(state)
-    print(f'The state file is stored at [{output_state_file}]')
+    msg = recce_state.export(state)
+    console.print(msg)
     return rc

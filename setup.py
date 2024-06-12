@@ -26,6 +26,7 @@ setup(name='recce',
       python_requires=">=3.8",
       packages=find_packages(),
       install_requires=[
+          'boto3',
           'requests>=2.28.1',
           'ruamel.yaml<0.18.0',
           'click>=7.1',

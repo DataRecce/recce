@@ -4,6 +4,47 @@ from typing import Optional
 
 import requests
 
+from recce.git import hosting_repo
+from recce.github import recce_pr_information
+from recce.state import PullRequestInfo
+
+
+def fetch_pr_metadata(**kwargs):
+    pr_info = PullRequestInfo()
+
+    # fetch from github action event path
+    metadata = fetch_pr_metadata_from_event_path()
+    if metadata is not None:
+        pr_info.id = metadata.get('github_pr_id')
+        pr_info.url = metadata.get('github_pr_url')
+        pr_info.title = metadata.get('github_pr_title')
+    else:
+        repo = hosting_repo()
+        pr = recce_pr_information()
+        if pr:
+            pr_info.repository = repo
+            pr_info.id = pr.number
+            pr_info.title = pr.title
+            pr_info.url = pr.html_url
+            pr_info.base_branch = pr.base.ref
+            pr_info.branch = pr.head.ref
+
+    # fetch from cli arguments
+    if pr_info.url is None and 'github_pull_request_url' in kwargs:
+        pr_info.url = kwargs.get('github_pull_request_url')
+
+    if pr_info.branch is None:
+        pr_info.branch = kwargs.get('git_current_branch')
+
+    if pr_info.base_branch is None:
+        pr_info.base_branch = kwargs.get('git_base_branch')
+
+    # fetch from env
+    if pr_info.url is None:
+        pr_info.url = os.getenv("RECCE_PR_URL")
+
+    return pr_info
+
 
 def fetch_pr_metadata_from_event_path() -> Optional[dict]:
     """

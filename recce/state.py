@@ -2,6 +2,7 @@
 
 import json
 import logging
+import os
 import time
 from datetime import datetime
 from typing import List, Optional, Dict, Union
@@ -15,6 +16,8 @@ from recce.git import current_branch
 from recce.models.types import Run, Check
 
 logger = logging.getLogger('uvicorn')
+
+RECCE_CLOUD_API_HOST = os.environ.get('RECCE_CLOUD_API_HOST', 'https://staging.cloud.datarecce.io')
 
 
 def pydantic_model_json_dump(model: BaseModel):
@@ -58,6 +61,7 @@ class PullRequestInfo(BaseModel):
     url: Optional[str] = None
     branch: Optional[str] = None
     base_branch: Optional[str] = None
+    repository: Optional[str] = None
 
     def to_dict(self):
         return pydantic_model_dump(self)
@@ -147,7 +151,7 @@ class RecceStateLoader:
         self.review_mode = review_mode
         self.cloud_mode = cloud_mode
         self.state_file = state_file
-        self.cloud_options = cloud_options
+        self.cloud_options = cloud_options or {}
         self.error_message = None
         self.hint_message = None
         self.state: RecceState | None = None
@@ -189,36 +193,74 @@ class RecceStateLoader:
             pass
         return self.state
 
-    def export(self, state: RecceState = None):
+    def export(self, state: RecceState = None) -> str | None:
         if state is not None:
             self.update(state)
         # TODO: Export the current Recce state to file or cloud storage
         if self.cloud_mode:
-            self._export_state_to_cloud()
+            return self._export_state_to_cloud()
         else:
-            self._export_state_to_file()
+            return self._export_state_to_file()
 
-    def _export_state_to_cloud(self):
+    def _export_state_to_cloud(self) -> str | None:
+        from recce.pull_request import fetch_pr_metadata
         # TODO: export the state to remote cloud storage
-        print('TODO: export the state to remote cloud storage')
-        print(f"        remote host: {self.cloud_options.get('host')}")
-        pass
+        pr_info = fetch_pr_metadata()
+        if self.cloud_options.get('host', '').startswith('s3://'):
+            return self._export_state_to_s3_bucket(pr_info)
+        else:
+            return self._export_state_to_recce_cloud(pr_info)
 
-    def _export_state_to_recce_cloud(self):
-        pass
+    def _export_state_to_recce_cloud(self, pr_info) -> str | None:
+        import requests
+        # Step 1: Get the token
+        token = self.cloud_options.get('secret')
 
-    def _export_state_to_s3_bucket(self):
-        pass
+        # Step 2: Call Recce Cloud API to get presigned URL
+        artifact_name = 'recce-state.json'
+        api_url = f'{RECCE_CLOUD_API_HOST}/api/v1/{pr_info.repository}/pulls/{pr_info.id}/artifacts/upload?artifact_name={artifact_name}'
+        headers = {
+            'Authorization': f'Bearer {token}'
+        }
+        response = requests.post(api_url, headers=headers)
+        if response.status_code != 200:
+            self.error_message = response.text
+            return f'Failed to upload the state file to Recce Cloud.'
+        presigned_url = response.json().get('presigned_url')
 
-    def _export_state_to_file(self):
+        # Step 3: Upload the state file to the presigned URL
+        import tempfile
+        with tempfile.NamedTemporaryFile() as tmp:
+            self._export_state_to_file(tmp.name)
+            response = requests.put(presigned_url, data=open(tmp.name, 'rb').read())
+            if response.status_code != 200:
+                self.error_message = response.text
+                return f'Failed to upload the state file to Recce Cloud.'
+        return f'The state file has been uploaded to Recce Cloud.'
+
+    def _export_state_to_s3_bucket(self, pr_info) -> str | None:
+        import boto3
+        import tempfile
+        s3_client = boto3.client('s3')
+        s3_bucket_name = self.cloud_options.get('host').replace('s3://', '')
+        s3_bucket_key = f'github/{pr_info.repository}/pulls/{pr_info.id}/recce-state.json'
+        with tempfile.NamedTemporaryFile() as tmp:
+            self._export_state_to_file(tmp.name)
+            s3_client.upload_file(tmp.name, s3_bucket_name, s3_bucket_key)
+        return f'The state file has been uploaded to \' s3://{s3_bucket_name}/{s3_bucket_key}\''
+
+    def _export_state_to_file(self, file_path: Optional[str] = None):
         """
-                Store the state to a file. Store happens when terminating the server or run instance.
-                """
+        Store the state to a file. Store happens when terminating the server or run instance.
+        """
+
+        file_path = file_path or self.state_file
         start_time = time.time()
-        logger.info(f"Store recce state to '{self.state_file}'")
+        logger.info(f"Store recce state to '{file_path}'")
         json_data = self.state.to_json()
-        with open(self.state_file, 'w') as f:
+        with open(file_path, 'w') as f:
             f.write(json_data)
         end_time = time.time()
         elapsed_time = end_time - start_time
         logger.info(f'Store state completed in {elapsed_time:.2f} seconds')
+        return f'The state file is stored at [{file_path}]'
