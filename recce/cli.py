@@ -6,6 +6,7 @@ import click
 from recce import event
 from recce.config import RecceConfig, RECCE_CONFIG_FILE, RECCE_ERROR_LOG_FILE
 from recce.run import cli_run, check_github_ci_env
+from recce.state import RecceStateLoader
 from recce.summary import generate_markdown_summary
 from .core import RecceContext
 from .event.track import TrackCommand
@@ -42,6 +43,14 @@ recce_options = [
                  show_default=True),
     click.option('--error-log', help='Path to the error log file.', type=click.Path(), default=RECCE_ERROR_LOG_FILE,
                  hidden=True),
+]
+
+recce_cloud_options = [
+    click.option('--cloud', is_flag=True, help='Fetch the state file from cloud', ),
+    click.option('--state-file-host', help='The host to fetch the state file from.', type=click.STRING,
+                 envvar='RECCE_STATE_FILE_HOST', default='cloud.datarecce.io', hidden=True),
+    click.option('--state-file-secret', help='The secret to fetch the state file.', type=click.STRING,
+                 envvar='GITHUB_TOKEN', hidden=True),
 ]
 
 
@@ -144,6 +153,7 @@ def diff(sql, primary_keys: List[str] = None, keep_shape: bool = False, keep_equ
 @add_options(dbt_related_options)
 @add_options(sqlmesh_related_options)
 @add_options(recce_options)
+@add_options(recce_cloud_options)
 def server(host, port, state_file=None, **kwargs):
     """
     Launch the recce server
@@ -158,18 +168,28 @@ def server(host, port, state_file=None, **kwargs):
     from rich.console import Console
 
     is_review = kwargs.get('review', False)
+    is_cloud = kwargs.get('cloud', False)
     console = Console()
-    if not state_file and is_review is True:
-        console.print("[[red]Error[/red]] Cannot launch server in review mode without a state file.")
-        console.print("Please provide a state file in the command argument.")
+    cloud_options = None
+    if is_cloud:
+        cloud_options = {
+            'host': kwargs.get('state_file_host'),
+            'secret': kwargs.get('state_file_secret'),
+        }
+    recce_state = RecceStateLoader(review_mode=is_review, cloud_mode=is_cloud,
+                                   state_file=state_file, cloud_options=cloud_options)
+    if not recce_state.verify():
+        error, hint = recce_state.error_and_hint
+        console.print(f"[[red]Error[/red]] {error}")
+        console.print(f"{hint}")
         exit(1)
 
-    if is_review:
+    if recce_state.review_mode is True:
         console.rule("Recce Server : Review Mode")
     else:
         console.rule("Recce Server")
 
-    state = AppState(state_file=state_file, kwargs=kwargs)
+    state = AppState(recce_state=recce_state, kwargs=kwargs)
     app.state = state
 
     uvicorn.run(app, host=host, port=port, lifespan='on')

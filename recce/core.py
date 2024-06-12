@@ -24,6 +24,8 @@ class RecceContext:
 
     @classmethod
     def load(cls, **kwargs):
+        state: RecceState | None = None
+        recce_state = kwargs.get('recce_state')
         state_file = kwargs.get('state_file')
         is_review_mode = kwargs.get('review', False)
 
@@ -31,8 +33,13 @@ class RecceContext:
             review_mode=is_review_mode,
         )
 
+        # TODO: replace the state_file by RecceStateLoader
         if state_file and Path(state_file).exists():
             state = RecceState.from_file(state_file)
+            context.import_state(state)
+
+        if recce_state:
+            state = recce_state.load()
             context.import_state(state)
 
         # Load the artifacts from the state file or `target` and `target-base` directory

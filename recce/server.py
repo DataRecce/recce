@@ -24,13 +24,14 @@ from .config import RecceConfig
 from .core import load_context, default_context
 from .exceptions import RecceException
 from .run import load_preset_checks
+from .state import RecceStateLoader
 
 logger = logging.getLogger('uvicorn')
 
 
 @dataclass
 class AppState:
-    state_file: Optional[str] = None
+    recce_state: Optional[RecceStateLoader] = None
     kwargs: Optional[dict] = None
 
 
@@ -41,14 +42,14 @@ async def lifespan(fastapi: FastAPI):
 
     console = Console()
     app_state: AppState = app.state
-    state_file = app_state.state_file
+    recce_state = app_state.recce_state
     kwargs = app_state.kwargs
-    ctx = load_context(**kwargs, state_file=state_file)
+    ctx = load_context(**kwargs, recce_state=recce_state)
     ctx.start_monitor_artifacts(callback=dbt_artifacts_updated_callback)
 
     # Initialize Recce Config
     config = RecceConfig(config_file=kwargs.get('config'))
-    if not state_file:
+    if not recce_state:
         preset_checks = config.get('checks', [])
         if preset_checks and len(preset_checks) > 0:
             console.rule("Loading Preset Checks")
@@ -56,8 +57,8 @@ async def lifespan(fastapi: FastAPI):
 
     yield
 
-    if app_state.state_file:
-        ctx.export_state().to_state_file(state_file)
+    if recce_state:
+        recce_state.export(ctx.export_state())
 
     ctx.stop_monitor_artifacts()
 

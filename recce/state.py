@@ -122,6 +122,7 @@ class RecceState(BaseModel):
     def to_json(self):
         return pydantic_model_json_dump(self)
 
+    # TODO: Deprecated
     def to_state_file(self, file_path: str):
         """
         Store the state to a file. Store happens when terminating the server or run instance.
@@ -130,6 +131,81 @@ class RecceState(BaseModel):
         logger.info(f"Store recce state to '{file_path}'")
         json_data = self.to_json()
         with open(file_path, 'w') as f:
+            f.write(json_data)
+        end_time = time.time()
+        elapsed_time = end_time - start_time
+        logger.info(f'Store state completed in {elapsed_time:.2f} seconds')
+
+
+class RecceStateLoader:
+    def __init__(self,
+                 review_mode: bool = False,
+                 cloud_mode: bool = False,
+                 state_file: Optional[str] = None,
+                 cloud_options: Optional[Dict[str, str]] = None
+                 ):
+        self.review_mode = review_mode
+        self.cloud_mode = cloud_mode
+        self.state_file = state_file
+        self.cloud_options = cloud_options
+        self.error_message = None
+        self.hint_message = None
+        self.state: RecceState | None = None
+
+        # Load the state
+        self.load()
+        pass
+
+    def verify(self) -> bool:
+        if self.cloud_mode:
+            pass
+        else:
+            if self.review_mode is True and self.state_file is None:
+                self.error_message = 'Cannot launch server in review mode without a state file.'
+                self.hint_message = 'Please provide a state file in the command argument.'
+                return False
+            pass
+        return True
+
+    @property
+    def error_and_hint(self) -> (str | None, str | None):
+        return self.error_message, self.hint_message
+
+    def __bool__(self):
+        return self.state is not None
+
+    def update(self, state: RecceState):
+        self.state = state
+
+    def load(self) -> RecceState:
+        if self.cloud_mode:
+            # TODO: Load the state from cloud storage
+            pass
+        else:
+            self.state = RecceState.from_file(self.state_file)
+        return self.state
+
+    def export(self, state: RecceState = None):
+        if state is not None:
+            self.update(state)
+        # TODO: Export the current Recce state to file or cloud storage
+        if self.cloud_mode:
+            self._export_state_to_cloud()
+        else:
+            self._export_state_to_file()
+
+    def _export_state_to_file(self):
+        # TODO: export the state to remote cloud storage
+        pass
+
+    def _export_state_to_cloud(self):
+        """
+                Store the state to a file. Store happens when terminating the server or run instance.
+                """
+        start_time = time.time()
+        logger.info(f"Store recce state to '{self.state_file}'")
+        json_data = self.state.to_json()
+        with open(self.state_file, 'w') as f:
             f.write(json_data)
         end_time = time.time()
         elapsed_time = end_time - start_time
