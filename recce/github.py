@@ -145,7 +145,4 @@ def recce_pr_information():
     github_token = os.getenv("GITHUB_TOKEN")
     pr: PullRequest = get_pull_request(branch, owner, repo_name, github_token)
 
-    if pr:
-        return dict(title=pr.title, html_url=pr.html_url, created_at=pr.created_at)
-
-    return None
+    return pr if pr else None
