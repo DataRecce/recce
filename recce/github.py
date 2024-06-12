@@ -1,9 +1,12 @@
 import io
+import os
 import zipfile
 from typing import List
 
 import requests
-from github import Artifact
+from github import Artifact, Github, Auth, UnknownObjectException, PullRequest
+
+from recce.git import current_branch, hosting_repo
 
 
 def download_artifact(github_token: str, artifact: Artifact) -> List[str]:
@@ -109,3 +112,37 @@ def recce_ci_artifact(**kwargs):
 def recce_base_artifact(**kwargs):
     # TODO: Implement this function
     pass
+
+
+def get_pull_request(branch, owner, repo_name, github_token=None):
+    g = Github(auth=Auth.Token(github_token)) if github_token else Github()
+
+    try:
+        repo = g.get_repo(f"{owner}/{repo_name}")
+        pulls = repo.get_pulls(state='open')
+
+        for pr in pulls:
+            if pr.head.ref == branch:
+                return pr
+
+    except UnknownObjectException:
+        print(f"Repository {owner}/{repo_name} not found. Please provide '$GITHUB_TOKEN' environment variable.")
+        return None
+
+    return None
+
+
+def recce_pr_information() -> PullRequest:
+    branch = current_branch()
+    repo = hosting_repo()
+
+    if '/' not in repo:
+        print('This is not a GitHub repository.')
+        return
+
+    owner, repo_name = repo.split('/')
+
+    github_token = os.getenv("GITHUB_TOKEN")
+    pr = get_pull_request(branch, owner, repo_name, github_token)
+
+    return pr if pr else None
