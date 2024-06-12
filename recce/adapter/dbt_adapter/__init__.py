@@ -392,8 +392,6 @@ class DbtAdapter(BaseAdapter):
 
         manifest_dict = manifest.to_dict()
 
-        parent_map = {k: v for k, v in manifest_dict['parent_map'].items() if not k.startswith('test.')}
-
         nodes = {}
 
         for node in manifest_dict['nodes'].values():
@@ -492,6 +490,8 @@ class DbtAdapter(BaseAdapter):
                     'config': semantic_models['config'],
                 }
 
+        nodeIds = nodes.keys()
+        parent_map = {k: v for k, v in manifest_dict['parent_map'].items() if k in nodeIds}
         return dict(
             parent_map=parent_map,
             nodes=nodes,
