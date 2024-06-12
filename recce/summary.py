@@ -1,3 +1,4 @@
+import sys
 from typing import List, Dict, Set, Union, Type, Optional
 from uuid import UUID
 
@@ -16,6 +17,11 @@ from recce.tasks.valuediff import ValueDiffTaskResultDiffer, ValueDiffDetailTask
 ADD_COLOR = '#1dce00'
 MODIFIED_COLOR = '#ffa502'
 REMOVE_COLOR = '#ff067e'
+
+
+def _warn(msg):
+    # print to stderr
+    print(f"warning: {msg}", file=sys.stderr)
 
 
 class Node:
@@ -219,9 +225,11 @@ class LineageGraph:
 
     def create_edge(self, parent_id: str, child_id: str, edge_from: str = 'base'):
         if parent_id not in self.nodes:
-            raise ValueError(f'Parent node {parent_id} not found in graph')
+            _warn(f'Parent node {parent_id} not found in graph')
+            return
         if child_id not in self.nodes:
-            raise ValueError(f'Child node {child_id} not found in graph')
+            _warn(f'Child node {child_id} not found in graph')
+            return
 
         edge_id = f'{parent_id}-->{child_id}'
         if edge_id in self.edges:
