@@ -154,6 +154,7 @@ class RecceStateLoader:
 
         # Load the state
         self.load()
+
         pass
 
     def verify(self) -> bool:
@@ -178,11 +179,14 @@ class RecceStateLoader:
         self.state = state
 
     def load(self) -> RecceState:
-        if self.cloud_mode:
-            # TODO: Load the state from cloud storage
+        try:
+            if self.cloud_mode:
+                # TODO: Load the state from cloud storage
+                pass
+            else:
+                self.state = RecceState.from_file(self.state_file)
+        except Exception:
             pass
-        else:
-            self.state = RecceState.from_file(self.state_file)
         return self.state
 
     def export(self, state: RecceState = None):
@@ -194,11 +198,19 @@ class RecceStateLoader:
         else:
             self._export_state_to_file()
 
-    def _export_state_to_file(self):
+    def _export_state_to_cloud(self):
         # TODO: export the state to remote cloud storage
+        print('TODO: export the state to remote cloud storage')
+        print(f"        remote host: {self.cloud_options.get('host')}")
         pass
 
-    def _export_state_to_cloud(self):
+    def _export_state_to_recce_cloud(self):
+        pass
+
+    def _export_state_to_s3_bucket(self):
+        pass
+
+    def _export_state_to_file(self):
         """
                 Store the state to a file. Store happens when terminating the server or run instance.
                 """

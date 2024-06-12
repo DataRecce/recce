@@ -209,6 +209,7 @@ def server(host, port, state_file=None, **kwargs):
 @add_options(dbt_related_options)
 @add_options(sqlmesh_related_options)
 @add_options(recce_options)
+@add_options(recce_cloud_options)
 def run(output, **kwargs):
     is_github_action, pr_url = check_github_ci_env(**kwargs)
     if is_github_action is True and pr_url is not None:
@@ -217,7 +218,16 @@ def run(output, **kwargs):
     # Initialize Recce Config
     RecceConfig(config_file=kwargs.get('config'))
 
-    return asyncio.run(cli_run(output, **kwargs))
+    cloud_mode = kwargs.get('cloud', False)
+    state_file = kwargs.get('state_file')
+    cloud_options = {
+        'host': kwargs.get('state_file_host'),
+        'secret': kwargs.get('state_file_secret'),
+    } if cloud_mode else None
+    recce_state = RecceStateLoader(review_mode=False, cloud_mode=cloud_mode,
+                                   state_file=state_file, cloud_options=cloud_options)
+
+    return asyncio.run(cli_run(output, recce_state=recce_state, **kwargs))
 
 
 @cli.command(cls=TrackCommand)
@@ -229,9 +239,11 @@ def summary(state_file, **kwargs):
     from rich.console import Console
     from .core import load_context
     console = Console()
+    recce_state = RecceStateLoader(review_mode=False, cloud_mode=False,
+                                   state_file=state_file, cloud_options=None)
     try:
         # Load context in review mode, won't need to check dbt_project.yml file.
-        ctx = load_context(**kwargs, state_file=state_file, review=True)
+        ctx = load_context(**kwargs, recce_state=recce_state, review=True)
     except Exception as e:
         console.print("[[red]Error[/red]] Failed to generate summary:")
         console.print(f"{e}")

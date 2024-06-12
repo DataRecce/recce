@@ -13,7 +13,7 @@ from recce.config import RecceConfig
 from recce.core import RecceContext
 from recce.models.types import RunType
 from recce.pull_request import fetch_pr_metadata_from_event_path
-from recce.state import RecceState, PullRequestInfo
+from recce.state import RecceState, PullRequestInfo, RecceStateLoader
 
 
 def check_github_ci_env(**kwargs):
@@ -253,6 +253,13 @@ async def cli_run(output_state_file: str, **kwargs):
     state: RecceState = ctx.export_state()
     state.pull_request = fetch_pr_metadata(**kwargs)
 
-    state.to_state_file(output_state_file)
+    cloud_mode = kwargs.get('cloud', False)
+    cloud_options = {
+        'host': kwargs.get('state_file_host'),
+        'secret': kwargs.get('state_file_secret'),
+    } if cloud_mode else None
+    recce_state = RecceStateLoader(review_mode=False, cloud_mode=cloud_mode, state_file=output_state_file,
+                                   cloud_options=cloud_options)
+    recce_state.export(state)
     print(f'The state file is stored at [{output_state_file}]')
     return rc
