@@ -46,10 +46,10 @@ recce_options = [
 ]
 
 recce_cloud_options = [
-    click.option('--cloud', is_flag=True, help='Fetch the state file from cloud', ),
+    click.option('--cloud', is_flag=True, help='Fetch the state file from cloud'),
     click.option('--state-file-host', help='The host to fetch the state file from.', type=click.STRING,
                  envvar='RECCE_STATE_FILE_HOST', default='cloud.datarecce.io', hidden=True),
-    click.option('--state-file-secret', help='The secret to fetch the state file.', type=click.STRING,
+    click.option('--cloud-token', help='The token used by Recce Cloud.', type=click.STRING,
                  envvar='GITHUB_TOKEN', hidden=True),
 ]
 
@@ -174,7 +174,7 @@ def server(host, port, state_file=None, **kwargs):
     if is_cloud:
         cloud_options = {
             'host': kwargs.get('state_file_host'),
-            'secret': kwargs.get('state_file_secret'),
+            'token': kwargs.get('cloud_token'),
         }
     recce_state = RecceStateLoader(review_mode=is_review, cloud_mode=is_cloud,
                                    state_file=state_file, cloud_options=cloud_options)
@@ -222,7 +222,7 @@ def run(output, **kwargs):
     state_file = kwargs.get('state_file')
     cloud_options = {
         'host': kwargs.get('state_file_host'),
-        'secret': kwargs.get('state_file_secret'),
+        'token': kwargs.get('cloud_token'),
     } if cloud_mode else None
     recce_state = RecceStateLoader(review_mode=False, cloud_mode=cloud_mode,
                                    state_file=state_file, cloud_options=cloud_options)

@@ -233,7 +233,7 @@ async def cli_run(output_state_file: str, **kwargs):
     cloud_mode = kwargs.get('cloud', False)
     cloud_options = {
         'host': kwargs.get('state_file_host'),
-        'secret': kwargs.get('state_file_secret'),
+        'token': kwargs.get('cloud_token'),
     } if cloud_mode else None
     recce_state = RecceStateLoader(review_mode=False, cloud_mode=cloud_mode, state_file=output_state_file,
                                    cloud_options=cloud_options)

@@ -202,6 +202,9 @@ class RecceStateLoader:
         else:
             return self._export_state_to_file()
 
+    def _load_state_from_cloud(self) -> RecceState | None:
+        return None
+
     def _export_state_to_cloud(self) -> str | None:
         from recce.pull_request import fetch_pr_metadata
         # TODO: export the state to remote cloud storage
@@ -214,7 +217,7 @@ class RecceStateLoader:
     def _export_state_to_recce_cloud(self, pr_info) -> str | None:
         import requests
         # Step 1: Get the token
-        token = self.cloud_options.get('secret')
+        token = self.cloud_options.get('token')
 
         # Step 2: Call Recce Cloud API to get presigned URL
         artifact_name = 'recce-state.json'
@@ -236,7 +239,7 @@ class RecceStateLoader:
             if response.status_code != 200:
                 self.error_message = response.text
                 return f'Failed to upload the state file to Recce Cloud.'
-        return f'The state file has been uploaded to Recce Cloud.'
+        return f'The state file is uploaded to Recce Cloud.'
 
     def _export_state_to_s3_bucket(self, pr_info) -> str | None:
         import boto3
@@ -247,7 +250,7 @@ class RecceStateLoader:
         with tempfile.NamedTemporaryFile() as tmp:
             self._export_state_to_file(tmp.name)
             s3_client.upload_file(tmp.name, s3_bucket_name, s3_bucket_key)
-        return f'The state file has been uploaded to \' s3://{s3_bucket_name}/{s3_bucket_key}\''
+        return f'The state file is uploaded to \' s3://{s3_bucket_name}/{s3_bucket_key}\''
 
     def _export_state_to_file(self, file_path: Optional[str] = None):
         """
