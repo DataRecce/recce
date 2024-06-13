@@ -21,6 +21,22 @@ logger = logging.getLogger('uvicorn')
 RECCE_CLOUD_API_HOST = os.environ.get('RECCE_CLOUD_API_HOST', 'https://staging.cloud.datarecce.io')
 
 
+def check_s3_bucket(bucket_name: str):
+    import boto3
+    s3_client = boto3.client('s3')
+    try:
+        s3_client.head_bucket(Bucket=bucket_name)
+    except botocore.exceptions.ClientError as e:
+        error_code = e.response['Error']['Code']
+        if error_code == '404':
+            return False, f"Bucket '{bucket_name}' does not exist."
+        elif error_code == '403':
+            return False, f"Bucket '{bucket_name}' exists but you do not have permission to access it."
+        else:
+            return False, f"Failed to access the S3 bucket: '{bucket_name}'"
+    return True, None
+
+
 def pydantic_model_json_dump(model: BaseModel):
     pydantic_version = pydantic.version.VERSION
     pydantic_major = pydantic_version.split(".")[0]
@@ -198,6 +214,8 @@ class RecceStateLoader:
         import requests
         # Step 1: Get the token
         token = self.cloud_options.get('token')
+        if token is None:
+            raise Exception('No token is provided to access Recce Cloud.')
 
         # Step 2: Call Recce Cloud API to get presigned URL
         api_url = f'{RECCE_CLOUD_API_HOST}/api/v1/{pr_info.repository}/pulls/{pr_info.id}/artifacts/{method}?artifact_name={artifact_name}'
@@ -217,7 +235,9 @@ class RecceStateLoader:
 
     def _load_state_from_cloud(self) -> RecceState:
         from recce.pull_request import fetch_pr_metadata
-        pr_info = fetch_pr_metadata()
+        pr_info = fetch_pr_metadata(github_token=self.cloud_options.get('token'))
+        if (pr_info.id is None) or (pr_info.repository is None):
+            raise Exception('Cannot get the pull request information from GitHub.')
 
         if self.cloud_options.get('host', '').startswith('s3://'):
             logger.debug('Fetching state from AWS S3 bucket...')
@@ -249,6 +269,11 @@ class RecceStateLoader:
         s3_client = boto3.client('s3')
         s3_bucket_name = self.cloud_options.get('host').replace('s3://', '')
         s3_bucket_key = f'github/{pr_info.repository}/pulls/{pr_info.id}/recce-state.json'
+
+        rc, error_message = check_s3_bucket(s3_bucket_name)
+        if rc is False:
+            raise Exception(error_message)
+
         with tempfile.NamedTemporaryFile() as tmp:
             try:
                 s3_client.download_file(s3_bucket_name, s3_bucket_key, tmp.name)
@@ -263,8 +288,10 @@ class RecceStateLoader:
 
     def _export_state_to_cloud(self) -> str | None:
         from recce.pull_request import fetch_pr_metadata
-        # TODO: export the state to remote cloud storage
-        pr_info = fetch_pr_metadata()
+        pr_info = fetch_pr_metadata(github_token=self.cloud_options.get('token'))
+        if (pr_info.id is None) or (pr_info.repository is None):
+            raise Exception('Cannot get the pull request information from GitHub.')
+
         if self.cloud_options.get('host', '').startswith('s3://'):
             logger.info(f"Store recce state to AWS S3 bucket")
             return self._export_state_to_s3_bucket(pr_info)
@@ -291,6 +318,11 @@ class RecceStateLoader:
         s3_client = boto3.client('s3')
         s3_bucket_name = self.cloud_options.get('host').replace('s3://', '')
         s3_bucket_key = f'github/{pr_info.repository}/pulls/{pr_info.id}/recce-state.json'
+
+        rc, error_message = check_s3_bucket(s3_bucket_name)
+        if rc is False:
+            raise Exception(error_message)
+
         with tempfile.NamedTemporaryFile() as tmp:
             self._export_state_to_file(tmp.name)
             s3_client.upload_file(tmp.name, s3_bucket_name, s3_bucket_key)

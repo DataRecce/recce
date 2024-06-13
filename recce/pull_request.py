@@ -20,7 +20,7 @@ def fetch_pr_metadata(**kwargs):
         pr_info.title = metadata.get('github_pr_title')
     else:
         repo = hosting_repo()
-        pr = recce_pr_information()
+        pr = recce_pr_information(**kwargs)
         if pr:
             pr_info.repository = repo
             pr_info.id = pr.number

@@ -187,8 +187,13 @@ def server(host, port, state_file=None, **kwargs):
             'host': kwargs.get('state_file_host'),
             'token': kwargs.get('cloud_token'),
         }
-    recce_state = RecceStateLoader(review_mode=is_review, cloud_mode=is_cloud,
-                                   state_file=state_file, cloud_options=cloud_options)
+    try:
+        recce_state = RecceStateLoader(review_mode=is_review, cloud_mode=is_cloud,
+                                       state_file=state_file, cloud_options=cloud_options)
+    except Exception as e:
+        console.print("[[red]Error[/red]] Failed to load recce state file.")
+        console.print(f"  Reason: {e}")
+        exit(1)
     if not recce_state.verify():
         error, hint = recce_state.error_and_hint
         console.print(f"[[red]Error[/red]] {error}")
@@ -238,8 +243,13 @@ def run(output, **kwargs):
         'host': kwargs.get('state_file_host'),
         'token': kwargs.get('cloud_token'),
     } if cloud_mode else None
-    recce_state = RecceStateLoader(review_mode=False, cloud_mode=cloud_mode,
-                                   state_file=state_file, cloud_options=cloud_options)
+    try:
+        recce_state = RecceStateLoader(review_mode=False, cloud_mode=cloud_mode,
+                                       state_file=state_file, cloud_options=cloud_options)
+    except Exception as e:
+        console.print("[[red]Error[/red]] Failed to load recce state file.")
+        console.print(f"  Reason: {e}")
+        exit(1)
     if not recce_state.verify():
         error, hint = recce_state.error_and_hint
         console.print(f"[[red]Error[/red]] {error}")
@@ -266,8 +276,14 @@ def summary(state_file, **kwargs):
         'host': kwargs.get('state_file_host'),
         'token': kwargs.get('cloud_token'),
     } if cloud_mode else None
-    recce_state = RecceStateLoader(review_mode=True, cloud_mode=cloud_mode,
-                                   state_file=state_file, cloud_options=cloud_options)
+
+    try:
+        recce_state = RecceStateLoader(review_mode=True, cloud_mode=cloud_mode,
+                                       state_file=state_file, cloud_options=cloud_options)
+    except Exception as e:
+        console.print("[[red]Error[/red]] Failed to load recce state file.")
+        console.print(f"  Reason: {e}")
+        exit(1)
     if not recce_state.verify():
         error, hint = recce_state.error_and_hint
         console.print(f"[[red]Error[/red]] {error}")
