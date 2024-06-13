@@ -57,8 +57,7 @@ async def lifespan(fastapi: FastAPI):
 
     yield
 
-    if recce_state:
-        recce_state.export(ctx.export_state())
+    recce_state.export(ctx.export_state())
 
     ctx.stop_monitor_artifacts()
 
@@ -157,7 +156,8 @@ async def get_info():
                 'base': context.get_lineage(base=True),
                 'current': context.get_lineage(base=False),
             },
-            'demo': bool(demo)
+            'demo': bool(demo),
+            'cloud_mode': context.state_loader.cloud_mode,
         }
 
         if context.adapter_type == 'sqlmesh':

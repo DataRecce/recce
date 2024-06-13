@@ -185,6 +185,8 @@ class RecceStateLoader:
         if self.cloud_mode:
             message = self._export_state_to_cloud()
         else:
+            if self.state_file is None:
+                return 'No state file is provided. Skip storing the state.'
             logger.info(f"Store recce state to '{self.state_file}'")
             message = self._export_state_to_file()
         end_time = time.time()
