@@ -118,3 +118,13 @@ def create_check_without_run(check_name, check_description, check_type, params, 
                   is_preset=is_preset)
     CheckDAO().create(check)
     return check
+
+
+def purge_preset_checks():
+    checks = CheckDAO().list()
+    for check in checks:
+        if check.is_preset:
+            related_runs = RunDAO().list_by_check_id(check.check_id)
+            for run in related_runs:
+                RunDAO().delete(run.run_id)
+            CheckDAO().delete(check.check_id)

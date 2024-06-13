@@ -35,6 +35,7 @@ export interface LineageGraphContextType {
   lineageGraph?: LineageGraph;
   envInfo?: EnvInfo;
   reviewMode?: boolean;
+  cloudMode?: boolean;
   isDemoSite?: boolean;
   isLoading?: boolean;
   error?: string;
@@ -125,6 +126,7 @@ export function LineageGraphContextProvider({ children }: LineageGraphProps) {
   const lineage = data?.lineage;
   const isDemoSite = data?.demo;
   const reviewMode = data?.review_mode;
+  const cloudMode = data?.cloud_mode;
   const adapterType = data?.adapter_type;
   const git = data?.git;
   const pullRequest = data?.pull_request;
@@ -153,6 +155,7 @@ export function LineageGraphContextProvider({ children }: LineageGraphProps) {
           },
           envInfo,
           reviewMode,
+          cloudMode,
           isDemoSite,
           error: errorMessage,
           isLoading,

@@ -132,7 +132,7 @@ def get_pull_request(branch, owner, repo_name, github_token=None):
     return None
 
 
-def recce_pr_information() -> PullRequest:
+def recce_pr_information(github_token=None) -> PullRequest:
     branch = current_branch()
     repo = hosting_repo()
 
@@ -142,7 +142,7 @@ def recce_pr_information() -> PullRequest:
 
     owner, repo_name = repo.split('/')
 
-    github_token = os.getenv("GITHUB_TOKEN")
+    github_token = github_token if github_token else os.getenv("GITHUB_TOKEN")
     pr = get_pull_request(branch, owner, repo_name, github_token)
 
     return pr if pr else None

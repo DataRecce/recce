@@ -7,13 +7,13 @@ from rich import box
 from rich.console import Console
 from rich.table import Table
 
-from recce.apis.check_func import create_check_from_run, create_check_without_run
+from recce.apis.check_func import create_check_from_run, create_check_without_run, purge_preset_checks
 from recce.apis.run_func import submit_run
 from recce.config import RecceConfig
 from recce.core import RecceContext
 from recce.models.types import RunType
-from recce.pull_request import fetch_pr_metadata_from_event_path
-from recce.state import RecceState, PullRequestInfo
+from recce.pull_request import fetch_pr_metadata
+from recce.state import RecceState
 
 
 def check_github_ci_env(**kwargs):
@@ -28,30 +28,6 @@ def check_github_ci_env(**kwargs):
     github_pull_request_url = f"{github_server_url}/{github_repository}/pull/{github_ref_name}"
 
     return True, github_pull_request_url
-
-
-def fetch_pr_metadata(**kwargs):
-    pr_info = PullRequestInfo()
-
-    # fetch from github action event path
-    metadata = fetch_pr_metadata_from_event_path()
-    if metadata is not None:
-        pr_info.id = metadata.get('github_pr_id')
-        pr_info.url = metadata.get('github_pr_url')
-        pr_info.title = metadata.get('github_pr_title')
-
-    # fetch from cli arguments
-    if pr_info.url is None and 'github_pull_request_url' in kwargs:
-        pr_info.url = kwargs.get('github_pull_request_url')
-
-    pr_info.branch = kwargs.get('git_current_branch')
-    pr_info.base_branch = kwargs.get('git_base_branch')
-
-    # fetch from env
-    if pr_info.url is None:
-        pr_info.url = os.getenv("RECCE_PR_URL")
-
-    return pr_info
 
 
 async def execute_default_runs(context: RecceContext):
@@ -121,7 +97,7 @@ def load_preset_checks(checks: list):
     console.print(table)
 
 
-async def execute_preset_checks(checks: list) -> (int, List[dict]):
+async def execute_preset_checks(preset_checks: list) -> (int, List[dict]):
     """
     Execute the preset checks
     """
@@ -134,7 +110,12 @@ async def execute_preset_checks(checks: list) -> (int, List[dict]):
     table.add_column('Type')
     table.add_column('Execution Time')
     table.add_column('Failed Reason')
-    for check in checks:
+
+    # Purge the existing preset checks before running the new ones
+    purge_preset_checks()
+
+    # Execute the preset checks
+    for check in preset_checks:
         run = None
         check_name = check.get('name')
         check_type = check.get('type')
@@ -250,9 +231,10 @@ async def cli_run(output_state_file: str, **kwargs):
             process_failed_checks(failed_checks, error_log)
 
     # Export the state
+    console.rule("Export state")
     state: RecceState = ctx.export_state()
     state.pull_request = fetch_pr_metadata(**kwargs)
-
-    state.to_state_file(output_state_file)
-    print(f'The state file is stored at [{output_state_file}]')
+    ctx.state_loader.state_file = output_state_file
+    msg = ctx.state_loader.export(state)
+    console.print(msg)
     return rc

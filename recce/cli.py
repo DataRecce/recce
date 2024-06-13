@@ -6,11 +6,21 @@ import click
 from recce import event
 from recce.config import RecceConfig, RECCE_CONFIG_FILE, RECCE_ERROR_LOG_FILE
 from recce.run import cli_run, check_github_ci_env
+from recce.state import RecceStateLoader
 from recce.summary import generate_markdown_summary
+from recce.util.logger import CustomFormatter
 from .core import RecceContext
 from .event.track import TrackCommand
 
 event.init()
+
+
+def handle_debug_flag(**kwargs):
+    if kwargs.get('debug'):
+        import logging
+        ch = logging.StreamHandler()
+        ch.setFormatter(CustomFormatter())
+        logging.basicConfig(handlers=[ch], level=logging.DEBUG)
 
 
 def add_options(options):
@@ -42,6 +52,15 @@ recce_options = [
                  show_default=True),
     click.option('--error-log', help='Path to the error log file.', type=click.Path(), default=RECCE_ERROR_LOG_FILE,
                  hidden=True),
+    click.option('--debug', is_flag=True, help='Enable debug mode.', hidden=True),
+]
+
+recce_cloud_options = [
+    click.option('--cloud', is_flag=True, help='Fetch the state file from cloud.'),
+    click.option('--cloud-token', help='The token used by Recce Cloud.', type=click.STRING,
+                 envvar='GITHUB_TOKEN'),
+    click.option('--state-file-host', help='The host to fetch the state file from.', type=click.STRING,
+                 envvar='RECCE_STATE_FILE_HOST', default='cloud.datarecce.io', hidden=True),
 ]
 
 
@@ -144,6 +163,7 @@ def diff(sql, primary_keys: List[str] = None, keep_shape: bool = False, keep_equ
 @add_options(dbt_related_options)
 @add_options(sqlmesh_related_options)
 @add_options(recce_options)
+@add_options(recce_cloud_options)
 def server(host, port, state_file=None, **kwargs):
     """
     Launch the recce server
@@ -157,19 +177,35 @@ def server(host, port, state_file=None, **kwargs):
     from .server import app, AppState
     from rich.console import Console
 
+    handle_debug_flag(**kwargs)
     is_review = kwargs.get('review', False)
+    is_cloud = kwargs.get('cloud', False)
     console = Console()
-    if not state_file and is_review is True:
-        console.print("[[red]Error[/red]] Cannot launch server in review mode without a state file.")
-        console.print("Please provide a state file in the command argument.")
+    cloud_options = None
+    if is_cloud:
+        cloud_options = {
+            'host': kwargs.get('state_file_host'),
+            'token': kwargs.get('cloud_token'),
+        }
+    try:
+        recce_state = RecceStateLoader(review_mode=is_review, cloud_mode=is_cloud,
+                                       state_file=state_file, cloud_options=cloud_options)
+    except Exception as e:
+        console.print("[[red]Error[/red]] Failed to load recce state file.")
+        console.print(f"  Reason: {e}")
+        exit(1)
+    if not recce_state.verify():
+        error, hint = recce_state.error_and_hint
+        console.print(f"[[red]Error[/red]] {error}")
+        console.print(f"{hint}")
         exit(1)
 
-    if is_review:
+    if recce_state.review_mode is True:
         console.rule("Recce Server : Review Mode")
     else:
         console.rule("Recce Server")
 
-    state = AppState(state_file=state_file, kwargs=kwargs)
+    state = AppState(recce_state=recce_state, kwargs=kwargs)
     app.state = state
 
     uvicorn.run(app, host=host, port=port, lifespan='on')
@@ -189,7 +225,11 @@ def server(host, port, state_file=None, **kwargs):
 @add_options(dbt_related_options)
 @add_options(sqlmesh_related_options)
 @add_options(recce_options)
+@add_options(recce_cloud_options)
 def run(output, **kwargs):
+    from rich.console import Console
+    handle_debug_flag(**kwargs)
+    console = Console()
     is_github_action, pr_url = check_github_ci_env(**kwargs)
     if is_github_action is True and pr_url is not None:
         kwargs['github_pull_request_url'] = pr_url
@@ -197,23 +237,63 @@ def run(output, **kwargs):
     # Initialize Recce Config
     RecceConfig(config_file=kwargs.get('config'))
 
-    return asyncio.run(cli_run(output, **kwargs))
+    cloud_mode = kwargs.get('cloud', False)
+    state_file = kwargs.get('state_file')
+    cloud_options = {
+        'host': kwargs.get('state_file_host'),
+        'token': kwargs.get('cloud_token'),
+    } if cloud_mode else None
+    try:
+        recce_state = RecceStateLoader(review_mode=False, cloud_mode=cloud_mode,
+                                       state_file=state_file, cloud_options=cloud_options)
+    except Exception as e:
+        console.print("[[red]Error[/red]] Failed to load recce state file.")
+        console.print(f"  Reason: {e}")
+        exit(1)
+    if not recce_state.verify():
+        error, hint = recce_state.error_and_hint
+        console.print(f"[[red]Error[/red]] {error}")
+        console.print(f"{hint}")
+        exit(1)
+
+    return asyncio.run(cli_run(output, recce_state=recce_state, **kwargs))
 
 
 @cli.command(cls=TrackCommand)
-@click.argument('state_file', required=True)
+@click.argument('state_file', required=False)
 @click.option('--format', '-f', help='Output format. Currently only markdown is supported.',
               type=click.Choice(['markdown', 'mermaid', 'check'], case_sensitive=False),
               default='markdown', show_default=True, hidden=True)
+@add_options(recce_options)
+@add_options(recce_cloud_options)
 def summary(state_file, **kwargs):
     from rich.console import Console
     from .core import load_context
+    handle_debug_flag(**kwargs)
     console = Console()
+    cloud_mode = kwargs.get('cloud', False)
+    cloud_options = {
+        'host': kwargs.get('state_file_host'),
+        'token': kwargs.get('cloud_token'),
+    } if cloud_mode else None
+
+    try:
+        recce_state = RecceStateLoader(review_mode=True, cloud_mode=cloud_mode,
+                                       state_file=state_file, cloud_options=cloud_options)
+    except Exception as e:
+        console.print("[[red]Error[/red]] Failed to load recce state file.")
+        console.print(f"  Reason: {e}")
+        exit(1)
+    if not recce_state.verify():
+        error, hint = recce_state.error_and_hint
+        console.print(f"[[red]Error[/red]] {error}")
+        console.print(f"{hint}")
+        exit(1)
     try:
         # Load context in review mode, won't need to check dbt_project.yml file.
-        ctx = load_context(**kwargs, state_file=state_file, review=True)
+        ctx = load_context(**kwargs, recce_state=recce_state, review=True)
     except Exception as e:
-        console.print("[[red]Error[/red]] Failed to generate summary:")
+        console.print("[[red]Error[/red]] Failed to generate summary")
         console.print(f"{e}")
         exit(1)
 

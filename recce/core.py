@@ -3,14 +3,13 @@ import json
 import logging
 import os
 from dataclasses import dataclass
-from pathlib import Path
 from typing import Callable, Dict, Optional
 
 from recce.adapter.base import BaseAdapter
 from recce.models import RunDAO, CheckDAO, Check
 from recce.models.check import load_checks
 from recce.models.run import load_runs
-from recce.state import RecceState, RecceStateMetadata, GitRepoInfo, PullRequestInfo
+from recce.state import RecceState, RecceStateMetadata, GitRepoInfo, PullRequestInfo, RecceStateLoader
 
 logger = logging.getLogger('uvicorn')
 
@@ -20,19 +19,22 @@ class RecceContext:
     review_mode: bool = False
     adapter_type: str = None
     adapter: BaseAdapter = None
+    state_loader: RecceStateLoader = None
     review_state: RecceState = None
 
     @classmethod
     def load(cls, **kwargs):
-        state_file = kwargs.get('state_file')
+        state: RecceState | None = None
+        recce_state: RecceStateLoader = kwargs.get('recce_state')
         is_review_mode = kwargs.get('review', False)
 
         context = cls(
             review_mode=is_review_mode,
+            state_loader=recce_state,
         )
 
-        if state_file and Path(state_file).exists():
-            state = RecceState.from_file(state_file)
+        if recce_state:
+            state = recce_state.load()
             context.import_state(state)
 
         # Load the artifacts from the state file or `target` and `target-base` directory
