@@ -174,7 +174,7 @@ class RecceStateLoader:
         return True
 
     @property
-    def error_and_hint(self) -> (str | None, str | None):
+    def error_and_hint(self) -> (Union[str, None], Union[str, None]):
         return self.error_message, self.hint_message
 
     def __bool__(self):
@@ -193,7 +193,7 @@ class RecceStateLoader:
             self.state = self._load_state_from_file()
         return self.state
 
-    def export(self, state: RecceState = None) -> str | None:
+    def export(self, state: RecceState = None) -> Union[str, None]:
         if state is not None:
             self.update(state)
         # TODO: Export the current Recce state to file or cloud storage
@@ -246,7 +246,7 @@ class RecceStateLoader:
             logger.debug('Fetching state from Recce Cloud...')
             return self._load_state_from_recce_cloud(pr_info)
 
-    def _load_state_from_recce_cloud(self, pr_info) -> RecceState | None:
+    def _load_state_from_recce_cloud(self, pr_info) -> Union[RecceState, None]:
         import tempfile
         import requests
         presigned_url = self._get_presigned_url(pr_info, 'recce-state.json', method='download')
@@ -263,7 +263,7 @@ class RecceStateLoader:
                 f.write(response.content)
             return RecceState.from_file(tmp.name)
 
-    def _load_state_from_s3_bucket(self, pr_info) -> RecceState | None:
+    def _load_state_from_s3_bucket(self, pr_info) -> Union[RecceState, None]:
         import boto3
         import tempfile
         s3_client = boto3.client('s3')
@@ -286,7 +286,7 @@ class RecceStateLoader:
                     raise e
             return RecceState.from_file(tmp.name)
 
-    def _export_state_to_cloud(self) -> str | None:
+    def _export_state_to_cloud(self) -> Union[str, None]:
         from recce.pull_request import fetch_pr_metadata
         pr_info = fetch_pr_metadata(github_token=self.cloud_options.get('token'))
         if (pr_info.id is None) or (pr_info.repository is None):
@@ -299,7 +299,7 @@ class RecceStateLoader:
             logger.info("Store recce state to Recce Cloud")
             return self._export_state_to_recce_cloud(pr_info)
 
-    def _export_state_to_recce_cloud(self, pr_info) -> str | None:
+    def _export_state_to_recce_cloud(self, pr_info) -> Union[str, None]:
         import tempfile
         import requests
 
@@ -312,7 +312,7 @@ class RecceStateLoader:
                 return 'Failed to upload the state file to Recce Cloud.'
         return 'The state file is uploaded to Recce Cloud.'
 
-    def _export_state_to_s3_bucket(self, pr_info) -> str | None:
+    def _export_state_to_s3_bucket(self, pr_info) -> Union[str, None]:
         import boto3
         import tempfile
         s3_client = boto3.client('s3')
