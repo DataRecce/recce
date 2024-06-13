@@ -225,7 +225,7 @@ class RecceStateLoader:
         response = requests.post(api_url, headers=headers)
         if response.status_code != 200:
             self.error_message = response.text
-            raise Exception(f'Failed to get presigned URL from Recce Cloud.')
+            raise Exception('Failed to get presigned URL from Recce Cloud.')
         presigned_url = response.json().get('presigned_url')
         return presigned_url
 
@@ -293,10 +293,10 @@ class RecceStateLoader:
             raise Exception('Cannot get the pull request information from GitHub.')
 
         if self.cloud_options.get('host', '').startswith('s3://'):
-            logger.info(f"Store recce state to AWS S3 bucket")
+            logger.info("Store recce state to AWS S3 bucket")
             return self._export_state_to_s3_bucket(pr_info)
         else:
-            logger.info(f"Store recce state to Recce Cloud")
+            logger.info("Store recce state to Recce Cloud")
             return self._export_state_to_recce_cloud(pr_info)
 
     def _export_state_to_recce_cloud(self, pr_info) -> str | None:
@@ -309,8 +309,8 @@ class RecceStateLoader:
             response = requests.put(presigned_url, data=open(tmp.name, 'rb').read())
             if response.status_code != 200:
                 self.error_message = response.text
-                return f'Failed to upload the state file to Recce Cloud.'
-        return f'The state file is uploaded to Recce Cloud.'
+                return 'Failed to upload the state file to Recce Cloud.'
+        return 'The state file is uploaded to Recce Cloud.'
 
     def _export_state_to_s3_bucket(self, pr_info) -> str | None:
         import boto3
