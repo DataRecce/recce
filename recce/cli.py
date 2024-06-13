@@ -8,10 +8,19 @@ from recce.config import RecceConfig, RECCE_CONFIG_FILE, RECCE_ERROR_LOG_FILE
 from recce.run import cli_run, check_github_ci_env
 from recce.state import RecceStateLoader
 from recce.summary import generate_markdown_summary
+from recce.util.logger import CustomFormatter
 from .core import RecceContext
 from .event.track import TrackCommand
 
 event.init()
+
+
+def handle_debug_flag(**kwargs):
+    if kwargs.get('debug'):
+        import logging
+        ch = logging.StreamHandler()
+        ch.setFormatter(CustomFormatter())
+        logging.basicConfig(handlers=[ch], level=logging.DEBUG)
 
 
 def add_options(options):
@@ -43,6 +52,7 @@ recce_options = [
                  show_default=True),
     click.option('--error-log', help='Path to the error log file.', type=click.Path(), default=RECCE_ERROR_LOG_FILE,
                  hidden=True),
+    click.option('--debug', is_flag=True, help='Enable debug mode.', hidden=True),
 ]
 
 recce_cloud_options = [
@@ -167,6 +177,7 @@ def server(host, port, state_file=None, **kwargs):
     from .server import app, AppState
     from rich.console import Console
 
+    handle_debug_flag(**kwargs)
     is_review = kwargs.get('review', False)
     is_cloud = kwargs.get('cloud', False)
     console = Console()
@@ -211,6 +222,7 @@ def server(host, port, state_file=None, **kwargs):
 @add_options(recce_options)
 @add_options(recce_cloud_options)
 def run(output, **kwargs):
+    handle_debug_flag(**kwargs)
     is_github_action, pr_url = check_github_ci_env(**kwargs)
     if is_github_action is True and pr_url is not None:
         kwargs['github_pull_request_url'] = pr_url
@@ -231,16 +243,24 @@ def run(output, **kwargs):
 
 
 @cli.command(cls=TrackCommand)
-@click.argument('state_file', required=True)
+@click.argument('state_file', required=False)
 @click.option('--format', '-f', help='Output format. Currently only markdown is supported.',
               type=click.Choice(['markdown', 'mermaid', 'check'], case_sensitive=False),
               default='markdown', show_default=True, hidden=True)
+@add_options(recce_options)
+@add_options(recce_cloud_options)
 def summary(state_file, **kwargs):
     from rich.console import Console
     from .core import load_context
+    handle_debug_flag(**kwargs)
     console = Console()
-    recce_state = RecceStateLoader(review_mode=False, cloud_mode=False,
-                                   state_file=state_file, cloud_options=None)
+    cloud_mode = kwargs.get('cloud', False)
+    cloud_options = {
+        'host': kwargs.get('state_file_host'),
+        'token': kwargs.get('cloud_token'),
+    } if cloud_mode else None
+    recce_state = RecceStateLoader(review_mode=False, cloud_mode=cloud_mode,
+                                   state_file=state_file, cloud_options=cloud_options)
     try:
         # Load context in review mode, won't need to check dbt_project.yml file.
         ctx = load_context(**kwargs, recce_state=recce_state, review=True)

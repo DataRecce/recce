@@ -3,7 +3,6 @@ import json
 import logging
 import os
 from dataclasses import dataclass
-from pathlib import Path
 from typing import Callable, Dict, Optional
 
 from recce.adapter.base import BaseAdapter
@@ -32,11 +31,6 @@ class RecceContext:
         context = cls(
             review_mode=is_review_mode,
         )
-
-        # TODO: replace the state_file by RecceStateLoader
-        if state_file and Path(state_file).exists():
-            state = RecceState.from_file(state_file)
-            context.import_state(state)
 
         if recce_state:
             state = recce_state.load()
