@@ -7,13 +7,13 @@ from rich import box
 from rich.console import Console
 from rich.table import Table
 
-from recce.apis.check_func import create_check_from_run, create_check_without_run
+from recce.apis.check_func import create_check_from_run, create_check_without_run, purge_preset_checks
 from recce.apis.run_func import submit_run
 from recce.config import RecceConfig
 from recce.core import RecceContext
 from recce.models.types import RunType
 from recce.pull_request import fetch_pr_metadata
-from recce.state import RecceState, RecceStateLoader
+from recce.state import RecceState
 
 
 def check_github_ci_env(**kwargs):
@@ -97,7 +97,7 @@ def load_preset_checks(checks: list):
     console.print(table)
 
 
-async def execute_preset_checks(checks: list) -> (int, List[dict]):
+async def execute_preset_checks(preset_checks: list) -> (int, List[dict]):
     """
     Execute the preset checks
     """
@@ -110,7 +110,12 @@ async def execute_preset_checks(checks: list) -> (int, List[dict]):
     table.add_column('Type')
     table.add_column('Execution Time')
     table.add_column('Failed Reason')
-    for check in checks:
+
+    # Purge the existing preset checks before running the new ones
+    purge_preset_checks()
+
+    # Execute the preset checks
+    for check in preset_checks:
         run = None
         check_name = check.get('name')
         check_type = check.get('type')
@@ -229,14 +234,7 @@ async def cli_run(output_state_file: str, **kwargs):
     console.rule("Export state")
     state: RecceState = ctx.export_state()
     state.pull_request = fetch_pr_metadata(**kwargs)
-
-    cloud_mode = kwargs.get('cloud', False)
-    cloud_options = {
-        'host': kwargs.get('state_file_host'),
-        'token': kwargs.get('cloud_token'),
-    } if cloud_mode else None
-    recce_state = RecceStateLoader(review_mode=False, cloud_mode=cloud_mode, state_file=output_state_file,
-                                   cloud_options=cloud_options)
-    msg = recce_state.export(state)
+    ctx.state_loader.state_file = output_state_file
+    msg = ctx.state_loader.export(state)
     console.print(msg)
     return rc

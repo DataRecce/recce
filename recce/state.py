@@ -7,6 +7,7 @@ import time
 from datetime import datetime
 from typing import List, Optional, Dict, Union
 
+import botocore.exceptions
 import pydantic.version
 from pydantic import BaseModel
 from pydantic import Field
@@ -150,7 +151,7 @@ class RecceStateLoader:
             pass
         else:
             if self.review_mode is True and self.state_file is None:
-                self.error_message = 'Cannot launch server in review mode without a state file.'
+                self.error_message = 'Recce can not launch without a state file.'
                 self.hint_message = 'Please provide a state file in the command argument.'
                 return False
             pass
@@ -210,7 +211,7 @@ class RecceStateLoader:
 
     def _load_state_from_file(self, file_path: Optional[str] = None) -> RecceState:
         file_path = file_path or self.state_file
-        return RecceState.from_file(file_path)
+        return RecceState.from_file(file_path) if file_path else None
 
     def _load_state_from_cloud(self) -> RecceState:
         from recce.pull_request import fetch_pr_metadata
@@ -223,28 +224,39 @@ class RecceStateLoader:
             logger.debug('Fetching state from Recce Cloud...')
             return self._load_state_from_recce_cloud(pr_info)
 
-    def _load_state_from_recce_cloud(self, pr_info) -> RecceState:
+    def _load_state_from_recce_cloud(self, pr_info) -> RecceState | None:
         import tempfile
         import requests
         presigned_url = self._get_presigned_url(pr_info, 'recce-state.json', method='download')
 
         with tempfile.NamedTemporaryFile() as tmp:
             response = requests.get(presigned_url)
-            if response.status_code != 200:
+            if response.status_code == 404:
+                self.error_message = 'The state file is not found in Recce Cloud.'
+                return None
+            elif response.status_code != 200:
                 self.error_message = response.text
-                raise Exception(f'Failed to download the state file from Recce Cloud.')
+                raise Exception(f'{response.status_code} Failed to download the state file from Recce Cloud.')
             with open(tmp.name, 'wb') as f:
                 f.write(response.content)
             return RecceState.from_file(tmp.name)
 
-    def _load_state_from_s3_bucket(self, pr_info) -> RecceState:
+    def _load_state_from_s3_bucket(self, pr_info) -> RecceState | None:
         import boto3
         import tempfile
         s3_client = boto3.client('s3')
         s3_bucket_name = self.cloud_options.get('host').replace('s3://', '')
         s3_bucket_key = f'github/{pr_info.repository}/pulls/{pr_info.id}/recce-state.json'
         with tempfile.NamedTemporaryFile() as tmp:
-            s3_client.download_file(s3_bucket_name, s3_bucket_key, tmp.name)
+            try:
+                s3_client.download_file(s3_bucket_name, s3_bucket_key, tmp.name)
+            except botocore.exceptions.ClientError as e:
+                error_code = e.response.get('Error', {}).get('Code')
+                if error_code == '404':
+                    self.error_message = 'The state file is not found in the S3 bucket.'
+                    return None
+                else:
+                    raise e
             return RecceState.from_file(tmp.name)
 
     def _export_state_to_cloud(self) -> str | None:
@@ -291,4 +303,4 @@ class RecceStateLoader:
         json_data = self.state.to_json()
         with open(file_path, 'w') as f:
             f.write(json_data)
-        return f'The state file is stored at [{file_path}]'
+        return f'The state file is stored at \'{file_path}\''

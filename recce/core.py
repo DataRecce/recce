@@ -9,7 +9,7 @@ from recce.adapter.base import BaseAdapter
 from recce.models import RunDAO, CheckDAO, Check
 from recce.models.check import load_checks
 from recce.models.run import load_runs
-from recce.state import RecceState, RecceStateMetadata, GitRepoInfo, PullRequestInfo
+from recce.state import RecceState, RecceStateMetadata, GitRepoInfo, PullRequestInfo, RecceStateLoader
 
 logger = logging.getLogger('uvicorn')
 
@@ -19,17 +19,18 @@ class RecceContext:
     review_mode: bool = False
     adapter_type: str = None
     adapter: BaseAdapter = None
+    state_loader: RecceStateLoader = None
     review_state: RecceState = None
 
     @classmethod
     def load(cls, **kwargs):
         state: RecceState | None = None
-        recce_state = kwargs.get('recce_state')
-        state_file = kwargs.get('state_file')
+        recce_state: RecceStateLoader = kwargs.get('recce_state')
         is_review_mode = kwargs.get('review', False)
 
         context = cls(
             review_mode=is_review_mode,
+            state_loader=recce_state,
         )
 
         if recce_state:

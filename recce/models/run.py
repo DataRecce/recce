@@ -32,6 +32,14 @@ class RunDAO:
                 runs.append(run)
         return runs
 
+    def delete(self, run_id):
+        for run in _runs:
+            if str(run_id) == str(run.run_id):
+                _runs.remove(run)
+                return True
+
+        return False
+
 
 def load_runs(runs: List[Run]):
     global _runs
