@@ -1,5 +1,5 @@
 """Define the type to serialize/de-serialize the state of the recce instance."""
-
+import gzip
 import json
 import logging
 import os
@@ -19,6 +19,8 @@ from recce.models.types import Run, Check
 logger = logging.getLogger('uvicorn')
 
 RECCE_CLOUD_API_HOST = os.environ.get('RECCE_CLOUD_API_HOST', 'https://staging.cloud.datarecce.io')
+RECCE_STATE_FILE = 'recce-state.json'
+RECCE_STATE_COMPRESSED_FILE = f'{RECCE_STATE_FILE}.gz'
 
 
 def check_s3_bucket(bucket_name: str):
@@ -124,7 +126,7 @@ class RecceState(BaseModel):
         return state
 
     @staticmethod
-    def from_file(file_path: str):
+    def from_file(file_path: str, compressed: bool = False):
         """
         Load the state from a recce state file.
         """
@@ -134,9 +136,14 @@ class RecceState(BaseModel):
         if not Path(file_path).is_file():
             raise FileNotFoundError(f"State file not found: {file_path}")
 
-        with open(file_path, 'r') as f:
-            json_content = f.read()
+        if compressed:
+            with gzip.open(file_path, 'rb') as f:
+                json_content = f.read().decode()
             state = RecceState.from_json(json_content)
+        else:
+            with open(file_path, 'r') as f:
+                json_content = f.read()
+                state = RecceState.from_json(json_content)
 
         return state
 
@@ -249,7 +256,8 @@ class RecceStateLoader:
     def _load_state_from_recce_cloud(self, pr_info) -> Union[RecceState, None]:
         import tempfile
         import requests
-        presigned_url = self._get_presigned_url(pr_info, 'recce-state.json', method='download')
+
+        presigned_url = self._get_presigned_url(pr_info, RECCE_STATE_COMPRESSED_FILE, method='download')
 
         with tempfile.NamedTemporaryFile() as tmp:
             response = requests.get(presigned_url)
@@ -259,16 +267,16 @@ class RecceStateLoader:
             elif response.status_code != 200:
                 self.error_message = response.text
                 raise Exception(f'{response.status_code} Failed to download the state file from Recce Cloud.')
-            with open(tmp.name, 'wb') as f:
+            with gzip.open(tmp.name, 'wb') as f:
                 f.write(response.content)
-            return RecceState.from_file(tmp.name)
+            return RecceState.from_file(tmp.name, compressed=True)
 
     def _load_state_from_s3_bucket(self, pr_info) -> Union[RecceState, None]:
         import boto3
         import tempfile
         s3_client = boto3.client('s3')
         s3_bucket_name = self.cloud_options.get('host').replace('s3://', '')
-        s3_bucket_key = f'github/{pr_info.repository}/pulls/{pr_info.id}/recce-state.json'
+        s3_bucket_key = f'github/{pr_info.repository}/pulls/{pr_info.id}/{RECCE_STATE_COMPRESSED_FILE}'
 
         rc, error_message = check_s3_bucket(s3_bucket_name)
         if rc is False:
@@ -284,7 +292,7 @@ class RecceStateLoader:
                     return None
                 else:
                     raise e
-            return RecceState.from_file(tmp.name)
+            return RecceState.from_file(tmp.name, compressed=True)
 
     def _export_state_to_cloud(self) -> Union[str, None]:
         from recce.pull_request import fetch_pr_metadata
@@ -303,10 +311,10 @@ class RecceStateLoader:
         import tempfile
         import requests
 
-        presigned_url = self._get_presigned_url(pr_info, 'recce-state.json', method='upload')
+        presigned_url = self._get_presigned_url(pr_info, RECCE_STATE_COMPRESSED_FILE, method='upload')
         with tempfile.NamedTemporaryFile() as tmp:
-            self._export_state_to_file(tmp.name)
-            response = requests.put(presigned_url, data=open(tmp.name, 'rb').read())
+            self._export_state_to_file(tmp.name, compress=True)
+            response = requests.put(presigned_url, data=gzip.open(tmp.name, 'rb').read())
             if response.status_code != 200:
                 self.error_message = response.text
                 return 'Failed to upload the state file to Recce Cloud.'
@@ -317,24 +325,29 @@ class RecceStateLoader:
         import tempfile
         s3_client = boto3.client('s3')
         s3_bucket_name = self.cloud_options.get('host').replace('s3://', '')
-        s3_bucket_key = f'github/{pr_info.repository}/pulls/{pr_info.id}/recce-state.json'
+        s3_bucket_key = f'github/{pr_info.repository}/pulls/{pr_info.id}/{RECCE_STATE_COMPRESSED_FILE}'
 
         rc, error_message = check_s3_bucket(s3_bucket_name)
         if rc is False:
             raise Exception(error_message)
 
         with tempfile.NamedTemporaryFile() as tmp:
-            self._export_state_to_file(tmp.name)
+            self._export_state_to_file(tmp.name, compress=True)
             s3_client.upload_file(tmp.name, s3_bucket_name, s3_bucket_key)
         return f'The state file is uploaded to \' s3://{s3_bucket_name}/{s3_bucket_key}\''
 
-    def _export_state_to_file(self, file_path: Optional[str] = None):
+    def _export_state_to_file(self, file_path: Optional[str] = None, compress: bool = False) -> str:
         """
         Store the state to a file. Store happens when terminating the server or run instance.
         """
 
         file_path = file_path or self.state_file
         json_data = self.state.to_json()
-        with open(file_path, 'w') as f:
-            f.write(json_data)
+        if compress:
+            with gzip.open(file_path, 'wb') as f:
+                f.write(json_data.encode())
+            return f'The state file is stored at \'{file_path}\''
+        else:
+            with open(file_path, 'w') as f:
+                f.write(json_data)
         return f'The state file is stored at \'{file_path}\''
