@@ -18,6 +18,7 @@ def fetch_pr_metadata(**kwargs):
         pr_info.id = metadata.get('github_pr_id')
         pr_info.url = metadata.get('github_pr_url')
         pr_info.title = metadata.get('github_pr_title')
+        pr_info.repository = metadata.get('github_repository')
     else:
         repo = hosting_repo()
         pr = recce_pr_information(github_token=kwargs.get('github_token'))
@@ -53,8 +54,9 @@ def fetch_pr_metadata_from_event_path() -> Optional[dict]:
         Example:
         {
             "github_pr_id": 1,
-            "github_pr_url": "https://github.com/xyz/abc/pull/1
-            "github_pr_title": "Update README.md"
+            "github_pr_url": "https://github.com/xyz/abc/pull/1,
+            "github_pr_title": "Update README.md",
+            "github_repository": "xyz/abc"
         }
 
         :return: dict
@@ -62,6 +64,7 @@ def fetch_pr_metadata_from_event_path() -> Optional[dict]:
 
     # get the event json from the path in GITHUB_EVENT_PATH
     event_path = os.getenv("GITHUB_EVENT_PATH")
+    github_repository = os.getenv("GITHUB_REPOSITORY")
     if event_path:
         try:
             with open(event_path, "r") as event_file:
@@ -73,7 +76,10 @@ def fetch_pr_metadata_from_event_path() -> Optional[dict]:
                 pr_url = pull_request_data["_links"]["html"]["href"]
                 pr_api = pull_request_data["_links"]["self"]["href"]
                 pr_title = _fetch_pr_title(pr_api)
-                return dict(github_pr_id=pr_id, github_pr_url=pr_url, github_pr_title=pr_title)
+                return dict(github_pr_id=pr_id,
+                            github_pr_url=pr_url,
+                            github_pr_title=pr_title,
+                            github_repository=github_repository)
             else:
                 print("Not a pull request event, skip.")
         except Exception as e:

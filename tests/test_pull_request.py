@@ -23,6 +23,7 @@ def mock_github_event(tmp_path, monkeypatch):
         json.dump(event_data, f)
 
     monkeypatch.setenv("GITHUB_EVENT_PATH", str(event_file))
+    monkeypatch.setenv("GITHUB_REPOSITORY", "abc/xyz")
 
 
 @pytest.fixture
@@ -62,6 +63,7 @@ def test_fetch_pr_metadata(mock_github_event, mock_github_token, mock_get_reques
     assert result["github_pr_id"] == 1
     assert result["github_pr_url"] == "https://github.com/xyz/abc/pull/1"
     assert result["github_pr_title"] == "Update README.md"
+    assert result["github_repository"] == "abc/xyz"
 
 
 def test_fetch_pr_metadata_no_event(mock_get_request_success, monkeypatch):
