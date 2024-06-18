@@ -15,6 +15,7 @@ from pydantic import Field
 from recce import get_version
 from recce.git import current_branch
 from recce.models.types import Run, Check
+from recce.util.rwlock import ReadWriteLock
 
 logger = logging.getLogger('uvicorn')
 
@@ -165,6 +166,7 @@ class RecceStateLoader:
         self.error_message = None
         self.hint_message = None
         self.state: RecceState | None = None
+        self.state_lock = ReadWriteLock()
 
         # Load the state
         self.load()
@@ -190,8 +192,8 @@ class RecceStateLoader:
     def update(self, state: RecceState):
         self.state = state
 
-    def load(self) -> RecceState:
-        if self.state is not None:
+    def load(self, refresh=False) -> RecceState:
+        if self.state is not None and refresh is False:
             return self.state
 
         if self.cloud_mode:
@@ -216,6 +218,13 @@ class RecceStateLoader:
         elapsed_time = end_time - start_time
         logger.info(f'Store state completed in {elapsed_time:.2f} seconds')
         return message
+
+    def refresh(self):
+        self.state_lock.acquire_write()
+        try:
+            self.load(refresh=True)
+        finally:
+            self.state_lock.release_write()
 
     def _get_presigned_url(self, pr_info: PullRequestInfo, artifact_name: str, method: str = 'upload') -> str:
         import requests

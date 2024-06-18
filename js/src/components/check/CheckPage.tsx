@@ -97,7 +97,7 @@ export const CheckPage = () => {
   }, [status, selectedItem, checks, setOrderedChecks, setLocation]);
 
   if (isLoading) {
-    return <>Loading</>;
+    return <></>;
   }
 
   if (error) {

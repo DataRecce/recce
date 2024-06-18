@@ -8,7 +8,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Optional, Any
 
-from fastapi import FastAPI, HTTPException, Request, WebSocket, UploadFile
+from fastapi import FastAPI, HTTPException, Request, WebSocket, UploadFile, Response, BackgroundTasks
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import PlainTextResponse
 from fastapi.staticfiles import StaticFiles
@@ -211,6 +211,31 @@ async def import_handler(file: UploadFile):
         raise HTTPException(status_code=400, detail=str(e))
     except RecceException as e:
         raise HTTPException(status_code=400, detail=e.message)
+
+
+@app.post("/api/sync", status_code=202)
+async def sync_handler(response: Response, background_tasks: BackgroundTasks):
+    # Sync the state file
+    context = default_context()
+    is_syncing = context.state_loader.state_lock.is_locked()
+    if is_syncing:
+        response.status_code = 208
+        return {"status": "syncing"}
+
+    background_tasks.add_task(context.state_loader.refresh)
+    response.status_code = 202
+    return {"status": "request accepted"}
+
+
+@app.get("/api/sync", status_code=200)
+async def sync_status(response: Response):
+    context = default_context()
+    if context.state_loader.state_lock.is_locked():
+        response.status_code = 208
+        return {"status": "syncing"}
+
+    response.status_code = 200
+    return {"status": "idle"}
 
 
 @app.get("/api/version")

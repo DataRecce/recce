@@ -16,8 +16,9 @@ import {
   LinkProps,
   Heading,
   Badge,
+  Progress,
 } from "@chakra-ui/react";
-import { ReactNode, useLayoutEffect } from "react";
+import { ReactNode, useCallback, useLayoutEffect } from "react";
 import * as amplitude from "@amplitude/analytics-browser";
 import { QueryClientProvider } from "@tanstack/react-query";
 import RecceContextProvider from "@/lib/hooks/RecceContextProvider";
@@ -40,6 +41,7 @@ import { FaGithub, FaQuestionCircle, FaSlack } from "react-icons/fa";
 import { IconType } from "react-icons";
 import "@fontsource/montserrat/800.css";
 import { EnvInfo } from "@/components/env/EnvInfo";
+import { StateSynchronizer } from "@/components/check/StateSynchronizer";
 
 function getCookie(key: string) {
   var b = document.cookie.match("(^|;)\\s*" + key + "\\s*=\\s*([^;]+)");
@@ -75,7 +77,7 @@ function LinkIcon({ icon, href, ...prob }: LinkIconProps) {
 }
 
 function TopBar() {
-  const { reviewMode, isDemoSite, envInfo } = useLineageGraphContext();
+  const { reviewMode, isDemoSite, envInfo, cloudMode, isLoading } = useLineageGraphContext();
   const version = useVersionNumber();
   const prURL = envInfo?.pullRequest?.url;
 
@@ -118,6 +120,16 @@ function TopBar() {
           review mode
         </Badge>
       )}
+      {cloudMode && (
+        <Badge
+          fontSize="sm"
+          color="white"
+          colorScheme="whiteAlpha"
+          variant="outline"
+        >
+          cloud mode
+        </Badge>
+      )}
       <Spacer />
       {isDemoSite && prURL && (
         <>
@@ -156,7 +168,7 @@ interface TabProps {
 }
 
 function NavBar() {
-  const { isDemoSite } = useLineageGraphContext();
+  const { isDemoSite, cloudMode, isLoading } = useLineageGraphContext();
   const [location, setLocation] = useLocation();
 
   const tabs: TabProps[] = [
@@ -183,8 +195,13 @@ function NavBar() {
           );
         })}
         <Spacer />
-        {!isDemoSite && <StateImporter />}
-        <StateExporter />
+        { !isLoading &&
+          (<>
+            {cloudMode && <StateSynchronizer />}
+            {(!isDemoSite && !cloudMode) && <StateImporter />}
+            <StateExporter />
+          </>)
+        }
         <EnvInfo />
       </TabList>
     </Tabs>
@@ -251,7 +268,7 @@ export default function Home() {
                         }}
                       </Route>
                       <Route path="/ssr">
-                        <>Loading</>
+                        <Progress size='xs' isIndeterminate />
                       </Route>
                       <Route>
                         <Redirect to="/lineage" />
