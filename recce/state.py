@@ -222,9 +222,10 @@ class RecceStateLoader:
     def refresh(self):
         self.state_lock.acquire_write()
         try:
-            self.load(refresh=True)
+            new_state = self.load(refresh=True)
         finally:
             self.state_lock.release_write()
+        return new_state
 
     def _get_presigned_url(self, pr_info: PullRequestInfo, artifact_name: str, method: str = 'upload') -> str:
         import requests

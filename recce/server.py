@@ -222,7 +222,11 @@ async def sync_handler(response: Response, background_tasks: BackgroundTasks):
         response.status_code = 208
         return {"status": "syncing"}
 
-    background_tasks.add_task(context.state_loader.refresh)
+    def reload_state():
+        ctx = default_context()
+        ctx.refresh_state()
+
+    background_tasks.add_task(reload_state)
     response.status_code = 202
     return {"status": "request accepted"}
 

@@ -40,6 +40,9 @@ class RunDAO:
 
         return False
 
+    def clear(self):
+        _runs.clear()
+
 
 def load_runs(runs: List[Run]):
     global _runs

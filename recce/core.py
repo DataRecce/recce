@@ -132,6 +132,15 @@ class RecceContext:
 
         return state
 
+    def refresh_state(self):
+        """
+        refresh the state
+        """
+        RunDAO().clear()
+        CheckDAO().clear()
+        self.state_loader.refresh()
+        self.import_state(self.state_loader.state)
+
     def import_state(self, import_state: RecceState):
         """
         Import the state. It would
