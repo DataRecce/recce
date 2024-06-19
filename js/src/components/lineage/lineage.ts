@@ -98,9 +98,8 @@ export function buildLineageGraph(
     };
   };
 
-  for (const [key, parents] of Object.entries(base.parent_map)) {
+  for (const [key, nodeData] of Object.entries(base.nodes)) {
     nodes[key] = buildNode(key, "base");
-    const nodeData = base.nodes && base.nodes[key];
     if (nodeData) {
       nodes[key].data.base = nodeData;
       nodes[key].name = nodeData?.name;
@@ -109,13 +108,12 @@ export function buildLineageGraph(
     }
   }
 
-  for (const [key, parents] of Object.entries(current.parent_map)) {
+  for (const [key, nodeData] of Object.entries(current.nodes)) {
     if (nodes[key]) {
       nodes[key].from = "both";
     } else {
       nodes[key] = buildNode(key, "current");
     }
-    const nodeData = current.nodes && current.nodes[key];
     if (nodeData) {
       nodes[key].data.current = current.nodes && current.nodes[key];
       nodes[key].name = nodeData?.name;
@@ -129,6 +127,11 @@ export function buildLineageGraph(
       const childNode = nodes[child];
       const parentNode = nodes[parent];
       const id = `${parent}_${child}`;
+
+      if (!childNode || !parentNode) {
+        // Skip the edge if the node is not found
+        continue;
+      }
       edges[id] = {
         id,
         from: "base",
@@ -148,6 +151,10 @@ export function buildLineageGraph(
       const parentNode = nodes[parent];
       const id = `${parent}_${child}`;
 
+      if (!childNode || !parentNode) {
+        // Skip the edge if the node is not found
+        continue;
+      }
       if (edges[id]) {
         edges[id].from = "both";
       } else {
