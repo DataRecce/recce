@@ -1,11 +1,9 @@
-import { useRunsAggregated, useLineageGraphContext } from "@/lib/hooks/LineageGraphContext";
 import { Button, Icon, IconButton, Spinner, Tooltip } from "@chakra-ui/react";
 import { useCallback, useEffect, useState } from "react";
 import { TfiCloudDown, TfiCloudUp, TfiReload } from "react-icons/tfi";
 import { syncState, isStateSyncing } from "@/lib/api/state";
 import { useQueryClient } from "@tanstack/react-query";
 import { cacheKeys } from "@/lib/api/cacheKeys";
-import { useRouter } from "next/navigation";
 import { useLocation } from "wouter";
 
 function isCheckDetailPage(href: string): boolean {
@@ -45,7 +43,6 @@ export function StateSynchronizer() {
 
     return () => {
       if (intervalId) {
-        console.log("Clearing interval...", location);
         if (isCheckDetailPage(location)) {
           setLocation("/checks");
         }
