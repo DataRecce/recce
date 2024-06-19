@@ -3,6 +3,15 @@ import { Button, Icon, IconButton, Spinner, Tooltip } from "@chakra-ui/react";
 import { useCallback, useEffect, useState } from "react";
 import { TfiCloudDown, TfiCloudUp, TfiReload } from "react-icons/tfi";
 import { syncState, isStateSyncing } from "@/lib/api/state";
+import { useQueryClient } from "@tanstack/react-query";
+import { cacheKeys } from "@/lib/api/cacheKeys";
+import { useRouter } from "next/navigation";
+import { useLocation } from "wouter";
+
+function isCheckDetailPage(href: string): boolean {
+  const pattern = /^\/checks\/([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12})$/;
+  return pattern.test(href);
+}
 
 export function StateSpinner() {
   return (<Tooltip label="Loading">
@@ -13,19 +22,20 @@ export function StateSpinner() {
 }
 
 export function StateSynchronizer() {
-  const { retchLineageGraph }  = useLineageGraphContext();
   const [isSyncing, setSyncing] = useState(false);
+  const queryClient = useQueryClient();
+  const [location, setLocation] = useLocation();
 
   const checkSyncStatus = useCallback(async () => {
     if (await isStateSyncing()) {
-      console.log("Still syncing...");
       return;
     }
-
-    console.log("Syncing done.");
     setSyncing(false);
-    // retchLineageGraph && retchLineageGraph();
-  }, [setSyncing]);
+
+    // Refresh the lineage graph and checks
+    queryClient.invalidateQueries({ queryKey: cacheKeys.lineage() });
+    queryClient.invalidateQueries({ queryKey: cacheKeys.checks() });
+  }, [setSyncing, queryClient]);
 
   useEffect(() => {
     let intervalId: NodeJS.Timeout | null = null;
@@ -35,33 +45,33 @@ export function StateSynchronizer() {
 
     return () => {
       if (intervalId) {
+        console.log("Clearing interval...", location);
+        if (isCheckDetailPage(location)) {
+          setLocation("/checks");
+        }
         clearInterval(intervalId);
       }
     };
-  }, [isSyncing, checkSyncStatus])
+  }, [isSyncing, checkSyncStatus, setLocation, location])
 
 
   const requestSyncStatus = useCallback(async () => {
     if (await isStateSyncing()) {
-      console.log("Already syncing...");
       return;
     }
-
-    console.log("Syncing state...");
     await syncState();
     setSyncing(true);
+  }, [setSyncing]);
 
-    // long pulling the sync status
-    // await checkSyncStatus();
-  }, []);
+  if (isSyncing) return <StateSpinner/>;
   return (<Tooltip label="Sync with Cloud">
-    {isSyncing ? <StateSpinner/> : <IconButton
+    <IconButton
       pt="6px"
       variant="unstyled"
       aria-label="Sync state"
       onClick={requestSyncStatus}
       icon={<Icon as={TfiReload} boxSize={"1.2em"} />}
-    />}
+    />
   </Tooltip>);
 }
 

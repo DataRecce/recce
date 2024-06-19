@@ -72,7 +72,7 @@ def dbt_artifacts_updated_callback(file_changed_event: Any):
     logger.info(
         f'Detect {target_type} file {file_changed_event.event_type}: {file_name}')
     ctx = load_context()
-    ctx.refresh(file_changed_event.src_path)
+    ctx.refresh_manifest(file_changed_event.src_path)
     broadcast_command = {
         'command': 'refresh',
         'event': {

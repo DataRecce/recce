@@ -85,7 +85,7 @@ class RecceContext:
     def stop_monitor_artifacts(self):
         self.adapter.stop_monitor_artifacts()
 
-    def refresh(self, refresh_file_path: str = None):
+    def refresh_manifest(self, refresh_file_path: str = None):
         self.adapter.refresh(refresh_file_path)
 
     def export_state(self) -> RecceState:
