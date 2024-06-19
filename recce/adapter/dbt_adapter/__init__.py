@@ -491,7 +491,12 @@ class DbtAdapter(BaseAdapter):
                 }
 
         nodeIds = nodes.keys()
-        parent_map = {k: v for k, v in manifest_dict['parent_map'].items() if k in nodeIds}
+        parent_map = {}
+        for k, parents in manifest_dict['parent_map'].items():
+            if k not in nodeIds:
+                continue
+            parent_map[k] = [parent for parent in parents if parent in nodeIds]
+
         return dict(
             parent_map=parent_map,
             nodes=nodes,
