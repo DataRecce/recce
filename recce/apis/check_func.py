@@ -128,3 +128,8 @@ def purge_preset_checks():
             for run in related_runs:
                 RunDAO().delete(run.run_id)
             CheckDAO().delete(check.check_id)
+
+
+def export_persistent_state():
+    ctx = default_context()
+    ctx.state_loader.export(ctx.export_state())

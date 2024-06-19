@@ -217,7 +217,7 @@ async def import_handler(file: UploadFile):
 async def sync_handler(response: Response, background_tasks: BackgroundTasks):
     # Sync the state file
     context = default_context()
-    is_syncing = context.state_loader.state_lock.is_locked()
+    is_syncing = context.state_loader.state_lock.locked()
     if is_syncing:
         response.status_code = 208
         return {"status": "syncing"}
@@ -234,7 +234,7 @@ async def sync_handler(response: Response, background_tasks: BackgroundTasks):
 @app.get("/api/sync", status_code=200)
 async def sync_status(response: Response):
     context = default_context()
-    if context.state_loader.state_lock.is_locked():
+    if context.state_loader.state_lock.locked():
         response.status_code = 208
         return {"status": "syncing"}
 

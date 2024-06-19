@@ -53,10 +53,9 @@ export function StateSynchronizer() {
 
 
   const requestSyncStatus = useCallback(async () => {
-    if (await isStateSyncing()) {
-      return;
+    if (await isStateSyncing() === false) {
+      await syncState();
     }
-    await syncState();
     setSyncing(true);
   }, [setSyncing]);
 

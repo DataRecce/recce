@@ -3,6 +3,7 @@ import gzip
 import json
 import logging
 import os
+import threading
 import time
 from datetime import datetime
 from typing import List, Optional, Dict, Union
@@ -15,7 +16,6 @@ from pydantic import Field
 from recce import get_version
 from recce.git import current_branch
 from recce.models.types import Run, Check
-from recce.util.rwlock import ReadWriteLock
 
 logger = logging.getLogger('uvicorn')
 
@@ -166,7 +166,7 @@ class RecceStateLoader:
         self.error_message = None
         self.hint_message = None
         self.state: RecceState | None = None
-        self.state_lock = ReadWriteLock()
+        self.state_lock = threading.Lock()
 
         # Load the state
         self.load()
@@ -195,11 +195,14 @@ class RecceStateLoader:
     def load(self, refresh=False) -> RecceState:
         if self.state is not None and refresh is False:
             return self.state
-
-        if self.cloud_mode:
-            self.state = self._load_state_from_cloud()
-        else:
-            self.state = self._load_state_from_file()
+        self.state_lock.acquire()
+        try:
+            if self.cloud_mode:
+                self.state = self._load_state_from_cloud()
+            else:
+                self.state = self._load_state_from_file()
+        finally:
+            self.state_lock.release()
         return self.state
 
     def export(self, state: RecceState = None) -> Union[str, None]:
@@ -207,24 +210,24 @@ class RecceStateLoader:
             self.update(state)
         # TODO: Export the current Recce state to file or cloud storage
         start_time = time.time()
-        if self.cloud_mode:
-            message = self._export_state_to_cloud()
-        else:
-            if self.state_file is None:
-                return 'No state file is provided. Skip storing the state.'
-            logger.info(f"Store recce state to '{self.state_file}'")
-            message = self._export_state_to_file()
-        end_time = time.time()
-        elapsed_time = end_time - start_time
+        self.state_lock.acquire()
+        try:
+            if self.cloud_mode:
+                message = self._export_state_to_cloud()
+            else:
+                if self.state_file is None:
+                    return 'No state file is provided. Skip storing the state.'
+                logger.info(f"Store recce state to '{self.state_file}'")
+                message = self._export_state_to_file()
+            end_time = time.time()
+            elapsed_time = end_time - start_time
+        finally:
+            self.state_lock.release()
         logger.info(f'Store state completed in {elapsed_time:.2f} seconds')
         return message
 
     def refresh(self):
-        self.state_lock.acquire_write()
-        try:
-            new_state = self.load(refresh=True)
-        finally:
-            self.state_lock.release_write()
+        new_state = self.load(refresh=True)
         return new_state
 
     def _get_presigned_url(self, pr_info: PullRequestInfo, artifact_name: str, method: str = 'upload') -> str:

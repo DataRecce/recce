@@ -23,9 +23,21 @@ export async function isStateSyncing(): Promise<boolean> {
   return response.status === 208;
 }
 
-export async function syncState(): Promise<void> {
+export interface SyncStateResponse {
+  status: 'accepted' | 'syncing';
+}
+
+export async function syncState(): Promise<SyncStateResponse> {
   const response = await axiosClient.post("/api/sync");
-  if (response.status !== 202) {
-    throw new Error("Failed to sync state");
+  if (response.status === 202) {
+    return {
+      status: 'accepted',
+    };
   }
+  if (response.status === 208) {
+    return {
+      status: 'syncing',
+    };
+  }
+  throw new Error("Failed to sync state");
 }
