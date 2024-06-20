@@ -280,7 +280,7 @@ class RecceStateLoader:
             elif response.status_code != 200:
                 self.error_message = response.text
                 raise Exception(f'{response.status_code} Failed to download the state file from Recce Cloud.')
-            with gzip.open(tmp.name, 'wb') as f:
+            with open(tmp.name, 'wb') as f:
                 f.write(response.content)
             return RecceState.from_file(tmp.name, compressed=True)
 
@@ -327,7 +327,7 @@ class RecceStateLoader:
         presigned_url = self._get_presigned_url(pr_info, RECCE_STATE_COMPRESSED_FILE, method='upload')
         with tempfile.NamedTemporaryFile() as tmp:
             self._export_state_to_file(tmp.name, compress=True)
-            response = requests.put(presigned_url, data=gzip.open(tmp.name, 'rb').read())
+            response = requests.put(presigned_url, data=open(tmp.name, 'rb').read())
             if response.status_code != 200:
                 self.error_message = response.text
                 return 'Failed to upload the state file to Recce Cloud.'
