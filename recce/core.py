@@ -85,7 +85,7 @@ class RecceContext:
     def stop_monitor_artifacts(self):
         self.adapter.stop_monitor_artifacts()
 
-    def refresh(self, refresh_file_path: str = None):
+    def refresh_manifest(self, refresh_file_path: str = None):
         self.adapter.refresh(refresh_file_path)
 
     def export_state(self) -> RecceState:
@@ -131,6 +131,15 @@ class RecceContext:
         state.pull_request = pr
 
         return state
+
+    def refresh_state(self):
+        """
+        refresh the state
+        """
+        RunDAO().clear()
+        CheckDAO().clear()
+        self.state_loader.refresh()
+        self.import_state(self.state_loader.state)
 
     def import_state(self, import_state: RecceState):
         """

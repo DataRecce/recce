@@ -1,10 +1,10 @@
 from typing import Optional
 from uuid import UUID
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, BackgroundTasks
 from pydantic import BaseModel
 
-from recce.apis.check_func import create_check_without_run, create_check_from_run
+from recce.apis.check_func import create_check_without_run, create_check_from_run, export_persistent_state
 from recce.apis.run_func import submit_run
 from recce.exceptions import RecceException
 from recce.models import RunType, RunDAO, Check, CheckDAO, Run
@@ -46,7 +46,7 @@ class CheckOut(BaseModel):
 
 
 @check_router.post("/checks", status_code=201, response_model=CheckOut)
-async def create_check(check_in: CreateCheckIn):
+async def create_check(check_in: CreateCheckIn, background_tasks: BackgroundTasks):
     try:
         if check_in.run_id is not None:
             check = create_check_from_run(
@@ -68,6 +68,7 @@ async def create_check(check_in: CreateCheckIn):
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
 
+    background_tasks.add_task(export_persistent_state)
     return CheckOut.from_check(check)
 
 
@@ -128,7 +129,7 @@ class PatchCheckIn(BaseModel):
 
 
 @check_router.patch("/checks/{check_id}", status_code=200, response_model=CheckOut, response_model_exclude_none=True)
-async def update_check_handler(check_id: UUID, patch: PatchCheckIn):
+async def update_check_handler(check_id: UUID, patch: PatchCheckIn, background_tasks: BackgroundTasks):
     check = CheckDAO().find_check_by_id(check_id)
     if check is None:
         raise HTTPException(status_code=404, detail='Not Found')
@@ -144,6 +145,7 @@ async def update_check_handler(check_id: UUID, patch: PatchCheckIn):
     if patch.is_checked is not None:
         check.is_checked = patch.is_checked
 
+    background_tasks.add_task(export_persistent_state)
     return CheckOut.from_check(check)
 
 
@@ -152,9 +154,9 @@ class DeleteCheckOut(BaseModel):
 
 
 @check_router.delete("/checks/{check_id}", status_code=200, response_model=DeleteCheckOut)
-async def delete_handler(check_id: UUID):
+async def delete_handler(check_id: UUID, background_tasks: BackgroundTasks):
     CheckDAO().delete(check_id)
-
+    background_tasks.add_task(export_persistent_state)
     return DeleteCheckOut(check_id=check_id)
 
 

@@ -43,6 +43,9 @@ class CheckDAO:
         check_to_move = _checks.pop(source)
         _checks.insert(destination, check_to_move)
 
+    def clear(self):
+        _checks.clear()
+
 
 def load_checks(checks: List[Check]):
     global _checks
