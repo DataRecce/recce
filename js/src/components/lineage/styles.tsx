@@ -1,5 +1,5 @@
 import { VscDiffAdded, VscDiffModified, VscDiffRemoved } from "react-icons/vsc";
-import { FaCube, FaDatabase, FaSeedling } from "react-icons/fa";
+import { FaCamera, FaCube, FaDatabase, FaSeedling } from "react-icons/fa";
 import { FaChartSimple, FaCircleNodes, FaGauge } from "react-icons/fa6";
 
 export const IconAdded = VscDiffAdded;
@@ -89,6 +89,8 @@ export function getIconForResourceType(resourceType?: string): {
     return { color: "#fb8caf", icon: FaCircleNodes };
   } else if (resourceType === "seed") {
     return { color: "#a6dda6", icon: FaSeedling };
+  } else if (resourceType === "snapshot") {
+    return { color: "#a6dda6", icon: FaCamera };
   } else {
     return { color: "inherit", icon: undefined };
   }
