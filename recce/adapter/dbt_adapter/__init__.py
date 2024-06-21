@@ -398,7 +398,7 @@ class DbtAdapter(BaseAdapter):
             unique_id = node['unique_id']
             resource_type = node['resource_type']
 
-            if resource_type not in ['model', 'seed', 'exposure']:
+            if resource_type not in ['model', 'seed', 'exposure', 'snapshot']:
                 continue
 
             nodes[unique_id] = {
