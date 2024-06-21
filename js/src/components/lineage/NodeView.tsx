@@ -49,7 +49,8 @@ export function NodeView({ node, onCloseNode }: NodeViewProps) {
   const withColumns =
     node.resourceType === "model" ||
     node.resourceType === "seed" ||
-    node.resourceType === "source";
+    node.resourceType === "source" ||
+    node.resourceType === "snapshot";
   const {
     isOpen: isCodeDiffOpen,
     onOpen: onCodeDiffOpen,
