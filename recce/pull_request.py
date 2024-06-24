@@ -1,12 +1,25 @@
 import json
 import os
-from typing import Optional
+from typing import Optional, Union
 
 import requests
+from pydantic import BaseModel
 
 from recce.git import hosting_repo
 from recce.github import recce_pr_information
-from recce.state import PullRequestInfo
+from recce.util.pydantic_model import pydantic_model_dump
+
+
+class PullRequestInfo(BaseModel):
+    id: Optional[Union[int, str]] = None
+    title: Optional[str] = None
+    url: Optional[str] = None
+    branch: Optional[str] = None
+    base_branch: Optional[str] = None
+    repository: Optional[str] = None
+
+    def to_dict(self):
+        return pydantic_model_dump(self)
 
 
 def fetch_pr_metadata(**kwargs):

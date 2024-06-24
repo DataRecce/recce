@@ -9,13 +9,14 @@ from datetime import datetime
 from typing import List, Optional, Dict, Union
 
 import botocore.exceptions
-import pydantic.version
 from pydantic import BaseModel
 from pydantic import Field
 
 from recce import get_version
 from recce.git import current_branch
 from recce.models.types import Run, Check
+from recce.pull_request import fetch_pr_metadata, PullRequestInfo
+from recce.util.pydantic_model import pydantic_model_json_dump, pydantic_model_dump
 
 logger = logging.getLogger('uvicorn')
 
@@ -40,26 +41,6 @@ def check_s3_bucket(bucket_name: str):
     return True, None
 
 
-def pydantic_model_json_dump(model: BaseModel):
-    pydantic_version = pydantic.version.VERSION
-    pydantic_major = pydantic_version.split(".")[0]
-
-    if pydantic_major == "1":
-        return model.json(exclude_none=True)
-    else:
-        return model.model_dump_json(exclude_none=True)
-
-
-def pydantic_model_dump(model: BaseModel):
-    pydantic_version = pydantic.version.VERSION
-    pydantic_major = pydantic_version.split(".")[0]
-
-    if pydantic_major == "1":
-        return model.dict()
-    else:
-        return model.model_dump()
-
-
 class GitRepoInfo(BaseModel):
     branch: Optional[str] = None
 
@@ -70,18 +51,6 @@ class GitRepoInfo(BaseModel):
             return None
 
         return GitRepoInfo(branch=branch)
-
-    def to_dict(self):
-        return pydantic_model_dump(self)
-
-
-class PullRequestInfo(BaseModel):
-    id: Optional[Union[int, str]] = None
-    title: Optional[str] = None
-    url: Optional[str] = None
-    branch: Optional[str] = None
-    base_branch: Optional[str] = None
-    repository: Optional[str] = None
 
     def to_dict(self):
         return pydantic_model_dump(self)
@@ -167,6 +136,13 @@ class RecceStateLoader:
         self.hint_message = None
         self.state: RecceState | None = None
         self.state_lock = threading.Lock()
+        self.pr_info = None
+
+        if self.cloud_mode:
+            if self.cloud_options.get('token'):
+                self.pr_info = fetch_pr_metadata(github_token=self.cloud_options.get('token'))
+            else:
+                raise Exception('No GitHub token is provided to access the pull request information.')
 
         # Load the state
         self.load()
@@ -230,6 +206,44 @@ class RecceStateLoader:
         new_state = self.load(refresh=True)
         return new_state
 
+    def info(self):
+        if self.state is None:
+            self.error_message = 'No state is loaded.'
+            return None
+
+        state_info = {
+            'mode': 'cloud' if self.cloud_mode else 'local',
+            'source': None,
+        }
+        if self.cloud_mode:
+            if self.cloud_options.get('host', '').startswith('s3://'):
+                state_info['source'] = self.cloud_options.get('host')
+            else:
+                state_info['source'] = 'Recce Cloud'
+            state_info['pull_request'] = self.pr_info
+        else:
+            state_info['source'] = self.state_file
+        return state_info
+
+    def purge(self) -> bool:
+        if self.cloud_mode is True:
+            # self.error_message = 'Purging the state is not supported in cloud mode.'
+            # return False
+            if self.cloud_options.get('host', '').startswith('s3://'):
+                return self._purge_state_from_s3_bucket()
+            else:
+                return self._purge_state_from_cloud()
+        else:
+            if self.state_file is not None:
+                try:
+                    os.remove(self.state_file)
+                except Exception as e:
+                    self.error_message = f'Failed to remove the state file: {e}'
+                    return False
+            else:
+                self.error_message = 'No state file is provided. Skip removing the state file.'
+                return False
+
     def _get_presigned_url(self, pr_info: PullRequestInfo, artifact_name: str, method: str = 'upload') -> str:
         import requests
         # Step 1: Get the token
@@ -254,23 +268,21 @@ class RecceStateLoader:
         return RecceState.from_file(file_path) if file_path else None
 
     def _load_state_from_cloud(self) -> RecceState:
-        from recce.pull_request import fetch_pr_metadata
-        pr_info = fetch_pr_metadata(github_token=self.cloud_options.get('token'))
-        if (pr_info.id is None) or (pr_info.repository is None):
+        if (self.pr_info is None) or (self.pr_info.id is None) or (self.pr_info.repository is None):
             raise Exception('Cannot get the pull request information from GitHub.')
 
         if self.cloud_options.get('host', '').startswith('s3://'):
             logger.debug('Fetching state from AWS S3 bucket...')
-            return self._load_state_from_s3_bucket(pr_info)
+            return self._load_state_from_s3_bucket()
         else:
             logger.debug('Fetching state from Recce Cloud...')
-            return self._load_state_from_recce_cloud(pr_info)
+            return self._load_state_from_recce_cloud()
 
-    def _load_state_from_recce_cloud(self, pr_info) -> Union[RecceState, None]:
+    def _load_state_from_recce_cloud(self) -> Union[RecceState, None]:
         import tempfile
         import requests
 
-        presigned_url = self._get_presigned_url(pr_info, RECCE_STATE_COMPRESSED_FILE, method='download')
+        presigned_url = self._get_presigned_url(self.pr_info, RECCE_STATE_COMPRESSED_FILE, method='download')
 
         with tempfile.NamedTemporaryFile() as tmp:
             response = requests.get(presigned_url)
@@ -284,12 +296,12 @@ class RecceStateLoader:
                 f.write(response.content)
             return RecceState.from_file(tmp.name, compressed=True)
 
-    def _load_state_from_s3_bucket(self, pr_info) -> Union[RecceState, None]:
+    def _load_state_from_s3_bucket(self) -> Union[RecceState, None]:
         import boto3
         import tempfile
         s3_client = boto3.client('s3')
         s3_bucket_name = self.cloud_options.get('host').replace('s3://', '')
-        s3_bucket_key = f'github/{pr_info.repository}/pulls/{pr_info.id}/{RECCE_STATE_COMPRESSED_FILE}'
+        s3_bucket_key = f'github/{self.pr_info.repository}/pulls/{self.pr_info.id}/{RECCE_STATE_COMPRESSED_FILE}'
 
         rc, error_message = check_s3_bucket(s3_bucket_name)
         if rc is False:
@@ -308,23 +320,21 @@ class RecceStateLoader:
             return RecceState.from_file(tmp.name, compressed=True)
 
     def _export_state_to_cloud(self) -> Union[str, None]:
-        from recce.pull_request import fetch_pr_metadata
-        pr_info = fetch_pr_metadata(github_token=self.cloud_options.get('token'))
-        if (pr_info.id is None) or (pr_info.repository is None):
+        if (self.pr_info is None) or (self.pr_info.id is None) or (self.pr_info.repository is None):
             raise Exception('Cannot get the pull request information from GitHub.')
 
         if self.cloud_options.get('host', '').startswith('s3://'):
             logger.info("Store recce state to AWS S3 bucket")
-            return self._export_state_to_s3_bucket(pr_info)
+            return self._export_state_to_s3_bucket()
         else:
             logger.info("Store recce state to Recce Cloud")
-            return self._export_state_to_recce_cloud(pr_info)
+            return self._export_state_to_recce_cloud()
 
-    def _export_state_to_recce_cloud(self, pr_info) -> Union[str, None]:
+    def _export_state_to_recce_cloud(self) -> Union[str, None]:
         import tempfile
         import requests
 
-        presigned_url = self._get_presigned_url(pr_info, RECCE_STATE_COMPRESSED_FILE, method='upload')
+        presigned_url = self._get_presigned_url(self.pr_info, RECCE_STATE_COMPRESSED_FILE, method='upload')
         with tempfile.NamedTemporaryFile() as tmp:
             self._export_state_to_file(tmp.name, compress=True)
             response = requests.put(presigned_url, data=open(tmp.name, 'rb').read())
@@ -333,12 +343,12 @@ class RecceStateLoader:
                 return 'Failed to upload the state file to Recce Cloud.'
         return 'The state file is uploaded to Recce Cloud.'
 
-    def _export_state_to_s3_bucket(self, pr_info) -> Union[str, None]:
+    def _export_state_to_s3_bucket(self) -> Union[str, None]:
         import boto3
         import tempfile
         s3_client = boto3.client('s3')
         s3_bucket_name = self.cloud_options.get('host').replace('s3://', '')
-        s3_bucket_key = f'github/{pr_info.repository}/pulls/{pr_info.id}/{RECCE_STATE_COMPRESSED_FILE}'
+        s3_bucket_key = f'github/{self.pr_info.repository}/pulls/{self.pr_info.id}/{RECCE_STATE_COMPRESSED_FILE}'
 
         rc, error_message = check_s3_bucket(s3_bucket_name)
         if rc is False:
@@ -364,3 +374,40 @@ class RecceStateLoader:
             with open(file_path, 'w') as f:
                 f.write(json_data)
         return f'The state file is stored at \'{file_path}\''
+
+    def _purge_state_from_cloud(self) -> bool:
+        import requests
+        logger.debug('Purging the state from Recce Cloud...')
+        token = self.cloud_options.get('token')
+        api_url = f'{RECCE_CLOUD_API_HOST}/api/v1/{self.pr_info.repository}/pulls/{self.pr_info.id}/artifacts'
+        headers = {
+            'Authorization': f'Bearer {token}'
+        }
+        response = requests.delete(api_url, headers=headers)
+        if response.status_code != 204:
+            self.error_message = response.text
+            return False
+        return True
+
+    def _purge_state_from_s3_bucket(self) -> bool:
+        import boto3
+        from rich.console import Console
+        console = Console()
+        delete_objects = []
+        logger.debug('Purging the state from AWS S3 bucket...')
+        s3_client = boto3.client('s3')
+        s3_bucket_name = self.cloud_options.get('host').replace('s3://', '')
+        s3_key_prefix = f'github/{self.pr_info.repository}/pulls/{self.pr_info.id}/'
+        list_response = s3_client.list_objects_v2(Bucket=s3_bucket_name, Prefix=s3_key_prefix)
+        if 'Contents' in list_response:
+            for obj in list_response['Contents']:
+                key = obj['Key']
+                delete_objects.append({'Key': key})
+                console.print(f'[green]Deleted[/green]: {key}')
+        else:
+            return False
+
+        delete_response = s3_client.delete_objects(Bucket=s3_bucket_name, Delete={'Objects': delete_objects})
+        if 'Deleted' not in delete_response:
+            return False
+        return True

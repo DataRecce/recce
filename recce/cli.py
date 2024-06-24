@@ -227,6 +227,9 @@ def server(host, port, state_file=None, **kwargs):
 @add_options(recce_options)
 @add_options(recce_cloud_options)
 def run(output, **kwargs):
+    """
+        Run recce to generate the state file in CI/CD pipeline
+    """
     from rich.console import Console
     handle_debug_flag(**kwargs)
     console = Console()
@@ -267,6 +270,9 @@ def run(output, **kwargs):
 @add_options(recce_options)
 @add_options(recce_cloud_options)
 def summary(state_file, **kwargs):
+    """
+        Generate a summary of the recce state file
+    """
     from rich.console import Console
     from .core import load_context
     handle_debug_flag(**kwargs)
@@ -299,6 +305,66 @@ def summary(state_file, **kwargs):
 
     output = generate_markdown_summary(ctx, summary_format=kwargs.get('format'))
     print(output)
+
+
+@cli.command(cls=TrackCommand)
+@click.option('--cloud-token', help='The token used by Recce Cloud.', type=click.STRING,
+              envvar='GITHUB_TOKEN')
+@click.option('--state-file-host', help='The host to fetch the state file from.', type=click.STRING,
+              envvar='RECCE_STATE_FILE_HOST', default='cloud.datarecce.io', hidden=True)
+@click.option('--force', '-f', help='Bypasses the confirmation prompt. Purge the state file directly.', is_flag=True)
+@add_options(recce_options)
+def purge_cloud_state(**kwargs):
+    """
+        Purge the state file from cloud
+    """
+    from rich.console import Console
+    handle_debug_flag(**kwargs)
+    console = Console()
+    cloud_options = {
+        'host': kwargs.get('state_file_host'),
+        'token': kwargs.get('cloud_token'),
+    }
+    force_to_purge = kwargs.get('force', False)
+    try:
+        console.rule('Check Recce State from Cloud')
+        recce_state = RecceStateLoader(review_mode=False, cloud_mode=True,
+                                       state_file=None, cloud_options=cloud_options)
+    except Exception as e:
+        console.print("[[red]Error[/red]] Failed to load recce state file.")
+        console.print(f"  Reason: {e}")
+        return 1
+
+    if not recce_state.verify():
+        error, hint = recce_state.error_and_hint
+        console.print(f"[[red]Error[/red]] {error}")
+        console.print(f"{hint}")
+        return 1
+
+    info = recce_state.info()
+    if info is None:
+        console.print("[[yellow]Skip[/yellow]] No state file found in cloud.")
+        return 0
+
+    pr_info = info.get('pull_request')
+    console.print('[green]State File hosted by[/green]', info.get('source'))
+    console.print('[green]GitHub Repository[/green]', info.get('pull_request').repository)
+    console.print(f'[green]GitHub Pull Request[/green]\n{pr_info.title} #{pr_info.id}')
+    console.print(f'Branch merged into [blue]{pr_info.base_branch}[/blue] from [blue]{pr_info.branch}[/blue]')
+    console.print(pr_info.url)
+
+    try:
+        if force_to_purge is True or click.confirm('\nDo you want to purge the state file?'):
+            response = recce_state.purge()
+            if response is True:
+                console.rule('Purged Successfully')
+            else:
+                console.rule('Failed to Purge', style='red')
+                console.print(f'Reason: {recce_state.error_message}')
+    except click.exceptions.Abort:
+        pass
+
+    return 0
 
 
 @cli.group('github', short_help='GitHub related commands', hidden=True)
