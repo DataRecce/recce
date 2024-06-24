@@ -1,0 +1,6 @@
+recce_test:
+  target: dev
+  outputs:
+    dev:
+      type: duckdb
+      # path: 'recce_test.duckdb'
