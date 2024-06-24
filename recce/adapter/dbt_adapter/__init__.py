@@ -598,6 +598,16 @@ class DbtAdapter(BaseAdapter):
 
         self.manifest = as_manifest(self.curr_manifest)
 
+        # The dependencies of the review mode is derived from manifests.
+        # It is a workaround solution to use macro dispatch
+        # see: https://docs.getdbt.com/reference/dbt-jinja-functions/dispatch
+        dependencies = {}
+        for macro in self.manifest.macros.values():
+            if macro.package_name not in dependencies:
+                dependencies[macro.package_name] = self.runtime_config
+
+        self.runtime_config.dependencies = dependencies
+
         if not self.curr_manifest or not self.base_manifest:
             raise Exception(
                 'No enough dbt artifacts in the state file. Please use the latest recce to generate the recce state')
