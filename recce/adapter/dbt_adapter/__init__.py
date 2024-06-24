@@ -4,7 +4,7 @@ import os
 import uuid
 from contextlib import contextmanager
 from dataclasses import dataclass, fields
-from typing import Callable, Dict, List, Optional, Tuple, Iterator, Any
+from typing import Callable, Dict, List, Optional, Tuple, Iterator, Any, Set
 
 import agate
 import dbt.adapters.factory
@@ -134,6 +134,7 @@ class DbtArgs:
     profile: Optional[str] = None,
     target_path: Optional[str] = None,
     project_only_flags: Optional[Dict[str, Any]] = None
+    which: Optional[str] = 'run'
 
 
 @dataclass
@@ -172,6 +173,7 @@ class DbtAdapter(BaseAdapter):
             profiles_dir=profiles_dir,
             profile=profile_name,
             project_only_flags={},
+            which='recce'
         )
         set_from_args(args, args)
 
@@ -583,6 +585,16 @@ class DbtAdapter(BaseAdapter):
             return None
 
         return self.adapter.Relation.create_from(self.runtime_config, node)
+
+    def select_nodes(self, select: str) -> Set[str]:
+        from dbt.graph import SelectionCriteria, NodeSelector
+        from dbt.compilation import Compiler
+
+        compiler = Compiler(self.runtime_config)
+        graph = compiler.compile(self.manifest)
+        selector = NodeSelector(graph, self.manifest)
+        spec = SelectionCriteria.from_single_spec(select)
+        return selector.get_selected(spec)
 
     def export_artifacts(self) -> ArtifactsRoot:
         artifacts = ArtifactsRoot()
