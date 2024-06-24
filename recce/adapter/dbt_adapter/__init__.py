@@ -550,6 +550,15 @@ class DbtAdapter(BaseAdapter):
         self.curr_manifest = curr_manifest.writable_manifest()
         self.base_manifest = base_manifest.writable_manifest()
 
+        # The dependencies of the review mode is derived from manifests.
+        # It is a workaround solution to use macro dispatch
+        # see: https://docs.getdbt.com/reference/dbt-jinja-functions/dispatch
+        dependencies = {}
+        for macro in self.manifest.macros.values():
+            if macro.package_name not in dependencies:
+                dependencies[macro.package_name] = self.runtime_config
+        self.runtime_config.dependencies = dependencies
+
     def refresh(self, refresh_file_path: str = None):
         # Refresh the artifacts
         if refresh_file_path is None:
