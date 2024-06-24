@@ -230,6 +230,27 @@ class RecceStateLoader:
         new_state = self.load(refresh=True)
         return new_state
 
+    def info(self):
+        if self.state is None:
+            self.error_message = 'No state is loaded.'
+            return None
+
+        state_info = {
+            'mode': 'cloud' if self.cloud_mode else 'local',
+            'source': None,
+        }
+        if self.cloud_mode:
+            from recce.pull_request import fetch_pr_metadata
+            if self.cloud_options.get('host', '').startswith('s3://'):
+                state_info['source'] = self.cloud_options.get('host')
+            else:
+                state_info['source'] = 'Recce Cloud'
+            state_info['pull_request'] = fetch_pr_metadata(github_token=self.cloud_options.get('token'))
+        else:
+            state_info['source'] = self.state_file
+
+        return state_info
+
     def _get_presigned_url(self, pr_info: PullRequestInfo, artifact_name: str, method: str = 'upload') -> str:
         import requests
         # Step 1: Get the token
