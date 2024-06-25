@@ -337,11 +337,17 @@ class DbtAdapter(BaseAdapter):
 
         # set the manifest
         self.manifest = as_manifest(curr_manifest)
-        self.previous_state = PreviousState(
-            Path('target-base'),
-            Path(self.runtime_config.target_path),
-            Path(self.runtime_config.project_root)
-        )
+        if dbt_version < 'v1.6':
+            self.previous_state = PreviousState(
+                Path('target-base'),
+                Path(self.runtime_config.target_path),
+            )
+        else:
+            self.previous_state = PreviousState(
+                Path('target-base'),
+                Path(self.runtime_config.target_path),
+                Path(self.runtime_config.project_root),
+            )
 
         # set the file paths to watch
         self.artifacts_files = [

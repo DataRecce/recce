@@ -6,13 +6,13 @@ import uuid
 from contextlib import asynccontextmanager
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Optional, Any
+from typing import Optional, Any, Set
 
 from fastapi import FastAPI, HTTPException, Request, WebSocket, UploadFile, Response, BackgroundTasks
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import PlainTextResponse
 from fastapi.staticfiles import StaticFiles
-from pydantic import ValidationError
+from pydantic import ValidationError, BaseModel
 from starlette.middleware.gzip import GZipMiddleware
 from starlette.middleware.sessions import SessionMiddleware
 from starlette.websockets import WebSocketDisconnect
@@ -171,6 +171,27 @@ async def get_info():
         return info
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))
+
+
+class SelectNodesInput(BaseModel):
+    select: Optional[str] = None
+    exclude: Optional[str] = None
+
+
+class SelectNodesOutput(BaseModel):
+    nodes: Set[str] = []
+
+
+@app.post("/api/select", response_model=SelectNodesOutput)
+async def select_nodes(input: SelectNodesInput):
+    context = default_context()
+
+    if context.adapter_type != 'dbt':
+        raise HTTPException(status_code=400, detail='Only dbt adapter is supported')
+
+    nodes = context.adapter.select_nodes(input.select, input.exclude)
+    nodes = [node for node in nodes if not node.startswith('test.')]
+    return SelectNodesOutput(nodes=nodes)
 
 
 @app.get("/api/model/{model_id}")

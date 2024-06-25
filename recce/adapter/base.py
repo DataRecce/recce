@@ -1,6 +1,6 @@
 import logging
 from abc import ABC, abstractmethod
-from typing import Optional, Callable
+from typing import Optional, Callable, Set
 
 from recce.state import ArtifactsRoot
 
@@ -12,6 +12,10 @@ logger = logging.getLogger('uvicorn')
 class BaseAdapter(ABC):
     @abstractmethod
     def get_lineage(self, base: Optional[bool] = False):
+        raise NotImplementedError()
+
+    @abstractmethod
+    def select_nodes(self, select: Optional[str] = None, exclude: Optional[str] = None) -> Set[str]:
         raise NotImplementedError()
 
     @abstractmethod
