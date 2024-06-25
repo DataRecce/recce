@@ -612,7 +612,11 @@ class DbtAdapter(BaseAdapter):
         select_list = [select] if select else None
         exclude_list = [exclude] if exclude else None
 
-        spec = parse_difference(select_list, exclude_list)
+        # if dbt version < 1.8
+        if dbt_version < 'v1.8':
+            spec = parse_difference(select_list, exclude_list, "eager")
+        else:
+            spec = parse_difference(select_list, exclude_list)
         compiler = Compiler(self.runtime_config)
         graph = compiler.compile(self.manifest, write=False)
         selector = NodeSelector(graph, self.manifest, previous_state=self.previous_state)
