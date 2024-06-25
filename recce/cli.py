@@ -61,6 +61,8 @@ recce_cloud_options = [
                  envvar='GITHUB_TOKEN'),
     click.option('--state-file-host', help='The host to fetch the state file from.', type=click.STRING,
                  envvar='RECCE_STATE_FILE_HOST', default='cloud.datarecce.io', hidden=True),
+    click.option('--password', '-p', help='The password to use for compress state file.', type=click.STRING,
+                 envvar='STATE_PASSWORD'),
 ]
 
 
@@ -186,6 +188,7 @@ def server(host, port, state_file=None, **kwargs):
         cloud_options = {
             'host': kwargs.get('state_file_host'),
             'token': kwargs.get('cloud_token'),
+            'password': kwargs.get('password'),
         }
     try:
         recce_state = RecceStateLoader(review_mode=is_review, cloud_mode=is_cloud,
@@ -245,6 +248,7 @@ def run(output, **kwargs):
     cloud_options = {
         'host': kwargs.get('state_file_host'),
         'token': kwargs.get('cloud_token'),
+        'password': kwargs.get('password'),
     } if cloud_mode else None
     try:
         recce_state = RecceStateLoader(review_mode=False, cloud_mode=cloud_mode,
@@ -281,6 +285,7 @@ def summary(state_file, **kwargs):
     cloud_options = {
         'host': kwargs.get('state_file_host'),
         'token': kwargs.get('cloud_token'),
+        'password': kwargs.get('password'),
     } if cloud_mode else None
 
     try:
