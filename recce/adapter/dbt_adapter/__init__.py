@@ -608,6 +608,7 @@ class DbtAdapter(BaseAdapter):
         from dbt.graph import NodeSelector
         from dbt.compilation import Compiler
         from dbt.graph import parse_difference
+        import dbt.compilation
 
         select_list = [select] if select else None
         exclude_list = [exclude] if exclude else None
@@ -618,7 +619,10 @@ class DbtAdapter(BaseAdapter):
         else:
             spec = parse_difference(select_list, exclude_list)
         compiler = Compiler(self.runtime_config)
+        tmp_func = dbt.compilation.print_compile_stats
+        dbt.compilation.print_compile_stats = lambda x: None
         graph = compiler.compile(self.manifest, write=False)
+        dbt.compilation.print_compile_stats = tmp_func
         selector = NodeSelector(graph, self.manifest, previous_state=self.previous_state)
 
         return selector.get_selected(spec)
