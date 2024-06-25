@@ -429,6 +429,10 @@ class DbtAdapter(BaseAdapter):
             for child in child_map:
                 node_name = node['name']
                 comps = child.split('.')
+                if len(comps) < 2:
+                    # only happens in unittest
+                    continue
+
                 child_type = comps[0]
                 child_name = comps[2]
 
