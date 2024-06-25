@@ -4,10 +4,12 @@ import os
 import uuid
 from contextlib import contextmanager
 from dataclasses import dataclass, fields
+from pathlib import Path
 from typing import Callable, Dict, List, Optional, Tuple, Iterator, Any, Set
 
 import agate
 import dbt.adapters.factory
+from dbt.contracts.state import PreviousState
 from watchdog.events import FileSystemEventHandler
 from watchdog.observers import Observer
 
@@ -134,7 +136,7 @@ class DbtArgs:
     profile: Optional[str] = None,
     target_path: Optional[str] = None,
     project_only_flags: Optional[Dict[str, Any]] = None
-    which: Optional[str] = 'run'
+    which: Optional[str] = None
 
 
 @dataclass
@@ -142,6 +144,7 @@ class DbtAdapter(BaseAdapter):
     runtime_config: RuntimeConfig = None
     adapter: SQLAdapter = None
     manifest: Manifest = None
+    previous_state: PreviousState = None
     target_path: str = None
     curr_manifest: WritableManifest = None
     curr_catalog: CatalogArtifact = None
@@ -173,7 +176,7 @@ class DbtAdapter(BaseAdapter):
             profiles_dir=profiles_dir,
             profile=profile_name,
             project_only_flags={},
-            which='recce'
+            which='list'
         )
         set_from_args(args, args)
 
@@ -334,6 +337,11 @@ class DbtAdapter(BaseAdapter):
 
         # set the manifest
         self.manifest = as_manifest(curr_manifest)
+        self.previous_state = PreviousState(
+            Path('target-base'),
+            Path(self.runtime_config.target_path),
+            Path(self.runtime_config.project_root)
+        )
 
         # set the file paths to watch
         self.artifacts_files = [
@@ -429,6 +437,10 @@ class DbtAdapter(BaseAdapter):
             for child in child_map:
                 node_name = node['name']
                 comps = child.split('.')
+                if len(comps) < 2:
+                    # only happens in unittest
+                    continue
+
                 child_type = comps[0]
                 child_name = comps[2]
 
@@ -547,10 +559,16 @@ class DbtAdapter(BaseAdapter):
             self.artifacts_observer.join()
             logger.info('Stop monitoring artifacts')
 
-    def set_artifacts(self, curr_manifest: Manifest, base_manifest: Manifest):
+    def set_artifacts(self, base_manifest: Manifest, curr_manifest: Manifest):
         self.manifest = curr_manifest
         self.curr_manifest = curr_manifest.writable_manifest()
         self.base_manifest = base_manifest.writable_manifest()
+        self.previous_state = PreviousState(
+            Path('target-base'),
+            Path(self.runtime_config.target_path),
+            Path(self.runtime_config.project_root)
+        )
+        self.previous_state.manifest = base_manifest
 
         # The dependencies of the review mode is derived from manifests.
         # It is a workaround solution to use macro dispatch
@@ -586,14 +604,23 @@ class DbtAdapter(BaseAdapter):
 
         return self.adapter.Relation.create_from(self.runtime_config, node)
 
-    def select_nodes(self, select: str) -> Set[str]:
-        from dbt.graph import SelectionCriteria, NodeSelector
+    def select_nodes(self, select: Optional[str] = None, exclude: Optional[str] = None) -> Set[str]:
+        from dbt.graph import NodeSelector
         from dbt.compilation import Compiler
+        from dbt.graph import parse_difference
 
+        select_list = [select] if select else None
+        exclude_list = [exclude] if exclude else None
+
+        # if dbt version < 1.8
+        if dbt_version < 'v1.8':
+            spec = parse_difference(select_list, exclude_list, "eager")
+        else:
+            spec = parse_difference(select_list, exclude_list)
         compiler = Compiler(self.runtime_config)
-        graph = compiler.compile(self.manifest)
-        selector = NodeSelector(graph, self.manifest)
-        spec = SelectionCriteria.from_single_spec(select)
+        graph = compiler.compile(self.manifest, write=False)
+        selector = NodeSelector(graph, self.manifest, previous_state=self.previous_state)
+
         return selector.get_selected(spec)
 
     def export_artifacts(self) -> ArtifactsRoot:
@@ -627,6 +654,12 @@ class DbtAdapter(BaseAdapter):
         self.curr_catalog = load_catalog(data=artifacts.current.get('catalog'))
 
         self.manifest = as_manifest(self.curr_manifest)
+        self.previous_state = PreviousState(
+            Path('target-base'),
+            Path(self.runtime_config.target_path),
+            Path(self.runtime_config.project_root)
+        )
+        self.previous_state.manifest = as_manifest(self.base_manifest)
 
         # The dependencies of the review mode is derived from manifests.
         # It is a workaround solution to use macro dispatch
