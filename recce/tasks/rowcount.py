@@ -53,7 +53,11 @@ class RowCountDiffTask(Task, QueryMixin):
             for node in self.params.get('node_names', []):
                 query_candidates.append(node)
         elif self.params.get('select', "") or self.params.get('exclude', ""):
-            node_ids = dbt_adapter.select_nodes(self.params.get('select', ""))
+            def countable(unique_id):
+                return dbt_adapter.manifest.nodes[unique_id].resource_type == 'model'
+
+            node_ids = dbt_adapter.select_nodes(self.params.get('select', ""), self.params.get('exclude', ""))
+            node_ids = list(filter(countable, node_ids))
             for node_id in node_ids:
                 name = dbt_adapter.get_node_name_by_id(node_id)
                 if name:
