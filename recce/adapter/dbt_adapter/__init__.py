@@ -134,7 +134,7 @@ class DbtArgs:
     profile: Optional[str] = None,
     target_path: Optional[str] = None,
     project_only_flags: Optional[Dict[str, Any]] = None
-    which: Optional[str] = 'run'
+    which: Optional[str] = None
 
 
 @dataclass
@@ -173,7 +173,7 @@ class DbtAdapter(BaseAdapter):
             profiles_dir=profiles_dir,
             profile=profile_name,
             project_only_flags={},
-            which='recce'
+            which='list'
         )
         set_from_args(args, args)
 
@@ -547,7 +547,7 @@ class DbtAdapter(BaseAdapter):
             self.artifacts_observer.join()
             logger.info('Stop monitoring artifacts')
 
-    def set_artifacts(self, curr_manifest: Manifest, base_manifest: Manifest):
+    def set_artifacts(self, base_manifest: Manifest, curr_manifest: Manifest):
         self.manifest = curr_manifest
         self.curr_manifest = curr_manifest.writable_manifest()
         self.base_manifest = base_manifest.writable_manifest()
@@ -586,14 +586,26 @@ class DbtAdapter(BaseAdapter):
 
         return self.adapter.Relation.create_from(self.runtime_config, node)
 
-    def select_nodes(self, select: str) -> Set[str]:
-        from dbt.graph import SelectionCriteria, NodeSelector
+    def select_nodes(self, select: Optional[str] = None, exclude: Optional[str] = None) -> Set[str]:
+        from dbt.graph import NodeSelector
         from dbt.compilation import Compiler
+        from dbt.graph import parse_difference
+        from dbt.contracts.state import PreviousState
 
+        select_list = [select] if select else None
+        exclude_list = [exclude] if exclude else None
+
+        spec = parse_difference(select_list, exclude_list)
         compiler = Compiler(self.runtime_config)
-        graph = compiler.compile(self.manifest)
-        selector = NodeSelector(graph, self.manifest)
-        spec = SelectionCriteria.from_single_spec(select)
+        graph = compiler.compile(self.manifest, write=False)
+
+        from pathlib import Path
+
+        previous_state = PreviousState(Path('target-base'), Path('target'), Path('.'))
+        previous_state.manifest = as_manifest(self.base_manifest)
+
+        selector = NodeSelector(graph, self.manifest, previous_state=previous_state)
+
         return selector.get_selected(spec)
 
     def export_artifacts(self) -> ArtifactsRoot:
