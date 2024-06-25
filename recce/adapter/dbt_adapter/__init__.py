@@ -4,10 +4,12 @@ import os
 import uuid
 from contextlib import contextmanager
 from dataclasses import dataclass, fields
+from pathlib import Path
 from typing import Callable, Dict, List, Optional, Tuple, Iterator, Any, Set
 
 import agate
 import dbt.adapters.factory
+from dbt.contracts.state import PreviousState
 from watchdog.events import FileSystemEventHandler
 from watchdog.observers import Observer
 
@@ -142,6 +144,7 @@ class DbtAdapter(BaseAdapter):
     runtime_config: RuntimeConfig = None
     adapter: SQLAdapter = None
     manifest: Manifest = None
+    previous_state: PreviousState = None
     target_path: str = None
     curr_manifest: WritableManifest = None
     curr_catalog: CatalogArtifact = None
@@ -334,6 +337,11 @@ class DbtAdapter(BaseAdapter):
 
         # set the manifest
         self.manifest = as_manifest(curr_manifest)
+        self.previous_state = PreviousState(
+            Path('target-base'),
+            Path(self.runtime_config.target_path),
+            Path(self.runtime_config.project_root)
+        )
 
         # set the file paths to watch
         self.artifacts_files = [
@@ -555,6 +563,12 @@ class DbtAdapter(BaseAdapter):
         self.manifest = curr_manifest
         self.curr_manifest = curr_manifest.writable_manifest()
         self.base_manifest = base_manifest.writable_manifest()
+        self.previous_state = PreviousState(
+            Path('target-base'),
+            Path(self.runtime_config.target_path),
+            Path(self.runtime_config.project_root)
+        )
+        self.previous_state.manifest = base_manifest
 
         # The dependencies of the review mode is derived from manifests.
         # It is a workaround solution to use macro dispatch
@@ -594,7 +608,6 @@ class DbtAdapter(BaseAdapter):
         from dbt.graph import NodeSelector
         from dbt.compilation import Compiler
         from dbt.graph import parse_difference
-        from dbt.contracts.state import PreviousState
 
         select_list = [select] if select else None
         exclude_list = [exclude] if exclude else None
@@ -602,13 +615,7 @@ class DbtAdapter(BaseAdapter):
         spec = parse_difference(select_list, exclude_list)
         compiler = Compiler(self.runtime_config)
         graph = compiler.compile(self.manifest, write=False)
-
-        from pathlib import Path
-
-        previous_state = PreviousState(Path('target-base'), Path('target'), Path('.'))
-        previous_state.manifest = as_manifest(self.base_manifest)
-
-        selector = NodeSelector(graph, self.manifest, previous_state=previous_state)
+        selector = NodeSelector(graph, self.manifest, previous_state=self.previous_state)
 
         return selector.get_selected(spec)
 
@@ -643,6 +650,12 @@ class DbtAdapter(BaseAdapter):
         self.curr_catalog = load_catalog(data=artifacts.current.get('catalog'))
 
         self.manifest = as_manifest(self.curr_manifest)
+        self.previous_state = PreviousState(
+            Path('target-base'),
+            Path(self.runtime_config.target_path),
+            Path(self.runtime_config.project_root)
+        )
+        self.previous_state.manifest = as_manifest(self.base_manifest)
 
         # The dependencies of the review mode is derived from manifests.
         # It is a workaround solution to use macro dispatch
