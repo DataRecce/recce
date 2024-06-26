@@ -23,9 +23,7 @@ import { RunView } from "../run/RunView";
 import { Run } from "@/lib/api/types";
 import { useLineageGraphContext } from "@/lib/hooks/LineageGraphContext";
 import { QueryForm } from "./QueryForm";
-
-import Split from "react-split";
-import "./styles.css";
+import { VSplit } from "../split/Split";
 
 export const QueryPage = () => {
   const {
@@ -117,11 +115,10 @@ export const QueryPage = () => {
           Run
         </Button>
       </Flex>
-      <Split
-        className="split"
-        direction="vertical"
+      <VSplit
+        sizes={[40, 60]}
         minSize={100}
-        gutterSize={2}
+        gutterSize={5}
         style={{ height: "100%" }}
       >
         <Flex direction="row" height="300px">
@@ -175,7 +172,7 @@ export const QueryPage = () => {
             </RunView>
           )}
         </Flex>
-      </Split>
+      </VSplit>
     </Flex>
   );
 };

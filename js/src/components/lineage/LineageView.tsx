@@ -60,6 +60,7 @@ import { NodeRunView } from "./NodeRunView";
 import { union } from "./graph";
 import { LineageDiffViewOptions } from "@/lib/api/lineagecheck";
 import { ChangeStatusLegend } from "./ChangeStatusLegend";
+import { HSplit } from "../split/Split";
 
 export interface LineageViewProps {
   viewOptions?: LineageDiffViewOptions;
@@ -386,8 +387,14 @@ function _LineageView({ ...props }: LineageViewProps) {
   }
 
   return (
-    <Flex width="100%" height="100%">
-      <Box flex="1 0 0px">
+    <HSplit
+      sizes={detailViewSelected ? [70, 30] : [100, 0]}
+      minSize={detailViewSelected ? 400 : 0}
+      gutterSize={detailViewSelected ? 5 : 0}
+      style={{ height: "100%", width: "100%" }}
+    >
+      {/* <Flex width="100%" height="100%"> */}
+      <Box>
         <ReactFlow
           nodeTypes={nodeTypes}
           edgeTypes={edgeTypes}
@@ -537,8 +544,8 @@ function _LineageView({ ...props }: LineageViewProps) {
           </Panel>
         </ReactFlow>
       </Box>
-      {selectMode === "detail" && detailViewSelected && (
-        <Box flex="0 0 500px" borderLeft="solid 1px lightgray" height="100%">
+      {selectMode === "detail" && detailViewSelected ? (
+        <Box borderLeft="solid 1px lightgray" height="100%">
           <NodeView
             node={detailViewSelected}
             onCloseNode={() => {
@@ -548,9 +555,8 @@ function _LineageView({ ...props }: LineageViewProps) {
             }}
           />
         </Box>
-      )}
-      {selectMode === "action_result" && detailViewSelected && (
-        <Box flex="0 0 500px" borderLeft="solid 1px lightgray" height="100%">
+      ) : selectMode === "action_result" && detailViewSelected ? (
+        <Box borderLeft="solid 1px lightgray" height="100%">
           <NodeRunView
             node={detailViewSelected}
             onCloseNode={() => {
@@ -559,6 +565,8 @@ function _LineageView({ ...props }: LineageViewProps) {
             }}
           />
         </Box>
+      ) : (
+        <Box></Box>
       )}
       {isContextMenuRendered && (
         // Only render context menu when select mode is action
@@ -579,7 +587,9 @@ function _LineageView({ ...props }: LineageViewProps) {
           </MenuList>
         </Menu>
       )}
-    </Flex>
+      {/* </Flex> */}
+      {/* <div></div> */}
+    </HSplit>
   );
 }
 
