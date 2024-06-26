@@ -93,6 +93,7 @@ export function toDataGrid(schemaDiff: SchemaDiff) {
       name: "",
       resizable: true,
       minWidth: 35,
+      width: 35,
       cellClass: columnIndexCellClass,
       // colSpan: (args) => (args.type === "HEADER" ? 2 : 1),
     },
@@ -101,6 +102,7 @@ export function toDataGrid(schemaDiff: SchemaDiff) {
       name: "",
       resizable: true,
       minWidth: 35,
+      width: 35,
       cellClass: columnIndexCellClass,
 
       // colSpan: (args) => (args.type === "HEADER" ? 2 : 1),
