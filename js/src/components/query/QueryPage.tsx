@@ -118,10 +118,9 @@ export const QueryPage = () => {
       <VSplit
         sizes={[40, 60]}
         minSize={100}
-        gutterSize={5}
         style={{ height: "100%", borderTop: "1px solid #CBD5E0" }}
       >
-        <HSplit gutterSize={5} sizes={[90, 10]} minSize={300}>
+        <HSplit sizes={[90, 10]} minSize={300}>
           <Box width="70%" border={"1px solid #CBD5E0"}>
             <SqlEditor
               value={sqlQuery}

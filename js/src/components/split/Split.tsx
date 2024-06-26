@@ -2,7 +2,7 @@ import ReactSplit, { SplitProps } from "react-split";
 import "./styles.css";
 
 export const HSplit = (props: SplitProps) => {
-  const { style, children, ...rest } = props;
+  const { style, children, gutterSize = 5, ...rest } = props;
 
   return (
     <ReactSplit
@@ -12,6 +12,7 @@ export const HSplit = (props: SplitProps) => {
         ...style,
       }}
       direction="horizontal"
+      gutterSize={gutterSize}
       {...rest}
     >
       {children}
@@ -20,7 +21,7 @@ export const HSplit = (props: SplitProps) => {
 };
 
 export const VSplit = (props: SplitProps) => {
-  const { style, children, ...rest } = props;
+  const { style, children, gutterSize = 5, ...rest } = props;
 
   return (
     <ReactSplit
@@ -29,6 +30,7 @@ export const VSplit = (props: SplitProps) => {
         flexDirection: "column",
         ...style,
       }}
+      gutterSize={gutterSize}
       direction="vertical"
       {...rest}
     >

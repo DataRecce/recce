@@ -26,6 +26,7 @@ import { CheckList } from "./CheckList";
 import { useClipBoardToast } from "@/lib/hooks/useClipBoardToast";
 import { buildDescription, buildTitle } from "./check";
 import { stripIndents } from "common-tags";
+import { HSplit } from "../split/Split";
 
 export const CheckPage = () => {
   const [, setLocation] = useLocation();
@@ -113,9 +114,8 @@ export const CheckPage = () => {
   }
 
   return (
-    <Flex height="100%">
+    <HSplit style={{ height: "100%" }} minSize={300} sizes={[10, 90]}>
       <Box
-        flex="0 0 400px"
         borderRight="lightgray solid 1px"
         height="100%"
         style={{ contain: "size" }}
@@ -158,7 +158,7 @@ export const CheckPage = () => {
           />
         </VStack>
       </Box>
-      <Box flex="1" height="100%" width="calc(100% - 400px)">
+      <Box height="100%">
         <Switch>
           <Route path="/checks/:checkId">
             {(params) => {
@@ -169,7 +169,7 @@ export const CheckPage = () => {
           </Route>
         </Switch>
       </Box>
-    </Flex>
+    </HSplit>
   );
 };
 
