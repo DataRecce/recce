@@ -105,7 +105,8 @@ export function NodeView({ node, onCloseNode }: NodeViewProps) {
       <Box color="gray" paddingLeft={"16px"}>
         <HStack spacing={"8px"}>
           <ResourceTypeTag node={node} />
-          {node.resourceType === "model" && (
+          {(node.resourceType === "model" ||
+            node.resourceType === "snapshot") && (
             <RowCountTag node={node} isInteractive />
           )}
         </HStack>
