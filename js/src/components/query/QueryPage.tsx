@@ -23,7 +23,7 @@ import { RunView } from "../run/RunView";
 import { Run } from "@/lib/api/types";
 import { useLineageGraphContext } from "@/lib/hooks/LineageGraphContext";
 import { QueryForm } from "./QueryForm";
-import { VSplit } from "../split/Split";
+import { HSplit, VSplit } from "../split/Split";
 
 export const QueryPage = () => {
   const {
@@ -119,9 +119,9 @@ export const QueryPage = () => {
         sizes={[40, 60]}
         minSize={100}
         gutterSize={5}
-        style={{ height: "100%" }}
+        style={{ height: "100%", borderTop: "1px solid #CBD5E0" }}
       >
-        <Flex direction="row" height="300px">
+        <HSplit gutterSize={5} sizes={[90, 10]} minSize={300}>
           <Box width="70%" border={"1px solid #CBD5E0"}>
             <SqlEditor
               value={sqlQuery}
@@ -131,15 +131,14 @@ export const QueryPage = () => {
             />
           </Box>
           <QueryForm
-            ml="10px"
             p="5px"
-            width="30%"
             border="1px"
             borderColor="gray.300"
             defaultPrimaryKeys={primaryKeys}
             onPrimaryKeysChange={setPrimaryKeys}
           />
-        </Flex>
+        </HSplit>
+
         <Flex flex="1" direction="column">
           {runType === "query" ? (
             <RunView
