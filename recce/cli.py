@@ -63,7 +63,7 @@ recce_cloud_options = [
                  envvar='GITHUB_TOKEN'),
     click.option('--state-file-host', help='The host to fetch the state file from.', type=click.STRING,
                  envvar='RECCE_STATE_FILE_HOST', default='', hidden=True),
-    click.option('--password', '-p', help='The password to use for compress state file.', type=click.STRING,
+    click.option('--password', '-p', help='The password to encrypt the state file in cloud.', type=click.STRING,
                  envvar='RECCE_STATE_PASSWORD'),
 ]
 
