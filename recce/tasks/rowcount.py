@@ -9,6 +9,8 @@ from recce.tasks.query import QueryMixin
 class RowCountDiffParams(TypedDict, total=False):
     node_names: Optional[list[str]]
     node_ids: Optional[list[str]]
+    select: Optional[str]
+    exclude: Optional[str]
 
 
 class RowCountDiffTask(Task, QueryMixin):
@@ -22,10 +24,10 @@ class RowCountDiffTask(Task, QueryMixin):
         if node is None:
             return None
 
-        if node.resource_type != 'model':
+        if node.resource_type != 'model' and node.resource_type != 'snapshot':
             return None
 
-        if node.config and node.config.materialized not in ['table', 'view', 'incremental']:
+        if node.config and node.config.materialized not in ['table', 'view', 'incremental', 'snapshot']:
             return None
 
         relation = dbt_adapter.create_relation(model_name, base=base)
@@ -43,12 +45,23 @@ class RowCountDiffTask(Task, QueryMixin):
         dbt_adapter = default_context().adapter
 
         query_candidates = []
-        for node_id in self.params.get('node_ids', []):
-            name = dbt_adapter.get_node_name_by_id(node_id)
-            if name:
-                query_candidates.append(name)
-        for node in self.params.get('node_names', []):
-            query_candidates.append(node)
+        if self.params.get('node_ids', []) or self.params.get('node_names', []):
+            for node_id in self.params.get('node_ids', []):
+                name = dbt_adapter.get_node_name_by_id(node_id)
+                if name:
+                    query_candidates.append(name)
+            for node in self.params.get('node_names', []):
+                query_candidates.append(node)
+        elif self.params.get('select', "") or self.params.get('exclude', ""):
+            def countable(unique_id):
+                return unique_id.startswith('model') or unique_id.startswith('snapshot')
+
+            node_ids = dbt_adapter.select_nodes(self.params.get('select', ""), self.params.get('exclude', ""))
+            node_ids = list(filter(countable, node_ids))
+            for node_id in node_ids:
+                name = dbt_adapter.get_node_name_by_id(node_id)
+                if name:
+                    query_candidates.append(name)
 
         # Query row count for nodes that are not cached
         with dbt_adapter.connection_named("query"):
