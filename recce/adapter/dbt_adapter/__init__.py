@@ -619,6 +619,7 @@ class DbtAdapter(BaseAdapter):
         else:
             spec = parse_difference(select_list, exclude_list)
         compiler = Compiler(self.runtime_config)
+        # disable to print compile states
         tmp_func = dbt.compilation.print_compile_stats
         dbt.compilation.print_compile_stats = lambda x: None
         graph = compiler.compile(self.manifest, write=False)
