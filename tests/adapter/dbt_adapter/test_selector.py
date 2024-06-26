@@ -57,3 +57,16 @@ def test_select(dbt_test_helper):
     assert len(node_ids) == 2
     node_ids = adapter.select_nodes("+state:modified")
     assert len(node_ids) == 1
+
+    # Test resource type: snapshot
+    dbt_test_helper.create_snapshot("snapshot_1", csv_data_base, csv_data_curr)
+    dbt_test_helper.create_model("use_snapshot", csv_data_base, csv_data_base, ["snapshot_1"])
+
+    node_ids = adapter.select_nodes('resource_type:snapshot')
+    assert len(node_ids) == 1
+
+    node_ids = adapter.select_nodes('resource_type:snapshot+')
+    assert len(node_ids) == 2
+
+    node_ids = adapter.select_nodes("state:modified,resource_type:snapshot")
+    assert len(node_ids) == 1
