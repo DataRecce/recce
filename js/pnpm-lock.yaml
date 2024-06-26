@@ -101,6 +101,9 @@ dependencies:
   react-icons:
     specifier: ^4.11.0
     version: 4.11.0(react@18.2.0)
+  react-split:
+    specifier: ^2.0.14
+    version: 2.0.14(react@18.2.0)
   reactflow:
     specifier: ^11.10.1
     version: 11.10.1(@types/react@18.2.34)(react-dom@18.2.0)(react@18.2.0)
@@ -7334,6 +7337,16 @@ packages:
       - '@types/react'
     dev: false
 
+  /react-split@2.0.14(react@18.2.0):
+    resolution: {integrity: sha512-bKWydgMgaKTg/2JGQnaJPg51T6dmumTWZppFgEbbY0Fbme0F5TuatAScCLaqommbGQQf/ZT1zaejuPDriscISA==}
+    peerDependencies:
+      react: '*'
+    dependencies:
+      prop-types: 15.8.1
+      react: 18.2.0
+      split.js: 1.6.5
+    dev: false
+
   /react-style-singleton@2.2.1(@types/react@18.2.34)(react@18.2.0):
     resolution: {integrity: sha512-ZWj0fHEMyWkHzKYUr2Bs/4zU6XLmq9HsgBURm7g5pAVfyn49DgUiNgY2d4lXRlYSiCif9YBGpQleewkcqddc7g==}
     engines: {node: '>=10'}
@@ -7660,6 +7673,10 @@ packages:
     resolution: {integrity: sha512-UjgapumWlbMhkBgzT7Ykc5YXUT46F0iKu8SGXq0bcwP5dz/h0Plj6enJqjz1Zbq2l5WaqYnrVbwWOWMyF3F47g==}
     engines: {node: '>=0.10.0'}
     dev: true
+
+  /split.js@1.6.5:
+    resolution: {integrity: sha512-mPTnGCiS/RiuTNsVhCm9De9cCAUsrNFFviRbADdKiiV+Kk8HKp/0fWu7Kr8pi3/yBmsqLFHuXGT9UUZ+CNLwFw==}
+    dev: false
 
   /sprintf-js@1.0.3:
     resolution: {integrity: sha512-D9cPgkvLlV3t3IzL0D0YLvGA9Ahk4PcvVwUbN0dSGr1aP0Nrt4AEnTUbuGvquEC0mA64Gqt1fzirlRs5ibXx8g==}

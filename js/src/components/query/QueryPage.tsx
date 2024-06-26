@@ -23,6 +23,7 @@ import { RunView } from "../run/RunView";
 import { Run } from "@/lib/api/types";
 import { useLineageGraphContext } from "@/lib/hooks/LineageGraphContext";
 import { QueryForm } from "./QueryForm";
+import { HSplit, VSplit } from "../split/Split";
 
 export const QueryPage = () => {
   const {
@@ -114,57 +115,62 @@ export const QueryPage = () => {
           Run
         </Button>
       </Flex>
-      <Flex direction="row" height="300px">
-        <Box width="70%" border={"1px solid #CBD5E0"}>
-          <SqlEditor
-            value={sqlQuery}
-            onChange={setSqlQuery}
-            onRun={() => runQuery("query")}
-            onRunDiff={() => runQuery("query_diff")}
+      <VSplit
+        sizes={[40, 60]}
+        minSize={100}
+        style={{ height: "100%", borderTop: "1px solid #CBD5E0" }}
+      >
+        <HSplit sizes={[90, 10]} minSize={300}>
+          <Box width="70%" border={"1px solid #CBD5E0"}>
+            <SqlEditor
+              value={sqlQuery}
+              onChange={setSqlQuery}
+              onRun={() => runQuery("query")}
+              onRunDiff={() => runQuery("query_diff")}
+            />
+          </Box>
+          <QueryForm
+            p="5px"
+            border="1px"
+            borderColor="gray.300"
+            defaultPrimaryKeys={primaryKeys}
+            onPrimaryKeysChange={setPrimaryKeys}
           />
-        </Box>
-        <QueryForm
-          ml="10px"
-          p="5px"
-          width="30%"
-          border="1px"
-          borderColor="gray.300"
-          defaultPrimaryKeys={primaryKeys}
-          onPrimaryKeysChange={setPrimaryKeys}
-        />
-      </Flex>
-      <Flex flex="1" direction="column">
-        {runType === "query" ? (
-          <RunView
-            key={runId}
-            run={run}
-            error={error}
-            isPending={isPending}
-            onCancel={handleCancel}
-          >
-            {(props) => (
-              <QueryResultView {...props} onAddToChecklist={addToChecklist} />
-            )}
-          </RunView>
-        ) : (
-          <RunView
-            key={runId}
-            isPending={isPending}
-            run={run}
-            error={error}
-            viewOptions={viewOptions}
-            onViewOptionsChanged={setViewOptions}
-            onCancel={handleCancel}
-          >
-            {(props) => (
-              <QueryDiffResultView
-                {...props}
-                onAddToChecklist={addToChecklist}
-              />
-            )}
-          </RunView>
-        )}
-      </Flex>
+        </HSplit>
+
+        <Flex flex="1" direction="column">
+          {runType === "query" ? (
+            <RunView
+              key={runId}
+              run={run}
+              error={error}
+              isPending={isPending}
+              onCancel={handleCancel}
+            >
+              {(props) => (
+                <QueryResultView {...props} onAddToChecklist={addToChecklist} />
+              )}
+            </RunView>
+          ) : (
+            <RunView
+              key={runId}
+              isPending={isPending}
+              run={run}
+              error={error}
+              viewOptions={viewOptions}
+              onViewOptionsChanged={setViewOptions}
+              onCancel={handleCancel}
+            >
+              {(props) => (
+                <QueryDiffResultView
+                  {...props}
+                  onAddToChecklist={addToChecklist}
+                />
+              )}
+            </RunView>
+          )}
+        </Flex>
+      </VSplit>
     </Flex>
   );
 };
