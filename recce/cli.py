@@ -2,6 +2,7 @@ import asyncio
 from typing import List
 
 import click
+import uvicorn
 
 from recce import event
 from recce.config import RecceConfig, RECCE_CONFIG_FILE, RECCE_ERROR_LOG_FILE
@@ -176,7 +177,7 @@ def server(host, port, state_file=None, **kwargs):
     STATE_FILE: The path to the recce state file. Defaults=None, which will be no persistent state.
 
     """
-    import uvicorn
+
     from .server import app, AppState
     from rich.console import Console
 
