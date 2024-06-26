@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 
 export const metadata: Metadata = {
   title: "recce",
-  description: "Recce: a dbt tool",
+  description: "Recce: Data validation toolkit for comprehensive PR review",
 };
 
 export default function RootLayout({
