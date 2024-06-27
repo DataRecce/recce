@@ -103,7 +103,16 @@ export function SchemaDiffView({ check }: SchemaDiffViewProps) {
       }
     }
 
-    for (const node of selectedNodes) {
+    // filter that the resourec_type is mode,seed, source, or snapshot
+    const filteredNodes = selectedNodes.filter(
+      (node) =>
+        node.resourceType === "model" ||
+        node.resourceType === "seed" ||
+        node.resourceType === "source" ||
+        node.resourceType === "snapshot"
+    );
+
+    for (const node of filteredNodes) {
       if (
         isSchemaChanged(node.data.base?.columns, node.data.current?.columns)
       ) {
@@ -112,7 +121,7 @@ export function SchemaDiffView({ check }: SchemaDiffViewProps) {
     }
 
     //sort the selectedNodes from schemaChange and node name
-    selectedNodes.sort((a, b) => {
+    filteredNodes.sort((a, b) => {
       if (changedNodes.includes(a.id) && !changedNodes.includes(b.id)) {
         return -1;
       }
@@ -122,7 +131,7 @@ export function SchemaDiffView({ check }: SchemaDiffViewProps) {
       return a.name.localeCompare(b.name);
     });
 
-    return [selectedNodes, changedNodes];
+    return [filteredNodes, changedNodes];
   }, [params?.node_id, data?.nodes, lineageGraph]);
 
   const [selected, setSelected] = useState<number>(0);
