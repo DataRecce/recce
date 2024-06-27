@@ -77,7 +77,6 @@ export function CheckDescription({ value, onChange }: CheckDescriptionProps) {
 
   return (
     <Text
-      maxHeight="400px"
       overflow="auto"
       fontSize="11pt"
       onClick={handleEdit}

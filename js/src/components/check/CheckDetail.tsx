@@ -235,15 +235,15 @@ export const CheckDetail = ({ checkId }: CheckDetailProps) => {
 
   return (
     <VSplit
-      minSize={200}
+      minSize={100}
+      sizes={[30, 70]}
       style={{ height: "100%", width: "100%", maxHeight: "100%" }}
     >
-      {/* <Flex style={{ contain: "strict" }} flexDirection="column"> */}
       <Box
         style={{ contain: "strict" }}
         display="flex"
         flexDirection="column"
-        overflowY="auto"
+        overflow="auto"
       >
         <Flex p="0px 16px" alignItems="center">
           <CheckBreadcrumb
@@ -350,7 +350,7 @@ export const CheckDetail = ({ checkId }: CheckDetailProps) => {
               <Tab fontSize="10pt">Query</Tab>
             )}
           </TabList>
-          <TabPanels height="100%" flex="1">
+          <TabPanels height="100%" flex="1" style={{ contain: "strict" }}>
             <TabPanel p={0} width="100%" height="100%">
               {runTypeEntry?.RunResultView && (
                 <RunView

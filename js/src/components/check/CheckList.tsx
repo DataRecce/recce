@@ -97,6 +97,7 @@ export const CheckList = ({
             w="full"
             spacing="0"
             flex="1"
+            overflow={"auto"}
           >
             {checks.map((check, index) => (
               <Draggable

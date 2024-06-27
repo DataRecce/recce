@@ -148,13 +148,13 @@ export function SchemaDiffView({ check }: SchemaDiffViewProps) {
   } else if (selected < nodes.length) {
     const node = nodes[selected];
     return (
-      <HSplit sizes={[80, 20]} minSize={200} style={{ height: "100%" }}>
+      <HSplit sizes={[80, 20]} minSize={30} style={{ height: "100%" }}>
         <SchemaView
           base={node.data.base}
           current={node.data.current}
           enableScreenshot={true}
         />
-        <List>
+        <List overflow="auto">
           {nodes.map((node, i) => (
             <NodelistItem
               key={i}
