@@ -398,6 +398,8 @@ export function toDataDiffGrid(
   if (primaryKeys.length === 0) {
     columns.push({
       key: "_index",
+      width: 50,
+      maxWidth: 100,
       name: "",
       cellClass: "index-column",
     });
