@@ -23,6 +23,11 @@ import {
   ModalHeader,
   ModalOverlay,
   Spacer,
+  Tab,
+  TabList,
+  TabPanel,
+  TabPanels,
+  Tabs,
   Tag,
   TagLeftIcon,
   Tooltip,
@@ -229,8 +234,17 @@ export const CheckDetail = ({ checkId }: CheckDetailProps) => {
     : null;
 
   return (
-    <VSplit style={{ height: "100%", width: "100%", maxHeight: "100%" }}>
-      <Box style={{ contain: "size" }}>
+    <VSplit
+      minSize={200}
+      style={{ height: "100%", width: "100%", maxHeight: "100%" }}
+    >
+      {/* <Flex style={{ contain: "strict" }} flexDirection="column"> */}
+      <Box
+        style={{ contain: "strict" }}
+        display="flex"
+        flexDirection="column"
+        overflowY="auto"
+      >
         <Flex p="0px 16px" alignItems="center">
           <CheckBreadcrumb
             name={check?.name || ""}
@@ -318,57 +332,58 @@ export const CheckDetail = ({ checkId }: CheckDetailProps) => {
           </Tooltip>
         </Flex>
 
-        <Box p="8px 16px" minHeight="100px">
+        <Box flex="1" p="8px 16px" minHeight="100px">
           <CheckDescription
             key={check?.check_id}
             value={check?.description}
             onChange={handleUpdateDescription}
           />
         </Box>
-
-        {(check?.type === "query" || check?.type === "query_diff") && (
-          <Accordion defaultIndex={[]} allowToggle>
-            <AccordionItem>
-              <AccordionButton>
-                query
-                <AccordionIcon />
-              </AccordionButton>
-
-              <AccordionPanel>
-                <Box height="400px" width="100%" border="lightgray 1px solid ">
-                  <SqlEditor
-                    value={(check?.params as any)?.sql_template || ""}
-                    options={{ readOnly: true }}
-                  />
-                </Box>
-              </AccordionPanel>
-            </AccordionItem>
-          </Accordion>
-        )}
+        {/* </Flex> */}
       </Box>
 
-      <Box style={{ contain: "size" }}>
-        {runTypeEntry?.RunResultView && (
-          <RunView
-            isPending={rerunPending}
-            isAborting={abort}
-            isCheckDetail={true}
-            run={run}
-            error={rerunError}
-            progress={progress}
-            RunResultView={runTypeEntry.RunResultView}
-            viewOptions={check?.view_options}
-            onViewOptionsChanged={handelUpdateViewOptions}
-            onCancel={handleCancel}
-            onExecuteRun={handleRerun}
-          />
-        )}
-        {check && check.type === "schema_diff" && (
-          <SchemaDiffView check={check} />
-        )}
-        {check && check.type === "lineage_diff" && (
-          <LineageDiffView check={check} />
-        )}
+      <Box style={{ contain: "strict" }}>
+        <Tabs height="100%" display="flex" flexDirection="column">
+          <TabList>
+            <Tab fontSize="10pt">Result</Tab>
+            {(check?.type === "query" || check?.type === "query_diff") && (
+              <Tab fontSize="10pt">Query</Tab>
+            )}
+          </TabList>
+          <TabPanels height="100%" flex="1">
+            <TabPanel p={0} width="100%" height="100%">
+              {runTypeEntry?.RunResultView && (
+                <RunView
+                  isPending={rerunPending}
+                  isAborting={abort}
+                  isCheckDetail={true}
+                  run={run}
+                  error={rerunError}
+                  progress={progress}
+                  RunResultView={runTypeEntry.RunResultView}
+                  viewOptions={check?.view_options}
+                  onViewOptionsChanged={handelUpdateViewOptions}
+                  onCancel={handleCancel}
+                  onExecuteRun={handleRerun}
+                />
+              )}
+              {check && check.type === "schema_diff" && (
+                <SchemaDiffView check={check} />
+              )}
+              {check && check.type === "lineage_diff" && (
+                <LineageDiffView check={check} />
+              )}
+            </TabPanel>
+            {(check?.type === "query" || check?.type === "query_diff") && (
+              <TabPanel p={0} height="100%" width="100%">
+                <SqlEditor
+                  value={(check?.params as any)?.sql_template || ""}
+                  options={{ readOnly: true }}
+                />
+              </TabPanel>
+            )}
+          </TabPanels>
+        </Tabs>
       </Box>
       <Modal
         isOpen={isPresetCheckTemplateOpen}

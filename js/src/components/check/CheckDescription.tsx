@@ -55,13 +55,13 @@ export function CheckDescription({ value, onChange }: CheckDescriptionProps) {
 
   if (editing) {
     return (
-      <Flex direction="column" align="flex-end">
+      <Flex direction="column" align="flex-end" height="100%">
         <Textarea
-          h="200px"
           value={tempValue}
           onChange={handleChange}
           onKeyDown={handleKeyDown}
           ref={textareaRef}
+          flex={1}
         ></Textarea>
         <Flex gap="12px" alignItems="flex-end">
           <Link onClick={handleCancel} colorScheme="blue">
@@ -81,7 +81,7 @@ export function CheckDescription({ value, onChange }: CheckDescriptionProps) {
       overflow="auto"
       fontSize="11pt"
       onClick={handleEdit}
-      whiteSpace="pre-line"
+      whiteSpace="pre"
       color={!value ? "lightgray" : "inherit"}
     >
       {!value ? "Add description here" : value}
