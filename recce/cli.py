@@ -2,9 +2,11 @@ import asyncio
 from typing import List
 
 import click
+import uvicorn
 
 from recce import event
 from recce.config import RecceConfig, RECCE_CONFIG_FILE, RECCE_ERROR_LOG_FILE
+from recce.pull_request import fetch_pr_metadata
 from recce.run import cli_run, check_github_ci_env
 from recce.state import RecceStateLoader
 from recce.summary import generate_markdown_summary
@@ -60,7 +62,9 @@ recce_cloud_options = [
     click.option('--cloud-token', help='The token used by Recce Cloud.', type=click.STRING,
                  envvar='GITHUB_TOKEN'),
     click.option('--state-file-host', help='The host to fetch the state file from.', type=click.STRING,
-                 envvar='RECCE_STATE_FILE_HOST', default='cloud.datarecce.io', hidden=True),
+                 envvar='RECCE_STATE_FILE_HOST', default='', hidden=True),
+    click.option('--password', '-p', help='The password to encrypt the state file in cloud.', type=click.STRING,
+                 envvar='RECCE_STATE_PASSWORD'),
 ]
 
 
@@ -173,7 +177,7 @@ def server(host, port, state_file=None, **kwargs):
     STATE_FILE: The path to the recce state file. Defaults=None, which will be no persistent state.
 
     """
-    import uvicorn
+
     from .server import app, AppState
     from rich.console import Console
 
@@ -186,13 +190,14 @@ def server(host, port, state_file=None, **kwargs):
         cloud_options = {
             'host': kwargs.get('state_file_host'),
             'token': kwargs.get('cloud_token'),
+            'password': kwargs.get('password'),
         }
     try:
         recce_state = RecceStateLoader(review_mode=is_review, cloud_mode=is_cloud,
                                        state_file=state_file, cloud_options=cloud_options)
     except Exception as e:
-        console.print("[[red]Error[/red]] Failed to load recce state file.")
-        console.print(f"  Reason: {e}")
+        console.print("[[red]Error[/red]] Failed to load recce state file")
+        console.print(f"Reason: {e}")
         exit(1)
     if not recce_state.verify():
         error, hint = recce_state.error_and_hint
@@ -245,13 +250,14 @@ def run(output, **kwargs):
     cloud_options = {
         'host': kwargs.get('state_file_host'),
         'token': kwargs.get('cloud_token'),
+        'password': kwargs.get('password'),
     } if cloud_mode else None
     try:
         recce_state = RecceStateLoader(review_mode=False, cloud_mode=cloud_mode,
                                        state_file=state_file, cloud_options=cloud_options)
     except Exception as e:
-        console.print("[[red]Error[/red]] Failed to load recce state file.")
-        console.print(f"  Reason: {e}")
+        console.print("[[red]Error[/red]] Failed to load recce state file")
+        console.print(f"Reason: {e}")
         exit(1)
     if not recce_state.verify():
         error, hint = recce_state.error_and_hint
@@ -281,14 +287,15 @@ def summary(state_file, **kwargs):
     cloud_options = {
         'host': kwargs.get('state_file_host'),
         'token': kwargs.get('cloud_token'),
+        'password': kwargs.get('password'),
     } if cloud_mode else None
 
     try:
         recce_state = RecceStateLoader(review_mode=True, cloud_mode=cloud_mode,
                                        state_file=state_file, cloud_options=cloud_options)
     except Exception as e:
-        console.print("[[red]Error[/red]] Failed to load recce state file.")
-        console.print(f"  Reason: {e}")
+        console.print("[[red]Error[/red]] Failed to load recce state file")
+        console.print(f"Reason: {e}")
         exit(1)
     if not recce_state.verify():
         error, hint = recce_state.error_and_hint
@@ -311,7 +318,7 @@ def summary(state_file, **kwargs):
 @click.option('--cloud-token', help='The token used by Recce Cloud.', type=click.STRING,
               envvar='GITHUB_TOKEN')
 @click.option('--state-file-host', help='The host to fetch the state file from.', type=click.STRING,
-              envvar='RECCE_STATE_FILE_HOST', default='cloud.datarecce.io', hidden=True)
+              envvar='RECCE_STATE_FILE_HOST', default='', hidden=True)
 @click.option('--force', '-f', help='Bypasses the confirmation prompt. Purge the state file directly.', is_flag=True)
 @add_options(recce_options)
 def purge_cloud_state(**kwargs):
@@ -321,25 +328,36 @@ def purge_cloud_state(**kwargs):
     from rich.console import Console
     handle_debug_flag(**kwargs)
     console = Console()
+    recce_state = None
     cloud_options = {
         'host': kwargs.get('state_file_host'),
         'token': kwargs.get('cloud_token'),
     }
     force_to_purge = kwargs.get('force', False)
+
     try:
         console.rule('Check Recce State from Cloud')
         recce_state = RecceStateLoader(review_mode=False, cloud_mode=True,
                                        state_file=None, cloud_options=cloud_options)
-    except Exception as e:
-        console.print("[[red]Error[/red]] Failed to load recce state file.")
-        console.print(f"  Reason: {e}")
-        return 1
+    except Exception:
+        console.print("[[yellow]Skip[/yellow]] Cannot access existing state file from cloud. Purge it directly.")
 
-    if not recce_state.verify():
-        error, hint = recce_state.error_and_hint
-        console.print(f"[[red]Error[/red]] {error}")
-        console.print(f"{hint}")
-        return 1
+    if recce_state is None:
+        try:
+            if force_to_purge is True or click.confirm('\nDo you want to purge the state file?'):
+                host = cloud_options.get('host')
+                token = cloud_options.get('token')
+                pr_info = fetch_pr_metadata(github_token=token)
+                rc, err_msg = RecceStateLoader.purge_cloud_state(host=host, pr_info=pr_info, token=token)
+                if rc is True:
+                    console.rule('Purged Successfully')
+                else:
+                    console.rule('Failed to Purge', style='red')
+                    console.print(f'Reason: {err_msg}')
+
+        except click.exceptions.Abort:
+            pass
+        return 0
 
     info = recce_state.info()
     if info is None:

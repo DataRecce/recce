@@ -1,8 +1,8 @@
 """Define the type to serialize/de-serialize the state of the recce instance."""
-import gzip
 import json
 import logging
 import os
+import tempfile
 import threading
 import time
 from datetime import datetime
@@ -22,7 +22,7 @@ logger = logging.getLogger('uvicorn')
 
 RECCE_CLOUD_API_HOST = os.environ.get('RECCE_CLOUD_API_HOST', 'https://staging.cloud.datarecce.io')
 RECCE_STATE_FILE = 'recce-state.json'
-RECCE_STATE_COMPRESSED_FILE = f'{RECCE_STATE_FILE}.gz'
+RECCE_STATE_COMPRESSED_FILE = f'{RECCE_STATE_FILE}.zip'
 
 
 def check_s3_bucket(bucket_name: str):
@@ -96,7 +96,7 @@ class RecceState(BaseModel):
         return state
 
     @staticmethod
-    def from_file(file_path: str, compressed: bool = False):
+    def from_file(file_path: str, compressed: bool = False, compress_passwd: str = None):
         """
         Load the state from a recce state file.
         """
@@ -107,9 +107,22 @@ class RecceState(BaseModel):
             raise FileNotFoundError(f"State file not found: {file_path}")
 
         if compressed:
-            with gzip.open(file_path, 'rb') as f:
-                json_content = f.read().decode()
-            state = RecceState.from_json(json_content)
+            import pyminizip
+            cwd = os.getcwd()
+            try:
+                with tempfile.TemporaryDirectory() as tmp_dir:
+                    tmp_file = f'{tmp_dir}/{RECCE_STATE_FILE}'
+                    pyminizip.uncompress(file_path, compress_passwd, tmp_dir, 0)
+                    with open(tmp_file, 'r') as f:
+                        json_content = f.read()
+                    state = RecceState.from_json(json_content)
+            except Exception as e:
+                error_msg = str(e)
+                if '-3' in error_msg:
+                    raise Exception("Invalid password to uncompress state file.")
+                raise Exception(f"Failed to uncompress state file: {error_msg}")
+            finally:
+                os.chdir(cwd)
         else:
             with open(file_path, 'r') as f:
                 json_content = f.read()
@@ -149,7 +162,15 @@ class RecceStateLoader:
 
     def verify(self) -> bool:
         if self.cloud_mode:
-            pass
+            if self.cloud_options.get('token') is None:
+                self.error_message = 'No token is provided to access Recce Cloud.'
+                self.hint_message = 'Please provide a token in the command argument.'
+                return False
+            if not self.cloud_options.get('host'):
+                if self.cloud_options.get('password') is None:
+                    self.error_message = 'No password is provided to access the state file in Recce Cloud.'
+                    self.hint_message = 'Please provide a password with the option "--password <compress-password>".'
+                    return False
         else:
             if self.review_mode is True and self.state_file is None:
                 self.error_message = 'Recce can not launch without a state file.'
@@ -227,12 +248,17 @@ class RecceStateLoader:
 
     def purge(self) -> bool:
         if self.cloud_mode is True:
-            # self.error_message = 'Purging the state is not supported in cloud mode.'
-            # return False
             if self.cloud_options.get('host', '').startswith('s3://'):
-                return self._purge_state_from_s3_bucket()
+                rc, err_msg = RecceStateLoader._purge_state_from_s3_bucket(self.cloud_options.get('host', ''),
+                                                                           self.pr_info)
+                if err_msg:
+                    self.error_message = err_msg
+                return rc
             else:
-                return self._purge_state_from_cloud()
+                rc, err_msg = RecceStateLoader.purge_cloud_state(self.cloud_options.get('token'), self.pr_info)
+                if err_msg:
+                    self.error_message = err_msg
+                return rc
         else:
             if self.state_file is not None:
                 try:
@@ -243,6 +269,13 @@ class RecceStateLoader:
             else:
                 self.error_message = 'No state file is provided. Skip removing the state file.'
                 return False
+
+    @staticmethod
+    def purge_cloud_state(host: str, pr_info: PullRequestInfo, token: str = None) -> (bool, str):
+        if host.startswith('s3://'):
+            return RecceStateLoader._purge_state_from_s3_bucket(host, pr_info)
+        else:
+            return RecceStateLoader._purge_state_from_cloud(token, pr_info)
 
     def _get_presigned_url(self, pr_info: PullRequestInfo, artifact_name: str, method: str = 'upload') -> str:
         import requests
@@ -284,6 +317,7 @@ class RecceStateLoader:
 
         presigned_url = self._get_presigned_url(self.pr_info, RECCE_STATE_COMPRESSED_FILE, method='download')
 
+        compress_passwd = self.cloud_options.get('password')
         with tempfile.NamedTemporaryFile() as tmp:
             response = requests.get(presigned_url)
             if response.status_code == 404:
@@ -294,7 +328,7 @@ class RecceStateLoader:
                 raise Exception(f'{response.status_code} Failed to download the state file from Recce Cloud.')
             with open(tmp.name, 'wb') as f:
                 f.write(response.content)
-            return RecceState.from_file(tmp.name, compressed=True)
+            return RecceState.from_file(tmp.name, compressed=True, compress_passwd=compress_passwd)
 
     def _load_state_from_s3_bucket(self) -> Union[RecceState, None]:
         import boto3
@@ -307,6 +341,7 @@ class RecceStateLoader:
         if rc is False:
             raise Exception(error_message)
 
+        compress_passwd = self.cloud_options.get('password')
         with tempfile.NamedTemporaryFile() as tmp:
             try:
                 s3_client.download_file(s3_bucket_name, s3_bucket_key, tmp.name)
@@ -317,7 +352,7 @@ class RecceStateLoader:
                     return None
                 else:
                     raise e
-            return RecceState.from_file(tmp.name, compressed=True)
+            return RecceState.from_file(tmp.name, compressed=True, compress_passwd=compress_passwd)
 
     def _export_state_to_cloud(self) -> Union[str, None]:
         if (self.pr_info is None) or (self.pr_info.id is None) or (self.pr_info.repository is None):
@@ -335,8 +370,9 @@ class RecceStateLoader:
         import requests
 
         presigned_url = self._get_presigned_url(self.pr_info, RECCE_STATE_COMPRESSED_FILE, method='upload')
+        compress_passwd = self.cloud_options.get('password')
         with tempfile.NamedTemporaryFile() as tmp:
-            self._export_state_to_file(tmp.name, compress=True)
+            self._export_state_to_file(tmp.name, compress=True, compress_passwd=compress_passwd)
             response = requests.put(presigned_url, data=open(tmp.name, 'rb').read())
             if response.status_code != 200:
                 self.error_message = response.text
@@ -354,12 +390,14 @@ class RecceStateLoader:
         if rc is False:
             raise Exception(error_message)
 
+        compress_passwd = self.cloud_options.get('password')
         with tempfile.NamedTemporaryFile() as tmp:
-            self._export_state_to_file(tmp.name, compress=True)
+            self._export_state_to_file(tmp.name, compress=True, compress_passwd=compress_passwd)
             s3_client.upload_file(tmp.name, s3_bucket_name, s3_bucket_key)
         return f'The state file is uploaded to \' s3://{s3_bucket_name}/{s3_bucket_key}\''
 
-    def _export_state_to_file(self, file_path: Optional[str] = None, compress: bool = False) -> str:
+    def _export_state_to_file(self, file_path: Optional[str] = None, compress: bool = False,
+                              compress_passwd: str = None) -> str:
         """
         Store the state to a file. Store happens when terminating the server or run instance.
         """
@@ -367,37 +405,46 @@ class RecceStateLoader:
         file_path = file_path or self.state_file
         json_data = self.state.to_json()
         if compress:
-            with gzip.open(file_path, 'wb') as f:
-                f.write(json_data.encode())
+            import pyminizip
+            cwd = os.getcwd()
+            try:
+                with tempfile.TemporaryDirectory() as tmp_dir:
+                    tmp_file = f'{tmp_dir}/{RECCE_STATE_FILE}'
+                    with open(tmp_file, 'w') as f:
+                        f.write(json_data)
+                    pyminizip.compress(tmp_file, None, file_path, compress_passwd, 9)
+            finally:
+                os.chdir(cwd)
             return f'The state file is stored at \'{file_path}\''
         else:
             with open(file_path, 'w') as f:
                 f.write(json_data)
         return f'The state file is stored at \'{file_path}\''
 
-    def _purge_state_from_cloud(self) -> bool:
+    @staticmethod
+    def _purge_state_from_cloud(token: str, pr_info: PullRequestInfo) -> (bool, str):
         import requests
         logger.debug('Purging the state from Recce Cloud...')
-        token = self.cloud_options.get('token')
-        api_url = f'{RECCE_CLOUD_API_HOST}/api/v1/{self.pr_info.repository}/pulls/{self.pr_info.id}/artifacts'
+        token = token
+        api_url = f'{RECCE_CLOUD_API_HOST}/api/v1/{pr_info.repository}/pulls/{pr_info.id}/artifacts'
         headers = {
             'Authorization': f'Bearer {token}'
         }
         response = requests.delete(api_url, headers=headers)
         if response.status_code != 204:
-            self.error_message = response.text
-            return False
-        return True
+            return False, response.text
+        return True, None
 
-    def _purge_state_from_s3_bucket(self) -> bool:
+    @staticmethod
+    def _purge_state_from_s3_bucket(host: str, pr_info: PullRequestInfo) -> (bool, str):
         import boto3
         from rich.console import Console
         console = Console()
         delete_objects = []
         logger.debug('Purging the state from AWS S3 bucket...')
         s3_client = boto3.client('s3')
-        s3_bucket_name = self.cloud_options.get('host').replace('s3://', '')
-        s3_key_prefix = f'github/{self.pr_info.repository}/pulls/{self.pr_info.id}/'
+        s3_bucket_name = host.replace('s3://', '')
+        s3_key_prefix = f'github/{pr_info.repository}/pulls/{pr_info.id}/'
         list_response = s3_client.list_objects_v2(Bucket=s3_bucket_name, Prefix=s3_key_prefix)
         if 'Contents' in list_response:
             for obj in list_response['Contents']:
@@ -405,9 +452,9 @@ class RecceStateLoader:
                 delete_objects.append({'Key': key})
                 console.print(f'[green]Deleted[/green]: {key}')
         else:
-            return False
+            return False, 'No state file found in the S3 bucket.'
 
         delete_response = s3_client.delete_objects(Bucket=s3_bucket_name, Delete={'Objects': delete_objects})
         if 'Deleted' not in delete_response:
-            return False
-        return True
+            return False, 'Failed to delete the state file from the S3 bucket.'
+        return True, None
