@@ -7,7 +7,7 @@ import { select } from "@/lib/api/select";
 import { HSplit } from "../split/Split";
 import { Box, Center, Flex, Icon, List, ListItem } from "@chakra-ui/react";
 import { LineageGraphNode } from "../lineage/lineage";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import {
   getIconForChangeStatus,
   getIconForResourceType,
@@ -30,16 +30,14 @@ const NodelistItem = ({
   node,
   selected,
   onSelect,
+  schemaChanged,
 }: {
   node: LineageGraphNode;
   selected: boolean;
   onSelect: (nodeId: string) => void;
+  schemaChanged: boolean;
 }) => {
   const { icon } = getIconForResourceType(node.resourceType);
-  const schemaChanged = isSchemaChanged(
-    node.data.base?.columns,
-    node.data.current?.columns
-  );
 
   return (
     <Flex
@@ -87,22 +85,47 @@ export function SchemaDiffView({ check }: SchemaDiffViewProps) {
     enabled: !params?.node_id,
   });
 
-  let nodes: LineageGraphNode[] = [];
-  const [selected, setSelected] = useState<number>(0);
+  const [nodes, changedNodes] = useMemo(() => {
+    const selectedNodes: LineageGraphNode[] = [];
+    const changedNodes: string[] = [];
 
-  if (params?.node_id) {
-    const node = lineageGraph?.nodes[params.node_id];
-    if (node) {
-      nodes.push(node);
-    }
-  } else {
-    for (const nodeId of data?.nodes || []) {
-      const node = lineageGraph?.nodes[nodeId];
+    if (params?.node_id) {
+      const node = lineageGraph?.nodes[params.node_id];
       if (node) {
-        nodes.push(node);
+        selectedNodes.push(node);
+      }
+    } else {
+      for (const nodeId of data?.nodes || []) {
+        const node = lineageGraph?.nodes[nodeId];
+        if (node) {
+          selectedNodes.push(node);
+        }
       }
     }
-  }
+
+    for (const node of selectedNodes) {
+      if (
+        isSchemaChanged(node.data.base?.columns, node.data.current?.columns)
+      ) {
+        changedNodes.push(node.id);
+      }
+    }
+
+    //sort the selectedNodes from schemaChange and node name
+    selectedNodes.sort((a, b) => {
+      if (changedNodes.includes(a.id) && !changedNodes.includes(b.id)) {
+        return -1;
+      }
+      if (!changedNodes.includes(a.id) && changedNodes.includes(b.id)) {
+        return 1;
+      }
+      return a.name.localeCompare(b.name);
+    });
+
+    return [selectedNodes, changedNodes];
+  }, [params?.node_id, data?.nodes, lineageGraph]);
+
+  const [selected, setSelected] = useState<number>(0);
 
   if (isLoading) {
     return (
@@ -136,6 +159,7 @@ export function SchemaDiffView({ check }: SchemaDiffViewProps) {
             <NodelistItem
               key={i}
               node={node}
+              schemaChanged={changedNodes.includes(node.id)}
               selected={i === selected}
               onSelect={() => {
                 const index = i;
