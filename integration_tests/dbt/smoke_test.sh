@@ -41,9 +41,9 @@ if ! [ -e recce_state.json ]; then
 fi
 
 # row count diff to modified table models
-model=$(cat recce_state.json | jq '.runs[0].params.node_ids[0]' | tr -d '"')
+model=$(cat recce_state.json | jq '.runs[0].result | keys | .[0]' | tr -d '"')
 run_type=$(cat recce_state.json | jq '.runs[0]'.type | tr -d '"')
-assert_string_value $model "model.jaffle_shop.customers"
+assert_string_value $model "customers"
 assert_string_value $run_type "row_count_diff"
 
 # pull request information
