@@ -35,11 +35,29 @@ class RecceConfig(metaclass=SingletonMeta):
     def generate_template(self):
         data = yaml.CommentedMap(
             github={'repo': ''},
-            checks=[])
+            checks=yaml.CommentedSeq())
         data.yaml_set_comment_before_after_key('github', before='[Optional] GitHub settings')
         data.yaml_set_comment_before_after_key('checks',
                                                before='Recce Preset Checks',
                                                after=f'Example of preset check: {RECCE_PRESET_CHECK_EXAMPLE}')
+
+        # Define default checks
+        default_checks = [
+            yaml.CommentedMap(
+                name='Row count diff of modified and its downstream models',
+                description='<Check Description>',
+                type='row_count_diff',
+                params={'select': 'state:modified+'}
+            ),
+            yaml.CommentedMap(
+                name='Schema diff of all',
+                description='<Check Description>',
+                type='schema_diff',
+            )
+        ]
+
+        for check in default_checks:
+            data['checks'].append(check)
 
         return data
 
