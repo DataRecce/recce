@@ -45,9 +45,9 @@ class RecceConfig(metaclass=SingletonMeta):
         default_checks = [
             yaml.CommentedMap(
                 name='Preset check - Row count diff',
-                description='Row count diff of modified and its downstream table models',
+                description='Row count diff of the modified table models',
                 type='row_count_diff',
-                params={'select': 'state:modified+,config.materialized:table'},
+                params={'select': 'state:modified,config.materialized:table'},
             ),
             yaml.CommentedMap(
                 name='Preset check - Schema diff',
