@@ -211,13 +211,6 @@ async def cli_run(output_state_file: str, **kwargs):
     dbt_adaptor: DbtAdapter = ctx.adapter
     dbt_adaptor.print_lineage_info()
 
-    # Execute the default runs
-    console.rule("Default queries")
-    if not is_skip_query:
-        await execute_default_runs(ctx)
-    else:
-        print("Skip querying row counts")
-
     # Execute the preset checks
     rc = 0
     preset_checks = RecceConfig().get('checks')
