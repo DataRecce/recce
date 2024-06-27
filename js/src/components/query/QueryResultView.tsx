@@ -83,7 +83,7 @@ function toDataGrid(result: DataFrame, options: QueryDataGridOptions) {
   columns.push({
     key: "_index",
     name: "",
-    width: 10,
+    width: 50,
     cellClass: "index-column",
   });
 

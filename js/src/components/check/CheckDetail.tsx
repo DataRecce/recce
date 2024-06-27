@@ -23,6 +23,11 @@ import {
   ModalHeader,
   ModalOverlay,
   Spacer,
+  Tab,
+  TabList,
+  TabPanel,
+  TabPanels,
+  Tabs,
   Tag,
   TagLeftIcon,
   Tooltip,
@@ -57,6 +62,7 @@ import { formatDistanceToNow } from "date-fns";
 import { LineageDiffView } from "./LineageDiffView";
 import { findByRunType } from "../run/registry";
 import { PresetCheckTemplateView } from "./PresetCheckTemplateView";
+import { VSplit } from "../split/Split";
 
 interface CheckDetailProps {
   checkId: string;
@@ -228,144 +234,156 @@ export const CheckDetail = ({ checkId }: CheckDetailProps) => {
     : null;
 
   return (
-    <Flex height="100%" width="100%" maxHeight="100%" direction="column">
-      <Flex p="0px 16px" alignItems="center">
-        <CheckBreadcrumb
-          name={check?.name || ""}
-          setName={(name) => {
-            mutate({ name });
-          }}
-        />
-        <Spacer />
-        {isPresetCheck && (
-          <Tooltip label="Preset Check defined in recce config">
-            <Tag size="sm">
-              <TagLeftIcon boxSize={"14px"} as={CiBookmark} />
-              Preset
-            </Tag>
-          </Tooltip>
-        )}
-        <Menu>
-          <MenuButton
-            isRound={true}
-            as={IconButton}
-            icon={<Icon as={VscKebabVertical} />}
-            variant="ghost"
+    <VSplit
+      minSize={100}
+      sizes={[30, 70]}
+      style={{ height: "100%", width: "100%", maxHeight: "100%" }}
+    >
+      <Box
+        style={{ contain: "strict" }}
+        display="flex"
+        flexDirection="column"
+        overflow="auto"
+      >
+        <Flex p="0px 16px" alignItems="center">
+          <CheckBreadcrumb
+            name={check?.name || ""}
+            setName={(name) => {
+              mutate({ name });
+            }}
           />
-          <MenuList>
-            <MenuItem
-              icon={<IoMdCodeWorking />}
-              onClick={() => {
-                setOverlay(<Overlay />);
-                onPresetCheckTemplateOpen();
-              }}
+          <Spacer />
+          {isPresetCheck && (
+            <Tooltip label="Preset Check defined in recce config">
+              <Tag size="sm">
+                <TagLeftIcon boxSize={"14px"} as={CiBookmark} />
+                Preset
+              </Tag>
+            </Tooltip>
+          )}
+          <Menu>
+            <MenuButton
+              isRound={true}
+              as={IconButton}
+              icon={<Icon as={VscKebabVertical} />}
+              variant="ghost"
+            />
+            <MenuList>
+              <MenuItem
+                icon={<IoMdCodeWorking />}
+                onClick={() => {
+                  setOverlay(<Overlay />);
+                  onPresetCheckTemplateOpen();
+                }}
+              >
+                Get Preset Check Template
+              </MenuItem>
+              <MenuItem icon={<DeleteIcon />} onClick={() => handleDelete()}>
+                Delete
+              </MenuItem>
+            </MenuList>
+          </Menu>
+
+          {relativeTime && (
+            <Box
+              textOverflow="ellipsis"
+              whiteSpace="nowrap"
+              overflow="hidden"
+              fontSize="10pt"
             >
-              Get Preset Check Template
-            </MenuItem>
-            <MenuItem icon={<DeleteIcon />} onClick={() => handleDelete()}>
-              Delete
-            </MenuItem>
-          </MenuList>
-        </Menu>
+              {relativeTime}
+            </Box>
+          )}
 
-        {relativeTime && (
-          <Box
-            textOverflow="ellipsis"
-            whiteSpace="nowrap"
-            overflow="hidden"
-            fontSize="10pt"
-          >
-            {relativeTime}
-          </Box>
-        )}
+          {runTypeEntry?.RunResultView && (
+            <Tooltip label="Rerun">
+              <IconButton
+                isRound={true}
+                isLoading={rerunPending}
+                variant="ghost"
+                aria-label="Rerun"
+                icon={<RepeatIcon />}
+                onClick={() => handleRerun()}
+              />
+            </Tooltip>
+          )}
 
-        {runTypeEntry?.RunResultView && (
-          <Tooltip label="Rerun">
+          <Tooltip label="Copy markdown">
             <IconButton
               isRound={true}
-              isLoading={rerunPending}
               variant="ghost"
-              aria-label="Rerun"
-              icon={<RepeatIcon />}
-              onClick={() => handleRerun()}
+              aria-label="Copy markdown"
+              icon={<CopyIcon />}
+              onClick={() => handleCopy()}
             />
           </Tooltip>
-        )}
 
-        <Tooltip label="Copy markdown">
-          <IconButton
-            isRound={true}
-            variant="ghost"
-            aria-label="Copy markdown"
-            icon={<CopyIcon />}
-            onClick={() => handleCopy()}
-          />
-        </Tooltip>
-
-        <Tooltip
-          label={check?.is_checked ? "Mark as unchecked" : "Mark as checked"}
-        >
-          <Button
-            size="sm"
-            colorScheme={check?.is_checked ? "green" : "gray"}
-            leftIcon={<CheckCircleIcon />}
-            onClick={() => handleCheck()}
+          <Tooltip
+            label={check?.is_checked ? "Mark as unchecked" : "Mark as checked"}
           >
-            {check?.is_checked ? "Checked" : "Unchecked"}
-          </Button>
-        </Tooltip>
-      </Flex>
+            <Button
+              size="sm"
+              colorScheme={check?.is_checked ? "green" : "gray"}
+              leftIcon={<CheckCircleIcon />}
+              onClick={() => handleCheck()}
+            >
+              {check?.is_checked ? "Checked" : "Unchecked"}
+            </Button>
+          </Tooltip>
+        </Flex>
 
-      <Box p="8px 16px" minHeight="100px">
-        <CheckDescription
-          key={check?.check_id}
-          value={check?.description}
-          onChange={handleUpdateDescription}
-        />
+        <Box flex="1" p="8px 16px" minHeight="100px">
+          <CheckDescription
+            key={check?.check_id}
+            value={check?.description}
+            onChange={handleUpdateDescription}
+          />
+        </Box>
+        {/* </Flex> */}
       </Box>
 
-      {(check?.type === "query" || check?.type === "query_diff") && (
-        <Accordion defaultIndex={[]} allowToggle>
-          <AccordionItem>
-            <AccordionButton>
-              query
-              <AccordionIcon />
-            </AccordionButton>
-
-            <AccordionPanel>
-              <Box height="400px" width="100%" border="lightgray 1px solid ">
+      <Box style={{ contain: "strict" }}>
+        <Tabs height="100%" display="flex" flexDirection="column">
+          <TabList>
+            <Tab fontSize="10pt">Result</Tab>
+            {(check?.type === "query" || check?.type === "query_diff") && (
+              <Tab fontSize="10pt">Query</Tab>
+            )}
+          </TabList>
+          <TabPanels height="100%" flex="1" style={{ contain: "strict" }}>
+            <TabPanel p={0} width="100%" height="100%">
+              {runTypeEntry?.RunResultView && (
+                <RunView
+                  isPending={rerunPending}
+                  isAborting={abort}
+                  isCheckDetail={true}
+                  run={run}
+                  error={rerunError}
+                  progress={progress}
+                  RunResultView={runTypeEntry.RunResultView}
+                  viewOptions={check?.view_options}
+                  onViewOptionsChanged={handelUpdateViewOptions}
+                  onCancel={handleCancel}
+                  onExecuteRun={handleRerun}
+                />
+              )}
+              {check && check.type === "schema_diff" && (
+                <SchemaDiffView check={check} />
+              )}
+              {check && check.type === "lineage_diff" && (
+                <LineageDiffView check={check} />
+              )}
+            </TabPanel>
+            {(check?.type === "query" || check?.type === "query_diff") && (
+              <TabPanel p={0} height="100%" width="100%">
                 <SqlEditor
                   value={(check?.params as any)?.sql_template || ""}
                   options={{ readOnly: true }}
                 />
-              </Box>
-            </AccordionPanel>
-          </AccordionItem>
-        </Accordion>
-      )}
-
-      <Box style={{ contain: "size" }} flex="1 1 0%">
-        {runTypeEntry?.RunResultView && (
-          <RunView
-            isPending={rerunPending}
-            isAborting={abort}
-            isCheckDetail={true}
-            run={run}
-            error={rerunError}
-            progress={progress}
-            RunResultView={runTypeEntry.RunResultView}
-            viewOptions={check?.view_options}
-            onViewOptionsChanged={handelUpdateViewOptions}
-            onCancel={handleCancel}
-            onExecuteRun={handleRerun}
-          />
-        )}
-        {check && check.type === "schema_diff" && (
-          <SchemaDiffView check={check} />
-        )}
-        {check && check.type === "lineage_diff" && (
-          <LineageDiffView check={check} />
-        )}
+              </TabPanel>
+            )}
+          </TabPanels>
+        </Tabs>
       </Box>
       <Modal
         isOpen={isPresetCheckTemplateOpen}
@@ -398,7 +416,7 @@ export const CheckDetail = ({ checkId }: CheckDetailProps) => {
           </ModalBody>
         </ModalContent>
       </Modal>
-    </Flex>
+    </VSplit>
   );
 };
 

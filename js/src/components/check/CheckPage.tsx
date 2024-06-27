@@ -114,13 +114,18 @@ export const CheckPage = () => {
   }
 
   return (
-    <HSplit style={{ height: "100%" }} minSize={300} sizes={[10, 90]}>
+    <HSplit style={{ height: "100%" }} minSize={50} sizes={[20, 80]}>
       <Box
         borderRight="lightgray solid 1px"
         height="100%"
         style={{ contain: "size" }}
       >
-        <VStack spacing={0} align="flex-end" h="100%">
+        <VStack
+          spacing={0}
+          align="flex-end"
+          h="100%"
+          style={{ contain: "strict" }}
+        >
           <Tooltip label="Copy checklist to the clipboard">
             <IconButton
               mr="10px"

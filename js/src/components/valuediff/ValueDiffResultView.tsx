@@ -124,6 +124,7 @@ export function ValueDiffResultView({ run }: ValueDiffResultViewProp) {
     {
       key: "__is_pk__",
       name: "",
+      width: 30,
       maxWidth: 30,
       renderCell: ({ row }) => {
         return (
