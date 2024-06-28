@@ -665,11 +665,17 @@ class DbtAdapter(BaseAdapter):
         self.curr_catalog = load_catalog(data=artifacts.current.get('catalog'))
 
         self.manifest = as_manifest(self.curr_manifest)
-        self.previous_state = PreviousState(
-            Path('target-base'),
-            Path(self.runtime_config.target_path),
-            Path(self.runtime_config.project_root)
-        )
+        if dbt_version < 'v1.6':
+            self.previous_state = PreviousState(
+                Path('target-base'),
+                Path(self.runtime_config.target_path),
+            )
+        else:
+            self.previous_state = PreviousState(
+                Path('target-base'),
+                Path(self.runtime_config.target_path),
+                Path(self.runtime_config.project_root)
+            )
         self.previous_state.manifest = as_manifest(self.base_manifest)
 
         # The dependencies of the review mode is derived from manifests.
