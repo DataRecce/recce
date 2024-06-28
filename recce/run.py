@@ -10,7 +10,6 @@ from rich.table import Table
 from recce.apis.check_func import create_check_from_run, create_check_without_run, purge_preset_checks
 from recce.apis.run_func import submit_run
 from recce.config import RecceConfig
-from recce.core import RecceContext
 from recce.models.types import RunType
 from recce.pull_request import fetch_pr_metadata
 from recce.state import RecceState
@@ -28,56 +27,6 @@ def check_github_ci_env(**kwargs):
     github_pull_request_url = f"{github_server_url}/{github_repository}/pull/{github_ref_name}"
 
     return True, github_pull_request_url
-
-
-async def execute_default_runs(context: RecceContext):
-    """
-    Execute the default runs. It includes
-
-    1. Run 'row_count_diff' for all the modified table models
-    """
-    curr_lineage = context.get_lineage(base=False)
-    base_lineage = context.get_lineage(base=True)
-
-    try:
-        # Query the row count of all the nodes in the lineage
-        node_ids = []
-
-        for id, node in curr_lineage['nodes'].items():
-            if node.get('resource_type') != 'model':
-                continue
-
-            materialized = node.get('config', {}).get('materialized')
-            if materialized != 'table' and materialized != 'incremental':
-                continue
-
-            base_node = base_lineage['nodes'].get(id)
-            if base_node is None:
-                continue
-
-            base_checksum = node.get('checksum', {}).get('checksum')
-            curr_checksum = base_node.get('checksum', {}).get('checksum')
-
-            if base_checksum is None or curr_checksum is None or base_checksum == curr_checksum:
-                continue
-
-            node_ids.append(id)
-
-        print(f"Querying row count diff for the modified table models. [{len(node_ids)} node(s)]")
-        if len(node_ids) == 0:
-            print("Skipped")
-            return
-
-        start = time.time()
-        run, future = submit_run(RunType.ROW_COUNT_DIFF, params={
-            'node_ids': node_ids
-        })
-        await future
-        end = time.time()
-        print(f"Completed in {end - start:.2f} seconds")
-    except Exception as e:
-        print("Failed to run queries")
-        raise e
 
 
 def load_preset_checks(checks: list):
@@ -210,13 +159,6 @@ async def cli_run(output_state_file: str, **kwargs):
     from recce.adapter.dbt_adapter import DbtAdapter
     dbt_adaptor: DbtAdapter = ctx.adapter
     dbt_adaptor.print_lineage_info()
-
-    # Execute the default runs
-    console.rule("Default queries")
-    if not is_skip_query:
-        await execute_default_runs(ctx)
-    else:
-        print("Skip querying row counts")
 
     # Execute the preset checks
     rc = 0

@@ -113,6 +113,13 @@ def load_catalog(path: str = None, data: dict = None):
         return CatalogArtifact.upgrade_schema_version(data)
 
 
+def previous_state(state_path: Path, target_path: Path, project_root: Path) -> PreviousState:
+    if dbt_version < 'v1.5.2':
+        return PreviousState(state_path, target_path)
+    else:
+        return PreviousState(state_path, target_path, project_root)
+
+
 def default_profiles_dir():
     # Precedence: DBT_PROFILES_DIR > current working directory > ~/.dbt/
     # https://docs.getdbt.com/docs/core/connect-data-platform/connection-profiles#advanced-customizing-a-profile-directory
@@ -337,17 +344,11 @@ class DbtAdapter(BaseAdapter):
 
         # set the manifest
         self.manifest = as_manifest(curr_manifest)
-        if dbt_version < 'v1.6':
-            self.previous_state = PreviousState(
-                Path('target-base'),
-                Path(self.runtime_config.target_path),
-            )
-        else:
-            self.previous_state = PreviousState(
-                Path('target-base'),
-                Path(self.runtime_config.target_path),
-                Path(self.runtime_config.project_root),
-            )
+        self.previous_state = previous_state(
+            Path('target-base'),
+            Path(self.runtime_config.target_path),
+            Path(self.runtime_config.project_root),
+        )
 
         # set the file paths to watch
         self.artifacts_files = [
@@ -569,7 +570,7 @@ class DbtAdapter(BaseAdapter):
         self.manifest = curr_manifest
         self.curr_manifest = curr_manifest.writable_manifest()
         self.base_manifest = base_manifest.writable_manifest()
-        self.previous_state = PreviousState(
+        self.previous_state = previous_state(
             Path('target-base'),
             Path(self.runtime_config.target_path),
             Path(self.runtime_config.project_root)
@@ -665,7 +666,7 @@ class DbtAdapter(BaseAdapter):
         self.curr_catalog = load_catalog(data=artifacts.current.get('catalog'))
 
         self.manifest = as_manifest(self.curr_manifest)
-        self.previous_state = PreviousState(
+        self.previous_state = previous_state(
             Path('target-base'),
             Path(self.runtime_config.target_path),
             Path(self.runtime_config.project_root)

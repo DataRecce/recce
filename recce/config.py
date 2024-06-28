@@ -5,13 +5,8 @@ from recce import yaml
 from recce.util import SingletonMeta
 
 RECCE_CONFIG_FILE = 'recce.yml'
-RECCE_PRESET_CHECK_EXAMPLE = '''
-- name: <Check Name>
-  description: <Check Description>
-  type: <Type of Check>
-    view_options:
-      model: xxx
-      column: xxx
+RECCE_PRESET_CHECK_COMMENT = '''Preset Checks
+Please see https://datarecce.io/docs/features/preset-checks/
 '''
 RECCE_ERROR_LOG_FILE = 'recce_error.log'
 console = Console()
@@ -34,12 +29,25 @@ class RecceConfig(metaclass=SingletonMeta):
 
     def generate_template(self):
         data = yaml.CommentedMap(
-            github={'repo': ''},
-            checks=[])
-        data.yaml_set_comment_before_after_key('github', before='[Optional] GitHub settings')
-        data.yaml_set_comment_before_after_key('checks',
-                                               before='Recce Preset Checks',
-                                               after=f'Example of preset check: {RECCE_PRESET_CHECK_EXAMPLE}')
+            checks=yaml.CommentedSeq())
+        data.yaml_set_comment_before_after_key('checks', before=RECCE_PRESET_CHECK_COMMENT)
+        # Define default preset checks
+        default_checks = [
+            yaml.CommentedMap(
+                name='Row count diff',
+                description='Check the row count diff for all table models.',
+                type='row_count_diff',
+                params={'select': 'state:modified,config.materialized:table'},
+            ),
+            yaml.CommentedMap(
+                name='Schema diff',
+                description='Check the schema diff for all nodes.',
+                type='schema_diff',
+            )
+        ]
+
+        for check in default_checks:
+            data['checks'].append(check)
 
         return data
 
