@@ -41,17 +41,17 @@ class RecceConfig(metaclass=SingletonMeta):
                                                before='Recce Preset Checks',
                                                after=f'Example of preset check: {RECCE_PRESET_CHECK_EXAMPLE}')
 
-        # Define default checks
+        # Define default preset checks
         default_checks = [
             yaml.CommentedMap(
-                name='Preset check - Row count diff',
-                description='Row count diff of the modified table models',
+                name='Row count diff',
+                description='Check the row count diff for all table models.',
                 type='row_count_diff',
                 params={'select': 'state:modified,config.materialized:table'},
             ),
             yaml.CommentedMap(
-                name='Preset check - Schema diff',
-                description='Schema diff of all',
+                name='Schema diff',
+                description='Check the schema diff for all nodes.',
                 type='schema_diff',
             )
         ]
