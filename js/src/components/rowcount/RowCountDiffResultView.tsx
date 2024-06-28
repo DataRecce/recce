@@ -1,4 +1,4 @@
-import { Flex } from "@chakra-ui/react";
+import { Center, Flex } from "@chakra-ui/react";
 import {
   EmptyRowsRenderer,
   ScreenshotDataGrid,
@@ -64,6 +64,14 @@ export function RowCountDiffResultView({ run }: RowCountDiffResultViewProp) {
       delta: delta,
     };
   });
+
+  if (rows.length === 0) {
+    return (
+      <Center bg="rgb(249,249,249)" height="100%">
+        No nodes matched
+      </Center>
+    );
+  }
 
   return (
     <Flex direction="column">
