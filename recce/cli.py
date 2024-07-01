@@ -88,7 +88,7 @@ def _execute_sql(context, sql_template, base=False):
 @click.group()
 @click.pass_context
 def cli(ctx, **kwargs):
-    """Environment diff tool for DBT"""
+    """Recce: Data validation toolkit for comprehensive PR review"""
 
 
 @cli.command(cls=TrackCommand)
@@ -163,7 +163,7 @@ def diff(sql, primary_keys: List[str] = None, keep_shape: bool = False, keep_equ
 @click.argument('state_file', required=False)
 @click.option('--host', default='localhost', show_default=True, help='The host to bind to.')
 @click.option('--port', default=8000, show_default=True, help='The port to bind to.', type=int)
-@click.option('--review', is_flag=True, help='Open the state file in review mode.')
+@click.option('--review', is_flag=True, help='Open the state file in the review mode.')
 @add_options(dbt_related_options)
 @add_options(sqlmesh_related_options)
 @add_options(recce_options)
@@ -172,9 +172,26 @@ def server(host, port, state_file=None, **kwargs):
     """
     Launch the recce server
 
-    Arguments:\n
+    STATE_FILE is the path to the recce state file. Defaults=None, which will be no persistent state.
 
-    STATE_FILE: The path to the recce state file. Defaults=None, which will be no persistent state.
+    Examples:\n
+
+    \b
+    # Launch the recce server
+    recce server
+
+    \b
+    # Launch the recce server with a state file
+    recce server recce_state.json
+
+    \b
+    # Launch the server in the review mode
+    recce server --review recce_state.json
+
+    \b
+    # Launch the server and synchronize the state with the cloud
+    recce server --cloud
+    recce server --review --cloud
 
     """
 
@@ -220,7 +237,7 @@ def server(host, port, state_file=None, **kwargs):
 @click.option('-o', '--output', help='Path of the output state file.', type=click.Path(), default='recce_state.json',
               show_default=True)
 @click.option('--state-file', help='Path of the import state file.', type=click.Path())
-@click.option('--skip-query', is_flag=True, help='Skip querying row count for nodes in the lineage.')
+@click.option('--skip-query', is_flag=True, help='Skip running the queries for the checks.')
 @click.option('--git-current-branch', help='The git branch of the current environment.', type=click.STRING,
               envvar='GITHUB_HEAD_REF')
 @click.option('--git-base-branch', help='The git branch of the base environment.', type=click.STRING,
@@ -233,7 +250,22 @@ def server(host, port, state_file=None, **kwargs):
 @add_options(recce_cloud_options)
 def run(output, **kwargs):
     """
-        Run recce to generate the state file in CI/CD pipeline
+    Run recce and output the state file
+
+    Examples:\n
+
+    \b
+    # Run recce and output to the default path [recce_state.json]
+    recce run
+
+    \b
+    # Run recce and output to the specified path
+    recce run -o my_recce_state.json
+
+    \b
+    # Run recce and output to the specified path
+    recce run --cloud --cloud-token <token> --password <password>
+
     """
     from rich.console import Console
     handle_debug_flag(**kwargs)
