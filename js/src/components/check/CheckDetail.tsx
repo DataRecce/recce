@@ -207,7 +207,7 @@ export const CheckDetail = ({ checkId }: CheckDetailProps) => {
     }
   };
 
-  const handleCheck = useCallback(() => {
+  const handleApproveCheck = useCallback(() => {
     const isChecked = check?.is_checked;
     mutate({ is_checked: !isChecked });
   }, [check?.is_checked, mutate]);
@@ -319,15 +319,15 @@ export const CheckDetail = ({ checkId }: CheckDetailProps) => {
           </Tooltip>
 
           <Tooltip
-            label={check?.is_checked ? "Mark as unchecked" : "Mark as checked"}
+            label={check?.is_checked ? "Mark as pending" : "Mark as approved"}
           >
             <Button
               size="sm"
               colorScheme={check?.is_checked ? "green" : "gray"}
               leftIcon={<CheckCircleIcon />}
-              onClick={() => handleCheck()}
+              onClick={() => handleApproveCheck()}
             >
-              {check?.is_checked ? "Checked" : "Unchecked"}
+              {check?.is_checked ? "Approved" : "Pending"}
             </Button>
           </Tooltip>
         </Flex>
