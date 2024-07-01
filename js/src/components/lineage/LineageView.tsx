@@ -24,6 +24,7 @@ import {
   MenuItem,
   Center,
   SlideFade,
+  StackDivider,
 } from "@chakra-ui/react";
 import React, { useCallback, useLayoutEffect, useState } from "react";
 import ReactFlow, {
@@ -152,9 +153,9 @@ function _LineageView({ ...props }: LineageViewProps) {
   /**
    * Which control the linage view should be in
    */
-  const [controlMode, setControlMode] = useState<
-    "normal" | "selector" | "filter"
-  >("normal");
+  const [controlMode, setControlMode] = useState<"normal" | "selector">(
+    "normal"
+  );
 
   const [detailViewSelected, setDetailViewSelected] =
     useState<LineageGraphNode>();
@@ -393,8 +394,17 @@ function _LineageView({ ...props }: LineageViewProps) {
       gutterSize={detailViewSelected ? 5 : 0}
       style={{ height: "100%", width: "100%" }}
     >
-      {/* <Flex width="100%" height="100%"> */}
-      <Box>
+      <VStack divider={<StackDivider borderColor="gray.200" />} spacing={0}>
+        <NodeFilter
+          viewOptions={viewOptions}
+          onViewOptionsChanged={handleViewOptionsChanged}
+          onClose={(fitView: boolean) => {
+            setControlMode("normal");
+            if (fitView) {
+              reactFlow.fitView();
+            }
+          }}
+        />
         <ReactFlow
           nodeTypes={nodeTypes}
           edgeTypes={edgeTypes}
@@ -464,17 +474,6 @@ function _LineageView({ ...props }: LineageViewProps) {
                     >
                       Select models
                     </Button>
-                    <Button
-                      size="xs"
-                      variant="outline"
-                      backgroundColor="white"
-                      isDisabled={controlMode !== "normal"}
-                      onClick={() => {
-                        setControlMode("filter");
-                      }}
-                    >
-                      Filter nodes
-                    </Button>
 
                     <AddLineageDiffCheckButton
                       isDisabled={controlMode !== "normal"}
@@ -525,25 +524,9 @@ function _LineageView({ ...props }: LineageViewProps) {
                 onActionCompleted={() => {}}
               />
             </SlideFade>
-            <SlideFade
-              in={controlMode === "filter"}
-              unmountOnExit
-              style={{ zIndex: 10 }}
-            >
-              <NodeFilter
-                viewOptions={viewOptions}
-                onViewOptionsChanged={handleViewOptionsChanged}
-                onClose={(fitView: boolean) => {
-                  setControlMode("normal");
-                  if (fitView) {
-                    reactFlow.fitView();
-                  }
-                }}
-              />
-            </SlideFade>
           </Panel>
         </ReactFlow>
-      </Box>
+      </VStack>
       {selectMode === "detail" && detailViewSelected ? (
         <Box borderLeft="solid 1px lightgray" height="100%">
           <NodeView

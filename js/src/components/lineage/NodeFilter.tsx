@@ -16,11 +16,14 @@ import {
   MenuDivider,
   StackDivider,
   MenuGroup,
+  Spacer,
+  Input,
 } from "@chakra-ui/react";
 import _ from "lodash";
 
 import { FiAlignLeft, FiPackage } from "react-icons/fi";
 import { getIconForResourceType } from "./styles";
+import { CSSProperties } from "react";
 
 interface NodeFilterProps {
   viewOptions: LineageDiffViewOptions;
@@ -185,30 +188,46 @@ const PackageSelectMenu = ({
   );
 };
 
+const SelectFilter = () => {
+  return <Input height="24px" fontSize="10pt" placeholder="<selection>" />;
+};
+
+const ExcludeFilter = () => {
+  return <Input height="24px" fontSize="10pt" placeholder="<selection>" />;
+};
+
+const ControlItem = (props: {
+  label: string;
+  children: React.ReactNode;
+  style?: CSSProperties;
+}) => {
+  return (
+    <Box style={props.style} maxWidth="300px">
+      <Box fontSize="8pt">{props.label}</Box>
+      {props.children}
+    </Box>
+  );
+};
+
 export const NodeFilter = (props: NodeFilterProps) => {
   const { onClose } = props;
 
   return (
-    <Box bg="white" rounded="md" shadow="dark-lg">
-      <HStack
-        p="5px 15px"
-        mt="4"
-        divider={<StackDivider borderColor="gray.200" />}
-      >
-        <HStack>
+    <HStack width="100%" padding="4pt 8pt">
+      <HStack flex="1">
+        <ControlItem label="Mode">
           <ViewModeSelectMenu {...props} />
+        </ControlItem>
+        <ControlItem label="Package">
           <PackageSelectMenu {...props} />
-        </HStack>
-
-        <ButtonGroup size="xs" isAttached variant="outline" rounded="xs">
-          <Button onClick={() => onClose(true)}>Fit and Close</Button>
-          <IconButton
-            aria-label="Exit filter Mode"
-            icon={<SmallCloseIcon />}
-            onClick={() => onClose(false)}
-          />
-        </ButtonGroup>
+        </ControlItem>
+        <ControlItem label="Select" style={{ flex: "1 0 auto" }}>
+          <SelectFilter />
+        </ControlItem>
+        <ControlItem label="Exclude" style={{ flex: "1 0 auto" }}>
+          <ExcludeFilter />
+        </ControlItem>
       </HStack>
-    </Box>
+    </HStack>
   );
 };
