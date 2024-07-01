@@ -46,6 +46,12 @@ class CheckDAO:
     def clear(self):
         _checks.clear()
 
+    def status(self):
+        return {
+            'total': len(_checks),
+            'approved': len([c for c in _checks if c.is_checked])
+        }
+
 
 def load_checks(checks: List[Check]):
     global _checks
