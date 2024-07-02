@@ -5,6 +5,7 @@ from uuid import UUID
 from pydantic import BaseModel
 
 from recce.apis.check_func import get_node_name_by_id
+from recce.core import default_context
 from recce.models import CheckDAO, RunDAO, RunType, Run
 from recce.tasks.core import TaskResultDiffer
 from recce.tasks.histogram import HistogramDiffTaskResultDiffer
@@ -182,6 +183,7 @@ class CheckSummary(BaseModel):
     description: str
     changes: dict
     node_ids: Optional[List[str]]
+    changed_nodes: Optional[List[str]]
 
     @property
     def related_nodes(self):
@@ -190,6 +192,16 @@ class CheckSummary(BaseModel):
         for node_id in self.node_ids or []:
             name = get_node_name_by_id(node_id)
             nodes.append(name)
+
+        if self.changed_nodes:
+            changed_set = set(self.changed_nodes)
+
+            def sort_changed_first(n):
+                # tuple[0] gives priority to elements that are in changed_nodes
+                # tuple[1] preserves the original order of elements in nodes
+                return 0 if n in changed_set else 1, nodes.index(n)
+
+            return sorted(nodes, key=sort_changed_first)
 
         return nodes
 
@@ -299,7 +311,20 @@ def _get_node_row_count_diff(node_id, node_name):
     return None, None
 
 
-# def _get_node_schema_diff(node_id):
+def _get_node_schema_diff(params):
+    if params.get('node_id'):
+        return [params.get('node_id')]
+
+    select = params.get('select')
+    exclude = params.get('exclude')
+
+    dbt_adapter = default_context().adapter
+    return dbt_adapter.select_nodes(select, exclude)
+
+
+def _generate_related_models_summary(related_nodes: List[str], limit: int = 3) -> str:
+    related_models = related_nodes[:limit]
+    return ', '.join(related_models) + ('...' if len(related_nodes) > limit else '')
 
 
 def generate_check_summary(base_lineage, curr_lineage) -> (List[CheckSummary], Dict[str, int]):
@@ -335,7 +360,8 @@ def generate_check_summary(base_lineage, curr_lineage) -> (List[CheckSummary], D
                         name=check.name,
                         description=check.description,
                         changes=changes,
-                        node_ids=[node_id]
+                        node_ids=[node_id],
+                        changed_nodes=[]
                     )
                 )
         elif (check.type in [RunType.ROW_COUNT_DIFF, RunType.QUERY_DIFF,
@@ -351,7 +377,9 @@ def generate_check_summary(base_lineage, curr_lineage) -> (List[CheckSummary], D
                         name=check.name,
                         description=check.description,
                         changes=differ.changes,
-                        node_ids=differ.related_node_ids)
+                        node_ids=differ.related_node_ids,
+                        changed_nodes=differ.changed_nodes
+                    )
                 )
 
     return checks_summary, {
@@ -435,7 +463,7 @@ def generate_check_content(graph, check_statistics):
             data.append({
                 'Name': check.name,
                 'Type': str(check.type).replace('_', ' ').title(),
-                'Related Models': ', '.join(check.related_nodes) if check.related_nodes else 'N/A',
+                'Related Models': _generate_related_models_summary(check.related_nodes) if check.related_nodes else 'N/A',
                 # Temporarily remove the type of changes, until we implement a better way to display it.
                 # 'Type of Changes': _formate_changes(check.changes)
             })

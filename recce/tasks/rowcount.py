@@ -1,4 +1,4 @@
-from typing import TypedDict, Optional
+from typing import TypedDict, Optional, Union, List
 
 from recce.core import default_context
 from recce.tasks import Task
@@ -138,3 +138,7 @@ class RowCountDiffResultDiffer(TaskResultDiffer):
             current[node] = row_counts['curr']
 
         return TaskResultDiffer.diff(base, current)
+
+    def _get_changed_nodes(self) -> Union[List[str], None]:
+        if self.changes:
+            return self.changes.affected_root_keys.items
