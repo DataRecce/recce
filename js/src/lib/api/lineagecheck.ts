@@ -5,6 +5,8 @@ export interface LineageDiffViewOptions {
   view_mode?: "changed_models" | "all";
   node_ids?: string[];
   packages?: string[];
+  select?: string;
+  exclude?: string;
 }
 
 export async function createLineageDiffCheck(

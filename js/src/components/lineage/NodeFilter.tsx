@@ -1,26 +1,24 @@
 import { LineageDiffViewOptions } from "@/lib/api/lineagecheck";
 import { useLineageGraphContext } from "@/lib/hooks/LineageGraphContext";
-import { SmallCloseIcon } from "@chakra-ui/icons";
+
 import {
   HStack,
   Button,
   Icon,
   Box,
-  ButtonGroup,
-  IconButton,
   Checkbox,
   Menu,
   MenuButton,
   MenuItem,
   MenuList,
   MenuDivider,
-  StackDivider,
   MenuGroup,
+  Input,
 } from "@chakra-ui/react";
-import _ from "lodash";
 
 import { FiAlignLeft, FiPackage } from "react-icons/fi";
 import { getIconForResourceType } from "./styles";
+import { CSSProperties, ChangeEvent, useEffect, useRef, useState } from "react";
 
 interface NodeFilterProps {
   viewOptions: LineageDiffViewOptions;
@@ -185,30 +183,105 @@ const PackageSelectMenu = ({
   );
 };
 
+const NodeSelectionInput = (props: {
+  value: string;
+  onChange: (value: string) => void;
+}) => {
+  const [inputValue, setInputValue] = useState(props.value);
+  const inputRef = useRef(null);
+
+  useEffect(() => {
+    if (inputRef.current) {
+      (inputRef.current as any).value = props.value;
+    }
+  }, [props.value]);
+
+  return (
+    <Input
+      ref={inputRef}
+      height="24px"
+      fontSize="10pt"
+      placeholder="<selection>"
+      value={inputValue}
+      onChange={(event) => {
+        setInputValue(event.target.value);
+      }}
+      onKeyUp={(event) => {
+        if (event.key === "Enter") {
+          props.onChange(inputValue);
+        } else if (event.key === "Escape") {
+          event.preventDefault();
+          setInputValue(props.value);
+          if (inputRef.current) {
+            (inputRef.current as any).blur();
+          }
+        }
+      }}
+      onBlur={() => setInputValue(props.value)}
+    />
+  );
+};
+
+const SelectFilter = (props: NodeFilterProps) => {
+  return (
+    <NodeSelectionInput
+      value={props.viewOptions.select || ""}
+      onChange={(value) => {
+        props.onViewOptionsChanged({
+          ...props.viewOptions,
+          select: value ? value : undefined,
+        });
+      }}
+    />
+  );
+};
+
+const ExcludeFilter = (props: NodeFilterProps) => {
+  return (
+    <NodeSelectionInput
+      value={props.viewOptions.exclude || ""}
+      onChange={(value) => {
+        props.onViewOptionsChanged({
+          ...props.viewOptions,
+          exclude: value ? value : undefined,
+        });
+      }}
+    />
+  );
+};
+
+const ControlItem = (props: {
+  label: string;
+  children: React.ReactNode;
+  style?: CSSProperties;
+}) => {
+  return (
+    <Box style={props.style} maxWidth="300px">
+      <Box fontSize="8pt">{props.label}</Box>
+      {props.children}
+    </Box>
+  );
+};
+
 export const NodeFilter = (props: NodeFilterProps) => {
   const { onClose } = props;
 
   return (
-    <Box bg="white" rounded="md" shadow="dark-lg">
-      <HStack
-        p="5px 15px"
-        mt="4"
-        divider={<StackDivider borderColor="gray.200" />}
-      >
-        <HStack>
+    <HStack width="100%" padding="4pt 8pt">
+      <HStack flex="1">
+        <ControlItem label="Mode">
           <ViewModeSelectMenu {...props} />
+        </ControlItem>
+        <ControlItem label="Package">
           <PackageSelectMenu {...props} />
-        </HStack>
-
-        <ButtonGroup size="xs" isAttached variant="outline" rounded="xs">
-          <Button onClick={() => onClose(true)}>Fit and Close</Button>
-          <IconButton
-            aria-label="Exit filter Mode"
-            icon={<SmallCloseIcon />}
-            onClick={() => onClose(false)}
-          />
-        </ButtonGroup>
+        </ControlItem>
+        <ControlItem label="Select" style={{ flex: "1 0 auto" }}>
+          <SelectFilter {...props} />
+        </ControlItem>
+        <ControlItem label="Exclude" style={{ flex: "1 0 auto" }}>
+          <ExcludeFilter {...props} />
+        </ControlItem>
       </HStack>
-    </Box>
+    </HStack>
   );
 };
