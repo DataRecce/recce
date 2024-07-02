@@ -1,11 +1,11 @@
 import { axiosClient } from "./axiosClient";
 
-interface SelectInput {
+export interface SelectInput {
   select?: string;
   exclude?: string;
 }
 
-interface SelectOutput {
+export interface SelectOutput {
   nodes: string[];
 }
 

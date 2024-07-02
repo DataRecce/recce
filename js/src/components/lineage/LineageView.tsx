@@ -62,6 +62,10 @@ import { union } from "./graph";
 import { LineageDiffViewOptions } from "@/lib/api/lineagecheck";
 import { ChangeStatusLegend } from "./ChangeStatusLegend";
 import { HSplit } from "../split/Split";
+import { useMutation, useQuery } from "@tanstack/react-query";
+import { cacheKeys } from "@/lib/api/cacheKeys";
+import { SelectOutput, select } from "@/lib/api/select";
+import { isError } from "lodash";
 
 export interface LineageViewProps {
   viewOptions?: LineageDiffViewOptions;
@@ -168,6 +172,13 @@ function _LineageView({ ...props }: LineageViewProps) {
     selectedNode?: Node;
   }>({ x: 0, y: 0 });
 
+  // query key is from select and exclude of viewOptions
+  const queryKey = [
+    ...cacheKeys.lineage(),
+    viewOptions.select,
+    viewOptions.exclude,
+  ];
+
   useLayoutEffect(() => {
     if (!lineageGraph) {
       return;
@@ -270,12 +281,26 @@ function _LineageView({ ...props }: LineageViewProps) {
     [setNodes]
   );
 
-  const handleViewOptionsChanged = (newViewOptions: LineageDiffViewOptions) => {
+  const handleViewOptionsChanged = async (
+    newViewOptions: LineageDiffViewOptions
+  ) => {
+    let selectedNodes: string[] | undefined = undefined;
+
     if (!lineageGraph) {
       return;
     }
 
-    const [newNodes, newEdges] = toReactflow(lineageGraph, newViewOptions);
+    const result = await select({
+      select: newViewOptions.select,
+      exclude: newViewOptions.exclude,
+    });
+    selectedNodes = result.nodes;
+
+    const [newNodes, newEdges] = toReactflow(
+      lineageGraph,
+      newViewOptions,
+      selectedNodes
+    );
     layout(newNodes, newEdges);
     setNodes(newNodes);
     setEdges(newEdges);
@@ -394,7 +419,11 @@ function _LineageView({ ...props }: LineageViewProps) {
       gutterSize={detailViewSelected ? 5 : 0}
       style={{ height: "100%", width: "100%" }}
     >
-      <VStack divider={<StackDivider borderColor="gray.200" />} spacing={0}>
+      <VStack
+        divider={<StackDivider borderColor="gray.200" />}
+        spacing={0}
+        style={{ contain: "strict" }}
+      >
         <NodeFilter
           viewOptions={viewOptions}
           onViewOptionsChanged={handleViewOptionsChanged}
