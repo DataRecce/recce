@@ -305,6 +305,7 @@ def run(output, **kwargs):
 @click.option('--format', '-f', help='Output format. Currently only markdown is supported.',
               type=click.Choice(['markdown', 'mermaid', 'check'], case_sensitive=False),
               default='markdown', show_default=True, hidden=True)
+@add_options(dbt_related_options)
 @add_options(recce_options)
 @add_options(recce_cloud_options)
 def summary(state_file, **kwargs):
