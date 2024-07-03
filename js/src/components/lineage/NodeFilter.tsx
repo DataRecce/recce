@@ -28,6 +28,7 @@ import { CSSProperties, useCallback, useEffect, useRef, useState } from "react";
 import { createSchemaDiffCheck } from "@/lib/api/schemacheck";
 import { useLocation } from "wouter";
 import { Check } from "@/lib/api/checks";
+import { useRecceActionContext } from "@/lib/hooks/RecceActionContext";
 
 interface NodeFilterProps {
   isDisabled?: boolean;
@@ -284,7 +285,7 @@ const ControlItem = (props: {
 
 const MoreActionMenu = (props: NodeFilterProps) => {
   const [, setLocation] = useLocation();
-
+  const { runAction } = useRecceActionContext();
   const handleNavToCheck = useCallback(
     (check: Check) => {
       if (check.check_id) {
@@ -301,7 +302,23 @@ const MoreActionMenu = (props: NodeFilterProps) => {
       </MenuButton>
 
       <MenuList>
-        <MenuGroup title="Add check">
+        <MenuGroup title="Diff" m="0" p="4px 12px">
+          <MenuItem
+            as={Text}
+            size="sm"
+            fontSize="10pt"
+            onClick={() => {
+              runAction("row_count_diff", {
+                select: props.viewOptions.select,
+                exclude: props.viewOptions.exclude,
+              });
+            }}
+          >
+            Row Count Diff by Selector
+          </MenuItem>
+        </MenuGroup>
+        <MenuDivider />
+        <MenuGroup title="Add check" m="0" px="12px">
           <MenuItem
             as={Text}
             size="sm"

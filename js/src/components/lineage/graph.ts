@@ -31,8 +31,8 @@ export function getNeighborSet(
   return neighborSet;
 }
 
-export function union(...sets: Set<string>[]) {
-  const unionSet = new Set<string>();
+export function union<T>(...sets: Set<T>[]) {
+  const unionSet = new Set<T>();
 
   sets.forEach((set) => {
     set.forEach((key) => {
@@ -41,4 +41,18 @@ export function union(...sets: Set<string>[]) {
   });
 
   return unionSet;
+}
+
+export function intersect<T>(...sets: Set<T>[]) {
+  if (sets.length === 0) {
+    return new Set<T>();
+  }
+
+  let intersection = new Set<T>(sets[0]);
+
+  for (const set of sets) {
+    intersection = new Set([...intersection].filter((x) => set.has(x)));
+  }
+
+  return intersection;
 }

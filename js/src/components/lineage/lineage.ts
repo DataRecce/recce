@@ -1,5 +1,5 @@
 import { Node, Edge, Position } from "reactflow";
-import { getNeighborSet, union } from "./graph";
+import { getNeighborSet, intersect, union } from "./graph";
 import { Run } from "@/lib/api/types";
 import dagre from "dagre";
 import { LineageDiffViewOptions } from "@/lib/api/lineagecheck";
@@ -324,9 +324,8 @@ export function toReactflow(
     : undefined;
 
   if (selectedNodes !== undefined && selectedNodes !== null) {
-    // intersect of selectedNodes and filterSet
     filterSet = filterSet
-      ? new Set([...selectedNodes].filter((x) => filterSet.has(x)))
+      ? intersect(filterSet, new Set(selectedNodes))
       : new Set(selectedNodes);
   }
 

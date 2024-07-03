@@ -69,9 +69,6 @@ import { HSplit } from "../split/Split";
 import { cacheKeys } from "@/lib/api/cacheKeys";
 import { select } from "@/lib/api/select";
 import { useLocation } from "wouter";
-import { set } from "lodash";
-import { Check, CheckInput, createCheck } from "@/lib/api/checks";
-import { createSchemaDiffCheck } from "@/lib/api/schemacheck";
 
 export interface LineageViewProps {
   viewOptions?: LineageDiffViewOptions;
