@@ -57,8 +57,11 @@ def _generate_default_name(check_type, params, view_options):
         model = params.get('model')
         return f"value diff of {model}".capitalize()
     elif check_type == RunType.SCHEMA_DIFF:
-        node_name = get_node_name_by_id(params.get('node_id'))
-        return f"schema diff of {node_name}".capitalize()
+        if params.get('node_id'):
+            node_name = get_node_name_by_id(params.get('node_id'))
+            return f"schema diff of {node_name}".capitalize()
+        else:
+            return f"schema diff"
     elif check_type == RunType.PROFILE_DIFF:
         model = params.get('model')
         return f"profile diff of {model}".capitalize()

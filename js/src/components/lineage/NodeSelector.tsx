@@ -11,11 +11,9 @@ import {
 } from "@chakra-ui/react";
 import { LineageGraphNode } from "./lineage";
 
-import { TbAlignBoxLeftStretch } from "react-icons/tb";
-import { createCheckByNodeSchema, createCheckByRun } from "@/lib/api/checks";
+import { createCheckByRun } from "@/lib/api/checks";
 import { useLocation } from "wouter";
 
-import { TbBrandStackshare } from "react-icons/tb";
 import { ValueDiffParams } from "@/lib/api/valuediff";
 import { useCallback, useState } from "react";
 import { cancelRun, submitRun, waitRun } from "@/lib/api/runs";
@@ -25,6 +23,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { cacheKeys } from "@/lib/api/cacheKeys";
 import { createLineageDiffCheck } from "@/lib/api/lineagecheck";
 import { findByRunType } from "../run/registry";
+import { createSchemaDiffCheck } from "@/lib/api/schemacheck";
 
 export interface NodeSelectorProps {
   viewMode: string;
@@ -53,12 +52,12 @@ function AddSchemaChangesCheckButton({
         // TODO: Add schema changes
         let check;
         if (nodes.length === 1) {
-          check = await createCheckByNodeSchema(nodes[0].id);
+          check = await createSchemaDiffCheck({ node_id: nodes[0].id });
         } else {
           // TODO: Implement new type of check for multiple schema changes (RC-102)
           await Promise.all(
             nodes.map(async (node) => {
-              await createCheckByNodeSchema(node.id);
+              await createSchemaDiffCheck({ node_id: nodes[0].id });
             })
           );
         }

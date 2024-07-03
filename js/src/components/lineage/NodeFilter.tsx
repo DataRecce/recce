@@ -1,4 +1,7 @@
-import { LineageDiffViewOptions } from "@/lib/api/lineagecheck";
+import {
+  LineageDiffViewOptions,
+  createLineageDiffCheck,
+} from "@/lib/api/lineagecheck";
 import { useLineageGraphContext } from "@/lib/hooks/LineageGraphContext";
 
 import {
@@ -16,18 +19,25 @@ import {
   Input,
   ButtonGroup,
   Spacer,
+  Text,
 } from "@chakra-ui/react";
 
-import { FiAlignLeft, FiPackage } from "react-icons/fi";
+import { FiPackage } from "react-icons/fi";
 import { getIconForResourceType } from "./styles";
-import { CSSProperties, ChangeEvent, useEffect, useRef, useState } from "react";
+import { CSSProperties, useCallback, useEffect, useRef, useState } from "react";
+import { createSchemaDiffCheck } from "@/lib/api/schemacheck";
+import { useLocation } from "wouter";
+import { Check } from "@/lib/api/checks";
 
 interface NodeFilterProps {
+  isDisabled?: boolean;
   viewOptions: LineageDiffViewOptions;
   onViewOptionsChanged: (options: LineageDiffViewOptions) => void;
+  onSelectNodesClicked: () => void;
 }
 
 const ViewModeSelectMenu = ({
+  isDisabled,
   viewOptions,
   onViewOptionsChanged,
 }: NodeFilterProps) => {
@@ -45,10 +55,11 @@ const ViewModeSelectMenu = ({
     <Menu>
       <MenuButton
         as={Button}
-        minWidth="150px"
+        minWidth="100px"
         leftIcon={<Icon as={getIconForResourceType("model").icon} />}
         size="xs"
         variant="outline"
+        isDisabled={isDisabled}
       >
         {label}
       </MenuButton>
@@ -78,6 +89,7 @@ const ViewModeSelectMenu = ({
 const PackageSelectMenu = ({
   viewOptions,
   onViewOptionsChanged,
+  isDisabled,
 }: NodeFilterProps) => {
   const { lineageGraph } = useLineageGraphContext();
 
@@ -139,10 +151,11 @@ const PackageSelectMenu = ({
     <Menu closeOnSelect={false}>
       <MenuButton
         as={Button}
-        minWidth="150px"
+        minWidth="100px"
         leftIcon={<Icon as={FiPackage} />}
         size="xs"
         variant="outline"
+        isDisabled={isDisabled}
       >
         {label}
       </MenuButton>
@@ -187,6 +200,7 @@ const PackageSelectMenu = ({
 const NodeSelectionInput = (props: {
   value: string;
   onChange: (value: string) => void;
+  isDisabled?: boolean;
 }) => {
   const [inputValue, setInputValue] = useState(props.value);
   const inputRef = useRef(null);
@@ -203,6 +217,7 @@ const NodeSelectionInput = (props: {
       height="24px"
       fontSize="10pt"
       placeholder="<selection>"
+      isDisabled={props.isDisabled}
       value={inputValue}
       onChange={(event) => {
         setInputValue(event.target.value);
@@ -226,6 +241,7 @@ const NodeSelectionInput = (props: {
 const SelectFilter = (props: NodeFilterProps) => {
   return (
     <NodeSelectionInput
+      isDisabled={props.isDisabled}
       value={props.viewOptions.select || ""}
       onChange={(value) => {
         props.onViewOptionsChanged({
@@ -240,6 +256,7 @@ const SelectFilter = (props: NodeFilterProps) => {
 const ExcludeFilter = (props: NodeFilterProps) => {
   return (
     <NodeSelectionInput
+      isDisabled={props.isDisabled}
       value={props.viewOptions.exclude || ""}
       onChange={(value) => {
         props.onViewOptionsChanged({
@@ -265,30 +282,90 @@ const ControlItem = (props: {
   );
 };
 
+const MoreActionMenu = (props: NodeFilterProps) => {
+  const [, setLocation] = useLocation();
+
+  const handleNavToCheck = useCallback(
+    (check: Check) => {
+      if (check.check_id) {
+        setLocation(`/checks/${check.check_id}`);
+      }
+    },
+    [setLocation]
+  );
+
+  return (
+    <Menu>
+      <MenuButton as={Button} size={"xs"} isDisabled={props.isDisabled}>
+        ...
+      </MenuButton>
+
+      <MenuList>
+        <MenuGroup title="Add check">
+          <MenuItem
+            as={Text}
+            size="sm"
+            fontSize="10pt"
+            onClick={async () => {
+              const check = await createLineageDiffCheck(props.viewOptions);
+              if (check) {
+                handleNavToCheck(check);
+              }
+            }}
+          >
+            Lineage Diff
+          </MenuItem>
+          <MenuItem
+            as={Text}
+            size="sm"
+            fontSize="10pt"
+            onClick={async () => {
+              const check = await createSchemaDiffCheck({
+                select: props.viewOptions.select,
+                exclude: props.viewOptions.exclude,
+              });
+              if (check) {
+                handleNavToCheck(check);
+              }
+            }}
+          >
+            Schema Diff by Selector
+          </MenuItem>
+        </MenuGroup>
+      </MenuList>
+    </Menu>
+  );
+};
+
 export const NodeFilter = (props: NodeFilterProps) => {
   return (
     <HStack width="100%" padding="4pt 8pt">
       <HStack flex="1">
-        <ControlItem label="Mode">
+        <ControlItem label="Mode" style={{ flexShrink: "1" }}>
           <ViewModeSelectMenu {...props} />
         </ControlItem>
-        <ControlItem label="Package">
+        <ControlItem label="Package" style={{ flexShrink: "1" }}>
           <PackageSelectMenu {...props} />
         </ControlItem>
-        <ControlItem label="Select" style={{ flex: "100 0 auto" }}>
+        <ControlItem label="Select" style={{ flex: "100 1 auto" }}>
           <SelectFilter {...props} />
         </ControlItem>
-        <ControlItem label="Exclude" style={{ flex: "100 0 auto" }}>
+        <ControlItem label="Exclude" style={{ flex: "100 1 auto" }}>
           <ExcludeFilter {...props} />
         </ControlItem>
         <Spacer />
 
         <ControlItem label="Actions" action>
           <ButtonGroup isAttached variant="outline">
-            <Button size="xs" fontSize="9pt">
+            <Button
+              size="xs"
+              fontSize="9pt"
+              onClick={props.onSelectNodesClicked}
+              isDisabled={props.isDisabled}
+            >
               Select nodes
             </Button>
-            <Button size="xs">...</Button>
+            <MoreActionMenu {...props} />
           </ButtonGroup>
         </ControlItem>
       </HStack>

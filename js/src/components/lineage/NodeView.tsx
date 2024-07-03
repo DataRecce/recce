@@ -33,10 +33,10 @@ import { SqlDiffView } from "../schema/SqlDiffView";
 import { useLocation } from "wouter";
 import { ResourceTypeTag, RowCountTag } from "./NodeTag";
 import { useCallback } from "react";
-import { createCheckByNodeSchema, createCheckByRun } from "@/lib/api/checks";
 import { useRecceActionContext } from "@/lib/hooks/RecceActionContext";
 import { useLineageGraphContext } from "@/lib/hooks/LineageGraphContext";
 import useModelColumns from "@/lib/hooks/useModelColumns";
+import { createSchemaDiffCheck } from "@/lib/api/schemacheck";
 
 interface NodeViewProps {
   node: LineageGraphNode;
@@ -62,7 +62,7 @@ export function NodeView({ node, onCloseNode }: NodeViewProps) {
 
   const addSchemaCheck = useCallback(async () => {
     const nodeId = node.id;
-    const check = await createCheckByNodeSchema(nodeId);
+    const check = await createSchemaDiffCheck({ node_id: nodeId });
     setLocation(`/checks/${check.check_id}`);
   }, [node, setLocation]);
 

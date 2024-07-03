@@ -25,6 +25,7 @@ import {
   Center,
   SlideFade,
   StackDivider,
+  MenuGroup,
 } from "@chakra-ui/react";
 import React, { useCallback, useLayoutEffect, useState } from "react";
 import ReactFlow, {
@@ -68,6 +69,9 @@ import { HSplit } from "../split/Split";
 import { cacheKeys } from "@/lib/api/cacheKeys";
 import { select } from "@/lib/api/select";
 import { useLocation } from "wouter";
+import { set } from "lodash";
+import { Check, CheckInput, createCheck } from "@/lib/api/checks";
+import { createSchemaDiffCheck } from "@/lib/api/schemacheck";
 
 export interface LineageViewProps {
   viewOptions?: LineageDiffViewOptions;
@@ -357,7 +361,7 @@ function _LineageView({ ...props }: LineageViewProps) {
     setViewOptions(newViewOptions);
 
     await new Promise((resolve) => setTimeout(resolve, 1));
-    await(async () => {
+    await (async () => {
       reactFlow.fitView({ nodes: newNodes, duration: 200 });
     })();
   };
@@ -480,13 +484,17 @@ function _LineageView({ ...props }: LineageViewProps) {
       >
         {props.interactive && (
           <NodeFilter
+            isDisabled={controlMode !== "normal"}
             viewOptions={viewOptions}
             onViewOptionsChanged={handleViewOptionsChanged}
-            onClose={(fitView: boolean) => {
-              setControlMode("normal");
-              if (fitView) {
-                reactFlow.fitView();
-              }
+            onSelectNodesClicked={() => {
+              const newMode = selectMode === "detail" ? "action" : "detail";
+              setDetailViewSelected(undefined);
+              setIsDetailViewShown(false);
+              const newNodes = cleanUpNodes(nodes, newMode === "action");
+              setNodes(newNodes);
+              setSelectMode(newMode);
+              setControlMode("selector");
             }}
           />
         )}
@@ -527,46 +535,6 @@ function _LineageView({ ...props }: LineageViewProps) {
           <Panel position="bottom-left">
             <HStack>
               <ChangeStatusLegend />
-              {props.interactive && (
-                <Box
-                  p={2}
-                  flex="0 1 160px"
-                  fontSize="14px"
-                  className={IGNORE_SCREENSHOT_CLASS}
-                >
-                  <Text color="gray" mb="2px">
-                    Actions
-                  </Text>
-                  <VStack spacing={1} align="baseline">
-                    <Button
-                      size="xs"
-                      variant="outline"
-                      backgroundColor="white"
-                      isDisabled={controlMode !== "normal"}
-                      onClick={() => {
-                        const newMode =
-                          selectMode === "detail" ? "action" : "detail";
-                        setDetailViewSelected(undefined);
-                        setIsDetailViewShown(false);
-                        const newNodes = cleanUpNodes(
-                          nodes,
-                          newMode === "action"
-                        );
-                        setNodes(newNodes);
-                        setSelectMode(newMode);
-                        setControlMode("selector");
-                      }}
-                    >
-                      Select models
-                    </Button>
-
-                    <_AddLineageDiffCheckButton
-                      viewOptions={viewOptions}
-                      isDisabled={controlMode !== "normal"}
-                    />
-                  </VStack>
-                </Box>
-              )}
             </HStack>
           </Panel>
           {/* <Panel position="top-left">
