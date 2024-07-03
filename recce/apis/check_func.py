@@ -70,7 +70,10 @@ def _generate_default_name(check_type, params, view_options):
         return f"{'row count'.capitalize()} - {now}"
     elif check_type == RunType.LINEAGE_DIFF:
         nodes = view_options.get('node_ids') if view_options else params.get('node_ids')
-        return f"lineage diff of {len(nodes)} nodes".capitalize()
+        if nodes is not None:
+            return f"lineage diff of {len(nodes)} nodes".capitalize()
+        else:
+            return f"lineage diff"
     elif check_type == RunType.TOP_K_DIFF:
         model = params.get('model')
         column = params.get('column_name')

@@ -49,7 +49,7 @@ import { NodeView } from "./NodeView";
 
 import { useLineageGraphContext } from "@/lib/hooks/LineageGraphContext";
 
-import { AddLineageDiffCheckButton, NodeSelector } from "./NodeSelector";
+import { NodeSelector } from "./NodeSelector";
 import { NodeFilter } from "./NodeFilter";
 import {
   IGNORE_SCREENSHOT_CLASS,
@@ -59,13 +59,15 @@ import { useClipBoardToast } from "@/lib/hooks/useClipBoardToast";
 import { NodeRunView } from "./NodeRunView";
 
 import { union } from "./graph";
-import { LineageDiffViewOptions } from "@/lib/api/lineagecheck";
+import {
+  LineageDiffViewOptions,
+  createLineageDiffCheck,
+} from "@/lib/api/lineagecheck";
 import { ChangeStatusLegend } from "./ChangeStatusLegend";
 import { HSplit } from "../split/Split";
-import { useMutation, useQuery } from "@tanstack/react-query";
 import { cacheKeys } from "@/lib/api/cacheKeys";
-import { SelectOutput, select } from "@/lib/api/select";
-import { isError } from "lodash";
+import { select } from "@/lib/api/select";
+import { useLocation } from "wouter";
 
 export interface LineageViewProps {
   viewOptions?: LineageDiffViewOptions;
@@ -94,6 +96,34 @@ const viewModeTitle = {
   all: "All",
   changed_models: "Changed Models",
 };
+
+function _AddLineageDiffCheckButton({
+  viewOptions,
+  isDisabled,
+}: {
+  viewOptions: LineageDiffViewOptions;
+  isDisabled: boolean;
+}) {
+  const [, setLocation] = useLocation();
+  return (
+    <Button
+      size="xs"
+      variant="outline"
+      backgroundColor="white"
+      isDisabled={isDisabled}
+      onClick={async () => {
+        const check = await createLineageDiffCheck(viewOptions);
+        if (check) {
+          setLocation(`/checks/${check.check_id}`);
+        } else {
+          setLocation(`/checks`);
+        }
+      }}
+    >
+      Add lineage diff check
+    </Button>
+  );
+}
 
 function _LineageView({ ...props }: LineageViewProps) {
   const reactFlow = useReactFlow();
@@ -180,15 +210,35 @@ function _LineageView({ ...props }: LineageViewProps) {
   ];
 
   useLayoutEffect(() => {
-    if (!lineageGraph) {
-      return;
-    }
+    const t = async () => {
+      let selectedNodes: string[] | undefined = undefined;
 
-    const [nodes, edges] = toReactflow(lineageGraph, viewOptions);
+      if (!lineageGraph) {
+        return;
+      }
 
-    layout(nodes, edges);
-    setNodes(nodes);
-    setEdges(edges);
+      if (viewOptions.select || viewOptions.exclude) {
+        try {
+          const result = await select({
+            select: viewOptions.select,
+            exclude: viewOptions.exclude,
+          });
+          selectedNodes = result.nodes;
+        } catch (e) {}
+      }
+
+      const [nodes, edges] = toReactflow(
+        lineageGraph,
+        viewOptions,
+        selectedNodes
+      );
+
+      layout(nodes, edges);
+      setNodes(nodes);
+      setEdges(edges);
+    };
+
+    t();
 
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [setNodes, setEdges, lineageGraph]);
@@ -305,7 +355,11 @@ function _LineageView({ ...props }: LineageViewProps) {
     setNodes(newNodes);
     setEdges(newEdges);
     setViewOptions(newViewOptions);
-    reactFlow.fitView({ nodes: newNodes });
+
+    await new Promise((resolve) => setTimeout(resolve, 1));
+    await(async () => {
+      reactFlow.fitView({ nodes: newNodes, duration: 200 });
+    })();
   };
 
   if (isLoading) {
@@ -424,16 +478,18 @@ function _LineageView({ ...props }: LineageViewProps) {
         spacing={0}
         style={{ contain: "strict" }}
       >
-        <NodeFilter
-          viewOptions={viewOptions}
-          onViewOptionsChanged={handleViewOptionsChanged}
-          onClose={(fitView: boolean) => {
-            setControlMode("normal");
-            if (fitView) {
-              reactFlow.fitView();
-            }
-          }}
-        />
+        {props.interactive && (
+          <NodeFilter
+            viewOptions={viewOptions}
+            onViewOptionsChanged={handleViewOptionsChanged}
+            onClose={(fitView: boolean) => {
+              setControlMode("normal");
+              if (fitView) {
+                reactFlow.fitView();
+              }
+            }}
+          />
+        )}
         <ReactFlow
           nodeTypes={nodeTypes}
           edgeTypes={edgeTypes}
@@ -504,22 +560,20 @@ function _LineageView({ ...props }: LineageViewProps) {
                       Select models
                     </Button>
 
-                    <AddLineageDiffCheckButton
+                    <_AddLineageDiffCheckButton
+                      viewOptions={viewOptions}
                       isDisabled={controlMode !== "normal"}
-                      viewMode={viewMode}
-                      nodes={nodes.map((node) => node.data)}
-                      onFinish={() => setSelectMode("detail")}
                     />
                   </VStack>
                 </Box>
               )}
             </HStack>
           </Panel>
-          <Panel position="top-left">
+          {/* <Panel position="top-left">
             <Text fontSize="xl" color="grey" opacity={0.5}>
               {nodes.length > 0 ? viewModeTitle[viewMode] : "No nodes"}
             </Text>
-          </Panel>
+          </Panel> */}
           <MiniMap
             nodeColor={nodeColor}
             nodeStrokeWidth={3}

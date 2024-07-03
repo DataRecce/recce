@@ -14,6 +14,8 @@ import {
   MenuDivider,
   MenuGroup,
   Input,
+  ButtonGroup,
+  Spacer,
 } from "@chakra-ui/react";
 
 import { FiAlignLeft, FiPackage } from "react-icons/fi";
@@ -23,7 +25,6 @@ import { CSSProperties, ChangeEvent, useEffect, useRef, useState } from "react";
 interface NodeFilterProps {
   viewOptions: LineageDiffViewOptions;
   onViewOptionsChanged: (options: LineageDiffViewOptions) => void;
-  onClose: (fitView: boolean) => void;
 }
 
 const ViewModeSelectMenu = ({
@@ -254,6 +255,7 @@ const ControlItem = (props: {
   label: string;
   children: React.ReactNode;
   style?: CSSProperties;
+  action?: boolean;
 }) => {
   return (
     <Box style={props.style} maxWidth="300px">
@@ -264,8 +266,6 @@ const ControlItem = (props: {
 };
 
 export const NodeFilter = (props: NodeFilterProps) => {
-  const { onClose } = props;
-
   return (
     <HStack width="100%" padding="4pt 8pt">
       <HStack flex="1">
@@ -275,11 +275,21 @@ export const NodeFilter = (props: NodeFilterProps) => {
         <ControlItem label="Package">
           <PackageSelectMenu {...props} />
         </ControlItem>
-        <ControlItem label="Select" style={{ flex: "1 0 auto" }}>
+        <ControlItem label="Select" style={{ flex: "100 0 auto" }}>
           <SelectFilter {...props} />
         </ControlItem>
-        <ControlItem label="Exclude" style={{ flex: "1 0 auto" }}>
+        <ControlItem label="Exclude" style={{ flex: "100 0 auto" }}>
           <ExcludeFilter {...props} />
+        </ControlItem>
+        <Spacer />
+
+        <ControlItem label="Actions" action>
+          <ButtonGroup isAttached variant="outline">
+            <Button size="xs" fontSize="9pt">
+              Select nodes
+            </Button>
+            <Button size="xs">...</Button>
+          </ButtonGroup>
         </ControlItem>
       </HStack>
     </HStack>
