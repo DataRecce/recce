@@ -5,13 +5,13 @@ from uuid import UUID
 from pydantic import BaseModel
 
 from recce.apis.check_func import get_node_name_by_id
-from recce.core import default_context
 from recce.models import CheckDAO, RunDAO, RunType, Run
 from recce.tasks.core import TaskResultDiffer
 from recce.tasks.histogram import HistogramDiffTaskResultDiffer
 from recce.tasks.profile import ProfileDiffResultDiffer
 from recce.tasks.query import QueryDiffResultDiffer
 from recce.tasks.rowcount import RowCountDiffResultDiffer
+from recce.tasks.schema import SchemaDiffResultDiffer
 from recce.tasks.top_k import TopKDiffTaskResultDiffer
 from recce.tasks.valuediff import ValueDiffTaskResultDiffer, ValueDiffDetailTaskResultDiffer
 
@@ -193,16 +193,6 @@ class CheckSummary(BaseModel):
             name = get_node_name_by_id(node_id)
             nodes.append(name)
 
-        if self.changed_nodes:
-            changed_set = set(self.changed_nodes)
-
-            def sort_changed_first(n):
-                # tuple[0] gives priority to elements that are in changed_nodes
-                # tuple[1] preserves the original order of elements in nodes
-                return 0 if n in changed_set else 1, nodes.index(n)
-
-            return sorted(nodes, key=sort_changed_first)
-
         return nodes
 
 
@@ -311,20 +301,23 @@ def _get_node_row_count_diff(node_id, node_name):
     return None, None
 
 
-def _get_node_schema_diff(params):
-    if params.get('node_id'):
-        return [params.get('node_id')]
+def _generate_related_models_summary(check: CheckSummary, limit: int = 3) -> str:
+    if not check.related_nodes:
+        return 'N/A'
 
-    select = params.get('select')
-    exclude = params.get('exclude')
+    nodes = check.related_nodes
+    if check.changed_nodes:
+        changed_set = set(check.changed_nodes)
 
-    dbt_adapter = default_context().adapter
-    return dbt_adapter.select_nodes(select, exclude)
+        def sort_changed_first(n):
+            # tuple[0] gives priority to elements that are in changed_nodes
+            # tuple[1] preserves the original order of elements in nodes
+            return 0 if n in changed_set else 1, nodes.index(n)
 
+        nodes = sorted(check.related_nodes, key=sort_changed_first)
 
-def _generate_related_models_summary(related_nodes: List[str], limit: int = 3) -> str:
-    related_models = related_nodes[:limit]
-    return ', '.join(related_models) + ('...' if len(related_nodes) > limit else '')
+    display_nodes = nodes[:limit]
+    return ', '.join(display_nodes) + ('...' if len(nodes) > limit else '')
 
 
 def generate_check_summary(base_lineage, curr_lineage) -> (List[CheckSummary], Dict[str, int]):
@@ -343,44 +336,30 @@ def generate_check_summary(base_lineage, curr_lineage) -> (List[CheckSummary], D
 
     for check in checks:
         run = _find_run_by_check_id(check.check_id)
+        differ = None
         if run is not None and run.error is not None:
             failed_checks_count += 1
             continue
         elif check.type == RunType.SCHEMA_DIFF:
-            # TODO: Check schema diff of the selected node
-            node_id = check.params.get('node_id')
-            base = _build_node_schema(base_lineage, node_id)
-            current = _build_node_schema(curr_lineage, node_id)
-            changes = TaskResultDiffer.diff(base, current)
-            if changes:
-                checks_summary.append(
-                    CheckSummary(
-                        id=check.check_id,
-                        type=check.type,
-                        name=check.name,
-                        description=check.description,
-                        changes=changes,
-                        node_ids=[node_id],
-                        changed_nodes=[]
-                    )
-                )
+            differ = SchemaDiffResultDiffer(check, base_lineage, curr_lineage)
         elif (check.type in [RunType.ROW_COUNT_DIFF, RunType.QUERY_DIFF,
                              RunType.VALUE_DIFF, RunType.VALUE_DIFF_DETAIL, RunType.PROFILE_DIFF,
                              RunType.TOP_K_DIFF, RunType.HISTOGRAM_DIFF] and run is not None):
             # Check the result is changed or not
             differ = differ_factory(run)
-            if differ.changes is not None:
-                checks_summary.append(
-                    CheckSummary(
-                        id=check.check_id,
-                        type=check.type,
-                        name=check.name,
-                        description=check.description,
-                        changes=differ.changes,
-                        node_ids=differ.related_node_ids,
-                        changed_nodes=differ.changed_nodes
-                    )
+
+        if differ and differ.changes is not None:
+            checks_summary.append(
+                CheckSummary(
+                    id=check.check_id,
+                    type=check.type,
+                    name=check.name,
+                    description=check.description,
+                    changes=differ.changes,
+                    node_ids=differ.related_node_ids,
+                    changed_nodes=differ.changed_nodes
                 )
+            )
 
     return checks_summary, {
         'total': len(checks),
@@ -463,7 +442,7 @@ def generate_check_content(graph, check_statistics):
             data.append({
                 'Name': check.name,
                 'Type': str(check.type).replace('_', ' ').title(),
-                'Related Models': _generate_related_models_summary(check.related_nodes) if check.related_nodes else 'N/A',
+                'Related Models': _generate_related_models_summary(check),
                 # Temporarily remove the type of changes, until we implement a better way to display it.
                 # 'Type of Changes': _formate_changes(check.changes)
             })
