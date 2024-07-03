@@ -26,6 +26,7 @@ import {
   SlideFade,
   StackDivider,
   MenuGroup,
+  useToast,
 } from "@chakra-ui/react";
 import React, { useCallback, useLayoutEffect, useState } from "react";
 import ReactFlow, {
@@ -69,6 +70,7 @@ import { HSplit } from "../split/Split";
 import { cacheKeys } from "@/lib/api/cacheKeys";
 import { select } from "@/lib/api/select";
 import { useLocation } from "wouter";
+import { AxiosError } from "axios";
 
 export interface LineageViewProps {
   viewOptions?: LineageDiffViewOptions;
@@ -210,6 +212,8 @@ function _LineageView({ ...props }: LineageViewProps) {
     viewOptions.exclude,
   ];
 
+  const toast = useToast();
+
   useLayoutEffect(() => {
     const t = async () => {
       let selectedNodes: string[] | undefined = undefined;
@@ -341,11 +345,24 @@ function _LineageView({ ...props }: LineageViewProps) {
       return;
     }
 
-    const result = await select({
-      select: newViewOptions.select,
-      exclude: newViewOptions.exclude,
-    });
-    selectedNodes = result.nodes;
+    try {
+      const result = await select({
+        select: newViewOptions.select,
+        exclude: newViewOptions.exclude,
+      });
+      selectedNodes = result.nodes;
+    } catch (e) {
+      if (e instanceof AxiosError) {
+        toast({
+          title: "Select node error",
+          description: e.response?.data?.detail || e.message,
+          status: "error",
+          isClosable: true,
+          position: "bottom-right",
+        });
+      }
+      return;
+    }
 
     const [newNodes, newEdges] = toReactflow(
       lineageGraph,
@@ -534,11 +551,11 @@ function _LineageView({ ...props }: LineageViewProps) {
               <ChangeStatusLegend />
             </HStack>
           </Panel>
-          {/* <Panel position="top-left">
+          <Panel position="top-left">
             <Text fontSize="xl" color="grey" opacity={0.5}>
-              {nodes.length > 0 ? viewModeTitle[viewMode] : "No nodes"}
+              {nodes.length > 0 ? "" : "No nodes"}
             </Text>
-          </Panel> */}
+          </Panel>
           <MiniMap
             nodeColor={nodeColor}
             nodeStrokeWidth={3}
