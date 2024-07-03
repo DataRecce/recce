@@ -14,6 +14,7 @@ from pydantic import Field
 
 from recce import get_version
 from recce.git import current_branch
+from recce.models import CheckDAO
 from recce.models.types import Run, Check
 from recce.pull_request import fetch_pr_metadata, PullRequestInfo
 from recce.util.pydantic_model import pydantic_model_json_dump, pydantic_model_dump
@@ -277,7 +278,8 @@ class RecceStateLoader:
         else:
             return RecceStateLoader._purge_state_from_cloud(token, pr_info)
 
-    def _get_presigned_url(self, pr_info: PullRequestInfo, artifact_name: str, method: str = 'upload') -> str:
+    def _get_presigned_url(self, pr_info: PullRequestInfo, artifact_name: str, method: str = 'upload',
+                           metadata: dict = None) -> str:
         import requests
         # Step 1: Get the token
         token = self.cloud_options.get('token')
@@ -289,7 +291,7 @@ class RecceStateLoader:
         headers = {
             'Authorization': f'Bearer {token}'
         }
-        response = requests.post(api_url, headers=headers)
+        response = requests.post(api_url, headers=headers, json=metadata)
         if response.status_code != 200:
             self.error_message = response.text
             raise Exception('Failed to get presigned URL from Recce Cloud.')
@@ -358,18 +360,25 @@ class RecceStateLoader:
         if (self.pr_info is None) or (self.pr_info.id is None) or (self.pr_info.repository is None):
             raise Exception('Cannot get the pull request information from GitHub.')
 
+        check_status = CheckDAO().status()
+        metadata = {
+            'total_checks': check_status.get('total', 0),
+            'approved_checks': check_status.get('approved', 0),
+        }
+
         if self.cloud_options.get('host', '').startswith('s3://'):
             logger.info("Store recce state to AWS S3 bucket")
-            return self._export_state_to_s3_bucket()
+            return self._export_state_to_s3_bucket(metadata=metadata)
         else:
             logger.info("Store recce state to Recce Cloud")
-            return self._export_state_to_recce_cloud()
+            return self._export_state_to_recce_cloud(metadata=metadata)
 
-    def _export_state_to_recce_cloud(self) -> Union[str, None]:
+    def _export_state_to_recce_cloud(self, metadata: dict = None) -> Union[str, None]:
         import tempfile
         import requests
 
-        presigned_url = self._get_presigned_url(self.pr_info, RECCE_STATE_COMPRESSED_FILE, method='upload')
+        presigned_url = self._get_presigned_url(self.pr_info, RECCE_STATE_COMPRESSED_FILE, method='upload',
+                                                metadata=metadata)
         compress_passwd = self.cloud_options.get('password')
         with tempfile.NamedTemporaryFile() as tmp:
             self._export_state_to_file(tmp.name, compress=True, compress_passwd=compress_passwd)
@@ -379,7 +388,7 @@ class RecceStateLoader:
                 return 'Failed to upload the state file to Recce Cloud.'
         return 'The state file is uploaded to Recce Cloud.'
 
-    def _export_state_to_s3_bucket(self) -> Union[str, None]:
+    def _export_state_to_s3_bucket(self, metadata: dict = None) -> Union[str, None]:
         import boto3
         import tempfile
         s3_client = boto3.client('s3')
@@ -393,8 +402,39 @@ class RecceStateLoader:
         compress_passwd = self.cloud_options.get('password')
         with tempfile.NamedTemporaryFile() as tmp:
             self._export_state_to_file(tmp.name, compress=True, compress_passwd=compress_passwd)
-            s3_client.upload_file(tmp.name, s3_bucket_name, s3_bucket_key)
+
+            s3_client.upload_file(tmp.name, s3_bucket_name, s3_bucket_key,
+                                  # Casting all the values under metadata to string
+                                  ExtraArgs={'Metadata': {k: str(v) for k, v in metadata.items()}})
         return f'The state file is uploaded to \' s3://{s3_bucket_name}/{s3_bucket_key}\''
+
+    def _get_artifact_metadata_from_recce_cloud(self, artifact_name: str) -> dict:
+        import requests
+        token = self.cloud_options.get('token')
+        if token is None:
+            raise Exception('No token is provided to access Recce Cloud.')
+        api_url = f'{RECCE_CLOUD_API_HOST}/api/v1/{self.pr_info.repository}/pulls/{self.pr_info.id}/artifacts/{artifact_name}/metadata'
+        headers = {
+            'Authorization': f'Bearer {token}'
+        }
+        response = requests.get(api_url, headers=headers)
+        if response.status_code != 200:
+            self.error_message = response.text
+            raise Exception('Failed to get artifact metadata from Recce Cloud.')
+        return response.json()
+
+    def _get_artifact_metadata_from_s3_bucket(self, artifact_name: str) -> Union[dict, None]:
+        import boto3
+        s3_client = boto3.client('s3')
+        s3_bucket_name = self.cloud_options.get('host').replace('s3://', '')
+        s3_bucket_key = f'github/{self.pr_info.repository}/pulls/{self.pr_info.id}/{artifact_name}'
+        try:
+            response = s3_client.head_object(Bucket=s3_bucket_name, Key=s3_bucket_key)
+            metadata = response['Metadata']
+            return metadata
+        except botocore.exceptions.ClientError as e:
+            self.error_message = e.response.get('Error', {}).get('Message')
+            raise Exception('Failed to get artifact metadata from Recce Cloud.')
 
     def _export_state_to_file(self, file_path: Optional[str] = None, compress: bool = False,
                               compress_passwd: str = None) -> str:
