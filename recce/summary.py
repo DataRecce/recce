@@ -442,11 +442,16 @@ def generate_check_content(graph, check_statistics):
             data.append({
                 'Name': check.name,
                 'Type': str(check.type).replace('_', ' ').title(),
-                'Related Models': _generate_related_models_summary(check),
+                'Mismatched Nodes': _generate_related_models_summary(check),
                 # Temporarily remove the type of changes, until we implement a better way to display it.
                 # 'Type of Changes': _formate_changes(check.changes)
             })
-        check_content = markdown_table(data).set_params(quote=False, row_sep='markdown').get_markdown()
+        check_content = markdown_table(data).set_params(
+            quote=False,
+            row_sep='markdown',
+            padding_width=1,
+            padding_weight='right'  # Aligns the cell's contents to the beginning of the cell
+        ).get_markdown()
 
     if check_statistics.get('total', 0) > 0:
         warning_message = ''
