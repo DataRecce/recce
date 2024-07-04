@@ -1,4 +1,4 @@
-import _ from "lodash";
+import _, { omit } from "lodash";
 import { axiosClient } from "./axiosClient";
 import { Run, RunType } from "./types";
 
@@ -17,18 +17,6 @@ export interface Check<PT = any, RT = any, VO = any> {
 export async function createSimpleCheck(): Promise<Check> {
   const response = await axiosClient.post("/api/checks", {
     type: "simple",
-  });
-  const check = response.data;
-
-  return check;
-}
-
-export async function createCheckByNodeSchema(nodeId: string): Promise<Check> {
-  const response = await axiosClient.post("/api/checks", {
-    type: "schema_diff",
-    params: {
-      node_id: nodeId,
-    },
   });
   const check = response.data;
 

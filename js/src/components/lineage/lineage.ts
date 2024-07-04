@@ -1,5 +1,5 @@
 import { Node, Edge, Position } from "reactflow";
-import { getNeighborSet, union } from "./graph";
+import { getNeighborSet, intersect, union } from "./graph";
 import { Run } from "@/lib/api/types";
 import dagre from "dagre";
 import { LineageDiffViewOptions } from "@/lib/api/lineagecheck";
@@ -247,7 +247,7 @@ export function selectDownstream(
     degree
   );
 }
-export function selectViewOptions(
+function selectViewOptions(
   lineageGraph: LineageGraph,
   viewOptions: LineageDiffViewOptions
 ) {
@@ -288,7 +288,8 @@ export function selectViewOptions(
 
 export function toReactflow(
   lineageGraph: LineageGraph,
-  viewOptions?: LineageDiffViewOptions
+  viewOptions?: LineageDiffViewOptions,
+  selectedNodes?: string[]
 ): [Node[], Edge[]] {
   const nodes: Node[] = [];
   const edges: Edge[] = [];
@@ -318,9 +319,15 @@ export function toReactflow(
     return 0;
   }
 
-  const filterSet = viewOptions
+  let filterSet = viewOptions
     ? selectViewOptions(lineageGraph, viewOptions)
     : undefined;
+
+  if (selectedNodes !== undefined && selectedNodes !== null) {
+    filterSet = filterSet
+      ? intersect(filterSet, new Set(selectedNodes))
+      : new Set(selectedNodes);
+  }
 
   const sortedNodes = Object.values(lineageGraph.nodes).sort(compareFn);
   for (const node of sortedNodes) {

@@ -52,7 +52,7 @@ class RowCountDiffTask(Task, QueryMixin):
                     query_candidates.append(name)
             for node in self.params.get('node_names', []):
                 query_candidates.append(node)
-        elif self.params.get('select', "") or self.params.get('exclude', ""):
+        else:
             def countable(unique_id):
                 return unique_id.startswith('model') or unique_id.startswith('snapshot')
 

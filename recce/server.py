@@ -189,9 +189,12 @@ async def select_nodes(input: SelectNodesInput):
     if context.adapter_type != 'dbt':
         raise HTTPException(status_code=400, detail='Only dbt adapter is supported')
 
-    nodes = context.adapter.select_nodes(input.select, input.exclude)
-    nodes = [node for node in nodes if not node.startswith('test.')]
-    return SelectNodesOutput(nodes=nodes)
+    try:
+        nodes = context.adapter.select_nodes(input.select, input.exclude)
+        nodes = [node for node in nodes if not node.startswith('test.')]
+        return SelectNodesOutput(nodes=nodes)
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=str(e))
 
 
 @app.get("/api/model/{model_id}")

@@ -1,34 +1,44 @@
-import { LineageDiffViewOptions } from "@/lib/api/lineagecheck";
+import {
+  LineageDiffViewOptions,
+  createLineageDiffCheck,
+} from "@/lib/api/lineagecheck";
 import { useLineageGraphContext } from "@/lib/hooks/LineageGraphContext";
-import { SmallCloseIcon } from "@chakra-ui/icons";
+
 import {
   HStack,
   Button,
   Icon,
   Box,
-  ButtonGroup,
-  IconButton,
   Checkbox,
   Menu,
   MenuButton,
   MenuItem,
   MenuList,
   MenuDivider,
-  StackDivider,
   MenuGroup,
+  Input,
+  ButtonGroup,
+  Spacer,
+  Text,
 } from "@chakra-ui/react";
-import _ from "lodash";
 
-import { FiAlignLeft, FiPackage } from "react-icons/fi";
+import { FiPackage } from "react-icons/fi";
 import { getIconForResourceType } from "./styles";
+import { CSSProperties, useCallback, useEffect, useRef, useState } from "react";
+import { createSchemaDiffCheck } from "@/lib/api/schemacheck";
+import { useLocation } from "wouter";
+import { Check } from "@/lib/api/checks";
+import { useRecceActionContext } from "@/lib/hooks/RecceActionContext";
 
 interface NodeFilterProps {
+  isDisabled?: boolean;
   viewOptions: LineageDiffViewOptions;
   onViewOptionsChanged: (options: LineageDiffViewOptions) => void;
-  onClose: (fitView: boolean) => void;
+  onSelectNodesClicked: () => void;
 }
 
 const ViewModeSelectMenu = ({
+  isDisabled,
   viewOptions,
   onViewOptionsChanged,
 }: NodeFilterProps) => {
@@ -46,10 +56,11 @@ const ViewModeSelectMenu = ({
     <Menu>
       <MenuButton
         as={Button}
-        minWidth="150px"
+        minWidth="100px"
         leftIcon={<Icon as={getIconForResourceType("model").icon} />}
         size="xs"
         variant="outline"
+        isDisabled={isDisabled}
       >
         {label}
       </MenuButton>
@@ -79,6 +90,7 @@ const ViewModeSelectMenu = ({
 const PackageSelectMenu = ({
   viewOptions,
   onViewOptionsChanged,
+  isDisabled,
 }: NodeFilterProps) => {
   const { lineageGraph } = useLineageGraphContext();
 
@@ -140,10 +152,11 @@ const PackageSelectMenu = ({
     <Menu closeOnSelect={false}>
       <MenuButton
         as={Button}
-        minWidth="150px"
+        minWidth="100px"
         leftIcon={<Icon as={FiPackage} />}
         size="xs"
         variant="outline"
+        isDisabled={isDisabled}
       >
         {label}
       </MenuButton>
@@ -185,30 +198,194 @@ const PackageSelectMenu = ({
   );
 };
 
-export const NodeFilter = (props: NodeFilterProps) => {
-  const { onClose } = props;
+const NodeSelectionInput = (props: {
+  value: string;
+  onChange: (value: string) => void;
+  isDisabled?: boolean;
+}) => {
+  const [inputValue, setInputValue] = useState(props.value);
+  const inputRef = useRef(null);
+
+  useEffect(() => {
+    if (inputRef.current) {
+      (inputRef.current as any).value = props.value;
+    }
+  }, [props.value]);
 
   return (
-    <Box bg="white" rounded="md" shadow="dark-lg">
-      <HStack
-        p="5px 15px"
-        mt="4"
-        divider={<StackDivider borderColor="gray.200" />}
-      >
-        <HStack>
-          <ViewModeSelectMenu {...props} />
-          <PackageSelectMenu {...props} />
-        </HStack>
+    <Input
+      ref={inputRef}
+      height="24px"
+      fontSize="10pt"
+      placeholder="<selection>"
+      isDisabled={props.isDisabled}
+      value={inputValue}
+      onChange={(event) => {
+        setInputValue(event.target.value);
+      }}
+      onKeyUp={(event) => {
+        if (event.key === "Enter") {
+          props.onChange(inputValue);
+        } else if (event.key === "Escape") {
+          event.preventDefault();
+          setInputValue(props.value);
+          if (inputRef.current) {
+            (inputRef.current as any).blur();
+          }
+        }
+      }}
+      onBlur={() => setInputValue(props.value)}
+    />
+  );
+};
 
-        <ButtonGroup size="xs" isAttached variant="outline" rounded="xs">
-          <Button onClick={() => onClose(true)}>Fit and Close</Button>
-          <IconButton
-            aria-label="Exit filter Mode"
-            icon={<SmallCloseIcon />}
-            onClick={() => onClose(false)}
-          />
-        </ButtonGroup>
-      </HStack>
+const SelectFilter = (props: NodeFilterProps) => {
+  return (
+    <NodeSelectionInput
+      isDisabled={props.isDisabled}
+      value={props.viewOptions.select || ""}
+      onChange={(value) => {
+        props.onViewOptionsChanged({
+          ...props.viewOptions,
+          select: value ? value : undefined,
+        });
+      }}
+    />
+  );
+};
+
+const ExcludeFilter = (props: NodeFilterProps) => {
+  return (
+    <NodeSelectionInput
+      isDisabled={props.isDisabled}
+      value={props.viewOptions.exclude || ""}
+      onChange={(value) => {
+        props.onViewOptionsChanged({
+          ...props.viewOptions,
+          exclude: value ? value : undefined,
+        });
+      }}
+    />
+  );
+};
+
+const ControlItem = (props: {
+  label: string;
+  children: React.ReactNode;
+  style?: CSSProperties;
+  action?: boolean;
+}) => {
+  return (
+    <Box style={props.style} maxWidth="300px">
+      <Box fontSize="8pt">{props.label}</Box>
+      {props.children}
     </Box>
+  );
+};
+
+const MoreActionMenu = (props: NodeFilterProps) => {
+  const [, setLocation] = useLocation();
+  const { runAction } = useRecceActionContext();
+  const handleNavToCheck = useCallback(
+    (check: Check) => {
+      if (check.check_id) {
+        setLocation(`/checks/${check.check_id}`);
+      }
+    },
+    [setLocation]
+  );
+
+  return (
+    <Menu>
+      <MenuButton as={Button} size={"xs"} isDisabled={props.isDisabled}>
+        ...
+      </MenuButton>
+
+      <MenuList>
+        <MenuGroup title="Diff" m="0" p="4px 12px">
+          <MenuItem
+            as={Text}
+            size="sm"
+            fontSize="10pt"
+            onClick={() => {
+              runAction("row_count_diff", {
+                select: props.viewOptions.select,
+                exclude: props.viewOptions.exclude,
+              });
+            }}
+          >
+            Row Count Diff by Selector
+          </MenuItem>
+        </MenuGroup>
+        <MenuDivider />
+        <MenuGroup title="Add check" m="0" px="12px">
+          <MenuItem
+            as={Text}
+            size="sm"
+            fontSize="10pt"
+            onClick={async () => {
+              const check = await createLineageDiffCheck(props.viewOptions);
+              if (check) {
+                handleNavToCheck(check);
+              }
+            }}
+          >
+            Lineage Diff
+          </MenuItem>
+          <MenuItem
+            as={Text}
+            size="sm"
+            fontSize="10pt"
+            onClick={async () => {
+              const check = await createSchemaDiffCheck({
+                select: props.viewOptions.select,
+                exclude: props.viewOptions.exclude,
+              });
+              if (check) {
+                handleNavToCheck(check);
+              }
+            }}
+          >
+            Schema Diff by Selector
+          </MenuItem>
+        </MenuGroup>
+      </MenuList>
+    </Menu>
+  );
+};
+
+export const NodeFilter = (props: NodeFilterProps) => {
+  return (
+    <HStack width="100%" padding="4pt 8pt">
+      <HStack flex="1">
+        <ControlItem label="Mode" style={{ flexShrink: "1" }}>
+          <ViewModeSelectMenu {...props} />
+        </ControlItem>
+        <ControlItem label="Package" style={{ flexShrink: "1" }}>
+          <PackageSelectMenu {...props} />
+        </ControlItem>
+        <ControlItem label="Select" style={{ flex: "100 1 auto" }}>
+          <SelectFilter {...props} />
+        </ControlItem>
+        <ControlItem label="Exclude" style={{ flex: "100 1 auto" }}>
+          <ExcludeFilter {...props} />
+        </ControlItem>
+        <Spacer />
+
+        <ControlItem label="Actions" action>
+          <ButtonGroup isAttached variant="outline">
+            <Button
+              size="xs"
+              fontSize="9pt"
+              onClick={props.onSelectNodesClicked}
+              isDisabled={props.isDisabled}
+            >
+              Select nodes
+            </Button>
+            <MoreActionMenu {...props} />
+          </ButtonGroup>
+        </ControlItem>
+      </HStack>
+    </HStack>
   );
 };

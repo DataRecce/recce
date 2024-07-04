@@ -57,20 +57,24 @@ def _generate_default_name(check_type, params, view_options):
         model = params.get('model')
         return f"value diff of {model}".capitalize()
     elif check_type == RunType.SCHEMA_DIFF:
-        node_name = get_node_name_by_id(params.get('node_id'))
-        return f"schema diff of {node_name}".capitalize()
+        if params.get('node_id'):
+            node_name = get_node_name_by_id(params.get('node_id'))
+            return f"schema diff of {node_name}".capitalize()
+        return f"{'schema diff'.capitalize()} - {now}"
     elif check_type == RunType.PROFILE_DIFF:
         model = params.get('model')
         return f"profile diff of {model}".capitalize()
     elif check_type == RunType.ROW_COUNT_DIFF:
         nodes = params.get('node_names')
-        if len(nodes) == 1:
+        if nodes and len(nodes) == 1:
             node = nodes[0]
             return f"row count of {node}".capitalize()
         return f"{'row count'.capitalize()} - {now}"
     elif check_type == RunType.LINEAGE_DIFF:
         nodes = view_options.get('node_ids') if view_options else params.get('node_ids')
-        return f"lineage diff of {len(nodes)} nodes".capitalize()
+        if nodes is not None:
+            return f"lineage diff of {len(nodes)} nodes".capitalize()
+        return f"{'lineage diff'.capitalize()} - {now}"
     elif check_type == RunType.TOP_K_DIFF:
         model = params.get('model')
         column = params.get('column_name')
