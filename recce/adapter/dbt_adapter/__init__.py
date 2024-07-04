@@ -625,13 +625,37 @@ class DbtAdapter(BaseAdapter):
             spec = parse_difference(select_list, exclude_list, "eager")
         else:
             spec = parse_difference(select_list, exclude_list)
+
+        manifest = self.manifest.deepcopy()
+
+        for (key, node) in self.previous_state.manifest.nodes.items():
+            if key not in manifest.nodes:
+                manifest.nodes[key] = node
+
+        for (key, node) in self.previous_state.manifest.sources.items():
+            if key not in manifest.sources:
+                manifest.sources[key] = node
+
+        for (key, node) in self.previous_state.manifest.exposures.items():
+            if key not in manifest.exposures:
+                manifest.exposures[key] = node
+
+        for (key, node) in self.previous_state.manifest.metrics.items():
+            if key not in manifest.metrics:
+                manifest.metrics[key] = node
+
+        if hasattr(self.previous_state.manifest, 'semantic_models'):
+            for (key, node) in self.previous_state.manifest.semantic_models.items():
+                if key not in manifest.semantic_models:
+                    manifest.semantic_models[key] = node
+
         compiler = Compiler(self.runtime_config)
         # disable to print compile states
         tmp_func = dbt.compilation.print_compile_stats
         dbt.compilation.print_compile_stats = lambda x: None
-        graph = compiler.compile(self.manifest, write=False)
+        graph = compiler.compile(manifest, write=False)
         dbt.compilation.print_compile_stats = tmp_func
-        selector = NodeSelector(graph, self.manifest, previous_state=self.previous_state)
+        selector = NodeSelector(graph, manifest, previous_state=self.previous_state)
 
         return selector.get_selected(spec)
 

@@ -41,7 +41,7 @@ class DbtTestHelper:
         self.adapter.execute(f"CREATE schema IF NOT EXISTS {self.curr_schema}")
         self.adapter.set_artifacts(self.base_manifest, self.curr_manifest)
 
-    def create_model(self, model_name, base_csv, curr_csv, depends_on=[]):
+    def create_model(self, model_name, base_csv=None, curr_csv=None, depends_on=[]):
         package_name = "recce_test"
         # unique_id = f"model.{package_name}.{model_name}"
         unique_id = model_name
@@ -84,19 +84,19 @@ class DbtTestHelper:
             manifest.add_node_nofile(node)
             return node
 
-        base_csv = textwrap.dedent(base_csv)
-        curr_csv = textwrap.dedent(curr_csv)
-
-        _add_model_to_manifest(True, base_csv)
-        _add_model_to_manifest(False, curr_csv)
-
-        import pandas as pd
-        df_base = pd.read_csv(StringIO(base_csv))
-        df_curr = pd.read_csv(StringIO(curr_csv))
         dbt_adapter = self.adapter
         with dbt_adapter.connection_named('create model'):
-            dbt_adapter.execute(f"CREATE TABLE {self.base_schema}.{model_name} AS SELECT * FROM df_base")
-            dbt_adapter.execute(f"CREATE TABLE {self.curr_schema}.{model_name} AS SELECT * FROM df_curr")
+            import pandas as pd
+            if base_csv:
+                base_csv = textwrap.dedent(base_csv)
+                _add_model_to_manifest(True, base_csv)
+                df_base = pd.read_csv(StringIO(base_csv))
+                dbt_adapter.execute(f"CREATE TABLE {self.base_schema}.{model_name} AS SELECT * FROM df_base")
+            if curr_csv:
+                curr_csv = textwrap.dedent(curr_csv)
+                _add_model_to_manifest(False, curr_csv)
+                df_curr = pd.read_csv(StringIO(curr_csv))
+                dbt_adapter.execute(f"CREATE TABLE {self.curr_schema}.{model_name} AS SELECT * FROM df_curr")
         self.adapter.set_artifacts(self.base_manifest, self.curr_manifest)
 
     def remove_model(self, model_name):
