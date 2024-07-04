@@ -316,8 +316,11 @@ def _generate_related_models_summary(check: CheckSummary, limit: int = 3) -> str
 
         nodes = sorted(check.related_nodes, key=sort_changed_first)
 
-    display_nodes = nodes[:limit]
-    return ', '.join(display_nodes) + (f', and {len(nodes) - limit} more' if len(nodes) > limit else '')
+    if len(nodes) <= limit:
+        return ', '.join(nodes)
+
+    display_nodes = nodes[:limit - 1]
+    return ', '.join(display_nodes) + f', and {len(nodes) - len(display_nodes)} more nodes'
 
 
 def generate_check_summary(base_lineage, curr_lineage) -> (List[CheckSummary], Dict[str, int]):
