@@ -369,11 +369,17 @@ class DbtAdapter(BaseAdapter):
         return None
 
     def get_node_name_by_id(self, unique_id):
-        if unique_id in self.curr_manifest.nodes:
-            return self.curr_manifest.nodes[unique_id].name
-        elif unique_id in self.base_manifest.nodes:
-            return self.base_manifest.nodes[unique_id].name
-        return None
+        if unique_id.startswith('source.'):
+            if unique_id in self.curr_manifest.sources:
+                return self.curr_manifest.sources[unique_id].name
+            elif unique_id in self.base_manifest.sources:
+                return self.base_manifest.sources[unique_id].name
+        else:
+            if unique_id in self.curr_manifest.nodes:
+                return self.curr_manifest.nodes[unique_id].name
+            elif unique_id in self.base_manifest.nodes:
+                return self.base_manifest.nodes[unique_id].name
+            return None
 
     def get_manifest(self, base: bool):
         return self.curr_manifest if base is False else self.base_manifest

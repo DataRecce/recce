@@ -11,6 +11,7 @@ from recce.tasks.histogram import HistogramDiffTaskResultDiffer
 from recce.tasks.profile import ProfileDiffResultDiffer
 from recce.tasks.query import QueryDiffResultDiffer
 from recce.tasks.rowcount import RowCountDiffResultDiffer
+from recce.tasks.schema import SchemaDiffResultDiffer
 from recce.tasks.top_k import TopKDiffTaskResultDiffer
 from recce.tasks.valuediff import ValueDiffTaskResultDiffer, ValueDiffDetailTaskResultDiffer
 
@@ -182,6 +183,7 @@ class CheckSummary(BaseModel):
     description: str
     changes: dict
     node_ids: Optional[List[str]]
+    changed_nodes: Optional[List[str]]
 
     @property
     def related_nodes(self):
@@ -299,7 +301,23 @@ def _get_node_row_count_diff(node_id, node_name):
     return None, None
 
 
-# def _get_node_schema_diff(node_id):
+def _generate_related_models_summary(check: CheckSummary, limit: int = 3) -> str:
+    if not check.related_nodes:
+        return 'N/A'
+
+    nodes = check.related_nodes
+    if check.changed_nodes:
+        changed_set = set(check.changed_nodes)
+
+        def sort_changed_first(n):
+            # tuple[0] gives priority to elements that are in changed_nodes
+            # tuple[1] preserves the original order of elements in nodes
+            return 0 if n in changed_set else 1, nodes.index(n)
+
+        nodes = sorted(check.related_nodes, key=sort_changed_first)
+
+    display_nodes = nodes[:limit]
+    return ', '.join(display_nodes) + (f', and {len(nodes) - limit} more' if len(nodes) > limit else '')
 
 
 def generate_check_summary(base_lineage, curr_lineage) -> (List[CheckSummary], Dict[str, int]):
@@ -318,41 +336,30 @@ def generate_check_summary(base_lineage, curr_lineage) -> (List[CheckSummary], D
 
     for check in checks:
         run = _find_run_by_check_id(check.check_id)
+        differ = None
         if run is not None and run.error is not None:
             failed_checks_count += 1
             continue
         elif check.type == RunType.SCHEMA_DIFF:
-            # TODO: Check schema diff of the selected node
-            node_id = check.params.get('node_id')
-            base = _build_node_schema(base_lineage, node_id)
-            current = _build_node_schema(curr_lineage, node_id)
-            changes = TaskResultDiffer.diff(base, current)
-            if changes:
-                checks_summary.append(
-                    CheckSummary(
-                        id=check.check_id,
-                        type=check.type,
-                        name=check.name,
-                        description=check.description,
-                        changes=changes,
-                        node_ids=[node_id]
-                    )
-                )
+            differ = SchemaDiffResultDiffer(check, base_lineage, curr_lineage)
         elif (check.type in [RunType.ROW_COUNT_DIFF, RunType.QUERY_DIFF,
                              RunType.VALUE_DIFF, RunType.VALUE_DIFF_DETAIL, RunType.PROFILE_DIFF,
                              RunType.TOP_K_DIFF, RunType.HISTOGRAM_DIFF] and run is not None):
             # Check the result is changed or not
             differ = differ_factory(run)
-            if differ.changes is not None:
-                checks_summary.append(
-                    CheckSummary(
-                        id=check.check_id,
-                        type=check.type,
-                        name=check.name,
-                        description=check.description,
-                        changes=differ.changes,
-                        node_ids=differ.related_node_ids)
+
+        if differ and differ.changes is not None:
+            checks_summary.append(
+                CheckSummary(
+                    id=check.check_id,
+                    type=check.type,
+                    name=check.name,
+                    description=check.description,
+                    changes=differ.changes,
+                    node_ids=differ.related_node_ids,
+                    changed_nodes=differ.changed_nodes
                 )
+            )
 
     return checks_summary, {
         'total': len(checks),
@@ -435,11 +442,16 @@ def generate_check_content(graph, check_statistics):
             data.append({
                 'Name': check.name,
                 'Type': str(check.type).replace('_', ' ').title(),
-                'Related Models': ', '.join(check.related_nodes) if check.related_nodes else 'N/A',
+                'Mismatched Nodes': _generate_related_models_summary(check),
                 # Temporarily remove the type of changes, until we implement a better way to display it.
                 # 'Type of Changes': _formate_changes(check.changes)
             })
-        check_content = markdown_table(data).set_params(quote=False, row_sep='markdown').get_markdown()
+        check_content = markdown_table(data).set_params(
+            quote=False,
+            row_sep='markdown',
+            padding_width=1,
+            padding_weight='right'  # Aligns the cell's contents to the beginning of the cell
+        ).get_markdown()
 
     if check_statistics.get('total', 0) > 0:
         warning_message = ''

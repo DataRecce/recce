@@ -1,5 +1,5 @@
 from abc import ABC, abstractmethod
-from typing import List, Union
+from typing import List, Union, Optional
 
 from recce.core import default_context
 from recce.exceptions import RecceCancelException
@@ -52,6 +52,7 @@ class TaskResultDiffer(ABC):
         self.run = run
         self.changes = self._check_result_changed_fn(run.result) if run.result else None
         self.related_node_ids = self._get_related_node_ids()
+        self.changed_nodes = self._get_changed_nodes()
 
     @staticmethod
     def diff(base, current):
@@ -63,6 +64,11 @@ class TaskResultDiffer(ABC):
     def get_node_id_by_name(name):
         node = default_context().adapter.get_node_by_name(name)
         return node.unique_id if node else None
+
+    @staticmethod
+    def get_node_ids_by_selector(select: Optional[str] = None, exclude: Optional[str] = None) -> List[str]:
+        nodes = default_context().adapter.select_nodes(select, exclude)
+        return [node for node in nodes if not node.startswith('test.')]
 
     @abstractmethod
     def _check_result_changed_fn(self, result):
@@ -86,3 +92,10 @@ class TaskResultDiffer(ABC):
         else:
             # No related node ids in the params
             return None
+
+    def _get_changed_nodes(self) -> Union[List[str], None]:
+        """
+        Get the changed node ids.
+        Should be implemented by subclass.
+        """
+        return None
