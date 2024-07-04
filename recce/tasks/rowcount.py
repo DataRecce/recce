@@ -16,7 +16,7 @@ class RowCountDiffParams(TypedDict, total=False):
 class RowCountDiffTask(Task, QueryMixin):
     def __init__(self, params: RowCountDiffParams):
         super().__init__()
-        self.params = params
+        self.params = params if params is not None else {}
         self.connection = None
 
     def _query_row_count(self, dbt_adapter, model_name, base=False):
@@ -52,7 +52,7 @@ class RowCountDiffTask(Task, QueryMixin):
                     query_candidates.append(name)
             for node in self.params.get('node_names', []):
                 query_candidates.append(node)
-        elif self.params.get('select', "") or self.params.get('exclude', ""):
+        else:
             def countable(unique_id):
                 return unique_id.startswith('model') or unique_id.startswith('snapshot')
 
@@ -138,6 +138,22 @@ class RowCountDiffResultDiffer(TaskResultDiffer):
             current[node] = row_counts['curr']
 
         return TaskResultDiffer.diff(base, current)
+
+    def _get_related_node_ids(self) -> Union[List[str], None]:
+        """
+        Get the related node ids.
+        Should be implemented by subclass.
+        """
+        params = self.run.params
+        if params.get('model'):
+            return [TaskResultDiffer.get_node_id_by_name(params.get('model'))]
+        elif params.get('node_names'):
+            names = params.get('node_names', [])
+            return [TaskResultDiffer.get_node_id_by_name(name) for name in names]
+        elif params.get('node_ids'):
+            return params.get('node_ids', [])
+        else:
+            return TaskResultDiffer.get_node_ids_by_selector(params.get('select'), params.get('exclude'))
 
     def _get_changed_nodes(self) -> Union[List[str], None]:
         if self.changes:

@@ -89,10 +89,6 @@ class TaskResultDiffer(ABC):
         elif params.get('node_names'):
             names = params.get('node_names', [])
             return [TaskResultDiffer.get_node_id_by_name(name) for name in names]
-        elif params.get('node_ids'):
-            return params.get('node_ids', [])
-        elif params.get('select') or params.get('exclude'):
-            return TaskResultDiffer.get_node_ids_by_selector(params.get('select'), params.get('exclude'))
         else:
             # No related node ids in the params
             return None

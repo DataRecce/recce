@@ -16,11 +16,8 @@ class SchemaDiffResultDiffer:
         params = self.check.params
         if params.get('node_id'):
             return [params.get('node_id')] if params.get('node_id') else []
-        elif params.get('select') or params.get('exclude'):
-            return TaskResultDiffer.get_node_ids_by_selector(params.get('select'), params.get('exclude'))
         else:
-            # No related node ids in the params
-            return None
+            return TaskResultDiffer.get_node_ids_by_selector(params.get('select'), params.get('exclude'))
 
     def _check_result_changed_fn(self, base_lineage, curr_lineage):
         base = {}

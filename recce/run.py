@@ -69,7 +69,7 @@ async def execute_preset_checks(preset_checks: list) -> (int, List[dict]):
         check_name = check.get('name')
         check_type = check.get('type')
         check_description = check.get('description', '')
-        check_params = check.get('params', {})
+        check_params = check.get('params') if check.get('params') else {}
         check_options = check.get('view_options', {})
 
         try:
