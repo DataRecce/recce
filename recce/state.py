@@ -18,7 +18,7 @@ from recce.models import CheckDAO
 from recce.models.types import Run, Check
 from recce.pull_request import fetch_pr_metadata, PullRequestInfo
 from recce.util.pydantic_model import pydantic_model_json_dump, pydantic_model_dump
-from recce.util.recce_cloud import RecceCloud, PresignedUrlMethod
+from recce.util.recce_cloud import RecceCloud, PresignedUrlMethod, RecceCloudException
 
 logger = logging.getLogger('uvicorn')
 
@@ -272,7 +272,11 @@ class RecceStateLoader:
         if host.startswith('s3://'):
             return RecceStateLoader._purge_state_from_s3_bucket(token, pr_info, host)
         else:
-            return RecceCloud(token=token).purge_artifacts(pr_info)
+            try:
+                RecceCloud(token=token).purge_artifacts(pr_info)
+            except RecceCloudException as e:
+                return False, str(e)
+            return True, None
 
     def _load_state_from_file(self, file_path: Optional[str] = None) -> RecceState:
         file_path = file_path or self.state_file

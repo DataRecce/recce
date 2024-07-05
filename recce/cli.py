@@ -381,7 +381,7 @@ def purge_cloud_state(**kwargs):
                 host = cloud_options.get('host')
                 token = cloud_options.get('token')
                 pr_info = fetch_pr_metadata(github_token=token)
-                rc, err_msg = RecceStateLoader.purge_cloud_state(host=host, pr_info=pr_info, token=token)
+                rc, err_msg = RecceStateLoader.purge_cloud_state(token=token, pr_info=pr_info, host=host)
                 if rc is True:
                     console.rule('Purged Successfully')
                 else:
