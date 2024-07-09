@@ -6,6 +6,7 @@ from fastapi import APIRouter, HTTPException, Query
 from pydantic import BaseModel
 
 from recce.apis.run_func import submit_run, cancel_run, materialize_run_results
+from recce.event import log_api_event
 from recce.exceptions import RecceException
 from recce.models import RunDAO
 
@@ -21,6 +22,10 @@ class CreateRunIn(BaseModel):
 
 @run_router.post("/runs", status_code=201)
 async def create_run_handler(input: CreateRunIn):
+    log_api_event('create_run', dict(
+        type=input.type,
+        params=input.params,
+    ))
     try:
         run, future = submit_run(input.type, input.params)
     except RecceException as e:

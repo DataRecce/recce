@@ -148,6 +148,14 @@ def log_event(prop, event_type, **kwargs):
     _collector.log_event(payload, event_type)
 
 
+def log_api_event(endpoint_name, prop):
+    prop = dict(
+        **prop,
+        endpoint_name=endpoint_name,
+    )
+    log_event(prop, 'api_event')
+
+
 def capture_exception(e):
     user_id = load_user_profile().get('user_id')
     if is_ci_env() is True:

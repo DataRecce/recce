@@ -6,6 +6,7 @@ from pydantic import BaseModel
 
 from recce.apis.check_func import create_check_without_run, create_check_from_run, export_persistent_state
 from recce.apis.run_func import submit_run
+from recce.event import log_api_event
 from recce.exceptions import RecceException
 from recce.models import RunType, RunDAO, Check, CheckDAO, Run
 
@@ -63,6 +64,11 @@ async def create_check(check_in: CreateCheckIn, background_tasks: BackgroundTask
                 params=check_in.params,
                 check_view_options=check_in.view_options
             )
+        log_api_event('create_check', dict(
+            type=str(check.type),
+            params=check.params,
+            view_options=check.view_options,
+        ))
     except NameError as e:
         raise HTTPException(status_code=404, detail=str(e))
     except ValueError as e:
@@ -83,6 +89,11 @@ async def run_check_handler(check_id: UUID, input: RunCheckIn):
         raise HTTPException(status_code=404, detail=f"Check ID '{check_id}' not found")
 
     try:
+        log_api_event('rerun_check', dict(
+            type=str(check.type),
+            params=check.params,
+            rerun=True,
+        ))
         run, future = submit_run(check.type, check.params, check_id=check_id)
     except RecceException as e:
         raise HTTPException(status_code=400, detail=str(e))
