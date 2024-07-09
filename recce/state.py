@@ -18,6 +18,7 @@ from recce.models import CheckDAO
 from recce.models.types import Run, Check
 from recce.pull_request import fetch_pr_metadata, PullRequestInfo
 from recce.util.pydantic_model import pydantic_model_json_dump, pydantic_model_dump
+from recce.util.recce_cloud import RecceCloud, PresignedUrlMethod, RecceCloudException
 
 logger = logging.getLogger('uvicorn')
 
@@ -249,17 +250,12 @@ class RecceStateLoader:
 
     def purge(self) -> bool:
         if self.cloud_mode is True:
-            if self.cloud_options.get('host', '').startswith('s3://'):
-                rc, err_msg = RecceStateLoader._purge_state_from_s3_bucket(self.cloud_options.get('host', ''),
-                                                                           self.pr_info)
-                if err_msg:
-                    self.error_message = err_msg
-                return rc
-            else:
-                rc, err_msg = RecceStateLoader.purge_cloud_state(self.cloud_options.get('token'), self.pr_info)
-                if err_msg:
-                    self.error_message = err_msg
-                return rc
+            host = self.cloud_options.get('host')
+            token = self.cloud_options.get('token')
+            rc, err_msg = RecceStateLoader.purge_cloud_state(token, self.pr_info, host)
+            if err_msg:
+                self.error_message = err_msg
+            return rc
         else:
             if self.state_file is not None:
                 try:
@@ -272,31 +268,15 @@ class RecceStateLoader:
                 return False
 
     @staticmethod
-    def purge_cloud_state(host: str, pr_info: PullRequestInfo, token: str = None) -> (bool, str):
+    def purge_cloud_state(token: str, pr_info: PullRequestInfo, host: str) -> (bool, str):
         if host.startswith('s3://'):
-            return RecceStateLoader._purge_state_from_s3_bucket(host, pr_info)
+            return RecceStateLoader._purge_state_from_s3_bucket(token, pr_info, host)
         else:
-            return RecceStateLoader._purge_state_from_cloud(token, pr_info)
-
-    def _get_presigned_url(self, pr_info: PullRequestInfo, artifact_name: str, method: str = 'upload',
-                           metadata: dict = None) -> str:
-        import requests
-        # Step 1: Get the token
-        token = self.cloud_options.get('token')
-        if token is None:
-            raise Exception('No token is provided to access Recce Cloud.')
-
-        # Step 2: Call Recce Cloud API to get presigned URL
-        api_url = f'{RECCE_CLOUD_API_HOST}/api/v1/{pr_info.repository}/pulls/{pr_info.id}/artifacts/{method}?artifact_name={artifact_name}'
-        headers = {
-            'Authorization': f'Bearer {token}'
-        }
-        response = requests.post(api_url, headers=headers, json=metadata)
-        if response.status_code != 200:
-            self.error_message = response.text
-            raise Exception('Failed to get presigned URL from Recce Cloud.')
-        presigned_url = response.json().get('presigned_url')
-        return presigned_url
+            try:
+                RecceCloud(token=token).purge_artifacts(pr_info)
+            except RecceCloudException as e:
+                return False, str(e)
+            return True, None
 
     def _load_state_from_file(self, file_path: Optional[str] = None) -> RecceState:
         file_path = file_path or self.state_file
@@ -317,7 +297,8 @@ class RecceStateLoader:
         import tempfile
         import requests
 
-        presigned_url = self._get_presigned_url(self.pr_info, RECCE_STATE_COMPRESSED_FILE, method='download')
+        presigned_url = RecceCloud(token=self.cloud_options.get('token')).get_presigned_url(
+            method=PresignedUrlMethod.DOWNLOAD, pr_info=self.pr_info, artifact_name=RECCE_STATE_COMPRESSED_FILE)
 
         compress_passwd = self.cloud_options.get('password')
         with tempfile.NamedTemporaryFile() as tmp:
@@ -377,8 +358,10 @@ class RecceStateLoader:
         import tempfile
         import requests
 
-        presigned_url = self._get_presigned_url(self.pr_info, RECCE_STATE_COMPRESSED_FILE, method='upload',
-                                                metadata=metadata)
+        presigned_url = RecceCloud(token=self.cloud_options.get('token')).get_presigned_url(
+            method=PresignedUrlMethod.UPLOAD, pr_info=self.pr_info, artifact_name=RECCE_STATE_COMPRESSED_FILE,
+            metadata=metadata)
+
         compress_passwd = self.cloud_options.get('password')
         with tempfile.NamedTemporaryFile() as tmp:
             self._export_state_to_file(tmp.name, compress=True, compress_passwd=compress_passwd)
@@ -406,22 +389,8 @@ class RecceStateLoader:
             s3_client.upload_file(tmp.name, s3_bucket_name, s3_bucket_key,
                                   # Casting all the values under metadata to string
                                   ExtraArgs={'Metadata': {k: str(v) for k, v in metadata.items()}})
+        RecceCloud(token=self.cloud_options.get('token')).update_github_pull_request_check(self.pr_info, metadata)
         return f'The state file is uploaded to \' s3://{s3_bucket_name}/{s3_bucket_key}\''
-
-    def _get_artifact_metadata_from_recce_cloud(self, artifact_name: str) -> dict:
-        import requests
-        token = self.cloud_options.get('token')
-        if token is None:
-            raise Exception('No token is provided to access Recce Cloud.')
-        api_url = f'{RECCE_CLOUD_API_HOST}/api/v1/{self.pr_info.repository}/pulls/{self.pr_info.id}/artifacts/{artifact_name}/metadata'
-        headers = {
-            'Authorization': f'Bearer {token}'
-        }
-        response = requests.get(api_url, headers=headers)
-        if response.status_code != 200:
-            self.error_message = response.text
-            raise Exception('Failed to get artifact metadata from Recce Cloud.')
-        return response.json()
 
     def _get_artifact_metadata_from_s3_bucket(self, artifact_name: str) -> Union[dict, None]:
         import boto3
@@ -462,28 +431,14 @@ class RecceStateLoader:
         return f'The state file is stored at \'{file_path}\''
 
     @staticmethod
-    def _purge_state_from_cloud(token: str, pr_info: PullRequestInfo) -> (bool, str):
-        import requests
-        logger.debug('Purging the state from Recce Cloud...')
-        token = token
-        api_url = f'{RECCE_CLOUD_API_HOST}/api/v1/{pr_info.repository}/pulls/{pr_info.id}/artifacts'
-        headers = {
-            'Authorization': f'Bearer {token}'
-        }
-        response = requests.delete(api_url, headers=headers)
-        if response.status_code != 204:
-            return False, response.text
-        return True, None
-
-    @staticmethod
-    def _purge_state_from_s3_bucket(host: str, pr_info: PullRequestInfo) -> (bool, str):
+    def _purge_state_from_s3_bucket(token: str, pr_info: PullRequestInfo, s3_bucket: str) -> (bool, str):
         import boto3
         from rich.console import Console
         console = Console()
         delete_objects = []
         logger.debug('Purging the state from AWS S3 bucket...')
         s3_client = boto3.client('s3')
-        s3_bucket_name = host.replace('s3://', '')
+        s3_bucket_name = s3_bucket.replace('s3://', '')
         s3_key_prefix = f'github/{pr_info.repository}/pulls/{pr_info.id}/'
         list_response = s3_client.list_objects_v2(Bucket=s3_bucket_name, Prefix=s3_key_prefix)
         if 'Contents' in list_response:
@@ -497,4 +452,5 @@ class RecceStateLoader:
         delete_response = s3_client.delete_objects(Bucket=s3_bucket_name, Delete={'Objects': delete_objects})
         if 'Deleted' not in delete_response:
             return False, 'Failed to delete the state file from the S3 bucket.'
+        RecceCloud(token=token).update_github_pull_request_check(pr_info)
         return True, None
