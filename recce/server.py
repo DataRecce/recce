@@ -55,6 +55,9 @@ async def lifespan(fastapi: FastAPI):
             console.rule("Loading Preset Checks")
             load_preset_checks(preset_checks)
 
+    from recce.event import log_load_state
+    log_load_state(command='server')
+
     yield
 
     recce_state.export(ctx.export_state())

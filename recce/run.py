@@ -172,6 +172,9 @@ async def cli_run(output_state_file: str, **kwargs):
         if rc != 0 and failed_checks:
             process_failed_checks(failed_checks, error_log)
 
+    from recce.event import log_load_state
+    log_load_state(command='run')
+
     # Export the state
     console.rule("Export state")
     state: RecceState = ctx.export_state()

@@ -157,6 +157,28 @@ def log_api_event(endpoint_name, prop):
     _collector.schedule_flush()
 
 
+def log_load_state(command='server'):
+    from recce.models import CheckDAO
+
+    checks = 0
+    preset_checks = 0
+
+    for check in CheckDAO().list():
+        checks += 1
+        if check.is_preset:
+            preset_checks += 1
+
+    prop = dict(
+        command=command,
+        checks=checks,
+        preset_checks=preset_checks,
+    )
+
+    log_event(prop, 'load_state')
+    if command == 'server':
+        _collector.schedule_flush()
+
+
 def capture_exception(e):
     user_id = load_user_profile().get('user_id')
     if is_ci_env() is True:
