@@ -154,7 +154,7 @@ def log_api_event(endpoint_name, prop):
         endpoint_name=endpoint_name,
     )
     log_event(prop, 'api_event')
-    _schedule_flush()
+    _collector.schedule_flush()
 
 
 def capture_exception(e):
@@ -172,26 +172,3 @@ def flush_exceptions():
 
 def set_exception_tag(key, value):
     sentry_sdk.set_tag(key, value)
-
-
-flush_timer = None
-
-
-def _auto_flush():
-    global flush_timer
-    _collector.send_events()
-    flush_timer = None
-
-
-def _schedule_flush():
-    import asyncio
-    global flush_timer
-    try:
-        loop = asyncio.get_running_loop()
-        if loop.is_running():
-            flush_timer = loop.call_later(1, _auto_flush)
-
-    except RuntimeError:
-        # Not in an event loop, use threading.Timer instead
-        flush_timer = threading.Timer(1, _auto_flush)
-        flush_timer.start()
