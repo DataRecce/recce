@@ -23,6 +23,23 @@ class Collector:
         self._delete_threshold = 1000
         self._upload_threshold = 10
         self._is_ci: bool = is_ci_env()
+        self._flush_timer = None
+
+    def schedule_flush(self):
+        def _callback():
+            self._flush_timer = None
+            self.send_events()
+
+        # send async thread
+        import threading
+        if self._flush_timer:
+            try:
+                self._flush_timer.cancel()
+            except Exception:
+                # do nothing
+                pass
+        self._flush_timer = threading.Timer(1, _callback)
+        self._flush_timer.start()
 
     def is_ready(self):
         if self._api_key is None or self._user_id is None:
