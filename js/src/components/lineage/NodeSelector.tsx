@@ -57,7 +57,7 @@ function AddSchemaChangesCheckButton({
           // TODO: Implement new type of check for multiple schema changes (RC-102)
           await Promise.all(
             nodes.map(async (node) => {
-              await createSchemaDiffCheck({ node_id: nodes[0].id });
+              await createSchemaDiffCheck({ node_id: node.id });
             })
           );
         }
