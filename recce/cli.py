@@ -1,4 +1,6 @@
 import asyncio
+import os
+from pathlib import Path
 from typing import List
 
 import click
@@ -233,9 +235,12 @@ def server(host, port, state_file=None, **kwargs):
     uvicorn.run(app, host=host, port=port, lifespan='on')
 
 
+DEFAULT_RECCE_STATE_FILE = 'recce_state.json'
+
+
 @cli.command(cls=TrackCommand)
-@click.option('-o', '--output', help='Path of the output state file.', type=click.Path(), default='recce_state.json',
-              show_default=True)
+@click.option('-o', '--output', help='Path of the output state file.', type=click.Path(),
+              default=DEFAULT_RECCE_STATE_FILE, show_default=True)
 @click.option('--state-file', help='Path of the import state file.', type=click.Path())
 @click.option('--skip-query', is_flag=True, help='Skip running the queries for the checks.')
 @click.option('--git-current-branch', help='The git branch of the current environment.', type=click.STRING,
@@ -295,6 +300,26 @@ def run(output, **kwargs):
         error, hint = recce_state.error_and_hint
         console.print(f"[[red]Error[/red]] {error}")
         console.print(f"{hint}")
+        exit(1)
+
+    # Verify the output state file path
+    try:
+        if os.path.isdir(output) or output.endswith('/'):
+
+            output_dir = Path(output)
+            # Create the directory if not exists
+            output_dir.mkdir(parents=True, exist_ok=True)
+            output = os.path.join(output, DEFAULT_RECCE_STATE_FILE)
+            console.print(
+                f"[[yellow]Warning[/yellow]] The path '{output_dir}' is a directory. "
+                f"The state file will be saved as '{output}'.")
+        else:
+            # Create the parent directory if not exists
+            output_dir = Path(output).parent
+            output_dir.mkdir(parents=True, exist_ok=True)
+    except FileExistsError as e:
+        console.print(f"[[red]Error[/red]] Failed to access file path '{output}'.")
+        console.print(f"Reason: {e}")
         exit(1)
 
     return asyncio.run(cli_run(output, recce_state=recce_state, **kwargs))
