@@ -41,7 +41,7 @@ class DbtTestHelper:
         self.adapter.execute(f"CREATE schema IF NOT EXISTS {self.curr_schema}")
         self.adapter.set_artifacts(self.base_manifest, self.curr_manifest)
 
-    def create_model(self, model_name, base_csv=None, curr_csv=None, depends_on=[]):
+    def create_model(self, model_name, base_csv=None, curr_csv=None, depends_on=[], disabled=False):
         package_name = "recce_test"
         # unique_id = f"model.{package_name}.{model_name}"
         unique_id = model_name
@@ -81,7 +81,11 @@ class DbtTestHelper:
                     "nodes": depends_on
                 },
             })
-            manifest.add_node_nofile(node)
+
+            if disabled:
+                manifest.add_disabled_nofile(node)
+            else:
+                manifest.add_node_nofile(node)
             return node
 
         dbt_adapter = self.adapter

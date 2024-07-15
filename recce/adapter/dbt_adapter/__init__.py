@@ -632,28 +632,16 @@ class DbtAdapter(BaseAdapter):
         else:
             spec = parse_difference(select_list, exclude_list)
 
-        manifest = self.manifest.deepcopy()
+        manifest = Manifest()
+        manifest_prev = self.previous_state.manifest
+        manifest_curr = self.manifest
 
-        for (key, node) in self.previous_state.manifest.nodes.items():
-            if key not in manifest.nodes:
-                manifest.nodes[key] = node
-
-        for (key, node) in self.previous_state.manifest.sources.items():
-            if key not in manifest.sources:
-                manifest.sources[key] = node
-
-        for (key, node) in self.previous_state.manifest.exposures.items():
-            if key not in manifest.exposures:
-                manifest.exposures[key] = node
-
-        for (key, node) in self.previous_state.manifest.metrics.items():
-            if key not in manifest.metrics:
-                manifest.metrics[key] = node
-
-        if hasattr(self.previous_state.manifest, 'semantic_models'):
-            for (key, node) in self.previous_state.manifest.semantic_models.items():
-                if key not in manifest.semantic_models:
-                    manifest.semantic_models[key] = node
+        manifest.nodes = {**manifest_prev.nodes, **manifest_curr.nodes}
+        manifest.sources = {**manifest_prev.sources, **manifest_curr.sources}
+        manifest.exposures = {**manifest_prev.exposures, **manifest_curr.exposures}
+        manifest.metrics = {**manifest_prev.metrics, **manifest_curr.metrics}
+        if hasattr(manifest_prev, 'semantic_models'):
+            manifest.semantic_models = {**manifest_prev.semantic_models, **manifest_curr.semantic_models}
 
         compiler = Compiler(self.runtime_config)
         # disable to print compile states
