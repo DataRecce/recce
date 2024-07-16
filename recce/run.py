@@ -129,7 +129,7 @@ async def execute_state_checks(checks: list) -> (int, List[dict]):
     table.add_column('Execution Time')
     table.add_column('Failed Reason')
 
-    # Execute the preset checks
+    # Execute loaded checks
     for check in checks:
         run = None
         check_id = check.check_id
