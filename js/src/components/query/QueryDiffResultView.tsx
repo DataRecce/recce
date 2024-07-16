@@ -264,7 +264,11 @@ const _QueryDiffJoinResultView = ({
 };
 
 export const QueryDiffResultView = (props: QueryDiffResultViewProps) => {
-  if (props.run?.result !== undefined && props.run.result.diff !== null) {
+  if (
+    props.run?.result !== undefined &&
+    props.run.result.diff !== null &&
+    props.run.result.diff !== undefined
+  ) {
     return <_QueryDiffJoinResultView {...props} />;
   } else {
     return <_QueryDiffResultView {...props} />;
