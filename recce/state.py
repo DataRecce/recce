@@ -22,7 +22,6 @@ from recce.util.recce_cloud import RecceCloud, PresignedUrlMethod, RecceCloudExc
 
 logger = logging.getLogger('uvicorn')
 
-RECCE_CLOUD_API_HOST = os.environ.get('RECCE_CLOUD_API_HOST', 'https://staging.cloud.datarecce.io')
 RECCE_STATE_FILE = 'recce-state.json'
 RECCE_STATE_COMPRESSED_FILE = f'{RECCE_STATE_FILE}.zip'
 
@@ -158,6 +157,10 @@ class RecceStateLoader:
                 self.pr_info = fetch_pr_metadata(github_token=self.cloud_options.get('token'))
             else:
                 raise Exception('No GitHub token is provided to access the pull request information.')
+
+            # use PR information to check if repo is auth by the GitHub App
+            if not RecceCloud(token=self.cloud_options.get('token')).check_github_app_installed(self.pr_info.repository):
+                raise Exception('Recce GitHub App is not installed in the repository.')
 
         # Load the state
         self.load()
