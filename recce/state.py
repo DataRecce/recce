@@ -159,8 +159,12 @@ class RecceStateLoader:
                 raise Exception('No GitHub token is provided to access the pull request information.')
 
             # use PR information to check if repo is auth by the GitHub App
-            if not RecceCloud(token=self.cloud_options.get('token')).check_github_app_installed(self.pr_info.repository):
-                raise Exception('Recce GitHub App is not installed in the repository.')
+            result = RecceCloud(
+                token=self.cloud_options.get('token')
+            ).check_github_app_installed(self.pr_info.repository)
+            if result.get('installed') is False:
+                raise Exception("The repository needs to install Recce Cloud. "
+                                f"Please head to '{result.get('install_url')}'")
 
         # Load the state
         self.load()
