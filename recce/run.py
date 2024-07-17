@@ -235,10 +235,15 @@ async def cli_run(output_state_file: str, **kwargs):
             if rc != 0 and failed_checks:
                 process_failed_checks(failed_checks, error_log)
     else:
-        console.rule("Checks")
-        rc, failed_checks = await execute_state_checks(ctx.state_loader.state.checks)
-        if rc != 0 and failed_checks:
-            process_failed_checks(failed_checks, error_log)
+        state_checks = ctx.state_loader.state.checks
+        if is_skip_query or state_checks is None or len(state_checks) == 0:
+            # Skip the checks in the state
+            pass
+        else:
+            console.rule("Checks")
+            rc, failed_checks = await execute_state_checks(state_checks)
+            if rc != 0 and failed_checks:
+                process_failed_checks(failed_checks, error_log)
 
     from recce.event import log_load_state
     log_load_state(command='run')
