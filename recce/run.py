@@ -115,6 +115,68 @@ async def execute_preset_checks(preset_checks: list) -> (int, List[dict]):
     return rc, failed_checks
 
 
+async def execute_state_checks(checks: list) -> (int, List[dict]):
+    """
+    Execute the checks from loaded state
+    """
+    console = Console()
+    rc = 0
+    failed_checks = []
+    table = Table(title='Recce Checks', box=box.HORIZONTALS, title_style='bold dark_orange3')
+    table.add_column('Status')
+    table.add_column('Name')
+    table.add_column('Type')
+    table.add_column('Execution Time')
+    table.add_column('Failed Reason')
+
+    # Execute loaded checks
+    for check in checks:
+        run = None
+        check_id = check.check_id
+        check_name = check.name
+        check_type = check.type.value
+        check_description = check.description
+        check_params = check.params if check.params else {}
+        check.is_checked = False
+
+        try:
+            # verify the check
+            if check_type not in [e.value for e in RunType]:
+                raise ValueError(f"Invalid check type: {check_type}")
+
+            start = time.time()
+            if check_type not in ['schema_diff']:
+                run, future = submit_run(check_type, params=check_params, check_id=check_id)
+                await future
+
+            end = time.time()
+            table.add_row('[[green]Success[/green]]', check_name, check_type.replace('_', ' ').title(),
+                          f'{end - start:.2f} seconds', 'N/A')
+        except Exception as e:
+            rc = 1
+            if run is None:
+                table.add_row('[[red]Error[/red]]', check_name, check_type.replace('_', ' ').title(), 'N/A', str(e))
+                failed_checks.append({
+                    'check_name': check_name,
+                    'check_type': check_type,
+                    'check_description': check_description,
+                    'failed_type': 'error',
+                    'failed_reason': str(e)
+                })
+            else:
+                table.add_row('[[red]Failed[/red]]', check_name, check_type.replace('_', ' ').title(), 'N/A', run.error)
+                failed_checks.append({
+                    'check_name': check_name,
+                    'check_type': check_type,
+                    'check_description': 'N/A',
+                    'failed_type': 'failed',
+                    'failed_reason': run.error
+                })
+
+    console.print(table)
+    return rc, failed_checks
+
+
 def process_failed_checks(failed_checks: List[dict], error_log=None):
     from py_markdown_table.markdown_table import markdown_table
     failed_check_table = []
@@ -162,15 +224,26 @@ async def cli_run(output_state_file: str, **kwargs):
 
     # Execute the preset checks
     rc = 0
-    preset_checks = RecceConfig().get('checks')
-    if is_skip_query or preset_checks is None or len(preset_checks) == 0:
-        # Skip the preset checks
-        pass
+    if ctx.state_loader.state_file is None:
+        preset_checks = RecceConfig().get('checks')
+        if is_skip_query or preset_checks is None or len(preset_checks) == 0:
+            # Skip the preset checks
+            pass
+        else:
+            console.rule("Preset checks")
+            rc, failed_checks = await execute_preset_checks(preset_checks)
+            if rc != 0 and failed_checks:
+                process_failed_checks(failed_checks, error_log)
     else:
-        console.rule("Preset checks")
-        rc, failed_checks = await execute_preset_checks(preset_checks)
-        if rc != 0 and failed_checks:
-            process_failed_checks(failed_checks, error_log)
+        state_checks = ctx.state_loader.state.checks
+        if is_skip_query or state_checks is None or len(state_checks) == 0:
+            # Skip the checks in the state
+            pass
+        else:
+            console.rule("Checks")
+            rc, failed_checks = await execute_state_checks(state_checks)
+            if rc != 0 and failed_checks:
+                process_failed_checks(failed_checks, error_log)
 
     from recce.event import log_load_state
     log_load_state(command='run')
