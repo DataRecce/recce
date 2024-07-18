@@ -1,3 +1,4 @@
+import json
 import logging
 import os
 
@@ -18,8 +19,13 @@ class PresignedUrlMethod:
 class RecceCloudException(Exception):
     def __init__(self, message: str, reason: str, status_code: int):
         super().__init__(message)
-        self.reason = reason
         self.status_code = status_code
+
+        try:
+            reason = json.loads(reason).get('detail', '')
+        except json.JSONDecodeError:
+            pass
+        self.reason = reason
 
 
 class RecceCloud:
