@@ -86,14 +86,3 @@ class RecceCloud:
         except Exception as e:
             # We don't care the response of this request, so we don't need to raise any exception.
             logger.debug(f'Failed to update the GitHub PR check. Reason: {str(e)}')
-
-    def check_github_app_installed(self, repository: str) -> dict:
-        api_url = f'{self.base_url}/{repository}/installation'
-        response = self._request('GET', api_url)
-        if response.status_code != 200:
-            raise RecceCloudException(
-                message='Failed to check installation status of Recce GitHub APP',
-                reason=response.text,
-                status_code=response.status_code
-            )
-        return response.json()
