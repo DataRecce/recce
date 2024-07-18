@@ -5,7 +5,7 @@ import requests
 
 from recce.pull_request import PullRequestInfo
 
-RECCE_CLOUD_API_HOST = os.environ.get('RECCE_CLOUD_API_HOST', 'https://staging.cloud.datarecce.io')
+RECCE_CLOUD_API_HOST = os.environ.get('RECCE_CLOUD_API_HOST', 'https://cloud.datarecce.io')
 
 logger = logging.getLogger('uvicorn')
 
