@@ -47,7 +47,6 @@ setup(name='recce',
           'python-multipart',
           'GitPython',
           'PyGithub',
-          'pyminizip',
       ],
       tests_require=['pytest'],
       extras_require={

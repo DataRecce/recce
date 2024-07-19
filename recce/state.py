@@ -2,11 +2,13 @@
 import json
 import logging
 import os
-import tempfile
 import threading
 import time
+from base64 import b64encode
 from datetime import datetime
+from hashlib import md5, sha256
 from typing import List, Optional, Dict, Union
+from urllib.parse import urlencode
 
 import botocore.exceptions
 from pydantic import BaseModel
@@ -17,13 +19,28 @@ from recce.git import current_branch
 from recce.models import CheckDAO
 from recce.models.types import Run, Check
 from recce.pull_request import fetch_pr_metadata, PullRequestInfo
+from recce.util.io import SupportedFileTypes, file_io_factory
 from recce.util.pydantic_model import pydantic_model_json_dump, pydantic_model_dump
 from recce.util.recce_cloud import RecceCloud, PresignedUrlMethod, RecceCloudException
 
 logger = logging.getLogger('uvicorn')
 
 RECCE_STATE_FILE = 'recce-state.json'
-RECCE_STATE_COMPRESSED_FILE = f'{RECCE_STATE_FILE}.zip'
+RECCE_STATE_COMPRESSED_FILE = f'{RECCE_STATE_FILE}.gz'
+
+
+def s3_sse_c_headers(password: str) -> Dict[str, str]:
+    hashed_password = sha256()
+    md5_hash = md5()
+    hashed_password.update(password.encode())
+    md5_hash.update(hashed_password.digest())
+    encoded_passwd = b64encode(hashed_password.digest()).decode('utf-8')
+    encoded_md5 = b64encode(md5_hash.digest()).decode('utf-8')
+    return {
+        'x-amz-server-side-encryption-customer-algorithm': 'AES256',
+        'x-amz-server-side-encryption-customer-key': encoded_passwd,
+        'x-amz-server-side-encryption-customer-key-MD5': encoded_md5,
+    }
 
 
 def check_s3_bucket(bucket_name: str):
@@ -97,7 +114,7 @@ class RecceState(BaseModel):
         return state
 
     @staticmethod
-    def from_file(file_path: str, compressed: bool = False, compress_passwd: str = None):
+    def from_file(file_path: str, file_type: SupportedFileTypes = SupportedFileTypes.FILE):
         """
         Load the state from a recce state file.
         """
@@ -107,29 +124,9 @@ class RecceState(BaseModel):
         if not Path(file_path).is_file():
             raise FileNotFoundError(f"State file not found: {file_path}")
 
-        if compressed:
-            import pyminizip
-            cwd = os.getcwd()
-            try:
-                with tempfile.TemporaryDirectory() as tmp_dir:
-                    tmp_file = f'{tmp_dir}/{RECCE_STATE_FILE}'
-                    pyminizip.uncompress(file_path, compress_passwd, tmp_dir, 0)
-                    with open(tmp_file, 'r') as f:
-                        json_content = f.read()
-                    state = RecceState.from_json(json_content)
-            except Exception as e:
-                error_msg = str(e)
-                if '-3' in error_msg:
-                    raise Exception("Invalid password to uncompress state file.")
-                raise Exception(f"Failed to uncompress state file: {error_msg}")
-            finally:
-                os.chdir(cwd)
-        else:
-            with open(file_path, 'r') as f:
-                json_content = f.read()
-                state = RecceState.from_json(json_content)
-
-        return state
+        io = file_io_factory(file_type)
+        json_content = io.read(file_path)
+        return RecceState.from_json(json_content)
 
     def to_json(self):
         return pydantic_model_json_dump(self)
@@ -299,18 +296,24 @@ class RecceStateLoader:
         presigned_url = RecceCloud(token=self.cloud_options.get('token')).get_presigned_url(
             method=PresignedUrlMethod.DOWNLOAD, pr_info=self.pr_info, artifact_name=RECCE_STATE_COMPRESSED_FILE)
 
-        compress_passwd = self.cloud_options.get('password')
+        password = self.cloud_options.get('password')
+        if password is None:
+            raise Exception('No password is provided to access the state file in Recce Cloud.')
+
         with tempfile.NamedTemporaryFile() as tmp:
-            response = requests.get(presigned_url)
+            headers = s3_sse_c_headers(password)
+            response = requests.get(presigned_url,
+                                    headers=headers)
             if response.status_code == 404:
                 self.error_message = 'The state file is not found in Recce Cloud.'
                 return None
             elif response.status_code != 200:
                 self.error_message = response.text
-                raise Exception(f'{response.status_code} Failed to download the state file from Recce Cloud.')
+                raise Exception(
+                    f'{response.status_code} Failed to download the state file from Recce Cloud. The password could be wrong.')
             with open(tmp.name, 'wb') as f:
                 f.write(response.content)
-            return RecceState.from_file(tmp.name, compressed=True, compress_passwd=compress_passwd)
+            return RecceState.from_file(tmp.name, file_type=SupportedFileTypes.GZIP)
 
     def _load_state_from_s3_bucket(self) -> Union[RecceState, None]:
         import boto3
@@ -323,7 +326,6 @@ class RecceStateLoader:
         if rc is False:
             raise Exception(error_message)
 
-        compress_passwd = self.cloud_options.get('password')
         with tempfile.NamedTemporaryFile() as tmp:
             try:
                 s3_client.download_file(s3_bucket_name, s3_bucket_key, tmp.name)
@@ -334,7 +336,7 @@ class RecceStateLoader:
                     return None
                 else:
                     raise e
-            return RecceState.from_file(tmp.name, compressed=True, compress_passwd=compress_passwd)
+            return RecceState.from_file(tmp.name, file_type=SupportedFileTypes.GZIP)
 
     def _export_state_to_cloud(self) -> Union[str, None]:
         if (self.pr_info is None) or (self.pr_info.id is None) or (self.pr_info.repository is None):
@@ -362,12 +364,14 @@ class RecceStateLoader:
             metadata=metadata)
 
         compress_passwd = self.cloud_options.get('password')
+        headers = s3_sse_c_headers(compress_passwd)
+        headers['x-amz-tagging'] = urlencode(metadata)
         with tempfile.NamedTemporaryFile() as tmp:
-            self._export_state_to_file(tmp.name, compress=True, compress_passwd=compress_passwd)
-            response = requests.put(presigned_url, data=open(tmp.name, 'rb').read())
+            self._export_state_to_file(tmp.name, file_type=SupportedFileTypes.GZIP)
+            response = requests.put(presigned_url, data=open(tmp.name, 'rb').read(), headers=headers)
             if response.status_code != 200:
                 self.error_message = response.text
-                return 'Failed to upload the state file to Recce Cloud.'
+                return 'Failed to upload the state file to Recce Cloud. Reason: ' + response.text
         return 'The state file is uploaded to Recce Cloud.'
 
     def _export_state_to_s3_bucket(self, metadata: dict = None) -> Union[str, None]:
@@ -381,9 +385,8 @@ class RecceStateLoader:
         if rc is False:
             raise Exception(error_message)
 
-        compress_passwd = self.cloud_options.get('password')
         with tempfile.NamedTemporaryFile() as tmp:
-            self._export_state_to_file(tmp.name, compress=True, compress_passwd=compress_passwd)
+            self._export_state_to_file(tmp.name, file_type=SupportedFileTypes.GZIP)
 
             s3_client.upload_file(tmp.name, s3_bucket_name, s3_bucket_key,
                                   # Casting all the values under metadata to string
@@ -404,29 +407,17 @@ class RecceStateLoader:
             self.error_message = e.response.get('Error', {}).get('Message')
             raise Exception('Failed to get artifact metadata from Recce Cloud.')
 
-    def _export_state_to_file(self, file_path: Optional[str] = None, compress: bool = False,
-                              compress_passwd: str = None) -> str:
+    def _export_state_to_file(self, file_path: Optional[str] = None,
+                              file_type: SupportedFileTypes = SupportedFileTypes.FILE) -> str:
         """
         Store the state to a file. Store happens when terminating the server or run instance.
         """
 
         file_path = file_path or self.state_file
         json_data = self.state.to_json()
-        if compress:
-            import pyminizip
-            cwd = os.getcwd()
-            try:
-                with tempfile.TemporaryDirectory() as tmp_dir:
-                    tmp_file = f'{tmp_dir}/{RECCE_STATE_FILE}'
-                    with open(tmp_file, 'w') as f:
-                        f.write(json_data)
-                    pyminizip.compress(tmp_file, None, file_path, compress_passwd, 9)
-            finally:
-                os.chdir(cwd)
-            return f'The state file is stored at \'{file_path}\''
-        else:
-            with open(file_path, 'w') as f:
-                f.write(json_data)
+        io = file_io_factory(file_type)
+
+        io.write(file_path, json_data)
         return f'The state file is stored at \'{file_path}\''
 
     @staticmethod

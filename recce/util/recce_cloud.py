@@ -44,7 +44,7 @@ class RecceCloud:
                           pr_info: PullRequestInfo,
                           artifact_name: str,
                           metadata: dict = None) -> str:
-        api_url = f'{self.base_url}/{pr_info.repository}/pulls/{pr_info.id}/artifacts/{method}?artifact_name={artifact_name}'
+        api_url = f'{self.base_url}/{pr_info.repository}/pulls/{pr_info.id}/artifacts/{method}?artifact_name={artifact_name}&enable_ssec=true'
         response = self._request('POST', api_url, data=metadata)
         if response.status_code != 200:
             raise RecceCloudException(
