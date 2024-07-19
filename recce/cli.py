@@ -13,10 +13,28 @@ from recce.run import cli_run, check_github_ci_env
 from recce.state import RecceStateLoader
 from recce.summary import generate_markdown_summary
 from recce.util.logger import CustomFormatter
+from recce.util.recce_cloud import RecceCloudException
 from .core import RecceContext
 from .event.track import TrackCommand
 
 event.init()
+
+
+def create_state_loader(review_mode, cloud_mode, state_file, cloud_options):
+    from rich.console import Console
+    console = Console()
+
+    try:
+        return RecceStateLoader(review_mode=review_mode, cloud_mode=cloud_mode,
+                                state_file=state_file, cloud_options=cloud_options)
+    except RecceCloudException as e:
+        console.print("[[red]Error[/red]] Failed to load recce state file")
+        console.print(f"Reason: {e.reason}")
+        exit(1)
+    except Exception as e:
+        console.print("[[red]Error[/red]] Failed to load recce state file")
+        console.print(f"Reason: {e}")
+        exit(1)
 
 
 def handle_debug_flag(**kwargs):
@@ -211,13 +229,9 @@ def server(host, port, state_file=None, **kwargs):
             'token': kwargs.get('cloud_token'),
             'password': kwargs.get('password'),
         }
-    try:
-        recce_state = RecceStateLoader(review_mode=is_review, cloud_mode=is_cloud,
-                                       state_file=state_file, cloud_options=cloud_options)
-    except Exception as e:
-        console.print("[[red]Error[/red]] Failed to load recce state file")
-        console.print(f"Reason: {e}")
-        exit(1)
+
+    recce_state = create_state_loader(is_review, is_cloud, state_file, cloud_options)
+
     if not recce_state.verify():
         error, hint = recce_state.error_and_hint
         console.print(f"[[red]Error[/red]] {error}")
@@ -289,13 +303,10 @@ def run(output, **kwargs):
         'token': kwargs.get('cloud_token'),
         'password': kwargs.get('password'),
     } if cloud_mode else None
-    try:
-        recce_state = RecceStateLoader(review_mode=False, cloud_mode=cloud_mode,
-                                       state_file=state_file, cloud_options=cloud_options)
-    except Exception as e:
-        console.print("[[red]Error[/red]] Failed to load recce state file")
-        console.print(f"Reason: {e}")
-        exit(1)
+
+    recce_state = create_state_loader(review_mode=False, cloud_mode=cloud_mode, state_file=state_file,
+                                      cloud_options=cloud_options)
+
     if not recce_state.verify():
         error, hint = recce_state.error_and_hint
         console.print(f"[[red]Error[/red]] {error}")
@@ -348,13 +359,9 @@ def summary(state_file, **kwargs):
         'password': kwargs.get('password'),
     } if cloud_mode else None
 
-    try:
-        recce_state = RecceStateLoader(review_mode=True, cloud_mode=cloud_mode,
-                                       state_file=state_file, cloud_options=cloud_options)
-    except Exception as e:
-        console.print("[[red]Error[/red]] Failed to load recce state file")
-        console.print(f"Reason: {e}")
-        exit(1)
+    recce_state = create_state_loader(review_mode=True, cloud_mode=cloud_mode, state_file=state_file,
+                                      cloud_options=cloud_options)
+
     if not recce_state.verify():
         error, hint = recce_state.error_and_hint
         console.print(f"[[red]Error[/red]] {error}")

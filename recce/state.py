@@ -22,7 +22,6 @@ from recce.util.recce_cloud import RecceCloud, PresignedUrlMethod, RecceCloudExc
 
 logger = logging.getLogger('uvicorn')
 
-RECCE_CLOUD_API_HOST = os.environ.get('RECCE_CLOUD_API_HOST', 'https://staging.cloud.datarecce.io')
 RECCE_STATE_FILE = 'recce-state.json'
 RECCE_STATE_COMPRESSED_FILE = f'{RECCE_STATE_FILE}.zip'
 
@@ -275,7 +274,7 @@ class RecceStateLoader:
             try:
                 RecceCloud(token=token).purge_artifacts(pr_info)
             except RecceCloudException as e:
-                return False, str(e)
+                return False, e.reason
             return True, None
 
     def _load_state_from_file(self, file_path: Optional[str] = None) -> RecceState:
