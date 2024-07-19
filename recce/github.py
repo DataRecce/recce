@@ -126,7 +126,11 @@ def get_pull_request(branch, owner, repo_name, github_token=None):
                 return pr
 
     except UnknownObjectException:
-        print(f"Repository {owner}/{repo_name} not found. Please provide '$GITHUB_TOKEN' environment variable.")
+        if github_token is None:
+            print(f"Repository {owner}/{repo_name} not found. Please provide '$GITHUB_TOKEN' environment variable.")
+        else:
+            print(
+                f"Repository {owner}/{repo_name} not found. If it is private repo, please add the 'repo' scope to the token.")
         return None
 
     return None
@@ -136,6 +140,9 @@ def recce_pr_information(github_token=None) -> PullRequest:
     branch = current_branch()
     repo = hosting_repo()
 
+    if not repo:
+        print('This is not a git repository.')
+        return
     if '/' not in repo:
         print('This is not a GitHub repository.')
         return
