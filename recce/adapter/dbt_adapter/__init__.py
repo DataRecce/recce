@@ -50,6 +50,21 @@ if dbt_version < 'v1.8':
 else:
     from dbt.adapters.contracts.connection import Connection
 
+
+@contextmanager
+def silence_no_nodes_warning():
+    if dbt_version >= 'v1.8':
+        from dbt.events.types import NoNodesForSelectionCriteria
+        from dbt_common.events.functions import WARN_ERROR_OPTIONS
+        WARN_ERROR_OPTIONS.silence.append(NoNodesForSelectionCriteria.__name__)
+    try:
+        yield
+    finally:
+        if dbt_version >= 'v1.8':
+            from dbt_common.events.functions import WARN_ERROR_OPTIONS
+            WARN_ERROR_OPTIONS.silence.pop()
+
+
 logger = logging.getLogger('uvicorn')
 
 
@@ -651,7 +666,9 @@ class DbtAdapter(BaseAdapter):
         dbt.compilation.print_compile_stats = tmp_func
         selector = NodeSelector(graph, manifest, previous_state=self.previous_state)
 
-        return selector.get_selected(spec)
+        # disable "The selection criterion does not match"
+        with silence_no_nodes_warning():
+            return selector.get_selected(spec)
 
     def export_artifacts(self) -> ArtifactsRoot:
         artifacts = ArtifactsRoot()
