@@ -53,7 +53,7 @@ class TopKDiffTask(Task, QueryMixin):
             {% if not include_null %}
             where {{column}} is not null
             {% endif %}
-            group by category
+            group by 1
         ),
         CURR_CAT as (
             select
@@ -63,7 +63,7 @@ class TopKDiffTask(Task, QueryMixin):
             {% if not include_null %}
             where {{column}} is not null
             {% endif %}
-            group by category
+            group by 1
         )
         select
             coalesce(CURR_CAT.category, BASE_CAT.category) as category,

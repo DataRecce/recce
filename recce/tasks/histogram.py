@@ -49,7 +49,7 @@ def generate_histogram_sql_integer(node, column, min_value, max_value, num_bins=
     WITH value_ranges AS (
         SELECT
             {min_value} as min_value,
-            {max_value} as max_value,
+            {max_value} as max_value
     ),
     bin_parameters AS (
         SELECT
@@ -85,7 +85,7 @@ def generate_histogram_sql_numeric(node, column, min_value, max_value, num_bins=
         WITH value_ranges AS (
             SELECT
                 {min_value} as min_value,
-                {max_value} as max_value,
+                {max_value} as max_value
         ),
         bin_parameters AS (
             SELECT
