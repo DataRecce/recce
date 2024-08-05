@@ -224,7 +224,7 @@ async def cli_run(output_state_file: str, **kwargs):
 
     # Execute the preset checks
     rc = 0
-    if ctx.state_loader.state_file is None:
+    if ctx.state_loader.state is None:
         preset_checks = RecceConfig().get('checks')
         if is_skip_query or preset_checks is None or len(preset_checks) == 0:
             # Skip the preset checks
