@@ -68,10 +68,24 @@ async def lifespan(fastapi: FastAPI):
 app = FastAPI(lifespan=lifespan)
 
 
+def verify_json_file(file_path: str) -> bool:
+    try:
+        with open(file_path, 'r') as f:
+            json.load(f)
+    except Exception:
+        return False
+    return True
+
+
 def dbt_artifacts_updated_callback(file_changed_event: Any):
     src_path = Path(file_changed_event.src_path)
     target_type = src_path.parent.name
     file_name = src_path.name
+
+    if not verify_json_file(file_changed_event.src_path):
+        logger.debug('Skip to refresh the artifacts because the file is not updated completely.')
+        return
+
     logger.info(
         f'Detect {target_type} file {file_changed_event.event_type}: {file_name}')
     ctx = load_context()
