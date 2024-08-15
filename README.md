@@ -8,7 +8,7 @@
     </a>
 </p>
 
-<h3 align="center">The data validation toolkit for teams that care about building better data</h3>
+<h3 align="center">The&nbsp;data&nbsp;validation&nbsp;toolkit<br />for teams that care about building better data</h3>
 
 <p align="center">
     <a href="https://pypi.org/project/recce/"><img src="https://img.shields.io/badge/pip_install-recce-006DAD?style=flat-square" alt="install"></a> &nbsp; 
