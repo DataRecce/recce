@@ -1,8 +1,12 @@
-<picture>
- <source media="(prefers-color-scheme: dark)" srcset="https://datarecce.io/assets/images/recce-logo-stacked.png">
- <source media="(prefers-color-scheme: light)" srcset="https://datarecce.io/assets/images/recce-logo-stacked.png">
- <img alt="Recce: DataRecce.io" src="https://datarecce.io/assets/images/recce-logo-stacked.png" width="200" style="width: 100%; max-width: 200px; display: block; margin: 0 auto 20px;">
-</picture>
+<p align="center">
+    <a href="https://datarecce.io" target="_blank">
+        <picture>
+            <source media="(prefers-color-scheme: dark)" srcset="https://datarecce.io/assets/images/recce-logo-stacked.png">
+            <source media="(prefers-color-scheme: light)" srcset="https://datarecce.io/assets/images/recce-logo-stacked.png">
+            <img alt="Recce: DataRecce.io" src="https://datarecce.io/assets/images/recce-logo-stacked.png" width="200" style="width: 100%; max-width: 200px; display: block; margin: 0 auto 20px;">
+        </picture>
+    </a>
+</p>
 
 <h3 align="center">The data validation toolkit for teams that care about building better data</h3>
 
