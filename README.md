@@ -28,6 +28,17 @@ Data validations, or 'checks', are a method of impact assessment performed by co
 
 <a href="https://datarecce.io"><img src="https://datarecce.io/assets/images/landing/home/featured_image.png" style="width: 100%; max-width: 600px; display: block; margin: 0 auto 20px;" /></a>
 
+## Who's using `Recce`?
+
+`Recce` is useful for validating your own work or the work of others, and can also be used to share data impact with non-technical stakeholders to approve data checks.
+
+- **Data engineers** can use `Recce` to ensure the structural integrity of the data and understand the scope of impact before merging.
+
+- **Analysts** can use `Recce` to self-review and understand how data modeling changes have changed the data.
+
+- **Stakeholders** can use `Recce` to sign-off on data after updates have been made
+
+
 ## Why `Recce`
 
 [dbt](https://www.getdbt.com/) has brought many software best practices to data projects, such as:
@@ -114,17 +125,6 @@ Get full coverage of your pipeline by setting up [preset checks](https://datarec
 ### Other uses
 
 `Recce` is also useful for troubleshooting root causes by using Query Diff to compare ad-hoc queries and comparing data at the row level.
-
-
-## Who's using `Recce`?
-
-`Recce` is useful for validating your own work or the work of others, and can also be used to share data impact with non-technical stakeholders to approve data checks.
-
-- **Data engineers** can use `Recce` to ensure the structural integrity of the data and understand the scope of impact before merging.
-
-- **Analysts** can use `Recce` to self-review and understand how data modeling changes have changed the data.
-
-- **Stakeholders** can use `Recce` to sign-off on data after updates have been made
 
 
 ## Demo
@@ -265,4 +265,4 @@ You can follow along with news about `Recce` and blogs from our team in the foll
 - Medium blog: [In the Pipeline](https://medium.com/inthepipeline)
 - X: [@datarecce](https://x.com/DataRecce) 
 - Mastodon: [@DataRecce@mastodon.social](https://mastodon.social/@DataRecce)
-- BlueSky [@datarecce.bsky.social](https://bsky.app/profile/datarecce.bsky.social))
+- BlueSky [@datarecce.bsky.social](https://bsky.app/profile/datarecce.bsky.social)
