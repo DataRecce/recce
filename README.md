@@ -262,7 +262,7 @@ If you believe you have found a bug, or there is some missing functionality in R
 You can follow along with news about `Recce` and blogs from our team in the following places:
 
 - [LinkedIn](https://www.linkedin.com/company/datarecce)
-- Medium blog: [In the Pipeline](https://medium.com/inthepipeline)
-- X: [@datarecce](https://x.com/DataRecce) 
-- Mastodon: [@DataRecce@mastodon.social](https://mastodon.social/@DataRecce)
-- BlueSky [@datarecce.bsky.social](https://bsky.app/profile/datarecce.bsky.social)
+- [Medium blog](https://medium.com/inthepipeline)
+- [@datarecce](https://x.com/DataRecce) on X
+- [@DataRecce@mastodon.social](https://mastodon.social/@DataRecce) on Mastodon
+- [@datarecce.bsky.social](https://bsky.app/profile/datarecce.bsky.social) on BlueSky
