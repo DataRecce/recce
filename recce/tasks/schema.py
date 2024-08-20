@@ -25,7 +25,11 @@ class SchemaDiffResultDiffer:
         base_nodes = base_lineage.get('nodes', {})
         curr_nodes = curr_lineage.get('nodes', {})
         for node_id in self.related_node_ids:
-            node_name = curr_nodes.get(node_id, {})['name']
+            node = curr_nodes.get(node_id) or base_nodes.get(node_id)
+            if not node:
+                continue
+
+            node_name = node.get('name')
             base[node_name] = base_nodes.get(node_id, {}).get('columns', {})
             current[node_name] = curr_nodes.get(node_id, {}).get('columns', {})
 
