@@ -38,6 +38,21 @@ const NodelistItem = ({
   schemaChanged: boolean;
 }) => {
   const { icon } = getIconForResourceType(node.resourceType);
+  const { base, current } = node.data;
+
+  let statusIcon: IconType | undefined;
+  let statusColor: string | undefined;
+
+  if (schemaChanged) {
+    statusIcon = findByRunType("schema_diff")?.icon;
+    statusColor = getIconForChangeStatus("modified").color;
+  } else if (!base && current) {
+    statusIcon = getIconForChangeStatus("added").icon;
+    statusColor = getIconForChangeStatus("added").color;
+  } else if (base && !current) {
+    statusIcon = getIconForChangeStatus("removed").icon;
+    statusColor = getIconForChangeStatus("removed").color;
+  }
 
   return (
     <Flex
@@ -61,11 +76,8 @@ const NodelistItem = ({
         {node.name}
       </Box>
 
-      {schemaChanged && (
-        <Icon
-          as={findByRunType("schema_diff")?.icon}
-          color={getIconForChangeStatus("modified").color}
-        />
+      {statusIcon && statusColor && (
+        <Icon as={statusIcon} color={statusColor} />
       )}
     </Flex>
   );
@@ -88,6 +100,8 @@ export function SchemaDiffView({ check }: SchemaDiffViewProps) {
   const [nodes, changedNodes] = useMemo(() => {
     const selectedNodes: LineageGraphNode[] = [];
     const changedNodes: string[] = [];
+    const addedNodes: string[] = [];
+    const removedNodes: string[] = [];
 
     if (params?.node_id) {
       const node = lineageGraph?.nodes[params.node_id];
@@ -117,18 +131,34 @@ export function SchemaDiffView({ check }: SchemaDiffViewProps) {
         isSchemaChanged(node.data.base?.columns, node.data.current?.columns)
       ) {
         changedNodes.push(node.id);
+      } else if (!node.data.base && node.data.current) {
+        addedNodes.push(node.id);
+      } else if (node.data.base && !node.data.current) {
+        removedNodes.push(node.id);
       }
+    }
+    function sortScore(node: LineageGraphNode) {
+      if (changedNodes.includes(node.id)) {
+        return 3;
+      }
+      if (addedNodes.includes(node.id)) {
+        return 2;
+      }
+      if (removedNodes.includes(node.id)) {
+        return 1;
+      }
+      return 0;
     }
 
     //sort the selectedNodes from schemaChange and node name
     filteredNodes.sort((a, b) => {
-      if (changedNodes.includes(a.id) && !changedNodes.includes(b.id)) {
-        return -1;
+      const scoreA = sortScore(a);
+      const scoreB = sortScore(b);
+      if (scoreA !== scoreB) {
+        return scoreB - scoreA;
+      } else {
+        return a.name.localeCompare(b.name);
       }
-      if (!changedNodes.includes(a.id) && changedNodes.includes(b.id)) {
-        return 1;
-      }
-      return a.name.localeCompare(b.name);
     });
 
     return [filteredNodes, changedNodes];
