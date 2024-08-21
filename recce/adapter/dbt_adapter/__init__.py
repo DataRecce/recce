@@ -406,7 +406,7 @@ class DbtAdapter(BaseAdapter):
         if dbt_version >= dbt_version.parse('v1.8'):
             from dbt_common.context import set_invocation_context
             set_invocation_context({})
-            
+
         node_id = str("generated_" + uuid.uuid4().hex)
         node = parser.parse_remote(sql_template, node_id)
         process_node(self.runtime_config, manifest, node)
