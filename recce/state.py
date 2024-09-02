@@ -130,6 +130,14 @@ class RecceState(BaseModel):
     def to_json(self):
         return pydantic_model_json_dump(self)
 
+    def to_file(self, file_path: str, file_type: SupportedFileTypes = SupportedFileTypes.FILE):
+
+        json_data = self.to_json()
+        io = file_io_factory(file_type)
+
+        io.write(file_path, json_data)
+        return f'The state file is stored at \'{file_path}\''
+
 
 class RecceStateLoader:
     def __init__(self,
@@ -443,3 +451,145 @@ class RecceStateLoader:
             return False, 'Failed to delete the state file from the S3 bucket.'
         RecceCloud(token=token).update_github_pull_request_check(pr_info)
         return True, None
+
+
+class RecceCloudStateManager:
+    # It is a class to upload and download the state file to/from Recce Cloud.
+
+    def __init__(self, cloud_options: Optional[Dict[str, str]] = None):
+        self.cloud_options = cloud_options or {}
+        self.pr_info = None
+
+        if not self.cloud_options.get('token'):
+            raise Exception('No GitHub token is provided to access the pull request information.')
+        self.pr_info = fetch_pr_metadata(github_token=self.cloud_options.get('token'))
+        if self.pr_info.id is None:
+            raise Exception('Cannot get the pull request information from GitHub.')
+
+    def _check_state_in_recce_cloud(self) -> bool:
+        return RecceCloud(token=self.cloud_options.get('token')).check_artifacts_exists(self.pr_info)
+
+    def _check_state_in_s3_bucket(self) -> bool:
+        import boto3
+
+        s3_client = boto3.client('s3')
+        s3_bucket_name = self.cloud_options.get('host').replace('s3://', '')
+        s3_bucket_key = f'github/{self.pr_info.repository}/pulls/{self.pr_info.id}/{RECCE_STATE_COMPRESSED_FILE}'
+        try:
+            s3_client.head_object(Bucket=s3_bucket_name, Key=s3_bucket_key)
+        except botocore.exceptions.ClientError as e:
+            error_code = e.response.get('Error', {}).get('Code')
+            if error_code == '404':
+                return False
+        return True
+
+    def check_cloud_state_exists(self) -> bool:
+        if self.cloud_options.get('host', '').startswith('s3://'):
+            return self._check_state_in_s3_bucket()
+        else:
+            return self._check_state_in_recce_cloud()
+
+    def _upload_state_to_recce_cloud(self, state: RecceState, metadata: dict = None) -> Union[str, None]:
+        import tempfile
+        import requests
+
+        presigned_url = RecceCloud(token=self.cloud_options.get('token')).get_presigned_url(
+            method=PresignedUrlMethod.UPLOAD, pr_info=self.pr_info, artifact_name=RECCE_STATE_COMPRESSED_FILE,
+            metadata=metadata)
+
+        compress_passwd = self.cloud_options.get('password')
+        headers = s3_sse_c_headers(compress_passwd)
+        headers['x-amz-tagging'] = urlencode(metadata)
+        with tempfile.NamedTemporaryFile() as tmp:
+            state.to_file(tmp.name, file_type=SupportedFileTypes.GZIP)
+            response = requests.put(presigned_url, data=open(tmp.name, 'rb').read(), headers=headers)
+            if response.status_code != 200:
+                return f'Failed to upload the state file to Recce Cloud. Reason: {response.text}'
+        return 'The state file is uploaded to Recce Cloud.'
+
+    def _upload_state_to_s3_bucket(self, state: RecceState, metadata: dict = None) -> Union[str, None]:
+        import boto3
+        import tempfile
+
+        s3_client = boto3.client('s3')
+        s3_bucket_name = self.cloud_options.get('host').replace('s3://', '')
+        s3_bucket_key = f'github/{self.pr_info.repository}/pulls/{self.pr_info.id}/{RECCE_STATE_COMPRESSED_FILE}'
+
+        rc, error_message = check_s3_bucket(s3_bucket_name)
+        if rc is False:
+            raise Exception(error_message)
+
+        with tempfile.NamedTemporaryFile() as tmp:
+            state.to_file(tmp.name, file_type=SupportedFileTypes.GZIP)
+
+            s3_client.upload_file(tmp.name, s3_bucket_name, s3_bucket_key,
+                                  # Casting all the values under metadata to string
+                                  ExtraArgs={'Metadata': {k: str(v) for k, v in metadata.items()}})
+        RecceCloud(token=self.cloud_options.get('token')).update_github_pull_request_check(self.pr_info, metadata)
+        return f'The state file is uploaded to \' s3://{s3_bucket_name}/{s3_bucket_key}\''
+
+    def upload_state_to_cloud(self, state: RecceState) -> Union[str, None]:
+        if (self.pr_info is None) or (self.pr_info.id is None) or (self.pr_info.repository is None):
+            raise Exception('Cannot get the pull request information from GitHub.')
+
+        checks = state.checks
+
+        metadata = {
+            'total_checks': len(checks),
+            'approved_checks': len([c for c in checks if c.is_checked]),
+        }
+
+        if self.cloud_options.get('host', '').startswith('s3://'):
+            return self._upload_state_to_s3_bucket(state, metadata)
+        else:
+            return self._upload_state_to_recce_cloud(state, metadata)
+
+    def _download_state_from_s3_bucket(self, filepath):
+        import boto3
+
+        s3_client = boto3.client('s3')
+        s3_bucket_name = self.cloud_options.get('host').replace('s3://', '')
+        s3_bucket_key = f'github/{self.pr_info.repository}/pulls/{self.pr_info.id}/{RECCE_STATE_COMPRESSED_FILE}'
+
+        rc, error_message = check_s3_bucket(s3_bucket_name)
+        if rc is False:
+            raise Exception(error_message)
+
+        s3_client.download_file(s3_bucket_name, s3_bucket_key, filepath)
+
+    def _download_state_from_recce_cloud(self, filepath):
+        import io
+        import requests
+
+        presigned_url = RecceCloud(token=self.cloud_options.get('token')).get_presigned_url(
+            method=PresignedUrlMethod.DOWNLOAD, pr_info=self.pr_info, artifact_name=RECCE_STATE_COMPRESSED_FILE)
+
+        password = self.cloud_options.get('password')
+        if password is None:
+            raise Exception('No password is provided to access the state file in Recce Cloud.')
+
+        headers = s3_sse_c_headers(password)
+        response = requests.get(presigned_url, headers=headers)
+
+        if response.status_code != 200:
+            raise Exception(
+                f'{response.status_code} Failed to download the state file from Recce Cloud. The password could be wrong.')
+
+        byte_stream = io.BytesIO(response.content)
+        gzip_io = file_io_factory(SupportedFileTypes.GZIP)
+        decompressed_content = gzip_io.read_fileobj(byte_stream)
+
+        os.makedirs(os.path.dirname(filepath), exist_ok=True)
+        with open(filepath, 'wb') as f:
+            f.write(decompressed_content)
+
+    def download_state_to_cloud(self, filepath: str) -> Union[str, None]:
+        if (self.pr_info is None) or (self.pr_info.id is None) or (self.pr_info.repository is None):
+            raise Exception('Cannot get the pull request information from GitHub.')
+
+        if self.cloud_options.get('host', '').startswith('s3://'):
+            logger.debug('Download state file from AWS S3 bucket...')
+            return self._download_state_from_s3_bucket(filepath)
+        else:
+            logger.debug('Download state file from Recce Cloud...')
+            return self._download_state_from_recce_cloud(filepath)
