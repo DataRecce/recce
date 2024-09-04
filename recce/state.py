@@ -254,9 +254,7 @@ class RecceStateLoader:
 
     def purge(self) -> bool:
         if self.cloud_mode is True:
-            host = self.cloud_options.get('host')
-            token = self.cloud_options.get('token')
-            rc, err_msg = RecceStateLoader.purge_cloud_state(token, self.pr_info, host)
+            rc, err_msg = RecceCloudStateManager(self.cloud_options).purge_cloud_state()
             if err_msg:
                 self.error_message = err_msg
             return rc
@@ -270,17 +268,6 @@ class RecceStateLoader:
             else:
                 self.error_message = 'No state file is provided. Skip removing the state file.'
                 return False
-
-    @staticmethod
-    def purge_cloud_state(token: str, pr_info: PullRequestInfo, host: str) -> (bool, str):
-        if host.startswith('s3://'):
-            return RecceStateLoader._purge_state_from_s3_bucket(token, pr_info, host)
-        else:
-            try:
-                RecceCloud(token=token).purge_artifacts(pr_info)
-            except RecceCloudException as e:
-                return False, e.reason
-            return True, None
 
     def _load_state_from_file(self, file_path: Optional[str] = None) -> RecceState:
         file_path = file_path or self.state_file
@@ -427,34 +414,9 @@ class RecceStateLoader:
         io.write(file_path, json_data)
         return f'The state file is stored at \'{file_path}\''
 
-    @staticmethod
-    def _purge_state_from_s3_bucket(token: str, pr_info: PullRequestInfo, s3_bucket: str) -> (bool, str):
-        import boto3
-        from rich.console import Console
-        console = Console()
-        delete_objects = []
-        logger.debug('Purging the state from AWS S3 bucket...')
-        s3_client = boto3.client('s3')
-        s3_bucket_name = s3_bucket.replace('s3://', '')
-        s3_key_prefix = f'github/{pr_info.repository}/pulls/{pr_info.id}/'
-        list_response = s3_client.list_objects_v2(Bucket=s3_bucket_name, Prefix=s3_key_prefix)
-        if 'Contents' in list_response:
-            for obj in list_response['Contents']:
-                key = obj['Key']
-                delete_objects.append({'Key': key})
-                console.print(f'[green]Deleted[/green]: {key}')
-        else:
-            return False, 'No state file found in the S3 bucket.'
-
-        delete_response = s3_client.delete_objects(Bucket=s3_bucket_name, Delete={'Objects': delete_objects})
-        if 'Deleted' not in delete_response:
-            return False, 'Failed to delete the state file from the S3 bucket.'
-        RecceCloud(token=token).update_github_pull_request_check(pr_info)
-        return True, None
-
 
 class RecceCloudStateManager:
-    # It is a class to upload and download the state file to/from Recce Cloud.
+    # It is a class to upload, download and purge the state file on Recce Cloud.
 
     def __init__(self, cloud_options: Optional[Dict[str, str]] = None):
         self.cloud_options = cloud_options or {}
@@ -545,6 +507,7 @@ class RecceCloudStateManager:
             return self._upload_state_to_recce_cloud(state, metadata)
 
     def _download_state_from_s3_bucket(self, filepath):
+        import io
         import boto3
 
         s3_client = boto3.client('s3')
@@ -555,7 +518,14 @@ class RecceCloudStateManager:
         if rc is False:
             raise Exception(error_message)
 
-        s3_client.download_file(s3_bucket_name, s3_bucket_key, filepath)
+        response = s3_client.get_object(Bucket=s3_bucket_name, Key=s3_bucket_key)
+        byte_stream = io.BytesIO(response['Body'].read())
+        gzip_io = file_io_factory(SupportedFileTypes.GZIP)
+        decompressed_content = gzip_io.read_fileobj(byte_stream)
+
+        os.makedirs(os.path.dirname(filepath), exist_ok=True)
+        with open(filepath, 'wb') as f:
+            f.write(decompressed_content)
 
     def _download_state_from_recce_cloud(self, filepath):
         import io
@@ -593,3 +563,40 @@ class RecceCloudStateManager:
         else:
             logger.debug('Download state file from Recce Cloud...')
             return self._download_state_from_recce_cloud(filepath)
+
+    def _purge_state_from_s3_bucket(self) -> (bool, str):
+        import boto3
+        from rich.console import Console
+        console = Console()
+        delete_objects = []
+        logger.debug('Purging the state from AWS S3 bucket...')
+        s3_client = boto3.client('s3')
+        s3_bucket_name = self.cloud_options.get('host').replace('s3://', '')
+        s3_key_prefix = f'github/{self.pr_info.repository}/pulls/{self.pr_info.id}/'
+        list_response = s3_client.list_objects_v2(Bucket=s3_bucket_name, Prefix=s3_key_prefix)
+        if 'Contents' in list_response:
+            for obj in list_response['Contents']:
+                key = obj['Key']
+                delete_objects.append({'Key': key})
+                console.print(f'[green]Deleted[/green]: {key}')
+        else:
+            return False, 'No state file found in the S3 bucket.'
+
+        delete_response = s3_client.delete_objects(Bucket=s3_bucket_name, Delete={'Objects': delete_objects})
+        if 'Deleted' not in delete_response:
+            return False, 'Failed to delete the state file from the S3 bucket.'
+        RecceCloud(token=self.cloud_options.get('token')).update_github_pull_request_check(self.pr_info)
+        return True, None
+
+    def _purge_state_from_recce_cloud(self) -> (bool, str):
+        try:
+            RecceCloud(token=self.cloud_options.get('token')).purge_artifacts(self.pr_info)
+        except RecceCloudException as e:
+            return False, e.reason
+        return True, None
+
+    def purge_cloud_state(self) -> (bool, str):
+        if self.cloud_options.get('host', '').startswith('s3://'):
+            return self._purge_state_from_s3_bucket()
+        else:
+            return self._purge_state_from_recce_cloud()

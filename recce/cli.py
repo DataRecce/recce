@@ -8,7 +8,6 @@ import uvicorn
 
 from recce import event
 from recce.config import RecceConfig, RECCE_CONFIG_FILE, RECCE_ERROR_LOG_FILE
-from recce.pull_request import fetch_pr_metadata
 from recce.run import cli_run, check_github_ci_env
 from recce.state import RecceStateLoader, RecceCloudStateManager
 from recce.summary import generate_markdown_summary
@@ -392,7 +391,7 @@ def cloud(**kwargs):
               envvar='RECCE_STATE_FILE_HOST', default='', hidden=True)
 @click.option('--force', '-f', help='Bypasses the confirmation prompt. Purge the state file directly.', is_flag=True)
 @add_options(recce_options)
-def purge_cloud_state(**kwargs):
+def purge(**kwargs):
     """
         Purge the state file from cloud
     """
@@ -416,10 +415,7 @@ def purge_cloud_state(**kwargs):
     if recce_state is None:
         try:
             if force_to_purge is True or click.confirm('\nDo you want to purge the state file?'):
-                host = cloud_options.get('host')
-                token = cloud_options.get('token')
-                pr_info = fetch_pr_metadata(github_token=token)
-                rc, err_msg = RecceStateLoader.purge_cloud_state(token=token, pr_info=pr_info, host=host)
+                rc, err_msg = RecceCloudStateManager(cloud_options).purge_cloud_state()
                 if rc is True:
                     console.rule('Purged Successfully')
                 else:
