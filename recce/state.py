@@ -89,6 +89,32 @@ class ArtifactsRoot(BaseModel):
     base: Dict[str, Optional[dict]] = {}
     current: Dict[str, Optional[dict]] = {}
 
+    @staticmethod
+    def _merge_artifact(left: Optional[dict], right: Optional[dict]):
+        if left is None:
+            return right
+        if right is None:
+            return left
+
+        # compare two generated_at. Convert to datetime from iso8601
+        from dateutil import parser
+        def _generated_at(artifact):
+            dt = artifact.get('metadata', {}).get('generated_at', None)
+            return parser.parse(dt) if dt else None
+
+        left_generated_at = _generated_at(left)
+        right_generated_at = _generated_at(right)
+        if left_generated_at is None:
+            return right
+        elif right_generated_at is None:
+            return left
+        return left if left_generated_at > right_generated_at else right
+
+    def merge(self, other):
+        for key in ['manifest', 'catalog']:
+            self.base[key] = self._merge_artifact(self.base.get(key), other.base.get(key))
+            self.current[key] = self._merge_artifact(self.current.get(key), other.current.get(key))
+
 
 class RecceState(BaseModel):
     metadata: Optional[RecceStateMetadata] = None
@@ -137,6 +163,24 @@ class RecceState(BaseModel):
 
         io.write(file_path, json_data)
         return f'The state file is stored at \'{file_path}\''
+
+    def _merge_run(self, run: Run):
+        for r in self.runs:
+            if r.run_id == run.run_id:
+                break
+        else:
+            self.runs.append(run)
+
+    def _merge_check(self, check: Check):
+        for c in self.checks:
+            if c.check_id == check.check_id:
+                c.merge(check)
+                break
+        else:
+            self.checks.append(check)
+
+    def _merge_artifacts(self, artifacts: ArtifactsRoot):
+        self.artifacts.merge(artifacts)
 
 
 class RecceStateLoader:

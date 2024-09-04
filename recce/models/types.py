@@ -49,6 +49,17 @@ class Check(BaseModel):
     is_checked: bool = False
     is_preset: bool = False
 
+    def merge(self, other):
+        if self.check_id != other.check_id:
+            raise ValueError("Check ID mismatch")
+        self.name = other.name
+        self.description = other.description
+        self.type = other.type
+        self.params = other.params
+        self.view_options = other.view_options
+        self.is_checked = other.is_checked
+        self.is_preset = other.is_preset
+
 
 class Lineage(BaseModel):
     base: dict
