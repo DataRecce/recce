@@ -461,7 +461,6 @@ class RecceCloudStateManager:
 
         compress_passwd = self.cloud_options.get('password')
         headers = s3_sse_c_headers(compress_passwd)
-        headers['x-amz-tagging'] = urlencode(metadata)
         with tempfile.NamedTemporaryFile() as tmp:
             state.to_file(tmp.name, file_type=SupportedFileTypes.GZIP)
             response = requests.put(presigned_url, data=open(tmp.name, 'rb').read(), headers=headers)
