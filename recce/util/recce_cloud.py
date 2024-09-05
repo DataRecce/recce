@@ -80,11 +80,11 @@ class RecceCloud:
             )
 
     def check_artifacts_exists(self, pr_info: PullRequestInfo) -> bool:
-        api_url = f'{self.base_url}/{pr_info.repository}/pulls/{pr_info.id}/artifacts/exists'
+        api_url = f'{self.base_url}/{pr_info.repository}/pulls/{pr_info.id}/metadata'
         response = self._request('GET', api_url)
         if response.status_code == 200:
             return True
-        elif response.status_code == 404:
+        elif response.status_code == 204:
             return False
         else:
             raise RecceCloudException(
