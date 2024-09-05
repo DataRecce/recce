@@ -79,6 +79,20 @@ class RecceCloud:
                 status_code=response.status_code
             )
 
+    def check_artifacts_exists(self, pr_info: PullRequestInfo) -> bool:
+        api_url = f'{self.base_url}/{pr_info.repository}/pulls/{pr_info.id}/metadata'
+        response = self._request('GET', api_url)
+        if response.status_code == 200:
+            return True
+        elif response.status_code == 204:
+            return False
+        else:
+            raise RecceCloudException(
+                message='Failed to check if artifacts exist in Recce Cloud.',
+                reason=response.text,
+                status_code=response.status_code
+            )
+
     def update_github_pull_request_check(self, pr_info: PullRequestInfo, metadata: dict = None):
         api_url = f'{self.base_url}/{pr_info.repository}/pulls/{pr_info.id}/github/checks'
         try:

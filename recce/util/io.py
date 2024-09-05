@@ -57,6 +57,11 @@ class GzipFileIO(AbstractFileIO, ABC):
         with gzip.open(path, 'rt') as f:
             return f.read()
 
+    @staticmethod
+    def read_fileobj(fileobj) -> bytes:
+        with gzip.GzipFile(fileobj=fileobj) as f:
+            return f.read()
+
 
 class ZipFileIO(AbstractFileIO, ABC):
     @staticmethod

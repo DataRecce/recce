@@ -8,9 +8,8 @@ import uvicorn
 
 from recce import event
 from recce.config import RecceConfig, RECCE_CONFIG_FILE, RECCE_ERROR_LOG_FILE
-from recce.pull_request import fetch_pr_metadata
 from recce.run import cli_run, check_github_ci_env
-from recce.state import RecceStateLoader
+from recce.state import RecceStateLoader, RecceCloudStateManager
 from recce.summary import generate_markdown_summary
 from recce.util.logger import CustomFormatter
 from recce.util.recce_cloud import RecceCloudException
@@ -379,14 +378,20 @@ def summary(state_file, **kwargs):
     print(output)
 
 
-@cli.command(cls=TrackCommand)
+@cli.group('cloud', short_help='Manage Recce Cloud state file.')
+def cloud(**kwargs):
+    # Manage Recce Cloud.
+    pass
+
+
+@cloud.command(cls=TrackCommand)
 @click.option('--cloud-token', help='The token used by Recce Cloud.', type=click.STRING,
               envvar='GITHUB_TOKEN')
 @click.option('--state-file-host', help='The host to fetch the state file from.', type=click.STRING,
               envvar='RECCE_STATE_FILE_HOST', default='', hidden=True)
 @click.option('--force', '-f', help='Bypasses the confirmation prompt. Purge the state file directly.', is_flag=True)
 @add_options(recce_options)
-def purge_cloud_state(**kwargs):
+def purge(**kwargs):
     """
         Purge the state file from cloud
     """
@@ -410,10 +415,7 @@ def purge_cloud_state(**kwargs):
     if recce_state is None:
         try:
             if force_to_purge is True or click.confirm('\nDo you want to purge the state file?'):
-                host = cloud_options.get('host')
-                token = cloud_options.get('token')
-                pr_info = fetch_pr_metadata(github_token=token)
-                rc, err_msg = RecceStateLoader.purge_cloud_state(token=token, pr_info=pr_info, host=host)
+                rc, err_msg = RecceCloudStateManager(cloud_options).purge_cloud_state()
                 if rc is True:
                     console.rule('Purged Successfully')
                 else:
@@ -448,6 +450,88 @@ def purge_cloud_state(**kwargs):
         pass
 
     return 0
+
+
+@cloud.command(cls=TrackCommand)
+@click.argument('state_file', type=click.Path(exists=True))
+@click.option('--cloud-token', help='The token used by Recce Cloud.', type=click.STRING,
+              envvar='GITHUB_TOKEN')
+@click.option('--state-file-host', help='The host to fetch the state file from.', type=click.STRING,
+              envvar='RECCE_STATE_FILE_HOST', default='', hidden=True)
+@click.option('--password', '-p', help='The password to encrypt the state file in cloud.', type=click.STRING,
+              envvar='RECCE_STATE_PASSWORD')
+@add_options(recce_options)
+def upload(state_file, **kwargs):
+    """
+        Upload the state file to cloud
+    """
+    from rich.console import Console
+
+    handle_debug_flag(**kwargs)
+    cloud_options = {
+        'host': kwargs.get('state_file_host'),
+        'token': kwargs.get('cloud_token'),
+        'password': kwargs.get('password'),
+    }
+
+    console = Console()
+
+    # load local state
+    recce_state = create_state_loader(review_mode=False, cloud_mode=False, state_file=state_file,
+                                      cloud_options=cloud_options)
+
+    if not recce_state.verify():
+        error, hint = recce_state.error_and_hint
+        console.print(f"[[red]Error[/red]] {error}")
+        console.print(f"{hint}")
+        exit(1)
+
+    # check if state exists in cloud
+    state_manager = RecceCloudStateManager(cloud_options)
+    cloud_state_file_exists = state_manager.check_cloud_state_exists()
+
+    if cloud_state_file_exists and not click.confirm('\nDo you want to overwrite the existing state file?'):
+        return 0
+
+    console.print(state_manager.upload_state_to_cloud(recce_state.state))
+
+
+@cloud.command(cls=TrackCommand)
+@click.option('-o', '--output', help='Path of the downloaded state file.', type=click.STRING,
+              default=DEFAULT_RECCE_STATE_FILE, show_default=True)
+@click.option('--cloud-token', help='The token used by Recce Cloud.', type=click.STRING,
+              envvar='GITHUB_TOKEN')
+@click.option('--state-file-host', help='The host to fetch the state file from.', type=click.STRING,
+              envvar='RECCE_STATE_FILE_HOST', default='', hidden=True)
+@click.option('--password', '-p', help='The password to encrypt the state file in cloud.', type=click.STRING,
+              envvar='RECCE_STATE_PASSWORD')
+@add_options(recce_options)
+def download(**kwargs):
+    """
+        Download the state file to cloud
+    """
+    from rich.console import Console
+
+    handle_debug_flag(**kwargs)
+    filepath = kwargs.get('output')
+    cloud_options = {
+        'host': kwargs.get('state_file_host'),
+        'token': kwargs.get('cloud_token'),
+        'password': kwargs.get('password'),
+    }
+
+    console = Console()
+
+    # check if state exists in cloud
+    state_manager = RecceCloudStateManager(cloud_options)
+    cloud_state_file_exists = state_manager.check_cloud_state_exists()
+
+    if not cloud_state_file_exists:
+        console.print('[yellow]Skip[/yellow] No state file found in cloud.')
+        return 0
+
+    state_manager.download_state_to_cloud(filepath)
+    console.print(f'Downloaded state file to "{filepath}"')
 
 
 @cli.group('github', short_help='GitHub related commands', hidden=True)
