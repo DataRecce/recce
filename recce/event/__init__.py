@@ -3,12 +3,14 @@ import re
 import sys
 import threading
 import uuid
+from datetime import datetime
 
 import sentry_sdk
 
 from recce import is_ci_env, get_version
 from recce import yaml as pyml
 from recce.event.collector import Collector
+from recce.github import is_github_codespace, get_github_codespace_info
 
 USER_HOME = os.path.expanduser('~')
 RECCE_USER_HOME = os.path.join(USER_HOME, '.recce')
@@ -129,16 +131,23 @@ def flush_events(command=None):
     _collector.send_events()
 
 
-def log_event(prop, event_type, **kwargs):
+def should_log_event():
     with open(RECCE_USER_PROFILE, 'r') as f:
         user_profile = pyml.load(f)
     # TODO: default anonymous_tracking to false if field is not present
     tracking = user_profile.get('anonymous_tracking', False)
     tracking = tracking and isinstance(tracking, bool)
     if not tracking:
-        return
+        return False
 
     if not _collector.is_ready():
+        return False
+
+    return True
+
+
+def log_event(prop, event_type, **kwargs):
+    if should_log_event() is False:
         return
 
     payload = dict(
@@ -177,6 +186,27 @@ def log_load_state(command='server'):
     log_event(prop, 'load_state')
     if command == 'server':
         _collector.schedule_flush()
+
+
+def log_codespaces_events():
+    # Only log when the recce is running in GitHub Codespaces
+    if is_github_codespace() is False:
+        return
+
+    codespace = get_github_codespace_info()
+
+    prop = dict(
+        location=codespace.get('location'),
+        is_prebuild=True if codespace.get('prebuild') else False,
+    )
+
+    # Codespace created event
+    created_at = datetime.fromisoformat(codespace.get('created_at'))
+    _collector.log_event(prop, 'codespace_instance_created', event_triggered_at=created_at)
+
+    # Codespace available event
+    available_at = datetime.fromisoformat(codespace.get('updated_at'))
+    _collector.log_event(prop, 'codespace_instance_available', event_triggered_at=available_at)
 
 
 def capture_exception(e):

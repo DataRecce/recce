@@ -1,3 +1,4 @@
+import hashlib
 import json
 import os
 import platform
@@ -11,6 +12,7 @@ import portalocker
 import requests
 
 from recce import __version__, is_ci_env
+from recce.github import is_github_codespace, get_github_codespace_name
 
 
 class Collector:
@@ -23,6 +25,7 @@ class Collector:
         self._delete_threshold = 1000
         self._upload_threshold = 10
         self._is_ci: bool = is_ci_env()
+        self._is_github_codespace: bool = is_github_codespace()
         self._flush_timer = None
 
     def schedule_flush(self):
@@ -56,37 +59,58 @@ class Collector:
         self._unsend_events_file = unsend_events_file
         self._check_required_files()
 
-    def log_event(self, prop, event_type):
-        # Use local timezone
-        created_at = datetime.now()
-        python_version = f'{sys.version_info.major}.{sys.version_info.minor}'
-
-        # when the recce is running in automation use cases
-        # replace the user id with project_id to avoid so many unique user id
-        user_id = self._user_id
-        if self._is_ci is True:
-            user_id = f"{self._user_id}_CI"
-
+    def _log_event(self, user_id, event_type, created_at, user_properties, event_properties, ):
         event = dict(
             user_id=user_id,
             event_type=event_type,
             ip='$remote',
             time=int(time.mktime(created_at.timetuple())),
-            user_properties=dict(
-                version=__version__,
-                python_version=python_version,
-                is_ci=self._is_ci,
-            ),
-            event_properties=prop,
+            user_properties=user_properties,
+            event_properties=event_properties,
             platform=sys.platform,
             os_version=platform.platform(),
             app_version=__version__,
         )
-
         self._store_to_file(event)
         if self._is_full():
             self.send_events()
         self._cleanup_unsend_events()
+
+    def _get_user_id(self):
+        # when the recce is running in automation use cases
+        # replace the user id with project_id to avoid so many unique user id
+        user_id = self._user_id
+        if self._is_ci is True:
+            user_id = f"{self._user_id}_CI"
+        if self._is_github_codespace is True:
+            salted_name = f'codespaces-{get_github_codespace_name()}'
+            user_id = hashlib.sha256(salted_name.encode()).hexdigest()
+        return user_id
+
+    def log_event(self, prop, event_type, event_triggered_at: datetime = None):
+        # Use local timezone
+        if event_triggered_at is None:
+            created_at = datetime.now()
+        else:
+            created_at = event_triggered_at
+        python_version = f'{sys.version_info.major}.{sys.version_info.minor}'
+
+        # when the recce is running in automation use cases
+        # replace the user id with project_id to avoid so many unique user id
+        user_id = self._get_user_id()
+
+        self._log_event(
+            user_id=user_id,
+            event_type=event_type,
+            created_at=created_at,
+            user_properties=dict(
+                version=__version__,
+                python_version=python_version,
+                is_ci=self._is_ci,
+                is_github_codespace=self._is_github_codespace,
+            ),
+            event_properties=prop,
+        )
 
     def _check_required_files(self):
         user_home = os.path.dirname(self._unsend_events_file)

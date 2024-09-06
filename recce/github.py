@@ -153,3 +153,43 @@ def recce_pr_information(github_token=None) -> PullRequest:
     pr = get_pull_request(branch, owner, repo_name, github_token)
 
     return pr if pr else None
+
+
+def is_github_codespace():
+    return os.getenv('CODESPACES') == 'true'
+
+
+def get_github_codespace_name():
+    return os.getenv('CODESPACE_NAME')
+
+
+def get_github_codespace_info():
+    if is_github_codespace() is False:
+        return None
+
+    codespace_name = os.environ.get('CODESPACE_NAME')
+    github_token = os.environ.get('GITHUB_TOKEN')
+
+    response = requests.get(
+        f'https://api.github.com/user/codespaces/{codespace_name}',
+        headers={
+            'Accept': 'application/vnd.github+json',
+            'Authorization': f'token {github_token}',
+            'X-GitHub-Api-Version': '2022-11-28',
+        })
+
+    if response.status_code != 200:
+        return None
+    codespace_info = response.json()
+
+    return dict(
+        name=codespace_info.get('name'),
+        machine=codespace_info.get('machine'),
+        prebuild=codespace_info.get('prebuild'),
+        created_at=codespace_info.get('created_at'),
+        updated_at=codespace_info.get('updated_at'),
+        last_used_at=codespace_info.get('last_used_at'),
+        state=codespace_info.get('state'),
+        location=codespace_info.get('location'),
+        idle_timeout_minutes=codespace_info.get('idle_timeout_minutes'),
+    )

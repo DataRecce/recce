@@ -109,4 +109,5 @@ class TrackCommand(Command):
                     props['adapter_type'] = 'SQLMesh'
 
             event.log_event(props, command, params=ctx.params)
+            event.log_codespaces_events()
             event.flush_events()
