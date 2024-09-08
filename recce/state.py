@@ -522,7 +522,9 @@ class RecceCloudStateManager:
         gzip_io = file_io_factory(SupportedFileTypes.GZIP)
         decompressed_content = gzip_io.read_fileobj(byte_stream)
 
-        os.makedirs(os.path.dirname(filepath), exist_ok=True)
+        dirs = os.path.dirname(filepath)
+        if dirs:
+            os.makedirs(dirs, exist_ok=True)
         with open(filepath, 'wb') as f:
             f.write(decompressed_content)
 
@@ -548,11 +550,13 @@ class RecceCloudStateManager:
         gzip_io = file_io_factory(SupportedFileTypes.GZIP)
         decompressed_content = gzip_io.read_fileobj(byte_stream)
 
-        os.makedirs(os.path.dirname(filepath), exist_ok=True)
+        dirs = os.path.dirname(filepath)
+        if dirs:
+            os.makedirs(dirs, exist_ok=True)
         with open(filepath, 'wb') as f:
             f.write(decompressed_content)
 
-    def download_state_to_cloud(self, filepath: str) -> Union[str, None]:
+    def download_state_from_cloud(self, filepath: str) -> Union[str, None]:
         if (self.pr_info is None) or (self.pr_info.id is None) or (self.pr_info.repository is None):
             raise Exception('Cannot get the pull request information from GitHub.')
 

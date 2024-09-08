@@ -531,7 +531,7 @@ def download(**kwargs):
         console.print('[yellow]Skip[/yellow] No state file found in cloud.')
         return 0
 
-    state_manager.download_state_to_cloud(filepath)
+    state_manager.download_state_from_cloud(filepath)
     console.print(f'Downloaded state file to "{filepath}"')
 
 
