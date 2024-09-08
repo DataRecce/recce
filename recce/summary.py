@@ -1,3 +1,4 @@
+import os
 import sys
 from typing import List, Dict, Set, Union, Type, Optional
 from uuid import UUID
@@ -5,6 +6,7 @@ from uuid import UUID
 from pydantic import BaseModel
 
 from recce.apis.check_func import get_node_name_by_id
+from recce.core import RecceContext
 from recce.models import CheckDAO, RunDAO, RunType, Run
 from recce.tasks.core import TaskResultDiffer
 from recce.tasks.histogram import HistogramDiffTaskResultDiffer
@@ -14,6 +16,8 @@ from recce.tasks.rowcount import RowCountDiffResultDiffer
 from recce.tasks.schema import SchemaDiffResultDiffer
 from recce.tasks.top_k import TopKDiffTaskResultDiffer
 from recce.tasks.valuediff import ValueDiffTaskResultDiffer, ValueDiffDetailTaskResultDiffer
+
+RECCE_CLOUD_HOST = os.environ.get('RECCE_CLOUD_HOST', 'https://cloud.datarecce.io')
 
 ADD_COLOR = '#1dce00'
 MODIFIED_COLOR = '#ffa502'
@@ -401,7 +405,7 @@ def generate_mermaid_lineage_graph(graph: LineageGraph):
     return content, is_not_modified
 
 
-def generate_markdown_summary(ctx, summary_format: str = 'markdown'):
+def generate_markdown_summary(ctx: RecceContext, summary_format: str = 'markdown'):
     curr_lineage = ctx.get_lineage(base=False)
     base_lineage = ctx.get_lineage(base=True)
     graph = _build_lineage_graph(base_lineage, curr_lineage)
@@ -431,6 +435,11 @@ No changed module was detected.
 '''
         if check_content:
             content += check_content
+
+        if ctx.state_loader.cloud_mode:
+            pr_info = ctx.state_loader.pr_info
+            content += f'\nSee PR page: {RECCE_CLOUD_HOST}/{pr_info.repository}/pulls/{pr_info.id}'
+
         return content
 
 
