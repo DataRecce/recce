@@ -175,6 +175,7 @@ async def get_info():
             },
             'demo': bool(demo),
             'cloud_mode': context.state_loader.cloud_mode,
+            'file_mode': context.state_loader.state_file is not None,
         }
 
         if context.adapter_type == 'sqlmesh':
@@ -254,11 +255,23 @@ async def import_handler(file: UploadFile):
         raise HTTPException(status_code=400, detail=e.message)
 
 
+class SyncStateInput(BaseModel):
+    method: Optional[str] = None
+
+
 @app.post("/api/sync", status_code=202)
-async def sync_handler(response: Response, background_tasks: BackgroundTasks):
+async def sync_handler(input: SyncStateInput, response: Response, background_tasks: BackgroundTasks):
     # Sync the state file
     context = default_context()
-    is_syncing = context.state_loader.state_lock.locked()
+    state_loader = context.state_loader
+    print(input)
+
+    if not input.method:
+        is_conflict = state_loader.check_conflict()
+        if is_conflict:
+            raise HTTPException(status_code=409, detail='Conflict detected')
+
+    is_syncing = state_loader.state_lock.locked()
     if is_syncing:
         response.status_code = 208
         return {"status": "syncing"}

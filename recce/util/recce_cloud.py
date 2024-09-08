@@ -58,8 +58,8 @@ class RecceCloud:
         presigned_url = response.json().get('presigned_url')
         return presigned_url
 
-    def get_artifact_metadata(self, pr_info: PullRequestInfo, artifact_name: str) -> dict:
-        api_url = f'{self.base_url}/{pr_info.repository}/pulls/{pr_info.id}/artifacts/{artifact_name}/metadata'
+    def get_artifact_metadata(self, pr_info: PullRequestInfo) -> dict:
+        api_url = f'{self.base_url}/{pr_info.repository}/pulls/{pr_info.id}/metadata'
         response = self._request('GET', api_url)
         if response.status_code != 200:
             raise RecceCloudException(
