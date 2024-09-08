@@ -1,9 +1,12 @@
 from abc import ABC, abstractmethod
 from typing import List, Union, Optional
 
+from pydantic import BaseModel
+
 from recce.core import default_context
 from recce.exceptions import RecceCancelException
 from recce.models import Run
+from recce.util.pydantic_model import pydantic_model_dump
 
 
 class Task(ABC):
@@ -49,6 +52,9 @@ class TaskResultDiffer(ABC):
     related_node_ids: List[str] = None
 
     def __init__(self, run: Run):
+        # Dump the result to a dict when we create summary from recce run
+        if isinstance(run.result, BaseModel):
+            run.result = pydantic_model_dump(run.result)
         self.run = run
         self.changes = self._check_result_changed_fn(run.result) if run.result else None
         self.related_node_ids = self._get_related_node_ids()

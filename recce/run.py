@@ -13,6 +13,7 @@ from recce.config import RecceConfig
 from recce.models.types import RunType
 from recce.pull_request import fetch_pr_metadata
 from recce.state import RecceState
+from recce.summary import generate_markdown_summary
 
 
 def check_github_ci_env(**kwargs):
@@ -255,4 +256,14 @@ async def cli_run(output_state_file: str, **kwargs):
     ctx.state_loader.state_file = output_state_file
     msg = ctx.state_loader.export(state)
     console.print(msg)
+
+    summary_path = kwargs.get('summary')
+    if summary_path:
+        dirs = os.path.dirname(summary_path)
+        if dirs:
+            os.makedirs(dirs, exist_ok=True)
+        with open(summary_path, 'w') as f:
+            f.write(generate_markdown_summary(ctx))
+        console.print(f"The summary is stored at '{summary_path}'")
+
     return rc
