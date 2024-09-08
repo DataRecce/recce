@@ -2,13 +2,11 @@ import hashlib
 import json
 import logging
 import os
-from dataclasses import dataclass
-from typing import Callable, Dict, Optional
+from dataclasses import dataclass, field
+from typing import Callable, Dict, Optional, List
 
 from recce.adapter.base import BaseAdapter
-from recce.models import RunDAO, CheckDAO, Check
-from recce.models.check import load_checks
-from recce.models.run import load_runs
+from recce.models import Check, Run
 from recce.state import RecceState, RecceStateMetadata, GitRepoInfo, PullRequestInfo, RecceStateLoader
 
 logger = logging.getLogger('uvicorn')
@@ -21,23 +19,20 @@ class RecceContext:
     adapter: BaseAdapter = None
     state_loader: RecceStateLoader = None
     review_state: RecceState = None
+    runs: List[Run] = field(default_factory=list)
+    checks: List[Check] = field(default_factory=list)
 
     @classmethod
     def load(cls, **kwargs):
-        state: RecceState | None = None
-        recce_state: RecceStateLoader = kwargs.get('recce_state')
+        state_loader: RecceStateLoader = kwargs.get('state_loader')
         is_review_mode = kwargs.get('review', False)
 
         context = cls(
             review_mode=is_review_mode,
-            state_loader=recce_state,
+            state_loader=state_loader,
         )
 
-        if recce_state:
-            state = recce_state.load()
-            context.import_state(state)
-
-        # Load the artifacts from the state file or `target` and `target-base` directory
+        # Initiate the adapter
         if kwargs.get('sqlmesh', False):
             logger.warning('SQLMesh adapter is still in EXPERIMENTAL mode.')
             from recce.adapter.sqlmesh_adapter import SqlmeshAdapter
@@ -46,13 +41,18 @@ class RecceContext:
         else:
             from recce.adapter.dbt_adapter import DbtAdapter
             context.adapter_type = 'dbt'
+            context.adapter = DbtAdapter.load(**kwargs)
+
+        # Import state
+        if state_loader:
+            state = state_loader.load()
+            if state:
+                context.import_state(state)
+
             if is_review_mode:
                 if not state:
                     raise Exception('The state file is required for review mode')
                 context.review_state = state
-                context.adapter = DbtAdapter.load(artifacts=state.artifacts, **kwargs)
-            else:
-                context.adapter = DbtAdapter.load(**kwargs)
 
         return context
 
@@ -96,8 +96,8 @@ class RecceContext:
         state.metadata = RecceStateMetadata()
 
         # runs & checks
-        state.runs = RunDAO().list()
-        state.checks = CheckDAO().list()
+        state.runs = self.runs
+        state.checks = self.checks
 
         # artifacts & git & pull_request. If in review mode, use the review state
         if self.review_mode:
@@ -120,9 +120,8 @@ class RecceContext:
         state.metadata = RecceStateMetadata()
 
         # runs & checks
-        state.runs = RunDAO().list()
-        state.checks = CheckDAO().list()
-
+        state.runs = self.runs
+        state.checks = self.checks
         state.artifacts = self.adapter.export_artifacts()
         git = GitRepoInfo.from_current_repositroy()
         if git:
@@ -136,8 +135,8 @@ class RecceContext:
         """
         refresh the state
         """
-        RunDAO().clear()
-        CheckDAO().clear()
+        self.runs.clear()
+        self.checks.clear()
         self.state_loader.refresh()
         self.import_state(self.state_loader.state)
 
@@ -149,10 +148,8 @@ class RecceContext:
             2.1 If both checks are preset, use the new one
             2.2 If the check is not preset, append the check if not found
         """
-        checks = CheckDAO().list()
-        runs = RunDAO().list()
-        current_check_ids = [str(c.check_id) for c in checks]
-        current_run_ids = [str(r.run_id) for r in runs]
+        checks = list(self.checks)
+        runs = list(self.runs)
 
         def _calculate_checksum(c: Check):
             payload = json.dumps({
@@ -179,13 +176,19 @@ class RecceContext:
                 else:
                     checks.append(check)
                 import_checks += 1
-            elif str(check.check_id) not in current_check_ids:
-                # Merge the check
-                checks.append(check)
-                import_checks += 1
+            else:
+                for c in checks:
+                    if c.check_id == check.check_id:
+                        c.merge(check)
+                        break
+                else:
+                    # Merge the check
+                    checks.append(check)
+                    import_checks += 1
 
         # merge runs
         import_runs = 0
+        current_run_ids = {str(run.run_id) for run in runs}
         for run in import_state.runs:
             if str(run.run_id) not in current_run_ids:
                 runs.append(run)
@@ -193,10 +196,11 @@ class RecceContext:
 
         runs.sort(key=lambda x: x.run_at)
 
-        # Update to in-memory db
+        self.checks = checks
+        self.runs = runs
 
-        load_runs(runs)
-        load_checks(checks)
+        # merge artifacts
+        self.adapter.import_artifacts(import_state.artifacts)
 
         return import_runs, import_checks
 

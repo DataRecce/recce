@@ -5,7 +5,7 @@ import uuid
 from contextlib import contextmanager
 from dataclasses import dataclass, fields
 from pathlib import Path
-from typing import Callable, Dict, List, Optional, Tuple, Iterator, Any, Set
+from typing import Callable, Dict, List, Optional, Tuple, Iterator, Any, Set, Union
 
 import agate
 import dbt.adapters.factory
@@ -174,12 +174,18 @@ class DbtAdapter(BaseAdapter):
     base_manifest: WritableManifest = None
     base_catalog: CatalogArtifact = None
 
+    # Review mode
+    review_mode: bool = False
+
     # Watch the artifact change
     artifacts_observer = Observer()
     artifacts_files = []
 
     @classmethod
-    def load(cls, artifacts: ArtifactsRoot = None, no_artifacts=False, **kwargs):
+    def load(cls,
+             no_artifacts=False,
+             review=False,
+             **kwargs):
 
         target = kwargs.get('target')
         profile_name = kwargs.get('profile')
@@ -227,26 +233,14 @@ class DbtAdapter(BaseAdapter):
             dbt_adapter = cls(
                 runtime_config=runtime_config,
                 adapter=adapter,
+                review_mode=review,
             )
         except DbtProjectError as e:
-            if artifacts is not None:
-                # if artifacts is not None, it is in review mode. Launch server in view only mode.
-                logger.warning(f'Cannot initiate the dbt project. Reason: {e.msg}')
-                logger.warning('Launch recce in view only mode.')
-                dbt_adapter = cls()
-            else:
-                raise e
+            raise e
 
         # Load the artifacts from the state file or `target` and `target-base` directory
-        if no_artifacts:
-            # this is for testing purpose
-            pass
-        else:
-            if artifacts:
-                dbt_adapter.import_artifacts(artifacts)
-            else:
-                dbt_adapter.load_artifacts()
-
+        if not no_artifacts and not review:
+            dbt_adapter.load_artifacts()
             if not dbt_adapter.curr_manifest:
                 raise Exception('Cannot load "target/manifest.json"')
             if not dbt_adapter.base_manifest:
@@ -591,16 +585,21 @@ class DbtAdapter(BaseAdapter):
             self.artifacts_observer.join()
             logger.info('Stop monitoring artifacts')
 
-    def set_artifacts(self, base_manifest: Manifest, curr_manifest: Manifest):
-        self.manifest = curr_manifest
-        self.curr_manifest = curr_manifest.writable_manifest()
-        self.base_manifest = base_manifest.writable_manifest()
+    def set_artifacts(self,
+                      base_manifest: WritableManifest,
+                      curr_manifest: WritableManifest,
+                      manifest: Manifest,
+                      previous_manifest: Manifest,
+                      ):
+        self.curr_manifest = curr_manifest
+        self.base_manifest = base_manifest
+        self.manifest = manifest
         self.previous_state = previous_state(
             Path('target-base'),
             Path(self.runtime_config.target_path),
             Path(self.runtime_config.project_root)
         )
-        self.previous_state.manifest = base_manifest
+        self.previous_state.manifest = previous_manifest
 
         # The dependencies of the review mode is derived from manifests.
         # It is a workaround solution to use macro dispatch
@@ -675,6 +674,28 @@ class DbtAdapter(BaseAdapter):
             return selector.get_selected(spec)
 
     def export_artifacts(self) -> ArtifactsRoot:
+        '''
+        Export the artifacts from the current state
+        '''
+        artifacts = ArtifactsRoot()
+
+        def _load_artifact(artifact):
+            return artifact.to_dict() if artifact else None
+
+        artifacts.base = {
+            'manifest': _load_artifact(self.base_manifest),
+            'catalog': _load_artifact(self.base_catalog),
+        }
+        artifacts.current = {
+            'manifest': _load_artifact(self.curr_manifest),
+            'catalog': _load_artifact(self.curr_catalog),
+        }
+        return artifacts
+
+    def export_artifacts_from_file(self) -> ArtifactsRoot:
+        '''
+        Export the artifacts from the state file. This is the old impolementation
+        '''
         artifacts = ArtifactsRoot()
         target_path = self.runtime_config.target_path
         target_base_path = 'target-base'
@@ -699,10 +720,21 @@ class DbtAdapter(BaseAdapter):
         return artifacts
 
     def import_artifacts(self, artifacts: ArtifactsRoot):
-        self.base_manifest = load_manifest(data=artifacts.base.get('manifest'))
-        self.base_catalog = load_catalog(data=artifacts.base.get('catalog'))
-        self.curr_manifest = load_manifest(data=artifacts.current.get('manifest'))
-        self.curr_catalog = load_catalog(data=artifacts.current.get('catalog'))
+        # Merge the artifacts from the state file or cloud
+        def _select_artifact(
+            original: Union[WritableManifest, CatalogArtifact],
+            new: Union[WritableManifest, CatalogArtifact]
+        ):
+            if not original:
+                return new
+            if not new:
+                return original
+            return original if original.metadata.generated_at > new.metadata.generated_at else new
+
+        self.base_manifest = _select_artifact(self.base_manifest, load_manifest(data=artifacts.base.get('manifest')))
+        self.curr_manifest = _select_artifact(self.curr_manifest, load_manifest(data=artifacts.current.get('manifest')))
+        self.base_catalog = _select_artifact(self.base_catalog, load_catalog(data=artifacts.base.get('catalog')))
+        self.curr_catalog = _select_artifact(self.curr_catalog, load_catalog(data=artifacts.current.get('catalog')))
 
         self.manifest = as_manifest(self.curr_manifest)
         self.previous_state = previous_state(

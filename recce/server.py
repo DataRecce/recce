@@ -31,7 +31,7 @@ logger = logging.getLogger('uvicorn')
 
 @dataclass
 class AppState:
-    recce_state: Optional[RecceStateLoader] = None
+    state_loader: Optional[RecceStateLoader] = None
     kwargs: Optional[dict] = None
 
 
@@ -42,14 +42,14 @@ async def lifespan(fastapi: FastAPI):
 
     console = Console()
     app_state: AppState = app.state
-    recce_state = app_state.recce_state
+    state_loader = app_state.state_loader
     kwargs = app_state.kwargs
-    ctx = load_context(**kwargs, recce_state=recce_state)
+    ctx = load_context(**kwargs, state_loader=state_loader)
     ctx.start_monitor_artifacts(callback=dbt_artifacts_updated_callback)
 
     # Initialize Recce Config
     config = RecceConfig(config_file=kwargs.get('config'))
-    if not recce_state:
+    if not state_loader:
         preset_checks = config.get('checks', [])
         if preset_checks and len(preset_checks) > 0:
             console.rule("Loading Preset Checks")
@@ -60,7 +60,7 @@ async def lifespan(fastapi: FastAPI):
 
     yield
 
-    recce_state.export(ctx.export_state())
+    state_loader.export(ctx.export_state())
 
     ctx.stop_monitor_artifacts()
 

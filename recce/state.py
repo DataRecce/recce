@@ -89,37 +89,11 @@ class ArtifactsRoot(BaseModel):
     base: Dict[str, Optional[dict]] = {}
     current: Dict[str, Optional[dict]] = {}
 
-    @staticmethod
-    def _merge_artifact(left: Optional[dict], right: Optional[dict]):
-        if left is None:
-            return right
-        if right is None:
-            return left
-
-        # compare two generated_at. Convert to datetime from iso8601
-        from dateutil import parser
-        def _generated_at(artifact):
-            dt = artifact.get('metadata', {}).get('generated_at', None)
-            return parser.parse(dt) if dt else None
-
-        left_generated_at = _generated_at(left)
-        right_generated_at = _generated_at(right)
-        if left_generated_at is None:
-            return right
-        elif right_generated_at is None:
-            return left
-        return left if left_generated_at > right_generated_at else right
-
-    def merge(self, other):
-        for key in ['manifest', 'catalog']:
-            self.base[key] = self._merge_artifact(self.base.get(key), other.base.get(key))
-            self.current[key] = self._merge_artifact(self.current.get(key), other.current.get(key))
-
 
 class RecceState(BaseModel):
     metadata: Optional[RecceStateMetadata] = None
-    runs: Optional[List[Run]] = None
-    checks: Optional[List[Check]] = None
+    runs: Optional[List[Run]] = Field(default_factory=list)
+    checks: Optional[List[Check]] = Field(default_factory=list)
     artifacts: ArtifactsRoot = ArtifactsRoot(base={}, current={})
     git: Optional[GitRepoInfo] = None
     pull_request: Optional[PullRequestInfo] = None
@@ -188,7 +162,8 @@ class RecceStateLoader:
                  review_mode: bool = False,
                  cloud_mode: bool = False,
                  state_file: Optional[str] = None,
-                 cloud_options: Optional[Dict[str, str]] = None
+                 cloud_options: Optional[Dict[str, str]] = None,
+                 initial_state: Optional[RecceState] = None,
                  ):
         self.review_mode = review_mode
         self.cloud_mode = cloud_mode
@@ -196,7 +171,7 @@ class RecceStateLoader:
         self.cloud_options = cloud_options or {}
         self.error_message = None
         self.hint_message = None
-        self.state: RecceState | None = None
+        self.state: RecceState | None = initial_state
         self.state_lock = threading.Lock()
         self.pr_info = None
 
@@ -246,7 +221,7 @@ class RecceStateLoader:
         try:
             if self.cloud_mode:
                 self.state = self._load_state_from_cloud()
-            else:
+            elif self.state_file:
                 self.state = self._load_state_from_file()
         finally:
             self.state_lock.release()
