@@ -209,11 +209,11 @@ def log_codespaces_events():
     )
     # Codespace created event
     created_at = datetime.fromisoformat(codespace.get('created_at'))
-    _collector.log_event({}, 'codespace_instance_created', event_triggered_at=created_at, user_properties=user_prop)
+    _collector.log_event(prop, 'codespace_instance_created', event_triggered_at=created_at, user_properties=user_prop)
 
     # Codespace available event
     available_at = datetime.fromisoformat(codespace.get('updated_at'))
-    _collector.log_event({}, 'codespace_instance_available', event_triggered_at=available_at,
+    _collector.log_event(prop, 'codespace_instance_available', event_triggered_at=available_at,
                          user_properties=user_prop)
 
 

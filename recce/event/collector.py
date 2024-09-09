@@ -111,7 +111,7 @@ class Collector:
             user_id=user_id,
             event_type=event_type,
             created_at=created_at,
-            user_properties=user_properties,
+            user_properties=default_user_properties,
             event_properties=event_prop,
         )
 
