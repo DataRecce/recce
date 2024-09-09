@@ -451,7 +451,7 @@ def generate_markdown_summary(ctx: RecceContext, summary_format: str = 'markdown
     elif summary_format == 'markdown':
 
         content = '# Recce Summary\n'
-        content += f'{summary_metadata}\n'
+        content += f'## Manifest Information\n{summary_metadata}\n'
 
         if is_empty_graph is False:
             content += f'''
