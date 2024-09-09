@@ -278,7 +278,7 @@ async def sync_handler(input: SyncStateInput, response: Response, background_tas
 
     def reload_state():
         ctx = default_context()
-        ctx.refresh_state()
+        ctx.sync_state()
 
     background_tasks.add_task(reload_state)
     response.status_code = 202

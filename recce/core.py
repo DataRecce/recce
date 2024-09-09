@@ -131,16 +131,28 @@ class RecceContext:
 
         return state
 
-    def refresh_state(self):
+    def sync_state(self, method: str):
         """
-        refresh the state
-        """
-        self.runs.clear()
-        self.checks.clear()
-        self.state_loader.refresh()
-        self.import_state(self.state_loader.state)
+        Sync the state with the remote.
 
-    def import_state(self, import_state: RecceState):
+        :param method: merge, revert, overwrite
+
+        """
+        if method == 'merge':
+            self.state_loader.refresh()
+            self.import_state(self.state_loader.state, merge=True)
+            state = self.export_state()
+            self.state_loader.export(state)
+        elif method == 'revert':
+            self.state_loader.refresh()
+            self.import_state(self.state_loader.state, merge=False)
+        elif method == 'overwrite':
+            state = self.export_state()
+            self.state_loader.export(state)
+        else:
+            raise Exception(f'Unsupported method: {method}')
+
+    def import_state(self, import_state: RecceState, merge: bool = True):
         """
         Import the state. It would
         1. Merge runs
@@ -148,8 +160,8 @@ class RecceContext:
             2.1 If both checks are preset, use the new one
             2.2 If the check is not preset, append the check if not found
         """
-        checks = list(self.checks)
-        runs = list(self.runs)
+        checks = list(import_state.checks)
+        runs = list(import_state.runs)
 
         def _calculate_checksum(c: Check):
             payload = json.dumps({
@@ -166,33 +178,39 @@ class RecceContext:
 
         # merge checks
         import_checks = 0
-        for check in import_state.checks:
-            if check.is_preset:
-                # Replace the preset check if the checksum is the same
-                check_checksum = _calculate_checksum(check)
-                if check_checksum in current_preset_check_checksums:
-                    index = current_preset_check_checksums[check_checksum]
-                    checks[index] = check
-                else:
-                    checks.append(check)
-                import_checks += 1
-            else:
-                for c in checks:
-                    if c.check_id == check.check_id:
-                        c.merge(check)
-                        break
-                else:
-                    # Merge the check
-                    checks.append(check)
+        if merge:
+            for check in self.checks:
+                if check.is_preset:
+                    # Replace the preset check if the checksum is the same
+                    check_checksum = _calculate_checksum(check)
+                    if check_checksum in current_preset_check_checksums:
+                        index = current_preset_check_checksums[check_checksum]
+                        checks[index] = check
+                    else:
+                        checks.append(check)
                     import_checks += 1
+                else:
+                    for c in checks:
+                        if c.check_id == check.check_id:
+                            c.merge(check)
+                            break
+                    else:
+                        # Merge the check
+                        checks.append(check)
+                        import_checks += 1
+        else:
+            import_checks = len(checks)
 
         # merge runs
         import_runs = 0
-        current_run_ids = {str(run.run_id) for run in runs}
-        for run in import_state.runs:
-            if str(run.run_id) not in current_run_ids:
-                runs.append(run)
-                import_runs += 1
+        if merge:
+            current_run_ids = {str(run.run_id) for run in runs}
+            for run in self.runs:
+                if str(run.run_id) not in current_run_ids:
+                    runs.append(run)
+                    import_runs += 1
+        else:
+            import_runs = len(runs)
 
         runs.sort(key=lambda x: x.run_at)
 
@@ -200,7 +218,8 @@ class RecceContext:
         self.runs = runs
 
         # merge artifacts
-        self.adapter.import_artifacts(import_state.artifacts)
+        if self.adapter:
+            self.adapter.import_artifacts(import_state.artifacts)
 
         return import_runs, import_checks
 

@@ -267,7 +267,6 @@ class RecceStateLoader:
             return False
 
         state_etag = metadata.get('etag')
-        print(state_etag, self.state_etag)
         return state_etag != self.state_etag
 
     def info(self):

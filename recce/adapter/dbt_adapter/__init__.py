@@ -719,17 +719,20 @@ class DbtAdapter(BaseAdapter):
         }
         return artifacts
 
-    def import_artifacts(self, artifacts: ArtifactsRoot):
+    def import_artifacts(self, artifacts: ArtifactsRoot, merge=True):
         # Merge the artifacts from the state file or cloud
         def _select_artifact(
             original: Union[WritableManifest, CatalogArtifact],
             new: Union[WritableManifest, CatalogArtifact]
         ):
-            if not original:
+            if merge:
+                if not original:
+                    return new
+                if not new:
+                    return original
+                return original if original.metadata.generated_at > new.metadata.generated_at else new
+            else:
                 return new
-            if not new:
-                return original
-            return original if original.metadata.generated_at > new.metadata.generated_at else new
 
         self.base_manifest = _select_artifact(self.base_manifest, load_manifest(data=artifacts.base.get('manifest')))
         self.curr_manifest = _select_artifact(self.curr_manifest, load_manifest(data=artifacts.current.get('manifest')))

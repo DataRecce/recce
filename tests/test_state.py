@@ -11,13 +11,6 @@ current_dir = os.path.dirname(os.path.abspath(__file__))
 
 class TestRecceState(unittest.TestCase):
     def test_merge_checks(self):
-        context = RecceContext()
-        check1 = Check(name='test1', description='', type='query')
-        state = RecceState(checks=[check1], runs=[])
-        context.import_state(state)
-        assert len(context.checks) == 1
-
-    def test_merge_check(self):
         check1 = Check(name='test1', description='', type='query')
         check2 = Check(name='test2', description='', type='query')
         check2_2 = Check(name='test2_2', description='', type='query', check_id=check2.check_id)
@@ -30,12 +23,12 @@ class TestRecceState(unittest.TestCase):
         self.assertEqual(context.checks[0].name, check1.name)
 
         context = RecceContext(checks=[check1, check2])
-        state = RecceState(checks=[check2_2, check3], runs=[])
+        state = RecceState(checks=[check1, check2_2, check3], runs=[])
         context.import_state(state)
         self.assertEqual(len(context.checks), 3)
         self.assertEqual(context.checks[1].name, check2_2.name)
 
-    def test_merge_run(self):
+    def test_merge_runs(self):
         run1 = Run(type='query')
         run2 = Run(type='query')
         run3 = Run(type='query')
