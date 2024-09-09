@@ -344,7 +344,7 @@ def generate_summary_metadata(base_lineage, curr_lineage):
         {
             '': 'Current',
             'Manifest': curr_manifest.generated_at.strftime('%Y-%m-%d %H:%M:%S'),
-            'Catalog':  curr_catalog.generated_at.strftime('%Y-%m-%d %H:%M:%S') if curr_catalog else 'N/A'
+            'Catalog': curr_catalog.generated_at.strftime('%Y-%m-%d %H:%M:%S') if curr_catalog else 'N/A'
         }
     ]
 
@@ -354,7 +354,6 @@ def generate_summary_metadata(base_lineage, curr_lineage):
         padding_width=1,
         padding_weight='right'  # Aligns the cell's contents to the beginning of the cell
     ).get_markdown()
-
 
 
 def generate_check_summary(base_lineage, curr_lineage) -> (List[CheckSummary], Dict[str, int]):
