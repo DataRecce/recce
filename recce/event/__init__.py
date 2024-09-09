@@ -205,7 +205,7 @@ def log_codespaces_events():
     )
 
     prop = dict(
-        machine=codespace.get('machine'),
+        machine=codespace.get('machine', {}).get('display_name'),
     )
     # Codespace created event
     created_at = datetime.fromisoformat(codespace.get('created_at'))
