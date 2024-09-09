@@ -301,20 +301,15 @@ def _get_node_row_count_diff(node_id, node_name):
     return None, None
 
 
-def _generate_related_models_summary(check: CheckSummary, limit: int = 3) -> str:
+def _generate_mismatched_nodes_summary(check: CheckSummary, limit: int = 3) -> str:
     if not check.related_nodes:
         return 'N/A'
 
     nodes = check.related_nodes
     if check.changed_nodes:
-        changed_set = set(check.changed_nodes)
-
-        def sort_changed_first(n):
-            # tuple[0] gives priority to elements that are in changed_nodes
-            # tuple[1] preserves the original order of elements in nodes
-            return 0 if n in changed_set else 1, nodes.index(n)
-
-        nodes = sorted(check.related_nodes, key=sort_changed_first)
+        # the mismatch nodes within the related nodes (when apply node selection)
+        # currently only schema_diff and row_count_diff are supported to apply node selection
+        nodes = check.changed_nodes
 
     if len(nodes) <= limit:
         return ', '.join(nodes)
@@ -445,7 +440,7 @@ def generate_check_content(graph, check_statistics):
             data.append({
                 'Name': check.name,
                 'Type': str(check.type).replace('_', ' ').title(),
-                'Mismatched Nodes': _generate_related_models_summary(check),
+                'Mismatched Nodes': _generate_mismatched_nodes_summary(check),
                 # Temporarily remove the type of changes, until we implement a better way to display it.
                 # 'Type of Changes': _formate_changes(check.changes)
             })
