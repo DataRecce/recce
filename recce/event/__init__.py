@@ -1,3 +1,4 @@
+import hashlib
 import os
 import re
 import sys
@@ -10,7 +11,7 @@ import sentry_sdk
 from recce import is_ci_env, get_version
 from recce import yaml as pyml
 from recce.event.collector import Collector
-from recce.github import is_github_codespace, get_github_codespace_info
+from recce.github import is_github_codespace, get_github_codespace_info, get_github_codespace_name
 
 USER_HOME = os.path.expanduser('~')
 RECCE_USER_HOME = os.path.join(USER_HOME, '.recce')
@@ -99,8 +100,11 @@ def _generate_user_profile():
         # TODO: should show warning message but not raise exception
         print('Please disable command tracking to continue.')
         exit(1)
-
-    user_id = uuid.uuid4().hex
+    if is_github_codespace() is True:
+        salted_name = f'codespace-{get_github_codespace_name()}'
+        user_id = hashlib.sha256(salted_name.encode()).hexdigest()
+    else:
+        user_id = uuid.uuid4().hex
     with open(RECCE_USER_PROFILE, 'w+') as f:
         pyml.dump({'user_id': user_id, 'anonymous_tracking': True}, f)
     return dict(user_id=user_id, anonymous_tracking=True)

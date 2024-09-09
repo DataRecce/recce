@@ -1,4 +1,3 @@
-import hashlib
 import json
 import os
 import platform
@@ -12,7 +11,7 @@ import portalocker
 import requests
 
 from recce import __version__, is_ci_env
-from recce.github import is_github_codespace, get_github_codespace_name
+from recce.github import is_github_codespace
 
 
 class Collector:
@@ -82,9 +81,6 @@ class Collector:
         user_id = self._user_id
         if self._is_ci is True:
             user_id = f"{self._user_id}_CI"
-        if self._is_github_codespace is True:
-            salted_name = f'codespaces-{get_github_codespace_name()}'
-            user_id = hashlib.sha256(salted_name.encode()).hexdigest()
         return user_id
 
     def log_event(self, prop, event_type, event_triggered_at: datetime = None):
