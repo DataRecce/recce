@@ -84,7 +84,7 @@ class Collector:
             user_id = f"{self._user_id}_CI"
         return user_id
 
-    def log_event(self, prop, event_type, event_triggered_at: datetime = None):
+    def log_event(self, event_prop, event_type, event_triggered_at: datetime = None, user_properties=None):
         # Use local timezone
         if event_triggered_at is None:
             created_at = datetime.now()
@@ -97,17 +97,22 @@ class Collector:
         # replace the user id with project_id to avoid so many unique user id
         user_id = self._get_user_id()
 
+        default_user_properties = dict(
+            version=__version__,
+            python_version=python_version,
+            is_ci=self._is_ci,
+            is_github_codespace=self._is_github_codespace,
+        )
+
+        if user_properties is not None:
+            default_user_properties.update(user_properties)
+
         self._log_event(
             user_id=user_id,
             event_type=event_type,
             created_at=created_at,
-            user_properties=dict(
-                version=__version__,
-                python_version=python_version,
-                is_ci=self._is_ci,
-                is_github_codespace=self._is_github_codespace,
-            ),
-            event_properties=prop,
+            user_properties=user_properties,
+            event_properties=event_prop,
         )
 
     def _check_required_files(self):
