@@ -327,6 +327,36 @@ def _generate_related_models_summary(check: CheckSummary, limit: int = 3) -> str
     return ', '.join(display_nodes) + f', and {len(nodes) - len(display_nodes)} more nodes'
 
 
+def generate_summary_metadata(base_lineage, curr_lineage):
+    from py_markdown_table.markdown_table import markdown_table
+
+    base_manifest = base_lineage.get('manifest_metadata')
+    base_catalog = base_lineage.get('catalog_metadata')
+    curr_manifest = curr_lineage.get('manifest_metadata')
+    curr_catalog = curr_lineage.get('catalog_metadata')
+
+    metadata = [
+        {
+            '': 'Base',
+            'Manifest': base_manifest.generated_at.strftime('%Y-%m-%d %H:%M:%S'),
+            'Catalog': base_catalog.generated_at.strftime('%Y-%m-%d %H:%M:%S') if base_catalog else 'N/A'
+        },
+        {
+            '': 'Current',
+            'Manifest': curr_manifest.generated_at.strftime('%Y-%m-%d %H:%M:%S'),
+            'Catalog':  curr_catalog.generated_at.strftime('%Y-%m-%d %H:%M:%S') if curr_catalog else 'N/A'
+        }
+    ]
+
+    return markdown_table(metadata).set_params(
+        quote=False,
+        row_sep='markdown',
+        padding_width=1,
+        padding_weight='right'  # Aligns the cell's contents to the beginning of the cell
+    ).get_markdown()
+
+
+
 def generate_check_summary(base_lineage, curr_lineage) -> (List[CheckSummary], Dict[str, int]):
     runs = RunDAO().list()
     checks = CheckDAO().list()
@@ -408,6 +438,7 @@ def generate_mermaid_lineage_graph(graph: LineageGraph):
 def generate_markdown_summary(ctx: RecceContext, summary_format: str = 'markdown'):
     curr_lineage = ctx.get_lineage(base=False)
     base_lineage = ctx.get_lineage(base=True)
+    summary_metadata = generate_summary_metadata(base_lineage, curr_lineage)
     graph = _build_lineage_graph(base_lineage, curr_lineage)
     graph.checks, check_statistics = generate_check_summary(base_lineage, curr_lineage)
     mermaid_content, is_empty_graph = generate_mermaid_lineage_graph(graph)
@@ -420,6 +451,7 @@ def generate_markdown_summary(ctx: RecceContext, summary_format: str = 'markdown
     elif summary_format == 'markdown':
 
         content = '# Recce Summary\n'
+        content += f'{summary_metadata}\n'
 
         if is_empty_graph is False:
             content += f'''
@@ -438,7 +470,7 @@ No changed module was detected.
 
         if ctx.state_loader.cloud_mode:
             pr_info = ctx.state_loader.pr_info
-            content += f'\nSee PR page: {RECCE_CLOUD_HOST}/{pr_info.repository}/pulls/{pr_info.id}'
+            content += f'\nSee PR page: {RECCE_CLOUD_HOST}/{pr_info.repository}/pulls/{pr_info.id}\n'
 
         return content
 
