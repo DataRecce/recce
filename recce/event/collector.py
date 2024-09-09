@@ -6,6 +6,7 @@ import time
 from contextlib import contextmanager
 from datetime import datetime
 from json import JSONDecodeError
+from zoneinfo import ZoneInfo
 
 import portalocker
 import requests
@@ -88,7 +89,8 @@ class Collector:
         if event_triggered_at is None:
             created_at = datetime.now()
         else:
-            created_at = event_triggered_at
+            # Convert to GMT timezone
+            created_at = event_triggered_at.astimezone(ZoneInfo("GMT"))
         python_version = f'{sys.version_info.major}.{sys.version_info.minor}'
 
         # when the recce is running in automation use cases
