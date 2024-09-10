@@ -77,7 +77,8 @@ function LinkIcon({ icon, href, ...prob }: LinkIconProps) {
 }
 
 function TopBar() {
-  const { reviewMode, isDemoSite, envInfo, cloudMode, isLoading } = useLineageGraphContext();
+  const { reviewMode, isDemoSite, envInfo, cloudMode, isLoading } =
+    useLineageGraphContext();
   const version = useVersionNumber();
   const prURL = envInfo?.pullRequest?.url;
 
@@ -268,7 +269,7 @@ export default function Home() {
                         }}
                       </Route>
                       <Route path="/ssr">
-                        <Progress size='xs' isIndeterminate />
+                        <Progress size="xs" isIndeterminate />
                       </Route>
                       <Route>
                         <Redirect to="/lineage" />
