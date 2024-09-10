@@ -151,6 +151,7 @@ class RecceContext:
 
     def _merge_checks(self, import_checks: list[Check]):
         checks = list(self.checks)
+        imports = 0
 
         def _calculate_checksum(c: Check):
             payload = json.dumps({
@@ -177,21 +178,28 @@ class RecceContext:
                 if checksum in checksum_map:
                     check = checksum_map[checksum]
             if check:
-                check.merge(imported)
+                is_merge = check.merge(imported)
+                if is_merge:
+                    imports += 1
             else:
                 checks.append(imported)
+                imports += 1
         self.checks = checks
+        return imports
 
     def _merge_runs(self, import_runs: list[Run]):
         runs = list(self.runs)
         run_set = {run.run_id for run in self.runs}
+        imports = 0
 
         for run in import_runs:
             if run.run_id not in run_set:
                 runs.append(run)
+                imports += 1
 
         runs.sort(key=lambda x: x.run_at)
         self.runs = runs
+        return imports
 
     def import_state(self, import_state: RecceState, merge: bool = True):
         '''
@@ -200,18 +208,22 @@ class RecceContext:
         :param import_state: the state to import
         :param merge: whether to merge the state or replace the current state
         '''
+        import_runs = 0
+        import_checks = 0
         if merge:
-            self._merge_checks(import_state.checks)
-            self._merge_runs(import_state.runs)
+            import_runs = self._merge_runs(import_state.runs)
+            import_checks = self._merge_checks(import_state.checks)
         else:
-            self.checks = list(import_state.checks)
             self.runs = list(import_state.runs)
+            import_runs = len(self.runs)
+            self.checks = list(import_state.checks)
+            import_checks = len(self.checks)
 
         # always merge for artifacts
         if self.adapter:
             self.adapter.import_artifacts(import_state.artifacts)
 
-        return 0, 0
+        return import_runs, import_checks
 
 
 recce_context: Optional[RecceContext] = None

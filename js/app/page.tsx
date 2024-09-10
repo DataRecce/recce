@@ -168,8 +168,7 @@ interface TabProps {
 }
 
 function NavBar() {
-  const { isDemoSite, cloudMode, fileMode, isLoading } =
-    useLineageGraphContext();
+  const { isDemoSite, cloudMode, isLoading } = useLineageGraphContext();
   const [location, setLocation] = useLocation();
 
   const tabs: TabProps[] = [
@@ -198,7 +197,7 @@ function NavBar() {
         <Spacer />
         {!isLoading && (
           <>
-            {(cloudMode || fileMode) && <StateSynchronizer />}
+            {cloudMode && <StateSynchronizer />}
             {!isDemoSite && !cloudMode && <StateImporter />}
             <StateExporter />
           </>

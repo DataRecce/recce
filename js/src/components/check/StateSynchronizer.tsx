@@ -1,4 +1,5 @@
 import {
+  Box,
   Button,
   Icon,
   IconButton,
@@ -22,6 +23,7 @@ import { syncState, isStateSyncing, SyncStateInput } from "@/lib/api/state";
 import { useQueryClient } from "@tanstack/react-query";
 import { cacheKeys } from "@/lib/api/cacheKeys";
 import { useLocation } from "wouter";
+import { InfoIcon, InfoOutlineIcon } from "@chakra-ui/icons";
 
 function isCheckDetailPage(href: string): boolean {
   const pattern =
@@ -51,23 +53,16 @@ export function StateSynchronizer() {
     if (await isStateSyncing()) {
       return;
     }
-    if (syncOption === "merge") {
-      toast({
-        title: "Merge Completed",
-        position: "bottom-right",
-        description: (
-          <>
-            The following information updated
-            <ul>
-              <li>artifacts/base/manifest</li>
-            </ul>
-          </>
-        ),
-        status: "success",
-        duration: 10000,
-        isClosable: true,
-      });
-    }
+
+    toast({
+      description: "Sync Completed",
+      status: "success",
+      variant: "left-accent",
+      position: "bottom",
+      duration: 5000,
+      isClosable: true,
+    });
+
     setSyncing(false);
     setSyncOption("");
 
@@ -123,15 +118,49 @@ export function StateSynchronizer() {
       <Modal isOpen={isOpen} onClose={onClose}>
         <ModalOverlay />
         <ModalContent>
-          <ModalHeader>Select Sync Option</ModalHeader>
+          <ModalHeader fontSize="lg" fontWeight="bold">
+            Sync with Cloud
+          </ModalHeader>
           <ModalBody>
-            <RadioGroup onChange={setSyncOption} value={syncOption}>
-              <Stack direction="column">
-                <Radio value="overwrite">Overwrite</Radio>
-                <Radio value="revert">Revert</Radio>
-                <Radio value="merge">Merge</Radio>
-              </Stack>
-            </RadioGroup>
+            <Box>
+              New changes have been detected in the cloud. Please choose a
+              method to sync your state
+            </Box>
+            <Box mt="5px">
+              <RadioGroup onChange={setSyncOption} value={syncOption}>
+                <Stack direction="column">
+                  {/* Merge */}
+                  <Radio value="merge">
+                    Merge
+                    <Tooltip label="This will merge the local and remote states.">
+                      <span>
+                        <Icon as={InfoOutlineIcon} ml={2} cursor="pointer" />
+                      </span>
+                    </Tooltip>
+                  </Radio>
+
+                  {/* Overwrite */}
+                  <Radio value="overwrite">
+                    Overwrite
+                    <Tooltip label="This will overwrite the remote state file with the local state.">
+                      <span>
+                        <Icon as={InfoOutlineIcon} ml={2} cursor="pointer" />
+                      </span>
+                    </Tooltip>
+                  </Radio>
+
+                  {/* Revert */}
+                  <Radio value="revert">
+                    Revert
+                    <Tooltip label="This will discard local changes and revert to the cloud state.">
+                      <span>
+                        <Icon as={InfoOutlineIcon} ml={2} cursor="pointer" />
+                      </span>
+                    </Tooltip>
+                  </Radio>
+                </Stack>
+              </RadioGroup>
+            </Box>
           </ModalBody>
           <ModalFooter>
             <Button onClick={onClose} mr={3}>
@@ -142,7 +171,7 @@ export function StateSynchronizer() {
               onClick={() => requestSyncStatus({ method: syncOption as any })}
               isDisabled={!syncOption} // Disable button until an option is selected
             >
-              Confirm
+              Sync
             </Button>
           </ModalFooter>
         </ModalContent>
