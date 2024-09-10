@@ -69,7 +69,7 @@ export function StateSynchronizer() {
     // Refresh the lineage graph and checks
     queryClient.invalidateQueries({ queryKey: cacheKeys.lineage() });
     queryClient.invalidateQueries({ queryKey: cacheKeys.checks() });
-  }, [setSyncing, queryClient, toast, syncOption]);
+  }, [setSyncing, queryClient, toast]);
 
   useEffect(() => {
     let intervalId: NodeJS.Timeout | null = null;
