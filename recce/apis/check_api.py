@@ -75,7 +75,7 @@ async def create_check(check_in: CreateCheckIn, background_tasks: BackgroundTask
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
 
-    # background_tasks.add_task(export_persistent_state)
+    background_tasks.add_task(export_persistent_state)
     return CheckOut.from_check(check)
 
 
