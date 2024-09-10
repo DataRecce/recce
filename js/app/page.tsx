@@ -18,7 +18,13 @@ import {
   Badge,
   Progress,
 } from "@chakra-ui/react";
-import { ReactNode, useCallback, useLayoutEffect } from "react";
+import {
+  ReactNode,
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useState,
+} from "react";
 import * as amplitude from "@amplitude/analytics-browser";
 import { QueryClientProvider } from "@tanstack/react-query";
 import RecceContextProvider from "@/lib/hooks/RecceContextProvider";
@@ -42,6 +48,7 @@ import { IconType } from "react-icons";
 import "@fontsource/montserrat/800.css";
 import { EnvInfo } from "@/components/env/EnvInfo";
 import { StateSynchronizer } from "@/components/check/StateSynchronizer";
+import { listChecks } from "@/lib/api/checks";
 
 function getCookie(key: string) {
   var b = document.cookie.match("(^|;)\\s*" + key + "\\s*=\\s*([^;]+)");
@@ -168,6 +175,33 @@ interface TabProps {
   href: string;
 }
 
+function TabBadge({ callback }: { callback: () => Promise<number> }) {
+  const [count, setCount] = useState<number | null>(null);
+  useEffect(() => {
+    const fetchCount = async () => {
+      const result = await callback();
+      setCount(result);
+    };
+
+    fetchCount();
+  }, [callback]);
+
+  return (
+    <Box
+      ml="2px"
+      height="80%"
+      aspectRatio={1}
+      borderRadius="full"
+      bg="tomato"
+      alignContent={"center"}
+      color="white"
+      fontSize="xs"
+    >
+      {count}
+    </Box>
+  );
+}
+
 function NavBar() {
   const { isDemoSite, cloudMode, isLoading } = useLineageGraphContext();
   const [location, setLocation] = useLocation();
@@ -177,6 +211,11 @@ function NavBar() {
     { name: "Query", href: "/query" },
     { name: "Checks", href: "/checks" },
   ];
+
+  const checksCallback = useCallback(async () => {
+    const checks = await listChecks();
+    return checks.filter((check) => !check.is_checked).length;
+  }, []);
 
   const tabIndex = _.findIndex(tabs, ({ href }) => location.startsWith(href));
 
@@ -192,6 +231,7 @@ function NavBar() {
               }}
             >
               {name}
+              {name === "Checks" && <TabBadge callback={checksCallback} />}
             </Tab>
           );
         })}
