@@ -18,7 +18,6 @@ class RecceContext:
     adapter_type: str = None
     adapter: BaseAdapter = None
     state_loader: RecceStateLoader = None
-    review_state: RecceState = None
     runs: List[Run] = field(default_factory=list)
     checks: List[Check] = field(default_factory=list)
 
@@ -52,7 +51,6 @@ class RecceContext:
             if is_review_mode:
                 if not state:
                     raise Exception('The state file is required for review mode')
-                context.review_state = state
 
         return context
 
@@ -95,17 +93,16 @@ class RecceContext:
         state = RecceState()
         state.metadata = RecceStateMetadata()
 
-        # runs & checks
+        # runs & checks & artifacts
         state.runs = self.runs
         state.checks = self.checks
+        state.artifacts = self.adapter.export_artifacts()
 
-        # artifacts & git & pull_request. If in review mode, use the review state
+        # git & pull_request. If in review mode, use the review state
         if self.review_mode:
-            state.artifacts = self.review_state.artifacts
-            state.git = self.review_state.git
-            state.pull_request = self.review_state.pull_request
+            state.git = self.state_loader.state.git
+            state.pull_request = self.state_loader.state.pull_request
         else:
-            state.artifacts = self.adapter.export_artifacts()
             git = GitRepoInfo.from_current_repositroy()
             if git:
                 state.git = git
@@ -197,6 +194,12 @@ class RecceContext:
         self.runs = runs
 
     def import_state(self, import_state: RecceState, merge: bool = True):
+        '''
+        Import the state from another RecceState object.
+
+        :param import_state: the state to import
+        :param merge: whether to merge the state or replace the current state
+        '''
         if merge:
             self._merge_checks(import_state.checks)
             self._merge_runs(import_state.runs)
@@ -204,6 +207,7 @@ class RecceContext:
             self.checks = list(import_state.checks)
             self.runs = list(import_state.runs)
 
+        # always merge for artifacts
         if self.adapter:
             self.adapter.import_artifacts(import_state.artifacts)
 

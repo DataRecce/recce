@@ -140,7 +140,7 @@ async def execute_state_checks(checks: list) -> (int, List[dict]):
         check_params = check.params if check.params else {}
         if check.is_checked:
             check.is_checked = False
-            check.updated_at = datetime.utc(tz=timezone.utc).replace(microsecond=0)
+            check.updated_at = datetime.now(tz=timezone.utc).replace(microsecond=0)
 
         try:
             # verify the check
