@@ -1,6 +1,7 @@
 # add the RecceState test case
 import os
 import unittest
+from datetime import datetime
 
 from recce.core import RecceContext
 from recce.models import Check, Run
@@ -12,21 +13,54 @@ current_dir = os.path.dirname(os.path.abspath(__file__))
 class TestRecceState(unittest.TestCase):
     def test_merge_checks(self):
         check1 = Check(name='test1', description='', type='query')
-        check2 = Check(name='test2', description='', type='query')
-        check2_2 = Check(name='test2_2', description='', type='query', check_id=check2.check_id)
+        check2 = Check(name='test2', description='', type='query',
+                       updated_at=datetime(2000, 1, 1))
+        check2_2 = Check(name='test2_2', description='', type='query',
+                         updated_at=datetime(2020, 1, 1),
+                         check_id=check2.check_id)
         check3 = Check(name='test3', description='', type='query')
 
         context = RecceContext()
         state = RecceState(checks=[check1], runs=[])
         context.import_state(state)
-        self.assertEqual(len(context.checks), 1)
-        self.assertEqual(context.checks[0].name, check1.name)
+        self.assertEqual(1, len(context.checks))
+        self.assertEqual(check1.name, context.checks[0].name)
 
         context = RecceContext(checks=[check1, check2])
         state = RecceState(checks=[check1, check2_2, check3], runs=[])
         context.import_state(state)
-        self.assertEqual(len(context.checks), 3)
-        self.assertEqual(context.checks[1].name, check2_2.name)
+        self.assertEqual(3, len(context.checks))
+        self.assertEqual(check2_2.name, context.checks[1].name)
+
+    def test_merge_preset_checks(self):
+        check1 = Check(name='test1', description='test1', type='query', params=dict(foo='bar'),
+                       updated_at=datetime(2000, 1, 1), is_preset=True)
+        check2 = Check(name='test2', description='test2', type='query', params=dict(foo='bar'),
+                       updated_at=datetime(2001, 1, 1), is_preset=True)
+
+        context = RecceContext(checks=[check1])
+        state = RecceState(checks=[check2], runs=[])
+        context.import_state(state)
+        self.assertEqual(1, len(context.checks))
+        self.assertEqual(check2.name, context.checks[0].name)
+
+        # context = RecceContext(checks=[check2])
+        # state = RecceState(checks=[check1], runs=[])
+        # context.import_state(state)
+        # self.assertEqual(1, len(context.checks))
+        # self.assertEqual(check2.name, context.checks[0].name)
+
+    def test_revert_checks(self):
+        check1 = Check(name='test1', description='', type='query')
+        check2 = Check(name='test2', description='', type='query')
+        check2_2 = Check(name='test2_2', description='', type='query', check_id=check2.check_id)
+        check3 = Check(name='test3', description='', type='query')
+
+        context = RecceContext(checks=[check1, check2])
+        state = RecceState(checks=[check2_2, check3], runs=[])
+        context.import_state(state, merge=False)
+        self.assertEqual(2, len(context.checks))
+        self.assertEqual(check2_2.name, context.checks[0].name)
 
     def test_merge_runs(self):
         run1 = Run(type='query')
@@ -36,12 +70,12 @@ class TestRecceState(unittest.TestCase):
         context = RecceContext(runs=[])
         state = RecceState(runs=[run1])
         context.import_state(state)
-        self.assertEqual(len(context.runs), 1)
+        self.assertEqual(1, len(context.runs))
 
         context = RecceContext(runs=[run1, run2])
         state = RecceState(runs=[run2, run3])
         context.import_state(state)
-        self.assertEqual(len(context.runs), 3)
+        self.assertEqual(3, len(context.runs))
 
     def test_merge_dbt_artifacts(self):
         import json

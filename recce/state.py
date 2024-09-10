@@ -238,7 +238,8 @@ class RecceStateLoader:
         self.state_lock.acquire()
         try:
             if self.cloud_mode:
-                message = self._export_state_to_cloud()
+                message, state_etag = self._export_state_to_cloud()
+                self.state_etag = state_etag
             else:
                 if self.state_file is None:
                     return 'No state file is provided. Skip storing the state.'
@@ -389,7 +390,7 @@ class RecceStateLoader:
                     raise e
             return RecceState.from_file(tmp.name, file_type=SupportedFileTypes.GZIP)
 
-    def _export_state_to_cloud(self) -> Union[str, None]:
+    def _export_state_to_cloud(self) -> Tuple[Union[str, None], str]:
         if (self.pr_info is None) or (self.pr_info.id is None) or (self.pr_info.repository is None):
             raise Exception('Cannot get the pull request information from GitHub.')
 
@@ -401,10 +402,15 @@ class RecceStateLoader:
 
         if self.cloud_options.get('host', '').startswith('s3://'):
             logger.info("Store recce state to AWS S3 bucket")
-            return self._export_state_to_s3_bucket(metadata=metadata)
+            return self._export_state_to_s3_bucket(metadata=metadata), None
         else:
             logger.info("Store recce state to Recce Cloud")
-            return self._export_state_to_recce_cloud(metadata=metadata)
+            message = self._export_state_to_recce_cloud(metadata=metadata)
+            metadata = self._get_metadata_from_recce_cloud()
+            if metadata is None:
+                return None
+            state_etag = metadata.get('etag')
+            return message, state_etag
 
     def _export_state_to_recce_cloud(self, metadata: dict = None) -> Union[str, None]:
         import tempfile

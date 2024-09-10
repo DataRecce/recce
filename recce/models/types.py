@@ -1,5 +1,5 @@
 import uuid
-from datetime import datetime
+from datetime import datetime, timezone
 from enum import Enum
 from typing import Optional
 
@@ -36,7 +36,7 @@ class Run(BaseModel):
     error: Optional[str] = None
     progress: Optional[RunProgress] = None
     run_id: UUID4 = Field(default_factory=uuid.uuid4)
-    run_at: str = Field(default_factory=lambda: datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%SZ"))
+    run_at: str = Field(default_factory=lambda: datetime.now(timezone.utc).replace(microsecond=0))
 
 
 class Check(BaseModel):
@@ -48,10 +48,16 @@ class Check(BaseModel):
     check_id: UUID4 = Field(default_factory=uuid.uuid4)
     is_checked: bool = False
     is_preset: bool = False
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc).replace(microsecond=0))
+    updated_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc).replace(microsecond=0))
 
     def merge(self, other):
-        if self.check_id != other.check_id:
-            raise ValueError("Check ID mismatch")
+        if not self.is_preset and not other.is_preset and self.check_id != other.check_id:
+            raise ValueError(f"check_id mismatch: {self.check_id} != {other.check_id}")
+
+        if self.updated_at and other.updated_at and self.updated_at >= other.updated_at:
+            return
+
         self.name = other.name
         self.description = other.description
         self.type = other.type
@@ -59,6 +65,7 @@ class Check(BaseModel):
         self.view_options = other.view_options
         self.is_checked = other.is_checked
         self.is_preset = other.is_preset
+        self.updated_at = other.updated_at
 
 
 class Lineage(BaseModel):

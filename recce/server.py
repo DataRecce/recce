@@ -264,12 +264,13 @@ async def sync_handler(input: SyncStateInput, response: Response, background_tas
     # Sync the state file
     context = default_context()
     state_loader = context.state_loader
-    print(input)
+    method = input.method
 
-    if not input.method:
+    if not method:
         is_conflict = state_loader.check_conflict()
         if is_conflict:
             raise HTTPException(status_code=409, detail='Conflict detected')
+        method = 'overwrite'
 
     is_syncing = state_loader.state_lock.locked()
     if is_syncing:
@@ -278,7 +279,7 @@ async def sync_handler(input: SyncStateInput, response: Response, background_tas
 
     def reload_state():
         ctx = default_context()
-        ctx.sync_state()
+        ctx.sync_state(method)
 
     background_tasks.add_task(reload_state)
     response.status_code = 202

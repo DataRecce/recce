@@ -14,6 +14,7 @@ import {
   Stack,
   Tooltip,
   useDisclosure,
+  useToast,
 } from "@chakra-ui/react";
 import { useCallback, useEffect, useState } from "react";
 import { TfiCloudDown, TfiCloudUp, TfiReload } from "react-icons/tfi";
@@ -44,22 +45,41 @@ export function StateSynchronizer() {
   const [location, setLocation] = useLocation();
   const { isOpen, onOpen, onClose } = useDisclosure();
   const [syncOption, setSyncOption] = useState("");
+  const toast = useToast();
 
   const checkSyncStatus = useCallback(async () => {
     if (await isStateSyncing()) {
       return;
     }
+    if (syncOption === "merge") {
+      toast({
+        title: "Merge Completed",
+        position: "bottom-right",
+        description: (
+          <>
+            The following information updated
+            <ul>
+              <li>artifacts/base/manifest</li>
+            </ul>
+          </>
+        ),
+        status: "success",
+        duration: 10000,
+        isClosable: true,
+      });
+    }
     setSyncing(false);
+    setSyncOption("");
 
     // Refresh the lineage graph and checks
     queryClient.invalidateQueries({ queryKey: cacheKeys.lineage() });
     queryClient.invalidateQueries({ queryKey: cacheKeys.checks() });
-  }, [setSyncing, queryClient]);
+  }, [setSyncing, queryClient, toast, syncOption]);
 
   useEffect(() => {
     let intervalId: NodeJS.Timeout | null = null;
     if (isSyncing) {
-      intervalId = setInterval(checkSyncStatus, 2000);
+      intervalId = setInterval(checkSyncStatus, 500);
     }
 
     return () => {
@@ -74,6 +94,7 @@ export function StateSynchronizer() {
 
   const requestSyncStatus = useCallback(
     async (input: SyncStateInput) => {
+      setSyncing(true);
       onClose();
       if ((await isStateSyncing()) === false) {
         const response = await syncState(input);

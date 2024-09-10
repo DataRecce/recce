@@ -152,76 +152,62 @@ class RecceContext:
         else:
             raise Exception(f'Unsupported method: {method}')
 
-    def import_state(self, import_state: RecceState, merge: bool = True):
-        """
-        Import the state. It would
-        1. Merge runs
-        2. Merge checks
-            2.1 If both checks are preset, use the new one
-            2.2 If the check is not preset, append the check if not found
-        """
-        checks = list(import_state.checks)
-        runs = list(import_state.runs)
+    def _merge_checks(self, import_checks: list[Check]):
+        checks = list(self.checks)
 
         def _calculate_checksum(c: Check):
             payload = json.dumps({
-                'name': c.name.strip(),
-                'description': c.description.strip(),
                 'type': str(c.type),
                 'params': c.params,
                 'view_options': c.view_options,
             }, sort_keys=True)
             return hashlib.sha256(payload.encode()).hexdigest()
 
-        current_preset_check_checksums = {_calculate_checksum(c): index for index, c in enumerate(checks) if
-                                          c.is_preset}
+        checksum_map = {
+            _calculate_checksum(c): c for c in self.checks if c.is_preset
+        }
+        check_map = {
+            c.check_id: c for c in self.checks
+        }
 
         # merge checks
-        import_checks = 0
-        if merge:
-            for check in self.checks:
-                if check.is_preset:
-                    # Replace the preset check if the checksum is the same
-                    check_checksum = _calculate_checksum(check)
-                    if check_checksum in current_preset_check_checksums:
-                        index = current_preset_check_checksums[check_checksum]
-                        checks[index] = check
-                    else:
-                        checks.append(check)
-                    import_checks += 1
-                else:
-                    for c in checks:
-                        if c.check_id == check.check_id:
-                            c.merge(check)
-                            break
-                    else:
-                        # Merge the check
-                        checks.append(check)
-                        import_checks += 1
-        else:
-            import_checks = len(checks)
+        for imported in import_checks:
+            check: Check = None
+            if imported.check_id in check_map:
+                check = check_map[imported.check_id]
+            elif imported.is_preset:
+                checksum = _calculate_checksum(imported)
+                if checksum in checksum_map:
+                    check = checksum_map[checksum]
+            if check:
+                check.merge(imported)
+            else:
+                checks.append(imported)
+        self.checks = checks
 
-        # merge runs
-        import_runs = 0
-        if merge:
-            current_run_ids = {str(run.run_id) for run in runs}
-            for run in self.runs:
-                if str(run.run_id) not in current_run_ids:
-                    runs.append(run)
-                    import_runs += 1
-        else:
-            import_runs = len(runs)
+    def _merge_runs(self, import_runs: list[Run]):
+        runs = list(self.runs)
+        run_set = {run.run_id for run in self.runs}
+
+        for run in import_runs:
+            if run.run_id not in run_set:
+                runs.append(run)
 
         runs.sort(key=lambda x: x.run_at)
-
-        self.checks = checks
         self.runs = runs
 
-        # merge artifacts
+    def import_state(self, import_state: RecceState, merge: bool = True):
+        if merge:
+            self._merge_checks(import_state.checks)
+            self._merge_runs(import_state.runs)
+        else:
+            self.checks = list(import_state.checks)
+            self.runs = list(import_state.runs)
+
         if self.adapter:
             self.adapter.import_artifacts(import_state.artifacts)
 
-        return import_runs, import_checks
+        return 0, 0
 
 
 recce_context: Optional[RecceContext] = None
