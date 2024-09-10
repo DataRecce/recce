@@ -255,6 +255,7 @@ DEFAULT_RECCE_STATE_FILE = 'recce_state.json'
 @click.option('-o', '--output', help='Path of the output state file.', type=click.Path(),
               default=DEFAULT_RECCE_STATE_FILE, show_default=True)
 @click.option('--state-file', help='Path of the import state file.', type=click.Path())
+@click.option('--summary', help='Path of the summary markdown file.', type=click.Path())
 @click.option('--skip-query', is_flag=True, help='Skip running the queries for the checks.')
 @click.option('--git-current-branch', help='The git branch of the current environment.', type=click.STRING,
               envvar='GITHUB_HEAD_REF')
@@ -530,7 +531,7 @@ def download(**kwargs):
         console.print('[yellow]Skip[/yellow] No state file found in cloud.')
         return 0
 
-    state_manager.download_state_to_cloud(filepath)
+    state_manager.download_state_from_cloud(filepath)
     console.print(f'Downloaded state file to "{filepath}"')
 
 
