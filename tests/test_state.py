@@ -44,11 +44,11 @@ class TestRecceState(unittest.TestCase):
         self.assertEqual(1, len(context.checks))
         self.assertEqual(check2.name, context.checks[0].name)
 
-        # context = RecceContext(checks=[check2])
-        # state = RecceState(checks=[check1], runs=[])
-        # context.import_state(state)
-        # self.assertEqual(1, len(context.checks))
-        # self.assertEqual(check2.name, context.checks[0].name)
+        context = RecceContext(checks=[check2])
+        state = RecceState(checks=[check1], runs=[])
+        context.import_state(state)
+        self.assertEqual(1, len(context.checks))
+        self.assertEqual(check2.name, context.checks[0].name)
 
     def test_revert_checks(self):
         check1 = Check(name='test1', description='', type='query')
