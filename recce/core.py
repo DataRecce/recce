@@ -43,7 +43,7 @@ class RecceContext:
             context.adapter = DbtAdapter.load(**kwargs)
 
         # Import state
-        if state_loader:
+        if state_loader is not None:
             state = state_loader.load()
             if state:
                 context.import_state(state)
