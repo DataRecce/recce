@@ -221,9 +221,7 @@ class RecceStateLoader:
         self.state_lock.acquire()
         try:
             if self.cloud_mode:
-                print("sync start")
                 self.state, self.state_etag = self._load_state_from_cloud()
-                print("sync complete")
             elif self.state_file:
                 self.state = self._load_state_from_file()
         finally:
@@ -331,7 +329,6 @@ class RecceStateLoader:
                 return None
             state_etag = metadata.get('etag')
             if self.state_etag and state_etag == self.state_etag:
-                print("use cache state")
                 return self.state, self.state_etag
 
             return self._load_state_from_recce_cloud(), state_etag
