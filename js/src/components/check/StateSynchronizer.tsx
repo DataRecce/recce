@@ -17,13 +17,13 @@ import {
   useDisclosure,
   useToast,
 } from "@chakra-ui/react";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useState } from "react";
 import { TfiCloudDown, TfiCloudUp, TfiReload } from "react-icons/tfi";
 import { syncState, isStateSyncing, SyncStateInput } from "@/lib/api/state";
 import { useQueryClient } from "@tanstack/react-query";
 import { cacheKeys } from "@/lib/api/cacheKeys";
 import { useLocation } from "wouter";
-import { InfoIcon, InfoOutlineIcon } from "@chakra-ui/icons";
+import { InfoOutlineIcon } from "@chakra-ui/icons";
 
 function isCheckDetailPage(href: string): boolean {
   const pattern =
@@ -33,7 +33,7 @@ function isCheckDetailPage(href: string): boolean {
 
 export function StateSpinner() {
   return (
-    <Tooltip label="Loading">
+    <Tooltip label="Syncing">
       <Button pt="6px" variant="unstyled" boxSize={"1.2em"}>
         <Spinner />
       </Button>
@@ -49,58 +49,42 @@ export function StateSynchronizer() {
   const [syncOption, setSyncOption] = useState("");
   const toast = useToast();
 
-  const checkSyncStatus = useCallback(async () => {
-    if (await isStateSyncing()) {
-      return;
-    }
-
-    toast({
-      description: "Sync Completed",
-      status: "success",
-      variant: "left-accent",
-      position: "bottom",
-      duration: 5000,
-      isClosable: true,
-    });
-
-    setSyncing(false);
-    setSyncOption("");
-
-    // Refresh the lineage graph and checks
-    queryClient.invalidateQueries({ queryKey: cacheKeys.lineage() });
-    queryClient.invalidateQueries({ queryKey: cacheKeys.checks() });
-  }, [setSyncing, queryClient, toast]);
-
-  useEffect(() => {
-    let intervalId: NodeJS.Timeout | null = null;
-    if (isSyncing) {
-      intervalId = setInterval(checkSyncStatus, 500);
-    }
-
-    return () => {
-      if (intervalId) {
-        if (isCheckDetailPage(location)) {
-          setLocation("/checks");
-        }
-        clearInterval(intervalId);
-      }
-    };
-  }, [isSyncing, checkSyncStatus, setLocation, location]);
-
-  const requestSyncStatus = useCallback(
+  const handleSync = useCallback(
     async (input: SyncStateInput) => {
-      setSyncing(true);
       onClose();
-      if ((await isStateSyncing()) === false) {
-        const response = await syncState(input);
-        if (response.status === "conflict") {
-          onOpen();
-        } else {
-          setSyncing(true);
-        }
+      setSyncing(true);
+
+      const response = await syncState(input);
+      if (response.status === "conflict") {
+        onOpen();
+        setSyncing(false);
+        return;
+      }
+
+      while (await isStateSyncing()) {
+        await new Promise((resolve) => setTimeout(resolve, 1000));
+      }
+
+      toast({
+        description: "Sync Completed",
+        status: "success",
+        variant: "left-accent",
+        position: "bottom",
+        duration: 5000,
+        isClosable: true,
+      });
+
+      setSyncing(false);
+      setSyncOption("");
+
+      queryClient.invalidateQueries({ queryKey: cacheKeys.lineage() });
+      queryClient.invalidateQueries({ queryKey: cacheKeys.checks() });
+
+      if (isCheckDetailPage(location)) {
+        setLocation("/checks");
       }
     },
-    [onClose, onOpen, setSyncing]
+    [queryClient, location, setLocation, toast, onOpen, onClose]
   );
 
   if (isSyncing) return <StateSpinner />;
@@ -111,7 +95,7 @@ export function StateSynchronizer() {
           pt="6px"
           variant="unstyled"
           aria-label="Sync state"
-          onClick={() => requestSyncStatus({})}
+          onClick={() => handleSync({})}
           icon={<Icon as={TfiReload} boxSize={"1.2em"} />}
         />
       </Tooltip>
@@ -168,7 +152,7 @@ export function StateSynchronizer() {
             </Button>
             <Button
               colorScheme="blue"
-              onClick={() => requestSyncStatus({ method: syncOption as any })}
+              onClick={() => handleSync({ method: syncOption as any })}
               isDisabled={!syncOption} // Disable button until an option is selected
             >
               Sync
