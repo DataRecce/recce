@@ -33,14 +33,21 @@ class DbtTestHelper:
         context.schema_prefix = schema_prefix
         self.adapter = dbt_adapter
         self.context = context
-        writable_manifest = load_manifest(manifest_path)
-        self.curr_manifest = as_manifest(writable_manifest)
-        self.base_manifest = as_manifest(writable_manifest)
+        curr_writable_manifest = load_manifest(manifest_path)
+        base_writable_manifest = load_manifest(manifest_path)
+
+        self.curr_manifest = as_manifest(curr_writable_manifest)
+        self.base_manifest = as_manifest(base_writable_manifest)
         self.context = context
 
         self.adapter.execute(f"CREATE schema IF NOT EXISTS {self.base_schema}")
         self.adapter.execute(f"CREATE schema IF NOT EXISTS {self.curr_schema}")
-        self.adapter.set_artifacts(writable_manifest, writable_manifest, self.curr_manifest, self.base_manifest)
+        self.adapter.set_artifacts(
+            base_writable_manifest,
+            curr_writable_manifest,
+            self.curr_manifest,
+            self.base_manifest
+        )
 
     def create_model(self, model_name, base_csv=None, curr_csv=None, depends_on=[], disabled=False):
         package_name = "recce_test"
