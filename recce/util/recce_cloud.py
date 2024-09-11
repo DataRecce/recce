@@ -61,6 +61,8 @@ class RecceCloud:
     def get_artifact_metadata(self, pr_info: PullRequestInfo) -> dict:
         api_url = f'{self.base_url}/{pr_info.repository}/pulls/{pr_info.id}/metadata'
         response = self._request('GET', api_url)
+        if response.status_code == 204:
+            return None
         if response.status_code != 200:
             raise RecceCloudException(
                 message='Failed to get artifact metadata from Recce Cloud.',

@@ -326,7 +326,7 @@ class RecceStateLoader:
             logger.debug('Fetching state from Recce Cloud...')
             metadata = self._get_metadata_from_recce_cloud()
             if metadata is None:
-                return None
+                return None, None
             state_etag = metadata.get('etag')
             if self.state_etag and state_etag == self.state_etag:
                 return self.state, self.state_etag
