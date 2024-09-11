@@ -1,3 +1,4 @@
+import { AxiosError, isAxiosError } from "axios";
 import { axiosClient } from "./axiosClient";
 
 export interface ImportedState {
@@ -23,21 +24,36 @@ export async function isStateSyncing(): Promise<boolean> {
   return response.status === 208;
 }
 
+export interface SyncStateInput {
+  method?: "overwrite" | "revert" | "merge";
+}
 export interface SyncStateResponse {
-  status: 'accepted' | 'syncing';
+  status: "accepted" | "conflict" | "syncing";
 }
 
-export async function syncState(): Promise<SyncStateResponse> {
-  const response = await axiosClient.post("/api/sync");
-  if (response.status === 202) {
-    return {
-      status: 'accepted',
-    };
-  }
-  if (response.status === 208) {
-    return {
-      status: 'syncing',
-    };
+export async function syncState(
+  input: SyncStateInput
+): Promise<SyncStateResponse> {
+  try {
+    const response = await axiosClient.post("/api/sync", input);
+
+    if (response.status === 202) {
+      return {
+        status: "accepted",
+      };
+    }
+    if (response.status === 208) {
+      return {
+        status: "syncing",
+      };
+    }
+  } catch (error) {
+    if (isAxiosError(error)) {
+      if (error.response && error.response.status === 409) {
+        // 409 conflict case
+        return { status: "conflict" };
+      }
+    }
   }
   throw new Error("Failed to sync state");
 }

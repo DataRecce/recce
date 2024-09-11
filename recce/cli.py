@@ -229,20 +229,20 @@ def server(host, port, state_file=None, **kwargs):
             'password': kwargs.get('password'),
         }
 
-    recce_state = create_state_loader(is_review, is_cloud, state_file, cloud_options)
+    state_loader = create_state_loader(is_review, is_cloud, state_file, cloud_options)
 
-    if not recce_state.verify():
-        error, hint = recce_state.error_and_hint
+    if not state_loader.verify():
+        error, hint = state_loader.error_and_hint
         console.print(f"[[red]Error[/red]] {error}")
         console.print(f"{hint}")
         exit(1)
 
-    if recce_state.review_mode is True:
+    if state_loader.review_mode is True:
         console.rule("Recce Server : Review Mode")
     else:
         console.rule("Recce Server")
 
-    state = AppState(recce_state=recce_state, kwargs=kwargs)
+    state = AppState(state_loader=state_loader, kwargs=kwargs)
     app.state = state
 
     uvicorn.run(app, host=host, port=port, lifespan='on')
@@ -304,11 +304,11 @@ def run(output, **kwargs):
         'password': kwargs.get('password'),
     } if cloud_mode else None
 
-    recce_state = create_state_loader(review_mode=False, cloud_mode=cloud_mode, state_file=state_file,
-                                      cloud_options=cloud_options)
+    state_loader = create_state_loader(review_mode=False, cloud_mode=cloud_mode, state_file=state_file,
+                                       cloud_options=cloud_options)
 
-    if not recce_state.verify():
-        error, hint = recce_state.error_and_hint
+    if not state_loader.verify():
+        error, hint = state_loader.error_and_hint
         console.print(f"[[red]Error[/red]] {error}")
         console.print(f"{hint}")
         exit(1)
@@ -333,7 +333,7 @@ def run(output, **kwargs):
         console.print(f"Reason: {e}")
         exit(1)
 
-    return asyncio.run(cli_run(output, recce_state=recce_state, **kwargs))
+    return asyncio.run(cli_run(output, state_loader=state_loader, **kwargs))
 
 
 @cli.command(cls=TrackCommand)
@@ -359,17 +359,17 @@ def summary(state_file, **kwargs):
         'password': kwargs.get('password'),
     } if cloud_mode else None
 
-    recce_state = create_state_loader(review_mode=True, cloud_mode=cloud_mode, state_file=state_file,
-                                      cloud_options=cloud_options)
+    state_loader = create_state_loader(review_mode=True, cloud_mode=cloud_mode, state_file=state_file,
+                                       cloud_options=cloud_options)
 
-    if not recce_state.verify():
-        error, hint = recce_state.error_and_hint
+    if not state_loader.verify():
+        error, hint = state_loader.error_and_hint
         console.print(f"[[red]Error[/red]] {error}")
         console.print(f"{hint}")
         exit(1)
     try:
         # Load context in review mode, won't need to check dbt_project.yml file.
-        ctx = load_context(**kwargs, recce_state=recce_state, review=True)
+        ctx = load_context(**kwargs, state_loader=state_loader, review=True)
     except Exception as e:
         console.print("[[red]Error[/red]] Failed to generate summary")
         console.print(f"{e}")

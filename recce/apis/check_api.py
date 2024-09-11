@@ -1,3 +1,4 @@
+from datetime import datetime, timezone
 from typing import Optional
 from uuid import UUID
 
@@ -155,6 +156,7 @@ async def update_check_handler(check_id: UUID, patch: PatchCheckIn, background_t
         check.view_options = patch.view_options
     if patch.is_checked is not None:
         check.is_checked = patch.is_checked
+    check.updated_at = datetime.now(timezone.utc).replace(microsecond=0)
 
     background_tasks.add_task(export_persistent_state)
     return CheckOut.from_check(check)

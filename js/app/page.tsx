@@ -195,13 +195,13 @@ function NavBar() {
           );
         })}
         <Spacer />
-        { !isLoading &&
-          (<>
+        {!isLoading && (
+          <>
             {cloudMode && <StateSynchronizer />}
-            {(!isDemoSite && !cloudMode) && <StateImporter />}
+            {!isDemoSite && !cloudMode && <StateImporter />}
             <StateExporter />
-          </>)
-        }
+          </>
+        )}
         <EnvInfo />
       </TabList>
     </Tabs>

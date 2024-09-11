@@ -1,6 +1,7 @@
 import os
 import sys
 import time
+from datetime import datetime, timezone
 from typing import List
 
 from rich import box
@@ -138,7 +139,9 @@ async def execute_state_checks(checks: list) -> (int, List[dict]):
         check_type = check.type.value
         check_description = check.description
         check_params = check.params if check.params else {}
-        check.is_checked = False
+        if check.is_checked:
+            check.is_checked = False
+            check.updated_at = datetime.now(tz=timezone.utc).replace(microsecond=0)
 
         try:
             # verify the check

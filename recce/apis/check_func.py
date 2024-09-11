@@ -136,4 +136,10 @@ def purge_preset_checks():
 
 def export_persistent_state():
     ctx = default_context()
-    ctx.state_loader.export(ctx.export_state())
+    state_loader = ctx.state_loader
+    if state_loader:
+        is_conflict = state_loader.check_conflict()
+        if is_conflict:
+            ctx.sync_state('merge')
+        else:
+            ctx.sync_state('overwrite')

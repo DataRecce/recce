@@ -33,13 +33,21 @@ class DbtTestHelper:
         context.schema_prefix = schema_prefix
         self.adapter = dbt_adapter
         self.context = context
-        self.curr_manifest = as_manifest(load_manifest(manifest_path))
-        self.base_manifest = as_manifest(load_manifest(manifest_path))
+        curr_writable_manifest = load_manifest(manifest_path)
+        base_writable_manifest = load_manifest(manifest_path)
+
+        self.curr_manifest = as_manifest(curr_writable_manifest)
+        self.base_manifest = as_manifest(base_writable_manifest)
         self.context = context
 
         self.adapter.execute(f"CREATE schema IF NOT EXISTS {self.base_schema}")
         self.adapter.execute(f"CREATE schema IF NOT EXISTS {self.curr_schema}")
-        self.adapter.set_artifacts(self.base_manifest, self.curr_manifest)
+        self.adapter.set_artifacts(
+            base_writable_manifest,
+            curr_writable_manifest,
+            self.curr_manifest,
+            self.base_manifest
+        )
 
     def create_model(self, model_name, base_csv=None, curr_csv=None, depends_on=[], disabled=False):
         package_name = "recce_test"
@@ -101,7 +109,11 @@ class DbtTestHelper:
                 _add_model_to_manifest(False, curr_csv)
                 df_curr = pd.read_csv(StringIO(curr_csv))
                 dbt_adapter.execute(f"CREATE TABLE {self.curr_schema}.{model_name} AS SELECT * FROM df_curr")
-        self.adapter.set_artifacts(self.base_manifest, self.curr_manifest)
+        self.adapter.set_artifacts(
+            self.base_manifest.writable_manifest(),
+            self.curr_manifest.writable_manifest(),
+            self.curr_manifest,
+            self.base_manifest)
 
     def remove_model(self, model_name):
         dbt_adapter = self.adapter
@@ -171,7 +183,11 @@ class DbtTestHelper:
         with dbt_adapter.connection_named('create model'):
             dbt_adapter.execute(f"CREATE TABLE {self.base_schema}.{sanpshot_name} AS SELECT * FROM df_base")
             dbt_adapter.execute(f"CREATE TABLE {self.curr_schema}.{sanpshot_name} AS SELECT * FROM df_curr")
-        self.adapter.set_artifacts(self.base_manifest, self.curr_manifest)
+        self.adapter.set_artifacts(
+            self.base_manifest.writable_manifest(),
+            self.curr_manifest.writable_manifest(),
+            self.curr_manifest,
+            self.base_manifest)
 
     def remove_snapshot(self, snapshot_name):
         dbt_adapter = self.adapter

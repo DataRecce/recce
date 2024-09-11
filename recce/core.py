@@ -2,13 +2,11 @@ import hashlib
 import json
 import logging
 import os
-from dataclasses import dataclass
-from typing import Callable, Dict, Optional
+from dataclasses import dataclass, field
+from typing import Callable, Dict, Optional, List
 
 from recce.adapter.base import BaseAdapter
-from recce.models import RunDAO, CheckDAO, Check
-from recce.models.check import load_checks
-from recce.models.run import load_runs
+from recce.models import Check, Run
 from recce.state import RecceState, RecceStateMetadata, GitRepoInfo, PullRequestInfo, RecceStateLoader
 
 logger = logging.getLogger('uvicorn')
@@ -20,24 +18,20 @@ class RecceContext:
     adapter_type: str = None
     adapter: BaseAdapter = None
     state_loader: RecceStateLoader = None
-    review_state: RecceState = None
+    runs: List[Run] = field(default_factory=list)
+    checks: List[Check] = field(default_factory=list)
 
     @classmethod
     def load(cls, **kwargs):
-        state: RecceState | None = None
-        recce_state: RecceStateLoader = kwargs.get('recce_state')
+        state_loader: RecceStateLoader = kwargs.get('state_loader')
         is_review_mode = kwargs.get('review', False)
 
         context = cls(
             review_mode=is_review_mode,
-            state_loader=recce_state,
+            state_loader=state_loader,
         )
 
-        if recce_state:
-            state = recce_state.load()
-            context.import_state(state)
-
-        # Load the artifacts from the state file or `target` and `target-base` directory
+        # Initiate the adapter
         if kwargs.get('sqlmesh', False):
             logger.warning('SQLMesh adapter is still in EXPERIMENTAL mode.')
             from recce.adapter.sqlmesh_adapter import SqlmeshAdapter
@@ -46,13 +40,17 @@ class RecceContext:
         else:
             from recce.adapter.dbt_adapter import DbtAdapter
             context.adapter_type = 'dbt'
+            context.adapter = DbtAdapter.load(**kwargs)
+
+        # Import state
+        if state_loader:
+            state = state_loader.load()
+            if state:
+                context.import_state(state)
+
             if is_review_mode:
                 if not state:
                     raise Exception('The state file is required for review mode')
-                context.review_state = state
-                context.adapter = DbtAdapter.load(artifacts=state.artifacts, **kwargs)
-            else:
-                context.adapter = DbtAdapter.load(**kwargs)
 
         return context
 
@@ -95,17 +93,16 @@ class RecceContext:
         state = RecceState()
         state.metadata = RecceStateMetadata()
 
-        # runs & checks
-        state.runs = RunDAO().list()
-        state.checks = CheckDAO().list()
+        # runs & checks & artifacts
+        state.runs = self.runs
+        state.checks = self.checks
+        state.artifacts = self.adapter.export_artifacts()
 
-        # artifacts & git & pull_request. If in review mode, use the review state
+        # git & pull_request. If in review mode, use the review state
         if self.review_mode:
-            state.artifacts = self.review_state.artifacts
-            state.git = self.review_state.git
-            state.pull_request = self.review_state.pull_request
+            state.git = self.state_loader.state.git
+            state.pull_request = self.state_loader.state.pull_request
         else:
-            state.artifacts = self.adapter.export_artifacts()
             git = GitRepoInfo.from_current_repositroy()
             if git:
                 state.git = git
@@ -120,9 +117,8 @@ class RecceContext:
         state.metadata = RecceStateMetadata()
 
         # runs & checks
-        state.runs = RunDAO().list()
-        state.checks = CheckDAO().list()
-
+        state.runs = self.runs
+        state.checks = self.checks
         state.artifacts = self.adapter.export_artifacts()
         git = GitRepoInfo.from_current_repositroy()
         if git:
@@ -132,71 +128,100 @@ class RecceContext:
 
         return state
 
-    def refresh_state(self):
+    def sync_state(self, method: str):
         """
-        refresh the state
-        """
-        RunDAO().clear()
-        CheckDAO().clear()
-        self.state_loader.refresh()
-        self.import_state(self.state_loader.state)
+        Sync the state with the remote.
 
-    def import_state(self, import_state: RecceState):
+        :param method: merge, revert, overwrite
+
         """
-        Import the state. It would
-        1. Merge runs
-        2. Merge checks
-            2.1 If both checks are preset, use the new one
-            2.2 If the check is not preset, append the check if not found
-        """
-        checks = CheckDAO().list()
-        runs = RunDAO().list()
-        current_check_ids = [str(c.check_id) for c in checks]
-        current_run_ids = [str(r.run_id) for r in runs]
+        if method == 'merge':
+            self.state_loader.refresh()
+            self.import_state(self.state_loader.state, merge=True)
+            state = self.export_state()
+            self.state_loader.export(state)
+        elif method == 'revert':
+            self.state_loader.refresh()
+            self.import_state(self.state_loader.state, merge=False)
+        elif method == 'overwrite':
+            state = self.export_state()
+            self.state_loader.export(state)
+        else:
+            raise Exception(f'Unsupported method: {method}')
+
+    def _merge_checks(self, import_checks: list[Check]):
+        checks = list(self.checks)
+        imports = 0
 
         def _calculate_checksum(c: Check):
             payload = json.dumps({
-                'name': c.name.strip(),
-                'description': c.description.strip(),
                 'type': str(c.type),
                 'params': c.params,
                 'view_options': c.view_options,
             }, sort_keys=True)
             return hashlib.sha256(payload.encode()).hexdigest()
 
-        current_preset_check_checksums = {_calculate_checksum(c): index for index, c in enumerate(checks) if
-                                          c.is_preset}
+        checksum_map = {
+            _calculate_checksum(c): c for c in self.checks if c.is_preset
+        }
+        check_map = {
+            c.check_id: c for c in self.checks
+        }
 
         # merge checks
-        import_checks = 0
-        for check in import_state.checks:
-            if check.is_preset:
-                # Replace the preset check if the checksum is the same
-                check_checksum = _calculate_checksum(check)
-                if check_checksum in current_preset_check_checksums:
-                    index = current_preset_check_checksums[check_checksum]
-                    checks[index] = check
-                else:
-                    checks.append(check)
-                import_checks += 1
-            elif str(check.check_id) not in current_check_ids:
-                # Merge the check
-                checks.append(check)
-                import_checks += 1
+        for imported in import_checks:
+            check: Check = None
+            if imported.check_id in check_map:
+                check = check_map[imported.check_id]
+            elif imported.is_preset:
+                checksum = _calculate_checksum(imported)
+                if checksum in checksum_map:
+                    check = checksum_map[checksum]
+            if check:
+                is_merge = check.merge(imported)
+                if is_merge:
+                    imports += 1
+            else:
+                checks.append(imported)
+                imports += 1
+        self.checks = checks
+        return imports
 
-        # merge runs
-        import_runs = 0
-        for run in import_state.runs:
-            if str(run.run_id) not in current_run_ids:
+    def _merge_runs(self, import_runs: list[Run]):
+        runs = list(self.runs)
+        run_set = {run.run_id for run in self.runs}
+        imports = 0
+
+        for run in import_runs:
+            if run.run_id not in run_set:
                 runs.append(run)
-                import_runs += 1
+                imports += 1
 
         runs.sort(key=lambda x: x.run_at)
+        self.runs = runs
+        return imports
 
-        # Update to in-memory db
+    def import_state(self, import_state: RecceState, merge: bool = True):
+        '''
+        Import the state from another RecceState object.
 
-        load_runs(runs)
-        load_checks(checks)
+        :param import_state: the state to import
+        :param merge: whether to merge the state or replace the current state
+        '''
+        import_runs = 0
+        import_checks = 0
+        if merge:
+            import_runs = self._merge_runs(import_state.runs)
+            import_checks = self._merge_checks(import_state.checks)
+        else:
+            self.runs = list(import_state.runs)
+            import_runs = len(self.runs)
+            self.checks = list(import_state.checks)
+            import_checks = len(self.checks)
+
+        # always merge for artifacts
+        if self.adapter:
+            self.adapter.import_artifacts(import_state.artifacts)
 
         return import_runs, import_checks
 

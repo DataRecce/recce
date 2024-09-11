@@ -7,7 +7,7 @@ import time
 from base64 import b64encode
 from datetime import datetime
 from hashlib import md5, sha256
-from typing import List, Optional, Dict, Union
+from typing import List, Optional, Dict, Union, Tuple
 
 import botocore.exceptions
 from pydantic import BaseModel
@@ -92,8 +92,8 @@ class ArtifactsRoot(BaseModel):
 
 class RecceState(BaseModel):
     metadata: Optional[RecceStateMetadata] = None
-    runs: Optional[List[Run]] = None
-    checks: Optional[List[Check]] = None
+    runs: Optional[List[Run]] = Field(default_factory=list)
+    checks: Optional[List[Check]] = Field(default_factory=list)
     artifacts: ArtifactsRoot = ArtifactsRoot(base={}, current={})
     git: Optional[GitRepoInfo] = None
     pull_request: Optional[PullRequestInfo] = None
@@ -138,13 +138,32 @@ class RecceState(BaseModel):
         io.write(file_path, json_data)
         return f'The state file is stored at \'{file_path}\''
 
+    def _merge_run(self, run: Run):
+        for r in self.runs:
+            if r.run_id == run.run_id:
+                break
+        else:
+            self.runs.append(run)
+
+    def _merge_check(self, check: Check):
+        for c in self.checks:
+            if c.check_id == check.check_id:
+                c.merge(check)
+                break
+        else:
+            self.checks.append(check)
+
+    def _merge_artifacts(self, artifacts: ArtifactsRoot):
+        self.artifacts.merge(artifacts)
+
 
 class RecceStateLoader:
     def __init__(self,
                  review_mode: bool = False,
                  cloud_mode: bool = False,
                  state_file: Optional[str] = None,
-                 cloud_options: Optional[Dict[str, str]] = None
+                 cloud_options: Optional[Dict[str, str]] = None,
+                 initial_state: Optional[RecceState] = None,
                  ):
         self.review_mode = review_mode
         self.cloud_mode = cloud_mode
@@ -152,8 +171,9 @@ class RecceStateLoader:
         self.cloud_options = cloud_options or {}
         self.error_message = None
         self.hint_message = None
-        self.state: RecceState | None = None
+        self.state: RecceState | None = initial_state
         self.state_lock = threading.Lock()
+        self.state_etag = None
         self.pr_info = None
 
         if self.cloud_mode:
@@ -201,8 +221,8 @@ class RecceStateLoader:
         self.state_lock.acquire()
         try:
             if self.cloud_mode:
-                self.state = self._load_state_from_cloud()
-            else:
+                self.state, self.state_etag = self._load_state_from_cloud()
+            elif self.state_file:
                 self.state = self._load_state_from_file()
         finally:
             self.state_lock.release()
@@ -216,7 +236,8 @@ class RecceStateLoader:
         self.state_lock.acquire()
         try:
             if self.cloud_mode:
-                message = self._export_state_to_cloud()
+                message, state_etag = self._export_state_to_cloud()
+                self.state_etag = state_etag
             else:
                 if self.state_file is None:
                     return 'No state file is provided. Skip storing the state.'
@@ -232,6 +253,20 @@ class RecceStateLoader:
     def refresh(self):
         new_state = self.load(refresh=True)
         return new_state
+
+    def check_conflict(self) -> bool:
+        if not self.cloud_mode:
+            return False
+
+        if self.cloud_options.get('host', '').startswith('s3://'):
+            return False
+
+        metadata = self._get_metadata_from_recce_cloud()
+        if not metadata:
+            return False
+
+        state_etag = metadata.get('etag')
+        return state_etag != self.state_etag
 
     def info(self):
         if self.state is None:
@@ -273,22 +308,41 @@ class RecceStateLoader:
         file_path = file_path or self.state_file
         return RecceState.from_file(file_path) if file_path else None
 
-    def _load_state_from_cloud(self) -> RecceState:
+    def _load_state_from_cloud(self) -> Tuple[RecceState, str]:
+        '''
+        Load the state from Recce Cloud.
+
+        Returns:
+            RecceState: The state object.
+            str: The etag of the state file.
+        '''
         if (self.pr_info is None) or (self.pr_info.id is None) or (self.pr_info.repository is None):
             raise Exception('Cannot get the pull request information from GitHub.')
 
         if self.cloud_options.get('host', '').startswith('s3://'):
             logger.debug('Fetching state from AWS S3 bucket...')
-            return self._load_state_from_s3_bucket()
+            return self._load_state_from_s3_bucket(), None
         else:
             logger.debug('Fetching state from Recce Cloud...')
-            return self._load_state_from_recce_cloud()
+            metadata = self._get_metadata_from_recce_cloud()
+            if metadata is None:
+                return None, None
+            state_etag = metadata.get('etag')
+            if self.state_etag and state_etag == self.state_etag:
+                return self.state, self.state_etag
+
+            return self._load_state_from_recce_cloud(), state_etag
+
+    def _get_metadata_from_recce_cloud(self) -> Union[dict, None]:
+        recce_cloud = RecceCloud(token=self.cloud_options.get('token'))
+        return recce_cloud.get_artifact_metadata(pr_info=self.pr_info)
 
     def _load_state_from_recce_cloud(self) -> Union[RecceState, None]:
         import tempfile
         import requests
 
-        presigned_url = RecceCloud(token=self.cloud_options.get('token')).get_presigned_url(
+        recce_cloud = RecceCloud(token=self.cloud_options.get('token'))
+        presigned_url = recce_cloud.get_presigned_url(
             method=PresignedUrlMethod.DOWNLOAD, pr_info=self.pr_info, artifact_name=RECCE_STATE_COMPRESSED_FILE)
 
         password = self.cloud_options.get('password')
@@ -333,7 +387,7 @@ class RecceStateLoader:
                     raise e
             return RecceState.from_file(tmp.name, file_type=SupportedFileTypes.GZIP)
 
-    def _export_state_to_cloud(self) -> Union[str, None]:
+    def _export_state_to_cloud(self) -> Tuple[Union[str, None], str]:
         if (self.pr_info is None) or (self.pr_info.id is None) or (self.pr_info.repository is None):
             raise Exception('Cannot get the pull request information from GitHub.')
 
@@ -345,10 +399,15 @@ class RecceStateLoader:
 
         if self.cloud_options.get('host', '').startswith('s3://'):
             logger.info("Store recce state to AWS S3 bucket")
-            return self._export_state_to_s3_bucket(metadata=metadata)
+            return self._export_state_to_s3_bucket(metadata=metadata), None
         else:
             logger.info("Store recce state to Recce Cloud")
-            return self._export_state_to_recce_cloud(metadata=metadata)
+            message = self._export_state_to_recce_cloud(metadata=metadata)
+            metadata = self._get_metadata_from_recce_cloud()
+            if metadata is None:
+                return None
+            state_etag = metadata.get('etag')
+            return message, state_etag
 
     def _export_state_to_recce_cloud(self, metadata: dict = None) -> Union[str, None]:
         import tempfile

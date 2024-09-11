@@ -31,7 +31,7 @@ logger = logging.getLogger('uvicorn')
 
 @dataclass
 class AppState:
-    recce_state: Optional[RecceStateLoader] = None
+    state_loader: Optional[RecceStateLoader] = None
     kwargs: Optional[dict] = None
 
 
@@ -42,14 +42,14 @@ async def lifespan(fastapi: FastAPI):
 
     console = Console()
     app_state: AppState = app.state
-    recce_state = app_state.recce_state
+    state_loader = app_state.state_loader
     kwargs = app_state.kwargs
-    ctx = load_context(**kwargs, recce_state=recce_state)
+    ctx = load_context(**kwargs, state_loader=state_loader)
     ctx.start_monitor_artifacts(callback=dbt_artifacts_updated_callback)
 
     # Initialize Recce Config
     config = RecceConfig(config_file=kwargs.get('config'))
-    if not recce_state:
+    if not state_loader:
         preset_checks = config.get('checks', [])
         if preset_checks and len(preset_checks) > 0:
             console.rule("Loading Preset Checks")
@@ -60,7 +60,7 @@ async def lifespan(fastapi: FastAPI):
 
     yield
 
-    recce_state.export(ctx.export_state())
+    state_loader.export(ctx.export_state())
 
     ctx.stop_monitor_artifacts()
 
@@ -175,6 +175,7 @@ async def get_info():
             },
             'demo': bool(demo),
             'cloud_mode': context.state_loader.cloud_mode,
+            'file_mode': context.state_loader.state_file is not None,
         }
 
         if context.adapter_type == 'sqlmesh':
@@ -254,18 +255,31 @@ async def import_handler(file: UploadFile):
         raise HTTPException(status_code=400, detail=e.message)
 
 
+class SyncStateInput(BaseModel):
+    method: Optional[str] = None
+
+
 @app.post("/api/sync", status_code=202)
-async def sync_handler(response: Response, background_tasks: BackgroundTasks):
+async def sync_handler(input: SyncStateInput, response: Response, background_tasks: BackgroundTasks):
     # Sync the state file
     context = default_context()
-    is_syncing = context.state_loader.state_lock.locked()
+    state_loader = context.state_loader
+    method = input.method
+
+    if not method:
+        is_conflict = state_loader.check_conflict()
+        if is_conflict:
+            raise HTTPException(status_code=409, detail='Conflict detected')
+        method = 'overwrite'
+
+    is_syncing = state_loader.state_lock.locked()
     if is_syncing:
         response.status_code = 208
         return {"status": "syncing"}
 
     def reload_state():
         ctx = default_context()
-        ctx.refresh_state()
+        ctx.sync_state(method)
 
     background_tasks.add_task(reload_state)
     response.status_code = 202

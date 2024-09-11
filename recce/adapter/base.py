@@ -38,7 +38,7 @@ class BaseAdapter(ABC):
     def export_artifacts(self) -> ArtifactsRoot:
         return ArtifactsRoot(base={}, current={})
 
-    def import_artifacts(self, artifacts: ArtifactsRoot):
+    def import_artifacts(self, artifacts: ArtifactsRoot, merge: bool = False):
         pass
 
     def find_node_by_name(self, node_name, base=False):
