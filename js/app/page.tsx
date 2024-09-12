@@ -18,15 +18,9 @@ import {
   Badge,
   Progress,
 } from "@chakra-ui/react";
-import {
-  ReactNode,
-  useCallback,
-  useEffect,
-  useLayoutEffect,
-  useState,
-} from "react";
+import { ReactNode, useLayoutEffect } from "react";
 import * as amplitude from "@amplitude/analytics-browser";
-import { QueryClientProvider } from "@tanstack/react-query";
+import { QueryClientProvider, useQuery } from "@tanstack/react-query";
 import RecceContextProvider from "@/lib/hooks/RecceContextProvider";
 import { reactQueryClient } from "@/lib/api/axiosClient";
 import { useVersionNumber } from "@/lib/api/version";
@@ -48,7 +42,8 @@ import { IconType } from "react-icons";
 import "@fontsource/montserrat/800.css";
 import { EnvInfo } from "@/components/env/EnvInfo";
 import { StateSynchronizer } from "@/components/check/StateSynchronizer";
-import { listChecks } from "@/lib/api/checks";
+import { Check, listChecks } from "@/lib/api/checks";
+import { cacheKeys } from "@/lib/api/cacheKeys";
 
 function getCookie(key: string) {
   var b = document.cookie.match("(^|;)\\s*" + key + "\\s*=\\s*([^;]+)");
@@ -175,16 +170,28 @@ interface TabProps {
   href: string;
 }
 
-function TabBadge({ callback }: { callback: () => Promise<number> }) {
-  const [count, setCount] = useState<number | null>(null);
-  useEffect(() => {
-    const fetchCount = async () => {
-      const result = await callback();
-      setCount(result);
-    };
+function TabBadge({
+  queryKey,
+  fetchCallback,
+  selectCallback,
+}: {
+  queryKey: string[];
+  fetchCallback: () => Promise<any>;
+  selectCallback: (data: any) => any;
+}) {
+  const {
+    data: count,
+    isLoading,
+    error,
+  } = useQuery({
+    queryKey: queryKey,
+    queryFn: fetchCallback,
+    select: selectCallback,
+  });
 
-    fetchCount();
-  }, [callback]);
+  if (isLoading || error || count === 0) {
+    return <></>;
+  }
 
   return (
     <Box
@@ -212,10 +219,9 @@ function NavBar() {
     { name: "Checks", href: "/checks" },
   ];
 
-  const checksCallback = useCallback(async () => {
-    const checks = await listChecks();
+  const calPendingChecks = (checks: Check[]) => {
     return checks.filter((check) => !check.is_checked).length;
-  }, []);
+  };
 
   const tabIndex = _.findIndex(tabs, ({ href }) => location.startsWith(href));
 
@@ -231,7 +237,13 @@ function NavBar() {
               }}
             >
               {name}
-              {name === "Checks" && <TabBadge callback={checksCallback} />}
+              {name === "Checks" && (
+                <TabBadge
+                  queryKey={cacheKeys.checks()}
+                  fetchCallback={listChecks}
+                  selectCallback={calPendingChecks}
+                />
+              )}
             </Tab>
           );
         })}
