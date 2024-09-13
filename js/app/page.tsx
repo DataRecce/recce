@@ -170,14 +170,14 @@ interface TabProps {
   href: string;
 }
 
-function TabBadge({
+function TabBadge<T, R extends number>({
   queryKey,
   fetchCallback,
   selectCallback,
 }: {
   queryKey: string[];
-  fetchCallback: () => Promise<any>;
-  selectCallback: (data: any) => any;
+  fetchCallback: () => Promise<T>;
+  selectCallback?: (data: T) => R;
 }) {
   const {
     data: count,
@@ -238,7 +238,7 @@ function NavBar() {
             >
               {name}
               {name === "Checks" && (
-                <TabBadge
+                <TabBadge<Check[], number>
                   queryKey={cacheKeys.checks()}
                   fetchCallback={listChecks}
                   selectCallback={calPendingChecks}
