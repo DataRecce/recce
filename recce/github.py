@@ -217,6 +217,6 @@ def get_github_codespace_available_at():
         return None
 
     github_codepsce_log_dir = '/tmp/codespaces_logs'
-    log_file = os.listdir(github_codepsce_log_dir)[0]
+    log_file = os.listdir(github_codepsce_log_dir)[-1]  # Get the latest log file
     start_monitor_line = search_in_file(f'{github_codepsce_log_dir}/{log_file}', 'Starting monitor')
     return extract_datatime(start_monitor_line)
