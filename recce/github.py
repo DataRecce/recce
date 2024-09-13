@@ -1,6 +1,8 @@
 import io
 import os
+import re
 import zipfile
+from datetime import datetime
 from typing import List
 
 import requests
@@ -193,3 +195,28 @@ def get_github_codespace_info():
         location=codespace_info.get('location'),
         idle_timeout_minutes=codespace_info.get('idle_timeout_minutes'),
     )
+
+
+def get_github_codespace_available_at():
+    if is_github_codespace() is False:
+        return None
+
+    def search_in_file(file_path, search_string):
+        with open(file_path, 'r') as f:
+            for _, line in enumerate(f, 1):
+                if search_string in line:
+                    return line
+        return None
+
+    def extract_datatime(log_line):
+        pattern = r'\[(\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}\.\d{3}).*\]'
+        match = re.search(pattern, log_line)
+        if match:
+            datetime_str = match.group(1)
+            return datetime.strptime(datetime_str, '%Y-%m-%d %H:%M:%S.%f')
+        return None
+
+    github_codepsce_log_dir = '/tmp/codespaces_logs'
+    log_file = os.listdir(github_codepsce_log_dir)[0]
+    start_monitor_line = search_in_file(f'{github_codepsce_log_dir}/{log_file}', 'Starting monitor')
+    return extract_datatime(start_monitor_line)

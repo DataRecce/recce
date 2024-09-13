@@ -11,7 +11,8 @@ import sentry_sdk
 from recce import is_ci_env, get_version
 from recce import yaml as pyml
 from recce.event.collector import Collector
-from recce.github import is_github_codespace, get_github_codespace_info, get_github_codespace_name
+from recce.github import is_github_codespace, get_github_codespace_info, get_github_codespace_name, \
+    get_github_codespace_available_at
 
 USER_HOME = os.path.expanduser('~')
 RECCE_USER_HOME = os.path.join(USER_HOME, '.recce')
@@ -207,14 +208,21 @@ def log_codespaces_events():
     prop = dict(
         machine=codespace.get('machine', {}).get('display_name'),
     )
+
+    codespace_created_at = load_user_profile().get('codespace_created_at')
     # Codespace created event
-    created_at = datetime.fromisoformat(codespace.get('created_at'))
-    _collector.log_event(prop, 'codespace_instance_created', event_triggered_at=created_at, user_properties=user_prop)
+    if codespace_created_at is None:
+        created_at = datetime.fromisoformat(codespace.get('created_at'))
+        _collector.log_event(prop, 'codespace_instance_created', event_triggered_at=created_at,
+                             user_properties=user_prop)
+        update_user_profile({'codespace_created_at': codespace.get('created_at')})
 
     # Codespace available event
-    available_at = datetime.fromisoformat(codespace.get('updated_at'))
-    _collector.log_event(prop, 'codespace_instance_available', event_triggered_at=available_at,
-                         user_properties=user_prop)
+    available_at = get_github_codespace_available_at()
+    if available_at and available_at.isoformat() != load_user_profile().get('codespace_available_at'):
+        _collector.log_event(prop, 'codespace_instance_available', event_triggered_at=available_at,
+                             user_properties=user_prop)
+        update_user_profile({'codespace_available_at': available_at.isoformat()})
 
 
 def capture_exception(e):
