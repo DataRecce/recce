@@ -4,7 +4,7 @@ import re
 import sys
 import threading
 import uuid
-from datetime import datetime
+from datetime import datetime, timezone
 
 import sentry_sdk
 
@@ -49,6 +49,8 @@ def init():
     sentry_sdk.set_tag('recce.version', __version__)
     sentry_sdk.set_tag('platform', sys.platform)
     sentry_sdk.set_tag('is_ci_env', is_ci_env())
+    sentry_sdk.set_tag('is_github_codespace', is_github_codespace())
+    sentry_sdk.set_tag('system_timezone', get_system_timezone())
 
 
 def get_user_id():
@@ -240,3 +242,7 @@ def flush_exceptions():
 
 def set_exception_tag(key, value):
     sentry_sdk.set_tag(key, value)
+
+
+def get_system_timezone():
+    return datetime.now(timezone.utc).astimezone().tzinfo
