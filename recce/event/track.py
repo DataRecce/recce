@@ -55,6 +55,7 @@ class TrackCommand(Command):
         start_time = time.time()
         reason = 'error'
         event.set_exception_tag('command', ctx.command.name)
+        event.log_codespaces_events(ctx.command.name)
 
         try:
             ret = super(TrackCommand, self).invoke(ctx)
@@ -109,5 +110,4 @@ class TrackCommand(Command):
                     props['adapter_type'] = 'SQLMesh'
 
             event.log_event(props, command, params=ctx.params)
-            event.log_codespaces_events()
             event.flush_events()
