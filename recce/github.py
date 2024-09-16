@@ -197,7 +197,7 @@ def get_github_codespace_info():
     )
 
 
-def get_github_codespace_available_at():
+def get_github_codespace_available_at(codespace):
     if is_github_codespace() is False:
         return None
 
@@ -222,5 +222,5 @@ def get_github_codespace_available_at():
         start_monitor_line = search_in_file(f'{github_codepsce_log_dir}/{log_file}', 'Starting monitor')
         return extract_datatime(start_monitor_line)
     except Exception:
-        # If there is any error, suspect the codespace is available at the current time
-        return datetime.now()
+        # If there is any error, use the updated_at time from the codespace info
+        return datetime.fromisoformat(codespace.get('updated_at'))

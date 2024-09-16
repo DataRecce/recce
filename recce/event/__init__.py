@@ -221,7 +221,7 @@ def log_codespaces_events(command):
         update_user_profile({'codespace_created_at': codespace.get('created_at')})
 
     # Codespace available event
-    available_at = get_github_codespace_available_at()
+    available_at = get_github_codespace_available_at(codespace)
     if available_at and available_at.isoformat() != load_user_profile().get('codespace_available_at'):
         _collector.log_event(prop, 'codespace_instance_available', event_triggered_at=available_at,
                              user_properties=user_prop)
