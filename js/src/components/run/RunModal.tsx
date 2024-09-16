@@ -230,7 +230,7 @@ export const RunModal = <PT, RT, VO>({
               </Button>
             )}
 
-            {hasResult && !RunForm && (
+            {(hasResult || hasError) && !RunForm && (
               <Button colorScheme="blue" onClick={handleRerun}>
                 Rerun
               </Button>
