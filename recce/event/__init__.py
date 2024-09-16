@@ -1,14 +1,18 @@
+import hashlib
 import os
 import re
 import sys
 import threading
 import uuid
+from datetime import datetime, timezone
 
 import sentry_sdk
 
 from recce import is_ci_env, get_version
 from recce import yaml as pyml
 from recce.event.collector import Collector
+from recce.github import is_github_codespace, get_github_codespace_info, get_github_codespace_name, \
+    get_github_codespace_available_at
 
 USER_HOME = os.path.expanduser('~')
 RECCE_USER_HOME = os.path.join(USER_HOME, '.recce')
@@ -45,6 +49,8 @@ def init():
     sentry_sdk.set_tag('recce.version', __version__)
     sentry_sdk.set_tag('platform', sys.platform)
     sentry_sdk.set_tag('is_ci_env', is_ci_env())
+    sentry_sdk.set_tag('is_github_codespace', is_github_codespace())
+    sentry_sdk.set_tag('system_timezone', get_system_timezone())
 
 
 def get_user_id():
@@ -97,8 +103,11 @@ def _generate_user_profile():
         # TODO: should show warning message but not raise exception
         print('Please disable command tracking to continue.')
         exit(1)
-
-    user_id = uuid.uuid4().hex
+    if is_github_codespace() is True:
+        salted_name = f'codespace-{get_github_codespace_name()}'
+        user_id = hashlib.sha256(salted_name.encode()).hexdigest()
+    else:
+        user_id = uuid.uuid4().hex
     with open(RECCE_USER_PROFILE, 'w+') as f:
         pyml.dump({'user_id': user_id, 'anonymous_tracking': True}, f)
     return dict(user_id=user_id, anonymous_tracking=True)
@@ -129,16 +138,23 @@ def flush_events(command=None):
     _collector.send_events()
 
 
-def log_event(prop, event_type, **kwargs):
+def should_log_event():
     with open(RECCE_USER_PROFILE, 'r') as f:
         user_profile = pyml.load(f)
     # TODO: default anonymous_tracking to false if field is not present
     tracking = user_profile.get('anonymous_tracking', False)
     tracking = tracking and isinstance(tracking, bool)
     if not tracking:
-        return
+        return False
 
     if not _collector.is_ready():
+        return False
+
+    return True
+
+
+def log_event(prop, event_type, **kwargs):
+    if should_log_event() is False:
         return
 
     payload = dict(
@@ -179,6 +195,38 @@ def log_load_state(command='server'):
         _collector.schedule_flush()
 
 
+def log_codespaces_events():
+    # Only log when the recce is running in GitHub Codespaces
+    if is_github_codespace() is False:
+        return
+
+    codespace = get_github_codespace_info()
+
+    user_prop = dict(
+        location=codespace.get('location'),
+        is_prebuild=True if codespace.get('prebuild') else False,
+    )
+
+    prop = dict(
+        machine=codespace.get('machine', {}).get('display_name'),
+    )
+
+    codespace_created_at = load_user_profile().get('codespace_created_at')
+    # Codespace created event
+    if codespace_created_at is None:
+        created_at = datetime.fromisoformat(codespace.get('created_at'))
+        _collector.log_event(prop, 'codespace_instance_created', event_triggered_at=created_at,
+                             user_properties=user_prop)
+        update_user_profile({'codespace_created_at': codespace.get('created_at')})
+
+    # Codespace available event
+    available_at = get_github_codespace_available_at()
+    if available_at and available_at.isoformat() != load_user_profile().get('codespace_available_at'):
+        _collector.log_event(prop, 'codespace_instance_available', event_triggered_at=available_at,
+                             user_properties=user_prop)
+        update_user_profile({'codespace_available_at': available_at.isoformat()})
+
+
 def capture_exception(e):
     user_id = load_user_profile().get('user_id')
     if is_ci_env() is True:
@@ -194,3 +242,7 @@ def flush_exceptions():
 
 def set_exception_tag(key, value):
     sentry_sdk.set_tag(key, value)
+
+
+def get_system_timezone():
+    return datetime.now(timezone.utc).astimezone().tzinfo

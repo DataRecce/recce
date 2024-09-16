@@ -1,6 +1,8 @@
 import io
 import os
+import re
 import zipfile
+from datetime import datetime
 from typing import List
 
 import requests
@@ -153,3 +155,68 @@ def recce_pr_information(github_token=None) -> PullRequest:
     pr = get_pull_request(branch, owner, repo_name, github_token)
 
     return pr if pr else None
+
+
+def is_github_codespace():
+    return os.getenv('CODESPACES') == 'true'
+
+
+def get_github_codespace_name():
+    return os.getenv('CODESPACE_NAME')
+
+
+def get_github_codespace_info():
+    if is_github_codespace() is False:
+        return None
+
+    codespace_name = os.environ.get('CODESPACE_NAME')
+    github_token = os.environ.get('GITHUB_TOKEN')
+
+    response = requests.get(
+        f'https://api.github.com/user/codespaces/{codespace_name}',
+        headers={
+            'Accept': 'application/vnd.github+json',
+            'Authorization': f'token {github_token}',
+            'X-GitHub-Api-Version': '2022-11-28',
+        })
+
+    if response.status_code != 200:
+        return None
+    codespace_info = response.json()
+
+    return dict(
+        name=codespace_info.get('name'),
+        machine=codespace_info.get('machine'),
+        prebuild=codespace_info.get('prebuild'),
+        created_at=codespace_info.get('created_at'),
+        updated_at=codespace_info.get('updated_at'),
+        last_used_at=codespace_info.get('last_used_at'),
+        state=codespace_info.get('state'),
+        location=codespace_info.get('location'),
+        idle_timeout_minutes=codespace_info.get('idle_timeout_minutes'),
+    )
+
+
+def get_github_codespace_available_at():
+    if is_github_codespace() is False:
+        return None
+
+    def search_in_file(file_path, search_string):
+        with open(file_path, 'r') as f:
+            for _, line in enumerate(f, 1):
+                if search_string in line:
+                    return line
+        return None
+
+    def extract_datatime(log_line):
+        pattern = r'\[(\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}\.\d{3}).*\]'
+        match = re.search(pattern, log_line)
+        if match:
+            datetime_str = match.group(1)
+            return datetime.strptime(datetime_str, '%Y-%m-%d %H:%M:%S.%f')
+        return None
+
+    github_codepsce_log_dir = '/tmp/codespaces_logs'
+    log_file = os.listdir(github_codepsce_log_dir)[-1]  # Get the latest log file
+    start_monitor_line = search_in_file(f'{github_codepsce_log_dir}/{log_file}', 'Starting monitor')
+    return extract_datatime(start_monitor_line)
