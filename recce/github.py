@@ -197,7 +197,7 @@ def get_github_codespace_info():
     )
 
 
-def get_github_codespace_available_at():
+def get_github_codespace_available_at(codespace):
     if is_github_codespace() is False:
         return None
 
@@ -217,6 +217,10 @@ def get_github_codespace_available_at():
         return None
 
     github_codepsce_log_dir = '/tmp/codespaces_logs'
-    log_file = os.listdir(github_codepsce_log_dir)[-1]  # Get the latest log file
-    start_monitor_line = search_in_file(f'{github_codepsce_log_dir}/{log_file}', 'Starting monitor')
-    return extract_datatime(start_monitor_line)
+    try:
+        log_file = os.listdir(github_codepsce_log_dir)[-1]  # Get the latest log file
+        start_monitor_line = search_in_file(f'{github_codepsce_log_dir}/{log_file}', 'Starting monitor')
+        return extract_datatime(start_monitor_line)
+    except Exception:
+        # If there is any error, use the updated_at time from the codespace info
+        return datetime.fromisoformat(codespace.get('updated_at'))

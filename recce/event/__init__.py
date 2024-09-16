@@ -191,11 +191,12 @@ def log_load_state(command='server'):
     )
 
     log_event(prop, 'load_state')
+    log_event({}, f'{command}_started')
     if command == 'server':
         _collector.schedule_flush()
 
 
-def log_codespaces_events():
+def log_codespaces_events(command):
     # Only log when the recce is running in GitHub Codespaces
     if is_github_codespace() is False:
         return
@@ -220,11 +221,14 @@ def log_codespaces_events():
         update_user_profile({'codespace_created_at': codespace.get('created_at')})
 
     # Codespace available event
-    available_at = get_github_codespace_available_at()
+    available_at = get_github_codespace_available_at(codespace)
     if available_at and available_at.isoformat() != load_user_profile().get('codespace_available_at'):
         _collector.log_event(prop, 'codespace_instance_available', event_triggered_at=available_at,
                              user_properties=user_prop)
         update_user_profile({'codespace_available_at': available_at.isoformat()})
+
+    # Codespace instance event should be flushed immediately
+    _collector.send_events()
 
 
 def capture_exception(e):
