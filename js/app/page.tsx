@@ -18,9 +18,9 @@ import {
   Badge,
   Progress,
 } from "@chakra-ui/react";
-import { ReactNode, useCallback, useLayoutEffect } from "react";
+import { ReactNode, useLayoutEffect } from "react";
 import * as amplitude from "@amplitude/analytics-browser";
-import { QueryClientProvider } from "@tanstack/react-query";
+import { QueryClientProvider, useQuery } from "@tanstack/react-query";
 import RecceContextProvider from "@/lib/hooks/RecceContextProvider";
 import { reactQueryClient } from "@/lib/api/axiosClient";
 import { useVersionNumber } from "@/lib/api/version";
@@ -42,6 +42,8 @@ import { IconType } from "react-icons";
 import "@fontsource/montserrat/800.css";
 import { EnvInfo } from "@/components/env/EnvInfo";
 import { StateSynchronizer } from "@/components/check/StateSynchronizer";
+import { Check, listChecks } from "@/lib/api/checks";
+import { cacheKeys } from "@/lib/api/cacheKeys";
 
 function getCookie(key: string) {
   var b = document.cookie.match("(^|;)\\s*" + key + "\\s*=\\s*([^;]+)");
@@ -77,7 +79,8 @@ function LinkIcon({ icon, href, ...prob }: LinkIconProps) {
 }
 
 function TopBar() {
-  const { reviewMode, isDemoSite, envInfo, cloudMode, isLoading } = useLineageGraphContext();
+  const { reviewMode, isDemoSite, envInfo, cloudMode, isLoading } =
+    useLineageGraphContext();
   const version = useVersionNumber();
   const prURL = envInfo?.pullRequest?.url;
 
@@ -167,6 +170,45 @@ interface TabProps {
   href: string;
 }
 
+function TabBadge<T, R extends number>({
+  queryKey,
+  fetchCallback,
+  selectCallback,
+}: {
+  queryKey: string[];
+  fetchCallback: () => Promise<T>;
+  selectCallback?: (data: T) => R;
+}) {
+  const {
+    data: count,
+    isLoading,
+    error,
+  } = useQuery({
+    queryKey: queryKey,
+    queryFn: fetchCallback,
+    select: selectCallback,
+  });
+
+  if (isLoading || error || count === 0) {
+    return <></>;
+  }
+
+  return (
+    <Box
+      ml="2px"
+      height="80%"
+      aspectRatio={1}
+      borderRadius="full"
+      bg="tomato"
+      alignContent={"center"}
+      color="white"
+      fontSize="xs"
+    >
+      {count}
+    </Box>
+  );
+}
+
 function NavBar() {
   const { isDemoSite, cloudMode, isLoading } = useLineageGraphContext();
   const [location, setLocation] = useLocation();
@@ -176,6 +218,10 @@ function NavBar() {
     { name: "Query", href: "/query" },
     { name: "Checks", href: "/checks" },
   ];
+
+  const calPendingChecks = (checks: Check[]) => {
+    return checks.filter((check) => !check.is_checked).length;
+  };
 
   const tabIndex = _.findIndex(tabs, ({ href }) => location.startsWith(href));
 
@@ -191,6 +237,13 @@ function NavBar() {
               }}
             >
               {name}
+              {name === "Checks" && (
+                <TabBadge<Check[], number>
+                  queryKey={cacheKeys.checks()}
+                  fetchCallback={listChecks}
+                  selectCallback={calPendingChecks}
+                />
+              )}
             </Tab>
           );
         })}
@@ -268,7 +321,7 @@ export default function Home() {
                         }}
                       </Route>
                       <Route path="/ssr">
-                        <Progress size='xs' isIndeterminate />
+                        <Progress size="xs" isIndeterminate />
                       </Route>
                       <Route>
                         <Redirect to="/lineage" />
