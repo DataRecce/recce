@@ -25,6 +25,7 @@ import {
   MenuItem,
   MenuDivider,
   Icon,
+  MenuGroup,
 } from "@chakra-ui/react";
 
 import { FaCode } from "react-icons/fa";
@@ -106,92 +107,96 @@ export function NodeView({ node, onCloseNode }: NodeViewProps) {
                 Query
               </MenuItem>
               <MenuDivider />
-              <MenuItem
-                onClick={onCodeDiffOpen}
-                icon={<FaCode />}
-                fontSize="14px"
-              >
-                Code Diff
-              </MenuItem>
-              <MenuItem
-                icon={<Icon as={findByRunType("row_count_diff")?.icon} />}
-                fontSize="14px"
-                onClick={() => {}}
-              >
-                Row Count Diff
-              </MenuItem>
-              <MenuItem
-                icon={<Icon as={findByRunType("profile_diff")?.icon} />}
-                fontSize="14px"
-                isDisabled={isAddedOrRemoved}
-                onClick={() => {
-                  runAction(
-                    "profile_diff",
-                    {
-                      model: node.name,
-                    },
-                    { showForm: false, showLast: true }
-                  );
-                }}
-              >
-                Profile Diff
-              </MenuItem>
-              <MenuItem
-                icon={<Icon as={findByRunType("value_diff")?.icon} />}
-                fontSize="14px"
-                isDisabled={isAddedOrRemoved}
-                onClick={() => {
-                  runAction(
-                    "value_diff",
-                    {
-                      model: node.name,
-                    },
-                    { showForm: true, showLast: true }
-                  );
-                }}
-              >
-                Value Diff
-              </MenuItem>
-              <MenuItem
-                icon={<Icon as={findByRunType("top_k_diff")?.icon} />}
-                fontSize="14px"
-                isDisabled={isAddedOrRemoved}
-                onClick={() => {
-                  runAction(
-                    "top_k_diff",
-                    { model: node.name, column_name: "", k: 50 },
-                    { showForm: true }
-                  );
-                }}
-              >
-                Top-K Diff
-              </MenuItem>
-              <MenuItem
-                icon={<Icon as={findByRunType("histogram_diff")?.icon} />}
-                fontSize="14px"
-                isDisabled={isAddedOrRemoved}
-                onClick={() => {
-                  runAction(
-                    "histogram_diff",
-                    {
-                      model: node.name,
-                      column_name: "",
-                      column_type: "",
-                    },
-                    { showForm: true }
-                  );
-                }}
-              >
-                Histogram Diff
-              </MenuItem>
+              <MenuGroup title="Diff" m="0" p="4px 12px">
+                <MenuItem
+                  onClick={onCodeDiffOpen}
+                  icon={<FaCode />}
+                  fontSize="14px"
+                >
+                  Code Diff
+                </MenuItem>
+                <MenuItem
+                  icon={<Icon as={findByRunType("row_count_diff")?.icon} />}
+                  fontSize="14px"
+                  onClick={() => {}}
+                >
+                  Row Count Diff
+                </MenuItem>
+                <MenuItem
+                  icon={<Icon as={findByRunType("profile_diff")?.icon} />}
+                  fontSize="14px"
+                  isDisabled={isAddedOrRemoved}
+                  onClick={() => {
+                    runAction(
+                      "profile_diff",
+                      {
+                        model: node.name,
+                      },
+                      { showForm: false, showLast: true }
+                    );
+                  }}
+                >
+                  Profile Diff
+                </MenuItem>
+                <MenuItem
+                  icon={<Icon as={findByRunType("value_diff")?.icon} />}
+                  fontSize="14px"
+                  isDisabled={isAddedOrRemoved}
+                  onClick={() => {
+                    runAction(
+                      "value_diff",
+                      {
+                        model: node.name,
+                      },
+                      { showForm: true, showLast: true }
+                    );
+                  }}
+                >
+                  Value Diff
+                </MenuItem>
+                <MenuItem
+                  icon={<Icon as={findByRunType("top_k_diff")?.icon} />}
+                  fontSize="14px"
+                  isDisabled={isAddedOrRemoved}
+                  onClick={() => {
+                    runAction(
+                      "top_k_diff",
+                      { model: node.name, column_name: "", k: 50 },
+                      { showForm: true }
+                    );
+                  }}
+                >
+                  Top-K Diff
+                </MenuItem>
+                <MenuItem
+                  icon={<Icon as={findByRunType("histogram_diff")?.icon} />}
+                  fontSize="14px"
+                  isDisabled={isAddedOrRemoved}
+                  onClick={() => {
+                    runAction(
+                      "histogram_diff",
+                      {
+                        model: node.name,
+                        column_name: "",
+                        column_type: "",
+                      },
+                      { showForm: true }
+                    );
+                  }}
+                >
+                  Histogram Diff
+                </MenuItem>
+              </MenuGroup>
               <MenuDivider />
-              <MenuItem
-                icon={<Icon as={findByRunType("schema_diff")?.icon} />}
-                fontSize="14px"
-                onClick={addSchemaCheck}
-              >
-                Schema Diff Check
-              </MenuItem>
+              <MenuGroup title="Add Check" m="0" p="4px 12px">
+                <MenuItem
+                  icon={<Icon as={findByRunType("schema_diff")?.icon} />}
+                  fontSize="14px"
+                  onClick={addSchemaCheck}
+                >
+                  Schema Diff
+                </MenuItem>
+              </MenuGroup>
             </MenuList>
           </Menu>
         )}
