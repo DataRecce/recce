@@ -9,7 +9,7 @@ interface SqlDiffProps {
 export function SqlDiffView({ base, current }: SqlDiffProps) {
   return (
     <DiffEditor
-      height="500px"
+      height="100%"
       language="sql"
       theme="vs"
       original={base?.raw_code}
