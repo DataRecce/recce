@@ -112,7 +112,7 @@ export interface RowCountTagProps {
 }
 
 export function RowCountTag({
-  rowCount,
+  rowCount: fetchedRowCount,
   node,
   onRefresh,
   isFetching,
@@ -124,6 +124,7 @@ export function RowCountTag({
   const icon = findByRunType("row_count_diff")?.icon;
 
   let label;
+  const rowCount = fetchedRowCount || lastRowCount;
   if (rowCount) {
     const base = rowCount?.base === null ? "N/A" : rowCount?.base;
     const current = rowCount?.curr === null ? "N/A" : rowCount?.curr;

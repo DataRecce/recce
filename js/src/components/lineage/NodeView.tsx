@@ -95,8 +95,9 @@ export function NodeView({ node, onCloseNode }: NodeViewProps) {
           <Heading size="sm">{node.name}</Heading>
         </Box>
         <Spacer />
-        {/* {node.changeStatus === "modified" && ( */}
-        {(node.resourceType === "model" || node.resourceType === "seed") && (
+        {(node.resourceType === "model" ||
+          node.resourceType === "seed" ||
+          node.resourceType === "snapshot") && (
           <Menu>
             <MenuButton as={Button} size="xs" colorScheme="blue">
               Explore Changes
@@ -223,7 +224,8 @@ export function NodeView({ node, onCloseNode }: NodeViewProps) {
         <HStack spacing={"8px"}>
           <ResourceTypeTag node={node} />
           {(node.resourceType === "model" ||
-            node.resourceType === "snapshot") && (
+            node.resourceType === "snapshot" ||
+            node.resourceType === "seed") && (
             <RowCountTag
               node={node}
               onRefresh={refetchRowCount}
