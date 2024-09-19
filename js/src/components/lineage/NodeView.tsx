@@ -122,13 +122,16 @@ export function NodeView({ node, onCloseNode }: NodeViewProps) {
               </MenuItem>
               <MenuDivider />
               <MenuGroup title="Diff" m="0" p="4px 12px">
-                <MenuItem
-                  onClick={onCodeDiffOpen}
-                  icon={<FaCode />}
-                  fontSize="14px"
-                >
-                  Code Diff
-                </MenuItem>
+                {(node.resourceType === "model" ||
+                  node.resourceType === "snapshot") && (
+                  <MenuItem
+                    onClick={onCodeDiffOpen}
+                    icon={<FaCode />}
+                    fontSize="14px"
+                  >
+                    Code Diff
+                  </MenuItem>
+                )}
                 <MenuItem
                   icon={<Icon as={findByRunType("row_count_diff")?.icon} />}
                   fontSize="14px"
