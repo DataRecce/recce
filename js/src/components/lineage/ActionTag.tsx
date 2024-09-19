@@ -100,13 +100,7 @@ export const ActionTag = ({ node, action }: ActionTagProps) => {
 
   if (run.type === "row_count_diff") {
     const result = run.result as RowCountDiffResult;
-    return (
-      <RowCountTag
-        rowCount={result[node.name]}
-        node={node}
-        isInteractive={false}
-      />
-    );
+    return <RowCountTag rowCount={result[node.name]} node={node} />;
   }
 
   return <>{run_id}</>;

@@ -41,6 +41,9 @@ import { useLineageGraphContext } from "@/lib/hooks/LineageGraphContext";
 import useModelColumns from "@/lib/hooks/useModelColumns";
 import { createSchemaDiffCheck } from "@/lib/api/schemacheck";
 import { findByRunType } from "../run/registry";
+import { cacheKeys } from "@/lib/api/cacheKeys";
+import { queryModelRowCount } from "@/lib/api/models";
+import { useQuery } from "@tanstack/react-query";
 
 interface NodeViewProps {
   node: LineageGraphNode;
@@ -65,6 +68,16 @@ export function NodeView({ node, onCloseNode }: NodeViewProps) {
   const { runAction } = useRecceActionContext();
   const { envInfo } = useLineageGraphContext();
   const { primaryKey } = useModelColumns(node.name);
+  const {
+    data: rowCount,
+    refetch: refetchRowCount,
+    isFetching: isRowCountFetching,
+    error: rowCountError,
+  } = useQuery({
+    queryKey: cacheKeys.rowCount(node.name),
+    queryFn: () => queryModelRowCount(node.name),
+    enabled: false,
+  });
 
   const addSchemaCheck = useCallback(async () => {
     const nodeId = node.id;
@@ -118,7 +131,8 @@ export function NodeView({ node, onCloseNode }: NodeViewProps) {
                 <MenuItem
                   icon={<Icon as={findByRunType("row_count_diff")?.icon} />}
                   fontSize="14px"
-                  onClick={() => {}}
+                  onClick={() => refetchRowCount()}
+                  isDisabled={isRowCountFetching}
                 >
                   Row Count Diff
                 </MenuItem>
@@ -210,7 +224,13 @@ export function NodeView({ node, onCloseNode }: NodeViewProps) {
           <ResourceTypeTag node={node} />
           {(node.resourceType === "model" ||
             node.resourceType === "snapshot") && (
-            <RowCountTag node={node} isInteractive />
+            <RowCountTag
+              node={node}
+              onRefresh={refetchRowCount}
+              rowCount={rowCount}
+              isFetching={isRowCountFetching}
+              error={rowCountError}
+            />
           )}
         </HStack>
       </Box>

@@ -106,30 +106,21 @@ export function ModelRowCount({ rowCount }: ModelRowCountProps) {
 export interface RowCountTagProps {
   node: LineageGraphNode;
   rowCount?: RowCount;
-  isInteractive?: boolean; // if true, allows user to manually fetch row count
+  onRefresh?: () => Promise<any>;
+  isFetching?: boolean;
+  error?: Error | null;
 }
 
 export function RowCountTag({
-  rowCount: defaultRowCount,
+  rowCount,
   node,
-  isInteractive,
+  onRefresh,
+  isFetching,
 }: RowCountTagProps) {
   const { runsAggregated, refetchRunsAggregated } = useLineageGraphContext();
   const lastRowCount: RowCount | undefined =
     runsAggregated?.[node.id]?.["row_count_diff"]?.result;
 
-  const {
-    data: fetchedRowCount,
-    refetch: invokeRowCountQuery,
-    isFetching,
-  } = useQuery({
-    queryKey: cacheKeys.rowCount(node.name),
-    queryFn: () => queryModelRowCount(node.name),
-    enabled: false,
-    initialData: defaultRowCount,
-  });
-
-  const rowCount = fetchedRowCount || defaultRowCount || lastRowCount;
   const icon = findByRunType("row_count_diff")?.icon;
 
   let label;
@@ -158,7 +149,7 @@ export function RowCountTag({
             <>row count</>
           )}
         </TagLabel>
-        {isInteractive && (
+        {onRefresh && (
           <TagRightIcon
             as={IconButton}
             isLoading={isFetching}
@@ -166,7 +157,7 @@ export function RowCountTag({
             icon={<RepeatIcon />}
             size="xs"
             onClick={async () => {
-              await invokeRowCountQuery();
+              await onRefresh();
               refetchRunsAggregated?.();
             }}
           />
