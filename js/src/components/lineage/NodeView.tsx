@@ -100,7 +100,7 @@ export function NodeView({ node, onCloseNode }: NodeViewProps) {
           node.resourceType === "snapshot") && (
           <Menu>
             <MenuButton as={Button} size="xs" colorScheme="blue">
-              Explore Changes
+              Explore Diff
             </MenuButton>
             <MenuList>
               <MenuItem
@@ -206,7 +206,7 @@ export function NodeView({ node, onCloseNode }: NodeViewProps) {
                 </MenuItem>
               </MenuGroup>
               <MenuDivider />
-              <MenuGroup title="Add Check" m="0" p="4px 12px">
+              <MenuGroup title="Add to Checklist" m="0" p="4px 12px">
                 <MenuItem
                   icon={<Icon as={findByRunType("schema_diff")?.icon} />}
                   fontSize="14px"

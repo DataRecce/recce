@@ -318,7 +318,7 @@ const MoreActionMenu = (props: NodeFilterProps) => {
           </MenuItem>
         </MenuGroup>
         <MenuDivider />
-        <MenuGroup title="Add check" m="0" px="12px">
+        <MenuGroup title="Add to Checklist" m="0" px="12px">
           <MenuItem
             as={Text}
             size="sm"
