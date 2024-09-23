@@ -150,7 +150,7 @@ export function NodeView({ node, onCloseNode }: NodeViewProps) {
                       {
                         model: node.name,
                       },
-                      { showForm: false, showLast: true }
+                      { showForm: false, showLast: false }
                     );
                   }}
                 >
@@ -166,7 +166,7 @@ export function NodeView({ node, onCloseNode }: NodeViewProps) {
                       {
                         model: node.name,
                       },
-                      { showForm: true, showLast: true }
+                      { showForm: true, showLast: false }
                     );
                   }}
                 >

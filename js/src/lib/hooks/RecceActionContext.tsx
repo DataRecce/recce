@@ -11,8 +11,9 @@ import { useDisclosure } from "@chakra-ui/react";
 
 import { useLocation } from "wouter";
 
-import { searchRuns } from "../api/runs";
+import { searchRuns, submitRun, waitRun } from "../api/runs";
 import { findByRunType } from "@/components/run/registry";
+import { useMutation } from "@tanstack/react-query";
 
 export interface RecceActionOptions {
   showForm: boolean;
@@ -25,6 +26,7 @@ export interface RecceActionContextType {
     params?: any,
     actionOptions?: RecceActionOptions
   ) => void;
+  runId?: string;
 }
 
 export const RecceActionContext = createContext<RecceActionContextType>({
@@ -55,10 +57,12 @@ function _ActionModal({
   action,
   isOpen,
   onClose,
+  onExecute,
 }: {
   action: RunActionInternal;
   isOpen: boolean;
   onClose: () => void;
+  onExecute: (runId: string) => void;
 }) {
   const entry = findByRunType(action.type);
   if (entry === undefined) {
@@ -75,6 +79,7 @@ function _ActionModal({
       key={action.session}
       isOpen={isOpen}
       onClose={onClose}
+      onExecute={onExecute}
       title={title}
       type={action.type}
       params={action.params}
@@ -106,11 +111,21 @@ export function RecceActionContextProvider({
     [setAction, onOpen]
   );
   useCloseModalEffect(onClose);
+  const [runId, setRunId] = useState<string>();
+  const [, setLocation] = useLocation();
 
   return (
-    <RecceActionContext.Provider value={{ runAction }}>
+    <RecceActionContext.Provider value={{ runAction, runId }}>
       {action && (
-        <_ActionModal action={action} isOpen={isOpen} onClose={onClose} />
+        <_ActionModal
+          action={action}
+          isOpen={isOpen}
+          onClose={onClose}
+          onExecute={(runId) => {
+            setRunId(runId);
+            // setLocation(`/runs`);
+          }}
+        />
       )}
       {children}
     </RecceActionContext.Provider>

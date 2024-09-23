@@ -21,10 +21,12 @@ import { useLocation } from "wouter";
 import { RunView } from "./RunView";
 import { RunFormProps, RunResultViewProps } from "./types";
 import { formatDistanceToNow } from "date-fns";
+import { on } from "events";
 
 interface RunModalProps<PT, RT, VO> {
   isOpen: boolean;
   onClose: () => void;
+  onExecute: (runId: string) => void;
   title: string;
   type: RunType;
   params: PT;
@@ -36,6 +38,7 @@ interface RunModalProps<PT, RT, VO> {
 export const RunModal = <PT, RT, VO>({
   isOpen,
   onClose,
+  onExecute,
   type,
   title,
   params: defaultParams,
@@ -56,18 +59,20 @@ export const RunModal = <PT, RT, VO>({
     const { run_id } = await submitRun<PT, RT>(type, params as PT, {
       nowait: true,
     });
+    onExecute(run_id);
+    onClose();
 
-    setRunId(run_id);
+    // setRunId(run_id);
 
-    while (true) {
-      const run = await waitRun(run_id, 2);
-      setProgress(run.progress);
-      if (run.result || run.error) {
-        setAborting(false);
-        setProgress(undefined);
-        return run;
-      }
-    }
+    // while (true) {
+    //   const run = await waitRun(run_id, 2);
+    //   setProgress(run.progress);
+    //   if (run.result || run.error) {
+    //     setAborting(false);
+    //     setProgress(undefined);
+    //     return run;
+    //   }
+    // }
   };
 
   const {

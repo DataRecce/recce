@@ -27,8 +27,14 @@ import {
   StackDivider,
   MenuGroup,
   useToast,
+  useDisclosure,
 } from "@chakra-ui/react";
-import React, { useCallback, useLayoutEffect, useState } from "react";
+import React, {
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useState,
+} from "react";
 import ReactFlow, {
   Node,
   useEdgesState,
@@ -66,11 +72,17 @@ import {
   createLineageDiffCheck,
 } from "@/lib/api/lineagecheck";
 import { ChangeStatusLegend } from "./ChangeStatusLegend";
-import { HSplit } from "../split/Split";
+import { HSplit, VSplit } from "../split/Split";
 import { cacheKeys } from "@/lib/api/cacheKeys";
 import { select } from "@/lib/api/select";
 import { useLocation } from "wouter";
 import { AxiosError } from "axios";
+import { useRecceActionContext } from "@/lib/hooks/RecceActionContext";
+import { cancelRun, waitRun } from "@/lib/api/runs";
+import { createCheckByRun } from "@/lib/api/checks";
+import { useQueryClient } from "@tanstack/react-query";
+import { Run } from "@/lib/api/types";
+import { LatestRunPage } from "../run/LatestRunPage";
 
 export interface LineageViewProps {
   viewOptions?: LineageDiffViewOptions;
@@ -649,9 +661,30 @@ export default function LineageView({ ...props }: LineageViewProps) {
   if (props.viewMode === undefined) {
     props.viewMode = "changed_models";
   }
+  const { runId } = useRecceActionContext();
+  const { isOpen, onOpen, onClose } = useDisclosure();
+
+  useEffect(() => {
+    if (runId) {
+      onOpen();
+    } else {
+      onClose();
+    }
+  }, [runId, onOpen, onClose]);
+
   return (
-    <ReactFlowProvider>
-      <_LineageView {...props} />
-    </ReactFlowProvider>
+    <VSplit
+      sizes={isOpen ? [50, 50] : [100, 0]}
+      minSize={isOpen ? 100 : 0}
+      style={{ height: "100%", borderTop: "1px solid #CBD5E0" }}
+    >
+      <Box>
+        <ReactFlowProvider>
+          <_LineageView {...props} />
+        </ReactFlowProvider>
+      </Box>
+
+      {isOpen ? <LatestRunPage onClose={onClose} /> : <Box></Box>}
+    </VSplit>
   );
 }
