@@ -51,15 +51,20 @@ const _ParamView = ({ params }: { params: any }) => {
 };
 
 export const LatestRunPage = ({ onClose }: RunPageProps) => {
-  const { runId } = useRecceActionContext();
+  const { runId, runAction } = useRecceActionContext();
   const { isPending, error, run } = useRun(runId);
   const [viewOptions, setViewOptions] = useState();
   const queryClient = useQueryClient();
   const [, setLocation] = useLocation();
+  const [tabIndex, setTabIndex] = useState(0);
 
   const RunResultView = run?.type
     ? findByRunType(run.type)?.RunResultView
     : undefined;
+
+  const handleRerun = useCallback(() => {
+    runAction(run?.type || "", run?.params);
+  });
 
   const handleAddToChecklist = useCallback(async () => {
     if (!runId) {
@@ -70,24 +75,37 @@ export const LatestRunPage = ({ onClose }: RunPageProps) => {
     queryClient.invalidateQueries({ queryKey: cacheKeys.checks() });
     setLocation(`/checks/${check.check_id}`);
   }, [runId, setLocation, queryClient, viewOptions]);
-  const [tabIndex, setTabIndex] = useState(0);
 
   return (
     <Flex direction="column">
-      <Tabs tabIndex={tabIndex} onChange={setTabIndex} flexDirection="column">
-        <TabList alignItems="center" height="50px">
-          <Tab fontSize="10pt">Result</Tab>
-          <Tab fontSize="10pt">Params</Tab>
+      <Tabs
+        tabIndex={tabIndex}
+        onChange={setTabIndex}
+        flexDirection="column"
+        mb="1px"
+      >
+        <TabList height="50px">
+          <Tab>Result</Tab>
+          <Tab>Params</Tab>
           <Spacer />
           <HStack>
             <Button
-              size="xs"
+              isDisabled={!runId || isPending}
+              size="sm"
               colorScheme="blue"
-              fontSize="12px"
+              onClick={handleRerun}
+            >
+              Rerun
+            </Button>
+            <Button
+              isDisabled={!runId || !run?.result}
+              size="sm"
+              colorScheme="blue"
               onClick={handleAddToChecklist}
             >
               Add to Checklist
             </Button>
+
             <CloseButton
               onClick={() => {
                 if (onClose) {

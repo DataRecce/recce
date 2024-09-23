@@ -99,8 +99,8 @@ export function NodeView({ node, onCloseNode }: NodeViewProps) {
           node.resourceType === "seed" ||
           node.resourceType === "snapshot") && (
           <Menu>
-            <MenuButton as={Button} size="xs" colorScheme="blue">
-              Explore Diff
+            <MenuButton as={Button} size="sm" colorScheme="blue">
+              Explore Change
             </MenuButton>
             <MenuList>
               <MenuItem
@@ -135,7 +135,14 @@ export function NodeView({ node, onCloseNode }: NodeViewProps) {
                 <MenuItem
                   icon={<Icon as={findByRunType("row_count_diff")?.icon} />}
                   fontSize="14px"
-                  onClick={() => refetchRowCount()}
+                  // onClick={() => refetchRowCount()}
+                  onClick={() => {
+                    runAction(
+                      "row_count_diff",
+                      { node_names: [node.name] },
+                      { showForm: false, showLast: false }
+                    );
+                  }}
                   isDisabled={isRowCountFetching}
                 >
                   Row Count Diff
