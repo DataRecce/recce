@@ -54,7 +54,11 @@ export const RunView = <PT, RT>({
   }
 
   if (isPending) {
-    let loadingMessage = progress?.message ? progress?.message : "Loading...";
+    let loadingMessage = progress?.message
+      ? progress?.message
+      : run?.progress?.message
+      ? run?.progress?.message
+      : "Loading...";
 
     return (
       <Center p="16px" height="100%" bg="rgb(249,249,249)">

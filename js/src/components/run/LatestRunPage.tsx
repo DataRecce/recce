@@ -18,7 +18,7 @@ import {
   HStack,
   Box,
 } from "@chakra-ui/react";
-import { useCallback, useState } from "react";
+import { use, useCallback, useState } from "react";
 import { createCheckByRun } from "@/lib/api/checks";
 import { useLocation } from "wouter";
 import { Editor } from "@monaco-editor/react";
@@ -50,8 +50,15 @@ const _ParamView = ({ params }: { params: any }) => {
   );
 };
 
-export const LatestRunPage = ({ onClose }: RunPageProps) => {
-  const { runId, runAction } = useRecceActionContext();
+export const _LoadableRunView = ({
+  runId,
+  onClose,
+}: {
+  runId?: string;
+  onClose?: () => void;
+}) => {
+  const { runAction } = useRecceActionContext();
+
   const { isPending, error, run } = useRun(runId);
   const [viewOptions, setViewOptions] = useState();
   const queryClient = useQueryClient();
@@ -64,7 +71,7 @@ export const LatestRunPage = ({ onClose }: RunPageProps) => {
 
   const handleRerun = useCallback(() => {
     runAction(run?.type || "", run?.params);
-  });
+  }, [run, runAction]);
 
   const handleAddToChecklist = useCallback(async () => {
     if (!runId) {
@@ -128,4 +135,10 @@ export const LatestRunPage = ({ onClose }: RunPageProps) => {
       {tabIndex === 1 && <_ParamView params={run?.params} />}
     </Flex>
   );
+};
+
+export const LatestRunPage = ({ onClose }: RunPageProps) => {
+  const { runId } = useRecceActionContext();
+
+  return <_LoadableRunView runId={runId} onClose={onClose} />;
 };
