@@ -13,26 +13,24 @@ interface UseRunResult {
 }
 
 export const useRun = (runId?: string): UseRunResult => {
-  const [isPolling, setIsPolling] = useState(true);
+  const [isPolling, setIsPolling] = useState(false);
 
   const { error, data: run } = useQuery({
     queryKey: cacheKeys.run(runId || ""),
     queryFn: async () => {
       return waitRun(runId || "", 1);
     },
-    enabled: !!runId && isPolling,
+    enabled: !!runId,
     refetchInterval: isPolling ? 1000 : false,
   });
 
   useEffect(() => {
     if (error || run?.result || run?.error) {
       setIsPolling(false);
+    } else {
+      setIsPolling(true);
     }
-  }, [run]);
-
-  useEffect(() => {
-    setIsPolling(true);
-  }, [runId]);
+  }, [run, error]);
 
   const RunResultView = run?.type
     ? findByRunType(run.type)?.RunResultView
