@@ -179,7 +179,7 @@ class RecceStateLoader:
         if self.cloud_mode:
             if not self.cloud_options.get('token'):
                 raise Exception('No GitHub token is provided to access the pull request information.')
-            self.pr_info = fetch_pr_metadata(github_token=self.cloud_options.get('token'))
+            self.pr_info = fetch_pr_metadata(cloud=self.cloud_mode, github_token=self.cloud_options.get('token'))
             if self.pr_info.id is None:
                 raise Exception('Cannot get the pull request information from GitHub.')
 
@@ -483,7 +483,7 @@ class RecceCloudStateManager:
 
         if not self.cloud_options.get('token'):
             raise Exception('No GitHub token is provided to access the pull request information.')
-        self.pr_info = fetch_pr_metadata(github_token=self.cloud_options.get('token'))
+        self.pr_info = fetch_pr_metadata(cloud=True, github_token=self.cloud_options.get('token'))
         if self.pr_info.id is None:
             raise Exception('Cannot get the pull request information from GitHub.')
 
