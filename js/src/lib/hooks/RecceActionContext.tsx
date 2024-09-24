@@ -7,13 +7,15 @@ import React, {
 } from "react";
 import { Run, RunType } from "../api/types";
 import { RunModal } from "@/components/run/RunModal";
-import { useDisclosure } from "@chakra-ui/react";
+import { useDisclosure, useToast } from "@chakra-ui/react";
 
 import { useLocation } from "wouter";
 
 import { searchRuns, submitRun, waitRun } from "../api/runs";
 import { findByRunType } from "@/components/run/registry";
 import { useMutation } from "@tanstack/react-query";
+import { RunFormProps } from "@/components/run/types";
+import { run } from "node:test";
 
 export interface RecceActionOptions {
   showForm: boolean;
@@ -47,47 +49,12 @@ const useCloseModalEffect = (onClose: () => void) => {
 
 interface RunActionInternal {
   session: string;
+  title: string;
   type: RunType;
   params?: any;
   lastRun?: Run;
   options?: RecceActionOptions;
-}
-
-function _ActionModal({
-  action,
-  isOpen,
-  onClose,
-  onExecute,
-}: {
-  action: RunActionInternal;
-  isOpen: boolean;
-  onClose: () => void;
-  onExecute: (runId: string) => void;
-}) {
-  const entry = findByRunType(action.type);
-  if (entry === undefined) {
-    throw new Error(`Unknown run type: ${action.type}`);
-  }
-
-  const { title, RunResultView, RunForm } = entry;
-  if (RunResultView === undefined) {
-    throw new Error(`Run type ${action.type} does not have a result view`);
-  }
-
-  return (
-    <RunModal
-      key={action.session}
-      isOpen={isOpen}
-      onClose={onClose}
-      onExecute={onExecute}
-      title={title}
-      type={action.type}
-      params={action.params}
-      initialRun={action.lastRun}
-      RunResultView={RunResultView}
-      RunForm={action.options?.showForm && RunForm ? RunForm : undefined}
-    />
-  );
+  RunForm: React.ComponentType<RunFormProps<any>>;
 }
 
 export function RecceActionContextProvider({
@@ -95,36 +62,109 @@ export function RecceActionContextProvider({
 }: RecceActionContextProviderProps) {
   const [action, setAction] = useState<RunActionInternal>();
   const { isOpen, onOpen, onClose } = useDisclosure();
+  const toast = useToast();
+  const [runId, setRunId] = useState<string>();
+  const [location, setLocation] = useLocation();
+
   const runAction = useCallback(
     async (type: string, params?: any, options?: RecceActionOptions) => {
-      const session = new Date().getTime().toString();
-      let lastRun = undefined;
-      if (options?.showLast) {
-        const runs = await searchRuns(type, params, 1);
-        if (runs.length === 1) {
-          lastRun = runs[0];
+      try {
+        const session = new Date().getTime().toString();
+        let lastRun = undefined;
+        if (options?.showLast) {
+          const runs = await searchRuns(type, params, 1);
+          if (runs.length === 1) {
+            lastRun = runs[0];
+          }
         }
+
+        const entry = findByRunType(type);
+        if (entry === undefined) {
+          throw new Error(`Unknown run type: ${type}`);
+        }
+
+        const { title, RunResultView, RunForm } = entry;
+        if (RunResultView === undefined) {
+          throw new Error(`Run type ${type} does not have a result view`);
+        }
+
+        if (RunForm === undefined || !options?.showForm) {
+          const { run_id } = await submitRun(type, params, {
+            nowait: true,
+          });
+          setRunId(run_id);
+          if (location.startsWith("/lineage")) {
+            setLocation("/lineage");
+          }
+        } else {
+          setAction({
+            session,
+            title,
+            type,
+            params,
+            lastRun,
+            options,
+            RunForm,
+          });
+          onOpen();
+        }
+      } catch (e: any) {
+        toast({
+          title: "Failed to execute",
+          description: e?.message,
+          status: "error",
+          duration: 5000,
+          isClosable: true,
+        });
       }
-      setAction({ session, type, params, lastRun, options });
-      onOpen();
     },
-    [setAction, onOpen]
+    [setAction, onOpen, setRunId, toast]
   );
   useCloseModalEffect(onClose);
-  const [runId, setRunId] = useState<string>();
-  const [, setLocation] = useLocation();
+
+  const handleExecute = async (type: string, params: any) => {
+    try {
+      onClose();
+      const { run_id } = await submitRun(type, params, {
+        nowait: true,
+      });
+      setRunId(run_id);
+    } catch (e: any) {
+      toast({
+        title: "Failed to execute",
+        description: e?.message,
+        status: "error",
+        duration: 5000,
+        isClosable: true,
+      });
+    }
+  };
+
+  useEffect(() => {
+    if (runId) {
+      if (!location.startsWith("/lineage")) {
+        setLocation("/lineage");
+      }
+    }
+  }, [runId]);
 
   return (
     <RecceActionContext.Provider value={{ runAction, runId }}>
       {action && (
-        <_ActionModal
-          action={action}
+        <RunModal
+          key={action.session}
           isOpen={isOpen}
           onClose={onClose}
-          onExecute={(runId) => {
-            setRunId(runId);
-            // setLocation(`/runs`);
-          }}
+          onExecute={handleExecute}
+          title={action.title}
+          type={action.type}
+          params={action.params}
+          initialRun={action.lastRun}
+          RunForm={
+            action.options?.showForm && action.RunForm
+              ? action.RunForm
+              : undefined
+          }
         />
       )}
       {children}

@@ -9,33 +9,31 @@ import {
   Tabs,
   TabList,
   Tab,
-  TabPanels,
-  TabPanel,
   Flex,
   Button,
   Spacer,
   CloseButton,
   HStack,
-  Box,
 } from "@chakra-ui/react";
-import { use, useCallback, useState } from "react";
+import { useCallback, useState } from "react";
 import { createCheckByRun } from "@/lib/api/checks";
 import { useLocation } from "wouter";
 import { Editor } from "@monaco-editor/react";
+import YAML from "yaml";
 
 interface RunPageProps {
   onClose?: () => void;
 }
 
-const _ParamView = ({ params }: { params: any }) => {
-  const json = JSON.stringify(params, null, 2);
+const _ParamView = (data: { type: string; params: any }) => {
+  const yaml = YAML.stringify(data, null, 2);
 
   return (
     <Editor
       height="100%"
-      language="json"
+      language="yaml"
       theme="vs"
-      value={json}
+      value={yaml}
       options={{
         readOnly: true,
         fontSize: 14,
@@ -132,7 +130,9 @@ export const _LoadableRunView = ({
         />
       )}
 
-      {tabIndex === 1 && <_ParamView params={run?.params} />}
+      {tabIndex === 1 && run && (
+        <_ParamView type={run.type} params={run.params} />
+      )}
     </Flex>
   );
 };
