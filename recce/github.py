@@ -128,9 +128,7 @@ def get_pull_request(branch, owner, repo_name, github_token=None):
                 return pr
 
     except UnknownObjectException:
-        if github_token is None:
-            print(f"Repository {owner}/{repo_name} not found. Please provide '$GITHUB_TOKEN' environment variable.")
-        else:
+        if github_token is not None:
             print(
                 f"Repository {owner}/{repo_name} not found. If it is private repo, please add the 'repo' scope to the token.")
         return None
