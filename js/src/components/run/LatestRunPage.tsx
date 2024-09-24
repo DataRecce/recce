@@ -57,7 +57,7 @@ export const _LoadableRunView = ({
 }) => {
   const { runAction } = useRecceActionContext();
 
-  const { isPending, error, run } = useRun(runId);
+  const { isPending, error, run, onCancel } = useRun(runId);
   const [viewOptions, setViewOptions] = useState();
   const queryClient = useQueryClient();
   const [, setLocation] = useLocation();
@@ -126,6 +126,7 @@ export const _LoadableRunView = ({
           isPending={isPending}
           error={error}
           run={run}
+          onCancel={onCancel}
           RunResultView={RunResultView}
         />
       )}
