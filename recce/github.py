@@ -3,7 +3,7 @@ import os
 import re
 import zipfile
 from datetime import datetime
-from typing import List, Tuple, Union
+from typing import List, Tuple, Optional
 
 import requests
 from github import Artifact, Github, Auth, UnknownObjectException, PullRequest
@@ -116,7 +116,7 @@ def recce_base_artifact(**kwargs):
     pass
 
 
-def get_pull_request(branch, owner, repo_name, github_token=None) -> Tuple[Union[PullRequest, None], Union[str, None]]:
+def get_pull_request(branch, owner, repo_name, github_token=None) -> Tuple[Optional[type(PullRequest)], Optional[str]]:
     g = Github(auth=Auth.Token(github_token)) if github_token else Github()
 
     try:
@@ -134,7 +134,7 @@ def get_pull_request(branch, owner, repo_name, github_token=None) -> Tuple[Union
     return None, None
 
 
-def recce_pr_information(github_token=None) -> Tuple[Union[PullRequest, None], Union[str, None]]:
+def recce_pr_information(github_token=None) -> Tuple[Optional[type(PullRequest)], Optional[str]]:
     branch = current_branch()
     repo = hosting_repo()
 
