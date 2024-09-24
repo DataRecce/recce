@@ -34,7 +34,10 @@ def fetch_pr_metadata(**kwargs):
         pr_info.repository = metadata.get('github_repository')
     else:
         repo = hosting_repo()
-        pr = recce_pr_information(github_token=kwargs.get('github_token'))
+        pr, message = recce_pr_information(github_token=kwargs.get('github_token'))
+        if kwargs.get('cloud') and message:
+            print(message)
+
         if pr:
             pr_info.repository = repo
             pr_info.id = pr.number

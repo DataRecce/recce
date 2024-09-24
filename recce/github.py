@@ -3,7 +3,7 @@ import os
 import re
 import zipfile
 from datetime import datetime
-from typing import List
+from typing import List, Tuple, Optional
 
 import requests
 from github import Artifact, Github, Auth, UnknownObjectException, PullRequest
@@ -116,7 +116,7 @@ def recce_base_artifact(**kwargs):
     pass
 
 
-def get_pull_request(branch, owner, repo_name, github_token=None):
+def get_pull_request(branch, owner, repo_name, github_token=None) -> Tuple[Optional[type(PullRequest)], Optional[str]]:
     g = Github(auth=Auth.Token(github_token)) if github_token else Github()
 
     try:
@@ -125,36 +125,28 @@ def get_pull_request(branch, owner, repo_name, github_token=None):
 
         for pr in pulls:
             if pr.head.ref == branch:
-                return pr
+                return pr, None
 
     except UnknownObjectException:
-        if github_token is None:
-            print(f"Repository {owner}/{repo_name} not found. Please provide '$GITHUB_TOKEN' environment variable.")
-        else:
-            print(
-                f"Repository {owner}/{repo_name} not found. If it is private repo, please add the 'repo' scope to the token.")
-        return None
+        if github_token is not None:
+            return None, f"Repository {owner}/{repo_name} not found. If it is private repo, please add the 'repo' scope to the token."
 
-    return None
+    return None, None
 
 
-def recce_pr_information(github_token=None) -> PullRequest:
+def recce_pr_information(github_token=None) -> Tuple[Optional[type(PullRequest)], Optional[str]]:
     branch = current_branch()
     repo = hosting_repo()
 
     if not repo:
-        print('This is not a git repository.')
-        return
+        return None, 'This is not a git repository.'
     if '/' not in repo:
-        print('This is not a GitHub repository.')
-        return
+        return None, 'This is not a GitHub repository.'
 
     owner, repo_name = repo.split('/')
 
     github_token = github_token if github_token else os.getenv("GITHUB_TOKEN")
-    pr = get_pull_request(branch, owner, repo_name, github_token)
-
-    return pr if pr else None
+    return get_pull_request(branch, owner, repo_name, github_token)
 
 
 def is_github_codespace():
