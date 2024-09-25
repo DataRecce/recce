@@ -41,9 +41,6 @@ import { useLineageGraphContext } from "@/lib/hooks/LineageGraphContext";
 import useModelColumns from "@/lib/hooks/useModelColumns";
 import { createSchemaDiffCheck } from "@/lib/api/schemacheck";
 import { findByRunType } from "../run/registry";
-import { cacheKeys } from "@/lib/api/cacheKeys";
-import { queryModelRowCount } from "@/lib/api/models";
-import { useQuery } from "@tanstack/react-query";
 
 interface NodeViewProps {
   node: LineageGraphNode;
@@ -68,16 +65,13 @@ export function NodeView({ node, onCloseNode }: NodeViewProps) {
   const { runAction } = useRecceActionContext();
   const { envInfo } = useLineageGraphContext();
   const { primaryKey } = useModelColumns(node.name);
-  const {
-    data: rowCount,
-    refetch: refetchRowCount,
-    isFetching: isRowCountFetching,
-    error: rowCountError,
-  } = useQuery({
-    queryKey: cacheKeys.rowCount(node.name),
-    queryFn: () => queryModelRowCount(node.name),
-    enabled: false,
-  });
+  const refetchRowCount = () => {
+    runAction(
+      "row_count_diff",
+      { node_names: [node.name] },
+      { showForm: false, showLast: false }
+    );
+  };
 
   const addSchemaCheck = useCallback(async () => {
     const nodeId = node.id;
@@ -99,8 +93,8 @@ export function NodeView({ node, onCloseNode }: NodeViewProps) {
           node.resourceType === "seed" ||
           node.resourceType === "snapshot") && (
           <Menu>
-            <MenuButton as={Button} size="xs" colorScheme="blue">
-              Explore Diff
+            <MenuButton as={Button} size="sm" colorScheme="blue">
+              Explore Change
             </MenuButton>
             <MenuList>
               <MenuItem
@@ -136,7 +130,6 @@ export function NodeView({ node, onCloseNode }: NodeViewProps) {
                   icon={<Icon as={findByRunType("row_count_diff")?.icon} />}
                   fontSize="14px"
                   onClick={() => refetchRowCount()}
-                  isDisabled={isRowCountFetching}
                 >
                   Row Count Diff
                 </MenuItem>
@@ -150,7 +143,7 @@ export function NodeView({ node, onCloseNode }: NodeViewProps) {
                       {
                         model: node.name,
                       },
-                      { showForm: false, showLast: true }
+                      { showForm: false, showLast: false }
                     );
                   }}
                 >
@@ -166,7 +159,7 @@ export function NodeView({ node, onCloseNode }: NodeViewProps) {
                       {
                         model: node.name,
                       },
-                      { showForm: true, showLast: true }
+                      { showForm: true, showLast: false }
                     );
                   }}
                 >
@@ -229,13 +222,7 @@ export function NodeView({ node, onCloseNode }: NodeViewProps) {
           {(node.resourceType === "model" ||
             node.resourceType === "snapshot" ||
             node.resourceType === "seed") && (
-            <RowCountTag
-              node={node}
-              onRefresh={refetchRowCount}
-              rowCount={rowCount}
-              isFetching={isRowCountFetching}
-              error={rowCountError}
-            />
+            <RowCountTag node={node} onRefresh={refetchRowCount} />
           )}
         </HStack>
       </Box>

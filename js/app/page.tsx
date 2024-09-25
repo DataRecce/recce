@@ -1,6 +1,5 @@
 "use client";
 
-import LineageView from "@/components/lineage/LineageView";
 import {
   Image,
   Tabs,
@@ -44,6 +43,7 @@ import { EnvInfo } from "@/components/env/EnvInfo";
 import { StateSynchronizer } from "@/components/check/StateSynchronizer";
 import { Check, listChecks } from "@/lib/api/checks";
 import { cacheKeys } from "@/lib/api/cacheKeys";
+import { LineagePage } from "@/components/lineage/LineagePage";
 
 function getCookie(key: string) {
   var b = document.cookie.match("(^|;)\\s*" + key + "\\s*=\\s*([^;]+)");
@@ -306,7 +306,7 @@ export default function Home() {
                   >
                     {/* Prevent the lineage page unmount and lose states */}
                     <RouteAlwaysMount path="/lineage">
-                      <LineageView />
+                      <LineagePage />
                     </RouteAlwaysMount>
                     <Switch>
                       <Route path="/query">

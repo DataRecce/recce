@@ -4,7 +4,6 @@ from pydantic import BaseModel
 
 from .core import Task, TaskResultDiffer
 from .dataframe import DataFrame
-
 from ..core import default_context
 from ..exceptions import RecceException
 
@@ -182,8 +181,8 @@ class ValueDiffTask(Task, ValueDiffMixin):
                 if 'values do not match' in column_state:
                     column_groups[column_name]['mismatched'] += row_count
 
-                # Cancel as early as possible
-                self.check_cancel()
+            # Cancel as early as possible
+            self.check_cancel()
 
             completed = completed + 1
 
@@ -233,6 +232,7 @@ class ValueDiffTask(Task, ValueDiffMixin):
             return self._query_value_diff(dbt_adapter, primary_key, model, columns=columns)
 
     def cancel(self):
+        super().cancel()
         from recce.adapter.dbt_adapter import DbtAdapter
 
         if self.connection:
