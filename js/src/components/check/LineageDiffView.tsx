@@ -1,6 +1,7 @@
 import { Check } from "@/lib/api/checks";
-import LineageView from "../lineage/LineageView";
+import { LineageView } from "../lineage/LineageView";
 import { Flex } from "@chakra-ui/react";
+import { ReactFlowProvider } from "reactflow";
 
 export interface LineageDiffViewProps {
   check: Check;
@@ -11,7 +12,9 @@ export function LineageDiffView({ check }: LineageDiffViewProps) {
 
   return (
     <Flex direction="column" height="100%">
-      <LineageView viewOptions={viewOptions} interactive={false} />
+      <ReactFlowProvider>
+        <LineageView viewOptions={viewOptions} interactive={false} />
+      </ReactFlowProvider>
     </Flex>
   );
 }

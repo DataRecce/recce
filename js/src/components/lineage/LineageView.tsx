@@ -30,9 +30,12 @@ import {
   useDisclosure,
 } from "@chakra-ui/react";
 import React, {
+  Ref,
+  RefObject,
   useCallback,
   useEffect,
   useLayoutEffect,
+  useRef,
   useState,
 } from "react";
 import ReactFlow, {
@@ -140,8 +143,52 @@ function _AddLineageDiffCheckButton({
   );
 }
 
-function _LineageView({ ...props }: LineageViewProps) {
+const useResizeObserver = (
+  ref: RefObject<HTMLElement>,
+  handler: () => void
+): number => {
+  const [height, setHeight] = useState(1);
+  const [width, setWidth] = useState(1);
+  const target = ref?.current;
+
+  useEffect(() => {
+    const handleResize = (entries: ResizeObserverEntry[]) => {
+      for (let entry of entries) {
+        const newWidth = entry.contentRect.width;
+        const newHeight = entry.contentRect.height;
+
+        if (
+          Math.abs(newHeight - height) > 100 ||
+          Math.abs(newWidth - width) > 100
+        ) {
+          if (height > 0 && newHeight > 0 && width > 0 && newWidth > 0) {
+            handler();
+          }
+        }
+        setHeight(newHeight);
+        setWidth(newWidth);
+      }
+    };
+
+    const resizeObserver = new ResizeObserver(handleResize);
+
+    if (target) {
+      resizeObserver.observe(target);
+    }
+
+    return () => {
+      if (target) {
+        resizeObserver.unobserve(target);
+      }
+    };
+  }, [target, height, width, handler]);
+
+  return height;
+};
+
+export function LineageView({ ...props }: LineageViewProps) {
   const reactFlow = useReactFlow();
+  const refReactFlow = useRef<HTMLDivElement>(null);
   const { successToast, failToast } = useClipBoardToast();
   const { copyToClipboard, ImageDownloadModal, ref } = useCopyToClipboard({
     renderLibrary: "html-to-image",
@@ -307,6 +354,16 @@ function _LineageView({ ...props }: LineageViewProps) {
     }
   };
 
+  useResizeObserver(refReactFlow, () => {
+    if (selectMode === "detail" || selectMode === "action_result") {
+      const selectedNode = nodes.find((node) => node.data.isSelected);
+      if (selectedNode) {
+        console.log("resize", selectedNode.id);
+        centerNode(selectedNode);
+      }
+    }
+  });
+
   const onNodeClick = (event: React.MouseEvent, node: Node) => {
     if (props.interactive === false) return;
     closeContextMenu();
@@ -314,15 +371,15 @@ function _LineageView({ ...props }: LineageViewProps) {
       setDetailViewSelected(node.data);
       if (!isDetailViewShown) {
         setIsDetailViewShown(true);
-        centerNode(node);
       }
+      centerNode(node);
       setNodes(selectSingleNode(node.id, nodes));
     } else if (selectMode === "action_result") {
       setDetailViewSelected(node.data);
       if (!isDetailViewShown) {
         setIsDetailViewShown(true);
-        centerNode(node);
       }
+      centerNode(node);
       setNodes(selectSingleNode(node.id, nodes));
     } else {
       setNodes(selectNode(node.id, nodes));
@@ -504,6 +561,7 @@ function _LineageView({ ...props }: LineageViewProps) {
       style={{ height: "100%", width: "100%" }}
     >
       <VStack
+        ref={refReactFlow}
         divider={<StackDivider borderColor="gray.200" />}
         spacing={0}
         style={{ contain: "strict" }}
@@ -650,41 +708,5 @@ function _LineageView({ ...props }: LineageViewProps) {
       {/* </Flex> */}
       {/* <div></div> */}
     </HSplit>
-  );
-}
-
-export default function LineageView({ ...props }: LineageViewProps) {
-  // Set default value for interactive
-  if (props.interactive === undefined) {
-    props.interactive = true;
-  }
-  if (props.viewMode === undefined) {
-    props.viewMode = "changed_models";
-  }
-  const { runId } = useRecceActionContext();
-  const { isOpen, onOpen, onClose } = useDisclosure();
-
-  useEffect(() => {
-    if (runId) {
-      onOpen();
-    } else {
-      onClose();
-    }
-  }, [runId, onOpen, onClose]);
-
-  return (
-    <VSplit
-      sizes={isOpen ? [50, 50] : [100, 0]}
-      minSize={isOpen ? 100 : 0}
-      style={{ height: "100%", borderTop: "1px solid #CBD5E0" }}
-    >
-      <Box>
-        <ReactFlowProvider>
-          <_LineageView {...props} />
-        </ReactFlowProvider>
-      </Box>
-
-      {isOpen ? <RunResultPane onClose={onClose} /> : <Box></Box>}
-    </VSplit>
   );
 }
