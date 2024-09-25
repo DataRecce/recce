@@ -31,14 +31,16 @@ export const useRun = (runId?: string): UseRunResult => {
 
   useEffect(() => {
     if (error || run?.result || run?.error) {
-      setIsPolling(false);
-      if (run?.type === "row_count_diff") {
-        refetchRunsAggregated();
+      if (isPolling) {
+        setIsPolling(false);
+        if (run?.type === "row_count_diff") {
+          refetchRunsAggregated();
+        }
       }
     } else {
       setIsPolling(true);
     }
-  }, [run, error, refetchRunsAggregated]);
+  }, [run, error, isPolling, refetchRunsAggregated]);
 
   const onCancel = useCallback(async () => {
     setAborting(true);
