@@ -127,6 +127,8 @@ export const _LoadableRunView = ({
           error={error}
           run={run}
           onCancel={onCancel}
+          viewOptions={viewOptions}
+          onViewOptionsChanged={setViewOptions}
           RunResultView={RunResultView}
         />
       )}

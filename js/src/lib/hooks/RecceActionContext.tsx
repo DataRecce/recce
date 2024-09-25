@@ -108,15 +108,16 @@ export function RecceActionContextProvider({
         }
       } catch (e: any) {
         toast({
-          title: "Failed to execute",
+          title: "Failed to submit a run",
           description: e?.message,
+          position: "bottom-right",
           status: "error",
           duration: 5000,
           isClosable: true,
         });
       }
     },
-    [setAction, onOpen, setRunId, toast]
+    [setAction, onOpen, setRunId, toast, location, setLocation]
   );
   useCloseModalEffect(onClose);
 
@@ -129,8 +130,9 @@ export function RecceActionContextProvider({
       setRunId(run_id);
     } catch (e: any) {
       toast({
-        title: "Failed to execute",
+        title: "Failed to submit a run",
         description: e?.message,
+        position: "bottom-right",
         status: "error",
         duration: 5000,
         isClosable: true,
@@ -144,7 +146,7 @@ export function RecceActionContextProvider({
         setLocation("/lineage");
       }
     }
-  }, [runId]);
+  }, [runId, location, setLocation]);
 
   return (
     <RecceActionContext.Provider value={{ runAction, runId }}>

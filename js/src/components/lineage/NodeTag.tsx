@@ -106,7 +106,7 @@ export function ModelRowCount({ rowCount }: ModelRowCountProps) {
 export interface RowCountTagProps {
   node: LineageGraphNode;
   rowCount?: RowCount;
-  onRefresh?: () => Promise<any>;
+  onRefresh?: () => void;
   isFetching?: boolean;
   error?: Error | null;
 }
@@ -157,10 +157,7 @@ export function RowCountTag({
             aria-label="Query Row Count"
             icon={<RepeatIcon />}
             size="xs"
-            onClick={async () => {
-              await onRefresh();
-              refetchRunsAggregated?.();
-            }}
+            onClick={onRefresh}
           />
         )}
       </Tag>

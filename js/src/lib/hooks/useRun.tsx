@@ -4,6 +4,7 @@ import { cancelRun, waitRun } from "@/lib/api/runs";
 import { useQuery } from "@tanstack/react-query";
 import { Run } from "../api/types";
 import { useCallback, useEffect, useState } from "react";
+import { useRunsAggregated } from "./LineageGraphContext";
 
 interface UseRunResult {
   run?: Run;
@@ -36,6 +37,7 @@ export const useRun = (runId?: string): UseRunResult => {
   const [isPolling, setIsPolling] = useState(false);
   const [aborting, setAborting] = useState(false);
   useCancelOnUnmount({ runId, isPolling, setAborting });
+  const [, refetchRunsAggregated] = useRunsAggregated();
 
   const { error, data: run } = useQuery({
     queryKey: cacheKeys.run(runId || ""),
@@ -49,10 +51,13 @@ export const useRun = (runId?: string): UseRunResult => {
   useEffect(() => {
     if (error || run?.result || run?.error) {
       setIsPolling(false);
+      if (run?.type === "row_count_diff") {
+        refetchRunsAggregated();
+      }
     } else {
       setIsPolling(true);
     }
-  }, [run, error]);
+  }, [run, error, refetchRunsAggregated]);
 
   const onCancel = useCallback(async () => {
     setAborting(true);
