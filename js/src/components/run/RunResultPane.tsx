@@ -1,6 +1,5 @@
 import { cacheKeys } from "@/lib/api/cacheKeys";
-import { waitRun } from "@/lib/api/runs";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useQueryClient } from "@tanstack/react-query";
 import { RunView } from "./RunView";
 import { findByRunType } from "./registry";
 import { useRecceActionContext } from "@/lib/hooks/RecceActionContext";
@@ -15,7 +14,7 @@ import {
   CloseButton,
   HStack,
 } from "@chakra-ui/react";
-import { useCallback, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { createCheckByRun } from "@/lib/api/checks";
 import { useLocation } from "wouter";
 import { Editor } from "@monaco-editor/react";
@@ -58,6 +57,19 @@ export const _LoadableRunView = ({
   const { runAction } = useRecceActionContext();
 
   const { isPending, error, run, onCancel } = useRun(runId);
+  const isPendingRef = useRef(false);
+  isPendingRef.current = isPending;
+
+  useEffect(() => {
+    return () => {
+      if (isPendingRef.current) {
+        onCancel();
+      }
+    };
+
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isPendingRef]);
+
   const [viewOptions, setViewOptions] = useState();
   const queryClient = useQueryClient();
   const [, setLocation] = useLocation();

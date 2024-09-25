@@ -8,44 +8,25 @@ import { useRunsAggregated } from "./LineageGraphContext";
 
 interface UseRunResult {
   run?: Run;
+  aborting: boolean;
   isPending: boolean;
   error: Error | null;
   onCancel: () => void;
   RunResultView?: React.ComponentType<any>;
 }
 
-const useCancelOnUnmount = ({
-  runId,
-  isPolling,
-  setAborting,
-}: {
-  runId?: string;
-  isPolling?: boolean;
-  setAborting: (aborting: boolean) => void;
-}) => {
-  useEffect(() => {
-    return () => {
-      setAborting(false);
-      if (runId && isPolling) {
-        cancelRun(runId);
-      }
-    };
-  }, [isPolling, runId, setAborting]);
-};
-
 export const useRun = (runId?: string): UseRunResult => {
   const [isPolling, setIsPolling] = useState(false);
   const [aborting, setAborting] = useState(false);
-  useCancelOnUnmount({ runId, isPolling, setAborting });
   const [, refetchRunsAggregated] = useRunsAggregated();
 
   const { error, data: run } = useQuery({
     queryKey: cacheKeys.run(runId || ""),
     queryFn: async () => {
-      return waitRun(runId || "", 1);
+      return waitRun(runId || "", 2);
     },
     enabled: !!runId,
-    refetchInterval: isPolling ? 1000 : false,
+    refetchInterval: isPolling ? 50 : false,
   });
 
   useEffect(() => {
@@ -75,6 +56,7 @@ export const useRun = (runId?: string): UseRunResult => {
   return {
     run,
     isPending: isPolling,
+    aborting,
     error,
     onCancel,
     RunResultView,
