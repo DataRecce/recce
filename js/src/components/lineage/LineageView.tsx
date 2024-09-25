@@ -358,7 +358,6 @@ export function LineageView({ ...props }: LineageViewProps) {
     if (selectMode === "detail" || selectMode === "action_result") {
       const selectedNode = nodes.find((node) => node.data.isSelected);
       if (selectedNode) {
-        console.log("resize", selectedNode.id);
         centerNode(selectedNode);
       }
     }

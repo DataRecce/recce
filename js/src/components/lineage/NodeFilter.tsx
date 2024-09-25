@@ -184,7 +184,6 @@ const PackageSelectMenu = ({
                 size="sm"
                 isChecked={selected.has(pkg)}
                 onChange={() => {
-                  console.log("selected");
                   handleSelect(thePkg);
                 }}
               >
