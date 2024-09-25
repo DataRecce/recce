@@ -82,7 +82,7 @@ import { cancelRun, waitRun } from "@/lib/api/runs";
 import { createCheckByRun } from "@/lib/api/checks";
 import { useQueryClient } from "@tanstack/react-query";
 import { Run } from "@/lib/api/types";
-import { LatestRunPage } from "../run/LatestRunPage";
+import { RunResultPane } from "../run/RunResultPane";
 
 export interface LineageViewProps {
   viewOptions?: LineageDiffViewOptions;
@@ -684,7 +684,7 @@ export default function LineageView({ ...props }: LineageViewProps) {
         </ReactFlowProvider>
       </Box>
 
-      {isOpen ? <LatestRunPage onClose={onClose} /> : <Box></Box>}
+      {isOpen ? <RunResultPane onClose={onClose} /> : <Box></Box>}
     </VSplit>
   );
 }

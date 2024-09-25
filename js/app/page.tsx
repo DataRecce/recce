@@ -44,7 +44,6 @@ import { EnvInfo } from "@/components/env/EnvInfo";
 import { StateSynchronizer } from "@/components/check/StateSynchronizer";
 import { Check, listChecks } from "@/lib/api/checks";
 import { cacheKeys } from "@/lib/api/cacheKeys";
-import { LatestRunPage } from "@/components/run/LatestRunPage";
 
 function getCookie(key: string) {
   var b = document.cookie.match("(^|;)\\s*" + key + "\\s*=\\s*([^;]+)");
@@ -319,11 +318,6 @@ export default function Home() {
                       <Route path="/runs/:runId">
                         {({ runId }) => {
                           return <RunPage runId={runId} />;
-                        }}
-                      </Route>
-                      <Route path="/runs">
-                        {() => {
-                          return <LatestRunPage />;
                         }}
                       </Route>
                       <Route path="/ssr">

@@ -146,7 +146,8 @@ export function RecceActionContextProvider({
         setLocation("/lineage");
       }
     }
-  }, [runId, location, setLocation]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [runId]);
 
   return (
     <RecceActionContext.Provider value={{ runAction, runId }}>

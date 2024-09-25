@@ -140,7 +140,7 @@ export const _LoadableRunView = ({
   );
 };
 
-export const LatestRunPage = ({ onClose }: RunPageProps) => {
+export const RunResultPane = ({ onClose }: RunPageProps) => {
   const { runId } = useRecceActionContext();
 
   return <_LoadableRunView runId={runId} onClose={onClose} />;

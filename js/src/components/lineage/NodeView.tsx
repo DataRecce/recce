@@ -41,9 +41,6 @@ import { useLineageGraphContext } from "@/lib/hooks/LineageGraphContext";
 import useModelColumns from "@/lib/hooks/useModelColumns";
 import { createSchemaDiffCheck } from "@/lib/api/schemacheck";
 import { findByRunType } from "../run/registry";
-import { cacheKeys } from "@/lib/api/cacheKeys";
-import { queryModelRowCount } from "@/lib/api/models";
-import { useQuery } from "@tanstack/react-query";
 
 interface NodeViewProps {
   node: LineageGraphNode;
