@@ -235,9 +235,9 @@ async def cli_run(output_state_file: str, **kwargs):
             pass
         else:
             console.rule("Preset checks")
-            rc, failed_checks = await execute_preset_checks(preset_checks)
-            if rc != 0 and failed_checks:
-                console.print("[[yellow]Warning[/yellow]] Some preset checks failed. Please see the failed reason.")
+            _, failed_checks = await execute_preset_checks(preset_checks)
+            if failed_checks:
+                console.print("[[yellow]Warning[/yellow]] Preset checks failed. Please see the failed reason.")
                 process_failed_checks(failed_checks, error_log)
     else:
         state_checks = ctx.state_loader.state.checks
@@ -248,7 +248,7 @@ async def cli_run(output_state_file: str, **kwargs):
             console.rule("Checks")
             _, failed_checks = await execute_state_checks(state_checks)
             if failed_checks:
-                console.print("[[yellow]Warning[/yellow]] Some checks failed. Please see the failed reason.")
+                console.print("[[yellow]Warning[/yellow]] Checks failed. Please see the failed reason.")
                 process_failed_checks(failed_checks, error_log)
 
     from recce.event import log_load_state
