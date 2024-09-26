@@ -140,10 +140,12 @@ function _AddLineageDiffCheckButton({
 const useResizeObserver = (
   ref: RefObject<HTMLElement>,
   handler: () => void
-): number => {
-  const [height, setHeight] = useState(1);
-  const [width, setWidth] = useState(1);
+) => {
   const target = ref?.current;
+  const size = useRef({
+    width: 0,
+    height: 0,
+  });
 
   useEffect(() => {
     const handleResize = (entries: ResizeObserverEntry[]) => {
@@ -152,15 +154,22 @@ const useResizeObserver = (
         const newHeight = entry.contentRect.height;
 
         if (
-          Math.abs(newHeight - height) > 100 ||
-          Math.abs(newWidth - width) > 100
+          Math.abs(newHeight - size.current.height) > 10 ||
+          Math.abs(newWidth - size.current.width) > 10
         ) {
-          if (height > 0 && newHeight > 0 && width > 0 && newWidth > 0) {
+          if (
+            size.current.height > 0 &&
+            newHeight > 0 &&
+            size.current.width > 0 &&
+            newWidth > 0
+          ) {
             handler();
           }
         }
-        setHeight(newHeight);
-        setWidth(newWidth);
+        size.current = {
+          width: newWidth,
+          height: newHeight,
+        };
       }
     };
 
@@ -175,9 +184,7 @@ const useResizeObserver = (
         resizeObserver.unobserve(target);
       }
     };
-  }, [target, height, width, handler]);
-
-  return height;
+  }, [target, size, handler]);
 };
 
 export function LineageView({ ...props }: LineageViewProps) {
@@ -350,7 +357,7 @@ export function LineageView({ ...props }: LineageViewProps) {
     }
   };
 
-  useResizeObserver(refReactFlow, () => {
+  useResizeObserver(refReactFlow, async () => {
     if (selectMode === "detail" || selectMode === "action_result") {
       const selectedNode = nodes.find((node) => node.data.isSelected);
       if (selectedNode) {
