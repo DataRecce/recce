@@ -84,7 +84,7 @@ export function RecceActionContextProvider({
       setRunId(runId);
       onResultPaneOpen();
     },
-    [setRunId, onModalOpen]
+    [setRunId, onResultPaneOpen]
   );
 
   const runAction = useCallback(

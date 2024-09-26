@@ -377,15 +377,9 @@ export function LineageView({ ...props }: LineageViewProps) {
       centerNode(node);
       setNodes(selectSingleNode(node.id, nodes));
     } else if (selectMode === "action_result") {
-      // setDetailViewSelected(node.data);
-      // if (!isDetailViewShown) {
-      //   setIsDetailViewShown(true);
-      // }
-
       if (node.data.action?.run?.run_id) {
         showRunId(node.data.action?.run?.run_id);
       }
-
       centerNode(node);
       setNodes(selectSingleNode(node.id, nodes));
     } else {
