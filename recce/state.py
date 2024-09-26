@@ -121,7 +121,7 @@ class RecceState(BaseModel):
 
         logger.debug(f"Load state file from: '{file_path}'")
         if not Path(file_path).is_file():
-            raise FileNotFoundError(f"State file not found: {file_path}")
+            return None
 
         io = file_io_factory(file_type)
         json_content = io.read(file_path)
