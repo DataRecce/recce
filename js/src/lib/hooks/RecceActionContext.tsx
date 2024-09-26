@@ -14,6 +14,7 @@ import { useLocation } from "wouter";
 import { searchRuns, submitRun, waitRun } from "../api/runs";
 import { findByRunType } from "@/components/run/registry";
 import { RunFormProps } from "@/components/run/types";
+import { on } from "events";
 
 export interface RecceActionOptions {
   showForm: boolean;
@@ -27,10 +28,16 @@ export interface RecceActionContextType {
     actionOptions?: RecceActionOptions
   ) => void;
   runId?: string;
+  showRunId: (runId: string) => void;
+  isOpen: boolean;
+  close: () => void;
 }
 
 export const RecceActionContext = createContext<RecceActionContextType>({
   runAction: () => {},
+  showRunId: (runId: string) => {},
+  isOpen: false,
+  close: () => {},
 });
 
 interface RecceActionContextProviderProps {
@@ -59,10 +66,26 @@ export function RecceActionContextProvider({
   children,
 }: RecceActionContextProviderProps) {
   const [action, setAction] = useState<RunActionInternal>();
-  const { isOpen, onOpen, onClose } = useDisclosure();
+  const {
+    isOpen: isModalOpen,
+    onOpen: onModalOpen,
+    onClose: onModalClose,
+  } = useDisclosure();
+  const {
+    isOpen: isResultPaneOpen,
+    onOpen: onResultPaneOpen,
+    onClose: onResultPaneClose,
+  } = useDisclosure();
   const toast = useToast();
   const [runId, setRunId] = useState<string>();
   const [location, setLocation] = useLocation();
+  const showRunId = useCallback(
+    (runId: string) => {
+      setRunId(runId);
+      onResultPaneOpen();
+    },
+    [setRunId, onModalOpen]
+  );
 
   const runAction = useCallback(
     async (type: string, params?: any, options?: RecceActionOptions) => {
@@ -90,7 +113,7 @@ export function RecceActionContextProvider({
           const { run_id } = await submitRun(type, params, {
             nowait: true,
           });
-          setRunId(run_id);
+          showRunId(run_id);
           if (location.startsWith("/lineage")) {
             setLocation("/lineage");
           }
@@ -104,7 +127,7 @@ export function RecceActionContextProvider({
             options,
             RunForm,
           });
-          onOpen();
+          onModalOpen();
         }
       } catch (e: any) {
         toast({
@@ -117,17 +140,17 @@ export function RecceActionContextProvider({
         });
       }
     },
-    [setAction, onOpen, setRunId, toast, location, setLocation]
+    [setAction, onModalOpen, showRunId, toast, location, setLocation]
   );
-  useCloseModalEffect(onClose);
+  useCloseModalEffect(onModalClose);
 
   const handleExecute = async (type: string, params: any) => {
     try {
-      onClose();
+      onModalClose();
       const { run_id } = await submitRun(type, params, {
         nowait: true,
       });
-      setRunId(run_id);
+      showRunId(run_id);
     } catch (e: any) {
       toast({
         title: "Failed to submit a run",
@@ -150,12 +173,20 @@ export function RecceActionContextProvider({
   }, [runId]);
 
   return (
-    <RecceActionContext.Provider value={{ runAction, runId }}>
+    <RecceActionContext.Provider
+      value={{
+        runAction,
+        runId,
+        showRunId,
+        isOpen: isResultPaneOpen,
+        close: onResultPaneClose,
+      }}
+    >
       {action && (
         <RunModal
           key={action.session}
-          isOpen={isOpen}
-          onClose={onClose}
+          isOpen={isModalOpen}
+          onClose={onModalClose}
           onExecute={handleExecute}
           title={action.title}
           type={action.type}

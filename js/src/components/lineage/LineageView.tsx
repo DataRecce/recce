@@ -67,7 +67,6 @@ import {
   useCopyToClipboard,
 } from "@/lib/hooks/ScreenShot";
 import { useClipBoardToast } from "@/lib/hooks/useClipBoardToast";
-import { NodeRunView } from "./NodeRunView";
 
 import { union } from "./graph";
 import {
@@ -80,6 +79,7 @@ import { cacheKeys } from "@/lib/api/cacheKeys";
 import { select } from "@/lib/api/select";
 import { useLocation } from "wouter";
 import { AxiosError } from "axios";
+import { useRecceActionContext } from "@/lib/hooks/RecceActionContext";
 
 export interface LineageViewProps {
   viewOptions?: LineageDiffViewOptions;
@@ -221,6 +221,8 @@ export function LineageView({ ...props }: LineageViewProps) {
     error,
     refetchRunsAggregated,
   } = useLineageGraphContext();
+
+  const { showRunId, close: closeRunResultPane } = useRecceActionContext();
 
   /**
    * View mode
@@ -368,10 +370,15 @@ export function LineageView({ ...props }: LineageViewProps) {
       centerNode(node);
       setNodes(selectSingleNode(node.id, nodes));
     } else if (selectMode === "action_result") {
-      setDetailViewSelected(node.data);
-      if (!isDetailViewShown) {
-        setIsDetailViewShown(true);
+      // setDetailViewSelected(node.data);
+      // if (!isDetailViewShown) {
+      //   setIsDetailViewShown(true);
+      // }
+
+      if (node.data.action?.run?.run_id) {
+        showRunId(node.data.action?.run?.run_id);
       }
+
       centerNode(node);
       setNodes(selectSingleNode(node.id, nodes));
     } else {
@@ -643,6 +650,7 @@ export function LineageView({ ...props }: LineageViewProps) {
                   setDetailViewSelected(undefined);
                   setIsDetailViewShown(false);
                   setNodes(newNodes);
+                  closeRunResultPane();
                   refetchRunsAggregated?.();
                 }}
                 onActionStarted={() => {
@@ -663,16 +671,6 @@ export function LineageView({ ...props }: LineageViewProps) {
               setDetailViewSelected(undefined);
               setIsDetailViewShown(false);
               setNodes(cleanUpNodes(nodes));
-            }}
-          />
-        </Box>
-      ) : selectMode === "action_result" && detailViewSelected ? (
-        <Box borderLeft="solid 1px lightgray" height="100%">
-          <NodeRunView
-            node={detailViewSelected}
-            onCloseNode={() => {
-              setDetailViewSelected(undefined);
-              setIsDetailViewShown(false);
             }}
           />
         </Box>

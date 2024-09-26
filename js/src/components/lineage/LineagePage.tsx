@@ -7,16 +7,7 @@ import { ReactFlowProvider } from "reactflow";
 import { RunResultPane } from "../run/RunResultPane";
 
 export function LineagePage() {
-  const { runId } = useRecceActionContext();
-  const { isOpen, onOpen, onClose } = useDisclosure();
-
-  useEffect(() => {
-    if (runId) {
-      onOpen();
-    } else {
-      onClose();
-    }
-  }, [runId, onOpen, onClose]);
+  const { isOpen, close } = useRecceActionContext();
 
   return (
     <ReactFlowProvider>
@@ -29,7 +20,7 @@ export function LineagePage() {
           <LineageView viewMode="changed_models" interactive />
         </Box>
 
-        {isOpen ? <RunResultPane onClose={onClose} /> : <Box></Box>}
+        {isOpen ? <RunResultPane onClose={close} /> : <Box></Box>}
       </VSplit>
     </ReactFlowProvider>
   );
