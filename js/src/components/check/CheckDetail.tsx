@@ -320,6 +320,7 @@ export const CheckDetail = ({ checkId }: CheckDetailProps) => {
 
           <Tooltip
             label={check?.is_checked ? "Mark as pending" : "Mark as approved"}
+            placement="bottom-end"
           >
             <Button
               size="sm"
