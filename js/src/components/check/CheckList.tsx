@@ -105,21 +105,33 @@ export const CheckList = ({
                 draggableId={check.check_id}
                 index={index}
               >
-                {(provided) => (
-                  <Flex
-                    ref={provided.innerRef}
-                    {...provided.draggableProps}
-                    {...provided.dragHandleProps}
-                    w="full"
-                  >
-                    <ChecklistItem
-                      key={check.check_id}
-                      check={check}
-                      selected={check.check_id === selectedItem}
-                      onSelect={onCheckSelected}
-                    />
-                  </Flex>
-                )}
+                {(provided, snapshot) => {
+                  // see https://github.com/atlassian/react-beautiful-dnd/issues/1881#issuecomment-691237307
+                  if (snapshot.isDragging) {
+                    const props = provided.draggableProps as any;
+                    const offset = { x: 0, y: 80 };
+                    const x = props.style.left - offset.x;
+                    const y = props.style.top - offset.y;
+                    props.style.left = x;
+                    props.style.top = y;
+                  }
+
+                  return (
+                    <Flex
+                      ref={provided.innerRef}
+                      {...provided.draggableProps}
+                      {...provided.dragHandleProps}
+                      w="full"
+                    >
+                      <ChecklistItem
+                        key={check.check_id}
+                        check={check}
+                        selected={check.check_id === selectedItem}
+                        onSelect={onCheckSelected}
+                      />
+                    </Flex>
+                  );
+                }}
               </Draggable>
             ))}
             {provided.placeholder}
