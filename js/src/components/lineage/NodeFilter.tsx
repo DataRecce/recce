@@ -295,7 +295,7 @@ const MoreActionMenu = (props: NodeFilterProps) => {
   );
 
   return (
-    <Menu>
+    <Menu placement="bottom-end">
       <MenuButton as={Button} size={"xs"} isDisabled={props.isDisabled}>
         ...
       </MenuButton>
