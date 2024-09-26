@@ -71,7 +71,7 @@ export function HistogramDiffForm({
     return <Box>Loading...</Box>;
   }
 
-  if (columns.length === 0 || error) {
+  if (allColumns.length === 0 || error) {
     return (
       <Box>
         Error: Please provide the &apos;catalog.json&apos; to list column
@@ -85,7 +85,12 @@ export function HistogramDiffForm({
       <FormControl>
         <FormLabel>Pick a column to show Histogram Diff</FormLabel>
         <Select
-          placeholder="Select column"
+          placeholder={
+            columns.length !== 0
+              ? "Select column"
+              : "No numeric column is available"
+          }
+          isDisabled={columns.length === 0}
           value={params?.column_name}
           onChange={(e) => {
             const columnName = e.target.value;
