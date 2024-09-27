@@ -22,7 +22,11 @@ export function SchemaView({
   enableScreenshot = false,
 }: SchemaViewProps) {
   const { columns, rows } = useMemo(
-    () => toDataGrid(mergeColumns(base?.columns, current?.columns)),
+    () =>
+      toDataGrid(
+        current?.name || base?.name,
+        mergeColumns(base?.columns, current?.columns)
+      ),
     [base, current]
   );
 

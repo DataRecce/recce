@@ -4,6 +4,7 @@ import { ColumnOrColumnGroup } from "react-data-grid";
 
 import "./style.css";
 import { NodeData } from "@/lib/api/info";
+import { ColumnNameCell } from "./ColumnNameCell";
 
 interface SchemaDiffRow {
   name: string;
@@ -48,7 +49,7 @@ export function mergeColumns(
   return result;
 }
 
-export function toDataGrid(schemaDiff: SchemaDiff) {
+export function toDataGrid(name: string | undefined, schemaDiff: SchemaDiff) {
   function columnIndexCellClass(row: SchemaDiffRow) {
     if (row.baseIndex === undefined) {
       return "column-index-added";
@@ -111,6 +112,18 @@ export function toDataGrid(schemaDiff: SchemaDiff) {
       key: "name",
       name: "Name",
       resizable: true,
+      renderCell: ({ row, column }) => {
+        return name ? (
+          <ColumnNameCell
+            model={name}
+            columnName={row["name"] || ""}
+            columnType={row["currentType"] || ""}
+            // containerRef={containerRef}
+          />
+        ) : (
+          row["name"]
+        );
+      },
       cellClass: columnNameCellClass,
     },
     {
