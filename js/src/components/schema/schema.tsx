@@ -116,9 +116,9 @@ export function toDataGrid(name: string | undefined, schemaDiff: SchemaDiff) {
         return name ? (
           <ColumnNameCell
             model={name}
-            columnName={row["name"] || ""}
-            columnType={row["currentType"] || ""}
-            // containerRef={containerRef}
+            name={row["name"]}
+            baseType={row["baseType"]}
+            currentType={row["currentType"]}
           />
         ) : (
           row["name"]

@@ -13,24 +13,26 @@ import {
   MenuItem,
 } from "@chakra-ui/react";
 import { VscKebabVertical } from "react-icons/vsc";
+import { supportsHistogramDiff } from "../histogram/HistogramDiffForm";
 
 export function ColumnNameCell({
   model,
-  columnName,
-  columnType,
-}: //   containerRef,
-{
+  name,
+  baseType,
+  currentType,
+}: {
   model: string;
-  columnName: string;
-  columnType: string;
-  //   containerRef: React.RefObject<any>;
+  name: string;
+  baseType?: string;
+  currentType?: string;
 }) {
   const { runAction } = useRecceActionContext();
+  const columnType = currentType || baseType;
 
   const handleHistogramDiff = () => {
     runAction(
       "histogram_diff",
-      { model, column_name: columnName, column_type: columnType },
+      { model, column_name: name, column_type: columnType },
       { showForm: false }
     );
   };
@@ -38,15 +40,16 @@ export function ColumnNameCell({
   const handleTopkDiff = () => {
     runAction(
       "top_k_diff",
-      { model, column_name: columnName, k: 50 },
+      { model, column_name: name, k: 50 },
       { showForm: false }
     );
   };
+  const addedOrRemoved = !baseType || !currentType;
 
   return (
     <Flex>
       <Box overflow="hidden" textOverflow="ellipsis" whiteSpace="nowrap">
-        {columnName}
+        {name}
       </Box>
       <Spacer />
 
@@ -64,15 +67,24 @@ export function ColumnNameCell({
               size={"sm"}
             />
 
-            <Portal
-            // containerRef={containerRef}
-            >
+            <Portal>
               <MenuList lineHeight="20px">
                 <MenuGroup title="Diff" m="0" p="4px 12px">
-                  <MenuItem fontSize="10pt" onClick={handleHistogramDiff}>
+                  <MenuItem
+                    fontSize="10pt"
+                    onClick={handleHistogramDiff}
+                    isDisabled={
+                      addedOrRemoved ||
+                      (columnType ? !supportsHistogramDiff(columnType) : true)
+                    }
+                  >
                     Histogram Diff
                   </MenuItem>
-                  <MenuItem fontSize="10pt" onClick={handleTopkDiff}>
+                  <MenuItem
+                    fontSize="10pt"
+                    onClick={handleTopkDiff}
+                    isDisabled={addedOrRemoved}
+                  >
                     Top-k Diff
                   </MenuItem>
                 </MenuGroup>

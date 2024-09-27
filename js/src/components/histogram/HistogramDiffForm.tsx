@@ -53,6 +53,10 @@ function isDateTimeType(columnType: string) {
 
 interface HistogramDiffEditProps extends RunFormProps<HistogramDiffParams> {}
 
+export function supportsHistogramDiff(columnType: string) {
+  return !isStringDataType(columnType) && !isDateTimeType(columnType);
+}
+
 export function HistogramDiffForm({
   params,
   onParamsChanged,
