@@ -1,6 +1,7 @@
 import { AddIcon, WarningIcon } from "@chakra-ui/icons";
 import {
   Box,
+  Button,
   Checkbox,
   Flex,
   IconButton,
@@ -59,15 +60,14 @@ export const RunToolbar = <PT, RT>({
         Changed only
       </Checkbox>
       {onAddToChecklist && (
-        <Tooltip label="Add to Checklist">
-          <IconButton
-            variant="unstyled"
-            size="sm"
-            aria-label="Add"
-            icon={<AddIcon />}
-            onClick={() => onAddToChecklist(run)}
-          />
-        </Tooltip>
+        <Button
+          marginBlock="5px"
+          size="sm"
+          colorScheme="blue"
+          onClick={() => onAddToChecklist(run)}
+        >
+          Add to Checklist
+        </Button>
       )}
     </Flex>
   );

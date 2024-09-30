@@ -7,6 +7,7 @@ import {
 } from "@/lib/api/adhocQuery";
 import {
   Box,
+  Button,
   Center,
   Flex,
   Icon,
@@ -174,15 +175,14 @@ export const QueryResultView = ({
 
           <Spacer minHeight="32px" />
           {onAddToChecklist && (
-            <Tooltip label="Add to Checklist">
-              <IconButton
-                variant="unstyled"
-                size="sm"
-                aria-label="Add"
-                icon={<AddIcon />}
-                onClick={() => onAddToChecklist(run)}
-              />
-            </Tooltip>
+            <Button
+              marginBlock="5px"
+              size="sm"
+              colorScheme="blue"
+              onClick={() => onAddToChecklist(run)}
+            >
+              Add to Checklist
+            </Button>
           )}
         </Flex>
       )}
