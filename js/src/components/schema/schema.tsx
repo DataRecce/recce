@@ -49,7 +49,7 @@ export function mergeColumns(
   return result;
 }
 
-export function toDataGrid(name: string | undefined, schemaDiff: SchemaDiff) {
+export function toDataGrid(schemaDiff: SchemaDiff, nodeName?: string) {
   function columnIndexCellClass(row: SchemaDiffRow) {
     if (row.baseIndex === undefined) {
       return "column-index-added";
@@ -113,9 +113,9 @@ export function toDataGrid(name: string | undefined, schemaDiff: SchemaDiff) {
       name: "Name",
       resizable: true,
       renderCell: ({ row, column }) => {
-        return name ? (
+        return nodeName ? (
           <ColumnNameCell
-            model={name}
+            model={nodeName}
             name={row["name"]}
             baseType={row["baseType"]}
             currentType={row["currentType"]}

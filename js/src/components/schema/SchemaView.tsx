@@ -21,14 +21,15 @@ export function SchemaView({
   current,
   enableScreenshot = false,
 }: SchemaViewProps) {
-  const { columns, rows } = useMemo(
-    () =>
-      toDataGrid(
-        current?.name || base?.name,
-        mergeColumns(base?.columns, current?.columns)
-      ),
-    [base, current]
-  );
+  const { columns, rows } = useMemo(() => {
+    const schemaDiff = mergeColumns(base?.columns, current?.columns);
+    const resourceType = current?.resource_type || base?.resource_type;
+    if (resourceType && ["model", "seed", "snapshot"].includes(resourceType)) {
+      return toDataGrid(schemaDiff, current?.name || base?.name);
+    } else {
+      return toDataGrid(schemaDiff);
+    }
+  }, [base, current]);
 
   const { lineageGraph } = useLineageGraphContext();
   const noCatalogBase = !lineageGraph?.catalogMetadata.base;
