@@ -383,6 +383,16 @@ class DbtAdapter(BaseAdapter):
                 return self.curr_manifest.sources[unique_id].name
             elif unique_id in self.base_manifest.sources:
                 return self.base_manifest.sources[unique_id].name
+        elif unique_id.startswith('metric.'):
+            if unique_id in self.curr_manifest.metrics:
+                return self.curr_manifest.metrics[unique_id].name
+            elif unique_id in self.base_manifest.metrics:
+                return self.base_manifest.metrics[unique_id].name
+        elif unique_id.startswith('semantic_model.'):
+            if unique_id in self.curr_manifest.semantic_models:
+                return self.curr_manifest.semantic_models[unique_id].name
+            elif unique_id in self.base_manifest.semantic_models:
+                return self.base_manifest.semantic_models[unique_id].name
         else:
             if unique_id in self.curr_manifest.nodes:
                 return self.curr_manifest.nodes[unique_id].name
