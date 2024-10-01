@@ -470,7 +470,7 @@ export function NodeSelector({
                     variant="outline"
                     onClick={handleAddToChecklist}
                   >
-                    Add to checklist
+                    Add to Checklist
                   </Button>
                 )}
               <Button size="xs" variant="outline" onClick={onClose}>
