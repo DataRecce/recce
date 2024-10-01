@@ -44,6 +44,7 @@ import { StateSynchronizer } from "@/components/check/StateSynchronizer";
 import { Check, listChecks } from "@/lib/api/checks";
 import { cacheKeys } from "@/lib/api/cacheKeys";
 import { LineagePage } from "@/components/lineage/LineagePage";
+import OnboardingGuide from "@/components/onboarding-guide/OnboardingGuide";
 
 function getCookie(key: string) {
   var b = document.cookie.match("(^|;)\\s*" + key + "\\s*=\\s*([^;]+)");
@@ -297,6 +298,7 @@ export default function Home() {
               <Flex direction="column" height="100vh">
                 <TopBar />
                 <NavBar />
+                <OnboardingGuide />
                 <ErrorBoundary>
                   <Box
                     p={0}
