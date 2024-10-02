@@ -402,7 +402,7 @@ def generate_check_summary(base_lineage, curr_lineage) -> (List[CheckSummary], D
     }
 
 
-def generate_mermaid_lineage_graph(graph: LineageGraph, level: int = None):
+def generate_mermaid_lineage_graph(graph: LineageGraph):
     content = 'graph LR\n'
     is_not_modified = False
     # Only show the modified nodes and there children
@@ -415,8 +415,6 @@ def generate_mermaid_lineage_graph(graph: LineageGraph, level: int = None):
 
     up_to_level = ""
     while len(queue) > 0:
-        if level is not None and level == 0:
-            break
 
         level_nodes = len(queue)
         for _ in range(level_nodes):
@@ -439,7 +437,6 @@ def generate_mermaid_lineage_graph(graph: LineageGraph, level: int = None):
             break
 
         up_to_level = content
-        level = level - 1 if level is not None else None
 
     return up_to_level, is_not_modified
 
@@ -451,8 +448,6 @@ def generate_markdown_summary(ctx: RecceContext, summary_format: str = 'markdown
     graph = _build_lineage_graph(base_lineage, curr_lineage)
     graph.checks, check_statistics = generate_check_summary(base_lineage, curr_lineage)
     mermaid_content, is_empty_graph = generate_mermaid_lineage_graph(graph)
-    if len(mermaid_content) > MAX_MERMAID_TEXT_SIZE:
-        generate_mermaid_lineage_graph(graph, MAX_MERMAID_NODES_LEVEL)
     check_content = generate_check_content(graph, check_statistics)
 
     if summary_format == 'mermaid':
