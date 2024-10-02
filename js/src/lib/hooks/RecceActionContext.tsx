@@ -165,7 +165,7 @@ export function RecceActionContextProvider({
 
   useEffect(() => {
     if (runId) {
-      if (!location.startsWith("/lineage")) {
+      if (location.startsWith("/checks")) {
         setLocation("/lineage");
       }
     }

@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from "react";
+import React, { useState } from "react";
 import { Box, Button, Flex } from "@chakra-ui/react";
 import SqlEditor from "./SqlEditor";
 import {
@@ -6,24 +6,13 @@ import {
   useRecceQueryContext,
 } from "@/lib/hooks/RecceQueryContext";
 
-import { createCheckByRun } from "@/lib/api/checks";
-import { QueryDiffResultView } from "./QueryDiffResultView";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { cacheKeys } from "@/lib/api/cacheKeys";
-import { useLocation } from "wouter";
-import {
-  QueryDiffViewOptions,
-  QueryViewOptions,
-  submitQuery,
-  submitQueryDiff,
-} from "@/lib/api/adhocQuery";
-import { QueryResultView } from "./QueryResultView";
-import { cancelRun, waitRun } from "@/lib/api/runs";
-import { RunView } from "../run/RunView";
-import { Run } from "@/lib/api/types";
+import { useMutation } from "@tanstack/react-query";
+import { submitQuery, submitQueryDiff } from "@/lib/api/adhocQuery";
 import { useLineageGraphContext } from "@/lib/hooks/LineageGraphContext";
 import { QueryForm } from "./QueryForm";
-import { HSplit, VSplit } from "../split/Split";
+import { HSplit } from "../split/Split";
+import { useRecceActionContext } from "@/lib/hooks/RecceActionContext";
+import { waitRun } from "@/lib/api/runs";
 
 export const QueryPage = () => {
   const {
@@ -39,17 +28,8 @@ export const QueryPage = () => {
     sqlQuery = `select * from db.mymodel`;
   }
 
-  const [runType, setRunType] = useState<string>();
-  const [runId, setRunId] = useState<string>();
-
-  const [viewOptions, setViewOptions] = useState<
-    QueryDiffViewOptions | QueryViewOptions
-  >({});
-
-  const queryClient = useQueryClient();
-  const [, setLocation] = useLocation();
+  const { showRunId } = useRecceActionContext();
   const queryFn = async (type: "query" | "query_diff") => {
-    setRunType(type);
     const { run_id } =
       type === "query"
         ? await submitQuery({ sql_template: sqlQuery }, { nowait: true })
@@ -57,43 +37,15 @@ export const QueryPage = () => {
             { sql_template: sqlQuery, primary_keys: primaryKeys },
             { nowait: true }
           );
-    setRunId(run_id);
+
+    showRunId(run_id);
 
     return await waitRun(run_id);
   };
 
-  const {
-    data: run,
-    mutate: runQuery,
-    error,
-    isPending,
-  } = useMutation({
+  const { mutate: runQuery, isPending } = useMutation({
     mutationFn: queryFn,
-    onSuccess: (run) => {
-      setViewOptions({});
-    },
   });
-
-  const handleCancel = useCallback(async () => {
-    if (!runId) {
-      return;
-    }
-
-    return await cancelRun(runId);
-  }, [runId]);
-
-  const addToChecklist = useCallback(
-    async (run: Run<any, any>) => {
-      if (!run?.run_id) {
-        return;
-      }
-
-      const check = await createCheckByRun(run.run_id, viewOptions);
-      queryClient.invalidateQueries({ queryKey: cacheKeys.checks() });
-      setLocation(`/checks/${check.check_id}`);
-    },
-    [setLocation, viewOptions, queryClient]
-  );
 
   return (
     <Flex direction="column" height="100%">
@@ -108,69 +60,36 @@ export const QueryPage = () => {
         </Button>
         <Button
           colorScheme="blue"
-          onClick={() => runQuery("query")}
+          onClick={() => {
+            runQuery("query");
+          }}
           isDisabled={isPending}
           size="sm"
         >
           Run
         </Button>
       </Flex>
-      <VSplit
-        sizes={[40, 60]}
-        minSize={100}
+      <HSplit
+        sizes={[90, 10]}
+        minSize={300}
         style={{ height: "100%", borderTop: "1px solid #CBD5E0" }}
       >
-        <HSplit sizes={[90, 10]} minSize={300}>
-          <Box width="70%" border={"1px solid #CBD5E0"}>
-            <SqlEditor
-              value={sqlQuery}
-              onChange={setSqlQuery}
-              onRun={() => runQuery("query")}
-              onRunDiff={() => runQuery("query_diff")}
-            />
-          </Box>
-          <QueryForm
-            p="5px"
-            border="1px"
-            borderColor="gray.300"
-            defaultPrimaryKeys={primaryKeys}
-            onPrimaryKeysChange={setPrimaryKeys}
+        <Box width="70%" border={"1px solid #CBD5E0"}>
+          <SqlEditor
+            value={sqlQuery}
+            onChange={setSqlQuery}
+            onRun={() => runQuery("query")}
+            onRunDiff={() => runQuery("query_diff")}
           />
-        </HSplit>
-
-        <Flex flex="1" direction="column">
-          {runType === "query" ? (
-            <RunView
-              key={runId}
-              run={run}
-              error={error}
-              isPending={isPending}
-              onCancel={handleCancel}
-            >
-              {(props) => (
-                <QueryResultView {...props} onAddToChecklist={addToChecklist} />
-              )}
-            </RunView>
-          ) : (
-            <RunView
-              key={runId}
-              isPending={isPending}
-              run={run}
-              error={error}
-              viewOptions={viewOptions}
-              onViewOptionsChanged={setViewOptions}
-              onCancel={handleCancel}
-            >
-              {(props) => (
-                <QueryDiffResultView
-                  {...props}
-                  onAddToChecklist={addToChecklist}
-                />
-              )}
-            </RunView>
-          )}
-        </Flex>
-      </VSplit>
+        </Box>
+        <QueryForm
+          p="5px"
+          border="1px"
+          borderColor="gray.300"
+          defaultPrimaryKeys={primaryKeys}
+          onPrimaryKeysChange={setPrimaryKeys}
+        />
+      </HSplit>
     </Flex>
   );
 };
