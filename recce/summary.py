@@ -23,7 +23,6 @@ ADD_COLOR = '#1dce00'
 MODIFIED_COLOR = '#ffa502'
 REMOVE_COLOR = '#ff067e'
 
-MAX_MERMAID_NODES_LEVEL = 3
 MAX_MERMAID_TEXT_SIZE = 50000  # source: https://mermaid.js.org/config/schema-docs/config.html#maxtextsize
 
 
