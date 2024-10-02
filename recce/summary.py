@@ -23,6 +23,9 @@ ADD_COLOR = '#1dce00'
 MODIFIED_COLOR = '#ffa502'
 REMOVE_COLOR = '#ff067e'
 
+MAX_MERMAID_NODES_LEVEL = 3
+MAX_MERMAID_TEXT_SIZE = 50000  # source: https://mermaid.js.org/config/schema-docs/config.html#maxtextsize
+
 
 def _warn(msg):
     # print to stderr
@@ -399,7 +402,7 @@ def generate_check_summary(base_lineage, curr_lineage) -> (List[CheckSummary], D
     }
 
 
-def generate_mermaid_lineage_graph(graph: LineageGraph):
+def generate_mermaid_lineage_graph(graph: LineageGraph, level: int = None):
     content = 'graph LR\n'
     is_not_modified = False
     # Only show the modified nodes and there children
@@ -410,23 +413,35 @@ def generate_mermaid_lineage_graph(graph: LineageGraph):
     if len(queue) == 0:
         is_not_modified = True
 
+    up_to_level = ""
     while len(queue) > 0:
-        node_id = queue.pop(0)
-        if node_id in display_nodes:
-            # Skip if already displayed
-            continue
+        if level is not None and level == 0:
+            break
 
-        display_nodes.add(node_id)
-        node = graph.nodes[node_id]
-        content += node.get_node_str(graph.checks)
-        for child_id in node.children:
-            queue.append(child_id)
-            edge_id = f'{node_id}-->{child_id}'
-            if edge_id not in display_edge:
-                display_edge.add(edge_id)
-                content += graph.get_edge_str(edge_id)
+        level_nodes = len(queue)
+        for _ in range(level_nodes):
+            node_id = queue.pop(0)
+            if node_id in display_nodes:
+                # Skip if already displayed
+                continue
 
-    return content, is_not_modified
+            display_nodes.add(node_id)
+            node = graph.nodes[node_id]
+            content += node.get_node_str(graph.checks)
+            for child_id in node.children:
+                queue.append(child_id)
+                edge_id = f'{node_id}-->{child_id}'
+                if edge_id not in display_edge:
+                    display_edge.add(edge_id)
+                    content += graph.get_edge_str(edge_id)
+
+        if len(content) > MAX_MERMAID_TEXT_SIZE:
+            break
+
+        up_to_level = content
+        level = level - 1 if level is not None else None
+
+    return up_to_level, is_not_modified
 
 
 def generate_markdown_summary(ctx: RecceContext, summary_format: str = 'markdown'):
@@ -436,6 +451,8 @@ def generate_markdown_summary(ctx: RecceContext, summary_format: str = 'markdown
     graph = _build_lineage_graph(base_lineage, curr_lineage)
     graph.checks, check_statistics = generate_check_summary(base_lineage, curr_lineage)
     mermaid_content, is_empty_graph = generate_mermaid_lineage_graph(graph)
+    if len(mermaid_content) > MAX_MERMAID_TEXT_SIZE:
+        generate_mermaid_lineage_graph(graph, MAX_MERMAID_NODES_LEVEL)
     check_content = generate_check_content(graph, check_statistics)
 
     if summary_format == 'mermaid':
