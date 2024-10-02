@@ -20,7 +20,7 @@ const OnboardingGuide = () => {
 
   return (
   <>
-    <Modal isOpen={isGuideOpen} onClose={closeGuide}>
+    <Modal isOpen={isGuideOpen} onClose={closeGuide} scrollBehavior={"inside"}>
       <ModalOverlay />
         <ModalContent maxW="80vw" h="80vh">
           <ModalHeader>Welcome to Recce: 3 Steps to Begin</ModalHeader>
