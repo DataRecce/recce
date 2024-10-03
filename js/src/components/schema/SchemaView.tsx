@@ -80,7 +80,6 @@ export function SchemaView({
               blockSize: "auto",
               maxHeight: "100%",
               overflow: "auto",
-
               fontSize: "10pt",
               borderWidth: 1,
             }}

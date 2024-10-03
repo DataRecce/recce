@@ -45,6 +45,9 @@ import { Check, listChecks } from "@/lib/api/checks";
 import { cacheKeys } from "@/lib/api/cacheKeys";
 import { LineagePage } from "@/components/lineage/LineagePage";
 import OnboardingGuide from "@/components/onboarding-guide/OnboardingGuide";
+import { useRecceActionContext } from "@/lib/hooks/RecceActionContext";
+import { VSplit } from "@/components/split/Split";
+import { RunResultPane } from "@/components/run/RunResultPane";
 
 function getCookie(key: string) {
   var b = document.cookie.match("(^|;)\\s*" + key + "\\s*=\\s*([^;]+)");
@@ -262,6 +265,51 @@ function NavBar() {
   );
 }
 
+function Main() {
+  const { isOpen, close } = useRecceActionContext();
+  const [location] = useLocation();
+  const isRunResultPaneOpen = isOpen && !location.startsWith("/checks");
+
+  return (
+    <VSplit
+      sizes={isRunResultPaneOpen ? [60, 40] : [100, 0]}
+      minSize={isRunResultPaneOpen ? 100 : 0}
+      style={{
+        borderTop: "1px solid #CBD5E0",
+        flex: "1",
+        contain: "size",
+      }}
+    >
+      <Box p={0} style={{ contain: "content" }}>
+        <Switch>
+          {/* Prevent the lineage page unmount and lose states */}
+          <RouteAlwaysMount path="/lineage">
+            <LineagePage />
+          </RouteAlwaysMount>
+          <Route path="/query">
+            <QueryPage />
+          </Route>
+          <Route path="/checks/:slug*">
+            <CheckPage />
+          </Route>
+          <Route path="/runs/:runId">
+            {({ runId }) => {
+              return <RunPage runId={runId} />;
+            }}
+          </Route>
+          <Route path="/ssr">
+            <Progress size="xs" isIndeterminate />
+          </Route>
+          <Route>
+            <Redirect to="/lineage" />
+          </Route>
+        </Switch>
+      </Box>
+      {isRunResultPaneOpen ? <RunResultPane onClose={close} /> : <Box></Box>}
+    </VSplit>
+  );
+}
+
 export default function Home() {
   useLayoutEffect(() => {
     const userId = getCookie("recce_user_id");
@@ -300,36 +348,7 @@ export default function Home() {
                 <NavBar />
                 <OnboardingGuide />
                 <ErrorBoundary>
-                  <Box
-                    p={0}
-                    overflow="auto"
-                    flex="1"
-                    style={{ contain: "size" }}
-                  >
-                    {/* Prevent the lineage page unmount and lose states */}
-                    <RouteAlwaysMount path="/lineage">
-                      <LineagePage />
-                    </RouteAlwaysMount>
-                    <Switch>
-                      <Route path="/query">
-                        <QueryPage />
-                      </Route>
-                      <Route path="/checks/:slug*">
-                        <CheckPage />
-                      </Route>
-                      <Route path="/runs/:runId">
-                        {({ runId }) => {
-                          return <RunPage runId={runId} />;
-                        }}
-                      </Route>
-                      <Route path="/ssr">
-                        <Progress size="xs" isIndeterminate />
-                      </Route>
-                      <Route>
-                        <Redirect to="/lineage" />
-                      </Route>
-                    </Switch>
-                  </Box>
+                  <Main />
                 </ErrorBoundary>
               </Flex>
             </RecceContextProvider>

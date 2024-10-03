@@ -19,6 +19,7 @@ import { createCheckByRun } from "@/lib/api/checks";
 import { useLocation } from "wouter";
 import { Editor } from "@monaco-editor/react";
 import YAML from "yaml";
+import SqlEditor from "../query/SqlEditor";
 
 interface RunPageProps {
   onClose?: () => void;
@@ -93,6 +94,8 @@ export const _LoadableRunView = ({
     setLocation(`/checks/${check.check_id}`);
   }, [runId, setLocation, queryClient, viewOptions]);
 
+  const isQuery = run?.type === "query" || run?.type === "query_diff";
+
   return (
     <Flex direction="column">
       <Tabs
@@ -104,6 +107,7 @@ export const _LoadableRunView = ({
         <TabList height="50px">
           <Tab>Result</Tab>
           <Tab>Params</Tab>
+          {isQuery && <Tab>Query</Tab>}
           <Spacer />
           <HStack>
             <Button
@@ -147,6 +151,13 @@ export const _LoadableRunView = ({
 
       {tabIndex === 1 && run && (
         <_ParamView type={run.type} params={run.params} />
+      )}
+
+      {tabIndex === 2 && run && (
+        <SqlEditor
+          value={(run?.params as any)?.sql_template || ""}
+          options={{ readOnly: true }}
+        />
       )}
     </Flex>
   );
