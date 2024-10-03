@@ -48,9 +48,11 @@ import { cacheKeys } from "@/lib/api/cacheKeys";
 import { LineagePage } from "@/components/lineage/LineagePage";
 import OnboardingGuide from "@/components/onboarding-guide/OnboardingGuide";
 import { useRecceActionContext } from "@/lib/hooks/RecceActionContext";
-import { VSplit } from "@/components/split/Split";
+import { HSplit, VSplit } from "@/components/split/Split";
 import { RunResultPane } from "@/components/run/RunResultPane";
 import { VscGitPullRequest } from "react-icons/vsc";
+import { RunList } from "@/components/run/RunList";
+
 
 function getCookie(key: string) {
   var b = document.cookie.match("(^|;)\\s*" + key + "\\s*=\\s*([^;]+)");
@@ -305,7 +307,10 @@ function Main() {
         <Switch>
           {/* Prevent the lineage page unmount and lose states */}
           <RouteAlwaysMount path="/lineage">
-            <LineagePage />
+            <HSplit sizes={[30, 70]} style={{ height: "100%" }}>
+              <RunList />
+              <LineagePage />
+            </HSplit>
           </RouteAlwaysMount>
           <Route path="/query">
             <QueryPage />
