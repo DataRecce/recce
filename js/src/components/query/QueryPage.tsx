@@ -72,7 +72,7 @@ export const QueryPage = () => {
       <HSplit
         sizes={[90, 10]}
         minSize={300}
-        style={{ height: "100%", borderTop: "1px solid #CBD5E0" }}
+        style={{ flex: "1", borderTop: "1px solid #CBD5E0" }}
       >
         <Box width="70%" border={"1px solid #CBD5E0"}>
           <SqlEditor

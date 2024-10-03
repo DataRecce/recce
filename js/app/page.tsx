@@ -272,11 +272,15 @@ function Main() {
 
   return (
     <VSplit
-      sizes={isRunResultPaneOpen ? [50, 50] : [100, 0]}
+      sizes={isRunResultPaneOpen ? [60, 40] : [100, 0]}
       minSize={isRunResultPaneOpen ? 100 : 0}
-      style={{ height: "100%", borderTop: "1px solid #CBD5E0" }}
+      style={{
+        borderTop: "1px solid #CBD5E0",
+        flex: "1",
+        contain: "size",
+      }}
     >
-      <Box p={0} overflow="auto" flex="1" style={{ contain: "size" }}>
+      <Box p={0} style={{ contain: "content" }}>
         <Switch>
           {/* Prevent the lineage page unmount and lose states */}
           <RouteAlwaysMount path="/lineage">
