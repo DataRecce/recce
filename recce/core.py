@@ -8,6 +8,7 @@ from typing import Callable, Dict, Optional, List
 from recce.adapter.base import BaseAdapter
 from recce.models import Check, Run
 from recce.state import RecceState, RecceStateMetadata, GitRepoInfo, PullRequestInfo, RecceStateLoader
+from recce.util.recce_cloud import set_recce_cloud_onboarding_state
 
 logger = logging.getLogger('uvicorn')
 
@@ -224,6 +225,17 @@ class RecceContext:
             self.adapter.import_artifacts(import_state.artifacts)
 
         return import_runs, import_checks
+
+    def mark_onboarding_completed(self):
+        if self.state_loader.cloud_mode:
+            try:
+                token = self.state_loader.cloud_options.get('token')
+                set_recce_cloud_onboarding_state(token, 'completed')
+            except Exception as e:
+                logger.debug(f'Failed to mark onboarding completed in Recce Cloud. Reason: {str(e)}')
+        else:
+            # Skip the onboarding state for non-cloud mode
+            pass
 
 
 recce_context: Optional[RecceContext] = None

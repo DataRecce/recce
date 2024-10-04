@@ -18,6 +18,7 @@ import {
   Progress,
   HStack,
 } from "@chakra-ui/react";
+import React from "react";
 import { ReactNode, useLayoutEffect } from "react";
 import * as amplitude from "@amplitude/analytics-browser";
 import { QueryClientProvider, useQuery } from "@tanstack/react-query";
