@@ -39,12 +39,14 @@ class TestCommandServer(TestCase):
         result = self.runner.invoke(cli_command_server, ['--cloud', '--password', 'unittest'])
         assert result.exit_code == 1
 
+    @patch('recce.util.recce_cloud.get_recce_cloud_onboarding_state')
     @patch('recce.cli.uvicorn.run')
     @patch('recce.cli.RecceStateLoader')
-    def test_cmd_server_with_cloud(self, mock_state_loader_class, mock_run):
+    def test_cmd_server_with_cloud(self, mock_state_loader_class, mock_run, mock_get_recce_cloud_onboarding_state):
         mock_state_loader = MagicMock(spec=RecceStateLoader)
         mock_state_loader.verify.return_value = True
         mock_state_loader.review_mode = True
+        mock_get_recce_cloud_onboarding_state.return_value = 'completed'
 
         mock_state_loader_class.return_value = mock_state_loader
         self.runner.invoke(cli_command_server, ['--cloud', '--password', 'unittest', '--cloud-token', 'unittest'])

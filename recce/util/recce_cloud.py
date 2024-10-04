@@ -127,10 +127,13 @@ class RecceCloud:
 
 
 def get_recce_cloud_onboarding_state(token: str) -> str:
-    recce_cloud = RecceCloud(token)
-    user_info = recce_cloud.get_user_info()
-    if user_info:
-        return user_info.get('onboarding_state')
+    try:
+        recce_cloud = RecceCloud(token)
+        user_info = recce_cloud.get_user_info()
+        if user_info:
+            return user_info.get('onboarding_state')
+    except Exception as e:
+        logger.debug(str(e))
     return 'undefined'
 
 

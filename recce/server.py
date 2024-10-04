@@ -166,6 +166,7 @@ async def config_flag():
 async def mark_onboarding_completed():
     context = default_context()
     context.mark_onboarding_completed()
+    app.state.flag['show_onboarding_guide'] = False
 
 
 @app.get("/api/info")
