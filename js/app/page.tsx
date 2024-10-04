@@ -172,6 +172,7 @@ function TopBar() {
 interface TabProps {
   name: string;
   href: string;
+  badge?: ReactNode;
 }
 
 function TabBadge<T, R extends number>({
@@ -217,22 +218,28 @@ function NavBar() {
   const { isDemoSite, cloudMode, isLoading } = useLineageGraphContext();
   const [location, setLocation] = useLocation();
 
+  const checklistBadge = (
+    <TabBadge<Check[], number>
+      queryKey={cacheKeys.checks()}
+      fetchCallback={listChecks}
+      selectCallback={(checks: Check[]) => {
+        return checks.filter((check) => !check.is_checked).length;
+      }}
+    />
+  );
+
   const tabs: TabProps[] = [
     { name: "Lineage", href: "/lineage" },
     { name: "Query", href: "/query" },
-    { name: "Checks", href: "/checks" },
+    { name: "Checklist", href: "/checks", badge: checklistBadge },
   ];
-
-  const calPendingChecks = (checks: Check[]) => {
-    return checks.filter((check) => !check.is_checked).length;
-  };
 
   const tabIndex = _.findIndex(tabs, ({ href }) => location.startsWith(href));
 
   return (
     <Tabs index={tabIndex}>
       <TabList>
-        {tabs.map(({ name, href }) => {
+        {tabs.map(({ name, href, badge }) => {
           return (
             <Tab
               key={name}
@@ -241,13 +248,7 @@ function NavBar() {
               }}
             >
               {name}
-              {name === "Checks" && (
-                <TabBadge<Check[], number>
-                  queryKey={cacheKeys.checks()}
-                  fetchCallback={listChecks}
-                  selectCallback={calPendingChecks}
-                />
-              )}
+              {badge}
             </Tab>
           );
         })}
