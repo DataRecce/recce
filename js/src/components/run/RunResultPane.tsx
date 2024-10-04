@@ -20,6 +20,7 @@ import { useLocation } from "wouter";
 import { Editor } from "@monaco-editor/react";
 import YAML from "yaml";
 import SqlEditor from "../query/SqlEditor";
+import { CheckIcon, RepeatIcon } from "@chakra-ui/icons";
 
 interface RunPageProps {
   onClose?: () => void;
@@ -111,14 +112,16 @@ export const _LoadableRunView = ({
           <Spacer />
           <HStack>
             <Button
+              leftIcon={<RepeatIcon />}
+              variant="outline"
               isDisabled={!runId || isPending}
               size="sm"
-              colorScheme="blue"
               onClick={handleRerun}
             >
               Rerun
             </Button>
             <Button
+              leftIcon={<CheckIcon />}
               isDisabled={!runId || !run?.result}
               size="sm"
               colorScheme="blue"
