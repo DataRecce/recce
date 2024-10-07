@@ -1,6 +1,7 @@
 import json
 import logging
 import os
+from typing import Dict
 
 import requests
 
@@ -102,3 +103,40 @@ class RecceCloud:
         except Exception as e:
             # We don't care the response of this request, so we don't need to raise any exception.
             logger.debug(f'Failed to update the GitHub PR check. Reason: {str(e)}')
+
+    def get_user_info(self) -> Dict:
+        api_url = f'{self.base_url}/users'
+        response = self._request('GET', api_url)
+        if response.status_code != 200:
+            raise RecceCloudException(
+                message='Failed to get user info from Recce Cloud.',
+                reason=response.text,
+                status_code=response.status_code
+            )
+        return response.json().get('user')
+
+    def set_onboarding_state(self, state: str):
+        api_url = f'{self.base_url}/users/onboarding-state'
+        response = self._request('PUT', api_url, data={'state': state})
+        if response.status_code != 200:
+            raise RecceCloudException(
+                message='Failed to update onboarding state in Recce Cloud.',
+                reason=response.text,
+                status_code=response.status_code
+            )
+
+
+def get_recce_cloud_onboarding_state(token: str) -> str:
+    try:
+        recce_cloud = RecceCloud(token)
+        user_info = recce_cloud.get_user_info()
+        if user_info:
+            return user_info.get('onboarding_state')
+    except Exception as e:
+        logger.debug(str(e))
+    return 'undefined'
+
+
+def set_recce_cloud_onboarding_state(token: str, new_state: str):
+    recce_cloud = RecceCloud(token)
+    recce_cloud.set_onboarding_state(new_state)

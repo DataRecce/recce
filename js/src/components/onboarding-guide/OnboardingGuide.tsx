@@ -1,21 +1,27 @@
 import { Button, Modal, ModalBody, ModalCloseButton, ModalContent, ModalFooter, ModalHeader, ModalOverlay, Image, List, ListItem, Stack, Divider } from "@chakra-ui/react";
 import React from "react";
 import { useEffect, useState } from "react";
+import { getServerFlag, markOnboardingCompleted } from "@/lib/api/flag";
 
 
 const OnboardingGuide = () => {
   const [isGuideOpen, setIsGuideOpen] = useState<boolean>(false);
 
   useEffect(() => {
-    const hasVisited = localStorage.getItem("hasVisited");
-    if (!hasVisited) {
-      setIsGuideOpen(true);
-      localStorage.setItem("hasVisited", "true");
-    }
+    getServerFlag().then((flags) => {
+      const showOnboardingGuide = flags.show_onboarding_guide;
+      const hasVisited = localStorage.getItem("hasVisited");
+      if (!hasVisited && showOnboardingGuide) {
+        setIsGuideOpen(true);
+        localStorage.setItem("hasVisited", "true");
+      }
+    });
+
   }, []);
 
   const closeGuide = () => {
     setIsGuideOpen(false);
+    markOnboardingCompleted();
   }
 
   return (

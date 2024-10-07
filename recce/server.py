@@ -33,6 +33,7 @@ logger = logging.getLogger('uvicorn')
 class AppState:
     state_loader: Optional[RecceStateLoader] = None
     kwargs: Optional[dict] = None
+    flag: Optional[dict] = None
 
 
 @asynccontextmanager
@@ -105,6 +106,7 @@ clients = set()
 
 origins = [
     "http://localhost:3000",
+    "http://localhost:3001",
 ]
 
 app.add_middleware(GZipMiddleware, minimum_size=1000)
@@ -151,6 +153,20 @@ async def disable_cache(request: Request, call_next):
 @app.get("/api/health")
 async def health_check(request: Request):
     return {"status": "ok"}
+
+
+@app.get("/api/flag")
+async def config_flag():
+    app_state: AppState = app.state
+    flag = app_state.flag
+    return flag
+
+
+@app.post("/api/onboarding/completed", status_code=204)
+async def mark_onboarding_completed():
+    context = default_context()
+    context.mark_onboarding_completed()
+    app.state.flag['show_onboarding_guide'] = False
 
 
 @app.get("/api/info")

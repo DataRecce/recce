@@ -12,7 +12,7 @@ from recce.run import cli_run, check_github_ci_env
 from recce.state import RecceStateLoader, RecceCloudStateManager
 from recce.summary import generate_markdown_summary
 from recce.util.logger import CustomFormatter
-from recce.util.recce_cloud import RecceCloudException
+from recce.util.recce_cloud import RecceCloudException, get_recce_cloud_onboarding_state
 from .core import RecceContext
 from .event.track import TrackCommand
 
@@ -222,12 +222,17 @@ def server(host, port, state_file=None, **kwargs):
     is_cloud = kwargs.get('cloud', False)
     console = Console()
     cloud_options = None
+    flag = {
+        'show_onboarding_guide': True
+    }
     if is_cloud:
         cloud_options = {
             'host': kwargs.get('state_file_host'),
             'token': kwargs.get('cloud_token'),
             'password': kwargs.get('password'),
         }
+        cloud_onboarding_state = get_recce_cloud_onboarding_state(kwargs.get('cloud_token'))
+        flag['show_onboarding_guide'] = False if cloud_onboarding_state == 'completed' else True
 
     state_loader = create_state_loader(is_review, is_cloud, state_file, cloud_options)
 
@@ -242,7 +247,7 @@ def server(host, port, state_file=None, **kwargs):
     else:
         console.rule("Recce Server")
 
-    state = AppState(state_loader=state_loader, kwargs=kwargs)
+    state = AppState(state_loader=state_loader, kwargs=kwargs, flag=flag)
     app.state = state
 
     uvicorn.run(app, host=host, port=port, lifespan='on')
