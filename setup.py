@@ -28,7 +28,7 @@ setup(name='recce',
       install_requires=[
           'boto3',
           'requests>=2.28.1',
-          'ruamel.yaml<0.18.0',
+          'ruamel.yaml>=0.18.6',
           'click>=7.1',
           'deepdiff',
           'portalocker',
