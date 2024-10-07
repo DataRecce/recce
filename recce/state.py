@@ -308,7 +308,7 @@ class RecceStateLoader:
         file_path = file_path or self.state_file
         return RecceState.from_file(file_path) if file_path else None
 
-    def _load_state_from_cloud(self) -> Tuple[RecceState | None, str | None]:
+    def _load_state_from_cloud(self) -> Tuple[Optional[RecceState, None], Optional[str, None]]:
         '''
         Load the state from Recce Cloud.
 
