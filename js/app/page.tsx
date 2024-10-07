@@ -16,6 +16,7 @@ import {
   Heading,
   Badge,
   Progress,
+  HStack,
 } from "@chakra-ui/react";
 import { ReactNode, useLayoutEffect } from "react";
 import * as amplitude from "@amplitude/analytics-browser";
@@ -48,6 +49,7 @@ import OnboardingGuide from "@/components/onboarding-guide/OnboardingGuide";
 import { useRecceActionContext } from "@/lib/hooks/RecceActionContext";
 import { VSplit } from "@/components/split/Split";
 import { RunResultPane } from "@/components/run/RunResultPane";
+import { VscGitPullRequest } from "react-icons/vsc";
 
 function getCookie(key: string) {
   var b = document.cookie.match("(^|;)\\s*" + key + "\\s*=\\s*([^;]+)");
@@ -86,7 +88,7 @@ function TopBar() {
   const { reviewMode, isDemoSite, envInfo, cloudMode, isLoading } =
     useLineageGraphContext();
   const version = useVersionNumber();
-  const prURL = envInfo?.pullRequest?.url;
+  const { url: prURL, id: prID } = envInfo?.pullRequest || {};
 
   return (
     <Flex
@@ -134,7 +136,24 @@ function TopBar() {
           colorScheme="whiteAlpha"
           variant="outline"
         >
-          cloud mode
+          <HStack>
+            <Box>cloud mode</Box>
+            <Box
+              borderLeft="1px"
+              borderLeftColor="whiteAlpha.500"
+              paddingLeft="8px"
+            >
+              <Link href={prURL} _hover={{ textDecoration: "none" }} isExternal>
+                <Icon
+                  as={VscGitPullRequest}
+                  boxSize="3"
+                  fontWeight="extrabold"
+                  strokeWidth="1"
+                />
+                {` #${prID}`}
+              </Link>
+            </Box>
+          </HStack>
         </Badge>
       )}
       <Spacer />
