@@ -1,9 +1,10 @@
 import asyncio
-from typing import Dict, Type, List
+from typing import Dict, Type, List, Optional
 
 from recce.core import default_context
 from recce.exceptions import RecceException
 from recce.models import RunType, Run, RunDAO
+from recce.models.types import RunStatus
 from recce.tasks import QueryTask, ProfileDiffTask, ValueDiffTask, QueryDiffTask, Task, RowCountDiffTask, \
     ValueDiffDetailTask
 from recce.tasks.histogram import HistogramDiffTask
@@ -27,6 +28,62 @@ sqlmesh_registry: Dict[RunType, Type[Task]] = {
     RunType.QUERY_DIFF: QueryDiffTask,
     RunType.ROW_COUNT_DIFF: RowCountDiffTask,
 }
+
+
+def _get_ref_model(sql_template: str) -> Optional[str]:
+    import re
+
+    pattern = r'\bref\(["\']?(\w+)["\']?\)\s*}}'
+    matches = re.findall(pattern, sql_template)
+    if len(matches) == 1:
+        ref = matches[0]
+        return ref
+
+    return None
+
+
+def generate_run_name(run):
+    # parse utc time with timezone
+
+    import dateutil
+
+    run_type = run.type
+    params = run.params
+    now = dateutil.parser.parse(run.run_at)
+
+    if run_type == RunType.QUERY:
+        ref = _get_ref_model(params.get('sql_template'))
+        if ref:
+            return f"query of {ref}".capitalize()
+        return f"{'query'.capitalize()} - {now}"
+    elif run_type == RunType.QUERY_DIFF:
+        ref = _get_ref_model(params.get('sql_template'))
+        if ref:
+            return f"query diff of {ref}".capitalize()
+        return f"{'query diff'.capitalize()} - {now}"
+    elif run_type == RunType.VALUE_DIFF or run_type == RunType.VALUE_DIFF_DETAIL:
+        model = params.get('model')
+        return f"value diff of {model}".capitalize()
+    elif run_type == RunType.PROFILE_DIFF:
+        model = params.get('model')
+        return f"profile diff of {model}".capitalize()
+    elif run_type == RunType.ROW_COUNT_DIFF:
+        nodes = params.get('node_names')
+        if nodes and len(nodes) == 1:
+            node = nodes[0]
+            return f"row count diff of {node}".capitalize()
+        else:
+            return f"row count of {len(nodes)} nodes".capitalize()
+    elif run_type == RunType.TOP_K_DIFF:
+        model = params.get('model')
+        column = params.get('column_name')
+        return f"top-k diff of {model}.{column} ".capitalize()
+    elif run_type == RunType.HISTOGRAM_DIFF:
+        model = params.get('model')
+        column = params.get('column_name')
+        return f"histogram diff of {model}.{column} ".capitalize()
+    else:
+        return f"{'run'.capitalize()} - {now}"
 
 
 def create_task(run_type: RunType, params: dict):
@@ -56,6 +113,7 @@ def submit_run(type, params, check_id=None):
             raise RecceException("Recce Server is not launched under DBT project folder.")
 
     run = Run(type=run_type, params=params, check_id=check_id)
+    run.name = generate_run_name(run)
     RunDAO().create(run)
 
     loop = asyncio.get_running_loop()
@@ -71,8 +129,11 @@ def submit_run(type, params, check_id=None):
             return
         if result is not None:
             run.result = result
+            run.status = RunStatus.SUCCESSFUL
         if error is not None:
             run.error = str(error)
+            if run.status != RunStatus.CANCELLED:
+                run.status = RunStatus.FAILED
         run.progress = None
 
     def fn():
@@ -100,6 +161,7 @@ def cancel_run(run_id):
         raise RecceException(f"Run task for Run ID '{run_id}' not found")
 
     task.cancel()
+    run.status = RunStatus.CANCELLED
 
 
 def materialize_run_results(runs: List[Run], nodes: List[str] = None):

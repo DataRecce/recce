@@ -28,12 +28,20 @@ class RunProgress(BaseModel):
     percentage: float
 
 
+class RunStatus(Enum):
+    SUCCESSFUL = 'successful'
+    FAILED = 'failed'
+    CANCELLED = 'cancelled'
+
+
 class Run(BaseModel):
     type: RunType
+    name: Optional[str] = None
     params: Optional[dict] = None
     check_id: Optional[UUID4] = None
     result: Optional[dict] = None
     error: Optional[str] = None
+    status: Optional[RunStatus] = None
     progress: Optional[RunProgress] = None
     run_id: UUID4 = Field(default_factory=uuid.uuid4)
     run_at: str = Field(default_factory=lambda: datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%SZ"))

@@ -66,11 +66,13 @@ async def list_run_handler():
     result = [{
         'run_id': run.run_id,
         'run_at': run.run_at,
+        'name': run.name,
         'type': run.type,
-        'params': run.params
+        'params': run.params,
+        'status': run.status,
     } for run in runs]
 
-    # sort by run_at    
+    # sort by run_at
     result = sorted(result, key=lambda x: x['run_at'], reverse=True)
 
     return result
