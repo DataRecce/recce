@@ -289,50 +289,57 @@ function NavBar() {
 }
 
 function Main() {
-  const { isOpen, close } = useRecceActionContext();
+  const { isRunResultOpen, isHistoryOpen } = useRecceActionContext();
   const [location] = useLocation();
-  const isRunResultPaneOpen = isOpen && !location.startsWith("/checks");
+  const _isRunResultOpen = isRunResultOpen && !location.startsWith("/checks");
+  const _isHistoryOpen = isHistoryOpen && !location.startsWith("/checks");
 
   return (
-    <VSplit
-      sizes={isRunResultPaneOpen ? [60, 40] : [100, 0]}
-      minSize={isRunResultPaneOpen ? 100 : 0}
-      style={{
-        borderTop: "1px solid #CBD5E0",
-        flex: "1",
-        contain: "size",
-      }}
+    <HSplit
+      sizes={[0, 100]}
+      minSize={_isHistoryOpen ? 300 : 0}
+      gutterSize={_isHistoryOpen ? 5 : 0}
+      style={{ height: "100%" }}
     >
-      <Box p={0} style={{ contain: "content" }}>
-        <Switch>
-          {/* Prevent the lineage page unmount and lose states */}
-          <RouteAlwaysMount path="/lineage">
-            <HSplit sizes={[30, 70]} style={{ height: "100%" }}>
-              <RunList />
+      <Box style={{ contain: "size" }}>{_isHistoryOpen && <RunList />}</Box>
+      <VSplit
+        sizes={_isRunResultOpen ? [60, 40] : [100, 0]}
+        minSize={_isRunResultOpen ? 0 : 100}
+        gutterSize={_isRunResultOpen ? 5 : 0}
+        style={{
+          borderTop: "1px solid #CBD5E0",
+          flex: "1",
+          contain: "size",
+        }}
+      >
+        <Box p={0} style={{ contain: "content" }}>
+          <Switch>
+            {/* Prevent the lineage page unmount and lose states */}
+            <RouteAlwaysMount path="/lineage">
               <LineagePage />
-            </HSplit>
-          </RouteAlwaysMount>
-          <Route path="/query">
-            <QueryPage />
-          </Route>
-          <Route path="/checks/:slug*">
-            <CheckPage />
-          </Route>
-          <Route path="/runs/:runId">
-            {({ runId }) => {
-              return <RunPage runId={runId} />;
-            }}
-          </Route>
-          <Route path="/ssr">
-            <Progress size="xs" isIndeterminate />
-          </Route>
-          <Route>
-            <Redirect to="/lineage" />
-          </Route>
-        </Switch>
-      </Box>
-      {isRunResultPaneOpen ? <RunResultPane onClose={close} /> : <Box></Box>}
-    </VSplit>
+            </RouteAlwaysMount>
+            <Route path="/query">
+              <QueryPage />
+            </Route>
+            <Route path="/checks/:slug*">
+              <CheckPage />
+            </Route>
+            <Route path="/runs/:runId">
+              {({ runId }) => {
+                return <RunPage runId={runId} />;
+              }}
+            </Route>
+            <Route path="/ssr">
+              <Progress size="xs" isIndeterminate />
+            </Route>
+            <Route>
+              <Redirect to="/lineage" />
+            </Route>
+          </Switch>
+        </Box>
+        {_isRunResultOpen ? <RunResultPane onClose={close} /> : <Box></Box>}
+      </VSplit>
+    </HSplit>
   );
 }
 

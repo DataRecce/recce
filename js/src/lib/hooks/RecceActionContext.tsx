@@ -29,15 +29,21 @@ export interface RecceActionContextType {
   ) => void;
   runId?: string;
   showRunId: (runId: string) => void;
-  isOpen: boolean;
-  close: () => void;
+  isRunResultOpen: boolean;
+  closeRunResult: () => void;
+  isHistoryOpen: boolean;
+  closeHistory: () => void;
+  showHistory: () => void;
 }
 
 export const RecceActionContext = createContext<RecceActionContextType>({
   runAction: () => {},
   showRunId: (runId: string) => {},
-  isOpen: false,
-  close: () => {},
+  isRunResultOpen: false,
+  closeRunResult: () => {},
+  isHistoryOpen: false,
+  closeHistory: () => {},
+  showHistory: () => {},
 });
 
 interface RecceActionContextProviderProps {
@@ -72,9 +78,14 @@ export function RecceActionContextProvider({
     onClose: onModalClose,
   } = useDisclosure();
   const {
-    isOpen: isResultPaneOpen,
+    isOpen: isRunResultOpen,
     onOpen: onResultPaneOpen,
-    onClose: onResultPaneClose,
+    onClose: closeRunResult,
+  } = useDisclosure();
+  const {
+    isOpen: isHistoryOpen,
+    onOpen: showHistory,
+    onClose: closeHistory,
   } = useDisclosure();
   const toast = useToast();
   const [runId, setRunId] = useState<string>();
@@ -178,8 +189,11 @@ export function RecceActionContextProvider({
         runAction,
         runId,
         showRunId,
-        isOpen: isResultPaneOpen,
-        close: onResultPaneClose,
+        isRunResultOpen,
+        closeRunResult,
+        isHistoryOpen,
+        closeHistory,
+        showHistory,
       }}
     >
       {action && (

@@ -3,16 +3,12 @@ import React from "react";
 import { Check, updateCheck } from "@/lib/api/checks";
 import {
   Box,
-  Button,
-  Divider,
   Flex,
   HStack,
   Icon,
-  VStack,
   Text,
   IconButton,
   Spacer,
-  Badge,
 } from "@chakra-ui/react";
 import { cacheKeys } from "@/lib/api/cacheKeys";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
@@ -27,7 +23,13 @@ import { useRecceActionContext } from "@/lib/hooks/RecceActionContext";
 import { formatDistanceToNow } from "date-fns";
 import { RepeatIcon } from "@chakra-ui/icons";
 
-const RunListItem = ({ run }: { run: Run }) => {
+const RunListItem = ({
+  run,
+  isSelected,
+}: {
+  run: Run;
+  isSelected: boolean;
+}) => {
   const relativeTime = run?.run_at
     ? formatDistanceToNow(new Date(run.run_at), { addSuffix: true })
     : null;
@@ -39,8 +41,8 @@ const RunListItem = ({ run }: { run: Run }) => {
       direction="column"
       width="100%"
       p="5px 20px"
-      borderBottom="solid 1px lightgray"
       cursor="pointer"
+      borderLeftColor="recce.500"
       _hover={{ bg: "gray.200" }}
     >
       <Flex onClick={() => {}} alignItems="center" gap="12px">
@@ -95,14 +97,18 @@ export const RunList = () => {
       return await listRuns();
     },
   });
-  const { showRunId } = useRecceActionContext();
+  const { showRunId, runId } = useRecceActionContext();
   const handleRunClick = (runId: string) => () => {
     showRunId(runId);
   };
 
   return (
-    <VStack spacing="0" overflow={"auto"}>
-      <HStack width="100%" paddingInline="20px">
+    <Flex direction="column" height="100%">
+      <HStack
+        width="100%"
+        paddingInline="20px"
+        borderBottom="solid 1px lightgray"
+      >
         <Box>History</Box>
         <Spacer />
         <IconButton
@@ -114,15 +120,21 @@ export const RunList = () => {
           }}
         />
       </HStack>
-
-      <Divider />
-      {(runs || []).map((run, index) => {
-        return (
-          <Flex w="full" onClick={handleRunClick(run.run_id)}>
-            <RunListItem key={run.run_id} run={run} />
-          </Flex>
-        );
-      })}
-    </VStack>
+      <Box overflowY="scroll">
+        <Flex direction="column" overflowY="auto" flex="1">
+          {(runs || []).map((run, index) => {
+            return (
+              <Flex w="full" onClick={handleRunClick(run.run_id)}>
+                <RunListItem
+                  key={run.run_id}
+                  run={run}
+                  isSelected={run.run_id === runId}
+                />
+              </Flex>
+            );
+          })}
+        </Flex>
+      </Box>
+    </Flex>
   );
 };
