@@ -307,35 +307,36 @@ function Main() {
         minSize={_isRunResultOpen ? 0 : 100}
         gutterSize={_isRunResultOpen ? 5 : 0}
         style={{
-          borderTop: "1px solid #CBD5E0",
           flex: "1",
           contain: "size",
         }}
       >
         <Box p={0} style={{ contain: "content" }}>
-          <Switch>
-            {/* Prevent the lineage page unmount and lose states */}
-            <RouteAlwaysMount path="/lineage">
-              <LineagePage />
-            </RouteAlwaysMount>
-            <Route path="/query">
-              <QueryPage />
-            </Route>
-            <Route path="/checks/:slug*">
-              <CheckPage />
-            </Route>
-            <Route path="/runs/:runId">
-              {({ runId }) => {
-                return <RunPage runId={runId} />;
-              }}
-            </Route>
-            <Route path="/ssr">
-              <Progress size="xs" isIndeterminate />
-            </Route>
-            <Route>
-              <Redirect to="/lineage" />
-            </Route>
-          </Switch>
+          <ErrorBoundary>
+            <Switch>
+              {/* Prevent the lineage page unmount and lose states */}
+              <RouteAlwaysMount path="/lineage">
+                <LineagePage />
+              </RouteAlwaysMount>
+              <Route path="/query">
+                <QueryPage />
+              </Route>
+              <Route path="/checks/:slug*">
+                <CheckPage />
+              </Route>
+              <Route path="/runs/:runId">
+                {({ runId }) => {
+                  return <RunPage runId={runId} />;
+                }}
+              </Route>
+              <Route path="/ssr">
+                <Progress size="xs" isIndeterminate />
+              </Route>
+              <Route>
+                <Redirect to="/lineage" />
+              </Route>
+            </Switch>
+          </ErrorBoundary>
         </Box>
         {_isRunResultOpen ? <RunResultPane onClose={close} /> : <Box></Box>}
       </VSplit>
@@ -380,9 +381,7 @@ export default function Home() {
                 <TopBar />
                 <NavBar />
                 <OnboardingGuide />
-                <ErrorBoundary>
-                  <Main />
-                </ErrorBoundary>
+                <Main />
               </Flex>
             </RecceContextProvider>
           </Router>

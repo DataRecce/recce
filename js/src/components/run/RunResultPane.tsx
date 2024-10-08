@@ -21,6 +21,7 @@ import { Editor } from "@monaco-editor/react";
 import YAML from "yaml";
 import SqlEditor from "../query/SqlEditor";
 import { CheckIcon, RepeatIcon } from "@chakra-ui/icons";
+import { ErrorBoundary } from "@sentry/react";
 
 interface RunPageProps {
   onClose?: () => void;
@@ -85,6 +86,14 @@ export const _LoadableRunView = ({
     runAction(run?.type || "", run?.params);
   }, [run, runAction]);
 
+  const handleGoToCheck = useCallback(async () => {
+    if (!run?.check_id) {
+      return;
+    }
+
+    setLocation(`/checks/${run.check_id}`);
+  }, [runId, setLocation, queryClient, viewOptions]);
+
   const handleAddToChecklist = useCallback(async () => {
     if (!runId) {
       return;
@@ -120,15 +129,27 @@ export const _LoadableRunView = ({
             >
               Rerun
             </Button>
-            <Button
-              leftIcon={<CheckIcon />}
-              isDisabled={!runId || !run?.result}
-              size="sm"
-              colorScheme="blue"
-              onClick={handleAddToChecklist}
-            >
-              Add to Checklist
-            </Button>
+            {run?.check_id ? (
+              <Button
+                leftIcon={<CheckIcon />}
+                isDisabled={!runId || !run?.result}
+                size="sm"
+                colorScheme="blue"
+                onClick={handleGoToCheck}
+              >
+                Go to Check
+              </Button>
+            ) : (
+              <Button
+                leftIcon={<CheckIcon />}
+                isDisabled={!runId || !run?.result}
+                size="sm"
+                colorScheme="blue"
+                onClick={handleAddToChecklist}
+              >
+                Add to Checklist
+              </Button>
+            )}
 
             <CloseButton
               onClick={() => {

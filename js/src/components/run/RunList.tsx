@@ -1,5 +1,5 @@
 import "react-data-grid/lib/styles.css";
-import React from "react";
+import React, { useCallback } from "react";
 import { Check, updateCheck } from "@/lib/api/checks";
 import {
   Box,
@@ -9,41 +9,90 @@ import {
   Text,
   IconButton,
   Spacer,
+  Tooltip,
+  Heading,
 } from "@chakra-ui/react";
 import { cacheKeys } from "@/lib/api/cacheKeys";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import _ from "lodash";
-import { FaCheckCircle } from "react-icons/fa";
+import { FaCheckCircle, FaRegCheckCircle } from "react-icons/fa";
 import { TbChecklist } from "react-icons/tb";
 import { IconType } from "react-icons";
 import { findByRunType } from "../run/registry";
 import { Run } from "@/lib/api/types";
 import { listRuns } from "@/lib/api/runs";
 import { useRecceActionContext } from "@/lib/hooks/RecceActionContext";
-import { formatDistanceToNow } from "date-fns";
+import { format, formatDistanceToNow } from "date-fns";
 import { RepeatIcon } from "@chakra-ui/icons";
+import { useLocation } from "wouter";
+
+const RunListItemStatus = ({ run }: { run: Run }) => {
+  let status: string | undefined = run.status;
+  if (!status) {
+    if (run.result) {
+      status = "successful";
+    } else if (run.error) {
+      status = "failed";
+    }
+  }
+
+  let color = "";
+  let message = "";
+  if (status === "successful") {
+    color = "green";
+    message = "Successful";
+  } else if (status === "failed") {
+    color = "red";
+    message = "Failed";
+  } else if (status === "cancelled") {
+    color = "gray";
+    message = "Cancelled";
+  } else {
+    color = "gray";
+    message = "Unknown";
+  }
+
+  status === "successful" ? "green" : status === "failed" ? "red" : "gray";
+  return (
+    <Text fontWeight={500} color={`${color}.400`}>
+      {message}
+    </Text>
+  );
+};
 
 const RunListItem = ({
   run,
   isSelected,
+  onSelectRun,
+  onGoToCheck,
 }: {
   run: Run;
   isSelected: boolean;
+  onSelectRun: (runId: string) => void;
+  onGoToCheck: (checkId: string) => void;
 }) => {
   const relativeTime = run?.run_at
-    ? formatDistanceToNow(new Date(run.run_at), { addSuffix: true })
+    ? format(new Date(run.run_at), "MMM d, HH:mm")
     : null;
 
   const icon: IconType = findByRunType(run.type)?.icon || TbChecklist;
+  const checkId = run.check_id;
 
   return (
     <Flex
+      minWidth="200px"
       direction="column"
       width="100%"
       p="5px 20px"
       cursor="pointer"
-      borderLeftColor="recce.500"
-      _hover={{ bg: "gray.200" }}
+      borderBottom={"solid 1px lightgray"}
+      borderLeft={"4px"}
+      borderLeftColor={isSelected ? "orange.400" : "transparent"}
+      backgroundColor={isSelected ? "orange.50" : "transparent"}
+      onClick={() => {
+        onSelectRun(run.run_id);
+      }}
+      _hover={{ bg: isSelected ? "orange.50" : "gray.200" }}
     >
       <Flex onClick={() => {}} alignItems="center" gap="12px">
         <Icon as={icon} />
@@ -52,32 +101,39 @@ const RunListItem = ({
           textOverflow="ellipsis"
           whiteSpace="nowrap"
           overflow="hidden"
-          fontSize="12pt"
-          fontWeight="bold"
+          fontSize="11pt"
+          fontWeight="500"
         >
-          {
-            //first 8 characters of run_id
-            `<run name>_${run.run_id.slice(0, 8).toUpperCase()}`
-          }
+          {run.name}
         </Box>
-        <Box
-          backgroundColor="blue.50"
-          textColor="blue.500"
-          fontSize="10pt"
-          fontWeight={500}
-          padding="5px"
-          borderRadius="5px"
-        >
-          {"<type>"}
-        </Box>
-
-        <Icon color="green" as={FaCheckCircle} />
+        {checkId ? (
+          <Tooltip label="Go to check" aria-label="Checklist">
+            <Text
+              onClick={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                onGoToCheck(checkId);
+              }}
+            >
+              <Icon color="green" as={FaCheckCircle} />
+            </Text>
+          </Tooltip>
+        ) : (
+          <Icon as={FaRegCheckCircle} />
+        )}
       </Flex>
-      <Flex justifyContent="start">
+      <Flex
+        justifyContent="start"
+        fontSize="10pt"
+        color="gray.500"
+        gap="3px"
+        alignItems={"center"}
+      >
         <Text fontWeight={500} color="green.400">
-          Successful
+          <RunListItemStatus run={run} />
         </Text>
-        <Text color="gray.500"> • {relativeTime}</Text>
+        <Text>•</Text>
+        <Text>{relativeTime}</Text>
       </Flex>
     </Flex>
   );
@@ -86,6 +142,7 @@ const RunListItem = ({
 export const RunList = () => {
   const {
     data: runs,
+    isLoading,
     isFetching,
     error,
     refetch,
@@ -93,23 +150,33 @@ export const RunList = () => {
     queryKey: cacheKeys.runs(),
     queryFn: async () => {
       // wait 2 sec
-      await new Promise((resolve) => setTimeout(resolve, 2000));
+      // await new Promise((resolve) => setTimeout(resolve, 2000));
       return await listRuns();
     },
   });
   const { showRunId, runId } = useRecceActionContext();
-  const handleRunClick = (runId: string) => () => {
+  const handleSelectRun = (runId: string) => {
+    console.log("select run", runId);
     showRunId(runId);
   };
+  const [, setLocation] = useLocation();
+
+  const handleGoToCheck = useCallback(
+    (checkId: string) => {
+      setLocation(`/checks/${checkId}`);
+    },
+    [setLocation]
+  );
 
   return (
     <Flex direction="column" height="100%">
       <HStack
         width="100%"
-        paddingInline="20px"
+        height={"54px"}
+        paddingInline="24px 20px"
         borderBottom="solid 1px lightgray"
       >
-        <Box>History</Box>
+        <Heading size="md">History</Heading>
         <Spacer />
         <IconButton
           variant={"unstyled"}
@@ -120,20 +187,34 @@ export const RunList = () => {
           }}
         />
       </HStack>
-      <Box overflowY="scroll">
-        <Flex direction="column" overflowY="auto" flex="1">
-          {(runs || []).map((run, index) => {
-            return (
-              <Flex w="full" onClick={handleRunClick(run.run_id)}>
+      <Box
+        overflowY="scroll"
+        flex="1"
+        style={{
+          scrollbarColor: "lightgray rgba(0, 0, 0, 0)",
+          scrollbarGutter: "auto",
+          scrollbarWidth: "thin",
+        }}
+      >
+        {isLoading ? (
+          "Loading..."
+        ) : runs?.length === 0 ? (
+          "No run"
+        ) : (
+          <Flex direction="column" overflowY="auto" flex="1">
+            {(runs || []).map((run, index) => {
+              return (
                 <RunListItem
                   key={run.run_id}
                   run={run}
                   isSelected={run.run_id === runId}
+                  onSelectRun={handleSelectRun}
+                  onGoToCheck={handleGoToCheck}
                 />
-              </Flex>
-            );
-          })}
-        </Flex>
+              );
+            })}
+          </Flex>
+        )}
       </Box>
     </Flex>
   );

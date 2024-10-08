@@ -15,6 +15,8 @@ import { searchRuns, submitRun, waitRun } from "../api/runs";
 import { findByRunType } from "@/components/run/registry";
 import { RunFormProps } from "@/components/run/types";
 import { on } from "events";
+import { useQueryClient } from "@tanstack/react-query";
+import { cacheKeys } from "../api/cacheKeys";
 
 export interface RecceActionOptions {
   showForm: boolean;
@@ -97,6 +99,7 @@ export function RecceActionContextProvider({
     },
     [setRunId, onResultPaneOpen]
   );
+  const queryClient = useQueryClient();
 
   const runAction = useCallback(
     async (type: string, params?: any, options?: RecceActionOptions) => {
@@ -125,6 +128,7 @@ export function RecceActionContextProvider({
             nowait: true,
           });
           showRunId(run_id);
+          queryClient.invalidateQueries({ queryKey: cacheKeys.runs() });
           if (location.startsWith("/lineage")) {
             setLocation("/lineage");
           }

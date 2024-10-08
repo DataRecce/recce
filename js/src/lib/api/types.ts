@@ -33,6 +33,7 @@ export type RunType =
 export interface Run<PT = any, RT = any> {
   run_id: string;
   run_at: string;
+  name?: string;
   check_id?: string;
   type: RunType;
   progress?: {
@@ -42,4 +43,5 @@ export interface Run<PT = any, RT = any> {
   params?: PT;
   result?: RT;
   error?: string;
+  status?: "success" | "failed" | "cancelled";
 }

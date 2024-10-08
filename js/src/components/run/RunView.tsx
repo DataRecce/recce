@@ -10,6 +10,7 @@ import {
   VStack,
 } from "@chakra-ui/react";
 import { RunResultViewProps } from "./types";
+import { ErrorBoundary } from "@sentry/react";
 
 interface RunViewProps<PT, RT, VO = any> {
   isPending?: boolean;
@@ -53,7 +54,7 @@ export const RunView = <PT, RT>({
     );
   }
 
-  if (isPending) {
+  if (isPending || (run?.error == undefined && run?.result === undefined)) {
     let loadingMessage = progress?.message
       ? progress?.message
       : run?.progress?.message
@@ -115,12 +116,14 @@ export const RunView = <PT, RT>({
 
   return (
     <Box h="100%" style={{ contain: "size layout" }} overflow="auto">
-      {RunResultView && (
-        <RunResultView
-          run={run}
-          viewOptions={viewOptions}
-          onViewOptionsChanged={onViewOptionsChanged}
-        />
+      {RunResultView && (run.error || run.result) && (
+        <ErrorBoundary>
+          <RunResultView
+            run={run}
+            viewOptions={viewOptions}
+            onViewOptionsChanged={onViewOptionsChanged}
+          />
+        </ErrorBoundary>
       )}
       {children && children({ run, viewOptions, onViewOptionsChanged })}
     </Box>
