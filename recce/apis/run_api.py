@@ -24,7 +24,6 @@ class CreateRunIn(BaseModel):
 async def create_run_handler(input: CreateRunIn):
     log_api_event('create_run', dict(
         type=input.type,
-        params=input.params,
     ))
     try:
         run, future = submit_run(input.type, input.params)
