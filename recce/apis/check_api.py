@@ -67,8 +67,6 @@ async def create_check(check_in: CreateCheckIn, background_tasks: BackgroundTask
             )
         log_api_event('create_check', dict(
             type=str(check.type),
-            params=check.params,
-            view_options=check.view_options,
         ))
     except NameError as e:
         raise HTTPException(status_code=404, detail=str(e))
@@ -92,7 +90,6 @@ async def run_check_handler(check_id: UUID, input: RunCheckIn):
     try:
         log_api_event('rerun_check', dict(
             type=str(check.type),
-            params=check.params,
             rerun=True,
         ))
         run, future = submit_run(check.type, check.params, check_id=check_id)
