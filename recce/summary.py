@@ -402,7 +402,7 @@ def generate_check_summary(base_lineage, curr_lineage) -> (List[CheckSummary], D
 
 
 def generate_mermaid_lineage_graph(graph: LineageGraph):
-    content = 'graph LR\n'
+    content = up_to_level_content = 'graph LR\n'
     is_not_modified = False
     # Only show the modified nodes and there children
     queue = list(graph.modified_set)
@@ -412,7 +412,6 @@ def generate_mermaid_lineage_graph(graph: LineageGraph):
     if len(queue) == 0:
         is_not_modified = True
 
-    up_to_level = ""
     while len(queue) > 0:
 
         level_nodes = len(queue)
@@ -435,9 +434,9 @@ def generate_mermaid_lineage_graph(graph: LineageGraph):
         if len(content) > MAX_MERMAID_TEXT_SIZE:
             break
 
-        up_to_level = content
+        up_to_level_content = content
 
-    return up_to_level, is_not_modified
+    return up_to_level_content, is_not_modified, len(content) > MAX_MERMAID_TEXT_SIZE
 
 
 def generate_markdown_summary(ctx: RecceContext, summary_format: str = 'markdown'):
@@ -446,7 +445,7 @@ def generate_markdown_summary(ctx: RecceContext, summary_format: str = 'markdown
     summary_metadata = generate_summary_metadata(base_lineage, curr_lineage)
     graph = _build_lineage_graph(base_lineage, curr_lineage)
     graph.checks, check_statistics = generate_check_summary(base_lineage, curr_lineage)
-    mermaid_content, is_empty_graph = generate_mermaid_lineage_graph(graph)
+    mermaid_content, is_empty_graph, is_partial_graph = generate_mermaid_lineage_graph(graph)
     check_content = generate_check_content(graph, check_statistics)
 
     if summary_format == 'mermaid':
@@ -461,6 +460,7 @@ def generate_markdown_summary(ctx: RecceContext, summary_format: str = 'markdown
         if is_empty_graph is False:
             content += f'''
 ## Lineage Graph
+{"_Too many nodes to generate! Please see the full lineage graph on Recce instance._" if is_partial_graph else ''}
 ```mermaid
 {mermaid_content}
 ```
