@@ -4,6 +4,7 @@ from ruamel import yaml
 from ruamel.yaml import CommentedMap as _cm, CommentedSeq as _cs
 
 _yaml = yaml.YAML()
+_safe_yaml = yaml.YAML(typ='safe')
 
 CommentedMap = _cm
 CommentedSeq = _cs
@@ -21,7 +22,9 @@ def allow_duplicate_keys_loader() -> Callable:
 
 
 def safe_load(stream, version=None) -> Any:
-    return yaml.safe_load(stream, version)
+    if version is not None:
+        _safe_yaml.version = version
+    return _safe_yaml.load(stream)
 
 
 def dump(
