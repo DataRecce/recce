@@ -289,7 +289,8 @@ function NavBar() {
 }
 
 function Main() {
-  const { isRunResultOpen, isHistoryOpen } = useRecceActionContext();
+  const { isRunResultOpen, isHistoryOpen, closeRunResult } =
+    useRecceActionContext();
   const [location] = useLocation();
   const _isRunResultOpen = isRunResultOpen && !location.startsWith("/checks");
   const _isHistoryOpen = isHistoryOpen && !location.startsWith("/checks");
@@ -304,7 +305,7 @@ function Main() {
       <Box style={{ contain: "size" }}>{_isHistoryOpen && <RunList />}</Box>
       <VSplit
         sizes={_isRunResultOpen ? [60, 40] : [100, 0]}
-        minSize={_isRunResultOpen ? 0 : 100}
+        minSize={_isRunResultOpen ? 100 : 0}
         gutterSize={_isRunResultOpen ? 5 : 0}
         style={{
           flex: "1",
@@ -338,7 +339,11 @@ function Main() {
             </Switch>
           </ErrorBoundary>
         </Box>
-        {_isRunResultOpen ? <RunResultPane onClose={close} /> : <Box></Box>}
+        {_isRunResultOpen ? (
+          <RunResultPane onClose={closeRunResult} />
+        ) : (
+          <Box></Box>
+        )}
       </VSplit>
     </HSplit>
   );
