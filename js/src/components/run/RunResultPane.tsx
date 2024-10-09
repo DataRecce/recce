@@ -21,7 +21,6 @@ import { Editor } from "@monaco-editor/react";
 import YAML from "yaml";
 import SqlEditor from "../query/SqlEditor";
 import { CheckIcon, RepeatIcon } from "@chakra-ui/icons";
-import { ErrorBoundary } from "@sentry/react";
 
 interface RunPageProps {
   onClose?: () => void;
