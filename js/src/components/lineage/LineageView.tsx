@@ -229,8 +229,7 @@ export function LineageView({ ...props }: LineageViewProps) {
     refetchRunsAggregated,
   } = useLineageGraphContext();
 
-  const { showRunId, closeRunResultPane: closeRunResultPane } =
-    useRecceActionContext();
+  const { showRunId, closeRunResult } = useRecceActionContext();
 
   /**
    * View mode
@@ -652,7 +651,7 @@ export function LineageView({ ...props }: LineageViewProps) {
                   setDetailViewSelected(undefined);
                   setIsDetailViewShown(false);
                   setNodes(newNodes);
-                  closeRunResultPane();
+                  closeRunResult();
                   refetchRunsAggregated?.();
                 }}
                 onActionStarted={() => {
