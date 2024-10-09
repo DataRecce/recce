@@ -20,6 +20,7 @@ import { useLocation } from "wouter";
 import { Editor } from "@monaco-editor/react";
 import YAML from "yaml";
 import SqlEditor from "../query/SqlEditor";
+import { CheckIcon, RepeatIcon } from "@chakra-ui/icons";
 
 interface RunPageProps {
   onClose?: () => void;
@@ -84,6 +85,15 @@ export const _LoadableRunView = ({
     runAction(run?.type || "", run?.params);
   }, [run, runAction]);
 
+  const checkId = run?.check_id;
+  const handleGoToCheck = useCallback(async () => {
+    if (!checkId) {
+      return;
+    }
+
+    setLocation(`/checks/${checkId}`);
+  }, [checkId, setLocation]);
+
   const handleAddToChecklist = useCallback(async () => {
     if (!runId) {
       return;
@@ -111,21 +121,35 @@ export const _LoadableRunView = ({
           <Spacer />
           <HStack>
             <Button
+              leftIcon={<RepeatIcon />}
+              variant="outline"
               isDisabled={!runId || isPending}
               size="sm"
-              colorScheme="blue"
               onClick={handleRerun}
             >
               Rerun
             </Button>
-            <Button
-              isDisabled={!runId || !run?.result}
-              size="sm"
-              colorScheme="blue"
-              onClick={handleAddToChecklist}
-            >
-              Add to Checklist
-            </Button>
+            {run?.check_id ? (
+              <Button
+                leftIcon={<CheckIcon />}
+                isDisabled={!runId || !run?.result}
+                size="sm"
+                colorScheme="blue"
+                onClick={handleGoToCheck}
+              >
+                Go to Check
+              </Button>
+            ) : (
+              <Button
+                leftIcon={<CheckIcon />}
+                isDisabled={!runId || !run?.result}
+                size="sm"
+                colorScheme="blue"
+                onClick={handleAddToChecklist}
+              >
+                Add to Checklist
+              </Button>
+            )}
 
             <CloseButton
               onClick={() => {

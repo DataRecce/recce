@@ -24,11 +24,19 @@ import {
 
 import { FiPackage } from "react-icons/fi";
 import { getIconForResourceType } from "./styles";
-import { CSSProperties, useCallback, useEffect, useRef, useState } from "react";
+import {
+  CSSProperties,
+  use,
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+} from "react";
 import { createSchemaDiffCheck } from "@/lib/api/schemacheck";
 import { useLocation } from "wouter";
 import { Check } from "@/lib/api/checks";
 import { useRecceActionContext } from "@/lib/hooks/RecceActionContext";
+import { VscHistory } from "react-icons/vsc";
 
 interface NodeFilterProps {
   isDisabled?: boolean;
@@ -36,6 +44,20 @@ interface NodeFilterProps {
   onViewOptionsChanged: (options: LineageDiffViewOptions) => void;
   onSelectNodesClicked: () => void;
 }
+
+const HistoryToggle = () => {
+  const { isHistoryOpen, showHistory, closeHistory } = useRecceActionContext();
+  return (
+    <Button
+      leftIcon={<Icon as={VscHistory} />}
+      size="xs"
+      variant="outline"
+      onClick={isHistoryOpen ? closeHistory : showHistory}
+    >
+      {isHistoryOpen ? "Hide" : "Show"}
+    </Button>
+  );
+};
 
 const ViewModeSelectMenu = ({
   isDisabled,
@@ -357,6 +379,9 @@ export const NodeFilter = (props: NodeFilterProps) => {
   return (
     <HStack width="100%" padding="4pt 8pt">
       <HStack flex="1">
+        <ControlItem label="History" style={{ flexShrink: "1" }}>
+          <HistoryToggle />
+        </ControlItem>
         <ControlItem label="Mode" style={{ flexShrink: "1" }}>
           <ViewModeSelectMenu {...props} />
         </ControlItem>

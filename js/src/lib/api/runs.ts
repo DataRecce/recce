@@ -70,6 +70,12 @@ export async function searchRuns(type: string, params: any, limit?: number) {
   return response.data;
 }
 
+export async function listRuns() {
+  const response = await axiosClient.get("/api/runs");
+  const runs: Run<any, any>[] = response.data;
+  return runs;
+}
+
 export interface RunsAggregated {
   [unique_id: string]: {
     [run_type: string]: {

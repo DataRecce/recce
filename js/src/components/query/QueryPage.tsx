@@ -1,5 +1,5 @@
-import React, { useState } from "react";
-import { Box, Button, Flex } from "@chakra-ui/react";
+import React, { CSSProperties, useState } from "react";
+import { Box, Button, Flex, Icon, Spacer } from "@chakra-ui/react";
 import SqlEditor from "./SqlEditor";
 import {
   defaultSqlQuery,
@@ -13,6 +13,25 @@ import { QueryForm } from "./QueryForm";
 import { HSplit } from "../split/Split";
 import { useRecceActionContext } from "@/lib/hooks/RecceActionContext";
 import { waitRun } from "@/lib/api/runs";
+import { VscHistory } from "react-icons/vsc";
+
+const HistoryToggle = () => {
+  const { isHistoryOpen, showHistory, closeHistory } = useRecceActionContext();
+  return (
+    <Box>
+      <Box fontSize="8pt">History</Box>
+
+      <Button
+        leftIcon={<Icon as={VscHistory} />}
+        size="xs"
+        variant="outline"
+        onClick={isHistoryOpen ? closeHistory : showHistory}
+      >
+        {isHistoryOpen ? "Hide" : "Show"}
+      </Button>
+    </Box>
+  );
+};
 
 export const QueryPage = () => {
   const {
@@ -48,33 +67,44 @@ export const QueryPage = () => {
   });
 
   return (
-    <Flex direction="column" height="100%">
-      <Flex justifyContent="right" padding="5px" gap="5px">
-        <Button
-          colorScheme="blue"
-          onClick={() => runQuery("query_diff")}
-          isDisabled={isPending}
-          size="sm"
+    <HSplit
+      sizes={[90, 10]}
+      minSize={200}
+      style={{ flex: "1", height: "100%" }}
+    >
+      <Flex direction="column" height="100%">
+        <Flex
+          justifyContent="right"
+          alignItems="center"
+          padding="4pt 8pt"
+          gap="5px"
+          height="54px"
+          borderBottom="1px solid lightgray"
+          flex="0 0 54px"
         >
-          Run Diff
-        </Button>
-        <Button
-          colorScheme="blue"
-          onClick={() => {
-            runQuery("query");
-          }}
-          isDisabled={isPending}
-          size="sm"
-        >
-          Run
-        </Button>
-      </Flex>
-      <HSplit
-        sizes={[90, 10]}
-        minSize={300}
-        style={{ flex: "1", borderTop: "1px solid #CBD5E0" }}
-      >
-        <Box width="70%" border={"1px solid #CBD5E0"}>
+          <HistoryToggle />
+          <Spacer />
+          <Button
+            colorScheme="blue"
+            onClick={() => runQuery("query_diff")}
+            isDisabled={isPending}
+            size="sm"
+          >
+            Run Diff
+          </Button>
+          <Button
+            colorScheme="blue"
+            onClick={() => {
+              runQuery("query");
+            }}
+            isDisabled={isPending}
+            size="sm"
+          >
+            Run
+          </Button>
+        </Flex>
+
+        <Box width="100%" flex="1">
           <SqlEditor
             value={sqlQuery}
             onChange={setSqlQuery}
@@ -82,14 +112,14 @@ export const QueryPage = () => {
             onRunDiff={() => runQuery("query_diff")}
           />
         </Box>
-        <QueryForm
-          p="5px"
-          border="1px"
-          borderColor="gray.300"
-          defaultPrimaryKeys={primaryKeys}
-          onPrimaryKeysChange={setPrimaryKeys}
-        />
-      </HSplit>
-    </Flex>
+      </Flex>
+      <QueryForm
+        p="5px"
+        border="1px"
+        borderColor="gray.300"
+        defaultPrimaryKeys={primaryKeys}
+        onPrimaryKeysChange={setPrimaryKeys}
+      />
+    </HSplit>
   );
 };

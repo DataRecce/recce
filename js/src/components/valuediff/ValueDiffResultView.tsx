@@ -33,11 +33,9 @@ interface ValueDiffResultViewProp
 function ColumnNameCell({
   params,
   column,
-  containerRef,
 }: {
   params: ValueDiffParams;
   column: string;
-  containerRef: React.RefObject<any>;
 }) {
   const { runAction } = useRecceActionContext();
   const handleValueDiffDetail = (
@@ -73,31 +71,27 @@ function ColumnNameCell({
               size={"sm"}
             />
 
-            <Portal containerRef={containerRef}>
-              <MenuList lineHeight="20px">
-                <MenuGroup title="Action" as={Box} fontSize="8pt">
-                  <MenuItem
-                    fontSize="10pt"
-                    onClick={() =>
-                      handleValueDiffDetail({}, { showForm: true })
-                    }
-                  >
-                    Show mismatched values...
-                  </MenuItem>
-                  <MenuItem
-                    fontSize="10pt"
-                    onClick={() =>
-                      handleValueDiffDetail(
-                        { columns: [column] },
-                        { showForm: false }
-                      )
-                    }
-                  >
-                    Show mismatched values for &apos;{column}&apos;
-                  </MenuItem>
-                </MenuGroup>
-              </MenuList>
-            </Portal>
+            <MenuList lineHeight="20px">
+              <MenuGroup title="Action" as={Box} fontSize="8pt">
+                <MenuItem
+                  fontSize="10pt"
+                  onClick={() => handleValueDiffDetail({}, { showForm: true })}
+                >
+                  Show mismatched values...
+                </MenuItem>
+                <MenuItem
+                  fontSize="10pt"
+                  onClick={() =>
+                    handleValueDiffDetail(
+                      { columns: [column] },
+                      { showForm: false }
+                    )
+                  }
+                >
+                  Show mismatched values for &apos;{column}&apos;
+                </MenuItem>
+              </MenuGroup>
+            </MenuList>
           </>
         )}
       </Menu>
@@ -115,7 +109,6 @@ export function ValueDiffResultView({ run }: ValueDiffResultViewProp) {
       ? "diff-cell-modified"
       : "";
   };
-  const containerRef = useRef<any>();
   const primaryKeys = Array.isArray(params.primary_key)
     ? params.primary_key
     : [params.primary_key];
@@ -139,13 +132,7 @@ export function ValueDiffResultView({ run }: ValueDiffResultViewProp) {
       name: "Column",
       resizable: true,
       renderCell: ({ row, column }) => {
-        return (
-          <ColumnNameCell
-            column={row[column.key]}
-            params={params}
-            containerRef={containerRef}
-          />
-        );
+        return <ColumnNameCell column={row[column.key]} params={params} />;
       },
       cellClass: "cell-show-context-menu",
     },
@@ -174,13 +161,7 @@ export function ValueDiffResultView({ run }: ValueDiffResultViewProp) {
   ];
 
   return (
-    <Flex
-      direction="column"
-      gap="5px"
-      pt="5px"
-      height="100%"
-      ref={containerRef}
-    >
+    <Flex direction="column" gap="5px" pt="5px" height="100%">
       <Box px="16px">
         Model: {params.model}, {result.summary.total} total (
         {result.summary.total - result.summary.added - result.summary.removed}{" "}

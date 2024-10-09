@@ -61,14 +61,20 @@ async def wait_run_handler(run_id: UUID, timeout: int = Query(None, description=
 
 @run_router.get("/runs", status_code=200)
 async def list_run_handler():
-    runs = RunDAO().list()
+    runs = RunDAO().list() or []
 
     result = [{
         'run_id': run.run_id,
         'run_at': run.run_at,
+        'name': run.name,
         'type': run.type,
-        'params': run.params
+        'params': run.params,
+        'status': run.status,
+        'check_id': run.check_id,
     } for run in runs]
+
+    # sort by run_at
+    result = sorted(result, key=lambda x: x['run_at'], reverse=True)
 
     return result
 

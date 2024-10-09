@@ -48,9 +48,11 @@ import { cacheKeys } from "@/lib/api/cacheKeys";
 import { LineagePage } from "@/components/lineage/LineagePage";
 import OnboardingGuide from "@/components/onboarding-guide/OnboardingGuide";
 import { useRecceActionContext } from "@/lib/hooks/RecceActionContext";
-import { VSplit } from "@/components/split/Split";
+import { HSplit, VSplit } from "@/components/split/Split";
 import { RunResultPane } from "@/components/run/RunResultPane";
 import { VscGitPullRequest } from "react-icons/vsc";
+import { RunList } from "@/components/run/RunList";
+
 
 function getCookie(key: string) {
   var b = document.cookie.match("(^|;)\\s*" + key + "\\s*=\\s*([^;]+)");
@@ -287,47 +289,63 @@ function NavBar() {
 }
 
 function Main() {
-  const { isOpen, close } = useRecceActionContext();
+  const { isRunResultOpen, isHistoryOpen, closeRunResult } =
+    useRecceActionContext();
   const [location] = useLocation();
-  const isRunResultPaneOpen = isOpen && !location.startsWith("/checks");
+  const _isRunResultOpen = isRunResultOpen && !location.startsWith("/checks");
+  const _isHistoryOpen = isHistoryOpen && !location.startsWith("/checks");
 
   return (
-    <VSplit
-      sizes={isRunResultPaneOpen ? [60, 40] : [100, 0]}
-      minSize={isRunResultPaneOpen ? 100 : 0}
-      style={{
-        borderTop: "1px solid #CBD5E0",
-        flex: "1",
-        contain: "size",
-      }}
+    <HSplit
+      sizes={[0, 100]}
+      minSize={_isHistoryOpen ? 300 : 0}
+      gutterSize={_isHistoryOpen ? 5 : 0}
+      style={{ height: "100%" }}
     >
-      <Box p={0} style={{ contain: "content" }}>
-        <Switch>
-          {/* Prevent the lineage page unmount and lose states */}
-          <RouteAlwaysMount path="/lineage">
-            <LineagePage />
-          </RouteAlwaysMount>
-          <Route path="/query">
-            <QueryPage />
-          </Route>
-          <Route path="/checks/:slug*">
-            <CheckPage />
-          </Route>
-          <Route path="/runs/:runId">
-            {({ runId }) => {
-              return <RunPage runId={runId} />;
-            }}
-          </Route>
-          <Route path="/ssr">
-            <Progress size="xs" isIndeterminate />
-          </Route>
-          <Route>
-            <Redirect to="/lineage" />
-          </Route>
-        </Switch>
-      </Box>
-      {isRunResultPaneOpen ? <RunResultPane onClose={close} /> : <Box></Box>}
-    </VSplit>
+      <Box style={{ contain: "size" }}>{_isHistoryOpen && <RunList />}</Box>
+      <VSplit
+        sizes={_isRunResultOpen ? [60, 40] : [100, 0]}
+        minSize={_isRunResultOpen ? 100 : 0}
+        gutterSize={_isRunResultOpen ? 5 : 0}
+        style={{
+          flex: "1",
+          contain: "size",
+        }}
+      >
+        <Box p={0} style={{ contain: "content" }}>
+          <ErrorBoundary>
+            {/* Prevent the lineage page unmount and lose states */}
+            <RouteAlwaysMount path="/lineage">
+              <LineagePage />
+            </RouteAlwaysMount>
+            <Switch>
+              <Route path="/query">
+                <QueryPage />
+              </Route>
+              <Route path="/checks/:slug*">
+                <CheckPage />
+              </Route>
+              <Route path="/runs/:runId">
+                {({ runId }) => {
+                  return <RunPage runId={runId} />;
+                }}
+              </Route>
+              <Route path="/ssr">
+                <Progress size="xs" isIndeterminate />
+              </Route>
+              <Route>
+                <Redirect to="/lineage" />
+              </Route>
+            </Switch>
+          </ErrorBoundary>
+        </Box>
+        {_isRunResultOpen ? (
+          <RunResultPane onClose={closeRunResult} />
+        ) : (
+          <Box></Box>
+        )}
+      </VSplit>
+    </HSplit>
   );
 }
 
@@ -368,9 +386,7 @@ export default function Home() {
                 <TopBar />
                 <NavBar />
                 <OnboardingGuide />
-                <ErrorBoundary>
-                  <Main />
-                </ErrorBoundary>
+                <Main />
               </Flex>
             </RecceContextProvider>
           </Router>
