@@ -69,11 +69,14 @@ def generate_run_name(run):
         return f"profile diff of {model}".capitalize()
     elif run_type == RunType.ROW_COUNT_DIFF:
         nodes = params.get('node_names')
-        if nodes and len(nodes) == 1:
-            node = nodes[0]
-            return f"row count diff of {node}".capitalize()
+        if nodes:
+            if len(nodes) == 1:
+                node = nodes[0]
+                return f"row count diff of {node}".capitalize()
+            else:
+                return f"row count of {len(nodes)} nodes".capitalize()
         else:
-            return f"row count of {len(nodes)} nodes".capitalize()
+            return f"row count of multiple nodes".capitalize()
     elif run_type == RunType.TOP_K_DIFF:
         model = params.get('model')
         column = params.get('column_name')
