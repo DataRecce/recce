@@ -30,7 +30,7 @@ export interface RecceActionContextType {
     actionOptions?: RecceActionOptions
   ) => void;
   runId?: string;
-  showRunId: (runId: string) => void;
+  showRunId: (runId: string, refreshHistory?: boolean) => void;
   isRunResultOpen: boolean;
   closeRunResult: () => void;
   isHistoryOpen: boolean;
@@ -92,14 +92,19 @@ export function RecceActionContextProvider({
   const toast = useToast();
   const [runId, setRunId] = useState<string>();
   const [location, setLocation] = useLocation();
+  const queryClient = useQueryClient();
+
   const showRunId = useCallback(
-    (runId: string) => {
+    (runId: string, refreshHistory?: boolean) => {
       setRunId(runId);
       onResultPaneOpen();
+
+      if (refreshHistory !== false) {
+        queryClient.invalidateQueries({ queryKey: cacheKeys.runs() });
+      }
     },
     [setRunId, onResultPaneOpen]
   );
-  const queryClient = useQueryClient();
 
   const runAction = useCallback(
     async (type: string, params?: any, options?: RecceActionOptions) => {

@@ -86,13 +86,14 @@ export const _LoadableRunView = ({
     runAction(run?.type || "", run?.params);
   }, [run, runAction]);
 
+  const checkId = run?.check_id;
   const handleGoToCheck = useCallback(async () => {
-    if (!run?.check_id) {
+    if (!checkId) {
       return;
     }
 
-    setLocation(`/checks/${run.check_id}`);
-  }, [runId, setLocation, queryClient, viewOptions]);
+    setLocation(`/checks/${checkId}`);
+  }, [checkId, setLocation]);
 
   const handleAddToChecklist = useCallback(async () => {
     if (!runId) {

@@ -107,7 +107,7 @@ const RunListItem = ({
           {run.name}
         </Box>
         {checkId ? (
-          <Tooltip label="Go to check" aria-label="Checklist">
+          <Tooltip label="Go to Check" aria-label="Go to Check">
             <Text
               onClick={(e) => {
                 e.preventDefault();
@@ -119,7 +119,16 @@ const RunListItem = ({
             </Text>
           </Tooltip>
         ) : (
-          <Icon as={FaRegCheckCircle} />
+          <Tooltip label="Add to Checklist" aria-label="Add to Checklist">
+            <Text
+              onClick={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+              }}
+            >
+              <Icon as={FaRegCheckCircle} />
+            </Text>
+          </Tooltip>
         )}
       </Flex>
       <Flex
@@ -156,8 +165,7 @@ export const RunList = () => {
   });
   const { showRunId, runId } = useRecceActionContext();
   const handleSelectRun = (runId: string) => {
-    console.log("select run", runId);
-    showRunId(runId);
+    showRunId(runId, false);
   };
   const [, setLocation] = useLocation();
 
