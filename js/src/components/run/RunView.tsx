@@ -54,7 +54,7 @@ export const RunView = <PT, RT>({
     );
   }
 
-  if (isPending || (run?.error == undefined && run?.result === undefined)) {
+  if (isPending) {
     let loadingMessage = progress?.message
       ? progress?.message
       : run?.progress?.message

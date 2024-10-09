@@ -1,6 +1,6 @@
 import "react-data-grid/lib/styles.css";
 import React, { useCallback } from "react";
-import { Check, updateCheck } from "@/lib/api/checks";
+import { Check, createCheckByRun, updateCheck } from "@/lib/api/checks";
 import {
   Box,
   Flex,
@@ -11,6 +11,7 @@ import {
   Spacer,
   Tooltip,
   Heading,
+  Center,
 } from "@chakra-ui/react";
 import { cacheKeys } from "@/lib/api/cacheKeys";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
@@ -64,11 +65,13 @@ const RunListItem = ({
   run,
   isSelected,
   onSelectRun,
+  onAddToChecklist,
   onGoToCheck,
 }: {
   run: Run;
   isSelected: boolean;
   onSelectRun: (runId: string) => void;
+  onAddToChecklist: (runId: string) => void;
   onGoToCheck: (checkId: string) => void;
 }) => {
   const relativeTime = run?.run_at
@@ -124,6 +127,7 @@ const RunListItem = ({
               onClick={(e) => {
                 e.preventDefault();
                 e.stopPropagation();
+                onAddToChecklist(run.run_id);
               }}
             >
               <Icon as={FaRegCheckCircle} />
@@ -138,10 +142,14 @@ const RunListItem = ({
         gap="3px"
         alignItems={"center"}
       >
-        <Text fontWeight={500} color="green.400">
-          <RunListItemStatus run={run} />
-        </Text>
-        <Text>•</Text>
+        {run.status && (
+          <>
+            <Text fontWeight={500} color="green.400">
+              <RunListItemStatus run={run} />
+            </Text>
+            <Text>•</Text>
+          </>
+        )}
         <Text>{relativeTime}</Text>
       </Flex>
     </Flex>
@@ -168,6 +176,16 @@ export const RunList = () => {
     showRunId(runId, false);
   };
   const [, setLocation] = useLocation();
+  const queryClient = useQueryClient();
+  const handleAddToChecklist = useCallback(async () => {
+    if (!runId) {
+      return;
+    }
+    const check = await createCheckByRun(runId);
+
+    queryClient.invalidateQueries({ queryKey: cacheKeys.checks() });
+    setLocation(`/checks/${check.check_id}`);
+  }, [runId, setLocation, queryClient]);
 
   const handleGoToCheck = useCallback(
     (checkId: string) => {
@@ -207,7 +225,9 @@ export const RunList = () => {
         {isLoading ? (
           "Loading..."
         ) : runs?.length === 0 ? (
-          "No run"
+          <Center height="100%" color="gray.400">
+            No runs
+          </Center>
         ) : (
           <Flex direction="column" overflowY="auto" flex="1">
             {(runs || []).map((run, index) => {
@@ -218,6 +238,7 @@ export const RunList = () => {
                   isSelected={run.run_id === runId}
                   onSelectRun={handleSelectRun}
                   onGoToCheck={handleGoToCheck}
+                  onAddToChecklist={handleAddToChecklist}
                 />
               );
             })}
