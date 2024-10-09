@@ -76,7 +76,7 @@ def generate_run_name(run):
             else:
                 return f"row count of {len(nodes)} nodes".capitalize()
         else:
-            return f"row count of multiple nodes".capitalize()
+            return "row count of multiple nodes".capitalize()
     elif run_type == RunType.TOP_K_DIFF:
         model = params.get('model')
         column = params.get('column_name')
