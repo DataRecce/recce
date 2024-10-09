@@ -103,7 +103,7 @@ export function RecceActionContextProvider({
         queryClient.invalidateQueries({ queryKey: cacheKeys.runs() });
       }
     },
-    [setRunId, onResultPaneOpen]
+    [setRunId, onResultPaneOpen, queryClient]
   );
 
   const runAction = useCallback(
@@ -160,7 +160,15 @@ export function RecceActionContextProvider({
         });
       }
     },
-    [setAction, onModalOpen, showRunId, toast, location, setLocation]
+    [
+      setAction,
+      onModalOpen,
+      showRunId,
+      toast,
+      location,
+      setLocation,
+      queryClient,
+    ]
   );
   useCloseModalEffect(onModalClose);
 
