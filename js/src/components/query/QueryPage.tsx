@@ -67,39 +67,44 @@ export const QueryPage = () => {
   });
 
   return (
-    <Flex direction="column" height="100%">
-      <Flex
-        justifyContent="right"
-        alignItems="center"
-        padding="4pt 8pt"
-        gap="5px"
-        height="54px"
-        borderBottom="1px solid lightgray"
-        flex="0 0 54px"
-      >
-        <HistoryToggle />
-        <Spacer />
-        <Button
-          colorScheme="blue"
-          onClick={() => runQuery("query_diff")}
-          isDisabled={isPending}
-          size="sm"
+    <HSplit
+      sizes={[90, 10]}
+      minSize={200}
+      style={{ flex: "1", height: "100%" }}
+    >
+      <Flex direction="column" height="100%">
+        <Flex
+          justifyContent="right"
+          alignItems="center"
+          padding="4pt 8pt"
+          gap="5px"
+          height="54px"
+          borderBottom="1px solid lightgray"
+          flex="0 0 54px"
         >
-          Run Diff
-        </Button>
-        <Button
-          colorScheme="blue"
-          onClick={() => {
-            runQuery("query");
-          }}
-          isDisabled={isPending}
-          size="sm"
-        >
-          Run
-        </Button>
-      </Flex>
-      <HSplit sizes={[90, 10]} style={{ flex: "1" }}>
-        <Box width="70%">
+          <HistoryToggle />
+          <Spacer />
+          <Button
+            colorScheme="blue"
+            onClick={() => runQuery("query_diff")}
+            isDisabled={isPending}
+            size="sm"
+          >
+            Run Diff
+          </Button>
+          <Button
+            colorScheme="blue"
+            onClick={() => {
+              runQuery("query");
+            }}
+            isDisabled={isPending}
+            size="sm"
+          >
+            Run
+          </Button>
+        </Flex>
+
+        <Box width="100%" flex="1">
           <SqlEditor
             value={sqlQuery}
             onChange={setSqlQuery}
@@ -107,14 +112,14 @@ export const QueryPage = () => {
             onRunDiff={() => runQuery("query_diff")}
           />
         </Box>
-        <QueryForm
-          p="5px"
-          border="1px"
-          borderColor="gray.300"
-          defaultPrimaryKeys={primaryKeys}
-          onPrimaryKeysChange={setPrimaryKeys}
-        />
-      </HSplit>
-    </Flex>
+      </Flex>
+      <QueryForm
+        p="5px"
+        border="1px"
+        borderColor="gray.300"
+        defaultPrimaryKeys={primaryKeys}
+        onPrimaryKeysChange={setPrimaryKeys}
+      />
+    </HSplit>
   );
 };
