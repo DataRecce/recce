@@ -314,11 +314,11 @@ function Main() {
       >
         <Box p={0} style={{ contain: "content" }}>
           <ErrorBoundary>
+            {/* Prevent the lineage page unmount and lose states */}
+            <RouteAlwaysMount path="/lineage">
+              <LineagePage />
+            </RouteAlwaysMount>
             <Switch>
-              {/* Prevent the lineage page unmount and lose states */}
-              <RouteAlwaysMount path="/lineage">
-                <LineagePage />
-              </RouteAlwaysMount>
               <Route path="/query">
                 <QueryPage />
               </Route>
