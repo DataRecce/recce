@@ -26,6 +26,8 @@ import { useRecceActionContext } from "@/lib/hooks/RecceActionContext";
 import { format, formatDistanceToNow } from "date-fns";
 import { RepeatIcon } from "@chakra-ui/icons";
 import { useLocation } from "wouter";
+import SimpleBar from "simplebar-react";
+import "simplebar/dist/simplebar.min.css";
 
 const RunListItemStatus = ({ run }: { run: Run }) => {
   let status: string | undefined = run.status;
@@ -166,8 +168,6 @@ export const RunList = () => {
   } = useQuery({
     queryKey: cacheKeys.runs(),
     queryFn: async () => {
-      // wait 2 sec
-      // await new Promise((resolve) => setTimeout(resolve, 2000));
       return await listRuns();
     },
   });
@@ -198,8 +198,8 @@ export const RunList = () => {
     <Flex direction="column" height="100%">
       <HStack
         width="100%"
-        height={"54px"}
-        paddingInline="24px 20px"
+        flex="0 0 54px"
+        paddingInline="24px 8px"
         borderBottom="solid 1px lightgray"
       >
         <Heading size="md">History</Heading>
@@ -213,15 +213,7 @@ export const RunList = () => {
           }}
         />
       </HStack>
-      <Box
-        overflowY="scroll"
-        flex="1"
-        style={{
-          scrollbarColor: "lightgray rgba(0, 0, 0, 0)",
-          scrollbarGutter: "auto",
-          scrollbarWidth: "thin",
-        }}
-      >
+      <Box flex="1 1 auto">
         {isLoading ? (
           "Loading..."
         ) : runs?.length === 0 ? (
@@ -229,7 +221,7 @@ export const RunList = () => {
             No runs
           </Center>
         ) : (
-          <Flex direction="column" overflowY="auto" flex="1">
+          <SimpleBar style={{ minHeight: "100%", height: 0 }}>
             {(runs || []).map((run, index) => {
               return (
                 <RunListItem
@@ -242,7 +234,7 @@ export const RunList = () => {
                 />
               );
             })}
-          </Flex>
+          </SimpleBar>
         )}
       </Box>
     </Flex>
