@@ -36,10 +36,12 @@ const RunListItemStatus = ({ run }: { run: Run }) => {
     queryFn: async () => {
       return await waitRun(run.run_id);
     },
-    enabled: !run?.status,
+    enabled: run?.status === "running",
     retry: false,
   });
-  const isRunning = !run?.status && !fetchedRun?.status;
+  const isRunning = fetchedRun
+    ? fetchedRun.status === "running"
+    : run?.status === "running";
 
   let status: string | undefined = fetchedRun?.status || run?.status;
   if (!status) {
@@ -61,9 +63,12 @@ const RunListItemStatus = ({ run }: { run: Run }) => {
   } else if (status === "cancelled") {
     color = "gray";
     message = "Cancelled";
-  } else {
+  } else if (status === "running") {
     color = "blue";
     message = "Running";
+  } else {
+    color = "green";
+    message = "Finished";
   }
 
   return (
@@ -119,10 +124,11 @@ const RunListItem = ({
           textOverflow="ellipsis"
           whiteSpace="nowrap"
           overflow="hidden"
+          color={run.name ? "inherit" : "gray.500"}
           fontSize="11pt"
           fontWeight="500"
         >
-          {run.name}
+          {run.name || "<no name>"}
         </Box>
         {checkId ? (
           <Tooltip label="Go to Check" aria-label="Go to Check">
