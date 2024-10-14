@@ -79,6 +79,7 @@ export function StateSynchronizer() {
 
       queryClient.invalidateQueries({ queryKey: cacheKeys.lineage() });
       queryClient.invalidateQueries({ queryKey: cacheKeys.checks() });
+      queryClient.invalidateQueries({ queryKey: cacheKeys.runs() });
 
       if (isCheckDetailPage(location)) {
         setLocation("/checks");
