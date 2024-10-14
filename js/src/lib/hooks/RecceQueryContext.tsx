@@ -5,6 +5,10 @@ export interface QueryContext {
   setSqlQuery: (sqlQuery: string) => void;
   primaryKeys: string[] | undefined;
   setPrimaryKeys: (primaryKeys: string[] | undefined) => void;
+  isDualQuery: boolean;
+  setDualQuery: (isDualQuery: boolean) => void;
+  baseSqlQuery?: string;
+  setBaseSqlQuery?: (baseSqlQuery: string) => void;
 }
 
 export const defaultSqlQuery = 'select * from {{ ref("mymodel") }}';
@@ -14,6 +18,10 @@ const defaultQueryContext: QueryContext = {
   setSqlQuery: () => {},
   primaryKeys: undefined,
   setPrimaryKeys: () => {},
+  isDualQuery: false,
+  setDualQuery: () => {},
+  baseSqlQuery: defaultSqlQuery,
+  setBaseSqlQuery: () => {},
 };
 
 const RecceQueryContext = createContext(defaultQueryContext);
@@ -24,10 +32,12 @@ interface QueryContextProps {
 
 export function RecceQueryContextProvider({ children }: QueryContextProps) {
   const [sqlQuery, setSqlQuery] = React.useState<string>(defaultSqlQuery);
+  const [baseSqlQuery, setBaseSqlQuery] = React.useState<string>(defaultSqlQuery);
+  const [isDualQuery, setDualQuery] = React.useState<boolean>(false);
   const [primaryKeys, setPrimaryKeys] = React.useState<string[] | undefined>();
   return (
     <RecceQueryContext.Provider
-      value={{ setSqlQuery, sqlQuery, setPrimaryKeys, primaryKeys }}
+      value={{ setSqlQuery, sqlQuery, setPrimaryKeys, primaryKeys, isDualQuery, setDualQuery, baseSqlQuery, setBaseSqlQuery }}
     >
       {children}
     </RecceQueryContext.Provider>

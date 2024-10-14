@@ -1,6 +1,6 @@
 import React, { CSSProperties, useState } from "react";
-import { Box, Button, Flex, Icon, Spacer } from "@chakra-ui/react";
-import SqlEditor from "./SqlEditor";
+import { Box, Button, ButtonGroup, Flex, Icon, Spacer, Switch, Tooltip } from "@chakra-ui/react";
+import SqlEditor, { DualSqlEditor } from "./SqlEditor";
 import {
   defaultSqlQuery,
   useRecceQueryContext,
@@ -13,7 +13,8 @@ import { QueryForm } from "./QueryForm";
 import { HSplit } from "../split/Split";
 import { useRecceActionContext } from "@/lib/hooks/RecceActionContext";
 import { waitRun } from "@/lib/api/runs";
-import { VscHistory } from "react-icons/vsc";
+import { VscDiff, VscHistory } from "react-icons/vsc";
+import { InfoIcon } from "@chakra-ui/icons";
 
 const HistoryToggle = () => {
   const { isHistoryOpen, showHistory, closeHistory } = useRecceActionContext();
@@ -33,12 +34,35 @@ const HistoryToggle = () => {
   );
 };
 
+const QueryModeToggle = () => {
+  const { isDualQuery, setDualQuery } = useRecceQueryContext();
+  const handleToggle = () => {
+    setDualQuery(!isDualQuery);
+  };
+  const dualQueryDescription = 'Dual Query allows you to use different SQL queries to compare the results between current and base environment.';
+  return (
+    <Box>
+      <Box fontSize="8pt">Dual Query {''}
+        <Tooltip label={dualQueryDescription}>
+          <InfoIcon color="gray.600" boxSize="3" />
+        </Tooltip>
+      </Box>
+      <Switch
+        size='sm'
+        isChecked={isDualQuery}
+        onChange={handleToggle}/>
+    </Box>
+  )
+}
+
 export const QueryPage = () => {
   const {
     sqlQuery: _sqlQuery,
+    baseSqlQuery,
     setSqlQuery,
     primaryKeys,
     setPrimaryKeys,
+    isDualQuery,
   } = useRecceQueryContext();
   const { envInfo } = useLineageGraphContext();
 
@@ -83,16 +107,18 @@ export const QueryPage = () => {
           flex="0 0 54px"
         >
           <HistoryToggle />
+          <QueryModeToggle />
           <Spacer />
           <Button
             colorScheme="blue"
             onClick={() => runQuery("query_diff")}
             isDisabled={isPending}
             size="sm"
+            leftIcon={<Icon as={VscDiff} />}
           >
             Run Diff
           </Button>
-          <Button
+          {/* <Button
             colorScheme="blue"
             onClick={() => {
               runQuery("query");
@@ -102,15 +128,32 @@ export const QueryPage = () => {
           >
             Run
           </Button>
+          {isDualQuery && (<Button
+            colorScheme="blue"
+            onClick={() => {
+              runQuery("query");
+            }}
+            isDisabled={isPending}
+            size="sm"
+          >
+            Run Base
+          </Button>)} */}
         </Flex>
 
         <Box width="100%" flex="1">
-          <SqlEditor
+          {isDualQuery ? (<DualSqlEditor
+            value={sqlQuery}
+            baseValue={baseSqlQuery}
+            onChange={setSqlQuery}
+            onRun={() => runQuery("query")}
+            onRunDiff={() => runQuery("query_diff")}
+          />) : (<SqlEditor
             value={sqlQuery}
             onChange={setSqlQuery}
             onRun={() => runQuery("query")}
             onRunDiff={() => runQuery("query_diff")}
-          />
+          />)}
+
         </Box>
       </Flex>
       <QueryForm
