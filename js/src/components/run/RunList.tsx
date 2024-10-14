@@ -12,6 +12,7 @@ import {
   Tooltip,
   Heading,
   Center,
+  Spinner,
 } from "@chakra-ui/react";
 import { cacheKeys } from "@/lib/api/cacheKeys";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
@@ -21,7 +22,7 @@ import { TbChecklist } from "react-icons/tb";
 import { IconType } from "react-icons";
 import { findByRunType } from "../run/registry";
 import { Run } from "@/lib/api/types";
-import { listRuns } from "@/lib/api/runs";
+import { listRuns, waitRun } from "@/lib/api/runs";
 import { useRecceActionContext } from "@/lib/hooks/RecceActionContext";
 import { format, formatDistanceToNow } from "date-fns";
 import { RepeatIcon } from "@chakra-ui/icons";
@@ -30,7 +31,16 @@ import SimpleBar from "simplebar-react";
 import "simplebar/dist/simplebar.min.css";
 
 const RunListItemStatus = ({ run }: { run: Run }) => {
-  let status: string | undefined = run.status;
+  const { data: fetchedRun } = useQuery({
+    queryKey: cacheKeys.run(run.run_id),
+    queryFn: async () => {
+      return await waitRun(run.run_id);
+    },
+    enabled: !run?.status,
+  });
+  const isRunning = !run?.status && !fetchedRun?.status;
+
+  let status: string | undefined = fetchedRun?.status || run?.status;
   if (!status) {
     if (run.result) {
       status = "successful";
@@ -43,7 +53,7 @@ const RunListItemStatus = ({ run }: { run: Run }) => {
   let message = "";
   if (status === "successful") {
     color = "green";
-    message = "Successful";
+    message = "Finished";
   } else if (status === "failed") {
     color = "red";
     message = "Failed";
@@ -51,15 +61,17 @@ const RunListItemStatus = ({ run }: { run: Run }) => {
     color = "gray";
     message = "Cancelled";
   } else {
-    color = "gray";
-    message = "Unknown";
+    color = "blue";
+    message = "Running";
   }
 
-  status === "successful" ? "green" : status === "failed" ? "red" : "gray";
   return (
-    <Text fontWeight={500} color={`${color}.400`}>
-      {message}
-    </Text>
+    <>
+      {isRunning && <Spinner size="xs" color={`${color}.400`} />}
+      <Text fontWeight={500} color={`${color}.400`}>
+        {message}
+      </Text>
+    </>
   );
 };
 
@@ -139,19 +151,13 @@ const RunListItem = ({
       </Flex>
       <Flex
         justifyContent="start"
-        fontSize="10pt"
+        fontSize="11pt"
         color="gray.500"
         gap="3px"
         alignItems={"center"}
       >
-        {run.status && (
-          <>
-            <Text fontWeight={500} color="green.400">
-              <RunListItemStatus run={run} />
-            </Text>
-            <Text>•</Text>
-          </>
-        )}
+        <RunListItemStatus run={run} />
+        <Text>•</Text>
         <Text>{relativeTime}</Text>
       </Flex>
     </Flex>
