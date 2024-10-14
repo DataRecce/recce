@@ -29,9 +29,12 @@ class RunProgress(BaseModel):
 
 
 class RunStatus(Enum):
-    SUCCESSFUL = 'successful'
+    FINISHED = 'finished'
     FAILED = 'failed'
     CANCELLED = 'cancelled'
+    RUNNING = 'running'
+    # This is a special status only in v0.36.0. Replaced by FINISHED. To be removed in the future.
+    SUCCESSFUL = 'successful'
 
 
 class Run(BaseModel):

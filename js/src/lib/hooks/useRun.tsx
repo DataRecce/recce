@@ -27,6 +27,7 @@ export const useRun = (runId?: string): UseRunResult => {
     },
     enabled: !!runId,
     refetchInterval: isPolling ? 50 : false,
+    retry: false,
   });
 
   useEffect(() => {

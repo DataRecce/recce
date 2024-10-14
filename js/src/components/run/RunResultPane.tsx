@@ -132,7 +132,7 @@ export const _LoadableRunView = ({
             {run?.check_id ? (
               <Button
                 leftIcon={<CheckIcon />}
-                isDisabled={!runId || !run?.result}
+                isDisabled={!runId || !run?.result || !!error}
                 size="sm"
                 colorScheme="blue"
                 onClick={handleGoToCheck}
@@ -142,7 +142,7 @@ export const _LoadableRunView = ({
             ) : (
               <Button
                 leftIcon={<CheckIcon />}
-                isDisabled={!runId || !run?.result}
+                isDisabled={!runId || !run?.result || !!error}
                 size="sm"
                 colorScheme="blue"
                 onClick={handleAddToChecklist}

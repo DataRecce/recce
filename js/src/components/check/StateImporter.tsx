@@ -42,6 +42,7 @@ export function StateImporter() {
       const { runs, checks } = await importState(selectedFile);
       refetchRunsAggregated();
       await queryClient.invalidateQueries({ queryKey: cacheKeys.checks() });
+      await queryClient.invalidateQueries({ queryKey: cacheKeys.runs() });
       if (location.includes("/checks")) {
         setLocation("/checks");
       }
