@@ -9,6 +9,7 @@ from pydantic import BaseModel, UUID4, Field
 class RunType(Enum):
     SIMPLE = 'simple'
     QUERY = "query"
+    QUERY_BASE = 'query_base'
     QUERY_DIFF = 'query_diff'
     VALUE_DIFF = 'value_diff'
     VALUE_DIFF_DETAIL = 'value_diff_detail'

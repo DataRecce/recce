@@ -42,6 +42,11 @@ const registry: { [key: string]: RegistryEntry<any, any> } = {
     icon: TbSql,
     RunResultView: QueryResultView,
   },
+  query_base: {
+    title: "Query Base",
+    icon: TbSql,
+    RunResultView: QueryResultView,
+  },
   query_diff: {
     title: "Query Diff",
     icon: TbSql,

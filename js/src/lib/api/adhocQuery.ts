@@ -1,7 +1,9 @@
 import { SubmitOptions, submitRun } from "./runs";
 import { DataFrame } from "./types";
 
-export interface QueryParams {
+export interface QueryParams extends QueryRunParams, QueryDiffParams {}
+
+export interface QueryRunParams {
   sql_template: string;
 }
 
@@ -13,6 +15,7 @@ export interface QueryResult extends DataFrame {}
 
 export interface QueryDiffParams {
   sql_template: string;
+  base_sql_template?: string;
   primary_keys?: string[];
 }
 
@@ -29,10 +32,21 @@ export interface QueryDiffViewOptions {
 }
 
 export async function submitQuery(
-  params: QueryParams,
+  params: QueryRunParams,
   options?: SubmitOptions
 ) {
-  return await submitRun<QueryParams, QueryResult>("query", params, options);
+  return await submitRun<QueryRunParams, QueryResult>("query", params, options);
+}
+
+export async function submitQueryBase(
+  params: QueryRunParams,
+  options?: SubmitOptions
+) {
+  return await submitRun<QueryRunParams, QueryResult>(
+    "query_base",
+    params,
+    options
+  );
 }
 
 export async function submitQueryDiff(
