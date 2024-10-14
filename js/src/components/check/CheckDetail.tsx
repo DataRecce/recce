@@ -68,25 +68,6 @@ interface CheckDetailProps {
   checkId: string;
 }
 
-const useCancelOnUnmount = ({
-  runId,
-  isPending,
-  setAborting,
-}: {
-  runId?: string;
-  isPending?: boolean;
-  setAborting: (aborting: boolean) => void;
-}) => {
-  useEffect(() => {
-    return () => {
-      setAborting(false);
-      if (runId && isPending) {
-        cancelRun(runId);
-      }
-    };
-  }, [isPending, runId, setAborting]);
-};
-
 export const CheckDetail = ({ checkId }: CheckDetailProps) => {
   const queryClient = useQueryClient();
   const [, setLocation] = useLocation();
@@ -182,7 +163,6 @@ export const CheckDetail = ({ checkId }: CheckDetailProps) => {
     return await cancelRun(runId);
   }, [runId]);
 
-  useCancelOnUnmount({ runId, isPending: rerunPending, setAborting });
   const handleCopy = async () => {
     if (!check) {
       return;
