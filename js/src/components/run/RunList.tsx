@@ -37,13 +37,14 @@ const RunListItemStatus = ({ run }: { run: Run }) => {
       return await waitRun(run.run_id);
     },
     enabled: !run?.status,
+    retry: false,
   });
   const isRunning = !run?.status && !fetchedRun?.status;
 
   let status: string | undefined = fetchedRun?.status || run?.status;
   if (!status) {
     if (run.result) {
-      status = "successful";
+      status = "finished";
     } else if (run.error) {
       status = "failed";
     }
@@ -51,7 +52,7 @@ const RunListItemStatus = ({ run }: { run: Run }) => {
 
   let color = "";
   let message = "";
-  if (status === "successful") {
+  if (status === "successful" || status === "finished") {
     color = "green";
     message = "Finished";
   } else if (status === "failed") {
@@ -176,6 +177,7 @@ export const RunList = () => {
     queryFn: async () => {
       return await listRuns();
     },
+    retry: false,
   });
   const { showRunId, runId } = useRecceActionContext();
   const handleSelectRun = (runId: string) => {

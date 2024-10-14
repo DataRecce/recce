@@ -43,5 +43,5 @@ export interface Run<PT = any, RT = any> {
   params?: PT;
   result?: RT;
   error?: string;
-  status?: "successful" | "failed" | "cancelled";
+  status?: "finished" | "failed" | "cancelled" | string;
 }

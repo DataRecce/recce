@@ -132,7 +132,7 @@ def submit_run(type, params, check_id=None):
             return
         if result is not None:
             run.result = result
-            run.status = RunStatus.SUCCESSFUL
+            run.status = RunStatus.FINISHED
         if error is not None:
             run.error = str(error)
             if run.status != RunStatus.CANCELLED:
