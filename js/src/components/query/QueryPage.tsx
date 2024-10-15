@@ -49,23 +49,23 @@ const HistoryToggle = () => {
 };
 
 const QueryModeToggle = () => {
-  const { isDualQuery, setDualQuery, sqlQuery, setBaseSqlQuery } =
+  const { isCustomQueries, setCustomQueries, sqlQuery, setBaseSqlQuery } =
     useRecceQueryContext();
   const handleToggle = () => {
-    if (isDualQuery === false) setBaseSqlQuery && setBaseSqlQuery(sqlQuery);
-    setDualQuery(!isDualQuery);
+    if (isCustomQueries === false) setBaseSqlQuery && setBaseSqlQuery(sqlQuery);
+    setCustomQueries(!isCustomQueries);
   };
-  const dualQueryDescription =
-    "Dual Query allows you to use different SQL queries to compare the results between current and base environment.";
+  const customQueriesDescription =
+    "Custom queries allow you to use two SQL queries to compare results between current and base environments.";
   return (
     <Box>
       <Box fontSize="8pt">
-        Dual Query {""}
-        <Tooltip label={dualQueryDescription}>
+        Custom Queries {""}
+        <Tooltip label={customQueriesDescription}>
           <InfoIcon color="gray.600" boxSize="3" />
         </Tooltip>
       </Box>
-      <Switch size="sm" isChecked={isDualQuery} onChange={handleToggle} />
+      <Switch size="sm" isChecked={isCustomQueries} onChange={handleToggle} />
     </Box>
   );
 };
@@ -78,7 +78,7 @@ export const QueryPage = () => {
     setBaseSqlQuery,
     primaryKeys,
     setPrimaryKeys,
-    isDualQuery,
+    isCustomQueries,
   } = useRecceQueryContext();
   const { envInfo } = useLineageGraphContext();
 
@@ -108,7 +108,7 @@ export const QueryPage = () => {
 
     if (type === "query_diff") {
       params.primary_keys = primaryKeys;
-      if (isDualQuery) params.base_sql_template = baseSqlQuery;
+      if (isCustomQueries) params.base_sql_template = baseSqlQuery;
     }
     const { run_id } = await runFn(params, options);
 
@@ -152,7 +152,7 @@ export const QueryPage = () => {
         </Flex>
 
         <Box width="100%" flex="1">
-          {isDualQuery ? (
+          {isCustomQueries ? (
             <DualSqlEditor
               value={sqlQuery}
               baseValue={baseSqlQuery}
