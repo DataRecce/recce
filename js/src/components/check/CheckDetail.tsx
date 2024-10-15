@@ -53,7 +53,7 @@ import { CheckDescription } from "./CheckDescription";
 import { stripIndents } from "common-tags";
 import { useClipBoardToast } from "@/lib/hooks/useClipBoardToast";
 import { buildTitle, buildDescription, buildQuery } from "./check";
-import SqlEditor from "../query/SqlEditor";
+import SqlEditor, { DualSqlEditor } from "../query/SqlEditor";
 import { useCallback, useEffect, useState } from "react";
 import { cancelRun, submitRunFromCheck, waitRun } from "@/lib/api/runs";
 import { Run } from "@/lib/api/types";
@@ -355,12 +355,22 @@ export const CheckDetail = ({ checkId }: CheckDetailProps) => {
                 <LineageDiffView check={check} />
               )}
             </TabPanel>
-            {(check?.type === "query" || check?.type === "query_diff") && (
+            {(check?.type === "query" ||
+              check?.type === "query_diff" ||
+              check?.type === "query_base") && (
               <TabPanel p={0} height="100%" width="100%">
-                <SqlEditor
-                  value={(check?.params as any)?.sql_template || ""}
-                  options={{ readOnly: true }}
-                />
+                {check.params?.base_sql_template ? (
+                  <DualSqlEditor
+                    value={(check?.params as any)?.sql_template || ""}
+                    baseValue={(check?.params as any)?.base_sql_template || ""}
+                    options={{ readOnly: true }}
+                  />
+                ) : (
+                  <SqlEditor
+                    value={(check?.params as any)?.sql_template || ""}
+                    options={{ readOnly: true }}
+                  />
+                )}
               </TabPanel>
             )}
           </TabPanels>

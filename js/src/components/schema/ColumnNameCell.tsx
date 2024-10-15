@@ -69,9 +69,9 @@ export function ColumnNameCell({
 
             <Portal>
               <MenuList lineHeight="20px">
-                <MenuGroup title="Column" m="0" p="4px 12px">
+                {/* <MenuGroup title="Column" m="0" p="4px 12px">
                   <MenuItem fontSize="10pt">Set Alias Name</MenuItem>
-                </MenuGroup>
+                </MenuGroup> */}
                 <MenuGroup title="Diff" m="0" p="4px 12px">
                   <MenuItem
                     fontSize="10pt"

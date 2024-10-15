@@ -1,5 +1,6 @@
 import { Flex, Text, Stack, Badge, Spacer, IconButton } from "@chakra-ui/react";
 import { EditorProps, DiffEditor, Editor } from "@monaco-editor/react";
+import { on } from "events";
 import { VscDebugStart } from "react-icons/vsc";
 
 interface SqlEditorProps {
@@ -20,6 +21,7 @@ const SqlEditor: React.FC<SqlEditorProps> = ({
   value,
   onChange,
   onRun,
+  onRunBase,
   onRunDiff,
   label,
   options = {},
@@ -35,7 +37,7 @@ const SqlEditor: React.FC<SqlEditorProps> = ({
 
   return (
     <>
-      {(label || onRun) && (
+      {(label || onRun || onRunBase) && (
         <Flex
           backgroundColor="#E8EFF5"
           height="18px"
@@ -45,12 +47,12 @@ const SqlEditor: React.FC<SqlEditorProps> = ({
         >
           <Text as="b">{label ? label.toUpperCase() : ""}</Text>
           <Spacer />
-          {onRun && (
+          {(onRun || onRunBase) && (
             <IconButton
               borderRadius={"2px"}
               aria-label="Run"
               icon={<VscDebugStart />}
-              onClick={onRun}
+              onClick={onRun || onRunBase}
               color="green"
               fontSize="18px"
               size="18px"
@@ -70,6 +72,13 @@ const SqlEditor: React.FC<SqlEditorProps> = ({
             editor.addCommand(
               monaco.KeyMod.CtrlCmd | monaco.KeyCode.Enter,
               onRun
+            );
+          }
+
+          if (onRunBase) {
+            editor.addCommand(
+              monaco.KeyMod.Alt | monaco.KeyCode.Enter,
+              onRunBase
             );
           }
 
@@ -127,7 +136,7 @@ export const DualSqlEditor: React.FC<SqlEditorProps> = ({
             label="Base"
             value={baseValue || ""}
             onChange={onChangeBase}
-            onRun={onRunBase}
+            onRunBase={onRunBase}
             options={options}
             {...props}
           />
