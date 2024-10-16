@@ -69,10 +69,13 @@ class QueryResult(DataFrame):
 
 class QueryDiffParams(TypedDict):
     sql_template: str
+    base_sql_template: Optional[str]
     primary_keys: List[str]
 
 
 class QueryTask(Task, QueryMixin):
+    is_base = False
+
     def __init__(self, params: QueryParams):
         super().__init__()
         self.params = params
@@ -87,7 +90,7 @@ class QueryTask(Task, QueryMixin):
             self.connection = dbt_adapter.get_thread_connection()
 
             sql_template = self.params.get('sql_template')
-            table, more = self.execute_sql_with_limit(sql_template, base=False, limit=limit)
+            table, more = self.execute_sql_with_limit(sql_template, base=self.is_base, limit=limit)
             self.check_cancel()
 
             return DataFrame.from_agate(table, limit=limit, more=more)
@@ -98,7 +101,7 @@ class QueryTask(Task, QueryMixin):
 
         sql = self.params.get('sql_template')
         limit = QUERY_LIMIT
-        df, more = sqlmesh_adapter.fetchdf_with_limit(sql, base=False, limit=limit)
+        df, more = sqlmesh_adapter.fetchdf_with_limit(sql, base=self.is_base, limit=limit)
         return DataFrame.from_pandas(df, limit=limit, more=more)
 
     def execute(self):
@@ -115,6 +118,10 @@ class QueryTask(Task, QueryMixin):
             self.close_connection(self.connection)
 
 
+class QueryBaseTask(QueryTask):
+    is_base = True
+
+
 class QueryDiffResult(BaseModel):
     base: Optional[DataFrame] = None
     current: Optional[DataFrame] = None
@@ -128,11 +135,11 @@ class QueryDiffTask(Task, QueryMixin, ValueDiffMixin):
         self.connection = None
         self.legacy_surrogate_key = True
 
-    def _query_diff(self, dbt_adapter, sql_template: str):
+    def _query_diff(self, dbt_adapter, sql_template: str, base_sql_template: Optional[str] = None):
         limit = QUERY_LIMIT
 
         self.connection = dbt_adapter.get_thread_connection()
-        base, base_more = self.execute_sql_with_limit(sql_template, base=True, limit=limit)
+        base, base_more = self.execute_sql_with_limit(base_sql_template or sql_template, base=True, limit=limit)
         self.check_cancel()
 
         current, current_more = self.execute_sql_with_limit(sql_template, base=False, limit=limit)
@@ -143,7 +150,8 @@ class QueryDiffTask(Task, QueryMixin, ValueDiffMixin):
             current=DataFrame.from_agate(current, limit=limit, more=current_more)
         )
 
-    def _query_diff_join(self, dbt_adapter, sql_template: str, primary_keys: List[str]):
+    def _query_diff_join(self, dbt_adapter, sql_template: str, primary_keys: List[str],
+                         base_sql_template: Optional[str] = None):
 
         query_template = r"""
             {% set a_query %}
@@ -174,7 +182,7 @@ class QueryDiffTask(Task, QueryMixin, ValueDiffMixin):
             new_primary_key = 'primary_key'
         query_template = query_template.replace('__PRIMARY_KEY__', new_primary_key)
 
-        base_query = dbt_adapter.generate_sql(sql_template, base=True)
+        base_query = dbt_adapter.generate_sql(base_sql_template or sql_template, base=True)
         current_query = dbt_adapter.generate_sql(sql_template, base=False)
 
         sql = dbt_adapter.generate_sql(query_template, context=dict(
@@ -198,32 +206,34 @@ class QueryDiffTask(Task, QueryMixin, ValueDiffMixin):
         with dbt_adapter.connection_named("query"):
             sql_template = self.params.get('sql_template')
             primary_keys = self.params.get('primary_keys')
+            base_sql_template = self.params.get('base_sql_template')
 
             if primary_keys:
-                return self._query_diff_join(dbt_adapter, sql_template, primary_keys)
+                return self._query_diff_join(dbt_adapter, sql_template, primary_keys,
+                                             base_sql_template=base_sql_template)
 
-            return self._query_diff(dbt_adapter, sql_template)
+            return self._query_diff(dbt_adapter, sql_template, base_sql_template=base_sql_template)
 
-    def _sqlmesh_query_diff(self, sql):
+    def _sqlmesh_query_diff(self, sql, base_sql=None):
         from ..adapter.sqlmesh_adapter import SqlmeshAdapter
 
         sqlmesh_adapter: SqlmeshAdapter = default_context().adapter
 
         limit = QUERY_LIMIT
-        base, base_more = sqlmesh_adapter.fetchdf_with_limit(sql, base=True, limit=limit)
+        base, base_more = sqlmesh_adapter.fetchdf_with_limit(base_sql or sql, base=True, limit=limit)
         curr, curr_more = sqlmesh_adapter.fetchdf_with_limit(sql, base=False, limit=limit)
         return QueryDiffResult(
             base=DataFrame.from_pandas(base, limit=limit, more=base_more),
             current=DataFrame.from_pandas(curr, limit=limit, more=curr_more)
         )
 
-    def _sqlmesh_query_diff_join(self, sql, primary_keys):
+    def _sqlmesh_query_diff_join(self, sql, primary_keys, base_sql=None):
         from ..adapter.sqlmesh_adapter import SqlmeshAdapter
 
         sqlmesh_adapter: SqlmeshAdapter = default_context().adapter
 
         limit = QUERY_LIMIT
-        expr_base = sqlmesh_adapter.replace_virtual_tables(sql, base=True)
+        expr_base = sqlmesh_adapter.replace_virtual_tables(base_sql or sql, base=True)
         expr_curr = sqlmesh_adapter.replace_virtual_tables(sql, base=False)
         import sqlglot as g
 
@@ -276,11 +286,12 @@ class QueryDiffTask(Task, QueryMixin, ValueDiffMixin):
     def execute_sqlmesh(self):
         sql = self.params.get('sql_template')
         primary_keys = self.params.get('primary_keys')
+        base_sql = self.params.get('base_sql_template')
 
         if primary_keys:
-            return self._sqlmesh_query_diff_join(sql, primary_keys)
+            return self._sqlmesh_query_diff_join(sql, primary_keys, base_sql=base_sql)
         else:
-            return self._sqlmesh_query_diff(sql)
+            return self._sqlmesh_query_diff(sql, base_sql=base_sql)
 
     def execute(self):
         context = default_context()

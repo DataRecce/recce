@@ -17,9 +17,9 @@ import {
 import { useCallback, useEffect, useRef, useState } from "react";
 import { createCheckByRun } from "@/lib/api/checks";
 import { useLocation } from "wouter";
-import { Editor } from "@monaco-editor/react";
+import { DiffEditor, Editor } from "@monaco-editor/react";
 import YAML from "yaml";
-import SqlEditor from "../query/SqlEditor";
+import SqlEditor, { DualSqlEditor } from "../query/SqlEditor";
 import { CheckIcon, RepeatIcon } from "@chakra-ui/icons";
 
 interface RunPageProps {
@@ -104,7 +104,10 @@ export const _LoadableRunView = ({
     setLocation(`/checks/${check.check_id}`);
   }, [runId, setLocation, queryClient, viewOptions]);
 
-  const isQuery = run?.type === "query" || run?.type === "query_diff";
+  const isQuery =
+    run?.type === "query" ||
+    run?.type === "query_diff" ||
+    run?.type === "query_base";
 
   return (
     <Flex direction="column">
@@ -177,12 +180,20 @@ export const _LoadableRunView = ({
         <_ParamView type={run.type} params={run.params} />
       )}
 
-      {tabIndex === 2 && run && (
-        <SqlEditor
-          value={(run?.params as any)?.sql_template || ""}
-          options={{ readOnly: true }}
-        />
-      )}
+      {tabIndex === 2 &&
+        run &&
+        (run.params?.base_sql_template ? (
+          <DualSqlEditor
+            value={run.params.sql_template}
+            baseValue={run.params.base_sql_template}
+            options={{ readOnly: true }}
+          />
+        ) : (
+          <SqlEditor
+            value={(run?.params as any)?.sql_template || ""}
+            options={{ readOnly: true }}
+          />
+        ))}
     </Flex>
   );
 };

@@ -8,12 +8,14 @@ from recce.models.types import RunStatus
 from recce.tasks import QueryTask, ProfileDiffTask, ValueDiffTask, QueryDiffTask, Task, RowCountDiffTask, \
     ValueDiffDetailTask
 from recce.tasks.histogram import HistogramDiffTask
+from recce.tasks.query import QueryBaseTask
 from recce.tasks.top_k import TopKDiffTask
 
 running_tasks = {}
 
 dbt_registry: Dict[RunType, Type[Task]] = {
     RunType.QUERY: QueryTask,
+    RunType.QUERY_BASE: QueryBaseTask,
     RunType.QUERY_DIFF: QueryDiffTask,
     RunType.VALUE_DIFF: ValueDiffTask,
     RunType.VALUE_DIFF_DETAIL: ValueDiffDetailTask,
