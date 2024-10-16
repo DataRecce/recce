@@ -24,6 +24,7 @@ import { cacheKeys } from "@/lib/api/cacheKeys";
 import { createLineageDiffCheck } from "@/lib/api/lineagecheck";
 import { findByRunType } from "../run/registry";
 import { createSchemaDiffCheck } from "@/lib/api/schemacheck";
+import { useRecceActionContext } from "@/lib/hooks/RecceActionContext";
 
 export interface NodeSelectorProps {
   viewMode: string;
@@ -139,6 +140,7 @@ export function NodeSelector({
   });
   const queryClient = useQueryClient();
   const [, setLocation] = useLocation();
+  const { showRunId } = useRecceActionContext();
 
   const submitRunForNodes = async (
     type: RunType,
@@ -172,6 +174,7 @@ export function NodeSelector({
 
     try {
       const { run_id } = await submitRun(type, params, { nowait: true });
+      showRunId(run_id);
       actionState.currentRun = { run_id };
       actionState.total = 1;
 
