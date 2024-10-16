@@ -362,6 +362,8 @@ export function LineageView({ ...props }: LineageViewProps) {
       const selectedNode = nodes.find((node) => node.data.isSelected);
       if (selectedNode) {
         centerNode(selectedNode);
+      } else {
+        reactFlow.fitView({ nodes, duration: 200 });
       }
     }
   });
@@ -372,9 +374,9 @@ export function LineageView({ ...props }: LineageViewProps) {
     if (selectMode === "detail") {
       setDetailViewSelected(node.data);
       if (!isDetailViewShown) {
+        centerNode(node);
         setIsDetailViewShown(true);
       }
-      centerNode(node);
       setNodes(selectSingleNode(node.id, nodes));
     } else if (selectMode === "action_result") {
       if (node.data.action?.run?.run_id) {
