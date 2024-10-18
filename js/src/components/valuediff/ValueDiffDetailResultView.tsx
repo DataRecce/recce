@@ -1,6 +1,6 @@
 import "react-data-grid/lib/styles.css";
 
-import { Center, Flex } from "@chakra-ui/react";
+import { Center, Flex, forwardRef } from "@chakra-ui/react";
 import { useMemo } from "react";
 
 import "../query/styles.css";
@@ -29,12 +29,15 @@ export interface ValueDiffDetailResultViewProps
   ) => void;
 }
 
-export const ValueDiffDetailResultView = ({
-  run,
-  onAddToChecklist,
-  viewOptions,
-  onViewOptionsChanged,
-}: ValueDiffDetailResultViewProps) => {
+const _ValueDiffDetailResultView = (
+  {
+    run,
+    onAddToChecklist,
+    viewOptions,
+    onViewOptionsChanged,
+  }: ValueDiffDetailResultViewProps,
+  ref: any
+) => {
   const changedOnly = useMemo(
     () => viewOptions?.changed_only || false,
     [viewOptions]
@@ -117,6 +120,7 @@ export const ValueDiffDetailResultView = ({
         warnings={warnings}
       />
       <ScreenshotDataGrid
+        ref={ref}
         style={{ blockSize: "auto", maxHeight: "100%", overflow: "auto" }}
         columns={gridData.columns}
         rows={gridData.rows}
@@ -128,3 +132,5 @@ export const ValueDiffDetailResultView = ({
     </Flex>
   );
 };
+
+export const ValueDiffDetailResultView = forwardRef(_ValueDiffDetailResultView);

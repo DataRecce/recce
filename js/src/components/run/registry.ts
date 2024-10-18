@@ -24,7 +24,9 @@ import { MdFormatListNumberedRtl, MdSchema } from "react-icons/md";
 interface RegistryEntry<PT, RT, VO = any> {
   title: string;
   icon: IconType;
-  RunResultView?: React.ComponentType<RunResultViewProps<PT, RT>>;
+  RunResultView?: React.ForwardRefExoticComponent<
+    React.RefAttributes<HTMLDivElement> & RunResultViewProps<PT, RT, VO>
+  >;
   RunForm?: React.ComponentType<RunFormProps<PT>>;
 }
 

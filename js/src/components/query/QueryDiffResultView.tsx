@@ -5,7 +5,7 @@ import {
   QueryDiffResult,
   QueryDiffViewOptions,
 } from "@/lib/api/adhocQuery";
-import { Center, Flex } from "@chakra-ui/react";
+import { Box, Center, Flex, forwardRef } from "@chakra-ui/react";
 import { useMemo } from "react";
 import { toDataDiffGrid } from "./querydiff";
 import { toValueDiffGrid as toQueryDiffJoinGrid } from "../valuediff/valuediff";
@@ -28,12 +28,15 @@ export interface QueryDiffResultViewProps
   onAddToChecklist?: (run: Run<QueryDiffParams, QueryDiffResult>) => void;
 }
 
-const _QueryDiffResultView = ({
-  run,
-  onAddToChecklist,
-  viewOptions,
-  onViewOptionsChanged,
-}: QueryDiffResultViewProps) => {
+const _QueryDiffResultView = (
+  {
+    run,
+    onAddToChecklist,
+    viewOptions,
+    onViewOptionsChanged,
+  }: QueryDiffResultViewProps,
+  ref: any
+) => {
   const primaryKeys = useMemo(
     () => viewOptions?.primary_keys || [],
     [viewOptions]
@@ -145,6 +148,7 @@ const _QueryDiffResultView = ({
         warnings={warnings}
       />
       <ScreenshotDataGrid
+        ref={ref}
         style={{ blockSize: "auto", maxHeight: "100%", overflow: "auto" }}
         columns={gridData.columns}
         rows={gridData.rows}
@@ -161,12 +165,15 @@ const _QueryDiffResultView = ({
   );
 };
 
-const _QueryDiffJoinResultView = ({
-  run,
-  onAddToChecklist,
-  viewOptions,
-  onViewOptionsChanged,
-}: QueryDiffResultViewProps) => {
+const _QueryDiffJoinResultView = (
+  {
+    run,
+    onAddToChecklist,
+    viewOptions,
+    onViewOptionsChanged,
+  }: QueryDiffResultViewProps,
+  ref: any
+) => {
   const changedOnly = useMemo(
     () => viewOptions?.changed_only || false,
     [viewOptions]
@@ -247,6 +254,7 @@ const _QueryDiffJoinResultView = ({
         warnings={warnings}
       />
       <ScreenshotDataGrid
+        ref={ref}
         style={{ blockSize: "auto", maxHeight: "100%", overflow: "auto" }}
         columns={gridData.columns}
         rows={gridData.rows}
@@ -263,14 +271,18 @@ const _QueryDiffJoinResultView = ({
   );
 };
 
-export const QueryDiffResultView = (props: QueryDiffResultViewProps) => {
-  if (
-    props.run?.result !== undefined &&
-    props.run.result.diff !== null &&
-    props.run.result.diff !== undefined
-  ) {
-    return <_QueryDiffJoinResultView {...props} />;
-  } else {
-    return <_QueryDiffResultView {...props} />;
+export const QueryDiffResultView = forwardRef(
+  (props: QueryDiffResultViewProps, ref) => {
+    if (
+      props.run?.result !== undefined &&
+      props.run.result.diff !== null &&
+      props.run.result.diff !== undefined
+    ) {
+      const ResultView = forwardRef(_QueryDiffJoinResultView);
+      return <ResultView {...props} ref={ref} />;
+    } else {
+      const ResultView = forwardRef(_QueryDiffResultView);
+      return <ResultView {...props} ref={ref} />;
+    }
   }
-};
+);

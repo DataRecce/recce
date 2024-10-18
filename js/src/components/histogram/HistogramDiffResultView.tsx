@@ -1,13 +1,23 @@
 import { HistogramDiffParams, HistogramDiffResult } from "@/lib/api/profile";
 import { RunResultViewProps } from "../run/types";
-import { HStack, Box, Flex, Spacer, Heading } from "@chakra-ui/react";
+import {
+  HStack,
+  Box,
+  Flex,
+  Spacer,
+  Heading,
+  forwardRef,
+} from "@chakra-ui/react";
 import { HistogramChart } from "../charts/HistogramChart";
 import { ScreenshotBox } from "../screenshot/ScreenshotBox";
 
 interface HistogramDiffResultViewProp
   extends RunResultViewProps<HistogramDiffParams, HistogramDiffResult> {}
 
-export function HistogramDiffResultView({ run }: HistogramDiffResultViewProp) {
+function _HistogramDiffResultView(
+  { run }: HistogramDiffResultViewProp,
+  ref: any
+) {
   const params = run.params as HistogramDiffParams;
   const base = run.result?.base;
   const current = run.result?.current;
@@ -21,7 +31,7 @@ export function HistogramDiffResultView({ run }: HistogramDiffResultViewProp) {
 
   return (
     <Flex direction="column" height="500px">
-      <ScreenshotBox height="100%">
+      <ScreenshotBox ref={ref} height="100%">
         <Heading as="h1" size="md" paddingTop="4" textAlign="center">
           Model {params.model}.{params.column_name}
         </Heading>
@@ -46,3 +56,5 @@ export function HistogramDiffResultView({ run }: HistogramDiffResultViewProp) {
     </Flex>
   );
 }
+
+export const HistogramDiffResultView = forwardRef(_HistogramDiffResultView);

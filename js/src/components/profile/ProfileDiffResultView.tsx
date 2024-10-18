@@ -1,4 +1,4 @@
-import { Box, Center, Flex, Icon } from "@chakra-ui/react";
+import { Box, Center, Flex, forwardRef, Icon } from "@chakra-ui/react";
 
 import { ScreenshotDataGrid } from "../data-grid/ScreenshotDataGrid";
 import { RunResultViewProps } from "../run/types";
@@ -18,11 +18,10 @@ interface ProfileDiffResultViewProp
     ProfileDiffViewOptions
   > {}
 
-export function ProfileDiffResultView({
-  run,
-  viewOptions,
-  onViewOptionsChanged,
-}: ProfileDiffResultViewProp) {
+const _ProfileDiffResultView = (
+  { run, viewOptions, onViewOptionsChanged }: ProfileDiffResultViewProp,
+  ref: any
+) => {
   const result = run.result;
   const params = run.params;
   const pinnedColumns = useMemo(
@@ -59,6 +58,7 @@ export function ProfileDiffResultView({
   return (
     <>
       <ScreenshotDataGrid
+        ref={ref}
         style={{ blockSize: "auto", maxHeight: "100%", overflow: "auto" }}
         columns={gridData.columns}
         rows={gridData.rows}
@@ -68,4 +68,6 @@ export function ProfileDiffResultView({
       />
     </>
   );
-}
+};
+
+export const ProfileDiffResultView = forwardRef(_ProfileDiffResultView);

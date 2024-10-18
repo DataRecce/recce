@@ -10,6 +10,7 @@ import {
   Button,
   Center,
   Flex,
+  forwardRef,
   Icon,
   IconButton,
   Spacer,
@@ -113,12 +114,15 @@ function toDataGrid(result: DataFrame, options: QueryDataGridOptions) {
   return { columns, rows: result.data };
 }
 
-export const QueryResultView = ({
-  run,
-  viewOptions,
-  onViewOptionsChanged,
-  onAddToChecklist,
-}: QueryResultViewProp) => {
+const _QueryResultView = (
+  {
+    run,
+    viewOptions,
+    onViewOptionsChanged,
+    onAddToChecklist,
+  }: QueryResultViewProp,
+  ref: any
+) => {
   const pinnedColumns = useMemo(
     () => viewOptions?.pinned_columns || [],
     [viewOptions]
@@ -187,6 +191,7 @@ export const QueryResultView = ({
         </Flex>
       )}
       <ScreenshotDataGrid
+        ref={ref}
         style={{ blockSize: "auto", maxHeight: "100%", overflow: "auto" }}
         columns={gridData.columns}
         rows={gridData.rows}
@@ -202,3 +207,5 @@ export const QueryResultView = ({
     </Flex>
   );
 };
+
+export const QueryResultView = forwardRef(_QueryResultView);
