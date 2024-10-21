@@ -87,7 +87,7 @@ recce_cloud_options = [
 ]
 
 recce_dbt_artifact_dir_options = [
-    click.option('--target-path',  help='dbt artifacts directory for your development branch.',
+    click.option('--target-path', help='dbt artifacts directory for your development branch.',
                  type=click.STRING, default='target'),
     click.option('--target-base-path', help='dbt artifacts directory to be used as the base for the comparison.',
                  type=click.STRING, default='target-base'),
