@@ -2,6 +2,7 @@ import {
   Box,
   Center,
   Flex,
+  forwardRef,
   Icon,
   IconButton,
   Menu,
@@ -99,7 +100,7 @@ function ColumnNameCell({
   );
 }
 
-export function ValueDiffResultView({ run }: ValueDiffResultViewProp) {
+function _ValueDiffResultView({ run }: ValueDiffResultViewProp, ref: any) {
   const result = run.result as ValueDiffResult;
   const params = run.params as ValueDiffParams;
   const cellClass = (row: any) => {
@@ -169,6 +170,7 @@ export function ValueDiffResultView({ run }: ValueDiffResultViewProp) {
       </Box>
 
       <ScreenshotDataGrid
+        ref={ref}
         style={{
           blockSize: "auto",
           maxHeight: "100%",
@@ -185,3 +187,5 @@ export function ValueDiffResultView({ run }: ValueDiffResultViewProp) {
     </Flex>
   );
 }
+
+export const ValueDiffResultView = forwardRef(_ValueDiffResultView);

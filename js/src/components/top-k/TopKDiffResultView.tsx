@@ -10,6 +10,7 @@ import {
   VStack,
   Divider,
   Link,
+  forwardRef,
 } from "@chakra-ui/react";
 import {
   TopKSummaryBarChart,
@@ -21,7 +22,7 @@ import { ScreenshotBox } from "../screenshot/ScreenshotBox";
 interface TopKDiffResultViewProp
   extends RunResultViewProps<TopKDiffParams, TopKDiffResult> {}
 
-export function TopKDiffResultView({ run }: TopKDiffResultViewProp) {
+const _TopKDiffResultView = ({ run }: TopKDiffResultViewProp, ref: any) => {
   const [isDisplayTopTen, setIsDisplayTopTen] = useState<boolean>(true);
   // TODO: Implement TopKDiffResultView
   const result = run.result as TopKDiffResult;
@@ -32,7 +33,7 @@ export function TopKDiffResultView({ run }: TopKDiffResultViewProp) {
 
   return (
     <Flex direction="column" height={"100%"}>
-      <ScreenshotBox blockSize={"auto"}>
+      <ScreenshotBox ref={ref} blockSize={"auto"}>
         <Heading as="h1" size="md" paddingTop={4} textAlign="center">
           Model {params.model}.{params.column_name}
         </Heading>
@@ -59,4 +60,6 @@ export function TopKDiffResultView({ run }: TopKDiffResultViewProp) {
       )}
     </Flex>
   );
-}
+};
+
+export const TopKDiffResultView = forwardRef(_TopKDiffResultView);

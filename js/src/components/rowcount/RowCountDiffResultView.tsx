@@ -1,4 +1,4 @@
-import { Center, Flex } from "@chakra-ui/react";
+import { Center, Flex, forwardRef } from "@chakra-ui/react";
 import {
   EmptyRowsRenderer,
   ScreenshotDataGrid,
@@ -17,7 +17,10 @@ interface RowCountDiffRow {
   current: number | string;
 }
 
-export function RowCountDiffResultView({ run }: RowCountDiffResultViewProp) {
+function _RowCountDiffResultView(
+  { run }: RowCountDiffResultViewProp,
+  ref: any
+) {
   function columnCellClass(row: RowCountDiffRow) {
     if (row.base === row.current) {
       return "column-body-normal";
@@ -78,6 +81,7 @@ export function RowCountDiffResultView({ run }: RowCountDiffResultViewProp) {
       {Object.keys(runResult).length > 0 && (
         <>
           <ScreenshotDataGrid
+            ref={ref}
             style={{
               blockSize: "auto",
               maxHeight: "100%",
@@ -97,3 +101,5 @@ export function RowCountDiffResultView({ run }: RowCountDiffResultViewProp) {
     </Flex>
   );
 }
+
+export const RowCountDiffResultView = forwardRef(_RowCountDiffResultView);

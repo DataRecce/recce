@@ -15,7 +15,7 @@ import {
 } from "@chakra-ui/react";
 import html2canvas from "html2canvas";
 import { toCanvas } from "html-to-image";
-import { RefObject, useEffect, useRef, useState } from "react";
+import { RefObject, useCallback, useEffect, useRef, useState } from "react";
 import { useClipBoardToast } from "./useClipBoardToast";
 import { format } from "date-fns";
 import saveAs from "file-saver";
@@ -202,6 +202,32 @@ export function useCopyToClipboardButton(options?: HookOptions) {
       },
     });
 
+  const onMouseEnter = useCallback(() => {
+    if (ref.current) {
+      const nodeToUse = ((ref.current as any).element ||
+        ref.current) as HTMLElement;
+      nodeToUse.style.boxShadow = highlightBoxShadow;
+      nodeToUse.style.transition = "box-shadow 0.5s ease-in-out";
+    }
+  }, [ref]);
+
+  const onMouseLeave = useCallback(() => {
+    if (ref.current) {
+      const nodeToUse = ((ref.current as any).element ||
+        ref.current) as HTMLElement;
+      nodeToUse.style.boxShadow = "";
+    }
+  }, [ref]);
+
+  const onCopyToClipboard = useCallback(async () => {
+    if (ref.current) {
+      await copyToClipboard();
+      const nodeToUse = ((ref.current as any).element ||
+        ref.current) as HTMLElement;
+      nodeToUse.style.boxShadow = "";
+    }
+  }, [ref, copyToClipboard]);
+
   function CopyToClipboardButton({
     imageType = "png",
     ...props
@@ -215,29 +241,9 @@ export function useCopyToClipboardButton(options?: HookOptions) {
           leftIcon={<CopyIcon />}
           style={{ position: "absolute", bottom: "16px", right: "16px" }}
           isLoading={isLoading}
-          onMouseEnter={() => {
-            if (ref.current) {
-              const nodeToUse = ((ref.current as any).element ||
-                ref.current) as HTMLElement;
-              nodeToUse.style.boxShadow = highlightBoxShadow;
-              nodeToUse.style.transition = "box-shadow 0.5s ease-in-out";
-            }
-          }}
-          onMouseLeave={() => {
-            if (ref.current) {
-              const nodeToUse = ((ref.current as any).element ||
-                ref.current) as HTMLElement;
-              nodeToUse.style.boxShadow = "";
-            }
-          }}
-          onClick={async () => {
-            if (ref.current) {
-              await copyToClipboard();
-              const nodeToUse = ((ref.current as any).element ||
-                ref.current) as HTMLElement;
-              nodeToUse.style.boxShadow = "";
-            }
-          }}
+          onMouseEnter={onMouseEnter}
+          onMouseLeave={onMouseLeave}
+          onClick={onCopyToClipboard}
         >
           Copy to Clipboard
         </Button>
@@ -249,6 +255,9 @@ export function useCopyToClipboardButton(options?: HookOptions) {
   return {
     ref,
     CopyToClipboardButton,
+    onMouseEnter,
+    onMouseLeave,
+    onCopyToClipboard,
   };
 }
 

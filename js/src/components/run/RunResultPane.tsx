@@ -20,7 +20,9 @@ import { useLocation } from "wouter";
 import { DiffEditor, Editor } from "@monaco-editor/react";
 import YAML from "yaml";
 import SqlEditor, { DualSqlEditor } from "../query/SqlEditor";
-import { CheckIcon, RepeatIcon } from "@chakra-ui/icons";
+import { CheckIcon, CopyIcon, RepeatIcon } from "@chakra-ui/icons";
+import { useCopyToClipboardButton } from "@/lib/hooks/ScreenShot";
+import { RunStatusAndDate } from "./RunStatusAndDate";
 
 interface RunPageProps {
   onClose?: () => void;
@@ -86,6 +88,7 @@ export const _LoadableRunView = ({
   }, [run, runAction]);
 
   const checkId = run?.check_id;
+
   const handleGoToCheck = useCallback(async () => {
     if (!checkId) {
       return;
@@ -108,6 +111,8 @@ export const _LoadableRunView = ({
     run?.type === "query" ||
     run?.type === "query_diff" ||
     run?.type === "query_base";
+  const { ref, onCopyToClipboard, onMouseEnter, onMouseLeave } =
+    useCopyToClipboardButton();
 
   return (
     <Flex direction="column">
@@ -122,7 +127,9 @@ export const _LoadableRunView = ({
           <Tab>Params</Tab>
           {isQuery && <Tab>Query</Tab>}
           <Spacer />
-          <HStack>
+
+          <HStack overflow="hidden">
+            {run && <RunStatusAndDate run={run} />}
             <Button
               leftIcon={<RepeatIcon />}
               variant="outline"
@@ -132,6 +139,19 @@ export const _LoadableRunView = ({
             >
               Rerun
             </Button>
+
+            <Button
+              leftIcon={<CopyIcon />}
+              variant="outline"
+              isDisabled={!runId || !run?.result || !!error}
+              onMouseEnter={onMouseEnter}
+              onMouseLeave={onMouseLeave}
+              size="sm"
+              onClick={onCopyToClipboard}
+            >
+              Copy to Clipboard
+            </Button>
+
             {run?.check_id ? (
               <Button
                 leftIcon={<CheckIcon />}
@@ -166,6 +186,7 @@ export const _LoadableRunView = ({
       </Tabs>
       {tabIndex === 0 && (
         <RunView
+          ref={ref}
           isPending={isPending}
           error={error}
           run={run}

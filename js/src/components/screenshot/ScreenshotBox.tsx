@@ -1,4 +1,4 @@
-import { Box, BoxProps } from "@chakra-ui/react";
+import { Box, BoxProps, forwardRef } from "@chakra-ui/react";
 import {
   useCopyToClipboardButton,
   useImageDownloadModal,
@@ -11,18 +11,17 @@ interface ScreenshotBoxProps extends BoxProps {
   children?: React.ReactNode;
 }
 
-export const ScreenshotBox = ({
-  backgroundColor = "white",
-  blockSize,
-  children,
-  ...restProps
-}: ScreenshotBoxProps) => {
-  const { ref, CopyToClipboardButton } = useCopyToClipboardButton({
-    backgroundColor: backgroundColor,
-  });
-
-  return (
-    <>
+export const ScreenshotBox = forwardRef(
+  (
+    {
+      backgroundColor = "white",
+      blockSize,
+      children,
+      ...restProps
+    }: ScreenshotBoxProps,
+    ref: any
+  ) => {
+    return (
       <Box ref={ref} {...restProps} overflowY="auto" overflowX="hidden">
         <Box
           backgroundColor={backgroundColor}
@@ -32,7 +31,6 @@ export const ScreenshotBox = ({
           {children}
         </Box>
       </Box>
-      <CopyToClipboardButton imageType="png" />
-    </>
-  );
-};
+    );
+  }
+);
