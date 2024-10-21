@@ -113,5 +113,5 @@ class TrackCommand(Command):
                 elif recce_context.adapter_type == "sqlmesh":
                     props['adapter_type'] = 'SQLMesh'
 
-            event.log_event(props, command, params=ctx.params)
+            event.log_event(props, 'command', params=ctx.params)
             event.flush_events()
