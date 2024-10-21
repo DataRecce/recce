@@ -12,7 +12,7 @@ from rich.markup import escape
 
 from recce import event, get_runner
 from recce.core import load_context
-from recce.git import hosting_repo
+from recce.git import current_branch, hosting_repo
 
 console = Console()
 
@@ -83,6 +83,7 @@ class TrackCommand(Command):
             duration = end_time - start_time
             runner = get_runner()
             repo = hosting_repo()
+            branch = current_branch()
             command = ctx.command.name
             props = dict(
                 command=command,
@@ -96,6 +97,9 @@ class TrackCommand(Command):
 
             if repo is not None:
                 props['repository'] = sha256(repo.encode()).hexdigest()
+
+            if branch is not None:
+                props['branch'] = sha256(branch.encode()).hexdigest()
 
             try:
                 recce_context = load_context()

@@ -5,6 +5,7 @@ import sys
 import threading
 import uuid
 from datetime import datetime, timezone
+from hashlib import sha256
 
 import sentry_sdk
 
@@ -13,6 +14,7 @@ from recce import yaml as pyml
 from recce.event.collector import Collector
 from recce.github import is_github_codespace, get_github_codespace_info, get_github_codespace_name, \
     get_github_codespace_available_at
+from recce.git import current_branch, hosting_repo
 
 USER_HOME = os.path.expanduser('~')
 RECCE_USER_HOME = os.path.join(USER_HOME, '.recce')
@@ -156,6 +158,14 @@ def should_log_event():
 def log_event(prop, event_type, **kwargs):
     if should_log_event() is False:
         return
+
+    repo = hosting_repo()
+    if repo is not None:
+        prop['repository'] = sha256(repo.encode()).hexdigest()
+
+    branch = current_branch()
+    if branch is not None:
+        prop['branch'] = sha256(branch.encode()).hexdigest()
 
     payload = dict(
         **prop,
