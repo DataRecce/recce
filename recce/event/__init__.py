@@ -9,7 +9,7 @@ from hashlib import sha256
 
 import sentry_sdk
 
-from recce import is_ci_env, get_version
+from recce import is_ci_env, get_version, get_runner
 from recce import yaml as pyml
 from recce.event.collector import Collector
 from recce.github import is_github_codespace, get_github_codespace_info, get_github_codespace_name, \
@@ -167,6 +167,13 @@ def log_event(prop, event_type, **kwargs):
     if branch is not None:
         prop['branch'] = sha256(branch.encode()).hexdigest()
 
+    runner = get_runner()
+    if runner is not None:
+        prop['runner_type'] = runner
+
+        if runner == 'github codespaces':
+            prop['codespaces_name'] = get_github_codespace_name()
+
     payload = dict(
         **prop,
     )
@@ -201,39 +208,40 @@ def log_load_state(command='server'):
     )
 
     log_event(prop, 'load_state')
-    log_event({}, f'{command}_started')
     if command == 'server':
         _collector.schedule_flush()
 
 
 def log_codespaces_events(command):
     # Only log when the recce is running in GitHub Codespaces
-    if is_github_codespace() is False:
-        return
-
     codespace = get_github_codespace_info()
+    if codespace is None:
+        return
 
     user_prop = dict(
         location=codespace.get('location'),
-        is_prebuild=True if codespace.get('prebuild') else False,
+        is_prebuild=codespace.get('prebuild', False),
     )
 
     prop = dict(
         machine=codespace.get('machine', {}).get('display_name'),
+        codespaces_name=get_github_codespace_name(),
     )
 
+    # Codespace created event, send once
     codespace_created_at = load_user_profile().get('codespace_created_at')
-    # Codespace created event
     if codespace_created_at is None:
         created_at = datetime.fromisoformat(codespace.get('created_at'))
-        _collector.log_event(prop, 'codespace_instance_created', event_triggered_at=created_at,
+        prop['state'] = 'created'
+        _collector.log_event(prop, 'codespace_instance', event_triggered_at=created_at,
                              user_properties=user_prop)
         update_user_profile({'codespace_created_at': codespace.get('created_at')})
 
-    # Codespace available event
+    # Codespace available event, send multiple times as start/stop it
     available_at = get_github_codespace_available_at(codespace)
     if available_at and available_at.isoformat() != load_user_profile().get('codespace_available_at'):
-        _collector.log_event(prop, 'codespace_instance_available', event_triggered_at=available_at,
+        prop['state'] = 'available'
+        _collector.log_event(prop, 'codespace_instance', event_triggered_at=available_at,
                              user_properties=user_prop)
         update_user_profile({'codespace_available_at': available_at.isoformat()})
 
