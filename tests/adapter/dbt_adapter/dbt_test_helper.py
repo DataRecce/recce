@@ -25,6 +25,8 @@ class DbtTestHelper:
             no_artifacts=True,
             project_dir=project_dir,
             profiles_dir=profiles_dir,
+            target_path='target',
+            target_base_path='target-base',
         )
 
         context = RecceContext()
