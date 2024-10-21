@@ -220,7 +220,7 @@ def log_codespaces_events(command):
 
     user_prop = dict(
         location=codespace.get('location'),
-        is_prebuild= codespace.get('prebuild', False)
+        is_prebuild=codespace.get('prebuild', False),
     )
 
     prop = dict(
