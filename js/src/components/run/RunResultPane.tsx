@@ -13,7 +13,6 @@ import {
   Spacer,
   CloseButton,
   HStack,
-  Box,
 } from "@chakra-ui/react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { createCheckByRun } from "@/lib/api/checks";
@@ -23,6 +22,7 @@ import YAML from "yaml";
 import SqlEditor, { DualSqlEditor } from "../query/SqlEditor";
 import { CheckIcon, CopyIcon, RepeatIcon } from "@chakra-ui/icons";
 import { useCopyToClipboardButton } from "@/lib/hooks/ScreenShot";
+import { RunStatusAndDate } from "./RunStatusAndDate";
 
 interface RunPageProps {
   onClose?: () => void;
@@ -88,6 +88,7 @@ export const _LoadableRunView = ({
   }, [run, runAction]);
 
   const checkId = run?.check_id;
+
   const handleGoToCheck = useCallback(async () => {
     if (!checkId) {
       return;
@@ -126,7 +127,9 @@ export const _LoadableRunView = ({
           <Tab>Params</Tab>
           {isQuery && <Tab>Query</Tab>}
           <Spacer />
-          <HStack>
+
+          <HStack overflow="hidden">
+            {run && <RunStatusAndDate run={run} />}
             <Button
               leftIcon={<RepeatIcon />}
               variant="outline"

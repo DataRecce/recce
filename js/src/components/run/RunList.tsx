@@ -15,7 +15,7 @@ import {
   Spinner,
 } from "@chakra-ui/react";
 import { cacheKeys } from "@/lib/api/cacheKeys";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import _ from "lodash";
 import { FaCheckCircle, FaRegCheckCircle } from "react-icons/fa";
 import { TbChecklist } from "react-icons/tb";
@@ -24,62 +24,11 @@ import { findByRunType } from "../run/registry";
 import { Run } from "@/lib/api/types";
 import { listRuns, waitRun } from "@/lib/api/runs";
 import { useRecceActionContext } from "@/lib/hooks/RecceActionContext";
-import { format, formatDistanceToNow } from "date-fns";
 import { RepeatIcon } from "@chakra-ui/icons";
 import { useLocation } from "wouter";
 import SimpleBar from "simplebar-react";
 import "simplebar/dist/simplebar.min.css";
-
-const RunListItemStatus = ({ run }: { run: Run }) => {
-  const { data: fetchedRun } = useQuery({
-    queryKey: cacheKeys.run(run.run_id),
-    queryFn: async () => {
-      return await waitRun(run.run_id);
-    },
-    enabled: run?.status === "running",
-    retry: false,
-  });
-  const isRunning = fetchedRun
-    ? fetchedRun.status === "running"
-    : run?.status === "running";
-
-  let status: string | undefined = fetchedRun?.status || run?.status;
-  if (!status) {
-    if (run.result) {
-      status = "finished";
-    } else if (run.error) {
-      status = "failed";
-    }
-  }
-
-  let color = "";
-  let message = "";
-  if (status === "successful" || status === "finished") {
-    color = "green";
-    message = "Finished";
-  } else if (status === "failed") {
-    color = "red";
-    message = "Failed";
-  } else if (status === "cancelled") {
-    color = "gray";
-    message = "Cancelled";
-  } else if (status === "running") {
-    color = "blue";
-    message = "Running";
-  } else {
-    color = "green";
-    message = "Finished";
-  }
-
-  return (
-    <>
-      {isRunning && <Spinner size="xs" color={`${color}.400`} />}
-      <Text fontWeight={500} color={`${color}.400`}>
-        {message}
-      </Text>
-    </>
-  );
-};
+import { RunStatusAndDate } from "./RunStatusAndDate";
 
 const RunListItem = ({
   run,
@@ -94,9 +43,14 @@ const RunListItem = ({
   onAddToChecklist: (runId: string) => void;
   onGoToCheck: (checkId: string) => void;
 }) => {
-  const relativeTime = run?.run_at
-    ? format(new Date(run.run_at), "MMM d, HH:mm")
-    : null;
+  const { data: fetchedRun } = useQuery({
+    queryKey: cacheKeys.run(run.run_id),
+    queryFn: async () => {
+      return await waitRun(run.run_id);
+    },
+    enabled: run?.status === "running",
+    retry: false,
+  });
 
   const icon: IconType = findByRunType(run.type)?.icon || TbChecklist;
   const checkId = run.check_id;
@@ -163,9 +117,7 @@ const RunListItem = ({
         gap="3px"
         alignItems={"center"}
       >
-        <RunListItemStatus run={run} />
-        <Text>•</Text>
-        <Text>{relativeTime}</Text>
+        <RunStatusAndDate run={fetchedRun || run} />
       </Flex>
     </Flex>
   );

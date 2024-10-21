@@ -2,10 +2,12 @@ import { Run } from "@/lib/api/types";
 import {
   Alert,
   AlertIcon,
+  As,
   Box,
   Button,
   Center,
   CircularProgress,
+  ComponentWithAs,
   Flex,
   VStack,
 } from "@chakra-ui/react";
@@ -24,9 +26,7 @@ interface RunViewProps<PT, RT, VO = any> {
   onExecuteRun?: () => void;
   viewOptions?: VO;
   onViewOptionsChanged?: (viewOptions: VO) => void;
-  RunResultView?: React.ForwardRefExoticComponent<
-    React.RefAttributes<HTMLDivElement> & RunResultViewProps<PT, RT, VO>
-  >;
+  RunResultView?: ComponentWithAs<As, RunResultViewProps<PT, RT, VO>>;
   children?: <T extends RunResultViewProps<PT, RT, VO>>(
     params: T
   ) => React.ReactNode;
