@@ -10,6 +10,7 @@ import {
   Flex,
   Heading,
   Highlight,
+  HStack,
   Icon,
   IconButton,
   Menu,
@@ -63,6 +64,7 @@ import { LineageDiffView } from "./LineageDiffView";
 import { findByRunType } from "../run/registry";
 import { PresetCheckTemplateView } from "./PresetCheckTemplateView";
 import { VSplit } from "../split/Split";
+import { useCopyToClipboardButton } from "@/lib/hooks/ScreenShot";
 
 interface CheckDetailProps {
   checkId: string;
@@ -200,6 +202,9 @@ export const CheckDetail = ({ checkId }: CheckDetailProps) => {
     mutate({ description });
   };
 
+  const { ref, onCopyToClipboard, onMouseEnter, onMouseLeave } =
+    useCopyToClipboardButton();
+
   if (isLoading) {
     return <Center h="100%">Loading</Center>;
   }
@@ -325,16 +330,31 @@ export const CheckDetail = ({ checkId }: CheckDetailProps) => {
 
       <Box style={{ contain: "strict" }}>
         <Tabs height="100%" display="flex" flexDirection="column">
-          <TabList>
+          <TabList height="50px">
             <Tab fontSize="10pt">Result</Tab>
             {(check?.type === "query" || check?.type === "query_diff") && (
               <Tab fontSize="10pt">Query</Tab>
             )}
+            <Spacer />
+            <HStack mr="10px">
+              <Button
+                leftIcon={<CopyIcon />}
+                variant="outline"
+                isDisabled={!run?.result || !!run?.error}
+                onMouseEnter={onMouseEnter}
+                onMouseLeave={onMouseLeave}
+                size="sm"
+                onClick={onCopyToClipboard}
+              >
+                Copy to Clipboard
+              </Button>
+            </HStack>
           </TabList>
           <TabPanels height="100%" flex="1" style={{ contain: "strict" }}>
             <TabPanel p={0} width="100%" height="100%">
               {runTypeEntry?.RunResultView && (
                 <RunView
+                  ref={ref}
                   isPending={rerunPending}
                   isAborting={abort}
                   isCheckDetail={true}
