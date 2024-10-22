@@ -1,7 +1,7 @@
-import math
 from datetime import date, datetime
 from typing import TypedDict
 
+import math
 from dateutil.relativedelta import relativedelta
 
 from recce.core import default_context
@@ -314,31 +314,36 @@ class HistogramDiffTask(Task, QueryMixin):
                 FROM {{{{ ref("{node}") }}}}
                 """
             # Get the mix/max values from both the base and current environments
-            try:
-                min_max_base = self.execute_sql(min_max_sql, base=True)
-                min_max_curr = self.execute_sql(min_max_sql, base=False)
-            except Exception as e:
-                print(e)
-            finally:
-                self.check_cancel()
 
-            min_value = None
-            max_value = None
-            base_total = 0
-            curr_total = 0
+            min_max_base = self.execute_sql(min_max_sql, base=True)
+            min_max_curr = self.execute_sql(min_max_sql, base=False)
 
-            if min_max_base:
-                min_value = min_max_base[0][0]
-                max_value = min_max_base[0][1]
-                base_total = min_max_base[0][2]
-            if min_max_curr:
-                min_value = min(min_value, min_max_curr[0][0])
-                max_value = max(max_value, min_max_curr[0][1])
-                curr_total = min_max_curr[0][2]
+            def get_min_max(fn, base, curr):
+                if base is None and curr is None:
+                    return None
+                if base is None:
+                    return curr
+                if curr is None:
+                    return base
+                return fn(base, curr)
+
+            min_value = get_min_max(min, min_max_base[0][0], min_max_curr[0][0])
+            max_value = get_min_max(max, min_max_base[0][1], min_max_curr[0][1])
+            base_total = min_max_base[0][2]
+            curr_total = min_max_curr[0][2]
 
             # Get histogram data from both the base and current environments
             labels = None
-            if column_type.upper() in sql_datetime_types:
+            if min_value is None or max_value is None:
+                base_result = {
+                    'counts': [],
+                }
+                current_result = {
+                    'counts': [],
+                }
+                bin_edges = []
+                labels = []
+            elif column_type.upper() in sql_datetime_types:
                 base_result, current_result, bin_edges = query_datetime_histogram(
                     self, node, column, min_value, max_value)
             else:
