@@ -188,6 +188,9 @@ class DbtAdapter(BaseAdapter):
              **kwargs):
 
         target = kwargs.get('target')
+        target_path = kwargs.get('target_path', 'target')
+        target_base_path = kwargs.get('target_base_path', 'target-base')
+
         profile_name = kwargs.get('profile')
         project_dir = kwargs.get('project_dir')
         profiles_dir = kwargs.get('profiles_dir')
@@ -199,7 +202,7 @@ class DbtAdapter(BaseAdapter):
         args = DbtArgs(
             threads=1,
             target=target,
-            target_path='target',
+            target_path=target_path,
             project_dir=project_dir,
             profiles_dir=profiles_dir,
             profile=profile_name,
@@ -234,17 +237,18 @@ class DbtAdapter(BaseAdapter):
                 runtime_config=runtime_config,
                 adapter=adapter,
                 review_mode=review,
+                base_path=target_base_path
             )
         except DbtProjectError as e:
             raise e
 
-        # Load the artifacts from the state file or `target` and `target-base` directory
+        # Load the artifacts from the state file or dbt target and dbt base directory
         if not no_artifacts and not review:
             dbt_adapter.load_artifacts()
             if not dbt_adapter.curr_manifest:
-                raise Exception('Cannot load "target/manifest.json"')
+                raise Exception(f'Cannot load "{runtime_config.target_path}/manifest.json"')
             if not dbt_adapter.base_manifest:
-                raise Exception('Cannot load "target-base/manifest.json"')
+                raise Exception(f'Cannot load "{target_base_path}/manifest.json"')
         return dbt_adapter
 
     def print_lineage_info(self):
@@ -328,7 +332,7 @@ class DbtAdapter(BaseAdapter):
 
         project_root = self.runtime_config.project_root
         target_path = self.runtime_config.target_path
-        target_base_path = 'target-base'
+        target_base_path = self.base_path
         self.target_path = os.path.join(project_root, target_path)
         self.base_path = os.path.join(project_root, target_base_path)
 
@@ -354,7 +358,7 @@ class DbtAdapter(BaseAdapter):
         # set the manifest
         self.manifest = as_manifest(curr_manifest)
         self.previous_state = previous_state(
-            Path('target-base'),
+            Path(target_base_path),
             Path(self.runtime_config.target_path),
             Path(self.runtime_config.project_root),
         )
@@ -605,7 +609,7 @@ class DbtAdapter(BaseAdapter):
         self.base_manifest = base_manifest
         self.manifest = manifest
         self.previous_state = previous_state(
-            Path('target-base'),
+            Path(self.base_path),
             Path(self.runtime_config.target_path),
             Path(self.runtime_config.project_root)
         )
@@ -704,11 +708,11 @@ class DbtAdapter(BaseAdapter):
 
     def export_artifacts_from_file(self) -> ArtifactsRoot:
         '''
-        Export the artifacts from the state file. This is the old impolementation
+        Export the artifacts from the state file. This is the old implementation
         '''
         artifacts = ArtifactsRoot()
         target_path = self.runtime_config.target_path
-        target_base_path = 'target-base'
+        target_base_path = self.base_path
 
         def _load_artifact(path):
             if not os.path.isfile(path):
@@ -751,7 +755,7 @@ class DbtAdapter(BaseAdapter):
 
         self.manifest = as_manifest(self.curr_manifest)
         self.previous_state = previous_state(
-            Path('target-base'),
+            Path(self.base_path),
             Path(self.runtime_config.target_path),
             Path(self.runtime_config.project_root)
         )

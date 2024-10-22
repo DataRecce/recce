@@ -86,6 +86,13 @@ recce_cloud_options = [
                  envvar='RECCE_STATE_PASSWORD'),
 ]
 
+recce_dbt_artifact_dir_options = [
+    click.option('--target-path', help='dbt artifacts directory for your development branch.',
+                 type=click.STRING, default='target'),
+    click.option('--target-base-path', help='dbt artifacts directory to be used as the base for the comparison.',
+                 type=click.STRING, default='target-base'),
+]
+
 
 def _execute_sql(context, sql_template, base=False):
     try:
@@ -186,6 +193,7 @@ def diff(sql, primary_keys: List[str] = None, keep_shape: bool = False, keep_equ
 @add_options(dbt_related_options)
 @add_options(sqlmesh_related_options)
 @add_options(recce_options)
+@add_options(recce_dbt_artifact_dir_options)
 @add_options(recce_cloud_options)
 def server(host, port, state_file=None, **kwargs):
     """
@@ -271,6 +279,7 @@ DEFAULT_RECCE_STATE_FILE = 'recce_state.json'
 @add_options(dbt_related_options)
 @add_options(sqlmesh_related_options)
 @add_options(recce_options)
+@add_options(recce_dbt_artifact_dir_options)
 @add_options(recce_cloud_options)
 def run(output, **kwargs):
     """
