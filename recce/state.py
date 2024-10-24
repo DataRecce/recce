@@ -8,6 +8,7 @@ from base64 import b64encode
 from datetime import datetime
 from hashlib import md5, sha256
 from typing import List, Optional, Dict, Union, Tuple
+from urllib.parse import urlencode
 
 import botocore.exceptions
 from pydantic import BaseModel
@@ -416,9 +417,10 @@ class RecceStateLoader:
         presigned_url = RecceCloud(token=self.cloud_options.get('token')).get_presigned_url(
             method=PresignedUrlMethod.UPLOAD, pr_info=self.pr_info, artifact_name=RECCE_STATE_COMPRESSED_FILE,
             metadata=metadata)
-
         compress_passwd = self.cloud_options.get('password')
         headers = s3_sse_c_headers(compress_passwd)
+        if metadata:
+            headers['x-amz-tagging'] = urlencode(metadata)
         with tempfile.NamedTemporaryFile() as tmp:
             self._export_state_to_file(tmp.name, file_type=SupportedFileTypes.GZIP)
             response = requests.put(presigned_url, data=open(tmp.name, 'rb').read(), headers=headers)
