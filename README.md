@@ -1,5 +1,5 @@
 <p align="center">
-    <a href="https://datarecce.io" target="_blank">
+    <a href="https://datarecce.io">
         <picture>
             <source media="(prefers-color-scheme: dark)" srcset="https://datarecce.io/assets/images/recce-logo-stacked.png">
             <source media="(prefers-color-scheme: light)" srcset="https://datarecce.io/assets/images/recce-logo-stacked.png">
@@ -18,6 +18,12 @@
     <a href="https://github.com/DataRecce/recce/blob/main/LICENSE"><img src="https://img.shields.io/github/license/DataRecce/recce?style=flat-square" alt="license"></a> &nbsp; 
     <a href="https://getdbt.slack.com/archives/C05C28V7CPP"><img src="https://img.shields.io/badge/Slack-4A154B?style=flat-square&amp;logo=slack&amp;logoColor=white" alt="Slack"></a> &nbsp; 
     <a href="https://discord.com/invite/5zb2aK9KBV"><img src="https://img.shields.io/discord/664381609771925514?color=%237289DA&amp;label=chat&amp;logo=discord&amp;logoColor=white&amp;style=flat-square" alt="InfuseAI Discord Invite"></a> &nbsp; 
+</p>
+
+<p align="center">
+    <a href="https://cal.com/team/recce/chat?utm_source=banner&utm_campaign=oss">
+        <img alt="Book us with Cal.com" src="https://cal.com/book-with-cal-light.svg" />
+    </a>
 </p>
 
 ## Introduction
@@ -216,7 +222,7 @@ Start the `Recce` server:
 recce server
 ```
 
-This will launch 
+This will launch a Recce Instance for you to start your data validation work. Take a look at the [Hands-On Impact Analysis](https://datarecce.io/blog/hands-on-data-impact-analysis-recce/) blog that shows how to use various Recce features to validate a PR.
 
 ## Data Security
 `Recce` consists of a local server application that you run on your own device or compute services. 
@@ -239,10 +245,14 @@ With `Recce Cloud`:
 
 [Recce Cloud](https://datarecce.io/cloud) is currently in early-access private beta. 
 
-To find out how you can get access please [book an appointment](https://cal.com/team/recce/chat) for a short meeting.
+To find out how you can get access please [book an appointment](https://cal.com/team/recce/chat?utm_source=banner&utm_campaign=oss) for a short meeting.
+
+<a href="https://cal.com/team/recce/chat?utm_source=banner&utm_campaign=oss">
+    <img alt="Book us with Cal.com" src="https://cal.com/book-with-cal-light.svg" />
+</a>
 
 
-## Documentation 
+## Documentation
 
 The [Recce Documentation](https://datarecce.io/docs/) covers everything you need to get started from a 5-minute tutorial using Jaffle Shop, to advice on best practices for your dbt environments.
 
