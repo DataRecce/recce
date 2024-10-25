@@ -63,9 +63,12 @@ def generate_run_name(run):
         if ref:
             return f"query diff of {ref}".capitalize()
         return f"{'query diff'.capitalize()} - {now}"
-    elif run_type == RunType.VALUE_DIFF or run_type == RunType.VALUE_DIFF_DETAIL:
+    elif run_type == RunType.VALUE_DIFF:
         model = params.get('model')
         return f"value diff of {model}".capitalize()
+    elif run_type == RunType.VALUE_DIFF_DETAIL:
+        model = params.get('model')
+        return f"value diff detail of {model}".capitalize()
     elif run_type == RunType.PROFILE_DIFF:
         model = params.get('model')
         return f"profile diff of {model}".capitalize()
