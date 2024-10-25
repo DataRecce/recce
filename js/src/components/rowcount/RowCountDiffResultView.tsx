@@ -7,6 +7,7 @@ import {
 import { RunResultViewProps } from "../run/types";
 import { RowCountDiffParams, RowCountDiffResult } from "@/lib/api/rowcount";
 import { deltaPercentageString } from "./delta";
+import { isNumber } from "lodash";
 
 interface RowCountDiffResultViewProp
   extends RunResultViewProps<RowCountDiffParams, RowCountDiffResult> {}
@@ -43,8 +44,8 @@ function _RowCountDiffResultView(
 
   const rows: RowCountDiffRow[] = Object.keys(run.result || {}).map((key) => {
     const result = runResult[key];
-    const base = result?.base || null;
-    const current = result?.curr || null;
+    const base = isNumber(result?.base) ? result?.base : null;
+    const current = isNumber(result?.curr) ? result?.curr : null;
     let delta = "No Change";
 
     if (base !== null && current !== null) {
