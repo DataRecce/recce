@@ -59,21 +59,7 @@ export const _LoadableRunView = ({
   onClose?: () => void;
 }) => {
   const { runAction } = useRecceActionContext();
-
-  const { isPending, error, run, onCancel } = useRun(runId);
-  const isPendingRef = useRef(false);
-  isPendingRef.current = isPending;
-
-  useEffect(() => {
-    return () => {
-      if (isPendingRef.current) {
-        onCancel();
-      }
-    };
-
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isPendingRef]);
-
+  const { error, run, onCancel, isRunning } = useRun(runId);
   const [viewOptions, setViewOptions] = useState();
   const queryClient = useQueryClient();
   const [, setLocation] = useLocation();
@@ -133,7 +119,7 @@ export const _LoadableRunView = ({
             <Button
               leftIcon={<RepeatIcon />}
               variant="outline"
-              isDisabled={!runId || isPending}
+              isDisabled={!runId || isRunning}
               size="sm"
               onClick={handleRerun}
             >
@@ -187,7 +173,6 @@ export const _LoadableRunView = ({
       {tabIndex === 0 && (
         <RunView
           ref={ref}
-          isPending={isPending}
           error={error}
           run={run}
           onCancel={onCancel}

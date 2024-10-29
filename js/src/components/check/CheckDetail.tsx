@@ -1,9 +1,4 @@
 import {
-  Accordion,
-  AccordionButton,
-  AccordionIcon,
-  AccordionItem,
-  AccordionPanel,
   Box,
   Button,
   Center,
@@ -55,16 +50,17 @@ import { stripIndents } from "common-tags";
 import { useClipBoardToast } from "@/lib/hooks/useClipBoardToast";
 import { buildTitle, buildDescription, buildQuery } from "./check";
 import SqlEditor, { DualSqlEditor } from "../query/SqlEditor";
-import { useCallback, useEffect, useState } from "react";
-import { cancelRun, submitRunFromCheck, waitRun } from "@/lib/api/runs";
+import { useCallback, useState } from "react";
+import { cancelRun, submitRunFromCheck } from "@/lib/api/runs";
 import { Run } from "@/lib/api/types";
 import { RunView } from "../run/RunView";
-import { formatDistanceToNow } from "date-fns";
+import { formatDistanceToNow, sub } from "date-fns";
 import { LineageDiffView } from "./LineageDiffView";
 import { findByRunType } from "../run/registry";
 import { PresetCheckTemplateView } from "./PresetCheckTemplateView";
 import { VSplit } from "../split/Split";
 import { useCopyToClipboardButton } from "@/lib/hooks/ScreenShot";
+import { useRun } from "@/lib/hooks/useRun";
 
 interface CheckDetailProps {
   checkId: string;
@@ -74,9 +70,9 @@ export const CheckDetail = ({ checkId }: CheckDetailProps) => {
   const queryClient = useQueryClient();
   const [, setLocation] = useLocation();
   const { successToast, failToast } = useClipBoardToast();
-  const [runId, setRunId] = useState<string>();
+  const [submittedRunId, setSubmittedRunId] = useState<string>();
   const [progress, setProgress] = useState<Run["progress"]>();
-  const [abort, setAborting] = useState(false);
+  const [isAborting, setAborting] = useState(false);
   const {
     isOpen: isPresetCheckTemplateOpen,
     onOpen: onPresetCheckTemplateOpen,
@@ -90,14 +86,18 @@ export const CheckDetail = ({ checkId }: CheckDetailProps) => {
   const {
     isLoading,
     error,
-    refetch,
     data: check,
   } = useQuery({
     queryKey: cacheKeys.check(checkId),
     queryFn: async () => getCheck(checkId),
-    refetchOnMount: false,
-    staleTime: 5 * 60 * 1000,
+    refetchOnMount: true,
   });
+
+  const trackedRunId = submittedRunId || check?.last_run?.run_id;
+  const { run, error: rerunError } = useRun(trackedRunId);
+  const isRunning = submittedRunId
+    ? !run || run.status === "running"
+    : run?.status === "running";
 
   const runTypeEntry = check?.type ? findByRunType(check?.type) : undefined;
   const isPresetCheck = check?.is_preset || false;
@@ -118,52 +118,24 @@ export const CheckDetail = ({ checkId }: CheckDetailProps) => {
     },
   });
 
-  const submitRunFn = async () => {
+  const handleRerun = useCallback(async () => {
     const type = check?.type;
     if (!type) {
       return;
     }
 
-    const { run_id } = await submitRunFromCheck(checkId, { nowait: true });
-
-    setRunId(run_id);
-
-    while (true) {
-      const run = await waitRun(run_id, 2);
-      setProgress(run.progress);
-      if (run.result || run.error) {
-        setAborting(false);
-        setProgress(undefined);
-        return run;
-      }
-    }
-  };
-
-  const {
-    data: rerunRun,
-    mutate: rerun,
-    error: rerunError,
-    isIdle: rerunIdle,
-    isPending: rerunPending,
-  } = useMutation({
-    mutationFn: submitRunFn,
-    onSuccess: (run) => {
-      refetch();
-    },
-  });
-
-  const handleRerun = async () => {
-    rerun();
-  };
+    const submittedRun = await submitRunFromCheck(checkId, { nowait: true });
+    setSubmittedRunId(submittedRun.run_id);
+  }, [check, checkId, setSubmittedRunId]);
 
   const handleCancel = useCallback(async () => {
     setAborting(true);
-    if (!runId) {
+    if (!trackedRunId) {
       return;
     }
 
-    return await cancelRun(runId);
-  }, [runId]);
+    return await cancelRun(trackedRunId);
+  }, [trackedRunId]);
 
   const handleCopy = async () => {
     if (!check) {
@@ -213,7 +185,6 @@ export const CheckDetail = ({ checkId }: CheckDetailProps) => {
     return <Center h="100%">Error: {error.message}</Center>;
   }
 
-  const run = rerunIdle ? check?.last_run : rerunRun;
   const relativeTime = run?.run_at
     ? formatDistanceToNow(new Date(run.run_at), { addSuffix: true })
     : null;
@@ -284,7 +255,7 @@ export const CheckDetail = ({ checkId }: CheckDetailProps) => {
             <Tooltip label="Rerun">
               <IconButton
                 isRound={true}
-                isLoading={rerunPending}
+                isLoading={isRunning}
                 variant="ghost"
                 aria-label="Rerun"
                 icon={<RepeatIcon />}
@@ -352,22 +323,28 @@ export const CheckDetail = ({ checkId }: CheckDetailProps) => {
           </TabList>
           <TabPanels height="100%" flex="1" style={{ contain: "strict" }}>
             <TabPanel p={0} width="100%" height="100%">
-              {runTypeEntry?.RunResultView && (
-                <RunView
-                  ref={ref}
-                  isPending={rerunPending}
-                  isAborting={abort}
-                  isCheckDetail={true}
-                  run={run}
-                  error={rerunError}
-                  progress={progress}
-                  RunResultView={runTypeEntry.RunResultView}
-                  viewOptions={check?.view_options}
-                  onViewOptionsChanged={handelUpdateViewOptions}
-                  onCancel={handleCancel}
-                  onExecuteRun={handleRerun}
-                />
-              )}
+              {runTypeEntry?.RunResultView &&
+                (check?.last_run || trackedRunId ? (
+                  <RunView
+                    ref={ref}
+                    isRunning={isRunning}
+                    isAborting={isAborting}
+                    run={trackedRunId ? run : check?.last_run}
+                    error={rerunError}
+                    progress={progress}
+                    RunResultView={runTypeEntry.RunResultView}
+                    viewOptions={check?.view_options}
+                    onViewOptionsChanged={handelUpdateViewOptions}
+                    onCancel={handleCancel}
+                    onExecuteRun={handleRerun}
+                  />
+                ) : (
+                  <Center bg="rgb(249,249,249)" height="100%">
+                    <Button onClick={handleRerun} colorScheme="blue" size="sm">
+                      Run Query
+                    </Button>
+                  </Center>
+                ))}
               {check && check.type === "schema_diff" && (
                 <SchemaDiffView check={check} />
               )}

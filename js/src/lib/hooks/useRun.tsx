@@ -9,39 +9,41 @@ import { useRunsAggregated } from "./LineageGraphContext";
 interface UseRunResult {
   run?: Run;
   aborting: boolean;
-  isPending: boolean;
+  isRunning: boolean;
   error: Error | null;
   onCancel: () => void;
   RunResultView?: React.ComponentType<any>;
 }
 
 export const useRun = (runId?: string): UseRunResult => {
-  const [isPolling, setIsPolling] = useState(false);
+  const [isRunning, setIsRunning] = useState(false);
   const [aborting, setAborting] = useState(false);
   const [, refetchRunsAggregated] = useRunsAggregated();
 
   const { error, data: run } = useQuery({
     queryKey: cacheKeys.run(runId || ""),
     queryFn: async () => {
-      return waitRun(runId || "", 2);
+      return waitRun(runId || "", isRunning ? 2 : 0);
     },
     enabled: !!runId,
-    refetchInterval: isPolling ? 50 : false,
+    refetchInterval: isRunning ? 50 : false,
     retry: false,
   });
 
   useEffect(() => {
     if (error || run?.result || run?.error) {
-      if (isPolling) {
-        setIsPolling(false);
-        if (run?.type === "row_count_diff") {
-          refetchRunsAggregated();
-        }
+      if (isRunning) {
+        setIsRunning(false);
       }
-    } else {
-      setIsPolling(true);
+      if (run?.type === "row_count_diff") {
+        refetchRunsAggregated();
+      }
     }
-  }, [run, error, isPolling, refetchRunsAggregated]);
+
+    if (run?.status === "running") {
+      setIsRunning(true);
+    }
+  }, [run, error, isRunning, refetchRunsAggregated]);
 
   const onCancel = useCallback(async () => {
     setAborting(true);
@@ -58,7 +60,7 @@ export const useRun = (runId?: string): UseRunResult => {
 
   return {
     run,
-    isPending: isPolling,
+    isRunning,
     aborting,
     error,
     onCancel,
