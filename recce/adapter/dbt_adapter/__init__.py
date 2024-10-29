@@ -392,6 +392,11 @@ class DbtAdapter(BaseAdapter):
                 return self.curr_manifest.metrics[unique_id].name
             elif unique_id in self.base_manifest.metrics:
                 return self.base_manifest.metrics[unique_id].name
+        elif unique_id.startswith('exposure.'):
+            if unique_id in self.curr_manifest.exposures:
+                return self.curr_manifest.exposures[unique_id].name
+            elif unique_id in self.base_manifest.exposures:
+                return self.base_manifest.exposures[unique_id].name
         elif unique_id.startswith('semantic_model.'):
             if unique_id in self.curr_manifest.semantic_models:
                 return self.curr_manifest.semantic_models[unique_id].name
