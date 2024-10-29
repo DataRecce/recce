@@ -16,7 +16,7 @@ import { ErrorBoundary } from "@sentry/react";
 import { forwardRef } from "@chakra-ui/react";
 
 interface RunViewProps<PT, RT, VO = any> {
-  isPending?: boolean;
+  isRunning?: boolean;
   run?: Run<PT, RT>;
   error?: Error | null;
   progress?: Run["progress"];
@@ -35,9 +35,8 @@ interface RunViewProps<PT, RT, VO = any> {
 export const RunView = forwardRef(
   <PT, RT>(
     {
-      isPending,
+      isRunning,
       isAborting,
-      isCheckDetail,
       progress,
       error,
       run,
@@ -61,7 +60,7 @@ export const RunView = forwardRef(
       );
     }
 
-    if (isPending) {
+    if (isRunning !== undefined ? isRunning : run?.status === "running") {
       let loadingMessage = progress?.message
         ? progress?.message
         : run?.progress?.message
@@ -93,19 +92,12 @@ export const RunView = forwardRef(
           </VStack>
         </Center>
       );
-    } else if (!run) {
-      if (isCheckDetail) {
-        return (
-          <Center bg="rgb(249,249,249)" height="100%">
-            <Button onClick={onExecuteRun} colorScheme="blue" size="sm">
-              Run Query
-            </Button>
-          </Center>
-        );
-      }
+    }
+
+    if (!run) {
       return (
         <Center bg="rgb(249,249,249)" height="100%">
-          No Data
+          Loading...
         </Center>
       );
     }
