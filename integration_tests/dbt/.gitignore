@@ -1,0 +1,9 @@
+target/
+target-base/
+dbt_packages/
+recce_state.json
+recce_summary.md
+jaffle_shop.duckdb
+.user.yml
+package-lock.yml
+recce.yml
