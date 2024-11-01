@@ -1,6 +1,6 @@
 import typing as t
 from dataclasses import dataclass
-from typing import Optional
+from typing import Optional, Set
 
 import pandas as pd
 from sqlglot import parse_one, Expression, select
@@ -139,3 +139,8 @@ class SqlmeshAdapter(BaseAdapter):
         else:
             more = False
         return df, more
+
+    def select_nodes(self, select: Optional[str] = None, exclude: Optional[str] = None) -> Set[str]:
+        # SQLMesh doesn't have a concept of selecting nodes like dbt does.
+        # For now, we'll return an empty set.
+        return set()
