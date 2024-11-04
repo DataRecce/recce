@@ -58,7 +58,7 @@ function ColumnNameCell({
       </Box>
       <Spacer />
 
-      <Menu>
+      <Menu isLazy>
         {({ isOpen }) => (
           <>
             <MenuButton
@@ -176,6 +176,7 @@ function _ValueDiffResultView({ run }: ValueDiffResultViewProp, ref: any) {
           maxHeight: "100%",
           overflow: "auto",
           borderBlock: "1px solid lightgray",
+          flex: "1",
         }}
         columns={columns}
         rows={result.data.data}
