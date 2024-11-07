@@ -1,6 +1,19 @@
-import { Flex, Text, Stack, Badge, Spacer, IconButton } from "@chakra-ui/react";
+import {
+  Flex,
+  Text,
+  Stack,
+  Badge,
+  Spacer,
+  IconButton,
+  Button,
+  Icon,
+  Box,
+} from "@chakra-ui/react";
 import { EditorProps, DiffEditor, Editor } from "@monaco-editor/react";
 import { on } from "events";
+import { BiLogoXing } from "react-icons/bi";
+import { FaPlay } from "react-icons/fa6";
+import { RiPlayMiniFill } from "react-icons/ri";
 import { VscDebugStart } from "react-icons/vsc";
 
 interface SqlEditorProps {
@@ -39,26 +52,27 @@ const SqlEditor: React.FC<SqlEditorProps> = ({
     <>
       {(label || onRun || onRunBase) && (
         <Flex
-          backgroundColor="#E8EFF5"
-          height="18px"
-          fontSize={"12px"}
-          marginBottom={"6px"}
-          paddingX="2"
+          backgroundColor="#EDF2F880"
+          height="40px"
+          fontSize={"14px"}
+          align="center"
+          margin={"0"}
+          padding={"0px 16px"}
         >
           <Text as="b">{label ? label.toUpperCase() : ""}</Text>
           <Spacer />
           {(onRun || onRunBase) && (
-            <IconButton
-              borderRadius={"2px"}
-              aria-label="Run"
-              icon={<VscDebugStart />}
+            <Button
+              size="sm"
+              variant="outline"
               onClick={onRun || onRunBase}
-              color="green"
-              fontSize="18px"
-              size="18px"
-              marginX={2}
-              title={runButtonTitle}
-            />
+              backgroundColor={"white"}
+              // leftIcon={<Icon as={RiPlayMiniFill} />}
+              leftIcon={<Icon as={FaPlay} />}
+              padding={"6px 12px"}
+            >
+              Run Query
+            </Button>
           )}
         </Flex>
       )}
@@ -120,8 +134,14 @@ export const DualSqlEditor: React.FC<SqlEditorProps> = ({
 }: SqlEditorProps) => {
   return (
     <>
-      <Flex height={"100%"}>
-        <Stack height={"100%"} width={"50%"}>
+      <Flex height={"100%"} gap={0}>
+        <Stack
+          height={"100%"}
+          width={"50%"}
+          gap={0}
+          borderRight={"1px"}
+          borderColor={"#D4DBE4"}
+        >
           <SqlEditor
             label="Current"
             value={value}
@@ -131,7 +151,7 @@ export const DualSqlEditor: React.FC<SqlEditorProps> = ({
             {...props}
           />
         </Stack>
-        <Stack height={"100%"} width={"50%"}>
+        <Stack height={"100%"} width={"50%"} gap={0}>
           <SqlEditor
             label="Base"
             value={baseValue || ""}
