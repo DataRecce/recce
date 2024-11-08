@@ -143,20 +143,20 @@ export const DualSqlEditor: React.FC<SqlEditorProps> = ({
           borderColor={"#D4DBE4"}
         >
           <SqlEditor
-            label="Current"
-            value={value}
-            onChange={onChange}
-            onRun={onRun}
+            label="Base"
+            value={baseValue || ""}
+            onChange={onChangeBase}
+            onRunBase={onRunBase}
             options={options}
             {...props}
           />
         </Stack>
         <Stack height={"100%"} width={"50%"} gap={0}>
           <SqlEditor
-            label="Base"
-            value={baseValue || ""}
-            onChange={onChangeBase}
-            onRunBase={onRunBase}
+            label="Current"
+            value={value}
+            onChange={onChange}
+            onRun={onRun}
             options={options}
             {...props}
           />
