@@ -122,63 +122,61 @@ export const QueryPage = () => {
   });
 
   return (
-    <HSplit
-      sizes={[90, 10]}
-      minSize={200}
-      style={{ flex: "1", height: "100%" }}
-    >
-      <Flex direction="column" height="100%">
-        <Flex
-          justifyContent="right"
-          alignItems="center"
-          padding="4pt 8pt"
-          gap="5px"
-          height="54px"
-          borderBottom="1px solid lightgray"
-          flex="0 0 54px"
+    <Flex direction="column" height="100%">
+      <Flex
+        justifyContent="right"
+        alignItems="center"
+        padding="4pt 8pt"
+        gap="5px"
+        height="54px"
+        borderBottom="1px solid lightgray"
+        flex="0 0 54px"
+      >
+        <HistoryToggle />
+        <QueryModeToggle />
+        <Spacer />
+        <QueryForm
+          defaultPrimaryKeys={primaryKeys}
+          onPrimaryKeysChange={setPrimaryKeys}
+        />
+        <Button
+          colorScheme="blue"
+          onClick={() => runQuery("query_diff")}
+          isDisabled={isPending}
+          size="sm"
+          leftIcon={<Icon as={VscDiff} />}
         >
-          <HistoryToggle />
-          <QueryModeToggle />
-          <Spacer />
-          <Button
-            colorScheme="blue"
-            onClick={() => runQuery("query_diff")}
-            isDisabled={isPending}
-            size="sm"
-            leftIcon={<Icon as={VscDiff} />}
-          >
-            Run Diff
-          </Button>
-        </Flex>
-
-        <Box width="100%" flex="1">
-          {isCustomQueries ? (
-            <DualSqlEditor
-              value={sqlQuery}
-              baseValue={baseSqlQuery}
-              onChange={setSqlQuery}
-              onChangeBase={setBaseSqlQuery}
-              onRun={() => runQuery("query")}
-              onRunBase={() => runQuery("query_base")}
-              onRunDiff={() => runQuery("query_diff")}
-            />
-          ) : (
-            <SqlEditor
-              value={sqlQuery}
-              onChange={setSqlQuery}
-              onRun={() => runQuery("query")}
-              onRunDiff={() => runQuery("query_diff")}
-            />
-          )}
-        </Box>
+          Run Diff
+        </Button>
       </Flex>
-      <QueryForm
-        p="5px"
-        border="1px"
-        borderColor="gray.300"
-        defaultPrimaryKeys={primaryKeys}
-        onPrimaryKeysChange={setPrimaryKeys}
-      />
-    </HSplit>
+
+      <Box width="100%" flex="1">
+        {isCustomQueries ? (
+          <DualSqlEditor
+            value={sqlQuery}
+            baseValue={baseSqlQuery}
+            onChange={setSqlQuery}
+            onChangeBase={setBaseSqlQuery}
+            onRun={() => runQuery("query")}
+            onRunBase={() => runQuery("query_base")}
+            onRunDiff={() => runQuery("query_diff")}
+          />
+        ) : (
+          <SqlEditor
+            value={sqlQuery}
+            onChange={setSqlQuery}
+            onRun={() => runQuery("query")}
+            onRunDiff={() => runQuery("query_diff")}
+          />
+        )}
+      </Box>
+    </Flex>
+    /* <QueryForm
+      p="5px"
+      border="1px"
+      borderColor="gray.300"
+      defaultPrimaryKeys={primaryKeys}
+      onPrimaryKeysChange={setPrimaryKeys}
+    /> */
   );
 };

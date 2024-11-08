@@ -1,42 +1,48 @@
 import { useLineageGraphContext } from "@/lib/hooks/LineageGraphContext";
+import { TagInput } from "@/utils/TagInput";
 import { InfoIcon } from "@chakra-ui/icons";
 import {
+  Button,
   Flex,
   FlexProps,
   FormControl,
   FormLabel,
+  Input,
+  InputGroup,
+  InputRightElement,
+  Menu,
+  MenuButton,
+  MenuDivider,
+  MenuGroup,
+  MenuItem,
+  MenuList,
+  Portal,
   Tooltip,
 } from "@chakra-ui/react";
-import {
-  AutoComplete,
-  AutoCompleteCreatable,
-  AutoCompleteInput,
-  AutoCompleteItem,
-  AutoCompleteList,
-  AutoCompleteTag,
-  Item,
-  ItemTag,
-} from "@choc-ui/chakra-autocomplete";
-import { useMemo } from "react";
+import { useMemo, useRef, useState } from "react";
 
 interface QueryFormProps extends FlexProps {
   defaultPrimaryKeys: string[] | undefined;
   onPrimaryKeysChange: (primaryKeys: string[]) => void;
 }
 
-export const QueryForm = ({
+const PrimaryKeySelectMenu = ({
   defaultPrimaryKeys,
   onPrimaryKeysChange,
   ...prob
 }: QueryFormProps) => {
   const { lineageGraph } = useLineageGraphContext();
+  const [filter, setFilter] = useState("");
+  const [selectedKeys, setSelectedKeys] = useState<string[]>(
+    defaultPrimaryKeys || []
+  );
+  const inputRef = useRef();
 
   const columns = useMemo(() => {
     if (!lineageGraph) {
       return [];
     }
-
-    const columnSet = new Set();
+    const columnSet = new Set<string>();
     for (const modelName in lineageGraph.nodes) {
       const model = lineageGraph.nodes[modelName];
       const baseColumns = model.data.base?.columns;
@@ -53,57 +59,130 @@ export const QueryForm = ({
     return Array.from(columnSet).sort();
   }, [lineageGraph]);
 
+  const showNumberOfKeysSelected = (keys: string[]) => {
+    if (keys.length > 1) {
+      return `${keys.length} keys selected`;
+    } else if (keys.length === 1) {
+      return `${keys.length} key selected`;
+    }
+    return "";
+  };
+
+  const handleSelect = (column: string) => {
+    if (!selectedKeys.includes(column)) {
+      setFilter("");
+      setSelectedKeys([...selectedKeys, column]);
+      onPrimaryKeysChange([...selectedKeys, column]);
+    }
+  };
+
+  const handleClear = () => {
+    setFilter("");
+    setSelectedKeys([]);
+    onPrimaryKeysChange([]);
+  };
+
+  return (
+    <InputGroup size="xs" width={"240px"}>
+      <Menu isLazy closeOnSelect={false}>
+        <MenuButton width={"100%"}>
+          <Input
+            placeholder="Start by typing key name..."
+            size="xs"
+            borderRadius={"4px"}
+            value={showNumberOfKeysSelected(selectedKeys)}
+          />
+        </MenuButton>
+        <Portal>
+          <MenuList zIndex={"dropdown"} fontSize={"xs"} width={"240px"}>
+            {/* Filter  */}
+            <MenuGroup>
+              <TagInput
+                ref={inputRef}
+                placeholder="Filter keys or add custom"
+                value={filter}
+                onValueChange={(val) => setFilter(val)}
+                tags={selectedKeys}
+                onTagChange={(tag, action) => {
+                  if (action === "add" && tag) {
+                    setSelectedKeys([...selectedKeys, tag]);
+                    onPrimaryKeysChange([...selectedKeys, tag]);
+                  } else {
+                    setSelectedKeys(selectedKeys.filter((key) => key !== tag));
+                    onPrimaryKeysChange(
+                      selectedKeys.filter((key) => key !== tag)
+                    );
+                  }
+                }}
+                size="xs"
+              />
+            </MenuGroup>
+            <MenuDivider />
+            {/* Columns */}
+            <MenuGroup>
+              {filter !== "" && !columns.includes(filter) && (
+                // <MenuGroup>
+                <MenuItem
+                  key={"custom-key-by-filter"}
+                  onClick={() => handleSelect(filter)}
+                >
+                  Add &apos;{filter}&apos; to the list
+                </MenuItem>
+                // </MenuGroup>
+              )}
+              {columns
+                .filter((column) => filter === "" || column.includes(filter))
+                .filter((column) => !selectedKeys.includes(column))
+                .map((column, cid) => (
+                  <MenuItem
+                    key={`option-${cid}`}
+                    onClick={() => handleSelect(column)}
+                  >
+                    {column}
+                  </MenuItem>
+                ))}
+            </MenuGroup>
+          </MenuList>
+        </Portal>
+      </Menu>
+      <InputRightElement>
+        <Button
+          variant={"link"}
+          color={"#3182CE"}
+          fontSize={"xs"}
+          paddingTop="4px"
+          paddingRight={"24px"}
+          onClick={handleClear}
+          hidden={selectedKeys.length === 0}
+        >
+          Clear
+        </Button>
+      </InputRightElement>
+    </InputGroup>
+  );
+};
+
+export const QueryForm = ({
+  defaultPrimaryKeys,
+  onPrimaryKeysChange,
+  ...prob
+}: QueryFormProps) => {
   const labelInfo =
     "Provide a primary key to perform query diff in data warehouse and only return changed rows.";
 
   return (
     <Flex {...prob}>
       <FormControl m="4px 8px">
-        <FormLabel>
-          Primary key{" "}
+        <FormLabel fontSize={"8pt"} margin={"0"}>
+          Diff with Primary Key(s) (suggested){" "}
           <Tooltip label={labelInfo}>
             <InfoIcon color="gray.600" boxSize="3" />
           </Tooltip>
         </FormLabel>
-        <AutoComplete
-          restoreOnBlurIfEmpty={false}
-          multiple
-          creatable
-          filter={(query: string, optionValue: Item["value"]) => {
-            return optionValue.startsWith(query);
-          }}
-          onChange={(vals: string[]) => onPrimaryKeysChange(vals)}
-          defaultValues={
-            defaultPrimaryKeys !== undefined && defaultPrimaryKeys.length !== 0
-              ? defaultPrimaryKeys
-              : undefined
-          }
-        >
-          <AutoCompleteInput
-            placeholder="Select primary key..."
-            variant="outline"
-          >
-            {({ tags }: { tags: ItemTag[] }) =>
-              tags.map((tag, tid) => (
-                <AutoCompleteTag
-                  key={tid}
-                  label={tag.label}
-                  onRemove={tag.onRemove}
-                />
-              ))
-            }
-          </AutoCompleteInput>
-          <AutoCompleteList>
-            {columns.map((column, cid) => (
-              <AutoCompleteItem key={`option-${cid}`} value={column}>
-                {column}
-              </AutoCompleteItem>
-            ))}
-            <AutoCompleteCreatable>
-              {({ value }) => <Flex>Add &apos;{value}&apos; to List</Flex>}
-            </AutoCompleteCreatable>
-          </AutoCompleteList>
-        </AutoComplete>
+        <PrimaryKeySelectMenu
+          defaultPrimaryKeys={defaultPrimaryKeys}
+          onPrimaryKeysChange={onPrimaryKeysChange}
+        />
       </FormControl>
     </Flex>
   );
