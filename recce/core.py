@@ -107,6 +107,8 @@ class RecceContext:
             git = GitRepoInfo.from_current_repositroy()
             if git:
                 state.git = git
+            if self.state_loader.pr_info:
+                state.pull_request = self.state_loader.pr_info
 
         return state
 
