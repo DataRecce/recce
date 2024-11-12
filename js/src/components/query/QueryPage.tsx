@@ -143,8 +143,9 @@ export const QueryPage = () => {
           colorScheme="blue"
           onClick={() => runQuery("query_diff")}
           isDisabled={isPending}
-          size="sm"
-          leftIcon={<Icon as={VscDiff} />}
+          size="xs"
+          fontSize="14px"
+          marginTop={"16px"}
         >
           Run Diff
         </Button>
