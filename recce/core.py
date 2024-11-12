@@ -3,7 +3,7 @@ import json
 import logging
 import os
 from dataclasses import dataclass, field
-from typing import Callable, Dict, Optional, List
+from typing import Callable, Dict, Optional, List, Tuple
 
 from recce.adapter.base import BaseAdapter
 from recce.models import Check, Run
@@ -238,6 +238,19 @@ class RecceContext:
         else:
             # Skip the onboarding state for non-cloud mode
             pass
+
+    @staticmethod
+    def verify_required_artifacts(**kwargs) -> Tuple[bool, Optional[str]]:
+        if kwargs.get('sqlmesh', False):
+            pass
+        else:
+            from recce.adapter.dbt_adapter import DbtAdapter
+            try:
+                DbtAdapter.load(**kwargs)
+            except FileNotFoundError as e:
+                return False, f"Cannot load the manifest: '{e.filename}'"
+
+        return True, None
 
 
 recce_context: Optional[RecceContext] = None
