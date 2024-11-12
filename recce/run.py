@@ -12,8 +12,6 @@ from recce.apis.check_func import create_check_from_run, create_check_without_ru
 from recce.apis.run_func import submit_run
 from recce.config import RecceConfig
 from recce.models.types import RunType
-from recce.pull_request import fetch_pr_metadata
-from recce.state import RecceState
 from recce.summary import generate_markdown_summary
 
 
@@ -256,10 +254,8 @@ async def cli_run(output_state_file: str, **kwargs):
 
     # Export the state
     console.rule("Export state")
-    state: RecceState = ctx.export_state()
-    state.pull_request = fetch_pr_metadata(**kwargs)
     ctx.state_loader.state_file = output_state_file
-    msg = ctx.state_loader.export(state)
+    msg = ctx.state_loader.export(ctx.export_state())
     console.print(msg)
 
     summary_path = kwargs.get('summary')
