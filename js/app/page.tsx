@@ -92,6 +92,7 @@ function TopBar() {
     useLineageGraphContext();
   const version = useVersionNumber();
   const { url: prURL, id: prID } = envInfo?.pullRequest || {};
+  const demoPrId = prURL ? prURL.split("/").pop() : null;
 
   return (
     <Flex
@@ -159,22 +160,37 @@ function TopBar() {
           </HStack>
         </Badge>
       )}
-      <Spacer />
       {isDemoSite && prURL && (
         <>
-          <InfoIcon />
-          <Text>
-            Please check{" "}
-            <Link
-              textDecoration="underline"
-              fontWeight="600"
-              href={prURL}
-              isExternal
-            >
-              this Pull Request
-            </Link>{" "}
-            comment for context about this Recce instance
-          </Text>
+          <Badge
+            fontSize="sm"
+            color="white"
+            colorScheme="whiteAlpha"
+            variant="outline"
+          >
+            <HStack>
+              <Box>demo mode</Box>
+              <Box
+                borderLeft="1px"
+                borderLeftColor="whiteAlpha.500"
+                paddingLeft="8px"
+              >
+                <Link
+                  href={prURL}
+                  _hover={{ textDecoration: "none" }}
+                  isExternal
+                >
+                  <Icon
+                    as={VscGitPullRequest}
+                    boxSize="3"
+                    fontWeight="extrabold"
+                    strokeWidth="1"
+                  />
+                  {` #${demoPrId}`}
+                </Link>
+              </Box>
+            </HStack>
+          </Badge>
         </>
       )}
       <Spacer />
