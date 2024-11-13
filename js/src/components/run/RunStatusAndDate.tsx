@@ -2,6 +2,40 @@ import { Run } from "@/lib/api/types";
 import { Flex, Spinner, Text } from "@chakra-ui/react";
 import { format } from "date-fns";
 
+export function formatRunDate(date: Date | null) {
+  const today = new Date();
+  const yesterday = new Date();
+  yesterday.setDate(today.getDate() - 1);
+  if (date == null) {
+    return null;
+  }
+
+  if (today.toDateString() === date.toDateString()) {
+    return "Today";
+  } else if (yesterday.toDateString() === date.toDateString()) {
+    return "Yesterday";
+  } else {
+    return format(date, "MMM d");
+  }
+}
+
+export function formatRunDateTime(date: Date | null) {
+  const today = new Date();
+  const yesterday = new Date();
+  yesterday.setDate(today.getDate() - 1);
+  if (date == null) {
+    return null;
+  }
+
+  if (today.toDateString() === date.toDateString()) {
+    return "Today, " + format(date, "HH:mm");
+  } else if (yesterday.toDateString() === date.toDateString()) {
+    return "Yesterday, " + format(date, "HH:mm");
+  } else {
+    return format(date, "MMM d, HH:mm");
+  }
+}
+
 export const RunStatusAndDate = ({ run }: { run: Run }) => {
   const isRunning = run?.status === "running";
 
@@ -32,9 +66,7 @@ export const RunStatusAndDate = ({ run }: { run: Run }) => {
     color = "green";
     message = "Finished";
   }
-  const dateTime = run?.run_at
-    ? format(new Date(run.run_at), "MMM d, HH:mm")
-    : null;
+  const dateTime = run?.run_at ? formatRunDateTime(new Date(run.run_at)) : null;
 
   return (
     <Flex
@@ -56,3 +88,4 @@ export const RunStatusAndDate = ({ run }: { run: Run }) => {
     </Flex>
   );
 };
+
