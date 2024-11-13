@@ -255,6 +255,11 @@ def server(host, port, state_file=None, **kwargs):
     else:
         console.rule("Recce Server")
 
+    result, message = RecceContext.verify_required_artifacts(**kwargs)
+    if not result:
+        console.print(f"[[red]Error[/red]] {message}")
+        exit(1)
+
     state = AppState(state_loader=state_loader, kwargs=kwargs, flag=flag)
     app.state = state
 
@@ -325,6 +330,11 @@ def run(output, **kwargs):
         error, hint = state_loader.error_and_hint
         console.print(f"[[red]Error[/red]] {error}")
         console.print(f"{hint}")
+        exit(1)
+
+    result, message = RecceContext.verify_required_artifacts(**kwargs)
+    if not result:
+        console.print(f"[[red]Error[/red]] {message}")
         exit(1)
 
     # Verify the output state file path

@@ -4,6 +4,7 @@ import os
 import uuid
 from contextlib import contextmanager
 from dataclasses import dataclass, fields
+from errno import ENOENT
 from pathlib import Path
 from typing import Callable, Dict, List, Optional, Tuple, Iterator, Any, Set, Union
 
@@ -245,10 +246,6 @@ class DbtAdapter(BaseAdapter):
         # Load the artifacts from the state file or dbt target and dbt base directory
         if not no_artifacts and not review:
             dbt_adapter.load_artifacts()
-            if not dbt_adapter.curr_manifest:
-                raise Exception(f'Cannot load "{runtime_config.target_path}/manifest.json"')
-            if not dbt_adapter.base_manifest:
-                raise Exception(f'Cannot load "{target_base_path}/manifest.json"')
         return dbt_adapter
 
     def print_lineage_info(self):
@@ -340,11 +337,11 @@ class DbtAdapter(BaseAdapter):
         path = os.path.join(project_root, target_path, 'manifest.json')
         curr_manifest = load_manifest(path=path)
         if curr_manifest is None:
-            raise Exception(f'Cannot load the current manifest: {path}')
+            raise FileNotFoundError(ENOENT, os.strerror(ENOENT), path)
         path = os.path.join(project_root, target_base_path, 'manifest.json')
         base_manifest = load_manifest(path=path)
         if base_manifest is None:
-            raise Exception(f'Cannot load the base manifest: {path}')
+            raise FileNotFoundError(ENOENT, os.strerror(ENOENT), path)
 
         curr_catalog = load_catalog(path=os.path.join(project_root, target_path, 'catalog.json'))
         base_catalog = load_catalog(path=os.path.join(project_root, target_base_path, 'catalog.json'))
