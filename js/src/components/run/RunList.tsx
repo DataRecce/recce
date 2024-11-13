@@ -28,7 +28,7 @@ import { RepeatIcon } from "@chakra-ui/icons";
 import { useLocation } from "wouter";
 import SimpleBar from "simplebar-react";
 import "simplebar/dist/simplebar.min.css";
-import { RunStatusAndDate } from "./RunStatusAndDate";
+import { formatRunDate, RunStatusAndDate } from "./RunStatusAndDate";
 
 const RunListItem = ({
   run,
@@ -123,6 +123,23 @@ const RunListItem = ({
   );
 };
 
+const DateSegmentItem = ({ runAt }: { runAt?: string }) => {
+  const dateTime = runAt ? formatRunDate(new Date(runAt)) : null;
+
+  return (
+    <Flex
+      minWidth="200px"
+      width="100%"
+      p="5px 20px"
+      borderBottom={"solid 1px lightgray"}
+      color="gray.500"
+      fontSize={"11pt"}
+    >
+      {dateTime}
+    </Flex>
+  );
+};
+
 export const RunList = () => {
   const {
     data: runs,
@@ -160,6 +177,8 @@ export const RunList = () => {
     [setLocation]
   );
 
+  let previousDate: string | null = null;
+
   return (
     <Flex direction="column" height="100%">
       <HStack
@@ -189,15 +208,25 @@ export const RunList = () => {
         ) : (
           <SimpleBar style={{ minHeight: "100%", height: 0 }}>
             {(runs || []).map((run, index) => {
+              const currentDate = new Date(run.run_at).toDateString();
+              const shouldRenderDateSegment =
+                previousDate != null && previousDate !== currentDate;
+              previousDate = currentDate;
+
               return (
-                <RunListItem
-                  key={run.run_id}
-                  run={run}
-                  isSelected={run.run_id === runId}
-                  onSelectRun={handleSelectRun}
-                  onGoToCheck={handleGoToCheck}
-                  onAddToChecklist={handleAddToChecklist}
-                />
+                <>
+                  {shouldRenderDateSegment && (
+                    <DateSegmentItem key={currentDate} runAt={run.run_at} />
+                  )}
+                  <RunListItem
+                    key={run.run_id}
+                    run={run}
+                    isSelected={run.run_id === runId}
+                    onSelectRun={handleSelectRun}
+                    onGoToCheck={handleGoToCheck}
+                    onAddToChecklist={handleAddToChecklist}
+                  />
+                </>
               );
             })}
           </SimpleBar>
