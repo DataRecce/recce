@@ -1,13 +1,6 @@
 import { HistogramDiffParams, HistogramDiffResult } from "@/lib/api/profile";
 import { RunResultViewProps } from "../run/types";
-import {
-  HStack,
-  Box,
-  Flex,
-  Spacer,
-  Heading,
-  forwardRef,
-} from "@chakra-ui/react";
+import { HStack, Box, Flex, Spacer, forwardRef } from "@chakra-ui/react";
 import { HistogramChart } from "../charts/HistogramChart";
 import { ScreenshotBox } from "../screenshot/ScreenshotBox";
 
@@ -30,17 +23,14 @@ function _HistogramDiffResultView(
   }
 
   return (
-    <Flex direction="column" height="500px">
+    <Flex direction="column" height="100%">
       <ScreenshotBox ref={ref} height="100%">
-        <Heading as="h1" size="md" paddingTop="4" textAlign="center">
-          Model {params.model}.{params.column_name}
-        </Heading>
         <HStack>
           <Spacer />
-          <Box w="80%" h="300px" m="4">
-            {/* <Heading as='h3' size="sm" m="2" color='gray'>Base</Heading> */}
+          <Box w="80%" h="35vh" m="4">
             <HistogramChart
               data={{
+                title: `Model ${params.model}.${params.column_name}`,
                 type: run.params?.column_type || "",
                 datasets: [current, base],
                 min: min,

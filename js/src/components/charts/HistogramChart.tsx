@@ -10,17 +10,17 @@ import {
   LinearScale,
   AnimationOptions,
   ScaleOptions,
+  Title,
+  Legend,
 } from "chart.js";
 import { Chart } from "react-chartjs-2";
 import {
   formatAsAbbreviatedNumber,
   formatIntervalMinMax,
 } from "@/utils/formatters";
-import { Flex, Spacer, Text } from "@chakra-ui/react";
 import {
   BASE_BAR_COLOR_WITH_ALPHA,
   CURRENT_BAR_COLOR_WITH_ALPHA,
-  SquareIcon,
 } from "./SquareIcon";
 
 export const INFO_VAL_COLOR = "#63B3ED";
@@ -37,6 +37,7 @@ export const VALUE_RANGE = "Value Range";
 
 type HistogramChartProps = {
   data: {
+    title: string;
     type: string;
     samples?: number;
     min?: string | number;
@@ -58,6 +59,8 @@ export function HistogramChart({
     TimeSeriesScale,
     LinearScale,
     CategoryScale,
+    Title,
+    Legend,
     Tooltip
   );
 
@@ -69,24 +72,12 @@ export function HistogramChart({
 
   //infer `any` to allow for union data configurations & options
   return (
-    <>
-      <Flex alignItems={"center"} direction={"row"}>
-        <Spacer />
-        <Text as="h3" size="sm" p="2" color="gray">
-          <SquareIcon color={BASE_BAR_COLOR_WITH_ALPHA} /> Base
-        </Text>
-        <Text as="h3" size="sm" p="2" color="gray">
-          <SquareIcon color={CURRENT_BAR_COLOR_WITH_ALPHA} /> Current
-        </Text>
-        <Spacer />
-      </Flex>
-      <Chart
-        type="bar"
-        options={chartOptions}
-        data={chartData as any}
-        plugins={[]}
-      />
-    </>
+    <Chart
+      type="bar"
+      options={chartOptions}
+      data={chartData as any}
+      plugins={[]}
+    />
   );
 }
 
@@ -150,13 +141,20 @@ export function getHistogramChartOptions(
   hideAxis = false,
   { ...configOverrides }: ChartOptions<"bar"> = {}
 ): ChartOptions<"bar"> {
-  const { datasets, type, samples = 0, binEdges } = data;
+  const { title, datasets, type, samples = 0, binEdges } = data;
   const [base, current] = datasets;
   const isDatetime = type === "datetime";
   return {
     responsive: true,
     maintainAspectRatio: false,
     plugins: {
+      title: {
+        display: true,
+        text: title,
+        font: {
+          size: 20,
+        },
+      },
       tooltip: {
         mode: "index",
         // position: 'nearest',
