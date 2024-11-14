@@ -15,7 +15,7 @@ import { createCheckByRun } from "@/lib/api/checks";
 import { useLocation } from "wouter";
 
 import { ValueDiffParams } from "@/lib/api/valuediff";
-import { useCallback, useState } from "react";
+import { useCallback, useRef, useState } from "react";
 import { cancelRun, submitRun, waitRun } from "@/lib/api/runs";
 import { Run, RunType } from "@/lib/api/types";
 import { RowCountDiffParams } from "@/lib/api/rowcount";
@@ -26,120 +26,24 @@ import { findByRunType } from "../run/registry";
 import { createSchemaDiffCheck } from "@/lib/api/schemacheck";
 import { useRecceActionContext } from "@/lib/hooks/RecceActionContext";
 
-export interface NodeSelectorProps {
-  viewMode: string;
-
-  nodes: LineageGraphNode[];
-  onClose: () => void;
-  onActionStarted: () => void;
-  onActionNodeUpdated: (node: LineageGraphNode) => void;
-  onActionCompleted: () => void;
-}
-
-function AddSchemaChangesCheckButton({
-  nodes,
-  onFinish,
-}: {
-  nodes: LineageGraphNode[];
-  onFinish: () => void;
-}) {
-  const [, setLocation] = useLocation();
-  return (
-    <Button
-      size="xs"
-      variant="outline"
-      isDisabled={nodes.length === 0}
-      onClick={async () => {
-        // TODO: Add schema changes
-        let check;
-        if (nodes.length === 1) {
-          check = await createSchemaDiffCheck({ node_id: nodes[0].id });
-        } else {
-          // TODO: Implement new type of check for multiple schema changes (RC-102)
-          await Promise.all(
-            nodes.map(async (node) => {
-              await createSchemaDiffCheck({ node_id: node.id });
-            })
-          );
-        }
-        onFinish();
-        if (check) {
-          setLocation(`/checks/${check.check_id}`);
-        } else {
-          setLocation(`/checks`);
-        }
-      }}
-    >
-      <Icon as={findByRunType("schema_diff")?.icon} />
-      Add schema check
-    </Button>
-  );
-}
-
-export function AddLineageDiffCheckButton({
-  viewMode,
-  nodes,
-  onFinish,
-  isDisabled,
-  withIcon,
-}: {
-  viewMode: string;
-  nodes: LineageGraphNode[];
-  onFinish: () => void;
-  withIcon?: boolean;
-  isDisabled?: boolean;
-}) {
-  const [, setLocation] = useLocation();
-  return (
-    <Button
-      size="xs"
-      variant="outline"
-      backgroundColor="white"
-      isDisabled={nodes.length === 0 || isDisabled}
-      onClick={async () => {
-        const nodeIds = nodes.map((node) => node.id);
-        const check = await createLineageDiffCheck({
-          view_mode: viewMode as any,
-          node_ids: nodeIds,
-        });
-        onFinish();
-        if (check) {
-          setLocation(`/checks/${check.check_id}`);
-        } else {
-          setLocation(`/checks`);
-        }
-      }}
-    >
-      {withIcon && <Icon as={findByRunType("lineage_diff")?.icon} />}
-      Add lineage diff check
-    </Button>
-  );
-}
-
-interface ActionState {
-  mode: "per_node" | "multi_nodes";
-  status: "pending" | "running" | "canceling" | "canceled" | "completed";
-  currentRun?: Partial<Run>;
-  completed: number;
-  total: number;
-}
-
-export function NodeSelector({
-  viewMode,
-  nodes,
-  onClose,
+const useMultiNodeAction = ({
   onActionStarted,
   onActionNodeUpdated,
   onActionCompleted,
-}: NodeSelectorProps) {
-  const [actionState, setActionState] = useState<ActionState>({
+  nodes,
+}: {
+  onActionStarted: () => void;
+  onActionNodeUpdated: (node: LineageGraphNode) => void;
+  onActionCompleted: () => void;
+  nodes: LineageGraphNode[];
+}) => {
+  const actionState = useRef<ActionState>({
     mode: "per_node",
     status: "pending",
     completed: 0,
     total: 0,
-  });
-  const queryClient = useQueryClient();
-  const [, setLocation] = useLocation();
+  }).current;
+
   const { showRunId } = useRecceActionContext();
 
   const submitRunForNodes = async (
@@ -294,6 +198,138 @@ export function NodeSelector({
     onActionCompleted();
   };
 
+  const cancel = async () => {
+    actionState.status = "canceling";
+    if (actionState.currentRun?.run_id) {
+      cancelRun(actionState.currentRun.run_id);
+    }
+  };
+
+  return {
+    actionState,
+    submitRunForNodes,
+    submitRunsPerNodes,
+    cancel,
+  };
+};
+
+export interface NodeSelectorProps {
+  viewMode: string;
+
+  nodes: LineageGraphNode[];
+  onClose: () => void;
+  onActionStarted: () => void;
+  onActionNodeUpdated: (node: LineageGraphNode) => void;
+  onActionCompleted: () => void;
+}
+
+function AddSchemaChangesCheckButton({
+  nodes,
+  onFinish,
+}: {
+  nodes: LineageGraphNode[];
+  onFinish: () => void;
+}) {
+  const [, setLocation] = useLocation();
+  return (
+    <Button
+      size="xs"
+      variant="outline"
+      isDisabled={nodes.length === 0}
+      onClick={async () => {
+        // TODO: Add schema changes
+        let check;
+        if (nodes.length === 1) {
+          check = await createSchemaDiffCheck({ node_id: nodes[0].id });
+        } else {
+          // TODO: Implement new type of check for multiple schema changes (RC-102)
+          await Promise.all(
+            nodes.map(async (node) => {
+              await createSchemaDiffCheck({ node_id: node.id });
+            })
+          );
+        }
+        onFinish();
+        if (check) {
+          setLocation(`/checks/${check.check_id}`);
+        } else {
+          setLocation(`/checks`);
+        }
+      }}
+    >
+      <Icon as={findByRunType("schema_diff")?.icon} />
+      Add schema check
+    </Button>
+  );
+}
+
+export function AddLineageDiffCheckButton({
+  viewMode,
+  nodes,
+  onFinish,
+  isDisabled,
+  withIcon,
+}: {
+  viewMode: string;
+  nodes: LineageGraphNode[];
+  onFinish: () => void;
+  withIcon?: boolean;
+  isDisabled?: boolean;
+}) {
+  const [, setLocation] = useLocation();
+  return (
+    <Button
+      size="xs"
+      variant="outline"
+      backgroundColor="white"
+      isDisabled={nodes.length === 0 || isDisabled}
+      onClick={async () => {
+        const nodeIds = nodes.map((node) => node.id);
+        const check = await createLineageDiffCheck({
+          view_mode: viewMode as any,
+          node_ids: nodeIds,
+        });
+        onFinish();
+        if (check) {
+          setLocation(`/checks/${check.check_id}`);
+        } else {
+          setLocation(`/checks`);
+        }
+      }}
+    >
+      {withIcon && <Icon as={findByRunType("lineage_diff")?.icon} />}
+      Add lineage diff check
+    </Button>
+  );
+}
+
+interface ActionState {
+  mode: "per_node" | "multi_nodes";
+  status: "pending" | "running" | "canceling" | "canceled" | "completed";
+  currentRun?: Partial<Run>;
+  completed: number;
+  total: number;
+}
+
+export function NodeSelector({
+  viewMode,
+  nodes,
+  onClose,
+  onActionStarted,
+  onActionNodeUpdated,
+  onActionCompleted,
+}: NodeSelectorProps) {
+  const { actionState, submitRunForNodes, submitRunsPerNodes, cancel } =
+    useMultiNodeAction({
+      onActionStarted,
+      onActionNodeUpdated,
+      onActionCompleted,
+      nodes,
+    });
+
+  const queryClient = useQueryClient();
+  const [, setLocation] = useLocation();
+
   const handleRowCountDiffClick = async () => {
     const nodeNames = [];
     for (const node of nodes) {
@@ -344,13 +380,6 @@ export function NodeSelector({
     });
   };
 
-  const handleCancel = async () => {
-    actionState.status = "canceling";
-    if (actionState.currentRun?.run_id) {
-      cancelRun(actionState.currentRun.run_id);
-    }
-  };
-
   const handleAddToChecklist = useCallback(async () => {
     const runId = actionState.currentRun?.run_id;
 
@@ -366,7 +395,7 @@ export function NodeSelector({
 
   useUnmountEffect(() => {
     if (actionState.status === "running") {
-      handleCancel();
+      cancel();
     }
   });
 
@@ -457,7 +486,7 @@ export function NodeSelector({
             <Button
               size="xs"
               variant="outline"
-              onClick={handleCancel}
+              onClick={cancel}
               isLoading={actionState.status === "canceling"}
               loadingText="Canceling"
             >
