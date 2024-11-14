@@ -28,21 +28,86 @@
 
 ## Introduction
 
-`Recce` is a toolkit for performing data validation in the context of data modeling and pull request (PR) review for dbt projects.
+`Recce` is data validation toolkit for pull request (PR) review in dbt projects. Get enhanced visibility into how your team’s dbt modeling changes impact data by comparing your dev branch with stable production data. Run manual data checks during development, and automate checks in CI for PR review.
 
-Data validations, or 'checks', are a method of impact assessment performed by comparing the data in two dbt environments, such as development and production schemas. `Recce` enables the identifying and investigating of data change throughout the pull request process, from data modeling to stakeholder approval. 
 
-<a href="https://datarecce.io"><img src="https://datarecce.io/assets/images/landing/home/featured_image.png" style="width: 100%; max-width: 600px; display: block; margin: 0 auto 20px;" /></a>
+## Quick Start
 
-## Who's using `Recce`?
+Get up and running quickly by prepping your dev and prod environments. The key is building prod into the `target-base` folder to use as the base for the data comparison.
 
-`Recce` is useful for validating your own work or the work of others, and can also be used to share data impact with non-technical stakeholders to approve data checks.
+```Bash
+# Build prod and generate dbt docs into ./target-base
+dbt seed --target prod
+dbt run --target prod
+dbt docs generate --target prod --target-path ./target-base
 
-- **Data engineers** can use `Recce` to ensure the structural integrity of the data and understand the scope of impact before merging.
+# Switch to your dev branch
+git switch my-awesome-branch
 
-- **Analysts** can use `Recce` to self-review and understand how data modeling changes have changed the data.
+# build your dev environment
+dbt seed
+dbt run
+dbt docs generate
 
-- **Stakeholders** can use `Recce` to sign-off on data after updates have been made
+# Start a Recce Instance
+recce server
+```
+
+Follow our [5-minute Jaffle Shop tutorial](https://datarecce.io/docs/get-started-jaffle-shop/) to try it out for yourself.
+
+## What you get
+
+`recce server` launches a web UI that shows you the area of your lineage that is impacted by the branch changes.
+
+<a href="https://datarecce.io"><img src="https://datarecce.io/assets/images/readme/recce-overview-screenshot.png" style="width: 100%; max-width: 600px; display: block; margin: 0 auto 20px;" /></a>
+
+### Using Recce for Impact Assessment in dbt PR Review
+
+- Select nodes in the lineage to perform Checks (diffs) as part of your impact assessment during development or PR review.
+- Add Checks to your Checklist to note observed impacts.
+- Share your Checklist with the PR reviewer.
+- (`Recce Cloud`) Automatically sync Check status between Recce Instances
+- (`Recce Cloud`) Block PR merging until all Recce Checks have been approved
+
+Read more about using [Recce for Impact Assessment](https://datarecce.io/blog/hands-on-data-impact-analysis-recce/) on the Recce blog.
+
+
+## Try the Online Demo
+
+We provide three online Recce demos (based on Jaffle Shop), each is related to a specific pull request. Use these demos to inspect the data impact caused by the modeling changes in the PR. 
+
+For each demo, review the following:
+
+- The pull request comment
+- The code changes
+- How the lineage and data has changed in `Recce`
+
+This will enable you to validate if the intention of the PR has been successfully implemented without unintended impact.
+
+> [!TIP]
+Don't forget to click the Checks tab to view the Recce Checklist, and perform your own Checks for further investigation.
+> 
+
+### Demo 1: Calculation logic change
+
+This pull request adjusts the **logic** for how customer lifetime value is calculated:
+
+- [Demo #1](https://pr1.cloud.datarecce.io/)
+- [Pull request #1](https://github.com/DataRecce/jaffle_shop_duckdb/pull/1)
+
+### Demo 2: Refactoring
+
+This pull request performs some **refactoring** on the customers model by turning two CTEs into intermediate models, enhancing readability and maintainability:
+
+- [Demo #2](https://pr2.cloud.datarecce.io/)
+- [Pull request #2](https://github.com/DataRecce/jaffle_shop_duckdb/pull/2)
+
+### Demo 3: Analysis
+
+This pull request introduces a new Rounding Effect **Analysis** feature, aimed at analyzing and reporting the impacts of rounding in our data processing.
+
+- [Demo #3](https://pr3.cloud.datarecce.io/)
+- [Pull request #3](https://github.com/DataRecce/jaffle_shop_duckdb/pull/3)
 
 
 ## Why `Recce`
@@ -51,33 +116,26 @@ Data validations, or 'checks', are a method of impact assessment performed by co
 
 - Version controlled code
 - Modular SQL
-- Reproducible pipelines 
+- Reproducible pipelines
 
-Even so, 'bad merges' still happen, in which updated data models are merged into production without proper checks; resulting in erroneous data, silent errors, or even data downtime. This is due to the unique situation encountered by reviewers of having to review both the code (data models) and the resultant data.
+Even so, 'bad merges' still happen and erroneous data and silent errors make their way into prod data. As self-serve analytics opens dbt projects to many roles, and the size of dbt projects increase, the job of reviewing data modeling changes is even more critical.
 
-In addition, the dbt culture of 'self-serve analytics' has opened up data pipelines to the wider data team. This means that many roles, all with differing priorities, are modifying the dbt pipeline and making the job of reviewing pull requests even more difficult. Impact assessment and data QA is also made difficult by the growing size and complexity of dbt projects.
-
-The best way to understand the impact of code changes on data is to compare the data before-and-after the changes. To ensure:
-
-- historical data is not impacted (does not change) and
-- intentional modifications have the desired impact.
-
-This is where `Recce` comes in, by providing a self-serve review environment for the self-serve data platform specifically geared towards surfacing and understanding data impact from code changes.
+The only way to understand the impact of code changes on data is to compare the data before-and-after the changes.
 
 ## Features
 
-The core concept of `Recce` is comparing data between your pull request and a known-good base, such as production, or ideally a staging environment. Therefore, to suite of tools, or *diffs*, in `Recce` are designed to help you find and record this change.
+`Recce` provides a data review environment for data teams to check their work during development, and then again as part of PR review. The suite of tools and diffs in Recce are specifically geared towards surfacing, understanding, and recording data impact from code changes.
 
 ### Lineage Diff
-[Lineage Diff](https://datarecce.io/docs/features/lineage/) is the main interface to `Recce` is the Lineage Diff chart. It shows which nodes in the lineage have been added, removed, or modified.
+
+[Lineage Diff](https://datarecce.io/docs/features/lineage/) is the main interface to `Recce`  and shows which nodes in the lineage have been added, removed, or modified.
 
 ### Structural Diffs
-See if columns have been added or removed, and perform row count diffs for selected models to see if data has been lost.
 
 - [Schema Diff](https://datarecce.io/docs/features/lineage/#schema-diff) - Show the struture of the table including added or removed columns
 - [Row Count Diff](https://datarecce.io/docs/features/lineage/#row-count-diff) - Compares the row count for tables
 
-### Advanced Diffs
+### Statistical Diffs
 
 Advanced Diffs provide high level statistics about data change:
 
@@ -87,10 +145,11 @@ Advanced Diffs provide high level statistics about data change:
 - [Histogram Diff](https://datarecce.io/docs/features/lineage/#histogram-diff): Compares the distribution of a numeric column in an overlay histogram chart.
 
 ### Query Diff
+
 [Query Diff](https://datarecce.io/docs/features/query/) compares the results of any ad-hoc query, and supports the use of dbt macros.
 
-
 ### Checklist
+
 The [checklist](https://datarecce.io/docs/features/checklist/) provides a way to record the results of your data validation process.
 
 - Save the results of checks
@@ -100,138 +159,21 @@ The [checklist](https://datarecce.io/docs/features/checklist/) provides a way to
 - (`Recce Cloud`) Sync checks and check results across Recce instances
 - (`Recce Cloud`) Block PR merging until checks have been approved
 
-## `Recce` Use cases
+## Who's using `Recce`?
 
-Recce is designed for reviewing data change, which can happen at many stages of the PR process:
+`Recce` is useful for validating your own work or the work of others, and can also be used to share data impact with non-technical stakeholders to approve data checks.
 
-### Development
+- **Data engineers** can use `Recce` to ensure the structural integrity of the data and understand the scope of impact before merging.
+- **Analysts** can use `Recce` to self-review and understand how data modeling changes have changed the data.
+- **Stakeholders** can use `Recce` to sign-off on data after updates have been made
 
-Start a Recce server locally, during development, to inspect and investigate how your data modeling changes are impacting the data in your development schema compared to prod.
+## Documentation / How to use `Recce`
 
-After performing data checks and create a checklist:
+The [Recce Documentation](https://datarecce.io/docs/) covers everything you need to get started.
 
-- Copy the results of your development-time data validations into the PR comment to show that you have done your due diligence and performed QA on your work.
-- [Share the Recce state file](https://datarecce.io/docs/guides/scenario-pr-review/#share-the-recce-file) by exporting and attaching it to your PR comment.
+We’d advise first following the [5-minute tutorial](https://datarecce.io/docs/get-started-jaffle-shop/) that uses Jaffle Shop and then [trying out Recce](https://datarecce.io/docs/get-started/) in your own project.
 
-### PR Review
-
-The PR reviewer can:
-- review the checks manually added by the PR author
-- download the [Recce state file](https://datarecce.io/docs/features/state-file/) that has been attached to the PR by either CI automation, or the PR author.
-
-After downloading the state file, Recce can be run in [Review Mode](https://datarecce.io/docs/guides/scenario-pr-review/#share-the-recce-file), which does not require the dbt project to be present.
-
-### Continuous Integration (CI)
-Get full coverage of your pipeline by setting up [preset checks](https://datarecce.io/docs/features/preset-checks/) that run on all 
- `Recce Cloud` users can take advantage of our GitHub app that will enable the blocking of merging and alerting to unapproved checks. 
-
-#### Automated Impact Summary
-`Recce` can output an [Impact Summmary](https://datarecce.io/docs/features/recce-summary/) which can be posted as a PR comment as part of your CI automation. If data change from any of your checks is detected then the `Recce` Summary will show which ones. Run `Recce` in review mode to investigate the impact. 
-
-### Other uses
-
-`Recce` is also useful for troubleshooting root causes by using Query Diff to compare ad-hoc queries and comparing data at the row level.
-
-
-## Demo
-
-We provide three online demo instances of Recce, each with a related pull request. Use these demo instances to inspect the impact of the data modeling changes on the project lineage and data.
-
-For each demo, review the following:
-
-- The pull request comment
-- The code changes
-- How the lineage and data has changed in `Recce`
-
-This will enable you to validate if the intention of the PR has been successfully implemented and no unintended impact has occurred. 
-
-> [!TIP]
-> Don't forget to click the `Checks` tab to view the  data validation checklist, or perform your own checks for further investigation.
-
-### Demo 1: Calculation logic change
-
-This pull request adjusts the **logic** for how customer lifetime value is calculated:
-
-- [Demo #1](https://pr1.cloud.datarecce.io)
-- [Pull request #1](https://github.com/DataRecce/jaffle_shop_duckdb/pull/1)
-
-### Demo 2: Refactoring
-
-This pull request performs some **refactoring** on the customers model by turning two CTEs into intermediate models, enhancing readability and maintainability:
-
-- [Demo #2](https://pr2.cloud.datarecce.io)
-- [Pull request #2](https://github.com/DataRecce/jaffle_shop_duckdb/pull/2)
-
-### Demo 3: Analysis
-
-This pull request introduces a new Rounding Effect **Analysis** feature, aimed at analyzing and reporting the impacts of rounding in our data processing.
-
-- [Demo #3](https://pr3.cloud.datarecce.io)
-- [Pull request #3](https://github.com/DataRecce/jaffle_shop_duckdb/pull/3)
-
-
-## How to use `Recce`
-The following is a basic example of installing and using `Recce`. For a full introduction to using `Recce` please visit the [documentation](https://datarecce.io/docs/get-started/). 
-
-`Recce` requires at least two output schemas in your dbt `profiles.yml`, for example:
-
-```yaml
-jaffle_shop:
-  target: dev
-  outputs:
-    dev:
-      type: duckdb
-      path: jaffle_shop.duckdb
-      schema: dev
-    prod:
-      type: duckdb
-      path: jaffle_shop.duckdb
-      schema: main
-```
-
-Install Recce with Pip:
- 
- ```bash
- pip install recce
- ```
-
-Generate the dbt artifacts for your `base` environment. This is the stable environment that your PR data will be compared against.
-
-```bash
-git checkout main
-
-dbt run --target prod
-dbt docs generate --target prod --target-path target-base/
-```
-
-> [!NOTE]  
-> You must build these artifacts into a directory named `target-base`
-
-Generate the artifacts for your `target` (PR) environment: 
-
-```
-git checkout feature/my-awesome-feature
-
-dbt run
-dbt docs generate
-```
-
-Start the `Recce` server:
-
-```
-recce server
-```
-
-This will launch a Recce Instance for you to start your data validation work. Take a look at the [Hands-On Impact Analysis](https://datarecce.io/blog/hands-on-data-impact-analysis-recce/) blog that shows how to use various Recce features to validate a PR.
-
-## Data Security
-`Recce` consists of a local server application that you run on your own device or compute services. 
-
-- Diffs or queries that are performed by `Recce` happen either in your data warehouse, or in the browser itself.
-- `Recce` does not store or transmit your data.
-
-For `Recce Cloud` users:
-- An encrypted version of your `Recce` [state file](https://datarecce.io/docs/features/state-file/) is storedon `Recce Cloud`. This file is encrypted *before* transmission.  
+For advice on best practices in preparing dbt environments to enable effective PR review, check out [Best Practices for Preparing Environments](https://datarecce.io/docs/guides/best-practices-prep-env/).
 
 ## Recce Cloud
 
@@ -239,25 +181,30 @@ For `Recce Cloud` users:
 
 With `Recce Cloud`:
 
-- `Recce` environments can be instantiated **directly from a PR**
-- **data checks** are automatically **synced** across `Recce` instances
-- **unapproved checks can block merging** of pull requests
+- `Recce` Instances can be launched **directly from a PR**
+- **Checks** are automatically **synced** across `Recce` Instances
+- **Blocked merging** until all checks are approved
 
-[Recce Cloud](https://datarecce.io/cloud) is currently in early-access private beta. 
+[Recce Cloud](https://datarecce.io/cloud) is currently in early-access private beta.
 
 To find out how you can get access please [book an appointment](https://cal.com/team/recce/chat?utm_source=banner&utm_campaign=oss) for a short meeting.
 
 <a href="https://cal.com/team/recce/chat?utm_source=banner&utm_campaign=oss">
-    <img alt="Book us with Cal.com" src="https://cal.com/book-with-cal-light.svg" />
+<img alt="Book us with [Cal.com](http://cal.com/)" src="https://cal.com/book-with-cal-light.svg" />
 </a>
 
+## Data Security
 
-## Documentation
+`Recce` consists of a local server application that you run on your own device or compute services.
 
-The [Recce Documentation](https://datarecce.io/docs/) covers everything you need to get started from a 5-minute tutorial using Jaffle Shop, to advice on best practices for your dbt environments.
+- Diffs or queries that are performed by `Recce` happen either in your data warehouse, or in the browser itself.
+- `Recce` does not store your data.
 
+For `Recce Cloud` users:
 
-## Community &amp; Support
+- An encrypted version of your `Recce` [state file](https://datarecce.io/docs/features/state-file/) is storedon `Recce Cloud`. This file is encrypted *before* transmission.
+
+## Community & Support
 
 Here's where you can get in touch with the `Recce` team and find support:
 
@@ -271,8 +218,9 @@ If you believe you have found a bug, or there is some missing functionality in R
 
 You can follow along with news about `Recce` and blogs from our team in the following places:
 
+- [DataRecce.io](https://DataRecce.io)
 - [LinkedIn](https://www.linkedin.com/company/datarecce)
 - [Medium blog](https://medium.com/inthepipeline)
-- [@datarecce](https://x.com/DataRecce) on X
+- [@datarecce](https://x.com/DataRecce) on Twitter/X
 - [@DataRecce@mastodon.social](https://mastodon.social/@DataRecce) on Mastodon
 - [@datarecce.bsky.social](https://bsky.app/profile/datarecce.bsky.social) on BlueSky
