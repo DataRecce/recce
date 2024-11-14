@@ -1,21 +1,14 @@
 import { TopKDiffParams, TopKDiffResult } from "@/lib/api/profile";
 import { RunResultViewProps } from "../run/types";
 import {
-  Box,
   Flex,
   HStack,
   Heading,
   Spacer,
-  Text,
-  VStack,
-  Divider,
   Link,
   forwardRef,
 } from "@chakra-ui/react";
-import {
-  TopKSummaryBarChart,
-  TopKSummaryList,
-} from "../charts/TopKSummaryList";
+import { TopKSummaryBarChart } from "../charts/TopKSummaryList";
 import { useState } from "react";
 import { ScreenshotBox } from "../screenshot/ScreenshotBox";
 
@@ -34,7 +27,13 @@ const _TopKDiffResultView = ({ run }: TopKDiffResultViewProp, ref: any) => {
   return (
     <Flex direction="column" height={"100%"}>
       <ScreenshotBox ref={ref} blockSize={"auto"}>
-        <Heading as="h1" size="md" paddingTop={4} textAlign="center">
+        <Heading
+          as="h1"
+          size="md"
+          paddingTop={4}
+          textAlign="center"
+          color="gray.600"
+        >
           Model {params.model}.{params.column_name}
         </Heading>
         <HStack>

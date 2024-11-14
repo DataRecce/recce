@@ -9,7 +9,6 @@ import {
   Box,
   Flex,
   Link,
-  Text,
   Spacer,
   Icon,
   LinkProps,
@@ -52,7 +51,6 @@ import { HSplit, VSplit } from "@/components/split/Split";
 import { RunResultPane } from "@/components/run/RunResultPane";
 import { VscGitPullRequest } from "react-icons/vsc";
 import { RunList } from "@/components/run/RunList";
-
 
 function getCookie(key: string) {
   var b = document.cookie.match("(^|;)\\s*" + key + "\\s*=\\s*([^;]+)");
@@ -320,7 +318,7 @@ function Main() {
     >
       <Box style={{ contain: "size" }}>{_isHistoryOpen && <RunList />}</Box>
       <VSplit
-        sizes={_isRunResultOpen ? [60, 40] : [100, 0]}
+        sizes={_isRunResultOpen ? [50, 50] : [100, 0]}
         minSize={_isRunResultOpen ? 100 : 0}
         gutterSize={_isRunResultOpen ? 5 : 0}
         style={{
