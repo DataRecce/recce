@@ -223,11 +223,9 @@ export function LineageView({ ...props }: LineageViewProps) {
   >("detail");
 
   /**
-   * Which control the linage view should be in
+   * Show the multi-node selector
    */
-  const [controlMode, setControlMode] = useState<"normal" | "selector">(
-    "normal"
-  );
+  const nodeSelectorDisclosure = useDisclosure();
 
   const [detailViewSelected, setDetailViewSelected] =
     useState<LineageGraphNode>();
@@ -519,7 +517,7 @@ export function LineageView({ ...props }: LineageViewProps) {
           <Button
             colorScheme="blue"
             onClick={() => {
-              setControlMode("normal");
+              nodeSelectorDisclosure.onClose();
               handleViewOptionsChanged({ ...viewOptions, view_mode: "all" });
             }}
           >
@@ -536,7 +534,7 @@ export function LineageView({ ...props }: LineageViewProps) {
     const newNodes = cleanUpNodes(nodes, newMode === "action");
     setNodes(newNodes);
     setSelectMode(newMode);
-    setControlMode("selector");
+    nodeSelectorDisclosure.onOpen();
   };
 
   const selectNodeMulti = (nodeId: string) => {
@@ -547,7 +545,7 @@ export function LineageView({ ...props }: LineageViewProps) {
 
       setNodes(selectSingleNode(nodeId, nodes));
       setSelectMode("action");
-      setControlMode("selector");
+      nodeSelectorDisclosure.onOpen();
     } else {
       setNodes(selectNode(nodeId, nodes));
     }
@@ -569,7 +567,7 @@ export function LineageView({ ...props }: LineageViewProps) {
         >
           {props.interactive && (
             <NodeFilter
-              isDisabled={controlMode !== "normal"}
+              isDisabled={nodeSelectorDisclosure.isOpen}
               viewOptions={viewOptions}
               onViewOptionsChanged={handleViewOptionsChanged}
               onSelectNodesClicked={handleSelectNodesClicked}
@@ -627,7 +625,7 @@ export function LineageView({ ...props }: LineageViewProps) {
             />
             <Panel position="bottom-center" className={IGNORE_SCREENSHOT_CLASS}>
               <SlideFade
-                in={controlMode === "selector"}
+                in={nodeSelectorDisclosure.isOpen}
                 unmountOnExit
                 style={{ zIndex: 10 }}
               >
@@ -638,7 +636,7 @@ export function LineageView({ ...props }: LineageViewProps) {
                     .filter((node) => node.isSelected)}
                   onClose={() => {
                     setSelectMode("detail");
-                    setControlMode("normal");
+                    nodeSelectorDisclosure.onClose();
                     const newNodes = cleanUpNodes(nodes);
                     setDetailViewSelected(undefined);
                     setIsDetailViewShown(false);
