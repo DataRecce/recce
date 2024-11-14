@@ -80,6 +80,7 @@ import { select } from "@/lib/api/select";
 import { useLocation } from "wouter";
 import { AxiosError } from "axios";
 import { useRecceActionContext } from "@/lib/hooks/RecceActionContext";
+import { LineageViewContext } from "./LineageViewContext";
 
 export interface LineageViewProps {
   viewOptions?: LineageDiffViewOptions;
@@ -108,34 +109,6 @@ const viewModeTitle = {
   all: "All",
   changed_models: "Changed Models",
 };
-
-function _AddLineageDiffCheckButton({
-  viewOptions,
-  isDisabled,
-}: {
-  viewOptions: LineageDiffViewOptions;
-  isDisabled: boolean;
-}) {
-  const [, setLocation] = useLocation();
-  return (
-    <Button
-      size="xs"
-      variant="outline"
-      backgroundColor="white"
-      isDisabled={isDisabled}
-      onClick={async () => {
-        const check = await createLineageDiffCheck(viewOptions);
-        if (check) {
-          setLocation(`/checks/${check.check_id}`);
-        } else {
-          setLocation(`/checks`);
-        }
-      }}
-    >
-      Add lineage diff check
-    </Button>
-  );
-}
 
 const useResizeObserver = (
   ref: RefObject<HTMLElement>,
@@ -385,7 +358,8 @@ export function LineageView({ ...props }: LineageViewProps) {
       centerNode(node);
       setNodes(selectSingleNode(node.id, nodes));
     } else {
-      setNodes(selectNode(node.id, nodes));
+      const newNodes = selectNode(node.id, nodes);
+      setNodes(newNodes);
     }
   };
 
@@ -555,152 +529,170 @@ export function LineageView({ ...props }: LineageViewProps) {
       </Center>
     );
   }
+  const handleSelectNodesClicked = () => {
+    const newMode = selectMode === "detail" ? "action" : "detail";
+    setDetailViewSelected(undefined);
+    setIsDetailViewShown(false);
+    const newNodes = cleanUpNodes(nodes, newMode === "action");
+    setNodes(newNodes);
+    setSelectMode(newMode);
+    setControlMode("selector");
+  };
+
+  const selectNodeMulti = (nodeId: string) => {
+    handleSelectNodesClicked();
+    if (selectMode !== "action") {
+      setDetailViewSelected(undefined);
+      setIsDetailViewShown(false);
+
+      setNodes(selectSingleNode(nodeId, nodes));
+      setSelectMode("action");
+      setControlMode("selector");
+    } else {
+      setNodes(selectNode(nodeId, nodes));
+    }
+  };
 
   return (
-    <HSplit
-      sizes={detailViewSelected ? [70, 30] : [100, 0]}
-      minSize={detailViewSelected ? 400 : 0}
-      gutterSize={detailViewSelected ? 5 : 0}
-      style={{ height: "100%", width: "100%" }}
-    >
-      <VStack
-        ref={refReactFlow}
-        divider={<StackDivider borderColor="gray.200" />}
-        spacing={0}
-        style={{ contain: "strict" }}
+    <LineageViewContext.Provider value={{ selectNodeMulti, selectMode }}>
+      <HSplit
+        sizes={detailViewSelected ? [70, 30] : [100, 0]}
+        minSize={detailViewSelected ? 400 : 0}
+        gutterSize={detailViewSelected ? 5 : 0}
+        style={{ height: "100%", width: "100%" }}
       >
-        {props.interactive && (
-          <NodeFilter
-            isDisabled={controlMode !== "normal"}
-            viewOptions={viewOptions}
-            onViewOptionsChanged={handleViewOptionsChanged}
-            onSelectNodesClicked={() => {
-              const newMode = selectMode === "detail" ? "action" : "detail";
-              setDetailViewSelected(undefined);
-              setIsDetailViewShown(false);
-              const newNodes = cleanUpNodes(nodes, newMode === "action");
-              setNodes(newNodes);
-              setSelectMode(newMode);
-              setControlMode("selector");
-            }}
-          />
-        )}
-        <ReactFlow
-          nodeTypes={nodeTypes}
-          edgeTypes={edgeTypes}
-          nodes={nodes}
-          edges={edges}
-          onNodesChange={onNodesChange}
-          onEdgesChange={onEdgesChange}
-          onNodeClick={onNodeClick}
-          onNodeMouseEnter={onNodeMouseEnter}
-          onNodeMouseLeave={onNodeMouseLeave}
-          onNodeContextMenu={onNodeContextMenu}
-          onClick={closeContextMenu}
-          maxZoom={1}
-          minZoom={0.1}
-          fitView={true}
-          nodesDraggable={props.interactive}
-          ref={ref}
+        <VStack
+          ref={refReactFlow}
+          divider={<StackDivider borderColor="gray.200" />}
+          spacing={0}
+          style={{ contain: "strict" }}
         >
-          <Background color="#ccc" />
-          <Controls
-            showInteractive={false}
-            position="top-right"
-            className={IGNORE_SCREENSHOT_CLASS}
+          {props.interactive && (
+            <NodeFilter
+              isDisabled={controlMode !== "normal"}
+              viewOptions={viewOptions}
+              onViewOptionsChanged={handleViewOptionsChanged}
+              onSelectNodesClicked={handleSelectNodesClicked}
+            />
+          )}
+          <ReactFlow
+            nodeTypes={nodeTypes}
+            edgeTypes={edgeTypes}
+            nodes={nodes}
+            edges={edges}
+            onNodesChange={onNodesChange}
+            onEdgesChange={onEdgesChange}
+            onNodeClick={onNodeClick}
+            onNodeMouseEnter={onNodeMouseEnter}
+            onNodeMouseLeave={onNodeMouseLeave}
+            onNodeContextMenu={onNodeContextMenu}
+            onClick={closeContextMenu}
+            maxZoom={1}
+            minZoom={0.1}
+            fitView={true}
+            nodesDraggable={props.interactive}
+            ref={ref}
           >
-            <ControlButton
-              title="copy image"
-              onClick={async () => {
-                copyToClipboard();
+            <Background color="#ccc" />
+            <Controls
+              showInteractive={false}
+              position="top-right"
+              className={IGNORE_SCREENSHOT_CLASS}
+            >
+              <ControlButton
+                title="copy image"
+                onClick={async () => {
+                  copyToClipboard();
+                }}
+              >
+                <Icon as={FiCopy} />
+              </ControlButton>
+            </Controls>
+            <ImageDownloadModal />
+            <Panel position="bottom-left">
+              <HStack>
+                <ChangeStatusLegend />
+              </HStack>
+            </Panel>
+            <Panel position="top-left">
+              <Text fontSize="xl" color="grey" opacity={0.5}>
+                {nodes.length > 0 ? "" : "No nodes"}
+              </Text>
+            </Panel>
+            <MiniMap
+              nodeColor={nodeColor}
+              nodeStrokeWidth={3}
+              zoomable
+              pannable
+            />
+            <Panel position="bottom-center" className={IGNORE_SCREENSHOT_CLASS}>
+              <SlideFade
+                in={controlMode === "selector"}
+                unmountOnExit
+                style={{ zIndex: 10 }}
+              >
+                <NodeSelector
+                  viewMode={viewMode}
+                  nodes={nodes
+                    .map((node) => node.data)
+                    .filter((node) => node.isSelected)}
+                  onClose={() => {
+                    setSelectMode("detail");
+                    setControlMode("normal");
+                    const newNodes = cleanUpNodes(nodes);
+                    setDetailViewSelected(undefined);
+                    setIsDetailViewShown(false);
+                    setNodes(newNodes);
+                    closeRunResult();
+                    refetchRunsAggregated?.();
+                  }}
+                  onActionStarted={() => {
+                    setSelectMode("action_result");
+                  }}
+                  onActionNodeUpdated={handleActionNodeUpdated}
+                  onActionCompleted={() => {}}
+                />
+              </SlideFade>
+            </Panel>
+          </ReactFlow>
+        </VStack>
+        {selectMode === "detail" && detailViewSelected ? (
+          <Box borderLeft="solid 1px lightgray" height="100%">
+            <NodeView
+              node={detailViewSelected}
+              onCloseNode={() => {
+                setDetailViewSelected(undefined);
+                setIsDetailViewShown(false);
+                setNodes(cleanUpNodes(nodes));
+              }}
+            />
+          </Box>
+        ) : (
+          <Box></Box>
+        )}
+        {isContextMenuRendered && (
+          // Only render context menu when select mode is action
+          <Menu isOpen={true} onClose={closeContextMenu}>
+            <MenuList
+              style={{
+                position: "absolute",
+                left: `${contextMenuPosition.x}px`,
+                top: `${contextMenuPosition.y}px`,
               }}
             >
-              <Icon as={FiCopy} />
-            </ControlButton>
-          </Controls>
-          <ImageDownloadModal />
-          <Panel position="bottom-left">
-            <HStack>
-              <ChangeStatusLegend />
-            </HStack>
-          </Panel>
-          <Panel position="top-left">
-            <Text fontSize="xl" color="grey" opacity={0.5}>
-              {nodes.length > 0 ? "" : "No nodes"}
-            </Text>
-          </Panel>
-          <MiniMap
-            nodeColor={nodeColor}
-            nodeStrokeWidth={3}
-            zoomable
-            pannable
-          />
-          <Panel position="bottom-center" className={IGNORE_SCREENSHOT_CLASS}>
-            <SlideFade
-              in={controlMode === "selector"}
-              unmountOnExit
-              style={{ zIndex: 10 }}
-            >
-              <NodeSelector
-                viewMode={viewMode}
-                nodes={nodes
-                  .map((node) => node.data)
-                  .filter((node) => node.isSelected)}
-                onClose={() => {
-                  setSelectMode("detail");
-                  setControlMode("normal");
-                  const newNodes = cleanUpNodes(nodes);
-                  setDetailViewSelected(undefined);
-                  setIsDetailViewShown(false);
-                  setNodes(newNodes);
-                  closeRunResult();
-                  refetchRunsAggregated?.();
-                }}
-                onActionStarted={() => {
-                  setSelectMode("action_result");
-                }}
-                onActionNodeUpdated={handleActionNodeUpdated}
-                onActionCompleted={() => {}}
-              />
-            </SlideFade>
-          </Panel>
-        </ReactFlow>
-      </VStack>
-      {selectMode === "detail" && detailViewSelected ? (
-        <Box borderLeft="solid 1px lightgray" height="100%">
-          <NodeView
-            node={detailViewSelected}
-            onCloseNode={() => {
-              setDetailViewSelected(undefined);
-              setIsDetailViewShown(false);
-              setNodes(cleanUpNodes(nodes));
-            }}
-          />
-        </Box>
-      ) : (
-        <Box></Box>
-      )}
-      {isContextMenuRendered && (
-        // Only render context menu when select mode is action
-        <Menu isOpen={true} onClose={closeContextMenu}>
-          <MenuList
-            style={{
-              position: "absolute",
-              left: `${contextMenuPosition.x}px`,
-              top: `${contextMenuPosition.y}px`,
-            }}
-          >
-            <MenuItem icon={<BiArrowFromBottom />} onClick={selectParentNodes}>
-              Select parent nodes
-            </MenuItem>
-            <MenuItem icon={<BiArrowToBottom />} onClick={selectChildNodes}>
-              Select child nodes
-            </MenuItem>
-          </MenuList>
-        </Menu>
-      )}
-      {/* </Flex> */}
-      {/* <div></div> */}
-    </HSplit>
+              <MenuItem
+                icon={<BiArrowFromBottom />}
+                onClick={selectParentNodes}
+              >
+                Select parent nodes
+              </MenuItem>
+              <MenuItem icon={<BiArrowToBottom />} onClick={selectChildNodes}>
+                Select child nodes
+              </MenuItem>
+            </MenuList>
+          </Menu>
+        )}
+      </HSplit>
+    </LineageViewContext.Provider>
   );
 }
