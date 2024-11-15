@@ -30,11 +30,10 @@ import { useLocation } from "wouter";
 import { Check } from "@/lib/api/checks";
 import { useRecceActionContext } from "@/lib/hooks/RecceActionContext";
 import { VscHistory } from "react-icons/vsc";
+import { useLineageViewContext } from "./LineageViewContext";
 
 interface NodeFilterProps {
   isDisabled?: boolean;
-  viewOptions: LineageDiffViewOptions;
-  onViewOptionsChanged: (options: LineageDiffViewOptions) => void;
   onSelectNodesClicked: () => void;
 }
 
@@ -52,11 +51,8 @@ const HistoryToggle = () => {
   );
 };
 
-const ViewModeSelectMenu = ({
-  isDisabled,
-  viewOptions,
-  onViewOptionsChanged,
-}: NodeFilterProps) => {
+const ViewModeSelectMenu = ({ isDisabled }: NodeFilterProps) => {
+  const { viewOptions, onViewOptionsChanged } = useLineageViewContext();
   const viewMode = viewOptions.view_mode || "changed_models";
   const label = viewMode === "changed_models" ? "Changed Models" : "All";
 
@@ -102,12 +98,9 @@ const ViewModeSelectMenu = ({
   );
 };
 
-const PackageSelectMenu = ({
-  viewOptions,
-  onViewOptionsChanged,
-  isDisabled,
-}: NodeFilterProps) => {
+const PackageSelectMenu = ({ isDisabled }: NodeFilterProps) => {
   const { lineageGraph } = useLineageGraphContext();
+  const { viewOptions, onViewOptionsChanged } = useLineageViewContext();
 
   // get unique package names
   const available = new Set<string>();
@@ -254,13 +247,15 @@ const NodeSelectionInput = (props: {
 };
 
 const SelectFilter = (props: NodeFilterProps) => {
+  const { viewOptions, onViewOptionsChanged } = useLineageViewContext();
+
   return (
     <NodeSelectionInput
       isDisabled={props.isDisabled}
-      value={props.viewOptions.select || ""}
+      value={viewOptions.select || ""}
       onChange={(value) => {
-        props.onViewOptionsChanged({
-          ...props.viewOptions,
+        onViewOptionsChanged({
+          ...viewOptions,
           select: value ? value : undefined,
         });
       }}
@@ -269,13 +264,15 @@ const SelectFilter = (props: NodeFilterProps) => {
 };
 
 const ExcludeFilter = (props: NodeFilterProps) => {
+  const { viewOptions, onViewOptionsChanged } = useLineageViewContext();
+
   return (
     <NodeSelectionInput
       isDisabled={props.isDisabled}
-      value={props.viewOptions.exclude || ""}
+      value={viewOptions.exclude || ""}
       onChange={(value) => {
-        props.onViewOptionsChanged({
-          ...props.viewOptions,
+        onViewOptionsChanged({
+          ...viewOptions,
           exclude: value ? value : undefined,
         });
       }}
@@ -299,6 +296,7 @@ const ControlItem = (props: {
 const MoreActionMenu = (props: NodeFilterProps) => {
   const [, setLocation] = useLocation();
   const { runAction } = useRecceActionContext();
+  const { viewOptions } = useLineageViewContext();
   const handleNavToCheck = useCallback(
     (check: Check) => {
       if (check.check_id) {
@@ -310,7 +308,7 @@ const MoreActionMenu = (props: NodeFilterProps) => {
 
   return (
     <Menu placement="bottom-end">
-      <MenuButton as={Button} size={"xs"} isDisabled={props.isDisabled}>
+      <MenuButton as={Button} size={"xs"}>
         Actions
       </MenuButton>
 
@@ -322,8 +320,8 @@ const MoreActionMenu = (props: NodeFilterProps) => {
             fontSize="10pt"
             onClick={() => {
               runAction("row_count_diff", {
-                select: props.viewOptions.select,
-                exclude: props.viewOptions.exclude,
+                select: viewOptions.select,
+                exclude: viewOptions.exclude,
               });
             }}
           >
@@ -346,7 +344,7 @@ const MoreActionMenu = (props: NodeFilterProps) => {
             size="sm"
             fontSize="10pt"
             onClick={async () => {
-              const check = await createLineageDiffCheck(props.viewOptions);
+              const check = await createLineageDiffCheck(viewOptions);
               if (check) {
                 handleNavToCheck(check);
               }
@@ -360,8 +358,8 @@ const MoreActionMenu = (props: NodeFilterProps) => {
             fontSize="10pt"
             onClick={async () => {
               const check = await createSchemaDiffCheck({
-                select: props.viewOptions.select,
-                exclude: props.viewOptions.exclude,
+                select: viewOptions.select,
+                exclude: viewOptions.exclude,
               });
               if (check) {
                 handleNavToCheck(check);

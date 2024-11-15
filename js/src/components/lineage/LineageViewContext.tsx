@@ -1,9 +1,18 @@
+import { LineageDiffViewOptions } from "@/lib/api/lineagecheck";
 import { Run } from "@/lib/api/types";
 import React, { createContext, useContext, useState, ReactNode } from "react";
 
+type NewType = LineageDiffViewOptions;
+
 export interface LineageViewContextType {
-  selectNodeMulti: (nodeId: string) => void;
   selectMode: "action" | "detail" | "action_result";
+
+  // filter
+  viewOptions: LineageDiffViewOptions;
+  onViewOptionsChanged: (options: NewType) => void;
+
+  // selector
+  selectNodeMulti: (nodeId: string) => void;
   runRowCountDiff: () => Promise<void>;
   runValueDiff: () => Promise<void>;
   addLineageDiffCheck: (viewMode: string) => void;

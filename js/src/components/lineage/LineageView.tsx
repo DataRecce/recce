@@ -559,6 +559,8 @@ export function LineageView({ ...props }: LineageViewProps) {
   const contextValue: LineageViewContextType = {
     selectNodeMulti,
     selectMode,
+    viewOptions,
+    onViewOptionsChanged: handleViewOptionsChanged,
     runRowCountDiff: multiNodeAction.runRowCountDiff,
     runValueDiff: multiNodeAction.runValueDiff,
     addLineageDiffCheck: multiNodeAction.addLineageDiffCheck,
@@ -584,8 +586,6 @@ export function LineageView({ ...props }: LineageViewProps) {
           {props.interactive && (
             <NodeFilter
               isDisabled={nodeSelectorDisclosure.isOpen}
-              viewOptions={viewOptions}
-              onViewOptionsChanged={handleViewOptionsChanged}
               onSelectNodesClicked={handleSelectNodesClicked}
             />
           )}
