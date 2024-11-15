@@ -1,8 +1,21 @@
+import { Run } from "@/lib/api/types";
 import React, { createContext, useContext, useState, ReactNode } from "react";
 
-interface LineageViewContextType {
+export interface LineageViewContextType {
   selectNodeMulti: (nodeId: string) => void;
   selectMode: "action" | "detail" | "action_result";
+  runRowCountDiff: () => Promise<void>;
+  runValueDiff: () => Promise<void>;
+  addLineageDiffCheck: (viewMode: string) => void;
+  addSchemaDiffCheck: () => void;
+  cancel: () => void;
+  actionState: {
+    mode: "per_node" | "multi_nodes";
+    status: "pending" | "running" | "canceling" | "canceled" | "completed";
+    currentRun?: Partial<Run>;
+    completed: number;
+    total: number;
+  };
 }
 
 export const LineageViewContext = createContext<

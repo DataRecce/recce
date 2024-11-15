@@ -24,14 +24,7 @@ import {
 
 import { FiPackage } from "react-icons/fi";
 import { getIconForResourceType } from "./styles";
-import {
-  CSSProperties,
-  use,
-  useCallback,
-  useEffect,
-  useRef,
-  useState,
-} from "react";
+import { CSSProperties, useCallback, useEffect, useRef, useState } from "react";
 import { createSchemaDiffCheck } from "@/lib/api/schemacheck";
 import { useLocation } from "wouter";
 import { Check } from "@/lib/api/checks";
@@ -291,14 +284,13 @@ const ExcludeFilter = (props: NodeFilterProps) => {
 };
 
 const ControlItem = (props: {
-  label: string;
+  label?: string;
   children: React.ReactNode;
   style?: CSSProperties;
-  action?: boolean;
 }) => {
   return (
     <Box style={props.style} maxWidth="300px">
-      <Box fontSize="8pt">{props.label}</Box>
+      <Box fontSize="8pt">{props?.label || <>&nbsp;</>}</Box>
       {props.children}
     </Box>
   );
@@ -319,7 +311,7 @@ const MoreActionMenu = (props: NodeFilterProps) => {
   return (
     <Menu placement="bottom-end">
       <MenuButton as={Button} size={"xs"} isDisabled={props.isDisabled}>
-        ...
+        Actions
       </MenuButton>
 
       <MenuList>
@@ -335,7 +327,16 @@ const MoreActionMenu = (props: NodeFilterProps) => {
               });
             }}
           >
-            Row Count Diff by Selector
+            Row Count Diff
+          </MenuItem>
+          <MenuItem
+            as={Text}
+            size="sm"
+            isDisabled
+            fontSize="10pt"
+            onClick={() => {}}
+          >
+            Value Diff
           </MenuItem>
         </MenuGroup>
         <MenuDivider />
@@ -367,7 +368,7 @@ const MoreActionMenu = (props: NodeFilterProps) => {
               }
             }}
           >
-            Schema Diff by Selector
+            Schema Diff
           </MenuItem>
         </MenuGroup>
       </MenuList>
@@ -396,16 +397,25 @@ export const NodeFilter = (props: NodeFilterProps) => {
         </ControlItem>
         <Spacer />
 
-        <ControlItem label="Actions" action>
+        <ControlItem label="">
+          <Text fontSize="9pt" color="gray.500">
+            3 nodes selected
+          </Text>
+        </ControlItem>
+
+        <ControlItem label="">
+          <Button
+            size="xs"
+            fontSize="9pt"
+            onClick={props.onSelectNodesClicked}
+            isDisabled={props.isDisabled}
+          >
+            Deselect
+          </Button>
+        </ControlItem>
+
+        <ControlItem label="Explore">
           <ButtonGroup isAttached variant="outline">
-            <Button
-              size="xs"
-              fontSize="9pt"
-              onClick={props.onSelectNodesClicked}
-              isDisabled={props.isDisabled}
-            >
-              Select nodes
-            </Button>
             <MoreActionMenu {...props} />
           </ButtonGroup>
         </ControlItem>

@@ -69,18 +69,18 @@ import {
 import { useClipBoardToast } from "@/lib/hooks/useClipBoardToast";
 
 import { union } from "./graph";
-import {
-  LineageDiffViewOptions,
-  createLineageDiffCheck,
-} from "@/lib/api/lineagecheck";
+import { LineageDiffViewOptions } from "@/lib/api/lineagecheck";
 import { ChangeStatusLegend } from "./ChangeStatusLegend";
 import { HSplit, VSplit } from "../split/Split";
 import { cacheKeys } from "@/lib/api/cacheKeys";
 import { select } from "@/lib/api/select";
-import { useLocation } from "wouter";
 import { AxiosError } from "axios";
 import { useRecceActionContext } from "@/lib/hooks/RecceActionContext";
-import { LineageViewContext } from "./LineageViewContext";
+import {
+  LineageViewContext,
+  LineageViewContextType,
+} from "./LineageViewContext";
+import { useMultiNodesAction } from "./useMultiNodesAction";
 
 export interface LineageViewProps {
   viewOptions?: LineageDiffViewOptions;
@@ -237,13 +237,6 @@ export function LineageView({ ...props }: LineageViewProps) {
     y: number;
     selectedNode?: Node;
   }>({ x: 0, y: 0 });
-
-  // query key is from select and exclude of viewOptions
-  const queryKey = [
-    ...cacheKeys.lineage(),
-    viewOptions.select,
-    viewOptions.exclude,
-  ];
 
   const toast = useToast();
 
@@ -424,6 +417,17 @@ export function LineageView({ ...props }: LineageViewProps) {
     })();
   };
 
+  const multiNodeAction = useMultiNodesAction(
+    nodes.map((node) => node.data).filter((node) => node.isSelected),
+    {
+      onActionStarted: () => {
+        setSelectMode("action_result");
+      },
+      onActionNodeUpdated: handleActionNodeUpdated,
+      onActionCompleted: () => {},
+    }
+  );
+
   if (isLoading) {
     return (
       <Flex
@@ -542,17 +546,29 @@ export function LineageView({ ...props }: LineageViewProps) {
     if (selectMode !== "action") {
       setDetailViewSelected(undefined);
       setIsDetailViewShown(false);
-
-      setNodes(selectSingleNode(nodeId, nodes));
+      const newNodes = cleanUpNodes(nodes, true);
+      setNodes(selectSingleNode(nodeId, newNodes));
       setSelectMode("action");
+      multiNodeAction.reset();
       nodeSelectorDisclosure.onOpen();
     } else {
       setNodes(selectNode(nodeId, nodes));
     }
   };
 
+  const contextValue: LineageViewContextType = {
+    selectNodeMulti,
+    selectMode,
+    runRowCountDiff: multiNodeAction.runRowCountDiff,
+    runValueDiff: multiNodeAction.runValueDiff,
+    addLineageDiffCheck: multiNodeAction.addLineageDiffCheck,
+    addSchemaDiffCheck: multiNodeAction.addSchemaDiffCheck,
+    cancel: multiNodeAction.cancel,
+    actionState: multiNodeAction.actionState,
+  };
+
   return (
-    <LineageViewContext.Provider value={{ selectNodeMulti, selectMode }}>
+    <LineageViewContext.Provider value={contextValue}>
       <HSplit
         sizes={detailViewSelected ? [70, 30] : [100, 0]}
         minSize={detailViewSelected ? 400 : 0}
@@ -644,11 +660,6 @@ export function LineageView({ ...props }: LineageViewProps) {
                     closeRunResult();
                     refetchRunsAggregated?.();
                   }}
-                  onActionStarted={() => {
-                    setSelectMode("action_result");
-                  }}
-                  onActionNodeUpdated={handleActionNodeUpdated}
-                  onActionCompleted={() => {}}
                 />
               </SlideFade>
             </Panel>
