@@ -210,9 +210,6 @@ class RecceStateLoader:
     def error_and_hint(self) -> (Union[str, None], Union[str, None]):
         return self.error_message, self.hint_message
 
-    def __bool__(self):
-        return self.state is not None
-
     def update(self, state: RecceState):
         self.state = state
 
