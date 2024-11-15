@@ -1,5 +1,6 @@
 import json
 import typing as t
+from decimal import Decimal
 from enum import Enum
 
 if t.TYPE_CHECKING:
@@ -62,7 +63,12 @@ class DataFrame(BaseModel):
             else:
                 col_type = DataFrameColumnType.UNKNOWN
             columns.append(DataFrameColumn(name=col_name, type=col_type))
-        data = [row.values() for row in table.rows]
+
+        def _row_values(row):
+            # If the value is Decimal, check if it's finite. If not, convert it to float(xxx) (GitHub issue #476)
+            return tuple([float(v) if isinstance(v, Decimal) and not v.is_finite() else v for v in row.values()])
+
+        data = [_row_values(row) for row in table.rows]
         df = DataFrame(
             columns=columns,
             data=data,
