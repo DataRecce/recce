@@ -223,13 +223,13 @@ export function LineageView({ ...props }: LineageViewProps) {
 
   /**
    * Select mode: the behavior of clicking on nodes
-   * - detail: show node detail view
-   * - action: select nodes for action
+   * - single: single-select mode
+   * - multi: multi-select mode
    * - action_result: show node action result view
    */
   const [selectMode, setSelectMode] = useState<
-    "detail" | "action" | "action_result"
-  >("detail");
+    "single" | "multi" | "action_result"
+  >("single");
 
   const [detailViewSelected, setDetailViewSelected] =
     useState<LineageGraphNode>();
@@ -283,7 +283,7 @@ export function LineageView({ ...props }: LineageViewProps) {
       return;
     }
 
-    if (selectMode !== "detail") {
+    if (selectMode !== "single") {
       return;
     }
 
@@ -306,10 +306,6 @@ export function LineageView({ ...props }: LineageViewProps) {
     if (!lineageGraph) {
       return;
     }
-
-    // if (selectMode !== "detail") {
-    //   return;
-    // }
 
     const nodeSet = selectDownstream(lineageGraph, lineageGraph.modifiedSet);
 
@@ -336,7 +332,7 @@ export function LineageView({ ...props }: LineageViewProps) {
   const navToCheck = useNavToCheck();
 
   useResizeObserver(refReactFlow, async () => {
-    if (selectMode === "detail" || selectMode === "action_result") {
+    if (selectMode === "single" || selectMode === "action_result") {
       const selectedNode = nodes.find((node) => node.data.isSelected);
       if (selectedNode) {
         centerNode(selectedNode);
@@ -349,7 +345,7 @@ export function LineageView({ ...props }: LineageViewProps) {
   const onNodeClick = (event: React.MouseEvent, node: Node) => {
     if (props.interactive === false) return;
     closeContextMenu();
-    if (selectMode === "detail") {
+    if (selectMode === "single") {
       setDetailViewSelected(node.data);
       if (!isDetailViewShown) {
         centerNode(node);
@@ -458,7 +454,7 @@ export function LineageView({ ...props }: LineageViewProps) {
   const selectParentNodes = () => {
     const selectedNode = contextMenuPosition.selectedNode;
     if (
-      selectMode !== "action" ||
+      selectMode !== "multi" ||
       selectedNode === undefined ||
       lineageGraph === undefined
     )
@@ -473,7 +469,7 @@ export function LineageView({ ...props }: LineageViewProps) {
   const selectChildNodes = () => {
     const selectedNode = contextMenuPosition.selectedNode;
     if (
-      selectMode !== "action" ||
+      selectMode !== "multi" ||
       selectedNode === undefined ||
       lineageGraph === undefined
     )
@@ -491,7 +487,7 @@ export function LineageView({ ...props }: LineageViewProps) {
   };
 
   const onNodeContextMenu = (event: React.MouseEvent, node: Node) => {
-    if (selectMode !== "action") {
+    if (selectMode !== "multi") {
       return;
     }
     // Only show context menu when selectMode is action
@@ -545,16 +541,16 @@ export function LineageView({ ...props }: LineageViewProps) {
     );
   }
   const handleSelectNodesClicked = () => {
-    const newMode = selectMode === "detail" ? "action" : "detail";
+    const newMode = selectMode === "single" ? "multi" : "single";
     setDetailViewSelected(undefined);
     setIsDetailViewShown(false);
-    const newNodes = cleanUpNodes(nodes, newMode === "action");
+    const newNodes = cleanUpNodes(nodes, newMode === "multi");
     setNodes(newNodes);
     setSelectMode(newMode);
   };
 
   const selectNodeMulti = (nodeId: string) => {
-    if (selectMode !== "action") {
+    if (selectMode !== "multi") {
       if (!lineageGraph) {
         return;
       }
@@ -572,14 +568,14 @@ export function LineageView({ ...props }: LineageViewProps) {
 
       setDetailViewSelected(undefined);
       setIsDetailViewShown(false);
-      setSelectMode("action");
+      setSelectMode("multi");
       multiNodeAction.reset();
     } else {
       setNodes(selectNode(nodeId, nodes));
     }
   };
   const deselect = () => {
-    setSelectMode("detail");
+    setSelectMode("single");
     const newNodes = cleanUpNodes(nodes);
     setDetailViewSelected(undefined);
     setIsDetailViewShown(false);
@@ -596,7 +592,7 @@ export function LineageView({ ...props }: LineageViewProps) {
     selectNodeMulti,
     deselect,
     runRowCountDiff: async () => {
-      if (selectMode === "action") {
+      if (selectMode === "multi") {
         await multiNodeAction.runRowCountDiff();
       } else {
         await runAction("row_count_diff", {
@@ -606,12 +602,12 @@ export function LineageView({ ...props }: LineageViewProps) {
       }
     },
     runValueDiff: async () => {
-      if (selectMode === "action") {
+      if (selectMode === "multi") {
         await multiNodeAction.runValueDiff();
       }
     },
     addLineageDiffCheck: async () => {
-      if (selectMode === "action") {
+      if (selectMode === "multi") {
         multiNodeAction.addLineageDiffCheck(viewOptions.view_mode || "all");
       } else {
         const check = await createLineageDiffCheck(viewOptions);
@@ -621,7 +617,7 @@ export function LineageView({ ...props }: LineageViewProps) {
       }
     },
     addSchemaDiffCheck: async () => {
-      if (selectMode === "action") {
+      if (selectMode === "multi") {
         multiNodeAction.addSchemaDiffCheck();
       } else {
         const check = await createSchemaDiffCheck({
@@ -716,7 +712,7 @@ export function LineageView({ ...props }: LineageViewProps) {
             )}
           </ReactFlow>
         </VStack>
-        {selectMode === "detail" && detailViewSelected ? (
+        {selectMode === "single" && detailViewSelected ? (
           <Box borderLeft="solid 1px lightgray" height="100%">
             <NodeView
               node={detailViewSelected}

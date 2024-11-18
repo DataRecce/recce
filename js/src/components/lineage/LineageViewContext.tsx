@@ -7,7 +7,7 @@ import { LineageGraphNode } from "./lineage";
 type NewType = LineageDiffViewOptions;
 
 export interface LineageViewContextType {
-  selectMode: "action" | "detail" | "action_result";
+  selectMode: "multi" | "single" | "action_result";
   nodes: Node<LineageGraphNode>[];
 
   // filter

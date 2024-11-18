@@ -293,11 +293,11 @@ export const LineageViewTopBar = () => {
     return nodes.filter((node) => node.data.isSelected);
   }, [nodes]);
 
-  const isSingleSelect = selectMode === "detail" && selectNodes.length === 1;
-  const isMultiSelect = selectMode === "action" && selectNodes.length >= 1;
-  const isNoSelect = selectMode === "detail" && selectNodes.length === 0;
+  const isSingleSelect = selectMode === "single" && selectNodes.length === 1;
+  const isMultiSelect = selectMode === "multi" && selectNodes.length >= 1;
+  const isNoSelect = selectMode === "single" && selectNodes.length === 0;
 
-  const isFilterDisabled = selectMode !== "detail";
+  const isFilterDisabled = selectMode !== "single";
 
   return (
     <HStack width="100%" padding="4pt 8pt">
@@ -318,7 +318,7 @@ export const LineageViewTopBar = () => {
           <ExcludeFilter isDisabled={isFilterDisabled} />
         </ControlItem>
         <Spacer />
-        {selectMode === "action" && (
+        {selectMode === "multi" && (
           <>
             <ControlItem label="" style={{ flexShrink: "0" }}>
               <Text fontSize="9pt" color="gray.500">
@@ -331,7 +331,7 @@ export const LineageViewTopBar = () => {
                 variant={"outline"}
                 size="xs"
                 fontSize="9pt"
-                isDisabled={selectMode !== "action"}
+                isDisabled={selectMode !== "multi"}
                 onClick={() => {
                   deselect();
                 }}

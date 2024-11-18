@@ -1,13 +1,4 @@
-import {
-  Box,
-  Button,
-  Checkbox,
-  Flex,
-  HStack,
-  Icon,
-  Spacer,
-  Tooltip,
-} from "@chakra-ui/react";
+import { Box, Flex, HStack, Icon, Spacer, Tooltip } from "@chakra-ui/react";
 import React, { useState } from "react";
 
 import { Handle, NodeProps, Position, useStore } from "reactflow";
@@ -19,8 +10,6 @@ import "./styles.css";
 import { ActionTag } from "./ActionTag";
 import { useLineageGraphContext } from "@/lib/hooks/LineageGraphContext";
 
-import { MdFormatListNumberedRtl, MdSchema } from "react-icons/md";
-import { NodeColumnData } from "@/lib/api/info";
 import { findByRunType } from "../run/registry";
 import { isSchemaChanged } from "../schema/schemaDiff";
 import { useLineageViewContext } from "./LineageViewContext";
@@ -153,11 +142,11 @@ export function GraphNode({ data }: GraphNodeProps) {
           alignItems="top"
           visibility={showContent ? "inherit" : "hidden"}
         >
-          {isHovered || selectMode === "action" ? (
+          {isHovered || selectMode === "multi" ? (
             // Don't know why that the chakra checkbox would trigger two onNodeClick events, use the native cehckbox instead
             // <Checkbox isChecked={isSelected} />
             <input
-              checked={isSelected && selectMode === "action"}
+              checked={isSelected && selectMode === "multi"}
               type="checkbox"
               onChange={() => {
                 //noop, add the handler to prevent the warning in the console.
