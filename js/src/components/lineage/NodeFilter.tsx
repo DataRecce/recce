@@ -318,10 +318,9 @@ export const NodeFilter = () => {
           <ExcludeFilter isDisabled={isFilterDisabled} />
         </ControlItem>
         <Spacer />
-
         {selectMode === "action" && (
           <>
-            <ControlItem label="">
+            <ControlItem label="" style={{ flexShrink: "0" }}>
               <Text fontSize="9pt" color="gray.500">
                 {selectNodes.length} nodes selected
               </Text>
@@ -342,7 +341,6 @@ export const NodeFilter = () => {
             </ControlItem>
           </>
         )}
-
         <ControlItem label="Explore">
           <ButtonGroup isAttached variant="outline">
             <Menu placement="bottom-end">

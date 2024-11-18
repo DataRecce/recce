@@ -290,6 +290,10 @@ export function LineageView({ ...props }: LineageViewProps) {
       return;
     }
 
+    if (selectMode !== "detail") {
+      return;
+    }
+
     const nodeSet = union(
       selectUpstream(lineageGraph, [node.id]),
       selectDownstream(lineageGraph, [node.id])
@@ -309,6 +313,10 @@ export function LineageView({ ...props }: LineageViewProps) {
     if (!lineageGraph) {
       return;
     }
+
+    // if (selectMode !== "detail") {
+    //   return;
+    // }
 
     const nodeSet = selectDownstream(lineageGraph, lineageGraph.modifiedSet);
 
@@ -554,10 +562,23 @@ export function LineageView({ ...props }: LineageViewProps) {
 
   const selectNodeMulti = (nodeId: string) => {
     if (selectMode !== "action") {
+      if (!lineageGraph) {
+        return;
+      }
+
+      const nodeSet = selectDownstream(lineageGraph, lineageGraph.modifiedSet);
+      let [newNodes, newEdges] = highlightNodes(
+        Array.from(nodeSet),
+        nodes,
+        edges
+      );
+      newNodes = cleanUpNodes(newNodes, true);
+      newNodes = selectSingleNode(nodeId, newNodes);
+      setNodes(newNodes);
+      setEdges(newEdges);
+
       setDetailViewSelected(undefined);
       setIsDetailViewShown(false);
-      const newNodes = cleanUpNodes(nodes, true);
-      setNodes(selectSingleNode(nodeId, newNodes));
       setSelectMode("action");
       multiNodeAction.reset();
     } else {
