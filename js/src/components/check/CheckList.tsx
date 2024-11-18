@@ -17,7 +17,6 @@ import {
   Tooltip,
   VStack,
   useDisclosure,
-  useToast,
 } from "@chakra-ui/react";
 import { cacheKeys } from "@/lib/api/cacheKeys";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
@@ -45,7 +44,6 @@ const ChecklistItem = ({
   onSelect: (checkId: string) => void;
   onMarkAsChecked: () => void;
 }) => {
-  const toast = useToast();
   const queryClient = useQueryClient();
   const checkId = check.check_id!;
   const { mutate } = useMutation({
