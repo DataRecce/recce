@@ -15,8 +15,10 @@
   },
   "dependencies": {
     "@amplitude/analytics-browser": "^2.3.5",
+    "@chakra-ui/anatomy": "^2.3.4",
     "@chakra-ui/icons": "^2.1.1",
     "@chakra-ui/react": "^2.8.1",
+    "@chakra-ui/styled-system": "^2.12.0",
     "@choc-ui/chakra-autocomplete": "^5.4.0",
     "@emotion/react": "^11.11.1",
     "@emotion/styled": "^11.11.0",
