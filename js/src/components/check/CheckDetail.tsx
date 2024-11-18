@@ -170,7 +170,7 @@ export const CheckDetail = ({ checkId }: CheckDetailProps) => {
     if (!isChecked === true) {
       markedAsCheckedToast();
     }
-  }, [check?.is_checked, mutate]);
+  }, [check?.is_checked, mutate, markedAsCheckedToast]);
 
   const handelUpdateViewOptions = (viewOptions: any) => {
     mutate({ view_options: viewOptions });
