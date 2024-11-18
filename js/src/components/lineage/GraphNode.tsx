@@ -159,6 +159,9 @@ export function GraphNode({ data }: GraphNodeProps) {
             <input
               checked={isSelected && selectMode === "action"}
               type="checkbox"
+              onChange={() => {
+                //noop, add the handler to prevent the warning in the console.
+              }}
               onClick={(e) => {
                 e.stopPropagation();
                 selectNodeMulti(data.id);

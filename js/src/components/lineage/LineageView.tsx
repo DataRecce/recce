@@ -563,7 +563,6 @@ export function LineageView({ ...props }: LineageViewProps) {
   };
 
   const selectNodeMulti = (nodeId: string) => {
-    handleSelectNodesClicked();
     if (selectMode !== "action") {
       setDetailViewSelected(undefined);
       setIsDetailViewShown(false);
