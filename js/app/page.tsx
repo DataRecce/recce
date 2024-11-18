@@ -16,6 +16,7 @@ import {
   Badge,
   Progress,
   HStack,
+  extendTheme,
 } from "@chakra-ui/react";
 import React from "react";
 import { ReactNode, useLayoutEffect } from "react";
@@ -30,7 +31,7 @@ import { Redirect, Route, Router, Switch, useLocation, useRoute } from "wouter";
 
 import _ from "lodash";
 import { useHashLocation } from "@/lib/hooks/useHashLocation";
-import { ThemeProvider, createTheme } from "@mui/material";
+import { ThemeProvider, Tooltip, createTheme } from "@mui/material";
 import { useLineageGraphContext } from "@/lib/hooks/LineageGraphContext";
 import { InfoIcon } from "@chakra-ui/icons";
 import { RunPage } from "@/components/run/RunPage";
@@ -51,6 +52,8 @@ import { HSplit, VSplit } from "@/components/split/Split";
 import { RunResultPane } from "@/components/run/RunResultPane";
 import { VscGitPullRequest } from "react-icons/vsc";
 import { RunList } from "@/components/run/RunList";
+import { checkboxTheme } from "@theme/components/Checkbox";
+import { tooltipTheme } from "@theme/components/Tooltip";
 
 function getCookie(key: string) {
   var b = document.cookie.match("(^|;)\\s*" + key + "\\s*=\\s*([^;]+)");
@@ -363,6 +366,13 @@ function Main() {
   );
 }
 
+const chakraTheme = extendTheme({
+  components: {
+    Checkbox: checkboxTheme,
+    Tooltip: tooltipTheme,
+  },
+});
+
 export default function Home() {
   useLayoutEffect(() => {
     const userId = getCookie("recce_user_id");
@@ -392,7 +402,7 @@ export default function Home() {
 
   return (
     <ThemeProvider theme={muiDefaultTheme}>
-      <ChakraProvider>
+      <ChakraProvider theme={chakraTheme}>
         <QueryClientProvider client={reactQueryClient}>
           <Router hook={useHashLocation}>
             <RecceContextProvider>

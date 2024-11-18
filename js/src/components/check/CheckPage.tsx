@@ -154,7 +154,7 @@ export const CheckPage = () => {
               icon={<CopyIcon />}
             />
           </Tooltip>
-          <Divider mb="8px" />
+          <Divider />
           <CheckList
             checks={orderedChecks}
             selectedItem={selectedItem}

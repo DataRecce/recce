@@ -61,6 +61,7 @@ import { PresetCheckTemplateView } from "./PresetCheckTemplateView";
 import { VSplit } from "../split/Split";
 import { useCopyToClipboardButton } from "@/lib/hooks/ScreenShot";
 import { useRun } from "@/lib/hooks/useRun";
+import { useCheckToast } from "@/lib/hooks/useCheckToast";
 
 interface CheckDetailProps {
   checkId: string;
@@ -70,6 +71,7 @@ export const CheckDetail = ({ checkId }: CheckDetailProps) => {
   const queryClient = useQueryClient();
   const [, setLocation] = useLocation();
   const { successToast, failToast } = useClipBoardToast();
+  const { markedAsCheckedToast } = useCheckToast();
   const [submittedRunId, setSubmittedRunId] = useState<string>();
   const [progress, setProgress] = useState<Run["progress"]>();
   const [isAborting, setAborting] = useState(false);
@@ -164,7 +166,10 @@ export const CheckDetail = ({ checkId }: CheckDetailProps) => {
   const handleApproveCheck = useCallback(() => {
     const isChecked = check?.is_checked;
     mutate({ is_checked: !isChecked });
-  }, [check?.is_checked, mutate]);
+    if (!isChecked === true) {
+      markedAsCheckedToast();
+    }
+  }, [check?.is_checked, mutate, markedAsCheckedToast]);
 
   const handelUpdateViewOptions = (viewOptions: any) => {
     mutate({ view_options: viewOptions });
@@ -281,10 +286,15 @@ export const CheckDetail = ({ checkId }: CheckDetailProps) => {
             <Button
               size="sm"
               colorScheme={check?.is_checked ? "green" : "gray"}
-              leftIcon={<CheckCircleIcon />}
+              variant={check?.is_checked ? "solid" : "outline"}
+              leftIcon={
+                <CheckCircleIcon
+                  color={check?.is_checked ? "inherit" : "green"}
+                />
+              }
               onClick={() => handleApproveCheck()}
             >
-              {check?.is_checked ? "Approved" : "Pending"}
+              {check?.is_checked ? "Checked" : "Mark as Checked"}
             </Button>
           </Tooltip>
         </Flex>
