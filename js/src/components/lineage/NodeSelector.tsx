@@ -29,12 +29,6 @@ export function NodeSelector({ viewMode, nodes, onClose }: NodeSelectorProps) {
     actionState,
   } = useLineageViewContext();
 
-  useUnmountEffect(() => {
-    if (actionState.status === "running") {
-      cancel();
-    }
-  });
-
   const getProgressMessage = () => {
     if (actionState.mode === "per_node") {
       return `${actionState.completed} / ${actionState.total}`;

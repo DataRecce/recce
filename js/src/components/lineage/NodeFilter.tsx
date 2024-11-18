@@ -24,7 +24,14 @@ import {
 
 import { FiPackage } from "react-icons/fi";
 import { getIconForResourceType } from "./styles";
-import { CSSProperties, useCallback, useEffect, useRef, useState } from "react";
+import {
+  CSSProperties,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import { createSchemaDiffCheck } from "@/lib/api/schemacheck";
 import { useLocation } from "wouter";
 import { Check } from "@/lib/api/checks";
@@ -356,7 +363,10 @@ const MoreActionMenu = (props: NodeFilterProps) => {
 };
 
 export const NodeFilter = (props: NodeFilterProps) => {
-  const lineageViewContext = useLineageViewContext();
+  const { nodes, deselect, selectMode } = useLineageViewContext();
+  const selectNodes = useMemo(() => {
+    return nodes.filter((node) => node.data.isSelected);
+  }, [nodes]);
 
   return (
     <HStack width="100%" padding="4pt 8pt">
@@ -378,22 +388,29 @@ export const NodeFilter = (props: NodeFilterProps) => {
         </ControlItem>
         <Spacer />
 
-        <ControlItem label="">
-          <Text fontSize="9pt" color="gray.500">
-            {lineageViewContext.actionState.total} nodes selected
-          </Text>
-        </ControlItem>
+        {selectMode === "action" && (
+          <>
+            <ControlItem label="">
+              <Text fontSize="9pt" color="gray.500">
+                {selectNodes.length} nodes selected
+              </Text>
+            </ControlItem>
 
-        <ControlItem label="">
-          <Button
-            size="xs"
-            fontSize="9pt"
-            onClick={props.onSelectNodesClicked}
-            isDisabled={props.isDisabled}
-          >
-            Deselect
-          </Button>
-        </ControlItem>
+            <ControlItem label="">
+              <Button
+                variant={"outline"}
+                size="xs"
+                fontSize="9pt"
+                isDisabled={selectMode !== "action"}
+                onClick={() => {
+                  deselect();
+                }}
+              >
+                Deselect
+              </Button>
+            </ControlItem>
+          </>
+        )}
 
         <ControlItem label="Explore">
           <ButtonGroup isAttached variant="outline">

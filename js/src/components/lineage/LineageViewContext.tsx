@@ -1,11 +1,14 @@
 import { LineageDiffViewOptions } from "@/lib/api/lineagecheck";
 import { Run } from "@/lib/api/types";
 import React, { createContext, useContext, useState, ReactNode } from "react";
+import { Node } from "reactflow";
+import { LineageGraphNode } from "./lineage";
 
 type NewType = LineageDiffViewOptions;
 
 export interface LineageViewContextType {
   selectMode: "action" | "detail" | "action_result";
+  nodes: Node<LineageGraphNode>[];
 
   // filter
   viewOptions: LineageDiffViewOptions;
@@ -13,6 +16,8 @@ export interface LineageViewContextType {
 
   // selector
   selectNodeMulti: (nodeId: string) => void;
+  deselect: () => void;
+
   runRowCountDiff: () => Promise<void>;
   runValueDiff: () => Promise<void>;
   addLineageDiffCheck: (viewMode?: string) => void;

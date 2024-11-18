@@ -23,11 +23,8 @@ import {
   MenuList,
   MenuItem,
   Center,
-  SlideFade,
   StackDivider,
-  MenuGroup,
   useToast,
-  useDisclosure,
 } from "@chakra-ui/react";
 import React, {
   Ref,
@@ -240,11 +237,6 @@ export function LineageView({ ...props }: LineageViewProps) {
   const [selectMode, setSelectMode] = useState<
     "detail" | "action" | "action_result"
   >("detail");
-
-  /**
-   * Show the multi-node selector
-   */
-  const nodeSelectorDisclosure = useDisclosure();
 
   const [detailViewSelected, setDetailViewSelected] =
     useState<LineageGraphNode>();
@@ -542,7 +534,6 @@ export function LineageView({ ...props }: LineageViewProps) {
           <Button
             colorScheme="blue"
             onClick={() => {
-              nodeSelectorDisclosure.onClose();
               handleViewOptionsChanged({ ...viewOptions, view_mode: "all" });
             }}
           >
@@ -559,7 +550,6 @@ export function LineageView({ ...props }: LineageViewProps) {
     const newNodes = cleanUpNodes(nodes, newMode === "action");
     setNodes(newNodes);
     setSelectMode(newMode);
-    nodeSelectorDisclosure.onOpen();
   };
 
   const selectNodeMulti = (nodeId: string) => {
@@ -570,17 +560,27 @@ export function LineageView({ ...props }: LineageViewProps) {
       setNodes(selectSingleNode(nodeId, newNodes));
       setSelectMode("action");
       multiNodeAction.reset();
-      nodeSelectorDisclosure.onOpen();
     } else {
       setNodes(selectNode(nodeId, nodes));
     }
   };
+  const deselect = () => {
+    setSelectMode("detail");
+    const newNodes = cleanUpNodes(nodes);
+    setDetailViewSelected(undefined);
+    setIsDetailViewShown(false);
+    setNodes(newNodes);
+    closeRunResult();
+    refetchRunsAggregated?.();
+  };
 
   const contextValue: LineageViewContextType = {
-    selectNodeMulti,
     selectMode,
+    nodes,
     viewOptions,
     onViewOptionsChanged: handleViewOptionsChanged,
+    selectNodeMulti,
+    deselect,
     runRowCountDiff: async () => {
       if (selectMode === "action") {
         await multiNodeAction.runRowCountDiff();
@@ -639,7 +639,7 @@ export function LineageView({ ...props }: LineageViewProps) {
         >
           {props.interactive && (
             <NodeFilter
-              isDisabled={nodeSelectorDisclosure.isOpen}
+              isDisabled={selectMode !== "detail"}
               onSelectNodesClicked={handleSelectNodesClicked}
             />
           )}
@@ -693,11 +693,10 @@ export function LineageView({ ...props }: LineageViewProps) {
               zoomable
               pannable
             />
-            <Panel position="bottom-center" className={IGNORE_SCREENSHOT_CLASS}>
-              <SlideFade
-                in={nodeSelectorDisclosure.isOpen}
-                unmountOnExit
-                style={{ zIndex: 10 }}
+            {selectMode === "action_result" && (
+              <Panel
+                position="bottom-center"
+                className={IGNORE_SCREENSHOT_CLASS}
               >
                 <NodeSelector
                   viewMode={viewMode}
@@ -705,18 +704,11 @@ export function LineageView({ ...props }: LineageViewProps) {
                     .map((node) => node.data)
                     .filter((node) => node.isSelected)}
                   onClose={() => {
-                    setSelectMode("detail");
-                    nodeSelectorDisclosure.onClose();
-                    const newNodes = cleanUpNodes(nodes);
-                    setDetailViewSelected(undefined);
-                    setIsDetailViewShown(false);
-                    setNodes(newNodes);
-                    closeRunResult();
-                    refetchRunsAggregated?.();
+                    deselect();
                   }}
                 />
-              </SlideFade>
-            </Panel>
+              </Panel>
+            )}
           </ReactFlow>
         </VStack>
         {selectMode === "detail" && detailViewSelected ? (
@@ -733,29 +725,26 @@ export function LineageView({ ...props }: LineageViewProps) {
         ) : (
           <Box></Box>
         )}
-        {isContextMenuRendered && (
-          // Only render context menu when select mode is action
-          <Menu isOpen={true} onClose={closeContextMenu}>
-            <MenuList
-              style={{
-                position: "absolute",
-                left: `${contextMenuPosition.x}px`,
-                top: `${contextMenuPosition.y}px`,
-              }}
-            >
-              <MenuItem
-                icon={<BiArrowFromBottom />}
-                onClick={selectParentNodes}
-              >
-                Select parent nodes
-              </MenuItem>
-              <MenuItem icon={<BiArrowToBottom />} onClick={selectChildNodes}>
-                Select child nodes
-              </MenuItem>
-            </MenuList>
-          </Menu>
-        )}
       </HSplit>
+      {isContextMenuRendered && (
+        // Only render context menu when select mode is action
+        <Menu isOpen={true} onClose={closeContextMenu}>
+          <MenuList
+            style={{
+              position: "absolute",
+              left: `${contextMenuPosition.x}px`,
+              top: `${contextMenuPosition.y}px`,
+            }}
+          >
+            <MenuItem icon={<BiArrowFromBottom />} onClick={selectParentNodes}>
+              Select parent nodes
+            </MenuItem>
+            <MenuItem icon={<BiArrowToBottom />} onClick={selectChildNodes}>
+              Select child nodes
+            </MenuItem>
+          </MenuList>
+        </Menu>
+      )}
     </LineageViewContext.Provider>
   );
 }
