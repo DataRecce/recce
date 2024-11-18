@@ -31,6 +31,7 @@ import React, {
   useCallback,
   useEffect,
   useLayoutEffect,
+  useMemo,
   useRef,
   useState,
 } from "react";
@@ -69,8 +70,7 @@ import {
   LineageDiffViewOptions,
 } from "@/lib/api/lineagecheck";
 import { ChangeStatusLegend } from "./ChangeStatusLegend";
-import { HSplit, VSplit } from "../split/Split";
-import { cacheKeys } from "@/lib/api/cacheKeys";
+import { HSplit } from "../split/Split";
 import { select } from "@/lib/api/select";
 import { AxiosError } from "axios";
 import { useRecceActionContext } from "@/lib/hooks/RecceActionContext";
@@ -231,9 +231,13 @@ export function LineageView({ ...props }: LineageViewProps) {
     "single" | "multi" | "action_result"
   >("single");
 
-  const [detailViewSelected, setDetailViewSelected] =
-    useState<LineageGraphNode>();
-  const [isDetailViewShown, setIsDetailViewShown] = useState(false);
+  const selectedNode = useMemo(() => {
+    if (selectMode === "single") {
+      return nodes.find((node) => node.data.isSelected)?.data;
+    } else {
+      return undefined;
+    }
+  }, [selectMode, nodes]);
 
   const [isContextMenuRendered, setIsContextMenuRendered] = useState(false);
   const [contextMenuPosition, setContextMenuPosition] = useState<{
@@ -346,10 +350,8 @@ export function LineageView({ ...props }: LineageViewProps) {
     if (props.interactive === false) return;
     closeContextMenu();
     if (selectMode === "single") {
-      setDetailViewSelected(node.data);
-      if (!isDetailViewShown) {
+      if (!selectedNode) {
         centerNode(node);
-        setIsDetailViewShown(true);
       }
       setNodes(selectSingleNode(node.id, nodes));
     } else if (selectMode === "action_result") {
@@ -542,8 +544,7 @@ export function LineageView({ ...props }: LineageViewProps) {
   }
   const handleSelectNodesClicked = () => {
     const newMode = selectMode === "single" ? "multi" : "single";
-    setDetailViewSelected(undefined);
-    setIsDetailViewShown(false);
+
     const newNodes = cleanUpNodes(nodes, newMode === "multi");
     setNodes(newNodes);
     setSelectMode(newMode);
@@ -566,8 +567,6 @@ export function LineageView({ ...props }: LineageViewProps) {
       setNodes(newNodes);
       setEdges(newEdges);
 
-      setDetailViewSelected(undefined);
-      setIsDetailViewShown(false);
       setSelectMode("multi");
       multiNodeAction.reset();
     } else {
@@ -577,8 +576,7 @@ export function LineageView({ ...props }: LineageViewProps) {
   const deselect = () => {
     setSelectMode("single");
     const newNodes = cleanUpNodes(nodes);
-    setDetailViewSelected(undefined);
-    setIsDetailViewShown(false);
+
     setNodes(newNodes);
     closeRunResult();
     refetchRunsAggregated?.();
@@ -636,9 +634,9 @@ export function LineageView({ ...props }: LineageViewProps) {
   return (
     <LineageViewContext.Provider value={contextValue}>
       <HSplit
-        sizes={detailViewSelected ? [70, 30] : [100, 0]}
-        minSize={detailViewSelected ? 400 : 0}
-        gutterSize={detailViewSelected ? 5 : 0}
+        sizes={selectedNode ? [70, 30] : [100, 0]}
+        minSize={selectedNode ? 400 : 0}
+        gutterSize={selectedNode ? 5 : 0}
         style={{ height: "100%", width: "100%" }}
       >
         <VStack
@@ -712,13 +710,11 @@ export function LineageView({ ...props }: LineageViewProps) {
             )}
           </ReactFlow>
         </VStack>
-        {selectMode === "single" && detailViewSelected ? (
+        {selectMode === "single" && selectedNode ? (
           <Box borderLeft="solid 1px lightgray" height="100%">
             <NodeView
-              node={detailViewSelected}
+              node={selectedNode}
               onCloseNode={() => {
-                setDetailViewSelected(undefined);
-                setIsDetailViewShown(false);
                 setNodes(cleanUpNodes(nodes));
               }}
             />
