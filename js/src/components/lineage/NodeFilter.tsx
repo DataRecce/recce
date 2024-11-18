@@ -294,17 +294,7 @@ const ControlItem = (props: {
 };
 
 const MoreActionMenu = (props: NodeFilterProps) => {
-  const [, setLocation] = useLocation();
-  const { runAction } = useRecceActionContext();
-  const { viewOptions } = useLineageViewContext();
-  const handleNavToCheck = useCallback(
-    (check: Check) => {
-      if (check.check_id) {
-        setLocation(`/checks/${check.check_id}`);
-      }
-    },
-    [setLocation]
-  );
+  const lineageViewContext = useLineageViewContext();
 
   return (
     <Menu placement="bottom-end">
@@ -319,10 +309,7 @@ const MoreActionMenu = (props: NodeFilterProps) => {
             size="sm"
             fontSize="10pt"
             onClick={() => {
-              runAction("row_count_diff", {
-                select: viewOptions.select,
-                exclude: viewOptions.exclude,
-              });
+              lineageViewContext.runRowCountDiff();
             }}
           >
             Row Count Diff
@@ -330,9 +317,10 @@ const MoreActionMenu = (props: NodeFilterProps) => {
           <MenuItem
             as={Text}
             size="sm"
-            isDisabled
             fontSize="10pt"
-            onClick={() => {}}
+            onClick={() => {
+              lineageViewContext.runValueDiff();
+            }}
           >
             Value Diff
           </MenuItem>
@@ -343,11 +331,10 @@ const MoreActionMenu = (props: NodeFilterProps) => {
             as={Text}
             size="sm"
             fontSize="10pt"
-            onClick={async () => {
-              const check = await createLineageDiffCheck(viewOptions);
-              if (check) {
-                handleNavToCheck(check);
-              }
+            onClick={() => {
+              lineageViewContext.addLineageDiffCheck(
+                lineageViewContext.viewOptions.view_mode
+              );
             }}
           >
             Lineage Diff
@@ -356,14 +343,8 @@ const MoreActionMenu = (props: NodeFilterProps) => {
             as={Text}
             size="sm"
             fontSize="10pt"
-            onClick={async () => {
-              const check = await createSchemaDiffCheck({
-                select: viewOptions.select,
-                exclude: viewOptions.exclude,
-              });
-              if (check) {
-                handleNavToCheck(check);
-              }
+            onClick={() => {
+              lineageViewContext.addSchemaDiffCheck();
             }}
           >
             Schema Diff
@@ -375,6 +356,8 @@ const MoreActionMenu = (props: NodeFilterProps) => {
 };
 
 export const NodeFilter = (props: NodeFilterProps) => {
+  const lineageViewContext = useLineageViewContext();
+
   return (
     <HStack width="100%" padding="4pt 8pt">
       <HStack flex="1">
@@ -397,7 +380,7 @@ export const NodeFilter = (props: NodeFilterProps) => {
 
         <ControlItem label="">
           <Text fontSize="9pt" color="gray.500">
-            3 nodes selected
+            {lineageViewContext.actionState.total} nodes selected
           </Text>
         </ControlItem>
 

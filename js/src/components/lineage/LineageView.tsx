@@ -69,7 +69,10 @@ import {
 import { useClipBoardToast } from "@/lib/hooks/useClipBoardToast";
 
 import { union } from "./graph";
-import { LineageDiffViewOptions } from "@/lib/api/lineagecheck";
+import {
+  createLineageDiffCheck,
+  LineageDiffViewOptions,
+} from "@/lib/api/lineagecheck";
 import { ChangeStatusLegend } from "./ChangeStatusLegend";
 import { HSplit, VSplit } from "../split/Split";
 import { cacheKeys } from "@/lib/api/cacheKeys";
@@ -81,6 +84,9 @@ import {
   LineageViewContextType,
 } from "./LineageViewContext";
 import { useMultiNodesAction } from "./useMultiNodesAction";
+import { createSchemaDiffCheck } from "@/lib/api/schemacheck";
+import { useLocation } from "wouter";
+import { Check } from "@/lib/api/checks";
 
 export interface LineageViewProps {
   viewOptions?: LineageDiffViewOptions;
@@ -160,6 +166,19 @@ const useResizeObserver = (
   }, [target, size, handler]);
 };
 
+const useNavToCheck = () => {
+  const [, setLocation] = useLocation();
+  const navToCheck = useCallback(
+    (check: Check) => {
+      if (check.check_id) {
+        setLocation(`/checks/${check.check_id}`);
+      }
+    },
+    [setLocation]
+  );
+  return navToCheck;
+};
+
 export function LineageView({ ...props }: LineageViewProps) {
   const reactFlow = useReactFlow();
   const refReactFlow = useRef<HTMLDivElement>(null);
@@ -202,7 +221,7 @@ export function LineageView({ ...props }: LineageViewProps) {
     refetchRunsAggregated,
   } = useLineageGraphContext();
 
-  const { showRunId, closeRunResult } = useRecceActionContext();
+  const { showRunId, closeRunResult, runAction } = useRecceActionContext();
 
   /**
    * View mode
@@ -320,6 +339,8 @@ export function LineageView({ ...props }: LineageViewProps) {
       reactFlow.setCenter(x, y, { zoom, duration: 200 });
     }
   };
+
+  const navToCheck = useNavToCheck();
 
   useResizeObserver(refReactFlow, async () => {
     if (selectMode === "detail" || selectMode === "action_result") {
@@ -561,10 +582,44 @@ export function LineageView({ ...props }: LineageViewProps) {
     selectMode,
     viewOptions,
     onViewOptionsChanged: handleViewOptionsChanged,
-    runRowCountDiff: multiNodeAction.runRowCountDiff,
-    runValueDiff: multiNodeAction.runValueDiff,
-    addLineageDiffCheck: multiNodeAction.addLineageDiffCheck,
-    addSchemaDiffCheck: multiNodeAction.addSchemaDiffCheck,
+    runRowCountDiff: async () => {
+      if (selectMode === "action") {
+        await multiNodeAction.runRowCountDiff();
+      } else {
+        await runAction("row_count_diff", {
+          select: viewOptions.select,
+          exclude: viewOptions.exclude,
+        });
+      }
+    },
+    runValueDiff: async () => {
+      if (selectMode === "action") {
+        await multiNodeAction.runValueDiff();
+      }
+    },
+    addLineageDiffCheck: async () => {
+      if (selectMode === "action") {
+        multiNodeAction.addLineageDiffCheck(viewOptions.view_mode || "all");
+      } else {
+        const check = await createLineageDiffCheck(viewOptions);
+        if (check) {
+          navToCheck(check);
+        }
+      }
+    },
+    addSchemaDiffCheck: async () => {
+      if (selectMode === "action") {
+        multiNodeAction.addSchemaDiffCheck();
+      } else {
+        const check = await createSchemaDiffCheck({
+          select: viewOptions.select,
+          exclude: viewOptions.exclude,
+        });
+        if (check) {
+          navToCheck(check);
+        }
+      }
+    },
     cancel: multiNodeAction.cancel,
     actionState: multiNodeAction.actionState,
   };
