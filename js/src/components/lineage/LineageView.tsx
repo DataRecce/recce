@@ -637,12 +637,7 @@ export function LineageView({ ...props }: LineageViewProps) {
           spacing={0}
           style={{ contain: "strict" }}
         >
-          {props.interactive && (
-            <NodeFilter
-              isDisabled={selectMode !== "detail"}
-              onSelectNodesClicked={handleSelectNodesClicked}
-            />
-          )}
+          {props.interactive && <NodeFilter />}
           <ReactFlow
             nodeTypes={nodeTypes}
             edgeTypes={edgeTypes}
