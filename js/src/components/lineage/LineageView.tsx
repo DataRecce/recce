@@ -27,7 +27,6 @@ import {
   useToast,
 } from "@chakra-ui/react";
 import React, {
-  Ref,
   RefObject,
   useCallback,
   useEffect,
@@ -43,7 +42,6 @@ import ReactFlow, {
   MiniMap,
   Panel,
   Background,
-  ReactFlowProvider,
   ControlButton,
   useReactFlow,
 } from "reactflow";
@@ -57,8 +55,8 @@ import { NodeView } from "./NodeView";
 
 import { useLineageGraphContext } from "@/lib/hooks/LineageGraphContext";
 
-import { NodeSelector } from "./NodeSelector";
-import { NodeFilter } from "./NodeFilter";
+import { ActionControl } from "./ActionControl";
+import { LineageViewTopBar } from "./LineageViewTopBar";
 import {
   IGNORE_SCREENSHOT_CLASS,
   useCopyToClipboard,
@@ -106,11 +104,6 @@ const nodeColor = (node: Node) => {
   return node?.data?.changeStatus
     ? getIconForChangeStatus(node?.data?.changeStatus).color
     : ("lightgray" as string);
-};
-
-const viewModeTitle = {
-  all: "All",
-  changed_models: "Changed Models",
 };
 
 const useResizeObserver = (
@@ -658,7 +651,7 @@ export function LineageView({ ...props }: LineageViewProps) {
           spacing={0}
           style={{ contain: "strict" }}
         >
-          {props.interactive && <NodeFilter />}
+          {props.interactive && <LineageViewTopBar />}
           <ReactFlow
             nodeTypes={nodeTypes}
             edgeTypes={edgeTypes}
@@ -714,11 +707,7 @@ export function LineageView({ ...props }: LineageViewProps) {
                 position="bottom-center"
                 className={IGNORE_SCREENSHOT_CLASS}
               >
-                <NodeSelector
-                  viewMode={viewMode}
-                  nodes={nodes
-                    .map((node) => node.data)
-                    .filter((node) => node.isSelected)}
+                <ActionControl
                   onClose={() => {
                     deselect();
                   }}

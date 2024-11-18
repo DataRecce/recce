@@ -286,7 +286,7 @@ const ControlItem = (props: {
   );
 };
 
-export const NodeFilter = () => {
+export const LineageViewTopBar = () => {
   const { nodes, deselect, selectMode, ...lineageViewContext } =
     useLineageViewContext();
   const selectNodes = useMemo(() => {
