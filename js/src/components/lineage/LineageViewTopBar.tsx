@@ -28,6 +28,7 @@ import { CSSProperties, useEffect, useMemo, useRef, useState } from "react";
 import { useRecceActionContext } from "@/lib/hooks/RecceActionContext";
 import { VscHistory } from "react-icons/vsc";
 import { useLineageViewContext } from "./LineageViewContext";
+import { findByRunType } from "../run/registry";
 
 const HistoryToggle = () => {
   const { isHistoryOpen, showHistory, closeHistory } = useRecceActionContext();
@@ -355,6 +356,7 @@ export const LineageViewTopBar = () => {
                     size="sm"
                     fontSize="10pt"
                     isDisabled={!(isNoSelect || isMultiSelect)}
+                    icon={<Icon as={findByRunType("row_count_diff")?.icon} />}
                     onClick={() => {
                       lineageViewContext.runRowCountDiff();
                     }}
@@ -366,6 +368,7 @@ export const LineageViewTopBar = () => {
                     size="sm"
                     fontSize="10pt"
                     isDisabled={!isMultiSelect}
+                    icon={<Icon as={findByRunType("value_diff")?.icon} />}
                     onClick={() => {
                       lineageViewContext.runValueDiff();
                     }}
@@ -380,6 +383,7 @@ export const LineageViewTopBar = () => {
                     size="sm"
                     fontSize="10pt"
                     isDisabled={!(isNoSelect || isMultiSelect)}
+                    icon={<Icon as={findByRunType("lineage_diff")?.icon} />}
                     onClick={() => {
                       lineageViewContext.addLineageDiffCheck(
                         lineageViewContext.viewOptions.view_mode
@@ -393,6 +397,7 @@ export const LineageViewTopBar = () => {
                     size="sm"
                     fontSize="10pt"
                     isDisabled={!(isNoSelect || isMultiSelect)}
+                    icon={<Icon as={findByRunType("schema_diff")?.icon} />}
                     onClick={() => {
                       lineageViewContext.addSchemaDiffCheck();
                     }}
