@@ -231,13 +231,18 @@ export function LineageView({ ...props }: LineageViewProps) {
     "single" | "multi" | "action_result"
   >("single");
 
-  const selectedNode = useMemo(() => {
+  const selectedNode: LineageGraphNode = useMemo(() => {
     if (selectMode === "single") {
       return nodes.find((node) => node.data.isSelected)?.data;
     } else {
       return undefined;
     }
   }, [selectMode, nodes]);
+  const selectedNodes: LineageGraphNode[] = useMemo(() => {
+    return nodes
+      .filter((node) => node.data.isSelected)
+      .map((node) => node.data);
+  }, [nodes]);
 
   const [isContextMenuRendered, setIsContextMenuRendered] = useState(false);
   const [contextMenuPosition, setContextMenuPosition] = useState<{
@@ -429,16 +434,13 @@ export function LineageView({ ...props }: LineageViewProps) {
     })();
   };
 
-  const multiNodeAction = useMultiNodesAction(
-    nodes.map((node) => node.data).filter((node) => node.isSelected),
-    {
-      onActionStarted: () => {
-        setSelectMode("action_result");
-      },
-      onActionNodeUpdated: handleActionNodeUpdated,
-      onActionCompleted: () => {},
-    }
-  );
+  const multiNodeAction = useMultiNodesAction(selectedNodes, {
+    onActionStarted: () => {
+      setSelectMode("action_result");
+    },
+    onActionNodeUpdated: handleActionNodeUpdated,
+    onActionCompleted: () => {},
+  });
 
   if (isLoading) {
     return (
@@ -542,13 +544,6 @@ export function LineageView({ ...props }: LineageViewProps) {
       </Center>
     );
   }
-  const handleSelectNodesClicked = () => {
-    const newMode = selectMode === "single" ? "multi" : "single";
-
-    const newNodes = cleanUpNodes(nodes, newMode === "multi");
-    setNodes(newNodes);
-    setSelectMode(newMode);
-  };
 
   const selectNodeMulti = (nodeId: string) => {
     if (selectMode !== "multi") {
@@ -592,6 +587,12 @@ export function LineageView({ ...props }: LineageViewProps) {
     runRowCountDiff: async () => {
       if (selectMode === "multi") {
         await multiNodeAction.runRowCountDiff();
+      } else if (selectedNode) {
+        await runAction(
+          "row_count_diff",
+          { node_names: [selectedNode.name] },
+          { showForm: false, showLast: false }
+        );
       } else {
         await runAction("row_count_diff", {
           select: viewOptions.select,
@@ -602,6 +603,14 @@ export function LineageView({ ...props }: LineageViewProps) {
     runValueDiff: async () => {
       if (selectMode === "multi") {
         await multiNodeAction.runValueDiff();
+      } else if (selectedNode) {
+        await runAction(
+          "value_diff",
+          {
+            model: selectedNode.name,
+          },
+          { showForm: true, showLast: false }
+        );
       }
     },
     addLineageDiffCheck: async () => {
@@ -615,7 +624,7 @@ export function LineageView({ ...props }: LineageViewProps) {
       }
     },
     addSchemaDiffCheck: async () => {
-      if (selectMode === "multi") {
+      if (selectNodes.length > 0) {
         multiNodeAction.addSchemaDiffCheck();
       } else {
         const check = await createSchemaDiffCheck({
