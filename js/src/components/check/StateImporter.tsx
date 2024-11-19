@@ -79,6 +79,7 @@ export function StateImporter({ checksOnly }: { checksOnly?: boolean }) {
     location,
     setLocation,
     refetchRunsAggregated,
+    checksOnly,
   ]);
 
   const handleClick = () => {
