@@ -1,4 +1,4 @@
-import { useMemo } from "react";
+import { forwardRef, useMemo } from "react";
 
 import { mergeColumns, toDataGrid } from "./schema";
 import "react-data-grid/lib/styles.css";
@@ -16,11 +16,10 @@ interface SchemaViewProps {
   enableScreenshot?: boolean;
 }
 
-export function SchemaView({
-  base,
-  current,
-  enableScreenshot = false,
-}: SchemaViewProps) {
+export function _SchemaView(
+  { base, current, enableScreenshot = false }: SchemaViewProps,
+  ref: any
+) {
   const { columns, rows } = useMemo(() => {
     const schemaDiff = mergeColumns(base?.columns, current?.columns);
     const resourceType = current?.resource_type || base?.resource_type;
@@ -88,9 +87,12 @@ export function SchemaView({
             renderers={{ noRowsFallback: <EmptyRowsRenderer /> }}
             className="rdg-light"
             enableScreenshot={enableScreenshot}
+            ref={ref}
           />
         </>
       )}
     </Flex>
   );
 }
+
+export const SchemaView = forwardRef(_SchemaView);

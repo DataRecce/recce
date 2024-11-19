@@ -27,13 +27,16 @@ import {
   useToast,
 } from "@chakra-ui/react";
 import React, {
+  Ref,
   RefObject,
   useCallback,
   useEffect,
+  useImperativeHandle,
   useLayoutEffect,
   useMemo,
   useRef,
   useState,
+  forwardRef,
 } from "react";
 import ReactFlow, {
   Node,
@@ -92,6 +95,10 @@ export interface LineageViewProps {
   // to be removed
   viewMode?: "changed_models" | "all";
   filterNodes?: (key: string, node: LineageGraphNode) => boolean;
+}
+
+export interface LineageViewRef {
+  copyToClipboard: () => void;
 }
 
 const nodeTypes = {
@@ -169,11 +176,18 @@ const useNavToCheck = () => {
   return navToCheck;
 };
 
-export function LineageView({ ...props }: LineageViewProps) {
+export function _LineageView(
+  { ...props }: LineageViewProps,
+  ref: Ref<LineageViewRef>
+) {
   const reactFlow = useReactFlow();
   const refReactFlow = useRef<HTMLDivElement>(null);
   const { successToast, failToast } = useClipBoardToast();
-  const { copyToClipboard, ImageDownloadModal, ref } = useCopyToClipboard({
+  const {
+    copyToClipboard,
+    ImageDownloadModal,
+    ref: copyRef,
+  } = useCopyToClipboard({
     renderLibrary: "html-to-image",
     imageType: "png",
     shadowEffect: true,
@@ -212,6 +226,11 @@ export function LineageView({ ...props }: LineageViewProps) {
   } = useLineageGraphContext();
 
   const { showRunId, closeRunResult, runAction } = useRecceActionContext();
+
+  // Expose the function to the parent via the ref
+  useImperativeHandle(ref, () => ({
+    copyToClipboard,
+  }));
 
   /**
    * View mode
@@ -671,7 +690,7 @@ export function LineageView({ ...props }: LineageViewProps) {
             minZoom={0.1}
             fitView={true}
             nodesDraggable={props.interactive}
-            ref={ref}
+            ref={copyRef}
           >
             <Background color="#ccc" />
             <Controls
@@ -754,3 +773,7 @@ export function LineageView({ ...props }: LineageViewProps) {
     </LineageViewContext.Provider>
   );
 }
+
+export const LineageView = forwardRef<LineageViewRef, LineageViewProps>(
+  _LineageView
+);
