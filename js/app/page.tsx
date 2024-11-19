@@ -253,7 +253,8 @@ function TabBadge<T, R extends number>({
 }
 
 function NavBar() {
-  const { isDemoSite, cloudMode, isLoading } = useLineageGraphContext();
+  const { isDemoSite, reviewMode, cloudMode, isLoading } =
+    useLineageGraphContext();
   const [location, setLocation] = useLocation();
 
   const checklistBadge = (
@@ -295,6 +296,9 @@ function NavBar() {
           <>
             {cloudMode && <StateSynchronizer />}
             {!isDemoSite && !cloudMode && <StateImporter />}
+            {!isDemoSite && cloudMode && reviewMode && (
+              <StateImporter checksOnly />
+            )}
             <StateExporter />
           </>
         )}

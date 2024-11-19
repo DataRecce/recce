@@ -6,9 +6,9 @@ import uuid
 from contextlib import asynccontextmanager
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Optional, Any, Set
+from typing import Optional, Any, Set, Annotated
 
-from fastapi import FastAPI, HTTPException, Request, WebSocket, UploadFile, Response, BackgroundTasks
+from fastapi import FastAPI, HTTPException, Request, WebSocket, UploadFile, Response, BackgroundTasks, Form
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import PlainTextResponse
 from fastapi.staticfiles import StaticFiles
@@ -255,13 +255,20 @@ async def export_handler():
 
 
 @app.post("/api/import", status_code=200)
-async def import_handler(file: UploadFile):
+async def import_handler(file: Annotated[UploadFile, Form()], checks_only: Annotated[bool, Form()],
+                         background_tasks: BackgroundTasks):
     from recce.state import RecceState
 
     context = default_context()
     try:
         content = await file.read()
         state = RecceState.from_json(content)
+
+        if checks_only:
+            import_checks = context.import_checks(state)
+            background_tasks.add_task(context.sync_state, "overwrite")
+            return {"runs": 0, "checks": import_checks}
+
         import_runs, import_checks = context.import_state(state)
 
         return {"runs": import_runs, "checks": import_checks}
