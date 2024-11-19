@@ -648,7 +648,7 @@ export function _LineageView(
     },
     addSchemaDiffCheck: async () => {
       let check: Check;
-      if (selectNodes.length > 0) {
+      if (selectedNodes.length > 0) {
         check = await multiNodeAction.addSchemaDiffCheck();
         deselect();
       } else {
