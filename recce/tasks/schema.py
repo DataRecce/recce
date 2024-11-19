@@ -15,7 +15,7 @@ class SchemaDiffResultDiffer:
     def _get_related_node_ids(self) -> Union[List[str], None]:
         params = self.check.params
         if params.get('node_id'):
-            return [params.get('node_id')] if params.get('node_id') else []
+            return params.get('node_id') if isinstance(params.get('node_id'), list) else [params.get('node_id')]
         else:
             return TaskResultDiffer.get_node_ids_by_selector(params.get('select'), params.get('exclude'))
 

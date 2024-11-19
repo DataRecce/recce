@@ -323,7 +323,9 @@ export const LineageViewTopBar = () => {
           <>
             <ControlItem label="" style={{ flexShrink: "0" }}>
               <Text fontSize="9pt" color="gray.500">
-                {selectNodes.length} nodes selected
+                {selectNodes.length > 1
+                  ? `${selectNodes.length} nodes selected`
+                  : `${selectNodes.length} node selected`}
               </Text>
             </ControlItem>
 
@@ -384,7 +386,9 @@ export const LineageViewTopBar = () => {
                     as={Text}
                     size="sm"
                     fontSize="10pt"
-                    isDisabled={!(isNoSelect || isMultiSelect)}
+                    isDisabled={
+                      !(isNoSelect || (isMultiSelect && selectNodes.length > 1))
+                    }
                     icon={<Icon as={findByRunType("lineage_diff")?.icon} />}
                     onClick={() => {
                       lineageViewContext.addLineageDiffCheck(

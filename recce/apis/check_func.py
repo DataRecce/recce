@@ -46,8 +46,12 @@ def _generate_check_name(check_type, params, view_options):
     now = datetime.utcnow().strftime("%d %b %Y")
     if check_type == RunType.SCHEMA_DIFF:
         if params.get('node_id'):
-            node_name = get_node_name_by_id(params.get('node_id'))
-            return f"schema diff of {node_name}".capitalize()
+            nodeIds = params.get('node_id') if isinstance(params.get('node_id'), list) else [params.get('node_id')]
+            if len(nodeIds) == 1:
+                node_name = get_node_name_by_id(nodeIds[0])
+                return f"schema diff of {node_name}".capitalize()
+            else:
+                return f"schema diff of {len(nodeIds)} nodes".capitalize()
         return f"{'schema diff'.capitalize()} - {now}"
     elif check_type == RunType.LINEAGE_DIFF:
         nodes = view_options.get('node_ids') if view_options else params.get('node_ids')

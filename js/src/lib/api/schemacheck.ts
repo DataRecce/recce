@@ -2,7 +2,7 @@ import { axiosClient } from "./axiosClient";
 import { Check } from "./checks";
 
 export interface SchemaDiffViewParams {
-  node_id?: string;
+  node_id?: string | string[];
   select?: string;
   exclude?: string;
 }
