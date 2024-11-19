@@ -50,7 +50,7 @@ import { stripIndents } from "common-tags";
 import { useClipBoardToast } from "@/lib/hooks/useClipBoardToast";
 import { buildTitle, buildDescription, buildQuery } from "./check";
 import SqlEditor, { DualSqlEditor } from "../query/SqlEditor";
-import { useCallback, useState } from "react";
+import { useCallback, useRef, useState } from "react";
 import { cancelRun, submitRunFromCheck } from "@/lib/api/runs";
 import { Run } from "@/lib/api/types";
 import { RunView } from "../run/RunView";
@@ -62,6 +62,7 @@ import { VSplit } from "../split/Split";
 import { useCopyToClipboardButton } from "@/lib/hooks/ScreenShot";
 import { useRun } from "@/lib/hooks/useRun";
 import { useCheckToast } from "@/lib/hooks/useCheckToast";
+import { LineageViewRef } from "../lineage/LineageView";
 
 interface CheckDetailProps {
   checkId: string;
@@ -103,6 +104,8 @@ export const CheckDetail = ({ checkId }: CheckDetailProps) => {
 
   const runTypeEntry = check?.type ? findByRunType(check?.type) : undefined;
   const isPresetCheck = check?.is_preset || false;
+
+  const lineageViewRef = useRef<LineageViewRef>(null);
 
   const { mutate } = useMutation({
     mutationFn: (check: Partial<Check>) => updateCheck(checkId, check),
@@ -177,6 +180,16 @@ export const CheckDetail = ({ checkId }: CheckDetailProps) => {
 
   const handleUpdateDescription = (description?: string) => {
     mutate({ description });
+  };
+
+  const shouldDisabledCopyButton = (
+    type: string,
+    run: Run | undefined
+  ): boolean => {
+    if (type === "schema_diff" || type === "lineage_diff") {
+      return false;
+    }
+    return !run?.result || !!run?.error;
   };
 
   const { ref, onCopyToClipboard, onMouseEnter, onMouseLeave } =
@@ -321,11 +334,17 @@ export const CheckDetail = ({ checkId }: CheckDetailProps) => {
               <Button
                 leftIcon={<CopyIcon />}
                 variant="outline"
-                isDisabled={!run?.result || !!run?.error}
+                isDisabled={shouldDisabledCopyButton(check?.type ?? "", run)}
                 onMouseEnter={onMouseEnter}
                 onMouseLeave={onMouseLeave}
                 size="sm"
-                onClick={onCopyToClipboard}
+                onClick={() => {
+                  if (check?.type === "lineage_diff") {
+                    lineageViewRef.current?.copyToClipboard();
+                  } else {
+                    onCopyToClipboard();
+                  }
+                }}
               >
                 Copy to Clipboard
               </Button>
@@ -356,10 +375,10 @@ export const CheckDetail = ({ checkId }: CheckDetailProps) => {
                   </Center>
                 ))}
               {check && check.type === "schema_diff" && (
-                <SchemaDiffView check={check} />
+                <SchemaDiffView check={check} ref={ref} />
               )}
               {check && check.type === "lineage_diff" && (
-                <LineageDiffView check={check} />
+                <LineageDiffView check={check} ref={lineageViewRef} />
               )}
             </TabPanel>
             {(check?.type === "query" ||

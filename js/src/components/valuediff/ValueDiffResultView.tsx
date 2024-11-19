@@ -10,7 +10,6 @@ import {
   MenuGroup,
   MenuItem,
   MenuList,
-  Portal,
   Spacer,
 } from "@chakra-ui/react";
 
@@ -26,7 +25,6 @@ import {
   RecceActionOptions,
   useRecceActionContext,
 } from "@/lib/hooks/RecceActionContext";
-import { useRef } from "react";
 
 interface ValueDiffResultViewProp
   extends RunResultViewProps<ValueDiffParams, ValueDiffResult> {}
@@ -176,7 +174,6 @@ function _ValueDiffResultView({ run }: ValueDiffResultViewProp, ref: any) {
           maxHeight: "100%",
           overflow: "auto",
           borderBlock: "1px solid lightgray",
-          flex: "1",
         }}
         columns={columns}
         rows={result.data.data}

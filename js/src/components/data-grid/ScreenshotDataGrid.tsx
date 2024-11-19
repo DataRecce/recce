@@ -1,17 +1,11 @@
 import "react-data-grid/lib/styles.css";
 import DataGrid, { DataGridProps } from "react-data-grid";
 import { Flex, forwardRef, Text } from "@chakra-ui/react";
-import {
-  useCopyToClipboardButton,
-  useImageDownloadModal,
-} from "@/lib/hooks/ScreenShot";
-import { useCallback } from "react";
 
 interface ScreenshotDataGridProps extends DataGridProps<any> {}
 
 export const ScreenshotDataGrid = forwardRef(
   ({ ...props }: ScreenshotDataGridProps, ref: any) => {
-    const { CopyToClipboardButton } = useCopyToClipboardButton();
     return (
       <>
         <DataGrid ref={ref} {...props} />

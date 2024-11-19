@@ -7,7 +7,7 @@ import { select } from "@/lib/api/select";
 import { HSplit } from "../split/Split";
 import { Box, Center, Flex, Icon, List, ListItem } from "@chakra-ui/react";
 import { LineageGraphNode } from "../lineage/lineage";
-import { useMemo, useState } from "react";
+import { forwardRef, useMemo, useState } from "react";
 import {
   getIconForChangeStatus,
   getIconForResourceType,
@@ -83,7 +83,7 @@ const NodelistItem = ({
   );
 };
 
-export function SchemaDiffView({ check }: SchemaDiffViewProps) {
+export function _SchemaDiffView({ check }: SchemaDiffViewProps, ref: any) {
   const { lineageGraph } = useLineageGraphContext();
   const params = check.params as SchemaDiffParams;
 
@@ -192,8 +192,9 @@ export function SchemaDiffView({ check }: SchemaDiffViewProps) {
           base={node.data.base}
           current={node.data.current}
           enableScreenshot={true}
+          ref={ref}
         />
-        <List overflow="auto">
+        <List overflow="auto" backgroundColor="white">
           {nodes.map((node, i) => (
             <NodelistItem
               key={i}
@@ -214,3 +215,5 @@ export function SchemaDiffView({ check }: SchemaDiffViewProps) {
   // TODO: handle the edge case where the node is not found
   return <></>;
 }
+
+export const SchemaDiffView = forwardRef(_SchemaDiffView);
