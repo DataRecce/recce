@@ -92,6 +92,10 @@ export function StateImporter({ checksOnly }: { checksOnly?: boolean }) {
       setSelectedFile(event.target.files[0]);
       onOpen();
     }
+
+    if (hiddenFileInput.current) {
+      hiddenFileInput.current.value = "";
+    }
   };
 
   const warningSubject = !!checksOnly ? "checks" : "runs and checks";
