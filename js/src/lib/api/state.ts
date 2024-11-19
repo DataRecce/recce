@@ -11,9 +11,13 @@ export async function exportState(): Promise<string> {
   return response.data;
 }
 
-export async function importState(file: File): Promise<ImportedState> {
+export async function importState(
+  file: File,
+  checksOnly?: boolean
+): Promise<ImportedState> {
   const formData = new FormData();
   formData.append("file", file);
+  formData.append("checks_only", (!!checksOnly).toString());
 
   const response = await axiosClient.post("/api/import", formData);
   return response.data;
