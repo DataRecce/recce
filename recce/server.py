@@ -50,7 +50,7 @@ async def lifespan(fastapi: FastAPI):
 
     # Initialize Recce Config
     config = RecceConfig(config_file=kwargs.get('config'))
-    if not state_loader:
+    if state_loader.state is None:
         preset_checks = config.get('checks', [])
         if preset_checks and len(preset_checks) > 0:
             console.rule("Loading Preset Checks")

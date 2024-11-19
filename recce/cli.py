@@ -414,6 +414,8 @@ def cloud(**kwargs):
               envvar='GITHUB_TOKEN')
 @click.option('--state-file-host', help='The host to fetch the state file from.', type=click.STRING,
               envvar='RECCE_STATE_FILE_HOST', default='', hidden=True)
+@click.option('--password', '-p', help='The password to encrypt the state file in cloud.', type=click.STRING,
+              envvar='RECCE_STATE_PASSWORD')
 @click.option('--force', '-f', help='Bypasses the confirmation prompt. Purge the state file directly.', is_flag=True)
 @add_options(recce_options)
 def purge(**kwargs):
@@ -423,21 +425,22 @@ def purge(**kwargs):
     from rich.console import Console
     handle_debug_flag(**kwargs)
     console = Console()
-    recce_state = None
+    state_loader = None
     cloud_options = {
         'host': kwargs.get('state_file_host'),
         'token': kwargs.get('cloud_token'),
+        'password': kwargs.get('password'),
     }
     force_to_purge = kwargs.get('force', False)
 
     try:
         console.rule('Check Recce State from Cloud')
-        recce_state = RecceStateLoader(review_mode=False, cloud_mode=True,
-                                       state_file=None, cloud_options=cloud_options)
+        state_loader = RecceStateLoader(review_mode=False, cloud_mode=True,
+                                        state_file=None, cloud_options=cloud_options)
     except Exception:
         console.print("[[yellow]Skip[/yellow]] Cannot access existing state file from cloud. Purge it directly.")
 
-    if recce_state is None:
+    if state_loader is None:
         try:
             if force_to_purge is True or click.confirm('\nDo you want to purge the state file?'):
                 rc, err_msg = RecceCloudStateManager(cloud_options).purge_cloud_state()
@@ -451,7 +454,7 @@ def purge(**kwargs):
             pass
         return 0
 
-    info = recce_state.info()
+    info = state_loader.info()
     if info is None:
         console.print("[[yellow]Skip[/yellow]] No state file found in cloud.")
         return 0
@@ -465,12 +468,12 @@ def purge(**kwargs):
 
     try:
         if force_to_purge is True or click.confirm('\nDo you want to purge the state file?'):
-            response = recce_state.purge()
+            response = state_loader.purge()
             if response is True:
                 console.rule('Purged Successfully')
             else:
                 console.rule('Failed to Purge', style='red')
-                console.print(f'Reason: {recce_state.error_message}')
+                console.print(f'Reason: {state_loader.error_message}')
     except click.exceptions.Abort:
         pass
 
@@ -502,11 +505,11 @@ def upload(state_file, **kwargs):
     console = Console()
 
     # load local state
-    recce_state = create_state_loader(review_mode=False, cloud_mode=False, state_file=state_file,
-                                      cloud_options=cloud_options)
+    state_loader = create_state_loader(review_mode=False, cloud_mode=False, state_file=state_file,
+                                       cloud_options=cloud_options)
 
-    if not recce_state.verify():
-        error, hint = recce_state.error_and_hint
+    if not state_loader.verify():
+        error, hint = state_loader.error_and_hint
         console.print(f"[[red]Error[/red]] {error}")
         console.print(f"{hint}")
         exit(1)
@@ -518,7 +521,7 @@ def upload(state_file, **kwargs):
     if cloud_state_file_exists and not click.confirm('\nDo you want to overwrite the existing state file?'):
         return 0
 
-    console.print(state_manager.upload_state_to_cloud(recce_state.state))
+    console.print(state_manager.upload_state_to_cloud(state_loader.state))
 
 
 @cloud.command(cls=TrackCommand)
