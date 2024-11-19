@@ -24,26 +24,11 @@ import {
 
 import { FiPackage } from "react-icons/fi";
 import { getIconForResourceType } from "./styles";
-import {
-  CSSProperties,
-  use,
-  useCallback,
-  useEffect,
-  useRef,
-  useState,
-} from "react";
-import { createSchemaDiffCheck } from "@/lib/api/schemacheck";
-import { useLocation } from "wouter";
-import { Check } from "@/lib/api/checks";
+import { CSSProperties, useEffect, useMemo, useRef, useState } from "react";
 import { useRecceActionContext } from "@/lib/hooks/RecceActionContext";
 import { VscHistory } from "react-icons/vsc";
-
-interface NodeFilterProps {
-  isDisabled?: boolean;
-  viewOptions: LineageDiffViewOptions;
-  onViewOptionsChanged: (options: LineageDiffViewOptions) => void;
-  onSelectNodesClicked: () => void;
-}
+import { useLineageViewContext } from "./LineageViewContext";
+import { findByRunType } from "../run/registry";
 
 const HistoryToggle = () => {
   const { isHistoryOpen, showHistory, closeHistory } = useRecceActionContext();
@@ -59,11 +44,9 @@ const HistoryToggle = () => {
   );
 };
 
-const ViewModeSelectMenu = ({
-  isDisabled,
-  viewOptions,
-  onViewOptionsChanged,
-}: NodeFilterProps) => {
+const ViewModeSelectMenu = ({ isDisabled }: { isDisabled: boolean }) => {
+  const { viewOptions, onViewOptionsChanged, selectMode } =
+    useLineageViewContext();
   const viewMode = viewOptions.view_mode || "changed_models";
   const label = viewMode === "changed_models" ? "Changed Models" : "All";
 
@@ -109,12 +92,9 @@ const ViewModeSelectMenu = ({
   );
 };
 
-const PackageSelectMenu = ({
-  viewOptions,
-  onViewOptionsChanged,
-  isDisabled,
-}: NodeFilterProps) => {
+const PackageSelectMenu = ({ isDisabled }: { isDisabled: boolean }) => {
   const { lineageGraph } = useLineageGraphContext();
+  const { viewOptions, onViewOptionsChanged } = useLineageViewContext();
 
   // get unique package names
   const available = new Set<string>();
@@ -260,14 +240,16 @@ const NodeSelectionInput = (props: {
   );
 };
 
-const SelectFilter = (props: NodeFilterProps) => {
+const SelectFilter = ({ isDisabled }: { isDisabled: boolean }) => {
+  const { viewOptions, onViewOptionsChanged } = useLineageViewContext();
+
   return (
     <NodeSelectionInput
-      isDisabled={props.isDisabled}
-      value={props.viewOptions.select || ""}
+      isDisabled={isDisabled}
+      value={viewOptions.select || ""}
       onChange={(value) => {
-        props.onViewOptionsChanged({
-          ...props.viewOptions,
+        onViewOptionsChanged({
+          ...viewOptions,
           select: value ? value : undefined,
         });
       }}
@@ -275,14 +257,16 @@ const SelectFilter = (props: NodeFilterProps) => {
   );
 };
 
-const ExcludeFilter = (props: NodeFilterProps) => {
+const ExcludeFilter = ({ isDisabled }: { isDisabled: boolean }) => {
+  const { viewOptions, onViewOptionsChanged } = useLineageViewContext();
+
   return (
     <NodeSelectionInput
-      isDisabled={props.isDisabled}
-      value={props.viewOptions.exclude || ""}
+      isDisabled={isDisabled}
+      value={viewOptions.exclude || ""}
       onChange={(value) => {
-        props.onViewOptionsChanged({
-          ...props.viewOptions,
+        onViewOptionsChanged({
+          ...viewOptions,
           exclude: value ? value : undefined,
         });
       }}
@@ -291,91 +275,31 @@ const ExcludeFilter = (props: NodeFilterProps) => {
 };
 
 const ControlItem = (props: {
-  label: string;
+  label?: string;
   children: React.ReactNode;
   style?: CSSProperties;
-  action?: boolean;
 }) => {
   return (
     <Box style={props.style} maxWidth="300px">
-      <Box fontSize="8pt">{props.label}</Box>
+      <Box fontSize="8pt">{props?.label || <>&nbsp;</>}</Box>
       {props.children}
     </Box>
   );
 };
 
-const MoreActionMenu = (props: NodeFilterProps) => {
-  const [, setLocation] = useLocation();
-  const { runAction } = useRecceActionContext();
-  const handleNavToCheck = useCallback(
-    (check: Check) => {
-      if (check.check_id) {
-        setLocation(`/checks/${check.check_id}`);
-      }
-    },
-    [setLocation]
-  );
+export const LineageViewTopBar = () => {
+  const { nodes, deselect, selectMode, ...lineageViewContext } =
+    useLineageViewContext();
+  const selectNodes = useMemo(() => {
+    return nodes.filter((node) => node.data.isSelected);
+  }, [nodes]);
 
-  return (
-    <Menu placement="bottom-end">
-      <MenuButton as={Button} size={"xs"} isDisabled={props.isDisabled}>
-        ...
-      </MenuButton>
+  const isSingleSelect = selectMode === "single" && selectNodes.length === 1;
+  const isMultiSelect = selectMode === "multi" && selectNodes.length >= 1;
+  const isNoSelect = selectMode === "single" && selectNodes.length === 0;
 
-      <MenuList>
-        <MenuGroup title="Diff" m="0" p="4px 12px">
-          <MenuItem
-            as={Text}
-            size="sm"
-            fontSize="10pt"
-            onClick={() => {
-              runAction("row_count_diff", {
-                select: props.viewOptions.select,
-                exclude: props.viewOptions.exclude,
-              });
-            }}
-          >
-            Row Count Diff by Selector
-          </MenuItem>
-        </MenuGroup>
-        <MenuDivider />
-        <MenuGroup title="Add to Checklist" m="0" px="12px">
-          <MenuItem
-            as={Text}
-            size="sm"
-            fontSize="10pt"
-            onClick={async () => {
-              const check = await createLineageDiffCheck(props.viewOptions);
-              if (check) {
-                handleNavToCheck(check);
-              }
-            }}
-          >
-            Lineage Diff
-          </MenuItem>
-          <MenuItem
-            as={Text}
-            size="sm"
-            fontSize="10pt"
-            onClick={async () => {
-              const check = await createSchemaDiffCheck({
-                select: props.viewOptions.select,
-                exclude: props.viewOptions.exclude,
-              });
-              if (check) {
-                handleNavToCheck(check);
-              }
-            }}
-          >
-            Schema Diff by Selector
-          </MenuItem>
-        </MenuGroup>
-      </MenuList>
-    </Menu>
-  );
-};
+  const isFilterDisabled = selectMode !== "single";
 
-export const NodeFilter = (props: NodeFilterProps) => {
   return (
     <HStack width="100%" padding="4pt 8pt">
       <HStack flex="1">
@@ -383,30 +307,106 @@ export const NodeFilter = (props: NodeFilterProps) => {
           <HistoryToggle />
         </ControlItem>
         <ControlItem label="Mode" style={{ flexShrink: "1" }}>
-          <ViewModeSelectMenu {...props} />
+          <ViewModeSelectMenu isDisabled={isFilterDisabled} />
         </ControlItem>
         <ControlItem label="Package" style={{ flexShrink: "1" }}>
-          <PackageSelectMenu {...props} />
+          <PackageSelectMenu isDisabled={isFilterDisabled} />
         </ControlItem>
         <ControlItem label="Select" style={{ flex: "100 1 auto" }}>
-          <SelectFilter {...props} />
+          <SelectFilter isDisabled={isFilterDisabled} />
         </ControlItem>
         <ControlItem label="Exclude" style={{ flex: "100 1 auto" }}>
-          <ExcludeFilter {...props} />
+          <ExcludeFilter isDisabled={isFilterDisabled} />
         </ControlItem>
         <Spacer />
+        {selectMode === "multi" && (
+          <>
+            <ControlItem label="" style={{ flexShrink: "0" }}>
+              <Text fontSize="9pt" color="gray.500">
+                {selectNodes.length} nodes selected
+              </Text>
+            </ControlItem>
 
-        <ControlItem label="Actions" action>
+            <ControlItem label="">
+              <Button
+                variant={"outline"}
+                size="xs"
+                fontSize="9pt"
+                isDisabled={selectMode !== "multi"}
+                onClick={() => {
+                  deselect();
+                }}
+              >
+                Deselect
+              </Button>
+            </ControlItem>
+          </>
+        )}
+        <ControlItem label="Explore">
           <ButtonGroup isAttached variant="outline">
-            <Button
-              size="xs"
-              fontSize="9pt"
-              onClick={props.onSelectNodesClicked}
-              isDisabled={props.isDisabled}
-            >
-              Select nodes
-            </Button>
-            <MoreActionMenu {...props} />
+            <Menu placement="bottom-end">
+              <MenuButton as={Button} size={"xs"}>
+                Actions
+              </MenuButton>
+
+              <MenuList>
+                <MenuGroup title="Diff" m="0" p="4px 12px">
+                  <MenuItem
+                    as={Text}
+                    size="sm"
+                    fontSize="10pt"
+                    isDisabled={!(isNoSelect || isMultiSelect)}
+                    icon={<Icon as={findByRunType("row_count_diff")?.icon} />}
+                    onClick={() => {
+                      lineageViewContext.runRowCountDiff();
+                    }}
+                  >
+                    Row Count Diff
+                  </MenuItem>
+                  <MenuItem
+                    as={Text}
+                    size="sm"
+                    fontSize="10pt"
+                    isDisabled={!isMultiSelect}
+                    icon={<Icon as={findByRunType("value_diff")?.icon} />}
+                    onClick={() => {
+                      lineageViewContext.runValueDiff();
+                    }}
+                  >
+                    Value Diff
+                  </MenuItem>
+                </MenuGroup>
+                <MenuDivider />
+                <MenuGroup title="Add to Checklist" m="0" px="12px">
+                  <MenuItem
+                    as={Text}
+                    size="sm"
+                    fontSize="10pt"
+                    isDisabled={!(isNoSelect || isMultiSelect)}
+                    icon={<Icon as={findByRunType("lineage_diff")?.icon} />}
+                    onClick={() => {
+                      lineageViewContext.addLineageDiffCheck(
+                        lineageViewContext.viewOptions.view_mode
+                      );
+                    }}
+                  >
+                    Lineage Diff
+                  </MenuItem>
+                  <MenuItem
+                    as={Text}
+                    size="sm"
+                    fontSize="10pt"
+                    isDisabled={!(isNoSelect || isMultiSelect)}
+                    icon={<Icon as={findByRunType("schema_diff")?.icon} />}
+                    onClick={() => {
+                      lineageViewContext.addSchemaDiffCheck();
+                    }}
+                  >
+                    Schema Diff
+                  </MenuItem>
+                </MenuGroup>
+              </MenuList>
+            </Menu>
           </ButtonGroup>
         </ControlItem>
       </HStack>

@@ -23,18 +23,15 @@ import {
   MenuList,
   MenuItem,
   Center,
-  SlideFade,
   StackDivider,
-  MenuGroup,
   useToast,
-  useDisclosure,
 } from "@chakra-ui/react";
 import React, {
-  Ref,
   RefObject,
   useCallback,
   useEffect,
   useLayoutEffect,
+  useMemo,
   useRef,
   useState,
 } from "react";
@@ -46,7 +43,6 @@ import ReactFlow, {
   MiniMap,
   Panel,
   Background,
-  ReactFlowProvider,
   ControlButton,
   useReactFlow,
 } from "reactflow";
@@ -60,8 +56,8 @@ import { NodeView } from "./NodeView";
 
 import { useLineageGraphContext } from "@/lib/hooks/LineageGraphContext";
 
-import { NodeSelector } from "./NodeSelector";
-import { NodeFilter } from "./NodeFilter";
+import { ActionControl } from "./ActionControl";
+import { LineageViewTopBar } from "./LineageViewTopBar";
 import {
   IGNORE_SCREENSHOT_CLASS,
   useCopyToClipboard,
@@ -70,16 +66,22 @@ import { useClipBoardToast } from "@/lib/hooks/useClipBoardToast";
 
 import { union } from "./graph";
 import {
-  LineageDiffViewOptions,
   createLineageDiffCheck,
+  LineageDiffViewOptions,
 } from "@/lib/api/lineagecheck";
 import { ChangeStatusLegend } from "./ChangeStatusLegend";
-import { HSplit, VSplit } from "../split/Split";
-import { cacheKeys } from "@/lib/api/cacheKeys";
+import { HSplit } from "../split/Split";
 import { select } from "@/lib/api/select";
-import { useLocation } from "wouter";
 import { AxiosError } from "axios";
 import { useRecceActionContext } from "@/lib/hooks/RecceActionContext";
+import {
+  LineageViewContext,
+  LineageViewContextType,
+} from "./LineageViewContext";
+import { useMultiNodesAction } from "./useMultiNodesAction";
+import { createSchemaDiffCheck } from "@/lib/api/schemacheck";
+import { useLocation } from "wouter";
+import { Check } from "@/lib/api/checks";
 
 export interface LineageViewProps {
   viewOptions?: LineageDiffViewOptions;
@@ -103,39 +105,6 @@ const nodeColor = (node: Node) => {
     ? getIconForChangeStatus(node?.data?.changeStatus).color
     : ("lightgray" as string);
 };
-
-const viewModeTitle = {
-  all: "All",
-  changed_models: "Changed Models",
-};
-
-function _AddLineageDiffCheckButton({
-  viewOptions,
-  isDisabled,
-}: {
-  viewOptions: LineageDiffViewOptions;
-  isDisabled: boolean;
-}) {
-  const [, setLocation] = useLocation();
-  return (
-    <Button
-      size="xs"
-      variant="outline"
-      backgroundColor="white"
-      isDisabled={isDisabled}
-      onClick={async () => {
-        const check = await createLineageDiffCheck(viewOptions);
-        if (check) {
-          setLocation(`/checks/${check.check_id}`);
-        } else {
-          setLocation(`/checks`);
-        }
-      }}
-    >
-      Add lineage diff check
-    </Button>
-  );
-}
 
 const useResizeObserver = (
   ref: RefObject<HTMLElement>,
@@ -187,6 +156,19 @@ const useResizeObserver = (
   }, [target, size, handler]);
 };
 
+const useNavToCheck = () => {
+  const [, setLocation] = useLocation();
+  const navToCheck = useCallback(
+    (check: Check) => {
+      if (check.check_id) {
+        setLocation(`/checks/${check.check_id}`);
+      }
+    },
+    [setLocation]
+  );
+  return navToCheck;
+};
+
 export function LineageView({ ...props }: LineageViewProps) {
   const reactFlow = useReactFlow();
   const refReactFlow = useRef<HTMLDivElement>(null);
@@ -229,7 +211,7 @@ export function LineageView({ ...props }: LineageViewProps) {
     refetchRunsAggregated,
   } = useLineageGraphContext();
 
-  const { showRunId, closeRunResult } = useRecceActionContext();
+  const { showRunId, closeRunResult, runAction } = useRecceActionContext();
 
   /**
    * View mode
@@ -241,24 +223,21 @@ export function LineageView({ ...props }: LineageViewProps) {
 
   /**
    * Select mode: the behavior of clicking on nodes
-   * - detail: show node detail view
-   * - action: select nodes for action
+   * - single: single-select mode
+   * - multi: multi-select mode
    * - action_result: show node action result view
    */
   const [selectMode, setSelectMode] = useState<
-    "detail" | "action" | "action_result"
-  >("detail");
+    "single" | "multi" | "action_result"
+  >("single");
 
-  /**
-   * Which control the linage view should be in
-   */
-  const [controlMode, setControlMode] = useState<"normal" | "selector">(
-    "normal"
-  );
-
-  const [detailViewSelected, setDetailViewSelected] =
-    useState<LineageGraphNode>();
-  const [isDetailViewShown, setIsDetailViewShown] = useState(false);
+  const selectedNode = useMemo(() => {
+    if (selectMode === "single") {
+      return nodes.find((node) => node.data.isSelected)?.data;
+    } else {
+      return undefined;
+    }
+  }, [selectMode, nodes]);
 
   const [isContextMenuRendered, setIsContextMenuRendered] = useState(false);
   const [contextMenuPosition, setContextMenuPosition] = useState<{
@@ -266,13 +245,6 @@ export function LineageView({ ...props }: LineageViewProps) {
     y: number;
     selectedNode?: Node;
   }>({ x: 0, y: 0 });
-
-  // query key is from select and exclude of viewOptions
-  const queryKey = [
-    ...cacheKeys.lineage(),
-    viewOptions.select,
-    viewOptions.exclude,
-  ];
 
   const toast = useToast();
 
@@ -312,6 +284,10 @@ export function LineageView({ ...props }: LineageViewProps) {
 
   const onNodeMouseEnter = (event: React.MouseEvent, node: Node) => {
     if (!lineageGraph) {
+      return;
+    }
+
+    if (selectMode !== "single") {
       return;
     }
 
@@ -357,8 +333,10 @@ export function LineageView({ ...props }: LineageViewProps) {
     }
   };
 
+  const navToCheck = useNavToCheck();
+
   useResizeObserver(refReactFlow, async () => {
-    if (selectMode === "detail" || selectMode === "action_result") {
+    if (selectMode === "single" || selectMode === "action_result") {
       const selectedNode = nodes.find((node) => node.data.isSelected);
       if (selectedNode) {
         centerNode(selectedNode);
@@ -371,11 +349,9 @@ export function LineageView({ ...props }: LineageViewProps) {
   const onNodeClick = (event: React.MouseEvent, node: Node) => {
     if (props.interactive === false) return;
     closeContextMenu();
-    if (selectMode === "detail") {
-      setDetailViewSelected(node.data);
-      if (!isDetailViewShown) {
+    if (selectMode === "single") {
+      if (!selectedNode) {
         centerNode(node);
-        setIsDetailViewShown(true);
       }
       setNodes(selectSingleNode(node.id, nodes));
     } else if (selectMode === "action_result") {
@@ -385,7 +361,8 @@ export function LineageView({ ...props }: LineageViewProps) {
       centerNode(node);
       setNodes(selectSingleNode(node.id, nodes));
     } else {
-      setNodes(selectNode(node.id, nodes));
+      const newNodes = selectNode(node.id, nodes);
+      setNodes(newNodes);
     }
   };
 
@@ -452,6 +429,17 @@ export function LineageView({ ...props }: LineageViewProps) {
     })();
   };
 
+  const multiNodeAction = useMultiNodesAction(
+    nodes.map((node) => node.data).filter((node) => node.isSelected),
+    {
+      onActionStarted: () => {
+        setSelectMode("action_result");
+      },
+      onActionNodeUpdated: handleActionNodeUpdated,
+      onActionCompleted: () => {},
+    }
+  );
+
   if (isLoading) {
     return (
       <Flex
@@ -468,7 +456,7 @@ export function LineageView({ ...props }: LineageViewProps) {
   const selectParentNodes = () => {
     const selectedNode = contextMenuPosition.selectedNode;
     if (
-      selectMode !== "action" ||
+      selectMode !== "multi" ||
       selectedNode === undefined ||
       lineageGraph === undefined
     )
@@ -483,7 +471,7 @@ export function LineageView({ ...props }: LineageViewProps) {
   const selectChildNodes = () => {
     const selectedNode = contextMenuPosition.selectedNode;
     if (
-      selectMode !== "action" ||
+      selectMode !== "multi" ||
       selectedNode === undefined ||
       lineageGraph === undefined
     )
@@ -501,7 +489,7 @@ export function LineageView({ ...props }: LineageViewProps) {
   };
 
   const onNodeContextMenu = (event: React.MouseEvent, node: Node) => {
-    if (selectMode !== "action") {
+    if (selectMode !== "multi") {
       return;
     }
     // Only show context menu when selectMode is action
@@ -545,7 +533,6 @@ export function LineageView({ ...props }: LineageViewProps) {
           <Button
             colorScheme="blue"
             onClick={() => {
-              setControlMode("normal");
               handleViewOptionsChanged({ ...viewOptions, view_mode: "all" });
             }}
           >
@@ -555,131 +542,187 @@ export function LineageView({ ...props }: LineageViewProps) {
       </Center>
     );
   }
+  const handleSelectNodesClicked = () => {
+    const newMode = selectMode === "single" ? "multi" : "single";
+
+    const newNodes = cleanUpNodes(nodes, newMode === "multi");
+    setNodes(newNodes);
+    setSelectMode(newMode);
+  };
+
+  const selectNodeMulti = (nodeId: string) => {
+    if (selectMode !== "multi") {
+      if (!lineageGraph) {
+        return;
+      }
+
+      const nodeSet = selectDownstream(lineageGraph, lineageGraph.modifiedSet);
+      let [newNodes, newEdges] = highlightNodes(
+        Array.from(nodeSet),
+        nodes,
+        edges
+      );
+      newNodes = cleanUpNodes(newNodes, true);
+      newNodes = selectSingleNode(nodeId, newNodes);
+      setNodes(newNodes);
+      setEdges(newEdges);
+
+      setSelectMode("multi");
+      multiNodeAction.reset();
+    } else {
+      setNodes(selectNode(nodeId, nodes));
+    }
+  };
+  const deselect = () => {
+    setSelectMode("single");
+    const newNodes = cleanUpNodes(nodes);
+
+    setNodes(newNodes);
+    closeRunResult();
+    refetchRunsAggregated?.();
+  };
+
+  const contextValue: LineageViewContextType = {
+    selectMode,
+    nodes,
+    viewOptions,
+    onViewOptionsChanged: handleViewOptionsChanged,
+    selectNodeMulti,
+    deselect,
+    runRowCountDiff: async () => {
+      if (selectMode === "multi") {
+        await multiNodeAction.runRowCountDiff();
+      } else {
+        await runAction("row_count_diff", {
+          select: viewOptions.select,
+          exclude: viewOptions.exclude,
+        });
+      }
+    },
+    runValueDiff: async () => {
+      if (selectMode === "multi") {
+        await multiNodeAction.runValueDiff();
+      }
+    },
+    addLineageDiffCheck: async () => {
+      if (selectMode === "multi") {
+        multiNodeAction.addLineageDiffCheck(viewOptions.view_mode || "all");
+      } else {
+        const check = await createLineageDiffCheck(viewOptions);
+        if (check) {
+          navToCheck(check);
+        }
+      }
+    },
+    addSchemaDiffCheck: async () => {
+      if (selectMode === "multi") {
+        multiNodeAction.addSchemaDiffCheck();
+      } else {
+        const check = await createSchemaDiffCheck({
+          select: viewOptions.select,
+          exclude: viewOptions.exclude,
+        });
+        if (check) {
+          navToCheck(check);
+        }
+      }
+    },
+    cancel: multiNodeAction.cancel,
+    actionState: multiNodeAction.actionState,
+  };
 
   return (
-    <HSplit
-      sizes={detailViewSelected ? [70, 30] : [100, 0]}
-      minSize={detailViewSelected ? 400 : 0}
-      gutterSize={detailViewSelected ? 5 : 0}
-      style={{ height: "100%", width: "100%" }}
-    >
-      <VStack
-        ref={refReactFlow}
-        divider={<StackDivider borderColor="gray.200" />}
-        spacing={0}
-        style={{ contain: "strict" }}
+    <LineageViewContext.Provider value={contextValue}>
+      <HSplit
+        sizes={selectedNode ? [70, 30] : [100, 0]}
+        minSize={selectedNode ? 400 : 0}
+        gutterSize={selectedNode ? 5 : 0}
+        style={{ height: "100%", width: "100%" }}
       >
-        {props.interactive && (
-          <NodeFilter
-            isDisabled={controlMode !== "normal"}
-            viewOptions={viewOptions}
-            onViewOptionsChanged={handleViewOptionsChanged}
-            onSelectNodesClicked={() => {
-              const newMode = selectMode === "detail" ? "action" : "detail";
-              setDetailViewSelected(undefined);
-              setIsDetailViewShown(false);
-              const newNodes = cleanUpNodes(nodes, newMode === "action");
-              setNodes(newNodes);
-              setSelectMode(newMode);
-              setControlMode("selector");
-            }}
-          />
-        )}
-        <ReactFlow
-          nodeTypes={nodeTypes}
-          edgeTypes={edgeTypes}
-          nodes={nodes}
-          edges={edges}
-          onNodesChange={onNodesChange}
-          onEdgesChange={onEdgesChange}
-          onNodeClick={onNodeClick}
-          onNodeMouseEnter={onNodeMouseEnter}
-          onNodeMouseLeave={onNodeMouseLeave}
-          onNodeContextMenu={onNodeContextMenu}
-          onClick={closeContextMenu}
-          maxZoom={1}
-          minZoom={0.1}
-          fitView={true}
-          nodesDraggable={props.interactive}
-          ref={ref}
+        <VStack
+          ref={refReactFlow}
+          divider={<StackDivider borderColor="gray.200" />}
+          spacing={0}
+          style={{ contain: "strict" }}
         >
-          <Background color="#ccc" />
-          <Controls
-            showInteractive={false}
-            position="top-right"
-            className={IGNORE_SCREENSHOT_CLASS}
+          {props.interactive && <LineageViewTopBar />}
+          <ReactFlow
+            nodeTypes={nodeTypes}
+            edgeTypes={edgeTypes}
+            nodes={nodes}
+            edges={edges}
+            onNodesChange={onNodesChange}
+            onEdgesChange={onEdgesChange}
+            onNodeClick={onNodeClick}
+            onNodeMouseEnter={onNodeMouseEnter}
+            onNodeMouseLeave={onNodeMouseLeave}
+            onNodeContextMenu={onNodeContextMenu}
+            onClick={closeContextMenu}
+            maxZoom={1}
+            minZoom={0.1}
+            fitView={true}
+            nodesDraggable={props.interactive}
+            ref={ref}
           >
-            <ControlButton
-              title="copy image"
-              onClick={async () => {
-                copyToClipboard();
+            <Background color="#ccc" />
+            <Controls
+              showInteractive={false}
+              position="top-right"
+              className={IGNORE_SCREENSHOT_CLASS}
+            >
+              <ControlButton
+                title="copy image"
+                onClick={async () => {
+                  copyToClipboard();
+                }}
+              >
+                <Icon as={FiCopy} />
+              </ControlButton>
+            </Controls>
+            <ImageDownloadModal />
+            <Panel position="bottom-left">
+              <HStack>
+                <ChangeStatusLegend />
+              </HStack>
+            </Panel>
+            <Panel position="top-left">
+              <Text fontSize="xl" color="grey" opacity={0.5}>
+                {nodes.length > 0 ? "" : "No nodes"}
+              </Text>
+            </Panel>
+            <MiniMap
+              nodeColor={nodeColor}
+              nodeStrokeWidth={3}
+              zoomable
+              pannable
+            />
+            {selectMode === "action_result" && (
+              <Panel
+                position="bottom-center"
+                className={IGNORE_SCREENSHOT_CLASS}
+              >
+                <ActionControl
+                  onClose={() => {
+                    deselect();
+                  }}
+                />
+              </Panel>
+            )}
+          </ReactFlow>
+        </VStack>
+        {selectMode === "single" && selectedNode ? (
+          <Box borderLeft="solid 1px lightgray" height="100%">
+            <NodeView
+              node={selectedNode}
+              onCloseNode={() => {
+                setNodes(cleanUpNodes(nodes));
               }}
-            >
-              <Icon as={FiCopy} />
-            </ControlButton>
-          </Controls>
-          <ImageDownloadModal />
-          <Panel position="bottom-left">
-            <HStack>
-              <ChangeStatusLegend />
-            </HStack>
-          </Panel>
-          <Panel position="top-left">
-            <Text fontSize="xl" color="grey" opacity={0.5}>
-              {nodes.length > 0 ? "" : "No nodes"}
-            </Text>
-          </Panel>
-          <MiniMap
-            nodeColor={nodeColor}
-            nodeStrokeWidth={3}
-            zoomable
-            pannable
-          />
-          <Panel position="bottom-center" className={IGNORE_SCREENSHOT_CLASS}>
-            <SlideFade
-              in={controlMode === "selector"}
-              unmountOnExit
-              style={{ zIndex: 10 }}
-            >
-              <NodeSelector
-                viewMode={viewMode}
-                nodes={nodes
-                  .map((node) => node.data)
-                  .filter((node) => node.isSelected)}
-                onClose={() => {
-                  setSelectMode("detail");
-                  setControlMode("normal");
-                  const newNodes = cleanUpNodes(nodes);
-                  setDetailViewSelected(undefined);
-                  setIsDetailViewShown(false);
-                  setNodes(newNodes);
-                  closeRunResult();
-                  refetchRunsAggregated?.();
-                }}
-                onActionStarted={() => {
-                  setSelectMode("action_result");
-                }}
-                onActionNodeUpdated={handleActionNodeUpdated}
-                onActionCompleted={() => {}}
-              />
-            </SlideFade>
-          </Panel>
-        </ReactFlow>
-      </VStack>
-      {selectMode === "detail" && detailViewSelected ? (
-        <Box borderLeft="solid 1px lightgray" height="100%">
-          <NodeView
-            node={detailViewSelected}
-            onCloseNode={() => {
-              setDetailViewSelected(undefined);
-              setIsDetailViewShown(false);
-              setNodes(cleanUpNodes(nodes));
-            }}
-          />
-        </Box>
-      ) : (
-        <Box></Box>
-      )}
+            />
+          </Box>
+        ) : (
+          <Box></Box>
+        )}
+      </HSplit>
       {isContextMenuRendered && (
         // Only render context menu when select mode is action
         <Menu isOpen={true} onClose={closeContextMenu}>
@@ -699,8 +742,6 @@ export function LineageView({ ...props }: LineageViewProps) {
           </MenuList>
         </Menu>
       )}
-      {/* </Flex> */}
-      {/* <div></div> */}
-    </HSplit>
+    </LineageViewContext.Provider>
   );
 }

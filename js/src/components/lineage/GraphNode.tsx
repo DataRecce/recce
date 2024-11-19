@@ -1,5 +1,5 @@
 import { Box, Flex, HStack, Icon, Spacer, Tooltip } from "@chakra-ui/react";
-import React from "react";
+import React, { useState } from "react";
 
 import { Handle, NodeProps, Position, useStore } from "reactflow";
 import { LineageGraphNode } from "./lineage";
@@ -10,13 +10,11 @@ import "./styles.css";
 import { ActionTag } from "./ActionTag";
 import { useLineageGraphContext } from "@/lib/hooks/LineageGraphContext";
 
-import { MdFormatListNumberedRtl, MdSchema } from "react-icons/md";
-import { NodeColumnData } from "@/lib/api/info";
 import { findByRunType } from "../run/registry";
 import { isSchemaChanged } from "../schema/schemaDiff";
+import { useLineageViewContext } from "./LineageViewContext";
 
 interface GraphNodeProps extends NodeProps<LineageGraphNode> {}
-
 
 const NodeRunsAggregated = ({ id }: { id: string }) => {
   const { lineageGraph, runsAggregated } = useLineageGraphContext();
@@ -84,11 +82,13 @@ export function GraphNode({ data }: GraphNodeProps) {
   const showContent = useStore((s) => s.transform[2] > 0.3);
 
   const { icon: resourceIcon } = getIconForResourceType(resourceType);
+  const [isHovered, setIsHovered] = useState(false);
+  const { selectNodeMulti, selectMode } = useLineageViewContext();
 
   // text color, icon
 
   let color = "gray.400";
-  let iconChangeStatus;
+  let iconChangeStatus: any;
   let borderStyle = "solid";
   if (changeStatus) {
     iconChangeStatus = getIconForChangeStatus(changeStatus).icon;
@@ -130,6 +130,8 @@ export function GraphNode({ data }: GraphNodeProps) {
         transition="box-shadow 0.2s ease-in-out"
         padding={0}
         className={highlightClassName}
+        onMouseEnter={() => setIsHovered(true)}
+        onMouseLeave={() => setIsHovered(false)}
       >
         <Flex
           backgroundColor={color}
@@ -140,7 +142,23 @@ export function GraphNode({ data }: GraphNodeProps) {
           alignItems="top"
           visibility={showContent ? "inherit" : "hidden"}
         >
-          <Icon as={resourceIcon} />
+          {isHovered || selectMode === "multi" ? (
+            // Don't know why that the chakra checkbox would trigger two onNodeClick events, use the native cehckbox instead
+            // <Checkbox isChecked={isSelected} />
+            <input
+              checked={isSelected && selectMode === "multi"}
+              type="checkbox"
+              onChange={() => {
+                //noop, add the handler to prevent the warning in the console.
+              }}
+              onClick={(e) => {
+                e.stopPropagation();
+                selectNodeMulti(data.id);
+              }}
+            />
+          ) : (
+            <Icon as={resourceIcon} />
+          )}
         </Flex>
 
         <Flex flex="1 0 auto" mx="1" width="100px" direction="column">
