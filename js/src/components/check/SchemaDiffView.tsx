@@ -21,7 +21,7 @@ interface SchemaDiffViewProps {
 }
 
 export interface SchemaDiffParams {
-  node_id?: string;
+  node_id?: string | string[];
   select?: string;
   exclude?: string;
 }
@@ -104,9 +104,13 @@ export function SchemaDiffView({ check }: SchemaDiffViewProps) {
     const removedNodes: string[] = [];
 
     if (params?.node_id) {
-      const node = lineageGraph?.nodes[params.node_id];
-      if (node) {
-        selectedNodes.push(node);
+      const nodeIds =
+        params.node_id instanceof Array ? params.node_id : [params.node_id];
+      for (const nodeId of nodeIds) {
+        const node = lineageGraph?.nodes[nodeId];
+        if (node) {
+          selectedNodes.push(node);
+        }
       }
     } else {
       for (const nodeId of data?.nodes || []) {

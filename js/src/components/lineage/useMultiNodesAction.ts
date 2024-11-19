@@ -242,35 +242,21 @@ export const useMultiNodesAction = (
 
   const addLineageDiffCheck = async (viewMode: string) => {
     const nodeIds = nodes.map((node) => node.id);
-    const check = await createLineageDiffCheck({
+    return await createLineageDiffCheck({
       view_mode: viewMode as any,
       node_ids: nodeIds,
     });
-    if (check) {
-      setLocation(`/checks/${check.check_id}`);
-    } else {
-      setLocation(`/checks`);
-    }
   };
 
   const addSchemaDiffCheck = async () => {
-    // TODO: Add schema changes
     let check;
     if (nodes.length === 1) {
       check = await createSchemaDiffCheck({ node_id: nodes[0].id });
     } else {
-      // TODO: Implement new type of check for multiple schema changes (RC-102)
-      await Promise.all(
-        nodes.map(async (node) => {
-          await createSchemaDiffCheck({ node_id: node.id });
-        })
-      );
+      const nodeIds = nodes.map((node) => node.id);
+      check = await createSchemaDiffCheck({ node_id: nodeIds });
     }
-    if (check) {
-      setLocation(`/checks/${check.check_id}`);
-    } else {
-      setLocation(`/checks`);
-    }
+    return check;
   };
 
   const cancel = async () => {

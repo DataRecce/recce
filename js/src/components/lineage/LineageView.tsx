@@ -614,26 +614,32 @@ export function LineageView({ ...props }: LineageViewProps) {
       }
     },
     addLineageDiffCheck: async () => {
+      let check: Check;
       if (selectMode === "multi") {
-        multiNodeAction.addLineageDiffCheck(viewOptions.view_mode || "all");
+        check = await multiNodeAction.addLineageDiffCheck(
+          viewOptions.view_mode || "all"
+        );
+        deselect();
       } else {
-        const check = await createLineageDiffCheck(viewOptions);
-        if (check) {
-          navToCheck(check);
-        }
+        check = await createLineageDiffCheck(viewOptions);
+      }
+      if (check) {
+        navToCheck(check);
       }
     },
     addSchemaDiffCheck: async () => {
+      let check: Check;
       if (selectNodes.length > 0) {
-        multiNodeAction.addSchemaDiffCheck();
+        check = await multiNodeAction.addSchemaDiffCheck();
+        deselect();
       } else {
-        const check = await createSchemaDiffCheck({
+        check = await createSchemaDiffCheck({
           select: viewOptions.select,
           exclude: viewOptions.exclude,
         });
-        if (check) {
-          navToCheck(check);
-        }
+      }
+      if (check) {
+        navToCheck(check);
       }
     },
     cancel: multiNodeAction.cancel,
