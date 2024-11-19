@@ -355,7 +355,9 @@ export const LineageViewTopBar = () => {
                     as={Text}
                     size="sm"
                     fontSize="10pt"
-                    isDisabled={!(isNoSelect || isMultiSelect)}
+                    isDisabled={
+                      !(isNoSelect || isSingleSelect || isMultiSelect)
+                    }
                     icon={<Icon as={findByRunType("row_count_diff")?.icon} />}
                     onClick={() => {
                       lineageViewContext.runRowCountDiff();
@@ -367,7 +369,7 @@ export const LineageViewTopBar = () => {
                     as={Text}
                     size="sm"
                     fontSize="10pt"
-                    isDisabled={!isMultiSelect}
+                    isDisabled={!(isSingleSelect || isMultiSelect)}
                     icon={<Icon as={findByRunType("value_diff")?.icon} />}
                     onClick={() => {
                       lineageViewContext.runValueDiff();
@@ -396,7 +398,9 @@ export const LineageViewTopBar = () => {
                     as={Text}
                     size="sm"
                     fontSize="10pt"
-                    isDisabled={!(isNoSelect || isMultiSelect)}
+                    isDisabled={
+                      !(isNoSelect || isSingleSelect || isMultiSelect)
+                    }
                     icon={<Icon as={findByRunType("schema_diff")?.icon} />}
                     onClick={() => {
                       lineageViewContext.addSchemaDiffCheck();

@@ -142,7 +142,7 @@ export function GraphNode({ data }: GraphNodeProps) {
           alignItems="top"
           visibility={showContent ? "inherit" : "hidden"}
         >
-          {isHovered || selectMode === "multi" ? (
+          {(selectMode == "single" && isHovered) || selectMode === "multi" ? (
             // Don't know why that the chakra checkbox would trigger two onNodeClick events, use the native cehckbox instead
             // <Checkbox isChecked={isSelected} />
             <input
