@@ -406,7 +406,7 @@ export default function Home() {
         <QueryClientProvider client={reactQueryClient}>
           <Router hook={useHashLocation}>
             <RecceContextProvider>
-              <Flex direction="column" height="100vh">
+              <Flex direction="column" height="100vh" overflow="hidden">
                 <TopBar />
                 <NavBar />
                 <OnboardingGuide />
