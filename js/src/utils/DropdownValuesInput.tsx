@@ -37,7 +37,7 @@ export const DropdownValuesInput = (props: DropdownValuesInputProps) => {
     if (tags.length > 1) {
       return `${tags.length} ${props.unitName}s selected`;
     } else if (tags.length === 1) {
-      return `${tags.length} ${props.unitName} selected`;
+      return `${tags[0]}`;
     }
     return "";
   };
