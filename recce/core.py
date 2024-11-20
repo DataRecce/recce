@@ -228,6 +228,22 @@ class RecceContext:
 
         return import_runs, import_checks
 
+    def import_checks(self, import_state: RecceState, merge: bool = True):
+        """
+        Import the checks from another RecceState object.
+
+        :param import_state: the state to import
+        :param merge: whether to merge the state or replace the current state
+        """
+
+        if merge:
+            import_checks = self._merge_checks(import_state.checks)
+        else:
+            self.checks = list(import_state.checks)
+            import_checks = len(self.checks)
+
+        return import_checks
+
     def mark_onboarding_completed(self):
         if self.state_loader.cloud_mode:
             try:

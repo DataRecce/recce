@@ -23,7 +23,7 @@ import { useLocation } from "wouter";
 import { useRunsAggregated } from "@/lib/hooks/LineageGraphContext";
 import { TfiImport } from "react-icons/tfi";
 
-export function StateImporter() {
+export function StateImporter({ checksOnly }: { checksOnly?: boolean }) {
   const toast = useToast();
   const queryClient = useQueryClient();
   const hiddenFileInput = useRef<HTMLInputElement>(null);
@@ -39,15 +39,18 @@ export function StateImporter() {
     }
 
     try {
-      const { runs, checks } = await importState(selectedFile);
+      const { runs, checks } = await importState(selectedFile, checksOnly);
       refetchRunsAggregated();
       await queryClient.invalidateQueries({ queryKey: cacheKeys.checks() });
       await queryClient.invalidateQueries({ queryKey: cacheKeys.runs() });
       if (location.includes("/checks")) {
         setLocation("/checks");
       }
+      const description = !!checksOnly
+        ? `${checks} checks imported successfully`
+        : `${runs} runs and ${checks} checks imported successfully`;
       toast({
-        description: `${runs} runs and ${checks} checks imported successfully`,
+        description: description,
         status: "info",
         variant: "left-accent",
         position: "bottom",
@@ -76,6 +79,7 @@ export function StateImporter() {
     location,
     setLocation,
     refetchRunsAggregated,
+    checksOnly,
   ]);
 
   const handleClick = () => {
@@ -89,7 +93,13 @@ export function StateImporter() {
       setSelectedFile(event.target.files[0]);
       onOpen();
     }
+
+    if (hiddenFileInput.current) {
+      hiddenFileInput.current.value = "";
+    }
   };
+
+  const warningSubject = !!checksOnly ? "checks" : "runs and checks";
 
   return (
     <>
@@ -130,7 +140,7 @@ export function StateImporter() {
                 </Flex>
                 <Flex>
                   <Text>
-                    The current runs and checks will be{" "}
+                    The current {warningSubject} will be{" "}
                     <Text as="span" fontWeight="600">
                       merged
                     </Text>{" "}
