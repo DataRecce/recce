@@ -160,7 +160,12 @@ class RowCountDiffResultDiffer(TaskResultDiffer):
         elif params.get('node_ids'):
             return params.get('node_ids', [])
         else:
-            return TaskResultDiffer.get_node_ids_by_selector(params.get('select'), params.get('exclude'))
+            return TaskResultDiffer.get_node_ids_by_selector(
+                select=params.get('select'),
+                exclude=params.get('exclude'),
+                packages=params.get('packages'),
+                view_mode=params.get('view_mode'),
+            )
 
     def _get_changed_nodes(self) -> Union[List[str], None]:
         if self.changes:
