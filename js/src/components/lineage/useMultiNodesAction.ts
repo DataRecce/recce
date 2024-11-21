@@ -52,6 +52,7 @@ export const useMultiNodesAction = (
     for (const node of nodes) {
       const skipReason = skip(node);
 
+      node.isActionMode = true;
       if (skipReason) {
         node.action = {
           mode,
@@ -135,6 +136,7 @@ export const useMultiNodesAction = (
 
     for (const node of nodes) {
       const { params, skipReason } = getParams(node);
+      node.isActionMode = true;
       if (skipReason) {
         node.action = {
           mode,

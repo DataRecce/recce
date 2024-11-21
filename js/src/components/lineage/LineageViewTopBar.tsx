@@ -371,7 +371,9 @@ export const LineageViewTopBar = () => {
                     as={Text}
                     size="sm"
                     fontSize="10pt"
-                    isDisabled={!(isSingleSelect || isMultiSelect)}
+                    isDisabled={
+                      !(isNoSelect || isSingleSelect || isMultiSelect)
+                    }
                     icon={<Icon as={findByRunType("value_diff")?.icon} />}
                     onClick={() => {
                       lineageViewContext.runValueDiff();
