@@ -678,7 +678,7 @@ class DbtAdapter(BaseAdapter):
             package_spec = SelectionUnion([_parse_difference([f'package:{p}'], None) for p in packages])
             specs.append(package_spec)
         if view_mode and view_mode == 'changed_models':
-            specs.append(parse_difference(['1+state:modified+'], None))
+            specs.append(_parse_difference(['1+state:modified+'], None))
         spec = SelectionIntersection(specs)
 
         manifest = Manifest()
