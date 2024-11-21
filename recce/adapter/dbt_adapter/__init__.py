@@ -674,7 +674,7 @@ class DbtAdapter(BaseAdapter):
 
         specs = [_parse_difference(select_list, exclude_list)]
 
-        if packages:
+        if packages is not None:
             package_spec = SelectionUnion([_parse_difference([f'package:{p}'], None) for p in packages])
             specs.append(package_spec)
         if view_mode and view_mode == 'changed_models':

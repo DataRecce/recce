@@ -6,7 +6,7 @@ import uuid
 from contextlib import asynccontextmanager
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Optional, Any, Set, Annotated
+from typing import Optional, Any, Set, Annotated, Literal
 
 from fastapi import FastAPI, HTTPException, Request, WebSocket, UploadFile, Response, BackgroundTasks, Form
 from fastapi.middleware.cors import CORSMiddleware
@@ -210,6 +210,8 @@ async def get_info():
 class SelectNodesInput(BaseModel):
     select: Optional[str] = None
     exclude: Optional[str] = None
+    packages: Optional[list[str]] = None
+    view_mode: Optional[Literal['all', 'changed_models']] = None
 
 
 class SelectNodesOutput(BaseModel):
@@ -224,7 +226,12 @@ async def select_nodes(input: SelectNodesInput):
         raise HTTPException(status_code=400, detail='Only dbt adapter is supported')
 
     try:
-        nodes = context.adapter.select_nodes(input.select, input.exclude)
+        nodes = context.adapter.select_nodes(
+            select=input.select,
+            exclude=input.exclude,
+            packages=input.packages,
+            view_mode=input.view_mode,
+        )
         nodes = [node for node in nodes if not node.startswith('test.')]
         return SelectNodesOutput(nodes=nodes)
     except Exception as e:
