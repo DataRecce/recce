@@ -5,6 +5,8 @@ export interface SchemaDiffViewParams {
   node_id?: string | string[];
   select?: string;
   exclude?: string;
+  view_mode?: "all" | "changed_models";
+  packages?: string[];
 }
 
 export async function createSchemaDiffCheck(

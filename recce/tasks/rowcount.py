@@ -11,6 +11,8 @@ class RowCountDiffParams(TypedDict, total=False):
     node_ids: Optional[list[str]]
     select: Optional[str]
     exclude: Optional[str]
+    packages: Optional[list[str]]
+    view_mode: Optional[str]
 
 
 class RowCountDiffTask(Task, QueryMixin):
@@ -54,9 +56,14 @@ class RowCountDiffTask(Task, QueryMixin):
                 query_candidates.append(node)
         else:
             def countable(unique_id):
-                return unique_id.startswith('model') or unique_id.startswith('snapshot')
+                return unique_id.startswith('model') or unique_id.startswith('snapshot') or unique_id.startswith('seed')
 
-            node_ids = dbt_adapter.select_nodes(self.params.get('select', ""), self.params.get('exclude', ""))
+            node_ids = dbt_adapter.select_nodes(
+                select=self.params.get('select', None),
+                exclude=self.params.get('exclude', None),
+                packages=self.params.get('packages', None),
+                view_mode=self.params.get('view_mode', None)
+            )
             node_ids = list(filter(countable, node_ids))
             for node_id in node_ids:
                 name = dbt_adapter.get_node_name_by_id(node_id)
@@ -153,7 +160,12 @@ class RowCountDiffResultDiffer(TaskResultDiffer):
         elif params.get('node_ids'):
             return params.get('node_ids', [])
         else:
-            return TaskResultDiffer.get_node_ids_by_selector(params.get('select'), params.get('exclude'))
+            return TaskResultDiffer.get_node_ids_by_selector(
+                select=params.get('select'),
+                exclude=params.get('exclude'),
+                packages=params.get('packages'),
+                view_mode=params.get('view_mode'),
+            )
 
     def _get_changed_nodes(self) -> Union[List[str], None]:
         if self.changes:

@@ -1,5 +1,5 @@
 from abc import ABC, abstractmethod
-from typing import List, Union, Optional
+from typing import List, Union, Optional, Literal
 
 from pydantic import BaseModel
 
@@ -72,8 +72,18 @@ class TaskResultDiffer(ABC):
         return node.unique_id if node else None
 
     @staticmethod
-    def get_node_ids_by_selector(select: Optional[str] = None, exclude: Optional[str] = None) -> List[str]:
-        nodes = default_context().adapter.select_nodes(select, exclude)
+    def get_node_ids_by_selector(
+        select: Optional[str] = None,
+        exclude: Optional[str] = None,
+        packages: Optional[list[str]] = None,
+        view_mode: Optional[Literal['all', 'changed_models']] = None,
+    ) -> List[str]:
+        nodes = default_context().adapter.select_nodes(
+            select=select,
+            exclude=exclude,
+            packages=packages,
+            view_mode=view_mode
+        )
         return [node for node in nodes if not node.startswith('test.')]
 
     @abstractmethod

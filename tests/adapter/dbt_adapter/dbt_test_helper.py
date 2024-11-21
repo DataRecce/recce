@@ -49,8 +49,15 @@ class DbtTestHelper:
             self.base_manifest
         )
 
-    def create_model(self, model_name, base_csv=None, curr_csv=None, depends_on=[], disabled=False):
-        package_name = "recce_test"
+    def create_model(
+        self,
+        model_name,
+        base_csv=None,
+        curr_csv=None,
+        depends_on=[],
+        disabled=False,
+        package_name="recce_test",
+    ):
         # unique_id = f"model.{package_name}.{model_name}"
         unique_id = model_name
 

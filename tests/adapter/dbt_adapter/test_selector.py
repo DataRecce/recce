@@ -123,3 +123,55 @@ def test_select_with_disabled(dbt_test_helper):
     # Test graph operation
     node_ids = adapter.select_nodes("customers_1+")
     assert len(node_ids) == 1
+
+
+def test_select_with_pacakage_mode_include_exclude(dbt_test_helper):
+    csv_data_curr = """
+            customer_id,name,age
+            1,Alice,30
+            2,Bob,25
+            3,Charlie,35
+            """
+
+    csv_data_base = """
+            customer_id,name,age
+            1,Alice,35
+            2,Bob,25
+            3,Charlie,35
+            """
+
+    """
+    The diagram of the models:
+    customers_1 ── customers_2 ── customers_3(*) ├── other_package.customers_4
+                                                 └── customers_5
+
+    Only customers_3 is changed
+    """
+    dbt_test_helper.create_model("customers_1", csv_data_base, csv_data_base)
+    dbt_test_helper.create_model("customers_2", csv_data_base, csv_data_base, depends_on=['customers_1'])
+    dbt_test_helper.create_model("customers_3", csv_data_base, csv_data_curr, depends_on=['customers_2'])
+    dbt_test_helper.create_model("customers_4", csv_data_base, csv_data_base, depends_on=['customers_3'],
+                                 package_name='other_package')
+    dbt_test_helper.create_model("customers_5", csv_data_base, csv_data_base, depends_on=['customers_3'])
+
+    adapter: DbtAdapter = dbt_test_helper.context.adapter
+
+    node_ids = adapter.select_nodes(packages=['other_package'])
+    assert len(node_ids) == 1
+
+    node_ids = adapter.select_nodes(view_mode='changed_models')
+    assert len(node_ids) == 4
+
+    node_ids = adapter.select_nodes(view_mode='changed_models', packages=['other_package'])
+    assert len(node_ids) == 1
+
+    node_ids = adapter.select_nodes(view_mode='changed_models', packages=['other_package'], exclude='customers_4')
+    assert len(node_ids) == 0
+    node_ids = adapter.select_nodes(view_mode='changed_models', packages=['other_package'], select='customers_1+')
+    assert len(node_ids) == 1
+    node_ids = adapter.select_nodes(view_mode='changed_models', select='+customers_5')
+    assert len(node_ids) == 3
+    node_ids = adapter.select_nodes(view_mode='all', select='+customers_5')
+    assert len(node_ids) == 4
+    node_ids = adapter.select_nodes(select='+customers_5')
+    assert len(node_ids) == 4

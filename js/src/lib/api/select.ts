@@ -3,6 +3,8 @@ import { axiosClient } from "./axiosClient";
 export interface SelectInput {
   select?: string;
   exclude?: string;
+  packages?: string[];
+  view_mode?: "all" | "changed_models";
 }
 
 export interface SelectOutput {

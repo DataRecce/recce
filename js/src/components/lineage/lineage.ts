@@ -247,48 +247,9 @@ export function selectDownstream(
     degree
   );
 }
-function selectViewOptions(
-  lineageGraph: LineageGraph,
-  viewOptions: LineageDiffViewOptions
-) {
-  let lineageNodes = Object.values(lineageGraph.nodes);
-
-  const viewMode = viewOptions.view_mode || "changed_models";
-
-  if (viewMode === "changed_models") {
-    const u = selectUpstream(lineageGraph, lineageGraph.modifiedSet, 1);
-    const d = selectDownstream(lineageGraph, lineageGraph.modifiedSet);
-    const modified = union(u, d);
-    lineageNodes = lineageNodes.filter((node) => modified.has(node.id));
-  }
-
-  if (viewOptions.node_ids !== undefined) {
-    const nodeIds = new Set(viewOptions.node_ids);
-    lineageNodes = lineageNodes.filter((node) => nodeIds.has(node.id));
-  }
-
-  const packages =
-    viewOptions.packages !== undefined
-      ? viewOptions.packages
-      : lineageGraph.manifestMetadata.current?.project_name
-      ? [lineageGraph.manifestMetadata.current.project_name]
-      : undefined;
-  if (packages !== undefined) {
-    lineageNodes = lineageNodes.filter((node) => {
-      if (!node.packageName) {
-        return false;
-      }
-
-      return packages.includes(node.packageName);
-    });
-  }
-
-  return new Set(lineageNodes.map((node) => node.id));
-}
 
 export function toReactflow(
   lineageGraph: LineageGraph,
-  viewOptions?: LineageDiffViewOptions,
   selectedNodes?: string[]
 ): [Node[], Edge[]] {
   const nodes: Node[] = [];
@@ -319,16 +280,10 @@ export function toReactflow(
     return 0;
   }
 
-  let filterSet = viewOptions
-    ? selectViewOptions(lineageGraph, viewOptions)
-    : undefined;
-
-  if (selectedNodes !== undefined && selectedNodes !== null) {
-    filterSet = filterSet
-      ? intersect(filterSet, new Set(selectedNodes))
-      : new Set(selectedNodes);
-  }
-
+  const filterSet =
+    selectedNodes !== undefined && selectedNodes !== null
+      ? new Set(selectedNodes)
+      : undefined;
   const sortedNodes = Object.values(lineageGraph.nodes).sort(compareFn);
   for (const node of sortedNodes) {
     if (filterSet && !filterSet.has(node.id)) {

@@ -1,6 +1,6 @@
 import logging
 from abc import ABC, abstractmethod
-from typing import Optional, Callable, Set
+from typing import Optional, Callable, Set, Literal
 
 from recce.state import ArtifactsRoot
 
@@ -15,7 +15,13 @@ class BaseAdapter(ABC):
         raise NotImplementedError()
 
     @abstractmethod
-    def select_nodes(self, select: Optional[str] = None, exclude: Optional[str] = None) -> Set[str]:
+    def select_nodes(
+        self,
+        select: Optional[str] = None,
+        exclude: Optional[str] = None,
+        packages: Optional[list[str]] = None,
+        view_mode: Optional[Literal['all', 'changed_models']] = None,
+    ) -> Set[str]:
         raise NotImplementedError()
 
     @abstractmethod
