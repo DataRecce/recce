@@ -17,7 +17,12 @@ class SchemaDiffResultDiffer:
         if params.get('node_id'):
             return params.get('node_id') if isinstance(params.get('node_id'), list) else [params.get('node_id')]
         else:
-            return TaskResultDiffer.get_node_ids_by_selector(params.get('select'), params.get('exclude'))
+            return TaskResultDiffer.get_node_ids_by_selector(
+                select=params.get('select'),
+                exclude=params.get('exclude'),
+                packages=params.get('packages'),
+                view_mode=params.get('view_mode'),
+            )
 
     def _check_result_changed_fn(self, base_lineage, curr_lineage):
         base = {}

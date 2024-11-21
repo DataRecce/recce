@@ -24,6 +24,8 @@ export interface SchemaDiffParams {
   node_id?: string | string[];
   select?: string;
   exclude?: string;
+  view_mode?: "all" | "changed_models";
+  packages?: string[];
 }
 
 const NodelistItem = ({
@@ -92,7 +94,12 @@ export function _SchemaDiffView({ check }: SchemaDiffViewProps, ref: any) {
   const { isLoading, error, refetch, data } = useQuery({
     queryKey,
     queryFn: async () =>
-      select({ select: params?.select, exclude: params?.exclude }),
+      select({
+        select: params?.select,
+        exclude: params?.exclude,
+        packages: params?.packages,
+        view_mode: params?.view_mode,
+      }),
     refetchOnMount: true,
     enabled: !params?.node_id,
   });

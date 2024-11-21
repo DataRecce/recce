@@ -658,6 +658,8 @@ export function _LineageView(
         check = await createSchemaDiffCheck({
           select: viewOptions.select,
           exclude: viewOptions.exclude,
+          packages: viewOptions.packages,
+          view_mode: viewOptions.view_mode,
         });
       }
       if (check) {
