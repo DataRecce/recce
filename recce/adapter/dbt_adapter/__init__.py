@@ -677,6 +677,10 @@ class DbtAdapter(BaseAdapter):
         if hasattr(manifest_prev, 'semantic_models'):
             manifest.semantic_models = {**manifest_prev.semantic_models, **manifest_curr.semantic_models}
 
+        # check_modified_content rely on content and upstream macro
+        # Ref: dbt/graph/selector_methods.py:check_modified_content
+        manifest.macros = {**manifest_curr.macros}
+
         compiler = Compiler(self.runtime_config)
         # disable to print compile states
         tmp_func = dbt.compilation.print_compile_stats
