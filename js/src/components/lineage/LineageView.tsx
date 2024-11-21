@@ -213,9 +213,10 @@ export function _LineageView(
   const [nodes, setNodes, onNodesChange] = useNodesState([]);
   const [edges, setEdges, onEdgesChange] = useEdgesState([]);
 
-  const [viewOptions, setViewOptions] = useState<LineageDiffViewOptions>(
-    props.viewOptions || {}
-  );
+  const [viewOptions, setViewOptions] = useState<LineageDiffViewOptions>({
+    view_mode: "changed_models",
+    ...props.viewOptions,
+  });
 
   const {
     lineageGraph,
@@ -280,21 +281,23 @@ export function _LineageView(
         return;
       }
 
-      if (viewOptions.select || viewOptions.exclude) {
-        try {
-          const result = await select({
-            select: viewOptions.select,
-            exclude: viewOptions.exclude,
-          });
-          selectedNodes = result.nodes;
-        } catch (e) {}
-      }
+      const packageName = lineageGraph.manifestMetadata.current?.project_name;
+      const newViewOptions: LineageDiffViewOptions = {
+        view_mode: viewOptions.view_mode,
+        packages: packageName ? [packageName] : undefined,
+        ...props.viewOptions,
+      };
+      setViewOptions(newViewOptions);
 
-      const [nodes, edges] = toReactflow(
-        lineageGraph,
-        viewOptions,
-        selectedNodes
-      );
+      const result = await select({
+        select: newViewOptions.select,
+        exclude: newViewOptions.exclude,
+        packages: newViewOptions.packages,
+        view_mode: newViewOptions.view_mode,
+      });
+      selectedNodes = result.nodes;
+
+      const [nodes, edges] = toReactflow(lineageGraph, selectedNodes);
 
       layout(nodes, edges);
       setNodes(nodes);
@@ -304,7 +307,7 @@ export function _LineageView(
     t();
 
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [setNodes, setEdges, lineageGraph]);
+  }, [lineageGraph]);
 
   const onNodeMouseEnter = (event: React.MouseEvent, node: Node) => {
     if (!lineageGraph) {
@@ -422,6 +425,8 @@ export function _LineageView(
       const result = await select({
         select: newViewOptions.select,
         exclude: newViewOptions.exclude,
+        packages: newViewOptions.packages,
+        view_mode: newViewOptions.view_mode,
       });
       selectedNodes = result.nodes;
     } catch (e) {
@@ -437,11 +442,7 @@ export function _LineageView(
       return;
     }
 
-    const [newNodes, newEdges] = toReactflow(
-      lineageGraph,
-      newViewOptions,
-      selectedNodes
-    );
+    const [newNodes, newEdges] = toReactflow(lineageGraph, selectedNodes);
     layout(newNodes, newEdges);
     setNodes(newNodes);
     setEdges(newEdges);
