@@ -617,6 +617,8 @@ export function _LineageView(
         await runAction("row_count_diff", {
           select: viewOptions.select,
           exclude: viewOptions.exclude,
+          packages: viewOptions.packages,
+          view_mode: viewOptions.view_mode,
         });
       }
     },

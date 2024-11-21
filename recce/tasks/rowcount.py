@@ -56,9 +56,14 @@ class RowCountDiffTask(Task, QueryMixin):
                 query_candidates.append(node)
         else:
             def countable(unique_id):
-                return unique_id.startswith('model') or unique_id.startswith('snapshot')
+                return unique_id.startswith('model') or unique_id.startswith('snapshot') or unique_id.startswith('seed')
 
-            node_ids = dbt_adapter.select_nodes(self.params.get('select', ""), self.params.get('exclude', ""))
+            node_ids = dbt_adapter.select_nodes(
+                select=self.params.get('select', None),
+                exclude=self.params.get('exclude', None),
+                packages=self.params.get('packages', None),
+                view_mode=self.params.get('view_mode', None)
+            )
             node_ids = list(filter(countable, node_ids))
             for node_id in node_ids:
                 name = dbt_adapter.get_node_name_by_id(node_id)

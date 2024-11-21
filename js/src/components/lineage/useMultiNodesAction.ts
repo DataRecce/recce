@@ -36,7 +36,6 @@ export const useMultiNodesAction = (
   }).current;
 
   const { showRunId } = useRecceActionContext();
-  const [, setLocation] = useLocation();
 
   const submitRunForNodes = async (
     type: RunType,
