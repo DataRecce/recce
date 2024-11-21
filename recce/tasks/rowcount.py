@@ -11,6 +11,8 @@ class RowCountDiffParams(TypedDict, total=False):
     node_ids: Optional[list[str]]
     select: Optional[str]
     exclude: Optional[str]
+    packages: Optional[list[str]]
+    view_mode: Optional[str]
 
 
 class RowCountDiffTask(Task, QueryMixin):

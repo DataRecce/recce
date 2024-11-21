@@ -6,7 +6,7 @@ from contextlib import contextmanager
 from dataclasses import dataclass, fields
 from errno import ENOENT
 from pathlib import Path
-from typing import Callable, Dict, List, Optional, Tuple, Iterator, Any, Set, Union
+from typing import Callable, Dict, List, Optional, Tuple, Iterator, Any, Set, Union, Literal
 
 import agate
 import dbt.adapters.factory
@@ -651,26 +651,42 @@ class DbtAdapter(BaseAdapter):
 
         return self.adapter.Relation.create_from(self.runtime_config, node)
 
-    def select_nodes(self, select: Optional[str] = None, exclude: Optional[str] = None) -> Set[str]:
+    def select_nodes(
+        self,
+        select: Optional[str] = None,
+        exclude: Optional[str] = None,
+        packages: Optional[list[str]] = None,
+        view_mode: Optional[Literal['all', 'changed_models']] = None,
+    ) -> Set[str]:
         from dbt.graph import NodeSelector
         from dbt.compilation import Compiler
-        from dbt.graph import parse_difference
+        from dbt.graph import parse_difference, SelectionIntersection, SelectionUnion
         import dbt.compilation
 
         select_list = [select] if select else None
         exclude_list = [exclude] if exclude else None
 
-        # if dbt version < 1.8
-        if dbt_version < 'v1.8':
-            spec = parse_difference(select_list, exclude_list, "eager")
-        else:
-            spec = parse_difference(select_list, exclude_list)
+        def _parse_difference(include, exclude):
+            if dbt_version < 'v1.8':
+                return parse_difference(include, exclude, "eager")
+            else:
+                return parse_difference(include, exclude)
+
+        specs = [_parse_difference(select_list, exclude_list)]
+
+        if packages:
+            package_spec = SelectionUnion([_parse_difference([f'package:{p}'], None) for p in packages])
+            specs.append(package_spec)
+        if view_mode and view_mode == 'changed_models':
+            specs.append(parse_difference(['1+state:modified+'], None))
+        spec = SelectionIntersection(specs)
 
         manifest = Manifest()
         manifest_prev = self.previous_state.manifest
         manifest_curr = self.manifest
 
         manifest.nodes = {**manifest_prev.nodes, **manifest_curr.nodes}
+        manifest.macros = {**manifest_prev.macros, **manifest_curr.macros}
         manifest.sources = {**manifest_prev.sources, **manifest_curr.sources}
         manifest.exposures = {**manifest_prev.exposures, **manifest_curr.exposures}
         manifest.metrics = {**manifest_prev.metrics, **manifest_curr.metrics}
