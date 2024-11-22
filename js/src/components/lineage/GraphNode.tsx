@@ -13,6 +13,8 @@ import { useLineageGraphContext } from "@/lib/hooks/LineageGraphContext";
 import { findByRunType } from "../run/registry";
 import { isSchemaChanged } from "../schema/schemaDiff";
 import { useLineageViewContext } from "./LineageViewContext";
+import { FaCheckSquare, FaRegSquare, FaSquare } from "react-icons/fa";
+import { FaSquareCheck } from "react-icons/fa6";
 
 interface GraphNodeProps extends NodeProps<LineageGraphNode> {}
 
@@ -72,6 +74,24 @@ const NodeRunsAggregated = ({ id }: { id: string }) => {
             />
           </Box>
         </Tooltip>
+      )}
+    </Flex>
+  );
+};
+
+const GraphNodeCheckbox = ({
+  checked,
+  onClick,
+}: {
+  checked: boolean;
+  onClick?: React.MouseEventHandler;
+}) => {
+  return (
+    <Flex onClick={onClick} alignSelf="center" alignItems="center">
+      {checked ? (
+        <Icon boxSize="20px" as={FaCheckSquare} />
+      ) : (
+        <Icon boxSize="20px" as={FaRegSquare} />
       )}
     </Flex>
   );
@@ -143,21 +163,15 @@ export function GraphNode({ data }: GraphNodeProps) {
           visibility={showContent ? "inherit" : "hidden"}
         >
           {(selectMode == "single" && isHovered) || selectMode === "multi" ? (
-            // Don't know why that the chakra checkbox would trigger two onNodeClick events, use the native cehckbox instead
-            // <Checkbox isChecked={isSelected} />
-            <input
+            <GraphNodeCheckbox
               checked={isSelected && selectMode === "multi"}
-              type="checkbox"
-              onChange={() => {
-                //noop, add the handler to prevent the warning in the console.
-              }}
               onClick={(e) => {
                 e.stopPropagation();
                 selectNodeMulti(data.id);
               }}
             />
           ) : (
-            <Icon as={resourceIcon} />
+            <Icon boxSize="16px" as={resourceIcon} mx="2px" />
           )}
         </Flex>
 
@@ -167,6 +181,7 @@ export function GraphNode({ data }: GraphNodeProps) {
             textAlign="left"
             flex="1"
             p={1}
+            gap="5px"
             alignItems="center"
             visibility={showContent ? "inherit" : "hidden"}
           >
@@ -179,11 +194,11 @@ export function GraphNode({ data }: GraphNodeProps) {
               {name}
             </Box>
 
-            {iconChangeStatus && (
-              <Flex>
-                <Icon color={color} as={iconChangeStatus} flex="0 0 20px" />
-              </Flex>
+            {selectMode === "multi" && (
+              <Icon boxSize="16px" color={color} as={resourceIcon} />
             )}
+
+            {iconChangeStatus && <Icon color={color} as={iconChangeStatus} />}
           </Flex>
 
           <Flex
