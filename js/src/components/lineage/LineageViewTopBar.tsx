@@ -29,6 +29,7 @@ import { useRecceActionContext } from "@/lib/hooks/RecceActionContext";
 import { VscHistory } from "react-icons/vsc";
 import { useLineageViewContext } from "./LineageViewContext";
 import { findByRunType } from "../run/registry";
+import { ChevronDownIcon } from "@chakra-ui/icons";
 
 const HistoryToggle = () => {
   const { isHistoryOpen, showHistory, closeHistory } = useRecceActionContext();
@@ -347,7 +348,11 @@ export const LineageViewTopBar = () => {
         <ControlItem label="Explore">
           <ButtonGroup isAttached variant="outline">
             <Menu placement="bottom-end">
-              <MenuButton as={Button} size={"xs"}>
+              <MenuButton
+                as={Button}
+                size={"xs"}
+                rightIcon={<ChevronDownIcon />}
+              >
                 Actions
               </MenuButton>
 
@@ -371,7 +376,9 @@ export const LineageViewTopBar = () => {
                     as={Text}
                     size="sm"
                     fontSize="10pt"
-                    isDisabled={!(isSingleSelect || isMultiSelect)}
+                    isDisabled={
+                      !(isNoSelect || isSingleSelect || isMultiSelect)
+                    }
                     icon={<Icon as={findByRunType("value_diff")?.icon} />}
                     onClick={() => {
                       lineageViewContext.runValueDiff();

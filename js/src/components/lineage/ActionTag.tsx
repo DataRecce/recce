@@ -81,7 +81,7 @@ export const ActionTag = ({ node, action }: ActionTagProps) => {
     }
 
     return (
-      <Tag>
+      <Tag backgroundColor={mismatched > 0 ? "red.100" : "green.100"}>
         <TagLabel>
           <Flex
             fontSize="10pt"

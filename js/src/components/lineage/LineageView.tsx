@@ -85,6 +85,7 @@ import { useMultiNodesAction } from "./useMultiNodesAction";
 import { createSchemaDiffCheck } from "@/lib/api/schemacheck";
 import { useLocation } from "wouter";
 import { Check } from "@/lib/api/checks";
+import useValueDiffAlertDialog from "./useValueDiffAlertDialog";
 
 export interface LineageViewProps {
   viewOptions?: LineageDiffViewOptions;
@@ -262,6 +263,9 @@ export function _LineageView(
     return nodes
       .filter((node) => node.data.isSelected)
       .map((node) => node.data);
+  }, [nodes]);
+  const filteredNodes: LineageGraphNode[] = useMemo(() => {
+    return nodes.map((node) => node.data);
   }, [nodes]);
 
   const [isContextMenuRendered, setIsContextMenuRendered] = useState(false);
@@ -454,13 +458,18 @@ export function _LineageView(
     })();
   };
 
-  const multiNodeAction = useMultiNodesAction(selectedNodes, {
-    onActionStarted: () => {
-      setSelectMode("action_result");
-    },
-    onActionNodeUpdated: handleActionNodeUpdated,
-    onActionCompleted: () => {},
-  });
+  const multiNodeAction = useMultiNodesAction(
+    selectMode === "multi" ? selectedNodes : filteredNodes,
+    {
+      onActionStarted: () => {
+        setSelectMode("action_result");
+      },
+      onActionNodeUpdated: handleActionNodeUpdated,
+      onActionCompleted: () => {},
+    }
+  );
+
+  const valueDiffAlertDialog = useValueDiffAlertDialog();
 
   if (isLoading) {
     return (
@@ -623,9 +632,7 @@ export function _LineageView(
       }
     },
     runValueDiff: async () => {
-      if (selectMode === "multi") {
-        await multiNodeAction.runValueDiff();
-      } else if (selectedNode) {
+      if (selectedNode) {
         await runAction(
           "value_diff",
           {
@@ -633,6 +640,12 @@ export function _LineageView(
           },
           { showForm: true, showLast: false }
         );
+      } else {
+        const nodeCount =
+          selectMode === "multi" ? selectedNodes.length : filteredNodes.length;
+        if (await valueDiffAlertDialog.confirm(nodeCount)) {
+          await multiNodeAction.runValueDiff();
+        }
       }
     },
     addLineageDiffCheck: async () => {
@@ -781,6 +794,7 @@ export function _LineageView(
           </MenuList>
         </Menu>
       )}
+      {valueDiffAlertDialog.AlertDialog}
     </LineageViewContext.Provider>
   );
 }
