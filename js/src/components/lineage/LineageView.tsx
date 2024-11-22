@@ -392,7 +392,11 @@ export function _LineageView(
       centerNode(node);
       setNodes(selectSingleNode(node.id, nodes));
     } else {
-      const newNodes = selectNode(node.id, nodes);
+      let newNodes = selectNode(node.id, nodes);
+      if (!newNodes.find((n) => n.data.isSelected)) {
+        setSelectMode("single");
+        newNodes = cleanUpNodes(newNodes);
+      }
       setNodes(newNodes);
     }
   };
@@ -594,7 +598,12 @@ export function _LineageView(
       setSelectMode("multi");
       multiNodeAction.reset();
     } else {
-      setNodes(selectNode(nodeId, nodes));
+      let newNodes = selectNode(nodeId, nodes);
+      if (!newNodes.find((n) => n.data.isSelected)) {
+        setSelectMode("single");
+        newNodes = cleanUpNodes(newNodes);
+      }
+      setNodes(newNodes);
     }
   };
   const deselect = () => {
@@ -663,10 +672,17 @@ export function _LineageView(
       }
     },
     addSchemaDiffCheck: async () => {
-      let check: Check;
-      if (selectedNodes.length > 0) {
-        check = await multiNodeAction.addSchemaDiffCheck();
-        deselect();
+      let check: Check | undefined = undefined;
+
+      if (selectMode === "multi") {
+        if (selectedNodes.length > 0) {
+          check = await multiNodeAction.addSchemaDiffCheck();
+          deselect();
+        }
+      } else if (selectedNode) {
+        check = await createSchemaDiffCheck({
+          node_id: selectedNode.id,
+        });
       } else {
         check = await createSchemaDiffCheck({
           select: viewOptions.select,
@@ -675,6 +691,7 @@ export function _LineageView(
           view_mode: viewOptions.view_mode,
         });
       }
+
       if (check) {
         navToCheck(check);
       }
