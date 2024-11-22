@@ -285,21 +285,25 @@ export function _LineageView(
         return;
       }
 
-      const packageName = lineageGraph.manifestMetadata.current?.project_name;
-      const newViewOptions: LineageDiffViewOptions = {
-        view_mode: viewOptions.view_mode,
-        packages: packageName ? [packageName] : undefined,
-        ...props.viewOptions,
-      };
-      setViewOptions(newViewOptions);
+      if (viewOptions.node_ids) {
+        selectedNodes = viewOptions.node_ids;
+      } else {
+        const packageName = lineageGraph.manifestMetadata.current?.project_name;
+        const newViewOptions: LineageDiffViewOptions = {
+          view_mode: viewOptions.view_mode,
+          packages: packageName ? [packageName] : undefined,
+          ...props.viewOptions,
+        };
+        setViewOptions(newViewOptions);
 
-      const result = await select({
-        select: newViewOptions.select,
-        exclude: newViewOptions.exclude,
-        packages: newViewOptions.packages,
-        view_mode: newViewOptions.view_mode,
-      });
-      selectedNodes = result.nodes;
+        const result = await select({
+          select: newViewOptions.select,
+          exclude: newViewOptions.exclude,
+          packages: newViewOptions.packages,
+          view_mode: newViewOptions.view_mode,
+        });
+        selectedNodes = result.nodes;
+      }
 
       const [nodes, edges] = toReactflow(lineageGraph, selectedNodes);
 
@@ -392,7 +396,11 @@ export function _LineageView(
       centerNode(node);
       setNodes(selectSingleNode(node.id, nodes));
     } else {
-      const newNodes = selectNode(node.id, nodes);
+      let newNodes = selectNode(node.id, nodes);
+      if (!newNodes.find((n) => n.data.isSelected)) {
+        setSelectMode("single");
+        newNodes = cleanUpNodes(newNodes);
+      }
       setNodes(newNodes);
     }
   };
@@ -594,7 +602,12 @@ export function _LineageView(
       setSelectMode("multi");
       multiNodeAction.reset();
     } else {
-      setNodes(selectNode(nodeId, nodes));
+      let newNodes = selectNode(nodeId, nodes);
+      if (!newNodes.find((n) => n.data.isSelected)) {
+        setSelectMode("single");
+        newNodes = cleanUpNodes(newNodes);
+      }
+      setNodes(newNodes);
     }
   };
   const deselect = () => {
@@ -649,24 +662,30 @@ export function _LineageView(
       }
     },
     addLineageDiffCheck: async () => {
-      let check: Check;
+      let check: Check | undefined = undefined;
       if (selectMode === "multi") {
-        check = await multiNodeAction.addLineageDiffCheck(
-          viewOptions.view_mode || "all"
-        );
+        check = await multiNodeAction.addLineageDiffCheck();
         deselect();
-      } else {
+      } else if (!selectedNode) {
         check = await createLineageDiffCheck(viewOptions);
       }
+
       if (check) {
         navToCheck(check);
       }
     },
     addSchemaDiffCheck: async () => {
-      let check: Check;
-      if (selectedNodes.length > 0) {
-        check = await multiNodeAction.addSchemaDiffCheck();
-        deselect();
+      let check: Check | undefined = undefined;
+
+      if (selectMode === "multi") {
+        if (selectedNodes.length > 0) {
+          check = await multiNodeAction.addSchemaDiffCheck();
+          deselect();
+        }
+      } else if (selectedNode) {
+        check = await createSchemaDiffCheck({
+          node_id: selectedNode.id,
+        });
       } else {
         check = await createSchemaDiffCheck({
           select: viewOptions.select,
@@ -675,6 +694,7 @@ export function _LineageView(
           view_mode: viewOptions.view_mode,
         });
       }
+
       if (check) {
         navToCheck(check);
       }
