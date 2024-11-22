@@ -241,10 +241,9 @@ export const useMultiNodesAction = (
     });
   };
 
-  const addLineageDiffCheck = async (viewMode: string) => {
+  const addLineageDiffCheck = async () => {
     const nodeIds = nodes.map((node) => node.id);
     return await createLineageDiffCheck({
-      view_mode: viewMode as any,
       node_ids: nodeIds,
     });
   };

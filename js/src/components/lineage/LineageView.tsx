@@ -285,21 +285,25 @@ export function _LineageView(
         return;
       }
 
-      const packageName = lineageGraph.manifestMetadata.current?.project_name;
-      const newViewOptions: LineageDiffViewOptions = {
-        view_mode: viewOptions.view_mode,
-        packages: packageName ? [packageName] : undefined,
-        ...props.viewOptions,
-      };
-      setViewOptions(newViewOptions);
+      if (viewOptions.node_ids) {
+        selectedNodes = viewOptions.node_ids;
+      } else {
+        const packageName = lineageGraph.manifestMetadata.current?.project_name;
+        const newViewOptions: LineageDiffViewOptions = {
+          view_mode: viewOptions.view_mode,
+          packages: packageName ? [packageName] : undefined,
+          ...props.viewOptions,
+        };
+        setViewOptions(newViewOptions);
 
-      const result = await select({
-        select: newViewOptions.select,
-        exclude: newViewOptions.exclude,
-        packages: newViewOptions.packages,
-        view_mode: newViewOptions.view_mode,
-      });
-      selectedNodes = result.nodes;
+        const result = await select({
+          select: newViewOptions.select,
+          exclude: newViewOptions.exclude,
+          packages: newViewOptions.packages,
+          view_mode: newViewOptions.view_mode,
+        });
+        selectedNodes = result.nodes;
+      }
 
       const [nodes, edges] = toReactflow(lineageGraph, selectedNodes);
 
@@ -658,15 +662,14 @@ export function _LineageView(
       }
     },
     addLineageDiffCheck: async () => {
-      let check: Check;
+      let check: Check | undefined = undefined;
       if (selectMode === "multi") {
-        check = await multiNodeAction.addLineageDiffCheck(
-          viewOptions.view_mode || "all"
-        );
+        check = await multiNodeAction.addLineageDiffCheck();
         deselect();
-      } else {
+      } else if (!selectedNode) {
         check = await createLineageDiffCheck(viewOptions);
       }
+
       if (check) {
         navToCheck(check);
       }
