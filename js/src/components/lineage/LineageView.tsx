@@ -85,6 +85,7 @@ import { useMultiNodesAction } from "./useMultiNodesAction";
 import { createSchemaDiffCheck } from "@/lib/api/schemacheck";
 import { useLocation } from "wouter";
 import { Check } from "@/lib/api/checks";
+import useValueDiffAlertDialog from "./useValueDiffAlertDialog";
 
 export interface LineageViewProps {
   viewOptions?: LineageDiffViewOptions;
@@ -468,6 +469,8 @@ export function _LineageView(
     }
   );
 
+  const valueDiffAlertDialog = useValueDiffAlertDialog();
+
   if (isLoading) {
     return (
       <Flex
@@ -638,7 +641,11 @@ export function _LineageView(
           { showForm: true, showLast: false }
         );
       } else {
-        await multiNodeAction.runValueDiff();
+        const nodeCount =
+          selectMode === "multi" ? selectedNodes.length : filteredNodes.length;
+        if (await valueDiffAlertDialog.confirm(nodeCount)) {
+          await multiNodeAction.runValueDiff();
+        }
       }
     },
     addLineageDiffCheck: async () => {
@@ -787,6 +794,7 @@ export function _LineageView(
           </MenuList>
         </Menu>
       )}
+      {valueDiffAlertDialog.AlertDialog}
     </LineageViewContext.Provider>
   );
 }
