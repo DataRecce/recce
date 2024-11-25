@@ -20,7 +20,6 @@ import {
 } from "@chakra-ui/react";
 import React from "react";
 import { ReactNode, useLayoutEffect } from "react";
-import * as amplitude from "@amplitude/analytics-browser";
 import { QueryClientProvider, useQuery } from "@tanstack/react-query";
 import RecceContextProvider from "@/lib/hooks/RecceContextProvider";
 import { reactQueryClient } from "@/lib/api/axiosClient";
@@ -54,11 +53,7 @@ import { VscGitPullRequest } from "react-icons/vsc";
 import { RunList } from "@/components/run/RunList";
 import { checkboxTheme } from "@theme/components/Checkbox";
 import { tooltipTheme } from "@theme/components/Tooltip";
-
-function getCookie(key: string) {
-  var b = document.cookie.match("(^|;)\\s*" + key + "\\s*=\\s*([^;]+)");
-  return b ? b.pop() : "";
-}
+import { trackInit } from "@/lib/api/track";
 
 const RouteAlwaysMount = ({
   children,
@@ -379,17 +374,7 @@ const chakraTheme = extendTheme({
 
 export default function Home() {
   useLayoutEffect(() => {
-    const userId = getCookie("recce_user_id");
-    if (userId && process.env.AMPLITUDE_API_KEY) {
-      try {
-        // Initialize Amplitude
-        amplitude.init(process.env.AMPLITUDE_API_KEY, userId, {
-          defaultTracking: true,
-        });
-      } catch (e) {
-        console.error(e);
-      }
-    }
+    trackInit();
   }, []);
 
   const muiDefaultTheme = createTheme({
