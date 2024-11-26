@@ -60,17 +60,18 @@ export function getIconForChangeStatus(
   changeStatus?: "added" | "removed" | "modified"
 ): {
   color: string;
+  backgroundColor: string;
   icon: any; //IconType not provided
 } {
   if (changeStatus === "added") {
-    return { color: "#1dce00", icon: IconAdded };
+    return { color: "#1dce00", backgroundColor: "#e8fce5", icon: IconAdded };
   } else if (changeStatus === "removed") {
-    return { color: "#ff4444", icon: IconRemoved };
+    return { color: "#ff4444", backgroundColor: "#ffdbdb", icon: IconRemoved };
   } else if (changeStatus === "modified") {
-    return { color: "#ffa502", icon: IconModified };
+    return { color: "#ffa502", backgroundColor: "#fff2dd", icon: IconModified };
   }
 
-  return { color: "inherit", icon: undefined };
+  return { color: "inherit", backgroundColor: "white", icon: undefined };
 }
 
 export function getIconForResourceType(resourceType?: string): {

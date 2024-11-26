@@ -219,7 +219,7 @@ const NodeSelectionInput = (props: {
       ref={inputRef}
       height="24px"
       fontSize="10pt"
-      placeholder="<selection>"
+      placeholder="with selectors"
       isDisabled={props.isDisabled}
       value={inputValue}
       onChange={(event) => {
