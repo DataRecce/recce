@@ -107,21 +107,16 @@ export function GraphNode({ data }: GraphNodeProps) {
 
   // text color, icon
   let color = "gray.400";
-  let backgroundColor = !isSelected
-    ? "white"
-    : selectMode === "multi"
-    ? color
-    : "gray.100";
+  let backgroundColor = "gray.100";
   let iconChangeStatus: any;
   let borderStyle = "solid";
   if (changeStatus) {
     iconChangeStatus = getIconForChangeStatus(changeStatus).icon;
     color = getIconForChangeStatus(changeStatus).color;
-    backgroundColor = !isSelected
-      ? "white"
-      : selectMode === "multi"
-      ? color
-      : getIconForChangeStatus(changeStatus).backgroundColor;
+    backgroundColor = getIconForChangeStatus(changeStatus).backgroundColor;
+  } else {
+    color = "gray.400";
+    backgroundColor = "gray.100";
   }
 
   // border width and color
@@ -151,14 +146,35 @@ export function GraphNode({ data }: GraphNodeProps) {
         borderColor={borderColor}
         borderWidth={borderWidth}
         borderStyle={borderStyle}
-        backgroundColor={
-          showContent ? backgroundColor : isSelected ? color : backgroundColor
-        }
+        backgroundColor={(function () {
+          if (showContent) {
+            if (selectMode === "multi") {
+              return isSelected ? color : "white";
+            } else if (selectMode === "action_result") {
+              if (!data.action) {
+                return "white";
+              } else {
+                return isSelected ? backgroundColor : color;
+              }
+            } else {
+              return isSelected ? backgroundColor : "white";
+            }
+          } else {
+            return isSelected ? color : backgroundColor;
+          }
+        })()}
         borderRadius={3}
         // boxShadow={boxShadow}
         transition="box-shadow 0.2s ease-in-out"
         padding={0}
-        className={highlightClassName}
+        // className={highlightClassName}
+        filter={(function () {
+          if (selectMode === "action_result") {
+            return !!data?.action ? "none" : "opacity(0.2) grayscale(50%)";
+          } else {
+            return isHighlighted ? "none" : "opacity(0.2) grayscale(50%)";
+          }
+        })()}
         onMouseEnter={() => setIsHovered(true)}
         onMouseLeave={() => setIsHovered(false)}
       >
@@ -172,8 +188,14 @@ export function GraphNode({ data }: GraphNodeProps) {
           visibility={showContent ? "inherit" : "hidden"}
         >
           <GraphNodeCheckbox
-            checked={isSelected && selectMode === "multi"}
+            checked={
+              (selectMode === "multi" && isSelected) ||
+              (selectMode === "action_result" && !!data.action)
+            }
             onClick={(e) => {
+              if (selectMode === "action_result") {
+                return;
+              }
               e.stopPropagation();
               selectNodeMulti(data.id);
             }}
@@ -199,7 +221,15 @@ export function GraphNode({ data }: GraphNodeProps) {
           >
             <Box
               flex="1"
-              color={selectMode === "multi" && isSelected ? "white" : "inherit"}
+              color={(function () {
+                if (selectMode === "multi") {
+                  return isSelected ? "white" : "inherit";
+                } else if (selectMode === "action_result") {
+                  return !!data.action && !isSelected ? "white" : "inherit";
+                } else {
+                  return "inherit";
+                }
+              })()}
               overflow="hidden"
               textOverflow="ellipsis"
               whiteSpace="nowrap"
@@ -209,13 +239,30 @@ export function GraphNode({ data }: GraphNodeProps) {
 
             <Icon
               boxSize="16px"
-              color={selectMode === "multi" && isSelected ? "white" : "inherit"}
+              color={(function () {
+                if (selectMode === "multi") {
+                  return isSelected ? "white" : "inherit";
+                } else if (selectMode === "action_result") {
+                  return !!data.action && !isSelected ? "white" : "inherit";
+                } else {
+                  return "inherit";
+                }
+              })()}
               as={resourceIcon}
             />
 
             {iconChangeStatus && (
               <Icon
-                color={selectMode === "multi" && isSelected ? "white" : color}
+                // color={selectMode === "multi" && isSelected ? "white" : color}
+                color={(function () {
+                  if (selectMode === "multi") {
+                    return isSelected ? "white" : color;
+                  } else if (selectMode === "action_result") {
+                    return !!data.action && !isSelected ? "white" : "inherit";
+                  } else {
+                    return color;
+                  }
+                })()}
                 as={iconChangeStatus}
               />
             )}
