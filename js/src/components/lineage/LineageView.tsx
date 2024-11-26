@@ -86,6 +86,7 @@ import { createSchemaDiffCheck } from "@/lib/api/schemacheck";
 import { useLocation } from "wouter";
 import { Check } from "@/lib/api/checks";
 import useValueDiffAlertDialog from "./useValueDiffAlertDialog";
+import { trackMultiNodesAction } from "@/lib/api/track";
 
 export interface LineageViewProps {
   viewOptions?: LineageDiffViewOptions;
@@ -629,12 +630,14 @@ export function _LineageView(
     runRowCountDiff: async () => {
       if (selectMode === "multi") {
         await multiNodeAction.runRowCountDiff();
+        trackMultiNodesAction({ type: "row_count_diff", selected: "multi" });
       } else if (selectedNode) {
         await runAction(
           "row_count_diff",
           { node_names: [selectedNode.name] },
           { showForm: false, showLast: false }
         );
+        trackMultiNodesAction({ type: "row_count_diff", selected: "single" });
       } else {
         await runAction("row_count_diff", {
           select: viewOptions.select,
@@ -642,6 +645,7 @@ export function _LineageView(
           packages: viewOptions.packages,
           view_mode: viewOptions.view_mode,
         });
+        trackMultiNodesAction({ type: "row_count_diff", selected: "none" });
       }
     },
     runValueDiff: async () => {
@@ -653,11 +657,16 @@ export function _LineageView(
           },
           { showForm: true, showLast: false }
         );
+        trackMultiNodesAction({ type: "value_diff", selected: "single" });
       } else {
         const nodeCount =
           selectMode === "multi" ? selectedNodes.length : filteredNodes.length;
         if (await valueDiffAlertDialog.confirm(nodeCount)) {
           await multiNodeAction.runValueDiff();
+          trackMultiNodesAction({
+            type: "value_diff",
+            selected: selectMode === "multi" ? "multi" : "none",
+          });
         }
       }
     },
@@ -666,8 +675,10 @@ export function _LineageView(
       if (selectMode === "multi") {
         check = await multiNodeAction.addLineageDiffCheck();
         deselect();
+        trackMultiNodesAction({ type: "lineage_diff", selected: "multi" });
       } else if (!selectedNode) {
         check = await createLineageDiffCheck(viewOptions);
+        trackMultiNodesAction({ type: "lineage_diff", selected: "none" });
       }
 
       if (check) {
@@ -681,11 +692,13 @@ export function _LineageView(
         if (selectedNodes.length > 0) {
           check = await multiNodeAction.addSchemaDiffCheck();
           deselect();
+          trackMultiNodesAction({ type: "schema_diff", selected: "multi" });
         }
       } else if (selectedNode) {
         check = await createSchemaDiffCheck({
           node_id: selectedNode.id,
         });
+        trackMultiNodesAction({ type: "schema_diff", selected: "single" });
       } else {
         check = await createSchemaDiffCheck({
           select: viewOptions.select,
@@ -693,6 +706,7 @@ export function _LineageView(
           packages: viewOptions.packages,
           view_mode: viewOptions.view_mode,
         });
+        trackMultiNodesAction({ type: "schema_diff", selected: "none" });
       }
 
       if (check) {
