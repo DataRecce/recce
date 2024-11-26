@@ -8,8 +8,6 @@ import {
   AlertDialogBody,
   AlertDialogFooter,
   Box,
-  Alert,
-  AlertIcon,
   Flex,
 } from "@chakra-ui/react";
 import React, { useRef, useState, useCallback } from "react";
@@ -60,11 +58,6 @@ function useValueDiffAlertDialog() {
               Value diff will be executed on {nodeCount} nodes in the Lineage,
               which can add extra costs to your bill.
             </Box>
-            <Alert title="Alert Title" status="info" alignItems="flex-start">
-              <AlertIcon />
-              You can cancel anytime if the data warehouse supports this action
-              (BigQuery cannot be cancelled).
-            </Alert>
           </AlertDialogBody>
 
           <AlertDialogFooter>
