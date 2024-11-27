@@ -72,7 +72,7 @@ export const CheckDetail = ({ checkId }: CheckDetailProps) => {
   const queryClient = useQueryClient();
   const [, setLocation] = useLocation();
   const { successToast, failToast } = useClipBoardToast();
-  const { markedAsCheckedToast } = useCheckToast();
+  const { markedAsApprovedToast } = useCheckToast();
   const [submittedRunId, setSubmittedRunId] = useState<string>();
   const [progress, setProgress] = useState<Run["progress"]>();
   const [isAborting, setAborting] = useState(false);
@@ -170,9 +170,9 @@ export const CheckDetail = ({ checkId }: CheckDetailProps) => {
     const isChecked = check?.is_checked;
     mutate({ is_checked: !isChecked });
     if (!isChecked === true) {
-      markedAsCheckedToast();
+      markedAsApprovedToast();
     }
-  }, [check?.is_checked, mutate, markedAsCheckedToast]);
+  }, [check?.is_checked, mutate, markedAsApprovedToast]);
 
   const handelUpdateViewOptions = (viewOptions: any) => {
     mutate({ view_options: viewOptions });
@@ -293,7 +293,7 @@ export const CheckDetail = ({ checkId }: CheckDetailProps) => {
           </Tooltip>
 
           <Tooltip
-            label={check?.is_checked ? "Mark as pending" : "Mark as approved"}
+            label={check?.is_checked ? "Mark as Pending" : "Mark as Approved"}
             placement="bottom-end"
           >
             <Button
@@ -307,7 +307,7 @@ export const CheckDetail = ({ checkId }: CheckDetailProps) => {
               }
               onClick={() => handleApproveCheck()}
             >
-              {check?.is_checked ? "Checked" : "Mark as Checked"}
+              {check?.is_checked ? "Approved" : "Mark as Approved"}
             </Button>
           </Tooltip>
         </Flex>

@@ -37,12 +37,12 @@ const ChecklistItem = ({
   check,
   selected,
   onSelect,
-  onMarkAsChecked,
+  onMarkAsApproved,
 }: {
   check: Check;
   selected: boolean;
   onSelect: (checkId: string) => void;
-  onMarkAsChecked: () => void;
+  onMarkAsApproved: () => void;
 }) => {
   const queryClient = useQueryClient();
   const checkId = check.check_id!;
@@ -60,8 +60,8 @@ const ChecklistItem = ({
       // If unchecking, just update the check
       mutate({ is_checked: isChecked });
     } else {
-      // Show Mark as checked warning modal
-      onMarkAsChecked();
+      // Show Mark as Approved warning modal
+      onMarkAsApproved();
     }
   };
 
@@ -93,7 +93,7 @@ const ChecklistItem = ({
         </Box>
 
         {/* {check.is_checked && <Icon color="green" as={FaCheckCircle} />} */}
-        <Tooltip label="Click to mark as checked" placement="top" hasArrow>
+        <Tooltip label="Click to mark as approved" placement="top" hasArrow>
           <Flex>
             <Checkbox
               isChecked={check.is_checked}
@@ -138,30 +138,31 @@ export const CheckList = ({
     onChecksReordered(result.source.index, result.destination.index);
   };
   const {
-    isOpen: isMarkAsCheckedOpen,
-    onOpen: onMarkAsCheckedOpen,
-    onClose: onMarkAsCheckedClosed,
+    isOpen: isMarkAsApprovedOpen,
+    onOpen: onMarkAsApprovedOpen,
+    onClose: onMarkAsApprovedClosed,
   } = useDisclosure();
 
-  const { markedAsCheckedToast } = useCheckToast();
-  const handleOnMarkAsChecked = () => {
-    const bypassMarkAsCheckedWarning = localStorage.getItem(
-      "bypassMarkAsCheckedWarning"
+  const { markedAsApprovedToast } = useCheckToast();
+  const handleOnMarkAsApproved = () => {
+    const bypassMarkAsApprovedWarning = localStorage.getItem(
+      "bypassMarkAsApprovedWarning"
     );
-    if (bypassMarkAsCheckedWarning === "true") {
+    if (bypassMarkAsApprovedWarning === "true") {
       markCheckedByID(selectedItem!);
-      markedAsCheckedToast();
+      markedAsApprovedToast();
     } else {
-      onMarkAsCheckedOpen();
+      onMarkAsApprovedOpen();
     }
   };
 
-  const handleMarkAsCheckedConfirmed = () => {
+  const handleMarkAsApprovedConfirmed = () => {
     markCheckedByID(selectedItem!);
     if (bypassModal === true) {
-      localStorage.setItem("bypassMarkAsCheckedWarning", "true");
+      localStorage.setItem("bypassMarkAsApprovedWarning", "true");
     }
-    onMarkAsCheckedClosed();
+    markedAsApprovedToast();
+    onMarkAsApprovedClosed();
   };
 
   return (
@@ -206,7 +207,7 @@ export const CheckList = ({
                           check={check}
                           selected={check.check_id === selectedItem}
                           onSelect={onCheckSelected}
-                          onMarkAsChecked={handleOnMarkAsChecked}
+                          onMarkAsApproved={handleOnMarkAsApproved}
                         />
                       </Flex>
                     );
@@ -219,19 +220,19 @@ export const CheckList = ({
         </Droppable>
       </DragDropContext>
       <Modal
-        isOpen={isMarkAsCheckedOpen}
-        onClose={onMarkAsCheckedClosed}
+        isOpen={isMarkAsApprovedOpen}
+        onClose={onMarkAsApprovedClosed}
         isCentered
       >
         <ModalOverlay />
         <ModalContent width={"400px"}>
-          <ModalHeader>Mark as checked?</ModalHeader>
+          <ModalHeader>Mark as Approved?</ModalHeader>
           <ModalCloseButton />
           <Divider />
           <Box p={"16px"} fontSize="sm" gap="16px">
             <p>
-              Marking an item which&apos;s contents your haven&apos;t seen could
-              result in unwanted results being passwd on as ok.
+              Please ensure you have reviewed the contents of this check before
+              marking it as approved.
             </p>
             <Checkbox
               isChecked={bypassModal}
@@ -249,16 +250,16 @@ export const CheckList = ({
               variant="outline"
               size="xs"
               mr={2}
-              onClick={onMarkAsCheckedClosed}
+              onClick={onMarkAsApprovedClosed}
             >
               Cancel
             </Button>
             <Button
               colorScheme="blue"
               size="xs"
-              onClick={handleMarkAsCheckedConfirmed}
+              onClick={handleMarkAsApprovedConfirmed}
             >
-              Mark as checked
+              Mark as approved
             </Button>
           </ModalFooter>
         </ModalContent>
