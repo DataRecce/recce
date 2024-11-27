@@ -30,7 +30,8 @@ jobs:
 
     steps:
       - uses: actions/checkout@v4
-        token: ${{ secrets.AUTOCOMMIT_PERSONAL_TOKEN }}
+        with:
+          token: ${{ secrets.AUTOCOMMIT_PERSONAL_TOKEN }}
 
       - name: Use Node.js ${{ matrix.node-version }}
         uses: actions/setup-node@v3
