@@ -12,10 +12,12 @@ on:
       - main
       - release/**
       # Only PR target are `main` or `release/**` branches
+  # Trigger manually
+  workflow_dispatch:
 
 jobs:
   if_merged_build:
-    if: github.event.pull_request.merged == true
+    if: github.event.pull_request.merged == true || github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest
 
     permissions:
@@ -47,11 +49,11 @@ jobs:
         run: pnpm run build
 
       - name: Pull Remote Changes (before AC)
-        run: git pull origin ${{ github.base_ref }}
+        run: git pull origin ${{ github.base_ref || github.ref_name }}
 
       - uses: stefanzweifel/git-auto-commit-action@v4
         with:
           commit_message: AUTO-COMMIT - build js statics to recce data/
-          branch: ${{ github.base_ref }}
+          branch: ${{ github.base_ref || github.ref_name }}
           token: ${{ secrets.AUTOCOMMIT_PERSONAL_TOKEN }}
           # Auto-commits to target merge branch
