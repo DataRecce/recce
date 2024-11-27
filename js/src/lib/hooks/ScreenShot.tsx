@@ -225,8 +225,10 @@ export function useCopyToClipboardButton(options?: HookOptions) {
       const nodeToUse = ((ref.current as any).element ||
         ref.current) as HTMLElement;
       nodeToUse.style.boxShadow = "";
+    } else {
+      failToast("Failed to copy image to clipboard", "No content to copy");
     }
-  }, [ref, copyToClipboard]);
+  }, [ref, copyToClipboard, failToast]);
 
   function CopyToClipboardButton({
     imageType = "png",
