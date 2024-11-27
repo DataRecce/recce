@@ -29,14 +29,16 @@ export const ActionTag = ({ node, action }: ActionTagProps) => {
 
   if (status === "skipped") {
     return (
-      <Flex fontSize="10pt" color="gray">
-        <Box>Skipped</Box>
-        {skipReason && (
-          <Tooltip label={skipReason}>
-            <InfoIcon />
-          </Tooltip>
-        )}
-      </Flex>
+      <Tag backgroundColor={"gray.100"}>
+        <Flex fontSize="10pt" color="gray.500" alignItems="center" gap="3px">
+          <Box>Skipped</Box>
+          {skipReason && (
+            <Tooltip label={skipReason}>
+              <InfoIcon />
+            </Tooltip>
+          )}
+        </Flex>
+      </Tag>
     );
   }
 
