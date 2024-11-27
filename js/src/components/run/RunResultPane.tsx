@@ -129,7 +129,7 @@ export const _LoadableRunView = ({
             <Button
               leftIcon={<CopyIcon />}
               variant="outline"
-              isDisabled={!runId || !run?.result || !!error}
+              isDisabled={!runId || !run?.result || !!error || tabIndex !== 0}
               onMouseEnter={onMouseEnter}
               onMouseLeave={onMouseLeave}
               size="sm"

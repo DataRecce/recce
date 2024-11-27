@@ -192,6 +192,7 @@ export const CheckDetail = ({ checkId }: CheckDetailProps) => {
     return !run?.result || !!run?.error;
   };
 
+  const [tabIndex, setTabIndex] = useState(0);
   const { ref, onCopyToClipboard, onMouseEnter, onMouseLeave } =
     useCopyToClipboardButton();
 
@@ -323,7 +324,8 @@ export const CheckDetail = ({ checkId }: CheckDetailProps) => {
       </Box>
 
       <Box style={{ contain: "strict" }}>
-        <Tabs height="100%" display="flex" flexDirection="column">
+        <Tabs height="100%" display="flex" flexDirection="column" tabIndex={tabIndex}
+        onChange={setTabIndex}>
           <TabList height="50px">
             <Tab fontSize="10pt">Result</Tab>
             {(check?.type === "query" || check?.type === "query_diff") && (
@@ -334,7 +336,7 @@ export const CheckDetail = ({ checkId }: CheckDetailProps) => {
               <Button
                 leftIcon={<CopyIcon />}
                 variant="outline"
-                isDisabled={shouldDisabledCopyButton(check?.type ?? "", run)}
+                isDisabled={shouldDisabledCopyButton(check?.type ?? "", run) || tabIndex !== 0}
                 onMouseEnter={onMouseEnter}
                 onMouseLeave={onMouseLeave}
                 size="sm"
