@@ -29,7 +29,8 @@ jobs:
         working-directory: ./js
 
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
+        token: ${{ secrets.AUTOCOMMIT_PERSONAL_TOKEN }}
 
       - name: Use Node.js ${{ matrix.node-version }}
         uses: actions/setup-node@v3
@@ -56,5 +57,5 @@ jobs:
           commit_message: AUTO-COMMIT - build js statics to recce data/
           branch: ${{ github.base_ref || github.ref_name }}
           token: ${{ secrets.AUTOCOMMIT_PERSONAL_TOKEN }}
-          push_options: --force
+          #          push_options: --force
           # Auto-commits to target merge branch
