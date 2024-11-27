@@ -73,7 +73,11 @@ class RowCountDiffTask(Task, QueryMixin):
         # Query row count for nodes that are not cached
         with dbt_adapter.connection_named("query"):
             self.connection = dbt_adapter.get_thread_connection()
+            completed = 0
+            total = len(query_candidates)
             for node in query_candidates:
+                self.update_progress(message=f"Diff: {node} [{completed}/{total}]", percentage=completed / total)
+
                 base_row_count = self._query_row_count(dbt_adapter, node, base=True)
                 self.check_cancel()
                 curr_row_count = self._query_row_count(dbt_adapter, node, base=False)
@@ -82,6 +86,7 @@ class RowCountDiffTask(Task, QueryMixin):
                     'base': base_row_count,
                     'curr': curr_row_count,
                 }
+                completed += 1
 
         return result
 
