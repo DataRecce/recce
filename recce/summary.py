@@ -362,9 +362,9 @@ def generate_check_summary(base_lineage, curr_lineage) -> (List[CheckSummary], D
     # TODO: find a way to count failed checks, currently the state file won't include failed checks
 
     def _find_run_by_check_id(check_id):
-        for r in runs:
-            if str(check_id) == str(r.check_id):
-                return r
+        runs_for_check = [r for r in runs if str(check_id) == str(r.check_id)]
+        if runs_for_check:
+            return runs_for_check[-1]
         return None
 
     for check in checks:
