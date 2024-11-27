@@ -3,9 +3,9 @@ import { useToast } from "@chakra-ui/react";
 export function useCheckToast() {
   const toast = useToast();
 
-  function markedAsCheckedToast() {
+  function markedAsApprovedToast() {
     toast({
-      title: "Marked as checked",
+      title: "Marked as approved",
       position: "bottom-right",
       status: "success",
       containerStyle: {
@@ -15,6 +15,6 @@ export function useCheckToast() {
     });
   }
   return {
-    markedAsCheckedToast,
+    markedAsApprovedToast,
   };
 }
