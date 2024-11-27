@@ -56,4 +56,5 @@ jobs:
           commit_message: AUTO-COMMIT - build js statics to recce data/
           branch: ${{ github.base_ref || github.ref_name }}
           token: ${{ secrets.AUTOCOMMIT_PERSONAL_TOKEN }}
+          push_options: --force
           # Auto-commits to target merge branch
