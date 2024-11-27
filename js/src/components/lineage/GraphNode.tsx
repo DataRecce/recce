@@ -106,18 +106,18 @@ export function GraphNode({ data }: GraphNodeProps) {
   const { selectNodeMulti, selectMode } = useLineageViewContext();
 
   // text color, icon
-  let color = "gray.400";
-  let backgroundColor = "gray.100";
-  let iconChangeStatus: any;
+  const {
+    icon: iconChangeStatus,
+    color,
+    backgroundColor,
+  } = changeStatus
+    ? getIconForChangeStatus(changeStatus)
+    : {
+        icon: undefined,
+        color: "gray.400",
+        backgroundColor: "gray.100",
+      };
   let borderStyle = "solid";
-  if (changeStatus) {
-    iconChangeStatus = getIconForChangeStatus(changeStatus).icon;
-    color = getIconForChangeStatus(changeStatus).color;
-    backgroundColor = getIconForChangeStatus(changeStatus).backgroundColor;
-  } else {
-    color = "gray.400";
-    backgroundColor = "gray.100";
-  }
 
   // border width and color
   const selectedNodeShadowBox = "rgba(3, 102, 214, 0.5) 5px 5px 10px 3px";
@@ -182,7 +182,7 @@ export function GraphNode({ data }: GraphNodeProps) {
           backgroundColor={color}
           padding={2}
           borderRightWidth={borderWidth}
-          borderColor={selectMode == "multi" ? "#00000020" : borderColor}
+          borderColor={selectMode === "multi" ? "#00000020" : borderColor}
           borderStyle={borderStyle}
           alignItems="top"
           visibility={showContent ? "inherit" : "hidden"}
