@@ -16,6 +16,7 @@ jobs:
         uses: actions/checkout@v4
         with:
           ref: main
+          token: ${{ secrets.AUTOCOMMIT_PERSONAL_TOKEN }}
 
       - name: Bump version
         id: bump_version
