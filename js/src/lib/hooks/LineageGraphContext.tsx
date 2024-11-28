@@ -2,9 +2,11 @@ import { LineageGraph, buildLineageGraph } from "@/components/lineage/lineage";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import React, {
   createContext,
+  useCallback,
   useContext,
   useEffect,
   useMemo,
+  useRef,
   useState,
 } from "react";
 import { cacheKeys } from "../api/cacheKeys";
@@ -15,7 +17,17 @@ import {
   gitInfo,
   pullRequestInfo,
 } from "../api/info";
-import { useToast } from "@chakra-ui/react";
+import {
+  Button,
+  Modal,
+  ModalBody,
+  ModalContent,
+  ModalFooter,
+  ModalHeader,
+  ModalOverlay,
+  useToast,
+  Text,
+} from "@chakra-ui/react";
 import { PUBLIC_API_URL } from "../const";
 import path from "path";
 import { aggregateRuns, RunsAggregated } from "../api/runs";
@@ -50,27 +62,47 @@ const defaultLineageGraphsContext: LineageGraphContextType = {};
 
 const LineageGraphContext = createContext(defaultLineageGraphsContext);
 
-interface LineageGraphProps {
-  children: React.ReactNode;
-}
+type LineageWatcherStatus = "pending" | "connected" | "disconnected";
 
-function LineageWatcher({ refetch }: { refetch: () => void }) {
-  const artifactsUpdatedToast = useToast();
-  const [webSocket, setWebSocket] = useState<WebSocket>();
+function useLineageWatcher() {
+  const artifactsUpdatedToast = useToast();  
 
+  // use ref so that the callbacks can access the latest values
+  const ref = useRef<{
+    ws:WebSocket | undefined;
+    status: LineageWatcherStatus;
+  }>({
+    ws: undefined,
+    status: "pending",
+  });
+
+  const [status, setStatus] = useState<LineageWatcherStatus>("pending");
+  ref.current.status = status;
   const queryClient = useQueryClient();
 
-  useEffect(() => {
+  const invalidateCaches = () => {
+    queryClient.invalidateQueries({ queryKey: cacheKeys.lineage() });
+    queryClient.invalidateQueries({ queryKey: cacheKeys.checks() });
+    queryClient.invalidateQueries({ queryKey: cacheKeys.runs() });
+  }
+
+
+  const connect = () => {
     function httpUrlToWebSocketUrl(url: string): string {
       return url.replace(/(http)(s)?\:\/\//, "ws$2://");
     }
     const ws = new WebSocket(`${httpUrlToWebSocketUrl(PUBLIC_API_URL)}/api/ws`);
-    setWebSocket(ws);
+    ref.current.ws = ws;
+
     ws.onopen = () => {
       ws.send("ping"); // server will respond with 'pong'
     };
     ws.onmessage = (event) => {
-      if (event.data === "pong") {
+      if (event.data === "pong") {                
+        if (ref.current.status === "disconnected") {          
+          invalidateCaches();
+        }
+        setStatus("connected");
         return;
       }
       try {
@@ -87,27 +119,53 @@ function LineageWatcher({ refetch }: { refetch: () => void }) {
             duration: 5000,
             isClosable: true,
           });
-          queryClient.invalidateQueries({ queryKey: cacheKeys.lineage() });
+          invalidateCaches();
         }
       } catch (err) {
         console.error(err);
       }
     };
-    return () => {
-      if (ws) {
-        ws.close();
+    ws.onerror = (err) => {
+      console.error(err);
+    };
+    ws.onclose = () => {
+      setStatus((status) => {
+        if (status === "connected") {
+          return "disconnected";
+        }
+        return status;
+      });
+
+      ref.current.ws = undefined;
+    };
+  };
+
+  useEffect(() => {    
+    const refObj = ref.current;
+    connect();    
+    return () => {      
+      if (refObj.ws) {
+        refObj.ws.close();
       }
     };
-  }, [artifactsUpdatedToast, queryClient]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
-  return <></>;
+  return {
+    connectionStatus: status,
+    connect,
+  };
+}
+
+interface LineageGraphProps {
+  children: React.ReactNode;
 }
 
 export function LineageGraphContextProvider({ children }: LineageGraphProps) {
   const { data, isLoading, error, refetch } = useQuery({
     queryKey: cacheKeys.lineage(),
     queryFn: getServerInfo,
-  });
+  });  
 
   const { data: runsAggregated, refetch: refetchRunsAggregated } = useQuery({
     queryKey: cacheKeys.runsAggregated(),
@@ -146,9 +204,10 @@ export function LineageGraphContextProvider({ children }: LineageGraphProps) {
     sqlmesh: data?.sqlmesh,
   };
 
+  const { connectionStatus, connect } = useLineageWatcher();
+
   return (
     <>
-      <LineageWatcher refetch={refetch} />
       <LineageGraphContext.Provider
         value={{
           lineageGraph,
@@ -170,6 +229,33 @@ export function LineageGraphContextProvider({ children }: LineageGraphProps) {
       >
         {children}
       </LineageGraphContext.Provider>
+
+      <Modal
+        isOpen={connectionStatus === "disconnected"}
+        onClose={() => {}}
+        isCentered
+      >
+        <ModalOverlay />
+        <ModalContent>
+          <ModalHeader>Server Disconnected</ModalHeader>
+          <ModalBody>
+            <Text>
+              The server connection has been lost. Please click the button below
+              to reconnect.
+            </Text>
+          </ModalBody>
+          <ModalFooter>
+            <Button
+              colorScheme="blue"
+              onClick={() => {
+                connect();
+              }}
+            >
+              Reconnect
+            </Button>
+          </ModalFooter>
+        </ModalContent>
+      </Modal>
     </>
   );
 }
