@@ -7,7 +7,9 @@ import click
 import uvicorn
 
 from recce import event
+from recce.artifact import verify_artifact_path
 from recce.config import RecceConfig, RECCE_CONFIG_FILE, RECCE_ERROR_LOG_FILE
+from recce.git import current_branch, current_commit_hash
 from recce.run import cli_run, check_github_ci_env
 from recce.state import RecceStateLoader, RecceCloudStateManager
 from recce.summary import generate_markdown_summary
@@ -560,6 +562,44 @@ def download(**kwargs):
 
     state_manager.download_state_from_cloud(filepath)
     console.print(f'Downloaded state file to "{filepath}"')
+
+
+@cloud.command(cls=TrackCommand)
+@click.option('--cloud-token', help='The token used by Recce Cloud.', type=click.STRING,
+              envvar='GITHUB_TOKEN')
+@click.option('--branch', '-b', help='The branch of the provided artifact.', type=click.STRING,
+              envvar='GITHUB_HEAD_REF', default=current_branch())
+@click.option('--target-path', help='dbt artifacts directory for your artifact.', type=click.STRING, default='target')
+def upload_artifact(**kwargs):
+    """
+        Upload the DBT artifact to cloud
+    """
+    from rich.console import Console
+    console = Console()
+    target_path = kwargs.get('target_path')
+
+    if verify_artifact_path(target_path) is False:
+        console.print(f"[[red]Error[/red]] Invalid target path: {target_path}")
+        console.print("Please provide a valid target path containing manifest.json and catalog.json.")
+        return 1
+
+    console.print(current_commit_hash())
+    pass
+
+
+@cloud.command(cls=TrackCommand)
+@click.option('--cloud-token', help='The token used by Recce Cloud.', type=click.STRING,
+              envvar='GITHUB_TOKEN')
+@click.option('--branch', '-b', help='The branch of the selected artifact.', type=click.STRING,
+              envvar='GITHUB_BASE_REF', default=current_branch())
+@click.option('--target-path', help='dbt artifacts directory for your artifact.', type=click.STRING,
+              default='target-base')
+def download_artifact(**kwargs):
+    """
+        Download the DBT artifact to cloud
+    """
+
+    pass
 
 
 @cli.group('github', short_help='GitHub related commands', hidden=True)
