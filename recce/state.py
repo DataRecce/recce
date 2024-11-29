@@ -412,7 +412,9 @@ class RecceStateLoader:
         import requests
 
         presigned_url = RecceCloud(token=self.cloud_options.get('token')).get_presigned_url(
-            method=PresignedUrlMethod.UPLOAD, pr_info=self.pr_info, artifact_name=RECCE_STATE_COMPRESSED_FILE,
+            method=PresignedUrlMethod.UPLOAD, repository=self.pr_info.repository,
+            artifact_name=RECCE_STATE_COMPRESSED_FILE,
+            pr_id=self.pr_info.id,
             metadata=metadata)
         compress_passwd = self.cloud_options.get('password')
         headers = s3_sse_c_headers(compress_passwd)
@@ -514,7 +516,9 @@ class RecceCloudStateManager:
         import requests
 
         presigned_url = RecceCloud(token=self.cloud_options.get('token')).get_presigned_url(
-            method=PresignedUrlMethod.UPLOAD, pr_info=self.pr_info, artifact_name=RECCE_STATE_COMPRESSED_FILE,
+            method=PresignedUrlMethod.UPLOAD, repository=self.pr_info.repository,
+            artifact_name=RECCE_STATE_COMPRESSED_FILE,
+            pr_id=self.pr_info.id,
             metadata=metadata)
 
         compress_passwd = self.cloud_options.get('password')
@@ -591,7 +595,8 @@ class RecceCloudStateManager:
         import requests
 
         presigned_url = RecceCloud(token=self.cloud_options.get('token')).get_presigned_url(
-            method=PresignedUrlMethod.DOWNLOAD, pr_info=self.pr_info, artifact_name=RECCE_STATE_COMPRESSED_FILE)
+            method=PresignedUrlMethod.DOWNLOAD, repository=self.pr_info.repository,
+            artifact_name=RECCE_STATE_COMPRESSED_FILE, pr_id=self.pr_info.id)
 
         password = self.cloud_options.get('password')
         if password is None:

@@ -42,10 +42,17 @@ class RecceCloud:
 
     def get_presigned_url(self,
                           method: PresignedUrlMethod,
-                          pr_info: PullRequestInfo,
+                          repository: str,
                           artifact_name: str,
-                          metadata: dict = None) -> str:
-        api_url = f'{self.base_url}/{pr_info.repository}/pulls/{pr_info.id}/artifacts/{method}?artifact_name={artifact_name}&enable_ssec=true'
+                          metadata: dict = None,
+                          pr_id: int = None,
+                          sha: str = None) -> str:
+        if pr_id is not None:
+            api_url = f'{self.base_url}/{repository}/pulls/{pr_id}/artifacts/{method}?artifact_name={artifact_name}&enable_ssec=true'
+        elif sha is not None:
+            api_url = f'{self.base_url}/{repository}/commits/{sha}/artifacts/{method}?artifact_name={artifact_name}&enable_ssec=true'
+        else:
+            raise ValueError('Either pr_id or sha must be provided.')
         response = self._request('POST', api_url, data=metadata)
         if response.status_code != 200:
             raise RecceCloudException(

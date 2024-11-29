@@ -31,6 +31,20 @@ def current_commit_hash(short_length: int = 7, short: bool = False):
         return None
 
 
+def commit_hash_from_branch(branch: str, short_length: int = 7, short: bool = False):
+    try:
+        repo = Repo(search_parent_directories=True)
+        commit = repo.commit(branch)
+        if short:
+            return commit.hexsha[:short_length]
+        return commit.hexsha
+    except TypeError:
+        # happened when HEAD is a detached symbolic reference
+        return None
+    except Exception:
+        return None
+
+
 def hosting_repo(remote: str = 'origin'):
     try:
         repo = Repo(search_parent_directories=True)
