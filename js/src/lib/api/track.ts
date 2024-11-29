@@ -31,3 +31,11 @@ interface MultiNodeActionProps {
 export function trackMultiNodesAction(props: MultiNodeActionProps) {
   amplitude.track("[Web] multi_nodes_action", props);
 }
+
+interface HistoryActionProps {
+  name: "show" | "hide" | "click_run" | "add_to_checklist" | "go_to_check";
+}
+
+export function trackHistoryAction(props: HistoryActionProps) {
+  amplitude.track("[Web] history_action", props);
+}

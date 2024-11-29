@@ -30,6 +30,7 @@ import { VscHistory } from "react-icons/vsc";
 import { useLineageViewContext } from "./LineageViewContext";
 import { findByRunType } from "../run/registry";
 import { ChevronDownIcon } from "@chakra-ui/icons";
+import { trackHistoryAction } from "@/lib/api/track";
 
 const HistoryToggle = () => {
   const { isHistoryOpen, showHistory, closeHistory } = useRecceActionContext();
@@ -38,7 +39,15 @@ const HistoryToggle = () => {
       leftIcon={<Icon as={VscHistory} />}
       size="xs"
       variant="outline"
-      onClick={isHistoryOpen ? closeHistory : showHistory}
+      onClick={() => {
+        if (isHistoryOpen) {
+          trackHistoryAction({ name: "hide" });
+          closeHistory();
+        } else {
+          trackHistoryAction({ name: "show" });
+          showHistory();
+        }
+      }}
     >
       {isHistoryOpen ? "Hide" : "Show"}
     </Button>
