@@ -588,7 +588,7 @@ def upload_artifact(**kwargs):
                                  token=cloud_token, password=password,
                                  debug=kwargs.get('debug', False))
     except Exception as e:
-        console.print(f"[[red]Error[/red]] Failed to upload the DBT artifact to cloud.")
+        console.print("[[red]Error[/red]] Failed to upload the DBT artifact to cloud.")
         console.print(f"Reason: {e}")
         rc = 1
     return rc
@@ -619,7 +619,7 @@ def download_artifact(**kwargs):
                                    force=kwargs.get('force', False),
                                    debug=kwargs.get('debug', False))
     except Exception as e:
-        console.print(f"[[red]Error[/red]] Failed to download the DBT artifact from cloud.")
+        console.print("[[red]Error[/red]] Failed to download the DBT artifact from cloud.")
         console.print(f"Reason: {e}")
         rc = 1
     return rc
