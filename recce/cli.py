@@ -6,7 +6,6 @@ from typing import List
 import click
 import uvicorn
 
-from build.lib.recce.event.track import console
 from recce import event
 from recce.artifact import upload_dbt_artifact, download_dbt_artifact
 from recce.config import RecceConfig, RECCE_CONFIG_FILE, RECCE_ERROR_LOG_FILE
@@ -578,6 +577,8 @@ def upload_artifact(**kwargs):
     """
         Upload the DBT artifact to cloud
     """
+    from rich.console import Console
+    console = Console()
     cloud_token = kwargs.get('cloud_token')
     password = kwargs.get('password')
     target_path = kwargs.get('target_path')
@@ -610,6 +611,8 @@ def download_artifact(**kwargs):
     """
         Download the DBT artifact to cloud
     """
+    from rich.console import Console
+    console = Console()
     cloud_token = kwargs.get('cloud_token')
     password = kwargs.get('password')
     target_path = kwargs.get('target_path')
