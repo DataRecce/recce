@@ -6,10 +6,11 @@ from typing import List
 import click
 import uvicorn
 
+from build.lib.recce.event.track import console
 from recce import event
-from recce.artifact import verify_artifact_path
+from recce.artifact import upload_dbt_artifact, download_dbt_artifact
 from recce.config import RecceConfig, RECCE_CONFIG_FILE, RECCE_ERROR_LOG_FILE
-from recce.git import current_branch, current_commit_hash
+from recce.git import current_branch
 from recce.run import cli_run, check_github_ci_env
 from recce.state import RecceStateLoader, RecceCloudStateManager
 from recce.summary import generate_markdown_summary
@@ -570,21 +571,27 @@ def download(**kwargs):
 @click.option('--branch', '-b', help='The branch of the provided artifact.', type=click.STRING,
               envvar='GITHUB_HEAD_REF', default=current_branch())
 @click.option('--target-path', help='dbt artifacts directory for your artifact.', type=click.STRING, default='target')
+@click.option('--password', '-p', help='The password to encrypt the dbt artifact in cloud.', type=click.STRING,
+              envvar='RECCE_STATE_PASSWORD', required=True)
+@add_options(recce_options)
 def upload_artifact(**kwargs):
     """
         Upload the DBT artifact to cloud
     """
-    from rich.console import Console
-    console = Console()
+    cloud_token = kwargs.get('cloud_token')
+    password = kwargs.get('password')
     target_path = kwargs.get('target_path')
+    branch = kwargs.get('branch')
 
-    if verify_artifact_path(target_path) is False:
-        console.print(f"[[red]Error[/red]] Invalid target path: {target_path}")
-        console.print("Please provide a valid target path containing manifest.json and catalog.json.")
-        return 1
-
-    console.print(current_commit_hash())
-    pass
+    try:
+        rc = upload_dbt_artifact(target_path, branch=branch,
+                                 token=cloud_token, password=password,
+                                 debug=kwargs.get('debug', False))
+    except Exception as e:
+        console.print(f"[[red]Error[/red]] Failed to upload the DBT artifact to cloud.")
+        console.print(f"Reason: {e}")
+        rc = 1
+    return rc
 
 
 @cloud.command(cls=TrackCommand)
@@ -592,14 +599,30 @@ def upload_artifact(**kwargs):
               envvar='GITHUB_TOKEN')
 @click.option('--branch', '-b', help='The branch of the selected artifact.', type=click.STRING,
               envvar='GITHUB_BASE_REF', default=current_branch())
-@click.option('--target-path', help='dbt artifacts directory for your artifact.', type=click.STRING,
+@click.option('--target-path', help='The dbt artifacts directory for your artifact.', type=click.STRING,
               default='target-base')
+@click.option('--password', '-p', help='The password to encrypt the dbt artifact in cloud.', type=click.STRING,
+              envvar='RECCE_STATE_PASSWORD')
+@click.option('--force', '-f', help='Bypasses the confirmation prompt. Download the artifact directly.',
+              is_flag=True)
+@add_options(recce_options)
 def download_artifact(**kwargs):
     """
         Download the DBT artifact to cloud
     """
-
-    pass
+    cloud_token = kwargs.get('cloud_token')
+    password = kwargs.get('password')
+    target_path = kwargs.get('target_path')
+    branch = kwargs.get('branch')
+    try:
+        rc = download_dbt_artifact(target_path, branch=branch, token=cloud_token, password=password,
+                                   force=kwargs.get('force', False),
+                                   debug=kwargs.get('debug', False))
+    except Exception as e:
+        console.print(f"[[red]Error[/red]] Failed to download the DBT artifact from cloud.")
+        console.print(f"Reason: {e}")
+        rc = 1
+    return rc
 
 
 @cli.group('github', short_help='GitHub related commands', hidden=True)
