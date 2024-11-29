@@ -29,6 +29,7 @@ import { useRecceActionContext } from "@/lib/hooks/RecceActionContext";
 import { SubmitOptions, waitRun } from "@/lib/api/runs";
 import { VscDiff, VscHistory } from "react-icons/vsc";
 import { InfoIcon } from "@chakra-ui/icons";
+import { trackHistoryAction } from "@/lib/api/track";
 
 const HistoryToggle = () => {
   const { isHistoryOpen, showHistory, closeHistory } = useRecceActionContext();
@@ -40,7 +41,15 @@ const HistoryToggle = () => {
         leftIcon={<Icon as={VscHistory} />}
         size="xs"
         variant="outline"
-        onClick={isHistoryOpen ? closeHistory : showHistory}
+        onClick={() => {
+          if (isHistoryOpen) {
+            trackHistoryAction({ name: "hide" });
+            closeHistory();
+          } else {
+            trackHistoryAction({ name: "show" });
+            showHistory();
+          }
+        }}
       >
         {isHistoryOpen ? "Hide" : "Show"}
       </Button>

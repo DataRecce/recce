@@ -29,6 +29,7 @@ import { useLocation } from "wouter";
 import SimpleBar from "simplebar-react";
 import "simplebar/dist/simplebar.min.css";
 import { formatRunDate, RunStatusAndDate } from "./RunStatusAndDate";
+import { trackHistoryAction } from "@/lib/api/track";
 
 const RunListItem = ({
   run,
@@ -102,6 +103,7 @@ const RunListItem = ({
               onClick={(e) => {
                 e.preventDefault();
                 e.stopPropagation();
+                trackHistoryAction({ name: "add_to_checklist" });
                 onAddToChecklist(run.run_id);
               }}
             >
@@ -156,6 +158,7 @@ export const RunList = () => {
   });
   const { showRunId, runId } = useRecceActionContext();
   const handleSelectRun = (runId: string) => {
+    trackHistoryAction({ name: "click_run" });
     showRunId(runId, false);
   };
   const [, setLocation] = useLocation();
@@ -172,6 +175,7 @@ export const RunList = () => {
 
   const handleGoToCheck = useCallback(
     (checkId: string) => {
+      trackHistoryAction({ name: "go_to_check" });
       setLocation(`/checks/${checkId}`);
     },
     [setLocation]
