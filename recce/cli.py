@@ -575,7 +575,7 @@ def download(**kwargs):
 @add_options(recce_options)
 def upload_artifact(**kwargs):
     """
-        Upload the DBT artifact to cloud
+        Upload the dbt artifact to cloud
     """
     from rich.console import Console
     console = Console()
@@ -588,8 +588,10 @@ def upload_artifact(**kwargs):
         rc = upload_dbt_artifact(target_path, branch=branch,
                                  token=cloud_token, password=password,
                                  debug=kwargs.get('debug', False))
+        console.rule('Uploaded Successfully')
     except Exception as e:
-        console.print("[[red]Error[/red]] Failed to upload the DBT artifact to cloud.")
+        console.rule('Failed to Upload', style='red')
+        console.print("[[red]Error[/red]] Failed to upload the dbt artifact to cloud.")
         console.print(f"Reason: {e}")
         rc = 1
     return rc
@@ -609,7 +611,7 @@ def upload_artifact(**kwargs):
 @add_options(recce_options)
 def download_artifact(**kwargs):
     """
-        Download the DBT artifact to cloud
+        Download the dbt artifact to cloud
     """
     from rich.console import Console
     console = Console()
@@ -621,9 +623,21 @@ def download_artifact(**kwargs):
         rc = download_dbt_artifact(target_path, branch=branch, token=cloud_token, password=password,
                                    force=kwargs.get('force', False),
                                    debug=kwargs.get('debug', False))
+        console.rule('Downloaded Successfully')
     except Exception as e:
-        console.print("[[red]Error[/red]] Failed to download the DBT artifact from cloud.")
-        console.print(f"Reason: {e}")
+        console.rule('Failed to Download', style='red')
+        console.print("[[red]Error[/red]] Failed to download the dbt artifact from cloud.")
+        reason = str(e)
+
+        if 'Requests specifying Server Side Encryption with Customer provided keys must provide the correct secret key' in reason:
+            console.print("Reason: Decryption failed due to incorrect password.")
+            console.print(
+                "Please provide the correct password to decrypt the dbt artifact. Or re-upload the dbt artifact with a new password.")
+        elif 'The specified key does not exist' in reason:
+            console.print("Reason: The dbt artifact is not found in the cloud.")
+            console.print("Please upload the dbt artifact to the cloud before downloading it.")
+        else:
+            console.print(f"Reason: {reason}")
         rc = 1
     return rc
 
