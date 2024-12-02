@@ -4,6 +4,7 @@ import time
 from datetime import datetime, timezone
 from typing import List
 
+from deepdiff import DeepDiff
 from rich import box
 from rich.console import Console
 from rich.table import Table
@@ -11,6 +12,7 @@ from rich.table import Table
 from recce.apis.check_func import create_check_from_run, create_check_without_run, purge_preset_checks
 from recce.apis.run_func import submit_run
 from recce.config import RecceConfig
+from recce.core import default_context
 from recce.models.types import RunType
 from recce.summary import generate_markdown_summary
 
@@ -36,14 +38,54 @@ def load_preset_checks(checks: list):
     table.add_column('Type')
     table.add_column('Description')
     for check in checks:
+        is_check = False
         name = check.get('name')
         description = check.get('description', '')
         check_type = check.get('type')
         check_params = check.get('params', {})
         check_options = check.get('view_options', {})
-        create_check_without_run(name, description, check_type, check_params, check_options, is_preset=True)
+
+        if check_type == RunType.SCHEMA_DIFF.value:
+            is_check = schema_diff_should_be_approved(check_params)
+
+        create_check_without_run(name, description, check_type, check_params, check_options, is_preset=True,
+                                 is_checked=is_check)
         table.add_row(name, check_type.replace('_', ' ').title(), description.strip())
     console.print(table)
+
+
+def schema_diff_should_be_approved(check_params: dict) -> bool:
+    context = default_context()
+    nodes = context.adapter.select_nodes(
+        select=check_params.get('select'),
+        exclude=check_params.get('exclude'),
+        packages=check_params.get('packages'),
+        view_mode=check_params.get('view_mode'),
+    )
+    nodes = [node for node in nodes if not node.startswith('test.')]
+    for node in nodes:
+        base = context.get_model(node, base=True)
+        curr = context.get_model(node, base=False)
+    diff = DeepDiff(base, curr, ignore_order=True)
+
+    # If the diff is empty, then the check should be approved
+    if bool(diff) is False:
+        return True
+
+    return False
+
+
+def run_should_be_approved(run):
+    if run.type == RunType.ROW_COUNT_DIFF:
+        # If the run has an error, then the check should not be approved
+        if run.error is not None:
+            return False
+        # If the row count are exactly the same, then the check should be approved
+        for column, row_count_result in run.result.items():
+            if row_count_result['base'] != row_count_result['curr']:
+                return False
+        return True
+    return False
 
 
 async def execute_preset_checks(preset_checks: list) -> (int, List[dict]):
@@ -79,12 +121,15 @@ async def execute_preset_checks(preset_checks: list) -> (int, List[dict]):
 
             start = time.time()
             if check_type in ['schema_diff']:
+                is_check = schema_diff_should_be_approved(check_params)
                 create_check_without_run(check_name, check_description, check_type, check_params, check_options,
-                                         is_preset=True)
+                                         is_preset=True, is_checked=is_check)
             else:
                 run, future = submit_run(check_type, params=check_params)
                 await future
-                create_check_from_run(run.run_id, check_name, check_description, check_options, is_preset=True)
+                is_check = run_should_be_approved(run)
+                create_check_from_run(run.run_id, check_name, check_description, check_options, is_preset=True,
+                                      is_checked=is_check)
 
             end = time.time()
             table.add_row('[[green]Success[/green]]', check_name, check_type.replace('_', ' ').title(),
