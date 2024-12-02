@@ -62,7 +62,8 @@ def _generate_check_name(check_type, params, view_options):
         return f"{'check'.capitalize()} - {now}"
 
 
-def create_check_from_run(run_id, check_name=None, check_description='', check_view_options=None, is_preset=False):
+def create_check_from_run(run_id, check_name=None, check_description='', check_view_options=None, is_preset=False,
+                          is_checked=False):
     if run_id is None:
         raise ValueError('run_id is required')
 
@@ -80,21 +81,24 @@ def create_check_from_run(run_id, check_name=None, check_description='', check_v
                   type=run_type,
                   params=run_params,
                   view_options=check_view_options,
-                  is_preset=is_preset)
+                  is_preset=is_preset,
+                  is_checked=is_checked)
     CheckDAO().create(check)
     run.check_id = check.check_id
 
     return check
 
 
-def create_check_without_run(check_name, check_description, check_type, params, check_view_options, is_preset=False):
+def create_check_without_run(check_name, check_description, check_type, params, check_view_options, is_preset=False,
+                             is_checked=False):
     name = check_name if check_name is not None else _generate_check_name(check_type, params, check_view_options)
     check = Check(name=name,
                   description=check_description,
                   type=check_type,
                   params=params,
                   view_options=check_view_options,
-                  is_preset=is_preset)
+                  is_preset=is_preset,
+                  is_checked=is_checked)
     CheckDAO().create(check)
     return check
 
