@@ -7,7 +7,7 @@ import tempfile
 import requests
 from rich.console import Console
 
-from recce.git import hosting_repo, current_commit_hash, commit_hash_from_branch
+from recce.git import hosting_repo, commit_hash_from_branch, current_branch
 from recce.state import s3_sse_c_headers
 from recce.util.recce_cloud import RecceCloud, PresignedUrlMethod
 
@@ -75,6 +75,13 @@ def upload_dbt_artifact(target_path: str, branch: str, token: str, password: str
         console.print("Please provide a valid target path containing manifest.json and catalog.json.")
         return 1
 
+    if branch != current_branch():
+        console.print(
+            f"[[yellow]Warning[/yellow]] You are uploading the dbt artifact as branch '{branch}'. "
+            f"However, the current branch is '{current_branch()}'."
+        )
+        console.print("Please make sure you are uploading the dbt artifact to the correct branch.")
+
     compress_file_path = archive_artifact(target_path)
     repo = hosting_repo()
 
@@ -83,13 +90,13 @@ def upload_dbt_artifact(target_path: str, branch: str, token: str, password: str
         method=PresignedUrlMethod.UPLOAD,
         repository=repo,
         artifact_name='dbt_artifact.tar.gz',
-        sha=current_commit_hash(),
+        sha=commit_hash_from_branch(branch),
     )
 
     if debug:
         console.print('Git information:')
         console.print(f'Branch: {branch}')
-        console.print(f'Commit hash: {current_commit_hash()}')
+        console.print(f'Commit hash: {commit_hash_from_branch(branch)}')
         console.print(f'GitHub repository: {repo}')
         console.print(f'Artifact path: {compress_file_path}')
         console.print(f'Presigned URL: {presigned_url}')
@@ -113,10 +120,10 @@ def upload_dbt_artifact(target_path: str, branch: str, token: str, password: str
 def download_dbt_artifact(target_path: str, branch: str, token: str, password: str,
                           force: bool = False,
                           debug: bool = False):
+    console = Console()
     repo = hosting_repo()
     sha = commit_hash_from_branch(branch)
     if debug:
-        console = Console()
         console.rule('Debug information:')
         console.print(f'Git Branch: {branch}')
         console.print(f'Git Commit hash: {sha}')
