@@ -3,6 +3,14 @@ import os
 from git import Repo, InvalidGitRepositoryError
 
 
+def current_default_branch():
+    try:
+        repo = Repo(search_parent_directories=True)
+        return repo.remotes.origin.refs['HEAD'].reference.remote_head
+    except Exception:
+        return None
+
+
 def current_branch():
     try:
         repo = Repo(search_parent_directories=True)

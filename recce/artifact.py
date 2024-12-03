@@ -1,8 +1,10 @@
 import gzip
+import json
 import os
 import shutil
 import tarfile
 import tempfile
+from urllib.parse import urlencode
 
 import requests
 from rich.console import Console
@@ -40,9 +42,24 @@ def verify_artifact_path(target_path: str) -> bool:
     return False
 
 
-def archive_artifact(target_path: str) -> str:
+def parse_dbt_version(file_path: str) -> str:
+    with open(file_path, 'r') as f:
+        data = json.load(f)
+
+    dbt_version = data.get('metadata', {}).get('dbt_version', None)
+    return dbt_version
+
+
+def archive_artifact(target_path: str) -> (str, str):
     if verify_artifact_path(target_path) is False:
-        return None
+        raise Exception(f'Invalid target path: {target_path}')
+
+    manifest_path = os.path.join(target_path, 'manifest.json')
+    catalog_path = os.path.join(target_path, 'catalog.json')
+
+    dbt_version = parse_dbt_version(manifest_path)
+    if dbt_version is None:
+        raise Exception('Failed to parse dbt version from manifest.json')
 
     # prepare the temporary artifact path
     tmp_dir = tempfile.mkdtemp()
@@ -50,8 +67,6 @@ def archive_artifact(target_path: str) -> str:
     artifact_tar_gz_path = artifact_tar_path + '.gz'
 
     with tarfile.open(artifact_tar_path, 'w') as tar:
-        manifest_path = os.path.join(target_path, 'manifest.json')
-        catalog_path = os.path.join(target_path, 'catalog.json')
         tar.add(manifest_path, arcname='manifest.json')
         tar.add(catalog_path, arcname='catalog.json')
 
@@ -65,7 +80,7 @@ def archive_artifact(target_path: str) -> str:
     except FileNotFoundError:
         pass
 
-    return artifact_tar_gz_path
+    return artifact_tar_gz_path, dbt_version
 
 
 def upload_dbt_artifact(target_path: str, branch: str, token: str, password: str, debug: bool = False):
@@ -82,27 +97,37 @@ def upload_dbt_artifact(target_path: str, branch: str, token: str, password: str
         )
         console.print("Please make sure you are uploading the dbt artifact to the correct branch.")
 
-    compress_file_path = archive_artifact(target_path)
+    compress_file_path, dbt_version = archive_artifact(target_path)
     repo = hosting_repo()
+    sha = commit_hash_from_branch(branch)
+    metadata = {
+        'commit': sha,
+        'dbt_version': dbt_version
+    }
 
     # Get the presigned URL for uploading the artifact
     presigned_url = RecceCloud(token).get_presigned_url(
         method=PresignedUrlMethod.UPLOAD,
         repository=repo,
         artifact_name='dbt_artifact.tar.gz',
-        sha=commit_hash_from_branch(branch),
+        branch=branch,
+        metadata=metadata
     )
 
     if debug:
-        console.print('Git information:')
+        console.rule('Debug information', style='blue')
         console.print(f'Branch: {branch}')
-        console.print(f'Commit hash: {commit_hash_from_branch(branch)}')
+        console.print(f'Commit hash: {sha}')
         console.print(f'GitHub repository: {repo}')
         console.print(f'Artifact path: {compress_file_path}')
+        console.print(f'DBT version: {dbt_version}')
         console.print(f'Presigned URL: {presigned_url}')
 
     # Upload the compressed artifact
+
     headers = s3_sse_c_headers(password)
+    if metadata:
+        headers['x-amz-tagging'] = urlencode(metadata)
     response = requests.put(presigned_url, data=open(compress_file_path, 'rb').read(), headers=headers)
     if response.status_code != 200:
         raise Exception({response.text})
@@ -122,27 +147,31 @@ def download_dbt_artifact(target_path: str, branch: str, token: str, password: s
                           debug: bool = False):
     console = Console()
     repo = hosting_repo()
-    sha = commit_hash_from_branch(branch)
-    if debug:
-        console.rule('Debug information:')
-        console.print(f'Git Branch: {branch}')
-        console.print(f'Git Commit hash: {sha}')
-        console.print(f'GitHub repository: {repo}')
 
     if os.path.exists(target_path):
         if not force:
-            raise Exception(f'Path {target_path} already exists. Please provide a new path.')
-        console.print(f'[[yellow]Warning[/yellow]] Removing existing path: {target_path}')
+            raise Exception(
+                f'Path {target_path} already exists. Please provide a new path or use \'--fource\' option to overwrite the existing folder.')
+        console.print(f'[[yellow]Warning[/yellow]] Overwrite existing path: {target_path}')
         shutil.rmtree(target_path)
 
     os.mkdir(target_path)
 
-    presigned_url = RecceCloud(token).get_presigned_url(
-        method=PresignedUrlMethod.DOWNLOAD,
+    presigned_url, tags = RecceCloud(token).get_download_presigned_url_with_tags(
         repository=repo,
         artifact_name='dbt_artifact.tar.gz',
-        sha=sha,
+        branch=branch,
     )
+    sha = tags.get('commit')
+    dbt_version = tags.get('dbt_version')
+
+    if debug:
+        console.rule('Debug information', style='blue')
+        console.print(f'Git Branch: {branch}')
+        console.print(f'Git Commit: {sha}')
+        console.print(f'GitHub repository: {repo}')
+        console.print(f'DBT version: {dbt_version}')
+
     headers = s3_sse_c_headers(password)
     response = requests.get(presigned_url, headers=headers)
 
