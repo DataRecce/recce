@@ -46,11 +46,28 @@ class RecceCloud:
                           artifact_name: str,
                           metadata: dict = None,
                           pr_id: int = None,
-                          sha: str = None) -> str:
+                          branch: str = None) -> str:
+        response = self._fetch_presigned_url(method, repository, artifact_name, metadata, pr_id, branch)
+        return response.get('presigned_url')
+
+    def get_download_presigned_url_with_tags(self,
+                                             repository: str,
+                                             artifact_name: str,
+                                             branch: str = None) -> (str, dict):
+        response = self._fetch_presigned_url(PresignedUrlMethod.DOWNLOAD, repository, artifact_name, branch=branch)
+        return response.get('presigned_url'), response.get('tags', {})
+
+    def _fetch_presigned_url(self,
+                             method: PresignedUrlMethod,
+                             repository: str,
+                             artifact_name: str,
+                             metadata: dict = None,
+                             pr_id: int = None,
+                             branch: str = None) -> str:
         if pr_id is not None:
             api_url = f'{self.base_url}/{repository}/pulls/{pr_id}/artifacts/{method}?artifact_name={artifact_name}&enable_ssec=true'
-        elif sha is not None:
-            api_url = f'{self.base_url}/{repository}/commits/{sha}/artifacts/{method}?artifact_name={artifact_name}&enable_ssec=true'
+        elif branch is not None:
+            api_url = f'{self.base_url}/{repository}/commits/{branch}/artifacts/{method}?artifact_name={artifact_name}&enable_ssec=true'
         else:
             raise ValueError('Either pr_id or sha must be provided.')
         response = self._request('POST', api_url, data=metadata)
@@ -63,8 +80,7 @@ class RecceCloud:
                 reason=response.text,
                 status_code=response.status_code
             )
-        presigned_url = response.json().get('presigned_url')
-        return presigned_url
+        return response.json()
 
     def get_artifact_metadata(self, pr_info: PullRequestInfo) -> dict:
         api_url = f'{self.base_url}/{pr_info.repository}/pulls/{pr_info.id}/metadata'

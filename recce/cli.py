@@ -9,7 +9,7 @@ import uvicorn
 from recce import event
 from recce.artifact import upload_dbt_artifact, download_dbt_artifact
 from recce.config import RecceConfig, RECCE_CONFIG_FILE, RECCE_ERROR_LOG_FILE
-from recce.git import current_branch
+from recce.git import current_branch, current_default_branch
 from recce.run import cli_run, check_github_ci_env
 from recce.state import RecceStateLoader, RecceCloudStateManager
 from recce.summary import generate_markdown_summary
@@ -589,6 +589,8 @@ def upload_artifact(**kwargs):
                                  token=cloud_token, password=password,
                                  debug=kwargs.get('debug', False))
         console.rule('Uploaded Successfully')
+        console.print(
+            f'Uploaded dbt artifact to Recce Cloud for branch "{branch}" from "{os.path.abspath(target_path)}"')
     except Exception as e:
         console.rule('Failed to Upload', style='red')
         console.print("[[red]Error[/red]] Failed to upload the dbt artifact to cloud.")
@@ -601,11 +603,11 @@ def upload_artifact(**kwargs):
 @click.option('--cloud-token', help='The token used by Recce Cloud.', type=click.STRING,
               envvar='GITHUB_TOKEN')
 @click.option('--branch', '-b', help='The branch of the selected artifact.', type=click.STRING,
-              envvar='GITHUB_BASE_REF', default=current_branch())
+              envvar='GITHUB_BASE_REF', default=current_default_branch())
 @click.option('--target-path', help='The dbt artifacts directory for your artifact.', type=click.STRING,
               default='target-base')
 @click.option('--password', '-p', help='The password to encrypt the dbt artifact in cloud.', type=click.STRING,
-              envvar='RECCE_STATE_PASSWORD')
+              envvar='RECCE_STATE_PASSWORD', required=True)
 @click.option('--force', '-f', help='Bypasses the confirmation prompt. Download the artifact directly.',
               is_flag=True)
 @add_options(recce_options)
@@ -624,6 +626,8 @@ def download_artifact(**kwargs):
                                    force=kwargs.get('force', False),
                                    debug=kwargs.get('debug', False))
         console.rule('Downloaded Successfully')
+        console.print(
+            f'Downloaded dbt artifact from Recce Cloud for branch "{branch}" to "{os.path.abspath(target_path)}"')
     except Exception as e:
         console.rule('Failed to Download', style='red')
         console.print("[[red]Error[/red]] Failed to download the dbt artifact from cloud.")
