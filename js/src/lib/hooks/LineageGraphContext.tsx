@@ -240,8 +240,8 @@ export function LineageGraphContextProvider({ children }: LineageGraphProps) {
           <ModalHeader>Server Disconnected</ModalHeader>
           <ModalBody>
             <Text>
-              The server connection has been lost. Please click the button below
-              to reconnect.
+              The server connection has been lost. Please restart the Recce
+              server and try again.
             </Text>
           </ModalBody>
           <ModalFooter>
@@ -251,7 +251,7 @@ export function LineageGraphContextProvider({ children }: LineageGraphProps) {
                 connect();
               }}
             >
-              Reconnect
+              Retry
             </Button>
           </ModalFooter>
         </ModalContent>
