@@ -127,9 +127,10 @@ class CheckValidator:
         except Exception as e:
             raise ValueError(f'Invalid check format. {str(e)}')
 
-        self.validate_params(check)
+        self.validate_check(check)
 
-    def validate_params(self, check: Check):
+    def validate_check(self, check: Check):
+        """
+        Validate the check. This is supposed to be overridden by subclass. Throw ValueError if the check is invalid.
+        """
         pass
-        # if check.params is None:
-        #     raise ValueError(f'"params" cannot be empty')

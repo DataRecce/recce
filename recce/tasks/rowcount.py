@@ -1,24 +1,28 @@
-from typing import TypedDict, Optional, Union, List
+from typing import Optional, Union, List, Literal
+
+from pydantic import BaseModel
+from typing_extensions import override
 
 from recce.core import default_context
+from recce.models import Check
 from recce.tasks import Task
-from recce.tasks.core import TaskResultDiffer
+from recce.tasks.core import TaskResultDiffer, CheckValidator
 from recce.tasks.query import QueryMixin
 
 
-class RowCountDiffParams(TypedDict, total=False):
-    node_names: Optional[list[str]]
-    node_ids: Optional[list[str]]
-    select: Optional[str]
-    exclude: Optional[str]
-    packages: Optional[list[str]]
-    view_mode: Optional[str]
+class RowCountDiffParams(BaseModel):
+    node_names: Optional[list[str]] = None
+    node_ids: Optional[list[str]] = None
+    select: Optional[str] = None
+    exclude: Optional[str] = None
+    packages: Optional[list[str]] = None
+    view_mode: Optional[Literal['all', 'changed_models']] = None
 
 
 class RowCountDiffTask(Task, QueryMixin):
-    def __init__(self, params: RowCountDiffParams):
+    def __init__(self, params: dict):
         super().__init__()
-        self.params = params if params is not None else {}
+        self.params = RowCountDiffParams(**params) if params is not None else RowCountDiffParams()
         self.connection = None
 
     def _query_row_count(self, dbt_adapter, model_name, base=False):
@@ -47,22 +51,22 @@ class RowCountDiffTask(Task, QueryMixin):
         dbt_adapter = default_context().adapter
 
         query_candidates = []
-        if self.params.get('node_ids', []) or self.params.get('node_names', []):
-            for node_id in self.params.get('node_ids', []):
+        if self.params.node_ids or self.params.node_names:
+            for node_id in self.params.node_ids or []:
                 name = dbt_adapter.get_node_name_by_id(node_id)
                 if name:
                     query_candidates.append(name)
-            for node in self.params.get('node_names', []):
+            for node in self.params.node_names or []:
                 query_candidates.append(node)
         else:
             def countable(unique_id):
                 return unique_id.startswith('model') or unique_id.startswith('snapshot') or unique_id.startswith('seed')
 
             node_ids = dbt_adapter.select_nodes(
-                select=self.params.get('select', None),
-                exclude=self.params.get('exclude', None),
-                packages=self.params.get('packages', None),
-                view_mode=self.params.get('view_mode', None)
+                select=self.params.select,
+                exclude=self.params.exclude,
+                packages=self.params.packages,
+                view_mode=self.params.view_mode,
             )
             node_ids = list(filter(countable, node_ids))
             for node_id in node_ids:
@@ -95,9 +99,9 @@ class RowCountDiffTask(Task, QueryMixin):
 
         query_candidates = []
 
-        for node_id in self.params.get('node_ids', []):
+        for node_id in self.node_ids or []:
             query_candidates.append(node_id)
-        for node_name in self.params.get('node_names', []):
+        for node_name in self.params.node_names or []:
             query_candidates.append(node_name)
 
         from recce.adapter.sqlmesh_adapter import SqlmeshAdapter
@@ -175,3 +179,12 @@ class RowCountDiffResultDiffer(TaskResultDiffer):
     def _get_changed_nodes(self) -> Union[List[str], None]:
         if self.changes:
             return self.changes.affected_root_keys.items
+
+
+class RowCountDiffCheckValidator(CheckValidator):
+    @override
+    def validate_check(self, check: Check):
+        try:
+            RowCountDiffParams(**check.params)
+        except Exception as e:
+            raise ValueError(f'Invalid params: str{e}')

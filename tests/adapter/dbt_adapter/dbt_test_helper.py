@@ -56,10 +56,11 @@ class DbtTestHelper:
         curr_csv=None,
         depends_on=[],
         disabled=False,
+        unique_id=None,
         package_name="recce_test",
     ):
         # unique_id = f"model.{package_name}.{model_name}"
-        unique_id = model_name
+        unique_id = unique_id if unique_id else model_name
 
         def _add_model_to_manifest(base, raw_code):
             if base:

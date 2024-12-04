@@ -42,11 +42,17 @@ class RecceConfig(metaclass=SingletonMeta):
                     raise ValueError(f'Check type is required for check "{check}"')
                 if check_type == 'linage_diff' or check_type == 'schema_diff':
                     validator = CheckValidator()
+                elif check_type == 'row_count_diff':
+                    from recce.tasks.rowcount import RowCountDiffCheckValidator
+                    validator = RowCountDiffCheckValidator()
                 else:
                     validator = CheckValidator()
                 validator.validate(check)
             except Exception as e:
-                raise RecceConfigException(f'Load preset check failed from "{self.config_file}"\n{check}', cause=e)
+                import json
+                raise RecceConfigException(
+                    f"Load preset checks failed from '{self.config_file}'\n{json.dumps(check, indent=2)}",
+                    cause=e)
 
     def generate_template(self):
         data = yaml.CommentedMap(
