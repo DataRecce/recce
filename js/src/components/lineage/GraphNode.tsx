@@ -18,7 +18,7 @@ import { FaSquareCheck } from "react-icons/fa6";
 
 interface GraphNodeProps extends NodeProps<LineageGraphNode> {}
 
-const NodeRunsAggregated = ({ id }: { id: string }) => {
+const NodeRunsAggregated = ({ id, inverted }: { id: string, inverted:boolean }) => {
   const { lineageGraph, runsAggregated } = useLineageGraphContext();
   const runs = runsAggregated?.[id];
   const node = lineageGraph?.nodes[id];
@@ -39,6 +39,9 @@ const NodeRunsAggregated = ({ id }: { id: string }) => {
     rowCountChanged = rowCountDiff.result.curr !== rowCountDiff.result.base;
   }
 
+  const colorChanged = inverted ? 'white' : getIconForChangeStatus("modified").color;
+  const colorUnchanged = inverted ? 'gray' : 'lightgray';
+
   return (
     <Flex gap="5px">
       {schemaChanged !== undefined && (
@@ -51,8 +54,8 @@ const NodeRunsAggregated = ({ id }: { id: string }) => {
               as={findByRunType("schema_diff")?.icon}
               color={
                 schemaChanged
-                  ? getIconForChangeStatus("modified").color
-                  : "lightgray"
+                  ? colorChanged
+                  : colorUnchanged
               }
             />
           </Box>
@@ -68,8 +71,8 @@ const NodeRunsAggregated = ({ id }: { id: string }) => {
               as={findByRunType("row_count_diff")?.icon}
               color={
                 rowCountChanged
-                  ? getIconForChangeStatus("modified").color
-                  : "lightgray"
+                  ? colorChanged
+                  : colorUnchanged
               }
             />
           </Box>
@@ -276,8 +279,14 @@ export function GraphNode({ data }: GraphNodeProps) {
             visibility={showContent ? "inherit" : "hidden"}
           >
             <HStack spacing={"8px"}>
-              {!data.isActionMode && data.resourceType === "model" && (
-                <NodeRunsAggregated id={data.id} />
+              {selectMode !== "action_result" && data.resourceType === "model" && (
+                <NodeRunsAggregated id={data.id} inverted={function (){
+                  if (selectMode === "multi") {
+                    return isSelected ? true : false;
+                  } else {
+                    return false;
+                  }
+                }()}/>
               )}
               <Spacer />
               {data.isActionMode &&
