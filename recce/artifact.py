@@ -151,7 +151,7 @@ def download_dbt_artifact(target_path: str, branch: str, token: str, password: s
     if os.path.exists(target_path):
         if not force:
             raise Exception(
-                f'Path {target_path} already exists. Please provide a new path or use \'--fource\' option to overwrite the existing folder.')
+                f'Path {target_path} already exists. Please provide a new path or use \'--force\' option to overwrite the existing folder.')
         console.print(f'[[yellow]Warning[/yellow]] Overwrite existing path: {target_path}')
         shutil.rmtree(target_path)
 
