@@ -5,7 +5,7 @@ from pydantic import BaseModel
 
 from recce.core import default_context
 from recce.exceptions import RecceCancelException
-from recce.models import Run
+from recce.models import Run, Check
 from recce.util.pydantic_model import pydantic_model_dump
 
 
@@ -115,3 +115,21 @@ class TaskResultDiffer(ABC):
         Should be implemented by subclass.
         """
         return None
+
+
+class CheckValidator:
+    def __init__(self):
+        pass
+
+    def validate(self, check: dict):
+        try:
+            check = Check(**check)
+        except Exception as e:
+            raise ValueError(f'Invalid check format. {str(e)}')
+
+        self.validate_params(check)
+
+    def validate_params(self, check: Check):
+        pass
+        # if check.params is None:
+        #     raise ValueError(f'"params" cannot be empty')

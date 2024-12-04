@@ -53,7 +53,7 @@ class Run(BaseModel):
 
 class Check(BaseModel):
     name: str
-    description: str
+    description: Optional[str] = None
     type: RunType
     params: Optional[dict] = None
     view_options: Optional[dict] = None

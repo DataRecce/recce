@@ -2,12 +2,14 @@ import typing
 from typing import TypedDict, Optional, Tuple, List
 
 from pydantic import BaseModel
+from typing_extensions import override
 
-from .core import Task, TaskResultDiffer
+from .core import Task, TaskResultDiffer, CheckValidator
 from .dataframe import DataFrame
 from .valuediff import ValueDiffMixin
 from ..core import default_context
 from ..exceptions import RecceException
+from ..models import Check
 
 QUERY_LIMIT = 2000
 
@@ -322,3 +324,14 @@ class QueryDiffResultDiffer(TaskResultDiffer):
 
             # TODO: Implement detailed information of values changed
             return dict(values_changed={})
+
+
+class QueryDiffCheckValidator(CheckValidator):
+
+    @override
+    def validate_params(self, check: Check):
+        if check.params is None:
+            raise ValueError('"params" must be provided')
+
+        if check.params.get('sql_template') is None:
+            raise ValueError('"sql_template" must be provided')

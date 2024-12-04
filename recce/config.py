@@ -2,6 +2,7 @@
 from rich.console import Console
 
 from recce import yaml
+from recce.exceptions import RecceConfigException
 from recce.util import SingletonMeta
 
 RECCE_CONFIG_FILE = 'recce.yml'
@@ -22,10 +23,30 @@ class RecceConfig(metaclass=SingletonMeta):
         try:
             with open(self.config_file, 'r') as f:
                 self.config = yaml.safe_load(f)
+            self._verify_preset_checks()
         except FileNotFoundError:
             console.print(f'Recce config file not found. Generating default config file at \'{self.config_file}\'')
             self.config = self.generate_template()
             self.save()
+
+    def _verify_preset_checks(self):
+        from recce.tasks.core import CheckValidator
+
+        if 'checks' not in self.config:
+            return
+
+        for check in self.config['checks']:
+            try:
+                check_type = check.get('type')
+                if check_type is None:
+                    raise ValueError(f'Check type is required for check "{check}"')
+                if check_type == 'linage_diff' or check_type == 'schema_diff':
+                    validator = CheckValidator()
+                else:
+                    validator = CheckValidator()
+                validator.validate(check)
+            except Exception as e:
+                raise RecceConfigException(f'Load preset check failed from "{self.config_file}"\n{check}', cause=e)
 
     def generate_template(self):
         data = yaml.CommentedMap(
