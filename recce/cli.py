@@ -7,7 +7,7 @@ import click
 import uvicorn
 
 from recce import event
-from recce.artifact import upload_dbt_artifact, download_dbt_artifact
+from recce.artifact import upload_dbt_artifacts, download_dbt_artifacts
 from recce.config import RecceConfig, RECCE_CONFIG_FILE, RECCE_ERROR_LOG_FILE
 from recce.git import current_branch, current_default_branch
 from recce.run import cli_run, check_github_ci_env
@@ -567,15 +567,22 @@ def download(**kwargs):
 @cloud.command(cls=TrackCommand)
 @click.option('--cloud-token', help='The token used by Recce Cloud.', type=click.STRING,
               envvar='GITHUB_TOKEN')
-@click.option('--branch', '-b', help='The branch of the provided artifact.', type=click.STRING,
-              envvar='GITHUB_HEAD_REF', default=current_branch())
-@click.option('--target-path', help='dbt artifacts directory for your artifact.', type=click.STRING, default='target')
-@click.option('--password', '-p', help='The password to encrypt the dbt artifact in cloud.', type=click.STRING,
+@click.option('--branch', '-b', help='The branch of the provided artifacts.', type=click.STRING,
+              envvar='GITHUB_HEAD_REF', default=current_branch(), show_default=True)
+@click.option('--target-path', help='dbt artifacts directory for your artifacts.', type=click.STRING, default='target',
+              show_default=True)
+@click.option('--password', '-p', help='The password to encrypt the dbt artifacts in cloud.', type=click.STRING,
               envvar='RECCE_STATE_PASSWORD', required=True)
 @add_options(recce_options)
-def upload_artifact(**kwargs):
+def upload_artifacts(**kwargs):
     """
-        Upload the dbt artifact to cloud
+        Upload the dbt artifacts to cloud
+
+        Upload the dbt artifacts (metadata.json, catalog.json) to Recce Cloud for the given branch.
+        The password is used to encrypt the dbt artifacts in the cloud. You will need the password to download the dbt artifacts.
+
+        By default, the artifacts are uploaded to the current branch. You can specify the branch using the --branch option.
+        The target path is set to 'target' by default. You can specify the target path using the --target-path option.
     """
     from rich.console import Console
     console = Console()
@@ -585,16 +592,42 @@ def upload_artifact(**kwargs):
     branch = kwargs.get('branch')
 
     try:
-        rc = upload_dbt_artifact(target_path, branch=branch,
-                                 token=cloud_token, password=password,
-                                 debug=kwargs.get('debug', False))
+        rc = upload_dbt_artifacts(target_path, branch=branch,
+                                  token=cloud_token, password=password,
+                                  debug=kwargs.get('debug', False))
         console.rule('Uploaded Successfully')
         console.print(
-            f'Uploaded dbt artifact to Recce Cloud for branch "{branch}" from "{os.path.abspath(target_path)}"')
+            f'Uploaded dbt artifacts to Recce Cloud for branch "{branch}" from "{os.path.abspath(target_path)}"')
     except Exception as e:
         console.rule('Failed to Upload', style='red')
-        console.print("[[red]Error[/red]] Failed to upload the dbt artifact to cloud.")
+        console.print("[[red]Error[/red]] Failed to upload the dbt artifacts to cloud.")
         console.print(f"Reason: {e}")
+        rc = 1
+    return rc
+
+
+def _download_artifacts(branch, cloud_token, console, kwargs, password, target_path):
+    try:
+        rc = download_dbt_artifacts(target_path, branch=branch, token=cloud_token, password=password,
+                                    force=kwargs.get('force', False),
+                                    debug=kwargs.get('debug', False))
+        console.rule('Downloaded Successfully')
+        console.print(
+            f'Downloaded dbt artifacts from Recce Cloud for branch "{branch}" to "{os.path.abspath(target_path)}"')
+    except Exception as e:
+        console.rule('Failed to Download', style='red')
+        console.print("[[red]Error[/red]] Failed to download the dbt artifacts from cloud.")
+        reason = str(e)
+
+        if 'Requests specifying Server Side Encryption with Customer provided keys must provide the correct secret key' in reason:
+            console.print("Reason: Decryption failed due to incorrect password.")
+            console.print(
+                "Please provide the correct password to decrypt the dbt artifacts. Or re-upload the dbt artifacts with a new password.")
+        elif 'The specified key does not exist' in reason:
+            console.print("Reason: The dbt artifacts is not found in the cloud.")
+            console.print("Please upload the dbt artifacts to the cloud before downloading it.")
+        else:
+            console.print(f"Reason: {reason}")
         rc = 1
     return rc
 
@@ -602,18 +635,24 @@ def upload_artifact(**kwargs):
 @cloud.command(cls=TrackCommand)
 @click.option('--cloud-token', help='The token used by Recce Cloud.', type=click.STRING,
               envvar='GITHUB_TOKEN')
-@click.option('--branch', '-b', help='The branch of the selected artifact.', type=click.STRING,
-              envvar='GITHUB_BASE_REF', default=current_default_branch())
-@click.option('--target-path', help='The dbt artifacts directory for your artifact.', type=click.STRING,
-              default='target-base')
-@click.option('--password', '-p', help='The password to encrypt the dbt artifact in cloud.', type=click.STRING,
+@click.option('--branch', '-b', help='The branch of the selected artifacts.', type=click.STRING,
+              envvar='GITHUB_BASE_REF', default=current_branch(), show_default=True)
+@click.option('--target-path', help='The dbt artifacts directory for your artifacts.', type=click.STRING,
+              default='target', show_default=True)
+@click.option('--password', '-p', help='The password to decrypt the dbt artifacts in cloud.', type=click.STRING,
               envvar='RECCE_STATE_PASSWORD', required=True)
-@click.option('--force', '-f', help='Bypasses the confirmation prompt. Download the artifact directly.',
+@click.option('--force', '-f', help='Bypasses the confirmation prompt. Download the artifacts directly.',
               is_flag=True)
 @add_options(recce_options)
-def download_artifact(**kwargs):
+def download_artifacts(**kwargs):
     """
-        Download the dbt artifact to cloud
+        Download the dbt artifacts from cloud
+
+        Download the dbt artifacts (metadata.json, catalog.json) from Recce Cloud for the given branch.
+        The password is used to decrypt the dbt artifacts in the cloud.
+
+        By default, the artifacts are downloaded from the current branch. You can specify the branch using the --branch option.
+        The target path is set to 'target' by default. You can specify the target path using the --target-path option.
     """
     from rich.console import Console
     console = Console()
@@ -621,29 +660,36 @@ def download_artifact(**kwargs):
     password = kwargs.get('password')
     target_path = kwargs.get('target_path')
     branch = kwargs.get('branch')
-    try:
-        rc = download_dbt_artifact(target_path, branch=branch, token=cloud_token, password=password,
-                                   force=kwargs.get('force', False),
-                                   debug=kwargs.get('debug', False))
-        console.rule('Downloaded Successfully')
-        console.print(
-            f'Downloaded dbt artifact from Recce Cloud for branch "{branch}" to "{os.path.abspath(target_path)}"')
-    except Exception as e:
-        console.rule('Failed to Download', style='red')
-        console.print("[[red]Error[/red]] Failed to download the dbt artifact from cloud.")
-        reason = str(e)
+    return _download_artifacts(branch, cloud_token, console, kwargs, password, target_path)
 
-        if 'Requests specifying Server Side Encryption with Customer provided keys must provide the correct secret key' in reason:
-            console.print("Reason: Decryption failed due to incorrect password.")
-            console.print(
-                "Please provide the correct password to decrypt the dbt artifact. Or re-upload the dbt artifact with a new password.")
-        elif 'The specified key does not exist' in reason:
-            console.print("Reason: The dbt artifact is not found in the cloud.")
-            console.print("Please upload the dbt artifact to the cloud before downloading it.")
-        else:
-            console.print(f"Reason: {reason}")
-        rc = 1
-    return rc
+
+@cloud.command(cls=TrackCommand)
+@click.option('--cloud-token', help='The token used by Recce Cloud.', type=click.STRING,
+              envvar='GITHUB_TOKEN')
+@click.option('--branch', '-b', help='The branch of the selected artifacts.', type=click.STRING,
+              envvar='GITHUB_BASE_REF', default=current_default_branch(), show_default=True)
+@click.option('--target-path', help='The dbt artifacts directory for your artifacts.', type=click.STRING,
+              default='target-base', show_default=True)
+@click.option('--password', '-p', help='The password to decrypt the dbt artifacts in cloud.', type=click.STRING,
+              envvar='RECCE_STATE_PASSWORD', required=True)
+@click.option('--force', '-f', help='Bypasses the confirmation prompt. Download the artifacts directly.',
+              is_flag=True)
+def download_base_artifacts(**kwargs):
+    """
+        Download the base dbt artifacts from cloud
+
+        Download the base dbt artifacts (metadata.json, catalog.json) from Recce Cloud.
+        This is useful when you start to set up the base dbt artifacts for the first time.
+
+        Please make sure you have uploaded the dbt artifacts before downloading them.
+    """
+    from rich.console import Console
+    console = Console()
+    cloud_token = kwargs.get('cloud_token')
+    password = kwargs.get('password')
+    target_path = kwargs.get('target_path')
+    branch = kwargs.get('branch')
+    return _download_artifacts(branch, cloud_token, console, kwargs, password, target_path)
 
 
 @cli.group('github', short_help='GitHub related commands', hidden=True)
