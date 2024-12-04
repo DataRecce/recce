@@ -1,7 +1,6 @@
 from typing import Optional, Union, List, Literal
 
 from pydantic import BaseModel
-from typing_extensions import override
 
 from recce.core import default_context
 from recce.models import Check
@@ -182,7 +181,6 @@ class RowCountDiffResultDiffer(TaskResultDiffer):
 
 
 class RowCountDiffCheckValidator(CheckValidator):
-    @override
     def validate_check(self, check: Check):
         try:
             RowCountDiffParams(**check.params)

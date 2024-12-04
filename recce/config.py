@@ -40,8 +40,12 @@ class RecceConfig(metaclass=SingletonMeta):
                 check_type = check.get('type')
                 if check_type is None:
                     raise ValueError(f'Check type is required for check "{check}"')
-                if check_type == 'linage_diff' or check_type == 'schema_diff':
-                    validator = CheckValidator()
+                if check_type == 'lineage_diff':
+                    from recce.tasks.lineage import LineageDiffCheckValidator
+                    validator = LineageDiffCheckValidator()
+                elif check_type == 'schema_diff':
+                    from recce.tasks.schema import SchemaDiffCheckValidator
+                    validator = SchemaDiffCheckValidator()
                 elif check_type == 'row_count_diff':
                     from recce.tasks.rowcount import RowCountDiffCheckValidator
                     validator = RowCountDiffCheckValidator()

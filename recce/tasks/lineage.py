@@ -1,12 +1,19 @@
-from typing_extensions import override
+from typing import Optional, Literal
+
+from pydantic import BaseModel
 
 from recce.models import Check
 from recce.tasks.core import CheckValidator
 
 
-class LineageDiffCheckValidator(CheckValidator):
+class LineageDiffParams(BaseModel):
+    select: Optional[str] = None
+    exclude: Optional[str] = None
+    packages: Optional[list[str]] = None
+    view_mode: Optional[Literal['all', 'changed_models']] = None
 
-    @override
+
+class LineageDiffCheckValidator(CheckValidator):
     def validate_check(self, check: Check):
-        if check.params is None and check.view_options is None:
-            raise ValueError('"params" or "view_options" must be provided')
+        LineageDiffParams(**check.params)
+        LineageDiffParams(**check.view_options)

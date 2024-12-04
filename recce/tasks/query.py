@@ -2,7 +2,6 @@ import typing
 from typing import TypedDict, Optional, Tuple, List
 
 from pydantic import BaseModel
-from typing_extensions import override
 
 from .core import Task, TaskResultDiffer, CheckValidator
 from .dataframe import DataFrame
@@ -328,8 +327,7 @@ class QueryDiffResultDiffer(TaskResultDiffer):
 
 class QueryDiffCheckValidator(CheckValidator):
 
-    @override
-    def validate_params(self, check: Check):
+    def validate_check(self, check: Check):
         if check.params is None:
             raise ValueError('"params" must be provided')
 
