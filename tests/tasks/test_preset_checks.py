@@ -12,11 +12,11 @@ def test_default_validator():
     })
 
     # Failed "name" type
-    # with pytest.raises(ValueError):
-    CheckValidator().validate({
-        "name": 123,
-        "type": "row_count_diff",
-    })
+    with pytest.raises(ValueError):
+        CheckValidator().validate({
+            "name": 123,
+            "type": "row_count_diff",
+        })
 
 
 def test_query_diff_validator():
