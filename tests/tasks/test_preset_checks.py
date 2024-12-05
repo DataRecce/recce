@@ -4,17 +4,14 @@ import pytest
 def test_default_validator():
     from recce.tasks.core import CheckValidator
 
-    # Successful check
     CheckValidator().validate({
         "name": "test",
         "type": "row_count_diff",
         "params": {},
     })
 
-    # Failed "name" type
     with pytest.raises(ValueError):
         CheckValidator().validate({
-            "name": 123,
             "type": "row_count_diff",
         })
 

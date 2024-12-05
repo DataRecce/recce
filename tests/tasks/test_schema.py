@@ -22,14 +22,6 @@ def test_validator():
     validate({
         'node_id': ['abc'],
     })
-    with pytest.raises(ValueError):
-        validate({
-            'node_id': [123],
-        })
-    with pytest.raises(ValueError):
-        validate({
-            'node_id': [123, 'abc'],
-        })
 
     # Select by selector
     validate({

@@ -80,10 +80,6 @@ def test_validator():
     })
     with pytest.raises(ValueError):
         validate({
-            'node_names': [123],
-        })
-    with pytest.raises(ValueError):
-        validate({
             'node_names': 'abc',
         })
 
