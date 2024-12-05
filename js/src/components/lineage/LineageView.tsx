@@ -183,12 +183,12 @@ export function _LineageView(
   ref: Ref<LineageViewRef>
 ) {
   const reactFlow = useReactFlow();
-  const refReactFlow = useRef<HTMLDivElement>(null);
+  const refResize = useRef<HTMLDivElement>(null);
   const { successToast, failToast } = useClipBoardToast();
   const {
     copyToClipboard,
     ImageDownloadModal,
-    ref: copyRef,
+    ref: refReactFlow,
   } = useCopyToClipboard({
     renderLibrary: "html-to-image",
     imageType: "png",
@@ -371,7 +371,7 @@ export function _LineageView(
 
   const navToCheck = useNavToCheck();
 
-  useResizeObserver(refReactFlow, async () => {
+  useResizeObserver(refResize, async () => {
     if (selectMode === "single" || selectMode === "action_result") {
       const selectedNode = nodes.find((node) => node.data.isSelected);
       if (selectedNode) {
@@ -529,15 +529,20 @@ export function _LineageView(
   };
 
   const onNodeContextMenu = (event: React.MouseEvent, node: Node) => {
-    if (selectMode !== "multi") {
+    if (!props.interactive) {
+      return;
+    }
+    if (selectMode === "action_result") {
       return;
     }
     // Only show context menu when selectMode is action
     // Prevent native context menu from showing
     event.preventDefault();
+    const pane = (refReactFlow.current as any).getBoundingClientRect();
+    const offsetTop = (refReactFlow.current as any).offsetTop;
     setContextMenuPosition({
-      x: event.clientX,
-      y: event.clientY,
+      x: event.clientX - pane.left,
+      y: event.clientY - pane.top + offsetTop,
       selectedNode: node,
     });
     setIsContextMenuRendered(true);
@@ -726,10 +731,11 @@ export function _LineageView(
         style={{ height: "100%", width: "100%" }}
       >
         <VStack
-          ref={refReactFlow}
+          ref={refResize}
           divider={<StackDivider borderColor="gray.200" />}
           spacing={0}
           style={{ contain: "strict" }}
+          position="relative"
         >
           {props.interactive && <LineageViewTopBar />}
           <ReactFlow
@@ -748,7 +754,7 @@ export function _LineageView(
             minZoom={0.1}
             fitView={true}
             nodesDraggable={props.interactive}
-            ref={copyRef}
+            ref={refReactFlow}
           >
             <Background color="#ccc" />
             <Controls
@@ -795,6 +801,30 @@ export function _LineageView(
               </Panel>
             )}
           </ReactFlow>
+          {isContextMenuRendered && (
+            // Only render context menu when select mode is action
+            <Menu isOpen={true} onClose={closeContextMenu}>
+              <MenuList
+                style={{
+                  position: "absolute",
+                  left: `${contextMenuPosition.x}px`,
+                  top: `${contextMenuPosition.y}px`,
+                  // left: 0,
+                  // top: 0,
+                }}
+              >
+                <MenuItem
+                  icon={<BiArrowFromBottom />}
+                  onClick={selectParentNodes}
+                >
+                  Select parent nodes
+                </MenuItem>
+                <MenuItem icon={<BiArrowToBottom />} onClick={selectChildNodes}>
+                  Select child nodes
+                </MenuItem>
+              </MenuList>
+            </Menu>
+          )}
         </VStack>
         {selectMode === "single" && selectedNode ? (
           <Box borderLeft="solid 1px lightgray" height="100%">
@@ -809,25 +839,6 @@ export function _LineageView(
           <Box></Box>
         )}
       </HSplit>
-      {isContextMenuRendered && (
-        // Only render context menu when select mode is action
-        <Menu isOpen={true} onClose={closeContextMenu}>
-          <MenuList
-            style={{
-              position: "absolute",
-              left: `${contextMenuPosition.x}px`,
-              top: `${contextMenuPosition.y}px`,
-            }}
-          >
-            <MenuItem icon={<BiArrowFromBottom />} onClick={selectParentNodes}>
-              Select parent nodes
-            </MenuItem>
-            <MenuItem icon={<BiArrowToBottom />} onClick={selectChildNodes}>
-              Select child nodes
-            </MenuItem>
-          </MenuList>
-        </Menu>
-      )}
       {valueDiffAlertDialog.AlertDialog}
     </LineageViewContext.Provider>
   );
