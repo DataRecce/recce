@@ -61,6 +61,12 @@ class RecceConfig(metaclass=SingletonMeta):
                 elif check_type == 'profile_diff':
                     from recce.tasks.profile import ProfileDiffCheckValidator
                     validator = ProfileDiffCheckValidator()
+                elif check_type == 'top_k_diff':
+                    from recce.tasks.top_k import TopKDiffCheckValidator
+                    validator = TopKDiffCheckValidator()
+                elif check_type == 'histogram_diff':
+                    from recce.tasks.histogram import HistogramDiffCheckValidator
+                    validator = HistogramDiffCheckValidator()
                 else:
                     validator = CheckValidator()
                 validator.validate(check)

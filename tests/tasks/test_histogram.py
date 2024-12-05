@@ -1,4 +1,6 @@
-from recce.tasks.histogram import HistogramDiffTask
+import pytest
+
+from recce.tasks.histogram import HistogramDiffTask, HistogramDiffCheckValidator
 
 
 def test_histogram(dbt_test_helper):
@@ -106,3 +108,22 @@ def test_histogram_emtpy(dbt_test_helper):
     assert run_result['max'] == 50
     assert run_result['bin_edges'][0] == 25
     assert run_result['bin_edges'][-1] == 51
+
+
+def test_validator():
+    def validate(params: dict = {}, view_options: dict = {}):
+        HistogramDiffCheckValidator().validate({
+            'name': 'test',
+            'type': 'histogram_diff',
+            'params': params,
+            'view_options': view_options,
+        })
+
+    validate({
+        "model": "customers",
+        "column_name": "age",
+        "column_type": "int",
+    })
+
+    with pytest.raises(ValueError):
+        validate({})
