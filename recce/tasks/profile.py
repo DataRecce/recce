@@ -1,15 +1,16 @@
 import textwrap
-from typing import TypedDict, List
+from typing import List
 
 from pydantic import BaseModel
 
-from .core import Task, TaskResultDiffer
+from .core import Task, TaskResultDiffer, CheckValidator
 from .dataframe import DataFrame
 from ..core import default_context
 from ..exceptions import RecceException
+from ..models import Check
 
 
-class ProfileParams(TypedDict):
+class ProfileDiffParams(BaseModel):
     model: str
 
 
@@ -20,9 +21,9 @@ class ProfileResult(BaseModel):
 
 class ProfileDiffTask(Task):
 
-    def __init__(self, params: ProfileParams):
+    def __init__(self, params):
         super().__init__()
-        self.params = params
+        self.params = ProfileDiffParams(**params)
         self.connection = None
 
     def execute(self):
@@ -30,7 +31,7 @@ class ProfileDiffTask(Task):
         from recce.adapter.dbt_adapter import DbtAdapter, merge_tables
         dbt_adapter: DbtAdapter = default_context().adapter
 
-        model: str = self.params['model']
+        model: str = self.params.model
 
         self._verify_dbt_profiler(dbt_adapter)
 
@@ -148,3 +149,12 @@ class ProfileDiffTask(Task):
 class ProfileDiffResultDiffer(TaskResultDiffer):
     def _check_result_changed_fn(self, result):
         return self.diff(result['base'], result['current'])
+
+
+class ProfileDiffCheckValidator(CheckValidator):
+
+    def validate_check(self, check: Check):
+        try:
+            ProfileDiffParams(**check.params)
+        except Exception as e:
+            raise ValueError(f"Invalid check: {str(e)}")
