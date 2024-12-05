@@ -674,6 +674,7 @@ def download_artifacts(**kwargs):
               envvar='RECCE_STATE_PASSWORD', required=True)
 @click.option('--force', '-f', help='Bypasses the confirmation prompt. Download the artifacts directly.',
               is_flag=True)
+@add_options(recce_options)
 def download_base_artifacts(**kwargs):
     """
         Download the base dbt artifacts from cloud
