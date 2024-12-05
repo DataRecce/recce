@@ -49,6 +49,18 @@ class RecceConfig(metaclass=SingletonMeta):
                 elif check_type == 'row_count_diff':
                     from recce.tasks.rowcount import RowCountDiffCheckValidator
                     validator = RowCountDiffCheckValidator()
+                elif check_type == 'query':
+                    from recce.tasks.query import QueryCheckValidator
+                    validator = QueryCheckValidator()
+                elif check_type == 'query_diff':
+                    from recce.tasks.query import QueryDiffCheckValidator
+                    validator = QueryDiffCheckValidator()
+                elif check_type == 'value_diff' or check_type == 'value_diff_detail':
+                    from recce.tasks.valuediff import ValueDiffCheckValidator
+                    validator = ValueDiffCheckValidator()
+                elif check_type == 'profile_diff':
+                    from recce.tasks.profile import ProfileDiffCheckValidator
+                    validator = ProfileDiffCheckValidator()
                 else:
                     validator = CheckValidator()
                 validator.validate(check)
