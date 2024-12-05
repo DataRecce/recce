@@ -1,12 +1,14 @@
 from datetime import date, datetime
-from typing import TypedDict
+from typing import Optional
 
 import math
 from dateutil.relativedelta import relativedelta
+from pydantic import BaseModel
 
 from recce.core import default_context
+from recce.models import Check
 from recce.tasks import Task
-from recce.tasks.core import TaskResultDiffer
+from recce.tasks.core import TaskResultDiffer, CheckValidator
 from recce.tasks.query import QueryMixin
 
 sql_datetime_types = [
@@ -115,11 +117,11 @@ def generate_histogram_sql_numeric(node, column, min_value, max_value, num_bins=
     return sql, bin_size
 
 
-class HistogramDiffParams(TypedDict):
+class HistogramDiffParams(BaseModel):
     model: str
     column_name: str
     column_type: str
-    num_bins: int
+    num_bins: Optional[int] = 50
 
 
 def query_numeric_histogram(task, node, column, column_type, min_value, max_value, num_bins=50):
@@ -286,9 +288,9 @@ def query_datetime_histogram(task, node, column, min_value, max_value):
 
 
 class HistogramDiffTask(Task, QueryMixin):
-    def __init__(self, params: HistogramDiffParams):
+    def __init__(self, params):
         super().__init__()
-        self.params = params
+        self.params = HistogramDiffParams(**params)
         self.connection = None
 
     def execute(self):
@@ -296,10 +298,10 @@ class HistogramDiffTask(Task, QueryMixin):
         result = {}
 
         dbt_adapter: DbtAdapter = default_context().adapter
-        node = self.params['model']
-        column = self.params['column_name']
-        num_bins = self.params.get('num_bins', 50)
-        column_type = self.params['column_type']
+        node = self.params.model
+        column = self.params.column_name
+        num_bins = self.params.num_bins or 50
+        column_type = self.params.column_type
 
         if column_type.upper() in sql_not_supported_types:
             raise ValueError(f"Column type {column_type} is not supported for histogram analysis")
@@ -370,3 +372,12 @@ class HistogramDiffTask(Task, QueryMixin):
 class HistogramDiffTaskResultDiffer(TaskResultDiffer):
     def _check_result_changed_fn(self, result):
         return TaskResultDiffer.diff(result['base'], result['current'])
+
+
+class HistogramDiffCheckValidator(CheckValidator):
+
+    def validate_check(self, check: Check):
+        try:
+            HistogramDiffParams(**check.params)
+        except Exception as e:
+            raise ValueError(f"Invalid check: {str(e)}")

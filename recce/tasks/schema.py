@@ -1,6 +1,9 @@
-from typing import Union, List
+from typing import Union, List, Optional, Literal
 
-from recce.tasks.core import TaskResultDiffer
+from pydantic import BaseModel
+
+from recce.models import Check
+from recce.tasks.core import TaskResultDiffer, CheckValidator
 
 
 class SchemaDiffResultDiffer:
@@ -43,3 +46,17 @@ class SchemaDiffResultDiffer:
     def _get_changed_nodes(self) -> Union[List[str], None]:
         if self.changes:
             return self.changes.affected_root_keys.items
+
+
+class SchemaDiffParams(BaseModel):
+    node_id: Optional[Union[str, List[str]]] = None
+    select: Optional[str] = None
+    exclude: Optional[str] = None
+    packages: Optional[list[str]] = None
+    view_mode: Optional[Literal['all', 'changed_models']] = None
+
+
+class SchemaDiffCheckValidator(CheckValidator):
+    def validate_check(self, check: Check):
+        SchemaDiffParams(**check.params)
+        SchemaDiffParams(**check.view_options)

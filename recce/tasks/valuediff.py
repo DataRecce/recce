@@ -2,16 +2,17 @@ from typing import TypedDict, Optional, List, Union
 
 from pydantic import BaseModel
 
-from .core import Task, TaskResultDiffer
+from .core import Task, TaskResultDiffer, CheckValidator
 from .dataframe import DataFrame
 from ..core import default_context
 from ..exceptions import RecceException
+from ..models import Check
 
 
-class ValueDiffParams(TypedDict):
-    primary_key: Union[str, List[str]]
+class ValueDiffParams(BaseModel):
     model: str
-    exclude_columns: Optional[List[str]]
+    primary_key: Union[str, List[str]]
+    columns: Optional[List[str]] = None
 
 
 class ValueDiffResult(BaseModel):
@@ -77,9 +78,9 @@ class ValueDiffMixin:
 
 class ValueDiffTask(Task, ValueDiffMixin):
 
-    def __init__(self, params: ValueDiffParams):
+    def __init__(self, params):
         super().__init__()
-        self.params = params
+        self.params = ValueDiffParams(**params)
         self.connection = None
         self.legacy_surrogate_key = True
 
@@ -219,9 +220,9 @@ class ValueDiffTask(Task, ValueDiffMixin):
         with dbt_adapter.connection_named("value diff"):
             self.connection = dbt_adapter.get_thread_connection()
 
-            primary_key: Union[str, List[str]] = self.params['primary_key']
-            model: str = self.params['model']
-            columns: List[str] = self.params.get('columns')
+            primary_key: Union[str, List[str]] = self.params.primary_key
+            model: str = self.params.model
+            columns: List[str] = self.params.columns
 
             self._verify_dbt_packages_deps(dbt_adapter)
             self.check_cancel()
@@ -287,9 +288,9 @@ class ValueDiffDetailResult(DataFrame):
 
 class ValueDiffDetailTask(Task, ValueDiffMixin):
 
-    def __init__(self, params: ValueDiffParams):
+    def __init__(self, params):
         super().__init__()
-        self.params = params
+        self.params = ValueDiffParams(**params)
         self.connection = None
         self.legacy_surrogate_key = True
 
@@ -364,9 +365,9 @@ class ValueDiffDetailTask(Task, ValueDiffMixin):
         with dbt_adapter.connection_named("value diff"):
             self.connection = dbt_adapter.get_thread_connection()
 
-            primary_key: Union[str, List[str]] = self.params['primary_key']
-            model: str = self.params['model']
-            columns: List[str] = self.params.get('columns')
+            primary_key: Union[str, List[str]] = self.params.primary_key
+            model: str = self.params.model
+            columns: List[str] = self.params.columns
 
             self._verify_dbt_packages_deps(dbt_adapter)
             self.check_cancel()
@@ -393,3 +394,12 @@ class ValueDiffDetailTaskResultDiffer(TaskResultDiffer):
 
         # TODO: Implement detailed information of values changed
         return dict(values_changed={})
+
+
+class ValueDiffCheckValidator(CheckValidator):
+
+    def validate_check(self, check: Check):
+        try:
+            ValueDiffParams(**check.params)
+        except Exception as e:
+            raise ValueError(f"Invalid check: {str(e)}")

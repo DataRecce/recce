@@ -227,6 +227,8 @@ def server(host, port, state_file=None, **kwargs):
     from .server import app, AppState
     from rich.console import Console
 
+    RecceConfig(config_file=kwargs.get('config'))
+
     handle_debug_flag(**kwargs)
     is_review = kwargs.get('review', False)
     is_cloud = kwargs.get('cloud', False)

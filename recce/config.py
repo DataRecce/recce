@@ -2,6 +2,7 @@
 from rich.console import Console
 
 from recce import yaml
+from recce.exceptions import RecceConfigException
 from recce.util import SingletonMeta
 
 RECCE_CONFIG_FILE = 'recce.yml'
@@ -22,10 +23,58 @@ class RecceConfig(metaclass=SingletonMeta):
         try:
             with open(self.config_file, 'r') as f:
                 self.config = yaml.safe_load(f)
+            self._verify_preset_checks()
         except FileNotFoundError:
             console.print(f'Recce config file not found. Generating default config file at \'{self.config_file}\'')
             self.config = self.generate_template()
             self.save()
+
+    def _verify_preset_checks(self):
+        from recce.tasks.core import CheckValidator
+
+        if 'checks' not in self.config:
+            return
+
+        for check in self.config['checks']:
+            try:
+                check_type = check.get('type')
+                if check_type is None:
+                    raise ValueError(f'Check type is required for check "{check}"')
+                if check_type == 'lineage_diff':
+                    from recce.tasks.lineage import LineageDiffCheckValidator
+                    validator = LineageDiffCheckValidator()
+                elif check_type == 'schema_diff':
+                    from recce.tasks.schema import SchemaDiffCheckValidator
+                    validator = SchemaDiffCheckValidator()
+                elif check_type == 'row_count_diff':
+                    from recce.tasks.rowcount import RowCountDiffCheckValidator
+                    validator = RowCountDiffCheckValidator()
+                elif check_type == 'query':
+                    from recce.tasks.query import QueryCheckValidator
+                    validator = QueryCheckValidator()
+                elif check_type == 'query_diff':
+                    from recce.tasks.query import QueryDiffCheckValidator
+                    validator = QueryDiffCheckValidator()
+                elif check_type == 'value_diff' or check_type == 'value_diff_detail':
+                    from recce.tasks.valuediff import ValueDiffCheckValidator
+                    validator = ValueDiffCheckValidator()
+                elif check_type == 'profile_diff':
+                    from recce.tasks.profile import ProfileDiffCheckValidator
+                    validator = ProfileDiffCheckValidator()
+                elif check_type == 'top_k_diff':
+                    from recce.tasks.top_k import TopKDiffCheckValidator
+                    validator = TopKDiffCheckValidator()
+                elif check_type == 'histogram_diff':
+                    from recce.tasks.histogram import HistogramDiffCheckValidator
+                    validator = HistogramDiffCheckValidator()
+                else:
+                    validator = CheckValidator()
+                validator.validate(check)
+            except Exception as e:
+                import json
+                raise RecceConfigException(
+                    f"Load preset checks failed from '{self.config_file}'\n{json.dumps(check, indent=2)}",
+                    cause=e)
 
     def generate_template(self):
         data = yaml.CommentedMap(

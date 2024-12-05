@@ -1,22 +1,24 @@
-from typing import TypedDict
+from typing import Optional
+
+from pydantic import BaseModel
 
 from recce.core import default_context
+from recce.models import Check
 from recce.tasks import Task
-from recce.tasks.core import TaskResultDiffer
+from recce.tasks.core import TaskResultDiffer, CheckValidator
 from recce.tasks.query import QueryMixin
 
 
-class TopKDiffParams(TypedDict):
+class TopKDiffParams(BaseModel):
     model: str
     column_name: str
-    column_type: str
-    k: int
+    k: Optional[int] = 10
 
 
 class TopKDiffTask(Task, QueryMixin):
-    def __init__(self, params: TopKDiffParams):
+    def __init__(self, params):
         super().__init__()
-        self.params = params
+        self.params = TopKDiffParams(**params)
         self.connection = None
 
     def _query_row_count_diff(self, dbt_adapter, base_relation, curr_relation, column):
@@ -102,9 +104,9 @@ class TopKDiffTask(Task, QueryMixin):
 
         with dbt_adapter.connection_named("query"):
             self.connection = dbt_adapter.get_thread_connection()
-            model = self.params['model']
-            column = self.params['column_name']
-            k = self.params.get('k', 10)
+            model = self.params.model
+            column = self.params.column_name
+            k = self.params.k or 10
 
             base_relation = dbt_adapter.create_relation(model, base=True)
             if base_relation is None:
@@ -159,3 +161,12 @@ class TopKDiffTaskResultDiffer(TaskResultDiffer):
         current = result.get('current')
 
         return TaskResultDiffer.diff(base, current)
+
+
+class TopKDiffCheckValidator(CheckValidator):
+
+    def validate_check(self, check: Check):
+        try:
+            TopKDiffParams(**check.params)
+        except Exception as e:
+            raise ValueError(f"Invalid check: {str(e)}")

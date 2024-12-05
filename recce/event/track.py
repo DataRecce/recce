@@ -1,3 +1,4 @@
+import logging
 import os
 import sys
 import time
@@ -12,11 +13,13 @@ from rich.markup import escape
 
 from recce import event, get_runner
 from recce.core import load_context
+from recce.exceptions import RecceException
 from recce.git import current_branch, hosting_repo
 
 console = Console()
 
 _enable_traceback: bool = os.environ.get('RECCE_PRINT_TRACEBACK') == '1'
+logger = logging.getLogger('uvicorn')
 
 
 class TrackCommand(Command):
@@ -66,6 +69,11 @@ class TrackCommand(Command):
                 reason = 'error'
                 sys.exit(ret)
             return ret
+        except RecceException as e:
+            logger.debug(traceback.format_exc())
+            console.log("[Error] " + str(e))
+            reason = 'error'
+            sys.exit(1)
         except SystemExit as e:
             reason = 'error'
             raise e
