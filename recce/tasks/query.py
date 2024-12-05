@@ -1,5 +1,5 @@
 import typing
-from typing import TypedDict, Optional, Tuple, List
+from typing import Optional, Tuple, List
 
 from pydantic import BaseModel
 
@@ -60,7 +60,7 @@ class QueryMixin:
             dbt_adapter.cancel(connection)
 
 
-class QueryParams(TypedDict):
+class QueryParams(BaseModel):
     sql_template: str
 
 
@@ -68,18 +68,18 @@ class QueryResult(DataFrame):
     pass
 
 
-class QueryDiffParams(TypedDict):
+class QueryDiffParams(BaseModel):
     sql_template: str
-    base_sql_template: Optional[str]
-    primary_keys: List[str]
+    base_sql_template: Optional[str] = None
+    primary_keys: Optional[List[str]] = None
 
 
 class QueryTask(Task, QueryMixin):
     is_base = False
 
-    def __init__(self, params: QueryParams):
+    def __init__(self, params: dict):
         super().__init__()
-        self.params = params
+        self.params = QueryParams(**params)
         self.connection = None
 
     def execute_dbt(self):
@@ -90,7 +90,7 @@ class QueryTask(Task, QueryMixin):
         with dbt_adapter.connection_named("query"):
             self.connection = dbt_adapter.get_thread_connection()
 
-            sql_template = self.params.get('sql_template')
+            sql_template = self.params.sql_template
             table, more = self.execute_sql_with_limit(sql_template, base=self.is_base, limit=limit)
             self.check_cancel()
 
@@ -130,9 +130,9 @@ class QueryDiffResult(BaseModel):
 
 
 class QueryDiffTask(Task, QueryMixin, ValueDiffMixin):
-    def __init__(self, params: QueryDiffParams):
+    def __init__(self, params):
         super().__init__()
-        self.params = params
+        self.params = QueryDiffParams(**params)
         self.connection = None
         self.legacy_surrogate_key = True
 
@@ -205,9 +205,9 @@ class QueryDiffTask(Task, QueryMixin, ValueDiffMixin):
         dbt_adapter: DbtAdapter = default_context().adapter
 
         with dbt_adapter.connection_named("query"):
-            sql_template = self.params.get('sql_template')
-            primary_keys = self.params.get('primary_keys')
-            base_sql_template = self.params.get('base_sql_template')
+            sql_template = self.params.sql_template
+            primary_keys = self.params.primary_keys
+            base_sql_template = self.params.base_sql_template
 
             if primary_keys:
                 return self._query_diff_join(dbt_adapter, sql_template, primary_keys,
@@ -285,9 +285,9 @@ class QueryDiffTask(Task, QueryMixin, ValueDiffMixin):
         )
 
     def execute_sqlmesh(self):
-        sql = self.params.get('sql_template')
-        primary_keys = self.params.get('primary_keys')
-        base_sql = self.params.get('base_sql_template')
+        sql = self.params.sql_template
+        primary_keys = self.params.primary_keys
+        base_sql = self.params.base_sql_template
 
         if primary_keys:
             return self._sqlmesh_query_diff_join(sql, primary_keys, base_sql=base_sql)
@@ -325,11 +325,18 @@ class QueryDiffResultDiffer(TaskResultDiffer):
             return dict(values_changed={})
 
 
+class QueryCheckValidator(CheckValidator):
+    def validate_check(self, check: Check):
+        try:
+            QueryParams(**check.params)
+        except Exception as e:
+            raise ValueError(f"Invalid check: {str(e)}")
+
+
 class QueryDiffCheckValidator(CheckValidator):
 
     def validate_check(self, check: Check):
-        if check.params is None:
-            raise ValueError('"params" must be provided')
-
-        if check.params.get('sql_template') is None:
-            raise ValueError('"sql_template" must be provided')
+        try:
+            QueryDiffParams(**check.params)
+        except Exception as e:
+            raise ValueError(f"Invalid check: {str(e)}")
