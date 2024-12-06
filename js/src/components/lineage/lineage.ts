@@ -475,7 +475,8 @@ export function selectNode(nodeId: string, nodes: Node<LineageGraphNode>[]) {
 
 export function selectNodes(
   nodeIds: string[],
-  nodes: Node<LineageGraphNode>[]
+  nodes: Node<LineageGraphNode>[],
+  reset: boolean = false
 ) {
   const newNodes = nodes.map((n) => {
     const isMatch = nodeIds.includes(n.id);
@@ -483,7 +484,7 @@ export function selectNodes(
       ...n,
       data: {
         ...n.data,
-        isSelected: n.data.isSelected || isMatch,
+        isSelected: reset ? isMatch : n.data.isSelected || isMatch,
       },
     };
   });

@@ -324,6 +324,10 @@ export function _LineageView(
       return;
     }
 
+    if (selectedNode) {
+      return;
+    }
+
     if (selectMode !== "single") {
       return;
     }
@@ -348,6 +352,10 @@ export function _LineageView(
       return;
     }
 
+    if (selectedNode) {
+      return;
+    }
+
     const nodeSet = selectDownstream(lineageGraph, lineageGraph.modifiedSet);
 
     const [newNodes, newEdges] = highlightNodes(
@@ -357,6 +365,22 @@ export function _LineageView(
     );
 
     setNodes(newNodes);
+    setEdges(newEdges);
+  };
+
+  const onNodeViewClosed = () => {
+    if (!lineageGraph) {
+      return;
+    }
+
+    const nodeSet = selectDownstream(lineageGraph, lineageGraph.modifiedSet);
+
+    const [newNodes, newEdges] = highlightNodes(
+      Array.from(nodeSet),
+      nodes,
+      edges
+    );
+    setNodes(cleanUpNodes(newNodes));
     setEdges(newEdges);
   };
 
@@ -385,12 +409,28 @@ export function _LineageView(
 
   const onNodeClick = (event: React.MouseEvent, node: Node) => {
     if (props.interactive === false) return;
+    if (!lineageGraph) {
+      return;
+    }
+
     closeContextMenu();
     if (selectMode === "single") {
       if (!selectedNode) {
         centerNode(node);
       }
-      setNodes(selectSingleNode(node.id, nodes));
+      const nodeSet = union(
+        selectUpstream(lineageGraph, [node.id]),
+        selectDownstream(lineageGraph, [node.id])
+      );
+
+      const [newNodes, newEdges] = highlightNodes(
+        Array.from(nodeSet),
+        nodes,
+        edges
+      );
+
+      setNodes(selectSingleNode(node.id, newNodes));
+      setEdges(newEdges);
     } else if (selectMode === "action_result") {
       if (node.data.action?.run?.run_id) {
         showRunId(node.data.action?.run?.run_id);
@@ -504,12 +544,14 @@ export function _LineageView(
       return;
 
     if (selectMode === "single") {
+      setNodes(cleanUpNodes(nodes, true));
       setSelectMode("multi");
+      multiNodeAction.reset();
     }
 
     const selectedNodeId = selectedNode.id;
     const upstream = selectUpstream(lineageGraph, [selectedNodeId], degree);
-    const newNodes = selectNodes([...upstream], nodes);
+    const newNodes = selectNodes([...upstream], nodes, selectMode === "single");
     setNodes(newNodes);
   };
 
@@ -523,12 +565,18 @@ export function _LineageView(
       return;
 
     if (selectMode === "single") {
+      setNodes(cleanUpNodes(nodes, true));
       setSelectMode("multi");
+      multiNodeAction.reset();
     }
 
     const selectedNodeId = selectedNode.id;
     const downstream = selectDownstream(lineageGraph, [selectedNodeId], degree);
-    const newNodes = selectNodes([...downstream], nodes);
+    const newNodes = selectNodes(
+      [...downstream],
+      nodes,
+      selectMode === "single"
+    );
     setNodes(newNodes);
   };
 
@@ -861,12 +909,7 @@ export function _LineageView(
         </VStack>
         {selectMode === "single" && selectedNode ? (
           <Box borderLeft="solid 1px lightgray" height="100%">
-            <NodeView
-              node={selectedNode}
-              onCloseNode={() => {
-                setNodes(cleanUpNodes(nodes));
-              }}
-            />
+            <NodeView node={selectedNode} onCloseNode={onNodeViewClosed} />
           </Box>
         ) : (
           <Box></Box>
