@@ -25,6 +25,7 @@ import {
   Center,
   StackDivider,
   useToast,
+  MenuDivider,
 } from "@chakra-ui/react";
 import React, {
   Ref,
@@ -493,32 +494,40 @@ export function _LineageView(
     );
   }
 
-  const selectParentNodes = () => {
+  const selectParentNodes = (degree = 1000) => {
     const selectedNode = contextMenuPosition.selectedNode;
     if (
-      selectMode !== "multi" ||
+      selectMode === "action_result" ||
       selectedNode === undefined ||
       lineageGraph === undefined
     )
       return;
 
+    if (selectMode === "single") {
+      setSelectMode("multi");
+    }
+
     const selectedNodeId = selectedNode.id;
-    const upstream = selectUpstream(lineageGraph, [selectedNodeId]);
+    const upstream = selectUpstream(lineageGraph, [selectedNodeId], degree);
     const newNodes = selectNodes([...upstream], nodes);
     setNodes(newNodes);
   };
 
-  const selectChildNodes = () => {
+  const selectChildNodes = (degree = 1000) => {
     const selectedNode = contextMenuPosition.selectedNode;
     if (
-      selectMode !== "multi" ||
+      selectMode === "action_result" ||
       selectedNode === undefined ||
       lineageGraph === undefined
     )
       return;
 
+    if (selectMode === "single") {
+      setSelectMode("multi");
+    }
+
     const selectedNodeId = selectedNode.id;
-    const downstream = selectDownstream(lineageGraph, [selectedNodeId]);
+    const downstream = selectDownstream(lineageGraph, [selectedNodeId], degree);
     const newNodes = selectNodes([...downstream], nodes);
     setNodes(newNodes);
   };
@@ -805,22 +814,46 @@ export function _LineageView(
             // Only render context menu when select mode is action
             <Menu isOpen={true} onClose={closeContextMenu}>
               <MenuList
+                fontSize="11pt"
+                position="absolute"
+                width="250px"
                 style={{
-                  position: "absolute",
                   left: `${contextMenuPosition.x}px`,
                   top: `${contextMenuPosition.y}px`,
-                  // left: 0,
-                  // top: 0,
                 }}
               >
                 <MenuItem
                   icon={<BiArrowFromBottom />}
-                  onClick={selectParentNodes}
+                  onClick={() => {
+                    selectParentNodes(1);
+                  }}
                 >
                   Select parent nodes
                 </MenuItem>
-                <MenuItem icon={<BiArrowToBottom />} onClick={selectChildNodes}>
+                <MenuItem
+                  icon={<BiArrowToBottom />}
+                  onClick={() => {
+                    selectChildNodes(1);
+                  }}
+                >
                   Select child nodes
+                </MenuItem>
+                <MenuDivider></MenuDivider>
+                <MenuItem
+                  icon={<BiArrowFromBottom />}
+                  onClick={() => {
+                    selectParentNodes();
+                  }}
+                >
+                  Select all upstream nodes
+                </MenuItem>
+                <MenuItem
+                  icon={<BiArrowToBottom />}
+                  onClick={() => {
+                    selectChildNodes();
+                  }}
+                >
+                  Select all downstream nodes
                 </MenuItem>
               </MenuList>
             </Menu>
