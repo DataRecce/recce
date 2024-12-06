@@ -180,7 +180,7 @@ const useNavToCheck = () => {
 };
 
 export function _LineageView(
-  { ...props }: LineageViewProps,
+  { interactive = false, ...props }: LineageViewProps,
   ref: Ref<LineageViewRef>
 ) {
   const reactFlow = useReactFlow();
@@ -408,7 +408,7 @@ export function _LineageView(
   });
 
   const onNodeClick = (event: React.MouseEvent, node: Node) => {
-    if (props.interactive === false) return;
+    if (interactive === false) return;
     if (!lineageGraph) {
       return;
     }
@@ -586,7 +586,7 @@ export function _LineageView(
   };
 
   const onNodeContextMenu = (event: React.MouseEvent, node: Node) => {
-    if (!props.interactive) {
+    if (!interactive) {
       return;
     }
     if (selectMode === "action_result") {
@@ -683,6 +683,7 @@ export function _LineageView(
   };
 
   const contextValue: LineageViewContextType = {
+    interactive,
     selectMode,
     nodes,
     viewOptions,
@@ -794,7 +795,7 @@ export function _LineageView(
           style={{ contain: "strict" }}
           position="relative"
         >
-          {props.interactive && <LineageViewTopBar />}
+          {interactive && <LineageViewTopBar />}
           <ReactFlow
             nodeTypes={nodeTypes}
             edgeTypes={edgeTypes}
@@ -810,7 +811,7 @@ export function _LineageView(
             maxZoom={1}
             minZoom={0.1}
             fitView={true}
-            nodesDraggable={props.interactive}
+            nodesDraggable={interactive}
             ref={refReactFlow}
           >
             <Background color="#ccc" />

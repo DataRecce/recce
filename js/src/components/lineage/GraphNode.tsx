@@ -14,11 +14,16 @@ import { findByRunType } from "../run/registry";
 import { isSchemaChanged } from "../schema/schemaDiff";
 import { useLineageViewContext } from "./LineageViewContext";
 import { FaCheckSquare, FaRegSquare, FaSquare } from "react-icons/fa";
-import { FaSquareCheck } from "react-icons/fa6";
 
 interface GraphNodeProps extends NodeProps<LineageGraphNode> {}
 
-const NodeRunsAggregated = ({ id, inverted }: { id: string, inverted:boolean }) => {
+const NodeRunsAggregated = ({
+  id,
+  inverted,
+}: {
+  id: string;
+  inverted: boolean;
+}) => {
   const { lineageGraph, runsAggregated } = useLineageGraphContext();
   const runs = runsAggregated?.[id];
   const node = lineageGraph?.nodes[id];
@@ -39,8 +44,10 @@ const NodeRunsAggregated = ({ id, inverted }: { id: string, inverted:boolean }) 
     rowCountChanged = rowCountDiff.result.curr !== rowCountDiff.result.base;
   }
 
-  const colorChanged = inverted ? 'white' : getIconForChangeStatus("modified").color;
-  const colorUnchanged = inverted ? 'gray' : 'lightgray';
+  const colorChanged = inverted
+    ? "white"
+    : getIconForChangeStatus("modified").color;
+  const colorUnchanged = inverted ? "gray" : "lightgray";
 
   return (
     <Flex gap="5px">
@@ -52,11 +59,7 @@ const NodeRunsAggregated = ({ id, inverted }: { id: string, inverted:boolean }) 
           <Box height="16px">
             <Icon
               as={findByRunType("schema_diff")?.icon}
-              color={
-                schemaChanged
-                  ? colorChanged
-                  : colorUnchanged
-              }
+              color={schemaChanged ? colorChanged : colorUnchanged}
             />
           </Box>
         </Tooltip>
@@ -69,11 +72,7 @@ const NodeRunsAggregated = ({ id, inverted }: { id: string, inverted:boolean }) 
           <Box height="16px">
             <Icon
               as={findByRunType("row_count_diff")?.icon}
-              color={
-                rowCountChanged
-                  ? colorChanged
-                  : colorUnchanged
-              }
+              color={rowCountChanged ? colorChanged : colorUnchanged}
             />
           </Box>
         </Tooltip>
@@ -106,7 +105,7 @@ export function GraphNode({ data }: GraphNodeProps) {
 
   const { icon: resourceIcon } = getIconForResourceType(resourceType);
   const [isHovered, setIsHovered] = useState(false);
-  const { selectNodeMulti, selectMode } = useLineageViewContext();
+  const { interactive, selectNodeMulti, selectMode } = useLineageViewContext();
 
   // text color, icon
   const {
@@ -176,26 +175,28 @@ export function GraphNode({ data }: GraphNodeProps) {
       >
         <Flex
           backgroundColor={color}
-          padding={2}
+          padding={interactive ? "8px" : "2px"}
           borderRightWidth={borderWidth}
           borderColor={selectMode === "multi" ? "#00000020" : borderColor}
           borderStyle={borderStyle}
           alignItems="top"
           visibility={showContent ? "inherit" : "hidden"}
         >
-          <GraphNodeCheckbox
-            checked={
-              (selectMode === "multi" && isSelected) ||
-              (selectMode === "action_result" && !!data.action)
-            }
-            onClick={(e) => {
-              if (selectMode === "action_result") {
-                return;
+          {interactive && (
+            <GraphNodeCheckbox
+              checked={
+                (selectMode === "multi" && isSelected) ||
+                (selectMode === "action_result" && !!data.action)
               }
-              e.stopPropagation();
-              selectNodeMulti(data.id);
-            }}
-          />
+              onClick={(e) => {
+                if (selectMode === "action_result") {
+                  return;
+                }
+                e.stopPropagation();
+                selectNodeMulti(data.id);
+              }}
+            />
+          )}
         </Flex>
 
         <Flex
@@ -272,15 +273,19 @@ export function GraphNode({ data }: GraphNodeProps) {
             visibility={showContent ? "inherit" : "hidden"}
           >
             <HStack spacing={"8px"}>
-              {selectMode !== "action_result" && data.resourceType === "model" && (
-                <NodeRunsAggregated id={data.id} inverted={function (){
-                  if (selectMode === "multi") {
-                    return isSelected ? true : false;
-                  } else {
-                    return false;
-                  }
-                }()}/>
-              )}
+              {selectMode !== "action_result" &&
+                data.resourceType === "model" && (
+                  <NodeRunsAggregated
+                    id={data.id}
+                    inverted={(function () {
+                      if (selectMode === "multi") {
+                        return isSelected ? true : false;
+                      } else {
+                        return false;
+                      }
+                    })()}
+                  />
+                )}
               <Spacer />
               {data.isActionMode &&
                 (data.action ? (
