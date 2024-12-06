@@ -25,6 +25,7 @@ import {
   Center,
   StackDivider,
   useToast,
+  MenuDivider,
 } from "@chakra-ui/react";
 import React, {
   Ref,
@@ -183,12 +184,12 @@ export function _LineageView(
   ref: Ref<LineageViewRef>
 ) {
   const reactFlow = useReactFlow();
-  const refReactFlow = useRef<HTMLDivElement>(null);
+  const refResize = useRef<HTMLDivElement>(null);
   const { successToast, failToast } = useClipBoardToast();
   const {
     copyToClipboard,
     ImageDownloadModal,
-    ref: copyRef,
+    ref: refReactFlow,
   } = useCopyToClipboard({
     renderLibrary: "html-to-image",
     imageType: "png",
@@ -323,6 +324,10 @@ export function _LineageView(
       return;
     }
 
+    if (selectedNode) {
+      return;
+    }
+
     if (selectMode !== "single") {
       return;
     }
@@ -347,6 +352,10 @@ export function _LineageView(
       return;
     }
 
+    if (selectedNode) {
+      return;
+    }
+
     const nodeSet = selectDownstream(lineageGraph, lineageGraph.modifiedSet);
 
     const [newNodes, newEdges] = highlightNodes(
@@ -356,6 +365,22 @@ export function _LineageView(
     );
 
     setNodes(newNodes);
+    setEdges(newEdges);
+  };
+
+  const onNodeViewClosed = () => {
+    if (!lineageGraph) {
+      return;
+    }
+
+    const nodeSet = selectDownstream(lineageGraph, lineageGraph.modifiedSet);
+
+    const [newNodes, newEdges] = highlightNodes(
+      Array.from(nodeSet),
+      nodes,
+      edges
+    );
+    setNodes(cleanUpNodes(newNodes));
     setEdges(newEdges);
   };
 
@@ -371,7 +396,7 @@ export function _LineageView(
 
   const navToCheck = useNavToCheck();
 
-  useResizeObserver(refReactFlow, async () => {
+  useResizeObserver(refResize, async () => {
     if (selectMode === "single" || selectMode === "action_result") {
       const selectedNode = nodes.find((node) => node.data.isSelected);
       if (selectedNode) {
@@ -384,12 +409,28 @@ export function _LineageView(
 
   const onNodeClick = (event: React.MouseEvent, node: Node) => {
     if (props.interactive === false) return;
+    if (!lineageGraph) {
+      return;
+    }
+
     closeContextMenu();
     if (selectMode === "single") {
       if (!selectedNode) {
         centerNode(node);
       }
-      setNodes(selectSingleNode(node.id, nodes));
+      const nodeSet = union(
+        selectUpstream(lineageGraph, [node.id]),
+        selectDownstream(lineageGraph, [node.id])
+      );
+
+      const [newNodes, newEdges] = highlightNodes(
+        Array.from(nodeSet),
+        nodes,
+        edges
+      );
+
+      setNodes(selectSingleNode(node.id, newNodes));
+      setEdges(newEdges);
     } else if (selectMode === "action_result") {
       if (node.data.action?.run?.run_id) {
         showRunId(node.data.action?.run?.run_id);
@@ -493,33 +534,49 @@ export function _LineageView(
     );
   }
 
-  const selectParentNodes = () => {
+  const selectParentNodes = (degree = 1000) => {
     const selectedNode = contextMenuPosition.selectedNode;
     if (
-      selectMode !== "multi" ||
+      selectMode === "action_result" ||
       selectedNode === undefined ||
       lineageGraph === undefined
     )
       return;
 
+    if (selectMode === "single") {
+      setNodes(cleanUpNodes(nodes, true));
+      setSelectMode("multi");
+      multiNodeAction.reset();
+    }
+
     const selectedNodeId = selectedNode.id;
-    const upstream = selectUpstream(lineageGraph, [selectedNodeId]);
-    const newNodes = selectNodes([...upstream], nodes);
+    const upstream = selectUpstream(lineageGraph, [selectedNodeId], degree);
+    const newNodes = selectNodes([...upstream], nodes, selectMode === "single");
     setNodes(newNodes);
   };
 
-  const selectChildNodes = () => {
+  const selectChildNodes = (degree = 1000) => {
     const selectedNode = contextMenuPosition.selectedNode;
     if (
-      selectMode !== "multi" ||
+      selectMode === "action_result" ||
       selectedNode === undefined ||
       lineageGraph === undefined
     )
       return;
 
+    if (selectMode === "single") {
+      setNodes(cleanUpNodes(nodes, true));
+      setSelectMode("multi");
+      multiNodeAction.reset();
+    }
+
     const selectedNodeId = selectedNode.id;
-    const downstream = selectDownstream(lineageGraph, [selectedNodeId]);
-    const newNodes = selectNodes([...downstream], nodes);
+    const downstream = selectDownstream(lineageGraph, [selectedNodeId], degree);
+    const newNodes = selectNodes(
+      [...downstream],
+      nodes,
+      selectMode === "single"
+    );
     setNodes(newNodes);
   };
 
@@ -529,15 +586,20 @@ export function _LineageView(
   };
 
   const onNodeContextMenu = (event: React.MouseEvent, node: Node) => {
-    if (selectMode !== "multi") {
+    if (!props.interactive) {
+      return;
+    }
+    if (selectMode === "action_result") {
       return;
     }
     // Only show context menu when selectMode is action
     // Prevent native context menu from showing
     event.preventDefault();
+    const pane = (refReactFlow.current as any).getBoundingClientRect();
+    const offsetTop = (refReactFlow.current as any).offsetTop;
     setContextMenuPosition({
-      x: event.clientX,
-      y: event.clientY,
+      x: event.clientX - pane.left,
+      y: event.clientY - pane.top + offsetTop,
       selectedNode: node,
     });
     setIsContextMenuRendered(true);
@@ -726,10 +788,11 @@ export function _LineageView(
         style={{ height: "100%", width: "100%" }}
       >
         <VStack
-          ref={refReactFlow}
+          ref={refResize}
           divider={<StackDivider borderColor="gray.200" />}
           spacing={0}
           style={{ contain: "strict" }}
+          position="relative"
         >
           {props.interactive && <LineageViewTopBar />}
           <ReactFlow
@@ -748,7 +811,7 @@ export function _LineageView(
             minZoom={0.1}
             fitView={true}
             nodesDraggable={props.interactive}
-            ref={copyRef}
+            ref={refReactFlow}
           >
             <Background color="#ccc" />
             <Controls
@@ -795,39 +858,63 @@ export function _LineageView(
               </Panel>
             )}
           </ReactFlow>
+          {isContextMenuRendered && (
+            // Only render context menu when select mode is action
+            <Menu isOpen={true} onClose={closeContextMenu}>
+              <MenuList
+                fontSize="11pt"
+                position="absolute"
+                width="250px"
+                style={{
+                  left: `${contextMenuPosition.x}px`,
+                  top: `${contextMenuPosition.y}px`,
+                }}
+              >
+                <MenuItem
+                  icon={<BiArrowFromBottom />}
+                  onClick={() => {
+                    selectParentNodes(1);
+                  }}
+                >
+                  Select parent nodes
+                </MenuItem>
+                <MenuItem
+                  icon={<BiArrowToBottom />}
+                  onClick={() => {
+                    selectChildNodes(1);
+                  }}
+                >
+                  Select child nodes
+                </MenuItem>
+                <MenuDivider></MenuDivider>
+                <MenuItem
+                  icon={<BiArrowFromBottom />}
+                  onClick={() => {
+                    selectParentNodes();
+                  }}
+                >
+                  Select all upstream nodes
+                </MenuItem>
+                <MenuItem
+                  icon={<BiArrowToBottom />}
+                  onClick={() => {
+                    selectChildNodes();
+                  }}
+                >
+                  Select all downstream nodes
+                </MenuItem>
+              </MenuList>
+            </Menu>
+          )}
         </VStack>
         {selectMode === "single" && selectedNode ? (
           <Box borderLeft="solid 1px lightgray" height="100%">
-            <NodeView
-              node={selectedNode}
-              onCloseNode={() => {
-                setNodes(cleanUpNodes(nodes));
-              }}
-            />
+            <NodeView node={selectedNode} onCloseNode={onNodeViewClosed} />
           </Box>
         ) : (
           <Box></Box>
         )}
       </HSplit>
-      {isContextMenuRendered && (
-        // Only render context menu when select mode is action
-        <Menu isOpen={true} onClose={closeContextMenu}>
-          <MenuList
-            style={{
-              position: "absolute",
-              left: `${contextMenuPosition.x}px`,
-              top: `${contextMenuPosition.y}px`,
-            }}
-          >
-            <MenuItem icon={<BiArrowFromBottom />} onClick={selectParentNodes}>
-              Select parent nodes
-            </MenuItem>
-            <MenuItem icon={<BiArrowToBottom />} onClick={selectChildNodes}>
-              Select child nodes
-            </MenuItem>
-          </MenuList>
-        </Menu>
-      )}
       {valueDiffAlertDialog.AlertDialog}
     </LineageViewContext.Provider>
   );

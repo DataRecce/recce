@@ -130,15 +130,6 @@ export function GraphNode({ data }: GraphNodeProps) {
 
   const name = data?.name;
 
-  const highlightClassName =
-    isHighlighted === true
-      ? "node-highlight"
-      : isSelected === true
-      ? "node-highlight"
-      : isHighlighted === false
-      ? "node-unhighlight"
-      : undefined;
-
   return (
     <Tooltip
       label={resourceType === "model" ? name : `${name} (${resourceType})`}
@@ -175,7 +166,9 @@ export function GraphNode({ data }: GraphNodeProps) {
           if (selectMode === "action_result") {
             return !!data?.action ? "none" : "opacity(0.2) grayscale(50%)";
           } else {
-            return isHighlighted ? "none" : "opacity(0.2) grayscale(50%)";
+            return isHighlighted || isSelected
+              ? "none"
+              : "opacity(0.2) grayscale(50%)";
           }
         })()}
         onMouseEnter={() => setIsHovered(true)}
