@@ -341,7 +341,11 @@ class RecceStateLoader:
 
         recce_cloud = RecceCloud(token=self.cloud_options.get('token'))
         presigned_url = recce_cloud.get_presigned_url(
-            method=PresignedUrlMethod.DOWNLOAD, pr_info=self.pr_info, artifact_name=RECCE_STATE_COMPRESSED_FILE)
+            method=PresignedUrlMethod.DOWNLOAD,
+            pr_id=self.pr_info.id,
+            repository=self.pr_info.repository,
+            artifact_name=RECCE_STATE_COMPRESSED_FILE
+        )
 
         password = self.cloud_options.get('password')
         if password is None:
