@@ -63,6 +63,8 @@ def schema_diff_should_be_approved(check_params: dict) -> bool:
         view_mode=check_params.get('view_mode'),
     )
     nodes = [node for node in nodes if not node.startswith('test.')]
+    base = None
+    curr = None
     for node in nodes:
         base = context.get_model(node, base=True)
         curr = context.get_model(node, base=False)
