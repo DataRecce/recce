@@ -278,6 +278,7 @@ class DbtAdapter(BaseAdapter):
                 kwargs={"relation": relation})
 
         if self.adapter.connections.TYPE == 'databricks':
+            # reference: get_columns_in_relation (dbt/adapters/databricks/impl.py)
             from dbt.adapters.databricks import DatabricksColumn
             rows = columns
             columns = []
