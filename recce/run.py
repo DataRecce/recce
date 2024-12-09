@@ -45,9 +45,6 @@ def load_preset_checks(checks: list):
         check_params = check.get('params', {})
         check_options = check.get('view_options', {})
 
-        if check_type == RunType.SCHEMA_DIFF.value:
-            is_check = schema_diff_should_be_approved(check_params)
-
         create_check_without_run(name, description, check_type, check_params, check_options, is_preset=True,
                                  is_checked=is_check)
         table.add_row(name, check_type.replace('_', ' ').title(), description.strip())
@@ -57,26 +54,24 @@ def load_preset_checks(checks: list):
 def schema_diff_should_be_approved(check_params: dict) -> bool:
     try:
         context = default_context()
-        nodes = context.adapter.select_nodes(
+        selected_node_ids = context.adapter.select_nodes(
             select=check_params.get('select'),
             exclude=check_params.get('exclude'),
             packages=check_params.get('packages'),
             view_mode=check_params.get('view_mode'),
 
         )
-        nodes = [node for node in nodes if not node.startswith('test.')]
+        selected_node_ids = [node for node in selected_node_ids if not node.startswith('test.')]
 
-        def _get_selected_node_columns_from_lineage(lineage, selected_nodes):
-            selected_lineage = {}
-            for node_id, node in lineage['nodes'].items():
-                if node_id in selected_nodes:
-                    selected_lineage[node_id] = node.get('columns', {})
-            return selected_lineage
+        def _get_selected_node_columns_from_lineage(lineage, node_ids: list[str]):
+            nodes = {}
+            for node_id, node in lineage.get('nodes', {}).items():
+                if node_id in node_ids:
+                    nodes[node_id] = node.get('columns', {})
+            return nodes
 
-        base_lineage = context.get_lineage(base=True)
-        curr_lineage = context.get_lineage(base=False)
-        base_nodes = _get_selected_node_columns_from_lineage(base_lineage, nodes)
-        curr_nodes = _get_selected_node_columns_from_lineage(curr_lineage, nodes)
+        base_nodes = _get_selected_node_columns_from_lineage(context.get_lineage(base=True), selected_node_ids)
+        curr_nodes = _get_selected_node_columns_from_lineage(context.get_lineage(base=False), selected_node_ids)
         diff = DeepDiff(base_nodes, curr_nodes, ignore_order=True)
 
         # If the diff is empty, then the check should be approved
