@@ -52,6 +52,8 @@ export interface LineageGraphContextType {
   isDemoSite?: boolean;
   isLoading?: boolean;
   error?: string;
+  supportTasks?: { [key: string]: boolean };
+  isTaskShouldBeDisabled?: (taskName: string) => boolean;
   retchLineageGraph?: () => void;
 
   runsAggregated?: RunsAggregated;
@@ -65,11 +67,11 @@ const LineageGraphContext = createContext(defaultLineageGraphsContext);
 type LineageWatcherStatus = "pending" | "connected" | "disconnected";
 
 function useLineageWatcher() {
-  const artifactsUpdatedToast = useToast();  
+  const artifactsUpdatedToast = useToast();
 
   // use ref so that the callbacks can access the latest values
   const ref = useRef<{
-    ws:WebSocket | undefined;
+    ws: WebSocket | undefined;
     status: LineageWatcherStatus;
   }>({
     ws: undefined,
@@ -84,8 +86,7 @@ function useLineageWatcher() {
     queryClient.invalidateQueries({ queryKey: cacheKeys.lineage() });
     queryClient.invalidateQueries({ queryKey: cacheKeys.checks() });
     queryClient.invalidateQueries({ queryKey: cacheKeys.runs() });
-  }
-
+  };
 
   const connect = () => {
     function httpUrlToWebSocketUrl(url: string): string {
@@ -98,8 +99,8 @@ function useLineageWatcher() {
       ws.send("ping"); // server will respond with 'pong'
     };
     ws.onmessage = (event) => {
-      if (event.data === "pong") {                
-        if (ref.current.status === "disconnected") {          
+      if (event.data === "pong") {
+        if (ref.current.status === "disconnected") {
           invalidateCaches();
         }
         setStatus("connected");
@@ -140,10 +141,10 @@ function useLineageWatcher() {
     };
   };
 
-  useEffect(() => {    
+  useEffect(() => {
     const refObj = ref.current;
-    connect();    
-    return () => {      
+    connect();
+    return () => {
       if (refObj.ws) {
         refObj.ws.close();
       }
@@ -165,7 +166,7 @@ export function LineageGraphContextProvider({ children }: LineageGraphProps) {
   const { data, isLoading, error, refetch } = useQuery({
     queryKey: cacheKeys.lineage(),
     queryFn: getServerInfo,
-  });  
+  });
 
   const { data: runsAggregated, refetch: refetchRunsAggregated } = useQuery({
     queryKey: cacheKeys.runsAggregated(),
@@ -192,6 +193,7 @@ export function LineageGraphContextProvider({ children }: LineageGraphProps) {
   const pullRequest = data?.pull_request;
   const dbtBase = lineage?.base?.manifest_metadata;
   const dbtCurrent = lineage?.current?.manifest_metadata;
+  const supportTasks = data?.support_tasks;
 
   const envInfo: EnvInfo = {
     adapterType,
@@ -205,6 +207,16 @@ export function LineageGraphContextProvider({ children }: LineageGraphProps) {
   };
 
   const { connectionStatus, connect } = useLineageWatcher();
+
+  const isTaskShouldBeDisabled = useCallback(
+    (taskName: string) => {
+      if (supportTasks) {
+        return !supportTasks[taskName];
+      }
+      return false;
+    },
+    [supportTasks]
+  );
 
   return (
     <>
@@ -222,6 +234,8 @@ export function LineageGraphContextProvider({ children }: LineageGraphProps) {
           error: errorMessage,
           isLoading,
           runsAggregated,
+          supportTasks,
+          isTaskShouldBeDisabled,
           refetchRunsAggregated: () => {
             refetchRunsAggregated();
           },

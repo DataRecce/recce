@@ -179,6 +179,8 @@ async def get_info():
     else:
         state = context.export_state()
 
+    support_tasks = context.support_tasks()
+    print(support_tasks)
     try:
         info = {
             'adapter_type': context.adapter_type,
@@ -192,6 +194,7 @@ async def get_info():
             'demo': bool(demo),
             'cloud_mode': context.state_loader.cloud_mode,
             'file_mode': context.state_loader.state_file is not None,
+            'support_tasks': support_tasks,
         }
 
         if context.adapter_type == 'sqlmesh':

@@ -134,6 +134,7 @@ export interface ServerInfoResult {
     current: LineageData;
   };
   demo: boolean;
+  support_tasks: { [key: string]: boolean };
 }
 
 export async function getServerInfo(): Promise<ServerInfoResult> {
