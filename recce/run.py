@@ -55,24 +55,36 @@ def load_preset_checks(checks: list):
 
 
 def schema_diff_should_be_approved(check_params: dict) -> bool:
-    context = default_context()
-    nodes = context.adapter.select_nodes(
-        select=check_params.get('select'),
-        exclude=check_params.get('exclude'),
-        packages=check_params.get('packages'),
-        view_mode=check_params.get('view_mode'),
-    )
-    nodes = [node for node in nodes if not node.startswith('test.')]
-    base = None
-    curr = None
-    for node in nodes:
-        base = context.get_model(node, base=True)
-        curr = context.get_model(node, base=False)
-    diff = DeepDiff(base, curr, ignore_order=True)
+    try:
+        context = default_context()
+        nodes = context.adapter.select_nodes(
+            select=check_params.get('select'),
+            exclude=check_params.get('exclude'),
+            packages=check_params.get('packages'),
+            view_mode=check_params.get('view_mode'),
 
-    # If the diff is empty, then the check should be approved
-    if bool(diff) is False:
-        return True
+        )
+        nodes = [node for node in nodes if not node.startswith('test.')]
+
+        def _get_selected_node_columns_from_lineage(lineage, selected_nodes):
+            selected_lineage = {}
+            for node_id, node in lineage['nodes'].items():
+                if node_id in selected_nodes:
+                    selected_lineage[node_id] = node.get('columns', {})
+            return selected_lineage
+
+        base_lineage = context.get_lineage(base=True)
+        curr_lineage = context.get_lineage(base=False)
+        base_nodes = _get_selected_node_columns_from_lineage(base_lineage, nodes)
+        curr_nodes = _get_selected_node_columns_from_lineage(curr_lineage, nodes)
+        diff = DeepDiff(base_nodes, curr_nodes, ignore_order=True)
+
+        # If the diff is empty, then the check should be approved
+        if bool(diff) is False:
+            return True
+    except Exception:
+        # If there is any error, then the check should not be approved
+        pass
 
     return False
 
