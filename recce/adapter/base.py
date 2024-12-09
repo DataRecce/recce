@@ -32,6 +32,15 @@ class BaseAdapter(ABC):
     def get_node_name_by_id(self, unique_id):
         raise NotImplementedError()
 
+    @abstractmethod
+    def support_tasks(self):
+        """
+        Get the adapter support tasks. Should be implemented by subclass.
+        The tasks support map is a dictionary that maps all the Recce tasks are supported by the adapter or not.
+        True means supported, False means not supported.
+        """
+        raise NotImplementedError()
+
     def start_monitor_artifacts(self, callback: Callable = None):
         pass
 
