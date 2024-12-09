@@ -54,13 +54,19 @@ def load_preset_checks(checks: list):
 def schema_diff_should_be_approved(check_params: dict) -> bool:
     try:
         context = default_context()
-        selected_node_ids = context.adapter.select_nodes(
-            select=check_params.get('select'),
-            exclude=check_params.get('exclude'),
-            packages=check_params.get('packages'),
-            view_mode=check_params.get('view_mode'),
 
-        )
+        if 'node_id' in check_params:
+            # If the node_id is provided, then use it
+            selected_node_ids = check_params.get('node_id', [])
+        else:
+            # Otherwise, select the nodes based on the select/exclude/packages/view_mode
+            selected_node_ids = context.adapter.select_nodes(
+                select=check_params.get('select'),
+                exclude=check_params.get('exclude'),
+                packages=check_params.get('packages'),
+                view_mode=check_params.get('view_mode'),
+            )
+
         selected_node_ids = [node for node in selected_node_ids if not node.startswith('test.')]
 
         def _get_selected_node_columns_from_lineage(lineage, node_ids: list[str]):
