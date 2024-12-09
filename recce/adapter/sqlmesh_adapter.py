@@ -1,6 +1,6 @@
 import typing as t
 from dataclasses import dataclass
-from typing import Optional
+from typing import Optional, Dict, Type
 
 import pandas as pd
 from sqlglot import parse_one, Expression, select
@@ -10,6 +10,14 @@ from sqlmesh.core.environment import Environment
 from sqlmesh.core.state_sync import StateReader
 
 from recce.adapter.base import BaseAdapter
+from recce.models import RunType
+from recce.tasks import Task, QueryTask, QueryDiffTask, RowCountDiffTask
+
+sqlmesh_supported_registry: Dict[RunType, Type[Task]] = {
+    RunType.QUERY: QueryTask,
+    RunType.QUERY_DIFF: QueryDiffTask,
+    RunType.ROW_COUNT_DIFF: RowCountDiffTask,
+}
 
 
 @dataclass
@@ -17,6 +25,9 @@ class SqlmeshAdapter(BaseAdapter):
     context: SqlmeshContext
     base_env: Environment
     curr_env: Environment
+
+    def support_tasks(self):
+        return {run_type.value: True for run_type in sqlmesh_supported_registry}
 
     def get_lineage(self, base: Optional[bool] = False):
         state_reader: StateReader = self.context.state_reader

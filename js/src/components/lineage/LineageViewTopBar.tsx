@@ -300,6 +300,7 @@ const ControlItem = (props: {
 export const LineageViewTopBar = () => {
   const { nodes, deselect, selectMode, ...lineageViewContext } =
     useLineageViewContext();
+  const { isTaskShouldBeDisabled } = useLineageGraphContext();
   const selectNodes = useMemo(() => {
     return nodes.filter((node) => node.data.isSelected);
   }, [nodes]);
@@ -386,7 +387,9 @@ export const LineageViewTopBar = () => {
                     size="sm"
                     fontSize="10pt"
                     isDisabled={
-                      !(isNoSelect || isSingleSelect || isMultiSelect)
+                      !(isNoSelect || isSingleSelect || isMultiSelect) ||
+                      (isTaskShouldBeDisabled &&
+                        isTaskShouldBeDisabled("value_diff"))
                     }
                     icon={<Icon as={findByRunType("value_diff")?.icon} />}
                     onClick={() => {
