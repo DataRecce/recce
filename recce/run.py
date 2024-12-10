@@ -45,9 +45,6 @@ def load_preset_checks(checks: list):
         check_params = check.get('params', {})
         check_options = check.get('view_options', {})
 
-        if check_type == RunType.SCHEMA_DIFF.value:
-            is_check = schema_diff_should_be_approved(check_params)
-
         create_check_without_run(name, description, check_type, check_params, check_options, is_preset=True,
                                  is_checked=is_check)
         table.add_row(name, check_type.replace('_', ' ').title(), description.strip())
@@ -55,24 +52,43 @@ def load_preset_checks(checks: list):
 
 
 def schema_diff_should_be_approved(check_params: dict) -> bool:
-    context = default_context()
-    nodes = context.adapter.select_nodes(
-        select=check_params.get('select'),
-        exclude=check_params.get('exclude'),
-        packages=check_params.get('packages'),
-        view_mode=check_params.get('view_mode'),
-    )
-    nodes = [node for node in nodes if not node.startswith('test.')]
-    base = None
-    curr = None
-    for node in nodes:
-        base = context.get_model(node, base=True)
-        curr = context.get_model(node, base=False)
-    diff = DeepDiff(base, curr, ignore_order=True)
+    try:
+        context = default_context()
 
-    # If the diff is empty, then the check should be approved
-    if bool(diff) is False:
-        return True
+        if 'node_id' in check_params:
+            # If the node_id is provided, then use it
+            if isinstance(check_params['node_id'], str):
+                selected_node_ids = [check_params['node_id']]
+            else:
+                selected_node_ids = check_params.get('node_id', [])
+        else:
+            # Otherwise, select the nodes based on the select/exclude/packages/view_mode
+            selected_node_ids = context.adapter.select_nodes(
+                select=check_params.get('select'),
+                exclude=check_params.get('exclude'),
+                packages=check_params.get('packages'),
+                view_mode=check_params.get('view_mode'),
+            )
+
+        selected_node_ids = [node for node in selected_node_ids if not node.startswith('test.')]
+
+        def _get_selected_node_columns_from_lineage(lineage, node_ids: list[str]):
+            nodes = {}
+            for node_id, node in lineage.get('nodes', {}).items():
+                if node_id in node_ids:
+                    nodes[node_id] = node.get('columns', {})
+            return nodes
+
+        base_nodes = _get_selected_node_columns_from_lineage(context.get_lineage(base=True), selected_node_ids)
+        curr_nodes = _get_selected_node_columns_from_lineage(context.get_lineage(base=False), selected_node_ids)
+        diff = DeepDiff(base_nodes, curr_nodes, ignore_order=True)
+
+        # If the diff is empty, then the check should be approved
+        if bool(diff) is False:
+            return True
+    except Exception:
+        # If there is any error, then the check should not be approved
+        pass
 
     return False
 
