@@ -17,6 +17,8 @@ jobs:
           - python-version: "3.9"
             dbt-version: "1.6"
           - python-version: "3.11"
+            dbt-version: "1.8"
+          - python-version: "3.11"
             dbt-version: "latest"
     steps:
       - uses: actions/checkout@v3
