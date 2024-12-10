@@ -15,9 +15,9 @@ jobs:
       matrix:
         include:
           - python-version: "3.9"
-            dbt-version: "1.6"
+            dbt-version: "1.6.0"
           - python-version: "3.11"
-            dbt-version: "1.8"
+            dbt-version: "1.8.0"
           - python-version: "3.11"
             dbt-version: "latest"
     steps:
@@ -31,10 +31,12 @@ jobs:
           cache-dependency-path: setup.py
       - run: |
           python -m pip install --upgrade pip
-          if [ "${{ matrix.dbt-version }}" = "latest" ]; then
+          if [ "${{ matrix.dbt-version }}" == "latest" ]; then
+            pip install dbt-core
             pip install dbt-duckdb
           else
-            pip install dbt-duckdb==${{ matrix.dbt-version }}
+            pip install dbt-core~=${{ matrix.dbt-version }}
+            pip install dbt-duckdb~=${{ matrix.dbt-version }}
           fi
 
       - name: Install Recce
