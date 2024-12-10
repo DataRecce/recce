@@ -57,7 +57,10 @@ def schema_diff_should_be_approved(check_params: dict) -> bool:
 
         if 'node_id' in check_params:
             # If the node_id is provided, then use it
-            selected_node_ids = check_params.get('node_id', [])
+            if isinstance(check_params['node_id'], str):
+                selected_node_ids = [check_params['node_id']]
+            else:
+                selected_node_ids = check_params.get('node_id', [])
         else:
             # Otherwise, select the nodes based on the select/exclude/packages/view_mode
             selected_node_ids = context.adapter.select_nodes(
