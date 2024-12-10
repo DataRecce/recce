@@ -160,6 +160,7 @@ class DbtArgs:
     target_path: Optional[str] = None,
     project_only_flags: Optional[Dict[str, Any]] = None
     which: Optional[str] = None
+    state_modified_compare_more_unrendered_values: Optional[bool] = False  # new flag added since dbt v1.9
 
 
 @dataclass
@@ -259,9 +260,13 @@ class DbtAdapter(BaseAdapter):
 
     def get_columns(self, model: str, base=False) -> List[Column]:
         relation = self.create_relation(model, base)
+        get_columns_macro = 'get_columns_in_relation'
+        if self.adapter.connections.TYPE == 'databricks':
+            get_columns_macro = 'get_columns_comments'
+
         if dbt_version < 'v1.8':
-            return self.adapter.execute_macro(
-                'get_columns_in_relation',
+            columns = self.adapter.execute_macro(
+                get_columns_macro,
                 kwargs={"relation": relation},
                 manifest=self.manifest)
         else:
@@ -269,9 +274,26 @@ class DbtAdapter(BaseAdapter):
             macro_manifest = MacroManifest(self.manifest.macros)
             self.adapter.set_macro_resolver(macro_manifest)
             self.adapter.set_macro_context_generator(generate_runtime_macro_context)
-            return self.adapter.execute_macro(
-                'get_columns_in_relation',
+            columns = self.adapter.execute_macro(
+                get_columns_macro,
                 kwargs={"relation": relation})
+
+        if self.adapter.connections.TYPE == 'databricks':
+            # reference: get_columns_in_relation (dbt/adapters/databricks/impl.py)
+            from dbt.adapters.databricks import DatabricksColumn
+            rows = columns
+            columns = []
+            for row in rows:
+                if row["col_name"].startswith("#"):
+                    break
+                columns.append(
+                    DatabricksColumn(
+                        column=row["col_name"], dtype=row["data_type"], comment=row["comment"]
+                    )
+                )
+            return columns
+        else:
+            return columns
 
     def get_model(self, model_id: str, base=False):
         manifest = self.curr_manifest if base is False else self.base_manifest
