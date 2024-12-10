@@ -6,7 +6,7 @@ from contextlib import contextmanager
 from dataclasses import dataclass, fields
 from errno import ENOENT
 from pathlib import Path
-from typing import Callable, Dict, List, Optional, Tuple, Iterator, Any, Set, Union, Literal
+from typing import Callable, Dict, List, Optional, Tuple, Iterator, Any, Set, Union, Literal, Type
 
 import agate
 import dbt.adapters.factory
@@ -17,6 +17,21 @@ from watchdog.observers import Observer
 from recce.adapter.base import BaseAdapter
 from recce.state import ArtifactsRoot
 from .dbt_version import DbtVersion
+from ...models import RunType
+from ...tasks import Task, QueryTask, QueryBaseTask, QueryDiffTask, ValueDiffTask, ValueDiffDetailTask, ProfileDiffTask, \
+    RowCountDiffTask, TopKDiffTask, HistogramDiffTask
+
+dbt_supported_registry: Dict[RunType, Type[Task]] = {
+    RunType.QUERY: QueryTask,
+    RunType.QUERY_BASE: QueryBaseTask,
+    RunType.QUERY_DIFF: QueryDiffTask,
+    RunType.VALUE_DIFF: ValueDiffTask,
+    RunType.VALUE_DIFF_DETAIL: ValueDiffDetailTask,
+    RunType.PROFILE_DIFF: ProfileDiffTask,
+    RunType.ROW_COUNT_DIFF: RowCountDiffTask,
+    RunType.TOP_K_DIFF: TopKDiffTask,
+    RunType.HISTOGRAM_DIFF: HistogramDiffTask,
+}
 
 # Reference: https://github.com/AltimateAI/vscode-dbt-power-user/blob/master/dbt_core_integration.py
 
@@ -182,6 +197,19 @@ class DbtAdapter(BaseAdapter):
     # Watch the artifact change
     artifacts_observer = Observer()
     artifacts_files = []
+
+    def support_tasks(self):
+        support_map = {run_type.value: True for run_type in dbt_supported_registry}
+        supported_dbt_packages = set([package.package_name for package in self.manifest.macros.values()])
+
+        if 'dbt_profiler' not in supported_dbt_packages:
+            support_map[RunType.PROFILE_DIFF.value] = False
+
+        if 'audit_helper' not in supported_dbt_packages:
+            support_map[RunType.VALUE_DIFF.value] = False
+            support_map[RunType.VALUE_DIFF_DETAIL.value] = False
+
+        return support_map
 
     @classmethod
     def load(cls,

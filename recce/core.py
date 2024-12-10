@@ -268,6 +268,9 @@ class RecceContext:
 
         return True, None
 
+    def support_tasks(self):
+        return self.adapter.support_tasks()
+
 
 recce_context: Optional[RecceContext] = None
 

@@ -1,35 +1,12 @@
 import asyncio
-from typing import Dict, Type, List, Optional
+from typing import List, Optional
 
 from recce.core import default_context
 from recce.exceptions import RecceException
 from recce.models import RunType, Run, RunDAO
 from recce.models.types import RunStatus
-from recce.tasks import QueryTask, ProfileDiffTask, ValueDiffTask, QueryDiffTask, Task, RowCountDiffTask, \
-    ValueDiffDetailTask
-from recce.tasks.histogram import HistogramDiffTask
-from recce.tasks.query import QueryBaseTask
-from recce.tasks.top_k import TopKDiffTask
 
 running_tasks = {}
-
-dbt_registry: Dict[RunType, Type[Task]] = {
-    RunType.QUERY: QueryTask,
-    RunType.QUERY_BASE: QueryBaseTask,
-    RunType.QUERY_DIFF: QueryDiffTask,
-    RunType.VALUE_DIFF: ValueDiffTask,
-    RunType.VALUE_DIFF_DETAIL: ValueDiffDetailTask,
-    RunType.PROFILE_DIFF: ProfileDiffTask,
-    RunType.ROW_COUNT_DIFF: RowCountDiffTask,
-    RunType.TOP_K_DIFF: TopKDiffTask,
-    RunType.HISTOGRAM_DIFF: HistogramDiffTask,
-}
-
-sqlmesh_registry: Dict[RunType, Type[Task]] = {
-    RunType.QUERY: QueryTask,
-    RunType.QUERY_DIFF: QueryDiffTask,
-    RunType.ROW_COUNT_DIFF: RowCountDiffTask,
-}
 
 
 def _get_ref_model(sql_template: str) -> Optional[str]:
@@ -95,7 +72,13 @@ def generate_run_name(run):
 
 
 def create_task(run_type: RunType, params: dict):
-    registry = sqlmesh_registry if default_context().adapter_type == 'sqlmesh' else dbt_registry
+    if default_context().adapter_type == 'sqlmesh':
+        from recce.adapter.sqlmesh_adapter import sqlmesh_supported_registry as sqlmesh_registry
+        registry = sqlmesh_registry
+    else:
+        from recce.adapter.dbt_adapter import dbt_supported_registry as dbt_registry
+        registry = dbt_registry
+
     taskClz = registry.get(run_type)
     if not taskClz:
         raise NotImplementedError()

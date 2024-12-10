@@ -26,6 +26,7 @@ import {
   MenuDivider,
   Icon,
   MenuGroup,
+  Tooltip,
 } from "@chakra-ui/react";
 
 import { FaCode } from "react-icons/fa";
@@ -41,6 +42,8 @@ import { useLineageGraphContext } from "@/lib/hooks/LineageGraphContext";
 import useModelColumns from "@/lib/hooks/useModelColumns";
 import { createSchemaDiffCheck } from "@/lib/api/schemacheck";
 import { findByRunType } from "../run/registry";
+import { is } from "date-fns/locale";
+import { run } from "node:test";
 
 interface NodeViewProps {
   node: LineageGraphNode;
@@ -63,7 +66,7 @@ export function NodeView({ node, onCloseNode }: NodeViewProps) {
     onClose: onCodeDiffClose,
   } = useDisclosure();
   const { runAction } = useRecceActionContext();
-  const { envInfo } = useLineageGraphContext();
+  const { envInfo, isTaskShouldBeDisabled } = useLineageGraphContext();
   const { primaryKey } = useModelColumns(node.name);
   const refetchRowCount = () => {
     runAction(
@@ -78,6 +81,22 @@ export function NodeView({ node, onCloseNode }: NodeViewProps) {
     const check = await createSchemaDiffCheck({ node_id: nodeId });
     setLocation(`/checks/${check.check_id}`);
   }, [node, setLocation]);
+
+  const disableReason = (isAddedOrRemoved: boolean, runType: string) => {
+    if (isAddedOrRemoved) {
+      return "This action is not supported for added or removed nodes";
+    }
+    if (isTaskShouldBeDisabled && isTaskShouldBeDisabled(runType)) {
+      if (runType === "value_diff") {
+        return "DBT package 'dbt_auditor' is not installed, please install it to use this feature.";
+      } else if (runType === "profile_diff") {
+        return "DBT package 'dbt_profile' is not installed, please install it to use this feature.";
+      } else {
+        return "This action is not supported yet.";
+      }
+    }
+    return "";
+  };
 
   const isAddedOrRemoved =
     node.changeStatus === "added" || node.changeStatus === "removed";
@@ -133,38 +152,56 @@ export function NodeView({ node, onCloseNode }: NodeViewProps) {
                 >
                   Row Count Diff
                 </MenuItem>
-                <MenuItem
-                  icon={<Icon as={findByRunType("profile_diff")?.icon} />}
-                  fontSize="14px"
-                  isDisabled={isAddedOrRemoved}
-                  onClick={() => {
-                    runAction(
-                      "profile_diff",
-                      {
-                        model: node.name,
-                      },
-                      { showForm: false, showLast: false }
-                    );
-                  }}
+                <Tooltip
+                  hasArrow
+                  label={disableReason(isAddedOrRemoved, "profile_diff")}
                 >
-                  Profile Diff
-                </MenuItem>
-                <MenuItem
-                  icon={<Icon as={findByRunType("value_diff")?.icon} />}
-                  fontSize="14px"
-                  isDisabled={isAddedOrRemoved}
-                  onClick={() => {
-                    runAction(
-                      "value_diff",
-                      {
-                        model: node.name,
-                      },
-                      { showForm: true, showLast: false }
-                    );
-                  }}
+                  <MenuItem
+                    icon={<Icon as={findByRunType("profile_diff")?.icon} />}
+                    fontSize="14px"
+                    isDisabled={
+                      isAddedOrRemoved ||
+                      (isTaskShouldBeDisabled &&
+                        isTaskShouldBeDisabled("profile_diff"))
+                    }
+                    onClick={() => {
+                      runAction(
+                        "profile_diff",
+                        {
+                          model: node.name,
+                        },
+                        { showForm: false, showLast: false }
+                      );
+                    }}
+                  >
+                    Profile Diff
+                  </MenuItem>
+                </Tooltip>
+                <Tooltip
+                  hasArrow
+                  label={disableReason(isAddedOrRemoved, "value_diff")}
                 >
-                  Value Diff
-                </MenuItem>
+                  <MenuItem
+                    icon={<Icon as={findByRunType("value_diff")?.icon} />}
+                    fontSize="14px"
+                    isDisabled={
+                      isAddedOrRemoved ||
+                      (isTaskShouldBeDisabled &&
+                        isTaskShouldBeDisabled("value_diff"))
+                    }
+                    onClick={() => {
+                      runAction(
+                        "value_diff",
+                        {
+                          model: node.name,
+                        },
+                        { showForm: true, showLast: false }
+                      );
+                    }}
+                  >
+                    Value Diff
+                  </MenuItem>
+                </Tooltip>
                 <MenuItem
                   icon={<Icon as={findByRunType("top_k_diff")?.icon} />}
                   fontSize="14px"
