@@ -160,6 +160,7 @@ class DbtArgs:
     target_path: Optional[str] = None,
     project_only_flags: Optional[Dict[str, Any]] = None
     which: Optional[str] = None
+    state_modified_compare_more_unrendered_values: Optional[bool] = False  # new flag added since dbt v1.9
 
 
 @dataclass
