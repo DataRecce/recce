@@ -16,10 +16,10 @@ flake8:
 	@echo "Passed"
 
 test: install-dev
-	@python3 -m pytest tests
+	@python3 -m pytest --cov=recce --cov-report html tests
 
 test-tox: install-dev
-	@tox	
+	@tox
 
 install-frontend-requires:
 # Install pnpm if not installed
@@ -28,4 +28,3 @@ install-frontend-requires:
 
 dev: install-frontend-requires
 	@cd js && pnpm dev
-  
