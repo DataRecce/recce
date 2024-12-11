@@ -291,20 +291,19 @@ function NavBar() {
             );
           })}
         </Box>
-        <Filename />
-        <Flex flex="1" justifyContent="right">
-          {!isLoading && (
-            <>
-              {cloudMode && <StateSynchronizer />}
-              {!isDemoSite && !cloudMode && <StateImporter />}
-              {!isDemoSite && cloudMode && reviewMode && (
-                <StateImporter checksOnly />
-              )}
-              <StateExporter />
-            </>
-          )}
-          <EnvInfo />
-        </Flex>
+        {!isLoading && !isDemoSite && <Filename />}
+        {!isLoading && (
+          <Flex flex="1" justifyContent="right">
+            {cloudMode && <StateSynchronizer />}
+            {!isDemoSite && !cloudMode && <StateImporter />}
+            {!isDemoSite && cloudMode && reviewMode && (
+              <StateImporter checksOnly />
+            )}
+            <StateExporter />
+
+            <EnvInfo />
+          </Flex>
+        )}
       </TabList>
     </Tabs>
   );
