@@ -20,6 +20,7 @@ import {
   ButtonGroup,
   Spacer,
   Text,
+  Tooltip,
 } from "@chakra-ui/react";
 
 import { FiPackage } from "react-icons/fi";
@@ -31,6 +32,7 @@ import { useLineageViewContext } from "./LineageViewContext";
 import { findByRunType } from "../run/registry";
 import { ChevronDownIcon } from "@chakra-ui/icons";
 import { trackHistoryAction } from "@/lib/api/track";
+import { DisableTooltipMessages } from "@/constants/tooltipMessage";
 
 const HistoryToggle = () => {
   const { isHistoryOpen, showHistory, closeHistory } = useRecceActionContext();
@@ -382,22 +384,31 @@ export const LineageViewTopBar = () => {
                   >
                     Row Count Diff
                   </MenuItem>
-                  <MenuItem
-                    as={Text}
-                    size="sm"
-                    fontSize="10pt"
-                    isDisabled={
-                      !(isNoSelect || isSingleSelect || isMultiSelect) ||
-                      (isTaskShouldBeDisabled &&
-                        isTaskShouldBeDisabled("value_diff"))
+                  <Tooltip
+                    label={
+                      isTaskShouldBeDisabled &&
+                      isTaskShouldBeDisabled("value_diff")
+                        ? DisableTooltipMessages.audit_helper
+                        : null
                     }
-                    icon={<Icon as={findByRunType("value_diff")?.icon} />}
-                    onClick={() => {
-                      lineageViewContext.runValueDiff();
-                    }}
                   >
-                    Value Diff
-                  </MenuItem>
+                    <MenuItem
+                      as={Text}
+                      size="sm"
+                      fontSize="10pt"
+                      isDisabled={
+                        !(isNoSelect || isSingleSelect || isMultiSelect) ||
+                        (isTaskShouldBeDisabled &&
+                          isTaskShouldBeDisabled("value_diff"))
+                      }
+                      icon={<Icon as={findByRunType("value_diff")?.icon} />}
+                      onClick={() => {
+                        lineageViewContext.runValueDiff();
+                      }}
+                    >
+                      Value Diff
+                    </MenuItem>
+                  </Tooltip>
                 </MenuGroup>
                 <MenuDivider />
                 <MenuGroup title="Add to Checklist" m="0" px="12px">

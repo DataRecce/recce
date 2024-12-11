@@ -180,7 +180,6 @@ async def get_info():
         state = context.export_state()
 
     support_tasks = context.support_tasks()
-    print(support_tasks)
     try:
         info = {
             'adapter_type': context.adapter_type,
