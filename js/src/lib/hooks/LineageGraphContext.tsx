@@ -49,6 +49,7 @@ export interface LineageGraphContextType {
   reviewMode?: boolean;
   cloudMode?: boolean;
   fileMode?: boolean;
+  fileName?: string;
   isDemoSite?: boolean;
   isLoading?: boolean;
   error?: string;
@@ -165,37 +166,42 @@ interface LineageGraphProps {
 }
 
 export function LineageGraphContextProvider({ children }: LineageGraphProps) {
-  const { data, isLoading, error, refetch } = useQuery({
+  const queryServerInfo = useQuery({
     queryKey: cacheKeys.lineage(),
     queryFn: getServerInfo,
   });
 
-  const { data: runsAggregated, refetch: refetchRunsAggregated } = useQuery({
+  const queryRunAggregated = useQuery({
     queryKey: cacheKeys.runsAggregated(),
     queryFn: aggregateRuns,
   });
 
   const lineageGraph = useMemo(() => {
-    const lineage = data?.lineage;
+    const lineage = queryServerInfo.data?.lineage;
     if (!lineage || !lineage.base || !lineage.current) {
       return undefined;
     }
 
     return buildLineageGraph(lineage.base, lineage.current);
-  }, [data]);
+  }, [queryServerInfo.data]);
 
-  const errorMessage = error?.message;
-  const lineage = data?.lineage;
-  const isDemoSite = data?.demo;
-  const reviewMode = data?.review_mode;
-  const cloudMode = data?.cloud_mode;
-  const fileMode = data?.file_mode;
-  const adapterType = data?.adapter_type;
-  const git = data?.git;
-  const pullRequest = data?.pull_request;
+  const errorMessage = queryServerInfo.error?.message;
+  const {
+    lineage,
+    sqlmesh,
+    demo: isDemoSite,
+    review_mode: reviewMode,
+    cloud_mode: cloudMode,
+    file_mode: fileMode,
+    filename: fileName,
+    adapter_type: adapterType,
+    git,
+    pull_request: pullRequest,
+    support_tasks: supportTasks,
+  } = queryServerInfo.data || {};
+
   const dbtBase = lineage?.base?.manifest_metadata;
-  const dbtCurrent = lineage?.current?.manifest_metadata;
-  const supportTasks = data?.support_tasks;
+  const dbtCurrent = lineage?.current?.manifest_metadata;  
 
   const envInfo: EnvInfo = {
     adapterType,
@@ -205,7 +211,7 @@ export function LineageGraphContextProvider({ children }: LineageGraphProps) {
       base: dbtBase,
       current: dbtCurrent,
     },
-    sqlmesh: data?.sqlmesh,
+    sqlmesh,
   };
 
   const { connectionStatus, connect } = useLineageWatcher();
@@ -227,20 +233,21 @@ export function LineageGraphContextProvider({ children }: LineageGraphProps) {
         value={{
           lineageGraph,
           retchLineageGraph: () => {
-            refetch();
+            queryRunAggregated.refetch();
           },
           envInfo,
           reviewMode,
           cloudMode,
           fileMode,
+          fileName,
           isDemoSite,
           error: errorMessage,
-          isLoading,
-          runsAggregated,
           supportTasks,
           isActionAvailable,
+          isLoading: queryServerInfo.isLoading,
+          runsAggregated: queryRunAggregated.data,
           refetchRunsAggregated: () => {
-            refetchRunsAggregated();
+            queryRunAggregated.refetch();
           },
         }}
       >

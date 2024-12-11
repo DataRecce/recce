@@ -193,6 +193,7 @@ async def get_info():
             'demo': bool(demo),
             'cloud_mode': context.state_loader.cloud_mode,
             'file_mode': context.state_loader.state_file is not None,
+            'filename': context.state_loader.state_file,
             'support_tasks': support_tasks,
         }
 
@@ -252,6 +253,24 @@ async def get_columns(model_id: str):
         }
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))
+
+
+class SaveInput(BaseModel):
+    filename: Optional[str] = None
+
+
+@app.post("/api/save", response_class=PlainTextResponse, status_code=200)
+async def save_handler(input: SaveInput):
+    try:
+
+        # Sync the state file
+        context = default_context()
+        state_loader = context.state_loader
+        state_loader.state_file = input.filename
+        context.sync_state('overwrite')
+
+    except RecceException as e:
+        raise HTTPException(status_code=400, detail=e.message)
 
 
 @app.post("/api/export", response_class=PlainTextResponse, status_code=200)

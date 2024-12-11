@@ -226,6 +226,13 @@ class RecceStateLoader:
             self.state_lock.release()
         return self.state
 
+    def save_as(self, state_file: str, state: RecceState = None):
+        if self.cloud_mode:
+            raise Exception('Cannot save the state to Recce Cloud.')
+
+        self.state_file = state_file
+        self.export(state)
+
     def export(self, state: RecceState = None) -> Union[str, None]:
         if state is not None:
             self.update(state)

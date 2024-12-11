@@ -1,9 +1,18 @@
 import { AxiosError, isAxiosError } from "axios";
 import { axiosClient } from "./axiosClient";
 
+export interface SaveStateInput {
+  filename: string;
+}
+
 export interface ImportedState {
   runs: number;
   checks: number;
+}
+
+export async function saveState(input: SaveStateInput): Promise<void> {
+  const response = await axiosClient.post("/api/save", input);
+  return response.data;
 }
 
 export async function exportState(): Promise<string> {
