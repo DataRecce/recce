@@ -181,12 +181,5 @@ export const QueryPage = () => {
         )}
       </Box>
     </Flex>
-    /* <QueryForm
-      p="5px"
-      border="1px"
-      borderColor="gray.300"
-      defaultPrimaryKeys={primaryKeys}
-      onPrimaryKeysChange={setPrimaryKeys}
-    /> */
   );
 };

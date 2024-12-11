@@ -302,7 +302,7 @@ const ControlItem = (props: {
 export const LineageViewTopBar = () => {
   const { nodes, deselect, selectMode, ...lineageViewContext } =
     useLineageViewContext();
-  const { isTaskShouldBeDisabled } = useLineageGraphContext();
+  const { isActionAvailable } = useLineageGraphContext();
   const selectNodes = useMemo(() => {
     return nodes.filter((node) => node.data.isSelected);
   }, [nodes]);
@@ -386,8 +386,7 @@ export const LineageViewTopBar = () => {
                   </MenuItem>
                   <Tooltip
                     label={
-                      isTaskShouldBeDisabled &&
-                      isTaskShouldBeDisabled("value_diff")
+                      !isActionAvailable("value_diff")
                         ? DisableTooltipMessages.audit_helper
                         : null
                     }
@@ -398,8 +397,7 @@ export const LineageViewTopBar = () => {
                       fontSize="10pt"
                       isDisabled={
                         !(isNoSelect || isSingleSelect || isMultiSelect) ||
-                        (isTaskShouldBeDisabled &&
-                          isTaskShouldBeDisabled("value_diff"))
+                        !isActionAvailable("value_diff")
                       }
                       icon={<Icon as={findByRunType("value_diff")?.icon} />}
                       onClick={() => {

@@ -20,7 +20,8 @@ export const QueryForm = ({
   onPrimaryKeysChange,
   ...prob
 }: QueryFormProps) => {
-  const { lineageGraph, isTaskShouldBeDisabled } = useLineageGraphContext();
+  const { lineageGraph, isActionAvailable } = useLineageGraphContext();
+
   const labelInfo =
     "Provide a primary key to perform query diff in data warehouse and only return changed rows.";
 
@@ -62,11 +63,7 @@ export const QueryForm = ({
           size="xs"
           width={"240px"}
           placeholder="Start by typing key name..."
-          isDisabled={
-            (isTaskShouldBeDisabled &&
-              isTaskShouldBeDisabled("query_diff_with_primary_key")) ||
-            false
-          }
+          isDisabled={!isActionAvailable("query_diff_with_primary_key")}
         />
       </FormControl>
     </Flex>

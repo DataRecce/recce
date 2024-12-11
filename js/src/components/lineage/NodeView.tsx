@@ -67,7 +67,7 @@ export function NodeView({ node, onCloseNode }: NodeViewProps) {
     onClose: onCodeDiffClose,
   } = useDisclosure();
   const { runAction } = useRecceActionContext();
-  const { envInfo, isTaskShouldBeDisabled } = useLineageGraphContext();
+  const { envInfo, isActionAvailable } = useLineageGraphContext();
   const { primaryKey } = useModelColumns(node.name);
   const refetchRowCount = () => {
     runAction(
@@ -87,7 +87,7 @@ export function NodeView({ node, onCloseNode }: NodeViewProps) {
     if (isAddedOrRemoved) {
       return DisableTooltipMessages.add_or_remove;
     }
-    if (isTaskShouldBeDisabled && isTaskShouldBeDisabled(runType)) {
+    if (!isActionAvailable(runType)) {
       if (runType === "value_diff") {
         return DisableTooltipMessages.audit_helper;
       } else if (runType === "profile_diff") {
@@ -126,9 +126,12 @@ export function NodeView({ node, onCloseNode }: NodeViewProps) {
                   } else if (envInfo?.adapterType === "sqlmesh") {
                     setSqlQuery(`select * from ${node.name}`);
                   }
-                  setPrimaryKeys(
-                    primaryKey !== undefined ? [primaryKey] : undefined
-                  );
+                  if (isActionAvailable("query_diff_with_primary_key")) {
+                    // Only set primary key if the action is available
+                    setPrimaryKeys(
+                      primaryKey !== undefined ? [primaryKey] : undefined
+                    );
+                  }
                   setLocation("/query");
                 }}
               >
@@ -160,9 +163,7 @@ export function NodeView({ node, onCloseNode }: NodeViewProps) {
                     icon={<Icon as={findByRunType("profile_diff")?.icon} />}
                     fontSize="14px"
                     isDisabled={
-                      isAddedOrRemoved ||
-                      (isTaskShouldBeDisabled &&
-                        isTaskShouldBeDisabled("profile_diff"))
+                      isAddedOrRemoved || !isActionAvailable("profile_diff")
                     }
                     onClick={() => {
                       runAction(
@@ -182,9 +183,7 @@ export function NodeView({ node, onCloseNode }: NodeViewProps) {
                     icon={<Icon as={findByRunType("value_diff")?.icon} />}
                     fontSize="14px"
                     isDisabled={
-                      isAddedOrRemoved ||
-                      (isTaskShouldBeDisabled &&
-                        isTaskShouldBeDisabled("value_diff"))
+                      isAddedOrRemoved || !isActionAvailable("value_diff")
                     }
                     onClick={() => {
                       runAction(
