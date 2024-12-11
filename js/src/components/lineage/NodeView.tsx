@@ -44,6 +44,7 @@ import { createSchemaDiffCheck } from "@/lib/api/schemacheck";
 import { findByRunType } from "../run/registry";
 import { is } from "date-fns/locale";
 import { run } from "node:test";
+import { DisableTooltipMessages } from "@/constants/tooltipMessage";
 
 interface NodeViewProps {
   node: LineageGraphNode;
@@ -84,13 +85,13 @@ export function NodeView({ node, onCloseNode }: NodeViewProps) {
 
   const disableReason = (isAddedOrRemoved: boolean, runType: string) => {
     if (isAddedOrRemoved) {
-      return "This action is not supported for added or removed nodes";
+      return DisableTooltipMessages.add_or_remove;
     }
     if (isTaskShouldBeDisabled && isTaskShouldBeDisabled(runType)) {
       if (runType === "value_diff") {
-        return "DBT package 'dbt_auditor' is not installed, please install it to use this feature.";
+        return DisableTooltipMessages.audit_helper;
       } else if (runType === "profile_diff") {
-        return "DBT package 'dbt_profile' is not installed, please install it to use this feature.";
+        return DisableTooltipMessages.dbt_profile;
       } else {
         return "This action is not supported yet.";
       }
@@ -153,7 +154,6 @@ export function NodeView({ node, onCloseNode }: NodeViewProps) {
                   Row Count Diff
                 </MenuItem>
                 <Tooltip
-                  hasArrow
                   label={disableReason(isAddedOrRemoved, "profile_diff")}
                 >
                   <MenuItem
@@ -177,10 +177,7 @@ export function NodeView({ node, onCloseNode }: NodeViewProps) {
                     Profile Diff
                   </MenuItem>
                 </Tooltip>
-                <Tooltip
-                  hasArrow
-                  label={disableReason(isAddedOrRemoved, "value_diff")}
-                >
+                <Tooltip label={disableReason(isAddedOrRemoved, "value_diff")}>
                   <MenuItem
                     icon={<Icon as={findByRunType("value_diff")?.icon} />}
                     fontSize="14px"
@@ -202,38 +199,44 @@ export function NodeView({ node, onCloseNode }: NodeViewProps) {
                     Value Diff
                   </MenuItem>
                 </Tooltip>
-                <MenuItem
-                  icon={<Icon as={findByRunType("top_k_diff")?.icon} />}
-                  fontSize="14px"
-                  isDisabled={isAddedOrRemoved}
-                  onClick={() => {
-                    runAction(
-                      "top_k_diff",
-                      { model: node.name, column_name: "", k: 50 },
-                      { showForm: true }
-                    );
-                  }}
+                <Tooltip label={disableReason(isAddedOrRemoved, "top_k_diff")}>
+                  <MenuItem
+                    icon={<Icon as={findByRunType("top_k_diff")?.icon} />}
+                    fontSize="14px"
+                    isDisabled={isAddedOrRemoved}
+                    onClick={() => {
+                      runAction(
+                        "top_k_diff",
+                        { model: node.name, column_name: "", k: 50 },
+                        { showForm: true }
+                      );
+                    }}
+                  >
+                    Top-K Diff
+                  </MenuItem>
+                </Tooltip>
+                <Tooltip
+                  label={disableReason(isAddedOrRemoved, "histogram_diff")}
                 >
-                  Top-K Diff
-                </MenuItem>
-                <MenuItem
-                  icon={<Icon as={findByRunType("histogram_diff")?.icon} />}
-                  fontSize="14px"
-                  isDisabled={isAddedOrRemoved}
-                  onClick={() => {
-                    runAction(
-                      "histogram_diff",
-                      {
-                        model: node.name,
-                        column_name: "",
-                        column_type: "",
-                      },
-                      { showForm: true }
-                    );
-                  }}
-                >
-                  Histogram Diff
-                </MenuItem>
+                  <MenuItem
+                    icon={<Icon as={findByRunType("histogram_diff")?.icon} />}
+                    fontSize="14px"
+                    isDisabled={isAddedOrRemoved}
+                    onClick={() => {
+                      runAction(
+                        "histogram_diff",
+                        {
+                          model: node.name,
+                          column_name: "",
+                          column_type: "",
+                        },
+                        { showForm: true }
+                      );
+                    }}
+                  >
+                    Histogram Diff
+                  </MenuItem>
+                </Tooltip>
               </MenuGroup>
               <MenuDivider />
               <MenuGroup title="Add to Checklist" m="0" p="4px 12px">

@@ -211,7 +211,10 @@ export function LineageGraphContextProvider({ children }: LineageGraphProps) {
   const isTaskShouldBeDisabled = useCallback(
     (taskName: string) => {
       if (supportTasks) {
-        return !supportTasks[taskName];
+        const isSupport = supportTasks[taskName];
+        if (isSupport !== undefined) {
+          return !isSupport;
+        }
       }
       return false;
     },

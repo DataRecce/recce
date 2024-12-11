@@ -208,6 +208,7 @@ class DbtAdapter(BaseAdapter):
         if 'audit_helper' not in supported_dbt_packages:
             support_map[RunType.VALUE_DIFF.value] = False
             support_map[RunType.VALUE_DIFF_DETAIL.value] = False
+            support_map['query_diff_with_primary_key'] = False
 
         return support_map
 
