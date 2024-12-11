@@ -91,7 +91,7 @@ export function NodeView({ node, onCloseNode }: NodeViewProps) {
       if (runType === "value_diff") {
         return DisableTooltipMessages.audit_helper;
       } else if (runType === "profile_diff") {
-        return DisableTooltipMessages.dbt_profile;
+        return DisableTooltipMessages.dbt_profiler;
       } else {
         return "This action is not supported yet.";
       }
