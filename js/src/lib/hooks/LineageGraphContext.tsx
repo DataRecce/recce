@@ -53,14 +53,16 @@ export interface LineageGraphContextType {
   isLoading?: boolean;
   error?: string;
   supportTasks?: { [key: string]: boolean };
-  isTaskShouldBeDisabled?: (taskName: string) => boolean;
   retchLineageGraph?: () => void;
+  isActionAvailable: (actionName: string) => boolean;
 
   runsAggregated?: RunsAggregated;
   refetchRunsAggregated?: () => void;
 }
 
-const defaultLineageGraphsContext: LineageGraphContextType = {};
+const defaultLineageGraphsContext: LineageGraphContextType = {
+  isActionAvailable: () => true,
+};
 
 const LineageGraphContext = createContext(defaultLineageGraphsContext);
 
@@ -208,15 +210,13 @@ export function LineageGraphContextProvider({ children }: LineageGraphProps) {
 
   const { connectionStatus, connect } = useLineageWatcher();
 
-  const isTaskShouldBeDisabled = useCallback(
-    (taskName: string) => {
+  const isActionAvailable = useCallback(
+    (name: string) => {
       if (supportTasks) {
-        const isSupport = supportTasks[taskName];
-        if (isSupport !== undefined) {
-          return !isSupport;
-        }
+        return supportTasks[name] ?? true; // default to true if action not found in supportTasks
       }
-      return false;
+      // If the supportTasks does not be provided, all actions are available
+      return true;
     },
     [supportTasks]
   );
@@ -238,7 +238,7 @@ export function LineageGraphContextProvider({ children }: LineageGraphProps) {
           isLoading,
           runsAggregated,
           supportTasks,
-          isTaskShouldBeDisabled,
+          isActionAvailable,
           refetchRunsAggregated: () => {
             refetchRunsAggregated();
           },
