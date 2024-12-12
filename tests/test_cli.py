@@ -66,7 +66,7 @@ class TestCommandRun(TestCase):
         pass
 
     @patch.object(RecceContext, 'verify_required_artifacts')
-    @patch('recce.cli.asyncio_run')
+    @patch('recce.cli.asyncio.run')
     def test_cmd_run(self, mock_asyncio_run, mock_verify_required_artifacts):
         from recce.cli import run
 
