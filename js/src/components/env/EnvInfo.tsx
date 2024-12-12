@@ -88,7 +88,7 @@ export function EnvInfo() {
 
   return (
     <>
-      <Tooltip label="Environment Info">
+      <Tooltip label="Environment Info" placement="bottom-end">
         <IconButton
           pt="6px"
           variant="unstyled"

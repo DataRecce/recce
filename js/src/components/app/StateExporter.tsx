@@ -3,6 +3,7 @@ import { Icon, IconButton, Tooltip, useToast } from "@chakra-ui/react";
 import { format } from "date-fns";
 import saveAs from "file-saver";
 import { TfiExport } from "react-icons/tfi";
+import { IconExport } from "../icons";
 
 export function StateExporter() {
   const toast = useToast();
@@ -38,8 +39,9 @@ export function StateExporter() {
         variant="unstyled"
         aria-label="Export state"
         onClick={handleExport}
-        icon={<Icon as={TfiExport} boxSize={"1.2em"} />}
+        icon={<Icon as={IconExport} boxSize={"1.2em"} color="gray.500" />}
       />
     </Tooltip>
   );
+  Ic;
 }

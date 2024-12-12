@@ -54,7 +54,6 @@ import { checkboxTheme } from "@theme/components/Checkbox";
 import { tooltipTheme } from "@theme/components/Tooltip";
 import { trackInit } from "@/lib/api/track";
 import { Filename } from "@/components/app/Filename";
-import { StateImporter } from "@/components/app/StateImporter";
 import { StateSynchronizer } from "@/components/app/StateSynchronizer";
 
 const RouteAlwaysMount = ({
@@ -295,10 +294,6 @@ function NavBar() {
         {!isLoading && (
           <Flex flex="1" justifyContent="right">
             {cloudMode && <StateSynchronizer />}
-            {!isDemoSite && !cloudMode && <StateImporter />}
-            {!isDemoSite && cloudMode && reviewMode && (
-              <StateImporter checksOnly />
-            )}
             <StateExporter />
 
             <EnvInfo />
