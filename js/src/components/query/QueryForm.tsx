@@ -51,7 +51,7 @@ export const QueryForm = ({
       <FormControl m="4px 8px">
         <FormLabel fontSize={"8pt"} margin={"0"}>
           Diff with Primary Key(s) (suggested){" "}
-          <Tooltip label={labelInfo}>
+          <Tooltip label={labelInfo} placement="bottom-end">
             <InfoIcon color="gray.600" boxSize="3" />
           </Tooltip>
         </FormLabel>

@@ -390,6 +390,7 @@ export const LineageViewTopBar = () => {
                         ? DisableTooltipMessages.audit_helper
                         : null
                     }
+                    placement="left"
                   >
                     <MenuItem
                       as={Text}
