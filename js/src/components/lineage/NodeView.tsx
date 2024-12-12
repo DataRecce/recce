@@ -158,6 +158,7 @@ export function NodeView({ node, onCloseNode }: NodeViewProps) {
                 </MenuItem>
                 <Tooltip
                   label={disableReason(isAddedOrRemoved, "profile_diff")}
+                  placement="left"
                 >
                   <MenuItem
                     icon={<Icon as={findByRunType("profile_diff")?.icon} />}
@@ -178,7 +179,10 @@ export function NodeView({ node, onCloseNode }: NodeViewProps) {
                     Profile Diff
                   </MenuItem>
                 </Tooltip>
-                <Tooltip label={disableReason(isAddedOrRemoved, "value_diff")}>
+                <Tooltip
+                  label={disableReason(isAddedOrRemoved, "value_diff")}
+                  placement="left"
+                >
                   <MenuItem
                     icon={<Icon as={findByRunType("value_diff")?.icon} />}
                     fontSize="14px"
@@ -198,7 +202,10 @@ export function NodeView({ node, onCloseNode }: NodeViewProps) {
                     Value Diff
                   </MenuItem>
                 </Tooltip>
-                <Tooltip label={disableReason(isAddedOrRemoved, "top_k_diff")}>
+                <Tooltip
+                  label={disableReason(isAddedOrRemoved, "top_k_diff")}
+                  placement="left"
+                >
                   <MenuItem
                     icon={<Icon as={findByRunType("top_k_diff")?.icon} />}
                     fontSize="14px"
@@ -216,6 +223,7 @@ export function NodeView({ node, onCloseNode }: NodeViewProps) {
                 </Tooltip>
                 <Tooltip
                   label={disableReason(isAddedOrRemoved, "histogram_diff")}
+                  placement="left"
                 >
                   <MenuItem
                     icon={<Icon as={findByRunType("histogram_diff")?.icon} />}
