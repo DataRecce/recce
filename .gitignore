@@ -6,6 +6,7 @@ __pycache__/
 dist/
 
 dbt.log
+coverage.xml
 .coverage
 .coverage.*
 build

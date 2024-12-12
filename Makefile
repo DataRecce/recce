@@ -16,7 +16,7 @@ flake8:
 	@echo "Passed"
 
 test: install-dev
-	@python3 -m pytest --cov=recce --cov-report html tests
+	@python3 -m pytest --cov --cov-report xml --cov-report html tests
 
 test-tox: install-dev
 	@tox
