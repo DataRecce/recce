@@ -58,3 +58,19 @@ class TestCommandServer(TestCase):
         self.runner.invoke(cli_command_server, ['--cloud', '--password', 'unittest', '--cloud-token', 'unittest'])
         mock_state_loader_class.assert_called_once()
         mock_run.assert_called_once()
+
+
+class TestCommandRun(TestCase):
+    def setUp(self):
+        self.runner = CliRunner()
+        pass
+
+    @patch.object(RecceContext, 'verify_required_artifacts')
+    @patch('recce.cli.asyncio_run')
+    def test_cmd_run(self, mock_asyncio_run, mock_verify_required_artifacts):
+        from recce.cli import run
+
+        mock_verify_required_artifacts.return_value = True, None
+
+        self.runner.invoke(run, [])
+        mock_asyncio_run.assert_called_once()
