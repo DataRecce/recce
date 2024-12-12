@@ -11,7 +11,8 @@ on:
     branches:
       - main
     paths:
-      - "recce/**"
+      - "recce/**" # Recce OSS codebase
+      - "tests/**" # Recce OSS python unit tests
       - "setup.py"
 
 jobs:
