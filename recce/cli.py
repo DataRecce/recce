@@ -3,6 +3,8 @@ import os
 from pathlib import Path
 from typing import List
 
+from asyncio import run as asyncio_run
+
 import click
 import uvicorn
 
@@ -361,7 +363,7 @@ def run(output, **kwargs):
         console.print(f"Reason: {e}")
         exit(1)
 
-    return asyncio.run(cli_run(output, state_loader=state_loader, **kwargs))
+    return asyncio_run(cli_run(output, state_loader=state_loader, **kwargs))
 
 
 @cli.command(cls=TrackCommand)
