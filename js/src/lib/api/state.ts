@@ -3,6 +3,7 @@ import { axiosClient } from "./axiosClient";
 
 export interface SaveAsInput {
   filename: string;
+  overwrite?: boolean;
 }
 
 export interface ImportedState {
