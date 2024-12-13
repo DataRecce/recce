@@ -3,7 +3,7 @@ from unittest.mock import patch, MagicMock
 
 from click.testing import CliRunner
 
-from recce.cli import server as cli_command_server
+from recce.cli import server as cli_command_server, run as cli_command_run
 from recce.core import RecceContext
 from recce.state import RecceStateLoader
 
@@ -66,11 +66,9 @@ class TestCommandRun(TestCase):
         pass
 
     @patch.object(RecceContext, 'verify_required_artifacts')
-    @patch('recce.cli.asyncio.run')
-    def test_cmd_run(self, mock_asyncio_run, mock_verify_required_artifacts):
-        from recce.cli import run
-
+    @patch('recce.cli.cli_run')
+    def test_cmd_run(self, mock_cli_run, mock_verify_required_artifacts):
         mock_verify_required_artifacts.return_value = True, None
 
-        self.runner.invoke(run, [])
-        mock_asyncio_run.assert_called_once()
+        self.runner.invoke(cli_command_run, [])
+        mock_cli_run.assert_called_once()
