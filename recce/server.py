@@ -196,7 +196,7 @@ async def get_info():
             'demo': bool(demo),
             'cloud_mode': context.state_loader.cloud_mode,
             'file_mode': context.state_loader.state_file is not None,
-            'filename': context.state_loader.state_file,
+            'filename': os.path.basename(context.state_loader.state_file),
             'support_tasks': support_tasks,
         }
 
@@ -301,31 +301,44 @@ async def save_as_handler(input: SaveAsInput):
 
 class SaveAsInput(BaseModel):
     filename: Optional[str] = None
+    overwrite: Optional[bool] = False
 
 
 @app.post("/api/rename", response_class=PlainTextResponse, status_code=200)
 async def rename_handler(input: SaveAsInput):
     """
-    Save the state to a new file
+    Rename the state to a new file
     """
-    try:
+    import os
 
-        # Sync the state file
+    try:
         context = default_context()
         state_loader = context.state_loader
         if state_loader.cloud_mode:
             raise RecceException('Cloud mode does not support rename')
         if state_loader.state_file is None:
             raise RecceException('No state file to rename')
-        if state_loader.state_file == input.filename:
+
+        old_path = state_loader.state_file
+        new_filename = input.filename
+        old_dir = os.path.dirname(state_loader.state_file)
+        old_filename = os.path.basename(state_loader.state_file)
+        new_path = os.path.join(old_dir, new_filename)
+
+        if os.path.dirname(new_filename):
+            raise RecceException('The new filename should not contain directory')
+        if not new_filename.endswith('.json'):
+            raise RecceException('The new filename should end with .json')
+        if old_filename == input.filename:
             raise RecceException('The new filename is the same as the current filename')
+        if os.path.exists(new_path) and not input.overwrite:
+            raise HTTPException(status_code=409, detail=f'The file {new_filename} already exists')
 
-        old_state_file = state_loader.state_file
-        state_loader.state_file = input.filename
+        state_loader.state_file = new_path
         context.sync_state('overwrite')
-        import os
-        os.remove(old_state_file)
 
+        if os.path.exists(old_path):
+            os.remove(old_path)
     except RecceException as e:
         raise HTTPException(status_code=400, detail=e.message)
 
