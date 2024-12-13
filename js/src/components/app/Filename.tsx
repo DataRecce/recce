@@ -30,6 +30,40 @@ import { AiOutlineSave } from "react-icons/ai";
 import { IconEdit } from "../icons";
 import { AxiosError } from "axios";
 
+
+const useRecceToast = () => {
+  const toast = useToast();
+  const toastSuccess = (message: string) => {
+    toast({
+      description: message,
+      status: "success",
+      variant: "left-accent",
+      position: "bottom-right",
+      duration: 5000,
+      isClosable: true,
+    });
+  };
+
+  const toastError = (message: string, error?: Error) => {
+    const errorMessage = !error
+      ? `${message}`
+      : error instanceof AxiosError
+      ? `${message}. ${error?.response?.data?.detail}`
+      : `${message}. ${error}`;
+
+    toast({
+      description: errorMessage,
+      status: "error",
+      variant: "left-accent",
+      position: "bottom-right",
+      duration: 5000,
+      isClosable: true,
+    });
+  };
+
+  return { toastSuccess, toastError };
+};
+
 export const Filename = () => {
   const { fileName, cloudMode, isLoading } = useLineageGraphContext();
   const modalDisclosure = useDisclosure();
@@ -38,10 +72,10 @@ export const Filename = () => {
   const [errorMessage, setErrorMessage] = useState("");
   const [modified, setModified] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
-  const toast = useToast();
+  const { toastSuccess, toastError } = useRecceToast();
   const queryClient = useQueryClient();
 
-  useLayoutEffect(() => {
+  useEffect(() => {
     if (modalDisclosure.isOpen) {
       setNewFileName(fileName ? fileName : "recce_state.json");
       setErrorMessage("");
@@ -59,28 +93,10 @@ export const Filename = () => {
 
     try {
       await saveAs({ filename: newFileName });
-      toast({
-        description: "Save file successfully",
-        status: "info",
-        variant: "left-accent",
-        position: "bottom",
-        duration: 5000,
-        isClosable: true,
-      });
+      toastSuccess("Save file successfully");
       queryClient.invalidateQueries({ queryKey: cacheKeys.lineage() });
-    } catch (error) {
-      const message =
-        error instanceof AxiosError
-          ? error?.response?.data?.detail
-          : `${error}`;
-      toast({
-        description: "Save file failed. ${error.message}",
-        status: "error",
-        variant: "left-accent",
-        position: "bottom",
-        duration: 5000,
-        isClosable: true,
-      });
+    } catch (error: any) {
+      toastError("Save file failed", error);
     } finally {
       modalDisclosure.onClose();
     }
@@ -93,29 +109,10 @@ export const Filename = () => {
 
     try {
       await rename({ filename: newFileName });
-      toast({
-        description: "Save file successfully",
-        status: "info",
-        variant: "left-accent",
-        position: "bottom",
-        duration: 5000,
-        isClosable: true,
-      });
+      toastSuccess("Rename file successfully");
       queryClient.invalidateQueries({ queryKey: cacheKeys.lineage() });
-    } catch (error) {
-      const message =
-        error instanceof AxiosError
-          ? error?.response?.data?.detail
-          : `${error}`;
-
-      toast({
-        description: `Save file failed. ${message}`,
-        status: "error",
-        variant: "left-accent",
-        position: "bottom",
-        duration: 5000,
-        isClosable: true,
-      });
+    } catch (error: any) {
+      toastError("Rename file failed", error);
     } finally {
       modalDisclosure.onClose();
     }
