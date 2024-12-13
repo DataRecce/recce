@@ -1,7 +1,7 @@
 import { AxiosError, isAxiosError } from "axios";
 import { axiosClient } from "./axiosClient";
 
-export interface SaveStateInput {
+export interface SaveAsInput {
   filename: string;
 }
 
@@ -10,8 +10,13 @@ export interface ImportedState {
   checks: number;
 }
 
-export async function saveState(input: SaveStateInput): Promise<void> {
-  const response = await axiosClient.post("/api/save", input);
+export async function saveAs(input: SaveAsInput): Promise<void> {
+  const response = await axiosClient.post("/api/save-as", input);
+  return response.data;
+}
+
+export async function rename(input: SaveAsInput): Promise<void> {
+  const response = await axiosClient.post("/api/rename", input);
   return response.data;
 }
 

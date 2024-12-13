@@ -43,5 +43,4 @@ export function StateExporter() {
       />
     </Tooltip>
   );
-  Ic;
 }

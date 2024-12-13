@@ -1,5 +1,5 @@
 import { cacheKeys } from "@/lib/api/cacheKeys";
-import { saveState } from "@/lib/api/state";
+import { rename, saveAs } from "@/lib/api/state";
 import { useLineageGraphContext } from "@/lib/hooks/LineageGraphContext";
 import {
   Flex,
@@ -26,6 +26,8 @@ import {
 import { useQueryClient } from "@tanstack/react-query";
 import { useEffect, useState } from "react";
 import { AiOutlineSave } from "react-icons/ai";
+import { IconEdit } from "../icons";
+import { AxiosError } from "axios";
 
 export const Filename = () => {
   const { fileName, cloudMode, isLoading } = useLineageGraphContext();
@@ -41,13 +43,13 @@ export const Filename = () => {
     }
   }, [modalDisclosure.isOpen]);
 
-  const handleConfirm = async () => {
+  const handleSaveAs = async () => {
     if (!newFileName) {
       return;
     }
 
     try {
-      await saveState({ filename: newFileName });
+      await saveAs({ filename: newFileName });
       toast({
         description: "Save file successfully",
         status: "info",
@@ -59,7 +61,42 @@ export const Filename = () => {
       queryClient.invalidateQueries({ queryKey: cacheKeys.lineage() });
     } catch (error) {
       toast({
-        description: "Save file failed",
+        description: "Save file failed. ${error.message}",
+        status: "error",
+        variant: "left-accent",
+        position: "bottom",
+        duration: 5000,
+        isClosable: true,
+      });
+    } finally {
+      modalDisclosure.onClose();
+    }
+  };
+
+  const handleRename = async () => {
+    if (!newFileName) {
+      return;
+    }
+
+    try {
+      await rename({ filename: newFileName });
+      toast({
+        description: "Save file successfully",
+        status: "info",
+        variant: "left-accent",
+        position: "bottom",
+        duration: 5000,
+        isClosable: true,
+      });
+      queryClient.invalidateQueries({ queryKey: cacheKeys.lineage() });
+    } catch (error) {
+      const message =
+        error instanceof AxiosError
+          ? error?.response?.data?.detail
+          : `${error}`;
+
+      toast({
+        description: `Save file failed. ${message}`,
         status: "error",
         variant: "left-accent",
         position: "bottom",
@@ -85,7 +122,7 @@ export const Filename = () => {
           aria-label={""}
           variant="unstyled"
         >
-          <Icon as={AiOutlineSave} boxSize={"1em"} />
+          <Icon as={fileName ? IconEdit : AiOutlineSave} boxSize={"1em"} />
         </IconButton>
       </Flex>
       <Modal
@@ -95,7 +132,9 @@ export const Filename = () => {
       >
         <ModalOverlay />
         <ModalContent>
-          <ModalHeader>Save to file</ModalHeader>
+          <ModalHeader>
+            {fileName ? "Change Filename" : "Save File"}
+          </ModalHeader>
           <ModalCloseButton />
           <ModalBody
             onKeyDown={(e) => {
@@ -112,7 +151,7 @@ export const Filename = () => {
                 }}
                 onKeyDown={(e) => {
                   if (e.key === "Enter") {
-                    handleConfirm();
+                    handleSaveAs();
                   }
                 }}
               />
@@ -120,12 +159,21 @@ export const Filename = () => {
           </ModalBody>
           <ModalFooter gap="5px">
             <Button
-              colorScheme="blue"
-              onClick={handleConfirm}
+              colorScheme={fileName ? undefined : "blue"}
+              onClick={handleSaveAs}
               isDisabled={!newFileName}
             >
-              Confirm
+              {fileName ? "Save as New File" : "Confirm"}
             </Button>
+            {fileName && (
+              <Button
+                colorScheme="blue"
+                onClick={handleRename}
+                isDisabled={!newFileName}
+              >
+                Rename
+              </Button>
+            )}
           </ModalFooter>
         </ModalContent>
       </Modal>

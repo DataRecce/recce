@@ -103,8 +103,7 @@ export function StateImporter({ checksOnly = true }: { checksOnly?: boolean }) {
   };
 
   const warningSubject = !!checksOnly ? "checks" : "runs and checks";
-  // const { isDemoSite } = useLineageGraphContext();
-  const isDemoSite = true;
+  const { isDemoSite } = useLineageGraphContext();
   return (
     <>
       <Tooltip
