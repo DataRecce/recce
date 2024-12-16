@@ -56,6 +56,7 @@ def test_saveas_and_rename(dbt_test_helper, temp_folder):
     state_file = os.path.join(temp_folder, 'recce_state.json')
     state_file2 = os.path.join(temp_folder, 'recce_state2.json')
     state_file3 = os.path.join(temp_folder, 'recce_state3.json')
+    os.makedirs(os.path.join(temp_folder, 'dir.json'))
 
     from recce.state import RecceStateLoader
     context.state_loader = RecceStateLoader(state_file=state_file)
@@ -72,6 +73,10 @@ def test_saveas_and_rename(dbt_test_helper, temp_folder):
 
     # Same file
     response = client.post("/api/save-as", json={"filename": "recce_state2.json"})
+    assert response.status_code == 400
+
+    # folder
+    response = client.post("/api/save-as", json={"filename": "dir.json"})
     assert response.status_code == 400
 
     # Rename

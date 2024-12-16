@@ -309,8 +309,12 @@ def saveas_or_rename(input: SaveAsOrRenameInput, rename: bool = False):
     else:
         new_path = new_filename
 
-    if os.path.exists(new_path) and not input.overwrite:
-        raise HTTPException(status_code=409, detail=f'The file {new_filename} already exists')
+    if os.path.exists(new_path):
+        if os.path.isdir(new_path):
+            raise HTTPException(status_code=400, detail=f'The file {new_path} exists and is a directory')
+
+        if not input.overwrite:
+            raise HTTPException(status_code=409, detail=f'The file {new_filename} already exists')
 
     state_loader.state_file = new_path
     context.sync_state('overwrite')
