@@ -71,7 +71,8 @@ interface FilenameState {
 }
 
 export const Filename = () => {
-  const { fileName, cloudMode, isLoading } = useLineageGraphContext();
+  const { fileName, cloudMode, isDemoSite, isLoading } =
+    useLineageGraphContext();
   const modalDisclosure = useDisclosure();
   const overwriteDisclosure = useDisclosure();
 
@@ -158,6 +159,10 @@ export const Filename = () => {
       };
     });
   };
+
+  if (cloudMode || isDemoSite) {
+    return <></>;
+  }
 
   return (
     <>
