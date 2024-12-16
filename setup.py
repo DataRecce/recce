@@ -59,6 +59,7 @@ setup(name='recce',
               'twine',
               'tox',
               'pandas',
+              'httpx',
           ],
       },
       project_urls={
