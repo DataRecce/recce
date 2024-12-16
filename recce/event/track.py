@@ -11,7 +11,7 @@ from click.core import Command
 from rich.console import Console
 from rich.markup import escape
 
-from recce import event, get_runner
+from recce import event, get_runner, get_cli_args()
 from recce.core import load_context
 from recce.exceptions import RecceException
 from recce.git import current_branch, hosting_repo
@@ -90,6 +90,7 @@ class TrackCommand(Command):
             end_time = time.time()
             duration = end_time - start_time
             runner = get_runner()
+            cli_args = get_cli()
             repo = hosting_repo()
             branch = current_branch()
             command = ctx.command.name
@@ -102,6 +103,9 @@ class TrackCommand(Command):
 
             if runner is not None:
                 props['runner_type'] = runner
+
+            if cli_args is not None:
+                props['cli_args'] = cli_args
 
             if repo is not None:
                 props['repository'] = sha256(repo.encode()).hexdigest()
