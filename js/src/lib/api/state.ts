@@ -1,9 +1,24 @@
 import { AxiosError, isAxiosError } from "axios";
 import { axiosClient } from "./axiosClient";
 
+export interface SaveAsInput {
+  filename: string;
+  overwrite?: boolean;
+}
+
 export interface ImportedState {
   runs: number;
   checks: number;
+}
+
+export async function saveAs(input: SaveAsInput): Promise<void> {
+  const response = await axiosClient.post("/api/save-as", input);
+  return response.data;
+}
+
+export async function rename(input: SaveAsInput): Promise<void> {
+  const response = await axiosClient.post("/api/rename", input);
+  return response.data;
 }
 
 export async function exportState(): Promise<string> {

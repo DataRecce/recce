@@ -24,6 +24,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { cacheKeys } from "@/lib/api/cacheKeys";
 import { useLocation } from "wouter";
 import { InfoOutlineIcon } from "@chakra-ui/icons";
+import { IconSync } from "../icons";
 
 function isCheckDetailPage(href: string): boolean {
   const pattern =
@@ -34,7 +35,7 @@ function isCheckDetailPage(href: string): boolean {
 export function StateSpinner() {
   return (
     <Tooltip label="Syncing">
-      <Button pt="6px" variant="unstyled" boxSize={"1.2em"}>
+      <Button pt="6px" variant="unstyled" boxSize={"1em"}>
         <Spinner />
       </Button>
     </Tooltip>
@@ -93,11 +94,11 @@ export function StateSynchronizer() {
     <>
       <Tooltip label="Sync with Cloud">
         <IconButton
-          pt="6px"
+          size="sm"
           variant="unstyled"
           aria-label="Sync state"
           onClick={() => handleSync({})}
-          icon={<Icon as={TfiReload} boxSize={"1.2em"} />}
+          icon={<Icon as={IconSync} verticalAlign="middle" boxSize={"16px"} />}
         />
       </Tooltip>
       <Modal isOpen={isOpen} onClose={onClose}>
@@ -162,31 +163,5 @@ export function StateSynchronizer() {
         </ModalContent>
       </Modal>
     </>
-  );
-}
-
-export function StateCloudUploader() {
-  return (
-    <Tooltip label="Upload to Cloud">
-      <IconButton
-        pt="6px"
-        variant="unstyled"
-        aria-label="Upload state"
-        icon={<Icon as={TfiCloudUp} boxSize={"1.2em"} />}
-      />
-    </Tooltip>
-  );
-}
-
-export function StateCloudDownloader() {
-  return (
-    <Tooltip label="Download from Cloud">
-      <IconButton
-        pt="6px"
-        variant="unstyled"
-        aria-label="Download state"
-        icon={<Icon as={TfiCloudDown} boxSize={"1.2em"} />}
-      />
-    </Tooltip>
   );
 }

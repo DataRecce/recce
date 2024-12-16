@@ -126,6 +126,7 @@ export interface ServerInfoResult {
   review_mode: boolean;
   cloud_mode: boolean;
   file_mode: boolean;
+  filename?: string;
   git?: gitInfo;
   pull_request?: pullRequestInfo;
   sqlmesh?: SQLMeshInfo;

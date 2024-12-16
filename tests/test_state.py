@@ -5,7 +5,7 @@ from datetime import datetime
 
 from recce.core import RecceContext
 from recce.models import Check, Run
-from recce.state import RecceState, ArtifactsRoot
+from recce.state import RecceState, ArtifactsRoot, RecceStateLoader
 
 current_dir = os.path.dirname(os.path.abspath(__file__))
 
@@ -100,3 +100,24 @@ class TestRecceState(unittest.TestCase):
         manifest['metadata']['generated_at'] = '2099-01-01T00:00:00Z'
         adapter.import_artifacts(artifacts)
         self.assertEqual(adapter.base_manifest.metadata.invocation_id, manifest.get('metadata').get('invocation_id'))
+
+    def test_state_loader(self):
+        context = RecceContext()
+
+        # copy ./recce_state.json to temp and open
+
+        # use library to create a temp file in the context
+        import tempfile
+        import shutil
+        import os
+
+        with tempfile.NamedTemporaryFile() as f:
+            # copy ./recce_state.json to temp file
+            current_dir = os.path.dirname(os.path.abspath(__file__))
+            state_file = os.path.join(current_dir, 'recce_state.json')
+            shutil.copy(state_file, f.name)
+
+            # load the state file
+            state_loader = RecceStateLoader(state_file=f.name)
+            state = state_loader.load()
+            assert len(state.runs) == 17

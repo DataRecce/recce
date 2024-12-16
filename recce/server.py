@@ -171,6 +171,9 @@ async def mark_onboarding_completed():
 
 @app.get("/api/info")
 async def get_info():
+    """
+    Get the information of the current context.
+    """
     context = default_context()
     demo = os.environ.get('DEMO', False)
 
@@ -180,6 +183,11 @@ async def get_info():
         state = context.export_state()
 
     support_tasks = context.support_tasks()
+    if context.state_loader and context.state_loader.state_file:
+        filename = os.path.basename(context.state_loader.state_file)
+    else:
+        filename = None
+
     try:
         info = {
             'adapter_type': context.adapter_type,
@@ -193,6 +201,7 @@ async def get_info():
             'demo': bool(demo),
             'cloud_mode': context.state_loader.cloud_mode,
             'file_mode': context.state_loader.state_file is not None,
+            'filename': filename,
             'support_tasks': support_tasks,
         }
 
@@ -254,8 +263,92 @@ async def get_columns(model_id: str):
         raise HTTPException(status_code=400, detail=str(e))
 
 
+@app.post("/api/save", response_class=PlainTextResponse, status_code=200)
+async def save_handler():
+    """
+    Save the in-memory state to the state file
+    """
+    try:
+        # Sync the state file
+        context = default_context()
+        state_loader = context.state_loader
+        if not state_loader.cloud_mode and state_loader.state_file is None:
+            raise RecceException('Not file mode or cloud mode')
+
+        context.sync_state('overwrite')
+    except RecceException as e:
+        raise HTTPException(status_code=400, detail=e.message)
+
+
+class SaveAsOrRenameInput(BaseModel):
+    # The filename. The filename should not contain directory.
+    filename: Optional[str] = None
+    # Overwrite the file if it exists
+    overwrite: Optional[bool] = False
+
+
+def saveas_or_rename(input: SaveAsOrRenameInput, rename: bool = False):
+    context = default_context()
+    state_loader = context.state_loader
+    if state_loader.cloud_mode:
+        raise RecceException('Cloud mode does not support rename')
+
+    new_filename = input.filename
+    if os.path.dirname(new_filename):
+        raise RecceException('The new filename should not contain directory')
+    if not new_filename.endswith('.json'):
+        raise RecceException('The new filename should end with .json')
+
+    old_path = state_loader.state_file
+    if old_path:
+        old_dir = os.path.dirname(state_loader.state_file)
+        old_filename = os.path.basename(state_loader.state_file)
+        if old_filename == new_filename:
+            raise RecceException('The new filename is the same as the current filename')
+        new_path = os.path.join(old_dir, new_filename)
+    else:
+        new_path = new_filename
+
+    if os.path.exists(new_path):
+        if os.path.isdir(new_path):
+            raise HTTPException(status_code=400, detail=f'The file {new_path} exists and is a directory')
+
+        if not input.overwrite:
+            raise HTTPException(status_code=409, detail=f'The file {new_filename} already exists')
+
+    state_loader.state_file = new_path
+    context.sync_state('overwrite')
+    if rename and os.path.exists(old_path):
+        os.remove(old_path)
+
+
+@app.post("/api/save-as", response_class=PlainTextResponse, status_code=200)
+async def save_as_handler(input: SaveAsOrRenameInput):
+    """
+    Save the state to a new file
+    """
+    try:
+        saveas_or_rename(input, rename=False)
+    except RecceException as e:
+        raise HTTPException(status_code=400, detail=e.message)
+
+
+@app.post("/api/rename", response_class=PlainTextResponse, status_code=200)
+async def rename_handler(input: SaveAsOrRenameInput):
+    """
+    Rename the state to a new file
+    """
+    try:
+        saveas_or_rename(input, rename=True)
+    except RecceException as e:
+        raise HTTPException(status_code=400, detail=e.message)
+
+
 @app.post("/api/export", response_class=PlainTextResponse, status_code=200)
 async def export_handler():
+    """
+    Export the recce state to the client.
+    """
     context = default_context()
     try:
         return context.export_state().to_json()
@@ -264,8 +357,14 @@ async def export_handler():
 
 
 @app.post("/api/import", status_code=200)
-async def import_handler(file: Annotated[UploadFile, Form()], checks_only: Annotated[bool, Form()],
-                         background_tasks: BackgroundTasks):
+async def import_handler(
+    file: Annotated[UploadFile, Form()],
+    checks_only: Annotated[bool, Form()],
+    background_tasks: BackgroundTasks
+):
+    """
+    Import the recce state from the client.
+    """
     from recce.state import RecceState
 
     context = default_context()
@@ -293,7 +392,14 @@ class SyncStateInput(BaseModel):
 
 @app.post("/api/sync", status_code=202)
 async def sync_handler(input: SyncStateInput, response: Response, background_tasks: BackgroundTasks):
-    # Sync the state file
+    """
+    Sync the state with the external storage. (two-way sync)
+
+    This is used to sync the state with the external (local or cloud) storage. There are three methods:
+    - overwrite: Overwrite the external storage with the in-memory state.
+    - revert: Revert the in-memory state with the external storage.
+    - merge: Merge the state between the in-memory and external storage.
+    """
     context = default_context()
     state_loader = context.state_loader
     method = input.method
@@ -320,6 +426,9 @@ async def sync_handler(input: SyncStateInput, response: Response, background_tas
 
 @app.get("/api/sync", status_code=200)
 async def sync_status(response: Response):
+    """
+    Get the sync status.
+    """
     context = default_context()
     if context.state_loader.state_lock.locked():
         response.status_code = 208

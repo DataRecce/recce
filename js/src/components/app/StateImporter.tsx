@@ -20,10 +20,13 @@ import {
 import { InfoIcon } from "@chakra-ui/icons";
 import { importState } from "@/lib/api/state";
 import { useLocation } from "wouter";
-import { useRunsAggregated } from "@/lib/hooks/LineageGraphContext";
-import { TfiImport } from "react-icons/tfi";
+import {
+  useLineageGraphContext,
+  useRunsAggregated,
+} from "@/lib/hooks/LineageGraphContext";
+import { IconImport } from "../icons";
 
-export function StateImporter({ checksOnly }: { checksOnly?: boolean }) {
+export function StateImporter({ checksOnly = true }: { checksOnly?: boolean }) {
   const toast = useToast();
   const queryClient = useQueryClient();
   const hiddenFileInput = useRef<HTMLInputElement>(null);
@@ -100,16 +103,22 @@ export function StateImporter({ checksOnly }: { checksOnly?: boolean }) {
   };
 
   const warningSubject = !!checksOnly ? "checks" : "runs and checks";
-
+  const { isDemoSite } = useLineageGraphContext();
   return (
     <>
-      <Tooltip label="Import">
+      <Tooltip
+        label={
+          "Import Checklist from State File" +
+          (isDemoSite ? " (Disabled in the demo site)" : "")
+        }
+      >
         <IconButton
           pt="6px"
           variant="unstyled"
           aria-label="Import state"
           onClick={handleClick}
-          icon={<Icon as={TfiImport} boxSize={"1.2em"} />}
+          icon={<Icon as={IconImport} />}
+          isDisabled={isDemoSite}
         />
       </Tooltip>
       <input

@@ -27,7 +27,7 @@ import {
   Link,
 } from "@chakra-ui/react";
 import { format, parseISO } from "date-fns";
-import { IoIosGitBranch } from "react-icons/io";
+import { IconInfo } from "../icons";
 
 function formatTimestamp(timestamp: string): string {
   const date = parseISO(timestamp);
@@ -88,13 +88,13 @@ export function EnvInfo() {
 
   return (
     <>
-      <Tooltip label="Environment Info">
+      <Tooltip label="Environment Info" placement="bottom-end">
         <IconButton
-          pt="6px"
+          size="sm"
           variant="unstyled"
           aria-label="Export state"
           onClick={onOpen}
-          icon={<Icon as={IoIosGitBranch} boxSize={"1.5em"} color="gray.500" />}
+          icon={<Icon verticalAlign="middle" as={IconInfo} boxSize={"16px"} />}
         />
       </Tooltip>
       <Modal isOpen={isOpen} onClose={onClose} size="3xl">

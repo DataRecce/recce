@@ -30,18 +30,15 @@ import { Redirect, Route, Router, Switch, useLocation, useRoute } from "wouter";
 
 import _ from "lodash";
 import { useHashLocation } from "@/lib/hooks/useHashLocation";
-import { ThemeProvider, Tooltip, createTheme } from "@mui/material";
+import { ThemeProvider, createTheme } from "@mui/material";
 import { useLineageGraphContext } from "@/lib/hooks/LineageGraphContext";
-import { InfoIcon } from "@chakra-ui/icons";
 import { RunPage } from "@/components/run/RunPage";
 import { ErrorBoundary } from "@/components/errorboundary/ErrorBoundary";
-import { StateExporter } from "@/components/check/StateExporter";
-import { StateImporter } from "@/components/check/StateImporter";
+import { StateExporter } from "@/components/app/StateExporter";
 import { FaGithub, FaQuestionCircle, FaSlack } from "react-icons/fa";
 import { IconType } from "react-icons";
 import "@fontsource/montserrat/800.css";
-import { EnvInfo } from "@/components/env/EnvInfo";
-import { StateSynchronizer } from "@/components/check/StateSynchronizer";
+import { EnvInfo } from "@/components/app/EnvInfo";
 import { Check, listChecks } from "@/lib/api/checks";
 import { cacheKeys } from "@/lib/api/cacheKeys";
 import { LineagePage } from "@/components/lineage/LineagePage";
@@ -54,6 +51,8 @@ import { RunList } from "@/components/run/RunList";
 import { checkboxTheme } from "@theme/components/Checkbox";
 import { tooltipTheme } from "@theme/components/Tooltip";
 import { trackInit } from "@/lib/api/track";
+import { Filename } from "@/components/app/Filename";
+import { StateSynchronizer } from "@/components/app/StateSynchronizer";
 
 const RouteAlwaysMount = ({
   children,
@@ -249,7 +248,7 @@ function TabBadge<T, R extends number>({
 }
 
 function NavBar() {
-  const { isDemoSite, reviewMode, cloudMode, isLoading } =
+  const { isDemoSite, reviewMode, fileMode, cloudMode, isLoading } =
     useLineageGraphContext();
   const [location, setLocation] = useLocation();
 
@@ -274,31 +273,30 @@ function NavBar() {
   return (
     <Tabs index={tabIndex}>
       <TabList>
-        {tabs.map(({ name, href, badge }) => {
-          return (
-            <Tab
-              key={name}
-              onClick={() => {
-                setLocation(href);
-              }}
-            >
-              {name}
-              {badge}
-            </Tab>
-          );
-        })}
-        <Spacer />
+        <Box flex="1" display="flex">
+          {tabs.map(({ name, href, badge }) => {
+            return (
+              <Tab
+                key={name}
+                onClick={() => {
+                  setLocation(href);
+                }}
+              >
+                {name}
+                {badge}
+              </Tab>
+            );
+          })}
+        </Box>
+        {!isLoading && !isDemoSite && <Filename />}
         {!isLoading && (
-          <>
+          <Flex flex="1" justifyContent="right" alignItems="center" mr="8px">
             {cloudMode && <StateSynchronizer />}
-            {!isDemoSite && !cloudMode && <StateImporter />}
-            {!isDemoSite && cloudMode && reviewMode && (
-              <StateImporter checksOnly />
-            )}
             <StateExporter />
-          </>
+
+            <EnvInfo />
+          </Flex>
         )}
-        <EnvInfo />
       </TabList>
     </Tabs>
   );
