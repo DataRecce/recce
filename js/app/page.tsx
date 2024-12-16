@@ -30,17 +30,15 @@ import { Redirect, Route, Router, Switch, useLocation, useRoute } from "wouter";
 
 import _ from "lodash";
 import { useHashLocation } from "@/lib/hooks/useHashLocation";
-import { ThemeProvider, Tooltip, createTheme } from "@mui/material";
+import { ThemeProvider, createTheme } from "@mui/material";
 import { useLineageGraphContext } from "@/lib/hooks/LineageGraphContext";
-import { InfoIcon } from "@chakra-ui/icons";
 import { RunPage } from "@/components/run/RunPage";
 import { ErrorBoundary } from "@/components/errorboundary/ErrorBoundary";
 import { StateExporter } from "@/components/app/StateExporter";
 import { FaGithub, FaQuestionCircle, FaSlack } from "react-icons/fa";
-import { AiOutlineSave } from "react-icons/ai";
 import { IconType } from "react-icons";
 import "@fontsource/montserrat/800.css";
-import { EnvInfo } from "@/components/env/EnvInfo";
+import { EnvInfo } from "@/components/app/EnvInfo";
 import { Check, listChecks } from "@/lib/api/checks";
 import { cacheKeys } from "@/lib/api/cacheKeys";
 import { LineagePage } from "@/components/lineage/LineagePage";
@@ -292,7 +290,7 @@ function NavBar() {
         </Box>
         {!isLoading && !isDemoSite && <Filename />}
         {!isLoading && (
-          <Flex flex="1" justifyContent="right">
+          <Flex flex="1" justifyContent="right" alignItems="center" mr="8px">
             {cloudMode && <StateSynchronizer />}
             <StateExporter />
 

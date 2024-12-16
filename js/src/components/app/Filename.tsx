@@ -21,11 +21,12 @@ import {
   IconButton,
   FormErrorMessage,
   Checkbox,
+  Tooltip,
 } from "@chakra-ui/react";
 import { useQueryClient } from "@tanstack/react-query";
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { AiOutlineSave } from "react-icons/ai";
-import { IconEdit } from "../icons";
+import { IconEdit, IconSave } from "../icons";
 import { AxiosError } from "axios";
 import { localStorageKeys } from "@/lib/api/localStorageKeys";
 
@@ -167,15 +168,23 @@ export const Filename = () => {
   return (
     <>
       <Flex flex="1" justifyContent="center" alignItems="center">
-        <Box>{fileName ? fileName : cloudMode ? "cloud" : "New Instance"}</Box>
-        <IconButton
-          padding="6px 0px 0px 0px"
-          onClick={handleOpen}
-          aria-label={""}
-          variant="unstyled"
-        >
-          <Icon as={fileName ? IconEdit : AiOutlineSave} boxSize={"1em"} />
-        </IconButton>
+        <Box fontWeight="600">
+          {fileName ? fileName : cloudMode ? "cloud" : "New Instance"}
+        </Box>
+        <Tooltip label={fileName ? "Change Filename" : "Save"}>
+          <IconButton
+            onClick={handleOpen}
+            aria-label={""}
+            variant="unstyled"
+            size="sm"
+          >
+            <Icon
+              as={fileName ? IconEdit : IconSave}
+              boxSize={"16px"}
+              verticalAlign="middle"
+            />
+          </IconButton>
+        </Tooltip>
       </Flex>
       <Modal
         isOpen={modalDisclosure.isOpen}

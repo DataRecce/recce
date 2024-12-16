@@ -35,11 +35,11 @@ export function StateExporter() {
   return (
     <Tooltip label="Export">
       <IconButton
-        pt="6px"
+        size="sm"
         variant="unstyled"
         aria-label="Export state"
         onClick={handleExport}
-        icon={<Icon as={IconExport} boxSize={"1.2em"} color="gray.500" />}
+        icon={<Icon as={IconExport} verticalAlign="middle" boxSize={"16px"} />}
       />
     </Tooltip>
   );
