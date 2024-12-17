@@ -271,6 +271,23 @@ class RecceContext:
     def support_tasks(self):
         return self.adapter.support_tasks()
 
+    def state_loader_mode(self):
+        """
+        The state loader mode is used for telemetry purpose.
+        """
+        if os.environ.get('DEMO', False):
+            return 'demo'
+
+        if not self.state_loader:
+            return 'none'
+
+        if self.state_loader.cloud_mode:
+            return 'cloud'
+        elif self.state_loader.state_file:
+            return 'file'
+        else:
+            return 'none'
+
 
 recce_context: Optional[RecceContext] = None
 
