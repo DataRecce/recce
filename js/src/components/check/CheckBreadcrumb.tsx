@@ -57,15 +57,16 @@ export function CheckBreadcrumb({ name, setName }: CheckBreadcrumbProps) {
 
   return (
     <Breadcrumb
-      flex="0 1"
+      flex="0 1 auto"
       fontSize="12pt"
       fontWeight="500"
       separator={<ChevronRightIcon color="gray.500" />}
+      overflow={"hidden"}
     >
       <BreadcrumbItem>
         <Box>Checklist</Box>
       </BreadcrumbItem>
-      <BreadcrumbItem flex="0 1" cursor="pointer">
+      <BreadcrumbItem cursor="pointer" flex="0 1 auto" overflow="hidden">
         {isEditing ? (
           <Input
             ref={editInputRef}
@@ -73,12 +74,11 @@ export function CheckBreadcrumb({ name, setName }: CheckBreadcrumbProps) {
             onChange={handleChange}
             onKeyDown={handleKeyDown}
             size="sm"
-            w="auto"
-            minW="200px"
-            maxW="600px"
+            w="100%"
           />
         ) : (
           <Box
+            flex="0 1 auto"
             onClick={handleClick}
             textOverflow="ellipsis"
             whiteSpace="nowrap"

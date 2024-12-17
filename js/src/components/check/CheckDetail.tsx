@@ -10,6 +10,7 @@ import {
   IconButton,
   Menu,
   MenuButton,
+  MenuDivider,
   MenuItem,
   MenuList,
   Modal,
@@ -28,6 +29,7 @@ import {
   TagLeftIcon,
   Tooltip,
   useDisclosure,
+  Text,
 } from "@chakra-ui/react";
 import {
   CheckCircleIcon,
@@ -38,7 +40,7 @@ import {
 import { CiBookmark } from "react-icons/ci";
 import { IoMdCodeWorking } from "react-icons/io";
 import { CheckBreadcrumb } from "./CheckBreadcrumb";
-import { VscKebabVertical } from "react-icons/vsc";
+import { VscCircleLarge, VscKebabVertical } from "react-icons/vsc";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { cacheKeys } from "@/lib/api/cacheKeys";
 import { Check, deleteCheck, getCheck, updateCheck } from "@/lib/api/checks";
@@ -230,7 +232,7 @@ export const CheckDetail = ({ checkId }: CheckDetailProps) => {
           <Spacer />
           {isPresetCheck && (
             <Tooltip label="Preset Check defined in recce config">
-              <Tag size="sm">
+              <Tag size="sm" flex="0 0 auto">
                 <TagLeftIcon boxSize={"14px"} as={CiBookmark} />
                 Preset
               </Tag>
@@ -242,9 +244,12 @@ export const CheckDetail = ({ checkId }: CheckDetailProps) => {
               as={IconButton}
               icon={<Icon as={VscKebabVertical} />}
               variant="ghost"
+              size="sm"
             />
             <MenuList>
               <MenuItem
+                as={Text}
+                fontSize={"10pt"}
                 icon={<IoMdCodeWorking />}
                 onClick={() => {
                   setOverlay(<Overlay />);
@@ -253,7 +258,22 @@ export const CheckDetail = ({ checkId }: CheckDetailProps) => {
               >
                 Get Preset Check Template
               </MenuItem>
-              <MenuItem icon={<DeleteIcon />} onClick={() => handleDelete()}>
+              <MenuItem
+                as={Text}
+                fontSize={"10pt"}
+                icon={<CopyIcon />}
+                onClick={() => handleCopy()}
+              >
+                Copy Markdown
+              </MenuItem>
+              <MenuDivider />
+              <MenuItem
+                as={Text}
+                fontSize={"10pt"}
+                icon={<DeleteIcon />}
+                color="red"
+                onClick={() => handleDelete()}
+              >
                 Delete
               </MenuItem>
             </MenuList>
@@ -283,28 +303,21 @@ export const CheckDetail = ({ checkId }: CheckDetailProps) => {
             </Tooltip>
           )}
 
-          <Tooltip label="Copy markdown">
-            <IconButton
-              isRound={true}
-              variant="ghost"
-              aria-label="Copy markdown"
-              icon={<CopyIcon />}
-              onClick={() => handleCopy()}
-            />
-          </Tooltip>
-
           <Tooltip
             label={check?.is_checked ? "Mark as Pending" : "Mark as Approved"}
             placement="bottom-end"
           >
             <Button
+              flex="0 0 auto"
               size="sm"
               colorScheme={check?.is_checked ? "green" : "gray"}
               variant={check?.is_checked ? "solid" : "outline"}
               leftIcon={
-                <CheckCircleIcon
-                  color={check?.is_checked ? "inherit" : "green"}
-                />
+                check?.is_checked ? (
+                  <CheckCircleIcon />
+                ) : (
+                  <Icon as={VscCircleLarge} color="lightgray" />
+                )
               }
               onClick={() => handleApproveCheck()}
             >
@@ -324,8 +337,13 @@ export const CheckDetail = ({ checkId }: CheckDetailProps) => {
       </Box>
 
       <Box style={{ contain: "strict" }}>
-        <Tabs height="100%" display="flex" flexDirection="column" tabIndex={tabIndex}
-        onChange={setTabIndex}>
+        <Tabs
+          height="100%"
+          display="flex"
+          flexDirection="column"
+          tabIndex={tabIndex}
+          onChange={setTabIndex}
+        >
           <TabList height="50px">
             <Tab fontSize="10pt">Result</Tab>
             {(check?.type === "query" || check?.type === "query_diff") && (
@@ -336,7 +354,10 @@ export const CheckDetail = ({ checkId }: CheckDetailProps) => {
               <Button
                 leftIcon={<CopyIcon />}
                 variant="outline"
-                isDisabled={shouldDisabledCopyButton(check?.type ?? "", run) || tabIndex !== 0}
+                isDisabled={
+                  shouldDisabledCopyButton(check?.type ?? "", run) ||
+                  tabIndex !== 0
+                }
                 onMouseEnter={onMouseEnter}
                 onMouseLeave={onMouseLeave}
                 size="sm"
