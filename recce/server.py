@@ -22,6 +22,7 @@ from .apis.check_api import check_router
 from .apis.run_api import run_router
 from .config import RecceConfig
 from .core import load_context, default_context
+from .event import log_api_event
 from .exceptions import RecceException
 from .run import load_preset_checks
 from .state import RecceStateLoader
@@ -271,6 +272,7 @@ async def save_handler():
     try:
         # Sync the state file
         context = default_context()
+        log_api_event('save', dict(state_loader_mode=context.state_loader_mode()))
         state_loader = context.state_loader
         if not state_loader.cloud_mode and state_loader.state_file is None:
             raise RecceException('Not file mode or cloud mode')
@@ -327,7 +329,9 @@ async def save_as_handler(input: SaveAsOrRenameInput):
     """
     Save the state to a new file
     """
+    context = default_context()
     try:
+        log_api_event('saveas', dict(state_loader_mode=context.state_loader_mode()))
         saveas_or_rename(input, rename=False)
     except RecceException as e:
         raise HTTPException(status_code=400, detail=e.message)
@@ -338,7 +342,9 @@ async def rename_handler(input: SaveAsOrRenameInput):
     """
     Rename the state to a new file
     """
+    context = default_context()
     try:
+        log_api_event('rename', dict(state_loader_mode=context.state_loader_mode()))
         saveas_or_rename(input, rename=True)
     except RecceException as e:
         raise HTTPException(status_code=400, detail=e.message)
@@ -351,6 +357,7 @@ async def export_handler():
     """
     context = default_context()
     try:
+        log_api_event('export', dict(state_loader_mode=context.state_loader_mode()))
         return context.export_state().to_json()
     except RecceException as e:
         raise HTTPException(status_code=400, detail=e.message)
@@ -366,9 +373,9 @@ async def import_handler(
     Import the recce state from the client.
     """
     from recce.state import RecceState
-
     context = default_context()
     try:
+        log_api_event('import', dict(state_loader_mode=context.state_loader_mode()))
         content = await file.read()
         state = RecceState.from_json(content)
 
@@ -378,7 +385,6 @@ async def import_handler(
             return {"runs": 0, "checks": import_checks}
 
         import_runs, import_checks = context.import_state(state)
-
         return {"runs": import_runs, "checks": import_checks}
     except ValidationError as e:
         raise HTTPException(status_code=400, detail=str(e))
@@ -403,6 +409,10 @@ async def sync_handler(input: SyncStateInput, response: Response, background_tas
     context = default_context()
     state_loader = context.state_loader
     method = input.method
+    log_api_event('sync', dict(
+        state_loader_mode=context.state_loader_mode(),
+        method=method,
+    ))
 
     if not method:
         is_conflict = state_loader.check_conflict()
