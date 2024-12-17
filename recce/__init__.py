@@ -34,13 +34,6 @@ def get_runner():
     return None
 
 
-def get_cli_args():
-    # Join all arguments starting from the script name
-    full_command_line = ' '.join(sys.argv)
-
-    return full_command_line
-
-
 def get_version():
     version_file = os.path.normpath(os.path.join(os.path.dirname(__file__), 'VERSION'))
     with open(version_file) as fh:

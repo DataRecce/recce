@@ -11,7 +11,7 @@ from click.core import Command
 from rich.console import Console
 from rich.markup import escape
 
-from recce import event, get_runner, get_cli_args()
+from recce import event, get_runner
 from recce.core import load_context
 from recce.exceptions import RecceException
 from recce.git import current_branch, hosting_repo
@@ -88,30 +88,37 @@ class TrackCommand(Command):
             sys.exit(1)
         finally:
             end_time = time.time()
-            duration = end_time - start_time
             runner = get_runner()
-            cli_args = get_cli()
             repo = hosting_repo()
             branch = current_branch()
             command = ctx.command.name
+            duration = end_time - start_time
+            target_path = ctx.params.get('target_path', None)
+            target_base_path = ctx.params.get('target_base_path', None)
             props = dict(
                 command=command,
                 status=status,
                 reason=reason,
                 duration=duration,
+                cloud=ctx.params.get('cloud', False),
+                review=ctx.params.get('review', False),
+                debug=ctx.params.get('debug', False),
             )
 
             if runner is not None:
                 props['runner_type'] = runner
-
-            if cli_args is not None:
-                props['cli_args'] = cli_args
 
             if repo is not None:
                 props['repository'] = sha256(repo.encode()).hexdigest()
 
             if branch is not None:
                 props['branch'] = sha256(branch.encode()).hexdigest()
+
+            if target_path is not None:
+                props['target_path'] = sha256(target_path.encode()).hexdigest()
+
+            if target_base_path is not None:
+                props['target_base_path'] = sha256(target_base_path.encode()).hexdigest()
 
             try:
                 recce_context = load_context()

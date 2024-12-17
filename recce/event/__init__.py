@@ -9,7 +9,7 @@ from hashlib import sha256
 
 import sentry_sdk
 
-from recce import is_ci_env, get_version, get_runner, get_cli_args()
+from recce import is_ci_env, get_version, get_runner
 from recce import yaml as pyml
 from recce.event.collector import Collector
 from recce.github import is_github_codespace, get_github_codespace_info, get_github_codespace_name, \
@@ -173,10 +173,6 @@ def log_event(prop, event_type, **kwargs):
 
         if runner == 'github codespaces':
             prop['codespaces_name'] = get_github_codespace_name()
-
-    cli_args = get_cli_args()
-    if cli_args is not None:
-        prop['cli_args'] = cli_args
 
     payload = dict(
         **prop,
