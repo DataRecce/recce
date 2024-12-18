@@ -49,4 +49,5 @@ jobs:
         run: |
           ./integration_tests/dbt/smoke_test.sh
         env:
-          PR_URL: ${{ github.event.pull_request.html_url }}
+          GITHUB_TOKEN: ${{ secrets.RECCE_CLOUD_TOKEN }}
+          RECCE_STATE_PASSWORD: ${{ vars.RECCE_STATE_PASSWORD}}
