@@ -53,17 +53,14 @@ function check_server_status() {
     sleep 2
     done'; then
         echo "Server is up and running."
-        EXITCODE=0
     else
         echo "Failed to start the server within the time limit."
-        EXITCODE=1
+        exit 1
     fi
 
     echo "Stopping the server..."
     kill $(jobs -p) || true
     echo "Server stopped."
-
-    exit $EXITCODE
 }
 
 echo "Starting the server..."
