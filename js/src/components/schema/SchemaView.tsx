@@ -16,7 +16,7 @@ interface SchemaViewProps {
   enableScreenshot?: boolean;
 }
 
-export function _SchemaView(
+export function PrivateSchemaView(
   { base, current, enableScreenshot = false }: SchemaViewProps,
   ref: any
 ) {
@@ -95,4 +95,4 @@ export function _SchemaView(
   );
 }
 
-export const SchemaView = forwardRef(_SchemaView);
+export const SchemaView = forwardRef(PrivateSchemaView);

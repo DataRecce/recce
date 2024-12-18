@@ -20,12 +20,13 @@ import { RunFormProps, RunResultViewProps } from "./types";
 import { IconType } from "react-icons";
 import { LuBarChartHorizontalBig } from "react-icons/lu";
 import { MdFormatListNumberedRtl, MdSchema } from "react-icons/md";
-import { As, ComponentWithAs } from "@chakra-ui/react";
+import { ComponentWithAs } from "@chakra-ui/react";
+import { ElementType } from "react";
 
 interface RegistryEntry<PT, RT, VO = any> {
   title: string;
   icon: IconType;
-  RunResultView?: ComponentWithAs<As, RunResultViewProps<PT, RT, VO>>;
+  RunResultView?: ComponentWithAs<ElementType, RunResultViewProps<PT, RT, VO>>;
   RunForm?: React.ComponentType<RunFormProps<PT>>;
 }
 

@@ -51,7 +51,7 @@ const _ParamView = (data: { type: string; params: any }) => {
   );
 };
 
-export const _LoadableRunView = ({
+export const PrivateLoadableRunView = ({
   runId,
   onClose,
 }: {
@@ -207,5 +207,5 @@ export const _LoadableRunView = ({
 export const RunResultPane = ({ onClose }: RunPageProps) => {
   const { runId } = useRecceActionContext();
 
-  return <_LoadableRunView runId={runId} onClose={onClose} />;
+  return <PrivateLoadableRunView runId={runId} onClose={onClose} />;
 };

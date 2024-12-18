@@ -2,7 +2,6 @@ import { Run } from "@/lib/api/types";
 import {
   Alert,
   AlertIcon,
-  As,
   Box,
   Button,
   Center,
@@ -14,6 +13,7 @@ import {
 import { RunResultViewProps } from "./types";
 import { ErrorBoundary } from "@sentry/react";
 import { forwardRef } from "@chakra-ui/react";
+import { ElementType } from "react";
 
 interface RunViewProps<PT, RT, VO = any> {
   isRunning?: boolean;
@@ -26,7 +26,7 @@ interface RunViewProps<PT, RT, VO = any> {
   onExecuteRun?: () => void;
   viewOptions?: VO;
   onViewOptionsChanged?: (viewOptions: VO) => void;
-  RunResultView?: ComponentWithAs<As, RunResultViewProps<PT, RT, VO>>;
+  RunResultView?: ComponentWithAs<ElementType, RunResultViewProps<PT, RT, VO>>;
   children?: <T extends RunResultViewProps<PT, RT, VO>>(
     params: T
   ) => React.ReactNode;
