@@ -67,13 +67,11 @@ def hosting_repo(remote: str = 'origin'):
             # Handle https://github.com/user/repo.git or http://github.com/user/repo.git
             remote_repo = '/'.join(origin_url.split('/')[-2:]).replace('.git', '')
 
-        print('remote', remote_repo)
         return remote_repo
     except ValueError:
         repo = Repo(search_parent_directories=True)
         toplevel_dir = repo.git.rev_parse("--show-toplevel")
 
-        print('top', toplevel_dir)
         return os.path.basename(toplevel_dir)
     except InvalidGitRepositoryError:
         return None
