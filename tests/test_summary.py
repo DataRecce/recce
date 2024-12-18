@@ -12,7 +12,7 @@ pr2_manifest_dir = os.path.join(current_dir, 'data', 'manifest', 'pr2')  # Pull 
 dbt_version = DbtVersion()
 
 
-@unittest.skipIf(dbt_version < '1.9', "Dbt version is less than 1.9")
+@unittest.skipIf(dbt_version < '1.8.1', "Dbt version is less than 1.8.1")
 def test_generate_summary_metadata():
     manifest = load_manifest(path=os.path.join(current_dir, 'manifest.json'))
     assert manifest is not None
@@ -31,7 +31,7 @@ def test_generate_summary_metadata():
     generate_summary_metadata(curr_lineage, base_lineage)
 
 
-@unittest.skipIf(dbt_version < 'v1.9', "Dbt version is less than 1.9")
+@unittest.skipIf(dbt_version < 'v1.8.1', "Dbt version is less than 1.8.1")
 def test_build_lineage_graph():
     base_manifest = load_manifest(path=os.path.join(base_manifest_dir, 'manifest.json'))
     curr_manifest = load_manifest(path=os.path.join(pr2_manifest_dir, 'manifest.json'))
@@ -43,7 +43,7 @@ def test_build_lineage_graph():
     assert len(lineage_graph.modified_set) == 1
 
 
-@unittest.skipIf(dbt_version < 'v1.9', "Dbt version is less than 1.9")
+@unittest.skipIf(dbt_version < 'v1.8.1', "Dbt version is less than 1.8.1")
 def test_generate_mermaid_lineage_graph():
     set_default_context(RecceContext())
     base_manifest = load_manifest(path=os.path.join(base_manifest_dir, 'manifest.json'))
