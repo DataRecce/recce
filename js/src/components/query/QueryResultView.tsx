@@ -114,7 +114,7 @@ function toDataGrid(result: DataFrame, options: QueryDataGridOptions) {
   return { columns, rows: result.data };
 }
 
-const _QueryResultView = (
+const PrivateQueryResultView = (
   {
     run,
     viewOptions,
@@ -208,4 +208,4 @@ const _QueryResultView = (
   );
 };
 
-export const QueryResultView = forwardRef(_QueryResultView);
+export const QueryResultView = forwardRef(PrivateQueryResultView);

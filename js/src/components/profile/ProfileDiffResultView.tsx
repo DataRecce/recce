@@ -18,7 +18,7 @@ interface ProfileDiffResultViewProp
     ProfileDiffViewOptions
   > {}
 
-const _ProfileDiffResultView = (
+const PrivateProfileDiffResultView = (
   { run, viewOptions, onViewOptionsChanged }: ProfileDiffResultViewProp,
   ref: any
 ) => {
@@ -70,4 +70,4 @@ const _ProfileDiffResultView = (
   );
 };
 
-export const ProfileDiffResultView = forwardRef(_ProfileDiffResultView);
+export const ProfileDiffResultView = forwardRef(PrivateProfileDiffResultView);

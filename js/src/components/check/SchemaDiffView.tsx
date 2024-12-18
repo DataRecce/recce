@@ -85,7 +85,10 @@ const NodelistItem = ({
   );
 };
 
-export function _SchemaDiffView({ check }: SchemaDiffViewProps, ref: any) {
+export function PrivateSchemaDiffView(
+  { check }: SchemaDiffViewProps,
+  ref: any
+) {
   const { lineageGraph } = useLineageGraphContext();
   const params = check.params as SchemaDiffParams;
 
@@ -227,4 +230,4 @@ export function _SchemaDiffView({ check }: SchemaDiffViewProps, ref: any) {
   return <></>;
 }
 
-export const SchemaDiffView = forwardRef(_SchemaDiffView);
+export const SchemaDiffView = forwardRef(PrivateSchemaDiffView);

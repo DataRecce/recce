@@ -28,7 +28,7 @@ export interface QueryDiffResultViewProps
   onAddToChecklist?: (run: Run<QueryDiffParams, QueryDiffResult>) => void;
 }
 
-const _QueryDiffResultView = (
+const PrivateQueryDiffResultView = (
   {
     run,
     onAddToChecklist,
@@ -165,7 +165,7 @@ const _QueryDiffResultView = (
   );
 };
 
-const _QueryDiffJoinResultView = (
+const PrivateQueryDiffJoinResultView = (
   {
     run,
     onAddToChecklist,
@@ -278,10 +278,10 @@ export const QueryDiffResultView = forwardRef(
       props.run.result.diff !== null &&
       props.run.result.diff !== undefined
     ) {
-      const ResultView = forwardRef(_QueryDiffJoinResultView);
+      const ResultView = forwardRef(PrivateQueryDiffJoinResultView);
       return <ResultView {...props} ref={ref} />;
     } else {
-      const ResultView = forwardRef(_QueryDiffResultView);
+      const ResultView = forwardRef(PrivateQueryDiffResultView);
       return <ResultView {...props} ref={ref} />;
     }
   }

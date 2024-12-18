@@ -29,7 +29,7 @@ export interface ValueDiffDetailResultViewProps
   ) => void;
 }
 
-const _ValueDiffDetailResultView = (
+const PrivateValueDiffDetailResultView = (
   {
     run,
     onAddToChecklist,
@@ -133,4 +133,6 @@ const _ValueDiffDetailResultView = (
   );
 };
 
-export const ValueDiffDetailResultView = forwardRef(_ValueDiffDetailResultView);
+export const ValueDiffDetailResultView = forwardRef(
+  PrivateValueDiffDetailResultView
+);

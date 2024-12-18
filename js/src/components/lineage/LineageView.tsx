@@ -179,7 +179,7 @@ const useNavToCheck = () => {
   return navToCheck;
 };
 
-export function _LineageView(
+export function PrivateLineageView(
   { interactive = false, ...props }: LineageViewProps,
   ref: Ref<LineageViewRef>
 ) {
@@ -922,5 +922,5 @@ export function _LineageView(
 }
 
 export const LineageView = forwardRef<LineageViewRef, LineageViewProps>(
-  _LineageView
+  PrivateLineageView
 );

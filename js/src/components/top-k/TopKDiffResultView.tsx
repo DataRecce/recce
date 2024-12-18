@@ -15,7 +15,10 @@ import { ScreenshotBox } from "../screenshot/ScreenshotBox";
 interface TopKDiffResultViewProp
   extends RunResultViewProps<TopKDiffParams, TopKDiffResult> {}
 
-const _TopKDiffResultView = ({ run }: TopKDiffResultViewProp, ref: any) => {
+const PrivateTopKDiffResultView = (
+  { run }: TopKDiffResultViewProp,
+  ref: any
+) => {
   const [isDisplayTopTen, setIsDisplayTopTen] = useState<boolean>(true);
   // TODO: Implement TopKDiffResultView
   const result = run.result as TopKDiffResult;
@@ -61,4 +64,4 @@ const _TopKDiffResultView = ({ run }: TopKDiffResultViewProp, ref: any) => {
   );
 };
 
-export const TopKDiffResultView = forwardRef(_TopKDiffResultView);
+export const TopKDiffResultView = forwardRef(PrivateTopKDiffResultView);
