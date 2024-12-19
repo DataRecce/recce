@@ -51,25 +51,49 @@ function check_server_status() {
     if timeout 20 bash -c 'until curl -s -o /dev/null -w "%{http_code}" http://localhost:8000/api/info | grep -q 200; do
     echo "Server not ready yet..."
     sleep 2
-    done'; then    
+    done'; then
         echo "Server is up and running."
-        EXITCODE=0
     else
         echo "Failed to start the server within the time limit."
-        EXITCODE=1
+        exit 1
     fi
 
     echo "Stopping the server..."
     kill $(jobs -p) || true
     echo "Server stopped."
-
-    exit $EXITCODE
 }
 
 echo "Starting the server..."
 recce server &
 check_server_status
 
-echo "Starting the server (review mode)"
+echo "Starting the server (review mode)..."
 recce server --review recce_state.json &
 check_server_status
+
+
+# Clone jaffle_shop_duckdb
+NEW_WORKSPACE=$(dirname "$GITHUB_WORKSPACE")
+cd "$NEW_WORKSPACE" || exit
+pwd
+
+GIT_REPO="https://github.com/DataRecce/jaffle_shop_duckdb.git"
+GIT_BRANCH="fix/customer-lifetime-value"
+
+git clone --depth 1 --branch $GIT_BRANCH $GIT_REPO
+cd jaffle_shop_duckdb || exit
+
+# Hide PR information from GitHub Action
+HOLD_GITHUB_EVENT_PATH="$GITHUB_EVENT_PATH"
+unset GITHUB_EVENT_PATH
+
+# Recce Summary - Cloud
+recce summary --cloud | tee recce_summary.md
+cat ./recce_summary.md | grep -q customers
+
+# Recce Server - Cloud
+echo "Starting the server (cloud and review mode)..."
+recce server --cloud --review &
+check_server_status
+
+export GITHUB_EVENT_PATH="$HOLD_GITHUB_EVENT_PATH"
