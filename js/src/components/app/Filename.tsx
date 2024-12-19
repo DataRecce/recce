@@ -63,6 +63,26 @@ const useRecceToast = () => {
   return { toastSuccess, toastError };
 };
 
+const useClosePrompt = (prompt: boolean) => {
+  useEffect(() => {
+    const handleBeforeUnload = (e: any) => {
+      e.preventDefault();
+      e.returnValue = true;
+      return true;
+    };
+
+    if (prompt) {
+      window.addEventListener("beforeunload", handleBeforeUnload);
+    }
+
+    return () => {
+      if (prompt) {
+        window.removeEventListener("beforeunload", handleBeforeUnload);
+      }
+    };
+  }, [prompt]);
+};
+
 interface FilenameState {
   newFileName: string;
   errorMessage?: string;
@@ -76,6 +96,7 @@ export const Filename = () => {
     useLineageGraphContext();
   const modalDisclosure = useDisclosure();
   const overwriteDisclosure = useDisclosure();
+  useClosePrompt(!fileName && !cloudMode && !isDemoSite);
 
   const [
     { newFileName, errorMessage, modified, overwriteWithMethod, bypass },
