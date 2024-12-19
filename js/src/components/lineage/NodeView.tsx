@@ -45,6 +45,7 @@ import { findByRunType } from "../run/registry";
 import { is } from "date-fns/locale";
 import { run } from "node:test";
 import { DisableTooltipMessages } from "@/constants/tooltipMessage";
+import { PreviewChangeView } from "./PreviewChangeView";
 
 interface NodeViewProps {
   node: LineageGraphNode;
@@ -65,6 +66,11 @@ export function NodeView({ node, onCloseNode }: NodeViewProps) {
     isOpen: isCodeDiffOpen,
     onOpen: onCodeDiffOpen,
     onClose: onCodeDiffClose,
+  } = useDisclosure();
+  const {
+    isOpen: isPreviewChangeOpen,
+    onOpen: onPreviewChangeOpen,
+    onClose: onPreviewChangeClose,
   } = useDisclosure();
   const { runAction } = useRecceActionContext();
   const { envInfo, isActionAvailable } = useLineageGraphContext();
@@ -136,6 +142,13 @@ export function NodeView({ node, onCloseNode }: NodeViewProps) {
                 }}
               >
                 Query
+              </MenuItem>
+              <MenuItem
+                fontSize="14px"
+                icon={<Icon as={findByRunType("preview_change")?.icon} />}
+                onClick={onPreviewChangeOpen}
+              >
+                Preview Change (Beta)
               </MenuItem>
               <MenuDivider />
               <MenuGroup title="Diff" m="0" p="4px 12px">
@@ -295,6 +308,11 @@ export function NodeView({ node, onCloseNode }: NodeViewProps) {
           </ModalBody>
         </ModalContent>
       </Modal>
+      <PreviewChangeView
+        isOpen={isPreviewChangeOpen}
+        onClose={onPreviewChangeClose}
+        current={node.data.current}
+      />
     </Grid>
   );
 }

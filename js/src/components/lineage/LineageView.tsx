@@ -96,7 +96,7 @@ export interface LineageViewProps {
   height?: number;
 
   // to be removed
-  viewMode?: "changed_models" | "all";
+  // viewMode?: "changed_models" | "all"; // deprecated
   filterNodes?: (key: string, node: LineageGraphNode) => boolean;
 }
 
@@ -216,11 +216,6 @@ export function PrivateLineageView(
   const [nodes, setNodes, onNodesChange] = useNodesState([]);
   const [edges, setEdges, onEdgesChange] = useEdgesState([]);
 
-  const [viewOptions, setViewOptions] = useState<LineageDiffViewOptions>({
-    view_mode: "changed_models",
-    ...props.viewOptions,
-  });
-
   const {
     lineageGraph,
     retchLineageGraph,
@@ -230,6 +225,12 @@ export function PrivateLineageView(
   } = useLineageGraphContext();
 
   const { showRunId, closeRunResult, runAction } = useRecceActionContext();
+  const isModelsChanged = lineageGraph && lineageGraph?.modifiedSet?.length > 0;
+
+  const [viewOptions, setViewOptions] = useState<LineageDiffViewOptions>({
+    view_mode: isModelsChanged ? "changed_models" : "all",
+    ...props.viewOptions,
+  });
 
   // Expose the function to the parent via the ref
   useImperativeHandle(ref, () => ({
@@ -242,7 +243,7 @@ export function PrivateLineageView(
    * - changed_models: show only changed models
    */
   const viewMode: "all" | "changed_models" =
-    viewOptions.view_mode || props.viewMode || "changed_models";
+    viewOptions.view_mode || "changed_models";
 
   /**
    * Select mode: the behavior of clicking on nodes

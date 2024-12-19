@@ -2,6 +2,7 @@ import {
   TbAlignBoxLeftStretch,
   TbBrandStackshare,
   TbChartHistogram,
+  TbEyeEdit,
   TbEyeSearch,
   TbSql,
 } from "react-icons/tb";
@@ -88,6 +89,11 @@ const registry: { [key: string]: RegistryEntry<any, any> } = {
     icon: TbChartHistogram,
     RunResultView: HistogramDiffResultView,
     RunForm: HistogramDiffForm,
+  },
+  preview_change: {
+    title: "Preview Change",
+    icon: TbEyeEdit,
+    RunResultView: QueryResultView,
   },
 };
 
