@@ -1,7 +1,16 @@
 import { SubmitOptions, submitRun } from "./runs";
 import { DataFrame } from "./types";
 
-export interface QueryParams extends QueryRunParams, QueryDiffParams {}
+export interface QueryParams
+  extends QueryRunParams,
+    QueryDiffParams,
+    QueryPreviewChangeParams {}
+
+export interface QueryPreviewChangeParams {
+  current_model?: string;
+  sql_template: string;
+  primary_keys?: string[];
+}
 
 export interface QueryRunParams {
   sql_template: string;

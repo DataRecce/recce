@@ -17,6 +17,7 @@ import { RunFormProps } from "@/components/run/types";
 import { on } from "events";
 import { useQueryClient } from "@tanstack/react-query";
 import { cacheKeys } from "../api/cacheKeys";
+import { set } from "lodash";
 
 export interface RecceActionOptions {
   showForm: boolean;
@@ -36,6 +37,7 @@ export interface RecceActionContextType {
   isHistoryOpen: boolean;
   closeHistory: () => void;
   showHistory: () => void;
+  clearRunResult: () => void;
 }
 
 export const RecceActionContext = createContext<RecceActionContextType>({
@@ -46,6 +48,7 @@ export const RecceActionContext = createContext<RecceActionContextType>({
   isHistoryOpen: false,
   closeHistory: () => {},
   showHistory: () => {},
+  clearRunResult: () => {},
 });
 
 interface RecceActionContextProviderProps {
@@ -105,6 +108,11 @@ export function RecceActionContextProvider({
     },
     [setRunId, onResultPaneOpen, queryClient]
   );
+
+  const clearRunResult = useCallback(() => {
+    setRunId(undefined);
+    closeRunResult();
+  }, [closeRunResult, setRunId]);
 
   const runAction = useCallback(
     async (type: string, params?: any, options?: RecceActionOptions) => {
@@ -211,6 +219,7 @@ export function RecceActionContextProvider({
         isHistoryOpen,
         closeHistory,
         showHistory,
+        clearRunResult,
       }}
     >
       {action && (
