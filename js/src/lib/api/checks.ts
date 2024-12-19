@@ -1,6 +1,8 @@
 import _, { omit } from "lodash";
 import { axiosClient } from "./axiosClient";
 import { Run, RunType } from "./types";
+import { useQuery } from "@tanstack/react-query";
+import { cacheKeys } from "./cacheKeys";
 
 export interface Check<PT = any, RT = any, VO = any> {
   check_id: string;
@@ -39,6 +41,14 @@ export async function createCheckByRun(
 export async function listChecks(): Promise<Check[]> {
   const response = await axiosClient.get("/api/checks");
   return response.data;
+}
+
+export function useChecks(enabled: boolean) {
+  return useQuery({
+    queryKey: cacheKeys.checks(),
+    queryFn: listChecks,
+    enabled,
+  });
 }
 
 export async function getCheck(checkId: string): Promise<Check> {

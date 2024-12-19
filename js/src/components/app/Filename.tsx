@@ -24,11 +24,11 @@ import {
   Tooltip,
 } from "@chakra-ui/react";
 import { useQueryClient } from "@tanstack/react-query";
-import { useEffect, useLayoutEffect, useRef, useState } from "react";
-import { AiOutlineSave } from "react-icons/ai";
+import { useEffect, useRef, useState } from "react";
 import { IconEdit, IconSave } from "../icons";
 import { AxiosError } from "axios";
 import { localStorageKeys } from "@/lib/api/localStorageKeys";
+import { useChecks } from "@/lib/api/checks";
 
 const useRecceToast = () => {
   const toast = useToast();
@@ -67,8 +67,6 @@ const useClosePrompt = (prompt: boolean) => {
   useEffect(() => {
     const handleBeforeUnload = (e: any) => {
       e.preventDefault();
-      e.returnValue = true;
-      return true;
     };
 
     if (prompt) {
@@ -96,7 +94,12 @@ export const Filename = () => {
     useLineageGraphContext();
   const modalDisclosure = useDisclosure();
   const overwriteDisclosure = useDisclosure();
-  useClosePrompt(!fileName && !cloudMode && !isDemoSite);
+  const isStateless = !fileName && !cloudMode && !isDemoSite;
+  const { data: checks } = useChecks(isStateless);
+  const hasNonPresetChecks =
+    checks != undefined &&
+    checks.filter((check) => !check.is_preset).length > 0;
+  useClosePrompt(isStateless && hasNonPresetChecks);
 
   const [
     { newFileName, errorMessage, modified, overwriteWithMethod, bypass },
@@ -186,13 +189,16 @@ export const Filename = () => {
     return <></>;
   }
 
+  const titleNewInstance =
+    "New Instance" + (hasNonPresetChecks ? " (unsaved)" : "");
+
   return (
     <>
       <Flex flex="1" justifyContent="center" alignItems="center">
         <Box fontWeight="600">
-          {fileName ? fileName : cloudMode ? "cloud" : "New Instance"}
+          {fileName ? fileName : cloudMode ? "cloud" : titleNewInstance}
         </Box>
-        <Tooltip label={fileName ? "Change Filename" : "Save"}>
+        <Tooltip label={fileName ? "Change Filename" : "Save"} openDelay={1000}>
           <IconButton
             onClick={handleOpen}
             aria-label={""}
