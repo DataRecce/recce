@@ -28,6 +28,7 @@ import { useMutation } from "@tanstack/react-query";
 import { useState } from "react";
 import { QueryForm } from "../query/QueryForm";
 import { AiOutlineExperiment } from "react-icons/ai";
+import { trackPreviewChange } from "@/lib/api/track";
 
 interface PreviewChangeViewProps {
   isOpen: boolean;
@@ -84,6 +85,7 @@ function PreviewChangeTopBar({
           onClick={() => {
             onRunResultOpen();
             runQuery();
+            trackPreviewChange({ action: "run" });
           }}
           colorScheme="blue"
           isLoading={isPending}
