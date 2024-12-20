@@ -70,9 +70,10 @@ export function SqlPreview({ current, onChange }: SqlPreviewProps) {
           fontSize: 14,
           lineNumbers: "on",
           automaticLayout: true,
-          minimap: { enabled: true },
           wordWrap: "on",
           wrappingIndent: "same",
+          renderOverviewRuler: false,
+          minimap: { enabled: true },
         }}
         onMount={diffEditorSync.onMount}
       />

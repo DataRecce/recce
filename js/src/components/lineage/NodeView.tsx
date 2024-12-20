@@ -148,7 +148,7 @@ export function NodeView({ node, onCloseNode }: NodeViewProps) {
                 icon={<Icon as={findByRunType("preview_change")?.icon} />}
                 onClick={onPreviewChangeOpen}
               >
-                Preview Change (Beta)
+                Preview Change (Experiment)
               </MenuItem>
               <MenuDivider />
               <MenuGroup title="Diff" m="0" p="4px 12px">

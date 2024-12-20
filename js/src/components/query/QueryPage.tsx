@@ -31,7 +31,7 @@ import { VscDiff, VscHistory } from "react-icons/vsc";
 import { InfoIcon } from "@chakra-ui/icons";
 import { trackHistoryAction } from "@/lib/api/track";
 
-const HistoryToggle = () => {
+export const HistoryToggle = () => {
   const { isHistoryOpen, showHistory, closeHistory } = useRecceActionContext();
   return (
     <Box>

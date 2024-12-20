@@ -8,7 +8,7 @@ import {
   FormLabel,
   Tooltip,
 } from "@chakra-ui/react";
-import { useMemo, useRef, useState } from "react";
+import { useMemo } from "react";
 
 interface QueryFormProps extends FlexProps {
   defaultPrimaryKeys: string[] | undefined;
