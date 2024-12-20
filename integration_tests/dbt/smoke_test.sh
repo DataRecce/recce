@@ -51,25 +51,22 @@ function check_server_status() {
     if timeout 20 bash -c 'until curl -s -o /dev/null -w "%{http_code}" http://localhost:8000/api/info | grep -q 200; do
     echo "Server not ready yet..."
     sleep 2
-    done'; then    
+    done'; then
         echo "Server is up and running."
-        EXITCODE=0
     else
         echo "Failed to start the server within the time limit."
-        EXITCODE=1
+        exit 1
     fi
 
     echo "Stopping the server..."
     kill $(jobs -p) || true
     echo "Server stopped."
-
-    exit $EXITCODE
 }
 
 echo "Starting the server..."
 recce server &
 check_server_status
 
-echo "Starting the server (review mode)"
+echo "Starting the server (review mode)..."
 recce server --review recce_state.json &
 check_server_status
