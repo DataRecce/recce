@@ -48,6 +48,46 @@ jobs:
       - name: Run smoke test - dbt
         run: |
           ./integration_tests/dbt/smoke_test.sh
+
+  smoke-test-cloud:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        include:
+          - python-version: "3.9"
+            dbt-version: "1.6"
+          - python-version: "3.11"
+            dbt-version: "1.7"
+          - python-version: "3.11"
+            dbt-version: "1.8"
+          - python-version: "3.11"
+            dbt-version: "latest"
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+          cache: "pip" # caching pip dependencies
+          cache-dependency-path: setup.py
+      - run: |
+          python -m pip install --upgrade pip
+          if [ "${{ matrix.dbt-version }}" == "latest" ]; then
+            pip install dbt-core
+            pip install dbt-duckdb
+          else
+            pip install dbt-core~=${{ matrix.dbt-version }}.0
+            pip install dbt-duckdb~=${{ matrix.dbt-version }}.0
+          fi
+
+      - name: Install Recce
+        run: |
+          pip install .
+
+      - name: Run smoke test - dbt
+        run: |
+          ./integration_tests/dbt/smoke_test_cloud.sh
         env:
           GITHUB_TOKEN: ${{ secrets.RECCE_CLOUD_TOKEN }}
           RECCE_STATE_PASSWORD: ${{ vars.RECCE_STATE_PASSWORD}}

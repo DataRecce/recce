@@ -70,30 +70,3 @@ check_server_status
 echo "Starting the server (review mode)..."
 recce server --review recce_state.json &
 check_server_status
-
-
-# Clone jaffle_shop_duckdb
-NEW_WORKSPACE=$(dirname "$GITHUB_WORKSPACE")
-cd "$NEW_WORKSPACE" || exit
-pwd
-
-GIT_REPO="https://github.com/DataRecce/jaffle_shop_duckdb.git"
-GIT_BRANCH="fix/customer-lifetime-value"
-
-git clone --depth 1 --branch $GIT_BRANCH $GIT_REPO
-cd jaffle_shop_duckdb || exit
-
-# Hide PR information from GitHub Action
-HOLD_GITHUB_EVENT_PATH="$GITHUB_EVENT_PATH"
-unset GITHUB_EVENT_PATH
-
-# Recce Summary - Cloud
-recce summary --cloud | tee recce_summary.md
-cat ./recce_summary.md | grep -q customers
-
-# Recce Server - Cloud
-echo "Starting the server (cloud and review mode)..."
-recce server --cloud --review &
-check_server_status
-
-export GITHUB_EVENT_PATH="$HOLD_GITHUB_EVENT_PATH"

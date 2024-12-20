@@ -75,3 +75,7 @@ def hosting_repo(remote: str = 'origin'):
         return os.path.basename(toplevel_dir)
     except InvalidGitRepositoryError:
         return None
+
+
+if __name__ == '__main__':
+    print(current_branch())
