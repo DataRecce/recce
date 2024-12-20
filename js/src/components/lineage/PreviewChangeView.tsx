@@ -33,6 +33,7 @@ import { useFeedbackCollectionToast } from "@/lib/hooks/useFeedbackCollectionToa
 import { VscFeedback } from "react-icons/vsc";
 import { localStorageKeys } from "@/lib/api/localStorageKeys";
 import { useRecceQueryContext } from "@/lib/hooks/RecceQueryContext";
+import { trackPreviewChange } from "@/lib/api/track";
 
 interface PreviewChangeViewProps {
   isOpen: boolean;
@@ -92,6 +93,7 @@ function PreviewChangeTopBar({
             onRunResultOpen();
             runQuery();
             setTimeout(() => feedbackToast(), 3000);
+            trackPreviewChange({ action: "run" });
           }}
           colorScheme="blue"
           isLoading={isPending}

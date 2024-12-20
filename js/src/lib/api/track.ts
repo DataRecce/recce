@@ -39,3 +39,19 @@ interface HistoryActionProps {
 export function trackHistoryAction(props: HistoryActionProps) {
   amplitude.track("[Web] history_action", props);
 }
+
+interface PreviewChangeProps {
+  action: "explore" | "run";
+}
+
+export function trackPreviewChange(props: PreviewChangeProps) {
+  amplitude.track("[Experiment] preview_change", props);
+}
+
+interface PreviewChangeFeedbackProps {
+  feedback: "like" | "dislike";
+}
+
+export function trackPreviewChangeFeedback(props: PreviewChangeFeedbackProps) {
+  amplitude.track("[Experiment] preview_change", props);
+}
