@@ -460,7 +460,9 @@ class DbtAdapter(BaseAdapter):
     def get_manifest(self, base: bool):
         return self.curr_manifest if base is False else self.base_manifest
 
-    def generate_sql(self, sql_template: str, base: bool = False, context: Dict = {}):
+    def generate_sql(self, sql_template: str, base: bool = False, context=None):
+        if context is None:
+            context = {}
         manifest = as_manifest(self.get_manifest(base))
         parser = SqlBlockParser(self.runtime_config, manifest, self.runtime_config)
 
