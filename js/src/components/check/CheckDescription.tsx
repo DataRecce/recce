@@ -22,12 +22,6 @@ export function CheckDescription({ value, onChange }: CheckDescriptionProps) {
     setEditing(true);
   };
 
-  const handleKeyDown: KeyboardEventHandler = (event) => {
-    if (event.key === "Escape") {
-      setEditing(false);
-    }
-  };
-
   const handleCancel = () => {
     setTimeout(() => {
       setEditing(false);
@@ -38,6 +32,19 @@ export function CheckDescription({ value, onChange }: CheckDescriptionProps) {
     if (onChange) {
       onChange(tempValue);
       setEditing(false);
+    }
+  };
+
+  const handleKeyDown: KeyboardEventHandler = (event) => {
+    if (event.key === "Escape") {
+      setEditing(false);
+    }
+    if (
+      (event.metaKey || event.ctrlKey) && // mac: cmd, windows: ctrl
+      event.key === "Enter"
+    ) {
+      event.preventDefault();
+      handleUpdate();
     }
   };
 
@@ -77,10 +84,12 @@ export function CheckDescription({ value, onChange }: CheckDescriptionProps) {
 
   return (
     <Text
+      height="100%"
       overflow="auto"
       fontSize="11pt"
       onClick={handleEdit}
-      whiteSpace="pre"
+      whiteSpace="pre-wrap"
+      wordBreak="break-word"
       color={!value ? "lightgray" : "inherit"}
     >
       {!value ? "Add description here" : value}

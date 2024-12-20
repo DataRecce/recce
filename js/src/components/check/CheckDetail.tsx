@@ -216,13 +216,8 @@ export const CheckDetail = ({ checkId }: CheckDetailProps) => {
       sizes={[30, 70]}
       style={{ height: "100%", width: "100%", maxHeight: "100%" }}
     >
-      <Box
-        style={{ contain: "strict" }}
-        display="flex"
-        flexDirection="column"
-        overflow="auto"
-      >
-        <Flex p="0px 16px" alignItems="center">
+      <Box style={{ contain: "strict" }} display="flex" flexDirection="column">
+        <Flex p="0px 16px" alignItems="center" h="40px">
           <CheckBreadcrumb
             name={check?.name || ""}
             setName={(name) => {
