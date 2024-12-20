@@ -210,7 +210,7 @@ class QueryDiffTask(Task, QueryMixin, ValueDiffMixin):
 
     @staticmethod
     def _select_single_model(model_name):
-        return f'select * from {{ ref("{model_name}") }}'
+        return f'select * from {{{{ ref("{model_name}") }}}}'
 
     def execute_dbt(self):
         from recce.adapter.dbt_adapter import DbtAdapter
