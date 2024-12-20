@@ -26,6 +26,7 @@ import { RunStatusAndDate } from "./RunStatusAndDate";
 
 interface RunPageProps {
   onClose?: () => void;
+  disableAddToChecklist?: boolean;
 }
 
 const _ParamView = (data: { type: string; params: any }) => {
@@ -54,9 +55,11 @@ const _ParamView = (data: { type: string; params: any }) => {
 export const PrivateLoadableRunView = ({
   runId,
   onClose,
+  disableAddToChecklist,
 }: {
   runId?: string;
   onClose?: () => void;
+  disableAddToChecklist?: boolean;
 }) => {
   const { runAction } = useRecceActionContext();
   const { error, run, onCancel, isRunning } = useRun(runId);
@@ -100,6 +103,36 @@ export const PrivateLoadableRunView = ({
   const { ref, onCopyToClipboard, onMouseEnter, onMouseLeave } =
     useCopyToClipboardButton();
 
+  const AddToCheckButton = function () {
+    if (disableAddToChecklist) {
+      return <></>;
+    }
+    if (run?.check_id) {
+      return (
+        <Button
+          leftIcon={<CheckIcon />}
+          isDisabled={!runId || !run?.result || !!error}
+          size="sm"
+          colorScheme="blue"
+          onClick={handleGoToCheck}
+        >
+          Go to Check
+        </Button>
+      );
+    }
+    return (
+      <Button
+        leftIcon={<CheckIcon />}
+        isDisabled={!runId || !run?.result || !!error}
+        size="sm"
+        colorScheme="blue"
+        onClick={handleAddToChecklist}
+      >
+        Add to Checklist
+      </Button>
+    );
+  };
+
   return (
     <Flex direction="column">
       <Tabs
@@ -138,7 +171,7 @@ export const PrivateLoadableRunView = ({
               Copy to Clipboard
             </Button>
 
-            {run?.check_id ? (
+            {/* {run?.check_id ? (
               <Button
                 leftIcon={<CheckIcon />}
                 isDisabled={!runId || !run?.result || !!error}
@@ -158,7 +191,8 @@ export const PrivateLoadableRunView = ({
               >
                 Add to Checklist
               </Button>
-            )}
+            )} */}
+            <AddToCheckButton />
 
             <CloseButton
               onClick={() => {
@@ -204,8 +238,17 @@ export const PrivateLoadableRunView = ({
   );
 };
 
-export const RunResultPane = ({ onClose }: RunPageProps) => {
+export const RunResultPane = ({
+  onClose,
+  disableAddToChecklist,
+}: RunPageProps) => {
   const { runId } = useRecceActionContext();
 
-  return <PrivateLoadableRunView runId={runId} onClose={onClose} />;
+  return (
+    <PrivateLoadableRunView
+      runId={runId}
+      onClose={onClose}
+      disableAddToChecklist={disableAddToChecklist}
+    />
+  );
 };
