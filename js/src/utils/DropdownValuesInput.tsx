@@ -1,5 +1,6 @@
-import React, { useState, useRef } from "react";
+import React, { useState, useRef, useEffect } from "react";
 import {
+  Box,
   Button,
   Input,
   InputGroup,
@@ -58,6 +59,7 @@ export const DropdownValuesInput = (props: DropdownValuesInputProps) => {
     setValues([]);
     onValuesChange([]);
   };
+
   if (isDisabled) {
     return (
       <Tooltip label={DisableTooltipMessages.audit_helper}>
@@ -68,18 +70,24 @@ export const DropdownValuesInput = (props: DropdownValuesInputProps) => {
 
   return (
     <InputGroup size={props.size} width={props.width}>
-      <Menu isLazy closeOnSelect={false}>
+      <Menu
+        isLazy
+        closeOnSelect={false}
+        onOpen={() => inputRef?.current?.focus()}
+      >
         <MenuButton width={"100%"}>
           <Input
             placeholder={props.placeholder}
             size={props.size}
             borderRadius={"4px"}
             value={showNumberOfValuesSelected(values)}
+            onChange={() => {}} // Prevent input change
+            backgroundColor={"white"}
           />
         </MenuButton>
         <Portal>
           <MenuList
-            zIndex={"dropdown"}
+            zIndex={"popover"}
             fontSize={props.size}
             width={props.width}
           >
