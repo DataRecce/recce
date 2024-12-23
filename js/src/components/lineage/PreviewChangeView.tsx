@@ -240,7 +240,7 @@ export function PreviewChangeView({
             <Flex direction="column" height="100%" m={0} p={0}>
               <PreviewChangeTopBar
                 current={current}
-                primaryKeys={primaryKeys}
+                primaryKeys={primaryKeys ?? []}
                 setPrimaryKeys={setPrimaryKeys}
                 onRunResultOpen={onRunResultOpen}
                 runQuery={runQuery}
