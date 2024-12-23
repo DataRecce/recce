@@ -26,7 +26,7 @@ import { QueryParams, submitQueryDiff } from "@/lib/api/adhocQuery";
 import { SubmitOptions, waitRun } from "@/lib/api/runs";
 import { useRecceActionContext } from "@/lib/hooks/RecceActionContext";
 import { useMutation } from "@tanstack/react-query";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { QueryForm } from "../query/QueryForm";
 import { AiOutlineExperiment } from "react-icons/ai";
 import { useFeedbackCollectionToast } from "@/lib/hooks/useFeedbackCollectionToast";
@@ -186,6 +186,12 @@ export function PreviewChangeView({
       "https://docs.google.com/forms/d/e/1FAIpQLSd7Lei7Ijwo7MinWaI0K6rzZi_21gV1BKetmiNEX254kDziDA/viewform?usp=header",
     externalLinkText: "Give us feedback",
   });
+
+  useEffect(() => {
+    if (isOpen) {
+      setModifiedCode(current?.raw_code || "");
+    }
+  }, [isOpen, current]);
 
   return (
     <Modal
