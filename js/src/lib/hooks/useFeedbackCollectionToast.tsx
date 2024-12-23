@@ -32,7 +32,7 @@ function ReactionFeedback({
       <IconButton
         aria-label="thumbs up"
         variant={"ghost"}
-        icon={<Image src="/imgs/feedback/thumbs-up.png" />}
+        icon={<Image src="/imgs/feedback/thumbs-up.png" alt="like" />}
         width={"32px"}
         height={"32px"}
         onClick={onLike}
@@ -40,7 +40,7 @@ function ReactionFeedback({
       <IconButton
         aria-label="thumbs down"
         variant={"ghost"}
-        icon={<Image src="/imgs/feedback/thumbs-down.png" />}
+        icon={<Image src="/imgs/feedback/thumbs-down.png" alt="dislike" />}
         width={"32px"}
         height={"32px"}
         onClick={onDislike}
