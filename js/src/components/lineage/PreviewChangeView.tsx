@@ -165,7 +165,7 @@ export function PreviewChangeView({
   const { mutate: runQuery, isPending } = useMutation({
     mutationFn: queryFn,
   });
-  const { feedbackToast } = useFeedbackCollectionToast({
+  const { feedbackToast, closeToast } = useFeedbackCollectionToast({
     feedbackId: localStorageKeys.previewChangeFeedbackID,
     description: "Enjoy preview change?",
     onFeedbackSubmit: (feedback: string) => {
@@ -195,6 +195,7 @@ export function PreviewChangeView({
         onClose();
         onRunResultClose();
         clearRunResult();
+        closeToast();
       }}
     >
       {/* <ModalOverlay /> */}
