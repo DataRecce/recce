@@ -72,6 +72,7 @@ class QueryDiffParams(BaseModel):
     sql_template: str
     base_sql_template: Optional[str] = None
     primary_keys: Optional[List[str]] = None
+    current_model: Optional[str] = None
 
 
 class QueryTask(Task, QueryMixin):
@@ -136,11 +137,15 @@ class QueryDiffTask(Task, QueryMixin, ValueDiffMixin):
         self.connection = None
         self.legacy_surrogate_key = True
 
-    def _query_diff(self, dbt_adapter, sql_template: str, base_sql_template: Optional[str] = None):
+    def _query_diff(self, dbt_adapter, sql_template: str, base_sql_template: Optional[str] = None,
+                    preview_change: bool = False):
         limit = QUERY_LIMIT
 
         self.connection = dbt_adapter.get_thread_connection()
-        base, base_more = self.execute_sql_with_limit(base_sql_template or sql_template, base=True, limit=limit)
+        if preview_change:
+            base, base_more = self.execute_sql_with_limit(base_sql_template, base=False, limit=limit)
+        else:
+            base, base_more = self.execute_sql_with_limit(base_sql_template or sql_template, base=True, limit=limit)
         self.check_cancel()
 
         current, current_more = self.execute_sql_with_limit(sql_template, base=False, limit=limit)
@@ -152,7 +157,7 @@ class QueryDiffTask(Task, QueryMixin, ValueDiffMixin):
         )
 
     def _query_diff_join(self, dbt_adapter, sql_template: str, primary_keys: List[str],
-                         base_sql_template: Optional[str] = None):
+                         base_sql_template: Optional[str] = None, preview_change: bool = False):
 
         query_template = r"""
             {% set a_query %}
@@ -183,7 +188,10 @@ class QueryDiffTask(Task, QueryMixin, ValueDiffMixin):
             new_primary_key = 'primary_key'
         query_template = query_template.replace('__PRIMARY_KEY__', new_primary_key)
 
-        base_query = dbt_adapter.generate_sql(base_sql_template or sql_template, base=True)
+        if preview_change:
+            base_query = dbt_adapter.generate_sql(base_sql_template, base=False)
+        else:
+            base_query = dbt_adapter.generate_sql(base_sql_template or sql_template, base=True)
         current_query = dbt_adapter.generate_sql(sql_template, base=False)
 
         sql = dbt_adapter.generate_sql(query_template, context=dict(
@@ -200,20 +208,29 @@ class QueryDiffTask(Task, QueryMixin, ValueDiffMixin):
             diff=DataFrame.from_agate(table)
         )
 
+    @staticmethod
+    def _select_single_model(model_name):
+        return f'select * from {{{{ ref("{model_name}") }}}}'
+
     def execute_dbt(self):
         from recce.adapter.dbt_adapter import DbtAdapter
         dbt_adapter: DbtAdapter = default_context().adapter
 
         with dbt_adapter.connection_named("query"):
+            preview_change = False
             sql_template = self.params.sql_template
             primary_keys = self.params.primary_keys
             base_sql_template = self.params.base_sql_template
+            if self.params.current_model:
+                base_sql_template = self._select_single_model(self.params.current_model)
+                preview_change = True
 
             if primary_keys:
                 return self._query_diff_join(dbt_adapter, sql_template, primary_keys,
-                                             base_sql_template=base_sql_template)
+                                             base_sql_template=base_sql_template, preview_change=preview_change)
 
-            return self._query_diff(dbt_adapter, sql_template, base_sql_template=base_sql_template)
+            return self._query_diff(dbt_adapter, sql_template, base_sql_template=base_sql_template,
+                                    preview_change=preview_change)
 
     def _sqlmesh_query_diff(self, sql, base_sql=None):
         from ..adapter.sqlmesh_adapter import SqlmeshAdapter
