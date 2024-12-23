@@ -84,7 +84,6 @@ export function useFeedbackCollectionToast(options: {
       id: feedbackId,
       position: "bottom-right",
       duration: null,
-      isClosable: true,
       render: () => (
         <Alert
           status="success"
@@ -120,5 +119,6 @@ export function useFeedbackCollectionToast(options: {
 
   return {
     feedbackToast: feedBackCollectionToast,
+    closeToast: () => toast.closeAll(),
   };
 }
