@@ -93,7 +93,7 @@ const registry: { [key: string]: RegistryEntry<any, any> } = {
   preview_change: {
     title: "Preview Change",
     icon: TbEyeEdit,
-    RunResultView: QueryResultView,
+    RunResultView: QueryDiffResultView,
   },
 };
 
