@@ -6,6 +6,8 @@ import {
   Image,
   Flex,
   IconButton,
+  HStack,
+  CloseButton,
 } from "@chakra-ui/react";
 
 function ReactionFeedback({
@@ -84,7 +86,7 @@ export function useFeedbackCollectionToast(options: {
       id: feedbackId,
       position: "bottom-right",
       duration: null,
-      render: () => (
+      render: ({ id, onClose }) => (
         <Alert
           status="success"
           variant="subtle"
@@ -96,21 +98,24 @@ export function useFeedbackCollectionToast(options: {
           opacity={1}
         >
           <AlertDescription fontSize="md">
-            <ReactionFeedback
-              description={description}
-              onLike={() => {
-                onFeedbackSubmit("like");
-                toast.closeAll();
-                localStorage.setItem(feedbackId, "true");
-              }}
-              onDislike={() => {
-                onFeedbackSubmit("dislike");
-                toast.closeAll();
-                localStorage.setItem(feedbackId, "true");
-              }}
-              externalLink={externalLink}
-              externalLinkText={externalLinkText}
-            />
+            <HStack>
+              <ReactionFeedback
+                description={description}
+                onLike={() => {
+                  onFeedbackSubmit("like");
+                  toast.closeAll();
+                  localStorage.setItem(feedbackId, "true");
+                }}
+                onDislike={() => {
+                  onFeedbackSubmit("dislike");
+                  toast.closeAll();
+                  localStorage.setItem(feedbackId, "true");
+                }}
+                externalLink={externalLink}
+                externalLinkText={externalLinkText}
+              />
+              <CloseButton onClick={onClose} />
+            </HStack>
           </AlertDescription>
         </Alert>
       ),
