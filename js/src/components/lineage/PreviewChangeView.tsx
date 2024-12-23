@@ -25,9 +25,10 @@ import { QueryParams, submitQueryDiff } from "@/lib/api/adhocQuery";
 import { SubmitOptions, waitRun } from "@/lib/api/runs";
 import { useRecceActionContext } from "@/lib/hooks/RecceActionContext";
 import { useMutation } from "@tanstack/react-query";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { QueryForm } from "../query/QueryForm";
 import { AiOutlineExperiment } from "react-icons/ai";
+import { useFeedbackCollectionToast } from "@/lib/hooks/useFeedbackCollectionToast";
 
 interface PreviewChangeViewProps {
   isOpen: boolean;
@@ -51,6 +52,11 @@ function PreviewChangeTopBar({
   runQuery: () => void;
   isPending: boolean;
 }) {
+  const { feedbackToast } = useFeedbackCollectionToast(
+    "PreviewChangeView",
+    "Preview Change",
+    "Thank you for trying out the preview change feature. Is it helpful?"
+  );
   return (
     <Flex
       justifyContent="right"
@@ -84,6 +90,7 @@ function PreviewChangeTopBar({
           onClick={() => {
             onRunResultOpen();
             runQuery();
+            setTimeout(() => feedbackToast(), 3000);
           }}
           colorScheme="blue"
           isLoading={isPending}
