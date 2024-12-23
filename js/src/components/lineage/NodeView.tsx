@@ -156,7 +156,7 @@ export function NodeView({ node, onCloseNode }: NodeViewProps) {
                   }
                   onPreviewChangeOpen();
                   onPreviewChangeOpen();
-                  trackPreviewChange({ action: "explore" });
+                  trackPreviewChange({ action: "explore", node: node.name });
                 }}
               >
                 Preview Change (Experiment)

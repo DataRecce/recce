@@ -93,7 +93,7 @@ function PreviewChangeTopBar({
             onRunResultOpen();
             runQuery();
             setTimeout(() => feedbackToast(), 3000);
-            trackPreviewChange({ action: "run" });
+            trackPreviewChange({ action: "run", node: current?.name });
           }}
           colorScheme="blue"
           isLoading={isPending}
