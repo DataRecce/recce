@@ -146,7 +146,15 @@ export function NodeView({ node, onCloseNode }: NodeViewProps) {
               <MenuItem
                 fontSize="14px"
                 icon={<Icon as={findByRunType("preview_change")?.icon} />}
-                onClick={onPreviewChangeOpen}
+                onClick={() => {
+                  if (isActionAvailable("query_diff_with_primary_key")) {
+                    // Only set primary key if the action is available
+                    setPrimaryKeys(
+                      primaryKey !== undefined ? [primaryKey] : undefined
+                    );
+                  }
+                  onPreviewChangeOpen();
+                }}
               >
                 Preview Change (Experiment)
               </MenuItem>

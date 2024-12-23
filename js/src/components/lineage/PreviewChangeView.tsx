@@ -16,6 +16,7 @@ import {
   Heading,
   Badge,
   Icon,
+  IconButton,
 } from "@chakra-ui/react";
 import { SqlPreview } from "../schema/SqlDiffView";
 import { NodeData } from "@/lib/api/info";
@@ -29,6 +30,9 @@ import { useEffect, useState } from "react";
 import { QueryForm } from "../query/QueryForm";
 import { AiOutlineExperiment } from "react-icons/ai";
 import { useFeedbackCollectionToast } from "@/lib/hooks/useFeedbackCollectionToast";
+import { VscFeedback } from "react-icons/vsc";
+import { localStorageKeys } from "@/lib/api/localStorageKeys";
+import { useRecceQueryContext } from "@/lib/hooks/RecceQueryContext";
 
 interface PreviewChangeViewProps {
   isOpen: boolean;
@@ -44,6 +48,7 @@ function PreviewChangeTopBar({
   onRunResultOpen,
   runQuery,
   isPending,
+  feedbackToast,
 }: {
   current?: NodeData;
   primaryKeys: string[];
@@ -51,12 +56,8 @@ function PreviewChangeTopBar({
   onRunResultOpen: () => void;
   runQuery: () => void;
   isPending: boolean;
+  feedbackToast: () => void;
 }) {
-  const { feedbackToast } = useFeedbackCollectionToast(
-    "PreviewChangeView",
-    "Preview Change",
-    "Thank you for trying out the preview change feature. Is it helpful?"
-  );
   return (
     <Flex
       justifyContent="right"
@@ -141,8 +142,8 @@ export function PreviewChangeView({
   const [modifiedCode, setModifiedCode] = useState<string>(
     current?.raw_code || ""
   );
-  const [primaryKeys, setPrimaryKeys] = useState<string[]>([]);
   const { showRunId, clearRunResult } = useRecceActionContext();
+  const { primaryKeys, setPrimaryKeys } = useRecceQueryContext();
 
   const queryFn = async () => {
     const sqlTemplate = modifiedCode;
@@ -163,6 +164,27 @@ export function PreviewChangeView({
   };
   const { mutate: runQuery, isPending } = useMutation({
     mutationFn: queryFn,
+  });
+  const { feedbackToast } = useFeedbackCollectionToast({
+    feedbackId: localStorageKeys.previewChangeFeedbackID,
+    description: "Enjoy preview change?",
+    onFeedbackSubmit: (feedback: string) => {
+      switch (feedback) {
+        case "like":
+          console.log("Like");
+          // TODO: track feedback result
+          break;
+        case "dislike":
+          console.log("Dislike");
+          // TODO: track feedback result
+          break;
+        default:
+          console.log("Not support feedback type");
+      }
+    },
+    externalLink:
+      "https://docs.google.com/forms/d/e/1FAIpQLSd7Lei7Ijwo7MinWaI0K6rzZi_21gV1BKetmiNEX254kDziDA/viewform?usp=header",
+    externalLinkText: "Give us feedback",
   });
 
   return (
@@ -223,6 +245,7 @@ export function PreviewChangeView({
                 onRunResultOpen={onRunResultOpen}
                 runQuery={runQuery}
                 isPending={isPending}
+                feedbackToast={feedbackToast}
               />
               <PreviewChangeEditorLabels height="32pxs" flex="0 0 auto" />
               <SqlPreview current={current} onChange={setModifiedCode} />
@@ -234,6 +257,18 @@ export function PreviewChangeView({
             )}
           </VSplit>
         </ModalBody>
+        {/* Fixed position button */}
+        <Box position="fixed" bottom="4" right="4" opacity={0.5}>
+          <Tooltip label="Give us feedback">
+            <IconButton
+              aria-label="feedback"
+              icon={<VscFeedback />}
+              variant={"ghost"}
+              size={"md"}
+              onClick={() => feedbackToast(true)}
+            />
+          </Tooltip>
+        </Box>
       </ModalContent>
     </Modal>
   );

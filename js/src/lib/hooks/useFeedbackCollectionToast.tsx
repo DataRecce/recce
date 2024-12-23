@@ -3,88 +3,120 @@ import {
   Alert,
   AlertTitle,
   AlertDescription,
+  Link,
+  Image,
   Flex,
   IconButton,
 } from "@chakra-ui/react";
-import { AiFillDislike, AiFillLike } from "react-icons/ai";
-import { localStorageKeys } from "../api/localStorageKeys";
 
-enum FeedbackType {
-  reaction = "reaction",
-  score = "score",
+function ReactionFeedback({
+  description,
+  onLike,
+  onDislike,
+  externalLink,
+  externalLinkText,
+}: {
+  description: string;
+  onLike: () => void;
+  onDislike: () => void;
+  externalLink?: string;
+  externalLinkText?: string;
+}) {
+  return (
+    <Flex
+      gap={4}
+      justifyContent="center"
+      alignContent={"center"}
+      alignItems={"center"}
+    >
+      {description}
+      <IconButton
+        aria-label="thumbs up"
+        variant={"ghost"}
+        icon={<Image src="/imgs/feedback/thumbs-up.png" />}
+        width={"32px"}
+        height={"32px"}
+        onClick={onLike}
+      />
+      <IconButton
+        aria-label="thumbs down"
+        variant={"ghost"}
+        icon={<Image src="/imgs/feedback/thumbs-down.png" />}
+        width={"32px"}
+        height={"32px"}
+        onClick={onDislike}
+      />
+      {externalLink && externalLinkText && (
+        <Link href={externalLink} isExternal textDecoration="underline">
+          {externalLinkText}
+        </Link>
+      )}
+    </Flex>
+  );
 }
 
-export function useFeedbackCollectionToast(
-  feedbackId: string,
-  feedbackName: string,
-  description: string,
-  type: FeedbackType = FeedbackType.reaction
-) {
+export function useFeedbackCollectionToast(options: {
+  feedbackId: string;
+  description: string;
+  onFeedbackSubmit: (feedback: string) => void;
+  externalLink?: string;
+  externalLinkText?: string;
+}) {
   const toast = useToast();
+  const {
+    feedbackId,
+    description,
+    onFeedbackSubmit,
+    externalLink,
+    externalLinkText,
+  } = options;
 
-  function feedBackCollectionToast() {
+  function feedBackCollectionToast(skipBypassFeedback: boolean = false) {
+    const isSkipFeedback = localStorage.getItem(feedbackId);
     if (toast.isActive(feedbackId)) {
       // Don't show the toast again if it's already active
       return;
     }
-
-    const isSkipFeedback = localStorage.getItem(
-      localStorageKeys.bypassPreviewChangeFeedback
-    );
-
-    if (isSkipFeedback !== "true") {
-      toast({
-        id: feedbackId,
-        position: "bottom-right",
-        duration: null,
-        isClosable: true,
-        render: () => (
-          <Alert
-            status="success"
-            variant="subtle"
-            flexDirection="column"
-            alignItems="center"
-            justifyContent="center"
-            textAlign="center"
-            height="200px"
-            zIndex={"toast"}
-            borderRadius={4}
-            opacity={1}
-          >
-            <AlertTitle mt={4} mb={1} fontSize="lg">
-              How was your experience?
-            </AlertTitle>
-            <AlertDescription maxWidth="sm">{description}</AlertDescription>
-            <Flex gap={16} mt={4}>
-              <IconButton
-                aria-label="thumbs up"
-                icon={<AiFillLike />}
-                onClick={() => {
-                  // sendFeedback("like");
-                  toast.closeAll();
-                  localStorage.setItem(
-                    localStorageKeys.bypassPreviewChangeFeedback,
-                    "true"
-                  );
-                }}
-              />
-              <IconButton
-                aria-label="thumbs down"
-                icon={<AiFillDislike />}
-                onClick={() => {
-                  // sendFeedback("dislike");
-                  toast.closeAll();
-                  localStorage.setItem(
-                    localStorageKeys.bypassPreviewChangeFeedback,
-                    "true"
-                  );
-                }}
-              />
-            </Flex>
-          </Alert>
-        ),
-      });
+    if (isSkipFeedback === "true" && skipBypassFeedback === false) {
+      return;
     }
+
+    toast({
+      id: feedbackId,
+      position: "bottom-right",
+      duration: null,
+      isClosable: true,
+      render: () => (
+        <Alert
+          status="success"
+          variant="subtle"
+          zIndex={"toast"}
+          borderColor={"gray.200"}
+          borderWidth={3}
+          borderRadius={"md"}
+          backgroundColor={"white"}
+          opacity={1}
+        >
+          <AlertDescription fontSize="md">
+            <ReactionFeedback
+              description={description}
+              onLike={() => {
+                onFeedbackSubmit("like");
+                toast.closeAll();
+                localStorage.setItem(feedbackId, "true");
+              }}
+              onDislike={() => {
+                onFeedbackSubmit("dislike");
+                toast.closeAll();
+                localStorage.setItem(feedbackId, "true");
+              }}
+              externalLink={externalLink}
+              externalLinkText={externalLinkText}
+            />
+          </AlertDescription>
+        </Alert>
+      ),
+    });
   }
 
   return {
