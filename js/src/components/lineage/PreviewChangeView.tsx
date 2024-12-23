@@ -33,7 +33,10 @@ import { useFeedbackCollectionToast } from "@/lib/hooks/useFeedbackCollectionToa
 import { VscFeedback } from "react-icons/vsc";
 import { localStorageKeys } from "@/lib/api/localStorageKeys";
 import { useRecceQueryContext } from "@/lib/hooks/RecceQueryContext";
-import { trackPreviewChange } from "@/lib/api/track";
+import {
+  trackPreviewChange,
+  trackPreviewChangeFeedback,
+} from "@/lib/api/track";
 
 interface PreviewChangeViewProps {
   isOpen: boolean;
@@ -150,7 +153,6 @@ export function PreviewChangeView({
   const queryFn = async () => {
     const sqlTemplate = modifiedCode;
     const runFn = submitQueryDiff;
-    console.log(primaryKeys);
     const params: QueryParams = {
       current_model: current?.name || "",
       primary_keys: primaryKeys,
@@ -173,12 +175,10 @@ export function PreviewChangeView({
     onFeedbackSubmit: (feedback: string) => {
       switch (feedback) {
         case "like":
-          console.log("Like");
-          // TODO: track feedback result
+          trackPreviewChangeFeedback({ feedback: "like" });
           break;
         case "dislike":
-          console.log("Dislike");
-          // TODO: track feedback result
+          trackPreviewChangeFeedback({ feedback: "dislike" });
           break;
         default:
           console.log("Not support feedback type");
