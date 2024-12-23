@@ -41,7 +41,7 @@ export function trackHistoryAction(props: HistoryActionProps) {
 }
 
 interface PreviewChangeProps {
-  action: "explore" | "run";
+  action: "explore" | "run" | "close";
   node?: string;
 }
 

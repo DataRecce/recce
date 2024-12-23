@@ -198,6 +198,7 @@ export function PreviewChangeView({
         onRunResultClose();
         clearRunResult();
         closeToast();
+        trackPreviewChange({ action: "close" });
       }}
     >
       {/* <ModalOverlay /> */}
