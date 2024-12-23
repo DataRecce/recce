@@ -25,7 +25,7 @@ import { QueryParams, submitQueryDiff } from "@/lib/api/adhocQuery";
 import { SubmitOptions, waitRun } from "@/lib/api/runs";
 import { useRecceActionContext } from "@/lib/hooks/RecceActionContext";
 import { useMutation } from "@tanstack/react-query";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { QueryForm } from "../query/QueryForm";
 import { AiOutlineExperiment } from "react-icons/ai";
 
@@ -157,6 +157,12 @@ export function PreviewChangeView({
   const { mutate: runQuery, isPending } = useMutation({
     mutationFn: queryFn,
   });
+
+  useEffect(() => {
+    if (isOpen) {
+      setModifiedCode(current?.raw_code || "");
+    }
+  }, [isOpen, current]);
 
   return (
     <Modal
