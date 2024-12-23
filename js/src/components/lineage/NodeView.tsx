@@ -155,7 +155,6 @@ export function NodeView({ node, onCloseNode }: NodeViewProps) {
                     );
                   }
                   onPreviewChangeOpen();
-                  onPreviewChangeOpen();
                   trackPreviewChange({ action: "explore", node: node.name });
                 }}
               >
