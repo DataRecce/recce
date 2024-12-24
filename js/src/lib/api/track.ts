@@ -43,6 +43,7 @@ export function trackHistoryAction(props: HistoryActionProps) {
 interface PreviewChangeProps {
   action: "explore" | "run" | "close";
   node?: string;
+  status?: "success" | "failure";
 }
 
 export function trackPreviewChange(props: PreviewChangeProps) {
@@ -50,7 +51,8 @@ export function trackPreviewChange(props: PreviewChangeProps) {
 }
 
 interface PreviewChangeFeedbackProps {
-  feedback: "like" | "dislike";
+  feedback: "like" | "dislike" | "form";
+  node?: string;
 }
 
 export function trackPreviewChangeFeedback(props: PreviewChangeFeedbackProps) {

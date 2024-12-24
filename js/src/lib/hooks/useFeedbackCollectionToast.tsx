@@ -14,12 +14,14 @@ function ReactionFeedback({
   description,
   onLike,
   onDislike,
+  onClickLink,
   externalLink,
   externalLinkText,
 }: {
   description: string;
   onLike: () => void;
   onDislike: () => void;
+  onClickLink: () => void;
   externalLink?: string;
   externalLinkText?: string;
 }) {
@@ -48,7 +50,12 @@ function ReactionFeedback({
         onClick={onDislike}
       />
       {externalLink && externalLinkText && (
-        <Link href={externalLink} isExternal textDecoration="underline">
+        <Link
+          href={externalLink}
+          isExternal
+          textDecoration="underline"
+          onClick={onClickLink}
+        >
           {externalLinkText}
         </Link>
       )}
@@ -113,6 +120,9 @@ export function useFeedbackCollectionToast(options: {
                 }}
                 externalLink={externalLink}
                 externalLinkText={externalLinkText}
+                onClickLink={() => {
+                  onFeedbackSubmit("link");
+                }}
               />
               <CloseButton onClick={onClose} />
             </HStack>

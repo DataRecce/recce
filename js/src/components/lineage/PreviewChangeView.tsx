@@ -96,7 +96,6 @@ function PreviewChangeTopBar({
             onRunResultOpen();
             runQuery();
             setTimeout(() => feedbackToast(), 3000);
-            trackPreviewChange({ action: "run", node: current?.name });
           }}
           colorScheme="blue"
           isLoading={isPending}
@@ -168,17 +167,39 @@ export function PreviewChangeView({
   };
   const { mutate: runQuery, isPending } = useMutation({
     mutationFn: queryFn,
+    onSuccess(data, variables) {
+      if (data.error) {
+        trackPreviewChange({
+          action: "run",
+          node: current?.name,
+          status: "failure",
+        });
+      } else {
+        trackPreviewChange({
+          action: "run",
+          node: current?.name,
+          status: "success",
+        });
+      }
+    },
   });
   const { feedbackToast, closeToast } = useFeedbackCollectionToast({
     feedbackId: localStorageKeys.previewChangeFeedbackID,
     description: "Enjoy preview change?",
+
     onFeedbackSubmit: (feedback: string) => {
       switch (feedback) {
         case "like":
-          trackPreviewChangeFeedback({ feedback: "like" });
+          trackPreviewChangeFeedback({ feedback: "like", node: current?.name });
           break;
         case "dislike":
-          trackPreviewChangeFeedback({ feedback: "dislike" });
+          trackPreviewChangeFeedback({
+            feedback: "dislike",
+            node: current?.name,
+          });
+          break;
+        case "link":
+          trackPreviewChangeFeedback({ feedback: "form", node: current?.name });
           break;
         default:
           console.log("Not support feedback type");
@@ -198,7 +219,7 @@ export function PreviewChangeView({
         onRunResultClose();
         clearRunResult();
         closeToast();
-        trackPreviewChange({ action: "close" });
+        trackPreviewChange({ action: "close", node: current?.name });
       }}
     >
       {/* <ModalOverlay /> */}
