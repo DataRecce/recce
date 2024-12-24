@@ -132,7 +132,7 @@ export function getHistogramChartData(
 
   return {
     labels: newLabels,
-    datasets: [currentDataset, baseDataset],
+    datasets: [baseDataset, currentDataset],
   };
 }
 
