@@ -46,6 +46,7 @@ import { is } from "date-fns/locale";
 import { run } from "node:test";
 import { DisableTooltipMessages } from "@/constants/tooltipMessage";
 import { PreviewChangeView } from "./PreviewChangeView";
+import { trackPreviewChange } from "@/lib/api/track";
 
 interface NodeViewProps {
   node: LineageGraphNode;
@@ -154,6 +155,7 @@ export function NodeView({ node, onCloseNode }: NodeViewProps) {
                     );
                   }
                   onPreviewChangeOpen();
+                  trackPreviewChange({ action: "explore", node: node.name });
                 }}
               >
                 Preview Change (Experiment)

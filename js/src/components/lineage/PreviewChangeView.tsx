@@ -33,6 +33,10 @@ import { useFeedbackCollectionToast } from "@/lib/hooks/useFeedbackCollectionToa
 import { VscFeedback } from "react-icons/vsc";
 import { localStorageKeys } from "@/lib/api/localStorageKeys";
 import { useRecceQueryContext } from "@/lib/hooks/RecceQueryContext";
+import {
+  trackPreviewChange,
+  trackPreviewChangeFeedback,
+} from "@/lib/api/track";
 
 interface PreviewChangeViewProps {
   isOpen: boolean;
@@ -148,7 +152,6 @@ export function PreviewChangeView({
   const queryFn = async () => {
     const sqlTemplate = modifiedCode;
     const runFn = submitQueryDiff;
-    console.log(primaryKeys);
     const params: QueryParams = {
       current_model: current?.name || "",
       primary_keys: primaryKeys,
@@ -164,19 +167,39 @@ export function PreviewChangeView({
   };
   const { mutate: runQuery, isPending } = useMutation({
     mutationFn: queryFn,
+    onSuccess(data, variables) {
+      if (data.error) {
+        trackPreviewChange({
+          action: "run",
+          node: current?.name,
+          status: "failure",
+        });
+      } else {
+        trackPreviewChange({
+          action: "run",
+          node: current?.name,
+          status: "success",
+        });
+      }
+    },
   });
   const { feedbackToast, closeToast } = useFeedbackCollectionToast({
     feedbackId: localStorageKeys.previewChangeFeedbackID,
     description: "Enjoy preview change?",
+
     onFeedbackSubmit: (feedback: string) => {
       switch (feedback) {
         case "like":
-          console.log("Like");
-          // TODO: track feedback result
+          trackPreviewChangeFeedback({ feedback: "like", node: current?.name });
           break;
         case "dislike":
-          console.log("Dislike");
-          // TODO: track feedback result
+          trackPreviewChangeFeedback({
+            feedback: "dislike",
+            node: current?.name,
+          });
+          break;
+        case "link":
+          trackPreviewChangeFeedback({ feedback: "form", node: current?.name });
           break;
         default:
           console.log("Not support feedback type");
@@ -202,6 +225,7 @@ export function PreviewChangeView({
         onRunResultClose();
         clearRunResult();
         closeToast();
+        trackPreviewChange({ action: "close", node: current?.name });
       }}
     >
       {/* <ModalOverlay /> */}
