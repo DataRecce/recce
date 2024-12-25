@@ -132,7 +132,7 @@ export function getHistogramChartData(
 
   return {
     labels: newLabels,
-    datasets: [baseDataset, currentDataset],
+    datasets: [currentDataset, baseDataset],
   };
 }
 
@@ -148,6 +148,9 @@ export function getHistogramChartOptions(
     responsive: true,
     maintainAspectRatio: false,
     plugins: {
+      legend: {
+        reverse: true,
+      },
       title: {
         display: true,
         text: title,
