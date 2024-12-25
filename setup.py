@@ -23,7 +23,7 @@ setup(name='recce',
       entry_points={
           'console_scripts': ['recce = recce.cli:cli']
       },
-      python_requires=">=3.8",
+      python_requires=">=3.9",
       packages=find_packages(),
       install_requires=[
           'boto3',
@@ -66,7 +66,6 @@ setup(name='recce',
           "Bug Tracker": "https://github.com/InfuseAI/recce/issues",
       },
       classifiers=[
-          "Programming Language :: Python :: 3.8",
           "Programming Language :: Python :: 3.9",
           "Programming Language :: Python :: 3.10",
           "Programming Language :: Python :: 3.11",
