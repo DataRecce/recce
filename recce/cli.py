@@ -235,7 +235,8 @@ def server(host, port, state_file=None, **kwargs):
     console = Console()
     cloud_options = None
     flag = {
-        'show_onboarding_guide': True
+        'show_onboarding_guide': True,
+        'onboarding_mode': False,
     }
     if is_cloud:
         cloud_options = {
@@ -245,6 +246,23 @@ def server(host, port, state_file=None, **kwargs):
         }
         cloud_onboarding_state = get_recce_cloud_onboarding_state(kwargs.get('cloud_token'))
         flag['show_onboarding_guide'] = False if cloud_onboarding_state == 'completed' else True
+
+    if not os.path.isdir(kwargs.get('target_base_path')):
+        # Mark as onboarding mode if user provides the target-path only
+        flag['onboarding_mode'] = True
+        target_path = kwargs.get('target_path')
+        target_base_path = kwargs.get('target_base_path')
+        # Use the target path as the base path
+        kwargs['target_base_path'] = target_path
+
+        # Show warning message
+        console.rule('Warning', style='orange3')
+        console.print(
+            f'The folder "{target_base_path}" is not provided. '
+            f'Will use the current target folder "{target_path}" as the base.\n')
+        console.print('To setup your base environment, please refer to the following link for more information')
+        console.print('https://datarecce.io/docs/get-started/#prepare-dbt-artifacts')
+        console.print()
 
     state_loader = create_state_loader(is_review, is_cloud, state_file, cloud_options)
 
