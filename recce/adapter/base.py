@@ -10,6 +10,11 @@ logger = logging.getLogger('uvicorn')
 
 
 class BaseAdapter(ABC):
+
+    @classmethod
+    def load(cls, **kwargs):
+        raise NotImplementedError()
+
     @abstractmethod
     def get_lineage(self, base: Optional[bool] = False):
         raise NotImplementedError()

@@ -59,6 +59,31 @@ class TestCommandServer(TestCase):
         mock_state_loader_class.assert_called_once()
         mock_run.assert_called_once()
 
+    @patch.object(RecceContext, 'verify_required_artifacts')
+    @patch('os.path.isdir', side_effect=lambda path: True if path == 'existed_folder' else False)
+    @patch('recce.cli.uvicorn.run')
+    @patch('recce.server.AppState')
+    def test_cmd_server_with_target_folder_only(self,
+                                                mock_app_state, mock_run, mock_isdir, mock_verify_required_artifacts):
+        mock_verify_required_artifacts.return_value = True, None
+        self.runner.invoke(cli_command_server,
+                           [
+                               '--target-path', 'existed_folder',
+                               '--target-base-path', 'non_existed_folder',
+                           ])
+        mock_run.assert_called_once()
+
+        # Onboarding mode should be set to True
+        app_state_call_args = mock_app_state.call_args
+        app_state_flag = app_state_call_args.kwargs['flag']
+        assert 'onboarding_mode' in app_state_flag
+        assert app_state_flag['onboarding_mode'] == True
+
+        # The target_base_path should be set to the same as target_path
+        verify_required_artifacts_args = mock_verify_required_artifacts.call_args
+        assert verify_required_artifacts_args.kwargs['target_path'] == verify_required_artifacts_args.kwargs[
+            'target_base_path']
+
 
 class TestCommandRun(TestCase):
     def setUp(self):
