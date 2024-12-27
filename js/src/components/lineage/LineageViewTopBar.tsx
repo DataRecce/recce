@@ -21,6 +21,9 @@ import {
   Spacer,
   Text,
   Tooltip,
+  VStack,
+  Code,
+  Link,
 } from "@chakra-ui/react";
 
 import { FiPackage } from "react-icons/fi";
@@ -33,6 +36,28 @@ import { findByRunType } from "../run/registry";
 import { ChevronDownIcon } from "@chakra-ui/icons";
 import { trackHistoryAction } from "@/lib/api/track";
 import { DisableTooltipMessages } from "@/constants/tooltipMessage";
+
+const SelectFilterTooltip = () => {
+  return (
+    <VStack align={"start"} spacing={0}>
+      <Text fontSize="10pt" color={"gray.500"} pb={1}>
+        Select nodes by dbt node selector syntax
+      </Text>
+      <Text fontSize="8pt">
+        <Code fontSize={"8pt"}>model_name</Code> Select a node
+      </Text>
+      <Text fontSize="8pt">
+        <Code fontSize={"8pt"}>model_name+</Code> Select downstream nodes
+      </Text>
+      <Text fontSize="8pt">
+        <Code fontSize={"8pt"}>+model_name</Code> Select upstream nodes
+      </Text>
+      <Text fontSize="8pt">
+        <Code fontSize={"8pt"}>model*</Code> Select by wildcard
+      </Text>
+    </VStack>
+  );
+};
 
 const HistoryToggle = () => {
   const { isHistoryOpen, showHistory, closeHistory } = useRecceActionContext();
@@ -215,6 +240,7 @@ const NodeSelectionInput = (props: {
   value: string;
   onChange: (value: string) => void;
   isDisabled?: boolean;
+  tooltipComponent?: React.ReactNode;
 }) => {
   const [inputValue, setInputValue] = useState(props.value);
   const inputRef = useRef(null);
@@ -226,29 +252,38 @@ const NodeSelectionInput = (props: {
   }, [props.value]);
 
   return (
-    <Input
-      ref={inputRef}
-      height="24px"
-      fontSize="10pt"
-      placeholder="with selectors"
-      isDisabled={props.isDisabled}
-      value={inputValue}
-      onChange={(event) => {
-        setInputValue(event.target.value);
-      }}
-      onKeyUp={(event) => {
-        if (event.key === "Enter") {
-          props.onChange(inputValue);
-        } else if (event.key === "Escape") {
-          event.preventDefault();
-          setInputValue(props.value);
-          if (inputRef.current) {
-            (inputRef.current as any).blur();
+    <Tooltip
+      label={props.tooltipComponent}
+      placement="bottom-start"
+      defaultIsOpen={true}
+      color={"black"}
+      backgroundColor={"white"}
+      closeOnClick={false}
+    >
+      <Input
+        ref={inputRef}
+        height="24px"
+        fontSize="10pt"
+        placeholder="with selectors"
+        isDisabled={props.isDisabled}
+        value={inputValue}
+        onChange={(event) => {
+          setInputValue(event.target.value);
+        }}
+        onKeyUp={(event) => {
+          if (event.key === "Enter") {
+            props.onChange(inputValue);
+          } else if (event.key === "Escape") {
+            event.preventDefault();
+            setInputValue(props.value);
+            if (inputRef.current) {
+              (inputRef.current as any).blur();
+            }
           }
-        }
-      }}
-      onBlur={() => setInputValue(props.value)}
-    />
+        }}
+        onBlur={() => setInputValue(props.value)}
+      />
+    </Tooltip>
   );
 };
 
@@ -265,6 +300,7 @@ const SelectFilter = ({ isDisabled }: { isDisabled: boolean }) => {
           select: value ? value : undefined,
         });
       }}
+      tooltipComponent={<SelectFilterTooltip />}
     />
   );
 };
