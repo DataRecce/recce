@@ -148,6 +148,10 @@ def previous_state(state_path: Path, target_path: Path, project_root: Path) -> P
     if dbt_version < 'v1.5.2':
         return PreviousState(state_path, target_path)
     else:
+        from dbt.events.types import WarnStateTargetEqual
+        from dbt_common.events import EventLevel
+
+        WarnStateTargetEqual.level_tag = lambda x: EventLevel.DEBUG
         return PreviousState(state_path, target_path, project_root)
 
 
