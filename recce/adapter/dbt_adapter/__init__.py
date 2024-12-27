@@ -148,11 +148,23 @@ def previous_state(state_path: Path, target_path: Path, project_root: Path) -> P
     if dbt_version < 'v1.5.2':
         return PreviousState(state_path, target_path)
     else:
-        from dbt.events.types import WarnStateTargetEqual
-        from dbt_common.events import EventLevel
+        try:
+            # Overwrite the level_tag method temporarily to avoid the warning message
+            from dbt.events.types import WarnStateTargetEqual, EventLevel
+            original_level_tag_func = WarnStateTargetEqual.level_tag
+            WarnStateTargetEqual.level_tag = lambda x: EventLevel.DEBUG
+        except ImportError:
+            # Skip overwriting the level_tag method if the dbt version not support
+            original_level_tag_func = None
+            pass
 
-        WarnStateTargetEqual.level_tag = lambda x: EventLevel.DEBUG
-        return PreviousState(state_path, target_path, project_root)
+        state = PreviousState(state_path, target_path, project_root)
+
+        if original_level_tag_func is not None:
+            # Restore the original level_tag method
+            WarnStateTargetEqual.level_tag = original_level_tag_func
+
+        return state
 
 
 def default_profiles_dir():
