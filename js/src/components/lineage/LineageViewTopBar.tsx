@@ -255,6 +255,15 @@ const NodeSelectionInput = (props: {
 
   return (
     <Tooltip
+      // Custom tooltip style
+      width={"300px"}
+      padding={2}
+      shadow={"md"}
+      borderWidth={1}
+      rounded={"md"}
+      styleConfig={{
+        zIndex: "dropdown",
+      }}
       label={props.tooltipComponent}
       placement="bottom-start"
       defaultIsOpen={true}
