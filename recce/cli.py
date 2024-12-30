@@ -236,7 +236,7 @@ def server(host, port, state_file=None, **kwargs):
     cloud_options = None
     flag = {
         'show_onboarding_guide': True,
-        'onboarding_mode': False,
+        'single_env_onboarding': False,
     }
     if is_cloud:
         cloud_options = {
@@ -248,8 +248,8 @@ def server(host, port, state_file=None, **kwargs):
         flag['show_onboarding_guide'] = False if cloud_onboarding_state == 'completed' else True
 
     if not os.path.isdir(kwargs.get('target_base_path')):
-        # Mark as onboarding mode if user provides the target-path only
-        flag['onboarding_mode'] = True
+        # Mark as single env onboarding mode if user provides the target-path only
+        flag['single_env_onboarding'] = True
         target_path = kwargs.get('target_path')
         target_base_path = kwargs.get('target_base_path')
         # Use the target path as the base path
