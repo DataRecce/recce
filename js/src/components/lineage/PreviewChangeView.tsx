@@ -37,6 +37,7 @@ import {
   trackPreviewChange,
   trackPreviewChangeFeedback,
 } from "@/lib/api/track";
+import { useGuideToast } from "@/lib/hooks/useGuideToast";
 
 interface PreviewChangeViewProps {
   isOpen: boolean;
@@ -52,7 +53,6 @@ function PreviewChangeTopBar({
   onRunResultOpen,
   runQuery,
   isPending,
-  feedbackToast,
 }: {
   current?: NodeData;
   primaryKeys: string[];
@@ -60,7 +60,6 @@ function PreviewChangeTopBar({
   onRunResultOpen: () => void;
   runQuery: () => void;
   isPending: boolean;
-  feedbackToast: () => void;
 }) {
   return (
     <Flex
@@ -95,7 +94,6 @@ function PreviewChangeTopBar({
           onClick={() => {
             onRunResultOpen();
             runQuery();
-            setTimeout(() => feedbackToast(), 3000);
           }}
           colorScheme="blue"
           isLoading={isPending}
@@ -165,6 +163,7 @@ export function PreviewChangeView({
 
     return await waitRun(run_id);
   };
+
   const { mutate: runQuery, isPending } = useMutation({
     mutationFn: queryFn,
     onSuccess(data, variables) {
@@ -180,9 +179,12 @@ export function PreviewChangeView({
           node: current?.name,
           status: "success",
         });
+        setTimeout(() => feedbackToast(), 1000);
+        setTimeout(() => prepareEnvToast(), 3000);
       }
     },
   });
+
   const { feedbackToast, closeToast } = useFeedbackCollectionToast({
     feedbackId: localStorageKeys.previewChangeFeedbackID,
     description: "Enjoy preview change?",
@@ -210,6 +212,13 @@ export function PreviewChangeView({
     externalLinkText: "Give us feedback",
   });
 
+  const { guideToast: prepareEnvToast, closeGuideToast } = useGuideToast({
+    guideId: localStorageKeys.prepareEnvGuideID,
+    description: "Want to compare data changes with production data?",
+    externalLink: "https://datarecce.io/docs",
+    externalLinkText: "Learn how.",
+  });
+
   useEffect(() => {
     if (isOpen) {
       setModifiedCode(current?.raw_code || "");
@@ -225,6 +234,7 @@ export function PreviewChangeView({
         onRunResultClose();
         clearRunResult();
         closeToast();
+        closeGuideToast();
         trackPreviewChange({ action: "close", node: current?.name });
       }}
     >
@@ -276,7 +286,6 @@ export function PreviewChangeView({
                 onRunResultOpen={onRunResultOpen}
                 runQuery={runQuery}
                 isPending={isPending}
-                feedbackToast={feedbackToast}
               />
               <PreviewChangeEditorLabels height="32pxs" flex="0 0 auto" />
               <SqlPreview current={current} onChange={setModifiedCode} />
@@ -296,7 +305,10 @@ export function PreviewChangeView({
               icon={<VscFeedback />}
               variant={"ghost"}
               size={"md"}
-              onClick={() => feedbackToast(true)}
+              onClick={() => {
+                feedbackToast(true);
+                prepareEnvToast(true);
+              }}
             />
           </Tooltip>
         </Box>
