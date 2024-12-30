@@ -62,26 +62,26 @@ const SingleEnvGuide = ({ isGuideOpen, closeGuide }: GuideProps) => {
   return (
     <Modal isOpen={isGuideOpen} onClose={closeGuide} scrollBehavior={"inside"}>
       <ModalOverlay />
-      <ModalContent maxW="40vw" h="50vh">
-        <ModalHeader>All node in one environment</ModalHeader>
+      <ModalContent maxW="40vw" h="300px">
+        <ModalHeader>All nodes displayed</ModalHeader>
         <ModalCloseButton />
         <Divider />
         <ModalBody>
           <Stack spacing={4}>
             <Text>
-              The lineage shows all nodes since only one environment (target) so
-              no modified node.
+              In a single environment with only a target, no nodes are marked as
+              changed.
             </Text>
             <Flex bg="blue.100" color="blue.700">
               <InfoOutlineIcon mt="10px" ml="5px" />
               <Text margin="5px" paddingX="3px">
-                Want to see modified nodes? Get the target-base prepared.{" "}
+                To see changed nodes, configure a target-base.{" "}
                 <Link
                   textDecor="underline"
                   isExternal
                   href="https://datarecce.io/docs"
                 >
-                  See instruction here.
+                  Learn how.
                 </Link>
               </Text>
             </Flex>
