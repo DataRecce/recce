@@ -36,6 +36,7 @@ import { findByRunType } from "../run/registry";
 import { ChevronDownIcon } from "@chakra-ui/icons";
 import { trackHistoryAction } from "@/lib/api/track";
 import { DisableTooltipMessages } from "@/constants/tooltipMessage";
+import { useRecceServerFlag } from "@/lib/hooks/useRecceServerFlag";
 
 const SelectFilterTooltip = () => {
   return (
@@ -243,6 +244,7 @@ const NodeSelectionInput = (props: {
   tooltipComponent?: React.ReactNode;
 }) => {
   const [inputValue, setInputValue] = useState(props.value);
+  const { data: flags } = useRecceServerFlag();
   const inputRef = useRef(null);
 
   useEffect(() => {
@@ -259,6 +261,7 @@ const NodeSelectionInput = (props: {
       color={"black"}
       backgroundColor={"white"}
       closeOnClick={false}
+      isDisabled={!flags?.single_env_onboarding}
     >
       <Input
         ref={inputRef}
