@@ -2,7 +2,7 @@ import { axiosClient } from "./axiosClient";
 
 export interface RecceServerFlags {
   show_onboarding_guide: boolean;
-  onboarding_mode: boolean;
+  single_env_onboarding: boolean;
 }
 
 export async function getServerFlag(): Promise<RecceServerFlags> {

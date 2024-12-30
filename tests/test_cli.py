@@ -76,8 +76,8 @@ class TestCommandServer(TestCase):
         # Onboarding mode should be set to True
         app_state_call_args = mock_app_state.call_args
         app_state_flag = app_state_call_args.kwargs['flag']
-        assert 'onboarding_mode' in app_state_flag
-        assert app_state_flag['onboarding_mode'] == True
+        assert 'single_env_onboarding' in app_state_flag
+        assert app_state_flag['single_env_onboarding'] is True
 
         # The target_base_path should be set to the same as target_path
         verify_required_artifacts_args = mock_verify_required_artifacts.call_args

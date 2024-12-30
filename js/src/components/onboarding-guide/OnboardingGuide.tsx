@@ -108,7 +108,7 @@ const OnboardingGuide = () => {
   useEffect(() => {
     if (!isLoading && flags) {
       const showOnboardingGuide = flags.show_onboarding_guide;
-      const singleEnvMode = flags.onboarding_mode;
+      const singleEnvMode = flags.single_env_onboarding;
       if (singleEnvMode && showOnboardingGuide) {
         setISSingleEnvGuideOpen(true);
         return;
