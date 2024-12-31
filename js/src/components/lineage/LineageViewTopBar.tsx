@@ -354,6 +354,8 @@ export const LineageViewTopBar = () => {
   const selectNodes = useMemo(() => {
     return nodes.filter((node) => node.data.isSelected);
   }, [nodes]);
+  const { data: flags } = useRecceServerFlag();
+  const isSingleEnvOnboarding = flags?.single_env_onboarding;
 
   const isSingleSelect = selectMode === "single" && selectNodes.length === 1;
   const isMultiSelect = selectMode === "multi" && selectNodes.length >= 1;
@@ -405,95 +407,100 @@ export const LineageViewTopBar = () => {
             </ControlItem>
           </>
         )}
-        <ControlItem label="Explore">
-          <ButtonGroup isAttached variant="outline">
-            <Menu placement="bottom-end">
-              <MenuButton
-                as={Button}
-                size={"xs"}
-                rightIcon={<ChevronDownIcon />}
-              >
-                Actions
-              </MenuButton>
+        {!isSingleEnvOnboarding && (
+          <ControlItem label="Explore">
+            <ButtonGroup isAttached variant="outline">
+              <Menu placement="bottom-end">
+                <MenuButton
+                  as={Button}
+                  size={"xs"}
+                  rightIcon={<ChevronDownIcon />}
+                >
+                  Actions
+                </MenuButton>
 
-              <MenuList>
-                <MenuGroup title="Diff" m="0" p="4px 12px">
-                  <MenuItem
-                    as={Text}
-                    size="sm"
-                    fontSize="10pt"
-                    isDisabled={
-                      !(isNoSelect || isSingleSelect || isMultiSelect)
-                    }
-                    icon={<Icon as={findByRunType("row_count_diff")?.icon} />}
-                    onClick={() => {
-                      lineageViewContext.runRowCountDiff();
-                    }}
-                  >
-                    Row Count Diff
-                  </MenuItem>
-                  <Tooltip
-                    label={
-                      !isActionAvailable("value_diff")
-                        ? DisableTooltipMessages.audit_helper
-                        : null
-                    }
-                    placement="left"
-                  >
+                <MenuList>
+                  <MenuGroup title="Diff" m="0" p="4px 12px">
                     <MenuItem
                       as={Text}
                       size="sm"
                       fontSize="10pt"
                       isDisabled={
-                        !(isNoSelect || isSingleSelect || isMultiSelect) ||
-                        !isActionAvailable("value_diff")
+                        !(isNoSelect || isSingleSelect || isMultiSelect)
                       }
-                      icon={<Icon as={findByRunType("value_diff")?.icon} />}
+                      icon={<Icon as={findByRunType("row_count_diff")?.icon} />}
                       onClick={() => {
-                        lineageViewContext.runValueDiff();
+                        lineageViewContext.runRowCountDiff();
                       }}
                     >
-                      Value Diff
+                      Row Count Diff
                     </MenuItem>
-                  </Tooltip>
-                </MenuGroup>
-                <MenuDivider />
-                <MenuGroup title="Add to Checklist" m="0" px="12px">
-                  <MenuItem
-                    as={Text}
-                    size="sm"
-                    fontSize="10pt"
-                    isDisabled={
-                      !(isNoSelect || (isMultiSelect && selectNodes.length > 1))
-                    }
-                    icon={<Icon as={findByRunType("lineage_diff")?.icon} />}
-                    onClick={() => {
-                      lineageViewContext.addLineageDiffCheck(
-                        lineageViewContext.viewOptions.view_mode
-                      );
-                    }}
-                  >
-                    Lineage Diff
-                  </MenuItem>
-                  <MenuItem
-                    as={Text}
-                    size="sm"
-                    fontSize="10pt"
-                    isDisabled={
-                      !(isNoSelect || isSingleSelect || isMultiSelect)
-                    }
-                    icon={<Icon as={findByRunType("schema_diff")?.icon} />}
-                    onClick={() => {
-                      lineageViewContext.addSchemaDiffCheck();
-                    }}
-                  >
-                    Schema Diff
-                  </MenuItem>
-                </MenuGroup>
-              </MenuList>
-            </Menu>
-          </ButtonGroup>
-        </ControlItem>
+                    <Tooltip
+                      label={
+                        !isActionAvailable("value_diff")
+                          ? DisableTooltipMessages.audit_helper
+                          : null
+                      }
+                      placement="left"
+                    >
+                      <MenuItem
+                        as={Text}
+                        size="sm"
+                        fontSize="10pt"
+                        isDisabled={
+                          !(isNoSelect || isSingleSelect || isMultiSelect) ||
+                          !isActionAvailable("value_diff")
+                        }
+                        icon={<Icon as={findByRunType("value_diff")?.icon} />}
+                        onClick={() => {
+                          lineageViewContext.runValueDiff();
+                        }}
+                      >
+                        Value Diff
+                      </MenuItem>
+                    </Tooltip>
+                  </MenuGroup>
+                  <MenuDivider />
+                  <MenuGroup title="Add to Checklist" m="0" px="12px">
+                    <MenuItem
+                      as={Text}
+                      size="sm"
+                      fontSize="10pt"
+                      isDisabled={
+                        !(
+                          isNoSelect ||
+                          (isMultiSelect && selectNodes.length > 1)
+                        )
+                      }
+                      icon={<Icon as={findByRunType("lineage_diff")?.icon} />}
+                      onClick={() => {
+                        lineageViewContext.addLineageDiffCheck(
+                          lineageViewContext.viewOptions.view_mode
+                        );
+                      }}
+                    >
+                      Lineage Diff
+                    </MenuItem>
+                    <MenuItem
+                      as={Text}
+                      size="sm"
+                      fontSize="10pt"
+                      isDisabled={
+                        !(isNoSelect || isSingleSelect || isMultiSelect)
+                      }
+                      icon={<Icon as={findByRunType("schema_diff")?.icon} />}
+                      onClick={() => {
+                        lineageViewContext.addSchemaDiffCheck();
+                      }}
+                    >
+                      Schema Diff
+                    </MenuItem>
+                  </MenuGroup>
+                </MenuList>
+              </Menu>
+            </ButtonGroup>
+          </ControlItem>
+        )}
       </HStack>
     </HStack>
   );
