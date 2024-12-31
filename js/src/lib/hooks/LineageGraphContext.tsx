@@ -27,6 +27,7 @@ import {
   ModalOverlay,
   useToast,
   Text,
+  useDisclosure,
 } from "@chakra-ui/react";
 import { PUBLIC_API_URL } from "../const";
 import path from "path";
@@ -68,6 +69,7 @@ const defaultLineageGraphsContext: LineageGraphContextType = {
 const LineageGraphContext = createContext(defaultLineageGraphsContext);
 
 type LineageWatcherStatus = "pending" | "connected" | "disconnected";
+type EnvWatcherStatus = undefined | "relaunch";
 
 function useLineageWatcher() {
   const artifactsUpdatedToast = useToast();
@@ -76,12 +78,15 @@ function useLineageWatcher() {
   const ref = useRef<{
     ws: WebSocket | undefined;
     status: LineageWatcherStatus;
+    envStatus: EnvWatcherStatus;
   }>({
     ws: undefined,
     status: "pending",
+    envStatus: undefined,
   });
 
   const [status, setStatus] = useState<LineageWatcherStatus>("pending");
+  const [envStatus, setEnvStatus] = useState<EnvWatcherStatus>(undefined);
   ref.current.status = status;
   const queryClient = useQueryClient();
 
@@ -124,6 +129,8 @@ function useLineageWatcher() {
             isClosable: true,
           });
           invalidateCaches();
+        } else if (data.command === "relaunch") {
+          setEnvStatus("relaunch");
         }
       } catch (err) {
         console.error(err);
@@ -158,6 +165,7 @@ function useLineageWatcher() {
   return {
     connectionStatus: status,
     connect,
+    envStatus: envStatus,
   };
 }
 
@@ -201,7 +209,7 @@ export function LineageGraphContextProvider({ children }: LineageGraphProps) {
   } = queryServerInfo.data || {};
 
   const dbtBase = lineage?.base?.manifest_metadata;
-  const dbtCurrent = lineage?.current?.manifest_metadata;  
+  const dbtCurrent = lineage?.current?.manifest_metadata;
 
   const envInfo: EnvInfo = {
     adapterType,
@@ -214,7 +222,8 @@ export function LineageGraphContextProvider({ children }: LineageGraphProps) {
     sqlmesh,
   };
 
-  const { connectionStatus, connect } = useLineageWatcher();
+  const { connectionStatus, connect, envStatus } = useLineageWatcher();
+  const { onClose } = useDisclosure();
 
   const isActionAvailable = useCallback(
     (name: string) => {
@@ -276,6 +285,21 @@ export function LineageGraphContextProvider({ children }: LineageGraphProps) {
               }}
             >
               Retry
+            </Button>
+          </ModalFooter>
+        </ModalContent>
+      </Modal>
+
+      <Modal isOpen={envStatus === "relaunch"} onClose={onClose} isCentered>
+        <ModalOverlay />
+        <ModalContent>
+          <ModalHeader>Target-base Added</ModalHeader>
+          <ModalBody>
+            <Text>Please restart the Recce server.</Text>
+          </ModalBody>
+          <ModalFooter>
+            <Button colorScheme="blue" onClick={onClose}>
+              Got it!
             </Button>
           </ModalFooter>
         </ModalContent>
