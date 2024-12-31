@@ -53,6 +53,7 @@ import { tooltipTheme } from "@theme/components/Tooltip";
 import { trackInit } from "@/lib/api/track";
 import { Filename } from "@/components/app/Filename";
 import { StateSynchronizer } from "@/components/app/StateSynchronizer";
+import { useRecceServerFlag } from "@/lib/hooks/useRecceServerFlag";
 
 const RouteAlwaysMount = ({
   children,
@@ -206,6 +207,7 @@ interface TabProps {
   name: string;
   href: string;
   badge?: ReactNode;
+  disable?: boolean;
 }
 
 function TabBadge<T, R extends number>({
@@ -251,6 +253,7 @@ function NavBar() {
   const { isDemoSite, reviewMode, fileMode, cloudMode, isLoading } =
     useLineageGraphContext();
   const [location, setLocation] = useLocation();
+  const { data: flag, isLoading: flagLoading } = useRecceServerFlag();
 
   const checklistBadge = (
     <TabBadge<Check[], number>
@@ -264,8 +267,17 @@ function NavBar() {
 
   const tabs: TabProps[] = [
     { name: "Lineage", href: "/lineage" },
-    { name: "Query", href: "/query" },
-    { name: "Checklist", href: "/checks", badge: checklistBadge },
+    {
+      name: "Query",
+      href: "/query",
+      disable: flag?.single_env_onboarding === true,
+    },
+    {
+      name: "Checklist",
+      href: "/checks",
+      badge: checklistBadge,
+      disable: flag?.single_env_onboarding === true,
+    },
   ];
 
   const tabIndex = _.findIndex(tabs, ({ href }) => location.startsWith(href));
@@ -274,13 +286,14 @@ function NavBar() {
     <Tabs index={tabIndex}>
       <TabList>
         <Box flex="1" display="flex">
-          {tabs.map(({ name, href, badge }) => {
+          {tabs.map(({ name, href, badge, disable }) => {
             return (
               <Tab
                 key={name}
                 onClick={() => {
                   setLocation(href);
                 }}
+                isDisabled={disable}
               >
                 {name}
                 {badge}
@@ -288,8 +301,8 @@ function NavBar() {
             );
           })}
         </Box>
-        {!isLoading && !isDemoSite && <Filename />}
-        {!isLoading && (
+        {!isLoading && !flagLoading && !isDemoSite && <Filename />}
+        {!isLoading && !flagLoading && (
           <Flex flex="1" justifyContent="right" alignItems="center" mr="8px">
             {cloudMode && <StateSynchronizer />}
             <StateExporter />
