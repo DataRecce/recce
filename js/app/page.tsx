@@ -253,7 +253,7 @@ function NavBar() {
   const { isDemoSite, reviewMode, fileMode, cloudMode, isLoading } =
     useLineageGraphContext();
   const [location, setLocation] = useLocation();
-  const { data: flag, isLoading: flagLoading } = useRecceServerFlag();
+  const { data: flag, isLoading: isFlagLoading } = useRecceServerFlag();
 
   const checklistBadge = (
     <TabBadge<Check[], number>
@@ -293,7 +293,8 @@ function NavBar() {
                 onClick={() => {
                   setLocation(href);
                 }}
-                isDisabled={disable}
+                isDisabled={isLoading || isFlagLoading || disable}
+                hidden={disable}
               >
                 {name}
                 {badge}
@@ -301,8 +302,8 @@ function NavBar() {
             );
           })}
         </Box>
-        {!isLoading && !flagLoading && !isDemoSite && <Filename />}
-        {!isLoading && !flagLoading && (
+        {!isLoading && !isFlagLoading && !isDemoSite && <Filename />}
+        {!isLoading && !isFlagLoading && (
           <Flex flex="1" justifyContent="right" alignItems="center" mr="8px">
             {cloudMode && <StateSynchronizer />}
             <StateExporter />
