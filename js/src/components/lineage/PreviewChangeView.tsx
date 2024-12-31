@@ -38,6 +38,7 @@ import {
   trackPreviewChangeFeedback,
 } from "@/lib/api/track";
 import { useGuideToast } from "@/lib/hooks/useGuideToast";
+import { useRecceServerFlag } from "@/lib/hooks/useRecceServerFlag";
 
 interface PreviewChangeViewProps {
   isOpen: boolean;
@@ -146,6 +147,7 @@ export function PreviewChangeView({
   );
   const { showRunId, clearRunResult } = useRecceActionContext();
   const { primaryKeys, setPrimaryKeys } = useRecceQueryContext();
+  const { data: flags, isLoading } = useRecceServerFlag();
 
   const queryFn = async () => {
     const sqlTemplate = modifiedCode;
@@ -180,7 +182,11 @@ export function PreviewChangeView({
           status: "success",
         });
         setTimeout(() => feedbackToast(), 1000);
-        setTimeout(() => prepareEnvToast(), 3000);
+        setTimeout(() => {
+          if (!isLoading && flags?.single_env_onboarding) {
+            prepareEnvToast();
+          }
+        }, 2000);
       }
     },
   });
@@ -307,7 +313,6 @@ export function PreviewChangeView({
               size={"md"}
               onClick={() => {
                 feedbackToast(true);
-                prepareEnvToast(true);
               }}
             />
           </Tooltip>

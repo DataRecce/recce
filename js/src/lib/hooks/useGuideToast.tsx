@@ -17,12 +17,7 @@ export function useGuideToast(options: {
   const toast = useToast();
   const { guideId, description, externalLink, externalLinkText } = options;
 
-  function guideToast(skipBypassGuide: boolean = false) {
-    const isSkipGuide = localStorage.getItem(guideId);
-    if (isSkipGuide === "true" && skipBypassGuide === false) {
-      return;
-    }
-
+  function guideToast() {
     if (toast.isActive(guideId)) {
       // Don't show the toast again if it's already active
       return;
@@ -31,7 +26,7 @@ export function useGuideToast(options: {
     toast({
       id: guideId,
       position: "bottom-right",
-      duration: null,
+      duration: 3000,
       description: "some text",
       render: ({ id, onClose }) => (
         <Alert
@@ -54,7 +49,6 @@ export function useGuideToast(options: {
                   href={externalLink}
                   onClick={() => {
                     onClose();
-                    localStorage.setItem(guideId, "true");
                   }}
                 >
                   {externalLinkText}
@@ -63,7 +57,6 @@ export function useGuideToast(options: {
               <CloseButton
                 onClick={() => {
                   onClose();
-                  localStorage.setItem(guideId, "true");
                 }}
               />
             </HStack>

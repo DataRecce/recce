@@ -9,8 +9,6 @@ import {
   HStack,
   CloseButton,
 } from "@chakra-ui/react";
-import { useGuideToast } from "./useGuideToast";
-import { localStorageKeys } from "../api/localStorageKeys";
 
 function ReactionFeedback({
   description,
@@ -73,12 +71,6 @@ export function useFeedbackCollectionToast(options: {
   externalLinkText?: string;
 }) {
   const toast = useToast();
-  const { guideToast: prepareEnvToast } = useGuideToast({
-    guideId: localStorageKeys.prepareEnvGuideID,
-    description: "Want to compare data changes with production data?",
-    externalLink: "https://datarecce.io/docs",
-    externalLinkText: "Learn how.",
-  });
   const {
     feedbackId,
     description,
@@ -119,26 +111,22 @@ export function useFeedbackCollectionToast(options: {
                 onLike={() => {
                   onFeedbackSubmit("like");
                   onClose();
-                  prepareEnvToast();
                   localStorage.setItem(feedbackId, "true");
                 }}
                 onDislike={() => {
                   onFeedbackSubmit("dislike");
                   onClose();
-                  prepareEnvToast();
                   localStorage.setItem(feedbackId, "true");
                 }}
                 externalLink={externalLink}
                 externalLinkText={externalLinkText}
                 onClickLink={() => {
                   onFeedbackSubmit("link");
-                  prepareEnvToast();
                 }}
               />
               <CloseButton
                 onClick={() => {
                   onClose();
-                  prepareEnvToast();
                 }}
               />
             </HStack>
