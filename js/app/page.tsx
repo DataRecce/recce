@@ -302,8 +302,8 @@ function NavBar() {
             );
           })}
         </Box>
-        {!isLoading && !isFlagLoading && !isDemoSite && <Filename />}
-        {!isLoading && !isFlagLoading && (
+        {!isLoading && !isDemoSite && <Filename />}
+        {!isLoading && (
           <Flex flex="1" justifyContent="right" alignItems="center" mr="8px">
             {cloudMode && <StateSynchronizer />}
             <StateExporter />
