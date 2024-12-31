@@ -110,12 +110,12 @@ export function useFeedbackCollectionToast(options: {
                 description={description}
                 onLike={() => {
                   onFeedbackSubmit("like");
-                  toast.closeAll();
+                  onClose();
                   localStorage.setItem(feedbackId, "true");
                 }}
                 onDislike={() => {
                   onFeedbackSubmit("dislike");
-                  toast.closeAll();
+                  onClose();
                   localStorage.setItem(feedbackId, "true");
                 }}
                 externalLink={externalLink}
@@ -124,7 +124,11 @@ export function useFeedbackCollectionToast(options: {
                   onFeedbackSubmit("link");
                 }}
               />
-              <CloseButton onClick={onClose} />
+              <CloseButton
+                onClick={() => {
+                  onClose();
+                }}
+              />
             </HStack>
           </AlertDescription>
         </Alert>
