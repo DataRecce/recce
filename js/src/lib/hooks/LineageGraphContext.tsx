@@ -32,6 +32,8 @@ import {
 import { PUBLIC_API_URL } from "../const";
 import path from "path";
 import { aggregateRuns, RunsAggregated } from "../api/runs";
+import { markRelaunchHintCompleted } from "../api/flag";
+import { useRecceServerFlag } from "./useRecceServerFlag";
 
 interface EnvInfo {
   adapterType?: string;
@@ -223,7 +225,10 @@ export function LineageGraphContextProvider({ children }: LineageGraphProps) {
   };
 
   const { connectionStatus, connect, envStatus } = useLineageWatcher();
+  const { data: flags, isLoading } = useRecceServerFlag();
   const { onClose } = useDisclosure();
+  const [relaunchHintOpen, setRelaunchHintOpen] = useState<boolean>(false);
+  const queryClient = useQueryClient();
 
   const isActionAvailable = useCallback(
     (name: string) => {
@@ -235,6 +240,22 @@ export function LineageGraphContextProvider({ children }: LineageGraphProps) {
     },
     [supportTasks]
   );
+
+  useEffect(() => {
+    if (isLoading) {
+      return;
+    }
+
+    if (
+      envStatus === "relaunch" &&
+      flags?.single_env_onboarding &&
+      flags?.show_relaunch_hint
+    ) {
+      setRelaunchHintOpen(true);
+    } else {
+      setRelaunchHintOpen(false);
+    }
+  }, [flags, envStatus, isLoading]);
 
   return (
     <>
@@ -290,20 +311,37 @@ export function LineageGraphContextProvider({ children }: LineageGraphProps) {
         </ModalContent>
       </Modal>
 
-      <Modal isOpen={envStatus === "relaunch"} onClose={onClose} isCentered>
-        <ModalOverlay />
-        <ModalContent>
-          <ModalHeader>Target-base Added</ModalHeader>
-          <ModalBody>
-            <Text>Please restart the Recce server.</Text>
-          </ModalBody>
-          <ModalFooter>
-            <Button colorScheme="blue" onClick={onClose}>
-              Got it!
-            </Button>
-          </ModalFooter>
-        </ModalContent>
-      </Modal>
+      {flags?.single_env_onboarding && (
+        <Modal
+          isOpen={relaunchHintOpen}
+          onClose={() => {
+            onClose();
+            markRelaunchHintCompleted();
+            queryClient.invalidateQueries({ queryKey: cacheKeys.flag() });
+          }}
+          isCentered
+        >
+          <ModalOverlay />
+          <ModalContent>
+            <ModalHeader>Target-base Added</ModalHeader>
+            <ModalBody>
+              <Text>Please restart the Recce server.</Text>
+            </ModalBody>
+            <ModalFooter>
+              <Button
+                colorScheme="blue"
+                onClick={() => {
+                  onClose();
+                  markRelaunchHintCompleted();
+                  queryClient.invalidateQueries({ queryKey: cacheKeys.flag() });
+                }}
+              >
+                Got it!
+              </Button>
+            </ModalFooter>
+          </ModalContent>
+        </Modal>
+      )}
     </>
   );
 }
