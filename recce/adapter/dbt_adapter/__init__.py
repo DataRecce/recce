@@ -709,8 +709,8 @@ class DbtAdapter(BaseAdapter):
     def stop_monitor_base_env(self):
         if self.base_env_observer.is_alive():
             self.base_env_observer.stop()
-            self.base_env_observer.join()
-            logger.info('Stop monitoring base environment')
+        self.base_env_observer.join()
+        logger.info('Stop monitoring base environment')
 
     def set_artifacts(self,
                       base_manifest: WritableManifest,

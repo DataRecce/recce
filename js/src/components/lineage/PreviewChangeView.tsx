@@ -182,11 +182,9 @@ export function PreviewChangeView({
           status: "success",
         });
         setTimeout(() => feedbackToast(), 1000);
-        setTimeout(() => {
-          if (!isLoading && flags?.single_env_onboarding) {
-            prepareEnvToast();
-          }
-        }, 2000);
+        if (!isLoading && flags?.single_env_onboarding) {
+          setTimeout(() => prepareEnvToast(), 2000);
+        }
       }
     },
   });
