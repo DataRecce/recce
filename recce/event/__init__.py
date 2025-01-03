@@ -254,7 +254,7 @@ def log_single_env_event():
         action='launch_server',
     )
     log_event(prop, '[Experiment] single_environment')
-    _collector.send_events()
+    _collector.schedule_flush()
 
 
 def capture_exception(e):
