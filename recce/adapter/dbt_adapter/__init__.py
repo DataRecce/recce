@@ -107,6 +107,28 @@ class ArtifactsEventHandler(FileSystemEventHandler):
                 self.callback(event)
 
 
+class EnvironmentEventHandler(FileSystemEventHandler):
+    def __init__(self, observer, watch_files: set[str], callback: Callable = None):
+        super().__init__()
+        self.observer = observer
+        self.watch_files = watch_files
+        self.detected_files = set()
+        self.callback = callback
+
+    def on_created(self, event):
+        if event.is_directory:
+            return
+
+        if event.src_path in self.watch_files:
+            self.detected_files.add(event.src_path)
+
+        # Check if all target-base files are created
+        if self.detected_files == self.watch_files:
+            if callable(self.callback):
+                self.callback()
+            self.observer.stop()
+
+
 def merge_tables(tables: List[agate.Table]) -> agate.Table:
     if dbt_version < 'v1.8':
         from dbt.clients.agate_helper import merge_tables
@@ -213,6 +235,9 @@ class DbtAdapter(BaseAdapter):
     # Watch the artifact change
     artifacts_observer = Observer()
     artifacts_files = []
+
+    # Watch the base environment ready
+    base_env_observer = Observer()
 
     def support_tasks(self):
         support_map = {run_type.value: True for run_type in dbt_supported_registry}
@@ -669,6 +694,23 @@ class DbtAdapter(BaseAdapter):
             self.artifacts_observer.stop()
             self.artifacts_observer.join()
             logger.info('Stop monitoring artifacts')
+
+    def start_monitor_base_env(self, callback: Callable = None):
+        target_base_dir = os.path.join(self.runtime_config.project_root, 'target-base')
+        base_env_files = {
+            os.path.join(target_base_dir, 'manifest.json'),
+            os.path.join(target_base_dir, 'catalog.json'),
+        }
+        event_handler = EnvironmentEventHandler(self.base_env_observer, base_env_files, callback=callback)
+        self.base_env_observer.schedule(event_handler, self.runtime_config.project_root, recursive=True)
+        self.base_env_observer.start()
+        logger.info('Start monitoring base environment')
+
+    def stop_monitor_base_env(self):
+        if self.base_env_observer.is_alive():
+            self.base_env_observer.stop()
+        self.base_env_observer.join()
+        logger.info('Stop monitoring base environment')
 
     def set_artifacts(self,
                       base_manifest: WritableManifest,

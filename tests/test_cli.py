@@ -78,6 +78,8 @@ class TestCommandServer(TestCase):
         app_state_flag = app_state_call_args.kwargs['flag']
         assert 'single_env_onboarding' in app_state_flag
         assert app_state_flag['single_env_onboarding'] is True
+        assert 'show_relaunch_hint' in app_state_flag
+        assert app_state_flag['show_relaunch_hint'] is True
 
         # The target_base_path should be set to the same as target_path
         verify_required_artifacts_args = mock_verify_required_artifacts.call_args

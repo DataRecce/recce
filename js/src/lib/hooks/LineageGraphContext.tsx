@@ -27,10 +27,13 @@ import {
   ModalOverlay,
   useToast,
   Text,
+  useDisclosure,
 } from "@chakra-ui/react";
 import { PUBLIC_API_URL } from "../const";
 import path from "path";
 import { aggregateRuns, RunsAggregated } from "../api/runs";
+import { markRelaunchHintCompleted } from "../api/flag";
+import { useRecceServerFlag } from "./useRecceServerFlag";
 
 interface EnvInfo {
   adapterType?: string;
@@ -68,6 +71,7 @@ const defaultLineageGraphsContext: LineageGraphContextType = {
 const LineageGraphContext = createContext(defaultLineageGraphsContext);
 
 type LineageWatcherStatus = "pending" | "connected" | "disconnected";
+type EnvWatcherStatus = undefined | "relaunch";
 
 function useLineageWatcher() {
   const artifactsUpdatedToast = useToast();
@@ -82,6 +86,7 @@ function useLineageWatcher() {
   });
 
   const [status, setStatus] = useState<LineageWatcherStatus>("pending");
+  const [envStatus, setEnvStatus] = useState<EnvWatcherStatus>(undefined);
   ref.current.status = status;
   const queryClient = useQueryClient();
 
@@ -124,6 +129,8 @@ function useLineageWatcher() {
             isClosable: true,
           });
           invalidateCaches();
+        } else if (data.command === "relaunch") {
+          setEnvStatus("relaunch");
         }
       } catch (err) {
         console.error(err);
@@ -158,6 +165,7 @@ function useLineageWatcher() {
   return {
     connectionStatus: status,
     connect,
+    envStatus: envStatus,
   };
 }
 
@@ -201,7 +209,7 @@ export function LineageGraphContextProvider({ children }: LineageGraphProps) {
   } = queryServerInfo.data || {};
 
   const dbtBase = lineage?.base?.manifest_metadata;
-  const dbtCurrent = lineage?.current?.manifest_metadata;  
+  const dbtCurrent = lineage?.current?.manifest_metadata;
 
   const envInfo: EnvInfo = {
     adapterType,
@@ -214,7 +222,11 @@ export function LineageGraphContextProvider({ children }: LineageGraphProps) {
     sqlmesh,
   };
 
-  const { connectionStatus, connect } = useLineageWatcher();
+  const { connectionStatus, connect, envStatus } = useLineageWatcher();
+  const { data: flags, isLoading } = useRecceServerFlag();
+  const { onClose } = useDisclosure();
+  const [relaunchHintOpen, setRelaunchHintOpen] = useState<boolean>(false);
+  const queryClient = useQueryClient();
 
   const isActionAvailable = useCallback(
     (name: string) => {
@@ -226,6 +238,22 @@ export function LineageGraphContextProvider({ children }: LineageGraphProps) {
     },
     [supportTasks]
   );
+
+  useEffect(() => {
+    if (isLoading) {
+      return;
+    }
+
+    if (
+      envStatus === "relaunch" &&
+      flags?.single_env_onboarding &&
+      flags?.show_relaunch_hint
+    ) {
+      setRelaunchHintOpen(true);
+    } else {
+      setRelaunchHintOpen(false);
+    }
+  }, [flags, envStatus, isLoading]);
 
   return (
     <>
@@ -280,6 +308,38 @@ export function LineageGraphContextProvider({ children }: LineageGraphProps) {
           </ModalFooter>
         </ModalContent>
       </Modal>
+
+      {flags?.single_env_onboarding && (
+        <Modal
+          isOpen={relaunchHintOpen}
+          onClose={() => {
+            onClose();
+            markRelaunchHintCompleted();
+            queryClient.invalidateQueries({ queryKey: cacheKeys.flag() });
+          }}
+          isCentered
+        >
+          <ModalOverlay />
+          <ModalContent>
+            <ModalHeader>Target-base Added</ModalHeader>
+            <ModalBody>
+              <Text>Please restart the Recce server.</Text>
+            </ModalBody>
+            <ModalFooter>
+              <Button
+                colorScheme="blue"
+                onClick={() => {
+                  onClose();
+                  markRelaunchHintCompleted();
+                  queryClient.invalidateQueries({ queryKey: cacheKeys.flag() });
+                }}
+              >
+                Got it!
+              </Button>
+            </ModalFooter>
+          </ModalContent>
+        </Modal>
+      )}
     </>
   );
 }

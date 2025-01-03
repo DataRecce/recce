@@ -87,6 +87,12 @@ class RecceContext:
     def refresh_manifest(self, refresh_file_path: str = None):
         self.adapter.refresh(refresh_file_path)
 
+    def start_monitor_base_env(self, callback: Callable = None):
+        self.adapter.start_monitor_base_env(callback=callback)
+
+    def stop_monitor_base_env(self):
+        self.adapter.stop_monitor_base_env()
+
     def export_state(self) -> RecceState:
         """
         Export the state to a RecceState object.

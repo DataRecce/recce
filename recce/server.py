@@ -48,6 +48,8 @@ async def lifespan(fastapi: FastAPI):
     kwargs = app_state.kwargs
     ctx = load_context(**kwargs, state_loader=state_loader)
     ctx.start_monitor_artifacts(callback=dbt_artifacts_updated_callback)
+    if app_state.flag.get("single_env_onboarding", False):
+        ctx.start_monitor_base_env(callback=dbt_env_updated_callback)
 
     # Initialize Recce Config
     config = RecceConfig(config_file=kwargs.get('config'))
@@ -65,6 +67,8 @@ async def lifespan(fastapi: FastAPI):
     state_loader.export(ctx.export_state())
 
     ctx.stop_monitor_artifacts()
+    if app_state.flag.get("single_env_onboarding", False):
+        ctx.stop_monitor_base_env()
 
 
 app = FastAPI(lifespan=lifespan)
@@ -98,6 +102,16 @@ def dbt_artifacts_updated_callback(file_changed_event: Any):
             'eventType': file_changed_event.event_type,
             'srcPath': file_changed_event.src_path
         }
+    }
+    payload = json.dumps(broadcast_command)
+    asyncio.run(broadcast(payload))
+
+
+def dbt_env_updated_callback():
+
+    logger.info("Detect 'manifest.json' and 'catalog.json' are generated under 'target-base' directory")
+    broadcast_command = {
+        'command': 'relaunch',
     }
     payload = json.dumps(broadcast_command)
     asyncio.run(broadcast(payload))
@@ -168,6 +182,11 @@ async def mark_onboarding_completed():
     context = default_context()
     context.mark_onboarding_completed()
     app.state.flag['show_onboarding_guide'] = False
+
+
+@app.post("/api/relaunch-hint/completed", status_code=204)
+async def mark_relaunch_hint_completed():
+    app.state.flag['show_relaunch_hint'] = False
 
 
 @app.get("/api/info")

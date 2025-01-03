@@ -182,11 +182,9 @@ export function PreviewChangeView({
           status: "success",
         });
         setTimeout(() => feedbackToast(), 1000);
-        setTimeout(() => {
-          if (!isLoading && flags?.single_env_onboarding) {
-            prepareEnvToast();
-          }
-        }, 2000);
+        if (!isLoading && flags?.single_env_onboarding) {
+          setTimeout(() => prepareEnvToast(), 2000);
+        }
       }
     },
   });
@@ -221,7 +219,8 @@ export function PreviewChangeView({
   const { guideToast: prepareEnvToast, closeGuideToast } = useGuideToast({
     guideId: localStorageKeys.prepareEnvGuideID,
     description: "Want to compare data changes with production data?",
-    externalLink: "https://datarecce.io/docs",
+    externalLink:
+      "https://datarecce.io/docs/get-started/#prepare-dbt-artifacts",
     externalLinkText: "Learn how.",
   });
 

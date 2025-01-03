@@ -52,6 +52,12 @@ class BaseAdapter(ABC):
     def stop_monitor_artifacts(self):
         pass
 
+    def start_monitor_base_env(self, callback: Callable = None):
+        pass
+
+    def stop_monitor_base_env(self):
+        pass
+
     def refresh(self, refresh_file_path: str = None):
         pass
 
