@@ -219,7 +219,8 @@ export function PreviewChangeView({
   const { guideToast: prepareEnvToast, closeGuideToast } = useGuideToast({
     guideId: localStorageKeys.prepareEnvGuideID,
     description: "Want to compare data changes with production data?",
-    externalLink: "https://datarecce.io/docs",
+    externalLink:
+      "https://datarecce.io/docs/get-started/#prepare-dbt-artifacts",
     externalLinkText: "Learn how.",
   });
 

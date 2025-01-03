@@ -79,7 +79,7 @@ const SingleEnvGuide = ({ isGuideOpen, closeGuide }: GuideProps) => {
                 <Link
                   textDecor="underline"
                   isExternal
-                  href="https://datarecce.io/docs"
+                  href="https://datarecce.io/docs/get-started/#prepare-dbt-artifacts"
                 >
                   Learn how.
                 </Link>
