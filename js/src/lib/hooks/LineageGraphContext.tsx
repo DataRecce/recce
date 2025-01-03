@@ -80,11 +80,9 @@ function useLineageWatcher() {
   const ref = useRef<{
     ws: WebSocket | undefined;
     status: LineageWatcherStatus;
-    envStatus: EnvWatcherStatus;
   }>({
     ws: undefined,
     status: "pending",
-    envStatus: undefined,
   });
 
   const [status, setStatus] = useState<LineageWatcherStatus>("pending");
