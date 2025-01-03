@@ -13,9 +13,16 @@ export function useGuideToast(options: {
   description: string;
   externalLink?: string;
   externalLinkText?: string;
+  onExternalLinkClick?: () => void;
 }) {
   const toast = useToast();
-  const { guideId, description, externalLink, externalLinkText } = options;
+  const {
+    guideId,
+    description,
+    externalLink,
+    externalLinkText,
+    onExternalLinkClick,
+  } = options;
 
   function guideToast() {
     if (toast.isActive(guideId)) {
@@ -48,6 +55,9 @@ export function useGuideToast(options: {
                   isExternal
                   href={externalLink}
                   onClick={() => {
+                    if (onExternalLinkClick) {
+                      onExternalLinkClick();
+                    }
                     onClose();
                   }}
                 >

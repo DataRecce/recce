@@ -12,9 +12,9 @@ import sentry_sdk
 from recce import is_ci_env, get_version, get_runner
 from recce import yaml as pyml
 from recce.event.collector import Collector
+from recce.git import current_branch, hosting_repo
 from recce.github import is_github_codespace, get_github_codespace_info, get_github_codespace_name, \
     get_github_codespace_available_at
-from recce.git import current_branch, hosting_repo
 
 USER_HOME = os.path.expanduser('~')
 RECCE_USER_HOME = os.path.join(USER_HOME, '.recce')
@@ -246,6 +246,14 @@ def log_codespaces_events(command):
         update_user_profile({'codespace_available_at': available_at.isoformat()})
 
     # Codespace instance event should be flushed immediately
+    _collector.send_events()
+
+
+def log_single_env_event():
+    prop = dict(
+        action='launch_server',
+    )
+    log_event(prop, '[Experiment] single_environment')
     _collector.send_events()
 
 

@@ -21,6 +21,7 @@ import { useEffect, useState } from "react";
 import { markOnboardingCompleted } from "@/lib/api/flag";
 import { useRecceServerFlag } from "@/lib/hooks/useRecceServerFlag";
 import { InfoOutlineIcon } from "@chakra-ui/icons";
+import { trackSingleEnvironment } from "@/lib/api/track";
 
 interface GuideProps {
   isGuideOpen: boolean;
@@ -80,6 +81,12 @@ const SingleEnvGuide = ({ isGuideOpen, closeGuide }: GuideProps) => {
                   textDecor="underline"
                   isExternal
                   href="https://datarecce.io/docs/get-started/#prepare-dbt-artifacts"
+                  onClick={() =>
+                    trackSingleEnvironment({
+                      action: "external_link",
+                      from: "onboarding",
+                    })
+                  }
                 >
                   Learn how.
                 </Link>
@@ -111,6 +118,7 @@ const OnboardingGuide = () => {
       const singleEnvMode = flags.single_env_onboarding;
       if (singleEnvMode && showOnboardingGuide) {
         setISSingleEnvGuideOpen(true);
+        trackSingleEnvironment({ action: "onboarding" });
         return;
       }
 

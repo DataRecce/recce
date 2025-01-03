@@ -34,6 +34,7 @@ import path from "path";
 import { aggregateRuns, RunsAggregated } from "../api/runs";
 import { markRelaunchHintCompleted } from "../api/flag";
 import { useRecceServerFlag } from "./useRecceServerFlag";
+import { trackSingleEnvironment } from "../api/track";
 
 interface EnvInfo {
   adapterType?: string;
@@ -249,7 +250,9 @@ export function LineageGraphContextProvider({ children }: LineageGraphProps) {
       flags?.single_env_onboarding &&
       flags?.show_relaunch_hint
     ) {
+      // User has added a target-base folder
       setRelaunchHintOpen(true);
+      trackSingleEnvironment({ action: "target_base_added" });
     } else {
       setRelaunchHintOpen(false);
     }
