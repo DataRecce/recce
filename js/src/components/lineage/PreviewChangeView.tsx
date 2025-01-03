@@ -121,12 +121,12 @@ function PreviewChangeEditorLabels({ height = "32px", flex = "0 0 auto" }) {
     >
       <Stack width={widthOfBar}>
         <Text as="b" margin={margin}>
-          CURRENT
+          BASE
         </Text>
       </Stack>
       <Stack width={widthOfBar}>
         <Text as="b" margin={margin}>
-          PREVIEW EDITOR
+          PREVIEW EDITOR (CURRENT)
         </Text>
       </Stack>
     </Flex>
