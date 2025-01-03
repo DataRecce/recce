@@ -46,7 +46,7 @@ import { is } from "date-fns/locale";
 import { run } from "node:test";
 import { DisableTooltipMessages } from "@/constants/tooltipMessage";
 import { PreviewChangeView } from "./PreviewChangeView";
-import { trackPreviewChange } from "@/lib/api/track";
+import { trackPreviewChange, trackSingleEnvironment } from "@/lib/api/track";
 import { useRecceServerFlag } from "@/lib/hooks/useRecceServerFlag";
 
 interface NodeViewProps {
@@ -298,7 +298,10 @@ export function NodeView({ node, onCloseNode }: NodeViewProps) {
             setPrimaryKeys(primaryKey !== undefined ? [primaryKey] : undefined);
           }
           onPreviewChangeOpen();
-          trackPreviewChange({ action: "explore", node: node.name });
+          trackSingleEnvironment({
+            action: "preview_changes",
+            node: node.name,
+          });
         }}
       >
         Preview Changes

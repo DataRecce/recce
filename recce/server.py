@@ -22,7 +22,7 @@ from .apis.check_api import check_router
 from .apis.run_api import run_router
 from .config import RecceConfig
 from .core import load_context, default_context
-from .event import log_api_event
+from .event import log_api_event, log_single_env_event
 from .exceptions import RecceException
 from .run import load_preset_checks
 from .state import RecceStateLoader
@@ -48,8 +48,10 @@ async def lifespan(fastapi: FastAPI):
     kwargs = app_state.kwargs
     ctx = load_context(**kwargs, state_loader=state_loader)
     ctx.start_monitor_artifacts(callback=dbt_artifacts_updated_callback)
-    if app_state.flag.get("single_env_onboarding", False):
+    if app_state.flag.get("single_env_onboarding", False) is True:
+        # [Experiment 2] Start with Single Environment
         ctx.start_monitor_base_env(callback=dbt_env_updated_callback)
+        log_single_env_event()
 
     # Initialize Recce Config
     config = RecceConfig(config_file=kwargs.get('config'))
@@ -108,7 +110,6 @@ def dbt_artifacts_updated_callback(file_changed_event: Any):
 
 
 def dbt_env_updated_callback():
-
     logger.info("Detect 'manifest.json' and 'catalog.json' are generated under 'target-base' directory")
     broadcast_command = {
         'command': 'relaunch',

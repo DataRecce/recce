@@ -58,3 +58,17 @@ interface PreviewChangeFeedbackProps {
 export function trackPreviewChangeFeedback(props: PreviewChangeFeedbackProps) {
   amplitude.track("[Experiment] preview_change", props);
 }
+
+interface SingleEnvironmentProps {
+  action:
+    | "onboarding"
+    | "external_link"
+    | "preview_changes"
+    | `target_base_added`;
+  from?: "onboarding" | "preview_changes";
+  node?: string;
+}
+
+export function trackSingleEnvironment(props: SingleEnvironmentProps) {
+  amplitude.track("[Experiment] single_environment", props);
+}

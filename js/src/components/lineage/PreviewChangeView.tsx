@@ -36,6 +36,7 @@ import { useRecceQueryContext } from "@/lib/hooks/RecceQueryContext";
 import {
   trackPreviewChange,
   trackPreviewChangeFeedback,
+  trackSingleEnvironment,
 } from "@/lib/api/track";
 import { useGuideToast } from "@/lib/hooks/useGuideToast";
 import { useRecceServerFlag } from "@/lib/hooks/useRecceServerFlag";
@@ -222,6 +223,12 @@ export function PreviewChangeView({
     externalLink:
       "https://datarecce.io/docs/get-started/#prepare-dbt-artifacts",
     externalLinkText: "Learn how.",
+    onExternalLinkClick: () =>
+      trackSingleEnvironment({
+        action: "external_link",
+        from: "preview_changes",
+        node: current?.name,
+      }),
   });
 
   useEffect(() => {
