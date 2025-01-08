@@ -21,7 +21,7 @@ def is_ci_env():
 
     for env_var, expected_value in ci_environments.items():
         env_value = os.environ.get(env_var)
-        if env_value:
+        if env_value is not None:
             # If we just need the variable to exist
             if expected_value is None:
                 return True
