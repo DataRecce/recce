@@ -1,19 +1,33 @@
 import os
-import sys
 
 
 def is_ci_env():
-    # some CI service puts the "CI" var
-    if os.environ.get('CI', 'false') == 'true':
-        return True
+    # List of CI environment variables and their expected values
+    ci_environments = {
+        'CI': 'true',                   # Generic CI indicator
+        'CIRCLECI': 'true',             # CircleCI
+        'GITHUB_ACTIONS': 'true',       # GitHub Actions
+        'GITLAB_CI': 'true',            # GitLab CI
+        'JENKINS_URL': None,            # Jenkins (just needs to exist)
+        'TRAVIS': 'true',               # Travis CI
+        'APPVEYOR': 'true',             # AppVeyor
+        'DRONE': 'true',                # Drone CI
+        'TEAMCITY_VERSION': None,       # TeamCity
+        'BITBUCKET_COMMIT': None,       # Bitbucket Pipelines
+        'BUILDKITE': 'true',            # Buildkite
+        'CODEBUILD_BUILD_ID': None,     # AWS CodeBuild
+        'AZURE_PIPELINES': 'true',      # Azure Pipelines
+    }
 
-    # For CiecleCI exceptions
-    if os.environ.get('CIRCLECI', 'false') == 'true':
-        return True
-
-    # if not tty, it probably runs automatically
-    if not sys.stdout.isatty():
-        return True
+    for env_var, expected_value in ci_environments.items():
+        env_value = os.environ.get(env_var)
+        if env_value:
+            # If we just need the variable to exist
+            if expected_value is None:
+                return True
+            # If we need to match a specific value (case-insensitive)
+            if env_value.lower() == expected_value.lower():
+                return True
 
     return False
 
