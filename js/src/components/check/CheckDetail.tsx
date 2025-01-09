@@ -390,8 +390,8 @@ export const CheckDetail = ({ checkId }: CheckDetailProps) => {
                     <Flex direction="column" gap={4}>
                       {(check && check.is_preset && check.type === "row_count_diff") && (
                         <Box>
-                          This action is part of the initial preset and has not been perform yet.
-                          Once perfromed, the result will be shown here.
+                          This action is part of the initial preset and has not been performed yet.
+                          Once performed, the result will be shown here.
                         </Box>
                       )}
                       <Box display="flex" justifyContent="center">
