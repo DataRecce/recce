@@ -161,7 +161,7 @@ async def disable_cache(request: Request, call_next):
 
     # disable cache for '/' and '/index.html'
     if request.url.path in ['/', '/index.html']:
-        response.headers['Cache-Control'] = 'no-cache'
+        response.headers['Cache-Control'] = 'no-store'
 
     return response
 
