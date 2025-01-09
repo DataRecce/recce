@@ -357,7 +357,8 @@ export function PrivateLineageView(
       return;
     }
 
-    const nodeSet = selectDownstream(lineageGraph, lineageGraph.modifiedSet);
+    // const nodeSet = selectDownstream(lineageGraph, lineageGraph.modifiedSet);
+    const nodeSet = lineageGraph.impactedSet;
 
     const [newNodes, newEdges] = highlightNodes(
       Array.from(nodeSet),
