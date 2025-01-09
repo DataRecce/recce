@@ -2,6 +2,7 @@ import logging
 from abc import ABC, abstractmethod
 from typing import Optional, Callable, Set, Literal
 
+from recce.models.types import LineageDiff, NodeDiff
 from recce.state import ArtifactsRoot
 
 # from dbt.contracts.graph.nodes import ManifestNode
@@ -18,6 +19,37 @@ class BaseAdapter(ABC):
     @abstractmethod
     def get_lineage(self, base: Optional[bool] = False):
         raise NotImplementedError()
+
+    def get_lineage_diff(self) -> LineageDiff:
+        base = self.get_lineage(base=True)
+        current = self.get_lineage(base=False)
+        keys = {
+            *base.get('nodes', {}).keys(),
+            *current.get('nodes', {}).keys()
+        }
+
+        # for each node, compare the base and current lineage
+        diff = {}
+        for key in keys:
+            base_node = base.get('nodes', {}).get(key)
+            curr_node = current.get('nodes', {}).get(key)
+            if base_node and curr_node:
+                base_checksum = base_node.get('checksum', {}).get('checksum')
+                curr_checksum = curr_node.get('checksum', {}).get('checksum')
+
+                if base_checksum is not None and base_checksum == curr_checksum:
+                    continue
+
+                diff[key] = NodeDiff(change_status='modified', change_category='breaking')
+            elif base_node:
+                diff[key] = NodeDiff(chnage_status='removed')
+            elif curr_node:
+                diff[key] = NodeDiff(change_status='added')
+        return LineageDiff(
+            base=base,
+            current=current,
+            diff=diff,
+        )
 
     @abstractmethod
     def select_nodes(
