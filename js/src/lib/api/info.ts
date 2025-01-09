@@ -58,6 +58,13 @@ export interface LineageData {
   manifest_metadata?: ManifestMetadata | null;
   catalog_metadata?: CatalogMetadata | null;
 }
+export interface LineageDiffData {
+  [key: string]: {
+    change_status: "added" | "removed" | "modified";
+    change_category: "breaking" | "non-breaking";
+  };
+}
+
 interface LineageOutput {
   error?: string;
   data?: LineageData;
@@ -133,6 +140,7 @@ export interface ServerInfoResult {
   lineage: {
     base: LineageData;
     current: LineageData;
+    diff: LineageDiffData;
   };
   demo: boolean;
   support_tasks: { [key: string]: boolean };

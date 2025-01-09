@@ -191,7 +191,7 @@ export function LineageGraphContextProvider({ children }: LineageGraphProps) {
       return undefined;
     }
 
-    return buildLineageGraph(lineage.base, lineage.current);
+    return buildLineageGraph(lineage.base, lineage.current, lineage.diff);
   }, [queryServerInfo.data]);
 
   const errorMessage = queryServerInfo.error?.message;

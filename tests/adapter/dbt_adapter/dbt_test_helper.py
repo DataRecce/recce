@@ -54,6 +54,8 @@ class DbtTestHelper:
         model_name,
         base_csv=None,
         curr_csv=None,
+        base_sql=None,
+        curr_sql=None,
         depends_on=[],
         disabled=False,
         unique_id=None,
@@ -112,11 +114,19 @@ class DbtTestHelper:
                 _add_model_to_manifest(True, base_csv)
                 df_base = pd.read_csv(StringIO(base_csv))
                 dbt_adapter.execute(f"CREATE TABLE {self.base_schema}.{model_name} AS SELECT * FROM df_base")
+            elif base_sql:
+                bas_sql = textwrap.dedent(base_sql)
+                _add_model_to_manifest(True, base_sql)
+
             if curr_csv:
                 curr_csv = textwrap.dedent(curr_csv)
                 _add_model_to_manifest(False, curr_csv)
                 df_curr = pd.read_csv(StringIO(curr_csv))
                 dbt_adapter.execute(f"CREATE TABLE {self.curr_schema}.{model_name} AS SELECT * FROM df_curr")
+            elif curr_sql:
+                curr_sql = textwrap.dedent(curr_sql)
+                _add_model_to_manifest(False, curr_sql)
+
         self.adapter.set_artifacts(
             self.base_manifest.writable_manifest(),
             self.curr_manifest.writable_manifest(),
