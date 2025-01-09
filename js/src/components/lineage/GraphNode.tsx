@@ -215,7 +215,12 @@ export function GraphNode({ data }: GraphNodeProps) {
         onMouseLeave={() => setIsHovered(false)}
       >
         <Flex
-          backgroundColor={color}
+          // backgroundColor={color}
+          bg={
+            changeStatus === "modified"
+              ? "repeating-linear-gradient(45deg, orange, orange 5px, white 5px, white 10px)"
+              : color
+          }
           padding={interactive ? "8px" : "2px"}
           borderRightWidth={borderWidth}
           borderColor={selectMode === "multi" ? "#00000020" : borderColor}
