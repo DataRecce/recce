@@ -387,9 +387,22 @@ export const CheckDetail = ({ checkId }: CheckDetailProps) => {
                   />
                 ) : (
                   <Center bg="rgb(249,249,249)" height="100%">
-                    <Button onClick={handleRerun} colorScheme="blue" size="sm">
-                      Run Query
-                    </Button>
+                    <Flex direction="column" gap={4}>
+                      {(check && check.is_preset && check.type === "row_count_diff") && (
+                        <Box>
+                          This action is part of the initial preset and has not been perform yet.
+                          Once perfromed, the result will be shown here.
+                        </Box>
+                      )}
+                      <Box display="flex" justifyContent="center">
+                        <Button onClick={handleRerun} colorScheme="blue" size="sm">
+                          {check && check.is_preset &&
+                            check.type === "row_count_diff" ?
+                            "Execute Row Count Diff" : "Run Query"
+                          }
+                        </Button>
+                      </Box>
+                    </Flex>
                   </Center>
                 ))}
               {check && check.type === "schema_diff" && (
@@ -402,21 +415,21 @@ export const CheckDetail = ({ checkId }: CheckDetailProps) => {
             {(check?.type === "query" ||
               check?.type === "query_diff" ||
               check?.type === "query_base") && (
-              <TabPanel p={0} height="100%" width="100%">
-                {check.params?.base_sql_template ? (
-                  <DualSqlEditor
-                    value={(check?.params as any)?.sql_template || ""}
-                    baseValue={(check?.params as any)?.base_sql_template || ""}
-                    options={{ readOnly: true }}
-                  />
-                ) : (
-                  <SqlEditor
-                    value={(check?.params as any)?.sql_template || ""}
-                    options={{ readOnly: true }}
-                  />
-                )}
-              </TabPanel>
-            )}
+                <TabPanel p={0} height="100%" width="100%">
+                  {check.params?.base_sql_template ? (
+                    <DualSqlEditor
+                      value={(check?.params as any)?.sql_template || ""}
+                      baseValue={(check?.params as any)?.base_sql_template || ""}
+                      options={{ readOnly: true }}
+                    />
+                  ) : (
+                    <SqlEditor
+                      value={(check?.params as any)?.sql_template || ""}
+                      options={{ readOnly: true }}
+                    />
+                  )}
+                </TabPanel>
+              )}
           </TabPanels>
         </Tabs>
       </Box>
