@@ -3,15 +3,25 @@ from tests.adapter.dbt_adapter.conftest import dbt_test_helper
 
 
 def test_lineage_diff(dbt_test_helper):
-    sql_base = """
-        select a from {{ref('a')}}
-        """
+    sql_model1 = """
+    select a from T
+    """
 
-    sql_curr = """
-        select a, b from {{ref('a')}}
-        """
+    sql_model2 = """
+    select a from {{ ref("model1") }}
+    """
 
-    dbt_test_helper.create_model("customers_1", sql_base, sql_curr)
+    sql_model2_ = """
+    select
+    a,b
+    from
+    {{ ref("model1") }}
+    """
+
+    dbt_test_helper.create_model("model1", sql_model1, sql_model1)
+    dbt_test_helper.create_model("model2", sql_model2, sql_model2_)
     result = dbt_test_helper.context.get_lineage_diff()
-    nodediff = result.diff.get('customers_1')
-    assert nodediff is not None and nodediff.change_status == 'modified'
+    nodediff = result.diff.get('model1')
+    assert nodediff is None
+    nodediff2 = result.diff.get('model2')
+    assert nodediff2 is not None and nodediff2.change_status == 'modified' and nodediff2.change_category == 'non-breaking'

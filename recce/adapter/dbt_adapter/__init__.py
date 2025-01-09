@@ -18,6 +18,7 @@ from recce.adapter.base import BaseAdapter
 from recce.state import ArtifactsRoot
 from .dbt_version import DbtVersion
 from ...models import RunType
+from ...models.types import LineageDiff, NodeDiff
 from ...tasks import Task, QueryTask, QueryBaseTask, QueryDiffTask, ValueDiffTask, ValueDiffDetailTask, ProfileDiffTask, \
     RowCountDiffTask, TopKDiffTask, HistogramDiffTask
 
@@ -656,6 +657,47 @@ class DbtAdapter(BaseAdapter):
             nodes=nodes,
             manifest_metadata=manifest_metadata,
             catalog_metadata=catalog_metadata,
+        )
+
+    def get_lineage_diff(self) -> LineageDiff:
+        base = self.get_lineage(base=True)
+        current = self.get_lineage(base=False)
+        keys = {
+            *base.get('nodes', {}).keys(),
+            *current.get('nodes', {}).keys()
+        }
+
+        # for each node, compare the base and current lineage
+        diff = {}
+        for key in keys:
+            base_node = base.get('nodes', {}).get(key)
+            curr_node = current.get('nodes', {}).get(key)
+            if base_node and curr_node:
+                base_checksum = base_node.get('checksum', {}).get('checksum')
+                curr_checksum = curr_node.get('checksum', {}).get('checksum')
+                if base_checksum is None or curr_checksum is None or base_checksum == curr_checksum:
+                    continue
+
+                change_category = 'breaking'
+                if curr_node.get('resource_type') == 'model':
+                    try:
+                        from recce.adapter.dbt_adapter.breaking import is_breaking_change
+                        base_sql = self.generate_sql(base_node.get('raw_code'))
+                        curr_sql = self.generate_sql(curr_node.get('raw_code'))
+                        if not is_breaking_change(base_sql, curr_sql):
+                            change_category = 'non-breaking'
+                    except Exception as e:
+                        pass
+
+                diff[key] = NodeDiff(change_status='modified', change_category=change_category)
+            elif base_node:
+                diff[key] = NodeDiff(chnage_status='removed')
+            elif curr_node:
+                diff[key] = NodeDiff(change_status='added')
+        return LineageDiff(
+            base=base,
+            current=current,
+            diff=diff,
         )
 
     def get_manifests_by_id(self, unique_id: str):
