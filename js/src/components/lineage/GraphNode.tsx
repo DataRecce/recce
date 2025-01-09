@@ -100,12 +100,13 @@ const GraphNodeCheckbox = ({
 };
 
 export function GraphNode({ data }: GraphNodeProps) {
-  const { isHighlighted, isSelected, resourceType, changeStatus } = data;
+  const { id, isHighlighted, isSelected, resourceType, changeStatus } = data;
   const showContent = useStore((s) => s.transform[2] > 0.3);
 
   const { icon: resourceIcon } = getIconForResourceType(resourceType);
   const [isHovered, setIsHovered] = useState(false);
   const { interactive, selectNodeMulti, selectMode } = useLineageViewContext();
+  const { lineageGraph } = useLineageGraphContext();
 
   // text color, icon
   const {
@@ -176,7 +177,7 @@ export function GraphNode({ data }: GraphNodeProps) {
         <Flex
           // backgroundColor={color}
           bg={
-            changeStatus === "modified"
+            changeStatus === "modified" && lineageGraph?.nonBreakingSet.has(id)
               ? "repeating-linear-gradient(45deg, orange, orange 5px, white 5px, white 10px)"
               : color
           }

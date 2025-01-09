@@ -23,6 +23,9 @@ def is_breaking_change(original_sql, modified_sql):
         if isinstance(edit, Insert):
             inserted_expr = edit.expression
 
+            if isinstance(inserted_expr, exp.Where):
+                return True
+
             if (
                 not isinstance(inserted_expr.parent, exp.Select)
                 and inserted_expr.parent not in inserted_expressions
