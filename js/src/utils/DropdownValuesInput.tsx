@@ -1,6 +1,5 @@
 import React, { useState, useRef, useEffect } from "react";
 import {
-  Box,
   Button,
   Icon,
   Input,
@@ -21,7 +20,7 @@ import {
   Wrap,
   WrapItem,
 } from "@chakra-ui/react";
-import { FaPlus, FaChevronDown } from "react-icons/fa6";
+import { FaChevronDown } from "react-icons/fa6";
 
 import { DisableTooltipMessages } from "@/constants/tooltipMessage";
 
@@ -119,7 +118,7 @@ export const DropdownValuesInput = (props: DropdownValuesInputProps) => {
                 <WrapItem width={"100%"}>
                   <Input
                     ref={inputRef}
-                    placeholder="Filter keys or add custom"
+                    placeholder="Filter or add custom keys"
                     variant={"unstyled"}
                     size={props.size}
                     value={filter}
@@ -189,20 +188,23 @@ export const DropdownValuesInput = (props: DropdownValuesInputProps) => {
       <InputRightElement>
         {values.length === 0 ? (
           <Icon
-            as={FaPlus}
-            color="blue.500" // Chakra UI blue color
-            fontSize={props.size}
-            mt="1" // Using Chakra's spacing units instead of paddingTop
-            mr="6" // Using Chakra's spacing units instead of paddingRight
-          />
-        ) : (
-          <Icon
             as={FaChevronDown}
             color="blue.500"
             fontSize={props.size}
             mt="1"
             mr="6"
           />
+        ) : (
+          <Button
+            variant={"link"}
+            color={"#3182CE"}
+            fontSize={props.size}
+            paddingTop="4px"
+            paddingRight={"24px"}
+            onClick={handleClear}
+          >
+            Clear
+          </Button>
         )}
       </InputRightElement>
     </InputGroup>
