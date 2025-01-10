@@ -62,7 +62,7 @@ export const QueryForm = ({
           onValuesChange={onPrimaryKeysChange}
           size="xs"
           width={"240px"}
-          placeholder="Start by typing key name..."
+          placeholder="Select or type to add keys"
           isDisabled={!isActionAvailable("query_diff_with_primary_key")}
         />
       </FormControl>

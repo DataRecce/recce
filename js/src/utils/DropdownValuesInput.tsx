@@ -1,7 +1,7 @@
 import React, { useState, useRef, useEffect } from "react";
 import {
-  Box,
   Button,
+  Icon,
   Input,
   InputGroup,
   InputProps,
@@ -20,6 +20,7 @@ import {
   Wrap,
   WrapItem,
 } from "@chakra-ui/react";
+import { FaChevronDown } from "react-icons/fa6";
 
 import { DisableTooltipMessages } from "@/constants/tooltipMessage";
 
@@ -84,6 +85,17 @@ export const DropdownValuesInput = (props: DropdownValuesInputProps) => {
             onChange={() => {}} // Prevent input change
             backgroundColor={"white"}
           />
+          {values.length === 0 && (
+          <InputRightElement>
+              <Icon
+                as={FaChevronDown}
+                color="blue.500"
+                fontSize={props.size}
+                mt="1"
+                mr="6"
+              />
+            </InputRightElement>
+          )}
         </MenuButton>
         <Portal>
           <MenuList
@@ -117,7 +129,7 @@ export const DropdownValuesInput = (props: DropdownValuesInputProps) => {
                 <WrapItem width={"100%"}>
                   <Input
                     ref={inputRef}
-                    placeholder="Filter keys or add custom"
+                    placeholder="Filter or add custom keys"
                     variant={"unstyled"}
                     size={props.size}
                     value={filter}
@@ -184,19 +196,20 @@ export const DropdownValuesInput = (props: DropdownValuesInputProps) => {
           </MenuList>
         </Portal>
       </Menu>
-      <InputRightElement>
-        <Button
-          variant={"link"}
-          color={"#3182CE"}
-          fontSize={props.size}
-          paddingTop="4px"
-          paddingRight={"24px"}
-          hidden={values.length === 0}
-          onClick={handleClear}
-        >
-          Clear
-        </Button>
-      </InputRightElement>
+      {values.length > 0 && (
+        <InputRightElement>
+          <Button
+            variant={"link"}
+            color={"#3182CE"}
+            fontSize={props.size}
+            paddingTop="4px"
+            paddingRight={"24px"}
+            onClick={handleClear}
+          >
+            Clear
+          </Button>
+        </InputRightElement>
+      )}
     </InputGroup>
   );
 };
