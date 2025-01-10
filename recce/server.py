@@ -161,7 +161,16 @@ async def disable_cache(request: Request, call_next):
 
     # disable cache for '/' and '/index.html'
     if request.url.path in ['/', '/index.html']:
-        response.headers['Cache-Control'] = 'no-store'
+        if response.status_code == 304:
+            if_none_match = request.headers.get('If-None-Match')
+            etag = response.headers.get('ETag')
+            if if_none_match != etag:
+                file_path = static_folder_path / 'index.html'
+                with open(file_path, 'rb') as f:
+                    content = f.read()
+                response = Response(content=content, media_type='text/html')
+
+        response.headers['Cache-Control'] = 'no-cache, must-revalidate, max-age=0'
 
     return response
 
