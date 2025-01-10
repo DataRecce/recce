@@ -85,6 +85,17 @@ export const DropdownValuesInput = (props: DropdownValuesInputProps) => {
             onChange={() => {}} // Prevent input change
             backgroundColor={"white"}
           />
+          {values.length === 0 && (
+          <InputRightElement>
+              <Icon
+                as={FaChevronDown}
+                color="blue.500"
+                fontSize={props.size}
+                mt="1"
+                mr="6"
+              />
+            </InputRightElement>
+          )}
         </MenuButton>
         <Portal>
           <MenuList
@@ -185,16 +196,8 @@ export const DropdownValuesInput = (props: DropdownValuesInputProps) => {
           </MenuList>
         </Portal>
       </Menu>
-      <InputRightElement>
-        {values.length === 0 ? (
-          <Icon
-            as={FaChevronDown}
-            color="blue.500"
-            fontSize={props.size}
-            mt="1"
-            mr="6"
-          />
-        ) : (
+      {values.length > 0 && (
+        <InputRightElement>
           <Button
             variant={"link"}
             color={"#3182CE"}
@@ -205,8 +208,8 @@ export const DropdownValuesInput = (props: DropdownValuesInputProps) => {
           >
             Clear
           </Button>
-        )}
-      </InputRightElement>
+        </InputRightElement>
+      )}
     </InputGroup>
   );
 };
