@@ -1,4 +1,15 @@
-import { Box, Flex, HStack, Icon, Spacer, Tooltip } from "@chakra-ui/react";
+import {
+  Box,
+  Flex,
+  HStack,
+  Icon,
+  Spacer,
+  Tag,
+  TagLabel,
+  TagLeftIcon,
+  Text,
+  Tooltip,
+} from "@chakra-ui/react";
 import React, { useState } from "react";
 
 import { Handle, NodeProps, Position, useStore } from "reactflow";
@@ -14,8 +25,27 @@ import { findByRunType } from "../run/registry";
 import { isSchemaChanged } from "../schema/schemaDiff";
 import { useLineageViewContext } from "./LineageViewContext";
 import { FaCheckSquare, FaRegSquare, FaSquare } from "react-icons/fa";
+import { RowCount } from "@/lib/api/models";
+import { deltaPercentageString } from "../rowcount/delta";
 
 interface GraphNodeProps extends NodeProps<LineageGraphNode> {}
+
+function _RowCountDiffRate({ rowCount }: { rowCount: RowCount }) {
+  const base = rowCount.base;
+  const current = rowCount.curr;
+  const baseLabel = rowCount.base === null ? "N/A" : `${rowCount.base} Rows`;
+  const currentLabel = rowCount.curr === null ? "N/A" : `${rowCount.curr} Rows`;
+
+  if (base === null && current === null) {
+    return <>Failed to load</>;
+  } else if (base === null || current === null) {
+    return <Text>{`${baseLabel} -> ${currentLabel}`}</Text>;
+  } else if (base === current) {
+    return <Text>=</Text>;
+  } else if (base !== current) {
+    return <Text>{`${deltaPercentageString(base, current)} Rows`}</Text>;
+  }
+}
 
 const NodeRunsAggregated = ({
   id,
@@ -50,7 +80,7 @@ const NodeRunsAggregated = ({
   const colorUnchanged = inverted ? "gray" : "lightgray";
 
   return (
-    <Flex gap="5px">
+    <Flex flex="1">
       {schemaChanged !== undefined && (
         <Tooltip
           label={`Schema (${schemaChanged ? "changed" : "no change"})`}
@@ -64,17 +94,20 @@ const NodeRunsAggregated = ({
           </Box>
         </Tooltip>
       )}
+      <Spacer />
       {rowCountChanged !== undefined && (
         <Tooltip
           label={`Row count (${rowCountChanged ? "changed" : "no change"})`}
           openDelay={500}
         >
-          <Box height="16px">
-            <Icon
-              as={findByRunType("row_count_diff")?.icon}
-              color={rowCountChanged ? colorChanged : colorUnchanged}
-            />
-          </Box>
+          <Tag colorScheme={rowCountChanged ? "red" : "green"}>
+            <TagLeftIcon as={findByRunType("row_count_diff")?.icon} />
+            <TagLabel>
+              {runs && runs["row_count_diff"] && (
+                <_RowCountDiffRate rowCount={runs["row_count_diff"].result} />
+              )}
+            </TagLabel>
+          </Tag>
         </Tooltip>
       )}
     </Flex>
@@ -286,10 +319,12 @@ export function GraphNode({ data }: GraphNodeProps) {
                     })()}
                   />
                 )}
-              <Spacer />
               {data.isActionMode &&
                 (data.action ? (
-                  <ActionTag node={data} action={data.action} />
+                  <>
+                    <Spacer />
+                    <ActionTag node={data} action={data.action} />
+                  </>
                 ) : (
                   <></>
                 ))}
