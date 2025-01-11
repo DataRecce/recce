@@ -88,6 +88,7 @@ import { useLocation } from "wouter";
 import { Check } from "@/lib/api/checks";
 import useValueDiffAlertDialog from "./useValueDiffAlertDialog";
 import { trackMultiNodesAction } from "@/lib/api/track";
+import { LineageViewNotification } from "./LineageViewNotification";
 
 export interface LineageViewProps {
   viewOptions?: LineageDiffViewOptions;
@@ -797,6 +798,7 @@ export function PrivateLineageView(
           position="relative"
         >
           {interactive && <LineageViewTopBar />}
+          <LineageViewNotification />
           <ReactFlow
             nodeTypes={nodeTypes}
             edgeTypes={edgeTypes}

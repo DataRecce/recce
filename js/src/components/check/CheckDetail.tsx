@@ -133,6 +133,7 @@ export const CheckDetail = ({ checkId }: CheckDetailProps) => {
 
     const submittedRun = await submitRunFromCheck(checkId, { nowait: true });
     setSubmittedRunId(submittedRun.run_id);
+    queryClient.invalidateQueries({ queryKey: cacheKeys.check(checkId) });
   }, [check, checkId, setSubmittedRunId]);
 
   const handleCancel = useCallback(async () => {
