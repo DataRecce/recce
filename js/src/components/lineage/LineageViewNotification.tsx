@@ -1,4 +1,16 @@
-import { HStack, Button, Spacer, Text } from "@chakra-ui/react";
+import {
+  HStack,
+  Button,
+  Spacer,
+  Text,
+  Modal,
+  ModalOverlay,
+  ModalContent,
+  ModalHeader,
+  ModalBody,
+  ModalFooter,
+  useDisclosure,
+} from "@chakra-ui/react";
 import { useEffect, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { cacheKeys } from "@/lib/api/cacheKeys";
@@ -11,6 +23,8 @@ export const LineageViewNotification = () => {
     undefined
   );
   const maxNotificationLen = 100;
+
+  const { isOpen, onOpen, onClose } = useDisclosure();
 
   const { data: checks, status } = useQuery({
     queryKey: cacheKeys.checks(),
@@ -68,22 +82,48 @@ export const LineageViewNotification = () => {
     }
   }, [isLoadingDetail, checkDetail]);
 
+  const notificationKey = "notificationClosed";
+  if (!sessionStorage.getItem(notificationKey)) {
+    // Show the notification
+    sessionStorage.setItem(notificationKey, "true");
+  }
+
   return (
     !!affectedModels && (
-      <HStack width="100%" padding="2pt 8pt" backgroundColor={"blue.50"}>
-        <HStack flex="1" fontSize={"10pt"} color="blue.600">
-          <InfoOutlineIcon />
-          <Text>
-            Preform the row count of {affectedModels} to get a baseline for your
-            further actions.
-          </Text>
-          <Spacer />
-          <Button colorScheme="blue" size="xs">
-            Perform
-          </Button>
-          <Button size="xs">Ignore</Button>
+      <>
+        <HStack width="100%" padding="2pt 8pt" backgroundColor={"blue.50"}>
+          <HStack flex="1" fontSize={"10pt"} color="blue.600">
+            <InfoOutlineIcon />
+            <Text>
+              Preform the row count of {affectedModels} to get a baseline for
+              your further actions.
+            </Text>
+            <Spacer />
+            <Button colorScheme="blue" size="xs" onClick={onOpen}>
+              Perform
+            </Button>
+            <Button size="xs">Ignore</Button>
+          </HStack>
         </HStack>
-      </HStack>
+        <Modal isOpen={isOpen} onClose={onClose} isCentered>
+          <ModalOverlay />
+          <ModalContent>
+            <ModalHeader>Row Count</ModalHeader>
+            <ModalBody>
+              <Text>
+                Row count will be executed on 3 nodes in the Lineage, which can
+                add extra costs to your bill
+              </Text>
+            </ModalBody>
+            <ModalFooter>
+              <Button onClick={onClose}>Cancel</Button>
+              <Button colorScheme="blue" onClick={() => {}}>
+                Execute on N models
+              </Button>
+            </ModalFooter>
+          </ModalContent>
+        </Modal>
+      </>
     )
   );
 };
