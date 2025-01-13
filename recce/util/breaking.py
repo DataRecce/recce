@@ -1,4 +1,4 @@
-def is_breaking_change(original_sql, modified_sql, dialet=None):
+def is_breaking_change(original_sql, modified_sql, dialect=None):
     if original_sql == modified_sql:
         return False
 
@@ -10,8 +10,8 @@ def is_breaking_change(original_sql, modified_sql, dialet=None):
         return True
 
     try:
-        original_ast = parse_one(original_sql, dialect=dialet)
-        modified_ast = parse_one(modified_sql, dialet=dialet)
+        original_ast = parse_one(original_sql, dialect=dialect)
+        modified_ast = parse_one(modified_sql, dialect=dialect)
     except Exception:
         return True
 
