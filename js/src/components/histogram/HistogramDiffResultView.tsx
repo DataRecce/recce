@@ -32,7 +32,7 @@ function _HistogramDiffResultView(
               data={{
                 title: `Model ${params.model}.${params.column_name}`,
                 type: run.params?.column_type || "",
-                datasets: [current, base],
+                datasets: [base, current],
                 min: min,
                 max: max,
                 samples: base.total,
