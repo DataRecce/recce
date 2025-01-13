@@ -146,7 +146,8 @@ export function GraphNode({ data }: GraphNodeProps) {
 
   const { icon: resourceIcon } = getIconForResourceType(resourceType);
   const [isHovered, setIsHovered] = useState(false);
-  const { interactive, selectNodeMulti, selectMode } = useLineageViewContext();
+  const { interactive, selectNodeMulti, selectMode, advancedImpactRadius } =
+    useLineageViewContext();
   const { lineageGraph } = useLineageGraphContext();
 
   // text color, icon
@@ -218,7 +219,9 @@ export function GraphNode({ data }: GraphNodeProps) {
         <Flex
           // backgroundColor={color}
           bg={
-            changeStatus === "modified" && lineageGraph?.nonBreakingSet.has(id)
+            advancedImpactRadius &&
+            changeStatus === "modified" &&
+            lineageGraph?.nonBreakingSet.has(id)
               ? "repeating-linear-gradient(45deg, orange, orange 5px, white 5px, white 10px)"
               : color
           }

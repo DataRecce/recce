@@ -4,6 +4,7 @@ import {
   highlightNodes,
   layout,
   selectDownstream,
+  selectImpactRadius,
   selectNode,
   selectNodes,
   selectSingleNode,
@@ -26,6 +27,8 @@ import {
   StackDivider,
   useToast,
   MenuDivider,
+  Checkbox,
+  Switch,
 } from "@chakra-ui/react";
 import React, {
   Ref,
@@ -279,6 +282,8 @@ export function PrivateLineageView(
     selectedNode?: Node;
   }>({ x: 0, y: 0 });
 
+  const [advancedImpactRadius, setAdvancedImpactRadius] = useState(false);
+
   const toast = useToast();
 
   useLayoutEffect(() => {
@@ -349,42 +354,32 @@ export function PrivateLineageView(
     setEdges(newEdges);
   };
 
-  const onNodeMouseLeave = (event: React.MouseEvent, node: Node) => {
+  const highlightImpactRadius = (advanced: boolean = advancedImpactRadius) => {
     if (!lineageGraph) {
       return;
     }
 
+    const nodeSet = selectImpactRadius(lineageGraph, advanced);
+    const [newNodes, newEdges] = highlightNodes(
+      Array.from(nodeSet),
+      nodes,
+      edges
+    );
+
+    setNodes(cleanUpNodes(newNodes));
+    setEdges(newEdges);
+  };
+
+  const onNodeMouseLeave = (event: React.MouseEvent, node: Node) => {
     if (selectedNode) {
       return;
     }
 
-    // const nodeSet = selectDownstream(lineageGraph, lineageGraph.modifiedSet);
-    const nodeSet = lineageGraph.impactedSet;
-
-    const [newNodes, newEdges] = highlightNodes(
-      Array.from(nodeSet),
-      nodes,
-      edges
-    );
-
-    setNodes(newNodes);
-    setEdges(newEdges);
+    highlightImpactRadius();
   };
 
   const onNodeViewClosed = () => {
-    if (!lineageGraph) {
-      return;
-    }
-
-    const nodeSet = selectDownstream(lineageGraph, lineageGraph.modifiedSet);
-
-    const [newNodes, newEdges] = highlightNodes(
-      Array.from(nodeSet),
-      nodes,
-      edges
-    );
-    setNodes(cleanUpNodes(newNodes));
-    setEdges(newEdges);
+    highlightImpactRadius();
   };
 
   const centerNode = async (node: Node) => {
@@ -693,6 +688,8 @@ export function PrivateLineageView(
     onViewOptionsChanged: handleViewOptionsChanged,
     selectNodeMulti,
     deselect,
+    advancedImpactRadius,
+    setAdvancedImpactRadius,
     runRowCountDiff: async () => {
       if (selectMode === "multi") {
         await multiNodeAction.runRowCountDiff();
@@ -844,9 +841,23 @@ export function PrivateLineageView(
               </HStack>
             </Panel>
             <Panel position="top-left">
-              <Text fontSize="xl" color="grey" opacity={0.5}>
-                {nodes.length > 0 ? "" : "No nodes"}
-              </Text>
+              <Flex direction="column">
+                <Switch
+                  isChecked={advancedImpactRadius}
+                  onChange={(e) => {
+                    const advancedImpactRadius = e.target.checked;
+                    setAdvancedImpactRadius(advancedImpactRadius);
+                    highlightImpactRadius(advancedImpactRadius);
+                  }}
+                >
+                  Advanced Impact Radius (Experimental)
+                </Switch>
+                {nodes.length == 0 && (
+                  <Text fontSize="xl" color="grey" opacity={0.5}>
+                    No nodes
+                  </Text>
+                )}
+              </Flex>
             </Panel>
             <MiniMap
               nodeColor={nodeColor}

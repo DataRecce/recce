@@ -681,7 +681,7 @@ class DbtAdapter(BaseAdapter):
                 change_category = 'breaking'
                 if curr_node.get('resource_type') == 'model':
                     try:
-                        from recce.adapter.dbt_adapter.breaking import is_breaking_change
+                        from recce.util.breaking import is_breaking_change
                         base_sql = self.generate_sql(base_node.get('raw_code'))
                         curr_sql = self.generate_sql(curr_node.get('raw_code'))
                         if not is_breaking_change(base_sql, curr_sql):

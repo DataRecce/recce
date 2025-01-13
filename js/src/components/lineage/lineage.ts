@@ -281,6 +281,17 @@ export function selectDownstream(
   );
 }
 
+export function selectImpactRadius(
+  lineageGraph: LineageGraph,
+  advanced: boolean
+) {
+  if (!advanced) {
+    return selectDownstream(lineageGraph, lineageGraph.modifiedSet);
+  } else {
+    return lineageGraph.impactedSet;
+  }
+}
+
 export function toReactflow(
   lineageGraph: LineageGraph,
   selectedNodes?: string[]

@@ -1,4 +1,4 @@
-def is_breaking_change(original_sql, modified_sql):
+def is_breaking_change(original_sql, modified_sql, dialet=None):
     if original_sql == modified_sql:
         return False
 
@@ -8,8 +8,13 @@ def is_breaking_change(original_sql, modified_sql):
         import sqlglot.expressions as exp
     except ImportError:
         return True
-    original_ast = parse_one(original_sql)
-    modified_ast = parse_one(modified_sql)
+
+    try:
+        original_ast = parse_one(original_sql, dialect=dialet)
+        modified_ast = parse_one(modified_sql, dialet=dialet)
+    except Exception:
+        return True
+
     if not isinstance(original_ast, exp.Select) or not isinstance(modified_ast, exp.Select):
         raise ValueError("Currently only SELECT statements are supported for comparison")
 
