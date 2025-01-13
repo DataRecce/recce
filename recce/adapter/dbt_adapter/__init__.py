@@ -749,7 +749,9 @@ class DbtAdapter(BaseAdapter):
                 self.manifest = as_manifest(self.curr_manifest)
             elif refresh_file_path.endswith('catalog.json'):
                 self.curr_catalog = load_catalog(path=refresh_file_path)
-        elif self.base_path and target_type == os.path.basename(self.base_path):
+
+        # In single environment mode, the target and base are the same. We need to update both.
+        if self.base_path and target_type == os.path.basename(self.base_path):
             if refresh_file_path.endswith('manifest.json'):
                 self.base_manifest = load_manifest(path=refresh_file_path)
             elif refresh_file_path.endswith('catalog.json'):
