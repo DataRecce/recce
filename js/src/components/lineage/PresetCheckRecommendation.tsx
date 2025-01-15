@@ -122,15 +122,13 @@ export const PresetCheckRecommendation = () => {
         recommendedCheck.last_run?.run_at
       ).getTime();
 
-      let currEnvTimeStamp = 0;
-      let baseEnvTimeStamp = 0;
       const dbtInfo = envInfo?.dbt;
-      if (dbtInfo?.current?.generated_at) {
-        currEnvTimeStamp = new Date(dbtInfo.current?.generated_at).getTime();
-      }
-      if (dbtInfo?.base?.generated_at) {
-        baseEnvTimeStamp = new Date(dbtInfo?.base?.generated_at).getTime();
-      }
+      const currEnvTimeStamp = dbtInfo?.current?.generated_at
+        ? new Date(dbtInfo.current.generated_at).getTime()
+        : 0;
+      const baseEnvTimeStamp = dbtInfo?.base?.generated_at
+        ? new Date(dbtInfo.base.generated_at).getTime()
+        : 0;
       const envTimeStamp = Math.max(currEnvTimeStamp, baseEnvTimeStamp);
 
       if (runTimeStamp >= envTimeStamp) {
@@ -140,7 +138,7 @@ export const PresetCheckRecommendation = () => {
       setPerformedRecommend(false);
       setRecommendRerun(true);
 
-      // Check if the env has been refreshed since the last run
+      // Check if the env has been refreshed
       const prevEnvTimeStamp = sessionStorage.getItem(prevRefreshKey);
       if (
         prevEnvTimeStamp === null ||
@@ -154,29 +152,19 @@ export const PresetCheckRecommendation = () => {
     }
 
     const check = recommendedCheck;
+    const extractNodeNames = (nodeIds: string[]) => {
+      const nodes = nodeIds.map((nodeId) => lineageGraph?.nodes[nodeId]?.name);
+      return nodes.join(", ");
+    };
     if (selectedNodes.length > 0 && selectedNodes.length <= 3) {
       if (check.params?.node_names) {
         const nodeNames = check.params?.node_names.join(", ");
         setAffectedModels(`'${nodeNames}'`);
       } else if (check.params?.node_ids) {
-        const nodes = [];
-        for (const nodeId of check.params?.node_ids) {
-          const node = lineageGraph?.nodes[nodeId];
-          if (node) {
-            nodes.push(node.name);
-          }
-        }
-        const nodeNames = nodes.join(", ");
+        const nodeNames = extractNodeNames(check.params?.node_ids);
         setAffectedModels(`'${nodeNames}'`);
       } else if (selectedNodes) {
-        const nodes = [];
-        for (const nodeId of selectedNodes) {
-          const node = lineageGraph?.nodes[nodeId];
-          if (node) {
-            nodes.push(node.name);
-          }
-        }
-        const nodeNames = nodes.join(", ");
+        const nodeNames = extractNodeNames(selectedNodes);
         setAffectedModels(`'${nodeNames}'`);
       }
     } else if (lineageGraph?.modifiedSet?.length === selectedNodes.length) {
@@ -187,6 +175,7 @@ export const PresetCheckRecommendation = () => {
       setAffectedModels(`${selectedNodes.length} models`);
     }
 
+    // Track recommendation is shown the first time
     if (!sessionStorage.getItem(recommendShowKey)) {
       const prevEnvTimeStamp = sessionStorage.getItem(prevRefreshKey);
       sessionStorage.setItem(recommendShowKey, "true");
@@ -256,6 +245,7 @@ export const PresetCheckRecommendation = () => {
                 trackRecommendCheck({
                   action: "ignore",
                   from: recommendRerun ? "rerun" : "initial",
+                  nodes: numNodes,
                 });
               }}
             >
@@ -269,6 +259,7 @@ export const PresetCheckRecommendation = () => {
                 trackRecommendCheck({
                   action: "perform",
                   from: recommendRerun ? "rerun" : "initial",
+                  nodes: numNodes,
                 });
               }}
             >
@@ -276,7 +267,18 @@ export const PresetCheckRecommendation = () => {
             </Button>
           </HStack>
         </HStack>
-        <Modal isOpen={isOpen} onClose={onClose} isCentered>
+        <Modal
+          isOpen={isOpen}
+          onClose={() => {
+            onClose();
+            trackRecommendCheck({
+              action: "close",
+              from: recommendRerun ? "rerun" : "initial",
+              nodes: numNodes,
+            });
+          }}
+          isCentered
+        >
           <ModalOverlay />
           <ModalContent>
             <ModalHeader>Row Count Check</ModalHeader>
@@ -296,7 +298,18 @@ export const PresetCheckRecommendation = () => {
               </Stack>
             </ModalBody>
             <ModalFooter gap="5px">
-              <Button onClick={onClose}>Cancel</Button>
+              <Button
+                onClick={() => {
+                  onClose();
+                  trackRecommendCheck({
+                    action: "close",
+                    from: recommendRerun ? "rerun" : "initial",
+                    nodes: numNodes,
+                  });
+                }}
+              >
+                Cancel
+              </Button>
               <Button
                 colorScheme="blue"
                 onClick={() => {
@@ -306,6 +319,7 @@ export const PresetCheckRecommendation = () => {
                   trackRecommendCheck({
                     action: "execute",
                     from: recommendRerun ? "rerun" : "initial",
+                    nodes: numNodes,
                   });
                 }}
               >

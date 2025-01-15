@@ -74,8 +74,9 @@ export function trackSingleEnvironment(props: SingleEnvironmentProps) {
 }
 
 interface RecommendPresetCheckProps {
-  action: "recommend" | "ignore" | "perform" | "execute";
+  action: "recommend" | "ignore" | "perform" | "execute" | "close";
   from?: "initial" | "rerun";
+  nodes?: number;
 }
 
 export function trackRecommendCheck(props: RecommendPresetCheckProps) {
