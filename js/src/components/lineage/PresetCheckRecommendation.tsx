@@ -24,6 +24,7 @@ import { submitRunFromCheck } from "@/lib/api/runs";
 import { useRecceActionContext } from "@/lib/hooks/RecceActionContext";
 import { sessionStorageKeys } from "@/lib/api/sessionStorageKeys";
 import { useRecceServerFlag } from "@/lib/hooks/useRecceServerFlag";
+import { trackRecommendCheck } from "@/lib/api/track";
 
 const usePresetCheckRecommendation = () => {
   const queryChecks = useQuery({
@@ -98,17 +99,18 @@ export const PresetCheckRecommendation = () => {
   const [affectedModels, setAffectedModels] = useState<string>();
   const [performedRecommend, setPerformedRecommend] = useState<boolean>(false);
   const [ignoreRecommend, setIgnoreRecommend] = useState<boolean>(false);
-  const [recommendRefresh, setRecommendRefresh] = useState<boolean>(false);
+  const [recommendRerun, setRecommendRerun] = useState<boolean>(false);
   const { isOpen, onOpen, onClose } = useDisclosure();
-  const recommendationKey = sessionStorageKeys.recommendationIgnored;
+  const recommendIgnoreKey = sessionStorageKeys.recommendationIgnored;
+  const recommendShowKey = sessionStorageKeys.recommendationShowed;
   const prevRefreshKey = sessionStorageKeys.prevRefreshTimeStamp;
 
   useEffect(() => {
-    const ignored = sessionStorage.getItem(recommendationKey);
+    const ignored = sessionStorage.getItem(recommendIgnoreKey);
     if (ignored) {
       setIgnoreRecommend(true);
     }
-  }, [recommendationKey]);
+  }, [recommendIgnoreKey]);
 
   useEffect(() => {
     if (!recommendedCheck || !selectedNodes) {
@@ -135,18 +137,20 @@ export const PresetCheckRecommendation = () => {
         setPerformedRecommend(true);
         return;
       }
+      setPerformedRecommend(false);
+      setRecommendRerun(true);
 
+      // Check if the env has been refreshed since the last run
       const prevEnvTimeStamp = sessionStorage.getItem(prevRefreshKey);
       if (
         prevEnvTimeStamp === null ||
         parseInt(prevEnvTimeStamp) !== envTimeStamp
       ) {
         sessionStorage.setItem(prevRefreshKey, envTimeStamp.toString());
-        sessionStorage.removeItem(sessionStorageKeys.recommendationIgnored);
+        sessionStorage.removeItem(recommendIgnoreKey);
+        sessionStorage.removeItem(recommendShowKey);
         setIgnoreRecommend(false);
       }
-      setPerformedRecommend(false);
-      setRecommendRefresh(true);
     }
 
     const check = recommendedCheck;
@@ -182,11 +186,21 @@ export const PresetCheckRecommendation = () => {
     } else {
       setAffectedModels(`${selectedNodes.length} models`);
     }
+
+    if (!sessionStorage.getItem(recommendShowKey)) {
+      const prevEnvTimeStamp = sessionStorage.getItem(prevRefreshKey);
+      sessionStorage.setItem(recommendShowKey, "true");
+      trackRecommendCheck({
+        action: "recommend",
+        from: prevEnvTimeStamp === null ? "initial" : "rerun",
+      });
+    }
   }, [
     recommendedCheck,
     selectedNodes,
     lineageGraph,
-    recommendationKey,
+    recommendIgnoreKey,
+    recommendShowKey,
     prevRefreshKey,
     envInfo,
   ]);
@@ -216,7 +230,7 @@ export const PresetCheckRecommendation = () => {
       <>
         <HStack width="100%" padding="2pt 8pt" backgroundColor={"blue.50"}>
           <HStack flex="1" fontSize={"10pt"} color="blue.600">
-            {!recommendRefresh ? (
+            {!recommendRerun ? (
               <>
                 <InfoOutlineIcon />
                 <Text>
@@ -238,12 +252,26 @@ export const PresetCheckRecommendation = () => {
               size="xs"
               onClick={() => {
                 setIgnoreRecommend(true);
-                sessionStorage.setItem(recommendationKey, "true");
+                sessionStorage.setItem(recommendIgnoreKey, "true");
+                trackRecommendCheck({
+                  action: "ignore",
+                  from: recommendRerun ? "rerun" : "initial",
+                });
               }}
             >
               Ignore
             </Button>
-            <Button colorScheme="blue" size="xs" onClick={onOpen}>
+            <Button
+              colorScheme="blue"
+              size="xs"
+              onClick={() => {
+                onOpen();
+                trackRecommendCheck({
+                  action: "perform",
+                  from: recommendRerun ? "rerun" : "initial",
+                });
+              }}
+            >
               Perform
             </Button>
           </HStack>
@@ -275,6 +303,10 @@ export const PresetCheckRecommendation = () => {
                   onClose();
                   performPresetCheck();
                   setPerformedRecommend(true);
+                  trackRecommendCheck({
+                    action: "execute",
+                    from: recommendRerun ? "rerun" : "initial",
+                  });
                 }}
               >
                 Execute on {numNodes} models
