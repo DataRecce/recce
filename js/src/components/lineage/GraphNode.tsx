@@ -1,4 +1,15 @@
-import { Box, Flex, HStack, Icon, Spacer, Tooltip } from "@chakra-ui/react";
+import {
+  Box,
+  Flex,
+  HStack,
+  Icon,
+  Spacer,
+  Tag,
+  TagLabel,
+  TagLeftIcon,
+  Text,
+  Tooltip,
+} from "@chakra-ui/react";
 import React, { useState } from "react";
 
 import { Handle, NodeProps, Position, useStore } from "reactflow";
@@ -14,8 +25,40 @@ import { findByRunType } from "../run/registry";
 import { isSchemaChanged } from "../schema/schemaDiff";
 import { useLineageViewContext } from "./LineageViewContext";
 import { FaCheckSquare, FaRegSquare, FaSquare } from "react-icons/fa";
+import { RowCount } from "@/lib/api/models";
+import { deltaPercentageString } from "../rowcount/delta";
 
 interface GraphNodeProps extends NodeProps<LineageGraphNode> {}
+
+function _RowCountDiffTag({ rowCount }: { rowCount: RowCount }) {
+  const base = rowCount.base;
+  const current = rowCount.curr;
+  const baseLabel = rowCount.base === null ? "N/A" : `${rowCount.base} Rows`;
+  const currentLabel = rowCount.curr === null ? "N/A" : `${rowCount.curr} Rows`;
+
+  let tagLabel;
+  let colorScheme;
+  if (base === null && current === null) {
+    tagLabel = "Failed to load";
+    colorScheme = "gray";
+  } else if (base === null || current === null) {
+    tagLabel = `${baseLabel} -> ${currentLabel}`;
+    colorScheme = base === null ? "green" : "red";
+  } else if (base === current) {
+    tagLabel = "=";
+    colorScheme = "gray";
+  } else if (base !== current) {
+    tagLabel = `${deltaPercentageString(base, current)} Rows`;
+    colorScheme = base < current ? "green" : "red";
+  }
+
+  return (
+    <Tag colorScheme={colorScheme}>
+      <TagLeftIcon as={findByRunType("row_count_diff")?.icon} />
+      <TagLabel>{tagLabel}</TagLabel>
+    </Tag>
+  );
+}
 
 const NodeRunsAggregated = ({
   id,
@@ -50,7 +93,7 @@ const NodeRunsAggregated = ({
   const colorUnchanged = inverted ? "gray" : "lightgray";
 
   return (
-    <Flex gap="5px">
+    <Flex flex="1">
       {schemaChanged !== undefined && (
         <Tooltip
           label={`Schema (${schemaChanged ? "changed" : "no change"})`}
@@ -64,16 +107,14 @@ const NodeRunsAggregated = ({
           </Box>
         </Tooltip>
       )}
-      {rowCountChanged !== undefined && (
+      <Spacer />
+      {runs && runs["row_count_diff"] && rowCountChanged !== undefined && (
         <Tooltip
-          label={`Row count (${rowCountChanged ? "changed" : "no change"})`}
+          label={`Row count (${rowCountChanged ? "changed" : "="})`}
           openDelay={500}
         >
-          <Box height="16px">
-            <Icon
-              as={findByRunType("row_count_diff")?.icon}
-              color={rowCountChanged ? colorChanged : colorUnchanged}
-            />
+          <Box>
+            <_RowCountDiffTag rowCount={runs["row_count_diff"].result} />
           </Box>
         </Tooltip>
       )}
@@ -286,10 +327,12 @@ export function GraphNode({ data }: GraphNodeProps) {
                     })()}
                   />
                 )}
-              <Spacer />
               {data.isActionMode &&
                 (data.action ? (
-                  <ActionTag node={data} action={data.action} />
+                  <>
+                    <Spacer />
+                    <ActionTag node={data} action={data.action} />
+                  </>
                 ) : (
                   <></>
                 ))}
