@@ -25,82 +25,101 @@ import { useRecceActionContext } from "@/lib/hooks/RecceActionContext";
 import { sessionStorageKeys } from "@/lib/api/sessionStorageKeys";
 import { useRecceServerFlag } from "@/lib/hooks/useRecceServerFlag";
 
+const usePresetCheckRecommendation = () => {
+  const queryChecks = useQuery({
+    queryKey: cacheKeys.checks(),
+    queryFn: listChecks,
+  });
+
+  const lastRecommendCheck = useMemo(() => {
+    // filter out the preset checks and it's the latest row count diff check
+    if (queryChecks.status === "success" && queryChecks.data.length > 0) {
+      const check = queryChecks.data
+        .filter((check) => check.is_preset)
+        .findLast((check) => check.type === "row_count_diff");
+      if (check) {
+        return check;
+      }
+    }
+  }, [queryChecks]);
+
+  const queryPresetCheck = useQuery({
+    queryKey: lastRecommendCheck?.check_id
+      ? cacheKeys.check(lastRecommendCheck.check_id)
+      : [],
+    queryFn: async () => {
+      if (lastRecommendCheck?.check_id) {
+        return getCheck(lastRecommendCheck.check_id);
+      }
+    },
+    enabled: !!lastRecommendCheck?.check_id,
+  });
+
+  const querySelectedModels = useQuery({
+    queryKey: lastRecommendCheck?.check_id
+      ? [...cacheKeys.check(lastRecommendCheck.check_id), "select"]
+      : [],
+    queryFn: async () =>
+      select({
+        select: lastRecommendCheck?.params?.select,
+        exclude: lastRecommendCheck?.params?.exclude,
+      }),
+    enabled: !!lastRecommendCheck?.params?.select,
+  });
+
+  const selectedNodes = useMemo(() => {
+    if (lastRecommendCheck) {
+      if (lastRecommendCheck.params?.node_names) {
+        return lastRecommendCheck.params.node_names;
+      }
+
+      if (lastRecommendCheck.params?.node_ids) {
+        return lastRecommendCheck.params.node_ids;
+      }
+    }
+
+    if (querySelectedModels.status === "success" && querySelectedModels.data) {
+      return querySelectedModels.data.nodes;
+    }
+  }, [lastRecommendCheck, querySelectedModels]);
+
+  return {
+    recommendedCheck: queryPresetCheck.data,
+    selectedNodes,
+  };
+};
+
 export const PresetCheckRecommendation = () => {
   const { lineageGraph } = useLineageGraphContext();
   const { showRunId } = useRecceActionContext();
   const { data: flags } = useRecceServerFlag();
   const queryClient = useQueryClient();
-  const [recommendCheckId, setRecommendCheckId] = useState<string>("");
-  const [recommendCheckParam, setRecommendCheckParam] = useState<SelectInput>();
-  const [showRecommendation, setShowRecommendation] = useState<boolean>(false);
+  const { recommendedCheck, selectedNodes } = usePresetCheckRecommendation();
   const [affectedModels, setAffectedModels] = useState<string>();
+  const [performedRecommend, setPerformedRecommend] = useState<boolean>(false);
+  const [ignoreRecommend, setIgnoreRecommend] = useState<boolean>(false);
   const { isOpen, onOpen, onClose } = useDisclosure();
   const recommendationKey = sessionStorageKeys.recommendationIgnored;
 
-  const { data: checks, status } = useQuery({
-    queryKey: cacheKeys.checks(),
-    queryFn: listChecks,
-  });
-
-  const { data: presetCheck, status: presetCheckStatus } = useQuery({
-    queryKey: cacheKeys.check(recommendCheckId),
-    queryFn: async () => getCheck(recommendCheckId),
-    enabled: !!recommendCheckId,
-  });
-
-  const queryKey = [...cacheKeys.check(recommendCheckId), "select"];
-  const { data: selectedModels, status: selectedModelsStatus } = useQuery({
-    queryKey,
-    queryFn: async () =>
-      select({
-        select: recommendCheckParam?.select,
-        exclude: recommendCheckParam?.exclude,
-      }),
-    enabled: !!recommendCheckParam?.select,
-  });
+  useEffect(() => {
+    const ignored = sessionStorage.getItem(recommendationKey);
+    if (ignored) {
+      setIgnoreRecommend(true);
+    }
+  }, []);
 
   useEffect(() => {
-    // filter out the preset checks and it's the latest row count diff check
-    if (status === "success" && checks.length > 0) {
-      const check = checks
-        .filter((check) => check.is_preset)
-        .findLast((check) => check.type === "row_count_diff");
-      if (check) {
-        setRecommendCheckId(check.check_id);
-        setRecommendCheckParam(check.params);
-      }
-    }
-  }, [status, checks]);
-
-  const numNodes = useMemo(() => {
-    if (presetCheckStatus === "success" && presetCheck) {
-      if (presetCheck.params?.node_names) {
-        return presetCheck.params.node_names.length;
-      }
-
-      if (presetCheck.params?.node_ids) {
-        return presetCheck.params.node_ids.length;
-      }
-    }
-
-    if (selectedModelsStatus === "success" && selectedModels) {
-      return selectedModels.nodes.length;
-    }
-  }, [presetCheckStatus, presetCheck, selectedModelsStatus, selectedModels]);
-
-  useEffect(() => {
-    if (presetCheckStatus !== "success" || !presetCheck) {
-      setShowRecommendation(false);
+    if (!recommendedCheck || !selectedNodes) {
       return;
     }
 
-    if (presetCheck.last_run?.run_id) {
-      setShowRecommendation(false);
+    if (recommendedCheck.last_run?.run_id) {
+      setPerformedRecommend(true);
       return;
     }
 
-    const check = presetCheck;
-    if (numNodes > 0 && numNodes <= 3) {
+    const check = recommendedCheck;
+    if (selectedNodes.length > 0 && selectedNodes.length <= 3) {
       if (check.params?.node_names) {
         const nodeNames = check.params?.node_names.join(", ");
         setAffectedModels(`'${nodeNames}'`);
@@ -114,9 +133,9 @@ export const PresetCheckRecommendation = () => {
         }
         const nodeNames = nodes.join(", ");
         setAffectedModels(`'${nodeNames}'`);
-      } else if (selectedModelsStatus === "success" && selectedModels) {
+      } else if (selectedNodes) {
         const nodes = [];
-        for (const nodeId of selectedModels.nodes) {
+        for (const nodeId of selectedNodes) {
           const node = lineageGraph?.nodes[nodeId];
           if (node) {
             nodes.push(node.name);
@@ -125,32 +144,18 @@ export const PresetCheckRecommendation = () => {
         const nodeNames = nodes.join(", ");
         setAffectedModels(`'${nodeNames}'`);
       }
-    } else if (lineageGraph?.modifiedSet?.length === numNodes) {
+    } else if (lineageGraph?.modifiedSet?.length === selectedNodes.length) {
       setAffectedModels("modified and potentially impacted models");
     } else if (check.params?.select && !check.params?.exclude) {
       setAffectedModels(`'${check.params?.select}'`);
     } else {
-      setAffectedModels(`${numNodes} models`);
+      setAffectedModels(`${selectedNodes.length} models`);
     }
-
-    const ignored = sessionStorage.getItem(recommendationKey);
-    if (!ignored && !flags?.single_env_onboarding) {
-      setShowRecommendation(true);
-    }
-  }, [
-    presetCheckStatus,
-    presetCheck,
-    selectedModelsStatus,
-    selectedModels,
-    numNodes,
-    lineageGraph,
-    recommendationKey,
-    flags,
-  ]);
+  }, [recommendedCheck, selectedNodes, lineageGraph, recommendationKey, flags]);
 
   const performPresetCheck = useCallback(async () => {
-    const check = presetCheck;
-    if (presetCheckStatus !== "success" || !check || check.last_run?.run_id) {
+    const check = recommendedCheck;
+    if (!check || check.last_run?.run_id) {
       return;
     }
     const submittedRun = await submitRunFromCheck(check.check_id, {
@@ -160,10 +165,16 @@ export const PresetCheckRecommendation = () => {
     queryClient.invalidateQueries({
       queryKey: cacheKeys.check(check.check_id),
     });
-  }, [presetCheckStatus, presetCheck, showRunId, queryClient]);
+  }, [recommendedCheck, showRunId, queryClient]);
+
+  if (!recommendedCheck || !selectedNodes || flags?.single_env_onboarding) {
+    return <></>;
+  }
+  const numNodes = selectedNodes.length;
 
   return (
-    showRecommendation && (
+    !ignoreRecommend &&
+    !performedRecommend && (
       <>
         <HStack width="100%" padding="2pt 8pt" backgroundColor={"blue.50"}>
           <HStack flex="1" fontSize={"10pt"} color="blue.600">
@@ -176,7 +187,7 @@ export const PresetCheckRecommendation = () => {
             <Button
               size="xs"
               onClick={() => {
-                setShowRecommendation(false);
+                setIgnoreRecommend(true);
                 sessionStorage.setItem(recommendationKey, "true");
               }}
             >
@@ -212,8 +223,8 @@ export const PresetCheckRecommendation = () => {
                 colorScheme="blue"
                 onClick={() => {
                   onClose();
-                  setShowRecommendation(false);
                   performPresetCheck();
+                  setPerformedRecommend(true);
                 }}
               >
                 Execute on {numNodes} models
