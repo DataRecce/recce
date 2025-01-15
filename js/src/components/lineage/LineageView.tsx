@@ -797,8 +797,12 @@ export function PrivateLineageView(
           style={{ contain: "strict" }}
           position="relative"
         >
-          {interactive && <LineageViewTopBar />}
-          <PresetCheckRecommendation />
+          {interactive && (
+            <>
+              <LineageViewTopBar />
+              <PresetCheckRecommendation />
+            </>
+          )}
           <ReactFlow
             nodeTypes={nodeTypes}
             edgeTypes={edgeTypes}
