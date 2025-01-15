@@ -30,21 +30,34 @@ import { deltaPercentageString } from "../rowcount/delta";
 
 interface GraphNodeProps extends NodeProps<LineageGraphNode> {}
 
-function _RowCountDiffRate({ rowCount }: { rowCount: RowCount }) {
+function _RowCountDiffTag({ rowCount }: { rowCount: RowCount }) {
   const base = rowCount.base;
   const current = rowCount.curr;
   const baseLabel = rowCount.base === null ? "N/A" : `${rowCount.base} Rows`;
   const currentLabel = rowCount.curr === null ? "N/A" : `${rowCount.curr} Rows`;
 
+  let tagLabel;
+  let colorScheme;
   if (base === null && current === null) {
-    return <>Failed to load</>;
+    tagLabel = "Failed to load";
+    colorScheme = "gray";
   } else if (base === null || current === null) {
-    return <Text>{`${baseLabel} -> ${currentLabel}`}</Text>;
+    tagLabel = `${baseLabel} -> ${currentLabel}`;
+    colorScheme = base === null ? "green" : "red";
   } else if (base === current) {
-    return <Text>=</Text>;
+    tagLabel = "=";
+    colorScheme = "gray";
   } else if (base !== current) {
-    return <Text>{`${deltaPercentageString(base, current)} Rows`}</Text>;
+    tagLabel = `${deltaPercentageString(base, current)} Rows`;
+    colorScheme = base < current ? "green" : "red";
   }
+
+  return (
+    <Tag colorScheme={colorScheme}>
+      <TagLeftIcon as={findByRunType("row_count_diff")?.icon} />
+      <TagLabel>{tagLabel}</TagLabel>
+    </Tag>
+  );
 }
 
 const NodeRunsAggregated = ({
@@ -95,19 +108,14 @@ const NodeRunsAggregated = ({
         </Tooltip>
       )}
       <Spacer />
-      {rowCountChanged !== undefined && (
+      {runs && runs["row_count_diff"] && rowCountChanged !== undefined && (
         <Tooltip
-          label={`Row count (${rowCountChanged ? "changed" : "no change"})`}
+          label={`Row count (${rowCountChanged ? "changed" : "="})`}
           openDelay={500}
         >
-          <Tag colorScheme={rowCountChanged ? "red" : "green"}>
-            <TagLeftIcon as={findByRunType("row_count_diff")?.icon} />
-            <TagLabel>
-              {runs && runs["row_count_diff"] && (
-                <_RowCountDiffRate rowCount={runs["row_count_diff"].result} />
-              )}
-            </TagLabel>
-          </Tag>
+          <Box>
+            <_RowCountDiffTag rowCount={runs["row_count_diff"].result} />
+          </Box>
         </Tooltip>
       )}
     </Flex>

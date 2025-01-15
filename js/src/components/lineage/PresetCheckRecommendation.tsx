@@ -18,7 +18,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { cacheKeys } from "@/lib/api/cacheKeys";
 import { getCheck, listChecks } from "@/lib/api/checks";
 import { InfoOutlineIcon } from "@chakra-ui/icons";
-import { select, SelectInput } from "@/lib/api/select";
+import { select } from "@/lib/api/select";
 import { useLineageGraphContext } from "@/lib/hooks/LineageGraphContext";
 import { submitRunFromCheck } from "@/lib/api/runs";
 import { useRecceActionContext } from "@/lib/hooks/RecceActionContext";
@@ -106,7 +106,7 @@ export const PresetCheckRecommendation = () => {
     if (ignored) {
       setIgnoreRecommend(true);
     }
-  }, []);
+  }, [recommendationKey]);
 
   useEffect(() => {
     if (!recommendedCheck || !selectedNodes) {
