@@ -187,6 +187,7 @@ export const PresetCheckRecommendation = () => {
     selectedNodes,
     lineageGraph,
     recommendationKey,
+    prevRefreshKey,
     envInfo,
   ]);
 
