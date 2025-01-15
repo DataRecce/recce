@@ -17,7 +17,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { cacheKeys } from "@/lib/api/cacheKeys";
 import { getCheck, listChecks } from "@/lib/api/checks";
-import { InfoOutlineIcon } from "@chakra-ui/icons";
+import { InfoOutlineIcon, WarningTwoIcon } from "@chakra-ui/icons";
 import { select } from "@/lib/api/select";
 import { useLineageGraphContext } from "@/lib/hooks/LineageGraphContext";
 import { submitRunFromCheck } from "@/lib/api/runs";
@@ -90,7 +90,7 @@ const usePresetCheckRecommendation = () => {
 };
 
 export const PresetCheckRecommendation = () => {
-  const { lineageGraph } = useLineageGraphContext();
+  const { lineageGraph, envInfo } = useLineageGraphContext();
   const { showRunId } = useRecceActionContext();
   const { data: flags } = useRecceServerFlag();
   const queryClient = useQueryClient();
@@ -98,8 +98,10 @@ export const PresetCheckRecommendation = () => {
   const [affectedModels, setAffectedModels] = useState<string>();
   const [performedRecommend, setPerformedRecommend] = useState<boolean>(false);
   const [ignoreRecommend, setIgnoreRecommend] = useState<boolean>(false);
+  const [recommendRefresh, setRecommendRefresh] = useState<boolean>(false);
   const { isOpen, onOpen, onClose } = useDisclosure();
   const recommendationKey = sessionStorageKeys.recommendationIgnored;
+  const prevRefreshKey = sessionStorageKeys.prevRefreshTimeStamp;
 
   useEffect(() => {
     const ignored = sessionStorage.getItem(recommendationKey);
@@ -114,8 +116,37 @@ export const PresetCheckRecommendation = () => {
     }
 
     if (recommendedCheck.last_run?.run_id) {
-      setPerformedRecommend(true);
-      return;
+      const runTimeStamp = new Date(
+        recommendedCheck.last_run?.run_at
+      ).getTime();
+
+      let currEnvTimeStamp = 0;
+      let baseEnvTimeStamp = 0;
+      const dbtInfo = envInfo?.dbt;
+      if (dbtInfo?.current?.generated_at) {
+        currEnvTimeStamp = new Date(dbtInfo.current?.generated_at).getTime();
+      }
+      if (dbtInfo?.base?.generated_at) {
+        baseEnvTimeStamp = new Date(dbtInfo?.base?.generated_at).getTime();
+      }
+      const envTimeStamp = Math.max(currEnvTimeStamp, baseEnvTimeStamp);
+
+      if (runTimeStamp >= envTimeStamp) {
+        setPerformedRecommend(true);
+        return;
+      }
+
+      const prevEnvTimeStamp = sessionStorage.getItem(prevRefreshKey);
+      if (
+        prevEnvTimeStamp === null ||
+        parseInt(prevEnvTimeStamp) !== envTimeStamp
+      ) {
+        sessionStorage.setItem(prevRefreshKey, envTimeStamp.toString());
+        sessionStorage.removeItem(sessionStorageKeys.recommendationIgnored);
+        setIgnoreRecommend(false);
+      }
+      setPerformedRecommend(false);
+      setRecommendRefresh(true);
     }
 
     const check = recommendedCheck;
@@ -151,11 +182,17 @@ export const PresetCheckRecommendation = () => {
     } else {
       setAffectedModels(`${selectedNodes.length} models`);
     }
-  }, [recommendedCheck, selectedNodes, lineageGraph, recommendationKey, flags]);
+  }, [
+    recommendedCheck,
+    selectedNodes,
+    lineageGraph,
+    recommendationKey,
+    envInfo,
+  ]);
 
   const performPresetCheck = useCallback(async () => {
     const check = recommendedCheck;
-    if (!check || check.last_run?.run_id) {
+    if (!check) {
       return;
     }
     const submittedRun = await submitRunFromCheck(check.check_id, {
@@ -178,11 +215,23 @@ export const PresetCheckRecommendation = () => {
       <>
         <HStack width="100%" padding="2pt 8pt" backgroundColor={"blue.50"}>
           <HStack flex="1" fontSize={"10pt"} color="blue.600">
-            <InfoOutlineIcon />
-            <Text>
-              First Check: Perform a row count diff of {affectedModels} for
-              basic impact assessment
-            </Text>
+            {!recommendRefresh ? (
+              <>
+                <InfoOutlineIcon />
+                <Text>
+                  First Check: Perform a row count diff of {affectedModels} for
+                  basic impact assessment
+                </Text>
+              </>
+            ) : (
+              <>
+                <WarningTwoIcon />
+                <Text>
+                  New dbt build detected - Re-run row count checks to maintain
+                  result accuracy
+                </Text>
+              </>
+            )}
             <Spacer />
             <Button
               size="xs"
