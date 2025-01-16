@@ -10,6 +10,7 @@ import {
   MenuGroup,
   MenuItem,
   MenuList,
+  Portal,
   Spacer,
 } from "@chakra-ui/react";
 
@@ -70,27 +71,31 @@ function ColumnNameCell({
               size={"sm"}
             />
 
-            <MenuList lineHeight="20px">
-              <MenuGroup title="Action" as={Box} fontSize="8pt">
-                <MenuItem
-                  fontSize="10pt"
-                  onClick={() => handleValueDiffDetail({}, { showForm: true })}
-                >
-                  Show mismatched values...
-                </MenuItem>
-                <MenuItem
-                  fontSize="10pt"
-                  onClick={() =>
-                    handleValueDiffDetail(
-                      { columns: [column] },
-                      { showForm: false }
-                    )
-                  }
-                >
-                  Show mismatched values for &apos;{column}&apos;
-                </MenuItem>
-              </MenuGroup>
-            </MenuList>
+            <Portal>
+              <MenuList lineHeight="20px">
+                <MenuGroup title="Action" as={Box} fontSize="8pt">
+                  <MenuItem
+                    fontSize="10pt"
+                    onClick={() =>
+                      handleValueDiffDetail({}, { showForm: true })
+                    }
+                  >
+                    Show mismatched values...
+                  </MenuItem>
+                  <MenuItem
+                    fontSize="10pt"
+                    onClick={() =>
+                      handleValueDiffDetail(
+                        { columns: [column] },
+                        { showForm: false }
+                      )
+                    }
+                  >
+                    Show mismatched values for &apos;{column}&apos;
+                  </MenuItem>
+                </MenuGroup>
+              </MenuList>
+            </Portal>
           </>
         )}
       </Menu>
