@@ -149,6 +149,10 @@ export function GraphNode({ data }: GraphNodeProps) {
   const { interactive, selectNodeMulti, selectMode, advancedImpactRadius } =
     useLineageViewContext();
   const { lineageGraph } = useLineageGraphContext();
+  const isNonBreakingChange =
+    advancedImpactRadius &&
+    changeStatus === "modified" &&
+    lineageGraph?.nonBreakingSet.has(id);
 
   // text color, icon
   const {
@@ -162,11 +166,11 @@ export function GraphNode({ data }: GraphNodeProps) {
         color: "gray.400",
         backgroundColor: "gray.100",
       };
-  let borderStyle = "solid";
+  let borderStyle = isNonBreakingChange ? "dashed" : "solid";
 
   // border width and color
   const selectedNodeShadowBox = "rgba(3, 102, 214, 0.5) 5px 5px 10px 3px";
-  let borderWidth = 1;
+  let borderWidth = "2px";
   let borderColor = color;
   let boxShadow = data.isSelected ? selectedNodeShadowBox : "unset";
 
@@ -182,6 +186,7 @@ export function GraphNode({ data }: GraphNodeProps) {
         borderColor={borderColor}
         borderWidth={borderWidth}
         borderStyle={borderStyle}
+        borderRadius={8}
         backgroundColor={(function () {
           if (showContent) {
             if (selectMode === "multi") {
@@ -199,7 +204,6 @@ export function GraphNode({ data }: GraphNodeProps) {
             return isSelected ? color : backgroundColor;
           }
         })()}
-        borderRadius={3}
         // boxShadow={boxShadow}
         transition="box-shadow 0.2s ease-in-out"
         padding={0}
@@ -218,13 +222,7 @@ export function GraphNode({ data }: GraphNodeProps) {
       >
         <Flex
           // backgroundColor={color}
-          bg={
-            advancedImpactRadius &&
-            changeStatus === "modified" &&
-            lineageGraph?.nonBreakingSet.has(id)
-              ? "repeating-linear-gradient(45deg, orange, orange 5px, white 5px, white 10px)"
-              : color
-          }
+          bg={color}
           padding={interactive ? "8px" : "2px"}
           borderRightWidth={borderWidth}
           borderColor={selectMode === "multi" ? "#00000020" : borderColor}

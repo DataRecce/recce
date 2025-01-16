@@ -93,7 +93,7 @@ ChangeCategory = Literal[
 
 class NodeDiff(BaseModel):
     change_status: ChangeStatus
-    change_category: Optional[ChangeCategory]
+    change_category: Optional[ChangeCategory] = None
 
 
 class LineageDiff(BaseModel):

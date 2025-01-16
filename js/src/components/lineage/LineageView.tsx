@@ -27,10 +27,15 @@ import {
   StackDivider,
   useToast,
   MenuDivider,
-  Checkbox,
   Switch,
   Badge,
+  Link,
+  Popover,
+  PopoverBody,
+  PopoverContent,
+  PopoverTrigger,
 } from "@chakra-ui/react";
+import { InfoOutlineIcon } from "@chakra-ui/icons";
 import React, {
   Ref,
   RefObject,
@@ -93,6 +98,8 @@ import { Check } from "@/lib/api/checks";
 import useValueDiffAlertDialog from "./useValueDiffAlertDialog";
 import { trackMultiNodesAction } from "@/lib/api/track";
 import { PresetCheckRecommendation } from "./PresetCheckRecommendation";
+
+
 
 export interface LineageViewProps {
   viewOptions?: LineageDiffViewOptions;
@@ -843,7 +850,17 @@ export function PrivateLineageView(
             </Panel>
             <Panel position="top-left">
               <Flex direction="column">
-                <Flex direction="row" alignItems="center" gap="5px">
+                <Flex
+                  direction="row"
+                  alignItems="center"
+                  gap="5px"
+                  p="5px 10px"
+                  borderRadius="md"
+                  boxShadow="md"
+                  border="1px solid"
+                  borderColor="gray.200"
+                  bg="white"
+                >
                   <Switch
                     isChecked={advancedImpactRadius}
                     onChange={(e) => {
@@ -851,10 +868,34 @@ export function PrivateLineageView(
                       setAdvancedImpactRadius(advancedImpactRadius);
                       highlightImpactRadius(advancedImpactRadius);
                     }}
-                  >
-                    Breaking Change Analysis{" "}
-                  </Switch>
-                  <Badge>Beta</Badge>
+                    alignItems={"center"}
+                  ></Switch>
+                  <Flex alignItems={"center"}>
+                    <Text fontSize="10pt" lineHeight="1">
+                      Breaking Change Analysis
+                    </Text>
+                  </Flex>
+                  <Popover trigger="hover" placement="top-start">
+                    <PopoverTrigger>
+                      <Icon
+                        boxSize="10px"
+                        as={InfoOutlineIcon}
+                        color="gray.500"
+                        cursor="pointer"
+                      />
+                    </PopoverTrigger>
+                    <PopoverContent bg="black" color="white">
+                      <PopoverBody fontSize="sm">
+                        Analyze the SQL code in the model to determine if the
+                        modified code introduces a breaking change.{" "}
+                        <Link href="https://datarecce.io/docs/features/lineage/">
+                          Learn more
+                        </Link>
+                        .
+                      </PopoverBody>
+                    </PopoverContent>
+                  </Popover>
+                  <Badge color="gray">Beta</Badge>
                 </Flex>
                 {nodes.length == 0 && (
                   <Text fontSize="xl" color="grey" opacity={0.5}>
