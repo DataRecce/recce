@@ -72,3 +72,13 @@ interface SingleEnvironmentProps {
 export function trackSingleEnvironment(props: SingleEnvironmentProps) {
   amplitude.track("[Experiment] single_environment", props);
 }
+
+interface RecommendPresetCheckProps {
+  action: "recommend" | "ignore" | "perform" | "execute" | "close";
+  from?: "initial" | "rerun";
+  nodes?: number;
+}
+
+export function trackRecommendCheck(props: RecommendPresetCheckProps) {
+  amplitude.track("[Experiment] recommend_preset_check", props);
+}

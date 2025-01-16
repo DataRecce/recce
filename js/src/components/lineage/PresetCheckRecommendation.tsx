@@ -24,6 +24,7 @@ import { submitRunFromCheck } from "@/lib/api/runs";
 import { useRecceActionContext } from "@/lib/hooks/RecceActionContext";
 import { sessionStorageKeys } from "@/lib/api/sessionStorageKeys";
 import { useRecceServerFlag } from "@/lib/hooks/useRecceServerFlag";
+import { trackRecommendCheck } from "@/lib/api/track";
 
 const usePresetCheckRecommendation = () => {
   const queryChecks = useQuery({
@@ -98,17 +99,18 @@ export const PresetCheckRecommendation = () => {
   const [affectedModels, setAffectedModels] = useState<string>();
   const [performedRecommend, setPerformedRecommend] = useState<boolean>(false);
   const [ignoreRecommend, setIgnoreRecommend] = useState<boolean>(false);
-  const [recommendRefresh, setRecommendRefresh] = useState<boolean>(false);
+  const [recommendRerun, setRecommendRerun] = useState<boolean>(false);
   const { isOpen, onOpen, onClose } = useDisclosure();
-  const recommendationKey = sessionStorageKeys.recommendationIgnored;
+  const recommendIgnoreKey = sessionStorageKeys.recommendationIgnored;
+  const recommendShowKey = sessionStorageKeys.recommendationShowed;
   const prevRefreshKey = sessionStorageKeys.prevRefreshTimeStamp;
 
   useEffect(() => {
-    const ignored = sessionStorage.getItem(recommendationKey);
+    const ignored = sessionStorage.getItem(recommendIgnoreKey);
     if (ignored) {
       setIgnoreRecommend(true);
     }
-  }, [recommendationKey]);
+  }, [recommendIgnoreKey]);
 
   useEffect(() => {
     if (!recommendedCheck || !selectedNodes) {
@@ -120,59 +122,49 @@ export const PresetCheckRecommendation = () => {
         recommendedCheck.last_run?.run_at
       ).getTime();
 
-      let currEnvTimeStamp = 0;
-      let baseEnvTimeStamp = 0;
       const dbtInfo = envInfo?.dbt;
-      if (dbtInfo?.current?.generated_at) {
-        currEnvTimeStamp = new Date(dbtInfo.current?.generated_at).getTime();
-      }
-      if (dbtInfo?.base?.generated_at) {
-        baseEnvTimeStamp = new Date(dbtInfo?.base?.generated_at).getTime();
-      }
+      const currEnvTimeStamp = dbtInfo?.current?.generated_at
+        ? new Date(dbtInfo.current.generated_at).getTime()
+        : 0;
+      const baseEnvTimeStamp = dbtInfo?.base?.generated_at
+        ? new Date(dbtInfo.base.generated_at).getTime()
+        : 0;
       const envTimeStamp = Math.max(currEnvTimeStamp, baseEnvTimeStamp);
 
       if (runTimeStamp >= envTimeStamp) {
         setPerformedRecommend(true);
         return;
       }
+      setPerformedRecommend(false);
+      setRecommendRerun(true);
 
+      // Check if the env has been refreshed
       const prevEnvTimeStamp = sessionStorage.getItem(prevRefreshKey);
       if (
         prevEnvTimeStamp === null ||
         parseInt(prevEnvTimeStamp) !== envTimeStamp
       ) {
         sessionStorage.setItem(prevRefreshKey, envTimeStamp.toString());
-        sessionStorage.removeItem(sessionStorageKeys.recommendationIgnored);
+        sessionStorage.removeItem(recommendIgnoreKey);
+        sessionStorage.removeItem(recommendShowKey);
         setIgnoreRecommend(false);
       }
-      setPerformedRecommend(false);
-      setRecommendRefresh(true);
     }
 
     const check = recommendedCheck;
+    const extractNodeNames = (nodeIds: string[]) => {
+      const nodes = nodeIds.map((nodeId) => lineageGraph?.nodes[nodeId]?.name);
+      return nodes.join(", ");
+    };
     if (selectedNodes.length > 0 && selectedNodes.length <= 3) {
       if (check.params?.node_names) {
         const nodeNames = check.params?.node_names.join(", ");
         setAffectedModels(`'${nodeNames}'`);
       } else if (check.params?.node_ids) {
-        const nodes = [];
-        for (const nodeId of check.params?.node_ids) {
-          const node = lineageGraph?.nodes[nodeId];
-          if (node) {
-            nodes.push(node.name);
-          }
-        }
-        const nodeNames = nodes.join(", ");
+        const nodeNames = extractNodeNames(check.params?.node_ids);
         setAffectedModels(`'${nodeNames}'`);
       } else if (selectedNodes) {
-        const nodes = [];
-        for (const nodeId of selectedNodes) {
-          const node = lineageGraph?.nodes[nodeId];
-          if (node) {
-            nodes.push(node.name);
-          }
-        }
-        const nodeNames = nodes.join(", ");
+        const nodeNames = extractNodeNames(selectedNodes);
         setAffectedModels(`'${nodeNames}'`);
       }
     } else if (lineageGraph?.modifiedSet?.length === selectedNodes.length) {
@@ -182,11 +174,22 @@ export const PresetCheckRecommendation = () => {
     } else {
       setAffectedModels(`${selectedNodes.length} models`);
     }
+
+    // Track recommendation is shown the first time
+    if (!sessionStorage.getItem(recommendShowKey)) {
+      const prevEnvTimeStamp = sessionStorage.getItem(prevRefreshKey);
+      sessionStorage.setItem(recommendShowKey, "true");
+      trackRecommendCheck({
+        action: "recommend",
+        from: prevEnvTimeStamp === null ? "initial" : "rerun",
+      });
+    }
   }, [
     recommendedCheck,
     selectedNodes,
     lineageGraph,
-    recommendationKey,
+    recommendIgnoreKey,
+    recommendShowKey,
     prevRefreshKey,
     envInfo,
   ]);
@@ -216,7 +219,7 @@ export const PresetCheckRecommendation = () => {
       <>
         <HStack width="100%" padding="2pt 8pt" backgroundColor={"blue.50"}>
           <HStack flex="1" fontSize={"10pt"} color="blue.600">
-            {!recommendRefresh ? (
+            {!recommendRerun ? (
               <>
                 <InfoOutlineIcon />
                 <Text>
@@ -238,17 +241,44 @@ export const PresetCheckRecommendation = () => {
               size="xs"
               onClick={() => {
                 setIgnoreRecommend(true);
-                sessionStorage.setItem(recommendationKey, "true");
+                sessionStorage.setItem(recommendIgnoreKey, "true");
+                trackRecommendCheck({
+                  action: "ignore",
+                  from: recommendRerun ? "rerun" : "initial",
+                  nodes: numNodes,
+                });
               }}
             >
               Ignore
             </Button>
-            <Button colorScheme="blue" size="xs" onClick={onOpen}>
+            <Button
+              colorScheme="blue"
+              size="xs"
+              onClick={() => {
+                onOpen();
+                trackRecommendCheck({
+                  action: "perform",
+                  from: recommendRerun ? "rerun" : "initial",
+                  nodes: numNodes,
+                });
+              }}
+            >
               Perform
             </Button>
           </HStack>
         </HStack>
-        <Modal isOpen={isOpen} onClose={onClose} isCentered>
+        <Modal
+          isOpen={isOpen}
+          onClose={() => {
+            onClose();
+            trackRecommendCheck({
+              action: "close",
+              from: recommendRerun ? "rerun" : "initial",
+              nodes: numNodes,
+            });
+          }}
+          isCentered
+        >
           <ModalOverlay />
           <ModalContent>
             <ModalHeader>Row Count Check</ModalHeader>
@@ -268,13 +298,29 @@ export const PresetCheckRecommendation = () => {
               </Stack>
             </ModalBody>
             <ModalFooter gap="5px">
-              <Button onClick={onClose}>Cancel</Button>
+              <Button
+                onClick={() => {
+                  onClose();
+                  trackRecommendCheck({
+                    action: "close",
+                    from: recommendRerun ? "rerun" : "initial",
+                    nodes: numNodes,
+                  });
+                }}
+              >
+                Cancel
+              </Button>
               <Button
                 colorScheme="blue"
                 onClick={() => {
                   onClose();
                   performPresetCheck();
                   setPerformedRecommend(true);
+                  trackRecommendCheck({
+                    action: "execute",
+                    from: recommendRerun ? "rerun" : "initial",
+                    nodes: numNodes,
+                  });
                 }}
               >
                 Execute on {numNodes} models
