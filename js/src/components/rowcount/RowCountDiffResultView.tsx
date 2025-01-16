@@ -46,11 +46,10 @@ function _RowCountDiffResultView(
     const result = runResult[key];
     const base = isNumber(result?.base) ? result?.base : null;
     const current = isNumber(result?.curr) ? result?.curr : null;
-    let delta = "No Change";
+    let delta = "=";
 
     if (base !== null && current !== null) {
-      delta =
-        base !== current ? deltaPercentageString(base, current) : "No Change";
+      delta = base !== current ? deltaPercentageString(base, current) : "=";
     } else {
       if (base === current) {
         delta = "N/A";
