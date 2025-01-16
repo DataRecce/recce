@@ -29,6 +29,7 @@ import {
   MenuDivider,
   Checkbox,
   Switch,
+  Badge,
 } from "@chakra-ui/react";
 import React, {
   Ref,
@@ -842,16 +843,19 @@ export function PrivateLineageView(
             </Panel>
             <Panel position="top-left">
               <Flex direction="column">
-                <Switch
-                  isChecked={advancedImpactRadius}
-                  onChange={(e) => {
-                    const advancedImpactRadius = e.target.checked;
-                    setAdvancedImpactRadius(advancedImpactRadius);
-                    highlightImpactRadius(advancedImpactRadius);
-                  }}
-                >
-                  Advanced Impact Radius (Experimental)
-                </Switch>
+                <Flex direction="row" alignItems="center" gap="5px">
+                  <Switch
+                    isChecked={advancedImpactRadius}
+                    onChange={(e) => {
+                      const advancedImpactRadius = e.target.checked;
+                      setAdvancedImpactRadius(advancedImpactRadius);
+                      highlightImpactRadius(advancedImpactRadius);
+                    }}
+                  >
+                    Breaking Change Analysis{" "}
+                  </Switch>
+                  <Badge>Beta</Badge>
+                </Flex>
                 {nodes.length == 0 && (
                   <Text fontSize="xl" color="grey" opacity={0.5}>
                     No nodes
