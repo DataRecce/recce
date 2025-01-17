@@ -5,6 +5,7 @@ import uuid
 from contextlib import contextmanager
 from dataclasses import dataclass, fields
 from errno import ENOENT
+from functools import lru_cache
 from pathlib import Path
 from typing import Callable, Dict, List, Optional, Tuple, Iterator, Any, Set, Union, Literal, Type
 
@@ -538,6 +539,23 @@ class DbtAdapter(BaseAdapter):
     def get_lineage(self, base: Optional[bool] = False):
         manifest = self.curr_manifest if base is False else self.base_manifest
         catalog = self.curr_catalog if base is False else self.base_catalog
+        cache_key = hash((id(manifest), id(catalog)))
+        return self.get_lineage_cached(base, cache_key)
+
+    def get_lineage_diff(self) -> LineageDiff:
+        cache_key = hash((
+            id(self.base_manifest),
+            id(self.base_catalog),
+            id(self.curr_manifest),
+            id(self.curr_catalog),
+        ))
+        return self._get_lineage_diff_cached(cache_key)
+
+    @lru_cache(maxsize=2)
+    def get_lineage_cached(self, base: Optional[bool] = False, cache_key=0):
+        manifest = self.curr_manifest if base is False else self.base_manifest
+        catalog = self.curr_catalog if base is False else self.base_catalog
+
         manifest_metadata = manifest.metadata if manifest is not None else None
         catalog_metadata = catalog.metadata if catalog is not None else None
 
@@ -659,7 +677,8 @@ class DbtAdapter(BaseAdapter):
             catalog_metadata=catalog_metadata,
         )
 
-    def get_lineage_diff(self) -> LineageDiff:
+    @lru_cache(maxsize=1)
+    def _get_lineage_diff_cached(self, cache_key) -> LineageDiff:
         base = self.get_lineage(base=True)
         current = self.get_lineage(base=False)
         keys = {
@@ -958,3 +977,9 @@ class DbtAdapter(BaseAdapter):
 
     def cancel(self, connection: Connection):
         self.adapter.connections.cancel(connection)
+
+    def __hash__(self):
+        return id(self)
+
+    def __eq__(self, other):
+        return self.__hash__() == other.__hash__()
