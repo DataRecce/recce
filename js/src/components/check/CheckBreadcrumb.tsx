@@ -63,9 +63,6 @@ export function CheckBreadcrumb({ name, setName }: CheckBreadcrumbProps) {
       separator={<ChevronRightIcon color="gray.500" />}
       overflow={"hidden"}
     >
-      <BreadcrumbItem>
-        <Box>Checklist</Box>
-      </BreadcrumbItem>
       <BreadcrumbItem cursor="pointer" flex="0 1 auto" overflow="hidden">
         {isEditing ? (
           <Input
