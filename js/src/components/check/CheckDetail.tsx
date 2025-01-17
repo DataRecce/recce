@@ -30,6 +30,7 @@ import {
   Tooltip,
   useDisclosure,
   Text,
+  VStack,
 } from "@chakra-ui/react";
 import {
   CheckCircleIcon,
@@ -388,9 +389,14 @@ export const CheckDetail = ({ checkId }: CheckDetailProps) => {
                   />
                 ) : (
                   <Center bg="rgb(249,249,249)" height="100%">
-                    <Button onClick={handleRerun} colorScheme="blue" size="sm">
-                      Run Query
-                    </Button>
+                    <VStack spacing={4}>
+                      <Box>
+                          This action is part of the initial preset and has not been performed yet. Once performed, the result will be shown here.
+                      </Box>
+                      <Button onClick={handleRerun} colorScheme="blue" size="sm">
+                        Run Query
+                      </Button>
+                    </VStack>
                   </Center>
                 ))}
               {check && check.type === "schema_diff" && (
