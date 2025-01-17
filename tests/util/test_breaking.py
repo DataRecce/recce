@@ -1,8 +1,6 @@
 import textwrap
 import unittest
 
-import pytest
-
 from recce.util.breaking import is_breaking_change
 
 
@@ -108,20 +106,20 @@ class BreakingChangeTest(unittest.TestCase):
         """
         assert is_breaking_change(original_sql, modified_sql)
 
-    @pytest.mark.skip("The case when cannot be detected by sqlglot")
-    def test_non_breaking_change_add_column_by_case_when(self):
-        original_sql = """
-        select
-            a
-        from MyTable
-        """
-        modified_sql = """
-        select
-            a,
-            case when a > 100 then 1 else 0 end as b
-        from MyTable
-        """
-        assert not is_breaking_change(original_sql, modified_sql)
+    # @pytest.mark.skip("The case when cannot be detected by sqlglot")
+    # def test_non_breaking_change_add_column_by_case_when(self):
+    #     original_sql = """
+    #     select
+    #         a
+    #     from MyTable
+    #     """
+    #     modified_sql = """
+    #     select
+    #         a,
+    #         case when a > 100 then 1 else 0 end as b
+    #     from MyTable
+    #     """
+    #     assert not is_breaking_change(original_sql, modified_sql)
 
     def test_breaking_change_add_filter(self):
         original_sql = """
