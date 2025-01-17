@@ -121,14 +121,18 @@ function useLineageWatcher() {
           const { eventType, srcPath } = data.event;
           const [targetName, fileName] = srcPath.split("/").slice(-2);
           const name = path.parse(fileName).name;
-          artifactsUpdatedToast({
-            description: `Detected ${targetName} ${name} ${eventType}`,
-            status: "info",
-            variant: "left-accent",
-            position: "bottom-right",
-            duration: 5000,
-            isClosable: true,
-          });
+          const eventId = `${targetName}-${name}-${eventType}`;
+          if (!artifactsUpdatedToast.isActive(eventId)) {
+            artifactsUpdatedToast({
+              id: eventId,
+              description: `Detected ${targetName} ${name} ${eventType}`,
+              status: "info",
+              variant: "left-accent",
+              position: "bottom-right",
+              duration: 5000,
+              isClosable: true,
+            });
+          }
           invalidateCaches();
         } else if (data.command === "relaunch") {
           setEnvStatus("relaunch");
