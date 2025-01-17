@@ -225,15 +225,15 @@ export const CheckDetail = ({ checkId }: CheckDetailProps) => {
               mutate({ name });
             }}
           />
-          <Spacer />
           {isPresetCheck && (
             <Tooltip label="Preset Check defined in recce config">
-              <Tag size="sm" flex="0 0 auto">
+              <Tag size="sm" flex="0 0 auto" ml="2">
                 <TagLeftIcon boxSize={"14px"} as={CiBookmark} />
                 Preset
               </Tag>
             </Tooltip>
           )}
+          <Spacer />
           <Menu>
             <MenuButton
               isRound={true}
