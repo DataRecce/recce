@@ -705,7 +705,7 @@ class DbtAdapter(BaseAdapter):
                         curr_sql = self.generate_sql(curr_node.get('raw_code'))
                         if not is_breaking_change(base_sql, curr_sql):
                             change_category = 'non-breaking'
-                    except Exception as e:
+                    except Exception:
                         pass
 
                 diff[key] = NodeDiff(change_status='modified', change_category=change_category)

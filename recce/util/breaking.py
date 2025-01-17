@@ -30,30 +30,31 @@ def is_breaking_change(original_sql, modified_sql, dialect=None):
     for edit in edits:
         if isinstance(edit, Insert):
             inserted_expr = edit.expression
+            VALID_EXPRESSIONS = (
+                exp.Where,
+                exp.Join,
+                exp.Order,
+                exp.Group,
+                exp.Having,
+                exp.Limit,
+                exp.Offset,
+                exp.Window,
+                exp.Union,
+                exp.Intersect,
+                exp.Except,
+                exp.Merge,
+                exp.Delete,
+                exp.Update,
+                exp.Insert,
+                exp.Subquery,
+            )
 
-            if (
-                isinstance(inserted_expr, exp.Where) or
-                isinstance(inserted_expr, exp.Join) or
-                isinstance(inserted_expr, exp.Order) or
-                isinstance(inserted_expr, exp.Group) or
-                isinstance(inserted_expr, exp.Having) or
-                isinstance(inserted_expr, exp.Limit) or
-                isinstance(inserted_expr, exp.Offset) or
-                isinstance(inserted_expr, exp.Window) or
-                isinstance(inserted_expr, exp.Union) or
-                isinstance(inserted_expr, exp.Intersect) or
-                isinstance(inserted_expr, exp.Except) or
-                isinstance(inserted_expr, exp.Merge) or
-                isinstance(inserted_expr, exp.Delete) or
-                isinstance(inserted_expr, exp.Update) or
-                isinstance(inserted_expr, exp.Insert) or
-                isinstance(inserted_expr, exp.Subquery)
-            ):
+            if isinstance(inserted_expr, VALID_EXPRESSIONS):
                 return True
 
             if (
-                not isinstance(inserted_expr.parent, exp.Select)
-                and inserted_expr.parent not in inserted_expressions
+                not isinstance(inserted_expr.parent, exp.Select) and
+                inserted_expr.parent not in inserted_expressions
             ):
                 return True
         elif not isinstance(edit, Keep):
