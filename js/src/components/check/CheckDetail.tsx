@@ -186,7 +186,7 @@ export const CheckDetail = ({ checkId }: CheckDetailProps) => {
     mutate({ description });
   };
 
-  const shouldDisabledCopyButton = (
+  const isDisabledByNoResult = (
     type: string,
     run: Run | undefined
   ): boolean => {
@@ -301,7 +301,9 @@ export const CheckDetail = ({ checkId }: CheckDetailProps) => {
           )}
 
           <Tooltip
-            label={check?.is_checked ? "Mark as Pending" : "Mark as Approved"}
+            label={
+              isDisabledByNoResult(check?.type ?? "", run)
+                ? "Run the check first" : check?.is_checked ? "Mark as Pending" : "Mark as Approved"}
             placement="bottom-end"
           >
             <Button
@@ -317,6 +319,7 @@ export const CheckDetail = ({ checkId }: CheckDetailProps) => {
                 )
               }
               onClick={() => handleApproveCheck()}
+              isDisabled={isDisabledByNoResult(check?.type ?? "", run)}
             >
               {check?.is_checked ? "Approved" : "Mark as Approved"}
             </Button>
@@ -352,7 +355,7 @@ export const CheckDetail = ({ checkId }: CheckDetailProps) => {
                 leftIcon={<CopyIcon />}
                 variant="outline"
                 isDisabled={
-                  shouldDisabledCopyButton(check?.type ?? "", run) ||
+                  isDisabledByNoResult(check?.type ?? "", run) ||
                   tabIndex !== 0
                 }
                 onMouseEnter={onMouseEnter}
@@ -391,7 +394,7 @@ export const CheckDetail = ({ checkId }: CheckDetailProps) => {
                   <Center bg="rgb(249,249,249)" height="100%">
                     <VStack spacing={4}>
                       <Box>
-                          This action is part of the initial preset and has not been performed yet. Once performed, the result will be shown here.
+                        This action is part of the initial preset and has not been performed yet. Once performed, the result will be shown here.
                       </Box>
                       <Button onClick={handleRerun} colorScheme="blue" size="sm">
                         Run Query
@@ -409,21 +412,21 @@ export const CheckDetail = ({ checkId }: CheckDetailProps) => {
             {(check?.type === "query" ||
               check?.type === "query_diff" ||
               check?.type === "query_base") && (
-              <TabPanel p={0} height="100%" width="100%">
-                {check.params?.base_sql_template ? (
-                  <DualSqlEditor
-                    value={(check?.params as any)?.sql_template || ""}
-                    baseValue={(check?.params as any)?.base_sql_template || ""}
-                    options={{ readOnly: true }}
-                  />
-                ) : (
-                  <SqlEditor
-                    value={(check?.params as any)?.sql_template || ""}
-                    options={{ readOnly: true }}
-                  />
-                )}
-              </TabPanel>
-            )}
+                <TabPanel p={0} height="100%" width="100%">
+                  {check.params?.base_sql_template ? (
+                    <DualSqlEditor
+                      value={(check?.params as any)?.sql_template || ""}
+                      baseValue={(check?.params as any)?.base_sql_template || ""}
+                      options={{ readOnly: true }}
+                    />
+                  ) : (
+                    <SqlEditor
+                      value={(check?.params as any)?.sql_template || ""}
+                      options={{ readOnly: true }}
+                    />
+                  )}
+                </TabPanel>
+              )}
           </TabPanels>
         </Tabs>
       </Box>
