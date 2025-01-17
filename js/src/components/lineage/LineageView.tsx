@@ -290,7 +290,7 @@ export function PrivateLineageView(
     selectedNode?: Node;
   }>({ x: 0, y: 0 });
 
-  const [advancedImpactRadius, setAdvancedImpactRadius] = useState(false);
+  const [breakingChangeEnabled, setBreakingChangeEnabled] = useState(false);
 
   const toast = useToast();
 
@@ -322,8 +322,9 @@ export function PrivateLineageView(
         selectedNodes = result.nodes;
       }
 
-      const [nodes, edges] = toReactflow(lineageGraph, selectedNodes);
-
+      let [nodes, edges] = toReactflow(lineageGraph, selectedNodes);
+      const nodeSet = selectImpactRadius(lineageGraph, breakingChangeEnabled);
+      [nodes, edges] = highlightNodes(Array.from(nodeSet), nodes, edges);
       layout(nodes, edges);
       setNodes(nodes);
       setEdges(edges);
@@ -362,12 +363,14 @@ export function PrivateLineageView(
     setEdges(newEdges);
   };
 
-  const highlightImpactRadius = (advanced: boolean = advancedImpactRadius) => {
+  const highlightImpactRadius = (
+    _breakingChangeEnabled: boolean = breakingChangeEnabled
+  ) => {
     if (!lineageGraph) {
       return;
     }
 
-    const nodeSet = selectImpactRadius(lineageGraph, advanced);
+    const nodeSet = selectImpactRadius(lineageGraph, _breakingChangeEnabled);
     const [newNodes, newEdges] = highlightNodes(
       Array.from(nodeSet),
       nodes,
@@ -696,8 +699,8 @@ export function PrivateLineageView(
     onViewOptionsChanged: handleViewOptionsChanged,
     selectNodeMulti,
     deselect,
-    advancedImpactRadius,
-    setAdvancedImpactRadius,
+    advancedImpactRadius: breakingChangeEnabled,
+    setAdvancedImpactRadius: setBreakingChangeEnabled,
     runRowCountDiff: async () => {
       if (selectMode === "multi") {
         await multiNodeAction.runRowCountDiff();
@@ -862,10 +865,10 @@ export function PrivateLineageView(
                   bg="white"
                 >
                   <Switch
-                    isChecked={advancedImpactRadius}
+                    isChecked={breakingChangeEnabled}
                     onChange={(e) => {
                       const advancedImpactRadius = e.target.checked;
-                      setAdvancedImpactRadius(advancedImpactRadius);
+                      setBreakingChangeEnabled(advancedImpactRadius);
                       highlightImpactRadius(advancedImpactRadius);
                     }}
                     alignItems={"center"}
@@ -888,14 +891,17 @@ export function PrivateLineageView(
                       <PopoverBody fontSize="sm">
                         Analyze the SQL code in the model to determine if the
                         modified code introduces a breaking change.{" "}
-                        <Link href="https://datarecce.io/docs/features/lineage/">
+                        <Link
+                          href="https://datarecce.io/docs/features/lineage/"
+                          target="_blank"
+                        >
                           Learn more
                         </Link>
                         .
                       </PopoverBody>
                     </PopoverContent>
                   </Popover>
-                  <Badge color="gray">Beta</Badge>
+                  <Badge color="gray">Experiment</Badge>
                 </Flex>
                 {nodes.length == 0 && (
                   <Text fontSize="xl" color="grey" opacity={0.5}>

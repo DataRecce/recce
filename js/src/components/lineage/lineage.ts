@@ -283,9 +283,9 @@ export function selectDownstream(
 
 export function selectImpactRadius(
   lineageGraph: LineageGraph,
-  advanced: boolean
+  breakingChangeEnabled: boolean
 ) {
-  if (!advanced) {
+  if (!breakingChangeEnabled) {
     return selectDownstream(lineageGraph, lineageGraph.modifiedSet);
   } else {
     return lineageGraph.impactedSet;
@@ -364,7 +364,8 @@ export function toReactflow(
 
   layout(nodes, edges);
 
-  return highlightChanged(lineageGraph, nodes, edges);
+  // return highlightChanged(lineageGraph, nodes, edges);
+  return [nodes, edges];
 }
 
 export function filterNodes(
