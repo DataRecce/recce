@@ -889,8 +889,8 @@ export function PrivateLineageView(
                     </PopoverTrigger>
                     <PopoverContent bg="black" color="white">
                       <PopoverBody fontSize="sm">
-                        Analyze the SQL code in the model to determine if the
-                        modified code introduces a breaking change.{" "}
+                        Breaking changes are determined by analyzing SQL for
+                        changes that may impact downstream models.{" "}
                         <Link
                           href="https://datarecce.io/docs/features/lineage/"
                           target="_blank"
