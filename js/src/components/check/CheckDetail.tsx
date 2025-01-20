@@ -30,6 +30,7 @@ import {
   Tooltip,
   useDisclosure,
   Text,
+  VStack,
 } from "@chakra-ui/react";
 import {
   CheckCircleIcon,
@@ -185,7 +186,7 @@ export const CheckDetail = ({ checkId }: CheckDetailProps) => {
     mutate({ description });
   };
 
-  const shouldDisabledCopyButton = (
+  const isDisabledByNoResult = (
     type: string,
     run: Run | undefined
   ): boolean => {
@@ -225,101 +226,93 @@ export const CheckDetail = ({ checkId }: CheckDetailProps) => {
               mutate({ name });
             }}
           />
-          <Spacer />
           {isPresetCheck && (
             <Tooltip label="Preset Check defined in recce config">
-              <Tag size="sm" flex="0 0 auto">
+              <Tag size="sm" flex="0 0 auto" ml="2">
                 <TagLeftIcon boxSize={"14px"} as={CiBookmark} />
                 Preset
               </Tag>
             </Tooltip>
           )}
-          <Menu>
-            <MenuButton
-              isRound={true}
-              as={IconButton}
-              icon={<Icon as={VscKebabVertical} />}
-              variant="ghost"
-              size="sm"
-            />
-            <MenuList>
-              <MenuItem
-                as={Text}
-                fontSize={"10pt"}
-                icon={<IoMdCodeWorking />}
-                onClick={() => {
-                  setOverlay(<Overlay />);
-                  onPresetCheckTemplateOpen();
-                }}
+          <Spacer />
+          <HStack mr="10px">
+            {relativeTime && (
+              <Box
+                textOverflow="ellipsis"
+                whiteSpace="nowrap"
+                overflow="hidden"
+                fontSize="10pt"
               >
-                Get Preset Check Template
-              </MenuItem>
-              <MenuItem
-                as={Text}
-                fontSize={"10pt"}
-                icon={<CopyIcon />}
-                onClick={() => handleCopy()}
-              >
-                Copy Markdown
-              </MenuItem>
-              <MenuDivider />
-              <MenuItem
-                as={Text}
-                fontSize={"10pt"}
-                icon={<DeleteIcon />}
-                color="red"
-                onClick={() => handleDelete()}
-              >
-                Delete
-              </MenuItem>
-            </MenuList>
-          </Menu>
+                {relativeTime}
+              </Box>
+            )}
 
-          {relativeTime && (
-            <Box
-              textOverflow="ellipsis"
-              whiteSpace="nowrap"
-              overflow="hidden"
-              fontSize="10pt"
-            >
-              {relativeTime}
-            </Box>
-          )}
-
-          {runTypeEntry?.RunResultView && (
-            <Tooltip label="Rerun">
-              <IconButton
+            <Menu>
+              <MenuButton
                 isRound={true}
-                isLoading={isRunning}
+                as={IconButton}
+                icon={<Icon as={VscKebabVertical} />}
                 variant="ghost"
-                aria-label="Rerun"
-                icon={<RepeatIcon />}
-                onClick={() => handleRerun()}
+                size="sm"
               />
-            </Tooltip>
-          )}
+              <MenuList>
+                <MenuItem
+                  as={Text}
+                  fontSize={"10pt"}
+                  icon={<IoMdCodeWorking />}
+                  onClick={() => {
+                    setOverlay(<Overlay />);
+                    onPresetCheckTemplateOpen();
+                  }}
+                >
+                  Get Preset Check Template
+                </MenuItem>
+                <MenuItem
+                  as={Text}
+                  fontSize={"10pt"}
+                  icon={<CopyIcon />}
+                  onClick={() => handleCopy()}
+                >
+                  Copy Markdown
+                </MenuItem>
+                <MenuDivider />
+                <MenuItem
+                  as={Text}
+                  fontSize={"10pt"}
+                  icon={<DeleteIcon />}
+                  color="red"
+                  onClick={() => handleDelete()}
+                >
+                  Delete
+                </MenuItem>
+              </MenuList>
+            </Menu>
 
-          <Tooltip
-            label={check?.is_checked ? "Mark as Pending" : "Mark as Approved"}
-            placement="bottom-end"
-          >
-            <Button
-              flex="0 0 auto"
-              size="sm"
-              colorScheme={check?.is_checked ? "green" : "gray"}
-              variant={check?.is_checked ? "solid" : "outline"}
-              leftIcon={
-                check?.is_checked ? (
-                  <CheckCircleIcon />
-                ) : (
-                  <Icon as={VscCircleLarge} color="lightgray" />
-                )
-              }
-              onClick={() => handleApproveCheck()}
+            <Tooltip
+              label={
+                isDisabledByNoResult(check?.type ?? "", run)
+                  ? "Run the check first" : check?.is_checked ? "Mark as Pending" : "Mark as Approved"}
+              placement="bottom-end"
             >
-              {check?.is_checked ? "Approved" : "Mark as Approved"}
-            </Button>
-          </Tooltip>
+              <Button
+                flex="0 0 auto"
+                size="sm"
+                colorScheme={check?.is_checked ? "green" : "gray"}
+                variant={check?.is_checked ? "solid" : "outline"}
+                leftIcon={
+                  check?.is_checked ? (
+                    <CheckCircleIcon />
+                  ) : (
+                    <Icon as={VscCircleLarge} color="lightgray" />
+                  )
+                }
+                onClick={() => handleApproveCheck()}
+                isDisabled={isDisabledByNoResult(check?.type ?? "", run)}
+              >
+                {check?.is_checked ? "Approved" : "Mark as Approved"}
+              </Button>
+            </Tooltip>
+          </HStack>
         </Flex>
 
         <Box flex="1" p="8px 16px" minHeight="100px">
@@ -347,11 +340,24 @@ export const CheckDetail = ({ checkId }: CheckDetailProps) => {
             )}
             <Spacer />
             <HStack mr="10px">
+              {runTypeEntry?.RunResultView && (
+                <Tooltip label="Rerun">
+                  <Button
+                    leftIcon={<RepeatIcon />}
+                    variant="outline"
+                    isLoading={isRunning}
+                    size="sm"
+                    onClick={() => handleRerun()}
+                  >
+                    Rerun
+                  </Button>
+                </Tooltip>
+              )}
               <Button
                 leftIcon={<CopyIcon />}
                 variant="outline"
                 isDisabled={
-                  shouldDisabledCopyButton(check?.type ?? "", run) ||
+                  isDisabledByNoResult(check?.type ?? "", run) ||
                   tabIndex !== 0
                 }
                 onMouseEnter={onMouseEnter}
@@ -388,9 +394,14 @@ export const CheckDetail = ({ checkId }: CheckDetailProps) => {
                   />
                 ) : (
                   <Center bg="rgb(249,249,249)" height="100%">
-                    <Button onClick={handleRerun} colorScheme="blue" size="sm">
-                      Run Query
-                    </Button>
+                    <VStack spacing={4}>
+                      <Box>
+                        This action is part of the initial preset and has not been performed yet. Once performed, the result will be shown here.
+                      </Box>
+                      <Button onClick={handleRerun} colorScheme="blue" size="sm">
+                        Run Query
+                      </Button>
+                    </VStack>
                   </Center>
                 ))}
               {check && check.type === "schema_diff" && (
@@ -403,21 +414,21 @@ export const CheckDetail = ({ checkId }: CheckDetailProps) => {
             {(check?.type === "query" ||
               check?.type === "query_diff" ||
               check?.type === "query_base") && (
-              <TabPanel p={0} height="100%" width="100%">
-                {check.params?.base_sql_template ? (
-                  <DualSqlEditor
-                    value={(check?.params as any)?.sql_template || ""}
-                    baseValue={(check?.params as any)?.base_sql_template || ""}
-                    options={{ readOnly: true }}
-                  />
-                ) : (
-                  <SqlEditor
-                    value={(check?.params as any)?.sql_template || ""}
-                    options={{ readOnly: true }}
-                  />
-                )}
-              </TabPanel>
-            )}
+                <TabPanel p={0} height="100%" width="100%">
+                  {check.params?.base_sql_template ? (
+                    <DualSqlEditor
+                      value={(check?.params as any)?.sql_template || ""}
+                      baseValue={(check?.params as any)?.base_sql_template || ""}
+                      options={{ readOnly: true }}
+                    />
+                  ) : (
+                    <SqlEditor
+                      value={(check?.params as any)?.sql_template || ""}
+                      options={{ readOnly: true }}
+                    />
+                  )}
+                </TabPanel>
+              )}
           </TabPanels>
         </Tabs>
       </Box>
