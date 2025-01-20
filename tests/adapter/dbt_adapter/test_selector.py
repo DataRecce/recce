@@ -17,7 +17,7 @@ def test_select(dbt_test_helper):
         """
 
     dbt_test_helper.create_model("customers_1", csv_data_base, csv_data_curr)
-    dbt_test_helper.create_model("customers_2", csv_data_base, csv_data_base, ["customers_1"])
+    dbt_test_helper.create_model("customers_2", csv_data_base, csv_data_base, depends_on=["customers_1"])
     adapter: DbtAdapter = dbt_test_helper.context.adapter
 
     # Test methods
@@ -60,7 +60,7 @@ def test_select(dbt_test_helper):
 
     # Test resource type: snapshot
     dbt_test_helper.create_snapshot("snapshot_1", csv_data_base, csv_data_curr)
-    dbt_test_helper.create_model("use_snapshot", csv_data_base, csv_data_base, ["snapshot_1"])
+    dbt_test_helper.create_model("use_snapshot", csv_data_base, csv_data_base, depends_on=["snapshot_1"])
 
     node_ids = adapter.select_nodes('resource_type:snapshot')
     assert len(node_ids) == 1

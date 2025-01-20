@@ -1,7 +1,7 @@
 import uuid
 from datetime import datetime, timezone
 from enum import Enum
-from typing import Optional
+from typing import Optional, Literal
 
 from pydantic import BaseModel, UUID4, Field
 
@@ -81,6 +81,22 @@ class Check(BaseModel):
         return True
 
 
-class Lineage(BaseModel):
+ChangeStatus = Literal[
+    'added',
+    'removed',
+    'modified',
+]
+ChangeCategory = Literal[
+    'breaking', 'non-breaking'
+]
+
+
+class NodeDiff(BaseModel):
+    change_status: ChangeStatus
+    change_category: Optional[ChangeCategory] = None
+
+
+class LineageDiff(BaseModel):
     base: dict
     current: dict
+    diff: dict[str, NodeDiff]

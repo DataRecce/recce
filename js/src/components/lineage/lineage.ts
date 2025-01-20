@@ -6,10 +6,12 @@ import { LineageDiffViewOptions } from "@/lib/api/lineagecheck";
 import {
   CatalogMetadata,
   LineageData,
+  LineageDiffData,
   ManifestMetadata,
   NodeData,
 } from "@/lib/api/info";
 import { Manifest } from "next/dist/lib/metadata/types/manifest-types";
+import { select } from "@/lib/api/select";
 
 /**
  * THe types for internal data structures.
@@ -66,6 +68,8 @@ export interface LineageGraph {
     [key: string]: LineageGraphEdge;
   };
   modifiedSet: string[];
+  nonBreakingSet: Set<string>;
+  impactedSet: Set<string>;
 
   manifestMetadata: {
     base?: ManifestMetadata;
@@ -79,7 +83,8 @@ export interface LineageGraph {
 
 export function buildLineageGraph(
   base: LineageData,
-  current: LineageData
+  current: LineageData,
+  diff?: LineageDiffData
 ): LineageGraph {
   const nodes: { [key: string]: LineageGraphNode } = {};
   const edges: { [key: string]: LineageGraphEdge } = {};
@@ -173,8 +178,23 @@ export function buildLineageGraph(
   }
 
   const modifiedSet: string[] = [];
+  const nonBreakingSet: string[] = [];
+  const breakingSet: string[] = [];
+
   for (const [key, node] of Object.entries(nodes)) {
-    if (node.from === "base") {
+    if (diff) {
+      const diffNode = diff[key];
+      if (diffNode) {
+        node.changeStatus = diffNode.change_status;
+        modifiedSet.push(key);
+
+        if (diffNode.change_category === "non-breaking") {
+          nonBreakingSet.push(key);
+        } else {
+          breakingSet.push(key);
+        }
+      }
+    } else if (node.from === "base") {
       node.changeStatus = "removed";
       modifiedSet.push(node.id);
     } else if (node.from === "current") {
@@ -187,6 +207,7 @@ export function buildLineageGraph(
       if (checksum1 && checksum2 && checksum1 !== checksum2) {
         node.changeStatus = "modified";
         modifiedSet.push(node.id);
+        breakingSet.push(key);
       }
     }
   }
@@ -199,10 +220,22 @@ export function buildLineageGraph(
     }
   }
 
+  const impactedSet = union(
+    new Set(modifiedSet),
+    getNeighborSet(breakingSet, (key) => {
+      if (nodes[key] === undefined) {
+        return [];
+      }
+      return Object.keys(nodes[key].children);
+    })
+  );
+
   return {
     nodes,
     edges,
     modifiedSet,
+    nonBreakingSet: new Set(nonBreakingSet),
+    impactedSet,
     manifestMetadata: {
       base: base.manifest_metadata || undefined,
       current: current.manifest_metadata || undefined,
@@ -246,6 +279,17 @@ export function selectDownstream(
     },
     degree
   );
+}
+
+export function selectImpactRadius(
+  lineageGraph: LineageGraph,
+  breakingChangeEnabled: boolean
+) {
+  if (!breakingChangeEnabled) {
+    return selectDownstream(lineageGraph, lineageGraph.modifiedSet);
+  } else {
+    return lineageGraph.impactedSet;
+  }
 }
 
 export function toReactflow(
@@ -320,7 +364,8 @@ export function toReactflow(
 
   layout(nodes, edges);
 
-  return highlightChanged(lineageGraph, nodes, edges);
+  // return highlightChanged(lineageGraph, nodes, edges);
+  return [nodes, edges];
 }
 
 export function filterNodes(

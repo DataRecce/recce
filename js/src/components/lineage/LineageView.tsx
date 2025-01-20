@@ -4,6 +4,7 @@ import {
   highlightNodes,
   layout,
   selectDownstream,
+  selectImpactRadius,
   selectNode,
   selectNodes,
   selectSingleNode,
@@ -26,7 +27,15 @@ import {
   StackDivider,
   useToast,
   MenuDivider,
+  Switch,
+  Badge,
+  Link,
+  Popover,
+  PopoverBody,
+  PopoverContent,
+  PopoverTrigger,
 } from "@chakra-ui/react";
+import { InfoOutlineIcon } from "@chakra-ui/icons";
 import React, {
   Ref,
   RefObject,
@@ -89,6 +98,8 @@ import { Check } from "@/lib/api/checks";
 import useValueDiffAlertDialog from "./useValueDiffAlertDialog";
 import { trackMultiNodesAction } from "@/lib/api/track";
 import { PresetCheckRecommendation } from "./PresetCheckRecommendation";
+
+
 
 export interface LineageViewProps {
   viewOptions?: LineageDiffViewOptions;
@@ -279,6 +290,8 @@ export function PrivateLineageView(
     selectedNode?: Node;
   }>({ x: 0, y: 0 });
 
+  const [breakingChangeEnabled, setBreakingChangeEnabled] = useState(false);
+
   const toast = useToast();
 
   useLayoutEffect(() => {
@@ -309,8 +322,9 @@ export function PrivateLineageView(
         selectedNodes = result.nodes;
       }
 
-      const [nodes, edges] = toReactflow(lineageGraph, selectedNodes);
-
+      let [nodes, edges] = toReactflow(lineageGraph, selectedNodes);
+      const nodeSet = selectImpactRadius(lineageGraph, breakingChangeEnabled);
+      [nodes, edges] = highlightNodes(Array.from(nodeSet), nodes, edges);
       layout(nodes, edges);
       setNodes(nodes);
       setEdges(edges);
@@ -349,41 +363,34 @@ export function PrivateLineageView(
     setEdges(newEdges);
   };
 
-  const onNodeMouseLeave = (event: React.MouseEvent, node: Node) => {
+  const highlightImpactRadius = (
+    _breakingChangeEnabled: boolean = breakingChangeEnabled
+  ) => {
     if (!lineageGraph) {
       return;
     }
 
+    const nodeSet = selectImpactRadius(lineageGraph, _breakingChangeEnabled);
+    const [newNodes, newEdges] = highlightNodes(
+      Array.from(nodeSet),
+      nodes,
+      edges
+    );
+
+    setNodes(cleanUpNodes(newNodes));
+    setEdges(newEdges);
+  };
+
+  const onNodeMouseLeave = (event: React.MouseEvent, node: Node) => {
     if (selectedNode) {
       return;
     }
 
-    const nodeSet = selectDownstream(lineageGraph, lineageGraph.modifiedSet);
-
-    const [newNodes, newEdges] = highlightNodes(
-      Array.from(nodeSet),
-      nodes,
-      edges
-    );
-
-    setNodes(newNodes);
-    setEdges(newEdges);
+    highlightImpactRadius();
   };
 
   const onNodeViewClosed = () => {
-    if (!lineageGraph) {
-      return;
-    }
-
-    const nodeSet = selectDownstream(lineageGraph, lineageGraph.modifiedSet);
-
-    const [newNodes, newEdges] = highlightNodes(
-      Array.from(nodeSet),
-      nodes,
-      edges
-    );
-    setNodes(cleanUpNodes(newNodes));
-    setEdges(newEdges);
+    highlightImpactRadius();
   };
 
   const centerNode = async (node: Node) => {
@@ -692,6 +699,8 @@ export function PrivateLineageView(
     onViewOptionsChanged: handleViewOptionsChanged,
     selectNodeMulti,
     deselect,
+    advancedImpactRadius: breakingChangeEnabled,
+    setAdvancedImpactRadius: setBreakingChangeEnabled,
     runRowCountDiff: async () => {
       if (selectMode === "multi") {
         await multiNodeAction.runRowCountDiff();
@@ -843,9 +852,63 @@ export function PrivateLineageView(
               </HStack>
             </Panel>
             <Panel position="top-left">
-              <Text fontSize="xl" color="grey" opacity={0.5}>
-                {nodes.length > 0 ? "" : "No nodes"}
-              </Text>
+              <Flex direction="column">
+                <Flex
+                  direction="row"
+                  alignItems="center"
+                  gap="5px"
+                  p="5px 10px"
+                  borderRadius="md"
+                  boxShadow="md"
+                  border="1px solid"
+                  borderColor="gray.200"
+                  bg="white"
+                >
+                  <Switch
+                    isChecked={breakingChangeEnabled}
+                    onChange={(e) => {
+                      const advancedImpactRadius = e.target.checked;
+                      setBreakingChangeEnabled(advancedImpactRadius);
+                      highlightImpactRadius(advancedImpactRadius);
+                    }}
+                    alignItems={"center"}
+                  ></Switch>
+                  <Flex alignItems={"center"}>
+                    <Text fontSize="10pt" lineHeight="1">
+                      Breaking Change Analysis
+                    </Text>
+                  </Flex>
+                  <Popover trigger="hover" placement="top-start">
+                    <PopoverTrigger>
+                      <Icon
+                        boxSize="10px"
+                        as={InfoOutlineIcon}
+                        color="gray.500"
+                        cursor="pointer"
+                      />
+                    </PopoverTrigger>
+                    <PopoverContent bg="black" color="white">
+                      <PopoverBody fontSize="sm">
+                        Breaking changes are determined by analyzing SQL for
+                        changes that may impact downstream models.{" "}
+                        <Link
+                          href="https://datarecce.io/docs/features/lineage/"
+                          target="_blank"
+                        >
+                          Learn more
+                        </Link>
+                        .
+                      </PopoverBody>
+                    </PopoverContent>
+                  </Popover>
+                  <Badge color="gray">Experiment</Badge>
+                </Flex>
+                {nodes.length == 0 && (
+                  <Text fontSize="xl" color="grey" opacity={0.5}>
+                    No nodes
+                  </Text>
+                )}
+              </Flex>
             </Panel>
             <MiniMap
               nodeColor={nodeColor}

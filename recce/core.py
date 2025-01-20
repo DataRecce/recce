@@ -7,6 +7,7 @@ from typing import Callable, Dict, Optional, List, Tuple
 
 from recce.adapter.base import BaseAdapter
 from recce.models import Check, Run
+from recce.models.types import LineageDiff
 from recce.state import RecceState, RecceStateMetadata, GitRepoInfo, PullRequestInfo, RecceStateLoader
 from recce.util.recce_cloud import set_recce_cloud_onboarding_state
 
@@ -66,6 +67,9 @@ class RecceContext:
 
     def get_lineage(self, base: Optional[bool] = False):
         return self.adapter.get_lineage(base=base)
+
+    def get_lineage_diff(self) -> LineageDiff:
+        return self.adapter.get_lineage_diff()
 
     def build_name_to_unique_id_index(self) -> Dict[str, str]:
         name_to_unique_id = {}

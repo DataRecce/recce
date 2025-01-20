@@ -47,6 +47,7 @@ setup(name='recce',
           'python-multipart',
           'GitPython',
           'PyGithub',
+          'sqlglot',
       ],
       tests_require=['pytest'],
       extras_require={

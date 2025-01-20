@@ -5,6 +5,7 @@ import uuid
 from contextlib import contextmanager
 from dataclasses import dataclass, fields
 from errno import ENOENT
+from functools import lru_cache
 from pathlib import Path
 from typing import Callable, Dict, List, Optional, Tuple, Iterator, Any, Set, Union, Literal, Type
 
@@ -18,6 +19,7 @@ from recce.adapter.base import BaseAdapter
 from recce.state import ArtifactsRoot
 from .dbt_version import DbtVersion
 from ...models import RunType
+from ...models.types import LineageDiff, NodeDiff
 from ...tasks import Task, QueryTask, QueryBaseTask, QueryDiffTask, ValueDiffTask, ValueDiffDetailTask, ProfileDiffTask, \
     RowCountDiffTask, TopKDiffTask, HistogramDiffTask
 
@@ -537,6 +539,23 @@ class DbtAdapter(BaseAdapter):
     def get_lineage(self, base: Optional[bool] = False):
         manifest = self.curr_manifest if base is False else self.base_manifest
         catalog = self.curr_catalog if base is False else self.base_catalog
+        cache_key = hash((id(manifest), id(catalog)))
+        return self.get_lineage_cached(base, cache_key)
+
+    def get_lineage_diff(self) -> LineageDiff:
+        cache_key = hash((
+            id(self.base_manifest),
+            id(self.base_catalog),
+            id(self.curr_manifest),
+            id(self.curr_catalog),
+        ))
+        return self._get_lineage_diff_cached(cache_key)
+
+    @lru_cache(maxsize=2)
+    def get_lineage_cached(self, base: Optional[bool] = False, cache_key=0):
+        manifest = self.curr_manifest if base is False else self.base_manifest
+        catalog = self.curr_catalog if base is False else self.base_catalog
+
         manifest_metadata = manifest.metadata if manifest is not None else None
         catalog_metadata = catalog.metadata if catalog is not None else None
 
@@ -656,6 +675,48 @@ class DbtAdapter(BaseAdapter):
             nodes=nodes,
             manifest_metadata=manifest_metadata,
             catalog_metadata=catalog_metadata,
+        )
+
+    @lru_cache(maxsize=1)
+    def _get_lineage_diff_cached(self, cache_key) -> LineageDiff:
+        base = self.get_lineage(base=True)
+        current = self.get_lineage(base=False)
+        keys = {
+            *base.get('nodes', {}).keys(),
+            *current.get('nodes', {}).keys()
+        }
+
+        # for each node, compare the base and current lineage
+        diff = {}
+        for key in keys:
+            base_node = base.get('nodes', {}).get(key)
+            curr_node = current.get('nodes', {}).get(key)
+            if base_node and curr_node:
+                base_checksum = base_node.get('checksum', {}).get('checksum')
+                curr_checksum = curr_node.get('checksum', {}).get('checksum')
+                if base_checksum is None or curr_checksum is None or base_checksum == curr_checksum:
+                    continue
+
+                change_category = 'breaking'
+                if curr_node.get('resource_type') == 'model':
+                    try:
+                        from recce.util.breaking import is_breaking_change
+                        base_sql = self.generate_sql(base_node.get('raw_code'))
+                        curr_sql = self.generate_sql(curr_node.get('raw_code'))
+                        if not is_breaking_change(base_sql, curr_sql):
+                            change_category = 'non-breaking'
+                    except Exception:
+                        pass
+
+                diff[key] = NodeDiff(change_status='modified', change_category=change_category)
+            elif base_node:
+                diff[key] = NodeDiff(chnage_status='removed')
+            elif curr_node:
+                diff[key] = NodeDiff(change_status='added')
+        return LineageDiff(
+            base=base,
+            current=current,
+            diff=diff,
         )
 
     def get_manifests_by_id(self, unique_id: str):
@@ -916,3 +977,9 @@ class DbtAdapter(BaseAdapter):
 
     def cancel(self, connection: Connection):
         self.adapter.connections.cancel(connection)
+
+    def __hash__(self):
+        return id(self)
+
+    def __eq__(self, other):
+        return self.__hash__() == other.__hash__()

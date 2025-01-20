@@ -31,6 +31,10 @@ export interface LineageViewContextType {
     completed: number;
     total: number;
   };
+
+  // advancedImpactRadius
+  advancedImpactRadius: boolean;
+  setAdvancedImpactRadius: (value: boolean) => void;
 }
 
 export const LineageViewContext = createContext<
