@@ -148,8 +148,7 @@ function SandboxEditorLabels({
     >
       <Stack width={widthOfBar}>
         <Text as="b" margin={margin}>
-          ORIGINAL (Schemas: {schema}, Last Updated: {latestUpdateDistanceToNow}
-          )
+          ORIGINAL (Schema: {schema}, Last Updated: {latestUpdateDistanceToNow})
         </Text>
       </Stack>
       <Stack width={widthOfBar}>
