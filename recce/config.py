@@ -22,7 +22,8 @@ class RecceConfig(metaclass=SingletonMeta):
     def load(self):
         try:
             with open(self.config_file, 'r') as f:
-                self.config = yaml.safe_load(f)
+                config = yaml.safe_load(f)
+                self.config = config if config else {}
             self._verify_preset_checks()
         except FileNotFoundError:
             console.print(f'Recce config file not found. Generating default config file at \'{self.config_file}\'')
