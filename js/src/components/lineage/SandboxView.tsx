@@ -44,7 +44,7 @@ import { useLineageGraphContext } from "@/lib/hooks/LineageGraphContext";
 import { formatTimestamp } from "../app/EnvInfo";
 import { formatDistanceToNow } from "date-fns";
 
-interface PreviewChangeViewProps {
+interface SandboxViewProps {
   isOpen: boolean;
   onClose: () => void;
   current?: NodeData;
@@ -153,11 +153,7 @@ function SandboxEditorLabels({ height = "32px", flex = "0 0 auto" }) {
     </Flex>
   );
 }
-export function PreviewChangeView({
-  isOpen,
-  onClose,
-  current,
-}: PreviewChangeViewProps) {
+export function SandboxView({ isOpen, onClose, current }: SandboxViewProps) {
   const {
     isOpen: isRunResultOpen,
     onClose: onRunResultClose,

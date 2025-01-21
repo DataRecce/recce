@@ -45,7 +45,7 @@ import { findByRunType } from "../run/registry";
 import { is } from "date-fns/locale";
 import { run } from "node:test";
 import { DisableTooltipMessages } from "@/constants/tooltipMessage";
-import { PreviewChangeView } from "./PreviewChangeView";
+import { SandboxView } from "./SandboxView";
 import { trackPreviewChange, trackSingleEnvironment } from "@/lib/api/track";
 import { useRecceServerFlag } from "@/lib/hooks/useRecceServerFlag";
 
@@ -358,7 +358,7 @@ export function NodeView({ node, onCloseNode }: NodeViewProps) {
           </ModalBody>
         </ModalContent>
       </Modal>
-      <PreviewChangeView
+      <SandboxView
         isOpen={isSandboxOpen}
         onClose={onSandboxClose}
         current={node.data.current}
