@@ -70,9 +70,9 @@ export function NodeView({ node, onCloseNode }: NodeViewProps) {
     onClose: onCodeDiffClose,
   } = useDisclosure();
   const {
-    isOpen: isPreviewChangeOpen,
-    onOpen: onPreviewChangeOpen,
-    onClose: onPreviewChangeClose,
+    isOpen: isSandboxOpen,
+    onOpen: onSandboxOpen,
+    onClose: onSandboxClose,
   } = useDisclosure();
   const { runAction } = useRecceActionContext();
   const { envInfo, isActionAvailable } = useLineageGraphContext();
@@ -146,7 +146,7 @@ export function NodeView({ node, onCloseNode }: NodeViewProps) {
             </MenuItem>
             <MenuItem
               fontSize="14px"
-              icon={<Icon as={findByRunType("preview_change")?.icon} />}
+              icon={<Icon as={findByRunType("sandbox")?.icon} />}
               onClick={() => {
                 if (isActionAvailable("query_diff_with_primary_key")) {
                   // Only set primary key if the action is available
@@ -154,11 +154,11 @@ export function NodeView({ node, onCloseNode }: NodeViewProps) {
                     primaryKey !== undefined ? [primaryKey] : undefined
                   );
                 }
-                onPreviewChangeOpen();
+                onSandboxOpen();
                 trackPreviewChange({ action: "explore", node: node.name });
               }}
             >
-              Preview Change (Experiment)
+              Sandbox (Experiment)
             </MenuItem>
             <MenuDivider />
             <MenuGroup title="Diff" m="0" p="4px 12px">
@@ -286,7 +286,7 @@ export function NodeView({ node, onCloseNode }: NodeViewProps) {
     }
   }
 
-  function PreviewChangeButton() {
+  function SandboxButton() {
     return (
       <Button
         as={Button}
@@ -297,14 +297,14 @@ export function NodeView({ node, onCloseNode }: NodeViewProps) {
             // Only set primary key if the action is available
             setPrimaryKeys(primaryKey !== undefined ? [primaryKey] : undefined);
           }
-          onPreviewChangeOpen();
+          onSandboxOpen();
           trackSingleEnvironment({
             action: "preview_changes",
             node: node.name,
           });
         }}
       >
-        Preview Changes
+        Sandbox
       </Button>
     );
   }
@@ -317,7 +317,7 @@ export function NodeView({ node, onCloseNode }: NodeViewProps) {
         </Box>
         <Spacer />
         {isSingleEnvOnboarding ? (
-          <PreviewChangeButton />
+          <SandboxButton />
         ) : (
           <ExploreChangeMenuButton />
         )}
@@ -359,8 +359,8 @@ export function NodeView({ node, onCloseNode }: NodeViewProps) {
         </ModalContent>
       </Modal>
       <PreviewChangeView
-        isOpen={isPreviewChangeOpen}
-        onClose={onPreviewChangeClose}
+        isOpen={isSandboxOpen}
+        onClose={onSandboxClose}
         current={node.data.current}
       />
     </Grid>

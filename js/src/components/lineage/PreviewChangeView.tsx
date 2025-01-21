@@ -40,6 +40,9 @@ import {
 } from "@/lib/api/track";
 import { useGuideToast } from "@/lib/hooks/useGuideToast";
 import { useRecceServerFlag } from "@/lib/hooks/useRecceServerFlag";
+import { useLineageGraphContext } from "@/lib/hooks/LineageGraphContext";
+import { formatTimestamp } from "../app/EnvInfo";
+import { formatDistanceToNow } from "date-fns";
 
 interface PreviewChangeViewProps {
   isOpen: boolean;
@@ -48,7 +51,7 @@ interface PreviewChangeViewProps {
   height?: string;
 }
 
-function PreviewChangeTopBar({
+function SandboxTopBar({
   current,
   primaryKeys,
   setPrimaryKeys,
@@ -76,7 +79,7 @@ function PreviewChangeTopBar({
       <Box>
         <Heading as="h2" size="md" display="flex" alignItems="center" gap="5px">
           <Icon as={AiOutlineExperiment} boxSize="1.2em" />
-          Preview Changes
+          Sandbox
         </Heading>
         <Text fontSize="xs" color="gray.500">
           Compare the run results based on the modified SQL code of model{" "}
@@ -106,9 +109,25 @@ function PreviewChangeTopBar({
     </Flex>
   );
 }
-function PreviewChangeEditorLabels({ height = "32px", flex = "0 0 auto" }) {
+function SandboxEditorLabels({ height = "32px", flex = "0 0 auto" }) {
+  const { lineageGraph, envInfo } = useLineageGraphContext();
   const widthOfBar = "50%";
   const margin = "0 16px";
+
+  const currentTime = formatTimestamp(
+    envInfo?.dbt?.current?.generated_at || ""
+  );
+  const latestUpdateDistanceToNow = formatDistanceToNow(currentTime, {
+    addSuffix: true,
+  });
+  const currentSchemas = new Set<string>();
+  if (lineageGraph?.nodes) {
+    for (const value of Object.values(lineageGraph?.nodes)) {
+      if (value.data.current?.schema) {
+        currentSchemas.add(value.data.current.schema);
+      }
+    }
+  }
 
   return (
     <Flex
@@ -122,12 +141,13 @@ function PreviewChangeEditorLabels({ height = "32px", flex = "0 0 auto" }) {
     >
       <Stack width={widthOfBar}>
         <Text as="b" margin={margin}>
-          BASE
+          ORIGINAL (Schemas: {currentSchemas}, Last Updated:{" "}
+          {latestUpdateDistanceToNow})
         </Text>
       </Stack>
       <Stack width={widthOfBar}>
         <Text as="b" margin={margin}>
-          PREVIEW EDITOR (CURRENT)
+          SANDBOX EDITOR
         </Text>
       </Stack>
     </Flex>
@@ -291,7 +311,7 @@ export function PreviewChangeView({
             }}
           >
             <Flex direction="column" height="100%" m={0} p={0}>
-              <PreviewChangeTopBar
+              <SandboxTopBar
                 current={current}
                 primaryKeys={primaryKeys ?? []}
                 setPrimaryKeys={setPrimaryKeys}
@@ -299,7 +319,7 @@ export function PreviewChangeView({
                 runQuery={runQuery}
                 isPending={isPending}
               />
-              <PreviewChangeEditorLabels height="32pxs" flex="0 0 auto" />
+              <SandboxEditorLabels height="32pxs" flex="0 0 auto" />
               <SqlPreview current={current} onChange={setModifiedCode} />
             </Flex>
             {isRunResultOpen ? (

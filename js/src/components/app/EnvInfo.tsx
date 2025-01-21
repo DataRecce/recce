@@ -29,7 +29,7 @@ import {
 import { format, parseISO } from "date-fns";
 import { IconInfo } from "../icons";
 
-function formatTimestamp(timestamp: string): string {
+export function formatTimestamp(timestamp: string): string {
   const date = parseISO(timestamp);
   const formattedTimestamp = format(date, "yyyy-MM-dd'T'HH:mm:ss");
   return formattedTimestamp;

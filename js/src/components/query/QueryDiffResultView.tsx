@@ -4,6 +4,7 @@ import {
   QueryDiffParams,
   QueryDiffResult,
   QueryDiffViewOptions,
+  QueryPreviewChangeParams,
 } from "@/lib/api/adhocQuery";
 import { Box, Center, Flex, forwardRef } from "@chakra-ui/react";
 import { useMemo } from "react";
@@ -26,6 +27,8 @@ export interface QueryDiffResultViewProps
     QueryDiffViewOptions
   > {
   onAddToChecklist?: (run: Run<QueryDiffParams, QueryDiffResult>) => void;
+  baseTitle?: string;
+  currentTitle?: string;
 }
 
 const PrivateQueryDiffResultView = (
@@ -34,6 +37,8 @@ const PrivateQueryDiffResultView = (
     onAddToChecklist,
     viewOptions,
     onViewOptionsChanged,
+    baseTitle,
+    currentTitle,
   }: QueryDiffResultViewProps,
   ref: any
 ) => {
@@ -75,6 +80,8 @@ const PrivateQueryDiffResultView = (
       onPrimaryKeyChange: handlePrimaryKeyChanged,
       pinnedColumns,
       onPinnedColumnsChange: handlePinnedColumnsChanged,
+      baseTitle,
+      currentTitle,
     });
   }, [
     run,
@@ -83,6 +90,8 @@ const PrivateQueryDiffResultView = (
     primaryKeys,
     pinnedColumns,
     onViewOptionsChanged,
+    baseTitle,
+    currentTitle,
   ]);
 
   const warningPKey = useMemo(() => {
@@ -133,7 +142,6 @@ const PrivateQueryDiffResultView = (
       </Flex>
     );
   }
-
   return (
     <Flex
       direction="column"
@@ -171,6 +179,8 @@ const PrivateQueryDiffJoinResultView = (
     onAddToChecklist,
     viewOptions,
     onViewOptionsChanged,
+    baseTitle,
+    currentTitle,
   }: QueryDiffResultViewProps,
   ref: any
 ) => {
@@ -203,8 +213,18 @@ const PrivateQueryDiffJoinResultView = (
       changedOnly,
       pinnedColumns,
       onPinnedColumnsChange: handlePinnedColumnsChanged,
+      baseTitle,
+      currentTitle,
     });
-  }, [run, viewOptions, changedOnly, pinnedColumns, onViewOptionsChanged]);
+  }, [
+    run,
+    viewOptions,
+    changedOnly,
+    pinnedColumns,
+    onViewOptionsChanged,
+    baseTitle,
+    currentTitle,
+  ]);
 
   const limit = run.result?.diff?.limit || 0;
   const warningLimit =
@@ -273,16 +293,40 @@ const PrivateQueryDiffJoinResultView = (
 
 export const QueryDiffResultView = forwardRef(
   (props: QueryDiffResultViewProps, ref) => {
+    let baseTitle;
+    let currentTitle;
+    if (
+      props.run?.params &&
+      (props.run?.params as QueryPreviewChangeParams).current_model
+    ) {
+      // Configure the base and current titles under Sandbox Editor
+      baseTitle = "Original";
+      currentTitle = "Editor";
+    }
     if (
       props.run?.result !== undefined &&
       props.run.result.diff !== null &&
       props.run.result.diff !== undefined
     ) {
       const ResultView = forwardRef(PrivateQueryDiffJoinResultView);
-      return <ResultView {...props} ref={ref} />;
+      return (
+        <ResultView
+          {...props}
+          ref={ref}
+          baseTitle={baseTitle}
+          currentTitle={currentTitle}
+        />
+      );
     } else {
       const ResultView = forwardRef(PrivateQueryDiffResultView);
-      return <ResultView {...props} ref={ref} />;
+      return (
+        <ResultView
+          {...props}
+          ref={ref}
+          baseTitle={baseTitle}
+          currentTitle={currentTitle}
+        />
+      );
     }
   }
 );
