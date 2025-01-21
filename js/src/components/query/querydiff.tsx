@@ -71,12 +71,14 @@ function _getPrimaryKeyValue(
   }
 }
 
-interface QueryDataDiffGridOptions {
+export interface QueryDataDiffGridOptions {
   primaryKeys?: string[];
   onPrimaryKeyChange?: (primaryKeys: string[]) => void;
   pinnedColumns?: string[];
   onPinnedColumnsChange?: (pinnedColumns: string[]) => void;
   changedOnly?: boolean;
+  baseTitle?: string;
+  currentTitle?: string;
 }
 
 function DataFrameColumnGroupHeader({
@@ -374,7 +376,7 @@ export function toDataDiffGrid(
       children: [
         {
           key: `base__${name}`,
-          name: "Base",
+          name: options?.baseTitle || "Base",
           renderEditCell: textEditor,
           headerCellClass,
           cellClass,
@@ -383,7 +385,7 @@ export function toDataDiffGrid(
         },
         {
           key: `current__${name}`,
-          name: "Current",
+          name: options?.currentTitle || "Current",
           renderEditCell: textEditor,
           headerCellClass,
           cellClass,

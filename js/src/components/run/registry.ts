@@ -90,10 +90,10 @@ const registry: { [key: string]: RegistryEntry<any, any> } = {
     RunResultView: HistogramDiffResultView,
     RunForm: HistogramDiffForm,
   },
-  preview_change: {
-    title: "Preview Change",
+  sandbox: {
+    title: "Sandbox",
     icon: TbEyeEdit,
-    RunResultView: QueryDiffResultView,
+    // No specific RunResultView for sandbox, use QueryDiffResultView
   },
 };
 

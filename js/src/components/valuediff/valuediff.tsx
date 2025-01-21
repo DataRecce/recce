@@ -9,7 +9,10 @@ import { Box, Flex, Icon } from "@chakra-ui/react";
 import { VscPin, VscPinned } from "react-icons/vsc";
 import { DataFrame } from "@/lib/api/types";
 import { mergeKeysWithStatus } from "@/lib/mergeKeys";
-import { defaultRenderCell } from "../query/querydiff";
+import {
+  defaultRenderCell,
+  QueryDataDiffGridOptions,
+} from "../query/querydiff";
 
 function _getColumnMap(df: DataFrame) {
   const result: {
@@ -62,14 +65,6 @@ function _getPrimaryKeyValue(
     }
     return JSON.stringify(result);
   }
-}
-
-interface QueryDataDiffGridOptions {
-  primaryKeys?: string[];
-  onPrimaryKeyChange?: (primaryKeys: string[]) => void;
-  pinnedColumns?: string[];
-  onPinnedColumnsChange?: (pinnedColumns: string[]) => void;
-  changedOnly?: boolean;
 }
 
 function DataFrameColumnGroupHeader({
@@ -271,7 +266,7 @@ export function toValueDiffGrid(
       children: [
         {
           key: `base__${name}`,
-          name: "Base",
+          name: options?.baseTitle || "Base",
           renderEditCell: textEditor,
           headerCellClass,
           cellClass,
@@ -280,7 +275,7 @@ export function toValueDiffGrid(
         },
         {
           key: `current__${name}`,
-          name: "Current",
+          name: options?.currentTitle || "Current",
           renderEditCell: textEditor,
           headerCellClass,
           cellClass,
