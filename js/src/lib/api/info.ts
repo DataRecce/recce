@@ -9,6 +9,7 @@ export interface NodeColumnData {
   type: string;
 }
 export interface NodeData {
+  id: string;
   unique_id: string;
   name: string;
   schema?: string;

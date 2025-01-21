@@ -109,7 +109,15 @@ function SandboxTopBar({
     </Flex>
   );
 }
-function SandboxEditorLabels({ height = "32px", flex = "0 0 auto" }) {
+function SandboxEditorLabels({
+  currentModelID,
+  height = "32px",
+  flex = "0 0 auto",
+}: {
+  currentModelID: string;
+  height?: string;
+  flex?: string;
+}) {
   const { lineageGraph, envInfo } = useLineageGraphContext();
   const widthOfBar = "50%";
   const margin = "0 16px";
@@ -120,12 +128,11 @@ function SandboxEditorLabels({ height = "32px", flex = "0 0 auto" }) {
   const latestUpdateDistanceToNow = formatDistanceToNow(currentTime, {
     addSuffix: true,
   });
-  const currentSchemas = new Set<string>();
-  if (lineageGraph?.nodes) {
-    for (const value of Object.values(lineageGraph?.nodes)) {
-      if (value.data.current?.schema) {
-        currentSchemas.add(value.data.current.schema);
-      }
+  let schema = "N/A";
+  if (lineageGraph?.nodes && lineageGraph?.nodes[currentModelID]) {
+    const value = lineageGraph?.nodes[currentModelID];
+    if (value.data.current?.schema) {
+      schema = value.data.current.schema;
     }
   }
 
@@ -141,8 +148,8 @@ function SandboxEditorLabels({ height = "32px", flex = "0 0 auto" }) {
     >
       <Stack width={widthOfBar}>
         <Text as="b" margin={margin}>
-          ORIGINAL (Schemas: {currentSchemas}, Last Updated:{" "}
-          {latestUpdateDistanceToNow})
+          ORIGINAL (Schemas: {schema}, Last Updated: {latestUpdateDistanceToNow}
+          )
         </Text>
       </Stack>
       <Stack width={widthOfBar}>
@@ -315,7 +322,11 @@ export function SandboxView({ isOpen, onClose, current }: SandboxViewProps) {
                 runQuery={runQuery}
                 isPending={isPending}
               />
-              <SandboxEditorLabels height="32pxs" flex="0 0 auto" />
+              <SandboxEditorLabels
+                height="32pxs"
+                flex="0 0 auto"
+                currentModelID={current?.id || ""}
+              />
               <SqlPreview current={current} onChange={setModifiedCode} />
             </Flex>
             {isRunResultOpen ? (
