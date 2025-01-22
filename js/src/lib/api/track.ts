@@ -82,3 +82,19 @@ interface RecommendPresetCheckProps {
 export function trackRecommendCheck(props: RecommendPresetCheckProps) {
   amplitude.track("[Experiment] recommend_preset_check", props);
 }
+
+
+interface BreakingChangeAnalysisProps {
+  enabled: boolean;
+}
+
+let _breakingChangeEnabled = false;
+
+export function trackBreakingChange(props: BreakingChangeAnalysisProps) {
+  amplitude.track("[Experiment] breaking_change_analysis", props);
+  _breakingChangeEnabled = props.enabled;
+}
+
+export function getExperimentTrackingBreakingChangeEnabled() {
+  return _breakingChangeEnabled;
+}

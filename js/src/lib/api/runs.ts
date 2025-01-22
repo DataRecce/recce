@@ -1,6 +1,7 @@
 import _ from "lodash";
 import { axiosClient } from "./axiosClient";
 import { Run, RunType } from "./types";
+import { getExperimentTrackingBreakingChangeEnabled } from "./track";
 
 export interface SubmitOptions {
   nowait?: boolean;
@@ -11,10 +12,14 @@ export async function submitRun<PT = any, RT = any>(
   params?: PT,
   options?: SubmitOptions
 ) {
+  const track_props = getExperimentTrackingBreakingChangeEnabled()
+    ? { breaking_change_analysis: true }
+    : {};
   const response = await axiosClient.post("/api/runs", {
     type,
     params,
     nowait: options?.nowait,
+    track_props,
   });
 
   const run: Run<PT, RT> | Pick<Run, "run_id"> = response.data;

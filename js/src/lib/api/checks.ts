@@ -3,6 +3,7 @@ import { axiosClient } from "./axiosClient";
 import { Run, RunType } from "./types";
 import { useQuery } from "@tanstack/react-query";
 import { cacheKeys } from "./cacheKeys";
+import { getExperimentTrackingBreakingChangeEnabled } from "./track";
 
 export interface Check<PT = any, RT = any, VO = any> {
   check_id: string;
@@ -29,9 +30,13 @@ export async function createCheckByRun(
   runId: string,
   viewOptions?: any
 ): Promise<Check> {
+  const track_props = getExperimentTrackingBreakingChangeEnabled()
+    ? { breaking_change_analysis: true }
+    : {};
   const response = await axiosClient.post("/api/checks", {
     run_id: runId,
     view_options: viewOptions,
+    track_props,
   });
   const check = response.data;
 

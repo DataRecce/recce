@@ -21,6 +21,7 @@ class CreateCheckIn(BaseModel):
     type: Optional[RunType] = None,
     params: Optional[dict] = None
     view_options: Optional[dict] = None
+    track_props: Optional[dict] = None
 
 
 class CheckOut(BaseModel):
@@ -67,6 +68,7 @@ async def create_check(check_in: CreateCheckIn, background_tasks: BackgroundTask
             )
         log_api_event('create_check', dict(
             type=str(check.type),
+            track_props=check_in.track_props,
         ))
     except NameError as e:
         raise HTTPException(status_code=404, detail=str(e))
