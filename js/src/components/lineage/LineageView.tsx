@@ -27,15 +27,7 @@ import {
   StackDivider,
   useToast,
   MenuDivider,
-  Switch,
-  Badge,
-  Link,
-  Popover,
-  PopoverBody,
-  PopoverContent,
-  PopoverTrigger,
 } from "@chakra-ui/react";
-import { InfoOutlineIcon } from "@chakra-ui/icons";
 import React, {
   Ref,
   RefObject,
@@ -98,6 +90,7 @@ import { Check } from "@/lib/api/checks";
 import useValueDiffAlertDialog from "./useValueDiffAlertDialog";
 import { trackBreakingChange, trackMultiNodesAction } from "@/lib/api/track";
 import { PresetCheckRecommendation } from "./PresetCheckRecommendation";
+import { BreakingChangeSwitch } from "./BreakingChangeSwitch";
 
 export interface LineageViewProps {
   viewOptions?: LineageDiffViewOptions;
@@ -235,10 +228,8 @@ export function PrivateLineageView(
   } = useLineageGraphContext();
 
   const { showRunId, closeRunResult, runAction } = useRecceActionContext();
-  const isModelsChanged = lineageGraph && lineageGraph?.modifiedSet?.length > 0;
 
   const [viewOptions, setViewOptions] = useState<LineageDiffViewOptions>({
-    view_mode: isModelsChanged ? "changed_models" : "all",
     ...props.viewOptions,
   });
 
@@ -304,8 +295,16 @@ export function PrivateLineageView(
         selectedNodes = viewOptions.node_ids;
       } else {
         const packageName = lineageGraph.manifestMetadata.current?.project_name;
+        const isModelsChanged =
+          lineageGraph && lineageGraph?.modifiedSet?.length > 0;
+        const viewMode = viewOptions.view_mode
+          ? viewOptions.view_mode
+          : isModelsChanged
+          ? "changed_models"
+          : "all";
+
         const newViewOptions: LineageDiffViewOptions = {
-          view_mode: viewOptions.view_mode,
+          view_mode: viewMode,
           packages: packageName ? [packageName] : undefined,
           ...props.viewOptions,
         };
@@ -503,7 +502,13 @@ export function PrivateLineageView(
       return;
     }
 
-    const [newNodes, newEdges] = toReactflow(lineageGraph, selectedNodes);
+    let [newNodes, newEdges] = toReactflow(lineageGraph, selectedNodes);
+    const nodeSet = selectImpactRadius(lineageGraph, breakingChangeEnabled);
+    [newNodes, newEdges] = highlightNodes(
+      Array.from(nodeSet),
+      newNodes,
+      newEdges
+    );
     layout(newNodes, newEdges);
     setNodes(newNodes);
     setEdges(newEdges);
@@ -851,57 +856,14 @@ export function PrivateLineageView(
             </Panel>
             <Panel position="top-left">
               <Flex direction="column">
-                <Flex
-                  direction="row"
-                  alignItems="center"
-                  gap="5px"
-                  p="5px 10px"
-                  borderRadius="md"
-                  boxShadow="md"
-                  border="1px solid"
-                  borderColor="gray.200"
-                  bg="white"
-                >
-                  <Switch
-                    isChecked={breakingChangeEnabled}
-                    onChange={(e) => {
-                      const enabled = e.target.checked;
-                      setBreakingChangeEnabled(enabled);
-                      highlightImpactRadius(enabled);
-                      trackBreakingChange({ enabled });
-                    }}
-                    alignItems={"center"}
-                  ></Switch>
-                  <Flex alignItems={"center"}>
-                    <Text fontSize="10pt" lineHeight="1">
-                      Breaking Change Analysis
-                    </Text>
-                  </Flex>
-                  <Popover trigger="hover" placement="top-start">
-                    <PopoverTrigger>
-                      <Icon
-                        boxSize="10px"
-                        as={InfoOutlineIcon}
-                        color="gray.500"
-                        cursor="pointer"
-                      />
-                    </PopoverTrigger>
-                    <PopoverContent bg="black" color="white">
-                      <PopoverBody fontSize="sm">
-                        Breaking changes are determined by analyzing SQL for
-                        changes that may impact downstream models.{" "}
-                        <Link
-                          href="https://datarecce.io/docs/features/breaking-change-analysis/"
-                          target="_blank"
-                        >
-                          Learn more
-                        </Link>
-                        .
-                      </PopoverBody>
-                    </PopoverContent>
-                  </Popover>
-                  <Badge color="gray">Experiment</Badge>
-                </Flex>
+                <BreakingChangeSwitch
+                  enabled={breakingChangeEnabled}
+                  onChanged={(enabled) => {
+                    setBreakingChangeEnabled(enabled);
+                    highlightImpactRadius(enabled);
+                    trackBreakingChange({ enabled });
+                  }}
+                />
                 {nodes.length == 0 && (
                   <Text fontSize="xl" color="grey" opacity={0.5}>
                     No nodes
