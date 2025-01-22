@@ -891,7 +891,7 @@ export function PrivateLineageView(
                         Breaking changes are determined by analyzing SQL for
                         changes that may impact downstream models.{" "}
                         <Link
-                          href="https://datarecce.io/docs/features/lineage/"
+                          href="https://datarecce.io/docs/features/breaking-change-analysis/"
                           target="_blank"
                         >
                           Learn more
