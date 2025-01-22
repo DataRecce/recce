@@ -96,10 +96,8 @@ import { createSchemaDiffCheck } from "@/lib/api/schemacheck";
 import { useLocation } from "wouter";
 import { Check } from "@/lib/api/checks";
 import useValueDiffAlertDialog from "./useValueDiffAlertDialog";
-import { trackMultiNodesAction } from "@/lib/api/track";
+import { trackBreakingChange, trackMultiNodesAction } from "@/lib/api/track";
 import { PresetCheckRecommendation } from "./PresetCheckRecommendation";
-
-
 
 export interface LineageViewProps {
   viewOptions?: LineageDiffViewOptions;
@@ -867,9 +865,10 @@ export function PrivateLineageView(
                   <Switch
                     isChecked={breakingChangeEnabled}
                     onChange={(e) => {
-                      const advancedImpactRadius = e.target.checked;
-                      setBreakingChangeEnabled(advancedImpactRadius);
-                      highlightImpactRadius(advancedImpactRadius);
+                      const enabled = e.target.checked;
+                      setBreakingChangeEnabled(enabled);
+                      highlightImpactRadius(enabled);
+                      trackBreakingChange({ enabled });
                     }}
                     alignItems={"center"}
                   ></Switch>
@@ -892,7 +891,7 @@ export function PrivateLineageView(
                         Breaking changes are determined by analyzing SQL for
                         changes that may impact downstream models.{" "}
                         <Link
-                          href="https://datarecce.io/docs/features/lineage/"
+                          href="https://datarecce.io/docs/features/breaking-change-analysis/"
                           target="_blank"
                         >
                           Learn more

@@ -18,12 +18,14 @@ class CreateRunIn(BaseModel):
     params: dict
     check_id: Optional[str] = None
     nowait: Optional[bool] = False
+    track_props: Optional[dict] = None
 
 
 @run_router.post("/runs", status_code=201)
 async def create_run_handler(input: CreateRunIn):
     log_api_event('create_run', dict(
         type=input.type,
+        track_props=input.track_props,
     ))
     try:
         run, future = submit_run(input.type, input.params)
