@@ -510,8 +510,9 @@ class DbtAdapter(BaseAdapter):
         parser = SqlBlockParser(self.runtime_config, manifest, self.runtime_config)
 
         if dbt_version >= dbt_version.parse('v1.8'):
-            from dbt_common.context import set_invocation_context
+            from dbt_common.context import set_invocation_context, get_invocation_context
             set_invocation_context({})
+            get_invocation_context()._env = dict(os.environ)
 
         node_id = str("generated_" + uuid.uuid4().hex)
         node = parser.parse_remote(sql_template, node_id)
