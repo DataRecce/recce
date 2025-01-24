@@ -709,7 +709,8 @@ class DbtAdapter(BaseAdapter):
                         from recce.util.breaking import is_breaking_change
                         base_sql = self.generate_sql(base_node.get('raw_code'))
                         curr_sql = self.generate_sql(curr_node.get('raw_code'))
-                        if not is_breaking_change(base_sql, curr_sql):
+                        dialect = self.adapter.connections.TYPE
+                        if not is_breaking_change(base_sql, curr_sql, dialect=dialect):
                             change_category = 'non-breaking'
                     except Exception:
                         pass

@@ -6,15 +6,21 @@ def is_breaking_change(original_sql, modified_sql, dialect=None):
         return False
 
     try:
-        from sqlglot import parse_one, diff
+        from sqlglot import parse_one, diff, Dialect
         from sqlglot.diff import Insert, Keep
         import sqlglot.expressions as exp
     except ImportError:
         return True
 
     try:
-        original_ast = optimize(parse_one(original_sql, dialect=dialect))
-        modified_ast = optimize(parse_one(modified_sql, dialect=dialect))
+        dialect = Dialect.get(dialect)
+
+        def _parse(sql):
+            ast = parse_one(sql, dialect=dialect)
+            return optimize(ast, dialect=dialect)
+
+        original_ast = _parse(original_sql)
+        modified_ast = _parse(modified_sql)
     except Exception:
         return True
 
@@ -27,29 +33,33 @@ def is_breaking_change(original_sql, modified_sql, dialect=None):
         e.expression for e in edits if isinstance(e, Insert)
     }
 
+    VALID_EXPRESSIONS = (
+        exp.Where,
+        exp.Join,
+        exp.Order,
+        exp.Group,
+        exp.Having,
+        exp.Limit,
+        exp.Offset,
+        exp.Window,
+        exp.Union,
+        exp.Intersect,
+        exp.Except,
+        exp.Merge,
+        exp.Delete,
+        exp.Update,
+        exp.Insert,
+        exp.Subquery,
+    )
+
     for edit in edits:
         if isinstance(edit, Insert):
             inserted_expr = edit.expression
-            VALID_EXPRESSIONS = (
-                exp.Where,
-                exp.Join,
-                exp.Order,
-                exp.Group,
-                exp.Having,
-                exp.Limit,
-                exp.Offset,
-                exp.Window,
-                exp.Union,
-                exp.Intersect,
-                exp.Except,
-                exp.Merge,
-                exp.Delete,
-                exp.Update,
-                exp.Insert,
-                exp.Subquery,
-            )
 
             if isinstance(inserted_expr, VALID_EXPRESSIONS):
+                return True
+
+            if isinstance(inserted_expr, exp.UDTF):
                 return True
 
             if (
