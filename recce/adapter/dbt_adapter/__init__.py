@@ -9,9 +9,14 @@ from functools import lru_cache
 from pathlib import Path
 from typing import Callable, Dict, List, Optional, Tuple, Iterator, Any, Set, Union, Literal, Type
 
-import agate
-import dbt.adapters.factory
-from dbt.contracts.state import PreviousState
+try:
+    import agate
+    import dbt.adapters.factory
+    from dbt.contracts.state import PreviousState
+except ImportError as e:
+    print("Error: dbt module not found. Please install it by running:")
+    print("pip install dbt-core dbt-<adapter>")
+    raise e
 from watchdog.events import FileSystemEventHandler
 from watchdog.observers import Observer
 
