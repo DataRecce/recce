@@ -213,6 +213,20 @@ class BreakingChangeTest(unittest.TestCase):
 
         assert is_breaking_change(original_sql, malformed_sql)
 
+    def test_unnest_function(self):
+        original_sql = """
+        select
+            a
+        from MyTable
+        """
+        modified_sql = """
+        select
+            a,
+            unnest(a) as b
+        from MyTable
+        """
+        assert is_breaking_change(original_sql, modified_sql)
+
     def test_pr42(self):
         original_sql = """
         with source as (

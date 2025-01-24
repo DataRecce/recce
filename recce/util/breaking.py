@@ -27,29 +27,33 @@ def is_breaking_change(original_sql, modified_sql, dialect=None):
         e.expression for e in edits if isinstance(e, Insert)
     }
 
+    VALID_EXPRESSIONS = (
+        exp.Where,
+        exp.Join,
+        exp.Order,
+        exp.Group,
+        exp.Having,
+        exp.Limit,
+        exp.Offset,
+        exp.Window,
+        exp.Union,
+        exp.Intersect,
+        exp.Except,
+        exp.Merge,
+        exp.Delete,
+        exp.Update,
+        exp.Insert,
+        exp.Subquery,
+    )
+
     for edit in edits:
         if isinstance(edit, Insert):
             inserted_expr = edit.expression
-            VALID_EXPRESSIONS = (
-                exp.Where,
-                exp.Join,
-                exp.Order,
-                exp.Group,
-                exp.Having,
-                exp.Limit,
-                exp.Offset,
-                exp.Window,
-                exp.Union,
-                exp.Intersect,
-                exp.Except,
-                exp.Merge,
-                exp.Delete,
-                exp.Update,
-                exp.Insert,
-                exp.Subquery,
-            )
 
             if isinstance(inserted_expr, VALID_EXPRESSIONS):
+                return True
+
+            if isinstance(inserted_expr, exp.UDTF):
                 return True
 
             if (
