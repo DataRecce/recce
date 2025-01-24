@@ -227,6 +227,23 @@ class BreakingChangeTest(unittest.TestCase):
         """
         assert is_breaking_change(original_sql, modified_sql)
 
+    def test_dialect(self):
+        original_sql = """
+        SELECT
+            a
+        FROM MyTable
+        """
+        modified_sql = """
+        SELECT
+           a,
+           b,
+        FROM MyTable
+        """
+
+        assert not is_breaking_change(original_sql, modified_sql, dialect='duckdb')
+        assert not is_breaking_change(original_sql, modified_sql, dialect='xyz')
+        assert not is_breaking_change(original_sql, modified_sql, dialect=None)
+
     def test_pr42(self):
         original_sql = """
         with source as (
