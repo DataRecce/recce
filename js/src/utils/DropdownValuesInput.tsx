@@ -86,7 +86,7 @@ export const DropdownValuesInput = (props: DropdownValuesInputProps) => {
             backgroundColor={"white"}
           />
           {values.length === 0 && (
-          <InputRightElement>
+            <InputRightElement>
               <Icon
                 as={FaChevronDown}
                 color="blue.500"
@@ -191,7 +191,8 @@ export const DropdownValuesInput = (props: DropdownValuesInputProps) => {
                   >
                     {value}
                   </MenuItem>
-                ))}
+                ))
+                .slice(0, 10)}
             </MenuGroup>
           </MenuList>
         </Portal>
