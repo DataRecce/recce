@@ -1,5 +1,6 @@
 import React, { useState, useRef, useEffect } from "react";
 import {
+  Box,
   Button,
   Icon,
   Input,
@@ -68,6 +69,12 @@ export const DropdownValuesInput = (props: DropdownValuesInputProps) => {
       </Tooltip>
     );
   }
+
+  const filteredList =
+    suggestionList
+      ?.filter((value) => filter === "" || value.includes(filter))
+      .filter((value) => !values.includes(value)) || [];
+  const limit = 10;
 
   return (
     <InputGroup size={props.size} width={props.width}>
@@ -181,9 +188,7 @@ export const DropdownValuesInput = (props: DropdownValuesInputProps) => {
                   Add &apos;{filter}&apos; to the list
                 </MenuItem>
               )}
-              {suggestionList
-                ?.filter((value) => filter === "" || value.includes(filter))
-                .filter((value) => !values.includes(value))
+              {filteredList
                 ?.map((value, cid) => (
                   <MenuItem
                     key={`option-${cid}`}
@@ -192,7 +197,17 @@ export const DropdownValuesInput = (props: DropdownValuesInputProps) => {
                     {value}
                   </MenuItem>
                 ))
-                .slice(0, 10)}
+                .slice(0, limit)}
+              {filteredList?.length > limit && (
+                <Tooltip
+                  label="Please use filter to find more items"
+                  placement="top"
+                >
+                  <Box px="12px" color="gray" fontSize="8pt">
+                    and {filteredList.length - limit} more items...
+                  </Box>
+                </Tooltip>
+              )}
             </MenuGroup>
           </MenuList>
         </Portal>
