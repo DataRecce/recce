@@ -810,7 +810,7 @@ class DbtAdapter(BaseAdapter):
         if refresh_file_path is None:
             return self.load_artifacts()
 
-        target_type = refresh_file_path.split('/')[-2]
+        target_type = os.path.basename(os.path.dirname(refresh_file_path))
         if self.target_path and target_type == os.path.basename(self.target_path):
             if refresh_file_path.endswith('manifest.json'):
                 self.curr_manifest = load_manifest(path=refresh_file_path)
