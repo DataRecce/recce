@@ -92,23 +92,30 @@ Don't forget to click the Checks tab to view the Recce Checklist, and perform yo
 
 This pull request adjusts the **logic** for how customer lifetime value is calculated:
 
-- [Demo #1](https://pr1.cloud.datarecce.io/)
+- [Demo #1](https://pr1.demo.datarecce.io/)
 - [Pull request #1](https://github.com/DataRecce/jaffle_shop_duckdb/pull/1)
 
 ### Demo 2: Refactoring
 
 This pull request performs some **refactoring** on the customers model by turning two CTEs into intermediate models, enhancing readability and maintainability:
 
-- [Demo #2](https://pr2.cloud.datarecce.io/)
+- [Demo #2](https://pr2.demo.datarecce.io/)
 - [Pull request #2](https://github.com/DataRecce/jaffle_shop_duckdb/pull/2)
 
 ### Demo 3: Analysis
 
 This pull request introduces a new Rounding Effect **Analysis** feature, aimed at analyzing and reporting the impacts of rounding in our data processing.
 
-- [Demo #3](https://pr3.cloud.datarecce.io/)
+- [Demo #3](https://pr3.demo.datarecce.io/)
 - [Pull request #3](https://github.com/DataRecce/jaffle_shop_duckdb/pull/3)
 
+
+### Demo 4: Enhancing the existing model
+
+This pull request **enhances** the existing `customers` model by categorizing whether a customer has placed an order as part of a promotion.
+
+- [Demo #4](https://pr44.demo.datarecce.io/)
+- [Pull request #44](https://github.com/DataRecce/jaffle_shop_duckdb/pull/44)
 
 ## Why `Recce`
 
