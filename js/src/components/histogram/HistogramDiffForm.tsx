@@ -20,13 +20,29 @@ function isStringDataType(columnType: string) {
     "VARCHAR(MAX)",
     "XML",
     "JSON",
+  ];
+  // Normalize columnType by removing spaces and converting to uppercase
+  const normalizedType = columnType.trim().toUpperCase();
+
+  // Check if columnType is in the predefined list
+  if (stringDataTypes.includes(normalizedType)) {
+    return true;
+  }
+
+  // Match types that have a length specification (e.g., VARCHAR(255))
+  const regex = /^(VARCHAR|NVARCHAR|VARCHAR2|NVARCHAR2|CHAR|NCHAR)\(\d+\)$/;
+  return regex.test(normalizedType);
+}
+
+function isBooleanDataType(columnType: string) {
+  const booleanDataTypes = [
     "BOOLEAN", // PostgreSQL, SQLite, and others with native boolean support
     "TINYINT(1)", // MySQL/MariaDB uses TINYINT(1) to represent boolean values
     "BIT", // SQL Server and others use BIT to represent boolean values, where 1 is true and 0 is false
     "NUMBER(1)", // Oracle uses NUMBER(1) where 1 is true and 0 is false, as it does not have a native BOOLEAN type
     "BOOL", // Snowflake and PostgreSQL also support BOOL as an alias for BOOLEAN
   ];
-  return stringDataTypes.includes(columnType.toUpperCase());
+  return booleanDataTypes.includes(columnType.toUpperCase());
 }
 
 function isDateTimeType(columnType: string) {
@@ -54,7 +70,11 @@ function isDateTimeType(columnType: string) {
 interface HistogramDiffEditProps extends RunFormProps<HistogramDiffParams> {}
 
 export function supportsHistogramDiff(columnType: string) {
-  return !isStringDataType(columnType) && !isDateTimeType(columnType);
+  return (
+    !isStringDataType(columnType) &&
+    !isBooleanDataType(columnType) &&
+    !isDateTimeType(columnType)
+  );
 }
 
 export function HistogramDiffForm({
@@ -68,7 +88,10 @@ export function HistogramDiffForm({
     error,
   } = useModelColumns(params.model);
   const columns = allColumns.filter(
-    (c) => !isStringDataType(c.type) && !isDateTimeType(c.type)
+    (c) =>
+      !isStringDataType(c.type) &&
+      !isBooleanDataType(c.type) &&
+      !isDateTimeType(c.type)
   );
 
   if (isLoading) {

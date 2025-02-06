@@ -1,6 +1,6 @@
 import pytest
 
-from recce.tasks.histogram import HistogramDiffTask, HistogramDiffCheckValidator
+from recce.tasks.histogram import HistogramDiffTask, HistogramDiffCheckValidator, _is_histogram_supported
 
 
 def test_histogram(dbt_test_helper):
@@ -127,3 +127,11 @@ def test_validator():
 
     with pytest.raises(ValueError):
         validate({})
+
+
+def test_is_column_type_supported_by_histogram():
+    assert _is_histogram_supported("varchar") is False
+    assert _is_histogram_supported("varchar(16)") is False
+    assert _is_histogram_supported("varchar(256)") is False
+    assert _is_histogram_supported("bool") is False
+    assert _is_histogram_supported("int") is True

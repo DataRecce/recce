@@ -1,7 +1,8 @@
+import math
+import re
 from datetime import date, datetime
 from typing import Optional
 
-import math
 from dateutil.relativedelta import relativedelta
 from pydantic import BaseModel
 
@@ -42,6 +43,20 @@ sql_not_supported_types = [
     "NUMBER(1)",  # Oracle uses NUMBER(1) where 1 is true and 0 is false, as it does not have a native BOOLEAN type
     "BOOL",  # Snowflake and PostgreSQL also support BOOL as an alias for BOOLEAN
 ]
+
+sql_not_supported_types_pattern = [
+    r"^(CHAR|VARCHAR|NCHAR|NVARCHAR|VARCHAR2|NVARCHAR2)\(\d+\)$",  # String types with lengths
+]
+
+
+def _is_histogram_supported(column_type):
+    if column_type.upper() in sql_not_supported_types:
+        return False
+
+    for pattern in sql_not_supported_types_pattern:
+        if re.match(pattern, column_type.upper()):
+            return False
+    return True
 
 
 def generate_histogram_sql_integer(node, column, min_value, max_value, num_bins=50):
@@ -303,7 +318,7 @@ class HistogramDiffTask(Task, QueryMixin):
         num_bins = self.params.num_bins or 50
         column_type = self.params.column_type
 
-        if column_type.upper() in sql_not_supported_types:
+        if _is_histogram_supported(column_type) is False:
             raise ValueError(f"Column type {column_type} is not supported for histogram analysis")
 
         with dbt_adapter.connection_named("query"):
