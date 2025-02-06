@@ -31,7 +31,7 @@ import {
 
 import { FaCode } from "react-icons/fa";
 import { LineageGraphNode } from "./lineage";
-import { SchemaView } from "../schema/SchemaView";
+import { SchemaView, SingleEnvSchemaView } from "../schema/SchemaView";
 import { useRecceQueryContext } from "@/lib/hooks/RecceQueryContext";
 import { SqlDiffView } from "../schema/SqlDiffView";
 import { useLocation } from "wouter";
@@ -343,7 +343,11 @@ export function NodeView({ node, onCloseNode }: NodeViewProps) {
           </TabList>
           <TabPanels overflow="auto" height="calc(100% - 42px)">
             <TabPanel p={0} overflowY="auto" height="100%">
-              <SchemaView base={node.data.base} current={node.data.current} />
+              {isSingleEnvOnboarding ? (
+                <SingleEnvSchemaView current={node.data.current} />
+              ) : (
+                <SchemaView base={node.data.base} current={node.data.current} />
+              )}
             </TabPanel>
           </TabPanels>
         </Tabs>

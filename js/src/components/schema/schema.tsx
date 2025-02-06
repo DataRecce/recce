@@ -19,6 +19,12 @@ interface SchemaDiff {
   [key: string]: SchemaDiffRow;
 }
 
+interface SchemaRow {
+  name: string;
+  index: number;
+  type?: string;
+}
+
 export function mergeColumns(
   baseColumns: NodeData["columns"] = {},
   currentColumns: NodeData["columns"] = {}
@@ -140,6 +146,43 @@ export function toDataGrid(schemaDiff: SchemaDiff, nodeName?: string) {
     },
   ];
   const rows = Object.values(schemaDiff);
+
+  return { columns, rows };
+}
+export function toSingleEnvDataGrid(nodeColumns: NodeData["columns"] = {}) {
+  const rows: SchemaRow[] = Object.entries(nodeColumns).map(
+    ([name, column], index) => ({
+      name,
+      index: index + 1,
+      type: column.type,
+    })
+  );
+
+  const columns: ColumnOrColumnGroup<SchemaRow>[] = [
+    {
+      key: "index",
+      name: "",
+      resizable: true,
+      minWidth: 35,
+      width: 35,
+      cellClass: "column-index-normal",
+    },
+    {
+      key: "name",
+      name: "Name",
+      resizable: true,
+      renderCell: ({ row, column }) => {
+        return row["name"];
+      },
+      cellClass: "column-body-normal",
+    },
+    {
+      key: "type",
+      name: "Type",
+      resizable: true,
+      cellClass: "column-body-normal",
+    },
+  ];
 
   return { columns, rows };
 }

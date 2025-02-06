@@ -1,6 +1,6 @@
 import { forwardRef, useMemo } from "react";
 
-import { mergeColumns, toDataGrid } from "./schema";
+import { mergeColumns, toDataGrid, toSingleEnvDataGrid } from "./schema";
 import "react-data-grid/lib/styles.css";
 import { Flex, Alert, AlertIcon } from "@chakra-ui/react";
 import {
@@ -14,6 +14,66 @@ interface SchemaViewProps {
   base?: NodeData;
   current?: NodeData;
   enableScreenshot?: boolean;
+}
+
+function PrivateSingleEnvSchemaView(
+  { current }: { current?: NodeData },
+  ref: any
+) {
+  const { columns, rows } = useMemo(() => {
+    return toSingleEnvDataGrid(current?.columns);
+  }, [current]);
+
+  const { lineageGraph } = useLineageGraphContext();
+  const noCatalogCurrent = !lineageGraph?.catalogMetadata.current;
+  let catalogMissingMessage = undefined;
+  if (noCatalogCurrent) {
+    catalogMissingMessage = "catalog.json is missing.";
+  }
+
+  const noSchemaCurrent = current && current.columns === undefined;
+  let schemaMissingMessage = undefined;
+  if (noSchemaCurrent) {
+    schemaMissingMessage = "Schema information is missing.";
+  }
+
+  return (
+    <Flex direction="column">
+      {catalogMissingMessage ? (
+        <Alert status="warning" fontSize="12px" p="8px">
+          <AlertIcon />
+          {catalogMissingMessage}
+        </Alert>
+      ) : schemaMissingMessage ? (
+        <Alert status="warning" fontSize="12px" p="8px">
+          <AlertIcon />
+          {schemaMissingMessage}
+        </Alert>
+      ) : (
+        <></>
+      )}
+
+      {rows.length > 0 && (
+        <>
+          <ScreenshotDataGrid
+            style={{
+              blockSize: "auto",
+              maxHeight: "100%",
+              overflow: "auto",
+              fontSize: "10pt",
+              borderWidth: 1,
+            }}
+            columns={columns}
+            rows={rows}
+            renderers={{ noRowsFallback: <EmptyRowsRenderer /> }}
+            className="rdg-light"
+            enableScreenshot={false}
+            ref={ref}
+          />
+        </>
+      )}
+    </Flex>
+  );
 }
 
 export function PrivateSchemaView(
@@ -96,3 +156,4 @@ export function PrivateSchemaView(
 }
 
 export const SchemaView = forwardRef(PrivateSchemaView);
+export const SingleEnvSchemaView = forwardRef(PrivateSingleEnvSchemaView);
