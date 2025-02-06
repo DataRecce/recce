@@ -112,7 +112,7 @@ This pull request introduces a new Rounding Effect **Analysis** feature, aimed a
 
 ### Demo 4: Enhancing the existing model
 
-This pull request **enhances** the existing `customers` model by categorizing whether a customer has placed a promoted order.
+This pull request **enhances** the existing `customers` model by categorizing whether a customer has placed an order as part of a promotion.
 
 - [Demo #4](https://pr44.demo.datarecce.io/)
 - [Pull request #44](https://github.com/DataRecce/jaffle_shop_duckdb/pull/44)
