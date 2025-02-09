@@ -281,6 +281,10 @@ export function selectDownstream(
   );
 }
 
+export function selectAllNodes(lineageGraph: LineageGraph) {
+  return new Set(Object.values(lineageGraph.nodes).map((node) => node.id));
+}
+
 export function selectImpactRadius(
   lineageGraph: LineageGraph,
   breakingChangeEnabled: boolean
