@@ -50,6 +50,7 @@ import {
 } from "@/lib/api/track";
 import { useRecceServerFlag } from "@/lib/hooks/useRecceServerFlag";
 import { SingleEnvironmentQueryView } from "./SingleEnvironmentQueryView";
+import { SandboxView } from "./SandboxView";
 
 interface NodeViewProps {
   node: LineageGraphNode;
@@ -75,6 +76,11 @@ export function NodeView({ node, onCloseNode }: NodeViewProps) {
     isOpen: isQueryViewOpen,
     onOpen: onQueryViewOpen,
     onClose: onQueryViewClose,
+  } = useDisclosure();
+  const {
+    isOpen: isSandboxOpen,
+    onOpen: onSandboxOpen,
+    onClose: onSandboxClose,
   } = useDisclosure();
   const { runAction } = useRecceActionContext();
   const { envInfo, isActionAvailable } = useLineageGraphContext();
@@ -156,7 +162,7 @@ export function NodeView({ node, onCloseNode }: NodeViewProps) {
                     primaryKey !== undefined ? [primaryKey] : undefined
                   );
                 }
-                onQueryViewOpen();
+                onSandboxOpen();
                 trackPreviewChange({ action: "explore", node: node.name });
               }}
             >
@@ -288,29 +294,6 @@ export function NodeView({ node, onCloseNode }: NodeViewProps) {
     }
   }
 
-  function SandboxButton() {
-    return (
-      <Button
-        as={Button}
-        size="sm"
-        colorScheme="blue"
-        onClick={() => {
-          if (isActionAvailable("query_diff_with_primary_key")) {
-            // Only set primary key if the action is available
-            setPrimaryKeys(primaryKey !== undefined ? [primaryKey] : undefined);
-          }
-          onQueryViewOpen();
-          trackSingleEnvironment({
-            action: "preview_changes",
-            node: node.name,
-          });
-        }}
-      >
-        Sandbox
-      </Button>
-    );
-  }
-
   function SingleEnvironmentQueryButton() {
     return (
       <Button
@@ -338,7 +321,6 @@ export function NodeView({ node, onCloseNode }: NodeViewProps) {
         </Box>
         <Spacer />
         {isSingleEnvOnboarding ? (
-          // <SandboxButton />
           <SingleEnvironmentQueryButton />
         ) : (
           <ExploreChangeMenuButton />
@@ -387,6 +369,11 @@ export function NodeView({ node, onCloseNode }: NodeViewProps) {
       <SingleEnvironmentQueryView
         isOpen={isQueryViewOpen}
         onClose={onQueryViewClose}
+        current={node.data.current}
+      />
+      <SandboxView
+        isOpen={isSandboxOpen}
+        onClose={onSandboxClose}
         current={node.data.current}
       />
     </Grid>
