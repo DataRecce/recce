@@ -63,8 +63,8 @@ class TestCommandServer(TestCase):
     @patch('os.path.isdir', side_effect=lambda path: True if path == 'existed_folder' else False)
     @patch('recce.cli.uvicorn.run')
     @patch('recce.server.AppState')
-    def test_cmd_server_with_target_folder_only(self,
-                                                mock_app_state, mock_run, mock_isdir, mock_verify_required_artifacts):
+    def test_cmd_server_with_single_env(self,
+                                        mock_app_state, mock_run, mock_isdir, mock_verify_required_artifacts):
         mock_verify_required_artifacts.return_value = True, None
         self.runner.invoke(cli_command_server,
                            [
@@ -85,6 +85,27 @@ class TestCommandServer(TestCase):
         verify_required_artifacts_args = mock_verify_required_artifacts.call_args
         assert verify_required_artifacts_args.kwargs['target_path'] == verify_required_artifacts_args.kwargs[
             'target_base_path']
+
+    @patch.object(RecceContext, 'verify_required_artifacts')
+    @patch('os.path.isdir', side_effect=lambda path: True if path == 'existed_folder' else False)
+    @patch('recce.cli.uvicorn.run')
+    @patch('recce.server.AppState')
+    def test_cmd_server_with_single_env_but_review_mode_enabled(self,
+                                                                mock_app_state, mock_run, mock_isdir,
+                                                                mock_verify_required_artifacts):
+        mock_verify_required_artifacts.return_value = True, None
+        self.runner.invoke(cli_command_server,
+                           [
+                               'existed_state_file',
+                               '--review',
+                               '--target-path', 'existed_folder',
+                               '--target-base-path', 'non_existed_folder',
+                           ])
+        mock_run.assert_called_once()
+        app_state_call_args = mock_app_state.call_args
+        app_state_flag = app_state_call_args.kwargs['flag']
+        assert 'single_env_onboarding' in app_state_flag
+        assert app_state_flag['single_env_onboarding'] is False
 
 
 class TestCommandRun(TestCase):
