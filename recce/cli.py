@@ -248,7 +248,8 @@ def server(host, port, state_file=None, **kwargs):
         cloud_onboarding_state = get_recce_cloud_onboarding_state(kwargs.get('cloud_token'))
         flag['show_onboarding_guide'] = False if cloud_onboarding_state == 'completed' else True
 
-    if not os.path.isdir(kwargs.get('target_base_path')):
+    # Check Single Environment Onboarding Mode if the review mode is False
+    if not os.path.isdir(kwargs.get('target_base_path')) and is_review is False:
         # Mark as single env onboarding mode if user provides the target-path only
         flag['single_env_onboarding'] = True
         flag['show_relaunch_hint'] = True
