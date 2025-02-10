@@ -42,12 +42,14 @@ import { useLineageGraphContext } from "@/lib/hooks/LineageGraphContext";
 import useModelColumns from "@/lib/hooks/useModelColumns";
 import { createSchemaDiffCheck } from "@/lib/api/schemacheck";
 import { findByRunType } from "../run/registry";
-import { is } from "date-fns/locale";
-import { run } from "node:test";
 import { DisableTooltipMessages } from "@/constants/tooltipMessage";
-import { SandboxView } from "./SandboxView";
-import { trackPreviewChange, trackSingleEnvironment } from "@/lib/api/track";
+import {
+  trackPreviewChange,
+  trackSingleEnvironment,
+  trackSingleEnvironmentQuery,
+} from "@/lib/api/track";
 import { useRecceServerFlag } from "@/lib/hooks/useRecceServerFlag";
+import { SingleEnvironmentQueryView } from "./SingleEnvironmentQueryView";
 
 interface NodeViewProps {
   node: LineageGraphNode;
@@ -70,9 +72,9 @@ export function NodeView({ node, onCloseNode }: NodeViewProps) {
     onClose: onCodeDiffClose,
   } = useDisclosure();
   const {
-    isOpen: isSandboxOpen,
-    onOpen: onSandboxOpen,
-    onClose: onSandboxClose,
+    isOpen: isQueryViewOpen,
+    onOpen: onQueryViewOpen,
+    onClose: onQueryViewClose,
   } = useDisclosure();
   const { runAction } = useRecceActionContext();
   const { envInfo, isActionAvailable } = useLineageGraphContext();
@@ -154,7 +156,7 @@ export function NodeView({ node, onCloseNode }: NodeViewProps) {
                     primaryKey !== undefined ? [primaryKey] : undefined
                   );
                 }
-                onSandboxOpen();
+                onQueryViewOpen();
                 trackPreviewChange({ action: "explore", node: node.name });
               }}
             >
@@ -297,7 +299,7 @@ export function NodeView({ node, onCloseNode }: NodeViewProps) {
             // Only set primary key if the action is available
             setPrimaryKeys(primaryKey !== undefined ? [primaryKey] : undefined);
           }
-          onSandboxOpen();
+          onQueryViewOpen();
           trackSingleEnvironment({
             action: "preview_changes",
             node: node.name,
@@ -305,6 +307,25 @@ export function NodeView({ node, onCloseNode }: NodeViewProps) {
         }}
       >
         Sandbox
+      </Button>
+    );
+  }
+
+  function SingleEnvironmentQueryButton() {
+    return (
+      <Button
+        as={Button}
+        size="sm"
+        colorScheme="blue"
+        onClick={() => {
+          onQueryViewOpen();
+          trackSingleEnvironmentQuery({
+            action: "open_query_page",
+            node: node.name,
+          });
+        }}
+      >
+        Query
       </Button>
     );
   }
@@ -317,7 +338,8 @@ export function NodeView({ node, onCloseNode }: NodeViewProps) {
         </Box>
         <Spacer />
         {isSingleEnvOnboarding ? (
-          <SandboxButton />
+          // <SandboxButton />
+          <SingleEnvironmentQueryButton />
         ) : (
           <ExploreChangeMenuButton />
         )}
@@ -358,9 +380,9 @@ export function NodeView({ node, onCloseNode }: NodeViewProps) {
           </ModalBody>
         </ModalContent>
       </Modal>
-      <SandboxView
-        isOpen={isSandboxOpen}
-        onClose={onSandboxClose}
+      <SingleEnvironmentQueryView
+        isOpen={isQueryViewOpen}
+        onClose={onQueryViewClose}
         current={node.data.current}
       />
     </Grid>
