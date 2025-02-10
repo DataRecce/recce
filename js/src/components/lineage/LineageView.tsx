@@ -3,6 +3,7 @@ import {
   cleanUpNodes,
   highlightNodes,
   layout,
+  selectAllNodes,
   selectDownstream,
   selectImpactRadius,
   selectNode,
@@ -238,6 +239,14 @@ export function PrivateLineageView(
     copyToClipboard,
   }));
 
+  const isModelsChanged = useMemo(() => {
+    return lineageGraph && lineageGraph?.modifiedSet?.length > 0 ? true : false;
+  }, [lineageGraph]);
+
+  // If there are modified nodes, fit modified nodes initially.
+  // Otherwise, use defaultViewPort definition.
+  const defaultFitView = isModelsChanged ? true : false;
+
   /**
    * View mode
    * - all: show all nodes
@@ -295,8 +304,6 @@ export function PrivateLineageView(
         selectedNodes = viewOptions.node_ids;
       } else {
         const packageName = lineageGraph.manifestMetadata.current?.project_name;
-        const isModelsChanged =
-          lineageGraph && lineageGraph?.modifiedSet?.length > 0;
         const viewMode = viewOptions.view_mode
           ? viewOptions.view_mode
           : isModelsChanged
@@ -320,7 +327,10 @@ export function PrivateLineageView(
       }
 
       let [nodes, edges] = toReactflow(lineageGraph, selectedNodes);
-      const nodeSet = selectImpactRadius(lineageGraph, breakingChangeEnabled);
+      let nodeSet = selectAllNodes(lineageGraph);
+      if (isModelsChanged) {
+        nodeSet = selectImpactRadius(lineageGraph, breakingChangeEnabled);
+      }
       [nodes, edges] = highlightNodes(Array.from(nodeSet), nodes, edges);
       layout(nodes, edges);
       setNodes(nodes);
@@ -378,16 +388,40 @@ export function PrivateLineageView(
     setEdges(newEdges);
   };
 
+  const highlightAllNodes = () => {
+    if (!lineageGraph) {
+      return;
+    }
+
+    const nodeSet = selectAllNodes(lineageGraph);
+    const [newNodes, newEdges] = highlightNodes(
+      Array.from(nodeSet),
+      nodes,
+      edges
+    );
+
+    setNodes(cleanUpNodes(newNodes));
+    setEdges(newEdges);
+  };
+
   const onNodeMouseLeave = (event: React.MouseEvent, node: Node) => {
     if (selectedNode) {
       return;
     }
 
-    highlightImpactRadius();
+    if (isModelsChanged) {
+      highlightImpactRadius();
+    } else {
+      highlightAllNodes();
+    }
   };
 
   const onNodeViewClosed = () => {
-    highlightImpactRadius();
+    if (isModelsChanged) {
+      highlightImpactRadius();
+    } else {
+      highlightAllNodes();
+    }
   };
 
   const centerNode = async (node: Node) => {
@@ -827,9 +861,14 @@ export function PrivateLineageView(
             onNodeMouseLeave={onNodeMouseLeave}
             onNodeContextMenu={onNodeContextMenu}
             onClick={closeContextMenu}
+            defaultViewport={{
+              x: 100,
+              y: 100,
+              zoom: 1,
+            }}
             maxZoom={1}
             minZoom={0.1}
-            fitView={true}
+            fitView={defaultFitView}
             nodesDraggable={interactive}
             ref={refReactFlow}
           >
