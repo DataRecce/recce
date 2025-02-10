@@ -8,6 +8,7 @@ import {
   Button,
   Icon,
   Box,
+  BoxProps,
 } from "@chakra-ui/react";
 import { EditorProps, DiffEditor, Editor } from "@monaco-editor/react";
 import { on } from "events";
@@ -16,7 +17,7 @@ import { FaPlay } from "react-icons/fa6";
 import { RiPlayMiniFill } from "react-icons/ri";
 import { VscDebugStart } from "react-icons/vsc";
 
-interface SqlEditorProps {
+export interface SqlEditorProps {
   language?: string;
   theme?: string;
   value: string;
@@ -28,6 +29,12 @@ interface SqlEditorProps {
   onRunDiff?: () => void;
   options?: EditorProps["options"];
   label?: string;
+  CustomEditor?: React.ReactElement<any, any>;
+}
+
+export interface DualSqlEditorProps extends SqlEditorProps {
+  labels?: [string, string]; // [baseLabel, currentLabel]
+  BaseEnvironmentSetupGuide?: React.ReactElement<any, any>;
 }
 
 const SqlEditor: React.FC<SqlEditorProps> = ({
@@ -37,6 +44,7 @@ const SqlEditor: React.FC<SqlEditorProps> = ({
   onRunBase,
   onRunDiff,
   label,
+  CustomEditor,
   options = {},
   ...props
 }: SqlEditorProps) => {
@@ -46,14 +54,13 @@ const SqlEditor: React.FC<SqlEditorProps> = ({
     }
   };
 
-  const runButtonTitle = label ? `Run ${label}` : "Run";
-
   return (
     <>
       {(label || onRun || onRunBase) && (
         <Flex
           backgroundColor="#EDF2F880"
           height="40px"
+          minH="40px"
           fontSize={"14px"}
           align="center"
           margin={"0"}
@@ -76,52 +83,56 @@ const SqlEditor: React.FC<SqlEditorProps> = ({
           )}
         </Flex>
       )}
-      <Editor
-        language="sql"
-        theme="vs"
-        value={value}
-        onChange={handleEditorChange}
-        onMount={(editor, monaco) => {
-          if (onRun) {
-            editor.addCommand(
-              monaco.KeyMod.CtrlCmd | monaco.KeyCode.Enter,
-              onRun
-            );
-          }
+      {CustomEditor ? (
+        CustomEditor
+      ) : (
+        <Editor
+          language="sql"
+          theme="vs"
+          value={value}
+          onChange={handleEditorChange}
+          onMount={(editor, monaco) => {
+            if (onRun) {
+              editor.addCommand(
+                monaco.KeyMod.CtrlCmd | monaco.KeyCode.Enter,
+                onRun
+              );
+            }
 
-          if (onRunBase) {
-            editor.addCommand(
-              monaco.KeyMod.Alt | monaco.KeyCode.Enter,
-              onRunBase
-            );
-          }
+            if (onRunBase) {
+              editor.addCommand(
+                monaco.KeyMod.Alt | monaco.KeyCode.Enter,
+                onRunBase
+              );
+            }
 
-          if (onRunDiff) {
-            editor.addCommand(
-              monaco.KeyMod.CtrlCmd |
-                monaco.KeyMod.Shift |
-                monaco.KeyCode.Enter,
-              onRunDiff
-            );
-          }
-        }}
-        options={{
-          tabSize: 2,
-          fontSize: 16,
-          lineNumbers: "on",
-          automaticLayout: true,
-          minimap: { enabled: false },
-          wordWrap: "on",
-          wrappingIndent: "indent",
-          // Additional options as needed
-          ...options,
-        }}
-      />
+            if (onRunDiff) {
+              editor.addCommand(
+                monaco.KeyMod.CtrlCmd |
+                  monaco.KeyMod.Shift |
+                  monaco.KeyCode.Enter,
+                onRunDiff
+              );
+            }
+          }}
+          options={{
+            tabSize: 2,
+            fontSize: 16,
+            lineNumbers: "on",
+            automaticLayout: true,
+            minimap: { enabled: false },
+            wordWrap: "on",
+            wrappingIndent: "indent",
+            // Additional options as needed
+            ...options,
+          }}
+        />
+      )}
     </>
   );
 };
 
-export const DualSqlEditor: React.FC<SqlEditorProps> = ({
+export const DualSqlEditor: React.FC<DualSqlEditorProps> = ({
   value,
   baseValue,
   onChange,
@@ -130,8 +141,12 @@ export const DualSqlEditor: React.FC<SqlEditorProps> = ({
   onRunBase,
   onRunDiff,
   options = {},
+  labels,
+  BaseEnvironmentSetupGuide,
   ...props
-}: SqlEditorProps) => {
+}: DualSqlEditorProps) => {
+  const baseLabel = labels ? labels[0] : "Base";
+  const currentLabel = labels ? labels[1] : "Current";
   return (
     <>
       <Flex height={"100%"} gap={0}>
@@ -143,17 +158,20 @@ export const DualSqlEditor: React.FC<SqlEditorProps> = ({
           borderColor={"#D4DBE4"}
         >
           <SqlEditor
-            label="Base"
+            label={baseLabel}
             value={baseValue || ""}
             onChange={onChangeBase}
             onRunBase={onRunBase}
             options={options}
+            CustomEditor={
+              BaseEnvironmentSetupGuide ? BaseEnvironmentSetupGuide : undefined
+            }
             {...props}
           />
         </Stack>
         <Stack height={"100%"} width={"50%"} gap={0}>
           <SqlEditor
-            label="Current"
+            label={currentLabel}
             value={value}
             onChange={onChange}
             onRun={onRun}

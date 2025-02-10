@@ -59,6 +59,15 @@ export function trackPreviewChangeFeedback(props: PreviewChangeFeedbackProps) {
   amplitude.track("[Experiment] preview_change", props);
 }
 
+interface FeedbackProps {
+  feedback: "like" | "dislike" | "form";
+  node?: string;
+}
+
+export function trackFeedback(name: string, props: FeedbackProps) {
+  amplitude.track(`[Experiment] ${name} feedback`, props);
+}
+
 interface SingleEnvironmentProps {
   action:
     | "onboarding"
@@ -73,6 +82,18 @@ export function trackSingleEnvironment(props: SingleEnvironmentProps) {
   amplitude.track("[Experiment] single_environment", props);
 }
 
+interface SingleEnvironmentQueryProps {
+  action: "run_query" | "open_query_page" | "external_link";
+  node?: string;
+  status?: "success" | "failure";
+}
+
+export function trackSingleEnvironmentQuery(
+  props: SingleEnvironmentQueryProps
+) {
+  amplitude.track("[Experiment] single_environment_query_page", props);
+}
+
 interface RecommendPresetCheckProps {
   action: "recommend" | "ignore" | "perform" | "execute" | "close";
   from?: "initial" | "rerun";
@@ -82,7 +103,6 @@ interface RecommendPresetCheckProps {
 export function trackRecommendCheck(props: RecommendPresetCheckProps) {
   amplitude.track("[Experiment] recommend_preset_check", props);
 }
-
 
 interface BreakingChangeAnalysisProps {
   enabled: boolean;
