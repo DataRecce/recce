@@ -1,5 +1,4 @@
 import {
-  LineageData,
   LineageGraphEdge,
   LineageGraphNode,
   buildLineageGraph,
@@ -12,10 +11,33 @@ import { Node, Edge } from "reactflow";
 
 import { find } from "lodash";
 import { union } from "./graph";
+import { LineageData } from "@/lib/api/info";
 
 test("lineage diff", () => {
-  const base = {
-    nodes: {},
+  const base: LineageData = {
+    metadata: { pr_url: "" },
+    nodes: {
+      a: {
+        id: "a",
+        unique_id: "a",
+        name: "a",
+      },
+      b: {
+        id: "b",
+        unique_id: "b",
+        name: "b",
+      },
+      c: {
+        id: "c",
+        unique_id: "c",
+        name: "c",
+      },
+      d: {
+        id: "d",
+        unique_id: "d",
+        name: "d",
+      },
+    },
     parent_map: {
       a: [],
       b: ["a"],
@@ -25,8 +47,30 @@ test("lineage diff", () => {
     catalog_metadata: null,
   };
 
-  const current = {
-    nodes: {},
+  const current: LineageData = {
+    metadata: { pr_url: "" },
+    nodes: {
+      a: {
+        id: "a",
+        unique_id: "a",
+        name: "a",
+      },
+      b: {
+        id: "b",
+        unique_id: "b",
+        name: "b",
+      },
+      c: {
+        id: "c",
+        unique_id: "c",
+        name: "c",
+      },
+      d: {
+        id: "d",
+        unique_id: "d",
+        name: "d",
+      },
+    },
     parent_map: {
       a: [],
       b: ["a"],
@@ -47,15 +91,32 @@ test("lineage diff", () => {
 });
 
 test("lineage diff 2", () => {
-  const base = {
+  const base: LineageData = {
+    metadata: { pr_url: "" },
     nodes: {
+      a: {
+        id: "a",
+        unique_id: "a",
+        name: "a",
+      },
+      b: {
+        id: "b",
+        unique_id: "b",
+        name: "b",
+      },
       c: {
+        id: "c",
         unique_id: "c",
         name: "c",
         checksum: {
           name: "sha1",
           checksum: "c#v1",
         },
+      },
+      d: {
+        id: "d",
+        unique_id: "d",
+        name: "d",
       },
     },
     parent_map: {
@@ -68,14 +129,31 @@ test("lineage diff 2", () => {
   };
 
   const current: LineageData = {
+    metadata: { pr_url: "" },
     nodes: {
+      a2: {
+        id: "a2",
+        unique_id: "a2",
+        name: "a2",
+      },
+      b: {
+        id: "b",
+        unique_id: "b",
+        name: "b",
+      },
       c: {
+        id: "c",
         unique_id: "c",
         name: "c",
         checksum: {
           name: "sha1",
           checksum: "c#v2",
         },
+      },
+      d: {
+        id: "d",
+        unique_id: "d",
+        name: "d",
       },
     },
     parent_map: {
@@ -103,8 +181,30 @@ test("lineage diff 2", () => {
 });
 
 test("hightlight", () => {
-  const base = {
-    nodes: {},
+  const base: LineageData = {
+    metadata: { pr_url: "" },
+    nodes: {
+      a: {
+        id: "a",
+        unique_id: "a",
+        name: "a",
+      },
+      b: {
+        id: "b",
+        unique_id: "b",
+        name: "b",
+      },
+      c: {
+        id: "c",
+        unique_id: "c",
+        name: "c",
+      },
+      d: {
+        id: "d",
+        unique_id: "d",
+        name: "d",
+      },
+    },
     parent_map: {
       a: [],
       b: ["a"],
@@ -115,7 +215,29 @@ test("hightlight", () => {
   };
 
   const current: LineageData = {
-    nodes: {},
+    metadata: { pr_url: "" },
+    nodes: {
+      a2: {
+        id: "a2",
+        unique_id: "a2",
+        name: "a2",
+      },
+      b: {
+        id: "b",
+        unique_id: "b",
+        name: "b",
+      },
+      c: {
+        id: "c",
+        unique_id: "c",
+        name: "c",
+      },
+      d: {
+        id: "d",
+        unique_id: "d",
+        name: "d",
+      },
+    },
     parent_map: {
       a2: [],
       b: ["a2"],
