@@ -29,7 +29,6 @@ import { SubmitOptions, waitRun } from "@/lib/api/runs";
 import { QueryParams, submitQuery } from "@/lib/api/adhocQuery";
 import { DualSqlEditor } from "../query/SqlEditor";
 import { useLineageGraphContext } from "@/lib/hooks/LineageGraphContext";
-import { trackSingleEnvironmentQuery } from "@/lib/api/track";
 
 function BaseEnvironmentSetupGuide() {
   return (
@@ -50,11 +49,6 @@ function BaseEnvironmentSetupGuide() {
           isExternal
           color={"blue.500"}
           href="https://datarecce.io/docs/get-started/#prepare-dbt-artifacts"
-          onClick={() =>
-            trackSingleEnvironmentQuery({
-              action: "external_link",
-            })
-          }
         >
           Learn how
         </Link>
@@ -146,21 +140,6 @@ export function SingleEnvironmentQueryView({
 
   const { mutate: runQuery, isPending } = useMutation({
     mutationFn: queryFn,
-    onSuccess(data, variables) {
-      if (data.error) {
-        trackSingleEnvironmentQuery({
-          action: "run_query",
-          node: current?.name,
-          status: "failure",
-        });
-      } else {
-        trackSingleEnvironmentQuery({
-          action: "run_query",
-          node: current?.name,
-          status: "success",
-        });
-      }
-    },
   });
 
   return (

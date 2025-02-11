@@ -82,18 +82,6 @@ export function trackSingleEnvironment(props: SingleEnvironmentProps) {
   amplitude.track("[Experiment] single_environment", props);
 }
 
-interface SingleEnvironmentQueryProps {
-  action: "run_query" | "open_query_page" | "external_link";
-  node?: string;
-  status?: "success" | "failure";
-}
-
-export function trackSingleEnvironmentQuery(
-  props: SingleEnvironmentQueryProps
-) {
-  amplitude.track("[Experiment] single_environment_query_page", props);
-}
-
 interface RecommendPresetCheckProps {
   action: "recommend" | "ignore" | "perform" | "execute" | "close";
   from?: "initial" | "rerun";
