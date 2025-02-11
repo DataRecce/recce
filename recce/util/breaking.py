@@ -17,7 +17,12 @@ def is_breaking_change(original_sql, modified_sql, dialect=None):
 
         def _parse(sql):
             ast = parse_one(sql, dialect=dialect)
-            return optimize(ast, dialect=dialect)
+            try:
+                ast = optimize(ast, dialect=dialect)
+            except Exception:
+                # cannot optimize, skip it.
+                pass
+            return ast
 
         original_ast = _parse(original_sql)
         modified_ast = _parse(modified_sql)
