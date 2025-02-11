@@ -35,7 +35,7 @@ import { SchemaView, SingleEnvSchemaView } from "../schema/SchemaView";
 import { useRecceQueryContext } from "@/lib/hooks/RecceQueryContext";
 import { SqlDiffView } from "../schema/SqlDiffView";
 import { useLocation } from "wouter";
-import { ResourceTypeTag, RowCountTag } from "./NodeTag";
+import { ResourceTypeTag, RowCountDiffTag, RowCountTag } from "./NodeTag";
 import { useCallback } from "react";
 import { useRecceActionContext } from "@/lib/hooks/RecceActionContext";
 import { useLineageGraphContext } from "@/lib/hooks/LineageGraphContext";
@@ -82,6 +82,13 @@ export function NodeView({ node, onCloseNode }: NodeViewProps) {
   const { envInfo, isActionAvailable } = useLineageGraphContext();
   const { primaryKey } = useModelColumns(node.name);
   const refetchRowCount = () => {
+    runAction(
+      "row_count",
+      { node_names: [node.name] },
+      { showForm: false, showLast: false }
+    );
+  };
+  const refetchRowCountDiff = () => {
     runAction(
       "row_count_diff",
       { node_names: [node.name] },
@@ -179,7 +186,7 @@ export function NodeView({ node, onCloseNode }: NodeViewProps) {
               <MenuItem
                 icon={<Icon as={findByRunType("row_count_diff")?.icon} />}
                 fontSize="14px"
-                onClick={() => refetchRowCount()}
+                onClick={() => refetchRowCountDiff()}
               >
                 Row Count Diff
               </MenuItem>
@@ -299,6 +306,7 @@ export function NodeView({ node, onCloseNode }: NodeViewProps) {
         onClick={() => {
           onQueryViewOpen();
         }}
+        disabled={node.from === "base"}
       >
         Query
       </Button>
@@ -327,9 +335,12 @@ export function NodeView({ node, onCloseNode }: NodeViewProps) {
           <ResourceTypeTag node={node} />
           {(node.resourceType === "model" ||
             node.resourceType === "snapshot" ||
-            node.resourceType === "seed") && (
-            <RowCountTag node={node} onRefresh={refetchRowCount} />
-          )}
+            node.resourceType === "seed") &&
+            (isSingleEnvOnboarding ? (
+              <RowCountTag node={node} onRefresh={refetchRowCount} />
+            ) : (
+              <RowCountDiffTag node={node} onRefresh={refetchRowCountDiff} />
+            ))}
         </HStack>
       </Box>
       {withColumns && (

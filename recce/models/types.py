@@ -15,6 +15,7 @@ class RunType(Enum):
     VALUE_DIFF_DETAIL = 'value_diff_detail'
     SCHEMA_DIFF = 'schema_diff'
     PROFILE_DIFF = 'profile_diff'
+    ROW_COUNT = 'row_count'
     ROW_COUNT_DIFF = 'row_count_diff'
     LINEAGE_DIFF = 'lineage_diff'
     TOP_K_DIFF = 'top_k_diff'

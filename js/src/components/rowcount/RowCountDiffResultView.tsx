@@ -5,7 +5,12 @@ import {
 } from "../data-grid/ScreenshotDataGrid";
 
 import { RunResultViewProps } from "../run/types";
-import { RowCountDiffParams, RowCountDiffResult } from "@/lib/api/rowcount";
+import {
+  RowCountDiffParams,
+  RowCountDiffResult,
+  RowCountParams,
+  RowCountResult,
+} from "@/lib/api/rowcount";
 import { deltaPercentageString } from "./delta";
 import { isNumber } from "lodash";
 
@@ -102,4 +107,65 @@ function _RowCountDiffResultView(
   );
 }
 
+interface RowCountResultViewProp
+  extends RunResultViewProps<RowCountParams, RowCountResult> {}
+
+interface RowCountRow {
+  name: string;
+  current: number | string;
+}
+
+function _RowCountResultView({ run }: RowCountResultViewProp, ref: any) {
+  const runResult = run.result || {};
+
+  const columns = [
+    { key: "name", name: "Name" },
+    { key: "current", name: "Row Count" },
+  ];
+
+  const rows: RowCountRow[] = Object.keys(run.result || {}).map((key) => {
+    const result = runResult[key];
+    const current = isNumber(result?.curr) ? result?.curr : null;
+
+    return {
+      name: key,
+      current: current === null ? "N/A" : Number(current),
+    };
+  });
+
+  if (rows.length === 0) {
+    return (
+      <Center bg="rgb(249,249,249)" height="100%">
+        No nodes matched
+      </Center>
+    );
+  }
+
+  return (
+    <Flex direction="column">
+      {Object.keys(runResult).length > 0 && (
+        <>
+          <ScreenshotDataGrid
+            ref={ref}
+            style={{
+              blockSize: "auto",
+              maxHeight: "100%",
+              overflow: "auto",
+
+              fontSize: "10pt",
+              borderWidth: 1,
+            }}
+            columns={columns}
+            rows={rows}
+            renderers={{ noRowsFallback: <EmptyRowsRenderer /> }}
+            className="rdg-light"
+            enableScreenshot={true}
+          />
+        </>
+      )}
+    </Flex>
+  );
+}
+
 export const RowCountDiffResultView = forwardRef(_RowCountDiffResultView);
+export const RowCountResultView = forwardRef(_RowCountResultView);

@@ -319,6 +319,7 @@ function NavBar() {
 function Main() {
   const { isRunResultOpen, isHistoryOpen, closeRunResult } =
     useRecceActionContext();
+  const { data: flag } = useRecceServerFlag();
   const [location] = useLocation();
   const _isRunResultOpen = isRunResultOpen && !location.startsWith("/checks");
   const _isHistoryOpen = isHistoryOpen && !location.startsWith("/checks");
@@ -368,7 +369,10 @@ function Main() {
           </ErrorBoundary>
         </Box>
         {_isRunResultOpen ? (
-          <RunResultPane onClose={closeRunResult} />
+          <RunResultPane
+            onClose={closeRunResult}
+            disableAddToChecklist={flag?.single_env_onboarding ? true : false}
+          />
         ) : (
           <Box></Box>
         )}

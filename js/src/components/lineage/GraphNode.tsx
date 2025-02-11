@@ -25,12 +25,12 @@ import { findByRunType } from "../run/registry";
 import { isSchemaChanged } from "../schema/schemaDiff";
 import { useLineageViewContext } from "./LineageViewContext";
 import { FaCheckSquare, FaRegSquare, FaSquare } from "react-icons/fa";
-import { RowCount } from "@/lib/api/models";
+import { RowCountDiff } from "@/lib/api/models";
 import { deltaPercentageString } from "../rowcount/delta";
 
 interface GraphNodeProps extends NodeProps<LineageGraphNode> {}
 
-function _RowCountDiffTag({ rowCount }: { rowCount: RowCount }) {
+function _RowCountDiffTag({ rowCount }: { rowCount: RowCountDiff }) {
   const base = rowCount.base;
   const current = rowCount.curr;
   const baseLabel = rowCount.base === null ? "N/A" : `${rowCount.base} Rows`;

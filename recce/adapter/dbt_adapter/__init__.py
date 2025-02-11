@@ -26,7 +26,7 @@ from .dbt_version import DbtVersion
 from ...models import RunType
 from ...models.types import LineageDiff, NodeDiff
 from ...tasks import Task, QueryTask, QueryBaseTask, QueryDiffTask, ValueDiffTask, ValueDiffDetailTask, ProfileDiffTask, \
-    RowCountDiffTask, TopKDiffTask, HistogramDiffTask
+    RowCountTask, RowCountDiffTask, TopKDiffTask, HistogramDiffTask
 
 dbt_supported_registry: Dict[RunType, Type[Task]] = {
     RunType.QUERY: QueryTask,
@@ -35,6 +35,7 @@ dbt_supported_registry: Dict[RunType, Type[Task]] = {
     RunType.VALUE_DIFF: ValueDiffTask,
     RunType.VALUE_DIFF_DETAIL: ValueDiffDetailTask,
     RunType.PROFILE_DIFF: ProfileDiffTask,
+    RunType.ROW_COUNT: RowCountTask,
     RunType.ROW_COUNT_DIFF: RowCountDiffTask,
     RunType.TOP_K_DIFF: TopKDiffTask,
     RunType.HISTOGRAM_DIFF: HistogramDiffTask,

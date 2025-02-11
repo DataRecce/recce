@@ -19,7 +19,7 @@ import { SchemaView } from "../schema/SchemaView";
 import { mergeColumns } from "../schema/schema";
 import { mergeKeysWithStatus } from "@/lib/mergeKeys";
 import { useEffect, useState } from "react";
-import { ResourceTypeTag, RowCountTag } from "../lineage/NodeTag";
+import { ResourceTypeTag, RowCountDiffTag } from "../lineage/NodeTag";
 
 interface SchemaDiffCardProps {
   node: LineageGraphNode;
@@ -32,7 +32,7 @@ function SchemaDiffCard({ node, ...props }: CardProps & SchemaDiffCardProps) {
         <Heading fontSize={18}>{props.title}</Heading>
         <HStack spacing={"8px"} p={"16px"}>
           <ResourceTypeTag node={node} />
-          {node.resourceType === "model" && <RowCountTag node={node} />}
+          {node.resourceType === "model" && <RowCountDiffTag node={node} />}
         </HStack>
       </CardHeader>
       <CardBody>

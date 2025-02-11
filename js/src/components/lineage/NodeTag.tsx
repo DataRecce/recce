@@ -12,10 +12,8 @@ import {
 } from "@chakra-ui/react";
 import { getIconForResourceType } from "./styles";
 import { FiArrowRight, FiFrown } from "react-icons/fi";
-import { queryModelRowCount, RowCount } from "@/lib/api/models";
-import { cacheKeys } from "@/lib/api/cacheKeys";
+import { RowCount, RowCountDiff } from "@/lib/api/models";
 import { LineageGraphNode } from "./lineage";
-import { useQuery } from "@tanstack/react-query";
 import { RiArrowDownSFill, RiArrowUpSFill, RiSwapLine } from "react-icons/ri";
 import { useLineageGraphContext } from "@/lib/hooks/LineageGraphContext";
 import { deltaPercentageString } from "../rowcount/delta";
@@ -36,10 +34,10 @@ export function ResourceTypeTag({ node }: { node: LineageGraphNode }) {
 }
 
 interface ModelRowCountProps {
-  rowCount?: RowCount;
+  rowCount?: RowCountDiff;
 }
 
-function _RowCountByRate({ rowCount }: { rowCount: RowCount }) {
+function _RowCountByRate({ rowCount }: { rowCount: RowCountDiff }) {
   const base = rowCount.base;
   const current = rowCount.curr;
   const baseLabel = rowCount.base === null ? "N/A" : `${rowCount.base} rows`;
@@ -103,22 +101,22 @@ export function ModelRowCount({ rowCount }: ModelRowCountProps) {
   );
 }
 
-export interface RowCountTagProps {
+export interface RowCountDiffTagProps {
   node: LineageGraphNode;
-  rowCount?: RowCount;
+  rowCount?: RowCountDiff;
   onRefresh?: () => void;
   isFetching?: boolean;
   error?: Error | null;
 }
 
-export function RowCountTag({
+export function RowCountDiffTag({
   rowCount: fetchedRowCount,
   node,
   onRefresh,
   isFetching,
-}: RowCountTagProps) {
+}: RowCountDiffTagProps) {
   const { runsAggregated, refetchRunsAggregated } = useLineageGraphContext();
-  const lastRowCount: RowCount | undefined =
+  const lastRowCount: RowCountDiff | undefined =
     runsAggregated?.[node.id]?.["row_count_diff"]?.result;
 
   const icon = findByRunType("row_count_diff")?.icon;
@@ -162,5 +160,64 @@ export function RowCountTag({
         )}
       </Tag>
     </Tooltip>
+  );
+}
+
+export interface RowCountTagProps {
+  node: LineageGraphNode;
+  rowCount?: RowCount;
+  onRefresh?: () => void;
+  isFetching?: boolean;
+  error?: Error | null;
+}
+
+export function RowCountTag({
+  rowCount: fetchedRowCount,
+  node,
+  onRefresh,
+  isFetching,
+}: RowCountTagProps) {
+  const { runsAggregated, refetchRunsAggregated } = useLineageGraphContext();
+  const lastRowCount: RowCount | undefined =
+    runsAggregated?.[node.id]?.["row_count"]?.result;
+
+  const icon = findByRunType("row_count")?.icon;
+
+  let label;
+  const rowCount = fetchedRowCount || lastRowCount;
+  if (rowCount) {
+    const rows = rowCount.curr === null ? "N/A" : rowCount.curr;
+    label = `${rows} rows`;
+  }
+
+  return (
+    <Tag>
+      <TagLeftIcon as={icon} />
+      <TagLabel>
+        {rowCount || isFetching ? (
+          <SkeletonText
+            isLoaded={!isFetching}
+            noOfLines={1}
+            skeletonHeight={2}
+            minWidth={"30px"}
+          >
+            {rowCount ? `${label}` : "row count"}
+          </SkeletonText>
+        ) : (
+          <>row count</>
+        )}
+      </TagLabel>
+      {onRefresh && (
+        <TagRightIcon
+          as={IconButton}
+          isLoading={isFetching}
+          aria-label="Query Row Count"
+          icon={<RepeatIcon />}
+          size="xs"
+          onClick={onRefresh}
+          disabled={node.from === "base"}
+        />
+      )}
+    </Tag>
   );
 }

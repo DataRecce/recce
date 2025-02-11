@@ -11,7 +11,10 @@ import { HistogramDiffResultView } from "../histogram/HistogramDiffResultView";
 import { ProfileDiffResultView } from "../profile/ProfileDiffResultView";
 import { QueryDiffResultView } from "../query/QueryDiffResultView";
 import { QueryResultView } from "../query/QueryResultView";
-import { RowCountDiffResultView } from "../rowcount/RowCountDiffResultView";
+import {
+  RowCountDiffResultView,
+  RowCountResultView,
+} from "../rowcount/RowCountDiffResultView";
 import { TopKDiffForm } from "../top-k/TopKDiffForm";
 import { TopKDiffResultView } from "../top-k/TopKDiffResultView";
 import { ValueDiffDetailResultView } from "../valuediff/ValueDiffDetailResultView";
@@ -54,6 +57,11 @@ const registry: { [key: string]: RegistryEntry<any, any> } = {
     title: "Query Diff",
     icon: TbSql,
     RunResultView: QueryDiffResultView,
+  },
+  row_count: {
+    title: "Row Count",
+    icon: MdFormatListNumberedRtl,
+    RunResultView: RowCountResultView,
   },
   row_count_diff: {
     title: "Row Count Diff",
