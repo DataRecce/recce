@@ -59,15 +59,6 @@ export function trackPreviewChangeFeedback(props: PreviewChangeFeedbackProps) {
   amplitude.track("[Experiment] preview_change", props);
 }
 
-interface FeedbackProps {
-  feedback: "like" | "dislike" | "form";
-  node?: string;
-}
-
-export function trackFeedback(name: string, props: FeedbackProps) {
-  amplitude.track(`[Experiment] ${name} feedback`, props);
-}
-
 interface SingleEnvironmentProps {
   action:
     | "onboarding"
