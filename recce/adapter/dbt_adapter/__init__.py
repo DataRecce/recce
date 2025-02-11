@@ -810,6 +810,8 @@ class DbtAdapter(BaseAdapter):
         if refresh_file_path is None:
             return self.load_artifacts()
 
+        # In single environment mode (target_path is equal to base_path),
+        # we capture the original manifest as base and only update the current
         target_type = os.path.basename(os.path.dirname(refresh_file_path))
         if self.target_path and target_type == os.path.basename(self.target_path):
             if refresh_file_path.endswith('manifest.json'):
@@ -817,9 +819,7 @@ class DbtAdapter(BaseAdapter):
                 self.manifest = as_manifest(self.curr_manifest)
             elif refresh_file_path.endswith('catalog.json'):
                 self.curr_catalog = load_catalog(path=refresh_file_path)
-
-        # In single environment mode, the target and base are the same. We need to update both.
-        if self.base_path and target_type == os.path.basename(self.base_path):
+        elif self.base_path and target_type == os.path.basename(self.base_path):
             if refresh_file_path.endswith('manifest.json'):
                 self.base_manifest = load_manifest(path=refresh_file_path)
             elif refresh_file_path.endswith('catalog.json'):
