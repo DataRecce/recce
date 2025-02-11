@@ -43,10 +43,7 @@ import useModelColumns from "@/lib/hooks/useModelColumns";
 import { createSchemaDiffCheck } from "@/lib/api/schemacheck";
 import { findByRunType } from "../run/registry";
 import { DisableTooltipMessages } from "@/constants/tooltipMessage";
-import {
-  trackPreviewChange,
-  trackSingleEnvironmentQuery,
-} from "@/lib/api/track";
+import { trackPreviewChange } from "@/lib/api/track";
 import { useRecceServerFlag } from "@/lib/hooks/useRecceServerFlag";
 import { SingleEnvironmentQueryView } from "./SingleEnvironmentQueryView";
 import { SandboxView } from "./SandboxView";
@@ -301,10 +298,6 @@ export function NodeView({ node, onCloseNode }: NodeViewProps) {
         colorScheme="blue"
         onClick={() => {
           onQueryViewOpen();
-          trackSingleEnvironmentQuery({
-            action: "open_query_page",
-            node: node.name,
-          });
         }}
       >
         Query
