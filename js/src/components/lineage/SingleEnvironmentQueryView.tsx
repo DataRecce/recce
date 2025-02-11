@@ -29,9 +29,7 @@ import { SubmitOptions, waitRun } from "@/lib/api/runs";
 import { QueryParams, submitQuery } from "@/lib/api/adhocQuery";
 import { DualSqlEditor } from "../query/SqlEditor";
 import { useLineageGraphContext } from "@/lib/hooks/LineageGraphContext";
-import { trackFeedback, trackSingleEnvironmentQuery } from "@/lib/api/track";
-import { useFeedbackCollectionToast } from "@/lib/hooks/useFeedbackCollectionToast";
-import { localStorageKeys } from "@/lib/api/localStorageKeys";
+import { trackSingleEnvironmentQuery } from "@/lib/api/track";
 
 function BaseEnvironmentSetupGuide() {
   return (
@@ -132,39 +130,6 @@ export function SingleEnvironmentQueryView({
     }
   }
 
-  const { feedbackToast } = useFeedbackCollectionToast({
-    feedbackId: localStorageKeys.singleEnvironmentQueryFeedbackID,
-    description: "Enjoy Query Model?",
-
-    onFeedbackSubmit: (feedback: string) => {
-      switch (feedback) {
-        case "like":
-          trackFeedback("single_env_query_page", {
-            feedback: "like",
-            node: current?.name,
-          });
-          break;
-        case "dislike":
-          trackFeedback("single_env_query_page", {
-            feedback: "dislike",
-            node: current?.name,
-          });
-          break;
-        case "link":
-          trackFeedback("single_env_query_page", {
-            feedback: "form",
-            node: current?.name,
-          });
-          break;
-        default:
-          console.log("Not support feedback type");
-      }
-    },
-    externalLink:
-      "https://docs.google.com/forms/d/e/1FAIpQLSd7Lei7Ijwo7MinWaI0K6rzZi_21gV1BKetmiNEX254kDziDA/viewform?usp=header",
-    externalLinkText: "Give us feedback",
-  });
-
   const queryFn = async () => {
     const sqlTemplate = queryCode;
     const runFn = submitQuery;
@@ -194,10 +159,6 @@ export function SingleEnvironmentQueryView({
           node: current?.name,
           status: "success",
         });
-        setTimeout(() => feedbackToast(), 1000);
-        // if (!isLoading && flags?.single_env_onboarding) {
-        //   setTimeout(() => prepareEnvToast(), 2000);
-        // }
       }
     },
   });

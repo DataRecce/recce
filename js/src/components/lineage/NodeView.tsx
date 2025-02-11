@@ -45,7 +45,6 @@ import { findByRunType } from "../run/registry";
 import { DisableTooltipMessages } from "@/constants/tooltipMessage";
 import {
   trackPreviewChange,
-  trackSingleEnvironment,
   trackSingleEnvironmentQuery,
 } from "@/lib/api/track";
 import { useRecceServerFlag } from "@/lib/hooks/useRecceServerFlag";
