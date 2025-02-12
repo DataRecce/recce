@@ -48,8 +48,10 @@ async def lifespan(fastapi: FastAPI):
     kwargs = app_state.kwargs
     ctx = load_context(**kwargs, state_loader=state_loader)
     ctx.start_monitor_artifacts(callback=dbt_artifacts_updated_callback)
+    single_env = False
     if app_state.flag.get("single_env_onboarding", False) is True:
         # [Experiment 2] Start with Single Environment
+        single_env = True
         ctx.start_monitor_base_env(callback=dbt_env_updated_callback)
         log_single_env_event()
 
@@ -62,7 +64,7 @@ async def lifespan(fastapi: FastAPI):
             load_preset_checks(preset_checks)
 
     from recce.event import log_load_state
-    log_load_state(command='server')
+    log_load_state(command='server', single_env=single_env)
 
     yield
 
