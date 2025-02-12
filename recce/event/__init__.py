@@ -190,7 +190,7 @@ def log_api_event(endpoint_name, prop):
     _collector.schedule_flush()
 
 
-def log_load_state(command='server'):
+def log_load_state(command='server', single_env=False):
     from recce.models import CheckDAO
 
     checks = 0
@@ -206,6 +206,9 @@ def log_load_state(command='server'):
         checks=checks,
         preset_checks=preset_checks,
     )
+
+    if command == "server":
+        prop['single_env'] = single_env
 
     log_event(prop, 'load_state')
     if command == 'server':
