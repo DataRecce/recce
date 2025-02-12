@@ -24,6 +24,7 @@ export type RunType =
   | "value_diff_detail"
   | "schema_diff"
   | "profile_diff"
+  | "row_count"
   | "row_count_diff"
   | "lineage_diff"
   | "top_k_diff"

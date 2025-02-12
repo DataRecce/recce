@@ -4,6 +4,11 @@ import { waitRun } from "./runs";
 
 export interface RowCount {
   name?: string;
+  curr: number | null;
+}
+
+export interface RowCountDiff {
+  name?: string;
   base: number | null;
   curr: number | null;
 }
@@ -13,12 +18,16 @@ export interface QueryRowCountResult {
   result: RowCountDiffResult;
 }
 
-export async function fetchModelRowCount(modelName: string): Promise<RowCount> {
+export async function fetchModelRowCount(
+  modelName: string
+): Promise<RowCountDiff> {
   const response = await axiosClient.get(`/api/models/${modelName}/row_count`);
   return response.data;
 }
 
-export async function queryModelRowCount(modelName: string): Promise<RowCount> {
+export async function queryModelRowCount(
+  modelName: string
+): Promise<RowCountDiff> {
   const { result } = await queryRowCount([modelName]);
   return result[modelName];
 }

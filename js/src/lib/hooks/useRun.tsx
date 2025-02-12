@@ -35,7 +35,7 @@ export const useRun = (runId?: string): UseRunResult => {
       if (isRunning) {
         setIsRunning(false);
       }
-      if (run?.type === "row_count_diff") {
+      if (run?.type === "row_count_diff" || run?.type === "row_count") {
         refetchRunsAggregated();
       }
     }

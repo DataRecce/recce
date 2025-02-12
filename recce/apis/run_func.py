@@ -198,4 +198,17 @@ def materialize_run_results(runs: List[Run], nodes: List[str] = None):
                 else:
                     node_result = result.get(key)
                 node_result['row_count_diff'] = {'run_id': run.run_id, 'result': node_run_result}
+        elif run.type == RunType.ROW_COUNT:
+            for model_name, node_run_result in run.result.items():
+                key = mame_to_unique_id.get(model_name, model_name)
+
+                if nodes:
+                    if key not in nodes:
+                        continue
+
+                if model_name not in result:
+                    node_result = result[key] = {}
+                else:
+                    node_result = result.get(key)
+                node_result['row_count'] = {'run_id': run.run_id, 'result': node_run_result}
     return result
