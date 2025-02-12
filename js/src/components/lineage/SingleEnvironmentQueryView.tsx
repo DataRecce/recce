@@ -24,7 +24,7 @@ import { VSplit } from "../split/Split";
 import { RunResultPane } from "../run/RunResultPane";
 import { AiOutlineExperiment } from "react-icons/ai";
 import { useMutation } from "@tanstack/react-query";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { SubmitOptions, waitRun } from "@/lib/api/runs";
 import { QueryParams, submitQuery } from "@/lib/api/adhocQuery";
 import { DualSqlEditor } from "../query/SqlEditor";
@@ -123,6 +123,11 @@ export function SingleEnvironmentQueryView({
       currentSchema = value.data.current.schema;
     }
   }
+
+  // Set the default query code when the current node changes
+  useEffect(() => {
+    setQueryCode(`SELECT * FROM {{ ref("${current?.name}")}}`);
+  }, [current]);
 
   const queryFn = async () => {
     const sqlTemplate = queryCode;
