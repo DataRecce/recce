@@ -51,6 +51,7 @@ import ReactFlow, {
   Background,
   ControlButton,
   useReactFlow,
+  getNodesBounds,
 } from "reactflow";
 import "reactflow/dist/style.css";
 import { GraphNode } from "./GraphNode";
@@ -243,10 +244,6 @@ export function PrivateLineageView(
     return lineageGraph && lineageGraph?.modifiedSet?.length > 0 ? true : false;
   }, [lineageGraph]);
 
-  // If there are modified nodes, fit modified nodes initially.
-  // Otherwise, use defaultViewPort definition.
-  const defaultFitView = isModelsChanged ? true : false;
-
   /**
    * View mode
    * - all: show all nodes
@@ -332,6 +329,7 @@ export function PrivateLineageView(
         nodeSet = selectImpactRadius(lineageGraph, breakingChangeEnabled);
       }
       [nodes, edges] = highlightNodes(Array.from(nodeSet), nodes, edges);
+
       layout(nodes, edges);
       setNodes(nodes);
       setEdges(edges);
@@ -828,6 +826,14 @@ export function PrivateLineageView(
     actionState: multiNodeAction.actionState,
   };
 
+  if (!lineageGraph) {
+    return <></>;
+  }
+
+  if (Object.keys(lineageGraph.nodes).length > 0 && nodes.length === 0) {
+    return <></>;
+  }
+
   return (
     <LineageViewContext.Provider value={contextValue}>
       <HSplit
@@ -861,14 +867,20 @@ export function PrivateLineageView(
             onNodeMouseLeave={onNodeMouseLeave}
             onNodeContextMenu={onNodeContextMenu}
             onClick={closeContextMenu}
-            defaultViewport={{
-              x: 100,
-              y: 100,
-              zoom: 1,
+            onInit={() => {
+              if (isModelsChanged) {
+                reactFlow.fitView();
+              } else {
+                const bounds = getNodesBounds(nodes);
+                reactFlow.setCenter(
+                  bounds.x + bounds.width / 2,
+                  bounds.y + bounds.height / 2,
+                  { zoom: 1 }
+                );
+              }
             }}
             maxZoom={1}
             minZoom={0.1}
-            fitView={defaultFitView}
             nodesDraggable={interactive}
             ref={refReactFlow}
           >
