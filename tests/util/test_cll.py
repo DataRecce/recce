@@ -3,7 +3,7 @@ from dataclasses import dataclass
 from typing import Dict
 
 from sqlglot import parse_one
-from sqlglot.expressions import Column, Alias, Func, Binary, Paren, Case
+from sqlglot.expressions import Column, Alias, Func, Binary, Paren, Case, Expression
 from sqlglot.optimizer import traverse_scope
 from sqlglot.optimizer.qualify import qualify
 
@@ -58,6 +58,9 @@ def _cll_expression(expression, default_table):
             return depends_on
         if expression.this:
             return _cll_expression(expression.this, default_table)
+        return []
+    elif expression.this and isinstance(expression.this, Expression):
+        return _cll_expression(expression.this, default_table)
     else:
         return []
 
@@ -84,7 +87,7 @@ def cll(sql, schema=None):
     global_lineage = {}
     for scope in traverse_scope(expression):
         scope_lineage = {}
-        default_table = scope.expression.args['from'].name if scope.expression.args['from'] else None
+        default_table = scope.expression.args['from'].name if scope.expression.args.get('from') else None
         if len(scope.expression.args.get('joins', [])) > 0:
             default_table = None
 
@@ -123,6 +126,19 @@ class ColumnLevelLineageTest(unittest.TestCase):
         assert (result['a'][0]['node'] == 'table1')
         assert (result['b'][0]['node'] == 'table1')
 
+    def test_sql_with_canonial(self):
+        sql = """
+        select table1.a from schema1.table1
+        """
+        result = cll(sql)
+        assert (result['a'][0]['node'] == 'table1')
+
+        sql = """
+        select table1.a from db1.schema1.table1
+        """
+        result = cll(sql)
+        assert (result['a'][0]['node'] == 'table1')
+
     def test_select_star(self):
         sql = """
         select * from table1
@@ -131,11 +147,61 @@ class ColumnLevelLineageTest(unittest.TestCase):
         assert (result['a'][0]['node'] == 'table1')
         assert (result['b'][0]['node'] == 'table1')
 
+    def test_source_literal(self):
+        # numeric literal
+        sql = """
+        select 1
+        """
+        result = cll(sql)
+        assert len(result['1']) == 0
+
+        # string literal
+        sql = """
+        select 'abc' as c
+        """
+        result = cll(sql)
+        assert len(result['c']) == 0
+
+        # timestamp literal
+        sql = """
+        select timestamp '2021-01-01 00:00:00' as c
+        """
+        result = cll(sql)
+        assert len(result['c']) == 0
+
+    def test_source_generative_function(self):
+        # numeric literal
+        sql = """
+        select CURRENT_TIMESTAMP() as c from table1
+        """
+        result = cll(sql)
+        assert len(result['c']) == 0
+
+        # uuid
+        sql = """
+        select UUID() as c from table1
+        """
+        result = cll(sql)
+        assert len(result['c']) == 0
+
     def test_alias(self):
         sql = """
         select a as c from table1
         """
         result = cll(sql)
+        assert result['c'][0]['node'] == 'table1'
+        assert result['c'][0]['column'] == 'a'
+
+    def test_forward_ref(self):
+        sql = """
+        select
+            a as b,
+            b as c
+        from table1
+        """
+        result = cll(sql)
+        assert result['b'][0]['node'] == 'table1'
+        assert result['b'][0]['column'] == 'a'
         assert result['c'][0]['node'] == 'table1'
         assert result['c'][0]['column'] == 'a'
 
@@ -160,6 +226,38 @@ class ColumnLevelLineageTest(unittest.TestCase):
         assert result['x'][0]['node'] == 'table1'
         assert len(result['x']) == 4
 
+    def test_transform_binary_predicate(self):
+        sql = """
+        select a > 0 as x from table1
+        """
+        result = cll(sql)
+        assert result['x'][0]['node'] == 'table1'
+        assert result['x'][0]['column'] == 'a'
+
+    def test_transform_in(self):
+        sql = """
+        select a in (1, 2, 3) as x from table1
+        """
+        result = cll(sql)
+        assert result['x'][0]['node'] == 'table1'
+        assert result['x'][0]['column'] == 'a'
+
+    def test_transform_type_cast(self):
+        sql = """
+        select cast(a as int) as x from table1
+        """
+        result = cll(sql)
+        assert result['x'][0]['node'] == 'table1'
+        assert result['x'][0]['column'] == 'a'
+
+    def test_transform_type_cast_operator(self):
+        sql = """
+        select a::int as x from table1
+        """
+        result = cll(sql)
+        assert result['x'][0]['node'] == 'table1'
+        assert result['x'][0]['column'] == 'a'
+
     def test_transform_func(self):
         sql = """
         select date_trunc('month', created_at) as a from table1
@@ -179,7 +277,54 @@ class ColumnLevelLineageTest(unittest.TestCase):
     def test_transform_agg_func(self):
         sql = """
         select
+            count() as b,
+        from table1
+        """
+        result = cll(sql)
+        assert len(result['b']) == 0
+
+        sql = """
+        select
+            count(*) as b,
+        from table1
+        """
+        result = cll(sql)
+        assert len(result['b']) == 0
+
+        sql = """
+        select
             count(a) as b,
+        from table1
+        """
+        result = cll(sql)
+        assert result['b'][0]['node'] == 'table1'
+        assert result['b'][0]['column'] == 'a'
+
+        sql = """
+        select
+            count(a) as b,
+        from table1
+        group by c
+        """
+        result = cll(sql)
+        assert result['b'][0]['node'] == 'table1'
+        assert result['b'][0]['column'] == 'a'
+
+    def test_transform_nested_func(self):
+        sql = """
+        select
+            count(xyz(a1 or a2, a1 or a3)) as b,
+        from table1
+        group by c
+        """
+        result = cll(sql)
+        assert result['b'][0]['node'] == 'table1'
+        assert result['b'][0]['column'] == 'a1'
+
+    def test_transform_udtf(self):
+        sql = """
+        select
+            explode(a) as b,
         from table1
         """
         result = cll(sql)
