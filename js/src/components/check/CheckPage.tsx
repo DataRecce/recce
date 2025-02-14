@@ -6,24 +6,13 @@ import {
   listChecks,
   reorderChecks,
 } from "@/lib/api/checks";
-import {
-  Box,
-  Button,
-  Center,
-  Divider,
-  Flex,
-  IconButton,
-  Tooltip,
-  VStack,
-} from "@chakra-ui/react";
+import { Box, Center, Divider, Flex, VStack } from "@chakra-ui/react";
 import { CheckDetail } from "./CheckDetail";
 import { cacheKeys } from "@/lib/api/cacheKeys";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import _ from "lodash";
 import { Route, Switch, useLocation, useRoute } from "wouter";
-import { AddIcon, CopyIcon } from "@chakra-ui/icons";
 import { CheckList } from "./CheckList";
-import { useClipBoardToast } from "@/lib/hooks/useClipBoardToast";
 import { buildDescription, buildTitle } from "./check";
 import { stripIndents } from "common-tags";
 import { HSplit } from "../split/Split";
@@ -33,7 +22,6 @@ export const CheckPage = () => {
   const [, setLocation] = useLocation();
   const [, params] = useRoute("/checks/:checkId");
   const queryClient = useQueryClient();
-  const { successToast, failToast } = useClipBoardToast();
   const selectedItem = params?.checkId;
 
   const {
@@ -41,6 +29,7 @@ export const CheckPage = () => {
     error,
     data: checks,
     status,
+    refetch: refetchCheckList,
   } = useQuery({
     queryKey: cacheKeys.checks(),
     queryFn: listChecks,
@@ -144,7 +133,11 @@ export const CheckPage = () => {
           <Route path="/checks/:checkId">
             {(params) => {
               return (
-                <CheckDetail key={params.checkId} checkId={params.checkId} />
+                <CheckDetail
+                  key={params.checkId}
+                  checkId={params.checkId}
+                  refreshCheckList={refetchCheckList}
+                />
               );
             }}
           </Route>
