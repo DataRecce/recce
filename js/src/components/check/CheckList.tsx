@@ -21,7 +21,6 @@ import {
 import { cacheKeys } from "@/lib/api/cacheKeys";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import _ from "lodash";
-import { FaCheckCircle } from "react-icons/fa";
 import { TbChecklist } from "react-icons/tb";
 import { IconType } from "react-icons";
 import {
@@ -32,6 +31,8 @@ import {
 } from "@hello-pangea/dnd";
 import { findByRunType } from "../run/registry";
 import { useCheckToast } from "@/lib/hooks/useCheckToast";
+import { useRun } from "@/lib/hooks/useRun";
+import { isDisabledByNoResult } from "./CheckDetail";
 
 const ChecklistItem = ({
   check,
@@ -53,6 +54,8 @@ const ChecklistItem = ({
       queryClient.invalidateQueries({ queryKey: cacheKeys.checks() });
     },
   });
+  const trackedRunId = check?.last_run?.run_id;
+  const { run } = useRun(trackedRunId);
 
   const handleChange: React.ChangeEventHandler = (event) => {
     const isChecked: boolean = (event.target as any).checked;
@@ -66,6 +69,7 @@ const ChecklistItem = ({
   };
 
   const icon: IconType = findByRunType(check.type)?.icon || TbChecklist;
+  const isMarkAsApprovedDisabled = isDisabledByNoResult(check?.type ?? "", run);
 
   return (
     <>
@@ -93,7 +97,15 @@ const ChecklistItem = ({
         </Box>
 
         {/* {check.is_checked && <Icon color="green" as={FaCheckCircle} />} */}
-        <Tooltip label="Click to mark as approved" placement="top" hasArrow>
+        <Tooltip
+          label={
+            isMarkAsApprovedDisabled
+              ? "Run the check first"
+              : "Click to mark as approved"
+          }
+          placement="top"
+          hasArrow
+        >
           <Flex>
             <Checkbox
               isChecked={check.is_checked}
@@ -101,6 +113,7 @@ const ChecklistItem = ({
               colorScheme="green"
               size="xs"
               onChange={handleChange}
+              disabled={isMarkAsApprovedDisabled}
             />
           </Flex>
         </Tooltip>

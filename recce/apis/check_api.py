@@ -37,6 +37,8 @@ class CheckOut(BaseModel):
 
     @classmethod
     def from_check(cls, check: Check):
+        check_related_runs = RunDAO().list_by_check_id(check.check_id)
+        last_run = check_related_runs[-1] if len(check_related_runs) > 0 else None
         return CheckOut(check_id=check.check_id,
                         name=check.name,
                         description=check.description,
@@ -45,6 +47,7 @@ class CheckOut(BaseModel):
                         view_options=check.view_options,
                         is_checked=check.is_checked,
                         is_preset=check.is_preset,
+                        last_run=last_run,
                         )
 
 

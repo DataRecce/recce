@@ -67,11 +67,25 @@ import { useRun } from "@/lib/hooks/useRun";
 import { useCheckToast } from "@/lib/hooks/useCheckToast";
 import { LineageViewRef } from "../lineage/LineageView";
 
+export const isDisabledByNoResult = (
+  type: string,
+  run: Run | undefined
+): boolean => {
+  if (type === "schema_diff" || type === "lineage_diff") {
+    return false;
+  }
+  return !run?.result || !!run?.error;
+};
+
 interface CheckDetailProps {
   checkId: string;
+  refreshCheckList?: () => void;
 }
 
-export const CheckDetail = ({ checkId }: CheckDetailProps) => {
+export const CheckDetail = ({
+  checkId,
+  refreshCheckList,
+}: CheckDetailProps) => {
   const queryClient = useQueryClient();
   const [, setLocation] = useLocation();
   const { successToast, failToast } = useClipBoardToast();
@@ -135,7 +149,8 @@ export const CheckDetail = ({ checkId }: CheckDetailProps) => {
     const submittedRun = await submitRunFromCheck(checkId, { nowait: true });
     setSubmittedRunId(submittedRun.run_id);
     queryClient.invalidateQueries({ queryKey: cacheKeys.check(checkId) });
-  }, [check, checkId, setSubmittedRunId, queryClient]);
+    if (refreshCheckList) refreshCheckList(); // refresh the check list to fetch correct last run status
+  }, [check, checkId, setSubmittedRunId, queryClient, refreshCheckList]);
 
   const handleCancel = useCallback(async () => {
     setAborting(true);
@@ -184,16 +199,6 @@ export const CheckDetail = ({ checkId }: CheckDetailProps) => {
 
   const handleUpdateDescription = (description?: string) => {
     mutate({ description });
-  };
-
-  const isDisabledByNoResult = (
-    type: string,
-    run: Run | undefined
-  ): boolean => {
-    if (type === "schema_diff" || type === "lineage_diff") {
-      return false;
-    }
-    return !run?.result || !!run?.error;
   };
 
   const [tabIndex, setTabIndex] = useState(0);
@@ -291,7 +296,11 @@ export const CheckDetail = ({ checkId }: CheckDetailProps) => {
             <Tooltip
               label={
                 isDisabledByNoResult(check?.type ?? "", run)
-                  ? "Run the check first" : check?.is_checked ? "Mark as Pending" : "Mark as Approved"}
+                  ? "Run the check first"
+                  : check?.is_checked
+                  ? "Mark as Pending"
+                  : "Mark as Approved"
+              }
               placement="bottom-end"
             >
               <Button
@@ -357,8 +366,7 @@ export const CheckDetail = ({ checkId }: CheckDetailProps) => {
                 leftIcon={<CopyIcon />}
                 variant="outline"
                 isDisabled={
-                  isDisabledByNoResult(check?.type ?? "", run) ||
-                  tabIndex !== 0
+                  isDisabledByNoResult(check?.type ?? "", run) || tabIndex !== 0
                 }
                 onMouseEnter={onMouseEnter}
                 onMouseLeave={onMouseLeave}
@@ -396,9 +404,15 @@ export const CheckDetail = ({ checkId }: CheckDetailProps) => {
                   <Center bg="rgb(249,249,249)" height="100%">
                     <VStack spacing={4}>
                       <Box>
-                        This action is part of the initial preset and has not been performed yet. Once performed, the result will be shown here.
+                        This action is part of the initial preset and has not
+                        been performed yet. Once performed, the result will be
+                        shown here.
                       </Box>
-                      <Button onClick={handleRerun} colorScheme="blue" size="sm">
+                      <Button
+                        onClick={handleRerun}
+                        colorScheme="blue"
+                        size="sm"
+                      >
                         Run Query
                       </Button>
                     </VStack>
@@ -414,21 +428,21 @@ export const CheckDetail = ({ checkId }: CheckDetailProps) => {
             {(check?.type === "query" ||
               check?.type === "query_diff" ||
               check?.type === "query_base") && (
-                <TabPanel p={0} height="100%" width="100%">
-                  {check.params?.base_sql_template ? (
-                    <DualSqlEditor
-                      value={(check?.params as any)?.sql_template || ""}
-                      baseValue={(check?.params as any)?.base_sql_template || ""}
-                      options={{ readOnly: true }}
-                    />
-                  ) : (
-                    <SqlEditor
-                      value={(check?.params as any)?.sql_template || ""}
-                      options={{ readOnly: true }}
-                    />
-                  )}
-                </TabPanel>
-              )}
+              <TabPanel p={0} height="100%" width="100%">
+                {check.params?.base_sql_template ? (
+                  <DualSqlEditor
+                    value={(check?.params as any)?.sql_template || ""}
+                    baseValue={(check?.params as any)?.base_sql_template || ""}
+                    options={{ readOnly: true }}
+                  />
+                ) : (
+                  <SqlEditor
+                    value={(check?.params as any)?.sql_template || ""}
+                    options={{ readOnly: true }}
+                  />
+                )}
+              </TabPanel>
+            )}
           </TabPanels>
         </Tabs>
       </Box>
