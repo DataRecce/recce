@@ -84,6 +84,7 @@ def cll(sql, schema=None):
         pass
 
     # 第一個 pass: 建立每個 scope 的 column dependency map
+    result = {}
     global_lineage = {}
     for scope in traverse_scope(expression):
         scope_lineage = {}
@@ -93,18 +94,33 @@ def cll(sql, schema=None):
 
         for select in scope.expression.selects:
             # instance of Column
+            col_depends_on = []
             if isinstance(select, Column):
                 column = select
-                scope_lineage[select.alias_or_name] = [
+                col_depends_on = [
                     {"node": column.table or default_table, "column": column.name}
                 ]
             elif isinstance(select, Alias):
                 alias = select
-                col_expression = alias.args['this']
+                col_expression = alias.this
                 col_depends_on = _cll_expression(col_expression, default_table)
-                scope_lineage[select.alias_or_name] = col_depends_on
 
-        global_lineage[scope.expression] = scope_lineage
+            flatten_col_depends_on = []
+            for col_dep in col_depends_on:
+                col_dep_node = col_dep['node']
+                col_dep_column = col_dep['column']
+                cte_scope = scope.cte_sources.get(col_dep_node)
+                if cte_scope is not None:
+                    cte_cll = global_lineage[cte_scope]
+                    flatten_col_depends_on.extend(cte_cll.get(col_dep_column))
+                else:
+                    flatten_col_depends_on.append(col_dep)
+
+            scope_lineage[select.alias_or_name] = flatten_col_depends_on
+
+        global_lineage[scope] = scope_lineage
+        if not scope.is_cte:
+            result = scope_lineage
 
     # 第二個 pass: 解析全域層級的 dependency map，確保 external table 的 dependency
     # for column, depends_on in scope_lineage.items():
@@ -112,8 +128,6 @@ def cll(sql, schema=None):
     #         "type": "transform" if len(depends_on) > 1 else "original",
     #         "depends_on": depends_on,
     #     }
-
-    result = global_lineage[expression]
     return result
 
 
@@ -360,19 +374,18 @@ class ColumnLevelLineageTest(unittest.TestCase):
         assert result['a'][0]['node'] == 'table1'
         assert result['b'][0]['node'] == 'table2'
 
-    # def test_cte(self):
-    #     sql = """
-    #     with T as (
-    #         select
-    #             a,
-    #             a as a2,
-    #             b
-    #         from MyTable
-    #     )
-    #     select *
-    #     from T
-    #     """
-    #
-    #     result = cll(sql)
-    #     assert result['a2'][0]['node'] == 'MyTable'.lower()
-    #     assert result['a2'][0]['column'] == 'a'
+    def test_cte(self):
+        sql = """
+        with
+        cte1 as (
+            select a from table1
+        ),
+        cte2 as (
+            select a from cte1
+        )
+        select * from cte2
+        """
+
+        result = cll(sql)
+        assert result['a'][0]['node'] == 'table1'
+        assert result['a'][0]['column'] == 'a'
