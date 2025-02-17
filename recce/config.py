@@ -33,7 +33,7 @@ class RecceConfig(metaclass=SingletonMeta):
     def _verify_preset_checks(self):
         from recce.tasks.core import CheckValidator
 
-        if 'checks' not in self.config:
+        if not self.config.get('checks'):
             return
 
         for check in self.config['checks']:
