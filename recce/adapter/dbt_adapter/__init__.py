@@ -9,6 +9,8 @@ from functools import lru_cache
 from pathlib import Path
 from typing import Callable, Dict, List, Optional, Tuple, Iterator, Any, Set, Union, Literal, Type
 
+from recce.util.cll import cll
+
 try:
     import agate
     import dbt.adapters.factory
@@ -676,6 +678,30 @@ class DbtAdapter(BaseAdapter):
             if k not in nodeIds:
                 continue
             parent_map[k] = [parent for parent in parents if parent in nodeIds]
+
+        # Handle column-level lineage
+        for node in nodes.values():
+            if node.get('resource_type') != 'model':
+                continue
+
+            if node.get('raw_code') is None:
+                continue
+
+            compiled_sql = self.generate_sql(node.get('raw_code'), base=base)
+            schema = {}
+            for parent_id in parent_map[node.get('id')]:
+                parent_node = nodes.get(parent_id)
+                if parent_node is None:
+                    continue
+                columns = parent_node.get('columns') or {}
+                schema[parent_node['name']] = {
+                    name: column.get('type') for name, column in columns.items()
+                }
+            column_lineage = cll(compiled_sql, schema=schema)
+            for name, column in node['columns'].items():
+                if name in column_lineage:
+                    column['depends_on'] = column_lineage[name].depends_on
+                    column['transformation_type'] = column_lineage[name].type
 
         return dict(
             parent_map=parent_map,

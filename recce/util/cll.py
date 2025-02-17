@@ -127,6 +127,9 @@ def cll(sql, schema=None) -> Dict[str, ColumnLevelDependencyColumn]:
                 cte_scope = scope.cte_sources.get(col_dep_node)
                 if cte_scope is not None:
                     cte_cll = global_lineage[cte_scope]
+                    if cte_cll is None or cte_cll.get(col_dep_column) is None:
+                        # In dbt-duckdb, the external source is compiled as `read_csv('..') rather than a table.
+                        continue
                     cte_type = cte_cll.get(col_dep_column).type
                     flatten_col_depends_on.extend(cte_cll.get(col_dep_column).depends_on)
                 else:
