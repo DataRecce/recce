@@ -65,7 +65,7 @@ def _cll_expression(expression, default_table) -> ColumnLevelDependencyColumn:
             type = 'derived' if depends_on else 'source'
             return ColumnLevelDependencyColumn(type=type, depends_on=depends_on)
 
-        return []
+        return ColumnLevelDependencyColumn(type='source', depends_on=[])
     elif expression.this and isinstance(expression.this, Expression):
         depends_on = _cll_expression(expression.this, default_table).depends_on
         type = 'derived' if depends_on else 'source'
@@ -121,6 +121,7 @@ def cll(sql, schema=None) -> Dict[str, ColumnLevelDependencyColumn]:
                 # 'select 1'
                 column_cll = ColumnLevelDependencyColumn(type='source', depends_on=[])
 
+            cte_type = None
             flatten_col_depends_on = []
             for col_dep in column_cll.depends_on:
                 col_dep_node = col_dep.node
@@ -128,7 +129,8 @@ def cll(sql, schema=None) -> Dict[str, ColumnLevelDependencyColumn]:
                 cte_scope = scope.cte_sources.get(col_dep_node)
                 if cte_scope is not None:
                     cte_cll = global_lineage[cte_scope]
-                    flatten_col_depends_on.extend(cte_cll.get(col_dep_column))
+                    cte_type = cte_cll.get(col_dep_column).type
+                    flatten_col_depends_on.extend(cte_cll.get(col_dep_column).depends_on)
                 else:
                     flatten_col_depends_on.append(col_dep)
 
@@ -141,8 +143,27 @@ def cll(sql, schema=None) -> Dict[str, ColumnLevelDependencyColumn]:
                     dedup_col_depends_on.append(col_dep)
                     dedup_set.add(node_col)
 
+            # transformation type
+            type = column_cll.type
+            if cte_type is not None:
+                if len(dedup_col_depends_on) > 1:
+                    type = 'derived'
+                elif len(dedup_col_depends_on) == 0:
+                    type = 'source'
+                else:
+                    if isinstance(select, Column):
+                        type = cte_type
+                    elif isinstance(select, Alias):
+                        alias = select
+                        if column_cll.depends_on[0].column == alias.alias_or_name:
+                            type = cte_type
+                        else:
+                            type = 'renamed' if cte_type == 'passthrough' else cte_type
+                    else:
+                        type = 'source'
+
             scope_lineage[select.alias_or_name] = ColumnLevelDependencyColumn(
-                type=column_cll.type,
+                type=type,
                 depends_on=dedup_col_depends_on
             )
 
@@ -218,14 +239,16 @@ class ColumnLevelLineageTest(unittest.TestCase):
         select CURRENT_TIMESTAMP() as c from table1
         """
         result = cll(sql)
-        assert len(result['c']) == 0
+        assert result['c'].type == 'source'
+        assert len(result['c'].depends_on) == 0
 
         # uuid
         sql = """
         select UUID() as c from table1
         """
         result = cll(sql)
-        assert len(result['c']) == 0
+        assert result['c'].type == 'source'
+        assert len(result['c'].depends_on) == 0
 
     def test_alias(self):
         sql = """
@@ -270,56 +293,63 @@ class ColumnLevelLineageTest(unittest.TestCase):
         select (a+b) * (c+d) as x from table1
         """
         result = cll(sql)
-        assert result['x'][0]['node'] == 'table1'
-        assert len(result['x']) == 4
+        assert result['x'].type == 'derived'
+        assert result['x'].depends_on[0].node == 'table1'
+        assert len(result['x'].depends_on) == 4
 
     def test_transform_binary_predicate(self):
         sql = """
         select a > 0 as x from table1
         """
         result = cll(sql)
-        assert result['x'][0]['node'] == 'table1'
-        assert result['x'][0]['column'] == 'a'
+        assert result['x'].type == 'derived'
+        assert result['x'].depends_on[0].node == 'table1'
+        assert result['x'].depends_on[0].column == 'a'
 
     def test_transform_in(self):
         sql = """
         select a in (1, 2, 3) as x from table1
         """
         result = cll(sql)
-        assert result['x'][0]['node'] == 'table1'
-        assert result['x'][0]['column'] == 'a'
+        assert result['x'].type == 'derived'
+        assert result['x'].depends_on[0].node == 'table1'
+        assert result['x'].depends_on[0].column == 'a'
 
     def test_transform_type_cast(self):
         sql = """
         select cast(a as int) as x from table1
         """
         result = cll(sql)
-        assert result['x'][0]['node'] == 'table1'
-        assert result['x'][0]['column'] == 'a'
+        assert result['x'].type == 'derived'
+        assert result['x'].depends_on[0].node == 'table1'
+        assert result['x'].depends_on[0].column == 'a'
 
     def test_transform_type_cast_operator(self):
         sql = """
         select a::int as x from table1
         """
         result = cll(sql)
-        assert result['x'][0]['node'] == 'table1'
-        assert result['x'][0]['column'] == 'a'
+        assert result['x'].type == 'derived'
+        assert result['x'].depends_on[0].node == 'table1'
+        assert result['x'].depends_on[0].column == 'a'
 
     def test_transform_func(self):
         sql = """
         select date_trunc('month', created_at) as a from table1
         """
         result = cll(sql)
-        assert result['a'][0]['node'] == 'table1'
-        assert result['a'][0]['column'] == 'created_at'
+        assert result['a'].type == 'derived'
+        assert result['a'].depends_on[0].node == 'table1'
+        assert result['a'].depends_on[0].column == 'created_at'
 
     def test_transform_udf(self):
         sql = """
         select xyz(1, 2, created_at) as a from table1
         """
         result = cll(sql)
-        assert result['a'][0]['node'] == 'table1'
-        assert result['a'][0]['column'] == 'created_at'
+        assert result['a'].type == 'derived'
+        assert result['a'].depends_on[0].node == 'table1'
+        assert result['a'].depends_on[0].column == 'created_at'
 
     def test_transform_agg_func(self):
         sql = """
@@ -328,7 +358,8 @@ class ColumnLevelLineageTest(unittest.TestCase):
         from table1
         """
         result = cll(sql)
-        assert len(result['b']) == 0
+        assert result['b'].type == 'source'
+        assert len(result['b'].depends_on) == 0
 
         sql = """
         select
@@ -336,7 +367,8 @@ class ColumnLevelLineageTest(unittest.TestCase):
         from table1
         """
         result = cll(sql)
-        assert len(result['b']) == 0
+        assert result['b'].type == 'source'
+        assert len(result['b'].depends_on) == 0
 
         sql = """
         select
@@ -344,8 +376,9 @@ class ColumnLevelLineageTest(unittest.TestCase):
         from table1
         """
         result = cll(sql)
-        assert result['b'][0]['node'] == 'table1'
-        assert result['b'][0]['column'] == 'a'
+        assert result['b'].type == 'derived'
+        assert result['b'].depends_on[0].node == 'table1'
+        assert result['b'].depends_on[0].column == 'a'
 
         sql = """
         select
@@ -354,8 +387,9 @@ class ColumnLevelLineageTest(unittest.TestCase):
         group by c
         """
         result = cll(sql)
-        assert result['b'][0]['node'] == 'table1'
-        assert result['b'][0]['column'] == 'a'
+        assert result['b'].type == 'derived'
+        assert result['b'].depends_on[0].node == 'table1'
+        assert result['b'].depends_on[0].column == 'a'
 
     def test_transform_nested_func(self):
         sql = """
@@ -365,8 +399,9 @@ class ColumnLevelLineageTest(unittest.TestCase):
         group by c
         """
         result = cll(sql)
-        assert result['b'][0]['node'] == 'table1'
-        assert result['b'][0]['column'] == 'a1'
+        assert result['b'].type == 'derived'
+        assert result['b'].depends_on[0].node == 'table1'
+        assert result['b'].depends_on[0].column == 'a1'
 
     def test_transform_udtf(self):
         sql = """
@@ -375,8 +410,9 @@ class ColumnLevelLineageTest(unittest.TestCase):
         from table1
         """
         result = cll(sql)
-        assert result['b'][0]['node'] == 'table1'
-        assert result['b'][0]['column'] == 'a'
+        assert result['b'].type == 'derived'
+        assert result['b'].depends_on[0].node == 'table1'
+        assert result['b'].depends_on[0].column == 'a'
 
     def test_join(self):
         sql = """
@@ -385,8 +421,10 @@ class ColumnLevelLineageTest(unittest.TestCase):
         join table2 on table1.id = table2.id
         """
         result = cll(sql)
-        assert result['a'][0]['node'] == 'table1'
-        assert result['b'][0]['node'] == 'table2'
+        assert result['a'].type == 'passthrough'
+        assert result['a'].depends_on[0].node == 'table1'
+        assert result['b'].type == 'passthrough'
+        assert result['b'].depends_on[0].node == 'table2'
 
         sql = """
                 select a, b
@@ -394,8 +432,10 @@ class ColumnLevelLineageTest(unittest.TestCase):
                 join table2 on table1.id = table2.id
                 """
         result = cll(sql)
-        assert result['a'][0]['node'] == 'table1'
-        assert result['b'][0]['node'] == 'table1'
+        assert result['a'].type == 'passthrough'
+        assert result['a'].depends_on[0].node == 'table1'
+        assert result['b'].type == 'passthrough'
+        assert result['b'].depends_on[0].node == 'table1'
 
     def test_join_with_schema(self):
         sql = """
@@ -404,8 +444,10 @@ class ColumnLevelLineageTest(unittest.TestCase):
                 join table2 on table1.id = table2.id
                 """
         result = cll(sql, {'table1': {'id': 'Int', 'a': 'Int'}, 'table2': {'id': 'Int', 'b': 'Int'}})
-        assert result['a'][0]['node'] == 'table1'
-        assert result['b'][0]['node'] == 'table2'
+        assert result['a'].type == 'passthrough'
+        assert result['a'].depends_on[0].node == 'table1'
+        assert result['b'].type == 'passthrough'
+        assert result['b'].depends_on[0].node == 'table2'
 
     def test_cte(self):
         sql = """
@@ -420,8 +462,9 @@ class ColumnLevelLineageTest(unittest.TestCase):
         """
 
         result = cll(sql)
-        assert result['a'][0]['node'] == 'table1'
-        assert result['a'][0]['column'] == 'a'
+        assert result['a'].type == 'passthrough'
+        assert result['a'].depends_on[0].node == 'table1'
+        assert result['a'].depends_on[0].column == 'a'
 
     def test_cte_with_join(self):
         sql = """
@@ -443,14 +486,18 @@ class ColumnLevelLineageTest(unittest.TestCase):
         """
 
         result = cll(sql)
-        assert result['id'][0]['node'] == 'table3'
-        assert result['id'][0]['column'] == 'id'
-        assert result['a'][0]['node'] == 'table1'
-        assert result['a'][0]['column'] == 'a'
-        assert result['b'][0]['node'] == 'table2'
-        assert result['b'][0]['column'] == 'b'
-        assert result['c'][0]['node'] == 'table3'
-        assert result['c'][0]['column'] == 'c'
+        assert result['id'].type == 'passthrough'
+        assert result['id'].depends_on[0].node == 'table3'
+        assert result['id'].depends_on[0].column == 'id'
+        assert result['a'].type == 'passthrough'
+        assert result['a'].depends_on[0].node == 'table1'
+        assert result['a'].depends_on[0].column == 'a'
+        assert result['b'].type == 'passthrough'
+        assert result['b'].depends_on[0].node == 'table2'
+        assert result['b'].depends_on[0].column == 'b'
+        assert result['c'].type == 'passthrough'
+        assert result['c'].depends_on[0].node == 'table3'
+        assert result['c'].depends_on[0].column == 'c'
 
     def test_cte_with_transform(self):
         sql = """
@@ -470,11 +517,34 @@ class ColumnLevelLineageTest(unittest.TestCase):
         """
 
         result = cll(sql)
-        assert result['a'][0]['node'] == 'table1'
-        assert result['a'][0]['column'] == 'a'
-        assert result['b3'][0]['node'] == 'table1'
-        assert result['b3'][0]['column'] == 'b'
-        assert result['y'][0]['node'] == 'table1'
-        assert result['y'][0]['column'] == 'a'
-        assert result['y'][1]['node'] == 'table1'
-        assert result['y'][1]['column'] == 'b'
+        assert result['a'].type == 'passthrough'
+        assert result['a'].depends_on[0].node == 'table1'
+        assert result['a'].depends_on[0].column == 'a'
+        assert result['b3'].type == 'renamed'
+        assert result['b3'].depends_on[0].node == 'table1'
+        assert result['b3'].depends_on[0].column == 'b'
+        assert result['y'].type == 'derived'
+        assert result['y'].depends_on[0].node == 'table1'
+        assert result['y'].depends_on[0].column == 'a'
+        assert result['y'].depends_on[1].node == 'table1'
+        assert result['y'].depends_on[1].column == 'b'
+
+    def test_cte_with_transform2(self):
+        sql = """
+        with
+        cte1 as (
+            select
+                a + b as x
+            from table1
+        )
+        select
+            x as y
+        from cte1
+        """
+
+        result = cll(sql)
+        assert result['y'].type == 'derived'
+        assert result['y'].depends_on[0].node == 'table1'
+        assert result['y'].depends_on[0].column == 'a'
+        assert result['y'].depends_on[1].node == 'table1'
+        assert result['y'].depends_on[1].column == 'b'
