@@ -2,7 +2,7 @@ from dataclasses import dataclass
 from typing import Dict, List, Literal
 
 from sqlglot import parse_one
-from sqlglot.expressions import Column, Alias, Func, Binary, Paren, Case, Expression
+from sqlglot.expressions import Column, Alias, Func, Binary, Paren, Case, Expression, If
 from sqlglot.optimizer import traverse_scope
 from sqlglot.optimizer.qualify import qualify
 
@@ -49,6 +49,19 @@ def _cll_expression(expression, default_table) -> ColumnLevelDependencyColumn:
             depends_on_one = _cll_expression(expr, default_table).depends_on
             depends_on.extend(depends_on_one)
         depends_on.extend(_cll_expression(default, default_table).depends_on)
+        type = 'derived' if depends_on else 'source'
+        return ColumnLevelDependencyColumn(type=type, depends_on=depends_on)
+    elif isinstance(expression, If):
+        depends_on = []
+        if expression.this:
+            depends_on_one = _cll_expression(expression.this, default_table).depends_on
+            depends_on.extend(depends_on_one)
+        if expression.args.get('true'):
+            depends_on_one = _cll_expression(expression.args.get('true'), default_table).depends_on
+            depends_on.extend(depends_on_one)
+        if expression.args.get('false'):
+            depends_on_one = _cll_expression(expression.args.get('false'), default_table).depends_on
+            depends_on.extend(depends_on_one)
         type = 'derived' if depends_on else 'source'
         return ColumnLevelDependencyColumn(type=type, depends_on=depends_on)
     elif isinstance(expression, Func):

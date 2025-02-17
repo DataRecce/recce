@@ -117,6 +117,20 @@ class ColumnLevelLineageTest(unittest.TestCase):
         assert result['x'].depends_on[0].column == 'a'
         assert len(result['x'].depends_on) == 1
 
+        sql = """
+        select case
+            when payment_method = 'gift_card' then amount
+            else 0
+        end as x from table1
+        """
+        result = cll(sql)
+        assert result['x'].type == 'derived'
+        assert len(result['x'].depends_on) == 2
+        assert result['x'].depends_on[0].node == 'table1'
+        assert result['x'].depends_on[0].column == 'payment_method'
+        assert result['x'].depends_on[1].node == 'table1'
+        assert result['x'].depends_on[1].column == 'amount'
+
     def test_transform_binary(self):
         sql = """
         select (a+b) * (c+d) as x from table1
