@@ -89,17 +89,13 @@ def cll(sql, schema=None):
     for scope in traverse_scope(expression):
         scope_lineage = {}
         default_table = scope.expression.args['from'].name if scope.expression.args.get('from') else None
-        if len(scope.expression.args.get('joins', [])) > 0:
-            default_table = None
 
         for select in scope.expression.selects:
             # instance of Column
             col_depends_on = []
             if isinstance(select, Column):
                 column = select
-                col_depends_on = [
-                    {"node": column.table or default_table, "column": column.name}
-                ]
+                col_depends_on = _cll_expression(column, default_table)
             elif isinstance(select, Alias):
                 alias = select
                 col_expression = alias.this
@@ -116,7 +112,16 @@ def cll(sql, schema=None):
                 else:
                     flatten_col_depends_on.append(col_dep)
 
-            scope_lineage[select.alias_or_name] = flatten_col_depends_on
+            # deduplicate
+            dedup_col_depends_on = []
+            dedup_set = set()
+            for col_dep in flatten_col_depends_on:
+                node_col = col_dep['node'] + '.' + col_dep['column']
+                if node_col not in dedup_set:
+                    dedup_col_depends_on.append(col_dep)
+                    dedup_set.add(node_col)
+
+            scope_lineage[select.alias_or_name] = dedup_col_depends_on
 
         global_lineage[scope] = scope_lineage
         if not scope.is_cte:
@@ -230,7 +235,7 @@ class ColumnLevelLineageTest(unittest.TestCase):
         result = cll(sql)
         assert result['x'][0]['node'] == 'table1'
         assert result['x'][0]['column'] == 'a'
-        # assert len(result['x']) == 1
+        assert len(result['x']) == 1
 
     def test_transform_binary(self):
         sql = """
@@ -352,8 +357,8 @@ class ColumnLevelLineageTest(unittest.TestCase):
         join table2 on table1.id = table2.id
         """
         result = cll(sql)
-        assert (result['a'][0]['node'] == 'table1')
-        assert (result['b'][0]['node'] == 'table2')
+        assert result['a'][0]['node'] == 'table1'
+        assert result['b'][0]['node'] == 'table2'
 
         sql = """
                 select a, b
@@ -361,8 +366,8 @@ class ColumnLevelLineageTest(unittest.TestCase):
                 join table2 on table1.id = table2.id
                 """
         result = cll(sql)
-        assert result['a'][0]['node'] is None
-        assert result['b'][0]['node'] is None
+        assert result['a'][0]['node'] == 'table1'
+        assert result['b'][0]['node'] == 'table1'
 
     def test_join_with_schema(self):
         sql = """
@@ -389,3 +394,59 @@ class ColumnLevelLineageTest(unittest.TestCase):
         result = cll(sql)
         assert result['a'][0]['node'] == 'table1'
         assert result['a'][0]['column'] == 'a'
+
+    def test_cte_with_join(self):
+        sql = """
+        with
+        cte1 as (
+            select id, a from table1
+        ),
+        cte2 as (
+            select id, b from table2
+        )
+        select
+            id,
+            a,
+            b,
+            table3.c
+        from table3
+        left join cte1 on table3.id = cte1.id
+        join cte2 on table3.id = cte2.id
+        """
+
+        result = cll(sql)
+        assert result['id'][0]['node'] == 'table3'
+        assert result['id'][0]['column'] == 'id'
+        assert result['a'][0]['node'] == 'table1'
+        assert result['a'][0]['column'] == 'a'
+        assert result['b'][0]['node'] == 'table2'
+        assert result['b'][0]['column'] == 'b'
+        assert result['c'][0]['node'] == 'table3'
+        assert result['c'][0]['column'] == 'c'
+
+    def test_cte_with_transform(self):
+        sql = """
+        with
+        cte1 as (
+            select
+                a,
+                b as b2,
+                a + b as x
+            from table1
+        )
+        select
+            a,
+            b2 as b3,
+            x as y
+        from cte1
+        """
+
+        result = cll(sql)
+        assert result['a'][0]['node'] == 'table1'
+        assert result['a'][0]['column'] == 'a'
+        assert result['b3'][0]['node'] == 'table1'
+        assert result['b3'][0]['column'] == 'b'
+        assert result['y'][0]['node'] == 'table1'
+        assert result['y'][0]['column'] == 'a'
+        assert result['y'][1]['node'] == 'table1'
+        assert result['y'][1]['column'] == 'b'
