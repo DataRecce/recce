@@ -540,6 +540,18 @@ export function selectNodes(
   return newNodes;
 }
 
+export function deselectNodes(nodes: Node<LineageGraphNode>[]) {
+  return nodes.map((n) => {
+    return {
+      ...n,
+      data: {
+        ...n.data,
+        isSelected: false,
+      },
+    };
+  });
+}
+
 export function cleanUpNodes(
   nodes: Node<LineageGraphNode>[],
   isActionMode?: boolean
@@ -549,7 +561,7 @@ export function cleanUpNodes(
       ...n,
       data: {
         ...n.data,
-        isSelected: false,
+        // isSelected: false,
         isActionMode,
         action: undefined,
       },

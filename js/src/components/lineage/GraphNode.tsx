@@ -204,10 +204,8 @@ export function GraphNode({ data }: GraphNodeProps) {
             return isSelected ? color : backgroundColor;
           }
         })()}
-        // boxShadow={boxShadow}
         transition="box-shadow 0.2s ease-in-out"
         padding={0}
-        // className={highlightClassName}
         filter={(function () {
           if (selectMode === "action_result") {
             return !!data?.action ? "none" : "opacity(0.2) grayscale(50%)";
@@ -221,7 +219,6 @@ export function GraphNode({ data }: GraphNodeProps) {
         onMouseLeave={() => setIsHovered(false)}
       >
         <Flex
-          // backgroundColor={color}
           bg={color}
           padding={interactive ? "8px" : "2px"}
           borderRightWidth={borderWidth}

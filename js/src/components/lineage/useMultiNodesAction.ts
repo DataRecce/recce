@@ -5,7 +5,7 @@ import { ValueDiffParams } from "@/lib/api/valuediff";
 import { useRef } from "react";
 import { cancelRun, submitRun, waitRun } from "@/lib/api/runs";
 import { RunType } from "@/lib/api/types";
-import { RowCountDiffParams } from "@/lib/api/rowcount";
+import { RowCountDiffParams, RowCountParams } from "@/lib/api/rowcount";
 import { createLineageDiffCheck } from "@/lib/api/lineagecheck";
 import { createSchemaDiffCheck } from "@/lib/api/schemacheck";
 import { useRecceActionContext } from "@/lib/hooks/RecceActionContext";
@@ -191,6 +191,37 @@ export const useMultiNodesAction = (
     onActionCompleted();
   };
 
+  const runRowCount = async () => {
+    const nodeNames = [];
+    for (const node of nodes) {
+      if (node.resourceType !== "model") {
+        node.action = {
+          mode: "multi_nodes",
+          status: "skipped",
+          skipReason: "Not a model",
+        };
+        onActionNodeUpdated(node);
+      } else {
+        nodeNames.push(node.name);
+      }
+    }
+
+    const skip = (node: LineageGraphNode) => {
+      if (node.resourceType !== "model") {
+        return "Not a model";
+      }
+    };
+    const getParams = (nodes: LineageGraphNode[]) => {
+      const params: RowCountParams = {
+        node_names: nodes.map((node) => node.name),
+      };
+
+      return params;
+    };
+
+    await submitRunForNodes("row_count", skip, getParams);
+  };
+
   const runRowCountDiff = async () => {
     const nodeNames = [];
     for (const node of nodes) {
@@ -272,6 +303,7 @@ export const useMultiNodesAction = (
 
   return {
     actionState,
+    runRowCount,
     runRowCountDiff,
     runValueDiff,
     addLineageDiffCheck,

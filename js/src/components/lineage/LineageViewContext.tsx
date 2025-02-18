@@ -19,6 +19,7 @@ export interface LineageViewContextType {
   selectNodeMulti: (nodeId: string) => void;
   deselect: () => void;
 
+  runRowCount: () => Promise<void>;
   runRowCountDiff: () => Promise<void>;
   runValueDiff: () => Promise<void>;
   addLineageDiffCheck: (viewMode?: string) => void;
