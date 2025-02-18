@@ -470,7 +470,10 @@ export const CheckDetail = ({ checkId }: CheckDetailProps) => {
           <ModalBody>
             <Heading size="sm" fontWeight="bold">
               Please{" "}
-              <Link
+              <Text
+                as="span"
+                cursor="pointer"
+                _hover={{ textDecoration: "underline" }}
                 color={"blue.500"}
                 onClick={async () => {
                   await navigator.clipboard.writeText(presetCheckTemplate);
@@ -478,7 +481,7 @@ export const CheckDetail = ({ checkId }: CheckDetailProps) => {
                 }}
               >
                 copy
-              </Link>{" "}
+              </Text>{" "}
               the following template and paste it into the{" "}
               <Highlight
                 query="recce.yml"
