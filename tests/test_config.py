@@ -35,3 +35,11 @@ class RecceConfigTestCase(TestCase):
         self.assertIsNotNone(default_config.config)
         self.assertIsInstance(preset_checks, list)
         self.assertEqual(len(preset_checks), 2)
+
+    @patch('recce.yaml.safe_load')
+    def test_recce_config_null_checks(self, mock_yaml_safe_load):
+        # mock to load a yaml file with null checks
+        mock_yaml_safe_load.return_value = {
+            'checks': None
+        }
+        RecceConfig(self.recce_config_path)
