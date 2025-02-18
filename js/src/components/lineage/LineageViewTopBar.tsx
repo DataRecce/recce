@@ -405,6 +405,39 @@ export const LineageViewTopBar = () => {
                 Deselect
               </Button>
             </ControlItem>
+            {isSingleEnvOnboarding && (
+              <ControlItem label="Explore">
+                <ButtonGroup isAttached variant="outline">
+                  <Menu placement="bottom-end">
+                    <MenuButton
+                      as={Button}
+                      size={"xs"}
+                      rightIcon={<ChevronDownIcon />}
+                    >
+                      Actions
+                    </MenuButton>
+                    <MenuList>
+                      <MenuItem
+                        as={Text}
+                        size="sm"
+                        fontSize="10pt"
+                        isDisabled={
+                          !(isNoSelect || isSingleSelect || isMultiSelect)
+                        }
+                        icon={
+                          <Icon as={findByRunType("row_count_diff")?.icon} />
+                        }
+                        onClick={() => {
+                          lineageViewContext.runRowCount();
+                        }}
+                      >
+                        Row Count
+                      </MenuItem>
+                    </MenuList>
+                  </Menu>
+                </ButtonGroup>
+              </ControlItem>
+            )}
           </>
         )}
         {!isSingleEnvOnboarding && (

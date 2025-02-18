@@ -1,6 +1,7 @@
 import {
   LineageGraphNode,
   cleanUpNodes,
+  deselectNodes,
   highlightNodes,
   layout,
   selectAllNodes,
@@ -368,25 +369,30 @@ export function PrivateLineageView(
     setEdges(newEdges);
   };
 
-  const highlightImpactRadius = (
-    _breakingChangeEnabled: boolean = breakingChangeEnabled
-  ) => {
+  interface ResetNodeStyleProps {
+    deselect?: boolean;
+    breakingChangeEnabled?: boolean;
+  }
+
+  const resetImpactRadiusStyles = (props?: ResetNodeStyleProps) => {
+    const { deselect = false, breakingChangeEnabled = false } = props || {};
     if (!lineageGraph) {
       return;
     }
 
-    const nodeSet = selectImpactRadius(lineageGraph, _breakingChangeEnabled);
+    const nodeSet = selectImpactRadius(lineageGraph, breakingChangeEnabled);
     const [newNodes, newEdges] = highlightNodes(
       Array.from(nodeSet),
       nodes,
       edges
     );
 
-    setNodes(cleanUpNodes(newNodes));
+    setNodes(cleanUpNodes(deselect ? deselectNodes(newNodes) : newNodes));
     setEdges(newEdges);
   };
 
-  const highlightAllNodes = () => {
+  const resetAllNodeStyles = (prop?: ResetNodeStyleProps) => {
+    const { deselect = false } = prop || {};
     if (!lineageGraph) {
       return;
     }
@@ -398,7 +404,7 @@ export function PrivateLineageView(
       edges
     );
 
-    setNodes(cleanUpNodes(newNodes));
+    setNodes(cleanUpNodes(deselect ? deselectNodes(newNodes) : newNodes));
     setEdges(newEdges);
   };
 
@@ -406,19 +412,22 @@ export function PrivateLineageView(
     if (selectedNode) {
       return;
     }
+    if (selectMode === "action_result") {
+      return;
+    }
 
     if (isModelsChanged) {
-      highlightImpactRadius();
+      resetImpactRadiusStyles();
     } else {
-      highlightAllNodes();
+      resetAllNodeStyles();
     }
   };
 
   const onNodeViewClosed = () => {
     if (isModelsChanged) {
-      highlightImpactRadius();
+      resetImpactRadiusStyles({ deselect: true });
     } else {
-      highlightAllNodes();
+      resetAllNodeStyles({ deselect: true });
     }
   };
 
@@ -719,7 +728,7 @@ export function PrivateLineageView(
   };
   const deselect = () => {
     setSelectMode("single");
-    const newNodes = cleanUpNodes(nodes);
+    const newNodes = cleanUpNodes(deselectNodes(nodes));
 
     setNodes(newNodes);
     closeRunResult();
@@ -736,6 +745,27 @@ export function PrivateLineageView(
     deselect,
     advancedImpactRadius: breakingChangeEnabled,
     setAdvancedImpactRadius: setBreakingChangeEnabled,
+    runRowCount: async () => {
+      if (selectMode === "multi") {
+        await multiNodeAction.runRowCount();
+        trackMultiNodesAction({ type: "row_count", selected: "multi" });
+      } else if (selectedNode) {
+        await runAction(
+          "row_count",
+          { node_names: [selectedNode.name] },
+          { showForm: false, showLast: false }
+        );
+        trackMultiNodesAction({ type: "row_count", selected: "single" });
+      } else {
+        await runAction("row_count", {
+          select: viewOptions.select,
+          exclude: viewOptions.exclude,
+          packages: viewOptions.packages,
+          view_mode: viewOptions.view_mode,
+        });
+        trackMultiNodesAction({ type: "row_count", selected: "none" });
+      }
+    },
     runRowCountDiff: async () => {
       if (selectMode === "multi") {
         await multiNodeAction.runRowCountDiff();
@@ -911,7 +941,7 @@ export function PrivateLineageView(
                   enabled={breakingChangeEnabled}
                   onChanged={(enabled) => {
                     setBreakingChangeEnabled(enabled);
-                    highlightImpactRadius(enabled);
+                    resetImpactRadiusStyles({ breakingChangeEnabled: enabled });
                     trackBreakingChange({ enabled });
                   }}
                 />

@@ -24,7 +24,12 @@ export function trackInit() {
 }
 
 interface MultiNodeActionProps {
-  type: "row_count_diff" | "value_diff" | "schema_diff" | "lineage_diff";
+  type:
+    | "row_count"
+    | "row_count_diff"
+    | "value_diff"
+    | "schema_diff"
+    | "lineage_diff";
   selected: "single" | "multi" | "none";
 }
 

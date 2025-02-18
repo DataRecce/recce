@@ -12,8 +12,8 @@ import {
   Tooltip,
 } from "@chakra-ui/react";
 import { LineageGraphNode } from "./lineage";
-import { RowCountDiffResult } from "@/lib/api/rowcount";
-import { ModelRowCount, RowCountDiffTag } from "./NodeTag";
+import { RowCountDiffResult, RowCountResult } from "@/lib/api/rowcount";
+import { ModelRowCount, RowCountDiffTag, RowCountTag } from "./NodeTag";
 
 interface ActionTagProps {
   node: LineageGraphNode;
@@ -103,6 +103,11 @@ export const ActionTag = ({ node, action }: ActionTagProps) => {
   if (run.type === "row_count_diff") {
     const result = run.result as RowCountDiffResult;
     return <RowCountDiffTag rowCount={result[node.name]} node={node} />;
+  }
+
+  if (run.type === "row_count") {
+    const result = run.result as RowCountResult;
+    return <RowCountTag rowCount={result[node.name]} node={node} />;
   }
 
   return <>{run_id}</>;
