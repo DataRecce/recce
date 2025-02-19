@@ -50,6 +50,11 @@ export interface LineageGraphNode {
   };
 }
 
+export interface LinageGraphColumnNode {
+  node: LineageGraphNode;
+  column: string;
+}
+
 export interface LineageGraphEdge {
   id: string;
   from: "both" | "base" | "current";
@@ -346,6 +351,39 @@ export function toReactflow(
       targetPosition: Position.Left,
       sourcePosition: Position.Right,
     });
+
+    // add column nodes
+    if (node.data.current?.columns) {
+      let index = 0;
+      for (const column of Object.values(node.data.current.columns)) {
+        nodes.push({
+          id: `${node.name}_${column.name}`,
+          position: { x: 50, y: 40 + index * 10 },
+          parentId: node.id,
+          extent: "parent",
+          data: {
+            node,
+            column: column.name,
+          },
+          type: "customColumnNode",
+          targetPosition: Position.Left,
+          sourcePosition: Position.Right,
+        });
+
+        for (const parentColumn of column.depends_on || []) {
+          const source = `${parentColumn.node}_${parentColumn.column}`;
+          const target = `${node.name}_${column.name}`;
+
+          edges.push({
+            id: `${source}_${target}`,
+            source,
+            target,
+          });
+        }
+
+        index++;
+      }
+    }
   }
 
   const sortedEdges = Object.values(lineageGraph.edges).sort(compareFn);
@@ -419,6 +457,9 @@ export const layout = (nodes: Node[], edges: Edge[], direction = "LR") => {
   dagreGraph.setGraph({ rankdir: direction });
 
   nodes.forEach((node) => {
+    if (node.type !== "customNode") {
+      return;
+    }
     dagreGraph.setNode(node.id, { width: nodeWidth, height: nodeHeight });
   });
 
@@ -429,6 +470,10 @@ export const layout = (nodes: Node[], edges: Edge[], direction = "LR") => {
   dagre.layout(dagreGraph);
 
   nodes.forEach((node) => {
+    if (node.type !== "customNode") {
+      return;
+    }
+
     const nodeWithPosition = dagreGraph.node(node.id);
 
     // We are shifting the dagre node position (anchor=center center) to the top left

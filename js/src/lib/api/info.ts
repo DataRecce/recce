@@ -7,6 +7,11 @@ import { AxiosError } from "axios";
 export interface NodeColumnData {
   name: string;
   type: string;
+  transformation_type?: string;
+  depends_on?: {
+    node: string;
+    column: string;
+  }[];
 }
 export interface NodeData {
   id: string;

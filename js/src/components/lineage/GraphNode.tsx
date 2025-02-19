@@ -1,5 +1,6 @@
 import {
   Box,
+  Divider,
   Flex,
   HStack,
   Icon,
@@ -176,6 +177,8 @@ export function GraphNode({ data }: GraphNodeProps) {
 
   const name = data?.name;
 
+  const columns = data?.data.current?.columns ?? {};
+
   return (
     <Tooltip
       label={resourceType === "model" ? name : `${name} (${resourceType})`}
@@ -244,13 +247,7 @@ export function GraphNode({ data }: GraphNodeProps) {
           )}
         </Flex>
 
-        <Flex
-          flex="1 0 auto"
-          mx="1"
-          width="100px"
-          direction="column"
-          height="60px"
-        >
+        <Flex flex="1 0 auto" mx="1" width="100px" direction="column">
           <Flex
             width="100%"
             textAlign="left"
@@ -342,6 +339,11 @@ export function GraphNode({ data }: GraphNodeProps) {
                 ))}
             </HStack>
           </Flex>
+          <Divider />
+          <Box
+            height={`${Object.keys(columns).length * 10}px`}
+            overflow="auto"
+          ></Box>
         </Flex>
 
         {Object.keys(data?.parents ?? {}).length > 0 && (

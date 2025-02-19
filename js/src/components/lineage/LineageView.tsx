@@ -95,6 +95,7 @@ import { trackBreakingChange, trackMultiNodesAction } from "@/lib/api/track";
 import { PresetCheckRecommendation } from "./PresetCheckRecommendation";
 import { BreakingChangeSwitch } from "./BreakingChangeSwitch";
 import { useRun } from "@/lib/hooks/useRun";
+import { GraphColumnNode } from "./GraphColumnNode";
 
 export interface LineageViewProps {
   viewOptions?: LineageDiffViewOptions;
@@ -113,6 +114,7 @@ export interface LineageViewRef {
 
 const nodeTypes = {
   customNode: GraphNode,
+  customColumnNode: GraphColumnNode,
 };
 const edgeTypes = {
   customEdge: GraphEdge,
