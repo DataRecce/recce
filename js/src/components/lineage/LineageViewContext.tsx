@@ -36,6 +36,14 @@ export interface LineageViewContextType {
   // advancedImpactRadius
   advancedImpactRadius: boolean;
   setAdvancedImpactRadius: (value: boolean) => void;
+
+  // Column Level Lineage
+  columnLevelLinage?: {
+    node: string;
+    column: string;
+  };
+  showColumnLevelLineage: (node: string, column: string) => void;
+  resetColumnLevelLinage: () => void;
 }
 
 export const LineageViewContext = createContext<

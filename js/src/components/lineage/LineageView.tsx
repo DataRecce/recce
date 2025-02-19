@@ -96,6 +96,7 @@ import { PresetCheckRecommendation } from "./PresetCheckRecommendation";
 import { BreakingChangeSwitch } from "./BreakingChangeSwitch";
 import { useRun } from "@/lib/hooks/useRun";
 import { GraphColumnNode } from "./GraphColumnNode";
+import { ColumnLevelLineageControl } from "./ColumnLevelLineageControl";
 
 export interface LineageViewProps {
   viewOptions?: LineageDiffViewOptions;
@@ -296,6 +297,10 @@ export function PrivateLineageView(
   }>({ x: 0, y: 0 });
 
   const [breakingChangeEnabled, setBreakingChangeEnabled] = useState(false);
+  const [columnLevelLinage, setColumnLevelLinage] = useState<{
+    node: string;
+    column: string;
+  }>();
 
   const toast = useToast();
 
@@ -921,6 +926,14 @@ export function PrivateLineageView(
     },
     cancel: multiNodeAction.cancel,
     actionState: multiNodeAction.actionState,
+
+    // Column Level Lineage
+    showColumnLevelLineage: (node: string, column: string) => {
+      setColumnLevelLinage({ node, column });
+    },
+    resetColumnLevelLinage: () => {
+      setColumnLevelLinage(undefined);
+    },
   };
 
   if (!lineageGraph) {
@@ -1012,6 +1025,13 @@ export function PrivateLineageView(
                     trackBreakingChange({ enabled });
                   }}
                 />
+                {columnLevelLinage && (
+                  <ColumnLevelLineageControl
+                    node={columnLevelLinage.node}
+                    column={columnLevelLinage.column}
+                    reset={() => setColumnLevelLinage(undefined)}
+                  ></ColumnLevelLineageControl>
+                )}
                 {nodes.length == 0 && (
                   <Text fontSize="xl" color="grey" opacity={0.5}>
                     No nodes

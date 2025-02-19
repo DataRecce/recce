@@ -14,6 +14,8 @@ import {
 } from "@chakra-ui/react";
 import { VscKebabVertical } from "react-icons/vsc";
 import { supportsHistogramDiff } from "../histogram/HistogramDiffForm";
+import { LuEye } from "react-icons/lu";
+import { useLineageViewContext } from "../lineage/LineageViewContext";
 
 export function ColumnNameCell({
   model,
@@ -27,6 +29,7 @@ export function ColumnNameCell({
   currentType?: string;
 }) {
   const { runAction } = useRecceActionContext();
+  const { showColumnLevelLineage } = useLineageViewContext();
   const columnType = currentType || baseType;
 
   const handleHistogramDiff = () => {
@@ -46,12 +49,28 @@ export function ColumnNameCell({
   };
   const addedOrRemoved = !baseType || !currentType;
 
+  const handleViewCll = () => {
+    showColumnLevelLineage(model, name);
+  };
+
   return (
-    <Flex>
+    <Flex alignItems={"center"}>
       <Box overflow="hidden" textOverflow="ellipsis" whiteSpace="nowrap">
         {name}
       </Box>
       <Spacer />
+      {/* show icon button with eye icon */}
+      <IconButton
+        icon={<LuEye />}
+        aria-label={""}
+        className="row-context-menu"
+        visibility="hidden"
+        width={"0px"}
+        minWidth={"0px"}
+        variant="unstyled"
+        size={"sm"}
+        onClick={handleViewCll}
+      ></IconButton>
 
       <Menu>
         {({ isOpen }) => (
