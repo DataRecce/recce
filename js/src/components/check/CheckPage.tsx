@@ -17,12 +17,18 @@ import { buildDescription, buildTitle } from "./check";
 import { stripIndents } from "common-tags";
 import { HSplit } from "../split/Split";
 import { StateImporter } from "../app/StateImporter";
+import { useRecceCheckContext } from "@/lib/hooks/RecceCheckContext";
 
 export const CheckPage = () => {
   const [, setLocation] = useLocation();
   const [, params] = useRoute("/checks/:checkId");
+  const { latestSelectedCheckId, setLatestSelectedCheckId } =
+    useRecceCheckContext();
   const queryClient = useQueryClient();
   const selectedItem = params?.checkId;
+  if (selectedItem) {
+    setLatestSelectedCheckId(selectedItem);
+  }
 
   const {
     isLoading,
@@ -81,11 +87,23 @@ export const CheckPage = () => {
     }
 
     if (!selectedItem && checks.length > 0) {
-      setLocation(`/checks/${checks[0].check_id}`);
+      if (latestSelectedCheckId) {
+        setLocation(`/checks/${latestSelectedCheckId}`);
+      } else {
+        // If no check is selected, select the first one by default
+        setLocation(`/checks/${checks[0].check_id}`);
+      }
     }
 
     setOrderedChecks(checks);
-  }, [status, selectedItem, checks, setOrderedChecks, setLocation]);
+  }, [
+    status,
+    selectedItem,
+    checks,
+    setOrderedChecks,
+    setLocation,
+    latestSelectedCheckId,
+  ]);
 
   if (isLoading) {
     return <></>;

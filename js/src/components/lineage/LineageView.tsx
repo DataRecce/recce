@@ -94,6 +94,7 @@ import useValueDiffAlertDialog from "./useValueDiffAlertDialog";
 import { trackBreakingChange, trackMultiNodesAction } from "@/lib/api/track";
 import { PresetCheckRecommendation } from "./PresetCheckRecommendation";
 import { BreakingChangeSwitch } from "./BreakingChangeSwitch";
+import { useRun } from "@/lib/hooks/useRun";
 
 export interface LineageViewProps {
   viewOptions?: LineageDiffViewOptions;
@@ -230,11 +231,17 @@ export function PrivateLineageView(
     refetchRunsAggregated,
   } = useLineageGraphContext();
 
-  const { showRunId, closeRunResult, runAction } = useRecceActionContext();
+  const { runId, showRunId, closeRunResult, runAction, isRunResultOpen } =
+    useRecceActionContext();
+  const { run } = useRun(runId);
 
   const [viewOptions, setViewOptions] = useState<LineageDiffViewOptions>({
     ...props.viewOptions,
   });
+
+  const findNodeByName = (name: string) => {
+    return nodes.find((n) => n.data.name === name);
+  };
 
   // Expose the function to the parent via the ref
   useImperativeHandle(ref, () => ({
@@ -478,6 +485,9 @@ export function PrivateLineageView(
 
       setNodes(selectSingleNode(node.id, newNodes));
       setEdges(newEdges);
+
+      // Center the node in LineageView
+      centerNode(node);
     } else if (selectMode === "action_result") {
       if (node.data.action?.run?.run_id) {
         showRunId(node.data.action?.run?.run_id);
@@ -555,6 +565,11 @@ export function PrivateLineageView(
     setEdges(newEdges);
     setViewOptions(newViewOptions);
 
+    // Close the run result view if the run result node is not in the new nodes
+    if (run?.params?.model && !findNodeByName(run.params.model)) {
+      closeRunResult();
+    }
+
     await new Promise((resolve) => setTimeout(resolve, 1));
     await (async () => {
       reactFlow.fitView({ nodes: newNodes, duration: 200 });
@@ -573,6 +588,43 @@ export function PrivateLineageView(
   );
 
   const valueDiffAlertDialog = useValueDiffAlertDialog();
+
+  useEffect(() => {
+    if (!interactive) {
+      // Skip the following logic if the view is not interactive
+      return;
+    }
+    if (!isRunResultOpen) {
+      // Skip the following logic if the run result is not open
+      return;
+    }
+    const selectedRunModel = run?.params?.model;
+    // Create a mock MouseEvent
+    const mockEvent = new MouseEvent("click", {
+      bubbles: true,
+      cancelable: true,
+      view: window,
+    }) as unknown as React.MouseEvent<Element, MouseEvent>;
+
+    if (selectedRunModel) {
+      // If the run result is related to a node, select the node to show NodeView
+      const node = findNodeByName(selectedRunModel);
+      if (!node) {
+        // Cannot find the node in the current nodes, try to change the view mode to 'all'
+        handleViewOptionsChanged({
+          ...viewOptions,
+          view_mode: "all",
+        });
+      } else if (selectedNode !== node.data) {
+        // Only select the node if it is not already selected
+        onNodeClick(mockEvent, node);
+      }
+    } else {
+      // If the run result is not related to a node, close the NodeView
+      onNodeViewClosed();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [run, viewOptions, isRunResultOpen]);
 
   if (isLoading) {
     return (
