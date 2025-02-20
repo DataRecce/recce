@@ -38,21 +38,21 @@ class ColumnLevelLineageTest(unittest.TestCase):
         assert result['b'].depends_on[0].node == 'table1'
 
     def test_source_literal(self):
-        # # numeric literal
-        # sql = """
-        # select 1
-        # """
-        # result = cll(sql)
-        # assert result['1'].type == 'source'
-        # assert len(result['1'].depends_on) == 0
-        #
-        # # string literal
-        # sql = """
-        # select 'abc' as c
-        # """
-        # result = cll(sql)
-        # assert result['c'].type == 'source'
-        # assert len(result['c'].depends_on) == 0
+        # numeric literal
+        sql = """
+        select 1
+        """
+        result = cll(sql)
+        assert result['1'].type == 'source'
+        assert len(result['1'].depends_on) == 0
+
+        # string literal
+        sql = """
+        select 'abc' as c
+        """
+        result = cll(sql)
+        assert result['c'].type == 'source'
+        assert len(result['c'].depends_on) == 0
 
         # timestamp literal
         sql = """
