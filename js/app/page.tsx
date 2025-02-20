@@ -321,7 +321,7 @@ function Main() {
     useRecceActionContext();
   const { data: flag } = useRecceServerFlag();
   const [location] = useLocation();
-  const _isRunResultOpen = isRunResultOpen && !location.startsWith("/checks");
+  const _isRunResultOpen = isRunResultOpen;
   const _isHistoryOpen = isHistoryOpen && !location.startsWith("/checks");
 
   return (
