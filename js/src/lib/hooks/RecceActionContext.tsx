@@ -199,15 +199,6 @@ export function RecceActionContextProvider({
     }
   };
 
-  useEffect(() => {
-    if (runId) {
-      if (location.startsWith("/checks")) {
-        setLocation("/lineage");
-      }
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [runId]);
-
   return (
     <RecceActionContext.Provider
       value={{
