@@ -97,12 +97,12 @@ def cll(sql, schema=None) -> Dict[str, ColumnLevelDependencyColumn]:
     #      }
     try:
         expression = parse_one(sql)
-    except Exception as e:
+    except Exception:
         raise ValueError("Invalid SQL input")
 
     try:
         expression = qualify(expression, schema=schema)
-    except Exception as e:
+    except Exception:
         pass
 
     result = {}
@@ -123,7 +123,8 @@ def cll(sql, schema=None) -> Dict[str, ColumnLevelDependencyColumn]:
                 alias = select
                 col_expression = alias.this
                 column_cll = _cll_expression(col_expression, default_table)
-                if (column_cll and
+                if (
+                    column_cll and
                     column_cll.type == 'passthrough' and
                     column_cll.depends_on[0].column != alias.alias_or_name
                 ):
