@@ -138,8 +138,8 @@ async def execute_preset_checks(preset_checks: list) -> (int, List[dict]):
                 raise ValueError(f"Invalid check type: {check_type}")
 
             start = time.time()
-            if check_type in ['schema_diff']:
-                is_check = schema_diff_should_be_approved(check_params)
+            if check_type in ['schema_diff', 'lineage_diff']:
+                is_check = schema_diff_should_be_approved(check_params) if check_type == 'schema_diff' else False
                 create_check_without_run(check_name, check_description, check_type, check_params, check_options,
                                          is_preset=True, is_checked=is_check)
             else:
