@@ -47,6 +47,7 @@ import { trackPreviewChange } from "@/lib/api/track";
 import { useRecceServerFlag } from "@/lib/hooks/useRecceServerFlag";
 import { SingleEnvironmentQueryView } from "./SingleEnvironmentQueryView";
 import { SandboxView } from "./SandboxView";
+import { ChevronDownIcon } from "@chakra-ui/icons";
 
 interface NodeViewProps {
   node: LineageGraphNode;
@@ -131,8 +132,13 @@ export function NodeView({ node, onCloseNode }: NodeViewProps) {
     ) {
       return (
         <Menu>
-          <MenuButton as={Button} size="sm" colorScheme="blue">
-            Explore Change
+          <MenuButton
+            as={Button}
+            size="xs"
+            variant="ghost"
+            rightIcon={<ChevronDownIcon />}
+          >
+            Explore
           </MenuButton>
           <MenuList>
             <MenuItem
@@ -301,7 +307,7 @@ export function NodeView({ node, onCloseNode }: NodeViewProps) {
     return (
       <Button
         as={Button}
-        size="sm"
+        size="xs"
         colorScheme="blue"
         onClick={() => {
           onQueryViewOpen();

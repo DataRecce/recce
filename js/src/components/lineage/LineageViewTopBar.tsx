@@ -104,6 +104,7 @@ const ViewModeSelectMenu = ({ isDisabled }: { isDisabled: boolean }) => {
         size="xs"
         variant="outline"
         isDisabled={isDisabled}
+        rightIcon={<ChevronDownIcon />}
       >
         {label}
       </MenuButton>
@@ -197,6 +198,7 @@ const PackageSelectMenu = ({ isDisabled }: { isDisabled: boolean }) => {
         size="xs"
         variant="outline"
         isDisabled={isDisabled}
+        rightIcon={<ChevronDownIcon />}
       >
         {label}
       </MenuButton>
