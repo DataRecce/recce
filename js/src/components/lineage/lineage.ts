@@ -48,6 +48,11 @@ export interface LineageGraphNode {
     skipReason?: string;
     run?: Run;
   };
+
+  /**
+   * Column Level Linage. Only show the column in the set
+   */
+  columnSet?: Set<string>;
 }
 
 export interface LinageGraphColumnNode {
@@ -84,6 +89,67 @@ export interface LineageGraph {
     base?: CatalogMetadata;
     current?: CatalogMetadata;
   };
+}
+
+export function _selectColumnLevelLineage(
+  nodes: LineageGraph["nodes"],
+  node: string,
+  column: string
+) {
+  const parentMap: { [key: string]: string[] } = {};
+  const childMap: { [key: string]: string[] } = {};
+  const selectedColumn = `${node}_${column}`;
+
+  for (const [, modelNode] of Object.entries(nodes)) {
+    const nodeName = modelNode.data.current?.name;
+    for (const [, columnNode] of Object.entries(
+      modelNode.data.current?.columns || {}
+    )) {
+      const target = `${nodeName}_${columnNode.name}`;
+      parentMap[target] = [];
+
+      for (const parent of columnNode.depends_on || []) {
+        const source = `${parent.node}_${parent.column}`;
+        parentMap[target].push(source);
+        if (childMap[source] === undefined) {
+          childMap[source] = [];
+        }
+        childMap[source].push(target);
+      }
+    }
+  }
+
+  const selectColumnUpstream = (nodeIds: string[], degree: number = 1000) => {
+    return getNeighborSet(
+      nodeIds,
+      (key) => {
+        if (parentMap[key] === undefined) {
+          return [];
+        }
+        return parentMap[key];
+      },
+      degree
+    );
+  };
+
+  const selectColumnDownstream = (nodeIds: string[], degree: number = 1000) => {
+    return getNeighborSet(
+      nodeIds,
+      (key) => {
+        if (childMap[key] === undefined) {
+          return [];
+        }
+        return childMap[key];
+      },
+      degree
+    );
+  };
+
+  const columnSet = union(
+    selectColumnDownstream([selectedColumn]),
+    selectColumnUpstream([selectedColumn])
+  );
+  return columnSet;
 }
 
 export function buildLineageGraph(
@@ -303,10 +369,21 @@ export function selectImpactRadius(
 
 export function toReactflow(
   lineageGraph: LineageGraph,
-  selectedNodes?: string[]
+  selectedNodes?: string[],
+  columnLevelLineage?: {
+    node: string;
+    column: string;
+  }
 ): [Node[], Edge[]] {
   const nodes: Node[] = [];
   const edges: Edge[] = [];
+  const columnSet = columnLevelLineage
+    ? _selectColumnLevelLineage(
+        lineageGraph.nodes,
+        columnLevelLineage.node,
+        columnLevelLineage.column
+      )
+    : new Set<string>();
 
   function getWeight(from: string) {
     if (from === "base") {
@@ -343,22 +420,19 @@ export function toReactflow(
       continue;
     }
 
-    nodes.push({
-      id: node.id,
-      position: { x: 0, y: 0 },
-      data: node,
-      type: "customNode",
-      targetPosition: Position.Left,
-      sourcePosition: Position.Right,
-    });
-
     // add column nodes
+    const nodeColumnSet = new Set<string>();
+    let columnIndex = 0;
     if (node.data.current?.columns) {
-      let index = 0;
       for (const column of Object.values(node.data.current.columns)) {
+        const columnKey = `${node.name}_${column.name}`;
+        if (!columnSet.has(columnKey)) {
+          continue;
+        }
+
         nodes.push({
-          id: `${node.name}_${column.name}`,
-          position: { x: 50, y: 40 + index * 10 },
+          id: columnKey,
+          position: { x: 50, y: 40 + columnIndex * 10 },
           parentId: node.id,
           extent: "parent",
           data: {
@@ -372,7 +446,11 @@ export function toReactflow(
 
         for (const parentColumn of column.depends_on || []) {
           const source = `${parentColumn.node}_${parentColumn.column}`;
-          const target = `${node.name}_${column.name}`;
+          const target = columnKey;
+
+          if (!columnSet.has(source)) {
+            continue;
+          }
 
           edges.push({
             id: `${source}_${target}`,
@@ -381,9 +459,24 @@ export function toReactflow(
           });
         }
 
-        index++;
+        columnIndex++;
+        nodeColumnSet.add(columnKey);
       }
     }
+
+    nodes.push({
+      id: node.id,
+      position: { x: 0, y: 0 },
+      width: 300,
+      height: 36 + columnIndex * 10,
+      data: {
+        ...node,
+        columnSet: nodeColumnSet,
+      },
+      type: "customNode",
+      targetPosition: Position.Left,
+      sourcePosition: Position.Right,
+    });
   }
 
   const sortedEdges = Object.values(lineageGraph.edges).sort(compareFn);
@@ -460,7 +553,7 @@ export const layout = (nodes: Node[], edges: Edge[], direction = "LR") => {
     if (node.type !== "customNode") {
       return;
     }
-    dagreGraph.setNode(node.id, { width: nodeWidth, height: nodeHeight });
+    dagreGraph.setNode(node.id, { width: node.width, height: node.height });
   });
 
   edges.forEach((edge) => {

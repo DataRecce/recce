@@ -338,7 +338,11 @@ export function PrivateLineageView(
         selectedNodes = result.nodes;
       }
 
-      let [nodes, edges] = toReactflow(lineageGraph, selectedNodes);
+      let [nodes, edges] = toReactflow(
+        lineageGraph,
+        selectedNodes,
+        columnLevelLinage
+      );
       let nodeSet = selectAllNodes(lineageGraph);
       if (isModelsChanged) {
         nodeSet = selectImpactRadius(lineageGraph, breakingChangeEnabled);
@@ -560,7 +564,11 @@ export function PrivateLineageView(
       return;
     }
 
-    let [newNodes, newEdges] = toReactflow(lineageGraph, selectedNodes);
+    let [newNodes, newEdges] = toReactflow(
+      lineageGraph,
+      selectedNodes,
+      columnLevelLinage
+    );
     const nodeSet = selectImpactRadius(lineageGraph, breakingChangeEnabled);
     [newNodes, newEdges] = highlightNodes(
       Array.from(nodeSet),

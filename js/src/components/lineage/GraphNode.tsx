@@ -177,8 +177,6 @@ export function GraphNode({ data }: GraphNodeProps) {
 
   const name = data?.name;
 
-  const columns = data?.data.current?.columns ?? {};
-
   return (
     <Tooltip
       label={resourceType === "model" ? name : `${name} (${resourceType})`}
@@ -339,11 +337,15 @@ export function GraphNode({ data }: GraphNodeProps) {
                 ))}
             </HStack>
           </Flex>
-          <Divider />
-          <Box
-            height={`${Object.keys(columns).length * 10}px`}
-            overflow="auto"
-          ></Box>
+          {data?.columnSet && (
+            <>
+              <Divider />
+              <Box
+                height={`${data?.columnSet.size * 10}px`}
+                overflow="auto"
+              ></Box>
+            </>
+          )}
         </Flex>
 
         {Object.keys(data?.parents ?? {}).length > 0 && (
