@@ -590,6 +590,7 @@ export function PrivateLineageView(
   const valueDiffAlertDialog = useValueDiffAlertDialog();
 
   useEffect(() => {
+    const runResultType = run?.type;
     if (!interactive) {
       // Skip the following logic if the view is not interactive
       return;
@@ -598,6 +599,14 @@ export function PrivateLineageView(
       // Skip the following logic if the run result is not open
       return;
     }
+    if (
+      !runResultType ||
+      ["query_diff", "query", "row_count"].find((x) => x === runResultType)
+    ) {
+      // Skip the following logic if the run result type is not related to a node
+      return;
+    }
+
     const selectedRunModel = run?.params?.model;
     // Create a mock MouseEvent
     const mockEvent = new MouseEvent("click", {
