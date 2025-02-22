@@ -10,6 +10,7 @@ from pathlib import Path
 from typing import Callable, Dict, List, Optional, Tuple, Iterator, Any, Set, Union, Literal, Type
 
 from recce.util.cll import cll
+from recce.exceptions import RecceException
 
 try:
     import agate
@@ -470,6 +471,14 @@ class DbtAdapter(BaseAdapter):
             os.path.join(project_root, target_base_path, 'catalog.json'),
         ]
 
+    def is_python_model(self, node_id: str, base: Optional[bool] = False):
+        manifest = self.curr_manifest if base is False else self.base_manifest
+        model = manifest.nodes.get(node_id)
+        if hasattr(model, 'language'):
+            return model.language == 'python'
+
+        return False
+
     def find_node_by_name(self, node_name, base=False) -> Optional[ManifestNode]:
 
         manifest = self.curr_manifest if base is False else self.base_manifest
@@ -681,28 +690,7 @@ class DbtAdapter(BaseAdapter):
 
         # Handle column-level lineage, only enable if env var is set to true
         if os.getenv('RECCE_CLL_ENABLED') == 'true':
-            for node in nodes.values():
-                if node.get('resource_type') != 'model':
-                    continue
-
-                if node.get('raw_code') is None:
-                    continue
-
-                compiled_sql = self.generate_sql(node.get('raw_code'), base=base)
-                schema = {}
-                for parent_id in parent_map[node.get('id')]:
-                    parent_node = nodes.get(parent_id)
-                    if parent_node is None:
-                        continue
-                    columns = parent_node.get('columns') or {}
-                    schema[parent_node['name']] = {
-                        name: column.get('type') for name, column in columns.items()
-                    }
-                column_lineage = cll(compiled_sql, schema=schema)
-                for name, column in node['columns'].items():
-                    if name in column_lineage:
-                        column['depends_on'] = column_lineage[name].depends_on
-                        column['transformation_type'] = column_lineage[name].type
+            self.append_column_lineage(nodes, parent_map, base)
 
         return dict(
             parent_map=parent_map,
@@ -710,6 +698,53 @@ class DbtAdapter(BaseAdapter):
             manifest_metadata=manifest_metadata,
             catalog_metadata=catalog_metadata,
         )
+
+    def append_column_lineage(self, nodes: Dict, parent_map: Dict, base: Optional[bool] = False):
+        def _apply_all_columns(node, trans_type, depends_on):
+            for col in node.get('columns', {}).values():
+                col['transformation_type'] = trans_type
+                col['depends_on'] = depends_on
+
+        for node in nodes.values():
+            resource_type = node.get('resource_type')
+            if resource_type not in {'model', 'seed', 'source'}:
+                continue
+
+            if resource_type == 'source' or resource_type == 'seed':
+                _apply_all_columns(node, 'source', [])
+                continue
+
+            if node.get('raw_code') is None or self.is_python_model(node.get('id'), base=base):
+                _apply_all_columns(node, 'unknown', [])
+                continue
+
+            if not node.get('columns', {}):
+                # no catalog
+                continue
+
+            compiled_sql = self.generate_sql(node.get('raw_code'), base=base)
+
+            schema = {}
+            for parent_id in parent_map[node.get('id')]:
+                parent_node = nodes.get(parent_id)
+                if parent_node is None:
+                    continue
+                columns = parent_node.get('columns') or {}
+                schema[parent_node['name']] = {
+                    name: column.get('type') for name, column in columns.items()
+                }
+
+            try:
+                column_lineage = cll(compiled_sql, schema=schema)
+            except RecceException as exception:
+                print(exception)
+                _apply_all_columns(node, 'unknown', [])
+                continue
+
+            for name, column in node.get('columns', {}).items():
+                if name in column_lineage:
+                    column['depends_on'] = column_lineage[name].depends_on
+                    column['transformation_type'] = column_lineage[name].type
 
     @lru_cache(maxsize=1)
     def _get_lineage_diff_cached(self, cache_key) -> LineageDiff:
