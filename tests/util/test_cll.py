@@ -394,3 +394,101 @@ class ColumnLevelLineageTest(unittest.TestCase):
         assert result['y'].depends_on[0].column == 'a'
         assert result['y'].depends_on[1].node == 'table1'
         assert result['y'].depends_on[1].column == 'b'
+
+    def test_cte_with_join_aggregation(self):
+        sql = """
+        with
+        cte1 as (
+            select
+                a,
+                sum(b) as b1
+            from table1
+            group by a
+        ),
+        cte2 as (
+            select
+                a,
+                c
+            from table2
+        ),
+        final as (
+            select
+                cte1.a,
+                b1 as b2,
+                c
+            from cte1
+            join cte2 on cte1.a = cte2.a
+        )
+        select * from final
+        """
+
+        result = cll(sql,  {'table1': {'a': 'Int', 'b': 'Int'}, 'table2': {'a': 'Int', 'c': 'Int'}})
+        assert result['a'].type == 'passthrough'
+        assert result['a'].depends_on[0].node == 'table1'
+        assert result['a'].depends_on[0].column == 'a'
+        assert result['b2'].type == 'derived'
+        assert result['b2'].depends_on[0].node == 'table1'
+        assert result['b2'].depends_on[0].column == 'b'
+        assert result['c'].type == 'passthrough'
+        assert result['c'].depends_on[0].node == 'table2'
+        assert result['c'].depends_on[0].column == 'c'
+
+    def test_union(self):
+        sql = """
+        select a, b from table1
+        union
+        select a, b from table2
+        """
+        result = cll(sql)
+        assert result['a'].type == 'passthrough'
+        assert result['a'].depends_on[0].node == 'table1'
+        assert result['a'].depends_on[0].column == 'a'
+        assert result['a'].depends_on[1].node == 'table2'
+        assert result['a'].depends_on[1].column == 'a'
+        assert result['b'].type == 'passthrough'
+        assert result['b'].depends_on[0].node == 'table1'
+        assert result['b'].depends_on[0].column == 'b'
+        assert result['b'].depends_on[1].node == 'table2'
+        assert result['b'].depends_on[1].column == 'b'
+
+    def test_union_cte(self):
+        sql = """
+        with cte1 as (
+            select a from table1
+            union
+            select a from table2
+        )
+        select * from cte1
+        """
+        result = cll(sql)
+        assert result['a'].type == 'passthrough'
+        assert result['a'].depends_on[0].node == 'table1'
+        assert result['a'].depends_on[0].column == 'a'
+        assert result['a'].depends_on[1].node == 'table2'
+        assert result['a'].depends_on[1].column == 'a'
+
+    def test_union_all(self):
+        sql = """
+        select a from table1
+        union all
+        select a from table2
+        """
+        result = cll(sql)
+        assert result['a'].type == 'passthrough'
+        assert result['a'].depends_on[0].node == 'table1'
+        assert result['a'].depends_on[0].column == 'a'
+        assert result['a'].depends_on[1].node == 'table2'
+        assert result['a'].depends_on[1].column == 'a'
+
+    def test_intersect(self):
+        sql = """
+        select a from table1
+        intersect
+        select a from table2
+        """
+        result = cll(sql)
+        assert result['a'].type == 'passthrough'
+        assert result['a'].depends_on[0].node == 'table1'
+        assert result['a'].depends_on[0].column == 'a'
+        assert result['a'].depends_on[1].node == 'table2'
+        assert result['a'].depends_on[1].column == 'a'
