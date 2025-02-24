@@ -395,43 +395,32 @@ class ColumnLevelLineageTest(unittest.TestCase):
         assert result['y'].depends_on[1].node == 'table1'
         assert result['y'].depends_on[1].column == 'b'
 
-    def test_cte_with_join_aggregation(self):
+    def test_cte_with_transform3(self):
         sql = """
         with
         cte1 as (
             select
                 a,
-                sum(b) as b1
+                b
             from table1
-            group by a
         ),
         cte2 as (
             select
                 a,
-                c
-            from table2
-        ),
-        final as (
-            select
-                cte1.a,
-                b1 as b2,
-                c
+                sum(b) as b1
             from cte1
-            join cte2 on cte1.a = cte2.a
+            group by a
         )
-        select * from final
+        select * from cte2
         """
 
-        result = cll(sql,  {'table1': {'a': 'Int', 'b': 'Int'}, 'table2': {'a': 'Int', 'c': 'Int'}})
+        result = cll(sql)
         assert result['a'].type == 'passthrough'
         assert result['a'].depends_on[0].node == 'table1'
         assert result['a'].depends_on[0].column == 'a'
-        assert result['b2'].type == 'derived'
-        assert result['b2'].depends_on[0].node == 'table1'
-        assert result['b2'].depends_on[0].column == 'b'
-        assert result['c'].type == 'passthrough'
-        assert result['c'].depends_on[0].node == 'table2'
-        assert result['c'].depends_on[0].column == 'c'
+        assert result['b1'].type == 'derived'
+        assert result['b1'].depends_on[0].node == 'table1'
+        assert result['b1'].depends_on[0].column == 'b'
 
     def test_union(self):
         sql = """

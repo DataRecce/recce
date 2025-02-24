@@ -174,7 +174,10 @@ def cll(sql, schema=None) -> Dict[str, ColumnLevelDependencyColumn]:
 
                 # transformation type
                 type = column_cll.type
-                if cte_type is not None:
+                if type == 'derived':
+                    # keep current scope type
+                    pass
+                elif cte_type is not None:
                     if len(dedup_col_depends_on) > 1:
                         type = 'derived'
                     elif len(dedup_col_depends_on) == 0:
