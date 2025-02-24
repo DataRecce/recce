@@ -707,7 +707,7 @@ class DbtAdapter(BaseAdapter):
 
         for node in nodes.values():
             resource_type = node.get('resource_type')
-            if resource_type not in {'model', 'seed', 'source'}:
+            if resource_type not in {'model', 'seed', 'source', 'snapshot'}:
                 continue
 
             if resource_type == 'source' or resource_type == 'seed':

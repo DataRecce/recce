@@ -106,7 +106,7 @@ def cll(sql, schema=None) -> Dict[str, ColumnLevelDependencyColumn]:
     try:
         expression = qualify(expression, schema=schema)
     except OptimizeError as e:
-        print(f'Failed to optimize SQL: {str(e)}')
+        raise RecceException(f'Failed to optimize SQL: {str(e)}')
     except SqlglotError as e:
         raise RecceException(f'Failed to qualify SQL: {str(e)}')
 
