@@ -58,6 +58,7 @@ export interface LineageGraphNode {
 export interface LinageGraphColumnNode {
   node: LineageGraphNode;
   column: string;
+  type: string;
   transformationType: string;
 }
 
@@ -436,9 +437,12 @@ export function toReactflow(
           position: { x: 10, y: 60 + columnIndex * 15 },
           parentId: node.id,
           extent: "parent",
+          draggable: false,
           data: {
             node,
             column: column.name,
+            type: column.type,
+            transformationType: column.transformation_type,
           },
           style: {
             zIndex: 9999,
@@ -550,9 +554,6 @@ export const layout = (nodes: Node[], edges: Edge[], direction = "LR") => {
   const dagreGraph = new dagre.graphlib.Graph();
   dagreGraph.setDefaultEdgeLabel(() => ({}));
 
-  const nodeWidth = 300;
-  const nodeHeight = 36;
-
   const isHorizontal = direction === "LR";
   dagreGraph.setGraph({ rankdir: direction });
 
@@ -573,6 +574,8 @@ export const layout = (nodes: Node[], edges: Edge[], direction = "LR") => {
     if (node.type !== "customNode") {
       return;
     }
+    const nodeWidth = node.width || 300;
+    const nodeHeight = node.height || 36;
 
     const nodeWithPosition = dagreGraph.node(node.id);
 

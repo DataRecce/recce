@@ -1,5 +1,5 @@
 import { CloseIcon } from "@chakra-ui/icons";
-import { Flex, Button, Text, IconButton } from "@chakra-ui/react";
+import { Flex, Button, Text, IconButton, Code } from "@chakra-ui/react";
 
 interface ColumnLevelLineageControlProps {
   node: string;
@@ -24,9 +24,10 @@ export const ColumnLevelLineageControl = ({
       bg="white"
       fontSize={"10pt"}
     >
-      <Text>
-        Lineage for {node}.{column}
-      </Text>
+      <Text>Column Lineage for</Text>
+      <Code>
+        {node}.{column}
+      </Code>
       <IconButton
         icon={<CloseIcon />}
         aria-label={""}

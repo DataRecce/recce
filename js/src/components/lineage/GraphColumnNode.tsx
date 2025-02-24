@@ -1,20 +1,8 @@
-import {
-  Box,
-  Divider,
-  Flex,
-  HStack,
-  Icon,
-  Spacer,
-  Tag,
-  TagLabel,
-  TagLeftIcon,
-  Tooltip,
-} from "@chakra-ui/react";
+import { Box, Flex, Spacer, Tag, TagLabel } from "@chakra-ui/react";
 import React, { useState } from "react";
 
 import { Handle, NodeProps, Position, useStore } from "reactflow";
-import { LinageGraphColumnNode, LineageGraphNode } from "./lineage";
-import { getIconForChangeStatus, getIconForResourceType } from "./styles";
+import { LinageGraphColumnNode } from "./lineage";
 
 import "./styles.css";
 
@@ -23,15 +11,60 @@ import { useLineageGraphContext } from "@/lib/hooks/LineageGraphContext";
 
 interface GrapeColumnNodeProps extends NodeProps<LinageGraphColumnNode> {}
 
+const TransformationType = ({
+  transforamtionType,
+}: {
+  transforamtionType: string;
+}) => {
+  let letter = "U";
+  let color = "red";
+
+  if (transforamtionType === "passthrough") {
+    letter = "P";
+    color = "gray";
+  } else if (transforamtionType === "renamed") {
+    letter = "R";
+    color = "orange";
+  } else if (transforamtionType === "derived") {
+    letter = "D";
+    color = "orange";
+  } else {
+    letter = "U";
+    color = "red";
+  }
+
+  // # circle in color
+  return (
+    <Tag
+      fontSize="6pt"
+      size="xs"
+      colorScheme={color}
+      borderRadius="full"
+      paddingX="2px"
+    >
+      <TagLabel>{letter}</TagLabel>
+    </Tag>
+  );
+
+  //   return <Box color={color}>{letter}</Box>;
+};
+
 export function GraphColumnNode({ data }: GrapeColumnNodeProps) {
-  const { id, isHighlighted, isSelected, resourceType, changeStatus } =
-    data.node;
-  const column = data.column;
+  const { name: nodeName } = data.node;
+  const { column, type, transformationType } = data;
   const showContent = useStore((s) => s.transform[2] > 0.3);
 
-  const { interactive, selectNodeMulti, selectMode, advancedImpactRadius } =
-    useLineageViewContext();
+  const { viewOptions } = useLineageViewContext();
   const { lineageGraph } = useLineageGraphContext();
+
+  if (!viewOptions.column_level_lineage) {
+    return <>x</>;
+  }
+
+  const { node: selectedNode, column: selectedColumn } =
+    viewOptions.column_level_lineage;
+
+  const isFocus = column === selectedColumn && nodeName === selectedNode;
 
   return (
     <Flex
@@ -39,10 +72,23 @@ export function GraphColumnNode({ data }: GrapeColumnNodeProps) {
       height="16px"
       padding="0px 10px"
       border="1px solid lightgray"
+      backgroundColor={isFocus ? "#f0f0f0" : "inherit"}
+      _hover={{
+        backgroundColor: isFocus ? "#f0f0f0" : "#f0f0f0",
+      }}
     >
-      <Box fontSize="10px" color="gray">
-        {column}
-      </Box>
+      <Flex
+        fontSize="10px"
+        color="gray"
+        width="100%"
+        gap="3px"
+        alignItems="center"
+      >
+        <TransformationType transforamtionType={transformationType} />
+        <Box>{column}</Box>
+        <Spacer></Spacer>
+        <Box>{type}</Box>
+      </Flex>
       <Handle
         type="target"
         position={Position.Left}

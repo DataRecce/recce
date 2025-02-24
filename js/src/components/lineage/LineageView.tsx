@@ -470,13 +470,16 @@ export function PrivateLineageView(
 
   const onColumnNodeClick = (event: React.MouseEvent, node: Node) => {
     node.data;
-    handleViewOptionsChanged({
-      ...viewOptions,
-      column_level_lineage: {
-        node: node.data.node.name,
-        column: node.data.column,
+    handleViewOptionsChanged(
+      {
+        ...viewOptions,
+        column_level_lineage: {
+          node: node.data.node.name,
+          column: node.data.column,
+        },
       },
-    });
+      false
+    );
 
     return;
   };
@@ -548,7 +551,8 @@ export function PrivateLineageView(
   );
 
   const handleViewOptionsChanged = async (
-    newViewOptions: LineageDiffViewOptions
+    newViewOptions: LineageDiffViewOptions,
+    fitView: boolean = true
   ) => {
     let selectedNodes: string[] | undefined = undefined;
 
@@ -556,25 +560,35 @@ export function PrivateLineageView(
       return;
     }
 
-    try {
-      const result = await select({
-        select: newViewOptions.select,
-        exclude: newViewOptions.exclude,
-        packages: newViewOptions.packages,
-        view_mode: newViewOptions.view_mode,
-      });
-      selectedNodes = result.nodes;
-    } catch (e) {
-      if (e instanceof AxiosError) {
-        toast({
-          title: "Select node error",
-          description: e.response?.data?.detail || e.message,
-          status: "error",
-          isClosable: true,
-          position: "bottom-right",
+    const reselect =
+      viewOptions.select !== newViewOptions.select ||
+      viewOptions.exclude !== newViewOptions.exclude ||
+      viewOptions.packages !== newViewOptions.packages ||
+      viewOptions.view_mode !== newViewOptions.view_mode;
+
+    if (reselect) {
+      try {
+        const result = await select({
+          select: newViewOptions.select,
+          exclude: newViewOptions.exclude,
+          packages: newViewOptions.packages,
+          view_mode: newViewOptions.view_mode,
         });
+        selectedNodes = result.nodes;
+      } catch (e) {
+        if (e instanceof AxiosError) {
+          toast({
+            title: "Select node error",
+            description: e.response?.data?.detail || e.message,
+            status: "error",
+            isClosable: true,
+            position: "bottom-right",
+          });
+        }
+        return;
       }
-      return;
+    } else {
+      selectedNodes = nodes.map((n) => n.id);
     }
 
     let [newNodes, newEdges] = toReactflow(
@@ -588,6 +602,14 @@ export function PrivateLineageView(
       newNodes,
       newEdges
     );
+    if (selectMode === "single" && selectedNode) {
+      const newSelectedNode = newNodes.find(
+        (node) => node.id == selectedNode.id
+      );
+      if (newSelectedNode) {
+        newSelectedNode.data.isSelected = true;
+      }
+    }
     layout(newNodes, newEdges);
     setNodes(newNodes);
     setEdges(newEdges);
@@ -598,10 +620,12 @@ export function PrivateLineageView(
       closeRunResult();
     }
 
-    await new Promise((resolve) => setTimeout(resolve, 1));
-    await (async () => {
-      reactFlow.fitView({ nodes: newNodes, duration: 200 });
-    })();
+    if (fitView) {
+      await new Promise((resolve) => setTimeout(resolve, 1));
+      await (async () => {
+        reactFlow.fitView({ nodes: newNodes, duration: 200 });
+      })();
+    }
   };
 
   const multiNodeAction = useMultiNodesAction(
@@ -950,16 +974,22 @@ export function PrivateLineageView(
 
     // Column Level Lineage
     showColumnLevelLineage: (node: string, column: string) => {
-      handleViewOptionsChanged({
-        ...viewOptions,
-        column_level_lineage: { node, column },
-      });
+      handleViewOptionsChanged(
+        {
+          ...viewOptions,
+          column_level_lineage: { node, column },
+        },
+        false
+      );
     },
     resetColumnLevelLinage: () => {
-      handleViewOptionsChanged({
-        ...viewOptions,
-        column_level_lineage: undefined,
-      });
+      handleViewOptionsChanged(
+        {
+          ...viewOptions,
+          column_level_lineage: undefined,
+        },
+        false
+      );
     },
   };
 
@@ -1043,7 +1073,7 @@ export function PrivateLineageView(
               </HStack>
             </Panel>
             <Panel position="top-left">
-              <Flex direction="column">
+              <Flex direction="column" gap="5px">
                 <BreakingChangeSwitch
                   enabled={breakingChangeEnabled}
                   onChanged={(enabled) => {
