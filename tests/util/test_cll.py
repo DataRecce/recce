@@ -269,20 +269,6 @@ class ColumnLevelLineageTest(unittest.TestCase):
         assert result['b'].type == 'passthrough'
         assert result['b'].depends_on[0].node == 'table2'
 
-        #  a and b are ambiguous column
-        #  -> Column '"a"' could not be resolved
-        #
-        # sql = """
-        #         select a, b
-        #         from table1
-        #         join table2 on table1.id = table2.id
-        #         """
-        # result = cll(sql)
-        # assert result['a'].type == 'passthrough'
-        # assert result['a'].depends_on[0].node == 'table1'
-        # assert result['b'].type == 'passthrough'
-        # assert result['b'].depends_on[0].node == 'table1'
-
     def test_join_with_schema(self):
         sql = """
                 select a, b
