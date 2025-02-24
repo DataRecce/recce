@@ -440,12 +440,12 @@ class ColumnLevelLineageTest(unittest.TestCase):
         select a, b from table2
         """
         result = cll(sql)
-        assert result['a'].type == 'passthrough'
+        assert result['a'].type == 'derived'
         assert result['a'].depends_on[0].node == 'table1'
         assert result['a'].depends_on[0].column == 'a'
         assert result['a'].depends_on[1].node == 'table2'
         assert result['a'].depends_on[1].column == 'a'
-        assert result['b'].type == 'passthrough'
+        assert result['b'].type == 'derived'
         assert result['b'].depends_on[0].node == 'table1'
         assert result['b'].depends_on[0].column == 'b'
         assert result['b'].depends_on[1].node == 'table2'
@@ -461,7 +461,7 @@ class ColumnLevelLineageTest(unittest.TestCase):
         select * from cte1
         """
         result = cll(sql)
-        assert result['a'].type == 'passthrough'
+        assert result['a'].type == 'derived'
         assert result['a'].depends_on[0].node == 'table1'
         assert result['a'].depends_on[0].column == 'a'
         assert result['a'].depends_on[1].node == 'table2'
@@ -474,7 +474,7 @@ class ColumnLevelLineageTest(unittest.TestCase):
         select a from table2
         """
         result = cll(sql)
-        assert result['a'].type == 'passthrough'
+        assert result['a'].type == 'derived'
         assert result['a'].depends_on[0].node == 'table1'
         assert result['a'].depends_on[0].column == 'a'
         assert result['a'].depends_on[1].node == 'table2'
@@ -487,7 +487,7 @@ class ColumnLevelLineageTest(unittest.TestCase):
         select a from table2
         """
         result = cll(sql)
-        assert result['a'].type == 'passthrough'
+        assert result['a'].type == 'derived'
         assert result['a'].depends_on[0].node == 'table1'
         assert result['a'].depends_on[0].column == 'a'
         assert result['a'].depends_on[1].node == 'table2'

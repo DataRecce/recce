@@ -3,7 +3,7 @@ from typing import Dict, List, Literal
 
 from sqlglot import parse_one
 from sqlglot.errors import SqlglotError, OptimizeError
-from sqlglot.expressions import Column, Alias, Func, Binary, Paren, Case, Expression, If, Union
+from sqlglot.expressions import Column, Alias, Func, Binary, Paren, Case, Expression, If, Union, Intersect
 from sqlglot.optimizer import traverse_scope
 from sqlglot.optimizer.qualify import qualify
 
@@ -116,14 +116,14 @@ def cll(sql, schema=None) -> Dict[str, ColumnLevelDependencyColumn]:
         scope_lineage = {}
         default_table = scope.expression.args['from'].name if scope.expression.args.get('from') else None
 
-        if len(scope.union_scopes) > 1:
-            # union, intersection
+        if isinstance(scope.expression, Union) or isinstance(scope.expression, Intersect):
             for union_scope in scope.union_scopes:
                 for k, v in global_lineage[union_scope].items():
                     if k not in scope_lineage:
                         scope_lineage[k] = v
                     else:
                         scope_lineage[k].depends_on.extend(v.depends_on)
+                        scope_lineage[k].type = 'derived'
         else:
             for select in scope.expression.selects:
                 # instance of Column
