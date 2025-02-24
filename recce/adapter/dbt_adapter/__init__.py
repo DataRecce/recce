@@ -627,8 +627,8 @@ class DbtAdapter(BaseAdapter):
             if catalog is not None and unique_id in catalog.nodes:
                 columns = {}
                 primary_key = None
-                for col_name, col in catalog.nodes[unique_id].columns.items():
-                    col = dict(name=col_name, type=col.type)
+                for col_name, col_metadata in catalog.nodes[unique_id].columns.items():
+                    col = dict(name=col_name, type=col_metadata.type)
                     if col_name in cols_not_null:
                         col['not_null'] = True
                     if col_name in cols_unique:
@@ -652,7 +652,13 @@ class DbtAdapter(BaseAdapter):
             }
 
             if catalog is not None and unique_id in catalog.sources:
-                nodes[unique_id]['columns'] = catalog.sources[unique_id].columns
+                nodes[unique_id]['columns'] = {
+                    col_name: {
+                        'name': col_name,
+                        'type': col_metadata.type
+                    }
+                    for col_name, col_metadata in catalog.sources[unique_id].columns.items()
+                }
 
         for exposure in manifest_dict['exposures'].values():
             nodes[exposure['unique_id']] = {
