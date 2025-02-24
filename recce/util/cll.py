@@ -2,9 +2,12 @@ from dataclasses import dataclass
 from typing import Dict, List, Literal
 
 from sqlglot import parse_one
+from sqlglot.errors import SqlglotError, OptimizeError
 from sqlglot.expressions import Column, Alias, Func, Binary, Paren, Case, Expression, If
 from sqlglot.optimizer import traverse_scope
 from sqlglot.optimizer.qualify import qualify
+
+from recce.exceptions import RecceException
 
 
 @dataclass
@@ -97,13 +100,15 @@ def cll(sql, schema=None) -> Dict[str, ColumnLevelDependencyColumn]:
     #      }
     try:
         expression = parse_one(sql)
-    except Exception:
-        raise ValueError("Invalid SQL input")
+    except SqlglotError as e:
+        raise RecceException(f'Failed to parse SQL: {str(e)}')
 
     try:
         expression = qualify(expression, schema=schema)
-    except Exception:
-        pass
+    except OptimizeError as e:
+        raise RecceException(f'Failed to optimize SQL: {str(e)}')
+    except SqlglotError as e:
+        raise RecceException(f'Failed to qualify SQL: {str(e)}')
 
     result = {}
     global_lineage = {}
