@@ -58,6 +58,7 @@ export interface LineageGraphNode {
 export interface LinageGraphColumnNode {
   node: LineageGraphNode;
   column: string;
+  transformationType: string;
 }
 
 export interface LineageGraphEdge {
@@ -432,12 +433,15 @@ export function toReactflow(
 
         nodes.push({
           id: columnKey,
-          position: { x: 50, y: 40 + columnIndex * 10 },
+          position: { x: 10, y: 60 + columnIndex * 15 },
           parentId: node.id,
           extent: "parent",
           data: {
             node,
             column: column.name,
+          },
+          style: {
+            zIndex: 9999,
           },
           type: "customColumnNode",
           targetPosition: Position.Left,
@@ -456,6 +460,9 @@ export function toReactflow(
             id: `${source}_${target}`,
             source,
             target,
+            style: {
+              zIndex: 9999,
+            },
           });
         }
 
@@ -468,7 +475,7 @@ export function toReactflow(
       id: node.id,
       position: { x: 0, y: 0 },
       width: 300,
-      height: 36 + columnIndex * 10,
+      height: 36 + columnIndex * 15,
       data: {
         ...node,
         columnSet: nodeColumnSet,

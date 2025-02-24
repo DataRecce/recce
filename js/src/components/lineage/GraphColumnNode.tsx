@@ -34,12 +34,33 @@ export function GraphColumnNode({ data }: GrapeColumnNodeProps) {
   const { lineageGraph } = useLineageGraphContext();
 
   return (
-    <Flex>
+    <Flex
+      width="280px"
+      height="16px"
+      padding="0px 10px"
+      border="1px solid lightgray"
+    >
       <Box fontSize="10px" color="gray">
         {column}
       </Box>
-      <Handle type="target" position={Position.Left} isConnectable={false} />
-      <Handle type="source" position={Position.Right} isConnectable={false} />
+      <Handle
+        type="target"
+        position={Position.Left}
+        isConnectable={false}
+        style={{
+          left: 0,
+          visibility: "hidden",
+        }}
+      />
+      <Handle
+        type="source"
+        position={Position.Right}
+        isConnectable={false}
+        style={{
+          right: 0,
+          visibility: "hidden",
+        }}
+      />
     </Flex>
   );
 }

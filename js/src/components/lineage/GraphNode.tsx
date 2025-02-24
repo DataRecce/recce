@@ -147,13 +147,19 @@ export function GraphNode({ data }: GraphNodeProps) {
 
   const { icon: resourceIcon } = getIconForResourceType(resourceType);
   const [isHovered, setIsHovered] = useState(false);
-  const { interactive, selectNodeMulti, selectMode, advancedImpactRadius } =
-    useLineageViewContext();
+  const {
+    interactive,
+    selectNodeMulti,
+    selectMode,
+    advancedImpactRadius,
+    viewOptions,
+  } = useLineageViewContext();
   const { lineageGraph } = useLineageGraphContext();
   const isNonBreakingChange =
     advancedImpactRadius &&
     changeStatus === "modified" &&
     lineageGraph?.nonBreakingSet.has(id);
+  const isCLL = !!viewOptions.column_level_lineage;
 
   // text color, icon
   const {
@@ -178,16 +184,28 @@ export function GraphNode({ data }: GraphNodeProps) {
   const name = data?.name;
 
   return (
-    <Tooltip
-      label={resourceType === "model" ? name : `${name} (${resourceType})`}
-      placement="top"
+    <Flex
+      direction="column"
+      width="300px"
+      borderColor={borderColor}
+      borderWidth={borderWidth}
+      borderStyle={borderStyle}
+      borderRadius={8}
+      transition="box-shadow 0.2s ease-in-out"
+      padding={0}
+      filter={(function () {
+        if (selectMode === "action_result") {
+          return !!data?.action ? "none" : "opacity(0.2) grayscale(50%)";
+        } else {
+          return isHighlighted || isSelected
+            ? "none"
+            : "opacity(0.2) grayscale(50%)";
+        }
+      })()}
+      onMouseEnter={() => setIsHovered(true)}
+      onMouseLeave={() => setIsHovered(false)}
     >
       <Flex
-        width="300px"
-        borderColor={borderColor}
-        borderWidth={borderWidth}
-        borderStyle={borderStyle}
-        borderRadius={8}
         backgroundColor={(function () {
           if (showContent) {
             if (selectMode === "multi") {
@@ -205,19 +223,6 @@ export function GraphNode({ data }: GraphNodeProps) {
             return isSelected ? color : backgroundColor;
           }
         })()}
-        transition="box-shadow 0.2s ease-in-out"
-        padding={0}
-        filter={(function () {
-          if (selectMode === "action_result") {
-            return !!data?.action ? "none" : "opacity(0.2) grayscale(50%)";
-          } else {
-            return isHighlighted || isSelected
-              ? "none"
-              : "opacity(0.2) grayscale(50%)";
-          }
-        })()}
-        onMouseEnter={() => setIsHovered(true)}
-        onMouseLeave={() => setIsHovered(false)}
       >
         <Flex
           bg={color}
@@ -271,7 +276,14 @@ export function GraphNode({ data }: GraphNodeProps) {
               textOverflow="ellipsis"
               whiteSpace="nowrap"
             >
-              {name}
+              <Tooltip
+                label={
+                  resourceType === "model" ? name : `${name} (${resourceType})`
+                }
+                placement="top"
+              >
+                {name}
+              </Tooltip>
             </Box>
 
             <Icon
@@ -337,32 +349,26 @@ export function GraphNode({ data }: GraphNodeProps) {
                 ))}
             </HStack>
           </Flex>
-          {data?.columnSet && (
-            <>
-              <Divider />
-              <Box
-                height={`${data?.columnSet.size * 10}px`}
-                overflow="auto"
-              ></Box>
-            </>
-          )}
         </Flex>
-
-        {Object.keys(data?.parents ?? {}).length > 0 && (
-          <Handle
-            type="target"
-            position={Position.Left}
-            isConnectable={false}
-          />
-        )}
-        {Object.keys(data?.children ?? {}).length > 0 && (
-          <Handle
-            type="source"
-            position={Position.Right}
-            isConnectable={false}
-          />
-        )}
       </Flex>
-    </Tooltip>
+      {data?.columnSet && data?.columnSet.size > 0 && (
+        <>
+          <Divider />
+          <Box p="10px 20px">
+            <Box
+              height={`${data?.columnSet.size * 15}px`}
+              overflow="auto"
+            ></Box>
+          </Box>
+        </>
+      )}
+
+      {Object.keys(data?.parents ?? {}).length > 0 && (
+        <Handle type="target" position={Position.Left} isConnectable={false} />
+      )}
+      {Object.keys(data?.children ?? {}).length > 0 && (
+        <Handle type="source" position={Position.Right} isConnectable={false} />
+      )}
+    </Flex>
   );
 }
