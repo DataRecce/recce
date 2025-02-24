@@ -135,7 +135,7 @@ export function NodeView({ node, onCloseNode }: NodeViewProps) {
           <MenuButton
             as={Button}
             size="xs"
-            variant="ghost"
+            variant="outline"
             rightIcon={<ChevronDownIcon />}
           >
             Explore
