@@ -554,6 +554,36 @@ class DbtAdapter(BaseAdapter):
 
         return self.adapter.execute(sql, auto_begin=auto_begin, fetch=fetch, limit=limit)
 
+    def build_parent_map(self, nodes: Dict, base: Optional[bool] = False) -> Dict[str, List[str]]:
+        manifest = self.curr_manifest if base is False else self.base_manifest
+        manifest_dict = manifest.to_dict()
+
+        node_ids = nodes.keys()
+        parent_map = {}
+        for k, parents in manifest_dict['parent_map'].items():
+            if k not in node_ids:
+                continue
+            parent_map[k] = [parent for parent in parents if parent in node_ids]
+
+        return parent_map
+
+    @lru_cache(maxsize=2)
+    def build_table_map(self, base: Optional[bool] = False) -> Dict[str, str]:
+        manifest = self.curr_manifest if base is False else self.base_manifest
+        manifest_dict = manifest.to_dict()
+
+        table_map = {}
+        for node in manifest_dict['nodes'].values():
+            resource_type = node['resource_type']
+            if resource_type not in ['model', 'seed', 'exposure', 'snapshot']:
+                continue
+            table_map[node['unique_id']] = node.get('alias')
+
+        for source in manifest_dict['sources'].values():
+            table_map[source['unique_id']] = source.get('identifier')
+
+        return table_map
+
     def get_lineage(self, base: Optional[bool] = False):
         manifest = self.curr_manifest if base is False else self.base_manifest
         catalog = self.curr_catalog if base is False else self.base_catalog
@@ -687,20 +717,19 @@ class DbtAdapter(BaseAdapter):
                     'config': semantic_models['config'],
                 }
 
-        nodeIds = nodes.keys()
-        parent_map = {}
-        for k, parents in manifest_dict['parent_map'].items():
-            if k not in nodeIds:
-                continue
-            parent_map[k] = [parent for parent in parents if parent in nodeIds]
+        parent_map = self.build_parent_map(nodes, base)
+        table_map = {}
 
         # Handle column-level lineage, only enable if env var is set to true
         if os.getenv('RECCE_CLL_ENABLED') == 'true':
-            self.append_column_lineage(nodes, parent_map, base)
+            if base is False:
+                table_map = self.build_table_map(base)
+                self.append_column_lineage(nodes, parent_map, base)
 
         return dict(
             parent_map=parent_map,
             nodes=nodes,
+            table_map=table_map,
             manifest_metadata=manifest_metadata,
             catalog_metadata=catalog_metadata,
         )

@@ -380,3 +380,90 @@ class ColumnLevelLineageTest(unittest.TestCase):
         assert result['y'].depends_on[0].column == 'a'
         assert result['y'].depends_on[1].node == 'table1'
         assert result['y'].depends_on[1].column == 'b'
+
+    def test_cte_with_transform3(self):
+        sql = """
+        with
+        cte1 as (
+            select
+                a,
+                b
+            from table1
+        ),
+        cte2 as (
+            select
+                a,
+                sum(b) as b1
+            from cte1
+            group by a
+        )
+        select * from cte2
+        """
+
+        result = cll(sql)
+        assert result['a'].type == 'passthrough'
+        assert result['a'].depends_on[0].node == 'table1'
+        assert result['a'].depends_on[0].column == 'a'
+        assert result['b1'].type == 'derived'
+        assert result['b1'].depends_on[0].node == 'table1'
+        assert result['b1'].depends_on[0].column == 'b'
+
+    def test_union(self):
+        sql = """
+        select a, b from table1
+        union
+        select a, b from table2
+        """
+        result = cll(sql)
+        assert result['a'].type == 'derived'
+        assert result['a'].depends_on[0].node == 'table1'
+        assert result['a'].depends_on[0].column == 'a'
+        assert result['a'].depends_on[1].node == 'table2'
+        assert result['a'].depends_on[1].column == 'a'
+        assert result['b'].type == 'derived'
+        assert result['b'].depends_on[0].node == 'table1'
+        assert result['b'].depends_on[0].column == 'b'
+        assert result['b'].depends_on[1].node == 'table2'
+        assert result['b'].depends_on[1].column == 'b'
+
+    def test_union_cte(self):
+        sql = """
+        with cte1 as (
+            select a from table1
+            union
+            select a from table2
+        )
+        select * from cte1
+        """
+        result = cll(sql)
+        assert result['a'].type == 'derived'
+        assert result['a'].depends_on[0].node == 'table1'
+        assert result['a'].depends_on[0].column == 'a'
+        assert result['a'].depends_on[1].node == 'table2'
+        assert result['a'].depends_on[1].column == 'a'
+
+    def test_union_all(self):
+        sql = """
+        select a from table1
+        union all
+        select a from table2
+        """
+        result = cll(sql)
+        assert result['a'].type == 'derived'
+        assert result['a'].depends_on[0].node == 'table1'
+        assert result['a'].depends_on[0].column == 'a'
+        assert result['a'].depends_on[1].node == 'table2'
+        assert result['a'].depends_on[1].column == 'a'
+
+    def test_intersect(self):
+        sql = """
+        select a from table1
+        intersect
+        select a from table2
+        """
+        result = cll(sql)
+        assert result['a'].type == 'derived'
+        assert result['a'].depends_on[0].node == 'table1'
+        assert result['a'].depends_on[0].column == 'a'
+        assert result['a'].depends_on[1].node == 'table2'
+        assert result['a'].depends_on[1].column == 'a'
