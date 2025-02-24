@@ -297,10 +297,6 @@ export function PrivateLineageView(
   }>({ x: 0, y: 0 });
 
   const [breakingChangeEnabled, setBreakingChangeEnabled] = useState(false);
-  const [columnLevelLinage, setColumnLevelLinage] = useState<{
-    node: string;
-    column: string;
-  }>();
 
   const toast = useToast();
 
@@ -341,7 +337,7 @@ export function PrivateLineageView(
       let [nodes, edges] = toReactflow(
         lineageGraph,
         selectedNodes,
-        columnLevelLinage
+        viewOptions.column_level_lineage
       );
       let nodeSet = selectAllNodes(lineageGraph);
       if (isModelsChanged) {
@@ -567,7 +563,7 @@ export function PrivateLineageView(
     let [newNodes, newEdges] = toReactflow(
       lineageGraph,
       selectedNodes,
-      columnLevelLinage
+      newViewOptions.column_level_lineage
     );
     const nodeSet = selectImpactRadius(lineageGraph, breakingChangeEnabled);
     [newNodes, newEdges] = highlightNodes(
@@ -937,10 +933,16 @@ export function PrivateLineageView(
 
     // Column Level Lineage
     showColumnLevelLineage: (node: string, column: string) => {
-      setColumnLevelLinage({ node, column });
+      handleViewOptionsChanged({
+        ...viewOptions,
+        column_level_lineage: { node, column },
+      });
     },
     resetColumnLevelLinage: () => {
-      setColumnLevelLinage(undefined);
+      handleViewOptionsChanged({
+        ...viewOptions,
+        column_level_lineage: undefined,
+      });
     },
   };
 
@@ -1033,11 +1035,16 @@ export function PrivateLineageView(
                     trackBreakingChange({ enabled });
                   }}
                 />
-                {columnLevelLinage && (
+                {viewOptions.column_level_lineage && (
                   <ColumnLevelLineageControl
-                    node={columnLevelLinage.node}
-                    column={columnLevelLinage.column}
-                    reset={() => setColumnLevelLinage(undefined)}
+                    node={viewOptions.column_level_lineage.node}
+                    column={viewOptions.column_level_lineage.column}
+                    reset={() => {
+                      handleViewOptionsChanged({
+                        ...viewOptions,
+                        column_level_lineage: undefined,
+                      });
+                    }}
                   ></ColumnLevelLineageControl>
                 )}
                 {nodes.length == 0 && (
