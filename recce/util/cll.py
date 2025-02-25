@@ -1,7 +1,7 @@
 from dataclasses import dataclass
 from typing import Dict, List, Literal
 
-from sqlglot import parse_one
+from sqlglot import parse_one, Dialect
 from sqlglot.errors import SqlglotError, OptimizeError
 from sqlglot.expressions import Column, Alias, Func, Binary, Paren, Case, Expression, If, Union, Intersect
 from sqlglot.optimizer import traverse_scope
@@ -90,7 +90,7 @@ def _cll_expression(expression, default_table) -> ColumnLevelDependencyColumn:
         return ColumnLevelDependencyColumn(type='source', depends_on=depends_on)
 
 
-def cll(sql, schema=None) -> Dict[str, ColumnLevelDependencyColumn]:
+def cll(sql, schema=None, dialect=None) -> Dict[str, ColumnLevelDependencyColumn]:
     # given a sql, return the columns depends on
     # {
     #   'column1': {
@@ -98,13 +98,16 @@ def cll(sql, schema=None) -> Dict[str, ColumnLevelDependencyColumn]:
     #      'depends_on': {
     #           {node: model_id, column: column}, ...]
     #      }
+
+    dialect = Dialect.get(dialect) if dialect is not None else None
+
     try:
-        expression = parse_one(sql)
+        expression = parse_one(sql, dialect=dialect)
     except SqlglotError as e:
         raise RecceException(f'Failed to parse SQL: {str(e)}')
 
     try:
-        expression = qualify(expression, schema=schema)
+        expression = qualify(expression, schema=schema,  dialect=dialect)
     except OptimizeError as e:
         raise RecceException(f'Failed to optimize SQL: {str(e)}')
     except SqlglotError as e:
