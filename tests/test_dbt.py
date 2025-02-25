@@ -1,6 +1,6 @@
 import os
 from unittest import TestCase
-from unittest.mock import patch
+from unittest.mock import patch, MagicMock
 
 from recce.adapter.dbt_adapter import load_manifest, load_catalog, DbtAdapter
 from recce.exceptions import RecceException
@@ -35,6 +35,10 @@ class TestAdapterColumnLineage(TestCase):
         self.dbt_adapter = DbtAdapter(curr_manifest=manifest)
         self.patcher_generate_sql = patch.object(self.dbt_adapter, 'generate_sql')
         self.mock_generate_sql = self.patcher_generate_sql.start()
+
+        self.mock_adapter = MagicMock()
+        self.dbt_adapter.adapter = self.mock_adapter
+        self.mock_adapter.type.return_value = None
 
         # mock 'is_python_model' per test case, default to False
         self.patcher_is_python_model = patch.object(self.dbt_adapter, 'is_python_model', return_value=False)

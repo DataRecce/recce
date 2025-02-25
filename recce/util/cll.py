@@ -107,7 +107,7 @@ def cll(sql, schema=None, dialect=None) -> Dict[str, ColumnLevelDependencyColumn
         raise RecceException(f'Failed to parse SQL: {str(e)}')
 
     try:
-        expression = qualify(expression, schema=schema,  dialect=dialect)
+        expression = qualify(expression, schema=schema, dialect=dialect)
     except OptimizeError as e:
         raise RecceException(f'Failed to optimize SQL: {str(e)}')
     except SqlglotError as e:
