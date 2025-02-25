@@ -12,20 +12,20 @@ import { useLineageGraphContext } from "@/lib/hooks/LineageGraphContext";
 interface GrapeColumnNodeProps extends NodeProps<LinageGraphColumnNode> {}
 
 const TransformationType = ({
-  transforamtionType,
+  transformationType,
 }: {
-  transforamtionType: string;
+  transformationType: string;
 }) => {
   let letter = "U";
   let color = "red";
 
-  if (transforamtionType === "passthrough") {
+  if (transformationType === "passthrough") {
     letter = "P";
     color = "gray";
-  } else if (transforamtionType === "renamed") {
+  } else if (transformationType === "renamed") {
     letter = "R";
     color = "orange";
-  } else if (transforamtionType === "derived") {
+  } else if (transformationType === "derived") {
     letter = "D";
     color = "orange";
   } else {
@@ -84,7 +84,7 @@ export function GraphColumnNode({ data }: GrapeColumnNodeProps) {
         gap="3px"
         alignItems="center"
       >
-        <TransformationType transforamtionType={transformationType} />
+        <TransformationType transformationType={transformationType} />
         <Box>{column}</Box>
         <Spacer></Spacer>
         <Box>{type}</Box>
