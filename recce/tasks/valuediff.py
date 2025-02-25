@@ -69,7 +69,7 @@ class ValueDiffMixin:
                 invalids = row[0]
                 if invalids > 0:
                     raise RecceException(
-                        f"Invalid primary key: {primary_key}. The column should be unique. Please check by this sql: '{sql}'")
+                        f"Invalid primary key: \"{primary_key}\". The column should be unique. Please check by this sql: '{sql}'")
                 break
             else:
                 # it will never happen unless we use a wrong check sql

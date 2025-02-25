@@ -1,4 +1,5 @@
 import asyncio
+import logging
 from typing import List, Optional
 
 from recce.core import default_context
@@ -7,6 +8,7 @@ from recce.models import RunType, Run, RunDAO
 from recce.models.types import RunStatus
 
 running_tasks = {}
+logger = logging.getLogger('uvicorn')
 
 
 def _get_ref_model(sql_template: str) -> Optional[str]:
@@ -136,7 +138,9 @@ def submit_run(type, params, check_id=None):
             asyncio.run_coroutine_threadsafe(update_run_result(run.run_id, None, e), loop)
             if isinstance(e, RecceException) and e.is_raise is False:
                 return None
-            raise e
+            failed_reason = str(e).replace('. ', ".\n")
+            logger.error(f"Failed to execute {run_type} task: {failed_reason}")
+            return None
 
     future = loop.run_in_executor(None, fn)
     return run, future
