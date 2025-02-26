@@ -22,11 +22,13 @@ export function ColumnNameCell({
   name,
   baseType,
   currentType,
+  singleEnv,
 }: {
   model: string;
   name: string;
   baseType?: string;
   currentType?: string;
+  singleEnv?: boolean;
 }) {
   const { runAction } = useRecceActionContext();
   const { showColumnLevelLineage } = useLineageViewContext();
@@ -53,25 +55,8 @@ export function ColumnNameCell({
     showColumnLevelLineage(model, name);
   };
 
-  return (
-    <Flex alignItems={"center"}>
-      <Box overflow="hidden" textOverflow="ellipsis" whiteSpace="nowrap">
-        {name}
-      </Box>
-      <Spacer />
-      {/* show icon button with eye icon */}
-      <IconButton
-        icon={<LuEye />}
-        aria-label={""}
-        className="row-context-menu"
-        visibility="hidden"
-        width={"0px"}
-        minWidth={"0px"}
-        variant="unstyled"
-        size={"sm"}
-        onClick={handleViewCll}
-      ></IconButton>
-
+  const ActionMenu = () => {
+    return (
       <Menu>
         {({ isOpen }) => (
           <>
@@ -89,8 +74,8 @@ export function ColumnNameCell({
             <Portal>
               <MenuList lineHeight="20px">
                 {/* <MenuGroup title="Column" m="0" p="4px 12px">
-                  <MenuItem fontSize="10pt">Set Alias Name</MenuItem>
-                </MenuGroup> */}
+              <MenuItem fontSize="10pt">Set Alias Name</MenuItem>
+            </MenuGroup> */}
                 <MenuGroup title="Diff" m="0" p="4px 12px">
                   <MenuItem
                     fontSize="10pt"
@@ -115,6 +100,28 @@ export function ColumnNameCell({
           </>
         )}
       </Menu>
+    );
+  };
+
+  return (
+    <Flex alignItems={"center"}>
+      <Box overflow="hidden" textOverflow="ellipsis" whiteSpace="nowrap">
+        {name}
+      </Box>
+      <Spacer />
+      {/* show icon button with eye icon */}
+      <IconButton
+        icon={<LuEye />}
+        aria-label={""}
+        className="row-context-menu"
+        visibility="hidden"
+        width={"0px"}
+        minWidth={"0px"}
+        variant="unstyled"
+        size={"sm"}
+        onClick={handleViewCll}
+      ></IconButton>
+      {!singleEnv && <ActionMenu />}
     </Flex>
   );
 }
