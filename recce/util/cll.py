@@ -51,7 +51,8 @@ def _cll_expression(expression, default_table) -> ColumnLevelDependencyColumn:
         for expr in ifs:
             depends_on_one = _cll_expression(expr, default_table).depends_on
             depends_on.extend(depends_on_one)
-        depends_on.extend(_cll_expression(default, default_table).depends_on)
+        if default is not None:
+            depends_on.extend(_cll_expression(default, default_table).depends_on)
         type = 'derived' if depends_on else 'source'
         return ColumnLevelDependencyColumn(type=type, depends_on=depends_on)
     elif isinstance(expression, If):
