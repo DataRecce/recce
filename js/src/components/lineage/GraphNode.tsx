@@ -186,10 +186,6 @@ export function GraphNode({ data }: GraphNodeProps) {
     <Flex
       direction="column"
       width="300px"
-      borderColor={borderColor}
-      borderWidth={borderWidth}
-      borderStyle={borderStyle}
-      borderRadius={8}
       transition="box-shadow 0.2s ease-in-out"
       padding={0}
       filter={(function () {
@@ -205,6 +201,9 @@ export function GraphNode({ data }: GraphNodeProps) {
       onMouseLeave={() => setIsHovered(false)}
     >
       <Flex
+        borderColor={borderColor}
+        borderWidth={borderWidth}
+        borderStyle={borderStyle}
         borderTopRadius={8}
         borderBottomRadius={showColumns ? 0 : 8}
         backgroundColor={(function () {
@@ -354,7 +353,14 @@ export function GraphNode({ data }: GraphNodeProps) {
         </Flex>
       </Flex>
       {data?.columnSet && data?.columnSet.size > 0 && (
-        <Box p="6px 20px" borderTop={borderWidth} borderColor={borderColor}>
+        <Box
+          p="10px 20px"
+          borderColor={borderColor}
+          borderWidth={borderWidth}
+          borderTopWidth={0}
+          borderStyle={borderStyle}
+          borderBottomRadius={8}
+        >
           <Box height={`${data?.columnSet.size * 15}px`} overflow="auto"></Box>
         </Box>
       )}
