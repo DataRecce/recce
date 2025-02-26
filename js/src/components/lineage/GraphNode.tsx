@@ -182,6 +182,7 @@ export function GraphNode({ data }: GraphNodeProps) {
   let boxShadow = data.isSelected ? selectedNodeShadowBox : "unset";
 
   const name = data?.name;
+  const showColumns = data?.columnSet && data?.columnSet.size > 0;
 
   return (
     <Flex
@@ -206,6 +207,8 @@ export function GraphNode({ data }: GraphNodeProps) {
       onMouseLeave={() => setIsHovered(false)}
     >
       <Flex
+        borderTopRadius={8}
+        borderBottomRadius={showColumns ? 0 : 8}
         backgroundColor={(function () {
           if (showContent) {
             if (selectMode === "multi") {
@@ -223,6 +226,7 @@ export function GraphNode({ data }: GraphNodeProps) {
             return isSelected ? color : backgroundColor;
           }
         })()}
+        height="60px"
       >
         <Flex
           bg={color}
@@ -352,15 +356,9 @@ export function GraphNode({ data }: GraphNodeProps) {
         </Flex>
       </Flex>
       {data?.columnSet && data?.columnSet.size > 0 && (
-        <>
-          <Divider />
-          <Box p="10px 20px">
-            <Box
-              height={`${data?.columnSet.size * 15}px`}
-              overflow="auto"
-            ></Box>
-          </Box>
-        </>
+        <Box p="6px 20px" borderTop={borderWidth} borderColor={borderColor}>
+          <Box height={`${data?.columnSet.size * 15}px`} overflow="auto"></Box>
+        </Box>
       )}
 
       {Object.keys(data?.parents ?? {}).length > 0 && (

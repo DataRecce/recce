@@ -434,7 +434,7 @@ export function toReactflow(
 
         nodes.push({
           id: columnKey,
-          position: { x: 10, y: 60 + columnIndex * 15 },
+          position: { x: 10, y: 70 + columnIndex * 15 },
           parentId: node.id,
           extent: "parent",
           draggable: false,

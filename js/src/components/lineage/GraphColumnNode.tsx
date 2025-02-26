@@ -55,16 +55,14 @@ export function GraphColumnNode({ data }: GrapeColumnNodeProps) {
   const showContent = useStore((s) => s.transform[2] > 0.3);
 
   const { viewOptions } = useLineageViewContext();
-  const { lineageGraph } = useLineageGraphContext();
 
-  if (!viewOptions.column_level_lineage) {
-    return <>x</>;
-  }
-
-  const { node: selectedNode, column: selectedColumn } =
-    viewOptions.column_level_lineage;
-
+  const selectedNode = viewOptions.column_level_lineage?.node;
+  const selectedColumn = viewOptions.column_level_lineage?.column;
   const isFocus = column === selectedColumn && nodeName === selectedNode;
+
+  if (!showContent) {
+    return <></>;
+  }
 
   return (
     <Flex
