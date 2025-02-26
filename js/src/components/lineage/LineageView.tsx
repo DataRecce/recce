@@ -607,33 +607,37 @@ export function PrivateLineageView(
       return;
     }
 
-    const selectedRunModel = run?.params?.model;
-    // Create a mock MouseEvent
-    const mockEvent = new MouseEvent("click", {
-      bubbles: true,
-      cancelable: true,
-      view: window,
-    }) as unknown as React.MouseEvent<Element, MouseEvent>;
+    if (selectMode === "single") {
+      // Skip the following logic if the select mode is not single
+      const selectedRunModel = run?.params?.model;
+      // Create a mock MouseEvent
+      const mockEvent = new MouseEvent("click", {
+        bubbles: true,
+        cancelable: true,
+        view: window,
+      }) as unknown as React.MouseEvent<Element, MouseEvent>;
 
-    if (selectedRunModel) {
-      // If the run result is related to a node, select the node to show NodeView
-      const node = findNodeByName(selectedRunModel);
-      if (!node) {
-        // Cannot find the node in the current nodes, try to change the view mode to 'all'
-        handleViewOptionsChanged({
-          ...viewOptions,
-          view_mode: "all",
-        });
-      } else if (selectedNode !== node.data) {
-        // Only select the node if it is not already selected
-        onNodeClick(mockEvent, node);
+      if (selectedRunModel) {
+        // If the run result is related to a node, select the node to show NodeView
+        const node = findNodeByName(selectedRunModel);
+        if (!node) {
+          // Cannot find the node in the current nodes, try to change the view mode to 'all'
+          handleViewOptionsChanged({
+            ...viewOptions,
+            view_mode: "all",
+          });
+        } else if (selectedNode !== node.data) {
+          // Only select the node if it is not already selected
+          onNodeClick(mockEvent, node);
+        }
+      } else {
+        // If the run result is not related to a node, close the NodeView
+        onNodeViewClosed();
       }
-    } else {
-      // If the run result is not related to a node, close the NodeView
-      onNodeViewClosed();
     }
+
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [run, viewOptions, isRunResultOpen]);
+  }, [run, viewOptions, isRunResultOpen, selectMode]);
 
   if (isLoading) {
     return (
