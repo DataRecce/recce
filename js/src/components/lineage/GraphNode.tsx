@@ -159,7 +159,6 @@ export function GraphNode({ data }: GraphNodeProps) {
     advancedImpactRadius &&
     changeStatus === "modified" &&
     lineageGraph?.nonBreakingSet.has(id);
-  const isCLL = !!viewOptions.column_level_lineage;
 
   // text color, icon
   const {
@@ -179,7 +178,6 @@ export function GraphNode({ data }: GraphNodeProps) {
   const selectedNodeShadowBox = "rgba(3, 102, 214, 0.5) 5px 5px 10px 3px";
   let borderWidth = "2px";
   let borderColor = color;
-  let boxShadow = data.isSelected ? selectedNodeShadowBox : "unset";
 
   const name = data?.name;
   const showColumns = data?.columnSet && data?.columnSet.size > 0;
@@ -198,7 +196,7 @@ export function GraphNode({ data }: GraphNodeProps) {
         if (selectMode === "action_result") {
           return !!data?.action ? "none" : "opacity(0.2) grayscale(50%)";
         } else {
-          return isHighlighted || isSelected
+          return isHighlighted || isSelected || isHovered
             ? "none"
             : "opacity(0.2) grayscale(50%)";
         }
@@ -217,13 +215,13 @@ export function GraphNode({ data }: GraphNodeProps) {
               if (!data.action) {
                 return "white";
               } else {
-                return isSelected ? backgroundColor : color;
+                return isSelected || isHovered ? backgroundColor : color;
               }
             } else {
-              return isSelected ? backgroundColor : "white";
+              return isSelected || isHovered ? backgroundColor : "white";
             }
           } else {
-            return isSelected ? color : backgroundColor;
+            return isSelected || isHovered ? color : backgroundColor;
           }
         })()}
         height="60px"

@@ -355,34 +355,6 @@ export function PrivateLineageView(
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [lineageGraph]);
 
-  const onNodeMouseEnter = (event: React.MouseEvent, node: Node) => {
-    if (!lineageGraph) {
-      return;
-    }
-
-    if (selectedNode) {
-      return;
-    }
-
-    if (selectMode !== "single") {
-      return;
-    }
-
-    const nodeSet = union(
-      selectUpstream(lineageGraph, [node.id]),
-      selectDownstream(lineageGraph, [node.id])
-    );
-
-    const [newNodes, newEdges] = highlightNodes(
-      Array.from(nodeSet),
-      nodes,
-      edges
-    );
-
-    setNodes(newNodes);
-    setEdges(newEdges);
-  };
-
   interface ResetNodeStyleProps {
     deselect?: boolean;
     breakingChangeEnabled?: boolean;
@@ -420,21 +392,6 @@ export function PrivateLineageView(
 
     setNodes(cleanUpNodes(deselect ? deselectNodes(newNodes) : newNodes));
     setEdges(newEdges);
-  };
-
-  const onNodeMouseLeave = (event: React.MouseEvent, node: Node) => {
-    if (selectedNode) {
-      return;
-    }
-    if (selectMode === "action_result") {
-      return;
-    }
-
-    if (isModelsChanged) {
-      resetImpactRadiusStyles();
-    } else {
-      resetAllNodeStyles();
-    }
   };
 
   const onNodeViewClosed = () => {
@@ -1030,8 +987,6 @@ export function PrivateLineageView(
             onNodesChange={onNodesChange}
             onEdgesChange={onEdgesChange}
             onNodeClick={onNodeClick}
-            onNodeMouseEnter={onNodeMouseEnter}
-            onNodeMouseLeave={onNodeMouseLeave}
             onNodeContextMenu={onNodeContextMenu}
             onClick={closeContextMenu}
             onInit={() => {
