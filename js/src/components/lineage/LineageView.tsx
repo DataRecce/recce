@@ -794,17 +794,19 @@ export function PrivateLineageView(
     } else {
       let newNodes = selectNode(nodeId, nodes);
       if (!newNodes.find((n) => n.data.isSelected)) {
-        setSelectMode("single");
-        newNodes = cleanUpNodes(newNodes);
+        deselect();
+      } else {
+        setNodes(newNodes);
       }
-      setNodes(newNodes);
     }
   };
   const deselect = () => {
     setSelectMode("single");
-    const newNodes = cleanUpNodes(deselectNodes(nodes));
-
-    setNodes(newNodes);
+    if (isModelsChanged) {
+      resetImpactRadiusStyles({ deselect: true });
+    } else {
+      resetAllNodeStyles({ deselect: true });
+    }
     closeRunResult();
     refetchRunsAggregated?.();
   };
