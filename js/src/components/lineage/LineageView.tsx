@@ -19,7 +19,6 @@ import {
   Icon,
   Text,
   Spinner,
-  HStack,
   Button,
   VStack,
   Menu,
@@ -53,6 +52,7 @@ import ReactFlow, {
   ControlButton,
   useReactFlow,
   getNodesBounds,
+  Edge,
 } from "reactflow";
 import "reactflow/dist/style.css";
 import { GraphNode } from "./GraphNode";
@@ -97,6 +97,7 @@ import { BreakingChangeSwitch } from "./BreakingChangeSwitch";
 import { useRun } from "@/lib/hooks/useRun";
 import { GraphColumnNode } from "./GraphColumnNode";
 import { ColumnLevelLineageControl } from "./ColumnLevelLineageControl";
+import { ColumnLevelLineageLegend } from "./ColumnLevelLineageLegend";
 
 export interface LineageViewProps {
   viewOptions?: LineageDiffViewOptions;
@@ -117,6 +118,7 @@ const nodeTypes = {
   customNode: GraphNode,
   customColumnNode: GraphColumnNode,
 };
+const initialNodes: Node<LineageGraphNode>[] = [];
 const edgeTypes = {
   customEdge: GraphEdge,
 };
@@ -223,7 +225,7 @@ export function PrivateLineageView(
       failToast("Failed to copy image to clipboard", error);
     },
   });
-  const [nodes, setNodes, onNodesChange] = useNodesState([]);
+  const [nodes, setNodes, onNodesChange] = useNodesState(initialNodes);
   const [edges, setEdges, onEdgesChange] = useEdgesState([]);
 
   const {
@@ -273,7 +275,7 @@ export function PrivateLineageView(
     "single" | "multi" | "action_result"
   >("single");
 
-  const selectedNode: LineageGraphNode = useMemo(() => {
+  const selectedNode: LineageGraphNode | undefined = useMemo(() => {
     if (selectMode === "single") {
       return nodes.find((node) => node.data.isSelected)?.data;
     } else {
@@ -358,39 +360,56 @@ export function PrivateLineageView(
   interface ResetNodeStyleProps {
     deselect?: boolean;
     breakingChangeEnabled?: boolean;
+    nodes?: Node<LineageGraphNode>[];
+    edges?: Edge<any>[];
   }
 
   const resetImpactRadiusStyles = (props?: ResetNodeStyleProps) => {
-    const { deselect = false, breakingChangeEnabled = false } = props || {};
+    let {
+      deselect = false,
+      breakingChangeEnabled = false,
+      nodes: newNodes = nodes,
+      edges: newEdges = edges,
+    } = props || {};
     if (!lineageGraph) {
       return;
     }
 
     const nodeSet = selectImpactRadius(lineageGraph, breakingChangeEnabled);
-    const [newNodes, newEdges] = highlightNodes(
+    [newNodes, newEdges] = highlightNodes(
       Array.from(nodeSet),
-      nodes,
-      edges
+      newNodes,
+      newEdges
     );
-
-    setNodes(cleanUpNodes(deselect ? deselectNodes(newNodes) : newNodes));
+    if (deselect) {
+      newNodes = deselectNodes(newNodes);
+    }
+    newNodes = cleanUpNodes(newNodes);
+    setNodes(newNodes);
     setEdges(newEdges);
   };
 
   const resetAllNodeStyles = (prop?: ResetNodeStyleProps) => {
-    const { deselect = false } = prop || {};
+    let {
+      deselect = false,
+      nodes: newNodes = nodes,
+      edges: newEdges = edges,
+    } = prop || {};
     if (!lineageGraph) {
       return;
     }
 
     const nodeSet = selectAllNodes(lineageGraph);
-    const [newNodes, newEdges] = highlightNodes(
+    [newNodes, newEdges] = highlightNodes(
       Array.from(nodeSet),
-      nodes,
-      edges
+      newNodes,
+      newEdges
     );
-
-    setNodes(cleanUpNodes(deselect ? deselectNodes(newNodes) : newNodes));
+    if (deselect) {
+      newNodes = deselectNodes(newNodes);
+    }
+    newNodes = cleanUpNodes(newNodes);
+    setNodes(newNodes);
     setEdges(newEdges);
   };
 
@@ -553,12 +572,6 @@ export function PrivateLineageView(
       selectedNodes,
       newViewOptions.column_level_lineage
     );
-    const nodeSet = selectImpactRadius(lineageGraph, breakingChangeEnabled);
-    [newNodes, newEdges] = highlightNodes(
-      Array.from(nodeSet),
-      newNodes,
-      newEdges
-    );
     if (selectMode === "single" && selectedNode) {
       const newSelectedNode = newNodes.find(
         (node) => node.id == selectedNode.id
@@ -567,10 +580,14 @@ export function PrivateLineageView(
         newSelectedNode.data.isSelected = true;
       }
     }
-    layout(newNodes, newEdges);
     setNodes(newNodes);
     setEdges(newEdges);
     setViewOptions(newViewOptions);
+    if (isModelsChanged) {
+      resetImpactRadiusStyles({ nodes: newNodes, edges: newEdges });
+    } else {
+      resetAllNodeStyles({ nodes: newNodes, edges: newEdges });
+    }
 
     // Close the run result view if the run result node is not in the new nodes
     if (run?.params?.model && !findNodeByName(run.params.model)) {
@@ -778,17 +795,13 @@ export function PrivateLineageView(
         return;
       }
 
-      const nodeSet = selectDownstream(lineageGraph, lineageGraph.modifiedSet);
-      let [newNodes, newEdges] = highlightNodes(
-        Array.from(nodeSet),
-        nodes,
-        edges
-      );
-      newNodes = cleanUpNodes(newNodes, true);
-      newNodes = selectSingleNode(nodeId, newNodes);
-      setNodes(newNodes);
-      setEdges(newEdges);
+      if (isModelsChanged) {
+        resetImpactRadiusStyles({ deselect: true });
+      } else {
+        resetAllNodeStyles({ deselect: true });
+      }
 
+      setNodes((prevNodes) => selectSingleNode(nodeId, prevNodes));
       setSelectMode("multi");
       multiNodeAction.reset();
     } else {
@@ -952,11 +965,7 @@ export function PrivateLineageView(
     },
   };
 
-  if (!lineageGraph) {
-    return <></>;
-  }
-
-  if (Object.keys(lineageGraph.nodes).length > 0 && nodes.length === 0) {
+  if (!lineageGraph || nodes == initialNodes) {
     return <></>;
   }
 
@@ -1025,9 +1034,12 @@ export function PrivateLineageView(
             </Controls>
             <ImageDownloadModal />
             <Panel position="bottom-left">
-              <HStack>
-                <ChangeStatusLegend />
-              </HStack>
+              <Flex direction="column" gap="5px">
+                {isModelsChanged && <ChangeStatusLegend />}
+                {viewOptions.column_level_lineage && (
+                  <ColumnLevelLineageLegend />
+                )}
+              </Flex>
             </Panel>
             <Panel position="top-left">
               <Flex direction="column" gap="5px">

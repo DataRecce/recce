@@ -38,6 +38,7 @@ export const BreakingChangeSwitch = ({
       border="1px solid"
       borderColor="gray.200"
       bg="white"
+      alignSelf="flex-start"
     >
       <Switch
         isChecked={enabled}
