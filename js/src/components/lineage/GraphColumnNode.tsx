@@ -1,5 +1,5 @@
 import { Box, Flex, Spacer, Tag, TagLabel } from "@chakra-ui/react";
-import React, { useState } from "react";
+import React from "react";
 
 import { Handle, NodeProps, Position, useStore } from "reactflow";
 import { LinageGraphColumnNode } from "./lineage";
@@ -7,7 +7,6 @@ import { LinageGraphColumnNode } from "./lineage";
 import "./styles.css";
 
 import { useLineageViewContext } from "./LineageViewContext";
-import { useLineageGraphContext } from "@/lib/hooks/LineageGraphContext";
 
 interface GrapeColumnNodeProps extends NodeProps<LinageGraphColumnNode> {}
 
@@ -45,8 +44,6 @@ const TransformationType = ({
       <TagLabel>{letter}</TagLabel>
     </Tag>
   );
-
-  //   return <Box color={color}>{letter}</Box>;
 };
 
 export function GraphColumnNode({ data }: GrapeColumnNodeProps) {

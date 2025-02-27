@@ -33,9 +33,7 @@ export const ColumnLevelLineageControl = ({
         aria-label={""}
         onClick={reset}
         size="xs"
-      >
-        Reset
-      </IconButton>
+      />
     </Flex>
   );
 };
