@@ -7,6 +7,10 @@ export interface LineageDiffViewOptions {
   packages?: string[];
   select?: string;
   exclude?: string;
+  column_level_lineage?: {
+    node: string;
+    column: string;
+  };
 }
 
 export async function createLineageDiffCheck(

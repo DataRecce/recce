@@ -1,5 +1,6 @@
 import {
   Box,
+  Divider,
   Flex,
   HStack,
   Icon,
@@ -146,8 +147,13 @@ export function GraphNode({ data }: GraphNodeProps) {
 
   const { icon: resourceIcon } = getIconForResourceType(resourceType);
   const [isHovered, setIsHovered] = useState(false);
-  const { interactive, selectNodeMulti, selectMode, advancedImpactRadius } =
-    useLineageViewContext();
+  const {
+    interactive,
+    selectNodeMulti,
+    selectMode,
+    advancedImpactRadius,
+    viewOptions,
+  } = useLineageViewContext();
   const { lineageGraph } = useLineageGraphContext();
   const isNonBreakingChange =
     advancedImpactRadius &&
@@ -172,21 +178,34 @@ export function GraphNode({ data }: GraphNodeProps) {
   const selectedNodeShadowBox = "rgba(3, 102, 214, 0.5) 5px 5px 10px 3px";
   let borderWidth = "2px";
   let borderColor = color;
-  let boxShadow = data.isSelected ? selectedNodeShadowBox : "unset";
 
   const name = data?.name;
+  const showColumns = data?.columnSet && data?.columnSet.size > 0;
 
   return (
-    <Tooltip
-      label={resourceType === "model" ? name : `${name} (${resourceType})`}
-      placement="top"
+    <Flex
+      direction="column"
+      width="300px"
+      transition="box-shadow 0.2s ease-in-out"
+      padding={0}
+      filter={(function () {
+        if (selectMode === "action_result") {
+          return !!data?.action ? "none" : "opacity(0.2) grayscale(50%)";
+        } else {
+          return isHighlighted || isSelected || isHovered
+            ? "none"
+            : "opacity(0.2) grayscale(50%)";
+        }
+      })()}
+      onMouseEnter={() => setIsHovered(true)}
+      onMouseLeave={() => setIsHovered(false)}
     >
       <Flex
-        width="300px"
         borderColor={borderColor}
         borderWidth={borderWidth}
         borderStyle={borderStyle}
-        borderRadius={8}
+        borderTopRadius={8}
+        borderBottomRadius={showColumns ? 0 : 8}
         backgroundColor={(function () {
           if (showContent) {
             if (selectMode === "multi") {
@@ -195,28 +214,16 @@ export function GraphNode({ data }: GraphNodeProps) {
               if (!data.action) {
                 return "white";
               } else {
-                return isSelected ? backgroundColor : color;
+                return isSelected || isHovered ? backgroundColor : color;
               }
             } else {
-              return isSelected ? backgroundColor : "white";
+              return isSelected || isHovered ? backgroundColor : "white";
             }
           } else {
-            return isSelected ? color : backgroundColor;
+            return isSelected || isHovered ? color : backgroundColor;
           }
         })()}
-        transition="box-shadow 0.2s ease-in-out"
-        padding={0}
-        filter={(function () {
-          if (selectMode === "action_result") {
-            return !!data?.action ? "none" : "opacity(0.2) grayscale(50%)";
-          } else {
-            return isHighlighted || isSelected
-              ? "none"
-              : "opacity(0.2) grayscale(50%)";
-          }
-        })()}
-        onMouseEnter={() => setIsHovered(true)}
-        onMouseLeave={() => setIsHovered(false)}
+        height="60px"
       >
         <Flex
           bg={color}
@@ -244,13 +251,7 @@ export function GraphNode({ data }: GraphNodeProps) {
           )}
         </Flex>
 
-        <Flex
-          flex="1 0 auto"
-          mx="1"
-          width="100px"
-          direction="column"
-          height="60px"
-        >
+        <Flex flex="1 0 auto" mx="1" width="100px" direction="column">
           <Flex
             width="100%"
             textAlign="left"
@@ -276,7 +277,14 @@ export function GraphNode({ data }: GraphNodeProps) {
               textOverflow="ellipsis"
               whiteSpace="nowrap"
             >
-              {name}
+              <Tooltip
+                label={
+                  resourceType === "model" ? name : `${name} (${resourceType})`
+                }
+                placement="top"
+              >
+                {name}
+              </Tooltip>
             </Box>
 
             <Icon
@@ -343,22 +351,26 @@ export function GraphNode({ data }: GraphNodeProps) {
             </HStack>
           </Flex>
         </Flex>
-
-        {Object.keys(data?.parents ?? {}).length > 0 && (
-          <Handle
-            type="target"
-            position={Position.Left}
-            isConnectable={false}
-          />
-        )}
-        {Object.keys(data?.children ?? {}).length > 0 && (
-          <Handle
-            type="source"
-            position={Position.Right}
-            isConnectable={false}
-          />
-        )}
       </Flex>
-    </Tooltip>
+      {data?.columnSet && data?.columnSet.size > 0 && (
+        <Box
+          p="10px 20px"
+          borderColor={borderColor}
+          borderWidth={borderWidth}
+          borderTopWidth={0}
+          borderStyle={borderStyle}
+          borderBottomRadius={8}
+        >
+          <Box height={`${data?.columnSet.size * 15}px`} overflow="auto"></Box>
+        </Box>
+      )}
+
+      {Object.keys(data?.parents ?? {}).length > 0 && (
+        <Handle type="target" position={Position.Left} isConnectable={false} />
+      )}
+      {Object.keys(data?.children ?? {}).length > 0 && (
+        <Handle type="source" position={Position.Right} isConnectable={false} />
+      )}
+    </Flex>
   );
 }

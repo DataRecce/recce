@@ -721,7 +721,7 @@ class DbtAdapter(BaseAdapter):
         table_map = {}
 
         # Handle column-level lineage, only enable if env var is set to true
-        if os.getenv('RECCE_CLL_ENABLED') == 'true':
+        if os.getenv('RECCE_CLL_ENABLED') != 'false':
             if base is False:
                 table_map = self.build_table_map(base)
                 self.append_column_lineage(nodes, parent_map, base)
@@ -770,7 +770,8 @@ class DbtAdapter(BaseAdapter):
                 }
 
             try:
-                column_lineage = cll(compiled_sql, schema=schema)
+                dialect = self.adapter.type()
+                column_lineage = cll(compiled_sql, schema=schema, dialect=dialect)
             except RecceException as exception:
                 print(exception)
                 _apply_all_columns(node, 'unknown', [])

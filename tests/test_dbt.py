@@ -1,6 +1,6 @@
 import os
 from unittest import TestCase
-from unittest.mock import patch
+from unittest.mock import patch, MagicMock
 
 from recce.adapter.dbt_adapter import load_manifest, load_catalog, DbtAdapter
 from recce.exceptions import RecceException
@@ -9,23 +9,37 @@ from recce.util.cll import ColumnLevelDependencyColumn, ColumnLevelDependsOn
 current_dir = os.path.dirname(os.path.abspath(__file__))
 
 
-def test_load_lineage():
-    manifest = load_manifest(path=os.path.join(current_dir, 'manifest.json'))
-    assert manifest is not None
+class TestAdapterLineage(TestCase):
+    def setUp(self) -> None:
+        self.manifest = load_manifest(path=os.path.join(current_dir, 'manifest.json'))
+        assert self.manifest is not None
 
-    catalog = load_catalog(path=os.path.join(current_dir, 'catalog.json'))
-    assert catalog is not None
+        self.catalog = load_catalog(path=os.path.join(current_dir, 'catalog.json'))
+        assert self.catalog is not None
 
-    dbt_adapter = DbtAdapter(curr_manifest=manifest)
-    lineage = dbt_adapter.get_lineage()
-    assert lineage is not None
-    assert lineage['nodes']['model.jaffle_shop.orders'] is not None
-    assert 'columns' not in lineage['nodes']['model.jaffle_shop.orders']
+        # no cll in this test
+        self.patcher_append_column_lineage = patch.object(DbtAdapter, 'append_column_lineage')
+        self.patcher_append_column_lineage.start()
 
-    dbt_adapter = DbtAdapter(curr_manifest=manifest, curr_catalog=catalog)
-    lineage = dbt_adapter.get_lineage()
-    assert lineage is not None
-    assert len(lineage['nodes']['model.jaffle_shop.orders']['columns']) == 9
+    def tearDown(self):
+        self.patcher_append_column_lineage.stop()
+
+    def test_load_lineage(self):
+        dbt_adapter = DbtAdapter(curr_manifest=self.manifest)
+        lineage = dbt_adapter.get_lineage()
+        assert lineage is not None
+        assert lineage['nodes']['model.jaffle_shop.orders'] is not None
+        assert 'columns' not in lineage['nodes']['model.jaffle_shop.orders']
+
+    def test_load_lineage_with_catalog(self):
+        mock_adapter = MagicMock()
+        mock_adapter.type.return_value = None
+
+        dbt_adapter = DbtAdapter(curr_manifest=self.manifest, curr_catalog=self.catalog)
+        dbt_adapter.adapter = mock_adapter
+        lineage = dbt_adapter.get_lineage()
+        assert lineage is not None
+        assert len(lineage['nodes']['model.jaffle_shop.orders']['columns']) == 9
 
 
 class TestAdapterColumnLineage(TestCase):
@@ -35,6 +49,10 @@ class TestAdapterColumnLineage(TestCase):
         self.dbt_adapter = DbtAdapter(curr_manifest=manifest)
         self.patcher_generate_sql = patch.object(self.dbt_adapter, 'generate_sql')
         self.mock_generate_sql = self.patcher_generate_sql.start()
+
+        self.mock_adapter = MagicMock()
+        self.dbt_adapter.adapter = self.mock_adapter
+        self.mock_adapter.type.return_value = None
 
         # mock 'is_python_model' per test case, default to False
         self.patcher_is_python_model = patch.object(self.dbt_adapter, 'is_python_model', return_value=False)

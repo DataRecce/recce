@@ -95,6 +95,8 @@ import { trackBreakingChange, trackMultiNodesAction } from "@/lib/api/track";
 import { PresetCheckRecommendation } from "./PresetCheckRecommendation";
 import { BreakingChangeSwitch } from "./BreakingChangeSwitch";
 import { useRun } from "@/lib/hooks/useRun";
+import { GraphColumnNode } from "./GraphColumnNode";
+import { ColumnLevelLineageControl } from "./ColumnLevelLineageControl";
 
 export interface LineageViewProps {
   viewOptions?: LineageDiffViewOptions;
@@ -113,6 +115,7 @@ export interface LineageViewRef {
 
 const nodeTypes = {
   customNode: GraphNode,
+  customColumnNode: GraphColumnNode,
 };
 const edgeTypes = {
   customEdge: GraphEdge,
@@ -331,7 +334,11 @@ export function PrivateLineageView(
         selectedNodes = result.nodes;
       }
 
-      let [nodes, edges] = toReactflow(lineageGraph, selectedNodes);
+      let [nodes, edges] = toReactflow(
+        lineageGraph,
+        selectedNodes,
+        viewOptions.column_level_lineage
+      );
       let nodeSet = selectAllNodes(lineageGraph);
       if (isModelsChanged) {
         nodeSet = selectImpactRadius(lineageGraph, breakingChangeEnabled);
@@ -347,34 +354,6 @@ export function PrivateLineageView(
 
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [lineageGraph]);
-
-  const onNodeMouseEnter = (event: React.MouseEvent, node: Node) => {
-    if (!lineageGraph) {
-      return;
-    }
-
-    if (selectedNode) {
-      return;
-    }
-
-    if (selectMode !== "single") {
-      return;
-    }
-
-    const nodeSet = union(
-      selectUpstream(lineageGraph, [node.id]),
-      selectDownstream(lineageGraph, [node.id])
-    );
-
-    const [newNodes, newEdges] = highlightNodes(
-      Array.from(nodeSet),
-      nodes,
-      edges
-    );
-
-    setNodes(newNodes);
-    setEdges(newEdges);
-  };
 
   interface ResetNodeStyleProps {
     deselect?: boolean;
@@ -415,21 +394,6 @@ export function PrivateLineageView(
     setEdges(newEdges);
   };
 
-  const onNodeMouseLeave = (event: React.MouseEvent, node: Node) => {
-    if (selectedNode) {
-      return;
-    }
-    if (selectMode === "action_result") {
-      return;
-    }
-
-    if (isModelsChanged) {
-      resetImpactRadiusStyles();
-    } else {
-      resetAllNodeStyles();
-    }
-  };
-
   const onNodeViewClosed = () => {
     if (isModelsChanged) {
       resetImpactRadiusStyles({ deselect: true });
@@ -461,10 +425,30 @@ export function PrivateLineageView(
     }
   });
 
+  const onColumnNodeClick = (event: React.MouseEvent, node: Node) => {
+    node.data;
+    handleViewOptionsChanged(
+      {
+        ...viewOptions,
+        column_level_lineage: {
+          node: node.data.node.name,
+          column: node.data.column,
+        },
+      },
+      false
+    );
+
+    return;
+  };
+
   const onNodeClick = (event: React.MouseEvent, node: Node) => {
     if (interactive === false) return;
     if (!lineageGraph) {
       return;
+    }
+
+    if (node.type === "customColumnNode") {
+      return onColumnNodeClick(event, node);
     }
 
     closeContextMenu();
@@ -524,7 +508,8 @@ export function PrivateLineageView(
   );
 
   const handleViewOptionsChanged = async (
-    newViewOptions: LineageDiffViewOptions
+    newViewOptions: LineageDiffViewOptions,
+    fitView: boolean = true
   ) => {
     let selectedNodes: string[] | undefined = undefined;
 
@@ -532,34 +517,56 @@ export function PrivateLineageView(
       return;
     }
 
-    try {
-      const result = await select({
-        select: newViewOptions.select,
-        exclude: newViewOptions.exclude,
-        packages: newViewOptions.packages,
-        view_mode: newViewOptions.view_mode,
-      });
-      selectedNodes = result.nodes;
-    } catch (e) {
-      if (e instanceof AxiosError) {
-        toast({
-          title: "Select node error",
-          description: e.response?.data?.detail || e.message,
-          status: "error",
-          isClosable: true,
-          position: "bottom-right",
+    const reselect =
+      viewOptions.select !== newViewOptions.select ||
+      viewOptions.exclude !== newViewOptions.exclude ||
+      viewOptions.packages !== newViewOptions.packages ||
+      viewOptions.view_mode !== newViewOptions.view_mode;
+
+    if (reselect) {
+      try {
+        const result = await select({
+          select: newViewOptions.select,
+          exclude: newViewOptions.exclude,
+          packages: newViewOptions.packages,
+          view_mode: newViewOptions.view_mode,
         });
+        selectedNodes = result.nodes;
+      } catch (e) {
+        if (e instanceof AxiosError) {
+          toast({
+            title: "Select node error",
+            description: e.response?.data?.detail || e.message,
+            status: "error",
+            isClosable: true,
+            position: "bottom-right",
+          });
+        }
+        return;
       }
-      return;
+    } else {
+      selectedNodes = nodes.map((n) => n.id);
     }
 
-    let [newNodes, newEdges] = toReactflow(lineageGraph, selectedNodes);
+    let [newNodes, newEdges] = toReactflow(
+      lineageGraph,
+      selectedNodes,
+      newViewOptions.column_level_lineage
+    );
     const nodeSet = selectImpactRadius(lineageGraph, breakingChangeEnabled);
     [newNodes, newEdges] = highlightNodes(
       Array.from(nodeSet),
       newNodes,
       newEdges
     );
+    if (selectMode === "single" && selectedNode) {
+      const newSelectedNode = newNodes.find(
+        (node) => node.id == selectedNode.id
+      );
+      if (newSelectedNode) {
+        newSelectedNode.data.isSelected = true;
+      }
+    }
     layout(newNodes, newEdges);
     setNodes(newNodes);
     setEdges(newEdges);
@@ -570,10 +577,12 @@ export function PrivateLineageView(
       closeRunResult();
     }
 
-    await new Promise((resolve) => setTimeout(resolve, 1));
-    await (async () => {
-      reactFlow.fitView({ nodes: newNodes, duration: 200 });
-    })();
+    if (fitView) {
+      await new Promise((resolve) => setTimeout(resolve, 1));
+      await (async () => {
+        reactFlow.fitView({ nodes: newNodes, duration: 200 });
+      })();
+    }
   };
 
   const multiNodeAction = useMultiNodesAction(
@@ -785,17 +794,19 @@ export function PrivateLineageView(
     } else {
       let newNodes = selectNode(nodeId, nodes);
       if (!newNodes.find((n) => n.data.isSelected)) {
-        setSelectMode("single");
-        newNodes = cleanUpNodes(newNodes);
+        deselect();
+      } else {
+        setNodes(newNodes);
       }
-      setNodes(newNodes);
     }
   };
   const deselect = () => {
     setSelectMode("single");
-    const newNodes = cleanUpNodes(deselectNodes(nodes));
-
-    setNodes(newNodes);
+    if (isModelsChanged) {
+      resetImpactRadiusStyles({ deselect: true });
+    } else {
+      resetAllNodeStyles({ deselect: true });
+    }
     closeRunResult();
     refetchRunsAggregated?.();
   };
@@ -919,6 +930,26 @@ export function PrivateLineageView(
     },
     cancel: multiNodeAction.cancel,
     actionState: multiNodeAction.actionState,
+
+    // Column Level Lineage
+    showColumnLevelLineage: (node: string, column: string) => {
+      handleViewOptionsChanged(
+        {
+          ...viewOptions,
+          column_level_lineage: { node, column },
+        },
+        false
+      );
+    },
+    resetColumnLevelLinage: () => {
+      handleViewOptionsChanged(
+        {
+          ...viewOptions,
+          column_level_lineage: undefined,
+        },
+        false
+      );
+    },
   };
 
   if (!lineageGraph) {
@@ -958,8 +989,6 @@ export function PrivateLineageView(
             onNodesChange={onNodesChange}
             onEdgesChange={onEdgesChange}
             onNodeClick={onNodeClick}
-            onNodeMouseEnter={onNodeMouseEnter}
-            onNodeMouseLeave={onNodeMouseLeave}
             onNodeContextMenu={onNodeContextMenu}
             onClick={closeContextMenu}
             onInit={() => {
@@ -974,7 +1003,7 @@ export function PrivateLineageView(
                 );
               }
             }}
-            maxZoom={1}
+            maxZoom={2}
             minZoom={0.1}
             nodesDraggable={interactive}
             ref={refReactFlow}
@@ -1001,7 +1030,7 @@ export function PrivateLineageView(
               </HStack>
             </Panel>
             <Panel position="top-left">
-              <Flex direction="column">
+              <Flex direction="column" gap="5px">
                 <BreakingChangeSwitch
                   enabled={breakingChangeEnabled}
                   onChanged={(enabled) => {
@@ -1010,6 +1039,18 @@ export function PrivateLineageView(
                     trackBreakingChange({ enabled });
                   }}
                 />
+                {viewOptions.column_level_lineage && (
+                  <ColumnLevelLineageControl
+                    node={viewOptions.column_level_lineage.node}
+                    column={viewOptions.column_level_lineage.column}
+                    reset={() => {
+                      handleViewOptionsChanged({
+                        ...viewOptions,
+                        column_level_lineage: undefined,
+                      });
+                    }}
+                  ></ColumnLevelLineageControl>
+                )}
                 {nodes.length == 0 && (
                   <Text fontSize="xl" color="grey" opacity={0.5}>
                     No nodes

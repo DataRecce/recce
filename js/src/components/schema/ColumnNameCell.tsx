@@ -14,19 +14,24 @@ import {
 } from "@chakra-ui/react";
 import { VscKebabVertical } from "react-icons/vsc";
 import { supportsHistogramDiff } from "../histogram/HistogramDiffForm";
+import { LuEye } from "react-icons/lu";
+import { useLineageViewContext } from "../lineage/LineageViewContext";
 
 export function ColumnNameCell({
   model,
   name,
   baseType,
   currentType,
+  singleEnv,
 }: {
   model: string;
   name: string;
   baseType?: string;
   currentType?: string;
+  singleEnv?: boolean;
 }) {
   const { runAction } = useRecceActionContext();
+  const { showColumnLevelLineage } = useLineageViewContext();
   const columnType = currentType || baseType;
 
   const handleHistogramDiff = () => {
@@ -46,13 +51,12 @@ export function ColumnNameCell({
   };
   const addedOrRemoved = !baseType || !currentType;
 
-  return (
-    <Flex>
-      <Box overflow="hidden" textOverflow="ellipsis" whiteSpace="nowrap">
-        {name}
-      </Box>
-      <Spacer />
+  const handleViewCll = () => {
+    showColumnLevelLineage(model, name);
+  };
 
+  const ActionMenu = () => {
+    return (
       <Menu>
         {({ isOpen }) => (
           <>
@@ -70,8 +74,8 @@ export function ColumnNameCell({
             <Portal>
               <MenuList lineHeight="20px">
                 {/* <MenuGroup title="Column" m="0" p="4px 12px">
-                  <MenuItem fontSize="10pt">Set Alias Name</MenuItem>
-                </MenuGroup> */}
+              <MenuItem fontSize="10pt">Set Alias Name</MenuItem>
+            </MenuGroup> */}
                 <MenuGroup title="Diff" m="0" p="4px 12px">
                   <MenuItem
                     fontSize="10pt"
@@ -96,6 +100,28 @@ export function ColumnNameCell({
           </>
         )}
       </Menu>
+    );
+  };
+
+  return (
+    <Flex alignItems={"center"}>
+      <Box overflow="hidden" textOverflow="ellipsis" whiteSpace="nowrap">
+        {name}
+      </Box>
+      <Spacer />
+      {/* show icon button with eye icon */}
+      <IconButton
+        icon={<LuEye />}
+        aria-label={""}
+        className="row-context-menu"
+        visibility="hidden"
+        width={"0px"}
+        minWidth={"0px"}
+        variant="unstyled"
+        size={"sm"}
+        onClick={handleViewCll}
+      ></IconButton>
+      {!singleEnv && <ActionMenu />}
     </Flex>
   );
 }

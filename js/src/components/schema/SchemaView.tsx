@@ -21,7 +21,7 @@ function PrivateSingleEnvSchemaView(
   ref: any
 ) {
   const { columns, rows } = useMemo(() => {
-    return toSingleEnvDataGrid(current?.columns);
+    return toSingleEnvDataGrid(current?.columns, current?.name);
   }, [current]);
 
   const { lineageGraph } = useLineageGraphContext();

@@ -149,7 +149,10 @@ export function toDataGrid(schemaDiff: SchemaDiff, nodeName?: string) {
 
   return { columns, rows };
 }
-export function toSingleEnvDataGrid(nodeColumns: NodeData["columns"] = {}) {
+export function toSingleEnvDataGrid(
+  nodeColumns: NodeData["columns"] = {},
+  nodeName?: string
+) {
   const rows: SchemaRow[] = Object.entries(nodeColumns).map(
     ([name, column], index) => ({
       name,
@@ -172,7 +175,11 @@ export function toSingleEnvDataGrid(nodeColumns: NodeData["columns"] = {}) {
       name: "Name",
       resizable: true,
       renderCell: ({ row, column }) => {
-        return row["name"];
+        return nodeName ? (
+          <ColumnNameCell model={nodeName} name={row["name"]} singleEnv />
+        ) : (
+          row["name"]
+        );
       },
       cellClass: "column-body-normal",
     },
