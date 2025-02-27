@@ -118,6 +118,7 @@ const nodeTypes = {
   customNode: GraphNode,
   customColumnNode: GraphColumnNode,
 };
+const initialNodes: Node<LineageGraphNode>[] = [];
 const edgeTypes = {
   customEdge: GraphEdge,
 };
@@ -224,7 +225,7 @@ export function PrivateLineageView(
       failToast("Failed to copy image to clipboard", error);
     },
   });
-  const [nodes, setNodes, onNodesChange] = useNodesState([]);
+  const [nodes, setNodes, onNodesChange] = useNodesState(initialNodes);
   const [edges, setEdges, onEdgesChange] = useEdgesState([]);
 
   const {
@@ -964,11 +965,7 @@ export function PrivateLineageView(
     },
   };
 
-  if (!lineageGraph) {
-    return <></>;
-  }
-
-  if (Object.keys(lineageGraph.nodes).length > 0 && nodes.length === 0) {
+  if (!lineageGraph || nodes == initialNodes) {
     return <></>;
   }
 
