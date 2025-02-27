@@ -19,7 +19,6 @@ import {
   Icon,
   Text,
   Spinner,
-  HStack,
   Button,
   VStack,
   Menu,
@@ -53,6 +52,7 @@ import ReactFlow, {
   ControlButton,
   useReactFlow,
   getNodesBounds,
+  Edge,
 } from "reactflow";
 import "reactflow/dist/style.css";
 import { GraphNode } from "./GraphNode";
@@ -359,39 +359,56 @@ export function PrivateLineageView(
   interface ResetNodeStyleProps {
     deselect?: boolean;
     breakingChangeEnabled?: boolean;
+    nodes?: Node<LineageGraphNode>[];
+    edges?: Edge<any>[];
   }
 
   const resetImpactRadiusStyles = (props?: ResetNodeStyleProps) => {
-    const { deselect = false, breakingChangeEnabled = false } = props || {};
+    let {
+      deselect = false,
+      breakingChangeEnabled = false,
+      nodes: newNodes = nodes,
+      edges: newEdges = edges,
+    } = props || {};
     if (!lineageGraph) {
       return;
     }
 
     const nodeSet = selectImpactRadius(lineageGraph, breakingChangeEnabled);
-    const [newNodes, newEdges] = highlightNodes(
+    [newNodes, newEdges] = highlightNodes(
       Array.from(nodeSet),
-      nodes,
-      edges
+      newNodes,
+      newEdges
     );
-
-    setNodes(cleanUpNodes(deselect ? deselectNodes(newNodes) : newNodes));
+    if (deselect) {
+      newNodes = deselectNodes(newNodes);
+    }
+    newNodes = cleanUpNodes(newNodes);
+    setNodes(newNodes);
     setEdges(newEdges);
   };
 
   const resetAllNodeStyles = (prop?: ResetNodeStyleProps) => {
-    const { deselect = false } = prop || {};
+    let {
+      deselect = false,
+      nodes: newNodes = nodes,
+      edges: newEdges = edges,
+    } = prop || {};
     if (!lineageGraph) {
       return;
     }
 
     const nodeSet = selectAllNodes(lineageGraph);
-    const [newNodes, newEdges] = highlightNodes(
+    [newNodes, newEdges] = highlightNodes(
       Array.from(nodeSet),
-      nodes,
-      edges
+      newNodes,
+      newEdges
     );
-
-    setNodes(cleanUpNodes(deselect ? deselectNodes(newNodes) : newNodes));
+    if (deselect) {
+      newNodes = deselectNodes(newNodes);
+    }
+    newNodes = cleanUpNodes(newNodes);
+    setNodes(newNodes);
     setEdges(newEdges);
   };
 
@@ -554,12 +571,6 @@ export function PrivateLineageView(
       selectedNodes,
       newViewOptions.column_level_lineage
     );
-    const nodeSet = selectImpactRadius(lineageGraph, breakingChangeEnabled);
-    [newNodes, newEdges] = highlightNodes(
-      Array.from(nodeSet),
-      newNodes,
-      newEdges
-    );
     if (selectMode === "single" && selectedNode) {
       const newSelectedNode = newNodes.find(
         (node) => node.id == selectedNode.id
@@ -568,10 +579,14 @@ export function PrivateLineageView(
         newSelectedNode.data.isSelected = true;
       }
     }
-    layout(newNodes, newEdges);
     setNodes(newNodes);
     setEdges(newEdges);
-    setViewOptions(newViewOptions);
+    setViewOptions(newViewOptions);    
+    if (isModelsChanged) {
+      resetImpactRadiusStyles({ nodes: newNodes, edges: newEdges });
+    } else {
+      resetAllNodeStyles({ nodes: newNodes, edges: newEdges });
+    }
 
     // Close the run result view if the run result node is not in the new nodes
     if (run?.params?.model && !findNodeByName(run.params.model)) {
