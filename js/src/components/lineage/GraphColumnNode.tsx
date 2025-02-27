@@ -10,10 +10,12 @@ import { useLineageViewContext } from "./LineageViewContext";
 
 interface GrapeColumnNodeProps extends NodeProps<LinageGraphColumnNode> {}
 
-const TransformationType = ({
+export const TransformationType = ({
   transformationType,
+  legend,
 }: {
   transformationType: string;
+  legend?: boolean;
 }) => {
   let letter = "U";
   let color = "red";
@@ -27,6 +29,9 @@ const TransformationType = ({
   } else if (transformationType === "derived") {
     letter = "D";
     color = "orange";
+  } else if (transformationType === "source") {
+    letter = "S";
+    color = "blue";
   } else {
     letter = "U";
     color = "red";
@@ -34,15 +39,29 @@ const TransformationType = ({
 
   // # circle in color
   return (
-    <Tag
-      fontSize="6pt"
-      size="xs"
-      colorScheme={color}
-      borderRadius="full"
-      paddingX="2px"
-    >
-      <TagLabel>{letter}</TagLabel>
-    </Tag>
+    <>
+      {legend ? (
+        <Tag
+          fontSize="8pt"
+          size="xs"
+          colorScheme={color}
+          borderRadius="full"
+          paddingX="4px"
+        >
+          <TagLabel>{letter}</TagLabel>
+        </Tag>
+      ) : (
+        <Tag
+          fontSize="6pt"
+          size="xs"
+          colorScheme={color}
+          borderRadius="full"
+          paddingX="2px"
+        >
+          <TagLabel>{letter}</TagLabel>
+        </Tag>
+      )}
+    </>
   );
 };
 

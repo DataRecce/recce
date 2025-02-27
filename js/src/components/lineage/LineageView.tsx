@@ -97,6 +97,7 @@ import { BreakingChangeSwitch } from "./BreakingChangeSwitch";
 import { useRun } from "@/lib/hooks/useRun";
 import { GraphColumnNode } from "./GraphColumnNode";
 import { ColumnLevelLineageControl } from "./ColumnLevelLineageControl";
+import { ColumnLevelLineageLegend } from "./ColumnLevelLineageLegend";
 
 export interface LineageViewProps {
   viewOptions?: LineageDiffViewOptions;
@@ -1025,9 +1026,12 @@ export function PrivateLineageView(
             </Controls>
             <ImageDownloadModal />
             <Panel position="bottom-left">
-              <HStack>
-                <ChangeStatusLegend />
-              </HStack>
+              <Flex direction="column" gap="5px">
+                {isModelsChanged && <ChangeStatusLegend />}
+                {viewOptions.column_level_lineage && (
+                  <ColumnLevelLineageLegend />
+                )}
+              </Flex>
             </Panel>
             <Panel position="top-left">
               <Flex direction="column" gap="5px">
