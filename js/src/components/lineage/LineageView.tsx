@@ -779,17 +779,13 @@ export function PrivateLineageView(
         return;
       }
 
-      const nodeSet = selectDownstream(lineageGraph, lineageGraph.modifiedSet);
-      let [newNodes, newEdges] = highlightNodes(
-        Array.from(nodeSet),
-        nodes,
-        edges
-      );
-      newNodes = cleanUpNodes(newNodes, true);
-      newNodes = selectSingleNode(nodeId, newNodes);
-      setNodes(newNodes);
-      setEdges(newEdges);
+      if (isModelsChanged) {
+        resetImpactRadiusStyles({ deselect: true });
+      } else {
+        resetAllNodeStyles({ deselect: true });
+      }
 
+      setNodes((prevNodes) => selectSingleNode(nodeId, prevNodes));
       setSelectMode("multi");
       multiNodeAction.reset();
     } else {
