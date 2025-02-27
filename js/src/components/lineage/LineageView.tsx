@@ -275,7 +275,7 @@ export function PrivateLineageView(
     "single" | "multi" | "action_result"
   >("single");
 
-  const selectedNode: LineageGraphNode = useMemo(() => {
+  const selectedNode: LineageGraphNode | undefined = useMemo(() => {
     if (selectMode === "single") {
       return nodes.find((node) => node.data.isSelected)?.data;
     } else {
