@@ -779,6 +779,9 @@ class DbtAdapter(BaseAdapter):
 
             for name, column in node.get('columns', {}).items():
                 if name in column_lineage:
+                    for cld in column_lineage[name].depends_on:
+                        # manifest node name is case-insensitive
+                        cld.node = cld.node.lower()
                     column['depends_on'] = column_lineage[name].depends_on
                     column['transformation_type'] = column_lineage[name].type
 
