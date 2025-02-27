@@ -1,6 +1,5 @@
-import { Box, Flex, Icon, Tooltip } from "@chakra-ui/react";
+import { Box, Flex, Tooltip } from "@chakra-ui/react";
 
-import { getIconForChangeStatus } from "./styles";
 import { TransformationType } from "./GraphColumnNode";
 
 export function ColumnLevelLineageLegend() {

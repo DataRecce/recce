@@ -581,7 +581,7 @@ export function PrivateLineageView(
     }
     setNodes(newNodes);
     setEdges(newEdges);
-    setViewOptions(newViewOptions);    
+    setViewOptions(newViewOptions);
     if (isModelsChanged) {
       resetImpactRadiusStyles({ nodes: newNodes, edges: newEdges });
     } else {
