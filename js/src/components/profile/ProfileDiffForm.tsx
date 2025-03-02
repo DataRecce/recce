@@ -1,11 +1,8 @@
 import { ProfileDiffParams } from "@/lib/api/profile";
 import { RunFormProps } from "../run/types";
 
-interface ProfileDiffFormProp extends RunFormProps<ProfileDiffParams> {}
+type ProfileDiffFormProp = RunFormProps<ProfileDiffParams>;
 
-export function ProfileDiffForm({
-  params,
-  onParamsChanged,
-}: ProfileDiffFormProp) {
+export function ProfileDiffForm({ params, onParamsChanged }: ProfileDiffFormProp) {
   return <></>;
 }

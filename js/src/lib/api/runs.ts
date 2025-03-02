@@ -10,7 +10,7 @@ export interface SubmitOptions {
 export async function submitRun<PT = any, RT = any>(
   type: RunType,
   params?: PT,
-  options?: SubmitOptions
+  options?: SubmitOptions,
 ) {
   const track_props = getExperimentTrackingBreakingChangeEnabled()
     ? { breaking_change_analysis: true }
@@ -33,10 +33,7 @@ export async function getRun<PT = any, RT = any>(runId: string) {
   return run;
 }
 
-export async function waitRun<PT = any, RT = any>(
-  runId: string,
-  timeout?: number
-) {
+export async function waitRun<PT = any, RT = any>(runId: string, timeout?: number) {
   const response = await axiosClient.get(`/api/runs/${runId}/wait`, {
     params: {
       timeout,
@@ -54,7 +51,7 @@ export async function cancelRun(runId: string) {
 
 export async function submitRunFromCheck<PT = any, RT = any>(
   checkId: string,
-  options?: SubmitOptions
+  options?: SubmitOptions,
 ) {
   const response = await axiosClient.post(`/api/checks/${checkId}/run`, {
     nowait: options?.nowait,
@@ -77,18 +74,20 @@ export async function searchRuns(type: string, params: any, limit?: number) {
 
 export async function listRuns() {
   const response = await axiosClient.get("/api/runs");
-  const runs: Run<any, any>[] = response.data;
+  const runs: Run[] = response.data;
   return runs;
 }
 
-export interface RunsAggregated {
-  [unique_id: string]: {
-    [run_type: string]: {
+export type RunsAggregated = Record<
+  string,
+  Record<
+    string,
+    {
       run_id: string;
       result: any;
-    };
-  };
-}
+    }
+  >
+>;
 export async function aggregateRuns(): Promise<RunsAggregated> {
   const response = await axiosClient.post(`/api/runs/aggregate`, {});
 

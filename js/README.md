@@ -7,7 +7,10 @@
 2. pnpm
 
    ```
-   npm install -g pnpm
+   npm install -g corepack@latest
+   corepack enable
+   corepack install
+   pnpm install
    ```
 
 ## Development

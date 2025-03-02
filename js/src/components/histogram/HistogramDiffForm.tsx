@@ -67,13 +67,11 @@ function isDateTimeType(columnType: string) {
   return sql_datetime_types.includes(columnType.toUpperCase());
 }
 
-interface HistogramDiffEditProps extends RunFormProps<HistogramDiffParams> {}
+type HistogramDiffEditProps = RunFormProps<HistogramDiffParams>;
 
 export function supportsHistogramDiff(columnType: string) {
   return (
-    !isStringDataType(columnType) &&
-    !isBooleanDataType(columnType) &&
-    !isDateTimeType(columnType)
+    !isStringDataType(columnType) && !isBooleanDataType(columnType) && !isDateTimeType(columnType)
   );
 }
 
@@ -82,16 +80,9 @@ export function HistogramDiffForm({
   onParamsChanged,
   setIsReadyToExecute,
 }: HistogramDiffEditProps) {
-  const {
-    columns: allColumns,
-    isLoading,
-    error,
-  } = useModelColumns(params.model);
+  const { columns: allColumns, isLoading, error } = useModelColumns(params.model);
   const columns = allColumns.filter(
-    (c) =>
-      !isStringDataType(c.type) &&
-      !isBooleanDataType(c.type) &&
-      !isDateTimeType(c.type)
+    (c) => !isStringDataType(c.type) && !isBooleanDataType(c.type) && !isDateTimeType(c.type),
   );
 
   if (isLoading) {
@@ -99,12 +90,7 @@ export function HistogramDiffForm({
   }
 
   if (allColumns.length === 0 || error) {
-    return (
-      <Box>
-        Error: Please provide the &apos;catalog.json&apos; to list column
-        candidates
-      </Box>
-    );
+    return <Box>Error: Please provide the &apos;catalog.json&apos; to list column candidates</Box>;
   }
 
   return (
@@ -112,25 +98,19 @@ export function HistogramDiffForm({
       <FormControl>
         <FormLabel>Pick a column to show Histogram Diff</FormLabel>
         <Select
-          placeholder={
-            columns.length !== 0
-              ? "Select column"
-              : "No numeric column is available"
-          }
+          placeholder={columns.length !== 0 ? "Select column" : "No numeric column is available"}
           isDisabled={columns.length === 0}
-          value={params?.column_name}
+          value={params.column_name}
           onChange={(e) => {
             const columnName = e.target.value;
-            setIsReadyToExecute(!!columnName ? true : false);
-            const columnType =
-              columns.find((c) => c.name === columnName)?.type || "";
+            setIsReadyToExecute(columnName ? true : false);
+            const columnType = columns.find((c) => c.name === columnName)?.type || "";
             onParamsChanged({
               ...params,
               column_name: columnName,
               column_type: columnType,
             });
-          }}
-        >
+          }}>
           {columns.map((c) => (
             <option key={c.name} value={c.name}>
               {c.name} : {c.type}

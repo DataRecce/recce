@@ -29,7 +29,7 @@ export const useMultiNodesAction = (
     onActionStarted: () => void;
     onActionNodeUpdated: (node: LineageGraphNode) => void;
     onActionCompleted: () => void;
-  }
+  },
 ) => {
   const actionState = useRef<ActionState>({
     ...initValue,
@@ -40,7 +40,7 @@ export const useMultiNodesAction = (
   const submitRunForNodes = async (
     type: RunType,
     skip: (node: LineageGraphNode) => string | undefined,
-    getParams: (nodes: LineageGraphNode[]) => any
+    getParams: (nodes: LineageGraphNode[]) => any,
   ) => {
     const mode = "multi_nodes";
     actionState.mode = mode;
@@ -78,11 +78,7 @@ export const useMultiNodesAction = (
         const run = await waitRun(run_id, 2);
         actionState.currentRun = run;
 
-        const status = run.error
-          ? "failure"
-          : run.result
-          ? "success"
-          : "running";
+        const status = run.error ? "failure" : run.result ? "success" : "running";
 
         for (const node of candidates) {
           node.action = {
@@ -119,7 +115,7 @@ export const useMultiNodesAction = (
       params?: any;
       /* skipReason is a string that explains why the node is skipped */
       skipReason?: string;
-    }
+    },
   ) => {
     const mode = "per_node";
     actionState.mode = mode;
@@ -157,11 +153,7 @@ export const useMultiNodesAction = (
           while (true) {
             const run = await waitRun(run_id, 2);
             actionState.currentRun = run;
-            const status = run.error
-              ? "failure"
-              : run.result
-              ? "success"
-              : "running";
+            const status = run.error ? "failure" : run.result ? "success" : "running";
             node.action = {
               mode,
               status,
@@ -253,13 +245,12 @@ export const useMultiNodesAction = (
     await submitRunForNodes("row_count_diff", skip, getParams);
   };
 
-  const runValueDiff = async () => {
+  const runValueDiff = () => {
     submitRunsPerNodes("value_diff", (node) => {
-      const primaryKey = node.data?.current?.primary_key;
+      const primaryKey = node.data.current?.primary_key;
       if (!primaryKey) {
         return {
-          skipReason:
-            "No primary key found. The first unique column is used as primary key.",
+          skipReason: "No primary key found. The first unique column is used as primary key.",
         };
       }
 

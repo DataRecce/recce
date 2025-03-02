@@ -3,10 +3,7 @@ import { forwardRef, useMemo } from "react";
 import { mergeColumns, toDataGrid, toSingleEnvDataGrid } from "./schema";
 import "react-data-grid/lib/styles.css";
 import { Flex, Alert, AlertIcon } from "@chakra-ui/react";
-import {
-  EmptyRowsRenderer,
-  ScreenshotDataGrid,
-} from "../data-grid/ScreenshotDataGrid";
+import { EmptyRowsRenderer, ScreenshotDataGrid } from "../data-grid/ScreenshotDataGrid";
 import { useLineageGraphContext } from "@/lib/hooks/LineageGraphContext";
 import { NodeData } from "@/lib/api/info";
 
@@ -16,10 +13,7 @@ interface SchemaViewProps {
   enableScreenshot?: boolean;
 }
 
-function PrivateSingleEnvSchemaView(
-  { current }: { current?: NodeData },
-  ref: any
-) {
+function PrivateSingleEnvSchemaView({ current }: { current?: NodeData }, ref: any) {
   const { columns, rows } = useMemo(() => {
     return toSingleEnvDataGrid(current?.columns, current?.name);
   }, [current]);
@@ -78,7 +72,7 @@ function PrivateSingleEnvSchemaView(
 
 export function PrivateSchemaView(
   { base, current, enableScreenshot = false }: SchemaViewProps,
-  ref: any
+  ref: any,
 ) {
   const { columns, rows } = useMemo(() => {
     const schemaDiff = mergeColumns(base?.columns, current?.columns);
@@ -95,8 +89,7 @@ export function PrivateSchemaView(
   const noCatalogCurrent = !lineageGraph?.catalogMetadata.current;
   let catalogMissingMessage = undefined;
   if (noCatalogBase && noCatalogCurrent) {
-    catalogMissingMessage =
-      "catalog.json is missing on both current and base environments.";
+    catalogMissingMessage = "catalog.json is missing on both current and base environments.";
   } else if (noCatalogBase) {
     catalogMissingMessage = "catalog.json is missing on base environment.";
   } else if (noCatalogCurrent) {
@@ -107,13 +100,11 @@ export function PrivateSchemaView(
   const noSchemaCurrent = current && current.columns === undefined;
   let schemaMissingMessage = undefined;
   if (noSchemaBase && noSchemaCurrent) {
-    schemaMissingMessage =
-      "Schema information is missing on both current and base environments.";
+    schemaMissingMessage = "Schema information is missing on both current and base environments.";
   } else if (noSchemaBase) {
     schemaMissingMessage = "Schema information is missing on base environment.";
   } else if (noSchemaCurrent) {
-    schemaMissingMessage =
-      "Schema information is missing on current environment.";
+    schemaMissingMessage = "Schema information is missing on current environment.";
   }
 
   return (

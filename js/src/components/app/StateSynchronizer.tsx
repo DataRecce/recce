@@ -86,7 +86,7 @@ export function StateSynchronizer() {
         setLocation("/checks");
       }
     },
-    [queryClient, location, setLocation, toast, onOpen, onClose]
+    [queryClient, location, setLocation, toast, onOpen, onClose],
   );
 
   if (isSyncing) return <StateSpinner />;
@@ -109,8 +109,7 @@ export function StateSynchronizer() {
           </ModalHeader>
           <ModalBody>
             <Box>
-              New changes have been detected in the cloud. Please choose a
-              method to sync your state
+              New changes have been detected in the cloud. Please choose a method to sync your state
             </Box>
             <Box mt="5px">
               <RadioGroup onChange={setSyncOption} value={syncOption}>

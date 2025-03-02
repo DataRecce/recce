@@ -5,10 +5,7 @@ import { useMemo } from "react";
 
 import "../query/styles.css";
 import { Run } from "@/lib/api/types";
-import {
-  EmptyRowsRenderer,
-  ScreenshotDataGrid,
-} from "../data-grid/ScreenshotDataGrid";
+import { EmptyRowsRenderer, ScreenshotDataGrid } from "../data-grid/ScreenshotDataGrid";
 import { RunResultViewProps } from "../run/types";
 import { toValueDiffGrid } from "./valuediff";
 import {
@@ -24,28 +21,15 @@ export interface ValueDiffDetailResultViewProps
     ValueDiffDetailResult,
     ValueDiffDetailViewOptions
   > {
-  onAddToChecklist?: (
-    run: Run<ValueDiffDetailParams, ValueDiffDetailResult>
-  ) => void;
+  onAddToChecklist?: (run: Run<ValueDiffDetailParams, ValueDiffDetailResult>) => void;
 }
 
 const PrivateValueDiffDetailResultView = (
-  {
-    run,
-    onAddToChecklist,
-    viewOptions,
-    onViewOptionsChanged,
-  }: ValueDiffDetailResultViewProps,
-  ref: any
+  { run, onAddToChecklist, viewOptions, onViewOptionsChanged }: ValueDiffDetailResultViewProps,
+  ref: any,
 ) => {
-  const changedOnly = useMemo(
-    () => viewOptions?.changed_only || false,
-    [viewOptions]
-  );
-  const pinnedColumns = useMemo(
-    () => viewOptions?.pinned_columns || [],
-    [viewOptions]
-  );
+  const changedOnly = useMemo(() => viewOptions?.changed_only || false, [viewOptions]);
+  const pinnedColumns = useMemo(() => viewOptions?.pinned_columns || [], [viewOptions]);
 
   const gridData = useMemo(() => {
     const handlePinnedColumnsChanged = (pinnedColumns: string[]) => {
@@ -57,7 +41,7 @@ const PrivateValueDiffDetailResultView = (
       }
     };
 
-    if (!run.result || !run?.params?.primary_key) {
+    if (!run.result || !run.params?.primary_key) {
       return { columns: [], rows: [] };
     }
 
@@ -65,7 +49,7 @@ const PrivateValueDiffDetailResultView = (
     const primaryKey = run.params.primary_key;
     const primaryKeys = Array.isArray(primaryKey) ? primaryKey : [primaryKey];
 
-    return toValueDiffGrid(run?.result, primaryKeys, {
+    return toValueDiffGrid(run.result, primaryKeys, {
       changedOnly,
       pinnedColumns,
       onPinnedColumnsChange: handlePinnedColumnsChanged,
@@ -74,7 +58,7 @@ const PrivateValueDiffDetailResultView = (
 
   const limit = run.result?.limit || 0;
   const warning =
-    limit > 0 && run?.result?.more
+    limit > 0 && run.result?.more
       ? `Warning: Displayed results are limited to ${limit.toLocaleString()} records. To ensure complete data retrieval, consider applying a LIMIT or WHERE clause to constrain the result set.`
       : null;
 
@@ -89,11 +73,7 @@ const PrivateValueDiffDetailResultView = (
 
   if (changedOnly && gridData.rows.length === 0) {
     return (
-      <Flex
-        direction="column"
-        backgroundColor="rgb(249, 249, 249)"
-        height={"100%"}
-      >
+      <Flex direction="column" backgroundColor="rgb(249, 249, 249)" height={"100%"}>
         <RunToolbar
           run={run}
           viewOptions={viewOptions}
@@ -107,11 +87,7 @@ const PrivateValueDiffDetailResultView = (
   }
 
   return (
-    <Flex
-      direction="column"
-      backgroundColor="rgb(249, 249, 249)"
-      height={"100%"}
-    >
+    <Flex direction="column" backgroundColor="rgb(249, 249, 249)" height={"100%"}>
       <RunToolbar
         run={run}
         viewOptions={viewOptions}
@@ -133,6 +109,4 @@ const PrivateValueDiffDetailResultView = (
   );
 };
 
-export const ValueDiffDetailResultView = forwardRef(
-  PrivateValueDiffDetailResultView
-);
+export const ValueDiffDetailResultView = forwardRef(PrivateValueDiffDetailResultView);

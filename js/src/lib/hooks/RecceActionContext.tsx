@@ -1,10 +1,4 @@
-import React, {
-  createContext,
-  useCallback,
-  useContext,
-  useEffect,
-  useState,
-} from "react";
+import React, { createContext, useCallback, useContext, useEffect, useState } from "react";
 import { Run, RunType } from "../api/types";
 import { RunModal } from "@/components/run/RunModal";
 import { useDisclosure, useToast } from "@chakra-ui/react";
@@ -25,11 +19,7 @@ export interface RecceActionOptions {
 }
 
 export interface RecceActionContextType {
-  runAction: (
-    type: string,
-    params?: any,
-    actionOptions?: RecceActionOptions
-  ) => void;
+  runAction: (type: string, params?: any, actionOptions?: RecceActionOptions) => void;
   runId?: string;
   showRunId: (runId: string, refreshHistory?: boolean) => void;
   isRunResultOpen: boolean;
@@ -73,25 +63,15 @@ interface RunActionInternal {
   RunForm: React.ComponentType<RunFormProps<any>>;
 }
 
-export function RecceActionContextProvider({
-  children,
-}: RecceActionContextProviderProps) {
+export function RecceActionContextProvider({ children }: RecceActionContextProviderProps) {
   const [action, setAction] = useState<RunActionInternal>();
-  const {
-    isOpen: isModalOpen,
-    onOpen: onModalOpen,
-    onClose: onModalClose,
-  } = useDisclosure();
+  const { isOpen: isModalOpen, onOpen: onModalOpen, onClose: onModalClose } = useDisclosure();
   const {
     isOpen: isRunResultOpen,
     onOpen: onResultPaneOpen,
     onClose: closeRunResult,
   } = useDisclosure();
-  const {
-    isOpen: isHistoryOpen,
-    onOpen: showHistory,
-    onClose: closeHistory,
-  } = useDisclosure();
+  const { isOpen: isHistoryOpen, onOpen: showHistory, onClose: closeHistory } = useDisclosure();
   const toast = useToast();
   const [runId, setRunId] = useState<string>();
   const [location, setLocation] = useLocation();
@@ -106,7 +86,7 @@ export function RecceActionContextProvider({
         queryClient.invalidateQueries({ queryKey: cacheKeys.runs() });
       }
     },
-    [setRunId, onResultPaneOpen, queryClient]
+    [setRunId, onResultPaneOpen, queryClient],
   );
 
   const clearRunResult = useCallback(() => {
@@ -168,15 +148,7 @@ export function RecceActionContextProvider({
         });
       }
     },
-    [
-      setAction,
-      onModalOpen,
-      showRunId,
-      toast,
-      location,
-      setLocation,
-      queryClient,
-    ]
+    [setAction, onModalOpen, showRunId, toast, location, setLocation, queryClient],
   );
   useCloseModalEffect(onModalClose);
 
@@ -211,8 +183,7 @@ export function RecceActionContextProvider({
         closeHistory,
         showHistory,
         clearRunResult,
-      }}
-    >
+      }}>
       {action && (
         <RunModal
           key={action.session}
@@ -223,11 +194,7 @@ export function RecceActionContextProvider({
           type={action.type}
           params={action.params}
           initialRun={action.lastRun}
-          RunForm={
-            action.options?.showForm && action.RunForm
-              ? action.RunForm
-              : undefined
-          }
+          RunForm={action.options?.showForm && action.RunForm ? action.RunForm : undefined}
         />
       )}
       {children}

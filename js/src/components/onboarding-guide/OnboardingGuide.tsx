@@ -13,8 +13,7 @@ import {
   Stack,
   Divider,
 } from "@chakra-ui/react";
-import React from "react";
-import { useEffect, useState } from "react";
+import React, { useEffect, useState } from "react";
 import { markOnboardingCompleted } from "@/lib/api/flag";
 import { useRecceServerFlag } from "@/lib/hooks/useRecceServerFlag";
 
@@ -55,8 +54,7 @@ const FirstTimeVisitGuide = ({ isGuideOpen, closeGuide }: GuideProps) => {
 };
 
 const OnboardingGuide = () => {
-  const [isFirstTimeVisitGuideOpen, setIsFirstTimeVisitGuideOpen] =
-    useState<boolean>(false);
+  const [isFirstTimeVisitGuideOpen, setIsFirstTimeVisitGuideOpen] = useState<boolean>(false);
   const { data: flags, isLoading } = useRecceServerFlag();
 
   useEffect(() => {
@@ -79,12 +77,7 @@ const OnboardingGuide = () => {
     return <></>;
   }
 
-  return (
-    <FirstTimeVisitGuide
-      isGuideOpen={isFirstTimeVisitGuideOpen}
-      closeGuide={closeGuide}
-    />
-  );
+  return <FirstTimeVisitGuide isGuideOpen={isFirstTimeVisitGuideOpen} closeGuide={closeGuide} />;
 };
 
 export default OnboardingGuide;

@@ -8,7 +8,7 @@ import "./styles.css";
 
 import { useLineageViewContext } from "./LineageViewContext";
 
-interface GrapeColumnNodeProps extends NodeProps<LinageGraphColumnNode> {}
+type GrapeColumnNodeProps = NodeProps<LinageGraphColumnNode>;
 
 export const TransformationType = ({
   transformationType,
@@ -41,23 +41,11 @@ export const TransformationType = ({
   return (
     <>
       {legend ? (
-        <Tag
-          fontSize="8pt"
-          size="xs"
-          colorScheme={color}
-          borderRadius="full"
-          paddingX="4px"
-        >
+        <Tag fontSize="8pt" size="xs" colorScheme={color} borderRadius="full" paddingX="4px">
           <TagLabel>{letter}</TagLabel>
         </Tag>
       ) : (
-        <Tag
-          fontSize="6pt"
-          size="xs"
-          colorScheme={color}
-          borderRadius="full"
-          paddingX="2px"
-        >
+        <Tag fontSize="6pt" size="xs" colorScheme={color} borderRadius="full" paddingX="2px">
           <TagLabel>{letter}</TagLabel>
         </Tag>
       )}
@@ -89,15 +77,8 @@ export function GraphColumnNode({ data }: GrapeColumnNodeProps) {
       backgroundColor={isFocus ? "#f0f0f0" : "inherit"}
       _hover={{
         backgroundColor: isFocus ? "#f0f0f0" : "#f0f0f0",
-      }}
-    >
-      <Flex
-        fontSize="10px"
-        color="gray"
-        width="100%"
-        gap="3px"
-        alignItems="center"
-      >
+      }}>
+      <Flex fontSize="10px" color="gray" width="100%" gap="3px" alignItems="center">
         <TransformationType transformationType={transformationType} />
         <Box>{column}</Box>
         <Spacer></Spacer>

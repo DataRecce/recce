@@ -1,7 +1,4 @@
-import {
-  LineageDiffViewOptions,
-  createLineageDiffCheck,
-} from "@/lib/api/lineagecheck";
+import { LineageDiffViewOptions, createLineageDiffCheck } from "@/lib/api/lineagecheck";
 import { useLineageGraphContext } from "@/lib/hooks/LineageGraphContext";
 
 import {
@@ -75,16 +72,14 @@ const HistoryToggle = () => {
           trackHistoryAction({ name: "show" });
           showHistory();
         }
-      }}
-    >
+      }}>
       {isHistoryOpen ? "Hide" : "Show"}
     </Button>
   );
 };
 
 const ViewModeSelectMenu = ({ isDisabled }: { isDisabled: boolean }) => {
-  const { viewOptions, onViewOptionsChanged, selectMode } =
-    useLineageViewContext();
+  const { viewOptions, onViewOptionsChanged, selectMode } = useLineageViewContext();
   const viewMode = viewOptions.view_mode || "changed_models";
   const label = viewMode === "changed_models" ? "Changed Models" : "All";
 
@@ -104,8 +99,7 @@ const ViewModeSelectMenu = ({ isDisabled }: { isDisabled: boolean }) => {
         size="xs"
         variant="outline"
         isDisabled={isDisabled}
-        rightIcon={<ChevronDownIcon />}
-      >
+        rightIcon={<ChevronDownIcon />}>
         {label}
       </MenuButton>
 
@@ -114,16 +108,18 @@ const ViewModeSelectMenu = ({ isDisabled }: { isDisabled: boolean }) => {
           as={Checkbox}
           size="sm"
           isChecked={viewMode === "changed_models"}
-          onChange={() => handleSelect("changed_models")}
-        >
+          onChange={() => {
+            handleSelect("changed_models");
+          }}>
           Changed Models
         </MenuItem>
         <MenuItem
           as={Checkbox}
           size="sm"
           isChecked={viewMode === "all"}
-          onChange={() => handleSelect("all")}
-        >
+          onChange={() => {
+            handleSelect("all");
+          }}>
           All
         </MenuItem>
       </MenuList>
@@ -144,23 +140,23 @@ const PackageSelectMenu = ({ isDisabled }: { isDisabled: boolean }) => {
     }
   }
 
-  const projectName = lineageGraph?.manifestMetadata?.current?.project_name;
+  const projectName = lineageGraph?.manifestMetadata.current?.project_name;
 
   const selected = viewOptions.packages
     ? new Set(viewOptions.packages)
     : projectName
-    ? new Set([projectName])
-    : available;
+      ? new Set([projectName])
+      : available;
   const isSelectAll = selected.size === available.size;
   const isSelectNone = selected.size === 0;
   const label =
     selected.size === 1
       ? Array.from(selected)[0]
       : isSelectAll
-      ? "All Packages"
-      : isSelectNone
-      ? "No Package"
-      : `${selected.size} Packages`;
+        ? "All Packages"
+        : isSelectNone
+          ? "No Package"
+          : `${selected.size} Packages`;
 
   const handleSelectAll = () => {
     if (isSelectAll) {
@@ -198,8 +194,7 @@ const PackageSelectMenu = ({ isDisabled }: { isDisabled: boolean }) => {
         size="xs"
         variant="outline"
         isDisabled={isDisabled}
-        rightIcon={<ChevronDownIcon />}
-      >
+        rightIcon={<ChevronDownIcon />}>
         {label}
       </MenuButton>
 
@@ -210,8 +205,7 @@ const PackageSelectMenu = ({ isDisabled }: { isDisabled: boolean }) => {
             size="sm"
             isIndeterminate={!isSelectAll && !isSelectNone}
             isChecked={isSelectAll}
-            onChange={handleSelectAll}
-          >
+            onChange={handleSelectAll}>
             Select All
           </MenuItem>
           <MenuDivider />
@@ -227,8 +221,7 @@ const PackageSelectMenu = ({ isDisabled }: { isDisabled: boolean }) => {
                 isChecked={selected.has(pkg)}
                 onChange={() => {
                   handleSelect(thePkg);
-                }}
-              >
+                }}>
                 {pkg}
               </MenuItem>
             );
@@ -272,8 +265,7 @@ const NodeSelectionInput = (props: {
       color={"black"}
       backgroundColor={"white"}
       closeOnClick={false}
-      isDisabled={!flags?.single_env_onboarding}
-    >
+      isDisabled={!flags?.single_env_onboarding}>
       <Input
         ref={inputRef}
         height="24px"
@@ -295,7 +287,9 @@ const NodeSelectionInput = (props: {
             }
           }
         }}
-        onBlur={() => setInputValue(props.value)}
+        onBlur={() => {
+          setInputValue(props.value);
+        }}
       />
     </Tooltip>
   );
@@ -343,15 +337,14 @@ const ControlItem = (props: {
 }) => {
   return (
     <Box style={props.style} maxWidth="300px">
-      <Box fontSize="8pt">{props?.label || <>&nbsp;</>}</Box>
+      <Box fontSize="8pt">{props.label || <>&nbsp;</>}</Box>
       {props.children}
     </Box>
   );
 };
 
 export const LineageViewTopBar = () => {
-  const { nodes, deselect, selectMode, ...lineageViewContext } =
-    useLineageViewContext();
+  const { nodes, deselect, selectMode, ...lineageViewContext } = useLineageViewContext();
   const { isActionAvailable } = useLineageGraphContext();
   const selectNodes = useMemo(() => {
     return nodes.filter((node) => node.data.isSelected);
@@ -402,8 +395,7 @@ export const LineageViewTopBar = () => {
                 isDisabled={selectMode !== "multi"}
                 onClick={() => {
                   deselect();
-                }}
-              >
+                }}>
                 Deselect
               </Button>
             </ControlItem>
@@ -411,11 +403,7 @@ export const LineageViewTopBar = () => {
               <ControlItem label="Explore">
                 <ButtonGroup isAttached variant="outline">
                   <Menu placement="bottom-end">
-                    <MenuButton
-                      as={Button}
-                      size={"xs"}
-                      rightIcon={<ChevronDownIcon />}
-                    >
+                    <MenuButton as={Button} size={"xs"} rightIcon={<ChevronDownIcon />}>
                       Actions
                     </MenuButton>
                     <MenuList>
@@ -423,16 +411,11 @@ export const LineageViewTopBar = () => {
                         as={Text}
                         size="sm"
                         fontSize="10pt"
-                        isDisabled={
-                          !(isNoSelect || isSingleSelect || isMultiSelect)
-                        }
-                        icon={
-                          <Icon as={findByRunType("row_count_diff")?.icon} />
-                        }
+                        isDisabled={!(isNoSelect || isSingleSelect || isMultiSelect)}
+                        icon={<Icon as={findByRunType("row_count_diff")?.icon} />}
                         onClick={() => {
                           lineageViewContext.runRowCount();
-                        }}
-                      >
+                        }}>
                         Row Count
                       </MenuItem>
                     </MenuList>
@@ -446,11 +429,7 @@ export const LineageViewTopBar = () => {
           <ControlItem label="Explore">
             <ButtonGroup isAttached variant="outline">
               <Menu placement="bottom-end">
-                <MenuButton
-                  as={Button}
-                  size={"xs"}
-                  rightIcon={<ChevronDownIcon />}
-                >
+                <MenuButton as={Button} size={"xs"} rightIcon={<ChevronDownIcon />}>
                   Actions
                 </MenuButton>
 
@@ -460,14 +439,11 @@ export const LineageViewTopBar = () => {
                       as={Text}
                       size="sm"
                       fontSize="10pt"
-                      isDisabled={
-                        !(isNoSelect || isSingleSelect || isMultiSelect)
-                      }
+                      isDisabled={!(isNoSelect || isSingleSelect || isMultiSelect)}
                       icon={<Icon as={findByRunType("row_count_diff")?.icon} />}
                       onClick={() => {
                         lineageViewContext.runRowCountDiff();
-                      }}
-                    >
+                      }}>
                       Row Count Diff
                     </MenuItem>
                     <Tooltip
@@ -476,8 +452,7 @@ export const LineageViewTopBar = () => {
                           ? DisableTooltipMessages.audit_helper
                           : null
                       }
-                      placement="left"
-                    >
+                      placement="left">
                       <MenuItem
                         as={Text}
                         size="sm"
@@ -489,8 +464,7 @@ export const LineageViewTopBar = () => {
                         icon={<Icon as={findByRunType("value_diff")?.icon} />}
                         onClick={() => {
                           lineageViewContext.runValueDiff();
-                        }}
-                      >
+                        }}>
                         Value Diff
                       </MenuItem>
                     </Tooltip>
@@ -501,33 +475,24 @@ export const LineageViewTopBar = () => {
                       as={Text}
                       size="sm"
                       fontSize="10pt"
-                      isDisabled={
-                        !(
-                          isNoSelect ||
-                          (isMultiSelect && selectNodes.length > 1)
-                        )
-                      }
+                      isDisabled={!(isNoSelect || (isMultiSelect && selectNodes.length > 1))}
                       icon={<Icon as={findByRunType("lineage_diff")?.icon} />}
                       onClick={() => {
                         lineageViewContext.addLineageDiffCheck(
-                          lineageViewContext.viewOptions.view_mode
+                          lineageViewContext.viewOptions.view_mode,
                         );
-                      }}
-                    >
+                      }}>
                       Lineage Diff
                     </MenuItem>
                     <MenuItem
                       as={Text}
                       size="sm"
                       fontSize="10pt"
-                      isDisabled={
-                        !(isNoSelect || isSingleSelect || isMultiSelect)
-                      }
+                      isDisabled={!(isNoSelect || isSingleSelect || isMultiSelect)}
                       icon={<Icon as={findByRunType("schema_diff")?.icon} />}
                       onClick={() => {
                         lineageViewContext.addSchemaDiffCheck();
-                      }}
-                    >
+                      }}>
                       Schema Diff
                     </MenuItem>
                   </MenuGroup>

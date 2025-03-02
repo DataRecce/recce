@@ -1,5 +1,21 @@
 # See https://help.github.com/articles/ignoring-files/ for more about ignoring files.
 
+# IDEs and editors
+/.idea
+.project
+.classpath
+.c9/
+*.launch
+.settings/
+*.sublime-workspace
+
+# IDE - VSCode
+.vscode/*
+!.vscode/settings.json
+!.vscode/tasks.json
+!.vscode/launch.json
+!.vscode/extensions.json
+
 # dependencies
 /node_modules
 /.pnp
@@ -36,3 +52,6 @@ yarn-error.log*
 next-env.d.ts
 
 .envrc
+
+# Next.js
+.next

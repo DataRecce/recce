@@ -1,18 +1,7 @@
 import React, { CSSProperties, useState } from "react";
-import {
-  Box,
-  Button,
-  Flex,
-  Icon,
-  Spacer,
-  Switch,
-  Tooltip,
-} from "@chakra-ui/react";
+import { Box, Button, Flex, Icon, Spacer, Switch, Tooltip } from "@chakra-ui/react";
 import SqlEditor, { DualSqlEditor } from "./SqlEditor";
-import {
-  defaultSqlQuery,
-  useRecceQueryContext,
-} from "@/lib/hooks/RecceQueryContext";
+import { defaultSqlQuery, useRecceQueryContext } from "@/lib/hooks/RecceQueryContext";
 
 import { QueryOptions, useMutation } from "@tanstack/react-query";
 import {
@@ -49,8 +38,7 @@ export const HistoryToggle = () => {
             trackHistoryAction({ name: "show" });
             showHistory();
           }
-        }}
-      >
+        }}>
         {isHistoryOpen ? "Hide" : "Show"}
       </Button>
     </Box>
@@ -58,10 +46,9 @@ export const HistoryToggle = () => {
 };
 
 const QueryModeToggle = () => {
-  const { isCustomQueries, setCustomQueries, sqlQuery, setBaseSqlQuery } =
-    useRecceQueryContext();
+  const { isCustomQueries, setCustomQueries, sqlQuery, setBaseSqlQuery } = useRecceQueryContext();
   const handleToggle = () => {
-    if (isCustomQueries === false) setBaseSqlQuery && setBaseSqlQuery(sqlQuery);
+    if (!isCustomQueries) setBaseSqlQuery && setBaseSqlQuery(sqlQuery);
     setCustomQueries(!isCustomQueries);
   };
   const customQueriesDescription =
@@ -139,23 +126,20 @@ export const QueryPage = () => {
         gap="5px"
         height="54px"
         borderBottom="1px solid lightgray"
-        flex="0 0 54px"
-      >
+        flex="0 0 54px">
         <HistoryToggle />
         <QueryModeToggle />
         <Spacer />
-        <QueryForm
-          defaultPrimaryKeys={primaryKeys}
-          onPrimaryKeysChange={setPrimaryKeys}
-        />
+        <QueryForm defaultPrimaryKeys={primaryKeys} onPrimaryKeysChange={setPrimaryKeys} />
         <Button
           colorScheme="blue"
-          onClick={() => runQuery("query_diff")}
+          onClick={() => {
+            runQuery("query_diff");
+          }}
           isDisabled={isPending}
           size="xs"
           fontSize="14px"
-          marginTop={"16px"}
-        >
+          marginTop={"16px"}>
           Run Diff
         </Button>
       </Flex>
@@ -167,16 +151,26 @@ export const QueryPage = () => {
             baseValue={baseSqlQuery}
             onChange={setSqlQuery}
             onChangeBase={setBaseSqlQuery}
-            onRun={() => runQuery("query")}
-            onRunBase={() => runQuery("query_base")}
-            onRunDiff={() => runQuery("query_diff")}
+            onRun={() => {
+              runQuery("query");
+            }}
+            onRunBase={() => {
+              runQuery("query_base");
+            }}
+            onRunDiff={() => {
+              runQuery("query_diff");
+            }}
           />
         ) : (
           <SqlEditor
             value={sqlQuery}
             onChange={setSqlQuery}
-            onRun={() => runQuery("query")}
-            onRunDiff={() => runQuery("query_diff")}
+            onRun={() => {
+              runQuery("query");
+            }}
+            onRunDiff={() => {
+              runQuery("query_diff");
+            }}
           />
         )}
       </Box>

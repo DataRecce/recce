@@ -84,10 +84,10 @@ test("lineage diff", () => {
 
   expect(Object.keys(nodes).length).toBe(4);
   expect(Object.keys(edges).length).toBe(4);
-  expect(nodes["d"].from).toBe("both");
-  expect(nodes["c"].children["d"].from).toBe("current");
-  expect(nodes["d"].parents["c"].from).toBe("current");
-  expect(edges["c_d"].from).toBe("current");
+  expect(nodes.d.from).toBe("both");
+  expect(nodes.c.children.d.from).toBe("current");
+  expect(nodes.d.parents.c.from).toBe("current");
+  expect(edges.c_d.from).toBe("current");
 });
 
 test("lineage diff 2", () => {
@@ -169,15 +169,15 @@ test("lineage diff 2", () => {
 
   expect(Object.keys(nodes).length).toBe(5);
   expect(Object.keys(edges).length).toBe(4);
-  expect(nodes["a"].changeStatus).toBe("removed");
-  expect(nodes["a2"].changeStatus).toBe("added");
-  expect(nodes["b"].changeStatus).toBeUndefined;
-  expect(nodes["c"].changeStatus).toBe("modified");
-  expect(nodes["d"].changeStatus).toBeUndefined;
+  expect(nodes.a.changeStatus).toBe("removed");
+  expect(nodes.a2.changeStatus).toBe("added");
+  expect(nodes.b.changeStatus).toBeUndefined;
+  expect(nodes.c.changeStatus).toBe("modified");
+  expect(nodes.d.changeStatus).toBeUndefined;
 
-  expect(nodes["b"].parents["a"].changeStatus).toBe("removed");
-  expect(nodes["b"].parents["a2"].changeStatus).toBe("added");
-  expect(nodes["b"].children["c"].changeStatus).toBeUndefined;
+  expect(nodes.b.parents.a.changeStatus).toBe("removed");
+  expect(nodes.b.parents.a2.changeStatus).toBe("added");
+  expect(nodes.b.children.c.changeStatus).toBeUndefined;
 });
 
 test("hightlight", () => {
@@ -251,13 +251,9 @@ test("hightlight", () => {
   const [nodes, edges] = toReactflow(lineageGraph);
   const relatedNodes = union(
     selectUpstream(lineageGraph, ["a"]),
-    selectDownstream(lineageGraph, ["a"])
+    selectDownstream(lineageGraph, ["a"]),
   );
-  const [nodes2, edges2] = highlightNodes(
-    Array.from(relatedNodes),
-    nodes,
-    edges
-  );
+  const [nodes2, edges2] = highlightNodes(Array.from(relatedNodes), nodes, edges);
 
   expect(nodes.length).toBe(nodes2.length);
   expect(edges.length).toBe(edges2.length);

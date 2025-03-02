@@ -4,7 +4,7 @@ import { getIconForChangeStatus } from "./styles";
 
 import "./styles.css";
 
-interface GraphEdgeProps extends EdgeProps<LineageGraphEdge> {}
+type GraphEdgeProps = EdgeProps<LineageGraphEdge>;
 
 export default function GraphEdge(props: GraphEdgeProps) {
   const {
@@ -24,7 +24,7 @@ export default function GraphEdge(props: GraphEdgeProps) {
   };
 
   if (data?.changeStatus) {
-    style.stroke = getIconForChangeStatus(data?.changeStatus).color;
+    style.stroke = getIconForChangeStatus(data.changeStatus).color;
     style.strokeDasharray = "5";
   }
 
@@ -42,11 +42,7 @@ export default function GraphEdge(props: GraphEdgeProps) {
   });
   return (
     <>
-      <BaseEdge
-        path={edgePath}
-        markerEnd={markerEnd}
-        style={{ ...style, ...styleOverride }}
-      />
+      <BaseEdge path={edgePath} markerEnd={markerEnd} style={{ ...style, ...styleOverride }} />
     </>
   );
 }

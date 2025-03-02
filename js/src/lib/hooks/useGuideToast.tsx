@@ -16,13 +16,7 @@ export function useGuideToast(options: {
   onExternalLinkClick?: () => void;
 }) {
   const toast = useToast();
-  const {
-    guideId,
-    description,
-    externalLink,
-    externalLinkText,
-    onExternalLinkClick,
-  } = options;
+  const { guideId, description, externalLink, externalLinkText, onExternalLinkClick } = options;
 
   function guideToast() {
     if (toast.isActive(guideId)) {
@@ -44,8 +38,7 @@ export function useGuideToast(options: {
           borderWidth={3}
           borderRadius={"md"}
           backgroundColor={"white"}
-          opacity={1}
-        >
+          opacity={1}>
           <AlertDescription fontSize="md">
             <HStack>
               <Text>
@@ -59,8 +52,7 @@ export function useGuideToast(options: {
                       onExternalLinkClick();
                     }
                     onClose();
-                  }}
-                >
+                  }}>
                   {externalLinkText}
                 </Link>
               </Text>
@@ -78,6 +70,8 @@ export function useGuideToast(options: {
 
   return {
     guideToast: guideToast,
-    closeGuideToast: () => toast.closeAll(),
+    closeGuideToast: () => {
+      toast.closeAll();
+    },
   };
 }

@@ -33,12 +33,7 @@ import {
   VStack,
   Link,
 } from "@chakra-ui/react";
-import {
-  CheckCircleIcon,
-  CopyIcon,
-  DeleteIcon,
-  RepeatIcon,
-} from "@chakra-ui/icons";
+import { CheckCircleIcon, CopyIcon, DeleteIcon, RepeatIcon } from "@chakra-ui/icons";
 import { CiBookmark } from "react-icons/ci";
 import { IoMdCodeWorking } from "react-icons/io";
 import { CheckBreadcrumb } from "./CheckBreadcrumb";
@@ -61,24 +56,18 @@ import { RunView } from "../run/RunView";
 import { formatDistanceToNow, sub } from "date-fns";
 import { LineageDiffView } from "./LineageDiffView";
 import { findByRunType } from "../run/registry";
-import {
-  generateCheckTemplate,
-  PresetCheckTemplateView,
-} from "./PresetCheckTemplateView";
+import { generateCheckTemplate, PresetCheckTemplateView } from "./PresetCheckTemplateView";
 import { VSplit } from "../split/Split";
 import { useCopyToClipboardButton } from "@/lib/hooks/ScreenShot";
 import { useRun } from "@/lib/hooks/useRun";
 import { useCheckToast } from "@/lib/hooks/useCheckToast";
 import { LineageViewRef } from "../lineage/LineageView";
 
-export const isDisabledByNoResult = (
-  type: string,
-  run: Run | undefined
-): boolean => {
+export const isDisabledByNoResult = (type: string, run: Run | undefined): boolean => {
   if (type === "schema_diff" || type === "lineage_diff") {
     return false;
   }
-  return !run?.result || !!run?.error;
+  return !run?.result || !!run.error;
 };
 
 interface CheckDetailProps {
@@ -86,10 +75,7 @@ interface CheckDetailProps {
   refreshCheckList?: () => void;
 }
 
-export const CheckDetail = ({
-  checkId,
-  refreshCheckList,
-}: CheckDetailProps) => {
+export const CheckDetail = ({ checkId, refreshCheckList }: CheckDetailProps) => {
   const queryClient = useQueryClient();
   const [, setLocation] = useLocation();
   const { successToast, failToast } = useClipBoardToast();
@@ -103,9 +89,7 @@ export const CheckDetail = ({
     onOpen: onPresetCheckTemplateOpen,
     onClose: onPresetCheckTemplateClose,
   } = useDisclosure();
-  const Overlay = () => (
-    <ModalOverlay bg="blackAlpha.300" backdropFilter="blur(10px) " />
-  );
+  const Overlay = () => <ModalOverlay bg="blackAlpha.300" backdropFilter="blur(10px) " />;
   const [overlay, setOverlay] = useState(<Overlay />);
 
   const {
@@ -120,11 +104,9 @@ export const CheckDetail = ({
 
   const trackedRunId = submittedRunId || check?.last_run?.run_id;
   const { run, error: rerunError } = useRun(trackedRunId);
-  const isRunning = submittedRunId
-    ? !run || run.status === "running"
-    : run?.status === "running";
+  const isRunning = submittedRunId ? !run || run.status === "running" : run?.status === "running";
 
-  const runTypeEntry = check?.type ? findByRunType(check?.type) : undefined;
+  const runTypeEntry = check?.type ? findByRunType(check.type) : undefined;
   const isPresetCheck = check?.is_preset || false;
 
   const lineageViewRef = useRef<LineageViewRef>(null);
@@ -175,9 +157,7 @@ export const CheckDetail = ({
     if (!navigator.clipboard) {
       failToast(
         "Failed to copy the check to clipboard",
-        new Error(
-          "Copy to clipboard is available only in secure contexts (HTTPS)"
-        )
+        new Error("Copy to clipboard is available only in secure contexts (HTTPS)"),
       );
       return;
     }
@@ -193,7 +173,7 @@ export const CheckDetail = ({
   const handleApproveCheck = useCallback(() => {
     const isChecked = check?.is_checked;
     mutate({ is_checked: !isChecked });
-    if (!isChecked === true) {
+    if (!isChecked) {
       markedAsApprovedToast();
     }
   }, [check?.is_checked, mutate, markedAsApprovedToast]);
@@ -207,8 +187,7 @@ export const CheckDetail = ({
   };
 
   const [tabIndex, setTabIndex] = useState(0);
-  const { ref, onCopyToClipboard, onMouseEnter, onMouseLeave } =
-    useCopyToClipboardButton();
+  const { ref, onCopyToClipboard, onMouseEnter, onMouseLeave } = useCopyToClipboardButton();
 
   useEffect(() => {
     const template = generateCheckTemplate({
@@ -237,8 +216,7 @@ export const CheckDetail = ({
     <VSplit
       minSize={100}
       sizes={[30, 70]}
-      style={{ height: "100%", width: "100%", maxHeight: "100%" }}
-    >
+      style={{ height: "100%", width: "100%", maxHeight: "100%" }}>
       <Box style={{ contain: "strict" }} display="flex" flexDirection="column">
         <Flex p="0px 16px" alignItems="center" h="40px">
           <CheckBreadcrumb
@@ -258,12 +236,7 @@ export const CheckDetail = ({
           <Spacer />
           <HStack mr="10px">
             {relativeTime && (
-              <Box
-                textOverflow="ellipsis"
-                whiteSpace="nowrap"
-                overflow="hidden"
-                fontSize="10pt"
-              >
+              <Box textOverflow="ellipsis" whiteSpace="nowrap" overflow="hidden" fontSize="10pt">
                 {relativeTime}
               </Box>
             )}
@@ -284,16 +257,14 @@ export const CheckDetail = ({
                   onClick={() => {
                     setOverlay(<Overlay />);
                     onPresetCheckTemplateOpen();
-                  }}
-                >
+                  }}>
                   Get Preset Check Template
                 </MenuItem>
                 <MenuItem
                   as={Text}
                   fontSize={"10pt"}
                   icon={<CopyIcon />}
-                  onClick={() => handleCopy()}
-                >
+                  onClick={() => handleCopy()}>
                   Copy Markdown
                 </MenuItem>
                 <MenuDivider />
@@ -302,8 +273,9 @@ export const CheckDetail = ({
                   fontSize={"10pt"}
                   icon={<DeleteIcon />}
                   color="red"
-                  onClick={() => handleDelete()}
-                >
+                  onClick={() => {
+                    handleDelete();
+                  }}>
                   Delete
                 </MenuItem>
               </MenuList>
@@ -314,11 +286,10 @@ export const CheckDetail = ({
                 isDisabledByNoResult(check?.type ?? "", run)
                   ? "Run the check first"
                   : check?.is_checked
-                  ? "Mark as Pending"
-                  : "Mark as Approved"
+                    ? "Mark as Pending"
+                    : "Mark as Approved"
               }
-              placement="bottom-end"
-            >
+              placement="bottom-end">
               <Button
                 flex="0 0 auto"
                 size="sm"
@@ -331,9 +302,10 @@ export const CheckDetail = ({
                     <Icon as={VscCircleLarge} color="lightgray" />
                   )
                 }
-                onClick={() => handleApproveCheck()}
-                isDisabled={isDisabledByNoResult(check?.type ?? "", run)}
-              >
+                onClick={() => {
+                  handleApproveCheck();
+                }}
+                isDisabled={isDisabledByNoResult(check?.type ?? "", run)}>
                 {check?.is_checked ? "Approved" : "Mark as Approved"}
               </Button>
             </Tooltip>
@@ -356,8 +328,7 @@ export const CheckDetail = ({
           display="flex"
           flexDirection="column"
           tabIndex={tabIndex}
-          onChange={setTabIndex}
-        >
+          onChange={setTabIndex}>
           <TabList height="50px">
             <Tab fontSize="10pt">Result</Tab>
             {(check?.type === "query" || check?.type === "query_diff") && (
@@ -372,8 +343,7 @@ export const CheckDetail = ({
                     variant="outline"
                     isLoading={isRunning}
                     size="sm"
-                    onClick={() => handleRerun()}
-                  >
+                    onClick={() => handleRerun()}>
                     Rerun
                   </Button>
                 </Tooltip>
@@ -381,9 +351,7 @@ export const CheckDetail = ({
               <Button
                 leftIcon={<CopyIcon />}
                 variant="outline"
-                isDisabled={
-                  isDisabledByNoResult(check?.type ?? "", run) || tabIndex !== 0
-                }
+                isDisabled={isDisabledByNoResult(check?.type ?? "", run) || tabIndex !== 0}
                 onMouseEnter={onMouseEnter}
                 onMouseLeave={onMouseLeave}
                 size="sm"
@@ -393,8 +361,7 @@ export const CheckDetail = ({
                   } else {
                     onCopyToClipboard();
                   }
-                }}
-              >
+                }}>
                 Copy to Clipboard
               </Button>
             </HStack>
@@ -420,23 +387,16 @@ export const CheckDetail = ({
                   <Center bg="rgb(249,249,249)" height="100%">
                     <VStack spacing={4}>
                       <Box>
-                        This action is part of the initial preset and has not
-                        been performed yet. Once performed, the result will be
-                        shown here.
+                        This action is part of the initial preset and has not been performed yet.
+                        Once performed, the result will be shown here.
                       </Box>
-                      <Button
-                        onClick={handleRerun}
-                        colorScheme="blue"
-                        size="sm"
-                      >
+                      <Button onClick={handleRerun} colorScheme="blue" size="sm">
                         Run Query
                       </Button>
                     </VStack>
                   </Center>
                 ))}
-              {check && check.type === "schema_diff" && (
-                <SchemaDiffView check={check} ref={ref} />
-              )}
+              {check && check.type === "schema_diff" && <SchemaDiffView check={check} ref={ref} />}
               {check && check.type === "lineage_diff" && (
                 <LineageDiffView check={check} ref={lineageViewRef} />
               )}
@@ -447,13 +407,13 @@ export const CheckDetail = ({
               <TabPanel p={0} height="100%" width="100%">
                 {check.params?.base_sql_template ? (
                   <DualSqlEditor
-                    value={(check?.params as any)?.sql_template || ""}
-                    baseValue={(check?.params as any)?.base_sql_template || ""}
+                    value={check.params?.sql_template || ""}
+                    baseValue={check.params?.base_sql_template || ""}
                     options={{ readOnly: true }}
                   />
                 ) : (
                   <SqlEditor
-                    value={(check?.params as any)?.sql_template || ""}
+                    value={check.params?.sql_template || ""}
                     options={{ readOnly: true }}
                   />
                 )}
@@ -466,8 +426,7 @@ export const CheckDetail = ({
         isOpen={isPresetCheckTemplateOpen}
         onClose={onPresetCheckTemplateClose}
         isCentered
-        size="6xl"
-      >
+        size="6xl">
         {overlay}
         <ModalContent overflowY="auto" height="40%" width="60%">
           <ModalHeader>Preset Check Template</ModalHeader>
@@ -483,15 +442,11 @@ export const CheckDetail = ({
                 onClick={async () => {
                   await navigator.clipboard.writeText(presetCheckTemplate);
                   successToast("Copied the template to the clipboard");
-                }}
-              >
+                }}>
                 copy
               </Text>{" "}
               the following template and paste it into the{" "}
-              <Highlight
-                query="recce.yml"
-                styles={{ px: "1", py: "0", bg: "red.100" }}
-              >
+              <Highlight query="recce.yml" styles={{ px: "1", py: "0", bg: "red.100" }}>
                 recce.yml
               </Highlight>{" "}
               file.

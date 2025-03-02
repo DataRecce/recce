@@ -5,11 +5,13 @@
   "engines": {
     "node": ">=18"
   },
+  "packageManager": "pnpm@10.5.2",
   "scripts": {
     "dev": "next dev",
     "build": "npm run clean && next build && mv out ../recce/data",
     "start": "next start",
-    "lint": "next lint",
+    "lint": "eslint",
+    "lint:fix": "eslint --fix",
     "test": "jest --watch",
     "clean": "rimraf ../recce/data"
   },
@@ -56,6 +58,8 @@
     "yaml": "^2.6.1"
   },
   "devDependencies": {
+    "@eslint/js": "^9.21.0",
+    "@next/eslint-plugin-next": "^14.2.24",
     "@testing-library/dom": "^9.3.4",
     "@testing-library/jest-dom": "6.1.2",
     "@testing-library/react": "14.0.0",
@@ -69,13 +73,22 @@
     "@types/react": "^18.3.17",
     "@types/react-dom": "^18.3.5",
     "autoprefixer": "^10.4.20",
-    "eslint": "^8.57.1",
-    "eslint-config-next": "14.0.1",
+    "eslint": "^9.21.0",
+    "eslint-config-next": "14.2.24",
+    "eslint-config-prettier": "^10.0.2",
+    "eslint-plugin-import-x": "^4.6.1",
+    "eslint-plugin-jsx-a11y": "^6.10.2",
+    "eslint-plugin-prettier": "^5.2.3",
+    "eslint-plugin-react": "^7.37.4",
+    "eslint-plugin-react-hooks": "^5.2.0",
+    "eslint-plugin-tailwindcss": "^3.18.0",
+    "globals": "^16.0.0",
     "jest": "^29.7.0",
     "jest-environment-jsdom": "29.7.0",
     "postcss": "^8.4.49",
     "rimraf": "^5.0.10",
     "tailwindcss": "^3.4.17",
-    "typescript": "^5.7.2"
+    "typescript": "^5.7.2",
+    "typescript-eslint": "^8.25.0"
   }
 }

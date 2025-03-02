@@ -9,9 +9,7 @@ export interface SchemaDiffViewParams {
   packages?: string[];
 }
 
-export async function createSchemaDiffCheck(
-  params: SchemaDiffViewParams
-): Promise<Check> {
+export async function createSchemaDiffCheck(params: SchemaDiffViewParams): Promise<Check> {
   const response = await axiosClient.post("/api/checks", {
     type: "schema_diff",
     params: params,

@@ -1,17 +1,9 @@
 export interface DataFrame {
-  columns: Array<{
+  columns: {
     name: string;
-    type:
-      | "number"
-      | "integer"
-      | "text"
-      | "boolean"
-      | "date"
-      | "datetime"
-      | "timedelta"
-      | "unknown";
-  }>;
-  data: Array<Array<number | string | null>>;
+    type: "number" | "integer" | "text" | "boolean" | "date" | "datetime" | "timedelta" | "unknown";
+  }[];
+  data: (number | string | null)[][];
   limit?: number;
   more?: boolean;
 }

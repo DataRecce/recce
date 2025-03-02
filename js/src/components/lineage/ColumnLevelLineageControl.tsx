@@ -22,18 +22,12 @@ export const ColumnLevelLineageControl = ({
       border="1px solid"
       borderColor="gray.200"
       bg="white"
-      fontSize={"10pt"}
-    >
+      fontSize={"10pt"}>
       <Text>Column Lineage for</Text>
       <Code>
         {node}.{column}
       </Code>
-      <IconButton
-        icon={<CloseIcon />}
-        aria-label={""}
-        onClick={reset}
-        size="xs"
-      />
+      <IconButton icon={<CloseIcon />} aria-label={""} onClick={reset} size="xs" />
     </Flex>
   );
 };

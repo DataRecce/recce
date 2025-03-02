@@ -18,10 +18,7 @@ interface BreakingChangeSwitchProps {
   onChanged: (enabled: boolean) => void;
 }
 
-export const BreakingChangeSwitch = ({
-  enabled,
-  onChanged,
-}: BreakingChangeSwitchProps) => {
+export const BreakingChangeSwitch = ({ enabled, onChanged }: BreakingChangeSwitchProps) => {
   const recceServerFlag = useRecceServerFlag();
   if (!recceServerFlag.data || recceServerFlag.data.single_env_onboarding) {
     return <></>;
@@ -38,8 +35,7 @@ export const BreakingChangeSwitch = ({
       border="1px solid"
       borderColor="gray.200"
       bg="white"
-      alignSelf="flex-start"
-    >
+      alignSelf="flex-start">
       <Switch
         isChecked={enabled}
         onChange={(e) => {
@@ -47,8 +43,7 @@ export const BreakingChangeSwitch = ({
 
           onChanged(enabled);
         }}
-        alignItems={"center"}
-      ></Switch>
+        alignItems={"center"}></Switch>
       <Flex alignItems={"center"}>
         <Text fontSize="10pt" lineHeight="1">
           Breaking Change Analysis
@@ -56,21 +51,15 @@ export const BreakingChangeSwitch = ({
       </Flex>
       <Popover trigger="hover" placement="top-start">
         <PopoverTrigger>
-          <Icon
-            boxSize="10px"
-            as={InfoOutlineIcon}
-            color="gray.500"
-            cursor="pointer"
-          />
+          <Icon boxSize="10px" as={InfoOutlineIcon} color="gray.500" cursor="pointer" />
         </PopoverTrigger>
         <PopoverContent bg="black" color="white">
           <PopoverBody fontSize="sm">
-            Breaking changes are determined by analyzing SQL for changes that
-            may impact downstream models.{" "}
+            Breaking changes are determined by analyzing SQL for changes that may impact downstream
+            models.{" "}
             <Link
               href="https://datarecce.io/docs/features/breaking-change-analysis/"
-              target="_blank"
-            >
+              target="_blank">
               Learn more
             </Link>
             .

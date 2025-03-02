@@ -13,9 +13,7 @@ export interface LineageDiffViewOptions {
   };
 }
 
-export async function createLineageDiffCheck(
-  viewOptions: LineageDiffViewOptions
-): Promise<Check> {
+export async function createLineageDiffCheck(viewOptions: LineageDiffViewOptions): Promise<Check> {
   const response = await axiosClient.post("/api/checks", {
     type: "lineage_diff",
     params: {},

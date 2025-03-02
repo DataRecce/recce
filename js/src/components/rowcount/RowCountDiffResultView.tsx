@@ -1,8 +1,5 @@
 import { Center, Flex, forwardRef } from "@chakra-ui/react";
-import {
-  EmptyRowsRenderer,
-  ScreenshotDataGrid,
-} from "../data-grid/ScreenshotDataGrid";
+import { EmptyRowsRenderer, ScreenshotDataGrid } from "../data-grid/ScreenshotDataGrid";
 
 import { RunResultViewProps } from "../run/types";
 import {
@@ -14,8 +11,7 @@ import {
 import { deltaPercentageString } from "./delta";
 import { isNumber } from "lodash";
 
-interface RowCountDiffResultViewProp
-  extends RunResultViewProps<RowCountDiffParams, RowCountDiffResult> {}
+type RowCountDiffResultViewProp = RunResultViewProps<RowCountDiffParams, RowCountDiffResult>;
 
 interface RowCountDiffRow {
   name: string;
@@ -23,10 +19,7 @@ interface RowCountDiffRow {
   current: number | string;
 }
 
-function _RowCountDiffResultView(
-  { run }: RowCountDiffResultViewProp,
-  ref: any
-) {
+function _RowCountDiffResultView({ run }: RowCountDiffResultViewProp, ref: any) {
   function columnCellClass(row: RowCountDiffRow) {
     if (row.base === row.current) {
       return "column-body-normal";
@@ -49,8 +42,8 @@ function _RowCountDiffResultView(
 
   const rows: RowCountDiffRow[] = Object.keys(run.result || {}).map((key) => {
     const result = runResult[key];
-    const base = isNumber(result?.base) ? result?.base : null;
-    const current = isNumber(result?.curr) ? result?.curr : null;
+    const base = isNumber(result.base) ? result.base : null;
+    const current = isNumber(result.curr) ? result.curr : null;
     let delta = "=";
 
     if (base !== null && current !== null) {
@@ -107,8 +100,7 @@ function _RowCountDiffResultView(
   );
 }
 
-interface RowCountResultViewProp
-  extends RunResultViewProps<RowCountParams, RowCountResult> {}
+type RowCountResultViewProp = RunResultViewProps<RowCountParams, RowCountResult>;
 
 interface RowCountRow {
   name: string;
@@ -125,7 +117,7 @@ function _RowCountResultView({ run }: RowCountResultViewProp, ref: any) {
 
   const rows: RowCountRow[] = Object.keys(run.result || {}).map((key) => {
     const result = runResult[key];
-    const current = isNumber(result?.curr) ? result?.curr : null;
+    const current = isNumber(result.curr) ? result.curr : null;
 
     return {
       name: key,

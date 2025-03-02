@@ -1,13 +1,7 @@
 import { useLineageGraphContext } from "@/lib/hooks/LineageGraphContext";
 import { DropdownValuesInput } from "@/utils/DropdownValuesInput";
 import { InfoIcon } from "@chakra-ui/icons";
-import {
-  Flex,
-  FlexProps,
-  FormControl,
-  FormLabel,
-  Tooltip,
-} from "@chakra-ui/react";
+import { Flex, FlexProps, FormControl, FormLabel, Tooltip } from "@chakra-ui/react";
 import { useMemo } from "react";
 
 interface QueryFormProps extends FlexProps {
@@ -15,11 +9,7 @@ interface QueryFormProps extends FlexProps {
   onPrimaryKeysChange: (primaryKeys: string[]) => void;
 }
 
-export const QueryForm = ({
-  defaultPrimaryKeys,
-  onPrimaryKeysChange,
-  ...prob
-}: QueryFormProps) => {
+export const QueryForm = ({ defaultPrimaryKeys, onPrimaryKeysChange, ...prob }: QueryFormProps) => {
   const { lineageGraph, isActionAvailable } = useLineageGraphContext();
 
   const labelInfo =

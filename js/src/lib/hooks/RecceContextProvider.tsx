@@ -1,9 +1,6 @@
 import React from "react";
 
-import {
-  RecceQueryContextProvider,
-  RowCountStateContextProvider,
-} from "./RecceQueryContext";
+import { RecceQueryContextProvider, RowCountStateContextProvider } from "./RecceQueryContext";
 import { LineageGraphContextProvider } from "./LineageGraphContext";
 import { RecceActionContextProvider } from "./RecceActionContext";
 import { RecceCheckContextProvider } from "./RecceCheckContext";
