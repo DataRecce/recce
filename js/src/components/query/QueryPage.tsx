@@ -19,6 +19,8 @@ import { SubmitOptions, waitRun } from "@/lib/api/runs";
 import { VscDiff, VscHistory } from "react-icons/vsc";
 import { InfoIcon } from "@chakra-ui/icons";
 import { trackHistoryAction } from "@/lib/api/track";
+import { BaseEnvironmentSetupGuide } from "../lineage/SingleEnvironmentQueryView";
+import { useRecceServerFlag } from "@/lib/hooks/useRecceServerFlag";
 
 export const HistoryToggle = () => {
   const { isHistoryOpen, showHistory, closeHistory } = useRecceActionContext();
@@ -76,7 +78,8 @@ export const QueryPage = () => {
     setPrimaryKeys,
     isCustomQueries,
   } = useRecceQueryContext();
-  const { envInfo } = useLineageGraphContext();
+  const { lineageGraph, envInfo } = useLineageGraphContext();
+  const { data: flag } = useRecceServerFlag();
 
   let sqlQuery = _sqlQuery;
   if (envInfo?.adapterType === "sqlmesh" && _sqlQuery === defaultSqlQuery) {
@@ -116,6 +119,51 @@ export const QueryPage = () => {
   const { mutate: runQuery, isPending } = useMutation({
     mutationFn: queryFn,
   });
+
+  const currentSchema = "N/A";
+  // if (lineageGraph?.nodes && lineageGraph?.nodes[current?.id || ""]) {
+  //   const value = lineageGraph?.nodes[current?.id || ""];
+  //   if (value.data.current?.schema) {
+  //     currentSchema = value.data.current.schema;
+  //   }
+  // }
+
+  if (flag?.single_env_onboarding) {
+    return (
+      <Flex direction="column" height="100%">
+        <Flex
+          justifyContent="right"
+          alignItems="center"
+          padding="4pt 8pt"
+          gap="5px"
+          height="54px"
+          borderBottom="1px solid lightgray">
+          <HistoryToggle />
+          <Spacer />
+          {/* Disable the Diff button to let user known they should configure the base environment */}
+          <Tooltip label="Please configure the base environment before running the diff">
+            <Button
+              colorScheme="blue"
+              isDisabled={true}
+              size="xs"
+              fontSize="14px"
+              marginTop={"16px"}>
+              Run Diff
+            </Button>
+          </Tooltip>
+        </Flex>
+        <DualSqlEditor
+          value={sqlQuery}
+          onChange={setSqlQuery}
+          onRun={() => {
+            runQuery("query");
+          }}
+          labels={["base (production)", `current (${currentSchema})`]}
+          BaseEnvironmentSetupGuide={<BaseEnvironmentSetupGuide />}
+        />
+      </Flex>
+    );
+  }
 
   return (
     <Flex direction="column" height="100%">
