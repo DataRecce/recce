@@ -29,8 +29,9 @@ import { SubmitOptions, waitRun } from "@/lib/api/runs";
 import { QueryParams, submitQuery } from "@/lib/api/adhocQuery";
 import { DualSqlEditor } from "../query/SqlEditor";
 import { useLineageGraphContext } from "@/lib/hooks/LineageGraphContext";
+import { RiMindMap } from "react-icons/ri";
 
-function BaseEnvironmentSetupGuide() {
+export function BaseEnvironmentSetupGuide() {
   return (
     <Box height={"100%"}>
       <Stack spacing={4} p={4} m={"32px"} fontSize={"sm"}>
@@ -51,6 +52,40 @@ function BaseEnvironmentSetupGuide() {
         </Link>
       </Stack>
     </Box>
+  );
+}
+
+export function BaseEnvironmentSetupNotification() {
+  return (
+    <Flex direction="row" gap="10px" alignItems={"flex-start"}>
+      <Icon as={RiMindMap} color="blue.500" boxSize="5" />
+      <Flex direction="column" gap="5px">
+        <Text fontWeight="bold">
+          Lineage Diff{" "}
+          <Text color="red" as="span">
+            Live Reload
+          </Text>
+        </Text>
+
+        <Text fontSize="sm">
+          To view lineage diff in action, make a modeling change and rebuild
+          your dbt project. Leave Recce running and{" "}
+          <Text fontWeight="bold" as="span">
+            model changes will be automatically detected
+          </Text>{" "}
+          and displayed.
+        </Text>
+        <Link
+          color="blue.500"
+          fontSize="sm"
+          fontWeight="medium"
+          isExternal
+          href="https://datarecce.io/docs/get-started/#prepare-dbt-artifacts"
+        >
+          Learn how
+        </Link>
+      </Flex>
+    </Flex>
   );
 }
 

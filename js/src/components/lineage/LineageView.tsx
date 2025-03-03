@@ -89,6 +89,9 @@ import { useRun } from "@/lib/hooks/useRun";
 import { GraphColumnNode } from "./GraphColumnNode";
 import { ColumnLevelLineageControl } from "./ColumnLevelLineageControl";
 import { ColumnLevelLineageLegend } from "./ColumnLevelLineageLegend";
+import { LineageViewNotification } from "./LineageViewNotification";
+import { useRecceServerFlag } from "@/lib/hooks/useRecceServerFlag";
+import { BaseEnvironmentSetupNotification } from "./SingleEnvironmentQueryView";
 
 export interface LineageViewProps {
   viewOptions?: LineageDiffViewOptions;
@@ -211,6 +214,7 @@ export function PrivateLineageView(
   const { lineageGraph, retchLineageGraph, isLoading, error, refetchRunsAggregated } =
     useLineageGraphContext();
 
+  const { data: flagData } = useRecceServerFlag();
   const { runId, showRunId, closeRunResult, runAction, isRunResultOpen } = useRecceActionContext();
   const { run } = useRun(runId);
 
@@ -561,7 +565,7 @@ export function PrivateLineageView(
         setSelectMode("action_result");
       },
       onActionNodeUpdated: handleActionNodeUpdated,
-      onActionCompleted: () => {},
+      onActionCompleted: () => { },
     },
   );
 
@@ -960,6 +964,13 @@ export function PrivateLineageView(
                 {isModelsChanged && <ChangeStatusLegend />}
                 {viewOptions.column_level_lineage && <ColumnLevelLineageLegend />}
               </Flex>
+            </Panel>
+            <Panel position="top-center">
+              <LineageViewNotification
+                notification={
+                  flagData?.single_env_onboarding ? <BaseEnvironmentSetupNotification /> : undefined
+                }
+                type={"info"}></LineageViewNotification>
             </Panel>
             <Panel position="top-left">
               <Flex direction="column" gap="5px">
