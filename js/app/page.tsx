@@ -197,11 +197,7 @@ function NavBar() {
 
   const tabs: TabProps[] = [
     { name: "Lineage", href: "/lineage" },
-    {
-      name: "Query",
-      href: "/query",
-      disable: flag?.single_env_onboarding === true,
-    },
+    { name: "Query", href: "/query" },
     {
       name: "Checklist",
       href: "/checks",

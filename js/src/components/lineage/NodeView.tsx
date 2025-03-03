@@ -261,7 +261,12 @@ export function NodeView({ node, onCloseNode }: NodeViewProps) {
         size="xs"
         colorScheme="blue"
         onClick={() => {
-          onQueryViewOpen();
+          if (envInfo?.adapterType === "dbt") {
+            setSqlQuery(`select * from {{ ref("${node.name}") }}`);
+          } else if (envInfo?.adapterType === "sqlmesh") {
+            setSqlQuery(`select * from ${node.name}`);
+          }
+          setLocation("/query");
         }}
         disabled={node.from === "base"}>
         Query
