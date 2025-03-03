@@ -131,6 +131,20 @@ class ColumnLevelLineageTest(unittest.TestCase):
         assert result['x'].depends_on[1].node == 'table1'
         assert result['x'].depends_on[1].column == 'amount'
 
+    def test_transform_case_when_no_default(self):
+        sql = """
+        select count(
+            case when a = 'apple' then 1
+            end
+        ) as c from table1;
+        """
+
+        result = cll(sql)
+        assert result['c'].type == 'derived'
+        assert result['c'].depends_on[0].node == 'table1'
+        assert result['c'].depends_on[0].column == 'a'
+        assert len(result['c'].depends_on) == 1
+
     def test_transform_binary(self):
         sql = """
         select (a+b) * (c+d) as x from table1
@@ -407,6 +421,33 @@ class ColumnLevelLineageTest(unittest.TestCase):
         assert result['b1'].type == 'derived'
         assert result['b1'].depends_on[0].node == 'table1'
         assert result['b1'].depends_on[0].column == 'b'
+
+    def test_cte_with_transform4(self):
+        sql = """
+        with
+        cte1 as (
+            select
+                id,
+                count(distinct a) as x
+            from table1
+            group by 1
+        ),
+        cte2 as (
+            select
+                id,
+                x
+            from cte1
+        )
+
+        select * from cte2
+        """
+
+        result = cll(sql)
+        assert result['id'].type == 'passthrough'
+        assert result['id'].depends_on[0].node == 'table1'
+        assert result['x'].type == 'derived'
+        assert result['x'].depends_on[0].node == 'table1'
+        assert result['x'].depends_on[0].column == 'a'
 
     def test_union(self):
         sql = """

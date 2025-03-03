@@ -772,13 +772,19 @@ class DbtAdapter(BaseAdapter):
             try:
                 dialect = self.adapter.type()
                 column_lineage = cll(compiled_sql, schema=schema, dialect=dialect)
-            except RecceException as exception:
-                print(exception)
+            except RecceException:
+                # TODO: provide parsing error message if needed
+                _apply_all_columns(node, 'unknown', [])
+                continue
+            except Exception:
                 _apply_all_columns(node, 'unknown', [])
                 continue
 
             for name, column in node.get('columns', {}).items():
                 if name in column_lineage:
+                    for cld in column_lineage[name].depends_on:
+                        # manifest node name is case-insensitive
+                        cld.node = cld.node.lower()
                     column['depends_on'] = column_lineage[name].depends_on
                     column['transformation_type'] = column_lineage[name].type
 
