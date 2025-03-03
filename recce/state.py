@@ -513,6 +513,8 @@ class RecceCloudStateManager:
     def __init__(self, cloud_options: Optional[Dict[str, str]] = None):
         self.cloud_options = cloud_options or {}
         self.pr_info = None
+        self.error_message = None
+        self.hint_message = None
 
         if not self.cloud_options.get('token'):
             raise Exception('No GitHub token is provided to access the pull request information.')
