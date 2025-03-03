@@ -259,11 +259,10 @@ def server(host, port, state_file=None, **kwargs):
         kwargs['target_base_path'] = target_path
 
         # Show warning message
-        console.rule('Warning', style='orange3')
-        console.print(
-            f'The folder "{target_base_path}" is not provided. '
-            f'Will use the current target folder "{target_path}" as the base.\n')
-        console.print('To setup your base environment, please refer to the following link for more information')
+        console.rule('Notice', style='orange3')
+        console.print('Recce is launching in single environment mode.')
+        console.print('To use the full suite of Recce tools, please prepare the dbt artifacts to serve as the base for '
+                      f"your comparison in '{target_base_path}'.")
         console.print('https://datarecce.io/docs/get-started/#prepare-dbt-artifacts')
         console.print()
 
