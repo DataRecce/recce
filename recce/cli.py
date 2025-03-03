@@ -583,7 +583,7 @@ def download(**kwargs):
 
     # check if state exists in cloud
     state_manager = RecceCloudStateManager(cloud_options)
-    if state_manager.verify():
+    if not state_manager.verify():
         error, hint = state_manager.error_and_hint
         console.print(f"[[red]Error[/red]] {error}")
         console.print(f"{hint}")
