@@ -1,3 +1,4 @@
+import time
 from dataclasses import dataclass
 from typing import Dict, List, Literal
 
@@ -8,6 +9,63 @@ from sqlglot.optimizer import traverse_scope
 from sqlglot.optimizer.qualify import qualify
 
 from recce.exceptions import RecceException
+from recce.util import SingletonMeta
+
+
+@dataclass
+class CLLPerformanceTracking(metaclass=SingletonMeta):
+    lineage_start = None
+    lineage_elapsed = None
+    column_lineage_start = None
+    column_lineage_elapsed = None
+
+    total_nodes = None
+    sqlglot_error_nodes = 0
+    other_error_nodes = 0
+
+    def start_lineage(self):
+        self.lineage_start = time.perf_counter_ns()
+
+    def end_lineage(self):
+        if self.lineage_start is None:
+            return
+        self.lineage_elapsed = (time.perf_counter_ns() - self.lineage_start) / 1000000
+
+    def start_column_lineage(self):
+        self.column_lineage_start = time.perf_counter_ns()
+
+    def end_column_lineage(self):
+        if self.column_lineage_start is None:
+            return
+        self.column_lineage_elapsed = (time.perf_counter_ns() - self.column_lineage_start) / 1000000
+
+    def set_total_nodes(self, total_nodes):
+        self.total_nodes = total_nodes
+
+    def increment_sqlglot_error_nodes(self):
+        self.sqlglot_error_nodes += 1
+
+    def increment_other_error_nodes(self):
+        self.other_error_nodes += 1
+
+    def to_dict(self):
+        return {
+            'lineage_elapsed_ms': self.lineage_elapsed,
+            'column_lineage_elapsed_ms': self.column_lineage_elapsed,
+            'total_nodes': self.total_nodes,
+            'sqlglot_error_nodes': self.sqlglot_error_nodes,
+            'other_error_nodes': self.other_error_nodes
+        }
+
+    def reset(self):
+        self.lineage_start = None
+        self.lineage_elapsed = None
+        self.column_lineage_start = None
+        self.column_lineage_elapsed = None
+
+        self.total_nodes = None
+        self.sqlglot_error_nodes = 0
+        self.other_error_nodes = 0
 
 
 @dataclass

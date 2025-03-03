@@ -6,6 +6,7 @@ import threading
 import uuid
 from datetime import datetime, timezone
 from hashlib import sha256
+from typing import Dict
 
 import sentry_sdk
 
@@ -257,6 +258,12 @@ def log_single_env_event():
         action='launch_server',
     )
     log_event(prop, '[Experiment] single_environment')
+    _collector.schedule_flush()
+
+
+def log_performance(feature_name: str, metrics: Dict):
+    prop = metrics
+    log_event(prop, f'[Performance] {feature_name}')
     _collector.schedule_flush()
 
 
