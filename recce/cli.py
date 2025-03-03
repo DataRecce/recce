@@ -541,6 +541,12 @@ def upload(state_file, **kwargs):
 
     # check if state exists in cloud
     state_manager = RecceCloudStateManager(cloud_options)
+    if not state_manager.verify():
+        error, hint = state_manager.error_and_hint
+        console.print(f"[[red]Error[/red]] {error}")
+        console.print(f"{hint}")
+        exit(1)
+
     cloud_state_file_exists = state_manager.check_cloud_state_exists()
 
     if cloud_state_file_exists and not click.confirm('\nDo you want to overwrite the existing state file?'):
@@ -577,6 +583,12 @@ def download(**kwargs):
 
     # check if state exists in cloud
     state_manager = RecceCloudStateManager(cloud_options)
+    if state_manager.verify():
+        error, hint = state_manager.error_and_hint
+        console.print(f"[[red]Error[/red]] {error}")
+        console.print(f"{hint}")
+        exit(1)
+
     cloud_state_file_exists = state_manager.check_cloud_state_exists()
 
     if not cloud_state_file_exists:

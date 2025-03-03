@@ -5,6 +5,7 @@ import os
 import threading
 import time
 from base64 import b64encode
+from dataclasses import dataclass
 from datetime import datetime
 from hashlib import md5, sha256
 from typing import List, Optional, Dict, Union, Tuple
@@ -27,6 +28,23 @@ logger = logging.getLogger('uvicorn')
 
 RECCE_STATE_FILE = 'recce-state.json'
 RECCE_STATE_COMPRESSED_FILE = f'{RECCE_STATE_FILE}.gz'
+
+
+@dataclass
+class ErrorMessage:
+    error_message: str
+    hint_message: str
+
+
+RECCE_CLOUD_TOKEN_MISSING = ErrorMessage(
+    error_message='No GitHub token is provided to access the pull request information',
+    hint_message='Please provide a GitHub token in the command argument'
+)
+
+RECCE_CLOUD_PASSWORD_MISSING = ErrorMessage(
+    error_message='No password provided to access the state file in Recce Cloud',
+    hint_message='Please provide a password with the option "--password <compress-password>"'
+)
 
 
 def s3_sse_c_headers(password: str) -> Dict[str, str]:
@@ -190,13 +208,13 @@ class RecceStateLoader:
     def verify(self) -> bool:
         if self.cloud_mode:
             if self.cloud_options.get('token') is None:
-                self.error_message = 'No token is provided to access Recce Cloud.'
-                self.hint_message = 'Please provide a token in the command argument.'
+                self.error_message = RECCE_CLOUD_TOKEN_MISSING.error_message
+                self.hint_message = RECCE_CLOUD_TOKEN_MISSING.hint_message
                 return False
             if not self.cloud_options.get('host'):
                 if self.cloud_options.get('password') is None:
-                    self.error_message = 'No password is provided to access the state file in Recce Cloud.'
-                    self.hint_message = 'Please provide a password with the option "--password <compress-password>".'
+                    self.error_message = RECCE_CLOUD_PASSWORD_MISSING.error_message
+                    self.hint_message = RECCE_CLOUD_PASSWORD_MISSING.hint_message
                     return False
         else:
             if self.review_mode is True and self.state_file is None:
@@ -356,7 +374,7 @@ class RecceStateLoader:
 
         password = self.cloud_options.get('password')
         if password is None:
-            raise Exception('No password is provided to access the state file in Recce Cloud.')
+            raise Exception(RECCE_CLOUD_PASSWORD_MISSING.error_message)
 
         with tempfile.NamedTemporaryFile() as tmp:
             headers = s3_sse_c_headers(password)
@@ -487,6 +505,9 @@ class RecceStateLoader:
 
 
 class RecceCloudStateManager:
+    error_message: str
+    hint_message: str
+
     # It is a class to upload, download and purge the state file on Recce Cloud.
 
     def __init__(self, cloud_options: Optional[Dict[str, str]] = None):
@@ -498,6 +519,21 @@ class RecceCloudStateManager:
         self.pr_info = fetch_pr_metadata(cloud=True, github_token=self.cloud_options.get('token'))
         if self.pr_info.id is None:
             raise Exception('Cannot get the pull request information from GitHub.')
+
+    def verify(self) -> bool:
+        if self.cloud_options.get('token') is None:
+            self.error_message = RECCE_CLOUD_TOKEN_MISSING.error_message
+            self.hint_message = RECCE_CLOUD_TOKEN_MISSING.hint_message
+            return False
+        if self.cloud_options.get('password') is None:
+            self.error_message = RECCE_CLOUD_PASSWORD_MISSING.error_message
+            self.hint_message = RECCE_CLOUD_PASSWORD_MISSING.hint_message
+            return False
+        return True
+
+    @property
+    def error_and_hint(self) -> (Union[str, None], Union[str, None]):
+        return self.error_message, self.hint_message
 
     def _check_state_in_recce_cloud(self) -> bool:
         return RecceCloud(token=self.cloud_options.get('token')).check_artifacts_exists(self.pr_info)
@@ -611,7 +647,7 @@ class RecceCloudStateManager:
 
         password = self.cloud_options.get('password')
         if password is None:
-            raise Exception('No password is provided to access the state file in Recce Cloud.')
+            raise Exception(RECCE_CLOUD_PASSWORD_MISSING.error_message)
 
         headers = s3_sse_c_headers(password)
         response = requests.get(presigned_url, headers=headers)
