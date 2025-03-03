@@ -1,7 +1,7 @@
 import { NodeData } from "@/lib/api/info";
 import { mergeColumns } from "./schema";
 
-function _schema(columns: { [key: string]: string }): NodeData["columns"] {
+function _schema(columns: Record<string, string>): NodeData["columns"] {
   const result: ReturnType<typeof _schema> = {};
 
   Object.entries(columns).forEach(([name, type]) => {
@@ -39,7 +39,7 @@ test("column diff", () => {
     "name",
   ]);
 
-  expect(result["id"]).toStrictEqual({
+  expect(result.id).toStrictEqual({
     name: "id",
     reordered: false,
     baseIndex: 1,
@@ -47,7 +47,7 @@ test("column diff", () => {
     currentIndex: 1,
     currentType: "INT",
   });
-  expect(result["name"]).toStrictEqual({
+  expect(result.name).toStrictEqual({
     name: "name",
     reordered: true,
     baseIndex: 3,
@@ -55,7 +55,7 @@ test("column diff", () => {
     currentIndex: 5,
     currentType: "VARCHAR",
   });
-  expect(result["age"]).toStrictEqual({
+  expect(result.age).toStrictEqual({
     name: "age",
     reordered: false,
     baseIndex: 4,

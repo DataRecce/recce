@@ -38,16 +38,12 @@ export function ColumnNameCell({
     runAction(
       "histogram_diff",
       { model, column_name: name, column_type: columnType },
-      { showForm: false }
+      { showForm: false },
     );
   };
 
   const handleTopkDiff = () => {
-    runAction(
-      "top_k_diff",
-      { model, column_name: name, k: 50 },
-      { showForm: false }
-    );
+    runAction("top_k_diff", { model, column_name: name, k: 50 }, { showForm: false });
   };
   const addedOrRemoved = !baseType || !currentType;
 
@@ -81,17 +77,11 @@ export function ColumnNameCell({
                     fontSize="10pt"
                     onClick={handleHistogramDiff}
                     isDisabled={
-                      addedOrRemoved ||
-                      (columnType ? !supportsHistogramDiff(columnType) : true)
-                    }
-                  >
+                      addedOrRemoved || (columnType ? !supportsHistogramDiff(columnType) : true)
+                    }>
                     Histogram Diff
                   </MenuItem>
-                  <MenuItem
-                    fontSize="10pt"
-                    onClick={handleTopkDiff}
-                    isDisabled={addedOrRemoved}
-                  >
+                  <MenuItem fontSize="10pt" onClick={handleTopkDiff} isDisabled={addedOrRemoved}>
                     Top-k Diff
                   </MenuItem>
                 </MenuGroup>
@@ -119,8 +109,7 @@ export function ColumnNameCell({
         minWidth={"0px"}
         variant="unstyled"
         size={"sm"}
-        onClick={handleViewCll}
-      ></IconButton>
+        onClick={handleViewCll}></IconButton>
       {!singleEnv && <ActionMenu />}
     </Flex>
   );

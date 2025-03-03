@@ -35,7 +35,7 @@ export function formatTimestamp(timestamp: string): string {
   return formattedTimestamp;
 }
 
-function renderInfoEntries(info: Object): JSX.Element[] {
+function renderInfoEntries(info: object): JSX.Element[] {
   if (Object.values(info).every((value) => value === null)) {
     return [
       <Flex key={"no info"} ml="10px">
@@ -45,9 +45,7 @@ function renderInfoEntries(info: Object): JSX.Element[] {
   }
 
   return Object.entries(info)
-    .filter(
-      ([key, value]) => key !== "url" && value !== null && value !== undefined
-    )
+    .filter(([key, value]) => key !== "url" && value !== null && value !== undefined)
     .map(([key, value]) => (
       <ListItem key={key} ml="10px">
         {key}: {value}
@@ -65,18 +63,14 @@ export function EnvInfo() {
   const dbtBase = envInfo?.dbt?.base;
   const dbtCurrent = envInfo?.dbt?.current;
 
-  const baseTime = dbtBase?.generated_at
-    ? formatTimestamp(dbtBase?.generated_at)
-    : "";
+  const baseTime = dbtBase?.generated_at ? formatTimestamp(dbtBase.generated_at) : "";
 
-  const currentTime = dbtCurrent?.generated_at
-    ? formatTimestamp(dbtCurrent?.generated_at)
-    : "";
+  const currentTime = dbtCurrent?.generated_at ? formatTimestamp(dbtCurrent.generated_at) : "";
 
-  const baseSchemas: Set<string> = new Set();
-  const currentSchemas: Set<string> = new Set();
+  const baseSchemas = new Set<string>();
+  const currentSchemas = new Set<string>();
   if (lineageGraph?.nodes) {
-    for (const value of Object.values(lineageGraph?.nodes)) {
+    for (const value of Object.values(lineageGraph.nodes)) {
       if (value.data.base?.schema) {
         baseSchemas.add(value.data.base.schema);
       }
@@ -109,14 +103,10 @@ export function EnvInfo() {
                   <Flex justifyContent="left" gap="5px" direction="column">
                     <Heading size="sm">Review Information</Heading>
                     <UnorderedList spacing={1}>
-                      {reviewInfo?.url && (
+                      {reviewInfo.url && (
                         <ListItem ml="10px">
                           url:{" "}
-                          <Link
-                            href={reviewInfo.url}
-                            color="blue.500"
-                            isExternal
-                          >
+                          <Link href={reviewInfo.url} color="blue.500" isExternal>
                             {reviewInfo.url}
                           </Link>
                         </ListItem>
@@ -129,9 +119,7 @@ export function EnvInfo() {
                 <>
                   <Flex justifyContent="left" gap="5px" direction="column">
                     <Heading size="sm">Dev Information</Heading>
-                    <UnorderedList spacing={1}>
-                      {git && renderInfoEntries(git)}
-                    </UnorderedList>
+                    <UnorderedList spacing={1}>{git && renderInfoEntries(git)}</UnorderedList>
                   </Flex>
                 </>
               )}
@@ -184,8 +172,8 @@ export function EnvInfo() {
                       <Tbody>
                         <Tr>
                           <Td>Environment</Td>
-                          <Td>{envInfo?.sqlmesh?.base_env}</Td>
-                          <Td>{envInfo?.sqlmesh?.current_env}</Td>
+                          <Td>{envInfo.sqlmesh?.base_env}</Td>
+                          <Td>{envInfo.sqlmesh?.current_env}</Td>
                         </Tr>
                       </Tbody>
                     </Table>

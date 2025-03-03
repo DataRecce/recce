@@ -37,9 +37,9 @@ export function formatRunDateTime(date: Date | null) {
 }
 
 export const RunStatusAndDate = ({ run }: { run: Run }) => {
-  const isRunning = run?.status === "running";
+  const isRunning = run.status === "running";
 
-  let status: string | undefined = run?.status;
+  let status: string | undefined = run.status;
   if (!status) {
     if (run.result) {
       status = "finished";
@@ -66,7 +66,7 @@ export const RunStatusAndDate = ({ run }: { run: Run }) => {
     color = "green";
     message = "Finished";
   }
-  const dateTime = run?.run_at ? formatRunDateTime(new Date(run.run_at)) : null;
+  const dateTime = run.run_at ? formatRunDateTime(new Date(run.run_at)) : null;
 
   return (
     <Flex
@@ -75,8 +75,7 @@ export const RunStatusAndDate = ({ run }: { run: Run }) => {
       color="gray.500"
       gap="3px"
       alignItems={"center"}
-      overflow={"hidden"}
-    >
+      overflow={"hidden"}>
       {isRunning && <Spinner size="xs" color={`${color}.400`} />}
       <Text fontWeight={500} color={`${color}.400`}>
         {message}
@@ -88,4 +87,3 @@ export const RunStatusAndDate = ({ run }: { run: Run }) => {
     </Flex>
   );
 };
-

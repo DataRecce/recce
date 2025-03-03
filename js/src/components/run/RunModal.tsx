@@ -44,12 +44,7 @@ export const RunModal = <PT,>({
       <ModalContent overflowY="auto" height="75%">
         <ModalHeader>{title}</ModalHeader>
         <ModalCloseButton />
-        <ModalBody
-          p="0px"
-          h="100%"
-          overflow="auto"
-          borderY="1px solid lightgray"
-        >
+        <ModalBody p="0px" h="100%" overflow="auto" borderY="1px solid lightgray">
           <Box style={{ contain: "layout" }}>
             {RunForm && (
               <RunForm
@@ -67,8 +62,7 @@ export const RunModal = <PT,>({
               colorScheme="blue"
               onClick={() => {
                 onExecute(type, params as PT);
-              }}
-            >
+              }}>
               Execute
             </Button>
           </Flex>

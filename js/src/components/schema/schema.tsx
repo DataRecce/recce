@@ -15,9 +15,7 @@ interface SchemaDiffRow {
   baseType?: string;
 }
 
-interface SchemaDiff {
-  [key: string]: SchemaDiffRow;
-}
+type SchemaDiff = Record<string, SchemaDiffRow>;
 
 interface SchemaRow {
   name: string;
@@ -27,13 +25,10 @@ interface SchemaRow {
 
 export function mergeColumns(
   baseColumns: NodeData["columns"] = {},
-  currentColumns: NodeData["columns"] = {}
+  currentColumns: NodeData["columns"] = {},
 ): SchemaDiff {
   const result: SchemaDiff = {};
-  const mergedStatus = mergeKeysWithStatus(
-    Object.keys(baseColumns),
-    Object.keys(currentColumns)
-  );
+  const mergedStatus = mergeKeysWithStatus(Object.keys(baseColumns), Object.keys(currentColumns));
 
   Object.entries(mergedStatus).forEach(([name, status]) => {
     result[name] = {
@@ -122,12 +117,12 @@ export function toDataGrid(schemaDiff: SchemaDiff, nodeName?: string) {
         return nodeName ? (
           <ColumnNameCell
             model={nodeName}
-            name={row["name"]}
-            baseType={row["baseType"]}
-            currentType={row["currentType"]}
+            name={row.name}
+            baseType={row.baseType}
+            currentType={row.currentType}
           />
         ) : (
-          row["name"]
+          row.name
         );
       },
       cellClass: columnNameCellClass,
@@ -149,17 +144,12 @@ export function toDataGrid(schemaDiff: SchemaDiff, nodeName?: string) {
 
   return { columns, rows };
 }
-export function toSingleEnvDataGrid(
-  nodeColumns: NodeData["columns"] = {},
-  nodeName?: string
-) {
-  const rows: SchemaRow[] = Object.entries(nodeColumns).map(
-    ([name, column], index) => ({
-      name,
-      index: index + 1,
-      type: column.type,
-    })
-  );
+export function toSingleEnvDataGrid(nodeColumns: NodeData["columns"] = {}, nodeName?: string) {
+  const rows: SchemaRow[] = Object.entries(nodeColumns).map(([name, column], index) => ({
+    name,
+    index: index + 1,
+    type: column.type,
+  }));
 
   const columns: ColumnOrColumnGroup<SchemaRow>[] = [
     {
@@ -175,11 +165,7 @@ export function toSingleEnvDataGrid(
       name: "Name",
       resizable: true,
       renderCell: ({ row, column }) => {
-        return nodeName ? (
-          <ColumnNameCell model={nodeName} name={row["name"]} singleEnv />
-        ) : (
-          row["name"]
-        );
+        return nodeName ? <ColumnNameCell model={nodeName} name={row.name} singleEnv /> : row.name;
       },
       cellClass: "column-body-normal",
     },

@@ -5,11 +5,7 @@ export const metadata: Metadata = {
   description: "Recce: Data validation toolkit for comprehensive PR review",
 };
 
-export default function RootLayout({
-  children,
-}: {
-  children: React.ReactNode;
-}) {
+export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en">
       <body suppressHydrationWarning={true}>{children}</body>

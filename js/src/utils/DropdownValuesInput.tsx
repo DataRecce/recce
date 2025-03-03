@@ -43,7 +43,7 @@ export const DropdownValuesInput = (props: DropdownValuesInputProps) => {
     if (tags.length > 1) {
       return `${tags.length} ${props.unitName}s selected`;
     } else if (tags.length === 1) {
-      return `${tags[0]}`;
+      return tags[0];
     }
     return "";
   };
@@ -78,11 +78,7 @@ export const DropdownValuesInput = (props: DropdownValuesInputProps) => {
 
   return (
     <InputGroup size={props.size} width={props.width}>
-      <Menu
-        isLazy
-        closeOnSelect={false}
-        onOpen={() => inputRef?.current?.focus()}
-      >
+      <Menu isLazy closeOnSelect={false} onOpen={() => inputRef.current?.focus()}>
         <MenuButton width={"100%"}>
           <Input
             placeholder={props.placeholder}
@@ -94,22 +90,12 @@ export const DropdownValuesInput = (props: DropdownValuesInputProps) => {
           />
           {values.length === 0 && (
             <InputRightElement>
-              <Icon
-                as={FaChevronDown}
-                color="blue.500"
-                fontSize={props.size}
-                mt="1"
-                mr="6"
-              />
+              <Icon as={FaChevronDown} color="blue.500" fontSize={props.size} mt="1" mr="6" />
             </InputRightElement>
           )}
         </MenuButton>
         <Portal>
-          <MenuList
-            zIndex={"popover"}
-            fontSize={props.size}
-            width={props.width}
-          >
+          <MenuList zIndex={"popover"} fontSize={props.size} width={props.width}>
             {/* Input Filter & Show Tags */}
             <MenuGroup>
               <Wrap
@@ -117,8 +103,7 @@ export const DropdownValuesInput = (props: DropdownValuesInputProps) => {
                 borderRadius={"4px"}
                 width={"calc(100% - 8px)"}
                 marginX={"4px"}
-                padding={"4px"}
-              >
+                padding={"4px"}>
                 {values.map((value, cid) => (
                   <WrapItem key={`tag-${cid}`}>
                     <Tag key={value} size={props.size}>
@@ -145,9 +130,7 @@ export const DropdownValuesInput = (props: DropdownValuesInputProps) => {
                       setIsTyping(true);
                     }}
                     onKeyDown={(e) => {
-                      const newText = e.currentTarget.value
-                        .trim()
-                        .replace(",", "");
+                      const newText = e.currentTarget.value.trim().replace(",", "");
                       switch (e.key) {
                         case ",":
                         case "Enter":
@@ -155,10 +138,7 @@ export const DropdownValuesInput = (props: DropdownValuesInputProps) => {
                           setFilter("");
                           break;
                         case "Backspace":
-                          if (
-                            e.currentTarget.value === "" &&
-                            values.length > 0
-                          ) {
+                          if (e.currentTarget.value === "" && values.length > 0) {
                             setValues(values.slice(0, -1));
                             onValuesChange(values.slice(0, -1));
                           }
@@ -168,7 +148,7 @@ export const DropdownValuesInput = (props: DropdownValuesInputProps) => {
                       }
                     }}
                     onBlur={() => {
-                      if (inputRef && isTyping) inputRef?.current?.focus();
+                      if (inputRef && isTyping) inputRef.current?.focus();
                     }}
                   />
                 </WrapItem>
@@ -183,26 +163,23 @@ export const DropdownValuesInput = (props: DropdownValuesInputProps) => {
                   onClick={() => {
                     handleSelect(filter);
                     setIsTyping(false);
-                  }}
-                >
+                  }}>
                   Add &apos;{filter}&apos; to the list
                 </MenuItem>
               )}
               {filteredList
-                ?.map((value, cid) => (
+                .map((value, cid) => (
                   <MenuItem
                     key={`option-${cid}`}
-                    onClick={() => handleSelect(value)}
-                  >
+                    onClick={() => {
+                      handleSelect(value);
+                    }}>
                     {value}
                   </MenuItem>
                 ))
                 .slice(0, limit)}
-              {filteredList?.length > limit && (
-                <Tooltip
-                  label="Please use filter to find more items"
-                  placement="top"
-                >
+              {filteredList.length > limit && (
+                <Tooltip label="Please use filter to find more items" placement="top">
                   <Box px="12px" color="gray" fontSize="8pt">
                     and {filteredList.length - limit} more items...
                   </Box>
@@ -220,8 +197,7 @@ export const DropdownValuesInput = (props: DropdownValuesInputProps) => {
             fontSize={props.size}
             paddingTop="4px"
             paddingRight={"24px"}
-            onClick={handleClear}
-          >
+            onClick={handleClear}>
             Clear
           </Button>
         </InputRightElement>

@@ -64,8 +64,7 @@ const SqlEditor: React.FC<SqlEditorProps> = ({
           fontSize={"14px"}
           align="center"
           margin={"0"}
-          padding={"0px 16px"}
-        >
+          padding={"0px 16px"}>
           <Text as="b">{label ? label.toUpperCase() : ""}</Text>
           <Spacer />
           {(onRun || onRunBase) && (
@@ -76,8 +75,7 @@ const SqlEditor: React.FC<SqlEditorProps> = ({
               backgroundColor={"white"}
               // leftIcon={<Icon as={RiPlayMiniFill} />}
               leftIcon={<Icon as={FaPlay} />}
-              padding={"6px 12px"}
-            >
+              padding={"6px 12px"}>
               Run Query
             </Button>
           )}
@@ -93,25 +91,17 @@ const SqlEditor: React.FC<SqlEditorProps> = ({
           onChange={handleEditorChange}
           onMount={(editor, monaco) => {
             if (onRun) {
-              editor.addCommand(
-                monaco.KeyMod.CtrlCmd | monaco.KeyCode.Enter,
-                onRun
-              );
+              editor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyCode.Enter, onRun);
             }
 
             if (onRunBase) {
-              editor.addCommand(
-                monaco.KeyMod.Alt | monaco.KeyCode.Enter,
-                onRunBase
-              );
+              editor.addCommand(monaco.KeyMod.Alt | monaco.KeyCode.Enter, onRunBase);
             }
 
             if (onRunDiff) {
               editor.addCommand(
-                monaco.KeyMod.CtrlCmd |
-                  monaco.KeyMod.Shift |
-                  monaco.KeyCode.Enter,
-                onRunDiff
+                monaco.KeyMod.CtrlCmd | monaco.KeyMod.Shift | monaco.KeyCode.Enter,
+                onRunDiff,
               );
             }
           }}
@@ -150,22 +140,14 @@ export const DualSqlEditor: React.FC<DualSqlEditorProps> = ({
   return (
     <>
       <Flex height={"100%"} gap={0}>
-        <Stack
-          height={"100%"}
-          width={"50%"}
-          gap={0}
-          borderRight={"1px"}
-          borderColor={"#D4DBE4"}
-        >
+        <Stack height={"100%"} width={"50%"} gap={0} borderRight={"1px"} borderColor={"#D4DBE4"}>
           <SqlEditor
             label={baseLabel}
             value={baseValue || ""}
             onChange={onChangeBase}
             onRunBase={onRunBase}
             options={options}
-            CustomEditor={
-              BaseEnvironmentSetupGuide ? BaseEnvironmentSetupGuide : undefined
-            }
+            CustomEditor={BaseEnvironmentSetupGuide ? BaseEnvironmentSetupGuide : undefined}
             {...props}
           />
         </Stack>

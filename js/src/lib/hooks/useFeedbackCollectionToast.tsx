@@ -26,12 +26,7 @@ function ReactionFeedback({
   externalLinkText?: string;
 }) {
   return (
-    <Flex
-      gap={4}
-      justifyContent="center"
-      alignContent={"center"}
-      alignItems={"center"}
-    >
+    <Flex gap={4} justifyContent="center" alignContent={"center"} alignItems={"center"}>
       {description}
       <IconButton
         aria-label="thumbs up"
@@ -50,12 +45,7 @@ function ReactionFeedback({
         onClick={onDislike}
       />
       {externalLink && externalLinkText && (
-        <Link
-          href={externalLink}
-          isExternal
-          textDecoration="underline"
-          onClick={onClickLink}
-        >
+        <Link href={externalLink} isExternal textDecoration="underline" onClick={onClickLink}>
           {externalLinkText}
         </Link>
       )}
@@ -71,21 +61,15 @@ export function useFeedbackCollectionToast(options: {
   externalLinkText?: string;
 }) {
   const toast = useToast();
-  const {
-    feedbackId,
-    description,
-    onFeedbackSubmit,
-    externalLink,
-    externalLinkText,
-  } = options;
+  const { feedbackId, description, onFeedbackSubmit, externalLink, externalLinkText } = options;
 
-  function feedBackCollectionToast(skipBypassFeedback: boolean = false) {
+  function feedBackCollectionToast(skipBypassFeedback = false) {
     const isSkipFeedback = localStorage.getItem(feedbackId);
     if (toast.isActive(feedbackId)) {
       // Don't show the toast again if it's already active
       return;
     }
-    if (isSkipFeedback === "true" && skipBypassFeedback === false) {
+    if (isSkipFeedback === "true" && !skipBypassFeedback) {
       return;
     }
 
@@ -102,8 +86,7 @@ export function useFeedbackCollectionToast(options: {
           borderWidth={3}
           borderRadius={"md"}
           backgroundColor={"white"}
-          opacity={1}
-        >
+          opacity={1}>
           <AlertDescription fontSize="md">
             <HStack>
               <ReactionFeedback
@@ -138,6 +121,8 @@ export function useFeedbackCollectionToast(options: {
 
   return {
     feedbackToast: feedBackCollectionToast,
-    closeToast: () => toast.closeAll(),
+    closeToast: () => {
+      toast.closeAll();
+    },
   };
 }

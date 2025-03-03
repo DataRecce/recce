@@ -8,10 +8,7 @@ export interface LineageDiffViewProps {
   check: Check;
 }
 
-function _LineageDiffView(
-  { check }: LineageDiffViewProps,
-  ref: Ref<LineageViewRef>
-) {
+function _LineageDiffView({ check }: LineageDiffViewProps, ref: Ref<LineageViewRef>) {
   const viewOptions = { ...check.params, ...check.view_options };
 
   return (
@@ -23,6 +20,4 @@ function _LineageDiffView(
   );
 }
 
-export const LineageDiffView = forwardRef<LineageViewRef, LineageDiffViewProps>(
-  _LineageDiffView
-);
+export const LineageDiffView = forwardRef<LineageViewRef, LineageDiffViewProps>(_LineageDiffView);

@@ -24,7 +24,7 @@ export default function GraphEdge(props: GraphEdgeProps) {
   };
 
   if (data?.changeStatus) {
-    style.stroke = getIconForChangeStatus(data?.changeStatus).color;
+    style.stroke = getIconForChangeStatus(data.changeStatus).color;
     style.strokeDasharray = "5";
   }
 
@@ -42,11 +42,7 @@ export default function GraphEdge(props: GraphEdgeProps) {
   });
   return (
     <>
-      <BaseEdge
-        path={edgePath}
-        markerEnd={markerEnd}
-        style={{ ...style, ...styleOverride }}
-      />
+      <BaseEdge path={edgePath} markerEnd={markerEnd} style={{ ...style, ...styleOverride }} />
     </>
   );
 }

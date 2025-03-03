@@ -3,30 +3,16 @@ import { Box, Flex, Tooltip } from "@chakra-ui/react";
 import { TransformationType } from "./GraphColumnNode";
 
 export function ColumnLevelLineageLegend() {
-  const TRANSFORMATION_MSGS: {
-    [key: string]: [string, string];
-  } = {
-    passthrough: [
-      "Pass Through",
-      "Use the same column name and definition from upstream.",
-    ],
+  const TRANSFORMATION_MSGS: Record<string, [string, string]> = {
+    passthrough: ["Pass Through", "Use the same column name and definition from upstream."],
     renamed: ["Renamed", "Use a different column name from upstream."],
     derived: ["Derived", "Transformed from upstream one or more columns."],
     source: ["Source", "The original source column."],
-    unknown: [
-      "Unknown",
-      "Parse error, or un supported model type, or other unknown error.",
-    ],
+    unknown: ["Unknown", "Parse error, or un supported model type, or other unknown error."],
   };
 
   return (
-    <Box
-      bg="white"
-      padding="12px"
-      borderWidth="1px"
-      borderColor="gray.200"
-      fontSize="sm"
-    >
+    <Box bg="white" padding="12px" borderWidth="1px" borderColor="gray.200" fontSize="sm">
       {Object.entries(TRANSFORMATION_MSGS).map(([key, [label, tip]]) => {
         return (
           <Tooltip label={tip} key={key}>

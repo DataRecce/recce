@@ -9,10 +9,10 @@ import {
   ComponentWithAs,
   Flex,
   VStack,
+  forwardRef,
 } from "@chakra-ui/react";
 import { RunResultViewProps } from "./types";
 import { ErrorBoundary } from "@sentry/react";
-import { forwardRef } from "@chakra-ui/react";
 import { ElementType } from "react";
 
 interface RunViewProps<PT, RT, VO = any> {
@@ -27,9 +27,7 @@ interface RunViewProps<PT, RT, VO = any> {
   viewOptions?: VO;
   onViewOptionsChanged?: (viewOptions: VO) => void;
   RunResultView?: ComponentWithAs<ElementType, RunResultViewProps<PT, RT, VO>>;
-  children?: <T extends RunResultViewProps<PT, RT, VO>>(
-    params: T
-  ) => React.ReactNode;
+  children?: <T extends RunResultViewProps<PT, RT, VO>>(params: T) => React.ReactNode;
 }
 
 export const RunView = forwardRef(
@@ -47,7 +45,7 @@ export const RunView = forwardRef(
       children,
       onExecuteRun,
     }: RunViewProps<PT, RT>,
-    ref: any
+    ref: any,
   ) => {
     const errorMessage = (error as any)?.response?.data?.detail || run?.error;
 
@@ -61,25 +59,20 @@ export const RunView = forwardRef(
     }
 
     if (isRunning !== undefined ? isRunning : run?.status === "running") {
-      let loadingMessage = progress?.message
-        ? progress?.message
+      const loadingMessage = progress?.message
+        ? progress.message
         : run?.progress?.message
-        ? run?.progress?.message
-        : "Loading...";
+          ? run.progress.message
+          : "Loading...";
 
       return (
         <Center p="16px" height="100%" bg="rgb(249,249,249)">
           <VStack>
             <Flex alignItems="center">
-              {progress?.percentage === undefined ||
-              progress?.percentage === null ? (
+              {progress?.percentage === undefined || progress.percentage === null ? (
                 <CircularProgress isIndeterminate size="20px" mr="8px" />
               ) : (
-                <CircularProgress
-                  size="20px"
-                  value={progress.percentage * 100}
-                  mr="8px"
-                />
+                <CircularProgress size="20px" value={progress.percentage * 100} mr="8px" />
               )}
 
               {isAborting ? <>Aborting...</> : <>{loadingMessage}</>}
@@ -103,14 +96,10 @@ export const RunView = forwardRef(
     }
 
     if (children && RunResultView) {
-      throw new Error(
-        "RunView requires either a children or a RunResultView prop, but not both."
-      );
+      throw new Error("RunView requires either a children or a RunResultView prop, but not both.");
     }
     if (!children && !RunResultView) {
-      throw new Error(
-        "RunView requires at least one of children or RunResultView prop."
-      );
+      throw new Error("RunView requires at least one of children or RunResultView prop.");
     }
 
     return (
@@ -125,8 +114,8 @@ export const RunView = forwardRef(
             />
           </ErrorBoundary>
         )}
-        {children && children({ run, viewOptions, onViewOptionsChanged })}
+        {children?.({ run, viewOptions, onViewOptionsChanged })}
       </Box>
     );
-  }
+  },
 );

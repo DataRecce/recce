@@ -49,7 +49,7 @@ const RunListItem = ({
     queryFn: async () => {
       return await waitRun(run.run_id);
     },
-    enabled: run?.status === "running",
+    enabled: run.status === "running",
     retry: false,
   });
 
@@ -70,8 +70,7 @@ const RunListItem = ({
       onClick={() => {
         onSelectRun(run.run_id);
       }}
-      _hover={{ bg: isSelected ? "orange.50" : "gray.200" }}
-    >
+      _hover={{ bg: isSelected ? "orange.50" : "gray.200" }}>
       <Flex onClick={() => {}} alignItems="center" gap="12px">
         <Icon as={icon} />
         <Box
@@ -81,8 +80,7 @@ const RunListItem = ({
           overflow="hidden"
           color={run.name ? "inherit" : "gray.500"}
           fontSize="11pt"
-          fontWeight="500"
-        >
+          fontWeight="500">
           {run.name || "<no name>"}
         </Box>
         {checkId ? (
@@ -92,8 +90,7 @@ const RunListItem = ({
                 e.preventDefault();
                 e.stopPropagation();
                 onGoToCheck(checkId);
-              }}
-            >
+              }}>
               <Icon color="green" as={FaCheckCircle} />
             </Text>
           </Tooltip>
@@ -105,20 +102,13 @@ const RunListItem = ({
                 e.stopPropagation();
                 trackHistoryAction({ name: "add_to_checklist" });
                 onAddToChecklist(run.run_id);
-              }}
-            >
+              }}>
               <Icon as={FaRegCheckCircle} />
             </Text>
           </Tooltip>
         )}
       </Flex>
-      <Flex
-        justifyContent="start"
-        fontSize="11pt"
-        color="gray.500"
-        gap="3px"
-        alignItems={"center"}
-      >
+      <Flex justifyContent="start" fontSize="11pt" color="gray.500" gap="3px" alignItems={"center"}>
         <RunStatusAndDate run={fetchedRun || run} />
       </Flex>
     </Flex>
@@ -135,8 +125,7 @@ const DateSegmentItem = ({ runAt }: { runAt?: string }) => {
       p="5px 20px"
       borderBottom={"solid 1px lightgray"}
       color="gray.500"
-      fontSize={"11pt"}
-    >
+      fontSize={"11pt"}>
       {dateTime}
     </Flex>
   );
@@ -178,7 +167,7 @@ export const RunList = () => {
       trackHistoryAction({ name: "go_to_check" });
       setLocation(`/checks/${checkId}`);
     },
-    [setLocation]
+    [setLocation],
   );
 
   let previousDate: string | null = null;
@@ -189,8 +178,7 @@ export const RunList = () => {
         width="100%"
         flex="0 0 54px"
         paddingInline="24px 8px"
-        borderBottom="solid 1px lightgray"
-      >
+        borderBottom="solid 1px lightgray">
         <Heading size="md">History</Heading>
         <Spacer />
         <IconButton
@@ -213,8 +201,7 @@ export const RunList = () => {
           <SimpleBar style={{ minHeight: "100%", height: 0 }}>
             {(runs || []).map((run, index) => {
               const currentDate = new Date(run.run_at).toDateString();
-              const shouldRenderDateSegment =
-                previousDate != null && previousDate !== currentDate;
+              const shouldRenderDateSegment = previousDate != null && previousDate !== currentDate;
               previousDate = currentDate;
 
               return (

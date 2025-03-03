@@ -26,10 +26,7 @@ export async function createSimpleCheck(): Promise<Check> {
   return check;
 }
 
-export async function createCheckByRun(
-  runId: string,
-  viewOptions?: any
-): Promise<Check> {
+export async function createCheckByRun(runId: string, viewOptions?: any): Promise<Check> {
   const track_props = getExperimentTrackingBreakingChangeEnabled()
     ? { breaking_change_analysis: true }
     : {};
@@ -61,10 +58,7 @@ export async function getCheck(checkId: string): Promise<Check> {
   return response.data;
 }
 
-export async function updateCheck(
-  checkId: string,
-  payload: Partial<Check>
-): Promise<Check> {
+export async function updateCheck(checkId: string, payload: Partial<Check>): Promise<Check> {
   const response = await axiosClient.patch(`/api/checks/${checkId}`, payload);
   return response.data;
 }
@@ -74,9 +68,6 @@ export async function deleteCheck(checkId: string) {
   return response.data;
 }
 
-export async function reorderChecks(order: {
-  source: number;
-  destination: number;
-}) {
+export async function reorderChecks(order: { source: number; destination: number }) {
   return await axiosClient.post("/api/checks/reorder", order);
 }

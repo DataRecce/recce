@@ -6,19 +6,16 @@ import { LineageGraphNode } from "@/components/lineage/lineage";
 
 export function extractColumns(node: LineageGraphNode) {
   function getColumns(nodeData: NodeData) {
-    return nodeData && nodeData.columns ? Object.values(nodeData.columns) : [];
+    return nodeData.columns ? Object.values(nodeData.columns) : [];
   }
 
-  const baseColumns = getColumns(node.data.base!!);
-  const currentColumns = getColumns(node.data.current!!);
+  const baseColumns = getColumns(node.data.base!);
+  const currentColumns = getColumns(node.data.current!);
 
   return unionColumns(baseColumns, currentColumns);
 }
 
-export function unionColumns(
-  baseColumns: NodeColumnData[],
-  currentColumns: NodeColumnData[]
-) {
+export function unionColumns(baseColumns: NodeColumnData[], currentColumns: NodeColumnData[]) {
   const union: NodeColumnData[] = [];
   baseColumns.forEach((column) => {
     if (!union.some((c) => c.name === column.name)) {
@@ -56,11 +53,7 @@ const useModelColumns = (model: string | undefined) => {
       try {
         const data = await getModelInfo(node?.id!);
         const modelInfo = data.model;
-        if (
-          !modelInfo ||
-          !modelInfo.base.columns ||
-          !modelInfo.current.columns
-        ) {
+        if (!modelInfo.base.columns || !modelInfo.current.columns) {
           setColumns([]);
           return;
         }

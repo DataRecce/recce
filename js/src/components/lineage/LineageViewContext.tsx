@@ -42,16 +42,12 @@ export interface LineageViewContextType {
   resetColumnLevelLinage: () => void;
 }
 
-export const LineageViewContext = createContext<
-  LineageViewContextType | undefined
->(undefined);
+export const LineageViewContext = createContext<LineageViewContextType | undefined>(undefined);
 
 export const useLineageViewContext = (): LineageViewContextType => {
   const context = useContext(LineageViewContext);
   if (!context) {
-    throw new Error(
-      "useLineageViewContext must be used within a LineageViewProvider"
-    );
+    throw new Error("useLineageViewContext must be used within a LineageViewProvider");
   }
   return context;
 };

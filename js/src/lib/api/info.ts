@@ -25,7 +25,7 @@ export interface NodeData {
   raw_code?: string;
   resource_type?: string;
   package_name?: string;
-  columns?: { [key: string]: NodeColumnData };
+  columns?: Record<string, NodeColumnData>;
   primary_key?: string;
 }
 
@@ -55,45 +55,40 @@ export interface LineageData {
     pr_url: string;
     git_branch?: string;
   };
-  nodes: {
-    [key: string]: NodeData;
-  };
-  parent_map: {
-    [key: string]: string[];
-  };
+  nodes: Record<string, NodeData>;
+  parent_map: Record<string, string[]>;
   manifest_metadata?: ManifestMetadata | null;
   catalog_metadata?: CatalogMetadata | null;
 }
-export interface LineageDiffData {
-  [key: string]: {
+export type LineageDiffData = Record<
+  string,
+  {
     change_status: "added" | "removed" | "modified";
     change_category: "breaking" | "non-breaking";
-  };
-}
+  }
+>;
 
 interface LineageOutput {
   error?: string;
   data?: LineageData;
 }
 
-export async function getLineage(base: boolean = false): Promise<LineageData> {
+export async function getLineage(base = false): Promise<LineageData> {
   const response = await axiosClient.get(`/api/lineage?base=${base}`);
   return response.data;
 }
 
-export async function getLineageWithError(
-  base: boolean = false
-): Promise<LineageOutput> {
+export async function getLineageWithError(base = false): Promise<LineageOutput> {
   try {
     const data = await getLineage(base);
     return { data };
   } catch (err: any) {
     if (err instanceof AxiosError) {
-      const detail = err?.response?.data?.detail;
+      const detail = err.response?.data?.detail;
       if (detail) {
         return { error: detail };
       } else {
-        return { error: err?.message };
+        return { error: err.message };
       }
     } else {
       return { error: err?.message };
@@ -149,7 +144,7 @@ export interface ServerInfoResult {
     diff: LineageDiffData;
   };
   demo: boolean;
-  support_tasks: { [key: string]: boolean };
+  support_tasks: Record<string, boolean>;
 }
 
 export async function getServerInfo(): Promise<ServerInfoResult> {
@@ -160,11 +155,11 @@ export async function getServerInfo(): Promise<ServerInfoResult> {
 export interface ModelInfoResult {
   model: {
     base: {
-      columns?: { [key: string]: NodeColumnData };
+      columns?: Record<string, NodeColumnData>;
       primary_key?: string;
     };
     current: {
-      columns?: { [key: string]: NodeColumnData };
+      columns?: Record<string, NodeColumnData>;
       primary_key?: string;
     };
   };

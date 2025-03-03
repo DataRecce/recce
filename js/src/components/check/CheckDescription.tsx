@@ -1,11 +1,5 @@
 import { Button, Flex, Link, Text, Textarea } from "@chakra-ui/react";
-import {
-  ChangeEventHandler,
-  KeyboardEventHandler,
-  useEffect,
-  useRef,
-  useState,
-} from "react";
+import { ChangeEventHandler, KeyboardEventHandler, useEffect, useRef, useState } from "react";
 
 interface CheckDescriptionProps {
   value?: string;
@@ -68,8 +62,7 @@ export function CheckDescription({ value, onChange }: CheckDescriptionProps) {
           onChange={handleChange}
           onKeyDown={handleKeyDown}
           ref={textareaRef}
-          flex={1}
-        ></Textarea>
+          flex={1}></Textarea>
         <Flex gap="12px" alignItems="flex-end">
           <Link onClick={handleCancel} colorScheme="blue">
             cancel
@@ -90,8 +83,7 @@ export function CheckDescription({ value, onChange }: CheckDescriptionProps) {
       onClick={handleEdit}
       whiteSpace="pre-wrap"
       wordBreak="break-word"
-      color={!value ? "lightgray" : "inherit"}
-    >
+      color={!value ? "lightgray" : "inherit"}>
       {!value ? "Add description here" : value}
     </Text>
   );

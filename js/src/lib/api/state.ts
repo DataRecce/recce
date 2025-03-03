@@ -26,10 +26,7 @@ export async function exportState(): Promise<string> {
   return response.data;
 }
 
-export async function importState(
-  file: File,
-  checksOnly?: boolean
-): Promise<ImportedState> {
+export async function importState(file: File, checksOnly?: boolean): Promise<ImportedState> {
   const formData = new FormData();
   formData.append("file", file);
   formData.append("checks_only", (!!checksOnly).toString());
@@ -50,9 +47,7 @@ export interface SyncStateResponse {
   status: "accepted" | "conflict" | "syncing";
 }
 
-export async function syncState(
-  input: SyncStateInput
-): Promise<SyncStateResponse> {
+export async function syncState(input: SyncStateInput): Promise<SyncStateResponse> {
   try {
     const response = await axiosClient.post("/api/sync", input);
 
