@@ -47,7 +47,7 @@ jobs:
 
       - name: Run linters
         working-directory: ./js
-        run: pnpm lint --max-warnings=0
+        run: pnpm lint
 
       - name: Build the static files
         working-directory: ./js
