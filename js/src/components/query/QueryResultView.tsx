@@ -1,10 +1,6 @@
 import "react-data-grid/lib/styles.css";
 import { Column } from "react-data-grid";
-import {
-  QueryParams,
-  QueryResult,
-  QueryViewOptions,
-} from "@/lib/api/adhocQuery";
+import { QueryParams, QueryResult, QueryViewOptions } from "@/lib/api/adhocQuery";
 import {
   Box,
   Button,
@@ -18,10 +14,7 @@ import {
 } from "@chakra-ui/react";
 import { useMemo } from "react";
 import { DataFrame, Run } from "@/lib/api/types";
-import {
-  EmptyRowsRenderer,
-  ScreenshotDataGrid,
-} from "../data-grid/ScreenshotDataGrid";
+import { EmptyRowsRenderer, ScreenshotDataGrid } from "../data-grid/ScreenshotDataGrid";
 import { defaultRenderCell } from "./querydiff";
 import { VscPin, VscPinned } from "react-icons/vsc";
 import { RunResultViewProps } from "../run/types";
@@ -108,27 +101,19 @@ function toDataGrid(result: DataFrame, options: QueryDataGridOptions) {
 
   result.data.forEach((row, index) => {
     const row_data = row as any;
-    row_data["_index"] = index + 1;
+    row_data._index = index + 1;
   });
 
   return { columns, rows: result.data };
 }
 
 const PrivateQueryResultView = (
-  {
-    run,
-    viewOptions,
-    onViewOptionsChanged,
-    onAddToChecklist,
-  }: QueryResultViewProp,
-  ref: any
+  { run, viewOptions, onViewOptionsChanged, onAddToChecklist }: QueryResultViewProp,
+  ref: any,
 ) => {
-  const pinnedColumns = useMemo(
-    () => viewOptions?.pinned_columns || [],
-    [viewOptions]
-  );
+  const pinnedColumns = useMemo(() => viewOptions?.pinned_columns || [], [viewOptions]);
 
-  const dataframe = run?.result as DataFrame;
+  const dataframe = run.result as DataFrame;
   const gridData = useMemo(() => {
     if (!dataframe) {
       return { rows: [], columns: [] };
@@ -153,9 +138,9 @@ const PrivateQueryResultView = (
     return <Center height="100%">No data</Center>;
   }
 
-  const limit = dataframe?.limit || 0;
+  const limit = dataframe.limit || 0;
   const warning =
-    limit > 0 && dataframe?.more
+    limit > 0 && dataframe.more
       ? `Warning: Displayed results are limited to ${limit.toLocaleString()} records. To ensure complete data retrieval, consider applying a LIMIT or WHERE clause to constrain the result set.`
       : null;
   const showTopBar = onAddToChecklist || warning;
@@ -168,12 +153,10 @@ const PrivateQueryResultView = (
           alignItems="center"
           gap="5px"
           px="10px"
-          bg={warning ? "orange.100" : "inherit"}
-        >
+          bg={warning ? "orange.100" : "inherit"}>
           {warning && (
             <>
-              <WarningIcon color="orange.600" alignSelf="center" />{" "}
-              <Box>{warning}</Box>
+              <WarningIcon color="orange.600" alignSelf="center" /> <Box>{warning}</Box>
             </>
           )}
 
@@ -183,8 +166,9 @@ const PrivateQueryResultView = (
               marginBlock="5px"
               size="sm"
               colorScheme="blue"
-              onClick={() => onAddToChecklist(run)}
-            >
+              onClick={() => {
+                onAddToChecklist(run);
+              }}>
               Add to Checklist
             </Button>
           )}

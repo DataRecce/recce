@@ -13,8 +13,7 @@ export const HSplit = (props: SplitProps) => {
       }}
       direction="horizontal"
       gutterSize={gutterSize}
-      {...rest}
-    >
+      {...rest}>
       {children}
     </ReactSplit>
   );
@@ -32,8 +31,7 @@ export const VSplit = (props: SplitProps) => {
       }}
       gutterSize={gutterSize}
       direction="vertical"
-      {...rest}
-    >
+      {...rest}>
       {children}
     </ReactSplit>
   );

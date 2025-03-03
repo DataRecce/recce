@@ -1,12 +1,7 @@
 import { Box, Grid, Icon, Tooltip, VStack, Text, Flex } from "@chakra-ui/react";
 import { ReactNode, use } from "react";
 import { FiInfo } from "react-icons/fi";
-import {
-  IconAdded,
-  IconChanged,
-  IconModified,
-  IconRemoved,
-} from "../lineage/styles";
+import { IconAdded, IconChanged, IconModified, IconRemoved } from "../lineage/styles";
 import { LineageGraph } from "../lineage/lineage";
 import { NodeData } from "@/lib/api/info";
 
@@ -59,15 +54,7 @@ export function getIconForChangeStatus(changeStatus?: ChangeStatus): {
   return { color: "inherit", icon: undefined };
 }
 
-function SummaryText({
-  name,
-  value,
-  tip,
-}: {
-  name: ReactNode;
-  value: ReactNode;
-  tip?: ReactNode;
-}) {
+function SummaryText({ name, value, tip }: { name: ReactNode; value: ReactNode; tip?: ReactNode }) {
   return (
     <VStack alignItems="stretch">
       <Text fontSize="sm" color="gray">
@@ -106,10 +93,7 @@ function ChangeStatusCountLabel({
   );
 }
 
-function calculateColumnChange(
-  base: NodeData | undefined,
-  current: NodeData | undefined
-) {
+function calculateColumnChange(base: NodeData | undefined, current: NodeData | undefined) {
   let adds = 0;
   let removes = 0;
   let modifies = 0;
@@ -118,14 +102,14 @@ function calculateColumnChange(
   // Add columns
   if (current) {
     Object.keys(current.columns || {}).forEach((col) => {
-      if (!base || !base.columns || !base.columns[col]) adds++;
+      if (!base?.columns?.[col]) adds++;
     });
   }
 
   // Remove columns
   if (base) {
     Object.keys(base.columns || {}).forEach((col) => {
-      if (!current || !current.columns || !current.columns[col]) removes++;
+      if (!current?.columns?.[col]) removes++;
     });
   }
 
@@ -175,12 +159,7 @@ export function ChangeSummary({ lineageGraph }: Props) {
     calculateChangeSummary(lineageGraph);
 
   return (
-    <Grid
-      templateColumns="1fr 1fr"
-      mb="10px"
-      borderTop="1px solid lightgray"
-      padding={"2.5vw"}
-    >
+    <Grid templateColumns="1fr 1fr" mb="10px" borderTop="1px solid lightgray" padding={"2.5vw"}>
       <Box borderColor="lightgray">
         <SummaryText
           name="Code Changes"
@@ -188,14 +167,8 @@ export function ChangeSummary({ lineageGraph }: Props) {
             <>
               <Grid templateColumns="1fr 1fr 1fr" width="100%">
                 <ChangeStatusCountLabel changeStatus="added" value={adds} />
-                <ChangeStatusCountLabel
-                  changeStatus="removed"
-                  value={removes}
-                />
-                <ChangeStatusCountLabel
-                  changeStatus="modified"
-                  value={modifies}
-                />
+                <ChangeStatusCountLabel changeStatus="removed" value={removes} />
+                <ChangeStatusCountLabel changeStatus="modified" value={modifies} />
               </Grid>
             </>
           }
@@ -207,18 +180,9 @@ export function ChangeSummary({ lineageGraph }: Props) {
           value={
             <>
               <Grid templateColumns="1fr 1fr 1fr" width="100%">
-                <ChangeStatusCountLabel
-                  changeStatus="col_added"
-                  value={col_added}
-                />
-                <ChangeStatusCountLabel
-                  changeStatus="col_removed"
-                  value={col_removed}
-                />
-                <ChangeStatusCountLabel
-                  changeStatus="col_changed"
-                  value={col_changed}
-                />
+                <ChangeStatusCountLabel changeStatus="col_added" value={col_added} />
+                <ChangeStatusCountLabel changeStatus="col_removed" value={col_removed} />
+                <ChangeStatusCountLabel changeStatus="col_changed" value={col_changed} />
               </Grid>
             </>
           }

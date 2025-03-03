@@ -74,23 +74,18 @@ function SandboxTopBar({
       gap="5px"
       height="54px"
       borderBottom="1px solid lightgray"
-      flex="0 0 54px"
-    >
+      flex="0 0 54px">
       <Box>
         <Heading as="h2" size="md" display="flex" alignItems="center" gap="5px">
           <Icon as={AiOutlineExperiment} boxSize="1.2em" />
           Sandbox
         </Heading>
         <Text fontSize="xs" color="gray.500">
-          Compare the run results based on the modified SQL code of model{" "}
-          <b>{current?.name}</b>
+          Compare the run results based on the modified SQL code of model <b>{current?.name}</b>
         </Text>
       </Box>
       <Spacer />
-      <QueryForm
-        defaultPrimaryKeys={primaryKeys}
-        onPrimaryKeysChange={setPrimaryKeys}
-      />
+      <QueryForm defaultPrimaryKeys={primaryKeys} onPrimaryKeysChange={setPrimaryKeys} />
       <Tooltip label="Run diff to see the changes">
         <Button
           size="xs"
@@ -101,8 +96,7 @@ function SandboxTopBar({
             runQuery();
           }}
           colorScheme="blue"
-          isLoading={isPending}
-        >
+          isLoading={isPending}>
           Run Diff
         </Button>
       </Tooltip>
@@ -122,15 +116,13 @@ function SandboxEditorLabels({
   const widthOfBar = "50%";
   const margin = "0 16px";
 
-  const currentTime = formatTimestamp(
-    envInfo?.dbt?.current?.generated_at || ""
-  );
+  const currentTime = formatTimestamp(envInfo?.dbt?.current?.generated_at || "");
   const latestUpdateDistanceToNow = formatDistanceToNow(currentTime, {
     addSuffix: true,
   });
   let schema = "N/A";
-  if (lineageGraph?.nodes && lineageGraph?.nodes[currentModelID]) {
-    const value = lineageGraph?.nodes[currentModelID];
+  if (lineageGraph?.nodes[currentModelID]) {
+    const value = lineageGraph.nodes[currentModelID];
     if (value.data.current?.schema) {
       schema = value.data.current.schema;
     }
@@ -144,8 +136,7 @@ function SandboxEditorLabels({
       fontSize={"14px"}
       align="center"
       margin={"0"}
-      backgroundColor="#EDF2F880"
-    >
+      backgroundColor="#EDF2F880">
       <Stack width={widthOfBar}>
         <Text as="b" margin={margin}>
           ORIGINAL (Schema: {schema}, Last Updated: {latestUpdateDistanceToNow})
@@ -165,9 +156,7 @@ export function SandboxView({ isOpen, onClose, current }: SandboxViewProps) {
     onClose: onRunResultClose,
     onOpen: onRunResultOpen,
   } = useDisclosure();
-  const [modifiedCode, setModifiedCode] = useState<string>(
-    current?.raw_code || ""
-  );
+  const [modifiedCode, setModifiedCode] = useState<string>(current?.raw_code || "");
   const { showRunId, clearRunResult } = useRecceActionContext();
   const { primaryKeys, setPrimaryKeys } = useRecceQueryContext();
   const { data: flags, isLoading } = useRecceServerFlag();
@@ -204,9 +193,13 @@ export function SandboxView({ isOpen, onClose, current }: SandboxViewProps) {
           node: current?.name,
           status: "success",
         });
-        setTimeout(() => feedbackToast(), 1000);
+        setTimeout(() => {
+          feedbackToast();
+        }, 1000);
         if (!isLoading && flags?.single_env_onboarding) {
-          setTimeout(() => prepareEnvToast(), 2000);
+          setTimeout(() => {
+            prepareEnvToast();
+          }, 2000);
         }
       }
     },
@@ -242,15 +235,15 @@ export function SandboxView({ isOpen, onClose, current }: SandboxViewProps) {
   const { guideToast: prepareEnvToast, closeGuideToast } = useGuideToast({
     guideId: localStorageKeys.prepareEnvGuideID,
     description: "Want to compare data changes with production data?",
-    externalLink:
-      "https://datarecce.io/docs/get-started/#prepare-dbt-artifacts",
+    externalLink: "https://datarecce.io/docs/get-started/#prepare-dbt-artifacts",
     externalLinkText: "Learn how.",
-    onExternalLinkClick: () =>
+    onExternalLinkClick: () => {
       trackSingleEnvironment({
         action: "external_link",
         from: "preview_changes",
         node: current?.name,
-      }),
+      });
+    },
   });
 
   useEffect(() => {
@@ -270,8 +263,7 @@ export function SandboxView({ isOpen, onClose, current }: SandboxViewProps) {
         closeToast();
         closeGuideToast();
         trackPreviewChange({ action: "close", node: current?.name });
-      }}
-    >
+      }}>
       {/* <ModalOverlay /> */}
       <ModalContent height={"100%"}>
         <ModalHeader height={"40px"} bg="rgb(77, 209, 176)" px={0} py={4}>
@@ -282,20 +274,10 @@ export function SandboxView({ isOpen, onClose, current }: SandboxViewProps) {
               src="/logo/recce-logo-white.png"
               alt="recce-logo-white"
             />
-            <Heading
-              as="h1"
-              fontFamily={`"Montserrat", sans-serif`}
-              fontSize="lg"
-              color="white"
-            >
+            <Heading as="h1" fontFamily={`"Montserrat", sans-serif`} fontSize="lg" color="white">
               RECCE
             </Heading>
-            <Badge
-              fontSize="sm"
-              color="white"
-              colorScheme="whiteAlpha"
-              variant="outline"
-            >
+            <Badge fontSize="sm" color="white" colorScheme="whiteAlpha" variant="outline">
               Experiment
             </Badge>
           </Flex>
@@ -310,8 +292,7 @@ export function SandboxView({ isOpen, onClose, current }: SandboxViewProps) {
               flex: "1",
               contain: "size",
               height: "100%",
-            }}
-          >
+            }}>
             <Flex direction="column" height="100%" m={0} p={0}>
               <SandboxTopBar
                 current={current}

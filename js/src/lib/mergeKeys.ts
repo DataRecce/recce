@@ -46,10 +46,7 @@ export function mergeKeys(_base: string[], _curr: string[]) {
 
 type MergeStatus = "added" | "removed" | "reordered" | undefined;
 
-export function mergeKeysWithStatus(
-  _base: string[],
-  _curr: string[]
-): { [key: string]: MergeStatus } {
+export function mergeKeysWithStatus(_base: string[], _curr: string[]): Record<string, MergeStatus> {
   const merged = mergeKeys(_base, _curr);
   const result: ReturnType<typeof mergeKeysWithStatus> = {};
 
@@ -64,7 +61,7 @@ export function mergeKeysWithStatus(
   }
 
   // reorder case
-  const baseIndexMap: { [key: string]: number } = {};
+  const baseIndexMap: Record<string, number> = {};
   _base.forEach((item, index) => {
     baseIndexMap[item] = index;
   });

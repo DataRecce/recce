@@ -60,9 +60,7 @@ export function useCopyToClipboard({
   onError,
   ignoreElements,
 }: HookOptions) {
-  const [status, setStatus] = useState<
-    "idle" | "loading" | "success" | "error"
-  >("idle");
+  const [status, setStatus] = useState<"idle" | "loading" | "success" | "error">("idle");
   const ref = useRef(null);
 
   // ImageDownloadModal is used for browsers that don't support ClipboardItem
@@ -74,8 +72,7 @@ export function useCopyToClipboard({
       throw new Error("No node to use for screenshot");
     }
 
-    const nodeToUse = ((ref.current as any).element ||
-      ref.current) as HTMLElement;
+    const nodeToUse = ((ref.current as any).element || ref.current) as HTMLElement;
     const overflow = nodeToUse.style.overflow;
     const border = nodeToUse.style.border;
     const radius = nodeToUse.style.borderRadius;
@@ -102,12 +99,8 @@ export function useCopyToClipboard({
       // ref: https://github.com/niklasvh/html2canvas/issues/2107#issuecomment-1316354455
       const style = document.createElement("style");
       document.head.appendChild(style);
-      style.sheet?.insertRule(
-        "body > div:last-child img { display: inline-block; }"
-      );
-      const filter = ignoreElements
-        ? (n: HTMLElement) => !ignoreElements(n)
-        : undefined;
+      style.sheet?.insertRule("body > div:last-child img { display: inline-block; }");
+      const filter = ignoreElements ? (n: HTMLElement) => !ignoreElements(n) : undefined;
 
       setStatus("loading");
       const canvas =
@@ -122,9 +115,7 @@ export function useCopyToClipboard({
             }); // Use html-to-image for copy reactflow graph
 
       style.remove();
-      const outputCanvas = shadowEffect
-        ? document.createElement("canvas")
-        : canvas;
+      const outputCanvas = shadowEffect ? document.createElement("canvas") : canvas;
 
       if (shadowEffect) {
         // Add shadow effect
@@ -155,9 +146,7 @@ export function useCopyToClipboard({
 
   const copyToClipboard = async () => {
     try {
-      await navigator.clipboard.write([
-        new ClipboardItem({ [`image/${imageType}`]: toImage() }),
-      ]);
+      await navigator.clipboard.write([new ClipboardItem({ [`image/${imageType}`]: toImage() })]);
       setStatus("success");
       onSuccess && onSuccess();
     } catch (error) {
@@ -188,24 +177,22 @@ export function useCopyToClipboard({
 export function useCopyToClipboardButton(options?: HookOptions) {
   const { successToast, failToast } = useClipBoardToast();
 
-  const { isLoading, copyToClipboard, ImageDownloadModal, ref } =
-    useCopyToClipboard({
-      imageType: "png",
-      shadowEffect: true,
-      backgroundColor: options?.backgroundColor || null,
-      onSuccess: () => {
-        successToast("Copied the query result as an image to clipboard");
-      },
-      onError: (error) => {
-        console.error("Error taking screenshot", error);
-        failToast("Failed to copy image to clipboard", error);
-      },
-    });
+  const { isLoading, copyToClipboard, ImageDownloadModal, ref } = useCopyToClipboard({
+    imageType: "png",
+    shadowEffect: true,
+    backgroundColor: options?.backgroundColor || null,
+    onSuccess: () => {
+      successToast("Copied the query result as an image to clipboard");
+    },
+    onError: (error) => {
+      console.error("Error taking screenshot", error);
+      failToast("Failed to copy image to clipboard", error);
+    },
+  });
 
   const onMouseEnter = useCallback(() => {
     if (ref.current) {
-      const nodeToUse = ((ref.current as any).element ||
-        ref.current) as HTMLElement;
+      const nodeToUse = ((ref.current as any).element || ref.current) as HTMLElement;
       nodeToUse.style.boxShadow = highlightBoxShadow;
       nodeToUse.style.transition = "box-shadow 0.5s ease-in-out";
     }
@@ -213,8 +200,7 @@ export function useCopyToClipboardButton(options?: HookOptions) {
 
   const onMouseLeave = useCallback(() => {
     if (ref.current) {
-      const nodeToUse = ((ref.current as any).element ||
-        ref.current) as HTMLElement;
+      const nodeToUse = ((ref.current as any).element || ref.current) as HTMLElement;
       nodeToUse.style.boxShadow = "";
     }
   }, [ref]);
@@ -222,20 +208,14 @@ export function useCopyToClipboardButton(options?: HookOptions) {
   const onCopyToClipboard = useCallback(async () => {
     if (ref.current) {
       await copyToClipboard();
-      const nodeToUse = ((ref.current as any).element ||
-        ref.current) as HTMLElement;
+      const nodeToUse = ((ref.current as any).element || ref.current) as HTMLElement;
       nodeToUse.style.boxShadow = "";
     } else {
       failToast("Failed to copy image to clipboard", "No content to copy");
     }
   }, [ref, copyToClipboard, failToast]);
 
-  function CopyToClipboardButton({
-    imageType = "png",
-    ...props
-  }: {
-    imageType?: "png" | "jpeg";
-  }) {
+  function CopyToClipboardButton({ imageType = "png", ...props }: { imageType?: "png" | "jpeg" }) {
     return (
       <>
         <Button
@@ -245,8 +225,7 @@ export function useCopyToClipboardButton(options?: HookOptions) {
           isLoading={isLoading}
           onMouseEnter={onMouseEnter}
           onMouseLeave={onMouseLeave}
-          onClick={onCopyToClipboard}
-        >
+          onClick={onCopyToClipboard}>
           Copy to Clipboard
         </Button>
         <ImageDownloadModal />
@@ -277,7 +256,7 @@ export function useImageDownloadModal() {
       const reader = new FileReader();
       reader.readAsDataURL(imgBlob);
       reader.onloadend = (e) => {
-        if (e.target?.result && e.target?.result !== null) {
+        if (e.target?.result && e.target.result !== null) {
           setBase64Img(e.target.result as string);
         }
       };
@@ -288,10 +267,7 @@ export function useImageDownloadModal() {
         return;
       }
       const now = new Date();
-      const fileName = `recce-screenshot-${format(
-        now,
-        "yyyy-MM-dd-HH-mm-ss"
-      )}.png`;
+      const fileName = `recce-screenshot-${format(now, "yyyy-MM-dd-HH-mm-ss")}.png`;
       saveAs(imgBlob, fileName);
       onClose();
     };

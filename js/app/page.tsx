@@ -18,8 +18,7 @@ import {
   HStack,
   extendTheme,
 } from "@chakra-ui/react";
-import React from "react";
-import { ReactNode, useLayoutEffect } from "react";
+import React, { ReactNode, useLayoutEffect } from "react";
 import { QueryClientProvider, useQuery } from "@tanstack/react-query";
 import RecceContextProvider from "@/lib/hooks/RecceContextProvider";
 import { reactQueryClient } from "@/lib/api/axiosClient";
@@ -55,13 +54,7 @@ import { Filename } from "@/components/app/Filename";
 import { StateSynchronizer } from "@/components/app/StateSynchronizer";
 import { useRecceServerFlag } from "@/lib/hooks/useRecceServerFlag";
 
-const RouteAlwaysMount = ({
-  children,
-  path,
-}: {
-  children: ReactNode;
-  path: string;
-}) => {
+const RouteAlwaysMount = ({ children, path }: { children: ReactNode; path: string }) => {
   const [match] = useRoute(path);
   return (
     <Box display={match ? "block" : "none"} height="100%">
@@ -84,72 +77,36 @@ function LinkIcon({ icon, href, ...prob }: LinkIconProps) {
 }
 
 function TopBar() {
-  const { reviewMode, isDemoSite, envInfo, cloudMode, isLoading } =
-    useLineageGraphContext();
+  const { reviewMode, isDemoSite, envInfo, cloudMode, isLoading } = useLineageGraphContext();
   const version = useVersionNumber();
   const { url: prURL, id: prID } = envInfo?.pullRequest || {};
   const demoPrId = prURL ? prURL.split("/").pop() : null;
 
   return (
-    <Flex
-      gap="10px"
-      minHeight="40px"
-      alignItems="center"
-      bg="rgb(255, 110, 66)"
-    >
+    <Flex gap="10px" minHeight="40px" alignItems="center" bg="rgb(255, 110, 66)">
       <Image
         boxSize="20px"
         ml="18px"
         src="/logo/recce-logo-white.png"
-        alt="recce-logo-white"
-      ></Image>
-      <Heading
-        as="h1"
-        fontFamily={`"Montserrat", sans-serif`}
-        fontSize="lg"
-        color="white"
-      >
+        alt="recce-logo-white"></Image>
+      <Heading as="h1" fontFamily={`"Montserrat", sans-serif`} fontSize="lg" color="white">
         RECCE
       </Heading>
-      <Badge
-        fontSize="sm"
-        color="white"
-        colorScheme="whiteAlpha"
-        variant="outline"
-      >
+      <Badge fontSize="sm" color="white" colorScheme="whiteAlpha" variant="outline">
         {version}
       </Badge>
       {reviewMode && (
-        <Badge
-          fontSize="sm"
-          color="white"
-          colorScheme="whiteAlpha"
-          variant="outline"
-        >
+        <Badge fontSize="sm" color="white" colorScheme="whiteAlpha" variant="outline">
           review mode
         </Badge>
       )}
       {cloudMode && (
-        <Badge
-          fontSize="sm"
-          color="white"
-          colorScheme="whiteAlpha"
-          variant="outline"
-        >
+        <Badge fontSize="sm" color="white" colorScheme="whiteAlpha" variant="outline">
           <HStack>
             <Box>cloud mode</Box>
-            <Box
-              borderLeft="1px"
-              borderLeftColor="whiteAlpha.500"
-              paddingLeft="8px"
-            >
+            <Box borderLeft="1px" borderLeftColor="whiteAlpha.500" paddingLeft="8px">
               <Link href={prURL} _hover={{ textDecoration: "none" }} isExternal>
-                <Icon
-                  as={VscGitPullRequest}
-                  boxSize="3"
-                  fontWeight="extrabold"
-                  strokeWidth="1"
-                />
+                <Icon as={VscGitPullRequest} boxSize="3" fontWeight="extrabold" strokeWidth="1" />
                 {` #${prID}`}
               </Link>
             </Box>
@@ -158,30 +115,12 @@ function TopBar() {
       )}
       {isDemoSite && prURL && (
         <>
-          <Badge
-            fontSize="sm"
-            color="white"
-            colorScheme="whiteAlpha"
-            variant="outline"
-          >
+          <Badge fontSize="sm" color="white" colorScheme="whiteAlpha" variant="outline">
             <HStack>
               <Box>demo mode</Box>
-              <Box
-                borderLeft="1px"
-                borderLeftColor="whiteAlpha.500"
-                paddingLeft="8px"
-              >
-                <Link
-                  href={prURL}
-                  _hover={{ textDecoration: "none" }}
-                  isExternal
-                >
-                  <Icon
-                    as={VscGitPullRequest}
-                    boxSize="3"
-                    fontWeight="extrabold"
-                    strokeWidth="1"
-                  />
+              <Box borderLeft="1px" borderLeftColor="whiteAlpha.500" paddingLeft="8px">
+                <Link href={prURL} _hover={{ textDecoration: "none" }} isExternal>
+                  <Icon as={VscGitPullRequest} boxSize="3" fontWeight="extrabold" strokeWidth="1" />
                   {` #${demoPrId}`}
                 </Link>
               </Box>
@@ -191,15 +130,8 @@ function TopBar() {
       )}
       <Spacer />
       <LinkIcon icon={FaGithub} href="https://github.com/DataRecce/recce" />
-      <LinkIcon
-        icon={FaSlack}
-        href="https://getdbt.slack.com/archives/C05C28V7CPP"
-      />
-      <LinkIcon
-        mr="18px"
-        icon={FaQuestionCircle}
-        href="https://datarecce.io/docs"
-      />
+      <LinkIcon icon={FaSlack} href="https://getdbt.slack.com/archives/C05C28V7CPP" />
+      <LinkIcon mr="18px" icon={FaQuestionCircle} href="https://datarecce.io/docs" />
     </Flex>
   );
 }
@@ -242,16 +174,14 @@ function TabBadge<T, R extends number>({
       bg="tomato"
       alignContent={"center"}
       color="white"
-      fontSize="xs"
-    >
+      fontSize="xs">
       {count}
     </Box>
   );
 }
 
 function NavBar() {
-  const { isDemoSite, reviewMode, fileMode, cloudMode, isLoading } =
-    useLineageGraphContext();
+  const { isDemoSite, reviewMode, fileMode, cloudMode, isLoading } = useLineageGraphContext();
   const [location, setLocation] = useLocation();
   const { data: flag, isLoading: isFlagLoading } = useRecceServerFlag();
 
@@ -294,8 +224,7 @@ function NavBar() {
                   setLocation(href);
                 }}
                 isDisabled={isLoading || isFlagLoading || disable}
-                hidden={disable}
-              >
+                hidden={disable}>
                 {name}
                 {badge}
               </Tab>
@@ -317,8 +246,7 @@ function NavBar() {
 }
 
 function Main() {
-  const { isRunResultOpen, isHistoryOpen, closeRunResult } =
-    useRecceActionContext();
+  const { isRunResultOpen, isHistoryOpen, closeRunResult } = useRecceActionContext();
   const { data: flag } = useRecceServerFlag();
   const [location] = useLocation();
   const _isRunResultOpen = isRunResultOpen;
@@ -329,8 +257,7 @@ function Main() {
       sizes={[0, 100]}
       minSize={_isHistoryOpen ? 300 : 0}
       gutterSize={_isHistoryOpen ? 5 : 0}
-      style={{ height: "100%" }}
-    >
+      style={{ height: "100%" }}>
       <Box style={{ contain: "size" }}>{_isHistoryOpen && <RunList />}</Box>
       <VSplit
         sizes={_isRunResultOpen ? [50, 50] : [100, 0]}
@@ -339,8 +266,7 @@ function Main() {
         style={{
           flex: "1",
           contain: "size",
-        }}
-      >
+        }}>
         <Box p={0} style={{ contain: "content" }}>
           <ErrorBoundary>
             {/* Prevent the lineage page unmount and lose states */}

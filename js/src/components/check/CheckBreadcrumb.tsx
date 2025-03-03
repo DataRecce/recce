@@ -38,10 +38,7 @@ export function CheckBreadcrumb({ name, setName }: CheckBreadcrumbProps) {
 
   useEffect(() => {
     const handleClickOutside = (event: any) => {
-      if (
-        editInputRef.current &&
-        !(editInputRef.current as any).contains(event.target)
-      ) {
+      if (editInputRef.current && !(editInputRef.current as any).contains(event.target)) {
         handleCommit();
       }
     };
@@ -61,8 +58,7 @@ export function CheckBreadcrumb({ name, setName }: CheckBreadcrumbProps) {
       fontSize="12pt"
       fontWeight="500"
       separator={<ChevronRightIcon color="gray.500" />}
-      overflow={"hidden"}
-    >
+      overflow={"hidden"}>
       <BreadcrumbItem cursor="pointer" flex="0 1 auto" overflow="hidden">
         {isEditing ? (
           <Input
@@ -79,8 +75,7 @@ export function CheckBreadcrumb({ name, setName }: CheckBreadcrumbProps) {
             onClick={handleClick}
             textOverflow="ellipsis"
             whiteSpace="nowrap"
-            overflow="hidden"
-          >
+            overflow="hidden">
             {name}
           </Box>
         )}

@@ -11,10 +11,7 @@ import { HistogramDiffResultView } from "../histogram/HistogramDiffResultView";
 import { ProfileDiffResultView } from "../profile/ProfileDiffResultView";
 import { QueryDiffResultView } from "../query/QueryDiffResultView";
 import { QueryResultView } from "../query/QueryResultView";
-import {
-  RowCountDiffResultView,
-  RowCountResultView,
-} from "../rowcount/RowCountDiffResultView";
+import { RowCountDiffResultView, RowCountResultView } from "../rowcount/RowCountDiffResultView";
 import { TopKDiffForm } from "../top-k/TopKDiffForm";
 import { TopKDiffResultView } from "../top-k/TopKDiffResultView";
 import { ValueDiffDetailResultView } from "../valuediff/ValueDiffDetailResultView";
@@ -34,7 +31,7 @@ interface RegistryEntry<PT, RT, VO = any> {
   RunForm?: React.ComponentType<RunFormProps<PT>>;
 }
 
-const registry: { [key: string]: RegistryEntry<any, any> } = {
+const registry: Record<string, RegistryEntry<any, any>> = {
   lineage_diff: {
     title: "Lineage Diff",
     icon: TbBrandStackshare,
@@ -105,8 +102,6 @@ const registry: { [key: string]: RegistryEntry<any, any> } = {
   },
 };
 
-export const findByRunType = (
-  runType: string
-): RegistryEntry<any, any> | undefined => {
+export const findByRunType = (runType: string): RegistryEntry<any, any> | undefined => {
   return registry[runType];
 };

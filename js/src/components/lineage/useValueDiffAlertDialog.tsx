@@ -15,8 +15,7 @@ import React, { useRef, useState, useCallback } from "react";
 function useValueDiffAlertDialog() {
   const { isOpen, onOpen, onClose } = useDisclosure();
   const [nodeCount, setNodeCount] = useState(0);
-  const [resolvePromise, setResolvePromise] =
-    useState<(value: boolean) => void>();
+  const [resolvePromise, setResolvePromise] = useState<(value: boolean) => void>();
   const cancelRef = useRef<any>();
 
   const confirm = useCallback(
@@ -27,7 +26,7 @@ function useValueDiffAlertDialog() {
         onOpen();
       });
     },
-    [onOpen]
+    [onOpen],
   );
 
   const handleConfirm = () => {
@@ -41,12 +40,7 @@ function useValueDiffAlertDialog() {
   };
 
   const ValueDiffAlertDialog = (
-    <AlertDialog
-      size={"xl"}
-      isOpen={isOpen}
-      leastDestructiveRef={cancelRef}
-      onClose={handleCancel}
-    >
+    <AlertDialog size={"xl"} isOpen={isOpen} leastDestructiveRef={cancelRef} onClose={handleCancel}>
       <AlertDialogOverlay>
         <AlertDialogContent>
           <AlertDialogHeader fontSize="lg" fontWeight="bold">
@@ -55,8 +49,8 @@ function useValueDiffAlertDialog() {
 
           <AlertDialogBody gap="20px" as={Flex} direction="column">
             <Box>
-              Value diff will be executed on {nodeCount} nodes in the Lineage,
-              which can add extra costs to your bill.
+              Value diff will be executed on {nodeCount} nodes in the Lineage, which can add extra
+              costs to your bill.
             </Box>
           </AlertDialogBody>
 

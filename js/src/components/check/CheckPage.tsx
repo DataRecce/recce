@@ -1,11 +1,6 @@
 import "react-data-grid/lib/styles.css";
 import React, { useCallback, useEffect, useState } from "react";
-import {
-  Check,
-  createSimpleCheck,
-  listChecks,
-  reorderChecks,
-} from "@/lib/api/checks";
+import { Check, createSimpleCheck, listChecks, reorderChecks } from "@/lib/api/checks";
 import { Box, Center, Divider, Flex, VStack } from "@chakra-ui/react";
 import { CheckDetail } from "./CheckDetail";
 import { cacheKeys } from "@/lib/api/cacheKeys";
@@ -22,8 +17,7 @@ import { useRecceCheckContext } from "@/lib/hooks/RecceCheckContext";
 export const CheckPage = () => {
   const [, setLocation] = useLocation();
   const [, params] = useRoute("/checks/:checkId");
-  const { latestSelectedCheckId, setLatestSelectedCheckId } =
-    useRecceCheckContext();
+  const { latestSelectedCheckId, setLatestSelectedCheckId } = useRecceCheckContext();
   const queryClient = useQueryClient();
   const selectedItem = params?.checkId;
   if (selectedItem) {
@@ -46,13 +40,12 @@ export const CheckPage = () => {
     (checkId: string) => {
       setLocation(`/checks/${checkId}`);
     },
-    [setLocation]
+    [setLocation],
   );
 
   const [orderedChecks, setOrderedChecks] = useState(checks || []);
   const { mutate: changeChecksOrder } = useMutation({
-    mutationFn: (order: { source: number; destination: number }) =>
-      reorderChecks(order),
+    mutationFn: (order: { source: number; destination: number }) => reorderChecks(order),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: cacheKeys.checks() });
     },
@@ -71,7 +64,7 @@ export const CheckPage = () => {
 
       setOrderedChecks(updatedItems);
     },
-    [orderedChecks, setOrderedChecks, changeChecksOrder]
+    [orderedChecks, setOrderedChecks, changeChecksOrder],
   );
 
   const addToChecklist = useCallback(async () => {
@@ -96,14 +89,7 @@ export const CheckPage = () => {
     }
 
     setOrderedChecks(checks);
-  }, [
-    status,
-    selectedItem,
-    checks,
-    setOrderedChecks,
-    setLocation,
-    latestSelectedCheckId,
-  ]);
+  }, [status, selectedItem, checks, setOrderedChecks, setLocation, latestSelectedCheckId]);
 
   if (isLoading) {
     return <></>;
@@ -123,17 +109,8 @@ export const CheckPage = () => {
 
   return (
     <HSplit style={{ height: "100%" }} minSize={50} sizes={[20, 80]}>
-      <Box
-        borderRight="lightgray solid 1px"
-        height="100%"
-        style={{ contain: "size" }}
-      >
-        <VStack
-          spacing={0}
-          h="100%"
-          style={{ contain: "strict" }}
-          alignItems="stretch"
-        >
+      <Box borderRight="lightgray solid 1px" height="100%" style={{ contain: "size" }}>
+        <VStack spacing={0} h="100%" style={{ contain: "strict" }} alignItems="stretch">
           <Flex justifyContent="right" padding="0px 10px">
             <StateImporter checksOnly />
           </Flex>

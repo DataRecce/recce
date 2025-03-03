@@ -23,12 +23,7 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import _ from "lodash";
 import { TbChecklist } from "react-icons/tb";
 import { IconType } from "react-icons";
-import {
-  DragDropContext,
-  Draggable,
-  DropResult,
-  Droppable,
-} from "@hello-pangea/dnd";
+import { DragDropContext, Draggable, DropResult, Droppable } from "@hello-pangea/dnd";
 import { findByRunType } from "../run/registry";
 import { useCheckToast } from "@/lib/hooks/useCheckToast";
 import { useRun } from "@/lib/hooks/useRun";
@@ -46,7 +41,7 @@ const ChecklistItem = ({
   onMarkAsApproved: () => void;
 }) => {
   const queryClient = useQueryClient();
-  const checkId = check.check_id!;
+  const checkId = check.check_id;
   const { mutate } = useMutation({
     mutationFn: (check: Partial<Check>) => updateCheck(checkId, check),
     onSuccess: () => {
@@ -54,12 +49,12 @@ const ChecklistItem = ({
       queryClient.invalidateQueries({ queryKey: cacheKeys.checks() });
     },
   });
-  const trackedRunId = check?.last_run?.run_id;
+  const trackedRunId = check.last_run?.run_id;
   const { run } = useRun(trackedRunId);
 
   const handleChange: React.ChangeEventHandler = (event) => {
     const isChecked: boolean = (event.target as any).checked;
-    if (isChecked === false) {
+    if (!isChecked) {
       // If unchecking, just update the check
       mutate({ is_checked: isChecked });
     } else {
@@ -69,7 +64,7 @@ const ChecklistItem = ({
   };
 
   const icon: IconType = findByRunType(check.type)?.icon || TbChecklist;
-  const isMarkAsApprovedDisabled = isDisabledByNoResult(check?.type ?? "", run);
+  const isMarkAsApprovedDisabled = isDisabledByNoResult(check.type ?? "", run);
 
   return (
     <>
@@ -82,30 +77,21 @@ const ChecklistItem = ({
         borderBlockEndWidth={"1px"}
         borderLeftWidth={"3px"}
         borderLeftColor={selected ? "orange" : "transparent"}
-        onClick={() => onSelect(check.check_id)}
+        onClick={() => {
+          onSelect(check.check_id);
+        }}
         alignItems="center"
-        gap="5px"
-      >
+        gap="5px">
         <Icon as={icon} />
-        <Box
-          flex="1"
-          textOverflow="ellipsis"
-          whiteSpace="nowrap"
-          overflow="hidden"
-        >
+        <Box flex="1" textOverflow="ellipsis" whiteSpace="nowrap" overflow="hidden">
           {check.name}
         </Box>
 
         {/* {check.is_checked && <Icon color="green" as={FaCheckCircle} />} */}
         <Tooltip
-          label={
-            isMarkAsApprovedDisabled
-              ? "Run the check first"
-              : "Click to mark as approved"
-          }
+          label={isMarkAsApprovedDisabled ? "Run the check first" : "Click to mark as approved"}
           placement="top"
-          hasArrow
-        >
+          hasArrow>
           <Flex>
             <Checkbox
               isChecked={check.is_checked}
@@ -158,9 +144,7 @@ export const CheckList = ({
 
   const { markedAsApprovedToast } = useCheckToast();
   const handleOnMarkAsApproved = () => {
-    const bypassMarkAsApprovedWarning = localStorage.getItem(
-      "bypassMarkAsApprovedWarning"
-    );
+    const bypassMarkAsApprovedWarning = localStorage.getItem("bypassMarkAsApprovedWarning");
     if (bypassMarkAsApprovedWarning === "true") {
       markCheckedByID(selectedItem!);
       markedAsApprovedToast();
@@ -171,7 +155,7 @@ export const CheckList = ({
 
   const handleMarkAsApprovedConfirmed = () => {
     markCheckedByID(selectedItem!);
-    if (bypassModal === true) {
+    if (bypassModal) {
       localStorage.setItem("bypassMarkAsApprovedWarning", "true");
     }
     markedAsApprovedToast();
@@ -189,14 +173,9 @@ export const CheckList = ({
               w="full"
               spacing="0"
               flex="1"
-              overflow={"auto"}
-            >
+              overflow={"auto"}>
               {checks.map((check, index) => (
-                <Draggable
-                  key={check.check_id}
-                  draggableId={check.check_id}
-                  index={index}
-                >
+                <Draggable key={check.check_id} draggableId={check.check_id} index={index}>
                   {(provided, snapshot) => {
                     // see https://github.com/atlassian/react-beautiful-dnd/issues/1881#issuecomment-691237307
                     if (snapshot.isDragging) {
@@ -213,8 +192,7 @@ export const CheckList = ({
                         ref={provided.innerRef}
                         {...provided.draggableProps}
                         {...provided.dragHandleProps}
-                        w="full"
-                      >
+                        w="full">
                         <ChecklistItem
                           key={check.check_id}
                           check={check}
@@ -232,11 +210,7 @@ export const CheckList = ({
           )}
         </Droppable>
       </DragDropContext>
-      <Modal
-        isOpen={isMarkAsApprovedOpen}
-        onClose={onMarkAsApprovedClosed}
-        isCentered
-      >
+      <Modal isOpen={isMarkAsApprovedOpen} onClose={onMarkAsApprovedClosed} isCentered>
         <ModalOverlay />
         <ModalContent width={"400px"}>
           <ModalHeader>Mark as Approved?</ModalHeader>
@@ -244,34 +218,26 @@ export const CheckList = ({
           <Divider />
           <Box p={"16px"} fontSize="sm" gap="16px">
             <p>
-              Please ensure you have reviewed the contents of this check before
-              marking it as approved.
+              Please ensure you have reviewed the contents of this check before marking it as
+              approved.
             </p>
             <Checkbox
               isChecked={bypassModal}
-              onChange={(e) => setBypassModal(e.target.checked)}
+              onChange={(e) => {
+                setBypassModal(e.target.checked);
+              }}
               fontWeight="bold"
               size="sm"
-              pt="8px"
-            >
+              pt="8px">
               Don&apos;t show this again
             </Checkbox>
           </Box>
           <Divider />
           <ModalFooter>
-            <Button
-              variant="outline"
-              size="xs"
-              mr={2}
-              onClick={onMarkAsApprovedClosed}
-            >
+            <Button variant="outline" size="xs" mr={2} onClick={onMarkAsApprovedClosed}>
               Cancel
             </Button>
-            <Button
-              colorScheme="blue"
-              size="xs"
-              onClick={handleMarkAsApprovedConfirmed}
-            >
+            <Button colorScheme="blue" size="xs" onClick={handleMarkAsApprovedConfirmed}>
               Mark as approved
             </Button>
           </ModalFooter>

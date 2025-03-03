@@ -74,27 +74,15 @@ export function NodeView({ node, onCloseNode }: NodeViewProps) {
     onOpen: onQueryViewOpen,
     onClose: onQueryViewClose,
   } = useDisclosure();
-  const {
-    isOpen: isSandboxOpen,
-    onOpen: onSandboxOpen,
-    onClose: onSandboxClose,
-  } = useDisclosure();
+  const { isOpen: isSandboxOpen, onOpen: onSandboxOpen, onClose: onSandboxClose } = useDisclosure();
   const { runAction } = useRecceActionContext();
   const { envInfo, isActionAvailable } = useLineageGraphContext();
   const { primaryKey } = useModelColumns(node.name);
   const refetchRowCount = () => {
-    runAction(
-      "row_count",
-      { node_names: [node.name] },
-      { showForm: false, showLast: false }
-    );
+    runAction("row_count", { node_names: [node.name] }, { showForm: false, showLast: false });
   };
   const refetchRowCountDiff = () => {
-    runAction(
-      "row_count_diff",
-      { node_names: [node.name] },
-      { showForm: false, showLast: false }
-    );
+    runAction("row_count_diff", { node_names: [node.name] }, { showForm: false, showLast: false });
   };
   const { data: flag } = useRecceServerFlag();
   const isSingleEnvOnboarding = flag?.single_env_onboarding;
@@ -121,8 +109,7 @@ export function NodeView({ node, onCloseNode }: NodeViewProps) {
     return "";
   };
 
-  const isAddedOrRemoved =
-    node.changeStatus === "added" || node.changeStatus === "removed";
+  const isAddedOrRemoved = node.changeStatus === "added" || node.changeStatus === "removed";
 
   function ExploreChangeMenuButton() {
     if (
@@ -132,12 +119,7 @@ export function NodeView({ node, onCloseNode }: NodeViewProps) {
     ) {
       return (
         <Menu>
-          <MenuButton
-            as={Button}
-            size="xs"
-            variant="outline"
-            rightIcon={<ChevronDownIcon />}
-          >
+          <MenuButton as={Button} size="xs" variant="outline" rightIcon={<ChevronDownIcon />}>
             Explore
           </MenuButton>
           <MenuList>
@@ -152,13 +134,10 @@ export function NodeView({ node, onCloseNode }: NodeViewProps) {
                 }
                 if (isActionAvailable("query_diff_with_primary_key")) {
                   // Only set primary key if the action is available
-                  setPrimaryKeys(
-                    primaryKey !== undefined ? [primaryKey] : undefined
-                  );
+                  setPrimaryKeys(primaryKey !== undefined ? [primaryKey] : undefined);
                 }
                 setLocation("/query");
-              }}
-            >
+              }}>
               Query
             </MenuItem>
             <MenuItem
@@ -167,85 +146,63 @@ export function NodeView({ node, onCloseNode }: NodeViewProps) {
               onClick={() => {
                 if (isActionAvailable("query_diff_with_primary_key")) {
                   // Only set primary key if the action is available
-                  setPrimaryKeys(
-                    primaryKey !== undefined ? [primaryKey] : undefined
-                  );
+                  setPrimaryKeys(primaryKey !== undefined ? [primaryKey] : undefined);
                 }
                 onSandboxOpen();
                 trackPreviewChange({ action: "explore", node: node.name });
-              }}
-            >
+              }}>
               Sandbox (Experiment)
             </MenuItem>
             <MenuDivider />
             <MenuGroup title="Diff" m="0" p="4px 12px">
-              {(node.resourceType === "model" ||
-                node.resourceType === "snapshot") && (
-                <MenuItem
-                  onClick={onCodeDiffOpen}
-                  icon={<FaCode />}
-                  fontSize="14px"
-                >
+              {(node.resourceType === "model" || node.resourceType === "snapshot") && (
+                <MenuItem onClick={onCodeDiffOpen} icon={<FaCode />} fontSize="14px">
                   Code Diff
                 </MenuItem>
               )}
               <MenuItem
                 icon={<Icon as={findByRunType("row_count_diff")?.icon} />}
                 fontSize="14px"
-                onClick={() => refetchRowCountDiff()}
-              >
+                onClick={() => {
+                  refetchRowCountDiff();
+                }}>
                 Row Count Diff
               </MenuItem>
-              <Tooltip
-                label={disableReason(isAddedOrRemoved, "profile_diff")}
-                placement="left"
-              >
+              <Tooltip label={disableReason(isAddedOrRemoved, "profile_diff")} placement="left">
                 <MenuItem
                   icon={<Icon as={findByRunType("profile_diff")?.icon} />}
                   fontSize="14px"
-                  isDisabled={
-                    isAddedOrRemoved || !isActionAvailable("profile_diff")
-                  }
+                  isDisabled={isAddedOrRemoved || !isActionAvailable("profile_diff")}
                   onClick={() => {
                     runAction(
                       "profile_diff",
                       {
                         model: node.name,
                       },
-                      { showForm: false, showLast: false }
+                      { showForm: false, showLast: false },
                     );
-                  }}
-                >
+                  }}>
                   Profile Diff
                 </MenuItem>
               </Tooltip>
-              <Tooltip
-                label={disableReason(isAddedOrRemoved, "value_diff")}
-                placement="left"
-              >
+              <Tooltip label={disableReason(isAddedOrRemoved, "value_diff")} placement="left">
                 <MenuItem
                   icon={<Icon as={findByRunType("value_diff")?.icon} />}
                   fontSize="14px"
-                  isDisabled={
-                    isAddedOrRemoved || !isActionAvailable("value_diff")
-                  }
+                  isDisabled={isAddedOrRemoved || !isActionAvailable("value_diff")}
                   onClick={() => {
                     runAction(
                       "value_diff",
                       {
                         model: node.name,
                       },
-                      { showForm: true, showLast: false }
+                      { showForm: true, showLast: false },
                     );
-                  }}
-                >
+                  }}>
                   Value Diff
                 </MenuItem>
               </Tooltip>
-              <Tooltip
-                label={disableReason(isAddedOrRemoved, "top_k_diff")}
-                placement="left"
-              >
+              <Tooltip label={disableReason(isAddedOrRemoved, "top_k_diff")} placement="left">
                 <MenuItem
                   icon={<Icon as={findByRunType("top_k_diff")?.icon} />}
                   fontSize="14px"
@@ -254,17 +211,13 @@ export function NodeView({ node, onCloseNode }: NodeViewProps) {
                     runAction(
                       "top_k_diff",
                       { model: node.name, column_name: "", k: 50 },
-                      { showForm: true }
+                      { showForm: true },
                     );
-                  }}
-                >
+                  }}>
                   Top-K Diff
                 </MenuItem>
               </Tooltip>
-              <Tooltip
-                label={disableReason(isAddedOrRemoved, "histogram_diff")}
-                placement="left"
-              >
+              <Tooltip label={disableReason(isAddedOrRemoved, "histogram_diff")} placement="left">
                 <MenuItem
                   icon={<Icon as={findByRunType("histogram_diff")?.icon} />}
                   fontSize="14px"
@@ -277,10 +230,9 @@ export function NodeView({ node, onCloseNode }: NodeViewProps) {
                         column_name: "",
                         column_type: "",
                       },
-                      { showForm: true }
+                      { showForm: true },
                     );
-                  }}
-                >
+                  }}>
                   Histogram Diff
                 </MenuItem>
               </Tooltip>
@@ -290,8 +242,7 @@ export function NodeView({ node, onCloseNode }: NodeViewProps) {
               <MenuItem
                 icon={<Icon as={findByRunType("schema_diff")?.icon} />}
                 fontSize="14px"
-                onClick={addSchemaCheck}
-              >
+                onClick={addSchemaCheck}>
                 Schema Diff
               </MenuItem>
             </MenuGroup>
@@ -312,8 +263,7 @@ export function NodeView({ node, onCloseNode }: NodeViewProps) {
         onClick={() => {
           onQueryViewOpen();
         }}
-        disabled={node.from === "base"}
-      >
+        disabled={node.from === "base"}>
         Query
       </Button>
     );
@@ -326,11 +276,7 @@ export function NodeView({ node, onCloseNode }: NodeViewProps) {
           <Heading size="sm">{node.name}</Heading>
         </Box>
         <Spacer />
-        {isSingleEnvOnboarding ? (
-          <SingleEnvironmentQueryButton />
-        ) : (
-          <ExploreChangeMenuButton />
-        )}
+        {isSingleEnvOnboarding ? <SingleEnvironmentQueryButton /> : <ExploreChangeMenuButton />}
 
         <Box flex="0 1 1%">
           <CloseButton onClick={onCloseNode} />
@@ -380,11 +326,7 @@ export function NodeView({ node, onCloseNode }: NodeViewProps) {
         onClose={onQueryViewClose}
         current={node.data.current}
       />
-      <SandboxView
-        isOpen={isSandboxOpen}
-        onClose={onSandboxClose}
-        current={node.data.current}
-      />
+      <SandboxView isOpen={isSandboxOpen} onClose={onSandboxClose} current={node.data.current} />
     </Grid>
   );
 }

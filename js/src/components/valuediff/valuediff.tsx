@@ -1,26 +1,20 @@
-import {
-  ColumnOrColumnGroup,
-  RenderCellProps,
-  textEditor,
-} from "react-data-grid";
+import { ColumnOrColumnGroup, RenderCellProps, textEditor } from "react-data-grid";
 import _ from "lodash";
 import "../query/styles.css";
 import { Box, Flex, Icon } from "@chakra-ui/react";
 import { VscPin, VscPinned } from "react-icons/vsc";
 import { DataFrame } from "@/lib/api/types";
 import { mergeKeysWithStatus } from "@/lib/mergeKeys";
-import {
-  defaultRenderCell,
-  QueryDataDiffGridOptions,
-} from "../query/querydiff";
+import { defaultRenderCell, QueryDataDiffGridOptions } from "../query/querydiff";
 
 function _getColumnMap(df: DataFrame) {
-  const result: {
-    [key: string]: {
+  const result: Record<
+    string,
+    {
       index: number;
       status?: string;
-    };
-  } = {};
+    }
+  > = {};
 
   df.columns.map((col, index) => {
     result[col.name] = {
@@ -31,10 +25,7 @@ function _getColumnMap(df: DataFrame) {
   return result;
 }
 
-function _getPrimaryKeyIndexes(
-  columns: DataFrame["columns"],
-  primaryKeys: string[]
-) {
+function _getPrimaryKeyIndexes(columns: DataFrame["columns"], primaryKeys: string[]) {
   const indexes: number[] = [];
   for (const key of primaryKeys) {
     const index = columns.findIndex((col) => col.name === key);
@@ -50,14 +41,14 @@ function _getPrimaryKeyIndexes(
 function _getPrimaryKeyValue(
   columns: DataFrame["columns"],
   primaryIndexes: number[],
-  row: DataFrame["data"][number]
+  row: DataFrame["data"][number],
 ): string {
   const result: Record<string, any> = {};
 
   if (primaryIndexes.length === 0) {
     const row_data = row as any;
 
-    return JSON.stringify({ _index: row_data["_index"] });
+    return JSON.stringify({ _index: row_data._index });
   } else {
     for (const index of primaryIndexes) {
       const col = columns[index];
@@ -102,12 +93,7 @@ function DataFrameColumnGroupHeader({
 
   return (
     <Flex alignItems="center" gap="10px" className="grid-header">
-      <Box
-        flex={1}
-        overflow="hidden"
-        textOverflow="ellipsis"
-        whiteSpace="nowrap"
-      >
+      <Box flex={1} overflow="hidden" textOverflow="ellipsis" whiteSpace="nowrap">
         {name}
       </Box>
       {!isPK && onPinnedColumnsChange && (
@@ -126,7 +112,7 @@ function DataFrameColumnGroupHeader({
 export function toValueDiffGrid(
   df: DataFrame,
   primaryKeys: string[],
-  options?: QueryDataDiffGridOptions
+  options?: QueryDataDiffGridOptions,
 ) {
   const pinnedColumns = options?.pinnedColumns || [];
   const changedOnly = options?.changedOnly || false;
@@ -141,9 +127,9 @@ export function toValueDiffGrid(
     throw new Error("Primary keys are required");
   }
 
-  let primaryIndexes = _getPrimaryKeyIndexes(df.columns, primaryKeys);
-  let inBaseIndex = (columnMap["in_a"] || columnMap["IN_A"]).index;
-  let inCurrentIndex = (columnMap["in_b"] || columnMap["IN_B"]).index;
+  const primaryIndexes = _getPrimaryKeyIndexes(df.columns, primaryKeys);
+  const inBaseIndex = (columnMap.in_a || columnMap.IN_A).index;
+  const inCurrentIndex = (columnMap.in_b || columnMap.IN_B).index;
 
   df.data.forEach((row, index) => {
     const key = _getPrimaryKeyValue(df.columns, primaryIndexes, row);
@@ -156,10 +142,7 @@ export function toValueDiffGrid(
     }
   });
 
-  const mergedMap = mergeKeysWithStatus(
-    Object.keys(baseMap),
-    Object.keys(currentMap)
-  );
+  const mergedMap = mergeKeysWithStatus(Object.keys(baseMap), Object.keys(currentMap));
 
   const rowStats = {
     added: 0,
@@ -191,10 +174,10 @@ export function toValueDiffGrid(
 
     // Check if row is added, removed, or modified
     if (!baseRow) {
-      row["__status"] = "added";
+      row.__status = "added";
       rowStats.added++;
     } else if (!currentRow) {
-      row["__status"] = "removed";
+      row.__status = "removed";
       rowStats.removed++;
     } else {
       for (const [name, column] of Object.entries(columnMap)) {
@@ -207,12 +190,12 @@ export function toValueDiffGrid(
         }
 
         if (!_.isEqual(baseRow[column.index], currentRow[column.index])) {
-          row["__status"] = "modified";
+          row.__status = "modified";
           column.status = "modified";
         }
       }
     }
-    if (row["__status"] === "modified") {
+    if (row.__status === "modified") {
       rowStats.modified++;
     }
 
@@ -222,9 +205,7 @@ export function toValueDiffGrid(
   if (changedOnly) {
     rows = rows.filter(
       (row) =>
-        row["__status"] === "added" ||
-        row["__status"] === "removed" ||
-        row["__status"] === "modified"
+        row.__status === "added" || row.__status === "removed" || row.__status === "modified",
     );
   }
 
@@ -234,11 +215,11 @@ export function toValueDiffGrid(
       columnStatus === "added"
         ? "diff-header-added"
         : columnStatus === "removed"
-        ? "diff-header-removed"
-        : undefined;
+          ? "diff-header-removed"
+          : undefined;
 
     const cellClass = (row: any) => {
-      const rowStatus = row["__status"];
+      const rowStatus = row.__status;
       if (rowStatus === "removed") {
         return "diff-cell-removed";
       } else if (rowStatus === "added") {
@@ -260,8 +241,7 @@ export function toValueDiffGrid(
         <DataFrameColumnGroupHeader
           name={name}
           columnStatus={columnStatus}
-          {...options}
-        ></DataFrameColumnGroupHeader>
+          {...options}></DataFrameColumnGroupHeader>
       ),
       children: [
         {
@@ -290,18 +270,17 @@ export function toValueDiffGrid(
   primaryKeys.forEach((name) => {
     const columnStatus = columnMap[name].status || "";
     columns.push({
-      key: `${name}`,
+      key: name,
       name: (
         <DataFrameColumnGroupHeader
           name={name}
           columnStatus={columnStatus}
-          {...options}
-        ></DataFrameColumnGroupHeader>
+          {...options}></DataFrameColumnGroupHeader>
       ),
       frozen: true,
       cellClass: (row: any) => {
-        if (row["__status"]) {
-          return `diff-header-${row["__status"]}`;
+        if (row.__status) {
+          return `diff-header-${row.__status}`;
         }
         return undefined;
       },
@@ -337,11 +316,7 @@ export function toValueDiffGrid(
     }
 
     if (changedOnly && rowStats.modified > 0) {
-      if (
-        columnStatus !== "added" &&
-        columnStatus !== "removed" &&
-        columnStatus !== "modified"
-      ) {
+      if (columnStatus !== "added" && columnStatus !== "removed" && columnStatus !== "modified") {
         return;
       }
     }

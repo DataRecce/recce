@@ -21,8 +21,7 @@ export function RecceCheckContextProvider({ children }: CheckContextProps) {
       value={{
         setLatestSelectedCheckId: setSelectCheckId,
         latestSelectedCheckId: selectCheckId,
-      }}
-    >
+      }}>
       {children}
     </RecceCheckContext.Provider>
   );
