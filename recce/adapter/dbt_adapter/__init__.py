@@ -772,8 +772,11 @@ class DbtAdapter(BaseAdapter):
             try:
                 dialect = self.adapter.type()
                 column_lineage = cll(compiled_sql, schema=schema, dialect=dialect)
-            except RecceException as exception:
-                print(exception)
+            except RecceException:
+                # TODO: provide parsing error message if needed
+                _apply_all_columns(node, 'unknown', [])
+                continue
+            except Exception:
                 _apply_all_columns(node, 'unknown', [])
                 continue
 
