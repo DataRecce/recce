@@ -1,22 +1,23 @@
 import { useRecceActionContext } from "@/lib/hooks/RecceActionContext";
 import {
-  Flex,
   Box,
-  Spacer,
+  Flex,
+  Icon,
+  IconButton,
   Menu,
   MenuButton,
-  IconButton,
-  Icon,
-  Portal,
-  MenuList,
   MenuGroup,
   MenuItem,
+  MenuList,
+  Portal,
+  Spacer,
 } from "@chakra-ui/react";
 import { VscKebabVertical } from "react-icons/vsc";
 import { supportsHistogramDiff } from "../histogram/HistogramDiffForm";
 import { LuEye } from "react-icons/lu";
 import { useLineageViewContext } from "../lineage/LineageViewContext";
 import { trackColumnLevelLineage } from "@/lib/api/track";
+import { useLineageGraphContext } from "@/lib/hooks/LineageGraphContext";
 
 export function ColumnNameCell({
   model,
@@ -33,7 +34,12 @@ export function ColumnNameCell({
 }) {
   const { runAction } = useRecceActionContext();
   const { showColumnLevelLineage } = useLineageViewContext();
-  const columnType = currentType || baseType;
+  const { isActionAvailable } = useLineageGraphContext();
+  const columnType = currentType ?? baseType;
+
+  const handleProfileDiff = () => {
+    runAction("profile_diff", { model, columns: [name] }, { showForm: false });
+  };
 
   const handleHistogramDiff = () => {
     runAction(
@@ -96,6 +102,12 @@ export function ColumnNameCell({
               <MenuItem fontSize="10pt">Set Alias Name</MenuItem>
             </MenuGroup> */}
                   <MenuGroup title="Diff" m="0" p="4px 12px">
+                    <MenuItem
+                      fontSize="10pt"
+                      onClick={handleProfileDiff}
+                      isDisabled={addedOrRemoved || !isActionAvailable("profile_diff")}>
+                      Profile Diff
+                    </MenuItem>
                     <MenuItem
                       fontSize="10pt"
                       onClick={handleHistogramDiff}

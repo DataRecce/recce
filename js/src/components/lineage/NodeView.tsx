@@ -179,7 +179,7 @@ export function NodeView({ node, onCloseNode }: NodeViewProps) {
                       {
                         model: node.name,
                       },
-                      { showForm: false, showLast: false },
+                      { showForm: true, showLast: false },
                     );
                   }}>
                   Profile Diff

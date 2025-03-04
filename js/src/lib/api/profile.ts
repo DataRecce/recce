@@ -3,6 +3,7 @@ import { DataFrame } from "./types";
 
 export interface ProfileDiffParams {
   model: string;
+  columns?: string[];
 }
 
 export interface ProfileDiffResult {
