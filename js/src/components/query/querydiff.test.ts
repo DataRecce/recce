@@ -48,7 +48,7 @@ test("query diff", () => {
   };
 
   let result = toDataDiffGrid(base, current);
-  expect(result?.rows).toStrictEqual([
+  expect(result.rows).toStrictEqual([
     {
       _index: 1,
       __status: "modified",
@@ -79,10 +79,10 @@ test("query diff", () => {
       current__value: 350,
     },
   ]);
-  expect(result?.columns.length).toBe(4);
+  expect(result.columns.length).toBe(4);
 
   result = toDataDiffGrid(base, current, { primaryKeys: ["id"] });
-  expect(result?.rows).toStrictEqual([
+  expect(result.rows).toStrictEqual([
     {
       id: 1,
       __status: "modified",
@@ -107,7 +107,7 @@ test("query diff", () => {
       current__value: 350,
     },
   ]);
-  expect(result?.columns.length).toBe(3);
+  expect(result.columns.length).toBe(3);
 });
 
 test("query diff changed only", () => {
@@ -153,11 +153,11 @@ test("query diff changed only", () => {
     ],
   };
 
-  let result = toDataDiffGrid(base, current, {
+  const result = toDataDiffGrid(base, current, {
     primaryKeys: ["status"],
     changedOnly: true,
   });
-  expect(result?.rows).toStrictEqual([
+  expect(result.rows).toStrictEqual([
     {
       status: "inactive",
       base__c: 7,
@@ -167,7 +167,7 @@ test("query diff changed only", () => {
       __status: "modified",
     },
   ]);
-  expect(result?.columns.length).toBe(2);
+  expect(result.columns.length).toBe(2);
 });
 
 test("query diff changed only: show all columns if there is only removed records", () => {
@@ -206,16 +206,16 @@ test("query diff changed only: show all columns if there is only removed records
     ],
   };
 
-  let result = toDataDiffGrid(base, current, {
+  const result = toDataDiffGrid(base, current, {
     primaryKeys: ["status"],
     changedOnly: true,
   });
-  expect(result?.rows).toStrictEqual([
+  expect(result.rows).toStrictEqual([
     {
       status: null,
       base__c: 54,
       __status: "removed",
     },
   ]);
-  expect(result?.columns.length).toBe(2);
+  expect(result.columns.length).toBe(2);
 });

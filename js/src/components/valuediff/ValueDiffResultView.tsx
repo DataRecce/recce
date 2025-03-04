@@ -16,31 +16,18 @@ import {
 
 import { ColumnOrColumnGroup } from "react-data-grid";
 import { ValueDiffParams, ValueDiffResult } from "@/lib/api/valuediff";
-import {
-  EmptyRowsRenderer,
-  ScreenshotDataGrid,
-} from "../data-grid/ScreenshotDataGrid";
+import { EmptyRowsRenderer, ScreenshotDataGrid } from "../data-grid/ScreenshotDataGrid";
 import { RunResultViewProps } from "../run/types";
 import { VscKebabVertical, VscKey } from "react-icons/vsc";
-import {
-  RecceActionOptions,
-  useRecceActionContext,
-} from "@/lib/hooks/RecceActionContext";
+import { RecceActionOptions, useRecceActionContext } from "@/lib/hooks/RecceActionContext";
 
-interface ValueDiffResultViewProp
-  extends RunResultViewProps<ValueDiffParams, ValueDiffResult> {}
+interface ValueDiffResultViewProp extends RunResultViewProps<ValueDiffParams, ValueDiffResult> {}
 
-function ColumnNameCell({
-  params,
-  column,
-}: {
-  params: ValueDiffParams;
-  column: string;
-}) {
+function ColumnNameCell({ params, column }: { params: ValueDiffParams; column: string }) {
   const { runAction } = useRecceActionContext();
   const handleValueDiffDetail = (
     paramsOverride?: Partial<ValueDiffParams>,
-    options?: RecceActionOptions
+    options?: RecceActionOptions,
   ) => {
     const newParams = {
       ...params,
@@ -76,21 +63,16 @@ function ColumnNameCell({
                 <MenuGroup title="Action" as={Box} fontSize="8pt">
                   <MenuItem
                     fontSize="10pt"
-                    onClick={() =>
-                      handleValueDiffDetail({}, { showForm: true })
-                    }
-                  >
+                    onClick={() => {
+                      handleValueDiffDetail({}, { showForm: true });
+                    }}>
                     Show mismatched values...
                   </MenuItem>
                   <MenuItem
                     fontSize="10pt"
-                    onClick={() =>
-                      handleValueDiffDetail(
-                        { columns: [column] },
-                        { showForm: false }
-                      )
-                    }
-                  >
+                    onClick={() => {
+                      handleValueDiffDetail({ columns: [column] }, { showForm: false });
+                    }}>
                     Show mismatched values for &apos;{column}&apos;
                   </MenuItem>
                 </MenuGroup>
@@ -109,13 +91,9 @@ function _ValueDiffResultView({ run }: ValueDiffResultViewProp, ref: any) {
   const cellClass = (row: any) => {
     const value: number | undefined = row[2];
 
-    return value !== undefined && value !== null && value < 1
-      ? "diff-cell-modified"
-      : "";
+    return value !== undefined && value !== null && value < 1 ? "diff-cell-modified" : "";
   };
-  const primaryKeys = Array.isArray(params.primary_key)
-    ? params.primary_key
-    : [params.primary_key];
+  const primaryKeys = Array.isArray(params.primary_key) ? params.primary_key : [params.primary_key];
 
   const columns: ColumnOrColumnGroup<any, any>[] = [
     {
@@ -125,9 +103,7 @@ function _ValueDiffResultView({ run }: ValueDiffResultViewProp, ref: any) {
       maxWidth: 30,
       renderCell: ({ row }) => {
         return (
-          <Center height="100%">
-            {primaryKeys.includes(row[0]) && <Icon as={VscKey}></Icon>}
-          </Center>
+          <Center height="100%">{primaryKeys.includes(row[0]) && <Icon as={VscKey}></Icon>}</Center>
         );
       },
     },
@@ -154,9 +130,7 @@ function _ValueDiffResultView({ run }: ValueDiffResultViewProp, ref: any) {
         const value: number | undefined = row[column.key];
         return (
           <Box textAlign="end">
-            {value != undefined && value !== null
-              ? `${(value * 100).toFixed(2)} %`
-              : "N/A"}
+            {value != undefined && value !== null ? `${(value * 100).toFixed(2)} %` : "N/A"}
           </Box>
         );
       },
@@ -168,8 +142,8 @@ function _ValueDiffResultView({ run }: ValueDiffResultViewProp, ref: any) {
     <Flex direction="column" gap="5px" pt="5px" height="100%">
       <Box px="16px">
         Model: {params.model}, {result.summary.total} total (
-        {result.summary.total - result.summary.added - result.summary.removed}{" "}
-        common, {result.summary.added} added, {result.summary.removed} removed)
+        {result.summary.total - result.summary.added - result.summary.removed} common,{" "}
+        {result.summary.added} added, {result.summary.removed} removed)
       </Box>
 
       <ScreenshotDataGrid

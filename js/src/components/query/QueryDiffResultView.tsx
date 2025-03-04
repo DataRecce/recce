@@ -13,19 +13,12 @@ import { toValueDiffGrid as toQueryDiffJoinGrid } from "../valuediff/valuediff";
 
 import "./styles.css";
 import { Run } from "@/lib/api/types";
-import {
-  EmptyRowsRenderer,
-  ScreenshotDataGrid,
-} from "../data-grid/ScreenshotDataGrid";
+import { EmptyRowsRenderer, ScreenshotDataGrid } from "../data-grid/ScreenshotDataGrid";
 import { RunResultViewProps } from "../run/types";
 import { RunToolbar } from "../run/RunToolbar";
 
 export interface QueryDiffResultViewProps
-  extends RunResultViewProps<
-    QueryDiffParams,
-    QueryDiffResult,
-    QueryDiffViewOptions
-  > {
+  extends RunResultViewProps<QueryDiffParams, QueryDiffResult, QueryDiffViewOptions> {
   onAddToChecklist?: (run: Run<QueryDiffParams, QueryDiffResult>) => void;
   baseTitle?: string;
   currentTitle?: string;
@@ -40,20 +33,11 @@ const PrivateQueryDiffResultView = (
     baseTitle,
     currentTitle,
   }: QueryDiffResultViewProps,
-  ref: any
+  ref: any,
 ) => {
-  const primaryKeys = useMemo(
-    () => viewOptions?.primary_keys || [],
-    [viewOptions]
-  );
-  const changedOnly = useMemo(
-    () => viewOptions?.changed_only || false,
-    [viewOptions]
-  );
-  const pinnedColumns = useMemo(
-    () => viewOptions?.pinned_columns || [],
-    [viewOptions]
-  );
+  const primaryKeys = useMemo(() => viewOptions?.primary_keys || [], [viewOptions]);
+  const changedOnly = useMemo(() => viewOptions?.changed_only || false, [viewOptions]);
+  const pinnedColumns = useMemo(() => viewOptions?.pinned_columns || [], [viewOptions]);
 
   const gridData = useMemo(() => {
     const handlePrimaryKeyChanged = (primaryKeys: string[]) => {
@@ -74,7 +58,7 @@ const PrivateQueryDiffResultView = (
       }
     };
 
-    return toDataDiffGrid(run?.result?.base, run?.result?.current, {
+    return toDataDiffGrid(run.result?.base, run.result?.current, {
       changedOnly,
       primaryKeys,
       onPrimaryKeyChange: handlePrimaryKeyChanged,
@@ -108,7 +92,7 @@ const PrivateQueryDiffResultView = (
 
   const limit = run.result?.current?.limit || 0;
   const warningLimit =
-    limit > 0 && (run?.result?.current?.more || run?.result?.base?.more)
+    limit > 0 && (run.result?.current?.more || run.result?.base?.more)
       ? `Warning: Displayed results are limited to ${limit.toLocaleString()} records. To ensure complete data retrieval, consider applying a LIMIT or WHERE clause to constrain the result set.`
       : null;
 
@@ -126,11 +110,7 @@ const PrivateQueryDiffResultView = (
 
   if (changedOnly && gridData.rows.length === 0) {
     return (
-      <Flex
-        direction="column"
-        backgroundColor="rgb(249, 249, 249)"
-        height={"100%"}
-      >
+      <Flex direction="column" backgroundColor="rgb(249, 249, 249)" height={"100%"}>
         <RunToolbar
           run={run}
           viewOptions={viewOptions}
@@ -143,11 +123,7 @@ const PrivateQueryDiffResultView = (
     );
   }
   return (
-    <Flex
-      direction="column"
-      backgroundColor="rgb(249, 249, 249)"
-      height={"100%"}
-    >
+    <Flex direction="column" backgroundColor="rgb(249, 249, 249)" height={"100%"}>
       <RunToolbar
         run={run}
         viewOptions={viewOptions}
@@ -182,16 +158,10 @@ const PrivateQueryDiffJoinResultView = (
     baseTitle,
     currentTitle,
   }: QueryDiffResultViewProps,
-  ref: any
+  ref: any,
 ) => {
-  const changedOnly = useMemo(
-    () => viewOptions?.changed_only || false,
-    [viewOptions]
-  );
-  const pinnedColumns = useMemo(
-    () => viewOptions?.pinned_columns || [],
-    [viewOptions]
-  );
+  const changedOnly = useMemo(() => viewOptions?.changed_only || false, [viewOptions]);
+  const pinnedColumns = useMemo(() => viewOptions?.pinned_columns || [], [viewOptions]);
 
   const gridData = useMemo(() => {
     const handlePinnedColumnsChanged = (pinnedColumns: string[]) => {
@@ -203,32 +173,24 @@ const PrivateQueryDiffJoinResultView = (
       }
     };
 
-    if (!run.result?.diff || !run?.params?.primary_keys) {
+    if (!run.result?.diff || !run.params?.primary_keys) {
       return { columns: [], rows: [] };
     }
 
     const primaryKeys = run.params.primary_keys;
 
-    return toQueryDiffJoinGrid(run?.result.diff, primaryKeys, {
+    return toQueryDiffJoinGrid(run.result.diff, primaryKeys, {
       changedOnly,
       pinnedColumns,
       onPinnedColumnsChange: handlePinnedColumnsChanged,
       baseTitle,
       currentTitle,
     });
-  }, [
-    run,
-    viewOptions,
-    changedOnly,
-    pinnedColumns,
-    onViewOptionsChanged,
-    baseTitle,
-    currentTitle,
-  ]);
+  }, [run, viewOptions, changedOnly, pinnedColumns, onViewOptionsChanged, baseTitle, currentTitle]);
 
   const limit = run.result?.diff?.limit || 0;
   const warningLimit =
-    limit > 0 && run?.result?.diff?.more
+    limit > 0 && run.result?.diff?.more
       ? `Warning: Displayed results are limited to ${limit.toLocaleString()} records. To ensure complete data retrieval, consider applying a LIMIT or WHERE clause to constrain the result set.`
       : null;
 
@@ -243,11 +205,7 @@ const PrivateQueryDiffJoinResultView = (
 
   if (changedOnly && gridData.rows.length === 0) {
     return (
-      <Flex
-        direction="column"
-        backgroundColor="rgb(249, 249, 249)"
-        height={"100%"}
-      >
+      <Flex direction="column" backgroundColor="rgb(249, 249, 249)" height={"100%"}>
         <RunToolbar
           run={run}
           viewOptions={viewOptions}
@@ -261,11 +219,7 @@ const PrivateQueryDiffJoinResultView = (
   }
 
   return (
-    <Flex
-      direction="column"
-      backgroundColor="rgb(249, 249, 249)"
-      height={"100%"}
-    >
+    <Flex direction="column" backgroundColor="rgb(249, 249, 249)" height={"100%"}>
       <RunToolbar
         run={run}
         viewOptions={viewOptions}
@@ -291,42 +245,23 @@ const PrivateQueryDiffJoinResultView = (
   );
 };
 
-export const QueryDiffResultView = forwardRef(
-  (props: QueryDiffResultViewProps, ref) => {
-    let baseTitle;
-    let currentTitle;
-    if (
-      props.run?.params &&
-      (props.run?.params as QueryPreviewChangeParams).current_model
-    ) {
-      // Configure the base and current titles under Sandbox Editor
-      baseTitle = "Original";
-      currentTitle = "Editor";
-    }
-    if (
-      props.run?.result !== undefined &&
-      props.run.result.diff !== null &&
-      props.run.result.diff !== undefined
-    ) {
-      const ResultView = forwardRef(PrivateQueryDiffJoinResultView);
-      return (
-        <ResultView
-          {...props}
-          ref={ref}
-          baseTitle={baseTitle}
-          currentTitle={currentTitle}
-        />
-      );
-    } else {
-      const ResultView = forwardRef(PrivateQueryDiffResultView);
-      return (
-        <ResultView
-          {...props}
-          ref={ref}
-          baseTitle={baseTitle}
-          currentTitle={currentTitle}
-        />
-      );
-    }
+export const QueryDiffResultView = forwardRef((props: QueryDiffResultViewProps, ref) => {
+  let baseTitle;
+  let currentTitle;
+  if (props.run.params && (props.run.params as QueryPreviewChangeParams).current_model) {
+    // Configure the base and current titles under Sandbox Editor
+    baseTitle = "Original";
+    currentTitle = "Editor";
   }
-);
+  if (
+    props.run.result !== undefined &&
+    props.run.result.diff !== null &&
+    props.run.result.diff !== undefined
+  ) {
+    const ResultView = forwardRef(PrivateQueryDiffJoinResultView);
+    return <ResultView {...props} ref={ref} baseTitle={baseTitle} currentTitle={currentTitle} />;
+  } else {
+    const ResultView = forwardRef(PrivateQueryDiffResultView);
+    return <ResultView {...props} ref={ref} baseTitle={baseTitle} currentTitle={currentTitle} />;
+  }
+});

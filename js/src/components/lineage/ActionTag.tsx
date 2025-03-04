@@ -51,9 +51,7 @@ export const ActionTag = ({ node, action }: ActionTagProps) => {
     if (progress?.percentage === undefined) {
       return <CircularProgress isIndeterminate size="20px" />;
     } else {
-      return (
-        <CircularProgress size="20px" value={progress?.percentage * 100} />
-      );
+      return <CircularProgress size="20px" value={progress.percentage * 100} />;
     }
   }
 
@@ -89,11 +87,8 @@ export const ActionTag = ({ node, action }: ActionTagProps) => {
             fontSize="10pt"
             color={mismatched > 0 ? "red" : "green"}
             alignItems="center"
-            gap="3px"
-          >
-            {mismatched > 0
-              ? `${mismatched} columns mismatched`
-              : "All columns match"}
+            gap="3px">
+            {mismatched > 0 ? `${mismatched} columns mismatched` : "All columns match"}
           </Flex>
         </TagLabel>
       </Tag>

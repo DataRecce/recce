@@ -32,8 +32,7 @@ interface QueryContextProps {
 
 export function RecceQueryContextProvider({ children }: QueryContextProps) {
   const [sqlQuery, setSqlQuery] = React.useState<string>(defaultSqlQuery);
-  const [baseSqlQuery, setBaseSqlQuery] =
-    React.useState<string>(defaultSqlQuery);
+  const [baseSqlQuery, setBaseSqlQuery] = React.useState<string>(defaultSqlQuery);
   const [isCustomQueries, setCustomQueries] = React.useState<boolean>(false);
   const [primaryKeys, setPrimaryKeys] = React.useState<string[] | undefined>();
   return (
@@ -47,8 +46,7 @@ export function RecceQueryContextProvider({ children }: QueryContextProps) {
         setCustomQueries,
         baseSqlQuery,
         setBaseSqlQuery,
-      }}
-    >
+      }}>
       {children}
     </RecceQueryContext.Provider>
   );
@@ -72,14 +70,10 @@ interface RowCountStateContextProps {
   children: React.ReactNode;
 }
 
-export function RowCountStateContextProvider({
-  children,
-}: RowCountStateContextProps) {
+export function RowCountStateContextProvider({ children }: RowCountStateContextProps) {
   const [isNodesFetching, setIsNodesFetching] = React.useState<string[]>([]);
   return (
-    <RowCountStateContext.Provider
-      value={{ isNodesFetching, setIsNodesFetching }}
-    >
+    <RowCountStateContext.Provider value={{ isNodesFetching, setIsNodesFetching }}>
       {children}
     </RowCountStateContext.Provider>
   );

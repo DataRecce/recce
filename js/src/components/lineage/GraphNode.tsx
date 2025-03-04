@@ -61,13 +61,7 @@ function _RowCountDiffTag({ rowCount }: { rowCount: RowCountDiff }) {
   );
 }
 
-const NodeRunsAggregated = ({
-  id,
-  inverted,
-}: {
-  id: string;
-  inverted: boolean;
-}) => {
+const NodeRunsAggregated = ({ id, inverted }: { id: string; inverted: boolean }) => {
   const { lineageGraph, runsAggregated } = useLineageGraphContext();
   const runs = runsAggregated?.[id];
   const node = lineageGraph?.nodes[id];
@@ -76,30 +70,25 @@ const NodeRunsAggregated = ({
   }
 
   let schemaChanged;
-  if (node?.data.base && node?.data.current) {
-    const baseColumns = node.data.base?.columns;
-    const currColumns = node.data.current?.columns;
+  if (node?.data.base && node.data.current) {
+    const baseColumns = node.data.base.columns;
+    const currColumns = node.data.current.columns;
     schemaChanged = isSchemaChanged(baseColumns, currColumns);
   }
 
   let rowCountChanged;
-  if (runs && runs["row_count_diff"]) {
-    const rowCountDiff = runs["row_count_diff"];
+  if (runs?.row_count_diff) {
+    const rowCountDiff = runs.row_count_diff;
     rowCountChanged = rowCountDiff.result.curr !== rowCountDiff.result.base;
   }
 
-  const colorChanged = inverted
-    ? "white"
-    : getIconForChangeStatus("modified").color;
+  const colorChanged = inverted ? "white" : getIconForChangeStatus("modified").color;
   const colorUnchanged = inverted ? "gray" : "lightgray";
 
   return (
     <Flex flex="1">
       {schemaChanged !== undefined && (
-        <Tooltip
-          label={`Schema (${schemaChanged ? "changed" : "no change"})`}
-          openDelay={500}
-        >
+        <Tooltip label={`Schema (${schemaChanged ? "changed" : "no change"})`} openDelay={500}>
           <Box height="16px">
             <Icon
               as={findByRunType("schema_diff")?.icon}
@@ -109,13 +98,10 @@ const NodeRunsAggregated = ({
         </Tooltip>
       )}
       <Spacer />
-      {runs && runs["row_count_diff"] && rowCountChanged !== undefined && (
-        <Tooltip
-          label={`Row count (${rowCountChanged ? "changed" : "="})`}
-          openDelay={500}
-        >
+      {runs?.row_count_diff && rowCountChanged !== undefined && (
+        <Tooltip label={`Row count (${rowCountChanged ? "changed" : "="})`} openDelay={500}>
           <Box>
-            <_RowCountDiffTag rowCount={runs["row_count_diff"].result} />
+            <_RowCountDiffTag rowCount={runs.row_count_diff.result} />
           </Box>
         </Tooltip>
       )}
@@ -147,18 +133,11 @@ export function GraphNode({ data }: GraphNodeProps) {
 
   const { icon: resourceIcon } = getIconForResourceType(resourceType);
   const [isHovered, setIsHovered] = useState(false);
-  const {
-    interactive,
-    selectNodeMulti,
-    selectMode,
-    advancedImpactRadius,
-    viewOptions,
-  } = useLineageViewContext();
+  const { interactive, selectNodeMulti, selectMode, advancedImpactRadius, viewOptions } =
+    useLineageViewContext();
   const { lineageGraph } = useLineageGraphContext();
   const isNonBreakingChange =
-    advancedImpactRadius &&
-    changeStatus === "modified" &&
-    lineageGraph?.nonBreakingSet.has(id);
+    advancedImpactRadius && changeStatus === "modified" && lineageGraph?.nonBreakingSet.has(id);
 
   // text color, icon
   const {
@@ -172,15 +151,15 @@ export function GraphNode({ data }: GraphNodeProps) {
         color: "gray.400",
         backgroundColor: "gray.100",
       };
-  let borderStyle = isNonBreakingChange ? "dashed" : "solid";
+  const borderStyle = isNonBreakingChange ? "dashed" : "solid";
 
   // border width and color
   const selectedNodeShadowBox = "rgba(3, 102, 214, 0.5) 5px 5px 10px 3px";
-  let borderWidth = "2px";
-  let borderColor = color;
+  const borderWidth = "2px";
+  const borderColor = color;
 
-  const name = data?.name;
-  const showColumns = data?.columnSet && data?.columnSet.size > 0;
+  const name = data.name;
+  const showColumns = data.columnSet && data.columnSet.size > 0;
 
   return (
     <Flex
@@ -190,16 +169,17 @@ export function GraphNode({ data }: GraphNodeProps) {
       padding={0}
       filter={(function () {
         if (selectMode === "action_result") {
-          return !!data?.action ? "none" : "opacity(0.2) grayscale(50%)";
+          return data.action ? "none" : "opacity(0.2) grayscale(50%)";
         } else {
-          return isHighlighted || isSelected || isHovered
-            ? "none"
-            : "opacity(0.2) grayscale(50%)";
+          return isHighlighted || isSelected || isHovered ? "none" : "opacity(0.2) grayscale(50%)";
         }
       })()}
-      onMouseEnter={() => setIsHovered(true)}
-      onMouseLeave={() => setIsHovered(false)}
-    >
+      onMouseEnter={() => {
+        setIsHovered(true);
+      }}
+      onMouseLeave={() => {
+        setIsHovered(false);
+      }}>
       <Flex
         borderColor={borderColor}
         borderWidth={borderWidth}
@@ -223,8 +203,7 @@ export function GraphNode({ data }: GraphNodeProps) {
             return isSelected || isHovered ? color : backgroundColor;
           }
         })()}
-        height="60px"
-      >
+        height="60px">
         <Flex
           bg={color}
           padding={interactive ? "8px" : "2px"}
@@ -232,8 +211,7 @@ export function GraphNode({ data }: GraphNodeProps) {
           borderColor={selectMode === "multi" ? "#00000020" : borderColor}
           borderStyle={borderStyle}
           alignItems="top"
-          visibility={showContent ? "inherit" : "hidden"}
-        >
+          visibility={showContent ? "inherit" : "hidden"}>
           {interactive && (
             <GraphNodeCheckbox
               checked={
@@ -260,8 +238,7 @@ export function GraphNode({ data }: GraphNodeProps) {
             p={1}
             gap="5px"
             alignItems="center"
-            visibility={showContent ? "inherit" : "hidden"}
-          >
+            visibility={showContent ? "inherit" : "hidden"}>
             <Box
               flex="1"
               color={(function () {
@@ -275,14 +252,10 @@ export function GraphNode({ data }: GraphNodeProps) {
               })()}
               overflow="hidden"
               textOverflow="ellipsis"
-              whiteSpace="nowrap"
-            >
+              whiteSpace="nowrap">
               <Tooltip
-                label={
-                  resourceType === "model" ? name : `${name} (${resourceType})`
-                }
-                placement="top"
-              >
+                label={resourceType === "model" ? name : `${name} (${resourceType})`}
+                placement="top">
                 {name}
               </Tooltip>
             </Box>
@@ -323,22 +296,20 @@ export function GraphNode({ data }: GraphNodeProps) {
             mx="1"
             direction="column"
             paddingBottom="1"
-            visibility={showContent ? "inherit" : "hidden"}
-          >
+            visibility={showContent ? "inherit" : "hidden"}>
             <HStack spacing={"8px"}>
-              {selectMode !== "action_result" &&
-                data.resourceType === "model" && (
-                  <NodeRunsAggregated
-                    id={data.id}
-                    inverted={(function () {
-                      if (selectMode === "multi") {
-                        return isSelected ? true : false;
-                      } else {
-                        return false;
-                      }
-                    })()}
-                  />
-                )}
+              {selectMode !== "action_result" && data.resourceType === "model" && (
+                <NodeRunsAggregated
+                  id={data.id}
+                  inverted={(function () {
+                    if (selectMode === "multi") {
+                      return isSelected ? true : false;
+                    } else {
+                      return false;
+                    }
+                  })()}
+                />
+              )}
               {data.isActionMode &&
                 (data.action ? (
                   <>
@@ -352,23 +323,22 @@ export function GraphNode({ data }: GraphNodeProps) {
           </Flex>
         </Flex>
       </Flex>
-      {data?.columnSet && data?.columnSet.size > 0 && (
+      {data.columnSet && data.columnSet.size > 0 && (
         <Box
           p="10px 20px"
           borderColor={borderColor}
           borderWidth={borderWidth}
           borderTopWidth={0}
           borderStyle={borderStyle}
-          borderBottomRadius={8}
-        >
-          <Box height={`${data?.columnSet.size * 15}px`} overflow="auto"></Box>
+          borderBottomRadius={8}>
+          <Box height={`${data.columnSet.size * 15}px`} overflow="auto"></Box>
         </Box>
       )}
 
-      {Object.keys(data?.parents ?? {}).length > 0 && (
+      {Object.keys(data.parents ?? {}).length > 0 && (
         <Handle type="target" position={Position.Left} isConnectable={false} />
       )}
-      {Object.keys(data?.children ?? {}).length > 0 && (
+      {Object.keys(data.children ?? {}).length > 0 && (
         <Handle type="source" position={Position.Right} isConnectable={false} />
       )}
     </Flex>

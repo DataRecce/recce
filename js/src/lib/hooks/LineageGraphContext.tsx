@@ -57,7 +57,7 @@ export interface LineageGraphContextType {
   isDemoSite?: boolean;
   isLoading?: boolean;
   error?: string;
-  supportTasks?: { [key: string]: boolean };
+  supportTasks?: Record<string, boolean>;
   retchLineageGraph?: () => void;
   isActionAvailable: (actionName: string) => boolean;
 
@@ -191,7 +191,7 @@ export function LineageGraphContextProvider({ children }: LineageGraphProps) {
 
   const lineageGraph = useMemo(() => {
     const lineage = queryServerInfo.data?.lineage;
-    if (!lineage || !lineage.base || !lineage.current) {
+    if (!lineage?.base || !lineage.current) {
       return undefined;
     }
 
@@ -213,8 +213,8 @@ export function LineageGraphContextProvider({ children }: LineageGraphProps) {
     support_tasks: supportTasks,
   } = queryServerInfo.data || {};
 
-  const dbtBase = lineage?.base?.manifest_metadata;
-  const dbtCurrent = lineage?.current?.manifest_metadata;
+  const dbtBase = lineage?.base.manifest_metadata;
+  const dbtCurrent = lineage?.current.manifest_metadata;
 
   const envInfo: EnvInfo = {
     adapterType,
@@ -241,7 +241,7 @@ export function LineageGraphContextProvider({ children }: LineageGraphProps) {
       // If the supportTasks does not be provided, all actions are available
       return true;
     },
-    [supportTasks]
+    [supportTasks],
   );
 
   useEffect(() => {
@@ -249,11 +249,7 @@ export function LineageGraphContextProvider({ children }: LineageGraphProps) {
       return;
     }
 
-    if (
-      envStatus === "relaunch" &&
-      flags?.single_env_onboarding &&
-      flags?.show_relaunch_hint
-    ) {
+    if (envStatus === "relaunch" && flags?.single_env_onboarding && flags.show_relaunch_hint) {
       // User has added a target-base folder
       setRelaunchHintOpen(true);
       trackSingleEnvironment({ action: "target_base_added" });
@@ -284,23 +280,17 @@ export function LineageGraphContextProvider({ children }: LineageGraphProps) {
           refetchRunsAggregated: () => {
             queryRunAggregated.refetch();
           },
-        }}
-      >
+        }}>
         {children}
       </LineageGraphContext.Provider>
 
-      <Modal
-        isOpen={connectionStatus === "disconnected"}
-        onClose={() => {}}
-        isCentered
-      >
+      <Modal isOpen={connectionStatus === "disconnected"} onClose={() => {}} isCentered>
         <ModalOverlay />
         <ModalContent>
           <ModalHeader>Server Disconnected</ModalHeader>
           <ModalBody>
             <Text>
-              The server connection has been lost. Please restart the Recce
-              server and try again.
+              The server connection has been lost. Please restart the Recce server and try again.
             </Text>
           </ModalBody>
           <ModalFooter>
@@ -308,8 +298,7 @@ export function LineageGraphContextProvider({ children }: LineageGraphProps) {
               colorScheme="blue"
               onClick={() => {
                 connect();
-              }}
-            >
+              }}>
               Retry
             </Button>
           </ModalFooter>
@@ -324,8 +313,7 @@ export function LineageGraphContextProvider({ children }: LineageGraphProps) {
             markRelaunchHintCompleted();
             queryClient.invalidateQueries({ queryKey: cacheKeys.flag() });
           }}
-          isCentered
-        >
+          isCentered>
           <ModalOverlay />
           <ModalContent>
             <ModalHeader>Target-base Added</ModalHeader>
@@ -339,8 +327,7 @@ export function LineageGraphContextProvider({ children }: LineageGraphProps) {
                   onClose();
                   markRelaunchHintCompleted();
                   queryClient.invalidateQueries({ queryKey: cacheKeys.flag() });
-                }}
-              >
+                }}>
                 Got it!
               </Button>
             </ModalFooter>
@@ -355,8 +342,5 @@ export const useLineageGraphContext = () => useContext(LineageGraphContext);
 
 export const useRunsAggregated = () => {
   const { runsAggregated, refetchRunsAggregated } = useLineageGraphContext();
-  return [runsAggregated, refetchRunsAggregated] as [
-    RunsAggregated | undefined,
-    () => void
-  ];
+  return [runsAggregated, refetchRunsAggregated] as [RunsAggregated | undefined, () => void];
 };

@@ -54,9 +54,7 @@ export const useRun = (runId?: string): UseRunResult => {
     return await cancelRun(runId);
   }, [runId, setAborting]);
 
-  const RunResultView = run?.type
-    ? findByRunType(run.type)?.RunResultView
-    : undefined;
+  const RunResultView = run?.type ? findByRunType(run.type)?.RunResultView : undefined;
 
   return {
     run,

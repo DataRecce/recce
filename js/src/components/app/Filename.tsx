@@ -45,10 +45,10 @@ const useRecceToast = () => {
 
   const toastError = (message: string, error?: Error) => {
     const errorMessage = !error
-      ? `${message}`
+      ? message
       : error instanceof AxiosError
-      ? `${message}. ${error?.response?.data?.detail}`
-      : `${message}. ${error}`;
+        ? `${message}. ${error.response?.data?.detail}`
+        : `${message}. ${error}`;
 
     toast({
       description: errorMessage,
@@ -90,23 +90,19 @@ interface FilenameState {
 }
 
 export const Filename = () => {
-  const { fileName, cloudMode, isDemoSite, isLoading } =
-    useLineageGraphContext();
+  const { fileName, cloudMode, isDemoSite, isLoading } = useLineageGraphContext();
   const modalDisclosure = useDisclosure();
   const overwriteDisclosure = useDisclosure();
   const isStateless = !fileName && !cloudMode && !isDemoSite;
   const { data: checks } = useChecks(isStateless);
   const hasNonPresetChecks =
-    checks != undefined &&
-    checks.filter((check) => !check.is_preset).length > 0;
+    checks != undefined && checks.filter((check) => !check.is_preset).length > 0;
   useClosePrompt(isStateless && hasNonPresetChecks);
 
-  const [
-    { newFileName, errorMessage, modified, overwriteWithMethod, bypass },
-    setState,
-  ] = useState<FilenameState>({
-    newFileName: fileName || "recce_state.json",
-  });
+  const [{ newFileName, errorMessage, modified, overwriteWithMethod, bypass }, setState] =
+    useState<FilenameState>({
+      newFileName: fileName || "recce_state.json",
+    });
 
   const inputRef = useRef<HTMLInputElement>(null);
   const { toastSuccess, toastError } = useRecceToast();
@@ -115,22 +111,18 @@ export const Filename = () => {
   const handleOpen = () => {
     setState({
       newFileName: fileName || "recce_state.json",
-      modified: !!fileName ? false : true,
+      modified: fileName ? false : true,
     });
 
     modalDisclosure.onOpen();
   };
 
-  const handleAction = async (
-    method: "save" | "rename",
-    overwrite?: boolean
-  ) => {
+  const handleAction = async (method: "save" | "rename", overwrite?: boolean) => {
     if (!newFileName) {
       return;
     }
 
-    const bypassOverwrite =
-      localStorage.getItem(localStorageKeys.bypassSaveOverwrite) === "true";
+    const bypassOverwrite = localStorage.getItem(localStorageKeys.bypassSaveOverwrite) === "true";
 
     try {
       if (method === "save") {
@@ -144,11 +136,7 @@ export const Filename = () => {
           overwrite: overwrite || bypassOverwrite,
         });
       }
-      toastSuccess(
-        method === "save"
-          ? "Save file successfully"
-          : "Rename file successfully"
-      );
+      toastSuccess(method === "save" ? "Save file successfully" : "Rename file successfully");
       queryClient.invalidateQueries({ queryKey: cacheKeys.lineage() });
       if (bypass) {
         localStorage.setItem(localStorageKeys.bypassSaveOverwrite, "true");
@@ -165,10 +153,7 @@ export const Filename = () => {
           return;
         }
       }
-      toastError(
-        method === "save" ? "Save file failed" : "Rename file failed",
-        error
-      );
+      toastError(method === "save" ? "Save file failed" : "Rename file failed", error);
     } finally {
       modalDisclosure.onClose();
     }
@@ -189,46 +174,27 @@ export const Filename = () => {
     return <></>;
   }
 
-  const titleNewInstance =
-    "New Instance" + (hasNonPresetChecks ? " (unsaved)" : "");
+  const titleNewInstance = "New Instance" + (hasNonPresetChecks ? " (unsaved)" : "");
 
   return (
     <>
       <Flex flex="1" justifyContent="center" alignItems="center">
-        <Box fontWeight="600">
-          {fileName ? fileName : cloudMode ? "cloud" : titleNewInstance}
-        </Box>
+        <Box fontWeight="600">{fileName ? fileName : cloudMode ? "cloud" : titleNewInstance}</Box>
         <Tooltip label={fileName ? "Change Filename" : "Save"} openDelay={1000}>
-          <IconButton
-            onClick={handleOpen}
-            aria-label={""}
-            variant="unstyled"
-            size="sm"
-          >
-            <Icon
-              as={fileName ? IconEdit : IconSave}
-              boxSize={"16px"}
-              verticalAlign="middle"
-            />
+          <IconButton onClick={handleOpen} aria-label={""} variant="unstyled" size="sm">
+            <Icon as={fileName ? IconEdit : IconSave} boxSize={"16px"} verticalAlign="middle" />
           </IconButton>
         </Tooltip>
       </Flex>
-      <Modal
-        isOpen={modalDisclosure.isOpen}
-        onClose={modalDisclosure.onClose}
-        isCentered
-      >
+      <Modal isOpen={modalDisclosure.isOpen} onClose={modalDisclosure.onClose} isCentered>
         <ModalOverlay />
         <ModalContent>
-          <ModalHeader>
-            {fileName ? "Change Filename" : "Save File"}
-          </ModalHeader>
+          <ModalHeader>{fileName ? "Change Filename" : "Save File"}</ModalHeader>
           <ModalCloseButton />
           <ModalBody
             onKeyDown={(e) => {
               e.stopPropagation();
-            }}
-          >
+            }}>
             <FormControl isInvalid={!!errorMessage}>
               <FormLabel>File name:</FormLabel>
               <Input
@@ -247,8 +213,7 @@ export const Filename = () => {
                     newErrorMessage =
                       "Invalid filename. Only alphanumeric, space, _ and - are allowed.";
                   } else if (fileName && value === fileName) {
-                    newErrorMessage =
-                      "Filename is the same as the current one.";
+                    newErrorMessage = "Filename is the same as the current one.";
                   }
 
                   setState((s) => {
@@ -286,8 +251,7 @@ export const Filename = () => {
               onClick={() => {
                 handleAction("save");
               }}
-              isDisabled={!newFileName || !!errorMessage || !modified}
-            >
+              isDisabled={!newFileName || !!errorMessage || !modified}>
               {fileName ? "Save as New File" : "Confirm"}
             </Button>
             {fileName && (
@@ -297,8 +261,7 @@ export const Filename = () => {
                 onClick={() => {
                   handleAction("rename");
                 }}
-                isDisabled={!newFileName || !!errorMessage || !modified}
-              >
+                isDisabled={!newFileName || !!errorMessage || !modified}>
                 Rename
               </Button>
             )}
@@ -309,8 +272,7 @@ export const Filename = () => {
         isOpen={overwriteDisclosure.isOpen}
         onClose={overwriteDisclosure.onClose}
         initialFocusRef={inputRef}
-        isCentered
-      >
+        isCentered>
         <ModalOverlay />
         <ModalContent>
           <ModalHeader>Overwrite File?</ModalHeader>
@@ -320,8 +282,7 @@ export const Filename = () => {
             borderBottom="solid 1px lightgray"
             onKeyDown={(e) => {
               e.stopPropagation();
-            }}
-          >
+            }}>
             <Box fontSize="12pt">
               {overwriteWithMethod === "save"
                 ? "Saving a file with this name will overwrite the existing file. Are you sure you wish to continue?"
@@ -330,13 +291,12 @@ export const Filename = () => {
 
             <Checkbox
               isChecked={bypass}
-              onChange={(e) =>
-                setState((s) => ({ ...s, bypass: e.target.checked }))
-              }
+              onChange={(e) => {
+                setState((s) => ({ ...s, bypass: e.target.checked }));
+              }}
               fontWeight="bold"
               size="sm"
-              pt="8px"
-            >
+              pt="8px">
               Don&apos;t show this again
             </Checkbox>
           </ModalBody>
@@ -354,8 +314,7 @@ export const Filename = () => {
 
                 handleAction(overwriteWithMethod, true);
                 overwriteDisclosure.onClose();
-              }}
-            >
+              }}>
               Overwrite
             </Button>
           </ModalFooter>

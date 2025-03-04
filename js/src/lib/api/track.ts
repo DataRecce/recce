@@ -2,14 +2,11 @@ import * as amplitude from "@amplitude/analytics-browser";
 
 export function trackInit() {
   function getCookie(key: string) {
-    var b = document.cookie.match("(^|;)\\s*" + key + "\\s*=\\s*([^;]+)");
+    const b = document.cookie.match("(^|;)\\s*" + key + "\\s*=\\s*([^;]+)");
     return b ? b.pop() : "";
   }
 
-  const userId =
-    process.env.NODE_ENV === "development"
-      ? "web_dev"
-      : getCookie("recce_user_id");
+  const userId = process.env.NODE_ENV === "development" ? "web_dev" : getCookie("recce_user_id");
   const apiKey = process.env.AMPLITUDE_API_KEY;
   if (userId && apiKey) {
     try {
@@ -24,12 +21,7 @@ export function trackInit() {
 }
 
 interface MultiNodeActionProps {
-  type:
-    | "row_count"
-    | "row_count_diff"
-    | "value_diff"
-    | "schema_diff"
-    | "lineage_diff";
+  type: "row_count" | "row_count_diff" | "value_diff" | "schema_diff" | "lineage_diff";
   selected: "single" | "multi" | "none";
 }
 
@@ -65,11 +57,7 @@ export function trackPreviewChangeFeedback(props: PreviewChangeFeedbackProps) {
 }
 
 interface SingleEnvironmentProps {
-  action:
-    | "onboarding"
-    | "external_link"
-    | "preview_changes"
-    | `target_base_added`;
+  action: "onboarding" | "external_link" | "preview_changes" | `target_base_added`;
   from?: "onboarding" | "preview_changes";
   node?: string;
 }

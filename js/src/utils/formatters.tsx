@@ -1,7 +1,7 @@
-import { formatInTimeZone } from '@jeromefitz/date-fns-tz';
-import { TopKResult } from '@/lib/api/profile';
+import { formatInTimeZone } from "@jeromefitz/date-fns-tz";
+import { TopKResult } from "@/lib/api/profile";
 
-const NO_VALUE = '-';
+const NO_VALUE = "-";
 
 /**
  * "Formatters" -- these are your data formatting that returns a formatted value for UI presentation (e.g. number, string, falsey)
@@ -15,11 +15,11 @@ const NO_VALUE = '-';
  */
 export function formatBytes(bytes?: number, decimals = 2) {
   if (bytes === undefined) return;
-  if (!bytes) return '0 Bytes';
+  if (!bytes) return "0 Bytes";
 
   const k = 1024;
   const dm = decimals < 0 ? 0 : decimals;
-  const sizes = ['Bytes', 'KB', 'MB', 'GB', 'TB', 'PB', 'EB', 'ZB', 'YB'];
+  const sizes = ["Bytes", "KB", "MB", "GB", "TB", "PB", "EB", "ZB", "YB"];
 
   const i = Math.floor(Math.log(bytes) / Math.log(k));
 
@@ -34,7 +34,7 @@ export function formatReportTime(dateStr?: string) {
   const date = new Date(dateStr);
   const userTimezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
 
-  return formatInTimeZone(date, userTimezone, 'yyyy-MM-dd HH:mm:ss zzz');
+  return formatInTimeZone(date, userTimezone, "yyyy-MM-dd HH:mm:ss zzz");
 }
 
 /**
@@ -46,10 +46,10 @@ export function formatReportTime(dateStr?: string) {
  */
 export function formatNumber(
   num: number | string | undefined,
-  locales = 'en-US',
+  locales = "en-US",
   options?: Intl.NumberFormatOptions,
 ) {
-  if (typeof num !== 'number') return num;
+  if (typeof num !== "number") return num;
   return new Intl.NumberFormat(locales, options).format(num);
 }
 
@@ -64,8 +64,8 @@ export function formatIntervalMinMax(num: number) {
   const isUpperBound = num < 1 && num >= 0.999;
 
   const formatter = (newArg = num) =>
-    formatNumber(newArg, 'en-US', {
-      style: 'percent',
+    formatNumber(newArg, "en-US", {
+      style: "percent",
       minimumFractionDigits: 1,
     });
 
@@ -87,7 +87,7 @@ export function formatTestExpectedOrActual(value?: unknown): any {
   }
 
   // Needed due to comparison's get assertions DS
-  if (typeof value === 'object') {
+  if (typeof value === "object") {
     return JSON.stringify(value);
     // return Object.keys(value).map((key) =>
     //   typeof value[key] === 'string' ? value[key] : JSON.stringify(value[key]),
@@ -127,12 +127,8 @@ export function formatTopKMetrics(topK: TopKResult) {
  * @param fn any function to format the valid number
  * @param emptyLabel the return value if falsey value
  */
-export function formatColumnValueWith(
-  input: any,
-  fn: Function,
-  emptyLabel = NO_VALUE,
-): string {
-  if (typeof input === 'string') return input;
+export function formatColumnValueWith(input: any, fn: Function, emptyLabel = NO_VALUE): string {
+  if (typeof input === "string") return input;
   return isNaN(input) ? emptyLabel : fn(input);
 }
 
@@ -144,7 +140,7 @@ export function formatColumnValueWith(
  */
 export function formatTruncateString(input: string, end: number) {
   const shouldTruncate = input.length >= end;
-  return shouldTruncate ? input.slice(0, end) + '...' : input;
+  return shouldTruncate ? input.slice(0, end) + "..." : input;
 }
 /**
  * base < -2 => 2dp, scientific (small decimals)
@@ -160,7 +156,7 @@ export function formatTruncateString(input: string, end: number) {
  */
 export function formatAsAbbreviatedNumber(input: number | string) {
   // type guard for numbers (e.g. datetime strings)
-  if (typeof input !== 'number') return input;
+  if (typeof input !== "number") return input;
   else {
     // convert negatives
     const inputAsPositive = Math.abs(input);
@@ -182,42 +178,39 @@ export function formatAsAbbreviatedNumber(input: number | string) {
 
     // format as 'T' and beyond (trillions+)
     if (isLargeTrillions || isSmallTrillions)
-      return new Intl.NumberFormat('en-US', {
-        style: 'unit',
-        unit: 'liter', //just a placeholder
-        unitDisplay: 'narrow',
+      return new Intl.NumberFormat("en-US", {
+        style: "unit",
+        unit: "liter", //just a placeholder
+        unitDisplay: "narrow",
         maximumFractionDigits: isLargeTrillions ? 0 : 2,
       })
         .format(input / 1.0e12)
-        .replace('L', 'T');
+        .replace("L", "T");
     // format as 'B', 'M', 'K' (billions to thousands)
     else if (isBillions || isMillions || isThousands) {
       const lookup = {
         base: isBillions ? billion : isMillions ? million : thousand,
-        unit: isBillions ? 'B' : isMillions ? 'M' : 'K',
+        unit: isBillions ? "B" : isMillions ? "M" : "K",
       };
-      return new Intl.NumberFormat('en-US', {
-        style: 'unit',
-        unit: 'liter', //just a placeholder
-        unitDisplay: 'narrow',
+      return new Intl.NumberFormat("en-US", {
+        style: "unit",
+        unit: "liter", //just a placeholder
+        unitDisplay: "narrow",
         maximumFractionDigits: 1,
       })
         .format(input / lookup.base)
-        .replace('L', lookup.unit);
+        .replace("L", lookup.unit);
     }
     // format as unlabeled (1 to 999)
     else if (isOnesTensHundreds)
-      return new Intl.NumberFormat('en-US', {
+      return new Intl.NumberFormat("en-US", {
         maximumFractionDigits: 2,
       }).format(input);
     // format as fractionals (< 1)
     else
-      return new Intl.NumberFormat('en-US', {
+      return new Intl.NumberFormat("en-US", {
         maximumFractionDigits: isLargeFractionals ? 3 : 2,
-        notation:
-          isLargeFractionals || inputAsPositive === 0
-            ? 'standard'
-            : 'scientific',
+        notation: isLargeFractionals || inputAsPositive === 0 ? "standard" : "scientific",
       }).format(input);
   }
 }

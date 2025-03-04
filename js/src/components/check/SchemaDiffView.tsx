@@ -8,10 +8,7 @@ import { HSplit } from "../split/Split";
 import { Box, Center, Flex, Icon, List, ListItem } from "@chakra-ui/react";
 import { LineageGraphNode } from "../lineage/lineage";
 import { forwardRef, useMemo, useState } from "react";
-import {
-  getIconForChangeStatus,
-  getIconForResourceType,
-} from "../lineage/styles";
+import { getIconForChangeStatus, getIconForResourceType } from "../lineage/styles";
 import { IconType } from "react-icons";
 import { isSchemaChanged } from "../schema/schemaDiff";
 import { findByRunType } from "../run/registry";
@@ -64,31 +61,22 @@ const NodelistItem = ({
       cursor="pointer"
       _hover={{ bg: "gray.200" }}
       bg={selected ? "gray.100" : "inherit"}
-      onClick={() => onSelect(node.id)}
+      onClick={() => {
+        onSelect(node.id);
+      }}
       alignItems="center"
-      gap="5px"
-    >
+      gap="5px">
       <Icon as={icon} />
-      <Box
-        flex="1"
-        textOverflow="ellipsis"
-        whiteSpace="nowrap"
-        overflow="hidden"
-      >
+      <Box flex="1" textOverflow="ellipsis" whiteSpace="nowrap" overflow="hidden">
         {node.name}
       </Box>
 
-      {statusIcon && statusColor && (
-        <Icon as={statusIcon} color={statusColor} />
-      )}
+      {statusIcon && statusColor && <Icon as={statusIcon} color={statusColor} />}
     </Flex>
   );
 };
 
-export function PrivateSchemaDiffView(
-  { check }: SchemaDiffViewProps,
-  ref: any
-) {
+export function PrivateSchemaDiffView({ check }: SchemaDiffViewProps, ref: any) {
   const { lineageGraph } = useLineageGraphContext();
   const params = check.params as SchemaDiffParams;
 
@@ -98,13 +86,13 @@ export function PrivateSchemaDiffView(
     queryKey,
     queryFn: async () =>
       select({
-        select: params?.select,
-        exclude: params?.exclude,
-        packages: params?.packages,
-        view_mode: params?.view_mode,
+        select: params.select,
+        exclude: params.exclude,
+        packages: params.packages,
+        view_mode: params.view_mode,
       }),
     refetchOnMount: true,
-    enabled: !params?.node_id,
+    enabled: !params.node_id,
   });
 
   const [nodes, changedNodes] = useMemo(() => {
@@ -113,9 +101,8 @@ export function PrivateSchemaDiffView(
     const addedNodes: string[] = [];
     const removedNodes: string[] = [];
 
-    if (params?.node_id) {
-      const nodeIds =
-        params.node_id instanceof Array ? params.node_id : [params.node_id];
+    if (params.node_id) {
+      const nodeIds = params.node_id instanceof Array ? params.node_id : [params.node_id];
       for (const nodeId of nodeIds) {
         const node = lineageGraph?.nodes[nodeId];
         if (node) {
@@ -137,13 +124,11 @@ export function PrivateSchemaDiffView(
         node.resourceType === "model" ||
         node.resourceType === "seed" ||
         node.resourceType === "source" ||
-        node.resourceType === "snapshot"
+        node.resourceType === "snapshot",
     );
 
     for (const node of filteredNodes) {
-      if (
-        isSchemaChanged(node.data.base?.columns, node.data.current?.columns)
-      ) {
+      if (isSchemaChanged(node.data.base?.columns, node.data.current?.columns)) {
         changedNodes.push(node.id);
       } else if (!node.data.base && node.data.current) {
         addedNodes.push(node.id);
@@ -176,7 +161,7 @@ export function PrivateSchemaDiffView(
     });
 
     return [filteredNodes, changedNodes];
-  }, [params?.node_id, data?.nodes, lineageGraph]);
+  }, [params.node_id, data?.nodes, lineageGraph]);
 
   const [selected, setSelected] = useState<number>(0);
 
@@ -189,7 +174,7 @@ export function PrivateSchemaDiffView(
   } else if (error) {
     return (
       <Center bg="rgb(249,249,249)" height="100%">
-        Error: {error?.message}
+        Error: {error.message}
       </Center>
     );
   } else if (nodes.length == 0) {

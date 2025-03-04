@@ -1,8 +1,8 @@
 import { NodeColumnData } from "@/lib/api/info";
 
 export function isSchemaChanged(
-  baseSchema: { [key: string]: NodeColumnData } | undefined,
-  currSchema: { [key: string]: NodeColumnData } | undefined
+  baseSchema: Record<string, NodeColumnData> | undefined,
+  currSchema: Record<string, NodeColumnData> | undefined,
 ) {
   if (!baseSchema || !currSchema) {
     return undefined;

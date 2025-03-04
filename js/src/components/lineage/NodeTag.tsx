@@ -90,8 +90,8 @@ export function ModelRowCount({ rowCount }: ModelRowCountProps) {
     );
   }
 
-  const base = rowCount?.base === null ? "N/A" : rowCount?.base;
-  const current = rowCount?.curr === null ? "N/A" : rowCount?.curr;
+  const base = rowCount.base === null ? "N/A" : rowCount.base;
+  const current = rowCount.curr === null ? "N/A" : rowCount.curr;
   const label = `${base} -> ${current} rows`;
 
   return (
@@ -116,16 +116,15 @@ export function RowCountDiffTag({
   isFetching,
 }: RowCountDiffTagProps) {
   const { runsAggregated, refetchRunsAggregated } = useLineageGraphContext();
-  const lastRowCount: RowCountDiff | undefined =
-    runsAggregated?.[node.id]?.["row_count_diff"]?.result;
+  const lastRowCount: RowCountDiff | undefined = runsAggregated?.[node.id]?.row_count_diff.result;
 
   const icon = findByRunType("row_count_diff")?.icon;
 
   let label;
   const rowCount = fetchedRowCount || lastRowCount;
   if (rowCount) {
-    const base = rowCount?.base === null ? "N/A" : rowCount?.base;
-    const current = rowCount?.curr === null ? "N/A" : rowCount?.curr;
+    const base = rowCount.base === null ? "N/A" : rowCount.base;
+    const current = rowCount.curr === null ? "N/A" : rowCount.curr;
     label = `${base} -> ${current} rows`;
   }
 
@@ -136,12 +135,7 @@ export function RowCountDiffTag({
 
         <TagLabel>
           {rowCount || isFetching ? (
-            <SkeletonText
-              isLoaded={!isFetching}
-              noOfLines={1}
-              skeletonHeight={2}
-              minWidth={"30px"}
-            >
+            <SkeletonText isLoaded={!isFetching} noOfLines={1} skeletonHeight={2} minWidth={"30px"}>
               {rowCount ? <_RowCountByRate rowCount={rowCount} /> : "row count"}
             </SkeletonText>
           ) : (
@@ -178,8 +172,7 @@ export function RowCountTag({
   isFetching,
 }: RowCountTagProps) {
   const { runsAggregated, refetchRunsAggregated } = useLineageGraphContext();
-  const lastRowCount: RowCount | undefined =
-    runsAggregated?.[node.id]?.["row_count"]?.result;
+  const lastRowCount: RowCount | undefined = runsAggregated?.[node.id]?.row_count.result;
 
   const icon = findByRunType("row_count")?.icon;
 
@@ -195,12 +188,7 @@ export function RowCountTag({
       <TagLeftIcon as={icon} />
       <TagLabel>
         {rowCount || isFetching ? (
-          <SkeletonText
-            isLoaded={!isFetching}
-            noOfLines={1}
-            skeletonHeight={2}
-            minWidth={"30px"}
-          >
+          <SkeletonText isLoaded={!isFetching} noOfLines={1} skeletonHeight={2} minWidth={"30px"}>
             {rowCount ? `${label}` : "row count"}
           </SkeletonText>
         ) : (

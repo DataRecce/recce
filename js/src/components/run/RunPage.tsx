@@ -18,16 +18,7 @@ export const RunPage = ({ runId }: RunPageProps) => {
     queryFn: async () => waitRun(runId),
   });
 
-  const RunResultView = run?.type
-    ? findByRunType(run.type)?.RunResultView
-    : undefined;
+  const RunResultView = run?.type ? findByRunType(run.type)?.RunResultView : undefined;
 
-  return (
-    <RunView
-      isPending={isPending}
-      error={error}
-      run={run}
-      RunResultView={RunResultView}
-    />
-  );
+  return <RunView isPending={isPending} error={error} run={run} RunResultView={RunResultView} />;
 };

@@ -38,18 +38,15 @@ function BaseEnvironmentSetupGuide() {
           Config the Base Environment to run query diff
         </Heading>
         <Text>
-          To diff the model by SQL, you need to setup two environments.
-          Currently, only the target environment is setup.
+          To diff the model by SQL, you need to setup two environments. Currently, only the target
+          environment is setup.
         </Text>
-        <Text>
-          Please configure the base environment before running the query diff.
-        </Text>
+        <Text>Please configure the base environment before running the query diff.</Text>
         <Link
           textDecor="underline"
           isExternal
           color={"blue.500"}
-          href="https://datarecce.io/docs/get-started/#prepare-dbt-artifacts"
-        >
+          href="https://datarecce.io/docs/get-started/#prepare-dbt-artifacts">
           Learn how
         </Link>
       </Stack>
@@ -66,8 +63,7 @@ function QueryViewTopBar({ current }: { current?: NodeData }) {
       gap="5px"
       height="54px"
       borderBottom="1px solid lightgray"
-      flex="0 0 54px"
-    >
+      flex="0 0 54px">
       <Box>
         <Heading as="h2" size="md" display="flex" alignItems="center" gap="5px">
           <Icon as={AiOutlineExperiment} boxSize="1.2em" />
@@ -80,13 +76,7 @@ function QueryViewTopBar({ current }: { current?: NodeData }) {
       <Spacer />
       {/* Disable the Diff button to let user known they should configure the base environment */}
       <Tooltip label="Please configure the base environment before running the diff">
-        <Button
-          colorScheme="blue"
-          isDisabled={true}
-          size="xs"
-          fontSize="14px"
-          marginTop={"16px"}
-        >
+        <Button colorScheme="blue" isDisabled={true} size="xs" fontSize="14px" marginTop={"16px"}>
           Run Diff
         </Button>
       </Tooltip>
@@ -101,24 +91,18 @@ interface QueryViewProps {
   height?: string;
 }
 
-export function SingleEnvironmentQueryView({
-  isOpen,
-  onClose,
-  current,
-}: QueryViewProps) {
+export function SingleEnvironmentQueryView({ isOpen, onClose, current }: QueryViewProps) {
   const {
     isOpen: isRunResultOpen,
     onClose: onRunResultClose,
     onOpen: onRunResultOpen,
   } = useDisclosure();
-  const [queryCode, setQueryCode] = useState<string>(
-    `SELECT * FROM {{ ref("${current?.name}")}}`
-  );
+  const [queryCode, setQueryCode] = useState<string>(`SELECT * FROM {{ ref("${current?.name}")}}`);
   const { showRunId, clearRunResult } = useRecceActionContext();
   const { lineageGraph } = useLineageGraphContext();
   let currentSchema = "N/A";
-  if (lineageGraph?.nodes && lineageGraph?.nodes[current?.id || ""]) {
-    const value = lineageGraph?.nodes[current?.id || ""];
+  if (lineageGraph?.nodes[current?.id || ""]) {
+    const value = lineageGraph.nodes[current?.id || ""];
     if (value.data.current?.schema) {
       currentSchema = value.data.current.schema;
     }
@@ -155,8 +139,7 @@ export function SingleEnvironmentQueryView({
         onClose();
         onRunResultClose();
         clearRunResult();
-      }}
-    >
+      }}>
       <ModalContent height={"100%"}>
         <ModalHeader height={"40px"} bg="rgb(77, 209, 176)" px={0} py={4}>
           <Flex alignItems="center" height={"100%"} gap={"10px"}>
@@ -166,20 +149,10 @@ export function SingleEnvironmentQueryView({
               src="/logo/recce-logo-white.png"
               alt="recce-logo-white"
             />
-            <Heading
-              as="h1"
-              fontFamily={`"Montserrat", sans-serif`}
-              fontSize="lg"
-              color="white"
-            >
+            <Heading as="h1" fontFamily={`"Montserrat", sans-serif`} fontSize="lg" color="white">
               RECCE
             </Heading>
-            <Badge
-              fontSize="sm"
-              color="white"
-              colorScheme="whiteAlpha"
-              variant="outline"
-            >
+            <Badge fontSize="sm" color="white" colorScheme="whiteAlpha" variant="outline">
               Experiment
             </Badge>
           </Flex>
@@ -194,8 +167,7 @@ export function SingleEnvironmentQueryView({
               flex: "1",
               contain: "size",
               height: "100%",
-            }}
-          >
+            }}>
             <Box p={0} style={{ contain: "content" }}>
               <Flex direction="column" height="100%" m={0} p={0}>
                 <QueryViewTopBar current={current} />

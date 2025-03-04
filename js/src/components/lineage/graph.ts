@@ -1,10 +1,10 @@
 export function getNeighborSet(
   nodeIds: string[],
   getNeighbors: (id: string) => string[],
-  degree: number = 1000
+  degree = 1000,
 ) {
-  const neighborSet: Set<string> = new Set();
-  const visited: { [id: string]: number } = {};
+  const neighborSet = new Set<string>();
+  const visited: Record<string, number> = {};
 
   const dfs = (id: string, currentDegree: number) => {
     if (currentDegree < 0) {

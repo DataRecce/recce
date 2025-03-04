@@ -20,10 +20,7 @@ import {
 import { InfoIcon } from "@chakra-ui/icons";
 import { importState } from "@/lib/api/state";
 import { useLocation } from "wouter";
-import {
-  useLineageGraphContext,
-  useRunsAggregated,
-} from "@/lib/hooks/LineageGraphContext";
+import { useLineageGraphContext, useRunsAggregated } from "@/lib/hooks/LineageGraphContext";
 import { IconImport } from "../icons";
 
 export function StateImporter({ checksOnly = true }: { checksOnly?: boolean }) {
@@ -49,7 +46,7 @@ export function StateImporter({ checksOnly = true }: { checksOnly?: boolean }) {
       if (location.includes("/checks")) {
         setLocation("/checks");
       }
-      const description = !!checksOnly
+      const description = checksOnly
         ? `${checks} checks imported successfully`
         : `${runs} runs and ${checks} checks imported successfully`;
       toast({
@@ -102,16 +99,14 @@ export function StateImporter({ checksOnly = true }: { checksOnly?: boolean }) {
     }
   };
 
-  const warningSubject = !!checksOnly ? "checks" : "runs and checks";
+  const warningSubject = checksOnly ? "checks" : "runs and checks";
   const { isDemoSite } = useLineageGraphContext();
   return (
     <>
       <Tooltip
         label={
-          "Import Checklist from State File" +
-          (isDemoSite ? " (Disabled in the demo site)" : "")
-        }
-      >
+          "Import Checklist from State File" + (isDemoSite ? " (Disabled in the demo site)" : "")
+        }>
         <IconButton
           pt="6px"
           variant="unstyled"
@@ -127,12 +122,7 @@ export function StateImporter({ checksOnly = true }: { checksOnly?: boolean }) {
         ref={hiddenFileInput}
         onChange={handleFileSelect}
       />
-      <AlertDialog
-        isOpen={isOpen}
-        leastDestructiveRef={cancelRef}
-        onClose={onClose}
-        size={"xl"}
-      >
+      <AlertDialog isOpen={isOpen} leastDestructiveRef={cancelRef} onClose={onClose} size={"xl"}>
         <AlertDialogOverlay>
           <AlertDialogContent>
             <AlertDialogHeader fontSize="lg" fontWeight="bold">

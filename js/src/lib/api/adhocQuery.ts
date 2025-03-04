@@ -1,10 +1,7 @@
 import { SubmitOptions, submitRun } from "./runs";
 import { DataFrame } from "./types";
 
-export interface QueryParams
-  extends QueryRunParams,
-    QueryDiffParams,
-    QueryPreviewChangeParams {}
+export interface QueryParams extends QueryRunParams, QueryDiffParams, QueryPreviewChangeParams {}
 
 export interface QueryPreviewChangeParams {
   current_model?: string;
@@ -40,31 +37,14 @@ export interface QueryDiffViewOptions {
   pinned_columns?: string[];
 }
 
-export async function submitQuery(
-  params: QueryRunParams,
-  options?: SubmitOptions
-) {
+export async function submitQuery(params: QueryRunParams, options?: SubmitOptions) {
   return await submitRun<QueryRunParams, QueryResult>("query", params, options);
 }
 
-export async function submitQueryBase(
-  params: QueryRunParams,
-  options?: SubmitOptions
-) {
-  return await submitRun<QueryRunParams, QueryResult>(
-    "query_base",
-    params,
-    options
-  );
+export async function submitQueryBase(params: QueryRunParams, options?: SubmitOptions) {
+  return await submitRun<QueryRunParams, QueryResult>("query_base", params, options);
 }
 
-export async function submitQueryDiff(
-  params: QueryDiffParams,
-  options?: SubmitOptions
-) {
-  return await submitRun<QueryDiffParams, QueryDiffResult>(
-    "query_diff",
-    params,
-    options
-  );
+export async function submitQueryDiff(params: QueryDiffParams, options?: SubmitOptions) {
+  return await submitRun<QueryDiffParams, QueryDiffResult>("query_diff", params, options);
 }

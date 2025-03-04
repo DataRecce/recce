@@ -1,11 +1,7 @@
 import { checkboxAnatomy as parts } from "@chakra-ui/anatomy";
-import {
-  createMultiStyleConfigHelpers,
-  defineStyle,
-} from "@chakra-ui/styled-system";
+import { createMultiStyleConfigHelpers, defineStyle } from "@chakra-ui/styled-system";
 
-const { definePartsStyle, defineMultiStyleConfig } =
-  createMultiStyleConfigHelpers(parts.keys);
+const { definePartsStyle, defineMultiStyleConfig } = createMultiStyleConfigHelpers(parts.keys);
 
 // Defining a custom variant
 const variantCircular = definePartsStyle({

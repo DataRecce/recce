@@ -45,9 +45,7 @@ const usePresetCheckRecommendation = () => {
   }, [queryChecks]);
 
   const queryPresetCheck = useQuery({
-    queryKey: lastRecommendCheck?.check_id
-      ? cacheKeys.check(lastRecommendCheck.check_id)
-      : [],
+    queryKey: lastRecommendCheck?.check_id ? cacheKeys.check(lastRecommendCheck.check_id) : [],
     queryFn: async () => {
       if (lastRecommendCheck?.check_id) {
         return getCheck(lastRecommendCheck.check_id);
@@ -118,9 +116,7 @@ export const PresetCheckRecommendation = () => {
     }
 
     if (recommendedCheck.last_run?.run_id) {
-      const runTimeStamp = new Date(
-        recommendedCheck.last_run?.run_at
-      ).getTime();
+      const runTimeStamp = new Date(recommendedCheck.last_run.run_at).getTime();
 
       const dbtInfo = envInfo?.dbt;
       const currEnvTimeStamp = dbtInfo?.current?.generated_at
@@ -140,10 +136,7 @@ export const PresetCheckRecommendation = () => {
 
       // Check if the env has been refreshed
       const prevEnvTimeStamp = sessionStorage.getItem(prevRefreshKey);
-      if (
-        prevEnvTimeStamp === null ||
-        parseInt(prevEnvTimeStamp) !== envTimeStamp
-      ) {
+      if (prevEnvTimeStamp === null || parseInt(prevEnvTimeStamp) !== envTimeStamp) {
         sessionStorage.setItem(prevRefreshKey, envTimeStamp.toString());
         sessionStorage.removeItem(recommendIgnoreKey);
         sessionStorage.removeItem(recommendShowKey);
@@ -167,7 +160,7 @@ export const PresetCheckRecommendation = () => {
         const nodeNames = extractNodeNames(selectedNodes);
         setAffectedModels(`'${nodeNames}'`);
       }
-    } else if (lineageGraph?.modifiedSet?.length === selectedNodes.length) {
+    } else if (lineageGraph?.modifiedSet.length === selectedNodes.length) {
       setAffectedModels("modified and potentially impacted models");
     } else if (check.params?.select && !check.params?.exclude) {
       setAffectedModels(`'${check.params?.select}'`);
@@ -223,16 +216,15 @@ export const PresetCheckRecommendation = () => {
               <>
                 <InfoOutlineIcon />
                 <Text>
-                  First Check: Perform a row count diff of {affectedModels} for
-                  basic impact assessment
+                  First Check: Perform a row count diff of {affectedModels} for basic impact
+                  assessment
                 </Text>
               </>
             ) : (
               <>
                 <WarningTwoIcon />
                 <Text>
-                  New dbt build detected - Re-run row count checks to maintain
-                  result accuracy
+                  New dbt build detected - Re-run row count checks to maintain result accuracy
                 </Text>
               </>
             )}
@@ -247,8 +239,7 @@ export const PresetCheckRecommendation = () => {
                   from: recommendRerun ? "rerun" : "initial",
                   nodes: numNodes,
                 });
-              }}
-            >
+              }}>
               Ignore
             </Button>
             <Button
@@ -261,8 +252,7 @@ export const PresetCheckRecommendation = () => {
                   from: recommendRerun ? "rerun" : "initial",
                   nodes: numNodes,
                 });
-              }}
-            >
+              }}>
               Perform
             </Button>
           </HStack>
@@ -277,22 +267,21 @@ export const PresetCheckRecommendation = () => {
               nodes: numNodes,
             });
           }}
-          isCentered
-        >
+          isCentered>
           <ModalOverlay />
           <ModalContent>
             <ModalHeader>Row Count Check</ModalHeader>
             <ModalBody>
               <Stack spacing="4">
                 <Text>
-                  Perform a row count check of the {numNodes} node(s) displayed
-                  in the lineage diff DAG.
+                  Perform a row count check of the {numNodes} node(s) displayed in the lineage diff
+                  DAG.
                 </Text>
                 <Flex bg="blue.100" color="blue.700">
                   <InfoOutlineIcon mt="10px" ml="5px" />
                   <Text margin="5px" paddingX="3px">
-                    This is a recommended first check based on the preset checks
-                    defined in your recce.yml file.
+                    This is a recommended first check based on the preset checks defined in your
+                    recce.yml file.
                   </Text>
                 </Flex>
               </Stack>
@@ -306,8 +295,7 @@ export const PresetCheckRecommendation = () => {
                     from: recommendRerun ? "rerun" : "initial",
                     nodes: numNodes,
                   });
-                }}
-              >
+                }}>
                 Cancel
               </Button>
               <Button
@@ -321,8 +309,7 @@ export const PresetCheckRecommendation = () => {
                     from: recommendRerun ? "rerun" : "initial",
                     nodes: numNodes,
                   });
-                }}
-              >
+                }}>
                 Execute on {numNodes} models
               </Button>
             </ModalFooter>
