@@ -66,7 +66,6 @@ export const BreakingChangeSwitch = ({ enabled, onChanged }: BreakingChangeSwitc
           </PopoverBody>
         </PopoverContent>
       </Popover>
-      <Badge color="gray">Experiment</Badge>
     </Flex>
   );
 };
