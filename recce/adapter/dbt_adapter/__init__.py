@@ -9,8 +9,8 @@ from functools import lru_cache
 from pathlib import Path
 from typing import Callable, Dict, List, Optional, Tuple, Iterator, Any, Set, Union, Literal, Type
 
-from recce.util.cll import cll
 from recce.exceptions import RecceException
+from recce.util.cll import cll
 
 try:
     import agate
@@ -757,7 +757,25 @@ class DbtAdapter(BaseAdapter):
                 # no catalog
                 continue
 
-            compiled_sql = self.generate_sql(node.get('raw_code'), base=base)
+            def ref_func(*args):
+                if len(args) == 1:
+                    node = args[0]
+                elif len(args) > 1:
+                    package = args[0]
+                    node = args[1]
+                else:
+                    return None
+                return node
+
+            def source_func(source_name, table_name):
+                return f"__{source_name}_{table_name}"
+
+            raw_code = node.get('raw_code')
+            jinja_context = dict(
+                ref=ref_func,
+                source=source_func,
+            )
+            compiled_sql = self.generate_sql(raw_code, base=base, context=jinja_context)
 
             schema = {}
             for parent_id in parent_map[node.get('id')]:
