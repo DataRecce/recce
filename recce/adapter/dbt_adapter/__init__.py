@@ -814,11 +814,18 @@ class DbtAdapter(BaseAdapter):
                 cll_tracker.increment_other_error_nodes()
                 continue
 
+            for cld in column_lineage.values():
+                for depend_on in cld.depends_on:
+                    if depend_on.node.startswith('__'):
+                        pass
+                    else:
+                        for n in nodes.values():
+                            if n.get('name') == depend_on.node.lower():
+                                depend_on.node = n.get('id')
+                                break
+
             for name, column in node.get('columns', {}).items():
                 if name in column_lineage:
-                    for cld in column_lineage[name].depends_on:
-                        # manifest node name is case-insensitive
-                        cld.node = cld.node.lower()
                     column['depends_on'] = column_lineage[name].depends_on
                     column['transformation_type'] = column_lineage[name].type
 

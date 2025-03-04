@@ -78,7 +78,7 @@ export function PrivateSchemaView(
     const schemaDiff = mergeColumns(base?.columns, current?.columns);
     const resourceType = current?.resource_type || base?.resource_type;
     if (resourceType && ["model", "seed", "snapshot"].includes(resourceType)) {
-      return toDataGrid(schemaDiff, current?.name || base?.name);
+      return toDataGrid(schemaDiff, current?.id ?? base?.id);
     } else {
       return toDataGrid(schemaDiff);
     }
