@@ -23,6 +23,7 @@ import { LuBarChartHorizontalBig } from "react-icons/lu";
 import { MdFormatListNumberedRtl, MdSchema } from "react-icons/md";
 import { ComponentWithAs } from "@chakra-ui/react";
 import { ElementType } from "react";
+import { ProfileDiffForm } from "../profile/ProfileDiffForm";
 
 interface RegistryEntry<PT, RT, VO = any> {
   title: string;
@@ -70,6 +71,7 @@ const registry: Record<string, RegistryEntry<any, any>> = {
     title: "Profile Diff",
     icon: TbEyeSearch,
     RunResultView: ProfileDiffResultView,
+    RunForm: ProfileDiffForm,
   },
   value_diff: {
     title: "Value Diff",

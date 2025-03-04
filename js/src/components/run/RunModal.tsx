@@ -39,9 +39,9 @@ export const RunModal = <PT,>({
   const [isReadyToExecute, setIsReadyToExecute] = useState(false);
 
   return (
-    <Modal isOpen={isOpen} onClose={onClose} size="6xl" scrollBehavior="inside">
+    <Modal isOpen={isOpen} onClose={onClose} size="xl" scrollBehavior="inside">
       <ModalOverlay />
-      <ModalContent overflowY="auto" height="75%">
+      <ModalContent overflowY="auto" height="75%" minHeight={"400px"}>
         <ModalHeader>{title}</ModalHeader>
         <ModalCloseButton />
         <ModalBody p="0px" h="100%" overflow="auto" borderY="1px solid lightgray">
