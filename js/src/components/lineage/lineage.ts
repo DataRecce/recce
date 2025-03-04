@@ -1,8 +1,7 @@
 import { Node, Edge, Position } from "reactflow";
-import { getNeighborSet, intersect, union } from "./graph";
+import { getNeighborSet, union } from "./graph";
 import { Run } from "@/lib/api/types";
 import dagre from "dagre";
-import { LineageDiffViewOptions } from "@/lib/api/lineagecheck";
 import {
   CatalogMetadata,
   LineageData,
@@ -10,8 +9,6 @@ import {
   ManifestMetadata,
   NodeData,
 } from "@/lib/api/info";
-import { Manifest } from "next/dist/lib/metadata/types/manifest-types";
-import { select } from "@/lib/api/select";
 
 /**
  * THe types for internal data structures.
@@ -95,15 +92,18 @@ export function _selectColumnLevelLineage(
   const selectedColumn = `${node}_${column}`;
 
   for (const [, modelNode] of Object.entries(nodes)) {
-    const nodeName = modelNode.data.current?.name;
+    const nodeId = modelNode.data.current?.id;
+    if (!nodeId) {
+      continue;
+    }
     for (const [, columnNode] of Object.entries(modelNode.data.current?.columns || {})) {
-      const target = `${nodeName}_${columnNode.name}`;
+      const target = `${nodeId}_${columnNode.name}`;
       parentMap[target] = [];
 
       for (const parent of columnNode.depends_on || []) {
         const source = `${parent.node}_${parent.column}`;
         parentMap[target].push(source);
-        if (childMap[source] === undefined) {
+        if (!(source in childMap)) {
           childMap[source] = [];
         }
         childMap[source].push(target);
@@ -115,7 +115,7 @@ export function _selectColumnLevelLineage(
     return getNeighborSet(
       nodeIds,
       (key) => {
-        if (parentMap[key] === undefined) {
+        if (!(key in parentMap)) {
           return [];
         }
         return parentMap[key];
@@ -128,7 +128,7 @@ export function _selectColumnLevelLineage(
     return getNeighborSet(
       nodeIds,
       (key) => {
-        if (childMap[key] === undefined) {
+        if (!(key in childMap)) {
           return [];
         }
         return childMap[key];
@@ -388,8 +388,7 @@ export function toReactflow(
     return 0;
   }
 
-  const filterSet =
-    selectedNodes !== undefined && selectedNodes !== null ? new Set(selectedNodes) : undefined;
+  const filterSet = selectedNodes !== undefined ? new Set(selectedNodes) : undefined;
   const sortedNodes = Object.values(lineageGraph.nodes).sort(compareFn);
   for (const node of sortedNodes) {
     if (filterSet && !filterSet.has(node.id)) {
@@ -401,7 +400,7 @@ export function toReactflow(
     let columnIndex = 0;
     if (node.data.current?.columns) {
       for (const column of Object.values(node.data.current.columns)) {
-        const columnKey = `${node.name}_${column.name}`;
+        const columnKey = `${node.id}_${column.name}`;
         if (!columnSet.has(columnKey)) {
           continue;
         }
