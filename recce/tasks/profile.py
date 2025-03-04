@@ -12,6 +12,7 @@ from ..models import Check
 
 class ProfileDiffParams(BaseModel):
     model: str
+    columns: List[str] = None
 
 
 class ProfileResult(BaseModel):
@@ -32,6 +33,7 @@ class ProfileDiffTask(Task):
         dbt_adapter: DbtAdapter = default_context().adapter
 
         model: str = self.params.model
+        selected_columns: List[str] = self.params.columns
 
         self._verify_dbt_profiler(dbt_adapter)
 
@@ -40,6 +42,12 @@ class ProfileDiffTask(Task):
 
             base_columns = [column for column in dbt_adapter.get_columns(model, base=True)]
             curr_columns = [column for column in dbt_adapter.get_columns(model, base=False)]
+
+            if selected_columns:
+                # Only profile the columns in the filter_columns
+                base_columns = [column for column in base_columns if column.name in selected_columns]
+                curr_columns = [column for column in curr_columns if column.name in selected_columns]
+
             total = len(base_columns) + len(curr_columns)
             completed = 0
 
