@@ -16,6 +16,7 @@ import { VscKebabVertical } from "react-icons/vsc";
 import { supportsHistogramDiff } from "../histogram/HistogramDiffForm";
 import { LuEye } from "react-icons/lu";
 import { useLineageViewContext } from "../lineage/LineageViewContext";
+import { trackColumnLevelLineage } from "@/lib/api/track";
 
 export function ColumnNameCell({
   model,
@@ -48,6 +49,7 @@ export function ColumnNameCell({
   const addedOrRemoved = !baseType || !currentType;
 
   const handleViewCll = () => {
+    trackColumnLevelLineage({ action: "view" });
     showColumnLevelLineage(model, name);
   };
 
