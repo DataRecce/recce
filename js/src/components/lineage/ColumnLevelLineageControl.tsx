@@ -1,5 +1,16 @@
-import { CloseIcon } from "@chakra-ui/icons";
-import { Flex, Button, Text, IconButton, Code } from "@chakra-ui/react";
+import { CloseIcon, InfoOutlineIcon } from "@chakra-ui/icons";
+import {
+  Flex,
+  Text,
+  IconButton,
+  Code,
+  Icon,
+  Link,
+  Popover,
+  PopoverBody,
+  PopoverContent,
+  PopoverTrigger,
+} from "@chakra-ui/react";
 
 interface ColumnLevelLineageControlProps {
   node: string;
@@ -27,6 +38,21 @@ export const ColumnLevelLineageControl = ({
       <Code>
         {node}.{column}
       </Code>
+      <Popover trigger="hover" placement="top-start">
+        <PopoverTrigger>
+          <Icon boxSize="10px" as={InfoOutlineIcon} color="gray.500" cursor="pointer" />
+        </PopoverTrigger>
+        <PopoverContent bg="black" color="white">
+          <PopoverBody fontSize="sm">
+            Column-Level Lineage provides visibility into the upstream and downstream relationships
+            of a column.{" "}
+            <Link href="https://datarecce.io/docs/features/column-level-lineage/" target="_blank">
+              Learn more
+            </Link>
+            .
+          </PopoverBody>
+        </PopoverContent>
+      </Popover>
       <IconButton icon={<CloseIcon />} aria-label={""} onClick={reset} size="xs" />
     </Flex>
   );
