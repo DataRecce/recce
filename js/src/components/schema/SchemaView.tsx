@@ -15,7 +15,7 @@ interface SchemaViewProps {
 
 function PrivateSingleEnvSchemaView({ current }: { current?: NodeData }, ref: any) {
   const { columns, rows } = useMemo(() => {
-    return toSingleEnvDataGrid(current?.columns, current?.name);
+    return toSingleEnvDataGrid(current?.columns, current);
   }, [current]);
 
   const { lineageGraph } = useLineageGraphContext();
@@ -77,8 +77,8 @@ export function PrivateSchemaView(
   const { columns, rows } = useMemo(() => {
     const schemaDiff = mergeColumns(base?.columns, current?.columns);
     const resourceType = current?.resource_type || base?.resource_type;
-    if (resourceType && ["model", "seed", "snapshot"].includes(resourceType)) {
-      return toDataGrid(schemaDiff, current?.name || base?.name);
+    if (resourceType && ["model", "seed", "snapshot", "source"].includes(resourceType)) {
+      return toDataGrid(schemaDiff, current ?? base);
     } else {
       return toDataGrid(schemaDiff);
     }
