@@ -782,7 +782,7 @@ class DbtAdapter(BaseAdapter):
                 return node
 
             def source_func(source_name, table_name):
-                return f"__{source_name}_{table_name}"
+                return f"__{source_name}__{table_name}"
 
             raw_code = node.get('raw_code')
             jinja_context = dict(
@@ -797,7 +797,13 @@ class DbtAdapter(BaseAdapter):
                 if parent_node is None:
                     continue
                 columns = parent_node.get('columns') or {}
-                schema[parent_node['name']] = {
+                name = parent_node.get('name')
+                if parent_node.get('resource_type') == 'source':
+                    parts = parent_id.split('.')
+                    source = parts[2]
+                    table = parts[3]
+                    name = f"__{source}__{table}"
+                schema[name] = {
                     name: column.get('type') for name, column in columns.items()
                 }
 
@@ -817,7 +823,14 @@ class DbtAdapter(BaseAdapter):
             for cld in column_lineage.values():
                 for depend_on in cld.depends_on:
                     if depend_on.node.startswith('__'):
-                        pass
+                        for n in nodes.values():
+                            if n.get('resource_type') != 'source':
+                                continue
+                            # __source__table -> source.table
+                            source_table = depend_on.node.lstrip("_").replace("__", ".", 1).lower()
+                            if source_table in n.get('id'):
+                                depend_on.node = n.get('id')
+                                break
                     else:
                         for n in nodes.values():
                             if n.get('name') == depend_on.node.lower():

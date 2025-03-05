@@ -50,7 +50,7 @@ export function mergeColumns(
   return result;
 }
 
-export function toDataGrid(schemaDiff: SchemaDiff, nodeName?: string) {
+export function toDataGrid(schemaDiff: SchemaDiff, node?: NodeData) {
   function columnIndexCellClass(row: SchemaDiffRow) {
     if (row.baseIndex === undefined) {
       return "column-index-added";
@@ -114,9 +114,9 @@ export function toDataGrid(schemaDiff: SchemaDiff, nodeName?: string) {
       name: "Name",
       resizable: true,
       renderCell: ({ row, column }) => {
-        return nodeName ? (
+        return node ? (
           <ColumnNameCell
-            model={nodeName}
+            model={node}
             name={row.name}
             baseType={row.baseType}
             currentType={row.currentType}
@@ -144,7 +144,7 @@ export function toDataGrid(schemaDiff: SchemaDiff, nodeName?: string) {
 
   return { columns, rows };
 }
-export function toSingleEnvDataGrid(nodeColumns: NodeData["columns"] = {}, nodeName?: string) {
+export function toSingleEnvDataGrid(nodeColumns: NodeData["columns"] = {}, node?: NodeData) {
   const rows: SchemaRow[] = Object.entries(nodeColumns).map(([name, column], index) => ({
     name,
     index: index + 1,
@@ -165,7 +165,7 @@ export function toSingleEnvDataGrid(nodeColumns: NodeData["columns"] = {}, nodeN
       name: "Name",
       resizable: true,
       renderCell: ({ row, column }) => {
-        return nodeName ? <ColumnNameCell model={nodeName} name={row.name} singleEnv /> : row.name;
+        return node ? <ColumnNameCell model={node} name={row.name} singleEnv /> : row.name;
       },
       cellClass: "column-body-normal",
     },

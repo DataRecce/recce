@@ -18,6 +18,7 @@ import { LuEye } from "react-icons/lu";
 import { useLineageViewContext } from "../lineage/LineageViewContext";
 import { trackColumnLevelLineage } from "@/lib/api/track";
 import { useLineageGraphContext } from "@/lib/hooks/LineageGraphContext";
+import { NodeData } from "@/lib/api/info";
 
 export function ColumnNameCell({
   model,
@@ -26,7 +27,7 @@ export function ColumnNameCell({
   currentType,
   singleEnv,
 }: {
-  model: string;
+  model: NodeData;
   name: string;
   baseType?: string;
   currentType?: string;
@@ -44,19 +45,19 @@ export function ColumnNameCell({
   const handleHistogramDiff = () => {
     runAction(
       "histogram_diff",
-      { model, column_name: name, column_type: columnType },
+      { model: model.name, column_name: name, column_type: columnType },
       { showForm: false },
     );
   };
 
   const handleTopkDiff = () => {
-    runAction("top_k_diff", { model, column_name: name, k: 50 }, { showForm: false });
+    runAction("top_k_diff", { model: model.name, column_name: name, k: 50 }, { showForm: false });
   };
   const addedOrRemoved = !baseType || !currentType;
 
   const handleViewCll = () => {
     trackColumnLevelLineage({ action: "view" });
-    showColumnLevelLineage(model, name);
+    showColumnLevelLineage(model.id, name);
   };
 
   return (
@@ -79,7 +80,7 @@ export function ColumnNameCell({
         _hover={{ color: "black" }}
         onClick={handleViewCll}
       />
-      {!singleEnv && (
+      {!singleEnv && model.resource_type !== "source" && (
         <Menu>
           {({ isOpen }) => (
             <>
