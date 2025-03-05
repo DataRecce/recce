@@ -2,22 +2,22 @@ import pytest
 
 from recce.tasks import ProfileDiffTask
 
-
-def test_profile_diff(dbt_test_helper):
-    csv_data_curr = """
+csv_data_curr = """
         customer_id,name,age
         1,Alice,30
         2,Bob,25
         3,Charlie,35
         """
 
-    csv_data_base = """
-        customer_id,name,age
-        1,Alice,35
-        2,Bob,25
-        3,Charlie,35
-        """
+csv_data_base = """
+    customer_id,name,age
+    1,Alice,35
+    2,Bob,25
+    3,Charlie,35
+    """
 
+
+def test_profile_diff(dbt_test_helper):
     dbt_test_helper.create_model("customers", csv_data_base, csv_data_curr)
     params = dict(model='customers')
     task = ProfileDiffTask(params)
@@ -25,6 +25,15 @@ def test_profile_diff(dbt_test_helper):
 
     assert len(run_result.current.data) == 3
     assert len(run_result.base.data) == 3
+
+
+def test_profile_diff_with_selected_columns(dbt_test_helper):
+    dbt_test_helper.create_model("customers", csv_data_base, csv_data_curr)
+    params = dict(model='customers', columns=['name', 'age'])
+    task = ProfileDiffTask(params)
+    run_result = task.execute()
+    assert len(run_result.current.data) == 2
+    assert len(run_result.base.data) == 2
 
 
 def test_validator():
