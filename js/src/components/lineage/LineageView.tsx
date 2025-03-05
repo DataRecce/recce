@@ -937,7 +937,7 @@ export function PrivateLineageView(
                 });
               }
             }}
-            maxZoom={2}
+            maxZoom={1}
             minZoom={0.1}
             nodesDraggable={interactive}
             ref={refReactFlow}>
