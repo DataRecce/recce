@@ -86,9 +86,15 @@ def _cll_expression(expression, default_table) -> ColumnLevelDependencyColumn:
 
     if isinstance(expression, Column):
         column = expression
+        table = column.table
+        if default_table is not None:
+            if table is None:
+                table = default_table['name']
+            elif table == default_table['alias']:
+                table = default_table['name']
         return ColumnLevelDependencyColumn(
             type='passthrough',
-            depends_on=[ColumnLevelDependsOn(column.table or default_table, column.name)]
+            depends_on=[ColumnLevelDependsOn(table, column.name)]
         )
     elif isinstance(expression, Paren):
         return _cll_expression(expression.this, default_table)
@@ -183,7 +189,12 @@ def cll(sql, schema=None, dialect=None) -> Dict[str, ColumnLevelDependencyColumn
     global_lineage = {}
     for scope in traverse_scope(expression):
         scope_lineage = {}
-        default_table = scope.expression.args['from'].name if scope.expression.args.get('from') else None
+        default_table = None
+        if 'from' in scope.expression.args:
+            default_table = dict(
+                name=scope.expression.args['from'].name,
+                alias=scope.expression.args['from'].alias_or_name
+            )
 
         if isinstance(scope.expression, Union) or isinstance(scope.expression, Intersect):
             for union_scope in scope.union_scopes:
