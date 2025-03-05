@@ -45,7 +45,7 @@ export const ColumnLevelLineageControl = ({
         <PopoverContent bg="black" color="white">
           <PopoverBody fontSize="sm">
             Column-Level Lineage provides visibility into the upstream and downstream relationships
-            of a column.{" "}
+            of a column.
             <Link href="https://datarecce.io/docs/features/column-level-lineage/" target="_blank">
               Learn more
             </Link>
