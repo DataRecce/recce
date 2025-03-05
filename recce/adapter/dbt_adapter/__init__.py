@@ -752,6 +752,24 @@ class DbtAdapter(BaseAdapter):
                 col['transformation_type'] = trans_type
                 col['depends_on'] = depends_on
 
+        def _depend_node_to_id(column_lineage, nodes):
+            for cl in column_lineage.values():
+                for depend_on in cl.depends_on:
+                    if depend_on.node.startswith('__'):
+                        for n in nodes.values():
+                            if n.get('resource_type') != 'source':
+                                continue
+                            # __source__table -> source.table
+                            source_table = depend_on.node.lstrip("_").replace("__", ".", 1).lower()
+                            if source_table in n.get('id'):
+                                depend_on.node = n.get('id')
+                                break
+                    else:
+                        for n in nodes.values():
+                            if n.get('name') == depend_on.node.lower():
+                                depend_on.node = n.get('id')
+                                break
+
         cll_tracker = CLLPerformanceTracking()
         cll_tracker.set_total_nodes(len(nodes))
         for node in nodes.values():
@@ -775,7 +793,6 @@ class DbtAdapter(BaseAdapter):
                 if len(args) == 1:
                     node = args[0]
                 elif len(args) > 1:
-                    package = args[0]
                     node = args[1]
                 else:
                     return None
@@ -820,22 +837,7 @@ class DbtAdapter(BaseAdapter):
                 cll_tracker.increment_other_error_nodes()
                 continue
 
-            for cld in column_lineage.values():
-                for depend_on in cld.depends_on:
-                    if depend_on.node.startswith('__'):
-                        for n in nodes.values():
-                            if n.get('resource_type') != 'source':
-                                continue
-                            # __source__table -> source.table
-                            source_table = depend_on.node.lstrip("_").replace("__", ".", 1).lower()
-                            if source_table in n.get('id'):
-                                depend_on.node = n.get('id')
-                                break
-                    else:
-                        for n in nodes.values():
-                            if n.get('name') == depend_on.node.lower():
-                                depend_on.node = n.get('id')
-                                break
+            _depend_node_to_id(column_lineage, nodes)
 
             for name, column in node.get('columns', {}).items():
                 if name in column_lineage:
