@@ -15,7 +15,7 @@ export function ChangeStatusLegend() {
         const { icon, color } = getIconForChangeStatus(key as any);
 
         return (
-          <Tooltip label={tip} key={key}>
+          <Tooltip label={tip} key={key} placement="right">
             <Flex alignItems="center" gap="6px" marginBottom="2px">
               <Icon color={color} as={icon} /> {label}
             </Flex>

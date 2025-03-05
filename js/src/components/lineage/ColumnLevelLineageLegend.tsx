@@ -11,7 +11,7 @@ export function ColumnLevelLineageLegend() {
     ],
     derived: [
       "Derived",
-      "d	The column is created through transformations applied to upstream columns, such as calculations, conditions, functions, or aggregations.",
+      "The column is created through transformations applied to upstream columns, such as calculations, conditions, functions, or aggregations.",
     ],
     source: [
       "Source",
@@ -27,7 +27,7 @@ export function ColumnLevelLineageLegend() {
     <Box bg="white" padding="12px" borderWidth="1px" borderColor="gray.200" fontSize="sm">
       {Object.entries(TRANSFORMATION_MSGS).map(([key, [label, tip]]) => {
         return (
-          <Tooltip label={tip} key={key}>
+          <Tooltip label={tip} key={key} placement="right">
             <Flex alignItems="center" gap="6px" marginBottom="2px">
               <TransformationType legend transformationType={key} /> {label}
             </Flex>
