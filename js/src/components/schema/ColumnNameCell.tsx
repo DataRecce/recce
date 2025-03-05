@@ -53,50 +53,8 @@ export function ColumnNameCell({
     showColumnLevelLineage(model, name);
   };
 
-  const ActionMenu = () => {
-    return (
-      <Menu>
-        {({ isOpen }) => (
-          <>
-            <MenuButton
-              className="row-context-menu"
-              visibility={isOpen ? "visible" : "hidden"}
-              width={isOpen ? "auto" : "0px"}
-              minWidth={isOpen ? "auto" : "0px"}
-              as={IconButton}
-              icon={<Icon as={VscKebabVertical} />}
-              variant="unstyled"
-              size={"sm"}
-            />
-
-            <Portal>
-              <MenuList lineHeight="20px">
-                {/* <MenuGroup title="Column" m="0" p="4px 12px">
-              <MenuItem fontSize="10pt">Set Alias Name</MenuItem>
-            </MenuGroup> */}
-                <MenuGroup title="Diff" m="0" p="4px 12px">
-                  <MenuItem
-                    fontSize="10pt"
-                    onClick={handleHistogramDiff}
-                    isDisabled={
-                      addedOrRemoved || (columnType ? !supportsHistogramDiff(columnType) : true)
-                    }>
-                    Histogram Diff
-                  </MenuItem>
-                  <MenuItem fontSize="10pt" onClick={handleTopkDiff} isDisabled={addedOrRemoved}>
-                    Top-k Diff
-                  </MenuItem>
-                </MenuGroup>
-              </MenuList>
-            </Portal>
-          </>
-        )}
-      </Menu>
-    );
-  };
-
   return (
-    <Flex alignItems={"center"}>
+    <Flex alignItems={"center"} gap="3px">
       <Box overflow="hidden" textOverflow="ellipsis" whiteSpace="nowrap">
         {name}
       </Box>
@@ -111,8 +69,51 @@ export function ColumnNameCell({
         minWidth={"0px"}
         variant="unstyled"
         size={"sm"}
-        onClick={handleViewCll}></IconButton>
-      {!singleEnv && <ActionMenu />}
+        color="gray"
+        _hover={{ color: "black" }}
+        onClick={handleViewCll}
+      />
+      {!singleEnv && (
+        <Menu>
+          {({ isOpen }) => (
+            <>
+              <MenuButton
+                className="row-context-menu"
+                visibility={isOpen ? "visible" : "hidden"}
+                width={isOpen ? "auto" : "0px"}
+                minWidth={isOpen ? "auto" : "0px"}
+                as={IconButton}
+                icon={<Icon as={VscKebabVertical} />}
+                variant="unstyled"
+                size={"sm"}
+                color="gray"
+                _hover={{ color: "black" }}
+              />
+
+              <Portal>
+                <MenuList lineHeight="20px">
+                  {/* <MenuGroup title="Column" m="0" p="4px 12px">
+              <MenuItem fontSize="10pt">Set Alias Name</MenuItem>
+            </MenuGroup> */}
+                  <MenuGroup title="Diff" m="0" p="4px 12px">
+                    <MenuItem
+                      fontSize="10pt"
+                      onClick={handleHistogramDiff}
+                      isDisabled={
+                        addedOrRemoved || (columnType ? !supportsHistogramDiff(columnType) : true)
+                      }>
+                      Histogram Diff
+                    </MenuItem>
+                    <MenuItem fontSize="10pt" onClick={handleTopkDiff} isDisabled={addedOrRemoved}>
+                      Top-k Diff
+                    </MenuItem>
+                  </MenuGroup>
+                </MenuList>
+              </Portal>
+            </>
+          )}
+        </Menu>
+      )}
     </Flex>
   );
 }
