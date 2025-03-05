@@ -9,8 +9,9 @@ from functools import lru_cache
 from pathlib import Path
 from typing import Callable, Dict, List, Optional, Tuple, Iterator, Any, Set, Union, Literal, Type
 
-from recce.util.cll import cll
+from recce.util.cll import cll, CLLPerformanceTracking
 from recce.exceptions import RecceException
+from recce.event import log_performance
 
 try:
     import agate
@@ -601,6 +602,10 @@ class DbtAdapter(BaseAdapter):
 
     @lru_cache(maxsize=2)
     def get_lineage_cached(self, base: Optional[bool] = False, cache_key=0):
+        if base is False:
+            cll_tracker = CLLPerformanceTracking()
+            cll_tracker.start_lineage()
+
         manifest = self.curr_manifest if base is False else self.base_manifest
         catalog = self.curr_catalog if base is False else self.base_catalog
 
@@ -724,7 +729,14 @@ class DbtAdapter(BaseAdapter):
         if os.getenv('RECCE_CLL_ENABLED') != 'false':
             if base is False:
                 table_map = self.build_table_map(base)
+                cll_tracker.start_column_lineage()
                 self.append_column_lineage(nodes, parent_map, base)
+                cll_tracker.end_column_lineage()
+
+        if base is False:
+            cll_tracker.end_lineage()
+            log_performance("column level lineage", cll_tracker.to_dict())
+            cll_tracker.reset()
 
         return dict(
             parent_map=parent_map,
@@ -740,6 +752,8 @@ class DbtAdapter(BaseAdapter):
                 col['transformation_type'] = trans_type
                 col['depends_on'] = depends_on
 
+        cll_tracker = CLLPerformanceTracking()
+        cll_tracker.set_total_nodes(len(nodes))
         for node in nodes.values():
             resource_type = node.get('resource_type')
             if resource_type not in {'model', 'seed', 'source', 'snapshot'}:
@@ -775,9 +789,11 @@ class DbtAdapter(BaseAdapter):
             except RecceException:
                 # TODO: provide parsing error message if needed
                 _apply_all_columns(node, 'unknown', [])
+                cll_tracker.increment_sqlglot_error_nodes()
                 continue
             except Exception:
                 _apply_all_columns(node, 'unknown', [])
+                cll_tracker.increment_other_error_nodes()
                 continue
 
             for name, column in node.get('columns', {}).items():

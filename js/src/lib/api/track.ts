@@ -90,3 +90,11 @@ export function trackBreakingChange(props: BreakingChangeAnalysisProps) {
 export function getExperimentTrackingBreakingChangeEnabled() {
   return _breakingChangeEnabled;
 }
+
+interface ColumnLevelLineageProps {
+  action: "view";
+}
+
+export function trackColumnLevelLineage(props: ColumnLevelLineageProps) {
+  amplitude.track("Column level lineage", props);
+}
