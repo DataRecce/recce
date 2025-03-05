@@ -59,14 +59,14 @@ export const BreakingChangeSwitch = ({ enabled, onChanged }: BreakingChangeSwitc
             models.{" "}
             <Link
               href="https://datarecce.io/docs/features/breaking-change-analysis/"
-              target="_blank">
+              target="_blank"
+              textDecoration="underline">
               Learn more
             </Link>
             .
           </PopoverBody>
         </PopoverContent>
       </Popover>
-      <Badge color="gray">Experiment</Badge>
     </Flex>
   );
 };
