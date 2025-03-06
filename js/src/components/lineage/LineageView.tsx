@@ -399,12 +399,12 @@ export function PrivateLineageView(
   });
 
   const onColumnNodeClick = (event: React.MouseEvent, node: Node) => {
-    node.data;
+    // eslint-disable-next-line @typescript-eslint/no-floating-promises
     handleViewOptionsChanged(
       {
         ...viewOptions,
         column_level_lineage: {
-          node: node.data.node.name,
+          node: node.data.node.id,
           column: node.data.column,
         },
       },
@@ -871,16 +871,18 @@ export function PrivateLineageView(
     actionState: multiNodeAction.actionState,
 
     // Column Level Lineage
-    showColumnLevelLineage: (node: string, column: string) => {
+    showColumnLevelLineage: (nodeId: string, column: string) => {
+      // eslint-disable-next-line @typescript-eslint/no-floating-promises
       handleViewOptionsChanged(
         {
           ...viewOptions,
-          column_level_lineage: { node, column },
+          column_level_lineage: { node: nodeId, column },
         },
         false,
       );
     },
     resetColumnLevelLinage: () => {
+      // eslint-disable-next-line @typescript-eslint/no-floating-promises
       handleViewOptionsChanged(
         {
           ...viewOptions,
