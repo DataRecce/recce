@@ -88,6 +88,37 @@ class ColumnLevelLineageTest(unittest.TestCase):
         assert result['c'].depends_on[0].node == 'table1'
         assert result['c'].depends_on[0].column == 'a'
 
+    def test_alias_table(self):
+        sql = """
+        select a as c from table1 as table2
+        """
+        result = cll(sql)
+        assert result['c'].type == 'renamed'
+        assert result['c'].depends_on[0].node == 'table1'
+        assert result['c'].depends_on[0].column == 'a'
+
+        sql = """
+        select T1.a, T2.b
+        from table1 as T1
+        join table2 as T2 on T1.id = T2.id
+        """
+        result = cll(sql)
+        assert result['a'].type == 'passthrough'
+        assert result['a'].depends_on[0].node == 'table1'
+        assert result['b'].type == 'passthrough'
+        assert result['b'].depends_on[0].node == 'table2'
+
+        sql = """
+        with cte as (
+            select a as c from table1 as table2
+        )
+        select * from cte as final
+        """
+        result = cll(sql)
+        assert result['c'].type == 'renamed'
+        assert result['c'].depends_on[0].node == 'table1'
+        assert result['c'].depends_on[0].column == 'a'
+
     def test_forward_ref(self):
         sql = """
         select
