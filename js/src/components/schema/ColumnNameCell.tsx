@@ -67,7 +67,7 @@ export function ColumnNameCell({
       </Box>
       <Spacer />
       {/* show icon button with eye icon */}
-      {lineageViewContext &&
+      {lineageViewContext && (
         <IconButton
           icon={<LuEye />}
           aria-label={""}
@@ -81,7 +81,7 @@ export function ColumnNameCell({
           _hover={{ color: "black" }}
           onClick={handleViewCll}
         />
-      }
+      )}
       {!singleEnv && model.resource_type !== "source" && (
         <Menu>
           {({ isOpen }) => (

@@ -99,7 +99,7 @@ function useLineageWatcher() {
 
   const connect = () => {
     function httpUrlToWebSocketUrl(url: string): string {
-      return url.replace(/(http)(s)?\:\/\//, "ws$2://");
+      return url.replace(/(http)(s)?:\/\//, "ws$2://");
     }
     const ws = new WebSocket(`${httpUrlToWebSocketUrl(PUBLIC_API_URL)}/api/ws`);
     ref.current.ws = ws;

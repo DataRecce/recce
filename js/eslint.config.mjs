@@ -86,13 +86,8 @@ export default tseslint.config(
       "@typescript-eslint/no-empty-function": "off",
       "@typescript-eslint/non-nullable-type-assertion-style": "off",
       "@typescript-eslint/no-unused-vars": "warn",
-      "@typescript-eslint/no-explicit-any": "warn",
-      // TODO
-      //  ------------------------------------------------------------------------------------
-      //  Marking the below as warnings ""for now"" - They need to be addressed in the future
-      //  ------------------------------------------------------------------------------------
       "prettier/prettier": [
-        "warn",
+        "error",
         {
           semi: true,
           endOfLine: "auto",
@@ -104,11 +99,10 @@ export default tseslint.config(
           usePrettierrc: false,
         },
       ],
-      "no-useless-escape": "warn",
-      "no-var": "warn",
-      "prefer-const": "warn",
-      "no-extra-boolean-cast": "warn",
-      "no-prototype-builtins": "warn",
+      // TODO
+      //  ------------------------------------------------------------------------------------
+      //  Marking the below as warnings ""for now"" - They need to be addressed in the future
+      //  ------------------------------------------------------------------------------------
       "react/no-array-index-key": "warn",
       "react/no-unknown-property": [
         "warn",
@@ -116,6 +110,7 @@ export default tseslint.config(
           ignore: ["jsx", "global"],
         },
       ],
+      "@typescript-eslint/no-explicit-any": "warn",
       "@typescript-eslint/no-unsafe-function-type": "warn",
       "@typescript-eslint/no-extra-non-null-assertion": "warn",
       "@typescript-eslint/array-type": "warn",

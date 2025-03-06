@@ -172,7 +172,7 @@ const toRenderedValue = (value: any): [any, boolean] => {
 };
 
 export const defaultRenderCell = ({ row, column }: RenderCellProps<any, any>) => {
-  if (!row.hasOwnProperty(column.key)) {
+  if (!Object.hasOwn(row, column.key)) {
     return <Text style={{ color: "gray" }}>-</Text>;
   }
 

@@ -334,12 +334,8 @@ export function PrivateLineageView(
   }
 
   const resetImpactRadiusStyles = (props?: ResetNodeStyleProps) => {
-    let {
-      deselect = false,
-      breakingChangeEnabled = false,
-      nodes: newNodes = nodes,
-      edges: newEdges = edges,
-    } = props || {};
+    const { deselect = false, breakingChangeEnabled = false } = props ?? {};
+    let { nodes: newNodes = nodes, edges: newEdges = edges } = props ?? {};
     if (!lineageGraph) {
       return;
     }
@@ -354,8 +350,9 @@ export function PrivateLineageView(
     setEdges(newEdges);
   };
 
-  const resetAllNodeStyles = (prop?: ResetNodeStyleProps) => {
-    let { deselect = false, nodes: newNodes = nodes, edges: newEdges = edges } = prop || {};
+  const resetAllNodeStyles = (props?: ResetNodeStyleProps) => {
+    const { deselect = false } = props ?? {};
+    let { nodes: newNodes = nodes, edges: newEdges = edges } = props ?? {};
     if (!lineageGraph) {
       return;
     }
