@@ -24,7 +24,7 @@ import { useLineageGraphContext } from "@/lib/hooks/LineageGraphContext";
 
 import { findByRunType } from "../run/registry";
 import { isSchemaChanged } from "../schema/schemaDiff";
-import { useLineageViewContext } from "./LineageViewContext";
+import { useLineageViewContextSafe } from "./LineageViewContext";
 import { FaCheckSquare, FaRegSquare, FaSquare } from "react-icons/fa";
 import { RowCountDiff } from "@/lib/api/models";
 import { deltaPercentageString } from "../rowcount/delta";
@@ -134,7 +134,7 @@ export function GraphNode({ data }: GraphNodeProps) {
   const { icon: resourceIcon } = getIconForResourceType(resourceType);
   const [isHovered, setIsHovered] = useState(false);
   const { interactive, selectNodeMulti, selectMode, advancedImpactRadius, viewOptions } =
-    useLineageViewContext();
+    useLineageViewContextSafe();
   const { lineageGraph } = useLineageGraphContext();
   const isNonBreakingChange =
     advancedImpactRadius && changeStatus === "modified" && lineageGraph?.nonBreakingSet.has(id);

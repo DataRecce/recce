@@ -5,12 +5,12 @@ import _ from "lodash";
 import { LineageGraphNode } from "@/components/lineage/lineage";
 
 export function extractColumns(node: LineageGraphNode) {
-  function getColumns(nodeData: NodeData) {
-    return nodeData.columns ? Object.values(nodeData.columns) : [];
+  function getColumns(nodeData: NodeData | undefined) {
+    return nodeData?.columns ? Object.values(nodeData.columns) : [];
   }
 
-  const baseColumns = getColumns(node.data.base!);
-  const currentColumns = getColumns(node.data.current!);
+  const baseColumns = getColumns(node.data.base);
+  const currentColumns = getColumns(node.data.current);
 
   return unionColumns(baseColumns, currentColumns);
 }
