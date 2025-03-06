@@ -39,7 +39,7 @@ export function ColumnNameCell({
   const columnType = currentType ?? baseType;
 
   const handleProfileDiff = () => {
-    runAction("profile_diff", { model, columns: [name] }, { showForm: false });
+    runAction("profile_diff", { model: model.name, columns: [name] }, { showForm: false });
   };
 
   const handleHistogramDiff = () => {
