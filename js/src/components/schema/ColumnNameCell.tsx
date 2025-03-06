@@ -34,7 +34,7 @@ export function ColumnNameCell({
   singleEnv?: boolean;
 }) {
   const { runAction } = useRecceActionContext();
-  const { showColumnLevelLineage } = useLineageViewContext();
+  const lineageViewContext = useLineageViewContext();
   const { isActionAvailable } = useLineageGraphContext();
   const columnType = currentType ?? baseType;
 
@@ -57,7 +57,7 @@ export function ColumnNameCell({
 
   const handleViewCll = () => {
     trackColumnLevelLineage({ action: "view" });
-    showColumnLevelLineage(model.id, name);
+    lineageViewContext?.showColumnLevelLineage(model.id, name);
   };
 
   return (
@@ -67,19 +67,21 @@ export function ColumnNameCell({
       </Box>
       <Spacer />
       {/* show icon button with eye icon */}
-      <IconButton
-        icon={<LuEye />}
-        aria-label={""}
-        className="row-context-menu"
-        visibility="hidden"
-        width={"0px"}
-        minWidth={"0px"}
-        variant="unstyled"
-        size={"sm"}
-        color="gray"
-        _hover={{ color: "black" }}
-        onClick={handleViewCll}
-      />
+      {lineageViewContext &&
+        <IconButton
+          icon={<LuEye />}
+          aria-label={""}
+          className="row-context-menu"
+          visibility="hidden"
+          width={"0px"}
+          minWidth={"0px"}
+          variant="unstyled"
+          size={"sm"}
+          color="gray"
+          _hover={{ color: "black" }}
+          onClick={handleViewCll}
+        />
+      }
       {!singleEnv && model.resource_type !== "source" && (
         <Menu>
           {({ isOpen }) => (

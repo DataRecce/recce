@@ -1,13 +1,13 @@
 import { Box, Button, HStack, StackDivider } from "@chakra-ui/react";
 import { LineageGraphNode } from "./lineage";
-import { useLineageViewContext } from "./LineageViewContext";
+import { useLineageViewContextSafe } from "./LineageViewContext";
 
 export interface ActionControlProps {
   onClose: () => void;
 }
 
 export function ActionControl({ onClose }: ActionControlProps) {
-  const { cancel, actionState } = useLineageViewContext();
+  const { cancel, actionState } = useLineageViewContextSafe();
 
   const getProgressMessage = () => {
     if (actionState.mode === "per_node") {

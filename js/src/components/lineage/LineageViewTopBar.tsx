@@ -28,7 +28,7 @@ import { getIconForResourceType } from "./styles";
 import { CSSProperties, useEffect, useMemo, useRef, useState } from "react";
 import { useRecceActionContext } from "@/lib/hooks/RecceActionContext";
 import { VscHistory } from "react-icons/vsc";
-import { useLineageViewContext } from "./LineageViewContext";
+import { useLineageViewContextSafe } from "./LineageViewContext";
 import { findByRunType } from "../run/registry";
 import { ChevronDownIcon } from "@chakra-ui/icons";
 import { trackHistoryAction } from "@/lib/api/track";
@@ -79,7 +79,7 @@ const HistoryToggle = () => {
 };
 
 const ViewModeSelectMenu = ({ isDisabled }: { isDisabled: boolean }) => {
-  const { viewOptions, onViewOptionsChanged, selectMode } = useLineageViewContext();
+  const { viewOptions, onViewOptionsChanged, selectMode } = useLineageViewContextSafe();
   const viewMode = viewOptions.view_mode || "changed_models";
   const label = viewMode === "changed_models" ? "Changed Models" : "All";
 
@@ -129,7 +129,7 @@ const ViewModeSelectMenu = ({ isDisabled }: { isDisabled: boolean }) => {
 
 const PackageSelectMenu = ({ isDisabled }: { isDisabled: boolean }) => {
   const { lineageGraph } = useLineageGraphContext();
-  const { viewOptions, onViewOptionsChanged } = useLineageViewContext();
+  const { viewOptions, onViewOptionsChanged } = useLineageViewContextSafe();
 
   // get unique package names
   const available = new Set<string>();
@@ -296,7 +296,7 @@ const NodeSelectionInput = (props: {
 };
 
 const SelectFilter = ({ isDisabled }: { isDisabled: boolean }) => {
-  const { viewOptions, onViewOptionsChanged } = useLineageViewContext();
+  const { viewOptions, onViewOptionsChanged } = useLineageViewContextSafe();
 
   return (
     <NodeSelectionInput
@@ -314,7 +314,7 @@ const SelectFilter = ({ isDisabled }: { isDisabled: boolean }) => {
 };
 
 const ExcludeFilter = ({ isDisabled }: { isDisabled: boolean }) => {
-  const { viewOptions, onViewOptionsChanged } = useLineageViewContext();
+  const { viewOptions, onViewOptionsChanged } = useLineageViewContextSafe();
 
   return (
     <NodeSelectionInput
@@ -344,7 +344,7 @@ const ControlItem = (props: {
 };
 
 export const LineageViewTopBar = () => {
-  const { nodes, deselect, selectMode, ...lineageViewContext } = useLineageViewContext();
+  const { nodes, deselect, selectMode, ...lineageViewContext } = useLineageViewContextSafe();
   const { isActionAvailable } = useLineageGraphContext();
   const selectNodes = useMemo(() => {
     return nodes.filter((node) => node.data.isSelected);

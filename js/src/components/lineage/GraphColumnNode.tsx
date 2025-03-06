@@ -6,7 +6,7 @@ import { LinageGraphColumnNode } from "./lineage";
 
 import "./styles.css";
 
-import { useLineageViewContext } from "./LineageViewContext";
+import { useLineageViewContextSafe } from "./LineageViewContext";
 
 interface GrapeColumnNodeProps extends NodeProps<LinageGraphColumnNode> {}
 
@@ -58,7 +58,7 @@ export function GraphColumnNode({ data }: GrapeColumnNodeProps) {
   const { column, type, transformationType } = data;
   const showContent = useStore((s) => s.transform[2] > 0.3);
 
-  const { viewOptions } = useLineageViewContext();
+  const { viewOptions } = useLineageViewContextSafe();
 
   const selectedNode = viewOptions.column_level_lineage?.node;
   const selectedColumn = viewOptions.column_level_lineage?.column;
