@@ -82,6 +82,7 @@ class DbtTestHelper:
         package_name="recce_test",
         base_columns: dict[str, str] = None,
         curr_columns: dict[str, str] = None,
+        patch_func=None,
     ):
         # unique_id = f"model.{package_name}.{model_name}"
         unique_id = unique_id if unique_id else model_name
@@ -121,7 +122,7 @@ class DbtTestHelper:
                     catalog.nodes[unique_id].columns[column] = col_data
                     index = index + 1
 
-            node = ModelNode.from_dict({
+            node_dict = {
                 "resource_type": "model",
                 "name": model_name,
                 "package_name": package_name,
@@ -147,7 +148,10 @@ class DbtTestHelper:
                 "depends_on": {
                     "nodes": depends_on
                 },
-            })
+            }
+            if patch_func:
+                patch_func(node_dict)
+            node = ModelNode.from_dict(node_dict)
 
             if disabled:
                 manifest.add_disabled_nofile(node)
