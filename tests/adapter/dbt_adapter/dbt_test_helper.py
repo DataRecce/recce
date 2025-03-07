@@ -86,15 +86,40 @@ class DbtTestHelper:
         # unique_id = f"model.{package_name}.{model_name}"
         unique_id = unique_id if unique_id else model_name
 
-        def _add_model_to_manifest(base, raw_code):
+        def _add_model_to_manifest(base):
             if base:
                 schema = self.base_schema
                 manifest = self.base_manifest
                 catalog = self.base_catalog
+                csv = base_csv
+                sql = base_sql
+                columns = base_columns
             else:
                 schema = self.curr_schema
                 manifest = self.curr_manifest
                 catalog = self.curr_catalog
+                csv = curr_csv
+                sql = curr_sql
+                columns = curr_columns
+
+            if csv:
+                dbt_adapter = self.adapter
+                csv = textwrap.dedent(csv)
+                with dbt_adapter.connection_named('create model'):
+                    import pandas as pd
+                    df = pd.read_csv(StringIO(csv))
+                    dbt_adapter.execute(f"CREATE TABLE {schema}.{model_name} AS SELECT * FROM df")
+            raw_code = sql if sql else csv
+
+            if columns:
+                index = 1
+                table = CatalogTable(
+                    TableMetadata(type="BASE TABLE", schema=schema, name=model_name), {}, {})
+                catalog.nodes[unique_id] = table
+                for column, column_type in columns.items():
+                    col_data = ColumnMetadata(type=column_type, index=index, name=column)
+                    catalog.nodes[unique_id].columns[column] = col_data
+                    index = index + 1
 
             node = ModelNode.from_dict({
                 "resource_type": "model",
@@ -130,33 +155,11 @@ class DbtTestHelper:
                 manifest.add_node_nofile(node)
             return node
 
-        dbt_adapter = self.adapter
-        with dbt_adapter.connection_named('create model'):
-            import pandas as pd
-            if base_csv or base_sql:
-                if base_csv:
-                    base_csv = textwrap.dedent(base_csv)
-                    df_base = pd.read_csv(StringIO(base_csv))
-                    dbt_adapter.execute(f"CREATE TABLE {self.base_schema}.{model_name} AS SELECT * FROM df_base")
-                _add_model_to_manifest(True, base_sql if base_sql else base_csv)
+        if base_csv or base_sql:
+            _add_model_to_manifest(True)
 
-            if curr_csv or curr_sql:
-                if curr_csv:
-                    curr_csv = textwrap.dedent(curr_csv)
-                    df_curr = pd.read_csv(StringIO(curr_csv))
-                    dbt_adapter.execute(f"CREATE TABLE {self.curr_schema}.{model_name} AS SELECT * FROM df_curr")
-                _add_model_to_manifest(False, curr_sql if curr_sql else curr_csv)
-
-                if curr_columns:
-                    index = 1
-                    table = CatalogTable(
-                        TableMetadata(type="BASE TABLE", schema=self.curr_schema, name=model_name),
-                        {}, {})
-                    self.curr_catalog.nodes[unique_id] = table
-                    for column, column_type in curr_columns.items():
-                        col_data = ColumnMetadata(type=column_type, index=index, name=column)
-                        self.curr_catalog.nodes[unique_id].columns[column] = col_data
-                        index = index + 1
+        if curr_csv or curr_sql:
+            _add_model_to_manifest(False)
 
         self.adapter.set_artifacts(
             self.base_manifest.writable_manifest(),
