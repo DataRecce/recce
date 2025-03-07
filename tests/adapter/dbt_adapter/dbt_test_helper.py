@@ -5,7 +5,7 @@ from datetime import datetime
 from io import StringIO
 
 from dbt.artifacts.schemas.catalog import CatalogArtifact
-from dbt.contracts.graph.nodes import ModelNode, SnapshotNode
+from dbt.contracts.graph.nodes import ModelNode, SnapshotNode, SeedNode
 from dbt_common.contracts.metadata import ColumnMetadata, CatalogTable, TableMetadata
 
 from recce.adapter.dbt_adapter import DbtAdapter, as_manifest, load_manifest
@@ -79,6 +79,7 @@ class DbtTestHelper:
         depends_on=[],
         disabled=False,
         unique_id=None,
+        resource_type="model",
         package_name="recce_test",
         base_columns: dict[str, str] = None,
         curr_columns: dict[str, str] = None,
@@ -123,7 +124,7 @@ class DbtTestHelper:
                     index = index + 1
 
             node_dict = {
-                "resource_type": "model",
+                "resource_type": resource_type,
                 "name": model_name,
                 "package_name": package_name,
                 "path": "",
@@ -151,7 +152,13 @@ class DbtTestHelper:
             }
             if patch_func:
                 patch_func(node_dict)
-            node = ModelNode.from_dict(node_dict)
+
+            if resource_type == "snapshot":
+                node = SnapshotNode.from_dict(node_dict)
+            elif resource_type == "seed":
+                node = SeedNode.from_dict(node_dict)
+            else:
+                node = ModelNode.from_dict(node_dict)
 
             if disabled:
                 manifest.add_disabled_nofile(node)
@@ -186,71 +193,4 @@ class DbtTestHelper:
             dbt_adapter.execute(f"DROP SCHEMA IF EXISTS {self.curr_schema} CASCADE")
 
     def create_snapshot(self, sanpshot_name, base_csv, curr_csv, depends_on=[]):
-        package_name = "recce_test"
-        # unique_id = f"model.{package_name}.{model_name}"
-        unique_id = sanpshot_name
-
-        def _add_snapshot_to_manifest(base, raw_code):
-            if base:
-                schema = self.base_schema
-                manifest = self.base_manifest
-            else:
-                schema = self.curr_schema
-                manifest = self.curr_manifest
-
-            node = SnapshotNode.from_dict({
-                "resource_type": "snapshot",
-                "name": sanpshot_name,
-                "package_name": package_name,
-                "path": "",
-                "original_file_path": "",
-                "unique_id": unique_id,
-                "fqn": [
-                    package_name,
-                    sanpshot_name,
-                ],
-                "schema": schema,
-                "alias": sanpshot_name,
-                "checksum": {
-                    "name": "sha256",
-                    "checksum": hash(raw_code),
-                },
-                "raw_code": raw_code,
-                "config": {
-                    "materialized": "snapshot",
-                    "tags": ["test_tag"],
-                },
-                "tags": ["test_tag"],
-                "depends_on": {
-                    "nodes": depends_on
-                },
-            })
-            manifest.add_node_nofile(node)
-            return node
-
-        base_csv = textwrap.dedent(base_csv)
-        curr_csv = textwrap.dedent(curr_csv)
-
-        _add_snapshot_to_manifest(True, base_csv)
-        _add_snapshot_to_manifest(False, curr_csv)
-
-        import pandas as pd
-        df_base = pd.read_csv(StringIO(base_csv))
-        df_curr = pd.read_csv(StringIO(curr_csv))
-        dbt_adapter = self.adapter
-        with dbt_adapter.connection_named('create model'):
-            dbt_adapter.execute(f"CREATE TABLE {self.base_schema}.{sanpshot_name} AS SELECT * FROM df_base")
-            dbt_adapter.execute(f"CREATE TABLE {self.curr_schema}.{sanpshot_name} AS SELECT * FROM df_curr")
-        self.adapter.set_artifacts(
-            self.base_manifest.writable_manifest(),
-            self.curr_manifest.writable_manifest(),
-            self.curr_manifest,
-            self.base_manifest,
-            self.base_catalog,
-            self.curr_catalog)
-
-    def remove_snapshot(self, snapshot_name):
-        dbt_adapter = self.adapter
-        with dbt_adapter.connection_named('cleanup'):
-            dbt_adapter.execute(f"DROP TABLE IF EXISTS {self.base_schema}.{snapshot_name}")
-            dbt_adapter.execute(f"DROP TABLE IF EXISTS {self.curr_schema}.{snapshot_name} ")
+        self.create_model(sanpshot_name, base_csv, curr_csv, depends_on=depends_on, resource_type="snapshot")
