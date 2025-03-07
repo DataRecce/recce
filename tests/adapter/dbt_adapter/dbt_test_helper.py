@@ -1,9 +1,12 @@
 import os
 import textwrap
 import uuid
+from datetime import datetime
 from io import StringIO
 
+from dbt.artifacts.schemas.catalog import CatalogArtifact
 from dbt.contracts.graph.nodes import ModelNode, SnapshotNode
+from dbt_common.contracts.metadata import ColumnMetadata, CatalogTable, TableMetadata
 
 from recce.adapter.dbt_adapter import DbtAdapter, as_manifest, load_manifest
 from recce.core import RecceContext
@@ -38,6 +41,21 @@ class DbtTestHelper:
 
         self.curr_manifest = as_manifest(curr_writable_manifest)
         self.base_manifest = as_manifest(base_writable_manifest)
+        now = datetime.now()
+        self.curr_catalog = CatalogArtifact.from_results(
+            generated_at=now,
+            nodes={},
+            sources={},
+            compile_results=None,
+            errors=None,
+        )
+        self.base_catalog = CatalogArtifact.from_results(
+            generated_at=now,
+            nodes={},
+            sources={},
+            compile_results=None,
+            errors=None,
+        )
         self.context = context
 
         self.adapter.execute(f"CREATE schema IF NOT EXISTS {self.base_schema}")
@@ -46,7 +64,9 @@ class DbtTestHelper:
             base_writable_manifest,
             curr_writable_manifest,
             self.curr_manifest,
-            self.base_manifest
+            self.base_manifest,
+            self.base_catalog,
+            self.curr_catalog,
         )
 
     def create_model(
@@ -60,6 +80,8 @@ class DbtTestHelper:
         disabled=False,
         unique_id=None,
         package_name="recce_test",
+        base_columns: dict[str, str] = None,
+        curr_columns: dict[str, str] = None,
     ):
         # unique_id = f"model.{package_name}.{model_name}"
         unique_id = unique_id if unique_id else model_name
@@ -68,9 +90,11 @@ class DbtTestHelper:
             if base:
                 schema = self.base_schema
                 manifest = self.base_manifest
+                catalog = self.base_catalog
             else:
                 schema = self.curr_schema
                 manifest = self.curr_manifest
+                catalog = self.curr_catalog
 
             node = ModelNode.from_dict({
                 "resource_type": "model",
@@ -109,29 +133,38 @@ class DbtTestHelper:
         dbt_adapter = self.adapter
         with dbt_adapter.connection_named('create model'):
             import pandas as pd
-            if base_csv:
-                base_csv = textwrap.dedent(base_csv)
-                _add_model_to_manifest(True, base_csv)
-                df_base = pd.read_csv(StringIO(base_csv))
-                dbt_adapter.execute(f"CREATE TABLE {self.base_schema}.{model_name} AS SELECT * FROM df_base")
-            elif base_sql:
-                bas_sql = textwrap.dedent(base_sql)
-                _add_model_to_manifest(True, base_sql)
+            if base_csv or base_sql:
+                if base_csv:
+                    base_csv = textwrap.dedent(base_csv)
+                    df_base = pd.read_csv(StringIO(base_csv))
+                    dbt_adapter.execute(f"CREATE TABLE {self.base_schema}.{model_name} AS SELECT * FROM df_base")
+                _add_model_to_manifest(True, base_sql if base_sql else base_csv)
 
-            if curr_csv:
-                curr_csv = textwrap.dedent(curr_csv)
-                _add_model_to_manifest(False, curr_csv)
-                df_curr = pd.read_csv(StringIO(curr_csv))
-                dbt_adapter.execute(f"CREATE TABLE {self.curr_schema}.{model_name} AS SELECT * FROM df_curr")
-            elif curr_sql:
-                curr_sql = textwrap.dedent(curr_sql)
-                _add_model_to_manifest(False, curr_sql)
+            if curr_csv or curr_sql:
+                if curr_csv:
+                    curr_csv = textwrap.dedent(curr_csv)
+                    df_curr = pd.read_csv(StringIO(curr_csv))
+                    dbt_adapter.execute(f"CREATE TABLE {self.curr_schema}.{model_name} AS SELECT * FROM df_curr")
+                _add_model_to_manifest(False, curr_sql if curr_sql else curr_csv)
+
+                if curr_columns:
+                    index = 1
+                    table = CatalogTable(
+                        TableMetadata(type="BASE TABLE", schema=self.curr_schema, name=model_name),
+                        {}, {})
+                    self.curr_catalog.nodes[unique_id] = table
+                    for column, column_type in curr_columns.items():
+                        col_data = ColumnMetadata(type=column_type, index=index, name=column)
+                        self.curr_catalog.nodes[unique_id].columns[column] = col_data
+                        index = index + 1
 
         self.adapter.set_artifacts(
             self.base_manifest.writable_manifest(),
             self.curr_manifest.writable_manifest(),
             self.curr_manifest,
-            self.base_manifest)
+            self.base_manifest,
+            self.base_catalog,
+            self.curr_catalog)
 
     def remove_model(self, model_name):
         dbt_adapter = self.adapter
@@ -205,7 +238,9 @@ class DbtTestHelper:
             self.base_manifest.writable_manifest(),
             self.curr_manifest.writable_manifest(),
             self.curr_manifest,
-            self.base_manifest)
+            self.base_manifest,
+            self.base_catalog,
+            self.curr_catalog)
 
     def remove_snapshot(self, snapshot_name):
         dbt_adapter = self.adapter
