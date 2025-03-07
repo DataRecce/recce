@@ -9,9 +9,9 @@ from functools import lru_cache
 from pathlib import Path
 from typing import Callable, Dict, List, Optional, Tuple, Iterator, Any, Set, Union, Literal, Type
 
-from recce.util.cll import cll, CLLPerformanceTracking
-from recce.exceptions import RecceException
 from recce.event import log_performance
+from recce.exceptions import RecceException
+from recce.util.cll import cll, CLLPerformanceTracking
 
 try:
     import agate
@@ -723,12 +723,10 @@ class DbtAdapter(BaseAdapter):
                 }
 
         parent_map = self.build_parent_map(nodes, base)
-        table_map = {}
 
         # Handle column-level lineage, only enable if env var is set to true
         if os.getenv('RECCE_CLL_ENABLED') != 'false':
             if base is False:
-                table_map = self.build_table_map(base)
                 cll_tracker.start_column_lineage()
                 self.append_column_lineage(nodes, parent_map, base)
                 cll_tracker.end_column_lineage()
@@ -741,7 +739,6 @@ class DbtAdapter(BaseAdapter):
         return dict(
             parent_map=parent_map,
             nodes=nodes,
-            table_map=table_map,
             manifest_metadata=manifest_metadata,
             catalog_metadata=catalog_metadata,
         )
@@ -946,10 +943,14 @@ class DbtAdapter(BaseAdapter):
                       curr_manifest: WritableManifest,
                       manifest: Manifest,
                       previous_manifest: Manifest,
+                      base_catalog: CatalogArtifact,
+                      curr_catalog: CatalogArtifact,
                       ):
         self.curr_manifest = curr_manifest
         self.base_manifest = base_manifest
         self.manifest = manifest
+        self.curr_catalog = curr_catalog
+        self.base_catalog = base_catalog
         self.previous_state = previous_state(
             Path(self.base_path),
             Path(self.runtime_config.target_path),
