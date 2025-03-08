@@ -18,6 +18,7 @@ export const ErrorButton = () => {
   );
 };
 
+// eslint-disable-next-line @typescript-eslint/unbound-method
 const Fallback: FallbackRender = ({ error, resetError }) => {
   return (
     <Center height="100%" backgroundColor="gray.50">

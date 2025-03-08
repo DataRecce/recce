@@ -180,7 +180,11 @@ export function buildLineageGraph(
       nodes[key] = buildNode(key, "current");
     }
     if (nodeData) {
-      nodes[key].data.current = current.nodes && current.nodes[key];
+      // TODO `current.nodes` is treated as potentially falsy here
+      //  this means either that a) the typing needs to be adjusted
+      //  on `current.nodes` or b) the input to `current.nodes`
+      //  should default to a value
+      nodes[key].data.current = current.nodes?.[key];
       nodes[key].name = nodeData.name;
       nodes[key].resourceType = nodeData.resource_type;
       nodes[key].packageName = nodeData.package_name;

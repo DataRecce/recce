@@ -13,7 +13,7 @@ import {
 } from "@chakra-ui/react";
 import { RunResultViewProps } from "./types";
 import { ErrorBoundary } from "@sentry/react";
-import { ElementType } from "react";
+import React, { ElementType } from "react";
 
 interface RunViewProps<PT, RT, VO = any> {
   isRunning?: boolean;
@@ -27,6 +27,7 @@ interface RunViewProps<PT, RT, VO = any> {
   viewOptions?: VO;
   onViewOptionsChanged?: (viewOptions: VO) => void;
   RunResultView?: ComponentWithAs<ElementType, RunResultViewProps<PT, RT, VO>>;
+  // eslint-disable-next-line @typescript-eslint/no-unnecessary-type-parameters
   children?: <T extends RunResultViewProps<PT, RT, VO>>(params: T) => React.ReactNode;
 }
 

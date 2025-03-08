@@ -75,12 +75,12 @@ export default tseslint.config(
       "react/prop-types": "off",
       "react/react-in-jsx-scope": "off",
       // 'react/no-array-index-key': 'error',
-      // "react/no-unknown-property": [
-      //   "error",
-      //   {
-      //     ignore: ["jsx", "global"],
-      //   },
-      // ],
+      "react/no-unknown-property": [
+        "error",
+        {
+          ignore: ["jsx", "global"],
+        },
+      ],
       // '@typescript-eslint/no-explicit-any': 'error',
       "@typescript-eslint/explicit-module-boundary-types": "off",
       "@typescript-eslint/no-empty-function": "off",
@@ -104,25 +104,16 @@ export default tseslint.config(
       //  Marking the below as warnings ""for now"" - They need to be addressed in the future
       //  ------------------------------------------------------------------------------------
       "react/no-array-index-key": "warn",
-      "react/no-unknown-property": [
-        "warn",
-        {
-          ignore: ["jsx", "global"],
-        },
-      ],
       "@typescript-eslint/no-explicit-any": "warn",
       "@typescript-eslint/no-unsafe-function-type": "warn",
       "@typescript-eslint/no-extra-non-null-assertion": "warn",
-      "@typescript-eslint/array-type": "warn",
       "@typescript-eslint/restrict-plus-operands": "warn",
       "@typescript-eslint/no-inferrable-types": "warn",
       "@typescript-eslint/no-unnecessary-type-arguments": "warn",
       "@typescript-eslint/consistent-indexed-object-style": "warn",
-      "@typescript-eslint/no-deprecated": "warn",
       "@typescript-eslint/no-unnecessary-boolean-literal-compare": "warn",
       "@typescript-eslint/no-unnecessary-type-assertion": "warn",
       "@typescript-eslint/no-empty-object-type": "warn",
-      "@typescript-eslint/dot-notation": "warn",
       "@typescript-eslint/no-wrapper-object-types": "warn",
       "@typescript-eslint/consistent-generic-constructors": "warn",
       "@typescript-eslint/no-unnecessary-template-expression": "warn",
@@ -140,10 +131,7 @@ export default tseslint.config(
       "@typescript-eslint/no-unsafe-call": "warn",
       "@typescript-eslint/no-redundant-type-constituents": "warn",
       "@typescript-eslint/no-unsafe-return": "warn",
-      "@typescript-eslint/unbound-method": "warn",
-      "@typescript-eslint/no-unnecessary-type-parameters": "warn",
       "@typescript-eslint/no-unused-expressions": "warn",
-      "@typescript-eslint/prefer-optional-chain": "warn",
       "@typescript-eslint/require-await": "warn",
       "@typescript-eslint/await-thenable": "warn",
       "@typescript-eslint/no-confusing-void-expression": "warn",

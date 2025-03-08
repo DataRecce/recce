@@ -171,13 +171,13 @@ test("lineage diff 2", () => {
   expect(Object.keys(edges).length).toBe(4);
   expect(nodes.a.changeStatus).toBe("removed");
   expect(nodes.a2.changeStatus).toBe("added");
-  expect(nodes.b.changeStatus).toBeUndefined;
+  expect(nodes.b.changeStatus).toBeUndefined();
   expect(nodes.c.changeStatus).toBe("modified");
-  expect(nodes.d.changeStatus).toBeUndefined;
+  expect(nodes.d.changeStatus).toBeUndefined();
 
   expect(nodes.b.parents.a.changeStatus).toBe("removed");
   expect(nodes.b.parents.a2.changeStatus).toBe("added");
-  expect(nodes.b.children.c.changeStatus).toBeUndefined;
+  expect(nodes.b.children.c.changeStatus).toBeUndefined();
 });
 
 test("hightlight", () => {

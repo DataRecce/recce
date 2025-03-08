@@ -253,11 +253,7 @@ export const QueryDiffResultView = forwardRef((props: QueryDiffResultViewProps, 
     baseTitle = "Original";
     currentTitle = "Editor";
   }
-  if (
-    props.run.result !== undefined &&
-    props.run.result.diff !== null &&
-    props.run.result.diff !== undefined
-  ) {
+  if (props.run.result?.diff != null) {
     const ResultView = forwardRef(PrivateQueryDiffJoinResultView);
     return <ResultView {...props} ref={ref} baseTitle={baseTitle} currentTitle={currentTitle} />;
   } else {
