@@ -1,3 +1,4 @@
+import React from "react";
 import { useLineageGraphContext } from "@/lib/hooks/LineageGraphContext";
 import {
   Tooltip,
@@ -35,7 +36,7 @@ export function formatTimestamp(timestamp: string): string {
   return formattedTimestamp;
 }
 
-function renderInfoEntries(info: object): JSX.Element[] {
+function renderInfoEntries(info: object): React.JSX.Element[] {
   if (Object.values(info).every((value) => value === null)) {
     return [
       <Flex key={"no info"} ml="10px">
