@@ -4,9 +4,8 @@ import uuid
 from datetime import datetime
 from io import StringIO
 
-from dbt.artifacts.schemas.catalog import CatalogArtifact
 from dbt.contracts.graph.nodes import ModelNode, SnapshotNode, SeedNode, SourceDefinition
-from dbt_common.contracts.metadata import ColumnMetadata, CatalogTable, TableMetadata
+from dbt.contracts.results import CatalogArtifact, ColumnMetadata, CatalogTable, TableMetadata
 
 from recce.adapter.dbt_adapter import DbtAdapter, as_manifest, load_manifest
 from recce.core import RecceContext
