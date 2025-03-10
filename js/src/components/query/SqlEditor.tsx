@@ -131,7 +131,7 @@ export const DualSqlEditor: React.FC<DualSqlEditorProps> = ({
             onChange={onChangeBase}
             onRunBase={onRunBase}
             options={options}
-            CustomEditor={BaseEnvironmentSetupGuide ?? undefined}
+            CustomEditor={BaseEnvironmentSetupGuide}
             {...props}
           />
         </Stack>

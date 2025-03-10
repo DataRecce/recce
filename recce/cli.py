@@ -260,7 +260,7 @@ def server(host, port, state_file=None, **kwargs):
 
         # Show warning message
         console.rule('Notice', style='orange3')
-        console.print('Recce is launching in single environment mode.')
+        console.print('Recce is launching in limited functionality mode.')
         console.print('To use the full suite of Recce tools, please prepare the dbt artifacts to serve as the base for '
                       f"your comparison in '{target_base_path}'.")
         console.print('https://datarecce.io/docs/get-started/#prepare-dbt-artifacts')

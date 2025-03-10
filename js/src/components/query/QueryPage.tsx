@@ -1,22 +1,15 @@
-import React, { CSSProperties, useState } from "react";
+import React, { useMemo } from "react";
 import { Box, Button, Flex, Icon, Spacer, Switch, Tooltip } from "@chakra-ui/react";
 import SqlEditor, { DualSqlEditor } from "./SqlEditor";
 import { defaultSqlQuery, useRecceQueryContext } from "@/lib/hooks/RecceQueryContext";
 
-import { QueryOptions, useMutation } from "@tanstack/react-query";
-import {
-  QueryDiffParams,
-  QueryParams,
-  submitQuery,
-  submitQueryBase,
-  submitQueryDiff,
-} from "@/lib/api/adhocQuery";
+import { useMutation } from "@tanstack/react-query";
+import { QueryParams, submitQuery, submitQueryBase, submitQueryDiff } from "@/lib/api/adhocQuery";
 import { useLineageGraphContext } from "@/lib/hooks/LineageGraphContext";
 import { QueryForm } from "./QueryForm";
-import { HSplit } from "../split/Split";
 import { useRecceActionContext } from "@/lib/hooks/RecceActionContext";
 import { SubmitOptions, waitRun } from "@/lib/api/runs";
-import { VscDiff, VscHistory } from "react-icons/vsc";
+import { VscHistory } from "react-icons/vsc";
 import { InfoIcon } from "@chakra-ui/icons";
 import { trackHistoryAction } from "@/lib/api/track";
 import { BaseEnvironmentSetupGuide } from "../lineage/SingleEnvironmentQueryView";
@@ -120,13 +113,23 @@ export const QueryPage = () => {
     mutationFn: queryFn,
   });
 
-  const currentSchema = "N/A";
-  // if (lineageGraph?.nodes && lineageGraph?.nodes[current?.id || ""]) {
-  //   const value = lineageGraph?.nodes[current?.id || ""];
-  //   if (value.data.current?.schema) {
-  //     currentSchema = value.data.current.schema;
-  //   }
-  // }
+  const currentSchema = useMemo(() => {
+    // find the most common schema from the current lineage graph
+    const countMap: Record<string, number> = {};
+    for (const key in lineageGraph?.nodes) {
+      const schema = lineageGraph.nodes[key].data.current?.schema;
+      if (schema) {
+        countMap[schema] = (countMap[schema] || 0) + 1;
+      }
+    }
+    // Find the most common value
+    return Object.keys(countMap).reduce((mostCommon, current) => {
+      if (countMap[current] > (countMap[mostCommon] || 0)) {
+        return current;
+      }
+      return mostCommon;
+    }, "N/A");
+  }, [lineageGraph?.nodes]);
 
   if (flag?.single_env_onboarding) {
     return (

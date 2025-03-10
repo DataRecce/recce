@@ -1,6 +1,6 @@
 import { sessionStorageKeys } from "@/lib/api/sessionStorageKeys";
 import { CloseButton, Flex, Spacer } from "@chakra-ui/react";
-import React, { ReactNode, useEffect, useState } from "react";
+import React, { useEffect, useState } from "react";
 
 interface NotificationProps {
   notification?: React.ReactNode;
@@ -18,7 +18,7 @@ export function LineageViewNotification({ notification, type }: NotificationProp
     }
   }, [notificationKey]);
 
-  if (notification === undefined || !visible) {
+  if (notification === null || !visible) {
     return null;
   }
 
