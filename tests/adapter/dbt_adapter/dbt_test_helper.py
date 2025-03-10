@@ -5,7 +5,7 @@ from datetime import datetime
 from io import StringIO
 
 from dbt.artifacts.schemas.catalog import CatalogArtifact
-from dbt.contracts.graph.nodes import ModelNode, SnapshotNode, SeedNode
+from dbt.contracts.graph.nodes import ModelNode, SnapshotNode, SeedNode, SourceDefinition
 from dbt_common.contracts.metadata import ColumnMetadata, CatalogTable, TableMetadata
 
 from recce.adapter.dbt_adapter import DbtAdapter, as_manifest, load_manifest
@@ -185,6 +185,92 @@ class DbtTestHelper:
         with dbt_adapter.connection_named('cleanup'):
             dbt_adapter.execute(f"DROP TABLE IF EXISTS {self.base_schema}.{model_name}")
             dbt_adapter.execute(f"DROP TABLE IF EXISTS {self.curr_schema}.{model_name} ")
+
+    def create_source(
+        self,
+        source_name,
+        table_name,
+        base_csv=None,
+        curr_csv=None,
+        unique_id=None,
+        package_name="recce_test",
+        base_columns: dict[str, str] = None,
+        curr_columns: dict[str, str] = None,
+        patch_func=None,
+    ):
+        # unique_id = f"model.{package_name}.{model_name}"
+        unique_id = unique_id if unique_id else f"{source_name}.{table_name}"
+
+        def _add_source_to_manifest(base):
+            if base:
+                schema = self.base_schema
+                manifest = self.base_manifest
+                catalog = self.base_catalog
+                csv = base_csv
+                columns = base_columns
+            else:
+                schema = self.curr_schema
+                manifest = self.curr_manifest
+                catalog = self.curr_catalog
+                csv = curr_csv
+                columns = curr_columns
+
+            if csv:
+                dbt_adapter = self.adapter
+                csv = textwrap.dedent(csv)
+                with dbt_adapter.connection_named('create source'):
+                    import pandas as pd
+                    df = pd.read_csv(StringIO(csv))
+                    dbt_adapter.execute(f"CREATE TABLE {schema}.{table_name} AS SELECT * FROM df")
+
+            if columns:
+                index = 1
+                table = CatalogTable(
+                    TableMetadata(type="BASE TABLE", schema=schema, name=table_name), {}, {})
+                catalog.sources[unique_id] = table
+                for column, column_type in columns.items():
+                    col_data = ColumnMetadata(type=column_type, index=index, name=column)
+                    catalog.sources[unique_id].columns[column] = col_data
+                    index = index + 1
+
+            node_dict = {
+                "resource_type": "source",
+                "source_name": source_name,
+                "name": table_name,
+                "identifier": table_name,
+                "source_description": "test source",
+                "loader": "",
+                "package_name": package_name,
+                "path": "",
+                "original_file_path": "",
+                "unique_id": unique_id,
+                "fqn": [
+                    package_name,
+                    source_name,
+                    table_name,
+                ],
+                "schema": schema,
+            }
+            if patch_func:
+                patch_func(node_dict)
+
+            source = SourceDefinition.from_dict(node_dict)
+            manifest.sources[unique_id] = source
+            return source
+
+        if base_csv:
+            _add_source_to_manifest(True)
+
+        if curr_csv:
+            _add_source_to_manifest(False)
+
+        self.adapter.set_artifacts(
+            self.base_manifest.writable_manifest(),
+            self.curr_manifest.writable_manifest(),
+            self.curr_manifest,
+            self.base_manifest,
+            self.base_catalog,
+            self.curr_catalog)
 
     def cleanup(self):
         dbt_adapter = self.adapter
