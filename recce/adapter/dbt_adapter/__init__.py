@@ -684,16 +684,24 @@ class DbtAdapter(BaseAdapter):
                 'resource_type': source['resource_type'],
                 'package_name': source['package_name'],
                 'config': source['config'],
+                'columns': {
+                    col.get('name'): {
+                        'name': col.get('name'),
+                        'type': col.get('data_type')
+                    }
+                    for col in source['columns'].values()
+                }
             }
 
             if catalog is not None and unique_id in catalog.sources:
-                nodes[unique_id]['columns'] = {
+                columns = {
                     col_name: {
                         'name': col_name,
                         'type': col_metadata.type
                     }
                     for col_name, col_metadata in catalog.sources[unique_id].columns.items()
                 }
+                nodes[unique_id]['columns'].update(columns)
 
         for exposure in manifest_dict['exposures'].values():
             nodes[exposure['unique_id']] = {
