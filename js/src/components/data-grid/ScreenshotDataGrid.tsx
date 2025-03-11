@@ -12,7 +12,11 @@ export const ScreenshotDataGrid = forwardRef(({ ...props }: ScreenshotDataGridPr
   );
 });
 
-export function EmptyRowsRenderer() {
+interface EmptyRowsRendererProps {
+  emptyMessage?: string;
+}
+
+export function EmptyRowsRenderer({ emptyMessage }: EmptyRowsRendererProps) {
   return (
     <Flex
       h="35px"
@@ -20,7 +24,7 @@ export function EmptyRowsRenderer() {
       justifyContent="center"
       bg="gray.100"
       style={{ textAlign: "center", gridColumn: "1/-1" }}>
-      <Text fontWeight="600"> No rows</Text>
+      <Text fontWeight="600"> {emptyMessage ? emptyMessage : "No rows"}</Text>
     </Flex>
   );
 }
