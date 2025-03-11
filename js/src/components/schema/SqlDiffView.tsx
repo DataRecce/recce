@@ -9,7 +9,11 @@ interface SqlDiffProps {
   current?: NodeData;
 }
 
-function useDiffEditorSync(value: string, onChange: (value: string) => void) {
+interface UseDiffEditorSync {
+  onMount: (editor: monacoEditor.IStandaloneDiffEditor) => void;
+}
+
+function useDiffEditorSync(value: string, onChange: (value: string) => void): UseDiffEditorSync {
   const editorRef = useRef<any>(null);
 
   useEffect(() => {

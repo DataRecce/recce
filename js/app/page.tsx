@@ -142,6 +142,7 @@ interface TabProps {
   disable?: boolean;
 }
 
+// eslint-disable-next-line @typescript-eslint/no-unnecessary-type-parameters
 function TabBadge<T, R extends number>({
   queryKey,
   fetchCallback,
@@ -150,7 +151,7 @@ function TabBadge<T, R extends number>({
   queryKey: string[];
   fetchCallback: () => Promise<T>;
   selectCallback?: (data: T) => R;
-}) {
+}): ReactNode {
   const {
     data: count,
     isLoading,
