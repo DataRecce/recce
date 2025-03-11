@@ -1,7 +1,7 @@
 import { ColumnOrColumnGroup, RenderCellProps, textEditor } from "react-data-grid";
 import _ from "lodash";
 import "./styles.css";
-import { Box, Flex, Icon, Text } from "@chakra-ui/react";
+import { Badge, Box, Center, Flex, Icon, Text } from "@chakra-ui/react";
 import { VscClose, VscKey, VscPin, VscPinned } from "react-icons/vsc";
 import { DataFrame } from "@/lib/api/types";
 import { mergeKeysWithStatus } from "@/lib/mergeKeys";
@@ -73,6 +73,7 @@ export interface QueryDataDiffGridOptions {
   changedOnly?: boolean;
   baseTitle?: string;
   currentTitle?: string;
+  displayMode?: "side_by_side" | "inline";
 }
 
 function DataFrameColumnGroupHeader({
@@ -151,7 +152,12 @@ function DataFrameColumnGroupHeader({
   );
 }
 
-const toRenderedValue = (value: any): [any, boolean] => {
+const toRenderedValue = (row: any, key: string): [any, boolean] => {
+  if (!Object.hasOwn(row, key)) {
+    return ["-", true];
+  }
+  const value = row[key];
+
   let renderedValue;
   let grayOut = false;
 
@@ -172,13 +178,55 @@ const toRenderedValue = (value: any): [any, boolean] => {
 };
 
 export const defaultRenderCell = ({ row, column }: RenderCellProps<any, any>) => {
-  if (!Object.hasOwn(row, column.key)) {
-    return <Text style={{ color: "gray" }}>-</Text>;
+  const [renderedValue, grayOut] = toRenderedValue(row, column.key);
+  return <Text style={{ color: grayOut ? "gray" : "inherit" }}>{renderedValue}</Text>;
+};
+
+export const inlineRenderCell = ({ row, column }: RenderCellProps<any, any>) => {
+  const baseKey = `base__${column.key}`;
+  const currentKey = `current__${column.key}`;
+
+  if (!Object.hasOwn(row, baseKey) && !Object.hasOwn(row, currentKey)) {
+    // should not happen
+    return "-";
+  } else if (!Object.hasOwn(row, baseKey)) {
+    // new added column
+    return row[currentKey];
+  } else if (!Object.hasOwn(row, currentKey)) {
+    // removed column
+    return row[baseKey];
+  } else if (row[baseKey] === row[currentKey]) {
+    // no change
+    return row[currentKey];
   }
 
-  const value = row[column.key];
-  const [renderedValue, grayOut] = toRenderedValue(value);
-  return <Text style={{ color: grayOut ? "gray" : "inherit" }}>{renderedValue}</Text>;
+  const [baseValue, baseGrayOut] = toRenderedValue(row, `base__${column.key}`);
+  const [currentValue, currentGrayOut] = toRenderedValue(row, `current__${column.key}`);
+
+  return (
+    <Flex gap="5px" alignItems="center" lineHeight="normal" height="100%">
+      <Badge
+        p="2px 5px"
+        fontSize="8pt"
+        minWidth="30px"
+        maxWidth="100px"
+        overflow={"hidden"}
+        textOverflow={"ellipsis"}
+        colorScheme="red">
+        {baseValue}
+      </Badge>
+
+      <Badge
+        p="2px 5px"
+        colorScheme="green"
+        maxWidth="100px"
+        fontSize="8pt"
+        overflow={"hidden"}
+        textOverflow={"ellipsis"}>
+        {currentValue}
+      </Badge>
+    </Flex>
+  );
 };
 
 export function toDataDiffGrid(
@@ -191,6 +239,7 @@ export function toDataDiffGrid(
   const primaryKeys = options?.primaryKeys || [];
   const pinnedColumns = options?.pinnedColumns || [];
   const changedOnly = options?.changedOnly || false;
+  const displayMode = options?.displayMode || "side_by_side";
 
   const columns: ColumnOrColumnGroup<any, any>[] = [];
   const columnMap = _getColumnMap(base, current);
@@ -337,35 +386,50 @@ export function toDataDiffGrid(
       return undefined;
     };
 
-    return {
-      headerCellClass,
-      name: (
-        <DataFrameColumnGroupHeader
-          name={name}
-          columnStatus={columnStatus}
-          {...options}></DataFrameColumnGroupHeader>
-      ),
-      children: [
-        {
-          key: `base__${name}`,
-          name: options?.baseTitle || "Base",
-          renderEditCell: textEditor,
-          headerCellClass,
-          cellClass,
-          renderCell: defaultRenderCell,
-          size: "auto",
-        },
-        {
-          key: `current__${name}`,
-          name: options?.currentTitle || "Current",
-          renderEditCell: textEditor,
-          headerCellClass,
-          cellClass,
-          renderCell: defaultRenderCell,
-          size: "auto",
-        },
-      ],
-    };
+    if (displayMode === "inline") {
+      return {
+        headerCellClass,
+        name: (
+          <DataFrameColumnGroupHeader
+            name={name}
+            columnStatus={columnStatus}
+            {...options}></DataFrameColumnGroupHeader>
+        ),
+        key: name,
+        renderCell: inlineRenderCell,
+        size: "auto",
+      };
+    } else {
+      return {
+        headerCellClass,
+        name: (
+          <DataFrameColumnGroupHeader
+            name={name}
+            columnStatus={columnStatus}
+            {...options}></DataFrameColumnGroupHeader>
+        ),
+        children: [
+          {
+            key: `base__${name}`,
+            name: options?.baseTitle || "Base",
+            renderEditCell: textEditor,
+            headerCellClass,
+            cellClass,
+            renderCell: defaultRenderCell,
+            size: "auto",
+          },
+          {
+            key: `current__${name}`,
+            name: options?.currentTitle || "Current",
+            renderEditCell: textEditor,
+            headerCellClass,
+            cellClass,
+            renderCell: defaultRenderCell,
+            size: "auto",
+          },
+        ],
+      };
+    }
   };
 
   // merges columns: primary keys

@@ -1,11 +1,34 @@
-import { Box, Center, Flex, forwardRef, Icon } from "@chakra-ui/react";
+import { Box, Button, Center, Flex, forwardRef, Icon, Spacer } from "@chakra-ui/react";
 
 import { ScreenshotDataGrid } from "../data-grid/ScreenshotDataGrid";
 import { RunResultViewProps } from "../run/types";
 
 import { ProfileDiffParams, ProfileDiffResult, ProfileDiffViewOptions } from "@/lib/api/profile";
-import { useMemo, useState } from "react";
+import { useMemo } from "react";
 import { toDataDiffGrid } from "../query/querydiff";
+import { RunToolbar } from "../run/RunToolbar";
+
+interface ProfileDiffToolbarProps {
+  viewOptions?: ProfileDiffViewOptions;
+  onViewOptionsChanged?: (viewOptions: ProfileDiffViewOptions) => void;
+}
+
+export const ProfileDiffToolbar = ({
+  viewOptions,
+  onViewOptionsChanged,
+}: ProfileDiffToolbarProps) => {
+  return (
+    <Flex
+      borderBottom="1px solid lightgray"
+      justifyContent="flex-end"
+      gap="5px"
+      alignItems="center"
+      px="10px">
+      <Spacer />
+      <Button>Toggle</Button>
+    </Flex>
+  );
+};
 
 interface ProfileDiffResultViewProp
   extends RunResultViewProps<ProfileDiffParams, ProfileDiffResult, ProfileDiffViewOptions> {}
@@ -37,6 +60,7 @@ const PrivateProfileDiffResultView = (
       primaryKeys: [primaryKey],
       pinnedColumns,
       onPinnedColumnsChange: handlePinnedColumnsChanged,
+      displayMode: "inline",
     });
   }, [result, primaryKey, pinnedColumns, viewOptions, onViewOptionsChanged]);
 
@@ -45,7 +69,8 @@ const PrivateProfileDiffResultView = (
   }
 
   return (
-    <>
+    <Flex direction="column" backgroundColor="rgb(249, 249, 249)" height={"100%"}>
+      <ProfileDiffToolbar viewOptions={viewOptions} />
       <ScreenshotDataGrid
         ref={ref}
         style={{ blockSize: "auto", maxHeight: "100%", overflow: "auto" }}
@@ -55,7 +80,7 @@ const PrivateProfileDiffResultView = (
         className="rdg-light"
         enableScreenshot={true}
       />
-    </>
+    </Flex>
   );
 };
 
