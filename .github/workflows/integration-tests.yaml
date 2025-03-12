@@ -50,6 +50,9 @@ jobs:
           ./integration_tests/dbt/smoke_test.sh
 
   smoke-test-cloud:
+    concurrency:
+      group: smoke-test-cloud
+      cancel-in-progress: false
     runs-on: ubuntu-latest
     strategy:
       max-parallel: 1
