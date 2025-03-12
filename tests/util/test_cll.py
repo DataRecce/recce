@@ -119,6 +119,28 @@ class ColumnLevelLineageTest(unittest.TestCase):
         assert result['c'].depends_on[0].node == 'table1'
         assert result['c'].depends_on[0].column == 'a'
 
+    def test_inline_alias_table(self):
+        sql = """
+        select
+            t2.id,
+            a as c,
+            jn.b
+        from t1 as t2
+        left join (
+            select
+                id,
+                b
+            from t3
+        ) as jn on t2.id = jn.id
+        """
+        result = cll(sql)
+        assert result['c'].type == 'renamed'
+        assert result['c'].depends_on[0].node == 't1'
+        assert result['c'].depends_on[0].column == 'a'
+        assert result['b'].type == 'passthrough'
+        assert result['b'].depends_on[0].node == 't3'
+        assert result['b'].depends_on[0].column == 'b'
+
     def test_forward_ref(self):
         sql = """
         select
@@ -278,6 +300,28 @@ class ColumnLevelLineageTest(unittest.TestCase):
         assert result['b'].type == 'derived'
         assert result['b'].depends_on[0].node == 'table1'
         assert result['b'].depends_on[0].column == 'a'
+
+        sql = """
+            with cte as (
+                select
+                    date_trunc('month', created_at) as d,
+                    count(*) as c
+                from t1
+                group by d
+            )
+            select
+                d,
+                sum(c) over (order by d) as c1
+            from cte
+            order by d
+        """
+
+        result = cll(sql)
+        assert result['d'].type == 'derived'
+        assert result['d'].depends_on[0].node == 't1'
+        assert result['d'].depends_on[0].column == 'created_at'
+        assert result['c1'].type == 'source'
+        assert len(result['c1'].depends_on) == 0
 
     def test_transform_nested_func(self):
         sql = """
