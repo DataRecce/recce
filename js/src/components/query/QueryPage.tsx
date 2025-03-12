@@ -43,7 +43,7 @@ export const HistoryToggle = () => {
 const QueryModeToggle = () => {
   const { isCustomQueries, setCustomQueries, sqlQuery, setBaseSqlQuery } = useRecceQueryContext();
   const handleToggle = () => {
-    if (!isCustomQueries) setBaseSqlQuery && setBaseSqlQuery(sqlQuery);
+    if (!isCustomQueries && setBaseSqlQuery) setBaseSqlQuery(sqlQuery);
     setCustomQueries(!isCustomQueries);
   };
   const customQueriesDescription =
@@ -93,7 +93,7 @@ export const QueryPage = () => {
           throw new Error(`Unknown query type: ${type}`);
       }
     }
-    const sqlTemplate = type === "query_base" ? baseSqlQuery || "" : sqlQuery;
+    const sqlTemplate = type === "query_base" ? (baseSqlQuery ?? "") : sqlQuery;
     const runFn = queryFactory(type);
     const params: QueryParams = { sql_template: sqlTemplate };
     const options: SubmitOptions = { nowait: true };
