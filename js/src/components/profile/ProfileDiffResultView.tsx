@@ -1,31 +1,44 @@
-import { Box, Button, Center, Flex, forwardRef, Icon, Spacer } from "@chakra-ui/react";
+import { Box, Button, Center, Flex, forwardRef, Icon, Spacer, ButtonGroup } from "@chakra-ui/react";
 
 import { ScreenshotDataGrid } from "../data-grid/ScreenshotDataGrid";
 import { RunResultViewProps } from "../run/types";
 
 import { ProfileDiffParams, ProfileDiffResult, ProfileDiffViewOptions } from "@/lib/api/profile";
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { toDataDiffGrid } from "../query/querydiff";
 import { RunToolbar } from "../run/RunToolbar";
+import { ToggleSwitch } from "./ToggleSwitch";
 
 interface ProfileDiffToolbarProps {
   viewOptions?: ProfileDiffViewOptions;
   onViewOptionsChanged?: (viewOptions: ProfileDiffViewOptions) => void;
 }
 
-export const ProfileDiffToolbar = ({
-  viewOptions,
-  onViewOptionsChanged,
-}: ProfileDiffToolbarProps) => {
+const ProfileDiffToolbar = ({ viewOptions, onViewOptionsChanged }: ProfileDiffToolbarProps) => {
+  const displayMode = viewOptions?.display_mode ?? "inline";
+
   return (
     <Flex
+      height="40px"
       borderBottom="1px solid lightgray"
       justifyContent="flex-end"
       gap="5px"
       alignItems="center"
       px="10px">
       <Spacer />
-      <Button>Toggle</Button>
+      <ToggleSwitch
+        value={displayMode === "side_by_side"}
+        onChange={(value) => {
+          if (onViewOptionsChanged) {
+            onViewOptionsChanged({
+              ...viewOptions,
+              display_mode: value ? "side_by_side" : "inline",
+            });
+          }
+        }}
+        textOff="Inline"
+        textOn="Side by side"
+      />
     </Flex>
   );
 };
@@ -60,7 +73,7 @@ const PrivateProfileDiffResultView = (
       primaryKeys: [primaryKey],
       pinnedColumns,
       onPinnedColumnsChange: handlePinnedColumnsChanged,
-      displayMode: "inline",
+      displayMode: viewOptions?.display_mode,
     });
   }, [result, primaryKey, pinnedColumns, viewOptions, onViewOptionsChanged]);
 
@@ -70,7 +83,7 @@ const PrivateProfileDiffResultView = (
 
   return (
     <Flex direction="column" backgroundColor="rgb(249, 249, 249)" height={"100%"}>
-      <ProfileDiffToolbar viewOptions={viewOptions} />
+      <ProfileDiffToolbar viewOptions={viewOptions} onViewOptionsChanged={onViewOptionsChanged} />
       <ScreenshotDataGrid
         ref={ref}
         style={{ blockSize: "auto", maxHeight: "100%", overflow: "auto" }}
