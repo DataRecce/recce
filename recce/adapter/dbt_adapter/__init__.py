@@ -689,7 +689,7 @@ class DbtAdapter(BaseAdapter):
                         'name': col.get('name'),
                         'type': col.get('data_type')
                     }
-                    for col in source['columns'].values()
+                    for col in source.get('columns', {}).values()
                 }
             }
 
