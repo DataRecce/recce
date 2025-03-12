@@ -1,21 +1,6 @@
-import {
-  Flex,
-  Text,
-  Stack,
-  Badge,
-  Spacer,
-  IconButton,
-  Button,
-  Icon,
-  Box,
-  BoxProps,
-} from "@chakra-ui/react";
-import { EditorProps, DiffEditor, Editor } from "@monaco-editor/react";
-import { on } from "events";
-import { BiLogoXing } from "react-icons/bi";
+import { Flex, Text, Stack, Spacer, Button, Icon } from "@chakra-ui/react";
+import { EditorProps, Editor } from "@monaco-editor/react";
 import { FaPlay } from "react-icons/fa6";
-import { RiPlayMiniFill } from "react-icons/ri";
-import { VscDebugStart } from "react-icons/vsc";
 
 export interface SqlEditorProps {
   language?: string;
@@ -64,7 +49,8 @@ const SqlEditor: React.FC<SqlEditorProps> = ({
           fontSize={"14px"}
           align="center"
           margin={"0"}
-          padding={"0px 16px"}>
+          padding={"0px 16px"}
+          flex="0 0 40px">
           <Text as="b">{label ? label.toUpperCase() : ""}</Text>
           <Spacer />
           {(onRun || onRunBase) && (
@@ -81,9 +67,7 @@ const SqlEditor: React.FC<SqlEditorProps> = ({
           )}
         </Flex>
       )}
-      {CustomEditor ? (
-        CustomEditor
-      ) : (
+      {CustomEditor ?? (
         <Editor
           language="sql"
           theme="vs"
@@ -147,7 +131,7 @@ export const DualSqlEditor: React.FC<DualSqlEditorProps> = ({
             onChange={onChangeBase}
             onRunBase={onRunBase}
             options={options}
-            CustomEditor={BaseEnvironmentSetupGuide ? BaseEnvironmentSetupGuide : undefined}
+            CustomEditor={BaseEnvironmentSetupGuide}
             {...props}
           />
         </Stack>

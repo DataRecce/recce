@@ -45,7 +45,6 @@ import { findByRunType } from "../run/registry";
 import { DisableTooltipMessages } from "@/constants/tooltipMessage";
 import { trackPreviewChange } from "@/lib/api/track";
 import { useRecceServerFlag } from "@/lib/hooks/useRecceServerFlag";
-import { SingleEnvironmentQueryView } from "./SingleEnvironmentQueryView";
 import { SandboxView } from "./SandboxView";
 import { ChevronDownIcon } from "@chakra-ui/icons";
 
@@ -68,11 +67,6 @@ export function NodeView({ node, onCloseNode }: NodeViewProps) {
     isOpen: isCodeDiffOpen,
     onOpen: onCodeDiffOpen,
     onClose: onCodeDiffClose,
-  } = useDisclosure();
-  const {
-    isOpen: isQueryViewOpen,
-    onOpen: onQueryViewOpen,
-    onClose: onQueryViewClose,
   } = useDisclosure();
   const { isOpen: isSandboxOpen, onOpen: onSandboxOpen, onClose: onSandboxClose } = useDisclosure();
   const { runAction } = useRecceActionContext();
@@ -261,7 +255,12 @@ export function NodeView({ node, onCloseNode }: NodeViewProps) {
         size="xs"
         colorScheme="blue"
         onClick={() => {
-          onQueryViewOpen();
+          if (envInfo?.adapterType === "dbt") {
+            setSqlQuery(`select * from {{ ref("${node.name}") }}`);
+          } else if (envInfo?.adapterType === "sqlmesh") {
+            setSqlQuery(`select * from ${node.name}`);
+          }
+          setLocation("/query");
         }}
         disabled={node.from === "base"}>
         Query
@@ -321,11 +320,6 @@ export function NodeView({ node, onCloseNode }: NodeViewProps) {
           </ModalBody>
         </ModalContent>
       </Modal>
-      <SingleEnvironmentQueryView
-        isOpen={isQueryViewOpen}
-        onClose={onQueryViewClose}
-        current={node.data.current}
-      />
       <SandboxView isOpen={isSandboxOpen} onClose={onSandboxClose} current={node.data.current} />
     </Grid>
   );

@@ -1,24 +1,19 @@
-import React, { CSSProperties, useState } from "react";
+import React, { useMemo } from "react";
 import { Box, Button, Flex, Icon, Spacer, Switch, Tooltip } from "@chakra-ui/react";
 import SqlEditor, { DualSqlEditor } from "./SqlEditor";
 import { defaultSqlQuery, useRecceQueryContext } from "@/lib/hooks/RecceQueryContext";
 
-import { QueryOptions, useMutation } from "@tanstack/react-query";
-import {
-  QueryDiffParams,
-  QueryParams,
-  submitQuery,
-  submitQueryBase,
-  submitQueryDiff,
-} from "@/lib/api/adhocQuery";
+import { useMutation } from "@tanstack/react-query";
+import { QueryParams, submitQuery, submitQueryBase, submitQueryDiff } from "@/lib/api/adhocQuery";
 import { useLineageGraphContext } from "@/lib/hooks/LineageGraphContext";
 import { QueryForm } from "./QueryForm";
-import { HSplit } from "../split/Split";
 import { useRecceActionContext } from "@/lib/hooks/RecceActionContext";
 import { SubmitOptions, waitRun } from "@/lib/api/runs";
-import { VscDiff, VscHistory } from "react-icons/vsc";
+import { VscHistory } from "react-icons/vsc";
 import { InfoIcon } from "@chakra-ui/icons";
 import { trackHistoryAction } from "@/lib/api/track";
+import { BaseEnvironmentSetupGuide } from "../lineage/SingleEnvironmentQueryView";
+import { useRecceServerFlag } from "@/lib/hooks/useRecceServerFlag";
 
 export const HistoryToggle = () => {
   const { isHistoryOpen, showHistory, closeHistory } = useRecceActionContext();
@@ -48,7 +43,7 @@ export const HistoryToggle = () => {
 const QueryModeToggle = () => {
   const { isCustomQueries, setCustomQueries, sqlQuery, setBaseSqlQuery } = useRecceQueryContext();
   const handleToggle = () => {
-    if (!isCustomQueries) setBaseSqlQuery && setBaseSqlQuery(sqlQuery);
+    if (!isCustomQueries && setBaseSqlQuery) setBaseSqlQuery(sqlQuery);
     setCustomQueries(!isCustomQueries);
   };
   const customQueriesDescription =
@@ -76,7 +71,8 @@ export const QueryPage = () => {
     setPrimaryKeys,
     isCustomQueries,
   } = useRecceQueryContext();
-  const { envInfo } = useLineageGraphContext();
+  const { lineageGraph, envInfo } = useLineageGraphContext();
+  const { data: flag } = useRecceServerFlag();
 
   let sqlQuery = _sqlQuery;
   if (envInfo?.adapterType === "sqlmesh" && _sqlQuery === defaultSqlQuery) {
@@ -97,7 +93,7 @@ export const QueryPage = () => {
           throw new Error(`Unknown query type: ${type}`);
       }
     }
-    const sqlTemplate = type === "query_base" ? baseSqlQuery || "" : sqlQuery;
+    const sqlTemplate = type === "query_base" ? (baseSqlQuery ?? "") : sqlQuery;
     const runFn = queryFactory(type);
     const params: QueryParams = { sql_template: sqlTemplate };
     const options: SubmitOptions = { nowait: true };
@@ -116,6 +112,63 @@ export const QueryPage = () => {
   const { mutate: runQuery, isPending } = useMutation({
     mutationFn: queryFn,
   });
+
+  const currentSchema = useMemo(() => {
+    // find the most common schema from the current lineage graph
+    const countMap: Record<string, number> = {};
+    for (const key in lineageGraph?.nodes) {
+      const schema = lineageGraph.nodes[key].data.current?.schema;
+      if (schema) {
+        countMap[schema] = (countMap[schema] || 0) + 1;
+      }
+    }
+    // Find the most common value
+    return Object.keys(countMap).reduce((mostCommon, current) => {
+      if (countMap[current] > (countMap[mostCommon] || 0)) {
+        return current;
+      }
+      return mostCommon;
+    }, "N/A");
+  }, [lineageGraph?.nodes]);
+
+  if (flag?.single_env_onboarding) {
+    return (
+      <Flex direction="column" height="100%">
+        <Flex
+          justifyContent="right"
+          alignItems="center"
+          padding="4pt 8pt"
+          gap="5px"
+          height="54px"
+          borderBottom="1px solid lightgray">
+          <HistoryToggle />
+          <Spacer />
+          {/* Disable the Diff button to let user known they should configure the base environment */}
+          <Tooltip
+            label="Please configure the base environment before running the diff"
+            placement="left">
+            <Button
+              colorScheme="blue"
+              isDisabled={true}
+              size="xs"
+              fontSize="14px"
+              marginTop={"16px"}>
+              Run Diff
+            </Button>
+          </Tooltip>
+        </Flex>
+        <DualSqlEditor
+          value={sqlQuery}
+          onChange={setSqlQuery}
+          onRun={() => {
+            runQuery("query");
+          }}
+          labels={["base (production)", `current (${currentSchema})`]}
+          BaseEnvironmentSetupGuide={<BaseEnvironmentSetupGuide />}
+        />
+      </Flex>
+    );
+  }
 
   return (
     <Flex direction="column" height="100%">
