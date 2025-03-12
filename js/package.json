@@ -32,7 +32,7 @@
     "@mui/x-charts": "^6.19.8",
     "@sentry/react": "^7.120.2",
     "@tanstack/react-query": "^5.62.8",
-    "axios": "^1.7.9",
+    "axios": "^1.8.2",
     "chakra-react-select": "^4.10.1",
     "chart.js": "^4.4.7",
     "common-tags": "^1.8.2",
