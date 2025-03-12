@@ -202,46 +202,51 @@ interface CopyableBadgeProps {
   grayOut: boolean;
 }
 
-const CopyableBadge = ({ value, colorScheme, grayOut }: CopyableBadgeProps) => {
+const CopyableText = ({ value, colorScheme, grayOut }: CopyableBadgeProps) => {
   const { onCopy, hasCopied } = useClipboard(value);
   const [isHovered, setIsHovered] = useState(false);
 
   return (
-    <Badge
+    <Flex
       p="2px 5px"
       fontSize="8pt"
       minWidth="30px"
       maxWidth="200px"
       overflow="hidden"
       textOverflow="ellipsis"
-      colorScheme={colorScheme}
+      color={`${colorScheme}.800`}
+      backgroundColor={`${colorScheme}.100`}
+      fontWeight="700"
+      alignItems="center"
+      gap="2px"
       onMouseEnter={() => {
         setIsHovered(true);
       }}
       onMouseLeave={() => {
         setIsHovered(false);
       }}>
-      <Flex width="100%" overflow="hidden" textOverflow="ellipsis" gap="2px">
-        <Box overflow="hidden" textOverflow="ellipsis" color={grayOut ? "gray" : "inherit"}>
-          {value}
-        </Box>
-        {hasCopied ? (
-          <>Copied</>
-        ) : isHovered && !grayOut ? (
-          <IconButton
-            aria-label="Copy"
-            icon={<CopyIcon boxSize="10px" />}
-            boxSize="10px"
-            size="xs"
-            minW="10px"
-            variant="unstyled"
-            onClick={onCopy}
-          />
-        ) : (
-          <></>
-        )}
-      </Flex>
-    </Badge>
+      <Box overflow="hidden" textOverflow="ellipsis" color={grayOut ? "gray" : "inherit"}>
+        {value}
+      </Box>
+      {hasCopied ? (
+        <>Copied</>
+      ) : isHovered && !grayOut ? (
+        <IconButton
+          aria-label="Copy"
+          icon={<CopyIcon boxSize="10px" />}
+          size="xs"
+          minW="10px"
+          h="10px"
+          variant="unstyled"
+          onClick={onCopy}
+          display="flex"
+          alignItems="center"
+          justifyContent="center"
+        />
+      ) : (
+        <></>
+      )}
+    </Flex>
   );
 };
 
@@ -266,9 +271,9 @@ export const inlineRenderCell = ({ row, column }: RenderCellProps<any, any>) => 
 
   return (
     <Flex gap="5px" alignItems="center" lineHeight="normal" height="100%">
-      {hasBase && <CopyableBadge value={baseValue} colorScheme="red" grayOut={baseGrayOut} />}
+      {hasBase && <CopyableText value={baseValue} colorScheme="red" grayOut={baseGrayOut} />}
       {hasCurrent && (
-        <CopyableBadge value={currentValue} colorScheme="green" grayOut={currentGrayOut} />
+        <CopyableText value={currentValue} colorScheme="green" grayOut={currentGrayOut} />
       )}
     </Flex>
   );

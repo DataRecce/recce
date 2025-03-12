@@ -73,7 +73,7 @@ const PrivateProfileDiffResultView = (
       primaryKeys: [primaryKey],
       pinnedColumns,
       onPinnedColumnsChange: handlePinnedColumnsChanged,
-      displayMode: viewOptions?.display_mode,
+      displayMode: viewOptions?.display_mode ?? "inline",
     });
   }, [result, primaryKey, pinnedColumns, viewOptions, onViewOptionsChanged]);
 
