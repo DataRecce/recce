@@ -17,6 +17,7 @@ import { DataFrame } from "@/lib/api/types";
 import { mergeKeysWithStatus } from "@/lib/mergeKeys";
 import { CopyIcon } from "@chakra-ui/icons";
 import { useState } from "react";
+import { string } from "node_modules/yaml/dist/schema/common/string";
 
 function _getColumnMap(base: DataFrame, current: DataFrame) {
   const result: Record<
@@ -170,7 +171,7 @@ const toRenderedValue = (row: any, key: string): [any, boolean] => {
   }
   const value = row[key];
 
-  let renderedValue;
+  let renderedValue: string;
   let grayOut = false;
 
   if (typeof value === "boolean") {
@@ -183,6 +184,7 @@ const toRenderedValue = (row: any, key: string): [any, boolean] => {
     renderedValue = "(null)";
     grayOut = true;
   } else {
+    // convert to string
     renderedValue = value;
   }
 
@@ -197,9 +199,10 @@ export const defaultRenderCell = ({ row, column }: RenderCellProps<any, any>) =>
 interface CopyableBadgeProps {
   value: string;
   colorScheme: string;
+  grayOut: boolean;
 }
 
-const CopyableBadge = ({ value, colorScheme }: CopyableBadgeProps) => {
+const CopyableBadge = ({ value, colorScheme, grayOut }: CopyableBadgeProps) => {
   const { onCopy, hasCopied } = useClipboard(value);
   const [isHovered, setIsHovered] = useState(false);
 
@@ -219,12 +222,12 @@ const CopyableBadge = ({ value, colorScheme }: CopyableBadgeProps) => {
         setIsHovered(false);
       }}>
       <Flex width="100%" overflow="hidden" textOverflow="ellipsis" gap="2px">
-        <Box overflow="hidden" textOverflow="ellipsis">
+        <Box overflow="hidden" textOverflow="ellipsis" color={grayOut ? "gray" : "inherit"}>
           {value}
         </Box>
         {hasCopied ? (
           <>Copied</>
-        ) : isHovered ? (
+        ) : isHovered && !grayOut ? (
           <IconButton
             aria-label="Copy"
             icon={<CopyIcon boxSize="10px" />}
@@ -238,16 +241,6 @@ const CopyableBadge = ({ value, colorScheme }: CopyableBadgeProps) => {
           <></>
         )}
       </Flex>
-      {/* <Flex>
-        
-        {hasCopied ? (
-          <>Copied</>
-        ) : isHovered ? (
-          <IconButton aria-label="Copy" icon={<CopyIcon />} size="xs" onClick={onCopy} ml="5px" />
-        ) : (
-          <></>
-        )}
-      </Flex> */}
     </Badge>
   );
 };
@@ -259,25 +252,24 @@ export const inlineRenderCell = ({ row, column }: RenderCellProps<any, any>) => 
   if (!Object.hasOwn(row, baseKey) && !Object.hasOwn(row, currentKey)) {
     // should not happen
     return "-";
-  } else if (!Object.hasOwn(row, baseKey)) {
-    // new added column
-    return row[currentKey];
-  } else if (!Object.hasOwn(row, currentKey)) {
-    // removed column
-    return row[baseKey];
-  } else if (row[baseKey] === row[currentKey]) {
-    // no change
-    return row[currentKey];
   }
 
+  const hasBase = Object.hasOwn(row, baseKey);
+  const hasCurrent = Object.hasOwn(row, currentKey);
   const [baseValue, baseGrayOut] = toRenderedValue(row, `base__${column.key}`);
   const [currentValue, currentGrayOut] = toRenderedValue(row, `current__${column.key}`);
 
+  if (row[baseKey] === row[currentKey]) {
+    // no change
+    return <Text style={{ color: currentGrayOut ? "gray" : "inherit" }}>{currentValue}</Text>;
+  }
+
   return (
     <Flex gap="5px" alignItems="center" lineHeight="normal" height="100%">
-      <CopyableBadge value={baseValue} colorScheme="green" />
-
-      <CopyableBadge value={currentValue} colorScheme="red" />
+      {hasBase && <CopyableBadge value={baseValue} colorScheme="red" grayOut={baseGrayOut} />}
+      {hasCurrent && (
+        <CopyableBadge value={currentValue} colorScheme="green" grayOut={currentGrayOut} />
+      )}
     </Flex>
   );
 };
