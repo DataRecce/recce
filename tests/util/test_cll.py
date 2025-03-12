@@ -301,6 +301,28 @@ class ColumnLevelLineageTest(unittest.TestCase):
         assert result['b'].depends_on[0].node == 'table1'
         assert result['b'].depends_on[0].column == 'a'
 
+        sql = """
+            with cte as (
+                select
+                    date_trunc('month', created_at) as d,
+                    count(*) as c
+                from t1
+                group by d
+            )
+            select
+                d,
+                sum(c) over (order by d) as c1
+            from cte
+            order by d
+        """
+
+        result = cll(sql)
+        assert result['d'].type == 'derived'
+        assert result['d'].depends_on[0].node == 't1'
+        assert result['d'].depends_on[0].column == 'created_at'
+        assert result['c1'].type == 'source'
+        assert len(result['c1'].depends_on) == 0
+
     def test_transform_nested_func(self):
         sql = """
         select

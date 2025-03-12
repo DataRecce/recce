@@ -266,8 +266,11 @@ def cll(sql, schema=None, dialect=None) -> Dict[str, ColumnLevelDependencyColumn
                 # transformation type
                 type = column_cll.type
                 if type == 'derived':
-                    # keep current scope type
-                    pass
+                    if len(dedup_col_depends_on) == 0:
+                        type = 'source'
+                    else:
+                        # keep current scope type
+                        pass
                 elif cte_type is not None:
                     if len(dedup_col_depends_on) > 1:
                         type = 'derived'
