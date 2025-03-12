@@ -144,7 +144,9 @@ export const QueryPage = () => {
           <HistoryToggle />
           <Spacer />
           {/* Disable the Diff button to let user known they should configure the base environment */}
-          <Tooltip label="Please configure the base environment before running the diff">
+          <Tooltip
+            label="Please configure the base environment before running the diff"
+            placement="left">
             <Button
               colorScheme="blue"
               isDisabled={true}
