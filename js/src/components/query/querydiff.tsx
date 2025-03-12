@@ -1,10 +1,22 @@
 import { ColumnOrColumnGroup, RenderCellProps, textEditor } from "react-data-grid";
 import _ from "lodash";
 import "./styles.css";
-import { Badge, Box, Center, Flex, Icon, Text } from "@chakra-ui/react";
+import {
+  Badge,
+  Box,
+  Center,
+  Flex,
+  Icon,
+  IconButton,
+  Text,
+  Tooltip,
+  useClipboard,
+} from "@chakra-ui/react";
 import { VscClose, VscKey, VscPin, VscPinned } from "react-icons/vsc";
 import { DataFrame } from "@/lib/api/types";
 import { mergeKeysWithStatus } from "@/lib/mergeKeys";
+import { CopyIcon } from "@chakra-ui/icons";
+import { useState } from "react";
 
 function _getColumnMap(base: DataFrame, current: DataFrame) {
   const result: Record<
@@ -182,6 +194,64 @@ export const defaultRenderCell = ({ row, column }: RenderCellProps<any, any>) =>
   return <Text style={{ color: grayOut ? "gray" : "inherit" }}>{renderedValue}</Text>;
 };
 
+interface CopyableBadgeProps {
+  value: string;
+  colorScheme: string;
+}
+
+const CopyableBadge = ({ value, colorScheme }: CopyableBadgeProps) => {
+  const { onCopy, hasCopied } = useClipboard(value);
+  const [isHovered, setIsHovered] = useState(false);
+
+  return (
+    <Badge
+      p="2px 5px"
+      fontSize="8pt"
+      minWidth="30px"
+      maxWidth="200px"
+      overflow="hidden"
+      textOverflow="ellipsis"
+      colorScheme={colorScheme}
+      onMouseEnter={() => {
+        setIsHovered(true);
+      }}
+      onMouseLeave={() => {
+        setIsHovered(false);
+      }}>
+      <Flex width="100%" overflow="hidden" textOverflow="ellipsis" gap="2px">
+        <Box overflow="hidden" textOverflow="ellipsis">
+          {value}
+        </Box>
+        {hasCopied ? (
+          <>Copied</>
+        ) : isHovered ? (
+          <IconButton
+            aria-label="Copy"
+            icon={<CopyIcon boxSize="10px" />}
+            boxSize="10px"
+            size="xs"
+            minW="10px"
+            variant="unstyled"
+            onClick={onCopy}
+          />
+        ) : (
+          <></>
+        )}
+      </Flex>
+      {/* <Flex>
+        
+        {hasCopied ? (
+          <>Copied</>
+        ) : isHovered ? (
+          <IconButton aria-label="Copy" icon={<CopyIcon />} size="xs" onClick={onCopy} ml="5px" />
+        ) : (
+          <></>
+        )}
+      </Flex> */}
+    </Badge>
+  );
+};
+
 export const inlineRenderCell = ({ row, column }: RenderCellProps<any, any>) => {
   const baseKey = `base__${column.key}`;
   const currentKey = `current__${column.key}`;
@@ -205,26 +275,9 @@ export const inlineRenderCell = ({ row, column }: RenderCellProps<any, any>) => 
 
   return (
     <Flex gap="5px" alignItems="center" lineHeight="normal" height="100%">
-      <Badge
-        p="2px 5px"
-        fontSize="8pt"
-        minWidth="30px"
-        maxWidth="100px"
-        overflow={"hidden"}
-        textOverflow={"ellipsis"}
-        colorScheme="red">
-        {baseValue}
-      </Badge>
+      <CopyableBadge value={baseValue} colorScheme="green" />
 
-      <Badge
-        p="2px 5px"
-        colorScheme="green"
-        maxWidth="100px"
-        fontSize="8pt"
-        overflow={"hidden"}
-        textOverflow={"ellipsis"}>
-        {currentValue}
-      </Badge>
+      <CopyableBadge value={currentValue} colorScheme="red" />
     </Flex>
   );
 };
