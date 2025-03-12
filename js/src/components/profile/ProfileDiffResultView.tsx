@@ -1,12 +1,12 @@
-import { Box, Button, Center, Flex, forwardRef, Icon, Spacer, ButtonGroup } from "@chakra-ui/react";
+import { Center, Flex, forwardRef, Spacer } from "@chakra-ui/react";
 
 import { ScreenshotDataGrid } from "../data-grid/ScreenshotDataGrid";
 import { RunResultViewProps } from "../run/types";
 
 import { ProfileDiffParams, ProfileDiffResult, ProfileDiffViewOptions } from "@/lib/api/profile";
-import { useMemo, useState } from "react";
-import { toDataDiffGrid } from "../query/querydiff";
-import { RunToolbar } from "../run/RunToolbar";
+import { useMemo } from "react";
+import { DiffText, toDataDiffGrid } from "../query/querydiff";
+
 import { ToggleSwitch } from "./ToggleSwitch";
 
 interface ProfileDiffToolbarProps {
@@ -22,10 +22,16 @@ const ProfileDiffToolbar = ({ viewOptions, onViewOptionsChanged }: ProfileDiffTo
       height="40px"
       borderBottom="1px solid lightgray"
       justifyContent="flex-end"
-      gap="5px"
+      gap="10px"
       alignItems="center"
       px="10px">
       <Spacer />
+      {displayMode === "inline" && (
+        <>
+          <DiffText value="Base" colorScheme="red" grayOut={false} fontSize="10pt" noCopy />
+          <DiffText value="Current" colorScheme="green" grayOut={false} fontSize="10pt" noCopy />
+        </>
+      )}
       <ToggleSwitch
         value={displayMode === "side_by_side"}
         onChange={(value) => {

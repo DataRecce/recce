@@ -199,26 +199,57 @@ export const defaultRenderCell = ({ row, column }: RenderCellProps<any, any>) =>
 interface CopyableBadgeProps {
   value: string;
   colorScheme: string;
-  grayOut: boolean;
+  grayOut?: boolean;
+  noCopy?: boolean;
+  fontSize?: string;
 }
 
-const CopyableText = ({ value, colorScheme, grayOut }: CopyableBadgeProps) => {
+export const DiffText = ({ value, colorScheme, grayOut, noCopy, fontSize }: CopyableBadgeProps) => {
   const { onCopy, hasCopied } = useClipboard(value);
   const [isHovered, setIsHovered] = useState(false);
+
+  const CopyControl = () => {
+    if (noCopy || grayOut) {
+      return <></>;
+    }
+
+    if (hasCopied) {
+      return <>Copied</>;
+    }
+
+    if (!isHovered) {
+      return <></>;
+    }
+
+    return (
+      <IconButton
+        aria-label="Copy"
+        icon={<CopyIcon boxSize="10px" />}
+        size="xs"
+        minW="10px"
+        h="10px"
+        variant="unstyled"
+        onClick={onCopy}
+        display="flex"
+        alignItems="center"
+        justifyContent="center"
+      />
+    );
+  };
 
   return (
     <Flex
       p="2px 5px"
-      fontSize="8pt"
       minWidth="30px"
       maxWidth="200px"
       overflow="hidden"
       textOverflow="ellipsis"
       color={`${colorScheme}.800`}
       backgroundColor={`${colorScheme}.100`}
-      fontWeight="700"
       alignItems="center"
       gap="2px"
+      rounded="md"
+      fontSize={fontSize}
       onMouseEnter={() => {
         setIsHovered(true);
       }}
@@ -228,24 +259,8 @@ const CopyableText = ({ value, colorScheme, grayOut }: CopyableBadgeProps) => {
       <Box overflow="hidden" textOverflow="ellipsis" color={grayOut ? "gray" : "inherit"}>
         {value}
       </Box>
-      {hasCopied ? (
-        <>Copied</>
-      ) : isHovered && !grayOut ? (
-        <IconButton
-          aria-label="Copy"
-          icon={<CopyIcon boxSize="10px" />}
-          size="xs"
-          minW="10px"
-          h="10px"
-          variant="unstyled"
-          onClick={onCopy}
-          display="flex"
-          alignItems="center"
-          justifyContent="center"
-        />
-      ) : (
-        <></>
-      )}
+
+      <CopyControl />
     </Flex>
   );
 };
@@ -271,10 +286,8 @@ export const inlineRenderCell = ({ row, column }: RenderCellProps<any, any>) => 
 
   return (
     <Flex gap="5px" alignItems="center" lineHeight="normal" height="100%">
-      {hasBase && <CopyableText value={baseValue} colorScheme="red" grayOut={baseGrayOut} />}
-      {hasCurrent && (
-        <CopyableText value={currentValue} colorScheme="green" grayOut={currentGrayOut} />
-      )}
+      {hasBase && <DiffText value={baseValue} colorScheme="red" grayOut={baseGrayOut} />}
+      {hasCurrent && <DiffText value={currentValue} colorScheme="green" grayOut={currentGrayOut} />}
     </Flex>
   );
 };
