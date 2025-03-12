@@ -119,6 +119,28 @@ class ColumnLevelLineageTest(unittest.TestCase):
         assert result['c'].depends_on[0].node == 'table1'
         assert result['c'].depends_on[0].column == 'a'
 
+    def test_inline_alias_table(self):
+        sql = """
+        select
+            t2.id,
+            a as c,
+            jn.b
+        from t1 as t2
+        left join (
+            select
+                id,
+                b
+            from t3
+        ) as jn on t2.id = jn.id
+        """
+        result = cll(sql)
+        assert result['c'].type == 'renamed'
+        assert result['c'].depends_on[0].node == 't1'
+        assert result['c'].depends_on[0].column == 'a'
+        assert result['b'].type == 'passthrough'
+        assert result['b'].depends_on[0].node == 't3'
+        assert result['b'].depends_on[0].column == 'b'
+
     def test_forward_ref(self):
         sql = """
         select

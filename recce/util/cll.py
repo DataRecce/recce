@@ -5,7 +5,7 @@ from typing import Dict, List, Literal
 from sqlglot import parse_one, Dialect
 from sqlglot.errors import SqlglotError, OptimizeError
 from sqlglot.expressions import Column, Alias, Func, Binary, Paren, Case, Expression, If, Union, Intersect
-from sqlglot.optimizer import traverse_scope
+from sqlglot.optimizer import traverse_scope, Scope
 from sqlglot.optimizer.qualify import qualify
 
 from recce.exceptions import RecceException
@@ -91,7 +91,7 @@ def _cll_expression(expression, table_alias_map) -> ColumnLevelDependencyColumn:
         if alias is None:
             table = next(iter(table_alias_map.values()))
         else:
-            table = table_alias_map[alias]
+            table = table_alias_map.get(alias, alias)
 
         return ColumnLevelDependencyColumn(
             type='passthrough',
@@ -232,7 +232,13 @@ def cll(sql, schema=None, dialect=None) -> Dict[str, ColumnLevelDependencyColumn
                 for col_dep in column_cll.depends_on:
                     col_dep_node = col_dep.node
                     col_dep_column = col_dep.column
+                    # cte
                     cte_scope = scope.cte_sources.get(col_dep_node)
+                    # inline derived table
+                    source_scope = None
+                    if isinstance(scope.sources.get(col_dep_node), Scope):
+                        source_scope = scope.sources.get(col_dep_node)
+
                     if cte_scope is not None:
                         cte_cll = global_lineage[cte_scope]
                         if cte_cll is None or cte_cll.get(col_dep_column) is None:
@@ -240,6 +246,11 @@ def cll(sql, schema=None, dialect=None) -> Dict[str, ColumnLevelDependencyColumn
                             continue
                         cte_type = cte_cll.get(col_dep_column).type
                         flatten_col_depends_on.extend(cte_cll.get(col_dep_column).depends_on)
+                    elif source_scope is not None:
+                        source_cll = global_lineage[source_scope]
+                        if source_cll is None or source_cll.get(col_dep_column) is None:
+                            continue
+                        flatten_col_depends_on.extend(source_cll.get(col_dep_column).depends_on)
                     else:
                         flatten_col_depends_on.append(col_dep)
 
