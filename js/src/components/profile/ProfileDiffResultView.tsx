@@ -19,7 +19,7 @@ const ProfileDiffToolbar = ({ viewOptions, onViewOptionsChanged }: ProfileDiffTo
 
   return (
     <Flex
-      height="40px"
+      minHeight="32px"
       borderBottom="1px solid lightgray"
       justifyContent="flex-end"
       gap="10px"
