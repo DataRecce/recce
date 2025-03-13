@@ -2,7 +2,7 @@ import "react-data-grid/lib/styles.css";
 import DataGrid, { DataGridProps } from "react-data-grid";
 import { Flex, forwardRef, Text } from "@chakra-ui/react";
 
-interface ScreenshotDataGridProps extends DataGridProps<any> {}
+type ScreenshotDataGridProps = DataGridProps<any>;
 
 export const ScreenshotDataGrid = forwardRef(({ ...props }: ScreenshotDataGridProps, ref: any) => {
   return (

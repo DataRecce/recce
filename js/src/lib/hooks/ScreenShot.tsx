@@ -93,7 +93,7 @@ export function useCopyToClipboard({
       nodeToUse.style.borderRadius = boardEffect ? borderRadius : "";
       nodeToUse.style.backgroundColor = backgroundColor || "";
       // after firefox v125, html2canvas can't get the correct style height of the element to clone
-      nodeToUse.style.height = nodeToUse.offsetHeight + "px";
+      nodeToUse.style.height = `${String(nodeToUse.offsetHeight)}px`;
 
       // Add style to make images inline-block
       // ref: https://github.com/niklasvh/html2canvas/issues/2107#issuecomment-1316354455

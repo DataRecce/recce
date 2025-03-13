@@ -11,7 +11,7 @@ interface ValueDiffFormParams {
   columns?: string[];
 }
 
-interface ValueDiffFormProp extends RunFormProps<ValueDiffFormParams> {}
+type ValueDiffFormProp = RunFormProps<ValueDiffFormParams>;
 
 export function ValueDiffForm({ params, onParamsChanged, setIsReadyToExecute }: ValueDiffFormProp) {
   const [allColumns, setAllColumns] = useState<boolean>(

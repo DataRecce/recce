@@ -48,7 +48,7 @@ export interface SQLMeshInfo {
   current_env: string;
 }
 
-export interface CatalogMetadata extends ArtifactMetadata {}
+export type CatalogMetadata = ArtifactMetadata;
 
 export interface LineageData {
   metadata: {
