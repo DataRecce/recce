@@ -27,16 +27,17 @@ import {
   Icon,
   MenuGroup,
   Tooltip,
+  IconButton,
 } from "@chakra-ui/react";
 
-import { FaCode } from "react-icons/fa";
+import { FaExpandArrowsAlt } from "react-icons/fa";
 import { LineageGraphNode } from "./lineage";
 import { SchemaView, SingleEnvSchemaView } from "../schema/SchemaView";
 import { useRecceQueryContext } from "@/lib/hooks/RecceQueryContext";
 import { SqlDiffView } from "../schema/SqlDiffView";
 import { useLocation } from "wouter";
 import { ResourceTypeTag, RowCountDiffTag, RowCountTag } from "./NodeTag";
-import { useCallback } from "react";
+import { useCallback, useState } from "react";
 import { useRecceActionContext } from "@/lib/hooks/RecceActionContext";
 import { useLineageGraphContext } from "@/lib/hooks/LineageGraphContext";
 import useModelColumns from "@/lib/hooks/useModelColumns";
@@ -48,12 +49,63 @@ import { useRecceServerFlag } from "@/lib/hooks/useRecceServerFlag";
 import { SandboxView } from "./SandboxView";
 import { ChevronDownIcon } from "@chakra-ui/icons";
 
+const CodeTabContent = ({ node }: Partial<NodeViewProps>) => {
+  const { isOpen: isOpen, onOpen: onOpen, onClose: onClose } = useDisclosure();
+  const [isHovered, setIsHovered] = useState(false);
+  if (!node) {
+    return <></>;
+  }
+
+  if (node.resourceType !== "model" && node.resourceType !== "snapshot") {
+    return "Not available";
+  }
+
+  return (
+    <Box
+      style={{ position: "relative", padding: "10px" }}
+      height="100%"
+      onMouseEnter={() => {
+        setIsHovered(true);
+      }}
+      onMouseLeave={() => {
+        setIsHovered(false);
+      }}>
+      <SqlDiffView
+        base={node.data.base}
+        current={node.data.current}
+        options={{ renderSideBySide: false }}
+      />
+      <IconButton
+        icon={<FaExpandArrowsAlt />}
+        onClick={onOpen}
+        size="md"
+        aria-label={""}
+        style={{
+          position: "absolute",
+          top: "10px",
+          right: "60px",
+          opacity: isHovered ? 0.5 : 0.1,
+          transition: "opacity 0.3s ease-in-out",
+        }}
+      />
+      <Modal isOpen={isOpen} onClose={onClose} size="6xl">
+        <ModalOverlay />
+        <ModalContent overflowY="auto" height="75%">
+          <ModalHeader>Model Raw Code Diff</ModalHeader>
+          <ModalCloseButton />
+          <ModalBody>
+            <SqlDiffView base={node.data.base} current={node.data.current} />
+          </ModalBody>
+        </ModalContent>
+      </Modal>
+    </Box>
+  );
+};
+
 interface NodeViewProps {
   node: LineageGraphNode;
   onCloseNode: () => void;
 }
-
-const EmptyIcon = () => <Box as="span" w="12px" />;
 
 export function NodeView({ node, onCloseNode }: NodeViewProps) {
   const [, setLocation] = useLocation();
@@ -64,11 +116,7 @@ export function NodeView({ node, onCloseNode }: NodeViewProps) {
     node.resourceType === "source" ||
     node.resourceType === "snapshot";
   const withCodeDiff = node.resourceType === "model" || node.resourceType === "snapshot";
-  const {
-    isOpen: isCodeDiffOpen,
-    onOpen: onCodeDiffOpen,
-    onClose: onCodeDiffClose,
-  } = useDisclosure();
+
   const { isOpen: isSandboxOpen, onOpen: onSandboxOpen, onClose: onSandboxClose } = useDisclosure();
   const { runAction } = useRecceActionContext();
   const { envInfo, isActionAvailable } = useLineageGraphContext();
@@ -150,11 +198,6 @@ export function NodeView({ node, onCloseNode }: NodeViewProps) {
             </MenuItem>
             <MenuDivider />
             <MenuGroup title="Diff" m="0" p="4px 12px">
-              {withCodeDiff && (
-                <MenuItem onClick={onCodeDiffOpen} icon={<FaCode />} fontSize="14px">
-                  Code Diff
-                </MenuItem>
-              )}
               <MenuItem
                 icon={<Icon as={findByRunType("row_count_diff")?.icon} />}
                 fontSize="14px"
@@ -310,29 +353,11 @@ export function NodeView({ node, onCloseNode }: NodeViewProps) {
               )}
             </TabPanel>
             <TabPanel height="100%" p={0}>
-              {withCodeDiff ? (
-                <SqlDiffView
-                  base={node.data.base}
-                  current={node.data.current}
-                  options={{ renderSideBySide: false }}
-                />
-              ) : (
-                "Not available"
-              )}
+              <CodeTabContent node={node} />
             </TabPanel>
           </TabPanels>
         </Tabs>
       )}
-      <Modal isOpen={isCodeDiffOpen} onClose={onCodeDiffClose} size="6xl">
-        <ModalOverlay />
-        <ModalContent overflowY="auto" height="75%">
-          <ModalHeader>Model Raw Code Diff</ModalHeader>
-          <ModalCloseButton />
-          <ModalBody>
-            <SqlDiffView base={node.data.base} current={node.data.current} />
-          </ModalBody>
-        </ModalContent>
-      </Modal>
       <SandboxView isOpen={isSandboxOpen} onClose={onSandboxClose} current={node.data.current} />
     </Grid>
   );
