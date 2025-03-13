@@ -1,12 +1,13 @@
 import { NodeData } from "@/lib/api/info";
-import { Box, Flex, ResponsiveValue, Stack } from "@chakra-ui/react";
+import { Box } from "@chakra-ui/react";
 import { DiffEditor } from "@monaco-editor/react";
 import type { editor as monacoEditor } from "monaco-editor";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef } from "react";
 
 interface SqlDiffProps {
   base?: NodeData;
   current?: NodeData;
+  options?: monacoEditor.IDiffEditorConstructionOptions;
 }
 
 interface UseDiffEditorSync {
@@ -34,7 +35,7 @@ function useDiffEditorSync(value: string, onChange: (value: string) => void): Us
   };
 }
 
-export function SqlDiffView({ base, current }: SqlDiffProps) {
+export function SqlDiffView({ base, current, options }: SqlDiffProps) {
   return (
     <DiffEditor
       height="100%"
@@ -44,12 +45,12 @@ export function SqlDiffView({ base, current }: SqlDiffProps) {
       modified={current?.raw_code}
       options={{
         readOnly: true,
-        fontSize: 14,
         lineNumbers: "on",
         automaticLayout: true,
         minimap: { enabled: false },
-        wordWrap: "on",
-        wrappingIndent: "same",
+        // wordWrap: "on",
+        // wrappingIndent: "same",
+        ...options,
       }}
     />
   );

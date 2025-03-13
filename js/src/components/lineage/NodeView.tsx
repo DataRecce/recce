@@ -63,6 +63,7 @@ export function NodeView({ node, onCloseNode }: NodeViewProps) {
     node.resourceType === "seed" ||
     node.resourceType === "source" ||
     node.resourceType === "snapshot";
+  const withCodeDiff = node.resourceType === "model" || node.resourceType === "snapshot";
   const {
     isOpen: isCodeDiffOpen,
     onOpen: onCodeDiffOpen,
@@ -149,7 +150,7 @@ export function NodeView({ node, onCloseNode }: NodeViewProps) {
             </MenuItem>
             <MenuDivider />
             <MenuGroup title="Diff" m="0" p="4px 12px">
-              {(node.resourceType === "model" || node.resourceType === "snapshot") && (
+              {withCodeDiff && (
                 <MenuItem onClick={onCodeDiffOpen} icon={<FaCode />} fontSize="14px">
                   Code Diff
                 </MenuItem>
@@ -298,6 +299,7 @@ export function NodeView({ node, onCloseNode }: NodeViewProps) {
         <Tabs overflow="auto" as={Flex}>
           <TabList>
             <Tab>Columns</Tab>
+            <Tab>Code</Tab>
           </TabList>
           <TabPanels overflow="auto" height="calc(100% - 42px)">
             <TabPanel p={0} overflowY="auto" height="100%">
@@ -305,6 +307,17 @@ export function NodeView({ node, onCloseNode }: NodeViewProps) {
                 <SingleEnvSchemaView current={node.data.current} />
               ) : (
                 <SchemaView base={node.data.base} current={node.data.current} />
+              )}
+            </TabPanel>
+            <TabPanel height="100%" p={0}>
+              {withCodeDiff ? (
+                <SqlDiffView
+                  base={node.data.base}
+                  current={node.data.current}
+                  options={{ renderSideBySide: false }}
+                />
+              ) : (
+                "Not available"
               )}
             </TabPanel>
           </TabPanels>
