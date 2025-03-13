@@ -1,10 +1,12 @@
 import { ColumnOrColumnGroup, RenderCellProps, textEditor } from "react-data-grid";
 import _ from "lodash";
 import "./styles.css";
-import { Box, Flex, Icon, Text } from "@chakra-ui/react";
+import { Box, Flex, Icon, IconButton, Text, useClipboard } from "@chakra-ui/react";
 import { VscClose, VscKey, VscPin, VscPinned } from "react-icons/vsc";
 import { DataFrame } from "@/lib/api/types";
 import { mergeKeysWithStatus } from "@/lib/mergeKeys";
+import { CopyIcon } from "@chakra-ui/icons";
+import { useState } from "react";
 
 function _getColumnMap(base: DataFrame, current: DataFrame) {
   const result: Record<
@@ -73,6 +75,7 @@ export interface QueryDataDiffGridOptions {
   changedOnly?: boolean;
   baseTitle?: string;
   currentTitle?: string;
+  displayMode?: "side_by_side" | "inline";
 }
 
 function DataFrameColumnGroupHeader({
@@ -151,8 +154,13 @@ function DataFrameColumnGroupHeader({
   );
 }
 
-const toRenderedValue = (value: any): [any, boolean] => {
-  let renderedValue;
+const toRenderedValue = (row: any, key: string): [any, boolean] => {
+  if (!Object.hasOwn(row, key)) {
+    return ["-", true];
+  }
+  const value = row[key];
+
+  let renderedValue: string;
   let grayOut = false;
 
   if (typeof value === "boolean") {
@@ -165,6 +173,7 @@ const toRenderedValue = (value: any): [any, boolean] => {
     renderedValue = "(null)";
     grayOut = true;
   } else {
+    // convert to string
     renderedValue = value;
   }
 
@@ -172,13 +181,104 @@ const toRenderedValue = (value: any): [any, boolean] => {
 };
 
 export const defaultRenderCell = ({ row, column }: RenderCellProps<any, any>) => {
-  if (!Object.hasOwn(row, column.key)) {
-    return <Text style={{ color: "gray" }}>-</Text>;
+  const [renderedValue, grayOut] = toRenderedValue(row, column.key);
+  return <Text style={{ color: grayOut ? "gray" : "inherit" }}>{renderedValue}</Text>;
+};
+
+interface CopyableBadgeProps {
+  value: string;
+  colorScheme: string;
+  grayOut?: boolean;
+  noCopy?: boolean;
+  fontSize?: string;
+}
+
+export const DiffText = ({ value, colorScheme, grayOut, noCopy, fontSize }: CopyableBadgeProps) => {
+  const { onCopy, hasCopied } = useClipboard(value);
+  const [isHovered, setIsHovered] = useState(false);
+
+  const CopyControl = () => {
+    if (noCopy || grayOut) {
+      return <></>;
+    }
+
+    if (hasCopied) {
+      return <>Copied</>;
+    }
+
+    if (!isHovered) {
+      return <></>;
+    }
+
+    return (
+      <IconButton
+        aria-label="Copy"
+        icon={<CopyIcon boxSize="10px" />}
+        size="xs"
+        minW="10px"
+        h="10px"
+        variant="unstyled"
+        onClick={onCopy}
+        display="flex"
+        alignItems="center"
+        justifyContent="center"
+      />
+    );
+  };
+
+  return (
+    <Flex
+      p="2px 5px"
+      minWidth="30px"
+      maxWidth="200px"
+      overflow="hidden"
+      textOverflow="ellipsis"
+      color={`${colorScheme}.800`}
+      backgroundColor={`${colorScheme}.100`}
+      alignItems="center"
+      gap="2px"
+      rounded="md"
+      fontSize={fontSize}
+      onMouseEnter={() => {
+        setIsHovered(true);
+      }}
+      onMouseLeave={() => {
+        setIsHovered(false);
+      }}>
+      <Box overflow="hidden" textOverflow="ellipsis" color={grayOut ? "gray" : "inherit"}>
+        {value}
+      </Box>
+
+      <CopyControl />
+    </Flex>
+  );
+};
+
+export const inlineRenderCell = ({ row, column }: RenderCellProps<any, any>) => {
+  const baseKey = `base__${column.key}`;
+  const currentKey = `current__${column.key}`;
+
+  if (!Object.hasOwn(row, baseKey) && !Object.hasOwn(row, currentKey)) {
+    // should not happen
+    return "-";
   }
 
-  const value = row[column.key];
-  const [renderedValue, grayOut] = toRenderedValue(value);
-  return <Text style={{ color: grayOut ? "gray" : "inherit" }}>{renderedValue}</Text>;
+  const hasBase = Object.hasOwn(row, baseKey);
+  const hasCurrent = Object.hasOwn(row, currentKey);
+  const [baseValue, baseGrayOut] = toRenderedValue(row, `base__${column.key}`);
+  const [currentValue, currentGrayOut] = toRenderedValue(row, `current__${column.key}`);
+
+  if (row[baseKey] === row[currentKey]) {
+    // no change
+    return <Text style={{ color: currentGrayOut ? "gray" : "inherit" }}>{currentValue}</Text>;
+  }
+
+  return (
+    <Flex gap="5px" alignItems="center" lineHeight="normal" height="100%">
+      {hasBase && <DiffText value={baseValue} colorScheme="red" grayOut={baseGrayOut} />}
+      {hasCurrent && <DiffText value={currentValue} colorScheme="green" grayOut={currentGrayOut} />}
+    </Flex>
+  );
 };
 
 export function toDataDiffGrid(
@@ -191,6 +291,7 @@ export function toDataDiffGrid(
   const primaryKeys = options?.primaryKeys || [];
   const pinnedColumns = options?.pinnedColumns || [];
   const changedOnly = options?.changedOnly || false;
+  const displayMode = options?.displayMode || "side_by_side";
 
   const columns: ColumnOrColumnGroup<any, any>[] = [];
   const columnMap = _getColumnMap(base, current);
@@ -337,35 +438,50 @@ export function toDataDiffGrid(
       return undefined;
     };
 
-    return {
-      headerCellClass,
-      name: (
-        <DataFrameColumnGroupHeader
-          name={name}
-          columnStatus={columnStatus}
-          {...options}></DataFrameColumnGroupHeader>
-      ),
-      children: [
-        {
-          key: `base__${name}`,
-          name: options?.baseTitle || "Base",
-          renderEditCell: textEditor,
-          headerCellClass,
-          cellClass,
-          renderCell: defaultRenderCell,
-          size: "auto",
-        },
-        {
-          key: `current__${name}`,
-          name: options?.currentTitle || "Current",
-          renderEditCell: textEditor,
-          headerCellClass,
-          cellClass,
-          renderCell: defaultRenderCell,
-          size: "auto",
-        },
-      ],
-    };
+    if (displayMode === "inline") {
+      return {
+        headerCellClass,
+        name: (
+          <DataFrameColumnGroupHeader
+            name={name}
+            columnStatus={columnStatus}
+            {...options}></DataFrameColumnGroupHeader>
+        ),
+        key: name,
+        renderCell: inlineRenderCell,
+        size: "auto",
+      };
+    } else {
+      return {
+        headerCellClass,
+        name: (
+          <DataFrameColumnGroupHeader
+            name={name}
+            columnStatus={columnStatus}
+            {...options}></DataFrameColumnGroupHeader>
+        ),
+        children: [
+          {
+            key: `base__${name}`,
+            name: options?.baseTitle || "Base",
+            renderEditCell: textEditor,
+            headerCellClass,
+            cellClass,
+            renderCell: defaultRenderCell,
+            size: "auto",
+          },
+          {
+            key: `current__${name}`,
+            name: options?.currentTitle || "Current",
+            renderEditCell: textEditor,
+            headerCellClass,
+            cellClass,
+            renderCell: defaultRenderCell,
+            size: "auto",
+          },
+        ],
+      };
+    }
   };
 
   // merges columns: primary keys

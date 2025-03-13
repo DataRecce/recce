@@ -100,7 +100,7 @@ const PrivateValueDiffDetailResultView = (
         style={{ blockSize: "auto", maxHeight: "100%", overflow: "auto" }}
         columns={gridData.columns}
         rows={gridData.rows}
-        renderers={{ noRowsFallback: <EmptyRowsRenderer /> }}
+        renderers={{ noRowsFallback: <EmptyRowsRenderer emptyMessage="No mismatched rows" /> }}
         defaultColumnOptions={{ resizable: true, maxWidth: 800, minWidth: 35 }}
         className="rdg-light"
         enableScreenshot={true}

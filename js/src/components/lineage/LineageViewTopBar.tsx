@@ -261,7 +261,6 @@ const NodeSelectionInput = (props: {
       }}
       label={props.tooltipComponent}
       placement="bottom-start"
-      defaultIsOpen={true}
       color={"black"}
       backgroundColor={"white"}
       closeOnClick={false}
