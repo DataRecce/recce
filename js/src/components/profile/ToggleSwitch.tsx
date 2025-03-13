@@ -1,6 +1,4 @@
 import { ButtonGroup, Button } from "@chakra-ui/react";
-import { on } from "events";
-import { useState } from "react";
 
 interface ToggleSwitchProps {
   value: boolean;

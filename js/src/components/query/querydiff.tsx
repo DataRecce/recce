@@ -1,23 +1,12 @@
 import { ColumnOrColumnGroup, RenderCellProps, textEditor } from "react-data-grid";
 import _ from "lodash";
 import "./styles.css";
-import {
-  Badge,
-  Box,
-  Center,
-  Flex,
-  Icon,
-  IconButton,
-  Text,
-  Tooltip,
-  useClipboard,
-} from "@chakra-ui/react";
+import { Box, Flex, Icon, IconButton, Text, useClipboard } from "@chakra-ui/react";
 import { VscClose, VscKey, VscPin, VscPinned } from "react-icons/vsc";
 import { DataFrame } from "@/lib/api/types";
 import { mergeKeysWithStatus } from "@/lib/mergeKeys";
 import { CopyIcon } from "@chakra-ui/icons";
 import { useState } from "react";
-import { string } from "node_modules/yaml/dist/schema/common/string";
 
 function _getColumnMap(base: DataFrame, current: DataFrame) {
   const result: Record<
