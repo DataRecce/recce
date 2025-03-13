@@ -13,6 +13,7 @@ export interface ProfileDiffResult {
 
 export interface ProfileDiffViewOptions {
   pinned_columns?: string[];
+  display_mode?: "side_by_side" | "inline";
 }
 
 export async function submitProfileDiff(params: ProfileDiffParams, options?: SubmitOptions) {

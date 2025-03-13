@@ -1,11 +1,53 @@
-import { Box, Center, Flex, forwardRef, Icon } from "@chakra-ui/react";
+import { Center, Flex, forwardRef, Spacer } from "@chakra-ui/react";
 
 import { ScreenshotDataGrid } from "../data-grid/ScreenshotDataGrid";
 import { RunResultViewProps } from "../run/types";
 
 import { ProfileDiffParams, ProfileDiffResult, ProfileDiffViewOptions } from "@/lib/api/profile";
-import { useMemo, useState } from "react";
-import { toDataDiffGrid } from "../query/querydiff";
+import { useMemo } from "react";
+import { DiffText, toDataDiffGrid } from "../query/querydiff";
+
+import { ToggleSwitch } from "./ToggleSwitch";
+
+interface ProfileDiffToolbarProps {
+  viewOptions?: ProfileDiffViewOptions;
+  onViewOptionsChanged?: (viewOptions: ProfileDiffViewOptions) => void;
+}
+
+const ProfileDiffToolbar = ({ viewOptions, onViewOptionsChanged }: ProfileDiffToolbarProps) => {
+  const displayMode = viewOptions?.display_mode ?? "inline";
+
+  return (
+    <Flex
+      minHeight="32px"
+      borderBottom="1px solid lightgray"
+      justifyContent="flex-end"
+      gap="10px"
+      alignItems="center"
+      px="10px">
+      <Spacer />
+      {displayMode === "inline" && (
+        <>
+          <DiffText value="Base" colorScheme="red" grayOut={false} fontSize="10pt" noCopy />
+          <DiffText value="Current" colorScheme="green" grayOut={false} fontSize="10pt" noCopy />
+        </>
+      )}
+      <ToggleSwitch
+        value={displayMode === "side_by_side"}
+        onChange={(value) => {
+          if (onViewOptionsChanged) {
+            onViewOptionsChanged({
+              ...viewOptions,
+              display_mode: value ? "side_by_side" : "inline",
+            });
+          }
+        }}
+        textOff="Inline"
+        textOn="Side by side"
+      />
+    </Flex>
+  );
+};
 
 interface ProfileDiffResultViewProp
   extends RunResultViewProps<ProfileDiffParams, ProfileDiffResult, ProfileDiffViewOptions> {}
@@ -37,6 +79,7 @@ const PrivateProfileDiffResultView = (
       primaryKeys: [primaryKey],
       pinnedColumns,
       onPinnedColumnsChange: handlePinnedColumnsChanged,
+      displayMode: viewOptions?.display_mode ?? "inline",
     });
   }, [result, primaryKey, pinnedColumns, viewOptions, onViewOptionsChanged]);
 
@@ -45,7 +88,8 @@ const PrivateProfileDiffResultView = (
   }
 
   return (
-    <>
+    <Flex direction="column" backgroundColor="rgb(249, 249, 249)" height={"100%"}>
+      <ProfileDiffToolbar viewOptions={viewOptions} onViewOptionsChanged={onViewOptionsChanged} />
       <ScreenshotDataGrid
         ref={ref}
         style={{ blockSize: "auto", maxHeight: "100%", overflow: "auto" }}
@@ -55,7 +99,7 @@ const PrivateProfileDiffResultView = (
         className="rdg-light"
         enableScreenshot={true}
       />
-    </>
+    </Flex>
   );
 };
 
