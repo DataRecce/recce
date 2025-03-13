@@ -55,7 +55,7 @@ export const NodeSqlView = ({ node }: NodeSqlViewProps) => {
 
   return (
     <Box
-      style={{ position: "relative", padding: "10px" }}
+      style={{ position: "relative" }}
       height="100%"
       onMouseEnter={() => {
         setIsHovered(true);
@@ -85,8 +85,8 @@ export const NodeSqlView = ({ node }: NodeSqlViewProps) => {
         variant={"ghost"}
         style={{
           position: "absolute",
-          top: "10px",
-          right: "30px",
+          top: "5px",
+          right: "20px",
           opacity: isHovered ? 0.5 : 0.1,
           transition: "opacity 0.3s ease-in-out",
         }}
