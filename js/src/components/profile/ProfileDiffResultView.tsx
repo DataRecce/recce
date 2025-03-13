@@ -49,8 +49,11 @@ const ProfileDiffToolbar = ({ viewOptions, onViewOptionsChanged }: ProfileDiffTo
   );
 };
 
-interface ProfileDiffResultViewProp
-  extends RunResultViewProps<ProfileDiffParams, ProfileDiffResult, ProfileDiffViewOptions> {}
+type ProfileDiffResultViewProp = RunResultViewProps<
+  ProfileDiffParams,
+  ProfileDiffResult,
+  ProfileDiffViewOptions
+>;
 
 const PrivateProfileDiffResultView = (
   { run, viewOptions, onViewOptionsChanged }: ProfileDiffResultViewProp,

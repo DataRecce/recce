@@ -4,7 +4,7 @@ import { Box, FormControl, FormLabel, Select } from "@chakra-ui/react";
 import { useEffect } from "react";
 import useModelColumns from "@/lib/hooks/useModelColumns";
 
-interface TopKDiffFormProps extends RunFormProps<TopKDiffParams> {}
+type TopKDiffFormProps = RunFormProps<TopKDiffParams>;
 
 export function TopKDiffForm({ params, onParamsChanged, setIsReadyToExecute }: TopKDiffFormProps) {
   const { columns, isLoading, error } = useModelColumns(params.model);

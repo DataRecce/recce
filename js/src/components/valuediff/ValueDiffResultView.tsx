@@ -21,7 +21,7 @@ import { RunResultViewProps } from "../run/types";
 import { VscKebabVertical, VscKey } from "react-icons/vsc";
 import { RecceActionOptions, useRecceActionContext } from "@/lib/hooks/RecceActionContext";
 
-interface ValueDiffResultViewProp extends RunResultViewProps<ValueDiffParams, ValueDiffResult> {}
+type ValueDiffResultViewProp = RunResultViewProps<ValueDiffParams, ValueDiffResult>;
 
 function ColumnNameCell({ params, column }: { params: ValueDiffParams; column: string }) {
   const { runAction } = useRecceActionContext();

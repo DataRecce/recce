@@ -67,7 +67,7 @@ function isDateTimeType(columnType: string) {
   return sql_datetime_types.includes(columnType.toUpperCase());
 }
 
-interface HistogramDiffEditProps extends RunFormProps<HistogramDiffParams> {}
+type HistogramDiffEditProps = RunFormProps<HistogramDiffParams>;
 
 export function supportsHistogramDiff(columnType: string) {
   return (

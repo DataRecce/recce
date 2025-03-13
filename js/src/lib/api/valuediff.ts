@@ -20,7 +20,7 @@ export async function submitValueDiff(params: ValueDiffParams, options?: SubmitO
   return await submitRun<ValueDiffParams, ValueDiffResult>("value_diff", params, options);
 }
 
-export interface ValueDiffDetailResult extends DataFrame {}
+export type ValueDiffDetailResult = DataFrame;
 
 export type ValueDiffDetailParams = ValueDiffParams;
 
