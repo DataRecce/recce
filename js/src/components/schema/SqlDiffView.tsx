@@ -7,6 +7,7 @@ import { useEffect, useRef } from "react";
 interface SqlDiffProps {
   base?: NodeData;
   current?: NodeData;
+  singleEnv?: boolean;
   options?: monacoEditor.IDiffEditorConstructionOptions;
 }
 
@@ -35,10 +36,9 @@ function useDiffEditorSync(value: string, onChange: (value: string) => void): Us
   };
 }
 
-export function SqlDiffView({ base, current, options }: SqlDiffProps) {
+export function SqlDiffView({ base, current, singleEnv, options }: SqlDiffProps) {
   return (
     <DiffEditor
-      height="100%"
       language="sql"
       theme="vs"
       original={base?.raw_code}
@@ -47,9 +47,8 @@ export function SqlDiffView({ base, current, options }: SqlDiffProps) {
         readOnly: true,
         lineNumbers: "on",
         automaticLayout: true,
+        renderOverviewRuler: false,
         minimap: { enabled: false },
-        // wordWrap: "on",
-        // wrappingIndent: "same",
         ...options,
       }}
     />
@@ -75,8 +74,6 @@ export function SqlPreview({ current, onChange }: SqlPreviewProps) {
           fontSize: 14,
           lineNumbers: "on",
           automaticLayout: true,
-          wordWrap: "on",
-          wrappingIndent: "same",
           renderOverviewRuler: false,
           minimap: { enabled: true },
         }}

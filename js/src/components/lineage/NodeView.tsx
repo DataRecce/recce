@@ -34,7 +34,6 @@ import { FaExpandArrowsAlt } from "react-icons/fa";
 import { LineageGraphNode } from "./lineage";
 import { SchemaView, SingleEnvSchemaView } from "../schema/SchemaView";
 import { useRecceQueryContext } from "@/lib/hooks/RecceQueryContext";
-import { SqlDiffView } from "../schema/SqlDiffView";
 import { useLocation } from "wouter";
 import { ResourceTypeTag, RowCountDiffTag, RowCountTag } from "./NodeTag";
 import { useCallback, useState } from "react";
@@ -48,59 +47,7 @@ import { trackPreviewChange } from "@/lib/api/track";
 import { useRecceServerFlag } from "@/lib/hooks/useRecceServerFlag";
 import { SandboxView } from "./SandboxView";
 import { ChevronDownIcon } from "@chakra-ui/icons";
-
-const CodeTabContent = ({ node }: Partial<NodeViewProps>) => {
-  const { isOpen: isOpen, onOpen: onOpen, onClose: onClose } = useDisclosure();
-  const [isHovered, setIsHovered] = useState(false);
-  if (!node) {
-    return <></>;
-  }
-
-  if (node.resourceType !== "model" && node.resourceType !== "snapshot") {
-    return "Not available";
-  }
-
-  return (
-    <Box
-      style={{ position: "relative", padding: "10px" }}
-      height="100%"
-      onMouseEnter={() => {
-        setIsHovered(true);
-      }}
-      onMouseLeave={() => {
-        setIsHovered(false);
-      }}>
-      <SqlDiffView
-        base={node.data.base}
-        current={node.data.current}
-        options={{ renderSideBySide: false }}
-      />
-      <IconButton
-        icon={<FaExpandArrowsAlt />}
-        onClick={onOpen}
-        size="md"
-        aria-label={""}
-        style={{
-          position: "absolute",
-          top: "10px",
-          right: "60px",
-          opacity: isHovered ? 0.5 : 0.1,
-          transition: "opacity 0.3s ease-in-out",
-        }}
-      />
-      <Modal isOpen={isOpen} onClose={onClose} size="6xl">
-        <ModalOverlay />
-        <ModalContent overflowY="auto" height="75%">
-          <ModalHeader>Model Raw Code Diff</ModalHeader>
-          <ModalCloseButton />
-          <ModalBody>
-            <SqlDiffView base={node.data.base} current={node.data.current} />
-          </ModalBody>
-        </ModalContent>
-      </Modal>
-    </Box>
-  );
-};
+import { NodeSqlView } from "./NodeSqlView";
 
 interface NodeViewProps {
   node: LineageGraphNode;
@@ -353,7 +300,7 @@ export function NodeView({ node, onCloseNode }: NodeViewProps) {
               )}
             </TabPanel>
             <TabPanel height="100%" p={0}>
-              <CodeTabContent node={node} />
+              <NodeSqlView node={node} />
             </TabPanel>
           </TabPanels>
         </Tabs>
