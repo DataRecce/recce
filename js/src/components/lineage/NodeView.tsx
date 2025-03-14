@@ -13,12 +13,6 @@ import {
   Button,
   Spacer,
   useDisclosure,
-  Modal,
-  ModalOverlay,
-  ModalContent,
-  ModalHeader,
-  ModalBody,
-  ModalCloseButton,
   Menu,
   MenuButton,
   MenuList,
@@ -27,16 +21,14 @@ import {
   Icon,
   MenuGroup,
   Tooltip,
-  IconButton,
 } from "@chakra-ui/react";
 
-import { FaExpandArrowsAlt } from "react-icons/fa";
 import { LineageGraphNode } from "./lineage";
 import { SchemaView, SingleEnvSchemaView } from "../schema/SchemaView";
 import { useRecceQueryContext } from "@/lib/hooks/RecceQueryContext";
 import { useLocation } from "wouter";
 import { ResourceTypeTag, RowCountDiffTag, RowCountTag } from "./NodeTag";
-import { useCallback, useState } from "react";
+import { useCallback } from "react";
 import { useRecceActionContext } from "@/lib/hooks/RecceActionContext";
 import { useLineageGraphContext } from "@/lib/hooks/LineageGraphContext";
 import useModelColumns from "@/lib/hooks/useModelColumns";
