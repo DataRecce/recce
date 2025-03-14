@@ -18,7 +18,7 @@ import {
   Icon,
   IconButton,
 } from "@chakra-ui/react";
-import { SqlPreview } from "../schema/SqlDiffView";
+
 import { NodeData } from "@/lib/api/info";
 import { RunResultPane } from "../run/RunResultPane";
 import { VSplit } from "../split/Split";
@@ -26,7 +26,7 @@ import { QueryParams, submitQueryDiff } from "@/lib/api/adhocQuery";
 import { SubmitOptions, waitRun } from "@/lib/api/runs";
 import { useRecceActionContext } from "@/lib/hooks/RecceActionContext";
 import { useMutation } from "@tanstack/react-query";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { QueryForm } from "../query/QueryForm";
 import { AiOutlineExperiment } from "react-icons/ai";
 import { useFeedbackCollectionToast } from "@/lib/hooks/useFeedbackCollectionToast";
@@ -43,6 +43,8 @@ import { useRecceServerFlag } from "@/lib/hooks/useRecceServerFlag";
 import { useLineageGraphContext } from "@/lib/hooks/LineageGraphContext";
 import { formatTimestamp } from "../app/EnvInfo";
 import { formatDistanceToNow } from "date-fns";
+import { editor } from "monaco-editor";
+import { DiffEditor } from "@monaco-editor/react";
 
 interface SandboxViewProps {
   isOpen: boolean;
@@ -150,6 +152,61 @@ function SandboxEditorLabels({
     </Flex>
   );
 }
+
+interface UseDiffEditorSync {
+  onMount: (editor: editor.IStandaloneDiffEditor) => void;
+}
+
+function useDiffEditorSync(value: string, onChange: (value: string) => void): UseDiffEditorSync {
+  const editorRef = useRef<any>(null);
+
+  useEffect(() => {
+    if (editorRef.current && value !== editorRef.current.getValue()) {
+      editorRef.current.setValue(value);
+    }
+  }, [value]);
+
+  return {
+    onMount(editor: editor.IStandaloneDiffEditor) {
+      const modified = editor.getModifiedEditor();
+      editorRef.current = modified;
+
+      modified.onDidChangeModelContent(() => {
+        onChange(modified.getValue());
+      });
+    },
+  };
+}
+
+interface SqlPreviewProps {
+  current?: NodeData;
+  onChange: (value: string) => void;
+}
+
+function SqlPreview({ current, onChange }: SqlPreviewProps) {
+  const diffEditorSync = useDiffEditorSync(current?.raw_code || "", onChange);
+
+  return (
+    <Box flex={1} overflowY={"auto"}>
+      <DiffEditor
+        language="sql"
+        theme="vs"
+        original={current?.raw_code}
+        modified={current?.raw_code}
+        options={{
+          readOnly: false,
+          fontSize: 14,
+          lineNumbers: "on",
+          automaticLayout: true,
+          renderOverviewRuler: false,
+          minimap: { enabled: true },
+        }}
+        onMount={diffEditorSync.onMount}
+      />
+    </Box>
+  );
+}
+
 export function SandboxView({ isOpen, onClose, current }: SandboxViewProps) {
   const {
     isOpen: isRunResultOpen,
