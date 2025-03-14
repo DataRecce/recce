@@ -52,6 +52,7 @@ export const NodeSqlView = ({ node }: NodeSqlViewProps) => {
 
   const original = node.data.base?.raw_code;
   const modified = node.data.current?.raw_code;
+  const modelName = node.data.base?.name ?? node.data.current?.name ?? "";
 
   return (
     <Box
@@ -95,7 +96,15 @@ export const NodeSqlView = ({ node }: NodeSqlViewProps) => {
         <ModalOverlay />
         <ModalContent overflowY="auto" height="75%">
           <ModalHeader>
-            {isSingleEnvOnboarding ? "Model Raw Code" : "Model Raw Code Diff"}
+            {isSingleEnvOnboarding ? (
+              <h1>
+                <code>{modelName}</code> Model Code
+              </h1>
+            ) : (
+              <>
+                <code>{modelName}</code> Model Code Diff
+              </>
+            )}
           </ModalHeader>
           <ModalCloseButton />
           <ModalBody>
