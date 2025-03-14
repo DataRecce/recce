@@ -4,7 +4,7 @@ import { getIconForChangeStatus } from "./styles";
 
 import "./styles.css";
 
-interface GraphEdgeProps extends EdgeProps<LineageGraphEdge> {}
+type GraphEdgeProps = EdgeProps<LineageGraphEdge>;
 
 export default function GraphEdge(props: GraphEdgeProps) {
   const {

@@ -5,7 +5,7 @@ import { TopKSummaryBarChart } from "../charts/TopKSummaryList";
 import { useState } from "react";
 import { ScreenshotBox } from "../screenshot/ScreenshotBox";
 
-interface TopKDiffResultViewProp extends RunResultViewProps<TopKDiffParams, TopKDiffResult> {}
+type TopKDiffResultViewProp = RunResultViewProps<TopKDiffParams, TopKDiffResult>;
 
 const PrivateTopKDiffResultView = ({ run }: TopKDiffResultViewProp, ref: any) => {
   const [isDisplayTopTen, setIsDisplayTopTen] = useState<boolean>(true);

@@ -4,8 +4,7 @@ import { HStack, Box, Flex, Spacer, forwardRef } from "@chakra-ui/react";
 import { HistogramChart } from "../charts/HistogramChart";
 import { ScreenshotBox } from "../screenshot/ScreenshotBox";
 
-interface HistogramDiffResultViewProp
-  extends RunResultViewProps<HistogramDiffParams, HistogramDiffResult> {}
+type HistogramDiffResultViewProp = RunResultViewProps<HistogramDiffParams, HistogramDiffResult>;
 
 function _HistogramDiffResultView({ run }: HistogramDiffResultViewProp, ref: any) {
   const params = run.params as HistogramDiffParams;

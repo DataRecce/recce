@@ -8,7 +8,7 @@ import "./styles.css";
 
 import { useLineageViewContextSafe } from "./LineageViewContext";
 
-interface GrapeColumnNodeProps extends NodeProps<LinageGraphColumnNode> {}
+type GrapeColumnNodeProps = NodeProps<LinageGraphColumnNode>;
 
 export const TransformationType = ({
   transformationType,

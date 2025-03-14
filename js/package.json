@@ -5,7 +5,7 @@
   "engines": {
     "node": ">=18"
   },
-  "packageManager": "pnpm@10.5.2",
+  "packageManager": "pnpm@10.6.2+sha512.47870716bea1572b53df34ad8647b42962bc790ce2bf4562ba0f643237d7302a3d6a8ecef9e4bdfc01d23af1969aa90485d4cebb0b9638fa5ef1daef656f6c1b",
   "scripts": {
     "dev": "next dev",
     "build": "npm run clean && next build && mv out ../recce/data",
@@ -58,7 +58,7 @@
     "yaml": "^2.6.1"
   },
   "devDependencies": {
-    "@eslint/js": "^9.21.0",
+    "@eslint/js": "^9.22.0",
     "@next/eslint-plugin-next": "^14.2.24",
     "@testing-library/dom": "^9.3.4",
     "@testing-library/jest-dom": "6.1.2",
@@ -73,9 +73,9 @@
     "@types/react": "^18.3.17",
     "@types/react-dom": "^18.3.5",
     "autoprefixer": "^10.4.20",
-    "eslint": "^9.21.0",
+    "eslint": "^9.22.0",
     "eslint-config-next": "14.2.24",
-    "eslint-config-prettier": "^10.0.2",
+    "eslint-config-prettier": "^10.1.1",
     "eslint-plugin-import-x": "^4.6.1",
     "eslint-plugin-jsx-a11y": "^6.10.2",
     "eslint-plugin-prettier": "^5.2.3",
@@ -89,6 +89,6 @@
     "rimraf": "^5.0.10",
     "tailwindcss": "^3.4.17",
     "typescript": "^5.7.2",
-    "typescript-eslint": "^8.25.0"
+    "typescript-eslint": "^8.26.1"
   }
 }

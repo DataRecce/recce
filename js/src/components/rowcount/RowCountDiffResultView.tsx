@@ -11,8 +11,7 @@ import {
 import { deltaPercentageString } from "./delta";
 import { isNumber } from "lodash";
 
-interface RowCountDiffResultViewProp
-  extends RunResultViewProps<RowCountDiffParams, RowCountDiffResult> {}
+type RowCountDiffResultViewProp = RunResultViewProps<RowCountDiffParams, RowCountDiffResult>;
 
 interface RowCountDiffRow {
   name: string;
@@ -101,7 +100,7 @@ function _RowCountDiffResultView({ run }: RowCountDiffResultViewProp, ref: any) 
   );
 }
 
-interface RowCountResultViewProp extends RunResultViewProps<RowCountParams, RowCountResult> {}
+type RowCountResultViewProp = RunResultViewProps<RowCountParams, RowCountResult>;
 
 interface RowCountRow {
   name: string;

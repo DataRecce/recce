@@ -673,7 +673,7 @@ export function PrivateLineageView(
     // Prevent native context menu from showing
     event.preventDefault();
     const pane = (refReactFlow.current as any).getBoundingClientRect();
-    const offsetTop = (refReactFlow.current as any).offsetTop;
+    const offsetTop = (refReactFlow.current as any).offsetTop as number;
     setContextMenuPosition({
       x: event.clientX - pane.left,
       y: event.clientY - pane.top + offsetTop,

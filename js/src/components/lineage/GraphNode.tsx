@@ -29,7 +29,7 @@ import { FaCheckSquare, FaRegSquare, FaSquare } from "react-icons/fa";
 import { RowCountDiff } from "@/lib/api/models";
 import { deltaPercentageString } from "../rowcount/delta";
 
-interface GraphNodeProps extends NodeProps<LineageGraphNode> {}
+type GraphNodeProps = NodeProps<LineageGraphNode>;
 
 function _RowCountDiffTag({ rowCount }: { rowCount: RowCountDiff }) {
   const base = rowCount.base;

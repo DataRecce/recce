@@ -17,7 +17,7 @@ export interface QueryViewOptions {
   pinned_columns?: string[];
 }
 
-export interface QueryResult extends DataFrame {}
+export type QueryResult = DataFrame;
 
 export interface QueryDiffParams {
   sql_template: string;
