@@ -17,7 +17,7 @@ from starlette.middleware.gzip import GZipMiddleware
 from starlette.middleware.sessions import SessionMiddleware
 from starlette.websockets import WebSocketDisconnect
 
-from . import __version__, event
+from . import __version__, event, __latest_version__
 from .apis.check_api import check_router
 from .apis.run_api import run_router
 from .config import RecceConfig
@@ -469,10 +469,18 @@ async def sync_status(response: Response):
     return {"status": "idle"}
 
 
-@app.get("/api/version")
+class VersionOut(BaseModel):
+    version: str
+    latestVersion: str
+
+
+@app.get("/api/version", response_model=VersionOut)
 async def version():
     try:
-        return __version__
+        return dict(
+            version=__version__,
+            latestVersion=__latest_version__,
+        )
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))
 

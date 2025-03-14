@@ -6,6 +6,7 @@ import {
   TabList,
   Tab,
   ChakraProvider,
+  Code,
   Box,
   Flex,
   Link,
@@ -17,6 +18,7 @@ import {
   Progress,
   HStack,
   extendTheme,
+  useToast,
 } from "@chakra-ui/react";
 import React, { ReactNode, useLayoutEffect } from "react";
 import { QueryClientProvider, useQuery } from "@tanstack/react-query";
@@ -76,10 +78,69 @@ function LinkIcon({ icon, href, ...prob }: LinkIconProps) {
   );
 }
 
+function RecceVersionBadge() {
+  const { version, latestVersion } = useVersionNumber();
+  const updateAvailableToaster = useToast();
+  const updateAvailableToastId = "recce-update-available";
+  const versionFormatRegex = new RegExp("^\\d+\\.\\d+\\.\\d+$");
+  if (!versionFormatRegex.test(version)) {
+    // If the version is not in the format of x.y.z, don't apply
+    return (
+      <Badge fontSize="sm" color="white" colorScheme="whiteAlpha" variant="outline">
+        {version}
+      </Badge>
+    );
+  }
+
+  if (version !== latestVersion && !updateAvailableToaster.isActive(updateAvailableToastId)) {
+    updateAvailableToaster({
+      id: updateAvailableToastId,
+      title: "Update available",
+      position: "top-right",
+      description: (
+        <span>
+          A new version of Recce (v{latestVersion}) is available.
+          <br />
+          Please run <Code>pip install --upgrade recce</Code> to update Recce.
+          <br />
+          <Link
+            color="rgb(255, 215, 0)"
+            fontWeight={"bold"}
+            href={`https://github.com/DataRecce/recce/releases/tag/v${latestVersion}`}
+            isExternal
+            _hover={{ textDecoration: "underline" }}
+            target="_blank">
+            Click here to view the detail of latest release
+          </Link>
+        </span>
+      ),
+      containerStyle: {
+        background: "rgba(20, 20, 20, 0.6)", // Semi-transparent black
+        color: "white", // Ensure text is visible
+        backdropFilter: "blur(10px)", // Frosted glass effect
+        borderRadius: "8px",
+      },
+      variant: "unstyled",
+      isClosable: true,
+    });
+  }
+
+  // Link to the release page on GitHub if the version is in the format of x.y.z
+  return (
+    <Badge fontSize="sm" color="white" colorScheme="whiteAlpha" variant="outline">
+      <Link
+        href={`https://github.com/DataRecce/recce/releases/tag/v${version}`}
+        isExternal
+        _hover={{ textDecoration: "none" }}>
+        {version}
+      </Link>
+    </Badge>
+  );
+}
+
 function TopBar() {
-  const { reviewMode, isDemoSite, envInfo, cloudMode, isLoading } = useLineageGraphContext();
-  const version = useVersionNumber();
-  const { url: prURL, id: prID } = envInfo?.pullRequest || {};
+  const { reviewMode, isDemoSite, envInfo, cloudMode } = useLineageGraphContext();
+  const { url: prURL, id: prID } = envInfo?.pullRequest ?? {};
   const demoPrId = prURL ? prURL.split("/").pop() : null;
 
   return (
@@ -92,28 +153,26 @@ function TopBar() {
       <Heading as="h1" fontFamily={`"Montserrat", sans-serif`} fontSize="lg" color="white">
         RECCE
       </Heading>
-      <Badge fontSize="sm" color="white" colorScheme="whiteAlpha" variant="outline">
-        {version}
-      </Badge>
+      <RecceVersionBadge />
       {reviewMode && (
         <Badge fontSize="sm" color="white" colorScheme="whiteAlpha" variant="outline">
           review mode
         </Badge>
       )}
-      {cloudMode && (
+      {cloudMode && prID && (
         <Badge fontSize="sm" color="white" colorScheme="whiteAlpha" variant="outline">
           <HStack>
             <Box>cloud mode</Box>
             <Box borderLeft="1px" borderLeftColor="whiteAlpha.500" paddingLeft="8px">
               <Link href={prURL} _hover={{ textDecoration: "none" }} isExternal>
                 <Icon as={VscGitPullRequest} boxSize="3" fontWeight="extrabold" strokeWidth="1" />
-                {` #${prID}`}
+                {` #${String(prID)}`}
               </Link>
             </Box>
           </HStack>
         </Badge>
       )}
-      {isDemoSite && prURL && (
+      {isDemoSite && prURL && demoPrId && (
         <>
           <Badge fontSize="sm" color="white" colorScheme="whiteAlpha" variant="outline">
             <HStack>
@@ -182,7 +241,7 @@ function TabBadge<T, R extends number>({
 }
 
 function NavBar() {
-  const { isDemoSite, reviewMode, fileMode, cloudMode, isLoading } = useLineageGraphContext();
+  const { isDemoSite, cloudMode, isLoading } = useLineageGraphContext();
   const [location, setLocation] = useLocation();
   const { data: flag, isLoading: isFlagLoading } = useRecceServerFlag();
 
@@ -220,7 +279,7 @@ function NavBar() {
                 onClick={() => {
                   setLocation(href);
                 }}
-                isDisabled={isLoading || isFlagLoading || disable}
+                isDisabled={(isLoading ?? isFlagLoading) || disable}
                 hidden={disable}>
                 {name}
                 {badge}
