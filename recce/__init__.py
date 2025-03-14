@@ -1,22 +1,25 @@
 import os
 
+import requests
+from packaging.version import Version
+
 
 def is_ci_env():
     # List of CI environment variables and their expected values
     ci_environments = {
-        'CI': 'true',                   # Generic CI indicator
-        'CIRCLECI': 'true',             # CircleCI
-        'GITHUB_ACTIONS': 'true',       # GitHub Actions
-        'GITLAB_CI': 'true',            # GitLab CI
-        'JENKINS_URL': None,            # Jenkins (just needs to exist)
-        'TRAVIS': 'true',               # Travis CI
-        'APPVEYOR': 'true',             # AppVeyor
-        'DRONE': 'true',                # Drone CI
-        'TEAMCITY_VERSION': None,       # TeamCity
-        'BITBUCKET_COMMIT': None,       # Bitbucket Pipelines
-        'BUILDKITE': 'true',            # Buildkite
-        'CODEBUILD_BUILD_ID': None,     # AWS CodeBuild
-        'AZURE_PIPELINES': 'true',      # Azure Pipelines
+        'CI': 'true',  # Generic CI indicator
+        'CIRCLECI': 'true',  # CircleCI
+        'GITHUB_ACTIONS': 'true',  # GitHub Actions
+        'GITLAB_CI': 'true',  # GitLab CI
+        'JENKINS_URL': None,  # Jenkins (just needs to exist)
+        'TRAVIS': 'true',  # Travis CI
+        'APPVEYOR': 'true',  # AppVeyor
+        'DRONE': 'true',  # Drone CI
+        'TEAMCITY_VERSION': None,  # TeamCity
+        'BITBUCKET_COMMIT': None,  # Bitbucket Pipelines
+        'BUILDKITE': 'true',  # Buildkite
+        'CODEBUILD_BUILD_ID': None,  # AWS CodeBuild
+        'AZURE_PIPELINES': 'true',  # Azure Pipelines
     }
 
     for env_var, expected_value in ci_environments.items():
@@ -55,4 +58,17 @@ def get_version():
         return version
 
 
+def fetch_latest_version():
+    try:
+        url = 'https://pypi.org/pypi/recce/json'
+        response = requests.get(url)
+        response.raise_for_status()
+        data = response.json()
+        return data['info']['version']
+    except Exception:
+        return get_version()
+
+
 __version__ = get_version()
+__latest_version__ = fetch_latest_version()
+__is_recce_outdated__ = Version(__version__) < Version(__latest_version__)
