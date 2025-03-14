@@ -54,7 +54,6 @@ export function NodeView({ node, onCloseNode }: NodeViewProps) {
     node.resourceType === "seed" ||
     node.resourceType === "source" ||
     node.resourceType === "snapshot";
-  const withCodeDiff = node.resourceType === "model" || node.resourceType === "snapshot";
 
   const { isOpen: isSandboxOpen, onOpen: onSandboxOpen, onClose: onSandboxClose } = useDisclosure();
   const { runAction } = useRecceActionContext();
