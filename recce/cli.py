@@ -117,6 +117,14 @@ def _execute_sql(context, sql_template, base=False):
 @click.pass_context
 def cli(ctx, **kwargs):
     """Recce: Data validation toolkit for comprehensive PR review"""
+    from rich.console import Console
+    from recce import __is_recce_outdated__, __latest_version__
+    if __is_recce_outdated__ is True:
+        error_console = Console(stderr=True, style='bold')
+        error_console.print(
+            f"[[yellow]Update Available[/yellow]] A new version of Recce {__latest_version__} is available.",
+        )
+        error_console.print("Please update using the command: 'pip install --upgrade recce'.", end='\n\n')
 
 
 @cli.command(cls=TrackCommand)
