@@ -4,8 +4,21 @@ import { RunView } from "./RunView";
 import { findByRunType } from "./registry";
 import { useRecceActionContext } from "@/lib/hooks/RecceActionContext";
 import { useRun } from "@/lib/hooks/useRun";
-import { Tabs, TabList, Tab, Flex, Button, Spacer, CloseButton, HStack } from "@chakra-ui/react";
-import { useCallback, useEffect, useRef, useState } from "react";
+import {
+  Tabs,
+  TabList,
+  Tab,
+  Text,
+  Flex,
+  Button,
+  Spacer,
+  CloseButton,
+  HStack,
+  Icon,
+  Link,
+  useDisclosure,
+} from "@chakra-ui/react";
+import { ReactElement, useCallback, useEffect, useRef, useState } from "react";
 import { createCheckByRun } from "@/lib/api/checks";
 import { useLocation } from "wouter";
 import { DiffEditor, Editor } from "@monaco-editor/react";
@@ -14,10 +27,12 @@ import SqlEditor, { DualSqlEditor } from "../query/SqlEditor";
 import { CheckIcon, CopyIcon, RepeatIcon } from "@chakra-ui/icons";
 import { useCopyToClipboardButton } from "@/lib/hooks/ScreenShot";
 import { RunStatusAndDate } from "./RunStatusAndDate";
+import { FiInfo } from "react-icons/fi";
 
 interface RunPageProps {
   onClose?: () => void;
   disableAddToChecklist?: boolean;
+  isSingleEnvironment?: boolean;
 }
 
 const _ParamView = (data: { type: string; params: any }) => {
@@ -43,14 +58,88 @@ const _ParamView = (data: { type: string; params: any }) => {
   );
 };
 
+const RunResultNotification = (
+  props: React.PropsWithChildren<{ content: ReactElement; onClose: () => void }>,
+) => {
+  return (
+    <Flex
+      flex="1"
+      h="48px"
+      m="4px"
+      px="16px"
+      py="12px"
+      bg="blue.50"
+      border="1px"
+      borderRadius="4px"
+      borderColor="blue.400"
+      align={"center"}
+      gap="12px"
+      {...props}>
+      <Icon as={FiInfo} width={"20px"} height={"20px"} color={"blue.900"} />
+      {props.content}
+      <Spacer />
+      <CloseButton onClick={props.onClose} />
+    </Flex>
+  );
+};
+
+const SingleEnvironmentSetupNotification = ({ runType }: { runType?: string }) => {
+  const { isOpen, onClose } = useDisclosure({ defaultIsOpen: true });
+
+  const LearnHowLink = () => {
+    return (
+      <Link
+        href="https://datarecce.io/docs/get-started/#prepare-dbt-artifacts"
+        isExternal
+        color="rgba(49, 130, 206, 1)"
+        fontWeight={"bold"}
+        textDecoration={"underline"}>
+        Learn more
+      </Link>
+    );
+  };
+
+  if (!isOpen) {
+    return <></>;
+  }
+  switch (runType) {
+    case "row_count":
+      return (
+        <RunResultNotification
+          content={
+            <Text>
+              Enable row count diffing, and other Recce features, by configuring a base dbt
+              environment to compare against. <LearnHowLink />
+            </Text>
+          }
+          onClose={onClose}
+        />
+      );
+    case "profile":
+      return (
+        <RunResultNotification
+          content={
+            <Text>
+              Enable data-profile diffing, and other Recce features, by configuring a base dbt
+              environment to compare against. <LearnHowLink />
+            </Text>
+          }
+          onClose={onClose}
+        />
+      );
+    default:
+      return <></>;
+  }
+};
+
 export const PrivateLoadableRunView = ({
   runId,
   onClose,
-  disableAddToChecklist,
+  isSingleEnvironment,
 }: {
   runId?: string;
   onClose?: () => void;
-  disableAddToChecklist?: boolean;
+  isSingleEnvironment?: boolean;
 }) => {
   const { runAction } = useRecceActionContext();
   const { error, run, onCancel, isRunning } = useRun(runId);
@@ -58,6 +147,8 @@ export const PrivateLoadableRunView = ({
   const queryClient = useQueryClient();
   const [, setLocation] = useLocation();
   const [tabIndex, setTabIndex] = useState(0);
+  const disableAddToChecklist = !!isSingleEnvironment;
+  const showSingleEnvironmentSetupNotification = !!isSingleEnvironment;
 
   const RunResultView = run?.type ? findByRunType(run.type)?.RunResultView : undefined;
 
@@ -118,13 +209,15 @@ export const PrivateLoadableRunView = ({
 
   return (
     <Flex direction="column">
+      {showSingleEnvironmentSetupNotification && (
+        <SingleEnvironmentSetupNotification runType={run?.type} />
+      )}
       <Tabs tabIndex={tabIndex} onChange={setTabIndex} flexDirection="column" mb="1px">
         <TabList height="50px">
           <Tab>Result</Tab>
           <Tab>Params</Tab>
           {isQuery && <Tab>Query</Tab>}
           <Spacer />
-
           <HStack overflow="hidden">
             {run && <RunStatusAndDate run={run} />}
             <Button
@@ -147,27 +240,6 @@ export const PrivateLoadableRunView = ({
               Copy to Clipboard
             </Button>
 
-            {/* {run?.check_id ? (
-              <Button
-                leftIcon={<CheckIcon />}
-                isDisabled={!runId || !run?.result || !!error}
-                size="sm"
-                colorScheme="blue"
-                onClick={handleGoToCheck}
-              >
-                Go to Check
-              </Button>
-            ) : (
-              <Button
-                leftIcon={<CheckIcon />}
-                isDisabled={!runId || !run?.result || !!error}
-                size="sm"
-                colorScheme="blue"
-                onClick={handleAddToChecklist}
-              >
-                Add to Checklist
-              </Button>
-            )} */}
             <AddToCheckButton />
 
             <CloseButton
@@ -209,14 +281,14 @@ export const PrivateLoadableRunView = ({
   );
 };
 
-export const RunResultPane = ({ onClose, disableAddToChecklist }: RunPageProps) => {
+export const RunResultPane = ({ onClose, isSingleEnvironment }: RunPageProps) => {
   const { runId } = useRecceActionContext();
 
   return (
     <PrivateLoadableRunView
       runId={runId}
       onClose={onClose}
-      disableAddToChecklist={disableAddToChecklist}
+      isSingleEnvironment={isSingleEnvironment}
     />
   );
 };

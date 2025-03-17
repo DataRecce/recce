@@ -353,7 +353,7 @@ function Main() {
         {_isRunResultOpen ? (
           <RunResultPane
             onClose={closeRunResult}
-            disableAddToChecklist={flag?.single_env_onboarding ? true : false}
+            isSingleEnvironment={!!flag?.single_env_onboarding}
           />
         ) : (
           <Box></Box>
