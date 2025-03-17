@@ -13,12 +13,6 @@ import {
   Button,
   Spacer,
   useDisclosure,
-  Modal,
-  ModalOverlay,
-  ModalContent,
-  ModalHeader,
-  ModalBody,
-  ModalCloseButton,
   Menu,
   MenuButton,
   MenuList,
@@ -29,11 +23,9 @@ import {
   Tooltip,
 } from "@chakra-ui/react";
 
-import { FaCode } from "react-icons/fa";
 import { LineageGraphNode } from "./lineage";
 import { SchemaView, SingleEnvSchemaView } from "../schema/SchemaView";
 import { useRecceQueryContext } from "@/lib/hooks/RecceQueryContext";
-import { SqlDiffView } from "../schema/SqlDiffView";
 import { useLocation } from "wouter";
 import { ResourceTypeTag, RowCountDiffTag, RowCountTag } from "./NodeTag";
 import { useCallback } from "react";
@@ -47,13 +39,12 @@ import { trackPreviewChange } from "@/lib/api/track";
 import { useRecceServerFlag } from "@/lib/hooks/useRecceServerFlag";
 import { SandboxView } from "./SandboxView";
 import { ChevronDownIcon } from "@chakra-ui/icons";
+import { NodeSqlView } from "./NodeSqlView";
 
 interface NodeViewProps {
   node: LineageGraphNode;
   onCloseNode: () => void;
 }
-
-const EmptyIcon = () => <Box as="span" w="12px" />;
 
 export function NodeView({ node, onCloseNode }: NodeViewProps) {
   const [, setLocation] = useLocation();
@@ -63,11 +54,7 @@ export function NodeView({ node, onCloseNode }: NodeViewProps) {
     node.resourceType === "seed" ||
     node.resourceType === "source" ||
     node.resourceType === "snapshot";
-  const {
-    isOpen: isCodeDiffOpen,
-    onOpen: onCodeDiffOpen,
-    onClose: onCodeDiffClose,
-  } = useDisclosure();
+
   const { isOpen: isSandboxOpen, onOpen: onSandboxOpen, onClose: onSandboxClose } = useDisclosure();
   const { runAction } = useRecceActionContext();
   const { envInfo, isActionAvailable } = useLineageGraphContext();
@@ -149,11 +136,6 @@ export function NodeView({ node, onCloseNode }: NodeViewProps) {
             </MenuItem>
             <MenuDivider />
             <MenuGroup title="Diff" m="0" p="4px 12px">
-              {(node.resourceType === "model" || node.resourceType === "snapshot") && (
-                <MenuItem onClick={onCodeDiffOpen} icon={<FaCode />} fontSize="14px">
-                  Code Diff
-                </MenuItem>
-              )}
               <MenuItem
                 icon={<Icon as={findByRunType("row_count_diff")?.icon} />}
                 fontSize="14px"
@@ -298,6 +280,7 @@ export function NodeView({ node, onCloseNode }: NodeViewProps) {
         <Tabs overflow="auto" as={Flex}>
           <TabList>
             <Tab>Columns</Tab>
+            <Tab>Code</Tab>
           </TabList>
           <TabPanels overflow="auto" height="calc(100% - 42px)">
             <TabPanel p={0} overflowY="auto" height="100%">
@@ -307,19 +290,12 @@ export function NodeView({ node, onCloseNode }: NodeViewProps) {
                 <SchemaView base={node.data.base} current={node.data.current} />
               )}
             </TabPanel>
+            <TabPanel height="100%" p={0}>
+              <NodeSqlView node={node} />
+            </TabPanel>
           </TabPanels>
         </Tabs>
       )}
-      <Modal isOpen={isCodeDiffOpen} onClose={onCodeDiffClose} size="6xl">
-        <ModalOverlay />
-        <ModalContent overflowY="auto" height="75%">
-          <ModalHeader>Model Raw Code Diff</ModalHeader>
-          <ModalCloseButton />
-          <ModalBody>
-            <SqlDiffView base={node.data.base} current={node.data.current} />
-          </ModalBody>
-        </ModalContent>
-      </Modal>
       <SandboxView isOpen={isSandboxOpen} onClose={onSandboxClose} current={node.data.current} />
     </Grid>
   );

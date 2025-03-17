@@ -811,7 +811,6 @@ class DbtAdapter(BaseAdapter):
                 ref=ref_func,
                 source=source_func,
             )
-            compiled_sql = self.generate_sql(raw_code, base=base, context=jinja_context)
 
             schema = {}
             for parent_id in parent_map[node.get('id')]:
@@ -830,6 +829,7 @@ class DbtAdapter(BaseAdapter):
                 }
 
             try:
+                compiled_sql = self.generate_sql(raw_code, base=base, context=jinja_context)
                 dialect = self.adapter.type()
                 column_lineage = cll(compiled_sql, schema=schema, dialect=dialect)
             except RecceException:
