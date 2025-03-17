@@ -14,6 +14,8 @@ import {
   ValueDiffDetailViewOptions,
 } from "@/lib/api/valuediff";
 import { RunToolbar } from "../run/RunToolbar";
+import { DiffDislayModeSwitch } from "../query/ToggleSwitch";
+import { ChangedOnlyCheckbox } from "../query/ChangedOnlyCheckbox";
 
 export interface ValueDiffDetailResultViewProps
   extends RunResultViewProps<
@@ -30,6 +32,7 @@ const PrivateValueDiffDetailResultView = (
 ) => {
   const changedOnly = useMemo(() => viewOptions?.changed_only || false, [viewOptions]);
   const pinnedColumns = useMemo(() => viewOptions?.pinned_columns || [], [viewOptions]);
+  const displayMode = useMemo(() => viewOptions?.display_mode || "inline", [viewOptions]);
 
   const gridData = useMemo(() => {
     const handlePinnedColumnsChanged = (pinnedColumns: string[]) => {
@@ -53,8 +56,9 @@ const PrivateValueDiffDetailResultView = (
       changedOnly,
       pinnedColumns,
       onPinnedColumnsChange: handlePinnedColumnsChanged,
+      displayMode,
     });
-  }, [run, viewOptions, changedOnly, pinnedColumns, onViewOptionsChanged]);
+  }, [run, viewOptions, changedOnly, pinnedColumns, displayMode, onViewOptionsChanged]);
 
   const limit = run.result?.limit || 0;
   const warning =
@@ -77,7 +81,6 @@ const PrivateValueDiffDetailResultView = (
         <RunToolbar
           run={run}
           viewOptions={viewOptions}
-          onAddToChecklist={onAddToChecklist}
           onViewOptionsChanged={onViewOptionsChanged}
           warnings={warnings}
         />
@@ -91,10 +94,30 @@ const PrivateValueDiffDetailResultView = (
       <RunToolbar
         run={run}
         viewOptions={viewOptions}
-        onAddToChecklist={onAddToChecklist}
         onViewOptionsChanged={onViewOptionsChanged}
-        warnings={warnings}
-      />
+        warnings={warnings}>
+        <DiffDislayModeSwitch
+          displayMode={displayMode}
+          onDisplayModeChanged={(displayMode) => {
+            if (onViewOptionsChanged) {
+              onViewOptionsChanged({
+                ...viewOptions,
+                display_mode: displayMode,
+              });
+            }
+          }}
+        />
+
+        <ChangedOnlyCheckbox
+          changedOnly={viewOptions?.changed_only}
+          onChange={() => {
+            const changedOnly = !viewOptions?.changed_only;
+            if (onViewOptionsChanged) {
+              onViewOptionsChanged({ ...viewOptions, changed_only: changedOnly });
+            }
+          }}
+        />
+      </RunToolbar>
       <ScreenshotDataGrid
         ref={ref}
         style={{ blockSize: "auto", maxHeight: "100%", overflow: "auto" }}

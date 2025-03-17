@@ -27,6 +27,7 @@ export type ValueDiffDetailParams = ValueDiffParams;
 export interface ValueDiffDetailViewOptions {
   changed_only?: boolean;
   pinned_columns?: string[];
+  display_mode?: "inline" | "side_by_side";
 }
 
 export async function submitValueDiffDetail(params: ValueDiffParams, options?: SubmitOptions) {

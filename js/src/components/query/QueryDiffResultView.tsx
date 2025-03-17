@@ -113,26 +113,11 @@ const PrivateQueryDiffResultView = (
     return <Center height="100%">No data</Center>;
   }
 
-  if (changedOnly && gridData.rows.length === 0) {
-    return (
-      <Flex direction="column" backgroundColor="rgb(249, 249, 249)" height={"100%"}>
-        <RunToolbar
-          run={run}
-          viewOptions={viewOptions}
-          onAddToChecklist={onAddToChecklist}
-          onViewOptionsChanged={onViewOptionsChanged}
-          warnings={warnings}
-        />
-        <Center height="100%">No change</Center>;
-      </Flex>
-    );
-  }
   return (
     <Flex direction="column" backgroundColor="rgb(249, 249, 249)" height={"100%"}>
       <RunToolbar
         run={run}
         viewOptions={viewOptions}
-        onAddToChecklist={onAddToChecklist}
         onViewOptionsChanged={onViewOptionsChanged}
         warnings={warnings}>
         <DiffDislayModeSwitch
@@ -162,7 +147,7 @@ const PrivateQueryDiffResultView = (
         style={{ blockSize: "auto", maxHeight: "100%", overflow: "auto" }}
         columns={gridData.columns}
         rows={gridData.rows}
-        renderers={{ noRowsFallback: <EmptyRowsRenderer /> }}
+        renderers={{ noRowsFallback: <EmptyRowsRenderer emptyMessage="No mismatched rows" /> }}
         defaultColumnOptions={{
           resizable: true,
           maxWidth: 800,
@@ -176,14 +161,7 @@ const PrivateQueryDiffResultView = (
 };
 
 const PrivateQueryDiffJoinResultView = (
-  {
-    run,
-    onAddToChecklist,
-    viewOptions,
-    onViewOptionsChanged,
-    baseTitle,
-    currentTitle,
-  }: QueryDiffResultViewProps,
+  { run, viewOptions, onViewOptionsChanged, baseTitle, currentTitle }: QueryDiffResultViewProps,
   ref: any,
 ) => {
   const changedOnly = useMemo(() => viewOptions?.changed_only || false, [viewOptions]);
