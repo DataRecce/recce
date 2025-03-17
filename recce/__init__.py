@@ -59,14 +59,19 @@ def get_version():
 
 
 def fetch_latest_version():
+    current_version = get_version()
+    if "dev" in current_version:
+        # Skip fetching latest version if it's a dev version
+        return current_version
+
     try:
         url = 'https://pypi.org/pypi/recce/json'
-        response = requests.get(url)
+        response = requests.get(url, timeout=3)
         response.raise_for_status()
         data = response.json()
         return data['info']['version']
     except Exception:
-        return get_version()
+        return current_version
 
 
 __version__ = get_version()
