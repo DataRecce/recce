@@ -10,13 +10,17 @@ from ..exceptions import RecceException
 from ..models import Check
 
 
-class ProfileDiffParams(BaseModel):
+class ProfileParams(BaseModel):
     model: str
     columns: List[str] = None
 
 
-class ProfileResult(BaseModel):
+class ProfileDiffResult(BaseModel):
     base: DataFrame
+    current: DataFrame
+
+
+class ProfileResult(BaseModel):
     current: DataFrame
 
 
@@ -24,7 +28,7 @@ class ProfileDiffTask(Task):
 
     def __init__(self, params):
         super().__init__()
-        self.params = ProfileDiffParams(**params)
+        self.params = ProfileParams(**params)
         self.connection = None
 
     def execute(self):
@@ -72,7 +76,7 @@ class ProfileDiffTask(Task):
                 self.check_cancel()
             current = DataFrame.from_agate(merge_tables(tables))
 
-            return ProfileResult(base=base, current=current)
+            return ProfileDiffResult(base=base, current=current)
 
     def _verify_dbt_profiler(self, dbt_adapter):
         for macro_name, macro in dbt_adapter.manifest.macros.items():
@@ -159,10 +163,43 @@ class ProfileDiffResultDiffer(TaskResultDiffer):
         return self.diff(result['base'], result['current'])
 
 
-class ProfileDiffCheckValidator(CheckValidator):
+class ProfileCheckValidator(CheckValidator):
 
     def validate_check(self, check: Check):
         try:
-            ProfileDiffParams(**check.params)
+            ProfileParams(**check.params)
         except Exception as e:
             raise ValueError(f"Invalid check: {str(e)}")
+
+
+class ProfileTask(ProfileDiffTask):
+    def execute(self):
+        import agate
+        from recce.adapter.dbt_adapter import DbtAdapter, merge_tables
+        dbt_adapter: DbtAdapter = default_context().adapter
+
+        model: str = self.params.model
+        selected_columns: List[str] = self.params.columns
+
+        self._verify_dbt_profiler(dbt_adapter)
+
+        with dbt_adapter.connection_named("query"):
+            self.connection = dbt_adapter.get_thread_connection()
+            curr_columns = [column for column in dbt_adapter.get_columns(model, base=False)]
+
+            if selected_columns:
+                curr_columns = [column for column in curr_columns if column.name in selected_columns]
+
+            total = len(curr_columns)
+            completed = 0
+
+            tables: List[agate.Table] = []
+            for column in curr_columns:
+                self.update_progress(message=f'[Current] Profile column: {column.column}', percentage=completed / total)
+                relation = dbt_adapter.create_relation(model, base=False)
+                response, table = self._profile_column(dbt_adapter, relation, column)
+                tables.append(table)
+                completed = completed + 1
+                self.check_cancel()
+            current = DataFrame.from_agate(merge_tables(tables))
+            return ProfileResult(current=current)

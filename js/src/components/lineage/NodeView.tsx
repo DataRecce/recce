@@ -81,7 +81,7 @@ export function NodeView({ node, onCloseNode }: NodeViewProps) {
     if (!isActionAvailable(runType)) {
       if (runType === "value_diff") {
         return DisableTooltipMessages.audit_helper;
-      } else if (runType === "profile_diff") {
+      } else if (runType === "profile_diff" || runType === "profile") {
         return DisableTooltipMessages.dbt_profiler;
       } else {
         return "This action is not supported yet.";
@@ -231,23 +231,61 @@ export function NodeView({ node, onCloseNode }: NodeViewProps) {
   }
 
   function SingleEnvironmentQueryButton() {
-    return (
-      <Button
-        as={Button}
-        size="xs"
-        colorScheme="blue"
-        onClick={() => {
-          if (envInfo?.adapterType === "dbt") {
-            setSqlQuery(`select * from {{ ref("${node.name}") }}`);
-          } else if (envInfo?.adapterType === "sqlmesh") {
-            setSqlQuery(`select * from ${node.name}`);
-          }
-          setLocation("/query");
-        }}
-        disabled={node.from === "base"}>
-        Query
-      </Button>
-    );
+    if (
+      node.resourceType === "model" ||
+      node.resourceType === "seed" ||
+      node.resourceType === "snapshot"
+    ) {
+      return (
+        <Menu>
+          <MenuButton as={Button} size="xs" variant="outline" rightIcon={<ChevronDownIcon />}>
+            Explore
+          </MenuButton>
+          <MenuList>
+            <MenuItem
+              icon={<Icon as={findByRunType("query")?.icon} />}
+              fontSize="14px"
+              onClick={() => {
+                if (envInfo?.adapterType === "dbt") {
+                  setSqlQuery(`select * from {{ ref("${node.name}") }}`);
+                } else if (envInfo?.adapterType === "sqlmesh") {
+                  setSqlQuery(`select * from ${node.name}`);
+                }
+                setLocation("/query");
+              }}>
+              Query
+            </MenuItem>
+            <MenuItem
+              icon={<Icon as={findByRunType("row_count")?.icon} />}
+              fontSize="14px"
+              onClick={() => {
+                refetchRowCount();
+              }}>
+              Row Count
+            </MenuItem>
+            <Tooltip label={disableReason(isAddedOrRemoved, "profile")} placement="left">
+              <MenuItem
+                icon={<Icon as={findByRunType("profile")?.icon} />}
+                fontSize="14px"
+                isDisabled={isAddedOrRemoved || !isActionAvailable("profile_diff")}
+                onClick={() => {
+                  runAction(
+                    "profile",
+                    {
+                      model: node.name,
+                    },
+                    { showForm: true, showLast: false },
+                  );
+                }}>
+                Profile
+              </MenuItem>
+            </Tooltip>
+          </MenuList>
+        </Menu>
+      );
+    } else {
+      return <></>;
+    }
   }
 
   return (
