@@ -8,6 +8,7 @@ import {
   ModalHeader,
   ModalCloseButton,
   ModalBody,
+  Heading,
 } from "@chakra-ui/react";
 import { useState } from "react";
 import { FaExpandArrowsAlt } from "react-icons/fa";
@@ -97,13 +98,13 @@ export const NodeSqlView = ({ node }: NodeSqlViewProps) => {
         <ModalContent overflowY="auto" height="75%">
           <ModalHeader>
             {isSingleEnvOnboarding ? (
-              <h1>
+              <Heading as="h1" size="md">
                 <code>{modelName}</code> Model Code
-              </h1>
+              </Heading>
             ) : (
-              <>
+              <Heading as="h1" size="md">
                 <code>{modelName}</code> Model Code Diff
-              </>
+              </Heading>
             )}
           </ModalHeader>
           <ModalCloseButton />
