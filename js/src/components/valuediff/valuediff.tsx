@@ -2,7 +2,7 @@ import { ColumnOrColumnGroup, RenderCellProps, textEditor } from "react-data-gri
 import _ from "lodash";
 import "../query/styles.css";
 import { Box, Flex, Icon } from "@chakra-ui/react";
-import { VscPin, VscPinned } from "react-icons/vsc";
+import { VscKey, VscPin, VscPinned } from "react-icons/vsc";
 import { DataFrame } from "@/lib/api/types";
 import { mergeKeysWithStatus } from "@/lib/mergeKeys";
 import { defaultRenderCell, inlineRenderCell, QueryDataDiffGridOptions } from "../query/querydiff";
@@ -69,7 +69,6 @@ function DataFrameColumnGroupHeader({
   const pinnedColumns = options.pinnedColumns || [];
   const isPK = primaryKeys.includes(name);
   const isPinned = pinnedColumns.includes(name);
-  const canBePk = columnStatus !== "added" && columnStatus !== "removed";
 
   if (name === "index") {
     return <></>;
@@ -93,6 +92,7 @@ function DataFrameColumnGroupHeader({
 
   return (
     <Flex alignItems="center" gap="10px" className="grid-header">
+      {isPK && <Icon as={VscKey} />}
       <Box flex={1} overflow="hidden" textOverflow="ellipsis" whiteSpace="nowrap">
         {name}
       </Box>
@@ -243,6 +243,7 @@ export function toValueDiffGrid(
           <DataFrameColumnGroupHeader
             name={name}
             columnStatus={columnStatus}
+            primaryKeys={primaryKeys}
             {...options}></DataFrameColumnGroupHeader>
         ),
         key: name,
@@ -256,6 +257,7 @@ export function toValueDiffGrid(
           <DataFrameColumnGroupHeader
             name={name}
             columnStatus={columnStatus}
+            primaryKeys={primaryKeys}
             {...options}></DataFrameColumnGroupHeader>
         ),
         children: [
@@ -291,6 +293,7 @@ export function toValueDiffGrid(
         <DataFrameColumnGroupHeader
           name={name}
           columnStatus={columnStatus}
+          primaryKeys={primaryKeys}
           {...options}></DataFrameColumnGroupHeader>
       ),
       frozen: true,

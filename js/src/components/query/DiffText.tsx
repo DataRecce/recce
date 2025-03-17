@@ -56,6 +56,7 @@ export const DiffText = ({ value, colorScheme, grayOut, noCopy, fontSize }: Diff
       gap="2px"
       rounded="md"
       fontSize={fontSize}
+      flexShrink={noCopy ? "0" : "inherit"}
       onMouseEnter={() => {
         setIsHovered(true);
       }}

@@ -130,6 +130,7 @@ function DataFrameColumnGroupHeader({
 
   return (
     <Flex alignItems="center" gap="10px" className="grid-header">
+      {isPK && <Icon as={VscKey} />}
       <Box flex={1} overflow="hidden" textOverflow="ellipsis" whiteSpace="nowrap">
         {name}
       </Box>
