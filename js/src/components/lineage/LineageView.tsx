@@ -694,7 +694,9 @@ export function PrivateLineageView(
           <Button
             colorScheme="blue"
             onClick={() => {
-              retchLineageGraph && retchLineageGraph();
+              if (retchLineageGraph) {
+                retchLineageGraph();
+              }
             }}>
             Retry
           </Button>

@@ -22,7 +22,7 @@ export function StateExporter() {
       console.error("Export failed", error);
       toast({
         title: "Export failed",
-        description: `${error}`,
+        description: String(error),
         status: "error",
         variant: "left-accent",
         position: "bottom",
