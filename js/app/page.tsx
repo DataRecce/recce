@@ -279,7 +279,7 @@ function NavBar() {
                 onClick={() => {
                   setLocation(href);
                 }}
-                isDisabled={(isLoading ?? isFlagLoading) || disable}
+                isDisabled={!!isLoading || isFlagLoading || disable}
                 hidden={disable}>
                 {name}
                 {badge}
