@@ -8,7 +8,7 @@ import {
 } from "react-icons/tb";
 import { HistogramDiffForm } from "../histogram/HistogramDiffForm";
 import { HistogramDiffResultView } from "../histogram/HistogramDiffResultView";
-import { ProfileDiffResultView } from "../profile/ProfileDiffResultView";
+import { ProfileDiffResultView, ProfileResultView } from "../profile/ProfileDiffResultView";
 import { QueryDiffResultView } from "../query/QueryDiffResultView";
 import { QueryResultView } from "../query/QueryResultView";
 import { RowCountDiffResultView, RowCountResultView } from "../rowcount/RowCountDiffResultView";
@@ -66,7 +66,12 @@ const registry: Record<string, RegistryEntry<any, any>> = {
     icon: MdFormatListNumberedRtl,
     RunResultView: RowCountDiffResultView,
   },
-
+  profile: {
+    title: "Profile",
+    icon: TbEyeSearch,
+    RunResultView: ProfileResultView,
+    RunForm: ProfileDiffForm,
+  },
   profile_diff: {
     title: "Profile Diff",
     icon: TbEyeSearch,

@@ -37,10 +37,10 @@ def test_profile_diff_with_selected_columns(dbt_test_helper):
 
 
 def test_validator():
-    from recce.tasks.profile import ProfileDiffCheckValidator
+    from recce.tasks.profile import ProfileCheckValidator
 
     def validate(params: dict = {}, view_options: dict = {}):
-        ProfileDiffCheckValidator().validate({
+        ProfileCheckValidator().validate({
             'name': 'test',
             'type': 'profile_diff',
             'params': params,

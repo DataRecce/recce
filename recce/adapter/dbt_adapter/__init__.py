@@ -12,6 +12,7 @@ from typing import Callable, Dict, List, Optional, Tuple, Iterator, Any, Set, Un
 from recce.event import log_performance
 from recce.exceptions import RecceException
 from recce.util.cll import cll, CLLPerformanceTracking
+from ...tasks.profile import ProfileTask
 
 try:
     import agate
@@ -38,6 +39,7 @@ dbt_supported_registry: Dict[RunType, Type[Task]] = {
     RunType.QUERY_DIFF: QueryDiffTask,
     RunType.VALUE_DIFF: ValueDiffTask,
     RunType.VALUE_DIFF_DETAIL: ValueDiffDetailTask,
+    RunType.PROFILE: ProfileTask,
     RunType.PROFILE_DIFF: ProfileDiffTask,
     RunType.ROW_COUNT: RowCountTask,
     RunType.ROW_COUNT_DIFF: RowCountDiffTask,

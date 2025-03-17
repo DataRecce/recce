@@ -79,7 +79,7 @@ export interface QueryDataDiffGridOptions {
   displayMode?: "side_by_side" | "inline";
 }
 
-function DataFrameColumnGroupHeader({
+export function DataFrameColumnGroupHeader({
   name,
   columnStatus,
   onPrimaryKeyChange,
@@ -493,5 +493,93 @@ export function toDataDiffGrid(
     rows,
     invalidPKeyBase,
     invalidPKeyCurrent,
+  };
+}
+
+export interface QueryDataGridOptions {
+  primaryKeys?: string[];
+  onPrimaryKeyChange?: (primaryKeys: string[]) => void;
+  pinnedColumns?: string[];
+  onPinnedColumnsChange?: (pinnedColumns: string[]) => void;
+}
+
+export function toDataGrid(
+  data?: DataFrame,
+  options?: QueryDataGridOptions,
+): { columns: ColumnOrColumnGroup<any, any>[]; rows: any[] } {
+  const columns: ColumnOrColumnGroup<any, any>[] = [];
+  const primaryKeys = options?.primaryKeys || [];
+  const pinnedColumns = options?.pinnedColumns || [];
+
+  if (primaryKeys.length > 0) {
+    primaryKeys.forEach((name) => {
+      columns.push({
+        key: name,
+        name: (
+          <DataFrameColumnGroupHeader
+            name={name}
+            columnStatus=""
+            {...options}></DataFrameColumnGroupHeader>
+        ),
+        frozen: true,
+        renderCell: defaultRenderCell,
+      });
+    });
+  }
+
+  if (pinnedColumns.length > 0) {
+    pinnedColumns.forEach((name) => {
+      if (primaryKeys.includes(name)) {
+        return;
+      }
+
+      columns.push({
+        key: name,
+        name: (
+          <DataFrameColumnGroupHeader
+            name={name}
+            columnStatus=""
+            {...options}></DataFrameColumnGroupHeader>
+        ),
+        renderCell: defaultRenderCell,
+      });
+    });
+  }
+
+  Object.entries(data?.columns ?? []).forEach(([_, column]) => {
+    const name = column.name;
+    if (primaryKeys.includes(name)) {
+      return;
+    }
+
+    if (pinnedColumns.includes(name)) {
+      return;
+    }
+
+    columns.push({
+      key: name,
+      name: (
+        <DataFrameColumnGroupHeader
+          name={name}
+          columnStatus=""
+          {...options}></DataFrameColumnGroupHeader>
+      ),
+      renderCell: defaultRenderCell,
+    });
+  });
+
+  const rows =
+    data?.data.map((r) => {
+      const obj: Record<string, any> = {};
+      r.forEach((v, i) => {
+        const name = data.columns[i].name;
+        obj[name] = v;
+      });
+      return obj;
+    }) ?? [];
+
+  return {
+    columns,
+    rows,
   };
 }
