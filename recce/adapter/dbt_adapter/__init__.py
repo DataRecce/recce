@@ -802,6 +802,11 @@ class DbtAdapter(BaseAdapter):
                 _apply_all_columns(node, 'unknown', [])
                 continue
 
+            # dbt <= 1.8, MetricFlow expects the time spine table to be named metricflow_time_spine
+            if node.get('name') == 'metricflow_time_spine':
+                _apply_all_columns(node, 'source', [])
+                continue
+
             if not node.get('columns', {}):
                 # no catalog
                 continue
