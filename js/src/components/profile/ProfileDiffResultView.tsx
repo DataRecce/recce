@@ -5,49 +5,10 @@ import { RunResultViewProps } from "../run/types";
 
 import { ProfileDiffParams, ProfileDiffResult, ProfileDiffViewOptions } from "@/lib/api/profile";
 import { useMemo } from "react";
-import { DiffText, toDataDiffGrid } from "../query/querydiff";
-
-import { ToggleSwitch } from "./ToggleSwitch";
-
-interface ProfileDiffToolbarProps {
-  viewOptions?: ProfileDiffViewOptions;
-  onViewOptionsChanged?: (viewOptions: ProfileDiffViewOptions) => void;
-}
-
-const ProfileDiffToolbar = ({ viewOptions, onViewOptionsChanged }: ProfileDiffToolbarProps) => {
-  const displayMode = viewOptions?.display_mode ?? "inline";
-
-  return (
-    <Flex
-      minHeight="32px"
-      borderBottom="1px solid lightgray"
-      justifyContent="flex-end"
-      gap="10px"
-      alignItems="center"
-      px="10px">
-      <Spacer />
-      {displayMode === "inline" && (
-        <>
-          <DiffText value="Base" colorScheme="red" grayOut={false} fontSize="10pt" noCopy />
-          <DiffText value="Current" colorScheme="green" grayOut={false} fontSize="10pt" noCopy />
-        </>
-      )}
-      <ToggleSwitch
-        value={displayMode === "side_by_side"}
-        onChange={(value) => {
-          if (onViewOptionsChanged) {
-            onViewOptionsChanged({
-              ...viewOptions,
-              display_mode: value ? "side_by_side" : "inline",
-            });
-          }
-        }}
-        textOff="Inline"
-        textOn="Side by side"
-      />
-    </Flex>
-  );
-};
+import { toDataDiffGrid } from "../query/querydiff";
+import { RunToolbar } from "../run/RunToolbar";
+import { DiffDislayModeSwitch } from "../query/ToggleSwitch";
+import { display } from "html2canvas/dist/types/css/property-descriptors/display";
 
 interface ProfileDiffResultViewProp
   extends RunResultViewProps<ProfileDiffParams, ProfileDiffResult, ProfileDiffViewOptions> {}
@@ -57,8 +18,8 @@ const PrivateProfileDiffResultView = (
   ref: any,
 ) => {
   const result = run.result;
-  const params = run.params;
   const pinnedColumns = useMemo(() => viewOptions?.pinned_columns || [], [viewOptions]);
+  const displayMode = useMemo(() => viewOptions?.display_mode || "inline", [viewOptions]);
 
   const field = (result?.current?.columns || []).find(
     (f) => f.name.toLowerCase() === "column_name",
@@ -79,9 +40,9 @@ const PrivateProfileDiffResultView = (
       primaryKeys: [primaryKey],
       pinnedColumns,
       onPinnedColumnsChange: handlePinnedColumnsChanged,
-      displayMode: viewOptions?.display_mode ?? "inline",
+      displayMode,
     });
-  }, [result, primaryKey, pinnedColumns, viewOptions, onViewOptionsChanged]);
+  }, [result, primaryKey, pinnedColumns, displayMode, viewOptions, onViewOptionsChanged]);
 
   if (gridData.columns.length === 0) {
     return <Center height="100%">No data</Center>;
@@ -89,7 +50,19 @@ const PrivateProfileDiffResultView = (
 
   return (
     <Flex direction="column" backgroundColor="rgb(249, 249, 249)" height={"100%"}>
-      <ProfileDiffToolbar viewOptions={viewOptions} onViewOptionsChanged={onViewOptionsChanged} />
+      <RunToolbar run={run}>
+        <DiffDislayModeSwitch
+          displayMode={displayMode}
+          onDisplayModeChanged={(displayMode) => {
+            if (onViewOptionsChanged) {
+              onViewOptionsChanged({
+                ...viewOptions,
+                display_mode: displayMode,
+              });
+            }
+          }}
+        />
+      </RunToolbar>
       <ScreenshotDataGrid
         ref={ref}
         style={{ blockSize: "auto", maxHeight: "100%", overflow: "auto" }}
