@@ -212,8 +212,18 @@ const PrivateQueryDiffJoinResultView = (
       onPinnedColumnsChange: handlePinnedColumnsChanged,
       baseTitle,
       currentTitle,
+      displayMode,
     });
-  }, [run, viewOptions, changedOnly, pinnedColumns, onViewOptionsChanged, baseTitle, currentTitle]);
+  }, [
+    run,
+    viewOptions,
+    changedOnly,
+    pinnedColumns,
+    displayMode,
+    onViewOptionsChanged,
+    baseTitle,
+    currentTitle,
+  ]);
 
   const limit = run.result?.diff?.limit || 0;
   const warningLimit =

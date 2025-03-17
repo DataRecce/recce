@@ -5,7 +5,7 @@ import { Box, Flex, Icon } from "@chakra-ui/react";
 import { VscPin, VscPinned } from "react-icons/vsc";
 import { DataFrame } from "@/lib/api/types";
 import { mergeKeysWithStatus } from "@/lib/mergeKeys";
-import { defaultRenderCell, QueryDataDiffGridOptions } from "../query/querydiff";
+import { defaultRenderCell, inlineRenderCell, QueryDataDiffGridOptions } from "../query/querydiff";
 
 function _getColumnMap(df: DataFrame) {
   const result: Record<
@@ -116,6 +116,7 @@ export function toValueDiffGrid(
 ) {
   const pinnedColumns = options?.pinnedColumns || [];
   const changedOnly = options?.changedOnly || false;
+  const displayMode = options?.displayMode || "inline";
 
   const columns: ColumnOrColumnGroup<any, any>[] = [];
   const columnMap = _getColumnMap(df);
@@ -235,35 +236,50 @@ export function toValueDiffGrid(
       return undefined;
     };
 
-    return {
-      headerCellClass,
-      name: (
-        <DataFrameColumnGroupHeader
-          name={name}
-          columnStatus={columnStatus}
-          {...options}></DataFrameColumnGroupHeader>
-      ),
-      children: [
-        {
-          key: `base__${name}`,
-          name: options?.baseTitle || "Base",
-          renderEditCell: textEditor,
-          headerCellClass,
-          cellClass,
-          renderCell: defaultRenderCell,
-          size: "auto",
-        },
-        {
-          key: `current__${name}`,
-          name: options?.currentTitle || "Current",
-          renderEditCell: textEditor,
-          headerCellClass,
-          cellClass,
-          renderCell: defaultRenderCell,
-          size: "auto",
-        },
-      ],
-    };
+    if (displayMode === "inline") {
+      return {
+        headerCellClass,
+        name: (
+          <DataFrameColumnGroupHeader
+            name={name}
+            columnStatus={columnStatus}
+            {...options}></DataFrameColumnGroupHeader>
+        ),
+        key: name,
+        renderCell: inlineRenderCell,
+        size: "auto",
+      };
+    } else {
+      return {
+        headerCellClass,
+        name: (
+          <DataFrameColumnGroupHeader
+            name={name}
+            columnStatus={columnStatus}
+            {...options}></DataFrameColumnGroupHeader>
+        ),
+        children: [
+          {
+            key: `base__${name}`,
+            name: options?.baseTitle || "Base",
+            renderEditCell: textEditor,
+            headerCellClass,
+            cellClass,
+            renderCell: defaultRenderCell,
+            size: "auto",
+          },
+          {
+            key: `current__${name}`,
+            name: options?.currentTitle || "Current",
+            renderEditCell: textEditor,
+            headerCellClass,
+            cellClass,
+            renderCell: defaultRenderCell,
+            size: "auto",
+          },
+        ],
+      };
+    }
   };
 
   // merges columns: primary keys
