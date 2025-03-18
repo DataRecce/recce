@@ -259,6 +259,7 @@ class DbtAdapter(BaseAdapter):
 
         if 'dbt_profiler' not in supported_dbt_packages:
             support_map[RunType.PROFILE_DIFF.value] = False
+            support_map[RunType.PROFILE.value] = False
 
         if 'audit_helper' not in supported_dbt_packages:
             support_map[RunType.VALUE_DIFF.value] = False

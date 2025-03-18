@@ -218,7 +218,9 @@ export function NodeView({ node, onCloseNode }: NodeViewProps) {
               <MenuItem
                 icon={<Icon as={findByRunType("schema_diff")?.icon} />}
                 fontSize="14px"
-                onClick={addSchemaCheck}>
+                onClick={() => {
+                  void addSchemaCheck();
+                }}>
                 Schema Diff
               </MenuItem>
             </MenuGroup>
@@ -267,7 +269,7 @@ export function NodeView({ node, onCloseNode }: NodeViewProps) {
               <MenuItem
                 icon={<Icon as={findByRunType("profile")?.icon} />}
                 fontSize="14px"
-                isDisabled={isAddedOrRemoved || !isActionAvailable("profile_diff")}
+                isDisabled={isAddedOrRemoved || !isActionAvailable("profile")}
                 onClick={() => {
                   runAction(
                     "profile",
