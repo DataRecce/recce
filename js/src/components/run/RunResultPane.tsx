@@ -58,9 +58,7 @@ const _ParamView = (data: { type: string; params: any }) => {
   );
 };
 
-const RunResultNotification = (
-  props: React.PropsWithChildren<{ content: ReactElement; onClose: () => void }>,
-) => {
+const RunResultNotification = (props: React.PropsWithChildren<{ onClose: () => void }>) => {
   return (
     <Flex
       flex="1"
@@ -73,10 +71,9 @@ const RunResultNotification = (
       borderRadius="4px"
       borderColor="blue.400"
       align={"center"}
-      gap="12px"
-      {...props}>
+      gap="12px">
       <Icon as={FiInfo} width={"20px"} height={"20px"} color={"blue.900"} />
-      {props.content}
+      {props.children}
       <Spacer />
       <CloseButton onClick={props.onClose} />
     </Flex>
@@ -105,27 +102,21 @@ const SingleEnvironmentSetupNotification = ({ runType }: { runType?: string }) =
   switch (runType) {
     case "row_count":
       return (
-        <RunResultNotification
-          content={
-            <Text>
-              Enable row count diffing, and other Recce features, by configuring a base dbt
-              environment to compare against. <LearnHowLink />
-            </Text>
-          }
-          onClose={onClose}
-        />
+        <RunResultNotification onClose={onClose}>
+          <Text>
+            Enable row count diffing, and other Recce features, by configuring a base dbt
+            environment to compare against. <LearnHowLink />
+          </Text>
+        </RunResultNotification>
       );
     case "profile":
       return (
-        <RunResultNotification
-          content={
-            <Text>
-              Enable data-profile diffing, and other Recce features, by configuring a base dbt
-              environment to compare against. <LearnHowLink />
-            </Text>
-          }
-          onClose={onClose}
-        />
+        <RunResultNotification onClose={onClose}>
+          <Text>
+            Enable data-profile diffing, and other Recce features, by configuring a base dbt
+            environment to compare against. <LearnHowLink />
+          </Text>
+        </RunResultNotification>
       );
     default:
       return <></>;
