@@ -35,7 +35,7 @@ interface DiffDislayModeSwitchProps {
   onDisplayModeChanged: (displayMode: "inline" | "side_by_side") => void;
 }
 
-export const DiffDislayModeSwitch = ({
+export const DiffDisplayModeSwitch = ({
   displayMode,
   onDisplayModeChanged,
 }: DiffDislayModeSwitchProps) => {

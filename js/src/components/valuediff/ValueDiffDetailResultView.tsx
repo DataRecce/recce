@@ -14,7 +14,7 @@ import {
   ValueDiffDetailViewOptions,
 } from "@/lib/api/valuediff";
 import { RunToolbar } from "../run/RunToolbar";
-import { DiffDislayModeSwitch } from "../query/ToggleSwitch";
+import { DiffDisplayModeSwitch } from "../query/ToggleSwitch";
 import { ChangedOnlyCheckbox } from "../query/ChangedOnlyCheckbox";
 
 export interface ValueDiffDetailResultViewProps
@@ -96,7 +96,7 @@ const PrivateValueDiffDetailResultView = (
         viewOptions={viewOptions}
         onViewOptionsChanged={onViewOptionsChanged}
         warnings={warnings}>
-        <DiffDislayModeSwitch
+        <DiffDisplayModeSwitch
           displayMode={displayMode}
           onDisplayModeChanged={(displayMode) => {
             if (onViewOptionsChanged) {

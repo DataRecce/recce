@@ -16,7 +16,7 @@ import { Run } from "@/lib/api/types";
 import { EmptyRowsRenderer, ScreenshotDataGrid } from "../data-grid/ScreenshotDataGrid";
 import { RunResultViewProps } from "../run/types";
 import { RunToolbar } from "../run/RunToolbar";
-import { DiffDislayModeSwitch } from "./ToggleSwitch";
+import { DiffDisplayModeSwitch } from "./ToggleSwitch";
 import { ChangedOnlyCheckbox } from "./ChangedOnlyCheckbox";
 
 export interface QueryDiffResultViewProps
@@ -120,7 +120,7 @@ const PrivateQueryDiffResultView = (
         viewOptions={viewOptions}
         onViewOptionsChanged={onViewOptionsChanged}
         warnings={warnings}>
-        <DiffDislayModeSwitch
+        <DiffDisplayModeSwitch
           displayMode={displayMode}
           onDisplayModeChanged={(displayMode) => {
             if (onViewOptionsChanged) {
@@ -239,7 +239,7 @@ const PrivateQueryDiffJoinResultView = (
         viewOptions={viewOptions}
         onViewOptionsChanged={onViewOptionsChanged}
         warnings={warnings}>
-        <DiffDislayModeSwitch
+        <DiffDisplayModeSwitch
           displayMode={displayMode}
           onDisplayModeChanged={(displayMode) => {
             if (onViewOptionsChanged) {

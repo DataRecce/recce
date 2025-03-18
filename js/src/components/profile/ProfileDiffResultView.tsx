@@ -1,4 +1,4 @@
-import { Center, Flex, forwardRef, Spacer } from "@chakra-ui/react";
+import { Center, Flex, forwardRef } from "@chakra-ui/react";
 
 import { ScreenshotDataGrid } from "../data-grid/ScreenshotDataGrid";
 import { RunResultViewProps } from "../run/types";
@@ -7,8 +7,7 @@ import { ProfileDiffParams, ProfileDiffResult, ProfileDiffViewOptions } from "@/
 import { useMemo } from "react";
 import { toDataDiffGrid } from "../query/querydiff";
 import { RunToolbar } from "../run/RunToolbar";
-import { DiffDislayModeSwitch } from "../query/ToggleSwitch";
-import { display } from "html2canvas/dist/types/css/property-descriptors/display";
+import { DiffDisplayModeSwitch } from "../query/ToggleSwitch";
 
 interface ProfileDiffResultViewProp
   extends RunResultViewProps<ProfileDiffParams, ProfileDiffResult, ProfileDiffViewOptions> {}
@@ -51,7 +50,7 @@ const PrivateProfileDiffResultView = (
   return (
     <Flex direction="column" backgroundColor="rgb(249, 249, 249)" height={"100%"}>
       <RunToolbar run={run}>
-        <DiffDislayModeSwitch
+        <DiffDisplayModeSwitch
           displayMode={displayMode}
           onDisplayModeChanged={(displayMode) => {
             if (onViewOptionsChanged) {
