@@ -14,7 +14,6 @@ import {
   Spacer,
   CloseButton,
   HStack,
-  Link,
   useDisclosure,
 } from "@chakra-ui/react";
 import { useCallback, useState } from "react";
