@@ -524,10 +524,10 @@ class DbtAdapter(BaseAdapter):
     def get_manifest(self, base: bool):
         return self.curr_manifest if base is False else self.base_manifest
 
-    def generate_sql(self, sql_template: str, base: bool = False, context=None):
+    def generate_sql(self, sql_template: str, base: bool = False, context=None, provided_manifest=None):
         if context is None:
             context = {}
-        manifest = as_manifest(self.get_manifest(base))
+        manifest = provided_manifest if provided_manifest is not None else as_manifest(self.get_manifest(base))
         parser = SqlBlockParser(self.runtime_config, manifest, self.runtime_config)
 
         if dbt_version >= dbt_version.parse('v1.8'):
@@ -780,6 +780,7 @@ class DbtAdapter(BaseAdapter):
 
         cll_tracker = CLLPerformanceTracking()
         cll_tracker.set_total_nodes(len(nodes))
+        manifest = as_manifest(self.get_manifest(base))
         for node in nodes.values():
             resource_type = node.get('resource_type')
             if resource_type not in {'model', 'seed', 'source', 'snapshot'}:
@@ -791,6 +792,11 @@ class DbtAdapter(BaseAdapter):
 
             if node.get('raw_code') is None or self.is_python_model(node.get('id'), base=base):
                 _apply_all_columns(node, 'unknown', [])
+                continue
+
+            # dbt <= 1.8, MetricFlow expects the time spine table to be named metricflow_time_spine
+            if node.get('name') == 'metricflow_time_spine':
+                _apply_all_columns(node, 'source', [])
                 continue
 
             if not node.get('columns', {}):
@@ -832,7 +838,8 @@ class DbtAdapter(BaseAdapter):
                 }
 
             try:
-                compiled_sql = self.generate_sql(raw_code, base=base, context=jinja_context)
+                # provide a manifest to speedup and not pollute the manifest
+                compiled_sql = self.generate_sql(raw_code, base=base, context=jinja_context, provided_manifest=manifest)
                 dialect = self.adapter.type()
                 column_lineage = cll(compiled_sql, schema=schema, dialect=dialect)
             except RecceException:
