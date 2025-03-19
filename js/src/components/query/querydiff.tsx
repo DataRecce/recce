@@ -1,12 +1,10 @@
 import { ColumnOrColumnGroup, RenderCellProps, textEditor } from "react-data-grid";
 import _ from "lodash";
 import "./styles.css";
-import { Box, Flex, Icon, IconButton, Text, useClipboard } from "@chakra-ui/react";
+import { Box, Flex, Icon, Text } from "@chakra-ui/react";
 import { VscClose, VscKey, VscPin, VscPinned } from "react-icons/vsc";
 import { DataFrame } from "@/lib/api/types";
 import { mergeKeysWithStatus } from "@/lib/mergeKeys";
-import { CopyIcon } from "@chakra-ui/icons";
-import { useState } from "react";
 import { DiffText } from "./DiffText";
 
 function _getColumnMap(base: DataFrame, current: DataFrame) {
@@ -493,93 +491,5 @@ export function toDataDiffGrid(
     rows,
     invalidPKeyBase,
     invalidPKeyCurrent,
-  };
-}
-
-export interface QueryDataGridOptions {
-  primaryKeys?: string[];
-  onPrimaryKeyChange?: (primaryKeys: string[]) => void;
-  pinnedColumns?: string[];
-  onPinnedColumnsChange?: (pinnedColumns: string[]) => void;
-}
-
-export function toDataGrid(
-  data?: DataFrame,
-  options?: QueryDataGridOptions,
-): { columns: ColumnOrColumnGroup<any, any>[]; rows: any[] } {
-  const columns: ColumnOrColumnGroup<any, any>[] = [];
-  const primaryKeys = options?.primaryKeys || [];
-  const pinnedColumns = options?.pinnedColumns || [];
-
-  if (primaryKeys.length > 0) {
-    primaryKeys.forEach((name) => {
-      columns.push({
-        key: name,
-        name: (
-          <DataFrameColumnGroupHeader
-            name={name}
-            columnStatus=""
-            {...options}></DataFrameColumnGroupHeader>
-        ),
-        frozen: true,
-        renderCell: defaultRenderCell,
-      });
-    });
-  }
-
-  if (pinnedColumns.length > 0) {
-    pinnedColumns.forEach((name) => {
-      if (primaryKeys.includes(name)) {
-        return;
-      }
-
-      columns.push({
-        key: name,
-        name: (
-          <DataFrameColumnGroupHeader
-            name={name}
-            columnStatus=""
-            {...options}></DataFrameColumnGroupHeader>
-        ),
-        renderCell: defaultRenderCell,
-      });
-    });
-  }
-
-  Object.entries(data?.columns ?? []).forEach(([_, column]) => {
-    const name = column.name;
-    if (primaryKeys.includes(name)) {
-      return;
-    }
-
-    if (pinnedColumns.includes(name)) {
-      return;
-    }
-
-    columns.push({
-      key: name,
-      name: (
-        <DataFrameColumnGroupHeader
-          name={name}
-          columnStatus=""
-          {...options}></DataFrameColumnGroupHeader>
-      ),
-      renderCell: defaultRenderCell,
-    });
-  });
-
-  const rows =
-    data?.data.map((r) => {
-      const obj: Record<string, any> = {};
-      r.forEach((v, i) => {
-        const name = data.columns[i].name;
-        obj[name] = v;
-      });
-      return obj;
-    }) ?? [];
-
-  return {
-    columns,
-    rows,
   };
 }

@@ -15,11 +15,12 @@ import {
 import { useMemo } from "react";
 import { DataFrame, Run } from "@/lib/api/types";
 import { EmptyRowsRenderer, ScreenshotDataGrid } from "../data-grid/ScreenshotDataGrid";
-import { defaultRenderCell } from "./querydiff";
+import { DataFrameColumnGroupHeader, defaultRenderCell } from "./querydiff";
 import { VscPin, VscPinned } from "react-icons/vsc";
 import { RunResultViewProps } from "../run/types";
 import { AddIcon, WarningIcon } from "@chakra-ui/icons";
 import _ from "lodash";
+import { string } from "node_modules/yaml/dist/schema/common/string";
 
 interface QueryResultViewProp
   extends RunResultViewProps<QueryParams, QueryResult, QueryViewOptions> {
@@ -27,6 +28,8 @@ interface QueryResultViewProp
 }
 
 interface QueryDataGridOptions {
+  primaryKeys?: string[];
+  onPrimaryKeyChange?: (primaryKeys: string[]) => void;
   pinnedColumns?: string[];
   onPinnedColumnsChange?: (pinnedColumns: string[]) => void;
 }
@@ -65,8 +68,9 @@ function DataFrameColumnHeader({
   );
 }
 
-function toDataGrid(result: DataFrame, options: QueryDataGridOptions) {
+export function toDataGrid(result: DataFrame, options: QueryDataGridOptions) {
   const columns: Column<any, any>[] = [];
+  const primaryKeys = options.primaryKeys || [];
   const pinnedColumns = options.pinnedColumns || [];
   const toColumn = (key: number, name: string) => ({
     key: String(key),
@@ -74,13 +78,27 @@ function toDataGrid(result: DataFrame, options: QueryDataGridOptions) {
     width: "auto",
     renderCell: defaultRenderCell,
   });
-
-  columns.push({
-    key: "_index",
-    name: "",
-    width: 50,
-    cellClass: "index-column",
+  const toColumnGroup = (key: number, name: string) => ({
+    key: String(key),
+    name: <DataFrameColumnGroupHeader name={name} columnStatus="" {...options} />,
+    width: "auto",
+    frozen: true,
+    renderCell: defaultRenderCell,
   });
+
+  if (primaryKeys.length > 0) {
+    primaryKeys.forEach((name) => {
+      const i = _.findIndex(result.columns, (col) => col.name === name);
+      columns.push(toColumnGroup(i, name));
+    });
+  } else {
+    columns.push({
+      key: "_index",
+      name: "",
+      width: 50,
+      cellClass: "index-column",
+    });
+  }
 
   pinnedColumns.forEach((name) => {
     const i = _.findIndex(result.columns, (col) => col.name === name);
@@ -92,6 +110,10 @@ function toDataGrid(result: DataFrame, options: QueryDataGridOptions) {
   });
 
   result.columns.forEach((col, index) => {
+    if (primaryKeys.includes(col.name)) {
+      return;
+    }
+
     if (pinnedColumns.includes(col.name)) {
       return;
     }

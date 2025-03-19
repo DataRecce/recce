@@ -5,9 +5,10 @@ import { RunResultViewProps } from "../run/types";
 
 import { ProfileDiffParams, ProfileDiffResult, ProfileDiffViewOptions } from "@/lib/api/profile";
 import { useMemo } from "react";
-import { toDataDiffGrid, toDataGrid } from "../query/querydiff";
+import { toDataDiffGrid } from "../query/querydiff";
 import { RunToolbar } from "../run/RunToolbar";
 import { DiffDisplayModeSwitch } from "../query/ToggleSwitch";
+import { toDataGrid } from "../query/QueryResultView";
 
 type ProfileDiffResultViewProp = RunResultViewProps<
   ProfileDiffParams,
@@ -83,6 +84,7 @@ const PrivateProfileResultView = (
   ref: any,
 ) => {
   const result = run.result;
+  const dataFrame = result?.current;
   const pinnedColumns = useMemo(() => viewOptions?.pinned_columns || [], [viewOptions]);
   const field = (result?.current?.columns || []).find(
     (f) => f.name.toLowerCase() === "column_name",
@@ -99,12 +101,16 @@ const PrivateProfileResultView = (
       }
     };
 
-    return toDataGrid(result?.current, {
+    if (!dataFrame) {
+      return { columns: [], rows: [] };
+    }
+
+    return toDataGrid(dataFrame, {
       primaryKeys: [primaryKey],
       pinnedColumns,
       onPinnedColumnsChange: handlePinnedColumnsChanged,
     });
-  }, [result, pinnedColumns, primaryKey, viewOptions, onViewOptionsChanged]);
+  }, [dataFrame, pinnedColumns, primaryKey, viewOptions, onViewOptionsChanged]);
 
   if (gridData.columns.length === 0) {
     return <Center height="100%">No data</Center>;
