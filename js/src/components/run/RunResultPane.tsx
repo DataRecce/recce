@@ -14,20 +14,19 @@ import {
   Spacer,
   CloseButton,
   HStack,
-  Icon,
   Link,
   useDisclosure,
 } from "@chakra-ui/react";
-import { ReactElement, useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useState } from "react";
 import { createCheckByRun } from "@/lib/api/checks";
 import { useLocation } from "wouter";
-import { DiffEditor, Editor } from "@monaco-editor/react";
+import { Editor } from "@monaco-editor/react";
 import YAML from "yaml";
 import SqlEditor, { DualSqlEditor } from "../query/SqlEditor";
 import { CheckIcon, CopyIcon, RepeatIcon } from "@chakra-ui/icons";
 import { useCopyToClipboardButton } from "@/lib/hooks/ScreenShot";
 import { RunStatusAndDate } from "./RunStatusAndDate";
-import { FiInfo } from "react-icons/fi";
+import { LearnHowLink, RecceNotification } from "../onboarding-guide/Notification";
 
 interface RunPageProps {
   onClose?: () => void;
@@ -58,43 +57,8 @@ const _ParamView = (data: { type: string; params: any }) => {
   );
 };
 
-const RunResultNotification = (props: React.PropsWithChildren<{ onClose: () => void }>) => {
-  return (
-    <Flex
-      flex="1"
-      h="48px"
-      m="4px"
-      px="16px"
-      py="12px"
-      bg="blue.50"
-      border="1px"
-      borderRadius="4px"
-      borderColor="blue.400"
-      align={"center"}
-      gap="12px">
-      <Icon as={FiInfo} width={"20px"} height={"20px"} color={"blue.900"} />
-      {props.children}
-      <Spacer />
-      <CloseButton onClick={props.onClose} />
-    </Flex>
-  );
-};
-
 const SingleEnvironmentSetupNotification = ({ runType }: { runType?: string }) => {
   const { isOpen, onClose } = useDisclosure({ defaultIsOpen: true });
-
-  const LearnHowLink = () => {
-    return (
-      <Link
-        href="https://datarecce.io/docs/get-started/#prepare-dbt-artifacts"
-        isExternal
-        color="rgba(49, 130, 206, 1)"
-        fontWeight={"bold"}
-        textDecoration={"underline"}>
-        Learn more
-      </Link>
-    );
-  };
 
   if (!isOpen) {
     return <></>;
@@ -102,21 +66,21 @@ const SingleEnvironmentSetupNotification = ({ runType }: { runType?: string }) =
   switch (runType) {
     case "row_count":
       return (
-        <RunResultNotification onClose={onClose}>
+        <RecceNotification onClose={onClose}>
           <Text>
             Enable row count diffing, and other Recce features, by configuring a base dbt
             environment to compare against. <LearnHowLink />
           </Text>
-        </RunResultNotification>
+        </RecceNotification>
       );
     case "profile":
       return (
-        <RunResultNotification onClose={onClose}>
+        <RecceNotification onClose={onClose}>
           <Text>
             Enable data-profile diffing, and other Recce features, by configuring a base dbt
             environment to compare against. <LearnHowLink />
           </Text>
-        </RunResultNotification>
+        </RecceNotification>
       );
     default:
       return <></>;
