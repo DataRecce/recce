@@ -9,6 +9,7 @@ import {
   TabPanel,
   TabPanels,
   Tabs,
+  Text,
   HStack,
   Button,
   Spacer,
@@ -21,6 +22,7 @@ import {
   Icon,
   MenuGroup,
   Tooltip,
+  Link,
 } from "@chakra-ui/react";
 
 import { LineageGraphNode } from "./lineage";
@@ -40,6 +42,7 @@ import { useRecceServerFlag } from "@/lib/hooks/useRecceServerFlag";
 import { SandboxView } from "./SandboxView";
 import { ChevronDownIcon } from "@chakra-ui/icons";
 import { NodeSqlView } from "./NodeSqlView";
+import { LearnHowLink, RecceNotification } from "../onboarding-guide/Notification";
 
 interface NodeViewProps {
   node: LineageGraphNode;
@@ -56,6 +59,9 @@ export function NodeView({ node, onCloseNode }: NodeViewProps) {
     node.resourceType === "snapshot";
 
   const { isOpen: isSandboxOpen, onOpen: onSandboxOpen, onClose: onSandboxClose } = useDisclosure();
+  const { isOpen: isNotificationOpen, onClose: onNotificationClose } = useDisclosure({
+    defaultIsOpen: true,
+  });
   const { runAction } = useRecceActionContext();
   const { envInfo, isActionAvailable } = useLineageGraphContext();
   const { primaryKey } = useModelColumns(node.name);
@@ -232,7 +238,7 @@ export function NodeView({ node, onCloseNode }: NodeViewProps) {
     }
   }
 
-  function SingleEnvironmentQueryButton() {
+  function SingleEnvironmentMenuButton() {
     if (
       node.resourceType === "model" ||
       node.resourceType === "seed" ||
@@ -291,13 +297,13 @@ export function NodeView({ node, onCloseNode }: NodeViewProps) {
   }
 
   return (
-    <Grid height="100%" templateRows="auto auto 1fr">
+    <Grid height="100%" templateRows="auto auto auto 1fr">
       <HStack>
         <Box flex="0 1 20%" p="16px">
           <Heading size="sm">{node.name}</Heading>
         </Box>
         <Spacer />
-        {isSingleEnvOnboarding ? <SingleEnvironmentQueryButton /> : <ExploreChangeMenuButton />}
+        {isSingleEnvOnboarding ? <SingleEnvironmentMenuButton /> : <ExploreChangeMenuButton />}
 
         <Box flex="0 1 1%">
           <CloseButton onClick={onCloseNode} />
@@ -316,6 +322,18 @@ export function NodeView({ node, onCloseNode }: NodeViewProps) {
             ))}
         </HStack>
       </Box>
+      {isSingleEnvOnboarding && isNotificationOpen && (
+        <Box p="12px">
+          <RecceNotification onClose={onNotificationClose} align={"flex-start"}>
+            <Text>
+              Enable the Recce Checklist and start adding checks for better data validation and
+              review.
+              <br />
+              <LearnHowLink />
+            </Text>
+          </RecceNotification>
+        </Box>
+      )}
       {withColumns && (
         <Tabs overflow="auto" as={Flex}>
           <TabList>
