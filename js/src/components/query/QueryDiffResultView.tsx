@@ -6,7 +6,7 @@ import {
   QueryDiffViewOptions,
   QueryPreviewChangeParams,
 } from "@/lib/api/adhocQuery";
-import { Box, Center, Flex, forwardRef } from "@chakra-ui/react";
+import { Center, Checkbox, Flex, forwardRef } from "@chakra-ui/react";
 import { useMemo } from "react";
 import { toDataDiffGrid } from "./querydiff";
 import { toValueDiffGrid as toQueryDiffJoinGrid } from "../valuediff/valuediff";
@@ -16,6 +16,8 @@ import { Run } from "@/lib/api/types";
 import { EmptyRowsRenderer, ScreenshotDataGrid } from "../data-grid/ScreenshotDataGrid";
 import { RunResultViewProps } from "../run/types";
 import { RunToolbar } from "../run/RunToolbar";
+import { DiffDisplayModeSwitch } from "./ToggleSwitch";
+import { ChangedOnlyCheckbox } from "./ChangedOnlyCheckbox";
 
 export interface QueryDiffResultViewProps
   extends RunResultViewProps<QueryDiffParams, QueryDiffResult, QueryDiffViewOptions> {
@@ -38,6 +40,7 @@ const PrivateQueryDiffResultView = (
   const primaryKeys = useMemo(() => viewOptions?.primary_keys || [], [viewOptions]);
   const changedOnly = useMemo(() => viewOptions?.changed_only || false, [viewOptions]);
   const pinnedColumns = useMemo(() => viewOptions?.pinned_columns || [], [viewOptions]);
+  const displayMode = useMemo(() => viewOptions?.display_mode || "inline", [viewOptions]);
 
   const gridData = useMemo(() => {
     const handlePrimaryKeyChanged = (primaryKeys: string[]) => {
@@ -66,6 +69,7 @@ const PrivateQueryDiffResultView = (
       onPinnedColumnsChange: handlePinnedColumnsChanged,
       baseTitle,
       currentTitle,
+      displayMode,
     });
   }, [
     run,
@@ -73,6 +77,7 @@ const PrivateQueryDiffResultView = (
     changedOnly,
     primaryKeys,
     pinnedColumns,
+    displayMode,
     onViewOptionsChanged,
     baseTitle,
     currentTitle,
@@ -108,35 +113,41 @@ const PrivateQueryDiffResultView = (
     return <Center height="100%">No data</Center>;
   }
 
-  if (changedOnly && gridData.rows.length === 0) {
-    return (
-      <Flex direction="column" backgroundColor="rgb(249, 249, 249)" height={"100%"}>
-        <RunToolbar
-          run={run}
-          viewOptions={viewOptions}
-          onAddToChecklist={onAddToChecklist}
-          onViewOptionsChanged={onViewOptionsChanged}
-          warnings={warnings}
-        />
-        <Center height="100%">No change</Center>;
-      </Flex>
-    );
-  }
   return (
     <Flex direction="column" backgroundColor="rgb(249, 249, 249)" height={"100%"}>
       <RunToolbar
         run={run}
         viewOptions={viewOptions}
-        onAddToChecklist={onAddToChecklist}
         onViewOptionsChanged={onViewOptionsChanged}
-        warnings={warnings}
-      />
+        warnings={warnings}>
+        <DiffDisplayModeSwitch
+          displayMode={displayMode}
+          onDisplayModeChanged={(displayMode) => {
+            if (onViewOptionsChanged) {
+              onViewOptionsChanged({
+                ...viewOptions,
+                display_mode: displayMode,
+              });
+            }
+          }}
+        />
+
+        <ChangedOnlyCheckbox
+          changedOnly={viewOptions?.changed_only}
+          onChange={() => {
+            const changedOnly = !viewOptions?.changed_only;
+            if (onViewOptionsChanged) {
+              onViewOptionsChanged({ ...viewOptions, changed_only: changedOnly });
+            }
+          }}
+        />
+      </RunToolbar>
       <ScreenshotDataGrid
         ref={ref}
         style={{ blockSize: "auto", maxHeight: "100%", overflow: "auto" }}
         columns={gridData.columns}
         rows={gridData.rows}
-        renderers={{ noRowsFallback: <EmptyRowsRenderer /> }}
+        renderers={{ noRowsFallback: <EmptyRowsRenderer emptyMessage="No mismatched rows" /> }}
         defaultColumnOptions={{
           resizable: true,
           maxWidth: 800,
@@ -150,18 +161,12 @@ const PrivateQueryDiffResultView = (
 };
 
 const PrivateQueryDiffJoinResultView = (
-  {
-    run,
-    onAddToChecklist,
-    viewOptions,
-    onViewOptionsChanged,
-    baseTitle,
-    currentTitle,
-  }: QueryDiffResultViewProps,
+  { run, viewOptions, onViewOptionsChanged, baseTitle, currentTitle }: QueryDiffResultViewProps,
   ref: any,
 ) => {
   const changedOnly = useMemo(() => viewOptions?.changed_only || false, [viewOptions]);
   const pinnedColumns = useMemo(() => viewOptions?.pinned_columns || [], [viewOptions]);
+  const displayMode = useMemo(() => viewOptions?.display_mode || "inline", [viewOptions]);
 
   const gridData = useMemo(() => {
     const handlePinnedColumnsChanged = (pinnedColumns: string[]) => {
@@ -185,8 +190,18 @@ const PrivateQueryDiffJoinResultView = (
       onPinnedColumnsChange: handlePinnedColumnsChanged,
       baseTitle,
       currentTitle,
+      displayMode,
     });
-  }, [run, viewOptions, changedOnly, pinnedColumns, onViewOptionsChanged, baseTitle, currentTitle]);
+  }, [
+    run,
+    viewOptions,
+    changedOnly,
+    pinnedColumns,
+    displayMode,
+    onViewOptionsChanged,
+    baseTitle,
+    currentTitle,
+  ]);
 
   const limit = run.result?.diff?.limit || 0;
   const warningLimit =
@@ -209,7 +224,6 @@ const PrivateQueryDiffJoinResultView = (
         <RunToolbar
           run={run}
           viewOptions={viewOptions}
-          onAddToChecklist={onAddToChecklist}
           onViewOptionsChanged={onViewOptionsChanged}
           warnings={warnings}
         />
@@ -223,10 +237,30 @@ const PrivateQueryDiffJoinResultView = (
       <RunToolbar
         run={run}
         viewOptions={viewOptions}
-        onAddToChecklist={onAddToChecklist}
         onViewOptionsChanged={onViewOptionsChanged}
-        warnings={warnings}
-      />
+        warnings={warnings}>
+        <DiffDisplayModeSwitch
+          displayMode={displayMode}
+          onDisplayModeChanged={(displayMode) => {
+            if (onViewOptionsChanged) {
+              onViewOptionsChanged({
+                ...viewOptions,
+                display_mode: displayMode,
+              });
+            }
+          }}
+        />
+
+        <ChangedOnlyCheckbox
+          changedOnly={viewOptions?.changed_only}
+          onChange={() => {
+            const changedOnly = !viewOptions?.changed_only;
+            if (onViewOptionsChanged) {
+              onViewOptionsChanged({ ...viewOptions, changed_only: changedOnly });
+            }
+          }}
+        />
+      </RunToolbar>
       <ScreenshotDataGrid
         ref={ref}
         style={{ blockSize: "auto", maxHeight: "100%", overflow: "auto" }}

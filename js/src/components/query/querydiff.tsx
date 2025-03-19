@@ -7,6 +7,7 @@ import { DataFrame } from "@/lib/api/types";
 import { mergeKeysWithStatus } from "@/lib/mergeKeys";
 import { CopyIcon } from "@chakra-ui/icons";
 import { useState } from "react";
+import { DiffText } from "./DiffText";
 
 function _getColumnMap(base: DataFrame, current: DataFrame) {
   const result: Record<
@@ -129,6 +130,7 @@ function DataFrameColumnGroupHeader({
 
   return (
     <Flex alignItems="center" gap="10px" className="grid-header">
+      {isPK && <Icon as={VscKey} />}
       <Box flex={1} overflow="hidden" textOverflow="ellipsis" whiteSpace="nowrap">
         {name}
       </Box>
@@ -183,75 +185,6 @@ const toRenderedValue = (row: any, key: string): [any, boolean] => {
 export const defaultRenderCell = ({ row, column }: RenderCellProps<any, any>) => {
   const [renderedValue, grayOut] = toRenderedValue(row, column.key);
   return <Text style={{ color: grayOut ? "gray" : "inherit" }}>{renderedValue}</Text>;
-};
-
-interface CopyableBadgeProps {
-  value: string;
-  colorScheme: string;
-  grayOut?: boolean;
-  noCopy?: boolean;
-  fontSize?: string;
-}
-
-export const DiffText = ({ value, colorScheme, grayOut, noCopy, fontSize }: CopyableBadgeProps) => {
-  const { onCopy, hasCopied } = useClipboard(value);
-  const [isHovered, setIsHovered] = useState(false);
-
-  const CopyControl = () => {
-    if (noCopy || grayOut) {
-      return <></>;
-    }
-
-    if (hasCopied) {
-      return <>Copied</>;
-    }
-
-    if (!isHovered) {
-      return <></>;
-    }
-
-    return (
-      <IconButton
-        aria-label="Copy"
-        icon={<CopyIcon boxSize="10px" />}
-        size="xs"
-        minW="10px"
-        h="10px"
-        variant="unstyled"
-        onClick={onCopy}
-        display="flex"
-        alignItems="center"
-        justifyContent="center"
-      />
-    );
-  };
-
-  return (
-    <Flex
-      p="2px 5px"
-      minWidth="30px"
-      maxWidth="200px"
-      overflow="hidden"
-      textOverflow="ellipsis"
-      color={`${colorScheme}.800`}
-      backgroundColor={`${colorScheme}.100`}
-      alignItems="center"
-      gap="2px"
-      rounded="md"
-      fontSize={fontSize}
-      onMouseEnter={() => {
-        setIsHovered(true);
-      }}
-      onMouseLeave={() => {
-        setIsHovered(false);
-      }}>
-      <Box overflow="hidden" textOverflow="ellipsis" color={grayOut ? "gray" : "inherit"}>
-        {value}
-      </Box>
-
-      <CopyControl />
-    </Flex>
-  );
 };
 
 export const inlineRenderCell = ({ row, column }: RenderCellProps<any, any>) => {

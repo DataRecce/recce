@@ -2,10 +2,10 @@ import { ColumnOrColumnGroup, RenderCellProps, textEditor } from "react-data-gri
 import _ from "lodash";
 import "../query/styles.css";
 import { Box, Flex, Icon } from "@chakra-ui/react";
-import { VscPin, VscPinned } from "react-icons/vsc";
+import { VscKey, VscPin, VscPinned } from "react-icons/vsc";
 import { DataFrame } from "@/lib/api/types";
 import { mergeKeysWithStatus } from "@/lib/mergeKeys";
-import { defaultRenderCell, QueryDataDiffGridOptions } from "../query/querydiff";
+import { defaultRenderCell, inlineRenderCell, QueryDataDiffGridOptions } from "../query/querydiff";
 
 function _getColumnMap(df: DataFrame) {
   const result: Record<
@@ -69,7 +69,6 @@ function DataFrameColumnGroupHeader({
   const pinnedColumns = options.pinnedColumns || [];
   const isPK = primaryKeys.includes(name);
   const isPinned = pinnedColumns.includes(name);
-  const canBePk = columnStatus !== "added" && columnStatus !== "removed";
 
   if (name === "index") {
     return <></>;
@@ -93,6 +92,7 @@ function DataFrameColumnGroupHeader({
 
   return (
     <Flex alignItems="center" gap="10px" className="grid-header">
+      {isPK && <Icon as={VscKey} />}
       <Box flex={1} overflow="hidden" textOverflow="ellipsis" whiteSpace="nowrap">
         {name}
       </Box>
@@ -116,6 +116,7 @@ export function toValueDiffGrid(
 ) {
   const pinnedColumns = options?.pinnedColumns || [];
   const changedOnly = options?.changedOnly || false;
+  const displayMode = options?.displayMode || "inline";
 
   const columns: ColumnOrColumnGroup<any, any>[] = [];
   const columnMap = _getColumnMap(df);
@@ -235,35 +236,52 @@ export function toValueDiffGrid(
       return undefined;
     };
 
-    return {
-      headerCellClass,
-      name: (
-        <DataFrameColumnGroupHeader
-          name={name}
-          columnStatus={columnStatus}
-          {...options}></DataFrameColumnGroupHeader>
-      ),
-      children: [
-        {
-          key: `base__${name}`,
-          name: options?.baseTitle || "Base",
-          renderEditCell: textEditor,
-          headerCellClass,
-          cellClass,
-          renderCell: defaultRenderCell,
-          size: "auto",
-        },
-        {
-          key: `current__${name}`,
-          name: options?.currentTitle || "Current",
-          renderEditCell: textEditor,
-          headerCellClass,
-          cellClass,
-          renderCell: defaultRenderCell,
-          size: "auto",
-        },
-      ],
-    };
+    if (displayMode === "inline") {
+      return {
+        headerCellClass,
+        name: (
+          <DataFrameColumnGroupHeader
+            name={name}
+            columnStatus={columnStatus}
+            primaryKeys={primaryKeys}
+            {...options}></DataFrameColumnGroupHeader>
+        ),
+        key: name,
+        renderCell: inlineRenderCell,
+        size: "auto",
+      };
+    } else {
+      return {
+        headerCellClass,
+        name: (
+          <DataFrameColumnGroupHeader
+            name={name}
+            columnStatus={columnStatus}
+            primaryKeys={primaryKeys}
+            {...options}></DataFrameColumnGroupHeader>
+        ),
+        children: [
+          {
+            key: `base__${name}`,
+            name: options?.baseTitle || "Base",
+            renderEditCell: textEditor,
+            headerCellClass,
+            cellClass,
+            renderCell: defaultRenderCell,
+            size: "auto",
+          },
+          {
+            key: `current__${name}`,
+            name: options?.currentTitle || "Current",
+            renderEditCell: textEditor,
+            headerCellClass,
+            cellClass,
+            renderCell: defaultRenderCell,
+            size: "auto",
+          },
+        ],
+      };
+    }
   };
 
   // merges columns: primary keys
@@ -275,6 +293,7 @@ export function toValueDiffGrid(
         <DataFrameColumnGroupHeader
           name={name}
           columnStatus={columnStatus}
+          primaryKeys={primaryKeys}
           {...options}></DataFrameColumnGroupHeader>
       ),
       frozen: true,

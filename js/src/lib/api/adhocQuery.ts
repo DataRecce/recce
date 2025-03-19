@@ -35,6 +35,7 @@ export interface QueryDiffViewOptions {
   changed_only?: boolean;
   primary_keys?: string[];
   pinned_columns?: string[];
+  display_mode?: "inline" | "side_by_side";
 }
 
 export async function submitQuery(params: QueryRunParams, options?: SubmitOptions) {
