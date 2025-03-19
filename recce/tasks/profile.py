@@ -124,6 +124,33 @@ class ProfileDiffTask(Task):
             from
             {{ relation }}
             """)
+        elif db_type == 'redshift':
+            # DRC-1149: Support redshift median calculation
+            # https://github.com/data-mie/dbt-profiler/pull/89
+            #
+            # Since dbt-profiler 0.8.2, there is the third parameter for measure_median
+            # For sake of compatibility, we use the new way to call the macro only for redshift
+            sql_template = textwrap.dedent(r"""
+            with source_data as (
+              select
+                *
+              from {{ relation }}
+            )
+            select
+            '{{column_name}}' as column_name,
+            nullif('{{column_type}}', '') as data_type,
+            {{ dbt_profiler.measure_row_count(column_name, column_type) }} as row_count,
+            {{ dbt_profiler.measure_not_null_proportion(column_name, column_type) }} as not_null_proportion,
+            {{ dbt_profiler.measure_distinct_proportion(column_name, column_type) }} as distinct_proportion,
+            {{ dbt_profiler.measure_distinct_count(column_name, column_type) }} as distinct_count,
+            {{ dbt_profiler.measure_is_unique(column_name, column_type) }} as is_unique,
+            {{ dbt_profiler.measure_min(column_name, column_type) }} as min,
+            {{ dbt_profiler.measure_max(column_name, column_type) }} as max,
+            {{ dbt_profiler.measure_avg(column_name, column_type) }} as avg,
+            ({{ dbt_profiler.measure_median(column_name, column_type, 'source_data') }}) as median
+            from
+            source_data
+            """)
 
         try:
             sql = dbt_adapter.generate_sql(
