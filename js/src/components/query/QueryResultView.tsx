@@ -1,26 +1,15 @@
 import "react-data-grid/lib/styles.css";
 import { Column } from "react-data-grid";
 import { QueryParams, QueryResult, QueryViewOptions } from "@/lib/api/adhocQuery";
-import {
-  Box,
-  Button,
-  Center,
-  Flex,
-  forwardRef,
-  Icon,
-  IconButton,
-  Spacer,
-  Tooltip,
-} from "@chakra-ui/react";
+import { Box, Button, Center, Flex, forwardRef, Icon, Spacer } from "@chakra-ui/react";
 import { useMemo } from "react";
 import { DataFrame, Run } from "@/lib/api/types";
 import { EmptyRowsRenderer, ScreenshotDataGrid } from "../data-grid/ScreenshotDataGrid";
 import { DataFrameColumnGroupHeader, defaultRenderCell } from "./querydiff";
 import { VscPin, VscPinned } from "react-icons/vsc";
 import { RunResultViewProps } from "../run/types";
-import { AddIcon, WarningIcon } from "@chakra-ui/icons";
+import { WarningIcon } from "@chakra-ui/icons";
 import _ from "lodash";
-import { string } from "node_modules/yaml/dist/schema/common/string";
 
 interface QueryResultViewProp
   extends RunResultViewProps<QueryParams, QueryResult, QueryViewOptions> {
