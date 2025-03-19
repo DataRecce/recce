@@ -51,6 +51,8 @@ const useModelColumns = (model: string | undefined) => {
   useEffect(() => {
     const fetchData = async () => {
       try {
+        // TODO instead of using non-null assertions, fix the underlying typing to account for it
+        // eslint-disable-next-line @typescript-eslint/no-non-null-asserted-optional-chain,@typescript-eslint/no-non-null-assertion
         const data = await getModelInfo(node?.id!);
         const modelInfo = data.model;
         if (!modelInfo.base.columns || !modelInfo.current.columns) {

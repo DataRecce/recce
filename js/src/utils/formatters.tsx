@@ -121,15 +121,20 @@ export function formatTopKMetrics(topK: TopKResult) {
     topCounts,
   };
 }
+
 /**
  * A method to handle falsey non-numbers (relevant for comparison reports with column shifts, where base/target values can be undefined)
- * @param input any value that will be checked as number
- * @param fn any function to format the valid number
- * @param emptyLabel the return value if falsey value
+ * @param value {string | number} any value that will be checked as number
+ * @param fn {function} any function to format the valid number
+ * @param emptyLabel {string} the return value if falsey value
  */
-export function formatColumnValueWith(input: any, fn: Function, emptyLabel = NO_VALUE): string {
-  if (typeof input === "string") return input;
-  return isNaN(input) ? emptyLabel : fn(input);
+export function formatColumnValueWith(
+  value: string | number,
+  fn: (input: number) => string,
+  emptyLabel: string = NO_VALUE,
+): string {
+  if (typeof value === "string") return value;
+  return isNaN(value) ? emptyLabel : fn(value);
 }
 
 /**

@@ -61,7 +61,7 @@ export function StateImporter({ checksOnly = true }: { checksOnly?: boolean }) {
       console.error("Import failed", error);
       toast({
         title: "Import failed",
-        description: `${error}`,
+        description: String(error),
         status: "error",
         variant: "left-accent",
         position: "bottom",

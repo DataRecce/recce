@@ -44,11 +44,14 @@ const useRecceToast = () => {
   };
 
   const toastError = (message: string, error?: Error) => {
-    const errorMessage = !error
-      ? message
-      : error instanceof AxiosError
-        ? `${message}. ${error.response?.data?.detail}`
-        : `${message}. ${error}`;
+    let errorMessage = message;
+    if (error != null) {
+      if (error instanceof AxiosError) {
+        errorMessage = `${message}. ${String((error as AxiosError<{ detail: string } | undefined, unknown>).response?.data?.detail)}`;
+      } else {
+        errorMessage = `${message}. ${error}`;
+      }
+    }
 
     toast({
       description: errorMessage,
@@ -65,7 +68,7 @@ const useRecceToast = () => {
 
 const useClosePrompt = (prompt: boolean) => {
   useEffect(() => {
-    const handleBeforeUnload = (e: any) => {
+    const handleBeforeUnload = (e: BeforeUnloadEvent) => {
       e.preventDefault();
     };
 
@@ -141,7 +144,7 @@ export const Filename = () => {
       if (bypass) {
         localStorage.setItem(localStorageKeys.bypassSaveOverwrite, "true");
       }
-    } catch (error: any) {
+    } catch (error: unknown) {
       if (error instanceof AxiosError) {
         if (error.response?.status === 409) {
           setState((s) => ({
@@ -153,7 +156,7 @@ export const Filename = () => {
           return;
         }
       }
-      toastError(method === "save" ? "Save file failed" : "Rename file failed", error);
+      toastError(method === "save" ? "Save file failed" : "Rename file failed", error as Error);
     } finally {
       modalDisclosure.onClose();
     }

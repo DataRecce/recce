@@ -123,9 +123,9 @@ export const CheckList = ({
   const queryClient = useQueryClient();
   const { mutate: markCheckedByID } = useMutation({
     mutationFn: (checkId: string) => updateCheck(checkId, { is_checked: true }),
-    onSuccess: (_, checkId: string) => {
-      queryClient.invalidateQueries({ queryKey: cacheKeys.check(checkId) });
-      queryClient.invalidateQueries({ queryKey: cacheKeys.checks() });
+    onSuccess: async (_, checkId: string) => {
+      await queryClient.invalidateQueries({ queryKey: cacheKeys.check(checkId) });
+      await queryClient.invalidateQueries({ queryKey: cacheKeys.checks() });
     },
   });
 
@@ -146,6 +146,8 @@ export const CheckList = ({
   const handleOnMarkAsApproved = () => {
     const bypassMarkAsApprovedWarning = localStorage.getItem("bypassMarkAsApprovedWarning");
     if (bypassMarkAsApprovedWarning === "true") {
+      // TODO instead of using non-null assertions, fix the underlying typing to account for it
+      // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
       markCheckedByID(selectedItem!);
       markedAsApprovedToast();
     } else {
@@ -154,6 +156,8 @@ export const CheckList = ({
   };
 
   const handleMarkAsApprovedConfirmed = () => {
+    // TODO instead of using non-null assertions, fix the underlying typing to account for it
+    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
     markCheckedByID(selectedItem!);
     if (bypassModal) {
       localStorage.setItem("bypassMarkAsApprovedWarning", "true");
@@ -179,12 +183,14 @@ export const CheckList = ({
                   {(provided, snapshot) => {
                     // see https://github.com/atlassian/react-beautiful-dnd/issues/1881#issuecomment-691237307
                     if (snapshot.isDragging) {
-                      const props = provided.draggableProps as any;
-                      const offset = { x: 0, y: 80 };
-                      const x = props.style.left - offset.x;
-                      const y = props.style.top - offset.y;
-                      props.style.left = x;
-                      props.style.top = y;
+                      const props = provided.draggableProps;
+                      if (props.style != null && "left" in props.style) {
+                        const offset = { x: 0, y: 80 };
+                        const x = props.style.left - offset.x;
+                        const y = props.style.top - offset.y;
+                        props.style.left = x;
+                        props.style.top = y;
+                      }
                     }
 
                     return (

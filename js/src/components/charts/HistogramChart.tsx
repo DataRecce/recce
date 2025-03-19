@@ -169,7 +169,7 @@ function getScales(
 
   //swap x-scale when histogram is datetime
   const xScaleDate: ScaleOptions = {
-    display: hideAxis ? false : true,
+    display: !hideAxis,
     type: "timeseries", // each datum is spread w/ equal distance
     min,
     max,
@@ -190,7 +190,7 @@ function getScales(
    * NOTE: Category doesn't accept (min/max) -- will distort scales!
    */
   const xScaleCategory: ScaleOptions = {
-    display: hideAxis ? false : true,
+    display: !hideAxis,
     type: "category", //Linear doesn't understand bins!
     grid: { display: false },
     ticks: {
@@ -203,7 +203,7 @@ function getScales(
   const xScaleBase = isDatetime ? xScaleDate : xScaleCategory;
 
   const yScaleBase: ScaleOptions = {
-    display: hideAxis ? false : true,
+    display: !hideAxis,
     type: "linear",
     max: maxCount, //NOTE: do not add `min` since if they are equal nothing gets displayed sometimes
     border: { dash: [2, 2] },

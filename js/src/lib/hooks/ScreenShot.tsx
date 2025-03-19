@@ -148,7 +148,9 @@ export function useCopyToClipboard({
     try {
       await navigator.clipboard.write([new ClipboardItem({ [`image/${imageType}`]: toImage() })]);
       setStatus("success");
-      onSuccess && onSuccess();
+      if (onSuccess) {
+        onSuccess();
+      }
     } catch (error) {
       if ((error as Error).message === "ClipboardItem is not defined") {
         const blob = await toImage();
@@ -158,7 +160,9 @@ export function useCopyToClipboard({
       } else {
         setStatus("error");
         console.error("Error copying to clipboard", error);
-        onError && onError(error);
+        if (onError) {
+          onError(error);
+        }
       }
     }
   };

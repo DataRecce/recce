@@ -43,6 +43,7 @@ export default tseslint.config(
   {
     ignores: [
       "**/.next",
+      "**/.swc",
       "*.js",
       "**/.vscode",
       "**/.husky",
@@ -99,35 +100,31 @@ export default tseslint.config(
           usePrettierrc: false,
         },
       ],
+      "@typescript-eslint/restrict-template-expressions": [
+        "error",
+        {
+          "allowNumber": true
+        }
+      ],
       // TODO
       //  ------------------------------------------------------------------------------------
       //  Marking the below as warnings ""for now"" - They need to be addressed in the future
       //  ------------------------------------------------------------------------------------
-      "react/no-array-index-key": "warn",
-      "@typescript-eslint/no-explicit-any": "warn",
-      "@typescript-eslint/no-unsafe-function-type": "warn",
-      "@typescript-eslint/no-extra-non-null-assertion": "warn",
-      "@typescript-eslint/no-wrapper-object-types": "warn",
-      "@typescript-eslint/consistent-generic-constructors": "warn",
-      "@typescript-eslint/no-unnecessary-template-expression": "warn",
-      "@typescript-eslint/consistent-type-definitions": "warn",
-      "@typescript-eslint/no-unnecessary-condition": "warn",
-      "@typescript-eslint/no-unsafe-member-access": "warn",
-      "@typescript-eslint/no-misused-promises": "warn",
-      "@typescript-eslint/restrict-template-expressions": "warn",
-      "@typescript-eslint/prefer-nullish-coalescing": "warn",
-      "@typescript-eslint/no-non-null-assertion": "warn",
-      "@typescript-eslint/no-non-null-asserted-optional-chain": "warn",
-      "@typescript-eslint/no-floating-promises": "warn",
-      "@typescript-eslint/no-unsafe-assignment": "warn",
-      "@typescript-eslint/no-unsafe-argument": "warn",
-      "@typescript-eslint/no-unsafe-call": "warn",
-      "@typescript-eslint/no-redundant-type-constituents": "warn",
-      "@typescript-eslint/no-unsafe-return": "warn",
-      "@typescript-eslint/no-unused-expressions": "warn",
-      "@typescript-eslint/require-await": "warn",
-      "@typescript-eslint/await-thenable": "warn",
-      "@typescript-eslint/no-confusing-void-expression": "warn",
+      "react/no-array-index-key": "warn", // 6 errors
+      "@typescript-eslint/no-explicit-any": "warn", // 124 errors
+      "@typescript-eslint/no-unnecessary-condition": "warn", // 54 errors
+      "@typescript-eslint/no-unsafe-member-access": "warn", // 120 errors
+      "@typescript-eslint/no-misused-promises": "warn", // 26 errors
+      "@typescript-eslint/prefer-nullish-coalescing": "warn", // 133 errors
+      "@typescript-eslint/no-floating-promises": "warn", // 49 errors
+      "@typescript-eslint/no-unsafe-assignment": "warn", // 131 errors
+      "@typescript-eslint/no-unsafe-argument": "warn", // 17 errors
+      "@typescript-eslint/no-unsafe-call": "warn", // 8 errors
+      "@typescript-eslint/no-redundant-type-constituents": "warn", // 16 errors
+      "@typescript-eslint/no-unsafe-return": "warn", // 24 errors
+      "@typescript-eslint/require-await": "warn", // 6 errors
+      "@typescript-eslint/await-thenable": "warn", // 5 errors
+      "@typescript-eslint/no-confusing-void-expression": "warn", // 5 errors (same as await-thenable)
     },
   },
 );
