@@ -219,7 +219,7 @@ export function toValueDiffGrid(
           ? "diff-header-removed"
           : undefined;
 
-    const cellClass = (row: any) => {
+    const cellClassBase = (row: any) => {
       const rowStatus = row.__status;
       if (rowStatus === "removed") {
         return "diff-cell-removed";
@@ -230,7 +230,24 @@ export function toValueDiffGrid(
       } else if (columnStatus === "removed") {
         return undefined;
       } else if (!_.isEqual(row[`base__${name}`], row[`current__${name}`])) {
-        return "diff-cell-modified";
+        return "diff-cell-removed";
+      }
+
+      return undefined;
+    };
+
+    const cellClassCurrent = (row: any) => {
+      const rowStatus = row.__status;
+      if (rowStatus === "removed") {
+        return "diff-cell-removed";
+      } else if (rowStatus === "added") {
+        return "diff-cell-added";
+      } else if (columnStatus === "added") {
+        return undefined;
+      } else if (columnStatus === "removed") {
+        return undefined;
+      } else if (!_.isEqual(row[`base__${name}`], row[`current__${name}`])) {
+        return "diff-cell-added";
       }
 
       return undefined;
@@ -266,7 +283,7 @@ export function toValueDiffGrid(
             name: options?.baseTitle || "Base",
             renderEditCell: textEditor,
             headerCellClass,
-            cellClass,
+            cellClass: cellClassBase,
             renderCell: defaultRenderCell,
             size: "auto",
           },
@@ -275,7 +292,7 @@ export function toValueDiffGrid(
             name: options?.currentTitle || "Current",
             renderEditCell: textEditor,
             headerCellClass,
-            cellClass,
+            cellClass: cellClassCurrent,
             renderCell: defaultRenderCell,
             size: "auto",
           },
