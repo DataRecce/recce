@@ -297,7 +297,7 @@ export function NodeView({ node, onCloseNode }: NodeViewProps) {
   }
 
   return (
-    <Grid height="100%" templateRows="auto auto auto 1fr">
+    <Grid height="100%" templateRows="auto auto 1fr">
       <HStack>
         <Box flex="0 1 20%" p="16px">
           <Heading size="sm">{node.name}</Heading>
@@ -322,20 +322,20 @@ export function NodeView({ node, onCloseNode }: NodeViewProps) {
             ))}
         </HStack>
       </Box>
-      {isSingleEnvOnboarding && isNotificationOpen && (
-        <Box p="12px">
-          <RecceNotification onClose={onNotificationClose} align={"flex-start"}>
-            <Text>
-              Enable the Recce Checklist and start adding checks for better data validation and
-              review.
-              <br />
-              <LearnHowLink />
-            </Text>
-          </RecceNotification>
-        </Box>
-      )}
       {withColumns && (
         <Tabs overflow="auto" as={Flex}>
+          {isSingleEnvOnboarding && isNotificationOpen && (
+            <Box p="12px">
+              <RecceNotification onClose={onNotificationClose} align={"flex-start"}>
+                <Text>
+                  Enable the Recce Checklist and start adding checks for better data validation and
+                  review.
+                  <br />
+                  <LearnHowLink />
+                </Text>
+              </RecceNotification>
+            </Box>
+          )}
           <TabList>
             <Tab>Columns</Tab>
             <Tab>Code</Tab>
