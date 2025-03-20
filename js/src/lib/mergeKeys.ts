@@ -61,14 +61,14 @@ export function mergeKeysWithStatus(_base: string[], _curr: string[]): Record<st
   }
 
   // reorder case
-  const baseIndexMap: Record<string, number> = {};
+  const baseIndexMap: Record<string, number | undefined> = {};
   _base.forEach((item, index) => {
     baseIndexMap[item] = index;
   });
   let last = -1;
   for (const item of merged) {
     const curr = baseIndexMap[item];
-    if (curr === undefined) {
+    if (curr == null) {
       continue;
     }
 

@@ -58,7 +58,7 @@ interface RunActionInternal {
   params?: any;
   lastRun?: Run;
   options?: RecceActionOptions;
-  RunForm: React.ComponentType<RunFormProps<any>>;
+  RunForm?: React.ComponentType<RunFormProps<any>>;
 }
 
 export function RecceActionContextProvider({ children }: RecceActionContextProviderProps) {
@@ -114,7 +114,7 @@ export function RecceActionContextProvider({ children }: RecceActionContextProvi
           throw new Error(`Run type ${type} does not have a result view`);
         }
 
-        if (RunForm === undefined || !options?.showForm) {
+        if (RunForm == undefined || !options?.showForm) {
           const { run_id } = await submitRun(type, params, {
             nowait: true,
           });

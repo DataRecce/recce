@@ -148,7 +148,7 @@ export const DropdownValuesInput = (props: DropdownValuesInputProps) => {
                       }
                     }}
                     onBlur={() => {
-                      if (inputRef && isTyping) inputRef.current?.focus();
+                      if (inputRef.current && isTyping) inputRef.current.focus();
                     }}
                   />
                 </WrapItem>

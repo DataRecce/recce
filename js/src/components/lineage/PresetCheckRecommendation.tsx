@@ -77,6 +77,7 @@ const usePresetCheckRecommendation = () => {
       }
     }
 
+    // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
     if (querySelectedModels.status === "success" && querySelectedModels.data) {
       return querySelectedModels.data.nodes;
     }

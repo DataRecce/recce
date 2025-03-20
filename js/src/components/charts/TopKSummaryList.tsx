@@ -47,7 +47,7 @@ function prepareSummaryList(topK: TopKResult, isDisplayTopTen: boolean): Summary
     if (isLastItemOthers) {
       label = "(others)";
       isSpecialLabel = true;
-    } else if (v === undefined || v === null) {
+    } else if (v == null) {
       label = "(null)";
       isSpecialLabel = true;
     } else if (typeof v === "string" && v.length === 0) {
@@ -212,6 +212,7 @@ export function TopKSummaryList({ topk, valids, isDisplayTopTen }: Props) {
         const displayTopkRatio = formatIntervalMinMax(topkCount / valids);
         return (
           <Fragment key={index}>
+            {/* eslint-disable-next-line @typescript-eslint/no-unnecessary-condition */}
             {!isLastItemOthers || (isLastItemOthers && topkCount > 0) ? (
               <>
                 <Flex alignItems={"center"} width={"100%"} _hover={{ bg: "blackAlpha.300" }} px={3}>

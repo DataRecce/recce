@@ -116,7 +116,8 @@ function calculateColumnChange(base: NodeData | undefined, current: NodeData | u
   // Modify columns
   if (current && base) {
     Object.keys(current.columns || {}).forEach((col) => {
-      if (base.columns && current.columns && base.columns[col]) {
+      // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
+      if (base.columns && current.columns?.[col] && base.columns[col]) {
         if (base.columns[col].type !== current.columns[col].type) modifies++;
       }
     });

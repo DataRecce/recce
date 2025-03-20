@@ -89,9 +89,8 @@ function _ValueDiffResultView({ run }: ValueDiffResultViewProp, ref: any) {
   const result = run.result as ValueDiffResult;
   const params = run.params as ValueDiffParams;
   const cellClass = (row: any) => {
-    const value: number | undefined = row[2];
-
-    return value !== undefined && value !== null && value < 1 ? "diff-cell-modified" : "";
+    const value = row[2] as unknown as number | undefined;
+    return value != null && value < 1 ? "diff-cell-modified" : "";
   };
   const primaryKeys = Array.isArray(params.primary_key) ? params.primary_key : [params.primary_key];
 
@@ -127,12 +126,8 @@ function _ValueDiffResultView({ run }: ValueDiffResultViewProp, ref: any) {
       name: "Matched %",
       resizable: true,
       renderCell: ({ column, row }) => {
-        const value: number | undefined = row[column.key];
-        return (
-          <Box textAlign="end">
-            {value != undefined && value !== null ? `${(value * 100).toFixed(2)} %` : "N/A"}
-          </Box>
-        );
+        const value = row[column.key] as unknown as number | undefined;
+        return <Box textAlign="end">{value != null ? `${(value * 100).toFixed(2)} %` : "N/A"}</Box>;
       },
       cellClass,
     },

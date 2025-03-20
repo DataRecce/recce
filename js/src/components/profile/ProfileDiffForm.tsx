@@ -63,15 +63,22 @@ export function ProfileDiffForm({
           <Select
             isMulti
             closeMenuOnSelect={false}
-            options={(columnNames || []).map((c) => ({ label: c, value: c }))}
+            options={columnNames.map((c) => ({ label: c, value: c }))}
             value={(params.columns ?? []).map((c) => ({
               label: c,
               value: c,
             }))}
-            onChange={(options) => {
+            onChange={(newValue) => {
+              let cols: string[] | undefined;
+              const newCols = newValue.map((v) => v.value);
+              if (newCols.length === 0) {
+                cols = undefined;
+              } else {
+                cols = newCols;
+              }
               onParamsChanged({
                 ...params,
-                columns: (options || []).map((v) => v.value),
+                columns: cols,
               });
             }}></Select>
         )}

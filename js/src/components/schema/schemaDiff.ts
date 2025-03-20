@@ -24,6 +24,7 @@ export function isSchemaChanged(
 
   // modified
   for (const key of currKeys) {
+    // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
     if (!baseSchema[key] || baseSchema[key].type !== currSchema[key].type) {
       return true;
     }

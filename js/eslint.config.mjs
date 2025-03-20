@@ -112,7 +112,6 @@ export default tseslint.config(
       //  ------------------------------------------------------------------------------------
       "react/no-array-index-key": "warn", // 6 errors
       "@typescript-eslint/no-explicit-any": "warn", // 124 errors
-      "@typescript-eslint/no-unnecessary-condition": "warn", // 54 errors
       "@typescript-eslint/no-unsafe-member-access": "warn", // 120 errors
       "@typescript-eslint/no-misused-promises": "warn", // 26 errors
       "@typescript-eslint/prefer-nullish-coalescing": "warn", // 133 errors

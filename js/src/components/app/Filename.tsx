@@ -182,6 +182,7 @@ export const Filename = () => {
   return (
     <>
       <Flex flex="1" justifyContent="center" alignItems="center">
+        {/* eslint-disable-next-line @typescript-eslint/no-unnecessary-condition */}
         <Box fontWeight="600">{fileName ? fileName : cloudMode ? "cloud" : titleNewInstance}</Box>
         <Tooltip label={fileName ? "Change Filename" : "Save"} openDelay={1000}>
           <IconButton onClick={handleOpen} aria-label={""} variant="unstyled" size="sm">

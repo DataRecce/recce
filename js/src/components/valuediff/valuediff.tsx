@@ -129,7 +129,9 @@ export function toValueDiffGrid(
   }
 
   const primaryIndexes = _getPrimaryKeyIndexes(df.columns, primaryKeys);
+  // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
   const inBaseIndex = (columnMap.in_a || columnMap.IN_A).index;
+  // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
   const inCurrentIndex = (columnMap.in_b || columnMap.IN_B).index;
 
   df.data.forEach((row, index) => {

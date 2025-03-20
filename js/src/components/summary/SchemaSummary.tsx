@@ -8,15 +8,9 @@ import {
   SimpleGrid,
   Text,
   HStack,
-  Tooltip,
-  Tag,
-  TagLeftIcon,
-  TagLabel,
-  SkeletonText,
 } from "@chakra-ui/react";
 import { LineageGraph, LineageGraphNode } from "../lineage/lineage";
 import { SchemaView } from "../schema/SchemaView";
-import { mergeColumns } from "../schema/schema";
 import { mergeKeysWithStatus } from "@/lib/mergeKeys";
 import { useEffect, useState } from "react";
 import { ResourceTypeTag, RowCountDiffTag } from "../lineage/NodeTag";

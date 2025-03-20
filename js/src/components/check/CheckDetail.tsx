@@ -154,7 +154,8 @@ export const CheckDetail = ({ checkId, refreshCheckList }: CheckDetailProps) => 
     }
 
     const markdown = buildMarkdown(check);
-    if (!navigator.clipboard) {
+    // @see https://developer.mozilla.org/en-US/docs/Web/Security/Secure_Contexts
+    if (!window.isSecureContext) {
       failToast(
         "Failed to copy the check to clipboard",
         new Error("Copy to clipboard is available only in secure contexts (HTTPS)"),

@@ -29,7 +29,7 @@ test("column diff", () => {
     name: "VARCHAR",
   });
 
-  const result = mergeColumns(base, current) || {};
+  const result = mergeColumns(base, current);
   expect(Object.keys(result)).toStrictEqual([
     "id",
     "user_id",

@@ -29,6 +29,7 @@ import {
 } from "@chakra-ui/react";
 import { format, parseISO } from "date-fns";
 import { IconInfo } from "../icons";
+import { isEmpty } from "lodash";
 
 export function formatTimestamp(timestamp: string): string {
   const date = parseISO(timestamp);
@@ -112,7 +113,7 @@ export function EnvInfo() {
                           </Link>
                         </ListItem>
                       )}
-                      {reviewInfo && renderInfoEntries(reviewInfo)}
+                      {!isEmpty(reviewInfo) && renderInfoEntries(reviewInfo)}
                     </UnorderedList>
                   </Flex>
                 </>

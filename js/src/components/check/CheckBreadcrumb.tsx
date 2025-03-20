@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useRef, useState } from "react";
+import React, { ChangeEvent, useCallback, useEffect, useRef, useState } from "react";
 import { Box, Breadcrumb, BreadcrumbItem, Input } from "@chakra-ui/react";
 import { ChevronRightIcon } from "@chakra-ui/icons";
 
@@ -10,7 +10,7 @@ interface CheckBreadcrumbProps {
 export function CheckBreadcrumb({ name, setName }: CheckBreadcrumbProps) {
   const [isEditing, setIsEditing] = useState(false);
   const [editValue, setEditValue] = useState(name);
-  const editInputRef = useRef(null);
+  const editInputRef = useRef<HTMLInputElement>(null);
 
   const handleClick = () => {
     setEditValue(name);
@@ -32,13 +32,13 @@ export function CheckBreadcrumb({ name, setName }: CheckBreadcrumbProps) {
     }
   };
 
-  const handleChange: React.ChangeEventHandler = (event) => {
-    setEditValue((event.target as any).value);
+  const handleChange: React.ChangeEventHandler = (event: ChangeEvent<HTMLInputElement>) => {
+    setEditValue(event.target.value);
   };
 
   useEffect(() => {
-    const handleClickOutside = (event: any) => {
-      if (editInputRef.current && !(editInputRef.current as any).contains(event.target)) {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (editInputRef.current && !editInputRef.current.contains(event.target as Node | null)) {
         handleCommit();
       }
     };

@@ -110,7 +110,7 @@ export function formatTestExpectedOrActual(value?: unknown): any {
      (1) a:100 => a
      (1) a:100, b:99, c:99 => a
  */
-export function formatTopKMetrics(topK: TopKResult) {
+export function formatTopKMetrics(topK?: TopKResult): { topValues?: string; topCounts?: string } {
   if (!topK) return {};
   const { counts, values } = topK;
   const topValues = `${values[0]}`;
