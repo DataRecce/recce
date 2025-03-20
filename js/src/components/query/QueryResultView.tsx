@@ -124,7 +124,7 @@ const PrivateQueryResultView = (
 ) => {
   const pinnedColumns = useMemo(() => viewOptions?.pinned_columns || [], [viewOptions]);
 
-  const dataframe = run.result as DataFrame;
+  const dataframe = run.result;
   const gridData = useMemo(() => {
     if (!dataframe) {
       return { rows: [], columns: [] };
@@ -149,9 +149,9 @@ const PrivateQueryResultView = (
     return <Center height="100%">No data</Center>;
   }
 
-  const limit = dataframe.limit || 0;
+  const limit = dataframe ? (dataframe.limit ?? 0) : 0;
   const warning =
-    limit > 0 && dataframe.more
+    limit > 0 && dataframe?.more
       ? `Warning: Displayed results are limited to ${limit.toLocaleString()} records. To ensure complete data retrieval, consider applying a LIMIT or WHERE clause to constrain the result set.`
       : null;
   const showTopBar = onAddToChecklist || warning;

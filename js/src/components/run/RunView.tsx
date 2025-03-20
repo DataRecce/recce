@@ -70,7 +70,7 @@ export const RunView = forwardRef(
         <Center p="16px" height="100%" bg="rgb(249,249,249)">
           <VStack>
             <Flex alignItems="center">
-              {progress?.percentage === undefined || progress.percentage === null ? (
+              {progress?.percentage == null ? (
                 <CircularProgress isIndeterminate size="20px" mr="8px" />
               ) : (
                 <CircularProgress size="20px" value={progress.percentage * 100} mr="8px" />

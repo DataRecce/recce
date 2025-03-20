@@ -61,7 +61,7 @@ export function useCopyToClipboard({
   ignoreElements,
 }: HookOptions) {
   const [status, setStatus] = useState<"idle" | "loading" | "success" | "error">("idle");
-  const ref = useRef(null);
+  const ref = useRef<HTMLElement>(null);
 
   // ImageDownloadModal is used for browsers that don't support ClipboardItem
   const { onOpen, setImgBlob, ImageDownloadModal } = useImageDownloadModal();
@@ -260,7 +260,7 @@ export function useImageDownloadModal() {
       const reader = new FileReader();
       reader.readAsDataURL(imgBlob);
       reader.onloadend = (e) => {
-        if (e.target?.result && e.target.result !== null) {
+        if (e.target?.result != null) {
           setBase64Img(e.target.result as string);
         }
       };

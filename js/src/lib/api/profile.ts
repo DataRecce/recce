@@ -27,7 +27,7 @@ export interface TopKDiffParams {
 }
 
 export interface TopKResult {
-  values: (string | number)[];
+  values: (string | number | undefined)[];
   counts: number[];
   valids: number;
 }

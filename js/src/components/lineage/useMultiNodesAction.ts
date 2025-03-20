@@ -74,6 +74,7 @@ export const useMultiNodesAction = (
       actionState.currentRun = { run_id };
       actionState.total = 1;
 
+      // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
       while (true) {
         const run = await waitRun(run_id, 2);
         actionState.currentRun = run;
@@ -150,6 +151,7 @@ export const useMultiNodesAction = (
           };
           onActionNodeUpdated(node);
 
+          // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
           while (true) {
             const run = await waitRun(run_id, 2);
             actionState.currentRun = run;

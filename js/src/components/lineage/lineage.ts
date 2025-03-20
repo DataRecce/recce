@@ -1,3 +1,5 @@
+/* eslint-disable @typescript-eslint/no-unnecessary-condition */
+// TODO LineageData typing needs to be fully thought out to handle the edge-cases - JMS
 import { Node, Edge, Position } from "reactflow";
 import { getNeighborSet, union } from "./graph";
 import { Run } from "@/lib/api/types";
@@ -11,7 +13,7 @@ import {
 } from "@/lib/api/info";
 
 /**
- * THe types for internal data structures.
+ * The types for internal data structures.
  */
 
 export interface LineageGraphNode {

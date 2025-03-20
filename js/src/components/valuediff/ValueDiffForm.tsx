@@ -38,7 +38,7 @@ export function ValueDiffForm({ params, onParamsChanged, setIsReadyToExecute }: 
 
   const columnNames = columns.map((c) => c.name);
 
-  // primaryKey can be array or string, map to array
+  // primaryKey can be an array or string, map to array
   const primaryKeys = Array.isArray(primaryKey)
     ? primaryKey
     : primaryKey
@@ -65,7 +65,7 @@ export function ValueDiffForm({ params, onParamsChanged, setIsReadyToExecute }: 
           placeholder="Select primary key"
           isMulti
           closeMenuOnSelect={false}
-          options={(columnNames || []).map((c) => ({ label: c, value: c }))}
+          options={columnNames.map((c) => ({ label: c, value: c }))}
           value={(primaryKeys || []).map((c) => ({
             label: c,
             value: c,
@@ -95,15 +95,22 @@ export function ValueDiffForm({ params, onParamsChanged, setIsReadyToExecute }: 
           <Select
             isMulti
             closeMenuOnSelect={false}
-            options={(columnNames || []).map((c) => ({ label: c, value: c }))}
+            options={columnNames.map((c) => ({ label: c, value: c }))}
             value={(params.columns || []).map((c) => ({
               label: c,
               value: c,
             }))}
-            onChange={(options) => {
+            onChange={(newValue) => {
+              let cols: string[] | undefined;
+              const newCols = newValue.map((v) => v.value);
+              if (newCols.length === 0) {
+                cols = undefined;
+              } else {
+                cols = newCols;
+              }
               onParamsChanged({
                 ...params,
-                columns: (options || []).map((v) => v.value),
+                columns: cols,
               });
             }}></Select>
         )}

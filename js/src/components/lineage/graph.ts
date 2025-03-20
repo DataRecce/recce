@@ -4,13 +4,13 @@ export function getNeighborSet(
   degree = 1000,
 ) {
   const neighborSet = new Set<string>();
-  const visited: Record<string, number> = {};
+  const visited: Record<string, number | undefined> = {};
 
   const dfs = (id: string, currentDegree: number) => {
     if (currentDegree < 0) {
       return;
     }
-    if (visited[id] !== undefined && visited[id] >= currentDegree) {
+    if (visited[id] != null && visited[id] >= currentDegree) {
       return;
     }
     visited[id] = currentDegree;
