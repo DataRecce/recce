@@ -61,7 +61,7 @@ export function useCopyToClipboard({
   ignoreElements,
 }: HookOptions) {
   const [status, setStatus] = useState<"idle" | "loading" | "success" | "error">("idle");
-  const ref = useRef<HTMLElement>(null);
+  const ref = useRef<HTMLDivElement>(null);
 
   // ImageDownloadModal is used for browsers that don't support ClipboardItem
   const { onOpen, setImgBlob, ImageDownloadModal } = useImageDownloadModal();
