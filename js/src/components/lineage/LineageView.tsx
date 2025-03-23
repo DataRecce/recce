@@ -92,6 +92,8 @@ import { ColumnLevelLineageLegend } from "./ColumnLevelLineageLegend";
 import { LineageViewNotification } from "./LineageViewNotification";
 import { useRecceServerFlag } from "@/lib/hooks/useRecceServerFlag";
 import { BaseEnvironmentSetupNotification } from "./SingleEnvironmentQueryView";
+import { submitCll } from "@/lib/api/cll";
+import { useCll } from "@/lib/hooks/useColumnLevelLineage";
 
 export interface LineageViewProps {
   viewOptions?: LineageDiffViewOptions;
@@ -272,6 +274,8 @@ export function PrivateLineageView(
   }>({ x: 0, y: 0 });
 
   const [breakingChangeEnabled, setBreakingChangeEnabled] = useState(false);
+  const [cllId, setCllId] = useState<string>();
+  const { cll, isRunning } = useCll(cllId);
 
   const toast = useToast();
 
@@ -309,11 +313,7 @@ export function PrivateLineageView(
         selectedNodes = result.nodes;
       }
 
-      let [nodes, edges] = toReactflow(
-        lineageGraph,
-        selectedNodes,
-        viewOptions.column_level_lineage,
-      );
+      let [nodes, edges] = toReactflow(lineageGraph, selectedNodes);
       let nodeSet = selectAllNodes(lineageGraph);
       if (isModelsChanged) {
         nodeSet = selectImpactRadius(lineageGraph, breakingChangeEnabled);
@@ -402,7 +402,11 @@ export function PrivateLineageView(
     }
   });
 
-  const onColumnNodeClick = (event: React.MouseEvent, node: Node) => {
+  const onColumnNodeClick = async (event: React.MouseEvent, node: Node) => {
+    if (!cll || cll.params.node_id !== node.data.node.id) {
+      const cll = await submitCll(node.data.node.id, node.data.column);
+      setCllId(cll.cll_id);
+    }
     // eslint-disable-next-line @typescript-eslint/no-floating-promises
     handleViewOptionsChanged(
       {
@@ -526,6 +530,7 @@ export function PrivateLineageView(
       lineageGraph,
       selectedNodes,
       newViewOptions.column_level_lineage,
+      cll,
     );
     if (selectMode === "single" && selectedNode) {
       const newSelectedNode = newNodes.find((node) => node.id == selectedNode.id);
@@ -614,6 +619,23 @@ export function PrivateLineageView(
 
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [run, viewOptions, isRunResultOpen, selectMode]);
+
+  useEffect(() => {
+    if (cll?.status === "finished") {
+      // eslint-disable-next-line @typescript-eslint/no-floating-promises
+      handleViewOptionsChanged(
+        {
+          ...viewOptions,
+          column_level_lineage: {
+            node: cll.params.node_id,
+            column: cll.params.column,
+          },
+        },
+        false,
+      );
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [cll]);
 
   if (isLoading) {
     return (
@@ -877,7 +899,12 @@ export function PrivateLineageView(
     actionState: multiNodeAction.actionState,
 
     // Column Level Lineage
-    showColumnLevelLineage: (nodeId: string, column: string) => {
+    showColumnLevelLineage: async (nodeId: string, column: string) => {
+      if (!cll || nodeId !== cll.params.node_id) {
+        const cll = await submitCll(nodeId, column, { nowait: true });
+        setCllId(cll.cll_id);
+      }
+
       // eslint-disable-next-line @typescript-eslint/no-floating-promises
       handleViewOptionsChanged(
         {
@@ -999,7 +1026,9 @@ export function PrivateLineageView(
                         ...viewOptions,
                         column_level_lineage: undefined,
                       });
-                    }}></ColumnLevelLineageControl>
+                    }}
+                    isRunning={isRunning}
+                  />
                 )}
                 {nodes.length == 0 && (
                   <Text fontSize="xl" color="grey" opacity={0.5}>

@@ -38,7 +38,7 @@ export interface LineageViewContextType {
   setAdvancedImpactRadius: (value: boolean) => void;
 
   // Column Level Lineage
-  showColumnLevelLineage: (nodeId: string, column: string) => void;
+  showColumnLevelLineage: (nodeId: string, column: string) => Promise<void>;
   resetColumnLevelLinage: () => void;
 }
 

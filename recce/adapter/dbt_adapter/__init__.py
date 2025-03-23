@@ -13,6 +13,7 @@ from recce.event import log_performance
 from recce.exceptions import RecceException
 from recce.util.cll import cll, CLLPerformanceTracking
 from ...tasks.profile import ProfileTask
+from recce.util.lineage import find_upstream, find_downstream
 
 try:
     import agate
@@ -571,23 +572,6 @@ class DbtAdapter(BaseAdapter):
 
         return parent_map
 
-    @lru_cache(maxsize=2)
-    def build_table_map(self, base: Optional[bool] = False) -> Dict[str, str]:
-        manifest = self.curr_manifest if base is False else self.base_manifest
-        manifest_dict = manifest.to_dict()
-
-        table_map = {}
-        for node in manifest_dict['nodes'].values():
-            resource_type = node['resource_type']
-            if resource_type not in ['model', 'seed', 'exposure', 'snapshot']:
-                continue
-            table_map[node['unique_id']] = node.get('alias')
-
-        for source in manifest_dict['sources'].values():
-            table_map[source['unique_id']] = source.get('identifier')
-
-        return table_map
-
     def get_lineage(self, base: Optional[bool] = False):
         manifest = self.curr_manifest if base is False else self.base_manifest
         catalog = self.curr_catalog if base is False else self.base_catalog
@@ -734,13 +718,6 @@ class DbtAdapter(BaseAdapter):
                 }
 
         parent_map = self.build_parent_map(nodes, base)
-
-        # Handle column-level lineage, only enable if env var is set to true
-        if os.getenv('RECCE_CLL_ENABLED') != 'false':
-            if base is False:
-                cll_tracker.start_column_lineage()
-                self.append_column_lineage(nodes, parent_map, base)
-                cll_tracker.end_column_lineage()
 
         if base is False:
             cll_tracker.end_lineage()
@@ -900,6 +877,82 @@ class DbtAdapter(BaseAdapter):
             base=base,
             current=current,
             diff=diff,
+        )
+
+    def get_cll_by_node(self, node_id: str, base: Optional[bool] = False):
+        cll_tracker = CLLPerformanceTracking()
+        cll_tracker.start_column_lineage()
+
+        manifest = self.curr_manifest if base is False else self.base_manifest
+        catalog = self.curr_catalog if base is False else self.base_catalog
+        manifest_dict = manifest.to_dict()
+
+        parent_ids = find_upstream(node_id, manifest_dict.get('parent_map'))
+        child_ids = find_downstream(node_id, manifest_dict.get('child_map'))
+        cover_node_ids = parent_ids.union(child_ids)
+        cover_node_ids.add(node_id)
+
+        nodes = {}
+        for node in manifest_dict['nodes'].values():
+            if node.get('unique_id') not in cover_node_ids:
+                continue
+
+            unique_id = node['unique_id']
+            resource_type = node['resource_type']
+
+            if resource_type not in ['model', 'seed', 'exposure', 'snapshot']:
+                continue
+
+            nodes[unique_id] = {
+                'id': node['unique_id'],
+                'name': node['name'],
+                'resource_type': node['resource_type'],
+                'raw_code': node['raw_code'],
+            }
+
+            if catalog is not None and unique_id in catalog.nodes:
+                columns = {}
+                for col_name, col_metadata in catalog.nodes[unique_id].columns.items():
+                    col = dict(name=col_name, type=col_metadata.type)
+                    columns[col_name] = col
+                nodes[unique_id]['columns'] = columns
+
+        # Currently, it includes all sources nodes in manifest
+        for source in manifest_dict['sources'].values():
+            unique_id = source['unique_id']
+
+            nodes[unique_id] = {
+                'id': source['unique_id'],
+                'name': source['name'],
+                'resource_type': source['resource_type'],
+                'columns': {
+                    col.get('name'): {
+                        'name': col.get('name'),
+                        'type': col.get('data_type')
+                    }
+                    for col in source.get('columns', {}).values()
+                }
+            }
+
+            if catalog is not None and unique_id in catalog.sources:
+                columns = {
+                    col_name: {
+                        'name': col_name,
+                        'type': col_metadata.type
+                    }
+                    for col_name, col_metadata in catalog.sources[unique_id].columns.items()
+                }
+                nodes[unique_id]['columns'].update(columns)
+
+        parent_map = self.build_parent_map(nodes, base)
+        self.append_column_lineage(nodes, parent_map, base)
+
+        cll_tracker.end_column_lineage()
+        log_performance("column level lineage", cll_tracker.to_dict())
+        cll_tracker.reset()
+
+        return dict(
+            nodes=nodes
         )
 
     def get_manifests_by_id(self, unique_id: str):

@@ -83,6 +83,16 @@ class Check(BaseModel):
         return True
 
 
+class Cll(BaseModel):
+    cll_id: UUID4 = Field(default_factory=uuid.uuid4)
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc).replace(microsecond=0))
+    params: Optional[dict] = None
+    result: Optional[dict] = None
+    error: Optional[str] = None
+    status: Optional[RunStatus] = None
+    progress: Optional[RunProgress] = None
+
+
 ChangeStatus = Literal[
     'added',
     'removed',

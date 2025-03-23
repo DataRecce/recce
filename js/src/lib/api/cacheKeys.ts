@@ -7,4 +7,5 @@ export const cacheKeys = {
   run: (runId: string) => ["runs", runId],
   runsAggregated: () => ["runs_aggregated"],
   flag: () => ["flag"],
+  cll: (cllId: string) => ["cll", cllId],
 };

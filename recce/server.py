@@ -8,7 +8,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Optional, Any, Set, Annotated, Literal
 
-from fastapi import FastAPI, HTTPException, Request, WebSocket, UploadFile, Response, BackgroundTasks, Form
+from fastapi import FastAPI, HTTPException, Request, WebSocket, UploadFile, Response, BackgroundTasks, Form, Query
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import PlainTextResponse
 from fastapi.staticfiles import StaticFiles
@@ -24,8 +24,12 @@ from .config import RecceConfig
 from .core import load_context, default_context
 from .event import log_api_event, log_single_env_event
 from .exceptions import RecceException
+from .models import Cll
+from .models.cll import CllDAO
+from .models.types import RunStatus
 from .run import load_preset_checks
 from .state import RecceStateLoader
+from .tasks.cll import CllTask
 
 logger = logging.getLogger('uvicorn')
 
@@ -238,6 +242,71 @@ async def get_info():
         return info
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))
+
+
+class CreateCllIn(BaseModel):
+    params: dict
+    nowait: Optional[bool] = False
+
+
+@app.post("/api/cll")
+async def column_level_lineage_by_node(cll_input: CreateCllIn):
+    cll = CllDAO().find_cll_by_node(cll_input.params.get('node_id'))
+    if cll is not None:
+        return cll
+
+    loop = asyncio.get_running_loop()
+    task = CllTask(cll_input.params)
+
+    cll = Cll(params=cll_input.params, status=RunStatus.RUNNING)
+    CllDAO().create(cll)
+
+    async def update_run_result(result, error):
+        if cll is None:
+            return
+        if result is not None:
+            cll.result = result
+            cll.status = RunStatus.FINISHED
+        if error is not None:
+            cll.error = str(error)
+            if cll.status != RunStatus.CANCELLED:
+                cll.status = RunStatus.FAILED
+        cll.progress = None
+
+    def fn():
+        try:
+            result = task.execute()
+            asyncio.run_coroutine_threadsafe(update_run_result(result, None), loop)
+            return result
+        except BaseException as e:
+            asyncio.run_coroutine_threadsafe(update_run_result(None, e), loop)
+            if isinstance(e, RecceException) and e.is_raise is False:
+                return None
+            failed_reason = str(e).replace('. ', ".\n")
+            logger.error(f"Failed to parsing cll: {failed_reason}")
+            return None
+
+    future = loop.run_in_executor(None, fn)
+
+    if cll_input.nowait:
+        return cll
+    else:
+        cll.result = await future
+        return cll
+
+
+@app.get("/api/cll/{cll_id}/wait")
+async def wait_cll_handler(cll_id: uuid.UUID, timeout: int = Query(None, description="Maximum number of seconds to wait")):
+    cll = CllDAO().find_cll_by_id(cll_id)
+    if cll is None:
+        raise HTTPException(status_code=404, detail='Not Found')
+
+    start_time = asyncio.get_event_loop().time()
+    while cll.result is None and cll.error is None:
+        await asyncio.sleep(1)
+        if timeout is not None and (asyncio.get_event_loop().time() - start_time) > timeout:
+            break
+    return cll
 
 
 class SelectNodesInput(BaseModel):

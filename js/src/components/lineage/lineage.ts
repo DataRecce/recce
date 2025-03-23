@@ -9,6 +9,7 @@ import {
   ManifestMetadata,
   NodeData,
 } from "@/lib/api/info";
+import { CllResponse, ColumnLineageData } from "@/lib/api/cll";
 
 /**
  * THe types for internal data structures.
@@ -82,21 +83,17 @@ export interface LineageGraph {
   };
 }
 
-export function _selectColumnLevelLineage(
-  nodes: LineageGraph["nodes"],
-  node: string,
-  column: string,
-) {
+export function _selectColumnLevelLineage(node: string, column: string, cll: ColumnLineageData) {
   const parentMap: Record<string, string[]> = {};
   const childMap: Record<string, string[]> = {};
   const selectedColumn = `${node}_${column}`;
 
-  for (const [, modelNode] of Object.entries(nodes)) {
-    const nodeId = modelNode.data.current?.id;
+  for (const modelNode of Object.values(cll.current.nodes)) {
+    const nodeId = modelNode.id;
     if (!nodeId) {
       continue;
     }
-    for (const [, columnNode] of Object.entries(modelNode.data.current?.columns || {})) {
+    for (const columnNode of Object.values(modelNode.columns ?? {})) {
       const target = `${nodeId}_${columnNode.name}`;
       parentMap[target] = [];
 
@@ -356,16 +353,16 @@ export function toReactflow(
     node: string;
     column: string;
   },
+  cll?: CllResponse,
 ): [Node[], Edge[]] {
   const nodes: Node[] = [];
   const edges: Edge[] = [];
-  const columnSet = columnLevelLineage
-    ? _selectColumnLevelLineage(
-        lineageGraph.nodes,
-        columnLevelLineage.node,
-        columnLevelLineage.column,
-      )
-    : new Set<string>();
+  const columnSet =
+    columnLevelLineage &&
+    cll?.status === "finished" &&
+    cll.params.node_id === columnLevelLineage.node
+      ? _selectColumnLevelLineage(columnLevelLineage.node, columnLevelLineage.column, cll.result)
+      : new Set<string>();
 
   function getWeight(from: string) {
     if (from === "base") {
@@ -402,8 +399,8 @@ export function toReactflow(
     // add column nodes
     const nodeColumnSet = new Set<string>();
     let columnIndex = 0;
-    if (node.data.current?.columns) {
-      for (const column of Object.values(node.data.current.columns)) {
+    if (cll?.result.current.nodes && node.id in cll.result.current.nodes) {
+      for (const column of Object.values(cll.result.current.nodes[node.id].columns ?? {})) {
         const columnKey = `${node.id}_${column.name}`;
         if (!columnSet.has(columnKey)) {
           continue;
