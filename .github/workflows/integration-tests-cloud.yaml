@@ -7,8 +7,6 @@ on:
   pull_request_target:
     branches:
       - main
-    paths-ignore:
-      - "js/**"
 
 jobs:
   smoke-test-cloud:
@@ -36,6 +34,8 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - uses: actions/checkout@v3
+        with:
+          ref: ${{ github.event.pull_request.head.ref }}
 
       - name: Set up Python
         uses: actions/setup-python@v5
