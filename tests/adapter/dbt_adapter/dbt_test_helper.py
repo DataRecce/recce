@@ -75,7 +75,7 @@ class DbtTestHelper:
         curr_csv=None,
         base_sql=None,
         curr_sql=None,
-        depends_on=[],
+        depends_on=None,
         disabled=False,
         unique_id=None,
         resource_type="model",
@@ -86,6 +86,8 @@ class DbtTestHelper:
     ):
         # unique_id = f"model.{package_name}.{model_name}"
         unique_id = unique_id if unique_id else model_name
+        if depends_on is None:
+            depends_on = []
 
         def _add_model_to_manifest(base):
             if base:

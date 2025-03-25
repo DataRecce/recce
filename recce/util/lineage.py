@@ -1,5 +1,4 @@
 def find_upstream(node, parent_map):
-    """Return all ancestors (parents, grandparents, etc.) of a node."""
     visited = set()
     upstream = set()
 
@@ -18,7 +17,6 @@ def find_upstream(node, parent_map):
 
 
 def find_downstream(node, child_map):
-    """Return all descendants (children, grandchildren, etc.) of a node."""
     visited = set()
     downstream = set()
 

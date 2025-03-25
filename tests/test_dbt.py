@@ -15,12 +15,8 @@ class TestAdapterLineage(TestCase):
         self.catalog = load_catalog(path=os.path.join(current_dir, 'catalog.json'))
         assert self.catalog is not None
 
-        # no cll in this test
-        self.patcher_append_column_lineage = patch.object(DbtAdapter, 'append_column_lineage')
-        self.patcher_append_column_lineage.start()
-
     def tearDown(self):
-        self.patcher_append_column_lineage.stop()
+        pass
 
     def test_load_lineage(self):
         dbt_adapter = DbtAdapter(curr_manifest=self.manifest)
