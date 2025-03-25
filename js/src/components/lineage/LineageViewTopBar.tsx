@@ -240,11 +240,11 @@ const NodeSelectionInput = (props: {
 }) => {
   const [inputValue, setInputValue] = useState(props.value);
   const { data: flags } = useRecceServerFlag();
-  const inputRef = useRef(null);
+  const inputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     if (inputRef.current) {
-      (inputRef.current as any).value = props.value;
+      inputRef.current.value = props.value;
     }
   }, [props.value]);
 
@@ -282,7 +282,7 @@ const NodeSelectionInput = (props: {
             event.preventDefault();
             setInputValue(props.value);
             if (inputRef.current) {
-              (inputRef.current as any).blur();
+              inputRef.current.blur();
             }
           }
         }}
@@ -391,7 +391,6 @@ export const LineageViewTopBar = () => {
                 variant={"outline"}
                 size="xs"
                 fontSize="9pt"
-                isDisabled={selectMode !== "multi"}
                 onClick={() => {
                   deselect();
                 }}>

@@ -191,6 +191,7 @@ export function LineageGraphContextProvider({ children }: LineageGraphProps) {
 
   const lineageGraph = useMemo(() => {
     const lineage = queryServerInfo.data?.lineage;
+    // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
     if (!lineage?.base || !lineage.current) {
       return undefined;
     }
