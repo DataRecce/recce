@@ -4,9 +4,15 @@ on:
   push:
     branches:
       - main
+    paths-ignore:
+      - "js/**"
+      - "recce/data/**"
   pull_request_target:
     branches:
       - main
+    paths-ignore:
+      - "js/**"
+      - "recce/data/**"
 
 jobs:
   smoke-test-cloud:
