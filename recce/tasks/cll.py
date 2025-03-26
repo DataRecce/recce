@@ -26,6 +26,6 @@ class CllTask(Task):
         dbt_adapter: DbtAdapter = default_context().adapter
 
         # TODO: Add support for by the node and column
-        result = dbt_adapter.get_cll_by_node(self.params.node_id)
+        result = dbt_adapter.get_cll_by_node_id(self.params.node_id)
 
         return CllResult(current=result)
