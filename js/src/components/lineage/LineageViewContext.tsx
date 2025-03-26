@@ -10,6 +10,8 @@ export interface LineageViewContextType {
   interactive: boolean;
   selectMode: "multi" | "single" | "action_result";
   nodes: Node<LineageGraphNode>[];
+  focusedNode?: LineageGraphNode;
+  selectedNodes: LineageGraphNode[];
 
   // filter
   viewOptions: LineageDiffViewOptions;
@@ -21,6 +23,7 @@ export interface LineageViewContextType {
 
   // node state
   isNodeHighlighted: (nodeId: string) => boolean;
+  isNodeSelected: (nodeId: string) => boolean;
   isEdgeHighlighted: (source: string, target: string) => boolean;
 
   //actions

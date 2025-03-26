@@ -128,17 +128,26 @@ const GraphNodeCheckbox = ({
 };
 
 export function GraphNode({ data }: GraphNodeProps) {
-  const { id, isSelected, resourceType, changeStatus } = data;
+  const { id, resourceType, changeStatus } = data;
   const showContent = useStore((s) => s.transform[2] > 0.3);
 
   const { icon: resourceIcon } = getIconForResourceType(resourceType);
   const [isHovered, setIsHovered] = useState(false);
-  const { interactive, selectNodeMulti, selectMode, breakingChangeEnabled, isNodeHighlighted } =
-    useLineageViewContextSafe();
+  const {
+    interactive,
+    selectNodeMulti,
+    selectMode,
+    focusedNode,
+    breakingChangeEnabled,
+    isNodeHighlighted,
+    isNodeSelected,
+  } = useLineageViewContextSafe();
   const { lineageGraph } = useLineageGraphContext();
   const isNonBreakingChange =
     breakingChangeEnabled && changeStatus === "modified" && lineageGraph?.nonBreakingSet.has(id);
   const isHighlighted = isNodeHighlighted(id);
+  const isSelected = isNodeSelected(id);
+  const isFocused = focusedNode?.id === id;
 
   // text color, icon
   const {
@@ -155,7 +164,6 @@ export function GraphNode({ data }: GraphNodeProps) {
   const borderStyle = isNonBreakingChange ? "dashed" : "solid";
 
   // border width and color
-  const selectedNodeShadowBox = "rgba(3, 102, 214, 0.5) 5px 5px 10px 3px";
   const borderWidth = "2px";
   const borderColor = color;
 
@@ -172,7 +180,9 @@ export function GraphNode({ data }: GraphNodeProps) {
         if (selectMode === "action_result") {
           return data.action ? "none" : "opacity(0.2) grayscale(50%)";
         } else {
-          return isHighlighted || isSelected || isHovered ? "none" : "opacity(0.2) grayscale(50%)";
+          return isHighlighted || isFocused || isSelected || isHovered
+            ? "none"
+            : "opacity(0.2) grayscale(50%)";
         }
       })()}
       onMouseEnter={() => {
@@ -195,13 +205,13 @@ export function GraphNode({ data }: GraphNodeProps) {
               if (!data.action) {
                 return "white";
               } else {
-                return isSelected || isHovered ? backgroundColor : color;
+                return isFocused || isSelected || isHovered ? backgroundColor : color;
               }
             } else {
-              return isSelected || isHovered ? backgroundColor : "white";
+              return isFocused || isSelected || isHovered ? backgroundColor : "white";
             }
           } else {
-            return isSelected || isHovered ? color : backgroundColor;
+            return isFocused || isSelected || isHovered ? color : backgroundColor;
           }
         })()}
         height="60px">

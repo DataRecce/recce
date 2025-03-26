@@ -2,7 +2,6 @@ import {
   LineageGraphEdge,
   LineageGraphNode,
   buildLineageGraph,
-  highlightNodes,
   selectDownstream,
   selectUpstream,
   toReactflow,
@@ -178,88 +177,4 @@ test("lineage diff 2", () => {
   expect(nodes.b.parents.a.changeStatus).toBe("removed");
   expect(nodes.b.parents.a2.changeStatus).toBe("added");
   expect(nodes.b.children.c.changeStatus).toBeUndefined();
-});
-
-test("hightlight", () => {
-  const base: LineageData = {
-    metadata: { pr_url: "" },
-    nodes: {
-      a: {
-        id: "a",
-        unique_id: "a",
-        name: "a",
-      },
-      b: {
-        id: "b",
-        unique_id: "b",
-        name: "b",
-      },
-      c: {
-        id: "c",
-        unique_id: "c",
-        name: "c",
-      },
-      d: {
-        id: "d",
-        unique_id: "d",
-        name: "d",
-      },
-    },
-    parent_map: {
-      a: [],
-      b: ["a"],
-      c: ["b"],
-      d: ["c"],
-    },
-    catalog_metadata: null,
-  };
-
-  const current: LineageData = {
-    metadata: { pr_url: "" },
-    nodes: {
-      a2: {
-        id: "a2",
-        unique_id: "a2",
-        name: "a2",
-      },
-      b: {
-        id: "b",
-        unique_id: "b",
-        name: "b",
-      },
-      c: {
-        id: "c",
-        unique_id: "c",
-        name: "c",
-      },
-      d: {
-        id: "d",
-        unique_id: "d",
-        name: "d",
-      },
-    },
-    parent_map: {
-      a2: [],
-      b: ["a2"],
-      c: ["b"],
-      d: ["c"],
-    },
-    catalog_metadata: null,
-  };
-
-  const lineageGraph = buildLineageGraph(base, current);
-  const [nodes, edges] = toReactflow(lineageGraph);
-  const relatedNodes = union(
-    selectUpstream(lineageGraph, ["a"]),
-    selectDownstream(lineageGraph, ["a"]),
-  );
-  const [nodes2, edges2] = highlightNodes(Array.from(relatedNodes), nodes, edges);
-
-  expect(nodes.length).toBe(nodes2.length);
-  expect(edges.length).toBe(edges2.length);
-
-  const n = (nodes: Node<LineageGraphNode>[], id: string) =>
-    find(nodes, (node) => node.id === id)?.data;
-  const e = (edges: Edge<LineageGraphEdge>[], id: string) =>
-    find(edges, (edge) => edge.id === id)?.data;
 });

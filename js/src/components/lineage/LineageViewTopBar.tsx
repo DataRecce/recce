@@ -343,17 +343,15 @@ const ControlItem = (props: {
 };
 
 export const LineageViewTopBar = () => {
-  const { nodes, deselect, selectMode, ...lineageViewContext } = useLineageViewContextSafe();
+  const { nodes, deselect, selectMode, focusedNode, selectedNodes, ...lineageViewContext } =
+    useLineageViewContextSafe();
   const { isActionAvailable } = useLineageGraphContext();
-  const selectNodes = useMemo(() => {
-    return nodes.filter((node) => node.data.isSelected);
-  }, [nodes]);
   const { data: flags } = useRecceServerFlag();
   const isSingleEnvOnboarding = flags?.single_env_onboarding;
 
-  const isSingleSelect = selectMode === "single" && selectNodes.length === 1;
-  const isMultiSelect = selectMode === "multi" && selectNodes.length >= 1;
-  const isNoSelect = selectMode === "single" && selectNodes.length === 0;
+  const isSingleSelect = selectMode === "single" && selectedNodes.length === 1;
+  const isMultiSelect = selectMode === "multi" && selectedNodes.length >= 1;
+  const isNoSelect = selectMode === "single" && selectedNodes.length === 0;
 
   const isFilterDisabled = selectMode !== "single";
 
@@ -380,9 +378,9 @@ export const LineageViewTopBar = () => {
           <>
             <ControlItem label="" style={{ flexShrink: "0" }}>
               <Text fontSize="9pt" color="gray.500">
-                {selectNodes.length > 1
-                  ? `${selectNodes.length} nodes selected`
-                  : `${selectNodes.length} node selected`}
+                {selectedNodes.length > 1
+                  ? `${selectedNodes.length} nodes selected`
+                  : `${selectedNodes.length} node selected`}
               </Text>
             </ControlItem>
 
@@ -473,7 +471,7 @@ export const LineageViewTopBar = () => {
                       as={Text}
                       size="sm"
                       fontSize="10pt"
-                      isDisabled={!(isNoSelect || (isMultiSelect && selectNodes.length > 1))}
+                      isDisabled={!(isNoSelect || (isMultiSelect && selectedNodes.length > 1))}
                       icon={<Icon as={findByRunType("lineage_diff")?.icon} />}
                       onClick={() => {
                         lineageViewContext.addLineageDiffCheck(

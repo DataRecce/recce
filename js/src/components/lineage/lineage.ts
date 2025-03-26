@@ -513,7 +513,6 @@ export const layout = (nodes: Node[], edges: Edge[], direction = "LR") => {
   const dagreGraph = new dagre.graphlib.Graph();
   dagreGraph.setDefaultEdgeLabel(() => ({}));
 
-  const isHorizontal = direction === "LR";
   dagreGraph.setGraph({ rankdir: direction });
 
   nodes.forEach((node) => {
@@ -549,94 +548,6 @@ export const layout = (nodes: Node[], edges: Edge[], direction = "LR") => {
   });
 };
 
-export function highlightNodes(
-  nodesIds: string[],
-  nodes: Node<LineageGraphNode>[],
-  edges: Edge[],
-): [Node<LineageGraphNode>[], Edge[]] {
-  const relatedNodes = new Set(nodesIds);
-  const relatedEdges = new Set(
-    edges
-      .filter((edge) => {
-        return relatedNodes.has(edge.source) && relatedNodes.has(edge.target);
-      })
-      .map((edge) => edge.id),
-  );
-
-  const newNodes = nodes.map((node) => {
-    return {
-      ...node,
-      data: {
-        ...node.data,
-        isHighlighted: relatedNodes.has(node.id),
-      },
-    };
-  });
-  const newEdges = edges.map((edge) => {
-    return {
-      ...edge,
-      data: {
-        ...edge.data,
-        isHighlighted: relatedEdges.has(edge.id),
-      },
-    };
-  });
-
-  return [newNodes, newEdges];
-}
-
-export function highlightChanged(
-  lineageGraph: LineageGraph,
-  nodes: Node<LineageGraphNode>[],
-  edges: Edge[],
-) {
-  const modifiedDownstream = selectDownstream(lineageGraph, lineageGraph.modifiedSet);
-
-  return highlightNodes(Array.from(modifiedDownstream), nodes, edges);
-}
-
-export function selectSingleNode(nodeId: string, nodes: Node<LineageGraphNode>[]) {
-  const newNodes = nodes.map((n) => {
-    const isMatch = n.id === nodeId;
-    return {
-      ...n,
-      data: {
-        ...n.data,
-        isSelected: isMatch,
-      },
-    };
-  });
-  return newNodes;
-}
-
-export function selectNode(nodeId: string, nodes: Node<LineageGraphNode>[]) {
-  const newNodes = nodes.map((n) => {
-    const isMatch = n.id === nodeId;
-    return {
-      ...n,
-      data: {
-        ...n.data,
-        isSelected: n.data.isSelected !== isMatch,
-      },
-    };
-  });
-  return newNodes;
-}
-
-export function selectNodes(nodeIds: string[], nodes: Node<LineageGraphNode>[], reset = false) {
-  const newNodes = nodes.map((n) => {
-    const isMatch = nodeIds.includes(n.id);
-    return {
-      ...n,
-      data: {
-        ...n.data,
-        isSelected: reset ? isMatch : n.data.isSelected || isMatch,
-      },
-    };
-  });
-  return newNodes;
-}
-
 export function deselectNodes(nodes: Node<LineageGraphNode>[]) {
   return nodes.map((n) => {
     return {
@@ -662,9 +573,4 @@ export function cleanUpNodes(nodes: Node<LineageGraphNode>[], isActionMode?: boo
     };
   });
   return newNodes;
-}
-
-export function getSelectedNodes(nodes: Node<LineageGraphNode>[]) {
-  const selectedNodes = nodes.filter((n) => n.data.isSelected);
-  return selectedNodes;
 }
