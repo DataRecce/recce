@@ -6,7 +6,7 @@ from dataclasses import dataclass, field
 from typing import Callable, Dict, Optional, List, Tuple
 
 from recce.adapter.base import BaseAdapter
-from recce.models import Check, Run, Cll
+from recce.models import Check, Run
 from recce.models.types import LineageDiff
 from recce.state import RecceState, RecceStateMetadata, GitRepoInfo, PullRequestInfo, RecceStateLoader
 from recce.util.recce_cloud import set_recce_cloud_onboarding_state
@@ -22,7 +22,6 @@ class RecceContext:
     state_loader: RecceStateLoader = None
     runs: List[Run] = field(default_factory=list)
     checks: List[Check] = field(default_factory=list)
-    clls: List[Cll] = field(default_factory=list)
 
     @classmethod
     def load(cls, **kwargs):
