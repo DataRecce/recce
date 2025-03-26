@@ -128,16 +128,17 @@ const GraphNodeCheckbox = ({
 };
 
 export function GraphNode({ data }: GraphNodeProps) {
-  const { id, isHighlighted, isSelected, resourceType, changeStatus } = data;
+  const { id, isSelected, resourceType, changeStatus } = data;
   const showContent = useStore((s) => s.transform[2] > 0.3);
 
   const { icon: resourceIcon } = getIconForResourceType(resourceType);
   const [isHovered, setIsHovered] = useState(false);
-  const { interactive, selectNodeMulti, selectMode, advancedImpactRadius, viewOptions } =
+  const { interactive, selectNodeMulti, selectMode, breakingChangeEnabled, isNodeHighlighted } =
     useLineageViewContextSafe();
   const { lineageGraph } = useLineageGraphContext();
   const isNonBreakingChange =
-    advancedImpactRadius && changeStatus === "modified" && lineageGraph?.nonBreakingSet.has(id);
+    breakingChangeEnabled && changeStatus === "modified" && lineageGraph?.nonBreakingSet.has(id);
+  const isHighlighted = isNodeHighlighted(id);
 
   // text color, icon
   const {

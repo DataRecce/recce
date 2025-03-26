@@ -3,11 +3,14 @@ import { LineageGraphEdge } from "./lineage";
 import { getIconForChangeStatus } from "./styles";
 
 import "./styles.css";
+import { useLineageViewContext, useLineageViewContextSafe } from "./LineageViewContext";
 
 type GraphEdgeProps = EdgeProps<LineageGraphEdge>;
 
 export default function GraphEdge(props: GraphEdgeProps) {
   const {
+    source,
+    target,
     sourceX,
     sourceY,
     targetX,
@@ -23,12 +26,16 @@ export default function GraphEdge(props: GraphEdgeProps) {
     ...styleOverride,
   };
 
+  const { isEdgeHighlighted } = useLineageViewContextSafe();
+
   if (data?.changeStatus) {
     style.stroke = getIconForChangeStatus(data.changeStatus).color;
     style.strokeDasharray = "5";
   }
 
-  if (data?.isHighlighted === false) {
+  const isHighlighted = isEdgeHighlighted(source, target);
+
+  if (!isHighlighted) {
     style.filter = "opacity(0.2) grayscale(50%)";
   }
 

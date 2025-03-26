@@ -79,7 +79,7 @@ const HistoryToggle = () => {
 };
 
 const ViewModeSelectMenu = ({ isDisabled }: { isDisabled: boolean }) => {
-  const { viewOptions, onViewOptionsChanged, selectMode } = useLineageViewContextSafe();
+  const { viewOptions, onViewOptionsChanged } = useLineageViewContextSafe();
   const viewMode = viewOptions.view_mode || "changed_models";
   const label = viewMode === "changed_models" ? "Changed Models" : "All";
 

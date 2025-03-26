@@ -15,10 +15,15 @@ export interface LineageViewContextType {
   viewOptions: LineageDiffViewOptions;
   onViewOptionsChanged: (options: NewType) => void;
 
-  // selector
+  // select
   selectNodeMulti: (nodeId: string) => void;
   deselect: () => void;
 
+  // node state
+  isNodeHighlighted: (nodeId: string) => boolean;
+  isEdgeHighlighted: (source: string, target: string) => boolean;
+
+  //actions
   runRowCount: () => Promise<void>;
   runRowCountDiff: () => Promise<void>;
   runValueDiff: () => Promise<void>;
@@ -34,8 +39,8 @@ export interface LineageViewContextType {
   };
 
   // advancedImpactRadius
-  advancedImpactRadius: boolean;
-  setAdvancedImpactRadius: (value: boolean) => void;
+  breakingChangeEnabled: boolean;
+  setBreakingChangeEnabled: (value: boolean) => void;
 
   // Column Level Lineage
   showColumnLevelLineage: (nodeId: string, column: string) => Promise<void>;

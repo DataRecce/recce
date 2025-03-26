@@ -2,7 +2,6 @@ import {
   LineageGraphNode,
   cleanUpNodes,
   deselectNodes,
-  highlightNodes,
   layout,
   selectAllNodes,
   selectDownstream,
@@ -273,6 +272,7 @@ export function PrivateLineageView(
   }>({ x: 0, y: 0 });
 
   const [breakingChangeEnabled, setBreakingChangeEnabled] = useState(false);
+  const [highlighted, setHighlighted] = useState<Set<string>>(new Set());
 
   const toast = useToast();
 
@@ -315,7 +315,7 @@ export function PrivateLineageView(
       if (isModelsChanged) {
         nodeSet = selectImpactRadius(lineageGraph, breakingChangeEnabled);
       }
-      [nodes, edges] = highlightNodes(Array.from(nodeSet), nodes, edges);
+      setHighlighted(nodeSet);
 
       layout(nodes, edges);
       setNodes(nodes);
@@ -342,7 +342,7 @@ export function PrivateLineageView(
     }
 
     const nodeSet = selectImpactRadius(lineageGraph, breakingChangeEnabled);
-    [newNodes, newEdges] = highlightNodes(Array.from(nodeSet), newNodes, newEdges);
+    setHighlighted(nodeSet);
     if (deselect) {
       newNodes = deselectNodes(newNodes);
     }
@@ -359,7 +359,7 @@ export function PrivateLineageView(
     }
 
     const nodeSet = selectAllNodes(lineageGraph);
-    [newNodes, newEdges] = highlightNodes(Array.from(nodeSet), newNodes, newEdges);
+    setHighlighted(nodeSet);
     if (deselect) {
       newNodes = deselectNodes(newNodes);
     }
@@ -436,10 +436,9 @@ export function PrivateLineageView(
         selectDownstream(lineageGraph, [node.id]),
       );
 
-      const [newNodes, newEdges] = highlightNodes(Array.from(nodeSet), nodes, edges);
-
-      setNodes(selectSingleNode(node.id, newNodes));
-      setEdges(newEdges);
+      setHighlighted(nodeSet);
+      setNodes(selectSingleNode(node.id, nodes));
+      setEdges(edges);
 
       // Center the node in LineageView
       centerNode(node);
@@ -785,8 +784,12 @@ export function PrivateLineageView(
     onViewOptionsChanged: handleViewOptionsChanged,
     selectNodeMulti,
     deselect,
-    advancedImpactRadius: breakingChangeEnabled,
-    setAdvancedImpactRadius: setBreakingChangeEnabled,
+    breakingChangeEnabled,
+    setBreakingChangeEnabled,
+    isNodeHighlighted: (nodeId) => highlighted.has(nodeId),
+    isEdgeHighlighted: (source, target) => {
+      return highlighted.has(source) && highlighted.has(target);
+    },
     runRowCount: async () => {
       if (selectMode === "multi") {
         await multiNodeAction.runRowCount();

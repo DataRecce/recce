@@ -262,9 +262,4 @@ test("hightlight", () => {
     find(nodes, (node) => node.id === id)?.data;
   const e = (edges: Edge<LineageGraphEdge>[], id: string) =>
     find(edges, (edge) => edge.id === id)?.data;
-
-  expect(n(nodes2, "a")?.isHighlighted).toBe(true);
-  expect(n(nodes2, "a2")?.isHighlighted).toBe(false);
-  expect(e(edges2, "a_b")?.isHighlighted).toBe(true);
-  expect(e(edges2, "a2_b")?.isHighlighted).toBe(false);
 });
