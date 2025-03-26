@@ -20,7 +20,7 @@ export interface ColumnLineageData {
   };
 }
 
-export async function submitCll(nodeId: string, column: string): Promise<ColumnLineageData> {
+export async function getCll(nodeId: string, column: string): Promise<ColumnLineageData> {
   const params: CllParams = {
     node_id: nodeId,
     column,
