@@ -6,9 +6,9 @@ import uuid
 from contextlib import asynccontextmanager
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Optional, Any, Set, Annotated, Literal
+from typing import Optional, Any, Set, Annotated, Literal, Dict
 
-from fastapi import FastAPI, HTTPException, Request, WebSocket, UploadFile, Response, BackgroundTasks, Form
+from fastapi import FastAPI, HTTPException, Request, WebSocket, UploadFile, Response, BackgroundTasks, Form, Query
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import PlainTextResponse
 from fastapi.staticfiles import StaticFiles
@@ -238,6 +238,28 @@ async def get_info():
         return info
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))
+
+
+class CllIn(BaseModel):
+    params: Dict
+
+
+class CllOutput(BaseModel):
+    current: Dict
+
+
+@app.post("/api/cll", response_model=CllOutput)
+async def column_level_lineage_by_node(cll_input: CllIn):
+    from recce.adapter.dbt_adapter import DbtAdapter
+    dbt_adapter: DbtAdapter = default_context().adapter
+
+    try:
+        # TODO: Add support for by the node and column
+        result = dbt_adapter.get_cll_by_node_id(cll_input.params.get('node_id'))
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+    return CllOutput(current=result)
 
 
 class SelectNodesInput(BaseModel):

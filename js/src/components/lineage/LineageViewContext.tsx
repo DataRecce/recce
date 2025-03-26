@@ -1,6 +1,6 @@
 import { LineageDiffViewOptions } from "@/lib/api/lineagecheck";
 import { Run } from "@/lib/api/types";
-import React, { createContext, useContext, useState, ReactNode } from "react";
+import { createContext, useContext } from "react";
 import { Node } from "reactflow";
 import { LineageGraphNode } from "./lineage";
 
@@ -38,7 +38,7 @@ export interface LineageViewContextType {
   setAdvancedImpactRadius: (value: boolean) => void;
 
   // Column Level Lineage
-  showColumnLevelLineage: (nodeId: string, column: string) => void;
+  showColumnLevelLineage: (nodeId: string, column: string) => Promise<void>;
   resetColumnLevelLinage: () => void;
 }
 

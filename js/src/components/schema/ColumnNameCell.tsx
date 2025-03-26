@@ -19,6 +19,7 @@ import { useLineageViewContext } from "../lineage/LineageViewContext";
 import { trackColumnLevelLineage } from "@/lib/api/track";
 import { useLineageGraphContext } from "@/lib/hooks/LineageGraphContext";
 import { NodeData } from "@/lib/api/info";
+import { useState } from "react";
 
 export function ColumnNameCell({
   model,
@@ -37,6 +38,7 @@ export function ColumnNameCell({
   const lineageViewContext = useLineageViewContext();
   const { isActionAvailable } = useLineageGraphContext();
   const columnType = currentType ?? baseType;
+  const [cllRunning, setCllRunning] = useState(false);
 
   const handleProfileDiff = () => {
     runAction("profile_diff", { model: model.name, columns: [name] }, { showForm: false });
@@ -55,9 +57,11 @@ export function ColumnNameCell({
   };
   const addedOrRemoved = !baseType || !currentType;
 
-  const handleViewCll = () => {
+  const handleViewCll = async () => {
     trackColumnLevelLineage({ action: "view" });
-    lineageViewContext?.showColumnLevelLineage(model.id, name);
+    setCllRunning(true);
+    await lineageViewContext?.showColumnLevelLineage(model.id, name);
+    setCllRunning(false);
   };
 
   return (
@@ -79,7 +83,9 @@ export function ColumnNameCell({
           size={"sm"}
           color="gray"
           _hover={{ color: "black" }}
+          // eslint-disable-next-line @typescript-eslint/no-misused-promises
           onClick={handleViewCll}
+          isLoading={cllRunning}
         />
       )}
       {!singleEnv && model.resource_type !== "source" && (

@@ -73,9 +73,6 @@ class TestSchemaDiffAutoApprove(TestCase):
         dbt_adapter.adapter = MagicMock()
         dbt_adapter.adapter.type.return_value = None
 
-        # no cll in this test
-        dbt_adapter.append_column_lineage = MagicMock()
-
         dbt_adapter.select_nodes = MagicMock()
         # Base and Current will be the same
         self.default_context.get_lineage.return_value = dbt_adapter.get_lineage()

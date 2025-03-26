@@ -92,6 +92,7 @@ import { ColumnLevelLineageLegend } from "./ColumnLevelLineageLegend";
 import { LineageViewNotification } from "./LineageViewNotification";
 import { useRecceServerFlag } from "@/lib/hooks/useRecceServerFlag";
 import { BaseEnvironmentSetupNotification } from "./SingleEnvironmentQueryView";
+import { ColumnLineageData, getCll } from "@/lib/api/cll";
 
 export interface LineageViewProps {
   viewOptions?: LineageDiffViewOptions;
@@ -309,11 +310,7 @@ export function PrivateLineageView(
         selectedNodes = result.nodes;
       }
 
-      let [nodes, edges] = toReactflow(
-        lineageGraph,
-        selectedNodes,
-        viewOptions.column_level_lineage,
-      );
+      let [nodes, edges] = toReactflow(lineageGraph, selectedNodes);
       let nodeSet = selectAllNodes(lineageGraph);
       if (isModelsChanged) {
         nodeSet = selectImpactRadius(lineageGraph, breakingChangeEnabled);
@@ -522,10 +519,33 @@ export function PrivateLineageView(
       selectedNodes = nodes.map((n) => n.id);
     }
 
+    let cll: ColumnLineageData | undefined;
+    if (newViewOptions.column_level_lineage) {
+      try {
+        const cllResult = await getCll(
+          newViewOptions.column_level_lineage.node,
+          newViewOptions.column_level_lineage.column,
+        );
+        cll = cllResult;
+      } catch (e) {
+        if (e instanceof AxiosError) {
+          toast({
+            title: "Column Level Lineage error",
+            description: e.response?.data?.detail || e.message,
+            status: "error",
+            isClosable: true,
+            position: "bottom-right",
+          });
+          return;
+        }
+      }
+    }
+
     const [newNodes, newEdges] = toReactflow(
       lineageGraph,
       selectedNodes,
       newViewOptions.column_level_lineage,
+      cll,
     );
     if (selectMode === "single" && selectedNode) {
       const newSelectedNode = newNodes.find((node) => node.id == selectedNode.id);
@@ -877,9 +897,8 @@ export function PrivateLineageView(
     actionState: multiNodeAction.actionState,
 
     // Column Level Lineage
-    showColumnLevelLineage: (nodeId: string, column: string) => {
-      // eslint-disable-next-line @typescript-eslint/no-floating-promises
-      handleViewOptionsChanged(
+    showColumnLevelLineage: async (nodeId: string, column: string) => {
+      await handleViewOptionsChanged(
         {
           ...viewOptions,
           column_level_lineage: { node: nodeId, column },
@@ -999,7 +1018,8 @@ export function PrivateLineageView(
                         ...viewOptions,
                         column_level_lineage: undefined,
                       });
-                    }}></ColumnLevelLineageControl>
+                    }}
+                  />
                 )}
                 {nodes.length == 0 && (
                   <Text fontSize="xl" color="grey" opacity={0.5}>
