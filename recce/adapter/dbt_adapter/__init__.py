@@ -791,7 +791,7 @@ class DbtAdapter(BaseAdapter):
         cll_node_ids = parent_ids.union(child_ids)
         cll_node_ids.add(node_id)
 
-        node_manifest = self.get_lineage_nodes_manifest(base=base)
+        node_manifest = self.get_lineage_nodes_metadata(base=base)
         nodes = {}
         for node_id in cll_node_ids:
             if node_id not in node_manifest:
@@ -802,7 +802,7 @@ class DbtAdapter(BaseAdapter):
 
     @lru_cache(maxsize=128)
     def get_cll_cached(self, node_id: str, base: Optional[bool] = False):
-        nodes = self.get_lineage_nodes_manifest(base=base)
+        nodes = self.get_lineage_nodes_metadata(base=base)
 
         manifest = self.curr_manifest if base is False else self.base_manifest
         manifest_dict = manifest.to_dict()
@@ -839,7 +839,7 @@ class DbtAdapter(BaseAdapter):
                                 break
 
         cll_tracker = CLLPerformanceTracking()
-        nodes = self.get_lineage_nodes_manifest(base=base)
+        nodes = self.get_lineage_nodes_metadata(base=base)
         manifest = as_manifest(self.get_manifest(base))
         resource_type = node.get('resource_type')
         if resource_type not in {'model', 'seed', 'source', 'snapshot'}:
@@ -919,7 +919,7 @@ class DbtAdapter(BaseAdapter):
                 column['transformation_type'] = column_lineage[name].type
 
     @lru_cache(maxsize=2)
-    def get_lineage_nodes_manifest(self, base: Optional[bool] = False):
+    def get_lineage_nodes_metadata(self, base: Optional[bool] = False):
         manifest = self.curr_manifest if base is False else self.base_manifest
         catalog = self.curr_catalog if base is False else self.base_catalog
         manifest_dict = manifest.to_dict()
@@ -1069,8 +1069,11 @@ class DbtAdapter(BaseAdapter):
             if refresh_file_path.endswith('manifest.json'):
                 self.curr_manifest = load_manifest(path=refresh_file_path)
                 self.manifest = as_manifest(self.curr_manifest)
+                self.get_cll_cached.cache_clear()
+                self.get_lineage_nodes_metadata.cache_clear()
             elif refresh_file_path.endswith('catalog.json'):
                 self.curr_catalog = load_catalog(path=refresh_file_path)
+                self.get_lineage_nodes_metadata.cache_clear()
         elif self.base_path and target_type == os.path.basename(self.base_path):
             if refresh_file_path.endswith('manifest.json'):
                 self.base_manifest = load_manifest(path=refresh_file_path)
