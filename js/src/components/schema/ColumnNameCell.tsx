@@ -20,7 +20,6 @@ import { trackColumnLevelLineage } from "@/lib/api/track";
 import { useLineageGraphContext } from "@/lib/hooks/LineageGraphContext";
 import { NodeData } from "@/lib/api/info";
 import { useState } from "react";
-import { CllParams } from "@/lib/api/cll";
 
 export function ColumnNameCell({
   model,
@@ -40,7 +39,6 @@ export function ColumnNameCell({
   const { isActionAvailable } = useLineageGraphContext();
   const columnType = currentType ?? baseType;
   const [cllRunning, setCllRunning] = useState(false);
-  const [cllParams, setCllParams] = useState<CllParams>();
 
   const handleProfileDiff = () => {
     runAction("profile_diff", { model: model.name, columns: [name] }, { showForm: false });
@@ -62,19 +60,8 @@ export function ColumnNameCell({
   const handleViewCll = async () => {
     trackColumnLevelLineage({ action: "view" });
     setCllRunning(true);
-    setCllParams({ node_id: model.id, column: name });
     await lineageViewContext?.showColumnLevelLineage(model.id, name);
     setCllRunning(false);
-  };
-
-  const isColumnLineageLoading = () => {
-    if (cllParams === undefined) {
-      return false;
-    }
-    if (cllParams.column === name && cllParams.node_id === model.id && cllRunning) {
-      return true;
-    }
-    return false;
   };
 
   return (
@@ -98,7 +85,7 @@ export function ColumnNameCell({
           _hover={{ color: "black" }}
           // eslint-disable-next-line @typescript-eslint/no-misused-promises
           onClick={handleViewCll}
-          isLoading={isColumnLineageLoading()}
+          isLoading={cllRunning}
         />
       )}
       {!singleEnv && model.resource_type !== "source" && (
