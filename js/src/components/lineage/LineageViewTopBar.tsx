@@ -79,7 +79,7 @@ const HistoryToggle = () => {
 };
 
 const ViewModeSelectMenu = ({ isDisabled }: { isDisabled: boolean }) => {
-  const { viewOptions, onViewOptionsChanged, selectMode } = useLineageViewContextSafe();
+  const { viewOptions, onViewOptionsChanged } = useLineageViewContextSafe();
   const viewMode = viewOptions.view_mode || "changed_models";
   const label = viewMode === "changed_models" ? "Changed Models" : "All";
 
@@ -343,19 +343,16 @@ const ControlItem = (props: {
 };
 
 export const LineageViewTopBar = () => {
-  const { nodes, deselect, selectMode, ...lineageViewContext } = useLineageViewContextSafe();
+  const { deselect, focusedNode, selectedNodes, ...lineageViewContext } =
+    useLineageViewContextSafe();
   const { isActionAvailable } = useLineageGraphContext();
-  const selectNodes = useMemo(() => {
-    return nodes.filter((node) => node.data.isSelected);
-  }, [nodes]);
   const { data: flags } = useRecceServerFlag();
   const isSingleEnvOnboarding = flags?.single_env_onboarding;
 
-  const isSingleSelect = selectMode === "single" && selectNodes.length === 1;
-  const isMultiSelect = selectMode === "multi" && selectNodes.length >= 1;
-  const isNoSelect = selectMode === "single" && selectNodes.length === 0;
-
-  const isFilterDisabled = selectMode !== "single";
+  const isSingleSelect = !!focusedNode;
+  const isMultiSelect = selectedNodes.length > 0;
+  const isNoSelect = !isSingleSelect && !isMultiSelect;
+  const isFilterDisabled = isMultiSelect;
 
   return (
     <HStack width="100%" padding="4pt 8pt">
@@ -376,13 +373,13 @@ export const LineageViewTopBar = () => {
           <ExcludeFilter isDisabled={isFilterDisabled} />
         </ControlItem>
         <Spacer />
-        {selectMode === "multi" && (
+        {isMultiSelect && (
           <>
             <ControlItem label="" style={{ flexShrink: "0" }}>
               <Text fontSize="9pt" color="gray.500">
-                {selectNodes.length > 1
-                  ? `${selectNodes.length} nodes selected`
-                  : `${selectNodes.length} node selected`}
+                {selectedNodes.length > 1
+                  ? `${selectedNodes.length} nodes selected`
+                  : `${selectedNodes.length} node selected`}
               </Text>
             </ControlItem>
 
@@ -473,7 +470,7 @@ export const LineageViewTopBar = () => {
                       as={Text}
                       size="sm"
                       fontSize="10pt"
-                      isDisabled={!(isNoSelect || (isMultiSelect && selectNodes.length > 1))}
+                      isDisabled={!(isNoSelect || (isMultiSelect && selectedNodes.length > 1))}
                       icon={<Icon as={findByRunType("lineage_diff")?.icon} />}
                       onClick={() => {
                         lineageViewContext.addLineageDiffCheck(

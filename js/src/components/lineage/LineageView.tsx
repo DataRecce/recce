@@ -1,15 +1,8 @@
 import {
   LineageGraphNode,
-  cleanUpNodes,
-  deselectNodes,
-  highlightNodes,
+  NodeColumnSetMap,
   layout,
-  selectAllNodes,
   selectDownstream,
-  selectImpactRadius,
-  selectNode,
-  selectNodes,
-  selectSingleNode,
   selectUpstream,
   toReactflow,
 } from "./lineage";
@@ -52,7 +45,6 @@ import ReactFlow, {
   ControlButton,
   useReactFlow,
   getNodesBounds,
-  Edge,
 } from "reactflow";
 import "reactflow/dist/style.css";
 import { GraphNode } from "./GraphNode";
@@ -117,9 +109,9 @@ const initialNodes: Node<LineageGraphNode>[] = [];
 const edgeTypes = {
   customEdge: GraphEdge,
 };
-const nodeColor = (node: Node) => {
-  return node.data?.changeStatus
-    ? getIconForChangeStatus(node.data?.changeStatus).color
+const nodeColor = (node: Node<LineageGraphNode>) => {
+  return node.data.changeStatus
+    ? getIconForChangeStatus(node.data.changeStatus).color
     : ("lightgray" as string);
 };
 
@@ -241,7 +233,7 @@ export function PrivateLineageView(
    * - all: show all nodes
    * - changed_models: show only changed models
    */
-  const viewMode: "all" | "changed_models" = viewOptions.view_mode || "changed_models";
+  const viewMode = viewOptions.view_mode ?? "changed_models";
 
   /**
    * Select mode: the behavior of clicking on nodes
@@ -251,19 +243,111 @@ export function PrivateLineageView(
    */
   const [selectMode, setSelectMode] = useState<"single" | "multi" | "action_result">("single");
 
-  const selectedNode: LineageGraphNode | undefined = useMemo(() => {
-    if (selectMode === "single") {
-      return nodes.find((node) => node.data.isSelected)?.data;
-    } else {
-      return undefined;
+  const [focusedNodeId, setFocusedNodeId] = useState<string>();
+  const focusedNode = focusedNodeId ? lineageGraph?.nodes[focusedNodeId] : undefined;
+
+  const [selectedNodeIds, setSelectedNodeIds] = useState<Set<string>>(new Set());
+  const selectedNodes = useMemo(() => {
+    if (!lineageGraph) {
+      return [];
     }
-  }, [selectMode, nodes]);
-  const selectedNodes: LineageGraphNode[] = useMemo(() => {
-    return nodes.filter((node) => node.data.isSelected).map((node) => node.data);
+
+    const nodeIds = Array.from(selectedNodeIds);
+    return nodeIds.map((nodeId) => lineageGraph.nodes[nodeId]);
+  }, [lineageGraph, selectedNodeIds]);
+
+  const filteredNodeIds: string[] = useMemo(() => {
+    return nodes.filter((node) => node.type === "customNode").map((node) => node.id);
   }, [nodes]);
-  const filteredNodes: LineageGraphNode[] = useMemo(() => {
-    return nodes.map((node) => node.data);
-  }, [nodes]);
+  const filteredNodes = useMemo(() => {
+    if (!lineageGraph) {
+      return [];
+    }
+
+    return filteredNodeIds.map((nodeId) => lineageGraph.nodes[nodeId]);
+  }, [lineageGraph, filteredNodeIds]);
+
+  const [breakingChangeEnabled, setBreakingChangeEnabled] = useState(false);
+  const [nodeColumnSetMap, setNodeColumnSetMap] = useState<NodeColumnSetMap>();
+  const multiNodeAction = useMultiNodesAction(
+    selectedNodes.length > 0 ? selectedNodes : filteredNodes,
+    {
+      onActionStarted: () => {
+        setSelectMode("action_result");
+      },
+      onActionNodeUpdated: (updated: LineageGraphNode) => {
+        // trigger a re-render by updating the nodes
+        setNodes((nodes) =>
+          nodes.map((node) => {
+            if (node.id === updated.id) {
+              return {
+                ...node,
+              };
+            }
+            return node;
+          }),
+        );
+      },
+      onActionCompleted: () => {},
+    },
+  );
+
+  /**
+   * Highlighted nodes: the nodes that are highlighted. The behavior of highlighting depends on the select mode
+   *
+   * - Default: nodes in the impact radius, or all nodes if the impact radius is not available
+   * - Focus: upstream/downstream nodes of the focused node
+   * - Multi-select: nodes in the impact radius, or all nodes if the impact radius is not available
+   * - Action Result: selected nodes
+   */
+  const highlighted = useMemo<Set<string>>(() => {
+    if (!lineageGraph) {
+      return new Set<string>();
+    }
+
+    if (selectMode === "action_result") {
+      const nodeIds = Object.keys(multiNodeAction.actionState.actions);
+      return new Set(nodeIds);
+    }
+
+    if (viewOptions.column_level_lineage && nodeColumnSetMap) {
+      const nodeIds = Object.entries(nodeColumnSetMap)
+        .filter(([_, columnSet]) => {
+          return columnSet.size > 0;
+        })
+        .map(([nodeId, _]) => {
+          return nodeId;
+        });
+      return new Set(nodeIds);
+    }
+
+    if (focusedNode) {
+      return union(
+        selectUpstream(lineageGraph, [focusedNode.id]),
+        selectDownstream(lineageGraph, [focusedNode.id]),
+      );
+    }
+
+    if (isModelsChanged) {
+      if (!breakingChangeEnabled) {
+        return selectDownstream(lineageGraph, lineageGraph.modifiedSet);
+      } else {
+        return lineageGraph.impactedSet;
+      }
+    } else {
+      return new Set(filteredNodeIds);
+    }
+  }, [
+    lineageGraph,
+    selectMode,
+    viewOptions.column_level_lineage,
+    nodeColumnSetMap,
+    focusedNode,
+    isModelsChanged,
+    multiNodeAction.actionState.actions,
+    breakingChangeEnabled,
+    filteredNodeIds,
+  ]);
 
   const [isContextMenuRendered, setIsContextMenuRendered] = useState(false);
   const [contextMenuPosition, setContextMenuPosition] = useState<{
@@ -272,20 +356,18 @@ export function PrivateLineageView(
     selectedNode?: Node;
   }>({ x: 0, y: 0 });
 
-  const [breakingChangeEnabled, setBreakingChangeEnabled] = useState(false);
-
   const toast = useToast();
 
   useLayoutEffect(() => {
     const t = async () => {
-      let selectedNodes: string[] | undefined = undefined;
+      let filteredNodeIds: string[] | undefined = undefined;
 
       if (!lineageGraph) {
         return;
       }
 
       if (viewOptions.node_ids) {
-        selectedNodes = viewOptions.node_ids;
+        filteredNodeIds = viewOptions.node_ids;
       } else {
         const packageName = lineageGraph.manifestMetadata.current?.project_name;
         const viewMode = viewOptions.view_mode
@@ -300,6 +382,7 @@ export function PrivateLineageView(
           ...props.viewOptions,
         };
         setViewOptions(newViewOptions);
+        setNodeColumnSetMap(undefined);
 
         const result = await select({
           select: newViewOptions.select,
@@ -307,19 +390,14 @@ export function PrivateLineageView(
           packages: newViewOptions.packages,
           view_mode: newViewOptions.view_mode,
         });
-        selectedNodes = result.nodes;
+        filteredNodeIds = result.nodes;
       }
 
-      let [nodes, edges] = toReactflow(lineageGraph, selectedNodes);
-      let nodeSet = selectAllNodes(lineageGraph);
-      if (isModelsChanged) {
-        nodeSet = selectImpactRadius(lineageGraph, breakingChangeEnabled);
-      }
-      [nodes, edges] = highlightNodes(Array.from(nodeSet), nodes, edges);
-
+      const [nodes, edges, nodeColumnSetMap] = toReactflow(lineageGraph, filteredNodeIds);
       layout(nodes, edges);
       setNodes(nodes);
       setEdges(edges);
+      setNodeColumnSetMap(nodeColumnSetMap);
     };
 
     void t();
@@ -327,53 +405,8 @@ export function PrivateLineageView(
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [lineageGraph]);
 
-  interface ResetNodeStyleProps {
-    deselect?: boolean;
-    breakingChangeEnabled?: boolean;
-    nodes?: Node<LineageGraphNode>[];
-    edges?: Edge[];
-  }
-
-  const resetImpactRadiusStyles = (props?: ResetNodeStyleProps) => {
-    const { deselect = false, breakingChangeEnabled = false } = props ?? {};
-    let { nodes: newNodes = nodes, edges: newEdges = edges } = props ?? {};
-    if (!lineageGraph) {
-      return;
-    }
-
-    const nodeSet = selectImpactRadius(lineageGraph, breakingChangeEnabled);
-    [newNodes, newEdges] = highlightNodes(Array.from(nodeSet), newNodes, newEdges);
-    if (deselect) {
-      newNodes = deselectNodes(newNodes);
-    }
-    newNodes = cleanUpNodes(newNodes);
-    setNodes(newNodes);
-    setEdges(newEdges);
-  };
-
-  const resetAllNodeStyles = (props?: ResetNodeStyleProps) => {
-    const { deselect = false } = props ?? {};
-    let { nodes: newNodes = nodes, edges: newEdges = edges } = props ?? {};
-    if (!lineageGraph) {
-      return;
-    }
-
-    const nodeSet = selectAllNodes(lineageGraph);
-    [newNodes, newEdges] = highlightNodes(Array.from(nodeSet), newNodes, newEdges);
-    if (deselect) {
-      newNodes = deselectNodes(newNodes);
-    }
-    newNodes = cleanUpNodes(newNodes);
-    setNodes(newNodes);
-    setEdges(newEdges);
-  };
-
   const onNodeViewClosed = () => {
-    if (isModelsChanged) {
-      resetImpactRadiusStyles({ deselect: true });
-    } else {
-      resetAllNodeStyles({ deselect: true });
-    }
+    setFocusedNodeId(undefined);
   };
 
   const centerNode = async (node: Node) => {
@@ -390,9 +423,9 @@ export function PrivateLineageView(
 
   useResizeObserver(refResize, async () => {
     if (selectMode === "single" || selectMode === "action_result") {
-      const selectedNode = nodes.find((node) => node.data.isSelected);
-      if (selectedNode) {
-        void centerNode(selectedNode);
+      const node = nodes.find((node) => node.id === focusedNodeId);
+      if (node) {
+        void centerNode(node);
       } else {
         reactFlow.fitView({ nodes, duration: 200 });
       }
@@ -400,7 +433,7 @@ export function PrivateLineageView(
   });
 
   const onColumnNodeClick = (event: React.MouseEvent, node: Node) => {
-    // eslint-disable-next-line @typescript-eslint/no-floating-promises
+    setFocusedNodeId(node.parentId);
     handleViewOptionsChanged(
       {
         ...viewOptions,
@@ -411,8 +444,6 @@ export function PrivateLineageView(
       },
       false,
     );
-
-    return;
   };
 
   const onNodeClick = (event: React.MouseEvent, node: Node) => {
@@ -428,55 +459,26 @@ export function PrivateLineageView(
 
     closeContextMenu();
     if (selectMode === "single") {
-      if (!selectedNode) {
-        void centerNode(node);
-      }
-      const nodeSet = union(
-        selectUpstream(lineageGraph, [node.id]),
-        selectDownstream(lineageGraph, [node.id]),
-      );
-
-      const [newNodes, newEdges] = highlightNodes(Array.from(nodeSet), nodes, edges);
-
-      setNodes(selectSingleNode(node.id, newNodes));
-      setEdges(newEdges);
-
-      // Center the node in LineageView
-      void centerNode(node);
+      setFocusedNodeId(node.id);
     } else if (selectMode === "action_result") {
-      if (node.data.action?.run?.run_id) {
-        showRunId(node.data.action?.run?.run_id);
+      const action = multiNodeAction.actionState.actions[node.id];
+      if (action.run?.run_id) {
+        showRunId(action.run.run_id);
       }
-      void centerNode(node);
-      setNodes(selectSingleNode(node.id, nodes));
+      setFocusedNodeId(node.id);
     } else {
-      let newNodes = selectNode(node.id, nodes);
-      if (!newNodes.find((n) => n.data.isSelected)) {
-        setSelectMode("single");
-        newNodes = cleanUpNodes(newNodes);
+      const newSet = new Set(selectedNodeIds);
+      if (selectedNodeIds.has(node.id)) {
+        newSet.delete(node.id);
+      } else {
+        newSet.add(node.id);
       }
-      setNodes(newNodes);
+      setSelectedNodeIds(newSet);
+      if (newSet.size === 0) {
+        setSelectMode("single");
+      }
     }
   };
-
-  const handleActionNodeUpdated = useCallback(
-    (node: LineageGraphNode) => {
-      setNodes((prevNodes) => {
-        const newNodes = prevNodes.map((n) => {
-          if (n.id === node.id) {
-            return {
-              ...n,
-              data: node,
-            };
-          } else {
-            return n;
-          }
-        });
-        return newNodes;
-      });
-    },
-    [setNodes],
-  );
 
   const handleViewOptionsChanged = async (
     newViewOptions: LineageDiffViewOptions,
@@ -541,26 +543,16 @@ export function PrivateLineageView(
       }
     }
 
-    const [newNodes, newEdges] = toReactflow(
+    const [newNodes, newEdges, newNodeColumnSetMap] = toReactflow(
       lineageGraph,
       selectedNodes,
       newViewOptions.column_level_lineage,
       cll,
     );
-    if (selectMode === "single" && selectedNode) {
-      const newSelectedNode = newNodes.find((node) => node.id == selectedNode.id);
-      if (newSelectedNode) {
-        newSelectedNode.data.isSelected = true;
-      }
-    }
     setNodes(newNodes);
     setEdges(newEdges);
+    setNodeColumnSetMap(newNodeColumnSetMap);
     setViewOptions(newViewOptions);
-    if (isModelsChanged) {
-      resetImpactRadiusStyles({ nodes: newNodes, edges: newEdges });
-    } else {
-      resetAllNodeStyles({ nodes: newNodes, edges: newEdges });
-    }
 
     // Close the run result view if the run result node is not in the new nodes
     if (run?.params?.model && !findNodeByName(run.params.model)) {
@@ -574,17 +566,6 @@ export function PrivateLineageView(
       })();
     }
   };
-
-  const multiNodeAction = useMultiNodesAction(
-    selectMode === "multi" ? selectedNodes : filteredNodes,
-    {
-      onActionStarted: () => {
-        setSelectMode("action_result");
-      },
-      onActionNodeUpdated: handleActionNodeUpdated,
-      onActionCompleted: () => {},
-    },
-  );
 
   const valueDiffAlertDialog = useValueDiffAlertDialog();
 
@@ -622,7 +603,7 @@ export function PrivateLineageView(
             ...viewOptions,
             view_mode: "all",
           });
-        } else if (selectedNode !== node.data) {
+        } else if (focusedNode !== node.data) {
           // Only select the node if it is not already selected
           onNodeClick(mockEvent, node);
         }
@@ -649,15 +630,13 @@ export function PrivateLineageView(
       return;
 
     if (selectMode === "single") {
-      setNodes(cleanUpNodes(nodes, true));
       setSelectMode("multi");
       multiNodeAction.reset();
     }
 
     const selectedNodeId = selectedNode.id;
     const upstream = selectUpstream(lineageGraph, [selectedNodeId], degree);
-    const newNodes = selectNodes([...upstream], nodes, selectMode === "single");
-    setNodes(newNodes);
+    setSelectedNodeIds(union(selectedNodeIds, upstream));
   };
 
   const selectChildNodes = (degree = 1000) => {
@@ -666,15 +645,13 @@ export function PrivateLineageView(
       return;
 
     if (selectMode === "single") {
-      setNodes(cleanUpNodes(nodes, true));
       setSelectMode("multi");
       multiNodeAction.reset();
     }
 
     const selectedNodeId = selectedNode.id;
     const downstream = selectDownstream(lineageGraph, [selectedNodeId], degree);
-    const newNodes = selectNodes([...downstream], nodes, selectMode === "single");
-    setNodes(newNodes);
+    setSelectedNodeIds(union(selectedNodeIds, downstream));
   };
 
   const closeContextMenu = () => {
@@ -748,31 +725,26 @@ export function PrivateLineageView(
         return;
       }
 
-      if (isModelsChanged) {
-        resetImpactRadiusStyles({ deselect: true });
-      } else {
-        resetAllNodeStyles({ deselect: true });
-      }
-
-      setNodes((prevNodes) => selectSingleNode(nodeId, prevNodes));
+      setSelectedNodeIds(new Set([nodeId]));
       setSelectMode("multi");
+      setFocusedNodeId(undefined);
       multiNodeAction.reset();
     } else {
-      const newNodes = selectNode(nodeId, nodes);
-      if (!newNodes.find((n) => n.data.isSelected)) {
-        deselect();
-      } else {
-        setNodes(newNodes);
-      }
+      setSelectedNodeIds((prev) => {
+        const newSelectedNodes = new Set(prev);
+        if (prev.has(nodeId)) {
+          newSelectedNodes.delete(nodeId);
+        } else {
+          newSelectedNodes.add(nodeId);
+        }
+        return newSelectedNodes;
+      });
     }
   };
   const deselect = () => {
     setSelectMode("single");
-    if (isModelsChanged) {
-      resetImpactRadiusStyles({ deselect: true });
-    } else {
-      resetAllNodeStyles({ deselect: true });
-    }
+    setSelectedNodeIds(new Set());
+    setFocusedNodeId(undefined);
     closeRunResult();
     refetchRunsAggregated?.();
   };
@@ -781,20 +753,41 @@ export function PrivateLineageView(
     interactive,
     selectMode,
     nodes,
+    focusedNode,
+    selectedNodes,
     viewOptions,
     onViewOptionsChanged: handleViewOptionsChanged,
     selectNodeMulti,
     deselect,
-    advancedImpactRadius: breakingChangeEnabled,
-    setAdvancedImpactRadius: setBreakingChangeEnabled,
+    breakingChangeEnabled,
+    setBreakingChangeEnabled,
+    isNodeHighlighted: (nodeId: string) => highlighted.has(nodeId),
+    isNodeSelected: (nodeId: string) => selectedNodeIds.has(nodeId),
+    isEdgeHighlighted: (source, target) => {
+      if (viewOptions.column_level_lineage) {
+        return false;
+      }
+
+      return highlighted.has(source) && highlighted.has(target);
+    },
+    getNodeAction: (nodeId: string) => {
+      return multiNodeAction.actionState.actions[nodeId];
+    },
+    getNodeColumnSet: (nodeId: string) => {
+      if (!nodeColumnSetMap) {
+        return new Set();
+      }
+
+      return nodeColumnSetMap[nodeId] ?? new Set();
+    },
     runRowCount: async () => {
       if (selectMode === "multi") {
         await multiNodeAction.runRowCount();
         trackMultiNodesAction({ type: "row_count", selected: "multi" });
-      } else if (selectedNode) {
+      } else if (focusedNode) {
         await runAction(
           "row_count",
-          { node_names: [selectedNode.name] },
+          { node_names: [focusedNode.name] },
           { showForm: false, showLast: false },
         );
         trackMultiNodesAction({ type: "row_count", selected: "single" });
@@ -812,10 +805,10 @@ export function PrivateLineageView(
       if (selectMode === "multi") {
         await multiNodeAction.runRowCountDiff();
         trackMultiNodesAction({ type: "row_count_diff", selected: "multi" });
-      } else if (selectedNode) {
+      } else if (focusedNode) {
         await runAction(
           "row_count_diff",
-          { node_names: [selectedNode.name] },
+          { node_names: [focusedNode.name] },
           { showForm: false, showLast: false },
         );
         trackMultiNodesAction({ type: "row_count_diff", selected: "single" });
@@ -830,17 +823,17 @@ export function PrivateLineageView(
       }
     },
     runValueDiff: async () => {
-      if (selectedNode) {
+      if (focusedNode) {
         await runAction(
           "value_diff",
           {
-            model: selectedNode.name,
+            model: focusedNode.name,
           },
           { showForm: true, showLast: false },
         );
         trackMultiNodesAction({ type: "value_diff", selected: "single" });
       } else {
-        const nodeCount = selectMode === "multi" ? selectedNodes.length : filteredNodes.length;
+        const nodeCount = selectMode === "multi" ? selectedNodes.length : filteredNodeIds.length;
         if (await valueDiffAlertDialog.confirm(nodeCount)) {
           await multiNodeAction.runValueDiff();
           trackMultiNodesAction({
@@ -856,7 +849,7 @@ export function PrivateLineageView(
         check = await multiNodeAction.addLineageDiffCheck();
         deselect();
         trackMultiNodesAction({ type: "lineage_diff", selected: "multi" });
-      } else if (!selectedNode) {
+      } else if (!focusedNode) {
         check = await createLineageDiffCheck(viewOptions);
         trackMultiNodesAction({ type: "lineage_diff", selected: "none" });
       }
@@ -874,9 +867,9 @@ export function PrivateLineageView(
           deselect();
           trackMultiNodesAction({ type: "schema_diff", selected: "multi" });
         }
-      } else if (selectedNode) {
+      } else if (focusedNode) {
         check = await createSchemaDiffCheck({
-          node_id: selectedNode.id,
+          node_id: focusedNode.id,
         });
         trackMultiNodesAction({ type: "schema_diff", selected: "single" });
       } else {
@@ -905,6 +898,7 @@ export function PrivateLineageView(
         },
         false,
       );
+      setFocusedNodeId(nodeId);
     },
     resetColumnLevelLinage: () => {
       // eslint-disable-next-line @typescript-eslint/no-floating-promises
@@ -925,9 +919,9 @@ export function PrivateLineageView(
   return (
     <LineageViewContext.Provider value={contextValue}>
       <HSplit
-        sizes={selectedNode ? [70, 30] : [100, 0]}
-        minSize={selectedNode ? 400 : 0}
-        gutterSize={selectedNode ? 5 : 0}
+        sizes={focusedNode ? [70, 30] : [100, 0]}
+        minSize={focusedNode ? 400 : 0}
+        gutterSize={focusedNode ? 5 : 0}
         style={{ height: "100%", width: "100%" }}>
         <VStack
           ref={refResize}
@@ -999,19 +993,13 @@ export function PrivateLineageView(
                   enabled={breakingChangeEnabled}
                   onChanged={(enabled) => {
                     setBreakingChangeEnabled(enabled);
-                    resetImpactRadiusStyles({ breakingChangeEnabled: enabled });
+                    setFocusedNodeId(undefined);
                     trackBreakingChange({ enabled });
                   }}
                 />
                 {viewOptions.column_level_lineage && (
                   <ColumnLevelLineageControl
-                    node={
-                      nodes.find(
-                        (n) =>
-                          viewOptions.column_level_lineage &&
-                          n.data.id === viewOptions.column_level_lineage.node,
-                      )?.data.name ?? ""
-                    }
+                    node={viewOptions.column_level_lineage.node}
                     column={viewOptions.column_level_lineage.column}
                     reset={() => {
                       void handleViewOptionsChanged({
@@ -1083,9 +1071,9 @@ export function PrivateLineageView(
             </Menu>
           )}
         </VStack>
-        {selectMode === "single" && selectedNode ? (
+        {focusedNode ? (
           <Box borderLeft="solid 1px lightgray" height="100%">
-            <NodeView node={selectedNode} onCloseNode={onNodeViewClosed} />
+            <NodeView node={focusedNode} onCloseNode={onNodeViewClosed} />
           </Box>
         ) : (
           <Box></Box>

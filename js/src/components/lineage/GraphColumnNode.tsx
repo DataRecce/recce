@@ -54,7 +54,7 @@ export const TransformationType = ({
 };
 
 export function GraphColumnNode({ data }: GrapeColumnNodeProps) {
-  const { name: nodeName } = data.node;
+  const { id: nodeId } = data.node;
   const { column, type, transformationType } = data;
   const showContent = useStore((s) => s.transform[2] > 0.3);
 
@@ -62,7 +62,7 @@ export function GraphColumnNode({ data }: GrapeColumnNodeProps) {
 
   const selectedNode = viewOptions.column_level_lineage?.node;
   const selectedColumn = viewOptions.column_level_lineage?.column;
-  const isFocus = column === selectedColumn && nodeName === selectedNode;
+  const isFocus = column === selectedColumn && nodeId === selectedNode;
 
   if (!showContent) {
     return <></>;
