@@ -9,7 +9,7 @@ import {
   ManifestMetadata,
   NodeData,
 } from "@/lib/api/info";
-import { CllResponse, ColumnLineageData } from "@/lib/api/cll";
+import { ColumnLineageData } from "@/lib/api/cll";
 
 /**
  * THe types for internal data structures.
@@ -353,15 +353,13 @@ export function toReactflow(
     node: string;
     column: string;
   },
-  cll?: CllResponse,
+  cll?: ColumnLineageData,
 ): [Node[], Edge[]] {
   const nodes: Node[] = [];
   const edges: Edge[] = [];
   const columnSet =
-    columnLevelLineage &&
-    cll?.status === "finished" &&
-    cll.params.node_id === columnLevelLineage.node
-      ? _selectColumnLevelLineage(columnLevelLineage.node, columnLevelLineage.column, cll.result)
+    columnLevelLineage && cll != null
+      ? _selectColumnLevelLineage(columnLevelLineage.node, columnLevelLineage.column, cll)
       : new Set<string>();
 
   function getWeight(from: string) {
@@ -399,8 +397,8 @@ export function toReactflow(
     // add column nodes
     const nodeColumnSet = new Set<string>();
     let columnIndex = 0;
-    if (cll?.result.current.nodes && node.id in cll.result.current.nodes) {
-      for (const column of Object.values(cll.result.current.nodes[node.id].columns ?? {})) {
+    if (cll?.current.nodes && node.id in cll.current.nodes) {
+      for (const column of Object.values(cll.current.nodes[node.id].columns ?? {})) {
         const columnKey = `${node.id}_${column.name}`;
         if (!columnSet.has(columnKey)) {
           continue;

@@ -92,8 +92,7 @@ import { ColumnLevelLineageLegend } from "./ColumnLevelLineageLegend";
 import { LineageViewNotification } from "./LineageViewNotification";
 import { useRecceServerFlag } from "@/lib/hooks/useRecceServerFlag";
 import { BaseEnvironmentSetupNotification } from "./SingleEnvironmentQueryView";
-import { submitCll } from "@/lib/api/cll";
-import { useCll } from "@/lib/hooks/useColumnLevelLineage";
+import { ColumnLineageData, submitCll } from "@/lib/api/cll";
 
 export interface LineageViewProps {
   viewOptions?: LineageDiffViewOptions;
@@ -274,8 +273,7 @@ export function PrivateLineageView(
   }>({ x: 0, y: 0 });
 
   const [breakingChangeEnabled, setBreakingChangeEnabled] = useState(false);
-  const [cllId, setCllId] = useState<string>();
-  const { cll, isRunning } = useCll(cllId);
+  const [cllRunning, setCllRunning] = useState(false);
 
   const toast = useToast();
 
@@ -403,10 +401,6 @@ export function PrivateLineageView(
   });
 
   const onColumnNodeClick = async (event: React.MouseEvent, node: Node) => {
-    if (!cll || cll.params.node_id !== node.data.node.id) {
-      const cll = await submitCll(node.data.node.id, node.data.column);
-      setCllId(cll.cll_id);
-    }
     // eslint-disable-next-line @typescript-eslint/no-floating-promises
     handleViewOptionsChanged(
       {
@@ -526,6 +520,31 @@ export function PrivateLineageView(
       selectedNodes = nodes.map((n) => n.id);
     }
 
+    let cll: ColumnLineageData | undefined;
+    if (newViewOptions.column_level_lineage) {
+      setCllRunning(true);
+      try {
+        const cllResult = await submitCll(
+          newViewOptions.column_level_lineage.node,
+          newViewOptions.column_level_lineage.column,
+        );
+        cll = cllResult;
+      } catch (e) {
+        if (e instanceof AxiosError) {
+          toast({
+            title: "Column Level Lineage error",
+            description: e.response?.data?.detail || e.message,
+            status: "error",
+            isClosable: true,
+            position: "bottom-right",
+          });
+          return;
+        }
+      } finally {
+        setCllRunning(false);
+      }
+    }
+
     const [newNodes, newEdges] = toReactflow(
       lineageGraph,
       selectedNodes,
@@ -619,23 +638,6 @@ export function PrivateLineageView(
 
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [run, viewOptions, isRunResultOpen, selectMode]);
-
-  useEffect(() => {
-    if (cll?.status === "finished") {
-      // eslint-disable-next-line @typescript-eslint/no-floating-promises
-      handleViewOptionsChanged(
-        {
-          ...viewOptions,
-          column_level_lineage: {
-            node: cll.params.node_id,
-            column: cll.params.column,
-          },
-        },
-        false,
-      );
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [cll]);
 
   if (isLoading) {
     return (
@@ -899,12 +901,7 @@ export function PrivateLineageView(
     actionState: multiNodeAction.actionState,
 
     // Column Level Lineage
-    showColumnLevelLineage: async (nodeId: string, column: string) => {
-      if (!cll || nodeId !== cll.params.node_id) {
-        const cll = await submitCll(nodeId, column, { nowait: true });
-        setCllId(cll.cll_id);
-      }
-
+    showColumnLevelLineage: (nodeId: string, column: string) => {
       // eslint-disable-next-line @typescript-eslint/no-floating-promises
       handleViewOptionsChanged(
         {
@@ -1027,7 +1024,7 @@ export function PrivateLineageView(
                         column_level_lineage: undefined,
                       });
                     }}
-                    isRunning={isRunning}
+                    isRunning={cllRunning}
                   />
                 )}
                 {nodes.length == 0 && (
