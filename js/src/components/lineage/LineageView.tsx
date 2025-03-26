@@ -401,7 +401,7 @@ export function PrivateLineageView(
     }
   });
 
-  const onColumnNodeClick = async (event: React.MouseEvent, node: Node) => {
+  const onColumnNodeClick = (event: React.MouseEvent, node: Node) => {
     // eslint-disable-next-line @typescript-eslint/no-floating-promises
     handleViewOptionsChanged(
       {
