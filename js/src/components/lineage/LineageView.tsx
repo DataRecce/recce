@@ -92,7 +92,7 @@ import { ColumnLevelLineageLegend } from "./ColumnLevelLineageLegend";
 import { LineageViewNotification } from "./LineageViewNotification";
 import { useRecceServerFlag } from "@/lib/hooks/useRecceServerFlag";
 import { BaseEnvironmentSetupNotification } from "./SingleEnvironmentQueryView";
-import { ColumnLineageData, submitCll } from "@/lib/api/cll";
+import { CllParams, ColumnLineageData, submitCll } from "@/lib/api/cll";
 
 export interface LineageViewProps {
   viewOptions?: LineageDiffViewOptions;
@@ -274,6 +274,7 @@ export function PrivateLineageView(
 
   const [breakingChangeEnabled, setBreakingChangeEnabled] = useState(false);
   const [cllRunning, setCllRunning] = useState(false);
+  const [cllParams, setCllParams] = useState<CllParams>();
 
   const toast = useToast();
 
@@ -522,6 +523,10 @@ export function PrivateLineageView(
 
     let cll: ColumnLineageData | undefined;
     if (newViewOptions.column_level_lineage) {
+      setCllParams({
+        node_id: newViewOptions.column_level_lineage.node,
+        column: newViewOptions.column_level_lineage.column,
+      });
       setCllRunning(true);
       try {
         const cllResult = await submitCll(
@@ -921,6 +926,8 @@ export function PrivateLineageView(
         false,
       );
     },
+    cllParams,
+    cllRunning,
   };
 
   if (!lineageGraph || nodes == initialNodes) {
@@ -1024,7 +1031,6 @@ export function PrivateLineageView(
                         column_level_lineage: undefined,
                       });
                     }}
-                    isRunning={cllRunning}
                   />
                 )}
                 {nodes.length == 0 && (

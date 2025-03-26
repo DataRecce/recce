@@ -16,13 +16,11 @@ interface ColumnLevelLineageControlProps {
   node: string;
   column: string;
   reset: () => void;
-  isRunning: boolean;
 }
 export const ColumnLevelLineageControl = ({
   node,
   column,
   reset,
-  isRunning,
 }: ColumnLevelLineageControlProps) => {
   return (
     <Flex
@@ -58,13 +56,7 @@ export const ColumnLevelLineageControl = ({
           </PopoverBody>
         </PopoverContent>
       </Popover>
-      <IconButton
-        icon={<CloseIcon />}
-        isLoading={isRunning}
-        aria-label={""}
-        onClick={reset}
-        size="xs"
-      />
+      <IconButton icon={<CloseIcon />} aria-label={""} onClick={reset} size="xs" />
     </Flex>
   );
 };

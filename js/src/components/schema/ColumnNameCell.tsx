@@ -60,6 +60,18 @@ export function ColumnNameCell({
     lineageViewContext?.showColumnLevelLineage(model.id, name);
   };
 
+  const isColumnLineageLoading = () => {
+    const params = lineageViewContext?.cllParams;
+    const isRunning = lineageViewContext?.cllRunning;
+    if (params === undefined || isRunning === undefined) {
+      return false;
+    }
+    if (params.column === name && params.node_id === model.id && isRunning) {
+      return true;
+    }
+    return false;
+  };
+
   return (
     <Flex alignItems={"center"} gap="3px">
       <Box overflow="hidden" textOverflow="ellipsis" whiteSpace="nowrap">
@@ -80,6 +92,7 @@ export function ColumnNameCell({
           color="gray"
           _hover={{ color: "black" }}
           onClick={handleViewCll}
+          isLoading={isColumnLineageLoading()}
         />
       )}
       {!singleEnv && model.resource_type !== "source" && (
