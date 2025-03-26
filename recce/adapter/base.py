@@ -42,7 +42,7 @@ class BaseAdapter(ABC):
 
                 diff[key] = NodeDiff(change_status='modified', change_category='breaking')
             elif base_node:
-                diff[key] = NodeDiff(chnage_status='removed')
+                diff[key] = NodeDiff(change_status='removed')
             elif curr_node:
                 diff[key] = NodeDiff(change_status='added')
         return LineageDiff(
