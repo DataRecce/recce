@@ -597,10 +597,6 @@ class DbtAdapter(BaseAdapter):
 
     @lru_cache(maxsize=2)
     def get_lineage_cached(self, base: Optional[bool] = False, cache_key=0):
-        if base is False:
-            cll_tracker = CLLPerformanceTracking()
-            cll_tracker.start_lineage()
-
         manifest = self.curr_manifest if base is False else self.base_manifest
         catalog = self.curr_catalog if base is False else self.base_catalog
 
@@ -727,11 +723,6 @@ class DbtAdapter(BaseAdapter):
 
         parent_map = self.build_parent_map(nodes, base)
 
-        if base is False:
-            cll_tracker.end_lineage()
-            log_performance("column level lineage", cll_tracker.to_dict())
-            cll_tracker.reset()
-
         return dict(
             parent_map=parent_map,
             nodes=nodes,
@@ -783,6 +774,9 @@ class DbtAdapter(BaseAdapter):
         )
 
     def get_cll_by_node_id(self, node_id: str, base: Optional[bool] = False):
+        cll_tracker = CLLPerformanceTracking()
+        cll_tracker.start_column_lineage()
+
         manifest = self.curr_manifest if base is False else self.base_manifest
         manifest_dict = manifest.to_dict()
 
@@ -790,6 +784,7 @@ class DbtAdapter(BaseAdapter):
         child_ids = find_downstream(node_id, manifest_dict.get('child_map'))
         cll_node_ids = parent_ids.union(child_ids)
         cll_node_ids.add(node_id)
+        cll_tracker.set_total_nodes(len(cll_node_ids))
 
         node_manifest = self.get_lineage_nodes_metadata(base=base)
         nodes = {}
@@ -797,6 +792,10 @@ class DbtAdapter(BaseAdapter):
             if node_id not in node_manifest:
                 continue
             nodes[node_id] = self.get_cll_cached(node_id, base=base)
+
+        cll_tracker.end_column_lineage()
+        log_performance('column level lineage', cll_tracker.to_dict())
+        cll_tracker.reset()
 
         return dict(nodes=nodes)
 
