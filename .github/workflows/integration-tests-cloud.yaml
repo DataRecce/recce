@@ -1,4 +1,4 @@
-name: Run Smoke Test (DBT)
+name: Run Cloud Smoke Test (DBT)
 
 on:
   push:
@@ -7,7 +7,7 @@ on:
     paths-ignore:
       - "js/**"
       - "recce/data/**"
-  pull_request:
+  pull_request_target:
     branches:
       - main
     paths-ignore:
@@ -15,21 +15,33 @@ on:
       - "recce/data/**"
 
 jobs:
-  smoke-test:
+  smoke-test-cloud:
+    concurrency:
+      group: smoke-test-cloud
+      cancel-in-progress: false
     runs-on: ubuntu-latest
     strategy:
+      max-parallel: 1
       matrix:
         include:
-          - python-version: "3.9"
-            dbt-version: "1.6"
-          - python-version: "3.11"
-            dbt-version: "1.7"
           - python-version: "3.11"
             dbt-version: "1.8"
           - python-version: "3.11"
             dbt-version: "latest"
     steps:
+      - name: Check external code before checkout
+        run: |
+          PERMISSION=$(gh api repos/${{ github.repository }}/collaborators/${{ github.triggering_actor }}/permission --jq '.permission')
+          if [[ "$PERMISSION" != "write" && "$PERMISSION" != "admin" ]]; then
+            echo "Please review the code from ${{ github.actor }}, then re-run the workflow."
+            exit 1
+          fi
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
       - uses: actions/checkout@v3
+        with:
+          ref: ${{ github.event.pull_request.head.ref }}
 
       - name: Set up Python
         uses: actions/setup-python@v5
@@ -53,4 +65,7 @@ jobs:
 
       - name: Run smoke test - dbt
         run: |
-          ./integration_tests/dbt/smoke_test.sh
+          ./integration_tests/dbt/smoke_test_cloud.sh
+        env:
+          GITHUB_TOKEN: ${{ secrets.RECCE_CLOUD_TOKEN }}
+          RECCE_STATE_PASSWORD: ${{ vars.RECCE_STATE_PASSWORD}}
