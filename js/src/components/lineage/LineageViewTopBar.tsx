@@ -343,17 +343,16 @@ const ControlItem = (props: {
 };
 
 export const LineageViewTopBar = () => {
-  const { nodes, deselect, selectMode, focusedNode, selectedNodes, ...lineageViewContext } =
+  const { deselect, focusedNode, selectedNodes, ...lineageViewContext } =
     useLineageViewContextSafe();
   const { isActionAvailable } = useLineageGraphContext();
   const { data: flags } = useRecceServerFlag();
   const isSingleEnvOnboarding = flags?.single_env_onboarding;
 
-  const isSingleSelect = selectMode === "single" && selectedNodes.length === 1;
-  const isMultiSelect = selectMode === "multi" && selectedNodes.length >= 1;
-  const isNoSelect = selectMode === "single" && selectedNodes.length === 0;
-
-  const isFilterDisabled = selectMode !== "single";
+  const isSingleSelect = !!focusedNode;
+  const isMultiSelect = selectedNodes.length > 0;
+  const isNoSelect = !isSingleSelect && !isMultiSelect;
+  const isFilterDisabled = isMultiSelect;
 
   return (
     <HStack width="100%" padding="4pt 8pt">
@@ -374,7 +373,7 @@ export const LineageViewTopBar = () => {
           <ExcludeFilter isDisabled={isFilterDisabled} />
         </ControlItem>
         <Spacer />
-        {selectMode === "multi" && (
+        {isMultiSelect && (
           <>
             <ControlItem label="" style={{ flexShrink: "0" }}>
               <Text fontSize="9pt" color="gray.500">

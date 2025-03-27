@@ -267,7 +267,7 @@ export function PrivateLineageView(
 
     const nodeIds = Array.from(selectedNodeIds);
     return nodeIds.map((nodeId) => lineageGraph.nodes[nodeId]);
-  }, [lineageGraph]);
+  }, [lineageGraph, selectedNodeIds]);
 
   const filteredNodeIds: string[] = useMemo(() => {
     return nodes.filter((node) => node.type === 'customNode').map((node) => node.id);
@@ -371,9 +371,9 @@ export function PrivateLineageView(
 
   useResizeObserver(refResize, async () => {
     if (selectMode === "single" || selectMode === "action_result") {
-      const selectedNode = nodes.find((node) => node.data.isSelected);
-      if (selectedNode) {
-        centerNode(selectedNode);
+      const node = nodes.find((node) => node.id === focusedNodeId);
+      if (node) {
+        centerNode(node);
       } else {
         reactFlow.fitView({ nodes, duration: 200 });
       }
@@ -425,15 +425,16 @@ export function PrivateLineageView(
       centerNode(node);
       setFocusedNodeId(node.id);
     } else {
-      setSelectedNodeIds((prev) => {
-        const newSet = new Set(prev);
-        if (prev.has(node.id)) {
-          newSet.delete(node.id);
-        } else {
-          newSet.add(node.id);
-        }
-        return newSet;
-      });      
+      const newSet = new Set(selectedNodeIds);
+      if (selectedNodeIds.has(node.id)) {
+        newSet.delete(node.id);
+      } else {
+        newSet.add(node.id);        
+      }
+      setSelectedNodeIds(newSet);
+      if (newSet.size === 0) {
+        setSelectMode("single");
+      }
     }
   };
 
@@ -712,10 +713,10 @@ export function PrivateLineageView(
       if (!lineageGraph) {
         return;
       }
-
       
       setSelectedNodeIds(new Set([nodeId]));
       setSelectMode("multi");
+      setFocusedNodeId(undefined);
       multiNodeAction.reset();
     } else {
       setSelectedNodeIds((prev) => {
@@ -1050,7 +1051,7 @@ export function PrivateLineageView(
             </Menu>
           )}
         </VStack>
-        {selectMode === "single" && focusedNode ? (
+        {focusedNode ? (
           <Box borderLeft="solid 1px lightgray" height="100%">
             <NodeView node={focusedNode} onCloseNode={onNodeViewClosed} />
           </Box>
