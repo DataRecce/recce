@@ -333,18 +333,6 @@ export function selectDownstream(lineageGraph: LineageGraph, nodeIds: string[], 
   );
 }
 
-export function selectAllNodes(lineageGraph: LineageGraph) {
-  return new Set(Object.values(lineageGraph.nodes).map((node) => node.id));
-}
-
-export function selectImpactRadius(lineageGraph: LineageGraph, breakingChangeEnabled: boolean) {
-  if (!breakingChangeEnabled) {
-    return selectDownstream(lineageGraph, lineageGraph.modifiedSet);
-  } else {
-    return lineageGraph.impactedSet;
-  }
-}
-
 export function toReactflow(
   lineageGraph: LineageGraph,
   selectedNodes?: string[],

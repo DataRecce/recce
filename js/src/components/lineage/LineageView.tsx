@@ -1,9 +1,7 @@
 import {
   LineageGraphNode,
-  layout,
-  selectAllNodes,
+  layout,  
   selectDownstream,
-  selectImpactRadius,  
   selectUpstream,
   toReactflow,
 } from "./lineage";
@@ -235,7 +233,7 @@ export function PrivateLineageView(
    * - all: show all nodes
    * - changed_models: show only changed models
    */
-  const viewMode: "all" | "changed_models" = viewOptions.view_mode || "changed_models";
+  const viewMode = viewOptions.view_mode || "changed_models";
 
   /**
    * Select mode: the behavior of clicking on nodes
@@ -245,15 +243,6 @@ export function PrivateLineageView(
    */
   const [selectMode, setSelectMode] = useState<"single" | "multi" | "action_result">("single");
 
-  /**
-   * Highlighted nodes: the nodes that are highlighted. The behavior of highlighting depends on the select mode
-   * 
-   * - Default: nodes in the impact radius, or all nodes if the impact radius is not available
-   * - Focus: upstream/downstream nodes of the focused node
-   * - Multi-select: nodes in the impact radius, or all nodes if the impact radius is not available
-   * - Action Result: selected nodes
-   */
-  const [highlighted, setHighlighted] = useState<Set<string>>(new Set());
 
   const [focusedNodeId, setFocusedNodeId] = useState<string>();
   const focusedNode = focusedNodeId ? lineageGraph?.nodes[focusedNodeId] : undefined;
@@ -279,14 +268,79 @@ export function PrivateLineageView(
     return filteredNodeIds.map((nodeId) => lineageGraph.nodes[nodeId]);
   }, [lineageGraph, filteredNodeIds]);
 
+  const [breakingChangeEnabled, setBreakingChangeEnabled] = useState(false);
+  const handleActionNodeUpdated = useCallback(
+    (node: LineageGraphNode) => {
+      setNodes((prevNodes) => {
+        const newNodes = prevNodes.map((n) => {
+          if (n.id === node.id) {
+            return {
+              ...n,
+              data: node,
+            };
+          } else {
+            return n;
+          }
+        });
+        return newNodes;
+      });
+    },
+    [setNodes],
+  );
+  const multiNodeAction = useMultiNodesAction(
+    selectedNodes.length > 0 ? selectedNodes : filteredNodes,
+    {
+      onActionStarted: () => {
+        setSelectMode("action_result");
+      },
+      onActionNodeUpdated: handleActionNodeUpdated,
+      onActionCompleted: () => {},
+    },
+  );
+
+  /**
+   * Highlighted nodes: the nodes that are highlighted. The behavior of highlighting depends on the select mode
+   * 
+   * - Default: nodes in the impact radius, or all nodes if the impact radius is not available
+   * - Focus: upstream/downstream nodes of the focused node
+   * - Multi-select: nodes in the impact radius, or all nodes if the impact radius is not available
+   * - Action Result: selected nodes
+   */
+  // const [highlighted, setHighlighted] = useState<Set<string>>(new Set());
+  const highlighted = useMemo(() => {
+    if (!lineageGraph) {
+      return new Set<string>();
+    }
+
+    if (selectMode === 'action_result') {
+      const nodeIds = Object.keys(multiNodeAction.actionState.actions);
+      return new Set(nodeIds);
+    }
+
+    if (focusedNode) {
+      return union(
+        selectUpstream(lineageGraph, [focusedNode.id]),
+        selectDownstream(lineageGraph, [focusedNode.id]),
+      );
+    }
+
+    if (isModelsChanged) {
+      if (!breakingChangeEnabled) {
+        return selectDownstream(lineageGraph, lineageGraph.modifiedSet);
+      } else {
+        return lineageGraph.impactedSet;
+      }
+    } else {
+      return filteredNodes;
+    }
+  }, [lineageGraph, breakingChangeEnabled, focusedNode, selectMode, multiNodeAction.actionState.actions]);
+
   const [isContextMenuRendered, setIsContextMenuRendered] = useState(false);
   const [contextMenuPosition, setContextMenuPosition] = useState<{
     x: number;
     y: number;
     selectedNode?: Node;
   }>({ x: 0, y: 0 });
-
-  const [breakingChangeEnabled, setBreakingChangeEnabled] = useState(false);
 
   const toast = useToast();
 
@@ -325,12 +379,6 @@ export function PrivateLineageView(
       }
 
       let [nodes, edges] = toReactflow(lineageGraph, filteredNodeIds);
-      let nodeSet = selectAllNodes(lineageGraph);
-      if (isModelsChanged) {
-        nodeSet = selectImpactRadius(lineageGraph, breakingChangeEnabled);
-      }
-      setHighlighted(nodeSet);
-
       layout(nodes, edges);
       setNodes(nodes);
       setEdges(edges);
@@ -340,24 +388,6 @@ export function PrivateLineageView(
 
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [lineageGraph]);
-
-  interface ResetNodeStyleProps {
-    deselect?: boolean;
-    breakingChangeEnabled?: boolean;
-    nodes?: Node<LineageGraphNode>[];
-    edges?: Edge[];
-  }
-
-  const resetImpactRadiusStyles = (props?: ResetNodeStyleProps) => {
-    const { deselect = false, breakingChangeEnabled = false } = props ?? {};
-    let { nodes: newNodes = nodes, edges: newEdges = edges } = props ?? {};
-    if (!lineageGraph) {
-      return;
-    }
-
-    const nodeSet = selectImpactRadius(lineageGraph, breakingChangeEnabled);
-    setHighlighted(nodeSet);
-  };
 
   const onNodeViewClosed = () => {
     setFocusedNodeId(undefined);
@@ -415,11 +445,6 @@ export function PrivateLineageView(
 
     closeContextMenu();
     if (selectMode === "single") {
-      const nodeSet = union(
-        selectUpstream(lineageGraph, [node.id]),
-        selectDownstream(lineageGraph, [node.id]),
-      );
-      setHighlighted(nodeSet);
       setFocusedNodeId(node.id);    
 
       // Center the node in LineageView
@@ -444,25 +469,6 @@ export function PrivateLineageView(
       }
     }
   };
-
-  const handleActionNodeUpdated = useCallback(
-    (node: LineageGraphNode) => {
-      setNodes((prevNodes) => {
-        const newNodes = prevNodes.map((n) => {
-          if (n.id === node.id) {
-            return {
-              ...n,
-              data: node,
-            };
-          } else {
-            return n;
-          }
-        });
-        return newNodes;
-      });
-    },
-    [setNodes],
-  );
 
   const handleViewOptionsChanged = async (
     newViewOptions: LineageDiffViewOptions,
@@ -549,17 +555,6 @@ export function PrivateLineageView(
       })();
     }
   };
-
-  const multiNodeAction = useMultiNodesAction(
-    selectedNodes.length > 0 ? selectedNodes : filteredNodes,
-    {
-      onActionStarted: () => {
-        setSelectMode("action_result");
-      },
-      onActionNodeUpdated: handleActionNodeUpdated,
-      onActionCompleted: () => {},
-    },
-  );
 
   const valueDiffAlertDialog = useValueDiffAlertDialog();
 
@@ -974,8 +969,7 @@ export function PrivateLineageView(
                 <BreakingChangeSwitch
                   enabled={breakingChangeEnabled}
                   onChanged={(enabled) => {
-                    setBreakingChangeEnabled(enabled);
-                    resetImpactRadiusStyles({ breakingChangeEnabled: enabled });
+                    setBreakingChangeEnabled(enabled);                    
                     trackBreakingChange({ enabled });
                   }}
                 />
