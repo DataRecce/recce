@@ -139,6 +139,7 @@ export function GraphNode({ data }: GraphNodeProps) {
     selectMode,
     focusedNode,
     breakingChangeEnabled,
+    getNodeAction,
     isNodeHighlighted,
     isNodeSelected,
   } = useLineageViewContextSafe();
@@ -169,6 +170,7 @@ export function GraphNode({ data }: GraphNodeProps) {
 
   const name = data.name;
   const showColumns = data.columnSet && data.columnSet.size > 0;
+  const action = selectMode === "action_result" ? getNodeAction(data.id) : undefined;
 
   return (
     <Flex
@@ -178,7 +180,7 @@ export function GraphNode({ data }: GraphNodeProps) {
       padding={0}
       filter={(function () {
         if (selectMode === "action_result") {
-          return data.action ? "none" : "opacity(0.2) grayscale(50%)";
+          return action ? "none" : "opacity(0.2) grayscale(50%)";
         } else {
           return isHighlighted || isFocused || isSelected || isHovered
             ? "none"
@@ -202,7 +204,7 @@ export function GraphNode({ data }: GraphNodeProps) {
             if (selectMode === "multi") {
               return isSelected ? color : "white";
             } else if (selectMode === "action_result") {
-              if (!data.action) {
+              if (!action) {
                 return "white";
               } else {
                 return isFocused || isSelected || isHovered ? backgroundColor : color;
@@ -227,7 +229,7 @@ export function GraphNode({ data }: GraphNodeProps) {
             <GraphNodeCheckbox
               checked={
                 (selectMode === "multi" && isSelected) ||
-                (selectMode === "action_result" && !!data.action)
+                (selectMode === "action_result" && !!action)
               }
               onClick={(e) => {
                 if (selectMode === "action_result") {
@@ -256,7 +258,7 @@ export function GraphNode({ data }: GraphNodeProps) {
                 if (selectMode === "multi") {
                   return isSelected ? "white" : "inherit";
                 } else if (selectMode === "action_result") {
-                  return !!data.action && !isSelected ? "white" : "inherit";
+                  return !!action && !isSelected ? "white" : "inherit";
                 } else {
                   return "inherit";
                 }
@@ -277,7 +279,7 @@ export function GraphNode({ data }: GraphNodeProps) {
                 if (selectMode === "multi") {
                   return isSelected ? "white" : "inherit";
                 } else if (selectMode === "action_result") {
-                  return !!data.action && !isSelected ? "white" : "inherit";
+                  return !!action && !isSelected ? "white" : "inherit";
                 } else {
                   return "inherit";
                 }
@@ -292,7 +294,7 @@ export function GraphNode({ data }: GraphNodeProps) {
                   if (selectMode === "multi") {
                     return isSelected ? "white" : color;
                   } else if (selectMode === "action_result") {
-                    return !!data.action && !isSelected ? "white" : "inherit";
+                    return !!action && !isSelected ? "white" : "inherit";
                   } else {
                     return color;
                   }
@@ -321,15 +323,15 @@ export function GraphNode({ data }: GraphNodeProps) {
                   })()}
                 />
               )}
-              {data.isActionMode &&
-                (data.action ? (
-                  <>
-                    <Spacer />
-                    <ActionTag node={data} action={data.action} />
-                  </>
-                ) : (
-                  <></>
-                ))}
+
+              {action ? (
+                <>
+                  <Spacer />
+                  <ActionTag node={data} action={action} />
+                </>
+              ) : (
+                <></>
+              )}
             </HStack>
           </Flex>
         </Flex>

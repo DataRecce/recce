@@ -36,7 +36,6 @@ export interface LineageGraphNode {
   /**
    * The action status for the node which is trigger by action for multiple nodes
    */
-  isActionMode?: boolean;
   action?: {
     mode: "per_node" | "multi_nodes";
     status?: "pending" | "running" | "success" | "failure" | "skipped";
@@ -479,34 +478,7 @@ export function toReactflow(
 
   layout(nodes, edges);
 
-  // return highlightChanged(lineageGraph, nodes, edges);
   return [nodes, edges];
-}
-
-export function filterNodes(nodes: Node[], edges: Edge[], nodeIds: Set<string>): [Node[], Edge[]] {
-  const newNodes = nodes.filter((node) => nodeIds.has(node.id));
-  const newEdges = edges.filter((edge) => nodeIds.has(edge.source) && nodeIds.has(edge.target));
-
-  return [newNodes, newEdges];
-}
-
-export function hideNodes(nodes: Node[], edges: Edge[], nodeIds: Set<string>): [Node[], Edge[]] {
-  const newNodes = nodes.map((node) => {
-    return {
-      ...node,
-      hidden: !nodeIds.has(node.id),
-    };
-  });
-
-  const newEdges = edges.map((edge) => {
-    return {
-      ...edge,
-      hidden: !nodeIds.has(edge.source) || !nodeIds.has(edge.target),
-    };
-  });
-
-  layout(newNodes, newEdges);
-  return [newNodes, newEdges];
 }
 
 export const layout = (nodes: Node[], edges: Edge[], direction = "LR") => {
@@ -547,30 +519,3 @@ export const layout = (nodes: Node[], edges: Edge[], direction = "LR") => {
     return node;
   });
 };
-
-export function deselectNodes(nodes: Node<LineageGraphNode>[]) {
-  return nodes.map((n) => {
-    return {
-      ...n,
-      data: {
-        ...n.data,
-        isSelected: false,
-      },
-    };
-  });
-}
-
-export function cleanUpNodes(nodes: Node<LineageGraphNode>[], isActionMode?: boolean) {
-  const newNodes = nodes.map((n) => {
-    return {
-      ...n,
-      data: {
-        ...n.data,
-        // isSelected: false,
-        isActionMode,
-        action: undefined,
-      },
-    };
-  });
-  return newNodes;
-}

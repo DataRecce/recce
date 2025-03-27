@@ -1,6 +1,5 @@
 import {
   LineageGraphNode,
-  cleanUpNodes,
   layout,
   selectAllNodes,
   selectDownstream,
@@ -272,6 +271,13 @@ export function PrivateLineageView(
   const filteredNodeIds: string[] = useMemo(() => {
     return nodes.filter((node) => node.type === 'customNode').map((node) => node.id);
   }, [nodes]);
+  const filteredNodes = useMemo(() => {
+    if (!lineageGraph) {
+      return [];
+    }
+
+    return filteredNodeIds.map((nodeId) => lineageGraph.nodes[nodeId]);
+  }, [lineageGraph, filteredNodeIds]);
 
   const [isContextMenuRendered, setIsContextMenuRendered] = useState(false);
   const [contextMenuPosition, setContextMenuPosition] = useState<{
@@ -419,8 +425,9 @@ export function PrivateLineageView(
       // Center the node in LineageView
       centerNode(node);
     } else if (selectMode === "action_result") {
-      if (node.data.action?.run?.run_id) {
-        showRunId(node.data.action?.run?.run_id);
+      const action = multiNodeAction.actionState.actions[node.id];
+      if (action?.run?.run_id) {
+        showRunId(action?.run?.run_id);
       }
       centerNode(node);
       setFocusedNodeId(node.id);
@@ -544,7 +551,7 @@ export function PrivateLineageView(
   };
 
   const multiNodeAction = useMultiNodesAction(
-    selectedNodes,
+    selectedNodes.length > 0 ? selectedNodes : filteredNodes,
     {
       onActionStarted: () => {
         setSelectMode("action_result");
@@ -617,7 +624,6 @@ export function PrivateLineageView(
       return;
 
     if (selectMode === "single") {
-      setNodes(cleanUpNodes(nodes, true));
       setSelectMode("multi");
       multiNodeAction.reset();
     }
@@ -633,7 +639,6 @@ export function PrivateLineageView(
       return;
 
     if (selectMode === "single") {
-      setNodes(cleanUpNodes(nodes, true));
       setSelectMode("multi");
       multiNodeAction.reset();
     }
@@ -750,10 +755,13 @@ export function PrivateLineageView(
     deselect,
     breakingChangeEnabled,
     setBreakingChangeEnabled,
-    isNodeHighlighted: (nodeId) => highlighted.has(nodeId),
-    isNodeSelected: (nodeId) => selectedNodeIds.has(nodeId),
+    isNodeHighlighted: (nodeId: string) => highlighted.has(nodeId),
+    isNodeSelected: (nodeId: string) => selectedNodeIds.has(nodeId),
     isEdgeHighlighted: (source, target) => {
       return highlighted.has(source) && highlighted.has(target);
+    },
+    getNodeAction: (nodeId: string) => {
+      return multiNodeAction.actionState.actions[nodeId];
     },
     runRowCount: async () => {
       if (selectMode === "multi") {

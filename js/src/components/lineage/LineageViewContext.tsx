@@ -5,6 +5,24 @@ import { Node } from "reactflow";
 import { LineageGraphNode } from "./lineage";
 
 type NewType = LineageDiffViewOptions;
+type ActionStatus = "pending" | "running" | "success" | "failure" | "skipped";
+type ActionMode = "per_node" | "multi_nodes";
+
+interface NodeAction {
+  mode: ActionMode;
+  status?: ActionStatus;
+  skipReason?: string;
+  run?: Run;
+}
+
+export interface ActionState {
+  mode: ActionMode;
+  status: ActionStatus;
+  currentRun?: Partial<Run>;
+  completed: number;
+  total: number;
+  actions: Record<string, NodeAction>;
+}
 
 export interface LineageViewContextType {
   interactive: boolean;
@@ -25,6 +43,7 @@ export interface LineageViewContextType {
   isNodeHighlighted: (nodeId: string) => boolean;
   isNodeSelected: (nodeId: string) => boolean;
   isEdgeHighlighted: (source: string, target: string) => boolean;
+  getNodeAction: (nodeId: string) => NodeAction;
 
   //actions
   runRowCount: () => Promise<void>;
@@ -33,13 +52,7 @@ export interface LineageViewContextType {
   addLineageDiffCheck: (viewMode?: string) => void;
   addSchemaDiffCheck: () => void;
   cancel: () => void;
-  actionState: {
-    mode: "per_node" | "multi_nodes";
-    status: "pending" | "running" | "canceling" | "canceled" | "completed";
-    currentRun?: Partial<Run>;
-    completed: number;
-    total: number;
-  };
+  actionState: ActionState;
 
   // advancedImpactRadius
   breakingChangeEnabled: boolean;
