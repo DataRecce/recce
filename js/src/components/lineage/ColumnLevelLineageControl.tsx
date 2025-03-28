@@ -1,3 +1,4 @@
+import { useLineageGraphContext } from "@/lib/hooks/LineageGraphContext";
 import { CloseIcon, InfoOutlineIcon } from "@chakra-ui/icons";
 import {
   Flex,
@@ -22,6 +23,13 @@ export const ColumnLevelLineageControl = ({
   column,
   reset,
 }: ColumnLevelLineageControlProps) => {
+  const { lineageGraph } = useLineageGraphContext();
+  if (!lineageGraph) {
+    return <></>;
+  }
+
+  const nodeName = lineageGraph.nodes[node].name;
+
   return (
     <Flex
       direction="row"
@@ -36,7 +44,7 @@ export const ColumnLevelLineageControl = ({
       fontSize={"10pt"}>
       <Text>Column Lineage for</Text>
       <Code>
-        {node}.{column}
+        {nodeName}.{column}
       </Code>
       <Popover trigger="hover" placement="top-start">
         <PopoverTrigger>

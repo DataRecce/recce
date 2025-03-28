@@ -999,13 +999,7 @@ export function PrivateLineageView(
                 />
                 {viewOptions.column_level_lineage && (
                   <ColumnLevelLineageControl
-                    node={
-                      nodes.find(
-                        (n) =>
-                          viewOptions.column_level_lineage &&
-                          n.data.id === viewOptions.column_level_lineage.node,
-                      )?.data.name ?? ""
-                    }
+                    node={viewOptions.column_level_lineage.node}
                     column={viewOptions.column_level_lineage.column}
                     reset={() => {
                       handleViewOptionsChanged({
