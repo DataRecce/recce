@@ -268,32 +268,26 @@ export function PrivateLineageView(
     return filteredNodeIds.map((nodeId) => lineageGraph.nodes[nodeId]);
   }, [lineageGraph, filteredNodeIds]);
 
-  const [breakingChangeEnabled, setBreakingChangeEnabled] = useState(false);
-  const handleActionNodeUpdated = useCallback(
-    (node: LineageGraphNode) => {
-      setNodes((prevNodes) => {
-        const newNodes = prevNodes.map((n) => {
-          if (n.id === node.id) {
-            return {
-              ...n,
-              data: node,
-            };
-          } else {
-            return n;
-          }
-        });
-        return newNodes;
-      });
-    },
-    [setNodes],
-  );
+  const [breakingChangeEnabled, setBreakingChangeEnabled] = useState(false);    
   const multiNodeAction = useMultiNodesAction(
     selectedNodes.length > 0 ? selectedNodes : filteredNodes,
     {
       onActionStarted: () => {
         setSelectMode("action_result");
       },
-      onActionNodeUpdated: handleActionNodeUpdated,
+      onActionNodeUpdated: (updated: LineageGraphNode) => {
+        // trigger a re-render by updating the nodes
+        setNodes((nodes) => 
+          nodes.map((node) => {
+            if (node.id === updated.id) {
+              return {
+                ...node,
+              };
+            }
+            return node; 
+          })
+        );
+      },
       onActionCompleted: () => {},
     },
   );
