@@ -55,6 +55,7 @@ import { trackInit } from "@/lib/api/track";
 import { Filename } from "@/components/app/Filename";
 import { StateSynchronizer } from "@/components/app/StateSynchronizer";
 import { useRecceServerFlag } from "@/lib/hooks/useRecceServerFlag";
+import { useRecceModeContext } from "@/lib/hooks/RecceModeContext";
 
 const RouteAlwaysMount = ({ children, path }: { children: ReactNode; path: string }) => {
   const [match] = useRoute(path);
@@ -140,6 +141,7 @@ function RecceVersionBadge() {
 
 function TopBar() {
   const { reviewMode, isDemoSite, envInfo, cloudMode } = useLineageGraphContext();
+  const { readOnly } = useRecceModeContext();
   const { url: prURL, id: prID } = envInfo?.pullRequest ?? {};
   const demoPrId = prURL ? prURL.split("/").pop() : null;
 
@@ -154,9 +156,9 @@ function TopBar() {
         RECCE
       </Heading>
       <RecceVersionBadge />
-      {reviewMode && (
+      {(readOnly || reviewMode) && (
         <Badge fontSize="sm" color="white" colorScheme="whiteAlpha" variant="outline">
-          review mode
+          {readOnly ? "read only" : "review mode"}
         </Badge>
       )}
       {cloudMode && prID && (

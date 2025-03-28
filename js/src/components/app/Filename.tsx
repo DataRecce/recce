@@ -29,6 +29,7 @@ import { IconEdit, IconSave } from "../icons";
 import { AxiosError } from "axios";
 import { localStorageKeys } from "@/lib/api/localStorageKeys";
 import { useChecks } from "@/lib/api/checks";
+import { useRecceModeContext } from "@/lib/hooks/RecceModeContext";
 
 const useRecceToast = () => {
   const toast = useToast();
@@ -93,7 +94,8 @@ interface FilenameState {
 }
 
 export const Filename = () => {
-  const { fileName, cloudMode, isDemoSite, isLoading } = useLineageGraphContext();
+  const { readOnly } = useRecceModeContext();
+  const { fileName, cloudMode, isDemoSite } = useLineageGraphContext();
   const modalDisclosure = useDisclosure();
   const overwriteDisclosure = useDisclosure();
   const isStateless = !fileName && !cloudMode && !isDemoSite;
@@ -184,11 +186,13 @@ export const Filename = () => {
       <Flex flex="1" justifyContent="center" alignItems="center">
         {/* eslint-disable-next-line @typescript-eslint/no-unnecessary-condition */}
         <Box fontWeight="600">{fileName ? fileName : cloudMode ? "cloud" : titleNewInstance}</Box>
-        <Tooltip label={fileName ? "Change Filename" : "Save"} openDelay={1000}>
-          <IconButton onClick={handleOpen} aria-label={""} variant="unstyled" size="sm">
-            <Icon as={fileName ? IconEdit : IconSave} boxSize={"16px"} verticalAlign="middle" />
-          </IconButton>
-        </Tooltip>
+        {!readOnly && (
+          <Tooltip label={fileName ? "Change Filename" : "Save"} openDelay={1000}>
+            <IconButton onClick={handleOpen} aria-label={""} variant="unstyled" size="sm">
+              <Icon as={fileName ? IconEdit : IconSave} boxSize={"16px"} verticalAlign="middle" />
+            </IconButton>
+          </Tooltip>
+        )}
       </Flex>
       <Modal isOpen={modalDisclosure.isOpen} onClose={modalDisclosure.onClose} isCentered>
         <ModalOverlay />

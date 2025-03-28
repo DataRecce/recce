@@ -901,6 +901,9 @@ class DbtAdapter(BaseAdapter):
             # provide a manifest to speedup and not pollute the manifest
             compiled_sql = self.generate_sql(raw_code, base=base, context=jinja_context, provided_manifest=manifest)
             dialect = self.adapter.type()
+            # find adapter type from the manifest, otherwise we use the adapter type from the adapter
+            if self.get_manifest(base).metadata.adapter_type is not None:
+                dialect = self.get_manifest(base).metadata.adapter_type
             column_lineage = cll(compiled_sql, schema=schema, dialect=dialect)
         except RecceException:
             # TODO: provide parsing error message if needed

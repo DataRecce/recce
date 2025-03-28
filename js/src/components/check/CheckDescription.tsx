@@ -1,3 +1,4 @@
+import { useRecceModeContext } from "@/lib/hooks/RecceModeContext";
 import { Button, Flex, Link, Text, Textarea } from "@chakra-ui/react";
 import { ChangeEventHandler, KeyboardEventHandler, useEffect, useRef, useState } from "react";
 
@@ -7,6 +8,7 @@ interface CheckDescriptionProps {
 }
 
 export function CheckDescription({ value, onChange }: CheckDescriptionProps) {
+  const { readOnly } = useRecceModeContext();
   const [editing, setEditing] = useState(false);
   const [tempValue, setTempValue] = useState<string>();
   const textareaRef = useRef<HTMLTextAreaElement>(null);
@@ -80,7 +82,7 @@ export function CheckDescription({ value, onChange }: CheckDescriptionProps) {
       height="100%"
       overflow="auto"
       fontSize="11pt"
-      onClick={handleEdit}
+      onClick={!readOnly ? handleEdit : undefined}
       whiteSpace="pre-wrap"
       wordBreak="break-word"
       color={!value ? "lightgray" : "inherit"}>

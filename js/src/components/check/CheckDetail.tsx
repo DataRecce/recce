@@ -31,7 +31,6 @@ import {
   useDisclosure,
   Text,
   VStack,
-  Link,
 } from "@chakra-ui/react";
 import { CheckCircleIcon, CopyIcon, DeleteIcon, RepeatIcon } from "@chakra-ui/icons";
 import { CiBookmark } from "react-icons/ci";
@@ -53,7 +52,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { cancelRun, submitRunFromCheck } from "@/lib/api/runs";
 import { Run } from "@/lib/api/types";
 import { RunView } from "../run/RunView";
-import { formatDistanceToNow, sub } from "date-fns";
+import { formatDistanceToNow } from "date-fns";
 import { LineageDiffView } from "./LineageDiffView";
 import { findByRunType } from "../run/registry";
 import { generateCheckTemplate, PresetCheckTemplateView } from "./PresetCheckTemplateView";
@@ -62,6 +61,7 @@ import { useCopyToClipboardButton } from "@/lib/hooks/ScreenShot";
 import { useRun } from "@/lib/hooks/useRun";
 import { useCheckToast } from "@/lib/hooks/useCheckToast";
 import { LineageViewRef } from "../lineage/LineageView";
+import { useRecceModeContext } from "@/lib/hooks/RecceModeContext";
 
 export const isDisabledByNoResult = (type: string, run: Run | undefined): boolean => {
   if (type === "schema_diff" || type === "lineage_diff") {
@@ -76,12 +76,13 @@ interface CheckDetailProps {
 }
 
 export const CheckDetail = ({ checkId, refreshCheckList }: CheckDetailProps) => {
+  const { readOnly } = useRecceModeContext();
   const queryClient = useQueryClient();
   const [, setLocation] = useLocation();
   const { successToast, failToast } = useClipBoardToast();
   const { markedAsApprovedToast } = useCheckToast();
   const [submittedRunId, setSubmittedRunId] = useState<string>();
-  const [progress, setProgress] = useState<Run["progress"]>();
+  const [progress] = useState<Run["progress"]>();
   const [isAborting, setAborting] = useState(false);
   const [presetCheckTemplate, setPresetCheckTemplate] = useState<string>("");
   const {
@@ -276,7 +277,8 @@ export const CheckDetail = ({ checkId, refreshCheckList }: CheckDetailProps) => 
                   color="red"
                   onClick={() => {
                     handleDelete();
-                  }}>
+                  }}
+                  isDisabled={readOnly}>
                   Delete
                 </MenuItem>
               </MenuList>
@@ -306,7 +308,7 @@ export const CheckDetail = ({ checkId, refreshCheckList }: CheckDetailProps) => 
                 onClick={() => {
                   handleApproveCheck();
                 }}
-                isDisabled={isDisabledByNoResult(check?.type ?? "", run)}>
+                isDisabled={isDisabledByNoResult(check?.type ?? "", run) || readOnly}>
                 {check?.is_checked ? "Approved" : "Mark as Approved"}
               </Button>
             </Tooltip>
@@ -344,7 +346,8 @@ export const CheckDetail = ({ checkId, refreshCheckList }: CheckDetailProps) => 
                     variant="outline"
                     isLoading={isRunning}
                     size="sm"
-                    onClick={() => handleRerun()}>
+                    onClick={() => handleRerun()}
+                    isDisabled={readOnly}>
                     Rerun
                   </Button>
                 </Tooltip>
@@ -391,7 +394,11 @@ export const CheckDetail = ({ checkId, refreshCheckList }: CheckDetailProps) => 
                         This action is part of the initial preset and has not been performed yet.
                         Once performed, the result will be shown here.
                       </Box>
-                      <Button onClick={handleRerun} colorScheme="blue" size="sm">
+                      <Button
+                        onClick={handleRerun}
+                        colorScheme="blue"
+                        size="sm"
+                        isDisabled={readOnly}>
                         Run Query
                       </Button>
                     </VStack>

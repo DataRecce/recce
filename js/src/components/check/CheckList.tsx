@@ -28,6 +28,8 @@ import { findByRunType } from "../run/registry";
 import { useCheckToast } from "@/lib/hooks/useCheckToast";
 import { useRun } from "@/lib/hooks/useRun";
 import { isDisabledByNoResult } from "./CheckDetail";
+import { useRecceModeContext } from "@/lib/hooks/RecceModeContext";
+import { read } from "fs";
 
 const ChecklistItem = ({
   check,
@@ -40,6 +42,7 @@ const ChecklistItem = ({
   onSelect: (checkId: string) => void;
   onMarkAsApproved: () => void;
 }) => {
+  const { readOnly } = useRecceModeContext();
   const queryClient = useQueryClient();
   const checkId = check.check_id;
   const { mutate } = useMutation({
@@ -65,7 +68,9 @@ const ChecklistItem = ({
 
   const icon: IconType = findByRunType(check.type)?.icon || TbChecklist;
   // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
-  const isMarkAsApprovedDisabled = isDisabledByNoResult(check.type ?? "", run);
+  const isMarkAsApprovedDisabled = isDisabledByNoResult(check.type ?? "", run) || readOnly;
+  // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
+  const isNoResult = isDisabledByNoResult(check.type ?? "", run);
 
   return (
     <>
@@ -90,7 +95,7 @@ const ChecklistItem = ({
 
         {/* {check.is_checked && <Icon color="green" as={FaCheckCircle} />} */}
         <Tooltip
-          label={isMarkAsApprovedDisabled ? "Run the check first" : "Click to mark as approved"}
+          label={isNoResult ? "Run the check first" : "Click to mark as approved"}
           placement="top"
           hasArrow>
           <Flex>

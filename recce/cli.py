@@ -15,7 +15,7 @@ from recce.state import RecceStateLoader, RecceCloudStateManager
 from recce.summary import generate_markdown_summary
 from recce.util.logger import CustomFormatter
 from recce.util.recce_cloud import RecceCloudException, get_recce_cloud_onboarding_state
-from .core import RecceContext
+from .core import RecceContext, set_default_context
 from .event.track import TrackCommand
 
 event.init()
@@ -749,6 +749,42 @@ def github(**kwargs):
 def artifact(**kwargs):
     from recce.github import recce_ci_artifact
     return recce_ci_artifact(**kwargs)
+
+
+@cli.command(hidden=True, cls=TrackCommand)
+@click.argument('state_file', required=False)
+@click.option('--host', default='localhost', show_default=True, help='The host to bind to.')
+@click.option('--port', default=8000, show_default=True, help='The port to bind to.', type=int)
+def read_only(host, port, state_file=None, **kwargs):
+
+    from .server import app, AppState
+    from rich.console import Console
+
+    console = Console()
+    handle_debug_flag(**kwargs)
+    is_review = True
+    is_cloud = False
+    cloud_options = None
+    flag = {
+        'read_only': True,
+    }
+    state_loader = create_state_loader(is_review, is_cloud, state_file, cloud_options)
+
+    if not state_loader.verify():
+        error, hint = state_loader.error_and_hint
+        console.print(f"[[red]Error[/red]] {error}")
+        console.print(f"{hint}")
+        exit(1)
+
+    result, message = RecceContext.verify_required_artifacts(**kwargs)
+    if not result:
+        console.print(f"[[red]Error[/red]] {message}")
+        exit(1)
+
+    app.state = AppState(state_loader=state_loader, kwargs=kwargs, flag=flag)
+    set_default_context(RecceContext.load(**kwargs, review=is_review, state_loader=state_loader))
+
+    uvicorn.run(app, host=host, port=port, lifespan='off')
 
 
 if __name__ == "__main__":
