@@ -140,6 +140,7 @@ export function GraphNode({ data }: GraphNodeProps) {
     focusedNode,
     breakingChangeEnabled,
     getNodeAction,
+    getNodeColumnSet,
     isNodeHighlighted,
     isNodeSelected,
   } = useLineageViewContextSafe();
@@ -169,7 +170,8 @@ export function GraphNode({ data }: GraphNodeProps) {
   const borderColor = color;
 
   const name = data.name;
-  const showColumns = data.columnSet && data.columnSet.size > 0;
+  const columnSet = getNodeColumnSet(data.id);
+  const showColumns = columnSet.size > 0;
   const action = selectMode === "action_result" ? getNodeAction(data.id) : undefined;
 
   return (
@@ -336,7 +338,7 @@ export function GraphNode({ data }: GraphNodeProps) {
           </Flex>
         </Flex>
       </Flex>
-      {data.columnSet && data.columnSet.size > 0 && (
+      {columnSet.size > 0 && (
         <Box
           p="10px 20px"
           borderColor={borderColor}
@@ -344,7 +346,7 @@ export function GraphNode({ data }: GraphNodeProps) {
           borderTopWidth={0}
           borderStyle={borderStyle}
           borderBottomRadius={8}>
-          <Box height={`${data.columnSet.size * 15}px`} overflow="auto"></Box>
+          <Box height={`${columnSet.size * 15}px`} overflow="auto"></Box>
         </Box>
       )}
       {/* eslint-disable-next-line @typescript-eslint/no-unnecessary-condition */}

@@ -44,6 +44,7 @@ export interface LineageViewContextType {
   isNodeSelected: (nodeId: string) => boolean;
   isEdgeHighlighted: (source: string, target: string) => boolean;
   getNodeAction: (nodeId: string) => NodeAction;
+  getNodeColumnSet: (nodeId: string) => Set<string>;
 
   //actions
   runRowCount: () => Promise<void>;

@@ -30,23 +30,6 @@ export interface LineageGraphNode {
   packageName?: string;
   parents: Record<string, LineageGraphEdge>;
   children: Record<string, LineageGraphEdge>;
-
-  isSelected: boolean;
-
-  /**
-   * The action status for the node which is trigger by action for multiple nodes
-   */
-  action?: {
-    mode: "per_node" | "multi_nodes";
-    status?: "pending" | "running" | "success" | "failure" | "skipped";
-    skipReason?: string;
-    run?: Run;
-  };
-
-  /**
-   * Column Level Linage. Only show the column in the set
-   */
-  columnSet?: Set<string>;
 }
 
 export interface LinageGraphColumnNode {
@@ -81,6 +64,8 @@ export interface LineageGraph {
     current?: CatalogMetadata;
   };
 }
+
+export type NodeColumnSetMap = Record<string, Set<string>>;
 
 export function _selectColumnLevelLineage(node: string, column: string, cll: ColumnLineageData) {
   const parentMap: Record<string, string[]> = {};
@@ -155,7 +140,6 @@ export function buildLineageGraph(
       from,
       parents: {},
       children: {},
-      isSelected: false,
     };
   };
 
@@ -341,13 +325,15 @@ export function toReactflow(
     column: string;
   },
   cll?: ColumnLineageData,
-): [Node[], Edge[]] {
+): [Node[], Edge[], NodeColumnSetMap] {
   const nodes: Node[] = [];
   const edges: Edge[] = [];
   const columnSet =
     columnLevelLineage && cll != null
       ? _selectColumnLevelLineage(columnLevelLineage.node, columnLevelLineage.column, cll)
       : new Set<string>();
+
+  const nodeColumnSetMap: NodeColumnSetMap = {};
 
   function getWeight(from: string) {
     if (from === "base") {
@@ -433,6 +419,7 @@ export function toReactflow(
         nodeColumnSet.add(columnKey);
       }
     }
+    nodeColumnSetMap[node.id] = nodeColumnSet;
 
     nodes.push({
       id: node.id,
@@ -441,7 +428,6 @@ export function toReactflow(
       height: 36 + columnIndex * 15,
       data: {
         ...node,
-        columnSet: nodeColumnSet,
       },
       type: "customNode",
       targetPosition: Position.Left,
@@ -466,7 +452,7 @@ export function toReactflow(
 
   layout(nodes, edges);
 
-  return [nodes, edges];
+  return [nodes, edges, nodeColumnSetMap];
 }
 
 export const layout = (nodes: Node[], edges: Edge[], direction = "LR") => {
