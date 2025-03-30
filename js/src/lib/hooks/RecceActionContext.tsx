@@ -76,12 +76,12 @@ export function RecceActionContextProvider({ children }: RecceActionContextProvi
   const queryClient = useQueryClient();
 
   const showRunId = useCallback(
-    (runId: string, refreshHistory?: boolean) => {
+    async (runId: string, refreshHistory?: boolean) => {
       setRunId(runId);
       onResultPaneOpen();
 
       if (refreshHistory !== false) {
-        queryClient.invalidateQueries({ queryKey: cacheKeys.runs() });
+        await queryClient.invalidateQueries({ queryKey: cacheKeys.runs() });
       }
     },
     [setRunId, onResultPaneOpen, queryClient],
@@ -118,8 +118,8 @@ export function RecceActionContextProvider({ children }: RecceActionContextProvi
           const { run_id } = await submitRun(type, params, {
             nowait: true,
           });
-          showRunId(run_id);
-          queryClient.invalidateQueries({ queryKey: cacheKeys.runs() });
+          await showRunId(run_id);
+          await queryClient.invalidateQueries({ queryKey: cacheKeys.runs() });
           if (location.startsWith("/lineage")) {
             setLocation("/lineage");
           }
@@ -156,7 +156,7 @@ export function RecceActionContextProvider({ children }: RecceActionContextProvi
       const { run_id } = await submitRun(type, params, {
         nowait: true,
       });
-      showRunId(run_id);
+      await showRunId(run_id);
     } catch (e: any) {
       toast({
         title: "Failed to submit a run",

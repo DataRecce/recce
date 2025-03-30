@@ -106,21 +106,27 @@ export default tseslint.config(
           "allowNumber": true
         }
       ],
+      "@typescript-eslint/no-misused-promises": ["error",
+        {
+          checksVoidReturn: false
+        }
+      ],
       // TODO
       //  ------------------------------------------------------------------------------------
       //  Marking the below as warnings ""for now"" - They need to be addressed in the future
       //  ------------------------------------------------------------------------------------
       "react/no-array-index-key": "warn", // 6 errors
+      // Rules specific to avoiding 'Any' Typing
+      // @see https://typescript-eslint.io/blog/avoiding-anys
       "@typescript-eslint/no-explicit-any": "warn", // 124 errors
-      "@typescript-eslint/no-unsafe-member-access": "warn", // 120 errors
-      "@typescript-eslint/no-misused-promises": "warn", // 26 errors
-      "@typescript-eslint/prefer-nullish-coalescing": "warn", // 133 errors
-      "@typescript-eslint/no-floating-promises": "warn", // 49 errors
-      "@typescript-eslint/no-unsafe-assignment": "warn", // 131 errors
       "@typescript-eslint/no-unsafe-argument": "warn", // 17 errors
+      "@typescript-eslint/no-unsafe-assignment": "warn", // 131 errors
       "@typescript-eslint/no-unsafe-call": "warn", // 8 errors
-      "@typescript-eslint/no-redundant-type-constituents": "warn", // 16 errors
+      "@typescript-eslint/no-unsafe-member-access": "warn", // 120 errors
       "@typescript-eslint/no-unsafe-return": "warn", // 24 errors
+      // END Rules specific to avoiding 'Any' Typing
+      "@typescript-eslint/prefer-nullish-coalescing": "warn", // 133 errors
+      "@typescript-eslint/no-redundant-type-constituents": "warn", // 16 errors
       "@typescript-eslint/require-await": "warn", // 6 errors
       "@typescript-eslint/await-thenable": "warn", // 5 errors
       "@typescript-eslint/no-confusing-void-expression": "warn", // 5 errors (same as await-thenable)

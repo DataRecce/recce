@@ -112,7 +112,7 @@ export const PrivateLoadableRunView = ({
 
   const checkId = run?.check_id;
 
-  const handleGoToCheck = useCallback(async () => {
+  const handleGoToCheck = useCallback(() => {
     if (!checkId) {
       return;
     }
@@ -126,7 +126,7 @@ export const PrivateLoadableRunView = ({
     }
     const check = await createCheckByRun(runId, viewOptions);
 
-    queryClient.invalidateQueries({ queryKey: cacheKeys.checks() });
+    await queryClient.invalidateQueries({ queryKey: cacheKeys.checks() });
     setLocation(`/checks/${check.check_id}`);
   }, [runId, setLocation, queryClient, viewOptions]);
 

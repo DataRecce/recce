@@ -322,7 +322,7 @@ export function PrivateLineageView(
       setEdges(edges);
     };
 
-    t();
+    void t();
 
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [lineageGraph]);
@@ -392,7 +392,7 @@ export function PrivateLineageView(
     if (selectMode === "single" || selectMode === "action_result") {
       const selectedNode = nodes.find((node) => node.data.isSelected);
       if (selectedNode) {
-        centerNode(selectedNode);
+        void centerNode(selectedNode);
       } else {
         reactFlow.fitView({ nodes, duration: 200 });
       }
@@ -429,7 +429,7 @@ export function PrivateLineageView(
     closeContextMenu();
     if (selectMode === "single") {
       if (!selectedNode) {
-        centerNode(node);
+        void centerNode(node);
       }
       const nodeSet = union(
         selectUpstream(lineageGraph, [node.id]),
@@ -442,12 +442,12 @@ export function PrivateLineageView(
       setEdges(newEdges);
 
       // Center the node in LineageView
-      centerNode(node);
+      void centerNode(node);
     } else if (selectMode === "action_result") {
       if (node.data.action?.run?.run_id) {
         showRunId(node.data.action?.run?.run_id);
       }
-      centerNode(node);
+      void centerNode(node);
       setNodes(selectSingleNode(node.id, nodes));
     } else {
       let newNodes = selectNode(node.id, nodes);
@@ -618,7 +618,7 @@ export function PrivateLineageView(
         const node = findNodeByName(selectedRunModel);
         if (!node) {
           // Cannot find the node in the current nodes, try to change the view mode to 'all'
-          handleViewOptionsChanged({
+          void handleViewOptionsChanged({
             ...viewOptions,
             view_mode: "all",
           });
@@ -732,8 +732,8 @@ export function PrivateLineageView(
           <>No change detected</>
           <Button
             colorScheme="blue"
-            onClick={() => {
-              handleViewOptionsChanged({ ...viewOptions, view_mode: "all" });
+            onClick={async () => {
+              await handleViewOptionsChanged({ ...viewOptions, view_mode: "all" });
             }}>
             Show all nodes
           </Button>
@@ -973,7 +973,7 @@ export function PrivateLineageView(
               <ControlButton
                 title="copy image"
                 onClick={async () => {
-                  copyToClipboard();
+                  await copyToClipboard();
                 }}>
                 <Icon as={FiCopy} />
               </ControlButton>
@@ -1014,7 +1014,7 @@ export function PrivateLineageView(
                     }
                     column={viewOptions.column_level_lineage.column}
                     reset={() => {
-                      handleViewOptionsChanged({
+                      void handleViewOptionsChanged({
                         ...viewOptions,
                         column_level_lineage: undefined,
                       });

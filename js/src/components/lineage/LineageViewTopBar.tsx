@@ -411,8 +411,8 @@ export const LineageViewTopBar = () => {
                         fontSize="10pt"
                         isDisabled={!(isNoSelect || isSingleSelect || isMultiSelect)}
                         icon={<Icon as={findByRunType("row_count_diff")?.icon} />}
-                        onClick={() => {
-                          lineageViewContext.runRowCount();
+                        onClick={async () => {
+                          await lineageViewContext.runRowCount();
                         }}>
                         Row Count
                       </MenuItem>
@@ -439,8 +439,8 @@ export const LineageViewTopBar = () => {
                       fontSize="10pt"
                       isDisabled={!(isNoSelect || isSingleSelect || isMultiSelect)}
                       icon={<Icon as={findByRunType("row_count_diff")?.icon} />}
-                      onClick={() => {
-                        lineageViewContext.runRowCountDiff();
+                      onClick={async () => {
+                        await lineageViewContext.runRowCountDiff();
                       }}>
                       Row Count Diff
                     </MenuItem>
@@ -460,8 +460,8 @@ export const LineageViewTopBar = () => {
                           !isActionAvailable("value_diff")
                         }
                         icon={<Icon as={findByRunType("value_diff")?.icon} />}
-                        onClick={() => {
-                          lineageViewContext.runValueDiff();
+                        onClick={async () => {
+                          await lineageViewContext.runValueDiff();
                         }}>
                         Value Diff
                       </MenuItem>

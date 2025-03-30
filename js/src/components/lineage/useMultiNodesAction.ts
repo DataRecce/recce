@@ -248,7 +248,7 @@ export const useMultiNodesAction = (
   };
 
   const runValueDiff = async () => {
-    submitRunsPerNodes("value_diff", (node) => {
+    await submitRunsPerNodes("value_diff", (node) => {
       const primaryKey = node.data.current?.primary_key;
       if (!primaryKey) {
         return {

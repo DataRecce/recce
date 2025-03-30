@@ -197,7 +197,7 @@ export const PresetCheckRecommendation = () => {
       nowait: true,
     });
     showRunId(submittedRun.run_id);
-    queryClient.invalidateQueries({
+    await queryClient.invalidateQueries({
       queryKey: cacheKeys.check(check.check_id),
     });
   }, [recommendedCheck, showRunId, queryClient]);
@@ -303,7 +303,7 @@ export const PresetCheckRecommendation = () => {
                 colorScheme="blue"
                 onClick={() => {
                   onClose();
-                  performPresetCheck();
+                  void performPresetCheck();
                   setPerformedRecommend(true);
                   trackRecommendCheck({
                     action: "execute",
