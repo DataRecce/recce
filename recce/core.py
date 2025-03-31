@@ -310,7 +310,6 @@ def load_context(**kwargs) -> RecceContext:
 
 
 def default_context() -> RecceContext:
-    global recce_context
     return recce_context
 
 
