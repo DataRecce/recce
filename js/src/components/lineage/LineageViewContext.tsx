@@ -34,7 +34,7 @@ export interface LineageViewContextType {
   onViewOptionsChanged: (options: NewType) => void;
 
   // Multi nodes selection
-  selectMode?: "selecting" | "action_result";
+  selectMode: "selecting" | "action_result" | undefined;
   selectNode: (nodeId: string) => void;
   deselect: () => void;
 

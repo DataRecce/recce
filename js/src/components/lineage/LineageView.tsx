@@ -374,7 +374,7 @@ export function PrivateLineageView(
         filteredNodeIds = viewOptions.node_ids;
       } else {
         const packageName = lineageGraph.manifestMetadata.current?.project_name;
-        const viewMode = (viewOptions.view_mode ?? isModelsChanged) ? "changed_models" : "all";
+        const viewMode = viewOptions.view_mode ?? (isModelsChanged ? "changed_models" : "all");
 
         const newViewOptions: LineageDiffViewOptions = {
           view_mode: viewMode,
