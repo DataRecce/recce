@@ -115,7 +115,7 @@ const GraphNodeCheckbox = ({
   onClick?: React.MouseEventHandler;
 }) => {
   return (
-    <Flex onClick={onClick} alignSelf="center" alignItems="center">
+    <Flex onClick={onClick} alignSelf="center" alignItems="center" cursor={"pointer"}>
       {checked ? (
         <Icon boxSize="20px" as={FaCheckSquare} />
       ) : (
@@ -133,7 +133,7 @@ export function GraphNode({ data }: GraphNodeProps) {
   const [isHovered, setIsHovered] = useState(false);
   const {
     interactive,
-    selectNodeMulti,
+    selectNode,
     selectMode,
     focusedNode,
     breakingChangeEnabled,
@@ -174,6 +174,7 @@ export function GraphNode({ data }: GraphNodeProps) {
 
   return (
     <Flex
+      cursor={selectMode === "selecting" ? "pointer" : "inherit"}
       direction="column"
       width="300px"
       transition="box-shadow 0.2s ease-in-out"
@@ -201,7 +202,7 @@ export function GraphNode({ data }: GraphNodeProps) {
         borderBottomRadius={showColumns ? 0 : 8}
         backgroundColor={(function () {
           if (showContent) {
-            if (selectMode === "multi") {
+            if (selectMode === "selecting") {
               return isSelected ? color : "white";
             } else if (selectMode === "action_result") {
               if (!action) {
@@ -221,14 +222,14 @@ export function GraphNode({ data }: GraphNodeProps) {
           bg={color}
           padding={interactive ? "8px" : "2px"}
           borderRightWidth={borderWidth}
-          borderColor={selectMode === "multi" ? "#00000020" : borderColor}
+          borderColor={selectMode === "selecting" ? "#00000020" : borderColor}
           borderStyle={borderStyle}
           alignItems="top"
           visibility={showContent ? "inherit" : "hidden"}>
           {interactive && (
             <GraphNodeCheckbox
               checked={
-                (selectMode === "multi" && isSelected) ||
+                (selectMode === "selecting" && isSelected) ||
                 (selectMode === "action_result" && !!action)
               }
               onClick={(e) => {
@@ -236,7 +237,7 @@ export function GraphNode({ data }: GraphNodeProps) {
                   return;
                 }
                 e.stopPropagation();
-                selectNodeMulti(data.id);
+                selectNode(data.id);
               }}
             />
           )}
@@ -255,7 +256,7 @@ export function GraphNode({ data }: GraphNodeProps) {
             <Box
               flex="1"
               color={(function () {
-                if (selectMode === "multi") {
+                if (selectMode === "selecting") {
                   return isSelected ? "white" : "inherit";
                 } else if (selectMode === "action_result") {
                   return !!action && !isSelected ? "white" : "inherit";
@@ -276,7 +277,7 @@ export function GraphNode({ data }: GraphNodeProps) {
             <Icon
               boxSize="16px"
               color={(function () {
-                if (selectMode === "multi") {
+                if (selectMode === "selecting") {
                   return isSelected ? "white" : "inherit";
                 } else if (selectMode === "action_result") {
                   return !!action && !isSelected ? "white" : "inherit";
@@ -291,7 +292,7 @@ export function GraphNode({ data }: GraphNodeProps) {
               <Icon
                 // color={selectMode === "multi" && isSelected ? "white" : color}
                 color={(function () {
-                  if (selectMode === "multi") {
+                  if (selectMode === "selecting") {
                     return isSelected ? "white" : color;
                   } else if (selectMode === "action_result") {
                     return !!action && !isSelected ? "white" : "inherit";
@@ -315,7 +316,7 @@ export function GraphNode({ data }: GraphNodeProps) {
                 <NodeRunsAggregated
                   id={data.id}
                   inverted={(function () {
-                    if (selectMode === "multi") {
+                    if (selectMode === "selecting") {
                       return isSelected ? true : false;
                     } else {
                       return false;
