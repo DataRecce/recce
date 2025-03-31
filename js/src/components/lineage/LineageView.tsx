@@ -434,7 +434,7 @@ export function PrivateLineageView(
 
   const onColumnNodeClick = (event: React.MouseEvent, node: Node) => {
     setFocusedNodeId(node.parentId);
-    handleViewOptionsChanged(
+    void handleViewOptionsChanged(
       {
         ...viewOptions,
         column_level_lineage: {
@@ -504,12 +504,15 @@ export function PrivateLineageView(
           packages: newViewOptions.packages,
           view_mode: newViewOptions.view_mode,
         });
+        // focus to unfocus the model or column node
+        newViewOptions.column_level_lineage = undefined;
         selectedNodes = result.nodes;
       } catch (e) {
         if (e instanceof AxiosError) {
+          const e2 = e as AxiosError<{ detail?: string }>;
           toast({
             title: "Select node error",
-            description: e.response?.data?.detail || e.message,
+            description: e2.response?.data.detail ?? e.message,
             status: "error",
             isClosable: true,
             position: "bottom-right",
@@ -517,6 +520,7 @@ export function PrivateLineageView(
         }
         return;
       }
+      setFocusedNodeId(undefined);
     } else {
       selectedNodes = nodes.map((n) => n.id);
     }
@@ -531,9 +535,10 @@ export function PrivateLineageView(
         cll = cllResult;
       } catch (e) {
         if (e instanceof AxiosError) {
+          const e2 = e as AxiosError<{ detail?: string }>;
           toast({
             title: "Column Level Lineage error",
-            description: e.response?.data?.detail || e.message,
+            description: e2.response?.data.detail ?? e.message,
             status: "error",
             isClosable: true,
             position: "bottom-right",
