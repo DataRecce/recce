@@ -11,6 +11,7 @@ import {
   MenuList,
   Portal,
   Spacer,
+  Tooltip,
 } from "@chakra-ui/react";
 import { VscKebabVertical } from "react-icons/vsc";
 import { supportsHistogramDiff } from "../histogram/HistogramDiffForm";
@@ -72,21 +73,22 @@ export function ColumnNameCell({
       <Spacer />
       {/* show icon button with eye icon */}
       {lineageViewContext && (
-        <IconButton
-          icon={<LuEye />}
-          aria-label={""}
-          className="row-context-menu"
-          visibility="hidden"
-          width={"0px"}
-          minWidth={"0px"}
-          variant="unstyled"
-          size={"sm"}
-          color="gray"
-          _hover={{ color: "black" }}
-          // eslint-disable-next-line @typescript-eslint/no-misused-promises
-          onClick={handleViewCll}
-          isLoading={cllRunning}
-        />
+        <Tooltip label="Show Lineage">
+          <IconButton
+            icon={<LuEye />}
+            aria-label={""}
+            className="row-context-menu"
+            visibility="hidden"
+            width={"0px"}
+            minWidth={"0px"}
+            variant="unstyled"
+            size={"sm"}
+            color="gray"
+            _hover={{ color: "black" }}
+            onClick={handleViewCll}
+            isLoading={cllRunning}
+          />
+        </Tooltip>
       )}
       {!singleEnv && model.resource_type !== "source" && (
         <Menu>
