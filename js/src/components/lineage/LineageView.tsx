@@ -637,6 +637,12 @@ export function PrivateLineageView(
     if (selectMode === "single") {
       setSelectMode("multi");
       multiNodeAction.reset();
+      if (viewOptions.column_level_lineage) {
+        void handleViewOptionsChanged({
+          ...viewOptions,
+          column_level_lineage: undefined,
+        });
+      }
     }
 
     const selectedNodeId = selectedNode.id;
@@ -652,6 +658,12 @@ export function PrivateLineageView(
     if (selectMode === "single") {
       setSelectMode("multi");
       multiNodeAction.reset();
+      if (viewOptions.column_level_lineage) {
+        void handleViewOptionsChanged({
+          ...viewOptions,
+          column_level_lineage: undefined,
+        });
+      }
     }
 
     const selectedNodeId = selectedNode.id;
@@ -733,6 +745,12 @@ export function PrivateLineageView(
       setSelectedNodeIds(new Set([nodeId]));
       setSelectMode("multi");
       setFocusedNodeId(undefined);
+      if (viewOptions.column_level_lineage) {
+        void handleViewOptionsChanged({
+          ...viewOptions,
+          column_level_lineage: undefined,
+        });
+      }
       multiNodeAction.reset();
     } else {
       const newSelectedNodeIds = new Set(selectedNodeIds);
@@ -908,8 +926,7 @@ export function PrivateLineageView(
       setFocusedNodeId(nodeId);
     },
     resetColumnLevelLinage: () => {
-      // eslint-disable-next-line @typescript-eslint/no-floating-promises
-      handleViewOptionsChanged(
+      void handleViewOptionsChanged(
         {
           ...viewOptions,
           column_level_lineage: undefined,
