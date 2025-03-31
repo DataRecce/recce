@@ -25,7 +25,6 @@ export interface ActionState {
 
 export interface LineageViewContextType {
   interactive: boolean;
-  selectMode: "multi" | "single" | "action_result";
   nodes: Node<LineageGraphNode>[];
   focusedNode?: LineageGraphNode;
   selectedNodes: LineageGraphNode[];
@@ -34,8 +33,9 @@ export interface LineageViewContextType {
   viewOptions: LineageDiffViewOptions;
   onViewOptionsChanged: (options: NewType) => void;
 
-  // select
-  selectNodeMulti: (nodeId: string) => void;
+  // Multi nodes selection
+  selectMode: "selecting" | "action_result" | undefined;
+  selectNode: (nodeId: string) => void;
   deselect: () => void;
 
   // node state

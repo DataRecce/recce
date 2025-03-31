@@ -234,28 +234,6 @@ export function PrivateLineageView(
    * - changed_models: show only changed models
    */
   const viewMode = viewOptions.view_mode ?? "changed_models";
-
-  /**
-   * Select mode: the behavior of clicking on nodes
-   * - single: single-select mode
-   * - multi: multi-select mode
-   * - action_result: show node action result view
-   */
-  const [selectMode, setSelectMode] = useState<"single" | "multi" | "action_result">("single");
-
-  const [focusedNodeId, setFocusedNodeId] = useState<string>();
-  const focusedNode = focusedNodeId ? lineageGraph?.nodes[focusedNodeId] : undefined;
-
-  const [selectedNodeIds, setSelectedNodeIds] = useState<Set<string>>(new Set());
-  const selectedNodes = useMemo(() => {
-    if (!lineageGraph) {
-      return [];
-    }
-
-    const nodeIds = Array.from(selectedNodeIds);
-    return nodeIds.map((nodeId) => lineageGraph.nodes[nodeId]);
-  }, [lineageGraph, selectedNodeIds]);
-
   const filteredNodeIds: string[] = useMemo(() => {
     return nodes.filter((node) => node.type === "customNode").map((node) => node.id);
   }, [nodes]);
@@ -267,8 +245,28 @@ export function PrivateLineageView(
     return filteredNodeIds.map((nodeId) => lineageGraph.nodes[nodeId]);
   }, [lineageGraph, filteredNodeIds]);
 
-  const [breakingChangeEnabled, setBreakingChangeEnabled] = useState(false);
-  const [nodeColumnSetMap, setNodeColumnSetMap] = useState<NodeColumnSetMap>();
+  /**
+   * Focused node: the node that is currently focused. Show the NodeView when a node is focused
+   */
+  const [focusedNodeId, setFocusedNodeId] = useState<string>();
+  const focusedNode = focusedNodeId ? lineageGraph?.nodes[focusedNodeId] : undefined;
+
+  /**
+   * Select mode: the behavior of clicking on nodes
+   * - (undefined): no selection
+   * - selecting: selecting nodes
+   * - action_result: take action on selected nodes
+   */
+  const [selectMode, setSelectMode] = useState<"selecting" | "action_result">();
+  const [selectedNodeIds, setSelectedNodeIds] = useState<Set<string>>(new Set());
+  const selectedNodes = useMemo(() => {
+    if (!lineageGraph) {
+      return [];
+    }
+
+    const nodeIds = Array.from(selectedNodeIds);
+    return nodeIds.map((nodeId) => lineageGraph.nodes[nodeId]);
+  }, [lineageGraph, selectedNodeIds]);
   const multiNodeAction = useMultiNodesAction(
     selectedNodes.length > 0 ? selectedNodes : filteredNodes,
     {
@@ -291,6 +289,12 @@ export function PrivateLineageView(
       onActionCompleted: () => {},
     },
   );
+
+  /**
+   * Breaking Change and Column Level Lineage
+   */
+  const [breakingChangeEnabled, setBreakingChangeEnabled] = useState(false);
+  const [nodeColumnSetMap, setNodeColumnSetMap] = useState<NodeColumnSetMap>();
 
   /**
    * Highlighted nodes: the nodes that are highlighted. The behavior of highlighting depends on the select mode
@@ -370,11 +374,7 @@ export function PrivateLineageView(
         filteredNodeIds = viewOptions.node_ids;
       } else {
         const packageName = lineageGraph.manifestMetadata.current?.project_name;
-        const viewMode = viewOptions.view_mode
-          ? viewOptions.view_mode
-          : isModelsChanged
-            ? "changed_models"
-            : "all";
+        const viewMode = viewOptions.view_mode ?? (isModelsChanged ? "changed_models" : "all");
 
         const newViewOptions: LineageDiffViewOptions = {
           view_mode: viewMode,
@@ -422,7 +422,7 @@ export function PrivateLineageView(
   const navToCheck = useNavToCheck();
 
   useResizeObserver(refResize, async () => {
-    if (selectMode === "single" || selectMode === "action_result") {
+    if (selectMode !== "selecting") {
       const node = nodes.find((node) => node.id === focusedNodeId);
       if (node) {
         void centerNode(node);
@@ -458,7 +458,7 @@ export function PrivateLineageView(
     }
 
     closeContextMenu();
-    if (selectMode === "single") {
+    if (!selectMode) {
       setFocusedNodeId(node.id);
     } else if (selectMode === "action_result") {
       const action = multiNodeAction.actionState.actions[node.id];
@@ -475,7 +475,7 @@ export function PrivateLineageView(
       }
       setSelectedNodeIds(newSet);
       if (newSet.size === 0) {
-        setSelectMode("single");
+        setSelectMode(undefined);
       }
     }
   };
@@ -589,7 +589,7 @@ export function PrivateLineageView(
       return;
     }
 
-    if (selectMode === "single") {
+    if (!selectMode) {
       // Skip the following logic if the select mode is not single
       const selectedRunModel = run.params?.model;
       // Create a mock MouseEvent
@@ -621,21 +621,13 @@ export function PrivateLineageView(
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [run, viewOptions, isRunResultOpen, selectMode]);
 
-  if (isLoading) {
-    return (
-      <Flex width="100%" height="100%" alignItems="center" justifyContent="center">
-        <Spinner size="xl" />
-      </Flex>
-    );
-  }
-
   const selectParentNodes = (degree = 1000) => {
     const selectedNode = contextMenuPosition.selectedNode;
     if (selectMode === "action_result" || selectedNode === undefined || lineageGraph === undefined)
       return;
 
-    if (selectMode === "single") {
-      setSelectMode("multi");
+    if (!selectMode) {
+      setSelectMode("selecting");
       multiNodeAction.reset();
       if (viewOptions.column_level_lineage) {
         void handleViewOptionsChanged({
@@ -655,8 +647,8 @@ export function PrivateLineageView(
     if (selectMode === "action_result" || selectedNode === undefined || lineageGraph === undefined)
       return;
 
-    if (selectMode === "single") {
-      setSelectMode("multi");
+    if (!selectMode) {
+      setSelectMode("selecting");
       multiNodeAction.reset();
       if (viewOptions.column_level_lineage) {
         void handleViewOptionsChanged({
@@ -696,54 +688,14 @@ export function PrivateLineageView(
     setIsContextMenuRendered(true);
   };
 
-  if (error) {
-    return (
-      <Center h="100%">
-        <VStack>
-          <Box>
-            Failed to load lineage data. This could be because the server has been terminated or
-            there is a network error.
-          </Box>
-          <Box>[Reason: {error}]</Box>
-          <Button
-            colorScheme="blue"
-            onClick={() => {
-              if (retchLineageGraph) {
-                retchLineageGraph();
-              }
-            }}>
-            Retry
-          </Button>
-        </VStack>
-      </Center>
-    );
-  }
-
-  if (viewMode === "changed_models" && !lineageGraph?.modifiedSet.length) {
-    return (
-      <Center h="100%">
-        <VStack>
-          <>No change detected</>
-          <Button
-            colorScheme="blue"
-            onClick={async () => {
-              await handleViewOptionsChanged({ ...viewOptions, view_mode: "all" });
-            }}>
-            Show all nodes
-          </Button>
-        </VStack>
-      </Center>
-    );
-  }
-
-  const selectNodeMulti = (nodeId: string) => {
-    if (selectMode !== "multi") {
+  const selectNode = (nodeId: string) => {
+    if (!selectMode) {
       if (!lineageGraph) {
         return;
       }
 
       setSelectedNodeIds(new Set([nodeId]));
-      setSelectMode("multi");
+      setSelectMode("selecting");
       setFocusedNodeId(undefined);
       if (viewOptions.column_level_lineage) {
         void handleViewOptionsChanged({
@@ -752,7 +704,7 @@ export function PrivateLineageView(
         });
       }
       multiNodeAction.reset();
-    } else {
+    } else if (selectMode === "selecting") {
       const newSelectedNodeIds = new Set(selectedNodeIds);
       if (selectedNodeIds.has(nodeId)) {
         newSelectedNodeIds.delete(nodeId);
@@ -762,12 +714,12 @@ export function PrivateLineageView(
 
       setSelectedNodeIds(newSelectedNodeIds);
       if (newSelectedNodeIds.size === 0) {
-        setSelectMode("single");
+        setSelectMode(undefined);
       }
     }
   };
   const deselect = () => {
-    setSelectMode("single");
+    setSelectMode(undefined);
     setSelectedNodeIds(new Set());
     setFocusedNodeId(undefined);
     closeRunResult();
@@ -776,13 +728,13 @@ export function PrivateLineageView(
 
   const contextValue: LineageViewContextType = {
     interactive,
-    selectMode,
     nodes,
     focusedNode,
     selectedNodes,
     viewOptions,
     onViewOptionsChanged: handleViewOptionsChanged,
-    selectNodeMulti,
+    selectMode,
+    selectNode,
     deselect,
     breakingChangeEnabled,
     setBreakingChangeEnabled,
@@ -806,18 +758,18 @@ export function PrivateLineageView(
       return nodeColumnSetMap[nodeId] ?? new Set();
     },
     runRowCount: async () => {
-      if (selectMode === "multi") {
+      if (selectMode === "selecting") {
         await multiNodeAction.runRowCount();
         trackMultiNodesAction({ type: "row_count", selected: "multi" });
       } else if (focusedNode) {
-        await runAction(
+        runAction(
           "row_count",
           { node_names: [focusedNode.name] },
           { showForm: false, showLast: false },
         );
         trackMultiNodesAction({ type: "row_count", selected: "single" });
       } else {
-        await runAction("row_count", {
+        runAction("row_count", {
           select: viewOptions.select,
           exclude: viewOptions.exclude,
           packages: viewOptions.packages,
@@ -827,18 +779,18 @@ export function PrivateLineageView(
       }
     },
     runRowCountDiff: async () => {
-      if (selectMode === "multi") {
+      if (selectMode === "selecting") {
         await multiNodeAction.runRowCountDiff();
         trackMultiNodesAction({ type: "row_count_diff", selected: "multi" });
       } else if (focusedNode) {
-        await runAction(
+        runAction(
           "row_count_diff",
           { node_names: [focusedNode.name] },
           { showForm: false, showLast: false },
         );
         trackMultiNodesAction({ type: "row_count_diff", selected: "single" });
       } else {
-        await runAction("row_count_diff", {
+        runAction("row_count_diff", {
           select: viewOptions.select,
           exclude: viewOptions.exclude,
           packages: viewOptions.packages,
@@ -849,7 +801,7 @@ export function PrivateLineageView(
     },
     runValueDiff: async () => {
       if (focusedNode) {
-        await runAction(
+        runAction(
           "value_diff",
           {
             model: focusedNode.name,
@@ -858,19 +810,20 @@ export function PrivateLineageView(
         );
         trackMultiNodesAction({ type: "value_diff", selected: "single" });
       } else {
-        const nodeCount = selectMode === "multi" ? selectedNodes.length : filteredNodeIds.length;
+        const nodeCount =
+          selectMode === "selecting" ? selectedNodes.length : filteredNodeIds.length;
         if (await valueDiffAlertDialog.confirm(nodeCount)) {
           await multiNodeAction.runValueDiff();
           trackMultiNodesAction({
             type: "value_diff",
-            selected: selectMode === "multi" ? "multi" : "none",
+            selected: selectMode === "selecting" ? "multi" : "none",
           });
         }
       }
     },
     addLineageDiffCheck: async () => {
       let check: Check | undefined = undefined;
-      if (selectMode === "multi") {
+      if (selectMode === "selecting") {
         check = await multiNodeAction.addLineageDiffCheck();
         deselect();
         trackMultiNodesAction({ type: "lineage_diff", selected: "multi" });
@@ -886,7 +839,7 @@ export function PrivateLineageView(
     addSchemaDiffCheck: async () => {
       let check: Check | undefined = undefined;
 
-      if (selectMode === "multi") {
+      if (selectMode === "selecting") {
         if (selectedNodes.length > 0) {
           check = await multiNodeAction.addSchemaDiffCheck();
           deselect();
@@ -936,8 +889,56 @@ export function PrivateLineageView(
     },
   };
 
+  if (isLoading) {
+    return (
+      <Flex width="100%" height="100%" alignItems="center" justifyContent="center">
+        <Spinner size="xl" />
+      </Flex>
+    );
+  }
+
+  if (error) {
+    return (
+      <Center h="100%">
+        <VStack>
+          <Box>
+            Failed to load lineage data. This could be because the server has been terminated or
+            there is a network error.
+          </Box>
+          <Box>[Reason: {error}]</Box>
+          <Button
+            colorScheme="blue"
+            onClick={() => {
+              if (retchLineageGraph) {
+                retchLineageGraph();
+              }
+            }}>
+            Retry
+          </Button>
+        </VStack>
+      </Center>
+    );
+  }
+
   if (!lineageGraph || nodes == initialNodes) {
     return <></>;
+  }
+
+  if (viewMode === "changed_models" && !lineageGraph.modifiedSet.length) {
+    return (
+      <Center h="100%">
+        <VStack>
+          <>No change detected</>
+          <Button
+            colorScheme="blue"
+            onClick={async () => {
+              await handleViewOptionsChanged({ ...viewOptions, view_mode: "all" });
+            }}>
+            Show all nodes
+          </Button>
+        </VStack>
+      </Center>
+    );
   }
 
   return (
