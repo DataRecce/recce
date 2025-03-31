@@ -735,15 +735,17 @@ export function PrivateLineageView(
       setFocusedNodeId(undefined);
       multiNodeAction.reset();
     } else {
-      setSelectedNodeIds((prev) => {
-        const newSelectedNodes = new Set(prev);
-        if (prev.has(nodeId)) {
-          newSelectedNodes.delete(nodeId);
-        } else {
-          newSelectedNodes.add(nodeId);
-        }
-        return newSelectedNodes;
-      });
+      const newSelectedNodeIds = new Set(selectedNodeIds);
+      if (selectedNodeIds.has(nodeId)) {
+        newSelectedNodeIds.delete(nodeId);
+      } else {
+        newSelectedNodeIds.add(nodeId);
+      }
+
+      setSelectedNodeIds(newSelectedNodeIds);
+      if (newSelectedNodeIds.size === 0) {
+        setSelectMode("single");
+      }
     }
   };
   const deselect = () => {
