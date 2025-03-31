@@ -140,7 +140,7 @@ export const Filename = () => {
         });
       }
       toastSuccess(method === "save" ? "Save file successfully" : "Rename file successfully");
-      queryClient.invalidateQueries({ queryKey: cacheKeys.lineage() });
+      await queryClient.invalidateQueries({ queryKey: cacheKeys.lineage() });
       if (bypass) {
         localStorage.setItem(localStorageKeys.bypassSaveOverwrite, "true");
       }
@@ -236,9 +236,9 @@ export const Filename = () => {
                     }
 
                     if (!fileName) {
-                      handleAction("save");
+                      void handleAction("save");
                     } else {
-                      handleAction("rename");
+                      void handleAction("rename");
                     }
                   } else if (e.key === "Escape") {
                     modalDisclosure.onClose();
@@ -252,8 +252,8 @@ export const Filename = () => {
             <Button
               size="sm"
               colorScheme={fileName ? undefined : "blue"}
-              onClick={() => {
-                handleAction("save");
+              onClick={async () => {
+                await handleAction("save");
               }}
               isDisabled={!newFileName || !!errorMessage || !modified}>
               {fileName ? "Save as New File" : "Confirm"}
@@ -262,8 +262,8 @@ export const Filename = () => {
               <Button
                 size="sm"
                 colorScheme="blue"
-                onClick={() => {
-                  handleAction("rename");
+                onClick={async () => {
+                  await handleAction("rename");
                 }}
                 isDisabled={!newFileName || !!errorMessage || !modified}>
                 Rename
@@ -316,7 +316,7 @@ export const Filename = () => {
                   return;
                 }
 
-                handleAction(overwriteWithMethod, true);
+                void handleAction(overwriteWithMethod, true);
                 overwriteDisclosure.onClose();
               }}>
               Overwrite

@@ -78,9 +78,9 @@ export function StateSynchronizer() {
       setSyncing(false);
       setSyncOption("");
 
-      queryClient.invalidateQueries({ queryKey: cacheKeys.lineage() });
-      queryClient.invalidateQueries({ queryKey: cacheKeys.checks() });
-      queryClient.invalidateQueries({ queryKey: cacheKeys.runs() });
+      await queryClient.invalidateQueries({ queryKey: cacheKeys.lineage() });
+      await queryClient.invalidateQueries({ queryKey: cacheKeys.checks() });
+      await queryClient.invalidateQueries({ queryKey: cacheKeys.runs() });
 
       if (isCheckDetailPage(location)) {
         setLocation("/checks");

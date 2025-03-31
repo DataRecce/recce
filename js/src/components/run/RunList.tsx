@@ -158,7 +158,7 @@ export const RunList = () => {
     }
     const check = await createCheckByRun(runId);
 
-    queryClient.invalidateQueries({ queryKey: cacheKeys.checks() });
+    await queryClient.invalidateQueries({ queryKey: cacheKeys.checks() });
     setLocation(`/checks/${check.check_id}`);
   }, [runId, setLocation, queryClient]);
 
@@ -185,8 +185,8 @@ export const RunList = () => {
           variant={"unstyled"}
           icon={<RepeatIcon />}
           aria-label="Search database"
-          onClick={() => {
-            refetch();
+          onClick={async () => {
+            await refetch();
           }}
         />
       </HStack>

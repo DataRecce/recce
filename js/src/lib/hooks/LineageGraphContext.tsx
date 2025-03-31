@@ -92,9 +92,9 @@ function useLineageWatcher() {
   const queryClient = useQueryClient();
 
   const invalidateCaches = () => {
-    queryClient.invalidateQueries({ queryKey: cacheKeys.lineage() });
-    queryClient.invalidateQueries({ queryKey: cacheKeys.checks() });
-    queryClient.invalidateQueries({ queryKey: cacheKeys.runs() });
+    void queryClient.invalidateQueries({ queryKey: cacheKeys.lineage() });
+    void queryClient.invalidateQueries({ queryKey: cacheKeys.checks() });
+    void queryClient.invalidateQueries({ queryKey: cacheKeys.runs() });
   };
 
   const connect = () => {
@@ -265,7 +265,7 @@ export function LineageGraphContextProvider({ children }: LineageGraphProps) {
         value={{
           lineageGraph,
           retchLineageGraph: () => {
-            queryRunAggregated.refetch();
+            void queryRunAggregated.refetch();
           },
           envInfo,
           reviewMode,
@@ -279,7 +279,7 @@ export function LineageGraphContextProvider({ children }: LineageGraphProps) {
           isLoading: queryServerInfo.isLoading,
           runsAggregated: queryRunAggregated.data,
           refetchRunsAggregated: () => {
-            queryRunAggregated.refetch();
+            void queryRunAggregated.refetch();
           },
         }}>
         {children}
@@ -311,8 +311,8 @@ export function LineageGraphContextProvider({ children }: LineageGraphProps) {
           isOpen={relaunchHintOpen}
           onClose={() => {
             onClose();
-            markRelaunchHintCompleted();
-            queryClient.invalidateQueries({ queryKey: cacheKeys.flag() });
+            void markRelaunchHintCompleted();
+            void queryClient.invalidateQueries({ queryKey: cacheKeys.flag() });
           }}
           isCentered>
           <ModalOverlay />
@@ -326,8 +326,8 @@ export function LineageGraphContextProvider({ children }: LineageGraphProps) {
                 colorScheme="blue"
                 onClick={() => {
                   onClose();
-                  markRelaunchHintCompleted();
-                  queryClient.invalidateQueries({ queryKey: cacheKeys.flag() });
+                  void markRelaunchHintCompleted();
+                  void queryClient.invalidateQueries({ queryKey: cacheKeys.flag() });
                 }}>
                 Got it!
               </Button>

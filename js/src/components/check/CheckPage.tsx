@@ -46,8 +46,8 @@ export const CheckPage = () => {
   const [orderedChecks, setOrderedChecks] = useState(checks || []);
   const { mutate: changeChecksOrder } = useMutation({
     mutationFn: (order: { source: number; destination: number }) => reorderChecks(order),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: cacheKeys.checks() });
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: cacheKeys.checks() });
     },
   });
 
@@ -69,7 +69,7 @@ export const CheckPage = () => {
 
   const addToChecklist = useCallback(async () => {
     const check = await createSimpleCheck();
-    queryClient.invalidateQueries({ queryKey: cacheKeys.checks() });
+    await queryClient.invalidateQueries({ queryKey: cacheKeys.checks() });
 
     handleSelectItem(check.check_id);
   }, [queryClient, handleSelectItem]);

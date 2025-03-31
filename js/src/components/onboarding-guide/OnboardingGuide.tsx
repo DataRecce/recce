@@ -70,7 +70,7 @@ const OnboardingGuide = () => {
 
   const closeGuide = () => {
     setIsFirstTimeVisitGuideOpen(false);
-    markOnboardingCompleted();
+    void markOnboardingCompleted();
   };
 
   if (isLoading) {

@@ -11,7 +11,7 @@ interface UseRunResult {
   aborting: boolean;
   isRunning: boolean;
   error: Error | null;
-  onCancel: () => void;
+  onCancel: () => Promise<void>;
   RunResultView?: React.ComponentType<any>;
 }
 
@@ -51,7 +51,8 @@ export const useRun = (runId?: string): UseRunResult => {
       return;
     }
 
-    return await cancelRun(runId);
+    await cancelRun(runId);
+    return;
   }, [runId, setAborting]);
 
   const RunResultView = run?.type ? findByRunType(run.type)?.RunResultView : undefined;

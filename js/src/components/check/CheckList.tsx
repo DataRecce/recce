@@ -44,9 +44,9 @@ const ChecklistItem = ({
   const checkId = check.check_id;
   const { mutate } = useMutation({
     mutationFn: (check: Partial<Check>) => updateCheck(checkId, check),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: cacheKeys.check(checkId) });
-      queryClient.invalidateQueries({ queryKey: cacheKeys.checks() });
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: cacheKeys.check(checkId) });
+      await queryClient.invalidateQueries({ queryKey: cacheKeys.checks() });
     },
   });
   const trackedRunId = check.last_run?.run_id;

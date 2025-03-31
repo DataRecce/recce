@@ -113,16 +113,16 @@ export const CheckDetail = ({ checkId, refreshCheckList }: CheckDetailProps) => 
 
   const { mutate } = useMutation({
     mutationFn: (check: Partial<Check>) => updateCheck(checkId, check),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: cacheKeys.check(checkId) });
-      queryClient.invalidateQueries({ queryKey: cacheKeys.checks() });
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: cacheKeys.check(checkId) });
+      await queryClient.invalidateQueries({ queryKey: cacheKeys.checks() });
     },
   });
 
   const { mutate: handleDelete } = useMutation({
     mutationFn: () => deleteCheck(checkId),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: cacheKeys.checks() });
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: cacheKeys.checks() });
       setLocation("/checks");
     },
   });
@@ -135,7 +135,7 @@ export const CheckDetail = ({ checkId, refreshCheckList }: CheckDetailProps) => 
 
     const submittedRun = await submitRunFromCheck(checkId, { nowait: true });
     setSubmittedRunId(submittedRun.run_id);
-    queryClient.invalidateQueries({ queryKey: cacheKeys.check(checkId) });
+    await queryClient.invalidateQueries({ queryKey: cacheKeys.check(checkId) });
     if (refreshCheckList) refreshCheckList(); // refresh the check list to fetch correct last run status
   }, [check, checkId, setSubmittedRunId, queryClient, refreshCheckList]);
 
@@ -356,11 +356,11 @@ export const CheckDetail = ({ checkId, refreshCheckList }: CheckDetailProps) => 
                 onMouseEnter={onMouseEnter}
                 onMouseLeave={onMouseLeave}
                 size="sm"
-                onClick={() => {
+                onClick={async () => {
                   if (check?.type === "lineage_diff") {
                     lineageViewRef.current?.copyToClipboard();
                   } else {
-                    onCopyToClipboard();
+                    await onCopyToClipboard();
                   }
                 }}>
                 Copy to Clipboard
