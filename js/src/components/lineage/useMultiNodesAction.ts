@@ -1,5 +1,4 @@
 import { LineageGraphNode } from "./lineage";
-import { useLocation } from "wouter";
 
 import { ValueDiffParams } from "@/lib/api/valuediff";
 import { useRef } from "react";
@@ -9,14 +8,14 @@ import { RowCountDiffParams, RowCountParams } from "@/lib/api/rowcount";
 import { createLineageDiffCheck } from "@/lib/api/lineagecheck";
 import { createSchemaDiffCheck } from "@/lib/api/schemacheck";
 import { useRecceActionContext } from "@/lib/hooks/RecceActionContext";
-import { LineageViewContextType } from "./LineageViewContext";
-type ActionState = LineageViewContextType["actionState"];
+import { ActionState } from "./LineageViewContext";
 
 const initValue: ActionState = {
   mode: "per_node",
   status: "pending",
   completed: 0,
   total: 0,
+  actions: {},
 };
 
 export const useMultiNodesAction = (
@@ -42,8 +41,11 @@ export const useMultiNodesAction = (
     skip: (node: LineageGraphNode) => string | undefined,
     getParams: (nodes: LineageGraphNode[]) => any,
   ) => {
-    const mode = "multi_nodes";
-    actionState.mode = mode;
+    actionState.mode = "multi_nodes";
+    actionState.actions = {};
+    const mode = actionState.mode;
+    const actions = actionState.actions;
+
     onActionStarted();
     actionState.status = "running";
 
@@ -52,16 +54,15 @@ export const useMultiNodesAction = (
     for (const node of nodes) {
       const skipReason = skip(node);
 
-      node.isActionMode = true;
       if (skipReason) {
-        node.action = {
+        actions[node.id] = {
           mode,
           status: "skipped",
           skipReason,
         };
         onActionNodeUpdated(node);
       } else {
-        node.action = { mode, status: "pending" };
+        actions[node.id] = { mode, status: "pending" };
         candidates.push(node);
       }
     }
@@ -82,7 +83,7 @@ export const useMultiNodesAction = (
         const status = run.error ? "failure" : run.result ? "success" : "running";
 
         for (const node of candidates) {
-          node.action = {
+          actions[node.id] = {
             mode,
             status,
             run,
@@ -118,13 +119,16 @@ export const useMultiNodesAction = (
       skipReason?: string;
     },
   ) => {
-    const mode = "per_node";
-    actionState.mode = mode;
+    actionState.mode = "per_node";
+    actionState.actions = {};
+    const mode = actionState.mode;
+    const actions = actionState.actions;
+
     onActionStarted();
     actionState.status = "running";
 
     for (const node of nodes) {
-      node.action = { mode, status: "pending" };
+      actions[node.id] = { mode, status: "pending" };
       onActionNodeUpdated(node);
     }
 
@@ -133,9 +137,8 @@ export const useMultiNodesAction = (
 
     for (const node of nodes) {
       const { params, skipReason } = getParams(node);
-      node.isActionMode = true;
       if (skipReason) {
-        node.action = {
+        actions[node.id] = {
           mode,
           status: "skipped",
           skipReason,
@@ -145,7 +148,7 @@ export const useMultiNodesAction = (
         try {
           const { run_id } = await submitRun(type, params, { nowait: true });
           actionState.currentRun = { run_id };
-          node.action = {
+          actions[node.id] = {
             mode,
             status: "running",
           };
@@ -156,7 +159,7 @@ export const useMultiNodesAction = (
             const run = await waitRun(run_id, 2);
             actionState.currentRun = run;
             const status = run.error ? "failure" : run.result ? "success" : "running";
-            node.action = {
+            actions[node.id] = {
               mode,
               status,
               run,
@@ -189,7 +192,7 @@ export const useMultiNodesAction = (
     const nodeNames = [];
     for (const node of nodes) {
       if (node.resourceType !== "model") {
-        node.action = {
+        actionState.actions[node.id] = {
           mode: "multi_nodes",
           status: "skipped",
           skipReason: "Not a model",
@@ -220,7 +223,7 @@ export const useMultiNodesAction = (
     const nodeNames = [];
     for (const node of nodes) {
       if (node.resourceType !== "model") {
-        node.action = {
+        actionState.actions[node.id] = {
           mode: "multi_nodes",
           status: "skipped",
           skipReason: "Not a model",

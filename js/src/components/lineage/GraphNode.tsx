@@ -1,6 +1,5 @@
 import {
   Box,
-  Divider,
   Flex,
   HStack,
   Icon,
@@ -8,7 +7,6 @@ import {
   Tag,
   TagLabel,
   TagLeftIcon,
-  Text,
   Tooltip,
 } from "@chakra-ui/react";
 import React, { useState } from "react";
@@ -25,7 +23,7 @@ import { useLineageGraphContext } from "@/lib/hooks/LineageGraphContext";
 import { findByRunType } from "../run/registry";
 import { isSchemaChanged } from "../schema/schemaDiff";
 import { useLineageViewContextSafe } from "./LineageViewContext";
-import { FaCheckSquare, FaRegSquare, FaSquare } from "react-icons/fa";
+import { FaCheckSquare, FaRegSquare } from "react-icons/fa";
 import { RowCountDiff } from "@/lib/api/models";
 import { deltaPercentageString } from "../rowcount/delta";
 
@@ -128,16 +126,28 @@ const GraphNodeCheckbox = ({
 };
 
 export function GraphNode({ data }: GraphNodeProps) {
-  const { id, isHighlighted, isSelected, resourceType, changeStatus } = data;
+  const { id, resourceType, changeStatus } = data;
   const showContent = useStore((s) => s.transform[2] > 0.3);
 
   const { icon: resourceIcon } = getIconForResourceType(resourceType);
   const [isHovered, setIsHovered] = useState(false);
-  const { interactive, selectNodeMulti, selectMode, advancedImpactRadius, viewOptions } =
-    useLineageViewContextSafe();
+  const {
+    interactive,
+    selectNodeMulti,
+    selectMode,
+    focusedNode,
+    breakingChangeEnabled,
+    getNodeAction,
+    getNodeColumnSet,
+    isNodeHighlighted,
+    isNodeSelected,
+  } = useLineageViewContextSafe();
   const { lineageGraph } = useLineageGraphContext();
   const isNonBreakingChange =
-    advancedImpactRadius && changeStatus === "modified" && lineageGraph?.nonBreakingSet.has(id);
+    breakingChangeEnabled && changeStatus === "modified" && lineageGraph?.nonBreakingSet.has(id);
+  const isHighlighted = isNodeHighlighted(id);
+  const isSelected = isNodeSelected(id);
+  const isFocused = focusedNode?.id === id;
 
   // text color, icon
   const {
@@ -154,12 +164,13 @@ export function GraphNode({ data }: GraphNodeProps) {
   const borderStyle = isNonBreakingChange ? "dashed" : "solid";
 
   // border width and color
-  const selectedNodeShadowBox = "rgba(3, 102, 214, 0.5) 5px 5px 10px 3px";
   const borderWidth = "2px";
   const borderColor = color;
 
   const name = data.name;
-  const showColumns = data.columnSet && data.columnSet.size > 0;
+  const columnSet = getNodeColumnSet(data.id);
+  const showColumns = columnSet.size > 0;
+  const action = selectMode === "action_result" ? getNodeAction(data.id) : undefined;
 
   return (
     <Flex
@@ -169,9 +180,11 @@ export function GraphNode({ data }: GraphNodeProps) {
       padding={0}
       filter={(function () {
         if (selectMode === "action_result") {
-          return data.action ? "none" : "opacity(0.2) grayscale(50%)";
+          return action ? "none" : "opacity(0.2) grayscale(50%)";
         } else {
-          return isHighlighted || isSelected || isHovered ? "none" : "opacity(0.2) grayscale(50%)";
+          return isHighlighted || isFocused || isSelected || isHovered
+            ? "none"
+            : "opacity(0.2) grayscale(50%)";
         }
       })()}
       onMouseEnter={() => {
@@ -191,16 +204,16 @@ export function GraphNode({ data }: GraphNodeProps) {
             if (selectMode === "multi") {
               return isSelected ? color : "white";
             } else if (selectMode === "action_result") {
-              if (!data.action) {
+              if (!action) {
                 return "white";
               } else {
-                return isSelected || isHovered ? backgroundColor : color;
+                return isFocused || isSelected || isHovered ? backgroundColor : color;
               }
             } else {
-              return isSelected || isHovered ? backgroundColor : "white";
+              return isFocused || isSelected || isHovered ? backgroundColor : "white";
             }
           } else {
-            return isSelected || isHovered ? color : backgroundColor;
+            return isFocused || isSelected || isHovered ? color : backgroundColor;
           }
         })()}
         height="60px">
@@ -216,7 +229,7 @@ export function GraphNode({ data }: GraphNodeProps) {
             <GraphNodeCheckbox
               checked={
                 (selectMode === "multi" && isSelected) ||
-                (selectMode === "action_result" && !!data.action)
+                (selectMode === "action_result" && !!action)
               }
               onClick={(e) => {
                 if (selectMode === "action_result") {
@@ -245,7 +258,7 @@ export function GraphNode({ data }: GraphNodeProps) {
                 if (selectMode === "multi") {
                   return isSelected ? "white" : "inherit";
                 } else if (selectMode === "action_result") {
-                  return !!data.action && !isSelected ? "white" : "inherit";
+                  return !!action && !isSelected ? "white" : "inherit";
                 } else {
                   return "inherit";
                 }
@@ -266,7 +279,7 @@ export function GraphNode({ data }: GraphNodeProps) {
                 if (selectMode === "multi") {
                   return isSelected ? "white" : "inherit";
                 } else if (selectMode === "action_result") {
-                  return !!data.action && !isSelected ? "white" : "inherit";
+                  return !!action && !isSelected ? "white" : "inherit";
                 } else {
                   return "inherit";
                 }
@@ -281,7 +294,7 @@ export function GraphNode({ data }: GraphNodeProps) {
                   if (selectMode === "multi") {
                     return isSelected ? "white" : color;
                   } else if (selectMode === "action_result") {
-                    return !!data.action && !isSelected ? "white" : "inherit";
+                    return !!action && !isSelected ? "white" : "inherit";
                   } else {
                     return color;
                   }
@@ -310,20 +323,20 @@ export function GraphNode({ data }: GraphNodeProps) {
                   })()}
                 />
               )}
-              {data.isActionMode &&
-                (data.action ? (
-                  <>
-                    <Spacer />
-                    <ActionTag node={data} action={data.action} />
-                  </>
-                ) : (
-                  <></>
-                ))}
+
+              {action ? (
+                <>
+                  <Spacer />
+                  <ActionTag node={data} action={action} />
+                </>
+              ) : (
+                <></>
+              )}
             </HStack>
           </Flex>
         </Flex>
       </Flex>
-      {data.columnSet && data.columnSet.size > 0 && (
+      {columnSet.size > 0 && (
         <Box
           p="10px 20px"
           borderColor={borderColor}
@@ -331,7 +344,7 @@ export function GraphNode({ data }: GraphNodeProps) {
           borderTopWidth={0}
           borderStyle={borderStyle}
           borderBottomRadius={8}>
-          <Box height={`${data.columnSet.size * 15}px`} overflow="auto"></Box>
+          <Box height={`${columnSet.size * 15}px`} overflow="auto"></Box>
         </Box>
       )}
       {/* eslint-disable-next-line @typescript-eslint/no-unnecessary-condition */}

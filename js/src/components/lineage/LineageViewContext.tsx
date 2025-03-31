@@ -5,37 +5,58 @@ import { Node } from "reactflow";
 import { LineageGraphNode } from "./lineage";
 
 type NewType = LineageDiffViewOptions;
+type ActionMode = "per_node" | "multi_nodes";
+
+interface NodeAction {
+  mode: ActionMode;
+  status?: "pending" | "running" | "success" | "failure" | "skipped";
+  skipReason?: string;
+  run?: Run;
+}
+
+export interface ActionState {
+  mode: ActionMode;
+  status: "pending" | "running" | "canceling" | "canceled" | "completed";
+  currentRun?: Partial<Run>;
+  completed: number;
+  total: number;
+  actions: Record<string, NodeAction>;
+}
 
 export interface LineageViewContextType {
   interactive: boolean;
   selectMode: "multi" | "single" | "action_result";
   nodes: Node<LineageGraphNode>[];
+  focusedNode?: LineageGraphNode;
+  selectedNodes: LineageGraphNode[];
 
   // filter
   viewOptions: LineageDiffViewOptions;
   onViewOptionsChanged: (options: NewType) => void;
 
-  // selector
+  // select
   selectNodeMulti: (nodeId: string) => void;
   deselect: () => void;
 
+  // node state
+  isNodeHighlighted: (nodeId: string) => boolean;
+  isNodeSelected: (nodeId: string) => boolean;
+  isEdgeHighlighted: (source: string, target: string) => boolean;
+  getNodeAction: (nodeId: string) => NodeAction;
+  getNodeColumnSet: (nodeId: string) => Set<string>;
+
+  //actions
   runRowCount: () => Promise<void>;
   runRowCountDiff: () => Promise<void>;
   runValueDiff: () => Promise<void>;
   addLineageDiffCheck: (viewMode?: string) => void;
   addSchemaDiffCheck: () => void;
   cancel: () => void;
-  actionState: {
-    mode: "per_node" | "multi_nodes";
-    status: "pending" | "running" | "canceling" | "canceled" | "completed";
-    currentRun?: Partial<Run>;
-    completed: number;
-    total: number;
-  };
+  actionState: ActionState;
 
   // advancedImpactRadius
-  advancedImpactRadius: boolean;
-  setAdvancedImpactRadius: (value: boolean) => void;
+  breakingChangeEnabled: boolean;
+  setBreakingChangeEnabled: (value: boolean) => void;
 
   // Column Level Lineage
   showColumnLevelLineage: (nodeId: string, column: string) => Promise<void>;

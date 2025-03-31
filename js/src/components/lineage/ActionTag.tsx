@@ -1,23 +1,15 @@
 import { Run } from "@/lib/api/types";
 import { ValueDiffResult } from "@/lib/api/valuediff";
 import { ExternalLinkIcon, InfoIcon, WarningIcon } from "@chakra-ui/icons";
-import {
-  Box,
-  CircularProgress,
-  Flex,
-  Link,
-  SkeletonText,
-  Tag,
-  TagLabel,
-  Tooltip,
-} from "@chakra-ui/react";
+import { Box, CircularProgress, Flex, Tag, TagLabel, Tooltip } from "@chakra-ui/react";
 import { LineageGraphNode } from "./lineage";
 import { RowCountDiffResult, RowCountResult } from "@/lib/api/rowcount";
-import { ModelRowCount, RowCountDiffTag, RowCountTag } from "./NodeTag";
+import { RowCountDiffTag, RowCountTag } from "./NodeTag";
+import { ActionState } from "./LineageViewContext";
 
 interface ActionTagProps {
   node: LineageGraphNode;
-  action: Required<LineageGraphNode>["action"];
+  action: ActionState["actions"][string];
 }
 
 export const ActionTag = ({ node, action }: ActionTagProps) => {

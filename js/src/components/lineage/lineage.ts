@@ -30,25 +30,6 @@ export interface LineageGraphNode {
   packageName?: string;
   parents: Record<string, LineageGraphEdge>;
   children: Record<string, LineageGraphEdge>;
-
-  isSelected: boolean;
-  isHighlighted?: boolean;
-
-  /**
-   * The action status for the node which is trigger by action for multiple nodes
-   */
-  isActionMode?: boolean;
-  action?: {
-    mode: "per_node" | "multi_nodes";
-    status?: "pending" | "running" | "success" | "failure" | "skipped";
-    skipReason?: string;
-    run?: Run;
-  };
-
-  /**
-   * Column Level Linage. Only show the column in the set
-   */
-  columnSet?: Set<string>;
 }
 
 export interface LinageGraphColumnNode {
@@ -64,7 +45,6 @@ export interface LineageGraphEdge {
   changeStatus?: "added" | "removed";
   parent: LineageGraphNode;
   child: LineageGraphNode;
-  isHighlighted?: boolean;
 }
 
 export interface LineageGraph {
@@ -84,6 +64,8 @@ export interface LineageGraph {
     current?: CatalogMetadata;
   };
 }
+
+export type NodeColumnSetMap = Record<string, Set<string>>;
 
 export function _selectColumnLevelLineage(node: string, column: string, cll: ColumnLineageData) {
   const parentMap: Record<string, string[]> = {};
@@ -158,7 +140,6 @@ export function buildLineageGraph(
       from,
       parents: {},
       children: {},
-      isSelected: false,
     };
   };
 
@@ -183,7 +164,7 @@ export function buildLineageGraph(
       //  this means either that a) the typing needs to be adjusted
       //  on `current.nodes` or b) the input to `current.nodes`
       //  should default to a value
-      nodes[key].data.current = current.nodes?.[key];
+      nodes[key].data.current = current.nodes[key];
       nodes[key].name = nodeData.name;
       nodes[key].resourceType = nodeData.resource_type;
       nodes[key].packageName = nodeData.package_name;
@@ -336,18 +317,6 @@ export function selectDownstream(lineageGraph: LineageGraph, nodeIds: string[], 
   );
 }
 
-export function selectAllNodes(lineageGraph: LineageGraph) {
-  return new Set(Object.values(lineageGraph.nodes).map((node) => node.id));
-}
-
-export function selectImpactRadius(lineageGraph: LineageGraph, breakingChangeEnabled: boolean) {
-  if (!breakingChangeEnabled) {
-    return selectDownstream(lineageGraph, lineageGraph.modifiedSet);
-  } else {
-    return lineageGraph.impactedSet;
-  }
-}
-
 export function toReactflow(
   lineageGraph: LineageGraph,
   selectedNodes?: string[],
@@ -356,13 +325,15 @@ export function toReactflow(
     column: string;
   },
   cll?: ColumnLineageData,
-): [Node[], Edge[]] {
+): [Node[], Edge[], NodeColumnSetMap] {
   const nodes: Node[] = [];
   const edges: Edge[] = [];
   const columnSet =
     columnLevelLineage && cll != null
       ? _selectColumnLevelLineage(columnLevelLineage.node, columnLevelLineage.column, cll)
       : new Set<string>();
+
+  const nodeColumnSetMap: NodeColumnSetMap = {};
 
   function getWeight(from: string) {
     if (from === "base") {
@@ -448,6 +419,7 @@ export function toReactflow(
         nodeColumnSet.add(columnKey);
       }
     }
+    nodeColumnSetMap[node.id] = nodeColumnSet;
 
     nodes.push({
       id: node.id,
@@ -456,7 +428,6 @@ export function toReactflow(
       height: 36 + columnIndex * 15,
       data: {
         ...node,
-        columnSet: nodeColumnSet,
       },
       type: "customNode",
       targetPosition: Position.Left,
@@ -481,41 +452,13 @@ export function toReactflow(
 
   layout(nodes, edges);
 
-  // return highlightChanged(lineageGraph, nodes, edges);
-  return [nodes, edges];
-}
-
-export function filterNodes(nodes: Node[], edges: Edge[], nodeIds: Set<string>): [Node[], Edge[]] {
-  const newNodes = nodes.filter((node) => nodeIds.has(node.id));
-  const newEdges = edges.filter((edge) => nodeIds.has(edge.source) && nodeIds.has(edge.target));
-
-  return [newNodes, newEdges];
-}
-
-export function hideNodes(nodes: Node[], edges: Edge[], nodeIds: Set<string>): [Node[], Edge[]] {
-  const newNodes = nodes.map((node) => {
-    return {
-      ...node,
-      hidden: !nodeIds.has(node.id),
-    };
-  });
-
-  const newEdges = edges.map((edge) => {
-    return {
-      ...edge,
-      hidden: !nodeIds.has(edge.source) || !nodeIds.has(edge.target),
-    };
-  });
-
-  layout(newNodes, newEdges);
-  return [newNodes, newEdges];
+  return [nodes, edges, nodeColumnSetMap];
 }
 
 export const layout = (nodes: Node[], edges: Edge[], direction = "LR") => {
   const dagreGraph = new dagre.graphlib.Graph();
   dagreGraph.setDefaultEdgeLabel(() => ({}));
 
-  const isHorizontal = direction === "LR";
   dagreGraph.setGraph({ rankdir: direction });
 
   nodes.forEach((node) => {
@@ -550,123 +493,3 @@ export const layout = (nodes: Node[], edges: Edge[], direction = "LR") => {
     return node;
   });
 };
-
-export function highlightNodes(
-  nodesIds: string[],
-  nodes: Node<LineageGraphNode>[],
-  edges: Edge[],
-): [Node<LineageGraphNode>[], Edge[]] {
-  const relatedNodes = new Set(nodesIds);
-  const relatedEdges = new Set(
-    edges
-      .filter((edge) => {
-        return relatedNodes.has(edge.source) && relatedNodes.has(edge.target);
-      })
-      .map((edge) => edge.id),
-  );
-
-  const newNodes = nodes.map((node) => {
-    return {
-      ...node,
-      data: {
-        ...node.data,
-        isHighlighted: relatedNodes.has(node.id),
-      },
-    };
-  });
-  const newEdges = edges.map((edge) => {
-    return {
-      ...edge,
-      data: {
-        ...edge.data,
-        isHighlighted: relatedEdges.has(edge.id),
-      },
-    };
-  });
-
-  return [newNodes, newEdges];
-}
-
-export function highlightChanged(
-  lineageGraph: LineageGraph,
-  nodes: Node<LineageGraphNode>[],
-  edges: Edge[],
-) {
-  const modifiedDownstream = selectDownstream(lineageGraph, lineageGraph.modifiedSet);
-
-  return highlightNodes(Array.from(modifiedDownstream), nodes, edges);
-}
-
-export function selectSingleNode(nodeId: string, nodes: Node<LineageGraphNode>[]) {
-  const newNodes = nodes.map((n) => {
-    const isMatch = n.id === nodeId;
-    return {
-      ...n,
-      data: {
-        ...n.data,
-        isSelected: isMatch,
-      },
-    };
-  });
-  return newNodes;
-}
-
-export function selectNode(nodeId: string, nodes: Node<LineageGraphNode>[]) {
-  const newNodes = nodes.map((n) => {
-    const isMatch = n.id === nodeId;
-    return {
-      ...n,
-      data: {
-        ...n.data,
-        isSelected: n.data.isSelected !== isMatch,
-      },
-    };
-  });
-  return newNodes;
-}
-
-export function selectNodes(nodeIds: string[], nodes: Node<LineageGraphNode>[], reset = false) {
-  const newNodes = nodes.map((n) => {
-    const isMatch = nodeIds.includes(n.id);
-    return {
-      ...n,
-      data: {
-        ...n.data,
-        isSelected: reset ? isMatch : n.data.isSelected || isMatch,
-      },
-    };
-  });
-  return newNodes;
-}
-
-export function deselectNodes(nodes: Node<LineageGraphNode>[]) {
-  return nodes.map((n) => {
-    return {
-      ...n,
-      data: {
-        ...n.data,
-        isSelected: false,
-      },
-    };
-  });
-}
-
-export function cleanUpNodes(nodes: Node<LineageGraphNode>[], isActionMode?: boolean) {
-  const newNodes = nodes.map((n) => {
-    return {
-      ...n,
-      data: {
-        ...n.data,
-        // isSelected: false,
-        isActionMode,
-        action: undefined,
-      },
-    };
-  });
-  return newNodes;
-}
-
-export function getSelectedNodes(nodes: Node<LineageGraphNode>[]) {
-  const selectedNodes = nodes.filter((n) => n.data.isSelected);
-  return selectedNodes;
-}
