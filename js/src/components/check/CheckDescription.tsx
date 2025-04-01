@@ -12,7 +12,7 @@ export function CheckDescription({ value, onChange }: CheckDescriptionProps) {
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
   const handleEdit = () => {
-    setTempValue(value || "");
+    setTempValue(value ?? "");
     setEditing(true);
   };
 
@@ -84,7 +84,7 @@ export function CheckDescription({ value, onChange }: CheckDescriptionProps) {
       whiteSpace="pre-wrap"
       wordBreak="break-word"
       color={!value ? "lightgray" : "inherit"}>
-      {!value ? "Add description here" : value}
+      {value ?? "Add description here"}
     </Text>
   );
 }

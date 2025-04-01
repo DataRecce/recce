@@ -30,9 +30,9 @@ const PrivateValueDiffDetailResultView = (
   { run, onAddToChecklist, viewOptions, onViewOptionsChanged }: ValueDiffDetailResultViewProps,
   ref: any,
 ) => {
-  const changedOnly = useMemo(() => viewOptions?.changed_only || false, [viewOptions]);
-  const pinnedColumns = useMemo(() => viewOptions?.pinned_columns || [], [viewOptions]);
-  const displayMode = useMemo(() => viewOptions?.display_mode || "inline", [viewOptions]);
+  const changedOnly = useMemo(() => viewOptions?.changed_only ?? false, [viewOptions]);
+  const pinnedColumns = useMemo(() => viewOptions?.pinned_columns ?? [], [viewOptions]);
+  const displayMode = useMemo(() => viewOptions?.display_mode ?? "inline", [viewOptions]);
 
   const gridData = useMemo(() => {
     const handlePinnedColumnsChanged = (pinnedColumns: string[]) => {
@@ -60,7 +60,7 @@ const PrivateValueDiffDetailResultView = (
     });
   }, [run, viewOptions, changedOnly, pinnedColumns, displayMode, onViewOptionsChanged]);
 
-  const limit = run.result?.limit || 0;
+  const limit = run.result?.limit ?? 0;
   const warning =
     limit > 0 && run.result?.more
       ? `Warning: Displayed results are limited to ${limit.toLocaleString()} records. To ensure complete data retrieval, consider applying a LIMIT or WHERE clause to constrain the result set.`

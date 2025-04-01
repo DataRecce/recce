@@ -76,7 +76,7 @@ export function PrivateSchemaView(
 ) {
   const { columns, rows } = useMemo(() => {
     const schemaDiff = mergeColumns(base?.columns, current?.columns);
-    const resourceType = current?.resource_type || base?.resource_type;
+    const resourceType = current?.resource_type ?? base?.resource_type;
     if (resourceType && ["model", "seed", "snapshot", "source"].includes(resourceType)) {
       return toDataGrid(schemaDiff, current ?? base);
     } else {

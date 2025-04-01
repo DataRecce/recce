@@ -27,7 +27,7 @@ function _HistogramDiffResultView({ run }: HistogramDiffResultViewProp, ref: any
             <HistogramChart
               data={{
                 title: `Model ${params.model}.${params.column_name}`,
-                type: run.params?.column_type || "",
+                type: run.params?.column_type ?? "",
                 datasets: [base, current],
                 min: min,
                 max: max,

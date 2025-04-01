@@ -101,21 +101,21 @@ function calculateColumnChange(base: NodeData | undefined, current: NodeData | u
 
   // Add columns
   if (current) {
-    Object.keys(current.columns || {}).forEach((col) => {
+    Object.keys(current.columns ?? {}).forEach((col) => {
       if (!base?.columns?.[col]) adds++;
     });
   }
 
   // Remove columns
   if (base) {
-    Object.keys(base.columns || {}).forEach((col) => {
+    Object.keys(base.columns ?? {}).forEach((col) => {
       if (!current?.columns?.[col]) removes++;
     });
   }
 
   // Modify columns
   if (current && base) {
-    Object.keys(current.columns || {}).forEach((col) => {
+    Object.keys(current.columns ?? {}).forEach((col) => {
       // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
       if (base.columns && current.columns?.[col] && base.columns[col]) {
         if (base.columns[col].type !== current.columns[col].type) modifies++;

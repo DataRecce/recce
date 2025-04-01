@@ -212,7 +212,7 @@ export function LineageGraphContextProvider({ children }: LineageGraphProps) {
     git,
     pull_request: pullRequest,
     support_tasks: supportTasks,
-  } = queryServerInfo.data || {};
+  } = queryServerInfo.data ?? {};
 
   const dbtBase = lineage?.base.manifest_metadata;
   const dbtCurrent = lineage?.current.manifest_metadata;

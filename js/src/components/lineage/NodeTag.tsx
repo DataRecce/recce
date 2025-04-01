@@ -90,8 +90,8 @@ export function ModelRowCount({ rowCount }: ModelRowCountProps) {
     );
   }
 
-  const base = rowCount.base === null ? "N/A" : rowCount.base;
-  const current = rowCount.curr === null ? "N/A" : rowCount.curr;
+  const base = rowCount.base ?? "N/A";
+  const current = rowCount.curr ?? "N/A";
   const label = `${base} -> ${current} rows`;
 
   return (
@@ -121,10 +121,10 @@ export function RowCountDiffTag({
   const icon = findByRunType("row_count_diff")?.icon;
 
   let label;
-  const rowCount = fetchedRowCount || lastRowCount;
+  const rowCount = fetchedRowCount ?? lastRowCount;
   if (rowCount) {
-    const base = rowCount.base === null ? "N/A" : rowCount.base;
-    const current = rowCount.curr === null ? "N/A" : rowCount.curr;
+    const base = rowCount.base ?? "N/A";
+    const current = rowCount.curr ?? "N/A";
     label = `${base} -> ${current} rows`;
   }
 
@@ -177,9 +177,9 @@ export function RowCountTag({
   const icon = findByRunType("row_count")?.icon;
 
   let label;
-  const rowCount = fetchedRowCount || lastRowCount;
+  const rowCount = fetchedRowCount ?? lastRowCount;
   if (rowCount) {
-    const rows = rowCount.curr === null ? "N/A" : rowCount.curr;
+    const rows = rowCount.curr ?? "N/A";
     label = `${rows} rows`;
   }
 

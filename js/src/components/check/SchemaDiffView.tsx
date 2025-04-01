@@ -110,7 +110,7 @@ export function PrivateSchemaDiffView({ check }: SchemaDiffViewProps, ref: any) 
         }
       }
     } else {
-      for (const nodeId of data?.nodes || []) {
+      for (const nodeId of data?.nodes ?? []) {
         const node = lineageGraph?.nodes[nodeId];
         if (node) {
           selectedNodes.push(node);

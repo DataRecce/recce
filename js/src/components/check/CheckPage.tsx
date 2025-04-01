@@ -43,7 +43,7 @@ export const CheckPage = () => {
     [setLocation],
   );
 
-  const [orderedChecks, setOrderedChecks] = useState(checks || []);
+  const [orderedChecks, setOrderedChecks] = useState(checks ?? []);
   const { mutate: changeChecksOrder } = useMutation({
     mutationFn: (order: { source: number; destination: number }) => reorderChecks(order),
     onSuccess: async () => {

@@ -81,7 +81,7 @@ export function _selectColumnLevelLineage(node: string, column: string, cll: Col
       const target = `${nodeId}_${columnNode.name}`;
       parentMap[target] = [];
 
-      for (const parent of columnNode.depends_on || []) {
+      for (const parent of columnNode.depends_on ?? []) {
         const source = `${parent.node}_${parent.column}`;
         parentMap[target].push(source);
         if (!(source in childMap)) {
@@ -281,12 +281,12 @@ export function buildLineageGraph(
     nonBreakingSet: new Set(nonBreakingSet),
     impactedSet,
     manifestMetadata: {
-      base: base.manifest_metadata || undefined,
-      current: current.manifest_metadata || undefined,
+      base: base.manifest_metadata ?? undefined,
+      current: current.manifest_metadata ?? undefined,
     },
     catalogMetadata: {
-      base: base.catalog_metadata || undefined,
-      current: current.catalog_metadata || undefined,
+      base: base.catalog_metadata ?? undefined,
+      current: current.catalog_metadata ?? undefined,
     },
   };
 }
@@ -397,7 +397,7 @@ export function toReactflow(
           sourcePosition: Position.Right,
         });
 
-        for (const parentColumn of column.depends_on || []) {
+        for (const parentColumn of column.depends_on ?? []) {
           const source = `${parentColumn.node}_${parentColumn.column}`;
           const target = columnKey;
 
@@ -478,8 +478,8 @@ export const layout = (nodes: Node[], edges: Edge[], direction = "LR") => {
     if (node.type !== "customNode") {
       return;
     }
-    const nodeWidth = node.width || 300;
-    const nodeHeight = node.height || 36;
+    const nodeWidth = node.width ?? 300;
+    const nodeHeight = node.height ?? 36;
 
     const nodeWithPosition = dagreGraph.node(node.id);
 

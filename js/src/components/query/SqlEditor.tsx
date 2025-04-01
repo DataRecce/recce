@@ -41,7 +41,7 @@ const SqlEditor: React.FC<SqlEditorProps> = ({
 
   return (
     <>
-      {(label || onRun || onRunBase) && (
+      {(label ?? onRun ?? onRunBase) && (
         <Flex
           backgroundColor="#EDF2F880"
           height="40px"
@@ -53,11 +53,11 @@ const SqlEditor: React.FC<SqlEditorProps> = ({
           flex="0 0 40px">
           <Text as="b">{label ? label.toUpperCase() : ""}</Text>
           <Spacer />
-          {(onRun || onRunBase) && (
+          {(onRun ?? onRunBase) && (
             <Button
               size="sm"
               variant="outline"
-              onClick={onRun || onRunBase}
+              onClick={onRun ?? onRunBase}
               backgroundColor={"white"}
               // leftIcon={<Icon as={RiPlayMiniFill} />}
               leftIcon={<Icon as={FaPlay} />}
@@ -127,7 +127,7 @@ export const DualSqlEditor: React.FC<DualSqlEditorProps> = ({
         <Stack height={"100%"} width={"50%"} gap={0} borderRight={"1px"} borderColor={"#D4DBE4"}>
           <SqlEditor
             label={baseLabel}
-            value={baseValue || ""}
+            value={baseValue ?? ""}
             onChange={onChangeBase}
             onRunBase={onRunBase}
             options={options}

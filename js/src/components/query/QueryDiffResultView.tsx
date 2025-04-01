@@ -37,10 +37,10 @@ const PrivateQueryDiffResultView = (
   }: QueryDiffResultViewProps,
   ref: any,
 ) => {
-  const primaryKeys = useMemo(() => viewOptions?.primary_keys || [], [viewOptions]);
-  const changedOnly = useMemo(() => viewOptions?.changed_only || false, [viewOptions]);
-  const pinnedColumns = useMemo(() => viewOptions?.pinned_columns || [], [viewOptions]);
-  const displayMode = useMemo(() => viewOptions?.display_mode || "inline", [viewOptions]);
+  const primaryKeys = useMemo(() => viewOptions?.primary_keys ?? [], [viewOptions]);
+  const changedOnly = useMemo(() => viewOptions?.changed_only ?? false, [viewOptions]);
+  const pinnedColumns = useMemo(() => viewOptions?.pinned_columns ?? [], [viewOptions]);
+  const displayMode = useMemo(() => viewOptions?.display_mode ?? "inline", [viewOptions]);
 
   const gridData = useMemo(() => {
     const handlePrimaryKeyChanged = (primaryKeys: string[]) => {
@@ -95,7 +95,7 @@ const PrivateQueryDiffResultView = (
     }
   }, [gridData.invalidPKeyBase, gridData.invalidPKeyCurrent, primaryKeys]);
 
-  const limit = run.result?.current?.limit || 0;
+  const limit = run.result?.current?.limit ?? 0;
   const warningLimit =
     limit > 0 && (run.result?.current?.more || run.result?.base?.more)
       ? `Warning: Displayed results are limited to ${limit.toLocaleString()} records. To ensure complete data retrieval, consider applying a LIMIT or WHERE clause to constrain the result set.`
@@ -164,9 +164,9 @@ const PrivateQueryDiffJoinResultView = (
   { run, viewOptions, onViewOptionsChanged, baseTitle, currentTitle }: QueryDiffResultViewProps,
   ref: any,
 ) => {
-  const changedOnly = useMemo(() => viewOptions?.changed_only || false, [viewOptions]);
-  const pinnedColumns = useMemo(() => viewOptions?.pinned_columns || [], [viewOptions]);
-  const displayMode = useMemo(() => viewOptions?.display_mode || "inline", [viewOptions]);
+  const changedOnly = useMemo(() => viewOptions?.changed_only ?? false, [viewOptions]);
+  const pinnedColumns = useMemo(() => viewOptions?.pinned_columns ?? [], [viewOptions]);
+  const displayMode = useMemo(() => viewOptions?.display_mode ?? "inline", [viewOptions]);
 
   const gridData = useMemo(() => {
     const handlePinnedColumnsChanged = (pinnedColumns: string[]) => {
@@ -203,7 +203,7 @@ const PrivateQueryDiffJoinResultView = (
     currentTitle,
   ]);
 
-  const limit = run.result?.diff?.limit || 0;
+  const limit = run.result?.diff?.limit ?? 0;
   const warningLimit =
     limit > 0 && run.result?.diff?.more
       ? `Warning: Displayed results are limited to ${limit.toLocaleString()} records. To ensure complete data retrieval, consider applying a LIMIT or WHERE clause to constrain the result set.`

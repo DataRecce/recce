@@ -107,7 +107,7 @@ export const PrivateLoadableRunView = ({
   const RunResultView = run?.type ? findByRunType(run.type)?.RunResultView : undefined;
 
   const handleRerun = useCallback(() => {
-    runAction(run?.type || "", run?.params);
+    runAction(run?.type ?? "", run?.params);
   }, [run, runAction]);
 
   const checkId = run?.check_id;
@@ -229,7 +229,7 @@ export const PrivateLoadableRunView = ({
             options={{ readOnly: true }}
           />
         ) : (
-          <SqlEditor value={run.params?.sql_template || ""} options={{ readOnly: true }} />
+          <SqlEditor value={run.params?.sql_template ?? ""} options={{ readOnly: true }} />
         ))}
     </Flex>
   );

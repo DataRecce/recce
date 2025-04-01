@@ -59,8 +59,8 @@ function DataFrameColumnHeader({
 
 export function toDataGrid(result: DataFrame, options: QueryDataGridOptions) {
   const columns: Column<any, any>[] = [];
-  const primaryKeys = options.primaryKeys || [];
-  const pinnedColumns = options.pinnedColumns || [];
+  const primaryKeys = options.primaryKeys ?? [];
+  const pinnedColumns = options.pinnedColumns ?? [];
   const toColumn = (key: number, name: string) => ({
     key: String(key),
     name: <DataFrameColumnHeader name={name} {...options} />,
@@ -122,7 +122,7 @@ const PrivateQueryResultView = (
   { run, viewOptions, onViewOptionsChanged, onAddToChecklist }: QueryResultViewProp,
   ref: any,
 ) => {
-  const pinnedColumns = useMemo(() => viewOptions?.pinned_columns || [], [viewOptions]);
+  const pinnedColumns = useMemo(() => viewOptions?.pinned_columns ?? [], [viewOptions]);
 
   const dataframe = run.result;
   const gridData = useMemo(() => {
@@ -154,7 +154,7 @@ const PrivateQueryResultView = (
     limit > 0 && dataframe?.more
       ? `Warning: Displayed results are limited to ${limit.toLocaleString()} records. To ensure complete data retrieval, consider applying a LIMIT or WHERE clause to constrain the result set.`
       : null;
-  const showTopBar = onAddToChecklist || warning;
+  const showTopBar = onAddToChecklist ?? warning;
 
   return (
     <Flex direction="column" backgroundColor="rgb(249, 249, 249)" height="100%">

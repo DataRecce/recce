@@ -24,7 +24,7 @@ export function EmptyRowsRenderer({ emptyMessage }: EmptyRowsRendererProps) {
       justifyContent="center"
       bg="gray.100"
       style={{ textAlign: "center", gridColumn: "1/-1" }}>
-      <Text fontWeight="600"> {emptyMessage ? emptyMessage : "No rows"}</Text>
+      <Text fontWeight="600"> {emptyMessage ?? "No rows"}</Text>
     </Flex>
   );
 }

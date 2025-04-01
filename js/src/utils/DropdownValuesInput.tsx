@@ -34,7 +34,7 @@ export interface DropdownValuesInputProps extends InputProps {
 
 export const DropdownValuesInput = (props: DropdownValuesInputProps) => {
   const { defaultValues, suggestionList, onValuesChange, isDisabled } = props;
-  const [values, setValues] = useState<string[]>(defaultValues || []);
+  const [values, setValues] = useState<string[]>(defaultValues ?? []);
   const [filter, setFilter] = useState<string>("");
   const [isTyping, setIsTyping] = useState<boolean>(false);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -73,7 +73,7 @@ export const DropdownValuesInput = (props: DropdownValuesInputProps) => {
   const filteredList =
     suggestionList
       ?.filter((value) => filter === "" || value.includes(filter))
-      .filter((value) => !values.includes(value)) || [];
+      .filter((value) => !values.includes(value)) ?? [];
   const limit = 10;
 
   return (
