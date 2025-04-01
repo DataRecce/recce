@@ -21,13 +21,13 @@ const PrivateProfileDiffResultView = (
   ref: any,
 ) => {
   const result = run.result;
-  const pinnedColumns = useMemo(() => viewOptions?.pinned_columns || [], [viewOptions]);
-  const displayMode = useMemo(() => viewOptions?.display_mode || "inline", [viewOptions]);
+  const pinnedColumns = useMemo(() => viewOptions?.pinned_columns ?? [], [viewOptions]);
+  const displayMode = useMemo(() => viewOptions?.display_mode ?? "inline", [viewOptions]);
 
-  const field = (result?.current?.columns || []).find(
+  const field = (result?.current?.columns ?? []).find(
     (f) => f.name.toLowerCase() === "column_name",
   );
-  const primaryKey = field?.name || "column_name";
+  const primaryKey = field?.name ?? "column_name";
 
   const gridData = useMemo(() => {
     const handlePinnedColumnsChanged = (pinnedColumns: string[]) => {
@@ -85,11 +85,11 @@ const PrivateProfileResultView = (
 ) => {
   const result = run.result;
   const dataFrame = result?.current;
-  const pinnedColumns = useMemo(() => viewOptions?.pinned_columns || [], [viewOptions]);
-  const field = (result?.current?.columns || []).find(
+  const pinnedColumns = useMemo(() => viewOptions?.pinned_columns ?? [], [viewOptions]);
+  const field = (result?.current?.columns ?? []).find(
     (f) => f.name.toLowerCase() === "column_name",
   );
-  const primaryKey = field?.name || "column_name";
+  const primaryKey = field?.name ?? "column_name";
 
   const gridData = useMemo(() => {
     const handlePinnedColumnsChanged = (pinnedColumns: string[]) => {

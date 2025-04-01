@@ -84,8 +84,8 @@ export function DataFrameColumnGroupHeader({
   onPinnedColumnsChange,
   ...options
 }: { name: string; columnStatus: string } & QueryDataDiffGridOptions) {
-  const primaryKeys = options.primaryKeys || [];
-  const pinnedColumns = options.pinnedColumns || [];
+  const primaryKeys = options.primaryKeys ?? [];
+  const pinnedColumns = options.pinnedColumns ?? [];
   const isPK = primaryKeys.includes(name);
   const isPinned = pinnedColumns.includes(name);
   const canBePk = columnStatus !== "added" && columnStatus !== "removed";
@@ -217,12 +217,12 @@ export function toDataDiffGrid(
   _current?: DataFrame,
   options?: QueryDataDiffGridOptions,
 ) {
-  const base = _base || { columns: [], data: [] };
-  const current = _current || { columns: [], data: [] };
-  const primaryKeys = options?.primaryKeys || [];
-  const pinnedColumns = options?.pinnedColumns || [];
-  const changedOnly = options?.changedOnly || false;
-  const displayMode = options?.displayMode || "side_by_side";
+  const base = _base ?? { columns: [], data: [] };
+  const current = _current ?? { columns: [], data: [] };
+  const primaryKeys = options?.primaryKeys ?? [];
+  const pinnedColumns = options?.pinnedColumns ?? [];
+  const changedOnly = options?.changedOnly ?? false;
+  const displayMode = options?.displayMode ?? "side_by_side";
 
   const columns: ColumnOrColumnGroup<any, any>[] = [];
   const columnMap = _getColumnMap(base, current);
@@ -411,7 +411,7 @@ export function toDataDiffGrid(
         children: [
           {
             key: `base__${name}`,
-            name: options?.baseTitle || "Base",
+            name: options?.baseTitle ?? "Base",
             renderEditCell: textEditor,
             headerCellClass,
             cellClass: cellClassBase,
@@ -420,7 +420,7 @@ export function toDataDiffGrid(
           },
           {
             key: `current__${name}`,
-            name: options?.currentTitle || "Current",
+            name: options?.currentTitle ?? "Current",
             renderEditCell: textEditor,
             headerCellClass,
             cellClass: cellClassCurrent,
@@ -443,7 +443,7 @@ export function toDataDiffGrid(
     });
   } else {
     primaryKeys.forEach((name) => {
-      const columnStatus = columnMap[name].status || "";
+      const columnStatus = columnMap[name].status ?? "";
       columns.push({
         key: name,
         name: (
@@ -466,7 +466,7 @@ export function toDataDiffGrid(
 
   // merges columns: pinned columns
   pinnedColumns.forEach((name) => {
-    const columnStatus = columnMap[name].status || "";
+    const columnStatus = columnMap[name].status ?? "";
 
     if (name === "index") {
       return;
@@ -481,7 +481,7 @@ export function toDataDiffGrid(
 
   // merges columns: other columns
   Object.entries(columnMap).forEach(([name, mergedColumn]) => {
-    const columnStatus = mergedColumn.status || "";
+    const columnStatus = mergedColumn.status ?? "";
 
     if (name === "index") {
       return;

@@ -102,12 +102,12 @@ export const CheckDetail = ({ checkId, refreshCheckList }: CheckDetailProps) => 
     refetchOnMount: true,
   });
 
-  const trackedRunId = submittedRunId || check?.last_run?.run_id;
+  const trackedRunId = submittedRunId ?? check?.last_run?.run_id;
   const { run, error: rerunError } = useRun(trackedRunId);
   const isRunning = submittedRunId ? !run || run.status === "running" : run?.status === "running";
 
   const runTypeEntry = check?.type ? findByRunType(check.type) : undefined;
-  const isPresetCheck = check?.is_preset || false;
+  const isPresetCheck = check?.is_preset ?? false;
 
   const lineageViewRef = useRef<LineageViewRef>(null);
 
@@ -192,9 +192,9 @@ export const CheckDetail = ({ checkId, refreshCheckList }: CheckDetailProps) => 
 
   useEffect(() => {
     const template = generateCheckTemplate({
-      name: check?.name || "",
-      description: check?.description || "",
-      type: check?.type || "",
+      name: check?.name ?? "",
+      description: check?.description ?? "",
+      type: check?.type ?? "",
       params: check?.params,
       viewOptions: check?.view_options,
     });
@@ -221,7 +221,7 @@ export const CheckDetail = ({ checkId, refreshCheckList }: CheckDetailProps) => 
       <Box style={{ contain: "strict" }} display="flex" flexDirection="column">
         <Flex p="0px 16px" alignItems="center" h="40px">
           <CheckBreadcrumb
-            name={check?.name || ""}
+            name={check?.name ?? ""}
             setName={(name) => {
               mutate({ name });
             }}
@@ -408,13 +408,13 @@ export const CheckDetail = ({ checkId, refreshCheckList }: CheckDetailProps) => 
               <TabPanel p={0} height="100%" width="100%">
                 {check.params?.base_sql_template ? (
                   <DualSqlEditor
-                    value={check.params?.sql_template || ""}
-                    baseValue={check.params?.base_sql_template || ""}
+                    value={check.params?.sql_template ?? ""}
+                    baseValue={check.params?.base_sql_template ?? ""}
                     options={{ readOnly: true }}
                   />
                 ) : (
                   <SqlEditor
-                    value={check.params?.sql_template || ""}
+                    value={check.params?.sql_template ?? ""}
                     options={{ readOnly: true }}
                   />
                 )}

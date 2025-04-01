@@ -63,7 +63,7 @@ function prepareSummaryList(topK: TopKResult, isDisplayTopTen: boolean): Summary
       label,
       count: count,
       displayCount: formatAsAbbreviatedNumber(count),
-      displayRatio: formatIntervalMinMax(count / topK.valids) || "N/A",
+      displayRatio: formatIntervalMinMax(count / topK.valids) ?? "N/A",
     };
   });
 }

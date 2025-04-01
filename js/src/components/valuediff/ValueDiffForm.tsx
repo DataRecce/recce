@@ -66,7 +66,7 @@ export function ValueDiffForm({ params, onParamsChanged, setIsReadyToExecute }: 
           isMulti
           closeMenuOnSelect={false}
           options={columnNames.map((c) => ({ label: c, value: c }))}
-          value={(primaryKeys || []).map((c) => ({
+          value={(primaryKeys ?? []).map((c) => ({
             label: c,
             value: c,
           }))}
@@ -96,7 +96,7 @@ export function ValueDiffForm({ params, onParamsChanged, setIsReadyToExecute }: 
             isMulti
             closeMenuOnSelect={false}
             options={columnNames.map((c) => ({ label: c, value: c }))}
-            value={(params.columns || []).map((c) => ({
+            value={(params.columns ?? []).map((c) => ({
               label: c,
               value: c,
             }))}

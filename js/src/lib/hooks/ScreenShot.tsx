@@ -72,7 +72,7 @@ export function useCopyToClipboard({
       throw new Error("No node to use for screenshot");
     }
 
-    const nodeToUse = ((ref.current as any).element || ref.current) as HTMLElement;
+    const nodeToUse = ((ref.current as any).element ?? ref.current) as HTMLElement;
     const overflow = nodeToUse.style.overflow;
     const border = nodeToUse.style.border;
     const radius = nodeToUse.style.borderRadius;
@@ -91,7 +91,7 @@ export function useCopyToClipboard({
       nodeToUse.style.overflow = "hidden";
       nodeToUse.style.border = boardEffect ? borderStyle : "";
       nodeToUse.style.borderRadius = boardEffect ? borderRadius : "";
-      nodeToUse.style.backgroundColor = backgroundColor || "";
+      nodeToUse.style.backgroundColor = backgroundColor ?? "";
       // after firefox v125, html2canvas can't get the correct style height of the element to clone
       nodeToUse.style.height = `${String(nodeToUse.offsetHeight)}px`;
 
@@ -184,7 +184,7 @@ export function useCopyToClipboardButton(options?: HookOptions) {
   const { isLoading, copyToClipboard, ImageDownloadModal, ref } = useCopyToClipboard({
     imageType: "png",
     shadowEffect: true,
-    backgroundColor: options?.backgroundColor || null,
+    backgroundColor: options?.backgroundColor ?? null,
     onSuccess: () => {
       successToast("Copied the query result as an image to clipboard");
     },
@@ -196,7 +196,7 @@ export function useCopyToClipboardButton(options?: HookOptions) {
 
   const onMouseEnter = useCallback(() => {
     if (ref.current) {
-      const nodeToUse = ((ref.current as any).element || ref.current) as HTMLElement;
+      const nodeToUse = ((ref.current as any).element ?? ref.current) as HTMLElement;
       nodeToUse.style.boxShadow = highlightBoxShadow;
       nodeToUse.style.transition = "box-shadow 0.5s ease-in-out";
     }
@@ -204,7 +204,7 @@ export function useCopyToClipboardButton(options?: HookOptions) {
 
   const onMouseLeave = useCallback(() => {
     if (ref.current) {
-      const nodeToUse = ((ref.current as any).element || ref.current) as HTMLElement;
+      const nodeToUse = ((ref.current as any).element ?? ref.current) as HTMLElement;
       nodeToUse.style.boxShadow = "";
     }
   }, [ref]);
@@ -212,7 +212,7 @@ export function useCopyToClipboardButton(options?: HookOptions) {
   const onCopyToClipboard = useCallback(async () => {
     if (ref.current) {
       await copyToClipboard();
-      const nodeToUse = ((ref.current as any).element || ref.current) as HTMLElement;
+      const nodeToUse = ((ref.current as any).element ?? ref.current) as HTMLElement;
       nodeToUse.style.boxShadow = "";
     } else {
       failToast("Failed to copy image to clipboard", "No content to copy");

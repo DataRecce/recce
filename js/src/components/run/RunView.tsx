@@ -48,7 +48,7 @@ export const RunView = forwardRef(
     }: RunViewProps<PT, RT>,
     ref: any,
   ) => {
-    const errorMessage = (error as any)?.response?.data?.detail || run?.error;
+    const errorMessage = (error as any)?.response?.data?.detail ?? run?.error;
 
     if (errorMessage) {
       return (
@@ -59,12 +59,13 @@ export const RunView = forwardRef(
       );
     }
 
-    if (isRunning !== undefined ? isRunning : run?.status === "running") {
-      const loadingMessage = progress?.message
-        ? progress.message
-        : run?.progress?.message
-          ? run.progress.message
-          : "Loading...";
+    if (isRunning ?? run?.status === "running") {
+      let loadingMessage = "Loading...";
+      if (progress?.message) {
+        loadingMessage = progress.message;
+      } else if (run?.progress?.message) {
+        loadingMessage = run.progress.message;
+      }
 
       return (
         <Center p="16px" height="100%" bg="rgb(249,249,249)">
@@ -105,7 +106,7 @@ export const RunView = forwardRef(
 
     return (
       <Box h="100%" style={{ contain: "size layout" }} overflow="auto">
-        {RunResultView && (run.error || run.result) && (
+        {RunResultView && (run.error ?? run.result) && (
           <ErrorBoundary>
             <RunResultView
               ref={ref}
