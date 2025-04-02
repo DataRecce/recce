@@ -77,11 +77,11 @@ class RecceContext:
         base = self.get_lineage(base=True)
 
         for unique_id, node in curr['nodes'].items():
-            if excluded_types and node.get('resource_type') not in excluded_types:
+            if excluded_types and node.get('resource_type') in excluded_types:
                 continue
             name_to_unique_id[node['name']] = unique_id
         for unique_id, node in base['nodes'].items():
-            if excluded_types and node.get('resource_type') not in excluded_types:
+            if excluded_types and node.get('resource_type') in excluded_types:
                 continue
             name_to_unique_id[node['name']] = unique_id
         return name_to_unique_id
