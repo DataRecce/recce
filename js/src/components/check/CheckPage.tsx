@@ -1,6 +1,6 @@
 import "react-data-grid/lib/styles.css";
 import React, { useCallback, useEffect, useState } from "react";
-import { Check, createSimpleCheck, listChecks, reorderChecks } from "@/lib/api/checks";
+import { listChecks, reorderChecks } from "@/lib/api/checks";
 import { Box, Center, Divider, Flex, VStack } from "@chakra-ui/react";
 import { CheckDetail } from "./CheckDetail";
 import { cacheKeys } from "@/lib/api/cacheKeys";
@@ -8,8 +8,6 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import _ from "lodash";
 import { Route, Switch, useLocation, useRoute } from "wouter";
 import { CheckList } from "./CheckList";
-import { buildDescription, buildTitle } from "./check";
-import { stripIndents } from "common-tags";
 import { HSplit } from "../split/Split";
 import { StateImporter } from "../app/StateImporter";
 import { useRecceCheckContext } from "@/lib/hooks/RecceCheckContext";
@@ -66,13 +64,6 @@ export const CheckPage = () => {
     },
     [orderedChecks, setOrderedChecks, changeChecksOrder],
   );
-
-  const addToChecklist = useCallback(async () => {
-    const check = await createSimpleCheck();
-    await queryClient.invalidateQueries({ queryKey: cacheKeys.checks() });
-
-    handleSelectItem(check.check_id);
-  }, [queryClient, handleSelectItem]);
 
   useEffect(() => {
     if (status !== "success") {
@@ -141,16 +132,3 @@ export const CheckPage = () => {
     </HSplit>
   );
 };
-
-function buildMarkdown(checks: Check[]) {
-  const checkItems = checks.map((check) => {
-    return stripIndents`
-    <details><summary>${buildTitle(check)}</summary>
-
-    ${buildDescription(check)}
-
-    </details>`;
-  });
-
-  return checkItems.join("\n\n");
-}

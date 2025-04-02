@@ -26,6 +26,7 @@ import { CheckIcon, CopyIcon, RepeatIcon } from "@chakra-ui/icons";
 import { useCopyToClipboardButton } from "@/lib/hooks/ScreenShot";
 import { RunStatusAndDate } from "./RunStatusAndDate";
 import { LearnHowLink, RecceNotification } from "../onboarding-guide/Notification";
+import { useRecceInstanceContext } from "@/lib/hooks/RecceInstanceContext";
 
 interface RunPageProps {
   onClose?: () => void;
@@ -95,6 +96,7 @@ export const PrivateLoadableRunView = ({
   onClose?: () => void;
   isSingleEnvironment?: boolean;
 }) => {
+  const { readOnly } = useRecceInstanceContext();
   const { runAction } = useRecceActionContext();
   const { error, run, onCancel, isRunning } = useRun(runId);
   const [viewOptions, setViewOptions] = useState();
@@ -177,7 +179,7 @@ export const PrivateLoadableRunView = ({
             <Button
               leftIcon={<RepeatIcon />}
               variant="outline"
-              isDisabled={!runId || isRunning}
+              isDisabled={!runId || isRunning || readOnly}
               size="sm"
               onClick={handleRerun}>
               Rerun

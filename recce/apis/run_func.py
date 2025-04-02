@@ -180,7 +180,7 @@ def materialize_run_results(runs: List[Run], nodes: List[str] = None):
 
     context = default_context()
     if context:
-        mame_to_unique_id = context.build_name_to_unique_id_index()
+        mame_to_unique_id = context.build_name_to_unique_id_index(excluded_types={'semantic_model', 'metric'})
     else:
         mame_to_unique_id = {}
 

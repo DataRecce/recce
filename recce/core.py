@@ -3,7 +3,7 @@ import json
 import logging
 import os
 from dataclasses import dataclass, field
-from typing import Callable, Dict, Optional, List, Tuple
+from typing import Callable, Dict, Optional, List, Tuple, Set
 
 from recce.adapter.base import BaseAdapter
 from recce.models import Check, Run
@@ -71,14 +71,18 @@ class RecceContext:
     def get_lineage_diff(self) -> LineageDiff:
         return self.adapter.get_lineage_diff()
 
-    def build_name_to_unique_id_index(self) -> Dict[str, str]:
+    def build_name_to_unique_id_index(self, excluded_types: Set = None) -> Dict[str, str]:
         name_to_unique_id = {}
         curr = self.get_lineage(base=False)
         base = self.get_lineage(base=True)
 
         for unique_id, node in curr['nodes'].items():
+            if excluded_types and node.get('resource_type') not in excluded_types:
+                continue
             name_to_unique_id[node['name']] = unique_id
         for unique_id, node in base['nodes'].items():
+            if excluded_types and node.get('resource_type') not in excluded_types:
+                continue
             name_to_unique_id[node['name']] = unique_id
         return name_to_unique_id
 

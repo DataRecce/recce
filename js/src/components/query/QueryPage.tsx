@@ -14,6 +14,7 @@ import { InfoIcon } from "@chakra-ui/icons";
 import { trackHistoryAction } from "@/lib/api/track";
 import { BaseEnvironmentSetupGuide } from "../lineage/SingleEnvironmentQueryView";
 import { useRecceServerFlag } from "@/lib/hooks/useRecceServerFlag";
+import { useRecceInstanceContext } from "@/lib/hooks/RecceInstanceContext";
 
 export const HistoryToggle = () => {
   const { isHistoryOpen, showHistory, closeHistory } = useRecceActionContext();
@@ -72,6 +73,7 @@ export const QueryPage = () => {
     isCustomQueries,
   } = useRecceQueryContext();
   const { lineageGraph, envInfo } = useLineageGraphContext();
+  const { readOnly } = useRecceInstanceContext();
   const { data: flag } = useRecceServerFlag();
 
   let sqlQuery = _sqlQuery;
@@ -189,7 +191,7 @@ export const QueryPage = () => {
           onClick={() => {
             runQuery("query_diff");
           }}
-          isDisabled={isPending}
+          isDisabled={isPending || readOnly}
           size="xs"
           fontSize="14px"
           marginTop={"16px"}>

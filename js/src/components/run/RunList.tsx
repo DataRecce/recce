@@ -1,6 +1,6 @@
 import "react-data-grid/lib/styles.css";
 import React, { useCallback } from "react";
-import { Check, createCheckByRun, updateCheck } from "@/lib/api/checks";
+import { createCheckByRun } from "@/lib/api/checks";
 import {
   Box,
   Flex,
@@ -12,7 +12,6 @@ import {
   Tooltip,
   Heading,
   Center,
-  Spinner,
 } from "@chakra-ui/react";
 import { cacheKeys } from "@/lib/api/cacheKeys";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
@@ -30,6 +29,7 @@ import SimpleBar from "simplebar-react";
 import "simplebar/dist/simplebar.min.css";
 import { formatRunDate, RunStatusAndDate } from "./RunStatusAndDate";
 import { trackHistoryAction } from "@/lib/api/track";
+import { useRecceInstanceContext } from "@/lib/hooks/RecceInstanceContext";
 
 const RunListItem = ({
   run,
@@ -44,6 +44,7 @@ const RunListItem = ({
   onAddToChecklist: (runId: string) => void;
   onGoToCheck: (checkId: string) => void;
 }) => {
+  const { readOnly } = useRecceInstanceContext();
   const { data: fetchedRun } = useQuery({
     queryKey: cacheKeys.run(run.run_id),
     queryFn: async () => {
@@ -94,7 +95,7 @@ const RunListItem = ({
               <Icon color="green" as={FaCheckCircle} />
             </Text>
           </Tooltip>
-        ) : (
+        ) : !readOnly ? (
           <Tooltip label="Add to Checklist" aria-label="Add to Checklist">
             <Text
               onClick={(e) => {
@@ -106,7 +107,7 @@ const RunListItem = ({
               <Icon as={FaRegCheckCircle} />
             </Text>
           </Tooltip>
-        )}
+        ) : null}
       </Flex>
       <Flex justifyContent="start" fontSize="11pt" color="gray.500" gap="3px" alignItems={"center"}>
         <RunStatusAndDate run={fetchedRun || run} />

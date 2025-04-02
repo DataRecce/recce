@@ -22,7 +22,6 @@ import {
   Icon,
   MenuGroup,
   Tooltip,
-  Link,
 } from "@chakra-ui/react";
 
 import { LineageGraphNode } from "./lineage";
@@ -43,6 +42,7 @@ import { SandboxView } from "./SandboxView";
 import { ChevronDownIcon } from "@chakra-ui/icons";
 import { NodeSqlView } from "./NodeSqlView";
 import { LearnHowLink, RecceNotification } from "../onboarding-guide/Notification";
+import { useRecceInstanceContext } from "@/lib/hooks/RecceInstanceContext";
 
 interface NodeViewProps {
   node: LineageGraphNode;
@@ -99,6 +99,7 @@ export function NodeView({ node, onCloseNode }: NodeViewProps) {
   const isAddedOrRemoved = node.changeStatus === "added" || node.changeStatus === "removed";
 
   function ExploreChangeMenuButton() {
+    const { readOnly } = useRecceInstanceContext();
     if (
       node.resourceType === "model" ||
       node.resourceType === "seed" ||
@@ -106,7 +107,12 @@ export function NodeView({ node, onCloseNode }: NodeViewProps) {
     ) {
       return (
         <Menu>
-          <MenuButton as={Button} size="xs" variant="outline" rightIcon={<ChevronDownIcon />}>
+          <MenuButton
+            as={Button}
+            size="xs"
+            variant="outline"
+            rightIcon={<ChevronDownIcon />}
+            isDisabled={readOnly}>
             Explore
           </MenuButton>
           <MenuList>
