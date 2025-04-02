@@ -29,7 +29,7 @@ import { IconEdit, IconSave } from "../icons";
 import { AxiosError } from "axios";
 import { localStorageKeys } from "@/lib/api/localStorageKeys";
 import { useChecks } from "@/lib/api/checks";
-import { useRecceModeContext } from "@/lib/hooks/RecceModeContext";
+import { useRecceInstanceContext } from "@/lib/hooks/RecceInstanceContext";
 
 const useRecceToast = () => {
   const toast = useToast();
@@ -94,7 +94,7 @@ interface FilenameState {
 }
 
 export const Filename = () => {
-  const { readOnly } = useRecceModeContext();
+  const { readOnly } = useRecceInstanceContext();
   const { fileName, cloudMode, isDemoSite } = useLineageGraphContext();
   const modalDisclosure = useDisclosure();
   const overwriteDisclosure = useDisclosure();

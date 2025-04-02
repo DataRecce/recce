@@ -3,10 +3,10 @@ import { Icon, IconButton, Tooltip, useToast } from "@chakra-ui/react";
 import { format } from "date-fns";
 import saveAs from "file-saver";
 import { IconExport } from "../icons";
-import { useRecceModeContext } from "@/lib/hooks/RecceModeContext";
+import { useRecceInstanceContext } from "@/lib/hooks/RecceInstanceContext";
 
 export function StateExporter() {
-  const { readOnly } = useRecceModeContext();
+  const { readOnly } = useRecceInstanceContext();
   const toast = useToast();
 
   const handleExport = async () => {

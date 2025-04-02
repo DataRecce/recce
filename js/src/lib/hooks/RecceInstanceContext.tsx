@@ -1,17 +1,17 @@
 import { createContext, useContext, useEffect, useState } from "react";
 import { useRecceInstanceInfo } from "./useRecceInstanceInfo";
 
-interface ModeContextType {
+interface InstanceInfoType {
   readOnly: boolean;
 }
 
-const defaultValue: ModeContextType = {
+const defaultValue: InstanceInfoType = {
   readOnly: false,
 };
 
-const ModeContext = createContext<ModeContextType>(defaultValue);
+const InstanceInfo = createContext<InstanceInfoType>(defaultValue);
 
-export function RecceModeProvider({ children }: { children: React.ReactNode }) {
+export function RecceInstanceInfoProvider({ children }: { children: React.ReactNode }) {
   const { data: instanceInfo, isLoading } = useRecceInstanceInfo();
   const [readOnly, setReadOnly] = useState<boolean>(false);
 
@@ -21,7 +21,7 @@ export function RecceModeProvider({ children }: { children: React.ReactNode }) {
     }
   }, [instanceInfo, isLoading]);
 
-  return <ModeContext.Provider value={{ readOnly }}>{children}</ModeContext.Provider>;
+  return <InstanceInfo.Provider value={{ readOnly }}>{children}</InstanceInfo.Provider>;
 }
 
-export const useRecceModeContext = () => useContext(ModeContext);
+export const useRecceInstanceContext = () => useContext(InstanceInfo);

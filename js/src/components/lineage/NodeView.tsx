@@ -42,7 +42,7 @@ import { SandboxView } from "./SandboxView";
 import { ChevronDownIcon } from "@chakra-ui/icons";
 import { NodeSqlView } from "./NodeSqlView";
 import { LearnHowLink, RecceNotification } from "../onboarding-guide/Notification";
-import { useRecceModeContext } from "@/lib/hooks/RecceModeContext";
+import { useRecceInstanceContext } from "@/lib/hooks/RecceInstanceContext";
 
 interface NodeViewProps {
   node: LineageGraphNode;
@@ -99,7 +99,7 @@ export function NodeView({ node, onCloseNode }: NodeViewProps) {
   const isAddedOrRemoved = node.changeStatus === "added" || node.changeStatus === "removed";
 
   function ExploreChangeMenuButton() {
-    const { readOnly } = useRecceModeContext();
+    const { readOnly } = useRecceInstanceContext();
     if (
       node.resourceType === "model" ||
       node.resourceType === "seed" ||

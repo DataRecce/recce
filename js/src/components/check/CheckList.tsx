@@ -28,7 +28,7 @@ import { findByRunType } from "../run/registry";
 import { useCheckToast } from "@/lib/hooks/useCheckToast";
 import { useRun } from "@/lib/hooks/useRun";
 import { isDisabledByNoResult } from "./CheckDetail";
-import { useRecceModeContext } from "@/lib/hooks/RecceModeContext";
+import { useRecceInstanceContext } from "@/lib/hooks/RecceInstanceContext";
 
 const ChecklistItem = ({
   check,
@@ -41,7 +41,7 @@ const ChecklistItem = ({
   onSelect: (checkId: string) => void;
   onMarkAsApproved: () => void;
 }) => {
-  const { readOnly } = useRecceModeContext();
+  const { readOnly } = useRecceInstanceContext();
   const queryClient = useQueryClient();
   const checkId = check.check_id;
   const { mutate } = useMutation({

@@ -29,7 +29,7 @@ import SimpleBar from "simplebar-react";
 import "simplebar/dist/simplebar.min.css";
 import { formatRunDate, RunStatusAndDate } from "./RunStatusAndDate";
 import { trackHistoryAction } from "@/lib/api/track";
-import { useRecceModeContext } from "@/lib/hooks/RecceModeContext";
+import { useRecceInstanceContext } from "@/lib/hooks/RecceInstanceContext";
 
 const RunListItem = ({
   run,
@@ -44,7 +44,7 @@ const RunListItem = ({
   onAddToChecklist: (runId: string) => void;
   onGoToCheck: (checkId: string) => void;
 }) => {
-  const { readOnly } = useRecceModeContext();
+  const { readOnly } = useRecceInstanceContext();
   const { data: fetchedRun } = useQuery({
     queryKey: cacheKeys.run(run.run_id),
     queryFn: async () => {

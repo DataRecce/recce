@@ -1,4 +1,4 @@
-import { useRecceModeContext } from "@/lib/hooks/RecceModeContext";
+import { useRecceInstanceContext } from "@/lib/hooks/RecceInstanceContext";
 import { Button, Flex, Link, Text, Textarea } from "@chakra-ui/react";
 import { ChangeEventHandler, KeyboardEventHandler, useEffect, useRef, useState } from "react";
 
@@ -8,7 +8,7 @@ interface CheckDescriptionProps {
 }
 
 export function CheckDescription({ value, onChange }: CheckDescriptionProps) {
-  const { readOnly } = useRecceModeContext();
+  const { readOnly } = useRecceInstanceContext();
   const [editing, setEditing] = useState(false);
   const [tempValue, setTempValue] = useState<string>();
   const textareaRef = useRef<HTMLTextAreaElement>(null);

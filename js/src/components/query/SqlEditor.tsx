@@ -1,4 +1,4 @@
-import { useRecceModeContext } from "@/lib/hooks/RecceModeContext";
+import { useRecceInstanceContext } from "@/lib/hooks/RecceInstanceContext";
 import { Flex, Text, Stack, Spacer, Button, Icon } from "@chakra-ui/react";
 import { EditorProps, Editor } from "@monaco-editor/react";
 import { FaPlay } from "react-icons/fa6";
@@ -34,7 +34,7 @@ const SqlEditor: React.FC<SqlEditorProps> = ({
   options = {},
   ...props
 }: SqlEditorProps) => {
-  const { readOnly } = useRecceModeContext();
+  const { readOnly } = useRecceInstanceContext();
   const handleEditorChange = (value: string | undefined) => {
     if (value !== undefined && onChange) {
       onChange(value);

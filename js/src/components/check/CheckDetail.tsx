@@ -61,7 +61,7 @@ import { useCopyToClipboardButton } from "@/lib/hooks/ScreenShot";
 import { useRun } from "@/lib/hooks/useRun";
 import { useCheckToast } from "@/lib/hooks/useCheckToast";
 import { LineageViewRef } from "../lineage/LineageView";
-import { useRecceModeContext } from "@/lib/hooks/RecceModeContext";
+import { useRecceInstanceContext } from "@/lib/hooks/RecceInstanceContext";
 
 export const isDisabledByNoResult = (type: string, run: Run | undefined): boolean => {
   if (type === "schema_diff" || type === "lineage_diff") {
@@ -76,13 +76,13 @@ interface CheckDetailProps {
 }
 
 export const CheckDetail = ({ checkId, refreshCheckList }: CheckDetailProps) => {
-  const { readOnly } = useRecceModeContext();
+  const { readOnly } = useRecceInstanceContext();
   const queryClient = useQueryClient();
   const [, setLocation] = useLocation();
   const { successToast, failToast } = useClipBoardToast();
   const { markedAsApprovedToast } = useCheckToast();
   const [submittedRunId, setSubmittedRunId] = useState<string>();
-  const [progress] = useState<Run["progress"]>();
+  const [progress, setProgress] = useState<Run["progress"]>();
   const [isAborting, setAborting] = useState(false);
   const [presetCheckTemplate, setPresetCheckTemplate] = useState<string>("");
   const {

@@ -22,10 +22,10 @@ import { importState } from "@/lib/api/state";
 import { useLocation } from "wouter";
 import { useLineageGraphContext, useRunsAggregated } from "@/lib/hooks/LineageGraphContext";
 import { IconImport } from "../icons";
-import { useRecceModeContext } from "@/lib/hooks/RecceModeContext";
+import { useRecceInstanceContext } from "@/lib/hooks/RecceInstanceContext";
 
 export function StateImporter({ checksOnly = true }: { checksOnly?: boolean }) {
-  const { readOnly } = useRecceModeContext();
+  const { readOnly } = useRecceInstanceContext();
   const toast = useToast();
   const queryClient = useQueryClient();
   const hiddenFileInput = useRef<HTMLInputElement>(null);

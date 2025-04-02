@@ -34,7 +34,7 @@ import { ChevronDownIcon } from "@chakra-ui/icons";
 import { trackHistoryAction } from "@/lib/api/track";
 import { DisableTooltipMessages } from "@/constants/tooltipMessage";
 import { useRecceServerFlag } from "@/lib/hooks/useRecceServerFlag";
-import { useRecceModeContext } from "@/lib/hooks/RecceModeContext";
+import { useRecceInstanceContext } from "@/lib/hooks/RecceInstanceContext";
 
 const SelectFilterTooltip = () => {
   return (
@@ -347,7 +347,7 @@ export const LineageViewTopBar = () => {
   const { deselect, focusedNode, selectedNodes, ...lineageViewContext } =
     useLineageViewContextSafe();
   const { isActionAvailable } = useLineageGraphContext();
-  const { readOnly } = useRecceModeContext();
+  const { readOnly } = useRecceInstanceContext();
   const { data: flags } = useRecceServerFlag();
   const isSingleEnvOnboarding = flags?.single_env_onboarding;
 
