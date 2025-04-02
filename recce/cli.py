@@ -776,7 +776,7 @@ def read_only(host, port, state_file=None, **kwargs):
         console.print(f"{hint}")
         exit(1)
 
-    result, message = RecceContext.verify_required_artifacts(**kwargs)
+    result, message = RecceContext.verify_required_artifacts(**kwargs, review=is_review)
     if not result:
         console.print(f"[[red]Error[/red]] {message}")
         exit(1)
