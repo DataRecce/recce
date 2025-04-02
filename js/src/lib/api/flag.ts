@@ -4,7 +4,6 @@ export interface RecceServerFlags {
   show_onboarding_guide: boolean;
   single_env_onboarding: boolean;
   show_relaunch_hint: boolean;
-  read_only: boolean;
 }
 
 export async function getServerFlag(): Promise<RecceServerFlags> {

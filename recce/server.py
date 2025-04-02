@@ -173,6 +173,21 @@ async def health_check(request: Request):
     return {"status": "ok"}
 
 
+@app.get("/api/instance-info")
+async def recce_instance_info():
+    app_state: AppState = app.state
+    flag = app_state.flag
+    read_only = flag.get('read_only', False)
+    return {
+        "read_only": read_only,
+        # TODO: Add more instance info which won't change during the instance lifecycle
+        # review_mode
+        # cloud_mode
+        # demo
+        # single env
+    }
+
+
 @app.get("/api/flag")
 async def config_flag():
     app_state: AppState = app.state

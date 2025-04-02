@@ -29,7 +29,6 @@ import { useCheckToast } from "@/lib/hooks/useCheckToast";
 import { useRun } from "@/lib/hooks/useRun";
 import { isDisabledByNoResult } from "./CheckDetail";
 import { useRecceModeContext } from "@/lib/hooks/RecceModeContext";
-import { read } from "fs";
 
 const ChecklistItem = ({
   check,
