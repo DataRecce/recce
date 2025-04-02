@@ -752,7 +752,7 @@ def artifact(**kwargs):
 
 
 @cli.command(hidden=True, cls=TrackCommand)
-@click.argument('state_file', required=False)
+@click.argument('state_file', required=True)
 @click.option('--host', default='localhost', show_default=True, help='The host to bind to.')
 @click.option('--port', default=8000, show_default=True, help='The port to bind to.', type=int)
 def read_only(host, port, state_file=None, **kwargs):
