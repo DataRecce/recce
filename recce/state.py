@@ -46,6 +46,11 @@ RECCE_CLOUD_PASSWORD_MISSING = ErrorMessage(
     hint_message='Please provide a password with the option "--password <compress-password>"'
 )
 
+RECCE_API_KEY_MISSING = ErrorMessage(
+    error_message='No Recc API key is provided',
+    hint_message='Please login to Recce Cloud and copy the token from the settings page'
+)
+
 
 def s3_sse_c_headers(password: str) -> Dict[str, str]:
     hashed_password = sha256()
@@ -715,3 +720,47 @@ class RecceCloudStateManager:
             return self._purge_state_from_s3_bucket()
         else:
             return self._purge_state_from_recce_cloud()
+
+
+class RecceShareStateManager:
+    error_message: str
+    hint_message: str
+
+    # It is a class to share state file on Recce Cloud.
+
+    def __init__(self, cloud_options: Optional[Dict[str, str]] = None):
+        self.cloud_options = cloud_options or {}
+        self.error_message = None
+        self.hint_message = None
+
+        if not self.cloud_options.get('api_key'):
+            raise Exception(RECCE_API_KEY_MISSING.error_message)
+
+    def verify(self) -> bool:
+        if self.cloud_options.get('token') is None:
+            self.error_message = RECCE_CLOUD_TOKEN_MISSING.error_message
+            self.hint_message = RECCE_CLOUD_TOKEN_MISSING.hint_message
+            return False
+        if self.cloud_options.get('password') is None:
+            self.error_message = RECCE_CLOUD_PASSWORD_MISSING.error_message
+            self.hint_message = RECCE_CLOUD_PASSWORD_MISSING.hint_message
+            return False
+        if self.cloud_options.get('api_key') is None:
+            self.error_message = RECCE_API_KEY_MISSING.error_message
+            self.hint_message = RECCE_API_KEY_MISSING.hint_message
+            return False
+        return True
+
+    @property
+    def error_and_hint(self) -> (Union[str, None], Union[str, None]):
+        return self.error_message, self.hint_message
+
+    def share_state(self, file_name: str, state: RecceState) -> Union[str, None]:
+        import tempfile
+
+        with tempfile.NamedTemporaryFile() as tmp:
+            state.to_file(tmp.name, file_type=SupportedFileTypes.FILE)
+            response = RecceCloud(token=self.cloud_options.get('token')).share_state(file_name, open(tmp.name, 'rb'))
+            if response.get('status') != 'success':
+                return f"Failed to share the state file. Reason: {response.get('message')}"
+        return response.get('share_url')

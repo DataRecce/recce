@@ -9,9 +9,10 @@ import uvicorn
 from recce import event
 from recce.artifact import upload_dbt_artifacts, download_dbt_artifacts
 from recce.config import RecceConfig, RECCE_CONFIG_FILE, RECCE_ERROR_LOG_FILE
+from recce.event import get_recce_api_key, update_user_profile
 from recce.git import current_branch, current_default_branch
 from recce.run import cli_run, check_github_ci_env
-from recce.state import RecceStateLoader, RecceCloudStateManager
+from recce.state import RecceStateLoader, RecceCloudStateManager, RecceShareStateManager
 from recce.summary import generate_markdown_summary
 from recce.util.logger import CustomFormatter
 from recce.util.recce_cloud import RecceCloudException, get_recce_cloud_onboarding_state
@@ -749,6 +750,66 @@ def github(**kwargs):
 def artifact(**kwargs):
     from recce.github import recce_ci_artifact
     return recce_ci_artifact(**kwargs)
+
+
+@cloud.command(cls=TrackCommand)
+@click.argument('state_file', type=click.Path(exists=True))
+@click.option('--cloud-token', help='The token used by Recce Cloud.', type=click.STRING,
+              envvar='GITHUB_TOKEN')
+@click.option('--state-file-host', help='The host to fetch the state file from.', type=click.STRING,
+              envvar='RECCE_STATE_FILE_HOST', default='', hidden=True)
+@click.option('--password', '-p', help='The password to encrypt the state file in cloud.', type=click.STRING,
+              envvar='RECCE_STATE_PASSWORD')
+@click.option('--api-key', help='The token used by Recce Cloud API.', type=click.STRING,
+              envvar='RECCE_API_KEY')
+@add_options(recce_options)
+def share(state_file, **kwargs):
+    """
+        Share the state file
+    """
+    from rich.console import Console
+
+    handle_debug_flag(**kwargs)
+    cloud_options = {
+        'host': kwargs.get('state_file_host'),
+        'token': kwargs.get('cloud_token'),
+        'password': kwargs.get('password'),
+        'api_key': kwargs.get('api_key'),
+    }
+
+    console = Console()
+
+    # read or input the api key
+    api_key = cloud_options.get('api_key') if cloud_options.get('api_key') else get_recce_api_key()
+    if api_key is None:
+        console.print("Please login Recce Cloud and copy the API key from the setting page.\n"
+                      "You can also edit it in the recce profiles yaml file later.")
+        api_key = click.prompt('Your Recce API key', type=str, hide_input=True, show_default=False)
+        update_user_profile({'recce_api_key': api_key})
+
+    cloud_options['api_key'] = api_key
+
+    # load local state
+    state_loader = create_state_loader(review_mode=True, cloud_mode=False, state_file=state_file,
+                                       cloud_options=cloud_options)
+
+    if not state_loader.verify():
+        error, hint = state_loader.error_and_hint
+        console.print(f"[[red]Error[/red]] {error}")
+        console.print(f"{hint}")
+        exit(1)
+
+    # check if state exists in cloud
+    state_manager = RecceShareStateManager(cloud_options)
+    if not state_manager.verify():
+        error, hint = state_manager.error_and_hint
+        console.print(f"[[red]Error[/red]] {error}")
+        console.print(f"{hint}")
+        exit(1)
+
+    # check if state exists in cloud
+    state_file_name = os.path.basename(state_file)
+    console.print(f'Shared Link: {state_manager.share_state(state_file_name, state_loader.state)}')
 
 
 @cli.command(hidden=True, cls=TrackCommand)
