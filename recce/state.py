@@ -737,17 +737,13 @@ class RecceShareStateManager:
             raise Exception(RECCE_API_KEY_MISSING.error_message)
 
     def verify(self) -> bool:
-        if self.cloud_options.get('token') is None:
-            self.error_message = RECCE_CLOUD_TOKEN_MISSING.error_message
-            self.hint_message = RECCE_CLOUD_TOKEN_MISSING.hint_message
+        if self.cloud_options.get('api_key') is None:
+            self.error_message = RECCE_API_KEY_MISSING.error_message
+            self.hint_message = RECCE_API_KEY_MISSING.hint_message
             return False
         if self.cloud_options.get('password') is None:
             self.error_message = RECCE_CLOUD_PASSWORD_MISSING.error_message
             self.hint_message = RECCE_CLOUD_PASSWORD_MISSING.hint_message
-            return False
-        if self.cloud_options.get('api_key') is None:
-            self.error_message = RECCE_API_KEY_MISSING.error_message
-            self.hint_message = RECCE_API_KEY_MISSING.hint_message
             return False
         return True
 

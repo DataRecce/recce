@@ -752,7 +752,7 @@ def artifact(**kwargs):
     return recce_ci_artifact(**kwargs)
 
 
-@cloud.command(cls=TrackCommand)
+@cli.command(cls=TrackCommand)
 @click.argument('state_file', type=click.Path(exists=True))
 @click.option('--cloud-token', help='The token used by Recce Cloud.', type=click.STRING,
               envvar='GITHUB_TOKEN')
