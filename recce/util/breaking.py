@@ -198,7 +198,7 @@ def _diff_scope(
 
     # joins clause: Reference the source columns
     if new_select.args.get('joins'):
-        joins = new_select.get('joins')
+        joins = new_select.args.get('joins')
         for join in joins:
             if isinstance(join, exp.Join):
                 for ref_column in join.find_all(exp.Column):
@@ -255,8 +255,9 @@ def parse_change_category(old_sql, new_sql, old_schema=None, new_schema=None, di
             if schema:
                 try:
                     exp = optimize(exp, schema=schema, dialect=dialect)
-                except Exception:
+                except Exception as e:
                     # cannot optimize, skip it.
+                    _debug(e)
                     pass
             return exp
 

@@ -7,7 +7,7 @@ from recce.util.breaking import parse_change_category, ColumnChangeStatus
 
 SOURCE_SCHEMA = {
     'Customers': {
-        'id': 'int',
+        'customer_id': 'int',
         'a': 'int',
         'b': 'int',
         'c': 'int',
@@ -84,7 +84,7 @@ def is_non_breaking_change(
 
 
 class BreakingChangeTest(unittest.TestCase):
-    def test_non_breaking_identical(self):
+    def test_identical(self):
         original_sql = """
         select
             a, b
@@ -96,10 +96,18 @@ class BreakingChangeTest(unittest.TestCase):
             b
         from Customers
         """
+        modified_sql2 = """
+        --- thie is comment
+        select
+            a,
+            b
+        from Customers
+        """
         assert is_non_breaking_change(original_sql, modified_sql, {})
+        assert is_non_breaking_change(original_sql, modified_sql2, {})
         assert is_non_breaking_change(original_sql, textwrap.dedent(modified_sql), {})
 
-    def test_non_breaking_add_column(self):
+    def test_add_column(self):
         original_sql = """
         select
             a
@@ -110,7 +118,20 @@ class BreakingChangeTest(unittest.TestCase):
             a, b
         from Customers
         """
+        modified_sql2 = """
+        select
+            a, b as a2
+        from Customers
+        """
+        modified_sql3 = """
+        select
+            a,
+            case when a > 100 then 1 else 0 end as a2
+        from Customers
+        """
         assert is_non_breaking_change(original_sql, modified_sql, {'b': 'added'})
+        assert is_non_breaking_change(original_sql, modified_sql2, {'a2': 'added'})
+        assert is_non_breaking_change(original_sql, modified_sql3, {'a2': 'added'})
 
         # by cte
         original_sql = """
@@ -135,7 +156,7 @@ class BreakingChangeTest(unittest.TestCase):
         """
         assert is_non_breaking_change(original_sql, modified_sql, {'b': 'added'})
 
-    def test_partial_breaking_rename_column(self):
+    def test_rename_column(self):
         original_sql = """
         select
             a
@@ -173,7 +194,7 @@ class BreakingChangeTest(unittest.TestCase):
         """
         assert is_partial_breaking_change(original_sql, modified_sql, {'a': 'removed', 'a1': 'added', })
 
-    def test_partial_breaking_remove_column(self):
+    def test_remove_column(self):
         original_sql = """
         select
             a,
@@ -187,7 +208,7 @@ class BreakingChangeTest(unittest.TestCase):
         """
         assert is_partial_breaking_change(original_sql, modified_sql, {'a': 'removed'})
 
-    def test_non_breaking_change_reorder(self):
+    def test_reorder_column(self):
         original_sql = """
         select
             a,
@@ -202,56 +223,151 @@ class BreakingChangeTest(unittest.TestCase):
         """
         assert is_non_breaking_change(original_sql, modified_sql)
 
-    def test_non_breaking_add_column_by_case_when(self):
+    def test_modify_column(self):
         original_sql = """
+        select
+            case when a > 100 then 1 else 0 end as a2,
+        from Customers
+        """
+        modified_sql = """
+        select
+            case when a > 101 then 1 else 0 end as a2,
+        from Customers
+        """
+        assert is_partial_breaking_change(original_sql, modified_sql, {'a2': 'modified'})
+
+    def test_change_column_in_cte(self):
+        original = """
+        with A as (
+            select
+                customer_id,
+                a
+            from Customers
+        ),
+        B as (
+            select
+                customer_id,
+                count(*) as order_count
+            from Orders
+            group by 1
+        )
+        select * from A join B on A.customer_id = B.customer_id
+        """
+        modified1 = """
+        with A as (
+            select
+                customer_id,
+                a
+            from Customers
+        ),
+        B as (
+            select
+                customer_id,
+                count(*) as order_count,
+                sum(w) as order_amount,
+            from Orders
+            group by 1
+        )
+        select * from A join B on A.customer_id = B.customer_id
+        """
+        modified2 = """
+        with A as (
+            select
+                customer_id,
+                a
+            from Customers
+        ),
+        B as (
+            select
+                customer_id
+            from Orders
+            group by 1
+        )
+        select * from A join B on A.customer_id = B.customer_id
+        """
+        modified3 = """
+        with A as (
+            select
+                customer_id,
+                a
+            from Customers
+        ),
+        B as (
+            select
+                customer_id,
+                count(w) as order_count,
+            from Orders
+            group by 1
+        )
+        select * from A join B on A.customer_id = B.customer_id
+        """
+        assert is_non_breaking_change(original, modified1, {'order_amount': 'added'})
+        assert is_partial_breaking_change(original, modified2, {'order_count': 'removed'})
+        assert is_partial_breaking_change(original, modified3, {'order_count': 'modified'})
+
+    def test_cte_alias(self):
+        original = """
+        with O as (
+            select
+                customer_id,
+                count(*) as order_count
+            from Orders
+            group by 1
+        )
+        select
+            C.a,
+            C.a as a2,
+            C.c,
+            O.*
+        from Customers as C join O on C.customer_id = O.customer_id
+        """
+        modified = """
+        with O as (
+            select
+                customer_id,
+                count(*) as order_count,
+                sum(w) as order_amount,
+            from Orders
+            group by 1
+        )
+        select
+            C.a,
+            C.a + 1 as a2,
+            C.b,
+            O.*
+        from Customers as C join O on C.customer_id = O.customer_id
+        """
+        assert is_partial_breaking_change(
+            original, modified,
+            {
+                'a2': 'modified',
+                'b': 'added',
+                'c': 'removed',
+                'order_amount': 'added'
+            })
+
+    def test_where_change(self):
+        no_where = """
         select
             a
         from Customers
         """
-        modified_sql = """
-        select
-            a,
-            case when a > 100 then 1 else 0 end as b
-        from Customers
-        """
-        assert is_non_breaking_change(original_sql, modified_sql)
-
-    def test_partial_breaking_change_column_cte(self):
-        original_sql = """
-        with cte as (
-        select
-            a,
-            case when a > 100 then 1 else 0 end as b
-        from Customers
-        )
-        select cte.a, cte.b from cte
-        """
-        modified_sql = """
-        with cte as (
-        select
-            a,
-            case when a > 200 then 1 else 0 end as b
-        from Customers
-        )
-        select cte.a, cte.b from cte
-        """
-        assert is_partial_breaking_change(original_sql, modified_sql, {'b': 'modified'})
-
-    def test_breaking_add_filter(self):
-        original_sql = """
-        select
-            a
-        from Customers
-        """
-        modified_sql = """
+        with_where = """
         select
             a
         from Customers
         where a > 100
         """
-        assert is_breaking_change(original_sql, modified_sql)
+        with_where2 = """
+        select
+            a
+        from Customers
+        where a > 101
+        """
+        assert is_breaking_change(no_where, with_where)
+        assert is_breaking_change(with_where, with_where2)
 
-    def test_breaking_add_filter_local(self):
+    def test_where_ref_source(self):
         original_sql = """
         select
             a
@@ -296,7 +412,7 @@ class BreakingChangeTest(unittest.TestCase):
         # The 'b' in where clause is use the 'Customers.b' not the 'a + 1 as b'
         assert is_partial_breaking_change(original_sql, modified_sql)
 
-    def test_breaking_change_filter(self):
+    def test_where_source_column_change(self):
         original_sql = """
         with cte as (
             select
@@ -315,19 +431,47 @@ class BreakingChangeTest(unittest.TestCase):
         """
         assert is_breaking_change(original_sql, modified_sql)
 
-    def test_breaking_add_limit(self):
-        original_sql = """
+    def test_limit(self):
+        no_limit = """
         select
             a
         from Customers
         """
-        modified_sql = """
+        with_limit = """
         select
             a
         from Customers
         limit 100
         """
-        assert is_breaking_change(original_sql, modified_sql)
+        with_limit2 = """
+        select
+            a
+        from Customers
+        limit 101
+        """
+        assert is_breaking_change(no_limit, with_limit)
+        assert is_breaking_change(with_limit, with_limit2)
+
+    def test_offset(self):
+        no_offset = """
+        select
+            a
+        from Customers
+        """
+        with_offset = """
+        select
+            a
+        from Customers
+        offset 1
+        """
+        with_offset2 = """
+        select
+            a
+        from Customers
+        offset 10
+        """
+        assert is_breaking_change(no_offset, with_offset)
+        assert is_breaking_change(with_offset, with_offset2)
 
     def test_cte_with_select_star(self):
         original_sql = """
@@ -364,19 +508,18 @@ class BreakingChangeTest(unittest.TestCase):
         assert not is_breaking_change(original_sql, modified_sql)
 
     def test_non_sql(self):
-        original_sql = """
+        malformed1 = """
         select
             a
         from
         """
 
-        malformed_sql = """
+        malformed2 = """
         selects
             a
         from Customers
         """
-
-        assert is_breaking_change(original_sql, malformed_sql)
+        assert is_breaking_change(malformed1, malformed2)
 
     def test_unnest_function(self):
         original_sql = """
