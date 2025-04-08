@@ -123,12 +123,35 @@ def _diff_scope(
     old_select = old_scope.expression  # type: exp.Select
     new_select = new_scope.expression  # type: exp.Select
 
+    # check if the upstream scopes is the same and not breaking
+    if old_scope.sources.keys() != new_scope.sources.keys():
+        return BREAKING
+    for source_name, source in new_scope.sources.items():
+        if scope_changes_map.get(source) is not None:
+            change_category = scope_changes_map[source]
+            if change_category.category == 'breaking':
+                return BREAKING
+
+    # check if non-select expressions are the same
     for arg_key in old_select.args.keys() | new_select.args.keys():
         if arg_key in ['expressions', 'with']:
             continue
 
         if old_select.args.get(arg_key) != new_select.args.get(arg_key):
             return BREAKING
+
+    def source_column_change_status(ref_column: exp.Column) -> ColumnChangeStatus | None:
+        table_name = ref_column.table
+        column_name = ref_column.name
+        source = new_scope.sources.get(table_name, None)  # type: exp.Table | Scope
+        if not isinstance(source, Scope):
+            return None
+
+        ref_change_category = scope_changes_map.get(source)
+        if ref_change_category is None:
+            return None
+
+        return ref_change_category.changed_columns.get(column_name)
 
     # selects
     old_column_map = {projection.alias_or_name: projection for projection in old_select.selects}
@@ -165,52 +188,56 @@ def _diff_scope(
         else:
             ref_columns = new_column.find_all(exp.Column)
             for ref_column in ref_columns:
-                table_name = ref_column.table
-                column_name = ref_column.name
-                source = new_scope.sources.get(table_name, None)  # type: exp.Table | Scope
-                if not isinstance(source, Scope):
-                    continue
+                if source_column_change_status(ref_column) is not None:
+                    result.category = 'partial_breaking'
+                    changed_columns[column_name] = 'modified'
 
-                change_category = scope_changes_map.get(source)
-                if not change_category:
-                    continue
+    def selected_column_change_status(ref_column: exp.Column) -> ColumnChangeStatus | None:
+        column_name = ref_column.name
+        return changed_columns.get(column_name)
 
-                if change_category.category == 'breaking':
-                    return BREAKING
-
-                if change_category.category == 'partial_breaking':
-                    if change_category.changed_columns.get(column_name) is not None:
-                        result.category = 'partial_breaking'
-                        changed_columns[column_name] = 'modified'
-
-    # where
-    for arg_key in new_select.args.keys():
-        arg_value = new_select.args[arg_key]
-
-        if arg_key in ['expressions', 'with']:
-            continue
-
-        if arg_value is None:
-            continue
-
-        if isinstance(arg_value, exp.Expression):
-            for ref_column in arg_value.find_all(exp.Column):
-                table_name = ref_column.table
-                column_name = ref_column.name
-                source = new_scope.sources.get(table_name, None)  # type: exp.Table | Scope
-                if not isinstance(source, Scope):
-                    continue
-
-                change_category = scope_changes_map.get(source)
-                if not change_category:
-                    continue
-
-                if change_category.category == 'breaking':
-                    return BREAKING
-
-                if change_category.category == 'partial_breaking':
-                    if change_category.changed_columns.get(column_name) is not None:
+    # joins clause: Reference the source columns
+    if new_select.args.get('joins'):
+        joins = new_select.get('joins')
+        for join in joins:
+            if isinstance(join, exp.Join):
+                for ref_column in join.find_all(exp.Column):
+                    if source_column_change_status(ref_column) is not None:
                         return BREAKING
+
+    # where caluses: Reference the source columns
+    if new_select.args.get('where'):
+        where = new_select.args.get('where')
+        if isinstance(where, exp.Where):
+            for ref_column in where.find_all(exp.Column):
+                if source_column_change_status(ref_column) is not None:
+                    return BREAKING
+
+    # group by clause: Reference the source columns, column index
+    if new_select.args.get('group'):
+        group = new_select.args.get('group')
+        if isinstance(group, exp.Group):
+            for ref_column in group.find_all(exp.Column):
+                if source_column_change_status(ref_column) is not None:
+                    return BREAKING
+
+    # having clause: Reference the selected columns
+    if new_select.args.get('having'):
+        having = new_select.args.get('having')
+        if isinstance(having, exp.Having):
+            for ref_column in having.find_all(exp.Column):
+                if selected_column_change_status(ref_column) is not None:
+                    return BREAKING
+
+    # order by clause: Reference the selected columns
+    if new_select.args.get('order'):
+        order = new_select.args.get('order')
+        if isinstance(order, exp.Order):
+            for ref_column in order.find_all(exp.Column):
+                if source_column_change_status(ref_column) is not None:
+                    return BREAKING
+                if selected_column_change_status(ref_column) is not None:
+                    return BREAKING
 
     result.changed_columns = changed_columns
     return result
