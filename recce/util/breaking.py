@@ -186,6 +186,10 @@ def _diff_scope(
     # where
     for arg_key in new_select.args.keys():
         arg_value = new_select.args[arg_key]
+
+        if arg_key in ['expressions', 'with']:
+            continue
+
         if arg_value is None:
             continue
 

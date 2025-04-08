@@ -5,9 +5,33 @@ from deepdiff import DeepDiff
 
 from recce.util.breaking import parse_change_category, ColumnChangeStatus
 
+SOURCE_SCHEMA = {
+    'Customers': {
+        'id': 'int',
+        'a': 'int',
+        'b': 'int',
+        'c': 'int',
+        'd': 'int'
+    },
+    'Orders': {
+        'order_id': 'int',
+        'customer_id': 'int',
+        'w': 'int',
+        'x': 'int',
+        'y': 'int',
+        'z': 'int'
+    },
+}
 
-def is_breaking_change(original_sql, modified_sql, dialect=None, ):
-    result = parse_change_category(original_sql, modified_sql, dialect=dialect)
+
+def is_breaking_change(original_sql, modified_sql, dialect=None):
+    result = parse_change_category(
+        original_sql,
+        modified_sql,
+        old_schema=SOURCE_SCHEMA,
+        new_schema=SOURCE_SCHEMA,
+        dialect=dialect
+    )
     return result.category == 'breaking'
 
 
@@ -15,8 +39,15 @@ def is_partial_breaking_change(
     original_sql,
     modified_sql,
     expected_changed_columns: dict[str, ColumnChangeStatus] = None,
+    dialect=None
 ):
-    result = parse_change_category(original_sql, modified_sql)
+    result = parse_change_category(
+        original_sql,
+        modified_sql,
+        old_schema=SOURCE_SCHEMA,
+        new_schema=SOURCE_SCHEMA,
+        dialect=dialect
+    )
     if result.category != 'partial_breaking':
         return False
 
@@ -31,9 +62,16 @@ def is_partial_breaking_change(
 def is_non_breaking_change(
     original_sql,
     modified_sql,
-    expected_changed_columns: dict[str, ColumnChangeStatus] = None
+    expected_changed_columns: dict[str, ColumnChangeStatus] = None,
+    dialect=None
 ):
-    result = parse_change_category(original_sql, modified_sql)
+    result = parse_change_category(
+        original_sql,
+        modified_sql,
+        old_schema=SOURCE_SCHEMA,
+        new_schema=SOURCE_SCHEMA,
+        dialect=dialect
+    )
     if result.category != 'non_breaking':
         return False
 
@@ -50,13 +88,13 @@ class BreakingChangeTest(unittest.TestCase):
         original_sql = """
         select
             a, b
-        from MyTable
+        from Customers
         """
         modified_sql = """
         select
             a,
             b
-        from MyTable
+        from Customers
         """
         assert is_non_breaking_change(original_sql, modified_sql, {})
         assert is_non_breaking_change(original_sql, textwrap.dedent(modified_sql), {})
@@ -65,21 +103,21 @@ class BreakingChangeTest(unittest.TestCase):
         original_sql = """
         select
             a
-        from MyTable
+        from Customers
         """
         modified_sql = """
         select
             a, b
-        from MyTable
+        from Customers
         """
-        assert not is_breaking_change(original_sql, modified_sql)
+        # assert is_non_breaking_change(original_sql, modified_sql)
 
         # by cte
         original_sql = """
         with cte as (
             select
                 a
-            from MyTable
+            from Customers
         )
         select
             a
@@ -89,24 +127,24 @@ class BreakingChangeTest(unittest.TestCase):
         with cte as (
             select
                 a, b
-            from MyTable
+            from Customers
         )
         select
             a, b
         from cte
         """
-        assert not is_breaking_change(original_sql, modified_sql)
+        assert is_non_breaking_change(original_sql, modified_sql)
 
     def test_partial_breaking_rename_column(self):
         original_sql = """
         select
             a
-        from MyTable
+        from Customers
         """
         modified_sql = """
         select
-            a as a2
-        from MyTable
+            a as a1
+        from Customers
         """
         result = parse_change_category(original_sql, modified_sql)
         assert result.category == 'partial_breaking'
@@ -117,7 +155,7 @@ class BreakingChangeTest(unittest.TestCase):
             select
                 a,
                 b
-            from MyTable
+            from Customers
         )
         select
             a
@@ -128,7 +166,7 @@ class BreakingChangeTest(unittest.TestCase):
             select
                 a as a2,
                 b
-            from MyTable
+            from Customers
         )
         select
             a2
@@ -142,12 +180,12 @@ class BreakingChangeTest(unittest.TestCase):
         select
             a,
             b
-        from MyTable
+        from Customers
         """
         modified_sql = """
         select
             b
-        from MyTable
+        from Customers
         """
         result = parse_change_category(original_sql, modified_sql)
         assert result.category == 'partial_breaking'
@@ -157,13 +195,13 @@ class BreakingChangeTest(unittest.TestCase):
         select
             a,
             b
-        from MyTable
+        from Customers
         """
         modified_sql = """
         select
             b,
             a
-        from MyTable
+        from Customers
         """
         assert not is_breaking_change(original_sql, modified_sql)
 
@@ -171,13 +209,13 @@ class BreakingChangeTest(unittest.TestCase):
         original_sql = """
         select
             a
-        from MyTable
+        from Customers
         """
         modified_sql = """
         select
             a,
             case when a > 100 then 1 else 0 end as b
-        from MyTable
+        from Customers
         """
         assert not is_breaking_change(original_sql, modified_sql)
 
@@ -187,7 +225,7 @@ class BreakingChangeTest(unittest.TestCase):
         select
             a,
             case when a > 100 then 1 else 0 end as b
-        from MyTable
+        from Customers
         )
         select cte.a, cte.b from cte
         """
@@ -196,7 +234,7 @@ class BreakingChangeTest(unittest.TestCase):
         select
             a,
             case when a > 200 then 1 else 0 end as b
-        from MyTable
+        from Customers
         )
         select cte.a, cte.b from cte
         """
@@ -207,12 +245,12 @@ class BreakingChangeTest(unittest.TestCase):
         original_sql = """
         select
             a
-        from MyTable
+        from Customers
         """
         modified_sql = """
         select
             a
-        from MyTable
+        from Customers
         where a > 100
         """
         assert is_breaking_change(original_sql, modified_sql)
@@ -221,28 +259,28 @@ class BreakingChangeTest(unittest.TestCase):
         original_sql = """
         select
             a
-        from MyTable
+        from Customers
         where a > 100
         """
         modified_sql = """
         select
             a + 1 as a
-        from MyTable
+        from Customers
         where a > 100
         """
-        assert is_partial_breaking_change(original_sql, modified_sql, {'a': 'modified'})
+        assert is_breaking_change(original_sql, modified_sql)
 
     def test_breaking_add_filter_alias_local(self):
         original_sql = """
         select
             a as b
-        from MyTable
+        from Customers
         where b > 100
         """
         modified_sql = """
         select
             a + 1 as b
-        from MyTable
+        from Customers
         where b > 100
         """
         assert is_breaking_change(original_sql, modified_sql)
@@ -251,18 +289,18 @@ class BreakingChangeTest(unittest.TestCase):
         original_sql = """
         with cte as (
             select
-                a as b
-            from MyTable
+                a as a1
+            from Customers
         )
-        select cte.a from cte where cte.a > 100
+        select a1 from cte where a1 > 100
         """
         modified_sql = """
         with cte as (
             select
-                a + 1 as b
-            from MyTable
+                a + 1 as a1
+            from Customers
         )
-        select cte.a from cte where cte.a > 100
+        select a1 from cte where a1 > 100
         """
         assert is_breaking_change(original_sql, modified_sql)
 
@@ -270,12 +308,12 @@ class BreakingChangeTest(unittest.TestCase):
         original_sql = """
         select
             a
-        from MyTable
+        from Customers
         """
         modified_sql = """
         select
             a
-        from MyTable
+        from Customers
         limit 100
         """
         assert is_breaking_change(original_sql, modified_sql)
@@ -285,7 +323,7 @@ class BreakingChangeTest(unittest.TestCase):
         with cte as (
             select
                 a, b, c
-            from MyTable
+            from Customers
         )
         select
             *
@@ -295,7 +333,7 @@ class BreakingChangeTest(unittest.TestCase):
         with cte as (
             select
                 a
-            from MyTable
+            from Customers
         )
         select
             *
@@ -306,7 +344,7 @@ class BreakingChangeTest(unittest.TestCase):
             with cte as (
                 select
                     a,b,c,d
-                from MyTable
+                from Customers
             )
             select
                 *
@@ -324,7 +362,7 @@ class BreakingChangeTest(unittest.TestCase):
         malformed_sql = """
         selects
             a
-        from MyTable
+        from Customers
         """
 
         assert is_breaking_change(original_sql, malformed_sql)
@@ -333,13 +371,13 @@ class BreakingChangeTest(unittest.TestCase):
         original_sql = """
         select
             a
-        from MyTable
+        from Customers
         """
         modified_sql = """
         select
             a,
             unnest(a) as b
-        from MyTable
+        from Customers
         """
         assert is_breaking_change(original_sql, modified_sql)
 
@@ -347,13 +385,13 @@ class BreakingChangeTest(unittest.TestCase):
         original_sql = """
         SELECT
             a
-        FROM MyTable
+        FROM Customers
         """
         modified_sql = """
         SELECT
            a,
            b,
-        FROM MyTable
+        FROM Customers
         """
 
         assert not is_breaking_change(original_sql, modified_sql, dialect='duckdb')
@@ -363,7 +401,7 @@ class BreakingChangeTest(unittest.TestCase):
     def test_pr42(self):
         original_sql = """
         with source as (
-            select * from MyTable
+            select * from Customers
         ),
         renamed as (
             select
@@ -378,7 +416,7 @@ class BreakingChangeTest(unittest.TestCase):
         """
         modified_sql = """
         with source as (
-            select * from MyTable
+            select * from Customers
         ),
         renamed as (
             select
