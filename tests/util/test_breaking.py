@@ -260,6 +260,20 @@ class BreakingChangeTest(unittest.TestCase):
         select
             a
         from Customers
+        where b > 100
+        """
+        modified_sql = """
+        select
+            a + 1 as a
+        from Customers
+        where b > 100
+        """
+        assert is_partial_breaking_change(original_sql, modified_sql)
+
+        original_sql = """
+        select
+            a
+        from Customers
         where a > 100
         """
         modified_sql = """
@@ -268,9 +282,9 @@ class BreakingChangeTest(unittest.TestCase):
         from Customers
         where a > 100
         """
-        assert is_breaking_change(original_sql, modified_sql)
+        # The 'a' in where clause is use the 'Customers.a' not the 'a + 1 as a'
+        assert is_partial_breaking_change(original_sql, modified_sql)
 
-    def test_breaking_add_filter_alias_local(self):
         original_sql = """
         select
             a as b
@@ -283,7 +297,8 @@ class BreakingChangeTest(unittest.TestCase):
         from Customers
         where b > 100
         """
-        assert is_breaking_change(original_sql, modified_sql)
+        # The 'b' in where clause is use the 'Customers.b' not the 'a + 1 as b'
+        assert is_partial_breaking_change(original_sql, modified_sql)
 
     def test_breaking_change_filter(self):
         original_sql = """

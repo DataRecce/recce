@@ -194,9 +194,23 @@ def _diff_scope(
             continue
 
         if isinstance(arg_value, exp.Expression):
-            for column in arg_value.find_all(exp.Column):
-                if changed_columns.get(column.name) is not None:
+            for ref_column in arg_value.find_all(exp.Column):
+                table_name = ref_column.table
+                column_name = ref_column.name
+                source = new_scope.sources.get(table_name, None)  # type: exp.Table | Scope
+                if not isinstance(source, Scope):
+                    continue
+
+                change_category = scope_changes_map.get(source)
+                if not change_category:
+                    continue
+
+                if change_category.category == 'breaking':
                     return BREAKING
+
+                if change_category.category == 'partial_breaking':
+                    if change_category.changed_columns.get(column_name) is not None:
+                        return BREAKING
 
     result.changed_columns = changed_columns
     return result
