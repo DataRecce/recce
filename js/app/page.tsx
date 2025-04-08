@@ -19,6 +19,8 @@ import {
   HStack,
   extendTheme,
   useToast,
+  Grid,
+  GridItem,
 } from "@chakra-ui/react";
 import React, { ReactNode, useLayoutEffect } from "react";
 import { QueryClientProvider, useQuery } from "@tanstack/react-query";
@@ -56,6 +58,7 @@ import { Filename } from "@/components/app/Filename";
 import { StateSynchronizer } from "@/components/app/StateSynchronizer";
 import { useRecceServerFlag } from "@/lib/hooks/useRecceServerFlag";
 import { useRecceInstanceContext } from "@/lib/hooks/RecceInstanceContext";
+import { ShareSwitch } from "@/components/app/StateSharing";
 
 const RouteAlwaysMount = ({ children, path }: { children: ReactNode; path: string }) => {
   const [match] = useRoute(path);
@@ -289,7 +292,18 @@ function NavBar() {
             );
           })}
         </Box>
-        {!isLoading && !isDemoSite && <Filename />}
+        {!isLoading && !isDemoSite && (
+          <Grid templateColumns="repeat(5, 1fr)">
+            <GridItem colSpan={1} />
+            <GridItem colSpan={1}>
+              <Filename />
+            </GridItem>
+            <GridItem colSpan={3}>
+              <ShareSwitch />
+            </GridItem>
+          </Grid>
+        )}
+        {/* {!isLoading && !isDemoSite && <Filename />} */}
         {!isLoading && (
           <Flex flex="1" justifyContent="right" alignItems="center" mr="8px">
             {cloudMode && <StateSynchronizer />}

@@ -25,7 +25,7 @@ from .core import load_context, default_context
 from .event import log_api_event, log_single_env_event
 from .exceptions import RecceException
 from .run import load_preset_checks
-from .state import RecceStateLoader
+from .state import RecceStateLoader, RecceShareStateManager
 
 logger = logging.getLogger('uvicorn')
 
@@ -35,6 +35,7 @@ class AppState:
     state_loader: Optional[RecceStateLoader] = None
     kwargs: Optional[dict] = None
     flag: Optional[dict] = None
+    auth_options: Optional[dict] = None
 
 
 @asynccontextmanager
@@ -504,6 +505,37 @@ async def sync_status(response: Response):
 
     response.status_code = 200
     return {"status": "idle"}
+
+
+class ShareStateOutput(BaseModel):
+    share_url: str
+
+
+@app.post("/api/share", response_model=ShareStateOutput)
+async def share_state():
+    """
+    Share the recce state to the external storage. (one-way sync)
+    """
+    app_state: AppState = app.state
+    state_manager = RecceShareStateManager(app_state.auth_options)
+    if not state_manager.verify():
+        error, hint = state_manager.error_and_hint
+        raise HTTPException(status_code=400, detail=f"Failed to share state: {error}. {hint}")
+
+    context = default_context()
+    state_loader = context.state_loader
+
+    file_name = 'recce_state.json'
+    if state_loader.state_file:
+        file_name = os.path.basename(state_loader.state_file)
+
+    state = state_loader.state
+    if state_loader.state is None:
+        state = context.export_state()
+
+    share_url = state_manager.share_state(file_name, state)
+
+    return ShareStateOutput(share_url=share_url)
 
 
 class VersionOut(BaseModel):

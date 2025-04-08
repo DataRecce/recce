@@ -201,6 +201,8 @@ def diff(sql, primary_keys: List[str] = None, keep_shape: bool = False, keep_equ
 @click.option('--host', default='localhost', show_default=True, help='The host to bind to.')
 @click.option('--port', default=8000, show_default=True, help='The port to bind to.', type=int)
 @click.option('--review', is_flag=True, help='Open the state file in the review mode.')
+@click.option('--api-token', help='The token used by Recce Cloud API.', type=click.STRING,
+              envvar='RECCE_API_TOKEN')
 @add_options(dbt_related_options)
 @add_options(sqlmesh_related_options)
 @add_options(recce_options)
@@ -257,6 +259,10 @@ def server(host, port, state_file=None, **kwargs):
         cloud_onboarding_state = get_recce_cloud_onboarding_state(kwargs.get('cloud_token'))
         flag['show_onboarding_guide'] = False if cloud_onboarding_state == 'completed' else True
 
+    auth_options = {}
+    api_token = kwargs.get('api_token') if kwargs.get('api_token') else get_recce_api_token()
+    auth_options['api_token'] = api_token
+
     # Check Single Environment Onboarding Mode if the review mode is False
     if not os.path.isdir(kwargs.get('target_base_path')) and is_review is False:
         # Mark as single env onboarding mode if user provides the target-path only
@@ -293,7 +299,7 @@ def server(host, port, state_file=None, **kwargs):
         console.print(f"[[red]Error[/red]] {message}")
         exit(1)
 
-    state = AppState(state_loader=state_loader, kwargs=kwargs, flag=flag)
+    state = AppState(state_loader=state_loader, kwargs=kwargs, flag=flag, auth_options=auth_options)
     app.state = state
 
     uvicorn.run(app, host=host, port=port, lifespan='on')
@@ -763,15 +769,12 @@ def share(state_file, **kwargs):
     """
     from rich.console import Console
 
-    handle_debug_flag(**kwargs)
-    cloud_options = {
-        'api_token': kwargs.get('api_token'),
-    }
-
     console = Console()
+    handle_debug_flag(**kwargs)
+    cloud_options = None
 
     # read or input the api token
-    api_token = cloud_options.get('api_token') if cloud_options.get('api_token') else get_recce_api_token()
+    api_token = kwargs.get('api_token') if kwargs.get('api_token') else get_recce_api_token()
     if api_token is None:
         console.print("Please login Recce Cloud and copy the API token from the setting page.\n"
                       f"{RECCE_CLOUD_API_HOST}/settings#tokens\n"
@@ -779,7 +782,7 @@ def share(state_file, **kwargs):
         api_token = click.prompt('Your Recce API token', type=str, hide_input=True, show_default=False)
         update_user_profile({'api_token': api_token})
 
-    cloud_options['api_token'] = api_token
+    auth_options = {'api_token': api_token}
 
     # load local state
     state_loader = create_state_loader(review_mode=True, cloud_mode=False, state_file=state_file,
@@ -792,7 +795,7 @@ def share(state_file, **kwargs):
         exit(1)
 
     # check if state exists in cloud
-    state_manager = RecceShareStateManager(cloud_options)
+    state_manager = RecceShareStateManager(auth_options)
     if not state_manager.verify():
         error, hint = state_manager.error_and_hint
         console.print(f"[[red]Error[/red]] {error}")

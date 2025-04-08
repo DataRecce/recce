@@ -71,3 +71,25 @@ export async function syncState(input: SyncStateInput): Promise<SyncStateRespons
   }
   throw new Error("Failed to sync state");
 }
+
+export interface ShareStateResponse {
+  share_url?: string;
+  error?: string;
+}
+
+export async function shareState(): Promise<ShareStateResponse> {
+  try {
+    const response = await axiosClient.post("/api/share");
+    return response.data as ShareStateResponse;
+  } catch (error) {
+    if (isAxiosError(error)) {
+      if (error.response && error.response.status === 400) {
+        const errorMessage = String(
+          (error as AxiosError<{ detail: string } | undefined, unknown>).response?.data?.detail,
+        );
+        return { error: errorMessage };
+      }
+    }
+  }
+  throw new Error("Failed to share state");
+}
