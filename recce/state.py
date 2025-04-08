@@ -46,9 +46,9 @@ RECCE_CLOUD_PASSWORD_MISSING = ErrorMessage(
     hint_message='Please provide a password with the option "--password <compress-password>"'
 )
 
-RECCE_API_KEY_MISSING = ErrorMessage(
-    error_message='No Recc API key is provided',
-    hint_message='Please login to Recce Cloud and copy the token from the settings page'
+RECCE_API_TOKEN_MISSING = ErrorMessage(
+    error_message='No Recc API token is provided',
+    hint_message='Please login to Recce Cloud and copy the API token from the settings page'
 )
 
 
@@ -734,9 +734,9 @@ class RecceShareStateManager:
         self.hint_message = None
 
     def verify(self) -> bool:
-        if self.cloud_options.get('api_key') is None:
-            self.error_message = RECCE_API_KEY_MISSING.error_message
-            self.hint_message = RECCE_API_KEY_MISSING.hint_message
+        if self.cloud_options.get('api_token') is None:
+            self.error_message = RECCE_API_TOKEN_MISSING.error_message
+            self.hint_message = RECCE_API_TOKEN_MISSING.hint_message
             return False
         return True
 
@@ -749,7 +749,7 @@ class RecceShareStateManager:
 
         with tempfile.NamedTemporaryFile() as tmp:
             state.to_file(tmp.name, file_type=SupportedFileTypes.FILE)
-            response = RecceCloud(token=self.cloud_options.get('token')).share_state(file_name, open(tmp.name, 'rb'))
+            response = RecceCloud(token=self.cloud_options.get('api_token')).share_state(file_name, open(tmp.name, 'rb'))
             if response.get('status') != 'success':
                 return f"Failed to share the state file. Reason: {response.get('message')}"
         return response.get('share_url')

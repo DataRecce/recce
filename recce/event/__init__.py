@@ -60,8 +60,8 @@ def get_user_id():
     return load_user_profile().get('user_id')
 
 
-def get_recce_api_key():
-    return load_user_profile().get('recce_api_key')
+def get_recce_api_token():
+    return load_user_profile().get('api_token')
 
 
 def is_anonymous_tracking():
