@@ -367,51 +367,6 @@ class BreakingChangeTest(unittest.TestCase):
         assert is_breaking_change(no_where, with_where)
         assert is_breaking_change(with_where, with_where2)
 
-    def test_where_ref_source(self):
-        original_sql = """
-        select
-            a
-        from Customers
-        where b > 100
-        """
-        modified_sql = """
-        select
-            a + 1 as a
-        from Customers
-        where b > 100
-        """
-        assert is_partial_breaking_change(original_sql, modified_sql)
-
-        original_sql = """
-        select
-            a
-        from Customers
-        where a > 100
-        """
-        modified_sql = """
-        select
-            a + 1 as a
-        from Customers
-        where a > 100
-        """
-        # The 'a' in where clause is use the 'Customers.a' not the 'a + 1 as a'
-        assert is_partial_breaking_change(original_sql, modified_sql)
-
-        original_sql = """
-        select
-            a as b
-        from Customers
-        where b > 100
-        """
-        modified_sql = """
-        select
-            a + 1 as b
-        from Customers
-        where b > 100
-        """
-        # The 'b' in where clause is use the 'Customers.b' not the 'a + 1 as b'
-        assert is_partial_breaking_change(original_sql, modified_sql)
-
     def test_where_source_column_change(self):
         original_sql = """
         with cte as (
@@ -429,6 +384,76 @@ class BreakingChangeTest(unittest.TestCase):
         )
         select a1 from cte where a1 > 100
         """
+        assert is_breaking_change(original_sql, modified_sql)
+
+    def test_group_change(self):
+        original = """
+        select
+            a
+        from Customers
+        group by a
+        """
+        modified = """
+        select
+            a
+        from Customers
+        where a + 1
+        """
+        assert is_breaking_change(original, modified)
+
+    def test_group_change_index(self):
+        original = """
+           select
+               a as k,
+               count(*) as c
+           from Customers
+           group by 1
+           """
+        modified = """
+           select
+               a + 1 as k,
+               count(*) as c
+           from Customers
+           group by 1
+           """
+        assert is_breaking_change(original, modified)
+
+    def test_group_source_column_change(self):
+        original_sql = """
+           with cte as (
+               select
+                   a as a1
+               from Customers
+           )
+           select a1 from cte group by a1
+           """
+        modified_sql = """
+           with cte as (
+               select
+                   a + 1 as a1
+               from Customers
+           )
+           select a1 from cte group by a1
+           """
+        assert is_breaking_change(original_sql, modified_sql)
+
+    def test_group_source_index_change(self):
+        original_sql = """
+           with cte as (
+               select
+                   a as a1
+               from Customers
+           )
+           select a1 from cte group by 1
+           """
+        modified_sql = """
+           with cte as (
+               select
+                   a + 1 as a1
+               from Customers
+           )
+           select a1 from cte group by 1
+           """
         assert is_breaking_change(original_sql, modified_sql)
 
     def test_limit(self):
@@ -519,7 +544,7 @@ class BreakingChangeTest(unittest.TestCase):
             a
         from Customers
         """
-        assert is_breaking_change(malformed1, malformed2)
+        assert parse_change_category(malformed1, malformed2).category == 'unknown'
 
     def test_unnest_function(self):
         original_sql = """

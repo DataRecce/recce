@@ -6,7 +6,7 @@ from sqlglot import parse_one, diff, Dialect
 from sqlglot.diff import Insert, Keep
 from sqlglot.optimizer import optimize, traverse_scope, Scope
 
-ChangeCategory = Literal['breaking', 'partial_breaking', 'non_breaking']
+ChangeCategory = Literal['breaking', 'partial_breaking', 'non_breaking', 'unknown']
 ColumnChangeStatus = Literal['added', 'removed', 'modified']
 VALID_EXPRESSIONS = (
     exp.Where,
@@ -42,8 +42,8 @@ class ChangeCategoryResult:
         self.changed_columns = changed_columns
 
 
-BREAKING = ChangeCategoryResult('breaking')
-NON_BREAKING = ChangeCategoryResult('non_breaking')
+CHANGE_CATEGORY_UNKNOWN = ChangeCategoryResult('unknown')
+CHANGE_CATEGORY_BREAKING = ChangeCategoryResult('breaking')
 
 
 def _debug(*args):
@@ -125,12 +125,12 @@ def _diff_scope(
 
     # check if the upstream scopes is the same and not breaking
     if old_scope.sources.keys() != new_scope.sources.keys():
-        return BREAKING
+        return CHANGE_CATEGORY_BREAKING
     for source_name, source in new_scope.sources.items():
         if scope_changes_map.get(source) is not None:
             change_category = scope_changes_map[source]
             if change_category.category == 'breaking':
-                return BREAKING
+                return CHANGE_CATEGORY_BREAKING
 
     # check if non-select expressions are the same
     for arg_key in old_select.args.keys() | new_select.args.keys():
@@ -138,7 +138,7 @@ def _diff_scope(
             continue
 
         if old_select.args.get(arg_key) != new_select.args.get(arg_key):
-            return BREAKING
+            return CHANGE_CATEGORY_BREAKING
 
     def source_column_change_status(ref_column: exp.Column) -> ColumnChangeStatus | None:
         table_name = ref_column.table
@@ -170,18 +170,18 @@ def _diff_scope(
         if old_column is None:
 
             if _has_udtf(new_column):
-                return BREAKING
+                return CHANGE_CATEGORY_BREAKING
 
             changed_columns[column_name] = 'added'
         elif new_column is None:
             if _has_udtf(old_column):
-                return BREAKING
+                return CHANGE_CATEGORY_BREAKING
 
             changed_columns[column_name] = 'removed'
             result.category = 'partial_breaking'
         elif old_column != new_column:
             if _has_udtf(old_column) and _has_udtf(new_column):
-                return BREAKING
+                return CHANGE_CATEGORY_BREAKING
 
             changed_columns[column_name] = 'modified'
             result.category = 'partial_breaking'
@@ -203,7 +203,7 @@ def _diff_scope(
             if isinstance(join, exp.Join):
                 for ref_column in join.find_all(exp.Column):
                     if source_column_change_status(ref_column) is not None:
-                        return BREAKING
+                        return CHANGE_CATEGORY_BREAKING
 
     # where caluses: Reference the source columns
     if new_select.args.get('where'):
@@ -211,7 +211,7 @@ def _diff_scope(
         if isinstance(where, exp.Where):
             for ref_column in where.find_all(exp.Column):
                 if source_column_change_status(ref_column) is not None:
-                    return BREAKING
+                    return CHANGE_CATEGORY_BREAKING
 
     # group by clause: Reference the source columns, column index
     if new_select.args.get('group'):
@@ -219,7 +219,7 @@ def _diff_scope(
         if isinstance(group, exp.Group):
             for ref_column in group.find_all(exp.Column):
                 if source_column_change_status(ref_column) is not None:
-                    return BREAKING
+                    return CHANGE_CATEGORY_BREAKING
 
     # having clause: Reference the selected columns
     if new_select.args.get('having'):
@@ -227,7 +227,7 @@ def _diff_scope(
         if isinstance(having, exp.Having):
             for ref_column in having.find_all(exp.Column):
                 if selected_column_change_status(ref_column) is not None:
-                    return BREAKING
+                    return CHANGE_CATEGORY_BREAKING
 
     # order by clause: Reference the selected columns
     if new_select.args.get('order'):
@@ -235,9 +235,9 @@ def _diff_scope(
         if isinstance(order, exp.Order):
             for ref_column in order.find_all(exp.Column):
                 if source_column_change_status(ref_column) is not None:
-                    return BREAKING
+                    return CHANGE_CATEGORY_BREAKING
                 if selected_column_change_status(ref_column) is not None:
-                    return BREAKING
+                    return CHANGE_CATEGORY_BREAKING
 
     result.changed_columns = changed_columns
     return result
@@ -265,12 +265,12 @@ def parse_change_category(old_sql, new_sql, old_schema=None, new_schema=None, di
         new_exp = _parse(new_sql, new_schema)
     except Exception as e:
         _debug(e)
-        return BREAKING
+        return CHANGE_CATEGORY_UNKNOWN
 
     old_scopes = traverse_scope(old_exp)
     new_scopes = traverse_scope(new_exp)
     if len(old_scopes) != len(new_scopes):
-        return BREAKING
+        return CHANGE_CATEGORY_BREAKING
 
     scope_changes_map = {}
     for old_scope, new_scope in zip(old_scopes, new_scopes):
@@ -280,4 +280,3 @@ def parse_change_category(old_sql, new_sql, old_schema=None, new_schema=None, di
             return result
 
     return result
-    # return NON_BREAKING
