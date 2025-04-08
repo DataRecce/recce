@@ -54,7 +54,7 @@ def _debug(*args):
 def is_breaking_change(old_sql, new_sql, dialect=None):
     # return _is_breaking_change(original_sql, modified_sql, dialect=dialect)
     result = parse_change_category(old_sql, new_sql, old_schema=None, new_schema=None, dialect=dialect)
-    return result.category != 'non_breaking'
+    return result.category == 'breaking'
 
 
 def _is_breaking_change(original_sql, modified_sql, dialect=None) -> bool:

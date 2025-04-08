@@ -1,7 +1,48 @@
 import textwrap
 import unittest
 
-from recce.util.breaking import is_breaking_change, parse_change_category
+from deepdiff import DeepDiff
+
+from recce.util.breaking import parse_change_category, ColumnChangeStatus
+
+
+def is_breaking_change(original_sql, modified_sql, dialect=None, ):
+    result = parse_change_category(original_sql, modified_sql, dialect=dialect)
+    return result.category == 'breaking'
+
+
+def is_partial_breaking_change(
+    original_sql,
+    modified_sql,
+    expected_changed_columns: dict[str, ColumnChangeStatus] = None,
+):
+    result = parse_change_category(original_sql, modified_sql)
+    if result.category != 'partial_breaking':
+        return False
+
+    if expected_changed_columns is not None:
+        diff = DeepDiff(expected_changed_columns, result.changed_columns, ignore_order=True)
+        if len(diff) > 0:
+            return False
+
+    return True
+
+
+def is_non_breaking_change(
+    original_sql,
+    modified_sql,
+    expected_changed_columns: dict[str, ColumnChangeStatus] = None
+):
+    result = parse_change_category(original_sql, modified_sql)
+    if result.category != 'non_breaking':
+        return False
+
+    if expected_changed_columns is not None:
+        diff = DeepDiff(expected_changed_columns, result.changed_columns, ignore_order=True)
+        if len(diff) > 0:
+            return False
+
+    return True
 
 
 class BreakingChangeTest(unittest.TestCase):
@@ -17,8 +58,8 @@ class BreakingChangeTest(unittest.TestCase):
             b
         from MyTable
         """
-        assert not is_breaking_change(original_sql, modified_sql)
-        assert not is_breaking_change(original_sql, textwrap.dedent(modified_sql))
+        assert is_non_breaking_change(original_sql, modified_sql, {})
+        assert is_non_breaking_change(original_sql, textwrap.dedent(modified_sql), {})
 
     def test_non_breaking_add_column(self):
         original_sql = """
@@ -171,6 +212,21 @@ class BreakingChangeTest(unittest.TestCase):
         modified_sql = """
         select
             a
+        from MyTable
+        where a > 100
+        """
+        assert is_breaking_change(original_sql, modified_sql)
+
+    def test_breaking_add_filter_outer(self):
+        original_sql = """
+        select
+            a
+        from MyTable
+        where a > 100
+        """
+        modified_sql = """
+        select
+            a + 1 as a
         from MyTable
         where a > 100
         """
