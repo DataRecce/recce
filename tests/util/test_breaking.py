@@ -1,11 +1,11 @@
 import textwrap
 import unittest
 
-from recce.util.breaking import is_breaking_change
+from recce.util.breaking import is_breaking_change, parse_change_category
 
 
 class BreakingChangeTest(unittest.TestCase):
-    def test_no_change_identical(self):
+    def test_non_breaking_identical(self):
         original_sql = """
         select
             a, b
@@ -20,7 +20,7 @@ class BreakingChangeTest(unittest.TestCase):
         assert not is_breaking_change(original_sql, modified_sql)
         assert not is_breaking_change(original_sql, textwrap.dedent(modified_sql))
 
-    def test_no_change_add_column(self):
+    def test_non_breaking_add_column(self):
         original_sql = """
         select
             a
@@ -41,7 +41,7 @@ class BreakingChangeTest(unittest.TestCase):
             from MyTable
         )
         select
-            *
+            a
         from cte
         """
         modified_sql = """
@@ -51,12 +51,12 @@ class BreakingChangeTest(unittest.TestCase):
             from MyTable
         )
         select
-            *
+            a, b
         from cte
         """
         assert not is_breaking_change(original_sql, modified_sql)
 
-    def test_breaking_change_rename_column(self):
+    def test_partial_breaking_rename_column(self):
         original_sql = """
         select
             a
@@ -67,32 +67,36 @@ class BreakingChangeTest(unittest.TestCase):
             a as a2
         from MyTable
         """
-        assert is_breaking_change(original_sql, modified_sql)
+        result = parse_change_category(original_sql, modified_sql)
+        assert result.category == 'partial_breaking'
 
         # by cte
         original_sql = """
         with cte as (
             select
-                a
+                a,
+                b
             from MyTable
         )
         select
-            *
+            a
         from cte
         """
         modified_sql = """
         with cte as (
             select
-                a as a2
+                a as a2,
+                b
             from MyTable
         )
         select
-            *
+            a2
         from cte
         """
-        assert is_breaking_change(original_sql, modified_sql)
+        result = parse_change_category(original_sql, modified_sql)
+        assert result.category == 'partial_breaking'
 
-    def test_breaking_change_remove_column(self):
+    def test_partial_breaking_remove_column(self):
         original_sql = """
         select
             a,
@@ -104,24 +108,61 @@ class BreakingChangeTest(unittest.TestCase):
             b
         from MyTable
         """
-        assert is_breaking_change(original_sql, modified_sql)
+        result = parse_change_category(original_sql, modified_sql)
+        assert result.category == 'partial_breaking'
 
-    # @pytest.mark.skip("The case when cannot be detected by sqlglot")
-    # def test_non_breaking_change_add_column_by_case_when(self):
-    #     original_sql = """
-    #     select
-    #         a
-    #     from MyTable
-    #     """
-    #     modified_sql = """
-    #     select
-    #         a,
-    #         case when a > 100 then 1 else 0 end as b
-    #     from MyTable
-    #     """
-    #     assert not is_breaking_change(original_sql, modified_sql)
+    def test_non_breaking_change_reorder(self):
+        original_sql = """
+        select
+            a,
+            b
+        from MyTable
+        """
+        modified_sql = """
+        select
+            b,
+            a
+        from MyTable
+        """
+        assert not is_breaking_change(original_sql, modified_sql)
 
-    def test_breaking_change_add_filter(self):
+    def test_non_breaking_add_column_by_case_when(self):
+        original_sql = """
+        select
+            a
+        from MyTable
+        """
+        modified_sql = """
+        select
+            a,
+            case when a > 100 then 1 else 0 end as b
+        from MyTable
+        """
+        assert not is_breaking_change(original_sql, modified_sql)
+
+    def test_partial_breaking_change_column(self):
+        original_sql = """
+        with cte as (
+        select
+            a,
+            case when a > 100 then 1 else 0 end as b
+        from MyTable
+        )
+        select cte.a, cte.b from cte
+        """
+        modified_sql = """
+        with cte as (
+        select
+            a,
+            case when a > 200 then 1 else 0 end as b
+        from MyTable
+        )
+        select cte.a, cte.b from cte
+        """
+        result = parse_change_category(original_sql, modified_sql)
+        assert result.category == 'partial_breaking'
+
+    def test_breaking_add_filter(self):
         original_sql = """
         select
             a
@@ -135,7 +176,7 @@ class BreakingChangeTest(unittest.TestCase):
         """
         assert is_breaking_change(original_sql, modified_sql)
 
-    def test_breaking_change_change_filter(self):
+    def test_breaking_change_filter(self):
         original_sql = """
         select
             a
@@ -150,7 +191,7 @@ class BreakingChangeTest(unittest.TestCase):
         """
         assert is_breaking_change(original_sql, modified_sql)
 
-    def test_breaking_change_add_limit(self):
+    def test_breaking_add_limit(self):
         original_sql = """
         select
             a
