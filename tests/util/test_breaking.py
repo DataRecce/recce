@@ -110,7 +110,7 @@ class BreakingChangeTest(unittest.TestCase):
             a, b
         from Customers
         """
-        # assert is_non_breaking_change(original_sql, modified_sql)
+        assert is_non_breaking_change(original_sql, modified_sql)
 
         # by cte
         original_sql = """
@@ -322,7 +322,7 @@ class BreakingChangeTest(unittest.TestCase):
         original_sql = """
         with cte as (
             select
-                a, b, c
+                a, b
             from Customers
         )
         select
@@ -339,11 +339,11 @@ class BreakingChangeTest(unittest.TestCase):
             *
         from cte
         """
-        # assert is_breaking_change(original_sql, modified_sql)
+        assert is_partial_breaking_change(original_sql, modified_sql, {'b': 'removed'})
         modified_sql = """
             with cte as (
                 select
-                    a,b,c,d
+                    a,b,c
                 from Customers
             )
             select
