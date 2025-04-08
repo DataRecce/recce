@@ -217,7 +217,7 @@ class BreakingChangeTest(unittest.TestCase):
         """
         assert is_breaking_change(original_sql, modified_sql)
 
-    def test_breaking_add_filter_outer(self):
+    def test_breaking_add_filter_local(self):
         original_sql = """
         select
             a
@@ -230,20 +230,39 @@ class BreakingChangeTest(unittest.TestCase):
         from MyTable
         where a > 100
         """
+        assert is_partial_breaking_change(original_sql, modified_sql, {'a': 'modified'})
+
+    def test_breaking_add_filter_alias_local(self):
+        original_sql = """
+        select
+            a as b
+        from MyTable
+        where b > 100
+        """
+        modified_sql = """
+        select
+            a + 1 as b
+        from MyTable
+        where b > 100
+        """
         assert is_breaking_change(original_sql, modified_sql)
 
     def test_breaking_change_filter(self):
         original_sql = """
-        select
-            a
-        from MyTable
-        where a > 100
+        with cte as (
+            select
+                a as b
+            from MyTable
+        )
+        select cte.a from cte where cte.a > 100
         """
         modified_sql = """
-        select
-            a
-        from MyTable
-        where a > 101
+        with cte as (
+            select
+                a + 1 as b
+            from MyTable
+        )
+        select cte.a from cte where cte.a > 100
         """
         assert is_breaking_change(original_sql, modified_sql)
 

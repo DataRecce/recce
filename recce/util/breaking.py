@@ -121,7 +121,7 @@ def _diff_scope(
         raise ValueError("Currently only SELECT statements are supported for comparison")
 
     old_select = old_scope.expression  # type: exp.Select
-    new_select = new_scope.expression  # type: exp.Selects
+    new_select = new_scope.expression  # type: exp.Select
 
     for arg_key in old_select.args.keys() | new_select.args.keys():
         if arg_key in ['expressions', 'with']:
@@ -182,6 +182,17 @@ def _diff_scope(
                     if change_category.changed_columns.get(column_name) is not None:
                         result.category = 'partial_breaking'
                         changed_columns[column_name] = 'modified'
+
+    # where
+    for arg_key in new_select.args.keys():
+        arg_value = new_select.args[arg_key]
+        if arg_value is None:
+            continue
+
+        if isinstance(arg_value, exp.Expression):
+            for column in arg_value.find_all(exp.Column):
+                if changed_columns.get(column.name) is not None:
+                    return BREAKING
 
     result.changed_columns = changed_columns
     return result
