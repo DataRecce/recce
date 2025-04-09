@@ -729,6 +729,91 @@ class BreakingChangeTest(unittest.TestCase):
         """
         assert parse_change_category(malformed1, malformed2).category == 'unknown'
 
+    def test_count_function(self):
+        original = """
+        with cte as (
+            select a from Customers
+        )
+        select count(*) from cte
+        """
+        modified = """
+        with cte as (
+            select a from Customers where a > 100
+        )
+        select count(*) as c from cte
+        """
+        assert is_breaking_change(original, modified)
+
+        original = """
+        with cte as (
+            select a from Customers
+        )
+        select count(a) as c from cte
+        """
+        modified = """
+        with cte as (
+            select a from Customers where a > 100
+        )
+        select count(a) as c from cte
+        """
+        modified2 = """
+        with cte as (
+            select a+1 as a from Customers
+        )
+        select count(a) as c from cte
+        """
+
+        # Although we can mark it as partial breaking. However, in current implementation, we mark it as breaking
+        # if any downstream is breaking.
+        assert is_breaking_change(original, modified)
+
+        assert is_partial_breaking_change(original, modified2, {"c": "modified"})
+
+    def test_distinct_count_function(self):
+        original = """
+        select count(distinct a) as unique from cte
+        """
+        modified = """
+        select count(distinct (a+1)) as unique from cte
+        """
+        assert is_partial_breaking_change(original, modified, {'unique': 'modified'})
+
+        original = """
+        with cte as (
+            select a from Customers
+        )
+        select count(distinct a) as unique from cte
+        """
+        modified = """
+        with cte as (
+            select a + 1 as a  from Customers
+        )
+        select count(distinct a) as unique from cte
+        """
+        assert is_partial_breaking_change(original, modified, {"unique": "modified"})
+
+    def test_disctinct_function(self):
+        original = """
+        with cte as (
+            select a, b from Customers
+        )
+        select distinct a, b from cte
+        """
+        modified1 = """
+        with cte as (
+            select a, b from Customers where a > 100
+        )
+        select distinct a, b from cte
+        """
+        modified2 = """
+        with cte as (
+            select a+1 as a, b from Customers
+        )
+        select distinct a, b from cte
+        """
+        # assert is_breaking_change(original, modified1)
+        assert is_breaking_change(original, modified2)
+
     def test_unnest_function(self):
         original_sql = """
         select

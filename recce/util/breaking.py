@@ -157,6 +157,7 @@ def _diff_scope(
     old_column_map = {projection.alias_or_name: projection for projection in old_select.selects}
     new_column_map = {projection.alias_or_name: projection for projection in new_select.selects}
     changed_columns = {}
+    is_distinct = new_select.args.get('distinct') is not None
 
     for column_name in (old_column_map.keys() | new_column_map.keys()):
         def _has_udtf(expresion: exp.Expression) -> bool:
@@ -168,24 +169,35 @@ def _diff_scope(
         old_column = old_column_map.get(column_name)
         new_column = new_column_map.get(column_name)
         if old_column is None:
+            if is_distinct:
+                return CHANGE_CATEGORY_BREAKING
 
             if _has_udtf(new_column):
                 return CHANGE_CATEGORY_BREAKING
 
             changed_columns[column_name] = 'added'
         elif new_column is None:
+            if is_distinct:
+                return CHANGE_CATEGORY_BREAKING
+
             if _has_udtf(old_column):
                 return CHANGE_CATEGORY_BREAKING
 
             changed_columns[column_name] = 'removed'
             result.category = 'partial_breaking'
         elif old_column != new_column:
+            if is_distinct:
+                return CHANGE_CATEGORY_BREAKING
+
             if _has_udtf(old_column) and _has_udtf(new_column):
                 return CHANGE_CATEGORY_BREAKING
 
             changed_columns[column_name] = 'modified'
             result.category = 'partial_breaking'
         else:
+            if is_distinct:
+                return CHANGE_CATEGORY_BREAKING
+
             ref_columns = new_column.find_all(exp.Column)
             for ref_column in ref_columns:
                 if source_column_change_status(ref_column) is not None:
