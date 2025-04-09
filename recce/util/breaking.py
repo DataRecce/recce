@@ -226,6 +226,8 @@ def _diff_scope(
         having = new_select.args.get('having')
         if isinstance(having, exp.Having):
             for ref_column in having.find_all(exp.Column):
+                if source_column_change_status(ref_column) is not None:
+                    return CHANGE_CATEGORY_BREAKING
                 if selected_column_change_status(ref_column) is not None:
                     return CHANGE_CATEGORY_BREAKING
 
@@ -243,7 +245,14 @@ def _diff_scope(
     return result
 
 
-def parse_change_category(old_sql, new_sql, old_schema=None, new_schema=None, dialect=None) -> ChangeCategoryResult:
+def parse_change_category(
+    old_sql,
+    new_sql,
+    old_schema=None,
+    new_schema=None,
+    dialect=None,
+    unit_test=False,
+) -> ChangeCategoryResult:
     if old_sql == new_sql:
         return ChangeCategoryResult('non_breaking')
 
@@ -254,7 +263,27 @@ def parse_change_category(old_sql, new_sql, old_schema=None, new_schema=None, di
             exp = parse_one(sql, dialect=dialect)
             if schema:
                 try:
-                    exp = optimize(exp, schema=schema, dialect=dialect)
+                    if unit_test:
+                        from sqlglot.optimizer.qualify import qualify
+                        RULES = (
+                            qualify,
+                            # optimizer.pushdown_projections,
+                            # optimizer.qualify,
+                            # optimizer.unnest_subqueries,
+                            # optimizer.pushdown_predicates,
+                            # optimizer.optimize_joins,
+                            # optimizer.eliminate_subqueries,
+                            # optimizer.merge_subqueries,
+                            # optimizer.eliminate_joins,
+                            # optimizer.eliminate_ctes,
+                            # optimizer.qualify_columns,
+                            # optimizer.annotate_types,
+                            # optimizer.canonicalize,
+                            # optimizer.simplify,
+                        )
+                        exp = optimize(exp, schema=schema, dialect=dialect, rules=RULES)
+                    else:
+                        exp = optimize(exp, schema=schema, dialect=dialect)
                 except Exception as e:
                     # cannot optimize, skip it.
                     _debug(e)

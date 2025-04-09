@@ -30,7 +30,8 @@ def is_breaking_change(original_sql, modified_sql, dialect=None):
         modified_sql,
         old_schema=SOURCE_SCHEMA,
         new_schema=SOURCE_SCHEMA,
-        dialect=dialect
+        dialect=dialect,
+        unit_test=True,
     )
     return result.category == 'breaking'
 
@@ -46,7 +47,8 @@ def is_partial_breaking_change(
         modified_sql,
         old_schema=SOURCE_SCHEMA,
         new_schema=SOURCE_SCHEMA,
-        dialect=dialect
+        dialect=dialect,
+        unit_test=True,
     )
     if result.category != 'partial_breaking':
         return False
@@ -63,14 +65,15 @@ def is_non_breaking_change(
     original_sql,
     modified_sql,
     expected_changed_columns: dict[str, ColumnChangeStatus] = None,
-    dialect=None
+    dialect=None,
 ):
     result = parse_change_category(
         original_sql,
         modified_sql,
         old_schema=SOURCE_SCHEMA,
         new_schema=SOURCE_SCHEMA,
-        dialect=dialect
+        dialect=dialect,
+        unit_test=True,
     )
     if result.category != 'non_breaking':
         return False
@@ -455,6 +458,75 @@ class BreakingChangeTest(unittest.TestCase):
            select a1 from cte group by 1
            """
         assert is_breaking_change(original_sql, modified_sql)
+
+    def test_having_change(self):
+        original = """
+        select
+          customer_id,
+          sum(x) as total_spent
+        from Orders
+        group by customer_id
+        having sum(x) > 1000;
+        """
+        modified = """
+        select
+          customer_id,
+          sum(x) as total_spent
+        from Orders
+        group by customer_id
+        having sum(x) > 2000;
+        """
+        assert is_breaking_change(original, modified)
+
+    def test_having_source_change(self):
+        original = """
+        with cte as (
+           select
+               customer_id,
+               x as amount
+           from Orders
+        )
+        select
+           customer_id,
+           sum(amount) as total_spent
+        from cte
+        group by customer_id
+        having sum(amount) > 1000
+        """
+        modified = """
+        with cte as (
+           select
+               customer_id,
+               (x+1) as amount
+           from Orders
+        )
+        select
+           customer_id,
+           sum(amount) as total_spent
+        from cte
+        group by customer_id
+        having sum(amount) > 1000
+        """
+        assert is_breaking_change(original, modified)
+
+    def test_having_select_change(self):
+        original = """
+        select
+           customer_id,
+           count(amount) as total_spent
+        from Orders
+        group by customer_id
+        having total_spent > 1000
+        """
+        modified = """
+        select
+           customer_id,
+           sum(amount) as total_spent
+        from Orders
+        group by customer_id
+        having total_spent > 1000
+        """
+        assert is_breaking_change(original, modified)
 
     def test_limit(self):
         no_limit = """
