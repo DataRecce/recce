@@ -1,6 +1,6 @@
-import React, { useState, useEffect } from "react";
-import { Switch, Flex, Text, Spinner, IconButton, Button, Tooltip } from "@chakra-ui/react";
-import { CopyIcon, ExternalLinkIcon } from "@chakra-ui/icons";
+import React, { useState } from "react";
+import { Flex, Text, Spinner, IconButton, Button, Tooltip } from "@chakra-ui/react";
+import { CheckCircleIcon, CopyIcon, ExternalLinkIcon } from "@chakra-ui/icons";
 import { shareState } from "@/lib/api/state";
 import { useRecceInstanceContext } from "@/lib/hooks/RecceInstanceContext";
 
@@ -9,32 +9,24 @@ export function ShareSwitch() {
   const [isLoading, setIsLoading] = useState(false);
   const [shareUrl, setShareUrl] = useState<string>();
   const [error, setError] = useState<string>();
-  const [isSharingEnabled, setIsSharingEnabled] = useState(false);
 
-  useEffect(() => {
-    const fetchShareUrl = async () => {
-      setIsLoading(true);
-      setError(undefined);
-      try {
-        const response = await shareState();
-        if (response.error) {
-          setError(response.error);
-          return;
-        }
-        setShareUrl(response.share_url);
-      } catch (err) {
-        setError((err as Error).message);
-      } finally {
-        setIsLoading(false);
+  const handleShareClick = async () => {
+    setIsLoading(true);
+    setError(undefined);
+    setShareUrl(undefined);
+    try {
+      const response = await shareState();
+      if (response.status !== "success") {
+        setError(response.message);
+        return;
       }
-    };
-
-    if (isSharingEnabled) {
-      void fetchShareUrl();
-    } else {
-      setShareUrl(undefined);
+      setShareUrl(response.share_url);
+    } catch (err) {
+      setError((err as Error).message);
+    } finally {
+      setIsLoading(false);
     }
-  }, [isSharingEnabled]);
+  };
 
   if (!authed) {
     return (
@@ -57,23 +49,14 @@ export function ShareSwitch() {
     <Flex flex="1" alignItems="center" gap="5px">
       <Button
         size="sm"
-        onClick={() => {
-          setIsSharingEnabled(!isSharingEnabled);
-        }}
-        rightIcon={
-          <Switch
-            id="share-toggle"
-            size={"sm"}
-            isChecked={isSharingEnabled}
-            isReadOnly
-            pointerEvents="none"
-          />
-        }>
+        variant="outline"
+        onClick={handleShareClick}
+        rightIcon={shareUrl ? <CheckCircleIcon color="green" /> : undefined}>
         Share
       </Button>
       <Flex gap="5px" alignItems="center">
         {isLoading && <Spinner size="sm" />}
-        {isSharingEnabled && shareUrl && (
+        {shareUrl && (
           <>
             <Text fontSize="14">{shareUrl}</Text>
             <IconButton
@@ -84,7 +67,7 @@ export function ShareSwitch() {
             />
           </>
         )}
-        {isSharingEnabled && error && (
+        {error && (
           <Text fontSize="14" color="red.500">
             {error}
           </Text>

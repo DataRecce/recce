@@ -513,7 +513,9 @@ async def sync_status(response: Response):
 
 
 class ShareStateOutput(BaseModel):
-    share_url: str
+    status: str
+    message: str
+    share_url: Optional[str] = None
 
 
 @app.post("/api/share", response_model=ShareStateOutput)
@@ -538,9 +540,9 @@ async def share_state():
     if state_loader.state is None:
         state = context.export_state()
 
-    share_url = state_manager.share_state(file_name, state)
+    response = state_manager.share_state(file_name, state)
 
-    return ShareStateOutput(share_url=share_url)
+    return ShareStateOutput(**response)
 
 
 class VersionOut(BaseModel):

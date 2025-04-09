@@ -744,12 +744,10 @@ class RecceShareStateManager:
     def error_and_hint(self) -> (Union[str, None], Union[str, None]):
         return self.error_message, self.hint_message
 
-    def share_state(self, file_name: str, state: RecceState) -> Union[str, None]:
+    def share_state(self, file_name: str, state: RecceState) -> Dict:
         import tempfile
 
         with tempfile.NamedTemporaryFile() as tmp:
             state.to_file(tmp.name, file_type=SupportedFileTypes.FILE)
             response = RecceCloud(token=self.auth_options.get('api_token')).share_state(file_name, open(tmp.name, 'rb'))
-            if response.get('status') != 'success':
-                return f"Failed to share the state file. Reason: {response.get('message')}"
-        return response.get('share_url')
+            return response
