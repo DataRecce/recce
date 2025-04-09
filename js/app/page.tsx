@@ -293,12 +293,12 @@ function NavBar() {
           })}
         </Box>
         {!isLoading && !isDemoSite && (
-          <Grid templateColumns="repeat(5, 1fr)">
-            <GridItem colSpan={1} />
+          <Grid templateColumns="repeat(7, 1fr)" alignItems={"center"}>
+            <GridItem colSpan={2} />
             <GridItem colSpan={1}>
               <Filename />
             </GridItem>
-            <GridItem colSpan={3}>
+            <GridItem colSpan={4}>
               <ShareSwitch />
             </GridItem>
           </Grid>

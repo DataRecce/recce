@@ -179,8 +179,13 @@ async def recce_instance_info():
     app_state: AppState = app.state
     flag = app_state.flag
     read_only = flag.get('read_only', False)
+
+    auth_options = app_state.auth_options
+    api_token = auth_options.get('api_token')
+
     return {
         "read_only": read_only,
+        "authed": True if api_token else False,
         # TODO: Add more instance info which won't change during the instance lifecycle
         # review_mode
         # cloud_mode
