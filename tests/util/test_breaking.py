@@ -308,6 +308,23 @@ class BreakingChangeTest(unittest.TestCase):
         assert is_partial_breaking_change(original, modified2, {'order_count': 'removed'})
         assert is_partial_breaking_change(original, modified3, {'order_count': 'modified'})
 
+    def test_cte_rename_not_supported(self):
+        original = """
+        with cte as (
+            select * from Customers
+        )
+        select * from cte
+        """
+        modified = """
+        with cte2 as (
+            select * from Customers
+        )
+        select * from cte2
+        """
+
+        # This is not a breaking change, but we don't support this yet
+        assert is_breaking_change(original, modified)
+
     def test_cte_alias(self):
         original = """
         with O as (
@@ -969,6 +986,11 @@ class BreakingChangeTest(unittest.TestCase):
             select a from Customers where b > 100
         ) as t
         """
+        modified3 = """
+        select * from (
+            select a from Customers
+        ) as q
+        """
         added = """
         select * from (
             select a,b from Customers
@@ -978,6 +1000,20 @@ class BreakingChangeTest(unittest.TestCase):
         assert is_breaking_change(original, modified2)
         assert is_non_breaking_change(original, added, {'b': 'added'})
         assert is_partial_breaking_change(added, original, {'b': 'removed'})
+
+    def test_subquery_rename_not_supported(self):
+        original = """
+        select * from (
+            select a from Customers
+        ) as t
+        """
+        modified = """
+        select * from (
+            select a from Customers
+        ) as t2
+        """
+        # This is not a breaking change, but we don't support this yet
+        assert is_breaking_change(original, modified)
 
     def test_subquery_in_filter(self):
         original = """
