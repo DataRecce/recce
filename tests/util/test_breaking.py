@@ -239,7 +239,7 @@ class BreakingChangeTest(unittest.TestCase):
         """
         assert is_partial_breaking_change(original_sql, modified_sql, {'a2': 'modified'})
 
-    def test_change_column_in_cte(self):
+    def test_cte(self):
         original = """
         with A as (
             select
@@ -324,6 +324,40 @@ class BreakingChangeTest(unittest.TestCase):
 
         # This is not a breaking change, but we don't support this yet
         assert is_breaking_change(original, modified)
+
+    def test_cte_with_select_star(self):
+        original_sql = """
+        with cte as (
+            select
+                a, b
+            from Customers
+        )
+        select
+            *
+        from cte
+        """
+        modified_sql = """
+        with cte as (
+            select
+                a
+            from Customers
+        )
+        select
+            *
+        from cte
+        """
+        assert is_partial_breaking_change(original_sql, modified_sql, {'b': 'removed'})
+        modified_sql = """
+        with cte as (
+            select
+                a,b,c
+            from Customers
+        )
+        select
+            *
+        from cte
+        """
+        assert not is_breaking_change(original_sql, modified_sql)
 
     def test_cte_alias(self):
         original = """
@@ -698,54 +732,6 @@ class BreakingChangeTest(unittest.TestCase):
         assert is_breaking_change(no_offset, with_offset)
         assert is_breaking_change(with_offset, with_offset2)
 
-    def test_cte_with_select_star(self):
-        original_sql = """
-        with cte as (
-            select
-                a, b
-            from Customers
-        )
-        select
-            *
-        from cte
-        """
-        modified_sql = """
-        with cte as (
-            select
-                a
-            from Customers
-        )
-        select
-            *
-        from cte
-        """
-        assert is_partial_breaking_change(original_sql, modified_sql, {'b': 'removed'})
-        modified_sql = """
-            with cte as (
-                select
-                    a,b,c
-                from Customers
-            )
-            select
-                *
-            from cte
-            """
-        assert not is_breaking_change(original_sql, modified_sql)
-
-    def test_non_sql(self):
-        malformed1 = """
-        select
-            a
-        from
-        """
-
-        malformed2 = """
-        selects
-            a
-        from Customers
-        """
-        assert parse_change_category(malformed1, malformed2).category == 'unknown'
-
     def test_count_function(self):
         original = """
         with cte as (
@@ -1035,6 +1021,20 @@ class BreakingChangeTest(unittest.TestCase):
         )
         """
         assert is_breaking_change(original, modified)
+
+    def test_non_sql(self):
+        malformed1 = """
+        select
+            a
+        from
+        """
+
+        malformed2 = """
+        selects
+            a
+        from Customers
+        """
+        assert parse_change_category(malformed1, malformed2).category == 'unknown'
 
     def test_dialect(self):
         original_sql = """
