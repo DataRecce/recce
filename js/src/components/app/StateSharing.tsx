@@ -1,32 +1,11 @@
-import React, { useState } from "react";
 import { Flex, Text, Spinner, IconButton, Button, Tooltip } from "@chakra-ui/react";
 import { CheckCircleIcon, CopyIcon, ExternalLinkIcon } from "@chakra-ui/icons";
-import { shareState } from "@/lib/api/state";
 import { useRecceInstanceContext } from "@/lib/hooks/RecceInstanceContext";
+import { useRecceShareStateContext } from "@/lib/hooks/RecceShareStateContext";
 
-export function ShareSwitch() {
+export function TopLevelShare() {
   const { authed } = useRecceInstanceContext();
-  const [isLoading, setIsLoading] = useState(false);
-  const [shareUrl, setShareUrl] = useState<string>();
-  const [error, setError] = useState<string>();
-
-  const handleShareClick = async () => {
-    setIsLoading(true);
-    setError(undefined);
-    setShareUrl(undefined);
-    try {
-      const response = await shareState();
-      if (response.status !== "success") {
-        setError(response.message);
-        return;
-      }
-      setShareUrl(response.share_url);
-    } catch (err) {
-      setError((err as Error).message);
-    } finally {
-      setIsLoading(false);
-    }
-  };
+  const { shareUrl, isLoading, error, handleShareClick } = useRecceShareStateContext();
 
   if (!authed) {
     return (
