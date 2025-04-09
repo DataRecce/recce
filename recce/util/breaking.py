@@ -108,20 +108,15 @@ def _is_breaking_change(original_sql, modified_sql, dialect=None) -> bool:
     return False
 
 
-def _diff_scope(
+def _diff_select_scope(
     old_scope: Scope,
     new_scope: Scope,
     scope_changes_map: dict[Scope, ChangeCategoryResult]
 ) -> ChangeCategoryResult:
+    assert old_scope.expression.key == 'select'
+    assert new_scope.expression.key == 'select'
+
     result = ChangeCategoryResult('non_breaking')
-    if old_scope == new_scope:
-        return ChangeCategoryResult('non_breaking')
-
-    if not isinstance(old_scope.expression, exp.Select) or not isinstance(new_scope.expression, exp.Select):
-        raise ValueError("Currently only SELECT statements are supported for comparison")
-
-    old_select = old_scope.expression  # type: exp.Select
-    new_select = new_scope.expression  # type: exp.Select
 
     # check if the upstream scopes is the same and not breaking
     if old_scope.sources.keys() != new_scope.sources.keys():
@@ -133,8 +128,10 @@ def _diff_scope(
                 return CHANGE_CATEGORY_BREAKING
 
     # check if non-select expressions are the same
+    old_select = old_scope.expression  # type: exp.Select
+    new_select = new_scope.expression  # type: exp.Select
     for arg_key in old_select.args.keys() | new_select.args.keys():
-        if arg_key in ['expressions', 'with']:
+        if arg_key in ['expressions', 'with', 'from']:
             continue
 
         if old_select.args.get(arg_key) != new_select.args.get(arg_key):
@@ -256,6 +253,30 @@ def _diff_scope(
     return result
 
 
+def _diff_union_scope(
+    old_scope: Scope,
+    new_scope: Scope,
+    scope_changes_map: dict[Scope, ChangeCategoryResult]
+) -> ChangeCategoryResult:
+    assert old_scope.expression.key == 'union'
+    assert new_scope.expression.key == 'union'
+    assert len(old_scope.union_scopes) == len(new_scope.union_scopes)
+    result = scope_changes_map.get(new_scope.union_scopes[0])
+    if result.category in ['breaking', 'unknown']:
+        return result
+
+    for sub_scope in new_scope.union_scopes[1:]:
+        result_right = scope_changes_map.get(sub_scope)
+        if result_right.category in ['breaking', 'unknown']:
+            return result_right
+        if result_right.category == 'partial_breaking':
+            result.category = 'partial_breaking'
+        for column_name, column_change_status in result_right.changed_columns.items():
+            result.changed_columns[column_name] = column_change_status
+
+    return result
+
+
 def parse_change_category(
     old_sql,
     new_sql,
@@ -314,7 +335,19 @@ def parse_change_category(
 
     scope_changes_map = {}
     for old_scope, new_scope in zip(old_scopes, new_scopes):
-        result = _diff_scope(old_scope, new_scope, scope_changes_map)
+        if old_scope.expression.key != new_scope.expression.key:
+            scope_changes_map[new_scope] = CHANGE_CATEGORY_BREAKING
+            continue
+        if old_scope == new_scope:
+            scope_changes_map[new_scope] = ChangeCategoryResult('non_breaking')
+            continue
+
+        scope_type = old_scope.expression.key
+        if scope_type == 'select':
+            result = _diff_select_scope(old_scope, new_scope, scope_changes_map)
+        elif scope_type == 'union':
+            result = _diff_union_scope(old_scope, new_scope, scope_changes_map)
+
         scope_changes_map[new_scope] = result
         if new_scope.is_root:
             return result

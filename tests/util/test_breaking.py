@@ -854,6 +854,152 @@ class BreakingChangeTest(unittest.TestCase):
         """
         assert is_breaking_change(original, modified)
 
+    def test_set_operations(self):
+        union1 = """
+        select a from Customers
+        union
+        select a from Customers
+        """
+        union2 = """
+        select a + 1 as a from Customers
+        union
+        select a from Customers
+        """
+        union3 = """
+        select a,b from Customers
+        union
+        select a,b from Customers
+        """
+        assert is_partial_breaking_change(union1, union2, {'a': 'modified'})
+        assert is_partial_breaking_change(union2, union1, {'a': 'modified'})
+        assert is_non_breaking_change(union1, union3, {'b': 'added'})
+        assert is_partial_breaking_change(union3, union1, {'b': 'removed'})
+
+        union1 = """
+        select a from Customers
+        union
+        select a from Customers
+        union
+        select a from Customers
+        """
+        union2 = """
+        select a from Customers
+        union
+        select a + 1 as a from Customers
+        union
+        select a + 2 as a from Customers
+        """
+        union3 = """
+        select a,b from Customers
+        union
+        select a,b from Customers
+        union
+        select a,b from Customers
+        """
+        assert is_partial_breaking_change(union1, union2, {'a': 'modified'})
+        assert is_partial_breaking_change(union2, union1, {'a': 'modified'})
+        assert is_non_breaking_change(union1, union3, {'b': 'added'})
+        assert is_partial_breaking_change(union3, union1, {'b': 'removed'})
+
+    def test_union_all(self):
+        union1 = """
+        select a from Customers
+        union all
+        select a from Customers
+        """
+        union2 = """
+        select a + 1 as a from Customers
+        union all
+        select a from Customers
+        """
+        union3 = """
+        select a,b from Customers
+        union all
+        select a,b from Customers
+        """
+        assert is_partial_breaking_change(union1, union2, {'a': 'modified'})
+        assert is_partial_breaking_change(union2, union1, {'a': 'modified'})
+        assert is_non_breaking_change(union1, union3, {'b': 'added'})
+        assert is_partial_breaking_change(union3, union1, {'b': 'removed'})
+
+    def test_cte_recursive(self):
+        original = """
+        with recursive cte as (
+            select a, b from Customers
+            union all
+            select a, b from Customers
+            where a < 100
+        )
+        select * from cte
+        """
+        modified = """
+        with recursive cte as (
+            select a + 1 as a, b from Customers
+            union all
+            select a, b from Customers
+            where a < 100
+        )
+        select * from cte
+        """
+        modified2 = """
+        with recursive cte as (
+            select a + 1 as a, b from Customers
+            union all
+            select a, b from Customers
+            where a < 200
+        )
+        select * from cte
+        """
+        assert is_partial_breaking_change(original, modified, {'a': 'modified'})
+        assert is_breaking_change(original, modified2)
+
+    def test_subquery(self):
+        original = """
+        select * from (
+            select a from Customers
+        ) as t
+        """
+        modified1 = """
+        select * as a from (
+            select a + 1 as a from Customers
+        ) as t
+        """
+        modified2 = """
+        select * as a from (
+            select a from Customers where b > 100
+        ) as t
+        """
+        added = """
+        select * from (
+            select a,b from Customers
+        ) as t
+        """
+        assert is_partial_breaking_change(original, modified1, {'a': 'modified'})
+        assert is_breaking_change(original, modified2)
+        assert is_non_breaking_change(original, added, {'b': 'added'})
+        assert is_partial_breaking_change(added, original, {'b': 'removed'})
+
+    def test_subquery_in_filter(self):
+        original = """
+        select
+            customer_id,
+            a
+        from Customers
+        where a > (
+            select avg(a) from Customers
+        )
+        """
+        modified = """
+        select
+            customer_id,
+            a
+        from Customers
+        where a > (
+            select avg(a) + 1 from Customers
+        )
+        """
+        assert is_breaking_change(original, modified)
+
     def test_dialect(self):
         original_sql = """
         SELECT
