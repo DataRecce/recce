@@ -528,6 +528,117 @@ class BreakingChangeTest(unittest.TestCase):
         """
         assert is_breaking_change(original, modified)
 
+    def test_order_change(self):
+        no_order = """
+        select
+          customer_id,
+          a
+        from Orders
+        """
+        order1 = """
+        select
+          customer_id,
+          a
+        from Orders
+        order by customer_id;
+        """
+        order2 = """
+        select
+          customer_id,
+          a
+        from Orders
+        order by customer_id desc
+        """
+        order3 = """
+        select
+          customer_id,
+          a
+        from Orders
+        order by a
+        """
+        assert is_breaking_change(no_order, order1)
+        assert is_breaking_change(order1, order2)
+        assert is_breaking_change(order1, order3)
+
+    def test_order_source_change(self):
+        original = """
+        with cte as (
+           select
+               customer_id,
+               x as amount
+           from Orders
+        )
+        select
+           customer_id,
+           amount
+        from cte
+        order by amount
+        """
+        modified = """
+        with cte as (
+           select
+               customer_id,
+               (x+1) as amount
+           from Orders
+        )
+        select
+           customer_id,
+           amount
+        from cte
+        order by amount
+        """
+        assert is_breaking_change(original, modified)
+
+    def test_order_select_change(self):
+        original = """
+        select
+           customer_id,
+           x as amount,
+        from Orders
+        order by amount
+        """
+        modified = """
+        select
+           customer_id,
+           x + 1 as amount,
+        from Orders
+        order by amount
+        """
+        assert is_breaking_change(original, modified)
+
+    def test_order_index_change(self):
+        original = """
+        select
+           customer_id,
+           x as amount,
+        from Orders
+        order by 2
+        """
+        modified = """
+        select
+           customer_id,
+           x + 1 as amount,
+        from Orders
+        order by 2
+        """
+        assert is_breaking_change(original, modified)
+
+        original = """
+        select
+           customer_id,
+           x as amount,
+        from Orders
+        order by 1
+        """
+        modified = """
+        select
+           customer_id,
+           x + 1 as amount,
+        from Orders
+        order by 1
+        """
+        assert is_partial_breaking_change(original, modified, {'amount': 'modified'})
+
     def test_limit(self):
         no_limit = """
         select
