@@ -160,11 +160,8 @@ def _diff_scope(
     is_distinct = new_select.args.get('distinct') is not None
 
     for column_name in (old_column_map.keys() | new_column_map.keys()):
-        def _has_udtf(expresion: exp.Expression) -> bool:
-            for expr in expresion.walk():
-                if isinstance(expr, exp.UDTF):
-                    return True
-            return False
+        def _has_udtf(expr: exp.Expression) -> bool:
+            return expr.find(exp.UDTF) is not None
 
         old_column = old_column_map.get(column_name)
         new_column = new_column_map.get(column_name)
@@ -195,12 +192,14 @@ def _diff_scope(
             changed_columns[column_name] = 'modified'
             result.category = 'partial_breaking'
         else:
-            if is_distinct:
-                return CHANGE_CATEGORY_BREAKING
-
             ref_columns = new_column.find_all(exp.Column)
             for ref_column in ref_columns:
                 if source_column_change_status(ref_column) is not None:
+                    if is_distinct:
+                        return CHANGE_CATEGORY_BREAKING
+                    if _has_udtf(new_column):
+                        return CHANGE_CATEGORY_BREAKING
+
                     result.category = 'partial_breaking'
                     changed_columns[column_name] = 'modified'
 

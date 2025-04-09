@@ -811,22 +811,48 @@ class BreakingChangeTest(unittest.TestCase):
         )
         select distinct a, b from cte
         """
-        # assert is_breaking_change(original, modified1)
+        assert is_breaking_change(original, modified1)
         assert is_breaking_change(original, modified2)
 
-    def test_unnest_function(self):
-        original_sql = """
+    def test_udtf_function(self):
+        no_udtf = """
         select
             a
         from Customers
         """
-        modified_sql = """
+        with_udtf = """
         select
             a,
             unnest(a) as b
         from Customers
         """
-        assert is_breaking_change(original_sql, modified_sql)
+        with_udtf2 = """
+        select
+            a,
+            unnest(a+1) as b
+        from Customers
+        """
+        assert is_breaking_change(no_udtf, with_udtf)
+        assert is_breaking_change(with_udtf, no_udtf)
+        assert is_breaking_change(with_udtf, with_udtf2)
+
+        original = """
+        with cte as (
+        select
+            a
+        from Customers
+        )
+        select unnest(a) as a2 from cte
+        """
+        modified = """
+        with cte as (
+        select
+            a + 1 as a
+        from Customers
+        )
+        select unnest(a) as a2 from cte
+        """
+        assert is_breaking_change(original, modified)
 
     def test_dialect(self):
         original_sql = """
