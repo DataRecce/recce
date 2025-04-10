@@ -343,6 +343,9 @@ def parse_change_category(
             else:
                 result = ChangeCategoryResult('non_breaking', changed_columns={})
 
+        if result.category == 'breaking' or result.category == 'unknown':
+            return result
+
         scope_changes_map[new_scope] = result
         if new_scope.is_root:
             return result
