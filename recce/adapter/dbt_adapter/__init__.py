@@ -13,8 +13,9 @@ from typing import Callable, Dict, List, Optional, Tuple, Iterator, Any, Set, Un
 from recce.event import log_performance
 from recce.exceptions import RecceException
 from recce.util.cll import cll, CLLPerformanceTracking
-from ...tasks.profile import ProfileTask
 from recce.util.lineage import find_upstream, find_downstream
+from ...tasks.profile import ProfileTask
+from ...util.breaking import parse_change_category
 
 try:
     import agate
@@ -740,6 +741,26 @@ class DbtAdapter(BaseAdapter):
             *base.get('nodes', {}).keys(),
             *current.get('nodes', {}).keys()
         }
+        base_manifest = as_manifest(self.get_manifest(True))
+        curr_manifest = as_manifest(self.get_manifest(False))
+
+        def ref_func(*args):
+            if len(args) == 1:
+                node = args[0]
+            elif len(args) > 1:
+                node = args[1]
+            else:
+                return None
+            return node
+
+        def source_func(source_name, table_name):
+            source_name = source_name.replace('-', '_')
+            return f"__{source_name}__{table_name}"
+
+        jinja_context = dict(
+            ref=ref_func,
+            source=source_func,
+        )
 
         # for each node, compare the base and current lineage
         diff = {}
@@ -755,13 +776,51 @@ class DbtAdapter(BaseAdapter):
                 change_category = 'breaking'
                 if curr_node.get('resource_type') == 'model':
                     try:
-                        from recce.util.breaking import is_breaking_change
-                        base_sql = self.generate_sql(base_node.get('raw_code'))
-                        curr_sql = self.generate_sql(curr_node.get('raw_code'))
+                        def _get_schema(lineage):
+                            schema = {}
+                            nodes = lineage['nodes']
+                            parent_list = lineage['parent_map'].get(key, [])
+                            for parent_id in parent_list:
+                                parent_node = nodes.get(parent_id)
+                                if parent_node is None:
+                                    continue
+                                columns = parent_node.get('columns') or {}
+                                name = parent_node.get('name')
+                                if parent_node.get('resource_type') == 'source':
+                                    parts = parent_id.split('.')
+                                    source = parts[2]
+                                    table = parts[3]
+                                    source = source.replace('-', '_')
+                                    name = f"__{source}__{table}"
+                                schema[name] = {
+                                    name: column.get('type') for name, column in columns.items()
+                                }
+                            return schema
+
+                        base_sql = self.generate_sql(
+                            base_node.get('raw_code'),
+                            context=jinja_context,
+                            provided_manifest=base_manifest
+                        )
+                        curr_sql = self.generate_sql(
+                            curr_node.get('raw_code'),
+                            context=jinja_context,
+                            provided_manifest=curr_manifest
+                        )
+                        base_schema = _get_schema(base)
+                        curr_schema = _get_schema(current)
                         dialect = self.adapter.connections.TYPE
-                        if not is_breaking_change(base_sql, curr_sql, dialect=dialect):
+
+                        change_category_result = parse_change_category(
+                            base_sql,
+                            curr_sql,
+                            old_schema=base_schema,
+                            new_schema=curr_schema,
+                            dialect=dialect
+                        )
+                        if change_category_result.category == 'non_breaking':
                             change_category = 'non-breaking'
-                    except Exception:
+                    except Exception as e:
                         pass
 
                 diff[key] = NodeDiff(change_status='modified', change_category=change_category)
