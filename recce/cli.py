@@ -806,7 +806,12 @@ def share(state_file, **kwargs):
     state_file_name = os.path.basename(state_file)
 
     try:
-        console.print(f'Shared Link: {state_manager.share_state(state_file_name, state_loader.state)}')
+        response = state_manager.share_state(state_file_name, state_loader.state)
+        if response.get('status') == 'error':
+            console.print("[[red]Error[/red]] Failed to share the state.\n"
+                          f"Reason: {response.get('message')}")
+        else:
+            console.print(f"Shared Link: {response.get('share_url')}")
     except RecceCloudException as e:
         console.print(f"[[red]Error[/red]] {e}")
         console.print(f"Reason: {e.reason}")
