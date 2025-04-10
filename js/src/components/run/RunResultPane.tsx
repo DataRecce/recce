@@ -223,7 +223,7 @@ export const PrivateLoadableRunView = ({
                     <Button
                       leftIcon={<TbCloudUpload />}
                       variant="outline"
-                      isDisabled={!runId || !run?.result || !!error || tabIndex !== 0 || !authed}
+                      isDisabled={!runId || !run?.result || !!error || tabIndex !== 0}
                       size="sm"
                       onClick={handleShareClick}>
                       Share to Cloud
