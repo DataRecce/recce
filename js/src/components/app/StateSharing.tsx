@@ -1,11 +1,23 @@
-import { Flex, Text, Spinner, IconButton, Button, Tooltip } from "@chakra-ui/react";
+import { Flex, Text, Spinner, IconButton, Button, Tooltip, useClipboard } from "@chakra-ui/react";
 import { CheckCircleIcon, CopyIcon, ExternalLinkIcon } from "@chakra-ui/icons";
 import { useRecceInstanceContext } from "@/lib/hooks/RecceInstanceContext";
 import { useRecceShareStateContext } from "@/lib/hooks/RecceShareStateContext";
+import { useClipBoardToast } from "@/lib/hooks/useClipBoardToast";
 
 export function TopLevelShare() {
+  const { successToast, failToast } = useClipBoardToast();
+  const { onCopy } = useClipboard("");
   const { authed } = useRecceInstanceContext();
   const { shareUrl, isLoading, error, handleShareClick } = useRecceShareStateContext();
+
+  const handleCopy = () => {
+    try {
+      onCopy(shareUrl);
+      successToast("Copied the link to clipboard");
+    } catch (error) {
+      failToast("Failed to copy the link", error);
+    }
+  };
 
   if (!authed) {
     return (
@@ -42,7 +54,7 @@ export function TopLevelShare() {
               size="xs"
               aria-label="Copy the share URL"
               icon={<CopyIcon />}
-              onClick={() => navigator.clipboard.writeText(shareUrl)}
+              onClick={handleCopy}
             />
           </>
         )}
