@@ -52,9 +52,8 @@ def _debug(*args):
 
 
 def is_breaking_change(old_sql, new_sql, dialect=None):
-    # return _is_breaking_change(original_sql, modified_sql, dialect=dialect)
     result = parse_change_category(old_sql, new_sql, old_schema=None, new_schema=None, dialect=dialect)
-    return result.category == 'breaking'
+    return result.category != 'non_breaking'
 
 
 def _is_breaking_change(original_sql, modified_sql, dialect=None) -> bool:
@@ -333,9 +332,16 @@ def parse_change_category(
 
         scope_type = old_scope.expression.key
         if scope_type == 'select':
+            # CTE, Subquery, Root
             result = _diff_select_scope(old_scope, new_scope, scope_changes_map)
         elif scope_type == 'union':
+            # Union
             result = _diff_union_scope(old_scope, new_scope, scope_changes_map)
+        else:
+            if old_scope.expression != new_scope.expression:
+                result = CHANGE_CATEGORY_BREAKING
+            else:
+                result = ChangeCategoryResult('non_breaking', changed_columns={})
 
         scope_changes_map[new_scope] = result
         if new_scope.is_root:
