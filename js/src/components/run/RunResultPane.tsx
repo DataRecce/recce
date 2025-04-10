@@ -20,6 +20,7 @@ import {
   MenuList,
   MenuItem,
   MenuDivider,
+  Tooltip,
 } from "@chakra-ui/react";
 import { useCallback, useState } from "react";
 import { createCheckByRun } from "@/lib/api/checks";
@@ -27,7 +28,13 @@ import { useLocation } from "wouter";
 import { Editor } from "@monaco-editor/react";
 import YAML from "yaml";
 import SqlEditor, { DualSqlEditor } from "../query/SqlEditor";
-import { CheckIcon, ChevronDownIcon, CopyIcon, RepeatIcon } from "@chakra-ui/icons";
+import {
+  CheckIcon,
+  ChevronDownIcon,
+  CopyIcon,
+  ExternalLinkIcon,
+  RepeatIcon,
+} from "@chakra-ui/icons";
 import { useCopyToClipboardButton } from "@/lib/hooks/ScreenShot";
 import { RunStatusAndDate } from "./RunStatusAndDate";
 import { LearnHowLink, RecceNotification } from "../onboarding-guide/Notification";
@@ -212,14 +219,27 @@ export const PrivateLoadableRunView = ({
                 </MenuItem>
                 <MenuDivider />
                 <MenuItem _hover={{ bg: "transparent" }}>
-                  <Button
-                    leftIcon={<TbCloudUpload />}
-                    variant="outline"
-                    isDisabled={!runId || !run?.result || !!error || tabIndex !== 0 || !authed}
-                    size="sm"
-                    onClick={handleShareClick}>
-                    Share to Cloud
-                  </Button>
+                  {authed ? (
+                    <Button
+                      leftIcon={<TbCloudUpload />}
+                      variant="outline"
+                      isDisabled={!runId || !run?.result || !!error || tabIndex !== 0 || !authed}
+                      size="sm"
+                      onClick={handleShareClick}>
+                      Share to Cloud
+                    </Button>
+                  ) : (
+                    <Tooltip label="Please copy api token and relaunch recce with token">
+                      <Button
+                        leftIcon={<ExternalLinkIcon />}
+                        size="sm"
+                        onClick={() => {
+                          window.open("https://cloud.datarecce.io/settings#tokens", "_blank");
+                        }}>
+                        Enable sharing
+                      </Button>
+                    </Tooltip>
+                  )}
                 </MenuItem>
               </MenuList>
             </Menu>
