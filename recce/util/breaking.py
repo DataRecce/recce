@@ -160,6 +160,9 @@ def _diff_select_scope(
         def _has_udtf(expr: exp.Expression) -> bool:
             return expr.find(exp.UDTF) is not None
 
+        def _has_aggregate(expr: exp.Expression) -> bool:
+            return expr.find(exp.AggFunc) is not None
+
         old_column = old_column_map.get(column_name)
         new_column = new_column_map.get(column_name)
         if old_column is None:
@@ -184,6 +187,9 @@ def _diff_select_scope(
                 return CHANGE_CATEGORY_BREAKING
 
             if _has_udtf(old_column) and _has_udtf(new_column):
+                return CHANGE_CATEGORY_BREAKING
+
+            if _has_aggregate(old_column) != _has_aggregate(new_column):
                 return CHANGE_CATEGORY_BREAKING
 
             changed_columns[column_name] = 'modified'

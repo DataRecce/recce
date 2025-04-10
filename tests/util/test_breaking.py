@@ -264,9 +264,189 @@ class BreakingChangeTest(unittest.TestCase):
             (a * b + c * d) as a2,
         from Customers
         """
+        aggregate = """
+        select
+            count(a) as a2,
+        from Customers
+        """
         assert is_partial_breaking_change(alias, derived, {'a2': 'modified'})
         assert is_partial_breaking_change(derived, alias, {'a2': 'modified'})
         assert is_partial_breaking_change(derived, derived2, {'a2': 'modified'})
+
+    def test_aggrgation_function(self):
+        no_agg = """
+        select
+            a as a2,
+        from Customers
+        """
+
+        agg = """
+        select
+            count(*) as a2,
+        from Customers
+        """
+
+        agg2 = """
+        select
+            count(a) as a2,
+        from Customers
+        """
+
+        agg3 = """
+        select
+            sum(a) as a2,
+        from Customers
+        """
+
+        agg4 = """
+        select
+            sum(a+1) as a2,
+        from Customers
+        """
+
+        # Because changes from non-aggregation to aggregation would affect the row count.
+        assert is_breaking_change(no_agg, agg)
+        assert is_breaking_change(agg, no_agg)
+
+        assert is_partial_breaking_change(agg, agg2, {'a2': 'modified'})
+        assert is_partial_breaking_change(agg2, agg3, {'a2': 'modified'})
+        assert is_partial_breaking_change(agg3, agg4, {'a2': 'modified'})
+
+    def test_window_function(self):
+        no_win = """
+        SELECT
+           order_id,
+           customer_id,
+           x AS amount
+        FROM Orders;
+        """
+
+        with_win = """
+        SELECT
+           order_id,
+           customer_id,
+           x AS amount,
+           SUM(x) OVER (PARTITION BY customer_id) AS customer_total
+        FROM Orders;
+        """
+
+        with_win2 = """
+        SELECT
+           order_id,
+           customer_id,
+           x AS amount,
+           SUM(x+1) OVER (PARTITION BY customer_id) AS customer_total
+        FROM Orders;
+        """
+
+        assert is_non_breaking_change(no_win, with_win, {'customer_total': 'added'})
+        assert is_partial_breaking_change(with_win, no_win, {'customer_total': 'removed'})
+        assert is_partial_breaking_change(with_win, with_win2, {'customer_total': 'modified'})
+
+    def test_joins(self):
+        no_join = """
+        select
+            a,
+            b
+        from Customers as C
+        """
+
+        with_join = """
+        select
+            a,
+            b
+        from Customers as C
+        join Orders as O on C.customer_id = O.customer_id
+        """
+        with_join2 = """
+        select
+            a,
+            b,
+            x,
+            y
+        from Customers as C
+        join Orders as O on C.customer_id = O.customer_id
+        """
+        with_join3 = """
+        select
+            a,
+            b,
+            x,
+            y
+        from Customers as C
+        join Orders as O on C.customer_id = O.customer_id and O.x > 1000
+        """
+
+        assert is_breaking_change(no_join, with_join)
+        assert is_non_breaking_change(with_join, with_join2, {'x': 'added', 'y': 'added'})
+        assert is_breaking_change(with_join, with_join3)
+
+    def test_outer_joins(self):
+        no_join = """
+        select
+            a,
+            b
+        from Customers as C
+        """
+
+        with_inner_join = """
+        select
+            a,
+            b,
+            x,
+            y
+        from Customers as C
+        join Orders as O on C.customer_id = O.customer_id
+        """
+
+        with_left_join = """
+        select
+            a,
+            b,
+            x,
+            y
+        from Customers as C
+        left join Orders as O on C.customer_id = O.customer_id
+        """
+
+        with_right_join = """
+        select
+            a,
+            b,
+            x,
+            y
+        from Customers as C
+        right join Orders as O on C.customer_id = O.customer_id
+        """
+
+        with_full_outer_join = """
+        select
+            a,
+            b,
+            x,
+            y
+        from Customers as C
+        full outer join Orders as O on C.customer_id = O.customer_id
+        """
+
+        with_cross_join = """
+        select
+            a,
+            b,
+            x,
+            y
+        from Customers as C
+        cross join Orders as O
+        """
+
+        assert is_breaking_change(with_inner_join, with_left_join)
+        assert is_breaking_change(with_inner_join, with_right_join)
+        assert is_breaking_change(with_inner_join, with_full_outer_join)
+        assert is_breaking_change(with_inner_join, with_cross_join)
+
+        # Currently, we don't support left join as partial breaking change.
+        assert is_breaking_change(no_join, with_left_join)
+        # assert is_non_breaking_change(no_join, with_left_join, {'x': 'added', 'y': 'added'})
 
     def test_cte(self):
         original = """
@@ -473,15 +653,15 @@ class BreakingChangeTest(unittest.TestCase):
     def test_group_change(self):
         original = """
         select
-            a
+            a as k
         from Customers
         group by a
         """
         modified = """
         select
-            a
+            a + 1 as k
         from Customers
-        where a + 1
+        group by a + 1
         """
         assert is_breaking_change(original, modified)
 
