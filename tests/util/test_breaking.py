@@ -24,14 +24,38 @@ SOURCE_SCHEMA = {
 }
 
 
-def is_breaking_change(original_sql, modified_sql, dialect=None):
-    result = parse_change_category(
+def _parse_change_catgory(
+    original_sql,
+    modified_sql,
+    dialect=None,
+    optimize=False,
+):
+    from sqlglot.optimizer.qualify import qualify
+    from sqlglot.optimizer import RULES
+
+    optimizer_rules = RULES if optimize else (qualify,)
+
+    return parse_change_category(
         original_sql,
         modified_sql,
         old_schema=SOURCE_SCHEMA,
         new_schema=SOURCE_SCHEMA,
         dialect=dialect,
-        unit_test=True,
+        optimizier_rules=optimizer_rules,
+    )
+
+
+def is_breaking_change(
+    original_sql,
+    modified_sql,
+    dialect=None,
+    optimize=False,
+):
+    result = _parse_change_catgory(
+        original_sql,
+        modified_sql,
+        dialect=dialect,
+        optimize=optimize,
     )
     return result.category == 'breaking'
 
@@ -40,15 +64,14 @@ def is_partial_breaking_change(
     original_sql,
     modified_sql,
     expected_changed_columns: dict[str, ColumnChangeStatus] = None,
-    dialect=None
+    dialect=None,
+    optimize=False,
 ):
-    result = parse_change_category(
+    result = _parse_change_catgory(
         original_sql,
         modified_sql,
-        old_schema=SOURCE_SCHEMA,
-        new_schema=SOURCE_SCHEMA,
         dialect=dialect,
-        unit_test=True,
+        optimize=optimize,
     )
     if result.category != 'partial_breaking':
         return False
@@ -66,14 +89,13 @@ def is_non_breaking_change(
     modified_sql,
     expected_changed_columns: dict[str, ColumnChangeStatus] = None,
     dialect=None,
+    optimize=False,
 ):
-    result = parse_change_category(
+    result = _parse_change_catgory(
         original_sql,
         modified_sql,
-        old_schema=SOURCE_SCHEMA,
-        new_schema=SOURCE_SCHEMA,
         dialect=dialect,
-        unit_test=True,
+        optimize=optimize,
     )
     if result.category != 'non_breaking':
         return False
@@ -227,17 +249,24 @@ class BreakingChangeTest(unittest.TestCase):
         assert is_non_breaking_change(original_sql, modified_sql)
 
     def test_modify_column(self):
-        original_sql = """
+        alias = """
         select
-            case when a > 100 then 1 else 0 end as a2,
+            a as a2,
         from Customers
         """
-        modified_sql = """
+        derived = """
         select
-            case when a > 101 then 1 else 0 end as a2,
+            a + 1 as a2,
         from Customers
         """
-        assert is_partial_breaking_change(original_sql, modified_sql, {'a2': 'modified'})
+        derived2 = """
+        select
+            (a * b + c * d) as a2,
+        from Customers
+        """
+        assert is_partial_breaking_change(alias, derived, {'a2': 'modified'})
+        assert is_partial_breaking_change(derived, alias, {'a2': 'modified'})
+        assert is_partial_breaking_change(derived, derived2, {'a2': 'modified'})
 
     def test_cte(self):
         original = """
@@ -308,7 +337,7 @@ class BreakingChangeTest(unittest.TestCase):
         assert is_partial_breaking_change(original, modified2, {'order_count': 'removed'})
         assert is_partial_breaking_change(original, modified3, {'order_count': 'modified'})
 
-    def test_cte_rename_not_supported(self):
+    def test_cte_rename(self):
         original = """
         with cte as (
             select * from Customers
@@ -322,8 +351,9 @@ class BreakingChangeTest(unittest.TestCase):
         select * from cte2
         """
 
-        # This is not a breaking change, but we don't support this yet
+        # This would be treated as non breaking change after the optimizer.
         assert is_breaking_change(original, modified)
+        assert is_non_breaking_change(original, modified, optimize=True)
 
     def test_cte_with_select_star(self):
         original_sql = """
@@ -987,7 +1017,7 @@ class BreakingChangeTest(unittest.TestCase):
         assert is_non_breaking_change(original, added, {'b': 'added'})
         assert is_partial_breaking_change(added, original, {'b': 'removed'})
 
-    def test_subquery_rename_not_supported(self):
+    def test_subquery_rename(self):
         original = """
         select * from (
             select a from Customers
@@ -998,8 +1028,10 @@ class BreakingChangeTest(unittest.TestCase):
             select a from Customers
         ) as t2
         """
-        # This is not a breaking change, but we don't support this yet
+
+        # This would be treated as non breaking change after the optimizer.
         assert is_breaking_change(original, modified)
+        assert is_non_breaking_change(original, modified, optimize=True)
 
     def test_subquery_in_filter(self):
         original = """

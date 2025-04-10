@@ -283,7 +283,7 @@ def parse_change_category(
     old_schema=None,
     new_schema=None,
     dialect=None,
-    unit_test=False,
+    optimizier_rules=None,
 ) -> ChangeCategoryResult:
     if old_sql == new_sql:
         return ChangeCategoryResult('non_breaking')
@@ -295,27 +295,10 @@ def parse_change_category(
             exp = parse_one(sql, dialect=dialect)
             if schema:
                 try:
-                    if unit_test:
-                        from sqlglot.optimizer.qualify import qualify
-                        RULES = (
-                            qualify,
-                            # optimizer.pushdown_projections,
-                            # optimizer.qualify,
-                            # optimizer.unnest_subqueries,
-                            # optimizer.pushdown_predicates,
-                            # optimizer.optimize_joins,
-                            # optimizer.eliminate_subqueries,
-                            # optimizer.merge_subqueries,
-                            # optimizer.eliminate_joins,
-                            # optimizer.eliminate_ctes,
-                            # optimizer.qualify_columns,
-                            # optimizer.annotate_types,
-                            # optimizer.canonicalize,
-                            # optimizer.simplify,
-                        )
-                        exp = optimize(exp, schema=schema, dialect=dialect, rules=RULES)
-                    else:
-                        exp = optimize(exp, schema=schema, dialect=dialect)
+                    kwargs = {}
+                    if optimizier_rules is not None:
+                        kwargs["rules"] = optimizier_rules
+                    exp = optimize(exp, schema=schema, dialect=dialect, **kwargs)
                 except Exception as e:
                     # cannot optimize, skip it.
                     _debug(e)
