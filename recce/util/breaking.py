@@ -218,7 +218,7 @@ def _diff_select_scope(
                     if source_column_change_status(ref_column) is not None:
                         return CHANGE_CATEGORY_BREAKING
 
-    # where caluses: Reference the source columns
+    # where clauses: Reference the source columns
     if new_select.args.get('where'):
         where = new_select.args.get('where')
         if isinstance(where, exp.Where):
@@ -234,7 +234,7 @@ def _diff_select_scope(
                 if source_column_change_status(ref_column) is not None:
                     return CHANGE_CATEGORY_BREAKING
 
-    # having clause: Reference the selected columns
+    # having clause: Reference the source columns, selected columns
     if new_select.args.get('having'):
         having = new_select.args.get('having')
         if isinstance(having, exp.Having):
@@ -244,7 +244,7 @@ def _diff_select_scope(
                 if selected_column_change_status(ref_column) is not None:
                     return CHANGE_CATEGORY_BREAKING
 
-    # order by clause: Reference the selected columns
+    # order by clause: Reference the source columns, selected columns, column index
     if new_select.args.get('order'):
         order = new_select.args.get('order')
         if isinstance(order, exp.Order):

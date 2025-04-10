@@ -122,10 +122,10 @@ class BreakingChangeTest(unittest.TestCase):
         from Customers
         """
         modified_sql2 = """
-        --- thie is comment
+        --- this is comment
         select
-            a,
-            b
+            a, --- this is comment
+            b  --- this is comment
         from Customers
         """
         assert is_non_breaking_change(original_sql, modified_sql, {})
@@ -1024,8 +1024,16 @@ class BreakingChangeTest(unittest.TestCase):
         )
         select distinct a, b from cte
         """
+        modified_removed = """
+        with cte as (
+            select a, b from Customers
+        )
+        select distinct a from cte
+        """
         assert is_breaking_change(original, modified1)
         assert is_breaking_change(original, modified2)
+        assert is_breaking_change(original, modified_removed)
+        assert is_breaking_change(modified_removed, original)
 
     def test_udtf_function(self):
         no_udtf = """
