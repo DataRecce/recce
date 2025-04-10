@@ -811,19 +811,17 @@ class DbtAdapter(BaseAdapter):
                         curr_schema = _get_schema(current)
                         dialect = self.adapter.connections.TYPE
 
-                        change_category_result = parse_change_category(
+                        change = parse_change_category(
                             base_sql,
                             curr_sql,
                             old_schema=base_schema,
                             new_schema=curr_schema,
                             dialect=dialect
                         )
-                        if change_category_result.category == 'non_breaking':
-                            change_category = 'non-breaking'
                     except Exception as e:
                         pass
 
-                diff[key] = NodeDiff(change_status='modified', change_category=change_category)
+                diff[key] = NodeDiff(change_status='modified', change=change)
             elif base_node:
                 diff[key] = NodeDiff(change_status='removed')
             elif curr_node:
