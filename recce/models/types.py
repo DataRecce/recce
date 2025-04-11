@@ -103,7 +103,7 @@ class NodeChange(BaseModel):
 
 class NodeDiff(BaseModel):
     change_status: ChangeStatus
-    change: Optional[NodeChange] = None
+    change: Optional[NodeChange] = None  # Only available if change_status is 'modified'
 
 
 class LineageDiff(BaseModel):
