@@ -5,8 +5,6 @@ from typing import Optional, Literal
 
 from pydantic import BaseModel, UUID4, Field
 
-from recce.util.breaking import ChangeCategoryResult
-
 
 class RunType(Enum):
     SIMPLE = 'simple'
@@ -91,13 +89,21 @@ ChangeStatus = Literal[
     'modified',
 ]
 ChangeCategory = Literal[
-    'breaking', 'non-breaking'
+    'breaking',
+    'non_breaking',
+    'partial_breaking',
+    'unknown',
 ]
+
+
+class NodeChange(BaseModel):
+    category: ChangeCategory
+    columns: Optional[dict[str, ChangeStatus]] = None
 
 
 class NodeDiff(BaseModel):
     change_status: ChangeStatus
-    change: Optional[ChangeCategoryResult] = None
+    change: Optional[NodeChange] = None
 
 
 class LineageDiff(BaseModel):
