@@ -136,7 +136,7 @@ def _diff_select_scope(
         if old_select.args.get(arg_key) != new_select.args.get(arg_key):
             return CHANGE_CATEGORY_BREAKING
 
-    def source_column_change_status(ref_column: exp.Column) -> ColumnChangeStatus | None:
+    def source_column_change_status(ref_column: exp.Column) -> Optional[ColumnChangeStatus]:
         table_name = ref_column.table
         column_name = ref_column.name
         source = new_scope.sources.get(table_name, None)  # type: exp.Table | Scope
@@ -205,7 +205,7 @@ def _diff_select_scope(
                     result.category = 'partial_breaking'
                     changed_columns[column_name] = 'modified'
 
-    def selected_column_change_status(ref_column: exp.Column) -> ColumnChangeStatus | None:
+    def selected_column_change_status(ref_column: exp.Column) -> Optional[ColumnChangeStatus]:
         column_name = ref_column.name
         return changed_columns.get(column_name)
 
