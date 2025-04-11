@@ -123,6 +123,8 @@ class RecceCloud:
         api_url = f'{self.base_url}/recce-state/upload'
         files = {'file': (file_name, file_io, 'application/json')}
         response = self._request('POST', api_url, files=files)
+        if response.status_code == 403:
+            return {'status': 'error', 'message': response.json().get('detail')}
         if response.status_code != 200:
             raise RecceCloudException(
                 message='Failed to share Recce state.',

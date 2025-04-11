@@ -15,6 +15,12 @@ import {
   CloseButton,
   HStack,
   useDisclosure,
+  Menu,
+  MenuButton,
+  MenuList,
+  MenuItem,
+  MenuDivider,
+  Tooltip,
 } from "@chakra-ui/react";
 import { useCallback, useState } from "react";
 import { createCheckByRun } from "@/lib/api/checks";
@@ -22,11 +28,19 @@ import { useLocation } from "wouter";
 import { Editor } from "@monaco-editor/react";
 import YAML from "yaml";
 import SqlEditor, { DualSqlEditor } from "../query/SqlEditor";
-import { CheckIcon, CopyIcon, RepeatIcon } from "@chakra-ui/icons";
+import {
+  CheckIcon,
+  ChevronDownIcon,
+  CopyIcon,
+  ExternalLinkIcon,
+  RepeatIcon,
+} from "@chakra-ui/icons";
 import { useCopyToClipboardButton } from "@/lib/hooks/ScreenShot";
 import { RunStatusAndDate } from "./RunStatusAndDate";
 import { LearnHowLink, RecceNotification } from "../onboarding-guide/Notification";
 import { useRecceInstanceContext } from "@/lib/hooks/RecceInstanceContext";
+import { TbCloudUpload } from "react-icons/tb";
+import { useRecceShareStateContext } from "@/lib/hooks/RecceShareStateContext";
 
 interface RunPageProps {
   onClose?: () => void;
@@ -96,7 +110,8 @@ export const PrivateLoadableRunView = ({
   onClose?: () => void;
   isSingleEnvironment?: boolean;
 }) => {
-  const { readOnly } = useRecceInstanceContext();
+  const { readOnly, authed } = useRecceInstanceContext();
+  const { handleShareClick } = useRecceShareStateContext();
   const { runAction } = useRecceActionContext();
   const { error, run, onCancel, isRunning } = useRun(runId);
   const [viewOptions, setViewOptions] = useState();
@@ -185,16 +200,49 @@ export const PrivateLoadableRunView = ({
               Rerun
             </Button>
 
-            <Button
-              leftIcon={<CopyIcon />}
-              variant="outline"
-              isDisabled={!runId || !run?.result || !!error || tabIndex !== 0}
-              onMouseEnter={onMouseEnter}
-              onMouseLeave={onMouseLeave}
-              size="sm"
-              onClick={onCopyToClipboard}>
-              Copy to Clipboard
-            </Button>
+            <Menu>
+              <MenuButton as={Button} size="sm" rightIcon={<ChevronDownIcon />} variant="outline">
+                Share
+              </MenuButton>
+              <MenuList minW="0">
+                <MenuItem _hover={{ bg: "transparent" }}>
+                  <Button
+                    leftIcon={<CopyIcon />}
+                    variant="outline"
+                    isDisabled={!runId || !run?.result || !!error || tabIndex !== 0}
+                    onMouseEnter={onMouseEnter}
+                    onMouseLeave={onMouseLeave}
+                    size="sm"
+                    onClick={onCopyToClipboard}>
+                    Copy to Clipboard
+                  </Button>
+                </MenuItem>
+                <MenuDivider />
+                <MenuItem _hover={{ bg: "transparent" }}>
+                  {authed ? (
+                    <Button
+                      leftIcon={<TbCloudUpload />}
+                      variant="outline"
+                      isDisabled={!runId || !run?.result || !!error || tabIndex !== 0}
+                      size="sm"
+                      onClick={handleShareClick}>
+                      Share to Cloud
+                    </Button>
+                  ) : (
+                    <Tooltip label="Please copy api token and relaunch recce with token">
+                      <Button
+                        leftIcon={<ExternalLinkIcon />}
+                        size="sm"
+                        onClick={() => {
+                          window.open("https://cloud.datarecce.io/settings#tokens", "_blank");
+                        }}>
+                        Enable sharing
+                      </Button>
+                    </Tooltip>
+                  )}
+                </MenuItem>
+              </MenuList>
+            </Menu>
 
             <AddToCheckButton />
 

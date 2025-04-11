@@ -1,4 +1,4 @@
-import { AxiosError, isAxiosError } from "axios";
+import { isAxiosError } from "axios";
 import { axiosClient } from "./axiosClient";
 
 export interface SaveAsInput {
@@ -70,4 +70,15 @@ export async function syncState(input: SyncStateInput): Promise<SyncStateRespons
     }
   }
   throw new Error("Failed to sync state");
+}
+
+export interface ShareStateResponse {
+  status: string;
+  message: string;
+  share_url?: string;
+}
+
+export async function shareState(): Promise<ShareStateResponse> {
+  const response = await axiosClient.post("/api/share");
+  return response.data as ShareStateResponse;
 }
