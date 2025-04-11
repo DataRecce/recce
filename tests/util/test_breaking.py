@@ -41,7 +41,7 @@ def _parse_change_catgory(
         old_schema=SOURCE_SCHEMA,
         new_schema=SOURCE_SCHEMA,
         dialect=dialect,
-        optimizier_rules=optimizer_rules,
+        optimizer_rules=optimizer_rules,
     )
 
 

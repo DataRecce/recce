@@ -288,7 +288,7 @@ def parse_change_category(
     old_schema=None,
     new_schema=None,
     dialect=None,
-    optimizier_rules=None,
+    optimizer_rules=None,
 ) -> ChangeCategoryResult:
     if old_sql == new_sql:
         return ChangeCategoryResult('non_breaking')
@@ -301,8 +301,8 @@ def parse_change_category(
             if schema:
                 try:
                     kwargs = {}
-                    if optimizier_rules is not None:
-                        kwargs["rules"] = optimizier_rules
+                    if optimizer_rules is not None:
+                        kwargs["rules"] = optimizer_rules
                     exp = optimize(exp, schema=schema, dialect=dialect, **kwargs)
                 except Exception as e:
                     # cannot optimize, skip it.
