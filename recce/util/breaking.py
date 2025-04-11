@@ -266,6 +266,9 @@ def _diff_union_scope(
     assert old_scope.expression.key == 'union'
     assert new_scope.expression.key == 'union'
     assert len(old_scope.union_scopes) == len(new_scope.union_scopes)
+    assert new_scope.union_scopes is not None
+    assert len(new_scope.union_scopes) > 0
+
     result = scope_changes_map.get(new_scope.union_scopes[0])
     if result.category in ['breaking', 'unknown']:
         return result
