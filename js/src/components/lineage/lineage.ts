@@ -329,15 +329,19 @@ export function selectDownstream(lineageGraph: LineageGraph, nodeIds: string[], 
 
 export function toReactflow(
   lineageGraph: LineageGraph,
-  selectedNodes?: string[],
-  columnLevelLineage?: {
-    node: string;
-    column: string;
+  options?: {
+    selectedNodes?: string[];
+    columnLevelLineage?: {
+      node: string;
+      column: string;
+    };
+    cll?: ColumnLineageData;
+    breakingChangeEnabled?: boolean;
   },
-  cll?: ColumnLineageData,
 ): [Node[], Edge[], NodeColumnSetMap] {
   const nodes: Node[] = [];
   const edges: Edge[] = [];
+  const { selectedNodes, columnLevelLineage, cll, breakingChangeEnabled } = options || {};
   const columnSet =
     columnLevelLineage && cll != null
       ? _selectColumnLevelLineage(columnLevelLineage.node, columnLevelLineage.column, cll)
@@ -428,7 +432,34 @@ export function toReactflow(
         columnIndex++;
         nodeColumnSet.add(columnKey);
       }
+    } else if (breakingChangeEnabled && node.change) {
+      for (const column of Object.keys(node.change.columns || {})) {
+        const columnKey = `${node.id}_${column}`;
+        nodes.push({
+          id: columnKey,
+          position: { x: 10, y: 70 + columnIndex * 15 },
+          parentId: node.id,
+          extent: "parent",
+          draggable: false,
+          data: {
+            node,
+            column,
+            type: "",
+            transformationType: "",
+          },
+          style: {
+            zIndex: 9999,
+          },
+          type: "customColumnNode",
+          targetPosition: Position.Left,
+          sourcePosition: Position.Right,
+        });
+
+        columnIndex++;
+        nodeColumnSet.add(columnKey);
+      }
     }
+
     nodeColumnSetMap[node.id] = nodeColumnSet;
 
     nodes.push({
