@@ -24,4 +24,4 @@ def test_lineage_diff(dbt_test_helper):
     nodediff = result.diff.get('model1')
     assert nodediff is None
     nodediff2 = result.diff.get('model2')
-    assert nodediff2 is not None and nodediff2.change_status == 'modified' and nodediff2.change_category == 'non-breaking'
+    assert nodediff2 is not None and nodediff2.change_status == 'modified' and nodediff2.change.category == 'non_breaking'

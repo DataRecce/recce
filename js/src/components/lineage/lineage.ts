@@ -26,6 +26,10 @@ export interface LineageGraphNode {
     current?: NodeData;
   };
   changeStatus?: "added" | "removed" | "modified";
+  change?: {
+    category: "breaking" | "non_breaking" | "partial_breaking" | "unknown";
+    columns: Record<string, "added" | "removed" | "modified"> | null;
+  };
   resourceType?: string;
   packageName?: string;
   parents: Record<string, LineageGraphEdge>;
@@ -230,9 +234,15 @@ export function buildLineageGraph(
       const diffNode = diff[key];
       if (diffNode) {
         node.changeStatus = diffNode.change_status;
+        if (diffNode.change) {
+          node.change = {
+            category: diffNode.change.category,
+            columns: diffNode.change.columns,
+          };
+        }
         modifiedSet.push(key);
 
-        if (diffNode.change_category === "non-breaking") {
+        if (diffNode?.change?.category === "non_breaking") {
           nonBreakingSet.push(key);
         } else {
           breakingSet.push(key);

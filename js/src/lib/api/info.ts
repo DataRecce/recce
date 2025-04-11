@@ -64,7 +64,10 @@ export type LineageDiffData = Record<
   string,
   {
     change_status: "added" | "removed" | "modified";
-    change_category: "breaking" | "non-breaking";
+    change: {
+      category: "breaking" | "non_breaking" | "partial_breaking" | "unknown";
+      columns: Record<string, "added" | "removed" | "modified"> | null;
+    } | null;
   }
 >;
 
