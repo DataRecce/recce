@@ -77,7 +77,7 @@ def is_partial_breaking_change(
         return False
 
     if expected_changed_columns is not None:
-        diff = DeepDiff(expected_changed_columns, result.changed_columns, ignore_order=True)
+        diff = DeepDiff(expected_changed_columns, result.columns, ignore_order=True)
         if len(diff) > 0:
             return False
 
@@ -101,7 +101,7 @@ def is_non_breaking_change(
         return False
 
     if expected_changed_columns is not None:
-        diff = DeepDiff(expected_changed_columns, result.changed_columns, ignore_order=True)
+        diff = DeepDiff(expected_changed_columns, result.columns, ignore_order=True)
         if len(diff) > 0:
             return False
 

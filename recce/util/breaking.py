@@ -1,10 +1,11 @@
-from dataclasses import dataclass
 from typing import Literal, Optional
 
 import sqlglot.expressions as exp
 from sqlglot import parse_one, diff, Dialect
 from sqlglot.diff import Insert, Keep
 from sqlglot.optimizer import optimize, traverse_scope, Scope
+
+from recce.models.types import NodeChange
 
 ChangeCategory = Literal['breaking', 'partial_breaking', 'non_breaking', 'unknown']
 ColumnChangeStatus = Literal['added', 'removed', 'modified']
@@ -27,23 +28,8 @@ VALID_EXPRESSIONS = (
     exp.Subquery,
 )
 
-
-@dataclass
-class ChangeCategoryResult:
-    category: ChangeCategory
-    changed_columns: Optional[dict[str, ColumnChangeStatus]]
-
-    def __init__(
-        self,
-        category: ChangeCategory,
-        changed_columns: Optional[dict[str, ColumnChangeStatus]] = None
-    ):
-        self.category = category
-        self.changed_columns = changed_columns
-
-
-CHANGE_CATEGORY_UNKNOWN = ChangeCategoryResult('unknown')
-CHANGE_CATEGORY_BREAKING = ChangeCategoryResult('breaking')
+CHANGE_CATEGORY_UNKNOWN = NodeChange(category='unknown')
+CHANGE_CATEGORY_BREAKING = NodeChange(category='breaking')
 
 
 def _debug(*args):
@@ -110,12 +96,12 @@ def _is_breaking_change(original_sql, modified_sql, dialect=None) -> bool:
 def _diff_select_scope(
     old_scope: Scope,
     new_scope: Scope,
-    scope_changes_map: dict[Scope, ChangeCategoryResult]
-) -> ChangeCategoryResult:
+    scope_changes_map: dict[Scope, NodeChange]
+) -> NodeChange:
     assert old_scope.expression.key == 'select'
     assert new_scope.expression.key == 'select'
 
-    result = ChangeCategoryResult('non_breaking')
+    result = NodeChange(category='non_breaking')
 
     # check if the upstream scopes is the same and not breaking
     if old_scope.sources.keys() != new_scope.sources.keys():
@@ -147,7 +133,7 @@ def _diff_select_scope(
         if ref_change_category is None:
             return None
 
-        return ref_change_category.changed_columns.get(column_name)
+        return ref_change_category.columns.get(column_name)
 
     # selects
     old_column_map = {projection.alias_or_name: projection for projection in old_select.selects}
@@ -254,15 +240,15 @@ def _diff_select_scope(
                 if selected_column_change_status(ref_column) is not None:
                     return CHANGE_CATEGORY_BREAKING
 
-    result.changed_columns = changed_columns
+    result.columns = changed_columns
     return result
 
 
 def _diff_union_scope(
     old_scope: Scope,
     new_scope: Scope,
-    scope_changes_map: dict[Scope, ChangeCategoryResult]
-) -> ChangeCategoryResult:
+    scope_changes_map: dict[Scope, NodeChange]
+) -> NodeChange:
     assert old_scope.expression.key == 'union'
     assert new_scope.expression.key == 'union'
     assert len(old_scope.union_scopes) == len(new_scope.union_scopes)
@@ -279,8 +265,8 @@ def _diff_union_scope(
             return result_right
         if result_right.category == 'partial_breaking':
             result.category = 'partial_breaking'
-        for column_name, column_change_status in result_right.changed_columns.items():
-            result.changed_columns[column_name] = column_change_status
+        for column_name, column_change_status in result_right.columns.items():
+            result.columns[column_name] = column_change_status
 
     return result
 
@@ -292,9 +278,9 @@ def parse_change_category(
     new_schema=None,
     dialect=None,
     optimizer_rules=None,
-) -> ChangeCategoryResult:
+) -> NodeChange:
     if old_sql == new_sql:
-        return ChangeCategoryResult('non_breaking')
+        return NodeChange(category='non_breaking')
 
     try:
         dialect = Dialect.get(dialect)
@@ -330,7 +316,7 @@ def parse_change_category(
             scope_changes_map[new_scope] = CHANGE_CATEGORY_BREAKING
             continue
         if old_scope == new_scope:
-            scope_changes_map[new_scope] = ChangeCategoryResult('non_breaking')
+            scope_changes_map[new_scope] = NodeChange(category='non_breaking')
             continue
 
         scope_type = old_scope.expression.key
@@ -344,7 +330,7 @@ def parse_change_category(
             if old_scope.expression != new_scope.expression:
                 result = CHANGE_CATEGORY_BREAKING
             else:
-                result = ChangeCategoryResult('non_breaking', changed_columns={})
+                result = NodeChange(category='non_breaking', columns={})
 
         if result.category == 'breaking' or result.category == 'unknown':
             return result
