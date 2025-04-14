@@ -40,7 +40,8 @@ export interface LinageGraphColumnNode {
   node: LineageGraphNode;
   column: string;
   type: string;
-  transformationType: string;
+  transformationType?: string;
+  changeStatus?: "added" | "removed" | "modified";
 }
 
 export interface LineageGraphEdge {
@@ -433,8 +434,11 @@ export function toReactflow(
         nodeColumnSet.add(columnKey);
       }
     } else if (breakingChangeEnabled && node.change) {
-      for (const column of Object.keys(node.change.columns || {})) {
+      for (const [column, changeStatus] of Object.entries(node.change.columns || {})) {
         const columnKey = `${node.id}_${column}`;
+        const columnType =
+          node.data.current?.columns?.[column]?.type || node.data.base?.columns?.[column]?.type;
+
         nodes.push({
           id: columnKey,
           position: { x: 10, y: 70 + columnIndex * 15 },
@@ -444,8 +448,8 @@ export function toReactflow(
           data: {
             node,
             column,
-            type: "",
-            transformationType: "",
+            type: columnType,
+            changeStatus,
           },
           style: {
             zIndex: 9999,
@@ -462,11 +466,16 @@ export function toReactflow(
 
     nodeColumnSetMap[node.id] = nodeColumnSet;
 
+    let height = 60;
+    if (columnIndex > 0) {
+      height += 20 + columnIndex * 15;
+    }
+
     nodes.push({
       id: node.id,
       position: { x: 0, y: 0 },
       width: 300,
-      height: 36 + columnIndex * 15,
+      height: height,
       data: {
         ...node,
       },
@@ -500,7 +509,7 @@ export const layout = (nodes: Node[], edges: Edge[], direction = "LR") => {
   const dagreGraph = new dagre.graphlib.Graph();
   dagreGraph.setDefaultEdgeLabel(() => ({}));
 
-  dagreGraph.setGraph({ rankdir: direction });
+  dagreGraph.setGraph({ rankdir: direction, ranksep: 50, nodesep: 30 });
 
   nodes.forEach((node) => {
     if (node.type !== "customNode") {
@@ -520,7 +529,7 @@ export const layout = (nodes: Node[], edges: Edge[], direction = "LR") => {
       return;
     }
     const nodeWidth = node.width || 300;
-    const nodeHeight = node.height || 36;
+    const nodeHeight = node.height || 60;
 
     const nodeWithPosition = dagreGraph.node(node.id);
 
