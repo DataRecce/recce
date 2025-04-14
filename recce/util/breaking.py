@@ -103,9 +103,7 @@ def _diff_select_scope(
 
     result = NodeChange(category='non_breaking')
 
-    # check if the upstream scopes is the same and not breaking
-    if old_scope.sources.keys() != new_scope.sources.keys():
-        return CHANGE_CATEGORY_BREAKING
+    # check if the upstream scopes is not breaking
     for source_name, source in new_scope.sources.items():
         if scope_changes_map.get(source) is not None:
             change_category = scope_changes_map[source]
@@ -148,6 +146,9 @@ def _diff_select_scope(
         def _has_aggregate(expr: exp.Expression) -> bool:
             return expr.find(exp.AggFunc) is not None
 
+        def _has_star(expr: exp.Expression) -> bool:
+            return expr.find(exp.Star) is not None
+
         old_column = old_column_map.get(column_name)
         new_column = new_column_map.get(column_name)
         if old_column is None:
@@ -180,6 +181,17 @@ def _diff_select_scope(
             changed_columns[column_name] = 'modified'
             result.category = 'partial_breaking'
         else:
+            if _has_star(new_column):
+                for source_name, (_, source) in new_scope.selected_sources.items():
+                    change = scope_changes_map.get(source)
+                    if change is not None:
+                        for sub_column_name in change.columns.keys():
+                            column_change_status = change.columns[sub_column_name]
+                            changed_columns[sub_column_name] = column_change_status
+                            if column_change_status in ['removed', 'modified']:
+                                result.category = 'partial_breaking'
+                continue
+
             ref_columns = new_column.find_all(exp.Column)
             for ref_column in ref_columns:
                 if source_column_change_status(ref_column) is not None:
@@ -187,9 +199,9 @@ def _diff_select_scope(
                         return CHANGE_CATEGORY_BREAKING
                     if _has_udtf(new_column):
                         return CHANGE_CATEGORY_BREAKING
-
-                    result.category = 'partial_breaking'
-                    changed_columns[column_name] = 'modified'
+                    else:
+                        result.category = 'partial_breaking'
+                        changed_columns[column_name] = 'modified'
 
     def selected_column_change_status(ref_column: exp.Column) -> Optional[ColumnChangeStatus]:
         column_name = ref_column.name
