@@ -909,6 +909,7 @@ export function PrivateLineageView(
       setFocusedNodeId(nodeId);
     },
     resetColumnLevelLinage: () => {
+      setFocusedNodeId(undefined);
       void handleViewOptionsChanged(
         {
           ...viewOptions,
@@ -1053,6 +1054,7 @@ export function PrivateLineageView(
                     node={viewOptions.column_level_lineage.node}
                     column={viewOptions.column_level_lineage.column}
                     reset={() => {
+                      setFocusedNodeId(undefined);
                       void handleViewOptionsChanged({
                         ...viewOptions,
                         column_level_lineage: undefined,
