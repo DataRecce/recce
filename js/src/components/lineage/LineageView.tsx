@@ -437,6 +437,10 @@ export function PrivateLineageView(
   });
 
   const onColumnNodeClick = (event: React.MouseEvent, node: Node) => {
+    if (selectMode) {
+      return;
+    }
+
     setFocusedNodeId(node.parentId);
     void handleViewOptionsChanged(
       {
