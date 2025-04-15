@@ -531,6 +531,16 @@ class BreakingChangeTest(unittest.TestCase):
         select * from cte2
         """
 
+        # This would be treated as non breaking change after the optimizer.
+        assert is_partial_breaking_change(original, modified, {
+            "customer_id": "modified",
+            "a": "modified",
+            "b": "modified",
+            "c": "modified",
+            "d": "modified"
+        })
+        assert is_non_breaking_change(original, modified, optimize=True)
+
     def test_cte_with_select_star(self):
         original_sql = """
         with cte as (
@@ -1213,6 +1223,12 @@ class BreakingChangeTest(unittest.TestCase):
         ) as t2
         """
 
+        # This would be treated as non breaking change after the optimizer.
+        assert is_partial_breaking_change(original, modified, {
+            "a": "modified"
+        })
+        assert is_non_breaking_change(original, modified, optimize=True)
+
     def test_subquery_in_filter(self):
         original = """
         select
@@ -1259,8 +1275,8 @@ class BreakingChangeTest(unittest.TestCase):
         )
         select * from renamed
         """
-        # assert is_non_breaking_change(original, added, {'a1': 'added'})
-        # assert is_partial_breaking_change(added, original, {'a1': 'removed'})
+        assert is_non_breaking_change(original, added, {'a1': 'added'})
+        assert is_partial_breaking_change(added, original, {'a1': 'removed'})
 
         original = """
         with source (
