@@ -77,7 +77,7 @@ def is_partial_breaking_change(
         return False
 
     if expected_changed_columns is not None:
-        diff = DeepDiff(expected_changed_columns, result.changed_columns, ignore_order=True)
+        diff = DeepDiff(expected_changed_columns, result.columns, ignore_order=True)
         if len(diff) > 0:
             return False
 
@@ -101,7 +101,7 @@ def is_non_breaking_change(
         return False
 
     if expected_changed_columns is not None:
-        diff = DeepDiff(expected_changed_columns, result.changed_columns, ignore_order=True)
+        diff = DeepDiff(expected_changed_columns, result.columns, ignore_order=True)
         if len(diff) > 0:
             return False
 
@@ -532,7 +532,13 @@ class BreakingChangeTest(unittest.TestCase):
         """
 
         # This would be treated as non breaking change after the optimizer.
-        assert is_breaking_change(original, modified)
+        assert is_partial_breaking_change(original, modified, {
+            "customer_id": "modified",
+            "a": "modified",
+            "b": "modified",
+            "c": "modified",
+            "d": "modified"
+        })
         assert is_non_breaking_change(original, modified, optimize=True)
 
     def test_cte_with_select_star(self):
@@ -1218,7 +1224,9 @@ class BreakingChangeTest(unittest.TestCase):
         """
 
         # This would be treated as non breaking change after the optimizer.
-        assert is_breaking_change(original, modified)
+        assert is_partial_breaking_change(original, modified, {
+            "a": "modified"
+        })
         assert is_non_breaking_change(original, modified, optimize=True)
 
     def test_subquery_in_filter(self):
@@ -1241,6 +1249,60 @@ class BreakingChangeTest(unittest.TestCase):
         )
         """
         assert is_breaking_change(original, modified)
+
+    def test_no_schema(self):
+        original = """
+        with source (
+            select * from Payments
+        ),
+        renamed (
+            select
+            *
+            from source
+        )
+        select * from renamed
+        """
+
+        added = """
+        with source (
+            select * from Payments
+        ),
+        renamed (
+            select
+            *,
+            a as a1
+            from source
+        )
+        select * from renamed
+        """
+        assert is_non_breaking_change(original, added, {'a1': 'added'})
+        assert is_partial_breaking_change(added, original, {'a1': 'removed'})
+
+        original = """
+        with source (
+            select * from Payments
+        ),
+        renamed (
+            select
+            *
+            from source
+        )
+        select * from source
+        """
+
+        added_no_use = """
+        with source (
+            select * from Payments
+        ),
+        renamed (
+            select
+            *,
+            a as a1
+            from source
+        )
+        select * from source
+        """
+        assert is_non_breaking_change(original, added_no_use, {})
 
     def test_non_sql(self):
         malformed1 = """
@@ -1308,3 +1370,39 @@ class BreakingChangeTest(unittest.TestCase):
         from renamed
         """
         assert is_non_breaking_change(original_sql, modified_sql)
+
+    def test_pr44(self):
+        original_sql = """
+        with source as (
+            select * from raw_payments
+        ),
+        renamed as (
+
+            select
+                id as payment_id,
+                order_id,
+                payment_method,
+                -- `amount` is currently stored in cents, so we convert it to dollars
+                amount / 100 as amount
+            from source
+        )
+
+        select * from renamed
+        """
+        modified_sql = """
+        with source as (
+            select * from raw_payments
+        ),
+        renamed as (
+            select
+                id as payment_id,
+                order_id,
+                payment_method,
+                -- `amount` is currently stored in cents, so we convert it to dollars
+                amount / 100 as amount,
+                payment_method == 'coupon' as is_promotion
+            from source
+        )
+        select * from renamed
+        """
+        assert is_non_breaking_change(original_sql, modified_sql, {'is_promotion': 'added'})
