@@ -2,6 +2,7 @@ import { axiosClient } from "./axiosClient";
 
 export interface RecceInstanceInfo {
   read_only: boolean;
+  authed: boolean;
 }
 
 export async function getRecceInstanceInfo(): Promise<RecceInstanceInfo> {
