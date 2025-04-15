@@ -32,7 +32,7 @@ from recce.adapter.base import BaseAdapter
 from recce.state import ArtifactsRoot
 from .dbt_version import DbtVersion
 from ...models import RunType
-from ...models.types import LineageDiff, NodeDiff
+from ...models.types import LineageDiff, NodeDiff, NodeChange
 from ...tasks import Task, QueryTask, QueryBaseTask, QueryDiffTask, ValueDiffTask, ValueDiffDetailTask, ProfileDiffTask, \
     RowCountTask, RowCountDiffTask, TopKDiffTask, HistogramDiffTask
 
@@ -773,7 +773,6 @@ class DbtAdapter(BaseAdapter):
                 if base_checksum is None or curr_checksum is None or base_checksum == curr_checksum:
                     continue
 
-                change_category = 'breaking'
                 if curr_node.get('resource_type') == 'model':
                     try:
                         def _get_schema(lineage):
@@ -818,8 +817,8 @@ class DbtAdapter(BaseAdapter):
                             new_schema=curr_schema,
                             dialect=dialect
                         )
-                    except Exception as e:
-                        pass
+                    except Exception:
+                        change = NodeChange(category='unknown')
 
                 diff[key] = NodeDiff(change_status='modified', change=change)
             elif base_node:
