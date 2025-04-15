@@ -180,33 +180,6 @@ export function GraphNode({ data }: GraphNodeProps) {
   const showColumns = columnSet.size > 0;
   const action = selectMode === "action_result" ? getNodeAction(data.id) : undefined;
 
-  const AggrOrChangeCategory = () => {
-    if (breakingChangeEnabled && changeStatus === "modified") {
-      return (
-        <Box height="20px" color="gray" fontSize="9pt" margin={0} fontWeight={600}>
-          {changeCategory ? CHANGE_CATEGORY_MSGS[changeCategory] : ""}
-        </Box>
-      );
-    }
-
-    if (selectMode !== "action_result" && data.resourceType === "model") {
-      return (
-        <NodeRunsAggregated
-          id={data.id}
-          inverted={(function () {
-            if (selectMode === "selecting") {
-              return isSelected ? true : false;
-            } else {
-              return false;
-            }
-          })()}
-        />
-      );
-    }
-
-    return <></>;
-  };
-
   return (
     <Flex
       cursor={selectMode === "selecting" ? "pointer" : "inherit"}
@@ -347,7 +320,24 @@ export function GraphNode({ data }: GraphNodeProps) {
             paddingBottom="1"
             visibility={showContent ? "inherit" : "hidden"}>
             <HStack spacing={"8px"}>
-              <AggrOrChangeCategory />
+              {breakingChangeEnabled && changeStatus === "modified" ? (
+                <Box height="20px" color="gray" fontSize="9pt" margin={0} fontWeight={600}>
+                  {changeCategory ? CHANGE_CATEGORY_MSGS[changeCategory] : ""}
+                </Box>
+              ) : selectMode !== "action_result" && data.resourceType === "model" ? (
+                <NodeRunsAggregated
+                  id={data.id}
+                  inverted={(function () {
+                    if (selectMode === "selecting") {
+                      return isSelected ? true : false;
+                    } else {
+                      return false;
+                    }
+                  })()}
+                />
+              ) : (
+                <></>
+              )}
 
               {action ? (
                 <>
