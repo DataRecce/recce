@@ -199,9 +199,8 @@ def _diff_select_scope(
                         return CHANGE_CATEGORY_BREAKING
                     if _has_udtf(new_column):
                         return CHANGE_CATEGORY_BREAKING
-                    else:
-                        result.category = 'partial_breaking'
-                        changed_columns[column_name] = 'modified'
+                    result.category = 'partial_breaking'
+                    changed_columns[column_name] = 'modified'
 
     def selected_column_change_status(ref_column: exp.Column) -> Optional[ColumnChangeStatus]:
         column_name = ref_column.name
