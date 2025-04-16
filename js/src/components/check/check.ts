@@ -7,7 +7,7 @@ export function buildTitle(check: Check) {
 
 export function buildDescription(check: Check) {
   // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
-  return check.description || "_(no description)_";
+  return check.description ? check.description : "_(no description)_";
 }
 
 export function buildQuery(check: Check) {
