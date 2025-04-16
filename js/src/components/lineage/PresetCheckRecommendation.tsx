@@ -25,6 +25,7 @@ import { useRecceActionContext } from "@/lib/hooks/RecceActionContext";
 import { sessionStorageKeys } from "@/lib/api/sessionStorageKeys";
 import { useRecceServerFlag } from "@/lib/hooks/useRecceServerFlag";
 import { trackRecommendCheck } from "@/lib/api/track";
+import { useRecceInstanceContext } from "@/lib/hooks/RecceInstanceContext";
 
 const usePresetCheckRecommendation = () => {
   const queryChecks = useQuery({
@@ -90,6 +91,7 @@ const usePresetCheckRecommendation = () => {
 };
 
 export const PresetCheckRecommendation = () => {
+  const { readOnly } = useRecceInstanceContext();
   const { lineageGraph, envInfo } = useLineageGraphContext();
   const { showRunId } = useRecceActionContext();
   const { data: flags } = useRecceServerFlag();
@@ -253,7 +255,8 @@ export const PresetCheckRecommendation = () => {
                   from: recommendRerun ? "rerun" : "initial",
                   nodes: numNodes,
                 });
-              }}>
+              }}
+              isDisabled={readOnly}>
               Perform
             </Button>
           </HStack>

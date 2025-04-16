@@ -393,7 +393,11 @@ export function PrivateLineageView(
         filteredNodeIds = result.nodes;
       }
 
-      const [nodes, edges, nodeColumnSetMap] = toReactflow(lineageGraph, filteredNodeIds);
+      // const [nodes, edges, nodeColumnSetMap] = toReactflow(lineageGraph, filteredNodeIds);
+      const [nodes, edges, nodeColumnSetMap] = toReactflow(lineageGraph, {
+        selectedNodes: filteredNodeIds,
+        breakingChangeEnabled,
+      });
       layout(nodes, edges);
       setNodes(nodes);
       setEdges(edges);
@@ -433,6 +437,10 @@ export function PrivateLineageView(
   });
 
   const onColumnNodeClick = (event: React.MouseEvent, node: Node) => {
+    if (selectMode) {
+      return;
+    }
+
     setFocusedNodeId(node.parentId);
     void handleViewOptionsChanged(
       {
@@ -480,10 +488,17 @@ export function PrivateLineageView(
     }
   };
 
-  const handleViewOptionsChanged = async (
-    newViewOptions: LineageDiffViewOptions,
-    fitView = true,
-  ) => {
+  const refreshLayout = async (options: {
+    viewOptions?: LineageDiffViewOptions;
+    breakingChangeEnabled?: boolean;
+    fitView?: boolean;
+  }) => {
+    const {
+      breakingChangeEnabled: newBreakingChangeEnabled = breakingChangeEnabled,
+      viewOptions: newViewOptions = viewOptions,
+      fitView,
+    } = options;
+
     let selectedNodes: string[] | undefined = undefined;
 
     if (!lineageGraph) {
@@ -548,16 +563,15 @@ export function PrivateLineageView(
       }
     }
 
-    const [newNodes, newEdges, newNodeColumnSetMap] = toReactflow(
-      lineageGraph,
+    const [newNodes, newEdges, newNodeColumnSetMap] = toReactflow(lineageGraph, {
       selectedNodes,
-      newViewOptions.column_level_lineage,
+      columnLevelLineage: newViewOptions.column_level_lineage,
       cll,
-    );
+      breakingChangeEnabled: newBreakingChangeEnabled,
+    });
     setNodes(newNodes);
     setEdges(newEdges);
     setNodeColumnSetMap(newNodeColumnSetMap);
-    setViewOptions(newViewOptions);
 
     // Close the run result view if the run result node is not in the new nodes
     if (run?.params?.model && !findNodeByName(run.params.model)) {
@@ -570,6 +584,26 @@ export function PrivateLineageView(
         reactFlow.fitView({ nodes: newNodes, duration: 200 });
       })();
     }
+  };
+
+  const handleViewOptionsChanged = async (
+    newViewOptions: LineageDiffViewOptions,
+    fitView = true,
+  ) => {
+    setViewOptions(newViewOptions);
+    await refreshLayout({
+      viewOptions: newViewOptions,
+      fitView,
+    });
+  };
+
+  const handleBreakingChangeEnabledChanged = async (enabled: boolean) => {
+    setBreakingChangeEnabled(enabled);
+    setFocusedNodeId(undefined);
+    await refreshLayout({
+      breakingChangeEnabled: enabled,
+    });
+    trackBreakingChange({ enabled });
   };
 
   const valueDiffAlertDialog = useValueDiffAlertDialog();
@@ -879,6 +913,7 @@ export function PrivateLineageView(
       setFocusedNodeId(nodeId);
     },
     resetColumnLevelLinage: () => {
+      setFocusedNodeId(undefined);
       void handleViewOptionsChanged(
         {
           ...viewOptions,
@@ -1016,17 +1051,14 @@ export function PrivateLineageView(
               <Flex direction="column" gap="5px">
                 <BreakingChangeSwitch
                   enabled={breakingChangeEnabled}
-                  onChanged={(enabled) => {
-                    setBreakingChangeEnabled(enabled);
-                    setFocusedNodeId(undefined);
-                    trackBreakingChange({ enabled });
-                  }}
+                  onChanged={handleBreakingChangeEnabledChanged}
                 />
                 {viewOptions.column_level_lineage && (
                   <ColumnLevelLineageControl
                     node={viewOptions.column_level_lineage.node}
                     column={viewOptions.column_level_lineage.column}
                     reset={() => {
+                      setFocusedNodeId(undefined);
                       void handleViewOptionsChanged({
                         ...viewOptions,
                         column_level_lineage: undefined,

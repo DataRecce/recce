@@ -2,10 +2,11 @@ import { exportState } from "@/lib/api/state";
 import { Icon, IconButton, Tooltip, useToast } from "@chakra-ui/react";
 import { format } from "date-fns";
 import saveAs from "file-saver";
-import { TfiExport } from "react-icons/tfi";
 import { IconExport } from "../icons";
+import { useRecceInstanceContext } from "@/lib/hooks/RecceInstanceContext";
 
 export function StateExporter() {
+  const { readOnly } = useRecceInstanceContext();
   const toast = useToast();
 
   const handleExport = async () => {
@@ -40,6 +41,7 @@ export function StateExporter() {
         aria-label="Export state"
         onClick={handleExport}
         icon={<Icon as={IconExport} verticalAlign="middle" boxSize={"16px"} />}
+        isDisabled={readOnly}
       />
     </Tooltip>
   );

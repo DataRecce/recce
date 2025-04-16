@@ -89,13 +89,21 @@ ChangeStatus = Literal[
     'modified',
 ]
 ChangeCategory = Literal[
-    'breaking', 'non-breaking'
+    'breaking',
+    'non_breaking',
+    'partial_breaking',
+    'unknown',
 ]
+
+
+class NodeChange(BaseModel):
+    category: ChangeCategory
+    columns: Optional[dict[str, ChangeStatus]] = None
 
 
 class NodeDiff(BaseModel):
     change_status: ChangeStatus
-    change_category: Optional[ChangeCategory] = None
+    change: Optional[NodeChange] = None  # Only available if change_status is 'modified'
 
 
 class LineageDiff(BaseModel):

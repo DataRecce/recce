@@ -9,13 +9,14 @@ import uvicorn
 from recce import event
 from recce.artifact import upload_dbt_artifacts, download_dbt_artifacts
 from recce.config import RecceConfig, RECCE_CONFIG_FILE, RECCE_ERROR_LOG_FILE
+from recce.event import get_recce_api_token, update_user_profile
 from recce.git import current_branch, current_default_branch
 from recce.run import cli_run, check_github_ci_env
-from recce.state import RecceStateLoader, RecceCloudStateManager
+from recce.state import RecceStateLoader, RecceCloudStateManager, RecceShareStateManager
 from recce.summary import generate_markdown_summary
 from recce.util.logger import CustomFormatter
-from recce.util.recce_cloud import RecceCloudException, get_recce_cloud_onboarding_state
-from .core import RecceContext
+from recce.util.recce_cloud import RecceCloudException, get_recce_cloud_onboarding_state, RECCE_CLOUD_API_HOST
+from .core import RecceContext, set_default_context
 from .event.track import TrackCommand
 
 event.init()
@@ -200,6 +201,8 @@ def diff(sql, primary_keys: List[str] = None, keep_shape: bool = False, keep_equ
 @click.option('--host', default='localhost', show_default=True, help='The host to bind to.')
 @click.option('--port', default=8000, show_default=True, help='The port to bind to.', type=int)
 @click.option('--review', is_flag=True, help='Open the state file in the review mode.')
+@click.option('--api-token', help='The token used by Recce Cloud API.', type=click.STRING,
+              envvar='RECCE_API_TOKEN')
 @add_options(dbt_related_options)
 @add_options(sqlmesh_related_options)
 @add_options(recce_options)
@@ -256,6 +259,10 @@ def server(host, port, state_file=None, **kwargs):
         cloud_onboarding_state = get_recce_cloud_onboarding_state(kwargs.get('cloud_token'))
         flag['show_onboarding_guide'] = False if cloud_onboarding_state == 'completed' else True
 
+    auth_options = {}
+    api_token = kwargs.get('api_token') if kwargs.get('api_token') else get_recce_api_token()
+    auth_options['api_token'] = api_token
+
     # Check Single Environment Onboarding Mode if the review mode is False
     if not os.path.isdir(kwargs.get('target_base_path')) and is_review is False:
         # Mark as single env onboarding mode if user provides the target-path only
@@ -292,7 +299,7 @@ def server(host, port, state_file=None, **kwargs):
         console.print(f"[[red]Error[/red]] {message}")
         exit(1)
 
-    state = AppState(state_loader=state_loader, kwargs=kwargs, flag=flag)
+    state = AppState(state_loader=state_loader, kwargs=kwargs, flag=flag, auth_options=auth_options)
     app.state = state
 
     uvicorn.run(app, host=host, port=port, lifespan='on')
@@ -749,6 +756,102 @@ def github(**kwargs):
 def artifact(**kwargs):
     from recce.github import recce_ci_artifact
     return recce_ci_artifact(**kwargs)
+
+
+@cli.command(cls=TrackCommand)
+@click.argument('state_file', type=click.Path(exists=True))
+@click.option('--api-token', help='The token used by Recce Cloud API.', type=click.STRING,
+              envvar='RECCE_API_TOKEN')
+@add_options(recce_options)
+def share(state_file, **kwargs):
+    """
+        Share the state file
+    """
+    from rich.console import Console
+
+    console = Console()
+    handle_debug_flag(**kwargs)
+    cloud_options = None
+
+    # read or input the api token
+    api_token = kwargs.get('api_token') if kwargs.get('api_token') else get_recce_api_token()
+    if api_token is None:
+        console.print("Please login Recce Cloud and copy the API token from the setting page.\n"
+                      f"{RECCE_CLOUD_API_HOST}/settings#tokens\n"
+                      "You can also edit it in the recce profiles yaml file later.")
+        api_token = click.prompt('Your Recce API token', type=str, hide_input=True, show_default=False)
+        update_user_profile({'api_token': api_token})
+
+    auth_options = {'api_token': api_token}
+
+    # load local state
+    state_loader = create_state_loader(review_mode=True, cloud_mode=False, state_file=state_file,
+                                       cloud_options=cloud_options)
+
+    if not state_loader.verify():
+        error, hint = state_loader.error_and_hint
+        console.print(f"[[red]Error[/red]] {error}")
+        console.print(f"{hint}")
+        exit(1)
+
+    # check if state exists in cloud
+    state_manager = RecceShareStateManager(auth_options)
+    if not state_manager.verify():
+        error, hint = state_manager.error_and_hint
+        console.print(f"[[red]Error[/red]] {error}")
+        console.print(f"{hint}")
+        exit(1)
+
+    # check if state exists in cloud
+    state_file_name = os.path.basename(state_file)
+
+    try:
+        response = state_manager.share_state(state_file_name, state_loader.state)
+        if response.get('status') == 'error':
+            console.print("[[red]Error[/red]] Failed to share the state.\n"
+                          f"Reason: {response.get('message')}")
+        else:
+            console.print(f"Shared Link: {response.get('share_url')}")
+    except RecceCloudException as e:
+        console.print(f"[[red]Error[/red]] {e}")
+        console.print(f"Reason: {e.reason}")
+        exit(1)
+
+
+@cli.command(hidden=True, cls=TrackCommand)
+@click.argument('state_file', required=True)
+@click.option('--host', default='localhost', show_default=True, help='The host to bind to.')
+@click.option('--port', default=8000, show_default=True, help='The port to bind to.', type=int)
+def read_only(host, port, state_file=None, **kwargs):
+
+    from .server import app, AppState
+    from rich.console import Console
+
+    console = Console()
+    handle_debug_flag(**kwargs)
+    is_review = True
+    is_cloud = False
+    cloud_options = None
+    flag = {
+        'read_only': True,
+    }
+    state_loader = create_state_loader(is_review, is_cloud, state_file, cloud_options)
+
+    if not state_loader.verify():
+        error, hint = state_loader.error_and_hint
+        console.print(f"[[red]Error[/red]] {error}")
+        console.print(f"{hint}")
+        exit(1)
+
+    result, message = RecceContext.verify_required_artifacts(**kwargs, review=is_review)
+    if not result:
+        console.print(f"[[red]Error[/red]] {message}")
+        exit(1)
+
+    app.state = AppState(state_loader=state_loader, kwargs=kwargs, flag=flag)
+    set_default_context(RecceContext.load(**kwargs, review=is_review, state_loader=state_loader))
+
+    uvicorn.run(app, host=host, port=port, lifespan='off')
 
 
 if __name__ == "__main__":

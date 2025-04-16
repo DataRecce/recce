@@ -59,6 +59,13 @@ function _RowCountDiffTag({ rowCount }: { rowCount: RowCountDiff }) {
   );
 }
 
+const CHANGE_CATEGORY_MSGS = {
+  breaking: "Breaking",
+  non_breaking: "Non Breaking",
+  partial_breaking: "Partial Breaking",
+  unknown: "Unknown",
+};
+
 const NodeRunsAggregated = ({ id, inverted }: { id: string; inverted: boolean }) => {
   const { lineageGraph, runsAggregated } = useLineageGraphContext();
   const runs = runsAggregated?.[id];
@@ -126,7 +133,8 @@ const GraphNodeCheckbox = ({
 };
 
 export function GraphNode({ data }: GraphNodeProps) {
-  const { id, resourceType, changeStatus } = data;
+  const { id, resourceType, changeStatus, change } = data;
+  const changeCategory = change?.category;
   const showContent = useStore((s) => s.transform[2] > 0.3);
 
   const { icon: resourceIcon } = getIconForResourceType(resourceType);
@@ -312,7 +320,11 @@ export function GraphNode({ data }: GraphNodeProps) {
             paddingBottom="1"
             visibility={showContent ? "inherit" : "hidden"}>
             <HStack spacing={"8px"}>
-              {selectMode !== "action_result" && data.resourceType === "model" && (
+              {breakingChangeEnabled && changeStatus === "modified" ? (
+                <Box height="20px" color="gray" fontSize="9pt" margin={0} fontWeight={600}>
+                  {changeCategory ? CHANGE_CATEGORY_MSGS[changeCategory] : ""}
+                </Box>
+              ) : selectMode !== "action_result" && data.resourceType === "model" ? (
                 <NodeRunsAggregated
                   id={data.id}
                   inverted={(function () {
@@ -323,6 +335,8 @@ export function GraphNode({ data }: GraphNodeProps) {
                     }
                   })()}
                 />
+              ) : (
+                <></>
               )}
 
               {action ? (
@@ -337,9 +351,9 @@ export function GraphNode({ data }: GraphNodeProps) {
           </Flex>
         </Flex>
       </Flex>
-      {columnSet.size > 0 && (
+      {showColumns && (
         <Box
-          p="10px 20px"
+          p="10px 10px"
           borderColor={borderColor}
           borderWidth={borderWidth}
           borderTopWidth={0}

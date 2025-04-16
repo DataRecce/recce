@@ -34,6 +34,7 @@ import { ChevronDownIcon } from "@chakra-ui/icons";
 import { trackHistoryAction } from "@/lib/api/track";
 import { DisableTooltipMessages } from "@/constants/tooltipMessage";
 import { useRecceServerFlag } from "@/lib/hooks/useRecceServerFlag";
+import { useRecceInstanceContext } from "@/lib/hooks/RecceInstanceContext";
 
 const SelectFilterTooltip = () => {
   return (
@@ -346,6 +347,7 @@ export const LineageViewTopBar = () => {
   const { deselect, focusedNode, selectedNodes, ...lineageViewContext } =
     useLineageViewContextSafe();
   const { isActionAvailable } = useLineageGraphContext();
+  const { readOnly } = useRecceInstanceContext();
   const { data: flags } = useRecceServerFlag();
   const isSingleEnvOnboarding = flags?.single_env_onboarding;
 
@@ -424,7 +426,11 @@ export const LineageViewTopBar = () => {
           <ControlItem label="Explore">
             <ButtonGroup isAttached variant="outline">
               <Menu placement="bottom-end">
-                <MenuButton as={Button} size={"xs"} rightIcon={<ChevronDownIcon />}>
+                <MenuButton
+                  as={Button}
+                  size={"xs"}
+                  rightIcon={<ChevronDownIcon />}
+                  isDisabled={readOnly}>
                   Actions
                 </MenuButton>
 

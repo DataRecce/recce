@@ -1,3 +1,4 @@
+import { useRecceInstanceContext } from "@/lib/hooks/RecceInstanceContext";
 import { Flex, Text, Stack, Spacer, Button, Icon } from "@chakra-ui/react";
 import { EditorProps, Editor } from "@monaco-editor/react";
 import { FaPlay } from "react-icons/fa6";
@@ -33,6 +34,7 @@ const SqlEditor: React.FC<SqlEditorProps> = ({
   options = {},
   ...props
 }: SqlEditorProps) => {
+  const { readOnly } = useRecceInstanceContext();
   const handleEditorChange = (value: string | undefined) => {
     if (value !== undefined && onChange) {
       onChange(value);
@@ -61,7 +63,8 @@ const SqlEditor: React.FC<SqlEditorProps> = ({
               backgroundColor={"white"}
               // leftIcon={<Icon as={RiPlayMiniFill} />}
               leftIcon={<Icon as={FaPlay} />}
-              padding={"6px 12px"}>
+              padding={"6px 12px"}
+              isDisabled={readOnly}>
               Run Query
             </Button>
           )}

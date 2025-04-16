@@ -1,7 +1,7 @@
 import json
 import logging
 import os
-from typing import Dict
+from typing import Dict, IO
 
 import requests
 
@@ -34,11 +34,11 @@ class RecceCloud:
         self.token = token
         self.base_url = f'{RECCE_CLOUD_API_HOST}/api/v1'
 
-    def _request(self, method, url, data=None):
+    def _request(self, method, url, **kwargs):
         headers = {
             'Authorization': f'Bearer {self.token}'
         }
-        return requests.request(method, url, headers=headers, json=data)
+        return requests.request(method, url, headers=headers, **kwargs)
 
     def get_presigned_url(self,
                           method: PresignedUrlMethod,
@@ -70,7 +70,7 @@ class RecceCloud:
             api_url = f'{self.base_url}/{repository}/commits/{branch}/artifacts/{method}?artifact_name={artifact_name}&enable_ssec=true'
         else:
             raise ValueError('Either pr_id or sha must be provided.')
-        response = self._request('POST', api_url, data=metadata)
+        response = self._request('POST', api_url, json=metadata)
         if response.status_code != 200:
             raise RecceCloudException(
                 message='Failed to {method} artifact {preposition} Recce Cloud.'.format(
@@ -119,10 +119,24 @@ class RecceCloud:
                 status_code=response.status_code
             )
 
+    def share_state(self, file_name: str, file_io: IO):
+        api_url = f'{self.base_url}/recce-state/upload'
+        files = {'file': (file_name, file_io, 'application/json')}
+        response = self._request('POST', api_url, files=files)
+        if response.status_code == 403:
+            return {'status': 'error', 'message': response.json().get('detail')}
+        if response.status_code != 200:
+            raise RecceCloudException(
+                message='Failed to share Recce state.',
+                reason=response.text,
+                status_code=response.status_code
+            )
+        return response.json()
+
     def update_github_pull_request_check(self, pr_info: PullRequestInfo, metadata: dict = None):
         api_url = f'{self.base_url}/{pr_info.repository}/pulls/{pr_info.id}/github/checks'
         try:
-            self._request('POST', api_url, data=metadata)
+            self._request('POST', api_url, json=metadata)
         except Exception as e:
             # We don't care the response of this request, so we don't need to raise any exception.
             logger.debug(f'Failed to update the GitHub PR check. Reason: {str(e)}')
@@ -140,7 +154,7 @@ class RecceCloud:
 
     def set_onboarding_state(self, state: str):
         api_url = f'{self.base_url}/users/onboarding-state'
-        response = self._request('PUT', api_url, data={'state': state})
+        response = self._request('PUT', api_url, json={'state': state})
         if response.status_code != 200:
             raise RecceCloudException(
                 message='Failed to update onboarding state in Recce Cloud.',

@@ -22,8 +22,10 @@ import { importState } from "@/lib/api/state";
 import { useLocation } from "wouter";
 import { useLineageGraphContext, useRunsAggregated } from "@/lib/hooks/LineageGraphContext";
 import { IconImport } from "../icons";
+import { useRecceInstanceContext } from "@/lib/hooks/RecceInstanceContext";
 
 export function StateImporter({ checksOnly = true }: { checksOnly?: boolean }) {
+  const { readOnly } = useRecceInstanceContext();
   const toast = useToast();
   const queryClient = useQueryClient();
   const hiddenFileInput = useRef<HTMLInputElement>(null);
@@ -113,7 +115,7 @@ export function StateImporter({ checksOnly = true }: { checksOnly?: boolean }) {
           aria-label="Import state"
           onClick={handleClick}
           icon={<Icon as={IconImport} />}
-          isDisabled={isDemoSite}
+          isDisabled={readOnly || isDemoSite}
         />
       </Tooltip>
       <input

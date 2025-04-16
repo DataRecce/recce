@@ -20,6 +20,7 @@ import { deltaPercentageString } from "../rowcount/delta";
 
 import { RepeatIcon } from "@chakra-ui/icons";
 import { findByRunType } from "../run/registry";
+import { useRecceInstanceContext } from "@/lib/hooks/RecceInstanceContext";
 
 export function ResourceTypeTag({ node }: { node: LineageGraphNode }) {
   const { icon: resourceTypeIcon } = getIconForResourceType(node.resourceType);
@@ -115,7 +116,8 @@ export function RowCountDiffTag({
   onRefresh,
   isFetching,
 }: RowCountDiffTagProps) {
-  const { runsAggregated, refetchRunsAggregated } = useLineageGraphContext();
+  const { readOnly } = useRecceInstanceContext();
+  const { runsAggregated } = useLineageGraphContext();
   const lastRowCount: RowCountDiff | undefined = runsAggregated?.[node.id]?.row_count_diff.result;
 
   const icon = findByRunType("row_count_diff")?.icon;
@@ -150,6 +152,7 @@ export function RowCountDiffTag({
             icon={<RepeatIcon />}
             size="xs"
             onClick={onRefresh}
+            isDisabled={readOnly}
           />
         )}
       </Tag>

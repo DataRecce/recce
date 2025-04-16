@@ -1,4 +1,4 @@
-import { Box, Flex, Spacer, Tag, TagLabel } from "@chakra-ui/react";
+import { Box, Flex, Icon, Spacer, Tag, TagLabel, Text } from "@chakra-ui/react";
 import React from "react";
 
 import { Handle, NodeProps, Position, useStore } from "reactflow";
@@ -7,6 +7,7 @@ import { LinageGraphColumnNode } from "./lineage";
 import "./styles.css";
 
 import { useLineageViewContextSafe } from "./LineageViewContext";
+import { getIconForChangeStatus } from "./styles";
 
 type GrapeColumnNodeProps = NodeProps<LinageGraphColumnNode>;
 
@@ -55,7 +56,7 @@ export const TransformationType = ({
 
 export function GraphColumnNode({ data }: GrapeColumnNodeProps) {
   const { id: nodeId } = data.node;
-  const { column, type, transformationType } = data;
+  const { column, type, transformationType, changeStatus } = data;
   const showContent = useStore((s) => s.transform[2] > 0.3);
 
   const { viewOptions } = useLineageViewContextSafe();
@@ -63,6 +64,7 @@ export function GraphColumnNode({ data }: GrapeColumnNodeProps) {
   const selectedNode = viewOptions.column_level_lineage?.node;
   const selectedColumn = viewOptions.column_level_lineage?.column;
   const isFocus = column === selectedColumn && nodeId === selectedNode;
+  const { color: colorChangeStatus, icon: iconChangeStatus } = getIconForChangeStatus(changeStatus);
 
   if (!showContent) {
     return <></>;
@@ -79,10 +81,18 @@ export function GraphColumnNode({ data }: GrapeColumnNodeProps) {
         backgroundColor: isFocus ? "#f0f0f0" : "#f0f0f0",
       }}>
       <Flex fontSize="10px" color="gray" width="100%" gap="3px" alignItems="center">
-        <TransformationType transformationType={transformationType} />
-        <Box>{column}</Box>
+        {changeStatus && (
+          <Icon
+            boxSize="12px"
+            display="inline-flex"
+            color={colorChangeStatus}
+            as={iconChangeStatus}
+          />
+        )}
+        {transformationType && <TransformationType transformationType={transformationType} />}
+        <Box height="16px">{column}</Box>
         <Spacer></Spacer>
-        <Box>{type}</Box>
+        <Box height="16px">{type}</Box>
       </Flex>
       <Handle
         type="target"

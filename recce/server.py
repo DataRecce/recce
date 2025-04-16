@@ -25,7 +25,7 @@ from .core import load_context, default_context
 from .event import log_api_event, log_single_env_event
 from .exceptions import RecceException
 from .run import load_preset_checks
-from .state import RecceStateLoader
+from .state import RecceStateLoader, RecceShareStateManager
 
 logger = logging.getLogger('uvicorn')
 
@@ -35,6 +35,7 @@ class AppState:
     state_loader: Optional[RecceStateLoader] = None
     kwargs: Optional[dict] = None
     flag: Optional[dict] = None
+    auth_options: Optional[dict] = None
 
 
 @asynccontextmanager
@@ -171,6 +172,26 @@ async def disable_cache(request: Request, call_next):
 @app.get("/api/health")
 async def health_check(request: Request):
     return {"status": "ok"}
+
+
+@app.get("/api/instance-info")
+async def recce_instance_info():
+    app_state: AppState = app.state
+    flag = app_state.flag
+    read_only = flag.get('read_only', False)
+
+    auth_options = app_state.auth_options
+    api_token = auth_options.get('api_token')
+
+    return {
+        "read_only": read_only,
+        "authed": True if api_token else False,
+        # TODO: Add more instance info which won't change during the instance lifecycle
+        # review_mode
+        # cloud_mode
+        # demo
+        # single env
+    }
 
 
 @app.get("/api/flag")
@@ -489,6 +510,39 @@ async def sync_status(response: Response):
 
     response.status_code = 200
     return {"status": "idle"}
+
+
+class ShareStateOutput(BaseModel):
+    status: str
+    message: str
+    share_url: Optional[str] = None
+
+
+@app.post("/api/share", response_model=ShareStateOutput)
+async def share_state():
+    """
+    Share the recce state to the external storage. (one-way sync)
+    """
+    app_state: AppState = app.state
+    state_manager = RecceShareStateManager(app_state.auth_options)
+    if not state_manager.verify():
+        error, hint = state_manager.error_and_hint
+        raise HTTPException(status_code=400, detail=f"Failed to share state: {error}. {hint}")
+
+    context = default_context()
+    state_loader = context.state_loader
+
+    file_name = 'recce_state.json'
+    if state_loader.state_file:
+        file_name = os.path.basename(state_loader.state_file)
+
+    state = state_loader.state
+    if state_loader.state is None:
+        state = context.export_state()
+
+    response = state_manager.share_state(file_name, state)
+
+    return ShareStateOutput(**response)
 
 
 class VersionOut(BaseModel):

@@ -19,6 +19,8 @@ import {
   HStack,
   extendTheme,
   useToast,
+  Grid,
+  GridItem,
 } from "@chakra-ui/react";
 import React, { ReactNode, useLayoutEffect } from "react";
 import { QueryClientProvider, useQuery } from "@tanstack/react-query";
@@ -55,6 +57,8 @@ import { trackInit } from "@/lib/api/track";
 import { Filename } from "@/components/app/Filename";
 import { StateSynchronizer } from "@/components/app/StateSynchronizer";
 import { useRecceServerFlag } from "@/lib/hooks/useRecceServerFlag";
+import { useRecceInstanceContext } from "@/lib/hooks/RecceInstanceContext";
+import { TopLevelShare } from "@/components/app/StateSharing";
 
 const RouteAlwaysMount = ({ children, path }: { children: ReactNode; path: string }) => {
   const [match] = useRoute(path);
@@ -140,6 +144,7 @@ function RecceVersionBadge() {
 
 function TopBar() {
   const { reviewMode, isDemoSite, envInfo, cloudMode } = useLineageGraphContext();
+  const { readOnly } = useRecceInstanceContext();
   const { url: prURL, id: prID } = envInfo?.pullRequest ?? {};
   const demoPrId = prURL ? prURL.split("/").pop() : null;
 
@@ -154,9 +159,9 @@ function TopBar() {
         RECCE
       </Heading>
       <RecceVersionBadge />
-      {reviewMode && (
+      {(readOnly || reviewMode) && (
         <Badge fontSize="sm" color="white" colorScheme="whiteAlpha" variant="outline">
-          review mode
+          {readOnly ? "read only" : "review mode"}
         </Badge>
       )}
       {cloudMode && prID && (
@@ -287,7 +292,17 @@ function NavBar() {
             );
           })}
         </Box>
-        {!isLoading && !isDemoSite && <Filename />}
+        {!isLoading && !isDemoSite && (
+          <Grid templateColumns="repeat(7, 1fr)" alignItems={"center"}>
+            <GridItem colSpan={2} />
+            <GridItem colSpan={1}>
+              <Filename />
+            </GridItem>
+            <GridItem colSpan={4}>
+              <TopLevelShare />
+            </GridItem>
+          </Grid>
+        )}
         {!isLoading && (
           <Flex flex="1" justifyContent="right" alignItems="center" mr="8px">
             {cloudMode && <StateSynchronizer />}
