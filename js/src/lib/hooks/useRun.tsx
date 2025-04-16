@@ -21,9 +21,9 @@ export const useRun = (runId?: string): UseRunResult => {
   const [, refetchRunsAggregated] = useRunsAggregated();
 
   const { error, data: run } = useQuery({
-    queryKey: cacheKeys.run(runId || ""),
+    queryKey: cacheKeys.run(runId ?? ""),
     queryFn: async () => {
-      return waitRun(runId || "", isRunning ? 2 : 0);
+      return waitRun(runId ?? "", isRunning ? 2 : 0);
     },
     enabled: !!runId,
     refetchInterval: isRunning ? 50 : false,

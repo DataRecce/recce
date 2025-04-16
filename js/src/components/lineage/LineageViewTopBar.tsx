@@ -81,7 +81,7 @@ const HistoryToggle = () => {
 
 const ViewModeSelectMenu = ({ isDisabled }: { isDisabled: boolean }) => {
   const { viewOptions, onViewOptionsChanged } = useLineageViewContextSafe();
-  const viewMode = viewOptions.view_mode || "changed_models";
+  const viewMode = viewOptions.view_mode ?? "changed_models";
   const label = viewMode === "changed_models" ? "Changed Models" : "All";
 
   const handleSelect = (viewMode: LineageDiffViewOptions["view_mode"]) => {
@@ -134,7 +134,7 @@ const PackageSelectMenu = ({ isDisabled }: { isDisabled: boolean }) => {
 
   // get unique package names
   const available = new Set<string>();
-  const nodes = Object.values(lineageGraph?.nodes || {});
+  const nodes = Object.values(lineageGraph?.nodes ?? {});
   for (const node of nodes) {
     if (node.packageName) {
       available.add(node.packageName);
@@ -301,7 +301,7 @@ const SelectFilter = ({ isDisabled }: { isDisabled: boolean }) => {
   return (
     <NodeSelectionInput
       isDisabled={isDisabled}
-      value={viewOptions.select || ""}
+      value={viewOptions.select ?? ""}
       onChange={(value) => {
         onViewOptionsChanged({
           ...viewOptions,
@@ -319,7 +319,7 @@ const ExcludeFilter = ({ isDisabled }: { isDisabled: boolean }) => {
   return (
     <NodeSelectionInput
       isDisabled={isDisabled}
-      value={viewOptions.exclude || ""}
+      value={viewOptions.exclude ?? ""}
       onChange={(value) => {
         onViewOptionsChanged({
           ...viewOptions,
@@ -337,6 +337,7 @@ const ControlItem = (props: {
 }) => {
   return (
     <Box style={props.style} maxWidth="300px">
+      {/* eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing */}
       <Box fontSize="8pt">{props.label || <>&nbsp;</>}</Box>
       {props.children}
     </Box>

@@ -54,7 +54,7 @@ const RunListItem = ({
     retry: false,
   });
 
-  const icon: IconType = findByRunType(run.type)?.icon || TbChecklist;
+  const icon: IconType = findByRunType(run.type)?.icon ?? TbChecklist;
   const checkId = run.check_id;
 
   return (
@@ -82,6 +82,7 @@ const RunListItem = ({
           color={run.name ? "inherit" : "gray.500"}
           fontSize="11pt"
           fontWeight="500">
+          {/* eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing */}
           {run.name || "<no name>"}
         </Box>
         {checkId ? (
@@ -110,7 +111,7 @@ const RunListItem = ({
         ) : null}
       </Flex>
       <Flex justifyContent="start" fontSize="11pt" color="gray.500" gap="3px" alignItems={"center"}>
-        <RunStatusAndDate run={fetchedRun || run} />
+        <RunStatusAndDate run={fetchedRun ?? run} />
       </Flex>
     </Flex>
   );
@@ -200,7 +201,7 @@ export const RunList = () => {
           </Center>
         ) : (
           <SimpleBar style={{ minHeight: "100%", height: 0 }}>
-            {(runs || []).map((run, index) => {
+            {(runs ?? []).map((run, index) => {
               const currentDate = new Date(run.run_at).toDateString();
               const shouldRenderDateSegment = previousDate != null && previousDate !== currentDate;
               previousDate = currentDate;

@@ -104,7 +104,7 @@ export function HistogramDiffForm({
           onChange={(e) => {
             const columnName = e.target.value;
             setIsReadyToExecute(columnName ? true : false);
-            const columnType = columns.find((c) => c.name === columnName)?.type || "";
+            const columnType = columns.find((c) => c.name === columnName)?.type ?? "";
             onParamsChanged({
               ...params,
               column_name: columnName,

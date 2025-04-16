@@ -31,7 +31,7 @@ function _RowCountDiffResultView({ run }: RowCountDiffResultViewProp, ref: any) 
     return "column-body-normal";
   }
 
-  const runResult = run.result || {};
+  const runResult = run.result ?? {};
 
   const columns = [
     { key: "name", name: "Name", cellClass: columnCellClass },
@@ -40,7 +40,7 @@ function _RowCountDiffResultView({ run }: RowCountDiffResultViewProp, ref: any) 
     { key: "delta", name: "Delta", cellClass: columnCellClass },
   ];
 
-  const rows: RowCountDiffRow[] = Object.keys(run.result || {}).map((key) => {
+  const rows: RowCountDiffRow[] = Object.keys(run.result ?? {}).map((key) => {
     const result = runResult[key];
     const base = isNumber(result.base) ? result.base : null;
     const current = isNumber(result.curr) ? result.curr : null;
@@ -108,14 +108,14 @@ interface RowCountRow {
 }
 
 function _RowCountResultView({ run }: RowCountResultViewProp, ref: any) {
-  const runResult = run.result || {};
+  const runResult = run.result ?? {};
 
   const columns = [
     { key: "name", name: "Name" },
     { key: "current", name: "Row Count" },
   ];
 
-  const rows: RowCountRow[] = Object.keys(run.result || {}).map((key) => {
+  const rows: RowCountRow[] = Object.keys(run.result ?? {}).map((key) => {
     const result = runResult[key];
     const current = isNumber(result.curr) ? result.curr : null;
 

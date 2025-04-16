@@ -44,8 +44,8 @@ function listChangedNodes(lineageGraph: LineageGraph) {
   lineageGraph.modifiedSet.forEach((nodeId) => {
     const node = allNodes[nodeId];
     const columnDiffStatus = mergeKeysWithStatus(
-      Object.keys(node.data.base?.columns || {}),
-      Object.keys(node.data.current?.columns || {}),
+      Object.keys(node.data.base?.columns ?? {}),
+      Object.keys(node.data.current?.columns ?? {}),
     );
     const isSchemaChanged = !Object.values(columnDiffStatus).every((el) => el === undefined);
     // We only want to show nodes that have real schema changes.

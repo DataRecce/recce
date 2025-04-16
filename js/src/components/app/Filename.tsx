@@ -106,7 +106,7 @@ export const Filename = () => {
 
   const [{ newFileName, errorMessage, modified, overwriteWithMethod, bypass }, setState] =
     useState<FilenameState>({
-      newFileName: fileName || "recce_state.json",
+      newFileName: fileName ?? "recce_state.json",
     });
 
   const inputRef = useRef<HTMLInputElement>(null);
@@ -115,7 +115,7 @@ export const Filename = () => {
 
   const handleOpen = () => {
     setState({
-      newFileName: fileName || "recce_state.json",
+      newFileName: fileName ?? "recce_state.json",
       modified: fileName ? false : true,
     });
 
@@ -133,12 +133,12 @@ export const Filename = () => {
       if (method === "save") {
         await saveAs({
           filename: newFileName,
-          overwrite: overwrite || bypassOverwrite,
+          overwrite: overwrite ?? bypassOverwrite,
         });
       } else {
         await rename({
           filename: newFileName,
-          overwrite: overwrite || bypassOverwrite,
+          overwrite: overwrite ?? bypassOverwrite,
         });
       }
       toastSuccess(method === "save" ? "Save file successfully" : "Rename file successfully");
@@ -184,8 +184,7 @@ export const Filename = () => {
   return (
     <>
       <Flex flex="1" justifyContent="center" alignItems="center">
-        {/* eslint-disable-next-line @typescript-eslint/no-unnecessary-condition */}
-        <Box fontWeight="600">{fileName ? fileName : cloudMode ? "cloud" : titleNewInstance}</Box>
+        <Box fontWeight="600">{(fileName ?? cloudMode) ? "cloud" : titleNewInstance}</Box>
         {!readOnly && (
           <Tooltip label={fileName ? "Change Filename" : "Save"} openDelay={1000}>
             <IconButton onClick={handleOpen} aria-label={""} variant="unstyled" size="sm">

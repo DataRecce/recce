@@ -86,7 +86,7 @@ export function _selectColumnLevelLineage(node: string, column: string, cll: Col
       const target = `${nodeId}_${columnNode.name}`;
       parentMap[target] = [];
 
-      for (const parent of columnNode.depends_on || []) {
+      for (const parent of columnNode.depends_on ?? []) {
         const source = `${parent.node}_${parent.column}`;
         parentMap[target].push(source);
         if (!(source in childMap)) {
@@ -292,12 +292,12 @@ export function buildLineageGraph(
     nonBreakingSet: new Set(nonBreakingSet),
     impactedSet,
     manifestMetadata: {
-      base: base.manifest_metadata || undefined,
-      current: current.manifest_metadata || undefined,
+      base: base.manifest_metadata ?? undefined,
+      current: current.manifest_metadata ?? undefined,
     },
     catalogMetadata: {
-      base: base.catalog_metadata || undefined,
-      current: current.catalog_metadata || undefined,
+      base: base.catalog_metadata ?? undefined,
+      current: current.catalog_metadata ?? undefined,
     },
   };
 }
@@ -342,7 +342,7 @@ export function toReactflow(
 ): [Node[], Edge[], NodeColumnSetMap] {
   const nodes: Node[] = [];
   const edges: Edge[] = [];
-  const { selectedNodes, columnLevelLineage, cll, breakingChangeEnabled } = options || {};
+  const { selectedNodes, columnLevelLineage, cll, breakingChangeEnabled } = options ?? {};
   const columnSet =
     columnLevelLineage && cll != null
       ? _selectColumnLevelLineage(columnLevelLineage.node, columnLevelLineage.column, cll)
@@ -412,7 +412,7 @@ export function toReactflow(
           sourcePosition: Position.Right,
         });
 
-        for (const parentColumn of column.depends_on || []) {
+        for (const parentColumn of column.depends_on ?? []) {
           const source = `${parentColumn.node}_${parentColumn.column}`;
           const target = columnKey;
 
@@ -434,10 +434,10 @@ export function toReactflow(
         nodeColumnSet.add(columnKey);
       }
     } else if (breakingChangeEnabled && node.change) {
-      for (const [column, changeStatus] of Object.entries(node.change.columns || {})) {
+      for (const [column, changeStatus] of Object.entries(node.change.columns ?? {})) {
         const columnKey = `${node.id}_${column}`;
         const columnType =
-          node.data.current?.columns?.[column]?.type || node.data.base?.columns?.[column]?.type;
+          node.data.current?.columns?.[column]?.type ?? node.data.base?.columns?.[column]?.type;
 
         nodes.push({
           id: columnKey,
@@ -528,8 +528,9 @@ export const layout = (nodes: Node[], edges: Edge[], direction = "LR") => {
     if (node.type !== "customNode") {
       return;
     }
-    const nodeWidth = node.width || 300;
-    const nodeHeight = node.height || 60;
+
+    const nodeWidth = node.width ?? 300;
+    const nodeHeight = node.height ?? 60;
 
     const nodeWithPosition = dagreGraph.node(node.id);
 

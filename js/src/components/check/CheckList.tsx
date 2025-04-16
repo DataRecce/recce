@@ -65,7 +65,7 @@ const ChecklistItem = ({
     }
   };
 
-  const icon: IconType = findByRunType(check.type)?.icon || TbChecklist;
+  const icon: IconType = findByRunType(check.type)?.icon ?? TbChecklist;
   // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
   const isMarkAsApprovedDisabled = isDisabledByNoResult(check.type ?? "", run) || readOnly;
   // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition

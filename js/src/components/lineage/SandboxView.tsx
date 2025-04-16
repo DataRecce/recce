@@ -118,7 +118,7 @@ function SandboxEditorLabels({
   const widthOfBar = "50%";
   const margin = "0 16px";
 
-  const currentTime = formatTimestamp(envInfo?.dbt?.current?.generated_at || "");
+  const currentTime = formatTimestamp(envInfo?.dbt?.current?.generated_at ?? "");
   const latestUpdateDistanceToNow = formatDistanceToNow(currentTime, {
     addSuffix: true,
   });
@@ -184,7 +184,7 @@ interface SqlPreviewProps {
 }
 
 function SqlPreview({ current, onChange }: SqlPreviewProps) {
-  const diffEditorSync = useDiffEditorSync(current?.raw_code || "", onChange);
+  const diffEditorSync = useDiffEditorSync(current?.raw_code ?? "", onChange);
 
   return (
     <Box flex={1} overflowY={"auto"}>
@@ -213,7 +213,7 @@ export function SandboxView({ isOpen, onClose, current }: SandboxViewProps) {
     onClose: onRunResultClose,
     onOpen: onRunResultOpen,
   } = useDisclosure();
-  const [modifiedCode, setModifiedCode] = useState<string>(current?.raw_code || "");
+  const [modifiedCode, setModifiedCode] = useState<string>(current?.raw_code ?? "");
   const { showRunId, clearRunResult } = useRecceActionContext();
   const { primaryKeys, setPrimaryKeys } = useRecceQueryContext();
   const { data: flags, isLoading } = useRecceServerFlag();
@@ -222,7 +222,7 @@ export function SandboxView({ isOpen, onClose, current }: SandboxViewProps) {
     const sqlTemplate = modifiedCode;
     const runFn = submitQueryDiff;
     const params: QueryParams = {
-      current_model: current?.name || "",
+      current_model: current?.name ?? "",
       primary_keys: primaryKeys,
       sql_template: sqlTemplate,
     };
@@ -305,7 +305,7 @@ export function SandboxView({ isOpen, onClose, current }: SandboxViewProps) {
 
   useEffect(() => {
     if (isOpen) {
-      setModifiedCode(current?.raw_code || "");
+      setModifiedCode(current?.raw_code ?? "");
     }
   }, [isOpen, current]);
 
@@ -362,7 +362,7 @@ export function SandboxView({ isOpen, onClose, current }: SandboxViewProps) {
               <SandboxEditorLabels
                 height="32pxs"
                 flex="0 0 auto"
-                currentModelID={current?.id || ""}
+                currentModelID={current?.id ?? ""}
               />
               <SqlPreview current={current} onChange={setModifiedCode} />
             </Flex>

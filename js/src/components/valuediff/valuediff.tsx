@@ -65,8 +65,8 @@ function DataFrameColumnGroupHeader({
   onPinnedColumnsChange,
   ...options
 }: { name: string; columnStatus: string } & QueryDataDiffGridOptions) {
-  const primaryKeys = options.primaryKeys || [];
-  const pinnedColumns = options.pinnedColumns || [];
+  const primaryKeys = options.primaryKeys ?? [];
+  const pinnedColumns = options.pinnedColumns ?? [];
   const isPK = primaryKeys.includes(name);
   const isPinned = pinnedColumns.includes(name);
 
@@ -114,9 +114,9 @@ export function toValueDiffGrid(
   primaryKeys: string[],
   options?: QueryDataDiffGridOptions,
 ) {
-  const pinnedColumns = options?.pinnedColumns || [];
-  const changedOnly = options?.changedOnly || false;
-  const displayMode = options?.displayMode || "inline";
+  const pinnedColumns = options?.pinnedColumns ?? [];
+  const changedOnly = options?.changedOnly ?? false;
+  const displayMode = options?.displayMode ?? "inline";
 
   const columns: ColumnOrColumnGroup<any, any>[] = [];
   const columnMap = _getColumnMap(df);
@@ -282,7 +282,7 @@ export function toValueDiffGrid(
         children: [
           {
             key: `base__${name}`,
-            name: options?.baseTitle || "Base",
+            name: options?.baseTitle ?? "Base",
             renderEditCell: textEditor,
             headerCellClass,
             cellClass: cellClassBase,
@@ -291,7 +291,7 @@ export function toValueDiffGrid(
           },
           {
             key: `current__${name}`,
-            name: options?.currentTitle || "Current",
+            name: options?.currentTitle ?? "Current",
             renderEditCell: textEditor,
             headerCellClass,
             cellClass: cellClassCurrent,
@@ -305,7 +305,7 @@ export function toValueDiffGrid(
 
   // merges columns: primary keys
   primaryKeys.forEach((name) => {
-    const columnStatus = columnMap[name].status || "";
+    const columnStatus = columnMap[name].status ?? "";
     columns.push({
       key: name,
       name: (
@@ -328,7 +328,7 @@ export function toValueDiffGrid(
 
   // merges columns: pinned columns
   pinnedColumns.forEach((name) => {
-    const columnStatus = columnMap[name].status || "";
+    const columnStatus = columnMap[name].status ?? "";
 
     if (primaryKeys.includes(name)) {
       return;
@@ -339,7 +339,7 @@ export function toValueDiffGrid(
 
   // merges columns: other columns
   Object.entries(columnMap).forEach(([name, mergedColumn]) => {
-    const columnStatus = mergedColumn.status || "";
+    const columnStatus = mergedColumn.status ?? "";
 
     if (name === "in_a" || name === "in_b") {
       return;
