@@ -441,7 +441,11 @@ export function PrivateLineageView(
       return;
     }
 
-    setFocusedNodeId(node.parentId);
+    // change focused node if the side pane is open
+    if (focusedNodeId) {
+      setFocusedNodeId(node.parentId);
+    }
+
     void handleViewOptionsChanged(
       {
         ...viewOptions,
