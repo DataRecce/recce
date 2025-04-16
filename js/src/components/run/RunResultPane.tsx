@@ -101,6 +101,66 @@ const SingleEnvironmentSetupNotification = ({ runType }: { runType?: string }) =
   }
 };
 
+const RunResultShareMenu = ({
+  disableCopyToClipboard,
+  onCopyToClipboard,
+  onMouseEnter,
+  onMouseLeave,
+}: {
+  disableCopyToClipboard: boolean;
+  onCopyToClipboard: () => Promise<void>;
+  onMouseEnter: () => void;
+  onMouseLeave: () => void;
+}) => {
+  const { authed } = useRecceInstanceContext();
+  const { handleShareClick } = useRecceShareStateContext();
+
+  return (
+    <Menu>
+      <MenuButton as={Button} size="sm" rightIcon={<ChevronDownIcon />} variant="outline">
+        Share
+      </MenuButton>
+      <MenuList minW="0">
+        <MenuItem _hover={{ bg: "transparent" }}>
+          <Button
+            leftIcon={<CopyIcon />}
+            variant="outline"
+            isDisabled={disableCopyToClipboard}
+            onMouseEnter={onMouseEnter}
+            onMouseLeave={onMouseLeave}
+            size="sm"
+            onClick={onCopyToClipboard}>
+            Copy to Clipboard
+          </Button>
+        </MenuItem>
+        <MenuDivider />
+        <MenuItem _hover={{ bg: "transparent" }}>
+          {authed ? (
+            <Button
+              leftIcon={<TbCloudUpload />}
+              variant="outline"
+              size="sm"
+              onClick={handleShareClick}>
+              Share to Cloud
+            </Button>
+          ) : (
+            <Tooltip label="Please copy api token and relaunch recce with token">
+              <Button
+                leftIcon={<ExternalLinkIcon />}
+                size="sm"
+                onClick={() => {
+                  window.open("https://cloud.datarecce.io/settings#tokens", "_blank");
+                }}>
+                Enable sharing
+              </Button>
+            </Tooltip>
+          )}
+        </MenuItem>
+      </MenuList>
+    </Menu>
+  );
+};
+
 export const PrivateLoadableRunView = ({
   runId,
   onClose,
@@ -111,7 +171,6 @@ export const PrivateLoadableRunView = ({
   isSingleEnvironment?: boolean;
 }) => {
   const { readOnly, authed } = useRecceInstanceContext();
-  const { handleShareClick } = useRecceShareStateContext();
   const { runAction } = useRecceActionContext();
   const { error, run, onCancel, isRunning } = useRun(runId);
   const [viewOptions, setViewOptions] = useState();
@@ -149,6 +208,7 @@ export const PrivateLoadableRunView = ({
 
   const isQuery = run?.type === "query" || run?.type === "query_diff" || run?.type === "query_base";
   const { ref, onCopyToClipboard, onMouseEnter, onMouseLeave } = useCopyToClipboardButton();
+  const disableCopyToClipboard = !runId || !run?.result || !!error || tabIndex !== 0;
 
   const AddToCheckButton = function () {
     if (disableAddToChecklist) {
@@ -212,57 +272,12 @@ export const PrivateLoadableRunView = ({
               </Button>
             )}
             {authed && (
-              <Menu>
-                <MenuButton as={Button} size="sm" rightIcon={<ChevronDownIcon />} variant="outline">
-                  Share
-                </MenuButton>
-                <MenuList minW="0">
-                  <MenuItem _hover={{ bg: "transparent" }}>
-                    <Button
-                      leftIcon={<CopyIcon />}
-                      variant="outline"
-                      isDisabled={!runId || !run?.result || !!error || tabIndex !== 0}
-                      onMouseEnter={onMouseEnter}
-                      onMouseLeave={onMouseLeave}
-                      size="sm"
-                      onClick={onCopyToClipboard}>
-                      Copy to Clipboard
-                    </Button>
-                  </MenuItem>
-                  <MenuDivider />
-                  <MenuItem _hover={{ bg: "transparent" }}>
-                    <Button
-                      leftIcon={<TbCloudUpload />}
-                      variant="outline"
-                      isDisabled={!runId || !run?.result || !!error || tabIndex !== 0}
-                      size="sm"
-                      onClick={handleShareClick}>
-                      Share to Cloud
-                    </Button>
-                    {/* {authed ? (
-                      <Button
-                        leftIcon={<TbCloudUpload />}
-                        variant="outline"
-                        isDisabled={!runId || !run?.result || !!error || tabIndex !== 0}
-                        size="sm"
-                        onClick={handleShareClick}>
-                        Share to Cloud
-                      </Button>
-                    ) : (
-                      <Tooltip label="Please copy api token and relaunch recce with token">
-                        <Button
-                          leftIcon={<ExternalLinkIcon />}
-                          size="sm"
-                          onClick={() => {
-                            window.open("https://cloud.datarecce.io/settings#tokens", "_blank");
-                          }}>
-                          Enable sharing
-                        </Button>
-                      </Tooltip>
-                    )} */}
-                  </MenuItem>
-                </MenuList>
-              </Menu>
+              <RunResultShareMenu
+                disableCopyToClipboard={disableCopyToClipboard}
+                onCopyToClipboard={onCopyToClipboard}
+                onMouseEnter={onMouseEnter}
+                onMouseLeave={onMouseLeave}
+              />
             )}
 
             <AddToCheckButton />
