@@ -1,96 +1,67 @@
-from typing import Literal, Optional
+import time
+from dataclasses import dataclass
+from typing import Optional
 
 import sqlglot.expressions as exp
-from sqlglot import parse_one, diff, Dialect
-from sqlglot.diff import Insert, Keep
-from sqlglot.optimizer import optimize, traverse_scope, Scope
+from sqlglot import parse_one, Dialect
+from sqlglot.errors import SqlglotError
+from sqlglot.optimizer import traverse_scope, Scope
+from sqlglot.optimizer.qualify import qualify
 
-from recce.models.types import NodeChange
-
-ChangeCategory = Literal['breaking', 'partial_breaking', 'non_breaking', 'unknown']
-ColumnChangeStatus = Literal['added', 'removed', 'modified']
-VALID_EXPRESSIONS = (
-    exp.Where,
-    exp.Join,
-    exp.Order,
-    exp.Group,
-    exp.Having,
-    exp.Limit,
-    exp.Offset,
-    exp.Window,
-    exp.Union,
-    exp.Intersect,
-    exp.Except,
-    exp.Merge,
-    exp.Delete,
-    exp.Update,
-    exp.Insert,
-    exp.Subquery,
-)
+from recce.models.types import NodeChange, ChangeStatus
 
 CHANGE_CATEGORY_UNKNOWN = NodeChange(category='unknown')
 CHANGE_CATEGORY_BREAKING = NodeChange(category='breaking')
 
 
-def _debug(*args):
-    pass
-    # print(*args)
+@dataclass
+class BreakingPerformanceTracking:
+    lineage_diff_start = None
+    lineage_diff_elapsed = None
+    modified_nodes = 0
+    sqlglot_error_nodes = 0
+    other_error_nodes = 0
+    checkpoints = {}
 
+    def start_lineage_diff(self):
+        self.lineage_diff_start = time.perf_counter_ns()
 
-def is_breaking_change(old_sql, new_sql, dialect=None):
-    result = parse_change_category(old_sql, new_sql, old_schema=None, new_schema=None, dialect=dialect)
-    return result.category != 'non_breaking'
+    def record_checkpoint(self, label: str):
+        if self.lineage_diff_start is None:
+            return
 
+        self.checkpoints[label] = (time.perf_counter_ns() - self.lineage_diff_start) / 1000000
 
-def _is_breaking_change(original_sql, modified_sql, dialect=None) -> bool:
-    if original_sql == modified_sql:
-        return False
+    def end_lineage_diff(self):
+        if self.lineage_diff_start is None:
+            return
+        self.lineage_diff_elapsed = (time.perf_counter_ns() - self.lineage_diff_start) / 1000000
 
-    try:
-        dialect = Dialect.get(dialect)
+    def increment_modified_nodes(self):
+        self.modified_nodes += 1
 
-        def _parse(sql):
-            ast = parse_one(sql, dialect=dialect)
-            try:
-                ast = optimize(ast, dialect=dialect)
-            except Exception:
-                # cannot optimize, skip it.
-                pass
-            return ast
+    def increment_sqlglot_error_nodes(self):
+        self.sqlglot_error_nodes += 1
 
-        original_ast = _parse(original_sql)
-        modified_ast = _parse(modified_sql)
-    except Exception:
-        return True
+    def increment_other_error_nodes(self):
+        self.other_error_nodes += 1
 
-    if not isinstance(original_ast, exp.Select) or not isinstance(modified_ast, exp.Select):
-        raise ValueError("Currently only SELECT statements are supported for comparison")
+    def to_dict(self):
+        return {
+            'lineage_diff_elapsed_ms': self.lineage_diff_elapsed,
+            'modified_nodes': self.modified_nodes,
+            'sqlglot_error_nodes': self.sqlglot_error_nodes,
+            'other_error_nodes': self.other_error_nodes,
+            'checkpoints': self.checkpoints,
+        }
 
-    edits = diff(original_ast, modified_ast, delta_only=True)
-
-    inserted_expressions = {
-        e.expression for e in edits if isinstance(e, Insert)
-    }
-
-    for edit in edits:
-        if isinstance(edit, Insert):
-            inserted_expr = edit.expression
-
-            if isinstance(inserted_expr, VALID_EXPRESSIONS):
-                return True
-
-            if isinstance(inserted_expr, exp.UDTF):
-                return True
-
-            if (
-                not isinstance(inserted_expr.parent, exp.Select) and
-                inserted_expr.parent not in inserted_expressions
-            ):
-                return True
-        elif not isinstance(edit, Keep):
-            return True
-
-    return False
+    def reset(self):
+        self.lineage_diff_start = None
+        self.lineage_diff_elapsed = None
+        self.modified_nodes = 0
+        self.sqlglot_error_nodes = 0
+        self.other_error_nodes = 0
+        self.checkpoints = {}
 
 
 def _diff_select_scope(
@@ -120,7 +91,7 @@ def _diff_select_scope(
         if old_select.args.get(arg_key) != new_select.args.get(arg_key):
             return CHANGE_CATEGORY_BREAKING
 
-    def source_column_change_status(ref_column: exp.Column) -> Optional[ColumnChangeStatus]:
+    def source_column_change_status(ref_column: exp.Column) -> Optional[ChangeStatus]:
         table_name = ref_column.table
         column_name = ref_column.name
         source = new_scope.sources.get(table_name, None)  # type: exp.Table | Scope
@@ -202,7 +173,7 @@ def _diff_select_scope(
                     result.category = 'partial_breaking'
                     changed_columns[column_name] = 'modified'
 
-    def selected_column_change_status(ref_column: exp.Column) -> Optional[ColumnChangeStatus]:
+    def selected_column_change_status(ref_column: exp.Column) -> Optional[ChangeStatus]:
         column_name = ref_column.name
         return changed_columns.get(column_name)
 
@@ -288,7 +259,7 @@ def parse_change_category(
     old_schema=None,
     new_schema=None,
     dialect=None,
-    optimizer_rules=None,
+    perf_tracking: BreakingPerformanceTracking = None,
 ) -> NodeChange:
     if old_sql == new_sql:
         return NodeChange(category='non_breaking')
@@ -300,20 +271,21 @@ def parse_change_category(
             exp = parse_one(sql, dialect=dialect)
             if schema:
                 try:
-                    kwargs = {}
-                    if optimizer_rules is not None:
-                        kwargs["rules"] = optimizer_rules
-                    exp = optimize(exp, schema=schema, dialect=dialect, **kwargs)
+                    exp = qualify(exp, schema=schema, dialect=dialect)
                 except Exception as e:
                     # cannot optimize, skip it.
-                    _debug(e)
                     pass
             return exp
 
         old_exp = _parse(old_sql, old_schema)
         new_exp = _parse(new_sql, new_schema)
+    except SqlglotError as e:
+        if perf_tracking:
+            perf_tracking.increment_sqlglot_error_nodes()
+        return CHANGE_CATEGORY_UNKNOWN
     except Exception as e:
-        _debug(e)
+        if perf_tracking:
+            perf_tracking.increment_other_error_nodes()
         return CHANGE_CATEGORY_UNKNOWN
 
     old_scopes = traverse_scope(old_exp)

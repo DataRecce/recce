@@ -15,7 +15,7 @@ from recce.exceptions import RecceException
 from recce.util.cll import cll, CLLPerformanceTracking
 from recce.util.lineage import find_upstream, find_downstream
 from ...tasks.profile import ProfileTask
-from ...util.breaking import parse_change_category
+from ...util.breaking import parse_change_category, BreakingPerformanceTracking
 
 try:
     import agate
@@ -741,8 +741,14 @@ class DbtAdapter(BaseAdapter):
             *base.get('nodes', {}).keys(),
             *current.get('nodes', {}).keys()
         }
+
+        # Start to diff
+        perf_tracking = BreakingPerformanceTracking()
+        perf_tracking.start_lineage_diff()
+
         base_manifest = as_manifest(self.get_manifest(True))
         curr_manifest = as_manifest(self.get_manifest(False))
+        perf_tracking.record_checkpoint('manifest')
 
         def ref_func(*args):
             if len(args) == 1:
@@ -775,6 +781,8 @@ class DbtAdapter(BaseAdapter):
 
                 if curr_node.get('resource_type') == 'model':
                     try:
+                        perf_tracking.increment_modified_nodes()
+
                         def _get_schema(lineage):
                             schema = {}
                             nodes = lineage['nodes']
@@ -815,7 +823,8 @@ class DbtAdapter(BaseAdapter):
                             curr_sql,
                             old_schema=base_schema,
                             new_schema=curr_schema,
-                            dialect=dialect
+                            dialect=dialect,
+                            perf_tracking=perf_tracking,
                         )
                     except Exception:
                         change = NodeChange(category='unknown')
@@ -825,6 +834,10 @@ class DbtAdapter(BaseAdapter):
                 diff[key] = NodeDiff(change_status='removed')
             elif curr_node:
                 diff[key] = NodeDiff(change_status='added')
+
+        perf_tracking.end_lineage_diff()
+        log_performance('model lineage diff', perf_tracking.to_dict())
+
         return LineageDiff(
             base=base,
             current=current,
