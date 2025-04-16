@@ -342,7 +342,7 @@ export function toReactflow(
 ): [Node[], Edge[], NodeColumnSetMap] {
   const nodes: Node[] = [];
   const edges: Edge[] = [];
-  const { selectedNodes, columnLevelLineage, cll, breakingChangeEnabled } = options || {};
+  const { selectedNodes, columnLevelLineage, cll, breakingChangeEnabled } = options ?? {};
   const columnSet =
     columnLevelLineage && cll != null
       ? _selectColumnLevelLineage(columnLevelLineage.node, columnLevelLineage.column, cll)
@@ -434,10 +434,10 @@ export function toReactflow(
         nodeColumnSet.add(columnKey);
       }
     } else if (breakingChangeEnabled && node.change) {
-      for (const [column, changeStatus] of Object.entries(node.change.columns || {})) {
+      for (const [column, changeStatus] of Object.entries(node.change.columns ?? {})) {
         const columnKey = `${node.id}_${column}`;
         const columnType =
-          node.data.current?.columns?.[column]?.type || node.data.base?.columns?.[column]?.type;
+          node.data.current?.columns?.[column]?.type ?? node.data.base?.columns?.[column]?.type;
 
         nodes.push({
           id: columnKey,

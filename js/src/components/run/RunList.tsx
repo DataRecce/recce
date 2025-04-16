@@ -82,7 +82,8 @@ const RunListItem = ({
           color={run.name ? "inherit" : "gray.500"}
           fontSize="11pt"
           fontWeight="500">
-          {run.name ?? "<no name>"}
+          {/* eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing */}
+          {run.name || "<no name>"}
         </Box>
         {checkId ? (
           <Tooltip label="Go to Check" aria-label="Go to Check">
