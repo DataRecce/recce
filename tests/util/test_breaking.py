@@ -3,7 +3,8 @@ import unittest
 
 from deepdiff import DeepDiff
 
-from recce.util.breaking import parse_change_category, ColumnChangeStatus
+from recce.models.types import ChangeStatus
+from recce.util.breaking import parse_change_category
 
 SOURCE_SCHEMA = {
     'Customers': {
@@ -63,7 +64,7 @@ def is_breaking_change(
 def is_partial_breaking_change(
     original_sql,
     modified_sql,
-    expected_changed_columns: dict[str, ColumnChangeStatus] = None,
+    expected_changed_columns: dict[str, ChangeStatus] = None,
     dialect=None,
     optimize=False,
 ):
@@ -87,7 +88,7 @@ def is_partial_breaking_change(
 def is_non_breaking_change(
     original_sql,
     modified_sql,
-    expected_changed_columns: dict[str, ColumnChangeStatus] = None,
+    expected_changed_columns: dict[str, ChangeStatus] = None,
     dialect=None,
     optimize=False,
 ):

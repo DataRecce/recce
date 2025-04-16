@@ -1,32 +1,10 @@
-from typing import Literal, Optional
+from typing import Optional
 
 import sqlglot.expressions as exp
-from sqlglot import parse_one, diff, Dialect
-from sqlglot.diff import Insert, Keep
+from sqlglot import parse_one, Dialect
 from sqlglot.optimizer import optimize, traverse_scope, Scope
 
-from recce.models.types import NodeChange
-
-ChangeCategory = Literal['breaking', 'partial_breaking', 'non_breaking', 'unknown']
-ColumnChangeStatus = Literal['added', 'removed', 'modified']
-VALID_EXPRESSIONS = (
-    exp.Where,
-    exp.Join,
-    exp.Order,
-    exp.Group,
-    exp.Having,
-    exp.Limit,
-    exp.Offset,
-    exp.Window,
-    exp.Union,
-    exp.Intersect,
-    exp.Except,
-    exp.Merge,
-    exp.Delete,
-    exp.Update,
-    exp.Insert,
-    exp.Subquery,
-)
+from recce.models.types import NodeChange, ChangeStatus
 
 CHANGE_CATEGORY_UNKNOWN = NodeChange(category='unknown')
 CHANGE_CATEGORY_BREAKING = NodeChange(category='breaking')
@@ -40,57 +18,6 @@ def _debug(*args):
 def is_breaking_change(old_sql, new_sql, dialect=None):
     result = parse_change_category(old_sql, new_sql, old_schema=None, new_schema=None, dialect=dialect)
     return result.category != 'non_breaking'
-
-
-def _is_breaking_change(original_sql, modified_sql, dialect=None) -> bool:
-    if original_sql == modified_sql:
-        return False
-
-    try:
-        dialect = Dialect.get(dialect)
-
-        def _parse(sql):
-            ast = parse_one(sql, dialect=dialect)
-            try:
-                ast = optimize(ast, dialect=dialect)
-            except Exception:
-                # cannot optimize, skip it.
-                pass
-            return ast
-
-        original_ast = _parse(original_sql)
-        modified_ast = _parse(modified_sql)
-    except Exception:
-        return True
-
-    if not isinstance(original_ast, exp.Select) or not isinstance(modified_ast, exp.Select):
-        raise ValueError("Currently only SELECT statements are supported for comparison")
-
-    edits = diff(original_ast, modified_ast, delta_only=True)
-
-    inserted_expressions = {
-        e.expression for e in edits if isinstance(e, Insert)
-    }
-
-    for edit in edits:
-        if isinstance(edit, Insert):
-            inserted_expr = edit.expression
-
-            if isinstance(inserted_expr, VALID_EXPRESSIONS):
-                return True
-
-            if isinstance(inserted_expr, exp.UDTF):
-                return True
-
-            if (
-                not isinstance(inserted_expr.parent, exp.Select) and
-                inserted_expr.parent not in inserted_expressions
-            ):
-                return True
-        elif not isinstance(edit, Keep):
-            return True
-
-    return False
 
 
 def _diff_select_scope(
@@ -120,7 +47,7 @@ def _diff_select_scope(
         if old_select.args.get(arg_key) != new_select.args.get(arg_key):
             return CHANGE_CATEGORY_BREAKING
 
-    def source_column_change_status(ref_column: exp.Column) -> Optional[ColumnChangeStatus]:
+    def source_column_change_status(ref_column: exp.Column) -> Optional[ChangeStatus]:
         table_name = ref_column.table
         column_name = ref_column.name
         source = new_scope.sources.get(table_name, None)  # type: exp.Table | Scope
@@ -202,7 +129,7 @@ def _diff_select_scope(
                     result.category = 'partial_breaking'
                     changed_columns[column_name] = 'modified'
 
-    def selected_column_change_status(ref_column: exp.Column) -> Optional[ColumnChangeStatus]:
+    def selected_column_change_status(ref_column: exp.Column) -> Optional[ChangeStatus]:
         column_name = ref_column.name
         return changed_columns.get(column_name)
 
