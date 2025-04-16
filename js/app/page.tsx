@@ -247,6 +247,7 @@ function TabBadge<T, R extends number>({
 
 function NavBar() {
   const { isDemoSite, cloudMode, isLoading } = useLineageGraphContext();
+  const { authed } = useRecceInstanceContext();
   const [location, setLocation] = useLocation();
   const { data: flag, isLoading: isFlagLoading } = useRecceServerFlag();
 
@@ -292,7 +293,8 @@ function NavBar() {
             );
           })}
         </Box>
-        {!isLoading && !isDemoSite && (
+        {!isLoading && !isDemoSite && !authed && <Filename />}
+        {!isLoading && !isDemoSite && authed && (
           <Grid templateColumns="repeat(7, 1fr)" alignItems={"center"}>
             <GridItem colSpan={2} />
             <GridItem colSpan={1}>
