@@ -272,18 +272,18 @@ def parse_change_category(
             if schema:
                 try:
                     exp = qualify(exp, schema=schema, dialect=dialect)
-                except Exception as e:
+                except Exception:
                     # cannot optimize, skip it.
                     pass
             return exp
 
         old_exp = _parse(old_sql, old_schema)
         new_exp = _parse(new_sql, new_schema)
-    except SqlglotError as e:
+    except SqlglotError:
         if perf_tracking:
             perf_tracking.increment_sqlglot_error_nodes()
         return CHANGE_CATEGORY_UNKNOWN
-    except Exception as e:
+    except Exception:
         if perf_tracking:
             perf_tracking.increment_other_error_nodes()
         return CHANGE_CATEGORY_UNKNOWN
