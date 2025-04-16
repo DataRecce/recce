@@ -29,20 +29,13 @@ def _parse_change_catgory(
     original_sql,
     modified_sql,
     dialect=None,
-    optimize=False,
 ):
-    from sqlglot.optimizer.qualify import qualify
-    from sqlglot.optimizer import RULES
-
-    optimizer_rules = RULES if optimize else (qualify,)
-
     return parse_change_category(
         original_sql,
         modified_sql,
         old_schema=SOURCE_SCHEMA,
         new_schema=SOURCE_SCHEMA,
         dialect=dialect,
-        optimizer_rules=optimizer_rules,
     )
 
 
@@ -50,13 +43,11 @@ def is_breaking_change(
     original_sql,
     modified_sql,
     dialect=None,
-    optimize=False,
 ):
     result = _parse_change_catgory(
         original_sql,
         modified_sql,
         dialect=dialect,
-        optimize=optimize,
     )
     return result.category == 'breaking'
 
@@ -66,13 +57,11 @@ def is_partial_breaking_change(
     modified_sql,
     expected_changed_columns: dict[str, ChangeStatus] = None,
     dialect=None,
-    optimize=False,
 ):
     result = _parse_change_catgory(
         original_sql,
         modified_sql,
         dialect=dialect,
-        optimize=optimize,
     )
     if result.category != 'partial_breaking':
         return False
@@ -90,13 +79,11 @@ def is_non_breaking_change(
     modified_sql,
     expected_changed_columns: dict[str, ChangeStatus] = None,
     dialect=None,
-    optimize=False,
 ):
     result = _parse_change_catgory(
         original_sql,
         modified_sql,
         dialect=dialect,
-        optimize=optimize,
     )
     if result.category != 'non_breaking':
         return False
@@ -540,7 +527,6 @@ class BreakingChangeTest(unittest.TestCase):
             "c": "modified",
             "d": "modified"
         })
-        assert is_non_breaking_change(original, modified, optimize=True)
 
     def test_cte_with_select_star(self):
         original_sql = """
@@ -1228,7 +1214,6 @@ class BreakingChangeTest(unittest.TestCase):
         assert is_partial_breaking_change(original, modified, {
             "a": "modified"
         })
-        assert is_non_breaking_change(original, modified, optimize=True)
 
     def test_subquery_in_filter(self):
         original = """
