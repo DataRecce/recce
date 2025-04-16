@@ -1,3 +1,6 @@
+/* eslint-disable @typescript-eslint/no-redundant-type-constituents */
+// TODO the RunType and Run["status"] types must be a finite list of enumerated values *without* a union with string.
+
 export interface DataFrame {
   columns: {
     name: string;
