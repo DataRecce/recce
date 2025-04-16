@@ -199,27 +199,38 @@ export const PrivateLoadableRunView = ({
               onClick={handleRerun}>
               Rerun
             </Button>
-
-            <Menu>
-              <MenuButton as={Button} size="sm" rightIcon={<ChevronDownIcon />} variant="outline">
-                Share
-              </MenuButton>
-              <MenuList minW="0">
-                <MenuItem _hover={{ bg: "transparent" }}>
-                  <Button
-                    leftIcon={<CopyIcon />}
-                    variant="outline"
-                    isDisabled={!runId || !run?.result || !!error || tabIndex !== 0}
-                    onMouseEnter={onMouseEnter}
-                    onMouseLeave={onMouseLeave}
-                    size="sm"
-                    onClick={onCopyToClipboard}>
-                    Copy to Clipboard
-                  </Button>
-                </MenuItem>
-                <MenuDivider />
-                <MenuItem _hover={{ bg: "transparent" }}>
-                  {authed ? (
+            {!authed && (
+              <Button
+                leftIcon={<CopyIcon />}
+                variant="outline"
+                isDisabled={!runId || !run?.result || !!error || tabIndex !== 0}
+                onMouseEnter={onMouseEnter}
+                onMouseLeave={onMouseLeave}
+                size="sm"
+                onClick={onCopyToClipboard}>
+                Copy to Clipboard
+              </Button>
+            )}
+            {authed && (
+              <Menu>
+                <MenuButton as={Button} size="sm" rightIcon={<ChevronDownIcon />} variant="outline">
+                  Share
+                </MenuButton>
+                <MenuList minW="0">
+                  <MenuItem _hover={{ bg: "transparent" }}>
+                    <Button
+                      leftIcon={<CopyIcon />}
+                      variant="outline"
+                      isDisabled={!runId || !run?.result || !!error || tabIndex !== 0}
+                      onMouseEnter={onMouseEnter}
+                      onMouseLeave={onMouseLeave}
+                      size="sm"
+                      onClick={onCopyToClipboard}>
+                      Copy to Clipboard
+                    </Button>
+                  </MenuItem>
+                  <MenuDivider />
+                  <MenuItem _hover={{ bg: "transparent" }}>
                     <Button
                       leftIcon={<TbCloudUpload />}
                       variant="outline"
@@ -228,21 +239,31 @@ export const PrivateLoadableRunView = ({
                       onClick={handleShareClick}>
                       Share to Cloud
                     </Button>
-                  ) : (
-                    <Tooltip label="Please copy api token and relaunch recce with token">
+                    {/* {authed ? (
                       <Button
-                        leftIcon={<ExternalLinkIcon />}
+                        leftIcon={<TbCloudUpload />}
+                        variant="outline"
+                        isDisabled={!runId || !run?.result || !!error || tabIndex !== 0}
                         size="sm"
-                        onClick={() => {
-                          window.open("https://cloud.datarecce.io/settings#tokens", "_blank");
-                        }}>
-                        Enable sharing
+                        onClick={handleShareClick}>
+                        Share to Cloud
                       </Button>
-                    </Tooltip>
-                  )}
-                </MenuItem>
-              </MenuList>
-            </Menu>
+                    ) : (
+                      <Tooltip label="Please copy api token and relaunch recce with token">
+                        <Button
+                          leftIcon={<ExternalLinkIcon />}
+                          size="sm"
+                          onClick={() => {
+                            window.open("https://cloud.datarecce.io/settings#tokens", "_blank");
+                          }}>
+                          Enable sharing
+                        </Button>
+                      </Tooltip>
+                    )} */}
+                  </MenuItem>
+                </MenuList>
+              </Menu>
+            )}
 
             <AddToCheckButton />
 
