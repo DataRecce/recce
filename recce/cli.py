@@ -762,7 +762,6 @@ def artifact(**kwargs):
 @click.argument('state_file', type=click.Path(exists=True))
 @click.option('--api-token', help='The token used by Recce Cloud API.', type=click.STRING,
               envvar='RECCE_API_TOKEN')
-@add_options(recce_options)
 def share(state_file, **kwargs):
     """
         Share the state file
@@ -780,9 +779,9 @@ def share(state_file, **kwargs):
         exit(1)
 
     if api_token is None:
-        console.print("Please login Recce Cloud and copy the API token from the setting page.\n"
+        console.print("An API key is required to this. This can be obtained in your user account settings.\n"
                       f"{RECCE_CLOUD_API_HOST}/settings#tokens\n"
-                      "You can also edit it in the recce profiles yaml file later.")
+                      "Add your API key to '~/.recce/profile.yml' for more convenient sharing.")
         api_token = click.prompt('Your Recce API token', type=str, hide_input=True, show_default=False)
         update_user_profile({'api_token': api_token})
 
