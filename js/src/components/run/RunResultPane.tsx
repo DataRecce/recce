@@ -20,7 +20,12 @@ import {
   MenuList,
   MenuItem,
   MenuDivider,
-  Tooltip,
+  PopoverBody,
+  PopoverTrigger,
+  PopoverContent,
+  Popover,
+  Link,
+  Portal,
 } from "@chakra-ui/react";
 import { useCallback, useState } from "react";
 import { createCheckByRun } from "@/lib/api/checks";
@@ -41,6 +46,7 @@ import { LearnHowLink, RecceNotification } from "../onboarding-guide/Notificatio
 import { useRecceInstanceContext } from "@/lib/hooks/RecceInstanceContext";
 import { TbCloudUpload } from "react-icons/tb";
 import { useRecceShareStateContext } from "@/lib/hooks/RecceShareStateContext";
+import { PUBLIC_CLOUD_WEB_URL } from "@/lib/const";
 
 interface RunPageProps {
   onClose?: () => void;
@@ -144,16 +150,32 @@ const RunResultShareMenu = ({
               Share to Cloud
             </Button>
           ) : (
-            <Tooltip label="Please copy api token and relaunch recce with token">
-              <Button
-                leftIcon={<ExternalLinkIcon />}
-                size="sm"
-                onClick={() => {
-                  window.open("https://cloud.datarecce.io/settings#tokens", "_blank");
-                }}>
-                Enable sharing
-              </Button>
-            </Tooltip>
+            <Popover trigger="hover" placement="bottom-start">
+              <PopoverTrigger>
+                <Button
+                  leftIcon={<ExternalLinkIcon />}
+                  size="sm"
+                  onClick={() => {
+                    window.open(`${PUBLIC_CLOUD_WEB_URL}/settings#tokens`, "_blank");
+                  }}>
+                  Enable sharing
+                </Button>
+              </PopoverTrigger>
+              <Portal>
+                <PopoverContent bg="black" color="white" sx={{ width: "max-content" }}>
+                  <PopoverBody fontSize="sm">
+                    API key required.{" "}
+                    <Link
+                      href="https://datarecce.io/docs/recce-cloud/share-recce-session-securely"
+                      target="_blank"
+                      textDecoration="underline">
+                      Learn more
+                    </Link>
+                    .
+                  </PopoverBody>
+                </PopoverContent>
+              </Portal>
+            </Popover>
           )}
         </MenuItem>
       </MenuList>

@@ -1,8 +1,21 @@
-import { Flex, Text, Spinner, IconButton, Button, Tooltip, useClipboard } from "@chakra-ui/react";
+import {
+  Flex,
+  Text,
+  Spinner,
+  IconButton,
+  Button,
+  useClipboard,
+  Popover,
+  PopoverTrigger,
+  PopoverContent,
+  PopoverBody,
+  Link,
+} from "@chakra-ui/react";
 import { CheckCircleIcon, CopyIcon, ExternalLinkIcon } from "@chakra-ui/icons";
 import { useRecceInstanceContext } from "@/lib/hooks/RecceInstanceContext";
 import { useRecceShareStateContext } from "@/lib/hooks/RecceShareStateContext";
 import { useClipBoardToast } from "@/lib/hooks/useClipBoardToast";
+import { PUBLIC_CLOUD_WEB_URL } from "@/lib/const";
 
 export function TopLevelShare() {
   const { successToast, failToast } = useClipBoardToast();
@@ -22,16 +35,30 @@ export function TopLevelShare() {
   if (!authed) {
     return (
       <Flex flex="1" alignItems="center">
-        <Tooltip label="Please copy api token and relaunch recce with token">
-          <Button
-            rightIcon={<ExternalLinkIcon />}
-            size="sm"
-            onClick={() => {
-              window.open("https://cloud.datarecce.io/settings#tokens", "_blank");
-            }}>
-            Enable sharing
-          </Button>
-        </Tooltip>
+        <Popover trigger="hover" placement="bottom-start">
+          <PopoverTrigger>
+            <Button
+              rightIcon={<ExternalLinkIcon />}
+              size="sm"
+              onClick={() => {
+                window.open(`${PUBLIC_CLOUD_WEB_URL}/settings#tokens`, "_blank");
+              }}>
+              Enable sharing
+            </Button>
+          </PopoverTrigger>
+          <PopoverContent bg="black" color="white" sx={{ width: "max-content" }}>
+            <PopoverBody fontSize="sm">
+              API key required.{" "}
+              <Link
+                href="https://datarecce.io/docs/recce-cloud/share-recce-session-securely"
+                target="_blank"
+                textDecoration="underline">
+                Learn more
+              </Link>
+              .
+            </PopoverBody>
+          </PopoverContent>
+        </Popover>
       </Flex>
     );
   }
