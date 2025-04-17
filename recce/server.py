@@ -8,7 +8,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Optional, Any, Set, Annotated, Literal, Dict
 
-from fastapi import FastAPI, HTTPException, Request, WebSocket, UploadFile, Response, BackgroundTasks, Form, Query
+from fastapi import FastAPI, HTTPException, Request, WebSocket, UploadFile, Response, BackgroundTasks, Form
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import PlainTextResponse
 from fastapi.staticfiles import StaticFiles
@@ -180,7 +180,7 @@ async def recce_instance_info():
     flag = app_state.flag
     read_only = flag.get('read_only', False)
 
-    auth_options = app_state.auth_options
+    auth_options = app_state.auth_options or {}
     api_token = auth_options.get('api_token')
 
     return {
