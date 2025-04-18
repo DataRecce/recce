@@ -292,17 +292,12 @@ function NavBar() {
             );
           })}
         </Box>
-        {!isLoading && !isDemoSite && (
-          <Grid templateColumns="repeat(7, 1fr)" alignItems={"center"}>
-            <GridItem colSpan={2} />
-            <GridItem colSpan={1}>
-              <Filename />
-            </GridItem>
-            <GridItem colSpan={4}>
-              <TopLevelShare />
-            </GridItem>
-          </Grid>
-        )}
+        <Flex flex="3" justifyContent="right" alignItems="center">
+          {!isLoading && !isDemoSite && <Filename />}
+        </Flex>
+        <Flex flex="3" justifyContent="left" alignItems="center">
+          {!isLoading && !isDemoSite && !flag?.single_env_onboarding && <TopLevelShare />}
+        </Flex>
         {!isLoading && (
           <Flex flex="1" justifyContent="right" alignItems="center" mr="8px">
             {cloudMode && <StateSynchronizer />}
