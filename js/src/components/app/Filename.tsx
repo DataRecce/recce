@@ -183,7 +183,7 @@ export const Filename = () => {
 
   return (
     <>
-      <Flex flex="1" justifyContent="center" alignItems="center">
+      <Flex justifyContent="center" alignItems="center">
         <Box fontWeight="600">{(fileName ?? cloudMode) ? "cloud" : titleNewInstance}</Box>
         {!readOnly && (
           <Tooltip label={fileName ? "Change Filename" : "Save"} openDelay={1000}>
