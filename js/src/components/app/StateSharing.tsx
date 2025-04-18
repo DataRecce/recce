@@ -1,7 +1,6 @@
 import {
   Flex,
   Text,
-  Spinner,
   IconButton,
   Button,
   useClipboard,
@@ -16,6 +15,7 @@ import { useRecceInstanceContext } from "@/lib/hooks/RecceInstanceContext";
 import { useRecceShareStateContext } from "@/lib/hooks/RecceShareStateContext";
 import { useClipBoardToast } from "@/lib/hooks/useClipBoardToast";
 import { PUBLIC_CLOUD_WEB_URL } from "@/lib/const";
+import { TbCloudUpload } from "react-icons/tb";
 
 export function TopLevelShare() {
   const { successToast, failToast } = useClipBoardToast();
@@ -48,7 +48,7 @@ export function TopLevelShare() {
           </PopoverTrigger>
           <PopoverContent bg="black" color="white" sx={{ width: "max-content" }}>
             <PopoverBody fontSize="sm">
-              API key required.{" "}
+              API token required.{" "}
               <Link
                 href="https://datarecce.io/docs/recce-cloud/share-recce-session-securely"
                 target="_blank"
@@ -69,11 +69,12 @@ export function TopLevelShare() {
         size="sm"
         variant="outline"
         onClick={handleShareClick}
-        rightIcon={shareUrl ? <CheckCircleIcon color="green" /> : undefined}>
+        leftIcon={<TbCloudUpload />}
+        rightIcon={shareUrl ? <CheckCircleIcon color="green" /> : undefined}
+        isLoading={isLoading}>
         Share
       </Button>
       <Flex gap="5px" alignItems="center">
-        {isLoading && <Spinner size="sm" />}
         {shareUrl && (
           <>
             <Text fontSize="14">{shareUrl}</Text>

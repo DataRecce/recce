@@ -127,57 +127,48 @@ const RunResultShareMenu = ({
         Share
       </MenuButton>
       <MenuList minW="0">
-        <MenuItem _hover={{ bg: "transparent" }}>
-          <Button
-            leftIcon={<CopyIcon />}
-            variant="outline"
-            isDisabled={disableCopyToClipboard}
-            onMouseEnter={onMouseEnter}
-            onMouseLeave={onMouseLeave}
-            size="sm"
-            onClick={onCopyToClipboard}>
-            Copy to Clipboard
-          </Button>
+        <MenuItem
+          fontSize="14px"
+          icon={<CopyIcon />}
+          onClick={onCopyToClipboard}
+          onMouseEnter={onMouseEnter}
+          onMouseLeave={onMouseLeave}
+          isDisabled={disableCopyToClipboard}>
+          Copy to Clipboard
         </MenuItem>
         <MenuDivider />
-        <MenuItem _hover={{ bg: "transparent" }}>
-          {authed ? (
-            <Button
-              leftIcon={<TbCloudUpload />}
-              variant="outline"
-              size="sm"
-              onClick={handleShareClick}>
-              Share to Cloud
-            </Button>
-          ) : (
-            <Popover trigger="hover" placement="bottom-start">
-              <PopoverTrigger>
-                <Button
-                  leftIcon={<ExternalLinkIcon />}
-                  size="sm"
-                  onClick={() => {
-                    window.open(`${PUBLIC_CLOUD_WEB_URL}/settings#tokens`, "_blank");
-                  }}>
-                  Enable sharing
-                </Button>
-              </PopoverTrigger>
-              <Portal>
-                <PopoverContent bg="black" color="white" sx={{ width: "max-content" }}>
-                  <PopoverBody fontSize="sm">
-                    API key required.{" "}
-                    <Link
-                      href="https://datarecce.io/docs/recce-cloud/share-recce-session-securely"
-                      target="_blank"
-                      textDecoration="underline">
-                      Learn more
-                    </Link>
-                    .
-                  </PopoverBody>
-                </PopoverContent>
-              </Portal>
-            </Popover>
-          )}
-        </MenuItem>
+        {authed ? (
+          <MenuItem fontSize="14px" icon={<TbCloudUpload />} onClick={handleShareClick}>
+            Share to Cloud
+          </MenuItem>
+        ) : (
+          <Popover trigger="hover" placement="bottom-start" closeOnBlur={false}>
+            <PopoverTrigger>
+              <MenuItem
+                fontSize="14px"
+                icon={<ExternalLinkIcon />}
+                onClick={() => {
+                  window.open(`${PUBLIC_CLOUD_WEB_URL}/settings#tokens`, "_blank");
+                }}>
+                Enable sharing
+              </MenuItem>
+            </PopoverTrigger>
+            <Portal>
+              <PopoverContent bg="black" color="white" sx={{ width: "max-content" }}>
+                <PopoverBody fontSize="sm">
+                  API token required.{" "}
+                  <Link
+                    href="https://datarecce.io/docs/recce-cloud/share-recce-session-securely"
+                    target="_blank"
+                    textDecoration="underline">
+                    Learn more
+                  </Link>
+                  .
+                </PopoverBody>
+              </PopoverContent>
+            </Portal>
+          </Popover>
+        )}
       </MenuList>
     </Menu>
   );
