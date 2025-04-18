@@ -817,6 +817,8 @@ class DbtAdapter(BaseAdapter):
                         base_schema = _get_schema(base)
                         curr_schema = _get_schema(current)
                         dialect = self.adapter.connections.TYPE
+                        if curr_manifest.metadata.adapter_type is not None:
+                            dialect = curr_manifest.metadata.adapter_type
 
                         change = parse_change_category(
                             base_sql,
@@ -826,6 +828,24 @@ class DbtAdapter(BaseAdapter):
                             dialect=dialect,
                             perf_tracking=perf_tracking,
                         )
+
+                        # Make sure that the case of the column names are the same
+                        changed_columns = {
+                            column.lower(): change_status
+                            for column, change_status in (change.columns or {}).items()
+                        }
+                        changed_columns_names = set(changed_columns)
+                        changed_columns_final = {}
+
+                        base_columns = base_node.get('columns') or {}
+                        curr_columns = curr_node.get('columns') or {}
+                        columns_names = set(base_columns) | set(curr_columns)
+
+                        for column_name in columns_names:
+                            if column_name.lower() in changed_columns_names:
+                                changed_columns_final[column_name] = changed_columns[column_name.lower()]
+
+                        change.columns = changed_columns_final
                     except Exception:
                         change = NodeChange(category='unknown')
 
