@@ -77,7 +77,9 @@ export function TopLevelShare() {
       <Flex gap="5px" alignItems="center">
         {shareUrl && (
           <>
-            <Text fontSize="14">{shareUrl}</Text>
+            <Flex overflowX="auto" whiteSpace="nowrap" maxWidth="350px">
+              <Text fontSize="14">{shareUrl}</Text>
+            </Flex>
             <IconButton
               size="xs"
               aria-label="Copy the share URL"
