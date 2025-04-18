@@ -125,10 +125,6 @@ export default tseslint.config(
       "@typescript-eslint/no-unsafe-member-access": "warn", // 120 errors
       "@typescript-eslint/no-unsafe-return": "warn", // 24 errors
       // END Rules specific to avoiding 'Any' Typing
-      "@typescript-eslint/no-redundant-type-constituents": "warn", // 16 errors
-      "@typescript-eslint/require-await": "warn", // 6 errors
-      "@typescript-eslint/await-thenable": "warn", // 5 errors
-      "@typescript-eslint/no-confusing-void-expression": "warn", // 5 errors (same as await-thenable)
     },
   },
 );

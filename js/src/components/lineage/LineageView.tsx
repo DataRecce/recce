@@ -413,7 +413,7 @@ export function PrivateLineageView(
     setFocusedNodeId(undefined);
   };
 
-  const centerNode = async (node: Node) => {
+  const centerNode = (node: Node) => {
     if (node.width && node.height) {
       const x = node.position.x + node.width / 2;
       const y = node.position.y + node.height / 2;
@@ -425,11 +425,11 @@ export function PrivateLineageView(
 
   const navToCheck = useNavToCheck();
 
-  useResizeObserver(refResize, async () => {
+  useResizeObserver(refResize, () => {
     if (selectMode !== "selecting") {
       const node = nodes.find((node) => node.id === focusedNodeId);
       if (node) {
-        void centerNode(node);
+        centerNode(node);
       } else {
         reactFlow.fitView({ nodes, duration: 200 });
       }
@@ -584,7 +584,7 @@ export function PrivateLineageView(
 
     if (fitView) {
       await new Promise((resolve) => setTimeout(resolve, 1));
-      await (async () => {
+      (() => {
         reactFlow.fitView({ nodes: newNodes, duration: 200 });
       })();
     }
