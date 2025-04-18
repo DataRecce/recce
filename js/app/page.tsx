@@ -247,6 +247,7 @@ function TabBadge<T, R extends number>({
 
 function NavBar() {
   const { isDemoSite, cloudMode, isLoading } = useLineageGraphContext();
+  const { readOnly } = useRecceInstanceContext();
   const [location, setLocation] = useLocation();
   const { data: flag, isLoading: isFlagLoading } = useRecceServerFlag();
 
@@ -296,7 +297,9 @@ function NavBar() {
           {!isLoading && !isDemoSite && <Filename />}
         </Flex>
         <Flex flex="3" justifyContent="left" alignItems="center">
-          {!isLoading && !isDemoSite && !flag?.single_env_onboarding && <TopLevelShare />}
+          {!isLoading && !isDemoSite && !flag?.single_env_onboarding && !readOnly && (
+            <TopLevelShare />
+          )}
         </Flex>
         {!isLoading && (
           <Flex flex="1" justifyContent="right" alignItems="center" mr="8px">

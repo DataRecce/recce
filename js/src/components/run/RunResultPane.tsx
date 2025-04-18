@@ -183,7 +183,7 @@ export const PrivateLoadableRunView = ({
   onClose?: () => void;
   isSingleEnvironment?: boolean;
 }) => {
-  const { readOnly, authed } = useRecceInstanceContext();
+  const { readOnly } = useRecceInstanceContext();
   const { runAction } = useRecceActionContext();
   const { error, run, onCancel, isRunning } = useRun(runId);
   const [viewOptions, setViewOptions] = useState();
@@ -272,7 +272,7 @@ export const PrivateLoadableRunView = ({
               onClick={handleRerun}>
               Rerun
             </Button>
-            {isSingleEnvironment ? (
+            {isSingleEnvironment || readOnly ? (
               <Button
                 leftIcon={<CopyIcon />}
                 variant="outline"
