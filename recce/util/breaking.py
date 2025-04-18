@@ -72,14 +72,15 @@ def _diff_select_scope(
     assert old_scope.expression.key == 'select'
     assert new_scope.expression.key == 'select'
 
-    result = NodeChange(category='non_breaking')
+    change_category = 'non_breaking'
+    changed_columns = {}
 
     # check if the upstream scopes is not breaking
     for source_name, source in new_scope.sources.items():
         if scope_changes_map.get(source) is not None:
-            change_category = scope_changes_map[source]
-            if change_category.category == 'breaking':
-                return CHANGE_CATEGORY_BREAKING
+            chanage = scope_changes_map[source]
+            if chanage.category == 'breaking':
+                change_category = 'breaking'
 
     # check if non-select expressions are the same
     old_select = old_scope.expression  # type: exp.Select
@@ -89,7 +90,7 @@ def _diff_select_scope(
             continue
 
         if old_select.args.get(arg_key) != new_select.args.get(arg_key):
-            return CHANGE_CATEGORY_BREAKING
+            change_category = 'breaking'
 
     def source_column_change_status(ref_column: exp.Column) -> Optional[ChangeStatus]:
         table_name = ref_column.table
@@ -107,7 +108,6 @@ def _diff_select_scope(
     # selects
     old_column_map = {projection.alias_or_name: projection for projection in old_select.selects}
     new_column_map = {projection.alias_or_name: projection for projection in new_select.selects}
-    changed_columns = {}
     is_distinct = new_select.args.get('distinct') is not None
 
     for column_name in (old_column_map.keys() | new_column_map.keys()):
@@ -124,53 +124,55 @@ def _diff_select_scope(
         new_column = new_column_map.get(column_name)
         if old_column is None:
             if is_distinct:
-                return CHANGE_CATEGORY_BREAKING
-
-            if _has_udtf(new_column):
-                return CHANGE_CATEGORY_BREAKING
+                change_category = 'breaking'
+            elif _has_udtf(new_column):
+                change_category = 'breaking'
 
             changed_columns[column_name] = 'added'
         elif new_column is None:
             if is_distinct:
-                return CHANGE_CATEGORY_BREAKING
-
-            if _has_udtf(old_column):
-                return CHANGE_CATEGORY_BREAKING
+                change_category = 'breaking'
+            elif _has_udtf(old_column):
+                change_category = 'breaking'
 
             changed_columns[column_name] = 'removed'
-            result.category = 'partial_breaking'
+            if change_category != 'breaking':
+                change_category = 'partial_breaking'
         elif old_column != new_column:
             if is_distinct:
-                return CHANGE_CATEGORY_BREAKING
-
-            if _has_udtf(old_column) and _has_udtf(new_column):
-                return CHANGE_CATEGORY_BREAKING
-
-            if _has_aggregate(old_column) != _has_aggregate(new_column):
-                return CHANGE_CATEGORY_BREAKING
+                change_category = 'breaking'
+            elif _has_udtf(old_column) and _has_udtf(new_column):
+                change_category = 'breaking'
+            elif _has_aggregate(old_column) != _has_aggregate(new_column):
+                change_category = 'breaking'
 
             changed_columns[column_name] = 'modified'
-            result.category = 'partial_breaking'
+            if change_category != 'breaking':
+                change_category = 'partial_breaking'
         else:
             if _has_star(new_column):
                 for source_name, (_, source) in new_scope.selected_sources.items():
                     change = scope_changes_map.get(source)
                     if change is not None:
+                        if change.category == 'breaking':
+                            change_category = 'breaking'
                         for sub_column_name in change.columns.keys():
                             column_change_status = change.columns[sub_column_name]
                             changed_columns[sub_column_name] = column_change_status
-                            if column_change_status in ['removed', 'modified']:
-                                result.category = 'partial_breaking'
+                            if change_category != 'breaking' and column_change_status in ['removed', 'modified']:
+                                change_category = 'partial_breaking'
                 continue
 
             ref_columns = new_column.find_all(exp.Column)
             for ref_column in ref_columns:
                 if source_column_change_status(ref_column) is not None:
                     if is_distinct:
-                        return CHANGE_CATEGORY_BREAKING
-                    if _has_udtf(new_column):
-                        return CHANGE_CATEGORY_BREAKING
-                    result.category = 'partial_breaking'
+                        change_category = 'breaking'
+                    elif _has_udtf(new_column):
+                        change_category = 'breaking'
+
+                    if change_category != 'breaking':
+                        change_category = 'partial_breaking'
                     changed_columns[column_name] = 'modified'
 
     def selected_column_change_status(ref_column: exp.Column) -> Optional[ChangeStatus]:
@@ -184,7 +186,7 @@ def _diff_select_scope(
             if isinstance(join, exp.Join):
                 for ref_column in join.find_all(exp.Column):
                     if source_column_change_status(ref_column) is not None:
-                        return CHANGE_CATEGORY_BREAKING
+                        change_category = 'breaking'
 
     # where clauses: Reference the source columns
     if new_select.args.get('where'):
@@ -192,7 +194,7 @@ def _diff_select_scope(
         if isinstance(where, exp.Where):
             for ref_column in where.find_all(exp.Column):
                 if source_column_change_status(ref_column) is not None:
-                    return CHANGE_CATEGORY_BREAKING
+                    change_category = 'breaking'
 
     # group by clause: Reference the source columns, column index
     if new_select.args.get('group'):
@@ -200,7 +202,7 @@ def _diff_select_scope(
         if isinstance(group, exp.Group):
             for ref_column in group.find_all(exp.Column):
                 if source_column_change_status(ref_column) is not None:
-                    return CHANGE_CATEGORY_BREAKING
+                    change_category = 'breaking'
 
     # having clause: Reference the source columns, selected columns
     if new_select.args.get('having'):
@@ -208,9 +210,9 @@ def _diff_select_scope(
         if isinstance(having, exp.Having):
             for ref_column in having.find_all(exp.Column):
                 if source_column_change_status(ref_column) is not None:
-                    return CHANGE_CATEGORY_BREAKING
-                if selected_column_change_status(ref_column) is not None:
-                    return CHANGE_CATEGORY_BREAKING
+                    change_category = 'breaking'
+                elif selected_column_change_status(ref_column) is not None:
+                    change_category = 'breaking'
 
     # order by clause: Reference the source columns, selected columns, column index
     if new_select.args.get('order'):
@@ -218,12 +220,11 @@ def _diff_select_scope(
         if isinstance(order, exp.Order):
             for ref_column in order.find_all(exp.Column):
                 if source_column_change_status(ref_column) is not None:
-                    return CHANGE_CATEGORY_BREAKING
-                if selected_column_change_status(ref_column) is not None:
-                    return CHANGE_CATEGORY_BREAKING
+                    change_category = 'breaking'
+                elif selected_column_change_status(ref_column) is not None:
+                    change_category = 'breaking'
 
-    result.columns = changed_columns
-    return result
+    return NodeChange(category=change_category, columns=changed_columns)
 
 
 def _diff_union_scope(
@@ -237,20 +238,22 @@ def _diff_union_scope(
     assert new_scope.union_scopes is not None
     assert len(new_scope.union_scopes) > 0
 
-    result = scope_changes_map.get(new_scope.union_scopes[0])
-    if result.category in ['breaking', 'unknown']:
-        return result
+    result_left = scope_changes_map.get(new_scope.union_scopes[0])
+    change_category = result_left.category
+    changed_columns = result_left.columns.copy()
 
     for sub_scope in new_scope.union_scopes[1:]:
         result_right = scope_changes_map.get(sub_scope)
-        if result_right.category in ['breaking', 'unknown']:
-            return result_right
-        if result_right.category == 'partial_breaking':
-            result.category = 'partial_breaking'
+        if change_category == 'partial_breaking':
+            if result_right.category in ['breaking']:
+                change_category = result_right.category
+        elif change_category == 'non_breaking':
+            if result_right.category in ['breaking', 'partial_breaking']:
+                change_category = result_right.category
         for column_name, column_change_status in result_right.columns.items():
-            result.columns[column_name] = column_change_status
+            changed_columns[column_name] = column_change_status
 
-    return result
+    return NodeChange(category=change_category, columns=changed_columns)
 
 
 def parse_change_category(
@@ -291,12 +294,12 @@ def parse_change_category(
     old_scopes = traverse_scope(old_exp)
     new_scopes = traverse_scope(new_exp)
     if len(old_scopes) != len(new_scopes):
-        return CHANGE_CATEGORY_BREAKING
+        return NodeChange(category='breaking', columns={})
 
     scope_changes_map = {}
     for old_scope, new_scope in zip(old_scopes, new_scopes):
         if old_scope.expression.key != new_scope.expression.key:
-            scope_changes_map[new_scope] = CHANGE_CATEGORY_BREAKING
+            scope_changes_map[new_scope] = NodeChange(category='breaking')
             continue
         if old_scope == new_scope:
             scope_changes_map[new_scope] = NodeChange(category='non_breaking')
@@ -311,11 +314,11 @@ def parse_change_category(
             result = _diff_union_scope(old_scope, new_scope, scope_changes_map)
         else:
             if old_scope.expression != new_scope.expression:
-                result = CHANGE_CATEGORY_BREAKING
+                result = NodeChange(category='breaking', columns={})
             else:
                 result = NodeChange(category='non_breaking', columns={})
 
-        if result.category == 'breaking' or result.category == 'unknown':
+        if result.category == 'unknown':
             return result
 
         scope_changes_map[new_scope] = result

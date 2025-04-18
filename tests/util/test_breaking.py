@@ -42,6 +42,7 @@ def _parse_change_catgory(
 def is_breaking_change(
     original_sql,
     modified_sql,
+    expected_changed_columns: dict[str, ChangeStatus] = None,
     dialect=None,
 ):
     result = _parse_change_catgory(
@@ -49,7 +50,15 @@ def is_breaking_change(
         modified_sql,
         dialect=dialect,
     )
-    return result.category == 'breaking'
+    if result.category != 'breaking':
+        return False
+
+    if expected_changed_columns is not None:
+        diff = DeepDiff(expected_changed_columns, result.columns, ignore_order=True)
+        if len(diff) > 0:
+            return False
+
+    return True
 
 
 def is_partial_breaking_change(
@@ -623,6 +632,22 @@ class BreakingChangeTest(unittest.TestCase):
         """
         assert is_breaking_change(no_where, with_where)
         assert is_breaking_change(with_where, with_where2)
+
+    def test_where_change_with_column_changes(self):
+        no_where = """
+        select
+            a,
+            b
+        from Customers
+        """
+        with_where = """
+        select
+            a + 1 as a,
+            b as b2,
+        from Customers
+        where a > 100
+        """
+        assert is_breaking_change(no_where, with_where, {'a': 'modified', 'b': 'removed', 'b2': 'added'})
 
     def test_where_source_column_change(self):
         original_sql = """
