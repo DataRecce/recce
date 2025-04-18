@@ -385,8 +385,10 @@ export function toReactflow(
     // add column nodes
     const nodeColumnSet = new Set<string>();
     let columnIndex = 0;
-    if (cll?.current.nodes && node.id in cll.current.nodes) {
-      for (const column of Object.values(cll.current.nodes[node.id].columns ?? {})) {
+    if (columnLevelLineage) {
+      const cllNodeColumns = cll?.current?.nodes?.[node.id]?.columns ?? {};
+
+      for (const column of Object.values(cllNodeColumns)) {
         const columnKey = `${node.id}_${column.name}`;
         if (!columnSet.has(columnKey)) {
           continue;
