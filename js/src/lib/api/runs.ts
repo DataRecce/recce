@@ -1,10 +1,17 @@
-import _ from "lodash";
 import { axiosClient } from "./axiosClient";
 import { Run, RunType } from "./types";
 import { getExperimentTrackingBreakingChangeEnabled } from "./track";
+import { AxiosResponse } from "axios";
 
 export interface SubmitOptions {
   nowait?: boolean;
+}
+
+interface SubmitRunBody {
+  type: RunType;
+  params?: Record<string, unknown>;
+  nowait?: boolean;
+  track_props: Record<string, string | boolean>;
 }
 
 export async function submitRun<PT = any, RT = any>(
@@ -15,73 +22,89 @@ export async function submitRun<PT = any, RT = any>(
   const track_props = getExperimentTrackingBreakingChangeEnabled()
     ? { breaking_change_analysis: true }
     : {};
-  const response = await axiosClient.post("/api/runs", {
+  const response = await axiosClient.post<
+    SubmitRunBody,
+    AxiosResponse<Run<PT, RT> | Pick<Run, "run_id">>
+  >("/api/runs", {
     type,
     params,
     nowait: options?.nowait,
     track_props,
   });
 
-  const run: Run<PT, RT> | Pick<Run, "run_id"> = response.data;
-
-  return run;
+  return response.data;
 }
 
 export async function getRun<PT = any, RT = any>(runId: string) {
-  const response = await axiosClient.get(`/api/runs/${runId}`);
-  const run: Run<PT, RT> = response.data;
-  return run;
+  const response = await axiosClient.get<never, AxiosResponse<Run<PT, RT>>>(`/api/runs/${runId}`);
+  return response.data;
+}
+
+interface WaitRunBody {
+  params: {
+    timeout?: number;
+  };
 }
 
 export async function waitRun<PT = any, RT = any>(runId: string, timeout?: number) {
-  const response = await axiosClient.get(`/api/runs/${runId}/wait`, {
-    params: {
-      timeout,
+  const response = await axiosClient.get<WaitRunBody, AxiosResponse<Run<PT, RT>>>(
+    `/api/runs/${runId}/wait`,
+    {
+      params: {
+        timeout,
+      },
     },
-  });
+  );
 
-  const run: Run<PT, RT> = response.data;
-
-  return run;
+  return response.data;
 }
 
 export async function cancelRun(runId: string) {
-  return await axiosClient.post(`/api/runs/${runId}/cancel`);
+  return await axiosClient.post<never, AxiosResponse<never>>(`/api/runs/${runId}/cancel`);
 }
 
 export async function submitRunFromCheck<PT = any, RT = any>(
   checkId: string,
   options?: SubmitOptions,
 ) {
-  const response = await axiosClient.post(`/api/checks/${checkId}/run`, {
+  const response = await axiosClient.post<
+    { nowait?: boolean },
+    AxiosResponse<Run<PT, RT> | Pick<Run, "run_id">>
+  >(`/api/checks/${checkId}/run`, {
     nowait: options?.nowait,
-  });
-
-  const run: Run<PT, RT> | Pick<Run, "run_id"> = response.data;
-
-  return run;
-}
-
-export async function searchRuns(type: string, params: any, limit?: number) {
-  const response = await axiosClient.post(`/api/runs/search`, {
-    type,
-    params,
-    limit,
   });
 
   return response.data;
 }
 
-export async function listRuns() {
-  const response = await axiosClient.get("/api/runs");
-  const runs: Run[] = response.data;
-  return runs;
+interface SearchRunsBody {
+  type: string;
+  params: Record<string, unknown>;
+  limit?: number;
+}
+
+export async function searchRuns(type: string, params: any, limit?: number) {
+  const response = await axiosClient.post<SearchRunsBody, AxiosResponse<Run[]>>(
+    `/api/runs/search`,
+    {
+      type,
+      params,
+      limit,
+    },
+  );
+
+  return response.data;
+}
+
+export async function listRuns(): Promise<Run[]> {
+  const response = await axiosClient.get<never, AxiosResponse<Run[]>>("/api/runs");
+  return response.data;
 }
 
 export type RunsAggregated = Record<
   string,
   Record<
-    string,
+    "row_count_diff" | "value_diff",
     {
       run_id: string;
       result: any;
@@ -89,7 +112,11 @@ export type RunsAggregated = Record<
   >
 >;
 export async function aggregateRuns(): Promise<RunsAggregated> {
-  const response = await axiosClient.post(`/api/runs/aggregate`, {});
+  // input should be AggregateRunsIn
+  const response = await axiosClient.post<unknown, AxiosResponse<RunsAggregated>>(
+    `/api/runs/aggregate`,
+    {},
+  );
 
   return response.data;
 }
