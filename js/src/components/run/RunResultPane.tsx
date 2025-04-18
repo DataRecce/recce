@@ -272,26 +272,12 @@ export const PrivateLoadableRunView = ({
               onClick={handleRerun}>
               Rerun
             </Button>
-            {!authed && (
-              <Button
-                leftIcon={<CopyIcon />}
-                variant="outline"
-                isDisabled={!runId || !run?.result || !!error || tabIndex !== 0}
-                onMouseEnter={onMouseEnter}
-                onMouseLeave={onMouseLeave}
-                size="sm"
-                onClick={onCopyToClipboard}>
-                Copy to Clipboard
-              </Button>
-            )}
-            {authed && (
-              <RunResultShareMenu
-                disableCopyToClipboard={disableCopyToClipboard}
-                onCopyToClipboard={onCopyToClipboard}
-                onMouseEnter={onMouseEnter}
-                onMouseLeave={onMouseLeave}
-              />
-            )}
+            <RunResultShareMenu
+              disableCopyToClipboard={disableCopyToClipboard}
+              onCopyToClipboard={onCopyToClipboard}
+              onMouseEnter={onMouseEnter}
+              onMouseLeave={onMouseLeave}
+            />
 
             <AddToCheckButton />
 

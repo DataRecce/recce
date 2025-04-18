@@ -758,7 +758,7 @@ def artifact(**kwargs):
     return recce_ci_artifact(**kwargs)
 
 
-@cli.command(cls=TrackCommand, hidden=True)
+@cli.command(cls=TrackCommand)
 @click.argument('state_file', type=click.Path(exists=True))
 @click.option('--api-token', help='The token used by Recce Cloud API.', type=click.STRING,
               envvar='RECCE_API_TOKEN')
@@ -774,10 +774,6 @@ def share(state_file, **kwargs):
 
     # read or input the api token
     api_token = kwargs.get('api_token') if kwargs.get('api_token') else get_recce_api_token()
-    if api_token is None:
-        console.print("Recce Share is coming soon — stay tuned!")
-        exit(1)
-
     if api_token is None:
         console.print("An API token is required to this. This can be obtained in your user account settings.\n"
                       f"{RECCE_CLOUD_API_HOST}/settings#tokens\n"
