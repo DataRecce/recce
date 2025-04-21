@@ -43,7 +43,7 @@ recce server
 ```
 
 To use the full suite of diffing tools in Recce, please prepare two environments to compare against. Follow
-our [5-minute Jaffle Shop tutorial](https://datarecce.io/docs/get-started-jaffle-shop/) to try it out for yourself.
+our [5-minute Jaffle Shop tutorial](https://docs.datarecce.io/get-started-jaffle-shop/) to try it out for yourself.
 
 ## What you get
 
@@ -134,36 +134,36 @@ recording data impact from code changes.
 
 ### Lineage Diff
 
-[Lineage Diff](https://datarecce.io/docs/features/lineage/) is the main interface to `Recce`  and shows which nodes in
+[Lineage Diff](https://docs.datarecce.io/features/lineage/) is the main interface to `Recce`  and shows which nodes in
 the lineage have been added, removed, or modified.
 
 ### Structural Diffs
 
-- [Schema Diff](https://datarecce.io/docs/features/lineage/#schema-diff) - Show the struture of the table including
+- [Schema Diff](https://docs.datarecce.io/features/lineage/#schema-diff) - Show the struture of the table including
   added or removed columns
-- [Row Count Diff](https://datarecce.io/docs/features/lineage/#row-count-diff) - Compares the row count for tables
+- [Row Count Diff](https://docs.datarecce.io/features/lineage/#row-count-diff) - Compares the row count for tables
 
 ### Statistical Diffs
 
 Advanced Diffs provide high level statistics about data change:
 
-- [Profile Diff](https://datarecce.io/docs/features/lineage/#profile-diff): Compares stats such as count, distinct
+- [Profile Diff](https://docs.datarecce.io/features/lineage/#profile-diff): Compares stats such as count, distinct
   count, min, max, average.
-- [Value Diff](https://datarecce.io/docs/features/lineage/#value-diff): The matched count and percentage for each column
+- [Value Diff](https://docs.datarecce.io/features/lineage/#value-diff): The matched count and percentage for each column
   in the table.
-- [Top-K Diff](https://datarecce.io/docs/features/lineage/#top-k-diff): Compares the distribution of a categorical
+- [Top-K Diff](https://docs.datarecce.io/features/lineage/#top-k-diff): Compares the distribution of a categorical
   column.
-- [Histogram Diff](https://datarecce.io/docs/features/lineage/#histogram-diff): Compares the distribution of a numeric
+- [Histogram Diff](https://docs.datarecce.io/features/lineage/#histogram-diff): Compares the distribution of a numeric
   column in an overlay histogram chart.
 
 ### Query Diff
 
-[Query Diff](https://datarecce.io/docs/features/query/) compares the results of any ad-hoc query, and supports the use
+[Query Diff](https://docs.datarecce.io/features/query/) compares the results of any ad-hoc query, and supports the use
 of dbt macros.
 
 ### Checklist
 
-The [checklist](https://datarecce.io/docs/features/checklist/) provides a way to record the results of your data
+The [checklist](https://docs.datarecce.io/features/checklist/) provides a way to record the results of your data
 validation process.
 
 - Save the results of checks
@@ -185,13 +185,13 @@ non-technical stakeholders to approve data checks.
 
 ## Documentation / How to use `Recce`
 
-The [Recce Documentation](https://datarecce.io/docs/) covers everything you need to get started.
+The [Recce Documentation](https://docs.datarecce.io/) covers everything you need to get started.
 
-We’d advise first following the [5-minute tutorial](https://datarecce.io/docs/get-started-jaffle-shop/) that uses Jaffle
-Shop and then [trying out Recce](https://datarecce.io/docs/get-started/) in your own project.
+We’d advise first following the [5-minute tutorial](https://docs.datarecce.io/get-started-jaffle-shop/) that uses Jaffle
+Shop and then [trying out Recce](https://docs.datarecce.io/get-started/) in your own project.
 
 For advice on best practices in preparing dbt environments to enable effective PR review, check
-out [Best Practices for Preparing Environments](https://datarecce.io/docs/guides/best-practices-prep-env/).
+out [Best Practices for Preparing Environments](https://docs.datarecce.io/guides/best-practices-prep-env/).
 
 ## Recce Cloud
 
@@ -222,7 +222,7 @@ please [book an appointment](https://cal.com/team/recce/chat?utm_source=banner&u
 
 For `Recce Cloud` users:
 
-- An encrypted version of your `Recce` [state file](https://datarecce.io/docs/features/state-file/) is storedon
+- An encrypted version of your `Recce` [state file](https://docs.datarecce.io/features/state-file/) is storedon
   `Recce Cloud`. This file is encrypted *before* transmission.
 
 ## Community & Support

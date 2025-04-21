@@ -195,7 +195,7 @@ function TopBar() {
       <Spacer />
       <LinkIcon icon={FaGithub} href="https://github.com/DataRecce/recce" />
       <LinkIcon icon={FaSlack} href="https://getdbt.slack.com/archives/C05C28V7CPP" />
-      <LinkIcon mr="18px" icon={FaQuestionCircle} href="https://datarecce.io/docs" />
+      <LinkIcon mr="18px" icon={FaQuestionCircle} href="https://docs.datarecce.io" />
     </Flex>
   );
 }
