@@ -30,7 +30,7 @@ export const RecceNotification = (
 export const LearnHowLink = () => {
   return (
     <Link
-      href="https://datarecce.io/docs/get-started/#prepare-dbt-artifacts"
+      href="https://docs.datarecce.io/get-started/#prepare-dbt-artifacts"
       isExternal
       color="rgba(49, 130, 206, 1)"
       fontWeight={"bold"}

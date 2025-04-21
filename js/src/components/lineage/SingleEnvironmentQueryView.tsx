@@ -65,7 +65,7 @@ export function BaseEnvironmentSetupGuide() {
             colorScheme="blue"
             size="lg"
             onClick={() => {
-              window.open("https://datarecce.io/docs/get-started/#prepare-dbt-artifacts", "_blank");
+              window.open("https://docs.datarecce.io/get-started/#prepare-dbt-artifacts", "_blank");
             }}>
             Start Now
           </Button>
@@ -100,7 +100,7 @@ export function BaseEnvironmentSetupNotification() {
           fontSize="sm"
           fontWeight="medium"
           isExternal
-          href="https://datarecce.io/docs/get-started/#prepare-dbt-artifacts">
+          href="https://docs.datarecce.io/get-started/#prepare-dbt-artifacts">
           Learn how
         </Link>
       </Flex>

@@ -278,7 +278,7 @@ def server(host, port, state_file=None, **kwargs):
         console.print('Recce is launching in single environment mode with limited functionality.')
         console.print('For full functionality, prepare a base set of dbt artifacts to compare against in '
                       f"'{target_base_path}'.")
-        console.print('https://datarecce.io/docs/get-started/#prepare-dbt-artifacts')
+        console.print('https://docs.datarecce.io/get-started/#prepare-dbt-artifacts')
         console.print()
 
     state_loader = create_state_loader(is_review, is_cloud, state_file, cloud_options)
@@ -822,7 +822,6 @@ def share(state_file, **kwargs):
 @click.option('--host', default='localhost', show_default=True, help='The host to bind to.')
 @click.option('--port', default=8000, show_default=True, help='The port to bind to.', type=int)
 def read_only(host, port, state_file=None, **kwargs):
-
     from .server import app, AppState
     from rich.console import Console
 

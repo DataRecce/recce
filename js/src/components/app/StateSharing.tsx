@@ -50,7 +50,7 @@ export function TopLevelShare() {
             <PopoverBody fontSize="sm">
               API token required.{" "}
               <Link
-                href="https://datarecce.io/docs/recce-cloud/share-recce-session-securely"
+                href="https://docs.datarecce.io/recce-cloud/share-recce-session-securely"
                 target="_blank"
                 textDecoration="underline">
                 Learn more
