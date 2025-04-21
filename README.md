@@ -48,11 +48,11 @@ our [5-minute Jaffle Shop tutorial](https://docs.datarecce.io/get-started-jaffle
 
 Recce gives you a clear, fast way to understand what your data changes are doing and why they matter. It helps you catch problems early, verify metrics, and share your findings with others, all as part of your normal workflow.
 
-<a href="https://datarecce.io"><img src="https://datarecce.io/assets/images/readme/recce-overview-screenshot.png" style="width: 100%; max-width: 600px; display: block; margin: 0 auto 20px;" alt="Lineage graph supports model/column levels navigation and breaking change analysis"/></a>
+<a href="https://datarecce.io"><img src="https://docs.datarecce.io/assets/images/home/lineage-readme1.png" style="width: 100%; max-width: 600px; display: block; margin: 0 auto 20px;" alt="Lineage graph supports model/column levels navigation and breaking change analysis"/></a>
 
-<a href="https://datarecce.io"><img src="https://datarecce.io/assets/images/readme/recce-overview-screenshot.png" style="width: 100%; max-width: 600px; display: block; margin: 0 auto 20px;" alt="Model and column level diff"/></a>
+<a href="https://datarecce.io"><img src="https://docs.datarecce.io/assets/images/home/diff-readme2.png" style="width: 100%; max-width: 600px; display: block; margin: 0 auto 20px;" alt="Model and column level diff"/></a>
 
-<a href="https://datarecce.io"><img src="https://datarecce.io/assets/images/readme/recce-overview-screenshot.png" style="width: 100%; max-width: 600px; display: block; margin: 0 auto 20px;" alt="Checklist for collaboration"/></a>
+<a href="https://datarecce.io"><img src="https://docs.datarecce.io/assets/images/home/checklist-readme3.png" style="width: 100%; max-width: 600px; display: block; margin: 0 auto 20px;" alt="Checklist for collaboration"/></a>
 
 ### Using Recce for Impact Assessment in dbt PR Review
 
