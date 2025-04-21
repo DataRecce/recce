@@ -776,6 +776,7 @@ class DbtAdapter(BaseAdapter):
             if base_node and curr_node:
                 base_checksum = base_node.get('checksum', {}).get('checksum')
                 curr_checksum = curr_node.get('checksum', {}).get('checksum')
+                change = None
                 if base_checksum is None or curr_checksum is None or base_checksum == curr_checksum:
                     continue
 
