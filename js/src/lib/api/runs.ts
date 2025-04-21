@@ -104,7 +104,7 @@ export async function listRuns(): Promise<Run[]> {
 export type RunsAggregated = Record<
   string,
   Record<
-    "row_count_diff" | "value_diff",
+    "row_count_diff" | "value_diff" | "row_count",
     {
       run_id: string;
       result: any;
