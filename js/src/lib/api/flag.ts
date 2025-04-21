@@ -1,4 +1,5 @@
 import { axiosClient } from "./axiosClient";
+import { AxiosResponse } from "axios";
 
 export interface RecceServerFlags {
   show_onboarding_guide: boolean;
@@ -7,13 +8,13 @@ export interface RecceServerFlags {
 }
 
 export async function getServerFlag(): Promise<RecceServerFlags> {
-  const response = await axiosClient.get("/api/flag");
-  return response.data;
+  return (await axiosClient.get<never, AxiosResponse<RecceServerFlags>>("/api/flag")).data;
 }
 
 export async function markOnboardingCompleted(): Promise<void> {
   try {
-    await axiosClient.post("/api/onboarding/completed");
+    await axiosClient.post<never, AxiosResponse<never>>("/api/onboarding/completed");
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
   } catch (error) {
     // skip any errors
   }
@@ -21,7 +22,8 @@ export async function markOnboardingCompleted(): Promise<void> {
 
 export async function markRelaunchHintCompleted(): Promise<void> {
   try {
-    await axiosClient.post("/api/relaunch-hint/completed");
+    await axiosClient.post<never, AxiosResponse<never>>("/api/relaunch-hint/completed");
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
   } catch (error) {
     // skip any errors
   }

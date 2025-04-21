@@ -24,7 +24,7 @@ export async function submitRun<PT = any, RT = any>(
     : {};
   const response = await axiosClient.post<
     SubmitRunBody,
-    AxiosResponse<Run<PT, RT> | Pick<Run, "run_id">>
+    AxiosResponse<Run<PT, RT> | Pick<Run<PT, RT>, "run_id">>
   >("/api/runs", {
     type,
     params,

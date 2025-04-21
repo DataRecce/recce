@@ -1,5 +1,6 @@
 import { axiosClient } from "./axiosClient";
 import { Check } from "./checks";
+import { AxiosResponse } from "axios";
 
 export interface SchemaDiffViewParams {
   node_id?: string | string[];
@@ -9,12 +10,19 @@ export interface SchemaDiffViewParams {
   packages?: string[];
 }
 
-export async function createSchemaDiffCheck(params: SchemaDiffViewParams): Promise<Check> {
-  const response = await axiosClient.post("/api/checks", {
-    type: "schema_diff",
-    params: params,
-  });
-  const check = response.data;
+interface CreateSchemaDiffCheckBody {
+  type: string;
+  params: SchemaDiffViewParams;
+}
 
-  return check;
+export async function createSchemaDiffCheck(params: SchemaDiffViewParams): Promise<Check> {
+  const response = await axiosClient.post<CreateSchemaDiffCheckBody, AxiosResponse<Check>>(
+    "/api/checks",
+    {
+      type: "schema_diff",
+      params: params,
+    },
+  );
+
+  return response.data;
 }
