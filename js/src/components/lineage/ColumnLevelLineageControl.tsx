@@ -55,7 +55,7 @@ export const ColumnLevelLineageControl = ({
             Column-Level Lineage provides visibility into the upstream and downstream relationships
             of a column.{" "}
             <Link
-              href="https://datarecce.io/docs/features/column-level-lineage/"
+              href="https://docs.datarecce.io/features/column-level-lineage/"
               target="_blank"
               textDecoration="underline">
               Learn more

@@ -195,7 +195,7 @@ function TopBar() {
       <Spacer />
       <LinkIcon icon={FaGithub} href="https://github.com/DataRecce/recce" />
       <LinkIcon icon={FaSlack} href="https://getdbt.slack.com/archives/C05C28V7CPP" />
-      <LinkIcon mr="18px" icon={FaQuestionCircle} href="https://datarecce.io/docs" />
+      <LinkIcon mr="18px" icon={FaQuestionCircle} href="https://docs.datarecce.io" />
     </Flex>
   );
 }
@@ -247,7 +247,7 @@ function TabBadge<T, R extends number>({
 
 function NavBar() {
   const { isDemoSite, cloudMode, isLoading } = useLineageGraphContext();
-  const { authed } = useRecceInstanceContext();
+  const { readOnly } = useRecceInstanceContext();
   const [location, setLocation] = useLocation();
   const { data: flag, isLoading: isFlagLoading } = useRecceServerFlag();
 
@@ -293,18 +293,14 @@ function NavBar() {
             );
           })}
         </Box>
-        {!isLoading && !isDemoSite && !authed && <Filename />}
-        {!isLoading && !isDemoSite && authed && (
-          <Grid templateColumns="repeat(7, 1fr)" alignItems={"center"}>
-            <GridItem colSpan={2} />
-            <GridItem colSpan={1}>
-              <Filename />
-            </GridItem>
-            <GridItem colSpan={4}>
-              <TopLevelShare />
-            </GridItem>
-          </Grid>
-        )}
+        <Flex flex="3" justifyContent="right" alignItems="center">
+          {!isLoading && !isDemoSite && <Filename />}
+        </Flex>
+        <Flex flex="3" justifyContent="left" alignItems="center">
+          {!isLoading && !isDemoSite && !flag?.single_env_onboarding && !readOnly && (
+            <TopLevelShare />
+          )}
+        </Flex>
         {!isLoading && (
           <Flex flex="1" justifyContent="right" alignItems="center" mr="8px">
             {cloudMode && <StateSynchronizer />}

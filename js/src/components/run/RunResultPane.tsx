@@ -158,7 +158,7 @@ const RunResultShareMenu = ({
                 <PopoverBody fontSize="sm">
                   API token required.{" "}
                   <Link
-                    href="https://datarecce.io/docs/recce-cloud/share-recce-session-securely"
+                    href="https://docs.datarecce.io/recce-cloud/share-recce-session-securely"
                     target="_blank"
                     textDecoration="underline">
                     Learn more
@@ -183,7 +183,7 @@ export const PrivateLoadableRunView = ({
   onClose?: () => void;
   isSingleEnvironment?: boolean;
 }) => {
-  const { readOnly, authed } = useRecceInstanceContext();
+  const { readOnly } = useRecceInstanceContext();
   const { runAction } = useRecceActionContext();
   const { error, run, onCancel, isRunning } = useRun(runId);
   const [viewOptions, setViewOptions] = useState();
@@ -272,7 +272,7 @@ export const PrivateLoadableRunView = ({
               onClick={handleRerun}>
               Rerun
             </Button>
-            {!authed && (
+            {isSingleEnvironment || readOnly ? (
               <Button
                 leftIcon={<CopyIcon />}
                 variant="outline"
@@ -283,8 +283,7 @@ export const PrivateLoadableRunView = ({
                 onClick={onCopyToClipboard}>
                 Copy to Clipboard
               </Button>
-            )}
-            {authed && (
+            ) : (
               <RunResultShareMenu
                 disableCopyToClipboard={disableCopyToClipboard}
                 onCopyToClipboard={onCopyToClipboard}

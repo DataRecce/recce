@@ -7,7 +7,7 @@ from recce.util import SingletonMeta
 
 RECCE_CONFIG_FILE = 'recce.yml'
 RECCE_PRESET_CHECK_COMMENT = '''Preset Checks
-Please see https://datarecce.io/docs/features/preset-checks/
+Please see https://docs.datarecce.io/features/preset-checks/
 '''
 RECCE_ERROR_LOG_FILE = 'recce_error.log'
 console = Console()

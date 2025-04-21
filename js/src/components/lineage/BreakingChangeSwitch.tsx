@@ -58,7 +58,7 @@ export const BreakingChangeSwitch = ({ enabled, onChanged }: BreakingChangeSwitc
             Breaking changes are determined by analyzing SQL for changes that may impact downstream
             models.{" "}
             <Link
-              href="https://datarecce.io/docs/features/breaking-change-analysis/"
+              href="https://docs.datarecce.io/features/breaking-change-analysis/"
               target="_blank"
               textDecoration="underline">
               Learn more
