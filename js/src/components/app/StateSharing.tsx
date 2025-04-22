@@ -16,6 +16,7 @@ import { useRecceShareStateContext } from "@/lib/hooks/RecceShareStateContext";
 import { useClipBoardToast } from "@/lib/hooks/useClipBoardToast";
 import { PUBLIC_CLOUD_WEB_URL } from "@/lib/const";
 import { TbCloudUpload } from "react-icons/tb";
+import { trackShareState } from "@/lib/api/track";
 
 export function TopLevelShare() {
   const { successToast, failToast } = useClipBoardToast();
@@ -41,7 +42,11 @@ export function TopLevelShare() {
               rightIcon={<ExternalLinkIcon />}
               size="sm"
               onClick={() => {
-                window.open(`${PUBLIC_CLOUD_WEB_URL}/settings#tokens`, "_blank");
+                trackShareState({ name: "enable" });
+                window.open(
+                  `${PUBLIC_CLOUD_WEB_URL}/settings?utm_source=recce_oss&utm_content=enable_sharing_button#tokens`,
+                  "_blank",
+                );
               }}>
               Enable sharing
             </Button>
@@ -68,7 +73,10 @@ export function TopLevelShare() {
       <Button
         size="sm"
         variant="outline"
-        onClick={handleShareClick}
+        onClick={() => {
+          trackShareState({ name: "create" });
+          void handleShareClick();
+        }}
         leftIcon={<TbCloudUpload />}
         rightIcon={shareUrl ? <CheckCircleIcon color="green" /> : undefined}
         isLoading={isLoading}>
@@ -84,7 +92,10 @@ export function TopLevelShare() {
               size="xs"
               aria-label="Copy the share URL"
               icon={<CopyIcon />}
-              onClick={handleCopy}
+              onClick={() => {
+                trackShareState({ name: "copy" });
+                handleCopy();
+              }}
             />
           </>
         )}
