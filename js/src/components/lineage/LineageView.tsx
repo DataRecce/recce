@@ -74,7 +74,11 @@ import { createSchemaDiffCheck } from "@/lib/api/schemacheck";
 import { useLocation } from "wouter";
 import { Check } from "@/lib/api/checks";
 import useValueDiffAlertDialog from "./useValueDiffAlertDialog";
-import { trackBreakingChange, trackMultiNodesAction } from "@/lib/api/track";
+import {
+  trackBreakingChange,
+  trackMultiNodesAction,
+  trackColumnLevelLineage,
+} from "@/lib/api/track";
 import { PresetCheckRecommendation } from "./PresetCheckRecommendation";
 import { BreakingChangeSwitch } from "./BreakingChangeSwitch";
 import { useRun } from "@/lib/hooks/useRun";
@@ -439,6 +443,12 @@ export function PrivateLineageView(
   const onColumnNodeClick = (event: React.MouseEvent, node: Node) => {
     if (selectMode) {
       return;
+    }
+
+    if (!viewOptions.column_level_lineage) {
+      trackColumnLevelLineage({ action: "view", source: "changed_column" });
+    } else {
+      trackColumnLevelLineage({ action: "view", source: "cll_column" });
     }
 
     // change focused node if the side pane is open

@@ -93,6 +93,7 @@ export function getExperimentTrackingBreakingChangeEnabled() {
 
 interface ColumnLevelLineageProps {
   action: "view";
+  source: "schema_column" | "changed_column" | "cll_column";
 }
 
 export function trackColumnLevelLineage(props: ColumnLevelLineageProps) {
