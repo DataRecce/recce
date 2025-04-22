@@ -99,3 +99,11 @@ interface ColumnLevelLineageProps {
 export function trackColumnLevelLineage(props: ColumnLevelLineageProps) {
   amplitude.track("Column level lineage", props);
 }
+
+interface ShareStateProps {
+  name: "enable" | "create" | "copy";
+}
+
+export function trackShareState(props: ShareStateProps) {
+  amplitude.track("share_state", props);
+}
