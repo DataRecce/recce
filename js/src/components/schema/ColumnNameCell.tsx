@@ -59,7 +59,7 @@ export function ColumnNameCell({
   const addedOrRemoved = !baseType || !currentType;
 
   const handleViewCll = async () => {
-    trackColumnLevelLineage({ action: "view" });
+    trackColumnLevelLineage({ action: "view", source: "schema_column" });
     setCllRunning(true);
     await lineageViewContext?.showColumnLevelLineage(model.id, name);
     setCllRunning(false);
