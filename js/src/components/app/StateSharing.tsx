@@ -44,7 +44,7 @@ export function TopLevelShare() {
               onClick={() => {
                 trackShareState({ name: "enable" });
                 window.open(
-                  `${PUBLIC_CLOUD_WEB_URL}/settings#tokens?utm_source=recce_oss&utm_medium=button&utm_content=enable_sharing_button`,
+                  `${PUBLIC_CLOUD_WEB_URL}/settings?utm_source=recce_oss&utm_medium=button&utm_content=enable_sharing_button#tokens`,
                   "_blank",
                 );
               }}>
