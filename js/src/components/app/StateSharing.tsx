@@ -43,7 +43,10 @@ export function TopLevelShare() {
               size="sm"
               onClick={() => {
                 trackShareState({ name: "enable" });
-                window.open(`${PUBLIC_CLOUD_WEB_URL}/settings#tokens?utm_source=recce_oss&utm_medium=button&utm_content=enable_sharing_button`, "_blank");
+                window.open(
+                  `${PUBLIC_CLOUD_WEB_URL}/settings#tokens?utm_source=recce_oss&utm_medium=button&utm_content=enable_sharing_button`,
+                  "_blank",
+                );
               }}>
               Enable sharing
             </Button>
@@ -72,7 +75,7 @@ export function TopLevelShare() {
         variant="outline"
         onClick={() => {
           trackShareState({ name: "create" });
-          handleShareClick();
+          void handleShareClick();
         }}
         leftIcon={<TbCloudUpload />}
         rightIcon={shareUrl ? <CheckCircleIcon color="green" /> : undefined}
