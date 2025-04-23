@@ -926,7 +926,7 @@ export function PrivateLineageView(
       );
       setFocusedNodeId(nodeId);
     },
-    resetColumnLevelLinage: () => {
+    resetColumnLevelLineage: () => {
       setFocusedNodeId(undefined);
       void handleViewOptionsChanged(
         {
@@ -1071,13 +1071,17 @@ export function PrivateLineageView(
                   <ColumnLevelLineageControl
                     node={viewOptions.column_level_lineage.node}
                     column={viewOptions.column_level_lineage.column}
-                    reset={() => {
-                      setFocusedNodeId(undefined);
-                      void handleViewOptionsChanged({
-                        ...viewOptions,
-                        column_level_lineage: undefined,
-                      });
-                    }}
+                    reset={
+                      interactive
+                        ? () => {
+                            setFocusedNodeId(undefined);
+                            void handleViewOptionsChanged({
+                              ...viewOptions,
+                              column_level_lineage: undefined,
+                            });
+                          }
+                        : undefined
+                    }
                   />
                 )}
                 {nodes.length == 0 && (

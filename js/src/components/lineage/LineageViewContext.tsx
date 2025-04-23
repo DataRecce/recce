@@ -59,7 +59,7 @@ export interface LineageViewContextType {
 
   // Column Level Lineage
   showColumnLevelLineage: (nodeId: string, column: string) => Promise<void>;
-  resetColumnLevelLinage: () => void;
+  resetColumnLevelLineage: () => void;
 }
 
 export const LineageViewContext = createContext<LineageViewContextType | undefined>(undefined);
