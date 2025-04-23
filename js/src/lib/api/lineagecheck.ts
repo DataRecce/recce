@@ -11,6 +11,7 @@ export interface LineageDiffViewOptions {
     node: string;
     column: string;
   };
+  breaking_change_enabled?: boolean;
 }
 
 export async function createLineageDiffCheck(viewOptions: LineageDiffViewOptions): Promise<Check> {

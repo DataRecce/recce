@@ -297,7 +297,7 @@ export function PrivateLineageView(
   /**
    * Breaking Change and Column Level Lineage
    */
-  const [breakingChangeEnabled, setBreakingChangeEnabled] = useState(false);
+  const breakingChangeEnabled = viewOptions.breaking_change_enabled ?? false;
   const [nodeColumnSetMap, setNodeColumnSetMap] = useState<NodeColumnSetMap>();
 
   /**
@@ -504,14 +504,9 @@ export function PrivateLineageView(
 
   const refreshLayout = async (options: {
     viewOptions?: LineageDiffViewOptions;
-    breakingChangeEnabled?: boolean;
     fitView?: boolean;
   }) => {
-    const {
-      breakingChangeEnabled: newBreakingChangeEnabled = breakingChangeEnabled,
-      viewOptions: newViewOptions = viewOptions,
-      fitView,
-    } = options;
+    const { viewOptions: newViewOptions = viewOptions, fitView } = options;
 
     let selectedNodes: string[] | undefined = undefined;
 
@@ -581,7 +576,7 @@ export function PrivateLineageView(
       selectedNodes,
       columnLevelLineage: newViewOptions.column_level_lineage,
       cll,
-      breakingChangeEnabled: newBreakingChangeEnabled,
+      breakingChangeEnabled: newViewOptions.breaking_change_enabled,
     });
     setNodes(newNodes);
     setEdges(newEdges);
@@ -612,11 +607,17 @@ export function PrivateLineageView(
   };
 
   const handleBreakingChangeEnabledChanged = async (enabled: boolean) => {
-    setBreakingChangeEnabled(enabled);
+    const newViewOptions = {
+      ...viewOptions,
+      breaking_change_enabled: enabled,
+    };
+
+    setViewOptions(newViewOptions);
     setFocusedNodeId(undefined);
     await refreshLayout({
-      breakingChangeEnabled: enabled,
+      viewOptions: newViewOptions,
     });
+
     trackBreakingChange({ enabled });
   };
 
@@ -785,7 +786,6 @@ export function PrivateLineageView(
     selectNode,
     deselect,
     breakingChangeEnabled,
-    setBreakingChangeEnabled,
     isNodeHighlighted: (nodeId: string) => highlighted.has(nodeId),
     isNodeSelected: (nodeId: string) => selectedNodeIds.has(nodeId),
     isEdgeHighlighted: (source, target) => {

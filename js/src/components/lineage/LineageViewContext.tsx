@@ -54,9 +54,8 @@ export interface LineageViewContextType {
   cancel: () => void;
   actionState: ActionState;
 
-  // advancedImpactRadius
+  // Breaking Change Analysis
   breakingChangeEnabled: boolean;
-  setBreakingChangeEnabled: (value: boolean) => void;
 
   // Column Level Lineage
   showColumnLevelLineage: (nodeId: string, column: string) => Promise<void>;
