@@ -40,7 +40,11 @@ def test_build_lineage_graph():
     base_lineage = dbt_adapter.get_lineage(base=True)
 
     lineage_graph = _build_lineage_graph(curr_lineage, base_lineage)
-    assert len(lineage_graph.modified_set) == 1
+    # Modified nodes: 3
+    # - int_customer_orders: added
+    # - int_customer_payments: added
+    # - customers: modified
+    assert len(lineage_graph.modified_set) == 3
 
 
 @unittest.skipIf(dbt_version < 'v1.8.1', "Dbt version is less than 1.8.1")
