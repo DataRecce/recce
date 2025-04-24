@@ -101,6 +101,30 @@ def test_select_removed_by_graph(dbt_test_helper):
     assert len(node_ids) == 2
 
 
+def test_select_source_removed_by_graph(dbt_test_helper):
+    csv_data_curr = """
+        customer_id,name,age
+        1,Alice,30
+        2,Bob,25
+        3,Charlie,35
+        """
+
+    csv_data_base = """
+        customer_id,name,age
+        1,Alice,35
+        2,Bob,25
+        3,Charlie,35
+        """
+
+    dbt_test_helper.create_model("customers_2", base_csv=csv_data_base)
+    dbt_test_helper.create_model("customers_3", curr_csv=csv_data_curr)
+    adapter: DbtAdapter = dbt_test_helper.context.adapter
+
+    # Test graph operation
+    node_ids = adapter.select_nodes("state:modified")
+    assert len(node_ids) == 2
+
+
 def test_select_with_disabled(dbt_test_helper):
     csv_data_curr = """
         customer_id,name,age
