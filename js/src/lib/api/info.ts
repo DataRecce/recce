@@ -1,5 +1,5 @@
 import { axiosClient } from "./axiosClient";
-import { AxiosError } from "axios";
+import { AxiosError, AxiosResponse } from "axios";
 
 /**
  * The data from the API
@@ -151,8 +151,7 @@ export interface ServerInfoResult {
 }
 
 export async function getServerInfo(): Promise<ServerInfoResult> {
-  const response = await axiosClient.get(`/api/info`);
-  return response.data;
+  return (await axiosClient.get<never, AxiosResponse<ServerInfoResult>>(`/api/info`)).data;
 }
 
 export interface ModelInfoResult {
@@ -169,6 +168,5 @@ export interface ModelInfoResult {
 }
 
 export async function getModelInfo(model: string): Promise<ModelInfoResult> {
-  const response = await axiosClient.get(`/api/model/${model}`);
-  return response.data;
+  return (await axiosClient.get<never, AxiosResponse<ModelInfoResult>>(`/api/model/${model}`)).data;
 }

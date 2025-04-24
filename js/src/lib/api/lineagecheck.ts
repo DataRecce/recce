@@ -1,5 +1,6 @@
 import { axiosClient } from "./axiosClient";
 import { Check } from "./checks";
+import { AxiosResponse } from "axios";
 
 export interface LineageDiffViewOptions {
   view_mode?: "changed_models" | "all";
@@ -13,13 +14,21 @@ export interface LineageDiffViewOptions {
   };
 }
 
-export async function createLineageDiffCheck(viewOptions: LineageDiffViewOptions): Promise<Check> {
-  const response = await axiosClient.post("/api/checks", {
-    type: "lineage_diff",
-    params: {},
-    view_options: viewOptions,
-  });
-  const check = response.data;
+interface CreateLineageDiffCheckBody {
+  type: string;
+  params: Record<string, string | boolean | number>;
+  view_options: LineageDiffViewOptions;
+}
 
-  return check;
+export async function createLineageDiffCheck(viewOptions: LineageDiffViewOptions): Promise<Check> {
+  const response = await axiosClient.post<CreateLineageDiffCheckBody, AxiosResponse<Check>>(
+    "/api/checks",
+    {
+      type: "lineage_diff",
+      params: {},
+      view_options: viewOptions,
+    },
+  );
+
+  return response.data;
 }

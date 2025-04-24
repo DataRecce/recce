@@ -1,5 +1,6 @@
 import { axiosClient } from "./axiosClient";
 import { NodeColumnData } from "./info";
+import { AxiosResponse } from "axios";
 
 export interface CllParams {
   node_id: string;
@@ -25,9 +26,9 @@ export async function getCll(nodeId: string, column: string): Promise<ColumnLine
     node_id: nodeId,
     column,
   };
-  const response = await axiosClient.post("/api/cll", {
+  const response = await axiosClient.post<CllParams, AxiosResponse<ColumnLineageData>>("/api/cll", {
     params,
   });
 
-  return response.data as ColumnLineageData;
+  return response.data;
 }
