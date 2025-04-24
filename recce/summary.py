@@ -442,7 +442,6 @@ def generate_mermaid_lineage_graph(graph: LineageGraph):
 
 def generate_markdown_summary(ctx: RecceContext, summary_format: str = 'markdown'):
     lineage_diff = ctx.get_lineage_diff()
-    ctx.get_lineage_diff()
     summary_metadata = generate_summary_metadata(lineage_diff.base, lineage_diff.current)
     graph = _build_lineage_graph(lineage_diff.base, lineage_diff.current)
     graph.checks, check_statistics = generate_check_summary(lineage_diff.base, lineage_diff.current)
