@@ -8,7 +8,7 @@
     </a>
 </p>
 
-<h3 align="center">The&nbsp;data&nbsp;validation&nbsp;toolkit<br />for teams that care about building better data</h3>
+<h3 align="center">Helping data teams preview, validate, and ship data changes with confidence.</h3>
 
 <p align="center">
     <a href="https://pypi.org/project/recce/"><img src="https://img.shields.io/badge/pip_install-recce-006DAD?style=flat-square" alt="install"></a> &nbsp; 
@@ -39,16 +39,13 @@ You can launch Recce in any dbt project in just two commands:
 pip install -U recce
 recce server
 ```
-This starts Recce locally, where you can explore lineage and run queries. To unlock the full set of diffing tools, such as data comparisons and impact checks, you’ll need to prepare two environments to compare against. You can follow our [5-minute Jaffle Shop tutorial](https://docs.datarecce.io/get-started-jaffle-shop/) to try it out step-by-step.
+This starts Recce locally, where you can explore lineage and run queries. To unlock the full set of diffing tools, such as data comparisons and impact checks, you’ll need to prepare two environments to compare against. You can follow our [Getting Started](https://docs.datarecce.io/get-started/) and [5-minute Jaffle Shop tutorial](https://docs.datarecce.io/get-started-jaffle-shop/) to try it out step-by-step.
 
-To use the full suite of diffing tools in Recce, please prepare two environments to compare against. Follow
-our [5-minute Jaffle Shop tutorial](https://docs.datarecce.io/get-started-jaffle-shop/) to try it out for yourself.
-
-## What you get
+## What You Get
 
 Recce gives you a clear, fast way to understand what your data changes are doing and why they matter. It helps you catch problems early, verify metrics, and share your findings with others, all as part of your normal workflow.
 
-<a href="https://datarecce.io"><img src="https://docs.datarecce.io/assets/images/home/lineage-readme1.png" style="width: 100%; max-width: 600px; display: block; margin: 0 auto 20px;" alt="Lineage graph supports model/column levels navigation and breaking change analysis"/></a>
+<a href="https://pr46.demo.datarecce.io/"><img width="1347" alt="readme" src="https://github.com/user-attachments/assets/773e4c3a-0a15-49e0-8d1b-38a55af17cb0" /></a>
 
 <a href="https://datarecce.io"><img src="https://docs.datarecce.io/assets/images/home/diff-readme2.png" style="width: 100%; max-width: 600px; display: block; margin: 0 auto 20px;" alt="Model and column level diff"/></a>
 
@@ -66,23 +63,15 @@ Recce gives you a clear, fast way to understand what your data changes are doing
 Read more about using [Recce for Impact Assessment](https://datarecce.io/blog/hands-on-data-impact-analysis-recce/) on
 the Recce blog.
 
-### What’s included
+### What’s Included
 
-- **Lineage and impact mapping:** Quickly see which models and columns are affected by a change. Navigate lineage down to the column level, and spot breaking changes with clear visual cues.
-- **Metric and data comparisons:** Use Profile, Value, Top-K, and Histogram Diffs to compare results before and after changes. Validate things like row counts, category distributions, and numeric ranges without writing extra SQL.
-- **Query diff:** Write and compare any two queries side by side. This is helpful when validating fixes or reviewing changes with teammates.
-- **Checklist for reviews and approvals:** Turn your validation steps into a checklist. Add notes, rerun checks, and share the results with reviewers or stakeholders. In Recce Cloud, checklists can sync automatically and even block PRs until checks are approved.
-- **Secure by design:** Recce is SOC 2 compliant to meet enterprise security standards. It runs locally or in your private environment, and your data stays in your warehouse.
+- [Lineage and impact mapping](https://docs.datarecce.io/features/lineage/): Quickly see which models and columns are affected by a change. Navigate lineage down to the column level, and spot breaking changes with clear visual cues.
+- Metric and data comparisons: Use [Profile, Value, Top-K, and Histogram Diffs](https://docs.datarecce.io/features/lineage/#node-details) to compare results before and after changes. Validate things like row counts, category distributions, and numeric ranges without writing extra SQL.
+- [Query diff](https://docs.datarecce.io/features/query/): Write and compare any two queries side by side. This is helpful when validating fixes or reviewing changes with teammates.
+- [Checklist for reviews and approvals](https://docs.datarecce.io/features/checklist/): Turn your validation steps into a checklist. Add notes, rerun checks, and share the results with reviewers or stakeholders. In Recce Cloud, checklists can sync automatically and even block PRs until checks are approved.
+- Secure by design: Recce is [SOC 2 compliant](https://trust.cloud.datarecce.io/) to meet enterprise security standards. It runs locally or in your private environment, and your data stays in your warehouse.
 
-### Learn More
-
-Want to dive deeper? Check out the [full documentation](https://docs.datarecce.io/) for setup guides, feature overviews, and use case tutorials.
-
-- [Getting Started](https://docs.datarecce.io/get-started/)
-- [Features Overview](https://docs.datarecce.io/features/lineage/)
-- [Writing Checks and Using Checklists](https://docs.datarecce.io/features/checklist/)
-- [State File and Configuration](https://docs.datarecce.io/features/state-file/)
-- [Running Recce in CI/CD](https://docs.datarecce.io/guides/scenario-ci/)
+👉 Want to dive deeper? Check out the [full documentation](https://docs.datarecce.io/) like [running Recce in CI/CD](https://docs.datarecce.io/guides/scenario-ci/)
 
 ## Recce Cloud
 
@@ -93,13 +82,12 @@ Ready to collaborate and move faster as a team? Recce Cloud adds real-time colla
 - Block merges until all Checks are approved
 - Launch demo links from your CI with full context
 
-👉 [View Pricing and Plans](https://datarecce.io/pricing)
-
 Recce Cloud is a hosted version of Recce that standardizes your workflow, keeps teams aligned, and reduces errors—so you can ship data changes with confidence.
+👉 [View Pricing and Plans](https://datarecce.io/pricing)
 
 ## Community & Support
 
-Here's where you can get in touch with the `Recce` team and find support:
+Here's where you can get in touch with the Recce team and find support:
 
 - [dbt Slack](https://www.getdbt.com/community/join-the-community) in
   the [#tools-recce](https://getdbt.slack.com/archives/C05C28V7CPP) channel
@@ -110,7 +98,7 @@ a [GitHub Issue](https://github.com/DataRecce/recce/issues).
 
 ## Recce on the web
 
-You can follow along with news about `Recce` and blogs from our team in the following places:
+You can follow along with news about Recce and blogs from our team in the following places:
 
 - [DataRecce.io](https://DataRecce.io)
 - [LinkedIn](https://www.linkedin.com/company/datarecce)
