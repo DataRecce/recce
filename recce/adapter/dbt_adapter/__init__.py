@@ -1207,7 +1207,17 @@ class DbtAdapter(BaseAdapter):
         manifest_prev = self.previous_state.manifest
         manifest_curr = self.manifest
 
-        manifest.nodes = {**manifest_prev.nodes, **manifest_curr.nodes}
+        manifest.nodes = {**manifest_curr.nodes}
+        # # mark a node is removed if the node id is no in the curr nodes
+        for node_id, node in manifest_prev.nodes.items():
+            if node_id not in manifest.nodes:
+                node_dict = node.to_dict()
+                if 'raw_code' in node_dict:
+                    node_dict['raw_code'] = "__removed__"
+                node_class = type(node)
+                removed_node = node_class.from_dict(node_dict)
+                manifest.nodes[node_id] = removed_node
+
         manifest.macros = {**manifest_prev.macros, **manifest_curr.macros}
         manifest.sources = {**manifest_prev.sources, **manifest_curr.sources}
         manifest.exposures = {**manifest_prev.exposures, **manifest_curr.exposures}

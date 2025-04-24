@@ -249,7 +249,8 @@ class LineageGraph:
 
     @property
     def modified_set(self) -> Set[str]:
-        return set([node_id for node_id, node in self.nodes.items() if node.change_status == 'modified'])
+        return set(
+            [node_id for node_id, node in self.nodes.items() if node.change_status in ['added', 'removed', 'modified']])
 
     def get_edge_str(self, edge_id):
         edge = self.edges[edge_id]
@@ -440,11 +441,10 @@ def generate_mermaid_lineage_graph(graph: LineageGraph):
 
 
 def generate_markdown_summary(ctx: RecceContext, summary_format: str = 'markdown'):
-    curr_lineage = ctx.get_lineage(base=False)
-    base_lineage = ctx.get_lineage(base=True)
-    summary_metadata = generate_summary_metadata(base_lineage, curr_lineage)
-    graph = _build_lineage_graph(base_lineage, curr_lineage)
-    graph.checks, check_statistics = generate_check_summary(base_lineage, curr_lineage)
+    lineage_diff = ctx.get_lineage_diff()
+    summary_metadata = generate_summary_metadata(lineage_diff.base, lineage_diff.current)
+    graph = _build_lineage_graph(lineage_diff.base, lineage_diff.current)
+    graph.checks, check_statistics = generate_check_summary(lineage_diff.base, lineage_diff.current)
     mermaid_content, is_empty_graph, is_partial_graph = generate_mermaid_lineage_graph(graph)
     check_content = generate_check_content(graph, check_statistics)
 
