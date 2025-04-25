@@ -30,6 +30,7 @@ import { AxiosError } from "axios";
 import { localStorageKeys } from "@/lib/api/localStorageKeys";
 import { useChecks } from "@/lib/api/checks";
 import { useRecceInstanceContext } from "@/lib/hooks/RecceInstanceContext";
+import { formatRunDateTime } from "../run/RunStatusAndDate";
 
 const useRecceToast = () => {
   const toast = useToast();
@@ -95,7 +96,7 @@ interface FilenameState {
 
 export const Filename = () => {
   const { readOnly } = useRecceInstanceContext();
-  const { fileName, cloudMode, isDemoSite } = useLineageGraphContext();
+  const { fileName, cloudMode, isDemoSite, envInfo } = useLineageGraphContext();
   const modalDisclosure = useDisclosure();
   const overwriteDisclosure = useDisclosure();
   const isStateless = !fileName && !cloudMode && !isDemoSite;
@@ -180,11 +181,17 @@ export const Filename = () => {
   }
 
   const titleNewInstance = "New Instance" + (hasNonPresetChecks ? " (unsaved)" : "");
+  let titleReadOnlyState;
+  if (readOnly && fileName) {
+    const generatedAt = envInfo?.stateMetadata?.generated_at;
+    const formattedDate = generatedAt ? formatRunDateTime(new Date(generatedAt)) : null;
+    titleReadOnlyState = formattedDate ? `${fileName} (${formattedDate})` : null;
+  }
 
   return (
     <>
       <Flex justifyContent="center" alignItems="center">
-        <Box fontWeight="600">{fileName ?? titleNewInstance}</Box>
+        <Box fontWeight="600">{titleReadOnlyState ?? fileName ?? titleNewInstance}</Box>
         {!readOnly && (
           <Tooltip label={fileName ? "Change Filename" : "Save"} openDelay={1000}>
             <IconButton onClick={handleOpen} aria-label={""} variant="unstyled" size="sm">
