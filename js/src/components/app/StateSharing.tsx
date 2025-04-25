@@ -93,8 +93,8 @@ export function TopLevelShare() {
               aria-label="Copy the share URL"
               icon={<CopyIcon />}
               onClick={() => {
-                trackShareState({ name: "copy" });
                 handleCopy();
+                trackShareState({ name: "copy" });
               }}
             />
           </>

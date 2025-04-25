@@ -144,6 +144,7 @@ const RunResultShareMenu = ({
             icon={<TbCloudUpload />}
             onClick={async () => {
               await handleShareClick();
+              trackShareState({ name: "create" });
             }}>
             Share to Cloud
           </MenuItem>
