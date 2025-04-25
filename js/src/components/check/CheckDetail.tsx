@@ -62,6 +62,7 @@ import { useRun } from "@/lib/hooks/useRun";
 import { useCheckToast } from "@/lib/hooks/useCheckToast";
 import { LineageViewRef } from "../lineage/LineageView";
 import { useRecceInstanceContext } from "@/lib/hooks/RecceInstanceContext";
+import { trackCopyToClipboard } from "@/lib/api/track";
 
 export const isDisabledByNoResult = (type: string, run: Run | undefined): boolean => {
   if (type === "schema_diff" || type === "lineage_diff") {
@@ -365,6 +366,7 @@ export const CheckDetail = ({ checkId, refreshCheckList }: CheckDetailProps) => 
                   } else {
                     await onCopyToClipboard();
                   }
+                  trackCopyToClipboard({ type: check?.type ?? "unknow", from: "check" });
                 }}>
                 Copy to Clipboard
               </Button>

@@ -47,6 +47,7 @@ import { useRecceInstanceContext } from "@/lib/hooks/RecceInstanceContext";
 import { TbCloudUpload } from "react-icons/tb";
 import { useRecceShareStateContext } from "@/lib/hooks/RecceShareStateContext";
 import { PUBLIC_CLOUD_WEB_URL } from "@/lib/const";
+import { trackCopyToClipboard } from "@/lib/api/track";
 
 interface RunPageProps {
   onClose?: () => void;
@@ -286,7 +287,10 @@ export const PrivateLoadableRunView = ({
             ) : (
               <RunResultShareMenu
                 disableCopyToClipboard={disableCopyToClipboard}
-                onCopyToClipboard={onCopyToClipboard}
+                onCopyToClipboard={async () => {
+                  await onCopyToClipboard();
+                  trackCopyToClipboard({ type: run?.type ?? "unknow", from: "run" });
+                }}
                 onMouseEnter={onMouseEnter}
                 onMouseLeave={onMouseLeave}
               />
