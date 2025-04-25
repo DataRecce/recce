@@ -47,7 +47,7 @@ import { useRecceInstanceContext } from "@/lib/hooks/RecceInstanceContext";
 import { TbCloudUpload } from "react-icons/tb";
 import { useRecceShareStateContext } from "@/lib/hooks/RecceShareStateContext";
 import { PUBLIC_CLOUD_WEB_URL } from "@/lib/const";
-import { trackCopyToClipboard } from "@/lib/api/track";
+import { trackShareState, trackCopyToClipboard } from "@/lib/api/track";
 
 interface RunPageProps {
   onClose?: () => void;
@@ -139,7 +139,12 @@ const RunResultShareMenu = ({
         </MenuItem>
         <MenuDivider />
         {authed ? (
-          <MenuItem fontSize="14px" icon={<TbCloudUpload />} onClick={handleShareClick}>
+          <MenuItem
+            fontSize="14px"
+            icon={<TbCloudUpload />}
+            onClick={async () => {
+              await handleShareClick();
+            }}>
             Share to Cloud
           </MenuItem>
         ) : (
