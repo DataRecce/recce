@@ -108,6 +108,14 @@ export function trackShareState(props: ShareStateProps) {
   amplitude.track("share_state", props);
 }
 
+interface StateActionProps {
+  name: "import" | "export";
+}
+
+export function trackStateAction(props: StateActionProps) {
+  amplitude.track("state_action", props);
+}
+
 interface CopyToClipboardProps {
   from: "run" | "check" | "lineage_view";
   type: string;
