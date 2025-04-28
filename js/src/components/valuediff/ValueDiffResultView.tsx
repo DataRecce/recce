@@ -20,11 +20,13 @@ import { EmptyRowsRenderer, ScreenshotDataGrid } from "../data-grid/ScreenshotDa
 import { RunResultViewProps } from "../run/types";
 import { VscKebabVertical, VscKey } from "react-icons/vsc";
 import { RecceActionOptions, useRecceActionContext } from "@/lib/hooks/RecceActionContext";
+import { useRecceInstanceContext } from "@/lib/hooks/RecceInstanceContext";
 
 type ValueDiffResultViewProp = RunResultViewProps<ValueDiffParams, ValueDiffResult>;
 
 function ColumnNameCell({ params, column }: { params: ValueDiffParams; column: string }) {
   const { runAction } = useRecceActionContext();
+  const { readOnly } = useRecceInstanceContext();
   const handleValueDiffDetail = (
     paramsOverride?: Partial<ValueDiffParams>,
     options?: RecceActionOptions,
@@ -56,6 +58,7 @@ function ColumnNameCell({ params, column }: { params: ValueDiffParams; column: s
               icon={<Icon as={VscKebabVertical} />}
               variant="unstyled"
               size={"sm"}
+              isDisabled={readOnly}
             />
 
             <Portal>
