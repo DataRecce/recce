@@ -73,9 +73,9 @@ export function TopLevelShare() {
       <Button
         size="sm"
         variant="outline"
-        onClick={() => {
+        onClick={async () => {
+          await handleShareClick();
           trackShareState({ name: "create" });
-          void handleShareClick();
         }}
         leftIcon={<TbCloudUpload />}
         rightIcon={shareUrl ? <CheckCircleIcon color="green" /> : undefined}
@@ -93,8 +93,8 @@ export function TopLevelShare() {
               aria-label="Copy the share URL"
               icon={<CopyIcon />}
               onClick={() => {
-                trackShareState({ name: "copy" });
                 handleCopy();
+                trackShareState({ name: "copy" });
               }}
             />
           </>

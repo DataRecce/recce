@@ -23,6 +23,7 @@ import { useLocation } from "wouter";
 import { useLineageGraphContext, useRunsAggregated } from "@/lib/hooks/LineageGraphContext";
 import { IconImport } from "../icons";
 import { useRecceInstanceContext } from "@/lib/hooks/RecceInstanceContext";
+import { trackStateAction } from "@/lib/api/track";
 
 export function StateImporter({ checksOnly = true }: { checksOnly?: boolean }) {
   const { readOnly } = useRecceInstanceContext();
@@ -113,7 +114,10 @@ export function StateImporter({ checksOnly = true }: { checksOnly?: boolean }) {
           pt="6px"
           variant="unstyled"
           aria-label="Import state"
-          onClick={handleClick}
+          onClick={() => {
+            handleClick();
+            trackStateAction({ name: "import" });
+          }}
           icon={<Icon as={IconImport} />}
           isDisabled={readOnly || isDemoSite}
         />

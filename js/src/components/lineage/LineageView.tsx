@@ -78,6 +78,7 @@ import {
   trackBreakingChange,
   trackMultiNodesAction,
   trackColumnLevelLineage,
+  trackCopyToClipboard,
 } from "@/lib/api/track";
 import { PresetCheckRecommendation } from "./PresetCheckRecommendation";
 import { BreakingChangeSwitch } from "./BreakingChangeSwitch";
@@ -981,7 +982,10 @@ export function PrivateLineageView(
           <Button
             colorScheme="blue"
             onClick={async () => {
-              await handleViewOptionsChanged({ ...viewOptions, view_mode: "all" });
+              await handleViewOptionsChanged({
+                ...viewOptions,
+                view_mode: "all",
+              });
             }}>
             Show all nodes
           </Button>
@@ -1042,6 +1046,7 @@ export function PrivateLineageView(
                 title="copy image"
                 onClick={async () => {
                   await copyToClipboard();
+                  trackCopyToClipboard({ type: viewMode, from: "lineage_view" });
                 }}>
                 <Icon as={FiCopy} />
               </ControlButton>

@@ -4,6 +4,7 @@ import { format } from "date-fns";
 import saveAs from "file-saver";
 import { IconExport } from "../icons";
 import { useRecceInstanceContext } from "@/lib/hooks/RecceInstanceContext";
+import { trackStateAction } from "@/lib/api/track";
 
 export function StateExporter() {
   const { readOnly } = useRecceInstanceContext();
@@ -39,7 +40,10 @@ export function StateExporter() {
         size="sm"
         variant="unstyled"
         aria-label="Export state"
-        onClick={handleExport}
+        onClick={async () => {
+          await handleExport();
+          trackStateAction({ name: "export" });
+        }}
         icon={<Icon as={IconExport} verticalAlign="middle" boxSize={"16px"} />}
         isDisabled={readOnly}
       />
