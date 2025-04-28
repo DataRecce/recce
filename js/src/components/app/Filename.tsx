@@ -184,7 +184,7 @@ export const Filename = () => {
   return (
     <>
       <Flex justifyContent="center" alignItems="center">
-        <Box fontWeight="600">{(fileName ?? cloudMode) ? "cloud" : titleNewInstance}</Box>
+        <Box fontWeight="600">{fileName ?? titleNewInstance}</Box>
         {!readOnly && (
           <Tooltip label={fileName ? "Change Filename" : "Save"} openDelay={1000}>
             <IconButton onClick={handleOpen} aria-label={""} variant="unstyled" size="sm">
