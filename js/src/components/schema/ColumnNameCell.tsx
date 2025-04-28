@@ -21,6 +21,7 @@ import { trackColumnLevelLineage } from "@/lib/api/track";
 import { useLineageGraphContext } from "@/lib/hooks/LineageGraphContext";
 import { NodeData } from "@/lib/api/info";
 import { useState } from "react";
+import { useRecceInstanceContext } from "@/lib/hooks/RecceInstanceContext";
 
 export function ColumnNameCell({
   model,
@@ -36,6 +37,7 @@ export function ColumnNameCell({
   singleEnv?: boolean;
 }) {
   const { runAction } = useRecceActionContext();
+  const { readOnly } = useRecceInstanceContext();
   const lineageViewContext = useLineageViewContext();
   const { isActionAvailable } = useLineageGraphContext();
   const columnType = currentType ?? baseType;
@@ -105,6 +107,7 @@ export function ColumnNameCell({
                 size={"sm"}
                 color="gray"
                 _hover={{ color: "black" }}
+                isDisabled={readOnly}
               />
 
               <Portal>
