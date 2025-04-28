@@ -1,7 +1,7 @@
 import { LineageDiffViewOptions } from "@/lib/api/lineagecheck";
 import { Run } from "@/lib/api/types";
-import { createContext, useContext } from "react";
-import { Node } from "reactflow";
+import React, { createContext, useContext } from "react";
+import { Node, NodeProps } from "reactflow";
 import { LineageGraphNode } from "./lineage";
 
 type NewType = LineageDiffViewOptions;
@@ -28,6 +28,9 @@ export interface LineageViewContextType {
   nodes: Node<LineageGraphNode>[];
   focusedNode?: LineageGraphNode;
   selectedNodes: LineageGraphNode[];
+
+  // context menu
+  showContextMenu: (event: React.MouseEvent, node: NodeProps) => void;
 
   // filter
   viewOptions: LineageDiffViewOptions;

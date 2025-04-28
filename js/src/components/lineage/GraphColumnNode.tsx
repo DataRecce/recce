@@ -1,4 +1,12 @@
-import { Box, Flex, Icon, Spacer, Tag, TagLabel, Text } from "@chakra-ui/react";
+import {
+  Box,
+  Flex,
+  Icon,
+  IconButton,
+  Spacer,
+  Tag,
+  TagLabel,
+} from "@chakra-ui/react";
 import React from "react";
 
 import { Handle, NodeProps, Position, useStore } from "reactflow";
@@ -8,6 +16,7 @@ import "./styles.css";
 
 import { useLineageViewContextSafe } from "./LineageViewContext";
 import { getIconForChangeStatus } from "./styles";
+import { VscKebabVertical } from "react-icons/vsc";
 
 type GrapeColumnNodeProps = NodeProps<LinageGraphColumnNode>;
 
@@ -42,11 +51,23 @@ export const TransformationType = ({
   return (
     <>
       {legend ? (
-        <Tag fontSize="8pt" size="xs" colorScheme={color} borderRadius="full" paddingX="4px">
+        <Tag
+          fontSize="8pt"
+          size="xs"
+          colorScheme={color}
+          borderRadius="full"
+          paddingX="4px"
+        >
           <TagLabel>{letter}</TagLabel>
         </Tag>
       ) : (
-        <Tag fontSize="6pt" size="xs" colorScheme={color} borderRadius="full" paddingX="2px">
+        <Tag
+          fontSize="6pt"
+          size="xs"
+          colorScheme={color}
+          borderRadius="full"
+          paddingX="2px"
+        >
           <TagLabel>{letter}</TagLabel>
         </Tag>
       )}
@@ -54,17 +75,20 @@ export const TransformationType = ({
   );
 };
 
-export function GraphColumnNode({ data }: GrapeColumnNodeProps) {
+export function GraphColumnNode(nodeProps: GrapeColumnNodeProps) {
+  const { data } = nodeProps
   const { id: nodeId } = data.node;
   const { column, type, transformationType, changeStatus } = data;
   const showContent = useStore((s) => s.transform[2] > 0.3);
 
-  const { viewOptions } = useLineageViewContextSafe();
+  const { viewOptions, showContextMenu } = useLineageViewContextSafe();
 
   const selectedNode = viewOptions.column_level_lineage?.node;
   const selectedColumn = viewOptions.column_level_lineage?.column;
   const isFocus = column === selectedColumn && nodeId === selectedNode;
-  const { color: colorChangeStatus, icon: iconChangeStatus } = getIconForChangeStatus(changeStatus);
+  const { color: colorChangeStatus, icon: iconChangeStatus } =
+    getIconForChangeStatus(changeStatus);
+  const [isHovered, setIsHovered] = React.useState(false);
 
   if (!showContent) {
     return <></>;
@@ -79,8 +103,17 @@ export function GraphColumnNode({ data }: GrapeColumnNodeProps) {
       backgroundColor={isFocus ? "#f0f0f0" : "inherit"}
       _hover={{
         backgroundColor: isFocus ? "#f0f0f0" : "#f0f0f0",
-      }}>
-      <Flex fontSize="10px" color="gray" width="100%" gap="3px" alignItems="center">
+      }}
+      onMouseEnter={() => setIsHovered(true)}
+      onMouseLeave={() => setIsHovered(false)}
+    >
+      <Flex
+        fontSize="10px"
+        color="gray"
+        width="100%"
+        gap="3px"
+        alignItems="center"
+      >
         {changeStatus && (
           <Icon
             boxSize="12px"
@@ -89,10 +122,25 @@ export function GraphColumnNode({ data }: GrapeColumnNodeProps) {
             as={iconChangeStatus}
           />
         )}
-        {transformationType && <TransformationType transformationType={transformationType} />}
+        {transformationType && (
+          <TransformationType transformationType={transformationType} />
+        )}
         <Box height="16px">{column}</Box>
         <Spacer></Spacer>
-        <Box height="16px">{type}</Box>
+        
+
+        {isHovered ? <IconButton 
+        variant="unstyled"
+        size={"sm"}
+        color="gray"
+        cursor={"pointer"}
+        _hover={{ color: "black" }} 
+        icon={<Icon as={VscKebabVertical} />}
+        onClick={(e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          showContextMenu(e, nodeProps);
+        } } aria-label={""}>Click</IconButton> : <Box height="16px">{type}</Box>}
       </Flex>
       <Handle
         type="target"
