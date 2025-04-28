@@ -295,7 +295,7 @@ export const PrivateLoadableRunView = ({
                 disableCopyToClipboard={disableCopyToClipboard}
                 onCopyToClipboard={async () => {
                   await onCopyToClipboard();
-                  trackCopyToClipboard({ type: run?.type ?? "unknow", from: "run" });
+                  trackCopyToClipboard({ type: run?.type ?? "unknown", from: "run" });
                 }}
                 onMouseEnter={onMouseEnter}
                 onMouseLeave={onMouseLeave}

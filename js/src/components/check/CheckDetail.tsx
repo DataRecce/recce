@@ -366,7 +366,7 @@ export const CheckDetail = ({ checkId, refreshCheckList }: CheckDetailProps) => 
                   } else {
                     await onCopyToClipboard();
                   }
-                  trackCopyToClipboard({ type: check?.type ?? "unknow", from: "check" });
+                  trackCopyToClipboard({ type: check?.type ?? "unknown", from: "check" });
                 }}>
                 Copy to Clipboard
               </Button>
