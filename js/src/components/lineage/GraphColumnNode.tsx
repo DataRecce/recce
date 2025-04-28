@@ -76,7 +76,7 @@ export const TransformationType = ({
 };
 
 export function GraphColumnNode(nodeProps: GrapeColumnNodeProps) {
-  const { data } = nodeProps
+  const { data } = nodeProps;
   const { id: nodeId } = data.node;
   const { column, type, transformationType, changeStatus } = data;
   const showContent = useStore((s) => s.transform[2] > 0.3);
@@ -93,6 +93,7 @@ export function GraphColumnNode(nodeProps: GrapeColumnNodeProps) {
   if (!showContent) {
     return <></>;
   }
+  // const isHovered = true;
 
   return (
     <Flex
@@ -127,20 +128,23 @@ export function GraphColumnNode(nodeProps: GrapeColumnNodeProps) {
         )}
         <Box height="16px">{column}</Box>
         <Spacer></Spacer>
-        
 
-        {isHovered ? <IconButton 
-        variant="unstyled"
-        size={"sm"}
-        color="gray"
-        cursor={"pointer"}
-        _hover={{ color: "black" }} 
-        icon={<Icon as={VscKebabVertical} />}
-        onClick={(e) => {
-          e.preventDefault();
-          e.stopPropagation();
-          showContextMenu(e, nodeProps);
-        } } aria-label={""}>Click</IconButton> : <Box height="16px">{type}</Box>}
+        {isHovered ? (
+          <Icon
+            as={VscKebabVertical}
+            boxSize="14px"
+            display={"inline-flex"}
+            cursor={"pointer"}
+            _hover={{ color: "black" }}
+            onClick={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              showContextMenu(e, nodeProps);
+            }}
+          />
+        ) : (
+          <Box height="16px">{type}</Box>
+        )}
       </Flex>
       <Handle
         type="target"
