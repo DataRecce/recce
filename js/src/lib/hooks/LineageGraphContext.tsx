@@ -74,6 +74,33 @@ const LineageGraphContext = createContext(defaultLineageGraphsContext);
 type LineageWatcherStatus = "pending" | "connected" | "disconnected";
 type EnvWatcherStatus = undefined | "relaunch";
 
+interface WebSocketRefreshEvent {
+  eventType: "created" | "updated" | "deleted";
+  srcPath: string;
+}
+
+interface WebSocketBroadcastEvent {
+  id: string;
+  title?: string;
+  description: string;
+  status?: "info" | "warning" | "success" | "error";
+  position?: "top" | "top-right" | "top-left" | "bottom" | "bottom-right" | "bottom-left";
+  duration?: number;
+}
+
+type WebSocketPayload =
+  | {
+      command: "refresh";
+      event: WebSocketRefreshEvent;
+    }
+  | {
+      command: "relaunch";
+    }
+  | {
+      command: "broadcast";
+      event: WebSocketBroadcastEvent;
+    };
+
 function useLineageWatcher() {
   const artifactsUpdatedToast = useToast();
 
@@ -107,6 +134,8 @@ function useLineageWatcher() {
     ws.onopen = () => {
       ws.send("ping"); // server will respond with 'pong'
     };
+
+    // Handling websocket messages from the server
     ws.onmessage = (event) => {
       if (event.data === "pong") {
         if (ref.current.status === "disconnected") {
@@ -116,7 +145,7 @@ function useLineageWatcher() {
         return;
       }
       try {
-        const data = JSON.parse(event.data);
+        const data = JSON.parse(event.data as string) as WebSocketPayload;
         if (data.command === "refresh") {
           const { eventType, srcPath } = data.event;
           const [targetName, fileName] = srcPath.split("/").slice(-2);
@@ -136,6 +165,19 @@ function useLineageWatcher() {
           invalidateCaches();
         } else if (data.command === "relaunch") {
           setEnvStatus("relaunch");
+        } else {
+          // Handle broadcast events
+          const { id, title, description, status, position, duration } = data.event;
+          artifactsUpdatedToast({
+            id: id || "broadcast",
+            title,
+            description,
+            status: status ?? "info",
+            variant: "left-accent",
+            position: position ?? "bottom-right",
+            duration: duration ?? 5000,
+            isClosable: true,
+          });
         }
       } catch (err) {
         console.error(err);
