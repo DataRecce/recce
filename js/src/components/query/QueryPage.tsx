@@ -81,6 +81,10 @@ export const QueryPage = () => {
     sqlQuery = `select * from db.mymodel`;
   }
 
+  if (readOnly) {
+    sqlQuery = `--- Would like to do query here? Book a demo with us at https://datarecce.io/\n${sqlQuery}`;
+  }
+
   const { showRunId } = useRecceActionContext();
   const queryFn = async (type: "query" | "query_base" | "query_diff") => {
     function queryFactory(type: string) {

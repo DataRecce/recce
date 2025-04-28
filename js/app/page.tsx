@@ -19,8 +19,6 @@ import {
   HStack,
   extendTheme,
   useToast,
-  Grid,
-  GridItem,
 } from "@chakra-ui/react";
 import React, { ReactNode, useLayoutEffect } from "react";
 import { QueryClientProvider, useQuery } from "@tanstack/react-query";
