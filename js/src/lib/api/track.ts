@@ -1,4 +1,5 @@
 import * as amplitude from "@amplitude/analytics-browser";
+import { sessionReplayPlugin } from "@amplitude/plugin-session-replay-browser";
 
 export function trackInit() {
   function getCookie(key: string) {
@@ -10,9 +11,12 @@ export function trackInit() {
   const apiKey = process.env.AMPLITUDE_API_KEY;
   if (userId && apiKey) {
     try {
+      // Create and Install Session Replay Plugin
+      const sessionReplayTracking = sessionReplayPlugin();
+      amplitude.add(sessionReplayTracking);
       // Initialize Amplitude
       amplitude.init(apiKey, userId, {
-        defaultTracking: true,
+        autocapture: true,
       });
     } catch (e) {
       console.error(e);
