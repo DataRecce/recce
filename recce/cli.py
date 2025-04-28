@@ -200,6 +200,7 @@ def diff(sql, primary_keys: List[str] = None, keep_shape: bool = False, keep_equ
 @click.argument('state_file', required=False)
 @click.option('--host', default='localhost', show_default=True, help='The host to bind to.')
 @click.option('--port', default=8000, show_default=True, help='The port to bind to.', type=int)
+@click.option('--lifetime', default=0, show_default=True, help='The lifetime of the server in seconds.', type=int)
 @click.option('--review', is_flag=True, help='Open the state file in the review mode.')
 @click.option('--api-token', help='The token used by Recce Cloud API.', type=click.STRING,
               envvar='RECCE_API_TOKEN')
@@ -208,7 +209,7 @@ def diff(sql, primary_keys: List[str] = None, keep_shape: bool = False, keep_equ
 @add_options(recce_options)
 @add_options(recce_dbt_artifact_dir_options)
 @add_options(recce_cloud_options)
-def server(host, port, state_file=None, **kwargs):
+def server(host, port, lifetime, state_file=None, **kwargs):
     """
     Launch the recce server
 
@@ -299,7 +300,8 @@ def server(host, port, state_file=None, **kwargs):
         console.print(f"[[red]Error[/red]] {message}")
         exit(1)
 
-    state = AppState(state_loader=state_loader, kwargs=kwargs, flag=flag, auth_options=auth_options)
+    state = AppState(command='server', state_loader=state_loader, kwargs=kwargs, flag=flag, auth_options=auth_options,
+                     lifetime=lifetime)
     app.state = state
 
     uvicorn.run(app, host=host, port=port, lifespan='on')
@@ -821,7 +823,8 @@ def share(state_file, **kwargs):
 @click.argument('state_file', required=True)
 @click.option('--host', default='localhost', show_default=True, help='The host to bind to.')
 @click.option('--port', default=8000, show_default=True, help='The port to bind to.', type=int)
-def read_only(host, port, state_file=None, **kwargs):
+@click.option('--lifetime', default=0, show_default=True, help='The lifetime of the server in seconds.', type=int)
+def read_only(host, port, lifetime, state_file=None, **kwargs):
     from .server import app, AppState
     from rich.console import Console
 
@@ -846,10 +849,10 @@ def read_only(host, port, state_file=None, **kwargs):
         console.print(f"[[red]Error[/red]] {message}")
         exit(1)
 
-    app.state = AppState(state_loader=state_loader, kwargs=kwargs, flag=flag)
+    app.state = AppState(command='read_only', state_loader=state_loader, kwargs=kwargs, flag=flag, lifetime=lifetime)
     set_default_context(RecceContext.load(**kwargs, review=is_review, state_loader=state_loader))
 
-    uvicorn.run(app, host=host, port=port, lifespan='off')
+    uvicorn.run(app, host=host, port=port, lifespan='on')
 
 
 if __name__ == "__main__":

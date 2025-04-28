@@ -4,6 +4,7 @@ import { AxiosResponse } from "axios";
 export interface RecceInstanceInfo {
   read_only: boolean;
   authed: boolean;
+  lifetime_expired_at?: Date;
 }
 
 export async function getRecceInstanceInfo(): Promise<RecceInstanceInfo> {

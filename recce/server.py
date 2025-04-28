@@ -2,9 +2,11 @@ import asyncio
 import json
 import logging
 import os
+import signal
 import uuid
 from contextlib import asynccontextmanager
 from dataclasses import dataclass
+from datetime import datetime, timedelta
 from pathlib import Path
 from typing import Optional, Any, Set, Annotated, Literal, Dict
 
@@ -13,6 +15,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import PlainTextResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import ValidationError, BaseModel
+from pytz import utc
 from starlette.middleware.gzip import GZipMiddleware
 from starlette.middleware.sessions import SessionMiddleware
 from starlette.websockets import WebSocketDisconnect
@@ -21,7 +24,7 @@ from . import __version__, event, __latest_version__
 from .apis.check_api import check_router
 from .apis.run_api import run_router
 from .config import RecceConfig
-from .core import load_context, default_context
+from .core import load_context, default_context, RecceContext
 from .event import log_api_event, log_single_env_event
 from .exceptions import RecceException
 from .run import load_preset_checks
@@ -32,19 +35,31 @@ logger = logging.getLogger('uvicorn')
 
 @dataclass
 class AppState:
+    command: Optional[str] = None
     state_loader: Optional[RecceStateLoader] = None
     kwargs: Optional[dict] = None
     flag: Optional[dict] = None
     auth_options: Optional[dict] = None
+    lifetime: Optional[int] = None
+    lifetime_expired_at: Optional[datetime] = None
 
 
-@asynccontextmanager
-async def lifespan(fastapi: FastAPI):
+def terminating_server():
+    """
+    Terminating the server process.
+    """
+    import os
+
+    pid = os.getpid()
+    logger.info(f"Terminating server process [{pid}] manually")
+    os.kill(pid, signal.SIGINT)
+
+
+def setup_server(app_state: AppState) -> RecceContext:
     from .core import load_context
     from rich.console import Console
 
     console = Console()
-    app_state: AppState = app.state
     state_loader = app_state.state_loader
     kwargs = app_state.kwargs
     ctx = load_context(**kwargs, state_loader=state_loader)
@@ -67,13 +82,52 @@ async def lifespan(fastapi: FastAPI):
     from recce.event import log_load_state
     log_load_state(command='server', single_env=single_env)
 
-    yield
+    if app_state.lifetime is not None and app_state.lifetime > 0:
+        # Terminate the server process after the specified lifetime
+        logger.info(f'[Configuration] The lifetime of the server is {app_state.lifetime} seconds')
+        app.state.lifetime_expired_at = datetime.now(utc) + timedelta(seconds=app_state.lifetime)
+        asyncio.get_running_loop().call_later(app_state.lifetime, terminating_server)
 
+    return ctx
+
+
+def teardown_server(app_state: AppState, ctx: RecceContext):
+    state_loader = app_state.state_loader
     state_loader.export(ctx.export_state())
 
     ctx.stop_monitor_artifacts()
     if app_state.flag.get("single_env_onboarding", False):
         ctx.stop_monitor_base_env()
+
+
+def setup_ready_only(app_state: AppState):
+    if app_state.lifetime is not None and app_state.lifetime > 0:
+        # Terminate the server process after the specified lifetime
+        logger.info(f'[Configuration] The lifetime of the server is {app_state.lifetime} seconds')
+        app.state.lifetime_expired_at = datetime.now(utc) + timedelta(seconds=app_state.lifetime)
+        asyncio.get_running_loop().call_later(app_state.lifetime, terminating_server)
+
+
+def teardown_ready_only(app_state: AppState):
+    pass
+
+
+@asynccontextmanager
+async def lifespan(fastapi: FastAPI):
+    ctx = None
+    app_state: AppState = app.state
+
+    if app_state.command == 'server':
+        ctx = setup_server(app_state)
+    elif app_state.command == 'read_only':
+        setup_ready_only(app_state)
+
+    yield
+
+    if app_state.command == 'server':
+        teardown_server(app_state, ctx)
+    elif app_state.command == 'read_only':
+        teardown_ready_only(app_state)
 
 
 app = FastAPI(lifespan=lifespan)
@@ -174,7 +228,13 @@ async def health_check(request: Request):
     return {"status": "ok"}
 
 
-@app.get("/api/instance-info")
+class RecceInstanceInfoOut(BaseModel):
+    read_only: bool
+    authed: bool
+    lifetime_expired_at: Optional[datetime] = None
+
+
+@app.get("/api/instance-info", response_model=RecceInstanceInfoOut, response_model_exclude_none=True)
 async def recce_instance_info():
     app_state: AppState = app.state
     flag = app_state.flag
@@ -186,6 +246,7 @@ async def recce_instance_info():
     return {
         "read_only": read_only,
         "authed": True if api_token else False,
+        "lifetime_expired_at": app_state.lifetime_expired_at,  # UTC timezone
         # TODO: Add more instance info which won't change during the instance lifecycle
         # review_mode
         # cloud_mode

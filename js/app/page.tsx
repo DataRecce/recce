@@ -21,8 +21,11 @@ import {
   useToast,
   Grid,
   GridItem,
+  Toast,
+  ToastId,
+  UseToastOptions,
 } from "@chakra-ui/react";
-import React, { ReactNode, useLayoutEffect } from "react";
+import React, { ReactNode, useCallback, useEffect, useLayoutEffect, useMemo, useRef } from "react";
 import { QueryClientProvider, useQuery } from "@tanstack/react-query";
 import RecceContextProvider from "@/lib/hooks/RecceContextProvider";
 import { reactQueryClient } from "@/lib/api/axiosClient";
@@ -59,6 +62,7 @@ import { StateSynchronizer } from "@/components/app/StateSynchronizer";
 import { useRecceServerFlag } from "@/lib/hooks/useRecceServerFlag";
 import { useRecceInstanceContext } from "@/lib/hooks/RecceInstanceContext";
 import { TopLevelShare } from "@/components/app/StateSharing";
+import { useCountdownToast } from "@/lib/hooks/useCountdownToast";
 
 const RouteAlwaysMount = ({ children, path }: { children: ReactNode; path: string }) => {
   const [match] = useRoute(path);
@@ -144,9 +148,11 @@ function RecceVersionBadge() {
 
 function TopBar() {
   const { reviewMode, isDemoSite, envInfo, cloudMode } = useLineageGraphContext();
-  const { readOnly } = useRecceInstanceContext();
+  const { readOnly, lifetimeExpiredAt } = useRecceInstanceContext();
   const { url: prURL, id: prID } = envInfo?.pullRequest ?? {};
   const demoPrId = prURL ? prURL.split("/").pop() : null;
+
+  useCountdownToast(lifetimeExpiredAt);
 
   return (
     <Flex gap="10px" minHeight="40px" alignItems="center" bg="rgb(255, 110, 66)">
