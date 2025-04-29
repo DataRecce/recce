@@ -3,6 +3,7 @@ import { useState } from "react";
 import { BiArrowFromBottom, BiArrowToBottom } from "react-icons/bi";
 import { Node, NodeProps } from "reactflow";
 import { findByRunType } from "../run/registry";
+import { useLineageViewContextSafe } from "./LineageViewContext";
 
 interface LineageViewContextMenuProps {
   x: number;
@@ -19,69 +20,67 @@ export const LineageViewContextMenu = ({
   y,
   node,
 }: LineageViewContextMenuProps) => {
-  const menuItems = [];
+  const menuItems: {
+    label: string;
+    icon: React.ReactNode;
+    action: () => void;
+  }[] = [];
 
-  const menuItemsModel = [
-    {
+  const { selectParentNodes, selectChildNodes } = useLineageViewContextSafe();
+
+  if (node?.type === "customNode") {
+    menuItems.push({
       label: "Select parent nodes",
       icon: <BiArrowFromBottom />,
       action: () => {
-        // selectParentNodes(1);
+        selectParentNodes(node.id, 1);
       },
-    },
-    {
+    });
+    menuItems.push({
       label: "Select child nodes",
       icon: <BiArrowToBottom />,
       action: () => {
-        // selectChildNodes(1);
+        selectChildNodes(node.id, 1);
       },
-    },
-    {
+    });
+    menuItems.push({
       label: "Select all upstream nodes",
       icon: <BiArrowFromBottom />,
       action: () => {
-        // selectParentNodes();
+        selectParentNodes(node.id);
       },
-    },
-    {
+    });
+    menuItems.push({
       label: "Select all downstream nodes",
       icon: <BiArrowToBottom />,
       action: () => {
-        // selectChildNodes();
+        selectChildNodes(node.id);
       },
-    },
-  ];
+    });
+  }
 
-  const menuItemsColumn = [
-    {
+  if (node?.type === "customColumnNode") {
+    menuItems.push({
       label: "Profile diff",
       icon: <Icon as={findByRunType("profile_diff")?.icon} />,
       action: () => {
         // selectChildNodes();
       },
-    },
-    {
+    });
+    menuItems.push({
       label: "Histogram diff",
       icon: <Icon as={findByRunType("histogram_diff")?.icon} />,
       action: () => {
         // selectChildNodes();
       },
-    },
-    {
+    });
+    menuItems.push({
       label: "Top-k diff",
       icon: <Icon as={findByRunType("top_k_diff")?.icon} />,
       action: () => {
         // selectChildNodes();
       },
-    },
-  ];
-
-  if (node?.type === "customNode") {
-    menuItems.push(...menuItemsModel);
-  }
-
-  if (node?.type === "customColumnNode") {
-    menuItems.push(...menuItemsColumn);
+    });
   }
 
   return (

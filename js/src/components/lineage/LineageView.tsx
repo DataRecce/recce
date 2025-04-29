@@ -686,10 +686,8 @@ export function PrivateLineageView(
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [run, viewOptions, isRunResultOpen, selectMode]);
 
-  const selectParentNodes = (degree = 1000) => {
-    const selectedNode = contextMenuPosition.selectedNode;
-    if (selectMode === "action_result" || selectedNode === undefined || lineageGraph === undefined)
-      return;
+  const selectParentNodes = (nodeId: string, degree = 1000) => {
+    if (selectMode === "action_result" || lineageGraph === undefined) return;
 
     if (!selectMode) {
       setSelectMode("selecting");
@@ -702,15 +700,12 @@ export function PrivateLineageView(
       }
     }
 
-    const selectedNodeId = selectedNode.id;
-    const upstream = selectUpstream(lineageGraph, [selectedNodeId], degree);
+    const upstream = selectUpstream(lineageGraph, [nodeId], degree);
     setSelectedNodeIds(union(selectedNodeIds, upstream));
   };
 
-  const selectChildNodes = (degree = 1000) => {
-    const selectedNode = contextMenuPosition.selectedNode;
-    if (selectMode === "action_result" || selectedNode === undefined || lineageGraph === undefined)
-      return;
+  const selectChildNodes = (nodeId: string, degree = 1000) => {
+    if (selectMode === "action_result" || lineageGraph === undefined) return;
 
     if (!selectMode) {
       setSelectMode("selecting");
@@ -723,8 +718,7 @@ export function PrivateLineageView(
       }
     }
 
-    const selectedNodeId = selectedNode.id;
-    const downstream = selectDownstream(lineageGraph, [selectedNodeId], degree);
+    const downstream = selectDownstream(lineageGraph, [nodeId], degree);
     setSelectedNodeIds(union(selectedNodeIds, downstream));
   };
 
@@ -790,10 +784,11 @@ export function PrivateLineageView(
     selectedNodes,
     viewOptions,
     showContextMenu: onNodeContextMenu,
-    isContextMenuOpen: lineageViewContextMenu.isOpen,
     onViewOptionsChanged: handleViewOptionsChanged,
     selectMode,
     selectNode,
+    selectParentNodes,
+    selectChildNodes,
     deselect,
     breakingChangeEnabled,
     isNodeHighlighted: (nodeId: string) => highlighted.has(nodeId),
