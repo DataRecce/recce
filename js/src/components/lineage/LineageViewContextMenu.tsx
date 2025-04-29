@@ -8,6 +8,7 @@ import { LinageGraphColumnNode, LineageGraphNode } from "./lineage";
 import { useRecceActionContext } from "@/lib/hooks/RecceActionContext";
 import { useLineageGraphContext } from "@/lib/hooks/LineageGraphContext";
 import { supportsHistogramDiff } from "../histogram/HistogramDiffForm";
+import { useRecceInstanceContext } from "@/lib/hooks/RecceInstanceContext";
 
 interface LineageViewContextMenuProps {
   x: number;
@@ -34,8 +35,11 @@ export const LineageViewContextMenu = ({
   const { selectParentNodes, selectChildNodes } = useLineageViewContextSafe();
   const { runAction } = useRecceActionContext();
   const { isActionAvailable } = useLineageGraphContext();
-
-  if (node?.type === "customNode") {
+  const { readOnly } = useRecceInstanceContext();
+  if (readOnly) {
+    // no items in the context menu
+    // we should prevent to show the context menu in the readonly mode
+  } else if (node?.type === "customNode") {
     menuItems.push({
       label: "Select parent nodes",
       icon: <BiArrowFromBottom />,
@@ -64,9 +68,7 @@ export const LineageViewContextMenu = ({
         selectChildNodes(node.id);
       },
     });
-  }
-
-  if (node?.type === "customColumnNode") {
+  } else if (node?.type === "customColumnNode") {
     const columnNode = node.data as LinageGraphColumnNode;
     const modelNode = columnNode.node;
     const column = columnNode.column;
@@ -128,18 +130,22 @@ export const LineageViewContextMenu = ({
               left: `${x}px`,
               top: `${y}px`,
             }}>
-            {menuItems.map((item, index) => (
-              <MenuItem
-                key={index}
-                icon={item.icon as any}
-                isDisabled={item.isDisabled}
-                onClick={() => {
-                  item.action();
-                  onClose();
-                }}>
-                {item.label}
-              </MenuItem>
-            ))}
+            {menuItems.length === 0 ? (
+              <MenuItem isDisabled>Not available</MenuItem>
+            ) : (
+              menuItems.map((item, index) => (
+                <MenuItem
+                  key={index}
+                  icon={item.icon as any}
+                  isDisabled={item.isDisabled}
+                  onClick={() => {
+                    item.action();
+                    onClose();
+                  }}>
+                  {item.label}
+                </MenuItem>
+              ))
+            )}
           </MenuList>
         </Menu>
       )}
