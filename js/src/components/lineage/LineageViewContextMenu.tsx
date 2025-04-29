@@ -9,6 +9,7 @@ import { useRecceActionContext } from "@/lib/hooks/RecceActionContext";
 import { useLineageGraphContext } from "@/lib/hooks/LineageGraphContext";
 import { supportsHistogramDiff } from "../histogram/HistogramDiffForm";
 import { useRecceInstanceContext } from "@/lib/hooks/RecceInstanceContext";
+import { useRecceServerFlag } from "@/lib/hooks/useRecceServerFlag";
 
 interface LineageViewContextMenuProps {
   x: number;
@@ -36,38 +37,43 @@ export const LineageViewContextMenu = ({
   const { runAction } = useRecceActionContext();
   const { isActionAvailable } = useLineageGraphContext();
   const { readOnly } = useRecceInstanceContext();
+  const { data: flag } = useRecceServerFlag();
+  const singleEnv = flag?.single_env_onboarding ?? false;
+
   if (readOnly) {
     // no items in the context menu
     // we should prevent to show the context menu in the readonly mode
   } else if (node?.type === "customNode") {
-    menuItems.push({
-      label: "Select parent nodes",
-      icon: <BiArrowFromBottom />,
-      action: () => {
-        selectParentNodes(node.id, 1);
-      },
-    });
-    menuItems.push({
-      label: "Select child nodes",
-      icon: <BiArrowToBottom />,
-      action: () => {
-        selectChildNodes(node.id, 1);
-      },
-    });
-    menuItems.push({
-      label: "Select all upstream nodes",
-      icon: <BiArrowFromBottom />,
-      action: () => {
-        selectParentNodes(node.id);
-      },
-    });
-    menuItems.push({
-      label: "Select all downstream nodes",
-      icon: <BiArrowToBottom />,
-      action: () => {
-        selectChildNodes(node.id);
-      },
-    });
+    if (!singleEnv) {
+      menuItems.push({
+        label: "Select parent nodes",
+        icon: <BiArrowFromBottom />,
+        action: () => {
+          selectParentNodes(node.id, 1);
+        },
+      });
+      menuItems.push({
+        label: "Select child nodes",
+        icon: <BiArrowToBottom />,
+        action: () => {
+          selectChildNodes(node.id, 1);
+        },
+      });
+      menuItems.push({
+        label: "Select all upstream nodes",
+        icon: <BiArrowFromBottom />,
+        action: () => {
+          selectParentNodes(node.id);
+        },
+      });
+      menuItems.push({
+        label: "Select all downstream nodes",
+        icon: <BiArrowToBottom />,
+        action: () => {
+          selectChildNodes(node.id);
+        },
+      });
+    }
   } else if (node?.type === "customColumnNode") {
     const columnNode = node.data as LinageGraphColumnNode;
     const modelNode = columnNode.node;
@@ -97,24 +103,30 @@ export const LineageViewContextMenu = ({
       modelNode.data.base?.columns?.[column] === undefined ||
       modelNode.data.current?.columns?.[column] === undefined;
 
+    let entry = findByRunType(singleEnv ? "profile" : "profile_diff");
     menuItems.push({
-      label: "Profile diff",
-      icon: <Icon as={findByRunType("profile_diff")?.icon} />,
+      label: entry?.title ?? "Profile",
+      icon: <Icon as={entry?.icon} />,
       action: handleProfileDiff,
       isDisabled: addedOrRemoved || !isActionAvailable("profile_diff"),
     });
-    menuItems.push({
-      label: "Histogram diff",
-      icon: <Icon as={findByRunType("histogram_diff")?.icon} />,
-      action: handleHistogramDiff,
-      isDisabled: addedOrRemoved || (columnType ? !supportsHistogramDiff(columnType) : true),
-    });
-    menuItems.push({
-      label: "Top-k diff",
-      icon: <Icon as={findByRunType("top_k_diff")?.icon} />,
-      action: handleTopkDiff,
-      isDisabled: addedOrRemoved,
-    });
+
+    if (!singleEnv) {
+      entry = findByRunType("histogram_diff");
+      menuItems.push({
+        label: entry?.title ?? "Histogram Diff",
+        icon: <Icon as={entry?.icon} />,
+        action: handleHistogramDiff,
+        isDisabled: addedOrRemoved || (columnType ? !supportsHistogramDiff(columnType) : true),
+      });
+      entry = findByRunType("top_k_diff");
+      menuItems.push({
+        label: entry?.title ?? "Top-K Diff",
+        icon: <Icon as={entry?.icon} />,
+        action: handleTopkDiff,
+        isDisabled: addedOrRemoved,
+      });
+    }
   }
 
   return (
@@ -131,7 +143,7 @@ export const LineageViewContextMenu = ({
               top: `${y}px`,
             }}>
             {menuItems.length === 0 ? (
-              <MenuItem isDisabled>Not available</MenuItem>
+              <MenuItem isDisabled>No action available</MenuItem>
             ) : (
               menuItems.map((item, index) => (
                 <MenuItem
