@@ -4,6 +4,10 @@ import { BiArrowFromBottom, BiArrowToBottom } from "react-icons/bi";
 import { Node, NodeProps } from "reactflow";
 import { findByRunType } from "../run/registry";
 import { useLineageViewContextSafe } from "./LineageViewContext";
+import { LinageGraphColumnNode, LineageGraphNode } from "./lineage";
+import { useRecceActionContext } from "@/lib/hooks/RecceActionContext";
+import { useLineageGraphContext } from "@/lib/hooks/LineageGraphContext";
+import { supportsHistogramDiff } from "../histogram/HistogramDiffForm";
 
 interface LineageViewContextMenuProps {
   x: number;
@@ -24,9 +28,12 @@ export const LineageViewContextMenu = ({
     label: string;
     icon: React.ReactNode;
     action: () => void;
+    isDisabled?: boolean;
   }[] = [];
 
   const { selectParentNodes, selectChildNodes } = useLineageViewContextSafe();
+  const { runAction } = useRecceActionContext();
+  const { isActionAvailable } = useLineageGraphContext();
 
   if (node?.type === "customNode") {
     menuItems.push({
@@ -60,26 +67,51 @@ export const LineageViewContextMenu = ({
   }
 
   if (node?.type === "customColumnNode") {
+    const columnNode = node.data as LinageGraphColumnNode;
+    const modelNode = columnNode.node;
+    const column = columnNode.column;
+    const columnType = columnNode.type;
+
+    const handleProfileDiff = () => {
+      runAction("profile_diff", { model: modelNode.name, columns: [column] }, { showForm: false });
+    };
+
+    const handleHistogramDiff = () => {
+      runAction(
+        "histogram_diff",
+        { model: modelNode.name, column_name: column, column_type: columnType },
+        { showForm: false },
+      );
+    };
+
+    const handleTopkDiff = () => {
+      runAction(
+        "top_k_diff",
+        { model: modelNode.name, column_name: column, k: 50 },
+        { showForm: false },
+      );
+    };
+    const addedOrRemoved =
+      modelNode.data.base?.columns?.[column] === undefined ||
+      modelNode.data.current?.columns?.[column] === undefined;
+
     menuItems.push({
       label: "Profile diff",
       icon: <Icon as={findByRunType("profile_diff")?.icon} />,
-      action: () => {
-        // selectChildNodes();
-      },
+      action: handleProfileDiff,
+      isDisabled: addedOrRemoved || !isActionAvailable("profile_diff"),
     });
     menuItems.push({
       label: "Histogram diff",
       icon: <Icon as={findByRunType("histogram_diff")?.icon} />,
-      action: () => {
-        // selectChildNodes();
-      },
+      action: handleHistogramDiff,
+      isDisabled: addedOrRemoved || (columnType ? !supportsHistogramDiff(columnType) : true),
     });
     menuItems.push({
       label: "Top-k diff",
       icon: <Icon as={findByRunType("top_k_diff")?.icon} />,
-      action: () => {
-        // selectChildNodes();
-      },
+      action: handleTopkDiff,
+      isDisabled: addedOrRemoved,
     });
   }
 
@@ -100,6 +132,7 @@ export const LineageViewContextMenu = ({
               <MenuItem
                 key={index}
                 icon={item.icon as any}
+                isDisabled={item.isDisabled}
                 onClick={() => {
                   item.action();
                   onClose();
