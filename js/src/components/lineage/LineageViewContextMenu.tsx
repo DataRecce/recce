@@ -1,12 +1,13 @@
-import { Menu, MenuList, MenuItem, MenuDivider, useDisclosure } from "@chakra-ui/react";
+import { Menu, MenuList, MenuItem, MenuDivider, useDisclosure, Icon } from "@chakra-ui/react";
 import { useState } from "react";
 import { BiArrowFromBottom, BiArrowToBottom } from "react-icons/bi";
-import { Node } from "reactflow";
+import { Node, NodeProps } from "reactflow";
+import { findByRunType } from "../run/registry";
 
 interface LineageViewContextMenuProps {
   x: number;
   y: number;
-  node?: Node;
+  node?: Node | NodeProps;
   isOpen: boolean;
   onClose: () => void;
 }
@@ -18,6 +19,71 @@ export const LineageViewContextMenu = ({
   y,
   node,
 }: LineageViewContextMenuProps) => {
+  const menuItems = [];
+
+  const menuItemsModel = [
+    {
+      label: "Select parent nodes",
+      icon: <BiArrowFromBottom />,
+      action: () => {
+        // selectParentNodes(1);
+      },
+    },
+    {
+      label: "Select child nodes",
+      icon: <BiArrowToBottom />,
+      action: () => {
+        // selectChildNodes(1);
+      },
+    },
+    {
+      label: "Select all upstream nodes",
+      icon: <BiArrowFromBottom />,
+      action: () => {
+        // selectParentNodes();
+      },
+    },
+    {
+      label: "Select all downstream nodes",
+      icon: <BiArrowToBottom />,
+      action: () => {
+        // selectChildNodes();
+      },
+    },
+  ];
+
+  const menuItemsColumn = [
+    {
+      label: "Profile diff",
+      icon: <Icon as={findByRunType("profile_diff")?.icon} />,
+      action: () => {
+        // selectChildNodes();
+      },
+    },
+    {
+      label: "Histogram diff",
+      icon: <Icon as={findByRunType("histogram_diff")?.icon} />,
+      action: () => {
+        // selectChildNodes();
+      },
+    },
+    {
+      label: "Top-k diff",
+      icon: <Icon as={findByRunType("top_k_diff")?.icon} />,
+      action: () => {
+        // selectChildNodes();
+      },
+    },
+  ];
+
+  if (node?.type === "customNode") {
+    menuItems.push(...menuItemsModel);
+  }
+
+  if (node?.type === "customColumnNode") {
+    menuItems.push(...menuItemsColumn);
+  }
+
   return (
     <>
       {isOpen && (
@@ -31,44 +97,17 @@ export const LineageViewContextMenu = ({
               left: `${x}px`,
               top: `${y}px`,
             }}>
-            <MenuItem
-              icon={<BiArrowFromBottom />}
-              onClick={() => {
-                // selectParentNodes(1);
-              }}>
-              Select parent nodes
-            </MenuItem>
-            <MenuItem
-              icon={<BiArrowToBottom />}
-              onClick={() => {
-                // selectChildNodes(1);
-              }}>
-              Select child nodes
-            </MenuItem>
-            <MenuDivider></MenuDivider>
-            <MenuItem
-              icon={<BiArrowFromBottom />}
-              onClick={() => {
-                // selectParentNodes();
-              }}>
-              Select all upstream nodes
-            </MenuItem>
-            <MenuItem
-              icon={<BiArrowToBottom />}
-              onClick={() => {
-                // selectChildNodes();
-              }}>
-              Select all downstream nodes
-            </MenuItem>
-            {node?.type === "customColumnNode" && (
+            {menuItems.map((item, index) => (
               <MenuItem
-                icon={<BiArrowToBottom />}
+                key={index}
+                icon={item.icon as any}
                 onClick={() => {
-                  // selectChildNodes();
+                  item.action();
+                  onClose();
                 }}>
-                Select all downstream columns
+                {item.label}
               </MenuItem>
-            )}
+            ))}
           </MenuList>
         </Menu>
       )}
@@ -88,9 +127,9 @@ export const useLineageViewContextMenu = ({
     x: 0,
     y: 0,
   });
-  const [node, setNode] = useState<Node>();
+  const [node, setNode] = useState<Node | NodeProps>();
 
-  const showContextMenu = (event: React.MouseEvent, node: Node) => {
+  const showContextMenu = (event: React.MouseEvent, node: Node | NodeProps) => {
     const x = event.clientX + offsetX;
     const y = event.clientY + offsetY;
 
@@ -108,7 +147,7 @@ export const useLineageViewContextMenu = ({
   const props: LineageViewContextMenuProps = {
     x: position.x,
     y: position.y,
-    node: node,
+    node,
     isOpen,
     onClose,
   };

@@ -30,7 +30,8 @@ export interface LineageViewContextType {
   selectedNodes: LineageGraphNode[];
 
   // context menu
-  showContextMenu: (event: React.MouseEvent, node: NodeProps) => void;
+  showContextMenu: (event: React.MouseEvent, node: Node | NodeProps) => void;
+  isContextMenuOpen: boolean;
 
   // filter
   viewOptions: LineageDiffViewOptions;

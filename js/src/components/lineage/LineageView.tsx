@@ -45,6 +45,7 @@ import ReactFlow, {
   ControlButton,
   useReactFlow,
   getNodesBounds,
+  NodeProps,
 } from "reactflow";
 import "reactflow/dist/style.css";
 import { GraphNode } from "./GraphNode";
@@ -731,7 +732,7 @@ export function PrivateLineageView(
     lineageViewContextMenu.closeContextMenu();
   };
 
-  const onNodeContextMenu = (event: React.MouseEvent, node: Node) => {
+  const onNodeContextMenu = (event: React.MouseEvent, node: Node | NodeProps) => {
     if (!interactive) {
       return;
     }
@@ -789,6 +790,7 @@ export function PrivateLineageView(
     selectedNodes,
     viewOptions,
     showContextMenu: onNodeContextMenu,
+    isContextMenuOpen: lineageViewContextMenu.isOpen,
     onViewOptionsChanged: handleViewOptionsChanged,
     selectMode,
     selectNode,
