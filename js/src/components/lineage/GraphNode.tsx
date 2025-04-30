@@ -26,6 +26,7 @@ import { useLineageViewContextSafe } from "./LineageViewContext";
 import { FaCheckSquare, FaRegSquare } from "react-icons/fa";
 import { RowCountDiff } from "@/lib/api/models";
 import { deltaPercentageString } from "../rowcount/delta";
+import { VscKebabVertical } from "react-icons/vsc";
 
 type GraphNodeProps = NodeProps<LineageGraphNode>;
 
@@ -132,7 +133,44 @@ const GraphNodeCheckbox = ({
   );
 };
 
-export function GraphNode({ data }: GraphNodeProps) {
+const GraphNodeTitle = ({
+  name,
+  color,
+  resourceType,
+}: {
+  name: string;
+  color: string;
+  resourceType?: string;
+}) => {
+  return (
+    <Box flex="1" color={color} overflow="hidden" textOverflow="ellipsis" whiteSpace="nowrap">
+      <Tooltip
+        label={resourceType === "model" ? name : `${name} (${resourceType})`}
+        placement="top">
+        {name}
+      </Tooltip>
+    </Box>
+  );
+};
+
+const GraphNodeUpperRight = () => {
+  return (
+    <>
+      <Icon boxSize="16px" color={resourceColor} as={resourceIcon} />
+
+      {iconChangeStatus && (
+        <Icon
+          // color={selectMode === "multi" && isSelected ? "white" : color}
+          color={iconChangeColor}
+          as={iconChangeStatus}
+        />
+      )}
+    </>
+  );
+};
+
+export function GraphNode(nodeProps: GraphNodeProps) {
+  const { data } = nodeProps;
   const { id, resourceType, changeStatus, change } = data;
   const changeCategory = change?.category;
   const showContent = useStore((s) => s.transform[2] > 0.3);
@@ -149,6 +187,7 @@ export function GraphNode({ data }: GraphNodeProps) {
     getNodeColumnSet,
     isNodeHighlighted,
     isNodeSelected,
+    showContextMenu,
   } = useLineageViewContextSafe();
   const { lineageGraph } = useLineageGraphContext();
   const isNonBreakingChange =
@@ -160,8 +199,8 @@ export function GraphNode({ data }: GraphNodeProps) {
   // text color, icon
   const {
     icon: iconChangeStatus,
-    color,
-    backgroundColor,
+    color: colorChangeStatus,
+    backgroundColor: backgroundColorChangeStatus,
   } = changeStatus
     ? getIconForChangeStatus(changeStatus)
     : {
@@ -173,12 +212,59 @@ export function GraphNode({ data }: GraphNodeProps) {
 
   // border width and color
   const borderWidth = "2px";
-  const borderColor = color;
+  const borderColor = colorChangeStatus;
 
   const name = data.name;
   const columnSet = getNodeColumnSet(data.id);
   const showColumns = columnSet.size > 0;
   const action = selectMode === "action_result" ? getNodeAction(data.id) : undefined;
+
+  const nodeBackgroundColor = (function () {
+    if (showContent) {
+      if (selectMode === "selecting") {
+        return isSelected ? colorChangeStatus : "white";
+      } else if (selectMode === "action_result") {
+        if (!action) {
+          return "white";
+        } else {
+          return isFocused || isSelected || isHovered
+            ? backgroundColorChangeStatus
+            : colorChangeStatus;
+        }
+      } else {
+        return isFocused || isSelected || isHovered ? backgroundColorChangeStatus : "white";
+      }
+    } else {
+      return isFocused || isSelected || isHovered ? colorChangeStatus : backgroundColorChangeStatus;
+    }
+  })();
+  const titleColor = (function () {
+    if (selectMode === "selecting") {
+      return isSelected ? "white" : "inherit";
+    } else if (selectMode === "action_result") {
+      return !!action && !isSelected ? "white" : "inherit";
+    } else {
+      return "inherit";
+    }
+  })();
+  const iconResourceColor = (function () {
+    if (selectMode === "selecting") {
+      return isSelected ? "white" : "inherit";
+    } else if (selectMode === "action_result") {
+      return !!action && !isSelected ? "white" : "inherit";
+    } else {
+      return "inherit";
+    }
+  })();
+  const iconChangeStatusColor = (function () {
+    if (selectMode === "selecting") {
+      return isSelected ? "white" : colorChangeStatus;
+    } else if (selectMode === "action_result") {
+      return !!action && !isSelected ? "white" : "inherit";
+    } else {
+      return colorChangeStatus;
+    }
+  })();
 
   return (
     <Flex
@@ -208,26 +294,10 @@ export function GraphNode({ data }: GraphNodeProps) {
         borderStyle={borderStyle}
         borderTopRadius={8}
         borderBottomRadius={showColumns ? 0 : 8}
-        backgroundColor={(function () {
-          if (showContent) {
-            if (selectMode === "selecting") {
-              return isSelected ? color : "white";
-            } else if (selectMode === "action_result") {
-              if (!action) {
-                return "white";
-              } else {
-                return isFocused || isSelected || isHovered ? backgroundColor : color;
-              }
-            } else {
-              return isFocused || isSelected || isHovered ? backgroundColor : "white";
-            }
-          } else {
-            return isFocused || isSelected || isHovered ? color : backgroundColor;
-          }
-        })()}
+        backgroundColor={nodeBackgroundColor}
         height="60px">
         <Flex
-          bg={color}
+          bg={colorChangeStatus}
           padding={interactive ? "8px" : "2px"}
           borderRightWidth={borderWidth}
           borderColor={selectMode === "selecting" ? "#00000020" : borderColor}
@@ -261,55 +331,27 @@ export function GraphNode({ data }: GraphNodeProps) {
             gap="5px"
             alignItems="center"
             visibility={showContent ? "inherit" : "hidden"}>
-            <Box
-              flex="1"
-              color={(function () {
-                if (selectMode === "selecting") {
-                  return isSelected ? "white" : "inherit";
-                } else if (selectMode === "action_result") {
-                  return !!action && !isSelected ? "white" : "inherit";
-                } else {
-                  return "inherit";
-                }
-              })()}
-              overflow="hidden"
-              textOverflow="ellipsis"
-              whiteSpace="nowrap">
-              <Tooltip
-                label={resourceType === "model" ? name : `${name} (${resourceType})`}
-                placement="top">
-                {name}
-              </Tooltip>
-            </Box>
+            <GraphNodeTitle name={name} color={titleColor} resourceType={resourceType} />
 
-            <Icon
-              boxSize="16px"
-              color={(function () {
-                if (selectMode === "selecting") {
-                  return isSelected ? "white" : "inherit";
-                } else if (selectMode === "action_result") {
-                  return !!action && !isSelected ? "white" : "inherit";
-                } else {
-                  return "inherit";
-                }
-              })()}
-              as={resourceIcon}
-            />
-
-            {iconChangeStatus && (
+            {isHovered ? (
               <Icon
-                // color={selectMode === "multi" && isSelected ? "white" : color}
-                color={(function () {
-                  if (selectMode === "selecting") {
-                    return isSelected ? "white" : color;
-                  } else if (selectMode === "action_result") {
-                    return !!action && !isSelected ? "white" : "inherit";
-                  } else {
-                    return color;
-                  }
-                })()}
-                as={iconChangeStatus}
+                as={VscKebabVertical}
+                // boxSize="14px"
+                // display={"inline-flex"}
+                color="gray"
+                cursor={"pointer"}
+                _hover={{ color: "black" }}
+                onClick={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  showContextMenu(e, nodeProps);
+                }}
               />
+            ) : (
+              <>
+                <Icon boxSize="16px" color={iconResourceColor} as={resourceIcon} />
+                {changeStatus && <Icon color={iconChangeStatusColor} as={iconChangeStatus} />}
+              </>
             )}
           </Flex>
 
