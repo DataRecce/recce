@@ -124,7 +124,8 @@ def submit_run(type, params, check_id=None):
             run.result = result
             run.status = RunStatus.FINISHED
         if error is not None:
-            run.error = str(error)
+            failed_reason = str(error) if str(error) != 'None' else repr(error)
+            run.error = failed_reason
             if run.status != RunStatus.CANCELLED:
                 run.status = RunStatus.FAILED
         run.progress = None
@@ -138,7 +139,10 @@ def submit_run(type, params, check_id=None):
             asyncio.run_coroutine_threadsafe(update_run_result(run.run_id, None, e), loop)
             if isinstance(e, RecceException) and e.is_raise is False:
                 return None
-            failed_reason = str(e).replace('. ', ".\n")
+            import sentry_sdk
+            sentry_sdk.capture_exception(e)
+            failed_reason = str(e) if str(e) != 'None' else repr(e)
+            failed_reason = failed_reason.replace('. ', ".\n")
             logger.error(f"Failed to execute {run_type} task: {failed_reason}")
             return None
 

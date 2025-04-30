@@ -401,16 +401,29 @@ export function PrivateLineageView(
           packages: packageName ? [packageName] : undefined,
           ...props.viewOptions,
         };
+
+        try {
+          const result = await select({
+            select: newViewOptions.select,
+            exclude: newViewOptions.exclude,
+            packages: newViewOptions.packages,
+            view_mode: newViewOptions.view_mode,
+          });
+          filteredNodeIds = result.nodes;
+        } catch (_) {
+          // fallback behavior
+          newViewOptions.view_mode = "all";
+          const result = await select({
+            select: newViewOptions.select,
+            exclude: newViewOptions.exclude,
+            packages: newViewOptions.packages,
+            view_mode: newViewOptions.view_mode,
+          });
+          filteredNodeIds = result.nodes;
+        }
+
         setViewOptions(newViewOptions);
         setNodeColumnSetMap(undefined);
-
-        const result = await select({
-          select: newViewOptions.select,
-          exclude: newViewOptions.exclude,
-          packages: newViewOptions.packages,
-          view_mode: newViewOptions.view_mode,
-        });
-        filteredNodeIds = result.nodes;
       }
 
       // const [nodes, edges, nodeColumnSetMap] = toReactflow(lineageGraph, filteredNodeIds);
