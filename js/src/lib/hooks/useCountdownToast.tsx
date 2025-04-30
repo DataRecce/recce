@@ -22,7 +22,10 @@ interface CountdownToastOptions {
  * @param lifetimeExpiredAt - Date when the server will expire
  * @param options - Optional toast UI configuration
  */
-export function useCountdownToast(lifetimeExpiredAt?: Date, options: CountdownToastOptions = {}) {
+export function useCountdownToast(
+  lifetimeExpiredAt: Date | undefined,
+  options: CountdownToastOptions = {},
+) {
   const countdownToast = useToast();
   const countdownToastIdRef = useRef<ToastId>();
   const countdownIntervalRef = useRef<NodeJS.Timeout>();
@@ -111,6 +114,7 @@ export function useCountdownToast(lifetimeExpiredAt?: Date, options: CountdownTo
       );
       return () => {
         clearTimeout(timeoutId);
+        cleanupToast();
       };
     }
 
