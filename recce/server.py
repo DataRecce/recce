@@ -288,10 +288,12 @@ async def get_info():
     else:
         filename = None
 
+    state_metadata = context.state_loader.state.metadata if context.state_loader.state else None
     lineage_diff = context.get_lineage_diff()
 
     try:
         info = {
+            'state_metadata': state_metadata,
             'adapter_type': context.adapter_type,
             'review_mode': context.review_mode,
             'git': state.git.to_dict() if state.git else None,

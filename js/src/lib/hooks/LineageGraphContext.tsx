@@ -16,6 +16,7 @@ import {
   getServerInfo,
   gitInfo,
   pullRequestInfo,
+  stateMetadata,
 } from "../api/info";
 import {
   Button,
@@ -37,6 +38,7 @@ import { useRecceServerFlag } from "./useRecceServerFlag";
 import { trackSingleEnvironment } from "../api/track";
 
 interface EnvInfo {
+  stateMetadata?: stateMetadata;
   adapterType?: string;
   git?: gitInfo;
   pullRequest?: pullRequestInfo;
@@ -243,6 +245,7 @@ export function LineageGraphContextProvider({ children }: LineageGraphProps) {
 
   const errorMessage = queryServerInfo.error?.message;
   const {
+    state_metadata: stateMetadata,
     lineage,
     sqlmesh,
     demo: isDemoSite,
@@ -260,6 +263,7 @@ export function LineageGraphContextProvider({ children }: LineageGraphProps) {
   const dbtCurrent = lineage?.current.manifest_metadata;
 
   const envInfo: EnvInfo = {
+    stateMetadata,
     adapterType,
     git,
     pullRequest,

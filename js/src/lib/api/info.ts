@@ -120,6 +120,12 @@ export async function getLineageDiff(): Promise<LineageDiffResult> {
   };
 }
 
+export interface stateMetadata {
+  schema_version: string;
+  recce_version: string;
+  generated_at: string;
+}
+
 export interface gitInfo {
   branch?: string;
 }
@@ -133,6 +139,7 @@ export interface pullRequestInfo {
 }
 
 export interface ServerInfoResult {
+  state_metadata: stateMetadata;
   adapter_type: string;
   review_mode: boolean;
   cloud_mode: boolean;
