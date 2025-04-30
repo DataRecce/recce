@@ -44,15 +44,16 @@ class AppState:
     lifetime_expired_at: Optional[datetime] = None
 
 
-def terminating_server():
-    """
-    Terminating the server process.
-    """
-    import os
+def schedule_lifetime_termination(app_state):
+    def terminating_server():
+        pid = os.getpid()
+        logger.info(f"Terminating server process [{pid}] manually")
+        os.kill(pid, signal.SIGINT)
 
-    pid = os.getpid()
-    logger.info(f"Terminating server process [{pid}] manually")
-    os.kill(pid, signal.SIGINT)
+    # Terminate the server process after the specified lifetime
+    logger.info(f'[Configuration] The lifetime of the server is {app_state.lifetime} seconds')
+    app.state.lifetime_expired_at = datetime.now(utc) + timedelta(seconds=app_state.lifetime)
+    asyncio.get_running_loop().call_later(app_state.lifetime, terminating_server)
 
 
 def setup_server(app_state: AppState) -> RecceContext:
@@ -83,10 +84,7 @@ def setup_server(app_state: AppState) -> RecceContext:
     log_load_state(command='server', single_env=single_env)
 
     if app_state.lifetime is not None and app_state.lifetime > 0:
-        # Terminate the server process after the specified lifetime
-        logger.info(f'[Configuration] The lifetime of the server is {app_state.lifetime} seconds')
-        app.state.lifetime_expired_at = datetime.now(utc) + timedelta(seconds=app_state.lifetime)
-        asyncio.get_running_loop().call_later(app_state.lifetime, terminating_server)
+        schedule_lifetime_termination(app_state)
 
     return ctx
 
@@ -102,10 +100,7 @@ def teardown_server(app_state: AppState, ctx: RecceContext):
 
 def setup_ready_only(app_state: AppState):
     if app_state.lifetime is not None and app_state.lifetime > 0:
-        # Terminate the server process after the specified lifetime
-        logger.info(f'[Configuration] The lifetime of the server is {app_state.lifetime} seconds')
-        app.state.lifetime_expired_at = datetime.now(utc) + timedelta(seconds=app_state.lifetime)
-        asyncio.get_running_loop().call_later(app_state.lifetime, terminating_server)
+        schedule_lifetime_termination(app_state)
 
 
 def teardown_ready_only(app_state: AppState):
