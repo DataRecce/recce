@@ -33,6 +33,7 @@ class QueryMixin:
         """
         from jinja2.exceptions import TemplateSyntaxError
         dbt_adapter = default_context().adapter
+        from dbt.exceptions import TargetNotFoundError
         try:
             sql = dbt_adapter.generate_sql(sql_template, base)
 
@@ -44,7 +45,8 @@ class QueryMixin:
                 if len(result.rows) > limit:
                     return result.limit(limit), True
                 return result, False
-
+        except TargetNotFoundError as e:
+            raise RecceException(str(e), is_raise=False)
         except TemplateSyntaxError as e:
             raise RecceException(f"Jinja template error: line {e.lineno}: {str(e)}")
 
