@@ -45,6 +45,7 @@ import ReactFlow, {
   ControlButton,
   useReactFlow,
   getNodesBounds,
+  NodeProps,
 } from "reactflow";
 import "reactflow/dist/style.css";
 import { GraphNode } from "./GraphNode";
@@ -90,6 +91,7 @@ import { LineageViewNotification } from "./LineageViewNotification";
 import { useRecceServerFlag } from "@/lib/hooks/useRecceServerFlag";
 import { BaseEnvironmentSetupNotification } from "./SingleEnvironmentQueryView";
 import { ColumnLineageData, getCll } from "@/lib/api/cll";
+import { LineageViewContextMenu, useLineageViewContextMenu } from "./LineageViewContextMenu";
 
 export interface LineageViewProps {
   viewOptions?: LineageDiffViewOptions;
@@ -358,12 +360,25 @@ export function PrivateLineageView(
     filteredNodeIds,
   ]);
 
-  const [isContextMenuRendered, setIsContextMenuRendered] = useState(false);
-  const [contextMenuPosition, setContextMenuPosition] = useState<{
-    x: number;
-    y: number;
-    selectedNode?: Node;
-  }>({ x: 0, y: 0 });
+  const reactFlowOffset = useMemo(() => {
+    // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
+    if (!refReactFlow.current) {
+      return {
+        offsetX: 0,
+        offsetY: 0,
+      };
+    }
+
+    const pane = (refReactFlow.current as any).getBoundingClientRect();
+    const offsetTop = (refReactFlow.current as any).offsetTop as number;
+    return {
+      offsetX: -pane.left,
+      offsetY: -pane.top + offsetTop,
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [refReactFlow.current]);
+
+  const lineageViewContextMenu = useLineageViewContextMenu(reactFlowOffset);
 
   const toast = useToast();
 
@@ -671,10 +686,8 @@ export function PrivateLineageView(
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [run, viewOptions, isRunResultOpen, selectMode]);
 
-  const selectParentNodes = (degree = 1000) => {
-    const selectedNode = contextMenuPosition.selectedNode;
-    if (selectMode === "action_result" || selectedNode === undefined || lineageGraph === undefined)
-      return;
+  const selectParentNodes = (nodeId: string, degree = 1000) => {
+    if (selectMode === "action_result" || lineageGraph === undefined) return;
 
     if (!selectMode) {
       setSelectMode("selecting");
@@ -687,15 +700,12 @@ export function PrivateLineageView(
       }
     }
 
-    const selectedNodeId = selectedNode.id;
-    const upstream = selectUpstream(lineageGraph, [selectedNodeId], degree);
+    const upstream = selectUpstream(lineageGraph, [nodeId], degree);
     setSelectedNodeIds(union(selectedNodeIds, upstream));
   };
 
-  const selectChildNodes = (degree = 1000) => {
-    const selectedNode = contextMenuPosition.selectedNode;
-    if (selectMode === "action_result" || selectedNode === undefined || lineageGraph === undefined)
-      return;
+  const selectChildNodes = (nodeId: string, degree = 1000) => {
+    if (selectMode === "action_result" || lineageGraph === undefined) return;
 
     if (!selectMode) {
       setSelectMode("selecting");
@@ -708,17 +718,15 @@ export function PrivateLineageView(
       }
     }
 
-    const selectedNodeId = selectedNode.id;
-    const downstream = selectDownstream(lineageGraph, [selectedNodeId], degree);
+    const downstream = selectDownstream(lineageGraph, [nodeId], degree);
     setSelectedNodeIds(union(selectedNodeIds, downstream));
   };
 
   const closeContextMenu = () => {
-    setIsContextMenuRendered(false);
-    setContextMenuPosition({ x: 0, y: 0 });
+    lineageViewContextMenu.closeContextMenu();
   };
 
-  const onNodeContextMenu = (event: React.MouseEvent, node: Node) => {
+  const onNodeContextMenu = (event: React.MouseEvent, node: Node | NodeProps) => {
     if (!interactive) {
       return;
     }
@@ -728,14 +736,7 @@ export function PrivateLineageView(
     // Only show context menu when selectMode is action
     // Prevent native context menu from showing
     event.preventDefault();
-    const pane = (refReactFlow.current as any).getBoundingClientRect();
-    const offsetTop = (refReactFlow.current as any).offsetTop as number;
-    setContextMenuPosition({
-      x: event.clientX - pane.left,
-      y: event.clientY - pane.top + offsetTop,
-      selectedNode: node,
-    });
-    setIsContextMenuRendered(true);
+    lineageViewContextMenu.showContextMenu(event, node);
   };
 
   const selectNode = (nodeId: string) => {
@@ -782,9 +783,12 @@ export function PrivateLineageView(
     focusedNode,
     selectedNodes,
     viewOptions,
+    showContextMenu: onNodeContextMenu,
     onViewOptionsChanged: handleViewOptionsChanged,
     selectMode,
     selectNode,
+    selectParentNodes,
+    selectChildNodes,
     deselect,
     breakingChangeEnabled,
     isNodeHighlighted: (nodeId: string) => highlighted.has(nodeId),
@@ -1107,49 +1111,7 @@ export function PrivateLineageView(
               </Panel>
             )}
           </ReactFlow>
-          {isContextMenuRendered && (
-            // Only render context menu when select mode is action
-            <Menu isOpen={true} onClose={closeContextMenu}>
-              <MenuList
-                fontSize="11pt"
-                position="absolute"
-                width="250px"
-                style={{
-                  left: `${contextMenuPosition.x}px`,
-                  top: `${contextMenuPosition.y}px`,
-                }}>
-                <MenuItem
-                  icon={<BiArrowFromBottom />}
-                  onClick={() => {
-                    selectParentNodes(1);
-                  }}>
-                  Select parent nodes
-                </MenuItem>
-                <MenuItem
-                  icon={<BiArrowToBottom />}
-                  onClick={() => {
-                    selectChildNodes(1);
-                  }}>
-                  Select child nodes
-                </MenuItem>
-                <MenuDivider></MenuDivider>
-                <MenuItem
-                  icon={<BiArrowFromBottom />}
-                  onClick={() => {
-                    selectParentNodes();
-                  }}>
-                  Select all upstream nodes
-                </MenuItem>
-                <MenuItem
-                  icon={<BiArrowToBottom />}
-                  onClick={() => {
-                    selectChildNodes();
-                  }}>
-                  Select all downstream nodes
-                </MenuItem>
-              </MenuList>
-            </Menu>
-          )}
+          <LineageViewContextMenu {...lineageViewContextMenu.props} />
         </VStack>
         {focusedNode ? (
           <Box borderLeft="solid 1px lightgray" height="100%">

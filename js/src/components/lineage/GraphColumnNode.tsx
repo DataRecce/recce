@@ -1,4 +1,4 @@
-import { Box, Flex, Icon, Spacer, Tag, TagLabel, Text } from "@chakra-ui/react";
+import { Box, Flex, Icon, Spacer, Tag, TagLabel } from "@chakra-ui/react";
 import React from "react";
 
 import { Handle, NodeProps, Position, useStore } from "reactflow";
@@ -8,6 +8,7 @@ import "./styles.css";
 
 import { useLineageViewContextSafe } from "./LineageViewContext";
 import { getIconForChangeStatus } from "./styles";
+import { VscKebabVertical } from "react-icons/vsc";
 
 type GrapeColumnNodeProps = NodeProps<LinageGraphColumnNode>;
 
@@ -54,17 +55,19 @@ export const TransformationType = ({
   );
 };
 
-export function GraphColumnNode({ data }: GrapeColumnNodeProps) {
+export function GraphColumnNode(nodeProps: GrapeColumnNodeProps) {
+  const { data } = nodeProps;
   const { id: nodeId } = data.node;
   const { column, type, transformationType, changeStatus } = data;
   const showContent = useStore((s) => s.transform[2] > 0.3);
 
-  const { viewOptions } = useLineageViewContextSafe();
+  const { viewOptions, showContextMenu } = useLineageViewContextSafe();
 
   const selectedNode = viewOptions.column_level_lineage?.node;
   const selectedColumn = viewOptions.column_level_lineage?.column;
   const isFocus = column === selectedColumn && nodeId === selectedNode;
   const { color: colorChangeStatus, icon: iconChangeStatus } = getIconForChangeStatus(changeStatus);
+  const [isHovered, setIsHovered] = React.useState(false);
 
   if (!showContent) {
     return <></>;
@@ -79,6 +82,12 @@ export function GraphColumnNode({ data }: GrapeColumnNodeProps) {
       backgroundColor={isFocus ? "#f0f0f0" : "inherit"}
       _hover={{
         backgroundColor: isFocus ? "#f0f0f0" : "#f0f0f0",
+      }}
+      onMouseEnter={() => {
+        setIsHovered(true);
+      }}
+      onMouseLeave={() => {
+        setIsHovered(false);
       }}>
       <Flex fontSize="10px" color="gray" width="100%" gap="3px" alignItems="center">
         {changeStatus && (
@@ -92,7 +101,23 @@ export function GraphColumnNode({ data }: GrapeColumnNodeProps) {
         {transformationType && <TransformationType transformationType={transformationType} />}
         <Box height="16px">{column}</Box>
         <Spacer></Spacer>
-        <Box height="16px">{type}</Box>
+
+        {isHovered ? (
+          <Icon
+            as={VscKebabVertical}
+            boxSize="14px"
+            display={"inline-flex"}
+            cursor={"pointer"}
+            _hover={{ color: "black" }}
+            onClick={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              showContextMenu(e, nodeProps);
+            }}
+          />
+        ) : (
+          <Box height="16px">{type}</Box>
+        )}
       </Flex>
       <Handle
         type="target"
