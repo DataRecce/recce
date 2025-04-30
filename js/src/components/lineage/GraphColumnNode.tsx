@@ -1,12 +1,4 @@
-import {
-  Box,
-  Flex,
-  Icon,
-  IconButton,
-  Spacer,
-  Tag,
-  TagLabel,
-} from "@chakra-ui/react";
+import { Box, Flex, Icon, Spacer, Tag, TagLabel } from "@chakra-ui/react";
 import React from "react";
 
 import { Handle, NodeProps, Position, useStore } from "reactflow";
@@ -51,23 +43,11 @@ export const TransformationType = ({
   return (
     <>
       {legend ? (
-        <Tag
-          fontSize="8pt"
-          size="xs"
-          colorScheme={color}
-          borderRadius="full"
-          paddingX="4px"
-        >
+        <Tag fontSize="8pt" size="xs" colorScheme={color} borderRadius="full" paddingX="4px">
           <TagLabel>{letter}</TagLabel>
         </Tag>
       ) : (
-        <Tag
-          fontSize="6pt"
-          size="xs"
-          colorScheme={color}
-          borderRadius="full"
-          paddingX="2px"
-        >
+        <Tag fontSize="6pt" size="xs" colorScheme={color} borderRadius="full" paddingX="2px">
           <TagLabel>{letter}</TagLabel>
         </Tag>
       )}
@@ -86,14 +66,12 @@ export function GraphColumnNode(nodeProps: GrapeColumnNodeProps) {
   const selectedNode = viewOptions.column_level_lineage?.node;
   const selectedColumn = viewOptions.column_level_lineage?.column;
   const isFocus = column === selectedColumn && nodeId === selectedNode;
-  const { color: colorChangeStatus, icon: iconChangeStatus } =
-    getIconForChangeStatus(changeStatus);
+  const { color: colorChangeStatus, icon: iconChangeStatus } = getIconForChangeStatus(changeStatus);
   const [isHovered, setIsHovered] = React.useState(false);
 
   if (!showContent) {
     return <></>;
   }
-  // const isHovered = true;
 
   return (
     <Flex
@@ -105,16 +83,13 @@ export function GraphColumnNode(nodeProps: GrapeColumnNodeProps) {
       _hover={{
         backgroundColor: isFocus ? "#f0f0f0" : "#f0f0f0",
       }}
-      onMouseEnter={() => setIsHovered(true)}
-      onMouseLeave={() => setIsHovered(false)}
-    >
-      <Flex
-        fontSize="10px"
-        color="gray"
-        width="100%"
-        gap="3px"
-        alignItems="center"
-      >
+      onMouseEnter={() => {
+        setIsHovered(true);
+      }}
+      onMouseLeave={() => {
+        setIsHovered(false);
+      }}>
+      <Flex fontSize="10px" color="gray" width="100%" gap="3px" alignItems="center">
         {changeStatus && (
           <Icon
             boxSize="12px"
@@ -123,9 +98,7 @@ export function GraphColumnNode(nodeProps: GrapeColumnNodeProps) {
             as={iconChangeStatus}
           />
         )}
-        {transformationType && (
-          <TransformationType transformationType={transformationType} />
-        )}
+        {transformationType && <TransformationType transformationType={transformationType} />}
         <Box height="16px">{column}</Box>
         <Spacer></Spacer>
 
