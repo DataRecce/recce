@@ -319,6 +319,8 @@ class DbtAdapter(BaseAdapter):
                 adapter_name = runtime_config.credentials.type
                 adapter_cls = get_adapter_class_by_name(adapter_name)
                 adapter: SQLAdapter = adapter_cls(runtime_config, get_mp_context())
+                from dbt.adapters.factory import FACTORY
+                FACTORY.adapters[adapter_name] = adapter
 
             adapter.connections.set_connection_name()
             runtime_config.adapter = adapter
@@ -1204,6 +1206,7 @@ class DbtAdapter(BaseAdapter):
         spec = SelectionIntersection(specs)
 
         manifest = Manifest()
+        manifest.metadata.adapter_type = self.adapter.type()
         manifest_prev = self.previous_state.manifest
         manifest_curr = self.manifest
 
