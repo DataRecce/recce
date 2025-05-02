@@ -10,6 +10,7 @@ import { useLineageGraphContext } from "@/lib/hooks/LineageGraphContext";
 import { supportsHistogramDiff } from "../histogram/HistogramDiffForm";
 import { useRecceInstanceContext } from "@/lib/hooks/RecceInstanceContext";
 import { useRecceServerFlag } from "@/lib/hooks/useRecceServerFlag";
+import { memoryUsage } from "process";
 
 interface LineageViewContextMenuProps {
   x: number;
@@ -27,10 +28,11 @@ export const LineageViewContextMenu = ({
   node,
 }: LineageViewContextMenuProps) => {
   const menuItems: {
-    label: string;
-    icon: React.ReactNode;
-    action: () => void;
+    label?: string;
+    icon?: React.ReactElement;
+    action?: () => void;
     isDisabled?: boolean;
+    isSeparator?: boolean;
   }[] = [];
 
   const { selectParentNodes, selectChildNodes, getNodeColumnSet } = useLineageViewContextSafe();
@@ -45,6 +47,7 @@ export const LineageViewContextMenu = ({
     // we should prevent to show the context menu in the readonly mode
   } else if (node?.type === "customNode") {
     const modelNode = node.data as LineageGraphNode;
+    const resourceType = modelNode.resourceType;
 
     const handleProfileDiff = () => {
       const columns = Array.from(getNodeColumnSet(node.id));
@@ -56,22 +59,30 @@ export const LineageViewContextMenu = ({
     };
 
     if (!singleEnv) {
-      let entry = findByRunType("profile_diff");
-      menuItems.push({
-        label: entry?.title ?? "Profile",
-        icon: <Icon as={entry?.icon} />,
-        action: () => {
-          handleProfileDiff();
-        },
-      });
-      entry = findByRunType("value_diff");
-      menuItems.push({
-        label: entry?.title ?? "Value Diff",
-        icon: <Icon as={entry?.icon} />,
-        action: () => {
-          handleValueDiff();
-        },
-      });
+      if (resourceType && ["model", "seed", "snapshot"].includes(resourceType)) {
+        let entry = findByRunType("profile_diff");
+        menuItems.push({
+          label: entry?.title ?? "Profile",
+          icon: <Icon as={entry?.icon} />,
+          action: () => {
+            handleProfileDiff();
+          },
+        });
+        entry = findByRunType("value_diff");
+        menuItems.push({
+          label: entry?.title ?? "Value Diff",
+          icon: <Icon as={entry?.icon} />,
+          action: () => {
+            handleValueDiff();
+          },
+        });
+        if (menuItems.length > 0) {
+          menuItems.push({
+            isSeparator: true,
+          });
+        }
+      }
+
       menuItems.push({
         label: "Select parent nodes",
         icon: <BiArrowFromBottom />,
@@ -172,18 +183,25 @@ export const LineageViewContextMenu = ({
             {menuItems.length === 0 ? (
               <MenuItem isDisabled>No action available</MenuItem>
             ) : (
-              menuItems.map((item, index) => (
-                <MenuItem
-                  key={index}
-                  icon={item.icon as any}
-                  isDisabled={item.isDisabled}
-                  onClick={() => {
-                    item.action();
-                    onClose();
-                  }}>
-                  {item.label}
-                </MenuItem>
-              ))
+              menuItems.map((item) => {
+                if (item.isSeparator) {
+                  return <MenuDivider />;
+                } else {
+                  return (
+                    <MenuItem
+                      icon={item.icon}
+                      isDisabled={item.isDisabled}
+                      onClick={() => {
+                        if (item.action) {
+                          item.action();
+                        }
+                        onClose();
+                      }}>
+                      {item.label}
+                    </MenuItem>
+                  );
+                }
+              })
             )}
           </MenuList>
         </Menu>
