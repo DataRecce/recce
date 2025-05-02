@@ -433,7 +433,7 @@ export function toReactflow(
         }
 
         columnIndex++;
-        nodeColumnSet.add(columnKey);
+        nodeColumnSet.add(column.name);
       }
     } else if (breakingChangeEnabled && node.change) {
       for (const [column, changeStatus] of Object.entries(node.change.columns ?? {})) {
@@ -462,7 +462,7 @@ export function toReactflow(
         });
 
         columnIndex++;
-        nodeColumnSet.add(columnKey);
+        nodeColumnSet.add(column);
       }
     }
 

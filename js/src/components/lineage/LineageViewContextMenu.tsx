@@ -33,7 +33,7 @@ export const LineageViewContextMenu = ({
     isDisabled?: boolean;
   }[] = [];
 
-  const { selectParentNodes, selectChildNodes } = useLineageViewContextSafe();
+  const { selectParentNodes, selectChildNodes, getNodeColumnSet } = useLineageViewContextSafe();
   const { runAction } = useRecceActionContext();
   const { isActionAvailable } = useLineageGraphContext();
   const { readOnly } = useRecceInstanceContext();
@@ -44,7 +44,34 @@ export const LineageViewContextMenu = ({
     // no items in the context menu
     // we should prevent to show the context menu in the readonly mode
   } else if (node?.type === "customNode") {
+    const modelNode = node.data as LineageGraphNode;
+
+    const handleProfileDiff = () => {
+      const columns = Array.from(getNodeColumnSet(node.id));
+      runAction("profile_diff", { model: modelNode.name, columns }, { showForm: true });
+    };
+    const handleValueDiff = () => {
+      const columns = Array.from(getNodeColumnSet(node.id));
+      runAction("value_diff", { model: modelNode.name, columns }, { showForm: true });
+    };
+
     if (!singleEnv) {
+      let entry = findByRunType("profile_diff");
+      menuItems.push({
+        label: entry?.title ?? "Profile",
+        icon: <Icon as={entry?.icon} />,
+        action: () => {
+          handleProfileDiff();
+        },
+      });
+      entry = findByRunType("value_diff");
+      menuItems.push({
+        label: entry?.title ?? "Value Diff",
+        icon: <Icon as={entry?.icon} />,
+        action: () => {
+          handleValueDiff();
+        },
+      });
       menuItems.push({
         label: "Select parent nodes",
         icon: <BiArrowFromBottom />,
