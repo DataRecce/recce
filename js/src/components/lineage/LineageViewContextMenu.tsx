@@ -11,6 +11,9 @@ import { supportsHistogramDiff } from "../histogram/HistogramDiffForm";
 import { useRecceInstanceContext } from "@/lib/hooks/RecceInstanceContext";
 import { useRecceServerFlag } from "@/lib/hooks/useRecceServerFlag";
 import { memoryUsage } from "process";
+import useModelColumns from "@/lib/hooks/useModelColumns";
+import { useRecceQueryContext } from "@/lib/hooks/RecceQueryContext";
+import { useLocation } from "wouter";
 
 interface LineageViewContextMenuProps {
   x: number;
@@ -43,6 +46,11 @@ export const LineageViewContextMenu = ({
   const { data: flag } = useRecceServerFlag();
   const singleEnv = flag?.single_env_onboarding ?? false;
 
+  // query
+  const { primaryKey } = useModelColumns((node?.data as LineageGraphNode | undefined)?.name);
+  const { setSqlQuery, setPrimaryKeys } = useRecceQueryContext();
+  const [, setLocation] = useLocation();
+
   if (readOnly) {
     // no items in the context menu
     // we should prevent to show the context menu in the readonly mode
@@ -51,8 +59,23 @@ export const LineageViewContextMenu = ({
     const resourceType = modelNode.resourceType;
 
     if (!selectMode && resourceType && ["model", "seed", "snapshot"].includes(resourceType)) {
+      // query
+      let entry = findByRunType(singleEnv ? "query" : "query_diff");
+      menuItems.push({
+        label: "Query",
+        icon: <Icon as={entry?.icon} />,
+        action: () => {
+          setSqlQuery(`select * from {{ ref("${modelNode.name}") }}`);
+          if (isActionAvailable("query_diff_with_primary_key")) {
+            // Only set primary key if the action is available
+            setPrimaryKeys(primaryKey !== undefined ? [primaryKey] : undefined);
+          }
+          setLocation("/query");
+        },
+      });
+
       // row count & row count diff
-      let entry = findByRunType(singleEnv ? "row_count" : "row_count_diff");
+      entry = findByRunType(singleEnv ? "row_count" : "row_count_diff");
       menuItems.push({
         label: entry?.title ?? "Row count",
         icon: <Icon as={entry?.icon} />,
