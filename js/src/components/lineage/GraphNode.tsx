@@ -153,22 +153,6 @@ const GraphNodeTitle = ({
   );
 };
 
-const GraphNodeUpperRight = () => {
-  return (
-    <>
-      <Icon boxSize="16px" color={resourceColor} as={resourceIcon} />
-
-      {iconChangeStatus && (
-        <Icon
-          // color={selectMode === "multi" && isSelected ? "white" : color}
-          color={iconChangeColor}
-          as={iconChangeStatus}
-        />
-      )}
-    </>
-  );
-};
-
 export function GraphNode(nodeProps: GraphNodeProps) {
   const { data } = nodeProps;
   const { id, resourceType, changeStatus, change } = data;
