@@ -50,51 +50,56 @@ export const LineageViewContextMenu = ({
     const modelNode = node.data as LineageGraphNode;
     const resourceType = modelNode.resourceType;
 
-    const handleRowCountDiff = () => {
-      runAction("row_count_diff", { node_names: [modelNode.name] }, { showForm: false });
-    };
-    const handleProfileDiff = () => {
-      const columns = Array.from(getNodeColumnSet(node.id));
-      runAction("profile_diff", { model: modelNode.name, columns }, { showForm: true });
-    };
-    const handleValueDiff = () => {
-      const columns = Array.from(getNodeColumnSet(node.id));
-      runAction("value_diff", { model: modelNode.name, columns }, { showForm: true });
-    };
+    if (!selectMode && resourceType && ["model", "seed", "snapshot"].includes(resourceType)) {
+      // row count & row count diff
+      let entry = findByRunType(singleEnv ? "row_count" : "row_count_diff");
+      menuItems.push({
+        label: entry?.title ?? "Row count",
+        icon: <Icon as={entry?.icon} />,
+        action: () => {
+          runAction(
+            singleEnv ? "row_count" : "row_count_diff",
+            { node_names: [modelNode.name] },
+            { showForm: false },
+          );
+        },
+      });
 
-    if (!singleEnv) {
-      if (!selectMode && resourceType && ["model", "seed", "snapshot"].includes(resourceType)) {
-        let entry = findByRunType("row_count_diff");
-        menuItems.push({
-          label: entry?.title ?? "Row count",
-          icon: <Icon as={entry?.icon} />,
-          action: () => {
-            handleRowCountDiff();
-          },
-        });
-        entry = findByRunType("profile_diff");
-        menuItems.push({
-          label: entry?.title ?? "Profile",
-          icon: <Icon as={entry?.icon} />,
-          action: () => {
-            handleProfileDiff();
-          },
-        });
+      // profile & profile diff
+      entry = findByRunType(singleEnv ? "profile" : "profile_diff");
+      menuItems.push({
+        label: entry?.title ?? "Profile",
+        icon: <Icon as={entry?.icon} />,
+        action: () => {
+          const columns = Array.from(getNodeColumnSet(node.id));
+          runAction(
+            singleEnv ? "profile" : "profile_diff",
+            { model: modelNode.name, columns },
+            { showForm: true },
+          );
+        },
+      });
+
+      // value diff
+      if (!singleEnv) {
         entry = findByRunType("value_diff");
         menuItems.push({
           label: entry?.title ?? "Value Diff",
           icon: <Icon as={entry?.icon} />,
           action: () => {
-            handleValueDiff();
+            const columns = Array.from(getNodeColumnSet(node.id));
+            runAction("value_diff", { model: modelNode.name, columns }, { showForm: true });
           },
         });
-        if (menuItems.length > 0) {
-          menuItems.push({
-            isSeparator: true,
-          });
-        }
       }
+    }
 
+    if (!singleEnv) {
+      if (menuItems.length > 0) {
+        menuItems.push({
+          isSeparator: true,
+        });
+      }
       menuItems.push({
         label: "Select parent nodes",
         icon: <BiArrowFromBottom />,
