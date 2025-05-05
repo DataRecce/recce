@@ -42,7 +42,7 @@ const ContextMenu = ({ menuItems, isOpen, onClose, x, y }: ContextMenuProps) => 
   return (
     <Menu isOpen={isOpen} onClose={onClose}>
       <MenuList
-        fontSize="9pt"
+        fontSize="10pt"
         position="absolute"
         width="250px"
         style={{
@@ -86,7 +86,7 @@ export const ModelNodeContextMenu = ({
 }: LineageViewContextMenuProps) => {
   const menuItems: ContextMenuItem[] = [];
 
-  const { selectParentNodes, selectChildNodes, getNodeColumnSet, selectMode } =
+  const { selectParentNodes, selectChildNodes, getNodeColumnSet, selectMode, viewOptions } =
     useLineageViewContextSafe();
   const { runAction } = useRecceActionContext();
   const { isActionAvailable } = useLineageGraphContext();
@@ -104,6 +104,7 @@ export const ModelNodeContextMenu = ({
 
   const modelNode = node.data as LineageGraphNode;
   const resourceType = modelNode.resourceType;
+  const columns = Array.from(getNodeColumnSet(node.id));
 
   if (!selectMode && resourceType && ["model", "seed", "snapshot"].includes(resourceType)) {
     // query
@@ -120,6 +121,60 @@ export const ModelNodeContextMenu = ({
         setLocation("/query");
       },
     });
+
+    if (columns.length > 0) {
+      if (viewOptions.column_level_lineage !== undefined) {
+        const allColumns = new Set<string>();
+        if (primaryKey) {
+          allColumns.add(primaryKey);
+        }
+        columns.forEach((column) => {
+          allColumns.add(column);
+        });
+
+        menuItems.push({
+          label: "Query Related Columns",
+          icon: <Icon as={entry?.icon} />,
+          action: () => {
+            const query = `select \n  ${Array.from(allColumns).join(",\n  ")}\nfrom {{ ref("${modelNode.name}") }}`;
+            setSqlQuery(query);
+            if (isActionAvailable("query_diff_with_primary_key")) {
+              // Only set primary key if the action is available
+              setPrimaryKeys(primaryKey !== undefined ? [primaryKey] : undefined);
+            }
+            setLocation("/query");
+          },
+        });
+      } else {
+        // modified columns
+        const changedColumns = Object.entries(modelNode.change?.columns ?? {})
+          .filter(([, value]) => value === "modified")
+          .map(([key]) => key);
+        if (changedColumns.length > 0) {
+          const allColumns = new Set<string>();
+          if (primaryKey) {
+            allColumns.add(primaryKey);
+          }
+          changedColumns.forEach((column) => {
+            allColumns.add(column);
+          });
+
+          menuItems.push({
+            label: "Query Modified Columns",
+            icon: <Icon as={entry?.icon} />,
+            action: () => {
+              const query = `select \n  ${Array.from(allColumns).join(",\n  ")}\nfrom {{ ref("${modelNode.name}") }}`;
+              setSqlQuery(query);
+              if (isActionAvailable("query_diff_with_primary_key")) {
+                // Only set primary key if the action is available
+                setPrimaryKeys(primaryKey !== undefined ? [primaryKey] : undefined);
+              }
+              setLocation("/query");
+            },
+          });
+        }
+      }
+    }
 
     // row count & row count diff
     entry = findByRunType(singleEnv ? "row_count" : "row_count_diff");
@@ -171,28 +226,28 @@ export const ModelNodeContextMenu = ({
       });
     }
     menuItems.push({
-      label: "Select parent nodes",
+      label: "Select Parent Nodes",
       icon: <BiArrowFromBottom />,
       action: () => {
         selectParentNodes(node.id, 1);
       },
     });
     menuItems.push({
-      label: "Select child nodes",
+      label: "Select Child Nodes",
       icon: <BiArrowToBottom />,
       action: () => {
         selectChildNodes(node.id, 1);
       },
     });
     menuItems.push({
-      label: "Select all upstream nodes",
+      label: "Select All Upstream Nodes",
       icon: <BiArrowFromBottom />,
       action: () => {
         selectParentNodes(node.id);
       },
     });
     menuItems.push({
-      label: "Select all downstream nodes",
+      label: "Select All Downstream Nodes",
       icon: <BiArrowToBottom />,
       action: () => {
         selectChildNodes(node.id);
