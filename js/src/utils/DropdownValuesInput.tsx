@@ -33,7 +33,7 @@ export interface DropdownValuesInputProps extends InputProps {
 }
 
 export const DropdownValuesInput = (props: DropdownValuesInputProps) => {
-  const { defaultValues, suggestionList, onValuesChange, isDisabled } = props;
+  const { defaultValues, suggestionList, onValuesChange } = props;
   const [values, setValues] = useState<string[]>(defaultValues ?? []);
   const [filter, setFilter] = useState<string>("");
   const [isTyping, setIsTyping] = useState<boolean>(false);
@@ -61,14 +61,6 @@ export const DropdownValuesInput = (props: DropdownValuesInputProps) => {
     setValues([]);
     onValuesChange([]);
   };
-
-  if (isDisabled) {
-    return (
-      <Tooltip label={DisableTooltipMessages.audit_helper}>
-        <Input size="xs" disabled placeholder="Unavailable" />
-      </Tooltip>
-    );
-  }
 
   const filteredList =
     suggestionList
