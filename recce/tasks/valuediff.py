@@ -1,12 +1,12 @@
-from typing import TypedDict, Optional, List, Union
+from typing import List, Optional, TypedDict, Union
 
 from pydantic import BaseModel
 
-from .core import Task, TaskResultDiffer, CheckValidator
-from .dataframe import DataFrame
 from ..core import default_context
 from ..exceptions import RecceException
 from ..models import Check
+from .core import CheckValidator, Task, TaskResultDiffer
+from .dataframe import DataFrame
 
 
 class ValueDiffParams(BaseModel):
@@ -28,10 +28,7 @@ class ValueDiffResult(BaseModel):
 class ValueDiffMixin:
     def _verify_dbt_packages_deps(self, dbt_adapter):
         for macro_name, macro in dbt_adapter.manifest.macros.items():
-            if (
-                macro.package_name == "dbt_utils"
-                and macro.name == "generate_surrogate_key"
-            ):
+            if macro.package_name == "dbt_utils" and macro.name == "generate_surrogate_key":
                 self.legacy_surrogate_key = False
                 break
 
@@ -52,7 +49,6 @@ class ValueDiffMixin:
 
         # check primary keys
         for base in [True, False]:
-
             relation = dbt_adapter.create_relation(model, base)
             context = dict(
                 relation=relation,
@@ -76,7 +72,6 @@ class ValueDiffMixin:
 
 
 class ValueDiffTask(Task, ValueDiffMixin):
-
     def __init__(self, params):
         super().__init__()
         self.params = ValueDiffParams(**params)
@@ -288,7 +283,6 @@ class ValueDiffTask(Task, ValueDiffMixin):
 
 
 class ValueDiffTaskResultDiffer(TaskResultDiffer):
-
     def _check_result_changed_fn(self, result):
         is_changed = False
         summary = result.get("summary", {})
@@ -332,7 +326,6 @@ class ValueDiffDetailResult(DataFrame):
 
 
 class ValueDiffDetailTask(Task, ValueDiffMixin):
-
     def __init__(self, params):
         super().__init__()
         self.params = ValueDiffParams(**params)
@@ -346,7 +339,6 @@ class ValueDiffDetailTask(Task, ValueDiffMixin):
         model: str,
         columns: List[str] = None,
     ):
-
         composite = True if isinstance(primary_key, List) else False
 
         if columns is None or len(columns) == 0:
@@ -449,7 +441,6 @@ class ValueDiffDetailTask(Task, ValueDiffMixin):
         return DataFrame.from_agate(table)
 
     def execute(self):
-
         from recce.adapter.dbt_adapter import DbtAdapter
 
         dbt_adapter: DbtAdapter = default_context().adapter
@@ -479,7 +470,6 @@ class ValueDiffDetailTask(Task, ValueDiffMixin):
 
 
 class ValueDiffDetailTaskResultDiffer(TaskResultDiffer):
-
     def _check_result_changed_fn(self, result):
         diff_data = result.get("data")
         if diff_data is None or len(diff_data) == 0:
@@ -490,7 +480,6 @@ class ValueDiffDetailTaskResultDiffer(TaskResultDiffer):
 
 
 class ValueDiffCheckValidator(CheckValidator):
-
     def validate_check(self, check: Check):
         try:
             ValueDiffParams(**check.params)

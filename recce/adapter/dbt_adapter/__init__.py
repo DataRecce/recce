@@ -92,11 +92,7 @@ from dbt.adapters.base import Column  # noqa: E402
 from dbt.adapters.factory import get_adapter_class_by_name  # noqa: E402
 from dbt.adapters.sql import SQLAdapter  # noqa: E402
 from dbt.config.runtime import RuntimeConfig  # noqa: E402
-from dbt.contracts.graph.manifest import (
-    Manifest,
-    WritableManifest,
-    MacroManifest,
-)  # noqa: E402
+from dbt.contracts.graph.manifest import Manifest, WritableManifest, MacroManifest  # noqa: E402
 from dbt.contracts.graph.nodes import ManifestNode  # noqa: E402
 from dbt.contracts.results import CatalogArtifact  # noqa: E402
 from dbt.flags import set_from_args  # noqa: E402
@@ -307,7 +303,6 @@ class DbtAdapter(BaseAdapter):
 
     @classmethod
     def load(cls, no_artifacts=False, review=False, **kwargs):
-
         target = kwargs.get("target")
         target_path = kwargs.get("target_path", "target")
         target_base_path = kwargs.get("target_base_path", "target-base")
@@ -355,6 +350,7 @@ class DbtAdapter(BaseAdapter):
                 adapter_cls = get_adapter_class_by_name(adapter_name)
                 adapter: SQLAdapter = adapter_cls(runtime_config, get_mp_context())
                 from dbt.adapters.factory import FACTORY
+
                 FACTORY.adapters[adapter_name] = adapter
 
             adapter.connections.set_connection_name()
@@ -450,10 +446,10 @@ class DbtAdapter(BaseAdapter):
 
             not_null_prefix = f"not_null_{node_name}_"
             if child_type == "test" and child_name.startswith(not_null_prefix):
-                cols_not_null.append(child_name[len(not_null_prefix) :])
+                cols_not_null.append(child_name[len(not_null_prefix):])
             unique_prefix = f"unique_{node_name}_"
             if child_type == "test" and child_name.startswith(unique_prefix):
-                cols_unique.append(child_name[len(unique_prefix) :])
+                cols_unique.append(child_name[len(unique_prefix):])
 
         columns_info = {}
         primary_key = None
@@ -535,7 +531,6 @@ class DbtAdapter(BaseAdapter):
         return False
 
     def find_node_by_name(self, node_name, base=False) -> Optional[ManifestNode]:
-
         manifest = self.curr_manifest if base is False else self.base_manifest
 
         for key, node in manifest.nodes.items():
@@ -728,10 +723,10 @@ class DbtAdapter(BaseAdapter):
 
                 not_null_prefix = f"not_null_{node_name}_"
                 if child_type == "test" and child_name.startswith(not_null_prefix):
-                    cols_not_null.append(child_name[len(not_null_prefix) :])
+                    cols_not_null.append(child_name[len(not_null_prefix):])
                 unique_prefix = f"unique_{node_name}_"
                 if child_type == "test" and child_name.startswith(unique_prefix):
-                    cols_unique.append(child_name[len(unique_prefix) :])
+                    cols_unique.append(child_name[len(unique_prefix):])
 
             if catalog is not None and unique_id in catalog.nodes:
                 columns = {}
@@ -851,11 +846,7 @@ class DbtAdapter(BaseAdapter):
                 base_checksum = base_node.get("checksum", {}).get("checksum")
                 curr_checksum = curr_node.get("checksum", {}).get("checksum")
                 change = None
-                if (
-                    base_checksum is None
-                    or curr_checksum is None
-                    or base_checksum == curr_checksum
-                ):
+                if base_checksum is None or curr_checksum is None or base_checksum == curr_checksum:
                     continue
 
                 if curr_node.get("resource_type") == "model":
@@ -1151,10 +1142,7 @@ class DbtAdapter(BaseAdapter):
     def get_manifests_by_id(self, unique_id: str):
         curr_manifest = self.get_manifest(base=False)
         base_manifest = self.get_manifest(base=True)
-        if (
-            unique_id in curr_manifest.nodes.keys()
-            or unique_id in base_manifest.nodes.keys()
-        ):
+        if unique_id in curr_manifest.nodes.keys() or unique_id in base_manifest.nodes.keys():
             return {
                 "current": curr_manifest.nodes.get(unique_id),
                 "base": base_manifest.nodes.get(unique_id),
