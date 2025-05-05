@@ -35,7 +35,8 @@ export const LineageViewContextMenu = ({
     isSeparator?: boolean;
   }[] = [];
 
-  const { selectParentNodes, selectChildNodes, getNodeColumnSet } = useLineageViewContextSafe();
+  const { selectParentNodes, selectChildNodes, getNodeColumnSet, selectMode } =
+    useLineageViewContextSafe();
   const { runAction } = useRecceActionContext();
   const { isActionAvailable } = useLineageGraphContext();
   const { readOnly } = useRecceInstanceContext();
@@ -49,6 +50,9 @@ export const LineageViewContextMenu = ({
     const modelNode = node.data as LineageGraphNode;
     const resourceType = modelNode.resourceType;
 
+    const handleRowCountDiff = () => {
+      runAction("row_count_diff", { node_names: [modelNode.name] }, { showForm: false });
+    };
     const handleProfileDiff = () => {
       const columns = Array.from(getNodeColumnSet(node.id));
       runAction("profile_diff", { model: modelNode.name, columns }, { showForm: true });
@@ -59,8 +63,16 @@ export const LineageViewContextMenu = ({
     };
 
     if (!singleEnv) {
-      if (resourceType && ["model", "seed", "snapshot"].includes(resourceType)) {
-        let entry = findByRunType("profile_diff");
+      if (!selectMode && resourceType && ["model", "seed", "snapshot"].includes(resourceType)) {
+        let entry = findByRunType("row_count_diff");
+        menuItems.push({
+          label: entry?.title ?? "Row count",
+          icon: <Icon as={entry?.icon} />,
+          action: () => {
+            handleRowCountDiff();
+          },
+        });
+        entry = findByRunType("profile_diff");
         menuItems.push({
           label: entry?.title ?? "Profile",
           icon: <Icon as={entry?.icon} />,
