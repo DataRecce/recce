@@ -1,19 +1,44 @@
+.PHONY: help format lint check test clean install dev-install
+
+# Default target executed when no arguments are given to make.
+default: help
+
 install-dev:
 	pip install -e .[dev]
+	pre-commit install
 
 install:
 	pip install .
 
-.help:
-	@echo "test - run tests"
-	@echo "flake8 - run flake8"
-	@echo "install - install requirements"
-	@echo "install-dev - install dev requirements"
-	@echo "dev - run the frontend in dev mode"
+help:
+	@echo "Available commands:"
+	@echo "  make help         - Show this help message"
+	@echo "  make format       - Format code with Black and isort"
+	@echo "  make flake8       - Run flake8 linting"
+	@echo "  make mypy         - Run type checking with mypy"
+	@echo "  make check        - Run all code quality checks without modifying files"
+	@echo "  make install      - Install requirements"
+	@echo "  make install-dev  - Install dev requirements"
+	@echo "  make dev          - Run the frontend in dev mode"
+
+format:
+	@echo "Formatting with Black..."
+	black ./recce ./tests
+	@echo "Sorting imports with isort..."
+	isort ./recce ./tests
 
 flake8:
-	@flake8
-	@echo "Passed"
+	@echo "Linting with flake8..."
+	flake8 ./recce ./tests
+
+# Run all code quality checks without modifying files
+check:
+	@echo "Checking code formatting with Black..."
+	black --check ./recce ./tests
+	@echo "Checking import order with isort..."
+	isort --check ./recce ./tests
+	@echo "Checking code style with flake8..."
+	flake8 ./recce ./tests
 
 test: install-dev
 	@python3 -m pytest --cov --cov-report xml --cov-report html tests
