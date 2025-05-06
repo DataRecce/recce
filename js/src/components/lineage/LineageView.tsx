@@ -642,7 +642,6 @@ export function PrivateLineageView(
     };
 
     setViewOptions(newViewOptions);
-    setFocusedNodeId(undefined);
     await refreshLayout({
       viewOptions: newViewOptions,
     });
