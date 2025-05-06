@@ -244,15 +244,8 @@ class QueryDiffTask(Task, QueryMixin, ValueDiffMixin):
         limit {{ limit }}
         """
 
-        if len(primary_keys) > 1:
-            self.check_cancel()
-
-            primary_key_str = " || '-' || ".join(
-                [f"coalesce(cast({p} as TEXT), '')" for p in primary_keys]
-            )
-            primary_key = f"md5(cast({primary_key_str} as TEXT))"
-        else:
-            primary_key = primary_keys[0]
+        self.check_cancel()
+        primary_key = ",".join(primary_keys)
 
         if preview_change:
             base_query = dbt_adapter.generate_sql(base_sql_template, base=False)
@@ -276,7 +269,6 @@ class QueryDiffTask(Task, QueryMixin, ValueDiffMixin):
         sql = transpile(
             sql, read="duckdb", write=adapter_name, identify=True, pretty=True
         )[0]
-        print(sql)
 
         _, table = dbt_adapter.execute(sql, fetch=True)
         self.check_cancel()
