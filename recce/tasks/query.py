@@ -10,6 +10,8 @@ from ..core import default_context
 from ..exceptions import RecceException
 from ..models import Check
 
+from sqlglot import transpile
+
 QUERY_LIMIT = 2000
 
 if typing.TYPE_CHECKING:
@@ -238,21 +240,19 @@ class QueryDiffTask(Task, QueryMixin, ValueDiffMixin):
 
         select * from all_records
         where not (in_a and in_b)
-        order by {{ __PRIMARY_KEY__ }}, in_a desc, in_b desc
+        order by {{ primary_key }}, in_a desc, in_b desc
         limit {{ limit }}
         """
 
         if len(primary_keys) > 1:
-            self._verify_dbt_packages_deps(dbt_adapter)
             self.check_cancel()
 
-            if self.legacy_surrogate_key:
-                new_primary_key = "dbt_utils.surrogate_key(primary_key)"
-            else:
-                new_primary_key = "dbt_utils.generate_surrogate_key(primary_key)"
+            primary_key_str = " || '-' || ".join(
+                [f"coalesce(cast({p} as TEXT), '')" for p in primary_keys]
+            )
+            primary_key = f"md5(cast({primary_key_str} as TEXT))"
         else:
-            new_primary_key = "primary_key"
-        query_template = query_template.replace("__PRIMARY_KEY__", new_primary_key)
+            primary_key = primary_keys[0]
 
         if preview_change:
             base_query = dbt_adapter.generate_sql(base_sql_template, base=False)
@@ -267,10 +267,16 @@ class QueryDiffTask(Task, QueryMixin, ValueDiffMixin):
             context=dict(
                 base_query=base_query,
                 current_query=current_query,
-                primary_key=primary_keys if len(primary_keys) != 1 else primary_keys[0],
+                primary_key=primary_key,
                 limit=QUERY_LIMIT,
             ),
         )
+
+        adapter_name = dbt_adapter.runtime_config.credentials.type
+        sql = transpile(
+            sql, read="duckdb", write=adapter_name, identify=True, pretty=True
+        )[0]
+        print(sql)
 
         _, table = dbt_adapter.execute(sql, fetch=True)
         self.check_cancel()

@@ -8,6 +8,8 @@ from ..models import Check
 from .core import CheckValidator, Task, TaskResultDiffer
 from .dataframe import DataFrame
 
+from sqlglot import transpile
+
 
 class ValueDiffParams(BaseModel):
     model: str
@@ -80,7 +82,7 @@ class ValueDiffTask(Task, ValueDiffMixin):
 
     def _query_value_diff(
         self,
-        dbt_adpter,
+        dbt_adapter,
         primary_key: Union[str, List[str]],
         model: str,
         columns: List[str] = None,
@@ -92,10 +94,10 @@ class ValueDiffTask(Task, ValueDiffMixin):
 
         if columns is None or len(columns) == 0:
             base_columns = [
-                column.column for column in dbt_adpter.get_columns(model, base=True)
+                column.column for column in dbt_adapter.get_columns(model, base=True)
             ]
             curr_columns = [
-                column.column for column in dbt_adpter.get_columns(model, base=False)
+                column.column for column in dbt_adapter.get_columns(model, base=False)
             ]
             columns = [column for column in base_columns if column in curr_columns]
         completed = 0
@@ -110,11 +112,11 @@ class ValueDiffTask(Task, ValueDiffMixin):
 
         sql_template = r"""
         with a_query as (
-            select {{ __PRIMARY_KEY__ }} as _pk, * from {{ base_relation }}
+            select {{ primary_key }} as _pk, * from {{ base_relation }}
         ),
 
         b_query as (
-            select {{ __PRIMARY_KEY__ }} as _pk, * from {{ curr_relation }}
+            select {{ primary_key }} as _pk, * from {{ curr_relation }}
         ),
 
         joined as (
@@ -154,30 +156,32 @@ class ValueDiffTask(Task, ValueDiffMixin):
         """
 
         if composite:
-            if self.legacy_surrogate_key:
-                new_primary_key = "dbt_utils.surrogate_key(primary_key)"
-            else:
-                new_primary_key = "dbt_utils.generate_surrogate_key(primary_key)"
-        else:
-            new_primary_key = "primary_key"
-        sql_template = sql_template.replace("__PRIMARY_KEY__", new_primary_key)
+            primary_key_str = " || '-' || ".join(
+                [f"coalesce(cast({p} as TEXT), '')" for p in primary_key]
+            )
+            primary_key = f"md5(cast({primary_key_str} as TEXT))"
 
         for column in columns:
             self.update_progress(
                 message=f"Diff column: {column}", percentage=completed / len(columns)
             )
 
-            sql = dbt_adpter.generate_sql(
+            sql = dbt_adapter.generate_sql(
                 sql_template,
                 context=dict(
-                    base_relation=dbt_adpter.create_relation(model, base=True),
-                    curr_relation=dbt_adpter.create_relation(model, base=False),
+                    base_relation=dbt_adapter.create_relation(model, base=True),
+                    curr_relation=dbt_adapter.create_relation(model, base=False),
                     primary_key=primary_key,
                     column_to_compare=column,
                 ),
             )
 
-            _, table = dbt_adpter.execute(sql, fetch=True)
+            adapter_name = dbt_adapter.runtime_config.credentials.type
+            sql = transpile(
+                sql, read="duckdb", write=adapter_name, identify=True, pretty=True
+            )[0]
+
+            _, table = dbt_adapter.execute(sql, fetch=True)
             for row in table.rows:
                 # data example:
                 # ('COLUMN_NAME', 'MATCH_STATUS', 'COUNT_RECORDS', 'PERCENT_OF_TOTAL')
@@ -411,18 +415,15 @@ class ValueDiffDetailTask(Task, ValueDiffMixin):
 
         select * from all_records
         where not (in_a and in_b)
-        order by {{ __PRIMARY_KEY__ }}, in_a desc, in_b desc
+        order by {{ primary_key }}, in_a desc, in_b desc
         limit {{ limit }}
         """
 
         if composite:
-            if self.legacy_surrogate_key:
-                new_primary_key = "dbt_utils.surrogate_key(primary_key)"
-            else:
-                new_primary_key = "dbt_utils.generate_surrogate_key(primary_key)"
-        else:
-            new_primary_key = "primary_key"
-        sql_template = sql_template.replace("__PRIMARY_KEY__", new_primary_key)
+            primary_key_str = " || '-' || ".join(
+                [f"coalesce(cast({p} as TEXT), '')" for p in primary_key]
+            )
+            primary_key = f"md5(cast({primary_key_str} as TEXT))"
 
         sql = dbt_adapter.generate_sql(
             sql_template,
@@ -434,6 +435,11 @@ class ValueDiffDetailTask(Task, ValueDiffMixin):
                 limit=1000,
             ),
         )
+
+        adapter_name = dbt_adapter.runtime_config.credentials.type
+        sql = transpile(
+            sql, read="duckdb", write=adapter_name, identify=True, pretty=True
+        )[0]
 
         _, table = dbt_adapter.execute(sql, fetch=True)
         self.check_cancel()
