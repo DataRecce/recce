@@ -225,6 +225,7 @@ async def health_check(request: Request):
 
 class RecceInstanceInfoOut(BaseModel):
     read_only: bool
+    single_env: bool
     authed: bool
     lifetime_expired_at: Optional[datetime] = None
 
@@ -234,12 +235,14 @@ async def recce_instance_info():
     app_state: AppState = app.state
     flag = app_state.flag
     read_only = flag.get('read_only', False)
+    single_env = flag.get('single_env_onboarding', False)
 
     auth_options = app_state.auth_options or {}
     api_token = auth_options.get('api_token')
 
     return {
         "read_only": read_only,
+        "single_env": single_env,
         "authed": True if api_token else False,
         "lifetime_expired_at": app_state.lifetime_expired_at,  # UTC timezone
         # TODO: Add more instance info which won't change during the instance lifecycle
