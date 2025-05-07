@@ -360,25 +360,7 @@ export function PrivateLineageView(
     filteredNodeIds,
   ]);
 
-  const reactFlowOffset = useMemo(() => {
-    // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
-    if (!refReactFlow.current) {
-      return {
-        offsetX: 0,
-        offsetY: 0,
-      };
-    }
-
-    const pane = (refReactFlow.current as any).getBoundingClientRect();
-    const offsetTop = (refReactFlow.current as any).offsetTop as number;
-    return {
-      offsetX: -pane.left,
-      offsetY: -pane.top + offsetTop,
-    };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [refReactFlow.current]);
-
-  const lineageViewContextMenu = useLineageViewContextMenu(reactFlowOffset);
+  const lineageViewContextMenu = useLineageViewContextMenu();
 
   const toast = useToast();
 
@@ -748,7 +730,11 @@ export function PrivateLineageView(
     // Only show context menu when selectMode is action
     // Prevent native context menu from showing
     event.preventDefault();
-    lineageViewContextMenu.showContextMenu(event, node);
+    const reactFlowDiv = refReactFlow.current as HTMLDivElement;
+    const pane = reactFlowDiv.getBoundingClientRect();
+    const x = event.clientX - pane.left;
+    const y = event.clientY - pane.top + reactFlowDiv.offsetTop;
+    lineageViewContextMenu.showContextMenu(x, y, node);
   };
 
   const selectNode = (nodeId: string) => {

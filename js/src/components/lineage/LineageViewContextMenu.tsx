@@ -349,13 +349,7 @@ export const LineageViewContextMenu = ({
   }
 };
 
-export const useLineageViewContextMenu = ({
-  offsetX,
-  offsetY,
-}: {
-  offsetX: number;
-  offsetY: number;
-}) => {
+export const useLineageViewContextMenu = () => {
   const { isOpen, onClose, onOpen } = useDisclosure();
   const [position, setPosition] = useState<{ x: number; y: number }>({
     x: 0,
@@ -363,10 +357,7 @@ export const useLineageViewContextMenu = ({
   });
   const [node, setNode] = useState<Node | NodeProps>();
 
-  const showContextMenu = (event: React.MouseEvent, node: Node | NodeProps) => {
-    const x = event.clientX + offsetX;
-    const y = event.clientY + offsetY;
-
+  const showContextMenu = (x: number, y: number, node: Node | NodeProps) => {
     setPosition({ x, y });
     setNode(node);
     onOpen();
