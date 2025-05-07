@@ -76,6 +76,11 @@ class ProfileDiffTask(Task):
                 self.check_cancel()
             current = DataFrame.from_agate(merge_tables(tables))
 
+            if len(base.columns) == 0 and len(current.columns) != 0:
+                base.columns = current.columns
+            elif len(base.columns) != 0 and len(current.columns) == 0:
+                current.columns = base.columns
+
             return ProfileDiffResult(base=base, current=current)
 
     def _verify_dbt_profiler(self, dbt_adapter):
