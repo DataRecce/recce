@@ -13,6 +13,7 @@ import { useRecceServerFlag } from "@/lib/hooks/useRecceServerFlag";
 import useModelColumns from "@/lib/hooks/useModelColumns";
 import { useRecceQueryContext } from "@/lib/hooks/RecceQueryContext";
 import { useLocation } from "wouter";
+import { SubmitRunTrackProps } from "@/lib/api/runs";
 
 interface LineageViewContextMenuProps {
   x: number;
@@ -105,6 +106,9 @@ export const ModelNodeContextMenu = ({
   const modelNode = node.data as LineageGraphNode;
   const resourceType = modelNode.resourceType;
   const columns = Array.from(getNodeColumnSet(node.id));
+  const trackProps: SubmitRunTrackProps = {
+    source: "lineage_model_node",
+  };
 
   if (!selectMode && resourceType && ["model", "seed", "snapshot"].includes(resourceType)) {
     // query
@@ -185,7 +189,7 @@ export const ModelNodeContextMenu = ({
         runAction(
           singleEnv ? "row_count" : "row_count_diff",
           { node_names: [modelNode.name] },
-          { showForm: false },
+          { showForm: false, trackProps },
         );
       },
     });
@@ -200,7 +204,7 @@ export const ModelNodeContextMenu = ({
         runAction(
           singleEnv ? "profile" : "profile_diff",
           { model: modelNode.name, columns },
-          { showForm: true },
+          { showForm: true, trackProps },
         );
       },
     });
@@ -213,7 +217,11 @@ export const ModelNodeContextMenu = ({
         icon: <Icon as={entry?.icon} />,
         action: () => {
           const columns = Array.from(getNodeColumnSet(node.id));
-          runAction("value_diff", { model: modelNode.name, columns }, { showForm: true });
+          runAction(
+            "value_diff",
+            { model: modelNode.name, columns },
+            { showForm: true, trackProps },
+          );
         },
       });
     }
@@ -280,16 +288,23 @@ export const ColumnNodeContextMenu = ({
   const modelNode = columnNode.node;
   const column = columnNode.column;
   const columnType = columnNode.type;
+  const trackProps: SubmitRunTrackProps = {
+    source: "lineage_column_node",
+  };
 
   const handleProfileDiff = () => {
-    runAction("profile_diff", { model: modelNode.name, columns: [column] }, { showForm: false });
+    runAction(
+      "profile_diff",
+      { model: modelNode.name, columns: [column] },
+      { showForm: false, trackProps },
+    );
   };
 
   const handleHistogramDiff = () => {
     runAction(
       "histogram_diff",
       { model: modelNode.name, column_name: column, column_type: columnType },
-      { showForm: false },
+      { showForm: false, trackProps },
     );
   };
 
@@ -297,7 +312,7 @@ export const ColumnNodeContextMenu = ({
     runAction(
       "top_k_diff",
       { model: modelNode.name, column_name: column, k: 50 },
-      { showForm: false },
+      { showForm: false, trackProps },
     );
   };
   const addedOrRemoved =
