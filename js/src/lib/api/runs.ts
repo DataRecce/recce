@@ -3,15 +3,22 @@ import { Run, RunType } from "./types";
 import { getExperimentTrackingBreakingChangeEnabled } from "./track";
 import { AxiosResponse } from "axios";
 
+export interface SubmitRunTrackProps {
+  breaking_change_analysis?: boolean;
+  source?: "lineage_model_node" | "lineage_column_node";
+  [key: string]: unknown;
+}
+
 export interface SubmitOptions {
   nowait?: boolean;
+  trackProps?: SubmitRunTrackProps;
 }
 
 interface SubmitRunBody {
   type: RunType;
   params?: Record<string, unknown>;
   nowait?: boolean;
-  track_props: Record<string, string | boolean>;
+  track_props: SubmitRunTrackProps;
 }
 
 export async function submitRun<PT = any, RT = any>(
@@ -19,9 +26,11 @@ export async function submitRun<PT = any, RT = any>(
   params?: PT,
   options?: SubmitOptions,
 ) {
-  const track_props = getExperimentTrackingBreakingChangeEnabled()
-    ? { breaking_change_analysis: true }
-    : {};
+  const track_props = options?.trackProps ? { ...options.trackProps } : {};
+  if (getExperimentTrackingBreakingChangeEnabled()) {
+    track_props.breaking_change_analysis = true;
+  }
+
   const response = await axiosClient.post<
     SubmitRunBody,
     AxiosResponse<Run<PT, RT> | Pick<Run<PT, RT>, "run_id">>

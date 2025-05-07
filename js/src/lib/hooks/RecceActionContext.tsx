@@ -5,7 +5,7 @@ import { useDisclosure, useToast } from "@chakra-ui/react";
 
 import { useLocation } from "wouter";
 
-import { searchRuns, submitRun } from "../api/runs";
+import { searchRuns, submitRun, SubmitRunTrackProps } from "../api/runs";
 import { findByRunType } from "@/components/run/registry";
 import { RunFormProps } from "@/components/run/types";
 import { useQueryClient } from "@tanstack/react-query";
@@ -14,6 +14,7 @@ import { cacheKeys } from "../api/cacheKeys";
 export interface RecceActionOptions {
   showForm: boolean;
   showLast?: boolean;
+  trackProps?: SubmitRunTrackProps;
 }
 
 export interface RecceActionContextType {
@@ -117,6 +118,7 @@ export function RecceActionContextProvider({ children }: RecceActionContextProvi
         if (RunForm == undefined || !options?.showForm) {
           const { run_id } = await submitRun(type, params, {
             nowait: true,
+            trackProps: options?.trackProps,
           });
           await showRunId(run_id);
           await queryClient.invalidateQueries({ queryKey: cacheKeys.runs() });
@@ -155,6 +157,7 @@ export function RecceActionContextProvider({ children }: RecceActionContextProvi
       onModalClose();
       const { run_id } = await submitRun(type, params, {
         nowait: true,
+        trackProps: action?.options?.trackProps,
       });
       await showRunId(run_id);
     } catch (e: any) {
