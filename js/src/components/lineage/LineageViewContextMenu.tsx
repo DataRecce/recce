@@ -50,14 +50,17 @@ const ContextMenu = ({ menuItems, isOpen, onClose, x, y }: ContextMenuProps) => 
           top: `${y}px`,
         }}>
         {menuItems.length === 0 ? (
-          <MenuItem isDisabled>No action available</MenuItem>
+          <MenuItem isDisabled key="no action">
+            No action available
+          </MenuItem>
         ) : (
           menuItems.map((item) => {
             if (item.isSeparator) {
-              return <MenuDivider />;
+              return <MenuDivider key={item.label} />;
             } else {
               return (
                 <MenuItem
+                  key={item.label}
                   icon={item.icon}
                   isDisabled={item.isDisabled}
                   onClick={() => {
@@ -222,6 +225,7 @@ export const ModelNodeContextMenu = ({
   if (!singleEnv) {
     if (menuItems.length > 0) {
       menuItems.push({
+        label: "select group",
         isSeparator: true,
       });
     }
