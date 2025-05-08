@@ -4,9 +4,8 @@ import platform
 import sys
 import time
 from contextlib import contextmanager
-from datetime import datetime
+from datetime import datetime, timezone
 from json import JSONDecodeError
-from datetime import timezone
 
 import portalocker
 import requests
@@ -17,7 +16,7 @@ from recce.github import is_github_codespace
 
 class Collector:
     def __init__(self):
-        self._api_endpoint = 'https://api.amplitude.com/2/httpapi'
+        self._api_endpoint = "https://api.amplitude.com/2/httpapi"
         self._api_key = None
         self._user_id = None
 
@@ -35,6 +34,7 @@ class Collector:
 
         # send async thread
         import threading
+
         if self._flush_timer:
             try:
                 self._flush_timer.cancel()
@@ -59,11 +59,18 @@ class Collector:
         self._unsend_events_file = unsend_events_file
         self._check_required_files()
 
-    def _log_event(self, user_id, event_type, created_at, user_properties, event_properties, ):
+    def _log_event(
+        self,
+        user_id,
+        event_type,
+        created_at,
+        user_properties,
+        event_properties,
+    ):
         event = dict(
             user_id=user_id,
             event_type=event_type,
-            ip='$remote',
+            ip="$remote",
             time=int(time.mktime(created_at.timetuple())),
             user_properties=user_properties,
             event_properties=event_properties,
@@ -91,7 +98,7 @@ class Collector:
         else:
             # Convert to UTC timezone
             created_at = event_triggered_at.astimezone(timezone.utc)
-        python_version = f'{sys.version_info.major}.{sys.version_info.minor}'
+        python_version = f"{sys.version_info.major}.{sys.version_info.minor}"
 
         # when the recce is running in automation use cases
         # replace the user id with project_id to avoid so many unique user id
@@ -120,17 +127,17 @@ class Collector:
         if not os.path.exists(user_home):
             os.makedirs(user_home, exist_ok=True)
         if not os.path.exists(self._unsend_events_file):
-            with portalocker.Lock(self._unsend_events_file, 'w+', timeout=5) as f:
-                f.write(json.dumps({'unsend_events': []}))
+            with portalocker.Lock(self._unsend_events_file, "w+", timeout=5) as f:
+                f.write(json.dumps({"unsend_events": []}))
 
     def _is_full(self):
-        with portalocker.Lock(self._unsend_events_file, 'r+', timeout=5) as f:
+        with portalocker.Lock(self._unsend_events_file, "r+", timeout=5) as f:
             o = json.loads(f.read())
-            return len(o.get('unsend_events', [])) >= self._upload_threshold
+            return len(o.get("unsend_events", [])) >= self._upload_threshold
 
     @contextmanager
     def load_json(self):
-        with portalocker.Lock(self._unsend_events_file, 'r+', timeout=5) as f:
+        with portalocker.Lock(self._unsend_events_file, "r+", timeout=5) as f:
             try:
                 o = json.loads(f.read())
                 yield o
@@ -146,9 +153,9 @@ class Collector:
         with self.load_json() as o:
             payload = dict(
                 api_key=self._api_key,
-                events=o['unsend_events'],
+                events=o["unsend_events"],
             )
-            o['unsend_events'] = []
+            o["unsend_events"] = []
         try:
             requests.post(self._api_endpoint, json=payload)
         except Exception:
@@ -157,17 +164,17 @@ class Collector:
 
     def _store_to_file(self, event):
         with self.load_json() as o:
-            events = o.get('unsend_events', None)
+            events = o.get("unsend_events", None)
             if events is None:
-                o['unsend_events'] = []
+                o["unsend_events"] = []
 
-            o['unsend_events'].append(event)
+            o["unsend_events"].append(event)
 
     def _cleanup_unsend_events(self):
         with self.load_json() as o:
-            events = o.get('unsend_events', None)
+            events = o.get("unsend_events", None)
             if events is None:
-                o['unsend_events'] = []
+                o["unsend_events"] = []
 
-            while len(o['unsend_events']) > self._delete_threshold:
-                o['unsend_events'].pop(0)
+            while len(o["unsend_events"]) > self._delete_threshold:
+                o["unsend_events"].pop(0)

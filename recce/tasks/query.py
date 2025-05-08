@@ -1,14 +1,14 @@
 import typing
-from typing import Optional, Tuple, List
+from typing import List, Optional, Tuple
 
 from pydantic import BaseModel
 
-from .core import Task, TaskResultDiffer, CheckValidator
-from .dataframe import DataFrame
-from .valuediff import ValueDiffMixin
 from ..core import default_context
 from ..exceptions import RecceException
 from ..models import Check
+from .core import CheckValidator, Task, TaskResultDiffer
+from .dataframe import DataFrame
+from .valuediff import ValueDiffMixin
 
 QUERY_LIMIT = 2000
 
@@ -40,9 +40,7 @@ class QueryMixin:
                 _, result = dbt_adapter.execute(sql, fetch=True, auto_begin=True)
                 return result, False
             else:
-                _, result = dbt_adapter.execute(
-                    sql, fetch=True, auto_begin=True, limit=limit + 1
-                )
+                _, result = dbt_adapter.execute(sql, fetch=True, auto_begin=True, limit=limit + 1)
                 if len(result.rows) > limit:
                     return result.limit(limit), True
                 return result, False
@@ -96,9 +94,7 @@ class QueryTask(Task, QueryMixin):
             self.connection = dbt_adapter.get_thread_connection()
 
             sql_template = self.params.sql_template
-            table, more = self.execute_sql_with_limit(
-                sql_template, base=self.is_base, limit=limit
-            )
+            table, more = self.execute_sql_with_limit(sql_template, base=self.is_base, limit=limit)
             self.check_cancel()
 
             return DataFrame.from_agate(table, limit=limit, more=more)
@@ -110,9 +106,7 @@ class QueryTask(Task, QueryMixin):
 
         sql = self.params.get("sql_template")
         limit = QUERY_LIMIT
-        df, more = sqlmesh_adapter.fetchdf_with_limit(
-            sql, base=self.is_base, limit=limit
-        )
+        df, more = sqlmesh_adapter.fetchdf_with_limit(sql, base=self.is_base, limit=limit)
         return DataFrame.from_pandas(df, limit=limit, more=more)
 
     def execute(self):
@@ -157,18 +151,12 @@ class QueryDiffTask(Task, QueryMixin, ValueDiffMixin):
 
         self.connection = dbt_adapter.get_thread_connection()
         if preview_change:
-            base, base_more = self.execute_sql_with_limit(
-                base_sql_template, base=False, limit=limit
-            )
+            base, base_more = self.execute_sql_with_limit(base_sql_template, base=False, limit=limit)
         else:
-            base, base_more = self.execute_sql_with_limit(
-                base_sql_template or sql_template, base=True, limit=limit
-            )
+            base, base_more = self.execute_sql_with_limit(base_sql_template or sql_template, base=True, limit=limit)
         self.check_cancel()
 
-        current, current_more = self.execute_sql_with_limit(
-            sql_template, base=False, limit=limit
-        )
+        current, current_more = self.execute_sql_with_limit(sql_template, base=False, limit=limit)
         self.check_cancel()
 
         return QueryDiffResult(
@@ -247,9 +235,7 @@ class QueryDiffTask(Task, QueryMixin, ValueDiffMixin):
         if preview_change:
             base_query = dbt_adapter.generate_sql(base_sql_template, base=False)
         else:
-            base_query = dbt_adapter.generate_sql(
-                base_sql_template or sql_template, base=True
-            )
+            base_query = dbt_adapter.generate_sql(base_sql_template or sql_template, base=True)
         current_query = dbt_adapter.generate_sql(sql_template, base=False)
 
         sql = dbt_adapter.generate_sql(
@@ -307,12 +293,8 @@ class QueryDiffTask(Task, QueryMixin, ValueDiffMixin):
         sqlmesh_adapter: SqlmeshAdapter = default_context().adapter
 
         limit = QUERY_LIMIT
-        base, base_more = sqlmesh_adapter.fetchdf_with_limit(
-            base_sql or sql, base=True, limit=limit
-        )
-        curr, curr_more = sqlmesh_adapter.fetchdf_with_limit(
-            sql, base=False, limit=limit
-        )
+        base, base_more = sqlmesh_adapter.fetchdf_with_limit(base_sql or sql, base=True, limit=limit)
+        curr, curr_more = sqlmesh_adapter.fetchdf_with_limit(sql, base=False, limit=limit)
         return QueryDiffResult(
             base=DataFrame.from_pandas(base, limit=limit, more=base_more),
             current=DataFrame.from_pandas(curr, limit=limit, more=curr_more),
@@ -371,9 +353,7 @@ class QueryDiffTask(Task, QueryMixin, ValueDiffMixin):
             .limit(1000)
         )
         diff, diff_more = sqlmesh_adapter.fetchdf_with_limit(expr, limit=limit)
-        return QueryDiffResult(
-            diff=DataFrame.from_pandas(diff, limit=limit, more=diff_more)
-        )
+        return QueryDiffResult(diff=DataFrame.from_pandas(diff, limit=limit, more=diff_more))
 
     def execute_sqlmesh(self):
         sql = self.params.sql_template

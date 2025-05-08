@@ -3,15 +3,21 @@ import json
 import logging
 import os
 from dataclasses import dataclass, field
-from typing import Callable, Dict, Optional, List, Tuple, Set
+from typing import Callable, Dict, List, Optional, Set, Tuple
 
 from recce.adapter.base import BaseAdapter
 from recce.models import Check, Run
 from recce.models.types import LineageDiff
-from recce.state import RecceState, RecceStateMetadata, GitRepoInfo, PullRequestInfo, RecceStateLoader
+from recce.state import (
+    GitRepoInfo,
+    PullRequestInfo,
+    RecceState,
+    RecceStateLoader,
+    RecceStateMetadata,
+)
 from recce.util.recce_cloud import set_recce_cloud_onboarding_state
 
-logger = logging.getLogger('uvicorn')
+logger = logging.getLogger("uvicorn")
 
 
 @dataclass
@@ -25,8 +31,8 @@ class RecceContext:
 
     @classmethod
     def load(cls, **kwargs):
-        state_loader: RecceStateLoader = kwargs.get('state_loader')
-        is_review_mode = kwargs.get('review', False)
+        state_loader: RecceStateLoader = kwargs.get("state_loader")
+        is_review_mode = kwargs.get("review", False)
 
         context = cls(
             review_mode=is_review_mode,
@@ -34,14 +40,16 @@ class RecceContext:
         )
 
         # Initiate the adapter
-        if kwargs.get('sqlmesh', False):
-            logger.warning('SQLMesh adapter is still in EXPERIMENTAL mode.')
+        if kwargs.get("sqlmesh", False):
+            logger.warning("SQLMesh adapter is still in EXPERIMENTAL mode.")
             from recce.adapter.sqlmesh_adapter import SqlmeshAdapter
-            context.adapter_type = 'sqlmesh'
+
+            context.adapter_type = "sqlmesh"
             context.adapter = SqlmeshAdapter.load(**kwargs)
         else:
             from recce.adapter.dbt_adapter import DbtAdapter
-            context.adapter_type = 'dbt'
+
+            context.adapter_type = "dbt"
             context.adapter = DbtAdapter.load(**kwargs)
 
         # Import state
@@ -52,7 +60,7 @@ class RecceContext:
 
             if is_review_mode:
                 if not state:
-                    raise Exception('The state file is required for review mode')
+                    raise Exception("The state file is required for review mode")
 
         return context
 
@@ -76,14 +84,14 @@ class RecceContext:
         curr = self.get_lineage(base=False)
         base = self.get_lineage(base=True)
 
-        for unique_id, node in curr['nodes'].items():
-            if excluded_types and node.get('resource_type') in excluded_types:
+        for unique_id, node in curr["nodes"].items():
+            if excluded_types and node.get("resource_type") in excluded_types:
                 continue
-            name_to_unique_id[node['name']] = unique_id
-        for unique_id, node in base['nodes'].items():
-            if excluded_types and node.get('resource_type') in excluded_types:
+            name_to_unique_id[node["name"]] = unique_id
+        for unique_id, node in base["nodes"].items():
+            if excluded_types and node.get("resource_type") in excluded_types:
                 continue
-            name_to_unique_id[node['name']] = unique_id
+            name_to_unique_id[node["name"]] = unique_id
         return name_to_unique_id
 
     def start_monitor_artifacts(self, callback: Callable = None):
@@ -140,7 +148,7 @@ class RecceContext:
         git = GitRepoInfo.from_current_repositroy()
         if git:
             state.git = git
-        pr = PullRequestInfo(url=os.getenv('RECCE_PR_URL'))
+        pr = PullRequestInfo(url=os.getenv("RECCE_PR_URL"))
         state.pull_request = pr
 
         return state
@@ -152,38 +160,37 @@ class RecceContext:
         :param method: merge, revert, overwrite
 
         """
-        if method == 'merge':
+        if method == "merge":
             self.state_loader.refresh()
             self.import_state(self.state_loader.state, merge=True)
             state = self.export_state()
             self.state_loader.export(state)
-        elif method == 'revert':
+        elif method == "revert":
             self.state_loader.refresh()
             self.import_state(self.state_loader.state, merge=False)
-        elif method == 'overwrite':
+        elif method == "overwrite":
             state = self.export_state()
             self.state_loader.export(state)
         else:
-            raise Exception(f'Unsupported method: {method}')
+            raise Exception(f"Unsupported method: {method}")
 
     def _merge_checks(self, import_checks: list[Check]):
         checks = list(self.checks)
         imports = 0
 
         def _calculate_checksum(c: Check):
-            payload = json.dumps({
-                'type': str(c.type),
-                'params': c.params,
-                'view_options': c.view_options,
-            }, sort_keys=True)
+            payload = json.dumps(
+                {
+                    "type": str(c.type),
+                    "params": c.params,
+                    "view_options": c.view_options,
+                },
+                sort_keys=True,
+            )
             return hashlib.sha256(payload.encode()).hexdigest()
 
-        checksum_map = {
-            _calculate_checksum(c): c for c in self.checks if c.is_preset
-        }
-        check_map = {
-            c.check_id: c for c in self.checks
-        }
+        checksum_map = {_calculate_checksum(c): c for c in self.checks if c.is_preset}
+        check_map = {c.check_id: c for c in self.checks}
 
         # merge checks
         for imported in import_checks:
@@ -219,12 +226,12 @@ class RecceContext:
         return imports
 
     def import_state(self, import_state: RecceState, merge: bool = True):
-        '''
+        """
         Import the state from another RecceState object.
 
         :param import_state: the state to import
         :param merge: whether to merge the state or replace the current state
-        '''
+        """
         import_runs = 0
         import_checks = 0
         if merge:
@@ -261,20 +268,21 @@ class RecceContext:
     def mark_onboarding_completed(self):
         if self.state_loader.cloud_mode:
             try:
-                token = self.state_loader.cloud_options.get('token')
-                set_recce_cloud_onboarding_state(token, 'completed')
+                token = self.state_loader.cloud_options.get("token")
+                set_recce_cloud_onboarding_state(token, "completed")
             except Exception as e:
-                logger.debug(f'Failed to mark onboarding completed in Recce Cloud. Reason: {str(e)}')
+                logger.debug(f"Failed to mark onboarding completed in Recce Cloud. Reason: {str(e)}")
         else:
             # Skip the onboarding state for non-cloud mode
             pass
 
     @staticmethod
     def verify_required_artifacts(**kwargs) -> Tuple[bool, Optional[str]]:
-        if kwargs.get('sqlmesh', False):
+        if kwargs.get("sqlmesh", False):
             pass
         else:
             from recce.adapter.dbt_adapter import DbtAdapter
+
             try:
                 DbtAdapter.load(**kwargs)
             except FileNotFoundError as e:
@@ -289,18 +297,18 @@ class RecceContext:
         """
         The state loader mode is used for telemetry purpose.
         """
-        if os.environ.get('DEMO', False):
-            return 'demo'
+        if os.environ.get("DEMO", False):
+            return "demo"
 
         if not self.state_loader:
-            return 'none'
+            return "none"
 
         if self.state_loader.cloud_mode:
-            return 'cloud'
+            return "cloud"
         elif self.state_loader.state_file:
-            return 'file'
+            return "file"
         else:
-            return 'none'
+            return "none"
 
 
 recce_context: Optional[RecceContext] = None

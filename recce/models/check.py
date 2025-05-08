@@ -1,6 +1,7 @@
-from typing import Optional, List
+from typing import List, Optional
 
 from recce.exceptions import RecceException
+
 from .types import Check
 
 
@@ -12,6 +13,7 @@ class CheckDAO:
     @property
     def _checks(self):
         from recce.core import default_context
+
         return default_context().checks
 
     def create(self, check) -> None:
@@ -38,10 +40,10 @@ class CheckDAO:
     def reorder(self, source: int, destination: int):
 
         if source < 0 or source >= len(self._checks):
-            raise RecceException('Failed to reorder checks. Source index out of range')
+            raise RecceException("Failed to reorder checks. Source index out of range")
 
         if destination < 0 or destination >= len(self._checks):
-            raise RecceException('Failed to reorder checks. Destination index out of range')
+            raise RecceException("Failed to reorder checks. Destination index out of range")
 
         check_to_move = self._checks.pop(source)
         self._checks.insert(destination, check_to_move)
@@ -50,7 +52,4 @@ class CheckDAO:
         self._checks.clear()
 
     def status(self):
-        return {
-            'total': len(self._checks),
-            'approved': len([c for c in self._checks if c.is_checked])
-        }
+        return {"total": len(self._checks), "approved": len([c for c in self._checks if c.is_checked])}

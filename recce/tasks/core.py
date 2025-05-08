@@ -1,11 +1,11 @@
 from abc import ABC, abstractmethod
-from typing import List, Union, Optional, Literal
+from typing import List, Literal, Optional, Union
 
 from pydantic import BaseModel
 
 from recce.core import default_context
 from recce.exceptions import RecceCancelException
-from recce.models import Run, Check
+from recce.models import Check, Run
 from recce.util.pydantic_model import pydantic_model_dump
 
 
@@ -63,6 +63,7 @@ class TaskResultDiffer(ABC):
     @staticmethod
     def diff(base, current):
         from deepdiff import DeepDiff
+
         diff = DeepDiff(base, current, ignore_order=True)
         return diff if diff else None
 
@@ -76,15 +77,12 @@ class TaskResultDiffer(ABC):
         select: Optional[str] = None,
         exclude: Optional[str] = None,
         packages: Optional[list[str]] = None,
-        view_mode: Optional[Literal['all', 'changed_models']] = None,
+        view_mode: Optional[Literal["all", "changed_models"]] = None,
     ) -> List[str]:
         nodes = default_context().adapter.select_nodes(
-            select=select,
-            exclude=exclude,
-            packages=packages,
-            view_mode=view_mode
+            select=select, exclude=exclude, packages=packages, view_mode=view_mode
         )
-        return [node for node in nodes if not node.startswith('test.')]
+        return [node for node in nodes if not node.startswith("test.")]
 
     @abstractmethod
     def _check_result_changed_fn(self, result):
@@ -100,10 +98,10 @@ class TaskResultDiffer(ABC):
         Should be implemented by subclass.
         """
         params = self.run.params
-        if params.get('model'):
-            return [TaskResultDiffer.get_node_id_by_name(params.get('model'))]
-        elif params.get('node_names'):
-            names = params.get('node_names', [])
+        if params.get("model"):
+            return [TaskResultDiffer.get_node_id_by_name(params.get("model"))]
+        elif params.get("node_names"):
+            names = params.get("node_names", [])
             return [TaskResultDiffer.get_node_id_by_name(name) for name in names]
         else:
             # No related node ids in the params
@@ -125,7 +123,7 @@ class CheckValidator:
         try:
             check = Check(**check)
         except Exception as e:
-            raise ValueError(f'Invalid check format. {str(e)}')
+            raise ValueError(f"Invalid check format. {str(e)}")
 
         self.validate_check(check)
 

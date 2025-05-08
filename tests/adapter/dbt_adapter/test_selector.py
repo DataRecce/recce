@@ -21,13 +21,13 @@ def test_select(dbt_test_helper):
     adapter: DbtAdapter = dbt_test_helper.context.adapter
 
     # Test methods
-    node_ids = adapter.select_nodes('customers_1')
+    node_ids = adapter.select_nodes("customers_1")
     assert len(node_ids) == 1
-    node_ids = adapter.select_nodes('resource_type:model')
+    node_ids = adapter.select_nodes("resource_type:model")
     assert len(node_ids) == 2
-    node_ids = adapter.select_nodes('tag:test_tag')
+    node_ids = adapter.select_nodes("tag:test_tag")
     assert len(node_ids) == 2
-    node_ids = adapter.select_nodes('tag:test_tag2')
+    node_ids = adapter.select_nodes("tag:test_tag2")
     assert len(node_ids) == 0
     node_ids = adapter.select_nodes("config.materialized:incremental")
     assert len(node_ids) == 0
@@ -47,9 +47,9 @@ def test_select(dbt_test_helper):
     assert len(node_ids) == 2
     node_ids = adapter.select_nodes("config.materialized:table,tag:test_tag2")
     assert len(node_ids) == 0
-    node_ids = adapter.select_nodes(exclude='customers_1')
+    node_ids = adapter.select_nodes(exclude="customers_1")
     assert len(node_ids) == 1
-    node_ids = adapter.select_nodes('customers_1', exclude='customers_2')
+    node_ids = adapter.select_nodes("customers_1", exclude="customers_2")
     assert len(node_ids) == 1
 
     # Test graph operation
@@ -62,10 +62,10 @@ def test_select(dbt_test_helper):
     dbt_test_helper.create_snapshot("snapshot_1", csv_data_base, csv_data_curr)
     dbt_test_helper.create_model("use_snapshot", csv_data_base, csv_data_base, depends_on=["snapshot_1"])
 
-    node_ids = adapter.select_nodes('resource_type:snapshot')
+    node_ids = adapter.select_nodes("resource_type:snapshot")
     assert len(node_ids) == 1
 
-    node_ids = adapter.select_nodes('resource_type:snapshot+')
+    node_ids = adapter.select_nodes("resource_type:snapshot+")
     assert len(node_ids) == 2
 
     node_ids = adapter.select_nodes("state:modified,resource_type:snapshot")
@@ -172,30 +172,31 @@ def test_select_with_pacakage_mode_include_exclude(dbt_test_helper):
     Only customers_3 is changed
     """
     dbt_test_helper.create_model("customers_1", csv_data_base, csv_data_base)
-    dbt_test_helper.create_model("customers_2", csv_data_base, csv_data_base, depends_on=['customers_1'])
-    dbt_test_helper.create_model("customers_3", csv_data_base, csv_data_curr, depends_on=['customers_2'])
-    dbt_test_helper.create_model("customers_4", csv_data_base, csv_data_base, depends_on=['customers_3'],
-                                 package_name='other_package')
-    dbt_test_helper.create_model("customers_5", csv_data_base, csv_data_base, depends_on=['customers_3'])
+    dbt_test_helper.create_model("customers_2", csv_data_base, csv_data_base, depends_on=["customers_1"])
+    dbt_test_helper.create_model("customers_3", csv_data_base, csv_data_curr, depends_on=["customers_2"])
+    dbt_test_helper.create_model(
+        "customers_4", csv_data_base, csv_data_base, depends_on=["customers_3"], package_name="other_package"
+    )
+    dbt_test_helper.create_model("customers_5", csv_data_base, csv_data_base, depends_on=["customers_3"])
 
     adapter: DbtAdapter = dbt_test_helper.context.adapter
 
-    node_ids = adapter.select_nodes(packages=['other_package'])
+    node_ids = adapter.select_nodes(packages=["other_package"])
     assert len(node_ids) == 1
 
-    node_ids = adapter.select_nodes(view_mode='changed_models')
+    node_ids = adapter.select_nodes(view_mode="changed_models")
     assert len(node_ids) == 4
 
-    node_ids = adapter.select_nodes(view_mode='changed_models', packages=['other_package'])
+    node_ids = adapter.select_nodes(view_mode="changed_models", packages=["other_package"])
     assert len(node_ids) == 1
 
-    node_ids = adapter.select_nodes(view_mode='changed_models', packages=['other_package'], exclude='customers_4')
+    node_ids = adapter.select_nodes(view_mode="changed_models", packages=["other_package"], exclude="customers_4")
     assert len(node_ids) == 0
-    node_ids = adapter.select_nodes(view_mode='changed_models', packages=['other_package'], select='customers_1+')
+    node_ids = adapter.select_nodes(view_mode="changed_models", packages=["other_package"], select="customers_1+")
     assert len(node_ids) == 1
-    node_ids = adapter.select_nodes(view_mode='changed_models', select='+customers_5')
+    node_ids = adapter.select_nodes(view_mode="changed_models", select="+customers_5")
     assert len(node_ids) == 3
-    node_ids = adapter.select_nodes(view_mode='all', select='+customers_5')
+    node_ids = adapter.select_nodes(view_mode="all", select="+customers_5")
     assert len(node_ids) == 4
-    node_ids = adapter.select_nodes(select='+customers_5')
+    node_ids = adapter.select_nodes(select="+customers_5")
     assert len(node_ids) == 4

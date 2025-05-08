@@ -5,7 +5,7 @@ from pydantic import BaseModel
 from recce.core import default_context
 from recce.models import Check
 from recce.tasks import Task
-from recce.tasks.core import TaskResultDiffer, CheckValidator
+from recce.tasks.core import CheckValidator, TaskResultDiffer
 from recce.tasks.query import QueryMixin
 
 
@@ -33,11 +33,14 @@ class TopKDiffTask(Task, QueryMixin):
         UNION ALL
         select count(*), count({{column}}) from {{ curr_relation }}
         """
-        sql = dbt_adapter.generate_sql(sql_template, context=dict(
-            base_relation=base_relation,
-            curr_relation=curr_relation,
-            column=column,
-        ))
+        sql = dbt_adapter.generate_sql(
+            sql_template,
+            context=dict(
+                base_relation=base_relation,
+                curr_relation=curr_relation,
+                column=column,
+            ),
+        )
         _, table = dbt_adapter.execute(sql, fetch=True)
 
         result = (table[0][0], table[0][1], table[1][0], table[1][1])
@@ -77,13 +80,16 @@ class TopKDiffTask(Task, QueryMixin):
         order by curr_count desc, base_count desc
         limit {{k}}
         """
-        sql = dbt_adapter.generate_sql(sql_template, context=dict(
-            base_relation=base_relation,
-            curr_relation=curr_relation,
-            column=column,
-            k=k,
-            include_null=False,
-        ))
+        sql = dbt_adapter.generate_sql(
+            sql_template,
+            context=dict(
+                base_relation=base_relation,
+                curr_relation=curr_relation,
+                column=column,
+                k=k,
+                include_null=False,
+            ),
+        )
         _, table = dbt_adapter.execute(sql, fetch=True)
 
         categories = []
@@ -91,7 +97,7 @@ class TopKDiffTask(Task, QueryMixin):
         curr_counts = []
 
         for row in table:
-            categories.append(row[0] if row[0] != '__null__' else None)
+            categories.append(row[0] if row[0] != "__null__" else None)
             base_counts.append(int(row[1] if row[1] else 0))
             curr_counts.append(int(row[2] if row[2] else 0))
 
@@ -100,6 +106,7 @@ class TopKDiffTask(Task, QueryMixin):
     def execute(self):
 
         from recce.adapter.dbt_adapter import DbtAdapter
+
         dbt_adapter: DbtAdapter = default_context().adapter
 
         with dbt_adapter.connection_named("query"):
@@ -118,33 +125,26 @@ class TopKDiffTask(Task, QueryMixin):
 
             self.check_cancel()
             categories, base_counts, curr_counts = self._query_top_k(
-                dbt_adapter,
-                base_relation,
-                curr_relation,
-                column,
-                k
+                dbt_adapter, base_relation, curr_relation, column, k
             )
             self.check_cancel()
 
             base_total, base_valids, curr_total, curr_valids = self._query_row_count_diff(
-                dbt_adapter,
-                base_relation,
-                curr_relation,
-                column
+                dbt_adapter, base_relation, curr_relation, column
             )
 
             result = {
-                'base': {
-                    'values': categories,
-                    'counts': base_counts,
-                    'valids': base_valids,
-                    'total': base_total,
+                "base": {
+                    "values": categories,
+                    "counts": base_counts,
+                    "valids": base_valids,
+                    "total": base_total,
                 },
-                'current': {
-                    'values': categories,
-                    'counts': curr_counts,
-                    'valids': curr_valids,
-                    'total': curr_total,
+                "current": {
+                    "values": categories,
+                    "counts": curr_counts,
+                    "valids": curr_valids,
+                    "total": curr_total,
                 },
             }
             return result
@@ -157,8 +157,8 @@ class TopKDiffTask(Task, QueryMixin):
 
 class TopKDiffTaskResultDiffer(TaskResultDiffer):
     def _check_result_changed_fn(self, result):
-        base = result.get('base')
-        current = result.get('current')
+        base = result.get("base")
+        current = result.get("current")
 
         return TaskResultDiffer.diff(base, current)
 

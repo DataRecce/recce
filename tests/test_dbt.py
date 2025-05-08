@@ -1,18 +1,18 @@
 import os
 from unittest import TestCase
-from unittest.mock import patch, MagicMock
+from unittest.mock import MagicMock, patch
 
-from recce.adapter.dbt_adapter import load_manifest, load_catalog, DbtAdapter
+from recce.adapter.dbt_adapter import DbtAdapter, load_catalog, load_manifest
 
 current_dir = os.path.dirname(os.path.abspath(__file__))
 
 
 class TestAdapterLineage(TestCase):
     def setUp(self) -> None:
-        self.manifest = load_manifest(path=os.path.join(current_dir, 'manifest.json'))
+        self.manifest = load_manifest(path=os.path.join(current_dir, "manifest.json"))
         assert self.manifest is not None
 
-        self.catalog = load_catalog(path=os.path.join(current_dir, 'catalog.json'))
+        self.catalog = load_catalog(path=os.path.join(current_dir, "catalog.json"))
         assert self.catalog is not None
 
     def tearDown(self):
@@ -22,8 +22,8 @@ class TestAdapterLineage(TestCase):
         dbt_adapter = DbtAdapter(curr_manifest=self.manifest)
         lineage = dbt_adapter.get_lineage()
         assert lineage is not None
-        assert lineage['nodes']['model.jaffle_shop.orders'] is not None
-        assert 'columns' not in lineage['nodes']['model.jaffle_shop.orders']
+        assert lineage["nodes"]["model.jaffle_shop.orders"] is not None
+        assert "columns" not in lineage["nodes"]["model.jaffle_shop.orders"]
 
     def test_load_lineage_with_catalog(self):
         mock_adapter = MagicMock()
@@ -33,4 +33,4 @@ class TestAdapterLineage(TestCase):
         dbt_adapter.adapter = mock_adapter
         lineage = dbt_adapter.get_lineage()
         assert lineage is not None
-        assert len(lineage['nodes']['model.jaffle_shop.orders']['columns']) == 9
+        assert len(lineage["nodes"]["model.jaffle_shop.orders"]["columns"]) == 9

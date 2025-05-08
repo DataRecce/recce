@@ -7,15 +7,20 @@ import click
 import uvicorn
 
 from recce import event
-from recce.artifact import upload_dbt_artifacts, download_dbt_artifacts
-from recce.config import RecceConfig, RECCE_CONFIG_FILE, RECCE_ERROR_LOG_FILE
+from recce.artifact import download_dbt_artifacts, upload_dbt_artifacts
+from recce.config import RECCE_CONFIG_FILE, RECCE_ERROR_LOG_FILE, RecceConfig
 from recce.event import get_recce_api_token, update_user_profile
 from recce.git import current_branch, current_default_branch
-from recce.run import cli_run, check_github_ci_env
-from recce.state import RecceStateLoader, RecceCloudStateManager, RecceShareStateManager
+from recce.run import check_github_ci_env, cli_run
+from recce.state import RecceCloudStateManager, RecceShareStateManager, RecceStateLoader
 from recce.summary import generate_markdown_summary
 from recce.util.logger import CustomFormatter
-from recce.util.recce_cloud import RecceCloudException, get_recce_cloud_onboarding_state, RECCE_CLOUD_API_HOST
+from recce.util.recce_cloud import (
+    RECCE_CLOUD_API_HOST,
+    RecceCloudException,
+    get_recce_cloud_onboarding_state,
+)
+
 from .core import RecceContext, set_default_context
 from .event.track import TrackCommand
 
@@ -24,11 +29,13 @@ event.init()
 
 def create_state_loader(review_mode, cloud_mode, state_file, cloud_options):
     from rich.console import Console
+
     console = Console()
 
     try:
-        return RecceStateLoader(review_mode=review_mode, cloud_mode=cloud_mode,
-                                state_file=state_file, cloud_options=cloud_options)
+        return RecceStateLoader(
+            review_mode=review_mode, cloud_mode=cloud_mode, state_file=state_file, cloud_options=cloud_options
+        )
     except RecceCloudException as e:
         console.print("[[red]Error[/red]] Failed to load recce state file")
         console.print(f"Reason: {e.reason}")
@@ -40,8 +47,9 @@ def create_state_loader(review_mode, cloud_mode, state_file, cloud_options):
 
 
 def handle_debug_flag(**kwargs):
-    if kwargs.get('debug'):
+    if kwargs.get("debug"):
         import logging
+
         ch = logging.StreamHandler()
         ch.setFormatter(CustomFormatter())
         logging.basicConfig(handlers=[ch], level=logging.DEBUG)
@@ -57,43 +65,75 @@ def add_options(options):
 
 
 dbt_related_options = [
-    click.option('--target', '-t', help='Which target to load for the given profile.', type=click.STRING),
-    click.option('--profile', help='Which existing profile to load.', type=click.STRING),
-    click.option('--project-dir', help='Which directory to look in for the dbt_project.yml file.', type=click.Path(),
-                 envvar="DBT_PROJECT_DIR"),
-    click.option('--profiles-dir', help='Which directory to look in for the profiles.yml file.', type=click.Path(),
-                 envvar="DBT_PROFILES_DIR"),
+    click.option("--target", "-t", help="Which target to load for the given profile.", type=click.STRING),
+    click.option("--profile", help="Which existing profile to load.", type=click.STRING),
+    click.option(
+        "--project-dir",
+        help="Which directory to look in for the dbt_project.yml file.",
+        type=click.Path(),
+        envvar="DBT_PROJECT_DIR",
+    ),
+    click.option(
+        "--profiles-dir",
+        help="Which directory to look in for the profiles.yml file.",
+        type=click.Path(),
+        envvar="DBT_PROFILES_DIR",
+    ),
 ]
 
 sqlmesh_related_options = [
-    click.option('--sqlmesh', is_flag=True, help='Use SQLMesh ', hidden=True),
-    click.option('--sqlmesh-envs', is_flag=False, help='SQLMesh envs to compare. SOURCE:TARGET', hidden=True),
-    click.option('--sqlmesh-config', is_flag=False, help='SQLMesh config name to use', hidden=True),
+    click.option("--sqlmesh", is_flag=True, help="Use SQLMesh ", hidden=True),
+    click.option("--sqlmesh-envs", is_flag=False, help="SQLMesh envs to compare. SOURCE:TARGET", hidden=True),
+    click.option("--sqlmesh-config", is_flag=False, help="SQLMesh config name to use", hidden=True),
 ]
 
 recce_options = [
-    click.option('--config', help='Path to the recce config file.', type=click.Path(), default=RECCE_CONFIG_FILE,
-                 show_default=True),
-    click.option('--error-log', help='Path to the error log file.', type=click.Path(), default=RECCE_ERROR_LOG_FILE,
-                 hidden=True),
-    click.option('--debug', is_flag=True, help='Enable debug mode.', hidden=True),
+    click.option(
+        "--config",
+        help="Path to the recce config file.",
+        type=click.Path(),
+        default=RECCE_CONFIG_FILE,
+        show_default=True,
+    ),
+    click.option(
+        "--error-log", help="Path to the error log file.", type=click.Path(), default=RECCE_ERROR_LOG_FILE, hidden=True
+    ),
+    click.option("--debug", is_flag=True, help="Enable debug mode.", hidden=True),
 ]
 
 recce_cloud_options = [
-    click.option('--cloud', is_flag=True, help='Fetch the state file from cloud.'),
-    click.option('--cloud-token', help='The token used by Recce Cloud.', type=click.STRING,
-                 envvar='GITHUB_TOKEN'),
-    click.option('--state-file-host', help='The host to fetch the state file from.', type=click.STRING,
-                 envvar='RECCE_STATE_FILE_HOST', default='', hidden=True),
-    click.option('--password', '-p', help='The password to encrypt the state file in cloud.', type=click.STRING,
-                 envvar='RECCE_STATE_PASSWORD'),
+    click.option("--cloud", is_flag=True, help="Fetch the state file from cloud."),
+    click.option("--cloud-token", help="The token used by Recce Cloud.", type=click.STRING, envvar="GITHUB_TOKEN"),
+    click.option(
+        "--state-file-host",
+        help="The host to fetch the state file from.",
+        type=click.STRING,
+        envvar="RECCE_STATE_FILE_HOST",
+        default="",
+        hidden=True,
+    ),
+    click.option(
+        "--password",
+        "-p",
+        help="The password to encrypt the state file in cloud.",
+        type=click.STRING,
+        envvar="RECCE_STATE_PASSWORD",
+    ),
 ]
 
 recce_dbt_artifact_dir_options = [
-    click.option('--target-path', help='dbt artifacts directory for your development branch.',
-                 type=click.STRING, default='target'),
-    click.option('--target-base-path', help='dbt artifacts directory to be used as the base for the comparison.',
-                 type=click.STRING, default='target-base'),
+    click.option(
+        "--target-path",
+        help="dbt artifacts directory for your development branch.",
+        type=click.STRING,
+        default="target",
+    ),
+    click.option(
+        "--target-base-path",
+        help="dbt artifacts directory to be used as the base for the comparison.",
+        type=click.STRING,
+        default="target-base",
+    ),
 ]
 
 
@@ -105,8 +145,9 @@ def _execute_sql(context, sql_template, base=False):
         exit(1)
 
     from recce.adapter.dbt_adapter import DbtAdapter
+
     dbt_adapter: DbtAdapter = context.adapter
-    with dbt_adapter.connection_named('recce'):
+    with dbt_adapter.connection_named("recce"):
         sql = dbt_adapter.generate_sql(sql_template, base)
         response, result = dbt_adapter.execute(sql, fetch=True, auto_begin=True)
         table = result
@@ -119,13 +160,15 @@ def _execute_sql(context, sql_template, base=False):
 def cli(ctx, **kwargs):
     """Recce: Data validation toolkit for comprehensive PR review"""
     from rich.console import Console
+
     from recce import __is_recce_outdated__, __latest_version__
+
     if __is_recce_outdated__ is True:
-        error_console = Console(stderr=True, style='bold')
+        error_console = Console(stderr=True, style="bold")
         error_console.print(
             f"[[yellow]Update Available[/yellow]] A new version of Recce {__latest_version__} is available.",
         )
-        error_console.print("Please update using the command: 'pip install --upgrade recce'.", end='\n\n')
+        error_console.print("Please update using the command: 'pip install --upgrade recce'.", end="\n\n")
 
 
 @cli.command(cls=TrackCommand)
@@ -134,12 +177,13 @@ def version():
     Show version information
     """
     from recce import __version__
+
     print(__version__)
 
 
 @cli.command(hidden=True, cls=TrackCommand)
-@click.option('--sql', help='Sql template to query', required=True)
-@click.option('--base', is_flag=True, help='Run the query on the base environment')
+@click.option("--sql", help="Sql template to query", required=True)
+@click.option("--base", is_flag=True, help="Run the query on the base environment")
 @add_options(dbt_related_options)
 def query(sql, base: bool = False, **kwargs):
     """
@@ -155,20 +199,25 @@ def query(sql, base: bool = False, **kwargs):
     """
     context = RecceContext.load(**kwargs)
     result = _execute_sql(context, sql, base=base)
-    print(result.to_string(na_rep='-', index=False))
+    print(result.to_string(na_rep="-", index=False))
 
 
 def _split_comma_separated(ctx, param, value):
-    return value.split(',') if value else None
+    return value.split(",") if value else None
 
 
 @cli.command(hidden=True, cls=TrackCommand)
-@click.option('--sql', help='Sql template to query.', required=True)
-@click.option('--primary-keys', type=click.STRING, help='Comma-separated list of primary key columns.',
-              callback=_split_comma_separated)
-@click.option('--keep-shape', is_flag=True, help='Keep unchanged columns. Otherwise, unchanged columns are hidden.')
-@click.option('--keep-equal', is_flag=True,
-              help='Keep values that are equal. Otherwise, equal values are shown as "-".')
+@click.option("--sql", help="Sql template to query.", required=True)
+@click.option(
+    "--primary-keys",
+    type=click.STRING,
+    help="Comma-separated list of primary key columns.",
+    callback=_split_comma_separated,
+)
+@click.option("--keep-shape", is_flag=True, help="Keep unchanged columns. Otherwise, unchanged columns are hidden.")
+@click.option(
+    "--keep-equal", is_flag=True, help='Keep values that are equal. Otherwise, equal values are shown as "-".'
+)
 @add_options(dbt_related_options)
 def diff(sql, primary_keys: List[str] = None, keep_shape: bool = False, keep_equal: bool = False, **kwargs):
     """
@@ -189,21 +238,19 @@ def diff(sql, primary_keys: List[str] = None, keep_shape: bool = False, keep_equ
         after.set_index(primary_keys, inplace=True)
 
     before_aligned, after_aligned = before.align(after)
-    diff = before_aligned.compare(after_aligned,
-                                  result_names=('base', 'current'),
-                                  keep_equal=keep_equal,
-                                  keep_shape=keep_shape)
-    print(diff.to_string(na_rep='-') if not diff.empty else 'no changes')
+    diff = before_aligned.compare(
+        after_aligned, result_names=("base", "current"), keep_equal=keep_equal, keep_shape=keep_shape
+    )
+    print(diff.to_string(na_rep="-") if not diff.empty else "no changes")
 
 
 @cli.command(cls=TrackCommand)
-@click.argument('state_file', required=False)
-@click.option('--host', default='localhost', show_default=True, help='The host to bind to.')
-@click.option('--port', default=8000, show_default=True, help='The port to bind to.', type=int)
-@click.option('--lifetime', default=0, show_default=True, help='The lifetime of the server in seconds.', type=int)
-@click.option('--review', is_flag=True, help='Open the state file in the review mode.')
-@click.option('--api-token', help='The token used by Recce Cloud API.', type=click.STRING,
-              envvar='RECCE_API_TOKEN')
+@click.argument("state_file", required=False)
+@click.option("--host", default="localhost", show_default=True, help="The host to bind to.")
+@click.option("--port", default=8000, show_default=True, help="The port to bind to.", type=int)
+@click.option("--lifetime", default=0, show_default=True, help="The lifetime of the server in seconds.", type=int)
+@click.option("--review", is_flag=True, help="Open the state file in the review mode.")
+@click.option("--api-token", help="The token used by Recce Cloud API.", type=click.STRING, envvar="RECCE_API_TOKEN")
 @add_options(dbt_related_options)
 @add_options(sqlmesh_related_options)
 @add_options(recce_options)
@@ -236,50 +283,49 @@ def server(host, port, lifetime, state_file=None, **kwargs):
 
     """
 
-    from .server import app, AppState
     from rich.console import Console
 
-    RecceConfig(config_file=kwargs.get('config'))
+    from .server import AppState, app
+
+    RecceConfig(config_file=kwargs.get("config"))
 
     handle_debug_flag(**kwargs)
-    is_review = kwargs.get('review', False)
-    is_cloud = kwargs.get('cloud', False)
+    is_review = kwargs.get("review", False)
+    is_cloud = kwargs.get("cloud", False)
     console = Console()
     cloud_options = None
-    flag = {
-        'show_onboarding_guide': True,
-        'single_env_onboarding': False,
-        'show_relaunch_hint': False
-    }
+    flag = {"show_onboarding_guide": True, "single_env_onboarding": False, "show_relaunch_hint": False}
     if is_cloud:
         cloud_options = {
-            'host': kwargs.get('state_file_host'),
-            'token': kwargs.get('cloud_token'),
-            'password': kwargs.get('password'),
+            "host": kwargs.get("state_file_host"),
+            "token": kwargs.get("cloud_token"),
+            "password": kwargs.get("password"),
         }
-        cloud_onboarding_state = get_recce_cloud_onboarding_state(kwargs.get('cloud_token'))
-        flag['show_onboarding_guide'] = False if cloud_onboarding_state == 'completed' else True
+        cloud_onboarding_state = get_recce_cloud_onboarding_state(kwargs.get("cloud_token"))
+        flag["show_onboarding_guide"] = False if cloud_onboarding_state == "completed" else True
 
     auth_options = {}
-    api_token = kwargs.get('api_token') if kwargs.get('api_token') else get_recce_api_token()
-    auth_options['api_token'] = api_token
+    api_token = kwargs.get("api_token") if kwargs.get("api_token") else get_recce_api_token()
+    auth_options["api_token"] = api_token
 
     # Check Single Environment Onboarding Mode if the review mode is False
-    if not os.path.isdir(kwargs.get('target_base_path')) and is_review is False:
+    if not os.path.isdir(kwargs.get("target_base_path")) and is_review is False:
         # Mark as single env onboarding mode if user provides the target-path only
-        flag['single_env_onboarding'] = True
-        flag['show_relaunch_hint'] = True
-        target_path = kwargs.get('target_path')
-        target_base_path = kwargs.get('target_base_path')
+        flag["single_env_onboarding"] = True
+        flag["show_relaunch_hint"] = True
+        target_path = kwargs.get("target_path")
+        target_base_path = kwargs.get("target_base_path")
         # Use the target path as the base path
-        kwargs['target_base_path'] = target_path
+        kwargs["target_base_path"] = target_path
 
         # Show warning message
-        console.rule('Notice', style='orange3')
-        console.print('Recce is launching in single environment mode with limited functionality.')
-        console.print('For full functionality, prepare a base set of dbt artifacts to compare against in '
-                      f"'{target_base_path}'.")
-        console.print('https://docs.datarecce.io/get-started/#prepare-dbt-artifacts')
+        console.rule("Notice", style="orange3")
+        console.print("Recce is launching in single environment mode with limited functionality.")
+        console.print(
+            "For full functionality, prepare a base set of dbt artifacts to compare against in "
+            f"'{target_base_path}'."
+        )
+        console.print("https://docs.datarecce.io/get-started/#prepare-dbt-artifacts")
         console.print()
 
     state_loader = create_state_loader(is_review, is_cloud, state_file, cloud_options)
@@ -300,28 +346,46 @@ def server(host, port, lifetime, state_file=None, **kwargs):
         console.print(f"[[red]Error[/red]] {message}")
         exit(1)
 
-    state = AppState(command='server', state_loader=state_loader, kwargs=kwargs, flag=flag, auth_options=auth_options,
-                     lifetime=lifetime)
+    state = AppState(
+        command="server",
+        state_loader=state_loader,
+        kwargs=kwargs,
+        flag=flag,
+        auth_options=auth_options,
+        lifetime=lifetime,
+    )
     app.state = state
 
-    uvicorn.run(app, host=host, port=port, lifespan='on')
+    uvicorn.run(app, host=host, port=port, lifespan="on")
 
 
-DEFAULT_RECCE_STATE_FILE = 'recce_state.json'
+DEFAULT_RECCE_STATE_FILE = "recce_state.json"
 
 
 @cli.command(cls=TrackCommand)
-@click.option('-o', '--output', help='Path of the output state file.', type=click.Path(),
-              default=DEFAULT_RECCE_STATE_FILE, show_default=True)
-@click.option('--state-file', help='Path of the import state file.', type=click.Path())
-@click.option('--summary', help='Path of the summary markdown file.', type=click.Path())
-@click.option('--skip-query', is_flag=True, help='Skip running the queries for the checks.')
-@click.option('--git-current-branch', help='The git branch of the current environment.', type=click.STRING,
-              envvar='GITHUB_HEAD_REF')
-@click.option('--git-base-branch', help='The git branch of the base environment.', type=click.STRING,
-              envvar='GITHUB_BASE_REF')
-@click.option('--github-pull-request-url', help='The github pull request url to use for the lineage.',
-              type=click.STRING)
+@click.option(
+    "-o",
+    "--output",
+    help="Path of the output state file.",
+    type=click.Path(),
+    default=DEFAULT_RECCE_STATE_FILE,
+    show_default=True,
+)
+@click.option("--state-file", help="Path of the import state file.", type=click.Path())
+@click.option("--summary", help="Path of the summary markdown file.", type=click.Path())
+@click.option("--skip-query", is_flag=True, help="Skip running the queries for the checks.")
+@click.option(
+    "--git-current-branch",
+    help="The git branch of the current environment.",
+    type=click.STRING,
+    envvar="GITHUB_HEAD_REF",
+)
+@click.option(
+    "--git-base-branch", help="The git branch of the base environment.", type=click.STRING, envvar="GITHUB_BASE_REF"
+)
+@click.option(
+    "--github-pull-request-url", help="The github pull request url to use for the lineage.", type=click.STRING
+)
 @add_options(dbt_related_options)
 @add_options(sqlmesh_related_options)
 @add_options(recce_options)
@@ -347,25 +411,31 @@ def run(output, **kwargs):
 
     """
     from rich.console import Console
+
     handle_debug_flag(**kwargs)
     console = Console()
     is_github_action, pr_url = check_github_ci_env(**kwargs)
     if is_github_action is True and pr_url is not None:
-        kwargs['github_pull_request_url'] = pr_url
+        kwargs["github_pull_request_url"] = pr_url
 
     # Initialize Recce Config
-    RecceConfig(config_file=kwargs.get('config'))
+    RecceConfig(config_file=kwargs.get("config"))
 
-    cloud_mode = kwargs.get('cloud', False)
-    state_file = kwargs.get('state_file')
-    cloud_options = {
-        'host': kwargs.get('state_file_host'),
-        'token': kwargs.get('cloud_token'),
-        'password': kwargs.get('password'),
-    } if cloud_mode else None
+    cloud_mode = kwargs.get("cloud", False)
+    state_file = kwargs.get("state_file")
+    cloud_options = (
+        {
+            "host": kwargs.get("state_file_host"),
+            "token": kwargs.get("cloud_token"),
+            "password": kwargs.get("password"),
+        }
+        if cloud_mode
+        else None
+    )
 
-    state_loader = create_state_loader(review_mode=False, cloud_mode=cloud_mode, state_file=state_file,
-                                       cloud_options=cloud_options)
+    state_loader = create_state_loader(
+        review_mode=False, cloud_mode=cloud_mode, state_file=state_file, cloud_options=cloud_options
+    )
 
     if not state_loader.verify():
         error, hint = state_loader.error_and_hint
@@ -380,7 +450,7 @@ def run(output, **kwargs):
 
     # Verify the output state file path
     try:
-        if os.path.isdir(output) or output.endswith('/'):
+        if os.path.isdir(output) or output.endswith("/"):
 
             output_dir = Path(output)
             # Create the directory if not exists
@@ -388,7 +458,8 @@ def run(output, **kwargs):
             output = os.path.join(output, DEFAULT_RECCE_STATE_FILE)
             console.print(
                 f"[[yellow]Warning[/yellow]] The path '{output_dir}' is a directory. "
-                f"The state file will be saved as '{output}'.")
+                f"The state file will be saved as '{output}'."
+            )
         else:
             # Create the parent directory if not exists
             output_dir = Path(output).parent
@@ -402,30 +473,43 @@ def run(output, **kwargs):
 
 
 @cli.command(cls=TrackCommand)
-@click.argument('state_file', required=False)
-@click.option('--format', '-f', help='Output format. Currently only markdown is supported.',
-              type=click.Choice(['markdown', 'mermaid', 'check'], case_sensitive=False),
-              default='markdown', show_default=True, hidden=True)
+@click.argument("state_file", required=False)
+@click.option(
+    "--format",
+    "-f",
+    help="Output format. Currently only markdown is supported.",
+    type=click.Choice(["markdown", "mermaid", "check"], case_sensitive=False),
+    default="markdown",
+    show_default=True,
+    hidden=True,
+)
 @add_options(dbt_related_options)
 @add_options(recce_options)
 @add_options(recce_cloud_options)
 def summary(state_file, **kwargs):
     """
-        Generate a summary of the recce state file
+    Generate a summary of the recce state file
     """
     from rich.console import Console
+
     from .core import load_context
+
     handle_debug_flag(**kwargs)
     console = Console()
-    cloud_mode = kwargs.get('cloud', False)
-    cloud_options = {
-        'host': kwargs.get('state_file_host'),
-        'token': kwargs.get('cloud_token'),
-        'password': kwargs.get('password'),
-    } if cloud_mode else None
+    cloud_mode = kwargs.get("cloud", False)
+    cloud_options = (
+        {
+            "host": kwargs.get("state_file_host"),
+            "token": kwargs.get("cloud_token"),
+            "password": kwargs.get("password"),
+        }
+        if cloud_mode
+        else None
+    )
 
-    state_loader = create_state_loader(review_mode=True, cloud_mode=cloud_mode, state_file=state_file,
-                                       cloud_options=cloud_options)
+    state_loader = create_state_loader(
+        review_mode=True, cloud_mode=cloud_mode, state_file=state_file, cloud_options=cloud_options
+    )
 
     if not state_loader.verify():
         error, hint = state_loader.error_and_hint
@@ -440,56 +524,68 @@ def summary(state_file, **kwargs):
         console.print(f"{e}")
         exit(1)
 
-    output = generate_markdown_summary(ctx, summary_format=kwargs.get('format'))
+    output = generate_markdown_summary(ctx, summary_format=kwargs.get("format"))
     print(output)
 
 
-@cli.group('cloud', short_help='Manage Recce Cloud state file.')
+@cli.group("cloud", short_help="Manage Recce Cloud state file.")
 def cloud(**kwargs):
     # Manage Recce Cloud.
     pass
 
 
 @cloud.command(cls=TrackCommand)
-@click.option('--cloud-token', help='The token used by Recce Cloud.', type=click.STRING,
-              envvar='GITHUB_TOKEN')
-@click.option('--state-file-host', help='The host to fetch the state file from.', type=click.STRING,
-              envvar='RECCE_STATE_FILE_HOST', default='', hidden=True)
-@click.option('--password', '-p', help='The password to encrypt the state file in cloud.', type=click.STRING,
-              envvar='RECCE_STATE_PASSWORD')
-@click.option('--force', '-f', help='Bypasses the confirmation prompt. Purge the state file directly.', is_flag=True)
+@click.option("--cloud-token", help="The token used by Recce Cloud.", type=click.STRING, envvar="GITHUB_TOKEN")
+@click.option(
+    "--state-file-host",
+    help="The host to fetch the state file from.",
+    type=click.STRING,
+    envvar="RECCE_STATE_FILE_HOST",
+    default="",
+    hidden=True,
+)
+@click.option(
+    "--password",
+    "-p",
+    help="The password to encrypt the state file in cloud.",
+    type=click.STRING,
+    envvar="RECCE_STATE_PASSWORD",
+)
+@click.option("--force", "-f", help="Bypasses the confirmation prompt. Purge the state file directly.", is_flag=True)
 @add_options(recce_options)
 def purge(**kwargs):
     """
-        Purge the state file from cloud
+    Purge the state file from cloud
     """
     from rich.console import Console
+
     handle_debug_flag(**kwargs)
     console = Console()
     state_loader = None
     cloud_options = {
-        'host': kwargs.get('state_file_host'),
-        'token': kwargs.get('cloud_token'),
-        'password': kwargs.get('password'),
+        "host": kwargs.get("state_file_host"),
+        "token": kwargs.get("cloud_token"),
+        "password": kwargs.get("password"),
     }
-    force_to_purge = kwargs.get('force', False)
+    force_to_purge = kwargs.get("force", False)
 
     try:
-        console.rule('Check Recce State from Cloud')
-        state_loader = RecceStateLoader(review_mode=False, cloud_mode=True,
-                                        state_file=None, cloud_options=cloud_options)
+        console.rule("Check Recce State from Cloud")
+        state_loader = RecceStateLoader(
+            review_mode=False, cloud_mode=True, state_file=None, cloud_options=cloud_options
+        )
     except Exception:
         console.print("[[yellow]Skip[/yellow]] Cannot access existing state file from cloud. Purge it directly.")
 
     if state_loader is None:
         try:
-            if force_to_purge is True or click.confirm('\nDo you want to purge the state file?'):
+            if force_to_purge is True or click.confirm("\nDo you want to purge the state file?"):
                 rc, err_msg = RecceCloudStateManager(cloud_options).purge_cloud_state()
                 if rc is True:
-                    console.rule('Purged Successfully')
+                    console.rule("Purged Successfully")
                 else:
-                    console.rule('Failed to Purge', style='red')
-                    console.print(f'Reason: {err_msg}')
+                    console.rule("Failed to Purge", style="red")
+                    console.print(f"Reason: {err_msg}")
 
         except click.exceptions.Abort:
             pass
@@ -500,21 +596,21 @@ def purge(**kwargs):
         console.print("[[yellow]Skip[/yellow]] No state file found in cloud.")
         return 0
 
-    pr_info = info.get('pull_request')
-    console.print('[green]State File hosted by[/green]', info.get('source'))
-    console.print('[green]GitHub Repository[/green]', info.get('pull_request').repository)
-    console.print(f'[green]GitHub Pull Request[/green]\n{pr_info.title} #{pr_info.id}')
-    console.print(f'Branch merged into [blue]{pr_info.base_branch}[/blue] from [blue]{pr_info.branch}[/blue]')
+    pr_info = info.get("pull_request")
+    console.print("[green]State File hosted by[/green]", info.get("source"))
+    console.print("[green]GitHub Repository[/green]", info.get("pull_request").repository)
+    console.print(f"[green]GitHub Pull Request[/green]\n{pr_info.title} #{pr_info.id}")
+    console.print(f"Branch merged into [blue]{pr_info.base_branch}[/blue] from [blue]{pr_info.branch}[/blue]")
     console.print(pr_info.url)
 
     try:
-        if force_to_purge is True or click.confirm('\nDo you want to purge the state file?'):
+        if force_to_purge is True or click.confirm("\nDo you want to purge the state file?"):
             response = state_loader.purge()
             if response is True:
-                console.rule('Purged Successfully')
+                console.rule("Purged Successfully")
             else:
-                console.rule('Failed to Purge', style='red')
-                console.print(f'Reason: {state_loader.error_message}')
+                console.rule("Failed to Purge", style="red")
+                console.print(f"Reason: {state_loader.error_message}")
     except click.exceptions.Abort:
         pass
 
@@ -522,32 +618,43 @@ def purge(**kwargs):
 
 
 @cloud.command(cls=TrackCommand)
-@click.argument('state_file', type=click.Path(exists=True))
-@click.option('--cloud-token', help='The token used by Recce Cloud.', type=click.STRING,
-              envvar='GITHUB_TOKEN')
-@click.option('--state-file-host', help='The host to fetch the state file from.', type=click.STRING,
-              envvar='RECCE_STATE_FILE_HOST', default='', hidden=True)
-@click.option('--password', '-p', help='The password to encrypt the state file in cloud.', type=click.STRING,
-              envvar='RECCE_STATE_PASSWORD')
+@click.argument("state_file", type=click.Path(exists=True))
+@click.option("--cloud-token", help="The token used by Recce Cloud.", type=click.STRING, envvar="GITHUB_TOKEN")
+@click.option(
+    "--state-file-host",
+    help="The host to fetch the state file from.",
+    type=click.STRING,
+    envvar="RECCE_STATE_FILE_HOST",
+    default="",
+    hidden=True,
+)
+@click.option(
+    "--password",
+    "-p",
+    help="The password to encrypt the state file in cloud.",
+    type=click.STRING,
+    envvar="RECCE_STATE_PASSWORD",
+)
 @add_options(recce_options)
 def upload(state_file, **kwargs):
     """
-        Upload the state file to cloud
+    Upload the state file to cloud
     """
     from rich.console import Console
 
     handle_debug_flag(**kwargs)
     cloud_options = {
-        'host': kwargs.get('state_file_host'),
-        'token': kwargs.get('cloud_token'),
-        'password': kwargs.get('password'),
+        "host": kwargs.get("state_file_host"),
+        "token": kwargs.get("cloud_token"),
+        "password": kwargs.get("password"),
     }
 
     console = Console()
 
     # load local state
-    state_loader = create_state_loader(review_mode=False, cloud_mode=False, state_file=state_file,
-                                       cloud_options=cloud_options)
+    state_loader = create_state_loader(
+        review_mode=False, cloud_mode=False, state_file=state_file, cloud_options=cloud_options
+    )
 
     if not state_loader.verify():
         error, hint = state_loader.error_and_hint
@@ -565,34 +672,50 @@ def upload(state_file, **kwargs):
 
     cloud_state_file_exists = state_manager.check_cloud_state_exists()
 
-    if cloud_state_file_exists and not click.confirm('\nDo you want to overwrite the existing state file?'):
+    if cloud_state_file_exists and not click.confirm("\nDo you want to overwrite the existing state file?"):
         return 0
 
     console.print(state_manager.upload_state_to_cloud(state_loader.state))
 
 
 @cloud.command(cls=TrackCommand)
-@click.option('-o', '--output', help='Path of the downloaded state file.', type=click.STRING,
-              default=DEFAULT_RECCE_STATE_FILE, show_default=True)
-@click.option('--cloud-token', help='The token used by Recce Cloud.', type=click.STRING,
-              envvar='GITHUB_TOKEN')
-@click.option('--state-file-host', help='The host to fetch the state file from.', type=click.STRING,
-              envvar='RECCE_STATE_FILE_HOST', default='', hidden=True)
-@click.option('--password', '-p', help='The password to encrypt the state file in cloud.', type=click.STRING,
-              envvar='RECCE_STATE_PASSWORD')
+@click.option(
+    "-o",
+    "--output",
+    help="Path of the downloaded state file.",
+    type=click.STRING,
+    default=DEFAULT_RECCE_STATE_FILE,
+    show_default=True,
+)
+@click.option("--cloud-token", help="The token used by Recce Cloud.", type=click.STRING, envvar="GITHUB_TOKEN")
+@click.option(
+    "--state-file-host",
+    help="The host to fetch the state file from.",
+    type=click.STRING,
+    envvar="RECCE_STATE_FILE_HOST",
+    default="",
+    hidden=True,
+)
+@click.option(
+    "--password",
+    "-p",
+    help="The password to encrypt the state file in cloud.",
+    type=click.STRING,
+    envvar="RECCE_STATE_PASSWORD",
+)
 @add_options(recce_options)
 def download(**kwargs):
     """
-        Download the state file to cloud
+    Download the state file to cloud
     """
     from rich.console import Console
 
     handle_debug_flag(**kwargs)
-    filepath = kwargs.get('output')
+    filepath = kwargs.get("output")
     cloud_options = {
-        'host': kwargs.get('state_file_host'),
-        'token': kwargs.get('cloud_token'),
-        'password': kwargs.get('password'),
+        "host": kwargs.get("state_file_host"),
+        "token": kwargs.get("cloud_token"),
+        "password": kwargs.get("password"),
     }
 
     console = Console()
@@ -608,7 +731,7 @@ def download(**kwargs):
     cloud_state_file_exists = state_manager.check_cloud_state_exists()
 
     if not cloud_state_file_exists:
-        console.print('[yellow]Skip[/yellow] No state file found in cloud.')
+        console.print("[yellow]Skip[/yellow] No state file found in cloud.")
         return 0
 
     state_manager.download_state_from_cloud(filepath)
@@ -616,41 +739,60 @@ def download(**kwargs):
 
 
 @cloud.command(cls=TrackCommand)
-@click.option('--cloud-token', help='The token used by Recce Cloud.', type=click.STRING,
-              envvar='GITHUB_TOKEN')
-@click.option('--branch', '-b', help='The branch of the provided artifacts.', type=click.STRING,
-              envvar='GITHUB_HEAD_REF', default=current_branch(), show_default=True)
-@click.option('--target-path', help='dbt artifacts directory for your artifacts.', type=click.STRING, default='target',
-              show_default=True)
-@click.option('--password', '-p', help='The password to encrypt the dbt artifacts in cloud.', type=click.STRING,
-              envvar='RECCE_STATE_PASSWORD', required=True)
+@click.option("--cloud-token", help="The token used by Recce Cloud.", type=click.STRING, envvar="GITHUB_TOKEN")
+@click.option(
+    "--branch",
+    "-b",
+    help="The branch of the provided artifacts.",
+    type=click.STRING,
+    envvar="GITHUB_HEAD_REF",
+    default=current_branch(),
+    show_default=True,
+)
+@click.option(
+    "--target-path",
+    help="dbt artifacts directory for your artifacts.",
+    type=click.STRING,
+    default="target",
+    show_default=True,
+)
+@click.option(
+    "--password",
+    "-p",
+    help="The password to encrypt the dbt artifacts in cloud.",
+    type=click.STRING,
+    envvar="RECCE_STATE_PASSWORD",
+    required=True,
+)
 @add_options(recce_options)
 def upload_artifacts(**kwargs):
     """
-        Upload the dbt artifacts to cloud
+    Upload the dbt artifacts to cloud
 
-        Upload the dbt artifacts (metadata.json, catalog.json) to Recce Cloud for the given branch.
-        The password is used to encrypt the dbt artifacts in the cloud. You will need the password to download the dbt artifacts.
+    Upload the dbt artifacts (metadata.json, catalog.json) to Recce Cloud for the given branch.
+    The password is used to encrypt the dbt artifacts in the cloud. You will need the password to download the dbt artifacts.
 
-        By default, the artifacts are uploaded to the current branch. You can specify the branch using the --branch option.
-        The target path is set to 'target' by default. You can specify the target path using the --target-path option.
+    By default, the artifacts are uploaded to the current branch. You can specify the branch using the --branch option.
+    The target path is set to 'target' by default. You can specify the target path using the --target-path option.
     """
     from rich.console import Console
+
     console = Console()
-    cloud_token = kwargs.get('cloud_token')
-    password = kwargs.get('password')
-    target_path = kwargs.get('target_path')
-    branch = kwargs.get('branch')
+    cloud_token = kwargs.get("cloud_token")
+    password = kwargs.get("password")
+    target_path = kwargs.get("target_path")
+    branch = kwargs.get("branch")
 
     try:
-        rc = upload_dbt_artifacts(target_path, branch=branch,
-                                  token=cloud_token, password=password,
-                                  debug=kwargs.get('debug', False))
-        console.rule('Uploaded Successfully')
+        rc = upload_dbt_artifacts(
+            target_path, branch=branch, token=cloud_token, password=password, debug=kwargs.get("debug", False)
+        )
+        console.rule("Uploaded Successfully")
         console.print(
-            f'Uploaded dbt artifacts to Recce Cloud for branch "{branch}" from "{os.path.abspath(target_path)}"')
+            f'Uploaded dbt artifacts to Recce Cloud for branch "{branch}" from "{os.path.abspath(target_path)}"'
+        )
     except Exception as e:
-        console.rule('Failed to Upload', style='red')
+        console.rule("Failed to Upload", style="red")
         console.print("[[red]Error[/red]] Failed to upload the dbt artifacts to cloud.")
         console.print(f"Reason: {e}")
         rc = 1
@@ -659,22 +801,32 @@ def upload_artifacts(**kwargs):
 
 def _download_artifacts(branch, cloud_token, console, kwargs, password, target_path):
     try:
-        rc = download_dbt_artifacts(target_path, branch=branch, token=cloud_token, password=password,
-                                    force=kwargs.get('force', False),
-                                    debug=kwargs.get('debug', False))
-        console.rule('Downloaded Successfully')
+        rc = download_dbt_artifacts(
+            target_path,
+            branch=branch,
+            token=cloud_token,
+            password=password,
+            force=kwargs.get("force", False),
+            debug=kwargs.get("debug", False),
+        )
+        console.rule("Downloaded Successfully")
         console.print(
-            f'Downloaded dbt artifacts from Recce Cloud for branch "{branch}" to "{os.path.abspath(target_path)}"')
+            f'Downloaded dbt artifacts from Recce Cloud for branch "{branch}" to "{os.path.abspath(target_path)}"'
+        )
     except Exception as e:
-        console.rule('Failed to Download', style='red')
+        console.rule("Failed to Download", style="red")
         console.print("[[red]Error[/red]] Failed to download the dbt artifacts from cloud.")
         reason = str(e)
 
-        if 'Requests specifying Server Side Encryption with Customer provided keys must provide the correct secret key' in reason:
+        if (
+            "Requests specifying Server Side Encryption with Customer provided keys must provide the correct secret key"
+            in reason
+        ):
             console.print("Reason: Decryption failed due to incorrect password.")
             console.print(
-                "Please provide the correct password to decrypt the dbt artifacts. Or re-upload the dbt artifacts with a new password.")
-        elif 'The specified key does not exist' in reason:
+                "Please provide the correct password to decrypt the dbt artifacts. Or re-upload the dbt artifacts with a new password."
+            )
+        elif "The specified key does not exist" in reason:
             console.print("Reason: The dbt artifacts is not found in the cloud.")
             console.print("Please upload the dbt artifacts to the cloud before downloading it.")
         else:
@@ -684,89 +836,132 @@ def _download_artifacts(branch, cloud_token, console, kwargs, password, target_p
 
 
 @cloud.command(cls=TrackCommand)
-@click.option('--cloud-token', help='The token used by Recce Cloud.', type=click.STRING,
-              envvar='GITHUB_TOKEN')
-@click.option('--branch', '-b', help='The branch of the selected artifacts.', type=click.STRING,
-              envvar='GITHUB_BASE_REF', default=current_branch(), show_default=True)
-@click.option('--target-path', help='The dbt artifacts directory for your artifacts.', type=click.STRING,
-              default='target', show_default=True)
-@click.option('--password', '-p', help='The password to decrypt the dbt artifacts in cloud.', type=click.STRING,
-              envvar='RECCE_STATE_PASSWORD', required=True)
-@click.option('--force', '-f', help='Bypasses the confirmation prompt. Download the artifacts directly.',
-              is_flag=True)
+@click.option("--cloud-token", help="The token used by Recce Cloud.", type=click.STRING, envvar="GITHUB_TOKEN")
+@click.option(
+    "--branch",
+    "-b",
+    help="The branch of the selected artifacts.",
+    type=click.STRING,
+    envvar="GITHUB_BASE_REF",
+    default=current_branch(),
+    show_default=True,
+)
+@click.option(
+    "--target-path",
+    help="The dbt artifacts directory for your artifacts.",
+    type=click.STRING,
+    default="target",
+    show_default=True,
+)
+@click.option(
+    "--password",
+    "-p",
+    help="The password to decrypt the dbt artifacts in cloud.",
+    type=click.STRING,
+    envvar="RECCE_STATE_PASSWORD",
+    required=True,
+)
+@click.option("--force", "-f", help="Bypasses the confirmation prompt. Download the artifacts directly.", is_flag=True)
 @add_options(recce_options)
 def download_artifacts(**kwargs):
     """
-        Download the dbt artifacts from cloud
+    Download the dbt artifacts from cloud
 
-        Download the dbt artifacts (metadata.json, catalog.json) from Recce Cloud for the given branch.
-        The password is used to decrypt the dbt artifacts in the cloud.
+    Download the dbt artifacts (metadata.json, catalog.json) from Recce Cloud for the given branch.
+    The password is used to decrypt the dbt artifacts in the cloud.
 
-        By default, the artifacts are downloaded from the current branch. You can specify the branch using the --branch option.
-        The target path is set to 'target' by default. You can specify the target path using the --target-path option.
+    By default, the artifacts are downloaded from the current branch. You can specify the branch using the --branch option.
+    The target path is set to 'target' by default. You can specify the target path using the --target-path option.
     """
     from rich.console import Console
+
     console = Console()
-    cloud_token = kwargs.get('cloud_token')
-    password = kwargs.get('password')
-    target_path = kwargs.get('target_path')
-    branch = kwargs.get('branch')
+    cloud_token = kwargs.get("cloud_token")
+    password = kwargs.get("password")
+    target_path = kwargs.get("target_path")
+    branch = kwargs.get("branch")
     return _download_artifacts(branch, cloud_token, console, kwargs, password, target_path)
 
 
 @cloud.command(cls=TrackCommand)
-@click.option('--cloud-token', help='The token used by Recce Cloud.', type=click.STRING,
-              envvar='GITHUB_TOKEN')
-@click.option('--branch', '-b', help='The branch of the selected artifacts.', type=click.STRING,
-              envvar='GITHUB_BASE_REF', default=current_default_branch(), show_default=True)
-@click.option('--target-path', help='The dbt artifacts directory for your artifacts.', type=click.STRING,
-              default='target-base', show_default=True)
-@click.option('--password', '-p', help='The password to decrypt the dbt artifacts in cloud.', type=click.STRING,
-              envvar='RECCE_STATE_PASSWORD', required=True)
-@click.option('--force', '-f', help='Bypasses the confirmation prompt. Download the artifacts directly.',
-              is_flag=True)
+@click.option("--cloud-token", help="The token used by Recce Cloud.", type=click.STRING, envvar="GITHUB_TOKEN")
+@click.option(
+    "--branch",
+    "-b",
+    help="The branch of the selected artifacts.",
+    type=click.STRING,
+    envvar="GITHUB_BASE_REF",
+    default=current_default_branch(),
+    show_default=True,
+)
+@click.option(
+    "--target-path",
+    help="The dbt artifacts directory for your artifacts.",
+    type=click.STRING,
+    default="target-base",
+    show_default=True,
+)
+@click.option(
+    "--password",
+    "-p",
+    help="The password to decrypt the dbt artifacts in cloud.",
+    type=click.STRING,
+    envvar="RECCE_STATE_PASSWORD",
+    required=True,
+)
+@click.option("--force", "-f", help="Bypasses the confirmation prompt. Download the artifacts directly.", is_flag=True)
 @add_options(recce_options)
 def download_base_artifacts(**kwargs):
     """
-        Download the base dbt artifacts from cloud
+    Download the base dbt artifacts from cloud
 
-        Download the base dbt artifacts (metadata.json, catalog.json) from Recce Cloud.
-        This is useful when you start to set up the base dbt artifacts for the first time.
+    Download the base dbt artifacts (metadata.json, catalog.json) from Recce Cloud.
+    This is useful when you start to set up the base dbt artifacts for the first time.
 
-        Please make sure you have uploaded the dbt artifacts before downloading them.
+    Please make sure you have uploaded the dbt artifacts before downloading them.
     """
     from rich.console import Console
+
     console = Console()
-    cloud_token = kwargs.get('cloud_token')
-    password = kwargs.get('password')
-    target_path = kwargs.get('target_path')
-    branch = kwargs.get('branch')
+    cloud_token = kwargs.get("cloud_token")
+    password = kwargs.get("password")
+    target_path = kwargs.get("target_path")
+    branch = kwargs.get("branch")
     return _download_artifacts(branch, cloud_token, console, kwargs, password, target_path)
 
 
-@cli.group('github', short_help='GitHub related commands', hidden=True)
+@cli.group("github", short_help="GitHub related commands", hidden=True)
 def github(**kwargs):
     pass
 
 
-@github.command(cls=TrackCommand,
-                short_help='Download the artifacts from the GitHub repository based on the current Pull Request.')
-@click.option('--github-token', help='The github token to use for accessing GitHub repo.', type=click.STRING,
-              envvar='GITHUB_TOKEN')
-@click.option('--github-repo', help='The github repo to use for accessing GitHub repo.', type=click.STRING,
-              envvar='GITHUB_REPOSITORY')
+@github.command(
+    cls=TrackCommand, short_help="Download the artifacts from the GitHub repository based on the current Pull Request."
+)
+@click.option(
+    "--github-token",
+    help="The github token to use for accessing GitHub repo.",
+    type=click.STRING,
+    envvar="GITHUB_TOKEN",
+)
+@click.option(
+    "--github-repo",
+    help="The github repo to use for accessing GitHub repo.",
+    type=click.STRING,
+    envvar="GITHUB_REPOSITORY",
+)
 def artifact(**kwargs):
     from recce.github import recce_ci_artifact
+
     return recce_ci_artifact(**kwargs)
 
 
 @cli.command(cls=TrackCommand)
-@click.argument('state_file', type=click.Path(exists=True))
-@click.option('--api-token', help='The token used by Recce Cloud API.', type=click.STRING,
-              envvar='RECCE_API_TOKEN')
+@click.argument("state_file", type=click.Path(exists=True))
+@click.option("--api-token", help="The token used by Recce Cloud API.", type=click.STRING, envvar="RECCE_API_TOKEN")
 def share(state_file, **kwargs):
     """
-        Share the state file
+    Share the state file
     """
     from rich.console import Console
 
@@ -775,19 +970,22 @@ def share(state_file, **kwargs):
     cloud_options = None
 
     # read or input the api token
-    api_token = kwargs.get('api_token') if kwargs.get('api_token') else get_recce_api_token()
+    api_token = kwargs.get("api_token") if kwargs.get("api_token") else get_recce_api_token()
     if api_token is None:
-        console.print("An API token is required to this. This can be obtained in your user account settings.\n"
-                      f"{RECCE_CLOUD_API_HOST}/settings#tokens\n"
-                      "Your API token will be added to '~/.recce/profile.yml' for more convenient sharing.")
-        api_token = click.prompt('Your Recce API token', type=str, hide_input=True, show_default=False)
-        update_user_profile({'api_token': api_token})
+        console.print(
+            "An API token is required to this. This can be obtained in your user account settings.\n"
+            f"{RECCE_CLOUD_API_HOST}/settings#tokens\n"
+            "Your API token will be added to '~/.recce/profile.yml' for more convenient sharing."
+        )
+        api_token = click.prompt("Your Recce API token", type=str, hide_input=True, show_default=False)
+        update_user_profile({"api_token": api_token})
 
-    auth_options = {'api_token': api_token}
+    auth_options = {"api_token": api_token}
 
     # load local state
-    state_loader = create_state_loader(review_mode=True, cloud_mode=False, state_file=state_file,
-                                       cloud_options=cloud_options)
+    state_loader = create_state_loader(
+        review_mode=True, cloud_mode=False, state_file=state_file, cloud_options=cloud_options
+    )
 
     if not state_loader.verify():
         error, hint = state_loader.error_and_hint
@@ -808,9 +1006,8 @@ def share(state_file, **kwargs):
 
     try:
         response = state_manager.share_state(state_file_name, state_loader.state)
-        if response.get('status') == 'error':
-            console.print("[[red]Error[/red]] Failed to share the state.\n"
-                          f"Reason: {response.get('message')}")
+        if response.get("status") == "error":
+            console.print("[[red]Error[/red]] Failed to share the state.\n" f"Reason: {response.get('message')}")
         else:
             console.print(f"Shared Link: {response.get('share_url')}")
     except RecceCloudException as e:
@@ -820,13 +1017,14 @@ def share(state_file, **kwargs):
 
 
 @cli.command(hidden=True, cls=TrackCommand)
-@click.argument('state_file', required=True)
-@click.option('--host', default='localhost', show_default=True, help='The host to bind to.')
-@click.option('--port', default=8000, show_default=True, help='The port to bind to.', type=int)
-@click.option('--lifetime', default=0, show_default=True, help='The lifetime of the server in seconds.', type=int)
+@click.argument("state_file", required=True)
+@click.option("--host", default="localhost", show_default=True, help="The host to bind to.")
+@click.option("--port", default=8000, show_default=True, help="The port to bind to.", type=int)
+@click.option("--lifetime", default=0, show_default=True, help="The lifetime of the server in seconds.", type=int)
 def read_only(host, port, lifetime, state_file=None, **kwargs):
-    from .server import app, AppState
     from rich.console import Console
+
+    from .server import AppState, app
 
     console = Console()
     handle_debug_flag(**kwargs)
@@ -834,7 +1032,7 @@ def read_only(host, port, lifetime, state_file=None, **kwargs):
     is_cloud = False
     cloud_options = None
     flag = {
-        'read_only': True,
+        "read_only": True,
     }
     state_loader = create_state_loader(is_review, is_cloud, state_file, cloud_options)
 
@@ -849,10 +1047,10 @@ def read_only(host, port, lifetime, state_file=None, **kwargs):
         console.print(f"[[red]Error[/red]] {message}")
         exit(1)
 
-    app.state = AppState(command='read_only', state_loader=state_loader, kwargs=kwargs, flag=flag, lifetime=lifetime)
+    app.state = AppState(command="read_only", state_loader=state_loader, kwargs=kwargs, flag=flag, lifetime=lifetime)
     set_default_context(RecceContext.load(**kwargs, review=is_review, state_loader=state_loader))
 
-    uvicorn.run(app, host=host, port=port, lifespan='on')
+    uvicorn.run(app, host=host, port=port, lifespan="on")
 
 
 if __name__ == "__main__":

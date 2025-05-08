@@ -10,14 +10,14 @@ from pydantic import BaseModel, Field
 
 
 class DataFrameColumnType(Enum):
-    NUMBER = 'number'
-    INTEGER = 'integer'
-    TEXT = 'text'
-    BOOLEAN = 'boolean'
-    DATE = 'date'
-    DATETIME = 'datetime'
-    TIMEDELTA = 'timedelta'
-    UNKNOWN = 'unknown'
+    NUMBER = "number"
+    INTEGER = "integer"
+    TEXT = "text"
+    BOOLEAN = "boolean"
+    DATE = "date"
+    DATETIME = "datetime"
+    TIMEDELTA = "timedelta"
+    UNKNOWN = "unknown"
 
 
 class DataFrameColumn(BaseModel):
@@ -32,19 +32,21 @@ class DataFrame(BaseModel):
     more: t.Optional[bool] = Field(None, description="Whether there are more rows to fetch")
 
     @staticmethod
-    def from_agate(table: 'agate.Table', limit: t.Optional[int] = None, more: t.Optional[bool] = None):
+    def from_agate(table: "agate.Table", limit: t.Optional[int] = None, more: t.Optional[bool] = None):
         from recce.adapter.dbt_adapter import dbt_version
-        if dbt_version < 'v1.8':
+
+        if dbt_version < "v1.8":
             import dbt.clients.agate_helper as agate_helper
         else:
             import dbt_common.clients.agate_helper as agate_helper
 
         import agate
+
         columns = []
 
         for col_name, col_type in zip(table.column_names, table.column_types):
 
-            has_integer = hasattr(agate_helper, 'Integer')
+            has_integer = hasattr(agate_helper, "Integer")
 
             if isinstance(col_type, agate.Number):
                 col_type = DataFrameColumnType.NUMBER
@@ -78,23 +80,23 @@ class DataFrame(BaseModel):
         return df
 
     @staticmethod
-    def from_pandas(pandas_df: 'pandas.DataFrame', limit: t.Optional[int] = None, more: t.Optional[bool] = None):
+    def from_pandas(pandas_df: "pandas.DataFrame", limit: t.Optional[int] = None, more: t.Optional[bool] = None):
         columns = []
         for column in pandas_df.columns:
             dtype = pandas_df[column].dtype
-            if dtype == 'int64':
+            if dtype == "int64":
                 col_type = DataFrameColumnType.INTEGER
-            elif dtype == 'float64':
+            elif dtype == "float64":
                 col_type = DataFrameColumnType.NUMBER
-            elif dtype == 'object':
+            elif dtype == "object":
                 col_type = DataFrameColumnType.TEXT
-            elif dtype == 'bool':
+            elif dtype == "bool":
                 col_type = DataFrameColumnType.BOOLEAN
             else:
                 col_type = DataFrameColumnType.UNKNOWN
             columns.append(DataFrameColumn(name=column, type=col_type))
 
-        s = pandas_df.to_json(orient='values')
+        s = pandas_df.to_json(orient="values")
         data = json.loads(s)
 
         df = DataFrame(

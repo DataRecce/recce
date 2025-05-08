@@ -8,29 +8,38 @@ from contextlib import asynccontextmanager
 from dataclasses import dataclass
 from datetime import datetime, timedelta
 from pathlib import Path
-from typing import Optional, Any, Set, Annotated, Literal, Dict
+from typing import Annotated, Any, Dict, Literal, Optional, Set
 
-from fastapi import FastAPI, HTTPException, Request, WebSocket, UploadFile, Response, BackgroundTasks, Form
+from fastapi import (
+    BackgroundTasks,
+    FastAPI,
+    Form,
+    HTTPException,
+    Request,
+    Response,
+    UploadFile,
+    WebSocket,
+)
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import PlainTextResponse
 from fastapi.staticfiles import StaticFiles
-from pydantic import ValidationError, BaseModel
+from pydantic import BaseModel, ValidationError
 from pytz import utc
 from starlette.middleware.gzip import GZipMiddleware
 from starlette.middleware.sessions import SessionMiddleware
 from starlette.websockets import WebSocketDisconnect
 
-from . import __version__, event, __latest_version__
+from . import __latest_version__, __version__, event
 from .apis.check_api import check_router
 from .apis.run_api import run_router
 from .config import RecceConfig
-from .core import load_context, default_context, RecceContext
+from .core import RecceContext, default_context, load_context
 from .event import log_api_event, log_single_env_event
 from .exceptions import RecceException
 from .run import load_preset_checks
-from .state import RecceStateLoader, RecceShareStateManager
+from .state import RecceShareStateManager, RecceStateLoader
 
-logger = logging.getLogger('uvicorn')
+logger = logging.getLogger("uvicorn")
 
 
 @dataclass
@@ -51,14 +60,15 @@ def schedule_lifetime_termination(app_state):
         os.kill(pid, signal.SIGINT)
 
     # Terminate the server process after the specified lifetime
-    logger.info(f'[Configuration] The lifetime of the server is {app_state.lifetime} seconds')
+    logger.info(f"[Configuration] The lifetime of the server is {app_state.lifetime} seconds")
     app.state.lifetime_expired_at = datetime.now(utc) + timedelta(seconds=app_state.lifetime)
     asyncio.get_running_loop().call_later(app_state.lifetime, terminating_server)
 
 
 def setup_server(app_state: AppState) -> RecceContext:
-    from .core import load_context
     from rich.console import Console
+
+    from .core import load_context
 
     console = Console()
     state_loader = app_state.state_loader
@@ -73,15 +83,16 @@ def setup_server(app_state: AppState) -> RecceContext:
         log_single_env_event()
 
     # Initialize Recce Config
-    config = RecceConfig(config_file=kwargs.get('config'))
+    config = RecceConfig(config_file=kwargs.get("config"))
     if state_loader.state is None:
-        preset_checks = config.get('checks', [])
+        preset_checks = config.get("checks", [])
         if preset_checks and len(preset_checks) > 0:
             console.rule("Loading Preset Checks")
             load_preset_checks(preset_checks)
 
     from recce.event import log_load_state
-    log_load_state(command='server', single_env=single_env)
+
+    log_load_state(command="server", single_env=single_env)
 
     if app_state.lifetime is not None and app_state.lifetime > 0:
         schedule_lifetime_termination(app_state)
@@ -112,16 +123,16 @@ async def lifespan(fastapi: FastAPI):
     ctx = None
     app_state: AppState = app.state
 
-    if app_state.command == 'server':
+    if app_state.command == "server":
         ctx = setup_server(app_state)
-    elif app_state.command == 'read_only':
+    elif app_state.command == "read_only":
         setup_ready_only(app_state)
 
     yield
 
-    if app_state.command == 'server':
+    if app_state.command == "server":
         teardown_server(app_state, ctx)
-    elif app_state.command == 'read_only':
+    elif app_state.command == "read_only":
         teardown_ready_only(app_state)
 
 
@@ -130,7 +141,7 @@ app = FastAPI(lifespan=lifespan)
 
 def verify_json_file(file_path: str) -> bool:
     try:
-        with open(file_path, 'r') as f:
+        with open(file_path, "r") as f:
             json.load(f)
     except Exception:
         return False
@@ -143,19 +154,15 @@ def dbt_artifacts_updated_callback(file_changed_event: Any):
     file_name = src_path.name
 
     if not verify_json_file(file_changed_event.src_path):
-        logger.debug('Skip to refresh the artifacts because the file is not updated completely.')
+        logger.debug("Skip to refresh the artifacts because the file is not updated completely.")
         return
 
-    logger.info(
-        f'Detect {target_type} file {file_changed_event.event_type}: {file_name}')
+    logger.info(f"Detect {target_type} file {file_changed_event.event_type}: {file_name}")
     ctx = load_context()
     ctx.refresh_manifest(file_changed_event.src_path)
     broadcast_command = {
-        'command': 'refresh',
-        'event': {
-            'eventType': file_changed_event.event_type,
-            'srcPath': file_changed_event.src_path
-        }
+        "command": "refresh",
+        "event": {"eventType": file_changed_event.event_type, "srcPath": file_changed_event.src_path},
     }
     payload = json.dumps(broadcast_command)
     asyncio.run(broadcast(payload))
@@ -164,7 +171,7 @@ def dbt_artifacts_updated_callback(file_changed_event: Any):
 def dbt_env_updated_callback():
     logger.info("Detect 'manifest.json' and 'catalog.json' are generated under 'target-base' directory")
     broadcast_command = {
-        'command': 'relaunch',
+        "command": "relaunch",
     }
     payload = json.dumps(broadcast_command)
     asyncio.run(broadcast(payload))
@@ -195,7 +202,7 @@ app.add_middleware(
 async def set_context_by_cookie(request: Request, call_next):
     response = await call_next(request)
 
-    user_id_in_cookie = request.cookies.get('recce_user_id')
+    user_id_in_cookie = request.cookies.get("recce_user_id")
     user_id = event.get_user_id()
 
     if event.is_anonymous_tracking() is False:
@@ -203,7 +210,7 @@ async def set_context_by_cookie(request: Request, call_next):
         user_id = None
 
     if user_id_in_cookie is None or user_id_in_cookie != user_id:
-        response.set_cookie(key='recce_user_id', value=user_id)
+        response.set_cookie(key="recce_user_id", value=user_id)
     return response
 
 
@@ -212,8 +219,8 @@ async def disable_cache(request: Request, call_next):
     response = await call_next(request)
 
     # disable cache for '/' and '/index.html'
-    if request.url.path in ['/', '/index.html']:
-        response.headers['Cache-Control'] = 'no-store'
+    if request.url.path in ["/", "/index.html"]:
+        response.headers["Cache-Control"] = "no-store"
 
     return response
 
@@ -234,11 +241,11 @@ class RecceInstanceInfoOut(BaseModel):
 async def recce_instance_info():
     app_state: AppState = app.state
     flag = app_state.flag
-    read_only = flag.get('read_only', False)
-    single_env = flag.get('single_env_onboarding', False)
+    read_only = flag.get("read_only", False)
+    single_env = flag.get("single_env_onboarding", False)
 
     auth_options = app_state.auth_options or {}
-    api_token = auth_options.get('api_token')
+    api_token = auth_options.get("api_token")
 
     return {
         "read_only": read_only,
@@ -264,12 +271,12 @@ async def config_flag():
 async def mark_onboarding_completed():
     context = default_context()
     context.mark_onboarding_completed()
-    app.state.flag['show_onboarding_guide'] = False
+    app.state.flag["show_onboarding_guide"] = False
 
 
 @app.post("/api/relaunch-hint/completed", status_code=204)
 async def mark_relaunch_hint_completed():
-    app.state.flag['show_relaunch_hint'] = False
+    app.state.flag["show_relaunch_hint"] = False
 
 
 @app.get("/api/info")
@@ -278,7 +285,7 @@ async def get_info():
     Get the information of the current context.
     """
     context = default_context()
-    demo = os.environ.get('DEMO', False)
+    demo = os.environ.get("DEMO", False)
 
     if demo:
         state = context.export_demo_state()
@@ -296,25 +303,26 @@ async def get_info():
 
     try:
         info = {
-            'state_metadata': state_metadata,
-            'adapter_type': context.adapter_type,
-            'review_mode': context.review_mode,
-            'git': state.git.to_dict() if state.git else None,
-            'pull_request': state.pull_request.to_dict() if state.pull_request else None,
-            'lineage': lineage_diff,
-            'demo': bool(demo),
-            'cloud_mode': context.state_loader.cloud_mode,
-            'file_mode': context.state_loader.state_file is not None,
-            'filename': filename,
-            'support_tasks': support_tasks,
+            "state_metadata": state_metadata,
+            "adapter_type": context.adapter_type,
+            "review_mode": context.review_mode,
+            "git": state.git.to_dict() if state.git else None,
+            "pull_request": state.pull_request.to_dict() if state.pull_request else None,
+            "lineage": lineage_diff,
+            "demo": bool(demo),
+            "cloud_mode": context.state_loader.cloud_mode,
+            "file_mode": context.state_loader.state_file is not None,
+            "filename": filename,
+            "support_tasks": support_tasks,
         }
 
-        if context.adapter_type == 'sqlmesh':
+        if context.adapter_type == "sqlmesh":
             from recce.adapter.sqlmesh_adapter import SqlmeshAdapter
+
             sqlmesh_adapter: SqlmeshAdapter = context.adapter
-            info['sqlmesh'] = {
-                'base_env': sqlmesh_adapter.base_env.name,
-                'current_env': sqlmesh_adapter.curr_env.name,
+            info["sqlmesh"] = {
+                "base_env": sqlmesh_adapter.base_env.name,
+                "current_env": sqlmesh_adapter.curr_env.name,
             }
 
         return info
@@ -333,11 +341,12 @@ class CllOutput(BaseModel):
 @app.post("/api/cll", response_model=CllOutput)
 async def column_level_lineage_by_node(cll_input: CllIn):
     from recce.adapter.dbt_adapter import DbtAdapter
+
     dbt_adapter: DbtAdapter = default_context().adapter
 
     try:
         # TODO: Add support for by the node and column
-        result = dbt_adapter.get_cll_by_node_id(cll_input.params.get('node_id'))
+        result = dbt_adapter.get_cll_by_node_id(cll_input.params.get("node_id"))
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))
 
@@ -348,7 +357,7 @@ class SelectNodesInput(BaseModel):
     select: Optional[str] = None
     exclude: Optional[str] = None
     packages: Optional[list[str]] = None
-    view_mode: Optional[Literal['all', 'changed_models']] = None
+    view_mode: Optional[Literal["all", "changed_models"]] = None
 
 
 class SelectNodesOutput(BaseModel):
@@ -359,8 +368,8 @@ class SelectNodesOutput(BaseModel):
 async def select_nodes(input: SelectNodesInput):
     context = default_context()
 
-    if context.adapter_type != 'dbt':
-        raise HTTPException(status_code=400, detail='Only dbt adapter is supported')
+    if context.adapter_type != "dbt":
+        raise HTTPException(status_code=400, detail="Only dbt adapter is supported")
 
     try:
         nodes = context.adapter.select_nodes(
@@ -369,7 +378,7 @@ async def select_nodes(input: SelectNodesInput):
             packages=input.packages,
             view_mode=input.view_mode,
         )
-        nodes = [node for node in nodes if not node.startswith('test.')]
+        nodes = [node for node in nodes if not node.startswith("test.")]
         return SelectNodesOutput(nodes=nodes)
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))
@@ -380,9 +389,9 @@ async def get_columns(model_id: str):
     context = default_context()
     try:
         return {
-            'model': {
-                'base': context.get_model(model_id, base=True),
-                'current': context.get_model(model_id, base=False)
+            "model": {
+                "base": context.get_model(model_id, base=True),
+                "current": context.get_model(model_id, base=False),
             }
         }
     except Exception as e:
@@ -397,12 +406,12 @@ async def save_handler():
     try:
         # Sync the state file
         context = default_context()
-        log_api_event('save', dict(state_loader_mode=context.state_loader_mode()))
+        log_api_event("save", dict(state_loader_mode=context.state_loader_mode()))
         state_loader = context.state_loader
         if not state_loader.cloud_mode and state_loader.state_file is None:
-            raise RecceException('Not file mode or cloud mode')
+            raise RecceException("Not file mode or cloud mode")
 
-        context.sync_state('overwrite')
+        context.sync_state("overwrite")
     except RecceException as e:
         raise HTTPException(status_code=400, detail=e.message)
 
@@ -418,33 +427,33 @@ def saveas_or_rename(input: SaveAsOrRenameInput, rename: bool = False):
     context = default_context()
     state_loader = context.state_loader
     if state_loader.cloud_mode:
-        raise RecceException('Cloud mode does not support rename')
+        raise RecceException("Cloud mode does not support rename")
 
     new_filename = input.filename
     if os.path.dirname(new_filename):
-        raise RecceException('The new filename should not contain directory')
-    if not new_filename.endswith('.json'):
-        raise RecceException('The new filename should end with .json')
+        raise RecceException("The new filename should not contain directory")
+    if not new_filename.endswith(".json"):
+        raise RecceException("The new filename should end with .json")
 
     old_path = state_loader.state_file
     if old_path:
         old_dir = os.path.dirname(state_loader.state_file)
         old_filename = os.path.basename(state_loader.state_file)
         if old_filename == new_filename:
-            raise RecceException('The new filename is the same as the current filename')
+            raise RecceException("The new filename is the same as the current filename")
         new_path = os.path.join(old_dir, new_filename)
     else:
         new_path = new_filename
 
     if os.path.exists(new_path):
         if os.path.isdir(new_path):
-            raise HTTPException(status_code=400, detail=f'The file {new_path} exists and is a directory')
+            raise HTTPException(status_code=400, detail=f"The file {new_path} exists and is a directory")
 
         if not input.overwrite:
-            raise HTTPException(status_code=409, detail=f'The file {new_filename} already exists')
+            raise HTTPException(status_code=409, detail=f"The file {new_filename} already exists")
 
     state_loader.state_file = new_path
-    context.sync_state('overwrite')
+    context.sync_state("overwrite")
     if rename and os.path.exists(old_path):
         os.remove(old_path)
 
@@ -456,7 +465,7 @@ async def save_as_handler(input: SaveAsOrRenameInput):
     """
     context = default_context()
     try:
-        log_api_event('saveas', dict(state_loader_mode=context.state_loader_mode()))
+        log_api_event("saveas", dict(state_loader_mode=context.state_loader_mode()))
         saveas_or_rename(input, rename=False)
     except RecceException as e:
         raise HTTPException(status_code=400, detail=e.message)
@@ -469,7 +478,7 @@ async def rename_handler(input: SaveAsOrRenameInput):
     """
     context = default_context()
     try:
-        log_api_event('rename', dict(state_loader_mode=context.state_loader_mode()))
+        log_api_event("rename", dict(state_loader_mode=context.state_loader_mode()))
         saveas_or_rename(input, rename=True)
     except RecceException as e:
         raise HTTPException(status_code=400, detail=e.message)
@@ -482,7 +491,7 @@ async def export_handler():
     """
     context = default_context()
     try:
-        log_api_event('export', dict(state_loader_mode=context.state_loader_mode()))
+        log_api_event("export", dict(state_loader_mode=context.state_loader_mode()))
         return context.export_state().to_json()
     except RecceException as e:
         raise HTTPException(status_code=400, detail=e.message)
@@ -490,17 +499,16 @@ async def export_handler():
 
 @app.post("/api/import", status_code=200)
 async def import_handler(
-    file: Annotated[UploadFile, Form()],
-    checks_only: Annotated[bool, Form()],
-    background_tasks: BackgroundTasks
+    file: Annotated[UploadFile, Form()], checks_only: Annotated[bool, Form()], background_tasks: BackgroundTasks
 ):
     """
     Import the recce state from the client.
     """
     from recce.state import RecceState
+
     context = default_context()
     try:
-        log_api_event('import', dict(state_loader_mode=context.state_loader_mode()))
+        log_api_event("import", dict(state_loader_mode=context.state_loader_mode()))
         content = await file.read()
         state = RecceState.from_json(content)
 
@@ -534,16 +542,19 @@ async def sync_handler(input: SyncStateInput, response: Response, background_tas
     context = default_context()
     state_loader = context.state_loader
     method = input.method
-    log_api_event('sync', dict(
-        state_loader_mode=context.state_loader_mode(),
-        method=method,
-    ))
+    log_api_event(
+        "sync",
+        dict(
+            state_loader_mode=context.state_loader_mode(),
+            method=method,
+        ),
+    )
 
     if not method:
         is_conflict = state_loader.check_conflict()
         if is_conflict:
-            raise HTTPException(status_code=409, detail='Conflict detected')
-        method = 'overwrite'
+            raise HTTPException(status_code=409, detail="Conflict detected")
+        method = "overwrite"
 
     is_syncing = state_loader.state_lock.locked()
     if is_syncing:
@@ -593,7 +604,7 @@ async def share_state():
     context = default_context()
     state_loader = context.state_loader
 
-    file_name = 'recce_state.json'
+    file_name = "recce_state.json"
     if state_loader.state_file:
         file_name = os.path.basename(state_loader.state_file)
 
@@ -629,8 +640,8 @@ async def websocket_endpoint(websocket: WebSocket):
     try:
         while True:
             data = await websocket.receive_text()
-            if data == 'ping':
-                await websocket.send_text('pong')
+            if data == "ping":
+                await websocket.send_text("pong")
     except WebSocketDisconnect:
         clients.remove(websocket)
 
@@ -640,9 +651,9 @@ async def broadcast(data: str):
         await client.send_text(data)
 
 
-api_prefix = '/api'
+api_prefix = "/api"
 app.include_router(check_router, prefix=api_prefix)
 app.include_router(run_router, prefix=api_prefix)
 
-static_folder_path = Path(__file__).parent / 'data'
+static_folder_path = Path(__file__).parent / "data"
 app.mount("/", StaticFiles(directory=static_folder_path, html=True), name="static")

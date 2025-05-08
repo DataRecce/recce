@@ -9,34 +9,66 @@ from pydantic import BaseModel
 from recce.core import default_context
 from recce.models import Check
 from recce.tasks import Task
-from recce.tasks.core import TaskResultDiffer, CheckValidator
+from recce.tasks.core import CheckValidator, TaskResultDiffer
 from recce.tasks.query import QueryMixin
 
 sql_datetime_types = [
-    "DATE", "DATETIME", "TIMESTAMP", "TIME",
+    "DATE",
+    "DATETIME",
+    "TIMESTAMP",
+    "TIME",
     "YEAR",  # Specific to MySQL/MariaDB
-    "DATETIME2", "SMALLDATETIME", "DATETIMEOFFSET",  # Specific to SQL Server
+    "DATETIME2",
+    "SMALLDATETIME",
+    "DATETIMEOFFSET",  # Specific to SQL Server
     "INTERVAL",  # Common in PostgreSQL and Oracle
-    "TIMESTAMPTZ", "TIMETZ",  # Specific to PostgreSQL
-    "TIMESTAMP WITH TIME ZONE", "TIMESTAMP WITH LOCAL TIME ZONE",  # Oracle
-    "TIMESTAMP_LTZ", "TIMESTAMP_NTZ", "TIMESTAMP_TZ",  # Specific to Snowflake
+    "TIMESTAMPTZ",
+    "TIMETZ",  # Specific to PostgreSQL
+    "TIMESTAMP WITH TIME ZONE",
+    "TIMESTAMP WITH LOCAL TIME ZONE",  # Oracle
+    "TIMESTAMP_LTZ",
+    "TIMESTAMP_NTZ",
+    "TIMESTAMP_TZ",  # Specific to Snowflake
 ]
 
 sql_integer_types = [
-    "TINYINT", "SMALLINT", "MEDIUMINT", "INT", "INTEGER", "BIGINT",  # Common across most databases
-    "INT2", "INT4", "INT8",  # PostgreSQL specific aliases
+    "TINYINT",
+    "SMALLINT",
+    "MEDIUMINT",
+    "INT",
+    "INTEGER",
+    "BIGINT",  # Common across most databases
+    "INT2",
+    "INT4",
+    "INT8",  # PostgreSQL specific aliases
     "UNSIGNED BIG INT",  # SQLite specific
     "NUMBER",  # Oracle, can be used as an integer with precision and scale
     "NUMERIC",  # Generally available in many SQL databases, used with precision and scale
-    "SMALLSERIAL", "SERIAL", "BIGSERIAL",  # PostgreSQL auto-increment types
-    "IDENTITY", "SMALLIDENTITY", "BIGIDENTITY",  # SQL Server specific auto-increment types
+    "SMALLSERIAL",
+    "SERIAL",
+    "BIGSERIAL",  # PostgreSQL auto-increment types
+    "IDENTITY",
+    "SMALLIDENTITY",
+    "BIGIDENTITY",  # SQL Server specific auto-increment types
     "BYTEINT",  # Specific to Snowflake, for storing very small integers
 ]
 
 sql_not_supported_types = [
-    "CHAR", "VARCHAR", "TINYTEXT", "TEXT", "MEDIUMTEXT", "LONGTEXT",
-    "NCHAR", "NVARCHAR", "VARCHAR2", "NVARCHAR2", "CLOB", "NCLOB",
-    "VARCHAR(MAX)", "XML", "JSON",
+    "CHAR",
+    "VARCHAR",
+    "TINYTEXT",
+    "TEXT",
+    "MEDIUMTEXT",
+    "LONGTEXT",
+    "NCHAR",
+    "NVARCHAR",
+    "VARCHAR2",
+    "NVARCHAR2",
+    "CLOB",
+    "NCLOB",
+    "VARCHAR(MAX)",
+    "XML",
+    "JSON",
     "BOOLEAN",  # PostgreSQL, SQLite, and others with native boolean support
     "TINYINT(1)",  # MySQL/MariaDB uses TINYINT(1) to represent boolean values
     "BIT",  # SQL Server and others use BIT to represent boolean values, where 1 is true and 0 is false
@@ -185,7 +217,7 @@ def query_numeric_histogram(task, node, column, column_type, min_value, max_valu
                 else:
                     counts[num_bins - 1] += count
         base_result = {
-            'counts': counts,
+            "counts": counts,
         }
     if curr is not None:
         counts = [0] * num_bins
@@ -199,7 +231,7 @@ def query_numeric_histogram(task, node, column, column_type, min_value, max_valu
                 else:
                     counts[num_bins - 1] += count
         curr_result = {
-            'counts': counts,
+            "counts": counts,
         }
     return base_result, curr_result, bin_edges, labels
 
@@ -209,7 +241,7 @@ def query_datetime_histogram(task, node, column, min_value, max_value):
     print(max_value, min_value, days_delta)
     # _type = None
     if days_delta > 365 * 4:
-        _type = 'yearly'
+        _type = "yearly"
         dmin = date(min_value.year, 1, 1)
         if max_value.year < 3000:
             dmax = date(max_value.year, 1, 1) + relativedelta(years=+1)
@@ -237,7 +269,7 @@ def query_datetime_histogram(task, node, column, min_value, max_value):
         else:
             dmax = date(3000, 1, 1)
         period = relativedelta(dmax, dmin)
-        num_buckets = (period.years * 12 + period.months)
+        num_buckets = period.years * 12 + period.months
         bin_edges = [dmin + relativedelta(months=i) for i in range(num_buckets + 1)]
         sql = f"""
         SELECT
@@ -285,18 +317,18 @@ def query_datetime_histogram(task, node, column, min_value, max_value):
 
     base_counts = [0] * num_buckets
     print(_type)
-    for (d, v) in base.rows:
+    for d, v in base.rows:
         i = bin_edges.index(d.date()) if isinstance(d, datetime) else bin_edges.index(d)
         base_counts[i] = v
     curr_counts = [0] * num_buckets
-    for (d, v) in curr.rows:
+    for d, v in curr.rows:
         i = bin_edges.index(d.date()) if isinstance(d, datetime) else bin_edges.index(d)
         curr_counts[i] = v
     base_result = {
-        'counts': base_counts,
+        "counts": base_counts,
     }
     curr_result = {
-        'counts': curr_counts,
+        "counts": curr_counts,
     }
 
     return base_result, curr_result, bin_edges
@@ -310,6 +342,7 @@ class HistogramDiffTask(Task, QueryMixin):
 
     def execute(self):
         from recce.adapter.dbt_adapter import DbtAdapter
+
         result = {}
 
         dbt_adapter: DbtAdapter = default_context().adapter
@@ -353,29 +386,31 @@ class HistogramDiffTask(Task, QueryMixin):
             labels = None
             if min_value is None or max_value is None:
                 base_result = {
-                    'counts': [],
+                    "counts": [],
                 }
                 current_result = {
-                    'counts': [],
+                    "counts": [],
                 }
                 bin_edges = []
                 labels = []
             elif column_type.upper() in sql_datetime_types:
                 base_result, current_result, bin_edges = query_datetime_histogram(
-                    self, node, column, min_value, max_value)
+                    self, node, column, min_value, max_value
+                )
             else:
                 base_result, current_result, bin_edges, labels = query_numeric_histogram(
-                    self, node, column, column_type, min_value, max_value, num_bins)
+                    self, node, column, column_type, min_value, max_value, num_bins
+                )
             if base_result:
-                base_result['total'] = base_total
+                base_result["total"] = base_total
             if current_result:
-                current_result['total'] = curr_total
-            result['base'] = base_result
-            result['current'] = current_result
-            result['min'] = min_value
-            result['max'] = max_value
-            result['bin_edges'] = bin_edges
-            result['labels'] = labels
+                current_result["total"] = curr_total
+            result["base"] = base_result
+            result["current"] = current_result
+            result["min"] = min_value
+            result["max"] = max_value
+            result["bin_edges"] = bin_edges
+            result["labels"] = labels
         return result
 
     def cancel(self):
@@ -386,7 +421,7 @@ class HistogramDiffTask(Task, QueryMixin):
 
 class HistogramDiffTaskResultDiffer(TaskResultDiffer):
     def _check_result_changed_fn(self, result):
-        return TaskResultDiffer.diff(result['base'], result['current'])
+        return TaskResultDiffer.diff(result["base"], result["current"])
 
 
 class HistogramDiffCheckValidator(CheckValidator):

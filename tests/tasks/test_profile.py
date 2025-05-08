@@ -19,7 +19,7 @@ csv_data_base = """
 
 def test_profile(dbt_test_helper):
     dbt_test_helper.create_model("customers", None, csv_data_curr)
-    params = dict(model='customers')
+    params = dict(model="customers")
     task = ProfileTask(params)
     run_result = task.execute()
 
@@ -28,7 +28,7 @@ def test_profile(dbt_test_helper):
 
 def test_profile_with_selected_columns(dbt_test_helper):
     dbt_test_helper.create_model("customers", None, csv_data_curr)
-    params = dict(model='customers', columns=['name', 'age'])
+    params = dict(model="customers", columns=["name", "age"])
     task = ProfileTask(params)
     run_result = task.execute()
     assert len(run_result.current.data) == 2
@@ -36,7 +36,7 @@ def test_profile_with_selected_columns(dbt_test_helper):
 
 def test_profile_diff(dbt_test_helper):
     dbt_test_helper.create_model("customers", csv_data_base, csv_data_curr)
-    params = dict(model='customers')
+    params = dict(model="customers")
     task = ProfileDiffTask(params)
     run_result = task.execute()
 
@@ -46,7 +46,7 @@ def test_profile_diff(dbt_test_helper):
 
 def test_profile_diff_with_selected_columns(dbt_test_helper):
     dbt_test_helper.create_model("customers", csv_data_base, csv_data_curr)
-    params = dict(model='customers', columns=['name', 'age'])
+    params = dict(model="customers", columns=["name", "age"])
     task = ProfileDiffTask(params)
     run_result = task.execute()
     assert len(run_result.current.data) == 2
@@ -57,17 +57,20 @@ def test_validator():
     from recce.tasks.profile import ProfileCheckValidator
 
     def validate(params: dict = {}, view_options: dict = {}):
-        ProfileCheckValidator().validate({
-            'name': 'test',
-            'type': 'profile_diff',
-            'params': params,
-            'view_options': view_options,
-        })
+        ProfileCheckValidator().validate(
+            {
+                "name": "test",
+                "type": "profile_diff",
+                "params": params,
+                "view_options": view_options,
+            }
+        )
 
-    validate({
-        'model': 'customers',
-    })
+    validate(
+        {
+            "model": "customers",
+        }
+    )
 
     with pytest.raises(ValueError):
-        validate({
-        })
+        validate({})

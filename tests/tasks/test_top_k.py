@@ -38,10 +38,10 @@ def test_top_k(dbt_test_helper):
     #     'valids': 4,
     #     'total': 4
     # }
-    assert run_result['current']['values'][0] == 'Bob'
-    assert run_result['current']['counts'][0] == 2
-    assert run_result['current']['valids'] == 4
-    assert run_result['current']['total'] == 4
+    assert run_result["current"]["values"][0] == "Bob"
+    assert run_result["current"]["counts"][0] == 2
+    assert run_result["current"]["valids"] == 4
+    assert run_result["current"]["total"] == 4
 
     # {
     #     'values': ['Bob', 'Alice', 'Charlie'],
@@ -49,25 +49,29 @@ def test_top_k(dbt_test_helper):
     #     'valids': 3,
     #     'total': 4
     # }
-    assert run_result['base']['counts'][0] == 1
-    assert run_result['base']['valids'] == 3
-    assert run_result['base']['total'] == 4
+    assert run_result["base"]["counts"][0] == 1
+    assert run_result["base"]["valids"] == 3
+    assert run_result["base"]["total"] == 4
 
 
 def test_validator():
     def validate(params: dict = {}, view_options: dict = {}):
-        TopKDiffCheckValidator().validate({
-            'name': 'test',
-            'type': 'top_k_diff',
-            'params': params,
-            'view_options': view_options,
-        })
+        TopKDiffCheckValidator().validate(
+            {
+                "name": "test",
+                "type": "top_k_diff",
+                "params": params,
+                "view_options": view_options,
+            }
+        )
 
-    validate({
-        "model": "customers",
-        "column_name": "name",
-        "k": 50,
-    })
+    validate(
+        {
+            "model": "customers",
+            "column_name": "name",
+            "k": 50,
+        }
+    )
 
     with pytest.raises(ValueError):
         validate({})

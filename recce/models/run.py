@@ -9,6 +9,7 @@ class RunDAO:
     @property
     def _runs(self):
         from recce.core import default_context
+
         return default_context().runs
 
     def create(self, run: Run):
