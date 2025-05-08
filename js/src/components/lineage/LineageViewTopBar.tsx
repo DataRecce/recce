@@ -448,21 +448,12 @@ export const LineageViewTopBar = () => {
                       }}>
                       Row Count Diff
                     </MenuItem>
-                    <Tooltip
-                      label={
-                        !isActionAvailable("value_diff")
-                          ? DisableTooltipMessages.audit_helper
-                          : null
-                      }
-                      placement="left">
+                    <Tooltip placement="left">
                       <MenuItem
                         as={Text}
                         size="sm"
                         fontSize="10pt"
-                        isDisabled={
-                          !(isNoSelect || isSingleSelect || isMultiSelect) ||
-                          !isActionAvailable("value_diff")
-                        }
+                        isDisabled={!(isNoSelect || isSingleSelect || isMultiSelect)}
                         icon={<Icon as={findByRunType("value_diff")?.icon} />}
                         onClick={async () => {
                           await lineageViewContext.runValueDiff();

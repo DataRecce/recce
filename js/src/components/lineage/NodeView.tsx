@@ -85,9 +85,7 @@ export function NodeView({ node, onCloseNode }: NodeViewProps) {
       return DisableTooltipMessages.add_or_remove;
     }
     if (!isActionAvailable(runType)) {
-      if (runType === "value_diff") {
-        return DisableTooltipMessages.audit_helper;
-      } else if (runType === "profile_diff" || runType === "profile") {
+      if (runType === "profile_diff" || runType === "profile") {
         return DisableTooltipMessages.dbt_profiler;
       } else {
         return "This action is not supported yet.";
@@ -177,7 +175,7 @@ export function NodeView({ node, onCloseNode }: NodeViewProps) {
                 <MenuItem
                   icon={<Icon as={findByRunType("value_diff")?.icon} />}
                   fontSize="14px"
-                  isDisabled={isAddedOrRemoved || !isActionAvailable("value_diff")}
+                  isDisabled={isAddedOrRemoved}
                   onClick={() => {
                     runAction(
                       "value_diff",
