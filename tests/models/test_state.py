@@ -1,10 +1,10 @@
-from recce.models import RunType, Run, Check
+from recce.models import Check, Run, RunType
 from recce.state import RecceState
 
 
 def test_load():
-    run = Run(type=RunType.QUERY, params=dict(sql_template='select * from users'))
-    check = Check(name='check 1', description='desc 1', type=run.type, params=run.params)
+    run = Run(type=RunType.QUERY, params=dict(sql_template="select * from users"))
+    check = Check(name="check 1", description="desc 1", type=run.type, params=run.params)
 
     state = RecceState(runs=[run], checks=[check])
     json_content = state.to_json()

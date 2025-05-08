@@ -2,10 +2,21 @@ import time
 from dataclasses import dataclass
 from typing import Dict, List, Literal
 
-from sqlglot import parse_one, Dialect
-from sqlglot.errors import SqlglotError, OptimizeError
-from sqlglot.expressions import Column, Alias, Func, Binary, Paren, Case, Expression, If, Union, Intersect
-from sqlglot.optimizer import traverse_scope, Scope
+from sqlglot import Dialect, parse_one
+from sqlglot.errors import OptimizeError, SqlglotError
+from sqlglot.expressions import (
+    Alias,
+    Binary,
+    Case,
+    Column,
+    Expression,
+    Func,
+    If,
+    Intersect,
+    Paren,
+    Union,
+)
+from sqlglot.optimizer import Scope, traverse_scope
 from sqlglot.optimizer.qualify import qualify
 
 from recce.exceptions import RecceException
@@ -50,11 +61,11 @@ class CLLPerformanceTracking(metaclass=SingletonMeta):
 
     def to_dict(self):
         return {
-            'lineage_elapsed_ms': self.lineage_elapsed,
-            'column_lineage_elapsed_ms': self.column_lineage_elapsed,
-            'total_nodes': self.total_nodes,
-            'sqlglot_error_nodes': self.sqlglot_error_nodes,
-            'other_error_nodes': self.other_error_nodes
+            "lineage_elapsed_ms": self.lineage_elapsed,
+            "column_lineage_elapsed_ms": self.column_lineage_elapsed,
+            "total_nodes": self.total_nodes,
+            "sqlglot_error_nodes": self.sqlglot_error_nodes,
+            "other_error_nodes": self.other_error_nodes,
         }
 
     def reset(self):
@@ -76,7 +87,7 @@ class ColumnLevelDependsOn:
 
 @dataclass
 class ColumnLevelDependencyColumn:
-    type: Literal['source', 'passthrough', 'renamed', 'derived']
+    type: Literal["source", "passthrough", "renamed", "derived"]
     depends_on: List[ColumnLevelDependsOn]
 
 
@@ -93,10 +104,7 @@ def _cll_expression(expression, table_alias_map) -> ColumnLevelDependencyColumn:
         else:
             table = table_alias_map.get(alias, alias)
 
-        return ColumnLevelDependencyColumn(
-            type='passthrough',
-            depends_on=[ColumnLevelDependsOn(table, column.name)]
-        )
+        return ColumnLevelDependencyColumn(type="passthrough", depends_on=[ColumnLevelDependsOn(table, column.name)])
     elif isinstance(expression, Paren):
         return _cll_expression(expression.this, table_alias_map)
     elif isinstance(expression, Binary):
@@ -107,31 +115,31 @@ def _cll_expression(expression, table_alias_map) -> ColumnLevelDependencyColumn:
         if expression.right:
             depends_on_right = _cll_expression(expression.right, table_alias_map).depends_on
             depends_on.extend(depends_on_right)
-        type = 'derived' if depends_on else 'source'
+        type = "derived" if depends_on else "source"
         return ColumnLevelDependencyColumn(type=type, depends_on=depends_on)
     elif isinstance(expression, Case):
-        ifs = expression.args['ifs']
-        default = expression.args['default']
+        ifs = expression.args["ifs"]
+        default = expression.args["default"]
         depends_on = []
         for expr in ifs:
             depends_on_one = _cll_expression(expr, table_alias_map).depends_on
             depends_on.extend(depends_on_one)
         if default is not None:
             depends_on.extend(_cll_expression(default, table_alias_map).depends_on)
-        type = 'derived' if depends_on else 'source'
+        type = "derived" if depends_on else "source"
         return ColumnLevelDependencyColumn(type=type, depends_on=depends_on)
     elif isinstance(expression, If):
         depends_on = []
         if expression.this:
             depends_on_one = _cll_expression(expression.this, table_alias_map).depends_on
             depends_on.extend(depends_on_one)
-        if expression.args.get('true'):
-            depends_on_one = _cll_expression(expression.args.get('true'), table_alias_map).depends_on
+        if expression.args.get("true"):
+            depends_on_one = _cll_expression(expression.args.get("true"), table_alias_map).depends_on
             depends_on.extend(depends_on_one)
-        if expression.args.get('false'):
-            depends_on_one = _cll_expression(expression.args.get('false'), table_alias_map).depends_on
+        if expression.args.get("false"):
+            depends_on_one = _cll_expression(expression.args.get("false"), table_alias_map).depends_on
             depends_on.extend(depends_on_one)
-        type = 'derived' if depends_on else 'source'
+        type = "derived" if depends_on else "source"
         return ColumnLevelDependencyColumn(type=type, depends_on=depends_on)
     elif isinstance(expression, Func):
         if expression.expressions:
@@ -139,28 +147,28 @@ def _cll_expression(expression, table_alias_map) -> ColumnLevelDependencyColumn:
             for expr in expression.expressions:
                 depends_on_one = _cll_expression(expr, table_alias_map).depends_on
                 depends_on.extend(depends_on_one)
-            type = 'derived' if depends_on else 'source'
+            type = "derived" if depends_on else "source"
             return ColumnLevelDependencyColumn(type=type, depends_on=depends_on)
         if expression.this:
             depends_on = _cll_expression(expression.this, table_alias_map).depends_on
-            type = 'derived' if depends_on else 'source'
+            type = "derived" if depends_on else "source"
             return ColumnLevelDependencyColumn(type=type, depends_on=depends_on)
 
-        return ColumnLevelDependencyColumn(type='source', depends_on=[])
+        return ColumnLevelDependencyColumn(type="source", depends_on=[])
     elif expression.this and isinstance(expression.this, Expression):
         depends_on = _cll_expression(expression.this, table_alias_map).depends_on
-        type = 'derived' if depends_on else 'source'
+        type = "derived" if depends_on else "source"
         return ColumnLevelDependencyColumn(type=type, depends_on=depends_on)
     elif expression.expressions:
         depends_on = []
         for expr in expression.expressions:
             depends_on_one = _cll_expression(expr, table_alias_map).depends_on
             depends_on.extend(depends_on_one)
-        type = 'derived' if depends_on else 'source'
+        type = "derived" if depends_on else "source"
         return ColumnLevelDependencyColumn(type=type, depends_on=depends_on)
     else:
         depends_on = []
-        return ColumnLevelDependencyColumn(type='source', depends_on=depends_on)
+        return ColumnLevelDependencyColumn(type="source", depends_on=depends_on)
 
 
 def cll(sql, schema=None, dialect=None) -> Dict[str, ColumnLevelDependencyColumn]:
@@ -177,24 +185,21 @@ def cll(sql, schema=None, dialect=None) -> Dict[str, ColumnLevelDependencyColumn
     try:
         expression = parse_one(sql, dialect=dialect)
     except SqlglotError as e:
-        raise RecceException(f'Failed to parse SQL: {str(e)}')
+        raise RecceException(f"Failed to parse SQL: {str(e)}")
 
     try:
         expression = qualify(expression, schema=schema, dialect=dialect)
     except OptimizeError as e:
-        raise RecceException(f'Failed to optimize SQL: {str(e)}')
+        raise RecceException(f"Failed to optimize SQL: {str(e)}")
     except SqlglotError as e:
-        raise RecceException(f'Failed to qualify SQL: {str(e)}')
+        raise RecceException(f"Failed to qualify SQL: {str(e)}")
 
     result = {}
     global_lineage = {}
     for scope in traverse_scope(expression):
         scope_lineage = {}
 
-        table_alias_map = {
-            t.alias_or_name: t.name
-            for t in scope.tables
-        }
+        table_alias_map = {t.alias_or_name: t.name for t in scope.tables}
 
         if isinstance(scope.expression, Union) or isinstance(scope.expression, Intersect):
             for union_scope in scope.union_scopes:
@@ -203,7 +208,7 @@ def cll(sql, schema=None, dialect=None) -> Dict[str, ColumnLevelDependencyColumn
                         scope_lineage[k] = v
                     else:
                         scope_lineage[k].depends_on.extend(v.depends_on)
-                        scope_lineage[k].type = 'derived'
+                        scope_lineage[k].type = "derived"
         else:
             for select in scope.expression.selects:
                 # instance of Column
@@ -218,14 +223,14 @@ def cll(sql, schema=None, dialect=None) -> Dict[str, ColumnLevelDependencyColumn
                     col_expression = alias.this
                     column_cll = _cll_expression(col_expression, table_alias_map)
                     if (
-                        column_cll and
-                        column_cll.type == 'passthrough' and
-                        column_cll.depends_on[0].column != alias.alias_or_name
+                        column_cll
+                        and column_cll.type == "passthrough"
+                        and column_cll.depends_on[0].column != alias.alias_or_name
                     ):
-                        column_cll.type = 'renamed'
+                        column_cll.type = "renamed"
                 else:
                     # 'select 1'
-                    column_cll = ColumnLevelDependencyColumn(type='source', depends_on=[])
+                    column_cll = ColumnLevelDependencyColumn(type="source", depends_on=[])
 
                 cte_type = None
                 flatten_col_depends_on = []
@@ -258,24 +263,24 @@ def cll(sql, schema=None, dialect=None) -> Dict[str, ColumnLevelDependencyColumn
                 dedup_col_depends_on = []
                 dedup_set = set()
                 for col_dep in flatten_col_depends_on:
-                    node_col = col_dep.node + '.' + col_dep.column
+                    node_col = col_dep.node + "." + col_dep.column
                     if node_col not in dedup_set:
                         dedup_col_depends_on.append(col_dep)
                         dedup_set.add(node_col)
 
                 # transformation type
                 type = column_cll.type
-                if type == 'derived':
+                if type == "derived":
                     if len(dedup_col_depends_on) == 0:
-                        type = 'source'
+                        type = "source"
                     else:
                         # keep current scope type
                         pass
                 elif cte_type is not None:
                     if len(dedup_col_depends_on) > 1:
-                        type = 'derived'
+                        type = "derived"
                     elif len(dedup_col_depends_on) == 0:
-                        type = 'source'
+                        type = "source"
                     else:
                         if isinstance(select, Column):
                             type = cte_type
@@ -284,13 +289,12 @@ def cll(sql, schema=None, dialect=None) -> Dict[str, ColumnLevelDependencyColumn
                             if column_cll.depends_on[0].column == alias.alias_or_name:
                                 type = cte_type
                             else:
-                                type = 'renamed' if cte_type == 'passthrough' else cte_type
+                                type = "renamed" if cte_type == "passthrough" else cte_type
                         else:
-                            type = 'source'
+                            type = "source"
 
                 scope_lineage[select.alias_or_name] = ColumnLevelDependencyColumn(
-                    type=type,
-                    depends_on=dedup_col_depends_on
+                    type=type, depends_on=dedup_col_depends_on
                 )
 
         global_lineage[scope] = scope_lineage

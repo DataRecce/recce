@@ -3,11 +3,11 @@ from typing import List
 
 from pydantic import BaseModel
 
-from .core import Task, TaskResultDiffer, CheckValidator
-from .dataframe import DataFrame
 from ..core import default_context
 from ..exceptions import RecceException
 from ..models import Check
+from .core import CheckValidator, Task, TaskResultDiffer
+from .dataframe import DataFrame
 
 
 class ProfileParams(BaseModel):
@@ -33,7 +33,9 @@ class ProfileDiffTask(Task):
 
     def execute(self):
         import agate
+
         from recce.adapter.dbt_adapter import DbtAdapter, merge_tables
+
         dbt_adapter: DbtAdapter = default_context().adapter
 
         model: str = self.params.model
@@ -58,7 +60,7 @@ class ProfileDiffTask(Task):
             tables: List[agate.Table] = []
 
             for column in base_columns:
-                self.update_progress(message=f'[Base] Profile column: {column.name}', percentage=completed / total)
+                self.update_progress(message=f"[Base] Profile column: {column.name}", percentage=completed / total)
                 relation = dbt_adapter.create_relation(model, base=True)
                 response, table = self._profile_column(dbt_adapter, relation, column)
                 tables.append(table)
@@ -68,7 +70,7 @@ class ProfileDiffTask(Task):
 
             tables: List[agate.Table] = []
             for column in curr_columns:
-                self.update_progress(message=f'[Current] Profile column: {column.column}', percentage=completed / total)
+                self.update_progress(message=f"[Current] Profile column: {column.column}", percentage=completed / total)
                 relation = dbt_adapter.create_relation(model, base=False)
                 response, table = self._profile_column(dbt_adapter, relation, column)
                 tables.append(table)
@@ -85,14 +87,16 @@ class ProfileDiffTask(Task):
 
     def _verify_dbt_profiler(self, dbt_adapter):
         for macro_name, macro in dbt_adapter.manifest.macros.items():
-            if macro.package_name == 'dbt_profiler':
+            if macro.package_name == "dbt_profiler":
                 break
         else:
             raise RecceException(
-                r"Package 'dbt_profiler' not found. Please refer to the link to install: https://hub.getdbt.com/data-mie/dbt_profiler/")
+                r"Package 'dbt_profiler' not found. Please refer to the link to install: https://hub.getdbt.com/data-mie/dbt_profiler/"
+            )
 
     def _profile_column(self, dbt_adapter, relation, column):
-        sql_template = textwrap.dedent(r"""
+        sql_template = textwrap.dedent(
+            r"""
         select
         '{{column_name}}' as column_name,
         nullif('{{column_type}}', '') as data_type,
@@ -107,13 +111,15 @@ class ProfileDiffTask(Task):
         {{ dbt_profiler.measure_median(column_name, column_type) }} as median
         from
         {{ relation }}
-        """)
+        """
+        )
         column_name = column.name
         column_type = column.data_type.lower()
         db_type = dbt_adapter.adapter.type()
-        if db_type == 'bigquery' and column_type.startswith('array'):
+        if db_type == "bigquery" and column_type.startswith("array"):
             # DRC-663: Support bigquery array type
-            sql_template = textwrap.dedent(r"""
+            sql_template = textwrap.dedent(
+                r"""
             select
             '{{column_name}}' as column_name,
             nullif('{{column_type}}', '') as data_type,
@@ -128,14 +134,16 @@ class ProfileDiffTask(Task):
             APPROX_QUANTILES(ARRAY_LENGTH({{ adapter.quote(column_name) }}), 100)[OFFSET(50)] as median,
             from
             {{ relation }}
-            """)
-        elif db_type == 'redshift':
+            """
+            )
+        elif db_type == "redshift":
             # DRC-1149: Support redshift median calculation
             # https://github.com/data-mie/dbt-profiler/pull/89
             #
             # Since dbt-profiler 0.8.2, there is the third parameter for measure_median
             # For sake of compatibility, we use the new way to call the macro only for redshift
-            sql_template = textwrap.dedent(r"""
+            sql_template = textwrap.dedent(
+                r"""
             with source_data as (
               select
                 *
@@ -155,13 +163,14 @@ class ProfileDiffTask(Task):
             ({{ dbt_profiler.measure_median(column_name, column_type, 'source_data') }}) as median
             from
             source_data
-            """)
+            """
+            )
 
         try:
             sql = dbt_adapter.generate_sql(
                 sql_template,
                 base=False,  # always false because we use the macro in current manifest
-                context=dict(relation=relation, column_name=column_name, column_type=column_type)
+                context=dict(relation=relation, column_name=column_name, column_type=column_type),
             )
         except Exception as e:
             raise RecceException(f"Failed to generate SQL for profiling column: {column_name}") from e
@@ -170,14 +179,15 @@ class ProfileDiffTask(Task):
             return dbt_adapter.execute(sql, fetch=True)
         except Exception as e:
             from recce.adapter.dbt_adapter import dbt_version
-            if dbt_version < 'v1.8':
+
+            if dbt_version < "v1.8":
                 from dbt.exceptions import DbtDatabaseError
             else:
                 from dbt_common.exceptions import DbtDatabaseError
             if isinstance(e, DbtDatabaseError):
-                if str(e).find('100051') >= 0:
+                if str(e).find("100051") >= 0:
                     # Snowflake error '100051 (22012): Division by zero"'
-                    e = RecceException('No profile diff result due to the model is empty.', False)
+                    e = RecceException("No profile diff result due to the model is empty.", False)
             raise e
 
     def cancel(self):
@@ -185,6 +195,7 @@ class ProfileDiffTask(Task):
 
         if self.connection:
             from recce.adapter.dbt_adapter import DbtAdapter
+
             dbt_adapter: DbtAdapter = default_context().adapter
             with dbt_adapter.connection_named("cancel"):
                 dbt_adapter.cancel(self.connection)
@@ -192,7 +203,7 @@ class ProfileDiffTask(Task):
 
 class ProfileDiffResultDiffer(TaskResultDiffer):
     def _check_result_changed_fn(self, result):
-        return self.diff(result['base'], result['current'])
+        return self.diff(result["base"], result["current"])
 
 
 class ProfileCheckValidator(CheckValidator):
@@ -207,7 +218,9 @@ class ProfileCheckValidator(CheckValidator):
 class ProfileTask(ProfileDiffTask):
     def execute(self):
         import agate
+
         from recce.adapter.dbt_adapter import DbtAdapter, merge_tables
+
         dbt_adapter: DbtAdapter = default_context().adapter
 
         model: str = self.params.model
@@ -227,7 +240,7 @@ class ProfileTask(ProfileDiffTask):
 
             tables: List[agate.Table] = []
             for column in curr_columns:
-                self.update_progress(message=f'[Current] Profile column: {column.column}', percentage=completed / total)
+                self.update_progress(message=f"[Current] Profile column: {column.column}", percentage=completed / total)
                 relation = dbt_adapter.create_relation(model, base=False)
                 response, table = self._profile_column(dbt_adapter, relation, column)
                 tables.append(table)

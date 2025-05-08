@@ -7,21 +7,8 @@ from recce.models.types import ChangeStatus
 from recce.util.breaking import parse_change_category
 
 SOURCE_SCHEMA = {
-    'Customers': {
-        'customer_id': 'int',
-        'a': 'int',
-        'b': 'int',
-        'c': 'int',
-        'd': 'int'
-    },
-    'Orders': {
-        'order_id': 'int',
-        'customer_id': 'int',
-        'w': 'int',
-        'x': 'int',
-        'y': 'int',
-        'z': 'int'
-    },
+    "Customers": {"customer_id": "int", "a": "int", "b": "int", "c": "int", "d": "int"},
+    "Orders": {"order_id": "int", "customer_id": "int", "w": "int", "x": "int", "y": "int", "z": "int"},
 }
 
 
@@ -50,7 +37,7 @@ def is_breaking_change(
         modified_sql,
         dialect=dialect,
     )
-    if result.category != 'breaking':
+    if result.category != "breaking":
         return False
 
     if expected_changed_columns is not None:
@@ -72,7 +59,7 @@ def is_partial_breaking_change(
         modified_sql,
         dialect=dialect,
     )
-    if result.category != 'partial_breaking':
+    if result.category != "partial_breaking":
         return False
 
     if expected_changed_columns is not None:
@@ -94,7 +81,7 @@ def is_non_breaking_change(
         modified_sql,
         dialect=dialect,
     )
-    if result.category != 'non_breaking':
+    if result.category != "non_breaking":
         return False
 
     if expected_changed_columns is not None:
@@ -151,9 +138,9 @@ class BreakingChangeTest(unittest.TestCase):
             case when a > 100 then 1 else 0 end as a2
         from Customers
         """
-        assert is_non_breaking_change(original_sql, modified_sql, {'b': 'added'})
-        assert is_non_breaking_change(original_sql, modified_sql2, {'a2': 'added'})
-        assert is_non_breaking_change(original_sql, modified_sql3, {'a2': 'added'})
+        assert is_non_breaking_change(original_sql, modified_sql, {"b": "added"})
+        assert is_non_breaking_change(original_sql, modified_sql2, {"a2": "added"})
+        assert is_non_breaking_change(original_sql, modified_sql3, {"a2": "added"})
 
         # by cte
         original_sql = """
@@ -176,7 +163,7 @@ class BreakingChangeTest(unittest.TestCase):
             a, b
         from cte
         """
-        assert is_non_breaking_change(original_sql, modified_sql, {'b': 'added'})
+        assert is_non_breaking_change(original_sql, modified_sql, {"b": "added"})
 
     def test_rename_column(self):
         original_sql = """
@@ -189,7 +176,14 @@ class BreakingChangeTest(unittest.TestCase):
             a as a1
         from Customers
         """
-        assert is_partial_breaking_change(original_sql, modified_sql, {'a': 'removed', 'a1': 'added', })
+        assert is_partial_breaking_change(
+            original_sql,
+            modified_sql,
+            {
+                "a": "removed",
+                "a1": "added",
+            },
+        )
 
         # by cte
         original_sql = """
@@ -214,7 +208,14 @@ class BreakingChangeTest(unittest.TestCase):
             a1
         from cte
         """
-        assert is_partial_breaking_change(original_sql, modified_sql, {'a': 'removed', 'a1': 'added', })
+        assert is_partial_breaking_change(
+            original_sql,
+            modified_sql,
+            {
+                "a": "removed",
+                "a1": "added",
+            },
+        )
 
     def test_remove_column(self):
         original_sql = """
@@ -228,7 +229,7 @@ class BreakingChangeTest(unittest.TestCase):
             b
         from Customers
         """
-        assert is_partial_breaking_change(original_sql, modified_sql, {'a': 'removed'})
+        assert is_partial_breaking_change(original_sql, modified_sql, {"a": "removed"})
 
     def test_reorder_column(self):
         original_sql = """
@@ -266,9 +267,9 @@ class BreakingChangeTest(unittest.TestCase):
             count(a) as a2,
         from Customers
         """
-        assert is_partial_breaking_change(alias, derived, {'a2': 'modified'})
-        assert is_partial_breaking_change(derived, alias, {'a2': 'modified'})
-        assert is_partial_breaking_change(derived, derived2, {'a2': 'modified'})
+        assert is_partial_breaking_change(alias, derived, {"a2": "modified"})
+        assert is_partial_breaking_change(derived, alias, {"a2": "modified"})
+        assert is_partial_breaking_change(derived, derived2, {"a2": "modified"})
 
     def test_aggrgation_function(self):
         no_agg = """
@@ -305,9 +306,9 @@ class BreakingChangeTest(unittest.TestCase):
         assert is_breaking_change(no_agg, agg)
         assert is_breaking_change(agg, no_agg)
 
-        assert is_partial_breaking_change(agg, agg2, {'a2': 'modified'})
-        assert is_partial_breaking_change(agg2, agg3, {'a2': 'modified'})
-        assert is_partial_breaking_change(agg3, agg4, {'a2': 'modified'})
+        assert is_partial_breaking_change(agg, agg2, {"a2": "modified"})
+        assert is_partial_breaking_change(agg2, agg3, {"a2": "modified"})
+        assert is_partial_breaking_change(agg3, agg4, {"a2": "modified"})
 
     def test_window_function(self):
         no_win = """
@@ -336,9 +337,9 @@ class BreakingChangeTest(unittest.TestCase):
         FROM Orders;
         """
 
-        assert is_non_breaking_change(no_win, with_win, {'customer_total': 'added'})
-        assert is_partial_breaking_change(with_win, no_win, {'customer_total': 'removed'})
-        assert is_partial_breaking_change(with_win, with_win2, {'customer_total': 'modified'})
+        assert is_non_breaking_change(no_win, with_win, {"customer_total": "added"})
+        assert is_partial_breaking_change(with_win, no_win, {"customer_total": "removed"})
+        assert is_partial_breaking_change(with_win, with_win2, {"customer_total": "modified"})
 
     def test_joins(self):
         no_join = """
@@ -375,7 +376,7 @@ class BreakingChangeTest(unittest.TestCase):
         """
 
         assert is_breaking_change(no_join, with_join)
-        assert is_non_breaking_change(with_join, with_join2, {'x': 'added', 'y': 'added'})
+        assert is_non_breaking_change(with_join, with_join2, {"x": "added", "y": "added"})
         assert is_breaking_change(with_join, with_join3)
 
     def test_outer_joins(self):
@@ -510,9 +511,9 @@ class BreakingChangeTest(unittest.TestCase):
         )
         select * from A join B on A.customer_id = B.customer_id
         """
-        assert is_non_breaking_change(original, modified1, {'order_amount': 'added'})
-        assert is_partial_breaking_change(original, modified2, {'order_count': 'removed'})
-        assert is_partial_breaking_change(original, modified3, {'order_count': 'modified'})
+        assert is_non_breaking_change(original, modified1, {"order_amount": "added"})
+        assert is_partial_breaking_change(original, modified2, {"order_count": "removed"})
+        assert is_partial_breaking_change(original, modified3, {"order_count": "modified"})
 
     def test_cte_rename(self):
         original = """
@@ -529,13 +530,11 @@ class BreakingChangeTest(unittest.TestCase):
         """
 
         # This would be treated as non breaking change after the optimizer.
-        assert is_partial_breaking_change(original, modified, {
-            "customer_id": "modified",
-            "a": "modified",
-            "b": "modified",
-            "c": "modified",
-            "d": "modified"
-        })
+        assert is_partial_breaking_change(
+            original,
+            modified,
+            {"customer_id": "modified", "a": "modified", "b": "modified", "c": "modified", "d": "modified"},
+        )
 
     def test_cte_with_select_star(self):
         original_sql = """
@@ -558,7 +557,7 @@ class BreakingChangeTest(unittest.TestCase):
             *
         from cte
         """
-        assert is_partial_breaking_change(original_sql, modified_sql, {'b': 'removed'})
+        assert is_partial_breaking_change(original_sql, modified_sql, {"b": "removed"})
         modified_sql = """
         with cte as (
             select
@@ -604,13 +603,8 @@ class BreakingChangeTest(unittest.TestCase):
         from Customers as C join O on C.customer_id = O.customer_id
         """
         assert is_partial_breaking_change(
-            original, modified,
-            {
-                'a2': 'modified',
-                'b': 'added',
-                'c': 'removed',
-                'order_amount': 'added'
-            })
+            original, modified, {"a2": "modified", "b": "added", "c": "removed", "order_amount": "added"}
+        )
 
     def test_where_change(self):
         no_where = """
@@ -647,7 +641,7 @@ class BreakingChangeTest(unittest.TestCase):
         from Customers
         where a > 100
         """
-        assert is_breaking_change(no_where, with_where, {'a': 'modified', 'b': 'removed', 'b2': 'added'})
+        assert is_breaking_change(no_where, with_where, {"a": "modified", "b": "removed", "b2": "added"})
 
     def test_where_source_column_change(self):
         original_sql = """
@@ -916,7 +910,7 @@ class BreakingChangeTest(unittest.TestCase):
         from Orders
         order by 1
         """
-        assert is_partial_breaking_change(original, modified, {'amount': 'modified'})
+        assert is_partial_breaking_change(original, modified, {"amount": "modified"})
 
     def test_limit(self):
         no_limit = """
@@ -1007,7 +1001,7 @@ class BreakingChangeTest(unittest.TestCase):
         modified = """
         select count(distinct (a+1)) as unique from cte
         """
-        assert is_partial_breaking_change(original, modified, {'unique': 'modified'})
+        assert is_partial_breaking_change(original, modified, {"unique": "modified"})
 
         original = """
         with cte as (
@@ -1109,10 +1103,10 @@ class BreakingChangeTest(unittest.TestCase):
         union
         select a,b from Customers
         """
-        assert is_partial_breaking_change(union1, union2, {'a': 'modified'})
-        assert is_partial_breaking_change(union2, union1, {'a': 'modified'})
-        assert is_non_breaking_change(union1, union3, {'b': 'added'})
-        assert is_partial_breaking_change(union3, union1, {'b': 'removed'})
+        assert is_partial_breaking_change(union1, union2, {"a": "modified"})
+        assert is_partial_breaking_change(union2, union1, {"a": "modified"})
+        assert is_non_breaking_change(union1, union3, {"b": "added"})
+        assert is_partial_breaking_change(union3, union1, {"b": "removed"})
 
         union1 = """
         select a from Customers
@@ -1135,10 +1129,10 @@ class BreakingChangeTest(unittest.TestCase):
         union
         select a,b from Customers
         """
-        assert is_partial_breaking_change(union1, union2, {'a': 'modified'})
-        assert is_partial_breaking_change(union2, union1, {'a': 'modified'})
-        assert is_non_breaking_change(union1, union3, {'b': 'added'})
-        assert is_partial_breaking_change(union3, union1, {'b': 'removed'})
+        assert is_partial_breaking_change(union1, union2, {"a": "modified"})
+        assert is_partial_breaking_change(union2, union1, {"a": "modified"})
+        assert is_non_breaking_change(union1, union3, {"b": "added"})
+        assert is_partial_breaking_change(union3, union1, {"b": "removed"})
 
     def test_union_all(self):
         union1 = """
@@ -1156,10 +1150,10 @@ class BreakingChangeTest(unittest.TestCase):
         union all
         select a,b from Customers
         """
-        assert is_partial_breaking_change(union1, union2, {'a': 'modified'})
-        assert is_partial_breaking_change(union2, union1, {'a': 'modified'})
-        assert is_non_breaking_change(union1, union3, {'b': 'added'})
-        assert is_partial_breaking_change(union3, union1, {'b': 'removed'})
+        assert is_partial_breaking_change(union1, union2, {"a": "modified"})
+        assert is_partial_breaking_change(union2, union1, {"a": "modified"})
+        assert is_non_breaking_change(union1, union3, {"b": "added"})
+        assert is_partial_breaking_change(union3, union1, {"b": "removed"})
 
     def test_cte_recursive(self):
         original = """
@@ -1189,7 +1183,7 @@ class BreakingChangeTest(unittest.TestCase):
         )
         select * from cte
         """
-        assert is_partial_breaking_change(original, modified, {'a': 'modified'})
+        assert is_partial_breaking_change(original, modified, {"a": "modified"})
         assert is_breaking_change(original, modified2)
 
     def test_subquery(self):
@@ -1218,10 +1212,10 @@ class BreakingChangeTest(unittest.TestCase):
             select a,b from Customers
         ) as t
         """
-        assert is_partial_breaking_change(original, modified1, {'a': 'modified'})
+        assert is_partial_breaking_change(original, modified1, {"a": "modified"})
         assert is_breaking_change(original, modified2)
-        assert is_non_breaking_change(original, added, {'b': 'added'})
-        assert is_partial_breaking_change(added, original, {'b': 'removed'})
+        assert is_non_breaking_change(original, added, {"b": "added"})
+        assert is_partial_breaking_change(added, original, {"b": "removed"})
 
     def test_subquery_rename(self):
         original = """
@@ -1236,9 +1230,7 @@ class BreakingChangeTest(unittest.TestCase):
         """
 
         # This would be treated as non breaking change after the optimizer.
-        assert is_partial_breaking_change(original, modified, {
-            "a": "modified"
-        })
+        assert is_partial_breaking_change(original, modified, {"a": "modified"})
 
     def test_subquery_in_filter(self):
         original = """
@@ -1286,8 +1278,8 @@ class BreakingChangeTest(unittest.TestCase):
         )
         select * from renamed
         """
-        assert is_non_breaking_change(original, added, {'a1': 'added'})
-        assert is_partial_breaking_change(added, original, {'a1': 'removed'})
+        assert is_non_breaking_change(original, added, {"a1": "added"})
+        assert is_partial_breaking_change(added, original, {"a1": "removed"})
 
         original = """
         with source (
@@ -1327,7 +1319,7 @@ class BreakingChangeTest(unittest.TestCase):
             a
         from Customers
         """
-        assert parse_change_category(malformed1, malformed2).category == 'unknown'
+        assert parse_change_category(malformed1, malformed2).category == "unknown"
 
     def test_dialect(self):
         original_sql = """
@@ -1343,8 +1335,8 @@ class BreakingChangeTest(unittest.TestCase):
         """
 
         assert is_non_breaking_change(original_sql, modified_sql, dialect=None)
-        assert is_non_breaking_change(original_sql, modified_sql, dialect='xyz')
-        for dialect in ['snowflake', 'bigquery', 'redshift', 'duckdb']:
+        assert is_non_breaking_change(original_sql, modified_sql, dialect="xyz")
+        for dialect in ["snowflake", "bigquery", "redshift", "duckdb"]:
             assert is_non_breaking_change(original_sql, modified_sql, dialect=dialect)
 
     def test_pr42(self):
@@ -1416,4 +1408,4 @@ class BreakingChangeTest(unittest.TestCase):
         )
         select * from renamed
         """
-        assert is_non_breaking_change(original_sql, modified_sql, {'is_promotion': 'added'})
+        assert is_non_breaking_change(original_sql, modified_sql, {"is_promotion": "added"})

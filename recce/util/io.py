@@ -1,14 +1,14 @@
 import gzip
 import os
 import tempfile
-from abc import ABCMeta, abstractmethod, ABC
+from abc import ABC, ABCMeta, abstractmethod
 from enum import Enum
 
 
 class SupportedFileTypes(Enum):
-    FILE = 'file'
-    GZIP = 'gzip'
-    ZIP = 'zip'
+    FILE = "file"
+    GZIP = "gzip"
+    ZIP = "zip"
 
 
 def file_io_factory(file_type: SupportedFileTypes):
@@ -19,7 +19,7 @@ def file_io_factory(file_type: SupportedFileTypes):
     elif file_type == SupportedFileTypes.ZIP:
         return ZipFileIO
     else:
-        raise ValueError(f'Unsupported file type: {file_type}')
+        raise ValueError(f"Unsupported file type: {file_type}")
 
 
 class AbstractFileIO(metaclass=ABCMeta):
@@ -37,24 +37,24 @@ class AbstractFileIO(metaclass=ABCMeta):
 class FileIO(AbstractFileIO, ABC):
     @staticmethod
     def write(path: str, data: str, **kwargs):
-        with open(path, 'w') as f:
+        with open(path, "w") as f:
             f.write(data)
 
     @staticmethod
     def read(path: str, **kwargs) -> str:
-        with open(path, 'r') as f:
+        with open(path, "r") as f:
             return f.read()
 
 
 class GzipFileIO(AbstractFileIO, ABC):
     @staticmethod
     def write(path: str, data: str, **kwargs):
-        with gzip.open(path, 'wt') as f:
+        with gzip.open(path, "wt") as f:
             f.write(data)
 
     @staticmethod
     def read(path: str, **kwargs) -> str:
-        with gzip.open(path, 'rt') as f:
+        with gzip.open(path, "rt") as f:
             return f.read()
 
     @staticmethod
@@ -69,17 +69,18 @@ class ZipFileIO(AbstractFileIO, ABC):
         try:
             import pyminizip
         except ImportError:
-            raise ImportError('pyminizip is not installed. Please install it using `pip install pyminizip`')
+            raise ImportError("pyminizip is not installed. Please install it using `pip install pyminizip`")
 
     @staticmethod
     def read(path: str, **kwargs) -> str:
         ZipFileIO._is_pyminizip_installed()
         import pyminizip
+
         cwd = os.getcwd()
-        password = kwargs.get('password')
-        zip_dir_name = kwargs.get('zip_dir_name')
+        password = kwargs.get("password")
+        zip_dir_name = kwargs.get("zip_dir_name")
         if zip_dir_name is None:
-            raise ValueError('zip_dir_name is required for zipping')
+            raise ValueError("zip_dir_name is required for zipping")
 
         try:
             with tempfile.TemporaryDirectory() as tmp_dir:
@@ -88,7 +89,7 @@ class ZipFileIO(AbstractFileIO, ABC):
                 content = FileIO.read(tmp_file)
         except Exception as e:
             error_msg = str(e)
-            if '-3' in error_msg:
+            if "-3" in error_msg:
                 raise Exception("Invalid password to uncompress state file.")
             raise Exception(f"Failed to uncompress state file: {error_msg}")
         finally:
@@ -100,11 +101,12 @@ class ZipFileIO(AbstractFileIO, ABC):
     def write(path: str, data: str, **kwargs):
         ZipFileIO._is_pyminizip_installed()
         import pyminizip
+
         cwd = os.getcwd()
-        password = kwargs.get('password')
-        zip_dir_name = kwargs.get('zip_dir_name')
+        password = kwargs.get("password")
+        zip_dir_name = kwargs.get("zip_dir_name")
         if zip_dir_name is None:
-            raise ValueError('zip_dir_name is required for zipping')
+            raise ValueError("zip_dir_name is required for zipping")
 
         try:
             with tempfile.TemporaryDirectory() as tmp_dir:

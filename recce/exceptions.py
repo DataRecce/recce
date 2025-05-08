@@ -7,7 +7,7 @@ class RecceException(Exception):
 
 class RecceCancelException(RecceException):
     def __init__(self):
-        super().__init__('Cancelled', False)
+        super().__init__("Cancelled", False)
 
 
 class RecceConfigException(RecceException):

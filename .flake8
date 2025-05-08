@@ -1,8 +1,9 @@
 [flake8]
-ignore = W605, F401, E501, E125, E126, W504, E203, W503
+ignore = W605, F401, E501, E125, E126, W504, E203, W503, F841, F541, F811
 max-line-length = 120
-exclude = tests,
-          docs,
+include = recce,
+          tests
+exclude = docs,
           .git,
           .venv,
           venv,

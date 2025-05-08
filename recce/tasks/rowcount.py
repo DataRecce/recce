@@ -1,11 +1,11 @@
-from typing import Optional, Union, List, Literal
+from typing import List, Literal, Optional, Union
 
 from pydantic import BaseModel
 
 from recce.core import default_context
 from recce.models import Check
 from recce.tasks import Task
-from recce.tasks.core import TaskResultDiffer, CheckValidator
+from recce.tasks.core import CheckValidator, TaskResultDiffer
 from recce.tasks.query import QueryMixin
 
 
@@ -25,10 +25,10 @@ class RowCountTask(Task, QueryMixin):
         if node is None:
             return None
 
-        if node.resource_type != 'model' and node.resource_type != 'snapshot':
+        if node.resource_type != "model" and node.resource_type != "snapshot":
             return None
 
-        if node.config and node.config.materialized not in ['table', 'view', 'incremental', 'snapshot']:
+        if node.config and node.config.materialized not in ["table", "view", "incremental", "snapshot"]:
             return None
 
         relation = dbt_adapter.create_relation(model_name, base=base)
@@ -54,8 +54,9 @@ class RowCountTask(Task, QueryMixin):
             for node in self.params.node_names or []:
                 query_candidates.append(node)
         else:
+
             def countable(unique_id):
-                return unique_id.startswith('model') or unique_id.startswith('snapshot') or unique_id.startswith('seed')
+                return unique_id.startswith("model") or unique_id.startswith("snapshot") or unique_id.startswith("seed")
 
             node_ids = dbt_adapter.select_nodes(
                 select=self.params.select,
@@ -80,7 +81,7 @@ class RowCountTask(Task, QueryMixin):
                 row_count = self._query_row_count(dbt_adapter, node, base=False)
                 self.check_cancel()
                 result[node] = {
-                    'curr': row_count,
+                    "curr": row_count,
                 }
                 completed += 1
 
@@ -98,7 +99,7 @@ class RowCountDiffParams(BaseModel):
     select: Optional[str] = None
     exclude: Optional[str] = None
     packages: Optional[list[str]] = None
-    view_mode: Optional[Literal['all', 'changed_models']] = None
+    view_mode: Optional[Literal["all", "changed_models"]] = None
 
 
 class RowCountDiffTask(Task, QueryMixin):
@@ -112,10 +113,10 @@ class RowCountDiffTask(Task, QueryMixin):
         if node is None:
             return None
 
-        if node.resource_type != 'model' and node.resource_type != 'snapshot':
+        if node.resource_type != "model" and node.resource_type != "snapshot":
             return None
 
-        if node.config and node.config.materialized not in ['table', 'view', 'incremental', 'snapshot']:
+        if node.config and node.config.materialized not in ["table", "view", "incremental", "snapshot"]:
             return None
 
         relation = dbt_adapter.create_relation(model_name, base=base)
@@ -141,8 +142,9 @@ class RowCountDiffTask(Task, QueryMixin):
             for node in self.params.node_names or []:
                 query_candidates.append(node)
         else:
+
             def countable(unique_id):
-                return unique_id.startswith('model') or unique_id.startswith('snapshot') or unique_id.startswith('seed')
+                return unique_id.startswith("model") or unique_id.startswith("snapshot") or unique_id.startswith("seed")
 
             node_ids = dbt_adapter.select_nodes(
                 select=self.params.select,
@@ -169,8 +171,8 @@ class RowCountDiffTask(Task, QueryMixin):
                 curr_row_count = self._query_row_count(dbt_adapter, node, base=False)
                 self.check_cancel()
                 result[node] = {
-                    'base': base_row_count,
-                    'curr': curr_row_count,
+                    "base": base_row_count,
+                    "curr": curr_row_count,
                 }
                 completed += 1
 
@@ -187,6 +189,7 @@ class RowCountDiffTask(Task, QueryMixin):
             query_candidates.append(node_name)
 
         from recce.adapter.sqlmesh_adapter import SqlmeshAdapter
+
         sqlmesh_adapter: SqlmeshAdapter = default_context().adapter
 
         for name in query_candidates:
@@ -194,28 +197,28 @@ class RowCountDiffTask(Task, QueryMixin):
             curr_row_count = None
 
             try:
-                df, _ = sqlmesh_adapter.fetchdf_with_limit(f'select count(*) from {name}', base=True)
+                df, _ = sqlmesh_adapter.fetchdf_with_limit(f"select count(*) from {name}", base=True)
                 base_row_count = int(df.iloc[0, 0])
             except Exception:
                 pass
             self.check_cancel()
 
             try:
-                df, _ = sqlmesh_adapter.fetchdf_with_limit(f'select count(*) from {name}', base=False)
+                df, _ = sqlmesh_adapter.fetchdf_with_limit(f"select count(*) from {name}", base=False)
                 curr_row_count = int(df.iloc[0, 0])
             except Exception:
                 pass
             self.check_cancel()
             result[name] = {
-                'base': base_row_count,
-                'curr': curr_row_count,
+                "base": base_row_count,
+                "curr": curr_row_count,
             }
 
         return result
 
     def execute(self):
         context = default_context()
-        if context.adapter_type == 'dbt':
+        if context.adapter_type == "dbt":
             return self.execute_dbt()
         else:
             return self.execute_sqlmesh()
@@ -232,8 +235,8 @@ class RowCountDiffResultDiffer(TaskResultDiffer):
         current = {}
 
         for node, row_counts in result.items():
-            base[node] = row_counts['base']
-            current[node] = row_counts['curr']
+            base[node] = row_counts["base"]
+            current[node] = row_counts["curr"]
 
         return TaskResultDiffer.diff(base, current)
 
@@ -243,19 +246,19 @@ class RowCountDiffResultDiffer(TaskResultDiffer):
         Should be implemented by subclass.
         """
         params = self.run.params
-        if params.get('model'):
-            return [TaskResultDiffer.get_node_id_by_name(params.get('model'))]
-        elif params.get('node_names'):
-            names = params.get('node_names', [])
+        if params.get("model"):
+            return [TaskResultDiffer.get_node_id_by_name(params.get("model"))]
+        elif params.get("node_names"):
+            names = params.get("node_names", [])
             return [TaskResultDiffer.get_node_id_by_name(name) for name in names]
-        elif params.get('node_ids'):
-            return params.get('node_ids', [])
+        elif params.get("node_ids"):
+            return params.get("node_ids", [])
         else:
             return TaskResultDiffer.get_node_ids_by_selector(
-                select=params.get('select'),
-                exclude=params.get('exclude'),
-                packages=params.get('packages'),
-                view_mode=params.get('view_mode'),
+                select=params.get("select"),
+                exclude=params.get("exclude"),
+                packages=params.get("packages"),
+                view_mode=params.get("view_mode"),
             )
 
     def _get_changed_nodes(self) -> Union[List[str], None]:
@@ -268,4 +271,4 @@ class RowCountDiffCheckValidator(CheckValidator):
         try:
             RowCountDiffParams(**check.params)
         except Exception as e:
-            raise ValueError(f'Invalid params: str{e}')
+            raise ValueError(f"Invalid params: str{e}")

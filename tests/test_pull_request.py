@@ -4,7 +4,7 @@ from unittest.mock import patch
 import pytest
 import requests
 
-from recce.pull_request import fetch_pr_metadata_from_event_path, _fetch_pr_title
+from recce.pull_request import _fetch_pr_title, fetch_pr_metadata_from_event_path
 
 
 @pytest.fixture

@@ -1,26 +1,26 @@
 import uuid
 from datetime import datetime, timezone
 from enum import Enum
-from typing import Optional, Literal
+from typing import Literal, Optional
 
-from pydantic import BaseModel, UUID4, Field
+from pydantic import UUID4, BaseModel, Field
 
 
 class RunType(Enum):
-    SIMPLE = 'simple'
+    SIMPLE = "simple"
     QUERY = "query"
-    QUERY_BASE = 'query_base'
-    QUERY_DIFF = 'query_diff'
-    VALUE_DIFF = 'value_diff'
-    VALUE_DIFF_DETAIL = 'value_diff_detail'
-    SCHEMA_DIFF = 'schema_diff'
-    PROFILE = 'profile'
-    PROFILE_DIFF = 'profile_diff'
-    ROW_COUNT = 'row_count'
-    ROW_COUNT_DIFF = 'row_count_diff'
-    LINEAGE_DIFF = 'lineage_diff'
-    TOP_K_DIFF = 'top_k_diff'
-    HISTOGRAM_DIFF = 'histogram_diff'
+    QUERY_BASE = "query_base"
+    QUERY_DIFF = "query_diff"
+    VALUE_DIFF = "value_diff"
+    VALUE_DIFF_DETAIL = "value_diff_detail"
+    SCHEMA_DIFF = "schema_diff"
+    PROFILE = "profile"
+    PROFILE_DIFF = "profile_diff"
+    ROW_COUNT = "row_count"
+    ROW_COUNT_DIFF = "row_count_diff"
+    LINEAGE_DIFF = "lineage_diff"
+    TOP_K_DIFF = "top_k_diff"
+    HISTOGRAM_DIFF = "histogram_diff"
 
     def __str__(self):
         return self.value
@@ -32,12 +32,12 @@ class RunProgress(BaseModel):
 
 
 class RunStatus(Enum):
-    FINISHED = 'finished'
-    FAILED = 'failed'
-    CANCELLED = 'cancelled'
-    RUNNING = 'running'
+    FINISHED = "finished"
+    FAILED = "failed"
+    CANCELLED = "cancelled"
+    RUNNING = "running"
     # This is a special status only in v0.36.0. Replaced by FINISHED. To be removed in the future.
-    SUCCESSFUL = 'successful'
+    SUCCESSFUL = "successful"
 
 
 class Run(BaseModel):
@@ -84,15 +84,15 @@ class Check(BaseModel):
 
 
 ChangeStatus = Literal[
-    'added',
-    'removed',
-    'modified',
+    "added",
+    "removed",
+    "modified",
 ]
 ChangeCategory = Literal[
-    'breaking',
-    'non_breaking',
-    'partial_breaking',
-    'unknown',
+    "breaking",
+    "non_breaking",
+    "partial_breaking",
+    "unknown",
 ]
 
 

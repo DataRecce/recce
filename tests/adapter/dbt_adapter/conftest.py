@@ -1,6 +1,7 @@
 import pytest
 
 from recce.core import set_default_context
+
 from .dbt_test_helper import DbtTestHelper
 
 

@@ -73,7 +73,7 @@ def test_query_diff_in_warehouse(dbt_test_helper):
         """
 
     dbt_test_helper.create_model("customers", csv_data_base, csv_data_curr)
-    params = dict(sql_template=f'select * from {{{{ ref("customers") }}}}', primary_keys=['customer_id'])
+    params = dict(sql_template=f'select * from {{{{ ref("customers") }}}}', primary_keys=["customer_id"])
     task = QueryDiffTask(params)
     run_result = task.execute()
     assert len(run_result.diff.data) == 2
@@ -81,7 +81,7 @@ def test_query_diff_in_warehouse(dbt_test_helper):
     params = dict(
         base_sql_template=f'select * from {{{{ ref("customers") }}}} where customer_id == 1',
         sql_template=f'select * from {{{{ ref("customers") }}}}',
-        primary_keys=['customer_id'],
+        primary_keys=["customer_id"],
     )
     task = QueryDiffTask(params)
     run_result = task.execute()
@@ -92,50 +92,50 @@ def test_validator():
     from recce.tasks.query import QueryCheckValidator, QueryDiffCheckValidator
 
     def validate(params: dict = {}, view_options: dict = {}):
-        QueryCheckValidator().validate({
-            'name': 'test',
-            'type': 'query',
-            'params': params,
-            'view_options': view_options,
-        })
+        QueryCheckValidator().validate(
+            {
+                "name": "test",
+                "type": "query",
+                "params": params,
+                "view_options": view_options,
+            }
+        )
 
     def validate_diff(params: dict = {}, view_options: dict = {}):
-        QueryDiffCheckValidator().validate({
-            'name': 'test',
-            'type': 'query_diff',
-            'params': params,
-            'view_options': view_options,
-        })
+        QueryDiffCheckValidator().validate(
+            {
+                "name": "test",
+                "type": "query_diff",
+                "params": params,
+                "view_options": view_options,
+            }
+        )
 
     # query
-    validate({
-        'sql_template': 'select * from abc'
-    })
+    validate({"sql_template": "select * from abc"})
 
     # diff in client
-    validate_diff({
-        'sql_template': 'select * from abc'
-    })
-    validate_diff({
-        'sql_template': 'select * from abc',
-        'base_sql_template': 'select * from abc',
-    })
+    validate_diff({"sql_template": "select * from abc"})
+    validate_diff(
+        {
+            "sql_template": "select * from abc",
+            "base_sql_template": "select * from abc",
+        }
+    )
 
     # diff in warehouse
-    validate_diff({
-        'primary_keys': ['customer_id'],
-        'sql_template': 'select * from abc',
-    })
-    validate_diff({
-        'sql_template': 'select * from abc',
-        'base_sql_template': 'select * from abc',
-        'primary_keys': ['customer_id']
-    })
-    validate_diff({
-        'sql_template': 'select * from abc',
-        'base_sql_template': 'select * from abc',
-        'primary_keys': ['customer_id']
-    })
+    validate_diff(
+        {
+            "primary_keys": ["customer_id"],
+            "sql_template": "select * from abc",
+        }
+    )
+    validate_diff(
+        {"sql_template": "select * from abc", "base_sql_template": "select * from abc", "primary_keys": ["customer_id"]}
+    )
+    validate_diff(
+        {"sql_template": "select * from abc", "base_sql_template": "select * from abc", "primary_keys": ["customer_id"]}
+    )
 
     # invalid
     with pytest.raises(ValueError):
@@ -145,7 +145,7 @@ def test_validator():
         validate_diff()
 
     with pytest.raises(ValueError):
-        validate_diff({'sql_template': 123, 'primary_keys': 'xyz'})
+        validate_diff({"sql_template": 123, "primary_keys": "xyz"})
 
     with pytest.raises(ValueError):
-        validate_diff({'sql_template': 's', 'primary_keys': 'xyz'})
+        validate_diff({"sql_template": "s", "primary_keys": "xyz"})

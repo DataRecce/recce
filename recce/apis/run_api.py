@@ -1,16 +1,16 @@
 import asyncio
-from typing import Optional, List
+from typing import List, Optional
 from uuid import UUID
 
 from fastapi import APIRouter, HTTPException, Query
 from pydantic import BaseModel
 
-from recce.apis.run_func import submit_run, cancel_run, materialize_run_results
+from recce.apis.run_func import cancel_run, materialize_run_results, submit_run
 from recce.event import log_api_event
 from recce.exceptions import RecceException
 from recce.models import RunDAO
 
-run_router = APIRouter(tags=['run'])
+run_router = APIRouter(tags=["run"])
 
 
 class CreateRunIn(BaseModel):
@@ -23,10 +23,13 @@ class CreateRunIn(BaseModel):
 
 @run_router.post("/runs", status_code=201)
 async def create_run_handler(input: CreateRunIn):
-    log_api_event('create_run', dict(
-        type=input.type,
-        track_props=input.track_props,
-    ))
+    log_api_event(
+        "create_run",
+        dict(
+            type=input.type,
+            track_props=input.track_props,
+        ),
+    )
     try:
         run, future = submit_run(input.type, input.params)
     except RecceException as e:
@@ -51,7 +54,7 @@ async def cancel_run_handler(run_id: UUID):
 async def wait_run_handler(run_id: UUID, timeout: int = Query(None, description="Maximum number of seconds to wait")):
     run = RunDAO().find_run_by_id(run_id)
     if run is None:
-        raise HTTPException(status_code=404, detail='Not Found')
+        raise HTTPException(status_code=404, detail="Not Found")
 
     start_time = asyncio.get_event_loop().time()
     while run.result is None and run.error is None:
@@ -65,18 +68,21 @@ async def wait_run_handler(run_id: UUID, timeout: int = Query(None, description=
 async def list_run_handler():
     runs = RunDAO().list() or []
 
-    result = [{
-        'run_id': run.run_id,
-        'run_at': run.run_at,
-        'name': run.name,
-        'type': run.type,
-        'params': run.params,
-        'status': run.status,
-        'check_id': run.check_id,
-    } for run in runs]
+    result = [
+        {
+            "run_id": run.run_id,
+            "run_at": run.run_at,
+            "name": run.name,
+            "type": run.type,
+            "params": run.params,
+            "status": run.status,
+            "check_id": run.check_id,
+        }
+        for run in runs
+    ]
 
     # sort by run_at
-    result = sorted(result, key=lambda x: x['run_at'], reverse=True)
+    result = sorted(result, key=lambda x: x["run_at"], reverse=True)
 
     return result
 
@@ -101,7 +107,7 @@ async def search_runs_handler(search: SearchRunsIn):
         result.append(run)
 
     if search.limit:
-        return result[-search.limit:]
+        return result[-search.limit :]
 
     return result
 

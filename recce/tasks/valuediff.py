@@ -26,9 +26,7 @@ class ValueDiffResult(BaseModel):
 
 
 class ValueDiffMixin:
-    def _verify_primary_key(
-        self, dbt_adapter, primary_key: Union[str, List[str]], model: str
-    ):
+    def _verify_primary_key(self, dbt_adapter, primary_key: Union[str, List[str]], model: str):
         self.update_progress(message=f"Verify primary key: {primary_key}")
         composite = True if isinstance(primary_key, List) else False
 
@@ -99,12 +97,8 @@ class ValueDiffTask(Task, ValueDiffMixin):
         composite = True if isinstance(primary_key, List) else False
 
         if columns is None or len(columns) == 0:
-            base_columns = [
-                column.column for column in dbt_adapter.get_columns(model, base=True)
-            ]
-            curr_columns = [
-                column.column for column in dbt_adapter.get_columns(model, base=False)
-            ]
+            base_columns = [column.column for column in dbt_adapter.get_columns(model, base=True)]
+            curr_columns = [column.column for column in dbt_adapter.get_columns(model, base=False)]
             columns = [column for column in base_columns if column in curr_columns]
         completed = 0
 
@@ -177,9 +171,7 @@ class ValueDiffTask(Task, ValueDiffMixin):
         """
 
         for column in columns:
-            self.update_progress(
-                message=f"Diff column: {column}", percentage=completed / len(columns)
-            )
+            self.update_progress(message=f"Diff column: {column}", percentage=completed / len(columns))
 
             sql = dbt_adapter.generate_sql(
                 sql_template,
@@ -193,9 +185,7 @@ class ValueDiffTask(Task, ValueDiffMixin):
 
             _, table = dbt_adapter.execute(sql, fetch=True)
             if column not in column_groups:
-                column_groups[column] = dict(
-                    added=0, removed=0, mismatched=0, matched=0
-                )
+                column_groups[column] = dict(added=0, removed=0, mismatched=0, matched=0)
             for row in table.rows:
                 # data example:
                 # ('COLUMN_NAME', 'MATCH_STATUS', 'COUNT_RECORDS', 'PERCENT_OF_TOTAL')
@@ -278,9 +268,7 @@ class ValueDiffTask(Task, ValueDiffMixin):
             self._verify_primary_key(dbt_adapter, primary_key, model)
             self.check_cancel()
 
-            return self._query_value_diff(
-                dbt_adapter, primary_key, model, columns=columns
-            )
+            return self._query_value_diff(dbt_adapter, primary_key, model, columns=columns)
 
     def cancel(self):
         super().cancel()
@@ -352,12 +340,8 @@ class ValueDiffDetailTask(Task, ValueDiffMixin):
         composite = True if isinstance(primary_key, List) else False
 
         if columns is None or len(columns) == 0:
-            base_columns = [
-                column.column for column in dbt_adapter.get_columns(model, base=True)
-            ]
-            curr_columns = [
-                column.column for column in dbt_adapter.get_columns(model, base=False)
-            ]
+            base_columns = [column.column for column in dbt_adapter.get_columns(model, base=True)]
+            curr_columns = [column.column for column in dbt_adapter.get_columns(model, base=False)]
             columns = [column for column in base_columns if column in curr_columns]
 
         if composite:

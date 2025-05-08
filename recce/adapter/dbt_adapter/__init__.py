@@ -9,25 +9,26 @@ from errno import ENOENT
 from functools import lru_cache
 from pathlib import Path
 from typing import (
+    Any,
     Callable,
     Dict,
-    List,
-    Optional,
-    Tuple,
     Iterator,
-    Any,
-    Set,
-    Union,
+    List,
     Literal,
+    Optional,
+    Set,
+    Tuple,
     Type,
+    Union,
 )
 
 from recce.event import log_performance
 from recce.exceptions import RecceException
-from recce.util.cll import cll, CLLPerformanceTracking
-from recce.util.lineage import find_upstream, find_downstream
+from recce.util.cll import CLLPerformanceTracking, cll
+from recce.util.lineage import find_downstream, find_upstream
+
 from ...tasks.profile import ProfileTask
-from ...util.breaking import parse_change_category, BreakingPerformanceTracking
+from ...util.breaking import BreakingPerformanceTracking, parse_change_category
 
 try:
     import agate
@@ -42,22 +43,23 @@ from watchdog.observers import Observer
 
 from recce.adapter.base import BaseAdapter
 from recce.state import ArtifactsRoot
-from .dbt_version import DbtVersion
+
 from ...models import RunType
-from ...models.types import LineageDiff, NodeDiff, NodeChange
+from ...models.types import LineageDiff, NodeChange, NodeDiff
 from ...tasks import (
-    Task,
-    QueryTask,
+    HistogramDiffTask,
+    ProfileDiffTask,
     QueryBaseTask,
     QueryDiffTask,
-    ValueDiffTask,
-    ValueDiffDetailTask,
-    ProfileDiffTask,
-    RowCountTask,
+    QueryTask,
     RowCountDiffTask,
+    RowCountTask,
+    Task,
     TopKDiffTask,
-    HistogramDiffTask,
+    ValueDiffDetailTask,
+    ValueDiffTask,
 )
+from .dbt_version import DbtVersion
 
 dbt_supported_registry: Dict[RunType, Type[Task]] = {
     RunType.QUERY: QueryTask,
@@ -92,7 +94,11 @@ from dbt.adapters.base import Column  # noqa: E402
 from dbt.adapters.factory import get_adapter_class_by_name  # noqa: E402
 from dbt.adapters.sql import SQLAdapter  # noqa: E402
 from dbt.config.runtime import RuntimeConfig  # noqa: E402
-from dbt.contracts.graph.manifest import Manifest, WritableManifest, MacroManifest  # noqa: E402
+from dbt.contracts.graph.manifest import (  # noqa: E402
+    MacroManifest,
+    Manifest,
+    WritableManifest,
+)
 from dbt.contracts.graph.nodes import ManifestNode  # noqa: E402
 from dbt.contracts.results import CatalogArtifact  # noqa: E402
 from dbt.flags import set_from_args  # noqa: E402
@@ -210,15 +216,13 @@ def load_catalog(path: str = None, data: dict = None):
         return CatalogArtifact.upgrade_schema_version(data)
 
 
-def previous_state(
-    state_path: Path, target_path: Path, project_root: Path
-) -> PreviousState:
+def previous_state(state_path: Path, target_path: Path, project_root: Path) -> PreviousState:
     if dbt_version < "v1.5.2":
         return PreviousState(state_path, target_path)
     else:
         try:
             # Overwrite the level_tag method temporarily to avoid the warning message
-            from dbt.events.types import WarnStateTargetEqual, EventLevel
+            from dbt.events.types import EventLevel, WarnStateTargetEqual
 
             original_level_tag_func = WarnStateTargetEqual.level_tag
             WarnStateTargetEqual.level_tag = lambda x: EventLevel.DEBUG
@@ -261,9 +265,7 @@ class DbtArgs:
     target_path: Optional[str] = (None,)
     project_only_flags: Optional[Dict[str, Any]] = None
     which: Optional[str] = None
-    state_modified_compare_more_unrendered_values: Optional[bool] = (
-        False  # new flag added since dbt v1.9
-    )
+    state_modified_compare_more_unrendered_values: Optional[bool] = False  # new flag added since dbt v1.9
 
 
 @dataclass
@@ -291,9 +293,7 @@ class DbtAdapter(BaseAdapter):
 
     def support_tasks(self):
         support_map = {run_type.value: True for run_type in dbt_supported_registry}
-        supported_dbt_packages = set(
-            [package.package_name for package in self.manifest.macros.values()]
-        )
+        supported_dbt_packages = set([package.package_name for package in self.manifest.macros.values()])
 
         if "dbt_profiler" not in supported_dbt_packages:
             support_map[RunType.PROFILE_DIFF.value] = False
@@ -337,11 +337,11 @@ class DbtAdapter(BaseAdapter):
                 adapter_cls = get_adapter_class_by_name(adapter_name)
                 adapter: SQLAdapter = adapter_cls(runtime_config)
             else:
-                from dbt_common.context import (
-                    set_invocation_context,
-                    get_invocation_context,
-                )
                 from dbt.mp_context import get_mp_context
+                from dbt_common.context import (
+                    get_invocation_context,
+                    set_invocation_context,
+                )
 
                 set_invocation_context({})
                 get_invocation_context()._env = dict(os.environ)
@@ -373,15 +373,11 @@ class DbtAdapter(BaseAdapter):
     def print_lineage_info(self):
         print("Base:")
         print(f"    Manifest: {self.base_manifest.metadata.generated_at}")
-        print(
-            f"    Catalog:  {self.base_catalog.metadata.generated_at if self.base_catalog else 'N/A'}"
-        )
+        print(f"    Catalog:  {self.base_catalog.metadata.generated_at if self.base_catalog else 'N/A'}")
 
         print("Current:")
         print(f"    Manifest: {self.curr_manifest.metadata.generated_at}")
-        print(
-            f"    Catalog:  {self.curr_catalog.metadata.generated_at if self.curr_catalog else 'N/A'}"
-        )
+        print(f"    Catalog:  {self.curr_catalog.metadata.generated_at if self.curr_catalog else 'N/A'}")
 
     def get_columns(self, model: str, base=False) -> List[Column]:
         relation = self.create_relation(model, base)
@@ -399,9 +395,7 @@ class DbtAdapter(BaseAdapter):
             macro_manifest = MacroManifest(self.manifest.macros)
             self.adapter.set_macro_resolver(macro_manifest)
             self.adapter.set_macro_context_generator(generate_runtime_macro_context)
-            columns = self.adapter.execute_macro(
-                get_columns_macro, kwargs={"relation": relation}
-            )
+            columns = self.adapter.execute_macro(get_columns_macro, kwargs={"relation": relation})
 
         if self.adapter.connections.TYPE == "databricks":
             # reference: get_columns_in_relation (dbt/adapters/databricks/impl.py)
@@ -446,10 +440,10 @@ class DbtAdapter(BaseAdapter):
 
             not_null_prefix = f"not_null_{node_name}_"
             if child_type == "test" and child_name.startswith(not_null_prefix):
-                cols_not_null.append(child_name[len(not_null_prefix):])
+                cols_not_null.append(child_name[len(not_null_prefix) :])
             unique_prefix = f"unique_{node_name}_"
             if child_type == "test" and child_name.startswith(unique_prefix):
-                cols_unique.append(child_name[len(unique_prefix):])
+                cols_unique.append(child_name[len(unique_prefix) :])
 
         columns_info = {}
         primary_key = None
@@ -493,12 +487,8 @@ class DbtAdapter(BaseAdapter):
         if base_manifest is None:
             raise FileNotFoundError(ENOENT, os.strerror(ENOENT), path)
 
-        curr_catalog = load_catalog(
-            path=os.path.join(project_root, target_path, "catalog.json")
-        )
-        base_catalog = load_catalog(
-            path=os.path.join(project_root, target_base_path, "catalog.json")
-        )
+        curr_catalog = load_catalog(path=os.path.join(project_root, target_path, "catalog.json"))
+        base_catalog = load_catalog(path=os.path.join(project_root, target_base_path, "catalog.json"))
 
         # set the value if all the artifacts are loaded successfully
         self.curr_manifest = curr_manifest
@@ -579,17 +569,13 @@ class DbtAdapter(BaseAdapter):
     ):
         if context is None:
             context = {}
-        manifest = (
-            provided_manifest
-            if provided_manifest is not None
-            else as_manifest(self.get_manifest(base))
-        )
+        manifest = provided_manifest if provided_manifest is not None else as_manifest(self.get_manifest(base))
         parser = SqlBlockParser(self.runtime_config, manifest, self.runtime_config)
 
         if dbt_version >= dbt_version.parse("v1.8"):
             from dbt_common.context import (
-                set_invocation_context,
                 get_invocation_context,
+                set_invocation_context,
             )
 
             set_invocation_context({})
@@ -604,12 +590,10 @@ class DbtAdapter(BaseAdapter):
             compiler.compile_node(node, manifest, context)
             return node.compiled_code
         else:
-            from dbt.context.providers import generate_runtime_model_context
             from dbt.clients import jinja
+            from dbt.context.providers import generate_runtime_model_context
 
-            jinja_ctx = generate_runtime_model_context(
-                node, self.runtime_config, manifest
-            )
+            jinja_ctx = generate_runtime_model_context(node, self.runtime_config, manifest)
             jinja_ctx.update(context)
             compiled_code = jinja.get_rendered(sql_template, jinja_ctx, node)
             return compiled_code
@@ -624,13 +608,9 @@ class DbtAdapter(BaseAdapter):
         if dbt_version < dbt_version.parse("v1.6"):
             return self.adapter.execute(sql, auto_begin=auto_begin, fetch=fetch)
 
-        return self.adapter.execute(
-            sql, auto_begin=auto_begin, fetch=fetch, limit=limit
-        )
+        return self.adapter.execute(sql, auto_begin=auto_begin, fetch=fetch, limit=limit)
 
-    def build_parent_map(
-        self, nodes: Dict, base: Optional[bool] = False
-    ) -> Dict[str, List[str]]:
+    def build_parent_map(self, nodes: Dict, base: Optional[bool] = False) -> Dict[str, List[str]]:
         manifest = self.curr_manifest if base is False else self.base_manifest
         manifest_dict = manifest.to_dict()
 
@@ -643,9 +623,7 @@ class DbtAdapter(BaseAdapter):
 
         return parent_map
 
-    def build_parent_list_per_node(
-        self, node_id: str, base: Optional[bool] = False
-    ) -> List[str]:
+    def build_parent_list_per_node(self, node_id: str, base: Optional[bool] = False) -> List[str]:
         manifest = self.curr_manifest if base is False else self.base_manifest
         manifest_dict = manifest.to_dict()
 
@@ -723,10 +701,10 @@ class DbtAdapter(BaseAdapter):
 
                 not_null_prefix = f"not_null_{node_name}_"
                 if child_type == "test" and child_name.startswith(not_null_prefix):
-                    cols_not_null.append(child_name[len(not_null_prefix):])
+                    cols_not_null.append(child_name[len(not_null_prefix) :])
                 unique_prefix = f"unique_{node_name}_"
                 if child_type == "test" and child_name.startswith(unique_prefix):
-                    cols_unique.append(child_name[len(unique_prefix):])
+                    cols_unique.append(child_name[len(unique_prefix) :])
 
             if catalog is not None and unique_id in catalog.nodes:
                 columns = {}
@@ -758,9 +736,7 @@ class DbtAdapter(BaseAdapter):
             if catalog is not None and unique_id in catalog.sources:
                 nodes[unique_id]["columns"] = {
                     col_name: {"name": col_name, "type": col_metadata.type}
-                    for col_name, col_metadata in catalog.sources[
-                        unique_id
-                    ].columns.items()
+                    for col_name, col_metadata in catalog.sources[unique_id].columns.items()
                 }
 
         for exposure in manifest_dict["exposures"].values():
@@ -869,10 +845,7 @@ class DbtAdapter(BaseAdapter):
                                     table = parts[3]
                                     source = source.replace("-", "_")
                                     name = f"__{source}__{table}"
-                                schema[name] = {
-                                    name: column.get("type")
-                                    for name, column in columns.items()
-                                }
+                                schema[name] = {name: column.get("type") for name, column in columns.items()}
                             return schema
 
                         base_sql = self.generate_sql(
@@ -902,8 +875,7 @@ class DbtAdapter(BaseAdapter):
 
                         # Make sure that the case of the column names are the same
                         changed_columns = {
-                            column.lower(): change_status
-                            for column, change_status in (change.columns or {}).items()
+                            column.lower(): change_status for column, change_status in (change.columns or {}).items()
                         }
                         changed_columns_names = set(changed_columns)
                         changed_columns_final = {}
@@ -914,9 +886,7 @@ class DbtAdapter(BaseAdapter):
 
                         for column_name in columns_names:
                             if column_name.lower() in changed_columns_names:
-                                changed_columns_final[column_name] = changed_columns[
-                                    column_name.lower()
-                                ]
+                                changed_columns_final[column_name] = changed_columns[column_name.lower()]
 
                         change.columns = changed_columns_final
                     except Exception:
@@ -977,9 +947,7 @@ class DbtAdapter(BaseAdapter):
         self.append_column_lineage(node, parent_list, base)
         return node
 
-    def append_column_lineage(
-        self, node: Dict, parent_list: List, base: Optional[bool] = False
-    ):
+    def append_column_lineage(self, node: Dict, parent_list: List, base: Optional[bool] = False):
         def _apply_all_columns(node, trans_type, depends_on):
             for col in node.get("columns", {}).values():
                 col["transformation_type"] = trans_type
@@ -993,9 +961,7 @@ class DbtAdapter(BaseAdapter):
                             if n.get("resource_type") != "source":
                                 continue
                             # __source__table -> source.table
-                            source_table = (
-                                depend_on.node.lstrip("_").replace("__", ".", 1).lower()
-                            )
+                            source_table = depend_on.node.lstrip("_").replace("__", ".", 1).lower()
                             if source_table in n.get("id"):
                                 depend_on.node = n.get("id")
                                 break
@@ -1016,9 +982,7 @@ class DbtAdapter(BaseAdapter):
             _apply_all_columns(node, "source", [])
             return
 
-        if node.get("raw_code") is None or self.is_python_model(
-            node.get("id"), base=base
-        ):
+        if node.get("raw_code") is None or self.is_python_model(node.get("id"), base=base):
             _apply_all_columns(node, "unknown", [])
             return
 
@@ -1061,15 +1025,11 @@ class DbtAdapter(BaseAdapter):
                 source = parts[2]
                 table = parts[3]
                 name = f"__{source}__{table}"
-            schema[name] = {
-                name: column.get("type") for name, column in columns.items()
-            }
+            schema[name] = {name: column.get("type") for name, column in columns.items()}
 
         try:
             # provide a manifest to speedup and not pollute the manifest
-            compiled_sql = self.generate_sql(
-                raw_code, base=base, context=jinja_context, provided_manifest=manifest
-            )
+            compiled_sql = self.generate_sql(raw_code, base=base, context=jinja_context, provided_manifest=manifest)
             dialect = self.adapter.type()
             # find adapter type from the manifest, otherwise we use the adapter type from the adapter
             if self.get_manifest(base).metadata.adapter_type is not None:
@@ -1132,9 +1092,7 @@ class DbtAdapter(BaseAdapter):
             if catalog is not None and unique_id in catalog.sources:
                 nodes[unique_id]["columns"] = {
                     col_name: {"name": col_name, "type": col_metadata.type}
-                    for col_name, col_metadata in catalog.sources[
-                        unique_id
-                    ].columns.items()
+                    for col_name, col_metadata in catalog.sources[unique_id].columns.items()
                 }
 
         return nodes
@@ -1162,17 +1120,11 @@ class DbtAdapter(BaseAdapter):
 
     def start_monitor_artifacts(self, callback: Callable = None):
         if self.artifacts_files:
-            event_handler = ArtifactsEventHandler(
-                self.artifacts_files, callback=callback
-            )
+            event_handler = ArtifactsEventHandler(self.artifacts_files, callback=callback)
             if self.target_path:
-                self.artifacts_observer.schedule(
-                    event_handler, self.target_path, recursive=False
-                )
+                self.artifacts_observer.schedule(event_handler, self.target_path, recursive=False)
             if self.base_path:
-                self.artifacts_observer.schedule(
-                    event_handler, self.base_path, recursive=False
-                )
+                self.artifacts_observer.schedule(event_handler, self.base_path, recursive=False)
             self.artifacts_observer.start()
             logger.info("Start monitoring dbt artifacts")
 
@@ -1188,12 +1140,8 @@ class DbtAdapter(BaseAdapter):
             os.path.join(target_base_dir, "manifest.json"),
             os.path.join(target_base_dir, "catalog.json"),
         }
-        event_handler = EnvironmentEventHandler(
-            self.base_env_observer, base_env_files, callback=callback
-        )
-        self.base_env_observer.schedule(
-            event_handler, self.runtime_config.project_root, recursive=True
-        )
+        event_handler = EnvironmentEventHandler(self.base_env_observer, base_env_files, callback=callback)
+        self.base_env_observer.schedule(event_handler, self.runtime_config.project_root, recursive=True)
         self.base_env_observer.start()
         logger.info("Start monitoring base environment")
 
@@ -1270,10 +1218,14 @@ class DbtAdapter(BaseAdapter):
         packages: Optional[list[str]] = None,
         view_mode: Optional[Literal["all", "changed_models"]] = None,
     ) -> Set[str]:
-        from dbt.graph import NodeSelector
-        from dbt.compilation import Compiler
-        from dbt.graph import parse_difference, SelectionIntersection, SelectionUnion
         import dbt.compilation
+        from dbt.compilation import Compiler
+        from dbt.graph import (
+            NodeSelector,
+            SelectionIntersection,
+            SelectionUnion,
+            parse_difference,
+        )
 
         select_list = [select] if select else None
         exclude_list = [exclude] if exclude else None
@@ -1287,9 +1239,7 @@ class DbtAdapter(BaseAdapter):
         specs = [_parse_difference(select_list, exclude_list)]
 
         if packages is not None:
-            package_spec = SelectionUnion(
-                [_parse_difference([f"package:{p}"], None) for p in packages]
-            )
+            package_spec = SelectionUnion([_parse_difference([f"package:{p}"], None) for p in packages])
             specs.append(package_spec)
         if view_mode and view_mode == "changed_models":
             specs.append(_parse_difference(["1+state:modified+"], None))
@@ -1370,20 +1320,12 @@ class DbtAdapter(BaseAdapter):
 
         project_root = self.runtime_config.project_root
         artifacts.base = {
-            "manifest": _load_artifact(
-                os.path.join(project_root, target_base_path, "manifest.json")
-            ),
-            "catalog": _load_artifact(
-                os.path.join(project_root, target_base_path, "catalog.json")
-            ),
+            "manifest": _load_artifact(os.path.join(project_root, target_base_path, "manifest.json")),
+            "catalog": _load_artifact(os.path.join(project_root, target_base_path, "catalog.json")),
         }
         artifacts.current = {
-            "manifest": _load_artifact(
-                os.path.join(project_root, target_path, "manifest.json")
-            ),
-            "catalog": _load_artifact(
-                os.path.join(project_root, target_path, "catalog.json")
-            ),
+            "manifest": _load_artifact(os.path.join(project_root, target_path, "manifest.json")),
+            "catalog": _load_artifact(os.path.join(project_root, target_path, "catalog.json")),
         }
         return artifacts
 
@@ -1398,26 +1340,14 @@ class DbtAdapter(BaseAdapter):
                     return new
                 if not new:
                     return original
-                return (
-                    original
-                    if original.metadata.generated_at > new.metadata.generated_at
-                    else new
-                )
+                return original if original.metadata.generated_at > new.metadata.generated_at else new
             else:
                 return new
 
-        self.base_manifest = _select_artifact(
-            self.base_manifest, load_manifest(data=artifacts.base.get("manifest"))
-        )
-        self.curr_manifest = _select_artifact(
-            self.curr_manifest, load_manifest(data=artifacts.current.get("manifest"))
-        )
-        self.base_catalog = _select_artifact(
-            self.base_catalog, load_catalog(data=artifacts.base.get("catalog"))
-        )
-        self.curr_catalog = _select_artifact(
-            self.curr_catalog, load_catalog(data=artifacts.current.get("catalog"))
-        )
+        self.base_manifest = _select_artifact(self.base_manifest, load_manifest(data=artifacts.base.get("manifest")))
+        self.curr_manifest = _select_artifact(self.curr_manifest, load_manifest(data=artifacts.current.get("manifest")))
+        self.base_catalog = _select_artifact(self.base_catalog, load_catalog(data=artifacts.base.get("catalog")))
+        self.curr_catalog = _select_artifact(self.curr_catalog, load_catalog(data=artifacts.current.get("catalog")))
 
         self.manifest = as_manifest(self.curr_manifest)
         self.previous_state = previous_state(

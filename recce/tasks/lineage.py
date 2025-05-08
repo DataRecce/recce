@@ -1,4 +1,4 @@
-from typing import Optional, Literal
+from typing import Literal, Optional
 
 from pydantic import BaseModel
 
@@ -10,7 +10,7 @@ class LineageDiffParams(BaseModel):
     select: Optional[str] = None
     exclude: Optional[str] = None
     packages: Optional[list[str]] = None
-    view_mode: Optional[Literal['all', 'changed_models']] = None
+    view_mode: Optional[Literal["all", "changed_models"]] = None
 
 
 class LineageDiffCheckValidator(CheckValidator):

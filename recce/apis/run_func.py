@@ -4,11 +4,11 @@ from typing import List, Optional
 
 from recce.core import default_context
 from recce.exceptions import RecceException
-from recce.models import RunType, Run, RunDAO
+from recce.models import Run, RunDAO, RunType
 from recce.models.types import RunStatus
 
 running_tasks = {}
-logger = logging.getLogger('uvicorn')
+logger = logging.getLogger("uvicorn")
 
 
 def _get_ref_model(sql_template: str) -> Optional[str]:
@@ -33,26 +33,26 @@ def generate_run_name(run):
     now = dateutil.parser.parse(run.run_at)
 
     if run_type == RunType.QUERY:
-        ref = _get_ref_model(params.get('sql_template'))
+        ref = _get_ref_model(params.get("sql_template"))
         if ref:
             return f"query of {ref}".capitalize()
         return f"{'query'.capitalize()} - {now}"
     elif run_type == RunType.QUERY_DIFF:
-        ref = _get_ref_model(params.get('sql_template'))
+        ref = _get_ref_model(params.get("sql_template"))
         if ref:
             return f"query diff of {ref}".capitalize()
         return f"{'query diff'.capitalize()} - {now}"
     elif run_type == RunType.VALUE_DIFF:
-        model = params.get('model')
+        model = params.get("model")
         return f"value diff of {model}".capitalize()
     elif run_type == RunType.VALUE_DIFF_DETAIL:
-        model = params.get('model')
+        model = params.get("model")
         return f"value diff detail of {model}".capitalize()
     elif run_type == RunType.PROFILE_DIFF:
-        model = params.get('model')
+        model = params.get("model")
         return f"profile diff of {model}".capitalize()
     elif run_type == RunType.ROW_COUNT_DIFF:
-        nodes = params.get('node_names')
+        nodes = params.get("node_names")
         if nodes:
             if len(nodes) == 1:
                 node = nodes[0]
@@ -62,23 +62,27 @@ def generate_run_name(run):
         else:
             return "row count of multiple nodes".capitalize()
     elif run_type == RunType.TOP_K_DIFF:
-        model = params.get('model')
-        column = params.get('column_name')
+        model = params.get("model")
+        column = params.get("column_name")
         return f"top-k diff of {model}.{column} ".capitalize()
     elif run_type == RunType.HISTOGRAM_DIFF:
-        model = params.get('model')
-        column = params.get('column_name')
+        model = params.get("model")
+        column = params.get("column_name")
         return f"histogram diff of {model}.{column} ".capitalize()
     else:
         return f"{'run'.capitalize()} - {now}"
 
 
 def create_task(run_type: RunType, params: dict):
-    if default_context().adapter_type == 'sqlmesh':
-        from recce.adapter.sqlmesh_adapter import sqlmesh_supported_registry as sqlmesh_registry
+    if default_context().adapter_type == "sqlmesh":
+        from recce.adapter.sqlmesh_adapter import (
+            sqlmesh_supported_registry as sqlmesh_registry,
+        )
+
         registry = sqlmesh_registry
     else:
         from recce.adapter.dbt_adapter import dbt_supported_registry as dbt_registry
+
         registry = dbt_registry
 
     taskClz = registry.get(run_type)
@@ -101,6 +105,7 @@ def submit_run(type, params, check_id=None):
     context = default_context()
     if context.review_mode is True:
         from recce.adapter.dbt_adapter import DbtAdapter
+
         dbt_adaptor: DbtAdapter = context.adapter
         if dbt_adaptor.adapter is None:
             raise RecceException("Recce Server is not launched under DBT project folder.")
@@ -113,7 +118,7 @@ def submit_run(type, params, check_id=None):
     running_tasks[run.run_id] = task
 
     def progress_listener(message=None, percentage=None):
-        run.progress = {'message': message, 'percentage': percentage}
+        run.progress = {"message": message, "percentage": percentage}
 
     task.progress_listener = progress_listener
 
@@ -124,7 +129,7 @@ def submit_run(type, params, check_id=None):
             run.result = result
             run.status = RunStatus.FINISHED
         if error is not None:
-            failed_reason = str(error) if str(error) != 'None' else repr(error)
+            failed_reason = str(error) if str(error) != "None" else repr(error)
             run.error = failed_reason
             if run.status != RunStatus.CANCELLED:
                 run.status = RunStatus.FAILED
@@ -140,9 +145,10 @@ def submit_run(type, params, check_id=None):
             if isinstance(e, RecceException) and e.is_raise is False:
                 return None
             import sentry_sdk
+
             sentry_sdk.capture_exception(e)
-            failed_reason = str(e) if str(e) != 'None' else repr(e)
-            failed_reason = failed_reason.replace('. ', ".\n")
+            failed_reason = str(e) if str(e) != "None" else repr(e)
+            failed_reason = failed_reason.replace(". ", ".\n")
             logger.error(f"Failed to execute {run_type} task: {failed_reason}")
             return None
 
@@ -164,7 +170,7 @@ def cancel_run(run_id):
 
 
 def materialize_run_results(runs: List[Run], nodes: List[str] = None):
-    '''
+    """
     Materialize the run results for nodes. It walks through all runs and get the last results for primary run types.
 
     The result format
@@ -180,11 +186,11 @@ def materialize_run_results(runs: List[Run], nodes: List[str] = None):
           },
        },
     }
-    '''
+    """
 
     context = default_context()
     if context:
-        mame_to_unique_id = context.build_name_to_unique_id_index(excluded_types={'semantic_model', 'metric'})
+        mame_to_unique_id = context.build_name_to_unique_id_index(excluded_types={"semantic_model", "metric"})
     else:
         mame_to_unique_id = {}
 
@@ -205,7 +211,7 @@ def materialize_run_results(runs: List[Run], nodes: List[str] = None):
                     node_result = result[key] = {}
                 else:
                     node_result = result.get(key)
-                node_result['row_count_diff'] = {'run_id': run.run_id, 'result': node_run_result}
+                node_result["row_count_diff"] = {"run_id": run.run_id, "result": node_run_result}
         elif run.type == RunType.ROW_COUNT:
             for model_name, node_run_result in run.result.items():
                 key = mame_to_unique_id.get(model_name, model_name)
@@ -218,5 +224,5 @@ def materialize_run_results(runs: List[Run], nodes: List[str] = None):
                     node_result = result[key] = {}
                 else:
                     node_result = result.get(key)
-                node_result['row_count'] = {'run_id': run.run_id, 'result': node_run_result}
+                node_result["row_count"] = {"run_id": run.run_id, "result": node_run_result}
     return result

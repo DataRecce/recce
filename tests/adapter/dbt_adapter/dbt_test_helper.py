@@ -4,8 +4,18 @@ import uuid
 from datetime import datetime
 from io import StringIO
 
-from dbt.contracts.graph.nodes import ModelNode, SnapshotNode, SeedNode, SourceDefinition
-from dbt.contracts.results import CatalogArtifact, ColumnMetadata, CatalogTable, TableMetadata
+from dbt.contracts.graph.nodes import (
+    ModelNode,
+    SeedNode,
+    SnapshotNode,
+    SourceDefinition,
+)
+from dbt.contracts.results import (
+    CatalogArtifact,
+    CatalogTable,
+    ColumnMetadata,
+    TableMetadata,
+)
 
 from recce.adapter.dbt_adapter import DbtAdapter, as_manifest, load_manifest
 from recce.core import RecceContext
@@ -19,9 +29,9 @@ class DbtTestHelper:
         self.curr_schema = f"{schema_prefix}_curr"
 
         current_dir = os.path.dirname(os.path.abspath(__file__))
-        project_dir = os.path.join(current_dir, 'test_proj')
+        project_dir = os.path.join(current_dir, "test_proj")
         profiles_dir = project_dir
-        manifest_path = os.path.join(project_dir, 'manifest.json')
+        manifest_path = os.path.join(project_dir, "manifest.json")
 
         dbt_adapter = DbtAdapter.load(
             no_artifacts=True,
@@ -30,7 +40,7 @@ class DbtTestHelper:
         )
 
         context = RecceContext()
-        context.adapter_type = 'dbt'
+        context.adapter_type = "dbt"
         context.adapter = dbt_adapter
         context.schema_prefix = schema_prefix
         self.adapter = dbt_adapter
@@ -108,16 +118,16 @@ class DbtTestHelper:
             if csv:
                 dbt_adapter = self.adapter
                 csv = textwrap.dedent(csv)
-                with dbt_adapter.connection_named('create model'):
+                with dbt_adapter.connection_named("create model"):
                     import pandas as pd
+
                     df = pd.read_csv(StringIO(csv))
                     dbt_adapter.execute(f"CREATE TABLE {schema}.{model_name} AS SELECT * FROM df")
             raw_code = sql if sql else csv
 
             if columns:
                 index = 1
-                table = CatalogTable(
-                    TableMetadata(type="BASE TABLE", schema=schema, name=model_name), {}, {})
+                table = CatalogTable(TableMetadata(type="BASE TABLE", schema=schema, name=model_name), {}, {})
                 catalog.nodes[unique_id] = table
                 for column, column_type in columns.items():
                     col_data = ColumnMetadata(type=column_type, index=index, name=column)
@@ -147,9 +157,7 @@ class DbtTestHelper:
                     "tags": ["test_tag"],
                 },
                 "tags": ["test_tag"],
-                "depends_on": {
-                    "nodes": depends_on
-                },
+                "depends_on": {"nodes": depends_on},
             }
             if patch_func:
                 patch_func(node_dict)
@@ -179,11 +187,12 @@ class DbtTestHelper:
             self.curr_manifest,
             self.base_manifest,
             self.base_catalog,
-            self.curr_catalog)
+            self.curr_catalog,
+        )
 
     def remove_model(self, model_name):
         dbt_adapter = self.adapter
-        with dbt_adapter.connection_named('cleanup'):
+        with dbt_adapter.connection_named("cleanup"):
             dbt_adapter.execute(f"DROP TABLE IF EXISTS {self.base_schema}.{model_name}")
             dbt_adapter.execute(f"DROP TABLE IF EXISTS {self.curr_schema}.{model_name} ")
 
@@ -219,15 +228,15 @@ class DbtTestHelper:
             if csv:
                 dbt_adapter = self.adapter
                 csv = textwrap.dedent(csv)
-                with dbt_adapter.connection_named('create source'):
+                with dbt_adapter.connection_named("create source"):
                     import pandas as pd
+
                     df = pd.read_csv(StringIO(csv))
                     dbt_adapter.execute(f"CREATE TABLE {schema}.{table_name} AS SELECT * FROM df")
 
             if columns:
                 index = 1
-                table = CatalogTable(
-                    TableMetadata(type="BASE TABLE", schema=schema, name=table_name), {}, {})
+                table = CatalogTable(TableMetadata(type="BASE TABLE", schema=schema, name=table_name), {}, {})
                 catalog.sources[unique_id] = table
                 for column, column_type in columns.items():
                     col_data = ColumnMetadata(type=column_type, index=index, name=column)
@@ -271,11 +280,12 @@ class DbtTestHelper:
             self.curr_manifest,
             self.base_manifest,
             self.base_catalog,
-            self.curr_catalog)
+            self.curr_catalog,
+        )
 
     def cleanup(self):
         dbt_adapter = self.adapter
-        with dbt_adapter.connection_named('cleanup'):
+        with dbt_adapter.connection_named("cleanup"):
             dbt_adapter.execute(f"DROP SCHEMA IF EXISTS {self.base_schema} CASCADE")
             dbt_adapter.execute(f"DROP SCHEMA IF EXISTS {self.curr_schema} CASCADE")
 

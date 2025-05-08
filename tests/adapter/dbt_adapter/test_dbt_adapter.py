@@ -6,9 +6,7 @@ def test_dbt_adapter_support_tasks(dbt_test_helper):
     adapter: DbtAdapter = dbt_test_helper.context.adapter
 
     # Test dbt package name
-    supported_dbt_packages = set(
-        [package.package_name for package in adapter.manifest.macros.values()]
-    )
+    supported_dbt_packages = set([package.package_name for package in adapter.manifest.macros.values()])
     assert "dbt_profiler" in supported_dbt_packages
 
     # Test dbt task support
