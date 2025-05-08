@@ -10,8 +10,6 @@ from ..core import default_context
 from ..exceptions import RecceException
 from ..models import Check
 
-from sqlglot import transpile
-
 QUERY_LIMIT = 2000
 
 if typing.TYPE_CHECKING:
@@ -240,12 +238,11 @@ class QueryDiffTask(Task, QueryMixin, ValueDiffMixin):
 
         select * from all_records
         where not (in_a and in_b)
-        order by {{ primary_key }}, in_a desc, in_b desc
+        order by {{ primary_keys | join(',\n') }}, in_a desc, in_b desc
         limit {{ limit }}
         """
 
         self.check_cancel()
-        primary_key = ",".join(primary_keys)
 
         if preview_change:
             base_query = dbt_adapter.generate_sql(base_sql_template, base=False)
@@ -260,15 +257,10 @@ class QueryDiffTask(Task, QueryMixin, ValueDiffMixin):
             context=dict(
                 base_query=base_query,
                 current_query=current_query,
-                primary_key=primary_key,
+                primary_keys=primary_keys,
                 limit=QUERY_LIMIT,
             ),
         )
-
-        adapter_name = dbt_adapter.runtime_config.credentials.type
-        sql = transpile(
-            sql, read="duckdb", write=adapter_name, identify=True, pretty=True
-        )[0]
 
         _, table = dbt_adapter.execute(sql, fetch=True)
         self.check_cancel()

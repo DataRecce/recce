@@ -8,8 +8,6 @@ from ..models import Check
 from .core import CheckValidator, Task, TaskResultDiffer
 from .dataframe import DataFrame
 
-from sqlglot import transpile
-
 
 class ValueDiffParams(BaseModel):
     model: str
@@ -111,12 +109,27 @@ class ValueDiffTask(Task, ValueDiffMixin):
                 columns.insert(0, primary_key)
 
         sql_template = r"""
+        {%- set default_null_value = "_recce_surrogate_key_null_" -%}
+        {%- set fields = [] -%}
+
+        {%- for field in primary_keys -%}
+            {%- do fields.append(
+                "coalesce(cast(" ~ field ~ " as " ~ dbt.type_string() ~ "), '" ~ default_null_value  ~"')"
+            ) -%}
+
+            {%- if not loop.last %}
+                {%- do fields.append("'-'") -%}
+            {%- endif -%}
+        {%- endfor -%}
+
+        {%- set _pk = dbt.hash(dbt.concat(fields)) -%}
+
         with a_query as (
-            select {{ primary_key }} as _pk, * from {{ base_relation }}
+            select {{ _pk }} as _pk, * from {{ base_relation }}
         ),
 
         b_query as (
-            select {{ primary_key }} as _pk, * from {{ curr_relation }}
+            select {{ _pk }} as _pk, * from {{ curr_relation }}
         ),
 
         joined as (
@@ -155,12 +168,6 @@ class ValueDiffTask(Task, ValueDiffMixin):
         from aggregated
         """
 
-        if composite:
-            primary_key_str = " || '-' || ".join(
-                [f"coalesce(cast({p} as TEXT), '')" for p in primary_key]
-            )
-            primary_key = f"md5(cast({primary_key_str} as TEXT))"
-
         for column in columns:
             self.update_progress(
                 message=f"Diff column: {column}", percentage=completed / len(columns)
@@ -171,58 +178,52 @@ class ValueDiffTask(Task, ValueDiffMixin):
                 context=dict(
                     base_relation=dbt_adapter.create_relation(model, base=True),
                     curr_relation=dbt_adapter.create_relation(model, base=False),
-                    primary_key=primary_key,
+                    primary_keys=primary_key if composite else [primary_key],
                     column_to_compare=column,
                 ),
             )
 
-            adapter_name = dbt_adapter.runtime_config.credentials.type
-            sql = transpile(
-                sql, read="duckdb", write=adapter_name, identify=True, pretty=True
-            )[0]
-
             _, table = dbt_adapter.execute(sql, fetch=True)
+            if column not in column_groups:
+                column_groups[column] = dict(
+                    added=0, removed=0, mismatched=0, matched=0
+                )
             for row in table.rows:
                 # data example:
                 # ('COLUMN_NAME', 'MATCH_STATUS', 'COUNT_RECORDS', 'PERCENT_OF_TOTAL')
-                # ('EVENT_ID', '✅: perfect match', 158601510, Decimal('100.00'))
+                # ('EVENT_ID', 'perfect match', 158601510, Decimal('100.00'))
                 column_name, column_state, row_count, total_rate = row
                 if "column_name" == row[0].lower():
                     # skip column names
                     return
 
-                #
                 # sample data like this:
                 #     https://github.com/dbt-labs/dbt-audit-helper/blob/main/macros/compare_column_values.sql
                 #
-                #     '✅: perfect match'            -> matched
-                #     '✅: both are null'            -> matched
-                #     '🤷: missing from a'           -> row added
-                #     '🤷: missing from b'           -> row removed
-                #     '🤷: value is null in a only'  -> mismatched
-                #     '🤷: value is null in b only'  -> mismatched
-                #     '🙅: values do not match'      -> mismatched
-                #     'unknown'                      -> this should never happen
+                #     'perfect match'            -> matched
+                #     'both are null'            -> matched
+                #     'missing from a'           -> row added
+                #     'missing from b'           -> row removed
+                #     'value is null in a only'  -> mismatched
+                #     'value is null in b only'  -> mismatched
+                #     'values do not match'      -> mismatched
+                #     'unknown'                  -> this should never happen
                 # end as match_status,
 
-                if column_name not in column_groups:
-                    column_groups[column_name] = dict(
-                        added=0, removed=0, mismatched=0, matched=0
-                    )
-                if "perfect match" in column_state:
-                    column_groups[column_name]["matched"] += row_count
-                if "both are null" in column_state:
-                    column_groups[column_name]["matched"] += row_count
-                if "missing from a" in column_state:
-                    column_groups[column_name]["added"] += row_count
-                if "missing from b" in column_state:
-                    column_groups[column_name]["removed"] += row_count
-                if "value is null in a only" in column_state:
-                    column_groups[column_name]["mismatched"] += row_count
-                if "value is null in b only" in column_state:
-                    column_groups[column_name]["mismatched"] += row_count
-                if "values do not match" in column_state:
-                    column_groups[column_name]["mismatched"] += row_count
+                state_mappings = {
+                    "perfect match": "matched",
+                    "both are null": "matched",
+                    "missing from a": "added",
+                    "missing from b": "removed",
+                    "value is null in a only": "mismatched",
+                    "value is null in b only": "mismatched",
+                    "values do not match": "mismatched"
+                }
+
+                # Use the mapping to update counts
+                for state, action in state_mappings.items():
+                    if state in column_state:
+                        column_groups[column_name][action] += row_count
 
             # Cancel as early as possible
             self.check_cancel()
@@ -364,11 +365,11 @@ class ValueDiffDetailTask(Task, ValueDiffMixin):
 
         sql_template = r"""
         with a_query as (
-            select {{ columns | join(',\n   ') }} from {{ base_relation }}
+            select {{ columns | join(',\n') }} from {{ base_relation }}
         ),
 
         b_query as (
-            select {{ columns | join(',\n   ') }} from {{ curr_relation }}
+            select {{ columns | join(',\n') }} from {{ curr_relation }}
         ),
 
         a_intersect_b as (
@@ -415,31 +416,20 @@ class ValueDiffDetailTask(Task, ValueDiffMixin):
 
         select * from all_records
         where not (in_a and in_b)
-        order by {{ primary_key }}, in_a desc, in_b desc
+        order by {{ primary_keys | join(',\n') }}, in_a desc, in_b desc
         limit {{ limit }}
         """
-
-        if composite:
-            primary_key_str = " || '-' || ".join(
-                [f"coalesce(cast({p} as TEXT), '')" for p in primary_key]
-            )
-            primary_key = f"md5(cast({primary_key_str} as TEXT))"
 
         sql = dbt_adapter.generate_sql(
             sql_template,
             context=dict(
                 base_relation=dbt_adapter.create_relation(model, base=True),
                 curr_relation=dbt_adapter.create_relation(model, base=False),
-                primary_key=primary_key,
+                primary_keys=primary_key if composite else [primary_key],
                 columns=columns,
                 limit=1000,
             ),
         )
-
-        adapter_name = dbt_adapter.runtime_config.credentials.type
-        sql = transpile(
-            sql, read="duckdb", write=adapter_name, identify=True, pretty=True
-        )[0]
 
         _, table = dbt_adapter.execute(sql, fetch=True)
         self.check_cancel()
