@@ -26,12 +26,6 @@ class ValueDiffResult(BaseModel):
 
 
 class ValueDiffMixin:
-    def _verify_dbt_packages_deps(self, dbt_adapter):
-        for macro_name, macro in dbt_adapter.manifest.macros.items():
-            if macro.package_name == "dbt_utils" and macro.name == "generate_surrogate_key":
-                self.legacy_surrogate_key = False
-                break
-
     def _verify_primary_key(
         self, dbt_adapter, primary_key: Union[str, List[str]], model: str
     ):
@@ -41,7 +35,21 @@ class ValueDiffMixin:
         if composite:
             if len(primary_key) == 0:
                 raise RecceException("Primary key cannot be empty")
-            sql_template = r"""{{ adapter.dispatch('test_unique_combination_of_columns', 'dbt_utils')(relation, primary_key) }}"""
+            sql_template = r"""
+            {%- set column_list = primary_key %}
+            {%- set columns_csv = column_list | join(', ') %}
+
+            with validation_errors as (
+                select
+                    {{ columns_csv }}
+                from {{ relation }}
+                group by {{ columns_csv }}
+                having count(*) > 1
+            )
+
+            select *
+            from validation_errors
+            """
         else:
             if primary_key is None or len(primary_key) == 0:
                 raise RecceException("Primary key cannot be empty")
@@ -217,7 +225,7 @@ class ValueDiffTask(Task, ValueDiffMixin):
                     "missing from b": "removed",
                     "value is null in a only": "mismatched",
                     "value is null in b only": "mismatched",
-                    "values do not match": "mismatched"
+                    "values do not match": "mismatched",
                 }
 
                 # Use the mapping to update counts
@@ -266,9 +274,6 @@ class ValueDiffTask(Task, ValueDiffMixin):
             primary_key: Union[str, List[str]] = self.params.primary_key
             model: str = self.params.model
             columns: List[str] = self.params.columns
-
-            self._verify_dbt_packages_deps(dbt_adapter)
-            self.check_cancel()
 
             self._verify_primary_key(dbt_adapter, primary_key, model)
             self.check_cancel()
@@ -447,9 +452,6 @@ class ValueDiffDetailTask(Task, ValueDiffMixin):
             primary_key: Union[str, List[str]] = self.params.primary_key
             model: str = self.params.model
             columns: List[str] = self.params.columns
-
-            self._verify_dbt_packages_deps(dbt_adapter)
-            self.check_cancel()
 
             self._verify_primary_key(dbt_adapter, primary_key, model)
             self.check_cancel()
