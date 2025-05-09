@@ -39,7 +39,6 @@ export function ColumnNameCell({
   const { runAction } = useRecceActionContext();
   const { readOnly } = useRecceInstanceContext();
   const lineageViewContext = useLineageViewContext();
-  const { isActionAvailable } = useLineageGraphContext();
   const columnType = currentType ?? baseType;
   const [cllRunning, setCllRunning] = useState(false);
 
@@ -119,7 +118,7 @@ export function ColumnNameCell({
                     <MenuItem
                       fontSize="10pt"
                       onClick={handleProfileDiff}
-                      isDisabled={addedOrRemoved || !isActionAvailable("profile_diff")}>
+                      isDisabled={addedOrRemoved}>
                       Profile Diff
                     </MenuItem>
                     <MenuItem
