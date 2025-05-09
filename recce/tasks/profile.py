@@ -1,4 +1,3 @@
-import textwrap
 from typing import List
 
 from pydantic import BaseModel
@@ -95,8 +94,7 @@ class ProfileDiffTask(Task):
             )
 
     def _profile_column(self, dbt_adapter, relation, column):
-        sql_template = textwrap.dedent(
-            r"""
+        sql_template = r"""
         select
         '{{column_name}}' as column_name,
         nullif('{{column_type}}', '') as data_type,
@@ -112,14 +110,12 @@ class ProfileDiffTask(Task):
         from
         {{ relation }}
         """
-        )
         column_name = column.name
         column_type = column.data_type.lower()
         db_type = dbt_adapter.adapter.type()
         if db_type == "bigquery" and column_type.startswith("array"):
             # DRC-663: Support bigquery array type
-            sql_template = textwrap.dedent(
-                r"""
+            sql_template = r"""
             select
             '{{column_name}}' as column_name,
             nullif('{{column_type}}', '') as data_type,
@@ -135,15 +131,13 @@ class ProfileDiffTask(Task):
             from
             {{ relation }}
             """
-            )
         elif db_type == "redshift":
             # DRC-1149: Support redshift median calculation
             # https://github.com/data-mie/dbt-profiler/pull/89
             #
             # Since dbt-profiler 0.8.2, there is the third parameter for measure_median
             # For sake of compatibility, we use the new way to call the macro only for redshift
-            sql_template = textwrap.dedent(
-                r"""
+            sql_template = r"""
             with source_data as (
               select
                 *
@@ -164,7 +158,6 @@ class ProfileDiffTask(Task):
             from
             source_data
             """
-            )
 
         try:
             sql = dbt_adapter.generate_sql(
