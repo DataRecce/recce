@@ -95,75 +95,142 @@ class ProfileDiffTask(Task):
 
     def _profile_column(self, dbt_adapter, relation, column):
         sql_template = r"""
+        {# Conditions -------------------------------------------- #}
+        {%- set is_struct = column_type.startswith('struct') -%}
+        {%- set is_numeric =
+            column_type.startswith('int') or
+            column_type.startswith('float') or
+            'numeric' in column_type or
+            'number' in column_type or
+            'double' in column_type or
+            'bigint' in column_type
+        -%}
+        {%- set is_date_or_time =
+            column_type.startswith('date') or
+            column_type.startswith('timestamp')
+        -%}
+        {%- set is_logical = column_type.startswith('bool') -%}
+
+        {%- if db_type == 'sqlserver' -%}
+            {%- set is_numeric = column_type in [
+                "decimal", "numeric", "bigint" "numeric", "smallint",
+                "decimal", "int", "tinyint", "money", "float", "real"
+            ]-%}
+        {%- elif db_type == 'athena' -%}
+            {%- set is_numeric =
+                "int" in column_type or
+                "float" in column_type or
+                "decimal" in column_type or
+                "double" in column_type
+            -%}
+        {%- endif -%}
+
+        {# General Agg ------------------------------------------- #}
+        {%- set agg_row_count = 'cast(count(*) as ' ~ dbt.type_bigint() ~ ')' -%}
+        {%- set agg_not_null_proportion =
+                'sum(case when ' ~ adapter.quote(column_name) ~ ' is null '
+                ~ 'then 0 '
+                ~ 'else 1 end) / '
+                ~ 'cast(count(*) as ' ~ dbt.type_numeric() ~ ')'
+        -%}
+        {%- set agg_distinct_proportion =
+                'count(distinct ' ~ adapter.quote(column_name) ~') / '
+                ~ 'cast(count(*) as ' ~ dbt.type_numeric() ~ ')'
+        -%}
+        {%- set agg_distinct_count = 'count(distinct ' ~ adapter.quote(column_name) ~ ')' -%}
+        {%- set agg_is_unique =      'count(distinct ' ~ adapter.quote(column_name) ~ ') = count(*)' -%}
+        {%- set agg_min =            'cast(null as ' ~ dbt.type_string() ~ ')' -%}
+        {%- set agg_max =            'cast(null as ' ~ dbt.type_string() ~ ')' -%}
+        {%- set agg_avg =            'cast(null as ' ~ dbt.type_numeric() ~ ')' -%}
+        {%- set agg_median =         'cast(null as ' ~ dbt.type_numeric() ~ ')' -%}
+
+
+        {%- if is_struct -%}
+            {%- set agg_distinct_proportion = 'cast(null as ' ~ dbt.type_numeric() ~ ')' -%}
+            {%- set agg_distinct_count = 'cast(null as ' ~ dbt.type_numeric() ~ ')' -%}
+            {%- set agg_is_unique = 'null' -%}
+        {%- endif -%}
+
+
+        {%- if (is_numeric or is_date_or_time) and (not is_struct) -%}
+            {%- set agg_min =
+                'cast(min(' ~ adapter.quote(column_name) ~ ') as ' ~ dbt_profiler.type_string() ~ ')'
+            -%}
+            {%- set agg_max =
+                'cast(max(' ~ adapter.quote(column_name) ~ ') as ' ~ dbt_profiler.type_string() ~ ')'
+            -%}
+        {%- endif -%}
+
+
+        {%- if is_numeric and not is_struct -%}
+            {%- set agg_avg = 'avg(' ~ adapter.quote(column_name) ~ ')' -%}
+
+            {%- if db_type == 'bigquery' -%}
+                {%- set agg_median = 'approx_quantiles(' ~ adapter.quote(column_name) ~ ', 100)[offset(50)]' -%}
+            {%- elif db_type == 'postgres' -%}
+                {%- set agg_median = 'percentile_cont(0.5) within group (order by ' ~ adapter.quote(column_name) ~ ')' -%}
+            {%- elif db_type == 'redshift' -%}
+                {%- set agg_median =
+                    '(select percentile_cont(0.5) within group (order by '
+                    ~ adapter.quote(column_name) ~ ') from ' ~ relation ~ ')' -%}
+            {%- elif db_type == 'athena' -%}
+                {%- set agg_median = 'approx_percentile( ' ~ adapter.quote(column_name) ~ ', 0.5)' -%}
+            {%- elif db_type == 'sqlserver' -%}
+                {%- set agg_median = 'percentile_cont(' ~ adapter.quote(column_name) ~ ', 0.5) over ()' -%}
+            {%- else -%}
+                {%- set agg_median = 'median(' ~ adapter.quote(column_name) ~ ')' -%}
+            {%- endif -%}
+        {%- elif is_logical -%}
+            {%- set agg_avg = 'avg(case when ' ~ adapter.quote(column_name) ~ ' then 1 else 0 end)' -%}
+        {%- endif -%}
+
+
+        {# Overwrite Agg ----------------------------------------- #}
+
+        {# DRC-663: Support bigquery array type }
+        {%- set is_array = column_type.startswith('array') -%}
+        {%- if db_type == 'bigquery' and is_array -%}
+            {%- set agg_distinct_proportion = 'cast(null as ' ~ dbt.type_numeric() ~ ')' -%}
+            {%- set agg_distinct_count = 'cast(null as ' ~ dbt.type_numeric() ~ ')' -%}
+            {%- set agg_is_unique = 'null' -%}
+            {%- set agg_min =
+                'cast(min(array_length(' ~ adapter.quote(column_name) ~ ')) as ' ~ dbt_profiler.type_string() ~ ')'
+            -%}
+            {%- set agg_max =
+                'cast(max(array_length(' ~ adapter.quote(column_name) ~ ')) as ' ~ dbt_profiler.type_string() ~ ')'
+            -%}
+            {%- set agg_avg = 'avg(array_length(' ~ adapter.quote(column_name) ~ '))' -%}
+            {%- set agg_median =
+                'approx_quantiles(array_length(' ~ adapter.quote(column_name) ~ '), 100)[offset(50)]'
+            -%}
+        {%- endif -%}
+
+
+        {# Main Query -------------------------------------------- #}
+
         select
-        '{{column_name}}' as column_name,
-        nullif('{{column_type}}', '') as data_type,
-        {{ dbt_profiler.measure_row_count(column_name, column_type) }} as row_count,
-        {{ dbt_profiler.measure_not_null_proportion(column_name, column_type) }} as not_null_proportion,
-        {{ dbt_profiler.measure_distinct_proportion(column_name, column_type) }} as distinct_proportion,
-        {{ dbt_profiler.measure_distinct_count(column_name, column_type) }} as distinct_count,
-        {{ dbt_profiler.measure_is_unique(column_name, column_type) }} as is_unique,
-        {{ dbt_profiler.measure_min(column_name, column_type) }} as min,
-        {{ dbt_profiler.measure_max(column_name, column_type) }} as max,
-        {{ dbt_profiler.measure_avg(column_name, column_type) }} as avg,
-        {{ dbt_profiler.measure_median(column_name, column_type) }} as median
-        from
-        {{ relation }}
+            '{{ column_name }}' as column_name,
+            nullif('{{ column_type }}', '') as data_type,
+            {{ agg_row_count }} as row_count,
+            {{ agg_not_null_proportion }} as not_null_proportion,
+            {{ agg_distinct_proportion }} as distinct_proportion,
+            {{ agg_distinct_count }} as distinct_count,
+            {{ agg_is_unique }} as is_unique,
+            {{ agg_min }} as min,
+            {{ agg_max }} as max,
+            {{ agg_avg }} as avg,
+            {{ agg_median }} as median
+        from {{ relation }}
         """
         column_name = column.name
         column_type = column.data_type.lower()
-        db_type = dbt_adapter.adapter.type()
-        if db_type == "bigquery" and column_type.startswith("array"):
-            # DRC-663: Support bigquery array type
-            sql_template = r"""
-            select
-            '{{column_name}}' as column_name,
-            nullif('{{column_type}}', '') as data_type,
-            {{ dbt_profiler.measure_row_count(column_name, column_type) }} as row_count,
-            {{ dbt_profiler.measure_not_null_proportion(column_name, column_type) }} as not_null_proportion,
-            cast(null as {{ dbt.type_numeric() }}) as distinct_proportion,
-            cast(null as {{ dbt.type_numeric() }}) as distinct_count,
-            null as is_unique,
-            cast(min(ARRAY_LENGTH({{ adapter.quote(column_name) }})) as {{ dbt_profiler.type_string() }}) as min,
-            cast(max(ARRAY_LENGTH({{ adapter.quote(column_name) }})) as {{ dbt_profiler.type_string() }}) as max,
-            avg(ARRAY_LENGTH({{ adapter.quote(column_name) }})) as avg,
-            APPROX_QUANTILES(ARRAY_LENGTH({{ adapter.quote(column_name) }}), 100)[OFFSET(50)] as median,
-            from
-            {{ relation }}
-            """
-        elif db_type == "redshift":
-            # DRC-1149: Support redshift median calculation
-            # https://github.com/data-mie/dbt-profiler/pull/89
-            #
-            # Since dbt-profiler 0.8.2, there is the third parameter for measure_median
-            # For sake of compatibility, we use the new way to call the macro only for redshift
-            sql_template = r"""
-            with source_data as (
-              select
-                *
-              from {{ relation }}
-            )
-            select
-            '{{column_name}}' as column_name,
-            nullif('{{column_type}}', '') as data_type,
-            {{ dbt_profiler.measure_row_count(column_name, column_type) }} as row_count,
-            {{ dbt_profiler.measure_not_null_proportion(column_name, column_type) }} as not_null_proportion,
-            {{ dbt_profiler.measure_distinct_proportion(column_name, column_type) }} as distinct_proportion,
-            {{ dbt_profiler.measure_distinct_count(column_name, column_type) }} as distinct_count,
-            {{ dbt_profiler.measure_is_unique(column_name, column_type) }} as is_unique,
-            {{ dbt_profiler.measure_min(column_name, column_type) }} as min,
-            {{ dbt_profiler.measure_max(column_name, column_type) }} as max,
-            {{ dbt_profiler.measure_avg(column_name, column_type) }} as avg,
-            ({{ dbt_profiler.measure_median(column_name, column_type, 'source_data') }}) as median
-            from
-            source_data
-            """
+        db_type = dbt_adapter.adapter.type().lower()
 
         try:
             sql = dbt_adapter.generate_sql(
                 sql_template,
                 base=False,  # always false because we use the macro in current manifest
-                context=dict(relation=relation, column_name=column_name, column_type=column_type),
+                context=dict(relation=relation, column_name=column_name, column_type=column_type, db_type=db_type),
             )
         except Exception as e:
             raise RecceException(f"Failed to generate SQL for profiling column: {column_name}") from e
