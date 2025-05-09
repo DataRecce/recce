@@ -40,8 +40,6 @@ class ProfileDiffTask(Task):
         model: str = self.params.model
         selected_columns: List[str] = self.params.columns
 
-        self._verify_dbt_profiler(dbt_adapter)
-
         with dbt_adapter.connection_named("query"):
             self.connection = dbt_adapter.get_thread_connection()
 
@@ -83,15 +81,6 @@ class ProfileDiffTask(Task):
                 current.columns = base.columns
 
             return ProfileDiffResult(base=base, current=current)
-
-    def _verify_dbt_profiler(self, dbt_adapter):
-        for macro_name, macro in dbt_adapter.manifest.macros.items():
-            if macro.package_name == "dbt_profiler":
-                break
-        else:
-            raise RecceException(
-                r"Package 'dbt_profiler' not found. Please refer to the link to install: https://hub.getdbt.com/data-mie/dbt_profiler/"
-            )
 
     def _profile_column(self, dbt_adapter, relation, column):
         sql_template = r"""
@@ -154,10 +143,10 @@ class ProfileDiffTask(Task):
 
         {%- if (is_numeric or is_date_or_time) and (not is_struct) -%}
             {%- set agg_min =
-                'cast(min(' ~ adapter.quote(column_name) ~ ') as ' ~ dbt_profiler.type_string() ~ ')'
+                'cast(min(' ~ adapter.quote(column_name) ~ ') as ' ~ dbt.type_string() ~ ')'
             -%}
             {%- set agg_max =
-                'cast(max(' ~ adapter.quote(column_name) ~ ') as ' ~ dbt_profiler.type_string() ~ ')'
+                'cast(max(' ~ adapter.quote(column_name) ~ ') as ' ~ dbt.type_string() ~ ')'
             -%}
         {%- endif -%}
 
@@ -194,10 +183,10 @@ class ProfileDiffTask(Task):
             {%- set agg_distinct_count = 'cast(null as ' ~ dbt.type_numeric() ~ ')' -%}
             {%- set agg_is_unique = 'null' -%}
             {%- set agg_min =
-                'cast(min(array_length(' ~ adapter.quote(column_name) ~ ')) as ' ~ dbt_profiler.type_string() ~ ')'
+                'cast(min(array_length(' ~ adapter.quote(column_name) ~ ')) as ' ~ dbt.type_string() ~ ')'
             -%}
             {%- set agg_max =
-                'cast(max(array_length(' ~ adapter.quote(column_name) ~ ')) as ' ~ dbt_profiler.type_string() ~ ')'
+                'cast(max(array_length(' ~ adapter.quote(column_name) ~ ')) as ' ~ dbt.type_string() ~ ')'
             -%}
             {%- set agg_avg = 'avg(array_length(' ~ adapter.quote(column_name) ~ '))' -%}
             {%- set agg_median =
@@ -285,8 +274,6 @@ class ProfileTask(ProfileDiffTask):
 
         model: str = self.params.model
         selected_columns: List[str] = self.params.columns
-
-        self._verify_dbt_profiler(dbt_adapter)
 
         with dbt_adapter.connection_named("query"):
             self.connection = dbt_adapter.get_thread_connection()
