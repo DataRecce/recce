@@ -52,7 +52,7 @@ const QueryModeToggle = () => {
   return (
     <Box>
       <Box fontSize="8pt">
-        Custom Queries {""}
+        Custom Queries{" "}
         <Tooltip label={customQueriesDescription}>
           <InfoIcon color="gray.600" boxSize="3" />
         </Tooltip>

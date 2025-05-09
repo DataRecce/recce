@@ -303,11 +303,10 @@ function NavBar() {
           )}
         </Flex>
         {!isLoading && (
-          <Flex flex="1" justifyContent="right" alignItems="center" mr="8px">
+          <Flex flex="3" justifyContent="right" alignItems="center" mr="8px">
+            <EnvInfo />
             {cloudMode && <StateSynchronizer />}
             <StateExporter />
-
-            <EnvInfo />
           </Flex>
         )}
       </TabList>

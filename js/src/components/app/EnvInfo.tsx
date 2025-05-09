@@ -1,40 +1,64 @@
 import React from "react";
 import { useLineageGraphContext } from "@/lib/hooks/LineageGraphContext";
 import {
-  Tooltip,
-  Modal,
-  ModalOverlay,
-  ModalHeader,
-  ModalContent,
-  ModalCloseButton,
-  ModalBody,
   Button,
-  ModalFooter,
-  useDisclosure,
-  IconButton,
-  TableContainer,
-  Table,
-  Thead,
-  Th,
-  Tbody,
-  Tr,
-  Td,
-  Icon,
+  Divider,
   Flex,
   Heading,
-  Divider,
-  ListItem,
-  UnorderedList,
+  Icon,
+  IconButton,
   Link,
+  ListItem,
+  Modal,
+  ModalBody,
+  ModalCloseButton,
+  ModalContent,
+  ModalFooter,
+  ModalHeader,
+  ModalOverlay,
+  Table,
+  TableContainer,
+  Tbody,
+  Td,
+  Th,
+  Thead,
+  Tooltip,
+  Tr,
+  UnorderedList,
+  useDisclosure,
 } from "@chakra-ui/react";
-import { format, parseISO } from "date-fns";
+import { format, formatDistance, parseISO } from "date-fns";
 import { IconInfo } from "../icons";
 import { isEmpty } from "lodash";
+import { LineageGraph } from "@/components/lineage/lineage";
 
 export function formatTimestamp(timestamp: string): string {
   const date = parseISO(timestamp);
-  const formattedTimestamp = format(date, "yyyy-MM-dd'T'HH:mm:ss");
-  return formattedTimestamp;
+  return format(date, "yyyy-MM-dd'T'HH:mm:ss");
+}
+
+export function formatTimeToNow(timestamp: string): string {
+  const date = parseISO(timestamp);
+  return formatDistance(date, new Date(), {
+    addSuffix: true,
+  });
+}
+
+export function extractSchemas(lineageGraph: LineageGraph | undefined): [Set<string>, Set<string>] {
+  const baseSchemas = new Set<string>();
+  const currentSchemas = new Set<string>();
+
+  if (lineageGraph?.nodes) {
+    for (const value of Object.values(lineageGraph.nodes)) {
+      if (value.data.base?.schema) {
+        baseSchemas.add(value.data.base.schema);
+      }
+      if (value.data.current?.schema) {
+        currentSchemas.add(value.data.current.schema);
+      }
+    }
+  }
+  return [baseSchemas, currentSchemas];
 }
 
 function renderInfoEntries(info: object): React.JSX.Element[] {
@@ -66,32 +90,36 @@ export function EnvInfo() {
   const dbtCurrent = envInfo?.dbt?.current;
 
   const baseTime = dbtBase?.generated_at ? formatTimestamp(dbtBase.generated_at) : "";
-
   const currentTime = dbtCurrent?.generated_at ? formatTimestamp(dbtCurrent.generated_at) : "";
-
-  const baseSchemas = new Set<string>();
-  const currentSchemas = new Set<string>();
-  if (lineageGraph?.nodes) {
-    for (const value of Object.values(lineageGraph.nodes)) {
-      if (value.data.base?.schema) {
-        baseSchemas.add(value.data.base.schema);
-      }
-      if (value.data.current?.schema) {
-        currentSchemas.add(value.data.current.schema);
-      }
-    }
+  let baseRelativeTime = "";
+  let currentRelativeTime = "";
+  if (dbtBase) {
+    baseRelativeTime = dbtBase.generated_at ? formatTimeToNow(dbtBase.generated_at) : "";
   }
+  if (dbtCurrent) {
+    currentRelativeTime = dbtCurrent.generated_at ? formatTimeToNow(dbtCurrent.generated_at) : "";
+  }
+  const [baseSchemas, currentSchemas] = extractSchemas(lineageGraph);
 
   return (
     <>
       <Tooltip label="Environment Info" placement="bottom-end">
-        <IconButton
-          size="sm"
-          variant="unstyled"
-          aria-label="Export state"
-          onClick={onOpen}
-          icon={<Icon verticalAlign="middle" as={IconInfo} boxSize={"16px"} />}
-        />
+        <div className="flex items-center hover:cursor-pointer hover:text-black" onClick={onOpen}>
+          <div className="flex flex-col text-sm">
+            <span>
+              {Array.from(baseSchemas).join(", ")} ({baseRelativeTime})
+            </span>
+            <span>
+              {Array.from(currentSchemas).join(", ")} ({currentRelativeTime})
+            </span>
+          </div>
+          <IconButton
+            size="sm"
+            variant="unstyled"
+            aria-label="Export state"
+            icon={<Icon verticalAlign="middle" as={IconInfo} boxSize={"16px"} />}
+          />
+        </div>
       </Tooltip>
       <Modal isOpen={isOpen} onClose={onClose} size="3xl">
         <ModalOverlay />

@@ -1,11 +1,8 @@
 import type { Config } from "tailwindcss";
+import { join } from "path";
 
-const config: Config = {
-  content: [
-    "./pages/**/*.{js,ts,jsx,tsx,mdx}",
-    "./components/**/*.{js,ts,jsx,tsx,mdx}",
-    "./app/**/*.{js,ts,jsx,tsx,mdx}",
-  ],
+export default {
+  content: [join(__dirname, "{src,pages,components,app}/**/*!(*.stories|*.spec).{ts,tsx,html}")],
   theme: {
     extend: {
       backgroundImage: {
@@ -14,6 +11,6 @@ const config: Config = {
       },
     },
   },
-  plugins: [],
-};
-export default config;
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
+  plugins: [require("tailwindcss"), require("autoprefixer")],
+} satisfies Config;

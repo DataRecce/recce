@@ -2,6 +2,10 @@ import { useRecceInstanceContext } from "@/lib/hooks/RecceInstanceContext";
 import { Flex, Text, Stack, Spacer, Button, Icon } from "@chakra-ui/react";
 import { EditorProps, Editor } from "@monaco-editor/react";
 import { FaPlay } from "react-icons/fa6";
+import React from "react";
+import { useLineageGraphContext } from "@/lib/hooks/LineageGraphContext";
+import { ManifestMetadata } from "@/lib/api/info";
+import { extractSchemas, formatTimeToNow } from "@/components/app/EnvInfo";
 
 export interface SqlEditorProps {
   language?: string;
@@ -14,6 +18,8 @@ export interface SqlEditorProps {
   onRunBase?: () => void;
   onRunDiff?: () => void;
   options?: EditorProps["options"];
+  manifestData?: ManifestMetadata;
+  schemas?: string;
   label?: string;
   CustomEditor?: React.ReactElement<any, any>;
 }
@@ -23,7 +29,7 @@ export interface DualSqlEditorProps extends SqlEditorProps {
   BaseEnvironmentSetupGuide?: React.ReactElement<any, any>;
 }
 
-const SqlEditor: React.FC<SqlEditorProps> = ({
+function SqlEditor({
   value,
   onChange,
   onRun,
@@ -32,14 +38,20 @@ const SqlEditor: React.FC<SqlEditorProps> = ({
   label,
   CustomEditor,
   options = {},
+  manifestData,
+  schemas,
   ...props
-}: SqlEditorProps) => {
+}: SqlEditorProps) {
   const { readOnly } = useRecceInstanceContext();
   const handleEditorChange = (value: string | undefined) => {
     if (value !== undefined && onChange) {
       onChange(value);
     }
   };
+  let timestamp = "";
+  if (manifestData) {
+    timestamp = manifestData.generated_at ? formatTimeToNow(manifestData.generated_at) : "";
+  }
 
   return (
     <>
@@ -53,7 +65,14 @@ const SqlEditor: React.FC<SqlEditorProps> = ({
           margin={"0"}
           padding={"0px 16px"}
           flex="0 0 40px">
-          <Text as="b">{label ? label.toUpperCase() : ""}</Text>
+          <Text as="strong">{label ? label.toUpperCase() : ""}</Text>
+          {manifestData && (
+            <span className="ml-1">
+              ({schemas && <span>{schemas}, </span>}
+              <span>{timestamp}</span>)
+            </span>
+          )}
+
           <Spacer />
           {(onRun ?? onRunBase) && (
             <Button
@@ -107,9 +126,9 @@ const SqlEditor: React.FC<SqlEditorProps> = ({
       )}
     </>
   );
-};
+}
 
-export const DualSqlEditor: React.FC<DualSqlEditorProps> = ({
+export function DualSqlEditor({
   value,
   baseValue,
   onChange,
@@ -121,9 +140,20 @@ export const DualSqlEditor: React.FC<DualSqlEditorProps> = ({
   labels,
   BaseEnvironmentSetupGuide,
   ...props
-}: DualSqlEditorProps) => {
+}: DualSqlEditorProps) {
   const baseLabel = labels ? labels[0] : "Base";
   const currentLabel = labels ? labels[1] : "Current";
+  const { envInfo, lineageGraph } = useLineageGraphContext();
+
+  let dbtBase: ManifestMetadata | undefined;
+  let dbtCurrent: ManifestMetadata | undefined;
+  if (envInfo?.dbt?.base && envInfo.dbt.current) {
+    dbtBase = envInfo.dbt.base;
+    dbtCurrent = envInfo.dbt.current;
+  }
+
+  const [baseSchemas, currentSchemas] = extractSchemas(lineageGraph);
+
   return (
     <>
       <Flex height={"100%"} gap={0}>
@@ -135,6 +165,8 @@ export const DualSqlEditor: React.FC<DualSqlEditorProps> = ({
             onRunBase={onRunBase}
             options={options}
             CustomEditor={BaseEnvironmentSetupGuide}
+            manifestData={dbtBase ?? undefined}
+            schemas={Array.from(baseSchemas).join(", ")}
             {...props}
           />
         </Stack>
@@ -145,12 +177,14 @@ export const DualSqlEditor: React.FC<DualSqlEditorProps> = ({
             onChange={onChange}
             onRun={onRun}
             options={options}
+            manifestData={dbtCurrent ?? undefined}
+            schemas={Array.from(currentSchemas).join(", ")}
             {...props}
           />
         </Stack>
       </Flex>
     </>
   );
-};
+}
 
 export default SqlEditor;
