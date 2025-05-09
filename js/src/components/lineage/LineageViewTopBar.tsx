@@ -347,7 +347,6 @@ const ControlItem = (props: {
 export const LineageViewTopBar = () => {
   const { deselect, focusedNode, selectedNodes, ...lineageViewContext } =
     useLineageViewContextSafe();
-  const { isActionAvailable } = useLineageGraphContext();
   const { readOnly } = useRecceInstanceContext();
   const { data: flags } = useRecceServerFlag();
   const isSingleEnvOnboarding = flags?.single_env_onboarding;
