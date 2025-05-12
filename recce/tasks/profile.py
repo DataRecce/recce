@@ -8,6 +8,135 @@ from ..models import Check
 from .core import CheckValidator, Task, TaskResultDiffer
 from .dataframe import DataFrame
 
+PROFILE_COLUMN_JINJA_TEMPLATE = r"""
+{# Conditions -------------------------------------------- #}
+{%- set is_struct = column_type.startswith('struct') -%}
+{%- set is_numeric =
+    column_type.startswith('int') or
+    column_type.startswith('float') or
+    'numeric' in column_type or
+    'number' in column_type or
+    'double' in column_type or
+    'bigint' in column_type
+-%}
+{%- set is_date_or_time =
+    column_type.startswith('date') or
+    column_type.startswith('timestamp')
+-%}
+{%- set is_logical = column_type.startswith('bool') -%}
+
+{%- if db_type == 'sqlserver' -%}
+    {%- set is_numeric = column_type in [
+        "bigint", "numeric", "smallint", "decimal", "int",
+        "tinyint", "money", "float", "real"
+    ]-%}
+{%- elif db_type == 'athena' -%}
+    {%- set is_numeric =
+        "int" in column_type or
+        "float" in column_type or
+        "decimal" in column_type or
+        "double" in column_type
+    -%}
+{%- endif -%}
+
+{# General Agg ------------------------------------------- #}
+{%- set agg_row_count = 'cast(count(*) as ' ~ dbt.type_bigint() ~ ')' -%}
+{%- set agg_not_null_proportion =
+        'sum(case when ' ~ adapter.quote(column_name) ~ ' is null '
+        ~ 'then 0 '
+        ~ 'else 1 end) / '
+        ~ 'cast(count(*) as ' ~ dbt.type_numeric() ~ ')'
+-%}
+{%- set agg_distinct_proportion =
+        'count(distinct ' ~ adapter.quote(column_name) ~') / '
+        ~ 'cast(count(*) as ' ~ dbt.type_numeric() ~ ')'
+-%}
+{%- set agg_distinct_count = 'count(distinct ' ~ adapter.quote(column_name) ~ ')' -%}
+{%- set agg_is_unique =      'count(distinct ' ~ adapter.quote(column_name) ~ ') = count(*)' -%}
+{%- set agg_min =            'cast(null as ' ~ dbt.type_string() ~ ')' -%}
+{%- set agg_max =            'cast(null as ' ~ dbt.type_string() ~ ')' -%}
+{%- set agg_avg =            'cast(null as ' ~ dbt.type_numeric() ~ ')' -%}
+{%- set agg_median =         'cast(null as ' ~ dbt.type_numeric() ~ ')' -%}
+
+
+{%- if is_struct -%}
+    {%- set agg_distinct_proportion = 'cast(null as ' ~ dbt.type_numeric() ~ ')' -%}
+    {%- set agg_distinct_count = 'cast(null as ' ~ dbt.type_numeric() ~ ')' -%}
+    {%- set agg_is_unique = 'null' -%}
+{%- endif -%}
+
+
+{%- if (is_numeric or is_date_or_time) and (not is_struct) -%}
+    {%- set agg_min =
+        'cast(min(' ~ adapter.quote(column_name) ~ ') as ' ~ dbt.type_string() ~ ')'
+    -%}
+    {%- set agg_max =
+        'cast(max(' ~ adapter.quote(column_name) ~ ') as ' ~ dbt.type_string() ~ ')'
+    -%}
+{%- endif -%}
+
+
+{%- if is_numeric and not is_struct -%}
+    {%- set agg_avg = 'avg(' ~ adapter.quote(column_name) ~ ')' -%}
+
+    {%- if db_type == 'bigquery' -%}
+        {%- set agg_median = 'approx_quantiles(' ~ adapter.quote(column_name) ~ ', 100)[offset(50)]' -%}
+    {%- elif db_type == 'postgres' -%}
+        {%- set agg_median = 'percentile_cont(0.5) within group (order by ' ~ adapter.quote(column_name) ~ ')' -%}
+    {%- elif db_type == 'redshift' -%}
+        {%- set agg_median =
+            '(select percentile_cont(0.5) within group (order by '
+            ~ adapter.quote(column_name) ~ ') from ' ~ relation ~ ')' -%}
+    {%- elif db_type == 'athena' -%}
+        {%- set agg_median = 'approx_percentile( ' ~ adapter.quote(column_name) ~ ', 0.5)' -%}
+    {%- elif db_type == 'sqlserver' -%}
+        {%- set agg_median = 'percentile_cont(' ~ adapter.quote(column_name) ~ ', 0.5) over ()' -%}
+    {%- else -%}
+        {%- set agg_median = 'median(' ~ adapter.quote(column_name) ~ ')' -%}
+    {%- endif -%}
+{%- elif is_logical -%}
+    {%- set agg_avg = 'avg(case when ' ~ adapter.quote(column_name) ~ ' then 1 else 0 end)' -%}
+{%- endif -%}
+
+
+{# Overwrite Agg ----------------------------------------- #}
+
+{# DRC-663: Support bigquery array type }
+{%- set is_array = column_type.startswith('array') -%}
+{%- if db_type == 'bigquery' and is_array -%}
+    {%- set agg_distinct_proportion = 'cast(null as ' ~ dbt.type_numeric() ~ ')' -%}
+    {%- set agg_distinct_count = 'cast(null as ' ~ dbt.type_numeric() ~ ')' -%}
+    {%- set agg_is_unique = 'null' -%}
+    {%- set agg_min =
+        'cast(min(array_length(' ~ adapter.quote(column_name) ~ ')) as ' ~ dbt.type_string() ~ ')'
+    -%}
+    {%- set agg_max =
+        'cast(max(array_length(' ~ adapter.quote(column_name) ~ ')) as ' ~ dbt.type_string() ~ ')'
+    -%}
+    {%- set agg_avg = 'avg(array_length(' ~ adapter.quote(column_name) ~ '))' -%}
+    {%- set agg_median =
+        'approx_quantiles(array_length(' ~ adapter.quote(column_name) ~ '), 100)[offset(50)]'
+    -%}
+{%- endif -%}
+
+
+{# Main Query -------------------------------------------- #}
+
+select
+    '{{ column_name }}' as column_name,
+    nullif('{{ column_type }}', '') as data_type,
+    {{ agg_row_count }} as row_count,
+    {{ agg_not_null_proportion }} as not_null_proportion,
+    {{ agg_distinct_proportion }} as distinct_proportion,
+    {{ agg_distinct_count }} as distinct_count,
+    {{ agg_is_unique }} as is_unique,
+    {{ agg_min }} as min,
+    {{ agg_max }} as max,
+    {{ agg_avg }} as avg,
+    {{ agg_median }} as median
+from {{ relation }}
+"""
+
 
 class ProfileParams(BaseModel):
     model: str
@@ -83,141 +212,13 @@ class ProfileDiffTask(Task):
             return ProfileDiffResult(base=base, current=current)
 
     def _profile_column(self, dbt_adapter, relation, column):
-        sql_template = r"""
-        {# Conditions -------------------------------------------- #}
-        {%- set is_struct = column_type.startswith('struct') -%}
-        {%- set is_numeric =
-            column_type.startswith('int') or
-            column_type.startswith('float') or
-            'numeric' in column_type or
-            'number' in column_type or
-            'double' in column_type or
-            'bigint' in column_type
-        -%}
-        {%- set is_date_or_time =
-            column_type.startswith('date') or
-            column_type.startswith('timestamp')
-        -%}
-        {%- set is_logical = column_type.startswith('bool') -%}
-
-        {%- if db_type == 'sqlserver' -%}
-            {%- set is_numeric = column_type in [
-                "decimal", "numeric", "bigint" "numeric", "smallint",
-                "decimal", "int", "tinyint", "money", "float", "real"
-            ]-%}
-        {%- elif db_type == 'athena' -%}
-            {%- set is_numeric =
-                "int" in column_type or
-                "float" in column_type or
-                "decimal" in column_type or
-                "double" in column_type
-            -%}
-        {%- endif -%}
-
-        {# General Agg ------------------------------------------- #}
-        {%- set agg_row_count = 'cast(count(*) as ' ~ dbt.type_bigint() ~ ')' -%}
-        {%- set agg_not_null_proportion =
-                'sum(case when ' ~ adapter.quote(column_name) ~ ' is null '
-                ~ 'then 0 '
-                ~ 'else 1 end) / '
-                ~ 'cast(count(*) as ' ~ dbt.type_numeric() ~ ')'
-        -%}
-        {%- set agg_distinct_proportion =
-                'count(distinct ' ~ adapter.quote(column_name) ~') / '
-                ~ 'cast(count(*) as ' ~ dbt.type_numeric() ~ ')'
-        -%}
-        {%- set agg_distinct_count = 'count(distinct ' ~ adapter.quote(column_name) ~ ')' -%}
-        {%- set agg_is_unique =      'count(distinct ' ~ adapter.quote(column_name) ~ ') = count(*)' -%}
-        {%- set agg_min =            'cast(null as ' ~ dbt.type_string() ~ ')' -%}
-        {%- set agg_max =            'cast(null as ' ~ dbt.type_string() ~ ')' -%}
-        {%- set agg_avg =            'cast(null as ' ~ dbt.type_numeric() ~ ')' -%}
-        {%- set agg_median =         'cast(null as ' ~ dbt.type_numeric() ~ ')' -%}
-
-
-        {%- if is_struct -%}
-            {%- set agg_distinct_proportion = 'cast(null as ' ~ dbt.type_numeric() ~ ')' -%}
-            {%- set agg_distinct_count = 'cast(null as ' ~ dbt.type_numeric() ~ ')' -%}
-            {%- set agg_is_unique = 'null' -%}
-        {%- endif -%}
-
-
-        {%- if (is_numeric or is_date_or_time) and (not is_struct) -%}
-            {%- set agg_min =
-                'cast(min(' ~ adapter.quote(column_name) ~ ') as ' ~ dbt.type_string() ~ ')'
-            -%}
-            {%- set agg_max =
-                'cast(max(' ~ adapter.quote(column_name) ~ ') as ' ~ dbt.type_string() ~ ')'
-            -%}
-        {%- endif -%}
-
-
-        {%- if is_numeric and not is_struct -%}
-            {%- set agg_avg = 'avg(' ~ adapter.quote(column_name) ~ ')' -%}
-
-            {%- if db_type == 'bigquery' -%}
-                {%- set agg_median = 'approx_quantiles(' ~ adapter.quote(column_name) ~ ', 100)[offset(50)]' -%}
-            {%- elif db_type == 'postgres' -%}
-                {%- set agg_median = 'percentile_cont(0.5) within group (order by ' ~ adapter.quote(column_name) ~ ')' -%}
-            {%- elif db_type == 'redshift' -%}
-                {%- set agg_median =
-                    '(select percentile_cont(0.5) within group (order by '
-                    ~ adapter.quote(column_name) ~ ') from ' ~ relation ~ ')' -%}
-            {%- elif db_type == 'athena' -%}
-                {%- set agg_median = 'approx_percentile( ' ~ adapter.quote(column_name) ~ ', 0.5)' -%}
-            {%- elif db_type == 'sqlserver' -%}
-                {%- set agg_median = 'percentile_cont(' ~ adapter.quote(column_name) ~ ', 0.5) over ()' -%}
-            {%- else -%}
-                {%- set agg_median = 'median(' ~ adapter.quote(column_name) ~ ')' -%}
-            {%- endif -%}
-        {%- elif is_logical -%}
-            {%- set agg_avg = 'avg(case when ' ~ adapter.quote(column_name) ~ ' then 1 else 0 end)' -%}
-        {%- endif -%}
-
-
-        {# Overwrite Agg ----------------------------------------- #}
-
-        {# DRC-663: Support bigquery array type }
-        {%- set is_array = column_type.startswith('array') -%}
-        {%- if db_type == 'bigquery' and is_array -%}
-            {%- set agg_distinct_proportion = 'cast(null as ' ~ dbt.type_numeric() ~ ')' -%}
-            {%- set agg_distinct_count = 'cast(null as ' ~ dbt.type_numeric() ~ ')' -%}
-            {%- set agg_is_unique = 'null' -%}
-            {%- set agg_min =
-                'cast(min(array_length(' ~ adapter.quote(column_name) ~ ')) as ' ~ dbt.type_string() ~ ')'
-            -%}
-            {%- set agg_max =
-                'cast(max(array_length(' ~ adapter.quote(column_name) ~ ')) as ' ~ dbt.type_string() ~ ')'
-            -%}
-            {%- set agg_avg = 'avg(array_length(' ~ adapter.quote(column_name) ~ '))' -%}
-            {%- set agg_median =
-                'approx_quantiles(array_length(' ~ adapter.quote(column_name) ~ '), 100)[offset(50)]'
-            -%}
-        {%- endif -%}
-
-
-        {# Main Query -------------------------------------------- #}
-
-        select
-            '{{ column_name }}' as column_name,
-            nullif('{{ column_type }}', '') as data_type,
-            {{ agg_row_count }} as row_count,
-            {{ agg_not_null_proportion }} as not_null_proportion,
-            {{ agg_distinct_proportion }} as distinct_proportion,
-            {{ agg_distinct_count }} as distinct_count,
-            {{ agg_is_unique }} as is_unique,
-            {{ agg_min }} as min,
-            {{ agg_max }} as max,
-            {{ agg_avg }} as avg,
-            {{ agg_median }} as median
-        from {{ relation }}
-        """
         column_name = column.name
         column_type = column.data_type.lower()
         db_type = dbt_adapter.adapter.type().lower()
 
         try:
             sql = dbt_adapter.generate_sql(
-                sql_template,
+                PROFILE_COLUMN_JINJA_TEMPLATE,
                 base=False,  # always false because we use the macro in current manifest
                 context=dict(relation=relation, column_name=column_name, column_type=column_type, db_type=db_type),
             )
