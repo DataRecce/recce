@@ -137,10 +137,10 @@ export function RecceActionContextProvider({ children }: RecceActionContextProvi
           });
           onModalOpen();
         }
-      } catch (e: any) {
+      } catch (e: unknown) {
         toast({
           title: "Failed to submit a run",
-          description: e?.message,
+          description: e instanceof Error ? e.message : undefined,
           position: "bottom-right",
           status: "error",
           duration: 5000,
@@ -160,10 +160,10 @@ export function RecceActionContextProvider({ children }: RecceActionContextProvi
         trackProps: action?.options?.trackProps,
       });
       await showRunId(run_id);
-    } catch (e: any) {
+    } catch (e: unknown) {
       toast({
         title: "Failed to submit a run",
-        description: e?.message,
+        description: e instanceof Error ? e.message : undefined,
         position: "bottom-right",
         status: "error",
         duration: 5000,

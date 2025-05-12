@@ -87,6 +87,7 @@ export default tseslint.config(
       "@typescript-eslint/no-empty-function": "off",
       "@typescript-eslint/non-nullable-type-assertion-style": "off",
       "@typescript-eslint/no-unused-vars": "warn",
+      "tailwindcss/no-custom-classname": "off",
       "prettier/prettier": [
         "error",
         {

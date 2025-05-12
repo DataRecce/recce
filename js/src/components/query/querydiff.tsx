@@ -1,11 +1,17 @@
-import { ColumnOrColumnGroup, RenderCellProps, textEditor } from "react-data-grid";
+import {
+  CalculatedColumn,
+  ColumnOrColumnGroup,
+  RenderCellProps,
+  textEditor,
+} from "react-data-grid";
 import _ from "lodash";
 import "./styles.css";
 import { Box, Flex, Icon, Text } from "@chakra-ui/react";
 import { VscClose, VscKey, VscPin, VscPinned } from "react-icons/vsc";
-import { DataFrame } from "@/lib/api/types";
+import { ColumnType, DataFrame, RowObjectType } from "@/lib/api/types";
 import { mergeKeysWithStatus } from "@/lib/mergeKeys";
 import { DiffText } from "./DiffText";
+import { formatNumber } from "@/utils/formatters";
 
 function _getColumnMap(base: DataFrame, current: DataFrame) {
   const result: Record<
@@ -154,7 +160,29 @@ export function DataFrameColumnGroupHeader({
   );
 }
 
-const toRenderedValue = (row: any, key: string): [any, boolean] => {
+function columnRenderedValue(
+  value: number,
+  renderAs: "raw" | "percent" | 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9,
+): string {
+  const locale = "en-US";
+  let renderedValue: string | undefined;
+  if (typeof renderAs === "number") {
+    renderedValue = formatNumber(value, locale, { maximumFractionDigits: renderAs });
+  } else if (renderAs === "percent") {
+    renderedValue = formatNumber(value, locale, { style: "percent", maximumFractionDigits: 2 });
+  } else {
+    renderedValue = String(value);
+  }
+
+  return renderedValue ?? "";
+}
+
+const toRenderedValue = (
+  row: RowObjectType,
+  key: string,
+  columnType?: ColumnType,
+  valueRenderAs: "raw" | "percent" | 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 = "raw",
+): [string, boolean] => {
   if (!Object.hasOwn(row, key)) {
     return ["-", true];
   }
@@ -172,22 +200,39 @@ const toRenderedValue = (row: any, key: string): [any, boolean] => {
   } else if (value === undefined || value === null) {
     renderedValue = "(null)";
     grayOut = true;
+  } else if (typeof value === "number") {
+    renderedValue = String(value);
   } else {
-    // convert to string
-    renderedValue = value;
+    if (columnType && columnType === "number") {
+      // Add formatting for numerical values if required
+      renderedValue = columnRenderedValue(parseFloat(value), valueRenderAs);
+    } else {
+      // convert to string
+      renderedValue = String(value);
+    }
   }
 
   return [renderedValue, grayOut];
 };
 
-export const defaultRenderCell = ({ row, column }: RenderCellProps<any, any>) => {
-  const [renderedValue, grayOut] = toRenderedValue(row, column.key);
+export const defaultRenderCell = ({ row, column }: RenderCellProps<RowObjectType, any>) => {
+  // Add the potential addition of columnType
+  const typedColumn = column as unknown as CalculatedColumn<RowObjectType, any> & {
+    columnType?: ColumnType;
+  };
+
+  const [renderedValue, grayOut] = toRenderedValue(row, column.key, typedColumn.columnType);
   return <Text style={{ color: grayOut ? "gray" : "inherit" }}>{renderedValue}</Text>;
 };
 
-export const inlineRenderCell = ({ row, column }: RenderCellProps<any, any>) => {
+export const inlineRenderCell = ({ row, column }: RenderCellProps<RowObjectType, any>) => {
+  // Add the potential addition of columnType
+  const typedColumn = column as unknown as CalculatedColumn<RowObjectType, any> & {
+    columnType?: ColumnType;
+  };
   const baseKey = `base__${column.key}`;
   const currentKey = `current__${column.key}`;
+  const columnType = typedColumn.columnType;
 
   if (!Object.hasOwn(row, baseKey) && !Object.hasOwn(row, currentKey)) {
     // should not happen
@@ -196,8 +241,8 @@ export const inlineRenderCell = ({ row, column }: RenderCellProps<any, any>) => 
 
   const hasBase = Object.hasOwn(row, baseKey);
   const hasCurrent = Object.hasOwn(row, currentKey);
-  const [baseValue, baseGrayOut] = toRenderedValue(row, `base__${column.key}`);
-  const [currentValue, currentGrayOut] = toRenderedValue(row, `current__${column.key}`);
+  const [baseValue, baseGrayOut] = toRenderedValue(row, `base__${column.key}`, columnType);
+  const [currentValue, currentGrayOut] = toRenderedValue(row, `current__${column.key}`, columnType);
 
   if (row[baseKey] === row[currentKey]) {
     // no change

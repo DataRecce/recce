@@ -3,7 +3,7 @@ import _ from "lodash";
 import "../query/styles.css";
 import { Box, Flex, Icon } from "@chakra-ui/react";
 import { VscKey, VscPin, VscPinned } from "react-icons/vsc";
-import { DataFrame } from "@/lib/api/types";
+import { ColumnType, DataFrame, RowData, RowDataTypes, RowObjectType } from "@/lib/api/types";
 import { mergeKeysWithStatus } from "@/lib/mergeKeys";
 import { defaultRenderCell, inlineRenderCell, QueryDataDiffGridOptions } from "../query/querydiff";
 
@@ -13,12 +13,14 @@ function _getColumnMap(df: DataFrame) {
     {
       index: number;
       status?: string;
+      colType: ColumnType;
     }
   > = {};
 
   df.columns.map((col, index) => {
     result[col.name] = {
       index,
+      colType: col.type,
     };
   });
 
@@ -118,12 +120,12 @@ export function toValueDiffGrid(
   const changedOnly = options?.changedOnly ?? false;
   const displayMode = options?.displayMode ?? "inline";
 
-  const columns: ColumnOrColumnGroup<any, any>[] = [];
+  const columns: (ColumnOrColumnGroup<any, any> & { columnType?: ColumnType })[] = [];
   const columnMap = _getColumnMap(df);
 
   // merge row
-  const baseMap: Record<string, any> = {};
-  const currentMap: Record<string, any> = {};
+  const baseMap: Record<string, RowData | undefined> = {};
+  const currentMap: Record<string, RowData | undefined> = {};
   if (primaryKeys.length === 0) {
     throw new Error("Primary keys are required");
   }
@@ -155,7 +157,7 @@ export function toValueDiffGrid(
   let rows = Object.entries(mergedMap).map(([key, status]) => {
     const baseRow = baseMap[key];
     const currentRow = currentMap[key];
-    const row = JSON.parse(key);
+    const row = JSON.parse(key) as RowObjectType;
 
     if (baseRow) {
       df.columns.forEach((col, index) => {
@@ -213,7 +215,7 @@ export function toValueDiffGrid(
   }
 
   // merge columns
-  const toColumn = (name: string, columnStatus: string) => {
+  const toColumn = (name: string, columnStatus: string, columnType: ColumnType) => {
     const headerCellClass =
       columnStatus === "added"
         ? "diff-header-added"
@@ -221,7 +223,7 @@ export function toValueDiffGrid(
           ? "diff-header-removed"
           : undefined;
 
-    const cellClassBase = (row: any) => {
+    const cellClassBase = (row: RowObjectType) => {
       const rowStatus = row.__status;
       if (rowStatus === "removed") {
         return "diff-cell-removed";
@@ -238,7 +240,7 @@ export function toValueDiffGrid(
       return undefined;
     };
 
-    const cellClassCurrent = (row: any) => {
+    const cellClassCurrent = (row: RowObjectType) => {
       const rowStatus = row.__status;
       if (rowStatus === "removed") {
         return "diff-cell-removed";
@@ -268,6 +270,7 @@ export function toValueDiffGrid(
         key: name,
         renderCell: inlineRenderCell,
         size: "auto",
+        columnType,
       };
     } else {
       return {
@@ -288,6 +291,7 @@ export function toValueDiffGrid(
             cellClass: cellClassBase,
             renderCell: defaultRenderCell,
             size: "auto",
+            columnType,
           },
           {
             key: `current__${name}`,
@@ -297,6 +301,7 @@ export function toValueDiffGrid(
             cellClass: cellClassCurrent,
             renderCell: defaultRenderCell,
             size: "auto",
+            columnType,
           },
         ],
       };
@@ -306,6 +311,8 @@ export function toValueDiffGrid(
   // merges columns: primary keys
   primaryKeys.forEach((name) => {
     const columnStatus = columnMap[name].status ?? "";
+    const columnType = columnMap[name].colType;
+
     columns.push({
       key: name,
       name: (
@@ -316,25 +323,27 @@ export function toValueDiffGrid(
           {...options}></DataFrameColumnGroupHeader>
       ),
       frozen: true,
-      cellClass: (row: any) => {
+      cellClass: (row: RowObjectType) => {
         if (row.__status) {
           return `diff-header-${row.__status}`;
         }
         return undefined;
       },
       renderCell: defaultRenderCell,
+      columnType,
     });
   });
 
   // merges columns: pinned columns
   pinnedColumns.forEach((name) => {
     const columnStatus = columnMap[name].status ?? "";
+    const columnType = columnMap[name].colType;
 
     if (primaryKeys.includes(name)) {
       return;
     }
 
-    columns.push(toColumn(name, columnStatus));
+    columns.push(toColumn(name, columnStatus, columnType));
   });
 
   // merges columns: other columns
@@ -358,7 +367,7 @@ export function toValueDiffGrid(
         return;
       }
     }
-    columns.push(toColumn(name, columnStatus));
+    columns.push(toColumn(name, columnStatus, mergedColumn.colType));
   });
 
   return {

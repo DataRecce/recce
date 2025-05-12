@@ -48,7 +48,7 @@ const PrivateValueDiffDetailResultView = (
       return { columns: [], rows: [] };
     }
 
-    // primaryKey can be array or string, map to array
+    // primaryKey can be an array or string, map to array
     const primaryKey = run.params.primary_key;
     const primaryKeys = Array.isArray(primaryKey) ? primaryKey : [primaryKey];
 
