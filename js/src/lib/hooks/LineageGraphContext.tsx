@@ -36,6 +36,11 @@ import { aggregateRuns, RunsAggregated } from "../api/runs";
 import { markRelaunchHintCompleted } from "../api/flag";
 import { useRecceServerFlag } from "./useRecceServerFlag";
 import { trackSingleEnvironment } from "../api/track";
+import { useRecceInstanceInfo } from "./useRecceInstanceInfo";
+import {
+  RecceShareInstanceDisconnectedModalContent,
+  ServerDisconnectedModalContent,
+} from "@/components/lineage/SeverDisconnectedModalContent";
 
 interface EnvInfo {
   stateMetadata?: stateMetadata;
@@ -276,6 +281,7 @@ export function LineageGraphContextProvider({ children }: LineageGraphProps) {
 
   const { connectionStatus, connect, envStatus } = useLineageWatcher();
   const { data: flags, isLoading } = useRecceServerFlag();
+  const { data: instanceInfo } = useRecceInstanceInfo();
   const { onClose } = useDisclosure();
   const [relaunchHintOpen, setRelaunchHintOpen] = useState<boolean>(false);
   const queryClient = useQueryClient();
@@ -305,6 +311,8 @@ export function LineageGraphContextProvider({ children }: LineageGraphProps) {
     }
   }, [flags, envStatus, isLoading]);
 
+  const { share_url: shareUrl } = instanceInfo ?? {};
+
   return (
     <>
       <LineageGraphContext.Provider
@@ -333,23 +341,11 @@ export function LineageGraphContextProvider({ children }: LineageGraphProps) {
 
       <Modal isOpen={connectionStatus === "disconnected"} onClose={() => {}} isCentered>
         <ModalOverlay />
-        <ModalContent>
-          <ModalHeader>Server Disconnected</ModalHeader>
-          <ModalBody>
-            <Text>
-              The server connection has been lost. Please restart the Recce server and try again.
-            </Text>
-          </ModalBody>
-          <ModalFooter>
-            <Button
-              colorScheme="blue"
-              onClick={() => {
-                connect();
-              }}>
-              Retry
-            </Button>
-          </ModalFooter>
-        </ModalContent>
+        {shareUrl ? (
+          <RecceShareInstanceDisconnectedModalContent shareUrl={shareUrl} />
+        ) : (
+          <ServerDisconnectedModalContent connect={connect} />
+        )}
       </Modal>
 
       {flags?.single_env_onboarding && (

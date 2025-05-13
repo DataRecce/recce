@@ -20,7 +20,6 @@ from recce.util.recce_cloud import (
     RecceCloudException,
     get_recce_cloud_onboarding_state,
 )
-
 from .core import RecceContext, set_default_context
 from .event.track import TrackCommand
 
@@ -1021,6 +1020,8 @@ def share(state_file, **kwargs):
 @click.option("--host", default="localhost", show_default=True, help="The host to bind to.")
 @click.option("--port", default=8000, show_default=True, help="The port to bind to.", type=int)
 @click.option("--lifetime", default=0, show_default=True, help="The lifetime of the server in seconds.", type=int)
+@click.option("--share-url", help="The share URL triggers this instance.", type=click.STRING, hidden=True,
+              envvar="RECCE_SHARE_URL")
 def read_only(host, port, lifetime, state_file=None, **kwargs):
     from rich.console import Console
 
@@ -1047,7 +1048,8 @@ def read_only(host, port, lifetime, state_file=None, **kwargs):
         console.print(f"[[red]Error[/red]] {message}")
         exit(1)
 
-    app.state = AppState(command="read_only", state_loader=state_loader, kwargs=kwargs, flag=flag, lifetime=lifetime)
+    app.state = AppState(command="read_only", state_loader=state_loader, kwargs=kwargs, flag=flag, lifetime=lifetime,
+                         share_url=kwargs.get("share_url"))
     set_default_context(RecceContext.load(**kwargs, review=is_review, state_loader=state_loader))
 
     uvicorn.run(app, host=host, port=port, lifespan="on")
