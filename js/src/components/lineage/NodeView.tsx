@@ -85,11 +85,7 @@ export function NodeView({ node, onCloseNode }: NodeViewProps) {
       return DisableTooltipMessages.add_or_remove;
     }
     if (!isActionAvailable(runType)) {
-      if (runType === "profile_diff" || runType === "profile") {
-        return DisableTooltipMessages.dbt_profiler;
-      } else {
-        return "This action is not supported yet.";
-      }
+      return "This action is not supported yet.";
     }
     return "";
   };
@@ -158,7 +154,7 @@ export function NodeView({ node, onCloseNode }: NodeViewProps) {
                 <MenuItem
                   icon={<Icon as={findByRunType("profile_diff")?.icon} />}
                   fontSize="14px"
-                  isDisabled={isAddedOrRemoved || !isActionAvailable("profile_diff")}
+                  isDisabled={isAddedOrRemoved}
                   onClick={() => {
                     runAction(
                       "profile_diff",
@@ -279,7 +275,7 @@ export function NodeView({ node, onCloseNode }: NodeViewProps) {
               <MenuItem
                 icon={<Icon as={findByRunType("profile")?.icon} />}
                 fontSize="14px"
-                isDisabled={isAddedOrRemoved || !isActionAvailable("profile")}
+                isDisabled={isAddedOrRemoved}
                 onClick={() => {
                   runAction(
                     "profile",
