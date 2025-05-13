@@ -293,11 +293,6 @@ class DbtAdapter(BaseAdapter):
 
     def support_tasks(self):
         support_map = {run_type.value: True for run_type in dbt_supported_registry}
-        supported_dbt_packages = set([package.package_name for package in self.manifest.macros.values()])
-
-        if "dbt_profiler" not in supported_dbt_packages:
-            support_map[RunType.PROFILE_DIFF.value] = False
-            support_map[RunType.PROFILE.value] = False
 
         return support_map
 
