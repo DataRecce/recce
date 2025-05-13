@@ -119,11 +119,11 @@ export default tseslint.config(
       "react/no-array-index-key": "warn", // 6 errors
       // Rules specific to avoiding 'Any' Typing
       // @see https://typescript-eslint.io/blog/avoiding-anys
-      "@typescript-eslint/no-explicit-any": "warn", // 124 errors
-      "@typescript-eslint/no-unsafe-argument": "warn", // 17 errors
-      "@typescript-eslint/no-unsafe-assignment": "warn", // 131 errors
+      "@typescript-eslint/no-explicit-any": "warn", // 95 errors
+      "@typescript-eslint/no-unsafe-argument": "warn", // 6 errors
+      "@typescript-eslint/no-unsafe-assignment": "warn", // 92 errors
       "@typescript-eslint/no-unsafe-call": "warn", // 8 errors
-      "@typescript-eslint/no-unsafe-member-access": "warn", // 120 errors
+      "@typescript-eslint/no-unsafe-member-access": "warn", // 53 errors
       "@typescript-eslint/no-unsafe-return": "warn", // 24 errors
       // END Rules specific to avoiding 'Any' Typing
     },
