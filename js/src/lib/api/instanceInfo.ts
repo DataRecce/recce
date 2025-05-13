@@ -6,6 +6,7 @@ export interface RecceInstanceInfo {
   single_env: boolean;
   authed: boolean;
   lifetime_expired_at?: Date;
+  share_url?: string;
 }
 
 export async function getRecceInstanceInfo(): Promise<RecceInstanceInfo> {

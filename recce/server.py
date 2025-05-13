@@ -51,6 +51,7 @@ class AppState:
     auth_options: Optional[dict] = None
     lifetime: Optional[int] = None
     lifetime_expired_at: Optional[datetime] = None
+    share_url: Optional[str] = None
 
 
 def schedule_lifetime_termination(app_state):
@@ -235,6 +236,7 @@ class RecceInstanceInfoOut(BaseModel):
     single_env: bool
     authed: bool
     lifetime_expired_at: Optional[datetime] = None
+    share_url: Optional[str] = None
 
 
 @app.get("/api/instance-info", response_model=RecceInstanceInfoOut, response_model_exclude_none=True)
@@ -252,6 +254,7 @@ async def recce_instance_info():
         "single_env": single_env,
         "authed": True if api_token else False,
         "lifetime_expired_at": app_state.lifetime_expired_at,  # UTC timezone
+        "share_url": app_state.share_url,
         # TODO: Add more instance info which won't change during the instance lifecycle
         # review_mode
         # cloud_mode
