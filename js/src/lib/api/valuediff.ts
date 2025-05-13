@@ -1,5 +1,5 @@
 import { SubmitOptions, submitRun } from "./runs";
-import { DataFrame } from "./types";
+import { ColumnRenderMode, DataFrame } from "./types";
 
 export interface ValueDiffResult {
   summary: {
@@ -28,6 +28,7 @@ export interface ValueDiffDetailViewOptions {
   changed_only?: boolean;
   pinned_columns?: string[];
   display_mode?: "inline" | "side_by_side";
+  columnsRenderMode?: Record<string, ColumnRenderMode>;
 }
 
 export async function submitValueDiffDetail(params: ValueDiffParams, options?: SubmitOptions) {

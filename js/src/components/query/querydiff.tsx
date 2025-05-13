@@ -1,3 +1,4 @@
+import React from "react";
 import {
   CalculatedColumn,
   ColumnOrColumnGroup,
@@ -6,12 +7,24 @@ import {
 } from "react-data-grid";
 import _ from "lodash";
 import "./styles.css";
-import { Box, Flex, Icon, Text } from "@chakra-ui/react";
-import { VscClose, VscKey, VscPin, VscPinned } from "react-icons/vsc";
-import { ColumnType, DataFrame, RowObjectType } from "@/lib/api/types";
+import {
+  Box,
+  Flex,
+  Icon,
+  IconButton,
+  Menu,
+  MenuButton,
+  MenuList,
+  MenuItem,
+  Portal,
+  Text,
+} from "@chakra-ui/react";
+import { VscClose, VscKebabVertical, VscKey, VscPin, VscPinned } from "react-icons/vsc";
+import { ColumnType, ColumnRenderMode, DataFrame, RowObjectType } from "@/lib/api/types";
 import { mergeKeysWithStatus } from "@/lib/mergeKeys";
 import { DiffText } from "./DiffText";
 import { formatNumber } from "@/utils/formatters";
+import { columnPrecisionSelectOptions } from "@/components/valuediff/shared";
 
 function _getColumnMap(base: DataFrame, current: DataFrame) {
   const result: Record<
@@ -20,6 +33,7 @@ function _getColumnMap(base: DataFrame, current: DataFrame) {
       baseColumnIndex: number;
       currentColumnIndex: number;
       status?: string;
+      colType: ColumnType;
     }
   > = {};
 
@@ -33,6 +47,7 @@ function _getColumnMap(base: DataFrame, current: DataFrame) {
       status,
       baseColumnIndex: base.columns.findIndex((col) => col.name === key),
       currentColumnIndex: current.columns.findIndex((col) => col.name === key),
+      colType: base.columns.find((c) => c.name === key)?.type ?? "unknown",
     };
   });
 
@@ -77,6 +92,8 @@ export interface QueryDataDiffGridOptions {
   onPrimaryKeyChange?: (primaryKeys: string[]) => void;
   pinnedColumns?: string[];
   onPinnedColumnsChange?: (pinnedColumns: string[]) => void;
+  columnsRenderMode?: Record<string, ColumnRenderMode>;
+  onColumnsRenderModeChanged?: (col: Record<string, ColumnRenderMode>) => void;
   changedOnly?: boolean;
   baseTitle?: string;
   currentTitle?: string;
@@ -88,13 +105,25 @@ export function DataFrameColumnGroupHeader({
   columnStatus,
   onPrimaryKeyChange,
   onPinnedColumnsChange,
+  columnType,
+  onColumnsRenderModeChanged,
   ...options
-}: { name: string; columnStatus: string } & QueryDataDiffGridOptions) {
+}: {
+  name: string;
+  columnStatus: string;
+  columnType: ColumnType;
+  onColumnRenderModeChanged?: (colNam: string, renderAs: ColumnRenderMode) => void;
+} & QueryDataDiffGridOptions) {
   const primaryKeys = options.primaryKeys ?? [];
   const pinnedColumns = options.pinnedColumns ?? [];
   const isPK = primaryKeys.includes(name);
   const isPinned = pinnedColumns.includes(name);
   const canBePk = columnStatus !== "added" && columnStatus !== "removed";
+
+  let selectOptions: { value: string; onClick: () => void }[] = [];
+  if (onColumnsRenderModeChanged) {
+    selectOptions = columnPrecisionSelectOptions(name, onColumnsRenderModeChanged);
+  }
 
   if (name === "index") {
     return <></>;
@@ -156,6 +185,26 @@ export function DataFrameColumnGroupHeader({
           onClick={isPinned ? handleUnpin : handlePin}
         />
       )}
+      {!isPK && columnType === "number" && (
+        <Menu>
+          <MenuButton
+            as={IconButton}
+            aria-label="Options"
+            icon={<VscKebabVertical />}
+            variant="unstyled"
+            className="size-4 min-w-4"
+          />
+          <Portal>
+            <MenuList>
+              {selectOptions.map((o) => (
+                <MenuItem key={o.value} onClick={o.onClick}>
+                  {o.value}
+                </MenuItem>
+              ))}
+            </MenuList>
+          </Portal>
+        </Menu>
+      )}
     </Flex>
   );
 }
@@ -181,7 +230,7 @@ const toRenderedValue = (
   row: RowObjectType,
   key: string,
   columnType?: ColumnType,
-  valueRenderAs: "raw" | "percent" | 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 = "raw",
+  columnRenderMode: ColumnRenderMode = "raw",
 ): [string, boolean] => {
   if (!Object.hasOwn(row, key)) {
     return ["-", true];
@@ -205,7 +254,7 @@ const toRenderedValue = (
   } else {
     if (columnType && columnType === "number") {
       // Add formatting for numerical values if required
-      renderedValue = columnRenderedValue(parseFloat(value), valueRenderAs);
+      renderedValue = columnRenderedValue(parseFloat(value), columnRenderMode);
     } else {
       // convert to string
       renderedValue = String(value);
@@ -215,24 +264,25 @@ const toRenderedValue = (
   return [renderedValue, grayOut];
 };
 
-export const defaultRenderCell = ({ row, column }: RenderCellProps<RowObjectType, any>) => {
+export const defaultRenderCell = ({ row, column }: RenderCellProps<RowObjectType>) => {
   // Add the potential addition of columnType
-  const typedColumn = column as unknown as CalculatedColumn<RowObjectType, any> & {
+  const { columnType, columnRenderMode } = column as unknown as CalculatedColumn<RowObjectType> & {
     columnType?: ColumnType;
+    columnRenderMode?: ColumnRenderMode;
   };
 
-  const [renderedValue, grayOut] = toRenderedValue(row, column.key, typedColumn.columnType);
+  const [renderedValue, grayOut] = toRenderedValue(row, column.key, columnType, columnRenderMode);
   return <Text style={{ color: grayOut ? "gray" : "inherit" }}>{renderedValue}</Text>;
 };
 
-export const inlineRenderCell = ({ row, column }: RenderCellProps<RowObjectType, any>) => {
+export const inlineRenderCell = ({ row, column }: RenderCellProps<RowObjectType>) => {
   // Add the potential addition of columnType
-  const typedColumn = column as unknown as CalculatedColumn<RowObjectType, any> & {
+  const { columnType, columnRenderMode } = column as unknown as CalculatedColumn<RowObjectType> & {
     columnType?: ColumnType;
+    columnRenderMode?: ColumnRenderMode;
   };
   const baseKey = `base__${column.key}`;
   const currentKey = `current__${column.key}`;
-  const columnType = typedColumn.columnType;
 
   if (!Object.hasOwn(row, baseKey) && !Object.hasOwn(row, currentKey)) {
     // should not happen
@@ -241,8 +291,18 @@ export const inlineRenderCell = ({ row, column }: RenderCellProps<RowObjectType,
 
   const hasBase = Object.hasOwn(row, baseKey);
   const hasCurrent = Object.hasOwn(row, currentKey);
-  const [baseValue, baseGrayOut] = toRenderedValue(row, `base__${column.key}`, columnType);
-  const [currentValue, currentGrayOut] = toRenderedValue(row, `current__${column.key}`, columnType);
+  const [baseValue, baseGrayOut] = toRenderedValue(
+    row,
+    `base__${column.key}`,
+    columnType,
+    columnRenderMode,
+  );
+  const [currentValue, currentGrayOut] = toRenderedValue(
+    row,
+    `current__${column.key}`,
+    columnType,
+    columnRenderMode,
+  );
 
   if (row[baseKey] === row[currentKey]) {
     // no change
@@ -268,8 +328,12 @@ export function toDataDiffGrid(
   const pinnedColumns = options?.pinnedColumns ?? [];
   const changedOnly = options?.changedOnly ?? false;
   const displayMode = options?.displayMode ?? "side_by_side";
+  const columnsRenderMode = options?.columnsRenderMode ?? {};
 
-  const columns: ColumnOrColumnGroup<any, any>[] = [];
+  const columns: (ColumnOrColumnGroup<RowObjectType> & {
+    columnType?: ColumnType;
+    columnRenderMode?: ColumnRenderMode;
+  })[] = [];
   const columnMap = _getColumnMap(base, current);
 
   // merge row
@@ -320,9 +384,9 @@ export function toDataDiffGrid(
   };
 
   let rows = Object.entries(mergedMap).map(([key, status]) => {
-    const baseRow = baseMap[key];
-    const currentRow = currentMap[key];
-    const row = JSON.parse(key);
+    const baseRow = baseMap[key] as RowObjectType | undefined;
+    const currentRow = currentMap[key] as RowObjectType | undefined;
+    const row = JSON.parse(key) as RowObjectType;
 
     if (baseRow) {
       base.columns.forEach((col, index) => {
@@ -389,7 +453,15 @@ export function toDataDiffGrid(
   }
 
   // merge columns
-  const toColumn = (name: string, columnStatus: string) => {
+  const toColumn = (
+    name: string,
+    columnStatus: string,
+    columnType: ColumnType,
+    columnRenderMode: ColumnRenderMode = "raw",
+  ): ColumnOrColumnGroup<RowObjectType> & {
+    columnType?: ColumnType;
+    columnRenderMode?: ColumnRenderMode;
+  } => {
     const headerCellClass =
       columnStatus === "added"
         ? "diff-header-added"
@@ -397,7 +469,7 @@ export function toDataDiffGrid(
           ? "diff-header-removed"
           : undefined;
 
-    const cellClassBase = (row: any) => {
+    const cellClassBase = (row: RowObjectType) => {
       const rowStatus = row.__status;
       if (rowStatus === "removed") {
         return "diff-cell-removed";
@@ -414,7 +486,7 @@ export function toDataDiffGrid(
       return undefined;
     };
 
-    const cellClassCurrent = (row: any) => {
+    const cellClassCurrent = (row: RowObjectType) => {
       const rowStatus = row.__status;
       if (rowStatus === "removed") {
         return "diff-cell-removed";
@@ -438,11 +510,14 @@ export function toDataDiffGrid(
           <DataFrameColumnGroupHeader
             name={name}
             columnStatus={columnStatus}
-            {...options}></DataFrameColumnGroupHeader>
+            columnType={columnType}
+            {...options}
+          />
         ),
         key: name,
         renderCell: inlineRenderCell,
-        size: "auto",
+        columnType,
+        columnRenderMode,
       };
     } else {
       return {
@@ -451,7 +526,9 @@ export function toDataDiffGrid(
           <DataFrameColumnGroupHeader
             name={name}
             columnStatus={columnStatus}
-            {...options}></DataFrameColumnGroupHeader>
+            columnType={columnType}
+            {...options}
+          />
         ),
         children: [
           {
@@ -461,7 +538,9 @@ export function toDataDiffGrid(
             headerCellClass,
             cellClass: cellClassBase,
             renderCell: defaultRenderCell,
-            size: "auto",
+            // @ts-expect-error Unable to patch children type, just pass it through
+            columnType,
+            columnRenderMode,
           },
           {
             key: `current__${name}`,
@@ -470,7 +549,9 @@ export function toDataDiffGrid(
             headerCellClass,
             cellClass: cellClassCurrent,
             renderCell: defaultRenderCell,
-            size: "auto",
+            // @ts-expect-error Unable to patch children type, just pass it through
+            columnType,
+            columnRenderMode,
           },
         ],
       };
@@ -489,22 +570,28 @@ export function toDataDiffGrid(
   } else {
     primaryKeys.forEach((name) => {
       const columnStatus = columnMap[name].status ?? "";
+      const columnType = columnMap[name].colType;
+
       columns.push({
         key: name,
         name: (
           <DataFrameColumnGroupHeader
             name={name}
             columnStatus={columnStatus}
-            {...options}></DataFrameColumnGroupHeader>
+            columnType={columnType}
+            {...options}
+          />
         ),
         frozen: true,
-        cellClass: (row: any) => {
+        cellClass: (row: RowObjectType) => {
           if (row.__status) {
             return `diff-header-${row.__status}`;
           }
           return undefined;
         },
         renderCell: defaultRenderCell,
+        columnType,
+        columnRenderMode: columnsRenderMode[name],
       });
     });
   }
@@ -512,6 +599,7 @@ export function toDataDiffGrid(
   // merges columns: pinned columns
   pinnedColumns.forEach((name) => {
     const columnStatus = columnMap[name].status ?? "";
+    const columnType = columnMap[name].colType;
 
     if (name === "index") {
       return;
@@ -521,12 +609,13 @@ export function toDataDiffGrid(
       return;
     }
 
-    columns.push(toColumn(name, columnStatus));
+    columns.push(toColumn(name, columnStatus, columnType, columnsRenderMode[name]));
   });
 
   // merges columns: other columns
   Object.entries(columnMap).forEach(([name, mergedColumn]) => {
     const columnStatus = mergedColumn.status ?? "";
+    const columnType = columnMap[name].colType;
 
     if (name === "index") {
       return;
@@ -545,7 +634,7 @@ export function toDataDiffGrid(
         return;
       }
     }
-    columns.push(toColumn(name, columnStatus));
+    columns.push(toColumn(name, columnStatus, columnType, columnsRenderMode[name]));
   });
 
   return {

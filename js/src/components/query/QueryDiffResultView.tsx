@@ -12,7 +12,7 @@ import { toDataDiffGrid } from "./querydiff";
 import { toValueDiffGrid as toQueryDiffJoinGrid } from "../valuediff/valuediff";
 
 import "./styles.css";
-import { Run } from "@/lib/api/types";
+import { ColumnRenderMode, Run } from "@/lib/api/types";
 import { EmptyRowsRenderer, ScreenshotDataGrid } from "../data-grid/ScreenshotDataGrid";
 import { RunResultViewProps } from "../run/types";
 import { RunToolbar } from "../run/RunToolbar";
@@ -41,8 +41,22 @@ const PrivateQueryDiffResultView = (
   const changedOnly = useMemo(() => viewOptions?.changed_only ?? false, [viewOptions]);
   const pinnedColumns = useMemo(() => viewOptions?.pinned_columns ?? [], [viewOptions]);
   const displayMode = useMemo(() => viewOptions?.display_mode ?? "inline", [viewOptions]);
+  const columnsRenderMode = useMemo(() => viewOptions?.columnsRenderMode ?? {}, [viewOptions]);
 
   const gridData = useMemo(() => {
+    const onColumnsRenderModeChanged = (cols: Record<string, ColumnRenderMode>) => {
+      const newRenderModes = {
+        ...(viewOptions?.columnsRenderMode ?? {}),
+        ...cols,
+      };
+      if (onViewOptionsChanged) {
+        onViewOptionsChanged({
+          ...viewOptions,
+          columnsRenderMode: newRenderModes,
+        });
+      }
+    };
+
     const handlePrimaryKeyChanged = (primaryKeys: string[]) => {
       if (onViewOptionsChanged) {
         onViewOptionsChanged({
@@ -67,6 +81,8 @@ const PrivateQueryDiffResultView = (
       onPrimaryKeyChange: handlePrimaryKeyChanged,
       pinnedColumns,
       onPinnedColumnsChange: handlePinnedColumnsChanged,
+      columnsRenderMode,
+      onColumnsRenderModeChanged,
       baseTitle,
       currentTitle,
       displayMode,
@@ -81,6 +97,7 @@ const PrivateQueryDiffResultView = (
     onViewOptionsChanged,
     baseTitle,
     currentTitle,
+    columnsRenderMode,
   ]);
 
   const warningPKey = useMemo(() => {
@@ -167,8 +184,22 @@ const PrivateQueryDiffJoinResultView = (
   const changedOnly = useMemo(() => viewOptions?.changed_only ?? false, [viewOptions]);
   const pinnedColumns = useMemo(() => viewOptions?.pinned_columns ?? [], [viewOptions]);
   const displayMode = useMemo(() => viewOptions?.display_mode ?? "inline", [viewOptions]);
+  const columnsRenderMode = useMemo(() => viewOptions?.columnsRenderMode ?? {}, [viewOptions]);
 
   const gridData = useMemo(() => {
+    const onColumnsRenderModeChanged = (cols: Record<string, ColumnRenderMode>) => {
+      const newRenderModes = {
+        ...(viewOptions?.columnsRenderMode ?? {}),
+        ...cols,
+      };
+      if (onViewOptionsChanged) {
+        onViewOptionsChanged({
+          ...viewOptions,
+          columnsRenderMode: newRenderModes,
+        });
+      }
+    };
+
     const handlePinnedColumnsChanged = (pinnedColumns: string[]) => {
       if (onViewOptionsChanged) {
         onViewOptionsChanged({
@@ -191,6 +222,8 @@ const PrivateQueryDiffJoinResultView = (
       baseTitle,
       currentTitle,
       displayMode,
+      columnsRenderMode,
+      onColumnsRenderModeChanged,
     });
   }, [
     run,
@@ -201,6 +234,7 @@ const PrivateQueryDiffJoinResultView = (
     onViewOptionsChanged,
     baseTitle,
     currentTitle,
+    columnsRenderMode,
   ]);
 
   const limit = run.result?.diff?.limit ?? 0;

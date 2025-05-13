@@ -1,11 +1,23 @@
-import { ColumnOrColumnGroup, RenderCellProps, textEditor } from "react-data-grid";
+import { ColumnOrColumnGroup, textEditor } from "react-data-grid";
 import _ from "lodash";
 import "../query/styles.css";
-import { Box, Flex, Icon } from "@chakra-ui/react";
-import { VscKey, VscPin, VscPinned } from "react-icons/vsc";
-import { ColumnType, DataFrame, RowData, RowDataTypes, RowObjectType } from "@/lib/api/types";
+import {
+  Box,
+  Flex,
+  Icon,
+  IconButton,
+  Menu,
+  MenuButton,
+  MenuItem,
+  MenuList,
+  Portal,
+} from "@chakra-ui/react";
+import { VscKebabVertical, VscKey, VscPin, VscPinned } from "react-icons/vsc";
+import { ColumnType, ColumnRenderMode, DataFrame, RowData, RowObjectType } from "@/lib/api/types";
 import { mergeKeysWithStatus } from "@/lib/mergeKeys";
 import { defaultRenderCell, inlineRenderCell, QueryDataDiffGridOptions } from "../query/querydiff";
+import React from "react";
+import { columnPrecisionSelectOptions } from "./shared";
 
 function _getColumnMap(df: DataFrame) {
   const result: Record<
@@ -65,12 +77,24 @@ function DataFrameColumnGroupHeader({
   columnStatus,
   onPrimaryKeyChange,
   onPinnedColumnsChange,
+  columnType,
+  onColumnsRenderModeChanged,
   ...options
-}: { name: string; columnStatus: string } & QueryDataDiffGridOptions) {
+}: {
+  name: string;
+  columnStatus: string;
+  columnType: ColumnType;
+  onColumnRenderModeChanged?: (colNam: string, renderAs: ColumnRenderMode) => void;
+} & QueryDataDiffGridOptions) {
   const primaryKeys = options.primaryKeys ?? [];
   const pinnedColumns = options.pinnedColumns ?? [];
   const isPK = primaryKeys.includes(name);
   const isPinned = pinnedColumns.includes(name);
+
+  let selectOptions: { value: string; onClick: () => void }[] = [];
+  if (onColumnsRenderModeChanged) {
+    selectOptions = columnPrecisionSelectOptions(name, onColumnsRenderModeChanged);
+  }
 
   if (name === "index") {
     return <></>;
@@ -107,6 +131,26 @@ function DataFrameColumnGroupHeader({
           onClick={isPinned ? handleUnpin : handlePin}
         />
       )}
+      {!isPK && columnType === "number" && (
+        <Menu>
+          <MenuButton
+            as={IconButton}
+            aria-label="Options"
+            icon={<VscKebabVertical />}
+            variant="unstyled"
+            className="size-4 min-w-4"
+          />
+          <Portal>
+            <MenuList>
+              {selectOptions.map((o) => (
+                <MenuItem key={o.value} onClick={o.onClick}>
+                  {o.value}
+                </MenuItem>
+              ))}
+            </MenuList>
+          </Portal>
+        </Menu>
+      )}
     </Flex>
   );
 }
@@ -119,8 +163,12 @@ export function toValueDiffGrid(
   const pinnedColumns = options?.pinnedColumns ?? [];
   const changedOnly = options?.changedOnly ?? false;
   const displayMode = options?.displayMode ?? "inline";
+  const columnsRenderMode = options?.columnsRenderMode ?? {};
 
-  const columns: (ColumnOrColumnGroup<any, any> & { columnType?: ColumnType })[] = [];
+  const columns: (ColumnOrColumnGroup<RowObjectType> & {
+    columnType?: ColumnType;
+    columnRenderMode?: ColumnRenderMode;
+  })[] = [];
   const columnMap = _getColumnMap(df);
 
   // merge row
@@ -215,7 +263,15 @@ export function toValueDiffGrid(
   }
 
   // merge columns
-  const toColumn = (name: string, columnStatus: string, columnType: ColumnType) => {
+  const toColumn = (
+    name: string,
+    columnStatus: string,
+    columnType: ColumnType,
+    columnRenderMode: ColumnRenderMode = "raw",
+  ): ColumnOrColumnGroup<RowObjectType> & {
+    columnType?: ColumnType;
+    columnRenderMode?: ColumnRenderMode;
+  } => {
     const headerCellClass =
       columnStatus === "added"
         ? "diff-header-added"
@@ -265,12 +321,14 @@ export function toValueDiffGrid(
             name={name}
             columnStatus={columnStatus}
             primaryKeys={primaryKeys}
-            {...options}></DataFrameColumnGroupHeader>
+            columnType={columnType}
+            {...options}
+          />
         ),
         key: name,
         renderCell: inlineRenderCell,
-        size: "auto",
         columnType,
+        columnRenderMode,
       };
     } else {
       return {
@@ -280,7 +338,9 @@ export function toValueDiffGrid(
             name={name}
             columnStatus={columnStatus}
             primaryKeys={primaryKeys}
-            {...options}></DataFrameColumnGroupHeader>
+            columnType={columnType}
+            {...options}
+          />
         ),
         children: [
           {
@@ -290,8 +350,9 @@ export function toValueDiffGrid(
             headerCellClass,
             cellClass: cellClassBase,
             renderCell: defaultRenderCell,
-            size: "auto",
+            // @ts-expect-error Unable to patch children type, just pass it through
             columnType,
+            columnRenderMode,
           },
           {
             key: `current__${name}`,
@@ -300,8 +361,9 @@ export function toValueDiffGrid(
             headerCellClass,
             cellClass: cellClassCurrent,
             renderCell: defaultRenderCell,
-            size: "auto",
+            // @ts-expect-error Unable to patch children type, just pass it through
             columnType,
+            columnRenderMode,
           },
         ],
       };
@@ -320,7 +382,9 @@ export function toValueDiffGrid(
           name={name}
           columnStatus={columnStatus}
           primaryKeys={primaryKeys}
-          {...options}></DataFrameColumnGroupHeader>
+          columnType={"unknown"}
+          {...options}
+        />
       ),
       frozen: true,
       cellClass: (row: RowObjectType) => {
@@ -331,6 +395,7 @@ export function toValueDiffGrid(
       },
       renderCell: defaultRenderCell,
       columnType,
+      columnRenderMode: columnsRenderMode[name],
     });
   });
 
@@ -343,7 +408,7 @@ export function toValueDiffGrid(
       return;
     }
 
-    columns.push(toColumn(name, columnStatus, columnType));
+    columns.push(toColumn(name, columnStatus, columnType, columnsRenderMode[name]));
   });
 
   // merges columns: other columns
@@ -367,7 +432,7 @@ export function toValueDiffGrid(
         return;
       }
     }
-    columns.push(toColumn(name, columnStatus, mergedColumn.colType));
+    columns.push(toColumn(name, columnStatus, mergedColumn.colType, columnsRenderMode[name]));
   });
 
   return {
