@@ -301,6 +301,7 @@ class ColumnLevelLineageTest(unittest.TestCase):
         assert result["b"].depends_on[0].node == "table1"
         assert result["b"].depends_on[0].column == "a"
 
+    def test_transform_agg_func_source(self):
         sql = """
             with cte as (
                 select
@@ -320,8 +321,9 @@ class ColumnLevelLineageTest(unittest.TestCase):
         assert result["d"].type == "derived"
         assert result["d"].depends_on[0].node == "t1"
         assert result["d"].depends_on[0].column == "created_at"
-        assert result["c1"].type == "source"
-        assert len(result["c1"].depends_on) == 0
+        assert result["c1"].type == "derived"
+        assert result["c1"].depends_on[0].node == "t1"
+        assert result["c1"].depends_on[0].column == "created_at"
 
     def test_transform_nested_func(self):
         sql = """
@@ -593,4 +595,5 @@ class ColumnLevelLineageTest(unittest.TestCase):
         where a > 0
         """
         result = cll_new(sql)
-        result.depends_on[0] == "table1"
+        assert result.depends_on[0].node == "table1"
+        assert result.depends_on[0].column == "a"
