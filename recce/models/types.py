@@ -57,8 +57,8 @@ class Check(BaseModel):
     name: str
     description: Optional[str] = None
     type: RunType
-    params: dict = {}
-    view_options: dict = {}
+    params: Optional[dict] = {}
+    view_options: Optional[dict] = {}
     check_id: UUID4 = Field(default_factory=uuid.uuid4)
     is_checked: bool = False
     is_preset: bool = False
