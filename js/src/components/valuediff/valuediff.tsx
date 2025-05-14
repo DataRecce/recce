@@ -138,7 +138,7 @@ function DataFrameColumnGroupHeader({
             aria-label="Options"
             icon={<VscKebabVertical />}
             variant="unstyled"
-            className="size-4 min-w-4"
+            className="!size-4 !min-w-4"
           />
           <Portal>
             <MenuList>
