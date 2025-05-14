@@ -1,6 +1,6 @@
 import unittest
 
-from recce.util.cll import cll
+from recce.util.cll import cll_old as cll
 
 
 class ColumnLevelLineageTest(unittest.TestCase):

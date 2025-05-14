@@ -91,6 +91,15 @@ class ColumnLevelDependencyColumn:
     depends_on: List[ColumnLevelDependsOn]
 
 
+@dataclass()
+class CllResult:
+    # Model to column dependencies
+    depends_on: List[ColumnLevelDependsOn]
+
+    # Column to column dependencies
+    columns: Dict[str, ColumnLevelDependencyColumn]
+
+
 def _cll_expression(expression, table_alias_map) -> ColumnLevelDependencyColumn:
     # given an expression, return the columns depends on
     # [{node: table, column: column}, ...]
@@ -171,7 +180,12 @@ def _cll_expression(expression, table_alias_map) -> ColumnLevelDependencyColumn:
         return ColumnLevelDependencyColumn(type="source", depends_on=depends_on)
 
 
-def cll(sql, schema=None, dialect=None) -> Dict[str, ColumnLevelDependencyColumn]:
+def cll_old(sql, schema=None, dialect=None) -> Dict[str, ColumnLevelDependencyColumn]:
+    result = cll(sql, schema=schema, dialect=dialect)
+    return result.columns
+
+
+def cll(sql, schema=None, dialect=None) -> CllResult:
     # given a sql, return the columns depends on
     # {
     #   'column1': {
@@ -194,7 +208,7 @@ def cll(sql, schema=None, dialect=None) -> Dict[str, ColumnLevelDependencyColumn
     except SqlglotError as e:
         raise RecceException(f"Failed to qualify SQL: {str(e)}")
 
-    result = {}
+    result = CllResult(depends_on=[], columns={})
     global_lineage = {}
     for scope in traverse_scope(expression):
         scope_lineage = {}
@@ -299,6 +313,6 @@ def cll(sql, schema=None, dialect=None) -> Dict[str, ColumnLevelDependencyColumn
 
         global_lineage[scope] = scope_lineage
         if not scope.is_cte:
-            result = scope_lineage
+            result.columns = scope_lineage
 
     return result
