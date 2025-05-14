@@ -1,5 +1,5 @@
 import { SubmitOptions, submitRun } from "./runs";
-import { DataFrame } from "./types";
+import { ColumnRenderMode, DataFrame } from "./types";
 
 export interface QueryParams extends QueryRunParams, QueryDiffParams, QueryPreviewChangeParams {}
 
@@ -15,6 +15,7 @@ export interface QueryRunParams {
 
 export interface QueryViewOptions {
   pinned_columns?: string[];
+  columnsRenderMode?: Record<string, ColumnRenderMode>;
 }
 
 export type QueryResult = DataFrame;
@@ -36,6 +37,7 @@ export interface QueryDiffViewOptions {
   primary_keys?: string[];
   pinned_columns?: string[];
   display_mode?: "inline" | "side_by_side";
+  columnsRenderMode?: Record<string, ColumnRenderMode>;
 }
 
 export async function submitQuery(params: QueryRunParams, options?: SubmitOptions) {

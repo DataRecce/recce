@@ -9,6 +9,7 @@ import { toDataDiffGrid } from "../query/querydiff";
 import { RunToolbar } from "../run/RunToolbar";
 import { DiffDisplayModeSwitch } from "../query/ToggleSwitch";
 import { toDataGrid } from "../query/QueryResultView";
+import { ColumnRenderMode } from "@/lib/api/types";
 
 type ProfileDiffResultViewProp = RunResultViewProps<
   ProfileDiffParams,
@@ -23,6 +24,7 @@ const PrivateProfileDiffResultView = (
   const result = run.result;
   const pinnedColumns = useMemo(() => viewOptions?.pinned_columns ?? [], [viewOptions]);
   const displayMode = useMemo(() => viewOptions?.display_mode ?? "inline", [viewOptions]);
+  const columnsRenderMode = useMemo(() => viewOptions?.columnsRenderMode ?? {}, [viewOptions]);
 
   const field = (result?.current?.columns ?? []).find(
     (f) => f.name.toLowerCase() === "column_name",
@@ -30,6 +32,19 @@ const PrivateProfileDiffResultView = (
   const primaryKey = field?.name ?? "column_name";
 
   const gridData = useMemo(() => {
+    const onColumnsRenderModeChanged = (cols: Record<string, ColumnRenderMode>) => {
+      const newRenderModes = {
+        ...(viewOptions?.columnsRenderMode ?? {}),
+        ...cols,
+      };
+      if (onViewOptionsChanged) {
+        onViewOptionsChanged({
+          ...viewOptions,
+          columnsRenderMode: newRenderModes,
+        });
+      }
+    };
+
     const handlePinnedColumnsChanged = (pinnedColumns: string[]) => {
       if (onViewOptionsChanged) {
         onViewOptionsChanged({
@@ -44,8 +59,18 @@ const PrivateProfileDiffResultView = (
       pinnedColumns,
       onPinnedColumnsChange: handlePinnedColumnsChanged,
       displayMode,
+      columnsRenderMode,
+      onColumnsRenderModeChanged,
     });
-  }, [result, primaryKey, pinnedColumns, displayMode, viewOptions, onViewOptionsChanged]);
+  }, [
+    result,
+    primaryKey,
+    pinnedColumns,
+    displayMode,
+    viewOptions,
+    onViewOptionsChanged,
+    columnsRenderMode,
+  ]);
 
   if (gridData.columns.length === 0) {
     return <Center height="100%">No data</Center>;
@@ -86,12 +111,27 @@ const PrivateProfileResultView = (
   const result = run.result;
   const dataFrame = result?.current;
   const pinnedColumns = useMemo(() => viewOptions?.pinned_columns ?? [], [viewOptions]);
+  const columnsRenderMode = useMemo(() => viewOptions?.columnsRenderMode ?? {}, [viewOptions]);
+
   const field = (result?.current?.columns ?? []).find(
     (f) => f.name.toLowerCase() === "column_name",
   );
   const primaryKey = field?.name ?? "column_name";
 
   const gridData = useMemo(() => {
+    const onColumnsRenderModeChanged = (cols: Record<string, ColumnRenderMode>) => {
+      const newRenderModes = {
+        ...(viewOptions?.columnsRenderMode ?? {}),
+        ...cols,
+      };
+      if (onViewOptionsChanged) {
+        onViewOptionsChanged({
+          ...viewOptions,
+          columnsRenderMode: newRenderModes,
+        });
+      }
+    };
+
     const handlePinnedColumnsChanged = (pinnedColumns: string[]) => {
       if (onViewOptionsChanged) {
         onViewOptionsChanged({
@@ -109,8 +149,10 @@ const PrivateProfileResultView = (
       primaryKeys: [primaryKey],
       pinnedColumns,
       onPinnedColumnsChange: handlePinnedColumnsChanged,
+      columnsRenderMode,
+      onColumnsRenderModeChanged,
     });
-  }, [dataFrame, pinnedColumns, primaryKey, viewOptions, onViewOptionsChanged]);
+  }, [dataFrame, pinnedColumns, primaryKey, viewOptions, onViewOptionsChanged, columnsRenderMode]);
 
   if (gridData.columns.length === 0) {
     return <Center height="100%">No data</Center>;

@@ -1,11 +1,23 @@
-import { ColumnOrColumnGroup, RenderCellProps, textEditor } from "react-data-grid";
+import { ColumnOrColumnGroup, textEditor } from "react-data-grid";
 import _ from "lodash";
 import "../query/styles.css";
-import { Box, Flex, Icon } from "@chakra-ui/react";
-import { VscKey, VscPin, VscPinned } from "react-icons/vsc";
-import { DataFrame } from "@/lib/api/types";
+import {
+  Box,
+  Flex,
+  Icon,
+  IconButton,
+  Menu,
+  MenuButton,
+  MenuItem,
+  MenuList,
+  Portal,
+} from "@chakra-ui/react";
+import { VscKebabVertical, VscKey, VscPin, VscPinned } from "react-icons/vsc";
+import { ColumnType, ColumnRenderMode, DataFrame, RowData, RowObjectType } from "@/lib/api/types";
 import { mergeKeysWithStatus } from "@/lib/mergeKeys";
 import { defaultRenderCell, inlineRenderCell, QueryDataDiffGridOptions } from "../query/querydiff";
+import React from "react";
+import { columnPrecisionSelectOptions } from "./shared";
 
 function _getColumnMap(df: DataFrame) {
   const result: Record<
@@ -13,12 +25,14 @@ function _getColumnMap(df: DataFrame) {
     {
       index: number;
       status?: string;
+      colType: ColumnType;
     }
   > = {};
 
   df.columns.map((col, index) => {
     result[col.name] = {
       index,
+      colType: col.type,
     };
   });
 
@@ -63,12 +77,24 @@ function DataFrameColumnGroupHeader({
   columnStatus,
   onPrimaryKeyChange,
   onPinnedColumnsChange,
+  columnType,
+  onColumnsRenderModeChanged,
   ...options
-}: { name: string; columnStatus: string } & QueryDataDiffGridOptions) {
+}: {
+  name: string;
+  columnStatus: string;
+  columnType: ColumnType;
+  onColumnRenderModeChanged?: (colNam: string, renderAs: ColumnRenderMode) => void;
+} & QueryDataDiffGridOptions) {
   const primaryKeys = options.primaryKeys ?? [];
   const pinnedColumns = options.pinnedColumns ?? [];
   const isPK = primaryKeys.includes(name);
   const isPinned = pinnedColumns.includes(name);
+
+  let selectOptions: { value: string; onClick: () => void }[] = [];
+  if (onColumnsRenderModeChanged) {
+    selectOptions = columnPrecisionSelectOptions(name, onColumnsRenderModeChanged);
+  }
 
   if (name === "index") {
     return <></>;
@@ -105,6 +131,26 @@ function DataFrameColumnGroupHeader({
           onClick={isPinned ? handleUnpin : handlePin}
         />
       )}
+      {!isPK && columnType === "number" && (
+        <Menu>
+          <MenuButton
+            as={IconButton}
+            aria-label="Options"
+            icon={<VscKebabVertical />}
+            variant="unstyled"
+            className="!size-4 !min-w-4"
+          />
+          <Portal>
+            <MenuList>
+              {selectOptions.map((o) => (
+                <MenuItem key={o.value} onClick={o.onClick}>
+                  {o.value}
+                </MenuItem>
+              ))}
+            </MenuList>
+          </Portal>
+        </Menu>
+      )}
     </Flex>
   );
 }
@@ -117,13 +163,17 @@ export function toValueDiffGrid(
   const pinnedColumns = options?.pinnedColumns ?? [];
   const changedOnly = options?.changedOnly ?? false;
   const displayMode = options?.displayMode ?? "inline";
+  const columnsRenderMode = options?.columnsRenderMode ?? {};
 
-  const columns: ColumnOrColumnGroup<any, any>[] = [];
+  const columns: (ColumnOrColumnGroup<RowObjectType> & {
+    columnType?: ColumnType;
+    columnRenderMode?: ColumnRenderMode;
+  })[] = [];
   const columnMap = _getColumnMap(df);
 
   // merge row
-  const baseMap: Record<string, any> = {};
-  const currentMap: Record<string, any> = {};
+  const baseMap: Record<string, RowData | undefined> = {};
+  const currentMap: Record<string, RowData | undefined> = {};
   if (primaryKeys.length === 0) {
     throw new Error("Primary keys are required");
   }
@@ -155,7 +205,7 @@ export function toValueDiffGrid(
   let rows = Object.entries(mergedMap).map(([key, status]) => {
     const baseRow = baseMap[key];
     const currentRow = currentMap[key];
-    const row = JSON.parse(key);
+    const row = JSON.parse(key) as RowObjectType;
 
     if (baseRow) {
       df.columns.forEach((col, index) => {
@@ -213,7 +263,15 @@ export function toValueDiffGrid(
   }
 
   // merge columns
-  const toColumn = (name: string, columnStatus: string) => {
+  const toColumn = (
+    name: string,
+    columnStatus: string,
+    columnType: ColumnType,
+    columnRenderMode: ColumnRenderMode = "raw",
+  ): ColumnOrColumnGroup<RowObjectType> & {
+    columnType?: ColumnType;
+    columnRenderMode?: ColumnRenderMode;
+  } => {
     const headerCellClass =
       columnStatus === "added"
         ? "diff-header-added"
@@ -221,7 +279,7 @@ export function toValueDiffGrid(
           ? "diff-header-removed"
           : undefined;
 
-    const cellClassBase = (row: any) => {
+    const cellClassBase = (row: RowObjectType) => {
       const rowStatus = row.__status;
       if (rowStatus === "removed") {
         return "diff-cell-removed";
@@ -238,7 +296,7 @@ export function toValueDiffGrid(
       return undefined;
     };
 
-    const cellClassCurrent = (row: any) => {
+    const cellClassCurrent = (row: RowObjectType) => {
       const rowStatus = row.__status;
       if (rowStatus === "removed") {
         return "diff-cell-removed";
@@ -263,11 +321,14 @@ export function toValueDiffGrid(
             name={name}
             columnStatus={columnStatus}
             primaryKeys={primaryKeys}
-            {...options}></DataFrameColumnGroupHeader>
+            columnType={columnType}
+            {...options}
+          />
         ),
         key: name,
         renderCell: inlineRenderCell,
-        size: "auto",
+        columnType,
+        columnRenderMode,
       };
     } else {
       return {
@@ -277,7 +338,9 @@ export function toValueDiffGrid(
             name={name}
             columnStatus={columnStatus}
             primaryKeys={primaryKeys}
-            {...options}></DataFrameColumnGroupHeader>
+            columnType={columnType}
+            {...options}
+          />
         ),
         children: [
           {
@@ -287,7 +350,9 @@ export function toValueDiffGrid(
             headerCellClass,
             cellClass: cellClassBase,
             renderCell: defaultRenderCell,
-            size: "auto",
+            // @ts-expect-error Unable to patch children type, just pass it through
+            columnType,
+            columnRenderMode,
           },
           {
             key: `current__${name}`,
@@ -296,7 +361,9 @@ export function toValueDiffGrid(
             headerCellClass,
             cellClass: cellClassCurrent,
             renderCell: defaultRenderCell,
-            size: "auto",
+            // @ts-expect-error Unable to patch children type, just pass it through
+            columnType,
+            columnRenderMode,
           },
         ],
       };
@@ -306,6 +373,8 @@ export function toValueDiffGrid(
   // merges columns: primary keys
   primaryKeys.forEach((name) => {
     const columnStatus = columnMap[name].status ?? "";
+    const columnType = columnMap[name].colType;
+
     columns.push({
       key: name,
       name: (
@@ -313,28 +382,33 @@ export function toValueDiffGrid(
           name={name}
           columnStatus={columnStatus}
           primaryKeys={primaryKeys}
-          {...options}></DataFrameColumnGroupHeader>
+          columnType={"unknown"}
+          {...options}
+        />
       ),
       frozen: true,
-      cellClass: (row: any) => {
+      cellClass: (row: RowObjectType) => {
         if (row.__status) {
           return `diff-header-${row.__status}`;
         }
         return undefined;
       },
       renderCell: defaultRenderCell,
+      columnType,
+      columnRenderMode: columnsRenderMode[name],
     });
   });
 
   // merges columns: pinned columns
   pinnedColumns.forEach((name) => {
     const columnStatus = columnMap[name].status ?? "";
+    const columnType = columnMap[name].colType;
 
     if (primaryKeys.includes(name)) {
       return;
     }
 
-    columns.push(toColumn(name, columnStatus));
+    columns.push(toColumn(name, columnStatus, columnType, columnsRenderMode[name]));
   });
 
   // merges columns: other columns
@@ -358,7 +432,7 @@ export function toValueDiffGrid(
         return;
       }
     }
-    columns.push(toColumn(name, columnStatus));
+    columns.push(toColumn(name, columnStatus, mergedColumn.colType, columnsRenderMode[name]));
   });
 
   return {

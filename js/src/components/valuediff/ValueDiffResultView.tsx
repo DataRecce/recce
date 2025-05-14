@@ -21,6 +21,7 @@ import { RunResultViewProps } from "../run/types";
 import { VscKebabVertical, VscKey } from "react-icons/vsc";
 import { RecceActionOptions, useRecceActionContext } from "@/lib/hooks/RecceActionContext";
 import { useRecceInstanceContext } from "@/lib/hooks/RecceInstanceContext";
+import { RowObjectType } from "@/lib/api/types";
 
 type ValueDiffResultViewProp = RunResultViewProps<ValueDiffParams, ValueDiffResult>;
 
@@ -91,13 +92,13 @@ function ColumnNameCell({ params, column }: { params: ValueDiffParams; column: s
 function _ValueDiffResultView({ run }: ValueDiffResultViewProp, ref: any) {
   const result = run.result as ValueDiffResult;
   const params = run.params as ValueDiffParams;
-  const cellClass = (row: any) => {
+  const cellClass = (row: RowObjectType) => {
     const value = row[2] as unknown as number | undefined;
     return value != null && value < 1 ? "diff-cell-modified" : "";
   };
   const primaryKeys = Array.isArray(params.primary_key) ? params.primary_key : [params.primary_key];
 
-  const columns: ColumnOrColumnGroup<any, any>[] = [
+  const columns: ColumnOrColumnGroup<RowObjectType>[] = [
     {
       key: "__is_pk__",
       name: "",
@@ -105,7 +106,9 @@ function _ValueDiffResultView({ run }: ValueDiffResultViewProp, ref: any) {
       maxWidth: 30,
       renderCell: ({ row }) => {
         return (
-          <Center height="100%">{primaryKeys.includes(row[0]) && <Icon as={VscKey}></Icon>}</Center>
+          <Center height="100%">
+            {primaryKeys.includes(String(row[0])) && <Icon as={VscKey}></Icon>}
+          </Center>
         );
       },
     },
@@ -114,7 +117,7 @@ function _ValueDiffResultView({ run }: ValueDiffResultViewProp, ref: any) {
       name: "Column",
       resizable: true,
       renderCell: ({ row, column }) => {
-        return <ColumnNameCell column={row[column.key]} params={params} />;
+        return <ColumnNameCell column={String(row[column.key])} params={params} />;
       },
       cellClass: "cell-show-context-menu",
     },

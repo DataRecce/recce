@@ -1,15 +1,30 @@
 import "react-data-grid/lib/styles.css";
-import { Column } from "react-data-grid";
+import { Column, ColumnOrColumnGroup } from "react-data-grid";
 import { QueryParams, QueryResult, QueryViewOptions } from "@/lib/api/adhocQuery";
-import { Box, Button, Center, Flex, forwardRef, Icon, Spacer } from "@chakra-ui/react";
-import { useMemo } from "react";
-import { DataFrame, Run } from "@/lib/api/types";
+import {
+  Box,
+  Button,
+  Center,
+  Flex,
+  forwardRef,
+  Icon,
+  IconButton,
+  Menu,
+  MenuButton,
+  MenuItem,
+  MenuList,
+  Portal,
+  Spacer,
+} from "@chakra-ui/react";
+import React, { useMemo } from "react";
+import { ColumnRenderMode, ColumnType, DataFrame, RowObjectType, Run } from "@/lib/api/types";
 import { EmptyRowsRenderer, ScreenshotDataGrid } from "../data-grid/ScreenshotDataGrid";
 import { DataFrameColumnGroupHeader, defaultRenderCell } from "./querydiff";
-import { VscPin, VscPinned } from "react-icons/vsc";
+import { VscKebabVertical, VscPin, VscPinned } from "react-icons/vsc";
 import { RunResultViewProps } from "../run/types";
 import { WarningIcon } from "@chakra-ui/icons";
 import _ from "lodash";
+import { columnPrecisionSelectOptions } from "@/components/valuediff/shared";
 
 interface QueryResultViewProp
   extends RunResultViewProps<QueryParams, QueryResult, QueryViewOptions> {
@@ -21,13 +36,26 @@ interface QueryDataGridOptions {
   onPrimaryKeyChange?: (primaryKeys: string[]) => void;
   pinnedColumns?: string[];
   onPinnedColumnsChange?: (pinnedColumns: string[]) => void;
+  columnsRenderMode?: Record<string, ColumnRenderMode>;
+  onColumnsRenderModeChanged?: (col: Record<string, ColumnRenderMode>) => void;
 }
 
 function DataFrameColumnHeader({
   name,
   pinnedColumns = [],
   onPinnedColumnsChange = () => {},
-}: { name: string } & QueryDataGridOptions) {
+  columnType,
+  onColumnsRenderModeChanged,
+}: {
+  name: string;
+  columnType: ColumnType;
+  onColumnRenderModeChanged?: (colNam: string, renderAs: ColumnRenderMode) => void;
+} & QueryDataGridOptions) {
+  let selectOptions: { value: string; onClick: () => void }[] = [];
+  if (onColumnsRenderModeChanged) {
+    selectOptions = columnPrecisionSelectOptions(name, onColumnsRenderModeChanged);
+  }
+
   const isPinned = pinnedColumns.includes(name);
 
   const handleUnpin = () => {
@@ -53,32 +81,93 @@ function DataFrameColumnHeader({
         as={isPinned ? VscPinned : VscPin}
         onClick={isPinned ? handleUnpin : handlePin}
       />
+      {columnType === "number" && (
+        <Menu>
+          <MenuButton
+            as={IconButton}
+            aria-label="Options"
+            icon={<VscKebabVertical />}
+            variant="unstyled"
+            className="!size-4 !min-w-4"
+          />
+          <Portal>
+            <MenuList>
+              {selectOptions.map((o) => (
+                <MenuItem key={o.value} onClick={o.onClick}>
+                  {o.value}
+                </MenuItem>
+              ))}
+            </MenuList>
+          </Portal>
+        </Menu>
+      )}
     </Flex>
   );
 }
 
 export function toDataGrid(result: DataFrame, options: QueryDataGridOptions) {
-  const columns: Column<any, any>[] = [];
+  const columns: (ColumnOrColumnGroup<RowObjectType> & {
+    columnType?: ColumnType;
+    columnRenderMode?: ColumnRenderMode;
+  })[] = [];
   const primaryKeys = options.primaryKeys ?? [];
   const pinnedColumns = options.pinnedColumns ?? [];
-  const toColumn = (key: number, name: string) => ({
+  const columnsRenderMode = options.columnsRenderMode ?? {};
+
+  const columnMap: Record<string, { colType: ColumnType }> = {};
+  result.columns.forEach((col) => {
+    columnMap[col.name] = {
+      colType: col.type,
+    };
+  });
+
+  const toColumn = (
+    key: number,
+    name: string,
+    columnType: ColumnType,
+    columnRenderMode: ColumnRenderMode = "raw",
+  ): ColumnOrColumnGroup<RowObjectType> & {
+    columnType?: ColumnType;
+    columnRenderMode?: ColumnRenderMode;
+  } => ({
     key: String(key),
-    name: <DataFrameColumnHeader name={name} {...options} />,
+    name: <DataFrameColumnHeader name={name} {...options} columnType={columnType} />,
     width: "auto",
     renderCell: defaultRenderCell,
+    columnType,
+    columnRenderMode,
   });
-  const toColumnGroup = (key: number, name: string) => ({
+  const toColumnGroup = (
+    key: number,
+    name: string,
+    columnType: ColumnType,
+    columnRenderMode: ColumnRenderMode = "raw",
+  ): ColumnOrColumnGroup<RowObjectType> & {
+    columnType?: ColumnType;
+    columnRenderMode?: ColumnRenderMode;
+  } => ({
     key: String(key),
-    name: <DataFrameColumnGroupHeader name={name} columnStatus="" {...options} />,
+    name: (
+      <DataFrameColumnGroupHeader
+        name={name}
+        columnStatus=""
+        columnType={columnType}
+        {...options}
+      />
+    ),
     width: "auto",
     frozen: true,
     renderCell: defaultRenderCell,
+    columnType,
+    columnRenderMode,
   });
 
   if (primaryKeys.length > 0) {
     primaryKeys.forEach((name) => {
       const i = _.findIndex(result.columns, (col) => col.name === name);
-      columns.push(toColumnGroup(i, name));
+      const columnType = columnMap[name].colType;
+
+      columns.push(toColumnGroup(i, name, columnType, columnsRenderMode[name]));
     });
   } else {
     columns.push({
@@ -90,24 +179,26 @@ export function toDataGrid(result: DataFrame, options: QueryDataGridOptions) {
   }
 
   pinnedColumns.forEach((name) => {
+    const columnType = columnMap[name].colType;
     const i = _.findIndex(result.columns, (col) => col.name === name);
     if (i < 0) {
       return;
     }
 
-    columns.push(toColumn(i, name));
+    columns.push(toColumn(i, name, columnType, columnsRenderMode[name]));
   });
 
-  result.columns.forEach((col, index) => {
-    if (primaryKeys.includes(col.name)) {
+  result.columns.forEach(({ name }, index) => {
+    if (primaryKeys.includes(name)) {
       return;
     }
 
-    if (pinnedColumns.includes(col.name)) {
+    if (pinnedColumns.includes(name)) {
       return;
     }
+    const columnType = columnMap[name].colType;
 
-    columns.push(toColumn(index, col.name));
+    columns.push(toColumn(index, name, columnType, columnsRenderMode[name]));
   });
 
   result.data.forEach((row, index) => {
@@ -123,9 +214,23 @@ const PrivateQueryResultView = (
   ref: any,
 ) => {
   const pinnedColumns = useMemo(() => viewOptions?.pinned_columns ?? [], [viewOptions]);
+  const columnsRenderMode = useMemo(() => viewOptions?.columnsRenderMode ?? {}, [viewOptions]);
 
   const dataframe = run.result;
   const gridData = useMemo(() => {
+    const onColumnsRenderModeChanged = (cols: Record<string, ColumnRenderMode>) => {
+      const newRenderModes = {
+        ...(viewOptions?.columnsRenderMode ?? {}),
+        ...cols,
+      };
+      if (onViewOptionsChanged) {
+        onViewOptionsChanged({
+          ...viewOptions,
+          columnsRenderMode: newRenderModes,
+        });
+      }
+    };
+
     if (!dataframe) {
       return { rows: [], columns: [] };
     }
@@ -142,8 +247,10 @@ const PrivateQueryResultView = (
     return toDataGrid(dataframe, {
       pinnedColumns,
       onPinnedColumnsChange: handlePinnedColumnsChanged,
+      columnsRenderMode,
+      onColumnsRenderModeChanged,
     });
-  }, [dataframe, pinnedColumns, viewOptions, onViewOptionsChanged]);
+  }, [dataframe, pinnedColumns, viewOptions, onViewOptionsChanged, columnsRenderMode]);
 
   if (gridData.columns.length === 0) {
     return <Center height="100%">No data</Center>;

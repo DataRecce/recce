@@ -16,6 +16,10 @@ indent_style = space
 indent_size = 2
 ij_javascript_force_semicolon_style = true
 ij_typescript_force_semicolon_style = true
+ij_typescript_use_double_quotes = true
+ij_javascript_use_double_quotes = true
+ij_javascript_force_quote_style = true
+ij_typescript_force_quote_style = true
 
 [*.{md,Rmd,rst}]
 trim_trailing_whitespace = false

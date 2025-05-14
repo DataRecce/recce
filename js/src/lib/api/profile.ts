@@ -1,5 +1,5 @@
 import { SubmitOptions, submitRun } from "./runs";
-import { DataFrame } from "./types";
+import { ColumnRenderMode, DataFrame } from "./types";
 
 export interface ProfileDiffParams {
   model: string;
@@ -14,6 +14,7 @@ export interface ProfileDiffResult {
 export interface ProfileDiffViewOptions {
   pinned_columns?: string[];
   display_mode?: "side_by_side" | "inline";
+  columnsRenderMode?: Record<string, ColumnRenderMode>;
 }
 
 export async function submitProfileDiff(params: ProfileDiffParams, options?: SubmitOptions) {

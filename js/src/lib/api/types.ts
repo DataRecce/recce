@@ -1,12 +1,31 @@
 /* eslint-disable @typescript-eslint/no-redundant-type-constituents */
 // TODO the RunType and Run["status"] types must be a finite list of enumerated values *without* a union with string.
 
+export type RowDataTypes = number | string | boolean | null | undefined;
+export type RowData = RowDataTypes[];
+
+export type RowObjectType = Record<string, RowDataTypes> & {
+  __status: "added" | "removed" | "modified" | undefined;
+};
+
+export type ColumnType =
+  | "number"
+  | "integer"
+  | "text"
+  | "boolean"
+  | "date"
+  | "datetime"
+  | "timedelta"
+  | "unknown";
+
+export type ColumnRenderMode = "raw" | "percent" | 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9;
+
 export interface DataFrame {
   columns: {
     name: string;
-    type: "number" | "integer" | "text" | "boolean" | "date" | "datetime" | "timedelta" | "unknown";
+    type: ColumnType;
   }[];
-  data: (number | string | null)[][];
+  data: RowData[];
   limit?: number;
   more?: boolean;
 }
