@@ -216,7 +216,10 @@ function columnRenderedValue(
   const locale = "en-US";
   let renderedValue: string | undefined;
   if (typeof renderAs === "number") {
-    renderedValue = formatNumber(value, locale, { maximumFractionDigits: renderAs });
+    renderedValue = formatNumber(value, locale, {
+      maximumFractionDigits: renderAs,
+      minimumFractionDigits: renderAs,
+    });
   } else if (renderAs === "percent") {
     renderedValue = formatNumber(value, locale, { style: "percent", maximumFractionDigits: 2 });
   } else {
