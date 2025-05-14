@@ -83,7 +83,8 @@ jobs:
           echo "$PYPIRC" > $HOME/.pypirc
 
           # change package name to recce-nightly
-          sed -i.bak "s/name='recce'/name='recce-nightly'/" setup.py
+          sed -i.bak 's/name="recce"/name="recce-nightly"/' setup.py
+          
 
           # build and upload to pypi
           pip install build twine
