@@ -583,3 +583,14 @@ class ColumnLevelLineageTest(unittest.TestCase):
         assert result["a"].depends_on[0].column == "a"
         assert result["a"].depends_on[1].node == "table2"
         assert result["a"].depends_on[1].column == "a"
+
+    def test_where(self):
+        from recce.util.cll import cll as cll_new
+
+        sql = """
+        select a, b
+        from table1
+        where a > 0
+        """
+        result = cll_new(sql)
+        result.depends_on[0] == "table1"

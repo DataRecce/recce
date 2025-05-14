@@ -210,6 +210,7 @@ def cll(sql, schema=None, dialect=None) -> CllResult:
 
     result = CllResult(depends_on=[], columns={})
     global_lineage = {}
+    depends_on: List[ColumnLevelDependencyColumn] = []
     for scope in traverse_scope(expression):
         scope_lineage = {}
 
@@ -310,9 +311,64 @@ def cll(sql, schema=None, dialect=None) -> CllResult:
                 scope_lineage[select.alias_or_name] = ColumnLevelDependencyColumn(
                     type=type, depends_on=dedup_col_depends_on
                 )
+                # joins clause: Reference the source columns
+
+            import sqlglot.expressions as exp
+
+            new_select = scope.expression
+            # joins clause: Reference the source columns
+            if new_select.args.get("joins"):
+                joins = new_select.args.get("joins")
+                for join in joins:
+                    if isinstance(join, exp.Join):
+                        for ref_column in join.find_all(exp.Column):
+                            # if source_column_change_status(ref_column) is not None:
+                            #     change_category = "breaking"
+                            pass
+
+            # where clauses: Reference the source columns
+            if new_select.args.get("where"):
+                where = new_select.args.get("where")
+                if isinstance(where, exp.Where):
+                    for ref_column in where.find_all(exp.Column):
+                        # if source_column_change_status(ref_column) is not None:
+                        #     change_category = "breaking"
+                        depends_on.append(ColumnLevelDependsOn(ref_column.table, ref_column.name))
+
+            # group by clause: Reference the source columns, column index
+            if new_select.args.get("group"):
+                group = new_select.args.get("group")
+                if isinstance(group, exp.Group):
+                    for ref_column in group.find_all(exp.Column):
+                        # if source_column_change_status(ref_column) is not None:
+                        #     change_category = "breaking"
+                        pass
+
+            # having clause: Reference the source columns, selected columns
+            if new_select.args.get("having"):
+                having = new_select.args.get("having")
+                if isinstance(having, exp.Having):
+                    for ref_column in having.find_all(exp.Column):
+                        # if source_column_change_status(ref_column) is not None:
+                        #     change_category = "breaking"
+                        # elif selected_column_change_status(ref_column) is not None:
+                        #     change_category = "breaking"
+                        pass
+
+            # order by clause: Reference the source columns, selected columns, column index
+            if new_select.args.get("order"):
+                order = new_select.args.get("order")
+                if isinstance(order, exp.Order):
+                    for ref_column in order.find_all(exp.Column):
+                        # if source_column_change_status(ref_column) is not None:
+                        #     change_category = "breaking"
+                        # elif selected_column_change_status(ref_column) is not None:
+                        #     change_category = "breaking"
+                        pass
 
         global_lineage[scope] = scope_lineage
         if not scope.is_cte:
             result.columns = scope_lineage
+            result.depends_on = depends_on
 
     return result
