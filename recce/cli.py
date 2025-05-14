@@ -1020,8 +1020,7 @@ def share(state_file, **kwargs):
 @click.option("--host", default="localhost", show_default=True, help="The host to bind to.")
 @click.option("--port", default=8000, show_default=True, help="The port to bind to.", type=int)
 @click.option("--lifetime", default=0, show_default=True, help="The lifetime of the server in seconds.", type=int)
-@click.option("--share-url", help="The share URL triggers this instance.", type=click.STRING, hidden=True,
-              envvar="RECCE_SHARE_URL")
+@click.option("--share-url", help="The share URL triggers this instance.", type=click.STRING, envvar="RECCE_SHARE_URL")
 def read_only(host, port, lifetime, state_file=None, **kwargs):
     from rich.console import Console
 
