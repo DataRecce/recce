@@ -48,6 +48,7 @@ import { TbCloudUpload } from "react-icons/tb";
 import { useRecceShareStateContext } from "@/lib/hooks/RecceShareStateContext";
 import { PUBLIC_CLOUD_WEB_URL } from "@/lib/const";
 import { trackShareState, trackCopyToClipboard } from "@/lib/api/track";
+import { UnAuthShareModalContent } from "@/components/app/StateSharing";
 
 interface RunPageProps {
   onClose?: () => void;
@@ -124,59 +125,56 @@ const RunResultShareMenu = ({
 
   return (
     <Menu>
-      <MenuButton as={Button} size="sm" rightIcon={<ChevronDownIcon />} variant="outline">
-        Share
-      </MenuButton>
-      <MenuList minW="0">
-        <MenuItem
-          fontSize="14px"
-          icon={<CopyIcon />}
-          onClick={onCopyToClipboard}
-          onMouseEnter={onMouseEnter}
-          onMouseLeave={onMouseLeave}
-          isDisabled={disableCopyToClipboard}>
-          Copy to Clipboard
-        </MenuItem>
-        <MenuDivider />
-        {authed ? (
-          <MenuItem
-            fontSize="14px"
-            icon={<TbCloudUpload />}
-            onClick={async () => {
-              await handleShareClick();
-              trackShareState({ name: "create" });
-            }}>
-            Share to Cloud
-          </MenuItem>
-        ) : (
-          <Popover trigger="hover" placement="bottom-start" closeOnBlur={false}>
-            <PopoverTrigger>
+      {({ onClose: onMenuClose }) => (
+        <>
+          <MenuButton as={Button} size="sm" rightIcon={<ChevronDownIcon />} variant="outline">
+            Share
+          </MenuButton>
+          <MenuList minW="0">
+            <MenuItem
+              fontSize="14px"
+              icon={<CopyIcon />}
+              onClick={onCopyToClipboard}
+              onMouseEnter={onMouseEnter}
+              onMouseLeave={onMouseLeave}
+              isDisabled={disableCopyToClipboard}>
+              Copy to Clipboard
+            </MenuItem>
+            <MenuDivider />
+            {authed ? (
               <MenuItem
                 fontSize="14px"
-                icon={<ExternalLinkIcon />}
-                onClick={() => {
-                  window.open(`${PUBLIC_CLOUD_WEB_URL}/settings#tokens`, "_blank");
+                icon={<TbCloudUpload />}
+                onClick={async () => {
+                  await handleShareClick();
+                  trackShareState({ name: "create" });
                 }}>
-                Enable sharing
+                Share to Cloud
               </MenuItem>
-            </PopoverTrigger>
-            <Portal>
-              <PopoverContent bg="black" color="white" sx={{ width: "max-content" }}>
-                <PopoverBody fontSize="sm">
-                  API token required.{" "}
-                  <Link
-                    href="https://docs.datarecce.io/recce-cloud/share-recce-session-securely"
-                    target="_blank"
-                    textDecoration="underline">
-                    Learn more
-                  </Link>
-                  .
-                </PopoverBody>
-              </PopoverContent>
-            </Portal>
-          </Popover>
-        )}
-      </MenuList>
+            ) : (
+              <Popover placement="left" closeOnBlur={false}>
+                {({ onClose }) => (
+                  <>
+                    <PopoverTrigger>
+                      <MenuItem fontSize="14px" icon={<TbCloudUpload />} closeOnSelect={false}>
+                        Share
+                      </MenuItem>
+                    </PopoverTrigger>
+                    <Portal>
+                      <UnAuthShareModalContent
+                        handleClose={() => {
+                          onMenuClose();
+                          onClose();
+                        }}
+                      />
+                    </Portal>
+                  </>
+                )}
+              </Popover>
+            )}
+          </MenuList>
+        </>
+      )}
     </Menu>
   );
 };
@@ -197,8 +195,8 @@ export const PrivateLoadableRunView = ({
   const queryClient = useQueryClient();
   const [, setLocation] = useLocation();
   const [tabIndex, setTabIndex] = useState(0);
-  const disableAddToChecklist = !!isSingleEnvironment;
-  const showSingleEnvironmentSetupNotification = !!isSingleEnvironment;
+  const disableAddToChecklist = isSingleEnvironment;
+  const showSingleEnvironmentSetupNotification = isSingleEnvironment;
 
   const RunResultView = run?.type ? findByRunType(run.type)?.RunResultView : undefined;
 
