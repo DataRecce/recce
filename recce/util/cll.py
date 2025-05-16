@@ -118,6 +118,8 @@ def _cll_column(proj, table_alias_map) -> ColumnLevelDependencyColumn:
         else:
             type = "derived"
 
+    depends_on = _dedeup_depends_on(depends_on)
+
     if len(depends_on) == 0:
         type = "source"
 
@@ -206,7 +208,8 @@ def _cll_select_scope(scope: Scope, scope_cll_map: dict[Scope, CllResult]) -> Cl
                 flatten_col_depends_on.append(col_dep)
 
         # deduplicate
-        dedup_col_depends_on = _dedeup_depends_on(flatten_col_depends_on)
+        # dedup_col_depends_on = _dedeup_depends_on(flatten_col_depends_on)
+        dedup_col_depends_on = flatten_col_depends_on
 
         # transformation type
         type = column_cll.type
