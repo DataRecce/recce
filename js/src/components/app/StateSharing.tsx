@@ -21,14 +21,58 @@ import { useClipBoardToast } from "@/lib/hooks/useClipBoardToast";
 import { PUBLIC_CLOUD_WEB_URL } from "@/lib/const";
 import { TbCloudUpload, TbExternalLink } from "react-icons/tb";
 import { trackShareState } from "@/lib/api/track";
-import { useRef } from "react";
+import { ReactNode } from "react";
+
+interface ShareModalProps {
+  handleClose: () => void;
+}
+
+export function UnAuthShareModalContent({ handleClose }: ShareModalProps): ReactNode {
+  return (
+    <PopoverContent bg="gray.200" color="black" sx={{ width: "max-content" }}>
+      <PopoverHeader fontWeight="semibold">Enable sharing</PopoverHeader>
+      <PopoverCloseButton />
+      <PopoverBody fontSize="sm">
+        API token required.{" "}
+        <Link
+          href="https://docs.datarecce.io/recce-cloud/share-recce-session-securely"
+          target="_blank"
+          textDecoration="underline">
+          Learn more
+        </Link>
+        .
+      </PopoverBody>
+      <PopoverFooter border="0" display="flex" alignItems="center" justifyContent="flex-end" pb={4}>
+        <ButtonGroup size="sm">
+          <Link
+            onClick={() => {
+              trackShareState({ name: "enable" });
+              handleClose();
+            }}
+            href={`${PUBLIC_CLOUD_WEB_URL}/signin?callbackUrl=/relaunch&utm_source=recce_oss&utm_content=enable_sharing_button#tokens`}
+            target="_blank">
+            <Button colorScheme="blue" rightIcon={<TbExternalLink />}>
+              Enable
+            </Button>
+          </Link>
+          <Button
+            colorScheme="gray"
+            onClick={() => {
+              handleClose();
+            }}>
+            Cancel
+          </Button>
+        </ButtonGroup>
+      </PopoverFooter>
+    </PopoverContent>
+  );
+}
 
 export function TopLevelShare() {
   const { successToast, failToast } = useClipBoardToast();
   const { onCopy } = useClipboard("");
   const { authed } = useRecceInstanceContext();
   const { shareUrl, isLoading, error, handleShareClick } = useRecceShareStateContext();
-  const initialFocusRef = useRef<HTMLAnchorElement>(null);
 
   const handleCopy = () => {
     try {
@@ -42,7 +86,7 @@ export function TopLevelShare() {
   if (!authed) {
     return (
       <Flex flex="1" alignItems="center">
-        <Popover placement="bottom-start" initialFocusRef={initialFocusRef}>
+        <Popover placement="bottom-start">
           {({ onClose }) => (
             <>
               <PopoverTrigger>
@@ -50,48 +94,7 @@ export function TopLevelShare() {
                   Share
                 </Button>
               </PopoverTrigger>
-              <PopoverContent bg="gray.200" sx={{ width: "max-content" }}>
-                <PopoverHeader fontWeight="semibold">Enable sharing</PopoverHeader>
-                <PopoverCloseButton />
-                <PopoverBody fontSize="sm">
-                  API token required.{" "}
-                  <Link
-                    href="https://docs.datarecce.io/recce-cloud/share-recce-session-securely"
-                    target="_blank"
-                    textDecoration="underline">
-                    Learn more
-                  </Link>
-                  .
-                </PopoverBody>
-                <PopoverFooter
-                  border="0"
-                  display="flex"
-                  alignItems="center"
-                  justifyContent="flex-end"
-                  pb={4}>
-                  <ButtonGroup size="sm">
-                    <Link
-                      ref={initialFocusRef}
-                      onClick={() => {
-                        trackShareState({ name: "enable" });
-                        onClose();
-                      }}
-                      href={`${PUBLIC_CLOUD_WEB_URL}/signin?callbackUrl=/relaunch&utm_source=recce_oss&utm_content=enable_sharing_button#tokens`}
-                      target="_blank">
-                      <Button colorScheme="blue" rightIcon={<TbExternalLink />}>
-                        Enable
-                      </Button>
-                    </Link>
-                    <Button
-                      colorScheme="gray"
-                      onClick={() => {
-                        onClose();
-                      }}>
-                      Cancel
-                    </Button>
-                  </ButtonGroup>
-                </PopoverFooter>
-              </PopoverContent>
+              <UnAuthShareModalContent handleClose={onClose} />
             </>
           )}
         </Popover>
