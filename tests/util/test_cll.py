@@ -617,3 +617,31 @@ class ColumnLevelLineageTest(unittest.TestCase):
         result = cll(sql)
         assert result.depends_on[0].node == "table1"
         assert result.depends_on[0].column == "a"
+
+    def test_group_by(self):
+        sql = """
+        select a, sum(b) as b
+        from table1
+        group by a
+        """
+        result = cll(sql)
+        assert_model(result, [("table1", "a")])
+
+        sql = """
+        select a, sum(b) as b
+        from table1
+        group by 1
+        """
+        result = cll(sql)
+        assert_model(result, [("table1", "a")])
+
+        sql = """
+        with CTE as (
+            select a, sum(b) as b
+            from table1
+            group by a
+        )
+        select * from CTE
+        """
+        result = cll(sql)
+        assert_model(result, [("table1", "a")])
