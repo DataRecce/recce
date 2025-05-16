@@ -1,6 +1,6 @@
 import time
 from dataclasses import dataclass
-from typing import Dict, List, Literal
+from typing import Dict, List, Literal, Optional
 
 import sqlglot.expressions as exp
 from sqlglot import Dialect, parse_one
@@ -173,76 +173,82 @@ def _cll_set_scope(scope: Scope, scope_cll_map: dict[Scope, CllResult]) -> CllRe
 
 
 def _cll_select_scope(scope: Scope, scope_cll_map: dict[Scope, CllResult]) -> CllResult:
-    scope_lineage = {}
-    depends_on = []
+    assert scope.expression.key == "select"
+
+    column_dep_map = {}
+    model_depends_on = []
     table_alias_map = {t.alias_or_name: t.name for t in scope.tables}
+    select = scope.expression
+
+    def source_column_dependency(ref_column: exp.Column) -> Optional[ColumnLevelDependencyColumn]:
+        column_name = ref_column.name
+        source = scope.sources.get(ref_column.table, None)  # type: exp.Table | Scope
+        if isinstance(source, Scope):
+            ref_cll = scope_cll_map.get(source)
+            if ref_cll is None:
+                return None
+            return ref_cll.columns.get(column_name)
+        elif isinstance(source, exp.Table):
+            alias = ref_column.table
+            if alias is None:
+                table_name = next(iter(table_alias_map.values()))
+            else:
+                table_name = table_alias_map.get(alias, alias)
+            return ColumnLevelDependencyColumn(
+                type="passthrough", depends_on=[ColumnLevelDependsOn(table_name, column_name)]
+            )
+        else:
+            return None
 
     for proj in scope.expression.selects:
-        column_cll = _cll_column(proj, table_alias_map)
+        type = "source"
+        column_depends_on: List[ColumnLevelDependsOn] = []
 
-        cte_type = None
-        flatten_col_depends_on = []
-        for col_dep in column_cll.depends_on:
-            col_dep_node = col_dep.node
-            col_dep_column = col_dep.column
-            # cte
-            cte_scope = scope.cte_sources.get(col_dep_node)
-            # inline derived table
-            source_scope = None
-            if isinstance(scope.sources.get(col_dep_node), Scope):
-                source_scope = scope.sources.get(col_dep_node)
+        # instance of Column
+        if isinstance(proj, exp.Alias):
+            # 'select a as b'
+            # 'select CURRENT_TIMESTAMP() as create_at'
+            root = proj.this
 
-            if cte_scope is not None:
-                cte_cll = scope_cll_map[cte_scope]
-                if cte_cll is None or cte_cll.columns.get(col_dep_column) is None:
-                    # In dbt-duckdb, the external source is compiled as `read_csv('..') rather than a table.
-                    continue
-                cte_type = cte_cll.columns.get(col_dep_column).type
-                flatten_col_depends_on.extend(cte_cll.columns.get(col_dep_column).depends_on)
-            elif source_scope is not None:
-                source_cll = scope_cll_map[source_scope]
-                if source_cll is None or source_cll.columns.get(col_dep_column) is None:
-                    continue
-                flatten_col_depends_on.extend(source_cll.columns.get(col_dep_column).depends_on)
-            else:
-                flatten_col_depends_on.append(col_dep)
-
-        # deduplicate
-        # dedup_col_depends_on = _dedeup_depends_on(flatten_col_depends_on)
-        dedup_col_depends_on = flatten_col_depends_on
-
-        # transformation type
-        type = column_cll.type
-        if type == "derived":
-            if len(dedup_col_depends_on) == 0:
-                type = "source"
-            else:
-                # keep current scope type
-                pass
-        elif cte_type is not None:
-            if len(dedup_col_depends_on) > 1:
-                type = "derived"
-            elif len(dedup_col_depends_on) == 0:
-                type = "source"
-            else:
-                if isinstance(proj, exp.Column):
-                    type = cte_type
-                elif isinstance(proj, exp.Alias):
-                    alias = proj
-                    if column_cll.depends_on[0].column == alias.alias_or_name:
-                        type = cte_type
-                    else:
-                        type = "renamed" if cte_type == "passthrough" else cte_type
+        for expression in root.walk(bfs=False):
+            if isinstance(expression, exp.Column):
+                ref_column_dependency = source_column_dependency(expression)
+                if ref_column_dependency is not None:
+                    column_depends_on.extend(ref_column_dependency.depends_on)
+                    if ref_column_dependency.type == "derived":
+                        type = "derived"
+                    elif ref_column_dependency.type == "renamed":
+                        if type == "source" or type == "passthrough":
+                            type = "renamed"
+                    elif ref_column_dependency.type == "passthrough":
+                        if type == "source":
+                            type = "passthrough"
                 else:
-                    type = "source"
+                    column_depends_on.append(ColumnLevelDependsOn(expression.table, expression.name))
+                    if type == "source":
+                        type = "passthrough"
 
-        scope_lineage[proj.alias_or_name] = ColumnLevelDependencyColumn(type=type, depends_on=dedup_col_depends_on)
+            elif isinstance(expression, (exp.Paren, exp.Identifier)):
+                pass
+            else:
+                type = "derived"
+
+        column_depends_on = _dedeup_depends_on(column_depends_on)
+
+        if len(column_depends_on) == 0 and type != "source":
+            type = "source"
+
+        if isinstance(proj, exp.Alias):
+            alias = proj
+            if type == "passthrough" and column_depends_on[0].column != alias.alias_or_name:
+                type = "renamed"
+
+        column_dep_map[proj.alias_or_name] = ColumnLevelDependencyColumn(type=type, depends_on=column_depends_on)
         # joins clause: Reference the source columns
 
-    new_select = scope.expression
     # joins clause: Reference the source columns
-    if new_select.args.get("joins"):
-        joins = new_select.args.get("joins")
+    if select.args.get("joins"):
+        joins = select.args.get("joins")
         for join in joins:
             if isinstance(join, exp.Join):
                 for ref_column in join.find_all(exp.Column):
@@ -251,17 +257,17 @@ def _cll_select_scope(scope: Scope, scope_cll_map: dict[Scope, CllResult]) -> Cl
                     pass
 
     # where clauses: Reference the source columns
-    if new_select.args.get("where"):
-        where = new_select.args.get("where")
+    if select.args.get("where"):
+        where = select.args.get("where")
         if isinstance(where, exp.Where):
             for ref_column in where.find_all(exp.Column):
                 # if source_column_change_status(ref_column) is not None:
                 #     change_category = "breaking"
-                depends_on.append(ColumnLevelDependsOn(ref_column.table, ref_column.name))
+                model_depends_on.append(ColumnLevelDependsOn(ref_column.table, ref_column.name))
 
     # group by clause: Reference the source columns, column index
-    if new_select.args.get("group"):
-        group = new_select.args.get("group")
+    if select.args.get("group"):
+        group = select.args.get("group")
         if isinstance(group, exp.Group):
             for ref_column in group.find_all(exp.Column):
                 # if source_column_change_status(ref_column) is not None:
@@ -269,8 +275,8 @@ def _cll_select_scope(scope: Scope, scope_cll_map: dict[Scope, CllResult]) -> Cl
                 pass
 
     # having clause: Reference the source columns, selected columns
-    if new_select.args.get("having"):
-        having = new_select.args.get("having")
+    if select.args.get("having"):
+        having = select.args.get("having")
         if isinstance(having, exp.Having):
             for ref_column in having.find_all(exp.Column):
                 # if source_column_change_status(ref_column) is not None:
@@ -280,8 +286,8 @@ def _cll_select_scope(scope: Scope, scope_cll_map: dict[Scope, CllResult]) -> Cl
                 pass
 
     # order by clause: Reference the source columns, selected columns, column index
-    if new_select.args.get("order"):
-        order = new_select.args.get("order")
+    if select.args.get("order"):
+        order = select.args.get("order")
         if isinstance(order, exp.Order):
             for ref_column in order.find_all(exp.Column):
                 # if source_column_change_status(ref_column) is not None:
@@ -290,7 +296,7 @@ def _cll_select_scope(scope: Scope, scope_cll_map: dict[Scope, CllResult]) -> Cl
                 #     change_category = "breaking"
                 pass
 
-    return CllResult(columns=scope_lineage, depends_on=depends_on)
+    return CllResult(columns=column_dep_map, depends_on=model_depends_on)
 
 
 def cll(sql, schema=None, dialect=None) -> CllResult:
