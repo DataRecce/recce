@@ -244,7 +244,10 @@ def _cll_select_scope(scope: Scope, scope_cll_map: dict[Scope, CllResult]) -> Cl
                 type = "renamed"
 
         column_dep_map[proj.alias_or_name] = ColumnLevelDependencyColumn(type=type, depends_on=column_depends_on)
-        # joins clause: Reference the source columns
+
+    def selected_column_dependency(ref_column: exp.Column) -> Optional[ColumnLevelDependencyColumn]:
+        column_name = ref_column.name
+        return column_dep_map.get(column_name)
 
     # joins clause: Reference the source columns
     if select.args.get("joins"):
@@ -252,50 +255,46 @@ def _cll_select_scope(scope: Scope, scope_cll_map: dict[Scope, CllResult]) -> Cl
         for join in joins:
             if isinstance(join, exp.Join):
                 for ref_column in join.find_all(exp.Column):
-                    # if source_column_change_status(ref_column) is not None:
-                    #     change_category = "breaking"
-                    pass
+                    if source_column_dependency(ref_column) is not None:
+                        model_depends_on.extend(source_column_dependency(ref_column).depends_on)
 
     # where clauses: Reference the source columns
     if select.args.get("where"):
         where = select.args.get("where")
         if isinstance(where, exp.Where):
             for ref_column in where.find_all(exp.Column):
-                # if source_column_change_status(ref_column) is not None:
-                #     change_category = "breaking"
-                model_depends_on.append(ColumnLevelDependsOn(ref_column.table, ref_column.name))
+                if source_column_dependency(ref_column) is not None:
+                    model_depends_on.extend(source_column_dependency(ref_column).depends_on)
 
     # group by clause: Reference the source columns, column index
     if select.args.get("group"):
         group = select.args.get("group")
         if isinstance(group, exp.Group):
             for ref_column in group.find_all(exp.Column):
-                # if source_column_change_status(ref_column) is not None:
-                #     change_category = "breaking"
-                pass
+                if source_column_dependency(ref_column) is not None:
+                    model_depends_on.extend(source_column_dependency(ref_column).depends_on)
 
     # having clause: Reference the source columns, selected columns
     if select.args.get("having"):
         having = select.args.get("having")
         if isinstance(having, exp.Having):
             for ref_column in having.find_all(exp.Column):
-                # if source_column_change_status(ref_column) is not None:
-                #     change_category = "breaking"
-                # elif selected_column_change_status(ref_column) is not None:
-                #     change_category = "breaking"
-                pass
+                if source_column_dependency(ref_column) is not None:
+                    model_depends_on.extend(source_column_dependency(ref_column).depends_on)
+                elif selected_column_dependency(ref_column) is not None:
+                    model_depends_on.extend(selected_column_dependency(ref_column).depends_on)
 
     # order by clause: Reference the source columns, selected columns, column index
     if select.args.get("order"):
         order = select.args.get("order")
         if isinstance(order, exp.Order):
             for ref_column in order.find_all(exp.Column):
-                # if source_column_change_status(ref_column) is not None:
-                #     change_category = "breaking"
-                # elif selected_column_change_status(ref_column) is not None:
-                #     change_category = "breaking"
-                pass
+                if source_column_dependency(ref_column) is not None:
+                    model_depends_on.extend(source_column_dependency(ref_column).depends_on)
+                elif selected_column_dependency(ref_column) is not None:
+                    model_depends_on.extend(selected_column_dependency(ref_column).depends_on)
 
+    model_depends_on = _dedeup_depends_on(model_depends_on)
     return CllResult(columns=column_dep_map, depends_on=model_depends_on)
 
 
