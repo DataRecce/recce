@@ -74,8 +74,8 @@ def _diff_select_scope(old_scope: Scope, new_scope: Scope, scope_changes_map: di
     # check if the upstream scopes is not breaking
     for source_name, source in new_scope.sources.items():
         if scope_changes_map.get(source) is not None:
-            chanage = scope_changes_map[source]
-            if chanage.category == "breaking":
+            change = scope_changes_map[source]
+            if change.category == "breaking":
                 change_category = "breaking"
 
     # check if non-select expressions are the same

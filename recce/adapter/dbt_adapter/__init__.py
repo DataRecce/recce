@@ -24,7 +24,8 @@ from typing import (
 
 from recce.event import log_performance
 from recce.exceptions import RecceException
-from recce.util.cll import CLLPerformanceTracking, cll
+from recce.util.cll import CLLPerformanceTracking
+from recce.util.cll import cll_old as cll
 from recce.util.lineage import find_downstream, find_upstream
 
 from ...tasks.profile import ProfileTask
