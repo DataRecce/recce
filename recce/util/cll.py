@@ -294,7 +294,13 @@ def _cll_select_scope(scope: Scope, scope_cll_map: dict[Scope, CllResult]) -> Cl
                 elif selected_column_dependency(ref_column) is not None:
                     model_depends_on.extend(selected_column_dependency(ref_column).depends_on)
 
+    for source in scope.sources.values():
+        scope_result = scope_cll_map.get(source)
+        if scope_result is not None:
+            model_depends_on.extend(scope_result.depends_on)
+
     model_depends_on = _dedeup_depends_on(model_depends_on)
+
     return CllResult(columns=column_dep_map, depends_on=model_depends_on)
 
 
