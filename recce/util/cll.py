@@ -134,7 +134,25 @@ def cll_old(sql, schema=None, dialect=None) -> Dict[str, ColumnLevelDependencyCo
     return result.columns
 
 
-def _cll_union_scope(scope: Scope, scope_cll_map: dict[Scope, CllResult]) -> CllResult:
+def _dedeup_depends_on(depends_on: List[ColumnLevelDependsOn]) -> List[ColumnLevelDependsOn]:
+    # deduplicate the depends_on list
+    dedup_set = set()
+    dedup_list = []
+    for col_dep in depends_on:
+        node_col = col_dep.node + "." + col_dep.column
+        if node_col not in dedup_set:
+            dedup_list.append(col_dep)
+            dedup_set.add(node_col)
+    return dedup_list
+
+
+def _dedeup_cll_result(cll_result: CllResult):
+    cll_result.depends_on = _dedeup_depends_on(cll_result.depends_on)
+    for column in cll_result.columns.values():
+        column.depends_on = _dedeup_depends_on(column.depends_on)
+
+
+def _cll_set_scope(scope: Scope, scope_cll_map: dict[Scope, CllResult]) -> CllResult:
     result = CllResult(depends_on=[], columns={})
     scope_lineage = result.columns
 
@@ -188,13 +206,7 @@ def _cll_select_scope(scope: Scope, scope_cll_map: dict[Scope, CllResult]) -> Cl
                 flatten_col_depends_on.append(col_dep)
 
         # deduplicate
-        dedup_col_depends_on = []
-        dedup_set = set()
-        for col_dep in flatten_col_depends_on:
-            node_col = col_dep.node + "." + col_dep.column
-            if node_col not in dedup_set:
-                dedup_col_depends_on.append(col_dep)
-                dedup_set.add(node_col)
+        dedup_col_depends_on = _dedeup_depends_on(flatten_col_depends_on)
 
         # transformation type
         type = column_cll.type
@@ -309,7 +321,7 @@ def cll(sql, schema=None, dialect=None) -> CllResult:
     for scope in traverse_scope(expression):
         scope_type = scope.expression.key
         if scope_type == "union" or scope_type == "intersect" or scope_type == "except":
-            result = _cll_union_scope(scope, scope_cll_map)
+            result = _cll_set_scope(scope, scope_cll_map)
         elif scope_type == "select":
             result = _cll_select_scope(scope, scope_cll_map)
         else:
