@@ -50,43 +50,49 @@ export function mergeColumns(
   return result;
 }
 
-export function toDataGrid(schemaDiff: SchemaDiff, node?: NodeData) {
+export function toDataGrid(schemaDiff: SchemaDiff, node?: NodeData, cllRunning?: boolean) {
   function columnIndexCellClass(row: SchemaDiffRow) {
+    let className = "";
     if (row.baseIndex === undefined) {
-      return "column-index-added";
+      className = "column-index-added";
     } else if (row.currentIndex === undefined) {
-      return "column-index-removed";
+      className = "column-index-removed";
     } else if (row.reordered === true) {
-      return "column-index-reordered";
+      className = "column-index-reordered";
     } else {
-      return "column-index-normal";
+      className = "column-index-normal";
     }
+    return className + " schema-cell";
   }
 
   function columnNameCellClass(row: SchemaDiffRow) {
+    let className = "";
     if (row.baseIndex === undefined) {
-      return "column-body-added";
+      className = "column-body-added";
     } else if (row.currentIndex === undefined) {
-      return "column-body-removed";
+      className = "column-body-removed";
     } else if (row.reordered === true) {
-      return "column-body-reordered";
+      className = "column-body-reordered";
     } else {
-      return "column-body-normal";
+      className = "column-body-normal";
     }
+    return className + " schema-cell";
   }
 
   function columnTypeCellClass(row: SchemaDiffRow) {
+    let className = "";
     if (row.baseIndex === undefined) {
-      return "column-body-added";
+      className = "column-body-added";
     } else if (row.currentIndex === undefined) {
-      return "column-body-removed";
+      className = "column-body-removed";
     } else if (row.baseType !== row.currentType) {
-      return "column-body-type-changed";
+      className = "column-body-type-changed";
     } else if (row.reordered === true) {
-      return "column-body-reordered";
+      className = "column-body-reordered";
     } else {
-      return "column-body-normal";
+      className = "column-body-normal";
     }
+    return className + " schema-cell";
   }
 
   const columns: ColumnOrColumnGroup<SchemaDiffRow>[] = [
@@ -120,6 +126,7 @@ export function toDataGrid(schemaDiff: SchemaDiff, node?: NodeData) {
             name={row.name}
             baseType={row.baseType}
             currentType={row.currentType}
+            cllRunning={cllRunning}
           />
         ) : (
           row.name

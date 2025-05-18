@@ -3,8 +3,18 @@
     background-color: rgb(204, 255, 216);
 }
 
+.rdg-row:hover .column-index-added {
+    background-color: rgb(170, 230, 180);
+    cursor: pointer;
+}
+
 .column-body-added {
     background-color: rgb(230, 255, 236)
+}
+
+.rdg-row:hover .column-body-added {
+    background-color: rgb(180, 220, 185);
+    cursor: pointer;
 }
 
 .column-index-removed {
@@ -12,8 +22,18 @@
     background-color: rgb(255, 215, 213)
 }
 
+.rdg-row:hover .column-index-removed {
+    background-color: rgb(220, 185, 183);
+    cursor: pointer;
+}
+
 .column-body-removed {
     background-color: rgb(255, 235, 233)
+}
+
+.rdg-row:hover .column-body-removed {
+    background-color: rgb(220, 200, 198);
+    cursor: pointer;
 }
 
 .column-index-reordered {
@@ -21,9 +41,19 @@
     background-color: rgb(255, 173, 21);
 }
 
-.column-body-reordered {    
+.rdg-row:hover .column-index-reordered {
+    background-color: rgb(220, 140, 18);
+    cursor: pointer;
+}
+
+.column-body-reordered {
     background-color: white;
     /* background-color: rgb(255, 238, 205); */
+}
+
+.rdg-row:hover .column-body-reordered {
+    background-color: #e0e0e0;
+    cursor: pointer;
 }
 
 .column-index-normal {
@@ -31,10 +61,29 @@
     background-color: rgb(249, 249, 249);
 }
 
+.rdg-row:hover .column-index-normal {
+    background-color: rgb(235, 235, 235);
+    cursor: pointer;
+}
+
 .column-body-normal {
     background-color: white
 }
 
-.column-body-type-changed {    
+.rdg-row:hover .column-body-normal {
+    background-color: rgb(241, 241, 241);
+    cursor: pointer;
+}
+
+.column-body-type-changed {
     background-color: rgb(255, 215, 213)
+}
+
+.rdg-row:hover .column-body-type-changed {
+    background-color: rgb(220, 185, 183);
+}
+
+.schema-cell[aria-selected="true"] {
+    outline: none;
+    outline-offset: 0;
 }
