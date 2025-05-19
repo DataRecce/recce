@@ -5,19 +5,23 @@ from typing import List
 
 import click
 import uvicorn
+from click import Abort
 
 from recce import event
 from recce.artifact import download_dbt_artifacts, upload_dbt_artifacts
 from recce.config import RECCE_CONFIG_FILE, RECCE_ERROR_LOG_FILE, RecceConfig
+from recce.exceptions import RecceConfigException
 from recce.git import current_branch, current_default_branch
 from recce.run import check_github_ci_env, cli_run
 from recce.state import RecceCloudStateManager, RecceShareStateManager, RecceStateLoader
 from recce.summary import generate_markdown_summary
-from recce.util.api_token import prepare_api_token
+from recce.util.api_token import prepare_api_token, show_invalid_api_token_message
 from recce.util.logger import CustomFormatter
 from recce.util.recce_cloud import (
     RecceCloudException,
-    get_recce_cloud_onboarding_state, )
+    get_recce_cloud_onboarding_state,
+)
+
 from .core import RecceContext, set_default_context
 from .event.track import TrackCommand
 
@@ -100,8 +104,9 @@ recce_options = [
 
 recce_cloud_options = [
     click.option("--cloud", is_flag=True, help="Fetch the state file from cloud."),
-    click.option("--cloud-token", help="The GitHub token used by Recce Cloud.", type=click.STRING,
-                 envvar="GITHUB_TOKEN"),
+    click.option(
+        "--cloud-token", help="The GitHub token used by Recce Cloud.", type=click.STRING, envvar="GITHUB_TOKEN"
+    ),
     click.option(
         "--state-file-host",
         help="The host to fetch the state file from.",
@@ -248,8 +253,9 @@ def diff(sql, primary_keys: List[str] = None, keep_shape: bool = False, keep_equ
 @click.option("--port", default=8000, show_default=True, help="The port to bind to.", type=int)
 @click.option("--lifetime", default=0, show_default=True, help="The lifetime of the server in seconds.", type=int)
 @click.option("--review", is_flag=True, help="Open the state file in the review mode.")
-@click.option("--api-token", help="The API token used by Recce Cloud Share Link.", type=click.STRING,
-              envvar="RECCE_API_TOKEN")
+@click.option(
+    "--api-token", help="The API token used by Recce Cloud Share Link.", type=click.STRING, envvar="RECCE_API_TOKEN"
+)
 @add_options(dbt_related_options)
 @add_options(sqlmesh_related_options)
 @add_options(recce_options)
@@ -304,7 +310,11 @@ def server(host, port, lifetime, state_file=None, **kwargs):
         flag["show_onboarding_guide"] = False if cloud_onboarding_state == "completed" else True
 
     auth_options = {}
-    api_token = prepare_api_token(**kwargs)
+    try:
+        api_token = prepare_api_token(**kwargs)
+    except RecceConfigException:
+        show_invalid_api_token_message()
+        exit(1)
     auth_options["api_token"] = api_token
 
     # Check Single Environment Onboarding Mode if the review mode is False
@@ -969,7 +979,14 @@ def share(state_file, **kwargs):
     cloud_options = None
 
     # read or input the api token
-    api_token = prepare_api_token(interaction=True, **kwargs)
+    try:
+        api_token = prepare_api_token(interaction=True, **kwargs)
+    except Abort:
+        console.print("[yellow]Abort[/yellow]")
+        exit(0)
+    except RecceConfigException:
+        show_invalid_api_token_message()
+        exit(1)
 
     auth_options = {"api_token": api_token}
 
@@ -1039,8 +1056,14 @@ def read_only(host, port, lifetime, state_file=None, **kwargs):
         console.print(f"[[red]Error[/red]] {message}")
         exit(1)
 
-    app.state = AppState(command="read_only", state_loader=state_loader, kwargs=kwargs, flag=flag, lifetime=lifetime,
-                         share_url=kwargs.get("share_url"))
+    app.state = AppState(
+        command="read_only",
+        state_loader=state_loader,
+        kwargs=kwargs,
+        flag=flag,
+        lifetime=lifetime,
+        share_url=kwargs.get("share_url"),
+    )
     set_default_context(RecceContext.load(**kwargs, review=is_review, state_loader=state_loader))
 
     uvicorn.run(app, host=host, port=port, lifespan="on")
