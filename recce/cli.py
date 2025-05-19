@@ -9,17 +9,15 @@ import uvicorn
 from recce import event
 from recce.artifact import download_dbt_artifacts, upload_dbt_artifacts
 from recce.config import RECCE_CONFIG_FILE, RECCE_ERROR_LOG_FILE, RecceConfig
-from recce.event import get_recce_api_token, update_user_profile
 from recce.git import current_branch, current_default_branch
 from recce.run import check_github_ci_env, cli_run
 from recce.state import RecceCloudStateManager, RecceShareStateManager, RecceStateLoader
 from recce.summary import generate_markdown_summary
+from recce.util.api_token import prepare_api_token
 from recce.util.logger import CustomFormatter
 from recce.util.recce_cloud import (
-    RECCE_CLOUD_API_HOST,
     RecceCloudException,
-    get_recce_cloud_onboarding_state,
-)
+    get_recce_cloud_onboarding_state, )
 from .core import RecceContext, set_default_context
 from .event.track import TrackCommand
 
@@ -102,7 +100,8 @@ recce_options = [
 
 recce_cloud_options = [
     click.option("--cloud", is_flag=True, help="Fetch the state file from cloud."),
-    click.option("--cloud-token", help="The token used by Recce Cloud.", type=click.STRING, envvar="GITHUB_TOKEN"),
+    click.option("--cloud-token", help="The GitHub token used by Recce Cloud.", type=click.STRING,
+                 envvar="GITHUB_TOKEN"),
     click.option(
         "--state-file-host",
         help="The host to fetch the state file from.",
@@ -249,7 +248,8 @@ def diff(sql, primary_keys: List[str] = None, keep_shape: bool = False, keep_equ
 @click.option("--port", default=8000, show_default=True, help="The port to bind to.", type=int)
 @click.option("--lifetime", default=0, show_default=True, help="The lifetime of the server in seconds.", type=int)
 @click.option("--review", is_flag=True, help="Open the state file in the review mode.")
-@click.option("--api-token", help="The token used by Recce Cloud API.", type=click.STRING, envvar="RECCE_API_TOKEN")
+@click.option("--api-token", help="The API token used by Recce Cloud Share Link.", type=click.STRING,
+              envvar="RECCE_API_TOKEN")
 @add_options(dbt_related_options)
 @add_options(sqlmesh_related_options)
 @add_options(recce_options)
@@ -304,7 +304,7 @@ def server(host, port, lifetime, state_file=None, **kwargs):
         flag["show_onboarding_guide"] = False if cloud_onboarding_state == "completed" else True
 
     auth_options = {}
-    api_token = kwargs.get("api_token") if kwargs.get("api_token") else get_recce_api_token()
+    api_token = prepare_api_token(**kwargs)
     auth_options["api_token"] = api_token
 
     # Check Single Environment Onboarding Mode if the review mode is False
@@ -534,7 +534,7 @@ def cloud(**kwargs):
 
 
 @cloud.command(cls=TrackCommand)
-@click.option("--cloud-token", help="The token used by Recce Cloud.", type=click.STRING, envvar="GITHUB_TOKEN")
+@click.option("--cloud-token", help="The GitHub token used by Recce Cloud.", type=click.STRING, envvar="GITHUB_TOKEN")
 @click.option(
     "--state-file-host",
     help="The host to fetch the state file from.",
@@ -618,7 +618,7 @@ def purge(**kwargs):
 
 @cloud.command(cls=TrackCommand)
 @click.argument("state_file", type=click.Path(exists=True))
-@click.option("--cloud-token", help="The token used by Recce Cloud.", type=click.STRING, envvar="GITHUB_TOKEN")
+@click.option("--cloud-token", help="The GitHub token used by Recce Cloud.", type=click.STRING, envvar="GITHUB_TOKEN")
 @click.option(
     "--state-file-host",
     help="The host to fetch the state file from.",
@@ -686,7 +686,7 @@ def upload(state_file, **kwargs):
     default=DEFAULT_RECCE_STATE_FILE,
     show_default=True,
 )
-@click.option("--cloud-token", help="The token used by Recce Cloud.", type=click.STRING, envvar="GITHUB_TOKEN")
+@click.option("--cloud-token", help="The GitHub token used by Recce Cloud.", type=click.STRING, envvar="GITHUB_TOKEN")
 @click.option(
     "--state-file-host",
     help="The host to fetch the state file from.",
@@ -738,7 +738,7 @@ def download(**kwargs):
 
 
 @cloud.command(cls=TrackCommand)
-@click.option("--cloud-token", help="The token used by Recce Cloud.", type=click.STRING, envvar="GITHUB_TOKEN")
+@click.option("--cloud-token", help="The GitHub token used by Recce Cloud.", type=click.STRING, envvar="GITHUB_TOKEN")
 @click.option(
     "--branch",
     "-b",
@@ -835,7 +835,7 @@ def _download_artifacts(branch, cloud_token, console, kwargs, password, target_p
 
 
 @cloud.command(cls=TrackCommand)
-@click.option("--cloud-token", help="The token used by Recce Cloud.", type=click.STRING, envvar="GITHUB_TOKEN")
+@click.option("--cloud-token", help="The GitHub token used by Recce Cloud.", type=click.STRING, envvar="GITHUB_TOKEN")
 @click.option(
     "--branch",
     "-b",
@@ -883,7 +883,7 @@ def download_artifacts(**kwargs):
 
 
 @cloud.command(cls=TrackCommand)
-@click.option("--cloud-token", help="The token used by Recce Cloud.", type=click.STRING, envvar="GITHUB_TOKEN")
+@click.option("--cloud-token", help="The GitHub token used by Recce Cloud.", type=click.STRING, envvar="GITHUB_TOKEN")
 @click.option(
     "--branch",
     "-b",
@@ -969,15 +969,7 @@ def share(state_file, **kwargs):
     cloud_options = None
 
     # read or input the api token
-    api_token = kwargs.get("api_token") if kwargs.get("api_token") else get_recce_api_token()
-    if api_token is None:
-        console.print(
-            "An API token is required to this. This can be obtained in your user account settings.\n"
-            f"{RECCE_CLOUD_API_HOST}/settings#tokens\n"
-            "Your API token will be added to '~/.recce/profile.yml' for more convenient sharing."
-        )
-        api_token = click.prompt("Your Recce API token", type=str, hide_input=True, show_default=False)
-        update_user_profile({"api_token": api_token})
+    api_token = prepare_api_token(interaction=True, **kwargs)
 
     auth_options = {"api_token": api_token}
 
