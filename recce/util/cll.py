@@ -182,20 +182,16 @@ def _cll_select_scope(scope: Scope, scope_cll_map: dict[Scope, CllResult]) -> Cl
 
     def source_column_dependency(ref_column: exp.Column) -> Optional[ColumnLevelDependencyColumn]:
         column_name = ref_column.name
-        source = scope.sources.get(ref_column.table, None)  # type: exp.Table | Scope
+        table_name = ref_column.table if ref_column.table != "" else next(iter(table_alias_map.values()))
+        source = scope.sources.get(table_name, None)  # type: exp.Table | Scope
         if isinstance(source, Scope):
             ref_cll = scope_cll_map.get(source)
             if ref_cll is None:
                 return None
             return ref_cll.columns.get(column_name)
         elif isinstance(source, exp.Table):
-            alias = ref_column.table
-            if alias is None:
-                table_name = next(iter(table_alias_map.values()))
-            else:
-                table_name = table_alias_map.get(alias, alias)
             return ColumnLevelDependencyColumn(
-                type="passthrough", depends_on=[ColumnLevelDependsOn(table_name, column_name)]
+                type="passthrough", depends_on=[ColumnLevelDependsOn(source.name, column_name)]
             )
         else:
             return None

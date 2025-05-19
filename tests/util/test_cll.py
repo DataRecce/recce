@@ -93,6 +93,13 @@ class ColumnLevelLineageTest(unittest.TestCase):
         result = cll(sql)
         assert_column(result, "c", "source", [])
 
+        # condition from source literal
+        sql = """
+        select 1 as a from table1 where a > 0
+        """
+        result = cll(sql)
+        assert_column(result, "a", "source", [])
+
     def test_source_generative_function(self):
         # numeric literal
         sql = """
@@ -330,6 +337,7 @@ class ColumnLevelLineageTest(unittest.TestCase):
         join table2 on table1.id = table2.id
         """
         result = cll(sql)
+        assert_model(result, [("table1", "id"), ("table2", "id")])
         assert_column(result, "a", "passthrough", [("table1", "a")])
         assert_column(result, "b", "passthrough", [("table2", "b")])
 
@@ -352,17 +360,18 @@ class ColumnLevelLineageTest(unittest.TestCase):
         cte2 as (
             select a from cte1
         )
-        select * from cte2
+        select * from cte2 where a > 0
         """
 
         result = cll(sql)
+        assert_model(result, [("table1", "a")])
         assert_column(result, "a", "passthrough", [("table1", "a")])
 
     def test_cte_with_join(self):
         sql = """
         with
         cte1 as (
-            select id, a from table1
+            select id, a from table1 where d > 0
         ),
         cte2 as (
             select id, b from table2
@@ -378,6 +387,7 @@ class ColumnLevelLineageTest(unittest.TestCase):
         """
 
         result = cll(sql)
+        assert_model(result, [("table3", "id"), ("table1", "id"), ("table2", "id"), ("table1", "d")])
         assert_column(result, "id", "passthrough", [("table3", "id")])
         assert_column(result, "a", "passthrough", [("table1", "a")])
         assert_column(result, "b", "passthrough", [("table2", "b")])
@@ -470,42 +480,46 @@ class ColumnLevelLineageTest(unittest.TestCase):
 
     def test_union(self):
         sql = """
-        select a, b from table1
+        select a, b from table1 where c > 0
         union
         select a, b from table2
         """
         result = cll(sql)
+        assert_model(result, [("table1", "c")])
         assert_column(result, "a", "derived", [("table1", "a"), ("table2", "a")])
         assert_column(result, "b", "derived", [("table1", "b"), ("table2", "b")])
 
     def test_union_cte(self):
         sql = """
         with cte1 as (
-            select a from table1
+            select a from table1 where c > 0
             union
             select a from table2
         )
         select * from cte1
         """
         result = cll(sql)
+        assert_model(result, [("table1", "c")])
         assert_column(result, "a", "derived", [("table1", "a"), ("table2", "a")])
 
     def test_union_all(self):
         sql = """
-        select a from table1
+        select a from table1 where c > 0
         union all
         select a from table2
         """
         result = cll(sql)
+        assert_model(result, [("table1", "c")])
         assert_column(result, "a", "derived", [("table1", "a"), ("table2", "a")])
 
     def test_intersect(self):
         sql = """
-        select a from table1
+        select a from table1 where c > 0
         intersect
         select a from table2
         """
         result = cll(sql)
+        assert_model(result, [("table1", "c")])
         assert_column(result, "a", "derived", [("table1", "a"), ("table2", "a")])
 
     def test_where(self):
@@ -515,8 +529,34 @@ class ColumnLevelLineageTest(unittest.TestCase):
         where a > 0
         """
         result = cll(sql)
-        assert result.depends_on[0].node == "table1"
-        assert result.depends_on[0].column == "a"
+        assert_model(result, [("table1", "a")])
+
+        sql = """
+        select a, b
+        from table1
+        where a + b > 0
+        """
+        result = cll(sql)
+        assert_model(result, [("table1", "a"), ("table1", "b")])
+
+        sql = """
+        select a, b
+        from table1
+        where a > 0 and b > 0
+        """
+        result = cll(sql)
+        assert_model(result, [("table1", "a"), ("table1", "b")])
+
+        sql = """
+        with cte as (
+            select a, b
+            from table1
+            where a > 0 and b > 0
+        )
+        select * from cte
+        """
+        result = cll(sql)
+        assert_model(result, [("table1", "a"), ("table1", "b")])
 
     def test_group_by(self):
         sql = """
@@ -540,6 +580,86 @@ class ColumnLevelLineageTest(unittest.TestCase):
             select a, sum(b) as b
             from table1
             group by a
+        )
+        select * from CTE
+        """
+        result = cll(sql)
+        assert_model(result, [("table1", "a")])
+
+    def test_having(self):
+        sql = """
+        select a, sum(b) as b
+        from table1
+        group by a
+        having sum(b) > 0
+        """
+        result = cll(sql)
+        assert_model(result, [("table1", "a"), ("table1", "b")])
+
+        sql = """
+        with CTE as (
+            select a, sum(b) as b
+            from table1
+            group by a
+            having sum(b) > 0
+        )
+        select * from CTE
+        """
+        result = cll(sql)
+        assert_model(result, [("table1", "a"), ("table1", "b")])
+
+    def test_having_by_selected_column(self):
+        sql = """
+        select a, sum(b) as c
+        from table1
+        group by a
+        having c > 0
+        """
+        result = cll(sql)
+        assert_model(result, [("table1", "a"), ("table1", "b")])
+
+        sql = """
+        with CTE as (
+            select a, sum(b) as c
+            from table1
+            group by a
+            having c > 0
+        )
+        select * from CTE
+        """
+        result = cll(sql)
+        assert_model(result, [("table1", "a"), ("table1", "b")])
+
+    def test_order_by(self):
+        sql = """
+        select a, b
+        from table1
+        order by a, b, c desc
+        """
+        result = cll(sql)
+        assert_model(result, [("table1", "a"), ("table1", "b"), ("table1", "c")])
+
+        sql = """
+        select a, b
+        from table1
+        order by 1, 2, c desc
+        """
+        result = cll(sql)
+        assert_model(result, [("table1", "a"), ("table1", "b"), ("table1", "c")])
+
+        sql = """
+        select a, b
+        from table1
+        order by c+d, func(e), 1 desc
+        """
+        result = cll(sql)
+        assert_model(result, [("table1", "a"), ("table1", "c"), ("table1", "d"), ("table1", "e")])
+
+        sql = """
+        with CTE as (
+            select a, b
+            from table1
+            order by a desc
         )
         select * from CTE
         """
