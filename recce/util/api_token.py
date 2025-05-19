@@ -1,5 +1,3 @@
-from typing import Optional
-
 import click
 from click import Abort
 from rich.console import Console
@@ -19,7 +17,7 @@ def show_invalid_api_token_message():
     console.print(f"Please check your API token from {RECCE_CLOUD_BASE_URL}/settings#tokens")
 
 
-def prepare_api_token(interaction=False, **kwargs, ) -> Optional[str, None]:
+def prepare_api_token(interaction=False, **kwargs, ):
     """
     Prepare the API token for the request.
     """
