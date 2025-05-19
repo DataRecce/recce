@@ -68,6 +68,10 @@ def get_recce_api_token():
     return load_user_profile().get("api_token")
 
 
+def update_recce_api_token(token):
+    return update_user_profile({"api_token": token})
+
+
 def is_anonymous_tracking():
     return load_user_profile().get("anonymous_tracking", False)
 

@@ -8,6 +8,7 @@ import requests
 from recce.pull_request import PullRequestInfo
 
 RECCE_CLOUD_API_HOST = os.environ.get("RECCE_CLOUD_API_HOST", "https://cloud.datarecce.io")
+RECCE_CLOUD_BASE_URL = os.environ.get("RECCE_CLOUD_BASE_URL", RECCE_CLOUD_API_HOST)
 
 logger = logging.getLogger("uvicorn")
 
@@ -31,12 +32,29 @@ class RecceCloudException(Exception):
 
 class RecceCloud:
     def __init__(self, token: str):
+        if token is None:
+            raise ValueError("Token cannot be None.")
         self.token = token
+        self.token_type = "github_token" if token.startswith(
+            ("ghp_", "gho_", "ghu_", "ghs_", "ghr_")) else "api_token"
         self.base_url = f"{RECCE_CLOUD_API_HOST}/api/v1"
 
     def _request(self, method, url, **kwargs):
         headers = {"Authorization": f"Bearer {self.token}"}
         return requests.request(method, url, headers=headers, **kwargs)
+
+    def verify_token(self) -> bool:
+        if self.token_type == "github_token":
+            return True
+        # Verify the Recce Cloud API token
+        api_url = f"{self.base_url}/verify-token"
+        try:
+            response = self._request("GET", api_url)
+            if response.status_code == 200:
+                return True
+        except Exception:
+            pass
+        return False
 
     def get_presigned_url(
         self,
