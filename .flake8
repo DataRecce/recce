@@ -15,8 +15,6 @@ ignore =
     E203,
     # W503: Line break before binary operator - Conflicts with Black formatter
     W503,
-    # F841: Local variable name is assigned to but never used
-    F841,
     # F811: Redefinition of unused name - Allows redefining imports
     F811
 
