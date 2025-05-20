@@ -1,4 +1,4 @@
-import { forwardRef, Key, useMemo, useState } from "react";
+import { forwardRef, useMemo, useState } from "react";
 
 import { mergeColumns, toDataGrid, toSingleEnvDataGrid } from "./schema";
 import "react-data-grid/lib/styles.css";
@@ -77,16 +77,16 @@ export function PrivateSchemaView(
   ref: any,
 ) {
   const lineageViewContext = useLineageViewContext();
-  const [cllRunning, setCllRunning] = useState(false);
+  const [cllRunningMap, setCllRunningMap] = useState<Map<string, boolean>>(new Map());
   const { columns, rows } = useMemo(() => {
     const schemaDiff = mergeColumns(base?.columns, current?.columns);
     const resourceType = current?.resource_type ?? base?.resource_type;
     if (resourceType && ["model", "seed", "snapshot", "source"].includes(resourceType)) {
-      return toDataGrid(schemaDiff, current ?? base, cllRunning);
+      return toDataGrid(schemaDiff, current ?? base, cllRunningMap);
     } else {
       return toDataGrid(schemaDiff);
     }
-  }, [base, current, cllRunning]);
+  }, [base, current, cllRunningMap]);
 
   const { lineageGraph } = useLineageGraphContext();
   const noCatalogBase = !lineageGraph?.catalogMetadata.base;
@@ -113,12 +113,12 @@ export function PrivateSchemaView(
 
   const handleViewCll = async (columnName: string) => {
     trackColumnLevelLineage({ action: "view", source: "schema_column" });
-    setCllRunning(true);
+    setCllRunningMap((prev) => new Map(prev).set(columnName, true));
     const modelId = current?.id ?? base?.id;
     if (modelId) {
       await lineageViewContext?.showColumnLevelLineage(modelId, columnName);
     }
-    setCllRunning(false);
+    setCllRunningMap((prev) => new Map(prev).set(columnName, false));
   };
 
   return (

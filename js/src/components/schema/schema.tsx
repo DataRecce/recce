@@ -50,7 +50,11 @@ export function mergeColumns(
   return result;
 }
 
-export function toDataGrid(schemaDiff: SchemaDiff, node?: NodeData, cllRunning?: boolean) {
+export function toDataGrid(
+  schemaDiff: SchemaDiff,
+  node?: NodeData,
+  cllRunningMap?: Map<string, boolean>,
+) {
   function columnIndexCellClass(row: SchemaDiffRow) {
     let className = "";
     if (row.baseIndex === undefined) {
@@ -126,7 +130,7 @@ export function toDataGrid(schemaDiff: SchemaDiff, node?: NodeData, cllRunning?:
             name={row.name}
             baseType={row.baseType}
             currentType={row.currentType}
-            cllRunning={cllRunning}
+            cllRunning={cllRunningMap?.get(row.name) ?? false}
           />
         ) : (
           row.name

@@ -64,12 +64,13 @@ export function ColumnNameCell({
           {({ isOpen }) => (
             <>
               <MenuButton
+                display="flex"
                 className="row-context-menu"
                 visibility={isOpen ? "visible" : "hidden"}
                 width={isOpen ? "auto" : "0px"}
                 minWidth={isOpen ? "auto" : "0px"}
                 as={IconButton}
-                icon={<Icon as={VscKebabVertical} verticalAlign={"unset"} />}
+                icon={<Icon as={VscKebabVertical} />}
                 variant="unstyled"
                 size={"sm"}
                 color="gray"
