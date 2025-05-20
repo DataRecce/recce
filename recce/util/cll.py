@@ -199,13 +199,7 @@ def _cll_select_scope(scope: Scope, scope_cll_map: dict[Scope, CllResult]) -> Cl
     for proj in scope.expression.selects:
         type = "source"
         column_depends_on: List[ColumnLevelDependsOn] = []
-
-        # instance of Column
-        if isinstance(proj, exp.Alias):
-            # 'select a as b'
-            # 'select CURRENT_TIMESTAMP() as create_at'
-            root = proj.this
-
+        root = proj.this if isinstance(proj, exp.Alias) else proj
         for expression in root.walk(bfs=False):
             if isinstance(expression, exp.Column):
                 ref_column_dependency = source_column_dependency(expression)
