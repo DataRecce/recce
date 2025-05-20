@@ -1,6 +1,34 @@
 import unittest
+from typing import List, Tuple
 
-from recce.util.cll import cll
+from recce.util.cll import CllResult, cll
+
+
+def assert_model(result: CllResult, depends_on: List[Tuple[str, str]]):
+    assert len(result.depends_on) == len(depends_on), "depends_on length mismatch"
+    for i in range(len(depends_on)):
+        node, column = depends_on[i]
+        anode = result.depends_on[i].node
+        acolumn = result.depends_on[i].column
+
+        assert (
+            anode == node and acolumn == column
+        ), f"depends_on mismatch at index {i}: expected ({node}, {column}), got ({anode}, {acolumn})"
+
+
+def assert_column(result: CllResult, column_name: str, type, depends_on: List[Tuple[str, str]]):
+    entry = result.columns.get(column_name)
+    assert entry is not None, f"Column {column_name} not found in result"
+    assert entry.type == type, f"Column {column_name} type mismatch: expected {type}, got {entry.type}"
+    assert len(entry.depends_on) == len(depends_on), "depends_on length mismatch"
+    for i in range(len(depends_on)):
+        node, column = depends_on[i]
+        anode = entry.depends_on[i].node
+        acolumn = entry.depends_on[i].column
+
+        assert (
+            anode == node and acolumn == column
+        ), f"depends_on mismatch at index {i}: expected ({node}, {column}), got ({anode}, {acolumn})"
 
 
 class ColumnLevelLineageTest(unittest.TestCase):
@@ -9,33 +37,39 @@ class ColumnLevelLineageTest(unittest.TestCase):
         select a,b from table1
         """
         result = cll(sql)
-        assert result["a"].type == "passthrough"
-        assert result["a"].depends_on[0].node == "table1"
+        assert_model(result, [])
+        assert_column(result, "a", "passthrough", [("table1", "a")])
+        assert_column(result, "b", "passthrough", [("table1", "b")])
+
+        sql = """
+        select c from table1 where c > 0
+        """
+        result = cll(sql)
+        assert_model(result, [("table1", "c")])
+        assert_column(result, "c", "passthrough", [("table1", "c")])
 
     def test_sql_with_canonial(self):
         sql = """
         select table1.a from schema1.table1
         """
         result = cll(sql)
-        assert result["a"].type == "passthrough"
-        assert result["a"].depends_on[0].node == "table1"
+        assert_model(result, [])
+        assert_column(result, "a", "passthrough", [("table1", "a")])
 
         sql = """
-        select table1.a from db1.schema1.table1
+        select table1.a from db1.schema1.table1 where dbt.schema1.table1.a > 0
         """
         result = cll(sql)
-        assert result["a"].type == "passthrough"
-        assert result["a"].depends_on[0].node == "table1"
+        assert_model(result, [("table1", "a")])
+        assert_column(result, "a", "passthrough", [("table1", "a")])
 
     def test_select_star(self):
         sql = """
         select * from table1
         """
         result = cll(sql, {"table1": {"a": "int", "b": "int"}})
-        assert result["a"].type == "passthrough"
-        assert result["a"].depends_on[0].node == "table1"
-        assert result["b"].type == "passthrough"
-        assert result["b"].depends_on[0].node == "table1"
+        assert_column(result, "a", "passthrough", [("table1", "a")])
+        assert_column(result, "b", "passthrough", [("table1", "b")])
 
     def test_source_literal(self):
         # numeric literal
@@ -43,24 +77,28 @@ class ColumnLevelLineageTest(unittest.TestCase):
         select 1
         """
         result = cll(sql)
-        assert result["1"].type == "source"
-        assert len(result["1"].depends_on) == 0
+        assert_column(result, "1", "source", [])
 
         # string literal
         sql = """
         select 'abc' as c
         """
         result = cll(sql)
-        assert result["c"].type == "source"
-        assert len(result["c"].depends_on) == 0
+        assert_column(result, "c", "source", [])
 
         # timestamp literal
         sql = """
         select timestamp '2021-01-01 00:00:00' as c
         """
         result = cll(sql)
-        assert result["c"].type == "source"
-        assert len(result["c"].depends_on) == 0
+        assert_column(result, "c", "source", [])
+
+        # condition from source literal
+        sql = """
+        select 1 as a from table1 where a > 0
+        """
+        result = cll(sql)
+        assert_column(result, "a", "source", [])
 
     def test_source_generative_function(self):
         # numeric literal
@@ -68,34 +106,28 @@ class ColumnLevelLineageTest(unittest.TestCase):
         select CURRENT_TIMESTAMP() as c from table1
         """
         result = cll(sql)
-        assert result["c"].type == "source"
-        assert len(result["c"].depends_on) == 0
+        assert_column(result, "c", "source", [])
 
         # uuid
         sql = """
         select UUID() as c from table1
         """
         result = cll(sql)
-        assert result["c"].type == "source"
-        assert len(result["c"].depends_on) == 0
+        assert_column(result, "c", "source", [])
 
     def test_alias(self):
         sql = """
         select a as c from table1
         """
         result = cll(sql)
-        assert result["c"].type == "renamed"
-        assert result["c"].depends_on[0].node == "table1"
-        assert result["c"].depends_on[0].column == "a"
+        assert_column(result, "c", "renamed", [("table1", "a")])
 
     def test_alias_table(self):
         sql = """
         select a as c from table1 as table2
         """
         result = cll(sql)
-        assert result["c"].type == "renamed"
-        assert result["c"].depends_on[0].node == "table1"
-        assert result["c"].depends_on[0].column == "a"
+        assert_column(result, "c", "renamed", [("table1", "a")])
 
         sql = """
         select T1.a, T2.b
@@ -103,10 +135,9 @@ class ColumnLevelLineageTest(unittest.TestCase):
         join table2 as T2 on T1.id = T2.id
         """
         result = cll(sql)
-        assert result["a"].type == "passthrough"
-        assert result["a"].depends_on[0].node == "table1"
-        assert result["b"].type == "passthrough"
-        assert result["b"].depends_on[0].node == "table2"
+        assert_model(result, [("table1", "id"), ("table2", "id")])
+        assert_column(result, "a", "passthrough", [("table1", "a")])
+        assert_column(result, "b", "passthrough", [("table2", "b")])
 
         sql = """
         with cte as (
@@ -115,9 +146,7 @@ class ColumnLevelLineageTest(unittest.TestCase):
         select * from cte as final
         """
         result = cll(sql)
-        assert result["c"].type == "renamed"
-        assert result["c"].depends_on[0].node == "table1"
-        assert result["c"].depends_on[0].column == "a"
+        assert_column(result, "c", "renamed", [("table1", "a")])
 
     def test_inline_alias_table(self):
         sql = """
@@ -134,12 +163,8 @@ class ColumnLevelLineageTest(unittest.TestCase):
         ) as jn on t2.id = jn.id
         """
         result = cll(sql)
-        assert result["c"].type == "renamed"
-        assert result["c"].depends_on[0].node == "t1"
-        assert result["c"].depends_on[0].column == "a"
-        assert result["b"].type == "passthrough"
-        assert result["b"].depends_on[0].node == "t3"
-        assert result["b"].depends_on[0].column == "b"
+        assert_column(result, "c", "renamed", [("t1", "a")])
+        assert_column(result, "b", "passthrough", [("t3", "b")])
 
     def test_forward_ref(self):
         sql = """
@@ -149,12 +174,8 @@ class ColumnLevelLineageTest(unittest.TestCase):
         from table1
         """
         result = cll(sql)
-        assert result["b"].type == "renamed"
-        assert result["b"].depends_on[0].node == "table1"
-        assert result["b"].depends_on[0].column == "a"
-        assert result["c"].type == "renamed"
-        assert result["c"].depends_on[0].node == "table1"
-        assert result["c"].depends_on[0].column == "a"
+        assert_column(result, "b", "renamed", [("table1", "a")])
+        assert_column(result, "c", "renamed", [("table1", "a")])
 
     def test_transform_case_when(self):
         sql = """
@@ -165,10 +186,7 @@ class ColumnLevelLineageTest(unittest.TestCase):
         end as x from table1
         """
         result = cll(sql)
-        assert result["x"].type == "derived"
-        assert result["x"].depends_on[0].node == "table1"
-        assert result["x"].depends_on[0].column == "a"
-        assert len(result["x"].depends_on) == 1
+        assert_column(result, "x", "derived", [("table1", "a")])
 
         sql = """
         select case
@@ -177,12 +195,7 @@ class ColumnLevelLineageTest(unittest.TestCase):
         end as x from table1
         """
         result = cll(sql)
-        assert result["x"].type == "derived"
-        assert len(result["x"].depends_on) == 2
-        assert result["x"].depends_on[0].node == "table1"
-        assert result["x"].depends_on[0].column == "payment_method"
-        assert result["x"].depends_on[1].node == "table1"
-        assert result["x"].depends_on[1].column == "amount"
+        assert_column(result, "x", "derived", [("table1", "payment_method"), ("table1", "amount")])
 
     def test_transform_case_when_no_default(self):
         sql = """
@@ -193,73 +206,56 @@ class ColumnLevelLineageTest(unittest.TestCase):
         """
 
         result = cll(sql)
-        assert result["c"].type == "derived"
-        assert result["c"].depends_on[0].node == "table1"
-        assert result["c"].depends_on[0].column == "a"
-        assert len(result["c"].depends_on) == 1
+        assert_column(result, "c", "derived", [("table1", "a")])
 
     def test_transform_binary(self):
         sql = """
         select (a+b) * (c+d) as x from table1
         """
         result = cll(sql)
-        assert result["x"].type == "derived"
-        assert result["x"].depends_on[0].node == "table1"
-        assert len(result["x"].depends_on) == 4
+        assert_column(result, "x", "derived", [("table1", "a"), ("table1", "b"), ("table1", "c"), ("table1", "d")])
 
     def test_transform_binary_predicate(self):
         sql = """
         select a > 0 as x from table1
         """
         result = cll(sql)
-        assert result["x"].type == "derived"
-        assert result["x"].depends_on[0].node == "table1"
-        assert result["x"].depends_on[0].column == "a"
+        assert_column(result, "x", "derived", [("table1", "a")])
 
     def test_transform_in(self):
         sql = """
         select a in (1, 2, 3) as x from table1
         """
         result = cll(sql)
-        assert result["x"].type == "derived"
-        assert result["x"].depends_on[0].node == "table1"
-        assert result["x"].depends_on[0].column == "a"
+        assert_column(result, "x", "derived", [("table1", "a")])
 
     def test_transform_type_cast(self):
         sql = """
         select cast(a as int) as x from table1
         """
         result = cll(sql)
-        assert result["x"].type == "derived"
-        assert result["x"].depends_on[0].node == "table1"
-        assert result["x"].depends_on[0].column == "a"
+        assert_column(result, "x", "derived", [("table1", "a")])
 
     def test_transform_type_cast_operator(self):
         sql = """
         select a::int as x from table1
         """
         result = cll(sql)
-        assert result["x"].type == "derived"
-        assert result["x"].depends_on[0].node == "table1"
-        assert result["x"].depends_on[0].column == "a"
+        assert_column(result, "x", "derived", [("table1", "a")])
 
     def test_transform_func(self):
         sql = """
         select date_trunc('month', created_at) as a from table1
         """
         result = cll(sql)
-        assert result["a"].type == "derived"
-        assert result["a"].depends_on[0].node == "table1"
-        assert result["a"].depends_on[0].column == "created_at"
+        assert_column(result, "a", "derived", [("table1", "created_at")])
 
     def test_transform_udf(self):
         sql = """
         select xyz(1, 2, created_at) as a from table1
         """
         result = cll(sql)
-        assert result["a"].type == "derived"
-        assert result["a"].depends_on[0].node == "table1"
-        assert result["a"].depends_on[0].column == "created_at"
+        assert_column(result, "a", "derived", [("table1", "created_at")])
 
     def test_transform_agg_func(self):
         sql = """
@@ -268,8 +264,7 @@ class ColumnLevelLineageTest(unittest.TestCase):
         from table1
         """
         result = cll(sql)
-        assert result["b"].type == "source"
-        assert len(result["b"].depends_on) == 0
+        assert_column(result, "b", "source", [])
 
         sql = """
         select
@@ -277,8 +272,7 @@ class ColumnLevelLineageTest(unittest.TestCase):
         from table1
         """
         result = cll(sql)
-        assert result["b"].type == "source"
-        assert len(result["b"].depends_on) == 0
+        assert_column(result, "b", "source", [])
 
         sql = """
         select
@@ -286,9 +280,7 @@ class ColumnLevelLineageTest(unittest.TestCase):
         from table1
         """
         result = cll(sql)
-        assert result["b"].type == "derived"
-        assert result["b"].depends_on[0].node == "table1"
-        assert result["b"].depends_on[0].column == "a"
+        assert_column(result, "b", "derived", [("table1", "a")])
 
         sql = """
         select
@@ -297,10 +289,9 @@ class ColumnLevelLineageTest(unittest.TestCase):
         group by c
         """
         result = cll(sql)
-        assert result["b"].type == "derived"
-        assert result["b"].depends_on[0].node == "table1"
-        assert result["b"].depends_on[0].column == "a"
+        assert_column(result, "b", "derived", [("table1", "a")])
 
+    def test_transform_agg_func_source(self):
         sql = """
             with cte as (
                 select
@@ -317,11 +308,8 @@ class ColumnLevelLineageTest(unittest.TestCase):
         """
 
         result = cll(sql)
-        assert result["d"].type == "derived"
-        assert result["d"].depends_on[0].node == "t1"
-        assert result["d"].depends_on[0].column == "created_at"
-        assert result["c1"].type == "source"
-        assert len(result["c1"].depends_on) == 0
+        assert_column(result, "d", "derived", [("t1", "created_at")])
+        assert_column(result, "c1", "derived", [("t1", "created_at")])
 
     def test_transform_nested_func(self):
         sql = """
@@ -331,9 +319,7 @@ class ColumnLevelLineageTest(unittest.TestCase):
         group by c
         """
         result = cll(sql)
-        assert result["b"].type == "derived"
-        assert result["b"].depends_on[0].node == "table1"
-        assert result["b"].depends_on[0].column == "a1"
+        assert_column(result, "b", "derived", [("table1", "a1"), ("table1", "a2"), ("table1", "a3")])
 
     def test_transform_udtf(self):
         sql = """
@@ -342,9 +328,7 @@ class ColumnLevelLineageTest(unittest.TestCase):
         from table1
         """
         result = cll(sql)
-        assert result["b"].type == "derived"
-        assert result["b"].depends_on[0].node == "table1"
-        assert result["b"].depends_on[0].column == "a"
+        assert_column(result, "b", "derived", [("table1", "a")])
 
     def test_join(self):
         sql = """
@@ -353,10 +337,9 @@ class ColumnLevelLineageTest(unittest.TestCase):
         join table2 on table1.id = table2.id
         """
         result = cll(sql)
-        assert result["a"].type == "passthrough"
-        assert result["a"].depends_on[0].node == "table1"
-        assert result["b"].type == "passthrough"
-        assert result["b"].depends_on[0].node == "table2"
+        assert_model(result, [("table1", "id"), ("table2", "id")])
+        assert_column(result, "a", "passthrough", [("table1", "a")])
+        assert_column(result, "b", "passthrough", [("table2", "b")])
 
     def test_join_with_schema(self):
         sql = """
@@ -365,10 +348,8 @@ class ColumnLevelLineageTest(unittest.TestCase):
                 join table2 on table1.id = table2.id
                 """
         result = cll(sql, {"table1": {"id": "Int", "a": "Int"}, "table2": {"id": "Int", "b": "Int"}})
-        assert result["a"].type == "passthrough"
-        assert result["a"].depends_on[0].node == "table1"
-        assert result["b"].type == "passthrough"
-        assert result["b"].depends_on[0].node == "table2"
+        assert_column(result, "a", "passthrough", [("table1", "a")])
+        assert_column(result, "b", "passthrough", [("table2", "b")])
 
     def test_cte(self):
         sql = """
@@ -379,19 +360,18 @@ class ColumnLevelLineageTest(unittest.TestCase):
         cte2 as (
             select a from cte1
         )
-        select * from cte2
+        select * from cte2 where a > 0
         """
 
         result = cll(sql)
-        assert result["a"].type == "passthrough"
-        assert result["a"].depends_on[0].node == "table1"
-        assert result["a"].depends_on[0].column == "a"
+        assert_model(result, [("table1", "a")])
+        assert_column(result, "a", "passthrough", [("table1", "a")])
 
     def test_cte_with_join(self):
         sql = """
         with
         cte1 as (
-            select id, a from table1
+            select id, a from table1 where d > 0
         ),
         cte2 as (
             select id, b from table2
@@ -407,18 +387,11 @@ class ColumnLevelLineageTest(unittest.TestCase):
         """
 
         result = cll(sql)
-        assert result["id"].type == "passthrough"
-        assert result["id"].depends_on[0].node == "table3"
-        assert result["id"].depends_on[0].column == "id"
-        assert result["a"].type == "passthrough"
-        assert result["a"].depends_on[0].node == "table1"
-        assert result["a"].depends_on[0].column == "a"
-        assert result["b"].type == "passthrough"
-        assert result["b"].depends_on[0].node == "table2"
-        assert result["b"].depends_on[0].column == "b"
-        assert result["c"].type == "passthrough"
-        assert result["c"].depends_on[0].node == "table3"
-        assert result["c"].depends_on[0].column == "c"
+        assert_model(result, [("table3", "id"), ("table1", "id"), ("table2", "id"), ("table1", "d")])
+        assert_column(result, "id", "passthrough", [("table3", "id")])
+        assert_column(result, "a", "passthrough", [("table1", "a")])
+        assert_column(result, "b", "passthrough", [("table2", "b")])
+        assert_column(result, "c", "passthrough", [("table3", "c")])
 
     def test_cte_with_transform(self):
         sql = """
@@ -438,17 +411,9 @@ class ColumnLevelLineageTest(unittest.TestCase):
         """
 
         result = cll(sql)
-        assert result["a"].type == "passthrough"
-        assert result["a"].depends_on[0].node == "table1"
-        assert result["a"].depends_on[0].column == "a"
-        assert result["b3"].type == "renamed"
-        assert result["b3"].depends_on[0].node == "table1"
-        assert result["b3"].depends_on[0].column == "b"
-        assert result["y"].type == "derived"
-        assert result["y"].depends_on[0].node == "table1"
-        assert result["y"].depends_on[0].column == "a"
-        assert result["y"].depends_on[1].node == "table1"
-        assert result["y"].depends_on[1].column == "b"
+        assert_column(result, "a", "passthrough", [("table1", "a")])
+        assert_column(result, "b3", "renamed", [("table1", "b")])
+        assert_column(result, "y", "derived", [("table1", "a"), ("table1", "b")])
 
     def test_cte_with_transform2(self):
         sql = """
@@ -464,11 +429,7 @@ class ColumnLevelLineageTest(unittest.TestCase):
         """
 
         result = cll(sql)
-        assert result["y"].type == "derived"
-        assert result["y"].depends_on[0].node == "table1"
-        assert result["y"].depends_on[0].column == "a"
-        assert result["y"].depends_on[1].node == "table1"
-        assert result["y"].depends_on[1].column == "b"
+        assert_column(result, "y", "derived", [("table1", "a"), ("table1", "b")])
 
     def test_cte_with_transform3(self):
         sql = """
@@ -490,12 +451,8 @@ class ColumnLevelLineageTest(unittest.TestCase):
         """
 
         result = cll(sql)
-        assert result["a"].type == "passthrough"
-        assert result["a"].depends_on[0].node == "table1"
-        assert result["a"].depends_on[0].column == "a"
-        assert result["b1"].type == "derived"
-        assert result["b1"].depends_on[0].node == "table1"
-        assert result["b1"].depends_on[0].column == "b"
+        assert_column(result, "a", "passthrough", [("table1", "a")])
+        assert_column(result, "b1", "derived", [("table1", "b")])
 
     def test_cte_with_transform4(self):
         sql = """
@@ -518,68 +475,201 @@ class ColumnLevelLineageTest(unittest.TestCase):
         """
 
         result = cll(sql)
-        assert result["id"].type == "passthrough"
-        assert result["id"].depends_on[0].node == "table1"
-        assert result["x"].type == "derived"
-        assert result["x"].depends_on[0].node == "table1"
-        assert result["x"].depends_on[0].column == "a"
+        assert_column(result, "id", "passthrough", [("table1", "id")])
+        assert_column(result, "x", "derived", [("table1", "a")])
 
     def test_union(self):
         sql = """
-        select a, b from table1
+        select a, b from table1 where c > 0
         union
         select a, b from table2
         """
         result = cll(sql)
-        assert result["a"].type == "derived"
-        assert result["a"].depends_on[0].node == "table1"
-        assert result["a"].depends_on[0].column == "a"
-        assert result["a"].depends_on[1].node == "table2"
-        assert result["a"].depends_on[1].column == "a"
-        assert result["b"].type == "derived"
-        assert result["b"].depends_on[0].node == "table1"
-        assert result["b"].depends_on[0].column == "b"
-        assert result["b"].depends_on[1].node == "table2"
-        assert result["b"].depends_on[1].column == "b"
+        assert_model(result, [("table1", "c")])
+        assert_column(result, "a", "derived", [("table1", "a"), ("table2", "a")])
+        assert_column(result, "b", "derived", [("table1", "b"), ("table2", "b")])
 
     def test_union_cte(self):
         sql = """
         with cte1 as (
-            select a from table1
+            select a from table1 where c > 0
             union
             select a from table2
         )
         select * from cte1
         """
         result = cll(sql)
-        assert result["a"].type == "derived"
-        assert result["a"].depends_on[0].node == "table1"
-        assert result["a"].depends_on[0].column == "a"
-        assert result["a"].depends_on[1].node == "table2"
-        assert result["a"].depends_on[1].column == "a"
+        assert_model(result, [("table1", "c")])
+        assert_column(result, "a", "derived", [("table1", "a"), ("table2", "a")])
 
     def test_union_all(self):
         sql = """
-        select a from table1
+        select a from table1 where c > 0
         union all
         select a from table2
         """
         result = cll(sql)
-        assert result["a"].type == "derived"
-        assert result["a"].depends_on[0].node == "table1"
-        assert result["a"].depends_on[0].column == "a"
-        assert result["a"].depends_on[1].node == "table2"
-        assert result["a"].depends_on[1].column == "a"
+        assert_model(result, [("table1", "c")])
+        assert_column(result, "a", "derived", [("table1", "a"), ("table2", "a")])
 
     def test_intersect(self):
         sql = """
-        select a from table1
+        select a from table1 where c > 0
         intersect
         select a from table2
         """
         result = cll(sql)
-        assert result["a"].type == "derived"
-        assert result["a"].depends_on[0].node == "table1"
-        assert result["a"].depends_on[0].column == "a"
-        assert result["a"].depends_on[1].node == "table2"
-        assert result["a"].depends_on[1].column == "a"
+        assert_model(result, [("table1", "c")])
+        assert_column(result, "a", "derived", [("table1", "a"), ("table2", "a")])
+
+    def test_where(self):
+        sql = """
+        select a, b
+        from table1
+        where a > 0
+        """
+        result = cll(sql)
+        assert_model(result, [("table1", "a")])
+
+        sql = """
+        select a, b
+        from table1
+        where a + b > 0
+        """
+        result = cll(sql)
+        assert_model(result, [("table1", "a"), ("table1", "b")])
+
+        sql = """
+        select a, b
+        from table1
+        where a > 0 and b > 0
+        """
+        result = cll(sql)
+        assert_model(result, [("table1", "a"), ("table1", "b")])
+
+        sql = """
+        with cte as (
+            select a, b
+            from table1
+            where a > 0 and b > 0
+        )
+        select * from cte
+        """
+        result = cll(sql)
+        assert_model(result, [("table1", "a"), ("table1", "b")])
+
+    def test_group_by(self):
+        sql = """
+        select a, sum(b) as b
+        from table1
+        group by a
+        """
+        result = cll(sql)
+        assert_model(result, [("table1", "a")])
+
+        sql = """
+        select a as a2, sum(b) as b
+        from table1
+        group by a2
+        """
+        result = cll(sql)
+        assert_model(result, [("table1", "a")])
+
+        sql = """
+        select a, sum(b) as b
+        from table1
+        group by 1
+        """
+        result = cll(sql)
+        assert_model(result, [("table1", "a")])
+
+        sql = """
+        with CTE as (
+            select a, sum(b) as b
+            from table1
+            group by a
+        )
+        select * from CTE
+        """
+        result = cll(sql)
+        assert_model(result, [("table1", "a")])
+
+    def test_having(self):
+        sql = """
+        select a, sum(b) as b
+        from table1
+        group by a
+        having sum(b) > 0
+        """
+        result = cll(sql)
+        assert_model(result, [("table1", "a"), ("table1", "b")])
+
+        sql = """
+        with CTE as (
+            select a, sum(b) as b
+            from table1
+            group by a
+            having sum(b) > 0
+        )
+        select * from CTE
+        """
+        result = cll(sql)
+        assert_model(result, [("table1", "a"), ("table1", "b")])
+
+    def test_having_by_selected_column(self):
+        sql = """
+        select a, sum(b) as c
+        from table1
+        group by a
+        having c > 0
+        """
+        result = cll(sql)
+        assert_model(result, [("table1", "a"), ("table1", "b")])
+
+        sql = """
+        with CTE as (
+            select a, sum(b) as c
+            from table1
+            group by a
+            having c > 0
+        )
+        select * from CTE
+        """
+        result = cll(sql)
+        assert_model(result, [("table1", "a"), ("table1", "b")])
+
+    def test_order_by(self):
+        sql = """
+        select a, b
+        from table1
+        order by a, b, c desc
+        """
+        result = cll(sql)
+        assert_model(result, [("table1", "a"), ("table1", "b"), ("table1", "c")])
+
+        sql = """
+        select a, b
+        from table1
+        order by 1, 2, c desc
+        """
+        result = cll(sql)
+        assert_model(result, [("table1", "a"), ("table1", "b"), ("table1", "c")])
+
+        sql = """
+        select a, b
+        from table1
+        order by c+d, func(e), 1 desc
+        """
+        result = cll(sql)
+        assert_model(result, [("table1", "a"), ("table1", "c"), ("table1", "d"), ("table1", "e")])
+
+        sql = """
+        with CTE as (
+            select a, b
+            from table1
+            order by a desc
+        )
+        select * from CTE
+        """
+        result = cll(sql)
+        assert_model(result, [("table1", "a")])
