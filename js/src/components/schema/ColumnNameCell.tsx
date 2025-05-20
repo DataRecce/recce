@@ -12,9 +12,15 @@ import {
   Portal,
   Spacer,
   Spinner,
+  Tooltip,
 } from "@chakra-ui/react";
 import { VscKebabVertical } from "react-icons/vsc";
 import { supportsHistogramDiff } from "../histogram/HistogramDiffForm";
+import { LuEye } from "react-icons/lu";
+import { useLineageViewContext } from "../lineage/LineageViewContext";
+import { trackColumnLevelLineage } from "@/lib/api/track";
+import { useLineageGraphContext } from "@/lib/hooks/LineageGraphContext";
+import { useState } from "react";
 import { NodeData } from "@/lib/api/info";
 import { useRecceInstanceContext } from "@/lib/hooks/RecceInstanceContext";
 
@@ -35,7 +41,9 @@ export function ColumnNameCell({
 }) {
   const { runAction } = useRecceActionContext();
   const { readOnly } = useRecceInstanceContext();
+  const lineageViewContext = useLineageViewContext();
   const columnType = currentType ?? baseType;
+  const [eyeTriggerLoading, setEyeTriggerLoading] = useState(false);
 
   const handleProfileDiff = () => {
     runAction("profile_diff", { model: model.name, columns: [name] }, { showForm: false });
@@ -54,13 +62,41 @@ export function ColumnNameCell({
   };
   const addedOrRemoved = !baseType || !currentType;
 
+  const handleViewCll = async () => {
+    trackColumnLevelLineage({ action: "view", source: "schema_column" });
+    setEyeTriggerLoading(true);
+    await lineageViewContext?.showColumnLevelLineage(model.id, name);
+    setEyeTriggerLoading(false);
+  };
+
   return (
     <Flex alignItems={"center"} gap="3px">
       <Box overflow="hidden" textOverflow="ellipsis" whiteSpace="nowrap">
         {name}
       </Box>
       <Spacer />
-      {singleEnv && cllRunning && <Spinner size="xs" color="gray.400" />}
+      {lineageViewContext && (
+        <Tooltip label="Show Lineage">
+          {cllRunning || eyeTriggerLoading ? (
+            <Spinner size="xs" color="gray.400" />
+          ) : (
+            <IconButton
+              icon={<LuEye />}
+              aria-label={""}
+              className="row-context-menu"
+              visibility="hidden"
+              width={"0px"}
+              minWidth={"0px"}
+              variant="unstyled"
+              size={"sm"}
+              color="gray"
+              _hover={{ color: "black" }}
+              onClick={handleViewCll}
+              isLoading={cllRunning}
+            />
+          )}
+        </Tooltip>
+      )}
       {!singleEnv && model.resource_type !== "source" && (
         <Menu>
           {({ isOpen }) => (
@@ -82,7 +118,6 @@ export function ColumnNameCell({
                   // prevent the click event from propagating to the Cell clicking
                   e.stopPropagation();
                 }}
-                isLoading={cllRunning}
               />
 
               <Portal>
