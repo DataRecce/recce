@@ -130,7 +130,7 @@ export function toDataGrid(
             name={row.name}
             baseType={row.baseType}
             currentType={row.currentType}
-            cllRunning={cllRunningMap?.get(row.name) ?? false}
+            rowCllRunning={cllRunningMap?.get(row.name) ?? false}
           />
         ) : (
           row.name
@@ -184,7 +184,7 @@ export function toSingleEnvDataGrid(
           <ColumnNameCell
             model={node}
             name={row.name}
-            cllRunning={cllRunningMap?.get(row.name) ?? false}
+            rowCllRunning={cllRunningMap?.get(row.name) ?? false}
             singleEnv
           />
         ) : (

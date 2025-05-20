@@ -11,7 +11,6 @@ import {
   MenuList,
   Portal,
   Spacer,
-  Spinner,
   Tooltip,
 } from "@chakra-ui/react";
 import { VscKebabVertical } from "react-icons/vsc";
@@ -19,9 +18,8 @@ import { supportsHistogramDiff } from "../histogram/HistogramDiffForm";
 import { LuEye } from "react-icons/lu";
 import { useLineageViewContext } from "../lineage/LineageViewContext";
 import { trackColumnLevelLineage } from "@/lib/api/track";
-import { useLineageGraphContext } from "@/lib/hooks/LineageGraphContext";
-import { useState } from "react";
 import { NodeData } from "@/lib/api/info";
+import { useState } from "react";
 import { useRecceInstanceContext } from "@/lib/hooks/RecceInstanceContext";
 
 export function ColumnNameCell({
@@ -30,20 +28,20 @@ export function ColumnNameCell({
   baseType,
   currentType,
   singleEnv,
-  cllRunning,
+  rowCllRunning,
 }: {
   model: NodeData;
   name: string;
   baseType?: string;
   currentType?: string;
   singleEnv?: boolean;
-  cllRunning?: boolean;
+  rowCllRunning?: boolean;
 }) {
   const { runAction } = useRecceActionContext();
   const { readOnly } = useRecceInstanceContext();
   const lineageViewContext = useLineageViewContext();
   const columnType = currentType ?? baseType;
-  const [eyeTriggerLoading, setEyeTriggerLoading] = useState(false);
+  const [cllRunning, setCllRunning] = useState(false);
 
   const handleProfileDiff = () => {
     runAction("profile_diff", { model: model.name, columns: [name] }, { showForm: false });
@@ -64,9 +62,9 @@ export function ColumnNameCell({
 
   const handleViewCll = async () => {
     trackColumnLevelLineage({ action: "view", source: "schema_column" });
-    setEyeTriggerLoading(true);
+    setCllRunning(true);
     await lineageViewContext?.showColumnLevelLineage(model.id, name);
-    setEyeTriggerLoading(false);
+    setCllRunning(false);
   };
 
   return (
@@ -77,24 +75,20 @@ export function ColumnNameCell({
       <Spacer />
       {lineageViewContext && (
         <Tooltip label="Show Lineage">
-          {cllRunning || eyeTriggerLoading ? (
-            <Spinner size="xs" color="gray.400" />
-          ) : (
-            <IconButton
-              icon={<LuEye />}
-              aria-label={""}
-              className="row-context-menu"
-              visibility="hidden"
-              width={"0px"}
-              minWidth={"0px"}
-              variant="unstyled"
-              size={"sm"}
-              color="gray"
-              _hover={{ color: "black" }}
-              onClick={handleViewCll}
-              isLoading={cllRunning}
-            />
-          )}
+          <IconButton
+            icon={<LuEye />}
+            aria-label={""}
+            className="row-context-menu"
+            visibility="hidden"
+            width={"0px"}
+            minWidth={"0px"}
+            variant="unstyled"
+            size={"sm"}
+            color="gray"
+            _hover={{ color: "black" }}
+            onClick={handleViewCll}
+            isLoading={cllRunning || rowCllRunning}
+          />
         </Tooltip>
       )}
       {!singleEnv && model.resource_type !== "source" && (
