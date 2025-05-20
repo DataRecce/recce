@@ -24,8 +24,7 @@ from typing import (
 
 from recce.event import log_performance
 from recce.exceptions import RecceException
-from recce.util.cll import CLLPerformanceTracking
-from recce.util.cll import cll_old as cll
+from recce.util.cll import CLLPerformanceTracking, cll
 from recce.util.lineage import find_downstream, find_upstream
 
 from ...tasks.profile import ProfileTask
@@ -950,22 +949,28 @@ class DbtAdapter(BaseAdapter):
                 col["depends_on"] = depends_on
 
         def _depend_node_to_id(column_lineage, nodes):
-            for cl in column_lineage.values():
+            # Precompute lookups
+            source_lookup = {}
+            name_lookup = {}
+            for n in nodes.values():
+                if n.get("resource_type") == "source":
+                    key = ".".join(n["id"].split(".")[-2:]).lower()  # assumes id format like 'source.table'
+                    source_lookup[key] = n["id"]
+                name = n.get("name")
+                if name:
+                    name_lookup[name.lower()] = n["id"]
+
+            for cl in column_lineage.columns.values():
                 for depend_on in cl.depends_on:
                     if depend_on.node.startswith("__"):
-                        for n in nodes.values():
-                            if n.get("resource_type") != "source":
-                                continue
-                            # __source__table -> source.table
-                            source_table = depend_on.node.lstrip("_").replace("__", ".", 1).lower()
-                            if source_table in n.get("id"):
-                                depend_on.node = n.get("id")
-                                break
+                        source_table = depend_on.node.lstrip("_").replace("__", ".", 1).lower()
+                        node_id = source_lookup.get(source_table)
+                        if node_id:
+                            depend_on.node = node_id
                     else:
-                        for n in nodes.values():
-                            if n.get("name") == depend_on.node.lower():
-                                depend_on.node = n.get("id")
-                                break
+                        node_id = name_lookup.get(depend_on.node.lower())
+                        if node_id:
+                            depend_on.node = node_id
 
         cll_tracker = CLLPerformanceTracking()
         nodes = self.get_lineage_nodes_metadata(base=base)
@@ -982,13 +987,11 @@ class DbtAdapter(BaseAdapter):
             _apply_all_columns(node, "unknown", [])
             return
 
-        # dbt <= 1.8, MetricFlow expects the time spine table to be named metricflow_time_spine
         if node.get("name") == "metricflow_time_spine":
             _apply_all_columns(node, "source", [])
             return
 
         if not node.get("columns", {}):
-            # no catalog
             return
 
         def ref_func(*args):
@@ -1024,15 +1027,12 @@ class DbtAdapter(BaseAdapter):
             schema[name] = {name: column.get("type") for name, column in columns.items()}
 
         try:
-            # provide a manifest to speedup and not pollute the manifest
             compiled_sql = self.generate_sql(raw_code, base=base, context=jinja_context, provided_manifest=manifest)
             dialect = self.adapter.type()
-            # find adapter type from the manifest, otherwise we use the adapter type from the adapter
             if self.get_manifest(base).metadata.adapter_type is not None:
                 dialect = self.get_manifest(base).metadata.adapter_type
             column_lineage = cll(compiled_sql, schema=schema, dialect=dialect)
         except RecceException:
-            # TODO: provide parsing error message if needed
             _apply_all_columns(node, "unknown", [])
             cll_tracker.increment_sqlglot_error_nodes()
             return
@@ -1044,9 +1044,10 @@ class DbtAdapter(BaseAdapter):
         _depend_node_to_id(column_lineage, nodes)
 
         for name, column in node.get("columns", {}).items():
-            if name in column_lineage:
-                column["depends_on"] = column_lineage[name].depends_on
-                column["transformation_type"] = column_lineage[name].type
+            if name in column_lineage.columns:
+                column["depends_on"] = column_lineage.columns[name].depends_on
+                column["transformation_type"] = column_lineage.columns[name].type
+        node["depends_on"] = column_lineage.depends_on
 
     @lru_cache(maxsize=2)
     def get_lineage_nodes_metadata(self, base: Optional[bool] = False):

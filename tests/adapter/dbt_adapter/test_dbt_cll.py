@@ -1,6 +1,24 @@
 from recce.adapter.dbt_adapter import DbtAdapter
 
 
+def assert_column(result, node_name, column_name, transformation_type, depends_on):
+    assert result["nodes"].get(node_name) is not None, f"Node {node_name} not found in result"
+    entry = result["nodes"][node_name]["columns"].get(column_name)
+    assert entry is not None, f"Column {column_name} not found in result"
+    assert (
+        entry["transformation_type"] == transformation_type
+    ), f"Column {column_name} type mismatch: expected {transformation_type}, got {entry.transformation_type}"
+    assert len(entry["depends_on"]) == len(depends_on), "depends_on length mismatch"
+    for i in range(len(depends_on)):
+        node, column = depends_on[i]
+        anode = entry["depends_on"][i].node
+        acolumn = entry["depends_on"][i].column
+
+        assert (
+            anode == node and acolumn == column
+        ), f"depends_on mismatch at index {i}: expected ({node}, {column}), got ({anode}, {acolumn})"
+
+
 def test_cll_basic(dbt_test_helper):
     dbt_test_helper.create_model("model1", curr_sql="select 1 as c", curr_columns={"c": "int"})
     dbt_test_helper.create_model(
@@ -8,8 +26,7 @@ def test_cll_basic(dbt_test_helper):
     )
     adapter: DbtAdapter = dbt_test_helper.context.adapter
     result = adapter.get_cll_by_node_id("model1")
-    assert result["nodes"]["model2"]["columns"]["c"]["depends_on"][0].column == "c"
-    assert result["nodes"]["model2"]["columns"]["c"]["depends_on"][0].node == "model1"
+    assert_column(result, "model2", "c", "passthrough", [("model1", "c")])
 
 
 def test_cll_table_alisa(dbt_test_helper):
@@ -22,8 +39,7 @@ def test_cll_table_alisa(dbt_test_helper):
     )
     adapter: DbtAdapter = dbt_test_helper.context.adapter
     result = adapter.get_cll_by_node_id("model1")
-    assert result["nodes"]["model2"]["columns"]["c"]["depends_on"][0].column == "c"
-    assert result["nodes"]["model2"]["columns"]["c"]["depends_on"][0].node == "model1"
+    assert_column(result, "model2", "c", "passthrough", [("model1", "c")])
 
 
 def test_seed(dbt_test_helper):
@@ -42,9 +58,7 @@ def test_seed(dbt_test_helper):
     )
     adapter: DbtAdapter = dbt_test_helper.context.adapter
     result = adapter.get_cll_by_node_id("seed1")
-
-    assert result["nodes"]["seed1"]["columns"]["customer_id"]["transformation_type"] == "source"
-    assert len(result["nodes"]["seed1"]["columns"]["customer_id"]["depends_on"]) == 0
+    assert_column(result, "seed1", "customer_id", "source", [])
 
 
 def test_python_model(dbt_test_helper):
@@ -72,7 +86,7 @@ def test_python_model(dbt_test_helper):
     assert adapter.is_python_model("model2")
 
     result = adapter.get_cll_by_node_id("model1")
-    assert result["nodes"]["model2"]["columns"]["customer_id"]["transformation_type"] == "unknown"
+    assert_column(result, "model2", "customer_id", "unknown", [])
 
 
 def test_source(dbt_test_helper):
@@ -91,7 +105,7 @@ def test_source(dbt_test_helper):
     )
     adapter: DbtAdapter = dbt_test_helper.context.adapter
     result = adapter.get_cll_by_node_id("source1.table1")
-    assert result["nodes"]["source1.table1"]["columns"]["customer_id"]["transformation_type"] == "source"
+    assert_column(result, "source1.table1", "customer_id", "source", [])
 
 
 def test_parse_error(dbt_test_helper):
@@ -99,7 +113,7 @@ def test_parse_error(dbt_test_helper):
     dbt_test_helper.create_model("model2", curr_sql="this is not a valid sql", curr_columns={"c": "int"})
     adapter: DbtAdapter = dbt_test_helper.context.adapter
     result = adapter.get_cll_by_node_id("model2")
-    assert result["nodes"]["model2"]["columns"]["c"]["transformation_type"] == "unknown"
+    assert_column(result, "model2", "c", "unknown", [])
 
 
 def test_model_without_catalog(dbt_test_helper):
