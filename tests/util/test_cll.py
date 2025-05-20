@@ -568,6 +568,14 @@ class ColumnLevelLineageTest(unittest.TestCase):
         assert_model(result, [("table1", "a")])
 
         sql = """
+        select a as a2, sum(b) as b
+        from table1
+        group by a2
+        """
+        result = cll(sql)
+        assert_model(result, [("table1", "a")])
+
+        sql = """
         select a, sum(b) as b
         from table1
         group by 1
