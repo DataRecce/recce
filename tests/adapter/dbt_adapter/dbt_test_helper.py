@@ -208,8 +208,7 @@ class DbtTestHelper:
         curr_columns: dict[str, str] = None,
         patch_func=None,
     ):
-        # unique_id = f"model.{package_name}.{model_name}"
-        unique_id = unique_id if unique_id else f"{source_name}.{table_name}"
+        unique_id = unique_id if unique_id else f"source.{package_name}.{source_name}.{table_name}"
 
         def _add_source_to_manifest(base):
             if base:
