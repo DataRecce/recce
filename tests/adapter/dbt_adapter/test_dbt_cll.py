@@ -103,9 +103,17 @@ def test_source(dbt_test_helper):
         curr_csv=csv_data_curr,
         curr_columns={"customer_id": "varchar", "name": "varchar", "age": "int"},
     )
+    dbt_test_helper.create_model(
+        "model1",
+        curr_sql='select customer_id from {{ source("source1", "table1") }}',
+        curr_columns={"customer_id": "int"},
+        depends_on=["source1.table1"],
+    )
     adapter: DbtAdapter = dbt_test_helper.context.adapter
-    result = adapter.get_cll_by_node_id("source1.table1")
-    assert_column(result, "source1.table1", "customer_id", "source", [])
+    result = adapter.get_cll_by_node_id("source.recce_test.source1.table1")
+    assert_column(result, "source.recce_test.source1.table1", "customer_id", "source", [])
+    result = adapter.get_cll_by_node_id("model1")
+    assert_column(result, "model1", "customer_id", "passthrough", [("source.recce_test.source1.table1", "customer_id")])
 
 
 def test_parse_error(dbt_test_helper):
