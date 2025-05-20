@@ -17,8 +17,6 @@ ignore =
     W503,
     # F841: Local variable name is assigned to but never used
     F841,
-    # F541: f-string without any placeholders - Allows f-strings with no variables
-    F541,
     # F811: Redefinition of unused name - Allows redefining imports
     F811
 
