@@ -11,6 +11,7 @@ import {
   MenuList,
   Portal,
   Spacer,
+  Spinner,
 } from "@chakra-ui/react";
 import { VscKebabVertical } from "react-icons/vsc";
 import { supportsHistogramDiff } from "../histogram/HistogramDiffForm";
@@ -59,6 +60,7 @@ export function ColumnNameCell({
         {name}
       </Box>
       <Spacer />
+      {singleEnv && cllRunning && <Spinner size="xs" color="gray.400" />}
       {!singleEnv && model.resource_type !== "source" && (
         <Menu>
           {({ isOpen }) => (

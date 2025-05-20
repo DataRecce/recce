@@ -16,9 +16,11 @@ interface SchemaViewProps {
 }
 
 function PrivateSingleEnvSchemaView({ current }: { current?: NodeData }, ref: any) {
+  const lineageViewContext = useLineageViewContext();
+  const [cllRunningMap, setCllRunningMap] = useState<Map<string, boolean>>(new Map());
   const { columns, rows } = useMemo(() => {
-    return toSingleEnvDataGrid(current?.columns, current);
-  }, [current]);
+    return toSingleEnvDataGrid(current?.columns, current, cllRunningMap);
+  }, [current, cllRunningMap]);
 
   const { lineageGraph } = useLineageGraphContext();
   const noCatalogCurrent = !lineageGraph?.catalogMetadata.current;
@@ -32,6 +34,16 @@ function PrivateSingleEnvSchemaView({ current }: { current?: NodeData }, ref: an
   if (noSchemaCurrent) {
     schemaMissingMessage = "Schema information is missing.";
   }
+
+  const handleViewCll = async (columnName: string) => {
+    trackColumnLevelLineage({ action: "view", source: "schema_column" });
+    setCllRunningMap((prev) => new Map(prev).set(columnName, true));
+    const modelId = current?.id;
+    if (modelId) {
+      await lineageViewContext?.showColumnLevelLineage(modelId, columnName);
+    }
+    setCllRunningMap((prev) => new Map(prev).set(columnName, false));
+  };
 
   return (
     <Flex direction="column">
@@ -65,6 +77,9 @@ function PrivateSingleEnvSchemaView({ current }: { current?: NodeData }, ref: an
             className="rdg-light"
             enableScreenshot={false}
             ref={ref}
+            onCellClick={async (args) => {
+              await handleViewCll(args.row.name);
+            }}
           />
         </>
       )}
