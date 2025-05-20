@@ -270,6 +270,7 @@ class BreakingChangeTest(unittest.TestCase):
         assert is_partial_breaking_change(alias, derived, {"a2": "modified"})
         assert is_partial_breaking_change(derived, alias, {"a2": "modified"})
         assert is_partial_breaking_change(derived, derived2, {"a2": "modified"})
+        assert is_breaking_change(alias, aggregate)
 
     def test_aggrgation_function(self):
         no_agg = """
@@ -1214,6 +1215,7 @@ class BreakingChangeTest(unittest.TestCase):
         """
         assert is_partial_breaking_change(original, modified1, {"a": "modified"})
         assert is_breaking_change(original, modified2)
+        assert is_partial_breaking_change(original, modified3, {"a": "modified"})
         assert is_non_breaking_change(original, added, {"b": "added"})
         assert is_partial_breaking_change(added, original, {"b": "removed"})
 
