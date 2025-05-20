@@ -3,8 +3,6 @@
 ignore =
     # W605: Invalid escape sequence - Ignores invalid escape sequences like '\d' in regex
     W605,
-    # F401: Module imported but unused - Allows unused imports
-    F401,
     # E501: Line too long - Allows lines longer than specified max length
     E501,
     # E125: Continuation line with same indent as next logical line
