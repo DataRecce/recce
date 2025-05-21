@@ -6,7 +6,7 @@ import "./style.css";
 import { NodeData } from "@/lib/api/info";
 import { ColumnNameCell } from "./ColumnNameCell";
 
-interface SchemaDiffRow {
+export interface SchemaDiffRow {
   name: string;
   reordered?: boolean;
   currentIndex?: number;
@@ -66,7 +66,7 @@ export function toDataGrid(
     } else {
       className = "column-index-normal";
     }
-    return className + " schema-cell";
+    return className + " schema-column schema-column-index";
   }
 
   function columnNameCellClass(row: SchemaDiffRow) {
@@ -80,7 +80,7 @@ export function toDataGrid(
     } else {
       className = "column-body-normal";
     }
-    return className + " schema-cell";
+    return className + " schema-column";
   }
 
   function columnTypeCellClass(row: SchemaDiffRow) {
@@ -96,7 +96,7 @@ export function toDataGrid(
     } else {
       className = "column-body-normal";
     }
-    return className + " schema-cell";
+    return className + " schema-column";
   }
 
   const columns: ColumnOrColumnGroup<SchemaDiffRow>[] = [

@@ -1,6 +1,6 @@
-import { forwardRef, useMemo, useState } from "react";
+import { forwardRef, Key, useMemo, useState } from "react";
 
-import { mergeColumns, toDataGrid, toSingleEnvDataGrid } from "./schema";
+import { mergeColumns, SchemaDiffRow, toDataGrid, toSingleEnvDataGrid } from "./schema";
 import "react-data-grid/lib/styles.css";
 import { Flex, Alert, AlertIcon } from "@chakra-ui/react";
 import { EmptyRowsRenderer, ScreenshotDataGrid } from "../data-grid/ScreenshotDataGrid";
@@ -8,6 +8,7 @@ import { useLineageGraphContext } from "@/lib/hooks/LineageGraphContext";
 import { NodeData } from "@/lib/api/info";
 import { trackColumnLevelLineage } from "@/lib/api/track";
 import { useLineageViewContext } from "../lineage/LineageViewContext";
+import { CellClickArgs } from "react-data-grid";
 
 interface SchemaViewProps {
   base?: NodeData;
@@ -77,7 +78,7 @@ function PrivateSingleEnvSchemaView({ current }: { current?: NodeData }, ref: an
             className="rdg-light"
             enableScreenshot={false}
             ref={ref}
-            onCellClick={async (args) => {
+            onCellClick={async (args: CellClickArgs<SchemaDiffRow>) => {
               await handleViewCll(args.row.name);
             }}
           />
@@ -136,6 +137,8 @@ export function PrivateSchemaView(
     setCllRunningMap((prev) => new Map(prev).set(columnName, false));
   };
 
+  const [selectedRows, setSelectedRows] = useState((): ReadonlySet<Key> => new Set());
+
   return (
     <Flex direction="column">
       {catalogMissingMessage ? (
@@ -168,8 +171,22 @@ export function PrivateSchemaView(
             className="rdg-light"
             enableScreenshot={enableScreenshot}
             ref={ref}
-            onCellClick={async (args) => {
+            rowKeyGetter={(row: SchemaDiffRow) => row.name}
+            selectedRows={selectedRows}
+            onSelectedRowsChange={setSelectedRows}
+            onCellClick={async (args: CellClickArgs<SchemaDiffRow>) => {
+              const clickedRowKey = args.row.name;
+              setSelectedRows(new Set([clickedRowKey]));
               await handleViewCll(args.row.name);
+            }}
+            rowClass={(row: SchemaDiffRow) => {
+              if (row.baseIndex === undefined) {
+                return "row-added";
+              } else if (row.currentIndex === undefined) {
+                return "row-removed";
+              } else {
+                return "row-normal";
+              }
             }}
           />
         </>

@@ -1,89 +1,84 @@
-.column-index-added {
-    text-align: right;
+.row-added {
     background-color: rgb(204, 255, 216);
 }
 
-.rdg-row:hover .column-index-added {
-    background-color: rgb(170, 230, 180);
+.row-added:hover,
+.row-added[aria-selected="true"] {
+    background-color:rgb(193 246 205);
     cursor: pointer;
 }
 
-.column-body-added {
-    background-color: rgb(230, 255, 236)
-}
-
-.rdg-row:hover .column-body-added {
-    background-color: rgb(180, 220, 185);
+.row-added[aria-selected="true"]:hover {
+    background-color: rgb(166 242 184);
     cursor: pointer;
 }
 
-.column-index-removed {
-    text-align: right;
-    background-color: rgb(255, 215, 213)
+.row-removed {
+    background-color: rgb(255, 215, 213);
 }
 
-.rdg-row:hover .column-index-removed {
-    background-color: rgb(220, 185, 183);
+.row-removed:hover,
+.row-removed[aria-selected="true"] {
+    background-color: rgb(246 195 193);
     cursor: pointer;
 }
 
-.column-body-removed {
-    background-color: rgb(255, 235, 233)
-}
-
-.rdg-row:hover .column-body-removed {
-    background-color: rgb(220, 200, 198);
+.row-removed[aria-selected="true"]:hover {
+    background-color: rgb(242 170 166);
     cursor: pointer;
 }
 
-.column-index-reordered {
-    text-align: right;
-    background-color: rgb(255, 173, 21);
-}
-
-.rdg-row:hover .column-index-reordered {
-    background-color: rgb(220, 140, 18);
-    cursor: pointer;
-}
-
-.column-body-reordered {
+.row-normal {
     background-color: white;
-    /* background-color: rgb(255, 238, 205); */
 }
 
-.rdg-row:hover .column-body-reordered {
-    background-color: #e0e0e0;
-    cursor: pointer;
-}
-
-.column-index-normal {
-    text-align: right;
-    background-color: rgb(249, 249, 249);
-}
-
-.rdg-row:hover .column-index-normal {
-    background-color: rgb(235, 235, 235);
-    cursor: pointer;
-}
-
-.column-body-normal {
-    background-color: white
-}
-
-.rdg-row:hover .column-body-normal {
+.row-normal:hover,
+.row-normal[aria-selected="true"] {
     background-color: rgb(241, 241, 241);
     cursor: pointer;
 }
 
-.column-body-type-changed {
-    background-color: rgb(255, 215, 213)
+.row-normal[aria-selected="true"]:hover {
+    background-color: rgb(230 230 230);
+    cursor: pointer;
 }
 
-.rdg-row:hover .column-body-type-changed {
-    background-color: rgb(220, 185, 183);
-}
+/* for general column */
 
-.schema-cell[aria-selected="true"] {
+.schema-column[aria-selected="true"] {
     outline: none;
     outline-offset: 0;
+}
+
+.schema-column-index {
+    text-align: right;
+    filter: brightness(0.95);
+}
+
+/* for reorder-index and type-change column */
+
+.column-body-type-changed {
+    background-color: rgb(255, 215, 213);
+}
+
+.row-normal:hover .column-body-type-changed,
+.row-normal[aria-selected="true"] .column-body-type-changed {
+    background-color: rgb(246 195 193);
+}
+
+.row-normal[aria-selected="true"]:hover .column-body-type-changed {
+    background-color: rgb(242 170 166);
+}
+
+.column-index-reordered {
+    background-color: rgb(255, 173, 21);
+}
+
+.row-normal:hover .column-index-reordered,
+.row-normal[aria-selected="true"] .column-index-reordered {
+    background-color: rgb(249 164 6);
+}
+
+.row-normal[aria-selected="true"]:hover .column-index-reordered {
+    background-color: rgb(224 147 6);
 }
