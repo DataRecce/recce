@@ -19,7 +19,7 @@ def test_query_diff_in_client(dbt_test_helper):
         """
 
     dbt_test_helper.create_model("customers", csv_data_base, csv_data_curr)
-    params = dict(sql_template=f'select * from {{{{ ref("customers") }}}}')
+    params = dict(sql_template='select * from {{ ref("customers") }}')
     task = QueryTask(params)
     run_result = task.execute()
     assert len(run_result.current.data) == 3
@@ -41,15 +41,15 @@ def test_query_diff_in_client(dbt_test_helper):
         """
 
     dbt_test_helper.create_model("customers", csv_data_base, csv_data_curr)
-    params = dict(sql_template=f'select * from {{{{ ref("customers") }}}}')
+    params = dict(sql_template='select * from {{ ref("customers") }}')
     task = QueryDiffTask(params)
     run_result = task.execute()
     assert len(run_result.base.data) == 3
     assert len(run_result.current.data) == 3
 
     params = dict(
-        base_sql_template=f'select * from {{{{ ref("customers") }}}} where customer_id <= 2',
-        sql_template=f'select * from {{{{ ref("customers") }}}}',
+        base_sql_template='select * from {{ ref("customers") }} where customer_id <= 2',
+        sql_template='select * from {{ ref("customers") }}',
     )
     task = QueryDiffTask(params)
     run_result = task.execute()
@@ -73,14 +73,14 @@ def test_query_diff_in_warehouse(dbt_test_helper):
         """
 
     dbt_test_helper.create_model("customers", csv_data_base, csv_data_curr)
-    params = dict(sql_template=f'select * from {{{{ ref("customers") }}}}', primary_keys=["customer_id"])
+    params = dict(sql_template='select * from {{ ref("customers") }}', primary_keys=["customer_id"])
     task = QueryDiffTask(params)
     run_result = task.execute()
     assert len(run_result.diff.data) == 2
 
     params = dict(
-        base_sql_template=f'select * from {{{{ ref("customers") }}}} where customer_id == 1',
-        sql_template=f'select * from {{{{ ref("customers") }}}}',
+        base_sql_template='select * from {{ ref("customers") }} where customer_id == 1',
+        sql_template='select * from {{ ref("customers") }}',
         primary_keys=["customer_id"],
     )
     task = QueryDiffTask(params)

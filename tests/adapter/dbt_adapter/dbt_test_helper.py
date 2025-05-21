@@ -121,7 +121,7 @@ class DbtTestHelper:
                 with dbt_adapter.connection_named("create model"):
                     import pandas as pd
 
-                    df = pd.read_csv(StringIO(csv))
+                    df = pd.read_csv(StringIO(csv))  # noqa: F841
                     dbt_adapter.execute(f"CREATE TABLE {schema}.{model_name} AS SELECT * FROM df")
             raw_code = sql if sql else csv
 
@@ -231,7 +231,7 @@ class DbtTestHelper:
                 with dbt_adapter.connection_named("create source"):
                     import pandas as pd
 
-                    df = pd.read_csv(StringIO(csv))
+                    df = pd.read_csv(StringIO(csv))  # noqa: F841
                     dbt_adapter.execute(f"CREATE TABLE {schema}.{table_name} AS SELECT * FROM df")
 
             if columns:

@@ -115,8 +115,6 @@ class TestRecceState(unittest.TestCase):
         self.assertEqual(adapter.base_manifest.metadata.invocation_id, manifest.get("metadata").get("invocation_id"))
 
     def test_state_loader(self):
-        context = RecceContext()
-
         # copy ./recce_state.json to temp and open
 
         # use library to create a temp file in the context
