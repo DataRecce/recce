@@ -19,7 +19,7 @@ def test_query_diff_in_client(dbt_test_helper):
         """
 
     dbt_test_helper.create_model("customers", csv_data_base, csv_data_curr)
-    params = dict(sql_template=f'select * from {{{{ ref("customers") }}}}')  # noqa: F541
+    params = dict(sql_template='select * from {{ ref("customers") }}')
     task = QueryTask(params)
     run_result = task.execute()
     assert len(run_result.current.data) == 3
