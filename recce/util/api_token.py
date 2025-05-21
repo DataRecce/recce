@@ -63,7 +63,7 @@ def prepare_api_token(
     if api_token:
         cloud_onboarding_state = get_recce_cloud_onboarding_state(api_token)
         if cloud_onboarding_state == "new":
-            # Mark the onboarding state as "installed" if the user is new
-            set_recce_cloud_onboarding_state(api_token, "installed")
+            # Mark the onboarding state as "launched" if the user is new
+            set_recce_cloud_onboarding_state(api_token, "launched")
 
     return api_token

@@ -90,7 +90,7 @@ class PrepareApiTokenTest(unittest.TestCase):
         self.assertEqual(token, "token")
         mock_prompt.assert_called_once()
         mock_update_token.assert_called_once()
-        mock_set_onboard.assert_called_once_with("token", "installed")
+        mock_set_onboard.assert_called_once_with("token", "launched")
 
     @patch("recce.util.api_token.set_recce_cloud_onboarding_state")
     @patch("recce.util.api_token.get_recce_cloud_onboarding_state", return_value="new")
