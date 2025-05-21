@@ -19,13 +19,32 @@ def assert_column(result, node_name, column_name, transformation_type, depends_o
         ), f"depends_on mismatch at index {i}: expected ({node}, {column}), got ({anode}, {acolumn})"
 
 
+def assert_model(result, node_name, depends_on):
+    assert result["nodes"].get(node_name) is not None, f"Node {node_name} not found in result"
+    entry = result["nodes"][node_name]
+
+    assert len(entry["depends_on"]) == len(depends_on), "depends_on length mismatch"
+    for i in range(len(depends_on)):
+        node, column = depends_on[i]
+        anode = entry["depends_on"][i].node
+        acolumn = entry["depends_on"][i].column
+
+        assert (
+            anode == node and acolumn == column
+        ), f"depends_on mismatch at index {i}: expected ({node}, {column}), got ({anode}, {acolumn})"
+
+
 def test_cll_basic(dbt_test_helper):
     dbt_test_helper.create_model("model1", curr_sql="select 1 as c", curr_columns={"c": "int"})
     dbt_test_helper.create_model(
-        "model2", curr_sql='select c from {{ ref("model1") }}', curr_columns={"c": "int"}, depends_on=["model1"]
+        "model2",
+        curr_sql='select c from {{ ref("model1") }} where c > 0',
+        curr_columns={"c": "int"},
+        depends_on=["model1"],
     )
     adapter: DbtAdapter = dbt_test_helper.context.adapter
-    result = adapter.get_cll_by_node_id("model1")
+    result = adapter.get_cll_by_node_id("model2")
+    assert_model(result, "model2", [("model1", "c")])
     assert_column(result, "model2", "c", "passthrough", [("model1", "c")])
 
 
