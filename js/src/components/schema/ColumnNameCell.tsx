@@ -11,15 +11,11 @@ import {
   MenuList,
   Portal,
   Spacer,
-  Tooltip,
+  Spinner,
 } from "@chakra-ui/react";
 import { VscKebabVertical } from "react-icons/vsc";
 import { supportsHistogramDiff } from "../histogram/HistogramDiffForm";
-import { LuEye } from "react-icons/lu";
-import { useLineageViewContext } from "../lineage/LineageViewContext";
-import { trackColumnLevelLineage } from "@/lib/api/track";
 import { NodeData } from "@/lib/api/info";
-import { useState } from "react";
 import { useRecceInstanceContext } from "@/lib/hooks/RecceInstanceContext";
 
 export function ColumnNameCell({
@@ -28,20 +24,18 @@ export function ColumnNameCell({
   baseType,
   currentType,
   singleEnv,
-  rowCllRunning,
+  cllRunning,
 }: {
   model: NodeData;
   name: string;
   baseType?: string;
   currentType?: string;
   singleEnv?: boolean;
-  rowCllRunning?: boolean;
+  cllRunning?: boolean;
 }) {
   const { runAction } = useRecceActionContext();
   const { readOnly } = useRecceInstanceContext();
-  const lineageViewContext = useLineageViewContext();
   const columnType = currentType ?? baseType;
-  const [cllRunning, setCllRunning] = useState(false);
 
   const handleProfileDiff = () => {
     runAction("profile_diff", { model: model.name, columns: [name] }, { showForm: false });
@@ -60,37 +54,13 @@ export function ColumnNameCell({
   };
   const addedOrRemoved = !baseType || !currentType;
 
-  const handleViewCll = async () => {
-    trackColumnLevelLineage({ action: "view", source: "schema_column" });
-    setCllRunning(true);
-    await lineageViewContext?.showColumnLevelLineage(model.id, name);
-    setCllRunning(false);
-  };
-
   return (
     <Flex alignItems={"center"} gap="3px">
       <Box overflow="hidden" textOverflow="ellipsis" whiteSpace="nowrap">
         {name}
       </Box>
       <Spacer />
-      {lineageViewContext && (
-        <Tooltip label="Show Lineage">
-          <IconButton
-            icon={<LuEye />}
-            aria-label={""}
-            className="row-context-menu"
-            visibility="hidden"
-            width={"0px"}
-            minWidth={"0px"}
-            variant="unstyled"
-            size={"sm"}
-            color="gray"
-            _hover={{ color: "black" }}
-            onClick={handleViewCll}
-            isLoading={cllRunning || rowCllRunning}
-          />
-        </Tooltip>
-      )}
+      {cllRunning && <Spinner size="xs" color="gray.400" />}
       {!singleEnv && model.resource_type !== "source" && (
         <Menu>
           {({ isOpen }) => (
