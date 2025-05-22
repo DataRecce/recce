@@ -151,7 +151,7 @@ export function toSingleEnvDataGrid(
       resizable: true,
       minWidth: 35,
       width: 35,
-      cellClass: "column-index-normal schema-cell",
+      cellClass: "schema-column schema-column-index",
     },
     {
       key: "name",
@@ -169,13 +169,13 @@ export function toSingleEnvDataGrid(
           row.name
         );
       },
-      cellClass: "column-body-normal schema-cell",
+      cellClass: "schema-column",
     },
     {
       key: "type",
       name: "Type",
       resizable: true,
-      cellClass: "column-body-normal schema-cell",
+      cellClass: "schema-column",
     },
   ];
 

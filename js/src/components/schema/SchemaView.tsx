@@ -46,6 +46,12 @@ function PrivateSingleEnvSchemaView({ current }: { current?: NodeData }, ref: an
     setCllRunningMap((prev) => new Map(prev).set(columnName, false));
   };
 
+  const [selectedRows, setSelectedRows] = useState((): ReadonlySet<Key> => new Set());
+  const rowKeyGetter = (row: SchemaDiffRow) => {
+    const modelId = current?.id;
+    return `${modelId}-${row.name}`;
+  };
+
   return (
     <Flex direction="column">
       {catalogMissingMessage ? (
@@ -78,9 +84,15 @@ function PrivateSingleEnvSchemaView({ current }: { current?: NodeData }, ref: an
             className="rdg-light"
             enableScreenshot={false}
             ref={ref}
+            rowKeyGetter={rowKeyGetter}
+            selectedRows={selectedRows}
+            onSelectedRowsChange={setSelectedRows}
             onCellClick={async (args: CellClickArgs<SchemaDiffRow>) => {
+              const clickedRowKey = rowKeyGetter(args.row);
+              setSelectedRows(new Set([clickedRowKey]));
               await handleViewCll(args.row.name);
             }}
+            rowClass={() => "row-normal"}
           />
         </>
       )}
