@@ -1048,9 +1048,10 @@ class DbtAdapter(BaseAdapter):
             return
 
         # Add cll dependency to the node.
-        node["depends_on"] = [
+        depends_on = [
             ColumnLevelDependsOn(node=table_id_map[d.node], column=d.column) for d in column_lineage.depends_on
         ]
+        node["depends_on"]["columns"] = depends_on
         for name, column in node.get("columns", {}).items():
             if name in column_lineage.columns:
                 column["depends_on"] = [
@@ -1079,6 +1080,9 @@ class DbtAdapter(BaseAdapter):
                 "package_name": node["package_name"],
                 "resource_type": node["resource_type"],
                 "raw_code": node["raw_code"],
+                "depends_on": {
+                    "nodes": node.get("depends_on").get("nodes", []),
+                },
             }
 
             if catalog is not None and unique_id in catalog.nodes:
