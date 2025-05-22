@@ -35,17 +35,20 @@ def assert_model(result, node_name, depends_on):
 
 
 def test_cll_basic(dbt_test_helper):
-    dbt_test_helper.create_model("model1", curr_sql="select 1 as c", curr_columns={"c": "int"})
+    dbt_test_helper.create_model(
+        "model1", unique_id="model.model1", curr_sql="select 1 as c", curr_columns={"c": "int"}
+    )
     dbt_test_helper.create_model(
         "model2",
+        unique_id="model.model2",
         curr_sql='select c from {{ ref("model1") }} where c > 0',
         curr_columns={"c": "int"},
-        depends_on=["model1"],
+        depends_on=["model.model1"],
     )
     adapter: DbtAdapter = dbt_test_helper.context.adapter
-    result = adapter.get_cll_by_node_id("model2")
-    assert_model(result, "model2", [("model1", "c")])
-    assert_column(result, "model2", "c", "passthrough", [("model1", "c")])
+    result = adapter.get_cll_by_node_id("model.model2")
+    assert_model(result, "model.model2", [("model.model1", "c")])
+    assert_column(result, "model.model2", "c", "passthrough", [("model.model1", "c")])
 
 
 def test_cll_table_alisa(dbt_test_helper):

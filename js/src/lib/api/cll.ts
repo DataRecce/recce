@@ -12,6 +12,10 @@ export interface NodeData {
   name: string;
   resource_type: string;
   raw_code?: string;
+  depends_on?: {
+    node: string;
+    column: string;
+  }[];
   columns?: Record<string, NodeColumnData>;
 }
 
