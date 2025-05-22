@@ -386,7 +386,23 @@ export function toReactflow(
     const nodeColumnSet = new Set<string>();
     let columnIndex = 0;
     if (columnLevelLineage) {
-      const cllNodeColumns = cll?.current?.nodes?.[node.id]?.columns ?? {};
+      const cllNode = cll?.current?.nodes?.[node.id];
+      const nodeDependsOn = cllNode?.depends_on ?? [];
+
+      for (const parentColumn of nodeDependsOn) {
+        const source = `${parentColumn.node}_${parentColumn.column}`;
+        const target = node.id;
+        edges.push({
+          id: `m2c_${source}_${target}`,
+          source,
+          target,
+          style: {
+            zIndex: 9999,
+          },
+        });
+      }
+
+      const cllNodeColumns = cllNode?.columns ?? {};
 
       for (const column of Object.values(cllNodeColumns)) {
         const columnKey = `${node.id}_${column.name}`;
