@@ -56,47 +56,25 @@ export function toDataGrid(
   cllRunningMap?: Map<string, boolean>,
 ) {
   function columnIndexCellClass(row: SchemaDiffRow) {
-    let className = "";
-    if (row.baseIndex === undefined) {
-      className = "column-index-added";
-    } else if (row.currentIndex === undefined) {
-      className = "column-index-removed";
-    } else if (row.reordered === true) {
-      className = "column-index-reordered";
-    } else {
-      className = "column-index-normal";
+    if (row.baseIndex !== undefined && row.currentIndex !== undefined && row.reordered === true) {
+      return "column-index-reordered schema-column schema-column-index";
     }
-    return className + " schema-column schema-column-index";
+    return "schema-column schema-column-index";
   }
 
-  function columnNameCellClass(row: SchemaDiffRow) {
-    let className = "";
-    if (row.baseIndex === undefined) {
-      className = "column-body-added";
-    } else if (row.currentIndex === undefined) {
-      className = "column-body-removed";
-    } else if (row.reordered === true) {
-      className = "column-body-reordered";
-    } else {
-      className = "column-body-normal";
-    }
-    return className + " schema-column";
+  function columnNameCellClass() {
+    return "schema-column";
   }
 
   function columnTypeCellClass(row: SchemaDiffRow) {
-    let className = "";
-    if (row.baseIndex === undefined) {
-      className = "column-body-added";
-    } else if (row.currentIndex === undefined) {
-      className = "column-body-removed";
-    } else if (row.baseType !== row.currentType) {
-      className = "column-body-type-changed";
-    } else if (row.reordered === true) {
-      className = "column-body-reordered";
-    } else {
-      className = "column-body-normal";
+    if (
+      row.baseIndex !== undefined &&
+      row.currentIndex !== undefined &&
+      row.baseType !== row.currentType
+    ) {
+      return "column-body-type-changed schema-column";
     }
-    return className + " schema-column";
+    return "schema-column";
   }
 
   const columns: ColumnOrColumnGroup<SchemaDiffRow>[] = [
