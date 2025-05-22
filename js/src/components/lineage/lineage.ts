@@ -11,7 +11,7 @@ import {
   ManifestMetadata,
   NodeData,
 } from "@/lib/api/info";
-import { ColumnLineageData } from "@/lib/api/cll";
+import { CllNodeData, ColumnLineageData } from "@/lib/api/cll";
 
 /**
  * The types for internal data structures.
@@ -328,6 +328,46 @@ export function selectDownstream(lineageGraph: LineageGraph, nodeIds: string[], 
   );
 }
 
+export function selectCllImpacted(cll: Record<string, CllNodeData>, node: string, column: string) {
+  const childMap: Record<string, string[]> = {};
+
+  for (const [nodeId, node] of Object.entries(cll)) {
+    for (const parentKey of node.depends_on?.nodes ?? []) {
+      if (!(parentKey in childMap)) {
+        childMap[parentKey] = [];
+      }
+      childMap[parentKey].push(nodeId);
+    }
+
+    for (const parent of node.depends_on?.columns ?? []) {
+      const parentKey = `${parent.node}_${parent.column}`;
+      if (!(parentKey in childMap)) {
+        childMap[parentKey] = [];
+      }
+      childMap[parentKey].push(nodeId);
+    }
+
+    for (const [columnId, column] of Object.entries(node.columns ?? {})) {
+      const columnKey = `${nodeId}_${columnId}`;
+
+      for (const parent of column.depends_on ?? []) {
+        const parentKey = `${parent.node}_${parent.column}`;
+        if (!(parentKey in childMap)) {
+          childMap[parentKey] = [];
+        }
+        childMap[parentKey].push(columnKey);
+      }
+    }
+  }
+
+  return getNeighborSet([`${node}_${column}`], (key) => {
+    if (!(key in childMap)) {
+      return [];
+    }
+    return childMap[key];
+  });
+}
+
 export function toReactflow(
   lineageGraph: LineageGraph,
   options?: {
@@ -339,7 +379,7 @@ export function toReactflow(
     cll?: ColumnLineageData;
     breakingChangeEnabled?: boolean;
   },
-): [Node[], Edge[], NodeColumnSetMap] {
+): [Node[], Edge[], NodeColumnSetMap, Set<string>] {
   const nodes: Node[] = [];
   const edges: Edge[] = [];
   const { selectedNodes, columnLevelLineage, cll, breakingChangeEnabled } = options ?? {};
@@ -349,6 +389,7 @@ export function toReactflow(
       : new Set<string>();
 
   const nodeColumnSetMap: NodeColumnSetMap = {};
+  const impacted = new Set<string>();
 
   function getWeight(from: string) {
     if (from === "base") {
@@ -387,7 +428,7 @@ export function toReactflow(
     let columnIndex = 0;
     if (columnLevelLineage) {
       const cllNode = cll?.current?.nodes?.[node.id];
-      const nodeDependsOn = cllNode?.depends_on ?? [];
+      const nodeDependsOn = cllNode?.depends_on?.columns ?? [];
 
       for (const parentColumn of nodeDependsOn) {
         const source = `${parentColumn.node}_${parentColumn.column}`;

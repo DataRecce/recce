@@ -2,6 +2,7 @@ import {
   LineageGraphNode,
   NodeColumnSetMap,
   layout,
+  selectCllImpacted,
   selectDownstream,
   selectUpstream,
   toReactflow,
@@ -302,6 +303,7 @@ export function PrivateLineageView(
    */
   const breakingChangeEnabled = viewOptions.breaking_change_enabled ?? false;
   const [nodeColumnSetMap, setNodeColumnSetMap] = useState<NodeColumnSetMap>();
+  const [cllImpacted, setCllImpacted] = useState<Set<string>>();
 
   /**
    * Highlighted nodes: the nodes that are highlighted. The behavior of highlighting depends on the select mode
@@ -329,7 +331,7 @@ export function PrivateLineageView(
         .map(([nodeId, _]) => {
           return nodeId;
         });
-      return new Set(nodeIds);
+      return new Set(nodeIds).union(cllImpacted ?? new Set());
     }
 
     if (focusedNode) {
@@ -589,6 +591,15 @@ export function PrivateLineageView(
       cll,
       breakingChangeEnabled: newViewOptions.breaking_change_enabled,
     });
+    if (newViewOptions.column_level_lineage != undefined && cll != undefined) {
+      const impacted = selectCllImpacted(
+        cll.current.nodes,
+        newViewOptions.column_level_lineage.node,
+        newViewOptions.column_level_lineage.column,
+      );
+      console.log("impacted", impacted);
+      setCllImpacted(impacted);
+    }
     setNodes(newNodes);
     setEdges(newEdges);
     setNodeColumnSetMap(newNodeColumnSetMap);
@@ -793,10 +804,13 @@ export function PrivateLineageView(
     isNodeSelected: (nodeId: string) => selectedNodeIds.has(nodeId),
     isEdgeHighlighted: (source, target) => {
       if (viewOptions.column_level_lineage) {
-        return false;
+        if (!cllImpacted) {
+          return false;
+        }
+        return cllImpacted.has(source) && cllImpacted.has(target);
+      } else {
+        return highlighted.has(source) && highlighted.has(target);
       }
-
-      return highlighted.has(source) && highlighted.has(target);
     },
     getNodeAction: (nodeId: string) => {
       return multiNodeAction.actionState.actions[nodeId];

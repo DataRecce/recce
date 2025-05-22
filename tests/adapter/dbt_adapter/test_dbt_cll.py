@@ -23,11 +23,11 @@ def assert_model(result, node_name, depends_on):
     assert result["nodes"].get(node_name) is not None, f"Node {node_name} not found in result"
     entry = result["nodes"][node_name]
 
-    assert len(entry["depends_on"]) == len(depends_on), "depends_on length mismatch"
+    assert len(entry["depends_on"]["columns"]) == len(depends_on), "depends_on length mismatch"
     for i in range(len(depends_on)):
         node, column = depends_on[i]
-        anode = entry["depends_on"][i].node
-        acolumn = entry["depends_on"][i].column
+        anode = entry["depends_on"]["columns"][i].node
+        acolumn = entry["depends_on"]["columns"][i].column
 
         assert (
             anode == node and acolumn == column
