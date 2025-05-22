@@ -138,6 +138,10 @@ export function PrivateSchemaView(
   };
 
   const [selectedRows, setSelectedRows] = useState((): ReadonlySet<Key> => new Set());
+  const rowKeyGetter = (row: SchemaDiffRow) => {
+    const modelId = current?.id ?? base?.id;
+    return `${modelId}-${row.name}`;
+  };
 
   return (
     <Flex direction="column">
@@ -171,11 +175,11 @@ export function PrivateSchemaView(
             className="rdg-light"
             enableScreenshot={enableScreenshot}
             ref={ref}
-            rowKeyGetter={(row: SchemaDiffRow) => row.name}
+            rowKeyGetter={rowKeyGetter}
             selectedRows={selectedRows}
             onSelectedRowsChange={setSelectedRows}
             onCellClick={async (args: CellClickArgs<SchemaDiffRow>) => {
-              const clickedRowKey = args.row.name;
+              const clickedRowKey = rowKeyGetter(args.row);
               setSelectedRows(new Set([clickedRowKey]));
               await handleViewCll(args.row.name);
             }}
