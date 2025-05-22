@@ -944,6 +944,7 @@ class DbtAdapter(BaseAdapter):
 
     def append_column_lineage(self, node: Dict, parent_list: List, base: Optional[bool] = False):
         def _apply_all_columns(node, trans_type, depends_on):
+            node["depends_on"] = depends_on
             for col in node.get("columns", {}).values():
                 col["transformation_type"] = trans_type
                 col["depends_on"] = depends_on
@@ -999,7 +1000,7 @@ class DbtAdapter(BaseAdapter):
 
             raise ValueError(f"Cannot find node {node_name} in the manifest")
 
-        def source_func(source_name, table_name):
+        def source_func(source_name, name):
             for key, n in nodes.items():
                 if n.get("resource_type") != "source":
                     continue
@@ -1014,7 +1015,7 @@ class DbtAdapter(BaseAdapter):
                 table_id_map[table_name] = unique_id
                 return table_name
 
-            return ValueError(f"Cannot find source {source_name}.{table_name} in the manifest")
+            raise ValueError(f"Cannot find source {source_name}.{table_name} in the manifest")
 
         raw_code = node.get("raw_code")
         jinja_context = dict(
@@ -1075,6 +1076,7 @@ class DbtAdapter(BaseAdapter):
             nodes[unique_id] = {
                 "id": node["unique_id"],
                 "name": node["name"],
+                "package_name": node["package_name"],
                 "resource_type": node["resource_type"],
                 "raw_code": node["raw_code"],
             }
@@ -1092,6 +1094,8 @@ class DbtAdapter(BaseAdapter):
             nodes[unique_id] = {
                 "id": source["unique_id"],
                 "name": source["name"],
+                "package_name": source["package_name"],
+                "source_name": source["source_name"],
                 "resource_type": source["resource_type"],
             }
 
