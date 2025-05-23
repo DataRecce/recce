@@ -46,11 +46,12 @@ function PrivateSingleEnvSchemaView({ current }: { current?: NodeData }, ref: an
     setCllRunningMap((prev) => new Map(prev).set(columnName, false));
   };
 
-  const [selectedRows, setSelectedRows] = useState((): ReadonlySet<Key> => new Set());
   const rowKeyGetter = (row: SchemaDiffRow) => {
     const modelId = current?.id;
     return `${modelId}-${row.name}`;
   };
+  const cll = lineageViewContext?.viewOptions.column_level_lineage;
+  const selectedRows: Set<Key> = cll ? new Set([`${cll.node}-${cll.column}`]) : new Set();
 
   return (
     <Flex direction="column">
@@ -86,10 +87,8 @@ function PrivateSingleEnvSchemaView({ current }: { current?: NodeData }, ref: an
             ref={ref}
             rowKeyGetter={rowKeyGetter}
             selectedRows={selectedRows}
-            onSelectedRowsChange={setSelectedRows}
+            onSelectedRowsChange={() => {}}
             onCellClick={async (args: CellClickArgs<SchemaDiffRow>) => {
-              const clickedRowKey = rowKeyGetter(args.row);
-              setSelectedRows(new Set([clickedRowKey]));
               await handleViewCll(args.row.name);
             }}
             rowClass={() => "row-normal"}
@@ -149,11 +148,12 @@ export function PrivateSchemaView(
     setCllRunningMap((prev) => new Map(prev).set(columnName, false));
   };
 
-  const [selectedRows, setSelectedRows] = useState((): ReadonlySet<Key> => new Set());
   const rowKeyGetter = (row: SchemaDiffRow) => {
     const modelId = current?.id ?? base?.id;
     return `${modelId}-${row.name}`;
   };
+  const cll = lineageViewContext?.viewOptions.column_level_lineage;
+  const selectedRows: Set<Key> = cll ? new Set([`${cll.node}-${cll.column}`]) : new Set();
 
   return (
     <Flex direction="column">
@@ -189,10 +189,8 @@ export function PrivateSchemaView(
             ref={ref}
             rowKeyGetter={rowKeyGetter}
             selectedRows={selectedRows}
-            onSelectedRowsChange={setSelectedRows}
+            onSelectedRowsChange={() => {}}
             onCellClick={async (args: CellClickArgs<SchemaDiffRow>) => {
-              const clickedRowKey = rowKeyGetter(args.row);
-              setSelectedRows(new Set([clickedRowKey]));
               await handleViewCll(args.row.name);
             }}
             rowClass={(row: SchemaDiffRow) => {
