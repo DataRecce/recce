@@ -19,25 +19,23 @@ import { supportsHistogramDiff } from "../histogram/HistogramDiffForm";
 import { NodeData } from "@/lib/api/info";
 import { useRecceInstanceContext } from "@/lib/hooks/RecceInstanceContext";
 import { useLineageViewContext } from "../lineage/LineageViewContext";
+import { SchemaDiffRow } from "./schema";
 
 export function ColumnNameCell({
   model,
-  name,
-  baseType,
-  currentType,
+  row,
   singleEnv,
   cllRunning,
 }: {
   model: NodeData;
-  name: string;
-  baseType?: string;
-  currentType?: string;
+  row: SchemaDiffRow;
   singleEnv?: boolean;
   cllRunning?: boolean;
 }) {
   const lineageViewContext = useLineageViewContext();
   const { runAction } = useRecceActionContext();
   const { readOnly } = useRecceInstanceContext();
+  const { name, baseType, currentType, baseIndex, currentIndex } = row;
   const columnType = currentType ?? baseType;
 
   const handleProfileDiff = () => {
@@ -56,7 +54,8 @@ export function ColumnNameCell({
     runAction("top_k_diff", { model: model.name, column_name: name, k: 50 }, { showForm: false });
   };
   const addedOrRemoved = !baseType || !currentType;
-  const isCllDisabled = lineageViewContext === undefined;
+  const isCllDisabled =
+    lineageViewContext === undefined || (baseIndex !== undefined && currentIndex === undefined);
 
   return (
     <Tooltip label="Click row to view lineage" placement="top" hasArrow isDisabled={isCllDisabled}>

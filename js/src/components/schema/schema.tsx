@@ -105,9 +105,7 @@ export function toDataGrid(
         return node ? (
           <ColumnNameCell
             model={node}
-            name={row.name}
-            baseType={row.baseType}
-            currentType={row.currentType}
+            row={row}
             cllRunning={cllRunningMap?.get(row.name) ?? false}
           />
         ) : (
@@ -161,7 +159,7 @@ export function toSingleEnvDataGrid(
         return node ? (
           <ColumnNameCell
             model={node}
-            name={row.name}
+            row={row}
             cllRunning={cllRunningMap?.get(row.name) ?? false}
             singleEnv
           />

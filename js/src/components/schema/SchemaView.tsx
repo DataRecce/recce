@@ -91,7 +91,12 @@ function PrivateSingleEnvSchemaView({ current }: { current?: NodeData }, ref: an
             onCellClick={async (args: CellClickArgs<SchemaDiffRow>) => {
               await handleViewCll(args.row.name);
             }}
-            rowClass={() => "row-normal"}
+            rowClass={() => {
+              if (lineageViewContext !== undefined) {
+                return "row-normal row-selectable";
+              }
+              return "row-normal";
+            }}
           />
         </>
       )}
@@ -191,16 +196,24 @@ export function PrivateSchemaView(
             selectedRows={selectedRows}
             onSelectedRowsChange={() => {}}
             onCellClick={async (args: CellClickArgs<SchemaDiffRow>) => {
+              if (args.row.baseIndex !== undefined && args.row.currentIndex === undefined) {
+                return;
+              }
               await handleViewCll(args.row.name);
             }}
             rowClass={(row: SchemaDiffRow) => {
+              let className;
               if (row.baseIndex === undefined) {
-                return "row-added";
+                className = "row-added";
               } else if (row.currentIndex === undefined) {
-                return "row-removed";
+                return "row-removed"; // removed column isn't selectable
               } else {
-                return "row-normal";
+                className = "row-normal";
               }
+              if (lineageViewContext !== undefined) {
+                className += " row-selectable";
+              }
+              return className;
             }}
           />
         </>

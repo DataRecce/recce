@@ -5,12 +5,10 @@
 .row-added:hover,
 .row-added[aria-selected="true"] {
     background-color:rgb(193 246 205);
-    cursor: pointer;
 }
 
 .row-added[aria-selected="true"]:hover {
     background-color: rgb(166 242 184);
-    cursor: pointer;
 }
 
 .row-removed {
@@ -20,12 +18,10 @@
 .row-removed:hover,
 .row-removed[aria-selected="true"] {
     background-color: rgb(246 195 193);
-    cursor: pointer;
 }
 
 .row-removed[aria-selected="true"]:hover {
     background-color: rgb(242 170 166);
-    cursor: pointer;
 }
 
 .row-normal {
@@ -35,12 +31,14 @@
 .row-normal:hover,
 .row-normal[aria-selected="true"] {
     background-color: rgb(241, 241, 241);
-    cursor: pointer;
 }
 
 .row-normal[aria-selected="true"]:hover {
     background-color: rgb(230 230 230);
-    cursor: pointer;
+}
+
+.row-selectable {
+    cursor: pointer
 }
 
 /* for general column */
