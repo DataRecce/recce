@@ -58,7 +58,7 @@ export function ColumnNameCell({
     lineageViewContext === undefined || (baseIndex !== undefined && currentIndex === undefined);
 
   return (
-    <Tooltip label="Click row to view lineage" placement="top" hasArrow isDisabled={isCllDisabled}>
+    <Tooltip label="View column lineage" placement="top" hasArrow isDisabled={isCllDisabled}>
       <Flex alignItems={"center"} gap="3px">
         <Box overflow="hidden" textOverflow="ellipsis" whiteSpace="nowrap">
           {name}
