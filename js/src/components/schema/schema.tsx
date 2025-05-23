@@ -6,7 +6,7 @@ import "./style.css";
 import { NodeData } from "@/lib/api/info";
 import { ColumnNameCell } from "./ColumnNameCell";
 
-interface SchemaDiffRow {
+export interface SchemaDiffRow {
   name: string;
   reordered?: boolean;
   currentIndex?: number;
@@ -50,43 +50,31 @@ export function mergeColumns(
   return result;
 }
 
-export function toDataGrid(schemaDiff: SchemaDiff, node?: NodeData) {
+export function toDataGrid(
+  schemaDiff: SchemaDiff,
+  node?: NodeData,
+  cllRunningMap?: Map<string, boolean>,
+) {
   function columnIndexCellClass(row: SchemaDiffRow) {
-    if (row.baseIndex === undefined) {
-      return "column-index-added";
-    } else if (row.currentIndex === undefined) {
-      return "column-index-removed";
-    } else if (row.reordered === true) {
-      return "column-index-reordered";
-    } else {
-      return "column-index-normal";
+    if (row.baseIndex !== undefined && row.currentIndex !== undefined && row.reordered === true) {
+      return "column-index-reordered schema-column schema-column-index";
     }
+    return "schema-column schema-column-index";
   }
 
-  function columnNameCellClass(row: SchemaDiffRow) {
-    if (row.baseIndex === undefined) {
-      return "column-body-added";
-    } else if (row.currentIndex === undefined) {
-      return "column-body-removed";
-    } else if (row.reordered === true) {
-      return "column-body-reordered";
-    } else {
-      return "column-body-normal";
-    }
+  function columnNameCellClass() {
+    return "schema-column";
   }
 
   function columnTypeCellClass(row: SchemaDiffRow) {
-    if (row.baseIndex === undefined) {
-      return "column-body-added";
-    } else if (row.currentIndex === undefined) {
-      return "column-body-removed";
-    } else if (row.baseType !== row.currentType) {
-      return "column-body-type-changed";
-    } else if (row.reordered === true) {
-      return "column-body-reordered";
-    } else {
-      return "column-body-normal";
+    if (
+      row.baseIndex !== undefined &&
+      row.currentIndex !== undefined &&
+      row.baseType !== row.currentType
+    ) {
+      return "column-body-type-changed schema-column";
     }
+    return "schema-column";
   }
 
   const columns: ColumnOrColumnGroup<SchemaDiffRow>[] = [
@@ -117,9 +105,8 @@ export function toDataGrid(schemaDiff: SchemaDiff, node?: NodeData) {
         return node ? (
           <ColumnNameCell
             model={node}
-            name={row.name}
-            baseType={row.baseType}
-            currentType={row.currentType}
+            row={row}
+            cllRunning={cllRunningMap?.get(row.name) ?? false}
           />
         ) : (
           row.name
@@ -144,7 +131,11 @@ export function toDataGrid(schemaDiff: SchemaDiff, node?: NodeData) {
 
   return { columns, rows };
 }
-export function toSingleEnvDataGrid(nodeColumns: NodeData["columns"] = {}, node?: NodeData) {
+export function toSingleEnvDataGrid(
+  nodeColumns: NodeData["columns"] = {},
+  node?: NodeData,
+  cllRunningMap?: Map<string, boolean>,
+) {
   const rows: SchemaRow[] = Object.entries(nodeColumns).map(([name, column], index) => ({
     name,
     index: index + 1,
@@ -158,22 +149,31 @@ export function toSingleEnvDataGrid(nodeColumns: NodeData["columns"] = {}, node?
       resizable: true,
       minWidth: 35,
       width: 35,
-      cellClass: "column-index-normal",
+      cellClass: "schema-column schema-column-index",
     },
     {
       key: "name",
       name: "Name",
       resizable: true,
       renderCell: ({ row, column }) => {
-        return node ? <ColumnNameCell model={node} name={row.name} singleEnv /> : row.name;
+        return node ? (
+          <ColumnNameCell
+            model={node}
+            row={row}
+            cllRunning={cllRunningMap?.get(row.name) ?? false}
+            singleEnv
+          />
+        ) : (
+          row.name
+        );
       },
-      cellClass: "column-body-normal",
+      cellClass: "schema-column",
     },
     {
       key: "type",
       name: "Type",
       resizable: true,
-      cellClass: "column-body-normal",
+      cellClass: "schema-column",
     },
   ];
 

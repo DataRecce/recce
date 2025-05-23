@@ -1,11 +1,14 @@
-import { forwardRef, useMemo } from "react";
+import { forwardRef, Key, useMemo, useState } from "react";
 
-import { mergeColumns, toDataGrid, toSingleEnvDataGrid } from "./schema";
+import { mergeColumns, SchemaDiffRow, toDataGrid, toSingleEnvDataGrid } from "./schema";
 import "react-data-grid/lib/styles.css";
 import { Flex, Alert, AlertIcon } from "@chakra-ui/react";
 import { EmptyRowsRenderer, ScreenshotDataGrid } from "../data-grid/ScreenshotDataGrid";
 import { useLineageGraphContext } from "@/lib/hooks/LineageGraphContext";
 import { NodeData } from "@/lib/api/info";
+import { trackColumnLevelLineage } from "@/lib/api/track";
+import { useLineageViewContext } from "../lineage/LineageViewContext";
+import { CellClickArgs } from "react-data-grid";
 
 interface SchemaViewProps {
   base?: NodeData;
@@ -14,9 +17,11 @@ interface SchemaViewProps {
 }
 
 function PrivateSingleEnvSchemaView({ current }: { current?: NodeData }, ref: any) {
+  const lineageViewContext = useLineageViewContext();
+  const [cllRunningMap, setCllRunningMap] = useState<Map<string, boolean>>(new Map());
   const { columns, rows } = useMemo(() => {
-    return toSingleEnvDataGrid(current?.columns, current);
-  }, [current]);
+    return toSingleEnvDataGrid(current?.columns, current, cllRunningMap);
+  }, [current, cllRunningMap]);
 
   const { lineageGraph } = useLineageGraphContext();
   const noCatalogCurrent = !lineageGraph?.catalogMetadata.current;
@@ -30,6 +35,23 @@ function PrivateSingleEnvSchemaView({ current }: { current?: NodeData }, ref: an
   if (noSchemaCurrent) {
     schemaMissingMessage = "Schema information is missing.";
   }
+
+  const handleViewCll = async (columnName: string) => {
+    trackColumnLevelLineage({ action: "view", source: "schema_column" });
+    setCllRunningMap((prev) => new Map(prev).set(columnName, true));
+    const modelId = current?.id;
+    if (modelId) {
+      await lineageViewContext?.showColumnLevelLineage(modelId, columnName);
+    }
+    setCllRunningMap((prev) => new Map(prev).set(columnName, false));
+  };
+
+  const rowKeyGetter = (row: SchemaDiffRow) => {
+    const modelId = current?.id;
+    return `${modelId}-${row.name}`;
+  };
+  const cll = lineageViewContext?.viewOptions.column_level_lineage;
+  const selectedRows: Set<Key> = cll ? new Set([`${cll.node}-${cll.column}`]) : new Set();
 
   return (
     <Flex direction="column">
@@ -63,6 +85,18 @@ function PrivateSingleEnvSchemaView({ current }: { current?: NodeData }, ref: an
             className="rdg-light"
             enableScreenshot={false}
             ref={ref}
+            rowKeyGetter={rowKeyGetter}
+            selectedRows={selectedRows}
+            onSelectedRowsChange={() => {}}
+            onCellClick={async (args: CellClickArgs<SchemaDiffRow>) => {
+              await handleViewCll(args.row.name);
+            }}
+            rowClass={() => {
+              if (lineageViewContext !== undefined) {
+                return "row-normal row-selectable";
+              }
+              return "row-normal";
+            }}
           />
         </>
       )}
@@ -74,15 +108,17 @@ export function PrivateSchemaView(
   { base, current, enableScreenshot = false }: SchemaViewProps,
   ref: any,
 ) {
+  const lineageViewContext = useLineageViewContext();
+  const [cllRunningMap, setCllRunningMap] = useState<Map<string, boolean>>(new Map());
   const { columns, rows } = useMemo(() => {
     const schemaDiff = mergeColumns(base?.columns, current?.columns);
     const resourceType = current?.resource_type ?? base?.resource_type;
     if (resourceType && ["model", "seed", "snapshot", "source"].includes(resourceType)) {
-      return toDataGrid(schemaDiff, current ?? base);
+      return toDataGrid(schemaDiff, current ?? base, cllRunningMap);
     } else {
       return toDataGrid(schemaDiff);
     }
-  }, [base, current]);
+  }, [base, current, cllRunningMap]);
 
   const { lineageGraph } = useLineageGraphContext();
   const noCatalogBase = !lineageGraph?.catalogMetadata.base;
@@ -106,6 +142,23 @@ export function PrivateSchemaView(
   } else if (noSchemaCurrent) {
     schemaMissingMessage = "Schema information is missing on current environment.";
   }
+
+  const handleViewCll = async (columnName: string) => {
+    trackColumnLevelLineage({ action: "view", source: "schema_column" });
+    setCllRunningMap((prev) => new Map(prev).set(columnName, true));
+    const modelId = current?.id ?? base?.id;
+    if (modelId) {
+      await lineageViewContext?.showColumnLevelLineage(modelId, columnName);
+    }
+    setCllRunningMap((prev) => new Map(prev).set(columnName, false));
+  };
+
+  const rowKeyGetter = (row: SchemaDiffRow) => {
+    const modelId = current?.id ?? base?.id;
+    return `${modelId}-${row.name}`;
+  };
+  const cll = lineageViewContext?.viewOptions.column_level_lineage;
+  const selectedRows: Set<Key> = cll ? new Set([`${cll.node}-${cll.column}`]) : new Set();
 
   return (
     <Flex direction="column">
@@ -139,6 +192,29 @@ export function PrivateSchemaView(
             className="rdg-light"
             enableScreenshot={enableScreenshot}
             ref={ref}
+            rowKeyGetter={rowKeyGetter}
+            selectedRows={selectedRows}
+            onSelectedRowsChange={() => {}}
+            onCellClick={async (args: CellClickArgs<SchemaDiffRow>) => {
+              if (args.row.baseIndex !== undefined && args.row.currentIndex === undefined) {
+                return;
+              }
+              await handleViewCll(args.row.name);
+            }}
+            rowClass={(row: SchemaDiffRow) => {
+              let className;
+              if (row.baseIndex === undefined) {
+                className = "row-added";
+              } else if (row.currentIndex === undefined) {
+                return "row-removed"; // removed column isn't selectable
+              } else {
+                className = "row-normal";
+              }
+              if (lineageViewContext !== undefined) {
+                className += " row-selectable";
+              }
+              return className;
+            }}
           />
         </>
       )}
