@@ -1,5 +1,5 @@
 import {
-  Button,
+  Button, Image,
   Modal,
   ModalBody,
   ModalCloseButton,
@@ -15,6 +15,8 @@ import Cookies from "js-cookie";
 import { LuExternalLink } from "react-icons/lu";
 import Link from "next/link";
 import { PUBLIC_CLOUD_WEB_URL } from "@/lib/const";
+import ReloadImage from "public/imgs/reload-image.svg";
+import { StaticImageData } from "next/image";
 
 type AuthState = "authenticating" | "pending" | "canceled" | "ignored";
 
@@ -36,11 +38,16 @@ export default function AuthModal(): ReactNode {
   updateModalState();
 
   return (
-    <Modal size="3xl" isOpen={isOpen} onClose={onClose}>
+    <Modal size="xl" isCentered isOpen={isOpen} onClose={onClose}>
       <ModalOverlay />
       <ModalContent>
-        {authState !== "authenticating" && <ModalHeader>Connect to Recce Cloud</ModalHeader>}
-        {authState === "authenticating" && <ModalHeader>Restart Recce Server</ModalHeader>}
+        {authState !== "authenticating" && <ModalHeader>Use Recce Cloud for Free</ModalHeader>}
+        {authState === "authenticating" && (
+          <ModalHeader className="text-center">
+            <Image className="mx-auto mb-2" src={(ReloadImage as StaticImageData).src} />
+            <div>Reload to Finish</div>
+          </ModalHeader>
+        )}
         <ModalCloseButton
           onClick={() => {
             setAuthState("canceled");
@@ -50,62 +57,61 @@ export default function AuthModal(): ReactNode {
         {authState !== "authenticating" ? (
           <>
             <ModalBody className="space-y-2 font-light">
-              <p>
-                Easily and securely share your data validation checks with your team by connecting
-                to Recce Cloud!
-              </p>
-              <p>
-                Reviewers and stakeholders can access your checks directly in the Cloud. Plus,
-                everything is protected with SOC 2 Type 1 security compliance.
-              </p>
-              <p className="!mt-4">
-                Connecting is recommended for better collaboration, but is completely optional.
-              </p>
+              <ul className="list-inside list-disc">
+                <li>Share your work with teammates, no setup needed</li>
+                <li>Reviewers can access it with a link.</li>
+                <li>It’s recommended, but optional.</li>
+              </ul>
             </ModalBody>
             <ModalFooter>
-              <Link
-                href={`${PUBLIC_CLOUD_WEB_URL}/signin?callbackUrl=relaunch`}
-                target="_blank"
-                onClick={() => {
-                  setAuthState("authenticating");
-                }}>
-                <Button colorScheme="blue" mr={3} rightIcon={<LuExternalLink />}>
-                  Sign in
+              <div className="flex w-full flex-col gap-2">
+                <Link
+                  className="w-full"
+                  href={`${PUBLIC_CLOUD_WEB_URL}/connect-to-cloud`}
+                  target="_blank"
+                  onClick={() => {
+                    setAuthState("authenticating");
+                  }}>
+                  <Button className="w-full" colorScheme="brand" rightIcon={<LuExternalLink />}>
+                    Use Recce Cloud
+                  </Button>
+                </Link>
+                <Button
+                  variant="solid"
+                  colorScheme="gray"
+                  size="sm"
+                  onClick={() => {
+                    setAuthState("canceled");
+                    onClose();
+                  }}>
+                  Skip
                 </Button>
-              </Link>
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => {
-                  setAuthState("canceled");
-                  onClose();
-                }}>
-                Skip
-              </Button>
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => {
-                  onClose();
-                  Cookies.set("authState", "ignored", { expires: 30 });
-                  setAuthState("ignored");
-                }}>
-                Snooze for 30 days
-              </Button>
+                <Button
+                  variant="link"
+                  size="sm"
+                  onClick={() => {
+                    onClose();
+                    Cookies.set("authState", "ignored", { expires: 30 });
+                    setAuthState("ignored");
+                  }}>
+                  Snooze for 30 days
+                </Button>
+              </div>
             </ModalFooter>
           </>
         ) : (
           <>
-            <ModalBody className="space-y-2 font-light">
-              <p>Relaunch Recce Server with the API Token and refresh this page to continue</p>
+            <ModalBody className="space-y-2 self-center font-light">
+              <p>Reload to complete connection to Recce Cloud</p>
             </ModalBody>
             <ModalFooter>
               <Button
-                colorScheme="blue"
+                className="w-full"
+                colorScheme="brand"
                 onClick={() => {
                   window.location.reload();
                 }}>
-                Refresh Page
+                Reload
               </Button>
             </ModalFooter>
           </>

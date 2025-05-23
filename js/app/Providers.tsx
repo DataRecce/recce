@@ -28,6 +28,19 @@ const chakraTheme = extendTheme({
     Checkbox: checkboxTheme,
     Tooltip: tooltipTheme,
   },
+  colors: {
+    brand: {
+      100: "#fd683e",
+      200: "#fd683e",
+      300: "#fd683e",
+      400: "#fd683e",
+      500: "#fd683e",
+      600: "#fd683e",
+      700: "#fd683e",
+      800: "#fd683e",
+      900: "#fd683e",
+    },
+  },
 });
 export default function Providers({ children }: { children: ReactNode }) {
   return (
