@@ -12,11 +12,13 @@ import {
   Portal,
   Spacer,
   Spinner,
+  Tooltip,
 } from "@chakra-ui/react";
 import { VscKebabVertical } from "react-icons/vsc";
 import { supportsHistogramDiff } from "../histogram/HistogramDiffForm";
 import { NodeData } from "@/lib/api/info";
 import { useRecceInstanceContext } from "@/lib/hooks/RecceInstanceContext";
+import { useLineageViewContext } from "../lineage/LineageViewContext";
 
 export function ColumnNameCell({
   model,
@@ -33,6 +35,7 @@ export function ColumnNameCell({
   singleEnv?: boolean;
   cllRunning?: boolean;
 }) {
+  const lineageViewContext = useLineageViewContext();
   const { runAction } = useRecceActionContext();
   const { readOnly } = useRecceInstanceContext();
   const columnType = currentType ?? baseType;
@@ -53,67 +56,73 @@ export function ColumnNameCell({
     runAction("top_k_diff", { model: model.name, column_name: name, k: 50 }, { showForm: false });
   };
   const addedOrRemoved = !baseType || !currentType;
+  const isCllDisabled = lineageViewContext === undefined;
 
   return (
-    <Flex alignItems={"center"} gap="3px">
-      <Box overflow="hidden" textOverflow="ellipsis" whiteSpace="nowrap">
-        {name}
-      </Box>
-      <Spacer />
-      {cllRunning && <Spinner size="xs" color="gray.400" />}
-      {!singleEnv && model.resource_type !== "source" && (
-        <Menu>
-          {({ isOpen }) => (
-            <>
-              <MenuButton
-                display="flex"
-                className="row-context-menu"
-                visibility={isOpen ? "visible" : "hidden"}
-                width={isOpen ? "auto" : "0px"}
-                minWidth={isOpen ? "auto" : "0px"}
-                as={IconButton}
-                icon={<Icon as={VscKebabVertical} />}
-                variant="unstyled"
-                size={"sm"}
-                color="gray"
-                _hover={{ color: "black" }}
-                isDisabled={readOnly}
-                onClick={(e) => {
-                  // prevent the click event from propagating to the Cell clicking
-                  e.stopPropagation();
-                }}
-              />
+    <Tooltip label="Click row to view lineage" placement="top" hasArrow isDisabled={isCllDisabled}>
+      <Flex alignItems={"center"} gap="3px">
+        <Box overflow="hidden" textOverflow="ellipsis" whiteSpace="nowrap">
+          {name}
+        </Box>
+        <Spacer />
+        {cllRunning && <Spinner size="xs" color="gray.400" />}
+        {!singleEnv && model.resource_type !== "source" && (
+          <Menu>
+            {({ isOpen }) => (
+              <>
+                <MenuButton
+                  display="flex"
+                  className="row-context-menu"
+                  visibility={isOpen ? "visible" : "hidden"}
+                  width={isOpen ? "auto" : "0px"}
+                  minWidth={isOpen ? "auto" : "0px"}
+                  as={IconButton}
+                  icon={<Icon as={VscKebabVertical} />}
+                  variant="unstyled"
+                  size={"sm"}
+                  color="gray"
+                  _hover={{ color: "black" }}
+                  isDisabled={readOnly}
+                  onClick={(e) => {
+                    // prevent the click event from propagating to the Cell clicking
+                    e.stopPropagation();
+                  }}
+                />
 
-              <Portal>
-                <MenuList lineHeight="20px">
-                  {/* <MenuGroup title="Column" m="0" p="4px 12px">
+                <Portal>
+                  <MenuList lineHeight="20px">
+                    {/* <MenuGroup title="Column" m="0" p="4px 12px">
               <MenuItem fontSize="10pt">Set Alias Name</MenuItem>
             </MenuGroup> */}
-                  <MenuGroup title="Diff" m="0" p="4px 12px">
-                    <MenuItem
-                      fontSize="10pt"
-                      onClick={handleProfileDiff}
-                      isDisabled={addedOrRemoved}>
-                      Profile Diff
-                    </MenuItem>
-                    <MenuItem
-                      fontSize="10pt"
-                      onClick={handleHistogramDiff}
-                      isDisabled={
-                        addedOrRemoved || (columnType ? !supportsHistogramDiff(columnType) : true)
-                      }>
-                      Histogram Diff
-                    </MenuItem>
-                    <MenuItem fontSize="10pt" onClick={handleTopkDiff} isDisabled={addedOrRemoved}>
-                      Top-k Diff
-                    </MenuItem>
-                  </MenuGroup>
-                </MenuList>
-              </Portal>
-            </>
-          )}
-        </Menu>
-      )}
-    </Flex>
+                    <MenuGroup title="Diff" m="0" p="4px 12px">
+                      <MenuItem
+                        fontSize="10pt"
+                        onClick={handleProfileDiff}
+                        isDisabled={addedOrRemoved}>
+                        Profile Diff
+                      </MenuItem>
+                      <MenuItem
+                        fontSize="10pt"
+                        onClick={handleHistogramDiff}
+                        isDisabled={
+                          addedOrRemoved || (columnType ? !supportsHistogramDiff(columnType) : true)
+                        }>
+                        Histogram Diff
+                      </MenuItem>
+                      <MenuItem
+                        fontSize="10pt"
+                        onClick={handleTopkDiff}
+                        isDisabled={addedOrRemoved}>
+                        Top-k Diff
+                      </MenuItem>
+                    </MenuGroup>
+                  </MenuList>
+                </Portal>
+              </>
+            )}
+          </Menu>
+        )}
+      </Flex>
+    </Tooltip>
   );
 }
