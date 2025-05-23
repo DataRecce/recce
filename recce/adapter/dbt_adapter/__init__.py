@@ -24,8 +24,7 @@ from typing import (
 
 from recce.event import log_performance
 from recce.exceptions import RecceException
-from recce.util.cll import CLLPerformanceTracking
-from recce.util.cll import cll_old as cll
+from recce.util.cll import CLLPerformanceTracking, ColumnLevelDependsOn, cll
 from recce.util.lineage import find_downstream, find_upstream
 
 from ...tasks.profile import ProfileTask
@@ -945,27 +944,10 @@ class DbtAdapter(BaseAdapter):
 
     def append_column_lineage(self, node: Dict, parent_list: List, base: Optional[bool] = False):
         def _apply_all_columns(node, trans_type, depends_on):
+            node["depends_on"] = depends_on
             for col in node.get("columns", {}).values():
                 col["transformation_type"] = trans_type
                 col["depends_on"] = depends_on
-
-        def _depend_node_to_id(column_lineage, nodes):
-            for cl in column_lineage.values():
-                for depend_on in cl.depends_on:
-                    if depend_on.node.startswith("__"):
-                        for n in nodes.values():
-                            if n.get("resource_type") != "source":
-                                continue
-                            # __source__table -> source.table
-                            source_table = depend_on.node.lstrip("_").replace("__", ".", 1).lower()
-                            if source_table in n.get("id"):
-                                depend_on.node = n.get("id")
-                                break
-                    else:
-                        for n in nodes.values():
-                            if n.get("name") == depend_on.node.lower():
-                                depend_on.node = n.get("id")
-                                break
 
         cll_tracker = CLLPerformanceTracking()
         nodes = self.get_lineage_nodes_metadata(base=base)
@@ -982,26 +964,58 @@ class DbtAdapter(BaseAdapter):
             _apply_all_columns(node, "unknown", [])
             return
 
-        # dbt <= 1.8, MetricFlow expects the time spine table to be named metricflow_time_spine
         if node.get("name") == "metricflow_time_spine":
             _apply_all_columns(node, "source", [])
             return
 
         if not node.get("columns", {}):
-            # no catalog
             return
 
-        def ref_func(*args):
-            if len(args) == 1:
-                node = args[0]
-            elif len(args) > 1:
-                node = args[1]
-            else:
-                return None
-            return node
+        table_id_map = {}
 
-        def source_func(source_name, table_name):
-            return f"__{source_name}__{table_name}"
+        def ref_func(*args):
+            node_name: str = None
+            project_or_package: str = None
+
+            if len(args) == 1:
+                node_name = args[0]
+            else:
+                project_or_package = args[0]
+                node_name = args[1]
+
+            for key, n in nodes.items():
+                if n.get("resource_type") == "source":
+                    # For resource_type==source, you should use "source(...)"
+                    continue
+                if n.get("name") != node_name:
+                    continue
+                if project_or_package is not None and n.get("package_name") != project_or_package:
+                    continue
+
+                # replace id "." to "_"
+                unique_id = n.get("id")
+                table_name = unique_id.replace(".", "_")
+                table_id_map[table_name] = unique_id
+                return table_name
+
+            raise ValueError(f"Cannot find node {node_name} in the manifest")
+
+        def source_func(source_name, name):
+            for key, n in nodes.items():
+                if n.get("resource_type") != "source":
+                    continue
+                if n.get("source_name") != source_name:
+                    continue
+                if n.get("name") != name:
+                    continue
+
+                # replace id "." to "_"
+                unique_id = n.get("id")
+                table_name = unique_id.replace(".", "_")
+                table_id_map[table_name] = unique_id
+                return table_name
+
+            raise ValueError(f"Cannot find source {source_name}.{table_name} in the manifest")
 
         raw_code = node.get("raw_code")
         jinja_context = dict(
@@ -1015,24 +1029,16 @@ class DbtAdapter(BaseAdapter):
             if parent_node is None:
                 continue
             columns = parent_node.get("columns") or {}
-            name = parent_node.get("name")
-            if parent_node.get("resource_type") == "source":
-                parts = parent_id.split(".")
-                source = parts[2]
-                table = parts[3]
-                name = f"__{source}__{table}"
-            schema[name] = {name: column.get("type") for name, column in columns.items()}
+            table_name = parent_id.replace(".", "_")
+            schema[table_name] = {name: column.get("type") for name, column in columns.items()}
 
         try:
-            # provide a manifest to speedup and not pollute the manifest
             compiled_sql = self.generate_sql(raw_code, base=base, context=jinja_context, provided_manifest=manifest)
             dialect = self.adapter.type()
-            # find adapter type from the manifest, otherwise we use the adapter type from the adapter
             if self.get_manifest(base).metadata.adapter_type is not None:
                 dialect = self.get_manifest(base).metadata.adapter_type
             column_lineage = cll(compiled_sql, schema=schema, dialect=dialect)
         except RecceException:
-            # TODO: provide parsing error message if needed
             _apply_all_columns(node, "unknown", [])
             cll_tracker.increment_sqlglot_error_nodes()
             return
@@ -1041,12 +1047,18 @@ class DbtAdapter(BaseAdapter):
             cll_tracker.increment_other_error_nodes()
             return
 
-        _depend_node_to_id(column_lineage, nodes)
-
+        # Add cll dependency to the node.
+        depends_on = [
+            ColumnLevelDependsOn(node=table_id_map[d.node], column=d.column) for d in column_lineage.depends_on
+        ]
+        node["depends_on"]["columns"] = depends_on
         for name, column in node.get("columns", {}).items():
-            if name in column_lineage:
-                column["depends_on"] = column_lineage[name].depends_on
-                column["transformation_type"] = column_lineage[name].type
+            if name in column_lineage.columns:
+                column["depends_on"] = [
+                    ColumnLevelDependsOn(node=table_id_map[d.node], column=d.column)
+                    for d in column_lineage.columns[name].depends_on
+                ]
+                column["transformation_type"] = column_lineage.columns[name].type
 
     @lru_cache(maxsize=2)
     def get_lineage_nodes_metadata(self, base: Optional[bool] = False):
@@ -1065,8 +1077,12 @@ class DbtAdapter(BaseAdapter):
             nodes[unique_id] = {
                 "id": node["unique_id"],
                 "name": node["name"],
+                "package_name": node["package_name"],
                 "resource_type": node["resource_type"],
                 "raw_code": node["raw_code"],
+                "depends_on": {
+                    "nodes": node.get("depends_on").get("nodes", []),
+                },
             }
 
             if catalog is not None and unique_id in catalog.nodes:
@@ -1082,6 +1098,8 @@ class DbtAdapter(BaseAdapter):
             nodes[unique_id] = {
                 "id": source["unique_id"],
                 "name": source["name"],
+                "package_name": source["package_name"],
+                "source_name": source["source_name"],
                 "resource_type": source["resource_type"],
             }
 
