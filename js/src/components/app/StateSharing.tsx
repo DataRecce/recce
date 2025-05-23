@@ -9,14 +9,64 @@ import {
   PopoverContent,
   PopoverBody,
   Link,
+  PopoverFooter,
+  ButtonGroup,
+  PopoverHeader,
+  PopoverCloseButton,
 } from "@chakra-ui/react";
-import { CheckCircleIcon, CopyIcon, ExternalLinkIcon } from "@chakra-ui/icons";
+import { CheckCircleIcon, CopyIcon } from "@chakra-ui/icons";
 import { useRecceInstanceContext } from "@/lib/hooks/RecceInstanceContext";
 import { useRecceShareStateContext } from "@/lib/hooks/RecceShareStateContext";
 import { useClipBoardToast } from "@/lib/hooks/useClipBoardToast";
 import { PUBLIC_CLOUD_WEB_URL } from "@/lib/const";
-import { TbCloudUpload } from "react-icons/tb";
+import { TbCloudUpload, TbExternalLink } from "react-icons/tb";
 import { trackShareState } from "@/lib/api/track";
+import { ReactNode } from "react";
+
+interface ShareModalProps {
+  handleClose: () => void;
+}
+
+export function UnAuthShareModalContent({ handleClose }: ShareModalProps): ReactNode {
+  return (
+    <PopoverContent bg="gray.200" color="black" sx={{ width: "max-content" }}>
+      <PopoverHeader fontWeight="semibold">Enable sharing</PopoverHeader>
+      <PopoverCloseButton />
+      <PopoverBody fontSize="sm">
+        API token required.{" "}
+        <Link
+          href="https://docs.datarecce.io/recce-cloud/share-recce-session-securely"
+          target="_blank"
+          textDecoration="underline">
+          Learn more
+        </Link>
+        .
+      </PopoverBody>
+      <PopoverFooter border="0" display="flex" alignItems="center" justifyContent="flex-end" pb={4}>
+        <ButtonGroup size="sm">
+          <Link
+            onClick={() => {
+              trackShareState({ name: "enable" });
+              handleClose();
+            }}
+            href={`${PUBLIC_CLOUD_WEB_URL}/signin?callbackUrl=/relaunch&utm_source=recce_oss&utm_content=enable_sharing_button#tokens`}
+            target="_blank">
+            <Button colorScheme="blue" rightIcon={<TbExternalLink />}>
+              Enable
+            </Button>
+          </Link>
+          <Button
+            colorScheme="gray"
+            onClick={() => {
+              handleClose();
+            }}>
+            Cancel
+          </Button>
+        </ButtonGroup>
+      </PopoverFooter>
+    </PopoverContent>
+  );
+}
 
 export function TopLevelShare() {
   const { successToast, failToast } = useClipBoardToast();
@@ -36,33 +86,17 @@ export function TopLevelShare() {
   if (!authed) {
     return (
       <Flex flex="1" alignItems="center">
-        <Popover trigger="hover" placement="bottom-start">
-          <PopoverTrigger>
-            <Button
-              rightIcon={<ExternalLinkIcon />}
-              size="sm"
-              onClick={() => {
-                trackShareState({ name: "enable" });
-                window.open(
-                  `${PUBLIC_CLOUD_WEB_URL}/settings?utm_source=recce_oss&utm_content=enable_sharing_button#tokens`,
-                  "_blank",
-                );
-              }}>
-              Enable sharing
-            </Button>
-          </PopoverTrigger>
-          <PopoverContent bg="black" color="white" sx={{ width: "max-content" }}>
-            <PopoverBody fontSize="sm">
-              API token required.{" "}
-              <Link
-                href="https://docs.datarecce.io/recce-cloud/share-recce-session-securely"
-                target="_blank"
-                textDecoration="underline">
-                Learn more
-              </Link>
-              .
-            </PopoverBody>
-          </PopoverContent>
+        <Popover placement="bottom-start">
+          {({ onClose }) => (
+            <>
+              <PopoverTrigger>
+                <Button size="sm" variant="outline" leftIcon={<TbCloudUpload />}>
+                  Share
+                </Button>
+              </PopoverTrigger>
+              <UnAuthShareModalContent handleClose={onClose} />
+            </>
+          )}
         </Popover>
       </Flex>
     );

@@ -68,6 +68,9 @@ class ZipFileIO(AbstractFileIO, ABC):
     def _is_pyminizip_installed():
         try:
             import pyminizip
+
+            # Use the module to avoid F401
+            return pyminizip is not None
         except ImportError:
             raise ImportError("pyminizip is not installed. Please install it using `pip install pyminizip`")
 

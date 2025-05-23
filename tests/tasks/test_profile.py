@@ -1,5 +1,4 @@
 import pytest
-from agate import data_types
 from jinja2 import Template
 from sqlglot import parse_one
 

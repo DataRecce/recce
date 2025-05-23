@@ -7,7 +7,7 @@ from recce.core import default_context
 from recce.server import app
 
 # noinspection PyUnresolvedReferences
-from tests.adapter.dbt_adapter.conftest import dbt_test_helper
+from tests.adapter.dbt_adapter.conftest import dbt_test_helper  # noqa: F401
 
 
 @pytest.fixture

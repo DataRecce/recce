@@ -1,5 +1,23 @@
 [flake8]
-ignore = W605, F401, E501, E125, E126, W504, E203, W503, F841, F541, F811
+# Ignore rules with descriptions:
+ignore =
+    # W605: Invalid escape sequence - Ignores invalid escape sequences like '\d' in regex
+    W605,
+    # E501: Line too long - Allows lines longer than specified max length
+    E501,
+    # E125: Continuation line with same indent as next logical line
+    E125,
+    # E126: Continuation line over-indented for hanging indent
+    E126,
+    # W504: Line break after binary operator
+    W504,
+    # E203: Whitespace before ':' - Conflicts with Black formatter
+    E203,
+    # W503: Line break before binary operator - Conflicts with Black formatter
+    W503,
+    # F811: Redefinition of unused name - Allows redefining imports
+    F811
+
 max-line-length = 120
 include = recce,
           tests
@@ -15,4 +33,5 @@ exclude = docs,
           *.egg-info
           .tox
 per-file-ignores =
+    # E402: Module level import not at top of file
     recce/adapter/dbt_adapter.py: E402
