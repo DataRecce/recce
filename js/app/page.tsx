@@ -5,7 +5,6 @@ import {
   Tabs,
   TabList,
   Tab,
-  ChakraProvider,
   Code,
   Box,
   Flex,
@@ -17,21 +16,16 @@ import {
   Badge,
   Progress,
   HStack,
-  extendTheme,
   useToast,
 } from "@chakra-ui/react";
 import React, { ReactNode, useLayoutEffect } from "react";
-import { QueryClientProvider, useQuery } from "@tanstack/react-query";
-import RecceContextProvider from "@/lib/hooks/RecceContextProvider";
-import { reactQueryClient } from "@/lib/api/axiosClient";
+import { useQuery } from "@tanstack/react-query";
+import _ from "lodash";
 import { useVersionNumber } from "@/lib/api/version";
 import { CheckPage } from "@/components/check/CheckPage";
 import { QueryPage } from "@/components/query/QueryPage";
-import { Redirect, Route, Router, Switch, useLocation, useRoute } from "wouter";
+import { Redirect, Route, Switch, useLocation, useRoute } from "wouter";
 
-import _ from "lodash";
-import { useHashLocation } from "@/lib/hooks/useHashLocation";
-import { ThemeProvider, createTheme } from "@mui/material";
 import { useLineageGraphContext } from "@/lib/hooks/LineageGraphContext";
 import { RunPage } from "@/components/run/RunPage";
 import { ErrorBoundary } from "@/components/errorboundary/ErrorBoundary";
@@ -49,8 +43,6 @@ import { HSplit, VSplit } from "@/components/split/Split";
 import { RunResultPane } from "@/components/run/RunResultPane";
 import { VscGitPullRequest } from "react-icons/vsc";
 import { RunList } from "@/components/run/RunList";
-import { checkboxTheme } from "@theme/components/Checkbox";
-import { tooltipTheme } from "@theme/components/Tooltip";
 import { trackInit } from "@/lib/api/track";
 import { Filename } from "@/components/app/Filename";
 import { StateSynchronizer } from "@/components/app/StateSynchronizer";
@@ -58,6 +50,8 @@ import { useRecceServerFlag } from "@/lib/hooks/useRecceServerFlag";
 import { useRecceInstanceContext } from "@/lib/hooks/RecceInstanceContext";
 import { TopLevelShare } from "@/components/app/StateSharing";
 import { useCountdownToast } from "@/lib/hooks/useCountdownToast";
+import Providers from "app/Providers";
+import AuthModal from "@/components/AuthModal/AuthModal";
 
 const RouteAlwaysMount = ({ children, path }: { children: ReactNode; path: string }) => {
   const [match] = useRoute(path);
@@ -200,6 +194,7 @@ function TopBar() {
     </Flex>
   );
 }
+
 interface TabProps {
   name: string;
   href: string;
@@ -376,46 +371,26 @@ function Main() {
   );
 }
 
-const chakraTheme = extendTheme({
-  components: {
-    Checkbox: checkboxTheme,
-    Tooltip: tooltipTheme,
-  },
-});
+function MainContainer({ children }: { children: ReactNode }): ReactNode {
+  return (
+    <Flex direction="column" height="100vh" overflow="hidden">
+      {children}
+    </Flex>
+  );
+}
 
 export default function Home() {
   useLayoutEffect(() => {
     trackInit();
   }, []);
 
-  const muiDefaultTheme = createTheme({
-    components: {
-      MuiTooltip: {
-        styleOverrides: {
-          tooltip: {
-            zIndex: 1500,
-          },
-        },
-      },
-    },
-  });
-
   return (
-    <ThemeProvider theme={muiDefaultTheme}>
-      <ChakraProvider theme={chakraTheme}>
-        <QueryClientProvider client={reactQueryClient}>
-          <Router hook={useHashLocation}>
-            <RecceContextProvider>
-              <Flex direction="column" height="100vh" overflow="hidden">
-                <TopBar />
-                <NavBar />
-                <OnboardingGuide />
-                <Main />
-              </Flex>
-            </RecceContextProvider>
-          </Router>
-        </QueryClientProvider>
-      </ChakraProvider>
-    </ThemeProvider>
+    <MainContainer>
+      <TopBar />
+      <NavBar />
+      <OnboardingGuide />
+      <Main />
+      <AuthModal />
+    </MainContainer>
   );
 }
