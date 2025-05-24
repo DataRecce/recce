@@ -24,7 +24,7 @@ from typing import (
 
 from recce.event import log_performance
 from recce.exceptions import RecceException
-from recce.util.cll import CLLPerformanceTracking, ColumnLevelDependsOn, cll
+from recce.util.cll import CllColumnDep, CLLPerformanceTracking, cll
 from recce.util.lineage import find_downstream, find_upstream
 
 from ...tasks.profile import ProfileTask
@@ -944,7 +944,7 @@ class DbtAdapter(BaseAdapter):
 
     def append_column_lineage(self, node: Dict, parent_list: List, base: Optional[bool] = False):
         def _apply_all_columns(node, trans_type, depends_on):
-            node["depends_on"] = depends_on
+            node["depends_on"] = {"columns": depends_on}
             for col in node.get("columns", {}).values():
                 col["transformation_type"] = trans_type
                 col["depends_on"] = depends_on
@@ -1037,7 +1037,7 @@ class DbtAdapter(BaseAdapter):
             dialect = self.adapter.type()
             if self.get_manifest(base).metadata.adapter_type is not None:
                 dialect = self.get_manifest(base).metadata.adapter_type
-            column_lineage = cll(compiled_sql, schema=schema, dialect=dialect)
+            m2c, c2c_map = cll(compiled_sql, schema=schema, dialect=dialect)
         except RecceException:
             _apply_all_columns(node, "unknown", [])
             cll_tracker.increment_sqlglot_error_nodes()
@@ -1048,17 +1048,14 @@ class DbtAdapter(BaseAdapter):
             return
 
         # Add cll dependency to the node.
-        depends_on = [
-            ColumnLevelDependsOn(node=table_id_map[d.node], column=d.column) for d in column_lineage.depends_on
-        ]
+        depends_on = [CllColumnDep(node=table_id_map[d.node], column=d.column) for d in m2c]
         node["depends_on"]["columns"] = depends_on
         for name, column in node.get("columns", {}).items():
-            if name in column_lineage.columns:
+            if name in c2c_map:
                 column["depends_on"] = [
-                    ColumnLevelDependsOn(node=table_id_map[d.node], column=d.column)
-                    for d in column_lineage.columns[name].depends_on
+                    CllColumnDep(node=table_id_map[d.node], column=d.column) for d in c2c_map[name].depends_on
                 ]
-                column["transformation_type"] = column_lineage.columns[name].type
+                column["transformation_type"] = c2c_map[name].type
 
     @lru_cache(maxsize=2)
     def get_lineage_nodes_metadata(self, base: Optional[bool] = False):

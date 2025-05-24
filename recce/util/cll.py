@@ -1,6 +1,6 @@
 import time
 from dataclasses import dataclass
-from typing import Dict, List, Literal, Optional
+from typing import Dict, List, Optional, Tuple
 
 import sqlglot.expressions as exp
 from sqlglot import Dialect, parse_one
@@ -9,7 +9,13 @@ from sqlglot.optimizer import Scope, traverse_scope
 from sqlglot.optimizer.qualify import qualify
 
 from recce.exceptions import RecceException
+from recce.models.types import CllColumn, CllColumnDep
 from recce.util import SingletonMeta
+
+CllResult = Tuple[
+    List[CllColumnDep],  # Model to column dependencies
+    Dict[str, CllColumn],  # Column to column dependencies
+]
 
 
 @dataclass
@@ -68,32 +74,11 @@ class CLLPerformanceTracking(metaclass=SingletonMeta):
         self.other_error_nodes = 0
 
 
-@dataclass
-class ColumnLevelDependsOn:
-    node: str
-    column: str
-
-
-@dataclass
-class ColumnLevelDependencyColumn:
-    type: Literal["source", "passthrough", "renamed", "derived"]
-    depends_on: List[ColumnLevelDependsOn]
-
-
-@dataclass()
-class CllResult:
-    # Model to column dependencies
-    depends_on: List[ColumnLevelDependsOn]
-
-    # Column to column dependencies
-    columns: Dict[str, ColumnLevelDependencyColumn]
-
-
-def _cll_column(proj, table_alias_map) -> ColumnLevelDependencyColumn:
+def _cll_column(proj, table_alias_map) -> CllColumn:
     # given an expression, return the columns depends on
     # [{node: table, column: column}, ...]
     type = "source"
-    depends_on: List[ColumnLevelDependsOn] = []
+    depends_on: List[CllColumnDep] = []
 
     # instance of Column
     if isinstance(proj, exp.Alias):
@@ -110,7 +95,7 @@ def _cll_column(proj, table_alias_map) -> ColumnLevelDependencyColumn:
                 table = next(iter(table_alias_map.values()))
             else:
                 table = table_alias_map.get(alias, alias)
-            depends_on.append(ColumnLevelDependsOn(table, column.name))
+            depends_on.append(CllColumnDep(table, column.name))
             if type == "source":
                 type = "passthrough"
         elif isinstance(expression, (exp.Paren, exp.Identifier)):
@@ -128,15 +113,10 @@ def _cll_column(proj, table_alias_map) -> ColumnLevelDependencyColumn:
         if type == "passthrough" and depends_on[0].column != alias.alias_or_name:
             type = "renamed"
 
-    return ColumnLevelDependencyColumn(type=type, depends_on=depends_on)
+    return CllColumn(type=type, depends_on=depends_on)
 
 
-def cll_old(sql, schema=None, dialect=None) -> Dict[str, ColumnLevelDependencyColumn]:
-    result = cll(sql, schema=schema, dialect=dialect)
-    return result.columns
-
-
-def _dedeup_depends_on(depends_on: List[ColumnLevelDependsOn]) -> List[ColumnLevelDependsOn]:
+def _dedeup_depends_on(depends_on: List[CllColumnDep]) -> List[CllColumnDep]:
     # deduplicate the depends_on list
     dedup_set = set()
     dedup_list = []
@@ -148,57 +128,58 @@ def _dedeup_depends_on(depends_on: List[ColumnLevelDependsOn]) -> List[ColumnLev
     return dedup_list
 
 
-def _dedeup_cll_result(cll_result: CllResult):
-    cll_result.depends_on = _dedeup_depends_on(cll_result.depends_on)
-    for column in cll_result.columns.values():
-        column.depends_on = _dedeup_depends_on(column.depends_on)
-
-
 def _cll_set_scope(scope: Scope, scope_cll_map: dict[Scope, CllResult]) -> CllResult:
-    result = CllResult(depends_on=[], columns={})
-    scope_lineage = result.columns
+    # model-to-column
+    m2c: List[CllColumnDep] = []
+    # column-to-column
+    c2c_map: Dict[str, CllColumn] = {}
 
     for union_scope in scope.union_scopes:
         sub_scope_result = scope_cll_map.get(union_scope)
+        if sub_scope_result is None:
+            raise RecceException(f"Scope {union_scope} not found in scope_cll_map")
+        sub_m2c, sub_c2c_map = sub_scope_result
 
-        for k, v in sub_scope_result.columns.items():
-            if k not in result.columns:
-                scope_lineage[k] = v
+        for k, v in sub_c2c_map.items():
+            if k not in c2c_map:
+                c2c_map[k] = v
             else:
-                scope_lineage[k].depends_on.extend(v.depends_on)
-                scope_lineage[k].type = "derived"
+                c2c_map[k].depends_on.extend(v.depends_on)
+                c2c_map[k].type = "derived"
 
-        result.depends_on.extend(sub_scope_result.depends_on)
-    return result
+        m2c.extend(sub_m2c)
+    return m2c, c2c_map
 
 
 def _cll_select_scope(scope: Scope, scope_cll_map: dict[Scope, CllResult]) -> CllResult:
     assert scope.expression.key == "select"
 
-    column_dep_map = {}
-    model_depends_on = []
+    # model-to-column dependencies
+    m2c = []
+    # column-to-column dependencies
+    c2c_map = {}
+
     table_alias_map = {t.alias_or_name: t.name for t in scope.tables}
     select = scope.expression
 
-    def source_column_dependency(ref_column: exp.Column) -> Optional[ColumnLevelDependencyColumn]:
+    def source_column_dependency(ref_column: exp.Column) -> Optional[CllColumn]:
         column_name = ref_column.name
         table_name = ref_column.table if ref_column.table != "" else next(iter(table_alias_map.values()))
         source = scope.sources.get(table_name, None)  # type: exp.Table | Scope
         if isinstance(source, Scope):
-            ref_cll = scope_cll_map.get(source)
-            if ref_cll is None:
+            ref_cll_result = scope_cll_map.get(source)
+            if ref_cll_result is None:
                 return None
-            return ref_cll.columns.get(column_name)
+            _, sub_c2c_map = ref_cll_result
+            return sub_c2c_map.get(column_name)
         elif isinstance(source, exp.Table):
-            return ColumnLevelDependencyColumn(
-                type="passthrough", depends_on=[ColumnLevelDependsOn(source.name, column_name)]
-            )
+            return CllColumn(type="passthrough", depends_on=[CllColumnDep(node=source.name, column=column_name)])
         else:
             return None
 
     for proj in scope.expression.selects:
         type = "source"
-        column_depends_on: List[ColumnLevelDependsOn] = []
+        column_depends_on: List[CllColumnDep] = []
         root = proj.this if isinstance(proj, exp.Alias) else proj
         for expression in root.walk(bfs=False):
             if isinstance(expression, exp.Column):
@@ -214,7 +195,7 @@ def _cll_select_scope(scope: Scope, scope_cll_map: dict[Scope, CllResult]) -> Cl
                         if type == "source":
                             type = "passthrough"
                 else:
-                    column_depends_on.append(ColumnLevelDependsOn(expression.table, expression.name))
+                    column_depends_on.append(CllColumnDep(expression.table, expression.name))
                     if type == "source":
                         type = "passthrough"
 
@@ -233,11 +214,11 @@ def _cll_select_scope(scope: Scope, scope_cll_map: dict[Scope, CllResult]) -> Cl
             if type == "passthrough" and column_depends_on[0].column != alias.alias_or_name:
                 type = "renamed"
 
-        column_dep_map[proj.alias_or_name] = ColumnLevelDependencyColumn(type=type, depends_on=column_depends_on)
+        c2c_map[proj.alias_or_name] = CllColumn(type=type, depends_on=column_depends_on)
 
-    def selected_column_dependency(ref_column: exp.Column) -> Optional[ColumnLevelDependencyColumn]:
+    def selected_column_dependency(ref_column: exp.Column) -> Optional[CllColumn]:
         column_name = ref_column.name
-        return column_dep_map.get(column_name)
+        return c2c_map.get(column_name)
 
     # joins clause: Reference the source columns
     if select.args.get("joins"):
@@ -246,7 +227,7 @@ def _cll_select_scope(scope: Scope, scope_cll_map: dict[Scope, CllResult]) -> Cl
             if isinstance(join, exp.Join):
                 for ref_column in join.find_all(exp.Column):
                     if source_column_dependency(ref_column) is not None:
-                        model_depends_on.extend(source_column_dependency(ref_column).depends_on)
+                        m2c.extend(source_column_dependency(ref_column).depends_on)
 
     # where clauses: Reference the source columns
     if select.args.get("where"):
@@ -254,7 +235,7 @@ def _cll_select_scope(scope: Scope, scope_cll_map: dict[Scope, CllResult]) -> Cl
         if isinstance(where, exp.Where):
             for ref_column in where.find_all(exp.Column):
                 if source_column_dependency(ref_column) is not None:
-                    model_depends_on.extend(source_column_dependency(ref_column).depends_on)
+                    m2c.extend(source_column_dependency(ref_column).depends_on)
 
     # group by clause: Reference the source columns, column index
     if select.args.get("group"):
@@ -262,7 +243,7 @@ def _cll_select_scope(scope: Scope, scope_cll_map: dict[Scope, CllResult]) -> Cl
         if isinstance(group, exp.Group):
             for ref_column in group.find_all(exp.Column):
                 if source_column_dependency(ref_column) is not None:
-                    model_depends_on.extend(source_column_dependency(ref_column).depends_on)
+                    m2c.extend(source_column_dependency(ref_column).depends_on)
 
     # having clause: Reference the source columns, selected columns
     if select.args.get("having"):
@@ -270,9 +251,9 @@ def _cll_select_scope(scope: Scope, scope_cll_map: dict[Scope, CllResult]) -> Cl
         if isinstance(having, exp.Having):
             for ref_column in having.find_all(exp.Column):
                 if source_column_dependency(ref_column) is not None:
-                    model_depends_on.extend(source_column_dependency(ref_column).depends_on)
+                    m2c.extend(source_column_dependency(ref_column).depends_on)
                 elif selected_column_dependency(ref_column) is not None:
-                    model_depends_on.extend(selected_column_dependency(ref_column).depends_on)
+                    m2c.extend(selected_column_dependency(ref_column).depends_on)
 
     # order by clause: Reference the source columns, selected columns, column index
     if select.args.get("order"):
@@ -280,18 +261,20 @@ def _cll_select_scope(scope: Scope, scope_cll_map: dict[Scope, CllResult]) -> Cl
         if isinstance(order, exp.Order):
             for ref_column in order.find_all(exp.Column):
                 if source_column_dependency(ref_column) is not None:
-                    model_depends_on.extend(source_column_dependency(ref_column).depends_on)
+                    m2c.extend(source_column_dependency(ref_column).depends_on)
                 elif selected_column_dependency(ref_column) is not None:
-                    model_depends_on.extend(selected_column_dependency(ref_column).depends_on)
+                    m2c.extend(selected_column_dependency(ref_column).depends_on)
 
     for source in scope.sources.values():
-        scope_result = scope_cll_map.get(source)
-        if scope_result is not None:
-            model_depends_on.extend(scope_result.depends_on)
+        scope_cll_result = scope_cll_map.get(source)
+        if scope_cll_result is None:
+            continue
+        sub_m2c, _ = scope_cll_result
+        m2c.extend(sub_m2c)
 
-    model_depends_on = _dedeup_depends_on(model_depends_on)
+    m2c = _dedeup_depends_on(m2c)
 
-    return CllResult(columns=column_dep_map, depends_on=model_depends_on)
+    return m2c, c2c_map
 
 
 def cll(sql, schema=None, dialect=None) -> CllResult:
@@ -320,7 +303,7 @@ def cll(sql, schema=None, dialect=None) -> CllResult:
     except SqlglotError as e:
         raise RecceException(f"Failed to qualify SQL: {str(e)}")
 
-    result = CllResult(depends_on=[], columns={})
+    result = None
     scope_cll_map = {}
     for scope in traverse_scope(expression):
         scope_type = scope.expression.key
@@ -333,4 +316,6 @@ def cll(sql, schema=None, dialect=None) -> CllResult:
 
         scope_cll_map[scope] = result
 
+    if result is None:
+        raise RecceException("Failed to extract CLL from SQL")
     return result
