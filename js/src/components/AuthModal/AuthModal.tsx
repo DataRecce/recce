@@ -1,5 +1,6 @@
 import {
-  Button, Image,
+  Button,
+  Image,
   Modal,
   ModalBody,
   ModalCloseButton,
@@ -20,25 +21,38 @@ import { StaticImageData } from "next/image";
 
 type AuthState = "authenticating" | "pending" | "canceled" | "ignored";
 
-export default function AuthModal(): ReactNode {
+interface AuthModalProps {
+  handleParentClose?: () => void;
+}
+
+export default function AuthModal({ handleParentClose }: AuthModalProps): ReactNode {
   const { authed } = useRecceInstanceContext();
   const { isOpen, onOpen, onClose } = useDisclosure();
   const authStateCookieValue = (Cookies.get("authState") ?? "pending") as AuthState;
   const [authState, setAuthState] = useState<AuthState>(authStateCookieValue);
 
   const updateModalState = useCallback(() => {
-    console.log(authed, isOpen);
     if (!authed && !isOpen && authState === "pending") {
       onOpen();
     } else if (authed && isOpen && authState !== "authenticating") {
+      if (handleParentClose) {
+        handleParentClose();
+      }
       onClose();
     }
-  }, [authState, authed, isOpen, onClose, onOpen]);
+  }, [authState, authed, handleParentClose, isOpen, onClose, onOpen]);
+
+  function handleAllCloses() {
+    if (handleParentClose) {
+      handleParentClose();
+    }
+    onClose();
+  }
 
   updateModalState();
 
   return (
-    <Modal size="xl" isCentered isOpen={isOpen} onClose={onClose}>
+    <Modal size="xl" isCentered isOpen={isOpen} onClose={handleAllCloses}>
       <ModalOverlay />
       <ModalContent>
         {authState !== "authenticating" && <ModalHeader>Use Recce Cloud for Free</ModalHeader>}
@@ -51,7 +65,7 @@ export default function AuthModal(): ReactNode {
         <ModalCloseButton
           onClick={() => {
             setAuthState("canceled");
-            onClose();
+            handleAllCloses();
           }}
         />
         {authState !== "authenticating" ? (
@@ -82,7 +96,7 @@ export default function AuthModal(): ReactNode {
                   size="sm"
                   onClick={() => {
                     setAuthState("canceled");
-                    onClose();
+                    handleAllCloses();
                   }}>
                   Skip
                 </Button>
@@ -90,7 +104,7 @@ export default function AuthModal(): ReactNode {
                   variant="link"
                   size="sm"
                   onClick={() => {
-                    onClose();
+                    handleAllCloses();
                     Cookies.set("authState", "ignored", { expires: 30 });
                     setAuthState("ignored");
                   }}>
