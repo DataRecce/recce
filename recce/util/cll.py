@@ -145,7 +145,7 @@ def _cll_set_scope(scope: Scope, scope_cll_map: dict[Scope, CllResult]) -> CllRe
                 c2c_map[k] = v
             else:
                 c2c_map[k].depends_on.extend(v.depends_on)
-                c2c_map[k].type = "derived"
+                c2c_map[k].transformation_type = "derived"
 
         m2c.extend(sub_m2c)
     return m2c, c2c_map
@@ -165,7 +165,7 @@ def _cll_select_scope(scope: Scope, scope_cll_map: dict[Scope, CllResult]) -> Cl
     def source_column_dependency(ref_column: exp.Column) -> Optional[CllColumn]:
         column_name = ref_column.name
         table_name = ref_column.table if ref_column.table != "" else next(iter(table_alias_map.values()))
-        source = scope.sources.get(table_name, None)  # type: exp.Table | Scope
+        source = scope.sources.get(table_name, None)  # transformation_type: exp.Table | Scope
         if isinstance(source, Scope):
             ref_cll_result = scope_cll_map.get(source)
             if ref_cll_result is None:
@@ -173,12 +173,16 @@ def _cll_select_scope(scope: Scope, scope_cll_map: dict[Scope, CllResult]) -> Cl
             _, sub_c2c_map = ref_cll_result
             return sub_c2c_map.get(column_name)
         elif isinstance(source, exp.Table):
-            return CllColumn(type="passthrough", depends_on=[CllColumnDep(node=source.name, column=column_name)])
+            return CllColumn(
+                name=column_name,
+                transformation_type="passthrough",
+                depends_on=[CllColumnDep(node=source.name, column=column_name)],
+            )
         else:
             return None
 
     for proj in scope.expression.selects:
-        type = "source"
+        transformation_type = "source"
         column_depends_on: List[CllColumnDep] = []
         root = proj.this if isinstance(proj, exp.Alias) else proj
         for expression in root.walk(bfs=False):
@@ -186,35 +190,37 @@ def _cll_select_scope(scope: Scope, scope_cll_map: dict[Scope, CllResult]) -> Cl
                 ref_column_dependency = source_column_dependency(expression)
                 if ref_column_dependency is not None:
                     column_depends_on.extend(ref_column_dependency.depends_on)
-                    if ref_column_dependency.type == "derived":
-                        type = "derived"
-                    elif ref_column_dependency.type == "renamed":
-                        if type == "source" or type == "passthrough":
-                            type = "renamed"
-                    elif ref_column_dependency.type == "passthrough":
-                        if type == "source":
-                            type = "passthrough"
+                    if ref_column_dependency.transformation_type == "derived":
+                        transformation_type = "derived"
+                    elif ref_column_dependency.transformation_type == "renamed":
+                        if transformation_type == "source" or transformation_type == "passthrough":
+                            transformation_type = "renamed"
+                    elif ref_column_dependency.transformation_type == "passthrough":
+                        if transformation_type == "source":
+                            transformation_type = "passthrough"
                 else:
                     column_depends_on.append(CllColumnDep(expression.table, expression.name))
-                    if type == "source":
-                        type = "passthrough"
+                    if transformation_type == "source":
+                        transformation_type = "passthrough"
 
             elif isinstance(expression, (exp.Paren, exp.Identifier)):
                 pass
             else:
-                type = "derived"
+                transformation_type = "derived"
 
         column_depends_on = _dedeup_depends_on(column_depends_on)
 
-        if len(column_depends_on) == 0 and type != "source":
-            type = "source"
+        if len(column_depends_on) == 0 and transformation_type != "source":
+            transformation_type = "source"
 
         if isinstance(proj, exp.Alias):
             alias = proj
-            if type == "passthrough" and column_depends_on[0].column != alias.alias_or_name:
-                type = "renamed"
+            if transformation_type == "passthrough" and column_depends_on[0].column != alias.alias_or_name:
+                transformation_type = "renamed"
 
-        c2c_map[proj.alias_or_name] = CllColumn(type=type, depends_on=column_depends_on)
+        c2c_map[proj.alias_or_name] = CllColumn(
+            name=proj.alias_or_name, transformation_type=transformation_type, depends_on=column_depends_on
+        )
 
     def selected_column_dependency(ref_column: exp.Column) -> Optional[CllColumn]:
         column_name = ref_column.name

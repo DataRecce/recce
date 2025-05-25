@@ -1,33 +1,34 @@
 from recce.adapter.dbt_adapter import DbtAdapter
+from recce.models.types import CllData
 
 
-def assert_column(result, node_name, column_name, transformation_type, depends_on):
-    assert result["nodes"].get(node_name) is not None, f"Node {node_name} not found in result"
-    entry = result["nodes"][node_name]["columns"].get(column_name)
+def assert_column(result: CllData, node_name, column_name, transformation_type, depends_on):
+    assert result.nodes.get(node_name) is not None, f"Node {node_name} not found in result"
+    entry = result.nodes[node_name].columns.get(column_name)
     assert entry is not None, f"Column {column_name} not found in result"
     assert (
-        entry["transformation_type"] == transformation_type
+        entry.transformation_type == transformation_type
     ), f"Column {column_name} type mismatch: expected {transformation_type}, got {entry.transformation_type}"
-    assert len(entry["depends_on"]) == len(depends_on), "depends_on length mismatch"
+    assert len(entry.depends_on) == len(depends_on), "depends_on length mismatch"
     for i in range(len(depends_on)):
         node, column = depends_on[i]
-        anode = entry["depends_on"][i].node
-        acolumn = entry["depends_on"][i].column
+        anode = entry.depends_on[i].node
+        acolumn = entry.depends_on[i].column
 
         assert (
             anode == node and acolumn == column
         ), f"depends_on mismatch at index {i}: expected ({node}, {column}), got ({anode}, {acolumn})"
 
 
-def assert_model(result, node_name, depends_on):
-    assert result["nodes"].get(node_name) is not None, f"Node {node_name} not found in result"
-    entry = result["nodes"][node_name]
+def assert_model(result: CllData, node_name, depends_on):
+    assert result.nodes.get(node_name) is not None, f"Node {node_name} not found in result"
+    entry = result.nodes.get(node_name)
 
-    assert len(entry["depends_on"]["columns"]) == len(depends_on), "depends_on length mismatch"
+    assert len(entry.depends_on.columns) == len(depends_on), "depends_on length mismatch"
     for i in range(len(depends_on)):
         node, column = depends_on[i]
-        anode = entry["depends_on"]["columns"][i].node
-        acolumn = entry["depends_on"]["columns"][i].column
+        anode = entry.depends_on.columns[i].node
+        acolumn = entry.depends_on.columns[i].column
 
         assert (
             anode == node and acolumn == column
@@ -183,4 +184,4 @@ def test_model_without_catalog(dbt_test_helper):
     dbt_test_helper.create_model("model1", curr_sql="select 1 as c")
     adapter: DbtAdapter = dbt_test_helper.context.adapter
     result = adapter.get_cll_by_node_id("model1")
-    assert not hasattr(result["nodes"]["model1"], "columns")
+    assert not result.nodes["model1"].columns

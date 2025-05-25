@@ -36,6 +36,7 @@ from .config import RecceConfig
 from .core import RecceContext, default_context, load_context
 from .event import log_api_event, log_single_env_event
 from .exceptions import RecceException
+from .models.types import CllResponse
 from .run import load_preset_checks
 from .state import RecceShareStateManager, RecceStateLoader
 
@@ -337,11 +338,7 @@ class CllIn(BaseModel):
     params: Dict
 
 
-class CllOutput(BaseModel):
-    current: Dict
-
-
-@app.post("/api/cll", response_model=CllOutput)
+@app.post("/api/cll", response_model=CllResponse)
 async def column_level_lineage_by_node(cll_input: CllIn):
     from recce.adapter.dbt_adapter import DbtAdapter
 
@@ -353,7 +350,7 @@ async def column_level_lineage_by_node(cll_input: CllIn):
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))
 
-    return CllOutput(current=result)
+    return CllResponse(current=result)
 
 
 class SelectNodesInput(BaseModel):

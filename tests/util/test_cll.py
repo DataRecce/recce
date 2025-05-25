@@ -17,11 +17,13 @@ def assert_model(result: CllResult, depends_on: List[Tuple[str, str]]):
         ), f"depends_on mismatch at index {i}: expected ({node}, {column}), got ({anode}, {acolumn})"
 
 
-def assert_column(result: CllResult, column_name: str, type, depends_on: List[Tuple[str, str]]):
+def assert_column(result: CllResult, column_name: str, transformation_type, depends_on: List[Tuple[str, str]]):
     _, c2c_map = result
     entry = c2c_map.get(column_name)
     assert entry is not None, f"Column {column_name} not found in result"
-    assert entry.type == type, f"Column {column_name} type mismatch: expected {type}, got {entry.type}"
+    assert (
+        entry.transformation_type == transformation_type
+    ), f"Column {column_name} type mismatch: expected {transformation_type}, got {entry.transformation_type}"
     assert len(entry.depends_on) == len(depends_on), "depends_on length mismatch"
     for i in range(len(depends_on)):
         node, column = depends_on[i]

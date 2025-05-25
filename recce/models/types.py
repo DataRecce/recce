@@ -119,8 +119,13 @@ class CllColumnDep(BaseModel):
 
 
 class CllColumn(BaseModel):
+    name: Optional[str]
+
+    # data type
+    type: Optional[str] = None
+
     # transformation type
-    type: Literal["source", "passthrough", "renamed", "derived", "unknown"] = "unknown"
+    transformation_type: Literal["source", "passthrough", "renamed", "derived", "unknown"] = "unknown"
 
     # column-to-column dependencies
     depends_on: List[CllColumnDep] = Field(default_factory=list)
@@ -137,7 +142,10 @@ class CllNodeDependsOn(BaseModel):
 class CllNode(BaseModel):
     id: str
     name: str
+    package_name: str
     resource_type: str
+    raw_code: Optional[str] = None
+    source_name: Optional[str] = None
 
     # Model to column dependencies
     depends_on: CllNodeDependsOn = Field(default_factory=CllNodeDependsOn)
@@ -146,5 +154,9 @@ class CllNode(BaseModel):
     columns: Dict[str, CllColumn] = Field(default_factory=dict)
 
 
-class CllResponse(BaseModel):
+class CllData(BaseModel):
     nodes: Dict[str, CllNode] = Field(default_factory=dict)
+
+
+class CllResponse(BaseModel):
+    current: CllData
