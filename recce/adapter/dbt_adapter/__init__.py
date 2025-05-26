@@ -1020,7 +1020,7 @@ class DbtAdapter(BaseAdapter):
                 table_id_map[table_name.lower()] = unique_id
                 return table_name
 
-            raise ValueError(f"Cannot find source {source_name}.{table_name} in the manifest")
+            raise ValueError(f"Cannot find source {source_name}.{name} in the manifest")
 
         raw_code = node.raw_code
         jinja_context = dict(

@@ -331,7 +331,7 @@ export function PrivateLineageView(
         .map(([nodeId, _]) => {
           return nodeId;
         });
-      return new Set(nodeIds).union(cllImpacted ?? new Set());
+      return new Set([...nodeIds, ...(cllImpacted ?? [])]);
     }
 
     if (focusedNode) {
@@ -358,6 +358,7 @@ export function PrivateLineageView(
     focusedNode,
     isModelsChanged,
     multiNodeAction.actionState.actions,
+    cllImpacted,
     breakingChangeEnabled,
     filteredNodeIds,
   ]);
