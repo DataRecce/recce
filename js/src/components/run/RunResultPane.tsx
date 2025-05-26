@@ -20,12 +20,6 @@ import {
   MenuList,
   MenuItem,
   MenuDivider,
-  PopoverBody,
-  PopoverTrigger,
-  PopoverContent,
-  Popover,
-  Link,
-  Portal,
 } from "@chakra-ui/react";
 import { useCallback, useState } from "react";
 import { createCheckByRun } from "@/lib/api/checks";
@@ -33,22 +27,15 @@ import { useLocation } from "wouter";
 import { Editor } from "@monaco-editor/react";
 import YAML from "yaml";
 import SqlEditor, { DualSqlEditor } from "../query/SqlEditor";
-import {
-  CheckIcon,
-  ChevronDownIcon,
-  CopyIcon,
-  ExternalLinkIcon,
-  RepeatIcon,
-} from "@chakra-ui/icons";
+import { CheckIcon, ChevronDownIcon, CopyIcon, RepeatIcon } from "@chakra-ui/icons";
 import { useCopyToClipboardButton } from "@/lib/hooks/ScreenShot";
 import { RunStatusAndDate } from "./RunStatusAndDate";
 import { LearnHowLink, RecceNotification } from "../onboarding-guide/Notification";
 import { useRecceInstanceContext } from "@/lib/hooks/RecceInstanceContext";
 import { TbCloudUpload } from "react-icons/tb";
 import { useRecceShareStateContext } from "@/lib/hooks/RecceShareStateContext";
-import { PUBLIC_CLOUD_WEB_URL } from "@/lib/const";
 import { trackShareState, trackCopyToClipboard } from "@/lib/api/track";
-import { UnAuthShareModalContent } from "@/components/app/StateSharing";
+import AuthModal from "@/components/AuthModal/AuthModal";
 
 interface RunPageProps {
   onClose?: () => void;
@@ -122,59 +109,52 @@ const RunResultShareMenu = ({
 }) => {
   const { authed } = useRecceInstanceContext();
   const { handleShareClick } = useRecceShareStateContext();
+  const [showModal, setShowModal] = useState(false);
+
+  const onClose = () => {
+    setShowModal(false);
+  };
 
   return (
     <Menu>
-      {({ onClose: onMenuClose }) => (
-        <>
-          <MenuButton as={Button} size="sm" rightIcon={<ChevronDownIcon />} variant="outline">
-            Share
-          </MenuButton>
-          <MenuList minW="0">
+      <MenuButton as={Button} size="sm" rightIcon={<ChevronDownIcon />} variant="outline">
+        Share
+      </MenuButton>
+      <MenuList minW="0">
+        <MenuItem
+          fontSize="14px"
+          icon={<CopyIcon />}
+          onClick={onCopyToClipboard}
+          onMouseEnter={onMouseEnter}
+          onMouseLeave={onMouseLeave}
+          isDisabled={disableCopyToClipboard}>
+          Copy to Clipboard
+        </MenuItem>
+        <MenuDivider />
+        {authed ? (
+          <MenuItem
+            fontSize="14px"
+            icon={<TbCloudUpload />}
+            onClick={async () => {
+              await handleShareClick();
+              trackShareState({ name: "create" });
+            }}>
+            Share to Cloud
+          </MenuItem>
+        ) : (
+          <>
             <MenuItem
               fontSize="14px"
-              icon={<CopyIcon />}
-              onClick={onCopyToClipboard}
-              onMouseEnter={onMouseEnter}
-              onMouseLeave={onMouseLeave}
-              isDisabled={disableCopyToClipboard}>
-              Copy to Clipboard
+              icon={<TbCloudUpload />}
+              onClick={() => {
+                setShowModal(true);
+              }}>
+              Share
             </MenuItem>
-            <MenuDivider />
-            {authed ? (
-              <MenuItem
-                fontSize="14px"
-                icon={<TbCloudUpload />}
-                onClick={async () => {
-                  await handleShareClick();
-                  trackShareState({ name: "create" });
-                }}>
-                Share to Cloud
-              </MenuItem>
-            ) : (
-              <Popover placement="left" closeOnBlur={false}>
-                {({ onClose }) => (
-                  <>
-                    <PopoverTrigger>
-                      <MenuItem fontSize="14px" icon={<TbCloudUpload />} closeOnSelect={false}>
-                        Share
-                      </MenuItem>
-                    </PopoverTrigger>
-                    <Portal>
-                      <UnAuthShareModalContent
-                        handleClose={() => {
-                          onMenuClose();
-                          onClose();
-                        }}
-                      />
-                    </Portal>
-                  </>
-                )}
-              </Popover>
-            )}
-          </MenuList>
-        </>
-      )}
+            {showModal && <AuthModal handleParentClose={onClose} ignoreCookie />}
+          </>
+        )}
+      </MenuList>
     </Menu>
   );
 };
