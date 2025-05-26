@@ -92,6 +92,18 @@ export function NodeView({ node, onCloseNode }: NodeViewProps) {
 
   const isAddedOrRemoved = node.changeStatus === "added" || node.changeStatus === "removed";
 
+  let query = `select * from {{ ref("${node.name}") }}`;
+  const baseColumns = Object.keys(node.data.base?.columns ?? {});
+  const currentColumns = Object.keys(node.data.current?.columns ?? {});
+  if (baseColumns.length > 0 && currentColumns.length > baseColumns.length) {
+    // If the model has added columns, comment out the added ones
+    const columnsNotInBase = currentColumns.filter((col) => !baseColumns.includes(col));
+    const formattedColumns = currentColumns
+      .map((col) => (columnsNotInBase.includes(col) ? `--- ${col} (Added)` : col))
+      .join(",\n  ");
+    query = `select \n  ${formattedColumns}\nfrom {{ ref("${node.name}") }}`;
+  }
+
   function ExploreChangeMenuButton() {
     const { readOnly } = useRecceInstanceContext();
     if (
@@ -115,7 +127,7 @@ export function NodeView({ node, onCloseNode }: NodeViewProps) {
               fontSize="14px"
               onClick={() => {
                 if (envInfo?.adapterType === "dbt") {
-                  setSqlQuery(`select * from {{ ref("${node.name}") }}`);
+                  setSqlQuery(query);
                 } else if (envInfo?.adapterType === "sqlmesh") {
                   setSqlQuery(`select * from ${node.name}`);
                 }

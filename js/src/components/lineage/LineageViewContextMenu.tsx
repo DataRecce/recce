@@ -116,11 +116,23 @@ export const ModelNodeContextMenu = ({
   if (!selectMode && resourceType && ["model", "seed", "snapshot"].includes(resourceType)) {
     // query
     let entry = findByRunType(singleEnv ? "query" : "query_diff");
+    let query = `select * from {{ ref("${modelNode.name}") }}`;
+    const baseColumns = Object.keys(modelNode.data.base?.columns ?? {});
+    const currentColumns = Object.keys(modelNode.data.current?.columns ?? {});
+    if (baseColumns.length > 0 && currentColumns.length > baseColumns.length) {
+      // If the model has added columns, comment out the added ones
+      const columnsNotInBase = currentColumns.filter((col) => !baseColumns.includes(col));
+      const formattedColumns = currentColumns
+        .map((col) => (columnsNotInBase.includes(col) ? `--- ${col} (Added)` : col))
+        .join(",\n  ");
+      query = `select \n  ${formattedColumns}\nfrom {{ ref("${modelNode.name}") }}`;
+    }
+
     menuItems.push({
       label: "Query",
       icon: <Icon as={entry?.icon} />,
       action: () => {
-        setSqlQuery(`select * from {{ ref("${modelNode.name}") }}`);
+        setSqlQuery(query);
         if (isActionAvailable("query_diff_with_primary_key")) {
           // Only set primary key if the action is available
           setPrimaryKeys(primaryKey !== undefined ? [primaryKey] : undefined);
