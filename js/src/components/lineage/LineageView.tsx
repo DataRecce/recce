@@ -15,13 +15,9 @@ import {
   Spinner,
   Button,
   VStack,
-  Menu,
-  MenuList,
-  MenuItem,
   Center,
   StackDivider,
   useToast,
-  MenuDivider,
 } from "@chakra-ui/react";
 import React, {
   Ref,
@@ -598,7 +594,6 @@ export function PrivateLineageView(
         newViewOptions.column_level_lineage.node,
         newViewOptions.column_level_lineage.column,
       );
-      console.log("impacted", impacted);
       setCllImpacted(impacted);
     }
     setNodes(newNodes);

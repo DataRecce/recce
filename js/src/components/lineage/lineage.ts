@@ -328,6 +328,12 @@ export function selectDownstream(lineageGraph: LineageGraph, nodeIds: string[], 
   );
 }
 
+/**
+ * Select the impacted nodes in the column-level lineage graph.
+ * It include the model nodes: `${node_id}` and the column nodes: `${node_id}_${column}`.
+ *
+ * This is used to show the downstream model node by model-to-column edge.
+ */
 export function selectCllImpacted(cll: Record<string, CllNodeData>, node: string, column: string) {
   const childMap: Record<string, string[]> = {};
 
@@ -379,7 +385,7 @@ export function toReactflow(
     cll?: ColumnLineageData;
     breakingChangeEnabled?: boolean;
   },
-): [Node[], Edge[], NodeColumnSetMap, Set<string>] {
+): [Node[], Edge[], NodeColumnSetMap] {
   const nodes: Node[] = [];
   const edges: Edge[] = [];
   const { selectedNodes, columnLevelLineage, cll, breakingChangeEnabled } = options ?? {};
@@ -389,7 +395,6 @@ export function toReactflow(
       : new Set<string>();
 
   const nodeColumnSetMap: NodeColumnSetMap = {};
-  const impacted = new Set<string>();
 
   function getWeight(from: string) {
     if (from === "base") {
