@@ -43,6 +43,7 @@ import { ChevronDownIcon } from "@chakra-ui/icons";
 import { NodeSqlView } from "./NodeSqlView";
 import { LearnHowLink, RecceNotification } from "../onboarding-guide/Notification";
 import { useRecceInstanceContext } from "@/lib/hooks/RecceInstanceContext";
+import { mergeKeys } from "@/lib/mergeKeys";
 
 interface NodeViewProps {
   node: LineageGraphNode;
@@ -95,11 +96,22 @@ export function NodeView({ node, onCloseNode }: NodeViewProps) {
   let query = `select * from {{ ref("${node.name}") }}`;
   const baseColumns = Object.keys(node.data.base?.columns ?? {});
   const currentColumns = Object.keys(node.data.current?.columns ?? {});
-  if (baseColumns.length > 0 && currentColumns.length > baseColumns.length) {
-    // If the model has added columns, comment out the added ones
-    const columnsNotInBase = currentColumns.filter((col) => !baseColumns.includes(col));
-    const formattedColumns = currentColumns
-      .map((col) => (columnsNotInBase.includes(col) ? `--- ${col} (Added)` : col))
+  if (
+    baseColumns.length > 0 &&
+    currentColumns.length > 0 &&
+    baseColumns.length !== currentColumns.length
+  ) {
+    // If the model has different columns, compare the common columns
+    const mergedColumns = mergeKeys(baseColumns, currentColumns);
+    const formattedColumns = mergedColumns
+      .map((col) => {
+        if (!baseColumns.includes(col)) {
+          return `--- ${col} (Added)`;
+        } else if (!currentColumns.includes(col)) {
+          return `--- ${col} (Removed)`;
+        }
+        return col;
+      })
       .join(",\n  ");
     query = `select \n  ${formattedColumns}\nfrom {{ ref("${node.name}") }}`;
   }
