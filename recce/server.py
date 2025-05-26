@@ -343,14 +343,8 @@ async def column_level_lineage_by_node(cll_input: CllIn):
     from recce.adapter.dbt_adapter import DbtAdapter
 
     dbt_adapter: DbtAdapter = default_context().adapter
-
-    try:
-        # TODO: Add support for by the node and column
-        result = dbt_adapter.get_cll_by_node_id(cll_input.params.get("node_id"))
-    except Exception as e:
-        raise HTTPException(status_code=400, detail=str(e))
-
-    return CllResponse(current=result)
+    cll = dbt_adapter.get_cll_by_node_id(cll_input.params.get("node_id"))
+    return CllResponse(current=cll)
 
 
 class SelectNodesInput(BaseModel):

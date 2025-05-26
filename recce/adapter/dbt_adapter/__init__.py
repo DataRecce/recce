@@ -1000,7 +1000,7 @@ class DbtAdapter(BaseAdapter):
                 # replace id "." to "_"
                 unique_id = n.id
                 table_name = unique_id.replace(".", "_")
-                table_id_map[table_name] = unique_id
+                table_id_map[table_name.lower()] = unique_id
                 return table_name
 
             raise ValueError(f"Cannot find node {node_name} in the manifest")
@@ -1017,7 +1017,7 @@ class DbtAdapter(BaseAdapter):
                 # replace id "." to "_"
                 unique_id = n.id
                 table_name = unique_id.replace(".", "_")
-                table_id_map[table_name] = unique_id
+                table_id_map[table_name.lower()] = unique_id
                 return table_name
 
             raise ValueError(f"Cannot find source {source_name}.{table_name} in the manifest")
@@ -1053,12 +1053,12 @@ class DbtAdapter(BaseAdapter):
             return
 
         # Add cll dependency to the node.
-        depends_on = [CllColumnDep(node=table_id_map[d.node], column=d.column) for d in m2c]
+        depends_on = [CllColumnDep(node=table_id_map[d.node.lower()], column=d.column) for d in m2c]
         node.depends_on.columns = depends_on
         for name, column in node.columns.items():
             if name in c2c_map:
                 column.depends_on = [
-                    CllColumnDep(node=table_id_map[d.node], column=d.column) for d in c2c_map[name].depends_on
+                    CllColumnDep(node=table_id_map[d.node.lower()], column=d.column) for d in c2c_map[name].depends_on
                 ]
                 column.transformation_type = c2c_map[name].transformation_type
 
