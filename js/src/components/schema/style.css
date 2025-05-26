@@ -1,40 +1,82 @@
-.column-index-added {
-    text-align: right;
+.row-added {
     background-color: rgb(204, 255, 216);
 }
 
-.column-body-added {
-    background-color: rgb(230, 255, 236)
+.row-added:hover,
+.row-added[aria-selected="true"] {
+    background-color:rgb(193 246 205);
 }
 
-.column-index-removed {
+.row-added[aria-selected="true"]:hover {
+    background-color: rgb(166 242 184);
+}
+
+.row-removed {
+    background-color: rgb(255, 215, 213);
+}
+
+.row-removed:hover,
+.row-removed[aria-selected="true"] {
+    background-color: rgb(246 195 193);
+}
+
+.row-removed[aria-selected="true"]:hover {
+    background-color: rgb(242 170 166);
+}
+
+.row-normal {
+    background-color: white;
+}
+
+.row-normal:hover,
+.row-normal[aria-selected="true"] {
+    background-color: rgb(241, 241, 241);
+}
+
+.row-normal[aria-selected="true"]:hover {
+    background-color: rgb(230 230 230);
+}
+
+.row-selectable {
+    cursor: pointer
+}
+
+/* for general column */
+
+.schema-column[aria-selected="true"] {
+    outline: none;
+    outline-offset: 0;
+}
+
+.schema-column-index {
     text-align: right;
-    background-color: rgb(255, 215, 213)
+    filter: brightness(0.95);
 }
 
-.column-body-removed {
-    background-color: rgb(255, 235, 233)
+/* for reorder-index and type-change column */
+
+.column-body-type-changed {
+    background-color: rgb(255, 215, 213);
+}
+
+.row-normal:hover .column-body-type-changed,
+.row-normal[aria-selected="true"] .column-body-type-changed {
+    background-color: rgb(246 195 193);
+}
+
+.row-normal[aria-selected="true"]:hover .column-body-type-changed {
+    background-color: rgb(242 170 166);
 }
 
 .column-index-reordered {
-    text-align: right;
     background-color: rgb(255, 173, 21);
 }
 
-.column-body-reordered {    
-    background-color: white;
-    /* background-color: rgb(255, 238, 205); */
+.row-normal:hover .column-index-reordered,
+.row-normal[aria-selected="true"] .column-index-reordered {
+    background-color: rgb(249 164 6);
 }
 
-.column-index-normal {
-    text-align: right;
-    background-color: rgb(249, 249, 249);
-}
-
-.column-body-normal {
-    background-color: white
-}
-
-.column-body-type-changed {    
-    background-color: rgb(255, 215, 213)
+.row-normal[aria-selected="true"]:hover .column-index-reordered {
+    background-color: rgb(224 147 6);
 }

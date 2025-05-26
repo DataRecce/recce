@@ -9,6 +9,9 @@ export default {
         "gradient-radial": "radial-gradient(var(--tw-gradient-stops))",
         "gradient-conic": "conic-gradient(from 180deg at 50% 50%, var(--tw-gradient-stops))",
       },
+      colors: {
+        brand: "rgb(253,104,62)",
+      },
     },
   },
   // eslint-disable-next-line @typescript-eslint/no-require-imports
