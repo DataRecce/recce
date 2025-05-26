@@ -37,7 +37,6 @@ import { EnvInfo } from "@/components/app/EnvInfo";
 import { Check, listChecks } from "@/lib/api/checks";
 import { cacheKeys } from "@/lib/api/cacheKeys";
 import { LineagePage } from "@/components/lineage/LineagePage";
-import OnboardingGuide from "@/components/onboarding-guide/OnboardingGuide";
 import { useRecceActionContext } from "@/lib/hooks/RecceActionContext";
 import { HSplit, VSplit } from "@/components/split/Split";
 import { RunResultPane } from "@/components/run/RunResultPane";
@@ -388,7 +387,6 @@ export default function Home() {
     <MainContainer>
       <TopBar />
       <NavBar />
-      <OnboardingGuide />
       <Main />
       <AuthModal />
     </MainContainer>
