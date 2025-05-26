@@ -23,13 +23,16 @@ type AuthState = "authenticating" | "pending" | "canceled" | "ignored";
 
 interface AuthModalProps {
   handleParentClose?: () => void;
+  ignoreCookie?: boolean;
 }
 
-export default function AuthModal({ handleParentClose }: AuthModalProps): ReactNode {
+export default function AuthModal({ handleParentClose, ignoreCookie }: AuthModalProps): ReactNode {
   const { authed } = useRecceInstanceContext();
   const { isOpen, onOpen, onClose } = useDisclosure();
   const authStateCookieValue = (Cookies.get("authState") ?? "pending") as AuthState;
-  const [authState, setAuthState] = useState<AuthState>(authStateCookieValue);
+  const [authState, setAuthState] = useState<AuthState>(
+    ignoreCookie ? "pending" : authStateCookieValue,
+  );
 
   const updateModalState = useCallback(() => {
     if (!authed && !isOpen && authState === "pending") {
@@ -52,22 +55,20 @@ export default function AuthModal({ handleParentClose }: AuthModalProps): ReactN
   updateModalState();
 
   return (
-    <Modal size="xl" isCentered isOpen={isOpen} onClose={handleAllCloses}>
+    <Modal size="lg" isCentered isOpen={isOpen} onClose={handleAllCloses}>
       <ModalOverlay />
-      <ModalContent>
-        {authState !== "authenticating" && <ModalHeader>Use Recce Cloud for Free</ModalHeader>}
+      <ModalContent borderRadius="2xl">
+        {authState !== "authenticating" && (
+          <ModalHeader className="text-center" fontSize="2xl">
+            Use Recce Cloud for Free
+          </ModalHeader>
+        )}
         {authState === "authenticating" && (
           <ModalHeader className="text-center">
             <Image className="mx-auto mb-2" src={(ReloadImage as StaticImageData).src} />
             <div>Reload to Finish</div>
           </ModalHeader>
         )}
-        <ModalCloseButton
-          onClick={() => {
-            setAuthState("canceled");
-            handleAllCloses();
-          }}
-        />
         {authState !== "authenticating" ? (
           <>
             <ModalBody className="space-y-2 font-light">
@@ -86,11 +87,15 @@ export default function AuthModal({ handleParentClose }: AuthModalProps): ReactN
                   onClick={() => {
                     setAuthState("authenticating");
                   }}>
-                  <Button className="w-full" colorScheme="brand" rightIcon={<LuExternalLink />}>
+                  <Button
+                    className="w-full !rounded-lg !font-medium"
+                    colorScheme="brand"
+                    rightIcon={<LuExternalLink />}>
                     Use Recce Cloud
                   </Button>
                 </Link>
                 <Button
+                  className="!rounded-lg !font-medium"
                   variant="solid"
                   colorScheme="gray"
                   size="sm"
@@ -101,6 +106,7 @@ export default function AuthModal({ handleParentClose }: AuthModalProps): ReactN
                   Skip
                 </Button>
                 <Button
+                  className="!font-medium !text-black"
                   variant="link"
                   size="sm"
                   onClick={() => {

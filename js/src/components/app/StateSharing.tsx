@@ -40,7 +40,7 @@ export function TopLevelShare() {
           }}>
           Share
         </Button>
-        {showModal && <AuthModal handleParentClose={onClose} />}
+        {showModal && <AuthModal handleParentClose={onClose} ignoreCookie />}
       </Flex>
     );
   }

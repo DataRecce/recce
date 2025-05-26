@@ -151,7 +151,7 @@ const RunResultShareMenu = ({
               }}>
               Share
             </MenuItem>
-            {showModal && <AuthModal handleParentClose={onClose} />}
+            {showModal && <AuthModal handleParentClose={onClose} ignoreCookie />}
           </>
         )}
       </MenuList>
