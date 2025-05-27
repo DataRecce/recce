@@ -44,6 +44,7 @@ import { NodeSqlView } from "./NodeSqlView";
 import { LearnHowLink, RecceNotification } from "../onboarding-guide/Notification";
 import { useRecceInstanceContext } from "@/lib/hooks/RecceInstanceContext";
 import { mergeKeys } from "@/lib/mergeKeys";
+import { formatSelectColumns } from "@/lib/formatSelect";
 
 interface NodeViewProps {
   node: LineageGraphNode;
@@ -93,28 +94,10 @@ export function NodeView({ node, onCloseNode }: NodeViewProps) {
 
   const isAddedOrRemoved = node.changeStatus === "added" || node.changeStatus === "removed";
 
-  let query = `select * from {{ ref("${node.name}") }}`;
   const baseColumns = Object.keys(node.data.base?.columns ?? {});
   const currentColumns = Object.keys(node.data.current?.columns ?? {});
-  if (
-    baseColumns.length > 0 &&
-    currentColumns.length > 0 &&
-    baseColumns.length !== currentColumns.length
-  ) {
-    // If the model has different columns, compare the common columns
-    const mergedColumns = mergeKeys(baseColumns, currentColumns);
-    const formattedColumns = mergedColumns
-      .map((col) => {
-        if (!baseColumns.includes(col)) {
-          return `--- ${col} (Added)`;
-        } else if (!currentColumns.includes(col)) {
-          return `--- ${col} (Removed)`;
-        }
-        return col;
-      })
-      .join(",\n  ");
-    query = `select \n  ${formattedColumns}\nfrom {{ ref("${node.name}") }}`;
-  }
+  const formattedColumns = formatSelectColumns(baseColumns, currentColumns);
+  const query = `select \n  ${formattedColumns}\nfrom {{ ref("${node.name}") }}`;
 
   function ExploreChangeMenuButton() {
     const { readOnly } = useRecceInstanceContext();
