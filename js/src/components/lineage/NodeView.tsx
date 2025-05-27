@@ -43,7 +43,6 @@ import { ChevronDownIcon } from "@chakra-ui/icons";
 import { NodeSqlView } from "./NodeSqlView";
 import { LearnHowLink, RecceNotification } from "../onboarding-guide/Notification";
 import { useRecceInstanceContext } from "@/lib/hooks/RecceInstanceContext";
-import { mergeKeys } from "@/lib/mergeKeys";
 import { formatSelectColumns } from "@/lib/formatSelect";
 
 interface NodeViewProps {
@@ -96,10 +95,11 @@ export function NodeView({ node, onCloseNode }: NodeViewProps) {
 
   const baseColumns = Object.keys(node.data.base?.columns ?? {});
   const currentColumns = Object.keys(node.data.current?.columns ?? {});
-  const formattedColumns = formatSelectColumns(baseColumns, currentColumns);
-  const query = `select \n  ${formattedColumns}\nfrom {{ ref("${node.name}") }}`;
 
   function ExploreChangeMenuButton() {
+    const formattedColumns = formatSelectColumns(baseColumns, currentColumns);
+    const query = `select \n  ${formattedColumns}\nfrom {{ ref("${node.name}") }}`;
+
     const { readOnly } = useRecceInstanceContext();
     if (
       node.resourceType === "model" ||
@@ -262,7 +262,9 @@ export function NodeView({ node, onCloseNode }: NodeViewProps) {
               fontSize="14px"
               onClick={() => {
                 if (envInfo?.adapterType === "dbt") {
-                  setSqlQuery(`select * from {{ ref("${node.name}") }}`);
+                  setSqlQuery(
+                    `select \n  ${currentColumns.join(",\n  ")}\nfrom {{ ref("${node.name}") }}`,
+                  );
                 } else if (envInfo?.adapterType === "sqlmesh") {
                   setSqlQuery(`select * from ${node.name}`);
                 }
