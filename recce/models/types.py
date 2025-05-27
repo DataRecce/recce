@@ -156,7 +156,3 @@ class CllNode(BaseModel):
 
 class CllData(BaseModel):
     nodes: Dict[str, CllNode] = Field(default_factory=dict)
-
-
-class CllResponse(BaseModel):
-    current: CllData

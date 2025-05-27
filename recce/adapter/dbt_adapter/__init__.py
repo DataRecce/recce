@@ -1028,7 +1028,7 @@ class DbtAdapter(BaseAdapter):
             source=source_func,
         )
 
-        schema: Dict[str, str] = {}
+        schema = {}
         for parent_id in parent_list:
             parent_node = nodes.get(parent_id)
             if parent_node is None:
@@ -1115,8 +1115,7 @@ class DbtAdapter(BaseAdapter):
         return nodes
 
     def get_manifests_by_id(self, unique_id: str):
-        self.get_manifest = self.get_manifest(base=False)
-        curr_manifest = self.get_manifest
+        curr_manifest = self.get_manifest(base=False)
         base_manifest = self.get_manifest(base=True)
         if unique_id in curr_manifest.nodes.keys() or unique_id in base_manifest.nodes.keys():
             return {

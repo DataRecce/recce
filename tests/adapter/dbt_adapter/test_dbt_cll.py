@@ -106,7 +106,6 @@ def test_seed(dbt_test_helper):
         depends_on=["seed.seed1"],
     )
     adapter: DbtAdapter = dbt_test_helper.context.adapter
-    # result = adapter.get_cll_by_node_id("seed.seed1")
 
     result = adapter.get_cll_by_node_id("model.model1")
     assert_model(result, "seed.seed1", [])

@@ -154,10 +154,10 @@ def _cll_set_scope(scope: Scope, scope_cll_map: dict[Scope, CllResult]) -> CllRe
 def _cll_select_scope(scope: Scope, scope_cll_map: dict[Scope, CllResult]) -> CllResult:
     assert scope.expression.key == "select"
 
-    # model-to-column dependencies
-    m2c = []
-    # column-to-column dependencies
-    c2c_map = {}
+    # model-to-column
+    m2c: List[CllColumnDep] = []
+    # column-to-column
+    c2c_map: Dict[str, CllColumn] = {}
 
     table_alias_map = {t.alias_or_name: t.name for t in scope.tables}
     select = scope.expression
