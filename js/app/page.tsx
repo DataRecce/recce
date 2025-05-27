@@ -228,6 +228,7 @@ function TabBadge<T, R extends number>({
   return (
     <Box
       ml="2px"
+      maxH={"20px"}
       height="80%"
       aspectRatio={1}
       borderRadius="full"

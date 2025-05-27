@@ -105,7 +105,7 @@ export function EnvInfo() {
     <>
       <Tooltip label="Environment Info" placement="bottom-end">
         <div className="flex items-center hover:cursor-pointer hover:text-black" onClick={onOpen}>
-          <div className="flex flex-col text-sm">
+          <div className="hidden text-sm lg:flex lg:flex-col">
             <span>
               {Array.from(baseSchemas).join(", ")} ({baseRelativeTime})
             </span>
@@ -116,7 +116,7 @@ export function EnvInfo() {
           <IconButton
             size="sm"
             variant="unstyled"
-            aria-label="Export state"
+            aria-label="Environment Info"
             icon={<Icon verticalAlign="middle" as={IconInfo} boxSize={"16px"} />}
           />
         </div>
