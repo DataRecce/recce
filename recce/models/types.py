@@ -1,7 +1,7 @@
 import uuid
 from datetime import datetime, timezone
 from enum import Enum
-from typing import Literal, Optional
+from typing import Dict, List, Literal, Optional
 
 from pydantic import UUID4, BaseModel, Field
 
@@ -110,3 +110,49 @@ class LineageDiff(BaseModel):
     base: dict
     current: dict
     diff: dict[str, NodeDiff]
+
+
+# Column Level Linage
+class CllColumnDep(BaseModel):
+    node: str
+    column: str
+
+
+class CllColumn(BaseModel):
+    name: Optional[str]
+
+    # data type
+    type: Optional[str] = None
+
+    # transformation type
+    transformation_type: Literal["source", "passthrough", "renamed", "derived", "unknown"] = "unknown"
+
+    # column-to-column dependencies
+    depends_on: List[CllColumnDep] = Field(default_factory=list)
+
+
+class CllNodeDependsOn(BaseModel):
+    # model-to-column dependencies
+    columns: List[CllColumnDep] = Field(default_factory=list)
+
+    # model-to-model dependencies
+    nodes: List[str] = Field(default_factory=list)
+
+
+class CllNode(BaseModel):
+    id: str
+    name: str
+    package_name: str
+    resource_type: str
+    raw_code: Optional[str] = None
+    source_name: Optional[str] = None
+
+    # Model to column dependencies
+    depends_on: CllNodeDependsOn = Field(default_factory=CllNodeDependsOn)
+
+    # Column to column dependencies
+    columns: Dict[str, CllColumn] = Field(default_factory=dict)
+
+
+class CllData(BaseModel):
+    nodes: Dict[str, CllNode] = Field(default_factory=dict)

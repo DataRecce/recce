@@ -7,17 +7,24 @@ export interface CllParams {
   column: string;
 }
 
-export interface NodeData {
+export interface CllNodeData {
   id: string;
   name: string;
   resource_type: string;
   raw_code?: string;
+  depends_on?: {
+    nodes: string[];
+    columns: {
+      node: string;
+      column: string;
+    }[];
+  };
   columns?: Record<string, NodeColumnData>;
 }
 
 export interface ColumnLineageData {
   current: {
-    nodes: Record<string, NodeData>;
+    nodes: Record<string, CllNodeData>;
   };
 }
 

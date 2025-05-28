@@ -5,21 +5,25 @@ from recce.util.cll import CllResult, cll
 
 
 def assert_model(result: CllResult, depends_on: List[Tuple[str, str]]):
-    assert len(result.depends_on) == len(depends_on), "depends_on length mismatch"
+    m2c, _ = result
+    assert len(m2c) == len(depends_on), "depends_on length mismatch"
     for i in range(len(depends_on)):
         node, column = depends_on[i]
-        anode = result.depends_on[i].node
-        acolumn = result.depends_on[i].column
+        anode = m2c[i].node
+        acolumn = m2c[i].column
 
         assert (
             anode == node and acolumn == column
         ), f"depends_on mismatch at index {i}: expected ({node}, {column}), got ({anode}, {acolumn})"
 
 
-def assert_column(result: CllResult, column_name: str, type, depends_on: List[Tuple[str, str]]):
-    entry = result.columns.get(column_name)
+def assert_column(result: CllResult, column_name: str, transformation_type, depends_on: List[Tuple[str, str]]):
+    _, c2c_map = result
+    entry = c2c_map.get(column_name)
     assert entry is not None, f"Column {column_name} not found in result"
-    assert entry.type == type, f"Column {column_name} type mismatch: expected {type}, got {entry.type}"
+    assert (
+        entry.transformation_type == transformation_type
+    ), f"Column {column_name} type mismatch: expected {transformation_type}, got {entry.transformation_type}"
     assert len(entry.depends_on) == len(depends_on), "depends_on length mismatch"
     for i in range(len(depends_on)):
         node, column = depends_on[i]
