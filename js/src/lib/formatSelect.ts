@@ -1,7 +1,23 @@
 import { mergeKeys } from "./mergeKeys";
 
-export function formatSelectColumns(baseColumns: string[], currentColumns: string[]) {
+export function formatSelectColumns(baseColumns: string[], currentColumns: string[]): string[] {
   const mergedColumns = mergeKeys(baseColumns, currentColumns);
+
+  // both side have no schema
+  if (mergedColumns.length === 0) {
+    return [];
+  }
+
+  // if either side has schema (added and removed model, no catalog.json)
+  if (baseColumns.length === 0 || currentColumns.length === 0) {
+    return mergedColumns.map((col, idx) => {
+      const last = idx === mergedColumns.length - 1;
+      if (last) {
+        return col;
+      }
+      return col + ",";
+    });
+  }
 
   let lastActualColumn = "";
   mergedColumns.forEach((col) => {
@@ -27,5 +43,5 @@ export function formatSelectColumns(baseColumns: string[], currentColumns: strin
     return formatCol + ",";
   });
 
-  return selectColumns.join("\n  ");
+  return selectColumns;
 }

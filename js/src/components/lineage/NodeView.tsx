@@ -98,8 +98,10 @@ export function NodeView({ node, onCloseNode }: NodeViewProps) {
 
   function ExploreChangeMenuButton() {
     const formattedColumns = formatSelectColumns(baseColumns, currentColumns);
-    const query = `select \n  ${formattedColumns}\nfrom {{ ref("${node.name}") }}`;
-
+    let query = `select * from {{ ref("${node.name}") }}`;
+    if (formattedColumns.length) {
+      query = `select \n  ${formattedColumns.join("\n  ")}\nfrom {{ ref("${node.name}") }}`;
+    }
     const { readOnly } = useRecceInstanceContext();
     if (
       node.resourceType === "model" ||
@@ -246,6 +248,11 @@ export function NodeView({ node, onCloseNode }: NodeViewProps) {
   }
 
   function SingleEnvironmentMenuButton() {
+    const formattedColumns = formatSelectColumns(baseColumns, currentColumns);
+    let query = `select * from {{ ref("${node.name}") }}`;
+    if (formattedColumns.length) {
+      query = `select \n  ${formattedColumns.join("\n  ")}\nfrom {{ ref("${node.name}") }}`;
+    }
     if (
       node.resourceType === "model" ||
       node.resourceType === "seed" ||
@@ -262,9 +269,7 @@ export function NodeView({ node, onCloseNode }: NodeViewProps) {
               fontSize="14px"
               onClick={() => {
                 if (envInfo?.adapterType === "dbt") {
-                  setSqlQuery(
-                    `select \n  ${currentColumns.join(",\n  ")}\nfrom {{ ref("${node.name}") }}`,
-                  );
+                  setSqlQuery(query);
                 } else if (envInfo?.adapterType === "sqlmesh") {
                   setSqlQuery(`select * from ${node.name}`);
                 }

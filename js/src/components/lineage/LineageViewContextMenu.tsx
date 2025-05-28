@@ -120,7 +120,10 @@ export const ModelNodeContextMenu = ({
     const baseColumns = Object.keys(modelNode.data.base?.columns ?? {});
     const currentColumns = Object.keys(modelNode.data.current?.columns ?? {});
     const formattedColumns = formatSelectColumns(baseColumns, currentColumns);
-    const query = `select \n  ${formattedColumns}\nfrom {{ ref("${modelNode.name}") }}`;
+    let query = `select * from {{ ref("${modelNode.name}") }}`;
+    if (formattedColumns.length) {
+      query = `select \n  ${formattedColumns.join("\n  ")}\nfrom {{ ref("${modelNode.name}") }}`;
+    }
 
     menuItems.push({
       label: "Query",
