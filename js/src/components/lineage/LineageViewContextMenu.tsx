@@ -14,6 +14,7 @@ import useModelColumns from "@/lib/hooks/useModelColumns";
 import { useRecceQueryContext } from "@/lib/hooks/RecceQueryContext";
 import { useLocation } from "wouter";
 import { SubmitRunTrackProps } from "@/lib/api/runs";
+import { formatSelectColumns } from "@/lib/formatSelect";
 
 interface LineageViewContextMenuProps {
   x: number;
@@ -116,11 +117,19 @@ export const ModelNodeContextMenu = ({
   if (!selectMode && resourceType && ["model", "seed", "snapshot"].includes(resourceType)) {
     // query
     let entry = findByRunType(singleEnv ? "query" : "query_diff");
+    const baseColumns = Object.keys(modelNode.data.base?.columns ?? {});
+    const currentColumns = Object.keys(modelNode.data.current?.columns ?? {});
+    const formattedColumns = formatSelectColumns(baseColumns, currentColumns);
+    let query = `select * from {{ ref("${modelNode.name}") }}`;
+    if (formattedColumns.length) {
+      query = `select \n  ${formattedColumns.join("\n  ")}\nfrom {{ ref("${modelNode.name}") }}`;
+    }
+
     menuItems.push({
       label: "Query",
       icon: <Icon as={entry?.icon} />,
       action: () => {
-        setSqlQuery(`select * from {{ ref("${modelNode.name}") }}`);
+        setSqlQuery(query);
         if (isActionAvailable("query_diff_with_primary_key")) {
           // Only set primary key if the action is available
           setPrimaryKeys(primaryKey !== undefined ? [primaryKey] : undefined);

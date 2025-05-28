@@ -43,6 +43,7 @@ import { ChevronDownIcon } from "@chakra-ui/icons";
 import { NodeSqlView } from "./NodeSqlView";
 import { LearnHowLink, RecceNotification } from "../onboarding-guide/Notification";
 import { useRecceInstanceContext } from "@/lib/hooks/RecceInstanceContext";
+import { formatSelectColumns } from "@/lib/formatSelect";
 
 interface NodeViewProps {
   node: LineageGraphNode;
@@ -92,7 +93,15 @@ export function NodeView({ node, onCloseNode }: NodeViewProps) {
 
   const isAddedOrRemoved = node.changeStatus === "added" || node.changeStatus === "removed";
 
+  const baseColumns = Object.keys(node.data.base?.columns ?? {});
+  const currentColumns = Object.keys(node.data.current?.columns ?? {});
+
   function ExploreChangeMenuButton() {
+    const formattedColumns = formatSelectColumns(baseColumns, currentColumns);
+    let query = `select * from {{ ref("${node.name}") }}`;
+    if (formattedColumns.length) {
+      query = `select \n  ${formattedColumns.join("\n  ")}\nfrom {{ ref("${node.name}") }}`;
+    }
     const { readOnly } = useRecceInstanceContext();
     if (
       node.resourceType === "model" ||
@@ -115,7 +124,7 @@ export function NodeView({ node, onCloseNode }: NodeViewProps) {
               fontSize="14px"
               onClick={() => {
                 if (envInfo?.adapterType === "dbt") {
-                  setSqlQuery(`select * from {{ ref("${node.name}") }}`);
+                  setSqlQuery(query);
                 } else if (envInfo?.adapterType === "sqlmesh") {
                   setSqlQuery(`select * from ${node.name}`);
                 }
@@ -239,6 +248,11 @@ export function NodeView({ node, onCloseNode }: NodeViewProps) {
   }
 
   function SingleEnvironmentMenuButton() {
+    const formattedColumns = formatSelectColumns(baseColumns, currentColumns);
+    let query = `select * from {{ ref("${node.name}") }}`;
+    if (formattedColumns.length) {
+      query = `select \n  ${formattedColumns.join("\n  ")}\nfrom {{ ref("${node.name}") }}`;
+    }
     if (
       node.resourceType === "model" ||
       node.resourceType === "seed" ||
@@ -255,7 +269,7 @@ export function NodeView({ node, onCloseNode }: NodeViewProps) {
               fontSize="14px"
               onClick={() => {
                 if (envInfo?.adapterType === "dbt") {
-                  setSqlQuery(`select * from {{ ref("${node.name}") }}`);
+                  setSqlQuery(query);
                 } else if (envInfo?.adapterType === "sqlmesh") {
                   setSqlQuery(`select * from ${node.name}`);
                 }
