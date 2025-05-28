@@ -409,7 +409,7 @@ export function toReactflow(
         if (!nodeAndColumnSet.has(source)) {
           continue;
         }
-        if (nodeColumnSet.has(parentColumn.column)) {
+        if (!nodeAndColumnSet.has(target)) {
           continue;
         }
 
