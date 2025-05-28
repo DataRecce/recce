@@ -18,14 +18,13 @@ import {
   HStack,
   useToast,
 } from "@chakra-ui/react";
-import React, { ReactNode, useLayoutEffect } from "react";
+import React, { ReactNode, Suspense, useLayoutEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
 import _ from "lodash";
 import { useVersionNumber } from "@/lib/api/version";
 import { CheckPage } from "@/components/check/CheckPage";
 import { QueryPage } from "@/components/query/QueryPage";
 import { Redirect, Route, Switch, useLocation, useRoute } from "wouter";
-
 import { useLineageGraphContext } from "@/lib/hooks/LineageGraphContext";
 import { RunPage } from "@/components/run/RunPage";
 import { ErrorBoundary } from "@/components/errorboundary/ErrorBoundary";
@@ -49,7 +48,6 @@ import { useRecceServerFlag } from "@/lib/hooks/useRecceServerFlag";
 import { useRecceInstanceContext } from "@/lib/hooks/RecceInstanceContext";
 import { TopLevelShare } from "@/components/app/StateSharing";
 import { useCountdownToast } from "@/lib/hooks/useCountdownToast";
-import Providers from "app/Providers";
 import AuthModal from "@/components/AuthModal/AuthModal";
 
 const RouteAlwaysMount = ({ children, path }: { children: ReactNode; path: string }) => {

@@ -13,20 +13,18 @@ interface RecceContextProps {
 
 export default function RecceContextProvider({ children }: RecceContextProps) {
   return (
-    <>
-      <RecceInstanceInfoProvider>
-        <RecceShareStateContextProvider>
-          <RecceQueryContextProvider>
-            <LineageGraphContextProvider>
-              <RowCountStateContextProvider>
-                <RecceActionContextProvider>
-                  <RecceCheckContextProvider>{children}</RecceCheckContextProvider>
-                </RecceActionContextProvider>
-              </RowCountStateContextProvider>
-            </LineageGraphContextProvider>
-          </RecceQueryContextProvider>
-        </RecceShareStateContextProvider>
-      </RecceInstanceInfoProvider>
-    </>
+    <RecceInstanceInfoProvider>
+      <RecceShareStateContextProvider>
+        <RecceQueryContextProvider>
+          <LineageGraphContextProvider>
+            <RowCountStateContextProvider>
+              <RecceActionContextProvider>
+                <RecceCheckContextProvider>{children}</RecceCheckContextProvider>
+              </RecceActionContextProvider>
+            </RowCountStateContextProvider>
+          </LineageGraphContextProvider>
+        </RecceQueryContextProvider>
+      </RecceShareStateContextProvider>
+    </RecceInstanceInfoProvider>
   );
 }

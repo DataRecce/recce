@@ -1,23 +1,24 @@
+"use client";
+
 import {
   Button,
   Image,
   Modal,
   ModalBody,
-  ModalCloseButton,
   ModalContent,
   ModalFooter,
   ModalHeader,
   ModalOverlay,
   useDisclosure,
 } from "@chakra-ui/react";
-import { ReactNode, useCallback, useState } from "react";
-import { useRecceInstanceContext } from "@/lib/hooks/RecceInstanceContext";
+import { ReactNode, useCallback, useEffect, useState } from "react";
 import Cookies from "js-cookie";
 import { LuExternalLink } from "react-icons/lu";
 import Link from "next/link";
 import { PUBLIC_CLOUD_WEB_URL } from "@/lib/const";
 import ReloadImage from "public/imgs/reload-image.svg";
 import { StaticImageData } from "next/image";
+import { useRecceInstanceContext } from "@/lib/hooks/RecceInstanceContext";
 
 type AuthState = "authenticating" | "pending" | "canceled" | "ignored";
 
@@ -26,7 +27,10 @@ interface AuthModalProps {
   ignoreCookie?: boolean;
 }
 
-export default function AuthModal({ handleParentClose, ignoreCookie }: AuthModalProps): ReactNode {
+export default function AuthModal({
+  handleParentClose,
+  ignoreCookie = false,
+}: AuthModalProps): ReactNode {
   const { authed } = useRecceInstanceContext();
   const { isOpen, onOpen, onClose } = useDisclosure();
   const authStateCookieValue = (Cookies.get("authState") ?? "pending") as AuthState;
@@ -52,7 +56,13 @@ export default function AuthModal({ handleParentClose, ignoreCookie }: AuthModal
     onClose();
   }
 
-  updateModalState();
+  useEffect(() => {
+    updateModalState();
+  }, [updateModalState]);
+
+  if (authState === "ignored" && !ignoreCookie) {
+    return null;
+  }
 
   return (
     <Modal size="lg" isCentered isOpen={isOpen} onClose={handleAllCloses}>
