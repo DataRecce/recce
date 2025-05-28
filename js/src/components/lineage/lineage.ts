@@ -72,64 +72,6 @@ export interface LineageGraph {
 
 export type NodeColumnSetMap = Record<string, Set<string>>;
 
-export function _selectColumnLevelLineage(node: string, column: string, cll: ColumnLineageData) {
-  const parentMap: Record<string, string[]> = {};
-  const childMap: Record<string, string[]> = {};
-  const selectedColumn = `${node}_${column}`;
-
-  for (const modelNode of Object.values(cll.current.nodes)) {
-    const nodeId = modelNode.id;
-    if (!nodeId) {
-      continue;
-    }
-    for (const columnNode of Object.values(modelNode.columns ?? {})) {
-      const target = `${nodeId}_${columnNode.name}`;
-      parentMap[target] = [];
-
-      for (const parent of columnNode.depends_on ?? []) {
-        const source = `${parent.node}_${parent.column}`;
-        parentMap[target].push(source);
-        if (!(source in childMap)) {
-          childMap[source] = [];
-        }
-        childMap[source].push(target);
-      }
-    }
-  }
-
-  const selectColumnUpstream = (nodeIds: string[], degree = 1000) => {
-    return getNeighborSet(
-      nodeIds,
-      (key) => {
-        if (!(key in parentMap)) {
-          return [];
-        }
-        return parentMap[key];
-      },
-      degree,
-    );
-  };
-
-  const selectColumnDownstream = (nodeIds: string[], degree = 1000) => {
-    return getNeighborSet(
-      nodeIds,
-      (key) => {
-        if (!(key in childMap)) {
-          return [];
-        }
-        return childMap[key];
-      },
-      degree,
-    );
-  };
-
-  const columnSet = union(
-    selectColumnDownstream([selectedColumn]),
-    selectColumnUpstream([selectedColumn]),
-  );
-  return columnSet;
-}
-
 export function buildLineageGraph(
   base: LineageData,
   current: LineageData,
@@ -329,16 +271,23 @@ export function selectDownstream(lineageGraph: LineageGraph, nodeIds: string[], 
 }
 
 /**
- * Select the impacted nodes in the column-level lineage graph.
- * It include the model nodes: `${node_id}` and the column nodes: `${node_id}_${column}`.
+ * Select the upstream&downstream nodes in the column-level lineage graph.
+ * It includes the
+ * - Model nodes: `${node_id}`
+ * - Column nodes: `${node_id}_${column}`.
  *
- * This is used to show the downstream model node by model-to-column edge.
  */
-export function selectCllImpacted(cll: Record<string, CllNodeData>, node: string, column: string) {
+export function selectCllLineage(cll: Record<string, CllNodeData>, node: string, column: string) {
   const childMap: Record<string, string[]> = {};
+  const parentMap: Record<string, string[]> = {};
 
   for (const [nodeId, node] of Object.entries(cll)) {
     for (const parentKey of node.depends_on?.nodes ?? []) {
+      if (!(nodeId in parentMap)) {
+        parentMap[nodeId] = [];
+      }
+      parentMap[nodeId].push(parentKey);
+
       if (!(parentKey in childMap)) {
         childMap[parentKey] = [];
       }
@@ -347,6 +296,11 @@ export function selectCllImpacted(cll: Record<string, CllNodeData>, node: string
 
     for (const parent of node.depends_on?.columns ?? []) {
       const parentKey = `${parent.node}_${parent.column}`;
+      if (!(nodeId in parentMap)) {
+        parentMap[nodeId] = [];
+      }
+      parentMap[nodeId].push(parentKey);
+
       if (!(parentKey in childMap)) {
         childMap[parentKey] = [];
       }
@@ -358,6 +312,11 @@ export function selectCllImpacted(cll: Record<string, CllNodeData>, node: string
 
       for (const parent of column.depends_on ?? []) {
         const parentKey = `${parent.node}_${parent.column}`;
+        if (!(columnKey in parentMap)) {
+          parentMap[columnKey] = [];
+        }
+        parentMap[columnKey].push(parentKey);
+
         if (!(parentKey in childMap)) {
           childMap[parentKey] = [];
         }
@@ -366,12 +325,20 @@ export function selectCllImpacted(cll: Record<string, CllNodeData>, node: string
     }
   }
 
-  return getNeighborSet([`${node}_${column}`], (key) => {
+  const cllSelectedId = `${node}_${column}`;
+  const downstream = getNeighborSet([cllSelectedId], (key) => {
     if (!(key in childMap)) {
       return [];
     }
     return childMap[key];
   });
+  const upstream = getNeighborSet([cllSelectedId], (key) => {
+    if (!(key in parentMap)) {
+      return [];
+    }
+    return parentMap[key];
+  });
+  return union(downstream, upstream);
 }
 
 export function toReactflow(
@@ -389,10 +356,6 @@ export function toReactflow(
   const nodes: Node[] = [];
   const edges: Edge[] = [];
   const { selectedNodes, columnLevelLineage, cll, breakingChangeEnabled } = options ?? {};
-  const columnSet =
-    columnLevelLineage && cll != null
-      ? _selectColumnLevelLineage(columnLevelLineage.node, columnLevelLineage.column, cll)
-      : new Set<string>();
 
   const nodeColumnSetMap: NodeColumnSetMap = {};
 
@@ -434,10 +397,22 @@ export function toReactflow(
     if (columnLevelLineage) {
       const cllNode = cll?.current?.nodes?.[node.id];
       const nodeDependsOn = cllNode?.depends_on?.columns ?? [];
+      const nodeAndColumnSet =
+        cll != null
+          ? selectCllLineage(cll.current.nodes, columnLevelLineage.node, columnLevelLineage.column)
+          : new Set<string>();
 
       for (const parentColumn of nodeDependsOn) {
         const source = `${parentColumn.node}_${parentColumn.column}`;
         const target = node.id;
+
+        if (!nodeAndColumnSet.has(source)) {
+          continue;
+        }
+        if (nodeColumnSet.has(parentColumn.column)) {
+          continue;
+        }
+
         edges.push({
           id: `m2c_${source}_${target}`,
           source,
@@ -452,7 +427,7 @@ export function toReactflow(
 
       for (const column of Object.values(cllNodeColumns)) {
         const columnKey = `${node.id}_${column.name}`;
-        if (!columnSet.has(columnKey)) {
+        if (!nodeAndColumnSet.has(columnKey)) {
           continue;
         }
 
@@ -480,7 +455,7 @@ export function toReactflow(
           const source = `${parentColumn.node}_${parentColumn.column}`;
           const target = columnKey;
 
-          if (!columnSet.has(source)) {
+          if (!nodeAndColumnSet.has(source)) {
             continue;
           }
 
