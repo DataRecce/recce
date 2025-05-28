@@ -2,7 +2,7 @@ import {
   LineageGraphNode,
   NodeColumnSetMap,
   layout,
-  selectCllImpacted,
+  selectCllLineage,
   selectDownstream,
   selectUpstream,
   toReactflow,
@@ -49,7 +49,6 @@ import { GraphNode } from "./GraphNode";
 import GraphEdge from "./GraphEdge";
 import { getIconForChangeStatus } from "./styles";
 import { FiCopy } from "react-icons/fi";
-import { BiArrowFromBottom, BiArrowToBottom } from "react-icons/bi";
 import { NodeView } from "./NodeView";
 
 import { useLineageGraphContext } from "@/lib/hooks/LineageGraphContext";
@@ -299,7 +298,7 @@ export function PrivateLineageView(
    */
   const breakingChangeEnabled = viewOptions.breaking_change_enabled ?? false;
   const [nodeColumnSetMap, setNodeColumnSetMap] = useState<NodeColumnSetMap>();
-  const [cllImpacted, setCllImpacted] = useState<Set<string>>();
+  const [cllNodeIds, setCllNodeIds] = useState<Set<string>>();
 
   /**
    * Highlighted nodes: the nodes that are highlighted. The behavior of highlighting depends on the select mode
@@ -319,15 +318,20 @@ export function PrivateLineageView(
       return new Set(nodeIds);
     }
 
-    if (viewOptions.column_level_lineage && nodeColumnSetMap) {
-      const nodeIds = Object.entries(nodeColumnSetMap)
-        .filter(([_, columnSet]) => {
-          return columnSet.size > 0;
-        })
-        .map(([nodeId, _]) => {
-          return nodeId;
-        });
-      return new Set([...nodeIds, ...(cllImpacted ?? [])]);
+    if (viewOptions.column_level_lineage) {
+      const nodesContainsColumns = nodeColumnSetMap
+        ? new Set(
+            Object.entries(nodeColumnSetMap)
+              .filter(([_, columnSet]) => {
+                return columnSet.size > 0;
+              })
+              .map(([nodeId, _]) => {
+                return nodeId;
+              }),
+          )
+        : new Set<string>();
+      const nodesInCLL = cllNodeIds ?? new Set<string>();
+      return union(nodesContainsColumns, nodesInCLL);
     }
 
     if (focusedNode) {
@@ -354,7 +358,7 @@ export function PrivateLineageView(
     focusedNode,
     isModelsChanged,
     multiNodeAction.actionState.actions,
-    cllImpacted,
+    cllNodeIds,
     breakingChangeEnabled,
     filteredNodeIds,
   ]);
@@ -589,12 +593,12 @@ export function PrivateLineageView(
       breakingChangeEnabled: newViewOptions.breaking_change_enabled,
     });
     if (newViewOptions.column_level_lineage != undefined && cll != undefined) {
-      const impacted = selectCllImpacted(
+      const cllNodeIds = selectCllLineage(
         cll.current.nodes,
         newViewOptions.column_level_lineage.node,
         newViewOptions.column_level_lineage.column,
       );
-      setCllImpacted(impacted);
+      setCllNodeIds(cllNodeIds);
     }
     setNodes(newNodes);
     setEdges(newEdges);
@@ -800,10 +804,10 @@ export function PrivateLineageView(
     isNodeSelected: (nodeId: string) => selectedNodeIds.has(nodeId),
     isEdgeHighlighted: (source, target) => {
       if (viewOptions.column_level_lineage) {
-        if (!cllImpacted) {
+        if (!cllNodeIds) {
           return false;
         }
-        return cllImpacted.has(source) && cllImpacted.has(target);
+        return cllNodeIds.has(source) && cllNodeIds.has(target);
       } else {
         return highlighted.has(source) && highlighted.has(target);
       }
