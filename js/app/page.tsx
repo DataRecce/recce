@@ -378,7 +378,7 @@ function MainContainer({ children }: { children: ReactNode }): ReactNode {
 }
 
 export default function Home() {
-  const { isDemoSite } = useLineageGraphContext();
+  const { isDemoSite, isLoading } = useLineageGraphContext();
 
   useLayoutEffect(() => {
     trackInit();
@@ -389,7 +389,7 @@ export default function Home() {
       <TopBar />
       <NavBar />
       <Main />
-      {!isDemoSite && <AuthModal />}
+      {!isLoading && !isDemoSite && <AuthModal />}
     </MainContainer>
   );
 }
