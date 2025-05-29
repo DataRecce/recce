@@ -181,10 +181,10 @@ def _cll_select_scope(scope: Scope, scope_cll_map: dict[Scope, CllResult]) -> Cl
         else:
             return None
 
-    def subquery_cll(subquery: exp.Subquery) -> CllResult:
+    def subquery_cll(subquery: exp.Subquery) -> Optional[CllResult]:
         select = subquery.find(exp.Select)
         if select is None:
-            return []
+            return None
 
         matched_scope = None
         for sub_scope in scope.subquery_scopes:
@@ -192,7 +192,7 @@ def _cll_select_scope(scope: Scope, scope_cll_map: dict[Scope, CllResult]) -> Cl
                 matched_scope = sub_scope
                 break
         if matched_scope is None:
-            return []
+            return None
 
         return scope_cll_map.get(matched_scope)
 
@@ -261,7 +261,7 @@ def _cll_select_scope(scope: Scope, scope_cll_map: dict[Scope, CllResult]) -> Cl
                 sub_cll = subquery_cll(subquery)
                 if sub_cll is not None:
                     sub_m2c, sub_c2c_map = sub_cll
-                    m2c.extend(sub_cll[0])
+                    m2c.extend(sub_m2c)
                     for sub_c in sub_c2c_map.values():
                         m2c.extend(sub_c.depends_on)
 
@@ -286,7 +286,7 @@ def _cll_select_scope(scope: Scope, scope_cll_map: dict[Scope, CllResult]) -> Cl
                 sub_cll = subquery_cll(subquery)
                 if sub_cll is not None:
                     sub_m2c, sub_c2c_map = sub_cll
-                    m2c.extend(sub_cll[0])
+                    m2c.extend(sub_m2c)
                     for sub_c in sub_c2c_map.values():
                         m2c.extend(sub_c.depends_on)
 
