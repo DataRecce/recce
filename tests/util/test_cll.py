@@ -677,3 +677,30 @@ class ColumnLevelLineageTest(unittest.TestCase):
         """
         result = cll(sql)
         assert_model(result, [("table1", "a")])
+
+    def test_subquery(self):
+        sql = """
+        select * from (
+            select a from table1 where b > 100
+        ) as t
+        """
+        result = cll(sql)
+        assert_model(result, [("table1", "b")])
+        assert_column(result, "a", "passthrough", [("table1", "a")])
+
+    def test_where_in_subquery(self):
+        sql = """
+        select a from table1 where user_id in (
+            select user_id from table2 where status is not null
+        )
+        """
+        result = cll(sql)
+        assert_model(result, [("table1", "user_id"), ("table2", "status"), ("table2", "user_id")])
+
+        sql = """
+            select a from table1 group by a having user_id in (
+                select user_id from table2
+            )
+            """
+        result = cll(sql)
+        assert_model(result, [("table1", "a"), ("table1", "user_id"), ("table2", "user_id")])
