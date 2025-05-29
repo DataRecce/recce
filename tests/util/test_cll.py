@@ -691,8 +691,16 @@ class ColumnLevelLineageTest(unittest.TestCase):
     def test_where_in_subquery(self):
         sql = """
         select a from table1 where user_id in (
-            select user_id from table2
+            select user_id from table2 where status is not null
         )
         """
         result = cll(sql)
-        assert_model(result, [("table1", "user_id"), ("table2", "user_id")])
+        assert_model(result, [("table1", "user_id"), ("table2", "status"), ("table2", "user_id")])
+
+        sql = """
+            select a from table1 group by a having user_id in (
+                select user_id from table2
+            )
+            """
+        result = cll(sql)
+        assert_model(result, [("table1", "a"), ("table1", "user_id"), ("table2", "user_id")])

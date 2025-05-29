@@ -181,6 +181,21 @@ def _cll_select_scope(scope: Scope, scope_cll_map: dict[Scope, CllResult]) -> Cl
         else:
             return None
 
+    def subquery_cll(subquery: exp.Subquery) -> CllResult:
+        select = subquery.find(exp.Select)
+        if select is None:
+            return []
+
+        matched_scope = None
+        for sub_scope in scope.subquery_scopes:
+            if sub_scope.expression == select:
+                matched_scope = sub_scope
+                break
+        if matched_scope is None:
+            return []
+
+        return scope_cll_map.get(matched_scope)
+
     for proj in scope.expression.selects:
         transformation_type = "source"
         column_depends_on: List[CllColumnDep] = []
@@ -242,6 +257,13 @@ def _cll_select_scope(scope: Scope, scope_cll_map: dict[Scope, CllResult]) -> Cl
             for ref_column in where.find_all(exp.Column):
                 if source_column_dependency(ref_column) is not None:
                     m2c.extend(source_column_dependency(ref_column).depends_on)
+            for subquery in where.find_all(exp.Subquery):
+                sub_cll = subquery_cll(subquery)
+                if sub_cll is not None:
+                    sub_m2c, sub_c2c_map = sub_cll
+                    m2c.extend(sub_cll[0])
+                    for sub_c in sub_c2c_map.values():
+                        m2c.extend(sub_c.depends_on)
 
     # group by clause: Reference the source columns, column index
     if select.args.get("group"):
@@ -260,6 +282,13 @@ def _cll_select_scope(scope: Scope, scope_cll_map: dict[Scope, CllResult]) -> Cl
                     m2c.extend(source_column_dependency(ref_column).depends_on)
                 elif selected_column_dependency(ref_column) is not None:
                     m2c.extend(selected_column_dependency(ref_column).depends_on)
+            for subquery in having.find_all(exp.Subquery):
+                sub_cll = subquery_cll(subquery)
+                if sub_cll is not None:
+                    sub_m2c, sub_c2c_map = sub_cll
+                    m2c.extend(sub_cll[0])
+                    for sub_c in sub_c2c_map.values():
+                        m2c.extend(sub_c.depends_on)
 
     # order by clause: Reference the source columns, selected columns, column index
     if select.args.get("order"):
