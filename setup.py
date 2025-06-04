@@ -6,9 +6,7 @@ from setuptools import find_packages  # type: ignore
 
 
 def _get_version():
-    version_file = os.path.normpath(
-        os.path.join(os.path.dirname(__file__), "recce", "VERSION")
-    )
+    version_file = os.path.normpath(os.path.join(os.path.dirname(__file__), "recce", "VERSION"))
     with open(version_file) as fh:
         version = fh.read().strip()
         return version
@@ -74,6 +72,8 @@ setup(
         "Programming Language :: Python :: 3.9",
         "Programming Language :: Python :: 3.10",
         "Programming Language :: Python :: 3.11",
+        "Programming Language :: Python :: 3.12",
+        "Programming Language :: Python :: 3.13",
         "License :: OSI Approved :: Apache Software License",
         "Operating System :: OS Independent",
         "Development Status :: 4 - Beta",

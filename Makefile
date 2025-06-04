@@ -41,10 +41,21 @@ check:
 	flake8 ./recce ./tests
 
 test: install-dev
-	@python3 -m pytest --cov --cov-report xml --cov-report html tests
+	@echo "Running tests..."
+	@python3 -m pytest tests
+
+test-coverage: install-dev
+	@echo "Running tests with coverage..."
+	@python3 -m pytest --cov=recce --cov-report=html --cov-report=term tests
+	@echo "Coverage report generated in htmlcov/index.html"
 
 test-tox: install-dev
-	@tox
+	@echo "Running tests with Tox based on DBT versions..."
+	@tox run-parallel
+
+test-tox-python-versions:
+	@echo "Running tests with Tox for specific Python versions..."
+	@tox run-parallel -e py39,py310,py311,py312,py313
 
 install-frontend-requires:
 # Install pnpm if not installed
