@@ -93,4 +93,5 @@ jobs:
 
       - name: Run test with specified Python version
         run: |
+          make install-dev
           tox -e ${{ matrix.python-version }}
