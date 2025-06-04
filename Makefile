@@ -55,7 +55,7 @@ test-tox: install-dev
 
 test-tox-python-versions:
 	@echo "Running tests with Tox for specific Python versions..."
-	@tox run-parallel -e py39,py310,py311,py312,py313
+	@tox run-parallel -e 3.9,3.10,3.11,3.12,3.13
 
 install-frontend-requires:
 # Install pnpm if not installed

@@ -82,11 +82,15 @@ jobs:
           cache: "pip" # caching pip dependencies
           cache-dependency-path: setup.py
 
-      - name: Install Recce
-        run: |
-          python -m pip install --upgrade pip
-          pip install .
+      - name: Cache tox environments
+        uses: actions/cache@v4
+        with:
+          path: .tox
+          key: ${{ runner.os }}-tox-${{ hashFiles('tox.ini') }}-${{ matrix.python-version }}
+          restore-keys: |
+            ${{ runner.os }}-tox-${{ hashFiles('tox.ini') }}-
+            ${{ runner.os }}-tox-
 
-      - name: Run tests
+      - name: Run test with specified Python version
         run: |
-          make test
+          tox -e ${{ matrix.python-version }}
