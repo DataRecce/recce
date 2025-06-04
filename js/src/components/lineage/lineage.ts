@@ -13,6 +13,7 @@ import {
 } from "@/lib/api/info";
 import { CllNodeData, ColumnLineageData } from "@/lib/api/cll";
 
+export const COLUMN_HEIGHT = 20;
 /**
  * The types for internal data structures.
  */
@@ -433,7 +434,7 @@ export function toReactflow(
 
         nodes.push({
           id: columnKey,
-          position: { x: 10, y: 70 + columnIndex * 15 },
+          position: { x: 10, y: 70 + columnIndex * COLUMN_HEIGHT },
           parentId: node.id,
           extent: "parent",
           draggable: false,
@@ -480,7 +481,7 @@ export function toReactflow(
 
         nodes.push({
           id: columnKey,
-          position: { x: 10, y: 70 + columnIndex * 15 },
+          position: { x: 10, y: 70 + columnIndex * COLUMN_HEIGHT },
           parentId: node.id,
           extent: "parent",
           draggable: false,
@@ -507,7 +508,7 @@ export function toReactflow(
 
     let height = 60;
     if (columnIndex > 0) {
-      height += 20 + columnIndex * 15;
+      height += 20 + columnIndex * COLUMN_HEIGHT;
     }
 
     nodes.push({
