@@ -66,27 +66,27 @@ jobs:
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
 
-    test-python-versions:
-      name: Test Python Versions
-      runs-on: ubuntu-latest
-      strategy:
-        matrix:
-          python-version: [ "3.9", "3.10", "3.11", "3.12", "3.13" ]
-      steps:
-        - uses: actions/checkout@v3m
+  test-python-versions:
+    name: Test Python Versions
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: [ "3.9", "3.10", "3.11", "3.12", "3.13" ]
+    steps:
+      - uses: actions/checkout@v3m
 
-        - name: Set up Python
-          uses: actions/setup-python@v5
-          with:
-            python-version: ${{ matrix.python-version }}
-            cache: "pip" # caching pip dependencies
-            cache-dependency-path: setup.py
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+          cache: "pip" # caching pip dependencies
+          cache-dependency-path: setup.py
 
-        - name: Install Recce
-          run: |
-            python -m pip install --upgrade pip
-            pip install .
+      - name: Install Recce
+        run: |
+          python -m pip install --upgrade pip
+          pip install .
 
-        - name: Run tests
-          run: |
-            make test
+      - name: Run tests
+        run: |
+          make test
