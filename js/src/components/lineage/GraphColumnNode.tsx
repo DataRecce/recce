@@ -78,7 +78,7 @@ export function GraphColumnNode(nodeProps: GrapeColumnNodeProps) {
       width="280px"
       height="16px"
       padding="0px 10px"
-      border="1px solid lightgray"
+      border="1px solid gray"
       backgroundColor={isFocus ? "#f0f0f0" : "inherit"}
       _hover={{
         backgroundColor: isFocus ? "#f0f0f0" : "#f0f0f0",
@@ -89,7 +89,7 @@ export function GraphColumnNode(nodeProps: GrapeColumnNodeProps) {
       onMouseLeave={() => {
         setIsHovered(false);
       }}>
-      <Flex fontSize="10px" color="gray" width="100%" gap="3px" alignItems="center">
+      <Flex fontSize="11px" color="gray" width="100%" gap="3px" alignItems="center">
         {changeStatus && (
           <Icon
             boxSize="12px"

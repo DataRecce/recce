@@ -319,19 +319,7 @@ export function PrivateLineageView(
     }
 
     if (viewOptions.column_level_lineage) {
-      const nodesContainsColumns = nodeColumnSetMap
-        ? new Set(
-            Object.entries(nodeColumnSetMap)
-              .filter(([_, columnSet]) => {
-                return columnSet.size > 0;
-              })
-              .map(([nodeId, _]) => {
-                return nodeId;
-              }),
-          )
-        : new Set<string>();
-      const nodesInCLL = cllNodeIds ?? new Set<string>();
-      return union(nodesContainsColumns, nodesInCLL);
+      return cllNodeIds ?? new Set<string>();
     }
 
     if (focusedNode) {
@@ -354,7 +342,6 @@ export function PrivateLineageView(
     lineageGraph,
     selectMode,
     viewOptions.column_level_lineage,
-    nodeColumnSetMap,
     focusedNode,
     isModelsChanged,
     multiNodeAction.actionState.actions,
