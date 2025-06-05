@@ -24,10 +24,8 @@ jobs:
             dbt-version: "1.6"
           - python-version: "3.11"
             dbt-version: "1.7"
-          - python-version: "3.11"
-            dbt-version: "1.8"
           - python-version: "3.12"
-            dbt-version: "latest"
+            dbt-version: "1.8"
           - python-version: "3.13"
             dbt-version: "latest"
     steps:
