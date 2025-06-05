@@ -1,5 +1,8 @@
 name: Test Python
 
+permissions:
+  contents: read
+
 on:
   push:
     branches:
@@ -38,6 +41,9 @@ jobs:
   test-dbt-versions:
     name: Test DBT Versions
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
     steps:
       - uses: actions/checkout@v3
 
