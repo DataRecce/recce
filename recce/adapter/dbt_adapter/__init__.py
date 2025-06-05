@@ -943,7 +943,7 @@ class DbtAdapter(BaseAdapter):
         for node_id in cll_node_ids:
             if node_id not in node_manifest:
                 continue
-            nodes[node_id] = self.get_cll_cached(node_id, base=base)
+            nodes[node_id] = self.get_cll_cached(node_id, base=base).copy(deep=True)
 
         cll_tracker.end_column_lineage()
         cll_tracker.set_total_nodes(len(nodes))

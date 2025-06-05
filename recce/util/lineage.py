@@ -82,10 +82,8 @@ def find_column_dependencies(node_id: str, node_column_id: str, parent_map: Dict
 
 
 def filter_column_lineage(cll_data: CllData, relevant_columns: Set) -> CllData:
-    # cll data is cached by lru_cache, so need a deep copy to avoid modifying the original data
-    new_cll_data = cll_data.copy(deep=True)
 
-    for node_id, node_obj in new_cll_data.nodes.items():
+    for node_id, node_obj in cll_data.nodes.items():
         filtered_node_columns = {}
 
         for col_name, col_data in node_obj.columns.items():
@@ -98,4 +96,4 @@ def filter_column_lineage(cll_data: CllData, relevant_columns: Set) -> CllData:
             dep for dep in node_obj.depends_on.columns if f"{dep.node}_{dep.column}" in relevant_columns
         ]
 
-    return new_cll_data
+    return cll_data
