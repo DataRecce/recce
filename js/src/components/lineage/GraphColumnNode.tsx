@@ -56,18 +56,19 @@ export const TransformationType = ({
 };
 
 export function GraphColumnNode(nodeProps: GrapeColumnNodeProps) {
-  const { data } = nodeProps;
+  const { id: columnNodeId, data } = nodeProps;
   const { id: nodeId } = data.node;
   const { column, type, transformationType, changeStatus } = data;
   const showContent = useStore((s) => s.transform[2] > 0.3);
 
-  const { viewOptions, showContextMenu } = useLineageViewContextSafe();
+  const { viewOptions, showContextMenu, isNodeHighlighted } = useLineageViewContextSafe();
 
   const selectedNode = viewOptions.column_level_lineage?.node;
   const selectedColumn = viewOptions.column_level_lineage?.column;
   const isFocus = column === selectedColumn && nodeId === selectedNode;
   const { color: colorChangeStatus, icon: iconChangeStatus } = getIconForChangeStatus(changeStatus);
   const [isHovered, setIsHovered] = React.useState(false);
+  const isHighlighted = isNodeHighlighted(columnNodeId);
 
   if (!showContent) {
     return <></>;
@@ -87,7 +88,8 @@ export function GraphColumnNode(nodeProps: GrapeColumnNodeProps) {
       }}
       onMouseLeave={() => {
         setIsHovered(false);
-      }}>
+      }}
+      filter={isHighlighted ? "none" : "opacity(0.2) grayscale(50%)"}>
       <Flex
         fontSize="11px"
         color="black"
