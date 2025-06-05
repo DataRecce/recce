@@ -24,7 +24,13 @@ from typing import (
 from recce.event import log_performance
 from recce.exceptions import RecceException
 from recce.util.cll import CllColumnDep, CLLPerformanceTracking, cll
-from recce.util.lineage import find_downstream, find_upstream
+from recce.util.lineage import (
+    build_dependency_maps,
+    filter_column_lineage,
+    find_column_dependencies,
+    find_downstream,
+    find_upstream,
+)
 
 from ...tasks.profile import ProfileTask
 from ...util.breaking import BreakingPerformanceTracking, parse_change_category
@@ -908,6 +914,17 @@ class DbtAdapter(BaseAdapter):
             current=current,
             diff=diff,
         )
+
+    def get_cll(self, node_id: str, column: Optional[str]) -> CllData:
+        cll = self.get_cll_by_node_id(node_id)
+        if column:
+            parent_map, child_map = build_dependency_maps(cll)
+            target_node = node_id
+            target_column = f"{node_id}_{column}"
+            upstream, downstream = find_column_dependencies(target_node, target_column, parent_map, child_map)
+            relevant_columns = {target_column}
+            relevant_columns.update(upstream, downstream)
+            return filter_column_lineage(cll, relevant_columns)
 
     def get_cll_by_node_id(self, node_id: str, base: Optional[bool] = False) -> CllData:
         cll_tracker = CLLPerformanceTracking()
