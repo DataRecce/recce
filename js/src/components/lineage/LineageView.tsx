@@ -313,39 +313,51 @@ export function PrivateLineageView(
       return new Set<string>();
     }
 
-    if (selectMode === "action_result") {
-      const nodeIds = Object.keys(multiNodeAction.actionState.actions);
-      return new Set(nodeIds);
-    }
-
     if (viewOptions.column_level_lineage) {
       return cllNodeIds ?? new Set<string>();
     }
 
-    if (focusedNode) {
-      return union(
+    let highlightedModels: Set<string> = new Set<string>();
+
+    if (selectMode === "action_result") {
+      const nodeIds = Object.keys(multiNodeAction.actionState.actions);
+      highlightedModels = new Set(nodeIds);
+    } else if (focusedNode) {
+      highlightedModels = union(
         selectUpstream(lineageGraph, [focusedNode.id]),
         selectDownstream(lineageGraph, [focusedNode.id]),
       );
-    }
-
-    if (isModelsChanged) {
+    } else if (isModelsChanged) {
       if (!breakingChangeEnabled) {
-        return selectDownstream(lineageGraph, lineageGraph.modifiedSet);
+        highlightedModels = selectDownstream(lineageGraph, lineageGraph.modifiedSet);
       } else {
-        return lineageGraph.impactedSet;
+        highlightedModels = lineageGraph.impactedSet;
       }
     } else {
-      return new Set(filteredNodeIds);
+      highlightedModels = new Set(filteredNodeIds);
     }
+
+    // Add columns in the highlighted models
+    const resultSet = new Set<string>(highlightedModels);
+    if (nodeColumnSetMap) {
+      Object.entries(nodeColumnSetMap).forEach(([nodeId, columns]) => {
+        if (highlightedModels.has(nodeId)) {
+          columns.forEach((column) => {
+            resultSet.add(`${nodeId}_${column}`);
+          });
+        }
+      });
+    }
+    return resultSet;
   }, [
     lineageGraph,
-    selectMode,
     viewOptions.column_level_lineage,
+    selectMode,
     focusedNode,
     isModelsChanged,
-    multiNodeAction.actionState.actions,
+    nodeColumnSetMap,
     cllNodeIds,
+    multiNodeAction.actionState.actions,
     breakingChangeEnabled,
     filteredNodeIds,
   ]);
