@@ -12,7 +12,7 @@ import {
 import React, { useState } from "react";
 
 import { Handle, NodeProps, Position, useStore } from "reactflow";
-import { LineageGraphNode } from "./lineage";
+import { COLUMN_HEIGHT, LineageGraphNode } from "./lineage";
 import { getIconForChangeStatus, getIconForResourceType } from "./styles";
 
 import "./styles.css";
@@ -385,7 +385,7 @@ export function GraphNode(nodeProps: GraphNodeProps) {
           borderTopWidth={0}
           borderStyle={borderStyle}
           borderBottomRadius={8}>
-          <Box height={`${columnSet.size * 15}px`} overflow="auto"></Box>
+          <Box height={`${columnSet.size * COLUMN_HEIGHT}px`} overflow="auto"></Box>
         </Box>
       )}
       {/* eslint-disable-next-line @typescript-eslint/no-unnecessary-condition */}

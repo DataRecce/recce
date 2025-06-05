@@ -2,7 +2,7 @@ import { Box, Flex, Icon, Spacer, Tag, TagLabel } from "@chakra-ui/react";
 import React from "react";
 
 import { Handle, NodeProps, Position, useStore } from "reactflow";
-import { LinageGraphColumnNode } from "./lineage";
+import { COLUMN_HEIGHT, LinageGraphColumnNode } from "./lineage";
 
 import "./styles.css";
 
@@ -47,7 +47,7 @@ export const TransformationType = ({
           <TagLabel>{letter}</TagLabel>
         </Tag>
       ) : (
-        <Tag fontSize="6pt" size="xs" colorScheme={color} borderRadius="full" paddingX="2px">
+        <Tag fontSize="8pt" size="xs" colorScheme={color} borderRadius="full" paddingX="4px">
           <TagLabel>{letter}</TagLabel>
         </Tag>
       )}
@@ -56,18 +56,19 @@ export const TransformationType = ({
 };
 
 export function GraphColumnNode(nodeProps: GrapeColumnNodeProps) {
-  const { data } = nodeProps;
+  const { id: columnNodeId, data } = nodeProps;
   const { id: nodeId } = data.node;
   const { column, type, transformationType, changeStatus } = data;
   const showContent = useStore((s) => s.transform[2] > 0.3);
 
-  const { viewOptions, showContextMenu } = useLineageViewContextSafe();
+  const { viewOptions, showContextMenu, isNodeHighlighted } = useLineageViewContextSafe();
 
   const selectedNode = viewOptions.column_level_lineage?.node;
   const selectedColumn = viewOptions.column_level_lineage?.column;
   const isFocus = column === selectedColumn && nodeId === selectedNode;
   const { color: colorChangeStatus, icon: iconChangeStatus } = getIconForChangeStatus(changeStatus);
   const [isHovered, setIsHovered] = React.useState(false);
+  const isHighlighted = isNodeHighlighted(columnNodeId);
 
   if (!showContent) {
     return <></>;
@@ -76,7 +77,6 @@ export function GraphColumnNode(nodeProps: GrapeColumnNodeProps) {
   return (
     <Flex
       width="280px"
-      height="16px"
       padding="0px 10px"
       border="1px solid gray"
       backgroundColor={isFocus ? "#f0f0f0" : "inherit"}
@@ -88,18 +88,25 @@ export function GraphColumnNode(nodeProps: GrapeColumnNodeProps) {
       }}
       onMouseLeave={() => {
         setIsHovered(false);
-      }}>
-      <Flex fontSize="11px" color="gray" width="100%" gap="3px" alignItems="center">
+      }}
+      filter={isHighlighted ? "none" : "opacity(0.2) grayscale(50%)"}>
+      <Flex
+        fontSize="11px"
+        color="black"
+        width="100%"
+        gap="3px"
+        alignItems="center"
+        height={`${COLUMN_HEIGHT - 1}px`}>
         {changeStatus && (
           <Icon
-            boxSize="12px"
+            boxSize="14px"
             display="inline-flex"
             color={colorChangeStatus}
             as={iconChangeStatus}
           />
         )}
         {transformationType && <TransformationType transformationType={transformationType} />}
-        <Box height="16px">{column}</Box>
+        <Box height={`${COLUMN_HEIGHT + 1} px`}>{column}</Box>
         <Spacer></Spacer>
 
         {isHovered ? (
@@ -116,7 +123,7 @@ export function GraphColumnNode(nodeProps: GrapeColumnNodeProps) {
             }}
           />
         ) : (
-          <Box height="16px">{type}</Box>
+          <Box height={`${COLUMN_HEIGHT + 1} px`}>{type}</Box>
         )}
       </Flex>
       <Handle
