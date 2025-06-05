@@ -122,6 +122,9 @@ class DbtTestHelper:
                     import pandas as pd
 
                     df = pd.read_csv(StringIO(csv))  # noqa: F841
+                    # DuckDB disables python_scan_all_frames by default after 1.1,
+                    # ref: https://github.com/duckdb/duckdb/pull/13896
+                    dbt_adapter.execute("SET python_scan_all_frames=true")
                     dbt_adapter.execute(f"CREATE TABLE {schema}.{model_name} AS SELECT * FROM df")
             raw_code = sql if sql else csv
 
@@ -231,6 +234,9 @@ class DbtTestHelper:
                     import pandas as pd
 
                     df = pd.read_csv(StringIO(csv))  # noqa: F841
+                    # DuckDB disables python_scan_all_frames by default after 1.1,
+                    # ref: https://github.com/duckdb/duckdb/pull/13896
+                    dbt_adapter.execute("SET python_scan_all_frames=true")
                     dbt_adapter.execute(f"CREATE TABLE {schema}.{table_name} AS SELECT * FROM df")
 
             if columns:
