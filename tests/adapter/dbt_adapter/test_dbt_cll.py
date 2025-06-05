@@ -184,3 +184,42 @@ def test_model_without_catalog(dbt_test_helper):
     adapter: DbtAdapter = dbt_test_helper.context.adapter
     result = adapter.get_cll_by_node_id("model1")
     assert not result.nodes["model1"].columns
+
+
+def test_cll_column_filter(dbt_test_helper):
+    dbt_test_helper.create_model(
+        "model1", unique_id="model.model1", curr_sql="select 1 as c, 1 as d", curr_columns={"c": "int", "d": "int"}
+    )
+    dbt_test_helper.create_model(
+        "model2",
+        unique_id="model.model2",
+        curr_sql='select c, d from {{ ref("model1") }} where c > 0',
+        curr_columns={"c": "int", "d": "int"},
+        depends_on=["model.model1"],
+    )
+    dbt_test_helper.create_model(
+        "model3",
+        unique_id="model.model3",
+        curr_sql='select c from {{ ref("model2") }}',
+        curr_columns={"c": "int"},
+        depends_on=["model.model2"],
+    )
+    dbt_test_helper.create_model(
+        "model4",
+        unique_id="model.model4",
+        curr_sql='select d from {{ ref("model2") }}',
+        curr_columns={"d": "int"},
+        depends_on=["model.model2"],
+    )
+
+    adapter: DbtAdapter = dbt_test_helper.context.adapter
+
+    result = adapter.get_cll("model.model2", "c")
+    assert_model(result, "model.model2", [("model.model1", "c")])
+    assert_column(result, "model.model2", "c", "passthrough", [("model.model1", "c")])
+
+    result = adapter.get_cll("model.model3", "c")
+    assert_column(result, "model.model3", "c", "passthrough", [("model.model2", "c")])
+
+    result = adapter.get_cll("model.model4", "d")
+    assert_column(result, "model.model2", "d", "passthrough", [("model.model2", "d")])
