@@ -26,8 +26,6 @@ jobs:
         include:
           - python-version: "3.11"
             dbt-version: "1.8"
-          - python-version: "3.12"
-            dbt-version: "latest"
           - python-version: "3.13"
             dbt-version: "latest"
     steps:
