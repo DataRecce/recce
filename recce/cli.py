@@ -184,6 +184,131 @@ def version():
     print(__version__)
 
 
+@cli.command(cls=TrackCommand)
+@add_options(recce_dbt_artifact_dir_options)
+def debug(**kwargs):
+    """
+    Diagnose and verify Recce setup for the development and the base environments
+    """
+
+    from rich.console import Console
+
+    from recce.adapter.dbt_adapter import DbtAdapter
+    from recce.core import load_context
+
+    console = Console()
+
+    target_path = Path(kwargs.get("target_path", "target"))
+    target_base_path = Path(kwargs.get("target_base_path", "target-base"))
+
+    curr_dir_is_ready = True
+    curr_manifest_is_ready = True
+    curr_catalog_is_ready = True
+    base_dir_is_ready = True
+    base_manifest_is_ready = True
+    base_catalog_is_ready = True
+    conn_is_ready = True
+
+    console.rule("Development Environment", style="orange3")
+    if not target_path.is_dir():
+        console.print(f"[[red]MISS[/red]] Directory does not exist: {target_path}")
+        curr_dir_is_ready = False
+    else:
+        console.print(f"[[green]OK[/green]] Directory exists: {target_path}")
+
+        manifest_path = target_path / "manifest.json"
+        if not manifest_path.is_file():
+            console.print(f"[[red]MISS[/red]] Manifest JSON file does not exist: {manifest_path}")
+            curr_manifest_is_ready = False
+        else:
+            console.print(f"[[green]OK[/green]] Manifest JSON file exists : {manifest_path}")
+
+        catalog_path = target_path / "catalog.json"
+        if not catalog_path.is_file():
+            console.print(f"[[red]MISS[/red]] Catalog JSON file does not exist: {catalog_path}")
+            curr_catalog_is_ready = False
+        else:
+            console.print(f"[[green]OK[/green]] Catalog JSON file exists: {catalog_path}")
+
+    console.rule("Base Environment", style="orange3")
+    if not target_base_path.is_dir():
+        console.print(f"[[red]MISS[/red]] Directory does not exist: {target_base_path}")
+        base_dir_is_ready = False
+    else:
+        console.print(f"[[green]OK[/green]] Directory exists: {target_base_path}")
+
+        manifest_path = target_base_path / "manifest.json"
+        if not manifest_path.is_file():
+            console.print(f"[[red]MISS[/red]] Manifest JSON file does not exist: {manifest_path}")
+            base_manifest_is_ready = False
+        else:
+            console.print(f"[[green]OK[/green]] Manifest JSON file exists : {manifest_path}")
+
+        catalog_path = target_base_path / "catalog.json"
+        if not catalog_path.is_file():
+            console.print(f"[[red]MISS[/red]] Catalog JSON file does not exist: {catalog_path}")
+            base_catalog_is_ready = False
+        else:
+            console.print(f"[[green]OK[/green]] Catalog JSON file exists: {catalog_path}")
+
+    console.rule("Warehouse Connection", style="orange3")
+    try:
+        kwargs["target_base_path"] = kwargs["target_path"]
+        ctx = load_context(**kwargs)
+        dbt_adapter: DbtAdapter = ctx.adapter
+        sql = dbt_adapter.generate_sql("select 1", False)
+        dbt_adapter.execute(sql, fetch=True, auto_begin=True)
+        console.print("[[green]OK[/green]] Connection test")
+    except Exception:
+        conn_is_ready = False
+        console.print("[[red]FAIL[/red]] Connection test")
+
+    console.rule("Result", style="orange3")
+    if (
+        curr_manifest_is_ready
+        and curr_catalog_is_ready
+        and base_manifest_is_ready
+        and base_catalog_is_ready
+        and conn_is_ready
+    ):
+        console.print("[[green]OK[/green]] You're ready for [bold]Recce[/bold]! Lunach it with `recce server`")
+    elif curr_manifest_is_ready and curr_catalog_is_ready and conn_is_ready:
+        console.print(
+            "[[orange3]OK[/orange3]] You're ready for the [bold]single environment mode[/bold]! Lunach Recce with `recce server`"
+        )
+
+    if not curr_dir_is_ready:
+        console.print(
+            "[[orange3]TIP[/orange3]] Run dbt or overwrite the default directory of the development environment with `--target-path`"
+        )
+    else:
+        if not curr_manifest_is_ready:
+            console.print(
+                "[[orange3]TIP[/orange3]] `dbt run` to generate the manifest JSON file for the development environment"
+            )
+        if not curr_catalog_is_ready:
+            console.print(
+                "[[orange3]TIP[/orange3]] `dbt docs generate` to generate the catalog JSON file for the development environment"
+            )
+
+    if not base_dir_is_ready:
+        console.print(
+            "[[orange3]TIP[/orange3]] Run dbt with `--target-path target-base` or overwrite the default directory of the base environment with `--target-base-path`"
+        )
+    else:
+        if not base_manifest_is_ready:
+            console.print(
+                "[[orange3]TIP[/orange3]] `dbt run --target-path target-base` to generate the manifest JSON file for the base environment"
+            )
+        if not base_catalog_is_ready:
+            console.print(
+                "[[orange3]TIP[/orange3]] `dbt docs generate --target-path target-base` to generate the catalog JSON file for the base environment"
+            )
+
+    if not conn_is_ready:
+        console.print("[[orange3]TIP[/orange3]] Run `dbt debug` to check the connection")
+
+
 @cli.command(hidden=True, cls=TrackCommand)
 @click.option("--sql", help="Sql template to query", required=True)
 @click.option("--base", is_flag=True, help="Run the query on the base environment")
