@@ -1197,5 +1197,336 @@ def read_only(host, port, lifetime, state_file=None, **kwargs):
     uvicorn.run(app, host=host, port=port, lifespan="on")
 
 
+def validate_profiles_config(profiles_config, database_type):
+    """Validate the generated profiles configuration."""
+    from rich.console import Console
+    console = Console()
+    
+    required_fields = {
+        'snowflake': ['account', 'user', 'password', 'warehouse', 'role'],
+        'bigquery': ['method', 'project', 'dataset', 'location'],
+        'postgres': ['host', 'port', 'user', 'password', 'dbname'],
+        'duckdb': ['path', 'threads']
+    }
+    
+    # Check if project name is still the default
+    if 'your_project_name' in profiles_config:
+        console.print("[yellow]⚠️  Warning: Using default project name 'your_project_name'. Please update it in profiles.yml[/yellow]")
+    
+    # Validate each environment
+    for env in ['dev', 'prod']:
+        if env not in profiles_config.get('your_project_name', {}).get('outputs', {}):
+            console.print(f"[red]❌ Error: Missing {env} environment configuration[/red]")
+            return False
+            
+        config = profiles_config['your_project_name']['outputs'][env]
+        
+        # Check required fields
+        missing_fields = [field for field in required_fields[database_type] 
+                         if field not in config or config[field] == f'your_{field}']
+        
+        if missing_fields:
+            console.print(f"[red]❌ Error: Missing or using default values for required fields in {env} environment:[/red]")
+            for field in missing_fields:
+                console.print(f"  - {field}")
+            return False
+            
+        # Type-specific validations
+        if database_type == 'postgres':
+            try:
+                port = int(config['port'])
+                if not (1 <= port <= 65535):
+                    console.print(f"[red]❌ Error: Invalid port number in {env} environment[/red]")
+                    return False
+            except ValueError:
+                console.print(f"[red]❌ Error: Port must be a number in {env} environment[/red]")
+                return False
+                
+        elif database_type == 'duckdb':
+            if not config['path'].endswith('.duckdb'):
+                console.print(f"[yellow]⚠️  Warning: DuckDB path should end with .duckdb in {env} environment[/yellow]")
+    
+    return True
+
+def test_database_connection(profiles_config, database_type, env='dev'):
+    """Test the database connection using the provided configuration."""
+    from rich.console import Console
+    from dbt.cli.main import dbtRunner, dbtRunnerResult
+    import tempfile
+    import os
+    
+    console = Console()
+    
+    # Create a temporary dbt project for testing
+    with tempfile.TemporaryDirectory() as temp_dir:
+        # Create a minimal dbt_project.yml
+        project_yml = """
+name: 'connection_test'
+version: '1.0.0'
+config-version: 2
+profile: 'your_project_name'
+        """
+        with open(os.path.join(temp_dir, 'dbt_project.yml'), 'w') as f:
+            f.write(project_yml)
+            
+        # Create a minimal model
+        os.makedirs(os.path.join(temp_dir, 'models'), exist_ok=True)
+        model_sql = """
+select 1 as test
+        """
+        with open(os.path.join(temp_dir, 'models', 'test.sql'), 'w') as f:
+            f.write(model_sql)
+            
+        # Write the profiles configuration
+        os.makedirs(os.path.expanduser('~/.dbt'), exist_ok=True)
+        with open(os.path.expanduser('~/.dbt/profiles.yml'), 'w') as f:
+            yaml.dump(profiles_config, f, default_flow_style=False)
+            
+        # Test the connection
+        console.print(f"\n[blue]Testing {env} environment connection...[/blue]")
+        dbt = dbtRunner()
+        res: dbtRunnerResult = dbt.invoke(['debug', '--project-dir', temp_dir, '--target', env])
+        
+        if res.success:
+            console.print(f"[green]✅ Successfully connected to {env} environment[/green]")
+            return True
+        else:
+            console.print(f"[red]❌ Failed to connect to {env} environment[/red]")
+            console.print(f"Error: {res.exception}")
+            return False
+
+@cli.command(cls=TrackCommand)
+@click.option('--database-type', type=click.Choice(['snowflake', 'bigquery', 'postgres', 'duckdb']), prompt='What type of database are you using?')
+@click.option('--dev-schema', prompt='What schema name would you like to use for development?', default='dev')
+@click.option('--prod-schema', prompt='What schema name would you like to use for production?', default='prod')
+@click.option('--validate', is_flag=True, help='Validate the configuration and test database connections')
+@add_options(dbt_related_options)
+def init(database_type, dev_schema, prod_schema, validate, **kwargs):
+    """
+    Initialize Recce configuration for your dbt project.
+    This will help you set up your development and production environments.
+    """
+    from rich.console import Console
+    from rich.prompt import Confirm
+    import yaml
+    import os
+
+    console = Console()
+    
+    # Get project directory
+    project_dir = kwargs.get('project_dir', os.getcwd())
+    profiles_dir = kwargs.get('profiles_dir', os.path.expanduser('~/.dbt'))
+    
+    # Create profiles.yml template
+    profiles_template = {
+        'config': {
+            'send_anonymous_usage_stats': False
+        },
+        'your_project_name': {
+            'target': 'dev',
+            'outputs': {
+                'dev': {
+                    'type': database_type,
+                    'schema': dev_schema,
+                },
+                'prod': {
+                    'type': database_type,
+                    'schema': prod_schema,
+                }
+            }
+        }
+    }
+
+    # Add database-specific connection details
+    if database_type == 'snowflake':
+        profiles_template['your_project_name']['outputs']['dev'].update({
+            'account': 'your_account',
+            'user': 'your_username',
+            'password': 'your_password',
+            'warehouse': 'your_warehouse',
+            'role': 'your_role'
+        })
+        profiles_template['your_project_name']['outputs']['prod'].update({
+            'account': 'your_account',
+            'user': 'your_username',
+            'password': 'your_password',
+            'warehouse': 'your_warehouse',
+            'role': 'your_role'
+        })
+    elif database_type == 'bigquery':
+        profiles_template['your_project_name']['outputs']['dev'].update({
+            'method': 'oauth',
+            'project': 'your_project',
+            'dataset': dev_schema,
+            'location': 'US'
+        })
+        profiles_template['your_project_name']['outputs']['prod'].update({
+            'method': 'oauth',
+            'project': 'your_project',
+            'dataset': prod_schema,
+            'location': 'US'
+        })
+    elif database_type == 'postgres':
+        profiles_template['your_project_name']['outputs']['dev'].update({
+            'host': 'localhost',
+            'port': 5432,
+            'user': 'your_username',
+            'password': 'your_password',
+            'dbname': 'your_database'
+        })
+        profiles_template['your_project_name']['outputs']['prod'].update({
+            'host': 'localhost',
+            'port': 5432,
+            'user': 'your_username',
+            'password': 'your_password',
+            'dbname': 'your_database'
+        })
+    elif database_type == 'duckdb':
+        profiles_template['your_project_name']['outputs']['dev'].update({
+            'path': 'your_database.duckdb',
+            'threads': 4
+        })
+        profiles_template['your_project_name']['outputs']['prod'].update({
+            'path': 'your_database.duckdb',
+            'threads': 4
+        })
+
+    # Create profiles.yml
+    profiles_path = os.path.join(profiles_dir, 'profiles.yml')
+    os.makedirs(os.path.dirname(profiles_path), exist_ok=True)
+    
+    if os.path.exists(profiles_path):
+        if not Confirm.ask(f"profiles.yml already exists at {profiles_path}. Overwrite?"):
+            console.print("[yellow]Setup cancelled. No changes made.[/yellow]")
+            return
+        with open(profiles_path, 'r') as f:
+            existing_profiles = yaml.safe_load(f) or {}
+    else:
+        existing_profiles = {}
+
+    # Update with new configuration
+    existing_profiles.update(profiles_template)
+    
+    with open(profiles_path, 'w') as f:
+        yaml.dump(existing_profiles, f, default_flow_style=False)
+
+    console.print(f"\n[green]✅ Created profiles.yml at {profiles_path}[/green]")
+    
+    if validate:
+        # Validate the configuration
+        if not validate_profiles_config(existing_profiles, database_type):
+            console.print("\n[yellow]⚠️  Please fix the configuration issues in profiles.yml before proceeding[/yellow]")
+            return
+            
+        # Test database connections
+        if not test_database_connection(existing_profiles, database_type, 'dev'):
+            console.print("\n[yellow]⚠️  Please fix the development environment connection issues[/yellow]")
+            return
+            
+        if not test_database_connection(existing_profiles, database_type, 'prod'):
+            console.print("\n[yellow]⚠️  Please fix the production environment connection issues[/yellow]")
+            return
+            
+        console.print("\n[green]✅ All validations passed![/green]")
+    
+    console.print("\nNext steps:")
+    console.print("1. Edit profiles.yml with your database credentials")
+    console.print("2. Run 'dbt debug' to verify your connection")
+    console.print("3. Run 'recce server' to start Recce")
+    console.print("\nNeed help? Check out our documentation: https://docs.datarecce.io")
+
+
+@cli.command(cls=TrackCommand)
+@click.option('--database-type', type=click.Choice(['snowflake', 'bigquery', 'postgres', 'duckdb']), help='Specify database type for validation')
+@click.option('--test-connection', is_flag=True, help='Test database connections')
+@add_options(dbt_related_options)
+def validate(database_type, test_connection, **kwargs):
+    """
+    Validate your existing Recce and dbt configuration.
+    This command checks your profiles.yml and tests database connections without making any changes.
+    """
+    from rich.console import Console
+    import yaml
+    import os
+
+    console = Console()
+    
+    # Get profiles directory
+    profiles_dir = kwargs.get('profiles_dir', os.path.expanduser('~/.dbt'))
+    profiles_path = os.path.join(profiles_dir, 'profiles.yml')
+    
+    if not os.path.exists(profiles_path):
+        console.print(f"[red]❌ Error: profiles.yml not found at {profiles_path}[/red]")
+        console.print("\nTo create a new configuration, run: recce init")
+        return
+    
+    # Load and validate profiles.yml
+    try:
+        with open(profiles_path, 'r') as f:
+            profiles_config = yaml.safe_load(f)
+    except Exception as e:
+        console.print(f"[red]❌ Error: Failed to load profiles.yml: {str(e)}[/red]")
+        return
+    
+    if not profiles_config:
+        console.print("[red]❌ Error: profiles.yml is empty[/red]")
+        return
+    
+    # If database type not specified, try to detect it
+    if not database_type:
+        # Get the first project's configuration
+        first_project = next(iter(profiles_config.values()))
+        if isinstance(first_project, dict) and 'outputs' in first_project:
+            first_env = next(iter(first_project['outputs'].values()))
+            if isinstance(first_env, dict) and 'type' in first_env:
+                database_type = first_env['type']
+                console.print(f"[blue]Detected database type: {database_type}[/blue]")
+    
+    if not database_type:
+        console.print("[red]❌ Error: Could not detect database type. Please specify --database-type[/red]")
+        return
+    
+    # Validate configuration
+    console.print("\n[blue]Validating configuration...[/blue]")
+    if not validate_profiles_config(profiles_config, database_type):
+        console.print("\n[yellow]⚠️  Configuration validation failed. Please fix the issues in profiles.yml[/yellow]")
+        return
+    
+    # Test connections if requested
+    if test_connection:
+        console.print("\n[blue]Testing database connections...[/blue]")
+        
+        # Get project name from dbt_project.yml if available
+        project_dir = kwargs.get('project_dir', os.getcwd())
+        project_name = None
+        try:
+            with open(os.path.join(project_dir, 'dbt_project.yml'), 'r') as f:
+                project_config = yaml.safe_load(f)
+                project_name = project_config.get('name')
+        except:
+            pass
+        
+        if not project_name:
+            # Use the first project name from profiles.yml
+            project_name = next(iter(profiles_config.keys()))
+        
+        # Test each environment
+        for env in ['dev', 'prod']:
+            if env not in profiles_config.get(project_name, {}).get('outputs', {}):
+                console.print(f"[yellow]⚠️  Warning: {env} environment not found in profiles.yml[/yellow]")
+                continue
+                
+            if not test_database_connection(profiles_config, database_type, env):
+                console.print(f"[red]❌ Failed to connect to {env} environment[/red]")
+            else:
+                console.print(f"[green]✅ Successfully connected to {env} environment[/green]")
+    
+    console.print("\n[green]✅ Configuration validation complete![/green]")
+    console.print("\nIf you need to make changes:")
+    console.print("1. Edit profiles.yml with your database credentials")
+    console.print("2. Run 'recce validate' again to check your changes")
+    console.print("3. Run 'recce server' to start Recce")
+
+
 if __name__ == "__main__":
     cli()
