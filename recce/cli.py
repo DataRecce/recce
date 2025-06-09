@@ -185,6 +185,7 @@ def version():
 
 
 @cli.command(cls=TrackCommand)
+@add_options(dbt_related_options)
 @add_options(recce_dbt_artifact_dir_options)
 def debug(**kwargs):
     """
@@ -253,8 +254,8 @@ def debug(**kwargs):
 
     console.rule("Warehouse Connection", style="orange3")
     try:
-        kwargs["target_base_path"] = kwargs["target_path"]
-        ctx = load_context(**kwargs)
+        context_kwargs = {**kwargs, "target_base_path": kwargs.get("target_base_path", "target-base")}
+        ctx = load_context(**context_kwargs)
         dbt_adapter: DbtAdapter = ctx.adapter
         sql = dbt_adapter.generate_sql("select 1", False)
         dbt_adapter.execute(sql, fetch=True, auto_begin=True)
@@ -271,10 +272,10 @@ def debug(**kwargs):
         and base_catalog_is_ready
         and conn_is_ready
     ):
-        console.print("[[green]OK[/green]] You're ready for [bold]Recce[/bold]! Lunach it with `recce server`")
+        console.print("[[green]OK[/green]] You're ready for [bold]Recce[/bold]! Launch it with `recce server`")
     elif curr_manifest_is_ready and curr_catalog_is_ready and conn_is_ready:
         console.print(
-            "[[orange3]OK[/orange3]] You're ready for the [bold]single environment mode[/bold]! Lunach Recce with `recce server`"
+            "[[orange3]OK[/orange3]] You're ready for the [bold]single environment mode[/bold]! Launch Recce with `recce server`"
         )
 
     if not curr_dir_is_ready:
