@@ -333,8 +333,8 @@ def server(host, port, lifetime, state_file=None, **kwargs):
         console.print(
             "Recce is ready to launch in Single Environment Mode with limited functionality."
             "\n\n"
-            "Single Environment Mode allows you to explore your dbt project but won't show"
-            "data comparisons between environments. For full functionality, configure a"
+            "Single Environment Mode allows you to explore your dbt project but won't show "
+            "data comparisons between environments. For full functionality, configure a "
             "base environment."
             "\n\n"
             "To set up full environment comparison:"
