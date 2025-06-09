@@ -289,6 +289,7 @@ def server(host, port, lifetime, state_file=None, **kwargs):
     """
 
     from rich.console import Console
+    from rich.prompt import Confirm
 
     from .server import AppState, app
 
@@ -323,19 +324,20 @@ def server(host, port, lifetime, state_file=None, **kwargs):
         flag["single_env_onboarding"] = True
         flag["show_relaunch_hint"] = True
         target_path = kwargs.get("target_path")
-        target_base_path = kwargs.get("target_base_path")
         # Use the target path as the base path
         kwargs["target_base_path"] = target_path
 
         # Show warning message
         console.rule("Notice", style="orange3")
-        console.print("Recce is launching in single environment mode with limited functionality.")
+        console.print("Only ready for launching Recce in single environment mode with [i]limited functionality[/i].")
         console.print(
-            "For full functionality, prepare a base set of dbt artifacts to compare against in "
-            f"'{target_base_path}'."
+            "Run `recce debug` to assits you setup Recce or check the doc https://docs.datarecce.io/configure-diff/ ."
         )
-        console.print("https://docs.datarecce.io/get-started/#prepare-dbt-artifacts")
         console.print()
+
+        lanch_in_single_env = Confirm.ask("Do you want to launch Recce in [bold]Single Environment Mode[/bold]?")
+        if not lanch_in_single_env:
+            os._exit(0)
 
     state_loader = create_state_loader(is_review, is_cloud, state_file, cloud_options)
 
