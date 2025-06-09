@@ -1,13 +1,4 @@
-import {
-  Flex,
-  Heading,
-  Button,
-  Icon,
-  Text,
-  Link,
-  ListItem,
-  UnorderedList,
-} from "@chakra-ui/react";
+import { Flex, Heading, Button, Icon, Text, Link, ListItem, UnorderedList } from "@chakra-ui/react";
 import { RiMindMap, RiTerminalBoxLine } from "react-icons/ri";
 
 export function BaseEnvironmentSetupGuide() {
@@ -21,8 +12,7 @@ export function BaseEnvironmentSetupGuide() {
       bg="blue.50"
       borderRadius="lg"
       boxShadow="md"
-      justifyContent={"center"}
-    >
+      justifyContent={"center"}>
       <Flex w="80%" direction="column" overflowY="auto" gap={6} px={8} pb={8}>
         <Flex direction="column" alignItems={"center"} gap={4}>
           <Flex
@@ -31,8 +21,7 @@ export function BaseEnvironmentSetupGuide() {
             borderRadius="full"
             alignItems="center"
             justifyContent="center"
-            boxShadow="md"
-          >
+            boxShadow="md">
             <Icon as={RiTerminalBoxLine} boxSize={7} color="blue.500" />
           </Flex>
           <Heading mt="4" size="lg">
@@ -51,8 +40,8 @@ export function BaseEnvironmentSetupGuide() {
         </Flex>
         <Flex direction="column" gap={2}>
           <Text fontSize="md">
-            To unlock the full power of Recce, set up a base environment of dbt
-            artifacts for comparison.
+            To unlock the full power of Recce, set up a base environment of dbt artifacts for
+            comparison.
           </Text>
           <Text>Once configured, you'll be able to:</Text>
           <UnorderedList>
@@ -69,21 +58,15 @@ export function BaseEnvironmentSetupGuide() {
               <Text>...and more!</Text>
             </ListItem>
           </UnorderedList>
-          <Text fontSize="md">
-            Take the next step toward better data impact assessment.
-          </Text>
+          <Text fontSize="md">Take the next step toward better data impact assessment.</Text>
         </Flex>
         <Flex w="100%" direction="column" mt={6}>
           <Button
             colorScheme="blue"
             size="lg"
             onClick={() => {
-              window.open(
-                "https://docs.datarecce.io/get-started/#prepare-dbt-artifacts",
-                "_blank",
-              );
-            }}
-          >
+              window.open("https://docs.datarecce.io/get-started/#prepare-dbt-artifacts", "_blank");
+            }}>
             Start Now
           </Button>
         </Flex>
@@ -105,8 +88,8 @@ export function BaseEnvironmentSetupNotification() {
         </Text>
 
         <Text fontSize="sm">
-          Single Environment Mode allows you to explore your dbt project but
-          won't show data comparisons between environments.
+          Single Environment Mode allows you to explore your dbt project but won't show data
+          comparisons between environments.
         </Text>
         <Text fontSize="sm">To set up full environment comparison:</Text>
         <UnorderedList>
@@ -121,8 +104,7 @@ export function BaseEnvironmentSetupNotification() {
                 fontSize="sm"
                 fontWeight="medium"
                 isExternal
-                href="https://docs.datarecce.io/configure-diff/"
-              >
+                href="https://docs.datarecce.io/configure-diff/">
                 docs{" "}
               </Link>
               for configuration details
