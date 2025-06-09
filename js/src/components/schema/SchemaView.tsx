@@ -189,7 +189,7 @@ export function PrivateSchemaView(
             columns={columns}
             rows={rows}
             renderers={{ noRowsFallback: <EmptyRowsRenderer /> }}
-            className="rdg-light"
+            className="rdg-light no-track-pii-safe"
             enableScreenshot={enableScreenshot}
             ref={ref}
             rowKeyGetter={rowKeyGetter}

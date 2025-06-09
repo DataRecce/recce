@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from "react";
+import React, { useState, useRef } from "react";
 import {
   Box,
   Button,
@@ -33,7 +33,7 @@ export interface DropdownValuesInputProps extends InputProps {
 }
 
 export const DropdownValuesInput = (props: DropdownValuesInputProps) => {
-  const { defaultValues, suggestionList, onValuesChange } = props;
+  const { defaultValues, suggestionList, onValuesChange, className } = props;
   const [values, setValues] = useState<string[]>(defaultValues ?? []);
   const [filter, setFilter] = useState<string>("");
   const [isTyping, setIsTyping] = useState<boolean>(false);
@@ -69,10 +69,11 @@ export const DropdownValuesInput = (props: DropdownValuesInputProps) => {
   const limit = 10;
 
   return (
-    <InputGroup size={props.size} width={props.width}>
+    <InputGroup size={props.size} width={props.width} className={className}>
       <Menu isLazy closeOnSelect={false} onOpen={() => inputRef.current?.focus()}>
         <MenuButton width={"100%"}>
           <Input
+            className="no-track-pii-safe"
             placeholder={props.placeholder}
             size={props.size}
             borderRadius={"4px"}
@@ -87,7 +88,11 @@ export const DropdownValuesInput = (props: DropdownValuesInputProps) => {
           )}
         </MenuButton>
         <Portal>
-          <MenuList zIndex={"popover"} fontSize={props.size} width={props.width}>
+          <MenuList
+            zIndex={"popover"}
+            fontSize={props.size}
+            width={props.width}
+            className="no-track-pii-safe">
             {/* Input Filter & Show Tags */}
             <MenuGroup>
               <Wrap

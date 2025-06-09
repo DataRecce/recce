@@ -105,7 +105,11 @@ export const RunView = forwardRef(
     }
 
     return (
-      <Box h="100%" style={{ contain: "size layout" }} overflow="auto">
+      <Box
+        h="100%"
+        style={{ contain: "size layout" }}
+        overflow="auto"
+        className="no-track-pii-safe">
         {RunResultView && (run.error ?? run.result) && (
           <ErrorBoundary>
             <RunResultView

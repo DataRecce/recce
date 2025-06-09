@@ -2,7 +2,6 @@
 // TODO LineageData typing needs to be fully thought out to handle the edge-cases - JMS
 import { Node, Edge, Position } from "reactflow";
 import { getNeighborSet, union } from "./graph";
-import { Run } from "@/lib/api/types";
 import dagre from "dagre";
 import {
   CatalogMetadata,
@@ -342,7 +341,7 @@ export function selectCllLineage(cll: Record<string, CllNodeData>, node: string,
   return union(downstream, upstream);
 }
 
-export function toReactflow(
+export function toReactFlow(
   lineageGraph: LineageGraph,
   options?: {
     selectedNodes?: string[];
@@ -438,6 +437,7 @@ export function toReactflow(
           parentId: node.id,
           extent: "parent",
           draggable: false,
+          className: "no-track-pii-safe",
           data: {
             node,
             column: column.name,
@@ -485,6 +485,7 @@ export function toReactflow(
           parentId: node.id,
           extent: "parent",
           draggable: false,
+          className: "no-track-pii-safe",
           data: {
             node,
             column,
@@ -516,6 +517,7 @@ export function toReactflow(
       position: { x: 0, y: 0 },
       width: 300,
       height: height,
+      className: "no-track-pii-safe",
       data: {
         ...node,
       },

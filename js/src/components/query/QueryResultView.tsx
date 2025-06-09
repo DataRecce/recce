@@ -1,5 +1,5 @@
 import "react-data-grid/lib/styles.css";
-import { Column, ColumnOrColumnGroup } from "react-data-grid";
+import { ColumnOrColumnGroup } from "react-data-grid";
 import { QueryParams, QueryResult, QueryViewOptions } from "@/lib/api/adhocQuery";
 import {
   Box,

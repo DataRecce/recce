@@ -58,7 +58,7 @@ export function CheckDescription({ value, onChange }: CheckDescriptionProps) {
 
   if (editing) {
     return (
-      <Flex direction="column" align="flex-end" height="100%">
+      <Flex direction="column" align="flex-end" height="100%" className="no-track-pii-safe">
         <Textarea
           value={tempValue}
           onChange={handleChange}
@@ -79,6 +79,7 @@ export function CheckDescription({ value, onChange }: CheckDescriptionProps) {
 
   return (
     <Text
+      className="no-track-pii-safe"
       height="100%"
       overflow="auto"
       fontSize="11pt"

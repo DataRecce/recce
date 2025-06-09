@@ -107,10 +107,12 @@ export function EnvInfo() {
         <div className="flex items-center hover:cursor-pointer hover:text-black" onClick={onOpen}>
           <div className="hidden text-sm lg:flex lg:flex-col">
             <span>
-              {Array.from(baseSchemas).join(", ")} ({baseRelativeTime})
+              <span className="no-track-pii-safe">{Array.from(baseSchemas).join(", ")}</span> (
+              {baseRelativeTime})
             </span>
             <span>
-              {Array.from(currentSchemas).join(", ")} ({currentRelativeTime})
+              <span className="no-track-pii-safe">{Array.from(currentSchemas).join(", ")}</span> (
+              {currentRelativeTime})
             </span>
           </div>
           <IconButton
@@ -169,8 +171,12 @@ export function EnvInfo() {
                       <Tbody>
                         <Tr>
                           <Td>schema</Td>
-                          <Td>{JSON.stringify(Array.from(baseSchemas))}</Td>
-                          <Td>{JSON.stringify(Array.from(currentSchemas))}</Td>
+                          <Td className="no-track-pii-safe">
+                            {JSON.stringify(Array.from(baseSchemas))}
+                          </Td>
+                          <Td className="no-track-pii-safe">
+                            {JSON.stringify(Array.from(currentSchemas))}
+                          </Td>
                         </Tr>
                         <Tr>
                           <Td>version</Td>
@@ -202,8 +208,8 @@ export function EnvInfo() {
                       <Tbody>
                         <Tr>
                           <Td>Environment</Td>
-                          <Td>{envInfo.sqlmesh?.base_env}</Td>
-                          <Td>{envInfo.sqlmesh?.current_env}</Td>
+                          <Td className="no-track-pii-safe">{envInfo.sqlmesh?.base_env}</Td>
+                          <Td className="no-track-pii-safe">{envInfo.sqlmesh?.current_env}</Td>
                         </Tr>
                       </Tbody>
                     </Table>

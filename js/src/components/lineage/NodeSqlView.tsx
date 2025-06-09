@@ -57,6 +57,7 @@ export const NodeSqlView = ({ node }: NodeSqlViewProps) => {
 
   return (
     <Box
+      className="no-track-pii-safe"
       style={{ position: "relative" }}
       height="100%"
       onMouseEnter={() => {

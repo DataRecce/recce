@@ -179,6 +179,7 @@ export const CheckList = ({
             <VStack
               {...provided.droppableProps}
               ref={provided.innerRef}
+              className="no-track-pii-safe"
               w="full"
               spacing="0"
               flex="1"
