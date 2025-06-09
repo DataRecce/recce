@@ -18,7 +18,7 @@ import {
   HStack,
   useToast,
 } from "@chakra-ui/react";
-import React, { ReactNode, Suspense, useLayoutEffect } from "react";
+import React, { ReactNode, useEffect, useLayoutEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
 import _ from "lodash";
 import { useVersionNumber } from "@/lib/api/version";
@@ -380,7 +380,7 @@ function MainContainer({ children }: { children: ReactNode }): ReactNode {
 export default function Home() {
   const { isDemoSite, isLoading } = useLineageGraphContext();
 
-  useLayoutEffect(() => {
+  useEffect(() => {
     trackInit();
   }, []);
 
