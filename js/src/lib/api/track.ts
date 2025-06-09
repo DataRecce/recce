@@ -1,5 +1,4 @@
-import * as amplitude from "@amplitude/analytics-browser";
-import { sessionReplayPlugin } from "@amplitude/plugin-session-replay-browser";
+import { initAll, track } from "@amplitude/unified";
 
 export function trackInit() {
   function getCookie(key: string) {
@@ -11,12 +10,14 @@ export function trackInit() {
   const apiKey = process.env.AMPLITUDE_API_KEY;
   if (userId && apiKey) {
     try {
-      // Create and Install Session Replay Plugin
-      const sessionReplayTracking = sessionReplayPlugin();
-      amplitude.add(sessionReplayTracking);
-      // Initialize Amplitude
-      amplitude.init(apiKey, userId, {
-        autocapture: true,
+      void initAll(apiKey, {
+        analytics: {
+          userId,
+          autocapture: true,
+        },
+        sr: {
+          sampleRate: 1,
+        },
       });
     } catch (e) {
       console.error(e);
@@ -30,7 +31,7 @@ interface MultiNodeActionProps {
 }
 
 export function trackMultiNodesAction(props: MultiNodeActionProps) {
-  amplitude.track("[Web] multi_nodes_action", props);
+  track("[Web] multi_nodes_action", props);
 }
 
 interface HistoryActionProps {
@@ -38,7 +39,7 @@ interface HistoryActionProps {
 }
 
 export function trackHistoryAction(props: HistoryActionProps) {
-  amplitude.track("[Web] history_action", props);
+  track("[Web] history_action", props);
 }
 
 interface PreviewChangeProps {
@@ -48,7 +49,7 @@ interface PreviewChangeProps {
 }
 
 export function trackPreviewChange(props: PreviewChangeProps) {
-  amplitude.track("[Experiment] preview_change", props);
+  track("[Experiment] preview_change", props);
 }
 
 interface PreviewChangeFeedbackProps {
@@ -57,7 +58,7 @@ interface PreviewChangeFeedbackProps {
 }
 
 export function trackPreviewChangeFeedback(props: PreviewChangeFeedbackProps) {
-  amplitude.track("[Experiment] preview_change", props);
+  track("[Experiment] preview_change", props);
 }
 
 interface SingleEnvironmentProps {
@@ -67,7 +68,7 @@ interface SingleEnvironmentProps {
 }
 
 export function trackSingleEnvironment(props: SingleEnvironmentProps) {
-  amplitude.track("[Experiment] single_environment", props);
+  track("[Experiment] single_environment", props);
 }
 
 interface RecommendPresetCheckProps {
@@ -77,7 +78,7 @@ interface RecommendPresetCheckProps {
 }
 
 export function trackRecommendCheck(props: RecommendPresetCheckProps) {
-  amplitude.track("[Experiment] recommend_preset_check", props);
+  track("[Experiment] recommend_preset_check", props);
 }
 
 interface BreakingChangeAnalysisProps {
@@ -87,7 +88,7 @@ interface BreakingChangeAnalysisProps {
 let _breakingChangeEnabled = false;
 
 export function trackBreakingChange(props: BreakingChangeAnalysisProps) {
-  amplitude.track("[Experiment] breaking_change_analysis", props);
+  track("[Experiment] breaking_change_analysis", props);
   _breakingChangeEnabled = props.enabled;
 }
 
@@ -101,7 +102,7 @@ interface ColumnLevelLineageProps {
 }
 
 export function trackColumnLevelLineage(props: ColumnLevelLineageProps) {
-  amplitude.track("Column level lineage", props);
+  track("Column level lineage", props);
 }
 
 interface ShareStateProps {
@@ -109,7 +110,7 @@ interface ShareStateProps {
 }
 
 export function trackShareState(props: ShareStateProps) {
-  amplitude.track("share_state", props);
+  track("share_state", props);
 }
 
 interface StateActionProps {
@@ -117,7 +118,7 @@ interface StateActionProps {
 }
 
 export function trackStateAction(props: StateActionProps) {
-  amplitude.track("state_action", props);
+  track("state_action", props);
 }
 
 interface CopyToClipboardProps {
@@ -126,5 +127,5 @@ interface CopyToClipboardProps {
 }
 
 export function trackCopyToClipboard(props: CopyToClipboardProps) {
-  amplitude.track("[Click] copy_to_clipboard", props);
+  track("[Click] copy_to_clipboard", props);
 }

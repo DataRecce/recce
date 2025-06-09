@@ -7,7 +7,12 @@ type ScreenshotDataGridProps = DataGridProps<any>;
 export const ScreenshotDataGrid = forwardRef(({ ...props }: ScreenshotDataGridProps, ref: any) => {
   return (
     <>
-      <DataGrid ref={ref} {...props} />
+      <DataGrid
+        ref={ref}
+        className={props.className ? props.className + "no-track-pii-safe" : "no-track-pii-safe"}
+        rowClass={() => "no-track-pii-safe"}
+        {...props}
+      />
     </>
   );
 });

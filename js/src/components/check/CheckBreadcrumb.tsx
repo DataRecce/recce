@@ -57,6 +57,7 @@ export function CheckBreadcrumb({ name, setName }: CheckBreadcrumbProps) {
       flex="0 1 auto"
       fontSize="12pt"
       fontWeight="500"
+      className="no-track-pii-safe"
       separator={<ChevronRightIcon color="gray.500" />}
       overflow={"hidden"}>
       <BreadcrumbItem cursor="pointer" flex="0 1 auto" overflow="hidden">

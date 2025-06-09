@@ -314,7 +314,9 @@ export function NodeView({ node, onCloseNode }: NodeViewProps) {
     <Grid height="100%" templateRows="auto auto 1fr">
       <HStack>
         <Box flex="0 1 20%" p="16px">
-          <Heading size="sm">{node.name}</Heading>
+          <Heading size="sm" className="no-track-pii-safe">
+            {node.name}
+          </Heading>
         </Box>
         <Spacer />
         {isSingleEnvOnboarding ? <SingleEnvironmentMenuButton /> : <ExploreChangeMenuButton />}

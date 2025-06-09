@@ -5,7 +5,7 @@ import {
   selectCllLineage,
   selectDownstream,
   selectUpstream,
-  toReactflow,
+  toReactFlow,
 } from "./lineage";
 import {
   Box,
@@ -410,8 +410,8 @@ export function PrivateLineageView(
         setNodeColumnSetMap(undefined);
       }
 
-      // const [nodes, edges, nodeColumnSetMap] = toReactflow(lineageGraph, filteredNodeIds);
-      const [nodes, edges, nodeColumnSetMap] = toReactflow(lineageGraph, {
+      // const [nodes, edges, nodeColumnSetMap] = toReactFlow(lineageGraph, filteredNodeIds);
+      const [nodes, edges, nodeColumnSetMap] = toReactFlow(lineageGraph, {
         selectedNodes: filteredNodeIds,
         breakingChangeEnabled,
       });
@@ -585,7 +585,7 @@ export function PrivateLineageView(
       }
     }
 
-    const [newNodes, newEdges, newNodeColumnSetMap] = toReactflow(lineageGraph, {
+    const [newNodes, newEdges, newNodeColumnSetMap] = toReactFlow(lineageGraph, {
       selectedNodes,
       columnLevelLineage: newViewOptions.column_level_lineage,
       cll,
@@ -1029,6 +1029,9 @@ export function PrivateLineageView(
             </>
           )}
           <ReactFlow
+            proOptions={{
+              hideAttribution: true,
+            }}
             nodeTypes={nodeTypes}
             edgeTypes={edgeTypes}
             nodes={nodes}

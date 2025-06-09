@@ -76,6 +76,7 @@ const RunListItem = ({
       <Flex onClick={() => {}} alignItems="center" gap="12px">
         <Icon as={icon} />
         <Box
+          className="no-track-pii-safe"
           flex="1"
           textOverflow="ellipsis"
           whiteSpace="nowrap"

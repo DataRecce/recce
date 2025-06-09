@@ -48,11 +48,13 @@ const _ParamView = (data: { type: string; params: any }) => {
 
   return (
     <Editor
+      className="no-track-pii-safe"
       height="100%"
       language="yaml"
       theme="vs"
       value={yaml}
       options={{
+        extraEditorClassName: "no-track-pii-safe",
         readOnly: true,
         fontSize: 14,
         lineNumbers: "off",

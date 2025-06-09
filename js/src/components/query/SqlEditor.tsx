@@ -91,6 +91,7 @@ function SqlEditor({
       )}
       {CustomEditor ?? (
         <Editor
+          className="no-track-pii-safe"
           language="sql"
           theme="vs"
           value={value}
@@ -112,6 +113,7 @@ function SqlEditor({
             }
           }}
           options={{
+            extraEditorClassName: "no-track-pii-safe",
             tabSize: 2,
             fontSize: 16,
             lineNumbers: "on",

@@ -46,6 +46,7 @@ export const QueryForm = ({ defaultPrimaryKeys, onPrimaryKeysChange, ...prob }: 
           </Tooltip>
         </FormLabel>
         <DropdownValuesInput
+          className="no-track-pii-safe"
           unitName="key"
           defaultValues={defaultPrimaryKeys}
           suggestionList={availableColumns}
