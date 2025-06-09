@@ -30,7 +30,7 @@ class TestCommandServer(TestCase):
         from recce.server import app
 
         mock_verify_required_artifacts.return_value = True, None
-        self.runner.invoke(cli_command_server, ["--host", "unittest", "--port", 5566])
+        self.runner.invoke(cli_command_server, ["--host", "unittest", "--port", 5566, "--single-env"])
         mock_run.assert_called_once_with(app, host="unittest", port=5566, lifespan="on")
 
     @patch("recce.cli.uvicorn.run")
@@ -59,7 +59,9 @@ class TestCommandServer(TestCase):
         mock_verify_required_artifacts.return_value = True, None
 
         mock_state_loader_class.return_value = mock_state_loader
-        self.runner.invoke(cli_command_server, ["--cloud", "--password", "unittest", "--cloud-token", "unittest"])
+        self.runner.invoke(
+            cli_command_server, ["--cloud", "--password", "unittest", "--cloud-token", "unittest", "--single-env"]
+        )
         mock_state_loader_class.assert_called_once()
         mock_run.assert_called_once()
 
@@ -71,12 +73,7 @@ class TestCommandServer(TestCase):
         mock_verify_required_artifacts.return_value = True, None
         self.runner.invoke(
             cli_command_server,
-            [
-                "--target-path",
-                "existed_folder",
-                "--target-base-path",
-                "non_existed_folder",
-            ],
+            ["--single-env", "--target-path", "existed_folder", "--target-base-path", "non_existed_folder"],
         )
         mock_run.assert_called_once()
 
@@ -108,6 +105,7 @@ class TestCommandServer(TestCase):
             [
                 "existed_state_file",
                 "--review",
+                "--single-env",
                 "--target-path",
                 "existed_folder",
                 "--target-base-path",
