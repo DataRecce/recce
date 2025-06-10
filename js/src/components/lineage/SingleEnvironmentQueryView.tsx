@@ -81,28 +81,36 @@ export function BaseEnvironmentSetupNotification() {
       <Icon as={RiMindMap} color="blue.500" boxSize="5" />
       <Flex direction="column" gap="5px">
         <Text fontWeight="bold">
-          Lineage Diff{" "}
+          Single Environment Mode{" "}
           <Text color="red" as="span">
-            Live Reload
+            Limited Functionality
           </Text>
         </Text>
 
         <Text fontSize="sm">
-          To view lineage diff in action, make a modeling change and rebuild your dbt project. Leave
-          Recce running and{" "}
-          <Text fontWeight="bold" as="span">
-            model changes will be automatically detected
-          </Text>{" "}
-          and displayed.
+          Single Environment Mode allows you to explore your dbt project but won't show data
+          comparisons between environments.
         </Text>
-        <Link
-          color="blue.500"
-          fontSize="sm"
-          fontWeight="medium"
-          isExternal
-          href="https://docs.datarecce.io/get-started/#prepare-dbt-artifacts">
-          Learn how
-        </Link>
+        <Text fontSize="sm">To set up full environment comparison:</Text>
+        <UnorderedList>
+          <ListItem>
+            <Text fontSize="sm">Run `recce debug` for setup assistance</Text>
+          </ListItem>
+          <ListItem>
+            <Text fontSize="sm">
+              Visit{" "}
+              <Link
+                color="blue.500"
+                fontSize="sm"
+                fontWeight="medium"
+                isExternal
+                href="https://docs.datarecce.io/configure-diff/">
+                docs{" "}
+              </Link>
+              for configuration details
+            </Text>
+          </ListItem>
+        </UnorderedList>
       </Flex>
     </Flex>
   );
