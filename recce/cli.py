@@ -347,7 +347,7 @@ def server(host, port, lifetime, state_file=None, **kwargs):
         if not single_env_flag:
             lanch_in_single_env = Confirm.ask("Launch in [bold]Single Environment Mode[/bold]?")
             if not lanch_in_single_env:
-                os._exit(0)
+                exit(0)
 
     state_loader = create_state_loader(is_review, is_cloud, state_file, cloud_options)
 
