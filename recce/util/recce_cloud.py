@@ -5,6 +5,8 @@ from typing import IO, Dict
 
 import requests
 
+from recce import get_version
+from recce.event import get_user_id, is_anonymous_tracking
 from recce.pull_request import PullRequestInfo
 
 RECCE_CLOUD_API_HOST = os.environ.get("RECCE_CLOUD_API_HOST", "https://cloud.datarecce.io")
@@ -35,12 +37,14 @@ class RecceCloud:
         if token is None:
             raise ValueError("Token cannot be None.")
         self.token = token
-        self.token_type = "github_token" if token.startswith(
-            ("ghp_", "gho_", "ghu_", "ghs_", "ghr_")) else "api_token"
+        self.token_type = "github_token" if token.startswith(("ghp_", "gho_", "ghu_", "ghs_", "ghr_")) else "api_token"
         self.base_url = f"{RECCE_CLOUD_API_HOST}/api/v1"
 
-    def _request(self, method, url, **kwargs):
-        headers = {"Authorization": f"Bearer {self.token}"}
+    def _request(self, method, url, headers: Dict = None, **kwargs):
+        headers = {
+            **(headers or {}),
+            "Authorization": f"Bearer {self.token}",
+        }
         return requests.request(method, url, headers=headers, **kwargs)
 
     def verify_token(self) -> bool:
@@ -49,7 +53,13 @@ class RecceCloud:
         # Verify the Recce Cloud API token
         api_url = f"{self.base_url}/verify-token"
         try:
-            response = self._request("GET", api_url)
+            headers: Dict = None
+            if is_anonymous_tracking():
+                headers = {
+                    "X-Recce-Oss-User-Id": get_user_id(),
+                    "X-Recce-Oss-Version": get_version(),
+                }
+            response = self._request("GET", api_url, headers=headers)
             if response.status_code == 200:
                 return True
         except Exception:
