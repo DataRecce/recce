@@ -116,3 +116,26 @@ class PrepareApiTokenTest(unittest.TestCase):
         with self.assertRaises(RecceConfigException):
             prepare_api_token(interaction=True)
             mock_prompt.assert_called_once()
+
+    @patch("recce.event.is_anonymous_tracking", return_value=True)
+    @patch("recce.event.get_user_id", return_value="unittest-user")
+    @patch("recce.get_version", return_value="unittest-version")
+    def test_verify_token_append_tracking_data(self, mock_is_anonymous_tracking, mock_get_user_id, mock_get_version):
+        from recce.util.api_token import RecceCloud
+
+        recce_cloud = RecceCloud("valid-token")
+        with patch.object(recce_cloud, "_request") as mock_request:
+            mock_request.return_value.status_code = 200
+            mock_request.return_value.json.return_value = {"status": "success"}
+            result = recce_cloud.verify_token()
+            called_kwargs = mock_request.call_args.kwargs
+            self.assertDictEqual(
+                called_kwargs,
+                {
+                    "headers": {
+                        "X-Recce-Oss-User-Id": "unittest-user",
+                        "X-Recce-Oss-Version": "unittest-version",
+                    }
+                },
+            )
+            self.assertTrue(result)
