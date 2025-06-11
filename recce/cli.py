@@ -199,62 +199,40 @@ def debug(**kwargs):
 
     console = Console()
 
-    target_path = Path(kwargs.get("target_path", "target"))
-    target_base_path = Path(kwargs.get("target_base_path", "target-base"))
+    def check_artifacts(env_name, target_path):
+        console.rule(f"{env_name} Environment", style="orange3")
+        if not target_path.is_dir():
+            console.print(f"[[red]MISS[/red]] Directory does not exist: {target_path}")
+            return [False, False, False]
 
-    curr_dir_is_ready = True
-    curr_manifest_is_ready = True
-    curr_catalog_is_ready = True
-    base_dir_is_ready = True
-    base_manifest_is_ready = True
-    base_catalog_is_ready = True
-    conn_is_ready = True
-
-    console.rule("Development Environment", style="orange3")
-    if not target_path.is_dir():
-        console.print(f"[[red]MISS[/red]] Directory does not exist: {target_path}")
-        curr_dir_is_ready = False
-    else:
         console.print(f"[[green]OK[/green]] Directory exists: {target_path}")
 
         manifest_path = target_path / "manifest.json"
-        if not manifest_path.is_file():
-            console.print(f"[[red]MISS[/red]] Manifest JSON file does not exist: {manifest_path}")
-            curr_manifest_is_ready = False
-        else:
+        manifest_is_ready = manifest_path.is_file()
+        if manifest_is_ready:
             console.print(f"[[green]OK[/green]] Manifest JSON file exists : {manifest_path}")
+        else:
+            console.print(f"[[red]MISS[/red]] Manifest JSON file does not exist: {manifest_path}")
 
         catalog_path = target_path / "catalog.json"
-        if not catalog_path.is_file():
-            console.print(f"[[red]MISS[/red]] Catalog JSON file does not exist: {catalog_path}")
-            curr_catalog_is_ready = False
-        else:
+        catalog_is_ready = catalog_path.is_file()
+        if catalog_is_ready:
             console.print(f"[[green]OK[/green]] Catalog JSON file exists: {catalog_path}")
-
-    console.rule("Base Environment", style="orange3")
-    if not target_base_path.is_dir():
-        console.print(f"[[red]MISS[/red]] Directory does not exist: {target_base_path}")
-        base_dir_is_ready = False
-    else:
-        console.print(f"[[green]OK[/green]] Directory exists: {target_base_path}")
-
-        manifest_path = target_base_path / "manifest.json"
-        if not manifest_path.is_file():
-            console.print(f"[[red]MISS[/red]] Manifest JSON file does not exist: {manifest_path}")
-            base_manifest_is_ready = False
         else:
-            console.print(f"[[green]OK[/green]] Manifest JSON file exists : {manifest_path}")
-
-        catalog_path = target_base_path / "catalog.json"
-        if not catalog_path.is_file():
             console.print(f"[[red]MISS[/red]] Catalog JSON file does not exist: {catalog_path}")
-            base_catalog_is_ready = False
-        else:
-            console.print(f"[[green]OK[/green]] Catalog JSON file exists: {catalog_path}")
+
+        return [True, manifest_is_ready, catalog_is_ready]
+
+    target_path = Path(kwargs.get("target_path", "target"))
+    target_base_path = Path(kwargs.get("target_base_path", "target-base"))
+
+    curr_is_ready = check_artifacts("development", target_path)
+    base_is_ready = check_artifacts("Base", target_base_path)
 
     console.rule("Warehouse Connection", style="orange3")
+    conn_is_ready = True
     try:
-        context_kwargs = {**kwargs, "target_base_path": kwargs.get("target_base_path", "target-base")}
+        context_kwargs = {**kwargs, "target_base_path": kwargs.get("target_path")}
         ctx = load_context(**context_kwargs)
         dbt_adapter: DbtAdapter = ctx.adapter
         sql = dbt_adapter.generate_sql("select 1", False)
@@ -265,43 +243,35 @@ def debug(**kwargs):
         console.print("[[red]FAIL[/red]] Connection test")
 
     console.rule("Result", style="orange3")
-    if (
-        curr_manifest_is_ready
-        and curr_catalog_is_ready
-        and base_manifest_is_ready
-        and base_catalog_is_ready
-        and conn_is_ready
-    ):
-        console.print("[[green]OK[/green]] You're ready for [bold]Recce[/bold]! Launch it with `recce server`")
-    elif curr_manifest_is_ready and curr_catalog_is_ready and conn_is_ready:
-        console.print(
-            "[[orange3]OK[/orange3]] You're ready for the [bold]single environment mode[/bold]! Launch Recce with `recce server`"
-        )
+    if all(curr_is_ready) and all(base_is_ready) and conn_is_ready:
+        console.print("[[green]OK[/green]] Ready to launch! Type `recce server`")
+    elif all(curr_is_ready) and conn_is_ready:
+        console.print("[[orange3]OK[/orange3]] Ready to launch with [i]limited features[/i]. Type `recce server`")
 
-    if not curr_dir_is_ready:
+    if not curr_is_ready[0]:
         console.print(
             "[[orange3]TIP[/orange3]] Run dbt or overwrite the default directory of the development environment with `--target-path`"
         )
     else:
-        if not curr_manifest_is_ready:
+        if not curr_is_ready[1]:
             console.print(
                 "[[orange3]TIP[/orange3]] `dbt run` to generate the manifest JSON file for the development environment"
             )
-        if not curr_catalog_is_ready:
+        if not curr_is_ready[2]:
             console.print(
                 "[[orange3]TIP[/orange3]] `dbt docs generate` to generate the catalog JSON file for the development environment"
             )
 
-    if not base_dir_is_ready:
+    if not base_is_ready[0]:
         console.print(
             "[[orange3]TIP[/orange3]] Run dbt with `--target-path target-base` or overwrite the default directory of the base environment with `--target-base-path`"
         )
     else:
-        if not base_manifest_is_ready:
+        if not base_is_ready[1]:
             console.print(
                 "[[orange3]TIP[/orange3]] `dbt run --target-path target-base` to generate the manifest JSON file for the base environment"
             )
-        if not base_catalog_is_ready:
+        if not base_is_ready[2]:
             console.print(
                 "[[orange3]TIP[/orange3]] `dbt docs generate --target-path target-base` to generate the catalog JSON file for the base environment"
             )
