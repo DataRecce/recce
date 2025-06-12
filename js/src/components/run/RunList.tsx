@@ -15,7 +15,6 @@ import {
 } from "@chakra-ui/react";
 import { cacheKeys } from "@/lib/api/cacheKeys";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import _ from "lodash";
 import { FaCheckCircle, FaRegCheckCircle } from "react-icons/fa";
 import { TbChecklist } from "react-icons/tb";
 import { IconType } from "react-icons";
