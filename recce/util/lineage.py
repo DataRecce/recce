@@ -44,6 +44,15 @@ def build_dependency_maps(cll_data: CllData) -> Tuple[Dict[str, Set], Dict[str, 
     child_map = {}
 
     for node_id, node_data in cll_data.nodes.items():
+        for dep_node in node_data.depends_on.nodes:
+            if node_id not in parent_map:
+                parent_map[node_id] = set()
+            parent_map[node_id].add(dep_node)
+
+            if dep_node not in child_map:
+                child_map[dep_node] = set()
+            child_map[dep_node].add(node_id)
+
         for col_name, col_data in node_data.columns.items():
             current_col_id = f"{node_id}_{col_name}"
 
