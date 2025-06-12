@@ -1,6 +1,6 @@
 from typing import Dict, Set, Tuple
 
-from recce.models.types import CllData
+from recce.models.types import CllColumnDep, CllData, List
 
 
 def find_upstream(node, parent_map):
@@ -72,28 +72,22 @@ def build_dependency_maps(cll_data: CllData) -> Tuple[Dict[str, Set], Dict[str, 
     return parent_map, child_map
 
 
-def find_column_dependencies(node_id: str, node_column_id: str, parent_map: Dict, child_map: Dict) -> Tuple[Set, Set]:
-    upstream_cols = set()
-    downstream_cols = set()
-    upstream_cols.update(find_upstream(node_id, parent_map), find_upstream(node_column_id, parent_map))
-    downstream_cols.update(find_downstream(node_id, child_map), find_downstream(node_column_id, child_map))
-
+def find_column_dependencies(node_column_id: str, parent_map: Dict, child_map: Dict) -> Tuple[Set, Set]:
+    upstream_cols = find_upstream(node_column_id, parent_map)
+    downstream_cols = find_downstream(node_column_id, child_map)
     return upstream_cols, downstream_cols
 
 
-def filter_column_lineage(cll_data: CllData, relevant_columns: Set) -> CllData:
+def filter_column_lineage(cll_data: CllData, relevant_columns: Set) -> Tuple[List[str], Dict[str, CllColumnDep]]:
+    nodes = []
+    columns = {}
 
-    for node_id, node_obj in cll_data.nodes.items():
-        filtered_node_columns = {}
+    for node_id in cll_data.lineage_nodes:
+        if node_id in relevant_columns:
+            nodes.append(node_id)
 
-        for col_name, col_data in node_obj.columns.items():
-            full_col_id = f"{node_id}_{col_name}"
-            if full_col_id in relevant_columns:
-                filtered_node_columns[col_name] = col_data
+    for col_id, column_obj in cll_data.lineage_columns.items():
+        if col_id in relevant_columns:
+            columns[col_id] = column_obj
 
-        node_obj.columns = filtered_node_columns
-        node_obj.depends_on.columns = [
-            dep for dep in node_obj.depends_on.columns if f"{dep.node}_{dep.column}" in relevant_columns
-        ]
-
-    return cll_data
+    return nodes, columns
