@@ -1,11 +1,14 @@
 import asyncio
 import os
+import sys
 from pathlib import Path
 from typing import List
 
 import click
 import uvicorn
 from click import Abort
+import yaml
+import shutil
 
 from recce import event
 from recce.artifact import download_dbt_artifacts, upload_dbt_artifacts
@@ -173,6 +176,10 @@ def cli(ctx, **kwargs):
         )
         error_console.print("Please update using the command: 'pip install --upgrade recce'.", end="\n\n")
 
+    # Register init and validate commands
+    cli.add_command(init)
+    cli.add_command(validate)
+
 
 @cli.command(cls=TrackCommand)
 def version():
@@ -299,7 +306,7 @@ def debug(**kwargs):
     else:
         if not base_manifest_is_ready:
             console.print(
-                "[[orange3]TIP[/orange3]] `dbt run --target-path target-base` to generate the manifest JSON file for the base environment"
+                "[[orange3]TIP[/orange3]] `dbt docs generate --target-path target-base` to generate the manifest JSON file for the base environment"
             )
         if not base_catalog_is_ready:
             console.print(
@@ -461,6 +468,19 @@ def server(host, port, lifetime, state_file=None, **kwargs):
             f"'{target_base_path}'."
         )
         console.print("https://docs.datarecce.io/get-started/#prepare-dbt-artifacts")
+        console.print("\n[blue]To use Recce, we need to generate dbt metadata files (called 'artifacts') for both your development and production environments.[/blue]")
+        console.print("\n[blue]Step 1: Generate development artifacts[/blue]")
+        console.print("To run in your dev branch:")
+        console.print("  dbt docs generate --target dev")
+        console.print("  # This creates metadata about your current development environment\n")
+        console.print("[blue]Step 2: Generate production artifacts[/blue]")
+        console.print("To run in your main or production branch:")
+        console.print("  dbt docs generate --target prod --target-path target-base\n")
+        console.print("[blue]After running these commands, you should see:[/blue]")
+        console.print("  - A 'target' folder with manifest.json (development)")
+        console.print("  - A 'target-base' folder with manifest.json (production)\n")
+        console.print("For more information on setting up Snowflake profiles, visit: https://docs.getdbt.com/docs/core/connect-data-platform/snowflake-setup")
+        console.print("See the Recce docs for more details: https://docs.datarecce.io/")
         console.print()
 
     state_loader = create_state_loader(is_review, is_cloud, state_file, cloud_options)
@@ -1296,34 +1316,95 @@ select 1 as test
             return False
 
 @cli.command(cls=TrackCommand)
+@click.option('--target', type=click.Choice(['dev', 'prod']), default='dev', help='Target environment to generate docs for')
+@click.option('--target-path', type=str, default='target', help='Path to store the generated docs')
+@add_options(dbt_related_options)
+def generate_docs(target, target_path, **kwargs):
+    """
+    Automatically generate dbt docs for the specified target environment.
+    """
+    from rich.console import Console
+    import subprocess
+    import os
+
+    console = Console()
+
+    # Construct the command
+    command = ['dbt', 'docs', 'generate', '--target', target]
+    if target == 'prod':
+        command.extend(['--target-path', target_path])
+
+    # Execute the command
+    console.print(f"[blue]Generating dbt docs for {target} environment...[/blue]")
+    result = subprocess.run(command, capture_output=True, text=True)
+
+    if result.returncode == 0:
+        console.print(f"[green]✅ Successfully generated dbt docs for {target} environment[/green]")
+    else:
+        console.print(f"[red]❌ Failed to generate dbt docs: {result.stderr}[/red]")
+
+
+@cli.command(cls=TrackCommand)
 @click.option('--database-type', type=click.Choice(['snowflake', 'bigquery', 'postgres', 'duckdb']), prompt='What type of database are you using?')
 @click.option('--dev-schema', prompt='What schema name would you like to use for development?', default='dev')
 @click.option('--prod-schema', prompt='What schema name would you like to use for production?', default='prod')
 @click.option('--validate', is_flag=True, help='Validate the configuration and test database connections')
+@click.option('--explain', is_flag=True, help='Show detailed explanation of the initialization process')
 @add_options(dbt_related_options)
-def init(database_type, dev_schema, prod_schema, validate, **kwargs):
-    """
-    Initialize Recce configuration for your dbt project.
-    This will help you set up your development and production environments.
-    """
+def init(database_type, dev_schema, prod_schema, validate, explain, **kwargs):
+    """Initialize a new dbt project configuration."""
     from rich.console import Console
-    from rich.prompt import Confirm
-    import yaml
-    import os
-
     console = Console()
+
+    # If --explain flag is used, show only the explanation and return
+    if explain:
+        console.print("\n[blue]To use Recce, we need to generate dbt metadata files (called 'artifacts') for both your development and production environments.[/blue]")
+        console.print("\n[blue]Step 1: Generate development artifacts[/blue]")
+        console.print("To run in your dev branch:")
+        console.print("  dbt docs generate --target dev")
+        console.print("  # This creates metadata about your current development environment\n")
+        console.print("[blue]Step 2: Generate production artifacts[/blue]")
+        console.print("To run in your main or production branch:")
+        console.print("  dbt docs generate --target prod --target-path target-base\n")
+        console.print("[blue]After running these commands, you should see:[/blue]")
+        console.print("  - A 'target' folder with manifest.json (development)")
+        console.print("  - A 'target-base' folder with manifest.json (production)\n")
+        console.print("For more information on setting up Snowflake profiles, visit: https://docs.getdbt.com/docs/core/connect-data-platform/snowflake-setup")
+        console.print("See the Recce docs for more details: https://docs.datarecce.io/")
+        return
+
+    # Only prompt for database type if not using --explain
+    if not database_type:
+        database_type = click.prompt('What type of database are you using?', type=click.Choice(['snowflake', 'bigquery', 'postgres', 'duckdb']))
+    if not dev_schema:
+        dev_schema = click.prompt('What schema name would you like to use for development?', default='dev')
+    if not prod_schema:
+        prod_schema = click.prompt('What schema name would you like to use for production?', default='prod')
+
+    # Use the simpler approach for setting directories
+    project_dir = os.path.abspath(kwargs.get('project_dir') or os.getcwd())
+    profiles_dir = os.path.abspath(kwargs.get('profiles_dir') or project_dir)
+
+    # Create profiles directory if it doesn't exist
+    if not os.path.exists(profiles_dir):
+        os.makedirs(profiles_dir)
+
+    # Create profiles.yml
+    profiles_path = os.path.join(profiles_dir, 'profiles.yml')
     
-    # Get project directory
-    project_dir = kwargs.get('project_dir', os.getcwd())
-    profiles_dir = kwargs.get('profiles_dir', os.path.expanduser('~/.dbt'))
+    # Get project name from dbt_project.yml if available
+    project_name = 'jaffle_shop'  # Default project name
+    try:
+        with open(os.path.join(project_dir, 'dbt_project.yml'), 'r') as f:
+            project_config = yaml.safe_load(f)
+            project_name = project_config.get('name', project_name)
+    except:
+        pass
     
-    # Create profiles.yml template
-    profiles_template = {
-        'config': {
-            'send_anonymous_usage_stats': False
-        },
-        'your_project_name': {
-            'target': 'dev',
+    # Generate configuration based on database type
+    config = {
+        project_name: {
+            'target': 'dev',  # Set default target
             'outputs': {
                 'dev': {
                     'type': database_type,
@@ -1337,103 +1418,94 @@ def init(database_type, dev_schema, prod_schema, validate, **kwargs):
         }
     }
 
-    # Add database-specific connection details
-    if database_type == 'snowflake':
-        profiles_template['your_project_name']['outputs']['dev'].update({
+    # Add database-specific configuration
+    if database_type == 'duckdb':
+        config[project_name]['outputs']['dev'].update({
+            'path': 'jaffle_shop.duckdb',
+            'threads': 24
+        })
+        config[project_name]['outputs']['prod'].update({
+            'path': 'jaffle_shop.duckdb',
+            'threads': 24
+        })
+    elif database_type == 'snowflake':
+        config[project_name]['outputs']['dev'].update({
             'account': 'your_account',
             'user': 'your_username',
             'password': 'your_password',
             'warehouse': 'your_warehouse',
             'role': 'your_role'
         })
-        profiles_template['your_project_name']['outputs']['prod'].update({
+        config[project_name]['outputs']['prod'].update({
             'account': 'your_account',
             'user': 'your_username',
             'password': 'your_password',
             'warehouse': 'your_warehouse',
             'role': 'your_role'
         })
-    elif database_type == 'bigquery':
-        profiles_template['your_project_name']['outputs']['dev'].update({
-            'method': 'oauth',
-            'project': 'your_project',
-            'dataset': dev_schema,
-            'location': 'US'
-        })
-        profiles_template['your_project_name']['outputs']['prod'].update({
-            'method': 'oauth',
-            'project': 'your_project',
-            'dataset': prod_schema,
-            'location': 'US'
-        })
-    elif database_type == 'postgres':
-        profiles_template['your_project_name']['outputs']['dev'].update({
-            'host': 'localhost',
-            'port': 5432,
-            'user': 'your_username',
-            'password': 'your_password',
-            'dbname': 'your_database'
-        })
-        profiles_template['your_project_name']['outputs']['prod'].update({
-            'host': 'localhost',
-            'port': 5432,
-            'user': 'your_username',
-            'password': 'your_password',
-            'dbname': 'your_database'
-        })
-    elif database_type == 'duckdb':
-        profiles_template['your_project_name']['outputs']['dev'].update({
-            'path': 'your_database.duckdb',
-            'threads': 4
-        })
-        profiles_template['your_project_name']['outputs']['prod'].update({
-            'path': 'your_database.duckdb',
-            'threads': 4
-        })
+    # Add other database types as needed
 
-    # Create profiles.yml
-    profiles_path = os.path.join(profiles_dir, 'profiles.yml')
-    os.makedirs(os.path.dirname(profiles_path), exist_ok=True)
-    
+    # Handle existing profiles.yml
     if os.path.exists(profiles_path):
-        if not Confirm.ask(f"profiles.yml already exists at {profiles_path}. Overwrite?"):
-            console.print("[yellow]Setup cancelled. No changes made.[/yellow]")
+        console.print(f"[yellow]profiles.yml already exists at {profiles_path}.[/yellow]")
+        choice = input("What would you like to do? [s]kip/[b]ackup/[o]verwrite/[a]bort: ").strip().lower()
+        if choice == 's' or choice == '':
+            console.print("Skipping creation of profiles.yml.\n")
+        elif choice == 'b':
+            backup_path = profiles_path + ".bak"
+            shutil.copy2(profiles_path, backup_path)
+            console.print(f"Backed up existing profiles.yml to {backup_path}")
+            with open(profiles_path, 'w') as f:
+                yaml.dump(config, f, default_flow_style=False)
+            console.print(f"\n✅ Created new profiles.yml at {profiles_path}")
+        elif choice == 'o':
+            console.print("Overwriting existing profiles.yml.")
+            with open(profiles_path, 'w') as f:
+                yaml.dump(config, f, default_flow_style=False)
+            console.print(f"\n✅ Overwrote profiles.yml at {profiles_path}")
+        else:
+            console.print("Aborted by user.")
             return
-        with open(profiles_path, 'r') as f:
-            existing_profiles = yaml.safe_load(f) or {}
     else:
-        existing_profiles = {}
+        with open(profiles_path, 'w') as f:
+            yaml.dump(config, f, default_flow_style=False)
+        console.print(f"\n✅ Created profiles.yml at {profiles_path}")
 
-    # Update with new configuration
-    existing_profiles.update(profiles_template)
-    
-    with open(profiles_path, 'w') as f:
-        yaml.dump(existing_profiles, f, default_flow_style=False)
-
-    console.print(f"\n[green]✅ Created profiles.yml at {profiles_path}[/green]")
-    
+    # Validate if requested
     if validate:
-        # Validate the configuration
-        if not validate_profiles_config(existing_profiles, database_type):
-            console.print("\n[yellow]⚠️  Please fix the configuration issues in profiles.yml before proceeding[/yellow]")
-            return
-            
-        # Test database connections
-        if not test_database_connection(existing_profiles, database_type, 'dev'):
-            console.print("\n[yellow]⚠️  Please fix the development environment connection issues[/yellow]")
-            return
-            
-        if not test_database_connection(existing_profiles, database_type, 'prod'):
-            console.print("\n[yellow]⚠️  Please fix the production environment connection issues[/yellow]")
-            return
-            
-        console.print("\n[green]✅ All validations passed![/green]")
-    
-    console.print("\nNext steps:")
-    console.print("1. Edit profiles.yml with your database credentials")
-    console.print("2. Run 'dbt debug' to verify your connection")
-    console.print("3. Run 'recce server' to start Recce")
-    console.print("\nNeed help? Check out our documentation: https://docs.datarecce.io")
+        try:
+            validate_profiles_config(config, database_type)
+            if test_database_connection(config, database_type):
+                console.print("\n✅ Configuration validation complete")
+            else:
+                console.print("\n⚠️ Configuration validation failed. Please check your database connection settings.")
+        except Exception as e:
+            console.print(f"\n❌ Error during validation: {str(e)}")
+            console.print("\n⚠️ Please fix the configuration issues in profiles.yml before proceeding")
+
+    # Check for artifacts
+    dev_manifest = os.path.join(project_dir, 'target', 'manifest.json')
+    prod_manifest = os.path.join(project_dir, 'target-base', 'manifest.json')
+    missing = []
+    if not os.path.exists(dev_manifest):
+        missing.append('target/manifest.json (dev artifacts)')
+    if not os.path.exists(prod_manifest):
+        missing.append('target-base/manifest.json (prod/base artifacts)')
+    if missing:
+        console.print("\n[yellow]Some required dbt artifacts are missing:[/yellow]")
+        for m in missing:
+            console.print(f"  - {m}")
+        console.print("\nTo generate them, you'll need:")
+        console.print("To run in your dev branch:")
+        console.print("  dbt docs generate --target dev")
+        console.print("  # This creates metadata about your current development environment")
+        console.print("To run in your main or production branch:")
+        console.print("  dbt docs generate --target prod --target-path target-base")
+        console.print("  # This creates metadata about your production environment")
+        console.print("For a detailed explanation of this process, run: recce explain-setup")
+        console.print("See the Recce docs for more details: https://docs.datarecce.io/")
+    else:
+        console.print("\n[green]All required dbt artifacts are present! You're ready to use Recce.[/green]")
 
 
 @cli.command(cls=TrackCommand)
@@ -1526,6 +1598,27 @@ def validate(database_type, test_connection, **kwargs):
     console.print("1. Edit profiles.yml with your database credentials")
     console.print("2. Run 'recce validate' again to check your changes")
     console.print("3. Run 'recce server' to start Recce")
+
+
+@cli.command()
+def explain_setup():
+    """Show a detailed explanation of the Recce onboarding and artifact setup process."""
+    from rich.console import Console
+    console = Console()
+    console.print("\n[blue]To use Recce, we need to generate dbt metadata files (called 'artifacts') for both your development and production environments.[/blue]")
+    console.print("\n[blue]Step 1: Generate development artifacts[/blue]")
+    console.print("To run in your dev branch:")
+    console.print("  dbt docs generate --target dev")
+    console.print("  # This creates metadata about your current development environment")
+    console.print("\n[blue]Step 2: Generate production artifacts[/blue]")
+    console.print("To run in your main or production branch:")
+    console.print("  dbt docs generate --target prod --target-path target-base")
+    console.print("  # This creates metadata about your production environment")
+    console.print("\n[blue]After running these commands, you should see:[/blue]")
+    console.print("  - A 'target' folder with manifest.json (development)")
+    console.print("  - A 'target-base' folder with manifest.json (production)\n")
+    console.print("For more information on setting up Snowflake profiles, visit: https://docs.getdbt.com/docs/core/connect-data-platform/snowflake-setup")
+    console.print("See the Recce docs for more details: https://docs.datarecce.io/")
 
 
 if __name__ == "__main__":
