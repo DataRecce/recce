@@ -244,40 +244,40 @@ def debug(**kwargs):
 
     console.rule("Result", style="orange3")
     if all(curr_is_ready) and all(base_is_ready) and conn_is_ready:
-        console.print("[[green]OK[/green]] Ready to launch! Type `recce server`")
+        console.print("[[green]OK[/green]] Ready to launch! Type 'recce server'.")
     elif all(curr_is_ready) and conn_is_ready:
-        console.print("[[orange3]OK[/orange3]] Ready to launch with [i]limited features[/i]. Type `recce server`")
+        console.print("[[orange3]OK[/orange3]] Ready to launch with [i]limited features[/i]. Type 'recce server'.")
 
     if not curr_is_ready[0]:
         console.print(
-            "[[orange3]TIP[/orange3]] Run dbt or overwrite the default directory of the development environment with `--target-path`"
+            "[[orange3]TIP[/orange3]] Run dbt or overwrite the default directory of the development environment with '--target-path'."
         )
     else:
         if not curr_is_ready[1]:
             console.print(
-                "[[orange3]TIP[/orange3]] `dbt run` to generate the manifest JSON file for the development environment"
+                "[[orange3]TIP[/orange3]] 'dbt run' to generate the manifest JSON file for the development environment."
             )
         if not curr_is_ready[2]:
             console.print(
-                "[[orange3]TIP[/orange3]] `dbt docs generate` to generate the catalog JSON file for the development environment"
+                "[[orange3]TIP[/orange3]] 'dbt docs generate' to generate the catalog JSON file for the development environment."
             )
 
     if not base_is_ready[0]:
         console.print(
-            "[[orange3]TIP[/orange3]] Run dbt with `--target-path target-base` or overwrite the default directory of the base environment with `--target-base-path`"
+            "[[orange3]TIP[/orange3]] Run dbt with '--target-path target-base' or overwrite the default directory of the base environment with '--target-base-path'."
         )
     else:
         if not base_is_ready[1]:
             console.print(
-                "[[orange3]TIP[/orange3]] `dbt run --target-path target-base` to generate the manifest JSON file for the base environment"
+                "[[orange3]TIP[/orange3]] 'dbt run --target-path target-base' to generate the manifest JSON file for the base environment."
             )
         if not base_is_ready[2]:
             console.print(
-                "[[orange3]TIP[/orange3]] `dbt docs generate --target-path target-base` to generate the catalog JSON file for the base environment"
+                "[[orange3]TIP[/orange3]] 'dbt docs generate --target-path target-base' to generate the catalog JSON file for the base environment."
             )
 
     if not conn_is_ready:
-        console.print("[[orange3]TIP[/orange3]] Run `dbt debug` to check the connection")
+        console.print("[[orange3]TIP[/orange3]] Run 'dbt debug' to check the connection.")
 
 
 @cli.command(hidden=True, cls=TrackCommand)
@@ -415,14 +415,15 @@ def server(host, port, lifetime, state_file=None, **kwargs):
         exit(1)
     auth_options["api_token"] = api_token
 
+    target_path = Path(kwargs.get("target_path", "target"))
+    target_base_path = Path(kwargs.get("target_base_path", "target-base"))
     # Check Single Environment Onboarding Mode if the review mode is False
-    if not os.path.isdir(kwargs.get("target_base_path")) and is_review is False:
+    if target_path.is_dir() and not target_base_path.is_dir() and not is_review:
         # Mark as single env onboarding mode if user provides the target-path only
         flag["single_env_onboarding"] = True
         flag["show_relaunch_hint"] = True
-        target_path = kwargs.get("target_path")
         # Use the target path as the base path
-        kwargs["target_base_path"] = target_path
+        kwargs["target_base_path"] = kwargs.get("target_path")
 
         # Show warning message
         console.rule("Notice", style="orange3")
@@ -453,15 +454,18 @@ def server(host, port, lifetime, state_file=None, **kwargs):
         console.print(f"{hint}")
         exit(1)
 
-    if state_loader.review_mode is True:
-        console.rule("Recce Server : Review Mode")
-    else:
-        console.rule("Recce Server")
-
     result, message = RecceContext.verify_required_artifacts(**kwargs)
     if not result:
+        console.rule("Notice", style="orange3")
         console.print(f"[[red]Error[/red]] {message}")
         exit(1)
+
+    if state_loader.review_mode is True:
+        console.rule("Recce Server : Review Mode")
+    elif flag["single_env_onboarding"]:
+        console.rule("Recce Server : Single Environment Mode")
+    else:
+        console.rule("Recce Server")
 
     state = AppState(
         command="server",
