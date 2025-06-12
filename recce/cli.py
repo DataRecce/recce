@@ -415,16 +415,31 @@ def server(host, port, lifetime, state_file=None, **kwargs):
         exit(1)
     auth_options["api_token"] = api_token
 
-    target_path = Path(kwargs.get("target_path", "target"))
-    target_base_path = Path(kwargs.get("target_base_path", "target-base"))
     # Check Single Environment Onboarding Mode if the review mode is False
-    if target_path.is_dir() and not target_base_path.is_dir() and not is_review:
+    if not Path(kwargs.get("target_base_path", "target-base")).is_dir() and not is_review:
         # Mark as single env onboarding mode if user provides the target-path only
         flag["single_env_onboarding"] = True
         flag["show_relaunch_hint"] = True
         # Use the target path as the base path
         kwargs["target_base_path"] = kwargs.get("target_path")
 
+    state_loader = create_state_loader(is_review, is_cloud, state_file, cloud_options)
+
+    if not state_loader.verify():
+        error, hint = state_loader.error_and_hint
+        console.print(f"[[red]Error[/red]] {error}")
+        console.print(f"{hint}")
+        exit(1)
+
+    result, message = RecceContext.verify_required_artifacts(**kwargs)
+    if not result:
+        console.rule("Notice", style="orange3")
+        console.print(f"[[red]Error[/red]] {message}")
+        exit(1)
+
+    if state_loader.review_mode is True:
+        console.rule("Recce Server : Review Mode")
+    elif flag["single_env_onboarding"]:
         # Show warning message
         console.rule("Notice", style="orange3")
         console.print(
@@ -446,23 +461,6 @@ def server(host, port, lifetime, state_file=None, **kwargs):
             if not lanch_in_single_env:
                 exit(0)
 
-    state_loader = create_state_loader(is_review, is_cloud, state_file, cloud_options)
-
-    if not state_loader.verify():
-        error, hint = state_loader.error_and_hint
-        console.print(f"[[red]Error[/red]] {error}")
-        console.print(f"{hint}")
-        exit(1)
-
-    result, message = RecceContext.verify_required_artifacts(**kwargs)
-    if not result:
-        console.rule("Notice", style="orange3")
-        console.print(f"[[red]Error[/red]] {message}")
-        exit(1)
-
-    if state_loader.review_mode is True:
-        console.rule("Recce Server : Review Mode")
-    elif flag["single_env_onboarding"]:
         console.rule("Recce Server : Single Environment Mode")
     else:
         console.rule("Recce Server")
