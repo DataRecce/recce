@@ -26,7 +26,9 @@ from recce.exceptions import RecceException
 from recce.util.cll import CllColumnDep, CLLPerformanceTracking, cll
 from recce.util.lineage import (
     build_dependency_maps,
-    filter_column_lineage,
+    build_lineage_vertices,
+    filter_dependency_maps,
+    filter_lineage_vertices,
     find_column_dependencies,
     find_downstream,
     find_upstream,
@@ -919,12 +921,20 @@ class DbtAdapter(BaseAdapter):
         cll = self.get_cll_by_node_id(node_id)
         if column:
             parent_map, child_map = build_dependency_maps(cll)
-            target_node = node_id
+            lineage_nodes, lineage_columns = build_lineage_vertices(cll)
             target_column = f"{node_id}_{column}"
-            upstream, downstream = find_column_dependencies(target_node, target_column, parent_map, child_map)
+            upstream, downstream = find_column_dependencies(target_column, parent_map, child_map)
             relevant_columns = {target_column}
             relevant_columns.update(upstream, downstream)
-            return filter_column_lineage(cll, relevant_columns)
+            nodes, columns = filter_lineage_vertices(lineage_nodes, lineage_columns, relevant_columns)
+            p_map, c_map = filter_dependency_maps(parent_map, child_map, relevant_columns)
+            return CllData(
+                nodes=cll.nodes,
+                lineage_nodes=nodes,
+                lineage_columns=columns,
+                parent_map=p_map,
+                child_map=c_map,
+            )
 
     def get_cll_by_node_id(self, node_id: str, base: Optional[bool] = False) -> CllData:
         cll_tracker = CLLPerformanceTracking()
@@ -943,7 +953,7 @@ class DbtAdapter(BaseAdapter):
         for node_id in cll_node_ids:
             if node_id not in node_manifest:
                 continue
-            nodes[node_id] = self.get_cll_cached(node_id, base=base).copy(deep=True)
+            nodes[node_id] = self.get_cll_cached(node_id, base=base)
 
         cll_tracker.end_column_lineage()
         cll_tracker.set_total_nodes(len(nodes))

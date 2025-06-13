@@ -1,7 +1,7 @@
 import uuid
 from datetime import datetime, timezone
 from enum import Enum
-from typing import Dict, List, Literal, Optional
+from typing import Dict, List, Literal, Optional, Set
 
 from pydantic import UUID4, BaseModel, Field
 
@@ -119,7 +119,9 @@ class CllColumnDep(BaseModel):
 
 
 class CllColumn(BaseModel):
-    name: Optional[str]
+    id: Optional[str] = None
+    table_id: Optional[str] = None
+    name: Optional[str] = None
 
     # data type
     type: Optional[str] = None
@@ -156,3 +158,7 @@ class CllNode(BaseModel):
 
 class CllData(BaseModel):
     nodes: Dict[str, CllNode] = Field(default_factory=dict)
+    lineage_nodes: Dict[str, CllNode] = Field(default_factory=set)
+    lineage_columns: Dict[str, CllColumn] = Field(default_factory=dict)
+    parent_map: Dict[str, Set[str]] = Field(default_factory=dict)
+    child_map: Dict[str, Set[str]] = Field(default_factory=dict)

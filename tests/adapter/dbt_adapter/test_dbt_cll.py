@@ -186,6 +186,21 @@ def test_model_without_catalog(dbt_test_helper):
     assert not result.nodes["model1"].columns
 
 
+def assert_lineage_model(cll_data: CllData, nodes):
+    assert len(nodes) == len(cll_data.lineage_nodes), "Model count mismatch"
+    for node in nodes:
+        assert node in cll_data.lineage_nodes, f"Model {node} not found in lineage"
+
+
+def assert_lineage_column(cll_data: CllData, columns):
+    assert len(columns) == len(cll_data.lineage_columns), "Column count mismatch"
+    for column in columns:
+        column_key = f"{column[0]}_{column[1]}"
+        assert column_key in cll_data.lineage_columns, f"Column {column} not found in lineage"
+        assert column[0] == cll_data.lineage_columns[column_key].table_id, f"Column {column[0]} node mismatch"
+        assert column[1] == cll_data.lineage_columns[column_key].name, f"Column {column[1]} name mismatch"
+
+
 def test_cll_column_filter(dbt_test_helper):
     dbt_test_helper.create_model(
         "model1", unique_id="model.model1", curr_sql="select 1 as c", curr_columns={"c": "int"}
@@ -215,25 +230,13 @@ def test_cll_column_filter(dbt_test_helper):
     adapter: DbtAdapter = dbt_test_helper.context.adapter
 
     result = adapter.get_cll("model.model2", "c")
-    assert_model(result, "model.model2", [])
-    assert_column(result, "model.model2", "c", "passthrough", [("model.model1", "c")])
-    assert_model(result, "model.model4", [])
-    assert result.nodes.get("model.model4").columns == {}
-
-    result = adapter.get_cll("model.model3", "y")
-    assert_model(result, "model.model3", [("model.model2", "y")])
-    assert result.nodes.get("model.model1").columns == {}
-    assert len(result.nodes.get("model.model2").columns) == 1
+    assert_lineage_model(result, [])
+    assert_lineage_column(result, [("model.model1", "c"), ("model.model2", "c"), ("model.model3", "c")])
 
     result = adapter.get_cll("model.model2", "y")
-    assert_model(result, "model.model3", [("model.model2", "y")])
-    assert result.nodes.get("model.model3").columns == {}
-    assert result.nodes.get("model.model1").columns == {}
-    assert len(result.nodes.get("model.model2").columns) == 1
+    assert_lineage_model(result, ["model.model3"])
+    assert_lineage_column(result, [("model.model2", "y"), ("model.model4", "y")])
 
     result = adapter.get_cll("model.model3", "c")
-    assert_model(result, "model.model3", [("model.model2", "y")])
-    assert_column(result, "model.model3", "c", "passthrough", [("model.model2", "c")])
-    assert_model(result, "model.model2", [])
-    assert_column(result, "model.model2", "c", "passthrough", [("model.model1", "c")])
-    assert_column(result, "model.model1", "c", "source", [])
+    assert_lineage_model(result, [])
+    assert_lineage_column(result, [("model.model1", "c"), ("model.model2", "c"), ("model.model3", "c")])
