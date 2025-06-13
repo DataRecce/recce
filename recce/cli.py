@@ -443,25 +443,19 @@ def server(host, port, lifetime, state_file=None, **kwargs):
         # Show warning message
         console.rule("Notice", style="orange3")
         console.print(
-            "Recce is ready to launch in Single Environment Mode with limited functionality."
-            "\n\n"
-            "Single Environment Mode allows you to explore your dbt project but won't show "
-            "data comparisons between environments. For full functionality, configure a "
-            "base environment."
-            "\n\n"
-            "To set up full environment comparison:"
-            "\n- Run `recce debug` for setup assistance"
-            "\n- Visit https://docs.datarecce.io/configure-diff/ for configuration guide"
+            "Recce will launch with limited features (no environment comparison).\n"
             "\n"
+            "For full functionality, set up a base environment first.\n"
+            "Setup help: 'recce debug' or https://docs.datarecce.io/configure-diff/\n"
         )
 
         single_env_flag = kwargs.get("single_env", False)
         if not single_env_flag:
-            lanch_in_single_env = Confirm.ask("Launch in [bold]Single Environment Mode[/bold]?")
+            lanch_in_single_env = Confirm.ask("Continue with limited mode?")
             if not lanch_in_single_env:
                 exit(0)
 
-        console.rule("Recce Server : Single Environment Mode")
+        console.rule("Recce Server : Limited Features")
     else:
         console.rule("Recce Server")
 
