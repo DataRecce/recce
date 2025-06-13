@@ -277,8 +277,8 @@ def log_performance(feature_name: str, metrics: Dict):
     _collector.schedule_flush()
 
 
-def log_connected_to_cloud(user_info: Dict):
-    log_event({**user_info, "action": "connected_to_cloud"}, "Connect OSS to Cloud")
+def log_connected_to_cloud():
+    log_event({"action": "connected_to_cloud"}, "Connect OSS to Cloud")
     _collector.schedule_flush()
 
 
