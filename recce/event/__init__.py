@@ -277,6 +277,11 @@ def log_performance(feature_name: str, metrics: Dict):
     _collector.schedule_flush()
 
 
+def log_connected_to_cloud(user_info: Dict):
+    log_event({**user_info, "action": "connected_to_cloud"}, "Connect OSS to Cloud")
+    _collector.schedule_flush()
+
+
 def capture_exception(e):
     user_id = load_user_profile().get("user_id")
     if is_ci_env() is True:
