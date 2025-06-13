@@ -7,7 +7,6 @@ from recce.exceptions import RecceConfigException
 from recce.util.recce_cloud import (
     RECCE_CLOUD_BASE_URL,
     RecceCloud,
-    RecceCloudException,
     get_recce_cloud_onboarding_state,
     set_recce_cloud_onboarding_state,
 )
@@ -38,13 +37,7 @@ def prepare_api_token(
         valid = RecceCloud(new_api_token).verify_token()
         if not valid:
             raise RecceConfigException("Invalid Recce Cloud API token")
-        try:
-            user_info = RecceCloud(new_api_token).get_user_info()
-            if user_info:
-                event.log_connected_to_cloud(user_info)
-        except RecceCloudException:
-            # Do nothing
-            pass
+        event.log_connected_to_cloud()
         api_token = new_api_token
         update_recce_api_token(api_token)
         console.print(
@@ -58,13 +51,7 @@ def prepare_api_token(
             console.print("[[yellow]Warning[/yellow]] Invalid Recce Cloud API token. Skipping the share link.")
             api_token = None
         if valid:
-            try:
-                user_info = RecceCloud(api_token).get_user_info()
-                if user_info:
-                    event.log_connected_to_cloud(user_info)
-            except RecceCloudException:
-                # Do nothing
-                pass
+            event.log_connected_to_cloud()
     else:
         # No api_token provided
         if interaction is True:
