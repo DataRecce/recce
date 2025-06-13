@@ -4,6 +4,13 @@ on:
     - cron: '0 18 * * 0,1,2,3,4' # run at 2 AM (UTC + 8) every working day
   workflow_dispatch:
     inputs:
+      release_type:
+        description: 'Select the type of night build'
+        type: choice
+        required: true
+        options:
+          - Alpha Release
+          - Release
       alpha_version:
         description: 'Alpha version serial number'
         required: true
@@ -49,17 +56,36 @@ jobs:
         id: patch_version
         run: |
           # Patch version
-          if [ "$ALPHA_VERSION" != "" ]; then
+          if [ "$RELEASE_TYPE" == "Alpha Release" && "$ALPHA_VERSION" != "" ]; then
             echo "Manually alpha version serial number: $ALPHA_VERSION"
             sed -i.bak "s/\.dev.*\$/\.$(date '+%Y%m%d')a$ALPHA_VERSION/" recce/VERSION
           else
-            echo "Nightly build version number: $(date '+%Y%m%d')"
-            sed -i.bak "s/\.dev.*\$/\.$(date '+%Y%m%d')/" recce/VERSION
+            latest_version=$(curl -s https://pypi.org/pypi/recce-nightly/json  | jq -r .info.version)
+            new_version=$(cat recce/VERSION | sed "s/\.dev.*\$/\.$(date '+%Y%m%d')/")
+
+            # Extract date-only portion of both
+            latest_date=$(echo "$latest_version" | sed -E 's/^.*\.([0-9]{8}).*/\1/')
+            new_date=$(date '+%Y%m%d')
+
+            if [[ "$latest_date" < "$new_date" ]]; then
+              # New date is newer, no post needed
+              final_version="$new_version"
+            else
+              # Same date, check if latest already has postN
+              if [[ "$latest_version" =~ -post([0-9]+)$ ]]; then
+                post_num=$(( ${BASH_REMATCH[1]} + 1 ))
+              else
+                post_num=1
+              fi
+              final_version="${new_version}-post${post_num}"
+            fi
+            echo "$final_version" > recce/VERSION
           fi
           echo "Nightly version: $(cat recce/VERSION)"
           echo "nightly_version=$(cat recce/VERSION)" >> $GITHUB_OUTPUT
         env:
           ALPHA_VERSION: ${{ inputs.alpha_version || '' }}
+          RELEASE_TYPE: ${{ inputs.release_type || 'Release' }}
 
       - name: Patch Event API Key
         run: |
@@ -84,7 +110,6 @@ jobs:
 
           # change package name to recce-nightly
           sed -i.bak 's/name="recce"/name="recce-nightly"/' setup.py
-          
 
           # build and upload to pypi
           pip install build twine
