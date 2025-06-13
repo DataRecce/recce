@@ -56,7 +56,7 @@ jobs:
         id: patch_version
         run: |
           # Patch version
-          if [ "$RELEASE_TYPE" == "Alpha Release" && "$ALPHA_VERSION" != "" ]; then
+          if [[ "$RELEASE_TYPE" == "Alpha Release" && "$ALPHA_VERSION" != "" ]]; then
             echo "Manually alpha version serial number: $ALPHA_VERSION"
             sed -i.bak "s/\.dev.*\$/\.$(date '+%Y%m%d')a$ALPHA_VERSION/" recce/VERSION
           else
