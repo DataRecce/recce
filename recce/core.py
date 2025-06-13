@@ -286,7 +286,7 @@ class RecceContext:
             try:
                 DbtAdapter.load(**kwargs)
             except FileNotFoundError as e:
-                return False, f"Cannot load the manifest: '{e.filename}'"
+                return False, f"Cannot load the manifest: '{e.filename}'. Type 'recce debug'."
 
         return True, None
 

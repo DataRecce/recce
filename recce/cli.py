@@ -199,62 +199,40 @@ def debug(**kwargs):
 
     console = Console()
 
-    target_path = Path(kwargs.get("target_path", "target"))
-    target_base_path = Path(kwargs.get("target_base_path", "target-base"))
+    def check_artifacts(env_name, target_path):
+        console.rule(f"{env_name} Environment", style="orange3")
+        if not target_path.is_dir():
+            console.print(f"[[red]MISS[/red]] Directory does not exist: {target_path}")
+            return [False, False, False]
 
-    curr_dir_is_ready = True
-    curr_manifest_is_ready = True
-    curr_catalog_is_ready = True
-    base_dir_is_ready = True
-    base_manifest_is_ready = True
-    base_catalog_is_ready = True
-    conn_is_ready = True
-
-    console.rule("Development Environment", style="orange3")
-    if not target_path.is_dir():
-        console.print(f"[[red]MISS[/red]] Directory does not exist: {target_path}")
-        curr_dir_is_ready = False
-    else:
         console.print(f"[[green]OK[/green]] Directory exists: {target_path}")
 
         manifest_path = target_path / "manifest.json"
-        if not manifest_path.is_file():
-            console.print(f"[[red]MISS[/red]] Manifest JSON file does not exist: {manifest_path}")
-            curr_manifest_is_ready = False
-        else:
+        manifest_is_ready = manifest_path.is_file()
+        if manifest_is_ready:
             console.print(f"[[green]OK[/green]] Manifest JSON file exists : {manifest_path}")
+        else:
+            console.print(f"[[red]MISS[/red]] Manifest JSON file does not exist: {manifest_path}")
 
         catalog_path = target_path / "catalog.json"
-        if not catalog_path.is_file():
-            console.print(f"[[red]MISS[/red]] Catalog JSON file does not exist: {catalog_path}")
-            curr_catalog_is_ready = False
-        else:
+        catalog_is_ready = catalog_path.is_file()
+        if catalog_is_ready:
             console.print(f"[[green]OK[/green]] Catalog JSON file exists: {catalog_path}")
-
-    console.rule("Base Environment", style="orange3")
-    if not target_base_path.is_dir():
-        console.print(f"[[red]MISS[/red]] Directory does not exist: {target_base_path}")
-        base_dir_is_ready = False
-    else:
-        console.print(f"[[green]OK[/green]] Directory exists: {target_base_path}")
-
-        manifest_path = target_base_path / "manifest.json"
-        if not manifest_path.is_file():
-            console.print(f"[[red]MISS[/red]] Manifest JSON file does not exist: {manifest_path}")
-            base_manifest_is_ready = False
         else:
-            console.print(f"[[green]OK[/green]] Manifest JSON file exists : {manifest_path}")
-
-        catalog_path = target_base_path / "catalog.json"
-        if not catalog_path.is_file():
             console.print(f"[[red]MISS[/red]] Catalog JSON file does not exist: {catalog_path}")
-            base_catalog_is_ready = False
-        else:
-            console.print(f"[[green]OK[/green]] Catalog JSON file exists: {catalog_path}")
+
+        return [True, manifest_is_ready, catalog_is_ready]
+
+    target_path = Path(kwargs.get("target_path", "target"))
+    target_base_path = Path(kwargs.get("target_base_path", "target-base"))
+
+    curr_is_ready = check_artifacts("development", target_path)
+    base_is_ready = check_artifacts("Base", target_base_path)
 
     console.rule("Warehouse Connection", style="orange3")
+    conn_is_ready = True
     try:
-        context_kwargs = {**kwargs, "target_base_path": kwargs.get("target_base_path", "target-base")}
+        context_kwargs = {**kwargs, "target_base_path": kwargs.get("target_path")}
         ctx = load_context(**context_kwargs)
         dbt_adapter: DbtAdapter = ctx.adapter
         sql = dbt_adapter.generate_sql("select 1", False)
@@ -265,49 +243,41 @@ def debug(**kwargs):
         console.print("[[red]FAIL[/red]] Connection test")
 
     console.rule("Result", style="orange3")
-    if (
-        curr_manifest_is_ready
-        and curr_catalog_is_ready
-        and base_manifest_is_ready
-        and base_catalog_is_ready
-        and conn_is_ready
-    ):
-        console.print("[[green]OK[/green]] You're ready for [bold]Recce[/bold]! Launch it with `recce server`")
-    elif curr_manifest_is_ready and curr_catalog_is_ready and conn_is_ready:
-        console.print(
-            "[[orange3]OK[/orange3]] You're ready for the [bold]single environment mode[/bold]! Launch Recce with `recce server`"
-        )
+    if all(curr_is_ready) and all(base_is_ready) and conn_is_ready:
+        console.print("[[green]OK[/green]] Ready to launch! Type 'recce server'.")
+    elif all(curr_is_ready) and conn_is_ready:
+        console.print("[[orange3]OK[/orange3]] Ready to launch with [i]limited features[/i]. Type 'recce server'.")
 
-    if not curr_dir_is_ready:
+    if not curr_is_ready[0]:
         console.print(
-            "[[orange3]TIP[/orange3]] Run dbt or overwrite the default directory of the development environment with `--target-path`"
+            "[[orange3]TIP[/orange3]] Run dbt or overwrite the default directory of the development environment with '--target-path'."
         )
     else:
-        if not curr_manifest_is_ready:
+        if not curr_is_ready[1]:
             console.print(
-                "[[orange3]TIP[/orange3]] `dbt run` to generate the manifest JSON file for the development environment"
+                "[[orange3]TIP[/orange3]] 'dbt run' to generate the manifest JSON file for the development environment."
             )
-        if not curr_catalog_is_ready:
+        if not curr_is_ready[2]:
             console.print(
-                "[[orange3]TIP[/orange3]] `dbt docs generate` to generate the catalog JSON file for the development environment"
+                "[[orange3]TIP[/orange3]] 'dbt docs generate' to generate the catalog JSON file for the development environment."
             )
 
-    if not base_dir_is_ready:
+    if not base_is_ready[0]:
         console.print(
-            "[[orange3]TIP[/orange3]] Run dbt with `--target-path target-base` or overwrite the default directory of the base environment with `--target-base-path`"
+            "[[orange3]TIP[/orange3]] Run dbt with '--target-path target-base' or overwrite the default directory of the base environment with '--target-base-path'."
         )
     else:
-        if not base_manifest_is_ready:
+        if not base_is_ready[1]:
             console.print(
-                "[[orange3]TIP[/orange3]] `dbt run --target-path target-base` to generate the manifest JSON file for the base environment"
+                "[[orange3]TIP[/orange3]] 'dbt run --target-path target-base' to generate the manifest JSON file for the base environment."
             )
-        if not base_catalog_is_ready:
+        if not base_is_ready[2]:
             console.print(
-                "[[orange3]TIP[/orange3]] `dbt docs generate --target-path target-base` to generate the catalog JSON file for the base environment"
+                "[[orange3]TIP[/orange3]] 'dbt docs generate --target-path target-base' to generate the catalog JSON file for the base environment."
             )
 
     if not conn_is_ready:
-        console.print("[[orange3]TIP[/orange3]] Run `dbt debug` to check the connection")
+        console.print("[[orange3]TIP[/orange3]] Run 'dbt debug' to check the connection.")
 
 
 @cli.command(hidden=True, cls=TrackCommand)
@@ -446,34 +416,12 @@ def server(host, port, lifetime, state_file=None, **kwargs):
     auth_options["api_token"] = api_token
 
     # Check Single Environment Onboarding Mode if the review mode is False
-    if not os.path.isdir(kwargs.get("target_base_path")) and is_review is False:
+    if not Path(kwargs.get("target_base_path", "target-base")).is_dir() and not is_review:
         # Mark as single env onboarding mode if user provides the target-path only
         flag["single_env_onboarding"] = True
         flag["show_relaunch_hint"] = True
-        target_path = kwargs.get("target_path")
         # Use the target path as the base path
-        kwargs["target_base_path"] = target_path
-
-        # Show warning message
-        console.rule("Notice", style="orange3")
-        console.print(
-            "Recce is ready to launch in Single Environment Mode with limited functionality."
-            "\n\n"
-            "Single Environment Mode allows you to explore your dbt project but won't show "
-            "data comparisons between environments. For full functionality, configure a "
-            "base environment."
-            "\n\n"
-            "To set up full environment comparison:"
-            "\n- Run `recce debug` for setup assistance"
-            "\n- Visit https://docs.datarecce.io/configure-diff/ for configuration guide"
-            "\n"
-        )
-
-        single_env_flag = kwargs.get("single_env", False)
-        if not single_env_flag:
-            lanch_in_single_env = Confirm.ask("Launch in [bold]Single Environment Mode[/bold]?")
-            if not lanch_in_single_env:
-                exit(0)
+        kwargs["target_base_path"] = kwargs.get("target_path")
 
     state_loader = create_state_loader(is_review, is_cloud, state_file, cloud_options)
 
@@ -483,15 +431,33 @@ def server(host, port, lifetime, state_file=None, **kwargs):
         console.print(f"{hint}")
         exit(1)
 
-    if state_loader.review_mode is True:
-        console.rule("Recce Server : Review Mode")
-    else:
-        console.rule("Recce Server")
-
     result, message = RecceContext.verify_required_artifacts(**kwargs)
     if not result:
+        console.rule("Notice", style="orange3")
         console.print(f"[[red]Error[/red]] {message}")
         exit(1)
+
+    if state_loader.review_mode is True:
+        console.rule("Recce Server : Review Mode")
+    elif flag["single_env_onboarding"]:
+        # Show warning message
+        console.rule("Notice", style="orange3")
+        console.print(
+            "Recce will launch with limited features (no environment comparison).\n"
+            "\n"
+            "For full functionality, set up a base environment first.\n"
+            "Setup help: 'recce debug' or https://docs.datarecce.io/configure-diff/\n"
+        )
+
+        single_env_flag = kwargs.get("single_env", False)
+        if not single_env_flag:
+            lanch_in_single_env = Confirm.ask("Continue with limited mode?")
+            if not lanch_in_single_env:
+                exit(0)
+
+        console.rule("Recce Server : Limited Features")
+    else:
+        console.rule("Recce Server")
 
     state = AppState(
         command="server",
