@@ -1,6 +1,6 @@
 from typing import Dict, Set, Tuple
 
-from recce.models.types import CllColumnDep, CllData, List
+from recce.models.types import CllColumnDep, CllData
 
 
 def find_upstream(node, parent_map):
@@ -81,22 +81,62 @@ def build_dependency_maps(cll_data: CllData) -> Tuple[Dict[str, Set], Dict[str, 
     return parent_map, child_map
 
 
+def build_lineage_vertices(cll_data: CllData) -> Tuple[Set[str], Dict[str, CllColumnDep]]:
+    lineage_nodes = set()
+    lineage_columns = {}
+
+    for cll_node_id, node in cll_data.nodes.items():
+        lineage_nodes.add(cll_node_id)
+        m2c = node.depends_on.columns
+        c2c_map = node.columns
+        for c in m2c:
+            col_id = f"{c.node}_{c.column}"
+            lineage_columns[col_id] = c
+
+        for name, cll_column in c2c_map.items():
+            column_key = f"{cll_node_id}_{name}"
+            lineage_columns[column_key] = CllColumnDep(node=cll_node_id, column=name)
+            for depend in cll_column.depends_on:
+                parent_key = f"{depend.node}_{depend.column}"
+                lineage_columns[parent_key] = CllColumnDep(node=depend.node, column=depend.column)
+
+    return lineage_nodes, lineage_columns
+
+
 def find_column_dependencies(node_column_id: str, parent_map: Dict, child_map: Dict) -> Tuple[Set, Set]:
     upstream_cols = find_upstream(node_column_id, parent_map)
     downstream_cols = find_downstream(node_column_id, child_map)
     return upstream_cols, downstream_cols
 
 
-def filter_column_lineage(cll_data: CllData, relevant_columns: Set) -> Tuple[List[str], Dict[str, CllColumnDep]]:
-    nodes = []
+def filter_lineage_vertices(
+    lineage_nodes: Set, lineage_columns: Dict, relevant_columns: Set
+) -> Tuple[Set[str], Dict[str, CllColumnDep]]:
+    nodes = set()
     columns = {}
 
-    for node_id in cll_data.lineage_nodes:
+    for node_id in lineage_nodes:
         if node_id in relevant_columns:
-            nodes.append(node_id)
+            nodes.add(node_id)
 
-    for col_id, column_obj in cll_data.lineage_columns.items():
+    for col_id, column_obj in lineage_columns.items():
         if col_id in relevant_columns:
             columns[col_id] = column_obj
 
     return nodes, columns
+
+
+def filter_dependency_maps(
+    parent_map: Dict, child_map: Dict, relevant_columns: Set
+) -> Tuple[Dict[str, Set], Dict[str, Set]]:
+    p_map = {}
+    c_map = {}
+    for node_id, parents in parent_map.items():
+        if node_id in relevant_columns:
+            p_map[node_id] = {p for p in parents if p in relevant_columns}
+
+    for node_id, children in child_map.items():
+        if node_id in relevant_columns:
+            c_map[node_id] = {c for c in children if c in relevant_columns}
+
+    return p_map, c_map

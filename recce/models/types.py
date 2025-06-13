@@ -156,7 +156,7 @@ class CllNode(BaseModel):
 
 class CllData(BaseModel):
     nodes: Dict[str, CllNode] = Field(default_factory=dict)
-    lineage_nodes: Optional[Set[str]] = Field(default_factory=list)
-    lineage_columns: Optional[Dict[str, CllColumnDep]] = Field(default_factory=dict)
-    parent_map: Optional[Dict[str, Set[str]]] = Field(default_factory=dict)
-    child_map: Optional[Dict[str, Set[str]]] = Field(default_factory=dict)
+    lineage_nodes: Set[str] = Field(default_factory=set)
+    lineage_columns: Dict[str, CllColumnDep] = Field(default_factory=dict)
+    parent_map: Dict[str, Set[str]] = Field(default_factory=dict)
+    child_map: Dict[str, Set[str]] = Field(default_factory=dict)

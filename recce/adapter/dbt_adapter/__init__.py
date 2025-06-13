@@ -26,7 +26,9 @@ from recce.exceptions import RecceException
 from recce.util.cll import CllColumnDep, CLLPerformanceTracking, cll
 from recce.util.lineage import (
     build_dependency_maps,
-    filter_column_lineage,
+    build_lineage_vertices,
+    filter_dependency_maps,
+    filter_lineage_vertices,
     find_column_dependencies,
     find_downstream,
     find_upstream,
@@ -919,17 +921,19 @@ class DbtAdapter(BaseAdapter):
         cll = self.get_cll_by_node_id(node_id)
         if column:
             parent_map, child_map = build_dependency_maps(cll)
+            lineage_nodes, lineage_columns = build_lineage_vertices(cll)
             target_column = f"{node_id}_{column}"
             upstream, downstream = find_column_dependencies(target_column, parent_map, child_map)
             relevant_columns = {target_column}
             relevant_columns.update(upstream, downstream)
-            nodes, columns = filter_column_lineage(cll, relevant_columns)
+            nodes, columns = filter_lineage_vertices(lineage_nodes, lineage_columns, relevant_columns)
+            p_map, c_map = filter_dependency_maps(parent_map, child_map, relevant_columns)
             return CllData(
                 nodes=cll.nodes,
                 lineage_nodes=nodes,
                 lineage_columns=columns,
-                parent_map=parent_map,
-                child_map=child_map,
+                parent_map=p_map,
+                child_map=c_map,
             )
 
     def get_cll_by_node_id(self, node_id: str, base: Optional[bool] = False) -> CllData:
@@ -946,38 +950,17 @@ class DbtAdapter(BaseAdapter):
 
         node_manifest = self.get_cll_nodes_from_metadata(base=base)
         nodes = {}
-
-        lineage_nodes = set()
-        lineage_columns = {}
         for node_id in cll_node_ids:
             if node_id not in node_manifest:
                 continue
-            lineage_nodes.add(node_id)
-            node = self.get_cll_cached(node_id, base=base)
-            nodes[node_id] = node
-            m2c = node.depends_on.columns
-            c2c_map = node.columns
-            for c in m2c:
-                col_id = f"{c.node}_{c.column}"
-                lineage_columns[col_id] = c
-
-            for name, column in c2c_map.items():
-                column_key = f"{node_id}_{name}"
-                lineage_columns[column_key] = CllColumnDep(node=node_id, column=name)
-                for depend in column.depends_on:
-                    parent_key = f"{depend.node}_{depend.column}"
-                    lineage_columns[parent_key] = CllColumnDep(node=depend.node, column=depend.column)
+            nodes[node_id] = self.get_cll_cached(node_id, base=base)
 
         cll_tracker.end_column_lineage()
         cll_tracker.set_total_nodes(len(nodes))
         log_performance("column level lineage", cll_tracker.to_dict())
         cll_tracker.reset()
 
-        return CllData(
-            nodes=nodes,
-            lineage_nodes=lineage_nodes,
-            lineage_columns=lineage_columns,
-        )
+        return CllData(nodes=nodes)
 
     @lru_cache(maxsize=128)
     def get_cll_cached(self, node_id: str, base: Optional[bool] = False) -> CllNode:
