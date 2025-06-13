@@ -1,11 +1,13 @@
 import click
 from rich.console import Console
 
+from recce import event
 from recce.event import get_recce_api_token, update_recce_api_token
 from recce.exceptions import RecceConfigException
 from recce.util.recce_cloud import (
     RECCE_CLOUD_BASE_URL,
     RecceCloud,
+    RecceCloudException,
     get_recce_cloud_onboarding_state,
     set_recce_cloud_onboarding_state,
 )
@@ -36,29 +38,50 @@ def prepare_api_token(
         valid = RecceCloud(new_api_token).verify_token()
         if not valid:
             raise RecceConfigException("Invalid Recce Cloud API token")
+        try:
+            user_info = RecceCloud(new_api_token).get_user_info()
+            if user_info:
+                event.log_connected_to_cloud(user_info)
+        except RecceCloudException:
+            # Do nothing
+            pass
         api_token = new_api_token
         update_recce_api_token(api_token)
-        console.print("[[green]Success[/green]] Update the user profile for Recce Cloud API Token.")
+        console.print(
+            "[[green]Success[/green]] User profile has been updated to include the Recce Cloud API Token. "
+            "You no longer need to append --api-token to the recce command"
+        )
     elif api_token:
         # Verify the API token from the user profile
         valid = RecceCloud(api_token).verify_token()
         if not valid:
             console.print("[[yellow]Warning[/yellow]] Invalid Recce Cloud API token. Skipping the share link.")
             api_token = None
+        if valid:
+            try:
+                user_info = RecceCloud(api_token).get_user_info()
+                if user_info:
+                    event.log_connected_to_cloud(user_info)
+            except RecceCloudException:
+                # Do nothing
+                pass
     else:
         # No api_token provided
         if interaction is True:
             console.print(
-                "An API token is required to this. This can be obtained in your user account settings.\n"
+                "An API token is required for this feature. This can be obtained in your user account settings.\n"
                 f"{RECCE_CLOUD_BASE_URL}/settings#tokens\n"
-                "Your API token will be added to '~/.recce/profile.yml' for more convenient sharing."
+                "Your API token can be added to '~/.recce/profile.yml' for more convenient sharing."
             )
             api_token = click.prompt("Your Recce API token", type=str, hide_input=True, show_default=False)
             valid = RecceCloud(api_token).verify_token()
             if not valid:
                 raise RecceConfigException("Invalid Recce Cloud API token")
             update_recce_api_token(api_token)
-            console.print("[[green]Success[/green]] Update the user profile for Recce Cloud API Token.")
+            console.print(
+                "[[green]Success[/green]] User profile has been updated to include the Recce Cloud API Token. "
+                "You no longer need to append --api-token to the recce command"
+            )
 
     if api_token:
         cloud_onboarding_state = get_recce_cloud_onboarding_state(api_token)
