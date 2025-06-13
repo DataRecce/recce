@@ -189,7 +189,7 @@ def test_model_without_catalog(dbt_test_helper):
 def assert_lineage_model(cll_data: CllData, nodes):
     assert len(nodes) == len(cll_data.lineage_nodes), "Model count mismatch"
     for node in nodes:
-        assert node in cll_data.nodes, f"Model {node} not found in lineage"
+        assert node in cll_data.lineage_nodes, f"Model {node} not found in lineage"
 
 
 def assert_lineage_column(cll_data: CllData, columns):
@@ -197,8 +197,8 @@ def assert_lineage_column(cll_data: CllData, columns):
     for column in columns:
         column_key = f"{column[0]}_{column[1]}"
         assert column_key in cll_data.lineage_columns, f"Column {column} not found in lineage"
-        assert column[0] == cll_data.lineage_columns[column_key].node, f"Column {column} node mismatch"
-        assert column[1] == cll_data.lineage_columns[column_key].column, f"Column {column} name mismatch"
+        assert column[0] == cll_data.lineage_columns[column_key].table_id, f"Column {column[0]} node mismatch"
+        assert column[1] == cll_data.lineage_columns[column_key].name, f"Column {column[1]} name mismatch"
 
 
 def test_cll_column_filter(dbt_test_helper):

@@ -1,6 +1,6 @@
 from typing import Dict, Set, Tuple
 
-from recce.models.types import CllColumnDep, CllData
+from recce.models.types import CllColumn, CllData, CllNode
 
 
 def find_upstream(node, parent_map):
@@ -81,24 +81,18 @@ def build_dependency_maps(cll_data: CllData) -> Tuple[Dict[str, Set], Dict[str, 
     return parent_map, child_map
 
 
-def build_lineage_vertices(cll_data: CllData) -> Tuple[Set[str], Dict[str, CllColumnDep]]:
-    lineage_nodes = set()
+def build_lineage_vertices(cll_data: CllData) -> Tuple[Dict[str, CllNode], Dict[str, CllColumn]]:
+    lineage_nodes = {}
     lineage_columns = {}
 
     for cll_node_id, node in cll_data.nodes.items():
-        lineage_nodes.add(cll_node_id)
-        m2c = node.depends_on.columns
-        c2c_map = node.columns
-        for c in m2c:
-            col_id = f"{c.node}_{c.column}"
-            lineage_columns[col_id] = c
+        lineage_nodes[cll_node_id] = node.copy()
 
-        for name, cll_column in c2c_map.items():
+        for name, cll_column in node.columns.items():
             column_key = f"{cll_node_id}_{name}"
-            lineage_columns[column_key] = CllColumnDep(node=cll_node_id, column=name)
-            for depend in cll_column.depends_on:
-                parent_key = f"{depend.node}_{depend.column}"
-                lineage_columns[parent_key] = CllColumnDep(node=depend.node, column=depend.column)
+            lineage_columns[column_key] = cll_column.copy()
+            lineage_columns[column_key].id = column_key
+            lineage_columns[column_key].table_id = cll_node_id
 
     return lineage_nodes, lineage_columns
 
@@ -110,18 +104,18 @@ def find_column_dependencies(node_column_id: str, parent_map: Dict, child_map: D
 
 
 def filter_lineage_vertices(
-    lineage_nodes: Set, lineage_columns: Dict, relevant_columns: Set
-) -> Tuple[Set[str], Dict[str, CllColumnDep]]:
-    nodes = set()
+    lineage_nodes: Dict[str, CllNode], lineage_columns: Dict[str, CllColumn], relevant_columns: Set[str]
+) -> Tuple[Dict[str, CllNode], Dict[str, CllColumn]]:
+    nodes = {}
     columns = {}
 
-    for node_id in lineage_nodes:
+    for node_id, node in lineage_nodes.items():
         if node_id in relevant_columns:
-            nodes.add(node_id)
+            nodes[node_id] = node
 
-    for col_id, column_obj in lineage_columns.items():
+    for col_id, column in lineage_columns.items():
         if col_id in relevant_columns:
-            columns[col_id] = column_obj
+            columns[col_id] = column
 
     return nodes, columns
 
