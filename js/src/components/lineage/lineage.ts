@@ -345,7 +345,7 @@ export function toReactFlow(
         const column = cll?.current?.lineage_columns[columnKey];
         const parentMap = cll?.current?.parent_map[columnKey] ?? [];
 
-        if (column == null || parentMap == null) {
+        if (column == null) {
           continue;
         }
 
