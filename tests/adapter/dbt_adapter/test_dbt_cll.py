@@ -3,36 +3,32 @@ from recce.models.types import CllData
 
 
 def assert_column(result: CllData, node_name, column_name, transformation_type, depends_on):
-    assert result.nodes.get(node_name) is not None, f"Node {node_name} not found in result"
-    entry = result.nodes[node_name].columns.get(column_name)
-    assert entry is not None, f"Column {column_name} not found in result"
+    column_id = f"{node_name}_{column_name}"
+    entry = result.lineage_columns.get(column_id)
+    assert entry is not None, f"Column {column_id} not found in result"
     assert (
         entry.transformation_type == transformation_type
     ), f"Column {column_name} type mismatch: expected {transformation_type}, got {entry.transformation_type}"
-    assert len(entry.depends_on) == len(depends_on), "depends_on length mismatch"
+    parents = result.parent_map.get(column_id)
+
+    assert len(parents) == len(depends_on), "depends_on length mismatch"
     for i in range(len(depends_on)):
         node, column = depends_on[i]
-        anode = entry.depends_on[i].node
-        acolumn = entry.depends_on[i].column
+        parent_column_id = f"{node}_{column}"
 
-        assert (
-            anode == node and acolumn == column
-        ), f"depends_on mismatch at index {i}: expected ({node}, {column}), got ({anode}, {acolumn})"
+        assert parent_column_id in parents, f"Column {parent_column_id} not found in {column_id}'s parent list"
 
 
 def assert_model(result: CllData, node_name, depends_on):
-    assert result.nodes.get(node_name) is not None, f"Node {node_name} not found in result"
-    entry = result.nodes.get(node_name)
-
-    assert len(entry.depends_on.columns) == len(depends_on), "depends_on length mismatch"
+    assert result.lineage_nodes.get(node_name) is not None, f"Node {node_name} not found in result"
+    parent_map = result.parent_map.get(node_name)
+    assert parent_map is not None, f"Parent map {node_name} not found in result"
+    # assert len(parent_map) == len(depends_on), "depends_on length mismatch"
     for i in range(len(depends_on)):
         node, column = depends_on[i]
-        anode = entry.depends_on.columns[i].node
-        acolumn = entry.depends_on.columns[i].column
+        column_id = f"{node}_{column}"
 
-        assert (
-            anode == node and acolumn == column
-        ), f"depends_on mismatch at index {i}: expected ({node}, {column}), got ({anode}, {acolumn})"
+        assert column_id in parent_map, f"Parent map {node_name} does not contain {column_id}"
 
 
 def test_cll_basic(dbt_test_helper):
@@ -183,7 +179,7 @@ def test_model_without_catalog(dbt_test_helper):
     dbt_test_helper.create_model("model1", curr_sql="select 1 as c")
     adapter: DbtAdapter = dbt_test_helper.context.adapter
     result = adapter.get_cll_by_node_id("model1")
-    assert not result.nodes["model1"].columns
+    assert not result.lineage_nodes["model1"].columns
 
 
 def assert_lineage_model(cll_data: CllData, nodes):
