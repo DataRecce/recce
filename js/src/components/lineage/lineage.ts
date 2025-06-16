@@ -324,7 +324,7 @@ export function toReactFlow(
     const nodeColumnSet = new Set<string>();
     let columnIndex = 0;
     if (columnLevelLineage) {
-      const parentMap = cll?.current?.parent_map[node.id] ?? [];
+      const parentMap = cll?.current?.parent_map[node.id] ?? new Set<string>();
 
       for (const parentKey of parentMap) {
         const source = parentKey;
@@ -343,7 +343,7 @@ export function toReactFlow(
       for (const columnName of Object.keys(node.data.current?.columns ?? {})) {
         const columnKey = `${node.id}_${columnName}`;
         const column = cll?.current?.columns[columnKey];
-        const parentMap = cll?.current?.parent_map[columnKey] ?? [];
+        const parentMap = cll?.current?.parent_map[columnKey] ?? new Set<string>();
 
         if (column == null) {
           continue;
@@ -370,7 +370,7 @@ export function toReactFlow(
           sourcePosition: Position.Right,
         });
 
-        for (const parentColumn of parentMap ?? []) {
+        for (const parentColumn of parentMap) {
           const source = parentColumn;
           const target = columnKey;
 

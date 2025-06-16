@@ -1086,22 +1086,22 @@ class DbtAdapter(BaseAdapter):
         cll_data.columns = {f"{node.id}_{col.name}": col for col in node.columns.values()}
 
         # parent map for node
-        depends_on = list(parent_list)
+        depends_on = set(parent_list)
         for d in m2c:
             parent_key = f"{table_id_map[d.node.lower()]}_{d.column}"
-            depends_on.append(parent_key)
+            depends_on.add(parent_key)
         cll_data.parent_map[node_id] = depends_on
 
         # parent map for columns
         for name, column in node.columns.items():
-            depends_on = []
+            depends_on = set()
             column_id = f"{node.id}_{name}"
             if name in c2c_map:
                 for d in c2c_map[name].depends_on:
                     parent_key = f"{table_id_map[d.node.lower()]}_{d.column}"
-                    depends_on.append(parent_key)
+                    depends_on.add(parent_key)
                 column.transformation_type = c2c_map[name].transformation_type
-            cll_data.parent_map[column_id] = depends_on
+            cll_data.parent_map[column_id] = set(depends_on)
         return cll_data
 
     def get_cll_node(self, node_id: str, base: Optional[bool] = False) -> Tuple[CllNode, list[str]]:
