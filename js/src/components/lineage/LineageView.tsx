@@ -2,7 +2,6 @@ import {
   LineageGraphNode,
   NodeColumnSetMap,
   layout,
-  selectCllLineage,
   selectDownstream,
   selectUpstream,
   toReactFlow,
@@ -592,11 +591,13 @@ export function PrivateLineageView(
       breakingChangeEnabled: newViewOptions.breaking_change_enabled,
     });
     if (newViewOptions.column_level_lineage != undefined && cll != undefined) {
-      const cllNodeIds = selectCllLineage(
-        cll.current.nodes,
-        newViewOptions.column_level_lineage.node,
-        newViewOptions.column_level_lineage.column,
-      );
+      const cllNodeIds = new Set<string>();
+      Object.keys(cll.current.lineage_nodes).forEach((key) => {
+        cllNodeIds.add(key);
+      });
+      Object.keys(cll.current.lineage_columns).forEach((key) => {
+        cllNodeIds.add(key);
+      });
       setCllNodeIds(cllNodeIds);
     }
     setNodes(newNodes);
