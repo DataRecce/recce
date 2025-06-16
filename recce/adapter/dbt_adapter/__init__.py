@@ -947,9 +947,11 @@ class DbtAdapter(BaseAdapter):
         nodes = {}
         cll_data = CllData()
         for node_id in cll_node_ids:
-            if node_id not in manifest.sources and node_id not in manifest.nodes:
+            if node_id not in manifest.sources and node_id not in manifest.nodes and node_id not in manifest.exposures:
                 continue
             cll_data_one = self.get_cll_cached(node_id, base=base)
+            if cll_data_one is None:
+                continue
             for n_id, n in cll_data_one.nodes.items():
                 cll_data.nodes[n_id] = n
             for c_id, c in cll_data_one.columns.items():
@@ -973,10 +975,12 @@ class DbtAdapter(BaseAdapter):
         return cll_data
 
     @lru_cache(maxsize=128)
-    def get_cll_cached(self, node_id: str, base: Optional[bool] = False) -> CllData:
+    def get_cll_cached(self, node_id: str, base: Optional[bool] = False) -> Optional[CllData]:
         cll_tracker = CLLPerformanceTracking()
 
         node, parent_list = self.get_cll_node(node_id, base=base)
+        if node is None:
+            return None
 
         def _apply_all_columns(node: CllNode, transformation_type):
             cll_data = CllData()
@@ -1104,15 +1108,19 @@ class DbtAdapter(BaseAdapter):
             cll_data.parent_map[column_id] = set(depends_on)
         return cll_data
 
-    def get_cll_node(self, node_id: str, base: Optional[bool] = False) -> Tuple[CllNode, list[str]]:
+    def get_cll_node(self, node_id: str, base: Optional[bool] = False) -> Tuple[Optional[CllNode], list[str]]:
         manifest = self.curr_manifest if base is False else self.base_manifest
         catalog = self.curr_catalog if base is False else self.base_catalog
         parent_list = []
+        node = None
 
+        # model, seed, snapshot
         if node_id in manifest.nodes:
             found = manifest.nodes[node_id]
-            unique_id = found.unique_id
+            if found.resource_type not in ["model", "seed", "snapshot"]:
+                return None, []
 
+            unique_id = found.unique_id
             node = CllNode(
                 id=found.unique_id,
                 name=found.name,
@@ -1131,7 +1139,7 @@ class DbtAdapter(BaseAdapter):
                     columns[col_name] = col
                 node.columns = columns
 
-        # for source in manifest_dict["sources"].values():
+        # source
         if node_id in manifest.sources:
             found = manifest.sources[node_id]
             unique_id = found.unique_id
@@ -1152,6 +1160,19 @@ class DbtAdapter(BaseAdapter):
                     col = CllColumn(id=column_id, name=col_name, table_id=unique_id, type=col_metadata.type)
                     columns[col_name] = col
                 node.columns = columns
+
+        # exposure
+        if node_id in manifest.exposures:
+            found = manifest.exposures[node_id]
+
+            node = CllNode(
+                id=found.unique_id,
+                name=found.name,
+                package_name=found.package_name,
+                resource_type=found.resource_type,
+            )
+            if hasattr(found.depends_on, "nodes"):
+                parent_list = found.depends_on.nodes
 
         return node, parent_list
 
