@@ -24,8 +24,8 @@ export interface CllNodeData {
 
 export interface ColumnLineageData {
   current: {
-    lineage_nodes: Record<string, CllNodeData>;
-    lineage_columns: Record<string, NodeColumnData>;
+    nodes: Record<string, CllNodeData>;
+    columns: Record<string, NodeColumnData>;
     parent_map: Record<string, string[]>;
     child_map: Record<string, string[]>;
   };

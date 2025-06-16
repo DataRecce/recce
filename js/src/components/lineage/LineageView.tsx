@@ -592,10 +592,10 @@ export function PrivateLineageView(
     });
     if (newViewOptions.column_level_lineage != undefined && cll != undefined) {
       const cllNodeIds = new Set<string>();
-      Object.keys(cll.current.lineage_nodes).forEach((key) => {
+      Object.keys(cll.current.nodes).forEach((key) => {
         cllNodeIds.add(key);
       });
-      Object.keys(cll.current.lineage_columns).forEach((key) => {
+      Object.keys(cll.current.columns).forEach((key) => {
         cllNodeIds.add(key);
       });
       setCllNodeIds(cllNodeIds);

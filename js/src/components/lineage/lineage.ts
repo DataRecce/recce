@@ -342,7 +342,7 @@ export function toReactFlow(
 
       for (const columnName of Object.keys(node.data.current?.columns ?? {})) {
         const columnKey = `${node.id}_${columnName}`;
-        const column = cll?.current?.lineage_columns[columnKey];
+        const column = cll?.current?.columns[columnKey];
         const parentMap = cll?.current?.parent_map[columnKey] ?? [];
 
         if (column == null) {

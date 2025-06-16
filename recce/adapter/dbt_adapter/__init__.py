@@ -923,12 +923,11 @@ class DbtAdapter(BaseAdapter):
         upstream, downstream = find_column_dependencies(target_column, cll.parent_map, cll.child_map)
         relevant_columns = {target_column}
         relevant_columns.update(upstream, downstream)
-        nodes, columns = filter_lineage_vertices(cll.lineage_nodes, cll.lineage_columns, relevant_columns)
+        nodes, columns = filter_lineage_vertices(cll.nodes, cll.columns, relevant_columns)
         p_map, c_map = filter_dependency_maps(cll.parent_map, cll.child_map, relevant_columns)
         return CllData(
-            nodes=cll.nodes,
-            lineage_nodes=nodes,
-            lineage_columns=columns,
+            nodes=nodes,
+            columns=columns,
             parent_map=p_map,
             child_map=c_map,
         )
@@ -951,10 +950,10 @@ class DbtAdapter(BaseAdapter):
             if node_id not in manifest.sources and node_id not in manifest.nodes:
                 continue
             cll_data_one = self.get_cll_cached(node_id, base=base)
-            for n_id, n in cll_data_one.lineage_nodes.items():
-                cll_data.lineage_nodes[n_id] = n
-            for c_id, c in cll_data_one.lineage_columns.items():
-                cll_data.lineage_columns[c_id] = c
+            for n_id, n in cll_data_one.nodes.items():
+                cll_data.nodes[n_id] = n
+            for c_id, c in cll_data_one.columns.items():
+                cll_data.columns[c_id] = c
             for p_id, parents in cll_data_one.parent_map.items():
                 cll_data.parent_map[p_id] = parents
 
@@ -981,12 +980,12 @@ class DbtAdapter(BaseAdapter):
 
         def _apply_all_columns(node: CllNode, transformation_type):
             cll_data = CllData()
-            cll_data.lineage_nodes[node.id] = node
+            cll_data.nodes[node.id] = node
             cll_data.parent_map[node.id] = set(parent_list)
             for col in node.columns.values():
                 column_id = f"{node.id}_{col.name}"
                 col.transformation_type = transformation_type
-                cll_data.lineage_columns[column_id] = col
+                cll_data.columns[column_id] = col
                 cll_data.parent_map[column_id] = set()
             return cll_data
 
@@ -1083,8 +1082,8 @@ class DbtAdapter(BaseAdapter):
 
         # Add cll dependency to the node.
         cll_data = CllData()
-        cll_data.lineage_nodes[node.id] = node
-        cll_data.lineage_columns = {f"{node.id}_{col.name}": col for col in node.columns.values()}
+        cll_data.nodes[node.id] = node
+        cll_data.columns = {f"{node.id}_{col.name}": col for col in node.columns.values()}
 
         # parent map for node
         depends_on = list(parent_list)

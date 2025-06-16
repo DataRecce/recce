@@ -4,7 +4,7 @@ from recce.models.types import CllData
 
 def assert_column(result: CllData, node_name, column_name, transformation_type, depends_on):
     column_id = f"{node_name}_{column_name}"
-    entry = result.lineage_columns.get(column_id)
+    entry = result.columns.get(column_id)
     assert entry is not None, f"Column {column_id} not found in result"
     assert (
         entry.transformation_type == transformation_type
@@ -20,7 +20,7 @@ def assert_column(result: CllData, node_name, column_name, transformation_type, 
 
 
 def assert_model(result: CllData, node_name, depends_on):
-    assert result.lineage_nodes.get(node_name) is not None, f"Node {node_name} not found in result"
+    assert result.nodes.get(node_name) is not None, f"Node {node_name} not found in result"
     parent_map = result.parent_map.get(node_name)
     assert parent_map is not None, f"Parent map {node_name} not found in result"
     # assert len(parent_map) == len(depends_on), "depends_on length mismatch"
@@ -179,22 +179,22 @@ def test_model_without_catalog(dbt_test_helper):
     dbt_test_helper.create_model("model1", curr_sql="select 1 as c")
     adapter: DbtAdapter = dbt_test_helper.context.adapter
     result = adapter.get_cll_by_node_id("model1")
-    assert not result.lineage_nodes["model1"].columns
+    assert not result.nodes["model1"].columns
 
 
 def assert_lineage_model(cll_data: CllData, nodes):
-    assert len(nodes) == len(cll_data.lineage_nodes), "Model count mismatch"
+    assert len(nodes) == len(cll_data.nodes), "Model count mismatch"
     for node in nodes:
-        assert node in cll_data.lineage_nodes, f"Model {node} not found in lineage"
+        assert node in cll_data.nodes, f"Model {node} not found in lineage"
 
 
 def assert_lineage_column(cll_data: CllData, columns):
-    assert len(columns) == len(cll_data.lineage_columns), "Column count mismatch"
+    assert len(columns) == len(cll_data.columns), "Column count mismatch"
     for column in columns:
         column_key = f"{column[0]}_{column[1]}"
-        assert column_key in cll_data.lineage_columns, f"Column {column} not found in lineage"
-        assert column[0] == cll_data.lineage_columns[column_key].table_id, f"Column {column[0]} node mismatch"
-        assert column[1] == cll_data.lineage_columns[column_key].name, f"Column {column[1]} name mismatch"
+        assert column_key in cll_data.columns, f"Column {column} not found in lineage"
+        assert column[0] == cll_data.columns[column_key].table_id, f"Column {column[0]} node mismatch"
+        assert column[1] == cll_data.columns[column_key].name, f"Column {column[1]} name mismatch"
 
 
 def test_cll_column_filter(dbt_test_helper):
