@@ -142,6 +142,7 @@ def silence_no_nodes_warning():
 
 
 logger = logging.getLogger("uvicorn")
+MIN_DBT_NODE_COMPOSITION = 3
 
 
 class ArtifactsEventHandler(FileSystemEventHandler):
@@ -699,7 +700,7 @@ class DbtAdapter(BaseAdapter):
             for child in child_map:
                 node_name = node["name"]
                 comps = child.split(".")
-                if len(comps) < 3:
+                if len(comps) < MIN_DBT_NODE_COMPOSITION:
                     # only happens in unittest
                     continue
 
@@ -1191,7 +1192,7 @@ class DbtAdapter(BaseAdapter):
         impacted_cll = self.get_impacted_cll(node_id)
 
         # merge impact radius
-        return self.merge_cll_data(impacted_nodes, impacted_cll)
+        return self._merge_cll_data(impacted_nodes, impacted_cll)
 
     def get_impacted_nodes(self, node_id: str) -> CllData:
         lineage_diff = self.get_lineage_diff()
@@ -1233,19 +1234,19 @@ class DbtAdapter(BaseAdapter):
         return CllData(nodes=nodes, columns=columns, parent_map=p_map, child_map=c_map)
 
     @staticmethod
-    def merge_cll_data(base: CllData, target: CllData) -> CllData:
+    def _merge_cll_data(base: CllData, target: CllData) -> CllData:
         merged_nodes = {**base.nodes, **target.nodes}
         merged_columns = {**base.columns, **target.columns}
 
         merged_parent_map = {}
         merged_keys = set(base.parent_map.keys()).union(set(target.parent_map.keys()))
         for key in merged_keys:
-            merged_parent_map[key] = base.parent_map.get(key, set()).union(base.parent_map.get(key, set()))
+            merged_parent_map[key] = base.parent_map.get(key, set()).union(target.parent_map.get(key, set()))
 
         merged_child_map = {}
         merged_keys = set(base.child_map.keys()).union(set(target.child_map.keys()))
         for key in merged_keys:
-            merged_child_map[key] = base.child_map.get(key, set()).union(base.child_map.get(key, set()))
+            merged_child_map[key] = base.child_map.get(key, set()).union(target.child_map.get(key, set()))
 
         return CllData(
             nodes=merged_nodes, columns=merged_columns, parent_map=merged_parent_map, child_map=merged_child_map
