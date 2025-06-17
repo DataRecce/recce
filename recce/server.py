@@ -355,6 +355,23 @@ async def column_level_lineage_by_node(cll_input: CllIn):
     return CllOutput(current=cll)
 
 
+class ImpactRadiusIn(BaseModel):
+    node_id: str
+
+
+@app.post("/api/impact-radius", response_model=CllOutput)
+async def impact_radius_by_node(impact_input: ImpactRadiusIn):
+    from recce.adapter.dbt_adapter import DbtAdapter
+
+    context = default_context()
+    dbt_adapter: DbtAdapter = context.adapter
+    node_id = impact_input.node_id
+
+    cll = dbt_adapter.get_impact_radius(node_id)
+
+    return CllOutput(current=cll)
+
+
 class SelectNodesInput(BaseModel):
     select: Optional[str] = None
     exclude: Optional[str] = None

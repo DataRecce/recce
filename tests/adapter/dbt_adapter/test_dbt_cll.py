@@ -236,3 +236,149 @@ def test_cll_column_filter(dbt_test_helper):
     result = adapter.get_cll("model.model3", "c")
     assert_lineage_model(result, [])
     assert_lineage_column(result, [("model.model1", "c"), ("model.model2", "c"), ("model.model3", "c")])
+
+
+def test_impact_radius_nodes(dbt_test_helper):
+    # non-breaking
+    dbt_test_helper.create_model(
+        "model1",
+        unique_id="model.model1",
+        curr_sql="select 1 as c",
+        base_sql="select 1 as c --- non-breaking",
+        curr_columns={"c": "int"},
+        base_columns={"c": "int"},
+    )
+    # breaking
+    dbt_test_helper.create_model(
+        "model2",
+        unique_id="model.model2",
+        curr_sql='select c, 2025 as y from {{ ref("model1") }}',
+        base_sql='select c, 2025 as y from {{ ref("model1") }} where c > 0 --- breaking',
+        curr_columns={"c": "int", "y": "int"},
+        base_columns={"c": "int", "y": "int"},
+        depends_on=["model.model1"],
+    )
+    dbt_test_helper.create_model(
+        "model3",
+        unique_id="model.model3",
+        curr_sql='select c from {{ ref("model2") }} where y < 2025',
+        base_sql='select c from {{ ref("model2") }} where y < 2025',
+        curr_columns={"c": "int"},
+        base_columns={"c": "int"},
+        depends_on=["model.model2"],
+    )
+    dbt_test_helper.create_model(
+        "model4",
+        unique_id="model.model4",
+        curr_sql='select y from {{ ref("model2") }}',
+        base_sql='select y from {{ ref("model2") }}',
+        curr_columns={"y": "int"},
+        base_columns={"y": "int"},
+        depends_on=["model.model2"],
+    )
+
+    adapter: DbtAdapter = dbt_test_helper.context.adapter
+
+    # breaking
+    result = adapter.get_impacted_nodes("model.model2")
+    assert_lineage_model(result, ["model.model2", "model.model3", "model.model4"])
+
+    # non-breaking
+    result = adapter.get_impacted_nodes("model.model1")
+    assert_lineage_model(result, [])
+
+
+def test_impact_radius_columns(dbt_test_helper):
+    # added column
+    dbt_test_helper.create_model(
+        "model1",
+        unique_id="model.model1",
+        curr_sql="select 1 as c, 2 as d --- add d",
+        base_sql="select 1 as c",
+        curr_columns={"c": "int", "d": "int"},
+        base_columns={"c": "int"},
+    )
+    # modified column
+    dbt_test_helper.create_model(
+        "model2",
+        unique_id="model.model2",
+        curr_sql='select c, 2024 as y from {{ ref("model1") }} --- modify y',
+        base_sql='select c, 2025 as y from {{ ref("model1") }}',
+        curr_columns={"c": "int", "y": "int"},
+        base_columns={"c": "int", "y": "int"},
+        depends_on=["model.model1"],
+    )
+    dbt_test_helper.create_model(
+        "model3",
+        unique_id="model.model3",
+        curr_sql='select c from {{ ref("model2") }} where y < 2025',
+        base_sql='select c from {{ ref("model2") }} where y < 2025',
+        curr_columns={"c": "int"},
+        base_columns={"c": "int"},
+        depends_on=["model.model2"],
+    )
+    dbt_test_helper.create_model(
+        "model4",
+        unique_id="model.model4",
+        curr_sql='select y from {{ ref("model2") }}',
+        base_sql='select y from {{ ref("model2") }}',
+        curr_columns={"y": "int"},
+        base_columns={"y": "int"},
+        depends_on=["model.model2"],
+    )
+
+    adapter: DbtAdapter = dbt_test_helper.context.adapter
+
+    result = adapter.get_impacted_cll("model.model2")
+    assert_lineage_model(result, ["model.model3"])
+    assert_lineage_column(result, [("model.model2", "y"), ("model.model4", "y")])
+
+    result = adapter.get_impacted_cll("model.model1")
+    assert_lineage_model(result, [])
+    assert_lineage_column(result, [("model.model1", "d")])
+
+
+def test_impact_radius(dbt_test_helper):
+    # added column
+    dbt_test_helper.create_model(
+        "model1",
+        unique_id="model.model1",
+        curr_sql="select 1 as c, 2 as d --- add d",
+        base_sql="select 1 as c",
+        curr_columns={"c": "int", "d": "int"},
+        base_columns={"c": "int"},
+    )
+    # breaking, added column, modified column
+    dbt_test_helper.create_model(
+        "model2",
+        unique_id="model.model2",
+        curr_sql='select c, 2024 as y, d from {{ ref("model1") }} --- modify y, add d',
+        base_sql='select c, 2025 as y from {{ ref("model1") }} where c > 0 --- breaking',
+        curr_columns={"c": "int", "y": "int", "d": "int"},
+        base_columns={"c": "int", "y": "int"},
+        depends_on=["model.model1"],
+    )
+    dbt_test_helper.create_model(
+        "model3",
+        unique_id="model.model3",
+        curr_sql='select c from {{ ref("model2") }} where y < 2025',
+        base_sql='select c from {{ ref("model2") }} where y < 2025',
+        curr_columns={"c": "int"},
+        base_columns={"c": "int"},
+        depends_on=["model.model2"],
+    )
+    dbt_test_helper.create_model(
+        "model4",
+        unique_id="model.model4",
+        curr_sql='select y from {{ ref("model2") }}',
+        base_sql='select y from {{ ref("model2") }}',
+        curr_columns={"y": "int"},
+        base_columns={"y": "int"},
+        depends_on=["model.model2"],
+    )
+
+    adapter: DbtAdapter = dbt_test_helper.context.adapter
+
+    result = adapter.get_impact_radius("model.model2")
+    assert_lineage_model(result, ["model.model2", "model.model3", "model.model4"])
+    assert_lineage_column(result, [("model.model2", "d"), ("model.model2", "y"), ("model.model4", "y")])
