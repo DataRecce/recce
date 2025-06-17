@@ -381,7 +381,7 @@ async def impact_radius_by_node(impact_input: ImpactRadiusIn):
         )
 
     merged_child_map = {}
-    merged_keys = set(impacted_nodes.child_map.keys()).union(set(impacted_cll.child.keys()))
+    merged_keys = set(impacted_nodes.child_map.keys()).union(set(impacted_cll.child_map.keys()))
     for key in merged_keys:
         merged_child_map[key] = impacted_nodes.child_map.get(key, set()).union(impacted_cll.child_map.get(key, set()))
 
