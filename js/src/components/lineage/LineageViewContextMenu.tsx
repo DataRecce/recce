@@ -91,8 +91,14 @@ export const ModelNodeContextMenu = ({
 }: LineageViewContextMenuProps) => {
   const menuItems: ContextMenuItem[] = [];
 
-  const { selectParentNodes, selectChildNodes, getNodeColumnSet, selectMode, viewOptions } =
-    useLineageViewContextSafe();
+  const {
+    selectParentNodes,
+    selectChildNodes,
+    getNodeColumnSet,
+    selectMode,
+    viewOptions,
+    showColumnLevelLineage,
+  } = useLineageViewContextSafe();
   const { runAction } = useRecceActionContext();
   const { isActionAvailable } = useLineageGraphContext();
   const { data: flag } = useRecceServerFlag();
@@ -272,6 +278,13 @@ export const ModelNodeContextMenu = ({
       icon: <BiArrowToBottom />,
       action: () => {
         selectChildNodes(node.id);
+      },
+    });
+    menuItems.push({
+      label: "Show Impcat Radius",
+      icon: <BiArrowToBottom />,
+      action: () => {
+        void showColumnLevelLineage(node.id, "");
       },
     });
   }
