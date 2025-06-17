@@ -355,6 +355,43 @@ async def column_level_lineage_by_node(cll_input: CllIn):
     return CllOutput(current=cll)
 
 
+class ImpactRadiusIn(BaseModel):
+    node_id: str
+
+
+@app.post("/api/impact-radius", response_model=CllOutput)
+async def impact_radius_by_node(impact_input: ImpactRadiusIn):
+    from recce.adapter.dbt_adapter import DbtAdapter
+
+    context = default_context()
+    dbt_adapter: DbtAdapter = context.adapter
+    node_id = impact_input.node_id
+    impacted_nodes = dbt_adapter.get_impacted_nodes(node_id)
+    impacted_cll = dbt_adapter.get_impacted_cll(node_id)
+
+    # merge impact radius
+    merged_nodes = {**impacted_nodes.nodes, **impacted_cll.nodes}
+    merged_columns = {**impacted_nodes.columns, **impacted_cll.columns}
+
+    merged_parent_map = {}
+    merged_keys = set(impacted_nodes.parent_map.keys()).union(set(impacted_cll.parent_map.keys()))
+    for key in merged_keys:
+        merged_parent_map[key] = impacted_nodes.parent_map.get(key, set()).union(
+            impacted_cll.parent_map.get(key, set())
+        )
+
+    merged_child_map = {}
+    merged_keys = set(impacted_nodes.child_map.keys()).union(set(impacted_cll.child.keys()))
+    for key in merged_keys:
+        merged_child_map[key] = impacted_nodes.child_map.get(key, set()).union(impacted_cll.child_map.get(key, set()))
+
+    cll_data = CllData(
+        nodes=merged_nodes, columns=merged_columns, parent_map=merged_parent_map, child_map=merged_child_map
+    )
+
+    return CllOutput(current=cll_data)
+
+
 class SelectNodesInput(BaseModel):
     select: Optional[str] = None
     exclude: Optional[str] = None

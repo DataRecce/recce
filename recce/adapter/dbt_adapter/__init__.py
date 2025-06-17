@@ -1186,6 +1186,43 @@ class DbtAdapter(BaseAdapter):
             }
         return None
 
+    def get_impacted_nodes(self, node_id: str) -> CllData:
+        lineage_diff = self.get_lineage_diff()
+        diff_info = lineage_diff.diff.get(node_id)
+        change_category = diff_info.change.category
+
+        if change_category == "breaking":
+            cll = self.get_cll_by_node_id(node_id)
+            _, downstream = find_column_dependencies(node_id, cll.parent_map, cll.child_map)
+            relevant_columns = {node_id}
+            relevant_columns.update(downstream)
+            nodes, columns = filter_lineage_vertices(cll.nodes, cll.columns, relevant_columns)
+            p_map, c_map = filter_dependency_maps(cll.parent_map, cll.child_map, relevant_columns)
+
+            return CllData(nodes=nodes, columns=columns, parent_map=p_map, child_map=c_map)
+
+        return CllData()
+
+    def get_impacted_cll(self, node_id: str) -> CllData:
+        lineage_diff = self.get_lineage_diff()
+        diff_info = lineage_diff.diff.get(node_id)
+        change_columns = diff_info.change.columns
+
+        cll = self.get_cll_by_node_id(node_id)
+        relevant_columns = set()
+        for col, change_status in change_columns.items():
+            if change_status == "removed":
+                continue
+            target_column = f"{node_id}_{col}"
+            _, downstream = find_column_dependencies(target_column, cll.parent_map, cll.child_map)
+            relevant_columns.add(target_column)
+            relevant_columns.update(downstream)
+
+        nodes, columns = filter_lineage_vertices(cll.nodes, cll.columns, relevant_columns)
+        p_map, c_map = filter_dependency_maps(cll.parent_map, cll.child_map, relevant_columns)
+
+        return CllData(nodes=nodes, columns=columns, parent_map=p_map, child_map=c_map)
+
     def build_name_to_unique_id_index(self) -> Dict[str, str]:
         name_to_unique_id = {}
         curr_manifest = self.get_manifest(base=False)
