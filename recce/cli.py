@@ -202,7 +202,7 @@ def debug(**kwargs):
     def check_artifacts(env_name, target_path):
         console.rule(f"{env_name} Environment", style="orange3")
         if not target_path.is_dir():
-            console.print(f"[[red]MISS[/red]] Directory does not exist: {target_path}")
+            console.print(f"[[red]MISS[/red]] Directory not found: {target_path}")
             return [False, False, False]
 
         console.print(f"[[green]OK[/green]] Directory exists: {target_path}")
@@ -212,21 +212,21 @@ def debug(**kwargs):
         if manifest_is_ready:
             console.print(f"[[green]OK[/green]] Manifest JSON file exists : {manifest_path}")
         else:
-            console.print(f"[[red]MISS[/red]] Manifest JSON file does not exist: {manifest_path}")
+            console.print(f"[[red]MISS[/red]] Manifest JSON file not found: {manifest_path}")
 
         catalog_path = target_path / "catalog.json"
         catalog_is_ready = catalog_path.is_file()
         if catalog_is_ready:
             console.print(f"[[green]OK[/green]] Catalog JSON file exists: {catalog_path}")
         else:
-            console.print(f"[[red]MISS[/red]] Catalog JSON file does not exist: {catalog_path}")
+            console.print(f"[[red]MISS[/red]] Catalog JSON file not found: {catalog_path}")
 
         return [True, manifest_is_ready, catalog_is_ready]
 
     target_path = Path(kwargs.get("target_path", "target"))
     target_base_path = Path(kwargs.get("target_base_path", "target-base"))
 
-    curr_is_ready = check_artifacts("development", target_path)
+    curr_is_ready = check_artifacts("Development", target_path)
     base_is_ready = check_artifacts("Base", target_base_path)
 
     console.rule("Warehouse Connection", style="orange3")
