@@ -133,14 +133,6 @@ class CllColumn(BaseModel):
     depends_on: List[CllColumnDep] = Field(default_factory=list)
 
 
-class CllNodeDependsOn(BaseModel):
-    # model-to-column dependencies
-    columns: List[CllColumnDep] = Field(default_factory=list)
-
-    # model-to-model dependencies
-    nodes: List[str] = Field(default_factory=list)
-
-
 class CllNode(BaseModel):
     id: str
     name: str
@@ -149,16 +141,12 @@ class CllNode(BaseModel):
     raw_code: Optional[str] = None
     source_name: Optional[str] = None
 
-    # Model to column dependencies
-    depends_on: CllNodeDependsOn = Field(default_factory=CllNodeDependsOn)
-
     # Column to column dependencies
     columns: Dict[str, CllColumn] = Field(default_factory=dict)
 
 
 class CllData(BaseModel):
     nodes: Dict[str, CllNode] = Field(default_factory=dict)
-    lineage_nodes: Dict[str, CllNode] = Field(default_factory=set)
-    lineage_columns: Dict[str, CllColumn] = Field(default_factory=dict)
+    columns: Dict[str, CllColumn] = Field(default_factory=dict)
     parent_map: Dict[str, Set[str]] = Field(default_factory=dict)
     child_map: Dict[str, Set[str]] = Field(default_factory=dict)

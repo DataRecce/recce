@@ -23,10 +23,8 @@ from typing import (
 
 from recce.event import log_performance
 from recce.exceptions import RecceException
-from recce.util.cll import CllColumnDep, CLLPerformanceTracking, cll
+from recce.util.cll import CLLPerformanceTracking, cll
 from recce.util.lineage import (
-    build_dependency_maps,
-    build_lineage_vertices,
     filter_dependency_maps,
     filter_lineage_vertices,
     find_column_dependencies,
@@ -56,7 +54,6 @@ from ...models.types import (
     CllColumn,
     CllData,
     CllNode,
-    CllNodeDependsOn,
     LineageDiff,
     NodeChange,
     NodeDiff,
@@ -919,22 +916,21 @@ class DbtAdapter(BaseAdapter):
 
     def get_cll(self, node_id: str, column: Optional[str]) -> CllData:
         cll = self.get_cll_by_node_id(node_id)
-        if column:
-            parent_map, child_map = build_dependency_maps(cll)
-            lineage_nodes, lineage_columns = build_lineage_vertices(cll)
-            target_column = f"{node_id}_{column}"
-            upstream, downstream = find_column_dependencies(target_column, parent_map, child_map)
-            relevant_columns = {target_column}
-            relevant_columns.update(upstream, downstream)
-            nodes, columns = filter_lineage_vertices(lineage_nodes, lineage_columns, relevant_columns)
-            p_map, c_map = filter_dependency_maps(parent_map, child_map, relevant_columns)
-            return CllData(
-                nodes=cll.nodes,
-                lineage_nodes=nodes,
-                lineage_columns=columns,
-                parent_map=p_map,
-                child_map=c_map,
-            )
+        if not column:
+            return cll
+
+        target_column = f"{node_id}_{column}"
+        upstream, downstream = find_column_dependencies(target_column, cll.parent_map, cll.child_map)
+        relevant_columns = {target_column}
+        relevant_columns.update(upstream, downstream)
+        nodes, columns = filter_lineage_vertices(cll.nodes, cll.columns, relevant_columns)
+        p_map, c_map = filter_dependency_maps(cll.parent_map, cll.child_map, relevant_columns)
+        return CllData(
+            nodes=nodes,
+            columns=columns,
+            parent_map=p_map,
+            child_map=c_map,
+        )
 
     def get_cll_by_node_id(self, node_id: str, base: Optional[bool] = False) -> CllData:
         cll_tracker = CLLPerformanceTracking()
@@ -948,60 +944,72 @@ class DbtAdapter(BaseAdapter):
         cll_node_ids = parent_ids.union(child_ids)
         cll_node_ids.add(node_id)
 
-        node_manifest = self.get_cll_nodes_from_metadata(base=base)
         nodes = {}
+        cll_data = CllData()
         for node_id in cll_node_ids:
-            if node_id not in node_manifest:
+            if node_id not in manifest.sources and node_id not in manifest.nodes and node_id not in manifest.exposures:
                 continue
-            nodes[node_id] = self.get_cll_cached(node_id, base=base)
+            cll_data_one = self.get_cll_cached(node_id, base=base)
+            if cll_data_one is None:
+                continue
+            for n_id, n in cll_data_one.nodes.items():
+                cll_data.nodes[n_id] = n
+            for c_id, c in cll_data_one.columns.items():
+                cll_data.columns[c_id] = c
+            for p_id, parents in cll_data_one.parent_map.items():
+                cll_data.parent_map[p_id] = parents
+
+        # build the child map
+        cll_data.child_map = {}
+        for node_id, parents in cll_data.parent_map.items():
+            for parent in parents:
+                if parent not in cll_data.child_map:
+                    cll_data.child_map[parent] = set()
+                cll_data.child_map[parent].add(node_id)
 
         cll_tracker.end_column_lineage()
         cll_tracker.set_total_nodes(len(nodes))
         log_performance("column level lineage", cll_tracker.to_dict())
         cll_tracker.reset()
 
-        return CllData(nodes=nodes)
+        return cll_data
 
     @lru_cache(maxsize=128)
-    def get_cll_cached(self, node_id: str, base: Optional[bool] = False) -> CllNode:
-        nodes = self.get_cll_nodes_from_metadata(base=base)
-
-        manifest = self.curr_manifest if base is False else self.base_manifest
-        manifest_dict = manifest.to_dict()
-        parent_list = []
-        if node_id in manifest_dict["parent_map"]:
-            parent_list = manifest_dict["parent_map"][node_id]
-
-        node = nodes[node_id]
-        self.append_column_lineage(node, parent_list, base)
-        return node
-
-    def append_column_lineage(self, node: CllNode, parent_list: List, base: Optional[bool] = False):
-        def _apply_all_columns(node: CllNode, transformation_type):
-            for col in node.columns.values():
-                col.transformation_type = transformation_type
-
+    def get_cll_cached(self, node_id: str, base: Optional[bool] = False) -> Optional[CllData]:
         cll_tracker = CLLPerformanceTracking()
-        nodes = self.get_cll_nodes_from_metadata(base=base)
+
+        node, parent_list = self.get_cll_node(node_id, base=base)
+        if node is None:
+            return None
+
+        def _apply_all_columns(node: CllNode, transformation_type):
+            cll_data = CllData()
+            cll_data.nodes[node.id] = node
+            cll_data.parent_map[node.id] = set(parent_list)
+            for col in node.columns.values():
+                column_id = f"{node.id}_{col.name}"
+                col.transformation_type = transformation_type
+                cll_data.columns[column_id] = col
+                cll_data.parent_map[column_id] = set()
+            return cll_data
+
         manifest = as_manifest(self.get_manifest(base))
+        catalog = self.curr_catalog if base is False else self.base_catalog
         resource_type = node.resource_type
         if resource_type not in {"model", "seed", "source", "snapshot"}:
-            return
+            return _apply_all_columns(node, "unknown")
 
         if resource_type == "source" or resource_type == "seed":
-            _apply_all_columns(node, "source")
-            return
+            return _apply_all_columns(node, "source")
 
         if node.raw_code is None or self.is_python_model(node.id, base=base):
-            _apply_all_columns(node, "unknown")
-            return
+            return _apply_all_columns(node, "unknown")
 
         if node.name == "metricflow_time_spine":
-            _apply_all_columns(node, "source")
-            return
+            return _apply_all_columns(node, "source")
 
         if not node.columns:
-            return
+            return _apply_all_columns(node, "unknown")
 
         table_id_map = {}
 
@@ -1015,17 +1023,14 @@ class DbtAdapter(BaseAdapter):
                 project_or_package = args[0]
                 node_name = args[1]
 
-            for key, n in nodes.items():
-                if n.resource_type == "source":
-                    # For resource_type==source, you should use "source(...)"
-                    continue
+            for key, n in manifest.nodes.items():
                 if n.name != node_name:
                     continue
                 if project_or_package is not None and n.package_name != project_or_package:
                     continue
 
                 # replace id "." to "_"
-                unique_id = n.id
+                unique_id = n.unique_id
                 table_name = unique_id.replace(".", "_")
                 table_id_map[table_name.lower()] = unique_id
                 return table_name
@@ -1033,16 +1038,14 @@ class DbtAdapter(BaseAdapter):
             raise ValueError(f"Cannot find node {node_name} in the manifest")
 
         def source_func(source_name, name):
-            for key, n in nodes.items():
-                if n.resource_type != "source":
-                    continue
+            for key, n in manifest.sources.items():
                 if n.source_name != source_name:
                     continue
                 if n.name != name:
                     continue
 
                 # replace id "." to "_"
-                unique_id = n.id
+                unique_id = n.unique_id
                 table_name = unique_id.replace(".", "_")
                 table_id_map[table_name.lower()] = unique_id
                 return table_name
@@ -1056,13 +1059,17 @@ class DbtAdapter(BaseAdapter):
         )
 
         schema = {}
-        for parent_id in parent_list:
-            parent_node = nodes.get(parent_id)
-            if parent_node is None:
-                continue
-            columns = parent_node.columns
-            table_name = parent_id.replace(".", "_")
-            schema[table_name] = {name: column.type for name, column in columns.items()}
+        if catalog is not None:
+            for parent_id in parent_list:
+                table_name = parent_id.replace(".", "_")
+                columns = {}
+                if parent_id in catalog.nodes:
+                    for col_name, col_metadata in catalog.nodes[parent_id].columns.items():
+                        columns[col_name] = col_metadata.type
+                if parent_id in catalog.sources:
+                    for col_name, col_metadata in catalog.sources[parent_id].columns.items():
+                        columns[col_name] = col_metadata.type
+                schema[table_name] = columns
 
         try:
             compiled_sql = self.generate_sql(raw_code, base=base, context=jinja_context, provided_manifest=manifest)
@@ -1071,75 +1078,103 @@ class DbtAdapter(BaseAdapter):
                 dialect = self.get_manifest(base).metadata.adapter_type
             m2c, c2c_map = cll(compiled_sql, schema=schema, dialect=dialect)
         except RecceException:
-            _apply_all_columns(node, "unknown")
             cll_tracker.increment_sqlglot_error_nodes()
-            return
+            return _apply_all_columns(node, "unknown")
         except Exception:
-            _apply_all_columns(node, "unknown")
             cll_tracker.increment_other_error_nodes()
-            return
+            return _apply_all_columns(node, "unknown")
 
         # Add cll dependency to the node.
-        depends_on = [CllColumnDep(node=table_id_map[d.node.lower()], column=d.column) for d in m2c]
-        node.depends_on.columns = depends_on
-        for name, column in node.columns.items():
-            if name in c2c_map:
-                column.depends_on = [
-                    CllColumnDep(node=table_id_map[d.node.lower()], column=d.column) for d in c2c_map[name].depends_on
-                ]
-                column.transformation_type = c2c_map[name].transformation_type
+        cll_data = CllData()
+        cll_data.nodes[node.id] = node
+        cll_data.columns = {f"{node.id}_{col.name}": col for col in node.columns.values()}
 
-    @lru_cache(maxsize=2)
-    def get_cll_nodes_from_metadata(self, base: Optional[bool] = False) -> Dict[str, CllNode]:
+        # parent map for node
+        depends_on = set(parent_list)
+        for d in m2c:
+            parent_key = f"{table_id_map[d.node.lower()]}_{d.column}"
+            depends_on.add(parent_key)
+        cll_data.parent_map[node_id] = depends_on
+
+        # parent map for columns
+        for name, column in node.columns.items():
+            depends_on = set()
+            column_id = f"{node.id}_{name}"
+            if name in c2c_map:
+                for d in c2c_map[name].depends_on:
+                    parent_key = f"{table_id_map[d.node.lower()]}_{d.column}"
+                    depends_on.add(parent_key)
+                column.transformation_type = c2c_map[name].transformation_type
+            cll_data.parent_map[column_id] = set(depends_on)
+        return cll_data
+
+    def get_cll_node(self, node_id: str, base: Optional[bool] = False) -> Tuple[Optional[CllNode], list[str]]:
         manifest = self.curr_manifest if base is False else self.base_manifest
         catalog = self.curr_catalog if base is False else self.base_catalog
-        manifest_dict = manifest.to_dict()
+        parent_list = []
+        node = None
 
-        nodes = {}
-        for node in manifest_dict["nodes"].values():
-            unique_id = node["unique_id"]
-            resource_type = node["resource_type"]
+        # model, seed, snapshot
+        if node_id in manifest.nodes:
+            found = manifest.nodes[node_id]
+            if found.resource_type not in ["model", "seed", "snapshot"]:
+                return None, []
 
-            if resource_type not in ["model", "seed", "exposure", "snapshot"]:
-                continue
-
-            nodes[unique_id] = CllNode(
-                id=node["unique_id"],
-                name=node["name"],
-                package_name=node["package_name"],
-                resource_type=node["resource_type"],
-                raw_code=node["raw_code"],
-                depends_on=CllNodeDependsOn(
-                    nodes=node.get("depends_on").get("nodes", []),
-                ),
+            unique_id = found.unique_id
+            node = CllNode(
+                id=found.unique_id,
+                name=found.name,
+                package_name=found.package_name,
+                resource_type=found.resource_type,
+                raw_code=found.raw_code,
             )
+            if hasattr(found.depends_on, "nodes"):
+                parent_list = found.depends_on.nodes
 
             if catalog is not None and unique_id in catalog.nodes:
                 columns = {}
                 for col_name, col_metadata in catalog.nodes[unique_id].columns.items():
-                    col = CllColumn(name=col_name, type=col_metadata.type)
+                    column_id = f"{unique_id}_{col_name}"
+                    col = CllColumn(id=column_id, name=col_name, table_id=unique_id, type=col_metadata.type)
                     columns[col_name] = col
-                nodes[unique_id].columns = columns
+                node.columns = columns
 
-        for source in manifest_dict["sources"].values():
-            unique_id = source["unique_id"]
+        # source
+        if node_id in manifest.sources:
+            found = manifest.sources[node_id]
+            unique_id = found.unique_id
 
-            nodes[unique_id] = CllNode(
-                id=source["unique_id"],
-                name=source["name"],
-                package_name=source["package_name"],
-                resource_type=source["resource_type"],
-                source_name=source["source_name"],
+            node = CllNode(
+                id=found.unique_id,
+                name=found.name,
+                package_name=found.package_name,
+                resource_type=found.resource_type,
+                source_name=found.source_name,
             )
+            parent_list = []
 
             if catalog is not None and unique_id in catalog.sources:
                 columns = {}
                 for col_name, col_metadata in catalog.sources[unique_id].columns.items():
-                    col = CllColumn(name=col_name, type=col_metadata.type)
+                    column_id = f"{unique_id}_{col_name}"
+                    col = CllColumn(id=column_id, name=col_name, table_id=unique_id, type=col_metadata.type)
                     columns[col_name] = col
-                nodes[unique_id].columns = columns
+                node.columns = columns
 
-        return nodes
+        # exposure
+        if node_id in manifest.exposures:
+            found = manifest.exposures[node_id]
+
+            node = CllNode(
+                id=found.unique_id,
+                name=found.name,
+                package_name=found.package_name,
+                resource_type=found.resource_type,
+            )
+            if hasattr(found.depends_on, "nodes"):
+                parent_list = found.depends_on.nodes
+
+        return node, parent_list
 
     def get_manifests_by_id(self, unique_id: str):
         curr_manifest = self.get_manifest(base=False)
@@ -1238,10 +1273,8 @@ class DbtAdapter(BaseAdapter):
                 self.curr_manifest = load_manifest(path=refresh_file_path)
                 self.manifest = as_manifest(self.curr_manifest)
                 self.get_cll_cached.cache_clear()
-                self.get_cll_nodes_from_metadata.cache_clear()
             elif refresh_file_path.endswith("catalog.json"):
                 self.curr_catalog = load_catalog(path=refresh_file_path)
-                self.get_cll_nodes_from_metadata.cache_clear()
         elif self.base_path and target_type == os.path.basename(self.base_path):
             if refresh_file_path.endswith("manifest.json"):
                 self.base_manifest = load_manifest(path=refresh_file_path)

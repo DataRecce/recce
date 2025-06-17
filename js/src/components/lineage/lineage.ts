@@ -270,77 +270,6 @@ export function selectDownstream(lineageGraph: LineageGraph, nodeIds: string[], 
   );
 }
 
-/**
- * Select the upstream&downstream nodes in the column-level lineage graph.
- * It includes the
- * - Model nodes: `${node_id}`
- * - Column nodes: `${node_id}_${column}`.
- *
- */
-export function selectCllLineage(cll: Record<string, CllNodeData>, node: string, column: string) {
-  const childMap: Record<string, string[]> = {};
-  const parentMap: Record<string, string[]> = {};
-
-  for (const [nodeId, node] of Object.entries(cll)) {
-    for (const parentKey of node.depends_on?.nodes ?? []) {
-      if (!(nodeId in parentMap)) {
-        parentMap[nodeId] = [];
-      }
-      parentMap[nodeId].push(parentKey);
-
-      if (!(parentKey in childMap)) {
-        childMap[parentKey] = [];
-      }
-      childMap[parentKey].push(nodeId);
-    }
-
-    for (const parent of node.depends_on?.columns ?? []) {
-      const parentKey = `${parent.node}_${parent.column}`;
-      if (!(nodeId in parentMap)) {
-        parentMap[nodeId] = [];
-      }
-      parentMap[nodeId].push(parentKey);
-
-      if (!(parentKey in childMap)) {
-        childMap[parentKey] = [];
-      }
-      childMap[parentKey].push(nodeId);
-    }
-
-    for (const [columnId, column] of Object.entries(node.columns ?? {})) {
-      const columnKey = `${nodeId}_${columnId}`;
-
-      for (const parent of column.depends_on ?? []) {
-        const parentKey = `${parent.node}_${parent.column}`;
-        if (!(columnKey in parentMap)) {
-          parentMap[columnKey] = [];
-        }
-        parentMap[columnKey].push(parentKey);
-
-        if (!(parentKey in childMap)) {
-          childMap[parentKey] = [];
-        }
-        childMap[parentKey].push(columnKey);
-      }
-    }
-  }
-
-  const cllSelectedId = `${node}_${column}`;
-  const downstream = getNeighborSet([cllSelectedId], (key) => {
-    if (!(key in childMap)) {
-      return [];
-    }
-    return childMap[key];
-  });
-  const upstream = getNeighborSet([cllSelectedId], (key) => {
-    if (!(key in parentMap)) {
-      return [];
-    }
-    return parentMap[key];
-  });
-  return union(downstream, upstream);
-}
-
 export function toReactFlow(
   lineageGraph: LineageGraph,
   options?: {
@@ -395,23 +324,11 @@ export function toReactFlow(
     const nodeColumnSet = new Set<string>();
     let columnIndex = 0;
     if (columnLevelLineage) {
-      const cllNode = cll?.current?.nodes?.[node.id];
-      const nodeDependsOn = cllNode?.depends_on?.columns ?? [];
-      const nodeAndColumnSet =
-        cll != null
-          ? selectCllLineage(cll.current.nodes, columnLevelLineage.node, columnLevelLineage.column)
-          : new Set<string>();
+      const parentMap = cll?.current?.parent_map[node.id] ?? new Set<string>();
 
-      for (const parentColumn of nodeDependsOn) {
-        const source = `${parentColumn.node}_${parentColumn.column}`;
+      for (const parentKey of parentMap) {
+        const source = parentKey;
         const target = node.id;
-
-        if (!nodeAndColumnSet.has(source)) {
-          continue;
-        }
-        if (!nodeAndColumnSet.has(target)) {
-          continue;
-        }
 
         edges.push({
           id: `m2c_${source}_${target}`,
@@ -423,11 +340,12 @@ export function toReactFlow(
         });
       }
 
-      const cllNodeColumns = cllNode?.columns ?? {};
+      for (const columnName of Object.keys(node.data.current?.columns ?? {})) {
+        const columnKey = `${node.id}_${columnName}`;
+        const column = cll?.current?.columns[columnKey];
+        const parentMap = cll?.current?.parent_map[columnKey] ?? new Set<string>();
 
-      for (const column of Object.values(cllNodeColumns)) {
-        const columnKey = `${node.id}_${column.name}`;
-        if (!nodeAndColumnSet.has(columnKey)) {
+        if (column == null) {
           continue;
         }
 
@@ -452,13 +370,9 @@ export function toReactFlow(
           sourcePosition: Position.Right,
         });
 
-        for (const parentColumn of column.depends_on ?? []) {
-          const source = `${parentColumn.node}_${parentColumn.column}`;
+        for (const parentColumn of parentMap) {
+          const source = parentColumn;
           const target = columnKey;
-
-          if (!nodeAndColumnSet.has(source)) {
-            continue;
-          }
 
           edges.push({
             id: `${source}_${target}`,
