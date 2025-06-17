@@ -1216,6 +1216,8 @@ class DbtAdapter(BaseAdapter):
     def get_impacted_cll(self, node_id: str) -> CllData:
         lineage_diff = self.get_lineage_diff()
         diff_info = lineage_diff.diff.get(node_id)
+        if diff_info is None:
+            return CllData()
         change_columns = diff_info.change.columns
 
         cll = self.get_cll_by_node_id(node_id)
