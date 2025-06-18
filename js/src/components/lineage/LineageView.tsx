@@ -85,7 +85,7 @@ import { ColumnLevelLineageLegend } from "./ColumnLevelLineageLegend";
 import { LineageViewNotification } from "./LineageViewNotification";
 import { useRecceServerFlag } from "@/lib/hooks/useRecceServerFlag";
 import { BaseEnvironmentSetupNotification } from "./SingleEnvironmentQueryView";
-import { ColumnLineageData, getCll } from "@/lib/api/cll";
+import { ColumnLineageData, getCll, getImpactRadius } from "@/lib/api/cll";
 import { LineageViewContextMenu, useLineageViewContextMenu } from "./LineageViewContextMenu";
 
 export interface LineageViewProps {
@@ -429,7 +429,17 @@ export function PrivateLineageView(
     setFocusedNodeId(undefined);
   };
 
-  const centerNode = (node: Node) => {
+  const centerNode = (nodeId: string) => {
+    let node = nodes.find((n) => n.id === nodeId);
+    if (!node) {
+      return;
+    }
+
+    if (node.parentId) {
+      const parentId = node.parentId;
+      node = nodes.find((n) => n.id === parentId) ?? node;
+    }
+
     if (node.width && node.height) {
       const x = node.position.x + node.width / 2;
       const y = node.position.y + node.height / 2;
@@ -443,11 +453,10 @@ export function PrivateLineageView(
 
   useResizeObserver(refResize, () => {
     if (selectMode !== "selecting") {
-      const node = nodes.find((node) => node.id === focusedNodeId);
-      if (node) {
-        centerNode(node);
-      } else {
+      if (!focusedNodeId) {
         reactFlow.fitView({ nodes, duration: 200 });
+      } else {
+        centerNode(focusedNodeId);
       }
     }
   });
@@ -564,10 +573,13 @@ export function PrivateLineageView(
     let cll: ColumnLineageData | undefined;
     if (newViewOptions.column_level_lineage) {
       try {
-        const cllResult = await getCll(
-          newViewOptions.column_level_lineage.node,
-          newViewOptions.column_level_lineage.column,
-        );
+        const cllResult = newViewOptions.column_level_lineage.column
+          ? await getCll(
+              newViewOptions.column_level_lineage.node,
+              newViewOptions.column_level_lineage.column,
+            )
+          : await getImpactRadius(newViewOptions.column_level_lineage.node);
+
         cll = cllResult;
       } catch (e) {
         if (e instanceof AxiosError) {
@@ -812,6 +824,29 @@ export function PrivateLineageView(
         return highlighted.has(source) && highlighted.has(target);
       }
     },
+    isNodeShowingChangeAnalysis: (nodeId: string) => {
+      if (!lineageGraph) {
+        return false;
+      }
+
+      const node = lineageGraph.nodes[nodeId];
+
+      if (viewOptions.column_level_lineage) {
+        const cll = viewOptions.column_level_lineage;
+
+        if (!cll.column) {
+          return cll.node === nodeId && node.changeStatus === "modified";
+        }
+
+        return false;
+      }
+
+      if (breakingChangeEnabled && node.changeStatus === "modified") {
+        return true;
+      }
+
+      return false;
+    },
     getNodeAction: (nodeId: string) => {
       return multiNodeAction.actionState.actions[nodeId];
     },
@@ -933,7 +968,8 @@ export function PrivateLineageView(
     actionState: multiNodeAction.actionState,
 
     // Column Level Lineage
-    showColumnLevelLineage: async (nodeId: string, column: string) => {
+    centerNode,
+    showColumnLevelLineage: async (nodeId: string, column?: string) => {
       await handleViewOptionsChanged(
         {
           ...viewOptions,

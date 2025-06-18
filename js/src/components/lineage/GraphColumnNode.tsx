@@ -12,11 +12,27 @@ import { VscKebabVertical } from "react-icons/vsc";
 
 type GrapeColumnNodeProps = NodeProps<LinageGraphColumnNode>;
 
+export const ChangeStatus = ({
+  changeStatus,
+}: {
+  changeStatus?: "added" | "removed" | "modified";
+}) => {
+  if (!changeStatus) {
+    return <></>;
+  }
+
+  const { color: colorChangeStatus, icon: iconChangeStatus } = getIconForChangeStatus(changeStatus);
+
+  return (
+    <Icon boxSize="14px" display="inline-flex" color={colorChangeStatus} as={iconChangeStatus} />
+  );
+};
+
 export const TransformationType = ({
   transformationType,
   legend,
 }: {
-  transformationType: string;
+  transformationType?: string;
   legend?: boolean;
 }) => {
   let letter = "U";
@@ -37,6 +53,10 @@ export const TransformationType = ({
   } else {
     letter = "U";
     color = "red";
+  }
+
+  if (!transformationType) {
+    return <></>;
   }
 
   // # circle in color
@@ -61,14 +81,15 @@ export function GraphColumnNode(nodeProps: GrapeColumnNodeProps) {
   const { column, type, transformationType, changeStatus } = data;
   const showContent = useStore((s) => s.transform[2] > 0.3);
 
-  const { viewOptions, showContextMenu, isNodeHighlighted } = useLineageViewContextSafe();
+  const { viewOptions, showContextMenu, isNodeHighlighted, isNodeShowingChangeAnalysis } =
+    useLineageViewContextSafe();
 
   const selectedNode = viewOptions.column_level_lineage?.node;
   const selectedColumn = viewOptions.column_level_lineage?.column;
   const isFocus = column === selectedColumn && nodeId === selectedNode;
-  const { color: colorChangeStatus, icon: iconChangeStatus } = getIconForChangeStatus(changeStatus);
   const [isHovered, setIsHovered] = React.useState(false);
   const isHighlighted = isNodeHighlighted(columnNodeId);
+  const isShowingChangeAnalysis = isNodeShowingChangeAnalysis(nodeId);
 
   if (!showContent) {
     return <></>;
@@ -97,16 +118,12 @@ export function GraphColumnNode(nodeProps: GrapeColumnNodeProps) {
         gap="3px"
         alignItems="center"
         height={`${COLUMN_HEIGHT - 1}px`}>
-        {changeStatus && (
-          <Icon
-            boxSize="14px"
-            display="inline-flex"
-            color={colorChangeStatus}
-            as={iconChangeStatus}
-          />
+        {isShowingChangeAnalysis ? (
+          <ChangeStatus changeStatus={changeStatus} />
+        ) : (
+          <TransformationType transformationType={transformationType} />
         )}
-        {transformationType && <TransformationType transformationType={transformationType} />}
-        <Box height={`${COLUMN_HEIGHT + 1} px`}>{column}</Box>
+        <Box height={`${COLUMN_HEIGHT + 1}px`}>{column}</Box>
         <Spacer></Spacer>
 
         {isHovered ? (
