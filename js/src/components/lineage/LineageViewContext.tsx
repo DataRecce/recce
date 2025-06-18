@@ -64,6 +64,7 @@ export interface LineageViewContextType {
   breakingChangeEnabled: boolean;
 
   // Column Level Lineage
+  centerNode: (nodeId: string) => void;
   showColumnLevelLineage: (nodeId: string, column?: string) => Promise<void>;
   resetColumnLevelLineage: () => void;
 }

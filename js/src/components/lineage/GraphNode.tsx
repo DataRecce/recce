@@ -166,7 +166,6 @@ export function GraphNode(nodeProps: GraphNodeProps) {
     selectNode,
     selectMode,
     focusedNode,
-    breakingChangeEnabled,
     getNodeAction,
     getNodeColumnSet,
     isNodeHighlighted,
@@ -176,8 +175,7 @@ export function GraphNode(nodeProps: GraphNodeProps) {
     viewOptions,
   } = useLineageViewContextSafe();
   const { lineageGraph } = useLineageGraphContext();
-  const isNonBreakingChange =
-    breakingChangeEnabled && changeStatus === "modified" && lineageGraph?.nonBreakingSet.has(id);
+  const isNonBreakingChange = changeStatus === "modified" && lineageGraph?.nonBreakingSet.has(id);
   const isHighlighted = isNodeHighlighted(id);
   const isSelected = isNodeSelected(id);
   const isFocusedByImpactRadius =

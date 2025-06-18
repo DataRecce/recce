@@ -119,8 +119,26 @@ export const ModelNodeContextMenu = ({
   const trackProps: SubmitRunTrackProps = {
     source: "lineage_model_node",
   };
+  const changeStatus = modelNode.changeStatus;
+
+  if (changeStatus === "modified") {
+    menuItems.push({
+      label: "Show Impcat Radius",
+      icon: <BiArrowToBottom />,
+      action: () => {
+        void showColumnLevelLineage(node.id);
+      },
+    });
+  }
 
   if (!selectMode && resourceType && ["model", "seed", "snapshot"].includes(resourceType)) {
+    if (menuItems.length > 0) {
+      menuItems.push({
+        label: "select group",
+        isSeparator: true,
+      });
+    }
+
     // query
     let entry = findByRunType(singleEnv ? "query" : "query_diff");
     const baseColumns = Object.keys(modelNode.data.base?.columns ?? {});
@@ -278,13 +296,6 @@ export const ModelNodeContextMenu = ({
       icon: <BiArrowToBottom />,
       action: () => {
         selectChildNodes(node.id);
-      },
-    });
-    menuItems.push({
-      label: "Show Impcat Radius",
-      icon: <BiArrowToBottom />,
-      action: () => {
-        void showColumnLevelLineage(node.id);
       },
     });
   }

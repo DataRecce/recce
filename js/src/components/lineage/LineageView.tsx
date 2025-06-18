@@ -430,6 +430,10 @@ export function PrivateLineageView(
   };
 
   const centerNode = (node: Node) => {
+    if (node.parentId) {
+      node = nodes.find((n) => n.id === node.parentId) || node;
+    }
+
     if (node.width && node.height) {
       const x = node.position.x + node.width / 2;
       const y = node.position.y + node.height / 2;
@@ -959,6 +963,12 @@ export function PrivateLineageView(
     actionState: multiNodeAction.actionState,
 
     // Column Level Lineage
+    centerNode: (nodeId: string) => {
+      const node = nodes.find((n) => n.id === nodeId);
+      if (node) {
+        centerNode(node);
+      }
+    },
     showColumnLevelLineage: async (nodeId: string, column?: string) => {
       await handleViewOptionsChanged(
         {

@@ -12,6 +12,7 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@chakra-ui/react";
+import { useLineageViewContextSafe } from "./LineageViewContext";
 
 interface ColumnLevelLineageControlProps {
   node: string;
@@ -24,11 +25,18 @@ export const ColumnLevelLineageControl = ({
   reset,
 }: ColumnLevelLineageControlProps) => {
   const { lineageGraph } = useLineageGraphContext();
+  const { centerNode } = useLineageViewContextSafe();
+
   if (!lineageGraph) {
     return <></>;
   }
 
   const nodeName = lineageGraph.nodes[node].name;
+
+  const navigateToNode = () => {
+    const nodeId = column ? `${node}_${column}` : node;
+    centerNode(nodeId);
+  };
 
   return (
     <Flex
@@ -42,8 +50,8 @@ export const ColumnLevelLineageControl = ({
       borderColor="gray.200"
       bg="white"
       fontSize={"10pt"}>
-      <Text>Column Lineage for</Text>
-      <Code>
+      <Text>{column ? "Column Lineage" : "Impact Radius"} for</Text>
+      <Code onClick={navigateToNode} cursor="pointer">
         {nodeName}
         {column ? `.${column}` : ""}
       </Code>
