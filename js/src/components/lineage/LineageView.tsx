@@ -429,9 +429,15 @@ export function PrivateLineageView(
     setFocusedNodeId(undefined);
   };
 
-  const centerNode = (node: Node) => {
+  const centerNode = (nodeId: string) => {
+    let node = nodes.find((n) => n.id === nodeId);
+    if (!node) {
+      return;
+    }
+
     if (node.parentId) {
-      node = nodes.find((n) => n.id === node.parentId) ?? node;
+      const parentId = node.parentId;
+      node = nodes.find((n) => n.id === parentId) ?? node;
     }
 
     if (node.width && node.height) {
@@ -447,11 +453,10 @@ export function PrivateLineageView(
 
   useResizeObserver(refResize, () => {
     if (selectMode !== "selecting") {
-      const node = nodes.find((node) => node.id === focusedNodeId);
-      if (node) {
-        centerNode(node);
-      } else {
+      if (!focusedNodeId) {
         reactFlow.fitView({ nodes, duration: 200 });
+      } else {
+        centerNode(focusedNodeId);
       }
     }
   });
@@ -963,12 +968,7 @@ export function PrivateLineageView(
     actionState: multiNodeAction.actionState,
 
     // Column Level Lineage
-    centerNode: (nodeId: string) => {
-      const node = nodes.find((n) => n.id === nodeId);
-      if (node) {
-        centerNode(node);
-      }
-    },
+    centerNode,
     showColumnLevelLineage: async (nodeId: string, column?: string) => {
       await handleViewOptionsChanged(
         {
