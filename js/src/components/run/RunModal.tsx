@@ -29,6 +29,16 @@ interface RunModalProps<PT> {
   RunForm?: React.ComponentType<RunFormProps<PT>>;
 }
 
+const getDocumentationUrl = (type: RunType): string | null => {
+  const urlMap: Record<string, string> = {
+    value_diff: "https://docs.datarecce.io/features/lineage/#value-diff",
+    profile_diff: "https://docs.datarecce.io/features/lineage/#profile-diff",
+    histogram_diff: "https://docs.datarecce.io/features/lineage/#histogram-diff",
+    top_k_diff: "https://docs.datarecce.io/features/lineage/#top-k-diff",
+  };
+  return urlMap[type] || null;
+};
+
 export const RunModal = <PT,>({
   isOpen,
   onClose,
@@ -40,6 +50,7 @@ export const RunModal = <PT,>({
 }: RunModalProps<PT>) => {
   const [params, setParams] = useState<Partial<PT>>(defaultParams);
   const [isReadyToExecute, setIsReadyToExecute] = useState(false);
+  const documentationUrl = getDocumentationUrl(type);
 
   return (
     <Modal isOpen={isOpen} onClose={onClose} size="6xl" scrollBehavior="inside">
@@ -48,8 +59,8 @@ export const RunModal = <PT,>({
         <ModalHeader>
           <Flex alignItems="center" gap={2}>
             {title}
-            {type === "value_diff" && (
-              <Link href="https://docs.datarecce.io/features/lineage/#value-diff" isExternal>
+            {documentationUrl && (
+              <Link href={documentationUrl} isExternal>
                 <Icon
                   as={IconInfo}
                   color="gray.500"
