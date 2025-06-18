@@ -815,6 +815,29 @@ export function PrivateLineageView(
         return highlighted.has(source) && highlighted.has(target);
       }
     },
+    isNodeShowingChangeAnalysis: (nodeId: string) => {
+      if (!lineageGraph) {
+        return false;
+      }
+
+      const node = lineageGraph.nodes[nodeId];
+
+      if (viewOptions.column_level_lineage) {
+        const cll = viewOptions.column_level_lineage;
+
+        if (!cll.column) {
+          return cll.node === nodeId && node.changeStatus === "modified";
+        }
+
+        return false;
+      }
+
+      if (breakingChangeEnabled && node.changeStatus === "modified") {
+        return true;
+      }
+
+      return false;
+    },
     getNodeAction: (nodeId: string) => {
       return multiNodeAction.actionState.actions[nodeId];
     },
@@ -936,7 +959,7 @@ export function PrivateLineageView(
     actionState: multiNodeAction.actionState,
 
     // Column Level Lineage
-    showColumnLevelLineage: async (nodeId: string, column: string) => {
+    showColumnLevelLineage: async (nodeId: string, column?: string) => {
       await handleViewOptionsChanged(
         {
           ...viewOptions,

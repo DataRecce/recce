@@ -276,7 +276,7 @@ export function toReactFlow(
     selectedNodes?: string[];
     columnLevelLineage?: {
       node: string;
-      column: string;
+      column?: string;
     };
     cll?: ColumnLineageData;
     breakingChangeEnabled?: boolean;

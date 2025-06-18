@@ -49,6 +49,7 @@ export interface LineageViewContextType {
   isEdgeHighlighted: (source: string, target: string) => boolean;
   getNodeAction: (nodeId: string) => NodeAction;
   getNodeColumnSet: (nodeId: string) => Set<string>;
+  isNodeShowingChangeAnalysis: (nodeId: string) => boolean;
 
   //actions
   runRowCount: () => Promise<void>;
@@ -63,7 +64,7 @@ export interface LineageViewContextType {
   breakingChangeEnabled: boolean;
 
   // Column Level Lineage
-  showColumnLevelLineage: (nodeId: string, column: string) => Promise<void>;
+  showColumnLevelLineage: (nodeId: string, column?: string) => Promise<void>;
   resetColumnLevelLineage: () => void;
 }
 

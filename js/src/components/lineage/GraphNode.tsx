@@ -171,6 +171,7 @@ export function GraphNode(nodeProps: GraphNodeProps) {
     getNodeColumnSet,
     isNodeHighlighted,
     isNodeSelected,
+    isNodeShowingChangeAnalysis,
     showContextMenu,
   } = useLineageViewContextSafe();
   const { lineageGraph } = useLineageGraphContext();
@@ -179,6 +180,7 @@ export function GraphNode(nodeProps: GraphNodeProps) {
   const isHighlighted = isNodeHighlighted(id);
   const isSelected = isNodeSelected(id);
   const isFocused = focusedNode?.id === id;
+  const isShowingChangeAnalysis = isNodeShowingChangeAnalysis(id);
 
   // text color, icon
   const {
@@ -346,7 +348,7 @@ export function GraphNode(nodeProps: GraphNodeProps) {
             paddingBottom="1"
             visibility={showContent ? "inherit" : "hidden"}>
             <HStack spacing={"8px"}>
-              {breakingChangeEnabled && changeStatus === "modified" ? (
+              {isShowingChangeAnalysis ? (
                 <Box height="20px" color="gray" fontSize="9pt" margin={0} fontWeight={600}>
                   {changeCategory ? CHANGE_CATEGORY_MSGS[changeCategory] : ""}
                 </Box>

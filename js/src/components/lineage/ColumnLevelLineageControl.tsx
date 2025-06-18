@@ -44,7 +44,8 @@ export const ColumnLevelLineageControl = ({
       fontSize={"10pt"}>
       <Text>Column Lineage for</Text>
       <Code>
-        {nodeName}.{column}
+        {nodeName}
+        {column ? `.${column}` : ""}
       </Code>
       <Popover trigger="hover" placement="top-start">
         <PopoverTrigger>

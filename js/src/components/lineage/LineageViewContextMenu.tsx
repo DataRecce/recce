@@ -284,7 +284,7 @@ export const ModelNodeContextMenu = ({
       label: "Show Impcat Radius",
       icon: <BiArrowToBottom />,
       action: () => {
-        void showColumnLevelLineage(node.id, "");
+        void showColumnLevelLineage(node.id);
       },
     });
   }
