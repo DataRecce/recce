@@ -431,7 +431,7 @@ export function PrivateLineageView(
 
   const centerNode = (node: Node) => {
     if (node.parentId) {
-      node = nodes.find((n) => n.id === node.parentId) || node;
+      node = nodes.find((n) => n.id === node.parentId) ?? node;
     }
 
     if (node.width && node.height) {
