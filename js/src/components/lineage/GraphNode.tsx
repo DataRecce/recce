@@ -173,13 +173,18 @@ export function GraphNode(nodeProps: GraphNodeProps) {
     isNodeSelected,
     isNodeShowingChangeAnalysis,
     showContextMenu,
+    viewOptions,
   } = useLineageViewContextSafe();
   const { lineageGraph } = useLineageGraphContext();
   const isNonBreakingChange =
     breakingChangeEnabled && changeStatus === "modified" && lineageGraph?.nonBreakingSet.has(id);
   const isHighlighted = isNodeHighlighted(id);
   const isSelected = isNodeSelected(id);
-  const isFocused = focusedNode?.id === id;
+  const isFocusedByImpactRadius =
+    viewOptions.column_level_lineage?.node === id &&
+    viewOptions.column_level_lineage.column === undefined;
+  const isFocused = focusedNode?.id === id || isFocusedByImpactRadius;
+
   const isShowingChangeAnalysis = isNodeShowingChangeAnalysis(id);
 
   // text color, icon
@@ -194,7 +199,7 @@ export function GraphNode(nodeProps: GraphNodeProps) {
         color: "gray.400",
         backgroundColor: "gray.100",
       };
-  const borderStyle = isNonBreakingChange ? "dashed" : "solid";
+  const borderStyle = isShowingChangeAnalysis && isNonBreakingChange ? "dashed" : "solid";
 
   // border width and color
   const borderWidth = "2px";
