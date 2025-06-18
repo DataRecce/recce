@@ -16,7 +16,7 @@ import { useLineageViewContextSafe } from "./LineageViewContext";
 
 interface ColumnLevelLineageControlProps {
   node: string;
-  column: string;
+  column?: string;
   reset?: () => void;
 }
 export const ColumnLevelLineageControl = ({
