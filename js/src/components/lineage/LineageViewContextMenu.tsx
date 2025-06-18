@@ -123,7 +123,7 @@ export const ModelNodeContextMenu = ({
 
   if (changeStatus === "modified") {
     menuItems.push({
-      label: "Show Impcat Radius",
+      label: "Show Impact Radius",
       icon: <BiArrowToBottom />,
       action: () => {
         void showColumnLevelLineage(node.id);

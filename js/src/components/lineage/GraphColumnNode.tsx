@@ -123,7 +123,7 @@ export function GraphColumnNode(nodeProps: GrapeColumnNodeProps) {
         ) : (
           <TransformationType transformationType={transformationType} />
         )}
-        <Box height={`${COLUMN_HEIGHT + 1} px`}>{column}</Box>
+        <Box height={`${COLUMN_HEIGHT + 1}px`}>{column}</Box>
         <Spacer></Spacer>
 
         {isHovered ? (
