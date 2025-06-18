@@ -15,6 +15,7 @@ import { useRecceQueryContext } from "@/lib/hooks/RecceQueryContext";
 import { useLocation } from "wouter";
 import { SubmitRunTrackProps } from "@/lib/api/runs";
 import { formatSelectColumns } from "@/lib/formatSelect";
+import { FaRegDotCircle } from "react-icons/fa";
 
 interface LineageViewContextMenuProps {
   x: number;
@@ -124,7 +125,7 @@ export const ModelNodeContextMenu = ({
   if (changeStatus === "modified") {
     menuItems.push({
       label: "Show Impact Radius",
-      icon: <BiArrowToBottom />,
+      icon: <FaRegDotCircle />,
       action: () => {
         void showColumnLevelLineage(node.id);
       },
