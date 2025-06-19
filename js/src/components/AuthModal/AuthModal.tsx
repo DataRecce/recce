@@ -14,11 +14,10 @@ import {
 import { ReactNode, useCallback, useEffect, useState } from "react";
 import Cookies from "js-cookie";
 import { LuExternalLink } from "react-icons/lu";
-import Link from "next/link";
-import { PUBLIC_CLOUD_WEB_URL } from "@/lib/const";
 import ReloadImage from "public/imgs/reload-image.svg";
 import { StaticImageData } from "next/image";
 import { useRecceInstanceContext } from "@/lib/hooks/RecceInstanceContext";
+import { connectToCloud } from "@/lib/api/connectToCloud";
 
 type AuthState = "authenticating" | "pending" | "canceled" | "ignored";
 
@@ -90,20 +89,18 @@ export default function AuthModal({
             </ModalBody>
             <ModalFooter>
               <div className="flex w-full flex-col gap-2">
-                <Link
-                  className="w-full"
-                  href={`${PUBLIC_CLOUD_WEB_URL}/connect-to-cloud`}
-                  target="_blank"
-                  onClick={() => {
+                <Button
+                  className="w-full !rounded-lg !font-medium"
+                  colorScheme="brand"
+                  rightIcon={<LuExternalLink />}
+                  onClick={async () => {
                     setAuthState("authenticating");
+                    const { connection_url } = await connectToCloud();
+                    // Open the connection URL in a new tab
+                    window.open(connection_url, "_blank");
                   }}>
-                  <Button
-                    className="w-full !rounded-lg !font-medium"
-                    colorScheme="brand"
-                    rightIcon={<LuExternalLink />}>
-                    Use Recce Cloud
-                  </Button>
-                </Link>
+                  Use Recce Cloud
+                </Button>
                 <Button
                   className="!rounded-lg !font-medium"
                   variant="solid"
