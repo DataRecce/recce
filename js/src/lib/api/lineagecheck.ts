@@ -10,7 +10,7 @@ export interface LineageDiffViewOptions {
   exclude?: string;
   column_level_lineage?: {
     node: string;
-    column: string;
+    column?: string;
   };
   breaking_change_enabled?: boolean;
 }

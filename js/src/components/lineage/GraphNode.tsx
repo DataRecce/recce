@@ -166,19 +166,24 @@ export function GraphNode(nodeProps: GraphNodeProps) {
     selectNode,
     selectMode,
     focusedNode,
-    breakingChangeEnabled,
     getNodeAction,
     getNodeColumnSet,
     isNodeHighlighted,
     isNodeSelected,
+    isNodeShowingChangeAnalysis,
     showContextMenu,
+    viewOptions,
   } = useLineageViewContextSafe();
   const { lineageGraph } = useLineageGraphContext();
-  const isNonBreakingChange =
-    breakingChangeEnabled && changeStatus === "modified" && lineageGraph?.nonBreakingSet.has(id);
+  const isNonBreakingChange = changeStatus === "modified" && lineageGraph?.nonBreakingSet.has(id);
   const isHighlighted = isNodeHighlighted(id);
   const isSelected = isNodeSelected(id);
-  const isFocused = focusedNode?.id === id;
+  const isFocusedByImpactRadius =
+    viewOptions.column_level_lineage?.node === id &&
+    viewOptions.column_level_lineage.column === undefined;
+  const isFocused = focusedNode?.id === id || isFocusedByImpactRadius;
+
+  const isShowingChangeAnalysis = isNodeShowingChangeAnalysis(id);
 
   // text color, icon
   const {
@@ -192,7 +197,7 @@ export function GraphNode(nodeProps: GraphNodeProps) {
         color: "gray.400",
         backgroundColor: "gray.100",
       };
-  const borderStyle = isNonBreakingChange ? "dashed" : "solid";
+  const borderStyle = isShowingChangeAnalysis && isNonBreakingChange ? "dashed" : "solid";
 
   // border width and color
   const borderWidth = "2px";
@@ -346,7 +351,7 @@ export function GraphNode(nodeProps: GraphNodeProps) {
             paddingBottom="1"
             visibility={showContent ? "inherit" : "hidden"}>
             <HStack spacing={"8px"}>
-              {breakingChangeEnabled && changeStatus === "modified" ? (
+              {isShowingChangeAnalysis ? (
                 <Box height="20px" color="gray" fontSize="9pt" margin={0} fontWeight={600}>
                   {changeCategory ? CHANGE_CATEGORY_MSGS[changeCategory] : ""}
                 </Box>

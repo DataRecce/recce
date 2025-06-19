@@ -15,6 +15,7 @@ import { useRecceQueryContext } from "@/lib/hooks/RecceQueryContext";
 import { useLocation } from "wouter";
 import { SubmitRunTrackProps } from "@/lib/api/runs";
 import { formatSelectColumns } from "@/lib/formatSelect";
+import { FaRegDotCircle } from "react-icons/fa";
 
 interface LineageViewContextMenuProps {
   x: number;
@@ -91,8 +92,14 @@ export const ModelNodeContextMenu = ({
 }: LineageViewContextMenuProps) => {
   const menuItems: ContextMenuItem[] = [];
 
-  const { selectParentNodes, selectChildNodes, getNodeColumnSet, selectMode, viewOptions } =
-    useLineageViewContextSafe();
+  const {
+    selectParentNodes,
+    selectChildNodes,
+    getNodeColumnSet,
+    selectMode,
+    viewOptions,
+    showColumnLevelLineage,
+  } = useLineageViewContextSafe();
   const { runAction } = useRecceActionContext();
   const { isActionAvailable } = useLineageGraphContext();
   const { data: flag } = useRecceServerFlag();
@@ -113,8 +120,26 @@ export const ModelNodeContextMenu = ({
   const trackProps: SubmitRunTrackProps = {
     source: "lineage_model_node",
   };
+  const changeStatus = modelNode.changeStatus;
+
+  if (changeStatus === "modified") {
+    menuItems.push({
+      label: "Show Impact Radius",
+      icon: <FaRegDotCircle />,
+      action: () => {
+        void showColumnLevelLineage(node.id);
+      },
+    });
+  }
 
   if (!selectMode && resourceType && ["model", "seed", "snapshot"].includes(resourceType)) {
+    if (menuItems.length > 0) {
+      menuItems.push({
+        label: "select group",
+        isSeparator: true,
+      });
+    }
+
     // query
     let entry = findByRunType(singleEnv ? "query" : "query_diff");
     const baseColumns = Object.keys(modelNode.data.base?.columns ?? {});

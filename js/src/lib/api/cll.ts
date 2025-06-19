@@ -7,6 +7,10 @@ export interface CllParams {
   column: string;
 }
 
+export interface ImpactRadiusParams {
+  node_id: string;
+}
+
 export interface CllNodeData {
   id: string;
   name: string;
@@ -39,6 +43,18 @@ export async function getCll(nodeId: string, column: string): Promise<ColumnLine
   const response = await axiosClient.post<CllParams, AxiosResponse<ColumnLineageData>>("/api/cll", {
     params,
   });
+
+  return response.data;
+}
+
+export async function getImpactRadius(nodeId: string): Promise<ColumnLineageData> {
+  const params: ImpactRadiusParams = {
+    node_id: nodeId,
+  };
+  const response = await axiosClient.post<ImpactRadiusParams, AxiosResponse<ColumnLineageData>>(
+    "/api/impact-radius",
+    params,
+  );
 
   return response.data;
 }
