@@ -33,8 +33,15 @@ from . import __latest_version__, __version__, event
 from .apis.check_api import check_router
 from .apis.run_api import run_router
 from .config import RecceConfig
+from .connect_to_cloud import (
+    connect_to_cloud_background_task,
+    generate_key_pair,
+    get_connection_url,
+    is_callback_server_running,
+    prepare_connection_url,
+)
 from .core import RecceContext, default_context, load_context
-from .event import log_api_event, log_single_env_event
+from .event import get_recce_api_token, log_api_event, log_single_env_event
 from .exceptions import RecceException
 from .models.types import CllData
 from .run import load_preset_checks
@@ -247,8 +254,7 @@ async def recce_instance_info():
     read_only = flag.get("read_only", False)
     single_env = flag.get("single_env_onboarding", False)
 
-    auth_options = app_state.auth_options or {}
-    api_token = auth_options.get("api_token")
+    api_token = get_recce_api_token()
 
     return {
         "read_only": read_only,
@@ -661,6 +667,20 @@ async def websocket_endpoint(websocket: WebSocket):
 async def broadcast(data: str):
     for client in clients:
         await client.send_text(data)
+
+
+@app.post("/api/connect")
+async def generate_connect_to_cloud_url(background_tasks: BackgroundTasks):
+    if is_callback_server_running():
+        return {"connection_url": get_connection_url()}
+
+    private_key, public_key = generate_key_pair()
+    connection_url, callback_port = prepare_connection_url(public_key)
+
+    background_tasks.add_task(connect_to_cloud_background_task, private_key, callback_port, connection_url)
+    return {
+        "connection_url": connection_url,
+    }
 
 
 api_prefix = "/api"
