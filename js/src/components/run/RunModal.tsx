@@ -61,7 +61,7 @@ export const RunModal = <PT,>({
     <Modal isOpen={isOpen} onClose={onClose} size="6xl" scrollBehavior="inside">
       <ModalOverlay />
       <ModalContent overflowY="auto" height="75%" minHeight={"400px"}>
-        <ModalHeader>
+        <ModalHeader className="flex items-center">
           {title}{" "}
           {documentationUrl && (
             <Popover trigger="hover" placement="bottom-end">
