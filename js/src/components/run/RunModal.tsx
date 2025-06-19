@@ -5,6 +5,7 @@ import {
   Button,
   Flex,
   Icon,
+  IconButton,
   Link,
   Modal,
   ModalBody,
@@ -13,6 +14,7 @@ import {
   ModalFooter,
   ModalHeader,
   ModalOverlay,
+  Tooltip,
 } from "@chakra-ui/react";
 import { IconInfo } from "../icons";
 import { RunFormProps } from "./types";
@@ -60,15 +62,25 @@ export const RunModal = <PT,>({
           <Flex alignItems="center" gap={2}>
             {title}
             {documentationUrl && (
-              <Link href={documentationUrl} isExternal>
-                <Icon
-                  as={IconInfo}
-                  color="gray.500"
-                  _hover={{ color: "blue.500" }}
-                  w={4}
-                  h={4}
-                />
-              </Link>
+              <Tooltip
+                label="Learn more about the SQL behind"
+                placement="bottom-end"
+                openDelay={100}
+                closeDelay={100}
+                trigger="hover">
+                <div className="flex items-center hover:cursor-pointer hover:text-black">
+                  <IconButton
+                    size="sm"
+                    variant="unstyled"
+                    aria-label="Learn more about the SQL behind"
+                    icon={<Icon verticalAlign="middle" as={IconInfo} boxSize={"16px"} />}
+                    onClick={() => window.open(documentationUrl, "_blank")}
+                    onFocus={(e) => {
+                      e.preventDefault();
+                    }}
+                  />
+                </div>
+              </Tooltip>
             )}
           </Flex>
         </ModalHeader>
