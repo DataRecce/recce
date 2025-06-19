@@ -18,6 +18,8 @@ from recce.util.recce_cloud import RECCE_CLOUD_BASE_URL, RecceCloud
 console = Console()
 
 static_folder_path = Path(__file__).parent / "data"
+_server_lock = threading.Lock()
+_connection_url = None
 
 
 def make_callback_handler(private_key):
@@ -73,6 +75,14 @@ def make_callback_handler(private_key):
     return OneTimeHTTPRequestHandler
 
 
+def is_callback_server_running():
+    return _server_lock.locked()
+
+
+def get_connection_url():
+    return _connection_url
+
+
 def run_one_time_http_server(private_key, port=8080):
     handler = make_callback_handler(private_key)
     server = HTTPServer(("localhost", port), handler)
@@ -100,3 +110,15 @@ def generate_key_pair():
 
     public_key = private_key.public_key()
     return private_key, public_key
+
+
+def connect_to_cloud_background_task(private_key, callback_port, connection_url):
+    if is_callback_server_running():
+        return
+
+    with _server_lock:
+        print("Running callback server")
+        global _connection_url
+        _connection_url = connection_url
+        run_one_time_http_server(private_key, callback_port)
+        _connection_url = None

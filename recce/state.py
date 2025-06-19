@@ -16,6 +16,7 @@ import botocore.exceptions
 from pydantic import BaseModel, Field
 
 from recce import get_version
+from recce.event import get_recce_api_token
 from recce.git import current_branch
 from recce.models import CheckDAO
 from recce.models.types import Check, Run
@@ -766,7 +767,7 @@ class RecceShareStateManager:
         self.hint_message = None
 
     def verify(self) -> bool:
-        if self.auth_options.get("api_token") is None:
+        if get_recce_api_token() is None:
             self.error_message = RECCE_API_TOKEN_MISSING.error_message
             self.hint_message = RECCE_API_TOKEN_MISSING.hint_message
             return False
@@ -781,5 +782,5 @@ class RecceShareStateManager:
 
         with tempfile.NamedTemporaryFile() as tmp:
             state.to_file(tmp.name, file_type=SupportedFileTypes.FILE)
-            response = RecceCloud(token=self.auth_options.get("api_token")).share_state(file_name, open(tmp.name, "rb"))
+            response = RecceCloud(token=get_recce_api_token()).share_state(file_name, open(tmp.name, "rb"))
             return response
