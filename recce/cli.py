@@ -10,6 +10,11 @@ from click import Abort
 from recce import event
 from recce.artifact import download_dbt_artifacts, upload_dbt_artifacts
 from recce.config import RECCE_CONFIG_FILE, RECCE_ERROR_LOG_FILE, RecceConfig
+from recce.connect_to_cloud import (
+    generate_key_pair,
+    prepare_connection_url,
+    run_one_time_http_server,
+)
 from recce.exceptions import RecceConfigException
 from recce.git import current_branch, current_default_branch
 from recce.run import check_github_ci_env, cli_run
@@ -640,6 +645,31 @@ def summary(state_file, **kwargs):
 
     output = generate_markdown_summary(ctx, summary_format=kwargs.get("format"))
     print(output)
+
+
+@cli.command(cls=TrackCommand)
+def connect_to_cloud():
+    """
+    Connect OSS to Cloud
+    """
+    import webbrowser
+
+    from rich.console import Console
+
+    console = Console()
+
+    # Prepare RSA keys for connecting to cloud
+    private_key, public_key = generate_key_pair()
+
+    connect_url, callback_port = prepare_connection_url(public_key)
+    console.rule("Connecting to Recce Cloud")
+    console.print("Attempting to automatically open the Recce Cloud authorization page in your default browser.")
+    console.print("If the browser does not open please open the following URL:")
+    console.print(connect_url)
+    webbrowser.open(connect_url)
+
+    # Launch a callback HTTP server for fetching the api-token
+    run_one_time_http_server(private_key, port=callback_port)
 
 
 @cli.group("cloud", short_help="Manage Recce Cloud state file.")
