@@ -2,9 +2,13 @@ import { axiosClient } from "./axiosClient";
 import { NodeColumnData } from "./info";
 import { AxiosResponse } from "axios";
 
-export interface CllParams {
-  node_id: string;
-  column: string;
+export interface CllInput {
+  node_id?: string;
+  column?: string;
+  change_analysis?: boolean;
+  cll?: boolean;
+  upstream?: boolean;
+  downstream?: boolean;
 }
 
 export interface ImpactRadiusParams {
@@ -35,14 +39,11 @@ export interface ColumnLineageData {
   };
 }
 
-export async function getCll(nodeId: string, column: string): Promise<ColumnLineageData> {
-  const params: CllParams = {
-    node_id: nodeId,
-    column,
-  };
-  const response = await axiosClient.post<CllParams, AxiosResponse<ColumnLineageData>>("/api/cll", {
-    params,
-  });
+export async function getCll(input: CllInput): Promise<ColumnLineageData> {
+  const response = await axiosClient.post<CllInput, AxiosResponse<ColumnLineageData>>(
+    "/api/cll",
+    input,
+  );
 
   return response.data;
 }
