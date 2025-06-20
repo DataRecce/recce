@@ -915,29 +915,20 @@ class DbtAdapter(BaseAdapter):
             diff=diff,
         )
 
-    def get_cll(self, node_id: str, column: Optional[str]) -> CllData:
-        cll = self.get_cll_by_node_id(node_id)
-        if not column:
-            return cll
-
+    def get_cll(
+        self,
+        node_id: Optional[str] = None,
+        column: Optional[str] = None,
+        change_analysis: Optional[bool] = False,
+        cll: Optional[bool] = False,
+        upstream: Optional[bool] = False,
+        downstream: Optional[bool] = False,
+    ) -> CllData:
         target_column = f"{node_id}_{column}"
-        upstream, downstream = find_column_dependencies(target_column, cll.parent_map, cll.child_map)
-        relevant_columns = {target_column}
-        relevant_columns.update(upstream, downstream)
-        nodes, columns = filter_lineage_vertices(cll.nodes, cll.columns, relevant_columns)
-        p_map, c_map = filter_dependency_maps(cll.parent_map, cll.child_map, relevant_columns)
-        return CllData(
-            nodes=nodes,
-            columns=columns,
-            parent_map=p_map,
-            child_map=c_map,
-        )
-
-    def get_cll_by_node_id(self, node_id: str, base: Optional[bool] = False) -> CllData:
         cll_tracker = CLLPerformanceTracking()
         cll_tracker.start_column_lineage()
 
-        manifest = self.curr_manifest if base is False else self.base_manifest
+        manifest = self.curr_manifest
         manifest_dict = manifest.to_dict()
 
         parent_ids = find_upstream(node_id, manifest_dict.get("parent_map"))
@@ -946,34 +937,52 @@ class DbtAdapter(BaseAdapter):
         cll_node_ids.add(node_id)
 
         nodes = {}
-        cll_data = CllData()
+        columns = {}
+        parent_map = {}
+        child_map = {}
+
         for node_id in cll_node_ids:
             if node_id not in manifest.sources and node_id not in manifest.nodes and node_id not in manifest.exposures:
                 continue
-            cll_data_one = self.get_cll_cached(node_id, base=base)
+            cll_data_one = self.get_cll_cached(node_id, base=False)
             if cll_data_one is None:
                 continue
             for n_id, n in cll_data_one.nodes.items():
-                cll_data.nodes[n_id] = n
+                nodes[n_id] = n
             for c_id, c in cll_data_one.columns.items():
-                cll_data.columns[c_id] = c
+                columns[c_id] = c
             for p_id, parents in cll_data_one.parent_map.items():
-                cll_data.parent_map[p_id] = parents
+                parent_map[p_id] = parents
 
         # build the child map
-        cll_data.child_map = {}
-        for node_id, parents in cll_data.parent_map.items():
+        child_map = {}
+        for node_id, parents in parent_map.items():
             for parent in parents:
-                if parent not in cll_data.child_map:
-                    cll_data.child_map[parent] = set()
-                cll_data.child_map[parent].add(node_id)
+                if parent not in child_map:
+                    child_map[parent] = set()
+                child_map[parent].add(node_id)
 
         cll_tracker.end_column_lineage()
         cll_tracker.set_total_nodes(len(nodes))
         log_performance("column level lineage", cll_tracker.to_dict())
         cll_tracker.reset()
 
-        return cll_data
+        if column:
+            upstream, downstream = find_column_dependencies(target_column, parent_map, child_map)
+            relevant_columns = {target_column}
+            relevant_columns.update(upstream, downstream)
+            nodes, columns = filter_lineage_vertices(nodes, columns, relevant_columns)
+            p_map, c_map = filter_dependency_maps(parent_map, child_map, relevant_columns)
+
+        return CllData(
+            nodes=nodes,
+            columns=columns,
+            parent_map=parent_map,
+            child_map=child_map,
+        )
+
+    def get_cll_by_node_id(self, node_id: str) -> CllData:
+        return self.get_cll(node_id=node_id)
 
     @lru_cache(maxsize=128)
     def get_cll_cached(self, node_id: str, base: Optional[bool] = False) -> Optional[CllData]:
