@@ -66,23 +66,12 @@ class PrepareApiTokenTest(unittest.TestCase):
         self.assertIsNone(token)
         mock_print.assert_any_call("[[yellow]Warning[/yellow]] Invalid Recce Cloud API token. Skipping the share link.")
 
-    @patch("recce.util.api_token.set_recce_cloud_onboarding_state")
-    @patch("recce.util.api_token.get_recce_cloud_onboarding_state", return_value="new")
     @patch("recce.util.api_token.update_recce_api_token")
     @patch("recce.util.api_token.click.prompt", return_value="token")
     @patch("recce.util.api_token.console.print")
     @patch("recce.util.api_token.RecceCloud")
     @patch("recce.util.api_token.get_recce_api_token", return_value=None)
-    def test_interactive_token_flow(
-        self,
-        mock_get_token,
-        mock_recce_cloud,
-        mock_print,
-        mock_prompt,
-        mock_update_token,
-        mock_get_onboard,
-        mock_set_onboard,
-    ):
+    def test_interactive_token_flow(self, mock_get_token, mock_recce_cloud, mock_print, mock_prompt, mock_update_token):
         from recce.util.api_token import prepare_api_token
 
         mock_recce_cloud.return_value.verify_token.return_value = True
@@ -90,24 +79,14 @@ class PrepareApiTokenTest(unittest.TestCase):
         self.assertEqual(token, "token")
         mock_prompt.assert_called_once()
         mock_update_token.assert_called_once()
-        mock_set_onboard.assert_called_once_with("token", "launched")
 
-    @patch("recce.util.api_token.set_recce_cloud_onboarding_state")
-    @patch("recce.util.api_token.get_recce_cloud_onboarding_state", return_value="new")
     @patch("recce.util.api_token.update_recce_api_token")
     @patch("recce.util.api_token.click.prompt", return_value="token")
     @patch("recce.util.api_token.console.print")
     @patch("recce.util.api_token.RecceCloud")
     @patch("recce.util.api_token.get_recce_api_token", return_value=None)
     def test_interactive_token_invalid_flow(
-        self,
-        mock_get_token,
-        mock_recce_cloud,
-        mock_print,
-        mock_prompt,
-        mock_update_token,
-        mock_get_onboard,
-        mock_set_onboard,
+        self, mock_get_token, mock_recce_cloud, mock_print, mock_prompt, mock_update_token
     ):
         from recce.util.api_token import prepare_api_token
 
