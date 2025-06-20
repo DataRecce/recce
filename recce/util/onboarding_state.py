@@ -8,9 +8,9 @@ from recce.util.recce_cloud import (
 
 
 class OnboardingState(Enum):
-    NEW = 1
-    LAUNCHED = 2
-    LAUNCHED_WITH_TWO_ENVS = 3
+    NEW = "signup_successful"
+    LAUNCHED = "launched_with_token"
+    LAUNCHED_WITH_TWO_ENVS = "configure_two_env"
 
 
 def update_onboarding_state(api_token: Union[str, bool, None], is_single_env: bool) -> OnboardingState:
@@ -21,24 +21,24 @@ def update_onboarding_state(api_token: Union[str, bool, None], is_single_env: bo
         #   launched -> launched_with_two_envs
         cloud_onboarding_state = get_recce_cloud_onboarding_state(api_token)
 
-        if cloud_onboarding_state == "new":
+        if cloud_onboarding_state == OnboardingState.NEW.value:
             # User has an API Token and is a "new" user
             if is_single_env:
                 # Mark the onboarding state as "launched" if the user is new
-                set_recce_cloud_onboarding_state(api_token, "launched")
+                set_recce_cloud_onboarding_state(api_token, OnboardingState.LAUNCHED.value)
                 return OnboardingState.LAUNCHED
             else:
-                set_recce_cloud_onboarding_state(api_token, "launched_with_two_envs")
+                set_recce_cloud_onboarding_state(api_token, OnboardingState.LAUNCHED_WITH_TWO_ENVS.value)
                 return OnboardingState.LAUNCHED_WITH_TWO_ENVS
-        elif cloud_onboarding_state == "launched":
+        elif cloud_onboarding_state == OnboardingState.LAUNCHED.value:
             # User has an API Token and has Two Environments
             if is_single_env:
                 # Just return the current state
                 return OnboardingState.LAUNCHED
             else:
-                set_recce_cloud_onboarding_state(api_token, "launched_with_two_envs")
+                set_recce_cloud_onboarding_state(api_token, OnboardingState.LAUNCHED_WITH_TWO_ENVS.value)
                 return OnboardingState.LAUNCHED_WITH_TWO_ENVS
-        elif cloud_onboarding_state == "launched_with_two_envs":
+        elif cloud_onboarding_state == OnboardingState.LAUNCHED_WITH_TWO_ENVS.value:
             # Just return the current state
             return OnboardingState.LAUNCHED_WITH_TWO_ENVS
 
