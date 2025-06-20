@@ -1,4 +1,5 @@
 from enum import Enum
+from typing import Union
 
 from recce.util.recce_cloud import (
     get_recce_cloud_onboarding_state,
@@ -12,7 +13,7 @@ class OnboardingState(Enum):
     LAUNCHED_WITH_TWO_ENVS = 3
 
 
-def update_onboarding_state(api_token: str | bool | None, is_single_env: bool) -> OnboardingState:
+def update_onboarding_state(api_token: Union[str, bool, None], is_single_env: bool) -> OnboardingState:
     if api_token:
         # existing onboarding_state values -> new, launched, launched_with_two_envs
         #   new -> launched
