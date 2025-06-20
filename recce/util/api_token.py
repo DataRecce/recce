@@ -7,8 +7,6 @@ from recce.exceptions import RecceConfigException
 from recce.util.recce_cloud import (
     RECCE_CLOUD_BASE_URL,
     RecceCloud,
-    get_recce_cloud_onboarding_state,
-    set_recce_cloud_onboarding_state,
 )
 
 console = Console()
@@ -54,7 +52,7 @@ def prepare_api_token(
             event.log_connected_to_cloud()
     else:
         # No api_token provided
-        if interaction is True:
+        if interaction:
             console.print(
                 "An API token is required for this feature. This can be obtained in your user account settings.\n"
                 f"{RECCE_CLOUD_BASE_URL}/settings#tokens\n"
@@ -69,11 +67,5 @@ def prepare_api_token(
                 "[[green]Success[/green]] User profile has been updated to include the Recce Cloud API Token. "
                 "You no longer need to append --api-token to the recce command"
             )
-
-    if api_token:
-        cloud_onboarding_state = get_recce_cloud_onboarding_state(api_token)
-        if cloud_onboarding_state == "new":
-            # Mark the onboarding state as "launched" if the user is new
-            set_recce_cloud_onboarding_state(api_token, "launched")
 
     return api_token
