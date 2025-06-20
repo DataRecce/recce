@@ -2,7 +2,6 @@ import { axiosClient } from "./axiosClient";
 import { AxiosResponse } from "axios";
 
 export interface RecceServerFlags {
-  show_onboarding_guide: boolean;
   single_env_onboarding: boolean;
   show_relaunch_hint: boolean;
 }

@@ -271,13 +271,6 @@ async def config_flag():
     return flag
 
 
-@app.post("/api/onboarding/completed", status_code=204)
-async def mark_onboarding_completed():
-    context = default_context()
-    context.mark_onboarding_completed()
-    app.state.flag["show_onboarding_guide"] = False
-
-
 @app.post("/api/relaunch-hint/completed", status_code=204)
 async def mark_relaunch_hint_completed():
     app.state.flag["show_relaunch_hint"] = False

@@ -17,9 +17,9 @@ from recce.state import RecceCloudStateManager, RecceShareStateManager, RecceSta
 from recce.summary import generate_markdown_summary
 from recce.util.api_token import prepare_api_token, show_invalid_api_token_message
 from recce.util.logger import CustomFormatter
+from recce.util.onboarding_state import update_onboarding_state
 from recce.util.recce_cloud import (
     RecceCloudException,
-    get_recce_cloud_onboarding_state,
 )
 
 from .core import RecceContext, set_default_context
@@ -397,15 +397,21 @@ def server(host, port, lifetime, state_file=None, **kwargs):
     is_cloud = kwargs.get("cloud", False)
     console = Console()
     cloud_options = None
-    flag = {"show_onboarding_guide": True, "single_env_onboarding": False, "show_relaunch_hint": False}
+    flag = {"single_env_onboarding": False, "show_relaunch_hint": False}
     if is_cloud:
         cloud_options = {
             "host": kwargs.get("state_file_host"),
             "token": kwargs.get("cloud_token"),
             "password": kwargs.get("password"),
         }
-        cloud_onboarding_state = get_recce_cloud_onboarding_state(kwargs.get("cloud_token"))
-        flag["show_onboarding_guide"] = False if cloud_onboarding_state == "completed" else True
+
+    # Check Single Environment Onboarding Mode if the review mode is False
+    if not Path(kwargs.get("target_base_path", "target-base")).is_dir() and not is_review:
+        # Mark as single env onboarding mode if user provides the target-path only
+        flag["single_env_onboarding"] = True
+        flag["show_relaunch_hint"] = True
+        # Use the target path as the base path
+        kwargs["target_base_path"] = kwargs.get("target_path")
 
     auth_options = {}
     try:
@@ -415,13 +421,8 @@ def server(host, port, lifetime, state_file=None, **kwargs):
         exit(1)
     auth_options["api_token"] = api_token
 
-    # Check Single Environment Onboarding Mode if the review mode is False
-    if not Path(kwargs.get("target_base_path", "target-base")).is_dir() and not is_review:
-        # Mark as single env onboarding mode if user provides the target-path only
-        flag["single_env_onboarding"] = True
-        flag["show_relaunch_hint"] = True
-        # Use the target path as the base path
-        kwargs["target_base_path"] = kwargs.get("target_path")
+    # Onboarding State logic update here
+    update_onboarding_state(api_token, flag["single_env_onboarding"])
 
     state_loader = create_state_loader(is_review, is_cloud, state_file, cloud_options)
 
