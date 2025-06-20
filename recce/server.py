@@ -8,7 +8,7 @@ from contextlib import asynccontextmanager
 from dataclasses import dataclass
 from datetime import datetime, timedelta
 from pathlib import Path
-from typing import Annotated, Any, Dict, Literal, Optional, Set
+from typing import Annotated, Any, Literal, Optional, Set
 
 from fastapi import (
     BackgroundTasks,
@@ -335,7 +335,12 @@ async def get_info():
 
 
 class CllIn(BaseModel):
-    params: Dict
+    node_id: Optional[str] = None
+    column: Optional[str] = None
+    change_analysis: Optional[bool] = False
+    cll: Optional[bool] = False
+    upstream: Optional[bool] = False
+    downstream: Optional[bool] = False
 
 
 class CllOutput(BaseModel):
@@ -347,27 +352,13 @@ async def column_level_lineage_by_node(cll_input: CllIn):
     from recce.adapter.dbt_adapter import DbtAdapter
 
     dbt_adapter: DbtAdapter = default_context().adapter
-    node_id = cll_input.params.get("node_id")
-    column = cll_input.params.get("column")
 
-    cll = dbt_adapter.get_cll(node_id, column)
-
-    return CllOutput(current=cll)
-
-
-class ImpactRadiusIn(BaseModel):
-    node_id: str
-
-
-@app.post("/api/impact-radius", response_model=CllOutput)
-async def impact_radius_by_node(impact_input: ImpactRadiusIn):
-    from recce.adapter.dbt_adapter import DbtAdapter
-
-    context = default_context()
-    dbt_adapter: DbtAdapter = context.adapter
-    node_id = impact_input.node_id
-
-    cll = dbt_adapter.get_impact_radius(node_id)
+    if cll_input.change_analysis and cll_input.node_id:
+        cll = dbt_adapter.get_impact_radius(cll_input.node_id)
+    elif cll_input.node_id:
+        cll = dbt_adapter.get_cll(cll_input.node_id, cll_input.column)
+    else:
+        raise HTTPException(status_code=400, detail="node_id is required for CLL query")
 
     return CllOutput(current=cll)
 
