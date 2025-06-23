@@ -180,13 +180,13 @@ class RecceCloud:
 
     def set_onboarding_state(self, state: str):
         api_url = f"{self.base_url}/users/onboarding-state"
-        response = self._request("PUT", api_url, json={"state": state})
-        if response.status_code != 200:
-            raise RecceCloudException(
-                message="Failed to update onboarding state in Recce Cloud.",
-                reason=response.text,
-                status_code=response.status_code,
-            )
+        try:
+            response = self._request("PUT", api_url, json={"state": state})
+            response.raise_for_status()
+        except requests.exceptions.HTTPError as e:
+            # Don't Raise an exception if setting onboarding_state fails
+            logger.warning(f"Failed to set Onboarding State in Recce Cloud. Reason: {str(e)}")
+        return
 
 
 def get_recce_cloud_onboarding_state(token: str) -> str:
