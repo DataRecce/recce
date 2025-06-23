@@ -977,6 +977,34 @@ class DbtAdapter(BaseAdapter):
 
                 for p_id, parents in cll_data_one.parent_map.items():
                     parent_map[p_id] = parents
+        else:
+            for cll_node_id in cll_node_ids:
+                if cll_node_id in manifest.sources:
+                    n = manifest.sources[cll_node_id]
+                    nodes[cll_node_id] = CllNode(
+                        id=n.unique_id,
+                        name=n.name,
+                        source_name=n.source_name,
+                        package_name=n.package_name,
+                    )
+                elif cll_node_id in manifest.nodes:
+                    n = manifest.nodes[cll_node_id]
+                    nodes[cll_node_id] = CllNode(
+                        id=n.unique_id,
+                        name=n.name,
+                        package_name=n.package_name,
+                        resource_type=n.resource_type,
+                    )
+                elif cll_node_id in manifest.exposures:
+                    n = manifest.exposures[cll_node_id]
+                    nodes[cll_node_id] = CllNode(
+                        id=n.unique_id,
+                        name=n.name,
+                        package_name=n.package_name,
+                        resource_type=n.resource_type,
+                    )
+
+                parent_map[cll_node_id] = manifest.parent_map.get(cll_node_id, [])
 
         # build the child map
         for parent_id, parents in parent_map.items():
@@ -987,10 +1015,14 @@ class DbtAdapter(BaseAdapter):
 
         # Find the anchor nodes
         anchor_node_ids = set()
+        extra_node_ids = set()
         if node_id is None and column is None:
             if change_analysis:
                 # If change analysis is requested, we need to find the nodes that have changes
                 for node_id, node_diff in self.get_lineage_diff().diff.items():
+                    extra_node_ids.add(node_id)
+                    if node_diff.change is None:
+                        continue
                     if node_diff.change.category == "breaking":
                         anchor_node_ids.add(node_id)
                     for column_name in node_diff.change.columns:
@@ -1022,8 +1054,8 @@ class DbtAdapter(BaseAdapter):
 
         # Filter the nodes and columns based on the anchor nodes
         if not no_filter:
-            nodes = {k: v for k, v in nodes.items() if k in result_node_ids}
-            columns = {k: v for k, v in columns.items() if k in result_node_ids}
+            nodes = {k: v for k, v in nodes.items() if k in result_node_ids or k in extra_node_ids}
+            columns = {k: v for k, v in columns.items() if k in result_node_ids or k in extra_node_ids}
             parent_map, child_map = filter_dependency_maps(parent_map, child_map, result_node_ids)
 
         cll_tracker.end_column_lineage()

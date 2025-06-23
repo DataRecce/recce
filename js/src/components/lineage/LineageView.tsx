@@ -481,7 +481,7 @@ export function PrivateLineageView(
       {
         ...viewOptions,
         column_level_lineage: {
-          node: node.data.node.id,
+          node_id: node.data.node.id,
           column: node.data.column,
         },
       },
@@ -573,15 +573,7 @@ export function PrivateLineageView(
     let cll: ColumnLineageData | undefined;
     if (newViewOptions.column_level_lineage) {
       try {
-        const cllInput: CllInput = {
-          node_id: newViewOptions.column_level_lineage.node,
-          column: newViewOptions.column_level_lineage.column,
-          change_analysis: !newViewOptions.column_level_lineage.column,
-          upstream: newViewOptions.column_level_lineage.column ? true : false,
-          downstream: true,
-          cll: true,
-        };
-        cll = await getCll(cllInput);
+        cll = await getCll(newViewOptions.column_level_lineage);
       } catch (e) {
         if (e instanceof AxiosError) {
           const e2 = e as AxiosError<{ detail?: string }>;
@@ -836,7 +828,7 @@ export function PrivateLineageView(
         const cll = viewOptions.column_level_lineage;
 
         if (!cll.column) {
-          return cll.node === nodeId && node.changeStatus === "modified";
+          return cll.node_id === nodeId && node.changeStatus === "modified";
         }
 
         return false;
@@ -970,15 +962,17 @@ export function PrivateLineageView(
 
     // Column Level Lineage
     centerNode,
-    showColumnLevelLineage: async (nodeId: string, column?: string) => {
+    showColumnLevelLineage: async (columnLevelLineage: CllInput) => {
       await handleViewOptionsChanged(
         {
           ...viewOptions,
-          column_level_lineage: { node: nodeId, column },
+          column_level_lineage: columnLevelLineage,
         },
         false,
       );
-      setFocusedNodeId(nodeId);
+      if (columnLevelLineage.node_id) {
+        setFocusedNodeId(columnLevelLineage.node_id);
+      }
     },
     resetColumnLevelLineage: () => {
       setFocusedNodeId(undefined);
@@ -1130,7 +1124,7 @@ export function PrivateLineageView(
                 />
                 {viewOptions.column_level_lineage && (
                   <ColumnLevelLineageControl
-                    node={viewOptions.column_level_lineage.node}
+                    node={viewOptions.column_level_lineage.node_id}
                     column={viewOptions.column_level_lineage.column}
                     reset={
                       interactive

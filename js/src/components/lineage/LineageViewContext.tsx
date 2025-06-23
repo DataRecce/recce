@@ -3,6 +3,7 @@ import { Run } from "@/lib/api/types";
 import React, { createContext, useContext } from "react";
 import { Node, NodeProps } from "reactflow";
 import { LineageGraphNode } from "./lineage";
+import { CllInput } from "@/lib/api/cll";
 
 type NewType = LineageDiffViewOptions;
 type ActionMode = "per_node" | "multi_nodes";
@@ -65,7 +66,7 @@ export interface LineageViewContextType {
 
   // Column Level Lineage
   centerNode: (nodeId: string) => void;
-  showColumnLevelLineage: (nodeId: string, column?: string) => Promise<void>;
+  showColumnLevelLineage: (cll: CllInput) => Promise<void>;
   resetColumnLevelLineage: () => void;
 }
 

@@ -179,7 +179,7 @@ export function GraphNode(nodeProps: GraphNodeProps) {
   const isHighlighted = isNodeHighlighted(id);
   const isSelected = isNodeSelected(id);
   const isFocusedByImpactRadius =
-    viewOptions.column_level_lineage?.node === id &&
+    viewOptions.column_level_lineage?.node_id === id &&
     viewOptions.column_level_lineage.column === undefined;
   const isFocused = focusedNode?.id === id || isFocusedByImpactRadius;
 

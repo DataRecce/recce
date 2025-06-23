@@ -2,6 +2,7 @@ import { useRecceServerFlag } from "@/lib/hooks/useRecceServerFlag";
 import { InfoOutlineIcon } from "@chakra-ui/icons";
 import {
   Badge,
+  Button,
   Flex,
   Icon,
   Link,
@@ -12,6 +13,7 @@ import {
   Switch,
   Text,
 } from "@chakra-ui/react";
+import { useLineageViewContextSafe } from "./LineageViewContext";
 
 interface BreakingChangeSwitchProps {
   enabled: boolean;
@@ -20,6 +22,7 @@ interface BreakingChangeSwitchProps {
 
 export const BreakingChangeSwitch = ({ enabled, onChanged }: BreakingChangeSwitchProps) => {
   const recceServerFlag = useRecceServerFlag();
+  const { showColumnLevelLineage } = useLineageViewContextSafe();
   if (!recceServerFlag.data || recceServerFlag.data.single_env_onboarding) {
     return <></>;
   }
@@ -36,6 +39,20 @@ export const BreakingChangeSwitch = ({ enabled, onChanged }: BreakingChangeSwitc
       borderColor="gray.200"
       bg="white"
       alignSelf="flex-start">
+      <Button
+        size="xs"
+        onClick={() => {
+          void showColumnLevelLineage({ upstream: false, change_analysis: true, cll: false });
+        }}>
+        Analyze change
+      </Button>
+      <Button
+        size="xs"
+        onClick={() => {
+          void showColumnLevelLineage({ upstream: false, change_analysis: true, cll: true });
+        }}>
+        Impact Raidus++
+      </Button>
       <Switch
         isChecked={enabled}
         onChange={(e) => {

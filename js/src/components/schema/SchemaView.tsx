@@ -41,7 +41,7 @@ function PrivateSingleEnvSchemaView({ current }: { current?: NodeData }, ref: an
     setCllRunningMap((prev) => new Map(prev).set(columnName, true));
     const modelId = current?.id;
     if (modelId) {
-      await lineageViewContext?.showColumnLevelLineage(modelId, columnName);
+      await lineageViewContext?.showColumnLevelLineage({ node_id: modelId, column: columnName });
     }
     setCllRunningMap((prev) => new Map(prev).set(columnName, false));
   };
@@ -51,7 +51,7 @@ function PrivateSingleEnvSchemaView({ current }: { current?: NodeData }, ref: an
     return `${modelId}-${row.name}`;
   };
   const cll = lineageViewContext?.viewOptions.column_level_lineage;
-  const selectedRows: Set<Key> = cll ? new Set([`${cll.node}-${cll.column}`]) : new Set();
+  const selectedRows: Set<Key> = cll ? new Set([`${cll.node_id}-${cll.column}`]) : new Set();
 
   return (
     <Flex direction="column">
@@ -148,7 +148,7 @@ export function PrivateSchemaView(
     setCllRunningMap((prev) => new Map(prev).set(columnName, true));
     const modelId = current?.id ?? base?.id;
     if (modelId) {
-      await lineageViewContext?.showColumnLevelLineage(modelId, columnName);
+      await lineageViewContext?.showColumnLevelLineage({ node_id: modelId, column: columnName });
     }
     setCllRunningMap((prev) => new Map(prev).set(columnName, false));
   };
@@ -158,7 +158,7 @@ export function PrivateSchemaView(
     return `${modelId}-${row.name}`;
   };
   const cll = lineageViewContext?.viewOptions.column_level_lineage;
-  const selectedRows: Set<Key> = cll ? new Set([`${cll.node}-${cll.column}`]) : new Set();
+  const selectedRows: Set<Key> = cll ? new Set([`${cll.node_id}-${cll.column}`]) : new Set();
 
   return (
     <Flex direction="column">

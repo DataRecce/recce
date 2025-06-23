@@ -15,7 +15,7 @@ import {
 import { useLineageViewContextSafe } from "./LineageViewContext";
 
 interface ColumnLevelLineageControlProps {
-  node: string;
+  node?: string;
   column?: string;
   reset?: () => void;
 }
@@ -31,9 +31,13 @@ export const ColumnLevelLineageControl = ({
     return <></>;
   }
 
-  const nodeName = lineageGraph.nodes[node].name;
+  const nodeName = node ? lineageGraph.nodes[node].name : undefined;
 
   const navigateToNode = () => {
+    if (!node) {
+      return;
+    }
+
     const nodeId = column ? `${node}_${column}` : node;
     centerNode(nodeId);
   };

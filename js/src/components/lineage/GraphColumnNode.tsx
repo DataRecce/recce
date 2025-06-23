@@ -84,7 +84,7 @@ export function GraphColumnNode(nodeProps: GrapeColumnNodeProps) {
   const { viewOptions, showContextMenu, isNodeHighlighted, isNodeShowingChangeAnalysis } =
     useLineageViewContextSafe();
 
-  const selectedNode = viewOptions.column_level_lineage?.node;
+  const selectedNode = viewOptions.column_level_lineage?.node_id;
   const selectedColumn = viewOptions.column_level_lineage?.column;
   const isFocus = column === selectedColumn && nodeId === selectedNode;
   const [isHovered, setIsHovered] = React.useState(false);

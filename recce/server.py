@@ -351,6 +351,7 @@ async def column_level_lineage_by_node(cll_input: CllIn):
         change_analysis=cll_input.change_analysis,
         upstream=cll_input.upstream,
         downstream=cll_input.downstream,
+        cll=cll_input.cll,
     )
 
     return CllOutput(current=cll)
