@@ -959,10 +959,22 @@ class DbtAdapter(BaseAdapter):
                 cll_data_one = self.get_cll_cached(cll_node_id, base=False)
                 if cll_data_one is None:
                     continue
+
+                node_diff = self.get_lineage_diff().diff.get(cll_node_id) if change_analysis else None
                 for n_id, n in cll_data_one.nodes.items():
                     nodes[n_id] = n
+
+                    if node_diff is not None:
+                        n.change_status = node_diff.change_status
+                        if node_diff.change is not None:
+                            n.change_category = node_diff.change.category
                 for c_id, c in cll_data_one.columns.items():
                     columns[c_id] = c
+                    if node_diff is not None and node_diff.change is not None:
+                        column_diff = node_diff.change.columns.get(c.name)
+                        if column_diff:
+                            c.change_status = column_diff
+
                 for p_id, parents in cll_data_one.parent_map.items():
                     parent_map[p_id] = parents
 
@@ -1017,12 +1029,6 @@ class DbtAdapter(BaseAdapter):
             nodes = {k: v for k, v in nodes.items() if k in anchor_node_ids}
             columns = {k: v for k, v in columns.items() if k in anchor_node_ids}
             parent_map, child_map = filter_dependency_maps(parent_map, child_map, anchor_node_ids)
-
-        # upstream, downstream = find_column_dependencies(target_column, parent_map, child_map)
-        # relevant_columns = {target_column}
-        # relevant_columns.update(upstream, downstream)
-        # nodes, columns = filter_lineage_vertices(nodes, columns, relevant_columns)
-        # parent_map, child_map = filter_dependency_maps(parent_map, child_map, relevant_columns)
 
         return CllData(
             nodes=nodes,

@@ -353,12 +353,18 @@ async def column_level_lineage_by_node(cll_input: CllIn):
 
     dbt_adapter: DbtAdapter = default_context().adapter
 
-    if cll_input.change_analysis and cll_input.node_id:
-        cll = dbt_adapter.get_impact_radius(cll_input.node_id)
-    elif cll_input.node_id:
-        cll = dbt_adapter.get_cll(cll_input.node_id, cll_input.column)
-    else:
-        raise HTTPException(status_code=400, detail="node_id is required for CLL query")
+    # if cll_input.change_analysis and cll_input.node_id:
+    #     cll = dbt_adapter.get_impact_radius(cll_input.node_id)
+    # elif cll_input.node_id:
+    #     cll = dbt_adapter.get_cll(cll_input.node_id, cll_input.column)
+    # else:
+    #     raise HTTPException(status_code=400, detail="node_id is required for CLL query")
+
+    cll = dbt_adapter.get_cll(
+        node_id=cll_input.node_id,
+        column=cll_input.column,
+        change_analysis=cll_input.change_analysis,
+    )
 
     return CllOutput(current=cll)
 
