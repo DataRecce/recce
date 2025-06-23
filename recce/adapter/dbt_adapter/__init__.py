@@ -915,65 +915,128 @@ class DbtAdapter(BaseAdapter):
             diff=diff,
         )
 
-    def get_cll(self, node_id: str, column: Optional[str]) -> CllData:
-        cll = self.get_cll_by_node_id(node_id)
-        if not column:
-            return cll
-
-        target_column = f"{node_id}_{column}"
-        upstream, downstream = find_column_dependencies(target_column, cll.parent_map, cll.child_map)
-        relevant_columns = {target_column}
-        relevant_columns.update(upstream, downstream)
-        nodes, columns = filter_lineage_vertices(cll.nodes, cll.columns, relevant_columns)
-        p_map, c_map = filter_dependency_maps(cll.parent_map, cll.child_map, relevant_columns)
-        return CllData(
-            nodes=nodes,
-            columns=columns,
-            parent_map=p_map,
-            child_map=c_map,
-        )
-
-    def get_cll_by_node_id(self, node_id: str, base: Optional[bool] = False) -> CllData:
+    def get_cll(
+        self,
+        node_id: Optional[str] = None,
+        column: Optional[str] = None,
+        change_analysis: Optional[bool] = False,
+        cll: Optional[bool] = True,
+        upstream: Optional[bool] = True,
+        downstream: Optional[bool] = True,
+        no_filter: Optional[bool] = False,
+    ) -> CllData:
         cll_tracker = CLLPerformanceTracking()
         cll_tracker.start_column_lineage()
 
-        manifest = self.curr_manifest if base is False else self.base_manifest
+        manifest = self.curr_manifest
         manifest_dict = manifest.to_dict()
 
-        parent_ids = find_upstream(node_id, manifest_dict.get("parent_map"))
-        child_ids = find_downstream(node_id, manifest_dict.get("child_map"))
-        cll_node_ids = parent_ids.union(child_ids)
-        cll_node_ids.add(node_id)
+        # Find related model nodes
+        if node_id is not None:
+            cll_node_ids = {node_id}
+        else:
+            lineage_diff = self.get_lineage_diff()
+            cll_node_ids = lineage_diff.diff.keys()
 
         nodes = {}
-        cll_data = CllData()
-        for node_id in cll_node_ids:
-            if node_id not in manifest.sources and node_id not in manifest.nodes and node_id not in manifest.exposures:
-                continue
-            cll_data_one = self.get_cll_cached(node_id, base=base)
-            if cll_data_one is None:
-                continue
-            for n_id, n in cll_data_one.nodes.items():
-                cll_data.nodes[n_id] = n
-            for c_id, c in cll_data_one.columns.items():
-                cll_data.columns[c_id] = c
-            for p_id, parents in cll_data_one.parent_map.items():
-                cll_data.parent_map[p_id] = parents
+        columns = {}
+        parent_map = {}
+        child_map = {}
+
+        if upstream:
+            cll_node_ids = cll_node_ids.union(find_upstream(cll_node_ids, manifest_dict.get("parent_map")))
+        if downstream:
+            cll_node_ids = cll_node_ids.union(find_downstream(cll_node_ids, manifest_dict.get("child_map")))
+
+        if cll:
+            for cll_node_id in cll_node_ids:
+                if (
+                    cll_node_id not in manifest.sources
+                    and cll_node_id not in manifest.nodes
+                    and cll_node_id not in manifest.exposures
+                ):
+                    continue
+                cll_data_one = self.get_cll_cached(cll_node_id, base=False)
+                if cll_data_one is None:
+                    continue
+
+                node_diff = self.get_lineage_diff().diff.get(cll_node_id) if change_analysis else None
+                for n_id, n in cll_data_one.nodes.items():
+                    nodes[n_id] = n
+
+                    if node_diff is not None:
+                        n.change_status = node_diff.change_status
+                        if node_diff.change is not None:
+                            n.change_category = node_diff.change.category
+                for c_id, c in cll_data_one.columns.items():
+                    columns[c_id] = c
+                    if node_diff is not None and node_diff.change is not None:
+                        column_diff = node_diff.change.columns.get(c.name)
+                        if column_diff:
+                            c.change_status = column_diff
+
+                for p_id, parents in cll_data_one.parent_map.items():
+                    parent_map[p_id] = parents
 
         # build the child map
-        cll_data.child_map = {}
-        for node_id, parents in cll_data.parent_map.items():
+        for parent_id, parents in parent_map.items():
             for parent in parents:
-                if parent not in cll_data.child_map:
-                    cll_data.child_map[parent] = set()
-                cll_data.child_map[parent].add(node_id)
+                if parent not in child_map:
+                    child_map[parent] = set()
+                child_map[parent].add(parent_id)
+
+        # Find the anchor nodes
+        anchor_node_ids = set()
+        if node_id is None and column is None:
+            if change_analysis:
+                # If change analysis is requested, we need to find the nodes that have changes
+                for node_id, node_diff in self.get_lineage_diff().diff.items():
+                    if node_diff.change.category == "breaking":
+                        anchor_node_ids.add(node_id)
+                    for column_name in node_diff.change.columns:
+                        anchor_node_ids.add(f"{node_id}_{column_name}")
+            else:
+                lineage_diff = self.get_lineage_diff()
+                anchor_node_ids = lineage_diff.diff.keys()
+        elif node_id is not None and column is None:
+            if change_analysis:
+                # If change analysis is requested, we need to find the nodes that have changes
+                node_diff = self.get_lineage_diff().diff.get(node_id)
+                if node_diff:
+                    if node_diff.change.category == "breaking":
+                        anchor_node_ids.add(node_id)
+                    for column_name in node_diff.change.columns:
+                        anchor_node_ids.add(f"{node_id}_{column_name}")
+                else:
+                    anchor_node_ids.add(node_id)
+            else:
+                anchor_node_ids.add(node_id)
+        else:
+            anchor_node_ids.add(f"{node_id}_{column}")
+
+        result_node_ids = set(anchor_node_ids)
+        if upstream:
+            result_node_ids = result_node_ids.union(find_upstream(anchor_node_ids, parent_map))
+        if downstream:
+            result_node_ids = result_node_ids.union(find_downstream(anchor_node_ids, child_map))
+
+        # Filter the nodes and columns based on the anchor nodes
+        if not no_filter:
+            nodes = {k: v for k, v in nodes.items() if k in result_node_ids}
+            columns = {k: v for k, v in columns.items() if k in result_node_ids}
+            parent_map, child_map = filter_dependency_maps(parent_map, child_map, result_node_ids)
 
         cll_tracker.end_column_lineage()
         cll_tracker.set_total_nodes(len(nodes))
         log_performance("column level lineage", cll_tracker.to_dict())
         cll_tracker.reset()
 
-        return cll_data
+        return CllData(
+            nodes=nodes,
+            columns=columns,
+            parent_map=parent_map,
+            child_map=child_map,
+        )
 
     @lru_cache(maxsize=128)
     def get_cll_cached(self, node_id: str, base: Optional[bool] = False) -> Optional[CllData]:
@@ -1202,7 +1265,7 @@ class DbtAdapter(BaseAdapter):
         change_category = diff_info.change.category
 
         if change_category == "breaking":
-            cll = self.get_cll_by_node_id(node_id)
+            cll = self.get_cll(node_id, no_filter=True)
             _, downstream = find_column_dependencies(node_id, cll.parent_map, cll.child_map)
             relevant_columns = {node_id}
             relevant_columns.update(downstream)
@@ -1220,7 +1283,7 @@ class DbtAdapter(BaseAdapter):
             return CllData()
         change_columns = diff_info.change.columns
 
-        cll = self.get_cll_by_node_id(node_id)
+        cll = self.get_cll(node_id, no_filter=True)
         relevant_columns = set()
         for col, change_status in change_columns.items():
             if change_status == "removed":

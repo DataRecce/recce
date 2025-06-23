@@ -129,6 +129,9 @@ class CllColumn(BaseModel):
     # transformation type
     transformation_type: Literal["source", "passthrough", "renamed", "derived", "unknown"] = "unknown"
 
+    # change analysis
+    change_status: Optional[ChangeStatus] = None
+
     # column-to-column dependencies
     depends_on: List[CllColumnDep] = Field(default_factory=list)
 
@@ -140,6 +143,10 @@ class CllNode(BaseModel):
     resource_type: str
     raw_code: Optional[str] = None
     source_name: Optional[str] = None
+
+    # change analysis
+    change_status: Optional[ChangeStatus] = None
+    change_category: Optional[ChangeCategory] = None
 
     # Column to column dependencies
     columns: Dict[str, CllColumn] = Field(default_factory=dict)

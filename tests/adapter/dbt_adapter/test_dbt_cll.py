@@ -51,11 +51,11 @@ def test_cll_basic(dbt_test_helper):
     )
     adapter: DbtAdapter = dbt_test_helper.context.adapter
 
-    result = adapter.get_cll_by_node_id("model.model2")
+    result = adapter.get_cll("model.model2", no_filter=True)
     assert_model(result, "model.model2", [("model.model1", "c")])
     assert_column(result, "model.model2", "c", "passthrough", [("model.model1", "c")])
 
-    result = adapter.get_cll_by_node_id("model.model3")
+    result = adapter.get_cll("model.model3", no_filter=True)
     assert_model(result, "model.model3", [("model.model1", "c")])
     assert_column(result, "model.model3", "c", "passthrough", [("model.model1", "c")])
 
@@ -75,7 +75,7 @@ def test_cll_table_alisa(dbt_test_helper):
         depends_on=["model.model1"],
     )
     adapter: DbtAdapter = dbt_test_helper.context.adapter
-    result = adapter.get_cll_by_node_id("model.model1")
+    result = adapter.get_cll("model.model1", no_filter=True)
     assert_column(result, "model.model2", "c", "passthrough", [("model.model1", "c")])
 
 
@@ -103,7 +103,7 @@ def test_seed(dbt_test_helper):
     )
     adapter: DbtAdapter = dbt_test_helper.context.adapter
 
-    result = adapter.get_cll_by_node_id("model.model1")
+    result = adapter.get_cll("model.model1", no_filter=True)
     assert_model(result, "seed.seed1", [])
     assert_column(result, "seed.seed1", "customer_id", "source", [])
     assert_model(result, "model.model1", [("seed.seed1", "age")])
@@ -134,7 +134,7 @@ def test_python_model(dbt_test_helper):
     assert not adapter.is_python_model("model1")
     assert adapter.is_python_model("model2")
 
-    result = adapter.get_cll_by_node_id("model1")
+    result = adapter.get_cll("model1", no_filter=True)
     assert_column(result, "model2", "customer_id", "unknown", [])
 
 
@@ -161,9 +161,9 @@ def test_source(dbt_test_helper):
         depends_on=["source.source1.table1"],
     )
     adapter: DbtAdapter = dbt_test_helper.context.adapter
-    result = adapter.get_cll_by_node_id("source.source1.table1")
+    result = adapter.get_cll("source.source1.table1", no_filter=True)
     assert_column(result, "source.source1.table1", "customer_id", "source", [])
-    result = adapter.get_cll_by_node_id("model.model1")
+    result = adapter.get_cll("model.model1", no_filter=True)
     assert_column(result, "model.model1", "customer_id", "passthrough", [("source.source1.table1", "customer_id")])
 
 
@@ -171,14 +171,14 @@ def test_parse_error(dbt_test_helper):
     dbt_test_helper.create_model("model1", curr_sql="select 1 as c", curr_columns={"c": "int"})
     dbt_test_helper.create_model("model2", curr_sql="this is not a valid sql", curr_columns={"c": "int"})
     adapter: DbtAdapter = dbt_test_helper.context.adapter
-    result = adapter.get_cll_by_node_id("model2")
+    result = adapter.get_cll("model2", no_filter=True)
     assert_column(result, "model2", "c", "unknown", [])
 
 
 def test_model_without_catalog(dbt_test_helper):
     dbt_test_helper.create_model("model1", curr_sql="select 1 as c")
     adapter: DbtAdapter = dbt_test_helper.context.adapter
-    result = adapter.get_cll_by_node_id("model1")
+    result = adapter.get_cll("model1", no_filter=True)
     assert not result.nodes["model1"].columns
 
 
