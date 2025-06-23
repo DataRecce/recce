@@ -51,11 +51,11 @@ def test_cll_basic(dbt_test_helper):
     )
     adapter: DbtAdapter = dbt_test_helper.context.adapter
 
-    result = adapter.get_cll("model.model2")
+    result = adapter.get_cll("model.model2", no_filter=True)
     assert_model(result, "model.model2", [("model.model1", "c")])
     assert_column(result, "model.model2", "c", "passthrough", [("model.model1", "c")])
 
-    result = adapter.get_cll("model.model3")
+    result = adapter.get_cll("model.model3", no_filter=True)
     assert_model(result, "model.model3", [("model.model1", "c")])
     assert_column(result, "model.model3", "c", "passthrough", [("model.model1", "c")])
 
