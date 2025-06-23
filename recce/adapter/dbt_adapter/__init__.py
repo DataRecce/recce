@@ -33,7 +33,7 @@ from recce.util.lineage import (
 )
 
 from ...tasks.profile import ProfileTask
-from ...util.breaking import BreakingPerformanceTracking, parse_change_category
+from ...util.breaking import parse_change_category
 
 try:
     import agate
@@ -795,13 +795,40 @@ class DbtAdapter(BaseAdapter):
         current = self.get_lineage(base=False)
         keys = {*base.get("nodes", {}).keys(), *current.get("nodes", {}).keys()}
 
-        # Start to diff
-        perf_tracking = BreakingPerformanceTracking()
-        perf_tracking.start_lineage_diff()
+        # for each node, compare the base and current lineage
+        diff = {}
+        for key in keys:
+            base_node = base.get("nodes", {}).get(key)
+            curr_node = current.get("nodes", {}).get(key)
+            if base_node and curr_node:
+                base_checksum = base_node.get("checksum", {}).get("checksum")
+                curr_checksum = curr_node.get("checksum", {}).get("checksum")
+                if base_checksum is None or curr_checksum is None or base_checksum == curr_checksum:
+                    continue
+                diff[key] = NodeDiff(change_status="modified")
+            elif base_node:
+                diff[key] = NodeDiff(change_status="removed")
+            elif curr_node:
+                diff[key] = NodeDiff(change_status="added")
+
+        return LineageDiff(
+            base=base,
+            current=current,
+            diff=diff,
+        )
+
+    def get_change_analysis_cached(self, node_id: str):
+        lineage_diff = self.get_lineage_diff()
+        diff = lineage_diff.diff
+
+        if node_id not in diff or diff[node_id].change_status != "modified":
+            return diff.get(node_id)
+
+        base = lineage_diff.base
+        current = lineage_diff.current
 
         base_manifest = as_manifest(self.get_manifest(True))
         curr_manifest = as_manifest(self.get_manifest(False))
-        perf_tracking.record_checkpoint("manifest")
 
         def ref_func(*args):
             if len(args) == 1:
@@ -821,99 +848,77 @@ class DbtAdapter(BaseAdapter):
             source=source_func,
         )
 
-        # for each node, compare the base and current lineage
-        diff = {}
-        for key in keys:
-            base_node = base.get("nodes", {}).get(key)
-            curr_node = current.get("nodes", {}).get(key)
-            if base_node and curr_node:
-                base_checksum = base_node.get("checksum", {}).get("checksum")
-                curr_checksum = curr_node.get("checksum", {}).get("checksum")
-                change = None
-                if base_checksum is None or curr_checksum is None or base_checksum == curr_checksum:
-                    continue
+        base_node = base.get("nodes", {}).get(node_id)
+        curr_node = current.get("nodes", {}).get(node_id)
+        change = None
+        if curr_node.get("resource_type") == "model":
+            try:
 
-                if curr_node.get("resource_type") == "model":
-                    try:
-                        perf_tracking.increment_modified_nodes()
+                def _get_schema(lineage):
+                    schema = {}
+                    nodes = lineage["nodes"]
+                    parent_list = lineage["parent_map"].get(node_id, [])
+                    for parent_id in parent_list:
+                        parent_node = nodes.get(parent_id)
+                        if parent_node is None:
+                            continue
+                        columns = parent_node.get("columns") or {}
+                        name = parent_node.get("name")
+                        if parent_node.get("resource_type") == "source":
+                            parts = parent_id.split(".")
+                            source = parts[2]
+                            table = parts[3]
+                            source = source.replace("-", "_")
+                            name = f"__{source}__{table}"
+                        schema[name] = {name: column.get("type") for name, column in columns.items()}
+                    return schema
 
-                        def _get_schema(lineage):
-                            schema = {}
-                            nodes = lineage["nodes"]
-                            parent_list = lineage["parent_map"].get(key, [])
-                            for parent_id in parent_list:
-                                parent_node = nodes.get(parent_id)
-                                if parent_node is None:
-                                    continue
-                                columns = parent_node.get("columns") or {}
-                                name = parent_node.get("name")
-                                if parent_node.get("resource_type") == "source":
-                                    parts = parent_id.split(".")
-                                    source = parts[2]
-                                    table = parts[3]
-                                    source = source.replace("-", "_")
-                                    name = f"__{source}__{table}"
-                                schema[name] = {name: column.get("type") for name, column in columns.items()}
-                            return schema
+                base_sql = self.generate_sql(
+                    base_node.get("raw_code"),
+                    context=jinja_context,
+                    provided_manifest=base_manifest,
+                )
+                curr_sql = self.generate_sql(
+                    curr_node.get("raw_code"),
+                    context=jinja_context,
+                    provided_manifest=curr_manifest,
+                )
+                base_schema = _get_schema(base)
+                curr_schema = _get_schema(current)
+                dialect = self.adapter.connections.TYPE
+                if curr_manifest.metadata.adapter_type is not None:
+                    dialect = curr_manifest.metadata.adapter_type
 
-                        base_sql = self.generate_sql(
-                            base_node.get("raw_code"),
-                            context=jinja_context,
-                            provided_manifest=base_manifest,
-                        )
-                        curr_sql = self.generate_sql(
-                            curr_node.get("raw_code"),
-                            context=jinja_context,
-                            provided_manifest=curr_manifest,
-                        )
-                        base_schema = _get_schema(base)
-                        curr_schema = _get_schema(current)
-                        dialect = self.adapter.connections.TYPE
-                        if curr_manifest.metadata.adapter_type is not None:
-                            dialect = curr_manifest.metadata.adapter_type
+                change = parse_change_category(
+                    base_sql,
+                    curr_sql,
+                    old_schema=base_schema,
+                    new_schema=curr_schema,
+                    dialect=dialect,
+                )
 
-                        change = parse_change_category(
-                            base_sql,
-                            curr_sql,
-                            old_schema=base_schema,
-                            new_schema=curr_schema,
-                            dialect=dialect,
-                            perf_tracking=perf_tracking,
-                        )
+                # Make sure that the case of the column names are the same
+                changed_columns = {
+                    column.lower(): change_status for column, change_status in (change.columns or {}).items()
+                }
+                changed_columns_names = set(changed_columns)
+                changed_columns_final = {}
 
-                        # Make sure that the case of the column names are the same
-                        changed_columns = {
-                            column.lower(): change_status for column, change_status in (change.columns or {}).items()
-                        }
-                        changed_columns_names = set(changed_columns)
-                        changed_columns_final = {}
+                base_columns = base_node.get("columns") or {}
+                curr_columns = curr_node.get("columns") or {}
+                columns_names = set(base_columns) | set(curr_columns)
 
-                        base_columns = base_node.get("columns") or {}
-                        curr_columns = curr_node.get("columns") or {}
-                        columns_names = set(base_columns) | set(curr_columns)
+                for column_name in columns_names:
+                    if column_name.lower() in changed_columns_names:
+                        changed_columns_final[column_name] = changed_columns[column_name.lower()]
 
-                        for column_name in columns_names:
-                            if column_name.lower() in changed_columns_names:
-                                changed_columns_final[column_name] = changed_columns[column_name.lower()]
+                change.columns = changed_columns_final
+            except Exception:
+                change = NodeChange(category="unknown")
 
-                        change.columns = changed_columns_final
-                    except Exception:
-                        change = NodeChange(category="unknown")
-
-                diff[key] = NodeDiff(change_status="modified", change=change)
-            elif base_node:
-                diff[key] = NodeDiff(change_status="removed")
-            elif curr_node:
-                diff[key] = NodeDiff(change_status="added")
-
-        perf_tracking.end_lineage_diff()
-        log_performance("model lineage diff", perf_tracking.to_dict())
-
-        return LineageDiff(
-            base=base,
-            current=current,
-            diff=diff,
-        )
+        node_diff = diff.get(node_id)
+        node_diff.change = change
+        return node_diff
 
     def get_cll(
         self,
@@ -960,7 +965,7 @@ class DbtAdapter(BaseAdapter):
                 if cll_data_one is None:
                     continue
 
-                node_diff = self.get_lineage_diff().diff.get(cll_node_id) if change_analysis else None
+                node_diff = self.get_change_analysis_cached(cll_node_id) if change_analysis else None
                 for n_id, n in cll_data_one.nodes.items():
                     nodes[n_id] = n
 
@@ -970,7 +975,7 @@ class DbtAdapter(BaseAdapter):
                             n.change_category = node_diff.change.category
                 for c_id, c in cll_data_one.columns.items():
                     columns[c_id] = c
-                    if node_diff is not None and node_diff.change is not None:
+                    if node_diff is not None and node_diff.change is not None and node_diff.change.columns is not None:
                         column_diff = node_diff.change.columns.get(c.name)
                         if column_diff:
                             c.change_status = column_diff
@@ -1057,26 +1062,30 @@ class DbtAdapter(BaseAdapter):
         if node_id is None and column is None:
             if change_analysis:
                 # If change analysis is requested, we need to find the nodes that have changes
-                for node_id, node_diff in self.get_lineage_diff().diff.items():
-                    extra_node_ids.add(node_id)
-                    if node_diff.change is None:
-                        continue
-                    if node_diff.change.category == "breaking":
-                        anchor_node_ids.add(node_id)
-                    for column_name in node_diff.change.columns:
-                        anchor_node_ids.add(f"{node_id}_{column_name}")
+                for node_id in self.get_lineage_diff().diff.keys():
+                    node_diff = self.get_change_analysis_cached(node_id)
+                    if node_diff is not None:
+                        if node_diff.change is not None:
+                            extra_node_ids.add(node_id)
+                            if node_diff.change.category == "breaking":
+                                anchor_node_ids.add(node_id)
+                            if node_diff.change.columns is not None:
+                                for column_name in node_diff.change.columns:
+                                    anchor_node_ids.add(f"{node_id}_{column_name}")
             else:
                 lineage_diff = self.get_lineage_diff()
                 anchor_node_ids = lineage_diff.diff.keys()
         elif node_id is not None and column is None:
             if change_analysis:
                 # If change analysis is requested, we need to find the nodes that have changes
-                node_diff = self.get_lineage_diff().diff.get(node_id)
-                if node_diff:
-                    if node_diff.change.category == "breaking":
-                        anchor_node_ids.add(node_id)
-                    for column_name in node_diff.change.columns:
-                        anchor_node_ids.add(f"{node_id}_{column_name}")
+                node_diff = self.get_change_analysis_cached(node_id)
+                if node_diff is not None:
+                    if node_diff.change is not None:
+                        if node_diff.change.category == "breaking":
+                            anchor_node_ids.add(node_id)
+                        if node_diff.change.columns is not None:
+                            for column_name in node_diff.change.columns:
+                                anchor_node_ids.add(f"{node_id}_{column_name}")
                 else:
                     anchor_node_ids.add(node_id)
             else:
