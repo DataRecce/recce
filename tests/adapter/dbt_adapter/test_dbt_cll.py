@@ -280,11 +280,11 @@ def test_impact_radius_nodes(dbt_test_helper):
     adapter: DbtAdapter = dbt_test_helper.context.adapter
 
     # breaking
-    result = adapter.get_impacted_nodes("model.model2")
+    result = adapter.get_cll(node_id="model.model2", change_analysis=True, upstream=False)
     assert_lineage_model(result, ["model.model2", "model.model3", "model.model4"])
 
     # non-breaking
-    result = adapter.get_impacted_nodes("model.model1")
+    result = adapter.get_cll(node_id="model.model1", change_analysis=True, upstream=False)
     assert_lineage_model(result, [])
 
 
@@ -329,11 +329,11 @@ def test_impact_radius_columns(dbt_test_helper):
 
     adapter: DbtAdapter = dbt_test_helper.context.adapter
 
-    result = adapter.get_impacted_cll("model.model2")
+    result = adapter.get_cll(node_id="model.model2", change_analysis=True, upstream=False)
     assert_lineage_model(result, ["model.model3"])
     assert_lineage_column(result, [("model.model2", "y"), ("model.model4", "y")])
 
-    result = adapter.get_impacted_cll("model.model1")
+    result = adapter.get_cll(node_id="model.model1", change_analysis=True, upstream=False)
     assert_lineage_model(result, [])
     assert_lineage_column(result, [("model.model1", "d")])
 
@@ -379,6 +379,6 @@ def test_impact_radius(dbt_test_helper):
 
     adapter: DbtAdapter = dbt_test_helper.context.adapter
 
-    result = adapter.get_impact_radius("model.model2")
+    result = adapter.get_cll(node_id="model.model2", change_analysis=True, upstream=False)
     assert_lineage_model(result, ["model.model2", "model.model3", "model.model4"])
     assert_lineage_column(result, [("model.model2", "d"), ("model.model2", "y"), ("model.model4", "y")])
