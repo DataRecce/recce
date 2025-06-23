@@ -85,7 +85,7 @@ import { ColumnLevelLineageLegend } from "./ColumnLevelLineageLegend";
 import { LineageViewNotification } from "./LineageViewNotification";
 import { useRecceServerFlag } from "@/lib/hooks/useRecceServerFlag";
 import { BaseEnvironmentSetupNotification } from "./SingleEnvironmentQueryView";
-import { ColumnLineageData, getCll, getImpactRadius } from "@/lib/api/cll";
+import { CllInput, ColumnLineageData, getCll } from "@/lib/api/cll";
 import { LineageViewContextMenu, useLineageViewContextMenu } from "./LineageViewContextMenu";
 
 export interface LineageViewProps {
@@ -573,14 +573,15 @@ export function PrivateLineageView(
     let cll: ColumnLineageData | undefined;
     if (newViewOptions.column_level_lineage) {
       try {
-        const cllResult = newViewOptions.column_level_lineage.column
-          ? await getCll(
-              newViewOptions.column_level_lineage.node,
-              newViewOptions.column_level_lineage.column,
-            )
-          : await getImpactRadius(newViewOptions.column_level_lineage.node);
-
-        cll = cllResult;
+        const cllInput: CllInput = {
+          node_id: newViewOptions.column_level_lineage.node,
+          column: newViewOptions.column_level_lineage.column,
+          change_analysis: !newViewOptions.column_level_lineage.column,
+          upstream: newViewOptions.column_level_lineage.column ? true : false,
+          downstream: true,
+          cll: true,
+        };
+        cll = await getCll(cllInput);
       } catch (e) {
         if (e instanceof AxiosError) {
           const e2 = e as AxiosError<{ detail?: string }>;
