@@ -4,15 +4,18 @@ import random
 import threading
 from http.server import BaseHTTPRequestHandler, HTTPServer
 from pathlib import Path
+from typing import Tuple
 from urllib.parse import parse_qs, urlparse
 
 from cryptography.hazmat.backends import default_backend
 from cryptography.hazmat.primitives import hashes, serialization
 from cryptography.hazmat.primitives.asymmetric import padding, rsa
+from cryptography.hazmat.primitives.asymmetric.rsa import RSAPrivateKey, RSAPublicKey
 from rich.console import Console
 
 from recce.event import update_recce_api_token
 from recce.exceptions import RecceConfigException
+from recce.util.onboarding_state import update_onboarding_state
 from recce.util.recce_cloud import RECCE_CLOUD_BASE_URL, RecceCloud
 
 console = Console()
@@ -22,7 +25,20 @@ _server_lock = threading.Lock()
 _connection_url = None
 
 
-def make_callback_handler(private_key):
+def decrypt_code(private_key: RSAPrivateKey, code: str) -> str:
+    ciphertext = base64.b64decode(code)
+    plaintext = private_key.decrypt(
+        ciphertext,
+        padding.OAEP(
+            mgf=padding.MGF1(algorithm=hashes.SHA1()),  # Node.js uses SHA1 by default
+            algorithm=hashes.SHA1(),
+            label=None,
+        ),
+    )
+    return plaintext.decode("utf-8")
+
+
+def make_callback_handler(private_key: RSAPrivateKey):
     class OneTimeHTTPRequestHandler(BaseHTTPRequestHandler):
         def do_GET(self):
             try:
@@ -33,16 +49,7 @@ def make_callback_handler(private_key):
                 parsed_url = urlparse(self.path)
                 query_params = parse_qs(parsed_url.query)
                 code = query_params.get("code").pop()
-                ciphertext = base64.b64decode(code)
-                plaintext = private_key.decrypt(
-                    ciphertext,
-                    padding.OAEP(
-                        mgf=padding.MGF1(algorithm=hashes.SHA1()),  # Node.js uses SHA1 by default
-                        algorithm=hashes.SHA1(),
-                        label=None,
-                    ),
-                )
-                api_token = plaintext.decode()
+                api_token = decrypt_code(private_key, code)
                 if not RecceCloud(api_token).verify_token():
                     raise RecceConfigException("Invalid Recce Cloud API token")
                 update_recce_api_token(api_token)
@@ -50,6 +57,9 @@ def make_callback_handler(private_key):
                     "[[green]Success[/green]] User profile has been updated to include the Recce Cloud API Token. "
                     "You no longer need to append --api-token to the recce command"
                 )
+                # Mark user onboarding state as `LAUNCHED_WITH_TOKEN`.
+                # If the current value is `CONFIGURE_TWO_ENV`, it will keep the original value.
+                update_onboarding_state(api_token, False)
 
                 # Construct HTML content
                 self.send_response(200)
@@ -62,10 +72,11 @@ def make_callback_handler(private_key):
                 console.print_exception()
                 self.send_response(500)
                 self.end_headers()
-                self.wfile.write(b"<h1>Error</h1>")
+                self.wfile.write(b"<h1>Internal Server Error</h1>")
             finally:
                 # Shut down the server after handling the first request
                 # Shutdown in a new thread to avoid deadlock
+                self.server.server_close()
                 threading.Thread(target=self.server.shutdown, daemon=True).start()
 
         def log_message(self, format, *args):
@@ -83,14 +94,13 @@ def get_connection_url():
     return _connection_url
 
 
-def run_one_time_http_server(private_key, port=8080):
+def run_one_time_http_server(private_key: RSAPrivateKey, port=8080):
     handler = make_callback_handler(private_key)
     server = HTTPServer(("localhost", port), handler)
-    console.print("\nWaiting for connection to Cloud ...")
     server.serve_forever()
 
 
-def prepare_connection_url(public_key):
+def prepare_connection_url(public_key: RSAPublicKey):
     public_key_pem_bytes = public_key.public_bytes(
         encoding=serialization.Encoding.PEM,
         format=serialization.PublicFormat.SubjectPublicKeyInfo,
@@ -101,7 +111,7 @@ def prepare_connection_url(public_key):
     return connect_url, callback_port
 
 
-def generate_key_pair():
+def generate_key_pair() -> Tuple[RSAPrivateKey, RSAPublicKey]:
     key_size = 2048  # Should be at least 2048
 
     private_key = rsa.generate_private_key(
@@ -112,12 +122,11 @@ def generate_key_pair():
     return private_key, public_key
 
 
-def connect_to_cloud_background_task(private_key, callback_port, connection_url):
+def connect_to_cloud_background_task(private_key: RSAPrivateKey, callback_port, connection_url):
     if is_callback_server_running():
         return
 
     with _server_lock:
-        print("Running callback server")
         global _connection_url
         _connection_url = connection_url
         run_one_time_http_server(private_key, callback_port)
