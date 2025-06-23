@@ -985,11 +985,6 @@ class DbtAdapter(BaseAdapter):
                     child_map[parent] = set()
                 child_map[parent].add(parent_id)
 
-        cll_tracker.end_column_lineage()
-        cll_tracker.set_total_nodes(len(nodes))
-        log_performance("column level lineage", cll_tracker.to_dict())
-        cll_tracker.reset()
-
         # Find the anchor nodes
         anchor_node_ids = set()
         if node_id is None and column is None:
@@ -1019,16 +1014,22 @@ class DbtAdapter(BaseAdapter):
         else:
             anchor_node_ids.add(f"{node_id}_{column}")
 
+        result_node_ids = set(anchor_node_ids)
         if upstream:
-            anchor_node_ids = anchor_node_ids.union(find_upstream(anchor_node_ids, parent_map))
+            result_node_ids = result_node_ids.union(find_upstream(anchor_node_ids, parent_map))
         if downstream:
-            anchor_node_ids = anchor_node_ids.union(find_downstream(anchor_node_ids, child_map))
+            result_node_ids = result_node_ids.union(find_downstream(anchor_node_ids, child_map))
 
         # Filter the nodes and columns based on the anchor nodes
         if not no_filter:
-            nodes = {k: v for k, v in nodes.items() if k in anchor_node_ids}
-            columns = {k: v for k, v in columns.items() if k in anchor_node_ids}
-            parent_map, child_map = filter_dependency_maps(parent_map, child_map, anchor_node_ids)
+            nodes = {k: v for k, v in nodes.items() if k in result_node_ids}
+            columns = {k: v for k, v in columns.items() if k in result_node_ids}
+            parent_map, child_map = filter_dependency_maps(parent_map, child_map, result_node_ids)
+
+        cll_tracker.end_column_lineage()
+        cll_tracker.set_total_nodes(len(nodes))
+        log_performance("column level lineage", cll_tracker.to_dict())
+        cll_tracker.reset()
 
         return CllData(
             nodes=nodes,
