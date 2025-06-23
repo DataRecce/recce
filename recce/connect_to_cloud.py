@@ -38,6 +38,22 @@ def decrypt_code(private_key: RSAPrivateKey, code: str) -> str:
     return plaintext.decode("utf-8")
 
 
+def handle_callback_request(query_string: str, private_key: RSAPrivateKey):
+    query_params = parse_qs(query_string)
+    code = query_params.get("code", [None])[0]
+    if not code:
+        raise RecceConfigException("Missing `code` in query")
+
+    api_token = decrypt_code(private_key, code)
+    if not RecceCloud(api_token).verify_token():
+        raise RecceConfigException("Invalid Recce Cloud API token")
+
+    update_recce_api_token(api_token)
+    update_onboarding_state(api_token, False)
+
+    return api_token  # for testability/debugging
+
+
 def make_callback_handler(private_key: RSAPrivateKey):
     class OneTimeHTTPRequestHandler(BaseHTTPRequestHandler):
         def do_GET(self):
@@ -47,19 +63,8 @@ def make_callback_handler(private_key: RSAPrivateKey):
 
                 # Parse query parameters
                 parsed_url = urlparse(self.path)
-                query_params = parse_qs(parsed_url.query)
-                code = query_params.get("code").pop()
-                api_token = decrypt_code(private_key, code)
-                if not RecceCloud(api_token).verify_token():
-                    raise RecceConfigException("Invalid Recce Cloud API token")
-                update_recce_api_token(api_token)
-                console.print(
-                    "[[green]Success[/green]] User profile has been updated to include the Recce Cloud API Token. "
-                    "You no longer need to append --api-token to the recce command"
-                )
-                # Mark user onboarding state as `LAUNCHED_WITH_TOKEN`.
-                # If the current value is `CONFIGURE_TWO_ENV`, it will keep the original value.
-                update_onboarding_state(api_token, False)
+
+                handle_callback_request(parsed_url.query, private_key)
 
                 # Construct HTML content
                 self.send_response(200)
