@@ -1483,13 +1483,18 @@ class DbtAdapter(BaseAdapter):
                 self.curr_manifest = load_manifest(path=refresh_file_path)
                 self.manifest = as_manifest(self.curr_manifest)
                 self.get_cll_cached.cache_clear()
+                self.get_change_analysis_cached.cache_clear()
             elif refresh_file_path.endswith("catalog.json"):
                 self.curr_catalog = load_catalog(path=refresh_file_path)
+                self.get_cll_cached.cache_clear()
+                self.get_change_analysis_cached.cache_clear()
         elif self.base_path and target_type == os.path.basename(self.base_path):
             if refresh_file_path.endswith("manifest.json"):
                 self.base_manifest = load_manifest(path=refresh_file_path)
+                self.get_change_analysis_cached.cache_clear()
             elif refresh_file_path.endswith("catalog.json"):
                 self.base_catalog = load_catalog(path=refresh_file_path)
+                self.get_change_analysis_cached.cache_clear()
 
     def create_relation(self, model, base=False):
         node = self.find_node_by_name(model, base)
