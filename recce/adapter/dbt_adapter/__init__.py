@@ -966,14 +966,12 @@ class DbtAdapter(BaseAdapter):
                 if cll_data_one is None:
                     continue
 
+                nodes[cll_node_id] = cll_data_one.nodes.get(cll_node_id)
                 node_diff = self.get_change_analysis_cached(cll_node_id) if change_analysis else None
-                for n_id, n in cll_data_one.nodes.items():
-                    nodes[n_id] = n
-
-                    if node_diff is not None:
-                        n.change_status = node_diff.change_status
-                        if node_diff.change is not None:
-                            n.change_category = node_diff.change.category
+                if node_diff is not None:
+                    nodes[cll_node_id].change_status = node_diff.change_status
+                    if node_diff.change is not None:
+                        nodes[cll_node_id].change_category = node_diff.change.category
                 for c_id, c in cll_data_one.columns.items():
                     columns[c_id] = c
                     if node_diff is not None and node_diff.change is not None and node_diff.change.columns is not None:
