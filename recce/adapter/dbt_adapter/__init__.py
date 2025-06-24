@@ -979,30 +979,68 @@ class DbtAdapter(BaseAdapter):
                     parent_map[p_id] = parents
         else:
             for cll_node_id in cll_node_ids:
+                cll_node = None
+                cll_node_columns: Dict[str, CllColumn] = {}
+
                 if cll_node_id in manifest.sources:
                     n = manifest.sources[cll_node_id]
-                    nodes[cll_node_id] = CllNode(
+                    cll_node = CllNode(
                         id=n.unique_id,
                         name=n.name,
                         source_name=n.source_name,
                         package_name=n.package_name,
                     )
+                    if self.curr_catalog and cll_node_id in self.curr_catalog.sources:
+                        cll_node_columns = {
+                            column.name: CllColumn(
+                                id=f"{cll_node_id}_{column.name}",
+                                table_id=cll_node_id,
+                                name=column.name,
+                                type=column.type,
+                            )
+                            for column in self.curr_catalog.sources[cll_node_id].columns.values()
+                        }
                 elif cll_node_id in manifest.nodes:
                     n = manifest.nodes[cll_node_id]
-                    nodes[cll_node_id] = CllNode(
+                    cll_node = CllNode(
                         id=n.unique_id,
                         name=n.name,
                         package_name=n.package_name,
                         resource_type=n.resource_type,
                     )
+                    if self.curr_catalog and cll_node_id in self.curr_catalog.nodes:
+                        cll_node_columns = {
+                            column.name: CllColumn(
+                                id=f"{cll_node_id}_{column.name}",
+                                table_id=cll_node_id,
+                                name=column.name,
+                                type=column.type,
+                            )
+                            for column in self.curr_catalog.nodes[cll_node_id].columns.values()
+                        }
                 elif cll_node_id in manifest.exposures:
                     n = manifest.exposures[cll_node_id]
-                    nodes[cll_node_id] = CllNode(
+                    cll_node = CllNode(
                         id=n.unique_id,
                         name=n.name,
                         package_name=n.package_name,
                         resource_type=n.resource_type,
                     )
+
+                if not cll_node:
+                    continue
+                nodes[cll_node_id] = cll_node
+
+                node_diff = self.get_lineage_diff().diff.get(cll_node_id) if change_analysis else None
+                if node_diff is not None:
+                    cll_node.change_status = node_diff.change_status
+                    if node_diff.change is not None:
+                        cll_node.change_category = node_diff.change.category
+                        for c, cll_column in cll_node_columns.items():
+                            if c in node_diff.change.columns:
+                                cll_column.change_status = node_diff.change.columns[c]
+                                cll_node.columns[c] = cll_column
+                                columns[cll_column.id] = cll_column
 
                 parent_map[cll_node_id] = manifest.parent_map.get(cll_node_id, [])
 

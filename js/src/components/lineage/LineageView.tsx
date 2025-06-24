@@ -217,6 +217,8 @@ export function PrivateLineageView(
     ...props.viewOptions,
   });
 
+  const [cll, setCll] = useState<ColumnLineageData | undefined>(undefined);
+
   const findNodeByName = (name: string) => {
     return nodes.find((n) => n.data.name === name);
   };
@@ -599,6 +601,7 @@ export function PrivateLineageView(
     setNodes(newNodes);
     setEdges(newEdges);
     setNodeColumnSetMap(newNodeColumnSetMap);
+    setCll(cll);
 
     // Close the run result view if the run result node is not in the new nodes
     if (run?.params?.model && !findNodeByName(run.params.model)) {
@@ -802,18 +805,14 @@ export function PrivateLineageView(
 
       const node = lineageGraph.nodes[nodeId];
 
-      if (viewOptions.column_level_lineage) {
+      if (viewOptions.column_level_lineage?.change_analysis) {
         const cll = viewOptions.column_level_lineage;
 
-        if (!cll.column) {
+        if (cll.node_id && !cll.column) {
           return cll.node_id === nodeId && node.changeStatus === "modified";
+        } else {
+          return node.changeStatus === "modified";
         }
-
-        return false;
-      }
-
-      if (node.changeStatus === "modified") {
-        return true;
       }
 
       return false;
@@ -940,6 +939,7 @@ export function PrivateLineageView(
 
     // Column Level Lineage
     centerNode,
+    cll,
     showColumnLevelLineage: async (columnLevelLineage: CllInput) => {
       await handleViewOptionsChanged(
         {

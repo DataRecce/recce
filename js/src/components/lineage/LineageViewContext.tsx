@@ -3,7 +3,7 @@ import { Run } from "@/lib/api/types";
 import React, { createContext, useContext } from "react";
 import { Node, NodeProps } from "reactflow";
 import { LineageGraphNode } from "./lineage";
-import { CllInput } from "@/lib/api/cll";
+import { CllInput, ColumnLineageData } from "@/lib/api/cll";
 
 type NewType = LineageDiffViewOptions;
 type ActionMode = "per_node" | "multi_nodes";
@@ -29,6 +29,7 @@ export interface LineageViewContextType {
   nodes: Node<LineageGraphNode>[];
   focusedNode?: LineageGraphNode;
   selectedNodes: LineageGraphNode[];
+  cll: ColumnLineageData | undefined;
 
   // context menu
   showContextMenu: (event: React.MouseEvent, node: Node | NodeProps) => void;

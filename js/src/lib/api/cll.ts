@@ -27,6 +27,8 @@ export interface CllNodeData {
       column: string;
     }[];
   };
+  change_status?: "added" | "removed" | "modified";
+  change_category?: "breaking" | "non_breaking" | "partial_breaking" | "unknown";
   columns?: Record<string, NodeColumnData>;
 }
 

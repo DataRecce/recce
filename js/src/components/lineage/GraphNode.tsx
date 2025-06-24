@@ -155,8 +155,8 @@ const GraphNodeTitle = ({
 
 export function GraphNode(nodeProps: GraphNodeProps) {
   const { data } = nodeProps;
-  const { id, resourceType, changeStatus, change } = data;
-  const changeCategory = change?.category;
+  const { id, resourceType, changeStatus } = data;
+
   const showContent = useStore((s) => s.transform[2] > 0.3);
 
   const { icon: resourceIcon } = getIconForResourceType(resourceType);
@@ -173,10 +173,11 @@ export function GraphNode(nodeProps: GraphNodeProps) {
     isNodeShowingChangeAnalysis,
     showContextMenu,
     viewOptions,
+    cll,
   } = useLineageViewContextSafe();
-  const { lineageGraph } = useLineageGraphContext();
-  // const isNonBreakingChange = changeStatus === "modified" && lineageGraph?.nonBreakingSet.has(id);
-  const isNonBreakingChange = false;
+  const changeCategory = cll?.current.nodes[id]?.change_category;
+
+  const isNonBreakingChange = changeCategory === "non_breaking";
   const isHighlighted = isNodeHighlighted(id);
   const isSelected = isNodeSelected(id);
   const isFocusedByImpactRadius =
