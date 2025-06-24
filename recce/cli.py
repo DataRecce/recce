@@ -664,7 +664,7 @@ def connect_to_cloud():
     connect_url, callback_port = prepare_connection_url(public_key)
     console.rule("Connecting to Recce Cloud")
     console.print("Attempting to automatically open the Recce Cloud authorization page in your default browser.")
-    console.print("If the browser does not open please open the following URL:")
+    console.print("If the browser does not open, please open the following URL:")
     console.print(connect_url)
     webbrowser.open(connect_url)
 
