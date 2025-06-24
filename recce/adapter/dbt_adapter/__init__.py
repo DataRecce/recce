@@ -1006,6 +1006,8 @@ class DbtAdapter(BaseAdapter):
                         }
                 elif cll_node_id in manifest.nodes:
                     n = manifest.nodes[cll_node_id]
+                    if n.resource_type not in ["model", "seed", "snapshot"]:
+                        continue
                     cll_node = CllNode(
                         id=n.unique_id,
                         name=n.name,
