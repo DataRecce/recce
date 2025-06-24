@@ -6,9 +6,9 @@ export interface CllInput {
   node_id?: string;
   column?: string;
   change_analysis?: boolean;
-  cll?: boolean;
-  upstream?: boolean;
-  downstream?: boolean;
+  no_cll?: boolean;
+  no_upstream?: boolean;
+  no_downstream?: boolean;
 }
 
 export interface ImpactRadiusParams {

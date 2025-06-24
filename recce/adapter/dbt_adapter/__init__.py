@@ -936,7 +936,7 @@ class DbtAdapter(BaseAdapter):
             cll_node_ids = {node_id}
         else:
             lineage_diff = self.get_lineage_diff()
-            cll_node_ids = lineage_diff.diff.keys()
+            cll_node_ids = set(lineage_diff.diff.keys())
 
         nodes = {}
         columns = {}

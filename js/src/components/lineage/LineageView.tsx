@@ -295,7 +295,6 @@ export function PrivateLineageView(
   /**
    * Breaking Change and Column Level Lineage
    */
-  const breakingChangeEnabled = viewOptions.breaking_change_enabled ?? false;
   const [nodeColumnSetMap, setNodeColumnSetMap] = useState<NodeColumnSetMap>();
   const [cllNodeIds, setCllNodeIds] = useState<Set<string>>();
 
@@ -327,11 +326,7 @@ export function PrivateLineageView(
         selectDownstream(lineageGraph, [focusedNode.id]),
       );
     } else if (isModelsChanged) {
-      if (!breakingChangeEnabled) {
-        highlightedModels = selectDownstream(lineageGraph, lineageGraph.modifiedSet);
-      } else {
-        highlightedModels = lineageGraph.impactedSet;
-      }
+      highlightedModels = selectDownstream(lineageGraph, lineageGraph.modifiedSet);
     } else {
       highlightedModels = new Set(filteredNodeIds);
     }
@@ -357,7 +352,6 @@ export function PrivateLineageView(
     nodeColumnSetMap,
     cllNodeIds,
     multiNodeAction.actionState.actions,
-    breakingChangeEnabled,
     filteredNodeIds,
   ]);
 
@@ -412,7 +406,6 @@ export function PrivateLineageView(
       // const [nodes, edges, nodeColumnSetMap] = toReactFlow(lineageGraph, filteredNodeIds);
       const [nodes, edges, nodeColumnSetMap] = toReactFlow(lineageGraph, {
         selectedNodes: filteredNodeIds,
-        breakingChangeEnabled,
       });
       layout(nodes, edges);
       setNodes(nodes);
@@ -591,9 +584,7 @@ export function PrivateLineageView(
 
     const [newNodes, newEdges, newNodeColumnSetMap] = toReactFlow(lineageGraph, {
       selectedNodes,
-      columnLevelLineage: newViewOptions.column_level_lineage,
       cll,
-      breakingChangeEnabled: newViewOptions.breaking_change_enabled,
     });
     if (newViewOptions.column_level_lineage != undefined && cll != undefined) {
       const cllNodeIds = new Set<string>();
@@ -633,19 +624,7 @@ export function PrivateLineageView(
     });
   };
 
-  const handleBreakingChangeEnabledChanged = async (enabled: boolean) => {
-    const newViewOptions = {
-      ...viewOptions,
-      breaking_change_enabled: enabled,
-    };
-
-    setViewOptions(newViewOptions);
-    await refreshLayout({
-      viewOptions: newViewOptions,
-    });
-
-    trackBreakingChange({ enabled });
-  };
+  const handleBreakingChangeEnabledChanged = async (enabled: boolean) => {};
 
   const valueDiffAlertDialog = useValueDiffAlertDialog();
 
@@ -804,7 +783,6 @@ export function PrivateLineageView(
     selectParentNodes,
     selectChildNodes,
     deselect,
-    breakingChangeEnabled,
     isNodeHighlighted: (nodeId: string) => highlighted.has(nodeId),
     isNodeSelected: (nodeId: string) => selectedNodeIds.has(nodeId),
     isEdgeHighlighted: (source, target) => {
@@ -834,7 +812,7 @@ export function PrivateLineageView(
         return false;
       }
 
-      if (breakingChangeEnabled && node.changeStatus === "modified") {
+      if (node.changeStatus === "modified") {
         return true;
       }
 
@@ -1119,7 +1097,7 @@ export function PrivateLineageView(
             <Panel position="top-left">
               <Flex direction="column" gap="5px">
                 <BreakingChangeSwitch
-                  enabled={breakingChangeEnabled}
+                  enabled={false}
                   onChanged={handleBreakingChangeEnabledChanged}
                 />
                 {viewOptions.column_level_lineage && (

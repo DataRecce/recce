@@ -61,9 +61,6 @@ export interface LineageViewContextType {
   cancel: () => void;
   actionState: ActionState;
 
-  // Breaking Change Analysis
-  breakingChangeEnabled: boolean;
-
   // Column Level Lineage
   centerNode: (nodeId: string) => void;
   showColumnLevelLineage: (cll: CllInput) => Promise<void>;

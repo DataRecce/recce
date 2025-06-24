@@ -42,14 +42,14 @@ export const BreakingChangeSwitch = ({ enabled, onChanged }: BreakingChangeSwitc
       <Button
         size="xs"
         onClick={() => {
-          void showColumnLevelLineage({ upstream: false, change_analysis: true, cll: false });
+          void showColumnLevelLineage({ no_upstream: true, change_analysis: true, no_cll: true });
         }}>
         Analyze change
       </Button>
       <Button
         size="xs"
         onClick={() => {
-          void showColumnLevelLineage({ upstream: false, change_analysis: true, cll: true });
+          void showColumnLevelLineage({ no_upstream: true, change_analysis: true });
         }}>
         Impact Raidus++
       </Button>

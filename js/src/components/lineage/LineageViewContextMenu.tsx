@@ -127,7 +127,11 @@ export const ModelNodeContextMenu = ({
       label: "Show Impact Radius",
       icon: <FaRegDotCircle />,
       action: () => {
-        void showColumnLevelLineage(node.id);
+        void showColumnLevelLineage({
+          node_id: node.id,
+          change_analysis: true,
+          no_upstream: true,
+        });
       },
     });
   }
