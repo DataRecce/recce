@@ -1037,7 +1037,7 @@ class DbtAdapter(BaseAdapter):
                     continue
                 nodes[cll_node_id] = cll_node
 
-                node_diff = self.get_lineage_diff().diff.get(cll_node_id) if change_analysis else None
+                node_diff = self.get_change_analysis_cached(cll_node_id) if change_analysis else None
                 if node_diff is not None:
                     cll_node.change_status = node_diff.change_status
                     if node_diff.change is not None:
@@ -1063,15 +1063,15 @@ class DbtAdapter(BaseAdapter):
         if node_id is None and column is None:
             if change_analysis:
                 # If change analysis is requested, we need to find the nodes that have changes
-                for node_id in self.get_lineage_diff().diff.keys():
-                    node_diff = self.get_change_analysis_cached(node_id)
+                for nid in self.get_lineage_diff().diff.keys():
+                    node_diff = self.get_change_analysis_cached(nid)
                     if node_diff is not None and node_diff.change is not None:
-                        extra_node_ids.add(node_id)
+                        extra_node_ids.add(nid)
                         if node_diff.change.category == "breaking":
-                            anchor_node_ids.add(node_id)
+                            anchor_node_ids.add(nid)
                         if node_diff.change.columns is not None:
                             for column_name in node_diff.change.columns:
-                                anchor_node_ids.add(f"{node_id}_{column_name}")
+                                anchor_node_ids.add(f"{nid}_{column_name}")
             else:
                 lineage_diff = self.get_lineage_diff()
                 anchor_node_ids = lineage_diff.diff.keys()
@@ -1080,6 +1080,7 @@ class DbtAdapter(BaseAdapter):
                 # If change analysis is requested, we need to find the nodes that have changes
                 node_diff = self.get_change_analysis_cached(node_id)
                 if node_diff is not None and node_diff.change is not None:
+                    extra_node_ids.add(node_id)
                     if node_diff.change.category == "breaking":
                         anchor_node_ids.add(node_id)
                     if node_diff.change.columns is not None:
