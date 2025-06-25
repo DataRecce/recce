@@ -793,23 +793,18 @@ class DbtAdapter(BaseAdapter):
     def _get_lineage_diff_cached(self, cache_key) -> LineageDiff:
         base = self.get_lineage(base=True)
         current = self.get_lineage(base=False)
-        keys = {*base.get("nodes", {}).keys(), *current.get("nodes", {}).keys()}
 
-        # for each node, compare the base and current lineage
+        modified_nodes = self.select_nodes(select="state:modified")
         diff = {}
-        for key in keys:
-            base_node = base.get("nodes", {}).get(key)
-            curr_node = current.get("nodes", {}).get(key)
+        for node_id in modified_nodes:
+            base_node = base.get("nodes", {}).get(node_id)
+            curr_node = current.get("nodes", {}).get(node_id)
             if base_node and curr_node:
-                base_checksum = base_node.get("checksum", {}).get("checksum")
-                curr_checksum = curr_node.get("checksum", {}).get("checksum")
-                if base_checksum is None or curr_checksum is None or base_checksum == curr_checksum:
-                    continue
-                diff[key] = NodeDiff(change_status="modified")
+                diff[node_id] = NodeDiff(change_status="modified")
             elif base_node:
-                diff[key] = NodeDiff(change_status="removed")
+                diff[node_id] = NodeDiff(change_status="removed")
             elif curr_node:
-                diff[key] = NodeDiff(change_status="added")
+                diff[node_id] = NodeDiff(change_status="added")
 
         return LineageDiff(
             base=base,
