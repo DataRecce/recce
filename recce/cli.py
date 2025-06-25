@@ -26,6 +26,7 @@ from recce.util.onboarding_state import update_onboarding_state
 from recce.util.recce_cloud import (
     RecceCloudException,
 )
+
 from .core import RecceContext, set_default_context
 from .event.track import TrackCommand
 
@@ -462,7 +463,7 @@ def server(host, port, lifetime, state_file=None, **kwargs):
 
         single_env_flag = kwargs.get("single_env", False)
         if not single_env_flag:
-            lanch_in_single_env = Confirm.ask("Continue with limited mode?")
+            lanch_in_single_env = Confirm.ask("Continue to launch Recce?")
             if not lanch_in_single_env:
                 exit(0)
 
