@@ -238,7 +238,55 @@ def test_cll_column_filter(dbt_test_helper):
     assert_lineage_column(result, [("model.model1", "c"), ("model.model2", "c"), ("model.model3", "c")])
 
 
-def test_impact_radius_nodes(dbt_test_helper):
+def test_breaking_change_analysis(dbt_test_helper):
+    dbt_test_helper.create_model(
+        "model1",
+        unique_id="model.model1",
+        curr_sql="select 1 as c",
+        base_sql="select 1 as c --- non-breaking",
+        curr_columns={"c": "int"},
+        base_columns={"c": "int"},
+    )
+    dbt_test_helper.create_model(
+        "model2",
+        unique_id="model.model2",
+        curr_sql='select c, 2025 as y from {{ ref("model1") }}',
+        base_sql='select c, 2025 as y from {{ ref("model1") }} where c > 0 --- breaking',
+        curr_columns={"c": "int", "y": "int"},
+        base_columns={"c": "int", "y": "int"},
+        depends_on=["model.model1"],
+    )
+    dbt_test_helper.create_model(
+        "model3",
+        unique_id="model.model3",
+        curr_sql='select c from {{ ref("model2") }} where y < 2025',
+        base_sql='select c from {{ ref("model2") }} where y < 2025',
+        curr_columns={"c": "int"},
+        base_columns={"c": "int"},
+        depends_on=["model.model2"],
+    )
+    dbt_test_helper.create_model(
+        "model4",
+        unique_id="model.model4",
+        curr_sql='select y + 1 as year from {{ ref("model2") }} --- partial breaking',
+        base_sql='select y as year from {{ ref("model2") }}',
+        curr_columns={"year": "int"},
+        base_columns={"year": "int"},
+        depends_on=["model.model2"],
+    )
+
+    adapter: DbtAdapter = dbt_test_helper.context.adapter
+
+    # breaking
+    result = adapter.get_cll(change_analysis=True, cll=False)
+    assert_lineage_model(result, ["model.model1", "model.model2", "model.model3", "model.model4"])
+    assert result.nodes.get("model.model1").change_category == "non_breaking", "model1 should be non-breaking"
+    assert result.nodes.get("model.model2").change_category == "breaking", "model2 should be breaking"
+    assert result.nodes.get("model.model3").change_category is None, "model3 should be no change"
+    assert result.nodes.get("model.model4").change_category == "partial_breaking", "model4 should be partial breaking"
+
+
+def test_breaking_change_analysis_by_nodes(dbt_test_helper):
     # non-breaking
     dbt_test_helper.create_model(
         "model1",
@@ -280,15 +328,15 @@ def test_impact_radius_nodes(dbt_test_helper):
     adapter: DbtAdapter = dbt_test_helper.context.adapter
 
     # breaking
-    result = adapter.get_impacted_nodes("model.model2")
+    result = adapter.get_cll(node_id="model.model2", change_analysis=True, cll=False, upstream=False)
     assert_lineage_model(result, ["model.model2", "model.model3", "model.model4"])
 
     # non-breaking
-    result = adapter.get_impacted_nodes("model.model1")
-    assert_lineage_model(result, [])
+    result = adapter.get_cll(node_id="model.model1", change_analysis=True, cll=False, upstream=False)
+    assert_lineage_model(result, ["model.model1"])
 
 
-def test_impact_radius_columns(dbt_test_helper):
+def test_impact_radius(dbt_test_helper):
     # added column
     dbt_test_helper.create_model(
         "model1",
@@ -329,16 +377,16 @@ def test_impact_radius_columns(dbt_test_helper):
 
     adapter: DbtAdapter = dbt_test_helper.context.adapter
 
-    result = adapter.get_impacted_cll("model.model2")
-    assert_lineage_model(result, ["model.model3"])
+    result = adapter.get_cll(node_id="model.model2", change_analysis=True, upstream=False)
+    assert_lineage_model(result, ["model.model2", "model.model3"])
     assert_lineage_column(result, [("model.model2", "y"), ("model.model4", "y")])
 
-    result = adapter.get_impacted_cll("model.model1")
-    assert_lineage_model(result, [])
+    result = adapter.get_cll(node_id="model.model1", change_analysis=True, upstream=False)
+    assert_lineage_model(result, ["model.model1"])
     assert_lineage_column(result, [("model.model1", "d")])
 
 
-def test_impact_radius(dbt_test_helper):
+def test_impact_radius_2(dbt_test_helper):
     # added column
     dbt_test_helper.create_model(
         "model1",
@@ -379,6 +427,6 @@ def test_impact_radius(dbt_test_helper):
 
     adapter: DbtAdapter = dbt_test_helper.context.adapter
 
-    result = adapter.get_impact_radius("model.model2")
+    result = adapter.get_cll(node_id="model.model2", change_analysis=True, upstream=False)
     assert_lineage_model(result, ["model.model2", "model.model3", "model.model4"])
     assert_lineage_column(result, [("model.model2", "d"), ("model.model2", "y"), ("model.model4", "y")])
