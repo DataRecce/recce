@@ -846,8 +846,12 @@ class DbtAdapter(BaseAdapter):
 
         base_node = base.get("nodes", {}).get(node_id)
         curr_node = current.get("nodes", {}).get(node_id)
-        change = None
-        if curr_node.get("resource_type") == "model":
+        change = NodeChange(category="unknown")
+        if (
+            curr_node.get("resource_type") in ["model", "snapshot"]
+            and curr_node.get("raw_code") is not None
+            and base_node.get("raw_code") is not None
+        ):
             try:
 
                 def _get_schema(lineage):
@@ -910,7 +914,8 @@ class DbtAdapter(BaseAdapter):
 
                 change.columns = changed_columns_final
             except Exception:
-                change = NodeChange(category="unknown")
+                # TODO: telemetry
+                pass
 
         node_diff = diff.get(node_id)
         node_diff.change = change
