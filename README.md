@@ -3,7 +3,7 @@
         <picture>
             <source media="(prefers-color-scheme: dark)" srcset="https://datarecce.io/assets/images/recce-logo-stacked.avif">
             <source media="(prefers-color-scheme: light)" srcset="https://datarecce.io/assets/images/recce-logo-stacked.avif">
-            <img alt="Recce: DataRecce.io" src="https://datarecce.io/assets/images/recce-logo-stacked.avif" width="200" style="width: 100%; max-width: 200px; display: block; margin: 0 auto 20px;">
+            <img alt="Recce: DataRecce.io" src="https://datarecce.io/assets/images/recce-logo-stacked.avif" width="200">
         </picture>
     </a>
 </p>
