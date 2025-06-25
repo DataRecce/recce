@@ -118,7 +118,7 @@ export function GraphColumnNode(nodeProps: GrapeColumnNodeProps) {
         gap="3px"
         alignItems="center"
         height={`${COLUMN_HEIGHT - 1}px`}>
-        {isShowingChangeAnalysis ? (
+        {isShowingChangeAnalysis && changeStatus ? (
           <ChangeStatus changeStatus={changeStatus} />
         ) : (
           <TransformationType transformationType={transformationType} />
