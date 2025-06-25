@@ -31,22 +31,11 @@ export default function AuthModal({
   ignoreCookie = false,
 }: AuthModalProps): ReactNode {
   const { authed } = useRecceInstanceContext();
-  const { isOpen, onOpen, onClose } = useDisclosure();
+  const { isOpen, onOpen, onClose } = useDisclosure({ defaultIsOpen: !authed });
   const authStateCookieValue = (Cookies.get("authState") ?? "pending") as AuthState;
   const [authState, setAuthState] = useState<AuthState>(
     ignoreCookie ? "pending" : authStateCookieValue,
   );
-
-  const updateModalState = useCallback(() => {
-    if (!authed && !isOpen && authState === "pending") {
-      onOpen();
-    } else if (authed && isOpen && authState !== "authenticating") {
-      if (handleParentClose) {
-        handleParentClose();
-      }
-      onClose();
-    }
-  }, [authState, authed, handleParentClose, isOpen, onClose, onOpen]);
 
   function handleAllCloses() {
     if (handleParentClose) {
@@ -55,11 +44,30 @@ export default function AuthModal({
     onClose();
   }
 
+  const handleAllClosesCB = useCallback(() => {
+    if (handleParentClose) {
+      handleParentClose();
+    }
+    onClose();
+  }, [handleParentClose, onClose]);
+
+  const updateModalState = useCallback(() => {
+    if (!authed && authState === "pending") {
+      onOpen();
+    } else if (authed) {
+      handleAllClosesCB();
+    }
+  }, [authState, authed, handleAllClosesCB, onOpen]);
+
   useEffect(() => {
     updateModalState();
   }, [updateModalState]);
 
   if (authState === "ignored" && !ignoreCookie) {
+    return null;
+  }
+
+  if (authed) {
     return null;
   }
 
@@ -107,7 +115,6 @@ export default function AuthModal({
                   colorScheme="gray"
                   size="sm"
                   onClick={() => {
-                    setAuthState("canceled");
                     handleAllCloses();
                   }}>
                   Skip
@@ -117,7 +124,6 @@ export default function AuthModal({
                   variant="link"
                   size="sm"
                   onClick={() => {
-                    handleAllCloses();
                     Cookies.set("authState", "ignored", { expires: 30 });
                     setAuthState("ignored");
                   }}>
