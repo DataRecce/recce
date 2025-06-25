@@ -762,7 +762,14 @@ export function PrivateLineageView(
     isNodeHighlighted: (nodeId: string) => highlighted.has(nodeId),
     isNodeSelected: (nodeId: string) => selectedNodeIds.has(nodeId),
     isEdgeHighlighted: (source, target) => {
-      return highlighted.has(source) && highlighted.has(target);
+      if (!cll) {
+        return highlighted.has(source) && highlighted.has(target);
+      } else {
+        if (!(source in cll.current.parent_map)) {
+          return false;
+        }
+        return target in cll.current.parent_map[source];
+      }
     },
     isNodeShowingChangeAnalysis: (nodeId: string) => {
       if (!lineageGraph) {
