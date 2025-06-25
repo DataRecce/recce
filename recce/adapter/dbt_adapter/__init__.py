@@ -3,6 +3,7 @@ import logging
 import os
 import uuid
 from contextlib import contextmanager
+from copy import deepcopy
 from dataclasses import dataclass, fields
 from errno import ENOENT
 from functools import lru_cache
@@ -962,7 +963,7 @@ class DbtAdapter(BaseAdapter):
                     and cll_node_id not in manifest.exposures
                 ):
                     continue
-                cll_data_one = self.get_cll_cached(cll_node_id, base=False)
+                cll_data_one = deepcopy(self.get_cll_cached(cll_node_id, base=False))
                 if cll_data_one is None:
                     continue
 
