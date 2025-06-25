@@ -1067,7 +1067,7 @@ class DbtAdapter(BaseAdapter):
                     node_diff = self.get_change_analysis_cached(nid)
                     if node_diff is not None and node_diff.change is not None:
                         extra_node_ids.add(nid)
-                        if node_diff.change.category == "breaking":
+                        if node_diff.change.category in ["breaking", "unknown"]:
                             anchor_node_ids.add(nid)
                         if node_diff.change.columns is not None:
                             for column_name in node_diff.change.columns:
@@ -1081,7 +1081,7 @@ class DbtAdapter(BaseAdapter):
                 node_diff = self.get_change_analysis_cached(node_id)
                 if node_diff is not None and node_diff.change is not None:
                     extra_node_ids.add(node_id)
-                    if node_diff.change.category == "breaking":
+                    if node_diff.change.category in ["breaking", "unknown"]:
                         anchor_node_ids.add(node_id)
                     if node_diff.change.columns is not None:
                         for column_name in node_diff.change.columns:
