@@ -26,7 +26,7 @@ class RecceConfig(metaclass=SingletonMeta):
                 self.config = config if config else {}
             self._verify_preset_checks()
         except FileNotFoundError:
-            console.print(f"Recce config file not found. Generating default config file at '{self.config_file}'")
+            console.print(f"[[orange3]NOTICE[/orange3]] Generate default Recce config file at '{self.config_file}'")
             self.config = self.generate_template()
             self.save()
 
