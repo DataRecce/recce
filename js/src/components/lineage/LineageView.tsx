@@ -297,7 +297,6 @@ export function PrivateLineageView(
   /**
    * Breaking Change and Column Level Lineage
    */
-  const [nodeColumnSetMap, setNodeColumnSetMap] = useState<NodeColumnSetMap>();
   const [cllNodeIds, setCllNodeIds] = useState<Set<string>>();
 
   /**
@@ -335,15 +334,6 @@ export function PrivateLineageView(
 
     // Add columns in the highlighted models
     const resultSet = new Set<string>(highlightedModels);
-    if (nodeColumnSetMap) {
-      Object.entries(nodeColumnSetMap).forEach(([nodeId, columns]) => {
-        if (highlightedModels.has(nodeId)) {
-          columns.forEach((column) => {
-            resultSet.add(`${nodeId}_${column}`);
-          });
-        }
-      });
-    }
     return resultSet;
   }, [
     lineageGraph,
@@ -351,7 +341,6 @@ export function PrivateLineageView(
     selectMode,
     focusedNode,
     isModelsChanged,
-    nodeColumnSetMap,
     cllNodeIds,
     multiNodeAction.actionState.actions,
     filteredNodeIds,
@@ -402,7 +391,6 @@ export function PrivateLineageView(
         }
 
         setViewOptions(newViewOptions);
-        setNodeColumnSetMap(undefined);
       }
 
       // const [nodes, edges, nodeColumnSetMap] = toReactFlow(lineageGraph, filteredNodeIds);
@@ -412,7 +400,6 @@ export function PrivateLineageView(
       layout(nodes, edges);
       setNodes(nodes);
       setEdges(edges);
-      setNodeColumnSetMap(nodeColumnSetMap);
     };
 
     void t();
@@ -600,7 +587,6 @@ export function PrivateLineageView(
     }
     setNodes(newNodes);
     setEdges(newEdges);
-    setNodeColumnSetMap(newNodeColumnSetMap);
     setCll(cll);
 
     // Close the run result view if the run result node is not in the new nodes
@@ -821,11 +807,21 @@ export function PrivateLineageView(
       return multiNodeAction.actionState.actions[nodeId];
     },
     getNodeColumnSet: (nodeId: string) => {
-      if (!nodeColumnSetMap) {
-        return new Set();
+      if (!cll) {
+        return new Set<string>();
       }
 
-      return nodeColumnSetMap[nodeId] ?? new Set();
+      if (!(nodeId in cll.current.nodes)) {
+        return new Set<string>();
+      }
+
+      const node = cll.current.nodes[nodeId];
+
+      if (!node.columns) {
+        return new Set<string>();
+      }
+
+      return new Set(Object.keys(node.columns));
     },
     runRowCount: async () => {
       if (selectMode === "selecting") {

@@ -18,15 +18,9 @@ export interface ImpactRadiusParams {
 export interface CllNodeData {
   id: string;
   name: string;
+  source_name: string;
   resource_type: string;
   raw_code?: string;
-  depends_on?: {
-    nodes: string[];
-    columns: {
-      node: string;
-      column: string;
-    }[];
-  };
   change_status?: "added" | "removed" | "modified";
   change_category?: "breaking" | "non_breaking" | "partial_breaking" | "unknown";
   columns?: Record<string, NodeColumnData>;

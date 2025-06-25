@@ -98,6 +98,7 @@ export const ModelNodeContextMenu = ({
     getNodeColumnSet,
     selectMode,
     viewOptions,
+    cll,
     showColumnLevelLineage,
   } = useLineageViewContextSafe();
   const { runAction } = useRecceActionContext();
@@ -168,7 +169,7 @@ export const ModelNodeContextMenu = ({
     });
 
     if (columns.length > 0) {
-      if (viewOptions.column_level_lineage !== undefined) {
+      if (cll !== undefined) {
         const allColumns = new Set<string>();
         if (primaryKey) {
           allColumns.add(primaryKey);

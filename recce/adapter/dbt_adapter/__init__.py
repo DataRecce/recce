@@ -1103,6 +1103,11 @@ class DbtAdapter(BaseAdapter):
         if not no_filter:
             nodes = {k: v for k, v in nodes.items() if k in result_node_ids or k in extra_node_ids}
             columns = {k: v for k, v in columns.items() if k in result_node_ids or k in extra_node_ids}
+
+            for node in nodes.values():
+                node.columns = {
+                    k: v for k, v in node.columns.items() if v.id in result_node_ids or v.id in extra_node_ids
+                }
             parent_map, child_map = filter_dependency_maps(parent_map, child_map, result_node_ids)
 
         cll_tracker.end_column_lineage()
