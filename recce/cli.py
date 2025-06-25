@@ -26,7 +26,6 @@ from recce.util.onboarding_state import update_onboarding_state
 from recce.util.recce_cloud import (
     RecceCloudException,
 )
-
 from .core import RecceContext, set_default_context
 from .event.track import TrackCommand
 
@@ -437,7 +436,13 @@ def server(host, port, lifetime, state_file=None, **kwargs):
         console.print(f"{hint}")
         exit(1)
 
-    result, message = RecceContext.verify_required_artifacts(**kwargs)
+    try:
+        result, message = RecceContext.verify_required_artifacts(**kwargs)
+    except Exception as e:
+        result = False
+        error_type = type(e).__name__
+        error_message = str(e)
+        message = f"{error_type}: {error_message}"
     if not result:
         console.rule("Notice", style="orange3")
         console.print(f"[[red]Error[/red]] {message}")
