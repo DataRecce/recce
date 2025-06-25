@@ -87,6 +87,7 @@ import { useRecceServerFlag } from "@/lib/hooks/useRecceServerFlag";
 import { BaseEnvironmentSetupNotification } from "./SingleEnvironmentQueryView";
 import { CllInput, ColumnLineageData, getCll } from "@/lib/api/cll";
 import { LineageViewContextMenu, useLineageViewContextMenu } from "./LineageViewContextMenu";
+import { node } from "globals";
 
 export interface LineageViewProps {
   viewOptions?: LineageDiffViewOptions;
@@ -218,6 +219,7 @@ export function PrivateLineageView(
   });
 
   const [cll, setCll] = useState<ColumnLineageData | undefined>(undefined);
+  const [nodeColumnSetMap, setNodeColumSetMap] = useState<NodeColumnSetMap>({});
 
   const findNodeByName = (name: string) => {
     return nodes.find((n) => n.data.name === name);
@@ -295,11 +297,6 @@ export function PrivateLineageView(
   );
 
   /**
-   * Breaking Change and Column Level Lineage
-   */
-  const [cllNodeIds, setCllNodeIds] = useState<Set<string>>();
-
-  /**
    * Highlighted nodes: the nodes that are highlighted. The behavior of highlighting depends on the select mode
    *
    * - Default: nodes in the impact radius, or all nodes if the impact radius is not available
@@ -312,8 +309,8 @@ export function PrivateLineageView(
       return new Set<string>();
     }
 
-    if (viewOptions.column_level_lineage) {
-      return cllNodeIds ?? new Set<string>();
+    if (cll) {
+      return new Set([...Object.keys(cll.current.nodes), ...Object.keys(cll.current.columns)]);
     }
 
     let highlightedModels: Set<string> = new Set<string>();
@@ -337,11 +334,10 @@ export function PrivateLineageView(
     return resultSet;
   }, [
     lineageGraph,
-    viewOptions.column_level_lineage,
+    cll,
     selectMode,
     focusedNode,
     isModelsChanged,
-    cllNodeIds,
     multiNodeAction.actionState.actions,
     filteredNodeIds,
   ]);
@@ -393,13 +389,13 @@ export function PrivateLineageView(
         setViewOptions(newViewOptions);
       }
 
-      // const [nodes, edges, nodeColumnSetMap] = toReactFlow(lineageGraph, filteredNodeIds);
       const [nodes, edges, nodeColumnSetMap] = toReactFlow(lineageGraph, {
         selectedNodes: filteredNodeIds,
       });
       layout(nodes, edges);
       setNodes(nodes);
       setEdges(edges);
+      setNodeColumSetMap(nodeColumnSetMap);
     };
 
     void t();
@@ -575,18 +571,9 @@ export function PrivateLineageView(
       selectedNodes,
       cll,
     });
-    if (newViewOptions.column_level_lineage != undefined && cll != undefined) {
-      const cllNodeIds = new Set<string>();
-      Object.keys(cll.current.nodes).forEach((key) => {
-        cllNodeIds.add(key);
-      });
-      Object.keys(cll.current.columns).forEach((key) => {
-        cllNodeIds.add(key);
-      });
-      setCllNodeIds(cllNodeIds);
-    }
     setNodes(newNodes);
     setEdges(newEdges);
+    setNodeColumSetMap(newNodeColumnSetMap);
     setCll(cll);
 
     // Close the run result view if the run result node is not in the new nodes
@@ -775,14 +762,7 @@ export function PrivateLineageView(
     isNodeHighlighted: (nodeId: string) => highlighted.has(nodeId),
     isNodeSelected: (nodeId: string) => selectedNodeIds.has(nodeId),
     isEdgeHighlighted: (source, target) => {
-      if (viewOptions.column_level_lineage) {
-        if (!cllNodeIds) {
-          return false;
-        }
-        return cllNodeIds.has(source) && cllNodeIds.has(target);
-      } else {
-        return highlighted.has(source) && highlighted.has(target);
-      }
+      return highlighted.has(source) && highlighted.has(target);
     },
     isNodeShowingChangeAnalysis: (nodeId: string) => {
       if (!lineageGraph) {
@@ -807,21 +787,11 @@ export function PrivateLineageView(
       return multiNodeAction.actionState.actions[nodeId];
     },
     getNodeColumnSet: (nodeId: string) => {
-      if (!cll) {
+      if (!(nodeId in nodeColumnSetMap)) {
         return new Set<string>();
       }
 
-      if (!(nodeId in cll.current.nodes)) {
-        return new Set<string>();
-      }
-
-      const node = cll.current.nodes[nodeId];
-
-      if (!node.columns) {
-        return new Set<string>();
-      }
-
-      return new Set(Object.keys(node.columns));
+      return new Set(nodeColumnSetMap[nodeId]);
     },
     runRowCount: async () => {
       if (selectMode === "selecting") {
