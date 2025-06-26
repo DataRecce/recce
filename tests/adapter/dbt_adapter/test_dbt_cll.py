@@ -22,23 +22,35 @@ def assert_parent_map(result: CllData, node_or_column_id, parents):
             raise ValueError(f"Invalid parent format: {parent}. Expected node_id or (node_id, column_name).")
 
 
-def assert_column(result: CllData, node_name, column_name, transformation_type, depends_on, change_status=None):
-    column_id = build_column_key(node_name, column_name)
+def assert_column(
+    result: CllData,
+    node_id,
+    column_name,
+    transformation_type=None,
+    change_status=None,
+    parents=None,
+):
+    column_id = build_column_key(node_id, column_name)
     entry = result.columns.get(column_id)
     assert entry is not None, f"Column {column_id} not found in result"
     assert (
         entry.transformation_type == transformation_type
     ), f"Column {column_name} type mismatch: expected {transformation_type}, got {entry.transformation_type}"
-    assert_parent_map(result, column_id, depends_on)
+    assert_parent_map(result, column_id, parents)
     assert (
         entry.change_status == change_status
     ), f"Column {column_name} change status mismatch: expected {change_status}, got {entry.change_status}"
 
 
-def assert_model(result: CllData, node_id, depends_on, change_category=None):
+def assert_model(
+    result: CllData,
+    node_id,
+    change_category=None,
+    parents=None,
+):
     entry = result.nodes.get(node_id)
     assert entry is not None, f"Node {node_id} not found in result"
-    assert_parent_map(result, node_id, depends_on)
+    assert_parent_map(result, node_id, parents)
 
     assert (
         entry.change_category == change_category
@@ -81,11 +93,11 @@ def test_cll_basic(dbt_test_helper):
     adapter: DbtAdapter = dbt_test_helper.context.adapter
 
     result = adapter.get_cll("model.model1", "c")
-    assert_model(result, "model.model2", [("model.model1", "c")])
-    assert_column(result, "model.model2", "c", "passthrough", [("model.model1", "c")])
+    assert_model(result, "model.model2", parents=[("model.model1", "c")])
+    assert_column(result, "model.model2", "c", transformation_type="passthrough", parents=[("model.model1", "c")])
 
-    assert_model(result, "model.model3", [("model.model1", "c")])
-    assert_column(result, "model.model3", "c", "passthrough", [("model.model1", "c")])
+    assert_model(result, "model.model3", parents=[("model.model1", "c")])
+    assert_column(result, "model.model3", "c", transformation_type="passthrough", parents=[("model.model1", "c")])
 
 
 def test_cll_table_alisa(dbt_test_helper):
@@ -104,7 +116,7 @@ def test_cll_table_alisa(dbt_test_helper):
     )
     adapter: DbtAdapter = dbt_test_helper.context.adapter
     result = adapter.get_cll("model.model1", "c")
-    assert_column(result, "model.model2", "c", "passthrough", [("model.model1", "c")])
+    assert_column(result, "model.model2", "c", transformation_type="passthrough", parents=[("model.model1", "c")])
 
 
 def test_seed(dbt_test_helper):
@@ -132,10 +144,16 @@ def test_seed(dbt_test_helper):
     adapter: DbtAdapter = dbt_test_helper.context.adapter
 
     result = adapter.get_cll("model.model1")
-    assert_model(result, "seed.seed1", [])
-    assert_column(result, "seed.seed1", "customer_id", "source", [])
-    assert_model(result, "model.model1", ["seed.seed1", ("seed.seed1", "age")])
-    assert_column(result, "model.model1", "customer_id", "passthrough", [("seed.seed1", "customer_id")])
+    assert_model(result, "seed.seed1", parents=[])
+    assert_column(result, "seed.seed1", "customer_id", transformation_type="source", parents=[])
+    assert_model(result, "model.model1", parents=["seed.seed1", ("seed.seed1", "age")])
+    assert_column(
+        result,
+        "model.model1",
+        "customer_id",
+        transformation_type="passthrough",
+        parents=[("seed.seed1", "customer_id")],
+    )
 
 
 def test_python_model(dbt_test_helper):
@@ -163,8 +181,8 @@ def test_python_model(dbt_test_helper):
     assert adapter.is_python_model("model2")
 
     result = adapter.get_cll("model2")
-    assert_model(result, "model2", ["model1"])
-    assert_column(result, "model2", "customer_id", "unknown", [])
+    assert_model(result, "model2", parents=["model1"])
+    assert_column(result, "model2", "customer_id", transformation_type="unknown", parents=[])
 
 
 def test_source(dbt_test_helper):
@@ -191,8 +209,14 @@ def test_source(dbt_test_helper):
     )
     adapter: DbtAdapter = dbt_test_helper.context.adapter
     result = adapter.get_cll("model.model1")
-    assert_column(result, "source.source1.table1", "customer_id", "source", [])
-    assert_column(result, "model.model1", "customer_id", "passthrough", [("source.source1.table1", "customer_id")])
+    assert_column(result, "source.source1.table1", "customer_id", transformation_type="source", parents=[])
+    assert_column(
+        result,
+        "model.model1",
+        "customer_id",
+        transformation_type="passthrough",
+        parents=[("source.source1.table1", "customer_id")],
+    )
 
 
 def test_parse_error(dbt_test_helper):
@@ -200,7 +224,7 @@ def test_parse_error(dbt_test_helper):
     dbt_test_helper.create_model("model2", curr_sql="this is not a valid sql", curr_columns={"c": "int"})
     adapter: DbtAdapter = dbt_test_helper.context.adapter
     result = adapter.get_cll("model2")
-    assert_column(result, "model2", "c", "unknown", [])
+    assert_column(result, "model2", "c", transformation_type="unknown", parents=[])
 
 
 def test_model_without_catalog(dbt_test_helper):
@@ -241,22 +265,22 @@ def test_column_level_lineage(dbt_test_helper):
     result = adapter.get_cll("model.model2", "c")
     assert_cll_contain_nodes(result, [])
     assert_cll_contain_columns(result, [("model.model1", "c"), ("model.model2", "c"), ("model.model3", "c")])
-    assert_column(result, "model.model2", "c", "passthrough", [("model.model1", "c")])
+    assert_column(result, "model.model2", "c", transformation_type="passthrough", parents=[("model.model1", "c")])
 
     result = adapter.get_cll("model.model2", "y")
     assert_cll_contain_nodes(result, ["model.model3"])
     assert_cll_contain_columns(result, [("model.model2", "y"), ("model.model4", "y")])
-    assert_column(result, "model.model2", "y", "source", [])
+    assert_column(result, "model.model2", "y", transformation_type="source", parents=[])
 
     result = adapter.get_cll("model.model3", "c")
     assert_cll_contain_nodes(result, [])
     assert_cll_contain_columns(result, [("model.model1", "c"), ("model.model2", "c"), ("model.model3", "c")])
-    assert_column(result, "model.model2", "c", "passthrough", [("model.model1", "c")])
+    assert_column(result, "model.model2", "c", transformation_type="passthrough", parents=[("model.model1", "c")])
 
     result = adapter.get_cll("model.model2", "c", no_upstream=True, no_downstream=True)
     assert_cll_contain_nodes(result, [])
     assert_cll_contain_columns(result, [("model.model2", "c")])
-    assert_column(result, "model.model2", "c", "passthrough", [])
+    assert_column(result, "model.model2", "c", transformation_type="passthrough", parents=[])
 
 
 def test_impact_radius_no_change_analysis_no_cll(dbt_test_helper):
@@ -309,11 +333,11 @@ def test_impact_radius_no_change_analysis_no_cll(dbt_test_helper):
 
     result = adapter.get_cll(no_cll=True)
     assert_cll_contain_nodes(result, ["model.model1", "model.model2", "model.model3", "model.model4", "model.model5"])
-    assert_model(result, "model.model1", [])
-    assert_model(result, "model.model2", ["model.model1"])
-    assert_model(result, "model.model3", ["model.model2"])
-    assert_model(result, "model.model4", ["model.model2"])
-    assert_model(result, "model.model5", ["model.model1"])
+    assert_model(result, "model.model1", parents=[])
+    assert_model(result, "model.model2", parents=["model.model1"])
+    assert_model(result, "model.model3", parents=["model.model2"])
+    assert_model(result, "model.model4", parents=["model.model2"])
+    assert_model(result, "model.model5", parents=["model.model1"])
 
 
 def test_impact_radius_with_change_analysis_no_cll(dbt_test_helper):
@@ -367,10 +391,10 @@ def test_impact_radius_with_change_analysis_no_cll(dbt_test_helper):
     # breaking
     result = adapter.get_cll(change_analysis=True, no_cll=True, no_upstream=True)
     assert_cll_contain_nodes(result, ["model.model1", "model.model2", "model.model3", "model.model4"])
-    assert_model(result, "model.model1", [], change_category="non_breaking")
-    assert_model(result, "model.model2", [], change_category="breaking")
-    assert_model(result, "model.model3", ["model.model2"], change_category=None)
-    assert_model(result, "model.model4", ["model.model2"], change_category="partial_breaking")
+    assert_model(result, "model.model1", parents=[], change_category="non_breaking")
+    assert_model(result, "model.model2", parents=[], change_category="breaking")
+    assert_model(result, "model.model3", parents=["model.model2"], change_category=None)
+    assert_model(result, "model.model4", parents=["model.model2"], change_category="partial_breaking")
 
 
 def test_impact_radius_with_change_analysis_with_cll(dbt_test_helper):
@@ -424,10 +448,10 @@ def test_impact_radius_with_change_analysis_with_cll(dbt_test_helper):
     result = adapter.get_cll(change_analysis=True, no_upstream=True)
     assert_cll_contain_nodes(result, ["model.model1", "model.model2", "model.model3", "model.model4"])
     assert_cll_contain_columns(result, [("model.model4", "year")])
-    assert_model(result, "model.model1", [], change_category="non_breaking")
-    assert_model(result, "model.model2", [], change_category="breaking")
-    assert_model(result, "model.model3", ["model.model2"], change_category=None)
-    assert_model(result, "model.model4", ["model.model2"], change_category="partial_breaking")
+    assert_model(result, "model.model1", parents=[], change_category="non_breaking")
+    assert_model(result, "model.model2", parents=[], change_category="breaking")
+    assert_model(result, "model.model3", parents=["model.model2"], change_category=None)
+    assert_model(result, "model.model4", parents=["model.model2"], change_category="partial_breaking")
 
 
 def test_impact_radius_by_node_no_cll(dbt_test_helper):
@@ -522,16 +546,16 @@ def test_impact_radius_by_node_with_cll(dbt_test_helper):
     adapter: DbtAdapter = dbt_test_helper.context.adapter
 
     result = adapter.get_cll(node_id="model.model2", change_analysis=True, no_upstream=True)
-    assert_model(result, "model.model2", [], change_category="partial_breaking")
-    assert_column(result, "model.model2", "y", "source", [], change_status="modified")
+    assert_model(result, "model.model2", parents=[], change_category="partial_breaking")
+    assert_column(result, "model.model2", "y", transformation_type="source", parents=[], change_status="modified")
     assert_cll_contain_nodes(result, ["model.model2", "model.model3"])
     assert_cll_contain_columns(result, [("model.model2", "y"), ("model.model4", "y")])
 
     result = adapter.get_cll(node_id="model.model1", change_analysis=True, no_upstream=True)
     assert_cll_contain_nodes(result, ["model.model1"])
     assert_cll_contain_columns(result, [("model.model1", "d")])
-    assert_model(result, "model.model1", [], change_category="non_breaking")
-    assert_column(result, "model.model1", "d", "source", [], change_status="added")
+    assert_model(result, "model.model1", parents=[], change_category="non_breaking")
+    assert_column(result, "model.model1", "d", transformation_type="source", parents=[], change_status="added")
 
 
 def test_impact_radius_by_node_with_cll_2(dbt_test_helper):
@@ -576,9 +600,9 @@ def test_impact_radius_by_node_with_cll_2(dbt_test_helper):
     adapter: DbtAdapter = dbt_test_helper.context.adapter
 
     result = adapter.get_cll(node_id="model.model2", change_analysis=True, no_upstream=True)
-    assert_model(result, "model.model2", [], change_category="breaking")
-    assert_column(result, "model.model2", "y", "source", [], change_status="modified")
-    assert_model(result, "model.model3", ["model.model2", ("model.model2", "y")])
-    assert_column(result, "model.model4", "y", "passthrough", [("model.model2", "y")])
+    assert_model(result, "model.model2", parents=[], change_category="breaking")
+    assert_column(result, "model.model2", "y", transformation_type="source", parents=[], change_status="modified")
+    assert_model(result, "model.model3", parents=["model.model2", ("model.model2", "y")])
+    assert_column(result, "model.model4", "y", transformation_type="passthrough", parents=[("model.model2", "y")])
     assert_cll_contain_nodes(result, ["model.model2", "model.model3", "model.model4"])
     assert_cll_contain_columns(result, [("model.model2", "d"), ("model.model2", "y"), ("model.model4", "y")])
