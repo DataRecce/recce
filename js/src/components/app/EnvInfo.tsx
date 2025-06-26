@@ -113,9 +113,9 @@ export function EnvInfo() {
               ({baseRelativeTime})
             </div>
             <div className="flex gap-1">
-              <div className="no-track-pii-safe max-w-32 truncate">
+              <span className="no-track-pii-safe max-w-32 truncate">
                 {Array.from(currentSchemas).join(", ")}
-              </div>{" "}
+              </span>{" "}
               ({currentRelativeTime})
             </div>
           </div>
