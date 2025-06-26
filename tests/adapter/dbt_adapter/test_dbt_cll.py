@@ -4,7 +4,7 @@ from recce.util.lineage import build_column_key
 
 
 def assert_parent_map(result: CllData, node_or_column_id, parents):
-    a_parents = result.parent_map.get(node_or_column_id)
+    a_parents = result.parent_map.get(node_or_column_id) or set()
 
     assert len(a_parents) == len(parents), "parents length mismatch"
     for parent in parents:
@@ -22,7 +22,7 @@ def assert_parent_map(result: CllData, node_or_column_id, parents):
             raise ValueError(f"Invalid parent format: {parent}. Expected node_id or (node_id, column_name).")
 
 
-def assert_column(result: CllData, node_name, column_name, transformation_type, depends_on):
+def assert_column(result: CllData, node_name, column_name, transformation_type, depends_on, change_status=None):
     column_id = build_column_key(node_name, column_name)
     entry = result.columns.get(column_id)
     assert entry is not None, f"Column {column_id} not found in result"
@@ -30,21 +30,19 @@ def assert_column(result: CllData, node_name, column_name, transformation_type, 
         entry.transformation_type == transformation_type
     ), f"Column {column_name} type mismatch: expected {transformation_type}, got {entry.transformation_type}"
     assert_parent_map(result, column_id, depends_on)
+    assert (
+        entry.change_status == change_status
+    ), f"Column {column_name} change status mismatch: expected {change_status}, got {entry.change_status}"
 
 
-def assert_model(result: CllData, node_name, depends_on):
-    # assert result.nodes.get(node_name) is not None, f"Node {node_name} not found in result"
+def assert_model(result: CllData, node_id, depends_on, change_category=None):
+    entry = result.nodes.get(node_id)
+    assert entry is not None, f"Node {node_id} not found in result"
+    assert_parent_map(result, node_id, depends_on)
 
-    assert_parent_map(result, node_name, depends_on)
-
-    # parent_map = result.parent_map.get(node_name)
-    # assert parent_map is not None, f"Parent map {node_name} not found in result"
-    # assert len(parent_map) == len(depends_on), "depends_on length mismatch"
-    # for i in range(len(depends_on)):
-    #     node, column = depends_on[i]
-    #     column_id = f"{node}_{column}"
-    #
-    #     assert column_id in parent_map, f"Parent map {node_name} does not contain {column_id}"
+    assert (
+        entry.change_category == change_category
+    ), f"Node {node_id} change category mismatch: expected {change_category}, got {entry.change_category}"
 
 
 def assert_cll_contain_nodes(cll_data: CllData, nodes):
@@ -134,8 +132,8 @@ def test_seed(dbt_test_helper):
     adapter: DbtAdapter = dbt_test_helper.context.adapter
 
     result = adapter.get_cll("model.model1")
-    # assert_model(result, "seed.seed1", [])
-    # assert_column(result, "seed.seed1", "customer_id", "source", [])
+    assert_model(result, "seed.seed1", [])
+    assert_column(result, "seed.seed1", "customer_id", "source", [])
     assert_model(result, "model.model1", ["seed.seed1", ("seed.seed1", "age")])
     assert_column(result, "model.model1", "customer_id", "passthrough", [("seed.seed1", "customer_id")])
 
@@ -164,7 +162,8 @@ def test_python_model(dbt_test_helper):
     assert not adapter.is_python_model("model1")
     assert adapter.is_python_model("model2")
 
-    result = adapter.get_cll("model1", no_filter=True)
+    result = adapter.get_cll("model2")
+    assert_model(result, "model2", ["model1"])
     assert_column(result, "model2", "customer_id", "unknown", [])
 
 
@@ -191,9 +190,8 @@ def test_source(dbt_test_helper):
         depends_on=["source.source1.table1"],
     )
     adapter: DbtAdapter = dbt_test_helper.context.adapter
-    result = adapter.get_cll("source.source1.table1", no_filter=True)
+    result = adapter.get_cll("model.model1")
     assert_column(result, "source.source1.table1", "customer_id", "source", [])
-    result = adapter.get_cll("model.model1", no_filter=True)
     assert_column(result, "model.model1", "customer_id", "passthrough", [("source.source1.table1", "customer_id")])
 
 
@@ -201,18 +199,18 @@ def test_parse_error(dbt_test_helper):
     dbt_test_helper.create_model("model1", curr_sql="select 1 as c", curr_columns={"c": "int"})
     dbt_test_helper.create_model("model2", curr_sql="this is not a valid sql", curr_columns={"c": "int"})
     adapter: DbtAdapter = dbt_test_helper.context.adapter
-    result = adapter.get_cll("model2", no_filter=True)
+    result = adapter.get_cll("model2")
     assert_column(result, "model2", "c", "unknown", [])
 
 
 def test_model_without_catalog(dbt_test_helper):
     dbt_test_helper.create_model("model1", curr_sql="select 1 as c")
     adapter: DbtAdapter = dbt_test_helper.context.adapter
-    result = adapter.get_cll("model1", no_filter=True)
+    result = adapter.get_cll("model1")
     assert not result.nodes["model1"].columns
 
 
-def test_cll_column_filter(dbt_test_helper):
+def test_column_level_lineage(dbt_test_helper):
     dbt_test_helper.create_model(
         "model1", unique_id="model.model1", curr_sql="select 1 as c", curr_columns={"c": "int"}
     )
@@ -243,17 +241,25 @@ def test_cll_column_filter(dbt_test_helper):
     result = adapter.get_cll("model.model2", "c")
     assert_cll_contain_nodes(result, [])
     assert_cll_contain_columns(result, [("model.model1", "c"), ("model.model2", "c"), ("model.model3", "c")])
+    assert_column(result, "model.model2", "c", "passthrough", [("model.model1", "c")])
 
     result = adapter.get_cll("model.model2", "y")
     assert_cll_contain_nodes(result, ["model.model3"])
     assert_cll_contain_columns(result, [("model.model2", "y"), ("model.model4", "y")])
+    assert_column(result, "model.model2", "y", "source", [])
 
     result = adapter.get_cll("model.model3", "c")
     assert_cll_contain_nodes(result, [])
     assert_cll_contain_columns(result, [("model.model1", "c"), ("model.model2", "c"), ("model.model3", "c")])
+    assert_column(result, "model.model2", "c", "passthrough", [("model.model1", "c")])
+
+    result = adapter.get_cll("model.model2", "c", no_upstream=True, no_downstream=True)
+    assert_cll_contain_nodes(result, [])
+    assert_cll_contain_columns(result, [("model.model2", "c")])
+    assert_column(result, "model.model2", "c", "passthrough", [])
 
 
-def test_breaking_change_analysis(dbt_test_helper):
+def test_impact_radius_no_change_analysis_no_cll(dbt_test_helper):
     dbt_test_helper.create_model(
         "model1",
         unique_id="model.model1",
@@ -289,19 +295,142 @@ def test_breaking_change_analysis(dbt_test_helper):
         base_columns={"year": "int"},
         depends_on=["model.model2"],
     )
+    dbt_test_helper.create_model(
+        "model5",
+        unique_id="model.model5",
+        curr_sql='select c, 2025 as y from {{ ref("model1") }}',
+        base_sql='select c, 2025 as y from {{ ref("model1") }}',
+        curr_columns={"c": "int", "y": "int"},
+        base_columns={"c": "int", "y": "int"},
+        depends_on=["model.model1"],
+    )
+
+    adapter: DbtAdapter = dbt_test_helper.context.adapter
+
+    result = adapter.get_cll(no_cll=True)
+    assert_cll_contain_nodes(result, ["model.model1", "model.model2", "model.model3", "model.model4", "model.model5"])
+    assert_model(result, "model.model1", [])
+    assert_model(result, "model.model2", ["model.model1"])
+    assert_model(result, "model.model3", ["model.model2"])
+    assert_model(result, "model.model4", ["model.model2"])
+    assert_model(result, "model.model5", ["model.model1"])
+
+
+def test_impact_radius_with_change_analysis_no_cll(dbt_test_helper):
+    dbt_test_helper.create_model(
+        "model1",
+        unique_id="model.model1",
+        curr_sql="select 1 as c",
+        base_sql="select 1 as c --- non-breaking",
+        curr_columns={"c": "int"},
+        base_columns={"c": "int"},
+    )
+    dbt_test_helper.create_model(
+        "model2",
+        unique_id="model.model2",
+        curr_sql='select c, 2025 as y from {{ ref("model1") }}',
+        base_sql='select c, 2025 as y from {{ ref("model1") }} where c > 0 --- breaking',
+        curr_columns={"c": "int", "y": "int"},
+        base_columns={"c": "int", "y": "int"},
+        depends_on=["model.model1"],
+    )
+    dbt_test_helper.create_model(
+        "model3",
+        unique_id="model.model3",
+        curr_sql='select c from {{ ref("model2") }} where y < 2025',
+        base_sql='select c from {{ ref("model2") }} where y < 2025',
+        curr_columns={"c": "int"},
+        base_columns={"c": "int"},
+        depends_on=["model.model2"],
+    )
+    dbt_test_helper.create_model(
+        "model4",
+        unique_id="model.model4",
+        curr_sql='select y + 1 as year from {{ ref("model2") }} --- partial breaking',
+        base_sql='select y as year from {{ ref("model2") }}',
+        curr_columns={"year": "int"},
+        base_columns={"year": "int"},
+        depends_on=["model.model2"],
+    )
+    dbt_test_helper.create_model(
+        "model5",
+        unique_id="model.model5",
+        curr_sql='select c, 2025 as y from {{ ref("model1") }}',
+        base_sql='select c, 2025 as y from {{ ref("model1") }}',
+        curr_columns={"c": "int", "y": "int"},
+        base_columns={"c": "int", "y": "int"},
+        depends_on=["model.model1"],
+    )
 
     adapter: DbtAdapter = dbt_test_helper.context.adapter
 
     # breaking
-    result = adapter.get_cll(change_analysis=True, cll=False)
+    result = adapter.get_cll(change_analysis=True, no_cll=True, no_upstream=True)
     assert_cll_contain_nodes(result, ["model.model1", "model.model2", "model.model3", "model.model4"])
-    assert result.nodes.get("model.model1").change_category == "non_breaking", "model1 should be non-breaking"
-    assert result.nodes.get("model.model2").change_category == "breaking", "model2 should be breaking"
-    assert result.nodes.get("model.model3").change_category is None, "model3 should be no change"
-    assert result.nodes.get("model.model4").change_category == "partial_breaking", "model4 should be partial breaking"
+    assert_model(result, "model.model1", [], change_category="non_breaking")
+    assert_model(result, "model.model2", [], change_category="breaking")
+    assert_model(result, "model.model3", ["model.model2"], change_category=None)
+    assert_model(result, "model.model4", ["model.model2"], change_category="partial_breaking")
 
 
-def test_breaking_change_analysis_by_nodes(dbt_test_helper):
+def test_impact_radius_with_change_analysis_with_cll(dbt_test_helper):
+    dbt_test_helper.create_model(
+        "model1",
+        unique_id="model.model1",
+        curr_sql="select 1 as c",
+        base_sql="select 1 as c --- non-breaking",
+        curr_columns={"c": "int"},
+        base_columns={"c": "int"},
+    )
+    dbt_test_helper.create_model(
+        "model2",
+        unique_id="model.model2",
+        curr_sql='select c, 2025 as y from {{ ref("model1") }}',
+        base_sql='select c, 2025 as y from {{ ref("model1") }} where c > 0 --- breaking',
+        curr_columns={"c": "int", "y": "int"},
+        base_columns={"c": "int", "y": "int"},
+        depends_on=["model.model1"],
+    )
+    dbt_test_helper.create_model(
+        "model3",
+        unique_id="model.model3",
+        curr_sql='select c from {{ ref("model2") }} where y < 2025',
+        base_sql='select c from {{ ref("model2") }} where y < 2025',
+        curr_columns={"c": "int"},
+        base_columns={"c": "int"},
+        depends_on=["model.model2"],
+    )
+    dbt_test_helper.create_model(
+        "model4",
+        unique_id="model.model4",
+        curr_sql='select y + 1 as year from {{ ref("model2") }} --- partial breaking',
+        base_sql='select y as year from {{ ref("model2") }}',
+        curr_columns={"year": "int"},
+        base_columns={"year": "int"},
+        depends_on=["model.model2"],
+    )
+    dbt_test_helper.create_model(
+        "model5",
+        unique_id="model.model5",
+        curr_sql='select c, 2025 as y from {{ ref("model1") }}',
+        base_sql='select c, 2025 as y from {{ ref("model1") }}',
+        curr_columns={"c": "int", "y": "int"},
+        base_columns={"c": "int", "y": "int"},
+        depends_on=["model.model1"],
+    )
+
+    adapter: DbtAdapter = dbt_test_helper.context.adapter
+
+    result = adapter.get_cll(change_analysis=True, no_upstream=True)
+    assert_cll_contain_nodes(result, ["model.model1", "model.model2", "model.model3", "model.model4"])
+    assert_cll_contain_columns(result, [("model.model4", "year")])
+    assert_model(result, "model.model1", [], change_category="non_breaking")
+    assert_model(result, "model.model2", [], change_category="breaking")
+    assert_model(result, "model.model3", ["model.model2"], change_category=None)
+    assert_model(result, "model.model4", ["model.model2"], change_category="partial_breaking")
+
+
+def test_impact_radius_by_node_no_cll(dbt_test_helper):
     # non-breaking
     dbt_test_helper.create_model(
         "model1",
@@ -343,15 +472,15 @@ def test_breaking_change_analysis_by_nodes(dbt_test_helper):
     adapter: DbtAdapter = dbt_test_helper.context.adapter
 
     # breaking
-    result = adapter.get_cll(node_id="model.model2", change_analysis=True, cll=False, upstream=False)
+    result = adapter.get_cll(node_id="model.model2", change_analysis=True, no_cll=True, no_upstream=True)
     assert_cll_contain_nodes(result, ["model.model2", "model.model3", "model.model4"])
 
     # non-breaking
-    result = adapter.get_cll(node_id="model.model1", change_analysis=True, cll=False, upstream=False)
+    result = adapter.get_cll(node_id="model.model1", change_analysis=True, no_cll=True, no_upstream=True)
     assert_cll_contain_nodes(result, ["model.model1"])
 
 
-def test_impact_radius(dbt_test_helper):
+def test_impact_radius_by_node_with_cll(dbt_test_helper):
     # added column
     dbt_test_helper.create_model(
         "model1",
@@ -392,16 +521,20 @@ def test_impact_radius(dbt_test_helper):
 
     adapter: DbtAdapter = dbt_test_helper.context.adapter
 
-    result = adapter.get_cll(node_id="model.model2", change_analysis=True, upstream=False)
+    result = adapter.get_cll(node_id="model.model2", change_analysis=True, no_upstream=True)
+    assert_model(result, "model.model2", [], change_category="partial_breaking")
+    assert_column(result, "model.model2", "y", "source", [], change_status="modified")
     assert_cll_contain_nodes(result, ["model.model2", "model.model3"])
     assert_cll_contain_columns(result, [("model.model2", "y"), ("model.model4", "y")])
 
-    result = adapter.get_cll(node_id="model.model1", change_analysis=True, upstream=False)
+    result = adapter.get_cll(node_id="model.model1", change_analysis=True, no_upstream=True)
     assert_cll_contain_nodes(result, ["model.model1"])
     assert_cll_contain_columns(result, [("model.model1", "d")])
+    assert_model(result, "model.model1", [], change_category="non_breaking")
+    assert_column(result, "model.model1", "d", "source", [], change_status="added")
 
 
-def test_impact_radius_2(dbt_test_helper):
+def test_impact_radius_by_node_with_cll_2(dbt_test_helper):
     # added column
     dbt_test_helper.create_model(
         "model1",
@@ -442,6 +575,10 @@ def test_impact_radius_2(dbt_test_helper):
 
     adapter: DbtAdapter = dbt_test_helper.context.adapter
 
-    result = adapter.get_cll(node_id="model.model2", change_analysis=True, upstream=False)
+    result = adapter.get_cll(node_id="model.model2", change_analysis=True, no_upstream=True)
+    assert_model(result, "model.model2", [], change_category="breaking")
+    assert_column(result, "model.model2", "y", "source", [], change_status="modified")
+    assert_model(result, "model.model3", ["model.model2", ("model.model2", "y")])
+    assert_column(result, "model.model4", "y", "passthrough", [("model.model2", "y")])
     assert_cll_contain_nodes(result, ["model.model2", "model.model3", "model.model4"])
     assert_cll_contain_columns(result, [("model.model2", "d"), ("model.model2", "y"), ("model.model4", "y")])
