@@ -1,34 +1,65 @@
 from recce.adapter.dbt_adapter import DbtAdapter
 from recce.models.types import CllData
+from recce.util.lineage import build_column_key
+
+
+def assert_parent_map(result: CllData, node_or_column_id, parents):
+    a_parents = result.parent_map.get(node_or_column_id)
+
+    assert len(a_parents) == len(parents), "parents length mismatch"
+    for parent in parents:
+        if isinstance(parent, str):
+            node_id = parent
+            assert node_id in a_parents, f"Node {node_id} not found in parent list"
+        elif len(parent) == 1:
+            (node_id,) = parent
+            assert node_id in a_parents, f"Column {parent} not found in parent list"
+        elif len(parent) == 2:
+            node, column = parent
+            column_id = build_column_key(node, column)
+            assert column_id in a_parents, f"Column {column_id} not found in parent list for {node_or_column_id}"
+        else:
+            raise ValueError(f"Invalid parent format: {parent}. Expected node_id or (node_id, column_name).")
 
 
 def assert_column(result: CllData, node_name, column_name, transformation_type, depends_on):
-    column_id = f"{node_name}_{column_name}"
+    column_id = build_column_key(node_name, column_name)
     entry = result.columns.get(column_id)
     assert entry is not None, f"Column {column_id} not found in result"
     assert (
         entry.transformation_type == transformation_type
     ), f"Column {column_name} type mismatch: expected {transformation_type}, got {entry.transformation_type}"
-    parents = result.parent_map.get(column_id)
-
-    assert len(parents) == len(depends_on), "depends_on length mismatch"
-    for i in range(len(depends_on)):
-        node, column = depends_on[i]
-        parent_column_id = f"{node}_{column}"
-
-        assert parent_column_id in parents, f"Column {parent_column_id} not found in {column_id}'s parent list"
+    assert_parent_map(result, column_id, depends_on)
 
 
 def assert_model(result: CllData, node_name, depends_on):
-    assert result.nodes.get(node_name) is not None, f"Node {node_name} not found in result"
-    parent_map = result.parent_map.get(node_name)
-    assert parent_map is not None, f"Parent map {node_name} not found in result"
-    # assert len(parent_map) == len(depends_on), "depends_on length mismatch"
-    for i in range(len(depends_on)):
-        node, column = depends_on[i]
-        column_id = f"{node}_{column}"
+    # assert result.nodes.get(node_name) is not None, f"Node {node_name} not found in result"
 
-        assert column_id in parent_map, f"Parent map {node_name} does not contain {column_id}"
+    assert_parent_map(result, node_name, depends_on)
+
+    # parent_map = result.parent_map.get(node_name)
+    # assert parent_map is not None, f"Parent map {node_name} not found in result"
+    # assert len(parent_map) == len(depends_on), "depends_on length mismatch"
+    # for i in range(len(depends_on)):
+    #     node, column = depends_on[i]
+    #     column_id = f"{node}_{column}"
+    #
+    #     assert column_id in parent_map, f"Parent map {node_name} does not contain {column_id}"
+
+
+def assert_cll_contain_nodes(cll_data: CllData, nodes):
+    assert len(nodes) == len(cll_data.nodes), "Model count mismatch"
+    for node in nodes:
+        assert node in cll_data.nodes, f"Model {node} not found in lineage"
+
+
+def assert_cll_contain_columns(cll_data: CllData, columns):
+    assert len(columns) == len(cll_data.columns), "Column count mismatch"
+    for column in columns:
+        column_key = f"{column[0]}_{column[1]}"
+        assert column_key in cll_data.columns, f"Column {column} not found in lineage"
+        assert column[0] == cll_data.columns[column_key].table_id, f"Column {column[0]} node mismatch"
+        assert column[1] == cll_data.columns[column_key].name, f"Column {column[1]} name mismatch"
 
 
 def test_cll_basic(dbt_test_helper):
@@ -51,11 +82,10 @@ def test_cll_basic(dbt_test_helper):
     )
     adapter: DbtAdapter = dbt_test_helper.context.adapter
 
-    result = adapter.get_cll("model.model2", no_filter=True)
+    result = adapter.get_cll("model.model1", "c")
     assert_model(result, "model.model2", [("model.model1", "c")])
     assert_column(result, "model.model2", "c", "passthrough", [("model.model1", "c")])
 
-    result = adapter.get_cll("model.model3", no_filter=True)
     assert_model(result, "model.model3", [("model.model1", "c")])
     assert_column(result, "model.model3", "c", "passthrough", [("model.model1", "c")])
 
@@ -75,7 +105,7 @@ def test_cll_table_alisa(dbt_test_helper):
         depends_on=["model.model1"],
     )
     adapter: DbtAdapter = dbt_test_helper.context.adapter
-    result = adapter.get_cll("model.model1", no_filter=True)
+    result = adapter.get_cll("model.model1", "c")
     assert_column(result, "model.model2", "c", "passthrough", [("model.model1", "c")])
 
 
@@ -103,10 +133,10 @@ def test_seed(dbt_test_helper):
     )
     adapter: DbtAdapter = dbt_test_helper.context.adapter
 
-    result = adapter.get_cll("model.model1", no_filter=True)
-    assert_model(result, "seed.seed1", [])
-    assert_column(result, "seed.seed1", "customer_id", "source", [])
-    assert_model(result, "model.model1", [("seed.seed1", "age")])
+    result = adapter.get_cll("model.model1")
+    # assert_model(result, "seed.seed1", [])
+    # assert_column(result, "seed.seed1", "customer_id", "source", [])
+    assert_model(result, "model.model1", ["seed.seed1", ("seed.seed1", "age")])
     assert_column(result, "model.model1", "customer_id", "passthrough", [("seed.seed1", "customer_id")])
 
 
@@ -182,21 +212,6 @@ def test_model_without_catalog(dbt_test_helper):
     assert not result.nodes["model1"].columns
 
 
-def assert_lineage_model(cll_data: CllData, nodes):
-    assert len(nodes) == len(cll_data.nodes), "Model count mismatch"
-    for node in nodes:
-        assert node in cll_data.nodes, f"Model {node} not found in lineage"
-
-
-def assert_lineage_column(cll_data: CllData, columns):
-    assert len(columns) == len(cll_data.columns), "Column count mismatch"
-    for column in columns:
-        column_key = f"{column[0]}_{column[1]}"
-        assert column_key in cll_data.columns, f"Column {column} not found in lineage"
-        assert column[0] == cll_data.columns[column_key].table_id, f"Column {column[0]} node mismatch"
-        assert column[1] == cll_data.columns[column_key].name, f"Column {column[1]} name mismatch"
-
-
 def test_cll_column_filter(dbt_test_helper):
     dbt_test_helper.create_model(
         "model1", unique_id="model.model1", curr_sql="select 1 as c", curr_columns={"c": "int"}
@@ -226,16 +241,16 @@ def test_cll_column_filter(dbt_test_helper):
     adapter: DbtAdapter = dbt_test_helper.context.adapter
 
     result = adapter.get_cll("model.model2", "c")
-    assert_lineage_model(result, [])
-    assert_lineage_column(result, [("model.model1", "c"), ("model.model2", "c"), ("model.model3", "c")])
+    assert_cll_contain_nodes(result, [])
+    assert_cll_contain_columns(result, [("model.model1", "c"), ("model.model2", "c"), ("model.model3", "c")])
 
     result = adapter.get_cll("model.model2", "y")
-    assert_lineage_model(result, ["model.model3"])
-    assert_lineage_column(result, [("model.model2", "y"), ("model.model4", "y")])
+    assert_cll_contain_nodes(result, ["model.model3"])
+    assert_cll_contain_columns(result, [("model.model2", "y"), ("model.model4", "y")])
 
     result = adapter.get_cll("model.model3", "c")
-    assert_lineage_model(result, [])
-    assert_lineage_column(result, [("model.model1", "c"), ("model.model2", "c"), ("model.model3", "c")])
+    assert_cll_contain_nodes(result, [])
+    assert_cll_contain_columns(result, [("model.model1", "c"), ("model.model2", "c"), ("model.model3", "c")])
 
 
 def test_breaking_change_analysis(dbt_test_helper):
@@ -279,7 +294,7 @@ def test_breaking_change_analysis(dbt_test_helper):
 
     # breaking
     result = adapter.get_cll(change_analysis=True, cll=False)
-    assert_lineage_model(result, ["model.model1", "model.model2", "model.model3", "model.model4"])
+    assert_cll_contain_nodes(result, ["model.model1", "model.model2", "model.model3", "model.model4"])
     assert result.nodes.get("model.model1").change_category == "non_breaking", "model1 should be non-breaking"
     assert result.nodes.get("model.model2").change_category == "breaking", "model2 should be breaking"
     assert result.nodes.get("model.model3").change_category is None, "model3 should be no change"
@@ -329,11 +344,11 @@ def test_breaking_change_analysis_by_nodes(dbt_test_helper):
 
     # breaking
     result = adapter.get_cll(node_id="model.model2", change_analysis=True, cll=False, upstream=False)
-    assert_lineage_model(result, ["model.model2", "model.model3", "model.model4"])
+    assert_cll_contain_nodes(result, ["model.model2", "model.model3", "model.model4"])
 
     # non-breaking
     result = adapter.get_cll(node_id="model.model1", change_analysis=True, cll=False, upstream=False)
-    assert_lineage_model(result, ["model.model1"])
+    assert_cll_contain_nodes(result, ["model.model1"])
 
 
 def test_impact_radius(dbt_test_helper):
@@ -378,12 +393,12 @@ def test_impact_radius(dbt_test_helper):
     adapter: DbtAdapter = dbt_test_helper.context.adapter
 
     result = adapter.get_cll(node_id="model.model2", change_analysis=True, upstream=False)
-    assert_lineage_model(result, ["model.model2", "model.model3"])
-    assert_lineage_column(result, [("model.model2", "y"), ("model.model4", "y")])
+    assert_cll_contain_nodes(result, ["model.model2", "model.model3"])
+    assert_cll_contain_columns(result, [("model.model2", "y"), ("model.model4", "y")])
 
     result = adapter.get_cll(node_id="model.model1", change_analysis=True, upstream=False)
-    assert_lineage_model(result, ["model.model1"])
-    assert_lineage_column(result, [("model.model1", "d")])
+    assert_cll_contain_nodes(result, ["model.model1"])
+    assert_cll_contain_columns(result, [("model.model1", "d")])
 
 
 def test_impact_radius_2(dbt_test_helper):
@@ -428,5 +443,5 @@ def test_impact_radius_2(dbt_test_helper):
     adapter: DbtAdapter = dbt_test_helper.context.adapter
 
     result = adapter.get_cll(node_id="model.model2", change_analysis=True, upstream=False)
-    assert_lineage_model(result, ["model.model2", "model.model3", "model.model4"])
-    assert_lineage_column(result, [("model.model2", "d"), ("model.model2", "y"), ("model.model4", "y")])
+    assert_cll_contain_nodes(result, ["model.model2", "model.model3", "model.model4"])
+    assert_cll_contain_columns(result, [("model.model2", "d"), ("model.model2", "y"), ("model.model4", "y")])

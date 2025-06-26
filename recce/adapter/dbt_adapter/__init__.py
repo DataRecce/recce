@@ -26,6 +26,7 @@ from recce.event import log_performance
 from recce.exceptions import RecceException
 from recce.util.cll import CLLPerformanceTracking, cll
 from recce.util.lineage import (
+    build_column_key,
     filter_dependency_maps,
     filter_lineage_vertices,
     find_column_dependencies,
@@ -927,9 +928,9 @@ class DbtAdapter(BaseAdapter):
         node_id: Optional[str] = None,
         column: Optional[str] = None,
         change_analysis: Optional[bool] = False,
-        cll: Optional[bool] = True,
-        upstream: Optional[bool] = True,
-        downstream: Optional[bool] = True,
+        no_cll: Optional[bool] = False,
+        no_upstream: Optional[bool] = False,
+        no_downstream: Optional[bool] = False,
         no_filter: Optional[bool] = False,
     ) -> CllData:
         cll_tracker = CLLPerformanceTracking()
@@ -950,12 +951,12 @@ class DbtAdapter(BaseAdapter):
         parent_map = {}
         child_map = {}
 
-        if upstream:
+        if not no_upstream:
             cll_node_ids = cll_node_ids.union(find_upstream(cll_node_ids, manifest_dict.get("parent_map")))
-        if downstream:
+        if not no_downstream:
             cll_node_ids = cll_node_ids.union(find_downstream(cll_node_ids, manifest_dict.get("child_map")))
 
-        if cll:
+        if not no_cll:
             for cll_node_id in cll_node_ids:
                 if (
                     cll_node_id not in manifest.sources
@@ -1091,13 +1092,19 @@ class DbtAdapter(BaseAdapter):
                     anchor_node_ids.add(node_id)
             else:
                 anchor_node_ids.add(node_id)
+                if not no_cll:
+                    node = nodes.get(node_id)
+                    if node:
+                        for column_name in node.columns:
+                            column_key = build_column_key(node_id, column_name)
+                            anchor_node_ids.add(column_key)
         else:
             anchor_node_ids.add(f"{node_id}_{column}")
 
         result_node_ids = set(anchor_node_ids)
-        if upstream:
+        if not no_upstream:
             result_node_ids = result_node_ids.union(find_upstream(anchor_node_ids, parent_map))
-        if downstream:
+        if not no_downstream:
             result_node_ids = result_node_ids.union(find_downstream(anchor_node_ids, child_map))
 
         # Filter the nodes and columns based on the anchor nodes
