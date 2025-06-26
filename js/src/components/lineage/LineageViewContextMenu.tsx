@@ -97,7 +97,6 @@ export const ModelNodeContextMenu = ({
     selectChildNodes,
     getNodeColumnSet,
     selectMode,
-    viewOptions,
     cll,
     showColumnLevelLineage,
   } = useLineageViewContextSafe();

@@ -1,7 +1,6 @@
 import { useRecceServerFlag } from "@/lib/hooks/useRecceServerFlag";
 import { InfoOutlineIcon } from "@chakra-ui/icons";
 import {
-  Badge,
   Button,
   Flex,
   Icon,

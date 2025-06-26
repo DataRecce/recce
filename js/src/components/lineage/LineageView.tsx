@@ -1069,27 +1069,20 @@ export function PrivateLineageView(
             </Panel>
             <Panel position="top-left">
               <Flex direction="column" gap="5px">
-                <BreakingChangeSwitch
-                  enabled={false}
-                  onChanged={handleBreakingChangeEnabledChanged}
+                <ColumnLevelLineageControl
+                  reset={
+                    interactive
+                      ? () => {
+                          setFocusedNodeId(undefined);
+                          void handleViewOptionsChanged({
+                            ...viewOptions,
+                            column_level_lineage: undefined,
+                          });
+                        }
+                      : undefined
+                  }
                 />
-                {viewOptions.column_level_lineage && (
-                  <ColumnLevelLineageControl
-                    node={viewOptions.column_level_lineage.node_id}
-                    column={viewOptions.column_level_lineage.column}
-                    reset={
-                      interactive
-                        ? () => {
-                            setFocusedNodeId(undefined);
-                            void handleViewOptionsChanged({
-                              ...viewOptions,
-                              column_level_lineage: undefined,
-                            });
-                          }
-                        : undefined
-                    }
-                  />
-                )}
+
                 {nodes.length == 0 && (
                   <Text fontSize="xl" color="grey" opacity={0.5}>
                     No nodes
