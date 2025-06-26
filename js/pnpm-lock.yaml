@@ -144,6 +144,9 @@ importers:
         specifier: ^2.7.1
         version: 2.8.0
     devDependencies:
+      '@amplitude/analytics-core':
+        specifier: ^2.13.0
+        version: 2.13.0
       '@eslint/js':
         specifier: ^9.28.0
         version: 9.28.0
@@ -262,8 +265,8 @@ packages:
   '@amplitude/analytics-core@1.2.7':
     resolution: {integrity: sha512-SM9jdQ+l2q+hy+DdCQm5vtfOTiI+53c+alSSc7fwiuFnTExllXHf9RUK6kKhw3ky+N2o6yqbo+0OGoepLhNf6w==}
 
-  '@amplitude/analytics-core@2.12.2':
-    resolution: {integrity: sha512-pbwiaOI5ftaLr2wBaThrTsr+SF8ljTFiGWgdQ2KqV80K6YWVed8l/YxOvveJhkpucfztMkZBUwbcdSbqY9bY3Q==}
+  '@amplitude/analytics-core@2.13.0':
+    resolution: {integrity: sha512-bwq0Cy2XFhV7JkYwPkMuSMMOl3IGIBnsUxjgmeTmPq/g8nPuIP/ZhEJ59w8CEQAXLGO2Q6P2OamOBEzzQIi1DA==}
 
   '@amplitude/analytics-remote-config@0.4.1':
     resolution: {integrity: sha512-BYl6kQ9qjztrCACsugpxO+foLaQIC0aSEzoXEAb/gwOzInmqkyyI+Ub+aWTBih4xgB/lhWlOcidWHAmNiTJTNw==}
@@ -4386,7 +4389,7 @@ snapshots:
 
   '@amplitude/analytics-browser@2.17.8':
     dependencies:
-      '@amplitude/analytics-core': 2.12.2
+      '@amplitude/analytics-core': 2.13.0
       '@amplitude/analytics-remote-config': 0.4.1
       '@amplitude/plugin-autocapture-browser': 1.2.8
       '@amplitude/plugin-network-capture-browser': 1.1.8
@@ -4396,7 +4399,7 @@ snapshots:
   '@amplitude/analytics-client-common@2.3.23':
     dependencies:
       '@amplitude/analytics-connector': 1.6.4
-      '@amplitude/analytics-core': 2.12.2
+      '@amplitude/analytics-core': 2.13.0
       '@amplitude/analytics-types': 2.9.2
       tslib: 2.8.1
 
@@ -4407,7 +4410,7 @@ snapshots:
       '@amplitude/analytics-types': 1.3.5
       tslib: 2.8.1
 
-  '@amplitude/analytics-core@2.12.2':
+  '@amplitude/analytics-core@2.13.0':
     dependencies:
       '@amplitude/analytics-connector': 1.6.4
       tslib: 2.8.1
@@ -4415,7 +4418,7 @@ snapshots:
   '@amplitude/analytics-remote-config@0.4.1':
     dependencies:
       '@amplitude/analytics-client-common': 2.3.23
-      '@amplitude/analytics-core': 2.12.2
+      '@amplitude/analytics-core': 2.13.0
       '@amplitude/analytics-types': 2.9.2
       tslib: 2.8.1
 
@@ -4443,18 +4446,18 @@ snapshots:
 
   '@amplitude/plugin-autocapture-browser@1.2.8':
     dependencies:
-      '@amplitude/analytics-core': 2.12.2
+      '@amplitude/analytics-core': 2.13.0
       rxjs: 7.8.2
       tslib: 2.8.1
 
   '@amplitude/plugin-experiment-browser@1.0.0-beta.0':
     dependencies:
-      '@amplitude/analytics-core': 2.12.2
+      '@amplitude/analytics-core': 2.13.0
       '@amplitude/experiment-js-client': 1.15.6
 
   '@amplitude/plugin-network-capture-browser@1.1.8':
     dependencies:
-      '@amplitude/analytics-core': 2.12.2
+      '@amplitude/analytics-core': 2.13.0
       rxjs: 7.8.2
       tslib: 2.8.1
 
@@ -4466,7 +4469,7 @@ snapshots:
 
   '@amplitude/plugin-session-replay-browser@1.16.13':
     dependencies:
-      '@amplitude/analytics-core': 2.12.2
+      '@amplitude/analytics-core': 2.13.0
       '@amplitude/session-replay-browser': 1.22.10
       idb-keyval: 6.2.2
       tslib: 2.8.1
@@ -4507,7 +4510,7 @@ snapshots:
 
   '@amplitude/session-replay-browser@1.22.10':
     dependencies:
-      '@amplitude/analytics-core': 2.12.2
+      '@amplitude/analytics-core': 2.13.0
       '@amplitude/analytics-remote-config': 0.6.2
       '@amplitude/rrweb': 2.0.0-alpha.29
       '@amplitude/rrweb-packer': 2.0.0-alpha.29

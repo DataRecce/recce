@@ -106,14 +106,18 @@ export function EnvInfo() {
       <Tooltip label="Environment Info" placement="bottom-end">
         <div className="flex items-center hover:cursor-pointer hover:text-black" onClick={onOpen}>
           <div className="hidden text-sm lg:flex lg:flex-col">
-            <span>
-              <span className="no-track-pii-safe">{Array.from(baseSchemas).join(", ")}</span> (
-              {baseRelativeTime})
-            </span>
-            <span>
-              <span className="no-track-pii-safe">{Array.from(currentSchemas).join(", ")}</span> (
-              {currentRelativeTime})
-            </span>
+            <div className="flex gap-1">
+              <span className="no-track-pii-safe max-w-32 truncate">
+                {Array.from(baseSchemas).join(", ")}
+              </span>{" "}
+              ({baseRelativeTime})
+            </div>
+            <div className="flex gap-1">
+              <div className="no-track-pii-safe max-w-32 truncate">
+                {Array.from(currentSchemas).join(", ")}
+              </div>{" "}
+              ({currentRelativeTime})
+            </div>
           </div>
           <IconButton
             size="sm"
@@ -172,10 +176,18 @@ export function EnvInfo() {
                         <Tr>
                           <Td>schema</Td>
                           <Td className="no-track-pii-safe">
-                            {JSON.stringify(Array.from(baseSchemas))}
+                            {Array.from(baseSchemas).map((item) => (
+                              <Tooltip key={item} label={item} placement="bottom">
+                                <div className="max-w-72 truncate">{item}</div>
+                              </Tooltip>
+                            ))}
                           </Td>
                           <Td className="no-track-pii-safe">
-                            {JSON.stringify(Array.from(currentSchemas))}
+                            {Array.from(currentSchemas).map((item) => (
+                              <Tooltip key={item} label={item} placement="bottom">
+                                <div className="max-w-72 truncate">{item}</div>
+                              </Tooltip>
+                            ))}
                           </Td>
                         </Tr>
                         <Tr>
