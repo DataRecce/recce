@@ -316,7 +316,6 @@ export function toReactFlow(
         const columnKey = `${node.id}_${columnName}`;
         const column = cll?.current?.columns[columnKey];
         const parentMap = cll?.current?.parent_map[columnKey] ?? new Set<string>();
-        const changeStatus = node.change?.columns?.[columnName];
 
         if (column == null) {
           continue;
@@ -334,7 +333,7 @@ export function toReactFlow(
             column: column.name,
             type: column.type,
             transformationType: column.transformation_type,
-            changeStatus,
+            changeStatus: column.change_status,
           },
           style: {
             zIndex: 9999,
