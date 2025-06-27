@@ -33,7 +33,8 @@ function PrivateSingleEnvSchemaView({ current }: { current?: NodeData }, ref: an
   const noSchemaCurrent = current && current.columns === undefined;
   let schemaMissingMessage = undefined;
   if (noSchemaCurrent) {
-    schemaMissingMessage = "catalog.json is outdated. Update catalog.json to get schema information.";
+    schemaMissingMessage =
+      "catalog.json is outdated. Update catalog.json to get schema information.";
   }
 
   const handleViewCll = async (columnName: string) => {
@@ -125,22 +126,28 @@ export function PrivateSchemaView(
   const noCatalogCurrent = !lineageGraph?.catalogMetadata.current;
   let catalogMissingMessage = undefined;
   if (noCatalogBase && noCatalogCurrent) {
-    catalogMissingMessage = "catalog.json not found on both environments. Run `recce debug` to troubleshoot.";
+    catalogMissingMessage =
+      "catalog.json not found on both environments. Run `recce debug` to troubleshoot.";
   } else if (noCatalogBase) {
-    catalogMissingMessage = "catalog.json not found on base environment. Run `recce debug` to troubleshoot.";
+    catalogMissingMessage =
+      "catalog.json not found on base environment. Run `recce debug` to troubleshoot.";
   } else if (noCatalogCurrent) {
-    catalogMissingMessage = "catalog.json not found on current environment. Run `recce debug` to troubleshoot.";
+    catalogMissingMessage =
+      "catalog.json not found on current environment. Run `recce debug` to troubleshoot.";
   }
 
   const noSchemaBase = base && base.columns === undefined;
   const noSchemaCurrent = current && current.columns === undefined;
   let schemaMissingMessage = undefined;
   if (noSchemaBase && noSchemaCurrent) {
-    schemaMissingMessage = "catalog.json is outdated on both environments. Update catalog.json to get schema information.";
+    schemaMissingMessage =
+      "catalog.json is outdated on both environments. Update catalog.json to get schema information.";
   } else if (noSchemaBase) {
-    schemaMissingMessage = "catalog.json is outdated on base environment. Update catalog.json to get schema information.";
+    schemaMissingMessage =
+      "catalog.json is outdated on base environment. Update catalog.json to get schema information.";
   } else if (noSchemaCurrent) {
-    schemaMissingMessage = "catalog.json is outdated on current environment. Update catalog.json to get schema information.";
+    schemaMissingMessage =
+      "catalog.json is outdated on current environment. Update catalog.json to get schema information.";
   }
 
   const handleViewCll = async (columnName: string) => {
