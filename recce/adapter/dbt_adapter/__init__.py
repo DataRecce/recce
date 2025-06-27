@@ -1045,10 +1045,10 @@ class DbtAdapter(BaseAdapter):
                     if node_diff.change is not None:
                         cll_node.change_category = node_diff.change.category
                         for c, cll_column in cll_node_columns.items():
-                            if c in node_diff.change.columns:
+                            cll_node.columns[c] = cll_column
+                            columns[cll_column.id] = cll_column
+                            if node_diff.change.columns and c in node_diff.change.columns:
                                 cll_column.change_status = node_diff.change.columns[c]
-                                cll_node.columns[c] = cll_column
-                                columns[cll_column.id] = cll_column
 
                 parent_map[cll_node_id] = manifest.parent_map.get(cll_node_id, [])
 
