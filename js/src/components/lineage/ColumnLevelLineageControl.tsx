@@ -24,11 +24,12 @@ import {
 import { useLineageViewContextSafe } from "./LineageViewContext";
 import { TbRadar } from "react-icons/tb";
 import { CllInput } from "@/lib/api/cll";
+import { VscArrowLeft } from "react-icons/vsc";
 
 interface ColumnLevelLineageControlProps {
   node?: string;
   column?: string;
-  reset?: () => void;
+  reset: () => void;
 }
 const AnalyzeChangeHint = ({ ml }: { ml?: number }) => {
   return (
@@ -89,7 +90,11 @@ const ModeMessage = () => {
     return <></>;
   }
 
-  if (cllInput?.node_id === undefined) {
+  if (!cllInput) {
+    return "Default View";
+  }
+
+  if (cllInput.node_id === undefined) {
     return "Impact Radius for Changed Models";
   }
 
@@ -103,7 +108,7 @@ const ModeMessage = () => {
 
     return (
       <>
-        <Text>Impact Radius for </Text>
+        <Text as="span">Impact Radius for </Text>
         <Code
           onClick={() => {
             centerNode(nodeId);
@@ -117,7 +122,7 @@ const ModeMessage = () => {
     const nodeId = `${cllInput.node_id}_${cllInput.column}`;
     return (
       <>
-        <Text>Column Lineage for </Text>
+        <Text as="span">Column Lineage for </Text>
         <Code
           onClick={() => {
             centerNode(nodeId);
@@ -130,13 +135,15 @@ const ModeMessage = () => {
   }
 };
 
-export const ColumnLevelLineageControl = ({ reset }: ColumnLevelLineageControlProps) => {
-  const { viewOptions, showColumnLevelLineage } = useLineageViewContextSafe();
+export const ColumnLevelLineageControl = () => {
+  const { viewOptions, showColumnLevelLineage, resetColumnLevelLineage } =
+    useLineageViewContextSafe();
 
   const cllMode = !!viewOptions.column_level_lineage;
 
   return (
     <Flex
+      minWidth="300px"
       direction="row"
       alignItems="center"
       gap="5px"
@@ -146,32 +153,36 @@ export const ColumnLevelLineageControl = ({ reset }: ColumnLevelLineageControlPr
       border="1px solid"
       borderColor="gray.200"
       bg="white"
+      justifyContent="space-between"
       fontSize={"10pt"}>
-      <ButtonGroup isAttached size="xs" variant="outline" colorScheme="gray">
-        <Button
-          onClick={() => {
-            void showColumnLevelLineage({ no_upstream: true, change_analysis: true, no_cll: true });
-          }}
-          rightIcon={<AnalyzeChangeHint />}>
-          Analyze Changes
-        </Button>
-        <Menu>
-          <MenuButton as={IconButton} icon={<ChevronDownIcon />} />
-          <MenuList>
-            <MenuItem
-              onClick={() => {
-                void showColumnLevelLineage({ no_upstream: true, change_analysis: true });
-              }}>
-              Analyze Changes + CLL
-            </MenuItem>
-          </MenuList>
-        </Menu>
-      </ButtonGroup>
+      <Menu>
+        <MenuButton
+          flex="1"
+          as={Button}
+          size="sm"
+          variant="ghost"
+          whiteSpace="nowrap"
+          display="inline-flex"
+          rightIcon={<ChevronDownIcon />}>
+          <ModeMessage />
+        </MenuButton>
+        <MenuList>
+          <MenuItem
+            onClick={() => {
+              resetColumnLevelLineage();
+            }}>
+            Default View
+          </MenuItem>
+          <MenuItem
+            onClick={() => {
+              void showColumnLevelLineage({ no_upstream: true, change_analysis: true });
+            }}>
+            Impact Radius
+          </MenuItem>
+        </MenuList>
+      </Menu>
 
-      <>
-        <Divider orientation="vertical" height="20px" />
-        <ModeMessage />
-        {viewOptions.column_level_lineage?.change_analysis && (
+      {/* {viewOptions.column_level_lineage?.change_analysis && (
           <Badge fontSize="8pt" variant="solid" colorScheme="orange" size={"xs"}>
             change analysis
             <AnalyzeChangeHint ml={1} />
@@ -182,18 +193,17 @@ export const ColumnLevelLineageControl = ({ reset }: ColumnLevelLineageControlPr
             cll
             <CllHint />
           </Badge>
-        )}
+        )} */}
 
-        {cllMode && reset && (
-          <IconButton
-            icon={<CloseIcon boxSize="10px" />}
-            aria-label={""}
-            onClick={reset}
-            size="xs"
-            variant="ghost"
-          />
-        )}
-      </>
+      <IconButton
+        icon={<Icon as={VscArrowLeft} boxSize="10px" />}
+        aria-label={""}
+        onClick={() => {
+          resetColumnLevelLineage(true);
+        }}
+        size="xs"
+        variant="ghost"
+      />
     </Flex>
   );
 };

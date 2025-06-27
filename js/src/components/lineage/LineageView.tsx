@@ -214,6 +214,7 @@ export function PrivateLineageView(
   const [viewOptions, setViewOptions] = useState<LineageDiffViewOptions>({
     ...props.viewOptions,
   });
+  const [prevColumnLevelLineage, setPrevColumnLevelLineage] = useState<CllInput | undefined>();
 
   const [cll, setCll] = useState<ColumnLineageData | undefined>(undefined);
   const [nodeColumnSetMap, setNodeColumSetMap] = useState<NodeColumnSetMap>({});
@@ -436,32 +437,67 @@ export function PrivateLineageView(
     }
   });
 
+  const showColumnLevelLineage = async (columnLevelLineage?: CllInput) => {
+    setPrevColumnLevelLineage(viewOptions.column_level_lineage);
+    await handleViewOptionsChanged(
+      {
+        ...viewOptions,
+        column_level_lineage: columnLevelLineage,
+      },
+      false,
+    );
+    if (columnLevelLineage?.node_id) {
+      setFocusedNodeId(columnLevelLineage.node_id);
+    } else {
+      setFocusedNodeId(undefined);
+    }
+  };
+
+  const resetColumnLevelLineage = async (previous?: boolean) => {
+    if (previous) {
+      await showColumnLevelLineage(prevColumnLevelLineage);
+    } else {
+      setFocusedNodeId(undefined);
+      await handleViewOptionsChanged(
+        {
+          ...viewOptions,
+          column_level_lineage: undefined,
+        },
+        false,
+      );
+    }
+  };
+
   const onColumnNodeClick = (event: React.MouseEvent, node: Node) => {
     if (selectMode) {
       return;
     }
 
-    if (!viewOptions.column_level_lineage) {
-      trackColumnLevelLineage({ action: "view", source: "changed_column" });
-    } else {
-      trackColumnLevelLineage({ action: "view", source: "cll_column" });
-    }
+    // if (!viewOptions.column_level_lineage) {
+    //   trackColumnLevelLineage({ action: "view", source: "changed_column" });
+    // } else {
+    //   trackColumnLevelLineage({ action: "view", source: "cll_column" });
+    // }
 
-    // change focused node if the side pane is open
-    if (focusedNodeId) {
-      setFocusedNodeId(node.parentId);
-    }
+    // // change focused node if the side pane is open
+    // if (focusedNodeId) {
+    //   setFocusedNodeId(node.parentId);
+    // }
 
-    void handleViewOptionsChanged(
-      {
-        ...viewOptions,
-        column_level_lineage: {
-          node_id: node.data.node.id,
-          column: node.data.column,
-        },
-      },
-      false,
-    );
+    // void handleViewOptionsChanged(
+    //   {
+    //     ...viewOptions,
+    //     column_level_lineage: {
+    //       node_id: node.data.node.id,
+    //       column: node.data.column,
+    //     },
+    //   },
+    //   false,
+    // );
+    void showColumnLevelLineage({
+      node_id: node.data.node.id,
+      column: node.data.column,
+    });
   };
 
   const onNodeClick = (event: React.MouseEvent, node: Node) => {
@@ -910,28 +946,8 @@ export function PrivateLineageView(
     // Column Level Lineage
     centerNode,
     cll,
-    showColumnLevelLineage: async (columnLevelLineage: CllInput) => {
-      await handleViewOptionsChanged(
-        {
-          ...viewOptions,
-          column_level_lineage: columnLevelLineage,
-        },
-        false,
-      );
-      if (columnLevelLineage.node_id) {
-        setFocusedNodeId(columnLevelLineage.node_id);
-      }
-    },
-    resetColumnLevelLineage: () => {
-      setFocusedNodeId(undefined);
-      void handleViewOptionsChanged(
-        {
-          ...viewOptions,
-          column_level_lineage: undefined,
-        },
-        false,
-      );
-    },
+    showColumnLevelLineage,
+    resetColumnLevelLineage,
   };
 
   if (isLoading) {

@@ -64,8 +64,8 @@ export interface LineageViewContextType {
 
   // Column Level Lineage
   centerNode: (nodeId: string) => void;
-  showColumnLevelLineage: (cll: CllInput) => Promise<void>;
-  resetColumnLevelLineage: () => void;
+  showColumnLevelLineage: (cll?: CllInput) => Promise<void>;
+  resetColumnLevelLineage: (previous?: boolean) => Promise<void>;
 }
 
 export const LineageViewContext = createContext<LineageViewContextType | undefined>(undefined);
