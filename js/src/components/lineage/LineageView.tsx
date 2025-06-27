@@ -71,13 +71,11 @@ import { useLocation } from "wouter";
 import { Check } from "@/lib/api/checks";
 import useValueDiffAlertDialog from "./useValueDiffAlertDialog";
 import {
-  trackBreakingChange,
   trackMultiNodesAction,
   trackColumnLevelLineage,
   trackCopyToClipboard,
 } from "@/lib/api/track";
 import { PresetCheckRecommendation } from "./PresetCheckRecommendation";
-import { BreakingChangeSwitch } from "./BreakingChangeSwitch";
 import { useRun } from "@/lib/hooks/useRun";
 import { GraphColumnNode } from "./GraphColumnNode";
 import { ColumnLevelLineageControl } from "./ColumnLevelLineageControl";
@@ -87,7 +85,6 @@ import { useRecceServerFlag } from "@/lib/hooks/useRecceServerFlag";
 import { BaseEnvironmentSetupNotification } from "./SingleEnvironmentQueryView";
 import { CllInput, ColumnLineageData, getCll } from "@/lib/api/cll";
 import { LineageViewContextMenu, useLineageViewContextMenu } from "./LineageViewContextMenu";
-import { node } from "globals";
 
 export interface LineageViewProps {
   viewOptions?: LineageDiffViewOptions;
