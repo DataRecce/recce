@@ -10,7 +10,7 @@ import {
   ManifestMetadata,
   NodeData,
 } from "@/lib/api/info";
-import { CllNodeData, ColumnLineageData } from "@/lib/api/cll";
+import { CllInput, CllNodeData, ColumnLineageData } from "@/lib/api/cll";
 
 export const COLUMN_HEIGHT = 20;
 /**
@@ -57,8 +57,6 @@ export interface LineageGraph {
 
   edges: Record<string, LineageGraphEdge>;
   modifiedSet: string[];
-  nonBreakingSet: Set<string>;
-  impactedSet: Set<string>;
 
   manifestMetadata: {
     base?: ManifestMetadata;
@@ -169,8 +167,6 @@ export function buildLineageGraph(
   }
 
   const modifiedSet: string[] = [];
-  const nonBreakingSet: string[] = [];
-  const breakingSet: string[] = [];
 
   for (const [key, node] of Object.entries(nodes)) {
     if (diff) {
@@ -184,12 +180,6 @@ export function buildLineageGraph(
           };
         }
         modifiedSet.push(key);
-
-        if (diffNode?.change?.category === "non_breaking") {
-          nonBreakingSet.push(key);
-        } else {
-          breakingSet.push(key);
-        }
       }
     } else if (node.from === "base") {
       node.changeStatus = "removed";
@@ -204,7 +194,6 @@ export function buildLineageGraph(
       if (checksum1 && checksum2 && checksum1 !== checksum2) {
         node.changeStatus = "modified";
         modifiedSet.push(node.id);
-        breakingSet.push(key);
       }
     }
   }
@@ -217,22 +206,10 @@ export function buildLineageGraph(
     }
   }
 
-  const impactedSet = union(
-    new Set(modifiedSet),
-    getNeighborSet(breakingSet, (key) => {
-      if (nodes[key] === undefined) {
-        return [];
-      }
-      return Object.keys(nodes[key].children);
-    }),
-  );
-
   return {
     nodes,
     edges,
     modifiedSet,
-    nonBreakingSet: new Set(nonBreakingSet),
-    impactedSet,
     manifestMetadata: {
       base: base.manifest_metadata ?? undefined,
       current: current.manifest_metadata ?? undefined,
@@ -274,17 +251,12 @@ export function toReactFlow(
   lineageGraph: LineageGraph,
   options?: {
     selectedNodes?: string[];
-    columnLevelLineage?: {
-      node: string;
-      column?: string;
-    };
     cll?: ColumnLineageData;
-    breakingChangeEnabled?: boolean;
   },
 ): [Node[], Edge[], NodeColumnSetMap] {
   const nodes: Node[] = [];
   const edges: Edge[] = [];
-  const { selectedNodes, columnLevelLineage, cll, breakingChangeEnabled } = options ?? {};
+  const { selectedNodes, cll } = options ?? {};
 
   const nodeColumnSetMap: NodeColumnSetMap = {};
 
@@ -323,7 +295,7 @@ export function toReactFlow(
     // add column nodes
     const nodeColumnSet = new Set<string>();
     let columnIndex = 0;
-    if (columnLevelLineage) {
+    if (cll) {
       const parentMap = cll?.current?.parent_map[node.id] ?? new Set<string>();
 
       for (const parentKey of parentMap) {
@@ -344,7 +316,6 @@ export function toReactFlow(
         const columnKey = `${node.id}_${columnName}`;
         const column = cll?.current?.columns[columnKey];
         const parentMap = cll?.current?.parent_map[columnKey] ?? new Set<string>();
-        const changeStatus = node.change?.columns?.[columnName];
 
         if (column == null) {
           continue;
@@ -362,7 +333,7 @@ export function toReactFlow(
             column: column.name,
             type: column.type,
             transformationType: column.transformation_type,
-            changeStatus,
+            changeStatus: column.change_status,
           },
           style: {
             zIndex: 9999,
@@ -388,36 +359,6 @@ export function toReactFlow(
 
         columnIndex++;
         nodeColumnSet.add(column.name);
-      }
-    } else if (breakingChangeEnabled && node.change) {
-      for (const [column, changeStatus] of Object.entries(node.change.columns ?? {})) {
-        const columnKey = `${node.id}_${column}`;
-        const columnType =
-          node.data.current?.columns?.[column]?.type ?? node.data.base?.columns?.[column]?.type;
-
-        nodes.push({
-          id: columnKey,
-          position: { x: 10, y: 70 + columnIndex * COLUMN_HEIGHT },
-          parentId: node.id,
-          extent: "parent",
-          draggable: false,
-          className: "no-track-pii-safe",
-          data: {
-            node,
-            column,
-            type: columnType,
-            changeStatus,
-          },
-          style: {
-            zIndex: 9999,
-          },
-          type: "customColumnNode",
-          targetPosition: Position.Left,
-          sourcePosition: Position.Right,
-        });
-
-        columnIndex++;
-        nodeColumnSet.add(column);
       }
     }
 

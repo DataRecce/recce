@@ -71,13 +71,11 @@ import { useLocation } from "wouter";
 import { Check } from "@/lib/api/checks";
 import useValueDiffAlertDialog from "./useValueDiffAlertDialog";
 import {
-  trackBreakingChange,
   trackMultiNodesAction,
   trackColumnLevelLineage,
   trackCopyToClipboard,
 } from "@/lib/api/track";
 import { PresetCheckRecommendation } from "./PresetCheckRecommendation";
-import { BreakingChangeSwitch } from "./BreakingChangeSwitch";
 import { useRun } from "@/lib/hooks/useRun";
 import { GraphColumnNode } from "./GraphColumnNode";
 import { ColumnLevelLineageControl } from "./ColumnLevelLineageControl";
@@ -217,6 +215,9 @@ export function PrivateLineageView(
     ...props.viewOptions,
   });
 
+  const [cll, setCll] = useState<ColumnLineageData | undefined>(undefined);
+  const [nodeColumnSetMap, setNodeColumSetMap] = useState<NodeColumnSetMap>({});
+
   const findNodeByName = (name: string) => {
     return nodes.find((n) => n.data.name === name);
   };
@@ -293,13 +294,6 @@ export function PrivateLineageView(
   );
 
   /**
-   * Breaking Change and Column Level Lineage
-   */
-  const breakingChangeEnabled = viewOptions.breaking_change_enabled ?? false;
-  const [nodeColumnSetMap, setNodeColumnSetMap] = useState<NodeColumnSetMap>();
-  const [cllNodeIds, setCllNodeIds] = useState<Set<string>>();
-
-  /**
    * Highlighted nodes: the nodes that are highlighted. The behavior of highlighting depends on the select mode
    *
    * - Default: nodes in the impact radius, or all nodes if the impact radius is not available
@@ -312,8 +306,8 @@ export function PrivateLineageView(
       return new Set<string>();
     }
 
-    if (viewOptions.column_level_lineage) {
-      return cllNodeIds ?? new Set<string>();
+    if (cll) {
+      return new Set([...Object.keys(cll.current.nodes), ...Object.keys(cll.current.columns)]);
     }
 
     let highlightedModels: Set<string> = new Set<string>();
@@ -327,37 +321,21 @@ export function PrivateLineageView(
         selectDownstream(lineageGraph, [focusedNode.id]),
       );
     } else if (isModelsChanged) {
-      if (!breakingChangeEnabled) {
-        highlightedModels = selectDownstream(lineageGraph, lineageGraph.modifiedSet);
-      } else {
-        highlightedModels = lineageGraph.impactedSet;
-      }
+      highlightedModels = selectDownstream(lineageGraph, lineageGraph.modifiedSet);
     } else {
       highlightedModels = new Set(filteredNodeIds);
     }
 
     // Add columns in the highlighted models
     const resultSet = new Set<string>(highlightedModels);
-    if (nodeColumnSetMap) {
-      Object.entries(nodeColumnSetMap).forEach(([nodeId, columns]) => {
-        if (highlightedModels.has(nodeId)) {
-          columns.forEach((column) => {
-            resultSet.add(`${nodeId}_${column}`);
-          });
-        }
-      });
-    }
     return resultSet;
   }, [
     lineageGraph,
-    viewOptions.column_level_lineage,
+    cll,
     selectMode,
     focusedNode,
     isModelsChanged,
-    nodeColumnSetMap,
-    cllNodeIds,
     multiNodeAction.actionState.actions,
-    breakingChangeEnabled,
     filteredNodeIds,
   ]);
 
@@ -406,18 +384,15 @@ export function PrivateLineageView(
         }
 
         setViewOptions(newViewOptions);
-        setNodeColumnSetMap(undefined);
       }
 
-      // const [nodes, edges, nodeColumnSetMap] = toReactFlow(lineageGraph, filteredNodeIds);
       const [nodes, edges, nodeColumnSetMap] = toReactFlow(lineageGraph, {
         selectedNodes: filteredNodeIds,
-        breakingChangeEnabled,
       });
       layout(nodes, edges);
       setNodes(nodes);
       setEdges(edges);
-      setNodeColumnSetMap(nodeColumnSetMap);
+      setNodeColumSetMap(nodeColumnSetMap);
     };
 
     void t();
@@ -481,7 +456,7 @@ export function PrivateLineageView(
       {
         ...viewOptions,
         column_level_lineage: {
-          node: node.data.node.id,
+          node_id: node.data.node.id,
           column: node.data.column,
         },
       },
@@ -573,15 +548,7 @@ export function PrivateLineageView(
     let cll: ColumnLineageData | undefined;
     if (newViewOptions.column_level_lineage) {
       try {
-        const cllInput: CllInput = {
-          node_id: newViewOptions.column_level_lineage.node,
-          column: newViewOptions.column_level_lineage.column,
-          change_analysis: !newViewOptions.column_level_lineage.column,
-          upstream: newViewOptions.column_level_lineage.column ? true : false,
-          downstream: true,
-          cll: true,
-        };
-        cll = await getCll(cllInput);
+        cll = await getCll(newViewOptions.column_level_lineage);
       } catch (e) {
         if (e instanceof AxiosError) {
           const e2 = e as AxiosError<{ detail?: string }>;
@@ -599,23 +566,12 @@ export function PrivateLineageView(
 
     const [newNodes, newEdges, newNodeColumnSetMap] = toReactFlow(lineageGraph, {
       selectedNodes,
-      columnLevelLineage: newViewOptions.column_level_lineage,
       cll,
-      breakingChangeEnabled: newViewOptions.breaking_change_enabled,
     });
-    if (newViewOptions.column_level_lineage != undefined && cll != undefined) {
-      const cllNodeIds = new Set<string>();
-      Object.keys(cll.current.nodes).forEach((key) => {
-        cllNodeIds.add(key);
-      });
-      Object.keys(cll.current.columns).forEach((key) => {
-        cllNodeIds.add(key);
-      });
-      setCllNodeIds(cllNodeIds);
-    }
     setNodes(newNodes);
     setEdges(newEdges);
-    setNodeColumnSetMap(newNodeColumnSetMap);
+    setNodeColumSetMap(newNodeColumnSetMap);
+    setCll(cll);
 
     // Close the run result view if the run result node is not in the new nodes
     if (run?.params?.model && !findNodeByName(run.params.model)) {
@@ -641,19 +597,7 @@ export function PrivateLineageView(
     });
   };
 
-  const handleBreakingChangeEnabledChanged = async (enabled: boolean) => {
-    const newViewOptions = {
-      ...viewOptions,
-      breaking_change_enabled: enabled,
-    };
-
-    setViewOptions(newViewOptions);
-    await refreshLayout({
-      viewOptions: newViewOptions,
-    });
-
-    trackBreakingChange({ enabled });
-  };
+  const handleBreakingChangeEnabledChanged = async (enabled: boolean) => {};
 
   const valueDiffAlertDialog = useValueDiffAlertDialog();
 
@@ -812,17 +756,16 @@ export function PrivateLineageView(
     selectParentNodes,
     selectChildNodes,
     deselect,
-    breakingChangeEnabled,
     isNodeHighlighted: (nodeId: string) => highlighted.has(nodeId),
     isNodeSelected: (nodeId: string) => selectedNodeIds.has(nodeId),
     isEdgeHighlighted: (source, target) => {
-      if (viewOptions.column_level_lineage) {
-        if (!cllNodeIds) {
+      if (!cll) {
+        return highlighted.has(source) && highlighted.has(target);
+      } else {
+        if (!(source in cll.current.parent_map)) {
           return false;
         }
-        return cllNodeIds.has(source) && cllNodeIds.has(target);
-      } else {
-        return highlighted.has(source) && highlighted.has(target);
+        return target in cll.current.parent_map[source];
       }
     },
     isNodeShowingChangeAnalysis: (nodeId: string) => {
@@ -832,18 +775,14 @@ export function PrivateLineageView(
 
       const node = lineageGraph.nodes[nodeId];
 
-      if (viewOptions.column_level_lineage) {
+      if (viewOptions.column_level_lineage?.change_analysis) {
         const cll = viewOptions.column_level_lineage;
 
-        if (!cll.column) {
-          return cll.node === nodeId && node.changeStatus === "modified";
+        if (cll.node_id && !cll.column) {
+          return cll.node_id === nodeId && node.changeStatus === "modified";
+        } else {
+          return node.changeStatus === "modified";
         }
-
-        return false;
-      }
-
-      if (breakingChangeEnabled && node.changeStatus === "modified") {
-        return true;
       }
 
       return false;
@@ -852,11 +791,11 @@ export function PrivateLineageView(
       return multiNodeAction.actionState.actions[nodeId];
     },
     getNodeColumnSet: (nodeId: string) => {
-      if (!nodeColumnSetMap) {
-        return new Set();
+      if (!(nodeId in nodeColumnSetMap)) {
+        return new Set<string>();
       }
 
-      return nodeColumnSetMap[nodeId] ?? new Set();
+      return new Set(nodeColumnSetMap[nodeId]);
     },
     runRowCount: async () => {
       if (selectMode === "selecting") {
@@ -970,15 +909,18 @@ export function PrivateLineageView(
 
     // Column Level Lineage
     centerNode,
-    showColumnLevelLineage: async (nodeId: string, column?: string) => {
+    cll,
+    showColumnLevelLineage: async (columnLevelLineage: CllInput) => {
       await handleViewOptionsChanged(
         {
           ...viewOptions,
-          column_level_lineage: { node: nodeId, column },
+          column_level_lineage: columnLevelLineage,
         },
         false,
       );
-      setFocusedNodeId(nodeId);
+      if (columnLevelLineage.node_id) {
+        setFocusedNodeId(columnLevelLineage.node_id);
+      }
     },
     resetColumnLevelLineage: () => {
       setFocusedNodeId(undefined);
@@ -1124,27 +1066,20 @@ export function PrivateLineageView(
             </Panel>
             <Panel position="top-left">
               <Flex direction="column" gap="5px">
-                <BreakingChangeSwitch
-                  enabled={breakingChangeEnabled}
-                  onChanged={handleBreakingChangeEnabledChanged}
+                <ColumnLevelLineageControl
+                  reset={
+                    interactive
+                      ? () => {
+                          setFocusedNodeId(undefined);
+                          void handleViewOptionsChanged({
+                            ...viewOptions,
+                            column_level_lineage: undefined,
+                          });
+                        }
+                      : undefined
+                  }
                 />
-                {viewOptions.column_level_lineage && (
-                  <ColumnLevelLineageControl
-                    node={viewOptions.column_level_lineage.node}
-                    column={viewOptions.column_level_lineage.column}
-                    reset={
-                      interactive
-                        ? () => {
-                            setFocusedNodeId(undefined);
-                            void handleViewOptionsChanged({
-                              ...viewOptions,
-                              column_level_lineage: undefined,
-                            });
-                          }
-                        : undefined
-                    }
-                  />
-                )}
+
                 {nodes.length == 0 && (
                   <Text fontSize="xl" color="grey" opacity={0.5}>
                     No nodes

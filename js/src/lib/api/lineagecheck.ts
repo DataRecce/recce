@@ -1,6 +1,7 @@
 import { axiosClient } from "./axiosClient";
 import { Check } from "./checks";
 import { AxiosResponse } from "axios";
+import { CllInput } from "./cll";
 
 export interface LineageDiffViewOptions {
   view_mode?: "changed_models" | "all";
@@ -8,11 +9,7 @@ export interface LineageDiffViewOptions {
   packages?: string[];
   select?: string;
   exclude?: string;
-  column_level_lineage?: {
-    node: string;
-    column?: string;
-  };
-  breaking_change_enabled?: boolean;
+  column_level_lineage?: CllInput;
 }
 
 interface CreateLineageDiffCheckBody {

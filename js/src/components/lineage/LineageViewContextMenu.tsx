@@ -97,7 +97,7 @@ export const ModelNodeContextMenu = ({
     selectChildNodes,
     getNodeColumnSet,
     selectMode,
-    viewOptions,
+    cll,
     showColumnLevelLineage,
   } = useLineageViewContextSafe();
   const { runAction } = useRecceActionContext();
@@ -127,7 +127,11 @@ export const ModelNodeContextMenu = ({
       label: "Show Impact Radius",
       icon: <FaRegDotCircle />,
       action: () => {
-        void showColumnLevelLineage(node.id);
+        void showColumnLevelLineage({
+          node_id: node.id,
+          change_analysis: true,
+          no_upstream: true,
+        });
       },
     });
   }
@@ -164,7 +168,7 @@ export const ModelNodeContextMenu = ({
     });
 
     if (columns.length > 0) {
-      if (viewOptions.column_level_lineage !== undefined) {
+      if (cll !== undefined) {
         const allColumns = new Set<string>();
         if (primaryKey) {
           allColumns.add(primaryKey);

@@ -80,3 +80,8 @@ def filter_dependency_maps(
             c_map[node_id] = {c for c in children if c in relevant_ids}
 
     return p_map, c_map
+
+
+def build_column_key(node_id: str, column_name: str) -> str:
+    """Build a unique column key from node name and column name."""
+    return f"{node_id}_{column_name}"

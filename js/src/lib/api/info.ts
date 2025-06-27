@@ -8,10 +8,7 @@ export interface NodeColumnData {
   name: string;
   type: string;
   transformation_type?: string;
-  depends_on?: {
-    node: string;
-    column: string;
-  }[];
+  change_status?: "added" | "removed" | "modified";
 }
 export interface NodeData {
   id: string;

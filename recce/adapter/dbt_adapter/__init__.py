@@ -3,6 +3,7 @@ import logging
 import os
 import uuid
 from contextlib import contextmanager
+from copy import deepcopy
 from dataclasses import dataclass, fields
 from errno import ENOENT
 from functools import lru_cache
@@ -25,15 +26,14 @@ from recce.event import log_performance
 from recce.exceptions import RecceException
 from recce.util.cll import CLLPerformanceTracking, cll
 from recce.util.lineage import (
+    build_column_key,
     filter_dependency_maps,
-    filter_lineage_vertices,
-    find_column_dependencies,
     find_downstream,
     find_upstream,
 )
 
 from ...tasks.profile import ProfileTask
-from ...util.breaking import BreakingPerformanceTracking, parse_change_category
+from ...util.breaking import parse_change_category
 
 try:
     import agate
@@ -793,15 +793,38 @@ class DbtAdapter(BaseAdapter):
     def _get_lineage_diff_cached(self, cache_key) -> LineageDiff:
         base = self.get_lineage(base=True)
         current = self.get_lineage(base=False)
-        keys = {*base.get("nodes", {}).keys(), *current.get("nodes", {}).keys()}
 
-        # Start to diff
-        perf_tracking = BreakingPerformanceTracking()
-        perf_tracking.start_lineage_diff()
+        modified_nodes = self.select_nodes(select="state:modified")
+        diff = {}
+        for node_id in modified_nodes:
+            base_node = base.get("nodes", {}).get(node_id)
+            curr_node = current.get("nodes", {}).get(node_id)
+            if base_node and curr_node:
+                diff[node_id] = NodeDiff(change_status="modified")
+            elif base_node:
+                diff[node_id] = NodeDiff(change_status="removed")
+            elif curr_node:
+                diff[node_id] = NodeDiff(change_status="added")
+
+        return LineageDiff(
+            base=base,
+            current=current,
+            diff=diff,
+        )
+
+    @lru_cache(maxsize=128)
+    def get_change_analysis_cached(self, node_id: str):
+        lineage_diff = self.get_lineage_diff()
+        diff = lineage_diff.diff
+
+        if node_id not in diff or diff[node_id].change_status != "modified":
+            return diff.get(node_id)
+
+        base = lineage_diff.base
+        current = lineage_diff.current
 
         base_manifest = as_manifest(self.get_manifest(True))
         curr_manifest = as_manifest(self.get_manifest(False))
-        perf_tracking.record_checkpoint("manifest")
 
         def ref_func(*args):
             if len(args) == 1:
@@ -821,108 +844,91 @@ class DbtAdapter(BaseAdapter):
             source=source_func,
         )
 
-        # for each node, compare the base and current lineage
-        diff = {}
-        for key in keys:
-            base_node = base.get("nodes", {}).get(key)
-            curr_node = current.get("nodes", {}).get(key)
-            if base_node and curr_node:
-                base_checksum = base_node.get("checksum", {}).get("checksum")
-                curr_checksum = curr_node.get("checksum", {}).get("checksum")
-                change = None
-                if base_checksum is None or curr_checksum is None or base_checksum == curr_checksum:
-                    continue
+        base_node = base.get("nodes", {}).get(node_id)
+        curr_node = current.get("nodes", {}).get(node_id)
+        change = NodeChange(category="unknown")
+        if (
+            curr_node.get("resource_type") in ["model", "snapshot"]
+            and curr_node.get("raw_code") is not None
+            and base_node.get("raw_code") is not None
+        ):
+            try:
 
-                if curr_node.get("resource_type") == "model":
-                    try:
-                        perf_tracking.increment_modified_nodes()
+                def _get_schema(lineage):
+                    schema = {}
+                    nodes = lineage["nodes"]
+                    parent_list = lineage["parent_map"].get(node_id, [])
+                    for parent_id in parent_list:
+                        parent_node = nodes.get(parent_id)
+                        if parent_node is None:
+                            continue
+                        columns = parent_node.get("columns") or {}
+                        name = parent_node.get("name")
+                        if parent_node.get("resource_type") == "source":
+                            parts = parent_id.split(".")
+                            source = parts[2]
+                            table = parts[3]
+                            source = source.replace("-", "_")
+                            name = f"__{source}__{table}"
+                        schema[name] = {name: column.get("type") for name, column in columns.items()}
+                    return schema
 
-                        def _get_schema(lineage):
-                            schema = {}
-                            nodes = lineage["nodes"]
-                            parent_list = lineage["parent_map"].get(key, [])
-                            for parent_id in parent_list:
-                                parent_node = nodes.get(parent_id)
-                                if parent_node is None:
-                                    continue
-                                columns = parent_node.get("columns") or {}
-                                name = parent_node.get("name")
-                                if parent_node.get("resource_type") == "source":
-                                    parts = parent_id.split(".")
-                                    source = parts[2]
-                                    table = parts[3]
-                                    source = source.replace("-", "_")
-                                    name = f"__{source}__{table}"
-                                schema[name] = {name: column.get("type") for name, column in columns.items()}
-                            return schema
+                base_sql = self.generate_sql(
+                    base_node.get("raw_code"),
+                    context=jinja_context,
+                    provided_manifest=base_manifest,
+                )
+                curr_sql = self.generate_sql(
+                    curr_node.get("raw_code"),
+                    context=jinja_context,
+                    provided_manifest=curr_manifest,
+                )
+                base_schema = _get_schema(base)
+                curr_schema = _get_schema(current)
+                dialect = self.adapter.connections.TYPE
+                if curr_manifest.metadata.adapter_type is not None:
+                    dialect = curr_manifest.metadata.adapter_type
 
-                        base_sql = self.generate_sql(
-                            base_node.get("raw_code"),
-                            context=jinja_context,
-                            provided_manifest=base_manifest,
-                        )
-                        curr_sql = self.generate_sql(
-                            curr_node.get("raw_code"),
-                            context=jinja_context,
-                            provided_manifest=curr_manifest,
-                        )
-                        base_schema = _get_schema(base)
-                        curr_schema = _get_schema(current)
-                        dialect = self.adapter.connections.TYPE
-                        if curr_manifest.metadata.adapter_type is not None:
-                            dialect = curr_manifest.metadata.adapter_type
+                change = parse_change_category(
+                    base_sql,
+                    curr_sql,
+                    old_schema=base_schema,
+                    new_schema=curr_schema,
+                    dialect=dialect,
+                )
 
-                        change = parse_change_category(
-                            base_sql,
-                            curr_sql,
-                            old_schema=base_schema,
-                            new_schema=curr_schema,
-                            dialect=dialect,
-                            perf_tracking=perf_tracking,
-                        )
+                # Make sure that the case of the column names are the same
+                changed_columns = {
+                    column.lower(): change_status for column, change_status in (change.columns or {}).items()
+                }
+                changed_columns_names = set(changed_columns)
+                changed_columns_final = {}
 
-                        # Make sure that the case of the column names are the same
-                        changed_columns = {
-                            column.lower(): change_status for column, change_status in (change.columns or {}).items()
-                        }
-                        changed_columns_names = set(changed_columns)
-                        changed_columns_final = {}
+                base_columns = base_node.get("columns") or {}
+                curr_columns = curr_node.get("columns") or {}
+                columns_names = set(base_columns) | set(curr_columns)
 
-                        base_columns = base_node.get("columns") or {}
-                        curr_columns = curr_node.get("columns") or {}
-                        columns_names = set(base_columns) | set(curr_columns)
+                for column_name in columns_names:
+                    if column_name.lower() in changed_columns_names:
+                        changed_columns_final[column_name] = changed_columns[column_name.lower()]
 
-                        for column_name in columns_names:
-                            if column_name.lower() in changed_columns_names:
-                                changed_columns_final[column_name] = changed_columns[column_name.lower()]
+                change.columns = changed_columns_final
+            except Exception:
+                # TODO: telemetry
+                pass
 
-                        change.columns = changed_columns_final
-                    except Exception:
-                        change = NodeChange(category="unknown")
-
-                diff[key] = NodeDiff(change_status="modified", change=change)
-            elif base_node:
-                diff[key] = NodeDiff(change_status="removed")
-            elif curr_node:
-                diff[key] = NodeDiff(change_status="added")
-
-        perf_tracking.end_lineage_diff()
-        log_performance("model lineage diff", perf_tracking.to_dict())
-
-        return LineageDiff(
-            base=base,
-            current=current,
-            diff=diff,
-        )
+        node_diff = diff.get(node_id)
+        node_diff.change = change
+        return node_diff
 
     def get_cll(
         self,
         node_id: Optional[str] = None,
         column: Optional[str] = None,
         change_analysis: Optional[bool] = False,
-        cll: Optional[bool] = True,
-        upstream: Optional[bool] = True,
-        downstream: Optional[bool] = True,
+        no_cll: Optional[bool] = False,
+        no_upstream: Optional[bool] = False,
+        no_downstream: Optional[bool] = False,
         no_filter: Optional[bool] = False,
     ) -> CllData:
         cll_tracker = CLLPerformanceTracking()
@@ -936,19 +942,19 @@ class DbtAdapter(BaseAdapter):
             cll_node_ids = {node_id}
         else:
             lineage_diff = self.get_lineage_diff()
-            cll_node_ids = lineage_diff.diff.keys()
+            cll_node_ids = set(lineage_diff.diff.keys())
 
         nodes = {}
         columns = {}
         parent_map = {}
         child_map = {}
 
-        if upstream:
+        if not no_upstream:
             cll_node_ids = cll_node_ids.union(find_upstream(cll_node_ids, manifest_dict.get("parent_map")))
-        if downstream:
+        if not no_downstream:
             cll_node_ids = cll_node_ids.union(find_downstream(cll_node_ids, manifest_dict.get("child_map")))
 
-        if cll:
+        if not no_cll:
             for cll_node_id in cll_node_ids:
                 if (
                     cll_node_id not in manifest.sources
@@ -956,27 +962,93 @@ class DbtAdapter(BaseAdapter):
                     and cll_node_id not in manifest.exposures
                 ):
                     continue
-                cll_data_one = self.get_cll_cached(cll_node_id, base=False)
+                cll_data_one = deepcopy(self.get_cll_cached(cll_node_id, base=False))
                 if cll_data_one is None:
                     continue
 
-                node_diff = self.get_lineage_diff().diff.get(cll_node_id) if change_analysis else None
-                for n_id, n in cll_data_one.nodes.items():
-                    nodes[n_id] = n
-
-                    if node_diff is not None:
-                        n.change_status = node_diff.change_status
-                        if node_diff.change is not None:
-                            n.change_category = node_diff.change.category
+                nodes[cll_node_id] = cll_data_one.nodes.get(cll_node_id)
+                node_diff = self.get_change_analysis_cached(cll_node_id) if change_analysis else None
+                if node_diff is not None:
+                    nodes[cll_node_id].change_status = node_diff.change_status
+                    if node_diff.change is not None:
+                        nodes[cll_node_id].change_category = node_diff.change.category
                 for c_id, c in cll_data_one.columns.items():
                     columns[c_id] = c
-                    if node_diff is not None and node_diff.change is not None:
+                    if node_diff is not None and node_diff.change is not None and node_diff.change.columns is not None:
                         column_diff = node_diff.change.columns.get(c.name)
                         if column_diff:
                             c.change_status = column_diff
 
                 for p_id, parents in cll_data_one.parent_map.items():
                     parent_map[p_id] = parents
+        else:
+            for cll_node_id in cll_node_ids:
+                cll_node = None
+                cll_node_columns: Dict[str, CllColumn] = {}
+
+                if cll_node_id in manifest.sources:
+                    n = manifest.sources[cll_node_id]
+                    cll_node = CllNode(
+                        id=n.unique_id,
+                        name=n.name,
+                        source_name=n.source_name,
+                        package_name=n.package_name,
+                    )
+                    if self.curr_catalog and cll_node_id in self.curr_catalog.sources:
+                        cll_node_columns = {
+                            column.name: CllColumn(
+                                id=f"{cll_node_id}_{column.name}",
+                                table_id=cll_node_id,
+                                name=column.name,
+                                type=column.type,
+                            )
+                            for column in self.curr_catalog.sources[cll_node_id].columns.values()
+                        }
+                elif cll_node_id in manifest.nodes:
+                    n = manifest.nodes[cll_node_id]
+                    if n.resource_type not in ["model", "seed", "snapshot"]:
+                        continue
+                    cll_node = CllNode(
+                        id=n.unique_id,
+                        name=n.name,
+                        package_name=n.package_name,
+                        resource_type=n.resource_type,
+                    )
+                    if self.curr_catalog and cll_node_id in self.curr_catalog.nodes:
+                        cll_node_columns = {
+                            column.name: CllColumn(
+                                id=f"{cll_node_id}_{column.name}",
+                                table_id=cll_node_id,
+                                name=column.name,
+                                type=column.type,
+                            )
+                            for column in self.curr_catalog.nodes[cll_node_id].columns.values()
+                        }
+                elif cll_node_id in manifest.exposures:
+                    n = manifest.exposures[cll_node_id]
+                    cll_node = CllNode(
+                        id=n.unique_id,
+                        name=n.name,
+                        package_name=n.package_name,
+                        resource_type=n.resource_type,
+                    )
+
+                if not cll_node:
+                    continue
+                nodes[cll_node_id] = cll_node
+
+                node_diff = self.get_change_analysis_cached(cll_node_id) if change_analysis else None
+                if node_diff is not None:
+                    cll_node.change_status = node_diff.change_status
+                    if node_diff.change is not None:
+                        cll_node.change_category = node_diff.change.category
+                        for c, cll_column in cll_node_columns.items():
+                            cll_node.columns[c] = cll_column
+                            columns[cll_column.id] = cll_column
+                            if node_diff.change.columns and c in node_diff.change.columns:
+                                cll_column.change_status = node_diff.change.columns[c]
+
+                parent_map[cll_node_id] = manifest.parent_map.get(cll_node_id, [])
 
         # build the child map
         for parent_id, parents in parent_map.items():
@@ -987,43 +1059,69 @@ class DbtAdapter(BaseAdapter):
 
         # Find the anchor nodes
         anchor_node_ids = set()
+        extra_node_ids = set()
         if node_id is None and column is None:
             if change_analysis:
                 # If change analysis is requested, we need to find the nodes that have changes
-                for node_id, node_diff in self.get_lineage_diff().diff.items():
-                    if node_diff.change.category == "breaking":
-                        anchor_node_ids.add(node_id)
-                    for column_name in node_diff.change.columns:
-                        anchor_node_ids.add(f"{node_id}_{column_name}")
+                for nid in self.get_lineage_diff().diff.keys():
+                    node_diff = self.get_change_analysis_cached(nid)
+                    if node_diff is not None and node_diff.change is not None:
+                        extra_node_ids.add(nid)
+                        if no_cll:
+                            if node_diff.change.category in ["breaking", "partial_breaking", "unknown"]:
+                                anchor_node_ids.add(nid)
+                        else:
+                            if node_diff.change.category in ["breaking", "unknown"]:
+                                anchor_node_ids.add(nid)
+                        if node_diff.change.columns is not None:
+                            for column_name in node_diff.change.columns:
+                                anchor_node_ids.add(f"{nid}_{column_name}")
             else:
                 lineage_diff = self.get_lineage_diff()
                 anchor_node_ids = lineage_diff.diff.keys()
         elif node_id is not None and column is None:
             if change_analysis:
                 # If change analysis is requested, we need to find the nodes that have changes
-                node_diff = self.get_lineage_diff().diff.get(node_id)
-                if node_diff:
-                    if node_diff.change.category == "breaking":
-                        anchor_node_ids.add(node_id)
-                    for column_name in node_diff.change.columns:
-                        anchor_node_ids.add(f"{node_id}_{column_name}")
+                node_diff = self.get_change_analysis_cached(node_id)
+                if node_diff is not None and node_diff.change is not None:
+                    extra_node_ids.add(node_id)
+                    if no_cll:
+                        if node_diff.change.category in ["breaking", "partial_breaking", "unknown"]:
+                            anchor_node_ids.add(node_id)
+                    else:
+                        if node_diff.change.category in ["breaking", "unknown"]:
+                            anchor_node_ids.add(node_id)
+                    if node_diff.change.columns is not None:
+                        for column_name in node_diff.change.columns:
+                            anchor_node_ids.add(f"{node_id}_{column_name}")
                 else:
                     anchor_node_ids.add(node_id)
             else:
                 anchor_node_ids.add(node_id)
+                if not no_cll:
+                    node = nodes.get(node_id)
+                    if node:
+                        for column_name in node.columns:
+                            column_key = build_column_key(node_id, column_name)
+                            anchor_node_ids.add(column_key)
         else:
             anchor_node_ids.add(f"{node_id}_{column}")
 
         result_node_ids = set(anchor_node_ids)
-        if upstream:
+        if not no_upstream:
             result_node_ids = result_node_ids.union(find_upstream(anchor_node_ids, parent_map))
-        if downstream:
+        if not no_downstream:
             result_node_ids = result_node_ids.union(find_downstream(anchor_node_ids, child_map))
 
         # Filter the nodes and columns based on the anchor nodes
         if not no_filter:
-            nodes = {k: v for k, v in nodes.items() if k in result_node_ids}
-            columns = {k: v for k, v in columns.items() if k in result_node_ids}
+            nodes = {k: v for k, v in nodes.items() if k in result_node_ids or k in extra_node_ids}
+            columns = {k: v for k, v in columns.items() if k in result_node_ids or k in extra_node_ids}
+
+            for node in nodes.values():
+                node.columns = {
+                    k: v for k, v in node.columns.items() if v.id in result_node_ids or v.id in extra_node_ids
+                }
             parent_map, child_map = filter_dependency_maps(parent_map, child_map, result_node_ids)
 
         cll_tracker.end_column_lineage()
@@ -1250,73 +1348,6 @@ class DbtAdapter(BaseAdapter):
             }
         return None
 
-    def get_impact_radius(self, node_id: str) -> CllData:
-        impacted_nodes = self.get_impacted_nodes(node_id)
-        impacted_cll = self.get_impacted_cll(node_id)
-
-        # merge impact radius
-        return self._merge_cll_data(impacted_nodes, impacted_cll)
-
-    def get_impacted_nodes(self, node_id: str) -> CllData:
-        lineage_diff = self.get_lineage_diff()
-        diff_info = lineage_diff.diff.get(node_id)
-        if diff_info is None:
-            return CllData()
-        change_category = diff_info.change.category
-
-        if change_category == "breaking":
-            cll = self.get_cll(node_id, no_filter=True)
-            _, downstream = find_column_dependencies(node_id, cll.parent_map, cll.child_map)
-            relevant_columns = {node_id}
-            relevant_columns.update(downstream)
-            nodes, columns = filter_lineage_vertices(cll.nodes, cll.columns, relevant_columns)
-            p_map, c_map = filter_dependency_maps(cll.parent_map, cll.child_map, relevant_columns)
-
-            return CllData(nodes=nodes, columns=columns, parent_map=p_map, child_map=c_map)
-
-        return CllData()
-
-    def get_impacted_cll(self, node_id: str) -> CllData:
-        lineage_diff = self.get_lineage_diff()
-        diff_info = lineage_diff.diff.get(node_id)
-        if diff_info is None:
-            return CllData()
-        change_columns = diff_info.change.columns
-
-        cll = self.get_cll(node_id, no_filter=True)
-        relevant_columns = set()
-        for col, change_status in change_columns.items():
-            if change_status == "removed":
-                continue
-            target_column = f"{node_id}_{col}"
-            _, downstream = find_column_dependencies(target_column, cll.parent_map, cll.child_map)
-            relevant_columns.add(target_column)
-            relevant_columns.update(downstream)
-
-        nodes, columns = filter_lineage_vertices(cll.nodes, cll.columns, relevant_columns)
-        p_map, c_map = filter_dependency_maps(cll.parent_map, cll.child_map, relevant_columns)
-
-        return CllData(nodes=nodes, columns=columns, parent_map=p_map, child_map=c_map)
-
-    @staticmethod
-    def _merge_cll_data(base: CllData, target: CllData) -> CllData:
-        merged_nodes = {**base.nodes, **target.nodes}
-        merged_columns = {**base.columns, **target.columns}
-
-        merged_parent_map = {}
-        merged_keys = set(base.parent_map.keys()).union(set(target.parent_map.keys()))
-        for key in merged_keys:
-            merged_parent_map[key] = base.parent_map.get(key, set()).union(target.parent_map.get(key, set()))
-
-        merged_child_map = {}
-        merged_keys = set(base.child_map.keys()).union(set(target.child_map.keys()))
-        for key in merged_keys:
-            merged_child_map[key] = base.child_map.get(key, set()).union(target.child_map.get(key, set()))
-
-        return CllData(
-            nodes=merged_nodes, columns=merged_columns, parent_map=merged_parent_map, child_map=merged_child_map
-        )
-
     def build_name_to_unique_id_index(self) -> Dict[str, str]:
         name_to_unique_id = {}
         curr_manifest = self.get_manifest(base=False)
@@ -1404,13 +1435,18 @@ class DbtAdapter(BaseAdapter):
                 self.curr_manifest = load_manifest(path=refresh_file_path)
                 self.manifest = as_manifest(self.curr_manifest)
                 self.get_cll_cached.cache_clear()
+                self.get_change_analysis_cached.cache_clear()
             elif refresh_file_path.endswith("catalog.json"):
                 self.curr_catalog = load_catalog(path=refresh_file_path)
+                self.get_cll_cached.cache_clear()
+                self.get_change_analysis_cached.cache_clear()
         elif self.base_path and target_type == os.path.basename(self.base_path):
             if refresh_file_path.endswith("manifest.json"):
                 self.base_manifest = load_manifest(path=refresh_file_path)
+                self.get_change_analysis_cached.cache_clear()
             elif refresh_file_path.endswith("catalog.json"):
                 self.base_catalog = load_catalog(path=refresh_file_path)
+                self.get_change_analysis_cached.cache_clear()
 
     def create_relation(self, model, base=False):
         node = self.find_node_by_name(model, base)
