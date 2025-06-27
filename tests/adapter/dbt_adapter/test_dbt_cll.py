@@ -397,6 +397,64 @@ def test_impact_radius_with_change_analysis_no_cll(dbt_test_helper):
     assert_model(result, "model.model4", parents=["model.model2"], change_category="partial_breaking")
 
 
+def test_impact_radius_with_change_analysis_no_cll_2(dbt_test_helper):
+    dbt_test_helper.create_model(
+        "model1",
+        unique_id="model.model1",
+        curr_sql="select 1 as c",
+        base_sql="select 2 as c",
+        curr_columns={"c": "int"},
+        base_columns={"c": "int"},
+    )
+    dbt_test_helper.create_model(
+        "model2",
+        unique_id="model.model2",
+        curr_sql='select c, 2025 as y from {{ ref("model1") }}',
+        base_sql='select c, 2025 as y from {{ ref("model1") }} where c > 0 --- breaking',
+        curr_columns={"c": "int", "y": "int"},
+        base_columns={"c": "int", "y": "int"},
+        depends_on=["model.model1"],
+    )
+    dbt_test_helper.create_model(
+        "model3",
+        unique_id="model.model3",
+        curr_sql='select c from {{ ref("model2") }} where y < 2025',
+        base_sql='select c from {{ ref("model2") }} where y < 2025',
+        curr_columns={"c": "int"},
+        base_columns={"c": "int"},
+        depends_on=["model.model2"],
+    )
+    dbt_test_helper.create_model(
+        "model4",
+        unique_id="model.model4",
+        curr_sql='select y + 1 as year from {{ ref("model2") }} --- partial breaking',
+        base_sql='select y as year from {{ ref("model2") }}',
+        curr_columns={"year": "int"},
+        base_columns={"year": "int"},
+        depends_on=["model.model2"],
+    )
+    dbt_test_helper.create_model(
+        "model5",
+        unique_id="model.model5",
+        curr_sql='select c, 2025 as y from {{ ref("model1") }}',
+        base_sql='select c, 2025 as y from {{ ref("model1") }}',
+        curr_columns={"c": "int", "y": "int"},
+        base_columns={"c": "int", "y": "int"},
+        depends_on=["model.model1"],
+    )
+
+    adapter: DbtAdapter = dbt_test_helper.context.adapter
+
+    # breaking
+    result = adapter.get_cll(change_analysis=True, no_cll=True, no_upstream=True)
+    assert_cll_contain_nodes(result, ["model.model1", "model.model2", "model.model3", "model.model4", "model.model5"])
+    assert_model(result, "model.model1", parents=[], change_category="partial_breaking")
+    assert_model(result, "model.model2", parents=["model.model1"], change_category="breaking")
+    assert_model(result, "model.model3", parents=["model.model2"], change_category=None)
+    assert_model(result, "model.model4", parents=["model.model2"], change_category="partial_breaking")
+    assert_model(result, "model.model5", parents=["model.model1"])
+
+
 def test_impact_radius_with_change_analysis_with_cll(dbt_test_helper):
     dbt_test_helper.create_model(
         "model1",

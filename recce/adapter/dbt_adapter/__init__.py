@@ -1067,8 +1067,12 @@ class DbtAdapter(BaseAdapter):
                     node_diff = self.get_change_analysis_cached(nid)
                     if node_diff is not None and node_diff.change is not None:
                         extra_node_ids.add(nid)
-                        if node_diff.change.category in ["breaking", "unknown"]:
-                            anchor_node_ids.add(nid)
+                        if no_cll:
+                            if node_diff.change.category in ["breaking", "partial_breaking", "unknown"]:
+                                anchor_node_ids.add(nid)
+                        else:
+                            if node_diff.change.category in ["breaking", "unknown"]:
+                                anchor_node_ids.add(nid)
                         if node_diff.change.columns is not None:
                             for column_name in node_diff.change.columns:
                                 anchor_node_ids.add(f"{nid}_{column_name}")
@@ -1081,8 +1085,12 @@ class DbtAdapter(BaseAdapter):
                 node_diff = self.get_change_analysis_cached(node_id)
                 if node_diff is not None and node_diff.change is not None:
                     extra_node_ids.add(node_id)
-                    if node_diff.change.category in ["breaking", "unknown"]:
-                        anchor_node_ids.add(node_id)
+                    if no_cll:
+                        if node_diff.change.category in ["breaking", "partial_breaking", "unknown"]:
+                            anchor_node_ids.add(node_id)
+                    else:
+                        if node_diff.change.category in ["breaking", "unknown"]:
+                            anchor_node_ids.add(node_id)
                     if node_diff.change.columns is not None:
                         for column_name in node_diff.change.columns:
                             anchor_node_ids.add(f"{node_id}_{column_name}")
