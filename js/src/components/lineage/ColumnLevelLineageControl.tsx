@@ -12,8 +12,6 @@ import {
   PopoverContent,
   PopoverTrigger,
   Button,
-  Divider,
-  ButtonGroup,
   Menu,
   MenuButton,
   MenuItem,
@@ -25,6 +23,7 @@ import { useLineageViewContextSafe } from "./LineageViewContext";
 import { TbRadar } from "react-icons/tb";
 import { CllInput } from "@/lib/api/cll";
 import { VscArrowLeft } from "react-icons/vsc";
+import { useRecceServerFlag } from "@/lib/hooks/useRecceServerFlag";
 
 interface ColumnLevelLineageControlProps {
   node?: string;
@@ -138,8 +137,8 @@ const ModeMessage = () => {
 export const ColumnLevelLineageControl = () => {
   const { viewOptions, showColumnLevelLineage, resetColumnLevelLineage } =
     useLineageViewContextSafe();
-
-  const cllMode = !!viewOptions.column_level_lineage;
+  const { data: flagData } = useRecceServerFlag();
+  const singleEnv = flagData?.single_env_onboarding ?? false;
 
   return (
     <Flex
@@ -169,16 +168,18 @@ export const ColumnLevelLineageControl = () => {
         <MenuList>
           <MenuItem
             onClick={() => {
-              resetColumnLevelLineage();
+              void resetColumnLevelLineage();
             }}>
             Default View
           </MenuItem>
-          <MenuItem
-            onClick={() => {
-              void showColumnLevelLineage({ no_upstream: true, change_analysis: true });
-            }}>
-            Impact Radius
-          </MenuItem>
+          {!singleEnv && (
+            <MenuItem
+              onClick={() => {
+                void showColumnLevelLineage({ no_upstream: true, change_analysis: true });
+              }}>
+              Impact Radius
+            </MenuItem>
+          )}
         </MenuList>
       </Menu>
 
@@ -199,7 +200,7 @@ export const ColumnLevelLineageControl = () => {
         icon={<Icon as={VscArrowLeft} boxSize="10px" />}
         aria-label={""}
         onClick={() => {
-          resetColumnLevelLineage(true);
+          void resetColumnLevelLineage(true);
         }}
         size="xs"
         variant="ghost"

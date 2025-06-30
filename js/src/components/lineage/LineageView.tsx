@@ -473,27 +473,6 @@ export function PrivateLineageView(
       return;
     }
 
-    // if (!viewOptions.column_level_lineage) {
-    //   trackColumnLevelLineage({ action: "view", source: "changed_column" });
-    // } else {
-    //   trackColumnLevelLineage({ action: "view", source: "cll_column" });
-    // }
-
-    // // change focused node if the side pane is open
-    // if (focusedNodeId) {
-    //   setFocusedNodeId(node.parentId);
-    // }
-
-    // void handleViewOptionsChanged(
-    //   {
-    //     ...viewOptions,
-    //     column_level_lineage: {
-    //       node_id: node.data.node.id,
-    //       column: node.data.column,
-    //     },
-    //   },
-    //   false,
-    // );
     void showColumnLevelLineage({
       node_id: node.data.node.id,
       column: node.data.column,
