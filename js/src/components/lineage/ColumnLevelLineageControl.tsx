@@ -17,11 +17,9 @@ import {
   MenuItem,
   MenuList,
   Portal,
-  Badge,
+  Divider,
 } from "@chakra-ui/react";
 import { useLineageViewContextSafe } from "./LineageViewContext";
-import { TbRadar } from "react-icons/tb";
-import { CllInput } from "@/lib/api/cll";
 import { VscArrowLeft } from "react-icons/vsc";
 import { useRecceServerFlag } from "@/lib/hooks/useRecceServerFlag";
 
@@ -129,7 +127,7 @@ const ModeMessage = () => {
   }
 };
 
-export const ColumnLevelLineageControl = () => {
+export const ColumnLevelLineageControl = ({ allowBack }: { allowBack: boolean }) => {
   const { showColumnLevelLineage, resetColumnLevelLineage, interactive } =
     useLineageViewContextSafe();
   const { data: flagData } = useRecceServerFlag();
@@ -179,16 +177,19 @@ export const ColumnLevelLineageControl = () => {
         </MenuList>
       </Menu>
 
-      {interactive && (
-        <IconButton
-          icon={<Icon as={VscArrowLeft} boxSize="10px" />}
-          aria-label={""}
-          onClick={() => {
-            void resetColumnLevelLineage(true);
-          }}
-          size="xs"
-          variant="ghost"
-        />
+      {interactive && allowBack && (
+        <>
+          <Divider orientation="vertical" height="24px" />
+          <IconButton
+            icon={<Icon as={VscArrowLeft} boxSize="10px" />}
+            aria-label={""}
+            onClick={() => {
+              void resetColumnLevelLineage(true);
+            }}
+            size="xs"
+            variant="ghost"
+          />
+        </>
       )}
     </Flex>
   );

@@ -488,8 +488,6 @@ export function PrivateLineageView(
       } else {
         await showColumnLevelLineage(undefined, true);
       }
-    } else {
-      await showColumnLevelLineage(undefined);
     }
   };
 
@@ -754,12 +752,6 @@ export function PrivateLineageView(
       setSelectedNodeIds(new Set([nodeId]));
       setSelectMode("selecting");
       setFocusedNodeId(undefined);
-      if (viewOptions.column_level_lineage) {
-        void handleViewOptionsChanged({
-          ...viewOptions,
-          column_level_lineage: undefined,
-        });
-      }
       multiNodeAction.reset();
     } else if (selectMode === "selecting") {
       const newSelectedNodeIds = new Set(selectedNodeIds);
@@ -1086,7 +1078,7 @@ export function PrivateLineageView(
             </Panel>
             <Panel position="top-left">
               <Flex direction="column" gap="5px">
-                <ColumnLevelLineageControl />
+                <ColumnLevelLineageControl allowBack={cllHistory.length > 0} />
                 {nodes.length == 0 && (
                   <Text fontSize="xl" color="grey" opacity={0.5}>
                     No nodes

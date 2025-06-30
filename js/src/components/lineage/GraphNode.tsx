@@ -380,7 +380,12 @@ export function GraphNode(nodeProps: GraphNodeProps) {
             paddingBottom="1"
             visibility={showContent ? "inherit" : "hidden"}>
             <HStack spacing={"8px"}>
-              {isShowingChangeAnalysis ? (
+              {action ? (
+                <>
+                  <Spacer />
+                  <ActionTag node={data} action={action} />
+                </>
+              ) : isShowingChangeAnalysis ? (
                 <Box height="20px" color="gray" fontSize="9pt" margin={0} fontWeight={600}>
                   {changeCategory ? CHANGE_CATEGORY_MSGS[changeCategory] : ""}
                 </Box>
@@ -395,15 +400,6 @@ export function GraphNode(nodeProps: GraphNodeProps) {
                     }
                   })()}
                 />
-              ) : (
-                <></>
-              )}
-
-              {action ? (
-                <>
-                  <Spacer />
-                  <ActionTag node={data} action={action} />
-                </>
               ) : (
                 <></>
               )}
