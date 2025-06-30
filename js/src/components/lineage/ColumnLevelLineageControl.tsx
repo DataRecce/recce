@@ -12,24 +12,17 @@ import {
   PopoverContent,
   PopoverTrigger,
   Button,
-  Divider,
-  ButtonGroup,
   Menu,
   MenuButton,
   MenuItem,
   MenuList,
   Portal,
-  Badge,
+  Divider,
 } from "@chakra-ui/react";
 import { useLineageViewContextSafe } from "./LineageViewContext";
-import { TbRadar } from "react-icons/tb";
-import { CllInput } from "@/lib/api/cll";
+import { VscArrowLeft } from "react-icons/vsc";
+import { useRecceServerFlag } from "@/lib/hooks/useRecceServerFlag";
 
-interface ColumnLevelLineageControlProps {
-  node?: string;
-  column?: string;
-  reset?: () => void;
-}
 const AnalyzeChangeHint = ({ ml }: { ml?: number }) => {
   return (
     <Popover trigger="hover" placement="bottom-start" isLazy>
@@ -89,7 +82,11 @@ const ModeMessage = () => {
     return <></>;
   }
 
-  if (cllInput?.node_id === undefined) {
+  if (!cllInput) {
+    return "Default View";
+  }
+
+  if (cllInput.node_id === undefined) {
     return "Impact Radius for Changed Models";
   }
 
@@ -103,7 +100,7 @@ const ModeMessage = () => {
 
     return (
       <>
-        <Text>Impact Radius for </Text>
+        <Text as="span">Impact Radius for </Text>
         <Code
           onClick={() => {
             centerNode(nodeId);
@@ -117,7 +114,7 @@ const ModeMessage = () => {
     const nodeId = `${cllInput.node_id}_${cllInput.column}`;
     return (
       <>
-        <Text>Column Lineage for </Text>
+        <Text as="span">Column Lineage for </Text>
         <Code
           onClick={() => {
             centerNode(nodeId);
@@ -130,13 +127,15 @@ const ModeMessage = () => {
   }
 };
 
-export const ColumnLevelLineageControl = ({ reset }: ColumnLevelLineageControlProps) => {
-  const { viewOptions, showColumnLevelLineage } = useLineageViewContextSafe();
-
-  const cllMode = !!viewOptions.column_level_lineage;
+export const ColumnLevelLineageControl = ({ allowBack }: { allowBack: boolean }) => {
+  const { showColumnLevelLineage, resetColumnLevelLineage, interactive } =
+    useLineageViewContextSafe();
+  const { data: flagData } = useRecceServerFlag();
+  const singleEnv = flagData?.single_env_onboarding ?? false;
 
   return (
     <Flex
+      minWidth="300px"
       direction="row"
       alignItems="center"
       gap="5px"
@@ -146,54 +145,52 @@ export const ColumnLevelLineageControl = ({ reset }: ColumnLevelLineageControlPr
       border="1px solid"
       borderColor="gray.200"
       bg="white"
+      justifyContent="space-between"
       fontSize={"10pt"}>
-      <ButtonGroup isAttached size="xs" variant="outline" colorScheme="gray">
-        <Button
-          onClick={() => {
-            void showColumnLevelLineage({ no_upstream: true, change_analysis: true, no_cll: true });
-          }}
-          rightIcon={<AnalyzeChangeHint />}>
-          Analyze Changes
-        </Button>
-        <Menu>
-          <MenuButton as={IconButton} icon={<ChevronDownIcon />} />
-          <MenuList>
+      <Menu>
+        <MenuButton
+          flex="1"
+          as={Button}
+          size="sm"
+          variant="ghost"
+          whiteSpace="nowrap"
+          display="inline-flex"
+          isDisabled={!interactive}
+          rightIcon={<ChevronDownIcon />}>
+          <ModeMessage />
+        </MenuButton>
+        <MenuList>
+          <MenuItem
+            onClick={() => {
+              void resetColumnLevelLineage();
+            }}>
+            Default View
+          </MenuItem>
+          {!singleEnv && (
             <MenuItem
               onClick={() => {
                 void showColumnLevelLineage({ no_upstream: true, change_analysis: true });
               }}>
-              Analyze Changes + CLL
+              Impact Radius
             </MenuItem>
-          </MenuList>
-        </Menu>
-      </ButtonGroup>
+          )}
+        </MenuList>
+      </Menu>
 
-      <>
-        <Divider orientation="vertical" height="20px" />
-        <ModeMessage />
-        {viewOptions.column_level_lineage?.change_analysis && (
-          <Badge fontSize="8pt" variant="solid" colorScheme="orange" size={"xs"}>
-            change analysis
-            <AnalyzeChangeHint ml={1} />
-          </Badge>
-        )}
-        {viewOptions.column_level_lineage && !viewOptions.column_level_lineage.no_cll && (
-          <Badge fontSize="8pt" variant="solid" colorScheme="yellow" size={"xs"}>
-            cll
-            <CllHint />
-          </Badge>
-        )}
-
-        {cllMode && reset && (
+      {interactive && allowBack && (
+        <>
+          <Divider orientation="vertical" height="24px" />
           <IconButton
-            icon={<CloseIcon boxSize="10px" />}
+            icon={<Icon as={VscArrowLeft} boxSize="10px" />}
             aria-label={""}
-            onClick={reset}
+            onClick={() => {
+              void resetColumnLevelLineage(true);
+            }}
             size="xs"
             variant="ghost"
           />
-        )}
-      </>
+        </>
+      )}
     </Flex>
   );
 };

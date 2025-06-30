@@ -1,5 +1,6 @@
 import {
   Box,
+  Center,
   Flex,
   HStack,
   Icon,
@@ -23,7 +24,7 @@ import { useLineageGraphContext } from "@/lib/hooks/LineageGraphContext";
 import { findByRunType } from "../run/registry";
 import { isSchemaChanged } from "../schema/schemaDiff";
 import { useLineageViewContextSafe } from "./LineageViewContext";
-import { FaCheckSquare, FaRegSquare } from "react-icons/fa";
+import { FaCheckSquare, FaRegDotCircle, FaRegSquare } from "react-icons/fa";
 import { RowCountDiff } from "@/lib/api/models";
 import { deltaPercentageString } from "../rowcount/delta";
 import { VscKebabVertical } from "react-icons/vsc";
@@ -174,6 +175,7 @@ export function GraphNode(nodeProps: GraphNodeProps) {
     showContextMenu,
     viewOptions,
     cll,
+    showColumnLevelLineage,
   } = useLineageViewContextSafe();
   const changeCategory = cll?.current.nodes[id]?.change_category;
 
@@ -325,19 +327,44 @@ export function GraphNode(nodeProps: GraphNodeProps) {
             <GraphNodeTitle name={name} color={titleColor} resourceType={resourceType} />
 
             {isHovered ? (
-              <Icon
-                as={VscKebabVertical}
-                // boxSize="14px"
-                // display={"inline-flex"}
-                color="gray"
-                cursor={"pointer"}
-                _hover={{ color: "black" }}
-                onClick={(e) => {
-                  e.preventDefault();
-                  e.stopPropagation();
-                  showContextMenu(e, nodeProps);
-                }}
-              />
+              <>
+                {changeStatus === "modified" && (
+                  <Tooltip label="Show Impact Radius" placement={"top"} openDelay={500}>
+                    <Center>
+                      <Icon
+                        boxSize="14px"
+                        as={FaRegDotCircle}
+                        color="gray"
+                        cursor={"pointer"}
+                        _hover={{ color: "black" }}
+                        onClick={(e) => {
+                          e.preventDefault();
+                          e.stopPropagation();
+
+                          void showColumnLevelLineage({
+                            node_id: id,
+                            change_analysis: true,
+                            no_upstream: true,
+                          });
+                        }}
+                      />
+                    </Center>
+                  </Tooltip>
+                )}
+                <Icon
+                  as={VscKebabVertical}
+                  // boxSize="14px"
+                  // display={"inline-flex"}
+                  color="gray"
+                  cursor={"pointer"}
+                  _hover={{ color: "black" }}
+                  onClick={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    showContextMenu(e, nodeProps);
+                  }}
+                />
+              </>
             ) : (
               <>
                 <Icon boxSize="16px" color={iconResourceColor} as={resourceIcon} />
@@ -353,7 +380,12 @@ export function GraphNode(nodeProps: GraphNodeProps) {
             paddingBottom="1"
             visibility={showContent ? "inherit" : "hidden"}>
             <HStack spacing={"8px"}>
-              {isShowingChangeAnalysis ? (
+              {action ? (
+                <>
+                  <Spacer />
+                  <ActionTag node={data} action={action} />
+                </>
+              ) : isShowingChangeAnalysis ? (
                 <Box height="20px" color="gray" fontSize="9pt" margin={0} fontWeight={600}>
                   {changeCategory ? CHANGE_CATEGORY_MSGS[changeCategory] : ""}
                 </Box>
@@ -368,15 +400,6 @@ export function GraphNode(nodeProps: GraphNodeProps) {
                     }
                   })()}
                 />
-              ) : (
-                <></>
-              )}
-
-              {action ? (
-                <>
-                  <Spacer />
-                  <ActionTag node={data} action={action} />
-                </>
               ) : (
                 <></>
               )}
