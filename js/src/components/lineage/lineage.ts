@@ -169,8 +169,8 @@ export function buildLineageGraph(
   const modifiedSet: string[] = [];
 
   for (const [key, node] of Object.entries(nodes)) {
-    if (diff?.[key]) {
-      const diffNode = diff[key];
+    const diffNode = diff?.[key];
+    if (diffNode) {
       node.changeStatus = diffNode.change_status;
       if (diffNode.change) {
         node.change = {
