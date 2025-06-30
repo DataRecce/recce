@@ -87,7 +87,7 @@ const ModeMessage = () => {
   }
 
   if (cllInput.node_id === undefined) {
-    return "Impact Radius for Changed Models";
+    return "Impact Radius";
   }
 
   const nodeName =
@@ -162,7 +162,7 @@ export const ColumnLevelLineageControl = ({ allowBack }: { allowBack: boolean })
         <MenuList>
           <MenuItem
             onClick={() => {
-              void resetColumnLevelLineage();
+              void showColumnLevelLineage(undefined);
             }}>
             Default View
           </MenuItem>
