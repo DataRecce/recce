@@ -214,7 +214,8 @@ export function PrivateLineageView(
   const [viewOptions, setViewOptions] = useState<LineageDiffViewOptions>({
     ...props.viewOptions,
   });
-  const [prevColumnLevelLineage, setPrevColumnLevelLineage] = useState<CllInput | undefined>();
+
+  const cllHistory = useRef<(CllInput | undefined)[]>([]).current;
 
   const [cll, setCll] = useState<ColumnLineageData | undefined>(undefined);
   const [nodeColumnSetMap, setNodeColumSetMap] = useState<NodeColumnSetMap>({});
@@ -437,8 +438,7 @@ export function PrivateLineageView(
     }
   });
 
-  const showColumnLevelLineage = async (columnLevelLineage?: CllInput) => {
-    setPrevColumnLevelLineage(viewOptions.column_level_lineage);
+  const showColumnLevelLineage = async (columnLevelLineage?: CllInput, previous = false) => {
     await handleViewOptionsChanged(
       {
         ...viewOptions,
@@ -446,6 +446,10 @@ export function PrivateLineageView(
       },
       false,
     );
+
+    if (!previous) {
+      cllHistory.push(viewOptions.column_level_lineage);
+    }
     if (columnLevelLineage?.node_id) {
       setFocusedNodeId(columnLevelLineage.node_id);
     } else {
@@ -454,17 +458,15 @@ export function PrivateLineageView(
   };
 
   const resetColumnLevelLineage = async (previous?: boolean) => {
-    if (previous) {
-      await showColumnLevelLineage(prevColumnLevelLineage);
+    if (previous && cllHistory.length > 0) {
+      const previousCll = cllHistory.pop();
+      if (previousCll) {
+        await showColumnLevelLineage(previousCll, true);
+      } else {
+        await showColumnLevelLineage(undefined, true);
+      }
     } else {
-      setFocusedNodeId(undefined);
-      await handleViewOptionsChanged(
-        {
-          ...viewOptions,
-          column_level_lineage: undefined,
-        },
-        false,
-      );
+      await showColumnLevelLineage(undefined);
     }
   };
 
