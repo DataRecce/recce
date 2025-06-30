@@ -169,18 +169,16 @@ export function buildLineageGraph(
   const modifiedSet: string[] = [];
 
   for (const [key, node] of Object.entries(nodes)) {
-    if (diff) {
+    if (diff?.[key]) {
       const diffNode = diff[key];
-      if (diffNode) {
-        node.changeStatus = diffNode.change_status;
-        if (diffNode.change) {
-          node.change = {
-            category: diffNode.change.category,
-            columns: diffNode.change.columns,
-          };
-        }
-        modifiedSet.push(key);
+      node.changeStatus = diffNode.change_status;
+      if (diffNode.change) {
+        node.change = {
+          category: diffNode.change.category,
+          columns: diffNode.change.columns,
+        };
       }
+      modifiedSet.push(key);
     } else if (node.from === "base") {
       node.changeStatus = "removed";
       modifiedSet.push(node.id);
