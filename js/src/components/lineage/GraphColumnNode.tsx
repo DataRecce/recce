@@ -110,7 +110,8 @@ export function GraphColumnNode(nodeProps: GrapeColumnNodeProps) {
       onMouseLeave={() => {
         setIsHovered(false);
       }}
-      filter={isHighlighted ? "none" : "opacity(0.2) grayscale(50%)"}>
+      filter={isHighlighted ? "none" : "opacity(0.2) grayscale(50%)"}
+      cursor="pointer">
       <Flex
         fontSize="11px"
         color="black"
