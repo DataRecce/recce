@@ -460,6 +460,8 @@ export function PrivateLineageView(
   });
 
   const showColumnLevelLineage = async (columnLevelLineage?: CllInput, previous = false) => {
+    const previousColumnLevelLineage = viewOptions.column_level_lineage;
+
     await handleViewOptionsChanged(
       {
         ...viewOptions,
@@ -469,7 +471,7 @@ export function PrivateLineageView(
     );
 
     if (!previous) {
-      cllHistory.push(viewOptions.column_level_lineage);
+      cllHistory.push(previousColumnLevelLineage);
     }
     if (columnLevelLineage?.node_id) {
       setFocusedNodeId(columnLevelLineage.node_id);
@@ -1084,20 +1086,7 @@ export function PrivateLineageView(
             </Panel>
             <Panel position="top-left">
               <Flex direction="column" gap="5px">
-                <ColumnLevelLineageControl
-                  reset={
-                    interactive
-                      ? () => {
-                          setFocusedNodeId(undefined);
-                          void handleViewOptionsChanged({
-                            ...viewOptions,
-                            column_level_lineage: undefined,
-                          });
-                        }
-                      : undefined
-                  }
-                />
-
+                <ColumnLevelLineageControl />
                 {nodes.length == 0 && (
                   <Text fontSize="xl" color="grey" opacity={0.5}>
                     No nodes

@@ -25,11 +25,6 @@ import { CllInput } from "@/lib/api/cll";
 import { VscArrowLeft } from "react-icons/vsc";
 import { useRecceServerFlag } from "@/lib/hooks/useRecceServerFlag";
 
-interface ColumnLevelLineageControlProps {
-  node?: string;
-  column?: string;
-  reset: () => void;
-}
 const AnalyzeChangeHint = ({ ml }: { ml?: number }) => {
   return (
     <Popover trigger="hover" placement="bottom-start" isLazy>
@@ -135,7 +130,7 @@ const ModeMessage = () => {
 };
 
 export const ColumnLevelLineageControl = () => {
-  const { viewOptions, showColumnLevelLineage, resetColumnLevelLineage } =
+  const { showColumnLevelLineage, resetColumnLevelLineage, interactive } =
     useLineageViewContextSafe();
   const { data: flagData } = useRecceServerFlag();
   const singleEnv = flagData?.single_env_onboarding ?? false;
@@ -162,6 +157,7 @@ export const ColumnLevelLineageControl = () => {
           variant="ghost"
           whiteSpace="nowrap"
           display="inline-flex"
+          isDisabled={!interactive}
           rightIcon={<ChevronDownIcon />}>
           <ModeMessage />
         </MenuButton>
@@ -183,28 +179,17 @@ export const ColumnLevelLineageControl = () => {
         </MenuList>
       </Menu>
 
-      {/* {viewOptions.column_level_lineage?.change_analysis && (
-          <Badge fontSize="8pt" variant="solid" colorScheme="orange" size={"xs"}>
-            change analysis
-            <AnalyzeChangeHint ml={1} />
-          </Badge>
-        )}
-        {viewOptions.column_level_lineage && !viewOptions.column_level_lineage.no_cll && (
-          <Badge fontSize="8pt" variant="solid" colorScheme="yellow" size={"xs"}>
-            cll
-            <CllHint />
-          </Badge>
-        )} */}
-
-      <IconButton
-        icon={<Icon as={VscArrowLeft} boxSize="10px" />}
-        aria-label={""}
-        onClick={() => {
-          void resetColumnLevelLineage(true);
-        }}
-        size="xs"
-        variant="ghost"
-      />
+      {interactive && (
+        <IconButton
+          icon={<Icon as={VscArrowLeft} boxSize="10px" />}
+          aria-label={""}
+          onClick={() => {
+            void resetColumnLevelLineage(true);
+          }}
+          size="xs"
+          variant="ghost"
+        />
+      )}
     </Flex>
   );
 };
