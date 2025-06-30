@@ -388,13 +388,34 @@ export function PrivateLineageView(
         setViewOptions(newViewOptions);
       }
 
+      let cll: ColumnLineageData | undefined;
+      if (viewOptions.column_level_lineage) {
+        try {
+          cll = await getCll(viewOptions.column_level_lineage);
+        } catch (e) {
+          if (e instanceof AxiosError) {
+            const e2 = e as AxiosError<{ detail?: string }>;
+            toast({
+              title: "Column Level Lineage error",
+              description: e2.response?.data.detail ?? e.message,
+              status: "error",
+              isClosable: true,
+              position: "bottom-right",
+            });
+            return;
+          }
+        }
+      }
+
       const [nodes, edges, nodeColumnSetMap] = toReactFlow(lineageGraph, {
         selectedNodes: filteredNodeIds,
+        cll: cll,
       });
       layout(nodes, edges);
       setNodes(nodes);
       setEdges(edges);
       setNodeColumSetMap(nodeColumnSetMap);
+      setCll(cll);
     };
 
     void t();
