@@ -7,7 +7,7 @@ import { useRecceInstanceContext } from "@/lib/hooks/RecceInstanceContext";
 import { trackStateAction } from "@/lib/api/track";
 
 export function StateExporter() {
-  const { readOnly } = useRecceInstanceContext();
+  const { featureToggles } = useRecceInstanceContext();
   const toast = useToast();
 
   const handleExport = async () => {
@@ -45,7 +45,7 @@ export function StateExporter() {
           trackStateAction({ name: "export" });
         }}
         icon={<Icon as={IconExport} verticalAlign="middle" boxSize={"16px"} />}
-        isDisabled={readOnly}
+        isDisabled={featureToggles.disableExportStateFile}
       />
     </Tooltip>
   );

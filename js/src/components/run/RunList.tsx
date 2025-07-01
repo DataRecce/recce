@@ -43,7 +43,7 @@ const RunListItem = ({
   onAddToChecklist: (runId: string) => void;
   onGoToCheck: (checkId: string) => void;
 }) => {
-  const { readOnly, singleEnv } = useRecceInstanceContext();
+  const { featureToggles } = useRecceInstanceContext();
   const { data: fetchedRun } = useQuery({
     queryKey: cacheKeys.run(run.run_id),
     queryFn: async () => {
@@ -55,7 +55,7 @@ const RunListItem = ({
 
   const icon: IconType = findByRunType(run.type)?.icon ?? TbChecklist;
   const checkId = run.check_id;
-  const hideAddToChecklist = readOnly || singleEnv;
+  const hideAddToChecklist = featureToggles.disableUpdateChecklist;
 
   return (
     <Flex

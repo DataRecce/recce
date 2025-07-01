@@ -102,7 +102,7 @@ export function NodeView({ node, onCloseNode }: NodeViewProps) {
     if (formattedColumns.length) {
       query = `select \n  ${formattedColumns.join("\n  ")}\nfrom {{ ref("${node.name}") }}`;
     }
-    const { readOnly } = useRecceInstanceContext();
+    const { featureToggles } = useRecceInstanceContext();
     if (
       node.resourceType === "model" ||
       node.resourceType === "seed" ||
@@ -115,7 +115,7 @@ export function NodeView({ node, onCloseNode }: NodeViewProps) {
             size="xs"
             variant="outline"
             rightIcon={<ChevronDownIcon />}
-            isDisabled={readOnly}>
+            isDisabled={featureToggles.disableNodeActionDropdown}>
             Explore
           </MenuButton>
           <MenuList>

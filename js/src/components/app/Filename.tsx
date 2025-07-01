@@ -95,7 +95,7 @@ interface FilenameState {
 }
 
 export const Filename = () => {
-  const { readOnly } = useRecceInstanceContext();
+  const { featureToggles } = useRecceInstanceContext();
   const { fileName, cloudMode, isDemoSite, envInfo } = useLineageGraphContext();
   const modalDisclosure = useDisclosure();
   const overwriteDisclosure = useDisclosure();
@@ -182,7 +182,7 @@ export const Filename = () => {
 
   const titleNewInstance = "New Instance" + (hasNonPresetChecks ? " (unsaved)" : "");
   let titleReadOnlyState;
-  if (readOnly && fileName) {
+  if (featureToggles.disableSaveToFile && fileName) {
     const generatedAt = envInfo?.stateMetadata?.generated_at;
     const formattedDate = generatedAt ? formatRunDateTime(new Date(generatedAt)) : null;
     titleReadOnlyState = formattedDate ? `${fileName} (${formattedDate})` : null;
@@ -192,7 +192,7 @@ export const Filename = () => {
     <>
       <Flex justifyContent="center" alignItems="center">
         <Box fontWeight="600">{titleReadOnlyState ?? fileName ?? titleNewInstance}</Box>
-        {!readOnly && (
+        {!featureToggles.disableSaveToFile && (
           <Tooltip label={fileName ? "Change Filename" : "Save"} openDelay={1000}>
             <IconButton onClick={handleOpen} aria-label={""} variant="unstyled" size="sm">
               <Icon as={fileName ? IconEdit : IconSave} boxSize={"16px"} verticalAlign="middle" />

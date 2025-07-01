@@ -42,7 +42,7 @@ function SqlEditor({
   schemas,
   ...props
 }: SqlEditorProps) {
-  const { readOnly } = useRecceInstanceContext();
+  const { featureToggles } = useRecceInstanceContext();
   const handleEditorChange = (value: string | undefined) => {
     if (value !== undefined && onChange) {
       onChange(value);
@@ -83,7 +83,7 @@ function SqlEditor({
               // leftIcon={<Icon as={RiPlayMiniFill} />}
               leftIcon={<Icon as={FaPlay} />}
               padding={"6px 12px"}
-              isDisabled={readOnly}>
+              isDisabled={featureToggles.disableDatabaseQuery}>
               Run Query
             </Button>
           )}

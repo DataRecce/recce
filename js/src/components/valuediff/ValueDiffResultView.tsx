@@ -27,7 +27,7 @@ type ValueDiffResultViewProp = RunResultViewProps<ValueDiffParams, ValueDiffResu
 
 function ColumnNameCell({ params, column }: { params: ValueDiffParams; column: string }) {
   const { runAction } = useRecceActionContext();
-  const { readOnly } = useRecceInstanceContext();
+  const { featureToggles } = useRecceInstanceContext();
   const handleValueDiffDetail = (
     paramsOverride?: Partial<ValueDiffParams>,
     options?: RecceActionOptions,
@@ -59,7 +59,7 @@ function ColumnNameCell({ params, column }: { params: ValueDiffParams; column: s
               icon={<Icon as={VscKebabVertical} />}
               variant="unstyled"
               size={"sm"}
-              isDisabled={readOnly}
+              isDisabled={featureToggles.disableDatabaseQuery}
             />
 
             <Portal>
