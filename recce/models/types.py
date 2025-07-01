@@ -151,6 +151,26 @@ class CllNode(BaseModel):
     # Column to column dependencies
     columns: Dict[str, CllColumn] = Field(default_factory=dict)
 
+    @classmethod
+    def build_cll_node(cls, manifest, resource_key, node_id) -> Optional["CllNode"]:
+        resources = getattr(manifest, resource_key)
+        if node_id not in resources:
+            return None
+        n = resources[node_id]
+        if resource_key == "nodes" and n.resource_type not in ["model", "seed", "snapshot"]:
+            return None
+        cll_node = CllNode(
+            id=n.unique_id,
+            name=n.name,
+            package_name=n.package_name,
+            resource_type=n.resource_type,
+        )
+        if resource_key == "sources":
+            cll_node.source_name = n.source_name
+        elif resource_key == "nodes":
+            cll_node.raw_code = n.raw_code
+        return cll_node
+
 
 class CllData(BaseModel):
     nodes: Dict[str, CllNode] = Field(default_factory=dict)

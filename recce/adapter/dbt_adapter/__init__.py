@@ -990,13 +990,7 @@ class DbtAdapter(BaseAdapter):
                 cll_node_columns: Dict[str, CllColumn] = {}
 
                 if cll_node_id in manifest.sources:
-                    n = manifest.sources[cll_node_id]
-                    cll_node = CllNode(
-                        id=n.unique_id,
-                        name=n.name,
-                        source_name=n.source_name,
-                        package_name=n.package_name,
-                    )
+                    cll_node = CllNode.build_cll_node(manifest, "sources", cll_node_id)
                     if self.curr_catalog and cll_node_id in self.curr_catalog.sources:
                         cll_node_columns = {
                             column.name: CllColumn(
@@ -1008,15 +1002,7 @@ class DbtAdapter(BaseAdapter):
                             for column in self.curr_catalog.sources[cll_node_id].columns.values()
                         }
                 elif cll_node_id in manifest.nodes:
-                    n = manifest.nodes[cll_node_id]
-                    if n.resource_type not in ["model", "seed", "snapshot"]:
-                        continue
-                    cll_node = CllNode(
-                        id=n.unique_id,
-                        name=n.name,
-                        package_name=n.package_name,
-                        resource_type=n.resource_type,
-                    )
+                    cll_node = CllNode.build_cll_node(manifest, "nodes", cll_node_id)
                     if self.curr_catalog and cll_node_id in self.curr_catalog.nodes:
                         cll_node_columns = {
                             column.name: CllColumn(
@@ -1028,29 +1014,11 @@ class DbtAdapter(BaseAdapter):
                             for column in self.curr_catalog.nodes[cll_node_id].columns.values()
                         }
                 elif cll_node_id in manifest.exposures:
-                    n = manifest.exposures[cll_node_id]
-                    cll_node = CllNode(
-                        id=n.unique_id,
-                        name=n.name,
-                        package_name=n.package_name,
-                        resource_type=n.resource_type,
-                    )
+                    cll_node = CllNode.build_cll_node(manifest, "exposures", cll_node_id)
                 elif hasattr(manifest, "semantic_models") and cll_node_id in manifest.semantic_models:
-                    n = manifest.semantic_models[cll_node_id]
-                    cll_node = CllNode(
-                        id=n.unique_id,
-                        name=n.name,
-                        package_name=n.package_name,
-                        resource_type=n.resource_type,
-                    )
+                    cll_node = CllNode.build_cll_node(manifest, "semantic_models", cll_node_id)
                 elif cll_node_id in manifest.metrics:
-                    n = manifest.metrics[cll_node_id]
-                    cll_node = CllNode(
-                        id=n.unique_id,
-                        name=n.name,
-                        package_name=n.package_name,
-                        resource_type=n.resource_type,
-                    )
+                    cll_node = CllNode.build_cll_node(manifest, "metrics", cll_node_id)
 
                 if not cll_node:
                     continue
@@ -1298,17 +1266,8 @@ class DbtAdapter(BaseAdapter):
         # model, seed, snapshot
         if node_id in manifest.nodes:
             found = manifest.nodes[node_id]
-            if found.resource_type not in ["model", "seed", "snapshot"]:
-                return None, []
-
             unique_id = found.unique_id
-            node = CllNode(
-                id=found.unique_id,
-                name=found.name,
-                package_name=found.package_name,
-                resource_type=found.resource_type,
-                raw_code=found.raw_code,
-            )
+            node = CllNode.build_cll_node(manifest, "nodes", node_id)
             if hasattr(found.depends_on, "nodes"):
                 parent_list = found.depends_on.nodes
 
@@ -1324,14 +1283,7 @@ class DbtAdapter(BaseAdapter):
         if node_id in manifest.sources:
             found = manifest.sources[node_id]
             unique_id = found.unique_id
-
-            node = CllNode(
-                id=found.unique_id,
-                name=found.name,
-                package_name=found.package_name,
-                resource_type=found.resource_type,
-                source_name=found.source_name,
-            )
+            node = CllNode.build_cll_node(manifest, "sources", node_id)
             parent_list = []
 
             if catalog is not None and unique_id in catalog.sources:
@@ -1345,35 +1297,19 @@ class DbtAdapter(BaseAdapter):
         # exposure
         if node_id in manifest.exposures:
             found = manifest.exposures[node_id]
-
-            node = CllNode(
-                id=found.unique_id,
-                name=found.name,
-                package_name=found.package_name,
-                resource_type=found.resource_type,
-            )
+            node = CllNode.build_cll_node(manifest, "exposures", node_id)
             if hasattr(found.depends_on, "nodes"):
                 parent_list = found.depends_on.nodes
 
         if hasattr(manifest, "semantic_models") and node_id in manifest.semantic_models:
             found = manifest.semantic_models[node_id]
-            node = CllNode(
-                id=found.unique_id,
-                name=found.name,
-                package_name=found.package_name,
-                resource_type=found.resource_type,
-            )
+            node = CllNode.build_cll_node(manifest, "semantic_models", node_id)
             if hasattr(found.depends_on, "nodes"):
                 parent_list = found.depends_on.nodes
 
         if node_id in manifest.metrics:
             found = manifest.metrics[node_id]
-            node = CllNode(
-                id=found.unique_id,
-                name=found.name,
-                package_name=found.package_name,
-                resource_type=found.resource_type,
-            )
+            node = CllNode.build_cll_node(manifest, "metrics", node_id)
             if hasattr(found.depends_on, "nodes"):
                 parent_list = found.depends_on.nodes
 
