@@ -955,12 +955,15 @@ class DbtAdapter(BaseAdapter):
             cll_node_ids = cll_node_ids.union(find_downstream(cll_node_ids, manifest_dict.get("child_map")))
 
         if not no_cll:
+            allowed_related_nodes = set()
+            for key in ["sources", "nodes", "exposures", "metrics"]:
+                attr = getattr(manifest, key)
+                allowed_related_nodes.update(set(attr.keys()))
+            if hasattr(manifest, "semantic_models"):
+                attr = getattr(manifest, "semantic_models")
+                allowed_related_nodes.update(set(attr.keys()))
             for cll_node_id in cll_node_ids:
-                if (
-                    cll_node_id not in manifest.sources
-                    and cll_node_id not in manifest.nodes
-                    and cll_node_id not in manifest.exposures
-                ):
+                if cll_node_id not in allowed_related_nodes:
                     continue
                 cll_data_one = deepcopy(self.get_cll_cached(cll_node_id, base=False))
                 if cll_data_one is None:
@@ -1026,6 +1029,22 @@ class DbtAdapter(BaseAdapter):
                         }
                 elif cll_node_id in manifest.exposures:
                     n = manifest.exposures[cll_node_id]
+                    cll_node = CllNode(
+                        id=n.unique_id,
+                        name=n.name,
+                        package_name=n.package_name,
+                        resource_type=n.resource_type,
+                    )
+                elif hasattr(manifest, "semantic_models") and cll_node_id in manifest.semantic_models:
+                    n = manifest.semantic_models[cll_node_id]
+                    cll_node = CllNode(
+                        id=n.unique_id,
+                        name=n.name,
+                        package_name=n.package_name,
+                        resource_type=n.resource_type,
+                    )
+                elif cll_node_id in manifest.metrics:
+                    n = manifest.metrics[cll_node_id]
                     cll_node = CllNode(
                         id=n.unique_id,
                         name=n.name,
@@ -1327,6 +1346,28 @@ class DbtAdapter(BaseAdapter):
         if node_id in manifest.exposures:
             found = manifest.exposures[node_id]
 
+            node = CllNode(
+                id=found.unique_id,
+                name=found.name,
+                package_name=found.package_name,
+                resource_type=found.resource_type,
+            )
+            if hasattr(found.depends_on, "nodes"):
+                parent_list = found.depends_on.nodes
+
+        if hasattr(manifest, "semantic_models") and node_id in manifest.semantic_models:
+            found = manifest.semantic_models[node_id]
+            node = CllNode(
+                id=found.unique_id,
+                name=found.name,
+                package_name=found.package_name,
+                resource_type=found.resource_type,
+            )
+            if hasattr(found.depends_on, "nodes"):
+                parent_list = found.depends_on.nodes
+
+        if node_id in manifest.metrics:
+            found = manifest.metrics[node_id]
             node = CllNode(
                 id=found.unique_id,
                 name=found.name,
