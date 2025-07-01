@@ -1050,7 +1050,12 @@ class DbtAdapter(BaseAdapter):
         if node_id is None and column is None:
             if change_analysis:
                 # If change analysis is requested, we need to find the nodes that have changes
-                for nid in self.get_lineage_diff().diff.keys():
+                for nid, nd in self.get_lineage_diff().diff.items():
+                    if nd.change_status == "added":
+                        extra_node_ids.add(nid)
+                    if nd.change_status == "removed":
+                        extra_node_ids.add(nid)
+
                     node_diff = self.get_change_analysis_cached(nid)
                     if node_diff is not None and node_diff.change is not None:
                         extra_node_ids.add(nid)
