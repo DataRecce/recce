@@ -4,6 +4,7 @@ import logging
 import os
 import signal
 import uuid
+import webbrowser
 from contextlib import asynccontextmanager
 from dataclasses import dataclass
 from datetime import datetime, timedelta
@@ -60,6 +61,8 @@ class AppState:
     lifetime: Optional[int] = None
     lifetime_expired_at: Optional[datetime] = None
     share_url: Optional[str] = None
+    host: Optional[str] = None
+    port: Optional[int] = None
 
 
 def schedule_lifetime_termination(app_state):
@@ -127,6 +130,19 @@ def teardown_ready_only(app_state: AppState):
     pass
 
 
+def setup_preview(app_state: AppState):
+    state_loader = app_state.state_loader
+    kwargs = app_state.kwargs
+    ctx = load_context(**kwargs, state_loader=state_loader)
+    return ctx
+
+
+def teardown_preview(app_state: AppState, ctx: RecceContext):
+    state_loader = app_state.state_loader
+    state_loader.export(ctx.export_state())
+    pass
+
+
 @asynccontextmanager
 async def lifespan(fastapi: FastAPI):
     ctx = None
@@ -136,6 +152,13 @@ async def lifespan(fastapi: FastAPI):
         ctx = setup_server(app_state)
     elif app_state.command == "read_only":
         setup_ready_only(app_state)
+    elif app_state.command == "preview":
+        ctx = setup_preview(app_state)
+
+    # TODO: Remove this part before mege
+    if app_state.host and app_state.port:
+        endpoint_url = f"http://{app_state.host}:{app_state.port}"
+        webbrowser.open(endpoint_url)
 
     yield
 
@@ -143,6 +166,8 @@ async def lifespan(fastapi: FastAPI):
         teardown_server(app_state, ctx)
     elif app_state.command == "read_only":
         teardown_ready_only(app_state)
+    elif app_state.command == "preview":
+        teardown_preview(app_state, ctx)
 
 
 app = FastAPI(lifespan=lifespan)
@@ -241,6 +266,7 @@ async def health_check(request: Request):
 
 class RecceInstanceInfoOut(BaseModel):
     read_only: bool
+    preview: bool
     single_env: bool
     authed: bool
     lifetime_expired_at: Optional[datetime] = None
@@ -258,6 +284,7 @@ async def recce_instance_info():
 
     return {
         "read_only": read_only,
+        "preview": flag.get("preview", False),
         "single_env": single_env,
         "authed": True if api_token else False,
         "lifetime_expired_at": app_state.lifetime_expired_at,  # UTC timezone

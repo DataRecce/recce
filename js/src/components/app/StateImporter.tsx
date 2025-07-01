@@ -26,7 +26,7 @@ import { useRecceInstanceContext } from "@/lib/hooks/RecceInstanceContext";
 import { trackStateAction } from "@/lib/api/track";
 
 export function StateImporter({ checksOnly = true }: { checksOnly?: boolean }) {
-  const { readOnly } = useRecceInstanceContext();
+  const { featureToggles } = useRecceInstanceContext();
   const toast = useToast();
   const queryClient = useQueryClient();
   const hiddenFileInput = useRef<HTMLInputElement>(null);
@@ -119,7 +119,7 @@ export function StateImporter({ checksOnly = true }: { checksOnly?: boolean }) {
             trackStateAction({ name: "import" });
           }}
           icon={<Icon as={IconImport} />}
-          isDisabled={readOnly || isDemoSite}
+          isDisabled={featureToggles.disableImportStateFile || isDemoSite}
         />
       </Tooltip>
       <input

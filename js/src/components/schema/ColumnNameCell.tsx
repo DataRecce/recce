@@ -34,7 +34,7 @@ export function ColumnNameCell({
 }) {
   const lineageViewContext = useLineageViewContext();
   const { runAction } = useRecceActionContext();
-  const { readOnly } = useRecceInstanceContext();
+  const { featureToggles } = useRecceInstanceContext();
   const { name, baseType, currentType, baseIndex, currentIndex } = row;
   const columnType = currentType ?? baseType;
 
@@ -81,7 +81,7 @@ export function ColumnNameCell({
                   size={"sm"}
                   color="gray"
                   _hover={{ color: "black" }}
-                  isDisabled={readOnly}
+                  isDisabled={featureToggles.disableDatabaseQuery}
                   onClick={(e) => {
                     // prevent the click event from propagating to the Cell clicking
                     e.stopPropagation();

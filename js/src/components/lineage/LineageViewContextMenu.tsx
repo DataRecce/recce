@@ -396,8 +396,8 @@ export const LineageViewContextMenu = ({
   y,
   node,
 }: LineageViewContextMenuProps) => {
-  const { readOnly } = useRecceInstanceContext();
-  if (readOnly) {
+  const { featureToggles } = useRecceInstanceContext();
+  if (featureToggles.disableViewActionDropdown) {
     <ContextMenu menuItems={[]} isOpen={isOpen} onClose={onClose} x={x} y={y} />;
   } else if (node?.type === "customNode") {
     return <ModelNodeContextMenu x={x} y={y} isOpen={isOpen} onClose={onClose} node={node} />;

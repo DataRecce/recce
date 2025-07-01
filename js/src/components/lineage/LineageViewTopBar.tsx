@@ -347,7 +347,7 @@ const ControlItem = (props: {
 export const LineageViewTopBar = () => {
   const { deselect, focusedNode, selectedNodes, ...lineageViewContext } =
     useLineageViewContextSafe();
-  const { readOnly } = useRecceInstanceContext();
+  const { featureToggles } = useRecceInstanceContext();
   const { data: flags } = useRecceServerFlag();
   const isSingleEnvOnboarding = flags?.single_env_onboarding;
 
@@ -430,7 +430,7 @@ export const LineageViewTopBar = () => {
                   as={Button}
                   size={"xs"}
                   rightIcon={<ChevronDownIcon />}
-                  isDisabled={readOnly}>
+                  isDisabled={featureToggles.disableViewActionDropdown}>
                   Actions
                 </MenuButton>
 

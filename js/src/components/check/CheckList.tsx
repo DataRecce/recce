@@ -41,7 +41,7 @@ const ChecklistItem = ({
   onSelect: (checkId: string) => void;
   onMarkAsApproved: () => void;
 }) => {
-  const { readOnly } = useRecceInstanceContext();
+  const { featureToggles } = useRecceInstanceContext();
   const queryClient = useQueryClient();
   const checkId = check.check_id;
   const { mutate } = useMutation({
@@ -66,8 +66,9 @@ const ChecklistItem = ({
   };
 
   const icon: IconType = findByRunType(check.type)?.icon ?? TbChecklist;
-  // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
-  const isMarkAsApprovedDisabled = isDisabledByNoResult(check.type ?? "", run) || readOnly;
+
+  const isMarkAsApprovedDisabled =
+    isDisabledByNoResult(check.type ?? "", run) || featureToggles.disableUpdateChecklist;
   // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
   const isNoResult = isDisabledByNoResult(check.type ?? "", run);
 

@@ -77,13 +77,13 @@ interface CheckDetailProps {
 }
 
 export const CheckDetail = ({ checkId, refreshCheckList }: CheckDetailProps) => {
-  const { readOnly } = useRecceInstanceContext();
+  const { featureToggles } = useRecceInstanceContext();
   const queryClient = useQueryClient();
   const [, setLocation] = useLocation();
   const { successToast, failToast } = useClipBoardToast();
   const { markedAsApprovedToast } = useCheckToast();
   const [submittedRunId, setSubmittedRunId] = useState<string>();
-  const [progress, setProgress] = useState<Run["progress"]>();
+  const [progress] = useState<Run["progress"]>();
   const [isAborting, setAborting] = useState(false);
   const [presetCheckTemplate, setPresetCheckTemplate] = useState<string>("");
   const {
@@ -279,7 +279,7 @@ export const CheckDetail = ({ checkId, refreshCheckList }: CheckDetailProps) => 
                   onClick={() => {
                     handleDelete();
                   }}
-                  isDisabled={readOnly}>
+                  isDisabled={featureToggles.disableUpdateChecklist}>
                   Delete
                 </MenuItem>
               </MenuList>
@@ -309,7 +309,10 @@ export const CheckDetail = ({ checkId, refreshCheckList }: CheckDetailProps) => 
                 onClick={() => {
                   handleApproveCheck();
                 }}
-                isDisabled={isDisabledByNoResult(check?.type ?? "", run) || readOnly}>
+                isDisabled={
+                  isDisabledByNoResult(check?.type ?? "", run) ||
+                  featureToggles.disableUpdateChecklist
+                }>
                 {check?.is_checked ? "Approved" : "Mark as Approved"}
               </Button>
             </Tooltip>
@@ -348,7 +351,7 @@ export const CheckDetail = ({ checkId, refreshCheckList }: CheckDetailProps) => 
                     isLoading={isRunning}
                     size="sm"
                     onClick={() => handleRerun()}
-                    isDisabled={readOnly}>
+                    isDisabled={featureToggles.disableDatabaseQuery}>
                     Rerun
                   </Button>
                 </Tooltip>
@@ -400,7 +403,7 @@ export const CheckDetail = ({ checkId, refreshCheckList }: CheckDetailProps) => 
                         onClick={handleRerun}
                         colorScheme="blue"
                         size="sm"
-                        isDisabled={readOnly}>
+                        isDisabled={featureToggles.disableDatabaseQuery}>
                         Run Query
                       </Button>
                     </VStack>
