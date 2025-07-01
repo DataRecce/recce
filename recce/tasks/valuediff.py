@@ -159,7 +159,7 @@ class ValueDiffTask(Task, ValueDiffMixin):
                 match_status,
                 count(*) as count_records
             from joined
-            group by column_name, match_status
+            group by 1, 2
         )
 
         select
