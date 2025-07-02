@@ -481,13 +481,18 @@ export function PrivateLineageView(
   };
 
   const resetColumnLevelLineage = async (previous?: boolean) => {
-    if (previous && cllHistory.length > 0) {
+    if (previous) {
+      if (cllHistory.length == 0) {
+        return;
+      }
       const previousCll = cllHistory.pop();
       if (previousCll) {
         await showColumnLevelLineage(previousCll, true);
       } else {
         await showColumnLevelLineage(undefined, true);
       }
+    } else {
+      await showColumnLevelLineage(undefined, true);
     }
   };
 

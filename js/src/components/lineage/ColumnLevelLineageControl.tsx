@@ -18,10 +18,12 @@ import {
   MenuList,
   Portal,
   Divider,
+  Box,
 } from "@chakra-ui/react";
 import { useLineageViewContextSafe } from "./LineageViewContext";
 import { VscArrowLeft } from "react-icons/vsc";
 import { useRecceServerFlag } from "@/lib/hooks/useRecceServerFlag";
+import { FaRegDotCircle } from "react-icons/fa";
 
 const AnalyzeChangeHint = ({ ml }: { ml?: number }) => {
   return (
@@ -87,7 +89,7 @@ const ModeMessage = () => {
   }
 
   if (cllInput.node_id === undefined) {
-    return "Impact Radius";
+    return <Text as="span">Impact Radius for All Changed Models</Text>;
   }
 
   const nodeName =
@@ -100,7 +102,9 @@ const ModeMessage = () => {
 
     return (
       <>
-        <Text as="span">Impact Radius for </Text>
+        <Text as="span" mr="5px">
+          Impact Radius for
+        </Text>
         <Code
           onClick={() => {
             centerNode(nodeId);
@@ -114,7 +118,9 @@ const ModeMessage = () => {
     const nodeId = `${cllInput.node_id}_${cllInput.column}`;
     return (
       <>
-        <Text as="span">Column Lineage for </Text>
+        <Text as="span" mr="5px">
+          Column Lineage for{" "}
+        </Text>
         <Code
           onClick={() => {
             centerNode(nodeId);
@@ -128,68 +134,58 @@ const ModeMessage = () => {
 };
 
 export const ColumnLevelLineageControl = ({ allowBack }: { allowBack: boolean }) => {
-  const { showColumnLevelLineage, resetColumnLevelLineage, interactive } =
+  const { showColumnLevelLineage, resetColumnLevelLineage, interactive, viewOptions } =
     useLineageViewContextSafe();
   const { data: flagData } = useRecceServerFlag();
   const singleEnv = flagData?.single_env_onboarding ?? false;
 
   return (
-    <Flex
-      minWidth="300px"
-      direction="row"
-      alignItems="center"
-      gap="5px"
-      p="5px 10px"
-      borderRadius="md"
-      boxShadow="md"
-      border="1px solid"
-      borderColor="gray.200"
-      bg="white"
-      justifyContent="space-between"
-      fontSize={"10pt"}>
-      <Menu>
-        <MenuButton
-          flex="1"
-          as={Button}
-          size="sm"
-          variant="ghost"
-          whiteSpace="nowrap"
-          display="inline-flex"
-          isDisabled={!interactive}
-          rightIcon={<ChevronDownIcon />}>
-          <ModeMessage />
-        </MenuButton>
-        <MenuList>
-          <MenuItem
+    <Flex direction="row" gap="5px">
+      {!singleEnv && (
+        <Box
+          borderRadius="md"
+          boxShadow="md"
+          border="1px solid"
+          borderColor="gray.200"
+          bg="white"
+          fontSize={"10pt"}>
+          <Button
+            leftIcon={<FaRegDotCircle />}
+            size="sm"
+            variant="ghost"
+            whiteSpace="nowrap"
+            display="inline-flex"
+            isDisabled={!interactive}
             onClick={() => {
-              void showColumnLevelLineage(undefined);
+              void showColumnLevelLineage({ no_upstream: true, change_analysis: true });
             }}>
-            Default View
-          </MenuItem>
-          {!singleEnv && (
-            <MenuItem
-              onClick={() => {
-                void showColumnLevelLineage({ no_upstream: true, change_analysis: true });
-              }}>
-              Impact Radius
-            </MenuItem>
-          )}
-        </MenuList>
-      </Menu>
+            Impact Radius
+          </Button>
+        </Box>
+      )}
 
-      {interactive && allowBack && (
-        <>
-          <Divider orientation="vertical" height="24px" />
+      {viewOptions.column_level_lineage && (
+        <Flex
+          borderRadius="md"
+          boxShadow="md"
+          border="1px solid"
+          borderColor="gray.200"
+          bg="white"
+          fontSize={"10pt"}
+          p="5px 10px"
+          alignItems={"center"}>
+          <ModeMessage />
           <IconButton
-            icon={<Icon as={VscArrowLeft} boxSize="10px" />}
+            icon={<CloseIcon boxSize="10px" />}
+            variant="ghost"
+            size="xs"
+            ml="2"
             aria-label={""}
             onClick={() => {
-              void resetColumnLevelLineage(true);
+              void resetColumnLevelLineage();
             }}
-            size="xs"
-            variant="ghost"
           />
-        </>
+        </Flex>
       )}
     </Flex>
   );
