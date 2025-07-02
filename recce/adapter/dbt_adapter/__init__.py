@@ -31,9 +31,10 @@ from recce.util.lineage import (
     find_downstream,
     find_upstream,
 )
+from recce.util.perf_tracking import LineagePerfTracker
 
 from ...tasks.profile import ProfileTask
-from ...util.breaking import parse_change_category
+from ...util.breaking import BreakingPerformanceTracking, parse_change_category
 
 try:
     import agate
@@ -658,8 +659,8 @@ class DbtAdapter(BaseAdapter):
     @lru_cache(maxsize=2)
     def get_lineage_cached(self, base: Optional[bool] = False, cache_key=0):
         if base is False:
-            cll_tracker = CLLPerformanceTracking()
-            cll_tracker.start_lineage()
+            perf_tracker = LineagePerfTracker()
+            perf_tracker.start_lineage()
 
         manifest = self.curr_manifest if base is False else self.base_manifest
         catalog = self.curr_catalog if base is False else self.base_catalog
@@ -777,10 +778,10 @@ class DbtAdapter(BaseAdapter):
         parent_map = self.build_parent_map(nodes, base)
 
         if base is False:
-            cll_tracker.end_lineage()
-            cll_tracker.set_total_nodes(len(nodes))
-            log_performance("model lineage", cll_tracker.to_dict())
-            cll_tracker.reset()
+            perf_tracker.end_lineage()
+            perf_tracker.set_total_nodes(len(nodes))
+            log_performance("model lineage", perf_tracker.to_dict())
+            perf_tracker.reset()
 
         return dict(
             parent_map=parent_map,
@@ -814,17 +815,22 @@ class DbtAdapter(BaseAdapter):
 
     @lru_cache(maxsize=128)
     def get_change_analysis_cached(self, node_id: str):
+        breaking_perf_tracker = BreakingPerformanceTracking()
         lineage_diff = self.get_lineage_diff()
         diff = lineage_diff.diff
 
         if node_id not in diff or diff[node_id].change_status != "modified":
             return diff.get(node_id)
 
+        breaking_perf_tracker.increment_modified_nodes()
+        breaking_perf_tracker.start_lineage_diff()
+
         base = lineage_diff.base
         current = lineage_diff.current
 
         base_manifest = as_manifest(self.get_manifest(True))
         curr_manifest = as_manifest(self.get_manifest(False))
+        breaking_perf_tracker.record_checkpoint("manifest")
 
         def ref_func(*args):
             if len(args) == 1:
@@ -895,6 +901,7 @@ class DbtAdapter(BaseAdapter):
                     old_schema=base_schema,
                     new_schema=curr_schema,
                     dialect=dialect,
+                    perf_tracking=breaking_perf_tracker,
                 )
 
                 # Make sure that the case of the column names are the same
@@ -917,6 +924,9 @@ class DbtAdapter(BaseAdapter):
                 # TODO: telemetry
                 pass
 
+        breaking_perf_tracker.end_lineage_diff()
+        log_performance("change analysis per node", breaking_perf_tracker.to_dict())
+        breaking_perf_tracker.reset()
         node_diff = diff.get(node_id)
         node_diff.change = change
         return node_diff
@@ -931,7 +941,15 @@ class DbtAdapter(BaseAdapter):
         no_downstream: Optional[bool] = False,
         no_filter: Optional[bool] = False,
     ) -> CllData:
-        cll_tracker = CLLPerformanceTracking()
+        cll_tracker = LineagePerfTracker()
+        cll_tracker.set_params(
+            has_node=node_id is not None,
+            has_column=column is not None,
+            change_analysis=change_analysis,
+            no_cll=no_cll,
+            no_upstream=no_upstream,
+            no_downstream=no_downstream,
+        )
         cll_tracker.start_column_lineage()
 
         manifest = self.curr_manifest
@@ -943,6 +961,8 @@ class DbtAdapter(BaseAdapter):
         else:
             lineage_diff = self.get_lineage_diff()
             cll_node_ids = set(lineage_diff.diff.keys())
+
+        cll_tracker.set_init_nodes(len(cll_node_ids))
 
         nodes = {}
         columns = {}
@@ -966,11 +986,15 @@ class DbtAdapter(BaseAdapter):
                 if cll_node_id not in allowed_related_nodes:
                     continue
                 cll_data_one = deepcopy(self.get_cll_cached(cll_node_id, base=False))
+                cll_tracker.increment_cll_nodes()
                 if cll_data_one is None:
                     continue
 
                 nodes[cll_node_id] = cll_data_one.nodes.get(cll_node_id)
-                node_diff = self.get_change_analysis_cached(cll_node_id) if change_analysis else None
+                node_diff = None
+                if change_analysis:
+                    node_diff = self.get_change_analysis_cached(cll_node_id)
+                    cll_tracker.increment_change_analysis_nodes()
                 if node_diff is not None:
                     nodes[cll_node_id].change_status = node_diff.change_status
                     if node_diff.change is not None:
@@ -1029,7 +1053,10 @@ class DbtAdapter(BaseAdapter):
                     continue
                 nodes[cll_node_id] = cll_node
 
-                node_diff = self.get_change_analysis_cached(cll_node_id) if change_analysis else None
+                node_diff = None
+                if change_analysis:
+                    node_diff = self.get_change_analysis_cached(cll_node_id)
+                    cll_tracker.increment_change_analysis_nodes()
                 if node_diff is not None:
                     cll_node.change_status = node_diff.change_status
                     if node_diff.change is not None:
@@ -1111,6 +1138,7 @@ class DbtAdapter(BaseAdapter):
         else:
             anchor_node_ids.add(f"{node_id}_{column}")
 
+        cll_tracker.set_anchor_nodes(len(anchor_node_ids))
         result_node_ids = set(anchor_node_ids)
         if not no_upstream:
             result_node_ids = result_node_ids.union(find_upstream(anchor_node_ids, parent_map))
@@ -1129,7 +1157,7 @@ class DbtAdapter(BaseAdapter):
             parent_map, child_map = filter_dependency_maps(parent_map, child_map, result_node_ids)
 
         cll_tracker.end_column_lineage()
-        cll_tracker.set_total_nodes(len(nodes))
+        cll_tracker.set_total_nodes(len(nodes) + len(columns))
         log_performance("column level lineage", cll_tracker.to_dict())
         cll_tracker.reset()
 
@@ -1147,6 +1175,9 @@ class DbtAdapter(BaseAdapter):
         node, parent_list = self.get_cll_node(node_id, base=base)
         if node is None:
             return None
+
+        cll_tracker.set_total_nodes(1)
+        cll_tracker.start_column_lineage()
 
         def _apply_all_columns(node: CllNode, transformation_type):
             cll_data = CllData()
@@ -1272,6 +1303,10 @@ class DbtAdapter(BaseAdapter):
                     depends_on.add(parent_key)
                 column.transformation_type = c2c_map[name].transformation_type
             cll_data.parent_map[column_id] = set(depends_on)
+
+        cll_tracker.end_column_lineage()
+        log_performance("column level lineage per node", cll_tracker.to_dict())
+        cll_tracker.reset()
         return cll_data
 
     def get_cll_node(self, node_id: str, base: Optional[bool] = False) -> Tuple[Optional[CllNode], list[str]]:
