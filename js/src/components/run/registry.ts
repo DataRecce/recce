@@ -19,7 +19,7 @@ import { ValueDiffForm } from "../valuediff/ValueDiffForm";
 import { ValueDiffResultView } from "../valuediff/ValueDiffResultView";
 import { RunFormProps, RunResultViewProps } from "./types";
 import { IconType } from "react-icons";
-import { LuBarChartHorizontalBig } from "react-icons/lu";
+import { LuChartBarBig } from "react-icons/lu";
 import { MdFormatListNumberedRtl, MdSchema } from "react-icons/md";
 import { ComponentWithAs } from "@chakra-ui/react";
 import { ElementType } from "react";
@@ -92,7 +92,7 @@ const registry: Record<string, RegistryEntry<any, any>> = {
   },
   top_k_diff: {
     title: "Top-K Diff",
-    icon: LuBarChartHorizontalBig,
+    icon: LuChartBarBig,
     RunResultView: TopKDiffResultView,
     RunForm: TopKDiffForm,
   },

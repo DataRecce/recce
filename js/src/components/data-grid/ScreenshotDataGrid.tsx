@@ -1,5 +1,5 @@
 import "react-data-grid/lib/styles.css";
-import DataGrid, { DataGridProps } from "react-data-grid";
+import { DataGrid, DataGridProps } from "react-data-grid";
 import { Flex, forwardRef, Text } from "@chakra-ui/react";
 
 type ScreenshotDataGridProps = DataGridProps<any>;

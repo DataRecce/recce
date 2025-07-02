@@ -8,7 +8,7 @@ import { useLineageGraphContext } from "@/lib/hooks/LineageGraphContext";
 import { NodeData } from "@/lib/api/info";
 import { trackColumnLevelLineage } from "@/lib/api/track";
 import { useLineageViewContext } from "../lineage/LineageViewContext";
-import { CellClickArgs } from "react-data-grid";
+import { CellMouseArgs } from "react-data-grid";
 
 interface SchemaViewProps {
   base?: NodeData;
@@ -89,7 +89,7 @@ function PrivateSingleEnvSchemaView({ current }: { current?: NodeData }, ref: an
             rowKeyGetter={rowKeyGetter}
             selectedRows={selectedRows}
             onSelectedRowsChange={() => {}}
-            onCellClick={async (args: CellClickArgs<SchemaDiffRow>) => {
+            onCellClick={async (args: CellMouseArgs<SchemaDiffRow>) => {
               await handleViewCll(args.row.name);
             }}
             rowClass={() => {
@@ -202,7 +202,7 @@ export function PrivateSchemaView(
             rowKeyGetter={rowKeyGetter}
             selectedRows={selectedRows}
             onSelectedRowsChange={() => {}}
-            onCellClick={async (args: CellClickArgs<SchemaDiffRow>) => {
+            onCellClick={async (args: CellMouseArgs<SchemaDiffRow>) => {
               if (args.row.baseIndex !== undefined && args.row.currentIndex === undefined) {
                 return;
               }
