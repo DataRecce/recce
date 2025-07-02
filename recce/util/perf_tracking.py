@@ -1,11 +1,9 @@
 import time
 from dataclasses import dataclass
 
-from recce.util import SingletonMeta
-
 
 @dataclass
-class LineagePerfTracker(metaclass=SingletonMeta):
+class LineagePerfTracker:
     lineage_start = None
     lineage_elapsed = None
     column_lineage_start = None

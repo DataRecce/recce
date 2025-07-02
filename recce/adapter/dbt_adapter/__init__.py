@@ -815,7 +815,6 @@ class DbtAdapter(BaseAdapter):
 
     @lru_cache(maxsize=128)
     def get_change_analysis_cached(self, node_id: str):
-        cll_perf_tracker = LineagePerfTracker()
         breaking_perf_tracker = BreakingPerformanceTracking()
         lineage_diff = self.get_lineage_diff()
         diff = lineage_diff.diff
@@ -823,7 +822,6 @@ class DbtAdapter(BaseAdapter):
         if node_id not in diff or diff[node_id].change_status != "modified":
             return diff.get(node_id)
 
-        cll_perf_tracker.increment_change_analysis_nodes()
         breaking_perf_tracker.increment_modified_nodes()
         breaking_perf_tracker.start_lineage_diff()
 
@@ -993,7 +991,10 @@ class DbtAdapter(BaseAdapter):
                     continue
 
                 nodes[cll_node_id] = cll_data_one.nodes.get(cll_node_id)
-                node_diff = self.get_change_analysis_cached(cll_node_id) if change_analysis else None
+                node_diff = None
+                if change_analysis:
+                    node_diff = self.get_change_analysis_cached(cll_node_id)
+                    cll_tracker.increment_change_analysis_nodes()
                 if node_diff is not None:
                     nodes[cll_node_id].change_status = node_diff.change_status
                     if node_diff.change is not None:
@@ -1052,7 +1053,10 @@ class DbtAdapter(BaseAdapter):
                     continue
                 nodes[cll_node_id] = cll_node
 
-                node_diff = self.get_change_analysis_cached(cll_node_id) if change_analysis else None
+                node_diff = None
+                if change_analysis:
+                    node_diff = self.get_change_analysis_cached(cll_node_id)
+                    cll_tracker.increment_change_analysis_nodes()
                 if node_diff is not None:
                     cll_node.change_status = node_diff.change_status
                     if node_diff.change is not None:
@@ -1153,7 +1157,7 @@ class DbtAdapter(BaseAdapter):
             parent_map, child_map = filter_dependency_maps(parent_map, child_map, result_node_ids)
 
         cll_tracker.end_column_lineage()
-        cll_tracker.set_total_nodes(len(nodes))
+        cll_tracker.set_total_nodes(len(nodes) + len(columns))
         log_performance("column level lineage", cll_tracker.to_dict())
         cll_tracker.reset()
 

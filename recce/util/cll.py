@@ -10,7 +10,6 @@ from sqlglot.optimizer.qualify import qualify
 
 from recce.exceptions import RecceException
 from recce.models.types import CllColumn, CllColumnDep
-from recce.util import SingletonMeta
 
 CllResult = Tuple[
     List[CllColumnDep],  # Model to column dependencies
@@ -19,7 +18,7 @@ CllResult = Tuple[
 
 
 @dataclass
-class CLLPerformanceTracking(metaclass=SingletonMeta):
+class CLLPerformanceTracking:
     lineage_start = None
     lineage_elapsed = None
     column_lineage_start = None
