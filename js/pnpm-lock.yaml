@@ -114,8 +114,8 @@ importers:
         specifier: ^5.3.0
         version: 5.3.0(chart.js@4.5.0)(react@18.3.1)
       react-data-grid:
-        specifier: 7.0.0-beta.56
-        version: 7.0.0-beta.56(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
+        specifier: 7.0.0-beta.40
+        version: 7.0.0-beta.40(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
       react-dom:
         specifier: ^18.3.1
         version: 18.3.1(react@18.3.1)
@@ -3776,11 +3776,11 @@ packages:
     peerDependencies:
       react: ^16.8.0 || ^17.0.0 || ^18.0.0 || ^19.0.0 || ^19.0.0-rc
 
-  react-data-grid@7.0.0-beta.56:
-    resolution: {integrity: sha512-sET7KFAP2oMz3LlXXg4J6fb3EzHKIckVaXuV+uyx5JRHjPoEDaAc4yrDc6usVeCi//QSZvUX85S0AS/E3uiaMw==}
+  react-data-grid@7.0.0-beta.40:
+    resolution: {integrity: sha512-2jgF56UfmHL9LhZ4teB+qR1WzAGGq3SL1ux8heiTYR8k8gQM1NFww6+EgKRlSU9fVR9yx+k/w3b6Y9aa+NpW0g==}
     peerDependencies:
-      react: ^19.0
-      react-dom: ^19.0
+      react: ^18.0
+      react-dom: ^18.0
 
   react-dom@18.3.1:
     resolution: {integrity: sha512-5m4nQKp+rZRb09LNH59GM4BxTh9251/ylbKIbpe7TpGxfJ+9kv6BLkLBXIjjspbgbnIBNqlI23tRnTWT0snUIw==}
@@ -8642,7 +8642,7 @@ snapshots:
       '@babel/runtime': 7.27.6
       react: 18.3.1
 
-  react-data-grid@7.0.0-beta.56(react-dom@18.3.1(react@18.3.1))(react@18.3.1):
+  react-data-grid@7.0.0-beta.40(react-dom@18.3.1(react@18.3.1))(react@18.3.1):
     dependencies:
       clsx: 2.1.1
       react: 18.3.1
