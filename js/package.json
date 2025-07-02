@@ -59,7 +59,7 @@
     "reactflow": "^11.11.4",
     "simplebar": "^6.3.1",
     "simplebar-react": "3.3.0",
-    "wouter": "^2.12.1",
+    "wouter": "^3.7.1",
     "yaml": "^2.8.0"
   },
   "devDependencies": {
