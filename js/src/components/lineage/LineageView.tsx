@@ -816,9 +816,9 @@ export function PrivateLineageView(
         const cll = viewOptions.column_level_lineage;
 
         if (cll.node_id && !cll.column) {
-          return cll.node_id === nodeId && node?.changeStatus === "modified";
+          return cll.node_id === nodeId && !!node?.changeStatus;
         } else {
-          return node?.changeStatus === "modified";
+          return !!node?.changeStatus;
         }
       }
 
