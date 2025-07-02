@@ -228,8 +228,9 @@ def debug(**kwargs):
 
         return [True, manifest_is_ready, catalog_is_ready]
 
-    target_path = Path(kwargs.get("target_path", "target"))
-    target_base_path = Path(kwargs.get("target_base_path", "target-base"))
+    project_dir_path = Path(kwargs.get("project_dir", "./"))
+    target_path = project_dir_path.joinpath(Path(kwargs.get("target_path", "target")))
+    target_base_path = project_dir_path.joinpath(Path(kwargs.get("target_base_path", "target-base")))
 
     curr_is_ready = check_artifacts("Development", target_path)
     base_is_ready = check_artifacts("Base", target_base_path)
