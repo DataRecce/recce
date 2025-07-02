@@ -133,7 +133,7 @@ const ModeMessage = () => {
   }
 };
 
-export const ColumnLevelLineageControl = ({ allowBack }: { allowBack: boolean }) => {
+export const ColumnLevelLineageControl = () => {
   const { showColumnLevelLineage, resetColumnLevelLineage, interactive, viewOptions } =
     useLineageViewContextSafe();
   const { data: flagData } = useRecceServerFlag();

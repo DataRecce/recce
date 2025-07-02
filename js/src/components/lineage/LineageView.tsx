@@ -482,7 +482,7 @@ export function PrivateLineageView(
 
   const resetColumnLevelLineage = async (previous?: boolean) => {
     if (previous) {
-      if (cllHistory.length == 0) {
+      if (cllHistory.length === 0) {
         return;
       }
       const previousCll = cllHistory.pop();
@@ -1083,7 +1083,7 @@ export function PrivateLineageView(
             </Panel>
             <Panel position="top-left">
               <Flex direction="column" gap="5px">
-                <ColumnLevelLineageControl allowBack={cllHistory.length > 0} />
+                <ColumnLevelLineageControl />
                 {nodes.length == 0 && (
                   <Text fontSize="xl" color="grey" opacity={0.5}>
                     No nodes
