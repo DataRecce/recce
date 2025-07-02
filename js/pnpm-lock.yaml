@@ -92,9 +92,6 @@ importers:
       html2canvas:
         specifier: ^1.4.1
         version: 1.4.1
-      husky:
-        specifier: ^9.1.7
-        version: 9.1.7
       js-cookie:
         specifier: ^3.0.5
         version: 3.0.5
@@ -219,6 +216,9 @@ importers:
       globals:
         specifier: ^16.3.0
         version: 16.3.0
+      husky:
+        specifier: ^9.1.7
+        version: 9.1.7
       jest:
         specifier: ^30.0.3
         version: 30.0.3(@types/node@24.0.10)(babel-plugin-macros@3.1.0)
