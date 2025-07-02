@@ -228,7 +228,7 @@ def debug(**kwargs):
 
         return [True, manifest_is_ready, catalog_is_ready]
 
-    project_dir_path = Path(kwargs.get("project_dir", "./"))
+    project_dir_path = Path(kwargs.get("project_dir") or "./")
     target_path = project_dir_path.joinpath(Path(kwargs.get("target_path", "target")))
     target_base_path = project_dir_path.joinpath(Path(kwargs.get("target_base_path", "target-base")))
 
@@ -412,7 +412,7 @@ def server(host, port, lifetime, state_file=None, **kwargs):
         }
 
     # Check Single Environment Onboarding Mode if the review mode is False
-    project_dir_path = Path(kwargs.get("project_dir", "./"))
+    project_dir_path = Path(kwargs.get("project_dir") or "./")
     target_base_path = project_dir_path.joinpath(Path(kwargs.get("target_base_path", "target-base")))
     if not target_base_path.is_dir() and not is_review:
         # Mark as single env onboarding mode if user provides the target-path only
