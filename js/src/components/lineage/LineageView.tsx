@@ -810,15 +810,15 @@ export function PrivateLineageView(
         return false;
       }
 
-      const node = lineageGraph.nodes[nodeId];
+      const node = nodeId in lineageGraph.nodes ? lineageGraph.nodes[nodeId] : undefined;
 
       if (viewOptions.column_level_lineage?.change_analysis) {
         const cll = viewOptions.column_level_lineage;
 
         if (cll.node_id && !cll.column) {
-          return cll.node_id === nodeId && node.changeStatus === "modified";
+          return cll.node_id === nodeId && node?.changeStatus === "modified";
         } else {
-          return node.changeStatus === "modified";
+          return node?.changeStatus === "modified";
         }
       }
 
