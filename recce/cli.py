@@ -412,7 +412,9 @@ def server(host, port, lifetime, state_file=None, **kwargs):
         }
 
     # Check Single Environment Onboarding Mode if the review mode is False
-    if not Path(kwargs.get("target_base_path", "target-base")).is_dir() and not is_review:
+    project_dir_path = Path(kwargs.get("project_dir", "./"))
+    target_base_path = project_dir_path.joinpath(Path(kwargs.get("target_base_path", "target-base")))
+    if not target_base_path.is_dir() and not is_review:
         # Mark as single env onboarding mode if user provides the target-path only
         flag["single_env_onboarding"] = True
         flag["show_relaunch_hint"] = True
