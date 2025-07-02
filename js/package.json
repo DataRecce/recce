@@ -33,7 +33,7 @@
     "@monaco-editor/react": "^4.7.0",
     "@mui/material": "^5.16.12",
     "@mui/x-charts": "^6.19.8",
-    "@sentry/react": "^7.120.2",
+    "@sentry/react": "^9.34.0",
     "@tanstack/react-query": "^5.81.5",
     "@types/js-cookie": "^3.0.6",
     "axios": "^1.10.0",
