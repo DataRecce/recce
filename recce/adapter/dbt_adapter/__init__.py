@@ -977,10 +977,15 @@ class DbtAdapter(BaseAdapter):
                         nodes[cll_node_id].change_category = node_diff.change.category
                 for c_id, c in cll_data_one.columns.items():
                     columns[c_id] = c
-                    if node_diff is not None and node_diff.change is not None and node_diff.change.columns is not None:
-                        column_diff = node_diff.change.columns.get(c.name)
-                        if column_diff:
-                            c.change_status = column_diff
+                    if node_diff is not None:
+                        if node_diff.change_status == "added":
+                            c.change_status = "added"
+                        elif node_diff.change_status == "removed":
+                            c.change_status = "removed"
+                        elif node_diff.change is not None and node_diff.change.columns is not None:
+                            column_diff = node_diff.change.columns.get(c.name)
+                            if column_diff:
+                                c.change_status = column_diff
 
                 for p_id, parents in cll_data_one.parent_map.items():
                     parent_map[p_id] = parents
@@ -1050,11 +1055,18 @@ class DbtAdapter(BaseAdapter):
         if node_id is None and column is None:
             if change_analysis:
                 # If change analysis is requested, we need to find the nodes that have changes
-                for nid, nd in self.get_lineage_diff().diff.items():
+                lineage_diff = self.get_lineage_diff()
+                for nid, nd in lineage_diff.diff.items():
                     if nd.change_status == "added":
                         extra_node_ids.add(nid)
+                        n = lineage_diff.current["nodes"].get(nid)
+                        n_columns = n.get("columns", {})
+                        for c in n_columns:
+                            anchor_node_ids.add(build_column_key(nid, c))
+                        continue
                     if nd.change_status == "removed":
                         extra_node_ids.add(nid)
+                        continue
 
                     node_diff = self.get_change_analysis_cached(nid)
                     if node_diff is not None and node_diff.change is not None:

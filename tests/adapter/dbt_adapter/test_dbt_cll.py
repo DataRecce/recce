@@ -542,6 +542,7 @@ def test_impact_radius_with_change_analysis_with_cll_added_removed(dbt_test_help
 
     adapter: DbtAdapter = dbt_test_helper.context.adapter
     result = adapter.get_cll(change_analysis=True, no_upstream=True)
+    assert_column(result, "model.model1_v2", "c", change_status="added", parents=[])
     assert_cll_contain_nodes(result, ["model.model1_v2", "model.model2"])
     assert_cll_contain_columns(result, [("model.model1_v2", "c"), ("model.model2", "c")])
 
