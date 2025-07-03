@@ -18,7 +18,7 @@ import {
   HStack,
   useToast,
 } from "@chakra-ui/react";
-import React, { ReactNode, useEffect, useLayoutEffect } from "react";
+import React, { ReactNode, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
 import _ from "lodash";
 import { useVersionNumber } from "@/lib/api/version";
@@ -339,7 +339,7 @@ function Main() {
               <Route path="/query">
                 <QueryPage />
               </Route>
-              <Route path="/checks/:slug*">
+              <Route path="/checks/:slug?">
                 <CheckPage />
               </Route>
               <Route path="/runs/:runId">

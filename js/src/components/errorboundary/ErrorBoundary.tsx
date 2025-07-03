@@ -34,7 +34,7 @@ const Fallback: FallbackRender = ({ error, resetError }) => {
         </Heading>
 
         <Box flex="1" fontSize="10pt">
-          {error.toString()}
+          {String(error)}
         </Box>
 
         <Button

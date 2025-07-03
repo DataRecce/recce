@@ -1,0 +1,4 @@
+cd js
+
+pnpm lint --quiet
+pnpm type:check
