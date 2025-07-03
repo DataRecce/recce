@@ -20,7 +20,6 @@ import {
   Tooltip,
   VStack,
   Code,
-  Link,
 } from "@chakra-ui/react";
 
 import { FiPackage } from "react-icons/fi";
@@ -32,7 +31,6 @@ import { useLineageViewContextSafe } from "./LineageViewContext";
 import { findByRunType } from "../run/registry";
 import { ChevronDownIcon } from "@chakra-ui/icons";
 import { trackHistoryAction } from "@/lib/api/track";
-import { DisableTooltipMessages } from "@/constants/tooltipMessage";
 import { useRecceServerFlag } from "@/lib/hooks/useRecceServerFlag";
 import { useRecceInstanceContext } from "@/lib/hooks/RecceInstanceContext";
 
@@ -408,7 +406,7 @@ export const LineageViewTopBar = () => {
                         as={Text}
                         size="sm"
                         fontSize="10pt"
-                        isDisabled={!(isNoSelect || isSingleSelect || isMultiSelect)}
+                        isDisabled={featureToggles.disableDatabaseQuery}
                         icon={<Icon as={findByRunType("row_count_diff")?.icon} />}
                         onClick={async () => {
                           await lineageViewContext.runRowCount();
@@ -440,7 +438,7 @@ export const LineageViewTopBar = () => {
                       as={Text}
                       size="sm"
                       fontSize="10pt"
-                      isDisabled={!(isNoSelect || isSingleSelect || isMultiSelect)}
+                      isDisabled={featureToggles.disableDatabaseQuery}
                       icon={<Icon as={findByRunType("row_count_diff")?.icon} />}
                       onClick={async () => {
                         await lineageViewContext.runRowCountDiff();
@@ -452,7 +450,7 @@ export const LineageViewTopBar = () => {
                         as={Text}
                         size="sm"
                         fontSize="10pt"
-                        isDisabled={!(isNoSelect || isSingleSelect || isMultiSelect)}
+                        isDisabled={featureToggles.disableDatabaseQuery}
                         icon={<Icon as={findByRunType("value_diff")?.icon} />}
                         onClick={async () => {
                           await lineageViewContext.runValueDiff();
@@ -480,7 +478,7 @@ export const LineageViewTopBar = () => {
                       as={Text}
                       size="sm"
                       fontSize="10pt"
-                      isDisabled={!(isNoSelect || isSingleSelect || isMultiSelect)}
+                      isDisabled={false}
                       icon={<Icon as={findByRunType("schema_diff")?.icon} />}
                       onClick={() => {
                         lineageViewContext.addSchemaDiffCheck();
