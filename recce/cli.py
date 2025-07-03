@@ -18,6 +18,7 @@ from recce.connect_to_cloud import (
 from recce.exceptions import RecceConfigException
 from recce.git import current_branch, current_default_branch
 from recce.run import check_github_ci_env, cli_run
+from recce.server import RecceServerMode
 from recce.state import RecceCloudStateManager, RecceShareStateManager, RecceStateLoader
 from recce.summary import generate_markdown_summary
 from recce.util.api_token import prepare_api_token, show_invalid_api_token_message
@@ -26,7 +27,6 @@ from recce.util.onboarding_state import update_onboarding_state
 from recce.util.recce_cloud import (
     RecceCloudException,
 )
-
 from .core import RecceContext, set_default_context
 from .event.track import TrackCommand
 
@@ -141,6 +141,22 @@ recce_dbt_artifact_dir_options = [
         help="dbt artifacts directory to be used as the base for the comparison.",
         type=click.STRING,
         default="target-base",
+    ),
+]
+
+recce_hidden_options = [
+    click.option(
+        "--mode",
+        envvar="RECCE_SERVER_MODE",
+        type=click.Choice(RecceServerMode.available_members(), case_sensitive=False),
+        hidden=True,
+    ),
+    click.option(
+        "--share-url",
+        help="The share URL triggers this instance.",
+        type=click.STRING,
+        envvar="RECCE_SHARE_ URL",
+        hidden=True,
     ),
 ]
 
@@ -364,6 +380,7 @@ def diff(sql, primary_keys: List[str] = None, keep_shape: bool = False, keep_equ
 @add_options(recce_options)
 @add_options(recce_dbt_artifact_dir_options)
 @add_options(recce_cloud_options)
+@add_options(recce_hidden_options)
 def server(host, port, lifetime, state_file=None, **kwargs):
     """
     Launch the recce server
@@ -399,27 +416,46 @@ def server(host, port, lifetime, state_file=None, **kwargs):
     RecceConfig(config_file=kwargs.get("config"))
 
     handle_debug_flag(**kwargs)
+    server_mode = kwargs.get("mode") if kwargs.get("mode") else RecceServerMode.server
     is_review = kwargs.get("review", False)
     is_cloud = kwargs.get("cloud", False)
+    flag = {}
     console = Console()
     cloud_options = None
-    flag = {"single_env_onboarding": False, "show_relaunch_hint": False}
-    if is_cloud:
-        cloud_options = {
-            "host": kwargs.get("state_file_host"),
-            "token": kwargs.get("cloud_token"),
-            "password": kwargs.get("password"),
-        }
 
-    # Check Single Environment Onboarding Mode if the review mode is False
-    project_dir_path = Path(kwargs.get("project_dir") or "./")
-    target_base_path = project_dir_path.joinpath(Path(kwargs.get("target_base_path", "target-base")))
-    if not target_base_path.is_dir() and not is_review:
-        # Mark as single env onboarding mode if user provides the target-path only
-        flag["single_env_onboarding"] = True
-        flag["show_relaunch_hint"] = True
-        # Use the target path as the base path
-        kwargs["target_base_path"] = kwargs.get("target_path")
+    if server_mode == RecceServerMode.server:
+        flag = {"single_env_onboarding": False, "show_relaunch_hint": False}
+        if is_cloud:
+            cloud_options = {
+                "host": kwargs.get("state_file_host"),
+                "token": kwargs.get("cloud_token"),
+                "password": kwargs.get("password"),
+            }
+
+        # Check Single Environment Onboarding Mode if the review mode is False
+        project_dir_path = Path(kwargs.get("project_dir") or "./")
+        target_base_path = project_dir_path.joinpath(Path(kwargs.get("target_base_path", "target-base")))
+        if not target_base_path.is_dir() and not is_review:
+            # Mark as single env onboarding mode if user provides the target-path only
+            flag["single_env_onboarding"] = True
+            flag["show_relaunch_hint"] = True
+            # Use the target path as the base path
+            kwargs["target_base_path"] = kwargs.get("target_path")
+    elif server_mode == RecceServerMode.preview:
+        flag = {
+            "preview": True,
+        }
+    elif server_mode == RecceServerMode.read_only:
+        is_review = kwargs["review"] = True
+        is_cloud = kwargs["cloud"] = False
+        cloud_options = None
+        flag = {
+            "read_only": True,
+        }
+        if state_file is None:
+            console.print("[[red]Error[/red]] The state_file is required in 'Read-Only' mode.")
+            console.print("Please provide recce_state json file exported by Recce OSS.")
+            exit(1)
 
     auth_options = {}
     try:
@@ -430,7 +466,7 @@ def server(host, port, lifetime, state_file=None, **kwargs):
     auth_options["api_token"] = api_token
 
     # Onboarding State logic update here
-    update_onboarding_state(api_token, flag["single_env_onboarding"])
+    update_onboarding_state(api_token, flag.get("single_env_onboarding"))
 
     state_loader = create_state_loader(is_review, is_cloud, state_file, cloud_options)
 
@@ -452,9 +488,9 @@ def server(host, port, lifetime, state_file=None, **kwargs):
         console.print(f"[[red]Error[/red]] {message}")
         exit(1)
 
-    if state_loader.review_mode is True:
+    if state_loader.review_mode:
         console.rule("Recce Server : Review Mode")
-    elif flag["single_env_onboarding"]:
+    elif flag.get("single_env_onboarding"):
         # Show warning message
         console.rule("Notice", style="orange3")
         console.print(
@@ -475,14 +511,18 @@ def server(host, port, lifetime, state_file=None, **kwargs):
         console.rule("Recce Server")
 
     state = AppState(
-        command="server",
+        command=server_mode,
         state_loader=state_loader,
         kwargs=kwargs,
         flag=flag,
         auth_options=auth_options,
         lifetime=lifetime,
+        share_url=kwargs.get("share_url"),
     )
     app.state = state
+
+    if server_mode == RecceServerMode.read_only:
+        set_default_context(RecceContext.load(**kwargs, state_loader=state_loader))
 
     uvicorn.run(app, host=host, port=port, lifespan="on")
 
@@ -1175,94 +1215,12 @@ def share(state_file, **kwargs):
 @click.option("--host", default="localhost", show_default=True, help="The host to bind to.")
 @click.option("--port", default=8000, show_default=True, help="The port to bind to.", type=int)
 @click.option("--lifetime", default=0, show_default=True, help="The lifetime of the server in seconds.", type=int)
-@click.option("--share-url", help="The share URL triggers this instance.", type=click.STRING, envvar="RECCE_SHARE_URL")
-def read_only(host, port, lifetime, state_file=None, **kwargs):
-    from rich.console import Console
-
-    from .server import AppState, app
-
-    console = Console()
-    handle_debug_flag(**kwargs)
-    is_review = True
-    is_cloud = False
-    cloud_options = None
-    flag = {
-        "read_only": True,
-    }
-    state_loader = create_state_loader(is_review, is_cloud, state_file, cloud_options)
-
-    if not state_loader.verify():
-        error, hint = state_loader.error_and_hint
-        console.print(f"[[red]Error[/red]] {error}")
-        console.print(f"{hint}")
-        exit(1)
-
-    result, message = RecceContext.verify_required_artifacts(**kwargs, review=is_review)
-    if not result:
-        console.print(f"[[red]Error[/red]] {message}")
-        exit(1)
-
-    app.state = AppState(
-        command="read_only",
-        state_loader=state_loader,
-        kwargs=kwargs,
-        flag=flag,
-        lifetime=lifetime,
-        share_url=kwargs.get("share_url"),
-    )
-    set_default_context(RecceContext.load(**kwargs, review=is_review, state_loader=state_loader))
-
-    uvicorn.run(app, host=host, port=port, lifespan="on")
-
-
-@cli.command(hidden=True, cls=TrackCommand)
-@click.option("--host", default="localhost", show_default=True, help="The host to bind to.")
-@click.option("--port", default=8000, show_default=True, help="The port to bind to.", type=int)
-@click.option("--lifetime", default=0, show_default=True, help="The lifetime of the server in seconds.", type=int)
-@click.option(
-    "--api-token", help="The personal token generated by Recce Cloud.", type=click.STRING, envvar="RECCE_API_TOKEN"
-)
-@add_options(recce_options)
-def preview(host, port, lifetime, **kwargs):
-    from rich.console import Console
-
-    from .server import AppState, app
-
-    console = Console()
-    handle_debug_flag(**kwargs)
-    # api_token = kwargs.get("api_token")
-
-    is_review = False
-    is_cloud = False
-    cloud_options = None
-    flag = {
-        "preview": True,
-    }
-    state_file = "preview_recce_state.json"
-    state_loader = create_state_loader(is_review, is_cloud, state_file, cloud_options)
-    if not state_loader.verify():
-        error, hint = state_loader.error_and_hint
-        console.print(f"[[red]Error[/red]] {error}")
-        console.print(f"{hint}")
-        exit(1)
-
-    result, message = RecceContext.verify_required_artifacts(**kwargs)
-    if not result:
-        console.print(f"[[red]Error[/red]] {message}")
-        exit(1)
-
-    app.state = AppState(
-        command="preview",
-        state_loader=state_loader,
-        kwargs=kwargs,
-        flag=flag,
-        lifetime=lifetime,
-        share_url=kwargs.get("share_url"),
-        host=host,
-        port=port,
-    )
-
-    uvicorn.run(app, host=host, port=port, lifespan="on")
+@click.option("--share-url", help="The share URL triggers this instance.", type=click.STRING, envvar="RECCE_SHARE_ URL")
+@click.pass_context
+def read_only(ctx, state_file=None, **kwargs):
+    # Invoke `recce server --mode read-only <state_file> ...
+    kwargs["mode"] = RecceServerMode.read_only
+    ctx.invoke(server, state_file=state_file, **kwargs)
 
 
 if __name__ == "__main__":

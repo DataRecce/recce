@@ -2,7 +2,7 @@ import { createContext, useContext, useEffect, useState } from "react";
 import { useRecceInstanceInfo } from "./useRecceInstanceInfo";
 
 interface RecceFeatureToggles {
-  mode: "read only" | "review mode" | "full access";
+  mode: "read only" | "preview mode" | null;
   disableSaveToFile: boolean;
   disableExportStateFile: boolean;
   disableImportStateFile: boolean;
@@ -14,7 +14,7 @@ interface RecceFeatureToggles {
 }
 
 const defaultFeatureToggles: RecceFeatureToggles = {
-  mode: "full access",
+  mode: null,
   disableSaveToFile: false,
   disableExportStateFile: false,
   disableImportStateFile: false,
@@ -26,7 +26,6 @@ const defaultFeatureToggles: RecceFeatureToggles = {
 };
 
 interface InstanceInfoType {
-  readOnly: boolean;
   singleEnv: boolean;
   authed: boolean;
   lifetimeExpiredAt?: Date;
@@ -34,7 +33,6 @@ interface InstanceInfoType {
 }
 
 const defaultValue: InstanceInfoType = {
-  readOnly: false,
   singleEnv: false,
   authed: false,
   lifetimeExpiredAt: undefined,
@@ -45,7 +43,6 @@ const InstanceInfo = createContext<InstanceInfoType>(defaultValue);
 
 export function RecceInstanceInfoProvider({ children }: { children: React.ReactNode }) {
   const { data: instanceInfo, isLoading } = useRecceInstanceInfo();
-  const [readOnly, setReadOnly] = useState<boolean>(false);
   const [featureToggles, setFeatureToggles] = useState<RecceFeatureToggles>(defaultFeatureToggles);
   const [singleEnv, setSingleEnv] = useState<boolean>(false);
   const [authed, setAuthed] = useState<boolean>(false);
@@ -53,7 +50,6 @@ export function RecceInstanceInfoProvider({ children }: { children: React.ReactN
 
   useEffect(() => {
     if (!isLoading && instanceInfo) {
-      setReadOnly(instanceInfo.read_only);
       setSingleEnv(instanceInfo.single_env);
       setAuthed(instanceInfo.authed);
       if (instanceInfo.lifetime_expired_at) {
@@ -63,7 +59,7 @@ export function RecceInstanceInfoProvider({ children }: { children: React.ReactN
 
       // Set feature toggles based on instanceInfo
       const toggles = defaultFeatureToggles;
-      if (instanceInfo.read_only) {
+      if (instanceInfo.server_mode === "read-only") {
         toggles.mode = "read only";
         toggles.disableSaveToFile = true;
         toggles.disableExportStateFile = true;
@@ -73,18 +69,28 @@ export function RecceInstanceInfoProvider({ children }: { children: React.ReactN
         toggles.disableViewActionDropdown = true;
         toggles.disableNodeActionDropdown = true;
         toggles.disableShare = true;
+      } else if (instanceInfo.server_mode === "preview") {
+        toggles.mode = "preview mode";
+        toggles.disableSaveToFile = true;
+        toggles.disableExportStateFile = true;
+        toggles.disableImportStateFile = true;
+        toggles.disableUpdateChecklist = false;
+        toggles.disableDatabaseQuery = true;
+        toggles.disableViewActionDropdown = false;
+        toggles.disableNodeActionDropdown = false;
+        toggles.disableShare = true;
       }
       if (instanceInfo.single_env) {
         toggles.disableUpdateChecklist = true;
         toggles.disableShare = true;
       }
+      setFeatureToggles(toggles);
     }
   }, [instanceInfo, isLoading]);
 
   return (
     <InstanceInfo.Provider
       value={{
-        readOnly,
         featureToggles,
         singleEnv,
         authed,

@@ -4,10 +4,10 @@ import logging
 import os
 import signal
 import uuid
-import webbrowser
 from contextlib import asynccontextmanager
 from dataclasses import dataclass
 from datetime import datetime, timedelta
+from enum import Enum
 from pathlib import Path
 from typing import Annotated, Any, Literal, Optional, Set
 
@@ -49,6 +49,19 @@ from .run import load_preset_checks
 from .state import RecceShareStateManager, RecceStateLoader
 
 logger = logging.getLogger("uvicorn")
+
+
+class RecceServerMode(str, Enum):
+    server = "server"
+    preview = "preview"
+    read_only = "read-only"
+
+    def __str__(self):
+        return self.value
+
+    @staticmethod
+    def available_members() -> Set[str]:
+        return ["server", "preview", "read-only"]
 
 
 @dataclass
@@ -155,11 +168,6 @@ async def lifespan(fastapi: FastAPI):
     elif app_state.command == "preview":
         ctx = setup_preview(app_state)
 
-    # TODO: Remove this part before mege
-    if app_state.host and app_state.port:
-        endpoint_url = f"http://{app_state.host}:{app_state.port}"
-        webbrowser.open(endpoint_url)
-
     yield
 
     if app_state.command == "server":
@@ -265,6 +273,7 @@ async def health_check(request: Request):
 
 
 class RecceInstanceInfoOut(BaseModel):
+    server_mode: RecceServerMode
     read_only: bool
     preview: bool
     single_env: bool
@@ -283,6 +292,7 @@ async def recce_instance_info():
     api_token = get_recce_api_token()
 
     return {
+        "server_mode": app_state.command,
         "read_only": read_only,
         "preview": flag.get("preview", False),
         "single_env": single_env,

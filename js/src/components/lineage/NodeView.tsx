@@ -122,6 +122,7 @@ export function NodeView({ node, onCloseNode }: NodeViewProps) {
             <MenuItem
               icon={<Icon as={findByRunType("query_diff")?.icon} />}
               fontSize="14px"
+              isDisabled={featureToggles.disableDatabaseQuery}
               onClick={() => {
                 if (envInfo?.adapterType === "dbt") {
                   setSqlQuery(query);
@@ -139,6 +140,7 @@ export function NodeView({ node, onCloseNode }: NodeViewProps) {
             <MenuItem
               fontSize="14px"
               icon={<Icon as={findByRunType("sandbox")?.icon} />}
+              isDisabled={featureToggles.disableDatabaseQuery}
               onClick={() => {
                 if (isActionAvailable("query_diff_with_primary_key")) {
                   // Only set primary key if the action is available
@@ -154,6 +156,7 @@ export function NodeView({ node, onCloseNode }: NodeViewProps) {
               <MenuItem
                 icon={<Icon as={findByRunType("row_count_diff")?.icon} />}
                 fontSize="14px"
+                isDisabled={featureToggles.disableDatabaseQuery}
                 onClick={() => {
                   refetchRowCountDiff();
                 }}>
@@ -163,7 +166,7 @@ export function NodeView({ node, onCloseNode }: NodeViewProps) {
                 <MenuItem
                   icon={<Icon as={findByRunType("profile_diff")?.icon} />}
                   fontSize="14px"
-                  isDisabled={isAddedOrRemoved}
+                  isDisabled={isAddedOrRemoved || featureToggles.disableDatabaseQuery}
                   onClick={() => {
                     runAction(
                       "profile_diff",
@@ -180,7 +183,7 @@ export function NodeView({ node, onCloseNode }: NodeViewProps) {
                 <MenuItem
                   icon={<Icon as={findByRunType("value_diff")?.icon} />}
                   fontSize="14px"
-                  isDisabled={isAddedOrRemoved}
+                  isDisabled={isAddedOrRemoved || featureToggles.disableDatabaseQuery}
                   onClick={() => {
                     runAction(
                       "value_diff",
@@ -197,7 +200,7 @@ export function NodeView({ node, onCloseNode }: NodeViewProps) {
                 <MenuItem
                   icon={<Icon as={findByRunType("top_k_diff")?.icon} />}
                   fontSize="14px"
-                  isDisabled={isAddedOrRemoved}
+                  isDisabled={isAddedOrRemoved || featureToggles.disableDatabaseQuery}
                   onClick={() => {
                     runAction(
                       "top_k_diff",
@@ -212,7 +215,7 @@ export function NodeView({ node, onCloseNode }: NodeViewProps) {
                 <MenuItem
                   icon={<Icon as={findByRunType("histogram_diff")?.icon} />}
                   fontSize="14px"
-                  isDisabled={isAddedOrRemoved}
+                  isDisabled={isAddedOrRemoved || featureToggles.disableDatabaseQuery}
                   onClick={() => {
                     runAction(
                       "histogram_diff",
