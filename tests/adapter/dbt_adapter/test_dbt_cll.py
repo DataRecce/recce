@@ -512,6 +512,41 @@ def test_impact_radius_with_change_analysis_with_cll(dbt_test_helper):
     assert_model(result, "model.model4", parents=["model.model2"], change_category="partial_breaking")
 
 
+def test_impact_radius_with_change_analysis_with_cll_added_removed(dbt_test_helper):
+    dbt_test_helper.create_model(
+        "model1",
+        unique_id="model.model1",
+        base_sql="select 1 as c",
+        base_columns={"c": "int"},
+    )
+    dbt_test_helper.create_model(
+        "model1_v2",
+        unique_id="model.model1_v2",
+        curr_sql="select 1 as c",
+        curr_columns={"c": "int"},
+    )
+    dbt_test_helper.create_model(
+        "model2",
+        unique_id="model.model2",
+        base_sql='select c from {{ ref("model1") }}',
+        base_columns={"c": "int"},
+        depends_on=["model.model1"],
+    )
+    dbt_test_helper.create_model(
+        "model2",
+        unique_id="model.model2",
+        curr_sql='select c from {{ ref("model1_v2") }}',
+        curr_columns={"c": "int"},
+        depends_on=["model.model1_v2"],
+    )
+
+    adapter: DbtAdapter = dbt_test_helper.context.adapter
+    result = adapter.get_cll(change_analysis=True, no_upstream=True)
+    assert_column(result, "model.model1_v2", "c", transformation_type="source", change_status="added", parents=[])
+    assert_cll_contain_nodes(result, ["model.model1_v2", "model.model2"])
+    assert_cll_contain_columns(result, [("model.model1_v2", "c"), ("model.model2", "c")])
+
+
 def test_impact_radius_by_node_no_cll(dbt_test_helper):
     # non-breaking
     dbt_test_helper.create_model(
