@@ -134,7 +134,7 @@ function RecceVersionBadge() {
 
 function TopBar() {
   const { reviewMode, isDemoSite, envInfo, cloudMode } = useLineageGraphContext();
-  const { readOnly, lifetimeExpiredAt } = useRecceInstanceContext();
+  const { featureToggles, lifetimeExpiredAt } = useRecceInstanceContext();
   const { url: prURL, id: prID } = envInfo?.pullRequest ?? {};
   const demoPrId = prURL ? prURL.split("/").pop() : null;
 
@@ -151,9 +151,9 @@ function TopBar() {
         RECCE
       </Heading>
       <RecceVersionBadge />
-      {(readOnly || reviewMode) && (
+      {(featureToggles.mode ?? reviewMode) && (
         <Badge fontSize="sm" color="white" colorScheme="whiteAlpha" variant="outline">
-          {readOnly ? "read only" : "review mode"}
+          {featureToggles.mode ?? "review mode"}
         </Badge>
       )}
       {cloudMode && prID && (
@@ -241,7 +241,7 @@ function TabBadge<T, R extends number>({
 
 function NavBar() {
   const { isDemoSite, cloudMode, isLoading } = useLineageGraphContext();
-  const { readOnly } = useRecceInstanceContext();
+  const { featureToggles } = useRecceInstanceContext();
   const [location, setLocation] = useLocation();
   const { data: flag, isLoading: isFlagLoading } = useRecceServerFlag();
 
@@ -291,9 +291,10 @@ function NavBar() {
           {!isLoading && !isDemoSite && <Filename />}
         </Flex>
         <Flex flex="3" justifyContent="left" alignItems="center">
-          {!isLoading && !isDemoSite && !flag?.single_env_onboarding && !readOnly && (
-            <TopLevelShare />
-          )}
+          {!isLoading &&
+            !isDemoSite &&
+            !flag?.single_env_onboarding &&
+            !featureToggles.disableShare && <TopLevelShare />}
         </Flex>
         {!isLoading && (
           <Flex flex="3" justifyContent="right" alignItems="center" mr="8px">
@@ -379,7 +380,7 @@ function MainContainer({ children }: { children: ReactNode }): ReactNode {
 
 export default function Home() {
   const { isDemoSite, isLoading } = useLineageGraphContext();
-  const { readOnly } = useRecceInstanceContext();
+  const { featureToggles } = useRecceInstanceContext();
 
   useEffect(() => {
     trackInit();
@@ -390,7 +391,7 @@ export default function Home() {
       <TopBar />
       <NavBar />
       <Main />
-      {!isLoading && !isDemoSite && !readOnly && <AuthModal />}
+      {!isLoading && !isDemoSite && !(featureToggles.mode !== null) && <AuthModal />}
     </MainContainer>
   );
 }

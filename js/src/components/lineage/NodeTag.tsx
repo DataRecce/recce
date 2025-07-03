@@ -116,7 +116,7 @@ export function RowCountDiffTag({
   onRefresh,
   isFetching,
 }: RowCountDiffTagProps) {
-  const { readOnly } = useRecceInstanceContext();
+  const { featureToggles } = useRecceInstanceContext();
   const { runsAggregated } = useLineageGraphContext();
   const lastRowCount: RowCountDiff | undefined = runsAggregated?.[node.id]?.row_count_diff.result;
 
@@ -152,7 +152,7 @@ export function RowCountDiffTag({
             icon={<RepeatIcon />}
             size="xs"
             onClick={onRefresh}
-            isDisabled={readOnly}
+            isDisabled={featureToggles.disableDatabaseQuery}
           />
         )}
       </Tag>

@@ -170,7 +170,7 @@ export const PrivateLoadableRunView = ({
   onClose?: () => void;
   isSingleEnvironment?: boolean;
 }) => {
-  const { readOnly } = useRecceInstanceContext();
+  const { featureToggles } = useRecceInstanceContext();
   const { runAction } = useRecceActionContext();
   const { error, run, onCancel, isRunning } = useRun(runId);
   const [viewOptions, setViewOptions] = useState();
@@ -211,7 +211,7 @@ export const PrivateLoadableRunView = ({
   const disableCopyToClipboard = !runId || !run?.result || !!error || tabIndex !== 0;
 
   const AddToCheckButton = function () {
-    if (disableAddToChecklist) {
+    if (featureToggles.disableUpdateChecklist) {
       return <></>;
     }
     if (run?.check_id) {
@@ -254,12 +254,12 @@ export const PrivateLoadableRunView = ({
             <Button
               leftIcon={<RepeatIcon />}
               variant="outline"
-              isDisabled={!runId || isRunning || readOnly}
+              isDisabled={!runId || isRunning || featureToggles.disableDatabaseQuery}
               size="sm"
               onClick={handleRerun}>
               Rerun
             </Button>
-            {isSingleEnvironment || readOnly ? (
+            {featureToggles.disableShare ? (
               <Button
                 leftIcon={<CopyIcon />}
                 variant="outline"

@@ -7,6 +7,7 @@ import uuid
 from contextlib import asynccontextmanager
 from dataclasses import dataclass
 from datetime import datetime, timedelta
+from enum import Enum
 from pathlib import Path
 from typing import Annotated, Any, Literal, Optional, Set
 
@@ -50,6 +51,19 @@ from .state import RecceShareStateManager, RecceStateLoader
 logger = logging.getLogger("uvicorn")
 
 
+class RecceServerMode(str, Enum):
+    server = "server"
+    preview = "preview"
+    read_only = "read-only"
+
+    def __str__(self):
+        return self.value
+
+    @staticmethod
+    def available_members() -> Set[str]:
+        return ["server", "preview", "read-only"]
+
+
 @dataclass
 class AppState:
     command: Optional[str] = None
@@ -60,6 +74,8 @@ class AppState:
     lifetime: Optional[int] = None
     lifetime_expired_at: Optional[datetime] = None
     share_url: Optional[str] = None
+    host: Optional[str] = None
+    port: Optional[int] = None
 
 
 def schedule_lifetime_termination(app_state):
@@ -127,6 +143,19 @@ def teardown_ready_only(app_state: AppState):
     pass
 
 
+def setup_preview(app_state: AppState):
+    state_loader = app_state.state_loader
+    kwargs = app_state.kwargs
+    ctx = load_context(**kwargs, state_loader=state_loader)
+    return ctx
+
+
+def teardown_preview(app_state: AppState, ctx: RecceContext):
+    state_loader = app_state.state_loader
+    state_loader.export(ctx.export_state())
+    pass
+
+
 @asynccontextmanager
 async def lifespan(fastapi: FastAPI):
     ctx = None
@@ -136,6 +165,8 @@ async def lifespan(fastapi: FastAPI):
         ctx = setup_server(app_state)
     elif app_state.command == "read_only":
         setup_ready_only(app_state)
+    elif app_state.command == "preview":
+        ctx = setup_preview(app_state)
 
     yield
 
@@ -143,6 +174,8 @@ async def lifespan(fastapi: FastAPI):
         teardown_server(app_state, ctx)
     elif app_state.command == "read_only":
         teardown_ready_only(app_state)
+    elif app_state.command == "preview":
+        teardown_preview(app_state, ctx)
 
 
 app = FastAPI(lifespan=lifespan)
@@ -240,7 +273,9 @@ async def health_check(request: Request):
 
 
 class RecceInstanceInfoOut(BaseModel):
+    server_mode: RecceServerMode
     read_only: bool
+    preview: bool
     single_env: bool
     authed: bool
     lifetime_expired_at: Optional[datetime] = None
@@ -257,7 +292,9 @@ async def recce_instance_info():
     api_token = get_recce_api_token()
 
     return {
+        "server_mode": app_state.command,
         "read_only": read_only,
+        "preview": flag.get("preview", False),
         "single_env": single_env,
         "authed": True if api_token else False,
         "lifetime_expired_at": app_state.lifetime_expired_at,  # UTC timezone

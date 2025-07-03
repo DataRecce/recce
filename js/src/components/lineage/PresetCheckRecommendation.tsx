@@ -91,7 +91,7 @@ const usePresetCheckRecommendation = () => {
 };
 
 export const PresetCheckRecommendation = () => {
-  const { readOnly } = useRecceInstanceContext();
+  const { featureToggles } = useRecceInstanceContext();
   const { lineageGraph, envInfo } = useLineageGraphContext();
   const { showRunId } = useRecceActionContext();
   const { data: flags } = useRecceServerFlag();
@@ -256,7 +256,7 @@ export const PresetCheckRecommendation = () => {
                   nodes: numNodes,
                 });
               }}
-              isDisabled={readOnly}>
+              isDisabled={featureToggles.disableDatabaseQuery}>
               Perform
             </Button>
           </HStack>

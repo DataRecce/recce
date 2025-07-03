@@ -73,7 +73,7 @@ export const QueryPage = () => {
     isCustomQueries,
   } = useRecceQueryContext();
   const { lineageGraph, envInfo } = useLineageGraphContext();
-  const { readOnly } = useRecceInstanceContext();
+  const { featureToggles } = useRecceInstanceContext();
   const { data: flag } = useRecceServerFlag();
 
   let sqlQuery = _sqlQuery;
@@ -81,7 +81,7 @@ export const QueryPage = () => {
     sqlQuery = `select * from db.mymodel`;
   }
 
-  if (readOnly) {
+  if (featureToggles.disableDatabaseQuery) {
     sqlQuery = `--- Would like to do query here? Book a demo with us at https://datarecce.io/\n${sqlQuery}`;
   }
 
@@ -195,7 +195,7 @@ export const QueryPage = () => {
           onClick={() => {
             runQuery("query_diff");
           }}
-          isDisabled={isPending || readOnly}
+          isDisabled={isPending || featureToggles.disableDatabaseQuery}
           size="xs"
           fontSize="14px"
           marginTop={"16px"}>
