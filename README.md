@@ -100,7 +100,7 @@ a [GitHub Issue](https://github.com/DataRecce/recce/issues).
 
 You can follow along with news about Recce and blogs from our team in the following places:
 
-- [DataRecce.io](https://DataRecce.io)
+- [RecceHQ.com](https://reccehq.com/)
 - [LinkedIn](https://www.linkedin.com/company/datarecce)
 - [Medium blog](https://medium.com/inthepipeline)
 - [@datarecce](https://x.com/DataRecce) on Twitter/X
