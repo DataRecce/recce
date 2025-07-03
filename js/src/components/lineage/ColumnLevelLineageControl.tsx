@@ -1,5 +1,5 @@
 import { useLineageGraphContext } from "@/lib/hooks/LineageGraphContext";
-import { ChevronDownIcon, CloseIcon, InfoOutlineIcon } from "@chakra-ui/icons";
+import { CloseIcon, InfoOutlineIcon } from "@chakra-ui/icons";
 import {
   Flex,
   Text,
@@ -12,16 +12,10 @@ import {
   PopoverContent,
   PopoverTrigger,
   Button,
-  Menu,
-  MenuButton,
-  MenuItem,
-  MenuList,
   Portal,
-  Divider,
   Box,
 } from "@chakra-ui/react";
 import { useLineageViewContextSafe } from "./LineageViewContext";
-import { VscArrowLeft } from "react-icons/vsc";
 import { useRecceServerFlag } from "@/lib/hooks/useRecceServerFlag";
 import { FaRegDotCircle } from "react-icons/fa";
 
