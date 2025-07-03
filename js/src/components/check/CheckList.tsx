@@ -66,11 +66,11 @@ const ChecklistItem = ({
   };
 
   const icon: IconType = findByRunType(check.type)?.icon ?? TbChecklist;
-
-  const isMarkAsApprovedDisabled =
-    isDisabledByNoResult(check.type ?? "", run) || featureToggles.disableUpdateChecklist;
   // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
-  const isNoResult = isDisabledByNoResult(check.type ?? "", run);
+  const checkType = check.type ?? "";
+  const isMarkAsApprovedDisabled =
+    isDisabledByNoResult(checkType, run) || featureToggles.disableUpdateChecklist;
+  const isNoResult = isDisabledByNoResult(checkType, run);
 
   return (
     <>
