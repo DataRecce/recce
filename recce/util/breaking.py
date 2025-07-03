@@ -78,6 +78,15 @@ def _diff_select_scope(old_scope: Scope, new_scope: Scope, scope_changes_map: di
             if change.category == "breaking":
                 change_category = "breaking"
 
+    # check if the upstream scopes sources table are the same
+    if len(old_scope.sources) != len(new_scope.sources):
+        change_category = "breaking"
+    else:
+        old_source_tables = [s.name for s in old_scope.sources.values() if isinstance(s, exp.Table)]
+        new_source_tables = [s.name for s in new_scope.sources.values() if isinstance(s, exp.Table)]
+        if sorted(old_source_tables) != sorted(new_source_tables):
+            change_category = "breaking"
+
     # check if non-select expressions are the same
     old_select = old_scope.expression  # type: exp.Select
     new_select = new_scope.expression  # type: exp.Select
