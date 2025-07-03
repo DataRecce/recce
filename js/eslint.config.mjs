@@ -6,7 +6,6 @@ import prettierRecommended from "eslint-plugin-prettier/recommended";
 import globals from "globals";
 import importXPlugin from "eslint-plugin-import-x";
 import jsxA11y from "eslint-plugin-jsx-a11y";
-import tailwind from "eslint-plugin-tailwindcss";
 import nextPlugin from "@next/eslint-plugin-next";
 
 export default tseslint.config(
@@ -38,7 +37,6 @@ export default tseslint.config(
   importXPlugin.flatConfigs.typescript,
   ...tseslint.configs.strictTypeChecked,
   ...tseslint.configs.stylisticTypeChecked,
-  ...tailwind.configs["flat/recommended"],
   prettierRecommended,
   {
     ignores: [
@@ -87,7 +85,6 @@ export default tseslint.config(
       "@typescript-eslint/no-empty-function": "off",
       "@typescript-eslint/non-nullable-type-assertion-style": "off",
       "@typescript-eslint/no-unused-vars": "off",
-      "tailwindcss/no-custom-classname": "off",
       "prettier/prettier": [
         "error",
         {
