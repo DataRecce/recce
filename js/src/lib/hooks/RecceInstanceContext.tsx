@@ -28,8 +28,8 @@ const defaultFeatureToggles: RecceFeatureToggles = {
 interface InstanceInfoType {
   singleEnv: boolean;
   authed: boolean;
-  lifetimeExpiredAt?: Date;
   featureToggles: RecceFeatureToggles;
+  lifetimeExpiredAt?: Date;
 }
 
 const defaultValue: InstanceInfoType = {
