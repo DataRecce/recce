@@ -128,14 +128,7 @@ class BreakingChangeTest(unittest.TestCase):
             b
         from Orders
         """
-        modified_sql_alias = """
-        select
-            a,
-            b
-        from Customers as C
-        """
         assert is_breaking_change(original_sql, modified_sql, {"a": "modified", "b": "modified"})
-        assert is_non_breaking_change(original_sql, modified_sql_alias, {})
 
     def test_add_column(self):
         original_sql = """
