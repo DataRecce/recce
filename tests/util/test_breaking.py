@@ -116,6 +116,20 @@ class BreakingChangeTest(unittest.TestCase):
         assert is_non_breaking_change(original_sql, modified_sql2, {})
         assert is_non_breaking_change(original_sql, textwrap.dedent(modified_sql), {})
 
+    def test_table_diff(self):
+        original_sql = """
+        select
+            a, b
+        from Customers
+        """
+        modified_sql = """
+        select
+            a,
+            b
+        from Orders
+        """
+        assert is_breaking_change(original_sql, modified_sql, {"a": "modified", "b": "modified"})
+
     def test_add_column(self):
         original_sql = """
         select
