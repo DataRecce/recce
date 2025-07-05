@@ -2,6 +2,7 @@ import { CloseButton, Flex, Icon, Link, Spacer } from "@chakra-ui/react";
 import { PropsWithChildren } from "react";
 import { FiInfo } from "react-icons/fi";
 import { SystemProps } from "@chakra-ui/styled-system";
+import { LuExternalLink } from "react-icons/lu";
 
 export const RecceNotification = (
   props: PropsWithChildren<{ onClose: () => void; align?: SystemProps["alignItems"] }>,
@@ -31,11 +32,11 @@ export const LearnHowLink = () => {
   return (
     <Link
       href="https://docs.datarecce.io/get-started/#prepare-dbt-artifacts"
-      isExternal
+      target="_blank"
       color="rgba(49, 130, 206, 1)"
       fontWeight={"bold"}
       textDecoration={"underline"}>
-      Learn how
+      Learn how <LuExternalLink />
     </Link>
   );
 };

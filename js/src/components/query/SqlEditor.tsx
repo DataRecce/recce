@@ -80,11 +80,9 @@ function SqlEditor({
               variant="outline"
               onClick={onRun ?? onRunBase}
               backgroundColor={"white"}
-              // leftIcon={<Icon as={RiPlayMiniFill} />}
-              leftIcon={<Icon as={FaPlay} />}
               padding={"6px 12px"}
-              isDisabled={readOnly}>
-              Run Query
+              disabled={readOnly}>
+              <FaPlay /> Run Query
             </Button>
           )}
         </Flex>

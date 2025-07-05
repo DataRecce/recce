@@ -1,4 +1,4 @@
-import { Center, Flex, forwardRef } from "@chakra-ui/react";
+import { Center, Flex } from "@chakra-ui/react";
 import { EmptyRowsRenderer, ScreenshotDataGrid } from "../data-grid/ScreenshotDataGrid";
 
 import { RunResultViewProps } from "../run/types";
@@ -10,6 +10,7 @@ import {
 } from "@/lib/api/rowcount";
 import { deltaPercentageString } from "./delta";
 import { isNumber } from "lodash";
+import { forwardRef } from "react";
 
 type RowCountDiffResultViewProp = RunResultViewProps<RowCountDiffParams, RowCountDiffResult>;
 
@@ -92,7 +93,6 @@ function _RowCountDiffResultView({ run }: RowCountDiffResultViewProp, ref: any) 
             rows={rows}
             renderers={{ noRowsFallback: <EmptyRowsRenderer /> }}
             className="rdg-light"
-            enableScreenshot={true}
           />
         </>
       )}
@@ -151,7 +151,6 @@ function _RowCountResultView({ run }: RowCountResultViewProp, ref: any) {
             rows={rows}
             renderers={{ noRowsFallback: <EmptyRowsRenderer /> }}
             className="rdg-light"
-            enableScreenshot={true}
           />
         </>
       )}

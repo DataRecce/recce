@@ -3,21 +3,14 @@ import { Run, RunType } from "@/lib/api/types";
 import {
   Box,
   Button,
+  CloseButton,
+  Dialog,
   Flex,
   Icon,
   IconButton,
   Link,
-  Modal,
-  ModalBody,
-  ModalCloseButton,
-  ModalContent,
-  ModalFooter,
-  ModalHeader,
-  ModalOverlay,
   Popover,
-  PopoverBody,
-  PopoverContent,
-  PopoverTrigger,
+  Portal,
 } from "@chakra-ui/react";
 import { RunFormProps } from "./types";
 import { useState } from "react";
@@ -54,72 +47,87 @@ export const RunModal = <PT,>({
   RunForm,
 }: RunModalProps<PT>) => {
   const [params, setParams] = useState<Partial<PT>>(defaultParams);
+  const [hovered, setHovered] = useState(false);
   const [isReadyToExecute, setIsReadyToExecute] = useState(false);
   const documentationUrl = getDocumentationUrl(type);
 
   return (
-    <Modal isOpen={isOpen} onClose={onClose} size="6xl" scrollBehavior="inside">
-      <ModalOverlay />
-      <ModalContent overflowY="auto" height="75%" minHeight={"400px"}>
-        <ModalHeader className="flex items-center">
-          {title}{" "}
-          {documentationUrl && (
-            <Popover trigger="hover" placement="bottom-end">
-              <PopoverTrigger>
-                <IconButton
-                  display="flex"
-                  size="sm"
-                  variant="unstyled"
-                  aria-label="Click this button to learn more about the SQL behind"
-                  icon={<Icon verticalAlign="middle" as={IconInfo} boxSize={"16px"} />}
-                  onClick={() => window.open(documentationUrl, "_blank")}
-                  onFocus={(e) => {
-                    e.preventDefault();
-                  }}
-                />
-              </PopoverTrigger>
-              <PopoverContent bg="black" color="white">
-                <PopoverBody fontSize="sm" p={2}>
-                  Click{" "}
-                  <Link
-                    href={documentationUrl}
-                    target="_blank"
-                    textDecoration="underline"
-                    color="white"
-                    _hover={{ color: "blue.300" }}>
-                    here
-                  </Link>{" "}
-                  to learn more about the SQL behind
-                </PopoverBody>
-              </PopoverContent>
-            </Popover>
-          )}
-        </ModalHeader>
-        <ModalCloseButton />
-        <ModalBody p="0px" h="100%" overflow="auto" borderY="1px solid lightgray">
-          <Box style={{ contain: "layout" }}>
-            {RunForm && (
-              <RunForm
-                params={params}
-                onParamsChanged={setParams}
-                setIsReadyToExecute={setIsReadyToExecute}
-              />
+    <Dialog.Root open={isOpen} onOpenChange={onClose} size="cover" scrollBehavior="inside">
+      <Portal>
+        <Dialog.Backdrop />
+        <Dialog.Content overflowY="auto" height="75%" minHeight={"400px"}>
+          <Dialog.Header className="flex items-center">
+            {title}{" "}
+            {documentationUrl && (
+              <Popover.Root
+                positioning={{ placement: "bottom-end" }}
+                open={hovered}
+                onFocusOutside={() => {
+                  setHovered(false);
+                }}>
+                <Popover.Trigger asChild>
+                  <IconButton
+                    display="flex"
+                    size="sm"
+                    variant="plain"
+                    aria-label="Click this button to learn more about the SQL behind"
+                    onMouseEnter={() => {
+                      setHovered(true);
+                    }}
+                    onClick={() => window.open(documentationUrl, "_blank")}
+                    onFocus={(e) => {
+                      e.preventDefault();
+                    }}>
+                    <Icon verticalAlign="middle" as={IconInfo} boxSize={"16px"} />
+                  </IconButton>
+                </Popover.Trigger>
+                <Popover.Positioner>
+                  <Popover.Content bg="black" color="white">
+                    <Popover.Body fontSize="sm" p={2}>
+                      Click{" "}
+                      <Link
+                        href={documentationUrl}
+                        target="_blank"
+                        textDecoration="underline"
+                        color="white"
+                        _hover={{ color: "blue.300" }}>
+                        here
+                      </Link>{" "}
+                      to learn more about the SQL behind
+                    </Popover.Body>
+                  </Popover.Content>
+                </Popover.Positioner>
+              </Popover.Root>
             )}
-          </Box>
-        </ModalBody>
-        <ModalFooter>
-          <Flex gap="10px">
-            <Button
-              isDisabled={!isReadyToExecute}
-              colorScheme="blue"
-              onClick={() => {
-                onExecute(type, params as PT);
-              }}>
-              Execute
-            </Button>
-          </Flex>
-        </ModalFooter>
-      </ModalContent>
-    </Modal>
+          </Dialog.Header>
+          <Dialog.Body p="0px" h="100%" overflow="auto" borderY="1px solid lightgray">
+            <Box style={{ contain: "layout" }}>
+              {RunForm && (
+                <RunForm
+                  params={params}
+                  onParamsChanged={setParams}
+                  setIsReadyToExecute={setIsReadyToExecute}
+                />
+              )}
+            </Box>
+          </Dialog.Body>
+          <Dialog.Footer>
+            <Flex gap="10px">
+              <Button
+                disabled={!isReadyToExecute}
+                colorScheme="blue"
+                onClick={() => {
+                  onExecute(type, params as PT);
+                }}>
+                Execute
+              </Button>
+            </Flex>
+          </Dialog.Footer>
+          <Dialog.CloseTrigger asChild>
+            <CloseButton size="sm" />
+          </Dialog.CloseTrigger>
+        </Dialog.Content>
+      </Portal>
+    </Dialog.Root>
   );
 };

@@ -2,35 +2,25 @@ import React from "react";
 import { useLineageGraphContext } from "@/lib/hooks/LineageGraphContext";
 import {
   Button,
-  Divider,
+  CloseButton,
   Flex,
   Heading,
   Icon,
   IconButton,
   Link,
-  ListItem,
-  Modal,
-  ModalBody,
-  ModalCloseButton,
-  ModalContent,
-  ModalFooter,
-  ModalHeader,
-  ModalOverlay,
+  Dialog,
+  List,
+  Portal,
+  Separator,
   Table,
-  TableContainer,
-  Tbody,
-  Td,
-  Th,
-  Thead,
-  Tooltip,
-  Tr,
-  UnorderedList,
   useDisclosure,
 } from "@chakra-ui/react";
 import { format, formatDistance, parseISO } from "date-fns";
 import { IconInfo } from "../icons";
 import { isEmpty } from "lodash";
 import { LineageGraph } from "@/components/lineage/lineage";
+import { Tooltip } from "@/components/ui/tooltip";
+import { LuExternalLink } from "react-icons/lu";
 
 export function formatTimestamp(timestamp: string): string {
   const date = parseISO(timestamp);
@@ -73,15 +63,15 @@ function renderInfoEntries(info: object): React.JSX.Element[] {
   return Object.entries(info)
     .filter(([key, value]) => key !== "url" && value !== null && value !== undefined)
     .map(([key, value]) => (
-      <ListItem key={key} ml="10px">
+      <List.Item key={key} ml="10px">
         {key}: {value}
-      </ListItem>
+      </List.Item>
     ));
 }
 
 export function EnvInfo() {
   const { envInfo, reviewMode, lineageGraph } = useLineageGraphContext();
-  const { isOpen, onOpen, onClose } = useDisclosure();
+  const { open, onOpen, onClose } = useDisclosure();
   const git = envInfo?.git;
   const pr = envInfo?.pullRequest;
   const reviewInfo = { ...git, ...pr };
@@ -103,7 +93,7 @@ export function EnvInfo() {
 
   return (
     <>
-      <Tooltip label="Environment Info" placement="bottom-end">
+      <Tooltip content="Environment Info" positioning={{ placement: "bottom-end" }}>
         <div className="flex items-center hover:cursor-pointer hover:text-black" onClick={onOpen}>
           <div className="hidden text-sm lg:flex lg:flex-col">
             <div className="flex gap-1">
@@ -119,124 +109,139 @@ export function EnvInfo() {
               ({currentRelativeTime})
             </div>
           </div>
-          <IconButton
-            size="sm"
-            variant="unstyled"
-            aria-label="Environment Info"
-            icon={<Icon verticalAlign="middle" as={IconInfo} boxSize={"16px"} />}
-          />
+          <IconButton size="sm" variant="plain" aria-label="Environment Info">
+            <Icon verticalAlign="middle" as={IconInfo} boxSize={"16px"} />
+          </IconButton>
         </div>
       </Tooltip>
-      <Modal isOpen={isOpen} onClose={onClose} size="3xl">
-        <ModalOverlay />
-        <ModalContent>
-          <ModalHeader>Environment Information</ModalHeader>
-          <ModalCloseButton />
-          <ModalBody>
-            <Flex direction="column" gap="5px">
-              {reviewMode ? (
-                <>
-                  <Flex justifyContent="left" gap="5px" direction="column">
-                    <Heading size="sm">Review Information</Heading>
-                    <UnorderedList spacing={1}>
-                      {reviewInfo.url && (
-                        <ListItem ml="10px">
-                          url:{" "}
-                          <Link href={reviewInfo.url} color="blue.500" isExternal>
-                            {reviewInfo.url}
-                          </Link>
-                        </ListItem>
-                      )}
-                      {!isEmpty(reviewInfo) && renderInfoEntries(reviewInfo)}
-                    </UnorderedList>
-                  </Flex>
-                </>
-              ) : (
-                <>
-                  <Flex justifyContent="left" gap="5px" direction="column">
-                    <Heading size="sm">Dev Information</Heading>
-                    <UnorderedList spacing={1}>{git && renderInfoEntries(git)}</UnorderedList>
-                  </Flex>
-                </>
-              )}
-              <Divider />
-              {envInfo?.adapterType === "dbt" && (
-                <Flex justifyContent="left" gap="5px" direction="column">
-                  <Heading size="sm">DBT</Heading>
-                  <TableContainer>
-                    <Table variant="simple">
-                      <Thead>
-                        <Tr>
-                          <Th></Th>
-                          <Th>base</Th>
-                          <Th>current</Th>
-                        </Tr>
-                      </Thead>
-                      <Tbody>
-                        <Tr>
-                          <Td>schema</Td>
-                          <Td className="no-track-pii-safe">
-                            {Array.from(baseSchemas).map((item) => (
-                              <Tooltip key={item} label={item} placement="bottom">
-                                <div className="max-w-72 truncate">{item}</div>
-                              </Tooltip>
-                            ))}
-                          </Td>
-                          <Td className="no-track-pii-safe">
-                            {Array.from(currentSchemas).map((item) => (
-                              <Tooltip key={item} label={item} placement="bottom">
-                                <div className="max-w-72 truncate">{item}</div>
-                              </Tooltip>
-                            ))}
-                          </Td>
-                        </Tr>
-                        <Tr>
-                          <Td>version</Td>
-                          <Td>{dbtBase?.dbt_version}</Td>
-                          <Td>{dbtCurrent?.dbt_version}</Td>
-                        </Tr>
-                        <Tr>
-                          <Td>timestamp</Td>
-                          <Td>{baseTime}</Td>
-                          <Td>{currentTime}</Td>
-                        </Tr>
-                      </Tbody>
-                    </Table>
-                  </TableContainer>
+      <Dialog.Root open={open} onOpenChange={onClose} size="lg">
+        <Portal>
+          <Dialog.Backdrop />
+          <Dialog.Positioner>
+            <Dialog.Content>
+              <Dialog.Header>
+                <Dialog.Title>Environment Information</Dialog.Title>
+              </Dialog.Header>
+              <Dialog.Body>
+                <Flex direction="column" gap="5px">
+                  {reviewMode ? (
+                    <>
+                      <Flex justifyContent="left" gap="5px" direction="column">
+                        <Heading size="sm">Review Information</Heading>
+                        <List.Root>
+                          {reviewInfo.url && (
+                            <List.Item ml="10px">
+                              url:{" "}
+                              <Link href={reviewInfo.url} color="blue.500" target="_blank">
+                                {reviewInfo.url} <LuExternalLink />
+                              </Link>
+                            </List.Item>
+                          )}
+                          {!isEmpty(reviewInfo) && renderInfoEntries(reviewInfo)}
+                        </List.Root>
+                      </Flex>
+                    </>
+                  ) : (
+                    <>
+                      <Flex justifyContent="left" gap="5px" direction="column">
+                        <Heading size="sm">Dev Information</Heading>
+                        <List.Root>{git && renderInfoEntries(git)}</List.Root>
+                      </Flex>
+                    </>
+                  )}
+                  <Separator />
+                  {envInfo?.adapterType === "dbt" && (
+                    <Flex justifyContent="left" gap="5px" direction="column">
+                      <Heading size="sm">DBT</Heading>
+                      <Table.ScrollArea borderWidth="1px" height="30rem">
+                        <Table.Root size="sm" variant="line" stickyHeader>
+                          <Table.Header>
+                            <Table.Row>
+                              <Table.ColumnHeader></Table.ColumnHeader>
+                              <Table.ColumnHeader>base</Table.ColumnHeader>
+                              <Table.ColumnHeader>current</Table.ColumnHeader>
+                            </Table.Row>
+                          </Table.Header>
+                          <Table.Body>
+                            <Table.Row>
+                              <Table.Cell>schema</Table.Cell>
+                              <Table.Cell className="no-track-pii-safe">
+                                {Array.from(baseSchemas).map((item) => (
+                                  <Tooltip
+                                    key={item}
+                                    content={item}
+                                    positioning={{ placement: "bottom" }}>
+                                    <div className="max-w-72 truncate">{item}</div>
+                                  </Tooltip>
+                                ))}
+                              </Table.Cell>
+                              <Table.Cell className="no-track-pii-safe">
+                                {Array.from(currentSchemas).map((item) => (
+                                  <Tooltip
+                                    key={item}
+                                    content={item}
+                                    positioning={{ placement: "bottom" }}>
+                                    <div className="max-w-72 truncate">{item}</div>
+                                  </Tooltip>
+                                ))}
+                              </Table.Cell>
+                            </Table.Row>
+                            <Table.Row>
+                              <Table.Cell>version</Table.Cell>
+                              <Table.Cell>{dbtBase?.dbt_version}</Table.Cell>
+                              <Table.Cell>{dbtCurrent?.dbt_version}</Table.Cell>
+                            </Table.Row>
+                            <Table.Row>
+                              <Table.Cell>timestamp</Table.Cell>
+                              <Table.Cell>{baseTime}</Table.Cell>
+                              <Table.Cell>{currentTime}</Table.Cell>
+                            </Table.Row>
+                          </Table.Body>
+                        </Table.Root>
+                      </Table.ScrollArea>
+                    </Flex>
+                  )}
+                  {envInfo?.adapterType === "sqlmesh" && (
+                    <Flex justifyContent="left" gap="5px" direction="column">
+                      <Heading size="sm">SQLMesh</Heading>
+                      <Table.ScrollArea borderWidth="1px" height="30rem">
+                        <Table.Root variant="line" stickyHeader>
+                          <Table.Header>
+                            <Table.Row>
+                              <Table.ColumnHeader></Table.ColumnHeader>
+                              <Table.ColumnHeader>base</Table.ColumnHeader>
+                              <Table.ColumnHeader>current</Table.ColumnHeader>
+                            </Table.Row>
+                          </Table.Header>
+                          <Table.Body>
+                            <Table.Row>
+                              <Table.Cell>Environment</Table.Cell>
+                              <Table.Cell className="no-track-pii-safe">
+                                {envInfo.sqlmesh?.base_env}
+                              </Table.Cell>
+                              <Table.Cell className="no-track-pii-safe">
+                                {envInfo.sqlmesh?.current_env}
+                              </Table.Cell>
+                            </Table.Row>
+                          </Table.Body>
+                        </Table.Root>
+                      </Table.ScrollArea>
+                    </Flex>
+                  )}
                 </Flex>
-              )}
-              {envInfo?.adapterType === "sqlmesh" && (
-                <Flex justifyContent="left" gap="5px" direction="column">
-                  <Heading size="sm">SQLMesh</Heading>
-                  <TableContainer>
-                    <Table variant="simple">
-                      <Thead>
-                        <Tr>
-                          <Th></Th>
-                          <Th>base</Th>
-                          <Th>current</Th>
-                        </Tr>
-                      </Thead>
-                      <Tbody>
-                        <Tr>
-                          <Td>Environment</Td>
-                          <Td className="no-track-pii-safe">{envInfo.sqlmesh?.base_env}</Td>
-                          <Td className="no-track-pii-safe">{envInfo.sqlmesh?.current_env}</Td>
-                        </Tr>
-                      </Tbody>
-                    </Table>
-                  </TableContainer>
-                </Flex>
-              )}
-            </Flex>
-          </ModalBody>
-          <ModalFooter>
-            <Button colorScheme="blue" mr={3} onClick={onClose}>
-              Close
-            </Button>
-          </ModalFooter>
-        </ModalContent>
-      </Modal>
+              </Dialog.Body>
+              <Dialog.Footer>
+                <Button colorScheme="blue" mr={3} onClick={onClose}>
+                  Close
+                </Button>
+              </Dialog.Footer>
+              <Dialog.CloseTrigger asChild>
+                <CloseButton size="sm" />
+              </Dialog.CloseTrigger>
+            </Dialog.Content>
+          </Dialog.Positioner>
+        </Portal>
+      </Dialog.Root>
     </>
   );
 }

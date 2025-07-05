@@ -1,5 +1,4 @@
-import { Box, Button, HStack, StackDivider } from "@chakra-ui/react";
-import { LineageGraphNode } from "./lineage";
+import { Box, Button, HStack, StackSeparator } from "@chakra-ui/react";
 import { useLineageViewContextSafe } from "./LineageViewContext";
 
 export interface ActionControlProps {
@@ -27,7 +26,7 @@ export function ActionControl({ onClose }: ActionControlProps) {
 
   return (
     <Box bg="white" rounded="md" shadow="dark-lg">
-      <HStack p="5px 15px" mt="4" divider={<StackDivider borderColor="gray.200" />} spacing={4}>
+      <HStack p="5px 15px" mt="4" separator={<StackSeparator borderColor="gray.200" />} gap={4}>
         <Box fontSize="10pt">
           Progress: {getProgressMessage()} {actionState.status === "canceled" ? " (canceled)" : ""}
         </Box>
@@ -37,7 +36,7 @@ export function ActionControl({ onClose }: ActionControlProps) {
             size="xs"
             variant="outline"
             onClick={cancel}
-            isLoading={actionState.status === "canceling"}
+            loading={actionState.status === "canceling"}
             loadingText="Canceling">
             Cancel
           </Button>

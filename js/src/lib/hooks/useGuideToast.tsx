@@ -1,12 +1,5 @@
-import {
-  useToast,
-  Alert,
-  AlertDescription,
-  Link,
-  HStack,
-  CloseButton,
-  Text,
-} from "@chakra-ui/react";
+import { useState } from "react";
+import { toaster } from "@/components/ui/toaster";
 
 export function useGuideToast(options: {
   guideId: string;
@@ -15,63 +8,37 @@ export function useGuideToast(options: {
   externalLinkText?: string;
   onExternalLinkClick?: () => void;
 }) {
-  const toast = useToast();
+  const [toastId, setToastId] = useState<string | undefined>(undefined);
   const { guideId, description, externalLink, externalLinkText, onExternalLinkClick } = options;
 
   function guideToast() {
-    if (toast.isActive(guideId)) {
+    if (toastId != null) {
       // Don't show the toast again if it's already active
       return;
     }
 
-    toast({
-      id: guideId,
-      position: "bottom-right",
-      duration: 3000,
-      description: "some text",
-      render: ({ id, onClose }) => (
-        <Alert
-          status="success"
-          variant="subtle"
-          zIndex={"toast"}
-          borderColor={"gray.200"}
-          borderWidth={3}
-          borderRadius={"md"}
-          backgroundColor={"white"}
-          opacity={1}>
-          <AlertDescription fontSize="md">
-            <HStack>
-              <Text>
-                {description}{" "}
-                <Link
-                  textDecor="underline"
-                  isExternal
-                  href={externalLink}
-                  onClick={() => {
-                    if (onExternalLinkClick) {
-                      onExternalLinkClick();
-                    }
-                    onClose();
-                  }}>
-                  {externalLinkText}
-                </Link>
-              </Text>
-              <CloseButton
-                onClick={() => {
-                  onClose();
-                }}
-              />
-            </HStack>
-          </AlertDescription>
-        </Alert>
-      ),
-    });
+    setToastId(
+      toaster.create({
+        id: guideId,
+        duration: 3000,
+        type: "success",
+        description: description,
+        action: {
+          label: externalLinkText ?? "link",
+          onClick: () => {
+            if (onExternalLinkClick) {
+              onExternalLinkClick();
+            }
+          },
+        },
+      }),
+    );
   }
 
   return {
     guideToast: guideToast,
     closeGuideToast: () => {
-      toast.closeAll();
+      toaster.dismiss(toastId);
     },
   };
 }

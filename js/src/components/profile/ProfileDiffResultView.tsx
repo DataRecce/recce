@@ -1,10 +1,10 @@
-import { Center, Flex, forwardRef } from "@chakra-ui/react";
+import { Center, Flex } from "@chakra-ui/react";
 
 import { ScreenshotDataGrid } from "../data-grid/ScreenshotDataGrid";
 import { RunResultViewProps } from "../run/types";
 
 import { ProfileDiffParams, ProfileDiffResult, ProfileDiffViewOptions } from "@/lib/api/profile";
-import { useMemo } from "react";
+import { forwardRef, useMemo } from "react";
 import { toDataDiffGrid } from "../query/querydiff";
 import { RunToolbar } from "../run/RunToolbar";
 import { DiffDisplayModeSwitch } from "../query/ToggleSwitch";
@@ -98,7 +98,6 @@ const PrivateProfileDiffResultView = (
         rows={gridData.rows}
         defaultColumnOptions={{ resizable: true, maxWidth: 800, minWidth: 35 }}
         className="rdg-light"
-        enableScreenshot={true}
       />
     </Flex>
   );
@@ -167,7 +166,6 @@ const PrivateProfileResultView = (
         rows={gridData.rows}
         defaultColumnOptions={{ resizable: true, maxWidth: 800, minWidth: 35 }}
         className="rdg-light"
-        enableScreenshot={true}
       />
     </Flex>
   );

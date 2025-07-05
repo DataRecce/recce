@@ -1,8 +1,9 @@
 import { HistogramDiffParams, HistogramDiffResult } from "@/lib/api/profile";
 import { RunResultViewProps } from "../run/types";
-import { HStack, Box, Flex, Spacer, forwardRef } from "@chakra-ui/react";
+import { HStack, Box, Flex, Spacer } from "@chakra-ui/react";
 import { HistogramChart } from "../charts/HistogramChart";
 import { ScreenshotBox } from "../screenshot/ScreenshotBox";
+import { forwardRef } from "react";
 
 type HistogramDiffResultViewProp = RunResultViewProps<HistogramDiffParams, HistogramDiffResult>;
 

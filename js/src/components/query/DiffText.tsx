@@ -1,6 +1,7 @@
-import { CopyIcon } from "@chakra-ui/icons";
-import { Box, Flex, IconButton, useClipboard } from "@chakra-ui/react";
+import { Box, Flex, IconButton } from "@chakra-ui/react";
 import { useState } from "react";
+import { useCopyToClipboard } from "usehooks-ts";
+import { PiCopy } from "react-icons/pi";
 
 interface DiffTextProps {
   value: string;
@@ -11,7 +12,8 @@ interface DiffTextProps {
 }
 
 export const DiffText = ({ value, colorScheme, grayOut, noCopy, fontSize }: DiffTextProps) => {
-  const { onCopy, hasCopied } = useClipboard(value);
+  const [copiedText, copyToClipboard] = useCopyToClipboard();
+  const hasCopiedText = Boolean(copiedText);
   const [isHovered, setIsHovered] = useState(false);
 
   const CopyControl = () => {
@@ -19,7 +21,7 @@ export const DiffText = ({ value, colorScheme, grayOut, noCopy, fontSize }: Diff
       return <></>;
     }
 
-    if (hasCopied) {
+    if (hasCopiedText) {
       return <>Copied</>;
     }
 
@@ -30,16 +32,16 @@ export const DiffText = ({ value, colorScheme, grayOut, noCopy, fontSize }: Diff
     return (
       <IconButton
         aria-label="Copy"
-        icon={<CopyIcon boxSize="10px" />}
         size="xs"
         minW="10px"
         h="10px"
-        variant="unstyled"
-        onClick={onCopy}
+        variant="plain"
+        onClick={() => copyToClipboard(value)}
         display="flex"
         alignItems="center"
-        justifyContent="center"
-      />
+        justifyContent="center">
+        <PiCopy size="10px" />
+      </IconButton>
     );
   };
 

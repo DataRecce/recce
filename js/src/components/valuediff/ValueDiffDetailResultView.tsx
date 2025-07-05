@@ -1,7 +1,7 @@
 import "react-data-grid/lib/styles.css";
 
-import { Center, Flex, forwardRef } from "@chakra-ui/react";
-import { useMemo } from "react";
+import { Center, Flex } from "@chakra-ui/react";
+import { forwardRef, useMemo } from "react";
 
 import "../query/styles.css";
 import { ColumnRenderMode, Run } from "@/lib/api/types";
@@ -150,7 +150,6 @@ const PrivateValueDiffDetailResultView = (
         renderers={{ noRowsFallback: <EmptyRowsRenderer emptyMessage="No mismatched rows" /> }}
         defaultColumnOptions={{ resizable: true, maxWidth: 800, minWidth: 35 }}
         className="rdg-light"
-        enableScreenshot={true}
       />
     </Flex>
   );

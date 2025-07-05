@@ -1,8 +1,9 @@
 import { useLineageGraphContext } from "@/lib/hooks/LineageGraphContext";
 import { DropdownValuesInput } from "@/utils/DropdownValuesInput";
-import { InfoIcon } from "@chakra-ui/icons";
-import { Flex, FlexProps, FormControl, FormLabel, Tooltip } from "@chakra-ui/react";
+import { Field, Flex, FlexProps } from "@chakra-ui/react";
 import { useMemo } from "react";
+import { Tooltip } from "@/components/ui/tooltip";
+import { PiInfo } from "react-icons/pi";
 
 interface QueryFormProps extends FlexProps {
   defaultPrimaryKeys: string[] | undefined;
@@ -38,13 +39,13 @@ export const QueryForm = ({ defaultPrimaryKeys, onPrimaryKeysChange, ...prob }: 
 
   return (
     <Flex {...prob}>
-      <FormControl m="4px 8px">
-        <FormLabel fontSize={"8pt"} margin={"0"}>
+      <Field.Root m="4px 8px">
+        <Field.Label fontSize={"8pt"} margin={"0"}>
           Diff with Primary Key(s) (suggested){" "}
-          <Tooltip label={labelInfo} placement="bottom-end">
-            <InfoIcon color="gray.600" boxSize="3" />
+          <Tooltip content={labelInfo} positioning={{ placement: "bottom-end" }}>
+            <PiInfo color="gray.600" size="3" />
           </Tooltip>
-        </FormLabel>
+        </Field.Label>
         <DropdownValuesInput
           className="no-track-pii-safe"
           unitName="key"
@@ -54,9 +55,9 @@ export const QueryForm = ({ defaultPrimaryKeys, onPrimaryKeysChange, ...prob }: 
           size="xs"
           width={"240px"}
           placeholder="Select or type to add keys"
-          isDisabled={!isActionAvailable("query_diff_with_primary_key")}
+          disabled={!isActionAvailable("query_diff_with_primary_key")}
         />
-      </FormControl>
+      </Field.Root>
     </Flex>
   );
 };

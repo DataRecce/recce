@@ -1,5 +1,6 @@
-import { Flex, Heading, Button, Icon, Text, Link, ListItem, UnorderedList } from "@chakra-ui/react";
+import { Flex, Heading, Button, Icon, Text, Link, List } from "@chakra-ui/react";
 import { RiMindMap, RiTerminalBoxLine } from "react-icons/ri";
+import { LuExternalLink } from "react-icons/lu";
 
 export function BaseEnvironmentSetupGuide() {
   return (
@@ -44,20 +45,20 @@ export function BaseEnvironmentSetupGuide() {
             comparison.
           </Text>
           <Text>Once configured, you'll be able to:</Text>
-          <UnorderedList>
-            <ListItem>
+          <List.Root>
+            <List.Item>
               <Text>Run statistical data diffs</Text>
-            </ListItem>
-            <ListItem>
+            </List.Item>
+            <List.Item>
               <Text>Run query diffs</Text>
-            </ListItem>
-            <ListItem>
+            </List.Item>
+            <List.Item>
               <Text>Save checks to your Recce Checklist</Text>
-            </ListItem>
-            <ListItem>
+            </List.Item>
+            <List.Item>
               <Text>...and more!</Text>
-            </ListItem>
-          </UnorderedList>
+            </List.Item>
+          </List.Root>
           <Text fontSize="md">Take the next step toward better data impact assessment.</Text>
         </Flex>
         <Flex w="100%" direction="column" mt={6}>
@@ -92,25 +93,25 @@ export function BaseEnvironmentSetupNotification() {
           comparisons between environments.
         </Text>
         <Text fontSize="sm">To set up full environment comparison:</Text>
-        <UnorderedList>
-          <ListItem>
+        <List.Root>
+          <List.Item>
             <Text fontSize="sm">Run `recce debug` for setup assistance</Text>
-          </ListItem>
-          <ListItem>
+          </List.Item>
+          <List.Item>
             <Text fontSize="sm">
               Visit{" "}
               <Link
                 color="blue.500"
                 fontSize="sm"
                 fontWeight="medium"
-                isExternal
+                target="_blank"
                 href="https://docs.datarecce.io/configure-diff/">
                 docs{" "}
               </Link>
-              for configuration details
+              for configuration details <LuExternalLink />
             </Text>
-          </ListItem>
-        </UnorderedList>
+          </List.Item>
+        </List.Root>
       </Flex>
     </Flex>
   );

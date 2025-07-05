@@ -1,5 +1,5 @@
-import { UseToastOptions, useToast, ToastId } from "@chakra-ui/react";
-import { useCallback, useEffect, useMemo, useRef } from "react";
+import { toaster } from "@/components/ui/toaster";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 const COUNTDOWN_CONFIG = {
   TOAST_ID: "lifetime-countdown",
@@ -11,36 +11,14 @@ const COUNTDOWN_CONFIG = {
   },
 } as const;
 
-interface CountdownToastOptions {
-  position?: UseToastOptions["position"];
-  variant?: UseToastOptions["variant"];
-  status?: UseToastOptions["status"];
-}
-
 /**
  * Hook to manage countdown toast notifications for server lifetime
  * @param lifetimeExpiredAt - Date when the server will expire
- * @param options - Optional toast UI configuration
  */
-export function useCountdownToast(
-  lifetimeExpiredAt: Date | undefined,
-  options: CountdownToastOptions = {},
-) {
-  const countdownToast = useToast();
-  const countdownToastIdRef = useRef<ToastId>();
+export function useCountdownToast(lifetimeExpiredAt: Date | undefined) {
+  const countdownToast = toaster;
+  const [countdownToastId, setCountdownToastId] = useState<string | null>(null);
   const countdownIntervalRef = useRef<NodeJS.Timeout>();
-
-  const toastOptions = useMemo<UseToastOptions>(
-    () => ({
-      position: options.position ?? "bottom-right",
-      variant: options.variant ?? "left-accent",
-      status: options.status ?? "warning",
-      duration: null,
-      isClosable: true,
-      containerStyle: COUNTDOWN_CONFIG.STYLE,
-    }),
-    [options.position, options.variant, options.status],
-  );
 
   const calculateRemainingSeconds = useCallback(() => {
     if (!lifetimeExpiredAt) return 0;
@@ -51,18 +29,14 @@ export function useCountdownToast(
   }, [lifetimeExpiredAt]);
 
   const cleanupToast = useCallback(() => {
-    if (countdownToastIdRef.current) {
-      countdownToast.close(countdownToastIdRef.current);
-      countdownToastIdRef.current = undefined;
+    if (countdownToastId != null) {
+      countdownToast.remove(countdownToastId);
+      setCountdownToastId(null);
     }
-    if (countdownIntervalRef.current) {
-      clearInterval(countdownIntervalRef.current);
-      countdownIntervalRef.current = undefined;
-    }
-  }, [countdownToast]);
+  }, [countdownToast, countdownToastId]);
 
   const updateToast = useCallback(() => {
-    if (!countdownToastIdRef.current) return;
+    if (countdownToastId == null) return;
 
     const remainingSeconds = calculateRemainingSeconds();
     if (remainingSeconds <= 0) {
@@ -70,11 +44,10 @@ export function useCountdownToast(
       return;
     }
 
-    countdownToast.update(countdownToastIdRef.current, {
-      ...toastOptions,
+    countdownToast.update(countdownToastId, {
       description: COUNTDOWN_CONFIG.MESSAGE(remainingSeconds),
     });
-  }, [countdownToast, toastOptions, calculateRemainingSeconds, cleanupToast]);
+  }, [countdownToastId, calculateRemainingSeconds, countdownToast, cleanupToast]);
 
   const showToast = useCallback(() => {
     if (!lifetimeExpiredAt) return;
@@ -85,21 +58,15 @@ export function useCountdownToast(
     const remainingSeconds = calculateRemainingSeconds();
     if (remainingSeconds <= 0) return;
 
-    countdownToastIdRef.current = countdownToast({
-      id: COUNTDOWN_CONFIG.TOAST_ID,
-      description: COUNTDOWN_CONFIG.MESSAGE(remainingSeconds),
-      ...toastOptions,
-    });
+    setCountdownToastId(
+      countdownToast.create({
+        id: COUNTDOWN_CONFIG.TOAST_ID,
+        description: COUNTDOWN_CONFIG.MESSAGE(remainingSeconds),
+      }),
+    );
 
     countdownIntervalRef.current = setInterval(updateToast, COUNTDOWN_CONFIG.UPDATE_INTERVAL);
-  }, [
-    lifetimeExpiredAt,
-    countdownToast,
-    calculateRemainingSeconds,
-    toastOptions,
-    updateToast,
-    cleanupToast,
-  ]);
+  }, [lifetimeExpiredAt, countdownToast, calculateRemainingSeconds, updateToast, cleanupToast]);
 
   useEffect(() => {
     if (!lifetimeExpiredAt) return;

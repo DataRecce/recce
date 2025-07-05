@@ -6,8 +6,8 @@ import {
   QueryDiffViewOptions,
   QueryPreviewChangeParams,
 } from "@/lib/api/adhocQuery";
-import { Center, Checkbox, Flex, forwardRef } from "@chakra-ui/react";
-import { useMemo } from "react";
+import { Center, Flex } from "@chakra-ui/react";
+import { forwardRef, useMemo } from "react";
 import { toDataDiffGrid } from "./querydiff";
 import { toValueDiffGrid as toQueryDiffJoinGrid } from "../valuediff/valuediff";
 
@@ -171,7 +171,6 @@ const PrivateQueryDiffResultView = (
           minWidth: 35,
         }}
         className="rdg-light"
-        enableScreenshot={true}
       />
     </Flex>
   );
@@ -307,7 +306,6 @@ const PrivateQueryDiffJoinResultView = (
           minWidth: 35,
         }}
         className="rdg-light"
-        enableScreenshot={true}
       />
     </Flex>
   );

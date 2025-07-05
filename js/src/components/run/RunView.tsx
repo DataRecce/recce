@@ -1,19 +1,8 @@
 import { Run } from "@/lib/api/types";
-import {
-  Alert,
-  AlertIcon,
-  Box,
-  Button,
-  Center,
-  CircularProgress,
-  ComponentWithAs,
-  Flex,
-  VStack,
-  forwardRef,
-} from "@chakra-ui/react";
+import { Alert, Box, Button, Center, Flex, ProgressCircle, VStack } from "@chakra-ui/react";
 import { RunResultViewProps } from "./types";
 import { ErrorBoundary } from "@sentry/react";
-import React, { ElementType } from "react";
+import React, { forwardRef, ForwardRefExoticComponent, RefAttributes } from "react";
 
 interface RunViewProps<PT, RT, VO = any> {
   isRunning?: boolean;
@@ -26,7 +15,9 @@ interface RunViewProps<PT, RT, VO = any> {
   onExecuteRun?: () => void;
   viewOptions?: VO;
   onViewOptionsChanged?: (viewOptions: VO) => void;
-  RunResultView?: ComponentWithAs<ElementType, RunResultViewProps<PT, RT, VO>>;
+  RunResultView?: ForwardRefExoticComponent<
+    RunResultViewProps<PT, RT, VO> & RefAttributes<unknown>
+  >;
   // eslint-disable-next-line @typescript-eslint/no-unnecessary-type-parameters
   children?: <T extends RunResultViewProps<PT, RT, VO>>(params: T) => React.ReactNode;
 }
@@ -52,10 +43,10 @@ export const RunView = forwardRef(
 
     if (errorMessage) {
       return (
-        <Alert status="error">
-          <AlertIcon />
-          Error: {errorMessage}
-        </Alert>
+        <Alert.Root status="error" title={`Error: ${errorMessage}`}>
+          <Alert.Indicator />
+          <Alert.Title>Error: {errorMessage}</Alert.Title>
+        </Alert.Root>
       );
     }
 
@@ -72,9 +63,13 @@ export const RunView = forwardRef(
           <VStack>
             <Flex alignItems="center">
               {progress?.percentage == null ? (
-                <CircularProgress isIndeterminate size="20px" mr="8px" />
+                <ProgressCircle.Root value={null} size="md" mr="8px">
+                  <ProgressCircle.Circle />
+                </ProgressCircle.Root>
               ) : (
-                <CircularProgress size="20px" value={progress.percentage * 100} mr="8px" />
+                <ProgressCircle.Root value={progress.percentage * 100} size="md" mr="8px">
+                  <ProgressCircle.Circle />
+                </ProgressCircle.Root>
               )}
 
               {isAborting ? <>Aborting...</> : <>{loadingMessage}</>}

@@ -1,14 +1,7 @@
-import {
-  useToast,
-  Alert,
-  AlertDescription,
-  Link,
-  Image,
-  Flex,
-  IconButton,
-  HStack,
-  CloseButton,
-} from "@chakra-ui/react";
+import { Link, Image, Flex, IconButton, HStack } from "@chakra-ui/react";
+import { toaster } from "@/components/ui/toaster";
+import React, { useState } from "react";
+import { LuExternalLink } from "react-icons/lu";
 
 function ReactionFeedback({
   description,
@@ -31,22 +24,22 @@ function ReactionFeedback({
       <IconButton
         aria-label="thumbs up"
         variant={"ghost"}
-        icon={<Image src="/imgs/feedback/thumbs-up.png" alt="like" />}
         width={"32px"}
         height={"32px"}
-        onClick={onLike}
-      />
+        onClick={onLike}>
+        <Image src="/imgs/feedback/thumbs-up.png" alt="like" />
+      </IconButton>
       <IconButton
         aria-label="thumbs down"
         variant={"ghost"}
-        icon={<Image src="/imgs/feedback/thumbs-down.png" alt="dislike" />}
         width={"32px"}
         height={"32px"}
-        onClick={onDislike}
-      />
+        onClick={onDislike}>
+        <Image src="/imgs/feedback/thumbs-down.png" alt="dislike" />
+      </IconButton>
       {externalLink && externalLinkText && (
-        <Link href={externalLink} isExternal textDecoration="underline" onClick={onClickLink}>
-          {externalLinkText}
+        <Link href={externalLink} target="_blank" textDecoration="underline" onClick={onClickLink}>
+          {externalLinkText} <LuExternalLink />
         </Link>
       )}
     </Flex>
@@ -60,12 +53,12 @@ export function useFeedbackCollectionToast(options: {
   externalLink?: string;
   externalLinkText?: string;
 }) {
-  const toast = useToast();
   const { feedbackId, description, onFeedbackSubmit, externalLink, externalLinkText } = options;
+  const [toastId, setToastId] = useState<string | undefined>(undefined);
 
   function feedBackCollectionToast(skipBypassFeedback = false) {
     const isSkipFeedback = localStorage.getItem(feedbackId);
-    if (toast.isActive(feedbackId)) {
+    if (toastId != null) {
       // Don't show the toast again if it's already active
       return;
     }
@@ -73,56 +66,41 @@ export function useFeedbackCollectionToast(options: {
       return;
     }
 
-    toast({
-      id: feedbackId,
-      position: "bottom-right",
-      duration: null,
-      render: ({ id, onClose }) => (
-        <Alert
-          status="success"
-          variant="subtle"
-          zIndex={"toast"}
-          borderColor={"gray.200"}
-          borderWidth={3}
-          borderRadius={"md"}
-          backgroundColor={"white"}
-          opacity={1}>
-          <AlertDescription fontSize="md">
-            <HStack>
-              <ReactionFeedback
-                description={description}
-                onLike={() => {
-                  onFeedbackSubmit("like");
-                  onClose();
-                  localStorage.setItem(feedbackId, "true");
-                }}
-                onDislike={() => {
-                  onFeedbackSubmit("dislike");
-                  onClose();
-                  localStorage.setItem(feedbackId, "true");
-                }}
-                externalLink={externalLink}
-                externalLinkText={externalLinkText}
-                onClickLink={() => {
-                  onFeedbackSubmit("link");
-                }}
-              />
-              <CloseButton
-                onClick={() => {
-                  onClose();
-                }}
-              />
-            </HStack>
-          </AlertDescription>
-        </Alert>
-      ),
-    });
+    setToastId(
+      toaster.create({
+        id: feedbackId,
+        duration: undefined,
+        type: "success",
+        description: (
+          <HStack>
+            <ReactionFeedback
+              description={description}
+              onLike={() => {
+                onFeedbackSubmit("like");
+                toaster.dismiss(toastId);
+                localStorage.setItem(feedbackId, "true");
+              }}
+              onDislike={() => {
+                onFeedbackSubmit("dislike");
+                toaster.dismiss(toastId);
+                localStorage.setItem(feedbackId, "true");
+              }}
+              externalLink={externalLink}
+              externalLinkText={externalLinkText}
+              onClickLink={() => {
+                onFeedbackSubmit("link");
+              }}
+            />
+          </HStack>
+        ),
+      }),
+    );
   }
 
   return {
     feedbackToast: feedBackCollectionToast,
     closeToast: () => {
-      toast.closeAll();
+      toaster.dismiss(toastId);
     },
   };
 }
