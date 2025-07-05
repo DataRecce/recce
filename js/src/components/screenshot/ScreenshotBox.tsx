@@ -1,6 +1,5 @@
-import { Box, BoxProps, forwardRef } from "@chakra-ui/react";
-import { useCopyToClipboardButton, useImageDownloadModal } from "@/lib/hooks/ScreenShot";
-import { useCallback } from "react";
+import { Box, BoxProps } from "@chakra-ui/react";
+import { forwardRef } from "react";
 
 interface ScreenshotBoxProps extends BoxProps {
   backgroundColor?: string;

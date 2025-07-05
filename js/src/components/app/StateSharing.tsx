@@ -1,5 +1,4 @@
-import { Flex, Text, IconButton, Button, useClipboard } from "@chakra-ui/react";
-import { CheckCircleIcon, CopyIcon } from "@chakra-ui/icons";
+import { Flex, Text, IconButton, Button } from "@chakra-ui/react";
 import { useRecceInstanceContext } from "@/lib/hooks/RecceInstanceContext";
 import { useRecceShareStateContext } from "@/lib/hooks/RecceShareStateContext";
 import { useClipBoardToast } from "@/lib/hooks/useClipBoardToast";
@@ -7,17 +6,19 @@ import { TbCloudUpload } from "react-icons/tb";
 import { trackShareState } from "@/lib/api/track";
 import { useState } from "react";
 import AuthModal from "@/components/AuthModal/AuthModal";
+import { useCopyToClipboard } from "usehooks-ts";
+import { PiCheckCircle, PiCopy } from "react-icons/pi";
 
 export function TopLevelShare() {
   const { successToast, failToast } = useClipBoardToast();
-  const { onCopy } = useClipboard("");
+  const [, copyToClipboard] = useCopyToClipboard();
   const { authed } = useRecceInstanceContext();
   const { shareUrl, isLoading, error, handleShareClick } = useRecceShareStateContext();
   const [showModal, setShowModal] = useState(false);
 
-  const handleCopy = () => {
+  const handleCopy = async () => {
     try {
-      onCopy(shareUrl);
+      await copyToClipboard(String(shareUrl));
       successToast("Copied the link to clipboard");
     } catch (error) {
       failToast("Failed to copy the link", error);
@@ -34,11 +35,10 @@ export function TopLevelShare() {
         <Button
           size="sm"
           variant="outline"
-          leftIcon={<TbCloudUpload />}
           onClick={() => {
             setShowModal(true);
           }}>
-          Share
+          <TbCloudUpload /> Share
         </Button>
         {showModal && <AuthModal handleParentClose={onClose} ignoreCookie />}
       </Flex>
@@ -54,10 +54,8 @@ export function TopLevelShare() {
           await handleShareClick();
           trackShareState({ name: "create" });
         }}
-        leftIcon={<TbCloudUpload />}
-        rightIcon={shareUrl ? <CheckCircleIcon color="green" /> : undefined}
-        isLoading={isLoading}>
-        Share
+        loading={isLoading}>
+        <TbCloudUpload /> Share {shareUrl ? <PiCheckCircle color="green" /> : undefined}
       </Button>
       <Flex gap="5px" alignItems="center">
         {shareUrl && (
@@ -68,12 +66,12 @@ export function TopLevelShare() {
             <IconButton
               size="xs"
               aria-label="Copy the share URL"
-              icon={<CopyIcon />}
-              onClick={() => {
-                handleCopy();
+              onClick={async () => {
+                await handleCopy();
                 trackShareState({ name: "copy" });
-              }}
-            />
+              }}>
+              <PiCopy />
+            </IconButton>
           </>
         )}
         {error && (

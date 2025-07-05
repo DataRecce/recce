@@ -18,18 +18,7 @@ import {
   pullRequestInfo,
   stateMetadata,
 } from "../api/info";
-import {
-  Button,
-  Modal,
-  ModalBody,
-  ModalContent,
-  ModalFooter,
-  ModalHeader,
-  ModalOverlay,
-  useToast,
-  Text,
-  useDisclosure,
-} from "@chakra-ui/react";
+import { Button, CloseButton, Dialog, Portal, Text, useDisclosure } from "@chakra-ui/react";
 import { PUBLIC_API_URL } from "../const";
 import path from "path";
 import { aggregateRuns, RunsAggregated } from "../api/runs";
@@ -41,6 +30,7 @@ import {
   RecceShareInstanceDisconnectedModalContent,
   ServerDisconnectedModalContent,
 } from "@/components/lineage/SeverDisconnectedModalContent";
+import { toaster } from "@/components/ui/toaster";
 
 interface EnvInfo {
   stateMetadata?: stateMetadata;
@@ -109,7 +99,9 @@ type WebSocketPayload =
     };
 
 function useLineageWatcher() {
-  const artifactsUpdatedToast = useToast();
+  const [artifactsUpdatedToastId, setArtifactsUpdatedToastId] = useState<string | undefined>(
+    undefined,
+  );
 
   // use ref so that the callbacks can access the latest values
   const ref = useRef<{
@@ -158,16 +150,16 @@ function useLineageWatcher() {
           const [targetName, fileName] = srcPath.split("/").slice(-2);
           const name = path.parse(fileName).name;
           const eventId = `${targetName}-${name}-${eventType}`;
-          if (!artifactsUpdatedToast.isActive(eventId)) {
-            artifactsUpdatedToast({
-              id: eventId,
-              description: `Detected ${targetName} ${name} ${eventType}`,
-              status: "info",
-              variant: "left-accent",
-              position: "bottom-right",
-              duration: 5000,
-              isClosable: true,
-            });
+          if (artifactsUpdatedToastId == null) {
+            setArtifactsUpdatedToastId(
+              toaster.create({
+                id: eventId,
+                description: `Detected ${targetName} ${name} ${eventType}`,
+                type: "info",
+                duration: 5000,
+                closable: true,
+              }),
+            );
           }
           invalidateCaches();
         } else if (data.command === "relaunch") {
@@ -175,16 +167,16 @@ function useLineageWatcher() {
         } else {
           // Handle broadcast events
           const { id, title, description, status, position, duration } = data.event;
-          artifactsUpdatedToast({
-            id: id || "broadcast",
-            title,
-            description,
-            status: status ?? "info",
-            variant: "left-accent",
-            position: position ?? "bottom-right",
-            duration: duration ?? 5000,
-            isClosable: true,
-          });
+          setArtifactsUpdatedToastId(
+            toaster.create({
+              id: id || "broadcast",
+              title,
+              description,
+              type: status ?? "info",
+              duration: duration ?? 5000,
+              closable: true,
+            }),
+          );
         }
       } catch (err) {
         console.error(err);
@@ -339,43 +331,59 @@ export function LineageGraphContextProvider({ children }: LineageGraphProps) {
         {children}
       </LineageGraphContext.Provider>
 
-      <Modal isOpen={connectionStatus === "disconnected"} onClose={() => {}} isCentered>
-        <ModalOverlay />
-        {shareUrl ? (
-          <RecceShareInstanceDisconnectedModalContent shareUrl={shareUrl} />
-        ) : (
-          <ServerDisconnectedModalContent connect={connect} />
-        )}
-      </Modal>
+      <Dialog.Root
+        open={connectionStatus === "disconnected"}
+        onOpenChange={() => {}}
+        placement="center">
+        <Portal>
+          <Dialog.Backdrop />
+          <Dialog.Positioner>
+            {shareUrl ? (
+              <RecceShareInstanceDisconnectedModalContent shareUrl={shareUrl} />
+            ) : (
+              <ServerDisconnectedModalContent connect={connect} />
+            )}
+          </Dialog.Positioner>
+        </Portal>
+      </Dialog.Root>
 
       {flags?.single_env_onboarding && (
-        <Modal
-          isOpen={relaunchHintOpen}
-          onClose={() => {
+        <Dialog.Root
+          open={relaunchHintOpen}
+          onOpenChange={() => {
             onClose();
             void markRelaunchHintCompleted();
             void queryClient.invalidateQueries({ queryKey: cacheKeys.flag() });
           }}
-          isCentered>
-          <ModalOverlay />
-          <ModalContent>
-            <ModalHeader>Target-base Added</ModalHeader>
-            <ModalBody>
-              <Text>Please restart the Recce server.</Text>
-            </ModalBody>
-            <ModalFooter>
-              <Button
-                colorScheme="blue"
-                onClick={() => {
-                  onClose();
-                  void markRelaunchHintCompleted();
-                  void queryClient.invalidateQueries({ queryKey: cacheKeys.flag() });
-                }}>
-                Got it!
-              </Button>
-            </ModalFooter>
-          </ModalContent>
-        </Modal>
+          placement="center">
+          <Portal>
+            <Dialog.Backdrop />
+            <Dialog.Positioner>
+              <Dialog.Content>
+                <Dialog.Header>
+                  <Dialog.Title>Target-base Added</Dialog.Title>
+                </Dialog.Header>
+                <Dialog.Body>
+                  <Text>Please restart the Recce server.</Text>
+                </Dialog.Body>
+                <Dialog.Footer>
+                  <Button
+                    colorScheme="blue"
+                    onClick={() => {
+                      onClose();
+                      void markRelaunchHintCompleted();
+                      void queryClient.invalidateQueries({ queryKey: cacheKeys.flag() });
+                    }}>
+                    Got it!
+                  </Button>
+                </Dialog.Footer>
+                <Dialog.CloseTrigger asChild>
+                  <CloseButton size="sm" />
+                </Dialog.CloseTrigger>
+              </Dialog.Content>
+            </Dialog.Positioner>
+          </Portal>
+        </Dialog.Root>
       )}
     </>
   );

@@ -6,25 +6,21 @@ import {
   Button,
   Center,
   Flex,
-  forwardRef,
   Icon,
   IconButton,
   Menu,
-  MenuButton,
-  MenuItem,
-  MenuList,
   Portal,
   Spacer,
 } from "@chakra-ui/react";
-import React, { useMemo } from "react";
+import React, { forwardRef, useMemo } from "react";
 import { ColumnRenderMode, ColumnType, DataFrame, RowObjectType, Run } from "@/lib/api/types";
 import { EmptyRowsRenderer, ScreenshotDataGrid } from "../data-grid/ScreenshotDataGrid";
 import { DataFrameColumnGroupHeader, defaultRenderCell } from "./querydiff";
 import { VscKebabVertical, VscPin, VscPinned } from "react-icons/vsc";
 import { RunResultViewProps } from "../run/types";
-import { WarningIcon } from "@chakra-ui/icons";
 import _ from "lodash";
 import { columnPrecisionSelectOptions } from "@/components/valuediff/shared";
+import { PiWarning } from "react-icons/pi";
 
 interface QueryResultViewProp
   extends RunResultViewProps<QueryParams, QueryResult, QueryViewOptions> {
@@ -82,24 +78,24 @@ function DataFrameColumnHeader({
         onClick={isPinned ? handleUnpin : handlePin}
       />
       {columnType === "number" && (
-        <Menu>
-          <MenuButton
-            as={IconButton}
-            aria-label="Options"
-            icon={<VscKebabVertical />}
-            variant="unstyled"
-            className="!size-4 !min-w-4"
-          />
+        <Menu.Root>
+          <Menu.Trigger asChild>
+            <IconButton aria-label="Options" variant="plain" className="!size-4 !min-w-4">
+              <VscKebabVertical />
+            </IconButton>
+          </Menu.Trigger>
           <Portal>
-            <MenuList>
-              {selectOptions.map((o) => (
-                <MenuItem key={o.value} onClick={o.onClick}>
-                  {o.value}
-                </MenuItem>
-              ))}
-            </MenuList>
+            <Menu.Positioner>
+              <Menu.Content>
+                {selectOptions.map((o) => (
+                  <Menu.Item key={o.value} value={o.value} onClick={o.onClick}>
+                    {o.value}
+                  </Menu.Item>
+                ))}
+              </Menu.Content>
+            </Menu.Positioner>
           </Portal>
-        </Menu>
+        </Menu.Root>
       )}
     </Flex>
   );
@@ -274,7 +270,7 @@ const PrivateQueryResultView = (
           bg={warning ? "orange.100" : "inherit"}>
           {warning && (
             <>
-              <WarningIcon color="orange.600" alignSelf="center" /> <Box>{warning}</Box>
+              <PiWarning color="orange.600" className="self-center" /> <Box>{warning}</Box>
             </>
           )}
 
@@ -304,7 +300,6 @@ const PrivateQueryResultView = (
           minWidth: 35,
         }}
         className="rdg-light"
-        enableScreenshot={true}
       />
     </Flex>
   );

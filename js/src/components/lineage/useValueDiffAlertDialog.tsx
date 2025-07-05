@@ -1,22 +1,11 @@
-import {
-  useDisclosure,
-  Button,
-  AlertDialog,
-  AlertDialogOverlay,
-  AlertDialogContent,
-  AlertDialogHeader,
-  AlertDialogBody,
-  AlertDialogFooter,
-  Box,
-  Flex,
-} from "@chakra-ui/react";
+import { useDisclosure, Button, Box, Flex, Dialog, Portal, CloseButton } from "@chakra-ui/react";
 import React, { useRef, useState, useCallback } from "react";
 
 function useValueDiffAlertDialog() {
-  const { isOpen, onOpen, onClose } = useDisclosure();
+  const { open, onOpen, onClose } = useDisclosure();
   const [nodeCount, setNodeCount] = useState(0);
   const [resolvePromise, setResolvePromise] = useState<(value: boolean) => void>();
-  const cancelRef = useRef<any>();
+  const cancelRef = useRef<HTMLButtonElement>(null);
 
   const confirm = useCallback(
     (nodeCount: number) => {
@@ -40,31 +29,44 @@ function useValueDiffAlertDialog() {
   };
 
   const ValueDiffAlertDialog = (
-    <AlertDialog size={"xl"} isOpen={isOpen} leastDestructiveRef={cancelRef} onClose={handleCancel}>
-      <AlertDialogOverlay>
-        <AlertDialogContent>
-          <AlertDialogHeader fontSize="lg" fontWeight="bold">
-            Value Diff on {nodeCount} nodes
-          </AlertDialogHeader>
+    <Dialog.Root
+      size={"xl"}
+      open={open}
+      role="alertdialog"
+      initialFocusEl={() => {
+        return cancelRef.current;
+      }}
+      onOpenChange={handleCancel}>
+      <Portal>
+        <Dialog.Backdrop />
+        <Dialog.Positioner>
+          <Dialog.Content>
+            <Dialog.Header fontSize="lg" fontWeight="bold">
+              <Dialog.Title>Value Diff on {nodeCount} nodes</Dialog.Title>
+            </Dialog.Header>
 
-          <AlertDialogBody gap="20px" as={Flex} direction="column">
-            <Box>
-              Value diff will be executed on {nodeCount} nodes in the Lineage, which can add extra
-              costs to your bill.
-            </Box>
-          </AlertDialogBody>
+            <Dialog.Body gap="20px" as={Flex} direction="column">
+              <Box>
+                Value diff will be executed on {nodeCount} nodes in the Lineage, which can add extra
+                costs to your bill.
+              </Box>
+            </Dialog.Body>
 
-          <AlertDialogFooter>
-            <Button ref={cancelRef} onClick={handleCancel}>
-              Cancel
-            </Button>
-            <Button colorScheme="blue" onClick={handleConfirm} ml={3}>
-              Execute
-            </Button>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialogOverlay>
-    </AlertDialog>
+            <Dialog.Footer>
+              <Button ref={cancelRef} onClick={handleCancel}>
+                Cancel
+              </Button>
+              <Button colorScheme="blue" onClick={handleConfirm} ml={3}>
+                Execute
+              </Button>
+            </Dialog.Footer>
+            <Dialog.CloseTrigger asChild>
+              <CloseButton size="sm" />
+            </Dialog.CloseTrigger>
+          </Dialog.Content>
+        </Dialog.Positioner>
+      </Portal>
+    </Dialog.Root>
   );
 
   return { confirm, AlertDialog: ValueDiffAlertDialog };

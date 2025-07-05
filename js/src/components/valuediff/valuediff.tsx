@@ -1,17 +1,7 @@
 import { ColumnOrColumnGroup, textEditor } from "react-data-grid";
 import _ from "lodash";
 import "../query/styles.css";
-import {
-  Box,
-  Flex,
-  Icon,
-  IconButton,
-  Menu,
-  MenuButton,
-  MenuItem,
-  MenuList,
-  Portal,
-} from "@chakra-ui/react";
+import { Box, Flex, Icon, IconButton, Menu, Portal } from "@chakra-ui/react";
 import { VscKebabVertical, VscKey, VscPin, VscPinned } from "react-icons/vsc";
 import { ColumnType, ColumnRenderMode, DataFrame, RowData, RowObjectType } from "@/lib/api/types";
 import { mergeKeysWithStatus } from "@/lib/mergeKeys";
@@ -132,24 +122,24 @@ function DataFrameColumnGroupHeader({
         />
       )}
       {!isPK && columnType === "number" && (
-        <Menu>
-          <MenuButton
-            as={IconButton}
-            aria-label="Options"
-            icon={<VscKebabVertical />}
-            variant="unstyled"
-            className="!size-4 !min-w-4"
-          />
+        <Menu.Root>
+          <Menu.Trigger asChild>
+            <IconButton aria-label="Options" variant="plain" className="!size-4 !min-w-4">
+              <VscKebabVertical />
+            </IconButton>
+          </Menu.Trigger>
           <Portal>
-            <MenuList>
-              {selectOptions.map((o) => (
-                <MenuItem key={o.value} onClick={o.onClick}>
-                  {o.value}
-                </MenuItem>
-              ))}
-            </MenuList>
+            <Menu.Positioner>
+              <Menu.Content>
+                {selectOptions.map((o) => (
+                  <Menu.Item value={o.value} key={o.value} onClick={o.onClick}>
+                    {o.value}
+                  </Menu.Item>
+                ))}
+              </Menu.Content>
+            </Menu.Positioner>
           </Portal>
-        </Menu>
+        </Menu.Root>
       )}
     </Flex>
   );

@@ -1,7 +1,7 @@
 import React, { createContext, useCallback, useContext, useEffect, useState } from "react";
 import { Run, RunType } from "../api/types";
 import { RunModal } from "@/components/run/RunModal";
-import { useDisclosure, useToast } from "@chakra-ui/react";
+import { useDisclosure } from "@chakra-ui/react";
 
 import { useLocation } from "wouter";
 
@@ -10,6 +10,7 @@ import { findByRunType } from "@/components/run/registry";
 import { RunFormProps } from "@/components/run/types";
 import { useQueryClient } from "@tanstack/react-query";
 import { cacheKeys } from "../api/cacheKeys";
+import { toaster } from "@/components/ui/toaster";
 
 export interface RecceActionOptions {
   showForm: boolean;
@@ -64,14 +65,13 @@ interface RunActionInternal {
 
 export function RecceActionContextProvider({ children }: RecceActionContextProviderProps) {
   const [action, setAction] = useState<RunActionInternal>();
-  const { isOpen: isModalOpen, onOpen: onModalOpen, onClose: onModalClose } = useDisclosure();
+  const { open: isModalOpen, onOpen: onModalOpen, onClose: onModalClose } = useDisclosure();
   const {
-    isOpen: isRunResultOpen,
+    open: isRunResultOpen,
     onOpen: onResultPaneOpen,
     onClose: closeRunResult,
   } = useDisclosure();
-  const { isOpen: isHistoryOpen, onOpen: showHistory, onClose: closeHistory } = useDisclosure();
-  const toast = useToast();
+  const { open: isHistoryOpen, onOpen: showHistory, onClose: closeHistory } = useDisclosure();
   const [runId, setRunId] = useState<string>();
   const [location, setLocation] = useLocation();
   const queryClient = useQueryClient();
@@ -138,17 +138,16 @@ export function RecceActionContextProvider({ children }: RecceActionContextProvi
           onModalOpen();
         }
       } catch (e: unknown) {
-        toast({
+        toaster.create({
           title: "Failed to submit a run",
           description: e instanceof Error ? e.message : undefined,
-          position: "bottom-right",
-          status: "error",
+          type: "error",
           duration: 5000,
-          isClosable: true,
+          closable: true,
         });
       }
     },
-    [setAction, onModalOpen, showRunId, toast, location, setLocation, queryClient],
+    [setAction, onModalOpen, showRunId, location, setLocation, queryClient],
   );
   useCloseModalEffect(onModalClose);
 
@@ -161,13 +160,12 @@ export function RecceActionContextProvider({ children }: RecceActionContextProvi
       });
       await showRunId(run_id);
     } catch (e: unknown) {
-      toast({
+      toaster.create({
         title: "Failed to submit a run",
         description: e instanceof Error ? e.message : undefined,
-        position: "bottom-right",
-        status: "error",
+        type: "error",
         duration: 5000,
-        isClosable: true,
+        closable: true,
       });
     }
   };

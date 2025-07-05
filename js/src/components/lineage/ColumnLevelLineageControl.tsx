@@ -1,5 +1,4 @@
 import { useLineageGraphContext } from "@/lib/hooks/LineageGraphContext";
-import { CloseIcon, InfoOutlineIcon } from "@chakra-ui/icons";
 import {
   Flex,
   Text,
@@ -8,9 +7,6 @@ import {
   Icon,
   Link,
   Popover,
-  PopoverBody,
-  PopoverContent,
-  PopoverTrigger,
   Button,
   Portal,
   Box,
@@ -18,54 +14,97 @@ import {
 import { useLineageViewContextSafe } from "./LineageViewContext";
 import { useRecceServerFlag } from "@/lib/hooks/useRecceServerFlag";
 import { FaRegDotCircle } from "react-icons/fa";
+import { useState } from "react";
+import { PiInfo, PiX } from "react-icons/pi";
 
 const AnalyzeChangeHint = ({ ml }: { ml?: number }) => {
+  const [hovered, setHovered] = useState(false);
+
   return (
-    <Popover trigger="hover" placement="bottom-start" isLazy>
-      <PopoverTrigger>
-        <Icon boxSize="10px" as={InfoOutlineIcon} cursor="pointer" ml={ml} />
-      </PopoverTrigger>
+    <Popover.Root
+      open={hovered}
+      onFocusOutside={() => {
+        setHovered(false);
+      }}
+      positioning={{ placement: "bottom-start" }}
+      lazyMount
+      unmountOnExit>
+      <Popover.Trigger asChild>
+        <Icon
+          boxSize="10px"
+          as={PiInfo}
+          cursor="pointer"
+          ml={ml}
+          onMouseEnter={() => {
+            setHovered(true);
+          }}
+        />
+      </Popover.Trigger>
       <Portal>
-        <PopoverContent bg="black" color="white">
-          <PopoverBody fontSize="sm">
-            Breaking changes are determined by analyzing SQL for changes that may impact downstream
-            models.{" "}
-            <Link
-              href="https://docs.datarecce.io/features/breaking-change-analysis/"
-              target="_blank"
-              textDecoration="underline">
-              Learn more
-            </Link>
-            .
-          </PopoverBody>
-        </PopoverContent>
+        <Popover.Positioner>
+          <Popover.Content bg="black" color="white">
+            <Popover.Arrow />
+            <Popover.Body fontSize="sm">
+              Breaking changes are determined by analyzing SQL for changes that may impact
+              downstream models.{" "}
+              <Link
+                href="https://docs.datarecce.io/features/breaking-change-analysis/"
+                target="_blank"
+                textDecoration="underline">
+                Learn more
+              </Link>
+              .
+            </Popover.Body>
+          </Popover.Content>
+        </Popover.Positioner>
       </Portal>
-    </Popover>
+    </Popover.Root>
   );
 };
 
 const CllHint = () => {
+  const [hovered, setHovered] = useState(false);
+
   return (
-    <Popover trigger="hover" placement="bottom-start">
-      <PopoverTrigger>
-        <Icon boxSize="10px" as={InfoOutlineIcon} color="white" cursor="pointer" ml="1" />
-      </PopoverTrigger>
+    <Popover.Root
+      open={hovered}
+      onFocusOutside={() => {
+        setHovered(false);
+      }}
+      positioning={{ placement: "bottom-start" }}
+      lazyMount
+      unmountOnExit>
+      <Popover.Trigger asChild>
+        <Icon
+          boxSize="10px"
+          as={PiInfo}
+          color="white"
+          cursor="pointer"
+          ml="1"
+          onMouseEnter={() => {
+            setHovered(true);
+          }}
+        />
+      </Popover.Trigger>
       <Portal>
-        <PopoverContent bg="black" color="white">
-          <PopoverBody fontSize="sm">
-            Column-Level Lineage provides visibility into the upstream and downstream relationships
-            of a column.{" "}
-            <Link
-              href="https://docs.datarecce.io/features/column-level-lineage/"
-              target="_blank"
-              textDecoration="underline">
-              Learn more
-            </Link>
-            .
-          </PopoverBody>
-        </PopoverContent>
+        <Popover.Positioner>
+          <Popover.Content bg="black" color="white">
+            <Popover.Arrow />
+            <Popover.Body fontSize="sm">
+              Column-Level Lineage provides visibility into the upstream and downstream
+              relationships of a column.{" "}
+              <Link
+                href="https://docs.datarecce.io/features/column-level-lineage/"
+                target="_blank"
+                textDecoration="underline">
+                Learn more
+              </Link>
+              .
+            </Popover.Body>
+          </Popover.Content>
+        </Popover.Positioner>
       </Portal>
-    </Popover>
+    </Popover.Root>
   );
 };
 
@@ -144,16 +183,15 @@ export const ColumnLevelLineageControl = () => {
           bg="white"
           fontSize={"10pt"}>
           <Button
-            leftIcon={<FaRegDotCircle />}
             size="sm"
             variant="ghost"
             whiteSpace="nowrap"
             display="inline-flex"
-            isDisabled={!interactive}
+            disabled={!interactive}
             onClick={() => {
               void showColumnLevelLineage({ no_upstream: true, change_analysis: true });
             }}>
-            Impact Radius
+            <FaRegDotCircle /> Impact Radius
           </Button>
         </Box>
       )}
@@ -170,15 +208,15 @@ export const ColumnLevelLineageControl = () => {
           alignItems={"center"}>
           <ModeMessage />
           <IconButton
-            icon={<CloseIcon boxSize="10px" />}
             variant="ghost"
             size="xs"
             ml="2"
             aria-label={""}
             onClick={() => {
               void resetColumnLevelLineage();
-            }}
-          />
+            }}>
+            <PiX size="10px" />
+          </IconButton>
         </Flex>
       )}
     </Flex>

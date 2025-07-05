@@ -1,5 +1,5 @@
-import { Box, Flex, Icon, Tooltip } from "@chakra-ui/react";
-
+import { Box, Flex, Icon } from "@chakra-ui/react";
+import { Tooltip } from "@/components/ui/tooltip";
 import { getIconForChangeStatus } from "./styles";
 
 export function ChangeStatusLegend() {
@@ -15,7 +15,7 @@ export function ChangeStatusLegend() {
         const { icon, color } = getIconForChangeStatus(key as any);
 
         return (
-          <Tooltip label={tip} key={key} placement="right">
+          <Tooltip content={tip} key={key} positioning={{ placement: "right" }}>
             <Flex alignItems="center" gap="6px" marginBottom="2px">
               <Icon color={color} as={icon} /> {label}
             </Flex>

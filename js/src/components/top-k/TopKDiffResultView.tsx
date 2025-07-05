@@ -1,8 +1,8 @@
 import { TopKDiffParams, TopKDiffResult } from "@/lib/api/profile";
 import { RunResultViewProps } from "../run/types";
-import { Flex, HStack, Heading, Spacer, Link, forwardRef } from "@chakra-ui/react";
+import { Flex, HStack, Heading, Spacer, Link } from "@chakra-ui/react";
 import { TopKSummaryBarChart } from "../charts/TopKSummaryList";
-import { useState } from "react";
+import { forwardRef, useState } from "react";
 import { ScreenshotBox } from "../screenshot/ScreenshotBox";
 
 type TopKDiffResultViewProp = RunResultViewProps<TopKDiffParams, TopKDiffResult>;
@@ -39,7 +39,7 @@ const PrivateTopKDiffResultView = ({ run }: TopKDiffResultViewProp, ref: any) =>
             onClick={() => {
               setIsDisplayTopTen((prevState) => !prevState);
             }}
-            textColor={"blue.500"}>
+            colorPalette="blue">
             {isDisplayTopTen ? "View More Items" : "View Only Top-10"}
           </Link>
         </Flex>
