@@ -2,7 +2,7 @@ import { forwardRef, Key, useMemo, useState } from "react";
 
 import { mergeColumns, SchemaDiffRow, toDataGrid, toSingleEnvDataGrid } from "./schema";
 import "react-data-grid/lib/styles.css";
-import { Flex, Alert, AlertIcon } from "@chakra-ui/react";
+import { Flex, Alert } from "@chakra-ui/react";
 import { EmptyRowsRenderer, ScreenshotDataGrid } from "../data-grid/ScreenshotDataGrid";
 import { useLineageGraphContext } from "@/lib/hooks/LineageGraphContext";
 import { NodeData } from "@/lib/api/info";
@@ -57,15 +57,15 @@ function PrivateSingleEnvSchemaView({ current }: { current?: NodeData }, ref: an
   return (
     <Flex direction="column">
       {catalogMissingMessage ? (
-        <Alert status="warning" fontSize="12px" p="8px">
-          <AlertIcon />
-          {catalogMissingMessage}
-        </Alert>
+        <Alert.Root status="warning" fontSize="12px" p="8px">
+          <Alert.Indicator />
+          <Alert.Description>{catalogMissingMessage}</Alert.Description>
+        </Alert.Root>
       ) : schemaMissingMessage ? (
-        <Alert status="warning" fontSize="12px" p="8px">
-          <AlertIcon />
-          {schemaMissingMessage}
-        </Alert>
+        <Alert.Root status="warning" fontSize="12px" p="8px">
+          <Alert.Indicator />
+          <Alert.Description>{schemaMissingMessage}</Alert.Description>
+        </Alert.Root>
       ) : (
         <></>
       )}
@@ -84,7 +84,6 @@ function PrivateSingleEnvSchemaView({ current }: { current?: NodeData }, ref: an
             rows={rows}
             renderers={{ noRowsFallback: <EmptyRowsRenderer /> }}
             className="rdg-light"
-            enableScreenshot={false}
             ref={ref}
             rowKeyGetter={rowKeyGetter}
             selectedRows={selectedRows}
@@ -170,15 +169,15 @@ export function PrivateSchemaView(
   return (
     <Flex direction="column">
       {catalogMissingMessage ? (
-        <Alert status="warning" fontSize="12px" p="8px">
-          <AlertIcon />
-          {catalogMissingMessage}
-        </Alert>
+        <Alert.Root status="warning" fontSize="12px" p="8px">
+          <Alert.Indicator />
+          <Alert.Description>{catalogMissingMessage}</Alert.Description>
+        </Alert.Root>
       ) : schemaMissingMessage ? (
-        <Alert status="warning" fontSize="12px" p="8px">
-          <AlertIcon />
-          {schemaMissingMessage}
-        </Alert>
+        <Alert.Root status="warning" fontSize="12px" p="8px">
+          <Alert.Indicator />
+          <Alert.Description>{schemaMissingMessage}</Alert.Description>
+        </Alert.Root>
       ) : (
         <></>
       )}
@@ -197,7 +196,6 @@ export function PrivateSchemaView(
             rows={rows}
             renderers={{ noRowsFallback: <EmptyRowsRenderer /> }}
             className="rdg-light no-track-pii-safe"
-            enableScreenshot={enableScreenshot}
             ref={ref}
             rowKeyGetter={rowKeyGetter}
             selectedRows={selectedRows}

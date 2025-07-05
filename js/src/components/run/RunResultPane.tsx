@@ -6,8 +6,6 @@ import { useRecceActionContext } from "@/lib/hooks/RecceActionContext";
 import { useRun } from "@/lib/hooks/useRun";
 import {
   Tabs,
-  TabList,
-  Tab,
   Text,
   Flex,
   Button,
@@ -16,10 +14,8 @@ import {
   HStack,
   useDisclosure,
   Menu,
-  MenuButton,
-  MenuList,
-  MenuItem,
-  MenuDivider,
+  IconButton,
+  Portal,
 } from "@chakra-ui/react";
 import { useCallback, useState } from "react";
 import { createCheckByRun } from "@/lib/api/checks";
@@ -27,7 +23,6 @@ import { useLocation } from "wouter";
 import { Editor } from "@monaco-editor/react";
 import YAML from "yaml";
 import SqlEditor, { DualSqlEditor } from "../query/SqlEditor";
-import { CheckIcon, ChevronDownIcon, CopyIcon, RepeatIcon } from "@chakra-ui/icons";
 import { useCopyToClipboardButton } from "@/lib/hooks/ScreenShot";
 import { RunStatusAndDate } from "./RunStatusAndDate";
 import { LearnHowLink, RecceNotification } from "../onboarding-guide/Notification";
@@ -36,6 +31,7 @@ import { TbCloudUpload } from "react-icons/tb";
 import { useRecceShareStateContext } from "@/lib/hooks/RecceShareStateContext";
 import { trackShareState, trackCopyToClipboard } from "@/lib/api/track";
 import AuthModal from "@/components/AuthModal/AuthModal";
+import { PiCaretDown, PiCheck, PiCopy, PiRepeat } from "react-icons/pi";
 
 interface RunPageProps {
   onClose?: () => void;
@@ -69,9 +65,9 @@ const _ParamView = (data: { type: string; params: any }) => {
 };
 
 const SingleEnvironmentSetupNotification = ({ runType }: { runType?: string }) => {
-  const { isOpen, onClose } = useDisclosure({ defaultIsOpen: true });
+  const { open, onClose } = useDisclosure({ defaultOpen: true });
 
-  if (!isOpen) {
+  if (!open) {
     return <></>;
   }
   switch (runType) {
@@ -118,48 +114,56 @@ const RunResultShareMenu = ({
   };
 
   return (
-    <Menu>
-      <MenuButton as={Button} size="sm" rightIcon={<ChevronDownIcon />} variant="outline">
-        Share
-      </MenuButton>
-      <MenuList minW="0">
-        <MenuItem
-          fontSize="14px"
-          icon={<CopyIcon />}
-          onClick={onCopyToClipboard}
-          onMouseEnter={onMouseEnter}
-          onMouseLeave={onMouseLeave}
-          isDisabled={disableCopyToClipboard}>
-          Copy to Clipboard
-        </MenuItem>
-        <MenuDivider />
-        {authed ? (
-          <MenuItem
-            fontSize="14px"
-            icon={<TbCloudUpload />}
-            onClick={async () => {
-              await handleShareClick();
-              trackShareState({ name: "create" });
-            }}>
-            Share to Cloud
-          </MenuItem>
-        ) : (
-          <>
-            <MenuItem
+    <Menu.Root onOpenChange={onClose}>
+      <Menu.Trigger asChild>
+        <IconButton size="sm" variant="outline">
+          Share <PiCaretDown />
+        </IconButton>
+      </Menu.Trigger>
+      <Portal>
+        <Menu.Positioner>
+          <Menu.Content minW="0">
+            <Menu.Item
               fontSize="14px"
-              icon={<TbCloudUpload />}
-              onClick={() => {
-                setShowModal(true);
-              }}>
-              Share
-            </MenuItem>
-            {showModal && <AuthModal handleParentClose={onClose} ignoreCookie />}
-          </>
-        )}
-      </MenuList>
-    </Menu>
+              value="copy-to-clipboard"
+              onClick={onCopyToClipboard}
+              onMouseEnter={onMouseEnter}
+              onMouseLeave={onMouseLeave}
+              disabled={disableCopyToClipboard}>
+              <PiCopy /> Copy to Clipboard
+            </Menu.Item>
+            <Menu.Separator />
+            {authed ? (
+              <Menu.Item
+                value="share-to-cloud"
+                fontSize="14px"
+                onClick={async () => {
+                  await handleShareClick();
+                  trackShareState({ name: "create" });
+                }}>
+                <TbCloudUpload /> Share to Cloud
+              </Menu.Item>
+            ) : (
+              <>
+                <Menu.Item
+                  value="share"
+                  fontSize="14px"
+                  onClick={() => {
+                    setShowModal(true);
+                  }}>
+                  <TbCloudUpload /> Share
+                </Menu.Item>
+                {showModal && <AuthModal handleParentClose={onClose} ignoreCookie />}
+              </>
+            )}
+          </Menu.Content>
+        </Menu.Positioner>
+      </Portal>
+    </Menu.Root>
   );
 };
+
+type TabValueItems = "result" | "params" | "query";
 
 export const PrivateLoadableRunView = ({
   runId,
@@ -176,7 +180,7 @@ export const PrivateLoadableRunView = ({
   const [viewOptions, setViewOptions] = useState();
   const queryClient = useQueryClient();
   const [, setLocation] = useLocation();
-  const [tabIndex, setTabIndex] = useState(0);
+  const [tabValue, setTabValue] = useState<TabValueItems>("result");
   const disableAddToChecklist = isSingleEnvironment;
   const showSingleEnvironmentSetupNotification = isSingleEnvironment;
 
@@ -208,7 +212,7 @@ export const PrivateLoadableRunView = ({
 
   const isQuery = run?.type === "query" || run?.type === "query_diff" || run?.type === "query_base";
   const { ref, onCopyToClipboard, onMouseEnter, onMouseLeave } = useCopyToClipboardButton();
-  const disableCopyToClipboard = !runId || !run?.result || !!error || tabIndex !== 0;
+  const disableCopyToClipboard = !runId || !run?.result || !!error || tabValue !== "result";
 
   const AddToCheckButton = function () {
     if (featureToggles.disableUpdateChecklist) {
@@ -217,23 +221,21 @@ export const PrivateLoadableRunView = ({
     if (run?.check_id) {
       return (
         <Button
-          leftIcon={<CheckIcon />}
-          isDisabled={!runId || !run.result || !!error}
+          disabled={!runId || !run.result || !!error}
           size="sm"
           colorScheme="blue"
           onClick={handleGoToCheck}>
-          Go to Check
+          <PiCheck /> Go to Check
         </Button>
       );
     }
     return (
       <Button
-        leftIcon={<CheckIcon />}
-        isDisabled={!runId || !run?.result || !!error}
+        disabled={!runId || !run?.result || !!error}
         size="sm"
         colorScheme="blue"
         onClick={handleAddToChecklist}>
-        Add to Checklist
+        <PiCheck /> Add to Checklist
       </Button>
     );
   };
@@ -243,32 +245,36 @@ export const PrivateLoadableRunView = ({
       {showSingleEnvironmentSetupNotification && (
         <SingleEnvironmentSetupNotification runType={run?.type} />
       )}
-      <Tabs tabIndex={tabIndex} onChange={setTabIndex} flexDirection="column" mb="1px">
-        <TabList height="50px">
-          <Tab>Result</Tab>
-          <Tab>Params</Tab>
-          {isQuery && <Tab>Query</Tab>}
+      <Tabs.Root
+        value={tabValue}
+        onValueChange={(e) => {
+          setTabValue(e.value as TabValueItems);
+        }}
+        flexDirection="column"
+        mb="1px">
+        <Tabs.List height="50px">
+          <Tabs.Trigger value="result">Result</Tabs.Trigger>
+          <Tabs.Trigger value="params">Params</Tabs.Trigger>
+          {isQuery && <Tabs.Trigger value="query">Query</Tabs.Trigger>}
           <Spacer />
           <HStack overflow="hidden">
             {run && <RunStatusAndDate run={run} />}
             <Button
-              leftIcon={<RepeatIcon />}
               variant="outline"
-              isDisabled={!runId || isRunning || featureToggles.disableDatabaseQuery}
+              disabled={!runId || isRunning || featureToggles.disableDatabaseQuery}
               size="sm"
               onClick={handleRerun}>
-              Rerun
+              <PiRepeat /> Rerun
             </Button>
             {featureToggles.disableShare ? (
               <Button
-                leftIcon={<CopyIcon />}
                 variant="outline"
-                isDisabled={!runId || !run?.result || !!error || tabIndex !== 0}
+                disabled={!runId || !run?.result || !!error || tabValue !== "result"}
                 onMouseEnter={onMouseEnter}
                 onMouseLeave={onMouseLeave}
                 size="sm"
                 onClick={onCopyToClipboard}>
-                Copy to Clipboard
+                <PiCopy /> Copy to Clipboard
               </Button>
             ) : (
               <RunResultShareMenu
@@ -292,9 +298,9 @@ export const PrivateLoadableRunView = ({
               }}
             />
           </HStack>
-        </TabList>
-      </Tabs>
-      {tabIndex === 0 && (
+        </Tabs.List>
+      </Tabs.Root>
+      {tabValue === "result" && (
         <RunView
           ref={ref}
           error={error}
@@ -306,9 +312,9 @@ export const PrivateLoadableRunView = ({
         />
       )}
 
-      {tabIndex === 1 && run && <_ParamView type={run.type} params={run.params} />}
+      {tabValue === "params" && run && <_ParamView type={run.type} params={run.params} />}
 
-      {tabIndex === 2 &&
+      {tabValue === "query" &&
         run &&
         (run.params?.base_sql_template ? (
           <DualSqlEditor

@@ -1,18 +1,4 @@
-import {
-  Box,
-  Center,
-  Flex,
-  forwardRef,
-  Icon,
-  IconButton,
-  Menu,
-  MenuButton,
-  MenuGroup,
-  MenuItem,
-  MenuList,
-  Portal,
-  Spacer,
-} from "@chakra-ui/react";
+import { Box, Center, Flex, Icon, IconButton, Menu, Portal, Spacer } from "@chakra-ui/react";
 
 import { ColumnOrColumnGroup } from "react-data-grid";
 import { ValueDiffParams, ValueDiffResult } from "@/lib/api/valuediff";
@@ -22,6 +8,7 @@ import { VscKebabVertical, VscKey } from "react-icons/vsc";
 import { RecceActionOptions, useRecceActionContext } from "@/lib/hooks/RecceActionContext";
 import { useRecceInstanceContext } from "@/lib/hooks/RecceInstanceContext";
 import { RowObjectType } from "@/lib/api/types";
+import { forwardRef } from "react";
 
 type ValueDiffResultViewProp = RunResultViewProps<ValueDiffParams, ValueDiffResult>;
 
@@ -47,44 +34,38 @@ function ColumnNameCell({ params, column }: { params: ValueDiffParams; column: s
       </Box>
       <Spacer />
 
-      <Menu isLazy>
-        {({ isOpen }) => (
-          <>
-            <MenuButton
-              className="row-context-menu"
-              visibility={isOpen ? "visible" : "hidden"}
-              width={isOpen ? "auto" : "0px"}
-              minWidth={isOpen ? "auto" : "0px"}
-              as={IconButton}
-              icon={<Icon as={VscKebabVertical} />}
-              variant="unstyled"
-              size={"sm"}
-              isDisabled={featureToggles.disableDatabaseQuery}
-            />
+      <Menu.Root lazyMount>
+        <Menu.Trigger asChild>
+          <IconButton className="row-context-menu" variant="plain" size={"sm"} disabled={featureToggles.disableDatabaseQuery}>
+            VscKebabVertical
+          </IconButton>
+        </Menu.Trigger>
 
-            <Portal>
-              <MenuList lineHeight="20px">
-                <MenuGroup title="Action" as={Box} fontSize="8pt">
-                  <MenuItem
-                    fontSize="10pt"
-                    onClick={() => {
-                      handleValueDiffDetail({}, { showForm: true });
-                    }}>
-                    Show mismatched values...
-                  </MenuItem>
-                  <MenuItem
-                    fontSize="10pt"
-                    onClick={() => {
-                      handleValueDiffDetail({ columns: [column] }, { showForm: false });
-                    }}>
-                    Show mismatched values for &apos;{column}&apos;
-                  </MenuItem>
-                </MenuGroup>
-              </MenuList>
-            </Portal>
-          </>
-        )}
-      </Menu>
+        <Portal>
+          <Menu.Positioner>
+            <Menu.Content lineHeight="20px">
+              <Menu.ItemGroup title="Action" as={Box} fontSize="8pt">
+                <Menu.Item
+                  value="show-mismatched-values"
+                  fontSize="10pt"
+                  onClick={() => {
+                    handleValueDiffDetail({}, { showForm: true });
+                  }}>
+                  Show mismatched values...
+                </Menu.Item>
+                <Menu.Item
+                  value="show-mismatched-columns"
+                  fontSize="10pt"
+                  onClick={() => {
+                    handleValueDiffDetail({ columns: [column] }, { showForm: false });
+                  }}>
+                  Show mismatched values for &apos;{column}&apos;
+                </Menu.Item>
+              </Menu.ItemGroup>
+            </Menu.Content>
+          </Menu.Positioner>
+        </Portal>
+      </Menu.Root>
     </Flex>
   );
 }
@@ -160,7 +141,6 @@ function _ValueDiffResultView({ run }: ValueDiffResultViewProp, ref: any) {
         renderers={{ noRowsFallback: <EmptyRowsRenderer /> }}
         defaultColumnOptions={{ resizable: true }}
         className="rdg-light"
-        enableScreenshot={true}
       />
     </Flex>
   );

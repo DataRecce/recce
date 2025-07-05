@@ -3,21 +3,17 @@ import {
   Button,
   Spacer,
   Text,
-  Modal,
-  ModalOverlay,
-  ModalContent,
-  ModalHeader,
-  ModalBody,
-  ModalFooter,
   useDisclosure,
   Stack,
   Flex,
+  Dialog,
+  Portal,
+  CloseButton,
 } from "@chakra-ui/react";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { cacheKeys } from "@/lib/api/cacheKeys";
 import { getCheck, listChecks } from "@/lib/api/checks";
-import { InfoOutlineIcon, WarningTwoIcon } from "@chakra-ui/icons";
 import { select } from "@/lib/api/select";
 import { useLineageGraphContext } from "@/lib/hooks/LineageGraphContext";
 import { submitRunFromCheck } from "@/lib/api/runs";
@@ -26,6 +22,7 @@ import { sessionStorageKeys } from "@/lib/api/sessionStorageKeys";
 import { useRecceServerFlag } from "@/lib/hooks/useRecceServerFlag";
 import { trackRecommendCheck } from "@/lib/api/track";
 import { useRecceInstanceContext } from "@/lib/hooks/RecceInstanceContext";
+import { PiInfo, PiWarningFill } from "react-icons/pi";
 
 const usePresetCheckRecommendation = () => {
   const queryChecks = useQuery({
@@ -101,7 +98,7 @@ export const PresetCheckRecommendation = () => {
   const [performedRecommend, setPerformedRecommend] = useState<boolean>(false);
   const [ignoreRecommend, setIgnoreRecommend] = useState<boolean>(false);
   const [recommendRerun, setRecommendRerun] = useState<boolean>(false);
-  const { isOpen, onOpen, onClose } = useDisclosure();
+  const { open, onOpen, onClose } = useDisclosure();
   const recommendIgnoreKey = sessionStorageKeys.recommendationIgnored;
   const recommendShowKey = sessionStorageKeys.recommendationShowed;
   const prevRefreshKey = sessionStorageKeys.prevRefreshTimeStamp;
@@ -217,7 +214,7 @@ export const PresetCheckRecommendation = () => {
           <HStack flex="1" fontSize={"10pt"} color="blue.600">
             {!recommendRerun ? (
               <>
-                <InfoOutlineIcon />
+                <PiInfo />
                 <Text>
                   First Check: Perform a row count diff of {affectedModels} for basic impact
                   assessment
@@ -225,7 +222,7 @@ export const PresetCheckRecommendation = () => {
               </>
             ) : (
               <>
-                <WarningTwoIcon />
+                <PiWarningFill />
                 <Text>
                   New dbt build detected - Re-run row count checks to maintain result accuracy
                 </Text>
@@ -256,14 +253,14 @@ export const PresetCheckRecommendation = () => {
                   nodes: numNodes,
                 });
               }}
-              isDisabled={featureToggles.disableDatabaseQuery}>
+              disabled={featureToggles.disableDatabaseQuery}>
               Perform
             </Button>
           </HStack>
         </HStack>
-        <Modal
-          isOpen={isOpen}
-          onClose={() => {
+        <Dialog.Root
+          open={open}
+          onOpenChange={() => {
             onClose();
             trackRecommendCheck({
               action: "close",
@@ -271,54 +268,63 @@ export const PresetCheckRecommendation = () => {
               nodes: numNodes,
             });
           }}
-          isCentered>
-          <ModalOverlay />
-          <ModalContent>
-            <ModalHeader>Row Count Check</ModalHeader>
-            <ModalBody>
-              <Stack spacing="4">
-                <Text>
-                  Perform a row count check of the {numNodes} node(s) displayed in the lineage diff
-                  DAG.
-                </Text>
-                <Flex bg="blue.100" color="blue.700">
-                  <InfoOutlineIcon mt="10px" ml="5px" />
-                  <Text margin="5px" paddingX="3px">
-                    This is a recommended first check based on the preset checks defined in your
-                    recce.yml file.
-                  </Text>
-                </Flex>
-              </Stack>
-            </ModalBody>
-            <ModalFooter gap="5px">
-              <Button
-                onClick={() => {
-                  onClose();
-                  trackRecommendCheck({
-                    action: "close",
-                    from: recommendRerun ? "rerun" : "initial",
-                    nodes: numNodes,
-                  });
-                }}>
-                Cancel
-              </Button>
-              <Button
-                colorScheme="blue"
-                onClick={() => {
-                  onClose();
-                  void performPresetCheck();
-                  setPerformedRecommend(true);
-                  trackRecommendCheck({
-                    action: "execute",
-                    from: recommendRerun ? "rerun" : "initial",
-                    nodes: numNodes,
-                  });
-                }}>
-                Execute on {numNodes} models
-              </Button>
-            </ModalFooter>
-          </ModalContent>
-        </Modal>
+          placement="center">
+          <Portal>
+            <Dialog.Backdrop />
+            <Dialog.Positioner>
+              <Dialog.Content>
+                <Dialog.Header>
+                  <Dialog.Title>Row Count Check</Dialog.Title>
+                </Dialog.Header>
+                <Dialog.Body>
+                  <Stack gap="4">
+                    <Text>
+                      Perform a row count check of the {numNodes} node(s) displayed in the lineage
+                      diff DAG.
+                    </Text>
+                    <Flex bg="blue.100" color="blue.700">
+                      <PiInfo className="mt-[0.625rem] ml=[0.3125rem]" />
+                      <Text margin="0.3125rem" paddingX="0.1875rem">
+                        This is a recommended first check based on the preset checks defined in your
+                        recce.yml file.
+                      </Text>
+                    </Flex>
+                  </Stack>
+                </Dialog.Body>
+                <Dialog.Footer gap="0.3125rem">
+                  <Button
+                    onClick={() => {
+                      onClose();
+                      trackRecommendCheck({
+                        action: "close",
+                        from: recommendRerun ? "rerun" : "initial",
+                        nodes: numNodes,
+                      });
+                    }}>
+                    Cancel
+                  </Button>
+                  <Button
+                    colorScheme="blue"
+                    onClick={() => {
+                      onClose();
+                      void performPresetCheck();
+                      setPerformedRecommend(true);
+                      trackRecommendCheck({
+                        action: "execute",
+                        from: recommendRerun ? "rerun" : "initial",
+                        nodes: numNodes,
+                      });
+                    }}>
+                    Execute on {numNodes} models
+                  </Button>
+                </Dialog.Footer>
+                <Dialog.CloseTrigger asChild>
+                  <CloseButton size="sm" />
+                </Dialog.CloseTrigger>
+              </Dialog.Content>
+            </Dialog.Positioner>
+          </Portal>
+        </Dialog.Root>
       </>
     )
   );

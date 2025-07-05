@@ -9,7 +9,6 @@ import {
   Text,
   IconButton,
   Spacer,
-  Tooltip,
   Heading,
   Center,
 } from "@chakra-ui/react";
@@ -22,13 +21,14 @@ import { findByRunType } from "../run/registry";
 import { Run } from "@/lib/api/types";
 import { listRuns, waitRun } from "@/lib/api/runs";
 import { useRecceActionContext } from "@/lib/hooks/RecceActionContext";
-import { RepeatIcon } from "@chakra-ui/icons";
 import { useLocation } from "wouter";
 import SimpleBar from "simplebar-react";
 import "simplebar/dist/simplebar.min.css";
 import { formatRunDate, RunStatusAndDate } from "./RunStatusAndDate";
 import { trackHistoryAction } from "@/lib/api/track";
 import { useRecceInstanceContext } from "@/lib/hooks/RecceInstanceContext";
+import { Tooltip } from "@/components/ui/tooltip";
+import { PiRepeat } from "react-icons/pi";
 
 const RunListItem = ({
   run,
@@ -87,7 +87,7 @@ const RunListItem = ({
           {run.name || "<no name>"}
         </Box>
         {checkId ? (
-          <Tooltip label="Go to Check" aria-label="Go to Check">
+          <Tooltip content="Go to Check" aria-label="Go to Check">
             <Text
               onClick={(e) => {
                 e.preventDefault();
@@ -98,7 +98,7 @@ const RunListItem = ({
             </Text>
           </Tooltip>
         ) : !hideAddToChecklist ? (
-          <Tooltip label="Add to Checklist" aria-label="Add to Checklist">
+          <Tooltip content="Add to Checklist" aria-label="Add to Checklist">
             <Text
               onClick={(e) => {
                 e.preventDefault();
@@ -185,13 +185,13 @@ export const RunList = () => {
         <Heading size="md">History</Heading>
         <Spacer />
         <IconButton
-          variant={"unstyled"}
-          icon={<RepeatIcon />}
+          variant="plain"
           aria-label="Search database"
           onClick={async () => {
             await refetch();
-          }}
-        />
+          }}>
+          <PiRepeat />
+        </IconButton>
       </HStack>
       <Box flex="1 1 auto">
         {isLoading ? (

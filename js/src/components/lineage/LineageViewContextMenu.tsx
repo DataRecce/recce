@@ -1,5 +1,5 @@
-import { Menu, MenuList, MenuItem, MenuDivider, useDisclosure, Icon } from "@chakra-ui/react";
-import { useState } from "react";
+import { Menu, useDisclosure, Icon, Portal } from "@chakra-ui/react";
+import { ReactNode, useState } from "react";
 import { BiArrowFromBottom, BiArrowToBottom } from "react-icons/bi";
 import { Node, NodeProps } from "reactflow";
 import { findByRunType } from "../run/registry";
@@ -27,7 +27,7 @@ interface LineageViewContextMenuProps {
 
 interface ContextMenuItem {
   label?: string;
-  icon?: React.ReactElement;
+  itemIcon?: ReactNode;
   action?: () => void;
   isDisabled?: boolean;
   isSeparator?: boolean;
@@ -35,51 +35,55 @@ interface ContextMenuItem {
 
 interface ContextMenuProps {
   menuItems: ContextMenuItem[];
-  isOpen: boolean;
+  open: boolean;
   onClose: () => void;
   x: number;
   y: number;
 }
 
-const ContextMenu = ({ menuItems, isOpen, onClose, x, y }: ContextMenuProps) => {
+const ContextMenu = ({ menuItems, open, onClose, x, y }: ContextMenuProps) => {
   return (
-    <Menu isOpen={isOpen} onClose={onClose}>
-      <MenuList
-        fontSize="10pt"
-        position="absolute"
-        width="250px"
-        style={{
-          left: `${x}px`,
-          top: `${y}px`,
-        }}>
-        {menuItems.length === 0 ? (
-          <MenuItem isDisabled key="no action">
-            No action available
-          </MenuItem>
-        ) : (
-          menuItems.map((item) => {
-            if (item.isSeparator) {
-              return <MenuDivider key={item.label} />;
-            } else {
-              return (
-                <MenuItem
-                  key={item.label}
-                  icon={item.icon}
-                  isDisabled={item.isDisabled}
-                  onClick={() => {
-                    if (item.action) {
-                      item.action();
-                    }
-                    onClose();
-                  }}>
-                  {item.label}
-                </MenuItem>
-              );
-            }
-          })
-        )}
-      </MenuList>
-    </Menu>
+    <Menu.Root open={open} onOpenChange={onClose}>
+      <Portal>
+        <Menu.Positioner>
+          <Menu.Content
+            fontSize="10pt"
+            position="absolute"
+            width="250px"
+            style={{
+              left: `${x}px`,
+              top: `${y}px`,
+            }}>
+            {menuItems.length === 0 ? (
+              <Menu.Item value="no-action" disabled key="no action">
+                No action available
+              </Menu.Item>
+            ) : (
+              menuItems.map(({ isSeparator, label, isDisabled, action, itemIcon }) => {
+                if (isSeparator) {
+                  return <Menu.Separator key={label} />;
+                } else {
+                  return (
+                    <Menu.Item
+                      value="label"
+                      key={label}
+                      disabled={isDisabled}
+                      onClick={() => {
+                        if (action) {
+                          action();
+                        }
+                        onClose();
+                      }}>
+                      {itemIcon} {label}
+                    </Menu.Item>
+                  );
+                }
+              })
+            )}
+          </Menu.Content>
+        </Menu.Positioner>
+      </Portal>
+    </Menu.Root>
   );
 };
 
@@ -125,7 +129,7 @@ export const ModelNodeContextMenu = ({
   if (changeStatus === "modified") {
     menuItems.push({
       label: "Show Impact Radius",
-      icon: <FaRegDotCircle />,
+      itemIcon: <FaRegDotCircle />,
       action: () => {
         void showColumnLevelLineage({
           node_id: node.id,
@@ -156,7 +160,7 @@ export const ModelNodeContextMenu = ({
 
     menuItems.push({
       label: "Query",
-      icon: <Icon as={entry?.icon} />,
+      itemIcon: <Icon as={entry?.icon} />,
       action: () => {
         setSqlQuery(query);
         if (isActionAvailable("query_diff_with_primary_key")) {
@@ -179,7 +183,7 @@ export const ModelNodeContextMenu = ({
 
         menuItems.push({
           label: "Query Related Columns",
-          icon: <Icon as={entry?.icon} />,
+          itemIcon: <Icon as={entry?.icon} />,
           action: () => {
             const query = `select \n  ${Array.from(allColumns).join(",\n  ")}\nfrom {{ ref("${modelNode.name}") }}`;
             setSqlQuery(query);
@@ -206,7 +210,7 @@ export const ModelNodeContextMenu = ({
 
           menuItems.push({
             label: "Query Modified Columns",
-            icon: <Icon as={entry?.icon} />,
+            itemIcon: <Icon as={entry?.icon} />,
             action: () => {
               const query = `select \n  ${Array.from(allColumns).join(",\n  ")}\nfrom {{ ref("${modelNode.name}") }}`;
               setSqlQuery(query);
@@ -225,7 +229,7 @@ export const ModelNodeContextMenu = ({
     entry = findByRunType(singleEnv ? "row_count" : "row_count_diff");
     menuItems.push({
       label: entry?.title ?? "Row count",
-      icon: <Icon as={entry?.icon} />,
+      itemIcon: <Icon as={entry?.icon} />,
       action: () => {
         runAction(
           singleEnv ? "row_count" : "row_count_diff",
@@ -239,7 +243,7 @@ export const ModelNodeContextMenu = ({
     entry = findByRunType(singleEnv ? "profile" : "profile_diff");
     menuItems.push({
       label: entry?.title ?? "Profile",
-      icon: <Icon as={entry?.icon} />,
+      itemIcon: <Icon as={entry?.icon} />,
       action: () => {
         const columns = Array.from(getNodeColumnSet(node.id));
         runAction(
@@ -255,7 +259,7 @@ export const ModelNodeContextMenu = ({
       entry = findByRunType("value_diff");
       menuItems.push({
         label: entry?.title ?? "Value Diff",
-        icon: <Icon as={entry?.icon} />,
+        itemIcon: <Icon as={entry?.icon} />,
         action: () => {
           const columns = Array.from(getNodeColumnSet(node.id));
           runAction(
@@ -277,35 +281,35 @@ export const ModelNodeContextMenu = ({
     }
     menuItems.push({
       label: "Select Parent Nodes",
-      icon: <BiArrowFromBottom />,
+      itemIcon: <BiArrowFromBottom />,
       action: () => {
         selectParentNodes(node.id, 1);
       },
     });
     menuItems.push({
       label: "Select Child Nodes",
-      icon: <BiArrowToBottom />,
+      itemIcon: <BiArrowToBottom />,
       action: () => {
         selectChildNodes(node.id, 1);
       },
     });
     menuItems.push({
       label: "Select All Upstream Nodes",
-      icon: <BiArrowFromBottom />,
+      itemIcon: <BiArrowFromBottom />,
       action: () => {
         selectParentNodes(node.id);
       },
     });
     menuItems.push({
       label: "Select All Downstream Nodes",
-      icon: <BiArrowToBottom />,
+      itemIcon: <BiArrowToBottom />,
       action: () => {
         selectChildNodes(node.id);
       },
     });
   }
 
-  return <ContextMenu x={x} y={y} menuItems={menuItems} isOpen={isOpen} onClose={onClose} />;
+  return <ContextMenu x={x} y={y} menuItems={menuItems} open={isOpen} onClose={onClose} />;
 };
 
 export const ColumnNodeContextMenu = ({
@@ -364,7 +368,7 @@ export const ColumnNodeContextMenu = ({
   let entry = findByRunType(singleEnv ? "profile" : "profile_diff");
   menuItems.push({
     label: entry?.title ?? "Profile",
-    icon: <Icon as={entry?.icon} />,
+    itemIcon: <Icon as={entry?.icon} />,
     action: handleProfileDiff,
     isDisabled: addedOrRemoved || !isActionAvailable("profile_diff"),
   });
@@ -373,20 +377,20 @@ export const ColumnNodeContextMenu = ({
     entry = findByRunType("histogram_diff");
     menuItems.push({
       label: entry?.title ?? "Histogram Diff",
-      icon: <Icon as={entry?.icon} />,
+      itemIcon: <Icon as={entry?.icon} />,
       action: handleHistogramDiff,
       isDisabled: addedOrRemoved || (columnType ? !supportsHistogramDiff(columnType) : true),
     });
     entry = findByRunType("top_k_diff");
     menuItems.push({
       label: entry?.title ?? "Top-K Diff",
-      icon: <Icon as={entry?.icon} />,
+      itemIcon: <Icon as={entry?.icon} />,
       action: handleTopkDiff,
       isDisabled: addedOrRemoved,
     });
   }
 
-  return <ContextMenu x={x} y={y} menuItems={menuItems} isOpen={isOpen} onClose={onClose} />;
+  return <ContextMenu x={x} y={y} menuItems={menuItems} open={isOpen} onClose={onClose} />;
 };
 
 export const LineageViewContextMenu = ({
@@ -398,7 +402,7 @@ export const LineageViewContextMenu = ({
 }: LineageViewContextMenuProps) => {
   const { featureToggles } = useRecceInstanceContext();
   if (featureToggles.disableViewActionDropdown) {
-    return <ContextMenu menuItems={[]} isOpen={isOpen} onClose={onClose} x={x} y={y} />;
+    return <ContextMenu menuItems={[]} open={isOpen} onClose={onClose} x={x} y={y} />;
   } else if (node?.type === "customNode") {
     return <ModelNodeContextMenu x={x} y={y} isOpen={isOpen} onClose={onClose} node={node} />;
   } else if (node?.type === "customColumnNode") {
@@ -407,7 +411,7 @@ export const LineageViewContextMenu = ({
 };
 
 export const useLineageViewContextMenu = () => {
-  const { isOpen, onClose, onOpen } = useDisclosure();
+  const { open, onClose, onOpen } = useDisclosure();
   const [position, setPosition] = useState<{ x: number; y: number }>({
     x: 0,
     y: 0,
@@ -430,7 +434,7 @@ export const useLineageViewContextMenu = () => {
     x: position.x,
     y: position.y,
     node,
-    isOpen,
+    isOpen: open,
     onClose,
   };
 

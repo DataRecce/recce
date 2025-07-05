@@ -1,4 +1,4 @@
-import { Box, Flex, Icon, Spacer, Tag, TagLabel } from "@chakra-ui/react";
+import { Box, Flex, Icon, Spacer, Tag } from "@chakra-ui/react";
 import React from "react";
 
 import { Handle, NodeProps, Position, useStore } from "reactflow";
@@ -63,13 +63,13 @@ export const TransformationType = ({
   return (
     <>
       {legend ? (
-        <Tag fontSize="8pt" size="xs" colorScheme={color} borderRadius="full" paddingX="4px">
-          <TagLabel>{letter}</TagLabel>
-        </Tag>
+        <Tag.Root fontSize="8pt" size="sm" colorScheme={color} borderRadius="full" paddingX="4px">
+          <Tag.Label>{letter}</Tag.Label>
+        </Tag.Root>
       ) : (
-        <Tag fontSize="8pt" size="xs" colorScheme={color} borderRadius="full" paddingX="4px">
-          <TagLabel>{letter}</TagLabel>
-        </Tag>
+        <Tag.Root fontSize="8pt" size="sm" colorScheme={color} borderRadius="full" paddingX="4px">
+          <Tag.Label>{letter}</Tag.Label>
+        </Tag.Root>
       )}
     </>
   );

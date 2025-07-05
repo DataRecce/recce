@@ -15,8 +15,7 @@ import {
   Button,
   VStack,
   Center,
-  StackDivider,
-  useToast,
+  StackSeparator,
 } from "@chakra-ui/react";
 import React, {
   Ref,
@@ -85,6 +84,7 @@ import { useRecceServerFlag } from "@/lib/hooks/useRecceServerFlag";
 import { BaseEnvironmentSetupNotification } from "./SingleEnvironmentQueryView";
 import { CllInput, ColumnLineageData, getCll } from "@/lib/api/cll";
 import { LineageViewContextMenu, useLineageViewContextMenu } from "./LineageViewContextMenu";
+import { toaster } from "@/components/ui/toaster";
 
 export interface LineageViewProps {
   viewOptions?: LineageDiffViewOptions;
@@ -343,8 +343,6 @@ export function PrivateLineageView(
 
   const lineageViewContextMenu = useLineageViewContextMenu();
 
-  const toast = useToast();
-
   useLayoutEffect(() => {
     const t = async () => {
       let filteredNodeIds: string[] | undefined = undefined;
@@ -395,12 +393,11 @@ export function PrivateLineageView(
         } catch (e) {
           if (e instanceof AxiosError) {
             const e2 = e as AxiosError<{ detail?: string }>;
-            toast({
+            toaster.create({
               title: "Column Level Lineage error",
               description: e2.response?.data.detail ?? e.message,
-              status: "error",
-              isClosable: true,
-              position: "bottom-right",
+              type: "error",
+              closable: true,
             });
             return;
           }
@@ -573,12 +570,11 @@ export function PrivateLineageView(
       } catch (e) {
         if (e instanceof AxiosError) {
           const e2 = e as AxiosError<{ detail?: string }>;
-          toast({
+          toaster.create({
             title: "Select node error",
             description: e2.response?.data.detail ?? e.message,
-            status: "error",
-            isClosable: true,
-            position: "bottom-right",
+            type: "error",
+            closable: true,
           });
         }
         return;
@@ -595,12 +591,11 @@ export function PrivateLineageView(
       } catch (e) {
         if (e instanceof AxiosError) {
           const e2 = e as AxiosError<{ detail?: string }>;
-          toast({
+          toaster.create({
             title: "Column Level Lineage error",
             description: e2.response?.data.detail ?? e.message,
-            status: "error",
-            isClosable: true,
-            position: "bottom-right",
+            type: "error",
+            closable: true,
           });
           return;
         }
@@ -1015,8 +1010,8 @@ export function PrivateLineageView(
         style={{ height: "100%", width: "100%" }}>
         <VStack
           ref={refResize}
-          divider={<StackDivider borderColor="gray.200" />}
-          spacing={0}
+          separator={<StackSeparator borderColor="gray.200" />}
+          gap={0}
           style={{ contain: "strict" }}
           position="relative">
           {interactive && (

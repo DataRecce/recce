@@ -1,30 +1,25 @@
 import {
   Box,
   Button,
+  CloseButton,
+  Dialog,
   Icon,
   IconButton,
-  Modal,
-  ModalBody,
-  ModalContent,
-  ModalFooter,
-  ModalHeader,
-  ModalOverlay,
-  Radio,
+  Portal,
   RadioGroup,
   Spinner,
   Stack,
-  Tooltip,
   useDisclosure,
-  useToast,
 } from "@chakra-ui/react";
-import { useCallback, useState } from "react";
-import { TfiCloudDown, TfiCloudUp, TfiReload } from "react-icons/tfi";
+import React, { useCallback, useState } from "react";
 import { syncState, isStateSyncing, SyncStateInput } from "@/lib/api/state";
 import { useQueryClient } from "@tanstack/react-query";
 import { cacheKeys } from "@/lib/api/cacheKeys";
 import { useLocation } from "wouter";
-import { InfoOutlineIcon } from "@chakra-ui/icons";
 import { IconSync } from "../icons";
+import { Tooltip } from "@/components/ui/tooltip";
+import { toaster } from "@/components/ui/toaster";
+import { PiInfo } from "react-icons/pi";
 
 function isCheckDetailPage(href: string): boolean {
   const pattern =
@@ -34,8 +29,8 @@ function isCheckDetailPage(href: string): boolean {
 
 export function StateSpinner() {
   return (
-    <Tooltip label="Syncing">
-      <Button pt="6px" variant="unstyled" boxSize={"1em"}>
+    <Tooltip content="Syncing">
+      <Button pt="6px" variant="plain" boxSize={"1em"}>
         <Spinner />
       </Button>
     </Tooltip>
@@ -46,9 +41,8 @@ export function StateSynchronizer() {
   const [isSyncing, setSyncing] = useState(false);
   const queryClient = useQueryClient();
   const [location, setLocation] = useLocation();
-  const { isOpen, onOpen, onClose } = useDisclosure();
+  const { open, onOpen, onClose } = useDisclosure();
   const [syncOption, setSyncOption] = useState("");
-  const toast = useToast();
 
   const handleSync = useCallback(
     async (input: SyncStateInput) => {
@@ -66,13 +60,11 @@ export function StateSynchronizer() {
         await new Promise((resolve) => setTimeout(resolve, 1000));
       }
 
-      toast({
+      toaster.create({
         description: "Sync Completed",
-        status: "success",
-        variant: "left-accent",
-        position: "bottom",
+        type: "success",
         duration: 5000,
-        isClosable: true,
+        closable: true,
       });
 
       setSyncing(false);
@@ -86,81 +78,105 @@ export function StateSynchronizer() {
         setLocation("/checks");
       }
     },
-    [queryClient, location, setLocation, toast, onOpen, onClose],
+    [queryClient, location, setLocation, onOpen, onClose],
   );
 
   if (isSyncing) return <StateSpinner />;
   return (
     <>
-      <Tooltip label="Sync with Cloud">
+      <Tooltip content="Sync with Cloud">
         <IconButton
           size="sm"
-          variant="unstyled"
+          variant="plain"
           aria-label="Sync state"
-          onClick={() => handleSync({})}
-          icon={<Icon as={IconSync} verticalAlign="middle" boxSize={"16px"} />}
-        />
+          onClick={() => handleSync({})}>
+          <Icon as={IconSync} verticalAlign="middle" boxSize={"16px"} />
+        </IconButton>
       </Tooltip>
-      <Modal isOpen={isOpen} onClose={onClose}>
-        <ModalOverlay />
-        <ModalContent>
-          <ModalHeader fontSize="lg" fontWeight="bold">
-            Sync with Cloud
-          </ModalHeader>
-          <ModalBody>
-            <Box>
-              New changes have been detected in the cloud. Please choose a method to sync your state
-            </Box>
-            <Box mt="5px">
-              <RadioGroup onChange={setSyncOption} value={syncOption}>
-                <Stack direction="column">
-                  {/* Merge */}
-                  <Radio value="merge">
-                    Merge
-                    <Tooltip label="This will merge the local and remote states.">
-                      <span>
-                        <Icon as={InfoOutlineIcon} ml={2} cursor="pointer" />
-                      </span>
-                    </Tooltip>
-                  </Radio>
+      <Dialog.Root open={open} onOpenChange={onClose}>
+        <Portal>
+          <Dialog.Backdrop />
+          <Dialog.Positioner>
+            <Dialog.Content>
+              <Dialog.Header fontSize="lg" fontWeight="bold">
+                <Dialog.Title>Sync with Cloud</Dialog.Title>
+              </Dialog.Header>
+              <Dialog.Body>
+                <Box>
+                  New changes have been detected in the cloud. Please choose a method to sync your
+                  state
+                </Box>
+                <Box mt="5px">
+                  <RadioGroup.Root
+                    onValueChange={(e) => {
+                      setSyncOption(String(e.value));
+                    }}
+                    value={syncOption}>
+                    <Stack direction="column">
+                      {/* Merge */}
+                      <RadioGroup.Item value="merge">
+                        <RadioGroup.ItemHiddenInput />
+                        <RadioGroup.ItemIndicator />
+                        <RadioGroup.ItemText>
+                          Merge
+                          <Tooltip content="This will merge the local and remote states.">
+                            <span>
+                              <Icon as={PiInfo} ml={2} cursor="pointer" />
+                            </span>
+                          </Tooltip>
+                        </RadioGroup.ItemText>
+                      </RadioGroup.Item>
 
-                  {/* Overwrite */}
-                  <Radio value="overwrite">
-                    Overwrite
-                    <Tooltip label="This will overwrite the remote state file with the local state.">
-                      <span>
-                        <Icon as={InfoOutlineIcon} ml={2} cursor="pointer" />
-                      </span>
-                    </Tooltip>
-                  </Radio>
+                      {/* Overwrite */}
+                      <RadioGroup.Item value="overwrite">
+                        <RadioGroup.ItemHiddenInput />
+                        <RadioGroup.ItemIndicator />
+                        <RadioGroup.ItemText>
+                          Overwrite
+                          <Tooltip content="This will overwrite the remote state file with the local state.">
+                            <span>
+                              <Icon as={PiInfo} ml={2} cursor="pointer" />
+                            </span>
+                          </Tooltip>
+                        </RadioGroup.ItemText>
+                      </RadioGroup.Item>
 
-                  {/* Revert */}
-                  <Radio value="revert">
-                    Revert
-                    <Tooltip label="This will discard local changes and revert to the cloud state.">
-                      <span>
-                        <Icon as={InfoOutlineIcon} ml={2} cursor="pointer" />
-                      </span>
-                    </Tooltip>
-                  </Radio>
-                </Stack>
-              </RadioGroup>
-            </Box>
-          </ModalBody>
-          <ModalFooter>
-            <Button onClick={onClose} mr={3}>
-              Cancel
-            </Button>
-            <Button
-              colorScheme="blue"
-              onClick={() => handleSync({ method: syncOption as any })}
-              isDisabled={!syncOption} // Disable button until an option is selected
-            >
-              Sync
-            </Button>
-          </ModalFooter>
-        </ModalContent>
-      </Modal>
+                      {/* Revert */}
+                      <RadioGroup.Item value="revert">
+                        <RadioGroup.ItemHiddenInput />
+                        <RadioGroup.ItemIndicator />
+                        <RadioGroup.ItemText>
+                          Revert
+                          <Tooltip content="This will discard local changes and revert to the cloud state.">
+                            <span>
+                              <Icon as={PiInfo} ml={2} cursor="pointer" />
+                            </span>
+                          </Tooltip>
+                        </RadioGroup.ItemText>
+                      </RadioGroup.Item>
+                    </Stack>
+                  </RadioGroup.Root>
+                </Box>
+              </Dialog.Body>
+              <Dialog.Footer>
+                <Button onClick={onClose} mr={3}>
+                  Cancel
+                </Button>
+                <Button
+                  colorScheme="blue"
+                  onClick={() => handleSync({ method: syncOption as any })}
+                  disabled={!syncOption} // Disable button until an option is selected
+                >
+                  Sync
+                </Button>
+              </Dialog.Footer>
+            </Dialog.Content>
+            <Dialog.CloseTrigger asChild>
+              <CloseButton size="sm" />
+            </Dialog.CloseTrigger>
+          </Dialog.Positioner>
+        </Portal>
+      </Dialog.Root>
     </>
   );
 }

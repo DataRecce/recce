@@ -1,6 +1,6 @@
 import { TopKDiffParams } from "@/lib/api/profile";
 import { RunFormProps } from "../run/types";
-import { Box, FormControl, FormLabel, Select } from "@chakra-ui/react";
+import { Box, Field, NativeSelect } from "@chakra-ui/react";
 import { useEffect } from "react";
 import useModelColumns from "@/lib/hooks/useModelColumns";
 
@@ -24,22 +24,24 @@ export function TopKDiffForm({ params, onParamsChanged, setIsReadyToExecute }: T
 
   return (
     <Box m="16px">
-      <FormControl>
-        <FormLabel>Pick a column to show top-k</FormLabel>
-        <Select
-          placeholder="Select column"
-          value={params.column_name}
-          onChange={(e) => {
-            const column = e.target.value;
-            onParamsChanged({ ...params, column_name: column });
-          }}>
-          {columnNames.map((c) => (
-            <option key={c} value={c}>
-              {c}
-            </option>
-          ))}
-        </Select>
-      </FormControl>
+      <Field.Root>
+        <Field.Label>Pick a column to show top-k</Field.Label>
+        <NativeSelect.Root>
+          <NativeSelect.Field
+            placeholder="Select column"
+            value={params.column_name}
+            onChange={(e) => {
+              const column = e.target.value;
+              onParamsChanged({ ...params, column_name: column });
+            }}>
+            {columnNames.map((c) => (
+              <option key={c} value={c}>
+                {c}
+              </option>
+            ))}
+          </NativeSelect.Field>
+        </NativeSelect.Root>
+      </Field.Root>
     </Box>
   );
 }

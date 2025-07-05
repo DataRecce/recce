@@ -1,16 +1,19 @@
-import { Button, ModalBody, ModalContent, ModalFooter, ModalHeader, Text } from "@chakra-ui/react";
+import { Button, CloseButton, Dialog, Text } from "@chakra-ui/react";
 import NextLink from "next/link";
+import React from "react";
 
 export function ServerDisconnectedModalContent({ connect }: { connect: () => void }) {
   return (
-    <ModalContent>
-      <ModalHeader>Server Disconnected</ModalHeader>
-      <ModalBody>
+    <Dialog.Content>
+      <Dialog.Header>
+        <Dialog.Title>Server Disconnected</Dialog.Title>
+      </Dialog.Header>
+      <Dialog.Body>
         <Text>
           The server connection has been lost. Please restart the Recce server and try again.
         </Text>
-      </ModalBody>
-      <ModalFooter>
+      </Dialog.Body>
+      <Dialog.Footer>
         <Button
           colorScheme="blue"
           onClick={() => {
@@ -18,23 +21,28 @@ export function ServerDisconnectedModalContent({ connect }: { connect: () => voi
           }}>
           Retry
         </Button>
-      </ModalFooter>
-    </ModalContent>
+      </Dialog.Footer>
+      <Dialog.CloseTrigger asChild>
+        <CloseButton size="sm" />
+      </Dialog.CloseTrigger>
+    </Dialog.Content>
   );
 }
 
 export function RecceShareInstanceDisconnectedModalContent({ shareUrl }: { shareUrl: string }) {
   return (
-    <ModalContent>
-      <ModalHeader>Share Instance Expired</ModalHeader>
-      <ModalBody>
+    <Dialog.Content>
+      <Dialog.Header>
+        <Dialog.Title>Share Instance Expired</Dialog.Title>
+      </Dialog.Header>
+      <Dialog.Body>
         <Text>This Share Instance has expired. Please restart the share instance.</Text>
-      </ModalBody>
-      <ModalFooter>
+      </Dialog.Body>
+      <Dialog.Footer>
         <NextLink href={shareUrl} passHref>
           <Button colorScheme="blue">Restart</Button>
         </NextLink>
-      </ModalFooter>
-    </ModalContent>
+      </Dialog.Footer>
+    </Dialog.Content>
   );
 }

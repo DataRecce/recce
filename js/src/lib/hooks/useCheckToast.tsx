@@ -1,16 +1,10 @@
-import { useToast } from "@chakra-ui/react";
+import { toaster } from "@/components/ui/toaster";
 
 export function useCheckToast() {
-  const toast = useToast();
-
   function markedAsApprovedToast() {
-    toast({
+    toaster.create({
       title: "Marked as approved",
-      position: "bottom-right",
-      status: "success",
-      containerStyle: {
-        fontSize: "sm",
-      },
+      type: "success",
       duration: 2000,
     });
   }

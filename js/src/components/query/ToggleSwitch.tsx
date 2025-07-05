@@ -9,7 +9,7 @@ interface ToggleSwitchProps {
 }
 export const ToggleSwitch = ({ value, onChange, textOn, textOff }: ToggleSwitchProps) => {
   return (
-    <ButtonGroup isAttached variant="outline" borderRadius="full" size={"xs"}>
+    <ButtonGroup attached variant="outline" borderRadius="full" size="xs">
       <Button
         onClick={() => {
           onChange(false);

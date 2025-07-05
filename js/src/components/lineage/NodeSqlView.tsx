@@ -1,16 +1,5 @@
-import {
-  useDisclosure,
-  Box,
-  IconButton,
-  Modal,
-  ModalOverlay,
-  ModalContent,
-  ModalHeader,
-  ModalCloseButton,
-  ModalBody,
-  Heading,
-} from "@chakra-ui/react";
-import { useState } from "react";
+import { useDisclosure, Box, IconButton, CloseButton, Portal, Dialog } from "@chakra-ui/react";
+import React, { useState } from "react";
 import { FaExpandArrowsAlt } from "react-icons/fa";
 import { LineageGraphNode } from "./lineage";
 import { DiffEditor, DiffEditorProps, Editor, EditorProps } from "@monaco-editor/react";
@@ -22,7 +11,7 @@ interface NodeSqlViewProps {
 }
 
 export const NodeSqlView = ({ node }: NodeSqlViewProps) => {
-  const { isOpen: isOpen, onOpen: onOpen, onClose: onClose } = useDisclosure();
+  const { open: isOpen, onOpen: onOpen, onClose: onClose } = useDisclosure();
   const [isHovered, setIsHovered] = useState(false);
   const { data: flags, isLoading } = useRecceServerFlag();
   const isSingleEnvOnboarding = flags?.single_env_onboarding;
@@ -81,7 +70,6 @@ export const NodeSqlView = ({ node }: NodeSqlViewProps) => {
         />
       )}
       <IconButton
-        icon={<FaExpandArrowsAlt />}
         onClick={onOpen}
         size="md"
         aria-label={""}
@@ -92,43 +80,50 @@ export const NodeSqlView = ({ node }: NodeSqlViewProps) => {
           right: "20px",
           opacity: isHovered ? 0.5 : 0.1,
           transition: "opacity 0.3s ease-in-out",
-        }}
-      />
-      <Modal isOpen={isOpen} onClose={onClose} size="6xl">
-        <ModalOverlay />
-        <ModalContent overflowY="auto" height="75%">
-          <ModalHeader>
-            {isSingleEnvOnboarding ? (
-              <Heading as="h1" size="md">
-                <code>{modelName}</code> Model Code
-              </Heading>
-            ) : (
-              <Heading as="h1" size="md">
-                <code>{modelName}</code> Model Code Diff
-              </Heading>
-            )}
-          </ModalHeader>
-          <ModalCloseButton />
-          <ModalBody>
-            {isSingleEnvOnboarding ? (
-              <Editor
-                language="sql"
-                theme="vs"
-                value={original ?? ""}
-                options={{ ...sqlOptions, fontSize: 16 }}
-              />
-            ) : (
-              <DiffEditor
-                language="sql"
-                theme="vs"
-                original={original}
-                modified={modified}
-                options={{ ...diffOptions, fontSize: 16 }}
-              />
-            )}
-          </ModalBody>
-        </ModalContent>
-      </Modal>
+        }}>
+        <FaExpandArrowsAlt />
+      </IconButton>
+      <Dialog.Root open={isOpen} onOpenChange={onClose} size="xl">
+        <Portal>
+          <Dialog.Backdrop />
+          <Dialog.Positioner>
+            <Dialog.Content overflowY="auto" height="75%">
+              <Dialog.Header>
+                {isSingleEnvOnboarding ? (
+                  <Dialog.Title>
+                    <code>{modelName}</code> Model Code
+                  </Dialog.Title>
+                ) : (
+                  <Dialog.Title>
+                    <code>{modelName}</code> Model Code Diff
+                  </Dialog.Title>
+                )}
+              </Dialog.Header>
+              <Dialog.Body>
+                {isSingleEnvOnboarding ? (
+                  <Editor
+                    language="sql"
+                    theme="vs"
+                    value={original ?? ""}
+                    options={{ ...sqlOptions, fontSize: 16 }}
+                  />
+                ) : (
+                  <DiffEditor
+                    language="sql"
+                    theme="vs"
+                    original={original}
+                    modified={modified}
+                    options={{ ...diffOptions, fontSize: 16 }}
+                  />
+                )}
+              </Dialog.Body>
+            </Dialog.Content>
+          </Dialog.Positioner>
+          <Dialog.CloseTrigger asChild>
+            <CloseButton size="sm" />
+          </Dialog.CloseTrigger>
+        </Portal>
+      </Dialog.Root>
     </Box>
   );
 };

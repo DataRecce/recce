@@ -1,22 +1,19 @@
 import {
   Flex,
-  Modal,
-  ModalBody,
-  ModalCloseButton,
-  ModalContent,
-  ModalHeader,
   Box,
   Text,
   Stack,
   Button,
+  Dialog,
   Spacer,
-  Tooltip,
   useDisclosure,
   Image,
   Heading,
   Badge,
   Icon,
   IconButton,
+  Portal,
+  CloseButton,
 } from "@chakra-ui/react";
 
 import { NodeData } from "@/lib/api/info";
@@ -26,7 +23,7 @@ import { QueryParams, submitQueryDiff } from "@/lib/api/adhocQuery";
 import { SubmitOptions, waitRun } from "@/lib/api/runs";
 import { useRecceActionContext } from "@/lib/hooks/RecceActionContext";
 import { useMutation } from "@tanstack/react-query";
-import { useEffect, useRef, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { QueryForm } from "../query/QueryForm";
 import { AiOutlineExperiment } from "react-icons/ai";
 import { useFeedbackCollectionToast } from "@/lib/hooks/useFeedbackCollectionToast";
@@ -45,6 +42,7 @@ import { formatTimestamp } from "../app/EnvInfo";
 import { formatDistanceToNow } from "date-fns";
 import { editor } from "monaco-editor";
 import { DiffEditor } from "@monaco-editor/react";
+import { Tooltip } from "@/components/ui/tooltip";
 
 interface SandboxViewProps {
   isOpen: boolean;
@@ -88,7 +86,7 @@ function SandboxTopBar({
       </Box>
       <Spacer />
       <QueryForm defaultPrimaryKeys={primaryKeys} onPrimaryKeysChange={setPrimaryKeys} />
-      <Tooltip label="Run diff to see the changes">
+      <Tooltip content="Run diff to see the changes">
         <Button
           size="xs"
           marginTop={"16px"}
@@ -98,7 +96,7 @@ function SandboxTopBar({
             runQuery();
           }}
           colorScheme="blue"
-          isLoading={isPending}>
+          loading={isPending}>
           Run Diff
         </Button>
       </Tooltip>
@@ -209,7 +207,7 @@ function SqlPreview({ current, onChange }: SqlPreviewProps) {
 
 export function SandboxView({ isOpen, onClose, current }: SandboxViewProps) {
   const {
-    isOpen: isRunResultOpen,
+    open: isRunResultOpen,
     onClose: onRunResultClose,
     onOpen: onRunResultOpen,
   } = useDisclosure();
@@ -310,10 +308,10 @@ export function SandboxView({ isOpen, onClose, current }: SandboxViewProps) {
   }, [isOpen, current]);
 
   return (
-    <Modal
-      isOpen={isOpen}
+    <Dialog.Root
+      open={isOpen}
       size="full"
-      onClose={() => {
+      onOpenChange={() => {
         onClose();
         onRunResultClose();
         clearRunResult();
@@ -321,73 +319,83 @@ export function SandboxView({ isOpen, onClose, current }: SandboxViewProps) {
         closeGuideToast();
         trackPreviewChange({ action: "close", node: current?.name });
       }}>
-      {/* <ModalOverlay /> */}
-      <ModalContent height={"100%"}>
-        <ModalHeader height={"40px"} bg="rgb(77, 209, 176)" px={0} py={4}>
-          <Flex alignItems="center" height={"100%"} gap={"10px"}>
-            <Image
-              boxSize="20px"
-              ml="18px"
-              src="/logo/recce-logo-white.png"
-              alt="recce-logo-white"
-            />
-            <Heading as="h1" fontFamily={`"Montserrat", sans-serif`} fontSize="lg" color="white">
-              RECCE
-            </Heading>
-            <Badge fontSize="sm" color="white" colorScheme="whiteAlpha" variant="outline">
-              Experiment
-            </Badge>
-          </Flex>
-        </ModalHeader>
-        <ModalCloseButton />
-        <ModalBody p={0}>
-          <VSplit
-            sizes={isRunResultOpen ? [50, 50] : [100, 0]}
-            minSize={isRunResultOpen ? 100 : 0}
-            gutterSize={isRunResultOpen ? 5 : 0}
-            style={{
-              flex: "1",
-              contain: "size",
-              height: "100%",
-            }}>
-            <Flex direction="column" height="100%" m={0} p={0}>
-              <SandboxTopBar
-                current={current}
-                primaryKeys={primaryKeys ?? []}
-                setPrimaryKeys={setPrimaryKeys}
-                onRunResultOpen={onRunResultOpen}
-                runQuery={runQuery}
-                isPending={isPending}
-              />
-              <SandboxEditorLabels
-                height="32pxs"
-                flex="0 0 auto"
-                currentModelID={current?.id ?? ""}
-              />
-              <SqlPreview current={current} onChange={setModifiedCode} />
-            </Flex>
-            {isRunResultOpen ? (
-              <RunResultPane onClose={onRunResultClose} disableAddToChecklist />
-            ) : (
-              <Box></Box>
-            )}
-          </VSplit>
-        </ModalBody>
-        {/* Fixed position button */}
-        <Box position="fixed" bottom="4" right="4" opacity={0.5}>
-          <Tooltip label="Give us feedback">
-            <IconButton
-              aria-label="feedback"
-              icon={<VscFeedback />}
-              variant={"ghost"}
-              size={"md"}
-              onClick={() => {
-                feedbackToast(true);
-              }}
-            />
-          </Tooltip>
-        </Box>
-      </ModalContent>
-    </Modal>
+      <Portal>
+        <Dialog.Backdrop />
+        <Dialog.Positioner>
+          <Dialog.Content height={"100%"}>
+            <Dialog.Header height={"40px"} bg="rgb(77, 209, 176)" px={0} py={4}>
+              <Flex alignItems="center" height={"100%"} gap={"10px"}>
+                <Image
+                  boxSize="20px"
+                  ml="18px"
+                  src="/logo/recce-logo-white.png"
+                  alt="recce-logo-white"
+                />
+                <Dialog.Title
+                  as="h1"
+                  fontFamily={`"Montserrat", sans-serif`}
+                  fontSize="lg"
+                  color="white">
+                  RECCE
+                </Dialog.Title>
+                <Badge fontSize="sm" color="white" colorScheme="whiteAlpha" variant="outline">
+                  Experiment
+                </Badge>
+              </Flex>
+            </Dialog.Header>
+            <Dialog.Body p={0}>
+              <VSplit
+                sizes={isRunResultOpen ? [50, 50] : [100, 0]}
+                minSize={isRunResultOpen ? 100 : 0}
+                gutterSize={isRunResultOpen ? 5 : 0}
+                style={{
+                  flex: "1",
+                  contain: "size",
+                  height: "100%",
+                }}>
+                <Flex direction="column" height="100%" m={0} p={0}>
+                  <SandboxTopBar
+                    current={current}
+                    primaryKeys={primaryKeys ?? []}
+                    setPrimaryKeys={setPrimaryKeys}
+                    onRunResultOpen={onRunResultOpen}
+                    runQuery={runQuery}
+                    isPending={isPending}
+                  />
+                  <SandboxEditorLabels
+                    height="32pxs"
+                    flex="0 0 auto"
+                    currentModelID={current?.id ?? ""}
+                  />
+                  <SqlPreview current={current} onChange={setModifiedCode} />
+                </Flex>
+                {isRunResultOpen ? (
+                  <RunResultPane onClose={onRunResultClose} disableAddToChecklist />
+                ) : (
+                  <Box></Box>
+                )}
+              </VSplit>
+            </Dialog.Body>
+            {/* Fixed position button */}
+            <Box position="fixed" bottom="4" right="4" opacity={0.5}>
+              <Tooltip content="Give us feedback">
+                <IconButton
+                  aria-label="feedback"
+                  variant="ghost"
+                  size="md"
+                  onClick={() => {
+                    feedbackToast(true);
+                  }}>
+                  <VscFeedback />
+                </IconButton>
+              </Tooltip>
+            </Box>
+            <Dialog.CloseTrigger asChild>
+              <CloseButton size="sm" />
+            </Dialog.CloseTrigger>
+          </Dialog.Content>
+        </Dialog.Positioner>
+      </Portal>
+    </Dialog.Root>
   );
 }

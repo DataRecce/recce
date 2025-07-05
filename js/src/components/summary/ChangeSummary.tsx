@@ -1,9 +1,10 @@
-import { Box, Grid, Icon, Tooltip, VStack, Text, Flex } from "@chakra-ui/react";
-import { ReactNode, use } from "react";
+import { Box, Grid, Icon, VStack, Text, Flex } from "@chakra-ui/react";
+import { ReactNode } from "react";
 import { FiInfo } from "react-icons/fi";
 import { IconAdded, IconChanged, IconModified, IconRemoved } from "../lineage/styles";
 import { LineageGraph } from "../lineage/lineage";
 import { NodeData } from "@/lib/api/info";
+import { Tooltip } from "@/components/ui/tooltip";
 
 export type ChangeStatus =
   // node change
@@ -60,7 +61,7 @@ function SummaryText({ name, value, tip }: { name: ReactNode; value: ReactNode; 
       <Text fontSize="sm" color="gray">
         {name}
         {tip && (
-          <Tooltip label={tip}>
+          <Tooltip content={tip}>
             <Box display="inline-block">
               <Icon mx={"2px"} as={FiInfo} boxSize={3} />
             </Box>

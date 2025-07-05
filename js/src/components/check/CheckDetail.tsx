@@ -9,30 +9,17 @@ import {
   Icon,
   IconButton,
   Menu,
-  MenuButton,
-  MenuDivider,
-  MenuItem,
-  MenuList,
-  Modal,
-  ModalBody,
-  ModalCloseButton,
-  ModalContent,
-  ModalHeader,
-  ModalOverlay,
   Spacer,
-  Tab,
-  TabList,
-  TabPanel,
-  TabPanels,
   Tabs,
   Tag,
-  TagLeftIcon,
-  Tooltip,
   useDisclosure,
   Text,
   VStack,
+  Dialog,
+  Portal,
+  MenuSeparator,
+  CloseButton,
 } from "@chakra-ui/react";
-import { CheckCircleIcon, CopyIcon, DeleteIcon, RepeatIcon } from "@chakra-ui/icons";
 import { CiBookmark } from "react-icons/ci";
 import { IoMdCodeWorking } from "react-icons/io";
 import { CheckBreadcrumb } from "./CheckBreadcrumb";
@@ -48,7 +35,7 @@ import { stripIndents } from "common-tags";
 import { useClipBoardToast } from "@/lib/hooks/useClipBoardToast";
 import { buildTitle, buildDescription, buildQuery } from "./check";
 import SqlEditor, { DualSqlEditor } from "../query/SqlEditor";
-import { useCallback, useEffect, useRef, useState } from "react";
+import React, { useCallback, useEffect, useRef, useState } from "react";
 import { cancelRun, submitRunFromCheck } from "@/lib/api/runs";
 import { Run } from "@/lib/api/types";
 import { RunView } from "../run/RunView";
@@ -63,6 +50,8 @@ import { useCheckToast } from "@/lib/hooks/useCheckToast";
 import { LineageViewRef } from "../lineage/LineageView";
 import { useRecceInstanceContext } from "@/lib/hooks/RecceInstanceContext";
 import { trackCopyToClipboard } from "@/lib/api/track";
+import { Tooltip } from "@/components/ui/tooltip";
+import { PiCheckCircle, PiCopy, PiRepeat, PiTrashFill } from "react-icons/pi";
 
 export const isDisabledByNoResult = (type: string, run: Run | undefined): boolean => {
   if (type === "schema_diff" || type === "lineage_diff") {
@@ -76,6 +65,8 @@ interface CheckDetailProps {
   refreshCheckList?: () => void;
 }
 
+type TabValueList = "result" | "query";
+
 export const CheckDetail = ({ checkId, refreshCheckList }: CheckDetailProps) => {
   const { featureToggles } = useRecceInstanceContext();
   const queryClient = useQueryClient();
@@ -87,11 +78,11 @@ export const CheckDetail = ({ checkId, refreshCheckList }: CheckDetailProps) => 
   const [isAborting, setAborting] = useState(false);
   const [presetCheckTemplate, setPresetCheckTemplate] = useState<string>("");
   const {
-    isOpen: isPresetCheckTemplateOpen,
+    open: isPresetCheckTemplateOpen,
     onOpen: onPresetCheckTemplateOpen,
     onClose: onPresetCheckTemplateClose,
   } = useDisclosure();
-  const Overlay = () => <ModalOverlay bg="blackAlpha.300" backdropFilter="blur(10px) " />;
+  const Overlay = () => <Dialog.Backdrop bg="blackAlpha.300" backdropFilter="blur(10px) " />;
   const [overlay, setOverlay] = useState(<Overlay />);
 
   const {
@@ -189,7 +180,7 @@ export const CheckDetail = ({ checkId, refreshCheckList }: CheckDetailProps) => 
     mutate({ description });
   };
 
-  const [tabIndex, setTabIndex] = useState(0);
+  const [tabValue, setTabValue] = useState<TabValueList>("result");
   const { ref, onCopyToClipboard, onMouseEnter, onMouseLeave } = useCopyToClipboardButton();
 
   useEffect(() => {
@@ -229,11 +220,13 @@ export const CheckDetail = ({ checkId, refreshCheckList }: CheckDetailProps) => 
             }}
           />
           {isPresetCheck && (
-            <Tooltip label="Preset Check defined in recce config">
-              <Tag size="sm" flex="0 0 auto" ml="2">
-                <TagLeftIcon boxSize={"14px"} as={CiBookmark} />
-                Preset
-              </Tag>
+            <Tooltip content="Preset Check defined in recce config">
+              <Tag.Root size="sm" flex="0 0 auto" ml="2">
+                <Tag.StartElement>
+                  <CiBookmark size="14px" />
+                </Tag.StartElement>
+                <Tag.Label>Preset</Tag.Label>
+              </Tag.Root>
             </Tooltip>
           )}
           <Spacer />
@@ -244,75 +237,71 @@ export const CheckDetail = ({ checkId, refreshCheckList }: CheckDetailProps) => 
               </Box>
             )}
 
-            <Menu>
-              <MenuButton
-                isRound={true}
-                as={IconButton}
-                icon={<Icon as={VscKebabVertical} />}
-                variant="ghost"
-                size="sm"
-              />
-              <MenuList>
-                <MenuItem
-                  as={Text}
-                  fontSize={"10pt"}
-                  icon={<IoMdCodeWorking />}
-                  onClick={() => {
-                    setOverlay(<Overlay />);
-                    onPresetCheckTemplateOpen();
-                  }}>
-                  Get Preset Check Template
-                </MenuItem>
-                <MenuItem
-                  as={Text}
-                  fontSize={"10pt"}
-                  icon={<CopyIcon />}
-                  onClick={() => handleCopy()}>
-                  Copy Markdown
-                </MenuItem>
-                <MenuDivider />
-                <MenuItem
-                  as={Text}
-                  fontSize={"10pt"}
-                  icon={<DeleteIcon />}
-                  color="red"
-                  onClick={() => {
-                    handleDelete();
-                  }}
-                  isDisabled={featureToggles.disableUpdateChecklist}>
-                  Delete
-                </MenuItem>
-              </MenuList>
-            </Menu>
+            <Menu.Root>
+              <Menu.Trigger asChild>
+                <IconButton rounded="full" variant="ghost" size="sm">
+                  <Icon as={VscKebabVertical} />
+                </IconButton>
+              </Menu.Trigger>
+              <Portal>
+                <Menu.Positioner>
+                  <Menu.Content>
+                    <Menu.Item
+                      value="preset-check-template"
+                      onClick={() => {
+                        setOverlay(<Overlay />);
+                        onPresetCheckTemplateOpen();
+                      }}>
+                      <Text textStyle="sm">
+                        <IoMdCodeWorking /> Get Preset Check Template
+                      </Text>
+                    </Menu.Item>
+                    <Menu.Item value="copy-markdown" onClick={() => handleCopy()}>
+                      <Text textStyle="sm">
+                        <PiCopy /> Copy Markdown
+                      </Text>
+                    </Menu.Item>
+                    <MenuSeparator />
+                    <Menu.Item
+                      value="delete"
+                      color="red"
+                      onClick={() => {
+                        handleDelete();
+                      }}
+                      disabled={featureToggles.disableUpdateChecklist}>
+                      <Text textStyle="sm">
+                        <PiTrashFill /> Delete
+                      </Text>
+                    </Menu.Item>
+                  </Menu.Content>
+                </Menu.Positioner>
+              </Portal>
+            </Menu.Root>
 
             <Tooltip
-              label={
+              content={
                 isDisabledByNoResult(check?.type ?? "", run)
                   ? "Run the check first"
                   : check?.is_checked
                     ? "Mark as Pending"
                     : "Mark as Approved"
               }
-              placement="bottom-end">
+              positioning={{ placement: "bottom-end" }}>
               <Button
                 flex="0 0 auto"
                 size="sm"
                 colorScheme={check?.is_checked ? "green" : "gray"}
                 variant={check?.is_checked ? "solid" : "outline"}
-                leftIcon={
-                  check?.is_checked ? (
-                    <CheckCircleIcon />
-                  ) : (
-                    <Icon as={VscCircleLarge} color="lightgray" />
-                  )
-                }
                 onClick={() => {
                   handleApproveCheck();
                 }}
-                isDisabled={
-                  isDisabledByNoResult(check?.type ?? "", run) ||
-                  featureToggles.disableUpdateChecklist
-                }>
+                disabled={isDisabledByNoResult(check?.type ?? "", run) ||
+                  featureToggles.disableUpdateChecklist}>
+                {check?.is_checked ? (
+                  <PiCheckCircle />
+                ) : (
+                  <Icon as={VscCircleLarge} color="lightgray" />
+                )}{" "}
                 {check?.is_checked ? "Approved" : "Mark as Approved"}
               </Button>
             </Tooltip>
@@ -330,36 +319,40 @@ export const CheckDetail = ({ checkId, refreshCheckList }: CheckDetailProps) => 
       </Box>
 
       <Box style={{ contain: "strict" }}>
-        <Tabs
+        <Tabs.Root
           height="100%"
           display="flex"
           flexDirection="column"
-          tabIndex={tabIndex}
-          onChange={setTabIndex}>
-          <TabList height="50px">
-            <Tab fontSize="10pt">Result</Tab>
+          value={tabValue}
+          onValueChange={(e) => {
+            setTabValue(e.value as TabValueList);
+          }}>
+          <Tabs.List height="50px">
+            <Tabs.Trigger value="result" fontSize="0.75rem">
+              Result
+            </Tabs.Trigger>
             {(check?.type === "query" || check?.type === "query_diff") && (
-              <Tab fontSize="10pt">Query</Tab>
+              <Tabs.Trigger value="query" fontSize="0.75rem">
+                Query
+              </Tabs.Trigger>
             )}
             <Spacer />
             <HStack mr="10px">
               {runTypeEntry?.RunResultView && (
-                <Tooltip label="Rerun">
+                <Tooltip content="Rerun">
                   <Button
-                    leftIcon={<RepeatIcon />}
                     variant="outline"
-                    isLoading={isRunning}
+                    loading={isRunning}
                     size="sm"
                     onClick={() => handleRerun()}
-                    isDisabled={featureToggles.disableDatabaseQuery}>
-                    Rerun
+                    disabled={featureToggles.disableDatabaseQuery}>
+                    <PiRepeat /> Rerun
                   </Button>
                 </Tooltip>
               )}
               <Button
-                leftIcon={<CopyIcon />}
                 variant="outline"
-                isDisabled={isDisabledByNoResult(check?.type ?? "", run) || tabIndex !== 0}
+                disabled={isDisabledByNoResult(check?.type ?? "", run) || tabValue !== "result"}
                 onMouseEnter={onMouseEnter}
                 onMouseLeave={onMouseLeave}
                 size="sm"
@@ -371,12 +364,12 @@ export const CheckDetail = ({ checkId, refreshCheckList }: CheckDetailProps) => 
                   }
                   trackCopyToClipboard({ type: check?.type ?? "unknown", from: "check" });
                 }}>
-                Copy to Clipboard
+                <PiCopy /> Copy to Clipboard
               </Button>
             </HStack>
-          </TabList>
-          <TabPanels height="100%" flex="1" style={{ contain: "strict" }}>
-            <TabPanel p={0} width="100%" height="100%">
+          </Tabs.List>
+          <Tabs.ContentGroup height="100%" flex="1" style={{ contain: "strict" }}>
+            <Tabs.Content value="result" p={0} width="100%" height="100%">
               {runTypeEntry?.RunResultView &&
                 (check?.last_run || trackedRunId ? (
                   <RunView
@@ -394,7 +387,7 @@ export const CheckDetail = ({ checkId, refreshCheckList }: CheckDetailProps) => 
                   />
                 ) : (
                   <Center bg="rgb(249,249,249)" height="100%">
-                    <VStack spacing={4}>
+                    <VStack gap={4}>
                       <Box>
                         This action is part of the initial preset and has not been performed yet.
                         Once performed, the result will be shown here.
@@ -403,7 +396,7 @@ export const CheckDetail = ({ checkId, refreshCheckList }: CheckDetailProps) => 
                         onClick={handleRerun}
                         colorScheme="blue"
                         size="sm"
-                        isDisabled={featureToggles.disableDatabaseQuery}>
+                        disabled={featureToggles.disableDatabaseQuery}>
                         Run Query
                       </Button>
                     </VStack>
@@ -413,11 +406,11 @@ export const CheckDetail = ({ checkId, refreshCheckList }: CheckDetailProps) => 
               {check && check.type === "lineage_diff" && (
                 <LineageDiffView check={check} ref={lineageViewRef} />
               )}
-            </TabPanel>
+            </Tabs.Content>
             {(check?.type === "query" ||
               check?.type === "query_diff" ||
               check?.type === "query_base") && (
-              <TabPanel p={0} height="100%" width="100%">
+              <Tabs.Content value="query" p={0} height="100%" width="100%">
                 {check.params?.base_sql_template ? (
                   <DualSqlEditor
                     value={check.params?.sql_template ?? ""}
@@ -430,45 +423,53 @@ export const CheckDetail = ({ checkId, refreshCheckList }: CheckDetailProps) => 
                     options={{ readOnly: true }}
                   />
                 )}
-              </TabPanel>
+              </Tabs.Content>
             )}
-          </TabPanels>
-        </Tabs>
+          </Tabs.ContentGroup>
+        </Tabs.Root>
       </Box>
-      <Modal
-        isOpen={isPresetCheckTemplateOpen}
-        onClose={onPresetCheckTemplateClose}
-        isCentered
-        size="6xl">
-        {overlay}
-        <ModalContent overflowY="auto" height="40%" width="60%">
-          <ModalHeader>Preset Check Template</ModalHeader>
-          <ModalCloseButton />
-          <ModalBody>
-            <Heading size="sm" fontWeight="bold">
-              Please{" "}
-              <Text
-                as="span"
-                cursor="pointer"
-                _hover={{ textDecoration: "underline" }}
-                color={"blue.500"}
-                onClick={async () => {
-                  await navigator.clipboard.writeText(presetCheckTemplate);
-                  successToast("Copied the template to the clipboard");
-                }}>
-                copy
-              </Text>{" "}
-              the following template and paste it into the{" "}
-              <Highlight query="recce.yml" styles={{ px: "1", py: "0", bg: "red.100" }}>
-                recce.yml
-              </Highlight>{" "}
-              file.
-            </Heading>
-            <br />
-            <PresetCheckTemplateView yamlTemplate={presetCheckTemplate} />
-          </ModalBody>
-        </ModalContent>
-      </Modal>
+      <Dialog.Root
+        open={isPresetCheckTemplateOpen}
+        onOpenChange={onPresetCheckTemplateClose}
+        placement="center"
+        size="xl">
+        <Portal>
+          {overlay}
+          <Dialog.Positioner>
+            <Dialog.Content overflowY="auto" height="40%" width="60%">
+              <Dialog.Header>
+                <Dialog.Title>Preset Check Template</Dialog.Title>
+              </Dialog.Header>
+              <Dialog.Body>
+                <Heading size="sm" fontWeight="bold">
+                  Please{" "}
+                  <Text
+                    as="span"
+                    cursor="pointer"
+                    _hover={{ textDecoration: "underline" }}
+                    color={"blue.500"}
+                    onClick={async () => {
+                      await navigator.clipboard.writeText(presetCheckTemplate);
+                      successToast("Copied the template to the clipboard");
+                    }}>
+                    copy
+                  </Text>{" "}
+                  the following template and paste it into the{" "}
+                  <Highlight query="recce.yml" styles={{ px: "1", py: "0", bg: "red.100" }}>
+                    recce.yml
+                  </Highlight>{" "}
+                  file.
+                </Heading>
+                <br />
+                <PresetCheckTemplateView yamlTemplate={presetCheckTemplate} />
+              </Dialog.Body>
+              <Dialog.CloseTrigger asChild>
+                <CloseButton size="sm" />
+              </Dialog.CloseTrigger>
+            </Dialog.Content>
+          </Dialog.Positioner>
+        </Portal>
+      </Dialog.Root>
     </VSplit>
   );
 };

@@ -1,14 +1,15 @@
 import { exportState } from "@/lib/api/state";
-import { Icon, IconButton, Tooltip, useToast } from "@chakra-ui/react";
+import { toaster } from "@/components/ui/toaster";
+import { Icon, IconButton } from "@chakra-ui/react";
 import { format } from "date-fns";
 import saveAs from "file-saver";
 import { IconExport } from "../icons";
 import { useRecceInstanceContext } from "@/lib/hooks/RecceInstanceContext";
 import { trackStateAction } from "@/lib/api/track";
+import { Tooltip } from "@/components/ui/tooltip";
 
 export function StateExporter() {
   const { featureToggles } = useRecceInstanceContext();
-  const toast = useToast();
 
   const handleExport = async () => {
     try {
@@ -22,31 +23,29 @@ export function StateExporter() {
       saveAs(blob, fileName);
     } catch (error) {
       console.error("Export failed", error);
-      toast({
+      toaster.create({
         title: "Export failed",
         description: String(error),
-        status: "error",
-        variant: "left-accent",
-        position: "bottom",
+        type: "error",
         duration: 5000,
-        isClosable: true,
+        closable: true,
       });
     }
   };
 
   return (
-    <Tooltip label="Export">
+    <Tooltip content="Export">
       <IconButton
         size="sm"
-        variant="unstyled"
+        variant="plain"
         aria-label="Export state"
         onClick={async () => {
           await handleExport();
           trackStateAction({ name: "export" });
         }}
-        icon={<Icon as={IconExport} verticalAlign="middle" boxSize={"16px"} />}
-        isDisabled={featureToggles.disableExportStateFile}
-      />
+        disabled={featureToggles.disableExportStateFile}>
+        <Icon as={IconExport} verticalAlign="middle" boxSize={"16px"} />
+      </IconButton>
     </Tooltip>
   );
 }

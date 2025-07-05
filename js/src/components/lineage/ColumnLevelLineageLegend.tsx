@@ -1,6 +1,7 @@
-import { Box, Flex, Tooltip } from "@chakra-ui/react";
+import { Box, Flex } from "@chakra-ui/react";
 
 import { TransformationType } from "./GraphColumnNode";
+import { Tooltip } from "@/components/ui/tooltip";
 
 export function ColumnLevelLineageLegend() {
   const TRANSFORMATION_MSGS: Record<string, [string, string]> = {
@@ -27,7 +28,7 @@ export function ColumnLevelLineageLegend() {
     <Box bg="white" padding="12px" borderWidth="1px" borderColor="gray.200" fontSize="sm">
       {Object.entries(TRANSFORMATION_MSGS).map(([key, [label, tip]]) => {
         return (
-          <Tooltip label={tip} key={key} placement="right">
+          <Tooltip content={tip} key={key} positioning={{ placement: "right" }}>
             <Flex alignItems="center" gap="6px" marginBottom="2px">
               <TransformationType legend transformationType={key} /> {label}
             </Flex>

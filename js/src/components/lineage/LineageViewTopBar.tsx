@@ -1,4 +1,4 @@
-import { LineageDiffViewOptions, createLineageDiffCheck } from "@/lib/api/lineagecheck";
+import { LineageDiffViewOptions } from "@/lib/api/lineagecheck";
 import { useLineageGraphContext } from "@/lib/hooks/LineageGraphContext";
 
 import {
@@ -8,35 +8,31 @@ import {
   Box,
   Checkbox,
   Menu,
-  MenuButton,
-  MenuItem,
-  MenuList,
-  MenuDivider,
-  MenuGroup,
   Input,
   ButtonGroup,
   Spacer,
   Text,
-  Tooltip,
   VStack,
   Code,
+  Portal,
 } from "@chakra-ui/react";
 
 import { FiPackage } from "react-icons/fi";
 import { getIconForResourceType } from "./styles";
-import { CSSProperties, useEffect, useMemo, useRef, useState } from "react";
+import { CSSProperties, useEffect, useRef, useState } from "react";
 import { useRecceActionContext } from "@/lib/hooks/RecceActionContext";
 import { VscHistory } from "react-icons/vsc";
 import { useLineageViewContextSafe } from "./LineageViewContext";
 import { findByRunType } from "../run/registry";
-import { ChevronDownIcon } from "@chakra-ui/icons";
 import { trackHistoryAction } from "@/lib/api/track";
 import { useRecceServerFlag } from "@/lib/hooks/useRecceServerFlag";
 import { useRecceInstanceContext } from "@/lib/hooks/RecceInstanceContext";
+import { Tooltip } from "@/components/ui/tooltip";
+import { PiCaretDown } from "react-icons/pi";
 
 const SelectFilterTooltip = () => {
   return (
-    <VStack align={"start"} spacing={0}>
+    <VStack align={"start"} gap={0}>
       <Text fontSize="10pt" color={"gray.500"} pb={1}>
         Select nodes by dbt node selector syntax
       </Text>
@@ -60,7 +56,6 @@ const HistoryToggle = () => {
   const { isHistoryOpen, showHistory, closeHistory } = useRecceActionContext();
   return (
     <Button
-      leftIcon={<Icon as={VscHistory} />}
       size="xs"
       variant="outline"
       onClick={() => {
@@ -72,7 +67,7 @@ const HistoryToggle = () => {
           showHistory();
         }
       }}>
-      {isHistoryOpen ? "Hide" : "Show"}
+      <Icon as={VscHistory} /> {isHistoryOpen ? "Hide" : "Show"}
     </Button>
   );
 };
@@ -90,39 +85,34 @@ const ViewModeSelectMenu = ({ isDisabled }: { isDisabled: boolean }) => {
   };
 
   return (
-    <Menu>
-      <MenuButton
-        as={Button}
-        minWidth="100px"
-        leftIcon={<Icon as={getIconForResourceType("model").icon} />}
-        size="xs"
-        variant="outline"
-        isDisabled={isDisabled}
-        rightIcon={<ChevronDownIcon />}>
-        {label}
-      </MenuButton>
-
-      <MenuList title="packages">
-        <MenuItem
-          as={Checkbox}
-          size="sm"
-          isChecked={viewMode === "changed_models"}
-          onChange={() => {
-            handleSelect("changed_models");
-          }}>
-          Changed Models
-        </MenuItem>
-        <MenuItem
-          as={Checkbox}
-          size="sm"
-          isChecked={viewMode === "all"}
-          onChange={() => {
-            handleSelect("all");
-          }}>
-          All
-        </MenuItem>
-      </MenuList>
-    </Menu>
+    <Menu.Root>
+      <Menu.Trigger asChild>
+        <Button minWidth="100px" size="xs" variant="outline" disabled={isDisabled}>
+          <Icon as={getIconForResourceType("model").icon} /> {label} <PiCaretDown />
+        </Button>
+      </Menu.Trigger>
+      <Portal>
+        <Menu.Positioner>
+          <Menu.Content>
+            <Menu.RadioItemGroup
+              value={viewMode}
+              onValueChange={(e) => {
+                handleSelect(e.value as typeof viewMode);
+              }}>
+              <Menu.ItemGroupLabel>packages</Menu.ItemGroupLabel>
+              <Menu.RadioItem value="changed_models">
+                Changed Models
+                <Menu.ItemIndicator />
+              </Menu.RadioItem>
+              <Menu.RadioItem value="all">
+                All
+                <Menu.ItemIndicator />
+              </Menu.RadioItem>
+            </Menu.RadioItemGroup>
+          </Menu.Content>
+        </Menu.Positioner>
+      </Portal>
+    </Menu.Root>
   );
 };
 
@@ -185,49 +175,50 @@ const PackageSelectMenu = ({ isDisabled }: { isDisabled: boolean }) => {
   };
 
   return (
-    <Menu closeOnSelect={false}>
-      <MenuButton
-        as={Button}
-        minWidth="100px"
-        leftIcon={<Icon as={FiPackage} />}
-        size="xs"
-        variant="outline"
-        isDisabled={isDisabled}
-        rightIcon={<ChevronDownIcon />}>
-        {label}
-      </MenuButton>
+    <Menu.Root closeOnSelect={false}>
+      <Menu.Trigger asChild>
+        <Button minWidth="100px" size="xs" variant="outline" disabled={isDisabled}>
+          <Icon as={FiPackage} /> {label} <PiCaretDown />
+        </Button>
+      </Menu.Trigger>
+      <Portal>
+        <Menu.Positioner>
+          <Menu.Content>
+            <Menu.ItemGroup>
+              <Menu.ItemGroupLabel>Select Packages</Menu.ItemGroupLabel>
+              <Menu.Item value="" asChild>
+                <Checkbox.Root
+                  checked={!isSelectAll && !isSelectNone ? "indeterminate" : isSelectAll}
+                  onCheckedChange={handleSelectAll}>
+                  <Checkbox.HiddenInput />
+                  <Checkbox.Control />
+                  <Checkbox.Label>Select All</Checkbox.Label>
+                </Checkbox.Root>
+              </Menu.Item>
 
-      <MenuList title="packages">
-        <MenuGroup title="Select Packages">
-          <MenuItem
-            as={Checkbox}
-            size="sm"
-            isIndeterminate={!isSelectAll && !isSelectNone}
-            isChecked={isSelectAll}
-            onChange={handleSelectAll}>
-            Select All
-          </MenuItem>
-          <MenuDivider />
+              <Menu.Separator />
 
-          {Array.from(available).map((pkg) => {
-            const thePkg = pkg;
-
-            return (
-              <MenuItem
-                key={pkg}
-                as={Checkbox}
-                size="sm"
-                isChecked={selected.has(pkg)}
-                onChange={() => {
-                  handleSelect(thePkg);
-                }}>
-                {pkg}
-              </MenuItem>
-            );
-          })}
-        </MenuGroup>
-      </MenuList>
-    </Menu>
+              {Array.from(available).map((pkg) => {
+                const thePkg = pkg;
+                return (
+                  <Menu.Item key={pkg} value={pkg}>
+                    <Checkbox.Root
+                      checked={selected.has(pkg)}
+                      onCheckedChange={() => {
+                        handleSelect(thePkg);
+                      }}>
+                      <Checkbox.HiddenInput />
+                      <Checkbox.Control />
+                      <Checkbox.Label>{pkg}</Checkbox.Label>
+                    </Checkbox.Root>
+                  </Menu.Item>
+                );
+              })}
+            </Menu.ItemGroup>
+          </Menu.Content>
+        </Menu.Positioner>
+      </Portal>
+    </Menu.Root>
   );
 };
 
@@ -250,26 +241,25 @@ const NodeSelectionInput = (props: {
   return (
     <Tooltip
       // Custom tooltip style
-      width={"300px"}
-      padding={2}
-      shadow={"md"}
-      borderWidth={1}
-      rounded={"md"}
-      styleConfig={{
-        zIndex: "dropdown",
+      contentProps={{
+        width: "300px",
+        padding: 2,
+        shadow: "md",
+        borderWidth: 1,
+        rounded: "md",
+        color: "black",
+        backgroundColor: "white",
       }}
-      label={props.tooltipComponent}
-      placement="bottom-start"
-      color={"black"}
-      backgroundColor={"white"}
+      content={props.tooltipComponent}
+      positioning={{ placement: "bottom-start" }}
       closeOnClick={false}
-      isDisabled={!flags?.single_env_onboarding}>
+      disabled={!flags?.single_env_onboarding}>
       <Input
         ref={inputRef}
         height="24px"
         fontSize="10pt"
         placeholder="with selectors"
-        isDisabled={props.isDisabled}
+        disabled={props.isDisabled}
         value={inputValue}
         onChange={(event) => {
           setInputValue(event.target.value);
@@ -396,25 +386,30 @@ export const LineageViewTopBar = () => {
             </ControlItem>
             {isSingleEnvOnboarding && (
               <ControlItem label="Explore">
-                <ButtonGroup isAttached variant="outline">
-                  <Menu placement="bottom-end">
-                    <MenuButton as={Button} size={"xs"} rightIcon={<ChevronDownIcon />}>
-                      Actions
-                    </MenuButton>
-                    <MenuList>
-                      <MenuItem
-                        as={Text}
-                        size="sm"
-                        fontSize="10pt"
-                        isDisabled={featureToggles.disableDatabaseQuery}
-                        icon={<Icon as={findByRunType("row_count_diff")?.icon} />}
-                        onClick={async () => {
-                          await lineageViewContext.runRowCount();
-                        }}>
-                        Row Count
-                      </MenuItem>
-                    </MenuList>
-                  </Menu>
+                <ButtonGroup attached variant="outline">
+                  <Menu.Root positioning={{ placement: "bottom-end" }}>
+                    <Menu.Trigger asChild>
+                      <Button size="xs">
+                        Actions <PiCaretDown />
+                      </Button>
+                    </Menu.Trigger>
+                    <Portal>
+                      <Menu.Positioner>
+                        <Menu.Content>
+                          <Menu.Item
+                            value="row-count"
+                            disabled={featureToggles.disableDatabaseQuery}
+                            onClick={async () => {
+                              await lineageViewContext.runRowCount();
+                            }}>
+                            <Text textStyle="sm">
+                              <Icon as={findByRunType("row_count_diff")?.icon} /> Row Count
+                            </Text>
+                          </Menu.Item>
+                        </Menu.Content>
+                      </Menu.Positioner>
+                    </Portal>
+                  </Menu.Root>
                 </ButtonGroup>
               </ControlItem>
             )}
@@ -422,72 +417,71 @@ export const LineageViewTopBar = () => {
         )}
         {!isSingleEnvOnboarding && (
           <ControlItem label="Explore">
-            <ButtonGroup isAttached variant="outline">
-              <Menu placement="bottom-end">
-                <MenuButton
-                  as={Button}
-                  size={"xs"}
-                  rightIcon={<ChevronDownIcon />}
-                  isDisabled={featureToggles.disableViewActionDropdown}>
-                  Actions
-                </MenuButton>
+            <ButtonGroup attached variant="outline">
+              <Menu.Root positioning={{ placement: "bottom-end" }}>
+                <Menu.Trigger asChild>
+                  <Button size="xs" disabled={featureToggles.disableViewActionDropdown}>
+                    Actions <PiCaretDown />
+                  </Button>
+                </Menu.Trigger>
+                <Portal>
+                  <Menu.Positioner>
+                    <Menu.Content>
+                      <Menu.ItemGroup m="0" p="4px 12px">
+                        <Menu.ItemGroupLabel>Diff</Menu.ItemGroupLabel>
+                        <Menu.Item
+                          value="row-count-diff"
+                          disabled={featureToggles.disableDatabaseQuery}
+                          onClick={async () => {
+                            await lineageViewContext.runRowCountDiff();
+                          }}>
+                          <Text textStyle="sm">
+                            <Icon as={findByRunType("row_count_diff")?.icon} /> Row Count Diff
+                          </Text>
+                        </Menu.Item>
+                        <Menu.Item
+                          value="value-diff"
+                          disabled={featureToggles.disableDatabaseQuery}
+                          onClick={async () => {
+                            await lineageViewContext.runValueDiff();
+                          }}>
+                          <Text textStyle="sm">
+                            <Icon as={findByRunType("value_diff")?.icon} /> Value Diff
+                          </Text>
+                        </Menu.Item>
+                      </Menu.ItemGroup>
 
-                <MenuList>
-                  <MenuGroup title="Diff" m="0" p="4px 12px">
-                    <MenuItem
-                      as={Text}
-                      size="sm"
-                      fontSize="10pt"
-                      isDisabled={featureToggles.disableDatabaseQuery}
-                      icon={<Icon as={findByRunType("row_count_diff")?.icon} />}
-                      onClick={async () => {
-                        await lineageViewContext.runRowCountDiff();
-                      }}>
-                      Row Count Diff
-                    </MenuItem>
-                    <Tooltip placement="left">
-                      <MenuItem
-                        as={Text}
-                        size="sm"
-                        fontSize="10pt"
-                        isDisabled={featureToggles.disableDatabaseQuery}
-                        icon={<Icon as={findByRunType("value_diff")?.icon} />}
-                        onClick={async () => {
-                          await lineageViewContext.runValueDiff();
-                        }}>
-                        Value Diff
-                      </MenuItem>
-                    </Tooltip>
-                  </MenuGroup>
-                  <MenuDivider />
-                  <MenuGroup title="Add to Checklist" m="0" px="12px">
-                    <MenuItem
-                      as={Text}
-                      size="sm"
-                      fontSize="10pt"
-                      isDisabled={!(isNoSelect || (isMultiSelect && selectedNodes.length > 1))}
-                      icon={<Icon as={findByRunType("lineage_diff")?.icon} />}
-                      onClick={() => {
-                        lineageViewContext.addLineageDiffCheck(
-                          lineageViewContext.viewOptions.view_mode,
-                        );
-                      }}>
-                      Lineage Diff
-                    </MenuItem>
-                    <MenuItem
-                      as={Text}
-                      size="sm"
-                      fontSize="10pt"
-                      isDisabled={false}
-                      icon={<Icon as={findByRunType("schema_diff")?.icon} />}
-                      onClick={() => {
-                        lineageViewContext.addSchemaDiffCheck();
-                      }}>
-                      Schema Diff
-                    </MenuItem>
-                  </MenuGroup>
-                </MenuList>
-              </Menu>
+                      <Menu.Separator />
+
+                      <Menu.ItemGroup m="0" px="12px">
+                        <Menu.ItemGroupLabel>Add to Checklist</Menu.ItemGroupLabel>
+                        <Menu.Item
+                          value="lineage-diff"
+                          disabled={!(isNoSelect || (isMultiSelect && selectedNodes.length > 1))}
+                          onClick={() => {
+                            lineageViewContext.addLineageDiffCheck(
+                              lineageViewContext.viewOptions.view_mode,
+                            );
+                          }}>
+                          <Text textStyle="sm">
+                            <Icon as={findByRunType("lineage_diff")?.icon} /> Lineage Diff
+                          </Text>
+                        </Menu.Item>
+                        <Menu.Item
+                          value="schema-diff"
+                          disabled={false}
+                          onClick={() => {
+                            lineageViewContext.addSchemaDiffCheck();
+                          }}>
+                          <Text textStyle="sm">
+                            <Icon as={findByRunType("schema_diff")?.icon} /> Schema Diff
+                          </Text>
+                        </Menu.Item>
+                      </Menu.ItemGroup>
+                    </Menu.Content>
+                  </Menu.Positioner>
+                </Portal>
+              </Menu.Root>
             </ButtonGroup>
           </ControlItem>
         )}

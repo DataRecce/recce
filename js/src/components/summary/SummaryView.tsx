@@ -1,4 +1,4 @@
-import { Divider, Flex, Heading, Spacer, Text } from "@chakra-ui/react";
+import { Flex, Heading, Separator } from "@chakra-ui/react";
 import { useLineageGraphContext } from "@/lib/hooks/LineageGraphContext";
 import { ChangeSummary } from "./ChangeSummary";
 import { SchemaSummary } from "./SchemaSummary";
@@ -14,7 +14,7 @@ export default function SummaryView() {
         {lineageGraph && (
           <>
             <ChangeSummary lineageGraph={lineageGraph} />
-            <Divider />
+            <Separator />
             <SchemaSummary lineageGraph={lineageGraph} />
           </>
         )}

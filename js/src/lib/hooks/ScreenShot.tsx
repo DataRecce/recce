@@ -1,24 +1,20 @@
-import { CopyIcon, InfoIcon } from "@chakra-ui/icons";
 import {
   Button,
+  CloseButton,
+  Dialog,
   Flex,
   Image,
-  Modal,
-  ModalBody,
-  ModalCloseButton,
-  ModalContent,
-  ModalFooter,
-  ModalHeader,
-  ModalOverlay,
+  Portal,
   Text,
   useDisclosure,
 } from "@chakra-ui/react";
 import html2canvas from "html2canvas";
 import { toCanvas } from "html-to-image";
-import { RefObject, useCallback, useEffect, useRef, useState } from "react";
+import React, { RefObject, useCallback, useEffect, useRef, useState } from "react";
 import { useClipBoardToast } from "./useClipBoardToast";
 import { format } from "date-fns";
 import saveAs from "file-saver";
+import { PiCopy, PiInfo } from "react-icons/pi";
 
 export const IGNORE_SCREENSHOT_CLASS = "ignore-screenshot";
 
@@ -224,13 +220,12 @@ export function useCopyToClipboardButton(options?: HookOptions) {
       <>
         <Button
           size="sm"
-          leftIcon={<CopyIcon />}
           style={{ position: "absolute", bottom: "16px", right: "16px" }}
-          isLoading={isLoading}
+          loading={isLoading}
           onMouseEnter={onMouseEnter}
           onMouseLeave={onMouseLeave}
           onClick={onCopyToClipboard}>
-          Copy to Clipboard
+          <PiCopy /> Copy to Clipboard
         </Button>
         <ImageDownloadModal />
       </>
@@ -247,7 +242,7 @@ export function useCopyToClipboardButton(options?: HookOptions) {
 }
 
 export function useImageDownloadModal() {
-  const { isOpen, onOpen, onClose } = useDisclosure();
+  const { open, onOpen, onClose } = useDisclosure();
   const [imgBlob, setImgBlob] = useState<Blob>();
 
   function ImageDownloadModal() {
@@ -277,35 +272,43 @@ export function useImageDownloadModal() {
     };
 
     return (
-      <Modal size="3xl" isOpen={isOpen} onClose={onClose}>
-        <ModalOverlay />
-        <ModalContent>
-          <ModalHeader>Screenshot Preview</ModalHeader>
-          <ModalCloseButton />
-          <ModalBody>
-            <Flex px="10px" gap="10px" direction="column">
-              <Flex alignItems="center" gap="5px">
-                <InfoIcon color="red.600" />
-                <Text fontWeight="500" display="inline">
-                  Copy to the Clipboard
-                </Text>{" "}
-                is not supported in the current browser
-              </Flex>
-              <Text>Please download it directly</Text>
-            </Flex>
-            <Image src={base64Img} alt="screenshot" />
-          </ModalBody>
+      <Dialog.Root size="xl" open={open} onOpenChange={onClose}>
+        <Portal>
+          <Dialog.Backdrop />
+          <Dialog.Positioner>
+            <Dialog.Content>
+              <Dialog.Header>
+                <Dialog.Title>Screenshot Preview</Dialog.Title>
+              </Dialog.Header>
+              <Dialog.Body>
+                <Flex px="10px" gap="10px" direction="column">
+                  <Flex alignItems="center" gap="5px">
+                    <PiInfo color="red.600" />
+                    <Text fontWeight="500" display="inline">
+                      Copy to the Clipboard
+                    </Text>{" "}
+                    is not supported in the current browser
+                  </Flex>
+                  <Text>Please download it directly</Text>
+                </Flex>
+                <Image src={base64Img} alt="screenshot" />
+              </Dialog.Body>
 
-          <ModalFooter>
-            <Button mr={3} onClick={onClose}>
-              Close
-            </Button>
-            <Button colorScheme="blue" onClick={onDownload}>
-              Download
-            </Button>
-          </ModalFooter>
-        </ModalContent>
-      </Modal>
+              <Dialog.Footer>
+                <Button mr={3} onClick={onClose}>
+                  Close
+                </Button>
+                <Button colorScheme="blue" onClick={onDownload}>
+                  Download
+                </Button>
+              </Dialog.Footer>
+              <Dialog.CloseTrigger asChild>
+                <CloseButton size="sm" />
+              </Dialog.CloseTrigger>
+            </Dialog.Content>
+          </Dialog.Positioner>
+        </Portal>
+      </Dialog.Root>
     );
   }
 

@@ -49,7 +49,7 @@ export const IconModifiedDownstream = (props: any) => {
 export function getIconForChangeStatus(changeStatus?: "added" | "removed" | "modified"): {
   color: string;
   backgroundColor: string;
-  icon: any; //IconType not provided
+  icon: typeof IconAdded | undefined;
 } {
   if (changeStatus === "added") {
     return { color: "#1dce00", backgroundColor: "#e8fce5", icon: IconAdded };
@@ -64,7 +64,7 @@ export function getIconForChangeStatus(changeStatus?: "added" | "removed" | "mod
 
 export function getIconForResourceType(resourceType?: string): {
   color: string;
-  icon: any; //IconType not provided
+  icon: typeof FaCube | undefined;
 } {
   if (resourceType === "model") {
     return { color: "#c0eafd", icon: FaCube };

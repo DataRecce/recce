@@ -1,38 +1,34 @@
-import { ChangeEvent, useCallback, useEffect, useRef, useState } from "react";
+import React, { ChangeEvent, useCallback, useRef, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { cacheKeys } from "@/lib/api/cacheKeys";
 import {
-  AlertDialog,
-  AlertDialogBody,
-  AlertDialogContent,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogOverlay,
   Button,
+  CloseButton,
+  Dialog,
   Flex,
   Icon,
   IconButton,
+  Portal,
   Text,
-  Tooltip,
   useDisclosure,
-  useToast,
 } from "@chakra-ui/react";
-import { InfoIcon } from "@chakra-ui/icons";
 import { importState } from "@/lib/api/state";
 import { useLocation } from "wouter";
 import { useLineageGraphContext, useRunsAggregated } from "@/lib/hooks/LineageGraphContext";
 import { IconImport } from "../icons";
 import { useRecceInstanceContext } from "@/lib/hooks/RecceInstanceContext";
 import { trackStateAction } from "@/lib/api/track";
+import { toaster } from "@/components/ui/toaster";
+import { Tooltip } from "@/components/ui/tooltip";
+import { PiInfo } from "react-icons/pi";
 
 export function StateImporter({ checksOnly = true }: { checksOnly?: boolean }) {
   const { featureToggles } = useRecceInstanceContext();
-  const toast = useToast();
   const queryClient = useQueryClient();
   const hiddenFileInput = useRef<HTMLInputElement>(null);
   const cancelRef = useRef<HTMLButtonElement>(null);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
-  const { isOpen, onOpen, onClose } = useDisclosure();
+  const { open, onOpen, onClose } = useDisclosure();
   const [location, setLocation] = useLocation();
   const [, refetchRunsAggregated] = useRunsAggregated();
 
@@ -52,24 +48,20 @@ export function StateImporter({ checksOnly = true }: { checksOnly?: boolean }) {
       const description = checksOnly
         ? `${checks} checks imported successfully`
         : `${runs} runs and ${checks} checks imported successfully`;
-      toast({
+      toaster.create({
         description: description,
-        status: "info",
-        variant: "left-accent",
-        position: "bottom",
+        type: "info",
         duration: 5000,
-        isClosable: true,
+        closable: true,
       });
     } catch (error) {
       console.error("Import failed", error);
-      toast({
+      toaster.create({
         title: "Import failed",
         description: String(error),
-        status: "error",
-        variant: "left-accent",
-        position: "bottom",
+        type: "error",
         duration: 5000,
-        isClosable: true,
+        closable: true,
       });
     }
 
@@ -77,7 +69,6 @@ export function StateImporter({ checksOnly = true }: { checksOnly?: boolean }) {
   }, [
     queryClient,
     selectedFile,
-    toast,
     onClose,
     location,
     setLocation,
@@ -107,20 +98,20 @@ export function StateImporter({ checksOnly = true }: { checksOnly?: boolean }) {
   return (
     <>
       <Tooltip
-        label={
+        content={
           "Import Checklist from State File" + (isDemoSite ? " (Disabled in the demo site)" : "")
         }>
         <IconButton
           pt="6px"
-          variant="unstyled"
+          variant="plain"
           aria-label="Import state"
           onClick={() => {
             handleClick();
             trackStateAction({ name: "import" });
           }}
-          icon={<Icon as={IconImport} />}
-          isDisabled={featureToggles.disableImportStateFile || isDemoSite}
-        />
+          disabled={featureToggles.disableImportStateFile || isDemoSite}>
+          <Icon as={IconImport} />
+        </IconButton>
       </Tooltip>
       <input
         type="file"
@@ -128,44 +119,55 @@ export function StateImporter({ checksOnly = true }: { checksOnly?: boolean }) {
         ref={hiddenFileInput}
         onChange={handleFileSelect}
       />
-      <AlertDialog isOpen={isOpen} leastDestructiveRef={cancelRef} onClose={onClose} size={"xl"}>
-        <AlertDialogOverlay>
-          <AlertDialogContent>
-            <AlertDialogHeader fontSize="lg" fontWeight="bold">
-              Import state
-            </AlertDialogHeader>
-
-            <AlertDialogBody>
-              <Flex px="5px" gap="5px" rounded="md" direction="column">
-                <Flex alignItems="center" gap="5px">
-                  <InfoIcon color="red.600" />
-                  <Text as="span" fontWeight="500" color="red.600">
-                    Caution!
-                  </Text>
+      <Dialog.Root
+        open={open}
+        role="alertdialog"
+        initialFocusEl={() => {
+          return cancelRef.current;
+        }}
+        onOpenChange={onClose}
+        size="xl">
+        <Portal>
+          <Dialog.Backdrop />
+          <Dialog.Positioner>
+            <Dialog.Content>
+              <Dialog.Header fontSize="lg" fontWeight="bold">
+                <Dialog.Title>Import state</Dialog.Title>
+              </Dialog.Header>
+              <Dialog.Body>
+                <Flex px="5px" gap="5px" rounded="md" direction="column">
+                  <Flex alignItems="center" gap="5px">
+                    <PiInfo color="red.600" />
+                    <Text as="span" fontWeight="500" color="red.600">
+                      Caution!
+                    </Text>
+                  </Flex>
+                  <Flex>
+                    <Text>
+                      The current {warningSubject} will be{" "}
+                      <Text as="span" fontWeight="600">
+                        merged
+                      </Text>{" "}
+                      with the imported state
+                    </Text>
+                  </Flex>
                 </Flex>
-                <Flex>
-                  <Text>
-                    The current {warningSubject} will be{" "}
-                    <Text as="span" fontWeight="600">
-                      merged
-                    </Text>{" "}
-                    with the imported state
-                  </Text>
-                </Flex>
-              </Flex>
-            </AlertDialogBody>
-
-            <AlertDialogFooter>
-              <Button ref={cancelRef} onClick={onClose}>
-                Cancel
-              </Button>
-              <Button colorScheme="blue" onClick={handleImport} ml="5px">
-                Import
-              </Button>
-            </AlertDialogFooter>
-          </AlertDialogContent>
-        </AlertDialogOverlay>
-      </AlertDialog>
+              </Dialog.Body>
+              <Dialog.Footer>
+                <Button ref={cancelRef} onClick={onClose}>
+                  Cancel
+                </Button>
+                <Button colorScheme="blue" onClick={handleImport} ml="5px">
+                  Import
+                </Button>
+              </Dialog.Footer>
+              <Dialog.CloseTrigger asChild>
+                <CloseButton size="sm" />
+              </Dialog.CloseTrigger>
+            </Dialog.Content>
+          </Dialog.Positioner>
+        </Portal>
+      </Dialog.Root>
     </>
   );
 }

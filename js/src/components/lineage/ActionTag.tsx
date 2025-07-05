@@ -1,11 +1,11 @@
-import { Run } from "@/lib/api/types";
 import { ValueDiffResult } from "@/lib/api/valuediff";
-import { ExternalLinkIcon, InfoIcon, WarningIcon } from "@chakra-ui/icons";
-import { Box, CircularProgress, Flex, Tag, TagLabel, Tooltip } from "@chakra-ui/react";
+import { Box, Flex, ProgressCircle, Tag } from "@chakra-ui/react";
 import { LineageGraphNode } from "./lineage";
 import { RowCountDiffResult, RowCountResult } from "@/lib/api/rowcount";
 import { RowCountDiffTag, RowCountTag } from "./NodeTag";
 import { ActionState } from "./LineageViewContext";
+import { Tooltip } from "@/components/ui/tooltip";
+import { PiInfo, PiWarning } from "react-icons/pi";
 
 interface ActionTagProps {
   node: LineageGraphNode;
@@ -16,34 +16,64 @@ export const ActionTag = ({ node, action }: ActionTagProps) => {
   const { status, skipReason, run } = action;
 
   if (status === "pending") {
-    return <CircularProgress size="20px" value={0} />;
+    return (
+      <ProgressCircle.Root value={0} size="md">
+        <ProgressCircle.Circle>
+          <ProgressCircle.Track />
+          <ProgressCircle.Range />
+        </ProgressCircle.Circle>
+      </ProgressCircle.Root>
+    );
   }
 
   if (status === "skipped") {
     return (
-      <Tag backgroundColor={"gray.100"}>
-        <Flex fontSize="10pt" color="gray.500" alignItems="center" gap="3px">
-          <Box>Skipped</Box>
-          {skipReason && (
-            <Tooltip label={skipReason}>
-              <InfoIcon />
-            </Tooltip>
-          )}
-        </Flex>
-      </Tag>
+      <Tag.Root backgroundColor={"gray.100"}>
+        <Tag.Label>
+          <Flex fontSize="10pt" color="gray.500" alignItems="center" gap="3px">
+            <Box>Skipped</Box>
+            {skipReason && (
+              <Tooltip content={skipReason}>
+                <PiInfo />
+              </Tooltip>
+            )}
+          </Flex>
+        </Tag.Label>
+      </Tag.Root>
     );
   }
 
   if (!run) {
-    return <CircularProgress isIndeterminate size="20px" />;
+    return (
+      <ProgressCircle.Root value={null} size="md">
+        <ProgressCircle.Circle>
+          <ProgressCircle.Track />
+          <ProgressCircle.Range />
+        </ProgressCircle.Circle>
+      </ProgressCircle.Root>
+    );
   }
 
   const { error, result, run_id, progress } = run;
   if (status === "running") {
     if (progress?.percentage === undefined) {
-      return <CircularProgress isIndeterminate size="20px" />;
+      return (
+        <ProgressCircle.Root value={null} size="md">
+          <ProgressCircle.Circle>
+            <ProgressCircle.Track />
+            <ProgressCircle.Range />
+          </ProgressCircle.Circle>
+        </ProgressCircle.Root>
+      );
     } else {
-      return <CircularProgress size="20px" value={progress.percentage * 100} />;
+      return (
+        <ProgressCircle.Root value={progress.percentage * 100} size="md">
+          <ProgressCircle.Circle>
+            <ProgressCircle.Track />
+            <ProgressCircle.Range />
+          </ProgressCircle.Circle>
+        </ProgressCircle.Root>
+      );
     }
   }
 
@@ -52,8 +82,8 @@ export const ActionTag = ({ node, action }: ActionTagProps) => {
       <Flex fontSize="10pt" color="gray">
         <Box>Error</Box>
         {skipReason && (
-          <Tooltip label={error}>
-            <WarningIcon />
+          <Tooltip content={error}>
+            <PiWarning />
           </Tooltip>
         )}
       </Flex>
@@ -73,8 +103,8 @@ export const ActionTag = ({ node, action }: ActionTagProps) => {
     }
 
     return (
-      <Tag backgroundColor={mismatched > 0 ? "red.100" : "green.100"}>
-        <TagLabel>
+      <Tag.Root backgroundColor={mismatched > 0 ? "red.100" : "green.100"}>
+        <Tag.Label>
           <Flex
             fontSize="10pt"
             color={mismatched > 0 ? "red" : "green"}
@@ -82,8 +112,8 @@ export const ActionTag = ({ node, action }: ActionTagProps) => {
             gap="3px">
             {mismatched > 0 ? `${mismatched} columns mismatched` : "All columns match"}
           </Flex>
-        </TagLabel>
-      </Tag>
+        </Tag.Label>
+      </Tag.Root>
     );
   }
 
