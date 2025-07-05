@@ -2,7 +2,7 @@ import { RunFormProps } from "../run/types";
 import { useEffect, useState } from "react";
 import useModelColumns from "@/lib/hooks/useModelColumns";
 import { Select } from "chakra-react-select";
-import { Box, Checkbox, FormControl, FormLabel, Input, VStack } from "@chakra-ui/react";
+import { Box, Checkbox, Field, Input, VStack } from "@chakra-ui/react";
 
 interface ProfileDiffFormParams {
   model: string;
@@ -41,24 +41,26 @@ export function ProfileDiffForm({
 
   return (
     <VStack gap={5} m="8px 24px" paddingBottom="200px">
-      <FormControl>
-        <FormLabel>Model</FormLabel>
-        <Input isReadOnly={true} value={params.model} />
-      </FormControl>
-      <FormControl>
-        <FormLabel>Columns</FormLabel>
-        <Checkbox
+      <Field.Root>
+        <Field.Label>Model</Field.Label>
+        <Input readOnly value={params.model} />
+      </Field.Root>
+      <Field.Root>
+        <Field.Label>Columns</Field.Label>
+        <Checkbox.Root
           marginBottom="10px"
-          isChecked={allColumns}
-          onChange={(e) => {
-            setAllColumns(e.target.checked);
+          checked={allColumns}
+          onCheckedChange={(e) => {
+            setAllColumns(Boolean(e.checked));
             onParamsChanged({
               ...params,
               columns: undefined,
             });
           }}>
-          All columns
-        </Checkbox>
+          <Checkbox.HiddenInput />
+          <Checkbox.Control />
+          <Checkbox.Label>All columns</Checkbox.Label>
+        </Checkbox.Root>
         {!allColumns && (
           <Select
             isMulti
@@ -82,7 +84,7 @@ export function ProfileDiffForm({
               });
             }}></Select>
         )}
-      </FormControl>
+      </Field.Root>
     </VStack>
   );
 }

@@ -1,28 +1,22 @@
-import { useToast } from "@chakra-ui/react";
+import { toaster } from "@/components/ui/toaster";
 
 export function useClipBoardToast() {
-  const clipboardToast = useToast();
-
   function successToast(message: string) {
-    clipboardToast({
+    toaster.create({
       description: message,
-      status: "info",
-      variant: "left-accent",
-      position: "bottom",
+      type: "info",
       duration: 5000,
-      isClosable: true,
+      closable: true,
     });
   }
 
   function failToast(title: string, error: any) {
-    clipboardToast({
+    toaster.create({
       title: title,
       description: `${error}`,
-      status: "error",
-      variant: "left-accent",
-      position: "bottom",
+      type: "error",
       duration: 5000,
-      isClosable: true,
+      closable: true,
     });
   }
 

@@ -1,6 +1,6 @@
 import { TopKDiffResult, TopKResult } from "@/lib/api/profile";
 import { formatAsAbbreviatedNumber, formatIntervalMinMax } from "@/utils/formatters";
-import { Box, Divider, Flex, Spacer, Text, Tooltip } from "@chakra-ui/react";
+import { Box, Flex, Separator, Spacer, Text } from "@chakra-ui/react";
 import { Fragment } from "react";
 import {
   ChartOptions,
@@ -13,6 +13,7 @@ import {
 } from "chart.js";
 import { Bar } from "react-chartjs-2";
 import { BASE_BAR_COLOR, CURRENT_BAR_COLOR, SquareIcon } from "./SquareIcon";
+import { Tooltip } from "@/components/ui/tooltip";
 
 export const INFO_VAL_COLOR = "#63B3ED";
 
@@ -79,7 +80,7 @@ function TopKChartTooltip({
 }) {
   return (
     <Tooltip
-      label={
+      content={
         <Box>
           <Text>
             <SquareIcon color={CURRENT_BAR_COLOR} />
@@ -91,8 +92,7 @@ function TopKChartTooltip({
           </Text>
         </Box>
       }
-      placement="auto"
-      hasArrow>
+      showArrow>
       {children}
     </Tooltip>
   );
@@ -107,10 +107,10 @@ export function TopKSummaryBarChart({ topKDiff, isDisplayTopTen }: BarChartProps
     <Box w={"100%"} px={20} py={4}>
       <Flex alignItems={"center"} direction={"row"}>
         <Spacer />
-        <Text as="h3" size="sm" p="2" color="gray">
+        <Text as="h3" fontSize="sm" p="2" color="gray">
           <SquareIcon color={BASE_BAR_COLOR} /> Base
         </Text>
-        <Text as="h3" size="sm" p="2" color="gray">
+        <Text as="h3" fontSize="sm" p="2" color="gray">
           <SquareIcon color={CURRENT_BAR_COLOR} /> Current
         </Text>
         <Spacer />
@@ -126,7 +126,7 @@ export function TopKSummaryBarChart({ topKDiff, isDisplayTopTen }: BarChartProps
             <TopKChartTooltip base={base} current={current}>
               <Flex alignItems={"center"} width={"100%"} _hover={{ bg: "blackAlpha.300" }} px={4}>
                 <Text
-                  noOfLines={1}
+                  lineClamp={1}
                   width={"10em"}
                   fontSize={"sm"}
                   color={current.isSpecialLabel ? "gray.400" : "inherit"}>
@@ -162,13 +162,7 @@ export function TopKSummaryBarChart({ topKDiff, isDisplayTopTen }: BarChartProps
                       valids={topKDiff.base.valids}
                       color={BASE_BAR_COLOR}
                     />
-                    <Text
-                      ml={5}
-                      mr={2}
-                      fontSize={"sm"}
-                      width={"6em"}
-                      // noOfLines={1}
-                    >
+                    <Text ml={5} mr={2} fontSize={"sm"} width={"6em"}>
                       {base.displayCount}
                     </Text>
                     <Text color={"gray.400"} fontSize={"sm"} width={"4em"}>
@@ -178,7 +172,7 @@ export function TopKSummaryBarChart({ topKDiff, isDisplayTopTen }: BarChartProps
                 </Flex>
               </Flex>
             </TopKChartTooltip>
-            <Divider />
+            <Separator />
           </Fragment>
         );
       })}
@@ -216,9 +210,9 @@ export function TopKSummaryList({ topk, valids, isDisplayTopTen }: Props) {
             {!isLastItemOthers || (isLastItemOthers && topkCount > 0) ? (
               <>
                 <Flex alignItems={"center"} width={"100%"} _hover={{ bg: "blackAlpha.300" }} px={3}>
-                  <Tooltip label={topkLabel} placement="start">
+                  <Tooltip content={topkLabel} positioning={{ placement: "top-start" }}>
                     <Text
-                      noOfLines={1}
+                      lineClamp={1}
                       width={"14em"}
                       fontSize={"sm"}
                       color={isLastItemOthers || catName.length === 0 ? "gray.400" : "inherit"}>
@@ -232,18 +226,18 @@ export function TopKSummaryList({ topk, valids, isDisplayTopTen }: Props) {
                       valids={valids}
                     />
                   </Flex>
-                  <Tooltip label={displayTopkCount} placement="start">
-                    <Text ml={5} mr={2} fontSize={"sm"} width={"4em"} noOfLines={1}>
+                  <Tooltip content={displayTopkCount} positioning={{ placement: "top-start" }}>
+                    <Text ml={5} mr={2} fontSize={"sm"} width={"4em"} lineClamp={1}>
                       {displayTopkCount}
                     </Text>
                   </Tooltip>
-                  <Tooltip label={displayTopkRatio} placement="start">
+                  <Tooltip content={displayTopkRatio} positioning={{ placement: "top-start" }}>
                     <Text color={"gray.400"} fontSize={"sm"} width={"4em"}>
                       {displayTopkRatio}
                     </Text>
                   </Tooltip>
                 </Flex>
-                <Divider />
+                <Separator />
               </>
             ) : (
               <></>

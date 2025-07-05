@@ -1,6 +1,6 @@
 import { HistogramDiffParams } from "@/lib/api/profile";
 import { RunFormProps } from "../run/types";
-import { Box, FormControl, FormLabel, Select } from "@chakra-ui/react";
+import { Box, Field, NativeSelect } from "@chakra-ui/react";
 import useModelColumns from "@/lib/hooks/useModelColumns";
 
 function isStringDataType(columnType: string) {
@@ -95,29 +95,31 @@ export function HistogramDiffForm({
 
   return (
     <Box m="16px">
-      <FormControl>
-        <FormLabel>Pick a column to show Histogram Diff</FormLabel>
-        <Select
-          placeholder={columns.length !== 0 ? "Select column" : "No numeric column is available"}
-          isDisabled={columns.length === 0}
-          value={params.column_name}
-          onChange={(e) => {
-            const columnName = e.target.value;
-            setIsReadyToExecute(columnName ? true : false);
-            const columnType = columns.find((c) => c.name === columnName)?.type ?? "";
-            onParamsChanged({
-              ...params,
-              column_name: columnName,
-              column_type: columnType,
-            });
-          }}>
-          {columns.map((c) => (
-            <option key={c.name} value={c.name}>
-              {c.name} : {c.type}
-            </option>
-          ))}
-        </Select>
-      </FormControl>
+      <Field.Root>
+        <Field.Label>Pick a column to show Histogram Diff</Field.Label>
+        <NativeSelect.Root disabled={columns.length === 0}>
+          <NativeSelect.Field
+            value={params.column_name}
+            onChange={(e) => {
+              const columnName = e.target.value;
+              setIsReadyToExecute(!!columnName);
+              const columnType = columns.find((c) => c.name === columnName)?.type ?? "";
+              onParamsChanged({
+                ...params,
+                column_name: columnName,
+                column_type: columnType,
+              });
+            }}
+            placeholder={columns.length !== 0 ? "Select column" : "No numeric column is available"}>
+            {columns.map((c) => (
+              <option key={c.name} value={c.name}>
+                {c.name} : {c.type}
+              </option>
+            ))}
+          </NativeSelect.Field>
+          <NativeSelect.Indicator />
+        </NativeSelect.Root>
+      </Field.Root>
     </Box>
   );
 }

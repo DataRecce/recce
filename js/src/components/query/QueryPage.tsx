@@ -1,5 +1,5 @@
 import React, { useMemo } from "react";
-import { Box, Button, Flex, Icon, Spacer, Switch, Tooltip } from "@chakra-ui/react";
+import { Box, Button, Flex, Spacer, Switch } from "@chakra-ui/react";
 import SqlEditor, { DualSqlEditor } from "./SqlEditor";
 import { defaultSqlQuery, useRecceQueryContext } from "@/lib/hooks/RecceQueryContext";
 
@@ -10,11 +10,12 @@ import { QueryForm } from "./QueryForm";
 import { useRecceActionContext } from "@/lib/hooks/RecceActionContext";
 import { SubmitOptions, waitRun } from "@/lib/api/runs";
 import { VscHistory } from "react-icons/vsc";
-import { InfoIcon } from "@chakra-ui/icons";
 import { trackHistoryAction } from "@/lib/api/track";
 import { BaseEnvironmentSetupGuide } from "../lineage/SingleEnvironmentQueryView";
 import { useRecceServerFlag } from "@/lib/hooks/useRecceServerFlag";
 import { useRecceInstanceContext } from "@/lib/hooks/RecceInstanceContext";
+import { Tooltip } from "@/components/ui/tooltip";
+import { PiInfo } from "react-icons/pi";
 
 export const HistoryToggle = () => {
   const { isHistoryOpen, showHistory, closeHistory } = useRecceActionContext();
@@ -23,7 +24,6 @@ export const HistoryToggle = () => {
       <Box fontSize="8pt">History</Box>
 
       <Button
-        leftIcon={<Icon as={VscHistory} />}
         size="xs"
         variant="outline"
         onClick={() => {
@@ -35,7 +35,7 @@ export const HistoryToggle = () => {
             showHistory();
           }
         }}>
-        {isHistoryOpen ? "Hide" : "Show"}
+        <VscHistory /> {isHistoryOpen ? "Hide" : "Show"}
       </Button>
     </Box>
   );
@@ -53,11 +53,15 @@ const QueryModeToggle = () => {
     <Box>
       <Box fontSize="8pt">
         Custom Queries{" "}
-        <Tooltip label={customQueriesDescription}>
-          <InfoIcon color="gray.600" boxSize="3" />
+        <Tooltip content={customQueriesDescription}>
+          <PiInfo color="gray.600" size="3" />
         </Tooltip>
       </Box>
-      <Switch size="sm" isChecked={isCustomQueries} onChange={handleToggle} />
+      <Switch.Root size="sm" checked={isCustomQueries} onCheckedChange={handleToggle}>
+        <Switch.HiddenInput />
+        <Switch.Control />
+        <Switch.Label />
+      </Switch.Root>
     </Box>
   );
 };
@@ -151,14 +155,9 @@ export const QueryPage = () => {
           <Spacer />
           {/* Disable the Diff button to let user known they should configure the base environment */}
           <Tooltip
-            label="Please configure the base environment before running the diff"
-            placement="left">
-            <Button
-              colorScheme="blue"
-              isDisabled={true}
-              size="xs"
-              fontSize="14px"
-              marginTop={"16px"}>
+            content="Please configure the base environment before running the diff"
+            positioning={{ placement: "left" }}>
+            <Button colorScheme="blue" disabled size="xs" fontSize="14px" marginTop={"16px"}>
               Run Diff
             </Button>
           </Tooltip>
@@ -195,7 +194,7 @@ export const QueryPage = () => {
           onClick={() => {
             runQuery("query_diff");
           }}
-          isDisabled={isPending || featureToggles.disableDatabaseQuery}
+          disabled={isPending || featureToggles.disableDatabaseQuery}
           size="xs"
           fontSize="14px"
           marginTop={"16px"}>

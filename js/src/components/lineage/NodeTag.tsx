@@ -1,15 +1,4 @@
-import {
-  HStack,
-  SkeletonText,
-  Tag,
-  TagLabel,
-  TagLeftIcon,
-  Tooltip,
-  Text,
-  Icon,
-  IconButton,
-  TagRightIcon,
-} from "@chakra-ui/react";
+import { HStack, SkeletonText, Tag, Text, Icon, IconButton } from "@chakra-ui/react";
 import { getIconForResourceType } from "./styles";
 import { FiArrowRight, FiFrown } from "react-icons/fi";
 import { RowCount, RowCountDiff } from "@/lib/api/models";
@@ -18,18 +7,23 @@ import { RiArrowDownSFill, RiArrowUpSFill, RiSwapLine } from "react-icons/ri";
 import { useLineageGraphContext } from "@/lib/hooks/LineageGraphContext";
 import { deltaPercentageString } from "../rowcount/delta";
 
-import { RepeatIcon } from "@chakra-ui/icons";
 import { findByRunType } from "../run/registry";
 import { useRecceInstanceContext } from "@/lib/hooks/RecceInstanceContext";
+import { Tooltip } from "@/components/ui/tooltip";
+import { PiRepeat } from "react-icons/pi";
 
 export function ResourceTypeTag({ node }: { node: LineageGraphNode }) {
-  const { icon: resourceTypeIcon } = getIconForResourceType(node.resourceType);
+  const { icon: ResourceTypeIcon } = getIconForResourceType(node.resourceType);
   return (
-    <Tooltip hasArrow label="Type of resource">
-      <Tag>
-        <TagLeftIcon as={resourceTypeIcon} />
-        <TagLabel>{node.resourceType}</TagLabel>
-      </Tag>
+    <Tooltip showArrow content="Type of resource">
+      <Tag.Root>
+        {ResourceTypeIcon && (
+          <Tag.StartElement>
+            <ResourceTypeIcon />
+          </Tag.StartElement>
+        )}
+        <Tag.Label>{node.resourceType}</Tag.Label>
+      </Tag.Root>
     </Tooltip>
   );
 }
@@ -96,7 +90,7 @@ export function ModelRowCount({ rowCount }: ModelRowCountProps) {
   const label = `${base} -> ${current} rows`;
 
   return (
-    <Tooltip hasArrow label={label}>
+    <Tooltip showArrow content={label}>
       <_RowCountByRate rowCount={rowCount} />
     </Tooltip>
   );
@@ -120,7 +114,7 @@ export function RowCountDiffTag({
   const { runsAggregated } = useLineageGraphContext();
   const lastRowCount: RowCountDiff | undefined = runsAggregated?.[node.id]?.row_count_diff.result;
 
-  const icon = findByRunType("row_count_diff")?.icon;
+  const RunTypeIcon = findByRunType("row_count_diff")?.icon;
 
   let label;
   const rowCount = fetchedRowCount ?? lastRowCount;
@@ -131,31 +125,35 @@ export function RowCountDiffTag({
   }
 
   return (
-    <Tooltip label={label}>
-      <Tag>
-        <TagLeftIcon as={icon} />
-
-        <TagLabel>
+    <Tooltip content={label}>
+      <Tag.Root>
+        {RunTypeIcon && (
+          <Tag.StartElement>
+            <RunTypeIcon />
+          </Tag.StartElement>
+        )}
+        <Tag.Label>
           {rowCount || isFetching ? (
-            <SkeletonText isLoaded={!isFetching} noOfLines={1} skeletonHeight={2} minWidth={"30px"}>
+            <SkeletonText loading={isFetching} noOfLines={1} height={2} minWidth={"30px"}>
               {rowCount ? <_RowCountByRate rowCount={rowCount} /> : "row count"}
             </SkeletonText>
           ) : (
             <>row count</>
           )}
-        </TagLabel>
+        </Tag.Label>
         {onRefresh && (
-          <TagRightIcon
-            as={IconButton}
-            isLoading={isFetching}
-            aria-label="Query Row Count"
-            icon={<RepeatIcon />}
-            size="xs"
-            onClick={onRefresh}
-            isDisabled={featureToggles.disableDatabaseQuery}
-          />
+          <Tag.EndElement>
+            <IconButton
+              loading={isFetching}
+              aria-label="Query Row Count"
+              size="xs"
+              onClick={onRefresh}
+              disabled={featureToggles.disableDatabaseQuery}>
+              <PiRepeat />
+            </IconButton>
+          </Tag.EndElement>
         )}
-      </Tag>
+      </Tag.Root>
     </Tooltip>
   );
 }
@@ -177,7 +175,7 @@ export function RowCountTag({
   const { runsAggregated, refetchRunsAggregated } = useLineageGraphContext();
   const lastRowCount: RowCount | undefined = runsAggregated?.[node.id]?.row_count.result;
 
-  const icon = findByRunType("row_count")?.icon;
+  const RunTypeIcon = findByRunType("row_count")?.icon;
 
   let label;
   const rowCount = fetchedRowCount ?? lastRowCount;
@@ -187,28 +185,33 @@ export function RowCountTag({
   }
 
   return (
-    <Tag>
-      <TagLeftIcon as={icon} />
-      <TagLabel>
+    <Tag.Root>
+      {RunTypeIcon && (
+        <Tag.StartElement>
+          <RunTypeIcon />
+        </Tag.StartElement>
+      )}
+      <Tag.Label>
         {rowCount || isFetching ? (
-          <SkeletonText isLoaded={!isFetching} noOfLines={1} skeletonHeight={2} minWidth={"30px"}>
+          <SkeletonText loading={isFetching} noOfLines={1} height={2} minWidth={"30px"}>
             {rowCount ? `${label}` : "row count"}
           </SkeletonText>
         ) : (
           <>row count</>
         )}
-      </TagLabel>
+      </Tag.Label>
       {onRefresh && (
-        <TagRightIcon
-          as={IconButton}
-          isLoading={isFetching}
-          aria-label="Query Row Count"
-          icon={<RepeatIcon />}
-          size="xs"
-          onClick={onRefresh}
-          disabled={node.from === "base"}
-        />
+        <Tag.EndElement>
+          <IconButton
+            loading={isFetching}
+            aria-label="Query Row Count"
+            size="xs"
+            onClick={onRefresh}
+            disabled={node.from === "base"}>
+            <PiRepeat />
+          </IconButton>
+        </Tag.EndElement>
       )}
-    </Tag>
+    </Tag.Root>
   );
 }

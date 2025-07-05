@@ -1,6 +1,5 @@
 import React, { ChangeEvent, useCallback, useEffect, useRef, useState } from "react";
-import { Box, Breadcrumb, BreadcrumbItem, Input } from "@chakra-ui/react";
-import { ChevronRightIcon } from "@chakra-ui/icons";
+import { Box, Breadcrumb, Input } from "@chakra-ui/react";
 
 interface CheckBreadcrumbProps {
   name: string;
@@ -53,14 +52,13 @@ export function CheckBreadcrumb({ name, setName }: CheckBreadcrumbProps) {
   }, [isEditing, editInputRef, handleCommit]);
 
   return (
-    <Breadcrumb
+    <Breadcrumb.Root
       flex="0 1 auto"
       fontSize="12pt"
       fontWeight="500"
       className="no-track-pii-safe"
-      separator={<ChevronRightIcon color="gray.500" />}
       overflow={"hidden"}>
-      <BreadcrumbItem cursor="pointer" flex="0 1 auto" overflow="hidden">
+      <Breadcrumb.Item cursor="pointer" flex="0 1 auto" overflow="hidden">
         {isEditing ? (
           <Input
             ref={editInputRef}
@@ -80,7 +78,7 @@ export function CheckBreadcrumb({ name, setName }: CheckBreadcrumbProps) {
             {name}
           </Box>
         )}
-      </BreadcrumbItem>
-    </Breadcrumb>
+      </Breadcrumb.Item>
+    </Breadcrumb.Root>
   );
 }

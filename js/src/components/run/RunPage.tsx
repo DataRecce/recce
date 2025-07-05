@@ -20,5 +20,5 @@ export const RunPage = ({ runId }: RunPageProps) => {
 
   const RunResultView = run?.type ? findByRunType(run.type)?.RunResultView : undefined;
 
-  return <RunView isPending={isPending} error={error} run={run} RunResultView={RunResultView} />;
+  return <RunView error={error} run={run} RunResultView={RunResultView} />;
 };

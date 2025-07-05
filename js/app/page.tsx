@@ -3,8 +3,6 @@
 import {
   Image,
   Tabs,
-  TabList,
-  Tab,
   Code,
   Box,
   Flex,
@@ -16,11 +14,9 @@ import {
   Badge,
   Progress,
   HStack,
-  useToast,
 } from "@chakra-ui/react";
-import React, { ReactNode, useEffect } from "react";
+import React, { ReactNode, useEffect, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import _ from "lodash";
 import { useVersionNumber } from "@/lib/api/version";
 import { CheckPage } from "@/components/check/CheckPage";
 import { QueryPage } from "@/components/query/QueryPage";
@@ -49,6 +45,8 @@ import { useRecceInstanceContext } from "@/lib/hooks/RecceInstanceContext";
 import { TopLevelShare } from "@/components/app/StateSharing";
 import { useCountdownToast } from "@/lib/hooks/useCountdownToast";
 import AuthModal from "@/components/AuthModal/AuthModal";
+import { LuExternalLink } from "react-icons/lu";
+import { toaster } from "@/components/ui/toaster";
 
 const RouteAlwaysMount = ({ children, path }: { children: ReactNode; path: string }) => {
   const [match] = useRoute(path);
@@ -66,7 +64,7 @@ interface LinkIconProps extends LinkProps {
 
 function LinkIcon({ icon, href, ...prob }: LinkIconProps) {
   return (
-    <Link height="20px" color="white" href={href} isExternal {...prob}>
+    <Link height="20px" color="white" href={href} target="_blank" {...prob}>
       <Icon color="white" boxSize="20px" as={icon} />
     </Link>
   );
@@ -74,8 +72,10 @@ function LinkIcon({ icon, href, ...prob }: LinkIconProps) {
 
 function RecceVersionBadge() {
   const { version, latestVersion } = useVersionNumber();
-  const updateAvailableToaster = useToast();
-  const updateAvailableToastId = "recce-update-available";
+  // "recce-update-available"
+  const [updateAvailableToastId, setUpdateAvailableToastId] = useState<string | undefined>(
+    undefined,
+  );
   const versionFormatRegex = new RegExp("^\\d+\\.\\d+\\.\\d+$");
   if (!versionFormatRegex.test(version)) {
     // If the version is not in the format of x.y.z, don't apply
@@ -86,37 +86,37 @@ function RecceVersionBadge() {
     );
   }
 
-  if (version !== latestVersion && !updateAvailableToaster.isActive(updateAvailableToastId)) {
-    updateAvailableToaster({
-      id: updateAvailableToastId,
-      title: "Update available",
-      position: "top-right",
-      description: (
-        <span>
-          A new version of Recce (v{latestVersion}) is available.
-          <br />
-          Please run <Code>pip install --upgrade recce</Code> to update Recce.
-          <br />
-          <Link
-            color="rgb(255, 215, 0)"
-            fontWeight={"bold"}
-            href={`https://github.com/DataRecce/recce/releases/tag/v${latestVersion}`}
-            isExternal
-            _hover={{ textDecoration: "underline" }}
-            target="_blank">
-            Click here to view the detail of latest release
-          </Link>
-        </span>
-      ),
-      containerStyle: {
-        background: "rgba(20, 20, 20, 0.6)", // Semi-transparent black
-        color: "white", // Ensure text is visible
-        backdropFilter: "blur(10px)", // Frosted glass effect
-        borderRadius: "8px",
-      },
-      variant: "unstyled",
-      isClosable: true,
-    });
+  if (version !== latestVersion && updateAvailableToastId == null) {
+    setUpdateAvailableToastId(
+      toaster.create({
+        id: updateAvailableToastId,
+        title: "Update available",
+        description: (
+          <span>
+            A new version of Recce (v{latestVersion}) is available.
+            <br />
+            Please run <Code>pip install --upgrade recce</Code> to update Recce.
+            <br />
+            <Link
+              color="rgb(255, 215, 0)"
+              fontWeight={"bold"}
+              href={`https://github.com/DataRecce/recce/releases/tag/v${latestVersion}`}
+              _hover={{ textDecoration: "underline" }}
+              target="_blank">
+              Click here to view the detail of latest release
+            </Link>
+          </span>
+        ),
+        // TODO Fix this at a later update
+        // containerStyle: {
+        //   background: "rgba(20, 20, 20, 0.6)", // Semi-transparent black
+        //   color: "white", // Ensure text is visible
+        //   backdropFilter: "blur(10px)", // Frosted glass effect
+        //   borderRadius: "8px",
+        // },
+        closable: true,
+      }),
+    );
   }
 
   // Link to the release page on GitHub if the version is in the format of x.y.z
@@ -124,9 +124,8 @@ function RecceVersionBadge() {
     <Badge fontSize="sm" color="white" colorScheme="whiteAlpha" variant="outline">
       <Link
         href={`https://github.com/DataRecce/recce/releases/tag/v${version}`}
-        isExternal
         _hover={{ textDecoration: "none" }}>
-        {version}
+        {version} <LuExternalLink />
       </Link>
     </Badge>
   );
@@ -161,9 +160,9 @@ function TopBar() {
           <HStack>
             <Box>cloud mode</Box>
             <Box borderLeft="1px" borderLeftColor="whiteAlpha.500" paddingLeft="8px">
-              <Link href={prURL} _hover={{ textDecoration: "none" }} isExternal>
+              <Link href={prURL} _hover={{ textDecoration: "none" }} target="_blank">
                 <Icon as={VscGitPullRequest} boxSize="3" fontWeight="extrabold" strokeWidth="1" />
-                {` #${String(prID)}`}
+                {` #${String(prID)}`} <LuExternalLink />
               </Link>
             </Box>
           </HStack>
@@ -175,9 +174,9 @@ function TopBar() {
             <HStack>
               <Box>demo mode</Box>
               <Box borderLeft="1px" borderLeftColor="whiteAlpha.500" paddingLeft="8px">
-                <Link href={prURL} _hover={{ textDecoration: "none" }} isExternal>
+                <Link href={prURL} _hover={{ textDecoration: "none" }} target="_blank">
                   <Icon as={VscGitPullRequest} boxSize="3" fontWeight="extrabold" strokeWidth="1" />
-                  {` #${demoPrId}`}
+                  {` #${demoPrId}`} <LuExternalLink />
                 </Link>
               </Box>
             </HStack>
@@ -243,6 +242,7 @@ function NavBar() {
   const { isDemoSite, cloudMode, isLoading } = useLineageGraphContext();
   const { featureToggles } = useRecceInstanceContext();
   const [location, setLocation] = useLocation();
+  const [valueLocation, setValueLocation] = useState(`/${location.split("/")[1]}`);
   const { data: flag, isLoading: isFlagLoading } = useRecceServerFlag();
 
   const checklistBadge = (
@@ -266,24 +266,27 @@ function NavBar() {
     },
   ];
 
-  const tabIndex = _.findIndex(tabs, ({ href }) => location.startsWith(href));
-
   return (
-    <Tabs index={tabIndex}>
-      <TabList>
+    <Tabs.Root
+      value={valueLocation}
+      onValueChange={(e) => {
+        setValueLocation(e.value);
+      }}>
+      <Tabs.List>
         <Box flex="1" display="flex">
           {tabs.map(({ name, href, badge, disable }) => {
             return (
-              <Tab
+              <Tabs.Trigger
+                value={href}
                 key={name}
                 onClick={() => {
                   setLocation(href);
                 }}
-                isDisabled={!!isLoading || isFlagLoading || disable}
+                disabled={!!isLoading || isFlagLoading || disable}
                 hidden={disable}>
                 {name}
                 {badge}
-              </Tab>
+              </Tabs.Trigger>
             );
           })}
         </Box>
@@ -303,8 +306,8 @@ function NavBar() {
             <StateExporter />
           </Flex>
         )}
-      </TabList>
-    </Tabs>
+      </Tabs.List>
+    </Tabs.Root>
   );
 }
 
@@ -349,7 +352,11 @@ function Main() {
                 }}
               </Route>
               <Route path="/ssr">
-                <Progress size="xs" isIndeterminate />
+                <Progress.Root size="xs" value={null}>
+                  <Progress.Track>
+                    <Progress.Range />
+                  </Progress.Track>
+                </Progress.Root>
               </Route>
               <Route>
                 <Redirect to="/lineage" />

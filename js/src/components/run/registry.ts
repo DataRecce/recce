@@ -21,15 +21,16 @@ import { RunFormProps, RunResultViewProps } from "./types";
 import { IconType } from "react-icons";
 import { LuChartBarBig } from "react-icons/lu";
 import { MdFormatListNumberedRtl, MdSchema } from "react-icons/md";
-import { ComponentWithAs } from "@chakra-ui/react";
-import { ElementType } from "react";
 import { ProfileDiffForm } from "../profile/ProfileDiffForm";
+import { ComponentType, ForwardRefExoticComponent, RefAttributes } from "react";
 
 interface RegistryEntry<PT, RT, VO = any> {
   title: string;
   icon: IconType;
-  RunResultView?: ComponentWithAs<ElementType, RunResultViewProps<PT, RT, VO>>;
-  RunForm?: React.ComponentType<RunFormProps<PT>>;
+  RunResultView?: ForwardRefExoticComponent<
+    RunResultViewProps<PT, RT, VO> & RefAttributes<unknown>
+  >;
+  RunForm?: ComponentType<RunFormProps<PT>>;
 }
 
 const registry: Record<string, RegistryEntry<any, any>> = {

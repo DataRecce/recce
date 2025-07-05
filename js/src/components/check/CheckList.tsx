@@ -5,22 +5,17 @@ import {
   Box,
   Button,
   Checkbox,
-  Divider,
   Flex,
   Icon,
-  Modal,
-  ModalCloseButton,
-  ModalContent,
-  ModalFooter,
-  ModalHeader,
-  ModalOverlay,
-  Tooltip,
   VStack,
   useDisclosure,
+  CloseButton,
+  Portal,
+  Separator,
+  Dialog,
 } from "@chakra-ui/react";
 import { cacheKeys } from "@/lib/api/cacheKeys";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import _ from "lodash";
 import { TbChecklist } from "react-icons/tb";
 import { IconType } from "react-icons";
 import { DragDropContext, Draggable, DropResult, Droppable } from "@hello-pangea/dnd";
@@ -29,6 +24,7 @@ import { useCheckToast } from "@/lib/hooks/useCheckToast";
 import { useRun } from "@/lib/hooks/useRun";
 import { isDisabledByNoResult } from "./CheckDetail";
 import { useRecceInstanceContext } from "@/lib/hooks/RecceInstanceContext";
+import { Tooltip } from "@/components/ui/tooltip";
 
 const ChecklistItem = ({
   check,
@@ -53,17 +49,6 @@ const ChecklistItem = ({
   });
   const trackedRunId = check.last_run?.run_id;
   const { run } = useRun(trackedRunId);
-
-  const handleChange: React.ChangeEventHandler = (event) => {
-    const isChecked: boolean = (event.target as any).checked;
-    if (!isChecked) {
-      // If unchecking, just update the check
-      mutate({ is_checked: isChecked });
-    } else {
-      // Show Mark as Approved warning modal
-      onMarkAsApproved();
-    }
-  };
 
   const icon: IconType = findByRunType(check.type)?.icon ?? TbChecklist;
   // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
@@ -95,18 +80,27 @@ const ChecklistItem = ({
 
         {/* {check.is_checked && <Icon color="green" as={FaCheckCircle} />} */}
         <Tooltip
-          label={isNoResult ? "Run the check first" : "Click to mark as approved"}
-          placement="top"
-          hasArrow>
+          content={isNoResult ? "Run the check first" : "Click to mark as approved"}
+          positioning={{ placement: "top" }}
+          showArrow>
           <Flex>
-            <Checkbox
-              isChecked={check.is_checked}
-              variant="circular"
+            <Checkbox.Root
+              checked={check.is_checked}
               colorScheme="green"
               size="xs"
-              onChange={handleChange}
-              disabled={isMarkAsApprovedDisabled}
-            />
+              onCheckedChange={(details) => {
+                if (!details.checked) {
+                  // If unchecking, just update the check
+                  mutate({ is_checked: details.checked });
+                } else {
+                  // Show Mark as Approved warning modal
+                  onMarkAsApproved();
+                }
+              }}
+              disabled={isMarkAsApprovedDisabled}>
+              <Checkbox.HiddenInput />
+              <Checkbox.Control />
+            </Checkbox.Root>
           </Flex>
         </Tooltip>
       </Flex>
@@ -143,7 +137,7 @@ export const CheckList = ({
     onChecksReordered(result.source.index, result.destination.index);
   };
   const {
-    isOpen: isMarkAsApprovedOpen,
+    open: isMarkAsApprovedOpen,
     onOpen: onMarkAsApprovedOpen,
     onClose: onMarkAsApprovedClosed,
   } = useDisclosure();
@@ -182,7 +176,7 @@ export const CheckList = ({
               ref={provided.innerRef}
               className="no-track-pii-safe"
               w="full"
-              spacing="0"
+              gap="0"
               flex="1"
               overflow={"auto"}>
               {checks.map((check, index) => (
@@ -223,39 +217,49 @@ export const CheckList = ({
           )}
         </Droppable>
       </DragDropContext>
-      <Modal isOpen={isMarkAsApprovedOpen} onClose={onMarkAsApprovedClosed} isCentered>
-        <ModalOverlay />
-        <ModalContent width={"400px"}>
-          <ModalHeader>Mark as Approved?</ModalHeader>
-          <ModalCloseButton />
-          <Divider />
-          <Box p={"16px"} fontSize="sm" gap="16px">
-            <p>
-              Please ensure you have reviewed the contents of this check before marking it as
-              approved.
-            </p>
-            <Checkbox
-              isChecked={bypassModal}
-              onChange={(e) => {
-                setBypassModal(e.target.checked);
-              }}
-              fontWeight="bold"
-              size="sm"
-              pt="8px">
-              Don&apos;t show this again
-            </Checkbox>
-          </Box>
-          <Divider />
-          <ModalFooter>
-            <Button variant="outline" size="xs" mr={2} onClick={onMarkAsApprovedClosed}>
-              Cancel
-            </Button>
-            <Button colorScheme="blue" size="xs" onClick={handleMarkAsApprovedConfirmed}>
-              Mark as approved
-            </Button>
-          </ModalFooter>
-        </ModalContent>
-      </Modal>
+      <Dialog.Root
+        open={isMarkAsApprovedOpen}
+        onOpenChange={onMarkAsApprovedClosed}
+        placement="center">
+        <Portal>
+          <Dialog.Positioner>
+            <Dialog.Content width={"400px"}>
+              <Dialog.Header>
+                <Dialog.Title>Mark as Approved?</Dialog.Title>
+              </Dialog.Header>
+              <Separator />
+              <Box p={"16px"} fontSize="sm" gap="16px">
+                <p>
+                  Please ensure you have reviewed the contents of this check before marking it as
+                  approved.
+                </p>
+                <Checkbox.Root
+                  checked={bypassModal}
+                  onCheckedChange={(e) => {
+                    setBypassModal(Boolean(e.checked));
+                  }}
+                  fontWeight="bold"
+                  size="sm"
+                  pt="8px">
+                  Don&apos;t show this again
+                </Checkbox.Root>
+              </Box>
+              <Separator />
+              <Dialog.Footer>
+                <Button variant="outline" size="xs" mr={2} onClick={onMarkAsApprovedClosed}>
+                  Cancel
+                </Button>
+                <Button colorScheme="blue" size="xs" onClick={handleMarkAsApprovedConfirmed}>
+                  Mark as approved
+                </Button>
+              </Dialog.Footer>
+              <Dialog.CloseTrigger asChild>
+                <CloseButton size="sm" />
+              </Dialog.CloseTrigger>
+            </Dialog.Content>
+          </Dialog.Positioner>
+        </Portal>
+      </Dialog.Root>
     </>
   );
 };

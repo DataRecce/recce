@@ -5,7 +5,7 @@ import { useQuery } from "@tanstack/react-query";
 import { cacheKeys } from "@/lib/api/cacheKeys";
 import { select } from "@/lib/api/select";
 import { HSplit } from "../split/Split";
-import { Box, Center, Flex, Icon, List, ListItem } from "@chakra-ui/react";
+import { Box, Center, Flex, Icon, List } from "@chakra-ui/react";
 import { LineageGraphNode } from "../lineage/lineage";
 import { forwardRef, useMemo, useState } from "react";
 import { getIconForChangeStatus, getIconForResourceType } from "../lineage/styles";
@@ -54,25 +54,27 @@ const NodelistItem = ({
   }
 
   return (
-    <Flex
-      width="100%"
-      fontSize="10pt"
-      p="5px 8px"
-      cursor="pointer"
-      _hover={{ bg: "gray.200" }}
-      bg={selected ? "gray.100" : "inherit"}
-      onClick={() => {
-        onSelect(node.id);
-      }}
-      alignItems="center"
-      gap="5px">
-      <Icon as={icon} />
-      <Box flex="1" textOverflow="ellipsis" whiteSpace="nowrap" overflow="hidden">
-        {node.name}
-      </Box>
+    <List.Item>
+      <Flex
+        width="100%"
+        fontSize="10pt"
+        p="5px 8px"
+        cursor="pointer"
+        _hover={{ bg: "gray.200" }}
+        bg={selected ? "gray.100" : "inherit"}
+        onClick={() => {
+          onSelect(node.id);
+        }}
+        alignItems="center"
+        gap="5px">
+        <Icon as={icon} />
+        <Box flex="1" textOverflow="ellipsis" whiteSpace="nowrap" overflow="hidden">
+          {node.name}
+        </Box>
 
-      {statusIcon && statusColor && <Icon as={statusIcon} color={statusColor} />}
-    </Flex>
+        {statusIcon && statusColor && <Icon as={statusIcon} color={statusColor} />}
+      </Flex>
+    </List.Item>
   );
 };
 
@@ -193,7 +195,7 @@ export function PrivateSchemaDiffView({ check }: SchemaDiffViewProps, ref: any) 
           enableScreenshot={true}
           ref={ref}
         />
-        <List overflow="auto" backgroundColor="white">
+        <List.Root overflow="auto" backgroundColor="white" as="ul" listStyle="none">
           {nodes.map((node, i) => (
             <NodelistItem
               key={i}
@@ -206,7 +208,7 @@ export function PrivateSchemaDiffView({ check }: SchemaDiffViewProps, ref: any) 
               }}
             />
           ))}
-        </List>
+        </List.Root>
       </HSplit>
     );
   }

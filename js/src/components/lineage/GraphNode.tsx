@@ -1,15 +1,4 @@
-import {
-  Box,
-  Center,
-  Flex,
-  HStack,
-  Icon,
-  Spacer,
-  Tag,
-  TagLabel,
-  TagLeftIcon,
-  Tooltip,
-} from "@chakra-ui/react";
+import { Box, Center, Flex, HStack, Icon, Spacer, Tag } from "@chakra-ui/react";
 import React, { useState } from "react";
 
 import { Handle, NodeProps, Position, useStore } from "reactflow";
@@ -28,6 +17,7 @@ import { FaCheckSquare, FaRegDotCircle, FaRegSquare } from "react-icons/fa";
 import { RowCountDiff } from "@/lib/api/models";
 import { deltaPercentageString } from "../rowcount/delta";
 import { VscKebabVertical } from "react-icons/vsc";
+import { Tooltip } from "@/components/ui/tooltip";
 
 type GraphNodeProps = NodeProps<LineageGraphNode>;
 
@@ -54,10 +44,12 @@ function _RowCountDiffTag({ rowCount }: { rowCount: RowCountDiff }) {
   }
 
   return (
-    <Tag colorScheme={colorScheme}>
-      <TagLeftIcon as={findByRunType("row_count_diff")?.icon} />
-      <TagLabel>{tagLabel}</TagLabel>
-    </Tag>
+    <Tag.Root colorScheme={colorScheme}>
+      <Tag.StartElement>
+        <Icon as={findByRunType("row_count_diff")?.icon} />
+      </Tag.StartElement>
+      <Tag.Label>{tagLabel}</Tag.Label>
+    </Tag.Root>
   );
 }
 
@@ -95,7 +87,7 @@ const NodeRunsAggregated = ({ id, inverted }: { id: string; inverted: boolean })
   return (
     <Flex flex="1">
       {schemaChanged !== undefined && (
-        <Tooltip label={`Schema (${schemaChanged ? "changed" : "no change"})`} openDelay={500}>
+        <Tooltip content={`Schema (${schemaChanged ? "changed" : "no change"})`} openDelay={500}>
           <Box height="16px">
             <Icon
               as={findByRunType("schema_diff")?.icon}
@@ -106,7 +98,7 @@ const NodeRunsAggregated = ({ id, inverted }: { id: string; inverted: boolean })
       )}
       <Spacer />
       {runs?.row_count_diff && rowCountChanged !== undefined && (
-        <Tooltip label={`Row count (${rowCountChanged ? "changed" : "="})`} openDelay={500}>
+        <Tooltip content={`Row count (${rowCountChanged ? "changed" : "="})`} openDelay={500}>
           <Box>
             <_RowCountDiffTag rowCount={runs.row_count_diff.result} />
           </Box>
@@ -146,8 +138,8 @@ const GraphNodeTitle = ({
   return (
     <Box flex="1" color={color} overflow="hidden" textOverflow="ellipsis" whiteSpace="nowrap">
       <Tooltip
-        label={resourceType === "model" ? name : `${name} (${resourceType})`}
-        placement="top">
+        content={resourceType === "model" ? name : `${name} (${resourceType})`}
+        positioning={{ placement: "top" }}>
         {name}
       </Tooltip>
     </Box>
@@ -329,7 +321,10 @@ export function GraphNode(nodeProps: GraphNodeProps) {
             {isHovered ? (
               <>
                 {changeStatus === "modified" && (
-                  <Tooltip label="Show Impact Radius" placement={"top"} openDelay={500}>
+                  <Tooltip
+                    content="Show Impact Radius"
+                    positioning={{ placement: "top" }}
+                    openDelay={500}>
                     <Center>
                       <Icon
                         boxSize="14px"
@@ -379,7 +374,7 @@ export function GraphNode(nodeProps: GraphNodeProps) {
             direction="column"
             paddingBottom="1"
             visibility={showContent ? "inherit" : "hidden"}>
-            <HStack spacing={"8px"}>
+            <HStack gap={"8px"}>
               {action ? (
                 <>
                   <Spacer />

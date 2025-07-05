@@ -6,13 +6,15 @@ interface ChangedOnlyCheckboxProps {
 }
 export const ChangedOnlyCheckbox = ({ changedOnly, onChange }: ChangedOnlyCheckboxProps) => {
   return (
-    <Checkbox
+    <Checkbox.Root
       size="xs"
-      isChecked={changedOnly}
-      onChange={() => {
+      checked={changedOnly}
+      onCheckedChange={() => {
         onChange();
       }}>
-      Changed only
-    </Checkbox>
+      <Checkbox.HiddenInput />
+      <Checkbox.Control />
+      <Checkbox.Label>Changed only</Checkbox.Label>
+    </Checkbox.Root>
   );
 };

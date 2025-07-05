@@ -1,14 +1,4 @@
-import {
-  Card,
-  CardProps,
-  CardBody,
-  CardHeader,
-  Flex,
-  Heading,
-  SimpleGrid,
-  Text,
-  HStack,
-} from "@chakra-ui/react";
+import { Card, Flex, Heading, SimpleGrid, Text, HStack } from "@chakra-ui/react";
 import { LineageGraph, LineageGraphNode } from "../lineage/lineage";
 import { SchemaView } from "../schema/SchemaView";
 import { mergeKeysWithStatus } from "@/lib/mergeKeys";
@@ -16,25 +6,28 @@ import { useEffect, useState } from "react";
 import { ResourceTypeTag, RowCountDiffTag } from "../lineage/NodeTag";
 
 interface SchemaDiffCardProps {
+  title: string;
   node: LineageGraphNode;
 }
 
-function SchemaDiffCard({ node, ...props }: CardProps & SchemaDiffCardProps) {
+function SchemaDiffCard({ node, ...props }: SchemaDiffCardProps) {
   return (
-    <Card maxWidth={"500px"}>
-      <CardHeader>
-        <Heading fontSize={18}>{props.title}</Heading>
-        <HStack spacing={"8px"} p={"16px"}>
-          <ResourceTypeTag node={node} />
-          {node.resourceType === "model" && <RowCountDiffTag node={node} />}
-        </HStack>
-      </CardHeader>
-      <CardBody>
+    <Card.Root maxWidth={"500px"}>
+      <Card.Header>
+        <Card.Title fontSize={18}>{props.title}</Card.Title>
+        <Card.Description>
+          <HStack gap={"8px"} p={"16px"}>
+            <ResourceTypeTag node={node} />
+            {node.resourceType === "model" && <RowCountDiffTag node={node} />}
+          </HStack>
+        </Card.Description>
+      </Card.Header>
+      <Card.Body>
         <Flex>
           <SchemaView base={node.data.base} current={node.data.current} />
         </Flex>
-      </CardBody>
-    </Card>
+      </Card.Body>
+    </Card.Root>
   );
 }
 
@@ -82,7 +75,7 @@ export function SchemaSummary({ lineageGraph }: Props) {
           <>
             <SimpleGrid
               minChildWidth="400px"
-              spacing={"2vw"}
+              gap={"2vw"}
               padding={"2.5vw"}
               width={"100%"}
               backgroundColor={"lightgray"}>
