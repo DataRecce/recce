@@ -116,15 +116,14 @@ const RunResultShareMenu = ({
   return (
     <Menu.Root onOpenChange={onClose}>
       <Menu.Trigger asChild>
-        <IconButton size="sm" variant="outline">
+        <Button size="xs" variant="outline" colorPalette="gray">
           Share <PiCaretDown />
-        </IconButton>
+        </Button>
       </Menu.Trigger>
       <Portal>
         <Menu.Positioner>
           <Menu.Content minW="0">
             <Menu.Item
-              fontSize="14px"
               value="copy-to-clipboard"
               onClick={onCopyToClipboard}
               onMouseEnter={onMouseEnter}
@@ -136,7 +135,6 @@ const RunResultShareMenu = ({
             {authed ? (
               <Menu.Item
                 value="share-to-cloud"
-                fontSize="14px"
                 onClick={async () => {
                   await handleShareClick();
                   trackShareState({ name: "create" });
@@ -147,7 +145,6 @@ const RunResultShareMenu = ({
               <>
                 <Menu.Item
                   value="share"
-                  fontSize="14px"
                   onClick={() => {
                     setShowModal(true);
                   }}>
@@ -223,7 +220,7 @@ export const PrivateLoadableRunView = ({
         <Button
           disabled={!runId || !run.result || !!error}
           size="sm"
-          colorScheme="blue"
+          colorPalette="cyan"
           onClick={handleGoToCheck}>
           <PiCheck /> Go to Check
         </Button>
@@ -232,8 +229,8 @@ export const PrivateLoadableRunView = ({
     return (
       <Button
         disabled={!runId || !run?.result || !!error}
-        size="sm"
-        colorScheme="blue"
+        size="xs"
+        colorPalette="cyan"
         onClick={handleAddToChecklist}>
         <PiCheck /> Add to Checklist
       </Button>
@@ -246,13 +243,15 @@ export const PrivateLoadableRunView = ({
         <SingleEnvironmentSetupNotification runType={run?.type} />
       )}
       <Tabs.Root
+        size="lg"
+        colorPalette="cyan"
         value={tabValue}
         onValueChange={(e) => {
           setTabValue(e.value as TabValueItems);
         }}
         flexDirection="column"
         mb="1px">
-        <Tabs.List height="50px">
+        <Tabs.List>
           <Tabs.Trigger value="result">Result</Tabs.Trigger>
           <Tabs.Trigger value="params">Params</Tabs.Trigger>
           {isQuery && <Tabs.Trigger value="query">Query</Tabs.Trigger>}
@@ -261,8 +260,9 @@ export const PrivateLoadableRunView = ({
             {run && <RunStatusAndDate run={run} />}
             <Button
               variant="outline"
+              colorPalette="gray"
               disabled={!runId || isRunning || featureToggles.disableDatabaseQuery}
-              size="sm"
+              size="xs"
               onClick={handleRerun}>
               <PiRepeat /> Rerun
             </Button>
@@ -291,6 +291,7 @@ export const PrivateLoadableRunView = ({
             <AddToCheckButton />
 
             <CloseButton
+              size="sm"
               onClick={() => {
                 if (onClose) {
                   onClose();

@@ -63,7 +63,7 @@ export function BaseEnvironmentSetupGuide() {
         </Flex>
         <Flex w="100%" direction="column" mt={6}>
           <Button
-            colorScheme="blue"
+            colorPalette="blue"
             size="lg"
             onClick={() => {
               window.open("https://docs.datarecce.io/get-started/#prepare-dbt-artifacts", "_blank");

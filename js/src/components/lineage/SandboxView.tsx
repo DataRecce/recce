@@ -95,7 +95,7 @@ function SandboxTopBar({
             onRunResultOpen();
             runQuery();
           }}
-          colorScheme="blue"
+          colorPalette="blue"
           loading={isPending}>
           Run Diff
         </Button>
@@ -338,7 +338,7 @@ export function SandboxView({ isOpen, onClose, current }: SandboxViewProps) {
                   color="white">
                   RECCE
                 </Dialog.Title>
-                <Badge fontSize="sm" color="white" colorScheme="whiteAlpha" variant="outline">
+                <Badge fontSize="sm" color="white/80" variant="outline">
                   Experiment
                 </Badge>
               </Flex>

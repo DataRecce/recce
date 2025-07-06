@@ -3,6 +3,9 @@ import { createSystem, defaultConfig } from "@chakra-ui/react";
 // import { tooltipTheme } from "@theme/components/Tooltip";
 
 export const system = createSystem(defaultConfig, {
+  preflight: {
+    scope: ".chakra-style-reset",
+  },
   theme: {
     tokens: {
       colors: {
@@ -16,6 +19,20 @@ export const system = createSystem(defaultConfig, {
           700: { value: "#fd683e" },
           800: { value: "#fd683e" },
           900: { value: "#fd683e" },
+          950: { value: "#fd683e" },
+        },
+      },
+    },
+    semanticTokens: {
+      colors: {
+        brand: {
+          solid: { value: "{colors.brand.500}" },
+          contrast: { value: "{colors.brand.100}" },
+          fg: { value: "{colors.brand.700}" },
+          muted: { value: "{colors.brand.100}" },
+          subtle: { value: "{colors.brand.200}" },
+          emphasized: { value: "{colors.brand.300}" },
+          focusRing: { value: "{colors.brand.500}" },
         },
       },
     },

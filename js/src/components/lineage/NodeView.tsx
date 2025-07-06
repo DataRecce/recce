@@ -103,7 +103,7 @@ export function NodeView({ node, onCloseNode }: NodeViewProps) {
       return (
         <Menu.Root>
           <Menu.Trigger asChild>
-            <Button size="xs" variant="outline" disabled={featureToggles.disableNodeActionDropdown}>
+            <Button size="2xs" variant="outline" disabled={featureToggles.disableNodeActionDropdown}>
               Explore <PiCaretDown />
             </Button>
           </Menu.Trigger>
@@ -337,7 +337,7 @@ export function NodeView({ node, onCloseNode }: NodeViewProps) {
         {isSingleEnvOnboarding ? <SingleEnvironmentMenuButton /> : <ExploreChangeMenuButton />}
 
         <Box flex="0 1 1%">
-          <CloseButton onClick={onCloseNode} />
+          <CloseButton size="2xs" onClick={onCloseNode} />
         </Box>
       </HStack>
       <Box color="gray" paddingLeft={"16px"}>
@@ -354,7 +354,7 @@ export function NodeView({ node, onCloseNode }: NodeViewProps) {
         </HStack>
       </Box>
       {withColumns && (
-        <Tabs.Root defaultValue="columns" overflow="auto" as={Flex}>
+        <Tabs.Root defaultValue="columns" overflow="auto">
           {isSingleEnvOnboarding && isNotificationOpen && (
             <Box p="12px">
               <RecceNotification onClose={onNotificationClose} align={"flex-start"}>

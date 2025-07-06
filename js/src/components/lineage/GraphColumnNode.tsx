@@ -63,11 +63,11 @@ export const TransformationType = ({
   return (
     <>
       {legend ? (
-        <Tag.Root fontSize="8pt" size="sm" colorScheme={color} borderRadius="full" paddingX="4px">
+        <Tag.Root fontSize="8pt" size="sm" colorPalette={color} borderRadius="full" paddingX="4px">
           <Tag.Label>{letter}</Tag.Label>
         </Tag.Root>
       ) : (
-        <Tag.Root fontSize="8pt" size="sm" colorScheme={color} borderRadius="full" paddingX="4px">
+        <Tag.Root fontSize="8pt" size="sm" colorPalette={color} borderRadius="full" paddingX="4px">
           <Tag.Label>{letter}</Tag.Label>
         </Tag.Root>
       )}

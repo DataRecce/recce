@@ -163,7 +163,7 @@ export function StateSynchronizer() {
                   Cancel
                 </Button>
                 <Button
-                  colorScheme="blue"
+                  colorPalette="blue"
                   onClick={() => handleSync({ method: syncOption as any })}
                   disabled={!syncOption} // Disable button until an option is selected
                 >

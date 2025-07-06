@@ -71,34 +71,32 @@ function PrivateSingleEnvSchemaView({ current }: { current?: NodeData }, ref: an
       )}
 
       {rows.length > 0 && (
-        <>
-          <ScreenshotDataGrid
-            style={{
-              blockSize: "auto",
-              maxHeight: "100%",
-              overflow: "auto",
-              fontSize: "10pt",
-              borderWidth: 1,
-            }}
-            columns={columns}
-            rows={rows}
-            renderers={{ noRowsFallback: <EmptyRowsRenderer /> }}
-            className="rdg-light"
-            ref={ref}
-            rowKeyGetter={rowKeyGetter}
-            selectedRows={selectedRows}
-            onSelectedRowsChange={() => {}}
-            onCellClick={async (args: CellClickArgs<SchemaDiffRow>) => {
-              await handleViewCll(args.row.name);
-            }}
-            rowClass={() => {
-              if (lineageViewContext !== undefined) {
-                return "row-normal row-selectable";
-              }
-              return "row-normal";
-            }}
-          />
-        </>
+        <ScreenshotDataGrid
+          style={{
+            blockSize: "auto",
+            maxHeight: "100%",
+            overflow: "auto",
+            fontSize: "10pt",
+            borderWidth: 1,
+          }}
+          columns={columns}
+          rows={rows}
+          renderers={{ noRowsFallback: <EmptyRowsRenderer /> }}
+          className="rdg-light"
+          ref={ref}
+          rowKeyGetter={rowKeyGetter}
+          selectedRows={selectedRows}
+          onSelectedRowsChange={() => {}}
+          onCellClick={async (args: CellClickArgs<SchemaDiffRow>) => {
+            await handleViewCll(args.row.name);
+          }}
+          rowClass={() => {
+            if (lineageViewContext !== undefined) {
+              return "row-normal row-selectable";
+            }
+            return "row-normal";
+          }}
+        />
       )}
     </Flex>
   );
@@ -183,45 +181,44 @@ export function PrivateSchemaView(
       )}
 
       {rows.length > 0 && (
-        <>
-          <ScreenshotDataGrid
-            style={{
-              blockSize: "auto",
-              maxHeight: "100%",
-              overflow: "auto",
-              fontSize: "10pt",
-              borderWidth: 1,
-            }}
-            columns={columns}
-            rows={rows}
-            renderers={{ noRowsFallback: <EmptyRowsRenderer /> }}
-            className="rdg-light no-track-pii-safe"
-            ref={ref}
-            rowKeyGetter={rowKeyGetter}
-            selectedRows={selectedRows}
-            onSelectedRowsChange={() => {}}
-            onCellClick={async (args: CellClickArgs<SchemaDiffRow>) => {
-              if (args.row.baseIndex !== undefined && args.row.currentIndex === undefined) {
-                return;
-              }
-              await handleViewCll(args.row.name);
-            }}
-            rowClass={(row: SchemaDiffRow) => {
-              let className;
-              if (row.baseIndex === undefined) {
-                className = "row-added";
-              } else if (row.currentIndex === undefined) {
-                return "row-removed"; // removed column isn't selectable
-              } else {
-                className = "row-normal";
-              }
-              if (lineageViewContext !== undefined) {
-                className += " row-selectable";
-              }
-              return className;
-            }}
-          />
-        </>
+        <ScreenshotDataGrid
+          style={{
+            blockSize: "auto",
+            maxHeight: "100%",
+            overflow: "auto",
+            fontSize: "0.8rem",
+            borderWidth: 1,
+          }}
+          columns={columns}
+          rows={rows}
+          rowHeight={35}
+          renderers={{ noRowsFallback: <EmptyRowsRenderer /> }}
+          className="rdg-light no-track-pii-safe"
+          ref={ref}
+          rowKeyGetter={rowKeyGetter}
+          selectedRows={selectedRows}
+          onSelectedRowsChange={() => {}}
+          onCellClick={async (args: CellClickArgs<SchemaDiffRow>) => {
+            if (args.row.baseIndex !== undefined && args.row.currentIndex === undefined) {
+              return;
+            }
+            await handleViewCll(args.row.name);
+          }}
+          rowClass={(row: SchemaDiffRow) => {
+            let className;
+            if (row.baseIndex === undefined) {
+              className = "row-added";
+            } else if (row.currentIndex === undefined) {
+              return "row-removed"; // removed column isn't selectable
+            } else {
+              className = "row-normal";
+            }
+            if (lineageViewContext !== undefined) {
+              className += " row-selectable";
+            }
+            return className;
+          }}
+        />
       )}
     </Flex>
   );

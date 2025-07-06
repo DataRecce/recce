@@ -66,10 +66,10 @@ export function CheckDescription({ value, onChange }: CheckDescriptionProps) {
           ref={textareaRef}
           flex={1}></Textarea>
         <Flex gap="12px" alignItems="flex-end">
-          <Link onClick={handleCancel} colorScheme="blue">
+          <Link onClick={handleCancel} colorPalette="blue">
             cancel
           </Link>
-          <Button mt="8px" size="sm" colorScheme="blue" onClick={handleUpdate}>
+          <Button mt="8px" size="sm" colorPalette="blue" onClick={handleUpdate}>
             Update
           </Button>
         </Flex>

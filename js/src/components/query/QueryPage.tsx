@@ -157,7 +157,7 @@ export const QueryPage = () => {
           <Tooltip
             content="Please configure the base environment before running the diff"
             positioning={{ placement: "left" }}>
-            <Button colorScheme="blue" disabled size="xs" fontSize="14px" marginTop={"16px"}>
+            <Button colorPalette="blue" disabled size="xs" fontSize="14px" marginTop={"16px"}>
               Run Diff
             </Button>
           </Tooltip>
@@ -190,7 +190,7 @@ export const QueryPage = () => {
         <Spacer />
         <QueryForm defaultPrimaryKeys={primaryKeys} onPrimaryKeysChange={setPrimaryKeys} />
         <Button
-          colorScheme="blue"
+          colorPalette="blue"
           onClick={() => {
             runQuery("query_diff");
           }}

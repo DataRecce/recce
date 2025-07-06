@@ -15,7 +15,7 @@ export function ServerDisconnectedModalContent({ connect }: { connect: () => voi
       </Dialog.Body>
       <Dialog.Footer>
         <Button
-          colorScheme="blue"
+          colorPalette="blue"
           onClick={() => {
             connect();
           }}>
@@ -40,7 +40,7 @@ export function RecceShareInstanceDisconnectedModalContent({ shareUrl }: { share
       </Dialog.Body>
       <Dialog.Footer>
         <NextLink href={shareUrl} passHref>
-          <Button colorScheme="blue">Restart</Button>
+          <Button colorPalette="blue">Restart</Button>
         </NextLink>
       </Dialog.Footer>
     </Dialog.Content>

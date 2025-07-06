@@ -231,7 +231,7 @@ export function EnvInfo() {
                 </Flex>
               </Dialog.Body>
               <Dialog.Footer>
-                <Button colorScheme="blue" mr={3} onClick={onClose}>
+                <Button colorPalette="blue" mr={3} onClick={onClose}>
                   Close
                 </Button>
               </Dialog.Footer>

@@ -279,7 +279,7 @@ const PrivateQueryResultView = (
             <Button
               marginBlock="5px"
               size="sm"
-              colorScheme="blue"
+              colorPalette="blue"
               onClick={() => {
                 onAddToChecklist(run);
               }}>
