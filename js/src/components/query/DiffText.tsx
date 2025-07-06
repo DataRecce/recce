@@ -5,13 +5,13 @@ import { PiCopy } from "react-icons/pi";
 
 interface DiffTextProps {
   value: string;
-  colorScheme: string;
+  colorPalette: string;
   grayOut?: boolean;
   noCopy?: boolean;
   fontSize?: string;
 }
 
-export const DiffText = ({ value, colorScheme, grayOut, noCopy, fontSize }: DiffTextProps) => {
+export const DiffText = ({ value, colorPalette, grayOut, noCopy, fontSize }: DiffTextProps) => {
   const [copiedText, copyToClipboard] = useCopyToClipboard();
   const hasCopiedText = Boolean(copiedText);
   const [isHovered, setIsHovered] = useState(false);
@@ -52,8 +52,8 @@ export const DiffText = ({ value, colorScheme, grayOut, noCopy, fontSize }: Diff
       maxWidth="200px"
       overflow="hidden"
       textOverflow="ellipsis"
-      color={`${colorScheme}.800`}
-      backgroundColor={`${colorScheme}.100`}
+      color={`${colorPalette}.800`}
+      backgroundColor={`${colorPalette}.100`}
       alignItems="center"
       gap="2px"
       rounded="md"

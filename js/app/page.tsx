@@ -80,7 +80,7 @@ function RecceVersionBadge() {
   if (!versionFormatRegex.test(version)) {
     // If the version is not in the format of x.y.z, don't apply
     return (
-      <Badge fontSize="sm" color="white" colorScheme="whiteAlpha" variant="outline">
+      <Badge fontSize="sm" color="white/80" variant="outline">
         {version}
       </Badge>
     );
@@ -121,7 +121,7 @@ function RecceVersionBadge() {
 
   // Link to the release page on GitHub if the version is in the format of x.y.z
   return (
-    <Badge fontSize="sm" color="white" colorScheme="whiteAlpha" variant="outline">
+    <Badge fontSize="sm" color="white/80" variant="outline">
       <Link
         href={`https://github.com/DataRecce/recce/releases/tag/v${version}`}
         _hover={{ textDecoration: "none" }}>
@@ -150,13 +150,13 @@ function TopBar() {
         RECCE
       </Heading>
       <RecceVersionBadge />
-      {(featureToggles.mode ?? reviewMode) && (
-        <Badge fontSize="sm" color="white" colorScheme="whiteAlpha" variant="outline">
-          {featureToggles.mode ?? "review mode"}
+      {(featureToggles.mode || reviewMode) && (
+        <Badge fontSize="sm" color="white/80" variant="outline">
+          {featureToggles.mode ? "read only" : "review mode"}
         </Badge>
       )}
       {cloudMode && prID && (
-        <Badge fontSize="sm" color="white" colorScheme="whiteAlpha" variant="outline">
+        <Badge fontSize="sm" color="white/80" variant="outline">
           <HStack>
             <Box>cloud mode</Box>
             <Box borderLeft="1px" borderLeftColor="whiteAlpha.500" paddingLeft="8px">
@@ -170,7 +170,7 @@ function TopBar() {
       )}
       {isDemoSite && prURL && demoPrId && (
         <>
-          <Badge fontSize="sm" color="white" colorScheme="whiteAlpha" variant="outline">
+          <Badge fontSize="sm" color="white/80" variant="outline">
             <HStack>
               <Box>demo mode</Box>
               <Box borderLeft="1px" borderLeftColor="whiteAlpha.500" paddingLeft="8px">
@@ -242,7 +242,7 @@ function NavBar() {
   const { isDemoSite, cloudMode, isLoading } = useLineageGraphContext();
   const { featureToggles } = useRecceInstanceContext();
   const [location, setLocation] = useLocation();
-  const [valueLocation, setValueLocation] = useState(`/${location.split("/")[1]}`);
+  const [valueLocation, setValueLocation] = useState("/lineage");
   const { data: flag, isLoading: isFlagLoading } = useRecceServerFlag();
 
   const checklistBadge = (
@@ -266,8 +266,15 @@ function NavBar() {
     },
   ];
 
+  useEffect(() => {
+    setValueLocation(`/${location.split("/")[1]}`);
+    // Only run on page load
+  }, [location]);
+
   return (
     <Tabs.Root
+      colorPalette="cyan"
+      defaultValue="/lineage"
       value={valueLocation}
       onValueChange={(e) => {
         setValueLocation(e.value);
@@ -278,7 +285,7 @@ function NavBar() {
             return (
               <Tabs.Trigger
                 value={href}
-                key={name}
+                key={href}
                 onClick={() => {
                   setLocation(href);
                 }}

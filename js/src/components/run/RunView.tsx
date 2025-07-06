@@ -75,7 +75,7 @@ export const RunView = forwardRef(
               {isAborting ? <>Aborting...</> : <>{loadingMessage}</>}
             </Flex>
             {!isAborting && (
-              <Button onClick={onCancel} colorScheme="blue" size="sm">
+              <Button onClick={onCancel} colorPalette="blue" size="sm">
                 Cancel
               </Button>
             )}

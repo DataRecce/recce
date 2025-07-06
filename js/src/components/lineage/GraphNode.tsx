@@ -28,23 +28,23 @@ function _RowCountDiffTag({ rowCount }: { rowCount: RowCountDiff }) {
   const currentLabel = rowCount.curr === null ? "N/A" : `${rowCount.curr} Rows`;
 
   let tagLabel;
-  let colorScheme;
+  let colorPalette;
   if (base === null && current === null) {
     tagLabel = "Failed to load";
-    colorScheme = "gray";
+    colorPalette = "gray";
   } else if (base === null || current === null) {
     tagLabel = `${baseLabel} -> ${currentLabel}`;
-    colorScheme = base === null ? "green" : "red";
+    colorPalette = base === null ? "green" : "red";
   } else if (base === current) {
     tagLabel = "=";
-    colorScheme = "gray";
+    colorPalette = "gray";
   } else if (base !== current) {
     tagLabel = `${deltaPercentageString(base, current)} Rows`;
-    colorScheme = base < current ? "green" : "red";
+    colorPalette = base < current ? "green" : "red";
   }
 
   return (
-    <Tag.Root colorScheme={colorScheme}>
+    <Tag.Root colorPalette={colorPalette}>
       <Tag.StartElement>
         <Icon as={findByRunType("row_count_diff")?.icon} />
       </Tag.StartElement>

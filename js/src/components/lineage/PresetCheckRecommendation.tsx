@@ -210,8 +210,8 @@ export const PresetCheckRecommendation = () => {
     !ignoreRecommend &&
     !performedRecommend && (
       <>
-        <HStack width="100%" padding="2pt 8pt" backgroundColor={"blue.50"}>
-          <HStack flex="1" fontSize={"10pt"} color="blue.600">
+        <HStack width="100%" padding="2pt 8pt" backgroundColor={"cyan.50"}>
+          <HStack flex="1" fontSize={"10pt"} color="cyan.600">
             {!recommendRerun ? (
               <>
                 <PiInfo />
@@ -230,7 +230,8 @@ export const PresetCheckRecommendation = () => {
             )}
             <Spacer />
             <Button
-              size="xs"
+              size="2xs"
+              variant="ghost"
               onClick={() => {
                 setIgnoreRecommend(true);
                 sessionStorage.setItem(recommendIgnoreKey, "true");
@@ -243,8 +244,8 @@ export const PresetCheckRecommendation = () => {
               Ignore
             </Button>
             <Button
-              colorScheme="blue"
-              size="xs"
+              colorPalette="cyan"
+              size="2xs"
               onClick={() => {
                 onOpen();
                 trackRecommendCheck({
@@ -304,7 +305,7 @@ export const PresetCheckRecommendation = () => {
                     Cancel
                   </Button>
                   <Button
-                    colorScheme="blue"
+                    colorPalette="cyan"
                     onClick={() => {
                       onClose();
                       void performPresetCheck();

@@ -43,8 +43,8 @@ export const DiffDisplayModeSwitch = ({
     <>
       {displayMode === "inline" && (
         <>
-          <DiffText value="Base" colorScheme="red" grayOut={false} fontSize="10pt" noCopy />
-          <DiffText value="Current" colorScheme="green" grayOut={false} fontSize="10pt" noCopy />
+          <DiffText value="Base" colorPalette="red" grayOut={false} fontSize="10pt" noCopy />
+          <DiffText value="Current" colorPalette="green" grayOut={false} fontSize="10pt" noCopy />
         </>
       )}
       <ToggleSwitch

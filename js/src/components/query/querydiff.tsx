@@ -303,8 +303,10 @@ export const inlineRenderCell = ({ row, column }: RenderCellProps<RowObjectType>
 
   return (
     <Flex gap="5px" alignItems="center" lineHeight="normal" height="100%">
-      {hasBase && <DiffText value={baseValue} colorScheme="red" grayOut={baseGrayOut} />}
-      {hasCurrent && <DiffText value={currentValue} colorScheme="green" grayOut={currentGrayOut} />}
+      {hasBase && <DiffText value={baseValue} colorPalette="red" grayOut={baseGrayOut} />}
+      {hasCurrent && (
+        <DiffText value={currentValue} colorPalette="green" grayOut={currentGrayOut} />
+      )}
     </Flex>
   );
 };

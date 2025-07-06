@@ -91,7 +91,7 @@ export default function AuthModal({
                   <div className="flex w-full flex-col gap-2">
                     <Button
                       className="w-full !rounded-lg !font-medium"
-                      colorScheme="brand"
+                      colorPalette="brand"
                       onClick={async () => {
                         setAuthState("authenticating");
                         const { connection_url } = await connectToCloud();
@@ -102,8 +102,8 @@ export default function AuthModal({
                     </Button>
                     <Button
                       className="!rounded-lg !font-medium"
-                      variant="solid"
-                      colorScheme="gray"
+                      variant="subtle"
+                      colorPalette="gray"
                       size="sm"
                       onClick={() => {
                         handleAllCloses();
@@ -131,7 +131,7 @@ export default function AuthModal({
                 <Dialog.Footer>
                   <Button
                     className="w-full"
-                    colorScheme="brand"
+                    colorPalette="brand"
                     onClick={() => {
                       window.location.reload();
                     }}>

@@ -56,7 +56,7 @@ const HistoryToggle = () => {
   const { isHistoryOpen, showHistory, closeHistory } = useRecceActionContext();
   return (
     <Button
-      size="xs"
+      size="2xs"
       variant="outline"
       onClick={() => {
         if (isHistoryOpen) {
@@ -87,7 +87,7 @@ const ViewModeSelectMenu = ({ isDisabled }: { isDisabled: boolean }) => {
   return (
     <Menu.Root>
       <Menu.Trigger asChild>
-        <Button minWidth="100px" size="xs" variant="outline" disabled={isDisabled}>
+        <Button minWidth="100px" size="2xs" variant="outline" disabled={isDisabled}>
           <Icon as={getIconForResourceType("model").icon} /> {label} <PiCaretDown />
         </Button>
       </Menu.Trigger>
@@ -177,7 +177,7 @@ const PackageSelectMenu = ({ isDisabled }: { isDisabled: boolean }) => {
   return (
     <Menu.Root closeOnSelect={false}>
       <Menu.Trigger asChild>
-        <Button minWidth="100px" size="xs" variant="outline" disabled={isDisabled}>
+        <Button minWidth="100px" size="2xs" variant="outline" disabled={isDisabled}>
           <Icon as={FiPackage} /> {label} <PiCaretDown />
         </Button>
       </Menu.Trigger>
@@ -345,7 +345,7 @@ export const LineageViewTopBar = () => {
   const isFilterDisabled = isMultiSelect;
 
   return (
-    <HStack width="100%" padding="4pt 8pt">
+    <HStack width="100%" padding="4pt 8pt" className="chakra-style-reset">
       <HStack flex="1">
         <ControlItem label="History" style={{ flexShrink: "1" }}>
           <HistoryToggle />
@@ -376,7 +376,7 @@ export const LineageViewTopBar = () => {
             <ControlItem label="">
               <Button
                 variant={"outline"}
-                size="xs"
+                size="2xs"
                 fontSize="9pt"
                 onClick={() => {
                   deselect();
@@ -389,7 +389,7 @@ export const LineageViewTopBar = () => {
                 <ButtonGroup attached variant="outline">
                   <Menu.Root positioning={{ placement: "bottom-end" }}>
                     <Menu.Trigger asChild>
-                      <Button size="xs">
+                      <Button size="2xs">
                         Actions <PiCaretDown />
                       </Button>
                     </Menu.Trigger>
@@ -420,7 +420,7 @@ export const LineageViewTopBar = () => {
             <ButtonGroup attached variant="outline">
               <Menu.Root positioning={{ placement: "bottom-end" }}>
                 <Menu.Trigger asChild>
-                  <Button size="xs" disabled={featureToggles.disableViewActionDropdown}>
+                  <Button size="2xs" disabled={featureToggles.disableViewActionDropdown}>
                     Actions <PiCaretDown />
                   </Button>
                 </Menu.Trigger>

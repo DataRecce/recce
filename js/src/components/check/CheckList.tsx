@@ -86,7 +86,7 @@ const ChecklistItem = ({
           <Flex>
             <Checkbox.Root
               checked={check.is_checked}
-              colorScheme="green"
+              colorPalette="green"
               size="xs"
               onCheckedChange={(details) => {
                 if (!details.checked) {
@@ -249,7 +249,7 @@ export const CheckList = ({
                 <Button variant="outline" size="xs" mr={2} onClick={onMarkAsApprovedClosed}>
                   Cancel
                 </Button>
-                <Button colorScheme="blue" size="xs" onClick={handleMarkAsApprovedConfirmed}>
+                <Button colorPalette="blue" size="xs" onClick={handleMarkAsApprovedConfirmed}>
                   Mark as approved
                 </Button>
               </Dialog.Footer>

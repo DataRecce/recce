@@ -256,7 +256,7 @@ export const Filename = () => {
               <Dialog.Footer gap="5px">
                 <Button
                   size="sm"
-                  colorScheme={fileName ? undefined : "blue"}
+                  colorPalette={fileName ? undefined : "blue"}
                   onClick={async () => {
                     await handleAction("save");
                   }}
@@ -266,7 +266,7 @@ export const Filename = () => {
                 {fileName && (
                   <Button
                     size="sm"
-                    colorScheme="blue"
+                    colorPalette="blue"
                     onClick={async () => {
                       await handleAction("rename");
                     }}
@@ -327,7 +327,7 @@ export const Filename = () => {
                 </Button>
                 <Button
                   size="sm"
-                  colorScheme="blue"
+                  colorPalette="blue"
                   onClick={() => {
                     if (!overwriteWithMethod) {
                       return;

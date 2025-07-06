@@ -290,7 +290,7 @@ export const CheckDetail = ({ checkId, refreshCheckList }: CheckDetailProps) => 
               <Button
                 flex="0 0 auto"
                 size="sm"
-                colorScheme={check?.is_checked ? "green" : "gray"}
+                colorPalette={check?.is_checked ? "green" : "gray"}
                 variant={check?.is_checked ? "solid" : "outline"}
                 onClick={() => {
                   handleApproveCheck();
@@ -394,7 +394,7 @@ export const CheckDetail = ({ checkId, refreshCheckList }: CheckDetailProps) => 
                       </Box>
                       <Button
                         onClick={handleRerun}
-                        colorScheme="blue"
+                        colorPalette="blue"
                         size="sm"
                         disabled={featureToggles.disableDatabaseQuery}>
                         Run Query

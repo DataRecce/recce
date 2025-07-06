@@ -368,7 +368,7 @@ export function LineageGraphContextProvider({ children }: LineageGraphProps) {
                 </Dialog.Body>
                 <Dialog.Footer>
                   <Button
-                    colorScheme="blue"
+                    colorPalette="blue"
                     onClick={() => {
                       onClose();
                       void markRelaunchHintCompleted();

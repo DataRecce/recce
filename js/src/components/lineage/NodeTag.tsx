@@ -1,4 +1,4 @@
-import { HStack, SkeletonText, Tag, Text, Icon, IconButton } from "@chakra-ui/react";
+import { HStack, SkeletonText, Tag, Text, Icon, IconButton, Button, Flex } from "@chakra-ui/react";
 import { getIconForResourceType } from "./styles";
 import { FiArrowRight, FiFrown } from "react-icons/fi";
 import { RowCount, RowCountDiff } from "@/lib/api/models";
@@ -11,6 +11,7 @@ import { findByRunType } from "../run/registry";
 import { useRecceInstanceContext } from "@/lib/hooks/RecceInstanceContext";
 import { Tooltip } from "@/components/ui/tooltip";
 import { PiRepeat } from "react-icons/pi";
+import { useEffect, useState } from "react";
 
 export function ResourceTypeTag({ node }: { node: LineageGraphNode }) {
   const { icon: ResourceTypeIcon } = getIconForResourceType(node.resourceType);
@@ -113,46 +114,49 @@ export function RowCountDiffTag({
   const { featureToggles } = useRecceInstanceContext();
   const { runsAggregated } = useLineageGraphContext();
   const lastRowCount: RowCountDiff | undefined = runsAggregated?.[node.id]?.row_count_diff.result;
-
   const RunTypeIcon = findByRunType("row_count_diff")?.icon;
 
-  let label;
-  const rowCount = fetchedRowCount ?? lastRowCount;
-  if (rowCount) {
-    const base = rowCount.base ?? "N/A";
-    const current = rowCount.curr ?? "N/A";
-    label = `${base} -> ${current} rows`;
-  }
+  const [rowsToShow, setRowsToShow] = useState<RowCountDiff>();
+  const [label, setLabel] = useState<string>("");
 
+  useEffect(() => {
+    const rowCount = fetchedRowCount ?? lastRowCount;
+    if (rowCount) {
+      const base = rowCount.base ?? "N/A";
+      const current = rowCount.curr ?? "N/A";
+      setLabel(`${base} -> ${current} rows`);
+      setRowsToShow(rowCount);
+    }
+  }, [fetchedRowCount, lastRowCount]);
+
+  // TODO isFetching is not hooked up, so disabling it on the skeleton for now
   return (
     <Tooltip content={label}>
-      <Tag.Root>
-        {RunTypeIcon && (
-          <Tag.StartElement>
-            <RunTypeIcon />
-          </Tag.StartElement>
-        )}
-        <Tag.Label>
-          {rowCount || isFetching ? (
-            <SkeletonText loading={isFetching} noOfLines={1} height={2} minWidth={"30px"}>
-              {rowCount ? <_RowCountByRate rowCount={rowCount} /> : "row count"}
-            </SkeletonText>
-          ) : (
-            <>row count</>
-          )}
-        </Tag.Label>
-        {onRefresh && (
-          <Tag.EndElement>
-            <IconButton
-              loading={isFetching}
-              aria-label="Query Row Count"
-              size="xs"
-              onClick={onRefresh}
-              disabled={featureToggles.disableDatabaseQuery}>
-              <PiRepeat />
-            </IconButton>
-          </Tag.EndElement>
-        )}
+      <Tag.Root asChild>
+        <Text fontSize="xs">
+          <Flex direction="row" alignItems="center" gap="1">
+            {RunTypeIcon && <RunTypeIcon />}
+            {rowsToShow != null || isFetching ? (
+              <SkeletonText loading={false} noOfLines={1} minWidth={"30px"}>
+                {rowsToShow != null ? <_RowCountByRate rowCount={rowsToShow} /> : "row counts"}
+              </SkeletonText>
+            ) : (
+              <span>row count</span>
+            )}
+            {onRefresh && (
+              <IconButton
+                loading={isFetching}
+                aria-label="Query Row Count"
+                size="2xs"
+                p="0"
+                variant="ghost"
+                onClick={onRefresh}
+                disabled={featureToggles.disableDatabaseQuery}>
+                <PiRepeat />
+              </IconButton>
+            )}
+          </Flex>
+        </Text>
       </Tag.Root>
     </Tooltip>
   );
@@ -193,7 +197,7 @@ export function RowCountTag({
       )}
       <Tag.Label>
         {rowCount || isFetching ? (
-          <SkeletonText loading={isFetching} noOfLines={1} height={2} minWidth={"30px"}>
+          <SkeletonText loading={isFetching} lineClamp={1} height={2} minWidth={"30px"}>
             {rowCount ? `${label}` : "row count"}
           </SkeletonText>
         ) : (

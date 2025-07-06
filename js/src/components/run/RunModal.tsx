@@ -115,7 +115,7 @@ export const RunModal = <PT,>({
             <Flex gap="10px">
               <Button
                 disabled={!isReadyToExecute}
-                colorScheme="blue"
+                colorPalette="blue"
                 onClick={() => {
                   onExecute(type, params as PT);
                 }}>

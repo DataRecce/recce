@@ -41,7 +41,7 @@ const Fallback: FallbackRender = ({ error, resetError }) => {
           justifySelf="center"
           alignSelf={"center"}
           mt="20px"
-          colorScheme="blue"
+          colorPalette="blue"
           size="sm"
           onClick={() => {
             resetError();
