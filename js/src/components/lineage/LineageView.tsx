@@ -187,11 +187,7 @@ export function PrivateLineageView(
     shadowEffect: true,
     backgroundColor: "white",
     ignoreElements: (element: Element) => {
-      const className = element.className;
-      if (typeof className === "string" && className.includes(IGNORE_SCREENSHOT_CLASS)) {
-        return true;
-      }
-      return false;
+      return element.className.includes(IGNORE_SCREENSHOT_CLASS);
     },
     onSuccess: () => {
       successToast("Copied the Lineage View as an image to clipboard");
@@ -1000,7 +996,6 @@ export function PrivateLineageView(
       </Center>
     );
   }
-
   return (
     <LineageViewContext.Provider value={contextValue}>
       <HSplit
@@ -1104,7 +1099,7 @@ export function PrivateLineageView(
             <NodeView node={focusedNode} onCloseNode={onNodeViewClosed} />
           </Box>
         ) : (
-          <Box></Box>
+          <Box>d</Box>
         )}
       </HSplit>
       {valueDiffAlertDialog.AlertDialog}
