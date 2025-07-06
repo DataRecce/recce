@@ -65,7 +65,7 @@ const ContextMenu = ({ menuItems, open, onClose, x, y }: ContextMenuProps) => {
                 } else {
                   return (
                     <Menu.Item
-                      value="label"
+                      value={String(label)}
                       key={label}
                       disabled={isDisabled}
                       onClick={() => {

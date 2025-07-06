@@ -110,8 +110,9 @@ const edgeTypes = {
   customEdge: GraphEdge,
 };
 const nodeColor = (node: Node<LineageGraphNode>) => {
+  console.log(getIconForChangeStatus(node.data.changeStatus).hexColor);
   return node.data.changeStatus
-    ? getIconForChangeStatus(node.data.changeStatus).color
+    ? getIconForChangeStatus(node.data.changeStatus).hexColor
     : ("lightgray" as string);
 };
 
