@@ -2,6 +2,7 @@ import React, { useState, useRef } from "react";
 import {
   Box,
   Button,
+  Group,
   Icon,
   Input,
   InputGroup,
@@ -59,42 +60,35 @@ export const DropdownValuesInput = (props: DropdownValuesInputProps) => {
       .filter((value) => !values.includes(value)) ?? [];
   const limit = 10;
 
+  const endElement =
+    values.length > 0 ? (
+      <Button
+        size="2xs"
+        variant="ghost"
+        color={"#3182CE"}
+        fontSize={props.size}
+        paddingTop="0"
+        me={-2}
+        onClick={handleClear}>
+        Clear
+      </Button>
+    ) : undefined;
+
   return (
-    <InputGroup
-      width={props.width}
-      className={className}
-      endAddon={
-        values.length > 0 && (
-          <Button
-            variant="ghost"
-            color={"#3182CE"}
-            fontSize={props.size}
-            paddingTop="4px"
-            paddingRight={"24px"}
-            onClick={handleClear}>
-            Clear
-          </Button>
-        )
-      }>
-      <Menu.Root lazyMount closeOnSelect={false} onOpenChange={() => inputRef.current?.focus()}>
+    <InputGroup width={props.width} className={className} endElement={endElement}>
+      <Menu.Root
+        size="sm"
+        lazyMount
+        closeOnSelect={false}
+        onOpenChange={() => inputRef.current?.focus()}>
         <Menu.Trigger asChild>
-          <Button width={"100%"}>
-            <InputGroup
-              endAddon={
-                values.length === 0 && (
-                  <Icon as={FaChevronDown} color="blue.500" fontSize={props.size} mt="1" mr="6" />
-                )
-              }>
-              <Input
-                className="no-track-pii-safe"
-                placeholder={props.placeholder}
-                size={props.size}
-                borderRadius={"4px"}
-                value={showNumberOfValuesSelected(values)}
-                onChange={() => {}} // Prevent input change
-                backgroundColor={"white"}
-              />
-            </InputGroup>
+          <Button
+            width={"100%"}
+            size="2xs"
+            colorPalette="gray"
+            variant="outline"
+            justifyContent="flex-start">
+            {showNumberOfValuesSelected(values)}
           </Button>
         </Menu.Trigger>
         <Portal>
@@ -116,6 +110,7 @@ export const DropdownValuesInput = (props: DropdownValuesInputProps) => {
                     <WrapItem key={`tag-${cid}`}>
                       <Tag.Root
                         key={value}
+                        paddingX={"0.5rem"}
                         size={
                           props.size === "sm"
                             ? props.size
@@ -125,10 +120,9 @@ export const DropdownValuesInput = (props: DropdownValuesInputProps) => {
                                 ? props.size
                                 : "md"
                         }>
-                        <Tag.Label paddingLeft={"8px"}>{value}</Tag.Label>
+                        <Tag.Label>{value}</Tag.Label>
                         <Tag.EndElement>
                           <Tag.CloseTrigger
-                            paddingRight={"8px"}
                             onClick={() => {
                               setValues(values.filter((v) => v !== value));
                               onValuesChange(values.filter((v) => v !== value));

@@ -15,7 +15,7 @@ import { BaseEnvironmentSetupGuide } from "../lineage/SingleEnvironmentQueryView
 import { useRecceServerFlag } from "@/lib/hooks/useRecceServerFlag";
 import { useRecceInstanceContext } from "@/lib/hooks/RecceInstanceContext";
 import { Tooltip } from "@/components/ui/tooltip";
-import { PiInfo } from "react-icons/pi";
+import { PiInfo, PiInfoFill } from "react-icons/pi";
 
 export const HistoryToggle = () => {
   const { isHistoryOpen, showHistory, closeHistory } = useRecceActionContext();
@@ -24,7 +24,7 @@ export const HistoryToggle = () => {
       <Box fontSize="8pt">History</Box>
 
       <Button
-        size="xs"
+        size="2xs"
         variant="outline"
         onClick={() => {
           if (isHistoryOpen) {
@@ -51,13 +51,17 @@ const QueryModeToggle = () => {
     "Custom queries allow you to use two SQL queries to compare results between current and base environments.";
   return (
     <Box>
-      <Box fontSize="8pt">
+      <Flex fontSize="0.75rem" gap={1} alignItems="center">
         Custom Queries{" "}
         <Tooltip content={customQueriesDescription}>
-          <PiInfo color="gray.600" size="3" />
+          <PiInfoFill color="gray.600" fontSize="1rem" />
         </Tooltip>
-      </Box>
-      <Switch.Root size="sm" checked={isCustomQueries} onCheckedChange={handleToggle}>
+      </Flex>
+      <Switch.Root
+        size="sm"
+        colorPalette="cyan"
+        checked={isCustomQueries}
+        onCheckedChange={handleToggle}>
         <Switch.HiddenInput />
         <Switch.Control />
         <Switch.Label />
@@ -179,7 +183,7 @@ export const QueryPage = () => {
     <Flex direction="column" height="100%">
       <Flex
         justifyContent="right"
-        alignItems="center"
+        alignItems="flex-end"
         padding="4pt 8pt"
         gap="5px"
         height="54px"
@@ -195,9 +199,7 @@ export const QueryPage = () => {
             runQuery("query_diff");
           }}
           disabled={isPending || featureToggles.disableDatabaseQuery}
-          size="xs"
-          fontSize="14px"
-          marginTop={"16px"}>
+          size="2xs">
           Run Diff
         </Button>
       </Flex>
