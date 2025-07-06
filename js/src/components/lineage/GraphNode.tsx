@@ -140,7 +140,7 @@ const GraphNodeTitle = ({
       <Tooltip
         content={resourceType === "model" ? name : `${name} (${resourceType})`}
         positioning={{ placement: "top" }}>
-        {name}
+        <>{name}</>
       </Tooltip>
     </Box>
   );
