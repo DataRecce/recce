@@ -138,7 +138,7 @@ export function RowCountDiffTag({
             {RunTypeIcon && <RunTypeIcon />}
             {rowsToShow != null || isFetching ? (
               <SkeletonText loading={false} noOfLines={1} minWidth={"30px"}>
-                {rowsToShow != null ? <_RowCountByRate rowCount={rowsToShow} /> : "row counts"}
+                {rowsToShow != null ? <_RowCountByRate rowCount={rowsToShow} /> : "row count"}
               </SkeletonText>
             ) : (
               <span>row count</span>

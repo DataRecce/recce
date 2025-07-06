@@ -45,10 +45,10 @@ function _RowCountDiffTag({ rowCount }: { rowCount: RowCountDiff }) {
 
   return (
     <Tag.Root colorPalette={colorPalette}>
-      <Tag.StartElement>
+      <Flex gap={1} alignItems="center">
         <Icon as={findByRunType("row_count_diff")?.icon} />
-      </Tag.StartElement>
-      <Tag.Label>{tagLabel}</Tag.Label>
+        <Tag.Label>{tagLabel}</Tag.Label>
+      </Flex>
     </Tag.Root>
   );
 }
@@ -82,7 +82,7 @@ const NodeRunsAggregated = ({ id, inverted }: { id: string; inverted: boolean })
   }
 
   const colorChanged = inverted ? "white" : getIconForChangeStatus("modified").color;
-  const colorUnchanged = inverted ? "gray" : "lightgray";
+  const colorUnchanged = inverted ? "gray" : "gray.100";
 
   return (
     <Flex flex="1">

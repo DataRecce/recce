@@ -175,13 +175,7 @@ export const ColumnLevelLineageControl = () => {
   return (
     <Flex direction="row" gap="5px">
       {!singleEnv && (
-        <Box
-          borderRadius="md"
-          boxShadow="md"
-          border="1px solid"
-          borderColor="gray.200"
-          bg="white"
-          fontSize={"10pt"}>
+        <Box borderRadius="md" boxShadow="md" border="1px solid" borderColor="gray.200" bg="white">
           <Button
             size="sm"
             variant="ghost"
@@ -203,9 +197,9 @@ export const ColumnLevelLineageControl = () => {
           border="1px solid"
           borderColor="gray.200"
           bg="white"
-          fontSize={"10pt"}
-          p="5px 10px"
-          alignItems={"center"}>
+          fontSize="0.8rem"
+          p="0 0.625rem"
+          alignItems="center">
           <ModeMessage />
           <IconButton
             variant="ghost"
