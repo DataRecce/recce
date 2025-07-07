@@ -33,7 +33,8 @@ export function TopLevelShare() {
     return (
       <Flex flex="1" alignItems="center">
         <Button
-          size="sm"
+          size="xs"
+          colorPalette="gray"
           variant="outline"
           onClick={() => {
             setShowModal(true);
@@ -48,8 +49,9 @@ export function TopLevelShare() {
   return (
     <Flex flex="1" alignItems="center" gap="5px">
       <Button
-        size="sm"
+        size="xs"
         variant="outline"
+        colorPalette="gray"
         onClick={async () => {
           await handleShareClick();
           trackShareState({ name: "create" });

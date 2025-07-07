@@ -1,7 +1,7 @@
 "use client";
 
 import { Button, Dialog, Image, Portal, useDisclosure } from "@chakra-ui/react";
-import { ReactNode, useCallback, useEffect, useState } from "react";
+import { Dispatch, ReactNode, SetStateAction, useCallback, useEffect, useState } from "react";
 import Cookies from "js-cookie";
 import { LuExternalLink } from "react-icons/lu";
 import ReloadImage from "public/imgs/reload-image.svg";
@@ -12,46 +12,22 @@ import { connectToCloud } from "@/lib/api/connectToCloud";
 type AuthState = "authenticating" | "pending" | "canceled" | "ignored";
 
 interface AuthModalProps {
-  handleParentClose?: () => void;
+  handleParentClose?: Dispatch<SetStateAction<boolean>>;
+  parentOpen?: boolean;
   ignoreCookie?: boolean;
 }
 
 export default function AuthModal({
   handleParentClose,
+  parentOpen = false,
   ignoreCookie = false,
 }: AuthModalProps): ReactNode {
   const { authed } = useRecceInstanceContext();
-  const { open, onOpen, onClose } = useDisclosure({ defaultOpen: !authed });
+  const [open, setOpen] = useState(parentOpen || !authed);
   const authStateCookieValue = (Cookies.get("authState") ?? "pending") as AuthState;
   const [authState, setAuthState] = useState<AuthState>(
     ignoreCookie ? "pending" : authStateCookieValue,
   );
-
-  function handleAllCloses() {
-    if (handleParentClose) {
-      handleParentClose();
-    }
-    onClose();
-  }
-
-  const handleAllClosesCB = useCallback(() => {
-    if (handleParentClose) {
-      handleParentClose();
-    }
-    onClose();
-  }, [handleParentClose, onClose]);
-
-  const updateModalState = useCallback(() => {
-    if (!authed && authState === "pending") {
-      onOpen();
-    } else if (authed) {
-      handleAllClosesCB();
-    }
-  }, [authState, authed, handleAllClosesCB, onOpen]);
-
-  useEffect(() => {
-    updateModalState();
-  }, [updateModalState]);
 
   if (authState === "ignored" && !ignoreCookie) {
     return null;
@@ -62,7 +38,17 @@ export default function AuthModal({
   }
 
   return (
-    <Dialog.Root size="lg" placement="center" open={open} onOpenChange={handleAllCloses}>
+    <Dialog.Root
+      size="lg"
+      placement="center"
+      lazyMount
+      open={open}
+      onOpenChange={(e) => {
+        setOpen(e.open);
+        if (handleParentClose) {
+          handleParentClose(e.open);
+        }
+      }}>
       <Portal>
         <Dialog.Backdrop />
         <Dialog.Positioner>
@@ -100,26 +86,28 @@ export default function AuthModal({
                       }}>
                       Use Recce Cloud <LuExternalLink />
                     </Button>
-                    <Button
-                      className="!rounded-lg !font-medium"
-                      variant="subtle"
-                      colorPalette="gray"
-                      size="sm"
-                      onClick={() => {
-                        handleAllCloses();
-                      }}>
-                      Skip
-                    </Button>
-                    <Button
-                      className="!font-medium !text-black"
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => {
-                        Cookies.set("authState", "ignored", { expires: 30 });
-                        setAuthState("ignored");
-                      }}>
-                      Snooze for 30 days
-                    </Button>
+                    <Dialog.ActionTrigger asChild>
+                      <Button
+                        className="!rounded-lg !font-medium"
+                        variant="subtle"
+                        colorPalette="gray"
+                        size="sm">
+                        Skip
+                      </Button>
+                    </Dialog.ActionTrigger>
+                    <Dialog.ActionTrigger>
+                      <Button
+                        width="100%"
+                        className="!rounded-lg !font-medium !text-black"
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => {
+                          Cookies.set("authState", "ignored", { expires: 30 });
+                          setAuthState("ignored");
+                        }}>
+                        Snooze for 30 days
+                      </Button>
+                    </Dialog.ActionTrigger>
                   </div>
                 </Dialog.Footer>
               </>

@@ -183,7 +183,12 @@ export const Filename = () => {
         <Box fontWeight="600">{titleReadOnlyState ?? fileName ?? titleNewInstance}</Box>
         {!featureToggles.disableSaveToFile && (
           <Tooltip content={fileName ? "Change Filename" : "Save"} openDelay={1000}>
-            <IconButton onClick={handleOpen} aria-label={""} variant="plain" size="sm">
+            <IconButton
+              onClick={handleOpen}
+              aria-label={""}
+              variant="ghost"
+              size="sm"
+              colorPalette="gray">
               <Icon as={fileName ? IconEdit : IconSave} boxSize={"16px"} verticalAlign="middle" />
             </IconButton>
           </Tooltip>

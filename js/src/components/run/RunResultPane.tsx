@@ -109,54 +109,54 @@ const RunResultShareMenu = ({
   const { handleShareClick } = useRecceShareStateContext();
   const [showModal, setShowModal] = useState(false);
 
-  const onClose = () => {
-    setShowModal(false);
-  };
-
   return (
-    <Menu.Root onOpenChange={onClose}>
-      <Menu.Trigger asChild>
-        <Button size="xs" variant="outline" colorPalette="gray">
-          Share <PiCaretDown />
-        </Button>
-      </Menu.Trigger>
-      <Portal>
-        <Menu.Positioner>
-          <Menu.Content minW="0">
-            <Menu.Item
-              value="copy-to-clipboard"
-              onClick={onCopyToClipboard}
-              onMouseEnter={onMouseEnter}
-              onMouseLeave={onMouseLeave}
-              disabled={disableCopyToClipboard}>
-              <PiCopy /> Copy to Clipboard
-            </Menu.Item>
-            <Menu.Separator />
-            {authed ? (
+    <>
+      <Menu.Root>
+        <Menu.Trigger asChild>
+          <Button size="xs" variant="outline" colorPalette="gray">
+            Share <PiCaretDown />
+          </Button>
+        </Menu.Trigger>
+        <Portal>
+          <Menu.Positioner>
+            <Menu.Content minW="0">
               <Menu.Item
-                value="share-to-cloud"
-                onClick={async () => {
-                  await handleShareClick();
-                  trackShareState({ name: "create" });
-                }}>
-                <TbCloudUpload /> Share to Cloud
+                value="copy-to-clipboard"
+                onClick={onCopyToClipboard}
+                onMouseEnter={onMouseEnter}
+                onMouseLeave={onMouseLeave}
+                disabled={disableCopyToClipboard}>
+                <PiCopy /> Copy to Clipboard
               </Menu.Item>
-            ) : (
-              <>
+              <Menu.Separator />
+              {authed ? (
                 <Menu.Item
-                  value="share"
-                  onClick={() => {
-                    setShowModal(true);
+                  value="share-to-cloud"
+                  onClick={async () => {
+                    await handleShareClick();
+                    trackShareState({ name: "create" });
                   }}>
-                  <TbCloudUpload /> Share
+                  <TbCloudUpload /> Share to Cloud
                 </Menu.Item>
-                {showModal && <AuthModal handleParentClose={onClose} ignoreCookie />}
-              </>
-            )}
-          </Menu.Content>
-        </Menu.Positioner>
-      </Portal>
-    </Menu.Root>
+              ) : (
+                <>
+                  <Menu.Item
+                    value="share"
+                    onClick={() => {
+                      setShowModal(true);
+                    }}>
+                    <TbCloudUpload /> Share
+                  </Menu.Item>
+                </>
+              )}
+            </Menu.Content>
+          </Menu.Positioner>
+        </Portal>
+      </Menu.Root>
+      {showModal && (
+        <AuthModal parentOpen={showModal} handleParentClose={setShowModal} ignoreCookie />
+      )}
+    </>
   );
 };
 
