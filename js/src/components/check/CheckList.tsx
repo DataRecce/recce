@@ -87,7 +87,8 @@ const ChecklistItem = ({
             <Checkbox.Root
               checked={check.is_checked}
               colorPalette="green"
-              size="xs"
+              variant="solid"
+              size="sm"
               onCheckedChange={(details) => {
                 if (!details.checked) {
                   // If unchecking, just update the check
@@ -99,7 +100,10 @@ const ChecklistItem = ({
               }}
               disabled={isMarkAsApprovedDisabled}>
               <Checkbox.HiddenInput />
-              <Checkbox.Control />
+              <Checkbox.Control
+                borderColor="border.inverted"
+                backgroundColor={isMarkAsApprovedDisabled ? "bg.emphasized" : undefined}
+              />
             </Checkbox.Root>
           </Flex>
         </Tooltip>
