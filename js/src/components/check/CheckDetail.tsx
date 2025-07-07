@@ -252,26 +252,26 @@ export const CheckDetail = ({ checkId, refreshCheckList }: CheckDetailProps) => 
                         setOverlay(<Overlay />);
                         onPresetCheckTemplateOpen();
                       }}>
-                      <Text textStyle="sm">
+                      <Flex alignItems="center" gap={1} textStyle="sm">
                         <IoMdCodeWorking /> Get Preset Check Template
-                      </Text>
+                      </Flex>
                     </Menu.Item>
                     <Menu.Item value="copy-markdown" onClick={() => handleCopy()}>
-                      <Text textStyle="sm">
+                      <Flex alignItems="center" gap={1} textStyle="sm">
                         <PiCopy /> Copy Markdown
-                      </Text>
+                      </Flex>
                     </Menu.Item>
                     <MenuSeparator />
                     <Menu.Item
                       value="delete"
-                      color="red"
+                      color="red.solid"
                       onClick={() => {
                         handleDelete();
                       }}
                       disabled={featureToggles.disableUpdateChecklist}>
-                      <Text textStyle="sm">
+                      <Flex alignItems="center" gap={1} textStyle="sm">
                         <PiTrashFill /> Delete
-                      </Text>
+                      </Flex>
                     </Menu.Item>
                   </Menu.Content>
                 </Menu.Positioner>
