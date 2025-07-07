@@ -29,7 +29,7 @@ export default function GraphEdge(props: GraphEdgeProps) {
   const { isEdgeHighlighted } = useLineageViewContextSafe();
 
   if (data?.changeStatus) {
-    style.stroke = getIconForChangeStatus(data.changeStatus).color;
+    style.stroke = getIconForChangeStatus(data.changeStatus).hexColor;
     style.strokeDasharray = "5";
   }
 
