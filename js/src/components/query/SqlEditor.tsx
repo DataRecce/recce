@@ -76,7 +76,7 @@ function SqlEditor({
           <Spacer />
           {(onRun ?? onRunBase) && (
             <Button
-              size="sm"
+              size="xs"
               variant="outline"
               onClick={onRun ?? onRunBase}
               backgroundColor={"white"}
