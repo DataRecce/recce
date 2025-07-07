@@ -52,7 +52,7 @@ export const RunModal = <PT,>({
   const documentationUrl = getDocumentationUrl(type);
 
   return (
-    <Dialog.Root open={isOpen} onOpenChange={onClose} size="cover" scrollBehavior="inside">
+    <Dialog.Root open={isOpen} onOpenChange={onClose} size="xl" scrollBehavior="inside">
       <Portal>
         <Dialog.Backdrop />
         <Dialog.Content overflowY="auto" height="75%" minHeight={"400px"}>

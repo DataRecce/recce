@@ -1,7 +1,6 @@
 import {
   Box,
   CloseButton,
-  Flex,
   Grid,
   Heading,
   Tabs,
@@ -144,7 +143,7 @@ export function NodeView({ node, onCloseNode }: NodeViewProps) {
                   <Icon as={findByRunType("sandbox")?.icon} /> Sandbox (Experiment)
                 </Menu.Item>
                 <Menu.Separator />
-                <Menu.ItemGroup m="0" p="4px 12px">
+                <Menu.ItemGroup m="0" p="0">
                   <Menu.ItemGroupLabel>Diff</Menu.ItemGroupLabel>
                   <Menu.Item
                     value="row-count-diff"
@@ -156,6 +155,7 @@ export function NodeView({ node, onCloseNode }: NodeViewProps) {
                     <Icon as={findByRunType("row_count_diff")?.icon} /> Row Count Diff
                   </Menu.Item>
                   <Tooltip
+                    disabled={disableReason(isAddedOrRemoved, "profile_diff") === ""}
                     content={disableReason(isAddedOrRemoved, "profile_diff")}
                     positioning={{ placement: "left" }}>
                     <Menu.Item
@@ -175,6 +175,7 @@ export function NodeView({ node, onCloseNode }: NodeViewProps) {
                     </Menu.Item>
                   </Tooltip>
                   <Tooltip
+                    disabled={disableReason(isAddedOrRemoved, "value_diff") === ""}
                     content={disableReason(isAddedOrRemoved, "value_diff")}
                     positioning={{ placement: "left" }}>
                     <Menu.Item
@@ -194,6 +195,7 @@ export function NodeView({ node, onCloseNode }: NodeViewProps) {
                     </Menu.Item>
                   </Tooltip>
                   <Tooltip
+                    disabled={disableReason(isAddedOrRemoved, "top_k_diff") === ""}
                     content={disableReason(isAddedOrRemoved, "top_k_diff")}
                     positioning={{ placement: "left" }}>
                     <Menu.Item
@@ -211,6 +213,7 @@ export function NodeView({ node, onCloseNode }: NodeViewProps) {
                     </Menu.Item>
                   </Tooltip>
                   <Tooltip
+                    disabled={disableReason(isAddedOrRemoved, "histogram_diff") === ""}
                     content={disableReason(isAddedOrRemoved, "histogram_diff")}
                     positioning={{ placement: "left" }}>
                     <Menu.Item

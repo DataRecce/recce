@@ -310,7 +310,7 @@ export function SandboxView({ isOpen, onClose, current }: SandboxViewProps) {
   return (
     <Dialog.Root
       open={isOpen}
-      size="full"
+      size="cover"
       onOpenChange={() => {
         onClose();
         onRunResultClose();
@@ -342,6 +342,9 @@ export function SandboxView({ isOpen, onClose, current }: SandboxViewProps) {
                   Experiment
                 </Badge>
               </Flex>
+              <Dialog.CloseTrigger asChild>
+                <CloseButton size="sm" />
+              </Dialog.CloseTrigger>
             </Dialog.Header>
             <Dialog.Body p={0}>
               <VSplit
@@ -390,9 +393,6 @@ export function SandboxView({ isOpen, onClose, current }: SandboxViewProps) {
                 </IconButton>
               </Tooltip>
             </Box>
-            <Dialog.CloseTrigger asChild>
-              <CloseButton size="sm" />
-            </Dialog.CloseTrigger>
           </Dialog.Content>
         </Dialog.Positioner>
       </Portal>
