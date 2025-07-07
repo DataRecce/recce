@@ -593,8 +593,9 @@ class RecceCloudStateManager:
         self.pr_info = None
         self.error_message = None
         self.hint_message = None
+        self.token = self.cloud_options.get("github_token")
 
-        if not self.cloud_options.get("github_token"):
+        if not self.token:
             raise Exception(RECCE_CLOUD_TOKEN_MISSING.error_message)
         self.pr_info = fetch_pr_metadata(cloud=True, github_token=self.token)
         if self.pr_info.id is None:
