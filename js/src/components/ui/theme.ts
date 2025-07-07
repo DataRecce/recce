@@ -15,6 +15,7 @@ export const system = createSystem(defaultConfig, {
           200: { value: "#FFA58C" },
           300: { value: "#FF8967" },
           400: { value: "#FF6E42" },
+          DEFAULT: { value: "#FD541E" },
           500: { value: "#FD541E" },
           600: { value: "#F04104" },
           700: { value: "#C93A06" },
@@ -28,7 +29,7 @@ export const system = createSystem(defaultConfig, {
       colors: {
         brand: {
           solid: { value: "{colors.brand.500}" },
-          contrast: { value: "{colors.brand.100}" },
+          contrast: { value: "{colors.white}" },
           fg: { value: "{colors.brand.700}" },
           muted: { value: "{colors.brand.100}" },
           subtle: { value: "{colors.brand.200}" },
