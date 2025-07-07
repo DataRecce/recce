@@ -359,7 +359,7 @@ function Main() {
                 }}
               </Route>
               <Route path="/ssr">
-                <Progress.Root size="xs" value={null}>
+                <Progress.Root size="xs" value={null} colorPalette="cyan">
                   <Progress.Track>
                     <Progress.Range />
                   </Progress.Track>
