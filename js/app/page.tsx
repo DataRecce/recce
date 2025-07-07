@@ -80,7 +80,7 @@ function RecceVersionBadge() {
   if (!versionFormatRegex.test(version)) {
     // If the version is not in the format of x.y.z, don't apply
     return (
-      <Badge fontSize="sm" color="white/80" variant="outline">
+      <Badge fontSize="sm" color="white/80" variant="outline" textTransform="uppercase">
         {version}
       </Badge>
     );
@@ -151,7 +151,7 @@ function TopBar() {
       </Heading>
       <RecceVersionBadge />
       {(featureToggles.mode || reviewMode) && (
-        <Badge fontSize="sm" color="white/80" variant="outline">
+        <Badge fontSize="sm" color="white/80" variant="outline" textTransform="uppercase">
           {featureToggles.mode ? "read only" : "review mode"}
         </Badge>
       )}
