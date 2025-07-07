@@ -89,7 +89,7 @@ export default function AuthModal({
                         Skip
                       </Button>
                     </Dialog.ActionTrigger>
-                    <Dialog.ActionTrigger>
+                    <Dialog.ActionTrigger asChild>
                       <Button
                         width="100%"
                         className="!rounded-lg !font-medium !text-black"
