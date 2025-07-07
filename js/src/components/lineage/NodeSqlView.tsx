@@ -72,7 +72,7 @@ export const NodeSqlView = ({ node }: NodeSqlViewProps) => {
       <IconButton
         onClick={onOpen}
         size="md"
-        aria-label={""}
+        aria-label="Expand"
         variant={"ghost"}
         style={{
           position: "absolute",

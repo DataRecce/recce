@@ -185,7 +185,7 @@ export const Filename = () => {
           <Tooltip content={fileName ? "Change Filename" : "Save"} openDelay={1000}>
             <IconButton
               onClick={handleOpen}
-              aria-label={""}
+              aria-label={fileName ? "Change Filename" : "Save"}
               variant="ghost"
               size="sm"
               colorPalette="gray">

@@ -205,7 +205,7 @@ export const ColumnLevelLineageControl = () => {
             variant="ghost"
             size="xs"
             ml="2"
-            aria-label={""}
+            aria-label="Reset Column Level Lineage"
             onClick={() => {
               void resetColumnLevelLineage();
             }}>
