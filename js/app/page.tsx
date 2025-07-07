@@ -151,9 +151,9 @@ function TopBar() {
         RECCE
       </Heading>
       <RecceVersionBadge />
-      {(featureToggles.mode || reviewMode) && (
+      {(featureToggles.mode ?? reviewMode) && (
         <Badge fontSize="sm" color="white/80" variant="outline" textTransform="uppercase">
-          {featureToggles.mode ? "read only" : "review mode"}
+          {featureToggles.mode ?? "review mode"}
         </Badge>
       )}
       {cloudMode && prID && (

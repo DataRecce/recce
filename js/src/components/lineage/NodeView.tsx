@@ -102,7 +102,10 @@ export function NodeView({ node, onCloseNode }: NodeViewProps) {
       return (
         <Menu.Root>
           <Menu.Trigger asChild>
-            <Button size="2xs" variant="outline" disabled={featureToggles.disableNodeActionDropdown}>
+            <Button
+              size="2xs"
+              variant="outline"
+              disabled={featureToggles.disableNodeActionDropdown}>
               Explore <PiCaretDown />
             </Button>
           </Menu.Trigger>
@@ -112,7 +115,7 @@ export function NodeView({ node, onCloseNode }: NodeViewProps) {
                 <Menu.Item
                   value="query"
                   fontSize="14px"
-                  disabled={featureToggles.disableDatabaseQuery}>
+                  disabled={featureToggles.disableDatabaseQuery}
                   onClick={() => {
                     if (envInfo?.adapterType === "dbt") {
                       setSqlQuery(query);
@@ -124,8 +127,7 @@ export function NodeView({ node, onCloseNode }: NodeViewProps) {
                       setPrimaryKeys(primaryKey !== undefined ? [primaryKey] : undefined);
                     }
                     setLocation("/query");
-                  }}
-
+                  }}>
                   <Icon as={findByRunType("query_diff")?.icon} /> Query
                 </Menu.Item>
                 <Menu.Item

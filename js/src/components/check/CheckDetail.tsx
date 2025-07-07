@@ -295,8 +295,10 @@ export const CheckDetail = ({ checkId, refreshCheckList }: CheckDetailProps) => 
                 onClick={() => {
                   handleApproveCheck();
                 }}
-                disabled={isDisabledByNoResult(check?.type ?? "", run) ||
-                  featureToggles.disableUpdateChecklist}>
+                disabled={
+                  isDisabledByNoResult(check?.type ?? "", run) ||
+                  featureToggles.disableUpdateChecklist
+                }>
                 {check?.is_checked ? (
                   <PiCheckCircle />
                 ) : (
