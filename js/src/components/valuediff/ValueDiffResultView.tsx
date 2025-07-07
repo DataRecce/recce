@@ -37,7 +37,11 @@ function ColumnNameCell({ params, column }: { params: ValueDiffParams; column: s
 
       <Menu.Root lazyMount>
         <Menu.Trigger asChild>
-          <IconButton className="row-context-menu" variant="plain" size={"sm"} disabled={featureToggles.disableDatabaseQuery}>
+          <IconButton
+            className="row-context-menu"
+            variant="plain"
+            size={"sm"}
+            disabled={featureToggles.disableDatabaseQuery}>
             <PiDotsThreeVertical />
           </IconButton>
         </Menu.Trigger>
