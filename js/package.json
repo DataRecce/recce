@@ -29,7 +29,7 @@
     "@hello-pangea/dnd": "^18.0.1",
     "@jeromefitz/date-fns-tz": "3.0.0-canary.8",
     "@monaco-editor/react": "^4.7.0",
-    "@sentry/react": "^9.34.0",
+    "@sentry/react": "^9.35.0",
     "@tailwindcss/postcss": "^4.1.11",
     "@tanstack/react-query": "^5.81.5",
     "@types/js-cookie": "^3.0.6",
