@@ -66,7 +66,7 @@ export function TopLevelShare() {
               <Text fontSize="14">{shareUrl}</Text>
             </Flex>
             <IconButton
-              size="xs"
+              size="2xs"
               aria-label="Copy the share URL"
               onClick={async () => {
                 await handleCopy();

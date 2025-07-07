@@ -1,6 +1,6 @@
 "use client";
 
-import { Button, Dialog, Image, Portal, useDisclosure } from "@chakra-ui/react";
+import { Button, Dialog, Image, Portal, VStack, Text } from "@chakra-ui/react";
 import { Dispatch, ReactNode, SetStateAction, useCallback, useEffect, useState } from "react";
 import Cookies from "js-cookie";
 import { LuExternalLink } from "react-icons/lu";
@@ -55,13 +55,7 @@ export default function AuthModal({
           <Dialog.Content borderRadius="2xl">
             {authState !== "authenticating" && (
               <Dialog.Header className="text-center" fontSize="2xl">
-                Use Recce Cloud for Free
-              </Dialog.Header>
-            )}
-            {authState === "authenticating" && (
-              <Dialog.Header className="text-center">
-                <Image className="mx-auto mb-2" src={(ReloadImage as StaticImageData).src} />
-                <div>Reload to Finish</div>
+                <Dialog.Title>Use Recce Cloud for Free</Dialog.Title>
               </Dialog.Header>
             )}
             {authState !== "authenticating" ? (
@@ -114,7 +108,18 @@ export default function AuthModal({
             ) : (
               <>
                 <Dialog.Body className="space-y-2 self-center font-light">
-                  <p>Reload to complete connection to Recce Cloud</p>
+                  <VStack gap={4} paddingTop="1rem">
+                    <Image
+                      className="mx-auto mb-2"
+                      h="6rem"
+                      fit="contain"
+                      src={(ReloadImage as StaticImageData).src}
+                    />
+                    <Text fontSize="2xl" fontWeight="medium">
+                      Reload to Finish
+                    </Text>
+                    <Text>Reload to complete connection to Recce Cloud</Text>
+                  </VStack>
                 </Dialog.Body>
                 <Dialog.Footer>
                   <Button
