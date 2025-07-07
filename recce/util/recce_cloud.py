@@ -66,7 +66,7 @@ class RecceCloud:
             pass
         return False
 
-    def get_presigned_url(
+    def get_presigned_url_by_github_repo(
         self,
         method: PresignedUrlMethod,
         repository: str,
@@ -78,7 +78,15 @@ class RecceCloud:
         response = self._fetch_presigned_url(method, repository, artifact_name, metadata, pr_id, branch)
         return response.get("presigned_url")
 
-    def get_download_presigned_url_with_tags(
+    def get_presigned_url_by_share_id(
+        self,
+        method: PresignedUrlMethod,
+        share_id: str,
+    ) -> str:
+        response = self._fetch_presigned_url_by_share_id(method, share_id)
+        return response.get("presigned_url")
+
+    def get_download_presigned_url_by_github_repo_with_tags(
         self, repository: str, artifact_name: str, branch: str = None
     ) -> (str, dict):
         response = self._fetch_presigned_url(PresignedUrlMethod.DOWNLOAD, repository, artifact_name, branch=branch)
@@ -100,6 +108,23 @@ class RecceCloud:
         else:
             raise ValueError("Either pr_id or sha must be provided.")
         response = self._request("POST", api_url, json=metadata)
+        if response.status_code != 200:
+            raise RecceCloudException(
+                message="Failed to {method} artifact {preposition} Recce Cloud.".format(
+                    method=method, preposition="from" if method == PresignedUrlMethod.DOWNLOAD else "to"
+                ),
+                reason=response.text,
+                status_code=response.status_code,
+            )
+        return response.json()
+
+    def _fetch_presigned_url_by_share_id(
+        self,
+        method: PresignedUrlMethod,
+        share_id: str,
+    ):
+        api_url = f"{self.base_url}/shares/{share_id}/presigned/{method}"
+        response = self._request("POST", api_url)
         if response.status_code != 200:
             raise RecceCloudException(
                 message="Failed to {method} artifact {preposition} Recce Cloud.".format(

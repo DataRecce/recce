@@ -48,6 +48,7 @@ def create_state_loader(review_mode, cloud_mode, state_file, cloud_options):
         exit(1)
     except Exception as e:
         console.print("[[red]Error[/red]] Failed to load recce state file")
+        console.print_exception()
         console.print(f"Reason: {e}")
         exit(1)
 
@@ -423,12 +424,20 @@ def server(host, port, lifetime, state_file=None, **kwargs):
     console = Console()
     cloud_options = None
 
+    auth_options = {}
+    try:
+        api_token = prepare_api_token(**kwargs)
+    except RecceConfigException:
+        show_invalid_api_token_message()
+        exit(1)
+    auth_options["api_token"] = api_token
+
     if server_mode == RecceServerMode.server:
         flag = {"single_env_onboarding": False, "show_relaunch_hint": False}
         if is_cloud:
             cloud_options = {
                 "host": kwargs.get("state_file_host"),
-                "token": kwargs.get("cloud_token"),
+                "github_token": kwargs.get("cloud_token"),
                 "password": kwargs.get("password"),
             }
 
@@ -442,6 +451,14 @@ def server(host, port, lifetime, state_file=None, **kwargs):
             # Use the target path as the base path
             kwargs["target_base_path"] = kwargs.get("target_path")
     elif server_mode == RecceServerMode.preview:
+        if is_cloud:
+            share_url = kwargs.get("share_url")
+            share_id = share_url.split("/")[-1] if share_url else None
+            cloud_options = {
+                "host": kwargs.get("state_file_host"),
+                "api_token": api_token,
+                "share_id": share_id,
+            }
         flag = {
             "preview": True,
         }
@@ -456,14 +473,6 @@ def server(host, port, lifetime, state_file=None, **kwargs):
             console.print("[[red]Error[/red]] The state_file is required in 'Read-Only' mode.")
             console.print("Please provide recce_state json file exported by Recce OSS.")
             exit(1)
-
-    auth_options = {}
-    try:
-        api_token = prepare_api_token(**kwargs)
-    except RecceConfigException:
-        show_invalid_api_token_message()
-        exit(1)
-    auth_options["api_token"] = api_token
 
     # Onboarding State logic update here
     update_onboarding_state(api_token, flag.get("single_env_onboarding"))
@@ -594,7 +603,7 @@ def run(output, **kwargs):
     cloud_options = (
         {
             "host": kwargs.get("state_file_host"),
-            "token": kwargs.get("cloud_token"),
+            "github_token": kwargs.get("cloud_token"),
             "password": kwargs.get("password"),
         }
         if cloud_mode
@@ -668,7 +677,7 @@ def summary(state_file, **kwargs):
     cloud_options = (
         {
             "host": kwargs.get("state_file_host"),
-            "token": kwargs.get("cloud_token"),
+            "github_token": kwargs.get("cloud_token"),
             "password": kwargs.get("password"),
         }
         if cloud_mode
@@ -757,7 +766,7 @@ def purge(**kwargs):
     state_loader = None
     cloud_options = {
         "host": kwargs.get("state_file_host"),
-        "token": kwargs.get("cloud_token"),
+        "github_token": kwargs.get("cloud_token"),
         "password": kwargs.get("password"),
     }
     force_to_purge = kwargs.get("force", False)
@@ -838,7 +847,7 @@ def upload(state_file, **kwargs):
     handle_debug_flag(**kwargs)
     cloud_options = {
         "host": kwargs.get("state_file_host"),
-        "token": kwargs.get("cloud_token"),
+        "github_token": kwargs.get("cloud_token"),
         "password": kwargs.get("password"),
     }
 
@@ -907,7 +916,7 @@ def download(**kwargs):
     filepath = kwargs.get("output")
     cloud_options = {
         "host": kwargs.get("state_file_host"),
-        "token": kwargs.get("cloud_token"),
+        "github_token": kwargs.get("cloud_token"),
         "password": kwargs.get("password"),
     }
 
