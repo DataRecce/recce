@@ -18,7 +18,7 @@ const COUNTDOWN_CONFIG = {
 export function useCountdownToast(lifetimeExpiredAt: Date | undefined) {
   const countdownToast = toaster;
   const [countdownToastId, setCountdownToastId] = useState<string | null>(null);
-  const countdownIntervalRef = useRef<NodeJS.Timeout>();
+  const countdownIntervalRef = useRef<NodeJS.Timeout>(undefined);
 
   const calculateRemainingSeconds = useCallback(() => {
     if (!lifetimeExpiredAt) return 0;
