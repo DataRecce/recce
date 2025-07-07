@@ -93,7 +93,7 @@ export function BaseEnvironmentSetupNotification() {
           comparisons between environments.
         </Text>
         <Text fontSize="sm">To set up full environment comparison:</Text>
-        <List.Root>
+        <List.Root ps="4">
           <List.Item>
             <Text fontSize="sm">Run `recce debug` for setup assistance</Text>
           </List.Item>
@@ -106,9 +106,9 @@ export function BaseEnvironmentSetupNotification() {
                 fontWeight="medium"
                 target="_blank"
                 href="https://docs.datarecce.io/configure-diff/">
-                docs{" "}
-              </Link>
-              for configuration details <LuExternalLink />
+                docs
+              </Link>{" "}
+              for configuration details
             </Text>
           </List.Item>
         </List.Root>

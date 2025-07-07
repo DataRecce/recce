@@ -205,16 +205,16 @@ export function RowCountTag({
         )}
       </Tag.Label>
       {onRefresh && (
-        <Tag.EndElement>
-          <IconButton
-            loading={isFetching}
-            aria-label="Query Row Count"
-            size="xs"
-            onClick={onRefresh}
-            disabled={node.from === "base"}>
-            <PiRepeat />
-          </IconButton>
-        </Tag.EndElement>
+        <IconButton
+          loading={isFetching}
+          aria-label="Query Row Count"
+          size="2xs"
+          p="0"
+          variant="ghost"
+          onClick={onRefresh}
+          disabled={node.from === "base"}>
+          <PiRepeat />
+        </IconButton>
       )}
     </Tag.Root>
   );
