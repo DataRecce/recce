@@ -52,11 +52,11 @@ function useValueDiffAlertDialog() {
               </Box>
             </Dialog.Body>
 
-            <Dialog.Footer>
-              <Button ref={cancelRef} onClick={handleCancel}>
+            <Dialog.Footer gap={1}>
+              <Button ref={cancelRef} onClick={handleCancel} variant="outline" colorPalette="gray">
                 Cancel
               </Button>
-              <Button colorPalette="blue" onClick={handleConfirm} ml={3}>
+              <Button colorPalette="cyan" onClick={handleConfirm} ml={3}>
                 Execute
               </Button>
             </Dialog.Footer>
