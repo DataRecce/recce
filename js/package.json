@@ -41,7 +41,7 @@
     "date-fns": "^4.1.0",
     "file-saver": "^2.0.5",
     "html-to-image": "^1.11.13",
-    "html2canvas": "^1.4.1",
+    "html2canvas-pro": "^1.5.11",
     "js-cookie": "^3.0.5",
     "lodash": "^4.17.21",
     "monaco-editor": "^0.52.2",

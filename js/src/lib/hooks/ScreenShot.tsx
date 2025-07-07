@@ -8,7 +8,7 @@ import {
   Text,
   useDisclosure,
 } from "@chakra-ui/react";
-import html2canvas from "html2canvas";
+import html2canvas from "html2canvas-pro";
 import { toCanvas } from "html-to-image";
 import React, { RefObject, useCallback, useEffect, useRef, useState } from "react";
 import { useClipBoardToast } from "./useClipBoardToast";

@@ -222,6 +222,7 @@ export const CheckList = ({
         onOpenChange={onMarkAsApprovedClosed}
         placement="center">
         <Portal>
+          <Dialog.Backdrop />
           <Dialog.Positioner>
             <Dialog.Content width={"400px"}>
               <Dialog.Header>
@@ -241,15 +242,17 @@ export const CheckList = ({
                   fontWeight="bold"
                   size="sm"
                   pt="8px">
-                  Don&apos;t show this again
+                  <Checkbox.HiddenInput />
+                  <Checkbox.Control />
+                  <Checkbox.Label>Don&apos;t show this again</Checkbox.Label>
                 </Checkbox.Root>
               </Box>
               <Separator />
-              <Dialog.Footer>
+              <Dialog.Footer gap={0}>
                 <Button variant="outline" size="xs" mr={2} onClick={onMarkAsApprovedClosed}>
                   Cancel
                 </Button>
-                <Button colorPalette="blue" size="xs" onClick={handleMarkAsApprovedConfirmed}>
+                <Button colorPalette="cyan" size="xs" onClick={handleMarkAsApprovedConfirmed}>
                   Mark as approved
                 </Button>
               </Dialog.Footer>
