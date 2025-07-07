@@ -268,7 +268,7 @@ class RecceContext:
     def mark_onboarding_completed(self):
         if self.state_loader.cloud_mode:
             try:
-                token = self.state_loader.cloud_options.get("token")
+                token = self.state_loader.cloud_options.get("github_token")
                 set_recce_cloud_onboarding_state(token, "completed")
             except Exception as e:
                 logger.debug(f"Failed to mark onboarding completed in Recce Cloud. Reason: {str(e)}")

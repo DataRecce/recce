@@ -100,7 +100,7 @@ def upload_dbt_artifacts(target_path: str, branch: str, token: str, password: st
     metadata = {"commit": sha, "dbt_version": dbt_version}
 
     # Get the presigned URL for uploading the artifacts
-    presigned_url = RecceCloud(token).get_presigned_url(
+    presigned_url = RecceCloud(token).get_presigned_url_by_github_repo(
         method=PresignedUrlMethod.UPLOAD,
         repository=repo,
         artifact_name="dbt_artifacts.tar.gz",
@@ -145,7 +145,7 @@ def download_dbt_artifacts(
     sha = None
     dbt_version = None
 
-    presigned_url, tags = RecceCloud(token).get_download_presigned_url_with_tags(
+    presigned_url, tags = RecceCloud(token).get_download_presigned_url_by_github_repo_with_tags(
         repository=repo,
         artifact_name="dbt_artifacts.tar.gz",
         branch=branch,
