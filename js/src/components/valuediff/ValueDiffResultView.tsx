@@ -4,11 +4,12 @@ import { ColumnOrColumnGroup } from "react-data-grid";
 import { ValueDiffParams, ValueDiffResult } from "@/lib/api/valuediff";
 import { EmptyRowsRenderer, ScreenshotDataGrid } from "../data-grid/ScreenshotDataGrid";
 import { RunResultViewProps } from "../run/types";
-import { VscKebabVertical, VscKey } from "react-icons/vsc";
+import { VscKey } from "react-icons/vsc";
 import { RecceActionOptions, useRecceActionContext } from "@/lib/hooks/RecceActionContext";
 import { useRecceInstanceContext } from "@/lib/hooks/RecceInstanceContext";
 import { RowObjectType } from "@/lib/api/types";
-import { forwardRef } from "react";
+import React, { forwardRef } from "react";
+import { PiDotsThreeVertical } from "react-icons/pi";
 
 type ValueDiffResultViewProp = RunResultViewProps<ValueDiffParams, ValueDiffResult>;
 
@@ -37,7 +38,7 @@ function ColumnNameCell({ params, column }: { params: ValueDiffParams; column: s
       <Menu.Root lazyMount>
         <Menu.Trigger asChild>
           <IconButton className="row-context-menu" variant="plain" size={"sm"} disabled={featureToggles.disableDatabaseQuery}>
-            VscKebabVertical
+            <PiDotsThreeVertical />
           </IconButton>
         </Menu.Trigger>
 

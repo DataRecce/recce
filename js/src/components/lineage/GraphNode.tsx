@@ -348,8 +348,6 @@ export function GraphNode(nodeProps: GraphNodeProps) {
                 )}
                 <Icon
                   as={VscKebabVertical}
-                  // boxSize="14px"
-                  // display={"inline-flex"}
                   color="gray"
                   cursor={"pointer"}
                   _hover={{ color: "black" }}

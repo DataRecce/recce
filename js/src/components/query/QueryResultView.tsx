@@ -16,11 +16,11 @@ import React, { forwardRef, useMemo } from "react";
 import { ColumnRenderMode, ColumnType, DataFrame, RowObjectType, Run } from "@/lib/api/types";
 import { EmptyRowsRenderer, ScreenshotDataGrid } from "../data-grid/ScreenshotDataGrid";
 import { DataFrameColumnGroupHeader, defaultRenderCell } from "./querydiff";
-import { VscKebabVertical, VscPin, VscPinned } from "react-icons/vsc";
+import { VscPin, VscPinned } from "react-icons/vsc";
 import { RunResultViewProps } from "../run/types";
 import _ from "lodash";
 import { columnPrecisionSelectOptions } from "@/components/valuediff/shared";
-import { PiWarning } from "react-icons/pi";
+import { PiDotsThreeVertical, PiWarning } from "react-icons/pi";
 
 interface QueryResultViewProp
   extends RunResultViewProps<QueryParams, QueryResult, QueryViewOptions> {
@@ -81,7 +81,7 @@ function DataFrameColumnHeader({
         <Menu.Root>
           <Menu.Trigger asChild>
             <IconButton aria-label="Options" variant="plain" className="!size-4 !min-w-4">
-              <VscKebabVertical />
+              <PiDotsThreeVertical />
             </IconButton>
           </Menu.Trigger>
           <Portal>

@@ -17,7 +17,7 @@ export const ActionTag = ({ node, action }: ActionTagProps) => {
 
   if (status === "pending") {
     return (
-      <ProgressCircle.Root value={0} size="md">
+      <ProgressCircle.Root value={0} size="xs">
         <ProgressCircle.Circle>
           <ProgressCircle.Track />
           <ProgressCircle.Range />
@@ -45,7 +45,7 @@ export const ActionTag = ({ node, action }: ActionTagProps) => {
 
   if (!run) {
     return (
-      <ProgressCircle.Root value={null} size="md">
+      <ProgressCircle.Root value={null} size="xs">
         <ProgressCircle.Circle>
           <ProgressCircle.Track />
           <ProgressCircle.Range />
@@ -58,7 +58,7 @@ export const ActionTag = ({ node, action }: ActionTagProps) => {
   if (status === "running") {
     if (progress?.percentage === undefined) {
       return (
-        <ProgressCircle.Root value={null} size="md">
+        <ProgressCircle.Root value={null} size="xs">
           <ProgressCircle.Circle>
             <ProgressCircle.Track />
             <ProgressCircle.Range />
@@ -67,7 +67,7 @@ export const ActionTag = ({ node, action }: ActionTagProps) => {
       );
     } else {
       return (
-        <ProgressCircle.Root value={progress.percentage * 100} size="md">
+        <ProgressCircle.Root value={progress.percentage * 100} size="xs">
           <ProgressCircle.Circle>
             <ProgressCircle.Track />
             <ProgressCircle.Range />
