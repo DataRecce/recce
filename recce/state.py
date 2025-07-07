@@ -9,7 +9,7 @@ from base64 import b64encode
 from dataclasses import dataclass
 from datetime import datetime
 from hashlib import md5, sha256
-from typing import Dict, List, Optional, Tuple, Union
+from typing import Dict, List, Optional, Tuple, Union, Literal
 from urllib.parse import urlencode
 
 import botocore.exceptions
@@ -203,7 +203,7 @@ class RecceStateLoader:
         self.state_lock = threading.Lock()
         self.state_etag = None
         self.pr_info = None
-        self.catalog: "github" | "preview" = 'github'
+        self.catalog: Literal["github", "preview"] = 'github'
 
         if self.cloud_mode:
             if self.cloud_options.get("github_token"):
