@@ -391,7 +391,7 @@ export default function Home() {
       <TopBar />
       <NavBar />
       <Main />
-      {!isLoading && !isDemoSite && !(featureToggles.mode !== null) && <AuthModal />}
+      {!isLoading && !isDemoSite && featureToggles.mode === null && <AuthModal />}
     </MainContainer>
   );
 }
