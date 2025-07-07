@@ -69,11 +69,7 @@ import { createSchemaDiffCheck } from "@/lib/api/schemacheck";
 import { useLocation } from "wouter";
 import { Check } from "@/lib/api/checks";
 import useValueDiffAlertDialog from "./useValueDiffAlertDialog";
-import {
-  trackMultiNodesAction,
-  trackColumnLevelLineage,
-  trackCopyToClipboard,
-} from "@/lib/api/track";
+import { trackMultiNodesAction, trackCopyToClipboard } from "@/lib/api/track";
 import { PresetCheckRecommendation } from "./PresetCheckRecommendation";
 import { useRun } from "@/lib/hooks/useRun";
 import { GraphColumnNode } from "./GraphColumnNode";
@@ -110,7 +106,6 @@ const edgeTypes = {
   customEdge: GraphEdge,
 };
 const nodeColor = (node: Node<LineageGraphNode>) => {
-  console.log(getIconForChangeStatus(node.data.changeStatus).hexColor);
   return node.data.changeStatus
     ? getIconForChangeStatus(node.data.changeStatus).hexColor
     : ("lightgray" as string);
@@ -1100,7 +1095,7 @@ export function PrivateLineageView(
             <NodeView node={focusedNode} onCloseNode={onNodeViewClosed} />
           </Box>
         ) : (
-          <Box>d</Box>
+          <Box></Box>
         )}
       </HSplit>
       {valueDiffAlertDialog.AlertDialog}

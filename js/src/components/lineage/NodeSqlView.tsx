@@ -98,6 +98,9 @@ export const NodeSqlView = ({ node }: NodeSqlViewProps) => {
                     <code>{modelName}</code> Model Code Diff
                   </Dialog.Title>
                 )}
+                <Dialog.CloseTrigger asChild>
+                  <CloseButton size="sm" />
+                </Dialog.CloseTrigger>
               </Dialog.Header>
               <Dialog.Body>
                 {isSingleEnvOnboarding ? (
@@ -119,9 +122,6 @@ export const NodeSqlView = ({ node }: NodeSqlViewProps) => {
               </Dialog.Body>
             </Dialog.Content>
           </Dialog.Positioner>
-          <Dialog.CloseTrigger asChild>
-            <CloseButton size="sm" />
-          </Dialog.CloseTrigger>
         </Portal>
       </Dialog.Root>
     </Box>
