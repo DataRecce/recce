@@ -14,6 +14,7 @@ import {
   Badge,
   Progress,
   HStack,
+  Text,
 } from "@chakra-ui/react";
 import React, { ReactNode, useEffect, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
@@ -156,13 +157,19 @@ function TopBar() {
         </Badge>
       )}
       {cloudMode && prID && (
-        <Badge fontSize="sm" color="white/80" variant="outline">
+        <Badge fontSize="sm" color="white/80" variant="outline" textTransform="uppercase">
           <HStack>
             <Box>cloud mode</Box>
-            <Box borderLeft="1px" borderLeftColor="whiteAlpha.500" paddingLeft="8px">
+            <Box borderLeftWidth="1px" borderLeftColor="white/80" paddingLeft="8px">
               <Link href={prURL} _hover={{ textDecoration: "none" }} target="_blank">
-                <Icon as={VscGitPullRequest} boxSize="3" fontWeight="extrabold" strokeWidth="1" />
-                {` #${String(prID)}`} <LuExternalLink />
+                <Icon
+                  color="white/80"
+                  as={VscGitPullRequest}
+                  boxSize="3"
+                  fontWeight="extrabold"
+                  strokeWidth="1"
+                />
+                <Text color="white/80">{` #${String(prID)}`}</Text>
               </Link>
             </Box>
           </HStack>

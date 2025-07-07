@@ -99,7 +99,7 @@ const ViewModeSelectMenu = ({ isDisabled }: { isDisabled: boolean }) => {
               onValueChange={(e) => {
                 handleSelect(e.value as typeof viewMode);
               }}>
-              <Menu.ItemGroupLabel>packages</Menu.ItemGroupLabel>
+              <Menu.ItemGroupLabel>mode</Menu.ItemGroupLabel>
               <Menu.RadioItem value="changed_models">
                 Changed Models
                 <Menu.ItemIndicator />
