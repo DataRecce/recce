@@ -645,7 +645,7 @@ class RecceCloudStateManager:
 
         import requests
 
-        presigned_url = RecceCloud(token=self.token).get_presigned_url_by_github_repo(
+        presigned_url = RecceCloud(token=self.github_token).get_presigned_url_by_github_repo(
             method=PresignedUrlMethod.UPLOAD,
             repository=self.pr_info.repository,
             artifact_name=RECCE_STATE_COMPRESSED_FILE,
@@ -796,12 +796,12 @@ class RecceCloudStateManager:
         delete_response = s3_client.delete_objects(Bucket=s3_bucket_name, Delete={"Objects": delete_objects})
         if "Deleted" not in delete_response:
             return False, "Failed to delete the state file from the S3 bucket."
-        RecceCloud(token=self.token).update_github_pull_request_check(self.pr_info)
+        RecceCloud(token=self.github_token).update_github_pull_request_check(self.pr_info)
         return True, None
 
     def _purge_state_from_recce_cloud(self) -> (bool, str):
         try:
-            RecceCloud(token=self.token).purge_artifacts(self.pr_info)
+            RecceCloud(token=self.github_token).purge_artifacts(self.pr_info)
         except RecceCloudException as e:
             return False, e.reason
         return True, None
