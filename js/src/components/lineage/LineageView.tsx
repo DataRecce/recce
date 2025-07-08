@@ -111,7 +111,7 @@ const nodeColor = (node: Node<LineageGraphNode>) => {
     : ("lightgray" as string);
 };
 
-const useResizeObserver = (ref: RefObject<HTMLElement>, handler: () => void) => {
+const useResizeObserver = (ref: RefObject<HTMLElement | null>, handler: () => void) => {
   const target = ref.current;
   const size = useRef({
     width: 0,
