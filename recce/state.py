@@ -17,6 +17,7 @@ from pydantic import BaseModel, Field
 
 from recce import get_version
 from recce.event import get_recce_api_token
+from recce.exceptions import RecceException
 from recce.git import current_branch
 from recce.models import CheckDAO
 from recce.models.types import Check, Run
@@ -211,12 +212,12 @@ class RecceStateLoader:
                 self.pr_info = fetch_pr_metadata(cloud=self.cloud_mode,
                                                  github_token=self.cloud_options.get("github_token"))
                 if self.pr_info.id is None:
-                    raise Exception("Cannot get the pull request information from GitHub.")
+                    raise RecceException("Cannot get the pull request information from GitHub.")
             elif self.cloud_options.get("api_token"):
                 self.catalog = "preview"
                 pass
             else:
-                raise Exception(RECCE_CLOUD_TOKEN_MISSING.error_message)
+                raise RecceException(RECCE_CLOUD_TOKEN_MISSING.error_message)
 
         # Load the state
         self.load()
@@ -593,16 +594,16 @@ class RecceCloudStateManager:
         self.pr_info = None
         self.error_message = None
         self.hint_message = None
-        self.token = self.cloud_options.get("github_token")
+        self.github_token = self.cloud_options.get("github_token")
 
-        if not self.token:
+        if not self.github_token:
             raise Exception(RECCE_CLOUD_TOKEN_MISSING.error_message)
-        self.pr_info = fetch_pr_metadata(cloud=True, github_token=self.token)
+        self.pr_info = fetch_pr_metadata(cloud=True, github_token=self.github_token)
         if self.pr_info.id is None:
             raise Exception("Cannot get the pull request information from GitHub.")
 
     def verify(self) -> bool:
-        if self.cloud_options.get("github_token") is None:
+        if self.github_token is None:
             self.error_message = RECCE_CLOUD_TOKEN_MISSING.error_message
             self.hint_message = RECCE_CLOUD_TOKEN_MISSING.hint_message
             return False
@@ -617,7 +618,7 @@ class RecceCloudStateManager:
         return self.error_message, self.hint_message
 
     def _check_state_in_recce_cloud(self) -> bool:
-        return RecceCloud(token=self.token).check_artifacts_exists(self.pr_info)
+        return RecceCloud(token=self.github_token).check_artifacts_exists(self.pr_info)
 
     def _check_state_in_s3_bucket(self) -> bool:
         import boto3
@@ -684,8 +685,8 @@ class RecceCloudStateManager:
                 # Casting all the values under metadata to string
                 ExtraArgs={"Metadata": {k: str(v) for k, v in metadata.items()}},
             )
-        RecceCloud(token=self.token).update_github_pull_request_check(self.pr_info,
-                                                                      metadata)
+        RecceCloud(token=self.github_token).update_github_pull_request_check(self.pr_info,
+                                                                             metadata)
         return f"The state file is uploaded to ' s3://{s3_bucket_name}/{s3_bucket_key}'"
 
     def upload_state_to_cloud(self, state: RecceState) -> Union[str, None]:
@@ -733,7 +734,7 @@ class RecceCloudStateManager:
 
         import requests
 
-        presigned_url = RecceCloud(token=self.token).get_presigned_url_by_github_repo(
+        presigned_url = RecceCloud(token=self.github_token).get_presigned_url_by_github_repo(
             method=PresignedUrlMethod.DOWNLOAD,
             repository=self.pr_info.repository,
             artifact_name=RECCE_STATE_COMPRESSED_FILE,

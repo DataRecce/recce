@@ -48,7 +48,6 @@ def create_state_loader(review_mode, cloud_mode, state_file, cloud_options):
         exit(1)
     except Exception as e:
         console.print("[[red]Error[/red]] Failed to load recce state file")
-        console.print_exception()
         console.print(f"Reason: {e}")
         exit(1)
 
