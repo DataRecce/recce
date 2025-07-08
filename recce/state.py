@@ -205,6 +205,7 @@ class RecceStateLoader:
         self.state_etag = None
         self.pr_info = None
         self.catalog: Literal["github", "preview"] = 'github'
+        self.share_id = None
 
         if self.cloud_mode:
             if self.cloud_options.get("github_token"):
@@ -215,7 +216,7 @@ class RecceStateLoader:
                     raise RecceException("Cannot get the pull request information from GitHub.")
             elif self.cloud_options.get("api_token"):
                 self.catalog = "preview"
-                pass
+                self.share_id = self.cloud_options.get("share_id")
             else:
                 raise RecceException(RECCE_CLOUD_TOKEN_MISSING.error_message)
 
@@ -375,7 +376,8 @@ class RecceStateLoader:
             if (self.pr_info is None) or (self.pr_info.id is None) or (self.pr_info.repository is None):
                 raise Exception("Cannot get the pull request information from GitHub.")
         elif self.catalog == "preview":
-            pass
+            if self.share_id is None:
+                raise Exception("Cannot load the share state from Recce Cloud. No share ID is provided.")
 
         if self.cloud_options.get("host", "").startswith("s3://"):
             logger.debug("Fetching state from AWS S3 bucket...")
