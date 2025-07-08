@@ -423,13 +423,14 @@ def server(host, port, lifetime, state_file=None, **kwargs):
     console = Console()
     cloud_options = None
 
-    auth_options = {}
     try:
         api_token = prepare_api_token(**kwargs)
     except RecceConfigException:
         show_invalid_api_token_message()
         exit(1)
-    auth_options["api_token"] = api_token
+    auth_options = {
+        "api_token": api_token,
+    }
 
     if server_mode == RecceServerMode.server:
         flag = {"single_env_onboarding": False, "show_relaunch_hint": False}
