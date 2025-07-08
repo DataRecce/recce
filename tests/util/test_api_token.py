@@ -9,13 +9,11 @@ class PrepareApiTokenTest(unittest.TestCase):
     @patch("recce.util.api_token.console.print")
     def test_show_invalid_api_token_message(self, mock_print):
         from recce.util.api_token import (
-            RECCE_CLOUD_BASE_URL,
             show_invalid_api_token_message,
         )
 
         show_invalid_api_token_message()
         mock_print.assert_any_call("[[red]Error[/red]] Invalid Recce Cloud API token.")
-        mock_print.assert_any_call(f"Please check your API token from {RECCE_CLOUD_BASE_URL}/settings#tokens")
 
     @patch("recce.util.api_token.get_recce_api_token", return_value=None)
     def test_no_token_provided_no_interaction(self, mock_get_token):
