@@ -143,7 +143,7 @@ export const ModelNodeContextMenu = ({
   if (!selectMode && resourceType && ["model", "seed", "snapshot"].includes(resourceType)) {
     if (menuItems.length > 0) {
       menuItems.push({
-        label: "select group",
+        label: "select group one",
         isSeparator: true,
       });
     }
@@ -275,7 +275,7 @@ export const ModelNodeContextMenu = ({
   if (!singleEnv) {
     if (menuItems.length > 0) {
       menuItems.push({
-        label: "select group",
+        label: "select group two",
         isSeparator: true,
       });
     }
