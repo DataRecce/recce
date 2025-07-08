@@ -137,7 +137,7 @@ class RecceState(BaseModel):
             if metadata.schema_version == "v0":
                 pass
             else:
-                raise Exception(f"Unsupported state file version: {metadata.schema_version}")
+                raise RecceException(f"Unsupported state file version: {metadata.schema_version}")
         return state
 
     @staticmethod
@@ -374,10 +374,10 @@ class RecceStateLoader:
         """
         if self.catalog == "github":
             if (self.pr_info is None) or (self.pr_info.id is None) or (self.pr_info.repository is None):
-                raise Exception("Cannot get the pull request information from GitHub.")
+                raise RecceException("Cannot get the pull request information from GitHub.")
         elif self.catalog == "preview":
             if self.share_id is None:
-                raise Exception("Cannot load the share state from Recce Cloud. No share ID is provided.")
+                raise RecceException("Cannot load the share state from Recce Cloud. No share ID is provided.")
 
         if self.cloud_options.get("host", "").startswith("s3://"):
             logger.debug("Fetching state from AWS S3 bucket...")
@@ -416,7 +416,7 @@ class RecceStateLoader:
 
             password = self.cloud_options.get("password")
             if password is None:
-                raise Exception(RECCE_CLOUD_PASSWORD_MISSING.error_message)
+                raise RecceException(RECCE_CLOUD_PASSWORD_MISSING.error_message)
         elif self.catalog == "preview":
             share_id = self.cloud_options.get("share_id")
             presigned_url = recce_cloud.get_presigned_url_by_share_id(
@@ -432,7 +432,7 @@ class RecceStateLoader:
                 return None
             elif response.status_code != 200:
                 self.error_message = response.text
-                raise Exception(
+                raise RecceException(
                     f"{response.status_code} Failed to download the state file from Recce Cloud. The password could be wrong."
                 )
             with open(tmp.name, "wb") as f:
@@ -452,7 +452,7 @@ class RecceStateLoader:
 
         rc, error_message = check_s3_bucket(s3_bucket_name)
         if rc is False:
-            raise Exception(error_message)
+            raise RecceException(error_message)
 
         with tempfile.NamedTemporaryFile() as tmp:
             try:
@@ -469,7 +469,7 @@ class RecceStateLoader:
     def _export_state_to_cloud(self) -> Tuple[Union[str, None], str]:
         if self.catalog == "github":
             if (self.pr_info is None) or (self.pr_info.id is None) or (self.pr_info.repository is None):
-                raise Exception("Cannot get the pull request information from GitHub.")
+                raise RecceException("Cannot get the pull request information from GitHub.")
         elif self.catalog == "preview":
             pass
 
@@ -540,7 +540,7 @@ class RecceStateLoader:
 
         rc, error_message = check_s3_bucket(s3_bucket_name)
         if rc is False:
-            raise Exception(error_message)
+            raise RecceException(error_message)
 
         with tempfile.NamedTemporaryFile() as tmp:
             self._export_state_to_file(tmp.name, file_type=SupportedFileTypes.GZIP)
@@ -568,7 +568,7 @@ class RecceStateLoader:
             return metadata
         except botocore.exceptions.ClientError as e:
             self.error_message = e.response.get("Error", {}).get("Message")
-            raise Exception("Failed to get artifact metadata from Recce Cloud.")
+            raise RecceException("Failed to get artifact metadata from Recce Cloud.")
 
     def _export_state_to_file(
         self, file_path: Optional[str] = None, file_type: SupportedFileTypes = SupportedFileTypes.FILE
@@ -599,10 +599,10 @@ class RecceCloudStateManager:
         self.github_token = self.cloud_options.get("github_token")
 
         if not self.github_token:
-            raise Exception(RECCE_CLOUD_TOKEN_MISSING.error_message)
+            raise RecceException(RECCE_CLOUD_TOKEN_MISSING.error_message)
         self.pr_info = fetch_pr_metadata(cloud=True, github_token=self.github_token)
         if self.pr_info.id is None:
-            raise Exception("Cannot get the pull request information from GitHub.")
+            raise RecceException("Cannot get the pull request information from GitHub.")
 
     def verify(self) -> bool:
         if self.github_token is None:
@@ -675,7 +675,7 @@ class RecceCloudStateManager:
 
         rc, error_message = check_s3_bucket(s3_bucket_name)
         if rc is False:
-            raise Exception(error_message)
+            raise RecceException(error_message)
 
         with tempfile.NamedTemporaryFile() as tmp:
             state.to_file(tmp.name, file_type=SupportedFileTypes.GZIP)
@@ -693,7 +693,7 @@ class RecceCloudStateManager:
 
     def upload_state_to_cloud(self, state: RecceState) -> Union[str, None]:
         if (self.pr_info is None) or (self.pr_info.id is None) or (self.pr_info.repository is None):
-            raise Exception("Cannot get the pull request information from GitHub.")
+            raise RecceException("Cannot get the pull request information from GitHub.")
 
         checks = state.checks
 
@@ -718,7 +718,7 @@ class RecceCloudStateManager:
 
         rc, error_message = check_s3_bucket(s3_bucket_name)
         if rc is False:
-            raise Exception(error_message)
+            raise RecceException(error_message)
 
         response = s3_client.get_object(Bucket=s3_bucket_name, Key=s3_bucket_key)
         byte_stream = io.BytesIO(response["Body"].read())
@@ -745,13 +745,13 @@ class RecceCloudStateManager:
 
         password = self.cloud_options.get("password")
         if password is None:
-            raise Exception(RECCE_CLOUD_PASSWORD_MISSING.error_message)
+            raise RecceException(RECCE_CLOUD_PASSWORD_MISSING.error_message)
 
         headers = s3_sse_c_headers(password)
         response = requests.get(presigned_url, headers=headers)
 
         if response.status_code != 200:
-            raise Exception(
+            raise RecceException(
                 f"{response.status_code} Failed to download the state file from Recce Cloud. The password could be wrong."
             )
 
@@ -767,7 +767,7 @@ class RecceCloudStateManager:
 
     def download_state_from_cloud(self, filepath: str) -> Union[str, None]:
         if (self.pr_info is None) or (self.pr_info.id is None) or (self.pr_info.repository is None):
-            raise Exception("Cannot get the pull request information from GitHub.")
+            raise RecceException("Cannot get the pull request information from GitHub.")
 
         if self.cloud_options.get("host", "").startswith("s3://"):
             logger.debug("Download state file from AWS S3 bucket...")
