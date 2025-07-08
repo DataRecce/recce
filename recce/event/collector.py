@@ -138,6 +138,7 @@ class Collector:
     @contextmanager
     def load_json(self):
         with portalocker.Lock(self._unsend_events_file, "r+", timeout=5) as f:
+            o = None
             try:
                 o = json.loads(f.read())
                 yield o
@@ -147,7 +148,8 @@ class Collector:
             finally:
                 f.seek(0)
                 f.truncate()
-                f.write(json.dumps(o))
+                if o is not None:
+                    f.write(json.dumps(o))
 
     def send_events(self):
         with self.load_json() as o:
