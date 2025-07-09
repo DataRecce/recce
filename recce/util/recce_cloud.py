@@ -129,7 +129,8 @@ class RecceCloud:
         data = None
         # Only provide metadata for upload requests
         if method == PresignedUrlMethod.UPLOAD:
-            data = {"metadata": metadata} if metadata else None
+            # Covert metadata values to strings to ensure JSON serializability
+            data = {"metadata": {key: str(value) for key, value in metadata.items()}} if metadata else None
         response = self._request(
             "POST",
             api_url,
