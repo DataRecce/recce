@@ -304,13 +304,17 @@ export function PrivateLineageView(
       return new Set<string>();
     }
 
-    if (cll) {
-      return new Set([...Object.keys(cll.current.nodes), ...Object.keys(cll.current.columns)]);
-    }
-
     let highlightedModels: Set<string> = new Set<string>();
-
-    if (selectMode === "action_result") {
+    if (cll) {
+      for (const [nodeId, node] of Object.entries(cll.current.nodes)) {
+        if (node.impacted !== false) {
+          highlightedModels.add(nodeId);
+        }
+      }
+      for (const columnId of Object.keys(cll.current.columns)) {
+        highlightedModels.add(columnId);
+      }
+    } else if (selectMode === "action_result") {
       const nodeIds = Object.keys(multiNodeAction.actionState.actions);
       highlightedModels = new Set(nodeIds);
     } else if (focusedNode) {
