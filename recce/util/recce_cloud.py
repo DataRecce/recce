@@ -82,8 +82,9 @@ class RecceCloud:
         self,
         method: PresignedUrlMethod,
         share_id: str,
+        metadata: dict = None,
     ) -> str:
-        response = self._fetch_presigned_url_by_share_id(method, share_id)
+        response = self._fetch_presigned_url_by_share_id(method, share_id, metadata=metadata)
         return response.get("presigned_url")
 
     def get_download_presigned_url_by_github_repo_with_tags(
@@ -122,6 +123,7 @@ class RecceCloud:
         self,
         method: PresignedUrlMethod,
         share_id: str,
+        metadata: dict = None,
     ):
         api_url = f"{self.base_url}/shares/{share_id}/presigned/{method}"
         response = self._request("POST", api_url)
