@@ -46,6 +46,7 @@ def assert_model(
     result: CllData,
     node_id,
     change_category=None,
+    impacted=None,
     parents=None,
 ):
     entry = result.nodes.get(node_id)
@@ -55,6 +56,8 @@ def assert_model(
     assert (
         entry.change_category == change_category
     ), f"Node {node_id} change category mismatch: expected {change_category}, got {entry.change_category}"
+
+    assert (entry.impacted == impacted), f"Node {node_id} impacted status mismatch: expected {impacted}, got {entry.impacted}"
 
 
 def assert_cll_contain_nodes(cll_data: CllData, nodes):
@@ -391,13 +394,14 @@ def test_impact_radius_with_change_analysis_no_cll(dbt_test_helper):
     # breaking
     result = adapter.get_cll(change_analysis=True, no_cll=True, no_upstream=True)
     assert_cll_contain_nodes(result, ["model.model1", "model.model2", "model.model3", "model.model4"])
-    assert_model(result, "model.model1", parents=[], change_category="non_breaking")
-    assert_model(result, "model.model2", parents=[], change_category="breaking")
-    assert_model(result, "model.model3", parents=["model.model2"], change_category=None)
-    assert_model(result, "model.model4", parents=["model.model2"], change_category="partial_breaking")
+    assert_model(result, "model.model1", parents=[], change_category="non_breaking", impacted=False)
+    assert_model(result, "model.model2", parents=[], change_category="breaking", impacted=True)
+    assert_model(result, "model.model3", parents=["model.model2"], change_category=None, impacted=True)
+    assert_model(result, "model.model4", parents=["model.model2"], change_category="partial_breaking", impacted=True)
 
 
 def test_impact_radius_with_change_analysis_no_cll_2(dbt_test_helper):
+    # partial breaking
     dbt_test_helper.create_model(
         "model1",
         unique_id="model.model1",
@@ -406,6 +410,7 @@ def test_impact_radius_with_change_analysis_no_cll_2(dbt_test_helper):
         curr_columns={"c": "int"},
         base_columns={"c": "int"},
     )
+    # breaking
     dbt_test_helper.create_model(
         "model2",
         unique_id="model.model2",
@@ -415,6 +420,7 @@ def test_impact_radius_with_change_analysis_no_cll_2(dbt_test_helper):
         base_columns={"c": "int", "y": "int"},
         depends_on=["model.model1"],
     )
+    # no change
     dbt_test_helper.create_model(
         "model3",
         unique_id="model.model3",
@@ -424,6 +430,7 @@ def test_impact_radius_with_change_analysis_no_cll_2(dbt_test_helper):
         base_columns={"c": "int"},
         depends_on=["model.model2"],
     )
+    # partial breaking
     dbt_test_helper.create_model(
         "model4",
         unique_id="model.model4",
@@ -433,6 +440,7 @@ def test_impact_radius_with_change_analysis_no_cll_2(dbt_test_helper):
         base_columns={"year": "int"},
         depends_on=["model.model2"],
     )
+    # no change
     dbt_test_helper.create_model(
         "model5",
         unique_id="model.model5",
@@ -448,11 +456,11 @@ def test_impact_radius_with_change_analysis_no_cll_2(dbt_test_helper):
     # breaking
     result = adapter.get_cll(change_analysis=True, no_cll=True, no_upstream=True)
     assert_cll_contain_nodes(result, ["model.model1", "model.model2", "model.model3", "model.model4", "model.model5"])
-    assert_model(result, "model.model1", parents=[], change_category="partial_breaking")
-    assert_model(result, "model.model2", parents=["model.model1"], change_category="breaking")
-    assert_model(result, "model.model3", parents=["model.model2"], change_category=None)
-    assert_model(result, "model.model4", parents=["model.model2"], change_category="partial_breaking")
-    assert_model(result, "model.model5", parents=["model.model1"])
+    assert_model(result, "model.model1", parents=[], change_category="partial_breaking", impacted=True)
+    assert_model(result, "model.model2", parents=["model.model1"], change_category="breaking", impacted=True)
+    assert_model(result, "model.model3", parents=["model.model2"], change_category=None, impacted=True)
+    assert_model(result, "model.model4", parents=["model.model2"], change_category="partial_breaking", impacted=True)
+    assert_model(result, "model.model5", parents=["model.model1"], impacted=True)
 
 
 def test_impact_radius_with_change_analysis_with_cll(dbt_test_helper):
@@ -506,13 +514,14 @@ def test_impact_radius_with_change_analysis_with_cll(dbt_test_helper):
     result = adapter.get_cll(change_analysis=True, no_upstream=True)
     assert_cll_contain_nodes(result, ["model.model1", "model.model2", "model.model3", "model.model4"])
     assert_cll_contain_columns(result, [("model.model4", "year")])
-    assert_model(result, "model.model1", parents=[], change_category="non_breaking")
-    assert_model(result, "model.model2", parents=[], change_category="breaking")
-    assert_model(result, "model.model3", parents=["model.model2"], change_category=None)
-    assert_model(result, "model.model4", parents=["model.model2"], change_category="partial_breaking")
+    assert_model(result, "model.model1", parents=[], change_category="non_breaking", impacted=False)
+    assert_model(result, "model.model2", parents=[], change_category="breaking", impacted=True)
+    assert_model(result, "model.model3", parents=["model.model2"], change_category=None, impacted=True)
+    assert_model(result, "model.model4", parents=["model.model2"], change_category="partial_breaking", impacted=True)
 
 
 def test_impact_radius_with_change_analysis_with_cll_added_removed(dbt_test_helper):
+    # rename model
     dbt_test_helper.create_model(
         "model1",
         unique_id="model.model1",
@@ -525,6 +534,7 @@ def test_impact_radius_with_change_analysis_with_cll_added_removed(dbt_test_help
         curr_sql="select 1 as c",
         curr_columns={"c": "int"},
     )
+    # change upstream
     dbt_test_helper.create_model(
         "model2",
         unique_id="model.model2",
@@ -542,7 +552,7 @@ def test_impact_radius_with_change_analysis_with_cll_added_removed(dbt_test_help
 
     adapter: DbtAdapter = dbt_test_helper.context.adapter
     result = adapter.get_cll(change_analysis=True, no_upstream=True)
-    assert_model(result, "model.model2", parents=[], change_category="breaking")
+    assert_model(result, "model.model2", parents=[], change_category="breaking", impacted=True)
     assert_column(result, "model.model1_v2", "c", transformation_type="source", change_status="added", parents=[])
     assert_cll_contain_nodes(result, ["model.model1_v2", "model.model2"])
     assert_cll_contain_columns(result, [("model.model1_v2", "c"), ("model.model2", "c")])
@@ -640,7 +650,8 @@ def test_impact_radius_by_node_with_cll(dbt_test_helper):
     adapter: DbtAdapter = dbt_test_helper.context.adapter
 
     result = adapter.get_cll(node_id="model.model2", change_analysis=True, no_upstream=True)
-    assert_model(result, "model.model2", parents=[], change_category="partial_breaking")
+    assert_model(result, "model.model2", parents=[], change_category="partial_breaking", impacted=False)
+    assert_model(result, "model.model3", parents=[('model.model2', 'y')], impacted=True)
     assert_column(result, "model.model2", "y", transformation_type="source", parents=[], change_status="modified")
     assert_cll_contain_nodes(result, ["model.model2", "model.model3"])
     assert_cll_contain_columns(result, [("model.model2", "y"), ("model.model4", "y")])
@@ -648,7 +659,7 @@ def test_impact_radius_by_node_with_cll(dbt_test_helper):
     result = adapter.get_cll(node_id="model.model1", change_analysis=True, no_upstream=True)
     assert_cll_contain_nodes(result, ["model.model1"])
     assert_cll_contain_columns(result, [("model.model1", "d")])
-    assert_model(result, "model.model1", parents=[], change_category="non_breaking")
+    assert_model(result, "model.model1", parents=[], change_category="non_breaking", impacted=False)
     assert_column(result, "model.model1", "d", transformation_type="source", parents=[], change_status="added")
 
 
@@ -694,9 +705,10 @@ def test_impact_radius_by_node_with_cll_2(dbt_test_helper):
     adapter: DbtAdapter = dbt_test_helper.context.adapter
 
     result = adapter.get_cll(node_id="model.model2", change_analysis=True, no_upstream=True)
-    assert_model(result, "model.model2", parents=[], change_category="breaking")
+    assert_model(result, "model.model2", parents=[], change_category="breaking", impacted=True)
     assert_column(result, "model.model2", "y", transformation_type="source", parents=[], change_status="modified")
-    assert_model(result, "model.model3", parents=["model.model2", ("model.model2", "y")])
+    assert_model(result, "model.model3", parents=["model.model2", ("model.model2", "y")], impacted=True)
+    assert_model(result, "model.model4", parents=["model.model2"], impacted=True)
     assert_column(result, "model.model4", "y", transformation_type="passthrough", parents=[("model.model2", "y")])
     assert_cll_contain_nodes(result, ["model.model2", "model.model3", "model.model4"])
     assert_cll_contain_columns(result, [("model.model2", "d"), ("model.model2", "y"), ("model.model4", "y")])

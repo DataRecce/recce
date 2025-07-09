@@ -151,6 +151,9 @@ class CllNode(BaseModel):
     # Column to column dependencies
     columns: Dict[str, CllColumn] = Field(default_factory=dict)
 
+    # If the node is impacted. Only used if option 'change_analysis' is set
+    impacted: Optional[bool] = None
+
     @classmethod
     def build_cll_node(cls, manifest, resource_key, node_id) -> Optional["CllNode"]:
         resources = getattr(manifest, resource_key)

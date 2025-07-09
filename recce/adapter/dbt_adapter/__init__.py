@@ -1154,6 +1154,10 @@ class DbtAdapter(BaseAdapter):
                 node.columns = {
                     k: v for k, v in node.columns.items() if v.id in result_node_ids or v.id in extra_node_ids
                 }
+
+                if change_analysis:
+                    node.impacted = node.id in result_node_ids
+
             parent_map, child_map = filter_dependency_maps(parent_map, child_map, result_node_ids)
 
         cll_tracker.end_column_lineage()
