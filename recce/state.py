@@ -448,7 +448,13 @@ class RecceStateLoader:
 
         s3_client = boto3.client("s3")
         s3_bucket_name = self.cloud_options.get("host").replace("s3://", "")
-        s3_bucket_key = f"{self.catalog}/{self.pr_info.repository}/pulls/{self.pr_info.id}/{RECCE_STATE_COMPRESSED_FILE}"
+
+        if self.catalog == "github":
+            s3_bucket_key = f"{self.catalog}/{self.pr_info.repository}/pulls/{self.pr_info.id}/{RECCE_STATE_COMPRESSED_FILE}"
+        elif self.catalog == "preview":
+            s3_bucket_key = f"{self.catalog}/{self.share_id}/{RECCE_STATE_FILE}"
+        else:
+            raise RecceException(f'Unsupported catalog type. {self.catalog} is not supported.')
 
         rc, error_message = check_s3_bucket(s3_bucket_name)
         if rc is False:
@@ -536,7 +542,12 @@ class RecceStateLoader:
 
         s3_client = boto3.client("s3")
         s3_bucket_name = self.cloud_options.get("host").replace("s3://", "")
-        s3_bucket_key = f"{self.catalog}/{self.pr_info.repository}/pulls/{self.pr_info.id}/{RECCE_STATE_COMPRESSED_FILE}"
+        if self.catalog == "github":
+            s3_bucket_key = f"{self.catalog}/{self.pr_info.repository}/pulls/{self.pr_info.id}/{RECCE_STATE_COMPRESSED_FILE}"
+        elif self.catalog == "preview":
+            s3_bucket_key = f"{self.catalog}/{self.share_id}/{RECCE_STATE_FILE}"
+        else:
+            raise RecceException(f'Unsupported catalog type. {self.catalog} is not supported.')
 
         rc, error_message = check_s3_bucket(s3_bucket_name)
         if rc is False:

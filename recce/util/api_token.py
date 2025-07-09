@@ -19,7 +19,7 @@ def show_invalid_api_token_message():
     console.print("[[red]Error[/red]] Invalid Recce Cloud API token.")
     console.print("Please associate with your Recce Cloud account by the following command 'recce connect-to-cloud'.")
     console.print(
-        "For more information, please visit: https://docs.reccehq.com/recce-cloud/share-recce-session-securely/")
+        "For more information, please visit: https://docs.reccehq.com/recce-cloud/share-recce-session-securely/#configure-recce-cloud-association-manually")
 
 
 def prepare_api_token(
