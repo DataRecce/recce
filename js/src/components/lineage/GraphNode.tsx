@@ -140,7 +140,7 @@ const GraphNodeTitle = ({
       <Tooltip
         content={resourceType === "model" ? name : `${name} (${resourceType})`}
         positioning={{ placement: "top" }}>
-        <>{name}</>
+        <span>{name}</span>
       </Tooltip>
     </Box>
   );
@@ -193,7 +193,6 @@ export function GraphNode(nodeProps: GraphNodeProps) {
         color: "gray.400",
         backgroundColor: "gray.100",
       };
-  const borderStyle = isShowingChangeAnalysis && isNonBreakingChange ? "dashed" : "solid";
 
   // border width and color
   const borderWidth = "2px";
@@ -276,7 +275,6 @@ export function GraphNode(nodeProps: GraphNodeProps) {
       <Flex
         borderColor={borderColor}
         borderWidth={borderWidth}
-        borderStyle={borderStyle}
         borderTopRadius={8}
         borderBottomRadius={showColumns ? 0 : 8}
         backgroundColor={nodeBackgroundColor}
@@ -286,7 +284,6 @@ export function GraphNode(nodeProps: GraphNodeProps) {
           padding={interactive ? "8px" : "2px"}
           borderRightWidth={borderWidth}
           borderColor={selectMode === "selecting" ? "#00000020" : borderColor}
-          borderStyle={borderStyle}
           alignItems="top"
           visibility={showContent ? "inherit" : "hidden"}>
           {interactive && (
@@ -406,7 +403,6 @@ export function GraphNode(nodeProps: GraphNodeProps) {
           borderColor={borderColor}
           borderWidth={borderWidth}
           borderTopWidth={0}
-          borderStyle={borderStyle}
           borderBottomRadius={8}>
           <Box height={`${columnSet.size * COLUMN_HEIGHT}px`} overflow="auto"></Box>
         </Box>

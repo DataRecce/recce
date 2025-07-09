@@ -41,7 +41,7 @@ export interface BlobHookReturn {
   isErrored: boolean;
   isSuccess: boolean;
   toImage: () => void;
-  ref: RefObject<HTMLElement>;
+  ref: RefObject<HTMLElement | null>;
 }
 
 export function useCopyToClipboard({
