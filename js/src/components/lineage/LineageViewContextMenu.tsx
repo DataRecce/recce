@@ -109,6 +109,7 @@ export const ModelNodeContextMenu = ({
   const { isActionAvailable } = useLineageGraphContext();
   const { data: flag } = useRecceServerFlag();
   const singleEnv = flag?.single_env_onboarding ?? false;
+  const isQueryDisabled = featureToggles.disableDatabaseQuery;
 
   // query
   const { primaryKey } = useModelColumns((node?.data as LineageGraphNode | undefined)?.name);
@@ -162,7 +163,7 @@ export const ModelNodeContextMenu = ({
     menuItems.push({
       label: "Query",
       itemIcon: <Icon as={entry?.icon} />,
-      isDisabled: featureToggles.disableDatabaseQuery,
+      isDisabled: isQueryDisabled,
       action: () => {
         setSqlQuery(query);
         if (isActionAvailable("query_diff_with_primary_key")) {
@@ -186,7 +187,7 @@ export const ModelNodeContextMenu = ({
         menuItems.push({
           label: "Query Related Columns",
           itemIcon: <Icon as={entry?.icon} />,
-          isDisabled: featureToggles.disableDatabaseQuery,
+          isDisabled: isQueryDisabled,
           action: () => {
             const query = `select \n  ${Array.from(allColumns).join(",\n  ")}\nfrom {{ ref("${modelNode.name}") }}`;
             setSqlQuery(query);
@@ -214,7 +215,7 @@ export const ModelNodeContextMenu = ({
           menuItems.push({
             label: "Query Modified Columns",
             itemIcon: <Icon as={entry?.icon} />,
-            isDisabled: featureToggles.disableDatabaseQuery,
+            isDisabled: isQueryDisabled,
             action: () => {
               const query = `select \n  ${Array.from(allColumns).join(",\n  ")}\nfrom {{ ref("${modelNode.name}") }}`;
               setSqlQuery(query);
@@ -234,7 +235,7 @@ export const ModelNodeContextMenu = ({
     menuItems.push({
       label: entry?.title ?? "Row count",
       itemIcon: <Icon as={entry?.icon} />,
-      isDisabled: featureToggles.disableDatabaseQuery,
+      isDisabled: isQueryDisabled,
       action: () => {
         runAction(
           singleEnv ? "row_count" : "row_count_diff",
@@ -249,7 +250,7 @@ export const ModelNodeContextMenu = ({
     menuItems.push({
       label: entry?.title ?? "Profile",
       itemIcon: <Icon as={entry?.icon} />,
-      isDisabled: featureToggles.disableDatabaseQuery,
+      isDisabled: isQueryDisabled,
       action: () => {
         const columns = Array.from(getNodeColumnSet(node.id));
         runAction(
@@ -266,7 +267,7 @@ export const ModelNodeContextMenu = ({
       menuItems.push({
         label: entry?.title ?? "Value Diff",
         itemIcon: <Icon as={entry?.icon} />,
-        isDisabled: featureToggles.disableDatabaseQuery,
+        isDisabled: isQueryDisabled,
         action: () => {
           const columns = Array.from(getNodeColumnSet(node.id));
           runAction(
@@ -333,6 +334,7 @@ export const ColumnNodeContextMenu = ({
   const { featureToggles } = useRecceInstanceContext();
   const { data: flag } = useRecceServerFlag();
   const singleEnv = flag?.single_env_onboarding ?? false;
+  const isQueryDisabled = featureToggles.disableDatabaseQuery;
 
   if (node?.data === undefined) {
     return <></>;
@@ -378,8 +380,7 @@ export const ColumnNodeContextMenu = ({
     label: entry?.title ?? "Profile",
     itemIcon: <Icon as={entry?.icon} />,
     action: handleProfileDiff,
-    isDisabled:
-      addedOrRemoved || !isActionAvailable("profile_diff") || featureToggles.disableDatabaseQuery,
+    isDisabled: addedOrRemoved || !isActionAvailable("profile_diff") || isQueryDisabled,
   });
 
   if (!singleEnv) {
@@ -391,14 +392,14 @@ export const ColumnNodeContextMenu = ({
       isDisabled:
         addedOrRemoved ||
         (columnType ? !supportsHistogramDiff(columnType) : true) ||
-        featureToggles.disableDatabaseQuery,
+        isQueryDisabled,
     });
     entry = findByRunType("top_k_diff");
     menuItems.push({
       label: entry?.title ?? "Top-K Diff",
       itemIcon: <Icon as={entry?.icon} />,
       action: handleTopkDiff,
-      isDisabled: addedOrRemoved || featureToggles.disableDatabaseQuery,
+      isDisabled: addedOrRemoved || isQueryDisabled,
     });
   }
 
