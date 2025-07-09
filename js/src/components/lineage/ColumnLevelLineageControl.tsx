@@ -10,12 +10,16 @@ import {
   Button,
   Portal,
   Box,
+  Spinner,
 } from "@chakra-ui/react";
 import { useLineageViewContextSafe } from "./LineageViewContext";
 import { useRecceServerFlag } from "@/lib/hooks/useRecceServerFlag";
 import { FaRegDotCircle } from "react-icons/fa";
 import { useState } from "react";
 import { PiInfo, PiX } from "react-icons/pi";
+import { UseMutationResult } from "@tanstack/react-query";
+import { CllInput, ColumnLineageData } from "@/lib/api/cll";
+import { Tooltip } from "../ui/tooltip";
 
 const AnalyzeChangeHint = ({ ml }: { ml?: number }) => {
   const [hovered, setHovered] = useState(false);
@@ -166,7 +170,11 @@ const ModeMessage = () => {
   }
 };
 
-export const ColumnLevelLineageControl = () => {
+export const ColumnLevelLineageControl = ({
+  action,
+}: {
+  action: UseMutationResult<ColumnLineageData, Error, CllInput>;
+}) => {
   const { showColumnLevelLineage, resetColumnLevelLineage, interactive, viewOptions } =
     useLineageViewContextSafe();
   const { data: flagData } = useRecceServerFlag();
@@ -189,7 +197,6 @@ export const ColumnLevelLineageControl = () => {
           </Button>
         </Box>
       )}
-
       {viewOptions.column_level_lineage && (
         <Flex
           borderRadius="md"
@@ -201,16 +208,30 @@ export const ColumnLevelLineageControl = () => {
           p="0 0.625rem"
           alignItems="center">
           <ModeMessage />
-          <IconButton
-            variant="ghost"
-            size="xs"
-            ml="2"
-            aria-label="Reset Column Level Lineage"
-            onClick={() => {
-              void resetColumnLevelLineage();
-            }}>
-            <PiX size="10px" />
-          </IconButton>
+          {action.isError && (
+            <Tooltip
+              content={`Error: ${action.error.message}`}
+              positioning={{ placement: "bottom" }}>
+              <Text as="span" color="red.500" ml="2px" display="inline-flex" alignItems="center">
+                <Icon as={PiInfo} color="red.500" boxSize="14px" />
+              </Text>
+            </Tooltip>
+          )}
+
+          {action.isPending ? (
+            <Spinner size="xs" ml="2px" />
+          ) : (
+            <IconButton
+              variant="ghost"
+              size="xs"
+              ml="2px"
+              aria-label="Reset Column Level Lineage"
+              onClick={() => {
+                void resetColumnLevelLineage();
+              }}>
+              <PiX size="10px" />
+            </IconButton>
+          )}
         </Flex>
       )}
     </Flex>

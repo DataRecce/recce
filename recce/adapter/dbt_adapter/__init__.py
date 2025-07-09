@@ -1323,7 +1323,7 @@ class DbtAdapter(BaseAdapter):
             if hasattr(found.depends_on, "nodes"):
                 parent_list = found.depends_on.nodes
 
-            if catalog is not None and unique_id in catalog.nodes:
+            if catalog is not None and node is not None and unique_id in catalog.nodes:
                 columns = {}
                 for col_name, col_metadata in catalog.nodes[unique_id].columns.items():
                     column_id = f"{unique_id}_{col_name}"
@@ -1338,7 +1338,7 @@ class DbtAdapter(BaseAdapter):
             node = CllNode.build_cll_node(manifest, "sources", node_id)
             parent_list = []
 
-            if catalog is not None and unique_id in catalog.sources:
+            if catalog is not None and node is not None and unique_id in catalog.sources:
                 columns = {}
                 for col_name, col_metadata in catalog.sources[unique_id].columns.items():
                     column_id = f"{unique_id}_{col_name}"

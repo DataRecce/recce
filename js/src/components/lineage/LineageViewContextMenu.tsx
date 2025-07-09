@@ -105,6 +105,7 @@ export const ModelNodeContextMenu = ({
     showColumnLevelLineage,
   } = useLineageViewContextSafe();
   const { runAction } = useRecceActionContext();
+  const { featureToggles } = useRecceInstanceContext();
   const { isActionAvailable } = useLineageGraphContext();
   const { data: flag } = useRecceServerFlag();
   const singleEnv = flag?.single_env_onboarding ?? false;
@@ -143,7 +144,7 @@ export const ModelNodeContextMenu = ({
   if (!selectMode && resourceType && ["model", "seed", "snapshot"].includes(resourceType)) {
     if (menuItems.length > 0) {
       menuItems.push({
-        label: "select group",
+        label: "select group one",
         isSeparator: true,
       });
     }
@@ -161,6 +162,7 @@ export const ModelNodeContextMenu = ({
     menuItems.push({
       label: "Query",
       itemIcon: <Icon as={entry?.icon} />,
+      isDisabled: featureToggles.disableDatabaseQuery,
       action: () => {
         setSqlQuery(query);
         if (isActionAvailable("query_diff_with_primary_key")) {
@@ -184,6 +186,7 @@ export const ModelNodeContextMenu = ({
         menuItems.push({
           label: "Query Related Columns",
           itemIcon: <Icon as={entry?.icon} />,
+          isDisabled: featureToggles.disableDatabaseQuery,
           action: () => {
             const query = `select \n  ${Array.from(allColumns).join(",\n  ")}\nfrom {{ ref("${modelNode.name}") }}`;
             setSqlQuery(query);
@@ -211,6 +214,7 @@ export const ModelNodeContextMenu = ({
           menuItems.push({
             label: "Query Modified Columns",
             itemIcon: <Icon as={entry?.icon} />,
+            isDisabled: featureToggles.disableDatabaseQuery,
             action: () => {
               const query = `select \n  ${Array.from(allColumns).join(",\n  ")}\nfrom {{ ref("${modelNode.name}") }}`;
               setSqlQuery(query);
@@ -230,6 +234,7 @@ export const ModelNodeContextMenu = ({
     menuItems.push({
       label: entry?.title ?? "Row count",
       itemIcon: <Icon as={entry?.icon} />,
+      isDisabled: featureToggles.disableDatabaseQuery,
       action: () => {
         runAction(
           singleEnv ? "row_count" : "row_count_diff",
@@ -244,6 +249,7 @@ export const ModelNodeContextMenu = ({
     menuItems.push({
       label: entry?.title ?? "Profile",
       itemIcon: <Icon as={entry?.icon} />,
+      isDisabled: featureToggles.disableDatabaseQuery,
       action: () => {
         const columns = Array.from(getNodeColumnSet(node.id));
         runAction(
@@ -260,6 +266,7 @@ export const ModelNodeContextMenu = ({
       menuItems.push({
         label: entry?.title ?? "Value Diff",
         itemIcon: <Icon as={entry?.icon} />,
+        isDisabled: featureToggles.disableDatabaseQuery,
         action: () => {
           const columns = Array.from(getNodeColumnSet(node.id));
           runAction(
@@ -275,7 +282,7 @@ export const ModelNodeContextMenu = ({
   if (!singleEnv) {
     if (menuItems.length > 0) {
       menuItems.push({
-        label: "select group",
+        label: "select group two",
         isSeparator: true,
       });
     }
@@ -323,6 +330,7 @@ export const ColumnNodeContextMenu = ({
 
   const { runAction } = useRecceActionContext();
   const { isActionAvailable } = useLineageGraphContext();
+  const { featureToggles } = useRecceInstanceContext();
   const { data: flag } = useRecceServerFlag();
   const singleEnv = flag?.single_env_onboarding ?? false;
 
@@ -370,7 +378,8 @@ export const ColumnNodeContextMenu = ({
     label: entry?.title ?? "Profile",
     itemIcon: <Icon as={entry?.icon} />,
     action: handleProfileDiff,
-    isDisabled: addedOrRemoved || !isActionAvailable("profile_diff"),
+    isDisabled:
+      addedOrRemoved || !isActionAvailable("profile_diff") || featureToggles.disableDatabaseQuery,
   });
 
   if (!singleEnv) {
@@ -379,14 +388,17 @@ export const ColumnNodeContextMenu = ({
       label: entry?.title ?? "Histogram Diff",
       itemIcon: <Icon as={entry?.icon} />,
       action: handleHistogramDiff,
-      isDisabled: addedOrRemoved || (columnType ? !supportsHistogramDiff(columnType) : true),
+      isDisabled:
+        addedOrRemoved ||
+        (columnType ? !supportsHistogramDiff(columnType) : true) ||
+        featureToggles.disableDatabaseQuery,
     });
     entry = findByRunType("top_k_diff");
     menuItems.push({
       label: entry?.title ?? "Top-K Diff",
       itemIcon: <Icon as={entry?.icon} />,
       action: handleTopkDiff,
-      isDisabled: addedOrRemoved,
+      isDisabled: addedOrRemoved || featureToggles.disableDatabaseQuery,
     });
   }
 
