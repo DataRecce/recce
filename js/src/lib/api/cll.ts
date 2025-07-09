@@ -23,6 +23,7 @@ export interface CllNodeData {
   raw_code?: string;
   change_status?: "added" | "removed" | "modified";
   change_category?: "breaking" | "non_breaking" | "partial_breaking" | "unknown";
+  impacted?: boolean;
   columns?: Record<string, NodeColumnData>;
 }
 
