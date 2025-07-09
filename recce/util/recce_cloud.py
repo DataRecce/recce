@@ -126,7 +126,13 @@ class RecceCloud:
         metadata: dict = None,
     ):
         api_url = f"{self.base_url}/shares/{share_id}/presigned/{method}"
-        response = self._request("POST", api_url)
+        response = self._request(
+            "POST",
+            api_url,
+            json={
+                "metadata": metadata,
+            },
+        )
         if response.status_code != 200:
             raise RecceCloudException(
                 message="Failed to {method} artifact {preposition} Recce Cloud.".format(
