@@ -81,6 +81,7 @@ import { BaseEnvironmentSetupNotification } from "./SingleEnvironmentQueryView";
 import { CllInput, ColumnLineageData, getCll } from "@/lib/api/cll";
 import { LineageViewContextMenu, useLineageViewContextMenu } from "./LineageViewContextMenu";
 import { toaster } from "@/components/ui/toaster";
+import { useMutation } from "@tanstack/react-query";
 
 export interface LineageViewProps {
   viewOptions?: LineageDiffViewOptions;
@@ -210,6 +211,9 @@ export function PrivateLineageView(
   const cllHistory = useRef<(CllInput | undefined)[]>([]).current;
 
   const [cll, setCll] = useState<ColumnLineageData | undefined>(undefined);
+  const actionGetCll = useMutation({
+    mutationFn: getCll,
+  });
   const [nodeColumnSetMap, setNodeColumSetMap] = useState<NodeColumnSetMap>({});
 
   const findNodeByName = (name: string) => {
@@ -381,7 +385,7 @@ export function PrivateLineageView(
       let cll: ColumnLineageData | undefined;
       if (viewOptions.column_level_lineage) {
         try {
-          cll = await getCll(viewOptions.column_level_lineage);
+          cll = await actionGetCll.mutateAsync(viewOptions.column_level_lineage);
         } catch (e) {
           if (e instanceof AxiosError) {
             const e2 = e as AxiosError<{ detail?: string }>;
@@ -579,7 +583,7 @@ export function PrivateLineageView(
     let cll: ColumnLineageData | undefined;
     if (newViewOptions.column_level_lineage) {
       try {
-        cll = await getCll(newViewOptions.column_level_lineage);
+        cll = await actionGetCll.mutateAsync(newViewOptions.column_level_lineage);
       } catch (e) {
         if (e instanceof AxiosError) {
           const e2 = e as AxiosError<{ detail?: string }>;
@@ -1069,7 +1073,7 @@ export function PrivateLineageView(
             </Panel>
             <Panel position="top-left">
               <Flex direction="column" gap="5px">
-                <ColumnLevelLineageControl />
+                <ColumnLevelLineageControl action={actionGetCll} />
                 {nodes.length == 0 && (
                   <Text fontSize="xl" color="grey" opacity={0.5}>
                     No nodes

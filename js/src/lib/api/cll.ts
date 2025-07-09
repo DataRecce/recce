@@ -43,15 +43,3 @@ export async function getCll(input: CllInput): Promise<ColumnLineageData> {
 
   return response.data;
 }
-
-export async function getImpactRadius(nodeId: string): Promise<ColumnLineageData> {
-  const params: ImpactRadiusParams = {
-    node_id: nodeId,
-  };
-  const response = await axiosClient.post<ImpactRadiusParams, AxiosResponse<ColumnLineageData>>(
-    "/api/impact-radius",
-    params,
-  );
-
-  return response.data;
-}
