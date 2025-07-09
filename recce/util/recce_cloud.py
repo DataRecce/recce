@@ -126,12 +126,14 @@ class RecceCloud:
         metadata: dict = None,
     ):
         api_url = f"{self.base_url}/shares/{share_id}/presigned/{method}"
+        data = None
+        # Only provide metadata for upload requests
+        if method == PresignedUrlMethod.UPLOAD:
+            data = {"metadata": metadata} if metadata else None
         response = self._request(
             "POST",
             api_url,
-            json={
-                "metadata": metadata,
-            },
+            json=data,
         )
         if response.status_code != 200:
             raise RecceCloudException(
