@@ -1085,7 +1085,7 @@ class DbtAdapter(BaseAdapter):
                 lineage_diff = self.get_lineage_diff()
                 for nid, nd in lineage_diff.diff.items():
                     if nd.change_status == "added":
-                        extra_node_ids.add(nid)
+                        anchor_node_ids.add(nid)
                         n = lineage_diff.current["nodes"].get(nid)
                         n_columns = n.get("columns", {})
                         for c in n_columns:
