@@ -9,7 +9,7 @@ from base64 import b64encode
 from dataclasses import dataclass
 from datetime import datetime
 from hashlib import md5, sha256
-from typing import Dict, List, Optional, Tuple, Union, Literal
+from typing import Dict, List, Literal, Optional, Tuple, Union
 from urllib.parse import urlencode
 
 import botocore.exceptions
@@ -204,14 +204,15 @@ class RecceStateLoader:
         self.state_lock = threading.Lock()
         self.state_etag = None
         self.pr_info = None
-        self.catalog: Literal["github", "preview"] = 'github'
+        self.catalog: Literal["github", "preview"] = "github"
         self.share_id = None
 
         if self.cloud_mode:
             if self.cloud_options.get("github_token"):
                 self.catalog = "github"
-                self.pr_info = fetch_pr_metadata(cloud=self.cloud_mode,
-                                                 github_token=self.cloud_options.get("github_token"))
+                self.pr_info = fetch_pr_metadata(
+                    cloud=self.cloud_mode, github_token=self.cloud_options.get("github_token")
+                )
                 if self.pr_info.id is None:
                     raise RecceException("Cannot get the pull request information from GitHub.")
             elif self.cloud_options.get("api_token"):
@@ -242,7 +243,9 @@ class RecceStateLoader:
                     return False
                 if self.cloud_options.get("share_id") is None:
                     self.error_message = "No share ID is provided for the preview catalog."
-                    self.hint_message = "Please provide a share URL in the command argument with option \"--share-url <share-url>\""
+                    self.hint_message = (
+                        'Please provide a share URL in the command argument with option "--share-url <share-url>"'
+                    )
                     return False
 
         else:
@@ -255,7 +258,7 @@ class RecceStateLoader:
 
     @property
     def token(self):
-        return self.cloud_options.get('github_token') or self.cloud_options.get('api_token')
+        return self.cloud_options.get("github_token") or self.cloud_options.get("api_token")
 
     @property
     def error_and_hint(self) -> (Union[str, None], Union[str, None]):
@@ -420,8 +423,7 @@ class RecceStateLoader:
         elif self.catalog == "preview":
             share_id = self.cloud_options.get("share_id")
             presigned_url = recce_cloud.get_presigned_url_by_share_id(
-                method=PresignedUrlMethod.DOWNLOAD,
-                share_id=share_id
+                method=PresignedUrlMethod.DOWNLOAD, share_id=share_id
             )
 
         with tempfile.NamedTemporaryFile() as tmp:
@@ -450,11 +452,13 @@ class RecceStateLoader:
         s3_bucket_name = self.cloud_options.get("host").replace("s3://", "")
 
         if self.catalog == "github":
-            s3_bucket_key = f"{self.catalog}/{self.pr_info.repository}/pulls/{self.pr_info.id}/{RECCE_STATE_COMPRESSED_FILE}"
+            s3_bucket_key = (
+                f"{self.catalog}/{self.pr_info.repository}/pulls/{self.pr_info.id}/{RECCE_STATE_COMPRESSED_FILE}"
+            )
         elif self.catalog == "preview":
             s3_bucket_key = f"{self.catalog}/{self.share_id}/{RECCE_STATE_FILE}"
         else:
-            raise RecceException(f'Unsupported catalog type. {self.catalog} is not supported.')
+            raise RecceException(f"Unsupported catalog type. {self.catalog} is not supported.")
 
         rc, error_message = check_s3_bucket(s3_bucket_name)
         if rc is False:
@@ -493,6 +497,8 @@ class RecceStateLoader:
             message = self._export_state_to_recce_cloud(metadata=metadata)
             metadata = self._get_metadata_from_recce_cloud()
             state_etag = metadata.get("etag") if metadata else None
+            if message:
+                logger.warning(message)
             return message, state_etag
 
     def _export_state_to_recce_cloud(self, metadata: dict = None) -> Union[str, None]:
@@ -513,6 +519,7 @@ class RecceStateLoader:
             presigned_url = RecceCloud(token=self.token).get_presigned_url_by_share_id(
                 method=PresignedUrlMethod.UPLOAD,
                 share_id=share_id,
+                metadata=metadata,
             )
         compress_passwd = self.cloud_options.get("password")
         if compress_passwd:
@@ -528,12 +535,13 @@ class RecceStateLoader:
             elif self.catalog == "preview":
                 file_type = SupportedFileTypes.FILE
             self._export_state_to_file(tmp.name, file_type=file_type)
+
             with open(tmp.name, "rb") as fd:
                 response = requests.put(presigned_url, data=fd.read(), headers=headers)
-            if response.status_code != 200:
+            if response.status_code not in [200, 204]:
                 self.error_message = response.text
                 return "Failed to upload the state file to Recce Cloud. Reason: " + response.text
-        return "The state file is uploaded to Recce Cloud."
+        return None
 
     def _export_state_to_s3_bucket(self, metadata: dict = None) -> Union[str, None]:
         import tempfile
@@ -543,11 +551,13 @@ class RecceStateLoader:
         s3_client = boto3.client("s3")
         s3_bucket_name = self.cloud_options.get("host").replace("s3://", "")
         if self.catalog == "github":
-            s3_bucket_key = f"{self.catalog}/{self.pr_info.repository}/pulls/{self.pr_info.id}/{RECCE_STATE_COMPRESSED_FILE}"
+            s3_bucket_key = (
+                f"{self.catalog}/{self.pr_info.repository}/pulls/{self.pr_info.id}/{RECCE_STATE_COMPRESSED_FILE}"
+            )
         elif self.catalog == "preview":
             s3_bucket_key = f"{self.catalog}/{self.share_id}/{RECCE_STATE_FILE}"
         else:
-            raise RecceException(f'Unsupported catalog type. {self.catalog} is not supported.')
+            raise RecceException(f"Unsupported catalog type. {self.catalog} is not supported.")
 
         rc, error_message = check_s3_bucket(s3_bucket_name)
         if rc is False:
@@ -563,8 +573,7 @@ class RecceStateLoader:
                 # Casting all the values under metadata to string
                 ExtraArgs={"Metadata": {k: str(v) for k, v in metadata.items()}},
             )
-        RecceCloud(token=self.token).update_github_pull_request_check(self.pr_info,
-                                                                      metadata)
+        RecceCloud(token=self.token).update_github_pull_request_check(self.pr_info, metadata)
         return f"The state file is uploaded to ' s3://{s3_bucket_name}/{s3_bucket_key}'"
 
     def _get_artifact_metadata_from_s3_bucket(self, artifact_name: str) -> Union[dict, None]:
@@ -698,8 +707,7 @@ class RecceCloudStateManager:
                 # Casting all the values under metadata to string
                 ExtraArgs={"Metadata": {k: str(v) for k, v in metadata.items()}},
             )
-        RecceCloud(token=self.github_token).update_github_pull_request_check(self.pr_info,
-                                                                             metadata)
+        RecceCloud(token=self.github_token).update_github_pull_request_check(self.pr_info, metadata)
         return f"The state file is uploaded to ' s3://{s3_bucket_name}/{s3_bucket_key}'"
 
     def upload_state_to_cloud(self, state: RecceState) -> Union[str, None]:
