@@ -119,9 +119,6 @@ def setup_server(app_state: AppState) -> RecceContext:
 
     log_load_state(command="server", single_env=single_env)
 
-    if app_state.lifetime is not None and app_state.lifetime > 0:
-        schedule_lifetime_termination(app_state)
-
     return ctx
 
 
@@ -135,8 +132,7 @@ def teardown_server(app_state: AppState, ctx: RecceContext):
 
 
 def setup_ready_only(app_state: AppState):
-    if app_state.lifetime is not None and app_state.lifetime > 0:
-        schedule_lifetime_termination(app_state)
+    pass
 
 
 def teardown_ready_only(app_state: AppState):
@@ -163,10 +159,13 @@ async def lifespan(fastapi: FastAPI):
 
     if app_state.command == "server":
         ctx = setup_server(app_state)
-    elif app_state.command == "read_only":
+    elif app_state.command == "read-only":
         setup_ready_only(app_state)
     elif app_state.command == "preview":
         ctx = setup_preview(app_state)
+
+    if app_state.lifetime is not None and app_state.lifetime > 0:
+        schedule_lifetime_termination(app_state)
 
     yield
 
