@@ -79,7 +79,7 @@ class RecceCloud:
         presigned_url = response.get("presigned_url")
         # Check if the CLI is running in Docker Recce Share Instance
         if os.environ.get("RECCE_SHARE_INSTANCE_ENV") == "docker" and presigned_url.startswith("http://localhost"):
-            # For local development, convert the presigned ULR from localhost to host.docker.internal
+            # For local development, convert the presigned URL from localhost to host.docker.internal
             presigned_url = presigned_url.replace("http://localhost", "http://host.docker.internal")
         return presigned_url
 
