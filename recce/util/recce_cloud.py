@@ -79,13 +79,7 @@ class RecceCloud:
         branch: str = None,
     ) -> str:
         response = self._fetch_presigned_url(method, repository, artifact_name, metadata, pr_id, branch)
-        presigned_url = response.get("presigned_url")
-        print(f"Presigned URL: {presigned_url}")
-        # Check if the CLI is running in Docker Recce Share Instance
-        if os.environ.get("RECCE_SHARE_INSTANCE_ENV") == "docker" and presigned_url.startswith(LOCALHOST_URL_PREFIX):
-            # For local development, convert the presigned URL from localhost to host.docker.internal
-            presigned_url = presigned_url.replace(LOCALHOST_URL_PREFIX, DOCKER_INTERNAL_URL_PREFIX)
-        return presigned_url
+        return response.get("presigned_url")
 
     def get_presigned_url_by_share_id(
         self,
@@ -94,7 +88,12 @@ class RecceCloud:
         metadata: dict = None,
     ) -> str:
         response = self._fetch_presigned_url_by_share_id(method, share_id, metadata=metadata)
-        return response.get("presigned_url")
+        presigned_url = response.get("presigned_url")
+        # Check if the CLI is running in Docker Recce Share Instance
+        if os.environ.get("RECCE_SHARE_INSTANCE_ENV") == "docker" and presigned_url.startswith(LOCALHOST_URL_PREFIX):
+            # For local development, convert the presigned URL from localhost to host.docker.internal
+            presigned_url = presigned_url.replace(LOCALHOST_URL_PREFIX, DOCKER_INTERNAL_URL_PREFIX)
+        return presigned_url
 
     def get_download_presigned_url_by_github_repo_with_tags(
         self, repository: str, artifact_name: str, branch: str = None
