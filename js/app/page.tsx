@@ -122,11 +122,11 @@ function RecceVersionBadge() {
 
   // Link to the release page on GitHub if the version is in the format of x.y.z
   return (
-    <Badge fontSize="sm" color="white/80" variant="outline">
+    <Badge fontSize="sm" color="white/80" variant="outline" textTransform="uppercase">
       <Link
         href={`https://github.com/DataRecce/recce/releases/tag/v${version}`}
         _hover={{ textDecoration: "none" }}>
-        {version} <LuExternalLink />
+        <Text color="white/80">{version}</Text>
       </Link>
     </Badge>
   );
@@ -166,29 +166,35 @@ function TopBar() {
                   color="white/80"
                   as={VscGitPullRequest}
                   boxSize="3"
+                  marginRight={0.5}
                   fontWeight="extrabold"
                   strokeWidth="1"
                 />
-                <Text color="white/80">{` #${String(prID)}`}</Text>
+                <Text color="white/80">{`#${String(prID)}`}</Text>
               </Link>
             </Box>
           </HStack>
         </Badge>
       )}
       {isDemoSite && prURL && demoPrId && (
-        <>
-          <Badge fontSize="sm" color="white/80" variant="outline">
-            <HStack>
-              <Box>demo mode</Box>
-              <Box borderLeft="1px" borderLeftColor="whiteAlpha.500" paddingLeft="8px">
-                <Link href={prURL} _hover={{ textDecoration: "none" }} target="_blank">
-                  <Icon as={VscGitPullRequest} boxSize="3" fontWeight="extrabold" strokeWidth="1" />
-                  {` #${demoPrId}`} <LuExternalLink />
-                </Link>
-              </Box>
-            </HStack>
-          </Badge>
-        </>
+        <Badge fontSize="sm" color="white/80" variant="outline" textTransform="uppercase">
+          <HStack>
+            <Box>demo mode</Box>
+            <Box borderLeftWidth="1px" borderLeftColor="white/80" paddingLeft="8px">
+              <Link href={prURL} _hover={{ textDecoration: "none" }} target="_blank">
+                <Icon
+                  color="white/80"
+                  as={VscGitPullRequest}
+                  boxSize="3"
+                  marginRight={0.5}
+                  fontWeight="extrabold"
+                  strokeWidth="1"
+                />
+                <Text color="white/80">{`#${demoPrId}`}</Text>
+              </Link>
+            </Box>
+          </HStack>
+        </Badge>
       )}
       <Spacer />
       <LinkIcon icon={FaGithub} href="https://github.com/DataRecce/recce" />
