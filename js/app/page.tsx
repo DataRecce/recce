@@ -166,10 +166,11 @@ function TopBar() {
                   color="white/80"
                   as={VscGitPullRequest}
                   boxSize="3"
+                  marginRight={0.5}
                   fontWeight="extrabold"
                   strokeWidth="1"
                 />
-                <Text color="white/80">{` #${String(prID)}`}</Text>
+                <Text color="white/80">{`#${String(prID)}`}</Text>
               </Link>
             </Box>
           </HStack>
@@ -185,10 +186,11 @@ function TopBar() {
                   color="white/80"
                   as={VscGitPullRequest}
                   boxSize="3"
+                  marginRight={0.5}
                   fontWeight="extrabold"
                   strokeWidth="1"
                 />
-                <Text color="white/80">{` #${demoPrId}`}</Text>
+                <Text color="white/80">{`#${demoPrId}`}</Text>
               </Link>
             </Box>
           </HStack>
