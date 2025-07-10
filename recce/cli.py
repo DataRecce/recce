@@ -27,6 +27,7 @@ from recce.util.onboarding_state import update_onboarding_state
 from recce.util.recce_cloud import (
     RecceCloudException,
 )
+
 from .core import RecceContext, set_default_context
 from .event.track import TrackCommand
 
@@ -155,7 +156,7 @@ recce_hidden_options = [
         "--share-url",
         help="The share URL triggers this instance.",
         type=click.STRING,
-        envvar="RECCE_SHARE_ URL",
+        envvar="RECCE_SHARE_URL",
         hidden=True,
     ),
 ]
@@ -1224,7 +1225,7 @@ def share(state_file, **kwargs):
 @click.option("--host", default="localhost", show_default=True, help="The host to bind to.")
 @click.option("--port", default=8000, show_default=True, help="The port to bind to.", type=int)
 @click.option("--lifetime", default=0, show_default=True, help="The lifetime of the server in seconds.", type=int)
-@click.option("--share-url", help="The share URL triggers this instance.", type=click.STRING, envvar="RECCE_SHARE_ URL")
+@click.option("--share-url", help="The share URL triggers this instance.", type=click.STRING, envvar="RECCE_SHARE_URL")
 @click.pass_context
 def read_only(ctx, state_file=None, **kwargs):
     # Invoke `recce server --mode read-only <state_file> ...
