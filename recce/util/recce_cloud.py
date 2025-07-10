@@ -12,6 +12,9 @@ from recce.pull_request import PullRequestInfo
 RECCE_CLOUD_API_HOST = os.environ.get("RECCE_CLOUD_API_HOST", "https://cloud.datarecce.io")
 RECCE_CLOUD_BASE_URL = os.environ.get("RECCE_CLOUD_BASE_URL", RECCE_CLOUD_API_HOST)
 
+DOCKER_INTERNAL_URL_PREFIX = "http://host.docker.internal"
+LOCALHOST_URL_PREFIX = "http://localhost"
+
 logger = logging.getLogger("uvicorn")
 
 
@@ -78,9 +81,9 @@ class RecceCloud:
         response = self._fetch_presigned_url(method, repository, artifact_name, metadata, pr_id, branch)
         presigned_url = response.get("presigned_url")
         # Check if the CLI is running in Docker Recce Share Instance
-        if os.environ.get("RECCE_SHARE_INSTANCE_ENV") == "docker" and presigned_url.startswith("http://localhost"):
+        if os.environ.get("RECCE_SHARE_INSTANCE_ENV") == "docker" and presigned_url.startswith(LOCALHOST_URL_PREFIX):
             # For local development, convert the presigned URL from localhost to host.docker.internal
-            presigned_url = presigned_url.replace("http://localhost", "http://host.docker.internal")
+            presigned_url = presigned_url.replace(LOCALHOST_URL_PREFIX, DOCKER_INTERNAL_URL_PREFIX)
         return presigned_url
 
     def get_presigned_url_by_share_id(
