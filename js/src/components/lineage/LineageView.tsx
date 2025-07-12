@@ -184,7 +184,14 @@ export function PrivateLineageView(
     shadowEffect: true,
     backgroundColor: "white",
     ignoreElements: (element: Element) => {
-      return element.className.includes(IGNORE_SCREENSHOT_CLASS);
+      try {
+        return element.classList.contains(IGNORE_SCREENSHOT_CLASS);
+      } catch {
+        if (element.className && typeof element.className === "string") {
+          return element.className.includes(IGNORE_SCREENSHOT_CLASS);
+        }
+        return false;
+      }
     },
     onSuccess: () => {
       successToast("Copied the Lineage View as an image to clipboard");
