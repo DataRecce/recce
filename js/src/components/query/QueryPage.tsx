@@ -59,7 +59,7 @@ const QueryModeToggle = () => {
       </Flex>
       <Switch.Root
         size="sm"
-        colorPalette="cyan"
+        colorPalette="iochmara"
         checked={isCustomQueries}
         onCheckedChange={handleToggle}>
         <Switch.HiddenInput />
@@ -161,7 +161,7 @@ export const QueryPage = () => {
           <Tooltip
             content="Please configure the base environment before running the diff"
             positioning={{ placement: "left" }}>
-            <Button colorPalette="cyan" disabled size="xs" fontSize="14px" marginTop={"16px"}>
+            <Button colorPalette="iochmara" disabled size="xs" fontSize="14px" marginTop={"16px"}>
               Run Diff
             </Button>
           </Tooltip>
@@ -194,7 +194,7 @@ export const QueryPage = () => {
         <Spacer />
         <QueryForm defaultPrimaryKeys={primaryKeys} onPrimaryKeysChange={setPrimaryKeys} />
         <Button
-          colorPalette="cyan"
+          colorPalette="iochmara"
           onClick={() => {
             runQuery("query_diff");
           }}

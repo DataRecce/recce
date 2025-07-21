@@ -5,7 +5,7 @@
   "engines": {
     "node": ">=20"
   },
-  "packageManager": "pnpm@10.12.4+sha512.5ea8b0deed94ed68691c9bad4c955492705c5eeb8a87ef86bc62c74a26b037b08ff9570f108b2e4dbd1dd1a9186fea925e527f141c648e85af45631074680184",
+  "packageManager": "pnpm@10.13.1+sha512.37ebf1a5c7a30d5fabe0c5df44ee8da4c965ca0c5af3dbab28c3a1681b70a256218d05c81c9c0dcf767ef6b8551eb5b960042b9ed4300c59242336377e01cfad",
   "scripts": {
     "dev": "next dev",
     "build": "npm run clean && next build && mv out ../recce/data",
@@ -29,9 +29,9 @@
     "@hello-pangea/dnd": "^18.0.1",
     "@jeromefitz/date-fns-tz": "3.0.0-canary.8",
     "@monaco-editor/react": "^4.7.0",
-    "@sentry/react": "^9.35.0",
+    "@sentry/react": "^9.40.0",
     "@tailwindcss/postcss": "^4.1.11",
-    "@tanstack/react-query": "^5.81.5",
+    "@tanstack/react-query": "^5.83.0",
     "@types/js-cookie": "^3.0.6",
     "axios": "^1.10.0",
     "chakra-react-select": "^6.1.0",
@@ -45,7 +45,7 @@
     "js-cookie": "^3.0.5",
     "lodash": "^4.17.21",
     "monaco-editor": "^0.52.2",
-    "next": "15.3.5",
+    "next": "15.4.2",
     "next-themes": "^0.4.6",
     "react": "19.1.0",
     "react-chartjs-2": "^5.3.0",
@@ -61,9 +61,9 @@
     "yaml": "^2.8.0"
   },
   "devDependencies": {
-    "@amplitude/analytics-core": "^2.15.0",
-    "@eslint/js": "^9.30.1",
-    "@next/eslint-plugin-next": "15.3.5",
+    "@amplitude/analytics-core": "^2.18.0",
+    "@eslint/js": "^9.31.0",
+    "@next/eslint-plugin-next": "15.4.2",
     "@testing-library/dom": "^10.4.0",
     "@testing-library/jest-dom": "6.6.3",
     "@testing-library/react": "16.3.0",
@@ -73,15 +73,15 @@
     "@types/file-saver": "^2.0.7",
     "@types/jest": "30.0.0",
     "@types/lodash": "^4.17.20",
-    "@types/node": "^24.0.10",
+    "@types/node": "^24.0.15",
     "@types/react": "19.1.8",
     "@types/react-dom": "19.1.6",
-    "eslint": "^9.30.1",
-    "eslint-config-next": "15.3.5",
-    "eslint-config-prettier": "^10.1.5",
+    "eslint": "^9.31.0",
+    "eslint-config-next": "15.4.2",
+    "eslint-config-prettier": "^10.1.8",
     "eslint-plugin-import-x": "^4.16.1",
     "eslint-plugin-jsx-a11y": "^6.10.2",
-    "eslint-plugin-prettier": "^5.5.1",
+    "eslint-plugin-prettier": "^5.5.3",
     "eslint-plugin-react": "^7.37.5",
     "eslint-plugin-react-hooks": "^5.2.0",
     "globals": "^16.3.0",
@@ -92,7 +92,7 @@
     "rimraf": "^6.0.1",
     "tailwindcss": "^4.1.11",
     "typescript": "^5.8.3",
-    "typescript-eslint": "^8.36.0"
+    "typescript-eslint": "^8.37.0"
   },
   "pnpm": {
     "overrides": {

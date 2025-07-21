@@ -220,7 +220,7 @@ export const PrivateLoadableRunView = ({
         <Button
           disabled={!runId || !run.result || !!error}
           size="sm"
-          colorPalette="cyan"
+          colorPalette="iochmara"
           onClick={handleGoToCheck}>
           <PiCheck /> Go to Check
         </Button>
@@ -230,7 +230,7 @@ export const PrivateLoadableRunView = ({
       <Button
         disabled={!runId || !run?.result || !!error}
         size="xs"
-        colorPalette="cyan"
+        colorPalette="iochmara"
         onClick={handleAddToChecklist}>
         <PiCheck /> Add to Checklist
       </Button>
@@ -244,7 +244,7 @@ export const PrivateLoadableRunView = ({
       )}
       <Tabs.Root
         size="lg"
-        colorPalette="cyan"
+        colorPalette="iochmara"
         value={tabValue}
         onValueChange={(e) => {
           setTabValue(e.value as TabValueItems);

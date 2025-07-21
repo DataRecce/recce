@@ -94,19 +94,19 @@ export function getIconForResourceType(resourceType?: string): {
   icon: typeof FaCube | undefined;
 } {
   if (resourceType === "model") {
-    return { color: "#c0eafd", icon: FaCube };
+    return { color: String(themeSystem.token("colors.cyan.subtle")), icon: FaCube };
   } else if (resourceType === "metric") {
-    return { color: "#ffe6ee", icon: FaChartSimple };
+    return { color: String(themeSystem.token("colors.rose.subtle")), icon: FaChartSimple };
   } else if (resourceType === "source") {
-    return { color: "#a6dda6", icon: FaDatabase };
+    return { color: String(themeSystem.token("colors.green.muted")), icon: FaDatabase };
   } else if (resourceType === "exposure") {
-    return { color: "#ffe6ee", icon: FaGauge };
+    return { color: String(themeSystem.token("colors.rose.subtle")), icon: FaGauge };
   } else if (resourceType === "semantic_model") {
-    return { color: "#fb8caf", icon: FaCircleNodes };
+    return { color: String(themeSystem.token("colors.rose.focusRing")), icon: FaCircleNodes };
   } else if (resourceType === "seed") {
-    return { color: "#a6dda6", icon: FaSeedling };
+    return { color: String(themeSystem.token("colors.green.emphasized")), icon: FaSeedling };
   } else if (resourceType === "snapshot") {
-    return { color: "#a6dda6", icon: FaCamera };
+    return { color: String(themeSystem.token("colors.green.emphasized")), icon: FaCamera };
   } else {
     return { color: "inherit", icon: undefined };
   }

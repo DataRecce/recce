@@ -256,7 +256,7 @@ export const CheckList = ({
                 <Button variant="outline" size="xs" mr={2} onClick={onMarkAsApprovedClosed}>
                   Cancel
                 </Button>
-                <Button colorPalette="cyan" size="xs" onClick={handleMarkAsApprovedConfirmed}>
+                <Button colorPalette="iochmara" size="xs" onClick={handleMarkAsApprovedConfirmed}>
                   Mark as approved
                 </Button>
               </Dialog.Footer>
