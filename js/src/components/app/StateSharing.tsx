@@ -25,10 +25,6 @@ export function TopLevelShare() {
     }
   };
 
-  const onClose = () => {
-    setShowModal(false);
-  };
-
   if (!authed) {
     return (
       <Flex flex="1" alignItems="center">
@@ -41,7 +37,14 @@ export function TopLevelShare() {
           }}>
           <TbCloudUpload /> Share
         </Button>
-        {showModal && <AuthModal handleParentClose={onClose} ignoreCookie />}
+        {showModal && (
+          <AuthModal
+            parentOpen={showModal}
+            handleParentClose={setShowModal}
+            ignoreCookie
+            variant="enable-share"
+          />
+        )}
       </Flex>
     );
   }

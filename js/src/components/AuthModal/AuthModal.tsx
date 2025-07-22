@@ -1,6 +1,6 @@
 "use client";
 
-import { Button, Dialog, Image, Portal, VStack, Text } from "@chakra-ui/react";
+import { Button, Dialog, Image, Link, Portal, VStack, Text } from "@chakra-ui/react";
 import { Dispatch, ReactNode, SetStateAction, useCallback, useEffect, useState } from "react";
 import Cookies from "js-cookie";
 import { LuExternalLink } from "react-icons/lu";
@@ -17,13 +17,23 @@ interface AuthModalProps {
   ignoreCookie?: boolean;
 }
 
+interface AuthModalProps {
+  handleParentClose?: Dispatch<SetStateAction<boolean>>;
+  parentOpen?: boolean;
+  ignoreCookie?: boolean;
+  variant?: "auth" | "enable-share";
+}
+
 export default function AuthModal({
   handleParentClose,
   parentOpen = false,
   ignoreCookie = false,
+  variant = "auth",
 }: AuthModalProps): ReactNode {
   const { authed } = useRecceInstanceContext();
   const [open, setOpen] = useState(parentOpen || !authed);
+
+  // Cookie handling only for auth variant
   const authStateCookieValue = (Cookies.get("authState") ?? "pending") as AuthState;
   const [authState, setAuthState] = useState<AuthState>(
     ignoreCookie ? "pending" : authStateCookieValue,
@@ -36,6 +46,20 @@ export default function AuthModal({
   if (authed) {
     return null;
   }
+
+  // Content configuration based on variant
+  const contents = {
+    auth: {
+      title: "Configure Cloud Token",
+      action: "Get token and configure",
+    },
+    "enable-share": {
+      title: "Enable Sharing with Cloud",
+      action: "Enable sharing",
+    },
+  };
+
+  const content = contents[variant];
 
   return (
     <Dialog.Root
@@ -55,17 +79,34 @@ export default function AuthModal({
           <Dialog.Content borderRadius="2xl">
             {authState !== "authenticating" && (
               <Dialog.Header className="text-center" fontSize="2xl">
-                <Dialog.Title>Use Recce Cloud for Free</Dialog.Title>
+                <Dialog.Title>{content.title}</Dialog.Title>
               </Dialog.Header>
             )}
             {authState !== "authenticating" ? (
               <>
                 <Dialog.Body className="space-y-2 font-light">
+                  <Text>
+                    To enable sharing, get your token from Recce Cloud and launch your local
+                    instance with it.
+                  </Text>
                   <ul className="list-inside list-disc">
-                    <li>Share your work with teammates, no setup needed</li>
-                    <li>Reviewers can access it with a link.</li>
-                    <li>It’s recommended, but optional.</li>
+                    <li>Share your instance with teammates via Recce Cloud.</li>
+                    <li>Your instance will be securely and freely hosted for sharing.</li>
+                    {variant === "auth" && <li>This step is recommended but optional.</li>}
                   </ul>
+                  <Text display="flex" gap={1}>
+                    More directions
+                    <Link
+                      variant="underline"
+                      color="blue.500"
+                      _focus={{
+                        outline: "none",
+                      }}
+                      href="https://cloud.datarecce.io/connect-to-cloud"
+                      target="_blank">
+                      here <LuExternalLink />
+                    </Link>
+                  </Text>
                 </Dialog.Body>
                 <Dialog.Footer>
                   <div className="flex w-full flex-col gap-2">
@@ -78,7 +119,7 @@ export default function AuthModal({
                         // Open the connection URL in a new tab
                         window.open(connection_url, "_blank");
                       }}>
-                      Use Recce Cloud <LuExternalLink />
+                      {content.action} <LuExternalLink />
                     </Button>
                     <Dialog.ActionTrigger asChild>
                       <Button
@@ -86,22 +127,24 @@ export default function AuthModal({
                         variant="subtle"
                         colorPalette="gray"
                         size="sm">
-                        Skip
+                        {variant === "auth" ? "Skip" : "Cancel"}
                       </Button>
                     </Dialog.ActionTrigger>
-                    <Dialog.ActionTrigger asChild>
-                      <Button
-                        width="100%"
-                        className="!rounded-lg !font-medium !text-black"
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => {
-                          Cookies.set("authState", "ignored", { expires: 30 });
-                          setAuthState("ignored");
-                        }}>
-                        Snooze for 30 days
-                      </Button>
-                    </Dialog.ActionTrigger>
+                    {variant === "auth" && (
+                      <Dialog.ActionTrigger asChild>
+                        <Button
+                          width="100%"
+                          className="!rounded-lg !font-medium !text-black"
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => {
+                            Cookies.set("authState", "ignored", { expires: 30 });
+                            setAuthState("ignored");
+                          }}>
+                          Snooze for 30 days
+                        </Button>
+                      </Dialog.ActionTrigger>
+                    )}
                   </div>
                 </Dialog.Footer>
               </>
