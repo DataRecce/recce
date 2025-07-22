@@ -36,11 +36,10 @@ export default function AuthModal({
   // Cookie handling only for auth variant
   const authStateCookieValue = (Cookies.get("authState") ?? "pending") as AuthState;
   const [authState, setAuthState] = useState<AuthState>(
-    variant === "auth" && !ignoreCookie ? authStateCookieValue : "pending",
+    ignoreCookie ? "pending" : authStateCookieValue,
   );
 
-  // Early returns for auth variant
-  if (variant === "auth" && authState === "ignored" && !ignoreCookie) {
+  if (authState === "ignored" && !ignoreCookie) {
     return null;
   }
 

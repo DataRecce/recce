@@ -154,7 +154,12 @@ const RunResultShareMenu = ({
         </Portal>
       </Menu.Root>
       {showModal && (
-        <AuthModal parentOpen={showModal} handleParentClose={setShowModal} variant="enable-share" />
+        <AuthModal
+          parentOpen={showModal}
+          handleParentClose={setShowModal}
+          ignoreCookie
+          variant="enable-share"
+        />
       )}
     </>
   );

@@ -41,6 +41,7 @@ export function TopLevelShare() {
           <AuthModal
             parentOpen={showModal}
             handleParentClose={setShowModal}
+            ignoreCookie
             variant="enable-share"
           />
         )}
