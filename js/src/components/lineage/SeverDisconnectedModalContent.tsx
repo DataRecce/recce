@@ -47,7 +47,7 @@ export function RecceInstanceDisconnectedModalContent({
       title: "Preview Instance Expired",
       body: "This Preview Instance has expired. To browse more, please book a meeting with us.",
       action: "Contact us",
-      link: "https://cloud.datarecce.io/",
+      link: "https://reccehq.com/demo/",
     },
   };
 
