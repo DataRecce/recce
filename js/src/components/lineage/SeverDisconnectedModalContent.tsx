@@ -1,4 +1,4 @@
-import { Button, CloseButton, Dialog, Link, Text } from "@chakra-ui/react";
+import { Button, CloseButton, Dialog, Text } from "@chakra-ui/react";
 import NextLink from "next/link";
 import React from "react";
 
@@ -62,9 +62,15 @@ export function RecceInstanceDisconnectedModalContent({
         <Text>{content.body}</Text>
       </Dialog.Body>
       <Dialog.Footer>
-        <NextLink href={content.link} passHref>
-          <Button colorPalette="blue">{content.action}</Button>
-        </NextLink>
+        {mode === "read only" ? (
+          <NextLink href={content.link} passHref>
+            <Button colorPalette="blue">{content.action}</Button>
+          </NextLink>
+        ) : (
+          <Button colorPalette="blue" onClick={() => window.open(content.link, "_blank")}>
+            {content.action}
+          </Button>
+        )}
       </Dialog.Footer>
     </Dialog.Content>
   );
