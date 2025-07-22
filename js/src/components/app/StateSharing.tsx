@@ -5,7 +5,7 @@ import { useClipBoardToast } from "@/lib/hooks/useClipBoardToast";
 import { TbCloudUpload } from "react-icons/tb";
 import { trackShareState } from "@/lib/api/track";
 import { useState } from "react";
-import { EnableShareModal } from "@/components/AuthModal/AuthModal";
+import AuthModal from "@/components/AuthModal/AuthModal";
 import { useCopyToClipboard } from "usehooks-ts";
 import { PiCheckCircle, PiCopy } from "react-icons/pi";
 
@@ -37,7 +37,13 @@ export function TopLevelShare() {
           }}>
           <TbCloudUpload /> Share
         </Button>
-        {showModal && <EnableShareModal parentOpen={showModal} handleParentClose={setShowModal} />}
+        {showModal && (
+          <AuthModal
+            parentOpen={showModal}
+            handleParentClose={setShowModal}
+            variant="enable-share"
+          />
+        )}
       </Flex>
     );
   }

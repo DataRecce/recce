@@ -30,7 +30,7 @@ import { useRecceInstanceContext } from "@/lib/hooks/RecceInstanceContext";
 import { TbCloudUpload } from "react-icons/tb";
 import { useRecceShareStateContext } from "@/lib/hooks/RecceShareStateContext";
 import { trackShareState, trackCopyToClipboard } from "@/lib/api/track";
-import { EnableShareModal } from "@/components/AuthModal/AuthModal";
+import AuthModal from "@/components/AuthModal/AuthModal";
 import { PiCaretDown, PiCheck, PiCopy, PiRepeat } from "react-icons/pi";
 
 interface RunPageProps {
@@ -153,7 +153,9 @@ const RunResultShareMenu = ({
           </Menu.Positioner>
         </Portal>
       </Menu.Root>
-      {showModal && <EnableShareModal parentOpen={showModal} handleParentClose={setShowModal} />}
+      {showModal && (
+        <AuthModal parentOpen={showModal} handleParentClose={setShowModal} variant="enable-share" />
+      )}
     </>
   );
 };
