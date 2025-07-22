@@ -24,10 +24,10 @@ import path from "path";
 import { aggregateRuns, RunsAggregated } from "../api/runs";
 import { markRelaunchHintCompleted } from "../api/flag";
 import { useRecceServerFlag } from "./useRecceServerFlag";
+import { useRecceInstanceContext } from "@/lib/hooks/RecceInstanceContext";
 import { trackSingleEnvironment } from "../api/track";
-import { useRecceInstanceInfo } from "./useRecceInstanceInfo";
 import {
-  RecceShareInstanceDisconnectedModalContent,
+  RecceInstanceDisconnectedModalContent,
   ServerDisconnectedModalContent,
 } from "@/components/lineage/SeverDisconnectedModalContent";
 import { toaster } from "@/components/ui/toaster";
@@ -273,7 +273,7 @@ export function LineageGraphContextProvider({ children }: LineageGraphProps) {
 
   const { connectionStatus, connect, envStatus } = useLineageWatcher();
   const { data: flags, isLoading } = useRecceServerFlag();
-  const { data: instanceInfo } = useRecceInstanceInfo();
+  const { featureToggles, shareUrl } = useRecceInstanceContext();
   const { onClose } = useDisclosure();
   const [relaunchHintOpen, setRelaunchHintOpen] = useState<boolean>(false);
   const queryClient = useQueryClient();
@@ -302,8 +302,6 @@ export function LineageGraphContextProvider({ children }: LineageGraphProps) {
       setRelaunchHintOpen(false);
     }
   }, [flags, envStatus, isLoading]);
-
-  const { share_url: shareUrl } = instanceInfo ?? {};
 
   return (
     <>
@@ -338,8 +336,11 @@ export function LineageGraphContextProvider({ children }: LineageGraphProps) {
         <Portal>
           <Dialog.Backdrop />
           <Dialog.Positioner>
-            {shareUrl ? (
-              <RecceShareInstanceDisconnectedModalContent shareUrl={shareUrl} />
+            {shareUrl && featureToggles.mode !== null ? (
+              <RecceInstanceDisconnectedModalContent
+                shareUrl={shareUrl}
+                mode={featureToggles.mode}
+              />
             ) : (
               <ServerDisconnectedModalContent connect={connect} />
             )}
