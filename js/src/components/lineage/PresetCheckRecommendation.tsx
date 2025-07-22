@@ -244,7 +244,7 @@ export const PresetCheckRecommendation = () => {
               Ignore
             </Button>
             <Button
-              colorPalette="cyan"
+              colorPalette="iochmara"
               size="2xs"
               onClick={() => {
                 onOpen();
@@ -305,7 +305,7 @@ export const PresetCheckRecommendation = () => {
                     Cancel
                   </Button>
                   <Button
-                    colorPalette="cyan"
+                    colorPalette="iochmara"
                     onClick={() => {
                       onClose();
                       void performPresetCheck();

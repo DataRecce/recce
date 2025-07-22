@@ -15,7 +15,7 @@ export function ServerDisconnectedModalContent({ connect }: { connect: () => voi
       </Dialog.Body>
       <Dialog.Footer>
         <Button
-          colorPalette="cyan"
+          colorPalette="iochmara"
           onClick={() => {
             connect();
           }}>

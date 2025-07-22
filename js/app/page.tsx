@@ -286,7 +286,7 @@ function NavBar() {
 
   return (
     <Tabs.Root
-      colorPalette="cyan"
+      colorPalette="iochmara"
       defaultValue="/lineage"
       value={valueLocation}
       onValueChange={(e) => {
@@ -372,7 +372,7 @@ function Main() {
                 }}
               </Route>
               <Route path="/ssr">
-                <Progress.Root size="xs" value={null} colorPalette="cyan">
+                <Progress.Root size="xs" value={null} colorPalette="iochmara">
                   <Progress.Track>
                     <Progress.Range />
                   </Progress.Track>
