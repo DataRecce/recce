@@ -30,6 +30,7 @@ interface InstanceInfoType {
   authed: boolean;
   featureToggles: RecceFeatureToggles;
   lifetimeExpiredAt?: Date;
+  shareUrl?: string;
 }
 
 const defaultValue: InstanceInfoType = {
@@ -37,6 +38,7 @@ const defaultValue: InstanceInfoType = {
   authed: false,
   lifetimeExpiredAt: undefined,
   featureToggles: defaultFeatureToggles,
+  shareUrl: undefined,
 };
 
 const InstanceInfo = createContext<InstanceInfoType>(defaultValue);
@@ -47,11 +49,13 @@ export function RecceInstanceInfoProvider({ children }: { children: React.ReactN
   const [singleEnv, setSingleEnv] = useState<boolean>(false);
   const [authed, setAuthed] = useState<boolean>(false);
   const [lifetimeExpiredAt, setLifetimeExpiredAt] = useState<Date>();
+  const [shareUrl, setShareUrl] = useState<string>();
 
   useEffect(() => {
     if (!isLoading && instanceInfo) {
       setSingleEnv(instanceInfo.single_env);
       setAuthed(instanceInfo.authed);
+      setShareUrl(instanceInfo.share_url);
       if (instanceInfo.lifetime_expired_at) {
         setLifetimeExpiredAt(new Date(instanceInfo.lifetime_expired_at));
         console.log("lifetime expired at", instanceInfo.lifetime_expired_at);
@@ -95,6 +99,7 @@ export function RecceInstanceInfoProvider({ children }: { children: React.ReactN
         singleEnv,
         authed,
         lifetimeExpiredAt,
+        shareUrl,
       }}>
       {children}
     </InstanceInfo.Provider>

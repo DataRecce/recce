@@ -1,4 +1,4 @@
-import { Button, CloseButton, Dialog, Text } from "@chakra-ui/react";
+import { Button, CloseButton, Dialog, Link, Text } from "@chakra-ui/react";
 import NextLink from "next/link";
 import React from "react";
 
@@ -29,18 +29,41 @@ export function ServerDisconnectedModalContent({ connect }: { connect: () => voi
   );
 }
 
-export function RecceShareInstanceDisconnectedModalContent({ shareUrl }: { shareUrl: string }) {
+export function RecceInstanceDisconnectedModalContent({
+  shareUrl,
+  mode,
+}: {
+  shareUrl: string;
+  mode: "read only" | "preview mode";
+}) {
+  const contents = {
+    "read only": {
+      title: "Share Instance Expired",
+      body: "This Share Instance has expired. Please restart the share instance.",
+      action: "Restart",
+      link: shareUrl,
+    },
+    "preview mode": {
+      title: "Preview Instance Expired",
+      body: "This Preview Instance has expired. To browse more, please book a meeting with us.",
+      action: "Contact us",
+      link: "https://cloud.datarecce.io/",
+    },
+  };
+
+  const content = contents[mode];
+
   return (
     <Dialog.Content>
       <Dialog.Header>
-        <Dialog.Title>Share Instance Expired</Dialog.Title>
+        <Dialog.Title>{content.title}</Dialog.Title>
       </Dialog.Header>
       <Dialog.Body>
-        <Text>This Share Instance has expired. Please restart the share instance.</Text>
+        <Text>{content.body}</Text>
       </Dialog.Body>
       <Dialog.Footer>
-        <NextLink href={shareUrl} passHref>
-          <Button colorPalette="blue">Restart</Button>
+        <NextLink href={content.link} passHref>
+          <Button colorPalette="blue">{content.action}</Button>
         </NextLink>
       </Dialog.Footer>
     </Dialog.Content>
