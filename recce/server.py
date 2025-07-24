@@ -124,7 +124,11 @@ def setup_server(app_state: AppState) -> RecceContext:
 
 def teardown_server(app_state: AppState, ctx: RecceContext):
     # pull latest state, merge runs/checks and pick the newer artifacts
-    ctx.sync_state("merge")
+    state_loader = ctx.state_loader
+    state_loader.refresh()
+    if state_loader.state:
+        ctx.import_state(state_loader.state, merge=True)
+    state_loader.export(ctx.export_state())
     ctx.stop_monitor_artifacts()
     if app_state.flag.get("single_env_onboarding", False):
         ctx.stop_monitor_base_env()
