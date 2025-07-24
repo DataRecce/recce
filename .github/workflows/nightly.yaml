@@ -102,6 +102,7 @@ jobs:
           popd
         env:
           AMPLITUDE_API_KEY: ${{ secrets.AMPLITUDE_NIGHTLY_API_KEY }}
+          GTM_ID: ${{ secrets.NIGHTLY_GTM_ID }}
 
       - name: Release to Pypi
         run: |
