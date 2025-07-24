@@ -1,4 +1,13 @@
-cd js
+#!/bin/bash
 
-pnpm lint --quiet
-pnpm type:check
+# Check if there are any staged TypeScript/JavaScript files in the js directory
+staged_js_files=$(git diff --cached --name-only | grep "^js/" | grep -E '\.(ts|tsx|js|jsx)$' || true)
+
+if [ -n "$staged_js_files" ]; then
+  echo "TypeScript/JavaScript files changed, running lint and type check..."
+  cd js
+  pnpm lint --quiet
+  pnpm type:check
+else
+  echo "No TypeScript/JavaScript files changed, skipping lint and type check."
+fi
