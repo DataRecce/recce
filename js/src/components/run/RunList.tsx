@@ -189,6 +189,7 @@ export const RunList = () => {
           variant="ghost"
           aria-label="Close History"
           onClick={() => {
+            trackHistoryAction({ name: "hide" });
             closeHistory();
           }}>
           <PiX />

@@ -8,6 +8,11 @@ import { VscHistory } from "react-icons/vsc";
 
 export default function HistoryToggle(): ReactNode {
   const { isHistoryOpen, setHistoryOpen, showHistory, closeHistory } = useRecceActionContext();
+
+  if (isHistoryOpen) {
+    return;
+  }
+
   return (
     <Box>
       <Box fontSize="8pt">History</Box>
@@ -16,15 +21,10 @@ export default function HistoryToggle(): ReactNode {
         size="2xs"
         variant="outline"
         onClick={() => {
-          if (isHistoryOpen) {
-            trackHistoryAction({ name: "hide" });
-            closeHistory();
-          } else {
-            trackHistoryAction({ name: "show" });
-            showHistory();
-          }
+          trackHistoryAction({ name: "show" });
+          showHistory();
         }}>
-        <VscHistory /> {isHistoryOpen ? "Hide" : "Show"}
+        <VscHistory /> Show
       </Button>
     </Box>
   );
