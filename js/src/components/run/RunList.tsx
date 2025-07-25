@@ -1,17 +1,7 @@
 import "react-data-grid/lib/styles.css";
 import React, { useCallback } from "react";
 import { createCheckByRun } from "@/lib/api/checks";
-import {
-  Box,
-  Flex,
-  HStack,
-  Icon,
-  Text,
-  IconButton,
-  Spacer,
-  Heading,
-  Center,
-} from "@chakra-ui/react";
+import { Box, Flex, Icon, Text, IconButton, Center, Drawer, CloseButton } from "@chakra-ui/react";
 import { cacheKeys } from "@/lib/api/cacheKeys";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { FaCheckCircle, FaRegCheckCircle } from "react-icons/fa";
@@ -44,6 +34,7 @@ const RunListItem = ({
   onGoToCheck: (checkId: string) => void;
 }) => {
   const { featureToggles } = useRecceInstanceContext();
+  const { closeHistory } = useRecceActionContext();
   const { data: fetchedRun } = useQuery({
     queryKey: cacheKeys.run(run.run_id),
     queryFn: async () => {
@@ -92,6 +83,7 @@ const RunListItem = ({
               onClick={(e) => {
                 e.preventDefault();
                 e.stopPropagation();
+                closeHistory();
                 onGoToCheck(checkId);
               }}>
               <Icon color="green" as={FaCheckCircle} />
@@ -103,6 +95,7 @@ const RunListItem = ({
               onClick={(e) => {
                 e.preventDefault();
                 e.stopPropagation();
+                closeHistory();
                 trackHistoryAction({ name: "add_to_checklist" });
                 onAddToChecklist(run.run_id);
               }}>
@@ -176,24 +169,32 @@ export const RunList = () => {
   let previousDate: string | null = null;
 
   return (
-    <Flex direction="column" height="100%">
-      <HStack
-        width="100%"
-        flex="0 0 54px"
-        paddingInline="24px 8px"
-        borderBottom="solid 1px lightgray">
-        <Heading size="md">History</Heading>
-        <Spacer />
-        <IconButton
-          variant="plain"
-          aria-label="Search database"
-          onClick={async () => {
-            await refetch();
-          }}>
-          <PiRepeat />
-        </IconButton>
-      </HStack>
-      <Box flex="1 1 auto">
+    <Drawer.Content>
+      <Drawer.Header padding={2}>
+        <Drawer.Title>History</Drawer.Title>
+        <Box display="flex" alignItems="center">
+          <IconButton
+            variant="ghost"
+            aria-label="Search database"
+            onClick={async () => {
+              await refetch();
+            }}>
+            <PiRepeat />
+          </IconButton>
+          <Drawer.CloseTrigger asChild>
+            <CloseButton
+              position="relative"
+              top="unset"
+              insetInlineEnd="unset"
+              size="sm"
+              onClick={() => {
+                trackHistoryAction({ name: "hide" });
+              }}
+            />
+          </Drawer.CloseTrigger>
+        </Box>
+      </Drawer.Header>
+      <Drawer.Body flex="1 1 auto" padding={0}>
         {isLoading ? (
           "Loading..."
         ) : runs?.length === 0 ? (
@@ -225,7 +226,7 @@ export const RunList = () => {
             })}
           </SimpleBar>
         )}
-      </Box>
-    </Flex>
+      </Drawer.Body>
+    </Drawer.Content>
   );
 };

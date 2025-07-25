@@ -37,7 +37,6 @@ import { useRecceActionContext } from "@/lib/hooks/RecceActionContext";
 import { HSplit, VSplit } from "@/components/split/Split";
 import { RunResultPane } from "@/components/run/RunResultPane";
 import { VscGitPullRequest } from "react-icons/vsc";
-import { RunList } from "@/components/run/RunList";
 import { trackInit } from "@/lib/api/track";
 import { Filename } from "@/components/app/Filename";
 import { StateSynchronizer } from "@/components/app/StateSynchronizer";
@@ -46,7 +45,6 @@ import { useRecceInstanceContext } from "@/lib/hooks/RecceInstanceContext";
 import { TopLevelShare } from "@/components/app/StateSharing";
 import { useCountdownToast } from "@/lib/hooks/useCountdownToast";
 import AuthModal from "@/components/AuthModal/AuthModal";
-import { LuExternalLink } from "react-icons/lu";
 import { toaster } from "@/components/ui/toaster";
 
 const RouteAlwaysMount = ({ children, path }: { children: ReactNode; path: string }) => {
@@ -344,7 +342,6 @@ function Main() {
       minSize={_isHistoryOpen ? 300 : 0}
       gutterSize={_isHistoryOpen ? 5 : 0}
       style={{ height: "100%" }}>
-      <Box style={{ contain: "size" }}>{_isHistoryOpen && <RunList />}</Box>
       <VSplit
         sizes={_isRunResultOpen ? [50, 50] : [100, 0]}
         minSize={_isRunResultOpen ? 100 : 0}
