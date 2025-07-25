@@ -1,7 +1,17 @@
 import "react-data-grid/lib/styles.css";
 import React, { useCallback } from "react";
 import { createCheckByRun } from "@/lib/api/checks";
-import { Box, Flex, Icon, Text, IconButton, Center, Drawer, CloseButton } from "@chakra-ui/react";
+import {
+  Box,
+  Flex,
+  Icon,
+  Text,
+  IconButton,
+  Center,
+  HStack,
+  Heading,
+  Spacer,
+} from "@chakra-ui/react";
 import { cacheKeys } from "@/lib/api/cacheKeys";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { FaCheckCircle, FaRegCheckCircle } from "react-icons/fa";
@@ -18,7 +28,7 @@ import { formatRunDate, RunStatusAndDate } from "./RunStatusAndDate";
 import { trackHistoryAction } from "@/lib/api/track";
 import { useRecceInstanceContext } from "@/lib/hooks/RecceInstanceContext";
 import { Tooltip } from "@/components/ui/tooltip";
-import { PiRepeat } from "react-icons/pi";
+import { PiX } from "react-icons/pi";
 
 const RunListItem = ({
   run,
@@ -34,7 +44,6 @@ const RunListItem = ({
   onGoToCheck: (checkId: string) => void;
 }) => {
   const { featureToggles } = useRecceInstanceContext();
-  const { closeHistory } = useRecceActionContext();
   const { data: fetchedRun } = useQuery({
     queryKey: cacheKeys.run(run.run_id),
     queryFn: async () => {
@@ -83,7 +92,6 @@ const RunListItem = ({
               onClick={(e) => {
                 e.preventDefault();
                 e.stopPropagation();
-                closeHistory();
                 onGoToCheck(checkId);
               }}>
               <Icon color="green" as={FaCheckCircle} />
@@ -95,7 +103,6 @@ const RunListItem = ({
               onClick={(e) => {
                 e.preventDefault();
                 e.stopPropagation();
-                closeHistory();
                 trackHistoryAction({ name: "add_to_checklist" });
                 onAddToChecklist(run.run_id);
               }}>
@@ -128,6 +135,7 @@ const DateSegmentItem = ({ runAt }: { runAt?: string }) => {
 };
 
 export const RunList = () => {
+  const { closeHistory } = useRecceActionContext();
   const {
     data: runs,
     isLoading,
@@ -169,24 +177,24 @@ export const RunList = () => {
   let previousDate: string | null = null;
 
   return (
-    <Drawer.Content>
-      <Drawer.Header padding={2}>
-        <Drawer.Title>History</Drawer.Title>
-        <Box display="flex" alignItems="center">
-          <Drawer.CloseTrigger asChild>
-            <CloseButton
-              position="relative"
-              top="unset"
-              insetInlineEnd="unset"
-              size="sm"
-              onClick={() => {
-                trackHistoryAction({ name: "hide" });
-              }}
-            />
-          </Drawer.CloseTrigger>
-        </Box>
-      </Drawer.Header>
-      <Drawer.Body flex="1 1 auto" padding={0}>
+    <Flex direction="column" height="100%">
+      <HStack
+        width="100%"
+        flex="0 0 54px"
+        paddingInline="24px 8px"
+        borderBottom="solid 1px lightgray">
+        <Heading size="md">History</Heading>
+        <Spacer />
+        <IconButton
+          variant="ghost"
+          aria-label="Close History"
+          onClick={() => {
+            closeHistory();
+          }}>
+          <PiX />
+        </IconButton>
+      </HStack>
+      <Box flex="1 1 auto">
         {isLoading ? (
           "Loading..."
         ) : runs?.length === 0 ? (
@@ -218,7 +226,7 @@ export const RunList = () => {
             })}
           </SimpleBar>
         )}
-      </Drawer.Body>
-    </Drawer.Content>
+      </Box>
+    </Flex>
   );
 };
