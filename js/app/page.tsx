@@ -133,22 +133,27 @@ function RecceVersionBadge() {
 
 function TopBar() {
   const { reviewMode, isDemoSite, envInfo, cloudMode } = useLineageGraphContext();
-  const { featureToggles, lifetimeExpiredAt } = useRecceInstanceContext();
+  const { featureToggles, lifetimeExpiredAt, authed } = useRecceInstanceContext();
   const { url: prURL, id: prID } = envInfo?.pullRequest ?? {};
   const demoPrId = prURL ? prURL.split("/").pop() : null;
+  const brandLink = cloudMode || authed ? "https://cloud.datarecce.io/" : "https://reccehq.com/";
 
   useCountdownToast(lifetimeExpiredAt);
 
   return (
     <Flex gap="10px" minHeight="40px" alignItems="center" bg="rgb(255, 110, 66)">
-      <Image
-        boxSize="20px"
-        ml="18px"
-        src="/logo/recce-logo-white.png"
-        alt="recce-logo-white"></Image>
-      <Heading as="h1" fontFamily={`"Montserrat", sans-serif`} fontSize="lg" color="white">
-        RECCE
-      </Heading>
+      <Link href={brandLink} target="_blank" _hover={{ textDecoration: "none" }}>
+        <Flex gap="10px" alignItems="center">
+          <Image
+            boxSize="20px"
+            ml="18px"
+            src="/logo/recce-logo-white.png"
+            alt="recce-logo-white"></Image>
+          <Heading as="h1" fontFamily={`"Montserrat", sans-serif`} fontSize="lg" color="white">
+            RECCE
+          </Heading>
+        </Flex>
+      </Link>
       <RecceVersionBadge />
       {(featureToggles.mode ?? reviewMode) && (
         <Badge fontSize="sm" color="white/80" variant="outline" textTransform="uppercase">
