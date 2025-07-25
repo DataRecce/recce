@@ -173,14 +173,6 @@ export const RunList = () => {
       <Drawer.Header padding={2}>
         <Drawer.Title>History</Drawer.Title>
         <Box display="flex" alignItems="center">
-          <IconButton
-            variant="ghost"
-            aria-label="Search database"
-            onClick={async () => {
-              await refetch();
-            }}>
-            <PiRepeat />
-          </IconButton>
           <Drawer.CloseTrigger asChild>
             <CloseButton
               position="relative"
