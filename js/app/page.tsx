@@ -46,6 +46,7 @@ import { TopLevelShare } from "@/components/app/StateSharing";
 import { useCountdownToast } from "@/lib/hooks/useCountdownToast";
 import AuthModal from "@/components/AuthModal/AuthModal";
 import { toaster } from "@/components/ui/toaster";
+import { RunList } from "@/components/run/RunList";
 
 const RouteAlwaysMount = ({ children, path }: { children: ReactNode; path: string }) => {
   const [match] = useRoute(path);
@@ -342,6 +343,7 @@ function Main() {
       minSize={_isHistoryOpen ? 300 : 0}
       gutterSize={_isHistoryOpen ? 5 : 0}
       style={{ height: "100%" }}>
+      <Box style={{ contain: "size" }}>{_isHistoryOpen && <RunList />}</Box>
       <VSplit
         sizes={_isRunResultOpen ? [50, 50] : [100, 0]}
         minSize={_isRunResultOpen ? 100 : 0}
