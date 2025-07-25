@@ -1,8 +1,10 @@
 import { createContext, useContext, useEffect, useState } from "react";
 import { useRecceInstanceInfo } from "./useRecceInstanceInfo";
 
+export type RecceFeatureMode = "read only" | "metadata only" | null;
+
 interface RecceFeatureToggles {
-  mode: "read only" | "preview mode" | null;
+  mode: RecceFeatureMode;
   disableSaveToFile: boolean;
   disableExportStateFile: boolean;
   disableImportStateFile: boolean;
@@ -74,7 +76,7 @@ export function RecceInstanceInfoProvider({ children }: { children: React.ReactN
         toggles.disableNodeActionDropdown = true;
         toggles.disableShare = true;
       } else if (instanceInfo.server_mode === "preview") {
-        toggles.mode = "preview mode";
+        toggles.mode = "metadata only";
         toggles.disableSaveToFile = true;
         toggles.disableExportStateFile = true;
         toggles.disableImportStateFile = true;

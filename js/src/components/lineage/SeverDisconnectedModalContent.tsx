@@ -1,3 +1,4 @@
+import { RecceFeatureMode } from "@/lib/hooks/RecceInstanceContext";
 import { Button, CloseButton, Dialog, Text } from "@chakra-ui/react";
 import NextLink from "next/link";
 import React from "react";
@@ -34,7 +35,7 @@ export function RecceInstanceDisconnectedModalContent({
   mode,
 }: {
   shareUrl: string;
-  mode: "read only" | "preview mode";
+  mode: Exclude<RecceFeatureMode, null>;
 }) {
   const contents = {
     "read only": {
@@ -43,7 +44,7 @@ export function RecceInstanceDisconnectedModalContent({
       action: "Restart",
       link: shareUrl,
     },
-    "preview mode": {
+    "metadata only": {
       title: "Preview Instance Expired",
       body: "This Preview Instance has expired. To browse more, please book a meeting with us.",
       action: "Contact us",
