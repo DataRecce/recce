@@ -1,4 +1,12 @@
-import React, { createContext, useCallback, useContext, useEffect, useState } from "react";
+import React, {
+  createContext,
+  Dispatch,
+  SetStateAction,
+  useCallback,
+  useContext,
+  useEffect,
+  useState,
+} from "react";
 import { Run, RunType } from "../api/types";
 import { RunModal } from "@/components/run/RunModal";
 import { useDisclosure } from "@chakra-ui/react";
@@ -27,6 +35,7 @@ export interface RecceActionContextType {
   isHistoryOpen: boolean;
   closeHistory: () => void;
   showHistory: () => void;
+  setHistoryOpen: Dispatch<SetStateAction<boolean>>;
   clearRunResult: () => void;
 }
 
@@ -38,6 +47,7 @@ export const RecceActionContext = createContext<RecceActionContextType>({
   isHistoryOpen: false,
   closeHistory: () => {},
   showHistory: () => {},
+  setHistoryOpen: (v) => {},
   clearRunResult: () => {},
 });
 
@@ -71,7 +81,12 @@ export function RecceActionContextProvider({ children }: RecceActionContextProvi
     onOpen: onResultPaneOpen,
     onClose: closeRunResult,
   } = useDisclosure();
-  const { open: isHistoryOpen, onOpen: showHistory, onClose: closeHistory } = useDisclosure();
+  const {
+    open: isHistoryOpen,
+    onOpen: showHistory,
+    onClose: closeHistory,
+    setOpen: setHistoryOpen,
+  } = useDisclosure();
   const [runId, setRunId] = useState<string>();
   const [location, setLocation] = useLocation();
   const queryClient = useQueryClient();
@@ -181,6 +196,7 @@ export function RecceActionContextProvider({ children }: RecceActionContextProvi
         isHistoryOpen,
         closeHistory,
         showHistory,
+        setHistoryOpen,
         clearRunResult,
       }}>
       {action && (

@@ -8,12 +8,17 @@ import { VscHistory } from "react-icons/vsc";
 import { RunList } from "@/components/run/RunList";
 
 export default function HistoryToggle(): ReactNode {
-  const { isHistoryOpen, showHistory, closeHistory } = useRecceActionContext();
+  const { isHistoryOpen, setHistoryOpen, showHistory, closeHistory } = useRecceActionContext();
   return (
     <Box>
       <Box fontSize="8pt">History</Box>
 
-      <Drawer.Root placement="start">
+      <Drawer.Root
+        placement="start"
+        open={isHistoryOpen}
+        onOpenChange={(e) => {
+          setHistoryOpen(e.open);
+        }}>
         <Drawer.Trigger asChild>
           <Button
             size="2xs"
