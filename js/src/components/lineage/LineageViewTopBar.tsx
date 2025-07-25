@@ -20,15 +20,13 @@ import {
 import { FiPackage } from "react-icons/fi";
 import { getIconForResourceType } from "./styles";
 import { CSSProperties, useEffect, useRef, useState } from "react";
-import { useRecceActionContext } from "@/lib/hooks/RecceActionContext";
-import { VscHistory } from "react-icons/vsc";
 import { useLineageViewContextSafe } from "./LineageViewContext";
 import { findByRunType } from "../run/registry";
-import { trackHistoryAction } from "@/lib/api/track";
 import { useRecceServerFlag } from "@/lib/hooks/useRecceServerFlag";
 import { useRecceInstanceContext } from "@/lib/hooks/RecceInstanceContext";
 import { Tooltip } from "@/components/ui/tooltip";
 import { PiCaretDown } from "react-icons/pi";
+import HistoryToggle from "@/components/shared/HistoryToggle";
 
 const SelectFilterTooltip = () => {
   return (
@@ -49,26 +47,6 @@ const SelectFilterTooltip = () => {
         <Code fontSize={"8pt"}>model*</Code> Select by wildcard
       </Text>
     </VStack>
-  );
-};
-
-const HistoryToggle = () => {
-  const { isHistoryOpen, showHistory, closeHistory } = useRecceActionContext();
-  return (
-    <Button
-      size="2xs"
-      variant="outline"
-      onClick={() => {
-        if (isHistoryOpen) {
-          trackHistoryAction({ name: "hide" });
-          closeHistory();
-        } else {
-          trackHistoryAction({ name: "show" });
-          showHistory();
-        }
-      }}>
-      <Icon as={VscHistory} /> {isHistoryOpen ? "Hide" : "Show"}
-    </Button>
   );
 };
 
@@ -347,9 +325,7 @@ export const LineageViewTopBar = () => {
   return (
     <HStack width="100%" padding="4pt 8pt" className="chakra-style-reset">
       <HStack flex="1">
-        <ControlItem label="History" style={{ flexShrink: "1" }}>
-          <HistoryToggle />
-        </ControlItem>
+        <HistoryToggle />
         <ControlItem label="Mode" style={{ flexShrink: "1" }}>
           <ViewModeSelectMenu isDisabled={isFilterDisabled} />
         </ControlItem>

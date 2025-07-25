@@ -9,37 +9,12 @@ import { useLineageGraphContext } from "@/lib/hooks/LineageGraphContext";
 import { QueryForm } from "./QueryForm";
 import { useRecceActionContext } from "@/lib/hooks/RecceActionContext";
 import { SubmitOptions, waitRun } from "@/lib/api/runs";
-import { VscHistory } from "react-icons/vsc";
-import { trackHistoryAction } from "@/lib/api/track";
 import { BaseEnvironmentSetupGuide } from "../lineage/SingleEnvironmentQueryView";
 import { useRecceServerFlag } from "@/lib/hooks/useRecceServerFlag";
 import { useRecceInstanceContext } from "@/lib/hooks/RecceInstanceContext";
 import { Tooltip } from "@/components/ui/tooltip";
-import { PiInfo, PiInfoFill } from "react-icons/pi";
-
-export const HistoryToggle = () => {
-  const { isHistoryOpen, showHistory, closeHistory } = useRecceActionContext();
-  return (
-    <Box>
-      <Box fontSize="8pt">History</Box>
-
-      <Button
-        size="2xs"
-        variant="outline"
-        onClick={() => {
-          if (isHistoryOpen) {
-            trackHistoryAction({ name: "hide" });
-            closeHistory();
-          } else {
-            trackHistoryAction({ name: "show" });
-            showHistory();
-          }
-        }}>
-        <VscHistory /> {isHistoryOpen ? "Hide" : "Show"}
-      </Button>
-    </Box>
-  );
-};
+import { PiInfoFill } from "react-icons/pi";
+import HistoryToggle from "@/components/shared/HistoryToggle";
 
 const QueryModeToggle = () => {
   const { isCustomQueries, setCustomQueries, sqlQuery, setBaseSqlQuery } = useRecceQueryContext();

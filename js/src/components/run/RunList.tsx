@@ -4,13 +4,13 @@ import { createCheckByRun } from "@/lib/api/checks";
 import {
   Box,
   Flex,
-  HStack,
   Icon,
   Text,
   IconButton,
-  Spacer,
-  Heading,
   Center,
+  HStack,
+  Heading,
+  Spacer,
 } from "@chakra-ui/react";
 import { cacheKeys } from "@/lib/api/cacheKeys";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
@@ -28,7 +28,7 @@ import { formatRunDate, RunStatusAndDate } from "./RunStatusAndDate";
 import { trackHistoryAction } from "@/lib/api/track";
 import { useRecceInstanceContext } from "@/lib/hooks/RecceInstanceContext";
 import { Tooltip } from "@/components/ui/tooltip";
-import { PiRepeat } from "react-icons/pi";
+import { PiX } from "react-icons/pi";
 
 const RunListItem = ({
   run,
@@ -135,6 +135,7 @@ const DateSegmentItem = ({ runAt }: { runAt?: string }) => {
 };
 
 export const RunList = () => {
+  const { closeHistory } = useRecceActionContext();
   const {
     data: runs,
     isLoading,
@@ -185,12 +186,13 @@ export const RunList = () => {
         <Heading size="md">History</Heading>
         <Spacer />
         <IconButton
-          variant="plain"
-          aria-label="Search database"
-          onClick={async () => {
-            await refetch();
+          variant="ghost"
+          aria-label="Close History"
+          onClick={() => {
+            trackHistoryAction({ name: "hide" });
+            closeHistory();
           }}>
-          <PiRepeat />
+          <PiX />
         </IconButton>
       </HStack>
       <Box flex="1 1 auto">
