@@ -13,13 +13,12 @@ else
 fi
 
 # start templated
-INSTALL_PYTHON=/Users/jaredmscott/repos/recce/recce/.venv/bin/python
+INSTALL_PYTHON=${INSTALL_PYTHON:-$(command -v python || true)}
 ARGS=(hook-impl --config=.pre-commit-config.yaml --hook-type=pre-commit)
 # end templated
 
 HERE="$(cd "$(dirname "$0")" && pwd)"
 STRIP_JS_HUSKY=$(echo "$HERE" | sed 's|/js/\.husky$||')
-echo $STRIP_JS_HUSKY
 ARGS+=(--hook-dir "$STRIP_JS_HUSKY" -- "$@")
 
 if [ -x "$INSTALL_PYTHON" ]; then
