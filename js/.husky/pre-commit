@@ -11,3 +11,21 @@ if [ -n "$staged_js_files" ]; then
 else
   echo "No TypeScript/JavaScript files changed, skipping lint and type check."
 fi
+
+# start templated
+INSTALL_PYTHON=${INSTALL_PYTHON:-$(command -v python || true)}
+ARGS=(hook-impl --config=.pre-commit-config.yaml --hook-type=pre-commit)
+# end templated
+
+HERE="$(cd "$(dirname "$0")" && pwd)"
+STRIP_JS_HUSKY=$(echo "$HERE" | sed 's|/js/\.husky$||')
+ARGS+=(--hook-dir "$STRIP_JS_HUSKY" -- "$@")
+
+if [ -x "$INSTALL_PYTHON" ]; then
+    exec "$INSTALL_PYTHON" -mpre_commit "${ARGS[@]}"
+elif command -v pre-commit > /dev/null; then
+    exec pre-commit "${ARGS[@]}"
+else
+    echo '`pre-commit` not found.  Did you forget to activate your virtualenv?' 1>&2
+    exit 1
+fi
