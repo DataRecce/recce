@@ -1,9 +1,9 @@
 import { cacheKeys } from "@/lib/api/cacheKeys";
 import { fetchUser, fetchGitHubAvatar } from "@/lib/api/user";
-import { Avatar, Box, Icon, Menu, Portal, Spinner, Text } from "@chakra-ui/react";
+import { Avatar, Box, defineStyle, Icon, Menu, Portal, Spinner, Text } from "@chakra-ui/react";
 import { useQuery } from "@tanstack/react-query";
 import { useRef } from "react";
-import { FaCloud, FaComments, FaUser } from "react-icons/fa";
+import { FaCloud, FaUser } from "react-icons/fa";
 
 export default function AvatarDropdown() {
   const {
@@ -45,7 +45,13 @@ export default function AvatarDropdown() {
             <Spinner size="sm" />
           </Box>
         ) : (
-          <Avatar.Root ref={ref} size="xs" cursor="pointer">
+          <Avatar.Root
+            outlineStyle="solid"
+            outlineWidth="1px"
+            outlineColor="white"
+            ref={ref}
+            size="xs"
+            cursor="pointer">
             <Avatar.Fallback name={user?.login ?? "U"} />
             {avatarUrl && <Avatar.Image src={avatarUrl} />}
           </Avatar.Root>
@@ -84,7 +90,7 @@ export default function AvatarDropdown() {
             <Menu.Separator />
             <Menu.Item
               value="recce cloud"
-              onClick={() => window.open("https://cloud.reccehq.com/", "_blank")}>
+              onClick={() => window.open("https://cloud.datarecce.io/", "_blank")}>
               <Icon as={FaCloud} mr={2} />
               Recce Cloud
             </Menu.Item>
@@ -93,12 +99,6 @@ export default function AvatarDropdown() {
               onClick={() => window.open("https://cal.com/team/recce/chat", "_blank")}>
               <Icon as={FaUser} mr={2} />
               Get live support
-            </Menu.Item>
-            <Menu.Item
-              value="talk with us"
-              onClick={() => window.open("https://cloud.datarecce.io/", "_blank")}>
-              <Icon as={FaComments} mr={2} />
-              Talk with us
             </Menu.Item>
           </Menu.Content>
         </Menu.Positioner>
