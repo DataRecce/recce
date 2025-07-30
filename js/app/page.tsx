@@ -138,6 +138,7 @@ function TopBar() {
   const { url: prURL, id: prID } = envInfo?.pullRequest ?? {};
   const demoPrId = prURL ? prURL.split("/").pop() : null;
   const brandLink = cloudMode || authed ? "https://cloud.datarecce.io/" : "https://reccehq.com/";
+  const [showModal, setShowModal] = useState(false);
 
   useCountdownToast(lifetimeExpiredAt);
 
@@ -202,28 +203,48 @@ function TopBar() {
         </Badge>
       )}
       <Spacer />
-      <LinkIcon icon={FaGithub} href="https://github.com/DataRecce/recce" />
-      <LinkIcon icon={FaSlack} href="https://getdbt.slack.com/archives/C05C28V7CPP" />
-      <LinkIcon icon={FaQuestionCircle} href="https://docs.datarecce.io" />
-      {authed || cloudMode ? (
-        <Box mr="18px">
-          <AvatarDropdown />
-        </Box>
-      ) : (
-        <Box
-          as="button"
-          color="white"
-          fontSize="sm"
-          fontWeight="semibold"
-          bg="brand.700"
-          borderRadius="md"
-          px={3}
-          py={1}
-          mr={2}
-          cursor="pointer"
-          onClick={() => window.open("https://cloud.datarecce.io/", "_blank")}>
-          Connect to Cloud
-        </Box>
+      {(isDemoSite ?? featureToggles.mode === "read only") && (
+        <>
+          <LinkIcon icon={FaGithub} href="https://github.com/DataRecce/recce" />
+          <LinkIcon icon={FaSlack} href="https://getdbt.slack.com/archives/C05C28V7CPP" />
+          <LinkIcon mr={2} icon={FaQuestionCircle} href="https://docs.datarecce.io" />
+        </>
+      )}
+      {!isDemoSite && featureToggles.mode !== "read only" && (
+        <>
+          {authed || cloudMode ? (
+            <Box mr={2}>
+              <AvatarDropdown />
+            </Box>
+          ) : (
+            <>
+              <Box
+                as="button"
+                color="white"
+                fontSize="sm"
+                fontWeight="semibold"
+                bg="brand.700"
+                borderRadius="md"
+                px={3}
+                py={1}
+                mr={2}
+                cursor="pointer"
+                onClick={() => {
+                  setShowModal(true);
+                }}>
+                Connect to Cloud
+              </Box>
+              {showModal && (
+                <AuthModal
+                  parentOpen={showModal}
+                  handleParentClose={setShowModal}
+                  ignoreCookie
+                  variant="user-profile"
+                />
+              )}
+            </>
+          )}
+        </>
       )}
     </Flex>
   );
