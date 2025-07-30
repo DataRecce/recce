@@ -27,5 +27,5 @@ elif command -v pre-commit > /dev/null; then
     exec pre-commit $ARGS
 else
     echo '`pre-commit` not found.  Did you forget to activate your virtualenv?' 1>&2
-    exit 1
+    echo "Skipping pre-commit hook."
 fi
