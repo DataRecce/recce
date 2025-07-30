@@ -47,6 +47,7 @@ import { useCountdownToast } from "@/lib/hooks/useCountdownToast";
 import AuthModal from "@/components/AuthModal/AuthModal";
 import { toaster } from "@/components/ui/toaster";
 import { RunList } from "@/components/run/RunList";
+import AvatarDropdown from "@/components/app/AvatarDropdown";
 
 const RouteAlwaysMount = ({ children, path }: { children: ReactNode; path: string }) => {
   const [match] = useRoute(path);
@@ -203,7 +204,27 @@ function TopBar() {
       <Spacer />
       <LinkIcon icon={FaGithub} href="https://github.com/DataRecce/recce" />
       <LinkIcon icon={FaSlack} href="https://getdbt.slack.com/archives/C05C28V7CPP" />
-      <LinkIcon mr="18px" icon={FaQuestionCircle} href="https://docs.datarecce.io" />
+      <LinkIcon icon={FaQuestionCircle} href="https://docs.datarecce.io" />
+      {authed || cloudMode ? (
+        <Box mr="18px">
+          <AvatarDropdown />
+        </Box>
+      ) : (
+        <Box
+          as="button"
+          color="white"
+          fontSize="sm"
+          fontWeight="semibold"
+          bg="brand.700"
+          borderRadius="md"
+          px={3}
+          py={1}
+          mr={2}
+          cursor="pointer"
+          onClick={() => window.open("https://cloud.datarecce.io/", "_blank")}>
+          Connect to Cloud
+        </Box>
+      )}
     </Flex>
   );
 }

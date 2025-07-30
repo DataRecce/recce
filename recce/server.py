@@ -714,6 +714,19 @@ async def generate_connect_to_cloud_url(background_tasks: BackgroundTasks):
     }
 
 
+@app.get("/api/users")
+async def get_user_info():
+    from recce.connect_to_cloud import RecceCloud
+
+    context = default_context()
+    user_token = get_recce_api_token() or context.state_loader.token
+    cloud = RecceCloud(user_token)
+    try:
+        user_info = cloud.get_user_info()
+        return user_info
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
 api_prefix = "/api"
 app.include_router(check_router, prefix=api_prefix)
 app.include_router(run_router, prefix=api_prefix)
