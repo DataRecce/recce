@@ -1,6 +1,6 @@
 import { cacheKeys } from "@/lib/api/cacheKeys";
 import { fetchUser, fetchGitHubAvatar } from "@/lib/api/user";
-import { Avatar, Box, defineStyle, Icon, Menu, Portal, Spinner, Text } from "@chakra-ui/react";
+import { Avatar, Box, Icon, Menu, Portal, Spinner, Text } from "@chakra-ui/react";
 import { useQuery } from "@tanstack/react-query";
 import { useRef } from "react";
 import { FaCloud, FaUser } from "react-icons/fa";
