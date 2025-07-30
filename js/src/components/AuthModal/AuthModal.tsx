@@ -21,7 +21,7 @@ interface AuthModalProps {
   handleParentClose?: Dispatch<SetStateAction<boolean>>;
   parentOpen?: boolean;
   ignoreCookie?: boolean;
-  variant?: "auth" | "enable-share";
+  variant?: "auth" | "enable-share" | "user-profile";
 }
 
 export default function AuthModal({
@@ -56,6 +56,10 @@ export default function AuthModal({
     "enable-share": {
       title: "Enable Sharing with Cloud",
       action: "Enable sharing",
+    },
+    "user-profile": {
+      title: "Configure Cloud Token",
+      action: "Get token and configure",
     },
   };
 
