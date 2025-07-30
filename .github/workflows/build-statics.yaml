@@ -45,7 +45,9 @@ jobs:
 
       - name: Install dependencies
         working-directory: ./js
-        run: pnpm install --frozen-lockfile
+        run: |
+          pnpm install --frozen-lockfile
+          pip install pre-commit
 
 
       - name: Build Apps
