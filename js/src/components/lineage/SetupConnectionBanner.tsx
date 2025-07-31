@@ -2,6 +2,7 @@ import { HStack, Button, Text } from "@chakra-ui/react";
 
 import { useRecceInstanceContext } from "@/lib/hooks/RecceInstanceContext";
 import { PiInfo } from "react-icons/pi";
+import { RECCE_SUPPORT_CALENDAR_URL } from "@/constants/urls";
 
 export default function SetupConnectionBanner() {
   const { featureToggles } = useRecceInstanceContext();
@@ -19,7 +20,7 @@ export default function SetupConnectionBanner() {
           bgColor="iochmara.400"
           size="2xs"
           onClick={() => {
-            window.open("https://cal.com/team/recce/chat", "_blank");
+            window.open(RECCE_SUPPORT_CALENDAR_URL, "_blank");
           }}>
           Connect to Data Warehouse
         </Button>
