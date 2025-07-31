@@ -15,6 +15,7 @@ import { useRecceInstanceContext } from "@/lib/hooks/RecceInstanceContext";
 import { Tooltip } from "@/components/ui/tooltip";
 import { PiInfoFill } from "react-icons/pi";
 import HistoryToggle from "@/components/shared/HistoryToggle";
+import SetupConnectionGuide from "./SetupConnectionGuide";
 
 const QueryModeToggle = () => {
   const { isCustomQueries, setCustomQueries, sqlQuery, setBaseSqlQuery } = useRecceQueryContext();
@@ -62,10 +63,6 @@ export const QueryPage = () => {
   let sqlQuery = _sqlQuery;
   if (envInfo?.adapterType === "sqlmesh" && _sqlQuery === defaultSqlQuery) {
     sqlQuery = `select * from db.mymodel`;
-  }
-
-  if (featureToggles.disableDatabaseQuery) {
-    sqlQuery = `--- Would like to do query here? Book a demo with us at https://datarecce.io/\n${sqlQuery}`;
   }
 
   const { showRunId } = useRecceActionContext();
@@ -120,7 +117,7 @@ export const QueryPage = () => {
     }, "N/A");
   }, [lineageGraph?.nodes]);
 
-  if (flag?.single_env_onboarding) {
+  if (flag?.single_env_onboarding || featureToggles.mode === "metadata only") {
     return (
       <Flex direction="column" height="100%">
         <Flex
@@ -148,7 +145,13 @@ export const QueryPage = () => {
             runQuery("query");
           }}
           labels={["base (production)", `current (${currentSchema})`]}
-          BaseEnvironmentSetupGuide={<BaseEnvironmentSetupGuide />}
+          SetupGuide={
+            featureToggles.mode === "metadata only" ? (
+              <SetupConnectionGuide />
+            ) : (
+              <BaseEnvironmentSetupGuide />
+            )
+          }
         />
       </Flex>
     );
