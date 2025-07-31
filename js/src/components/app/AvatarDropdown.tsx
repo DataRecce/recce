@@ -1,3 +1,4 @@
+import { RECCE_SUPPORT_CALENDAR_URL } from "@/constants/urls";
 import { cacheKeys } from "@/lib/api/cacheKeys";
 import { fetchUser, fetchGitHubAvatar } from "@/lib/api/user";
 import { Avatar, Box, Icon, Menu, Portal, Spinner, Text } from "@chakra-ui/react";
@@ -96,7 +97,7 @@ export default function AvatarDropdown() {
             </Menu.Item>
             <Menu.Item
               value="get live support"
-              onClick={() => window.open("https://cal.com/team/recce/chat", "_blank")}>
+              onClick={() => window.open(RECCE_SUPPORT_CALENDAR_URL, "_blank")}>
               <Icon as={FaUser} mr={2} />
               Get live support
             </Menu.Item>

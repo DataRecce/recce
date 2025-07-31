@@ -16,6 +16,7 @@ import { Tooltip } from "@/components/ui/tooltip";
 import { PiInfoFill } from "react-icons/pi";
 import HistoryToggle from "@/components/shared/HistoryToggle";
 import SetupConnectionGuide from "./SetupConnectionGuide";
+import { RECCE_SUPPORT_CALENDAR_URL } from "@/constants/urls";
 
 const QueryModeToggle = () => {
   const { isCustomQueries, setCustomQueries, sqlQuery, setBaseSqlQuery } = useRecceQueryContext();
@@ -63,6 +64,10 @@ export const QueryPage = () => {
   let sqlQuery = _sqlQuery;
   if (envInfo?.adapterType === "sqlmesh" && _sqlQuery === defaultSqlQuery) {
     sqlQuery = `select * from db.mymodel`;
+  }
+
+  if (featureToggles.mode === "read only") {
+    sqlQuery = `--- Would like to do query here? Book a demo with us at ${RECCE_SUPPORT_CALENDAR_URL}\n${sqlQuery}`;
   }
 
   const { showRunId } = useRecceActionContext();

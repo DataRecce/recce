@@ -1,3 +1,4 @@
+import { RECCE_SUPPORT_CALENDAR_URL } from "@/constants/urls";
 import { RecceFeatureMode } from "@/lib/hooks/RecceInstanceContext";
 import { Button, CloseButton, Dialog, Text } from "@chakra-ui/react";
 import NextLink from "next/link";
@@ -48,7 +49,7 @@ export function RecceInstanceDisconnectedModalContent({
       title: "Preview Instance Expired",
       body: "This Preview Instance has expired. To browse more, please book a meeting with us.",
       action: "Contact us",
-      link: "https://reccehq.com/demo/",
+      link: RECCE_SUPPORT_CALENDAR_URL,
     },
   };
 
