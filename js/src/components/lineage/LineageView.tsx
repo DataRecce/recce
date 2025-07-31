@@ -82,6 +82,7 @@ import { CllInput, ColumnLineageData, getCll } from "@/lib/api/cll";
 import { LineageViewContextMenu, useLineageViewContextMenu } from "./LineageViewContextMenu";
 import { toaster } from "@/components/ui/toaster";
 import { useMutation } from "@tanstack/react-query";
+import SetupConnectionBanner from "./SetupConnectionBanner";
 
 export interface LineageViewProps {
   viewOptions?: LineageDiffViewOptions;
@@ -1024,6 +1025,7 @@ export function PrivateLineageView(
             <>
               <LineageViewTopBar />
               <PresetCheckRecommendation />
+              <SetupConnectionBanner />
             </>
           )}
           <ReactFlow
