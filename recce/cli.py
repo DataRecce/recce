@@ -436,11 +436,21 @@ def server(host, port, lifetime, state_file=None, **kwargs):
     if server_mode == RecceServerMode.server:
         flag = {"single_env_onboarding": False, "show_relaunch_hint": False}
         if is_cloud:
-            cloud_options = {
-                "host": kwargs.get("state_file_host"),
-                "github_token": kwargs.get("cloud_token"),
-                "password": kwargs.get("password"),
-            }
+            share_url = kwargs.get("share_url")
+            if share_url:
+                is_review = kwargs["review"] = True
+                share_id = share_url.split("/")[-1]
+                cloud_options = {
+                    "host": kwargs.get("state_file_host"),
+                    "api_token": api_token,
+                    "share_id": share_id,
+                }
+            else:
+                cloud_options = {
+                    "host": kwargs.get("state_file_host"),
+                    "github_token": kwargs.get("cloud_token"),
+                    "password": kwargs.get("password"),
+                }
 
         # Check Single Environment Onboarding Mode if the review mode is False
         project_dir_path = Path(kwargs.get("project_dir") or "./")
@@ -453,6 +463,7 @@ def server(host, port, lifetime, state_file=None, **kwargs):
             kwargs["target_base_path"] = kwargs.get("target_path")
     elif server_mode == RecceServerMode.preview:
         if is_cloud:
+            is_review = kwargs["review"] = True
             share_url = kwargs.get("share_url")
             share_id = share_url.split("/")[-1] if share_url else None
             cloud_options = {
@@ -464,16 +475,18 @@ def server(host, port, lifetime, state_file=None, **kwargs):
             "preview": True,
         }
     elif server_mode == RecceServerMode.read_only:
-        is_review = kwargs["review"] = True
-        is_cloud = kwargs["cloud"] = False
-        cloud_options = None
+        if is_cloud:
+            is_review = kwargs["review"] = True
+            share_url = kwargs.get("share_url")
+            share_id = share_url.split("/")[-1] if share_url else None
+            cloud_options = {
+                "host": kwargs.get("state_file_host"),
+                "api_token": api_token,
+                "share_id": share_id,
+            }
         flag = {
             "read_only": True,
         }
-        if state_file is None:
-            console.print("[[red]Error[/red]] The state_file is required in 'Read-Only' mode.")
-            console.print("Please provide recce_state json file exported by Recce OSS.")
-            exit(1)
 
     # Onboarding State logic update here
     update_onboarding_state(api_token, flag.get("single_env_onboarding"))
