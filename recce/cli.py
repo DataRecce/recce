@@ -403,9 +403,15 @@ def server(host, port, lifetime, state_file=None, **kwargs):
     recce server --review recce_state.json
 
     \b
-    # Launch the server and synchronize the state with the cloud
+    # Launch the server using the state from the PR of your current branch. (Requires GitHub token)
+    export GITHUB_TOKEN=<your-github-token>
     recce server --cloud
     recce server --review --cloud
+
+    \b
+    # Launch the server using the state from a shared URL. (Requires Recce API token)
+    export RECCE_API_TOKEN=<your-recce-api-token>
+    recce server --cloud --share-url <share-url>
 
     """
 
@@ -433,14 +439,35 @@ def server(host, port, lifetime, state_file=None, **kwargs):
         "api_token": api_token,
     }
 
+    share_url = kwargs.get("share_url")
+    if share_url:
+        share_id = share_url.split("/")[-1]
+        if not share_id:
+            console.print("[[red]Error[/red]] Invalid share URL format.")
+            exit(1)
+
     if server_mode == RecceServerMode.server:
         flag = {"single_env_onboarding": False, "show_relaunch_hint": False}
         if is_cloud:
-            cloud_options = {
-                "host": kwargs.get("state_file_host"),
-                "github_token": kwargs.get("cloud_token"),
-                "password": kwargs.get("password"),
-            }
+            if share_url:
+                # recce server --cloud --share-url <share-url>
+                # Use state file stored for the share url
+                # Forces use of the review mode.
+                is_review = kwargs["review"] = True
+                cloud_options = {
+                    "host": kwargs.get("state_file_host"),
+                    "api_token": api_token,
+                    "share_id": share_id,
+                }
+            else:
+                # recce server --cloud
+                # recce server --cloud --review
+                # Use state file stored for the PR of the current branch
+                cloud_options = {
+                    "host": kwargs.get("state_file_host"),
+                    "github_token": kwargs.get("cloud_token"),
+                    "password": kwargs.get("password"),
+                }
 
         # Check Single Environment Onboarding Mode if the review mode is False
         project_dir_path = Path(kwargs.get("project_dir") or "./")
@@ -453,27 +480,56 @@ def server(host, port, lifetime, state_file=None, **kwargs):
             kwargs["target_base_path"] = kwargs.get("target_path")
     elif server_mode == RecceServerMode.preview:
         if is_cloud:
-            share_url = kwargs.get("share_url")
-            share_id = share_url.split("/")[-1] if share_url else None
+            # recce server --cloud --share-url <share-url> --mode preview
+            # Use state file stored for the share url
+            #
+            # Preview mode disable these features
+            # - run query
+            #
+            # Usage:
+            #    Used in cloud managed instance. For cloud onboarding to preview the uploaded artifacts.
             cloud_options = {
                 "host": kwargs.get("state_file_host"),
                 "api_token": api_token,
                 "share_id": share_id,
             }
+        else:
+            # recce server --mode preview recce_state.json
+            if state_file is None:
+                console.print("[[red]Error[/red]] The state_file is required in 'Preview' mode.")
+                console.print("Please provide recce_state json file exported by Recce OSS.")
+                exit(1)
+        is_review = kwargs["review"] = True
         flag = {
             "preview": True,
         }
     elif server_mode == RecceServerMode.read_only:
+        if is_cloud:
+            # recce server --cloud --share-url <share-url> --mode read-only
+            # Use state file stored for the share url
+            #
+            # Read-only mode disable these features
+            # - run query
+            # - use checklist
+            # - share
+            #
+            # Usage:
+            #    Used in cloud managed instance. Launch when user click a share link.
+            cloud_options = {
+                "host": kwargs.get("state_file_host"),
+                "api_token": api_token,
+                "share_id": share_id,
+            }
+        else:
+            # recce server --mode read-only recce_state.json
+            if state_file is None:
+                console.print("[[red]Error[/red]] The state_file is required in 'Read-Only' mode.")
+                console.print("Please provide recce_state json file exported by Recce OSS.")
+                exit(1)
         is_review = kwargs["review"] = True
-        is_cloud = kwargs["cloud"] = False
-        cloud_options = None
         flag = {
             "read_only": True,
         }
-        if state_file is None:
-            console.print("[[red]Error[/red]] The state_file is required in 'Read-Only' mode.")
-            console.print("Please provide recce_state json file exported by Recce OSS.")
-            exit(1)
 
     # Onboarding State logic update here
     update_onboarding_state(api_token, flag.get("single_env_onboarding"))
