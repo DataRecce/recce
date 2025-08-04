@@ -403,9 +403,15 @@ def server(host, port, lifetime, state_file=None, **kwargs):
     recce server --review recce_state.json
 
     \b
-    # Launch the server and synchronize the state with the cloud
+    # Launch the server using the state from the PR of your current branch. (Requires GitHub token)
+    export GITHUB_TOKEN=<your-github-token>
     recce server --cloud
     recce server --review --cloud
+
+    \b
+    # Launch the server using the state from a shared URL. (Requires Recce API token)
+    export RECCE_API_TOKEN=<your-recce-api-token>
+    recce server --cloud --share-url <share-url>
 
     """
 
@@ -438,6 +444,9 @@ def server(host, port, lifetime, state_file=None, **kwargs):
         if is_cloud:
             share_url = kwargs.get("share_url")
             if share_url:
+                # recce server --cloud --share-url <share-url>
+                # Use state file stored for the share url
+                # For to use the review mode.
                 is_review = kwargs["review"] = True
                 share_id = share_url.split("/")[-1]
                 cloud_options = {
@@ -446,6 +455,9 @@ def server(host, port, lifetime, state_file=None, **kwargs):
                     "share_id": share_id,
                 }
             else:
+                # recce server --cloud
+                # recce server --cloud --review
+                # Use state file stored for the PR of the current branch
                 cloud_options = {
                     "host": kwargs.get("state_file_host"),
                     "github_token": kwargs.get("cloud_token"),
@@ -463,6 +475,14 @@ def server(host, port, lifetime, state_file=None, **kwargs):
             kwargs["target_base_path"] = kwargs.get("target_path")
     elif server_mode == RecceServerMode.preview:
         if is_cloud:
+            # recce server --cloud --share-url <share-url> --mode preview
+            # Use state file stored for the share url
+            #
+            # Read-only mode disable these features
+            # - run query
+            #
+            # Usage:
+            #    Used in cloud managed instance. For cloud onboarding to preview the uploaded artifacts.
             is_review = kwargs["review"] = True
             share_url = kwargs.get("share_url")
             share_id = share_url.split("/")[-1] if share_url else None
@@ -476,6 +496,16 @@ def server(host, port, lifetime, state_file=None, **kwargs):
         }
     elif server_mode == RecceServerMode.read_only:
         if is_cloud:
+            # recce server --cloud --share-url <share-url> --mode read-only
+            # Use state file stored for the share url
+            #
+            # Read-only mode disable these features
+            # - run query
+            # - use checklist
+            # - share
+            #
+            # Usage:
+            #    Used in cloud managed instance. Launch when user click a share link.
             is_review = kwargs["review"] = True
             share_url = kwargs.get("share_url")
             share_id = share_url.split("/")[-1] if share_url else None
