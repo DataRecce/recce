@@ -478,7 +478,7 @@ def server(host, port, lifetime, state_file=None, **kwargs):
             # recce server --cloud --share-url <share-url> --mode preview
             # Use state file stored for the share url
             #
-            # Read-only mode disable these features
+            # Preview mode disable these features
             # - run query
             #
             # Usage:
