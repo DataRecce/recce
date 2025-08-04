@@ -2,7 +2,7 @@ import os
 import sys
 import time
 from datetime import datetime, timezone
-from typing import List
+from typing import Dict, List, Tuple
 
 from deepdiff import DeepDiff
 from rich import box
@@ -111,7 +111,7 @@ def run_should_be_approved(run):
     return False
 
 
-async def execute_preset_checks(preset_checks: list) -> (int, List[dict]):
+async def execute_preset_checks(preset_checks: List, is_skip_query: bool) -> Tuple[int, List[Dict]]:
     """
     Execute the preset checks
     """
@@ -155,12 +155,18 @@ async def execute_preset_checks(preset_checks: list) -> (int, List[dict]):
                     is_checked=is_check,
                 )
             else:
-                run, future = submit_run(check_type, params=check_params)
-                await future
-                is_check = run_should_be_approved(run)
-                create_check_from_run(
-                    run.run_id, check_name, check_description, check_options, is_preset=True, is_checked=is_check
-                )
+                if not is_skip_query:
+                    run, future = submit_run(check_type, params=check_params)
+                    await future
+                    is_check = run_should_be_approved(run)
+                    create_check_from_run(
+                        run.run_id, check_name, check_description, check_options, is_preset=True, is_checked=is_check
+                    )
+                else:
+                    create_check_without_run(
+                        check_name, check_description, check_type, check_params, check_options, is_preset=True
+                    )
+                    continue
 
             end = time.time()
             table.add_row(
@@ -200,7 +206,7 @@ async def execute_preset_checks(preset_checks: list) -> (int, List[dict]):
     return rc, failed_checks
 
 
-async def execute_state_checks(checks: list) -> (int, List[dict]):
+async def execute_state_checks(checks: List, is_skip_query: bool) -> Tuple[int, List[Dict]]:
     """
     Execute the checks from loaded state
     """
@@ -232,7 +238,7 @@ async def execute_state_checks(checks: list) -> (int, List[dict]):
                 raise ValueError(f"Invalid check type: {check_type}")
 
             start = time.time()
-            if check_type not in ["schema_diff"]:
+            if check_type not in ["schema_diff", "lineage_diff"] and not is_skip_query:
                 run, future = submit_run(check_type, params=check_params, check_id=check_id)
                 await future
 
@@ -315,6 +321,7 @@ async def cli_run(output_state_file: str, **kwargs):
     ctx = load_context(**kwargs)
 
     is_skip_query = kwargs.get("skip_query", False)
+    is_skip_check = kwargs.get("skip_check", False)
 
     # Prepare the artifact by collecting the lineage
     console.rule("DBT Artifacts")
@@ -327,23 +334,23 @@ async def cli_run(output_state_file: str, **kwargs):
     rc = 0
     if ctx.state_loader.state is None:
         preset_checks = RecceConfig().get("checks")
-        if is_skip_query or preset_checks is None or len(preset_checks) == 0:
+        if is_skip_check or preset_checks is None or len(preset_checks) == 0:
             # Skip the preset checks
             pass
         else:
             console.rule("Preset checks")
-            _, failed_checks = await execute_preset_checks(preset_checks)
+            _, failed_checks = await execute_preset_checks(preset_checks, is_skip_query)
             if failed_checks:
                 console.print("[[yellow]Warning[/yellow]] Preset checks failed. Please see the failed reason.")
                 process_failed_checks(failed_checks, error_log)
     else:
         state_checks = ctx.state_loader.state.checks
-        if is_skip_query or state_checks is None or len(state_checks) == 0:
+        if is_skip_check or state_checks is None or len(state_checks) == 0:
             # Skip the checks in the state
             pass
         else:
             console.rule("Checks")
-            _, failed_checks = await execute_state_checks(state_checks)
+            _, failed_checks = await execute_state_checks(state_checks, is_skip_query)
             if failed_checks:
                 console.print("[[yellow]Warning[/yellow]] Checks failed. Please see the failed reason.")
                 process_failed_checks(failed_checks, error_log)
