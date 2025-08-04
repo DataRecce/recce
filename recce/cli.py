@@ -488,12 +488,18 @@ def server(host, port, lifetime, state_file=None, **kwargs):
             #
             # Usage:
             #    Used in cloud managed instance. For cloud onboarding to preview the uploaded artifacts.
-            is_review = kwargs["review"] = True
             cloud_options = {
                 "host": kwargs.get("state_file_host"),
                 "api_token": api_token,
                 "share_id": share_id,
             }
+        else:
+            # recce server --mode preview recce_state.json
+            if state_file is None:
+                console.print("[[red]Error[/red]] The state_file is required in 'Preview' mode.")
+                console.print("Please provide recce_state json file exported by Recce OSS.")
+                exit(1)
+        is_review = kwargs["review"] = True
         flag = {
             "preview": True,
         }
@@ -509,12 +515,18 @@ def server(host, port, lifetime, state_file=None, **kwargs):
             #
             # Usage:
             #    Used in cloud managed instance. Launch when user click a share link.
-            is_review = kwargs["review"] = True
             cloud_options = {
                 "host": kwargs.get("state_file_host"),
                 "api_token": api_token,
                 "share_id": share_id,
             }
+        else:
+            # recce server --mode read-only recce_state.json
+            if state_file is None:
+                console.print("[[red]Error[/red]] The state_file is required in 'Read-Only' mode.")
+                console.print("Please provide recce_state json file exported by Recce OSS.")
+                exit(1)
+        is_review = kwargs["review"] = True
         flag = {
             "read_only": True,
         }
