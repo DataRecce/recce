@@ -439,16 +439,21 @@ def server(host, port, lifetime, state_file=None, **kwargs):
         "api_token": api_token,
     }
 
+    share_url = kwargs.get("share_url")
+    if share_url:
+        share_id = share_url.split("/")[-1]
+        if not share_id:
+            console.print("[[red]Error[/red]] Invalid share URL format.")
+            exit(1)
+
     if server_mode == RecceServerMode.server:
         flag = {"single_env_onboarding": False, "show_relaunch_hint": False}
         if is_cloud:
-            share_url = kwargs.get("share_url")
             if share_url:
                 # recce server --cloud --share-url <share-url>
                 # Use state file stored for the share url
-                # For to use the review mode.
+                # Forces use of the review mode.
                 is_review = kwargs["review"] = True
-                share_id = share_url.split("/")[-1]
                 cloud_options = {
                     "host": kwargs.get("state_file_host"),
                     "api_token": api_token,
@@ -484,8 +489,6 @@ def server(host, port, lifetime, state_file=None, **kwargs):
             # Usage:
             #    Used in cloud managed instance. For cloud onboarding to preview the uploaded artifacts.
             is_review = kwargs["review"] = True
-            share_url = kwargs.get("share_url")
-            share_id = share_url.split("/")[-1] if share_url else None
             cloud_options = {
                 "host": kwargs.get("state_file_host"),
                 "api_token": api_token,
@@ -507,8 +510,6 @@ def server(host, port, lifetime, state_file=None, **kwargs):
             # Usage:
             #    Used in cloud managed instance. Launch when user click a share link.
             is_review = kwargs["review"] = True
-            share_url = kwargs.get("share_url")
-            share_id = share_url.split("/")[-1] if share_url else None
             cloud_options = {
                 "host": kwargs.get("state_file_host"),
                 "api_token": api_token,
