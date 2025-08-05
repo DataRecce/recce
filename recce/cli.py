@@ -608,6 +608,7 @@ DEFAULT_RECCE_STATE_FILE = "recce_state.json"
 @click.option("--state-file", help="Path of the import state file.", type=click.Path())
 @click.option("--summary", help="Path of the summary markdown file.", type=click.Path())
 @click.option("--skip-query", is_flag=True, help="Skip running the queries for the checks.")
+@click.option("--skip-check", is_flag=True, help="Skip running the checks.")
 @click.option(
     "--git-current-branch",
     help="The git branch of the current environment.",
