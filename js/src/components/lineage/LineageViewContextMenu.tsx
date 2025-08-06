@@ -108,6 +108,8 @@ export const ModelNodeContextMenu = ({
   const { featureToggles } = useRecceInstanceContext();
   const { isActionAvailable } = useLineageGraphContext();
   const { data: flag } = useRecceServerFlag();
+  const { lineageGraph } = useLineageGraphContext();
+  const noCatalogCurrent = !lineageGraph?.catalogMetadata.current;
   const singleEnv = flag?.single_env_onboarding ?? false;
   const isQueryDisabled = featureToggles.disableDatabaseQuery;
 
@@ -132,6 +134,7 @@ export const ModelNodeContextMenu = ({
     menuItems.push({
       label: "Show Impact Radius",
       itemIcon: <FaRegDotCircle />,
+      isDisabled: noCatalogCurrent,
       action: () => {
         void showColumnLevelLineage({
           node_id: node.id,
