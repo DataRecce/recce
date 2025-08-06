@@ -13,9 +13,9 @@ export default function SetupConnectionBanner() {
 
   return (
     <div className="flex items-center w-full px-2 py-0.5 bg-cyan-50">
-      <HStack flex="1" fontSize={"10pt"} color="cyan.600">
+      <HStack flex="1" fontSize="sm" color="cyan.600">
         <PiInfo />
-        <Text>Query functions disabled without data warehouse connection.</Text>
+        <Text>Query functions disabled without a data warehouse connection.</Text>
         <Button
           bgColor="iochmara.400"
           size="2xs"

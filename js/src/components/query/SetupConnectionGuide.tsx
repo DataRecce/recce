@@ -14,7 +14,7 @@ export default function SetupConnectionGuide() {
             Wait, there's more!
           </Heading>
           <Text fontSize="md" textAlign="center">
-            Query functions disabled without{" "}
+            Query functions disabled without a{" "}
             <Text fontWeight="bold" as="span">
               data warehouse connection
             </Text>

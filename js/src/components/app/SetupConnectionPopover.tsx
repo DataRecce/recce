@@ -64,7 +64,7 @@ export default function SetupConnectionPopover({ children, display }: SetupConne
             onMouseEnter={handleMouseEnter}
             onMouseLeave={handleMouseLeave}>
             <Popover.Body>
-              Connect to data warehouse to unlock Diff.{" "}
+              Connect to a data warehouse to unlock Diff.{" "}
               <Link
                 href={RECCE_SUPPORT_CALENDAR_URL}
                 color="white"
