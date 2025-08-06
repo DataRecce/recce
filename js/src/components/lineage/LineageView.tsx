@@ -76,13 +76,13 @@ import { GraphColumnNode } from "./GraphColumnNode";
 import { ColumnLevelLineageControl } from "./ColumnLevelLineageControl";
 import { ColumnLevelLineageLegend } from "./ColumnLevelLineageLegend";
 import { LineageViewNotification } from "./LineageViewNotification";
-import { useRecceServerFlag } from "@/lib/hooks/useRecceServerFlag";
 import { BaseEnvironmentSetupNotification } from "./SingleEnvironmentQueryView";
 import { CllInput, ColumnLineageData, getCll } from "@/lib/api/cll";
 import { LineageViewContextMenu, useLineageViewContextMenu } from "./LineageViewContextMenu";
 import { toaster } from "@/components/ui/toaster";
 import { useMutation } from "@tanstack/react-query";
 import SetupConnectionBanner from "./SetupConnectionBanner";
+import { useRecceInstanceContext } from "@/lib/hooks/RecceInstanceContext";
 
 export interface LineageViewProps {
   viewOptions?: LineageDiffViewOptions;
@@ -208,7 +208,7 @@ export function PrivateLineageView(
   const { lineageGraph, retchLineageGraph, isLoading, error, refetchRunsAggregated } =
     useLineageGraphContext();
 
-  const { data: flagData } = useRecceServerFlag();
+  const { featureToggles, singleEnv } = useRecceInstanceContext();
   const { runId, showRunId, closeRunResult, runAction, isRunResultOpen } = useRecceActionContext();
   const { run } = useRun(runId);
 
@@ -1024,8 +1024,11 @@ export function PrivateLineageView(
           {interactive && (
             <>
               <LineageViewTopBar />
-              <PresetCheckRecommendation />
-              <SetupConnectionBanner />
+              {featureToggles.mode === "metadata only" ? (
+                <SetupConnectionBanner />
+              ) : (
+                <PresetCheckRecommendation />
+              )}
             </>
           )}
           <ReactFlow
@@ -1078,9 +1081,7 @@ export function PrivateLineageView(
             </Panel>
             <Panel position="top-center">
               <LineageViewNotification
-                notification={
-                  flagData?.single_env_onboarding ? <BaseEnvironmentSetupNotification /> : null
-                }
+                notification={singleEnv ? <BaseEnvironmentSetupNotification /> : null}
                 type={"info"}
               />
             </Panel>

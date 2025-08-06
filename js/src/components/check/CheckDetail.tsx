@@ -52,6 +52,7 @@ import { useRecceInstanceContext } from "@/lib/hooks/RecceInstanceContext";
 import { trackCopyToClipboard } from "@/lib/api/track";
 import { Tooltip } from "@/components/ui/tooltip";
 import { PiCheckCircle, PiCopy, PiRepeat, PiTrashFill } from "react-icons/pi";
+import SetupConnectionPopover from "@/components/app/SetupConnectionPopover";
 
 export const isDisabledByNoResult = (type: string, run: Run | undefined): boolean => {
   if (type === "schema_diff" || type === "lineage_diff") {
@@ -394,13 +395,15 @@ export const CheckDetail = ({ checkId, refreshCheckList }: CheckDetailProps) => 
                         This action is part of the initial preset and has not been performed yet.
                         Once performed, the result will be shown here.
                       </Box>
-                      <Button
-                        onClick={handleRerun}
-                        colorPalette="blue"
-                        size="sm"
-                        disabled={featureToggles.disableDatabaseQuery}>
-                        Run Query
-                      </Button>
+                      <SetupConnectionPopover display={featureToggles.mode === "metadata only"}>
+                        <Button
+                          onClick={handleRerun}
+                          colorPalette="blue"
+                          size="sm"
+                          disabled={featureToggles.disableDatabaseQuery}>
+                          Run Query
+                        </Button>
+                      </SetupConnectionPopover>
                     </VStack>
                   </Center>
                 ))}

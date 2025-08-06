@@ -17,6 +17,7 @@ import { PiInfoFill } from "react-icons/pi";
 import HistoryToggle from "@/components/shared/HistoryToggle";
 import SetupConnectionGuide from "./SetupConnectionGuide";
 import { RECCE_SUPPORT_CALENDAR_URL } from "@/constants/urls";
+import SetupConnectionPopover from "@/components/app/SetupConnectionPopover";
 
 const QueryModeToggle = () => {
   const { isCustomQueries, setCustomQueries, sqlQuery, setBaseSqlQuery } = useRecceQueryContext();
@@ -58,8 +59,7 @@ export const QueryPage = () => {
     isCustomQueries,
   } = useRecceQueryContext();
   const { lineageGraph, envInfo } = useLineageGraphContext();
-  const { featureToggles } = useRecceInstanceContext();
-  const { data: flag } = useRecceServerFlag();
+  const { featureToggles, singleEnv } = useRecceInstanceContext();
 
   let sqlQuery = _sqlQuery;
   if (envInfo?.adapterType === "sqlmesh" && _sqlQuery === defaultSqlQuery) {
@@ -122,7 +122,7 @@ export const QueryPage = () => {
     }, "N/A");
   }, [lineageGraph?.nodes]);
 
-  if (flag?.single_env_onboarding || featureToggles.mode === "metadata only") {
+  if (singleEnv || featureToggles.mode === "metadata only") {
     return (
       <Flex direction="column" height="100%">
         <Flex
@@ -134,14 +134,21 @@ export const QueryPage = () => {
           borderBottom="1px solid lightgray">
           <HistoryToggle />
           <Spacer />
-          {/* Disable the Diff button to let user known they should configure the base environment */}
-          <Tooltip
-            content="Please configure the base environment before running the diff"
-            positioning={{ placement: "left" }}>
-            <Button colorPalette="iochmara" disabled size="xs" fontSize="14px" marginTop={"16px"}>
-              Run Diff
-            </Button>
-          </Tooltip>
+          {singleEnv ? (
+            <Tooltip
+              content="Please configure the base environment before running the diff"
+              positioning={{ placement: "left" }}>
+              <Button colorPalette="iochmara" disabled size="xs" fontSize="14px" marginTop={"16px"}>
+                Run Diff
+              </Button>
+            </Tooltip>
+          ) : (
+            <SetupConnectionPopover display={featureToggles.mode === "metadata only"}>
+              <Button colorPalette="iochmara" disabled size="xs" fontSize="14px" marginTop={"16px"}>
+                Run Diff
+              </Button>
+            </SetupConnectionPopover>
+          )}
         </Flex>
         <DualSqlEditor
           value={sqlQuery}

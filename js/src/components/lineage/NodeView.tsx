@@ -27,7 +27,6 @@ import { createSchemaDiffCheck } from "@/lib/api/schemacheck";
 import { findByRunType } from "../run/registry";
 import { DisableTooltipMessages } from "@/constants/tooltipMessage";
 import { trackPreviewChange } from "@/lib/api/track";
-import { useRecceServerFlag } from "@/lib/hooks/useRecceServerFlag";
 import { SandboxView } from "./SandboxView";
 import { NodeSqlView } from "./NodeSqlView";
 import { LearnHowLink, RecceNotification } from "../onboarding-guide/Notification";
@@ -35,6 +34,7 @@ import { useRecceInstanceContext } from "@/lib/hooks/RecceInstanceContext";
 import { formatSelectColumns } from "@/lib/formatSelect";
 import { Tooltip } from "@/components/ui/tooltip";
 import { PiCaretDown } from "react-icons/pi";
+import SetupConnectionPopover from "@/components/app/SetupConnectionPopover";
 
 interface NodeViewProps {
   node: LineageGraphNode;
@@ -63,8 +63,8 @@ export function NodeView({ node, onCloseNode }: NodeViewProps) {
   const refetchRowCountDiff = () => {
     runAction("row_count_diff", { node_names: [node.name] }, { showForm: false, showLast: false });
   };
-  const { data: flag } = useRecceServerFlag();
-  const isSingleEnvOnboarding = flag?.single_env_onboarding;
+  const { featureToggles, singleEnv: isSingleEnvOnboarding } = useRecceInstanceContext();
+  const metadataOnly = featureToggles.mode === "metadata only";
 
   const addSchemaCheck = useCallback(async () => {
     const nodeId = node.id;
@@ -93,7 +93,29 @@ export function NodeView({ node, onCloseNode }: NodeViewProps) {
     if (formattedColumns.length) {
       query = `select \n  ${formattedColumns.join("\n  ")}\nfrom {{ ref("${node.name}") }}`;
     }
-    const { featureToggles } = useRecceInstanceContext();
+
+    const wrapMenuItem = (
+      children: React.ReactElement<{
+        ref?: React.Ref<HTMLElement>;
+        [key: string]: unknown;
+      }>,
+      runType: string,
+    ) => {
+      if (metadataOnly) {
+        return <SetupConnectionPopover display={true}>{children}</SetupConnectionPopover>;
+      }
+
+      const tooltipContent = disableReason(isAddedOrRemoved, runType);
+      return (
+        <Tooltip
+          disabled={tooltipContent === ""}
+          content={tooltipContent}
+          positioning={{ placement: "left" }}>
+          {children}
+        </Tooltip>
+      );
+    };
+
     if (
       node.resourceType === "model" ||
       node.resourceType === "seed" ||
@@ -112,54 +134,57 @@ export function NodeView({ node, onCloseNode }: NodeViewProps) {
           <Portal>
             <Menu.Positioner>
               <Menu.Content>
-                <Menu.Item
-                  value="query"
-                  fontSize="14px"
-                  disabled={featureToggles.disableDatabaseQuery}
-                  onClick={() => {
-                    if (envInfo?.adapterType === "dbt") {
-                      setSqlQuery(query);
-                    } else if (envInfo?.adapterType === "sqlmesh") {
-                      setSqlQuery(`select * from ${node.name}`);
-                    }
-                    if (isActionAvailable("query_diff_with_primary_key")) {
-                      // Only set primary key if the action is available
-                      setPrimaryKeys(primaryKey !== undefined ? [primaryKey] : undefined);
-                    }
-                    setLocation("/query");
-                  }}>
-                  <Icon as={findByRunType("query_diff")?.icon} /> Query
-                </Menu.Item>
-                <Menu.Item
-                  value="sandbox"
-                  fontSize="14px"
-                  disabled={featureToggles.disableDatabaseQuery}
-                  onClick={() => {
-                    if (isActionAvailable("query_diff_with_primary_key")) {
-                      // Only set primary key if the action is available
-                      setPrimaryKeys(primaryKey !== undefined ? [primaryKey] : undefined);
-                    }
-                    onSandboxOpen();
-                    trackPreviewChange({ action: "explore", node: node.name });
-                  }}>
-                  <Icon as={findByRunType("sandbox")?.icon} /> Sandbox (Experiment)
-                </Menu.Item>
-                <Menu.Separator />
-                <Menu.ItemGroup m="0" p="0">
-                  <Menu.ItemGroupLabel>Diff</Menu.ItemGroupLabel>
+                <SetupConnectionPopover display={metadataOnly}>
                   <Menu.Item
-                    value="row-count-diff"
+                    value="query"
                     fontSize="14px"
                     disabled={featureToggles.disableDatabaseQuery}
                     onClick={() => {
-                      refetchRowCountDiff();
+                      if (envInfo?.adapterType === "dbt") {
+                        setSqlQuery(query);
+                      } else if (envInfo?.adapterType === "sqlmesh") {
+                        setSqlQuery(`select * from ${node.name}`);
+                      }
+                      if (isActionAvailable("query_diff_with_primary_key")) {
+                        // Only set primary key if the action is available
+                        setPrimaryKeys(primaryKey !== undefined ? [primaryKey] : undefined);
+                      }
+                      setLocation("/query");
                     }}>
-                    <Icon as={findByRunType("row_count_diff")?.icon} /> Row Count Diff
+                    <Icon as={findByRunType("query_diff")?.icon} /> Query
                   </Menu.Item>
-                  <Tooltip
-                    disabled={disableReason(isAddedOrRemoved, "profile_diff") === ""}
-                    content={disableReason(isAddedOrRemoved, "profile_diff")}
-                    positioning={{ placement: "left" }}>
+                </SetupConnectionPopover>
+                <SetupConnectionPopover display={metadataOnly}>
+                  <Menu.Item
+                    value="sandbox"
+                    fontSize="14px"
+                    disabled={featureToggles.disableDatabaseQuery}
+                    onClick={() => {
+                      if (isActionAvailable("query_diff_with_primary_key")) {
+                        // Only set primary key if the action is available
+                        setPrimaryKeys(primaryKey !== undefined ? [primaryKey] : undefined);
+                      }
+                      onSandboxOpen();
+                      trackPreviewChange({ action: "explore", node: node.name });
+                    }}>
+                    <Icon as={findByRunType("sandbox")?.icon} /> Sandbox (Experiment)
+                  </Menu.Item>
+                </SetupConnectionPopover>
+                <Menu.Separator />
+                <Menu.ItemGroup m="0" p="0">
+                  <Menu.ItemGroupLabel>Diff</Menu.ItemGroupLabel>
+                  <SetupConnectionPopover display={metadataOnly}>
+                    <Menu.Item
+                      value="row-count-diff"
+                      fontSize="14px"
+                      disabled={featureToggles.disableDatabaseQuery}
+                      onClick={() => {
+                        refetchRowCountDiff();
+                      }}>
+                      <Icon as={findByRunType("row_count_diff")?.icon} /> Row Count Diff
+                    </Menu.Item>
+                  </SetupConnectionPopover>
+                  {wrapMenuItem(
                     <Menu.Item
                       value="profile-diff"
                       fontSize="14px"
@@ -174,12 +199,10 @@ export function NodeView({ node, onCloseNode }: NodeViewProps) {
                         );
                       }}>
                       <Icon as={findByRunType("profile_diff")?.icon} /> Profile Diff
-                    </Menu.Item>
-                  </Tooltip>
-                  <Tooltip
-                    disabled={disableReason(isAddedOrRemoved, "value_diff") === ""}
-                    content={disableReason(isAddedOrRemoved, "value_diff")}
-                    positioning={{ placement: "left" }}>
+                    </Menu.Item>,
+                    "profile_diff",
+                  )}
+                  {wrapMenuItem(
                     <Menu.Item
                       value="value-diff"
                       fontSize="14px"
@@ -194,12 +217,10 @@ export function NodeView({ node, onCloseNode }: NodeViewProps) {
                         );
                       }}>
                       <Icon as={findByRunType("value_diff")?.icon} /> Value Diff
-                    </Menu.Item>
-                  </Tooltip>
-                  <Tooltip
-                    disabled={disableReason(isAddedOrRemoved, "top_k_diff") === ""}
-                    content={disableReason(isAddedOrRemoved, "top_k_diff")}
-                    positioning={{ placement: "left" }}>
+                    </Menu.Item>,
+                    "value_diff",
+                  )}
+                  {wrapMenuItem(
                     <Menu.Item
                       value="top-k-diff"
                       fontSize="14px"
@@ -212,12 +233,10 @@ export function NodeView({ node, onCloseNode }: NodeViewProps) {
                         );
                       }}>
                       <Icon as={findByRunType("top_k_diff")?.icon} /> Top-K Diff
-                    </Menu.Item>
-                  </Tooltip>
-                  <Tooltip
-                    disabled={disableReason(isAddedOrRemoved, "histogram_diff") === ""}
-                    content={disableReason(isAddedOrRemoved, "histogram_diff")}
-                    positioning={{ placement: "left" }}>
+                    </Menu.Item>,
+                    "top_k_diff",
+                  )}
+                  {wrapMenuItem(
                     <Menu.Item
                       value="histogram-diff"
                       fontSize="14px"
@@ -234,8 +253,9 @@ export function NodeView({ node, onCloseNode }: NodeViewProps) {
                         );
                       }}>
                       <Icon as={findByRunType("histogram_diff")?.icon} /> Histogram Diff
-                    </Menu.Item>
-                  </Tooltip>
+                    </Menu.Item>,
+                    "histogram_diff",
+                  )}
                 </Menu.ItemGroup>
                 <Menu.Separator />
                 <Menu.ItemGroup m="0" p="4px 12px">
