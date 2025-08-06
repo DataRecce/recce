@@ -16,6 +16,7 @@ import { useLocation } from "wouter";
 import { SubmitRunTrackProps } from "@/lib/api/runs";
 import { formatSelectColumns } from "@/lib/formatSelect";
 import { FaRegDotCircle } from "react-icons/fa";
+import SetupConnectionPopover from "@/components/app/SetupConnectionPopover";
 
 interface LineageViewContextMenuProps {
   x: number;
@@ -42,6 +43,8 @@ interface ContextMenuProps {
 }
 
 const ContextMenu = ({ menuItems, open, onClose, x, y }: ContextMenuProps) => {
+  const { featureToggles } = useRecceInstanceContext();
+
   return (
     <Menu.Root open={open} onOpenChange={onClose}>
       <Portal>
@@ -63,7 +66,7 @@ const ContextMenu = ({ menuItems, open, onClose, x, y }: ContextMenuProps) => {
                 if (isSeparator) {
                   return <Menu.Separator key={label} />;
                 } else {
-                  return (
+                  const menuItem = (
                     <Menu.Item
                       value={String(label)}
                       key={label}
@@ -77,6 +80,17 @@ const ContextMenu = ({ menuItems, open, onClose, x, y }: ContextMenuProps) => {
                       {itemIcon} {label}
                     </Menu.Item>
                   );
+
+                  // Wrap disabled items with SetupConnectionPopover
+                  if (isDisabled) {
+                    return (
+                      <SetupConnectionPopover display={featureToggles.mode === "metadata only"}>
+                        {menuItem}
+                      </SetupConnectionPopover>
+                    );
+                  }
+
+                  return menuItem;
                 }
               })
             )}

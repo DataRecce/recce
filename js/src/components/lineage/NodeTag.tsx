@@ -12,6 +12,7 @@ import { useRecceInstanceContext } from "@/lib/hooks/RecceInstanceContext";
 import { Tooltip } from "@/components/ui/tooltip";
 import { PiRepeat } from "react-icons/pi";
 import { useEffect, useState } from "react";
+import SetupConnectionPopover from "@/components/app/SetupConnectionPopover";
 
 export function ResourceTypeTag({ node }: { node: LineageGraphNode }) {
   const { icon: ResourceTypeIcon } = getIconForResourceType(node.resourceType);
@@ -132,32 +133,34 @@ export function RowCountDiffTag({
   // TODO isFetching is not hooked up, so disabling it on the skeleton for now
   return (
     <Tooltip content={label}>
-      <Tag.Root asChild>
-        <Text fontSize="xs">
-          <Flex direction="row" alignItems="center" gap="1">
-            {RunTypeIcon && <RunTypeIcon />}
-            {rowsToShow != null || isFetching ? (
-              <SkeletonText loading={false} noOfLines={1} minWidth={"30px"}>
-                {rowsToShow != null ? <_RowCountByRate rowCount={rowsToShow} /> : "row count"}
-              </SkeletonText>
-            ) : (
-              <span>row count</span>
-            )}
-            {onRefresh && (
-              <IconButton
-                loading={isFetching}
-                aria-label="Query Row Count"
-                size="2xs"
-                p="0"
-                variant="ghost"
-                onClick={onRefresh}
-                disabled={featureToggles.disableDatabaseQuery}>
-                <PiRepeat />
-              </IconButton>
-            )}
-          </Flex>
-        </Text>
-      </Tag.Root>
+      <SetupConnectionPopover display={featureToggles.mode === "metadata only"}>
+        <Tag.Root asChild>
+          <Text fontSize="xs">
+            <Flex direction="row" alignItems="center" gap="1">
+              {RunTypeIcon && <RunTypeIcon />}
+              {rowsToShow != null || isFetching ? (
+                <SkeletonText loading={false} noOfLines={1} minWidth={"30px"}>
+                  {rowsToShow != null ? <_RowCountByRate rowCount={rowsToShow} /> : "row count"}
+                </SkeletonText>
+              ) : (
+                <span>row count</span>
+              )}
+              {onRefresh && (
+                <IconButton
+                  loading={isFetching}
+                  aria-label="Query Row Count"
+                  size="2xs"
+                  p="0"
+                  variant="ghost"
+                  onClick={onRefresh}
+                  disabled={featureToggles.disableDatabaseQuery}>
+                  <PiRepeat />
+                </IconButton>
+              )}
+            </Flex>
+          </Text>
+        </Tag.Root>
+      </SetupConnectionPopover>
     </Tooltip>
   );
 }

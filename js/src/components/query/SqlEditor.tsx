@@ -26,7 +26,7 @@ export interface SqlEditorProps {
 
 export interface DualSqlEditorProps extends SqlEditorProps {
   labels?: [string, string]; // [baseLabel, currentLabel]
-  BaseEnvironmentSetupGuide?: React.ReactElement<any, any>;
+  SetupGuide?: React.ReactElement<any, any>;
 }
 
 function SqlEditor({
@@ -138,7 +138,7 @@ export function DualSqlEditor({
   onRunDiff,
   options = {},
   labels,
-  BaseEnvironmentSetupGuide,
+  SetupGuide,
   ...props
 }: DualSqlEditorProps) {
   const baseLabel = labels ? labels[0] : "Base";
@@ -164,7 +164,7 @@ export function DualSqlEditor({
             onChange={onChangeBase}
             onRunBase={onRunBase}
             options={options}
-            CustomEditor={BaseEnvironmentSetupGuide}
+            CustomEditor={SetupGuide}
             manifestData={dbtBase ?? undefined}
             schemas={Array.from(baseSchemas).join(", ")}
             {...props}

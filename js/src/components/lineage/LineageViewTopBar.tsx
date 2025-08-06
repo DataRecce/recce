@@ -25,6 +25,7 @@ import { findByRunType } from "../run/registry";
 import { useRecceServerFlag } from "@/lib/hooks/useRecceServerFlag";
 import { useRecceInstanceContext } from "@/lib/hooks/RecceInstanceContext";
 import { Tooltip } from "@/components/ui/tooltip";
+import SetupConnectionPopover from "@/components/app/SetupConnectionPopover";
 import { PiCaretDown } from "react-icons/pi";
 import HistoryToggle from "@/components/shared/HistoryToggle";
 
@@ -405,26 +406,30 @@ export const LineageViewTopBar = () => {
                     <Menu.Content>
                       <Menu.ItemGroup m="0" p="4px 12px">
                         <Menu.ItemGroupLabel>Diff</Menu.ItemGroupLabel>
-                        <Menu.Item
-                          value="row-count-diff"
-                          disabled={featureToggles.disableDatabaseQuery}
-                          onClick={async () => {
-                            await lineageViewContext.runRowCountDiff();
-                          }}>
-                          <Text textStyle="sm">
-                            <Icon as={findByRunType("row_count_diff")?.icon} /> Row Count Diff
-                          </Text>
-                        </Menu.Item>
-                        <Menu.Item
-                          value="value-diff"
-                          disabled={featureToggles.disableDatabaseQuery}
-                          onClick={async () => {
-                            await lineageViewContext.runValueDiff();
-                          }}>
-                          <Text textStyle="sm">
-                            <Icon as={findByRunType("value_diff")?.icon} /> Value Diff
-                          </Text>
-                        </Menu.Item>
+                        <SetupConnectionPopover display={featureToggles.mode === "metadata only"}>
+                          <Menu.Item
+                            value="row-count-diff"
+                            disabled={featureToggles.disableDatabaseQuery}
+                            onClick={async () => {
+                              await lineageViewContext.runRowCountDiff();
+                            }}>
+                            <Text textStyle="sm">
+                              <Icon as={findByRunType("row_count_diff")?.icon} /> Row Count Diff
+                            </Text>
+                          </Menu.Item>
+                        </SetupConnectionPopover>
+                        <SetupConnectionPopover display={featureToggles.mode === "metadata only"}>
+                          <Menu.Item
+                            value="value-diff"
+                            disabled={featureToggles.disableDatabaseQuery}
+                            onClick={async () => {
+                              await lineageViewContext.runValueDiff();
+                            }}>
+                            <Text textStyle="sm">
+                              <Icon as={findByRunType("value_diff")?.icon} /> Value Diff
+                            </Text>
+                          </Menu.Item>
+                        </SetupConnectionPopover>
                       </Menu.ItemGroup>
 
                       <Menu.Separator />
