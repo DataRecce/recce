@@ -5,9 +5,9 @@
   "engines": {
     "node": ">=20"
   },
-  "packageManager": "pnpm@10.13.1+sha512.37ebf1a5c7a30d5fabe0c5df44ee8da4c965ca0c5af3dbab28c3a1681b70a256218d05c81c9c0dcf767ef6b8551eb5b960042b9ed4300c59242336377e01cfad",
+  "packageManager": "pnpm@10.14.0+sha512.ad27a79641b49c3e481a16a805baa71817a04bbe06a38d17e60e2eaee83f6a146c6a688125f5792e48dd5ba30e7da52a5cda4c3992b9ccf333f9ce223af84748",
   "scripts": {
-    "dev": "next dev",
+    "dev": "next dev --turbopack",
     "build": "npm run clean && next build && mv out ../recce/data",
     "start": "next start",
     "lint": "eslint",
@@ -22,7 +22,7 @@
     "@babel/helpers": "^7.28.2",
     "@babel/runtime": "^7.28.2",
     "@chakra-ui/anatomy": "^2.3.4",
-    "@chakra-ui/react": "^3.23.0",
+    "@chakra-ui/react": "^3.24.1",
     "@chakra-ui/styled-system": "^2.12.0",
     "@emotion/react": "^11.14.0",
     "@fontsource/montserrat": "^5.2.6",
@@ -30,9 +30,9 @@
     "@jeromefitz/date-fns-tz": "3.0.0-canary.8",
     "@monaco-editor/react": "^4.7.0",
     "@next/third-parties": "^15.4.5",
-    "@sentry/react": "^9.43.0",
+    "@sentry/react": "^10.1.0",
     "@tailwindcss/postcss": "^4.1.11",
-    "@tanstack/react-query": "^5.83.0",
+    "@tanstack/react-query": "^5.84.1",
     "@types/js-cookie": "^3.0.6",
     "axios": "^1.11.0",
     "chakra-react-select": "^6.1.0",
@@ -50,7 +50,7 @@
     "next-themes": "^0.4.6",
     "react": "19.1.1",
     "react-chartjs-2": "^5.3.0",
-    "react-data-grid": "7.0.0-beta.56",
+    "react-data-grid": "7.0.0-beta.57",
     "react-dom": "19.1.1",
     "react-icons": "^5.5.0",
     "react-split": "^2.0.14",
@@ -59,10 +59,10 @@
     "simplebar-react": "3.3.2",
     "usehooks-ts": "^3.1.1",
     "wouter": "^3.7.1",
-    "yaml": "^2.8.0"
+    "yaml": "^2.8.1"
   },
   "devDependencies": {
-    "@amplitude/analytics-core": "^2.19.0",
+    "@amplitude/analytics-core": "^2.20.0",
     "@eslint/js": "^9.32.0",
     "@next/eslint-plugin-next": "15.4.5",
     "@testing-library/dom": "^10.4.1",
@@ -74,7 +74,7 @@
     "@types/file-saver": "^2.0.7",
     "@types/jest": "30.0.0",
     "@types/lodash": "^4.17.20",
-    "@types/node": "^24.1.0",
+    "@types/node": "^24.2.0",
     "@types/react": "19.1.9",
     "@types/react-dom": "19.1.7",
     "eslint": "^9.32.0",
@@ -92,8 +92,8 @@
     "postcss": "^8.5.6",
     "rimraf": "^6.0.1",
     "tailwindcss": "^4.1.11",
-    "typescript": "^5.8.3",
-    "typescript-eslint": "^8.38.0"
+    "typescript": "^5.9.2",
+    "typescript-eslint": "^8.39.0"
   },
   "pnpm": {
     "overrides": {

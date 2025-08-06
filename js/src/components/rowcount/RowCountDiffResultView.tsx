@@ -61,8 +61,8 @@ function _RowCountDiffResultView({ run }: RowCountDiffResultViewProp, ref: any) 
 
     return {
       name: key,
-      base: base === null ? "N/A" : Number(base),
-      current: current === null ? "N/A" : Number(current),
+      base: base ?? "N/A",
+      current: current ?? "N/A",
       delta: delta,
     };
   });
@@ -121,7 +121,7 @@ function _RowCountResultView({ run }: RowCountResultViewProp, ref: any) {
 
     return {
       name: key,
-      current: current === null ? "N/A" : Number(current),
+      current: current ?? "N/A",
     };
   });
 

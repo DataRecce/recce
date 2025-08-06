@@ -249,7 +249,7 @@ const toRenderedValue = (
       renderedValue = columnRenderedValue(parseFloat(value), columnRenderMode);
     } else {
       // convert to string
-      renderedValue = String(value);
+      renderedValue = value;
     }
   }
 
