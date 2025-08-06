@@ -179,22 +179,30 @@ export const ColumnLevelLineageControl = ({
     useLineageViewContextSafe();
   const { data: flagData } = useRecceServerFlag();
   const singleEnv = flagData?.single_env_onboarding ?? false;
+  const { lineageGraph } = useLineageGraphContext();
+  const noCatalogCurrent = !lineageGraph?.catalogMetadata.current;
 
   return (
     <Flex direction="row" gap="5px">
       {!singleEnv && (
         <Box borderRadius="md" boxShadow="md" border="1px solid" borderColor="gray.200" bg="white">
-          <Button
-            size="sm"
-            variant="ghost"
-            whiteSpace="nowrap"
-            display="inline-flex"
-            disabled={!interactive}
-            onClick={() => {
-              void showColumnLevelLineage({ no_upstream: true, change_analysis: true });
-            }}>
-            <FaRegDotCircle /> Impact Radius
-          </Button>
+          <Tooltip
+            openDelay={50}
+            content="Please provide catalog.json to enable Impact Radius"
+            disabled={!noCatalogCurrent}
+            positioning={{ placement: "top" }}>
+            <Button
+              size="sm"
+              variant="ghost"
+              whiteSpace="nowrap"
+              display="inline-flex"
+              disabled={!interactive || noCatalogCurrent}
+              onClick={() => {
+                void showColumnLevelLineage({ no_upstream: true, change_analysis: true });
+              }}>
+              <FaRegDotCircle /> Impact Radius
+            </Button>
+          </Tooltip>
         </Box>
       )}
       {viewOptions.column_level_lineage && (

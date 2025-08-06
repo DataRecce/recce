@@ -13,7 +13,7 @@ export const metadata: Metadata = {
 export default function RootLayout({ children }: { children: ReactNode }) {
   return (
     <html lang="en" suppressHydrationWarning={true}>
-      {GTM_ID != null && String(GTM_ID).trim().length > 0 && <GoogleTagManager gtmId={GTM_ID} />}
+      {GTM_ID != null && GTM_ID.trim().length > 0 && <GoogleTagManager gtmId={GTM_ID} />}
       <body>
         <Providers>{children}</Providers>
       </body>
