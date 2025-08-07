@@ -1187,6 +1187,13 @@ def download_base_artifacts(**kwargs):
     password = kwargs.get("password")
     target_path = kwargs.get("target_path")
     branch = kwargs.get("branch")
+    # If recce can't infer default branch from "GITHUB_BASE_REF" and current_default_branch()
+    if branch is None:
+        console.print(
+            "[[red]Error[/red]] Please provide your base branch name with '--branch' to download the base " "artifacts."
+        )
+        exit(1)
+
     return _download_artifacts(branch, cloud_token, console, kwargs, password, target_path)
 
 
