@@ -94,6 +94,7 @@ class CloudStateLoader(RecceStateLoader):
                     'Please provide a share URL in the command argument with option "--share-url <share-url>"'
                 )
                 return False
+        return True
 
     def _load_state(self) -> Tuple[RecceState, str]:
         return self._load_state_from_cloud()
