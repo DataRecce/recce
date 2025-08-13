@@ -1,3 +1,4 @@
+import logging
 import os
 from typing import Optional, Tuple, Union
 
@@ -5,6 +6,8 @@ from recce.util.io import SupportedFileTypes, file_io_factory
 
 from .state import RecceState
 from .state_loader import RecceStateLoader
+
+logger = logging.getLogger("uvicorn")
 
 
 class FileStateLoader(RecceStateLoader):
@@ -32,6 +35,11 @@ class FileStateLoader(RecceStateLoader):
         """
         Store the state to a file. Store happens when terminating the server or run instance.
         """
+
+        if self.state_file is None:
+            return "No state file is provided. Skip storing the state.", None
+
+        logger.info(f"Store recce state to '{self.state_file}'")
         file_type = SupportedFileTypes.FILE
         file_path = self.state_file
         json_data = self.state.to_json()
