@@ -6,7 +6,7 @@ from click.testing import CliRunner
 from recce.cli import run as cli_command_run
 from recce.cli import server as cli_command_server
 from recce.core import RecceContext
-from recce.state import RecceStateLoader
+from recce.state import CloudStateLoader
 
 
 def test_cmd_version():
@@ -48,11 +48,11 @@ class TestCommandServer(TestCase):
     @patch.object(RecceContext, "verify_required_artifacts")
     @patch("recce.util.recce_cloud.get_recce_cloud_onboarding_state")
     @patch("recce.cli.uvicorn.run")
-    @patch("recce.cli.RecceStateLoader")
+    @patch("recce.cli.CloudStateLoader")
     def test_cmd_server_with_cloud(
         self, mock_state_loader_class, mock_run, mock_get_recce_cloud_onboarding_state, mock_verify_required_artifacts
     ):
-        mock_state_loader = MagicMock(spec=RecceStateLoader)
+        mock_state_loader = MagicMock(spec=CloudStateLoader)
         mock_state_loader.verify.return_value = True
         mock_state_loader.review_mode = True
         mock_get_recce_cloud_onboarding_state.return_value = "completed"

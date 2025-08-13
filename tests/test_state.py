@@ -5,7 +5,7 @@ from datetime import datetime
 
 from recce.core import RecceContext
 from recce.models import Check, Run
-from recce.state import ArtifactsRoot, RecceState, RecceStateLoader
+from recce.state import ArtifactsRoot, FileStateLoader, RecceState
 
 current_dir = os.path.dirname(os.path.abspath(__file__))
 
@@ -129,6 +129,6 @@ class TestRecceState(unittest.TestCase):
             shutil.copy(state_file, f.name)
 
             # load the state file
-            state_loader = RecceStateLoader(state_file=f.name)
+            state_loader = FileStateLoader(state_file=f.name)
             state = state_loader.load()
             assert len(state.runs) == 17

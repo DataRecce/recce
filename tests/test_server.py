@@ -31,9 +31,9 @@ def test_health():
 
 def test_stateless(dbt_test_helper):
     context = default_context()
-    from recce.state import RecceStateLoader
+    from recce.state import FileStateLoader
 
-    context.state_loader = RecceStateLoader()
+    context.state_loader = FileStateLoader()
     client = TestClient(app)
     response = client.get("/api/info")
     assert response.status_code == 200
@@ -44,9 +44,9 @@ def test_stateless(dbt_test_helper):
 
 def test_file_mode(dbt_test_helper):
     context = default_context()
-    from recce.state import RecceStateLoader
+    from recce.state import FileStateLoader
 
-    context.state_loader = RecceStateLoader(state_file="/tmp/recce_state.json")
+    context.state_loader = FileStateLoader(state_file="/tmp/recce_state.json")
     client = TestClient(app)
     response = client.get("/api/info")
     assert response.status_code == 200
@@ -63,9 +63,9 @@ def test_saveas_and_rename(dbt_test_helper, temp_folder):
     state_file3 = os.path.join(temp_folder, "recce_state3.json")
     os.makedirs(os.path.join(temp_folder, "dir.json"))
 
-    from recce.state import RecceStateLoader
+    from recce.state import FileStateLoader
 
-    context.state_loader = RecceStateLoader(state_file=state_file)
+    context.state_loader = FileStateLoader(state_file=state_file)
     client = TestClient(app)
 
     response = client.post("/api/save", json={"filename": "recce_state2.json"})
