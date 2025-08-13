@@ -410,7 +410,7 @@ export function toValueDiffGrid(
   Object.entries(columnMap).forEach(([name, mergedColumn]) => {
     const columnStatus = mergedColumn.status ?? "";
 
-    if (name === "in_a" || name === "IN_A" || name === "in_b" || name === "IN_B") {
+    if (["in_a", "in_b"].includes(name.toLowerCase())) {
       return;
     }
 
