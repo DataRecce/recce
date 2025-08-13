@@ -7,6 +7,7 @@ from typing import Dict, Literal, Optional, Tuple, Union, final
 from recce.exceptions import RecceException
 from recce.pull_request import fetch_pr_metadata
 
+from ..util.io import SupportedFileTypes, file_io_factory
 from .const import (
     RECCE_CLOUD_TOKEN_MISSING,
 )
@@ -128,6 +129,17 @@ class RecceStateLoader(ABC):
             str: The etag of the exported state file (if applicable).
         """
         raise NotImplementedError("Subclasses must implement this method.")
+
+    def _export_state_to_file(self, file_path: str, file_type: SupportedFileTypes = SupportedFileTypes.FILE) -> str:
+        """
+        Store the state to a file. Store happens when terminating the server or run instance.
+        """
+
+        json_data = self.state.to_json()
+        io = file_io_factory(file_type)
+
+        io.write(file_path, json_data)
+        return f"The state file is stored at '{file_path}'"
 
     def refresh(self):
         new_state = self.load(refresh=True)
