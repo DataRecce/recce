@@ -1,5 +1,11 @@
-from .cloud import RecceCloudStateManager, RecceShareStateManager, s3_sse_c_headers
+from .cloud import (
+    CloudStateLoader,
+    RecceCloudStateManager,
+    RecceShareStateManager,
+    s3_sse_c_headers,
+)
 from .const import ErrorMessage
+from .local import FileStateLoader
 from .state import (
     ArtifactsRoot,
     GitRepoInfo,
@@ -16,6 +22,8 @@ __all__ = [
     "RecceShareStateManager",
     "RecceState",
     "RecceStateLoader",
+    "CloudStateLoader",
+    "FileStateLoader",
     "RecceStateMetadata",
     "s3_sse_c_headers",
     "GitRepoInfo",
