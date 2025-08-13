@@ -4,13 +4,27 @@ import unittest
 from datetime import datetime
 
 from recce.core import RecceContext
-from recce.models import Check, Run
+from recce.models import Check, Run, RunType
 from recce.state import ArtifactsRoot, FileStateLoader, RecceState
 
 current_dir = os.path.dirname(os.path.abspath(__file__))
 
 
 class TestRecceState(unittest.TestCase):
+    def test_load(self):
+        run = Run(type=RunType.QUERY, params=dict(sql_template="select * from users"))
+        check = Check(name="check 1", description="desc 1", type=run.type, params=run.params)
+
+        state = RecceState(runs=[run], checks=[check])
+        json_content = state.to_json()
+        new_state = RecceState.from_json(json_content)
+
+        run_loaded = new_state.runs[0]
+        check_loaded = new_state.checks[0]
+
+        assert run.run_id == run_loaded.run_id
+        assert check.check_id == check_loaded.check_id
+
     def test_merge_checks(self):
         check1 = Check(name="test1", description="", type="query")
         check2 = Check(name="test2", description="", type="query", updated_at=datetime(2000, 1, 1))
@@ -92,7 +106,7 @@ class TestRecceState(unittest.TestCase):
         import json
         import os
 
-        with open(os.path.join(current_dir, "manifest.json"), "r") as f:
+        with open(os.path.join(current_dir, "../manifest.json"), "r") as f:
             manifest = json.load(f)
         manifest["metadata"]["generated_at"] = "2000-01-01T00:00:00Z"
         artifacts = ArtifactsRoot(
@@ -125,7 +139,7 @@ class TestRecceState(unittest.TestCase):
         with tempfile.NamedTemporaryFile() as f:
             # copy ./recce_state.json to temp file
             current_dir = os.path.dirname(os.path.abspath(__file__))
-            state_file = os.path.join(current_dir, "recce_state.json")
+            state_file = os.path.join(current_dir, "../recce_state.json")
             shutil.copy(state_file, f.name)
 
             # load the state file
