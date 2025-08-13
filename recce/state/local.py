@@ -2,8 +2,6 @@ import logging
 import os
 from typing import Optional, Tuple, Union
 
-from recce.util.io import SupportedFileTypes, file_io_factory
-
 from .state import RecceState
 from .state_loader import RecceStateLoader
 
@@ -40,12 +38,7 @@ class FileStateLoader(RecceStateLoader):
             return "No state file is provided. Skip storing the state.", None
 
         logger.info(f"Store recce state to '{self.state_file}'")
-        file_type = SupportedFileTypes.FILE
-        file_path = self.state_file
-        json_data = self.state.to_json()
-        io = file_io_factory(file_type)
-        io.write(file_path, json_data)
-        message = f"The state file is stored at '{file_path}'"
+        message = self._export_state_to_file(self.state_file)
         tag = None
 
         return message, tag
