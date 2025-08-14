@@ -146,9 +146,6 @@ class RecceStateLoader(ABC):
         if not self.cloud_mode:
             return False
 
-        if self.cloud_options.get("host", "").startswith("s3://"):
-            return False
-
         metadata = self._get_metadata_from_recce_cloud()
         if not metadata:
             return False
@@ -166,10 +163,7 @@ class RecceStateLoader(ABC):
             "source": None,
         }
         if self.cloud_mode:
-            if self.cloud_options.get("host", "").startswith("s3://"):
-                state_info["source"] = self.cloud_options.get("host")
-            else:
-                state_info["source"] = "Recce Cloud"
+            state_info["source"] = "Recce Cloud"
             state_info["pull_request"] = self.pr_info
         else:
             state_info["source"] = self.state_file

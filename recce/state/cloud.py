@@ -5,8 +5,6 @@ from hashlib import md5, sha256
 from typing import Dict, Optional, Tuple, Union
 from urllib.parse import urlencode
 
-import botocore.exceptions
-
 from recce.exceptions import RecceException
 from recce.pull_request import fetch_pr_metadata
 from recce.util.io import SupportedFileTypes, file_io_factory
@@ -19,7 +17,6 @@ from .const import (
     RECCE_CLOUD_PASSWORD_MISSING,
     RECCE_CLOUD_TOKEN_MISSING,
     RECCE_STATE_COMPRESSED_FILE,
-    RECCE_STATE_FILE,
 )
 from .state import RecceState
 from .state_loader import RecceStateLoader
@@ -39,23 +36,6 @@ def s3_sse_c_headers(password: str) -> Dict[str, str]:
         "x-amz-server-side-encryption-customer-key": encoded_passwd,
         "x-amz-server-side-encryption-customer-key-MD5": encoded_md5,
     }
-
-
-def check_s3_bucket(bucket_name: str):
-    import boto3
-
-    s3_client = boto3.client("s3")
-    try:
-        s3_client.head_bucket(Bucket=bucket_name)
-    except botocore.exceptions.ClientError as e:
-        error_code = e.response["Error"]["Code"]
-        if error_code == "404":
-            return False, f"Bucket '{bucket_name}' does not exist."
-        elif error_code == "403":
-            return False, f"Bucket '{bucket_name}' exists but you do not have permission to access it."
-        else:
-            return False, f"Failed to access the S3 bucket: '{bucket_name}'"
-    return True, None
 
 
 class CloudStateLoader(RecceStateLoader):
@@ -123,20 +103,16 @@ class CloudStateLoader(RecceStateLoader):
             if self.share_id is None:
                 raise RecceException("Cannot load the share state from Recce Cloud. No share ID is provided.")
 
-        if self.cloud_options.get("host", "").startswith("s3://"):
-            logger.debug("Fetching state from AWS S3 bucket...")
-            return self._load_state_from_s3_bucket(), None
+        logger.debug("Fetching state from Recce Cloud...")
+        metadata = self._get_metadata_from_recce_cloud()
+        if metadata:
+            state_etag = metadata.get("etag")
         else:
-            logger.debug("Fetching state from Recce Cloud...")
-            metadata = self._get_metadata_from_recce_cloud()
-            if metadata:
-                state_etag = metadata.get("etag")
-            else:
-                state_etag = None
-            if self.state_etag and state_etag == self.state_etag:
-                return self.state, self.state_etag
+            state_etag = None
+        if self.state_etag and state_etag == self.state_etag:
+            return self.state, self.state_etag
 
-            return self._load_state_from_recce_cloud(), state_etag
+        return self._load_state_from_recce_cloud(), state_etag
 
     def _get_metadata_from_recce_cloud(self) -> Union[dict, None]:
         recce_cloud = RecceCloud(token=self.token)
@@ -186,41 +162,6 @@ class CloudStateLoader(RecceStateLoader):
             file_type = SupportedFileTypes.GZIP if self.catalog == "github" else SupportedFileTypes.FILE
             return RecceState.from_file(tmp.name, file_type=file_type)
 
-    def _load_state_from_s3_bucket(self) -> Union[RecceState, None]:
-        import tempfile
-
-        import boto3
-
-        from .cloud import check_s3_bucket
-
-        s3_client = boto3.client("s3")
-        s3_bucket_name = self.cloud_options.get("host").replace("s3://", "")
-
-        if self.catalog == "github":
-            s3_bucket_key = (
-                f"{self.catalog}/{self.pr_info.repository}/pulls/{self.pr_info.id}/{RECCE_STATE_COMPRESSED_FILE}"
-            )
-        elif self.catalog == "preview":
-            s3_bucket_key = f"{self.catalog}/{self.share_id}/{RECCE_STATE_FILE}"
-        else:
-            raise RecceException(f"Unsupported catalog type. {self.catalog} is not supported.")
-
-        rc, error_message = check_s3_bucket(s3_bucket_name)
-        if rc is False:
-            raise RecceException(error_message)
-
-        with tempfile.NamedTemporaryFile() as tmp:
-            try:
-                s3_client.download_file(s3_bucket_name, s3_bucket_key, tmp.name)
-            except botocore.exceptions.ClientError as e:
-                error_code = e.response.get("Error", {}).get("Code")
-                if error_code == "404":
-                    self.error_message = "The state file is not found in the S3 bucket."
-                    return None
-                else:
-                    raise e
-            return RecceState.from_file(tmp.name, file_type=SupportedFileTypes.GZIP)
-
     def _export_state_to_cloud(self) -> Tuple[Union[str, None], str]:
         if self.catalog == "github":
             if (self.pr_info is None) or (self.pr_info.id is None) or (self.pr_info.repository is None):
@@ -234,17 +175,13 @@ class CloudStateLoader(RecceStateLoader):
             "approved_checks": check_status.get("approved", 0),
         }
 
-        if self.cloud_options.get("host", "").startswith("s3://"):
-            logger.info("Store recce state to AWS S3 bucket")
-            return self._export_state_to_s3_bucket(metadata=metadata), None
-        else:
-            logger.info("Store recce state to Recce Cloud")
-            message = self._export_state_to_recce_cloud(metadata=metadata)
-            metadata = self._get_metadata_from_recce_cloud()
-            state_etag = metadata.get("etag") if metadata else None
-            if message:
-                logger.warning(message)
-            return message, state_etag
+        logger.info("Store recce state to Recce Cloud")
+        message = self._export_state_to_recce_cloud(metadata=metadata)
+        metadata = self._get_metadata_from_recce_cloud()
+        state_etag = metadata.get("etag") if metadata else None
+        if message:
+            logger.warning(message)
+        return message, state_etag
 
     def _export_state_to_recce_cloud(self, metadata: dict = None) -> Union[str, None]:
         import tempfile
@@ -288,55 +225,6 @@ class CloudStateLoader(RecceStateLoader):
                 return "Failed to upload the state file to Recce Cloud. Reason: " + response.text
         return None
 
-    def _export_state_to_s3_bucket(self, metadata: dict = None) -> Union[str, None]:
-        import tempfile
-
-        import boto3
-
-        from .cloud import check_s3_bucket
-
-        s3_client = boto3.client("s3")
-        s3_bucket_name = self.cloud_options.get("host").replace("s3://", "")
-        if self.catalog == "github":
-            s3_bucket_key = (
-                f"{self.catalog}/{self.pr_info.repository}/pulls/{self.pr_info.id}/{RECCE_STATE_COMPRESSED_FILE}"
-            )
-        elif self.catalog == "preview":
-            s3_bucket_key = f"{self.catalog}/{self.share_id}/{RECCE_STATE_FILE}"
-        else:
-            raise RecceException(f"Unsupported catalog type. {self.catalog} is not supported.")
-
-        rc, error_message = check_s3_bucket(s3_bucket_name)
-        if rc is False:
-            raise RecceException(error_message)
-
-        with tempfile.NamedTemporaryFile() as tmp:
-            self._export_state_to_file(tmp.name, file_type=SupportedFileTypes.GZIP)
-
-            s3_client.upload_file(
-                tmp.name,
-                s3_bucket_name,
-                s3_bucket_key,
-                # Casting all the values under metadata to string
-                ExtraArgs={"Metadata": {k: str(v) for k, v in metadata.items()}},
-            )
-        RecceCloud(token=self.token).update_github_pull_request_check(self.pr_info, metadata)
-        return f"The state file is uploaded to ' s3://{s3_bucket_name}/{s3_bucket_key}'"
-
-    def _get_artifact_metadata_from_s3_bucket(self, artifact_name: str) -> Union[dict, None]:
-        import boto3
-
-        s3_client = boto3.client("s3")
-        s3_bucket_name = self.cloud_options.get("host").replace("s3://", "")
-        s3_bucket_key = f"github/{self.pr_info.repository}/pulls/{self.pr_info.id}/{artifact_name}"
-        try:
-            response = s3_client.head_object(Bucket=s3_bucket_name, Key=s3_bucket_key)
-            metadata = response["Metadata"]
-            return metadata
-        except botocore.exceptions.ClientError as e:
-            self.error_message = e.response.get("Error", {}).get("Message")
-            raise RecceException("Failed to get artifact metadata from Recce Cloud.")
-
 
 class RecceCloudStateManager:
     error_message: str
@@ -375,25 +263,8 @@ class RecceCloudStateManager:
     def _check_state_in_recce_cloud(self) -> bool:
         return RecceCloud(token=self.github_token).check_artifacts_exists(self.pr_info)
 
-    def _check_state_in_s3_bucket(self) -> bool:
-        import boto3
-
-        s3_client = boto3.client("s3")
-        s3_bucket_name = self.cloud_options.get("host").replace("s3://", "")
-        s3_bucket_key = f"github/{self.pr_info.repository}/pulls/{self.pr_info.id}/{RECCE_STATE_COMPRESSED_FILE}"
-        try:
-            s3_client.head_object(Bucket=s3_bucket_name, Key=s3_bucket_key)
-        except botocore.exceptions.ClientError as e:
-            error_code = e.response.get("Error", {}).get("Code")
-            if error_code == "404":
-                return False
-        return True
-
     def check_cloud_state_exists(self) -> bool:
-        if self.cloud_options.get("host", "").startswith("s3://"):
-            return self._check_state_in_s3_bucket()
-        else:
-            return self._check_state_in_recce_cloud()
+        return self._check_state_in_recce_cloud()
 
     def _upload_state_to_recce_cloud(self, state: RecceState, metadata: dict = None) -> Union[str, None]:
         import tempfile
@@ -417,32 +288,6 @@ class RecceCloudStateManager:
                 return f"Failed to upload the state file to Recce Cloud. Reason: {response.text}"
         return "The state file is uploaded to Recce Cloud."
 
-    def _upload_state_to_s3_bucket(self, state: RecceState, metadata: dict = None) -> Union[str, None]:
-        import tempfile
-
-        import boto3
-
-        s3_client = boto3.client("s3")
-        s3_bucket_name = self.cloud_options.get("host").replace("s3://", "")
-        s3_bucket_key = f"github/{self.pr_info.repository}/pulls/{self.pr_info.id}/{RECCE_STATE_COMPRESSED_FILE}"
-
-        rc, error_message = check_s3_bucket(s3_bucket_name)
-        if rc is False:
-            raise RecceException(error_message)
-
-        with tempfile.NamedTemporaryFile() as tmp:
-            state.to_file(tmp.name, file_type=SupportedFileTypes.GZIP)
-
-            s3_client.upload_file(
-                tmp.name,
-                s3_bucket_name,
-                s3_bucket_key,
-                # Casting all the values under metadata to string
-                ExtraArgs={"Metadata": {k: str(v) for k, v in metadata.items()}},
-            )
-        RecceCloud(token=self.github_token).update_github_pull_request_check(self.pr_info, metadata)
-        return f"The state file is uploaded to ' s3://{s3_bucket_name}/{s3_bucket_key}'"
-
     def upload_state_to_cloud(self, state: RecceState) -> Union[str, None]:
         if (self.pr_info is None) or (self.pr_info.id is None) or (self.pr_info.repository is None):
             raise RecceException("Cannot get the pull request information from GitHub.")
@@ -454,34 +299,7 @@ class RecceCloudStateManager:
             "approved_checks": len([c for c in checks if c.is_checked]),
         }
 
-        if self.cloud_options.get("host", "").startswith("s3://"):
-            return self._upload_state_to_s3_bucket(state, metadata)
-        else:
-            return self._upload_state_to_recce_cloud(state, metadata)
-
-    def _download_state_from_s3_bucket(self, filepath):
-        import io
-
-        import boto3
-
-        s3_client = boto3.client("s3")
-        s3_bucket_name = self.cloud_options.get("host").replace("s3://", "")
-        s3_bucket_key = f"github/{self.pr_info.repository}/pulls/{self.pr_info.id}/{RECCE_STATE_COMPRESSED_FILE}"
-
-        rc, error_message = check_s3_bucket(s3_bucket_name)
-        if rc is False:
-            raise RecceException(error_message)
-
-        response = s3_client.get_object(Bucket=s3_bucket_name, Key=s3_bucket_key)
-        byte_stream = io.BytesIO(response["Body"].read())
-        gzip_io = file_io_factory(SupportedFileTypes.GZIP)
-        decompressed_content = gzip_io.read_fileobj(byte_stream)
-
-        dirs = os.path.dirname(filepath)
-        if dirs:
-            os.makedirs(dirs, exist_ok=True)
-        with open(filepath, "wb") as f:
-            f.write(decompressed_content)
+        return self._upload_state_to_recce_cloud(state, metadata)
 
     def _download_state_from_recce_cloud(self, filepath):
         import io
@@ -521,37 +339,8 @@ class RecceCloudStateManager:
         if (self.pr_info is None) or (self.pr_info.id is None) or (self.pr_info.repository is None):
             raise RecceException("Cannot get the pull request information from GitHub.")
 
-        if self.cloud_options.get("host", "").startswith("s3://"):
-            logger.debug("Download state file from AWS S3 bucket...")
-            return self._download_state_from_s3_bucket(filepath)
-        else:
-            logger.debug("Download state file from Recce Cloud...")
-            return self._download_state_from_recce_cloud(filepath)
-
-    def _purge_state_from_s3_bucket(self) -> (bool, str):
-        import boto3
-        from rich.console import Console
-
-        console = Console()
-        delete_objects = []
-        logger.debug("Purging the state from AWS S3 bucket...")
-        s3_client = boto3.client("s3")
-        s3_bucket_name = self.cloud_options.get("host").replace("s3://", "")
-        s3_key_prefix = f"github/{self.pr_info.repository}/pulls/{self.pr_info.id}/"
-        list_response = s3_client.list_objects_v2(Bucket=s3_bucket_name, Prefix=s3_key_prefix)
-        if "Contents" in list_response:
-            for obj in list_response["Contents"]:
-                key = obj["Key"]
-                delete_objects.append({"Key": key})
-                console.print(f"[green]Deleted[/green]: {key}")
-        else:
-            return False, "No state file found in the S3 bucket."
-
-        delete_response = s3_client.delete_objects(Bucket=s3_bucket_name, Delete={"Objects": delete_objects})
-        if "Deleted" not in delete_response:
-            return False, "Failed to delete the state file from the S3 bucket."
-        RecceCloud(token=self.github_token).update_github_pull_request_check(self.pr_info)
-        return True, None
+        logger.debug("Download state file from Recce Cloud...")
+        return self._download_state_from_recce_cloud(filepath)
 
     def _purge_state_from_recce_cloud(self) -> (bool, str):
         try:
@@ -561,10 +350,7 @@ class RecceCloudStateManager:
         return True, None
 
     def purge_cloud_state(self) -> (bool, str):
-        if self.cloud_options.get("host", "").startswith("s3://"):
-            return self._purge_state_from_s3_bucket()
-        else:
-            return self._purge_state_from_recce_cloud()
+        return self._purge_state_from_recce_cloud()
 
 
 class RecceShareStateManager:
