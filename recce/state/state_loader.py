@@ -52,9 +52,6 @@ class RecceStateLoader(ABC):
             else:
                 raise RecceException(RECCE_CLOUD_TOKEN_MISSING.error_message)
 
-        # Load the state
-        self.load()
-
     @abstractmethod
     def verify(self) -> bool:
         """
