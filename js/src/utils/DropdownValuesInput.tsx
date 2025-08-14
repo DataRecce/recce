@@ -54,9 +54,10 @@ export const DropdownValuesInput = (props: DropdownValuesInputProps) => {
     onValuesChange([]);
   };
 
+  // Filter the suggestion list without case sensitivity based on the current input
   const filteredList =
     suggestionList
-      ?.filter((value) => filter === "" || value.includes(filter))
+      ?.filter((value) => filter === "" || value.toLowerCase().includes(filter.toLowerCase()))
       .filter((value) => !values.includes(value)) ?? [];
   const limit = 10;
 
