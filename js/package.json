@@ -98,9 +98,7 @@
   "pnpm": {
     "overrides": {
       "@types/react": "19.1.9",
-      "@types/react-dom": "19.1.7",
-      "brace-expansion@>=1.0.0 <=1.1.11": ">=1.1.12",
-      "brace-expansion@>=2.0.0 <=2.0.1": ">=2.0.2"
+      "@types/react-dom": "19.1.7"
     },
     "onlyBuiltDependencies": [
       "@tailwindcss/oxide",
