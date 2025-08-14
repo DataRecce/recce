@@ -4,6 +4,7 @@ venv
 __pycache__/
 .vscode/
 dist/
+.envrc
 
 dbt.log
 coverage.xml
