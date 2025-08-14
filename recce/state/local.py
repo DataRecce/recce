@@ -47,6 +47,7 @@ class FileStateLoader(RecceStateLoader):
         if self.state_file is not None:
             try:
                 os.remove(self.state_file)
+                return True
             except Exception as e:
                 self.error_message = f"Failed to remove the state file: {e}"
                 return False
