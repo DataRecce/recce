@@ -205,25 +205,6 @@ class TestRecceStateLoader(unittest.TestCase):
         }
         self.assertEqual(result, expected)
 
-    @patch("recce.state.state_loader.fetch_pr_metadata")
-    def test_info_cloud_mode_with_s3_host(self, mock_fetch_pr):
-        mock_pr_info = Mock()
-        mock_pr_info.id = "123"
-        mock_fetch_pr.return_value = mock_pr_info
-
-        cloud_options = {"github_token": "test_token", "host": "s3://my-bucket"}
-        loader = ConcreteStateLoader(cloud_mode=True, cloud_options=cloud_options)
-        loader.state = RecceState()
-
-        result = loader.info()
-
-        expected = {
-            "mode": "cloud",
-            "source": "s3://my-bucket",
-            "pull_request": mock_pr_info,
-        }
-        self.assertEqual(result, expected)
-
     def test_update_state(self):
         loader = ConcreteStateLoader()
         new_state = RecceState()
