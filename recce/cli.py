@@ -45,10 +45,13 @@ def create_state_loader(review_mode, cloud_mode, state_file, cloud_options):
     console = Console()
 
     try:
-        if cloud_mode:
-            return CloudStateLoader(review_mode=review_mode, cloud_options=cloud_options)
-        else:
-            return FileStateLoader(state_file=state_file)
+        state_loader = (
+            CloudStateLoader(review_mode=review_mode, cloud_options=cloud_options)
+            if cloud_mode
+            else FileStateLoader(state_file=state_file)
+        )
+        state_loader.load()
+        return state_loader
     except RecceCloudException as e:
         console.print("[[red]Error[/red]] Failed to load recce state file")
         console.print(f"Reason: {e.reason}")
