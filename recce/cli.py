@@ -48,7 +48,7 @@ def create_state_loader(review_mode, cloud_mode, state_file, cloud_options):
         state_loader = (
             CloudStateLoader(review_mode=review_mode, cloud_options=cloud_options)
             if cloud_mode
-            else FileStateLoader(state_file=state_file)
+            else FileStateLoader(review_mode=review_mode, state_file=state_file)
         )
         state_loader.load()
         return state_loader
