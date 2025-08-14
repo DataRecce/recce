@@ -4,13 +4,13 @@
 staged_js_files=$(git diff --cached --name-only | grep "^js/" | grep -E '\.(ts|tsx|js|jsx)$' || true)
 
 if [ -n "$staged_js_files" ]; then
-  echo "TypeScript/JavaScript files changed, running lint and type check..."
-  pushd js
-  pnpm lint --quiet
-  pnpm type:check
-  popd
+	echo "TypeScript/JavaScript files changed, running lint and type check..."
+	pushd js
+	pnpm lint:staged
+	pnpm type:check
+	popd
 else
-  echo "No TypeScript/JavaScript files changed, skipping lint and type check."
+	echo "No TypeScript/JavaScript files changed, skipping lint and type check."
 fi
 
 # start templated
@@ -23,10 +23,10 @@ STRIP_JS_HUSKY=$(echo "$HERE" | sed 's|/js/\.husky$||')
 ARGS="$ARGS --hook-dir $STRIP_JS_HUSKY -- $*"
 
 if [ -x "$INSTALL_PYTHON" ]; then
-    exec "$INSTALL_PYTHON" -mpre_commit $ARGS
-elif command -v pre-commit > /dev/null; then
-    exec pre-commit $ARGS
+	exec "$INSTALL_PYTHON" -mpre_commit $ARGS
+elif command -v pre-commit >/dev/null; then
+	exec pre-commit $ARGS
 else
-    echo '`pre-commit` not found.  Did you forget to activate your virtualenv?' 1>&2
-    echo "Skipping pre-commit hook."
+	echo '`pre-commit` not found.  Did you forget to activate your virtualenv?' 1>&2
+	echo "Skipping pre-commit hook."
 fi

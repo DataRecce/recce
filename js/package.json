@@ -11,6 +11,7 @@
     "build": "npm run clean && next build && mv out ../recce/data",
     "start": "next start",
     "lint": "eslint",
+    "lint:staged": "git diff --name-only --diff-filter=ACM | grep -E \"js/.*\\.(ts|tsx|js|jsx|mjs)$\" | sed 's/^js\\//\\.\\//' | xargs eslint",
     "lint:fix": "eslint --fix",
     "test": "jest --watch",
     "type:check": "tsc --noEmit",
