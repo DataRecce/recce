@@ -35,7 +35,6 @@ from recce.util.perf_tracking import LineagePerfTracker
 
 from ...tasks.profile import ProfileTask
 from ...util.breaking import BreakingPerformanceTracking, parse_change_category
-from recce.adapter.base import BaseAdapter
 
 try:
     import agate
