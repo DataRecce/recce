@@ -35,6 +35,7 @@ from recce.util.perf_tracking import LineagePerfTracker
 
 from ...tasks.profile import ProfileTask
 from ...util.breaking import BreakingPerformanceTracking, parse_change_category
+from recce.adapter.base import BaseAdapter
 
 try:
     import agate
@@ -621,11 +622,15 @@ class DbtAdapter(BaseAdapter):
 
     def build_parent_map(self, nodes: Dict, base: Optional[bool] = False) -> Dict[str, List[str]]:
         manifest = self.curr_manifest if base is False else self.base_manifest
-        manifest_dict = manifest.to_dict()
+        
+        try:
+            parent_map_source = manifest.parent_map
+        except AttributeError:
+            parent_map_source = manifest.to_dict()["parent_map"]
 
-        node_ids = nodes.keys()
+        node_ids = set(nodes)
         parent_map = {}
-        for k, parents in manifest_dict["parent_map"].items():
+        for k, parents in parent_map_source.items():
             if k not in node_ids:
                 continue
             parent_map[k] = [parent for parent in parents if parent in node_ids]
