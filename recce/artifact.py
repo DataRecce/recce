@@ -87,6 +87,7 @@ def upload_artifacts_to_snapshot(target_path: str, snapshot_id: str, token: str,
         console.print(f"[[red]Error[/red]] Invalid target path: {target_path}")
         console.print("Please provide a valid target path containing manifest.json and catalog.json.")
         return 1
+
     manifest_path = os.path.join(target_path, "manifest.json")
     catalog_path = os.path.join(target_path, "catalog.json")
 
@@ -98,24 +99,35 @@ def upload_artifacts_to_snapshot(target_path: str, snapshot_id: str, token: str,
             raise Exception("Failed to parse adapter type from manifest.json")
 
     recce_cloud = RecceCloud(token)
-    org_id = os.environ.get("RECCE_CLOUD_ORG_ID") or 1
-    project_id = os.environ.get("RECCE_CLOUD_PROJECT_ID") or 13
+
+    snapshot = recce_cloud.get_snapshot(snapshot_id)
+
+    org_id = snapshot.get("org_id")
+    if org_id is None:
+        raise Exception(f"Snapshot ID {snapshot_id} does not belong to any organization.")
+
+    project_id = snapshot.get("project_id")
+    if project_id is None:
+        raise Exception(f"Snapshot ID {snapshot_id} does not belong to any project.")
 
     # Get the presigned URL for uploading the artifacts using snapshot ID
+    console.print(f'Uploading artifacts for snapshot ID "{snapshot_id}"')
     presigned_urls = recce_cloud.get_download_urls_by_snapshot_id(org_id, project_id, snapshot_id)
-
     if debug:
         console.rule("Debug information", style="blue")
+        console.print(f"Org ID: {org_id}")
+        console.print(f"Project ID: {project_id}")
         console.print(f"Snapshot ID: {snapshot_id}")
         console.print(f"Manifest path: {presigned_urls['manifest_url']}")
         console.print(f"Catalog path: {presigned_urls['catalog_url']}")
         console.print(f"Adapter type: {adapter_type}")
-    console.print(f'Uploading the dbt artifacts from path "{target_path}" to snapshot ID "{snapshot_id}"')
 
     # Upload the compressed artifacts (no password needed for snapshot uploads)
+    console.print(f'Uploading manifest from path "{manifest_path}"')
     response = requests.put(presigned_urls["manifest_url"], data=open(manifest_path, "rb").read())
     if response.status_code != 200 and response.status_code != 204:
         raise Exception(response.text)
+    console.print(f'Uploading catalog from path "{catalog_path}"')
     response = requests.put(presigned_urls["catalog_url"], data=open(catalog_path, "rb").read())
     if response.status_code != 200 and response.status_code != 204:
         raise Exception(response.text)

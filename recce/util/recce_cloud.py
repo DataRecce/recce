@@ -278,6 +278,17 @@ class RecceCloud:
             logger.warning(f"Failed to set Onboarding State in Recce Cloud. Reason: {str(e)}")
         return
 
+    def get_snapshot(self, snapshot_id: str):
+        api_url = f"{self.base_url_v2}/snapshots/{snapshot_id}"
+        response = self._request("GET", api_url)
+        if response.status_code == 403:
+            return {"status": "error", "message": response.json().get("detail")}
+        if response.status_code != 200:
+            raise RecceCloudException(
+                message="Failed to share Recce state.", reason=response.text, status_code=response.status_code
+            )
+        return response.json()
+
     def update_snapshot(self, org_id: str, project_id: str, snapshot_id: str, adapter_type: str):
         api_url = f"{self.base_url_v2}/organizations/{org_id}/projects/{project_id}/snapshots/{snapshot_id}"
         data = {"adapter_type": adapter_type}

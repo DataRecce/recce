@@ -1329,8 +1329,8 @@ def snapshot(**kwargs):
             f'Uploaded dbt artifacts to Recce Cloud for snapshot ID "{snapshot_id}" from "{os.path.abspath(target_path)}"'
         )
     except Exception as e:
-        console.rule("Failed to Upload", style="red")
-        console.print("[[red]Error[/red]] Failed to upload the dbt artifacts to cloud.")
+        console.rule("Failed to Snapshot", style="red")
+        console.print(f"[[red]Error[/red]] Failed to upload the dbt artifacts to the snapshot {snapshot_id}.")
         console.print(f"Reason: {e}")
         rc = 1
     return rc
