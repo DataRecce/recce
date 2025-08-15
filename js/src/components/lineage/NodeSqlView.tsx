@@ -56,11 +56,11 @@ export const NodeSqlView = ({ node }: NodeSqlViewProps) => {
         setIsHovered(false);
       }}>
       {isSingleEnvOnboarding ? (
-        <SqlEditor language="sql" theme="vs" value={original ?? ""} options={sqlOptions} />
+        <SqlEditor language="sql" theme="light" value={original ?? ""} options={sqlOptions} />
       ) : (
         <DiffEditor
           language="sql"
-          theme="vs"
+          theme="light"
           original={original}
           modified={modified}
           options={{
@@ -106,14 +106,14 @@ export const NodeSqlView = ({ node }: NodeSqlViewProps) => {
                 {isSingleEnvOnboarding ? (
                   <Editor
                     language="sql"
-                    theme="vs"
+                    theme="light"
                     value={original ?? ""}
                     options={{ ...sqlOptions, fontSize: 16 }}
                   />
                 ) : (
                   <DiffEditor
                     language="sql"
-                    theme="vs"
+                    theme="light"
                     original={original}
                     modified={modified}
                     options={{ ...diffOptions, fontSize: 16 }}

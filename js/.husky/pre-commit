@@ -6,7 +6,7 @@ staged_js_files=$(git diff --cached --name-only | grep "^js/" | grep -E '\.(ts|t
 if [ -n "$staged_js_files" ]; then
 	echo "TypeScript/JavaScript files changed, running lint and type check..."
 	pushd js
-	pnpm lint:staged
+	pnpm lint:staged --quiet
 	pnpm type:check
 	popd
 else

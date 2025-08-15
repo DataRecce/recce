@@ -1,6 +1,13 @@
 import { useRecceInstanceContext } from "@/lib/hooks/RecceInstanceContext";
 import { Button, Flex, Link, Text, Textarea } from "@chakra-ui/react";
-import { ChangeEventHandler, KeyboardEventHandler, useEffect, useRef, useState } from "react";
+import {
+  ChangeEvent,
+  ChangeEventHandler,
+  KeyboardEventHandler,
+  useEffect,
+  useRef,
+  useState,
+} from "react";
 
 interface CheckDescriptionProps {
   value?: string;
@@ -44,8 +51,8 @@ export function CheckDescription({ value, onChange }: CheckDescriptionProps) {
     }
   };
 
-  const handleChange: ChangeEventHandler = (event) => {
-    setTempValue((event.target as any).value);
+  const handleChange: ChangeEventHandler = (event: ChangeEvent<HTMLTextAreaElement>) => {
+    setTempValue(event.target.value);
   };
 
   useEffect(() => {
