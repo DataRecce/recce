@@ -19,7 +19,12 @@ from recce.exceptions import RecceConfigException
 from recce.git import current_branch, current_default_branch
 from recce.run import check_github_ci_env, cli_run
 from recce.server import RecceServerMode
-from recce.state import RecceCloudStateManager, RecceShareStateManager, RecceStateLoader
+from recce.state import (
+    CloudStateLoader,
+    FileStateLoader,
+    RecceCloudStateManager,
+    RecceShareStateManager,
+)
 from recce.summary import generate_markdown_summary
 from recce.util.api_token import prepare_api_token, show_invalid_api_token_message
 from recce.util.logger import CustomFormatter
@@ -40,9 +45,13 @@ def create_state_loader(review_mode, cloud_mode, state_file, cloud_options):
     console = Console()
 
     try:
-        return RecceStateLoader(
-            review_mode=review_mode, cloud_mode=cloud_mode, state_file=state_file, cloud_options=cloud_options
+        state_loader = (
+            CloudStateLoader(review_mode=review_mode, cloud_options=cloud_options)
+            if cloud_mode
+            else FileStateLoader(review_mode=review_mode, state_file=state_file)
         )
+        state_loader.load()
+        return state_loader
     except RecceCloudException as e:
         console.print("[[red]Error[/red]] Failed to load recce state file")
         console.print(f"Reason: {e.reason}")
@@ -831,7 +840,7 @@ def purge(**kwargs):
 
     try:
         console.rule("Check Recce State from Cloud")
-        state_loader = RecceStateLoader(
+        state_loader = create_state_loader(
             review_mode=False, cloud_mode=True, state_file=None, cloud_options=cloud_options
         )
     except Exception:
