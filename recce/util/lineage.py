@@ -7,19 +7,17 @@ def find_upstream(node_ids: Iterable, parent_map):
     visited = set()
     upstream = set()
 
-    def dfs(current):
+    stack = list(node_ids)
+    while stack:
+        current = stack.pop()
         if current in visited:
-            return
+            continue
         visited.add(current)
-
         parents = parent_map.get(current, [])
         for parent in parents:
-            upstream.add(parent)
-            dfs(parent)
-
-    for node_id in node_ids:
-        dfs(node_id)
-
+            if parent not in upstream:
+                upstream.add(parent)
+                stack.append(parent)
     return upstream
 
 
@@ -27,19 +25,17 @@ def find_downstream(node_ids: Iterable, child_map):
     visited = set()
     downstream = set()
 
-    def dfs(current):
+    stack = list(node_ids)
+    while stack:
+        current = stack.pop()
         if current in visited:
-            return
+            continue
         visited.add(current)
-
         children = child_map.get(current, [])
         for child in children:
-            downstream.add(child)
-            dfs(child)
-
-    for node_id in node_ids:
-        dfs(node_id)
-
+            if child not in downstream:
+                downstream.add(child)
+                stack.append(child)
     return downstream
 
 
