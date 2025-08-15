@@ -90,6 +90,13 @@ def upload_artifacts_to_snapshot(target_path: str, snapshot_id: str, token: str,
     manifest_path = os.path.join(target_path, "manifest.json")
     catalog_path = os.path.join(target_path, "catalog.json")
 
+    # get the adapter type from the manifest file
+    with open(manifest_path, "r") as f:
+        manifest_data = json.load(f)
+        adapter_type = manifest_data.get("metadata", {}).get("adapter_type")
+        if adapter_type is None:
+            raise Exception("Failed to parse adapter type from manifest.json")
+
     recce_cloud = RecceCloud(token)
     org_id = os.environ.get("RECCE_CLOUD_ORG_ID") or 1
     project_id = os.environ.get("RECCE_CLOUD_PROJECT_ID") or 13
@@ -102,6 +109,7 @@ def upload_artifacts_to_snapshot(target_path: str, snapshot_id: str, token: str,
         console.print(f"Snapshot ID: {snapshot_id}")
         console.print(f"Manifest path: {presigned_urls['manifest_url']}")
         console.print(f"Catalog path: {presigned_urls['catalog_url']}")
+        console.print(f"Adapter type: {adapter_type}")
     console.print(f'Uploading the dbt artifacts from path "{target_path}" to snapshot ID "{snapshot_id}"')
 
     # Upload the compressed artifacts (no password needed for snapshot uploads)
@@ -113,7 +121,7 @@ def upload_artifacts_to_snapshot(target_path: str, snapshot_id: str, token: str,
         raise Exception(response.text)
 
     # Update the snapshot metadata
-    recce_cloud.update_snapshot(org_id, project_id, snapshot_id, "snowflake")
+    recce_cloud.update_snapshot(org_id, project_id, snapshot_id, adapter_type)
 
     return 0
 
