@@ -80,6 +80,44 @@ def archive_artifacts(target_path: str) -> (str, str):
     return artifacts_tar_gz_path, dbt_version
 
 
+def upload_artifacts_to_snapshot(target_path: str, snapshot_id: str, token: str, debug: bool = False):
+    """Upload dbt artifacts to a specific snapshot ID in Recce Cloud."""
+    console = Console()
+    if verify_artifacts_path(target_path) is False:
+        console.print(f"[[red]Error[/red]] Invalid target path: {target_path}")
+        console.print("Please provide a valid target path containing manifest.json and catalog.json.")
+        return 1
+    manifest_path = os.path.join(target_path, "manifest.json")
+    catalog_path = os.path.join(target_path, "catalog.json")
+
+    recce_cloud = RecceCloud(token)
+    org_id = os.environ.get("RECCE_CLOUD_ORG_ID") or 1
+    project_id = os.environ.get("RECCE_CLOUD_PROJECT_ID") or 13
+
+    # Get the presigned URL for uploading the artifacts using snapshot ID
+    presigned_urls = recce_cloud.get_download_urls_by_snapshot_id(org_id, project_id, snapshot_id)
+
+    if debug:
+        console.rule("Debug information", style="blue")
+        console.print(f"Snapshot ID: {snapshot_id}")
+        console.print(f"Manifest path: {presigned_urls['manifest_url']}")
+        console.print(f"Catalog path: {presigned_urls['catalog_url']}")
+    console.print(f'Uploading the dbt artifacts from path "{target_path}" to snapshot ID "{snapshot_id}"')
+
+    # Upload the compressed artifacts (no password needed for snapshot uploads)
+    response = requests.put(presigned_urls["manifest_url"], data=open(manifest_path, "rb").read())
+    if response.status_code != 200 and response.status_code != 204:
+        raise Exception(response.text)
+    response = requests.put(presigned_urls["catalog_url"], data=open(catalog_path, "rb").read())
+    if response.status_code != 200 and response.status_code != 204:
+        raise Exception(response.text)
+
+    # Update the snapshot metadata
+    recce_cloud.update_snapshot(org_id, project_id, snapshot_id, "snowflake")
+
+    return 0
+
+
 def upload_dbt_artifacts(target_path: str, branch: str, token: str, password: str, debug: bool = False):
     console = Console()
     if verify_artifacts_path(target_path) is False:
