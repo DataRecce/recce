@@ -204,9 +204,8 @@ class CloudStateLoader(RecceStateLoader):
         """
         Load state from snapshot by:
         1. Get snapshot info
-        2. List snapshots to find base snapshot
-        3. Download artifacts for both base and current snapshots
-        4. Create RecceState with no runs/checks
+        2. Download artifacts for both base and current snapshots
+        3. Download recce_state if available, otherwise create empty state with artifacts
         """
         if self.snapshot_id is None:
             raise RecceException("Cannot load the snapshot state from Recce Cloud. No snapshot ID is provided.")
@@ -228,14 +227,17 @@ class CloudStateLoader(RecceStateLoader):
         logger.debug(f"Downloading base snapshot artifacts for project {project_id}")
         base_artifacts = self._download_base_snapshot_artifacts(self.recce_cloud, org_id, project_id)
 
-        # 4. Create RecceState with downloaded artifacts (no runs/checks)
-        state = RecceState()
+        # 3. Try to download existing recce_state, otherwise create new state
+        try:
+            logger.debug(f"Downloading recce_state for snapshot {self.snapshot_id}")
+            state = self._download_snapshot_recce_state(self.recce_cloud, org_id, project_id, self.snapshot_id)
+        except Exception as e:
+            logger.debug(f"No existing recce_state found, creating new state: {e}")
+            state = RecceState()
+
+        # Set artifacts regardless of whether we loaded existing state
         state.artifacts.base = base_artifacts
         state.artifacts.current = current_artifacts
-
-        # Initialize empty runs and checks
-        state.runs = []
-        state.checks = []
 
         return state
 
@@ -263,6 +265,23 @@ class CloudStateLoader(RecceStateLoader):
             raise RecceException(f"Failed to download catalog for snapshot {snapshot_id}")
 
         return artifacts
+
+    def _download_snapshot_recce_state(self, recce_cloud, org_id: str, project_id: str, snapshot_id: str) -> RecceState:
+        """Download recce_state for a snapshot."""
+        # Get download URLs (now includes recce_state_url)
+        presigned_urls = recce_cloud.get_download_urls_by_snapshot_id(org_id, project_id, snapshot_id)
+        recce_state_url = presigned_urls.get("recce_state_url")
+
+        if not recce_state_url:
+            raise RecceException(f"No recce_state_url found for snapshot {snapshot_id}")
+
+        # Reuse the existing download method
+        state = self._download_state_from_url(recce_state_url, SupportedFileTypes.FILE)
+
+        if state is None:
+            raise RecceException(f"Failed to download recce_state for snapshot {snapshot_id}")
+
+        return state
 
     def _download_base_snapshot_artifacts(self, recce_cloud, org_id: str, project_id: str) -> dict:
         """Download manifest and catalog for the base snapshot, return JSON data directly."""
@@ -359,17 +378,60 @@ class CloudStateLoader(RecceStateLoader):
             logger.warning(message)
         return message, None
 
-    def _export_state_to_snapshot(self) -> Tuple[None, None]:
-        """Snapshot catalog doesn't support state export."""
-        return None, None
+    def _export_state_to_snapshot(self) -> Tuple[Union[str, None], None]:
+        """Export state to snapshot (upload recce_state with empty artifacts)."""
+        if self.snapshot_id is None:
+            raise RecceException("Cannot export state to snapshot. No snapshot ID is provided.")
+
+        # Get snapshot information
+        snapshot = self.recce_cloud.get_snapshot(self.snapshot_id)
+        org_id = snapshot.get("org_id")
+        project_id = snapshot.get("project_id")
+
+        if not org_id or not project_id:
+            raise RecceException(f"Snapshot {self.snapshot_id} does not belong to a valid organization or project.")
+
+        # Get upload URLs (now includes recce_state_url)
+        presigned_urls = self.recce_cloud.get_upload_urls_by_snapshot_id(org_id, project_id, self.snapshot_id)
+        recce_state_url = presigned_urls.get("recce_state_url")
+
+        if not recce_state_url:
+            raise RecceException(f"No recce_state_url found for snapshot {self.snapshot_id}")
+
+        # Create a copy of the state with empty artifacts for upload
+        upload_state = RecceState()
+        upload_state.runs = self.state.runs.copy() if self.state.runs else []
+        upload_state.checks = self.state.checks.copy() if self.state.checks else []
+        # Keep artifacts empty (don't copy self.state.artifacts)
+
+        # Upload the state with empty artifacts
+        message = self._upload_state_to_url(
+            presigned_url=recce_state_url,
+            file_type=SupportedFileTypes.FILE,
+            password=None,
+            metadata=None,
+            state=upload_state,
+        )
+
+        if message:
+            logger.warning(message)
+        return message, None
 
     def _upload_state_to_url(
-        self, presigned_url: str, file_type: SupportedFileTypes, password: str = None, metadata: dict = None
+        self,
+        presigned_url: str,
+        file_type: SupportedFileTypes,
+        password: str = None,
+        metadata: dict = None,
+        state: RecceState = None,
     ) -> Union[str, None]:
         """Upload state file to presigned URL."""
         import tempfile
 
         import requests
+
+        # Use provided state or default to self.state
+        upload_state = state or self.state
 
         # Prepare headers
         headers = {}
@@ -379,7 +441,10 @@ class CloudStateLoader(RecceStateLoader):
             headers["x-amz-tagging"] = urlencode(metadata)
 
         with tempfile.NamedTemporaryFile() as tmp:
-            self._export_state_to_file(tmp.name, file_type=file_type)
+            # Use the specified state to export to file
+            json_data = upload_state.to_json()
+            io = file_io_factory(file_type)
+            io.write(tmp.name, json_data)
 
             with open(tmp.name, "rb") as fd:
                 response = requests.put(presigned_url, data=fd.read(), headers=headers)
