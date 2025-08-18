@@ -198,8 +198,9 @@ class TestCloudStateLoader(unittest.TestCase):
 
         self.assertIn("401 Failed to download", str(cm.exception))
 
+    @patch("recce.state.cloud.CheckDAO")
     @patch("requests.put")
-    def test_export_state_to_recce_cloud_github_success(self, mock_put):
+    def test_export_state_to_github_success(self, mock_put, mock_check_dao):
         # Setup
         mock_pr_info = Mock()
         mock_pr_info.id = "123"
@@ -211,23 +212,30 @@ class TestCloudStateLoader(unittest.TestCase):
         loader.cloud_options = {"password": "test_pass"}
         loader.state = RecceState()
 
+        # Mock CheckDAO
+        mock_check_dao_instance = Mock()
+        mock_check_dao.return_value = mock_check_dao_instance
+        mock_check_dao_instance.status.return_value = {"total": 5, "approved": 3}
+
         # Mock loader's RecceCloud instance
         loader.recce_cloud = Mock()
         loader.recce_cloud.get_presigned_url_by_github_repo.return_value = "http://presigned.url"
+        loader.recce_cloud.get_artifact_metadata.return_value = {"etag": "test_etag"}
 
         # Mock HTTP response
         mock_response = Mock()
         mock_response.status_code = 200
         mock_put.return_value = mock_response
 
-        result = loader._export_state_to_recce_cloud()
+        result_message, result_etag = loader._export_state_to_github()
 
-        self.assertIsNone(result)  # Success returns None
+        self.assertIsNone(result_message)  # Success returns None
+        self.assertEqual(result_etag, "test_etag")
         mock_put.assert_called_once()
         loader.recce_cloud.get_presigned_url_by_github_repo.assert_called_once()
 
     @patch("requests.put")
-    def test_export_state_to_recce_cloud_preview_success(self, mock_put):
+    def test_export_state_to_preview_success(self, mock_put):
         # Setup
         loader = CloudStateLoader(cloud_options={"api_token": "token", "share_id": "test_share"})
         loader.catalog = "preview"
@@ -243,13 +251,14 @@ class TestCloudStateLoader(unittest.TestCase):
         mock_response.status_code = 200
         mock_put.return_value = mock_response
 
-        result = loader._export_state_to_recce_cloud()
+        result_message, result_etag = loader._export_state_to_preview()
 
-        self.assertIsNone(result)  # Success returns None
+        self.assertIsNone(result_message)  # Success returns None
+        self.assertIsNone(result_etag)  # Preview doesn't use etag
         loader.recce_cloud.get_presigned_url_by_share_id.assert_called_once()
 
     @patch("requests.put")
-    def test_export_state_to_recce_cloud_failure(self, mock_put):
+    def test_export_state_to_preview_failure(self, mock_put):
         # Setup
         loader = CloudStateLoader(cloud_options={"api_token": "token", "share_id": "test_share"})
         loader.catalog = "preview"
@@ -266,10 +275,11 @@ class TestCloudStateLoader(unittest.TestCase):
         mock_response.text = "Internal Server Error"
         mock_put.return_value = mock_response
 
-        result = loader._export_state_to_recce_cloud()
+        result_message, result_etag = loader._export_state_to_preview()
 
-        self.assertIn("Failed to upload", result)
-        self.assertIn("Internal Server Error", result)
+        self.assertIn("Failed to upload", result_message)
+        self.assertIn("Internal Server Error", result_message)
+        self.assertIsNone(result_etag)
 
     @patch("recce.state.cloud.RecceCloudStateManager")
     def test_purge_success(self, mock_manager_class):

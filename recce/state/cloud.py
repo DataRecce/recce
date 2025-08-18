@@ -290,69 +290,104 @@ class CloudStateLoader(RecceStateLoader):
         return artifacts
 
     def _export_state(self) -> Tuple[Union[str, None], str]:
-        if self.catalog == "github":
-            if (self.pr_info is None) or (self.pr_info.id is None) or (self.pr_info.repository is None):
-                raise RecceException("Cannot get the pull request information from GitHub.")
-        elif self.catalog == "preview":
-            pass
+        """
+        Export state to Recce Cloud based on catalog type.
 
+        Returns:
+            str: A message indicating the result of the export operation.
+            str: The etag of the exported state file (only used for GitHub).
+        """
+        logger.info("Store recce state to Recce Cloud")
+
+        if self.catalog == "github":
+            return self._export_state_to_github()
+        elif self.catalog == "preview":
+            return self._export_state_to_preview()
+        elif self.catalog == "snapshot":
+            return self._export_state_to_snapshot()
+        else:
+            raise RecceException(f"Unsupported catalog type: {self.catalog}")
+
+    def _export_state_to_github(self) -> Tuple[Union[str, None], str]:
+        """Export state to GitHub PR with metadata and etag."""
+        if (self.pr_info is None) or (self.pr_info.id is None) or (self.pr_info.repository is None):
+            raise RecceException("Cannot get the pull request information from GitHub.")
+
+        # Generate metadata for GitHub only
         check_status = CheckDAO().status()
         metadata = {
             "total_checks": check_status.get("total", 0),
             "approved_checks": check_status.get("approved", 0),
         }
 
-        logger.info("Store recce state to Recce Cloud")
-        message = self._export_state_to_recce_cloud(metadata=metadata)
-        metadata = self._get_metadata_from_recce_cloud()
-        state_etag = metadata.get("etag") if metadata else None
+        # Upload to Cloud
+        presigned_url = self.recce_cloud.get_presigned_url_by_github_repo(
+            method=PresignedUrlMethod.UPLOAD,
+            repository=self.pr_info.repository,
+            artifact_name=RECCE_STATE_COMPRESSED_FILE,
+            pr_id=self.pr_info.id,
+            metadata=metadata,
+        )
+        message = self._upload_state_to_url(
+            presigned_url=presigned_url,
+            file_type=SupportedFileTypes.GZIP,
+            password=self.cloud_options.get("password"),
+            metadata=metadata,
+        )
+
+        # Get updated etag after upload
+        metadata_response = self._get_metadata_from_recce_cloud()
+        state_etag = metadata_response.get("etag") if metadata_response else None
+
         if message:
             logger.warning(message)
         return message, state_etag
 
-    def _export_state_to_recce_cloud(self, metadata: dict = None) -> Union[str, None]:
+    def _export_state_to_preview(self) -> Tuple[Union[str, None], None]:
+        """Export state to preview share (no metadata or etag needed)."""
+        share_id = self.cloud_options.get("share_id")
+        presinged_url = self.recce_cloud.get_presigned_url_by_share_id(
+            method=PresignedUrlMethod.UPLOAD,
+            share_id=share_id,
+            metadata=None,
+        )
+        message = self._upload_state_to_url(
+            presigned_url=presinged_url, file_type=SupportedFileTypes.FILE, password=None, metadata=None
+        )
+
+        if message:
+            logger.warning(message)
+        return message, None
+
+    def _export_state_to_snapshot(self) -> Tuple[None, None]:
+        """Snapshot catalog doesn't support state export."""
+        return None, None
+
+    def _upload_state_to_url(
+        self, presigned_url: str, file_type: SupportedFileTypes, password: str = None, metadata: dict = None
+    ) -> Union[str, None]:
+        """Upload state file to presigned URL."""
         import tempfile
 
         import requests
 
-        if self.catalog == "github":
-            presigned_url = self.recce_cloud.get_presigned_url_by_github_repo(
-                method=PresignedUrlMethod.UPLOAD,
-                repository=self.pr_info.repository,
-                artifact_name=RECCE_STATE_COMPRESSED_FILE,
-                pr_id=self.pr_info.id,
-                metadata=metadata,
-            )
-        elif self.catalog == "preview":
-            share_id = self.cloud_options.get("share_id")
-            presigned_url = self.recce_cloud.get_presigned_url_by_share_id(
-                method=PresignedUrlMethod.UPLOAD,
-                share_id=share_id,
-                metadata=metadata,
-            )
-        elif self.catalog == "snapshot":
-            return None
-
-        compress_passwd = self.cloud_options.get("password")
-        if compress_passwd:
-            headers = s3_sse_c_headers(compress_passwd)
-        else:
-            headers = {}
-
+        # Prepare headers
+        headers = {}
+        if password:
+            headers.update(s3_sse_c_headers(password))
         if metadata:
             headers["x-amz-tagging"] = urlencode(metadata)
+
         with tempfile.NamedTemporaryFile() as tmp:
-            if self.catalog == "github":
-                file_type = SupportedFileTypes.GZIP
-            elif self.catalog == "preview":
-                file_type = SupportedFileTypes.FILE
             self._export_state_to_file(tmp.name, file_type=file_type)
 
             with open(tmp.name, "rb") as fd:
                 response = requests.put(presigned_url, data=fd.read(), headers=headers)
+
             if response.status_code not in [200, 204]:
                 self.error_message = response.text
                 return "Failed to upload the state file to Recce Cloud. Reason: " + response.text
+
         return None
 
 
