@@ -319,6 +319,28 @@ class RecceCloud:
             presigned_urls[key] = self._replace_localhost_with_docker_internal(url)
         return presigned_urls
 
+    def get_upload_urls_by_snapshot_id(self, org_id: str, project_id: str, snapshot_id: str) -> dict[str, str]:
+        api_url = f"{self.base_url_v2}/organizations/{org_id}/projects/{project_id}/snapshots/{snapshot_id}/upload-url"
+        response = self._request("GET", api_url)
+        if response.status_code != 200:
+            raise RecceCloudException(
+                message="Failed to download snapshot from Recce Cloud.",
+                reason=response.text,
+                status_code=response.status_code,
+            )
+        data = response.json()
+        if data["presigned_urls"] is None:
+            raise RecceCloudException(
+                message="No presigned URLs returned from the server.",
+                reason="",
+                status_code=404,
+            )
+
+        presigned_urls = data["presigned_urls"]
+        for key, url in presigned_urls.items():
+            presigned_urls[key] = self._replace_localhost_with_docker_internal(url)
+        return presigned_urls
+
 
 def get_recce_cloud_onboarding_state(token: str) -> str:
     try:
