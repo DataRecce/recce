@@ -51,6 +51,7 @@ class CloudStateLoader(RecceStateLoader):
             cloud_options=cloud_options,
             initial_state=initial_state,
         )
+        self.recce_cloud = RecceCloud(token=self.token)
 
     @property
     def token(self):
@@ -134,8 +135,7 @@ class CloudStateLoader(RecceStateLoader):
         return self._load_state_from_recce_cloud(), state_etag
 
     def _get_metadata_from_recce_cloud(self) -> Union[dict, None]:
-        recce_cloud = RecceCloud(token=self.token)
-        return recce_cloud.get_artifact_metadata(pr_info=self.pr_info) if self.pr_info else None
+        return self.recce_cloud.get_artifact_metadata(pr_info=self.pr_info) if self.pr_info else None
 
     def _load_state_from_snapshot(self) -> RecceState:
         """
@@ -145,11 +145,9 @@ class CloudStateLoader(RecceStateLoader):
         3. Download artifacts for both base and current snapshots
         4. Create RecceState with no runs/checks
         """
-        recce_cloud = RecceCloud(token=self.token)
-
         # 1. Get snapshot information
         logger.debug(f"Getting snapshot {self.snapshot_id}")
-        snapshot = recce_cloud.get_snapshot(self.snapshot_id)
+        snapshot = self.recce_cloud.get_snapshot(self.snapshot_id)
 
         org_id = snapshot.get("org_id")
         project_id = snapshot.get("project_id")
@@ -159,10 +157,10 @@ class CloudStateLoader(RecceStateLoader):
 
         # 2. Download manifests and catalogs for both snapshots
         logger.debug(f"Downloading current snapshot artifacts for {self.snapshot_id}")
-        current_artifacts = self._download_snapshot_artifacts(recce_cloud, org_id, project_id, self.snapshot_id)
+        current_artifacts = self._download_snapshot_artifacts(self.recce_cloud, org_id, project_id, self.snapshot_id)
 
         logger.debug(f"Downloading base snapshot artifacts for project {project_id}")
-        base_artifacts = self._download_base_snapshot_artifacts(recce_cloud, org_id, project_id)
+        base_artifacts = self._download_base_snapshot_artifacts(self.recce_cloud, org_id, project_id)
 
         # 4. Create RecceState with downloaded artifacts (no runs/checks)
         state = RecceState()
@@ -230,11 +228,10 @@ class CloudStateLoader(RecceStateLoader):
 
         import requests
 
-        recce_cloud = RecceCloud(token=self.token)
         password = None
 
         if self.catalog == "github":
-            presigned_url = recce_cloud.get_presigned_url_by_github_repo(
+            presigned_url = self.recce_cloud.get_presigned_url_by_github_repo(
                 method=PresignedUrlMethod.DOWNLOAD,
                 pr_id=self.pr_info.id,
                 repository=self.pr_info.repository,
@@ -246,7 +243,7 @@ class CloudStateLoader(RecceStateLoader):
                 raise RecceException(RECCE_CLOUD_PASSWORD_MISSING.error_message)
         elif self.catalog == "preview":
             share_id = self.cloud_options.get("share_id")
-            presigned_url = recce_cloud.get_presigned_url_by_share_id(
+            presigned_url = self.recce_cloud.get_presigned_url_by_share_id(
                 method=PresignedUrlMethod.DOWNLOAD, share_id=share_id
             )
 
@@ -296,7 +293,7 @@ class CloudStateLoader(RecceStateLoader):
         import requests
 
         if self.catalog == "github":
-            presigned_url = RecceCloud(token=self.token).get_presigned_url_by_github_repo(
+            presigned_url = self.recce_cloud.get_presigned_url_by_github_repo(
                 method=PresignedUrlMethod.UPLOAD,
                 repository=self.pr_info.repository,
                 artifact_name=RECCE_STATE_COMPRESSED_FILE,
@@ -305,7 +302,7 @@ class CloudStateLoader(RecceStateLoader):
             )
         elif self.catalog == "preview":
             share_id = self.cloud_options.get("share_id")
-            presigned_url = RecceCloud(token=self.token).get_presigned_url_by_share_id(
+            presigned_url = self.recce_cloud.get_presigned_url_by_share_id(
                 method=PresignedUrlMethod.UPLOAD,
                 share_id=share_id,
                 metadata=metadata,

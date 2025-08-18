@@ -91,9 +91,8 @@ class TestCloudStateLoader(unittest.TestCase):
         self.assertFalse(loader.verify())
         self.assertEqual(loader.error_message, "No share ID is provided for the preview catalog.")
 
-    @patch("recce.state.cloud.RecceCloud")
     @patch("requests.get")
-    def test_load_state_from_recce_cloud_github_success(self, mock_get, mock_recce_cloud):
+    def test_load_state_from_recce_cloud_github_success(self, mock_get):
         # Setup
         mock_pr_info = Mock()
         mock_pr_info.id = "123"
@@ -104,10 +103,9 @@ class TestCloudStateLoader(unittest.TestCase):
         loader.pr_info = mock_pr_info
         loader.cloud_options = {"password": "test_pass"}
 
-        # Mock RecceCloud
-        mock_cloud_instance = Mock()
-        mock_recce_cloud.return_value = mock_cloud_instance
-        mock_cloud_instance.get_presigned_url_by_github_repo.return_value = "http://presigned.url"
+        # Mock loader's RecceCloud instance
+        loader.recce_cloud = Mock()
+        loader.recce_cloud.get_presigned_url_by_github_repo.return_value = "http://presigned.url"
 
         # Mock HTTP response
         mock_response = Mock()
@@ -124,20 +122,18 @@ class TestCloudStateLoader(unittest.TestCase):
 
             self.assertEqual(result, mock_state)
             mock_get.assert_called_once()
-            mock_cloud_instance.get_presigned_url_by_github_repo.assert_called_once()
+            loader.recce_cloud.get_presigned_url_by_github_repo.assert_called_once()
 
-    @patch("recce.state.cloud.RecceCloud")
     @patch("requests.get")
-    def test_load_state_from_recce_cloud_preview_success(self, mock_get, mock_recce_cloud):
+    def test_load_state_from_recce_cloud_preview_success(self, mock_get):
         # Setup
         loader = CloudStateLoader(cloud_options={"api_token": "token", "share_id": "test_share"})
         loader.catalog = "preview"
         loader.cloud_options = {"share_id": "test_share"}
 
-        # Mock RecceCloud
-        mock_cloud_instance = Mock()
-        mock_recce_cloud.return_value = mock_cloud_instance
-        mock_cloud_instance.get_presigned_url_by_share_id.return_value = "http://presigned.url"
+        # Mock loader's RecceCloud instance
+        loader.recce_cloud = Mock()
+        loader.recce_cloud.get_presigned_url_by_share_id.return_value = "http://presigned.url"
 
         # Mock HTTP response
         mock_response = Mock()
@@ -153,7 +149,7 @@ class TestCloudStateLoader(unittest.TestCase):
             result = loader._load_state_from_recce_cloud()
 
             self.assertEqual(result, mock_state)
-            mock_cloud_instance.get_presigned_url_by_share_id.assert_called_once()
+            loader.recce_cloud.get_presigned_url_by_share_id.assert_called_once()
 
     @patch("recce.state.cloud.RecceCloud")
     @patch("requests.get")
@@ -200,9 +196,8 @@ class TestCloudStateLoader(unittest.TestCase):
 
         self.assertIn("401 Failed to download", str(cm.exception))
 
-    @patch("recce.state.cloud.RecceCloud")
     @patch("requests.put")
-    def test_export_state_to_recce_cloud_github_success(self, mock_put, mock_recce_cloud):
+    def test_export_state_to_recce_cloud_github_success(self, mock_put):
         # Setup
         mock_pr_info = Mock()
         mock_pr_info.id = "123"
@@ -214,10 +209,9 @@ class TestCloudStateLoader(unittest.TestCase):
         loader.cloud_options = {"password": "test_pass"}
         loader.state = RecceState()
 
-        # Mock RecceCloud
-        mock_cloud_instance = Mock()
-        mock_recce_cloud.return_value = mock_cloud_instance
-        mock_cloud_instance.get_presigned_url_by_github_repo.return_value = "http://presigned.url"
+        # Mock loader's RecceCloud instance
+        loader.recce_cloud = Mock()
+        loader.recce_cloud.get_presigned_url_by_github_repo.return_value = "http://presigned.url"
 
         # Mock HTTP response
         mock_response = Mock()
@@ -228,21 +222,19 @@ class TestCloudStateLoader(unittest.TestCase):
 
         self.assertIsNone(result)  # Success returns None
         mock_put.assert_called_once()
-        mock_cloud_instance.get_presigned_url_by_github_repo.assert_called_once()
+        loader.recce_cloud.get_presigned_url_by_github_repo.assert_called_once()
 
-    @patch("recce.state.cloud.RecceCloud")
     @patch("requests.put")
-    def test_export_state_to_recce_cloud_preview_success(self, mock_put, mock_recce_cloud):
+    def test_export_state_to_recce_cloud_preview_success(self, mock_put):
         # Setup
         loader = CloudStateLoader(cloud_options={"api_token": "token", "share_id": "test_share"})
         loader.catalog = "preview"
         loader.cloud_options = {"share_id": "test_share"}
         loader.state = RecceState()
 
-        # Mock RecceCloud
-        mock_cloud_instance = Mock()
-        mock_recce_cloud.return_value = mock_cloud_instance
-        mock_cloud_instance.get_presigned_url_by_share_id.return_value = "http://presigned.url"
+        # Mock loader's RecceCloud instance
+        loader.recce_cloud = Mock()
+        loader.recce_cloud.get_presigned_url_by_share_id.return_value = "http://presigned.url"
 
         # Mock HTTP response
         mock_response = Mock()
@@ -252,21 +244,19 @@ class TestCloudStateLoader(unittest.TestCase):
         result = loader._export_state_to_recce_cloud()
 
         self.assertIsNone(result)  # Success returns None
-        mock_cloud_instance.get_presigned_url_by_share_id.assert_called_once()
+        loader.recce_cloud.get_presigned_url_by_share_id.assert_called_once()
 
-    @patch("recce.state.cloud.RecceCloud")
     @patch("requests.put")
-    def test_export_state_to_recce_cloud_failure(self, mock_put, mock_recce_cloud):
+    def test_export_state_to_recce_cloud_failure(self, mock_put):
         # Setup
         loader = CloudStateLoader(cloud_options={"api_token": "token", "share_id": "test_share"})
         loader.catalog = "preview"
         loader.cloud_options = {"share_id": "test_share"}
         loader.state = RecceState()
 
-        # Mock RecceCloud
-        mock_cloud_instance = Mock()
-        mock_recce_cloud.return_value = mock_cloud_instance
-        mock_cloud_instance.get_presigned_url_by_share_id.return_value = "http://presigned.url"
+        # Mock loader's RecceCloud instance
+        loader.recce_cloud = Mock()
+        loader.recce_cloud.get_presigned_url_by_share_id.return_value = "http://presigned.url"
 
         # Mock HTTP error response
         mock_response = Mock()
@@ -309,23 +299,21 @@ class TestCloudStateLoader(unittest.TestCase):
         self.assertFalse(result)
         self.assertEqual(loader.error_message, "Purge failed")
 
-    @patch("recce.state.cloud.RecceCloud")
-    def test_get_metadata_from_recce_cloud(self, mock_recce_cloud):
+    def test_get_metadata_from_recce_cloud(self):
         # Setup
         mock_pr_info = Mock()
         loader = CloudStateLoader(cloud_options={"api_token": "token"})
         loader.pr_info = mock_pr_info
 
-        # Mock RecceCloud
-        mock_cloud_instance = Mock()
-        mock_recce_cloud.return_value = mock_cloud_instance
+        # Mock loader's RecceCloud instance
+        loader.recce_cloud = Mock()
         mock_metadata = {"etag": "test_etag", "total_checks": 5}
-        mock_cloud_instance.get_artifact_metadata.return_value = mock_metadata
+        loader.recce_cloud.get_artifact_metadata.return_value = mock_metadata
 
         result = loader._get_metadata_from_recce_cloud()
 
         self.assertEqual(result, mock_metadata)
-        mock_cloud_instance.get_artifact_metadata.assert_called_once_with(pr_info=mock_pr_info)
+        loader.recce_cloud.get_artifact_metadata.assert_called_once_with(pr_info=mock_pr_info)
 
     def test_get_metadata_from_recce_cloud_no_pr_info(self):
         loader = CloudStateLoader(cloud_options={"api_token": "token", "share_id": "test"})
