@@ -330,37 +330,6 @@ class TestCloudStateLoader(unittest.TestCase):
         loader = CloudStateLoader(cloud_options=cloud_options)
         self.assertIsInstance(loader, RecceStateLoader)
 
-    @patch("recce.state.state_loader.fetch_pr_metadata")
-    def test_load_state_calls_load_state_from_cloud(self, mock_fetch_pr):
-        mock_pr_info = Mock()
-        mock_pr_info.id = "123"
-        mock_fetch_pr.return_value = mock_pr_info
-
-        loader = CloudStateLoader(cloud_options={"github_token": "token", "password": "pass"})
-
-        with patch.object(loader, "_load_state_from_cloud") as mock_load:
-            mock_load.return_value = (RecceState(), "etag")
-            result = loader._load_state()
-
-            mock_load.assert_called_once()
-            self.assertIsInstance(result[0], RecceState)
-
-    @patch("recce.state.state_loader.fetch_pr_metadata")
-    def test_export_state_calls_export_state_to_cloud(self, mock_fetch_pr):
-        mock_pr_info = Mock()
-        mock_pr_info.id = "123"
-        mock_fetch_pr.return_value = mock_pr_info
-
-        loader = CloudStateLoader(cloud_options={"github_token": "token", "password": "pass"})
-        loader.state = RecceState()
-
-        with patch.object(loader, "_export_state_to_cloud") as mock_export:
-            mock_export.return_value = ("message", "etag")
-            result = loader._export_state()
-
-            mock_export.assert_called_once()
-            self.assertEqual(result, ("message", "etag"))
-
     def test_token_property_github(self):
         cloud_options = {"api_token": "test_api_token", "share_id": "test_share"}
         loader = CloudStateLoader(cloud_options=cloud_options)

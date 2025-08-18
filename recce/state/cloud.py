@@ -92,19 +92,13 @@ class CloudStateLoader(RecceStateLoader):
                 return False
         return True
 
-    def _load_state(self) -> Tuple[RecceState, str]:
-        return self._load_state_from_cloud()
-
-    def _export_state(self, state: RecceState = None) -> Union[str, None]:
-        return self._export_state_to_cloud()
-
     def purge(self) -> bool:
         rc, err_msg = RecceCloudStateManager(self.cloud_options).purge_cloud_state()
         if err_msg:
             self.error_message = err_msg
         return rc
 
-    def _load_state_from_cloud(self) -> Tuple[RecceState, str]:
+    def _load_state(self) -> Tuple[RecceState, str]:
         """
         Load the state from Recce Cloud.
 
@@ -266,7 +260,7 @@ class CloudStateLoader(RecceStateLoader):
             file_type = SupportedFileTypes.GZIP if self.catalog == "github" else SupportedFileTypes.FILE
             return RecceState.from_file(tmp.name, file_type=file_type)
 
-    def _export_state_to_cloud(self) -> Tuple[Union[str, None], str]:
+    def _export_state(self) -> Tuple[Union[str, None], str]:
         if self.catalog == "github":
             if (self.pr_info is None) or (self.pr_info.id is None) or (self.pr_info.repository is None):
                 raise RecceException("Cannot get the pull request information from GitHub.")

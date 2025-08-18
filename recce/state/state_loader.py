@@ -119,7 +119,7 @@ class RecceStateLoader(ABC):
         return message
 
     @abstractmethod
-    def _export_state(self, state: RecceState = None) -> Tuple[Union[str, None], str]:
+    def _export_state(self) -> Tuple[Union[str, None], str]:
         """
         Export the current Recce state to a file or cloud storage.
         Returns:

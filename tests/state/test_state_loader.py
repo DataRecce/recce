@@ -22,7 +22,7 @@ class ConcreteStateLoader(RecceStateLoader):
     def _load_state(self):
         return self.load_state_result
 
-    def _export_state(self, state=None):
+    def _export_state(self):
         return self.export_state_result
 
     def purge(self) -> bool:
