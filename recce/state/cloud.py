@@ -100,33 +100,102 @@ class CloudStateLoader(RecceStateLoader):
 
     def _load_state(self) -> Tuple[RecceState, str]:
         """
-        Load the state from Recce Cloud.
+        Load the state from Recce Cloud based on catalog type.
 
         Returns:
             RecceState: The state object.
-            str: The etag of the state file.
+            str: The etag of the state file (only used for GitHub).
         """
         if self.catalog == "github":
-            if (self.pr_info is None) or (self.pr_info.id is None) or (self.pr_info.repository is None):
-                raise RecceException("Cannot get the pull request information from GitHub.")
+            return self._load_state_from_github()
         elif self.catalog == "preview":
-            if self.share_id is None:
-                raise RecceException("Cannot load the share state from Recce Cloud. No share ID is provided.")
+            return self._load_state_from_preview()
         elif self.catalog == "snapshot":
-            if self.snapshot_id is None:
-                raise RecceException("Cannot load the snapshot state from Recce Cloud. No snapshot ID is provided.")
             return self._load_state_from_snapshot(), None
-
-        logger.debug("Fetching state from Recce Cloud...")
-        metadata = self._get_metadata_from_recce_cloud()
-        if metadata:
-            state_etag = metadata.get("etag")
         else:
-            state_etag = None
+            raise RecceException(f"Unsupported catalog type: {self.catalog}")
+
+    def _load_state_from_github(self) -> Tuple[RecceState, str]:
+        """Load state from GitHub PR with etag checking."""
+        if (self.pr_info is None) or (self.pr_info.id is None) or (self.pr_info.repository is None):
+            raise RecceException("Cannot get the pull request information from GitHub.")
+
+        logger.debug("Fetching GitHub state from Recce Cloud...")
+
+        # Check metadata and etag for GitHub only
+        metadata = self._get_metadata_from_recce_cloud()
+        state_etag = metadata.get("etag") if metadata else None
+
+        # Return cached state if etag matches
         if self.state_etag and state_etag == self.state_etag:
             return self.state, self.state_etag
 
-        return self._load_state_from_recce_cloud(), state_etag
+        # Download state from GitHub
+        import tempfile
+
+        import requests
+
+        presigned_url = self.recce_cloud.get_presigned_url_by_github_repo(
+            method=PresignedUrlMethod.DOWNLOAD,
+            pr_id=self.pr_info.id,
+            repository=self.pr_info.repository,
+            artifact_name=RECCE_STATE_COMPRESSED_FILE,
+        )
+
+        password = self.cloud_options.get("password")
+        if password is None:
+            raise RecceException(RECCE_CLOUD_PASSWORD_MISSING.error_message)
+
+        with tempfile.NamedTemporaryFile() as tmp:
+            headers = s3_sse_c_headers(password)
+            response = requests.get(presigned_url, headers=headers)
+
+            if response.status_code == 404:
+                self.error_message = "The state file is not found in Recce Cloud."
+                return None, state_etag
+            elif response.status_code != 200:
+                self.error_message = response.text
+                raise RecceException(
+                    f"{response.status_code} Failed to download the state file from Recce Cloud. The password could be wrong."
+                )
+
+            with open(tmp.name, "wb") as f:
+                f.write(response.content)
+
+            loaded_state = RecceState.from_file(tmp.name, file_type=SupportedFileTypes.GZIP)
+            return loaded_state, state_etag
+
+    def _load_state_from_preview(self) -> Tuple[RecceState, None]:
+        """Load state from preview share (no etag checking needed)."""
+        if self.share_id is None:
+            raise RecceException("Cannot load the share state from Recce Cloud. No share ID is provided.")
+
+        logger.debug("Fetching preview state from Recce Cloud...")
+
+        # Download state from preview share
+        import tempfile
+
+        import requests
+
+        presigned_url = self.recce_cloud.get_presigned_url_by_share_id(
+            method=PresignedUrlMethod.DOWNLOAD, share_id=self.share_id
+        )
+
+        with tempfile.NamedTemporaryFile() as tmp:
+            response = requests.get(presigned_url)
+
+            if response.status_code == 404:
+                self.error_message = "The state file is not found in Recce Cloud."
+                return None, None
+            elif response.status_code != 200:
+                self.error_message = response.text
+                raise RecceException(f"{response.status_code} Failed to download the state file from Recce Cloud.")
+
+            with open(tmp.name, "wb") as f:
+                f.write(response.content)
+
+            loaded_state = RecceState.from_file(tmp.name, file_type=SupportedFileTypes.FILE)
+            return loaded_state, None
 
     def _get_metadata_from_recce_cloud(self) -> Union[dict, None]:
         return self.recce_cloud.get_artifact_metadata(pr_info=self.pr_info) if self.pr_info else None
@@ -139,6 +208,9 @@ class CloudStateLoader(RecceStateLoader):
         3. Download artifacts for both base and current snapshots
         4. Create RecceState with no runs/checks
         """
+        if self.snapshot_id is None:
+            raise RecceException("Cannot load the snapshot state from Recce Cloud. No snapshot ID is provided.")
+
         # 1. Get snapshot information
         logger.debug(f"Getting snapshot {self.snapshot_id}")
         snapshot = self.recce_cloud.get_snapshot(self.snapshot_id)
@@ -216,49 +288,6 @@ class CloudStateLoader(RecceStateLoader):
             raise RecceException(f"Failed to download base snapshot catalog for project {project_id}")
 
         return artifacts
-
-    def _load_state_from_recce_cloud(self) -> Union[RecceState, None]:
-        import tempfile
-
-        import requests
-
-        password = None
-
-        if self.catalog == "github":
-            presigned_url = self.recce_cloud.get_presigned_url_by_github_repo(
-                method=PresignedUrlMethod.DOWNLOAD,
-                pr_id=self.pr_info.id,
-                repository=self.pr_info.repository,
-                artifact_name=RECCE_STATE_COMPRESSED_FILE,
-            )
-
-            password = self.cloud_options.get("password")
-            if password is None:
-                raise RecceException(RECCE_CLOUD_PASSWORD_MISSING.error_message)
-        elif self.catalog == "preview":
-            share_id = self.cloud_options.get("share_id")
-            presigned_url = self.recce_cloud.get_presigned_url_by_share_id(
-                method=PresignedUrlMethod.DOWNLOAD, share_id=share_id
-            )
-
-        with tempfile.NamedTemporaryFile() as tmp:
-            from .cloud import s3_sse_c_headers
-
-            headers = s3_sse_c_headers(password) if password else None
-            response = requests.get(presigned_url, headers=headers)
-            if response.status_code == 404:
-                self.error_message = "The state file is not found in Recce Cloud."
-                return None
-            elif response.status_code != 200:
-                self.error_message = response.text
-                raise RecceException(
-                    f"{response.status_code} Failed to download the state file from Recce Cloud. The password could be wrong."
-                )
-            with open(tmp.name, "wb") as f:
-                f.write(response.content)
-
-            file_type = SupportedFileTypes.GZIP if self.catalog == "github" else SupportedFileTypes.FILE
-            return RecceState.from_file(tmp.name, file_type=file_type)
 
     def _export_state(self) -> Tuple[Union[str, None], str]:
         if self.catalog == "github":
