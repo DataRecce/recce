@@ -131,10 +131,6 @@ class CloudStateLoader(RecceStateLoader):
             return self.state, self.state_etag
 
         # Download state from GitHub
-        import tempfile
-
-        import requests
-
         presigned_url = self.recce_cloud.get_presigned_url_by_github_repo(
             method=PresignedUrlMethod.DOWNLOAD,
             pr_id=self.pr_info.id,
@@ -146,24 +142,14 @@ class CloudStateLoader(RecceStateLoader):
         if password is None:
             raise RecceException(RECCE_CLOUD_PASSWORD_MISSING.error_message)
 
-        with tempfile.NamedTemporaryFile() as tmp:
-            headers = s3_sse_c_headers(password)
-            response = requests.get(presigned_url, headers=headers)
+        headers = s3_sse_c_headers(password)
+        loaded_state = self._download_state_from_url(presigned_url, SupportedFileTypes.GZIP, headers)
 
-            if response.status_code == 404:
-                self.error_message = "The state file is not found in Recce Cloud."
-                return None, state_etag
-            elif response.status_code != 200:
-                self.error_message = response.text
-                raise RecceException(
-                    f"{response.status_code} Failed to download the state file from Recce Cloud. The password could be wrong."
-                )
+        # Handle the case where download returns None (404 error)
+        if loaded_state is None:
+            return None, state_etag
 
-            with open(tmp.name, "wb") as f:
-                f.write(response.content)
-
-            loaded_state = RecceState.from_file(tmp.name, file_type=SupportedFileTypes.GZIP)
-            return loaded_state, state_etag
+        return loaded_state, state_etag
 
     def _load_state_from_preview(self) -> Tuple[RecceState, None]:
         """Load state from preview share (no etag checking needed)."""
@@ -173,32 +159,46 @@ class CloudStateLoader(RecceStateLoader):
         logger.debug("Fetching preview state from Recce Cloud...")
 
         # Download state from preview share
-        import tempfile
-
-        import requests
-
         presigned_url = self.recce_cloud.get_presigned_url_by_share_id(
             method=PresignedUrlMethod.DOWNLOAD, share_id=self.share_id
         )
 
+        loaded_state = self._download_state_from_url(presigned_url, SupportedFileTypes.FILE)
+
+        # Handle the case where download returns None (404 error)
+        if loaded_state is None:
+            return None, None
+
+        return loaded_state, None
+
+    def _get_metadata_from_recce_cloud(self) -> Union[dict, None]:
+        return self.recce_cloud.get_artifact_metadata(pr_info=self.pr_info) if self.pr_info else None
+
+    def _download_state_from_url(
+        self, presigned_url: str, file_type: SupportedFileTypes, headers: dict = None
+    ) -> RecceState:
+        """Download state file from presigned URL and convert to RecceState."""
+        import tempfile
+
+        import requests
+
         with tempfile.NamedTemporaryFile() as tmp:
-            response = requests.get(presigned_url)
+            response = requests.get(presigned_url, headers=headers)
 
             if response.status_code == 404:
                 self.error_message = "The state file is not found in Recce Cloud."
-                return None, None
+                return None
             elif response.status_code != 200:
                 self.error_message = response.text
-                raise RecceException(f"{response.status_code} Failed to download the state file from Recce Cloud.")
+                error_msg = f"{response.status_code} Failed to download the state file from Recce Cloud."
+                if headers:  # GitHub case with password
+                    error_msg += " The password could be wrong."
+                raise RecceException(error_msg)
 
             with open(tmp.name, "wb") as f:
                 f.write(response.content)
 
-            loaded_state = RecceState.from_file(tmp.name, file_type=SupportedFileTypes.FILE)
-            return loaded_state, None
-
-    def _get_metadata_from_recce_cloud(self) -> Union[dict, None]:
-        return self.recce_cloud.get_artifact_metadata(pr_info=self.pr_info) if self.pr_info else None
+            return RecceState.from_file(tmp.name, file_type=file_type)
 
     def _load_state_from_snapshot(self) -> RecceState:
         """
