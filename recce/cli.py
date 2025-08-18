@@ -507,13 +507,9 @@ def server(host, port, lifetime, state_file=None, **kwargs):
     # Read-Only: No run query, no checklist
     # Preview (Metadata-Only): No run query
     if server_mode == RecceServerMode.preview:
-        flag["preview"] = {
-            "preview": True,
-        }
+        flag["preview"] = True
     elif server_mode == RecceServerMode.read_only:
-        flag = {
-            "read_only": True,
-        }
+        flag["read_only"] = True
 
     # Onboarding State logic update here
     update_onboarding_state(api_token, flag.get("single_env_onboarding"))
@@ -1268,7 +1264,7 @@ def share(state_file, **kwargs):
         exit(1)
 
 
-@cli.command(cls=TrackCommand)
+@cli.command(cls=TrackCommand, hidden=True)
 @click.option(
     "--snapshot-id",
     help="The snapshot ID to upload artifacts to cloud.",
