@@ -67,10 +67,6 @@ class RecceStateLoader(ABC):
         raise NotImplementedError("Subclasses must implement this method.")
 
     @property
-    def token(self):
-        return self.cloud_options.get("github_token") or self.cloud_options.get("api_token")
-
-    @property
     def error_and_hint(self) -> (Union[str, None], Union[str, None]):
         return self.error_message, self.hint_message
 

@@ -52,6 +52,10 @@ class CloudStateLoader(RecceStateLoader):
             initial_state=initial_state,
         )
 
+    @property
+    def token(self):
+        return self.cloud_options.get("github_token") or self.cloud_options.get("api_token")
+
     def verify(self) -> bool:
         if self.catalog == "github":
             if self.cloud_options.get("github_token") is None:

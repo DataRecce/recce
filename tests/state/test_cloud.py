@@ -373,6 +373,24 @@ class TestCloudStateLoader(unittest.TestCase):
             mock_export.assert_called_once()
             self.assertEqual(result, ("message", "etag"))
 
+    def test_token_property_github(self):
+        cloud_options = {"api_token": "test_api_token", "share_id": "test_share"}
+        loader = CloudStateLoader(cloud_options=cloud_options)
+        loader.cloud_options = {"github_token": "github_token_value"}
+        self.assertEqual(loader.token, "github_token_value")
+
+    def test_token_property_api(self):
+        cloud_options = {"api_token": "api_token_value", "share_id": "test_share"}
+        loader = CloudStateLoader(cloud_options=cloud_options)
+        self.assertEqual(loader.token, "api_token_value")
+
+    def test_token_property_both_tokens(self):
+        cloud_options = {"api_token": "test_api_token", "share_id": "test_share"}
+        loader = CloudStateLoader(cloud_options=cloud_options)
+        loader.cloud_options = {"github_token": "github_token", "api_token": "api_token"}
+        # Should return github_token first
+        self.assertEqual(loader.token, "github_token")
+
 
 if __name__ == "__main__":
     unittest.main()

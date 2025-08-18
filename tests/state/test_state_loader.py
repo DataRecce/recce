@@ -93,22 +93,6 @@ class TestRecceStateLoader(unittest.TestCase):
 
         self.assertEqual(str(cm.exception), RECCE_CLOUD_TOKEN_MISSING.error_message)
 
-    def test_token_property_github(self):
-        cloud_options = {"github_token": "github_token_value"}
-        loader = ConcreteStateLoader(cloud_options=cloud_options)
-        self.assertEqual(loader.token, "github_token_value")
-
-    def test_token_property_api(self):
-        cloud_options = {"api_token": "api_token_value"}
-        loader = ConcreteStateLoader(cloud_options=cloud_options)
-        self.assertEqual(loader.token, "api_token_value")
-
-    def test_token_property_both_tokens(self):
-        cloud_options = {"github_token": "github_token", "api_token": "api_token"}
-        loader = ConcreteStateLoader(cloud_options=cloud_options)
-        # Should return github_token first
-        self.assertEqual(loader.token, "github_token")
-
     def test_error_and_hint_property(self):
         loader = ConcreteStateLoader()
         loader.error_message = "test error"
