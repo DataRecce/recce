@@ -1273,6 +1273,7 @@ def share(state_file, **kwargs):
     "--snapshot-id",
     help="The snapshot ID to upload artifacts to cloud.",
     type=click.STRING,
+    envvar="RECCE_SNAPSHOT_ID",
     required=True,
 )
 @click.option(

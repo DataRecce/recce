@@ -35,8 +35,9 @@ class RecceStateLoader(ABC):
         self.state_lock = threading.Lock()
         self.state_etag = None
         self.pr_info = None
-        self.catalog: Literal["github", "preview"] = "github"
+        self.catalog: Literal["github", "preview", "snapshot"] = "github"
         self.share_id = None
+        self.snapshot_id = None
 
         if self.cloud_mode:
             if self.cloud_options.get("github_token"):
@@ -47,8 +48,12 @@ class RecceStateLoader(ABC):
                 if self.pr_info.id is None:
                     raise RecceException("Cannot get the pull request information from GitHub.")
             elif self.cloud_options.get("api_token"):
-                self.catalog = "preview"
-                self.share_id = self.cloud_options.get("share_id")
+                if self.cloud_options.get("snapshot_id"):
+                    self.catalog = "snapshot"
+                    self.snapshot_id = self.cloud_options.get("snapshot_id")
+                else:
+                    self.catalog = "preview"
+                    self.share_id = self.cloud_options.get("share_id")
             else:
                 raise RecceException(RECCE_CLOUD_TOKEN_MISSING.error_message)
 

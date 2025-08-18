@@ -74,6 +74,17 @@ class CloudStateLoader(RecceStateLoader):
                     'Please provide a share URL in the command argument with option "--share-url <share-url>"'
                 )
                 return False
+        elif self.catalog == "snapshot":
+            if self.cloud_options.get("api_token") is None:
+                self.error_message = RECCE_API_TOKEN_MISSING.error_message
+                self.hint_message = RECCE_API_TOKEN_MISSING.hint_message
+                return False
+            if self.cloud_options.get("snapshot_id") is None:
+                self.error_message = "No snapshot ID is provided for the snapshot catalog."
+                self.hint_message = (
+                    'Please provide a snapshot ID in the command argument with option "--snapshot-id <snapshot-id>"'
+                )
+                return False
         return True
 
     def _load_state(self) -> Tuple[RecceState, str]:
@@ -102,6 +113,10 @@ class CloudStateLoader(RecceStateLoader):
         elif self.catalog == "preview":
             if self.share_id is None:
                 raise RecceException("Cannot load the share state from Recce Cloud. No share ID is provided.")
+        elif self.catalog == "snapshot":
+            if self.snapshot_id is None:
+                raise RecceException("Cannot load the snapshot state from Recce Cloud. No snapshot ID is provided.")
+            return self._load_state_from_snapshot(), None
 
         logger.debug("Fetching state from Recce Cloud...")
         metadata = self._get_metadata_from_recce_cloud()
@@ -117,6 +132,94 @@ class CloudStateLoader(RecceStateLoader):
     def _get_metadata_from_recce_cloud(self) -> Union[dict, None]:
         recce_cloud = RecceCloud(token=self.token)
         return recce_cloud.get_artifact_metadata(pr_info=self.pr_info) if self.pr_info else None
+
+    def _load_state_from_snapshot(self) -> RecceState:
+        """
+        Load state from snapshot by:
+        1. Get snapshot info
+        2. List snapshots to find base snapshot
+        3. Download artifacts for both base and current snapshots
+        4. Create RecceState with no runs/checks
+        """
+        recce_cloud = RecceCloud(token=self.token)
+
+        # 1. Get snapshot information
+        logger.debug(f"Getting snapshot {self.snapshot_id}")
+        snapshot = recce_cloud.get_snapshot(self.snapshot_id)
+
+        org_id = snapshot.get("org_id")
+        project_id = snapshot.get("project_id")
+
+        if not org_id or not project_id:
+            raise RecceException(f"Snapshot {self.snapshot_id} does not belong to a valid organization or project.")
+
+        # 2. Download manifests and catalogs for both snapshots
+        logger.debug(f"Downloading current snapshot artifacts for {self.snapshot_id}")
+        current_artifacts = self._download_snapshot_artifacts(recce_cloud, org_id, project_id, self.snapshot_id)
+
+        logger.debug(f"Downloading base snapshot artifacts for project {project_id}")
+        base_artifacts = self._download_base_snapshot_artifacts(recce_cloud, org_id, project_id)
+
+        # 4. Create RecceState with downloaded artifacts (no runs/checks)
+        state = RecceState()
+        state.artifacts.base = base_artifacts
+        state.artifacts.current = current_artifacts
+
+        # Initialize empty runs and checks
+        state.runs = []
+        state.checks = []
+
+        return state
+
+    def _download_snapshot_artifacts(self, recce_cloud, org_id: str, project_id: str, snapshot_id: str) -> dict:
+        """Download manifest and catalog for a snapshot, return JSON data directly."""
+        import requests
+
+        # Get download URLs
+        presigned_urls = recce_cloud.get_download_urls_by_snapshot_id(org_id, project_id, snapshot_id)
+
+        artifacts = {}
+
+        # Download manifest
+        response = requests.get(presigned_urls["manifest_url"])
+        if response.status_code == 200:
+            artifacts["manifest"] = response.json()
+        else:
+            raise RecceException(f"Failed to download manifest for snapshot {snapshot_id}")
+
+        # Download catalog
+        response = requests.get(presigned_urls["catalog_url"])
+        if response.status_code == 200:
+            artifacts["catalog"] = response.json()
+        else:
+            raise RecceException(f"Failed to download catalog for snapshot {snapshot_id}")
+
+        return artifacts
+
+    def _download_base_snapshot_artifacts(self, recce_cloud, org_id: str, project_id: str) -> dict:
+        """Download manifest and catalog for the base snapshot, return JSON data directly."""
+        import requests
+
+        # Get download URLs for base snapshot
+        presigned_urls = recce_cloud.get_base_snapshot_download_urls(org_id, project_id)
+
+        artifacts = {}
+
+        # Download manifest
+        response = requests.get(presigned_urls["manifest_url"])
+        if response.status_code == 200:
+            artifacts["manifest"] = response.json()
+        else:
+            raise RecceException(f"Failed to download base snapshot manifest for project {project_id}")
+
+        # Download catalog
+        response = requests.get(presigned_urls["catalog_url"])
+        if response.status_code == 200:
+            artifacts["catalog"] = response.json()
+        else:
+            raise RecceException(f"Failed to download base snapshot catalog for project {project_id}")
+
+        return artifacts
 
     def _load_state_from_recce_cloud(self) -> Union[RecceState, None]:
         import tempfile
@@ -203,6 +306,9 @@ class CloudStateLoader(RecceStateLoader):
                 share_id=share_id,
                 metadata=metadata,
             )
+        elif self.catalog == "snapshot":
+            return None
+
         compress_passwd = self.cloud_options.get("password")
         if compress_passwd:
             headers = s3_sse_c_headers(compress_passwd)
