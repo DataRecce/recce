@@ -57,6 +57,10 @@ class RecceStateLoader(ABC):
             else:
                 raise RecceException(RECCE_CLOUD_TOKEN_MISSING.error_message)
 
+    @property
+    def token(self):
+        return self.cloud_options.get("github_token") or self.cloud_options.get("api_token")
+
     @abstractmethod
     def verify(self) -> bool:
         """
@@ -144,17 +148,9 @@ class RecceStateLoader(ABC):
         return new_state
 
     def check_conflict(self) -> bool:
-        if not self.cloud_mode:
-            return False
+        return False
 
-        metadata = self._get_metadata_from_recce_cloud()
-        if not metadata:
-            return False
-
-        state_etag = metadata.get("etag")
-        return state_etag != self.state_etag
-
-    def info(self):
+    def info(self) -> dict:
         if self.state is None:
             self.error_message = "No state is loaded."
             return None

@@ -53,10 +53,6 @@ class CloudStateLoader(RecceStateLoader):
         )
         self.recce_cloud = RecceCloud(token=self.token)
 
-    @property
-    def token(self):
-        return self.cloud_options.get("github_token") or self.cloud_options.get("api_token")
-
     def verify(self) -> bool:
         if self.catalog == "github":
             if self.cloud_options.get("github_token") is None:
@@ -454,6 +450,17 @@ class CloudStateLoader(RecceStateLoader):
                 return "Failed to upload the state file to Recce Cloud. Reason: " + response.text
 
         return None
+
+    def check_conflict(self) -> bool:
+        if self.catalog != "github":
+            return False
+
+        metadata = self._get_metadata_from_recce_cloud()
+        if not metadata:
+            return False
+
+        state_etag = metadata.get("etag")
+        return state_etag != self.state_etag
 
 
 class RecceCloudStateManager:
