@@ -83,6 +83,8 @@ class RecceCloud:
         return response.get("presigned_url")
 
     def _replace_localhost_with_docker_internal(self, url: str) -> str:
+        if url is None:
+            return None
         if os.environ.get("RECCE_SHARE_INSTANCE_ENV") == "docker" and url.startswith(LOCALHOST_URL_PREFIX):
             # For local development, convert the presigned URL from localhost to host.docker.internal
             return url.replace(LOCALHOST_URL_PREFIX, DOCKER_INTERNAL_URL_PREFIX)
