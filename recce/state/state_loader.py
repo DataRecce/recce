@@ -35,8 +35,9 @@ class RecceStateLoader(ABC):
         self.state_lock = threading.Lock()
         self.state_etag = None
         self.pr_info = None
-        self.catalog: Literal["github", "preview"] = "github"
+        self.catalog: Literal["github", "preview", "snapshot"] = "github"
         self.share_id = None
+        self.snapshot_id = None
 
         if self.cloud_mode:
             if self.cloud_options.get("github_token"):
@@ -47,10 +48,18 @@ class RecceStateLoader(ABC):
                 if self.pr_info.id is None:
                     raise RecceException("Cannot get the pull request information from GitHub.")
             elif self.cloud_options.get("api_token"):
-                self.catalog = "preview"
-                self.share_id = self.cloud_options.get("share_id")
+                if self.cloud_options.get("snapshot_id"):
+                    self.catalog = "snapshot"
+                    self.snapshot_id = self.cloud_options.get("snapshot_id")
+                else:
+                    self.catalog = "preview"
+                    self.share_id = self.cloud_options.get("share_id")
             else:
                 raise RecceException(RECCE_CLOUD_TOKEN_MISSING.error_message)
+
+    @property
+    def token(self):
+        return self.cloud_options.get("github_token") or self.cloud_options.get("api_token")
 
     @abstractmethod
     def verify(self) -> bool:
@@ -60,10 +69,6 @@ class RecceStateLoader(ABC):
             bool: True if the configuration is valid, False otherwise.
         """
         raise NotImplementedError("Subclasses must implement this method.")
-
-    @property
-    def token(self):
-        return self.cloud_options.get("github_token") or self.cloud_options.get("api_token")
 
     @property
     def error_and_hint(self) -> (Union[str, None], Union[str, None]):
@@ -118,7 +123,7 @@ class RecceStateLoader(ABC):
         return message
 
     @abstractmethod
-    def _export_state(self, state: RecceState = None) -> Tuple[Union[str, None], str]:
+    def _export_state(self) -> Tuple[Union[str, None], str]:
         """
         Export the current Recce state to a file or cloud storage.
         Returns:
@@ -143,17 +148,9 @@ class RecceStateLoader(ABC):
         return new_state
 
     def check_conflict(self) -> bool:
-        if not self.cloud_mode:
-            return False
+        return False
 
-        metadata = self._get_metadata_from_recce_cloud()
-        if not metadata:
-            return False
-
-        state_etag = metadata.get("etag")
-        return state_etag != self.state_etag
-
-    def info(self):
+    def info(self) -> dict:
         if self.state is None:
             self.error_message = "No state is loaded."
             return None

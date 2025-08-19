@@ -80,6 +80,64 @@ def archive_artifacts(target_path: str) -> (str, str):
     return artifacts_tar_gz_path, dbt_version
 
 
+def upload_artifacts_to_snapshot(target_path: str, snapshot_id: str, token: str, debug: bool = False):
+    """Upload dbt artifacts to a specific snapshot ID in Recce Cloud."""
+    console = Console()
+    if verify_artifacts_path(target_path) is False:
+        console.print(f"[[red]Error[/red]] Invalid target path: {target_path}")
+        console.print("Please provide a valid target path containing manifest.json and catalog.json.")
+        return 1
+
+    manifest_path = os.path.join(target_path, "manifest.json")
+    catalog_path = os.path.join(target_path, "catalog.json")
+
+    # get the adapter type from the manifest file
+    with open(manifest_path, "r") as f:
+        manifest_data = json.load(f)
+        adapter_type = manifest_data.get("metadata", {}).get("adapter_type")
+        if adapter_type is None:
+            raise Exception("Failed to parse adapter type from manifest.json")
+
+    recce_cloud = RecceCloud(token)
+
+    snapshot = recce_cloud.get_snapshot(snapshot_id)
+
+    org_id = snapshot.get("org_id")
+    if org_id is None:
+        raise Exception(f"Snapshot ID {snapshot_id} does not belong to any organization.")
+
+    project_id = snapshot.get("project_id")
+    if project_id is None:
+        raise Exception(f"Snapshot ID {snapshot_id} does not belong to any project.")
+
+    # Get the presigned URL for uploading the artifacts using snapshot ID
+    console.print(f'Uploading artifacts for snapshot ID "{snapshot_id}"')
+    presigned_urls = recce_cloud.get_upload_urls_by_snapshot_id(org_id, project_id, snapshot_id)
+    if debug:
+        console.rule("Debug information", style="blue")
+        console.print(f"Org ID: {org_id}")
+        console.print(f"Project ID: {project_id}")
+        console.print(f"Snapshot ID: {snapshot_id}")
+        console.print(f"Manifest path: {presigned_urls['manifest_url']}")
+        console.print(f"Catalog path: {presigned_urls['catalog_url']}")
+        console.print(f"Adapter type: {adapter_type}")
+
+    # Upload the compressed artifacts (no password needed for snapshot uploads)
+    console.print(f'Uploading manifest from path "{manifest_path}"')
+    response = requests.put(presigned_urls["manifest_url"], data=open(manifest_path, "rb").read())
+    if response.status_code != 200 and response.status_code != 204:
+        raise Exception(response.text)
+    console.print(f'Uploading catalog from path "{catalog_path}"')
+    response = requests.put(presigned_urls["catalog_url"], data=open(catalog_path, "rb").read())
+    if response.status_code != 200 and response.status_code != 204:
+        raise Exception(response.text)
+
+    # Update the snapshot metadata
+    recce_cloud.update_snapshot(org_id, project_id, snapshot_id, adapter_type)
+
+    return 0
+
+
 def upload_dbt_artifacts(target_path: str, branch: str, token: str, password: str, debug: bool = False):
     console = Console()
     if verify_artifacts_path(target_path) is False:
