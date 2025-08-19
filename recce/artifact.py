@@ -112,7 +112,7 @@ def upload_artifacts_to_snapshot(target_path: str, snapshot_id: str, token: str,
 
     # Get the presigned URL for uploading the artifacts using snapshot ID
     console.print(f'Uploading artifacts for snapshot ID "{snapshot_id}"')
-    presigned_urls = recce_cloud.get_download_urls_by_snapshot_id(org_id, project_id, snapshot_id)
+    presigned_urls = recce_cloud.get_upload_urls_by_snapshot_id(org_id, project_id, snapshot_id)
     if debug:
         console.rule("Debug information", style="blue")
         console.print(f"Org ID: {org_id}")

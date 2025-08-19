@@ -361,13 +361,13 @@ class CloudStateLoader(RecceStateLoader):
     def _export_state_to_preview(self) -> Tuple[Union[str, None], None]:
         """Export state to preview share (no metadata or etag needed)."""
         share_id = self.cloud_options.get("share_id")
-        presinged_url = self.recce_cloud.get_presigned_url_by_share_id(
+        presigned_url = self.recce_cloud.get_presigned_url_by_share_id(
             method=PresignedUrlMethod.UPLOAD,
             share_id=share_id,
             metadata=None,
         )
         message = self._upload_state_to_url(
-            presigned_url=presinged_url, file_type=SupportedFileTypes.FILE, password=None, metadata=None
+            presigned_url=presigned_url, file_type=SupportedFileTypes.FILE, password=None, metadata=None
         )
 
         if message:

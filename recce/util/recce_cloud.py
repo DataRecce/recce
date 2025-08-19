@@ -249,7 +249,9 @@ class RecceCloud:
             return {"status": "error", "message": response.json().get("detail")}
         if response.status_code != 200:
             raise RecceCloudException(
-                message="Failed to share Recce state.", reason=response.text, status_code=response.status_code
+                message="Failed to get snapshot from Recce Cloud.",
+                reason=response.text,
+                status_code=response.status_code,
             )
         data = response.json()
         if data["success"] is not True:
@@ -268,7 +270,9 @@ class RecceCloud:
             return {"status": "error", "message": response.json().get("detail")}
         if response.status_code != 200:
             raise RecceCloudException(
-                message="Failed to share Recce state.", reason=response.text, status_code=response.status_code
+                message="Failed to update snapshot in Recce Cloud.",
+                reason=response.text,
+                status_code=response.status_code,
             )
         return response.json()
 
@@ -324,7 +328,7 @@ class RecceCloud:
         response = self._request("GET", api_url)
         if response.status_code != 200:
             raise RecceCloudException(
-                message="Failed to download snapshot from Recce Cloud.",
+                message="Failed to get upload URLs for snapshot from Recce Cloud.",
                 reason=response.text,
                 status_code=response.status_code,
             )
