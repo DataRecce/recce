@@ -456,7 +456,7 @@ function MainContainer({ children }: { children: ReactNode }): ReactNode {
 }
 
 export default function Home() {
-  const { isDemoSite, isLoading } = useLineageGraphContext();
+  const { isDemoSite, isLoading, isCodespace } = useLineageGraphContext();
   const { featureToggles } = useRecceInstanceContext();
 
   useEffect(() => {
@@ -468,7 +468,7 @@ export default function Home() {
       <TopBar />
       <NavBar />
       <Main />
-      {!isLoading && !isDemoSite && featureToggles.mode === null && <AuthModal />}
+      {!isLoading && !isDemoSite && !isCodespace && featureToggles.mode === null && <AuthModal />}
     </MainContainer>
   );
 }

@@ -151,6 +151,7 @@ export interface ServerInfoResult {
     diff: LineageDiffData;
   };
   demo: boolean;
+  codespace: boolean;
   support_tasks: Record<string, boolean>;
 }
 
