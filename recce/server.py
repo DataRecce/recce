@@ -44,6 +44,7 @@ from .connect_to_cloud import (
 from .core import RecceContext, default_context, load_context
 from .event import get_recce_api_token, log_api_event, log_single_env_event
 from .exceptions import RecceException
+from .github import is_github_codespace
 from .models.types import CllData
 from .run import load_preset_checks
 from .state import RecceShareStateManager, RecceStateLoader
@@ -328,6 +329,7 @@ async def get_info():
     """
     context = default_context()
     demo = os.environ.get("DEMO", False)
+    is_codespace = is_github_codespace()
 
     if demo:
         state = context.export_demo_state()
@@ -352,6 +354,7 @@ async def get_info():
             "pull_request": state.pull_request.to_dict() if state.pull_request else None,
             "lineage": lineage_diff,
             "demo": bool(demo),
+            "codespace": bool(is_codespace),
             "cloud_mode": context.state_loader.cloud_mode,
             "file_mode": context.state_loader.state_file is not None,
             "filename": filename,
@@ -726,6 +729,7 @@ async def get_user_info():
         return user_info
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))
+
 
 api_prefix = "/api"
 app.include_router(check_router, prefix=api_prefix)

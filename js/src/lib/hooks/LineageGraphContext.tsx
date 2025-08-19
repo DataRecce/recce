@@ -52,6 +52,7 @@ export interface LineageGraphContextType {
   fileMode?: boolean;
   fileName?: string;
   isDemoSite?: boolean;
+  isCodespace?: boolean;
   isLoading?: boolean;
   error?: string;
   supportTasks?: Record<string, boolean>;
@@ -246,6 +247,7 @@ export function LineageGraphContextProvider({ children }: LineageGraphProps) {
     lineage,
     sqlmesh,
     demo: isDemoSite,
+    codespace: isCodespace,
     review_mode: reviewMode,
     cloud_mode: cloudMode,
     file_mode: fileMode,
@@ -317,6 +319,7 @@ export function LineageGraphContextProvider({ children }: LineageGraphProps) {
           fileMode,
           fileName,
           isDemoSite,
+          isCodespace,
           error: errorMessage,
           supportTasks,
           isActionAvailable,
