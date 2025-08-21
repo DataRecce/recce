@@ -42,6 +42,7 @@ class RecceCloud:
         self.token = token
         self.token_type = "github_token" if token.startswith(("ghp_", "gho_", "ghu_", "ghs_", "ghr_")) else "api_token"
         self.base_url = f"{RECCE_CLOUD_API_HOST}/api/v1"
+        self.base_url_v2 = f"{RECCE_CLOUD_API_HOST}/api/v2"
 
     def _request(self, method, url, headers: Dict = None, **kwargs):
         headers = {
@@ -81,6 +82,14 @@ class RecceCloud:
         response = self._fetch_presigned_url(method, repository, artifact_name, metadata, pr_id, branch)
         return response.get("presigned_url")
 
+    def _replace_localhost_with_docker_internal(self, url: str) -> str:
+        if url is None:
+            return None
+        if os.environ.get("RECCE_SHARE_INSTANCE_ENV") == "docker" and url.startswith(LOCALHOST_URL_PREFIX):
+            # For local development, convert the presigned URL from localhost to host.docker.internal
+            return url.replace(LOCALHOST_URL_PREFIX, DOCKER_INTERNAL_URL_PREFIX)
+        return url
+
     def get_presigned_url_by_share_id(
         self,
         method: PresignedUrlMethod,
@@ -89,10 +98,13 @@ class RecceCloud:
     ) -> str:
         response = self._fetch_presigned_url_by_share_id(method, share_id, metadata=metadata)
         presigned_url = response.get("presigned_url")
-        # Check if the CLI is running in Docker Recce Share Instance
-        if os.environ.get("RECCE_SHARE_INSTANCE_ENV") == "docker" and presigned_url.startswith(LOCALHOST_URL_PREFIX):
-            # For local development, convert the presigned URL from localhost to host.docker.internal
-            presigned_url = presigned_url.replace(LOCALHOST_URL_PREFIX, DOCKER_INTERNAL_URL_PREFIX)
+        if not presigned_url:
+            raise RecceCloudException(
+                message="Failed to get presigned URL from Recce Cloud.",
+                reason="No presigned URL returned from the server.",
+                status_code=404,
+            )
+        presigned_url = self._replace_localhost_with_docker_internal(presigned_url)
         return presigned_url
 
     def get_download_presigned_url_by_github_repo_with_tags(
@@ -231,6 +243,109 @@ class RecceCloud:
             # Don't Raise an exception if setting onboarding_state fails
             logger.warning(f"Failed to set Onboarding State in Recce Cloud. Reason: {str(e)}")
         return
+
+    def get_snapshot(self, snapshot_id: str):
+        api_url = f"{self.base_url_v2}/snapshots/{snapshot_id}"
+        response = self._request("GET", api_url)
+        if response.status_code == 403:
+            return {"status": "error", "message": response.json().get("detail")}
+        if response.status_code != 200:
+            raise RecceCloudException(
+                message="Failed to get snapshot from Recce Cloud.",
+                reason=response.text,
+                status_code=response.status_code,
+            )
+        data = response.json()
+        if data["success"] is not True:
+            raise RecceCloudException(
+                message="Failed to get snapshot from Recce Cloud.",
+                reason=data.get("message", "Unknown error"),
+                status_code=response.status_code,
+            )
+        return data["snapshot"]
+
+    def update_snapshot(self, org_id: str, project_id: str, snapshot_id: str, adapter_type: str):
+        api_url = f"{self.base_url_v2}/organizations/{org_id}/projects/{project_id}/snapshots/{snapshot_id}"
+        data = {"adapter_type": adapter_type}
+        response = self._request("PATCH", api_url, json=data)
+        if response.status_code == 403:
+            return {"status": "error", "message": response.json().get("detail")}
+        if response.status_code != 200:
+            raise RecceCloudException(
+                message="Failed to update snapshot in Recce Cloud.",
+                reason=response.text,
+                status_code=response.status_code,
+            )
+        return response.json()
+
+    def get_download_urls_by_snapshot_id(self, org_id: str, project_id: str, snapshot_id: str) -> dict[str, str]:
+        api_url = (
+            f"{self.base_url_v2}/organizations/{org_id}/projects/{project_id}/snapshots/{snapshot_id}/download-url"
+        )
+        response = self._request("GET", api_url)
+        if response.status_code != 200:
+            raise RecceCloudException(
+                message="Failed to download snapshot from Recce Cloud.",
+                reason=response.text,
+                status_code=response.status_code,
+            )
+        data = response.json()
+        if data["presigned_urls"] is None:
+            raise RecceCloudException(
+                message="No presigned URLs returned from the server.",
+                reason="",
+                status_code=404,
+            )
+
+        presigned_urls = data["presigned_urls"]
+        for key, url in presigned_urls.items():
+            presigned_urls[key] = self._replace_localhost_with_docker_internal(url)
+        return presigned_urls
+
+    def get_base_snapshot_download_urls(self, org_id: str, project_id: str) -> dict[str, str]:
+        """Get download URLs for the base snapshot of a project."""
+        api_url = f"{self.base_url_v2}/organizations/{org_id}/projects/{project_id}/base-snapshot/download-url"
+        response = self._request("GET", api_url)
+        if response.status_code != 200:
+            raise RecceCloudException(
+                message="Failed to download base snapshot from Recce Cloud.",
+                reason=response.text,
+                status_code=response.status_code,
+            )
+        data = response.json()
+        if data["presigned_urls"] is None:
+            raise RecceCloudException(
+                message="No presigned URLs returned from the server.",
+                reason="",
+                status_code=404,
+            )
+
+        presigned_urls = data["presigned_urls"]
+        for key, url in presigned_urls.items():
+            presigned_urls[key] = self._replace_localhost_with_docker_internal(url)
+        return presigned_urls
+
+    def get_upload_urls_by_snapshot_id(self, org_id: str, project_id: str, snapshot_id: str) -> dict[str, str]:
+        api_url = f"{self.base_url_v2}/organizations/{org_id}/projects/{project_id}/snapshots/{snapshot_id}/upload-url"
+        response = self._request("GET", api_url)
+        if response.status_code != 200:
+            raise RecceCloudException(
+                message="Failed to get upload URLs for snapshot from Recce Cloud.",
+                reason=response.text,
+                status_code=response.status_code,
+            )
+        data = response.json()
+        if data["presigned_urls"] is None:
+            raise RecceCloudException(
+                message="No presigned URLs returned from the server.",
+                reason="",
+                status_code=404,
+            )
+
+        presigned_urls = data["presigned_urls"]
+        for key, url in presigned_urls.items():
+            presigned_urls[key] = self._replace_localhost_with_docker_internal(url)
+        return presigned_urls
 
 
 def get_recce_cloud_onboarding_state(token: str) -> str:

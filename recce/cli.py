@@ -8,7 +8,11 @@ import uvicorn
 from click import Abort
 
 from recce import event
-from recce.artifact import download_dbt_artifacts, upload_dbt_artifacts
+from recce.artifact import (
+    download_dbt_artifacts,
+    upload_artifacts_to_snapshot,
+    upload_dbt_artifacts,
+)
 from recce.config import RECCE_CONFIG_FILE, RECCE_ERROR_LOG_FILE, RecceConfig
 from recce.connect_to_cloud import (
     generate_key_pair,
@@ -166,6 +170,13 @@ recce_hidden_options = [
         help="The share URL triggers this instance.",
         type=click.STRING,
         envvar="RECCE_SHARE_URL",
+        hidden=True,
+    ),
+    click.option(
+        "--snapshot-id",
+        help="The snapshot ID triggers this instance.",
+        type=click.STRING,
+        envvar="RECCE_SNAPSHOT_ID",
         hidden=True,
     ),
 ]
@@ -417,11 +428,6 @@ def server(host, port, lifetime, state_file=None, **kwargs):
     recce server --cloud
     recce server --review --cloud
 
-    \b
-    # Launch the server using the state from a shared URL. (Requires Recce API token)
-    export RECCE_API_TOKEN=<your-recce-api-token>
-    recce server --cloud --share-url <share-url>
-
     """
 
     from rich.console import Console
@@ -435,7 +441,12 @@ def server(host, port, lifetime, state_file=None, **kwargs):
     server_mode = kwargs.get("mode") if kwargs.get("mode") else RecceServerMode.server
     is_review = kwargs.get("review", False)
     is_cloud = kwargs.get("cloud", False)
-    flag = {}
+    flag = {
+        "single_env_onboarding": False,
+        "show_relaunch_hint": False,
+        "preview": False,
+        "read_only": False,
+    }
     console = Console()
     cloud_options = None
 
@@ -449,35 +460,36 @@ def server(host, port, lifetime, state_file=None, **kwargs):
     }
 
     share_url = kwargs.get("share_url")
+    snapshot_id = kwargs.get("snapshot_id")
     if share_url:
         share_id = share_url.split("/")[-1]
         if not share_id:
             console.print("[[red]Error[/red]] Invalid share URL format.")
             exit(1)
 
-    if server_mode == RecceServerMode.server:
-        flag = {"single_env_onboarding": False, "show_relaunch_hint": False}
-        if is_cloud:
-            if share_url:
-                # recce server --cloud --share-url <share-url>
-                # Use state file stored for the share url
-                # Forces use of the review mode.
-                is_review = kwargs["review"] = True
-                cloud_options = {
-                    "host": kwargs.get("state_file_host"),
-                    "api_token": api_token,
-                    "share_id": share_id,
-                }
-            else:
-                # recce server --cloud
-                # recce server --cloud --review
-                # Use state file stored for the PR of the current branch
-                cloud_options = {
-                    "host": kwargs.get("state_file_host"),
-                    "github_token": kwargs.get("cloud_token"),
-                    "password": kwargs.get("password"),
-                }
-
+    if is_cloud:
+        # Cloud mode
+        if share_url:
+            is_review = kwargs["review"] = True
+            cloud_options = {
+                "host": kwargs.get("state_file_host"),
+                "api_token": api_token,
+                "share_id": share_id,
+            }
+        elif snapshot_id:
+            is_review = kwargs["review"] = True
+            cloud_options = {
+                "host": kwargs.get("state_file_host"),
+                "api_token": api_token,
+                "snapshot_id": snapshot_id,
+            }
+        else:
+            cloud_options = {
+                "host": kwargs.get("state_file_host"),
+                "github_token": kwargs.get("cloud_token"),
+                "password": kwargs.get("password"),
+            }
+    else:
         # Check Single Environment Onboarding Mode if the review mode is False
         project_dir_path = Path(kwargs.get("project_dir") or "./")
         target_base_path = project_dir_path.joinpath(Path(kwargs.get("target_base_path", "target-base")))
@@ -487,58 +499,17 @@ def server(host, port, lifetime, state_file=None, **kwargs):
             flag["show_relaunch_hint"] = True
             # Use the target path as the base path
             kwargs["target_base_path"] = kwargs.get("target_path")
-    elif server_mode == RecceServerMode.preview:
-        if is_cloud:
-            # recce server --cloud --share-url <share-url> --mode preview
-            # Use state file stored for the share url
-            #
-            # Preview mode disable these features
-            # - run query
-            #
-            # Usage:
-            #    Used in cloud managed instance. For cloud onboarding to preview the uploaded artifacts.
-            cloud_options = {
-                "host": kwargs.get("state_file_host"),
-                "api_token": api_token,
-                "share_id": share_id,
-            }
-        else:
-            # recce server --mode preview recce_state.json
-            if state_file is None:
-                console.print("[[red]Error[/red]] The state_file is required in 'Preview' mode.")
-                console.print("Please provide recce_state json file exported by Recce OSS.")
-                exit(1)
-        is_review = kwargs["review"] = True
-        flag = {
-            "preview": True,
-        }
+
+    # Server mode:
+    #
+    # It's used to determine the features disabled in the Web UI. Only used in the cloud-managed recce instances.
+    #
+    # Read-Only: No run query, no checklist
+    # Preview (Metadata-Only): No run query
+    if server_mode == RecceServerMode.preview:
+        flag["preview"] = True
     elif server_mode == RecceServerMode.read_only:
-        if is_cloud:
-            # recce server --cloud --share-url <share-url> --mode read-only
-            # Use state file stored for the share url
-            #
-            # Read-only mode disable these features
-            # - run query
-            # - use checklist
-            # - share
-            #
-            # Usage:
-            #    Used in cloud managed instance. Launch when user click a share link.
-            cloud_options = {
-                "host": kwargs.get("state_file_host"),
-                "api_token": api_token,
-                "share_id": share_id,
-            }
-        else:
-            # recce server --mode read-only recce_state.json
-            if state_file is None:
-                console.print("[[red]Error[/red]] The state_file is required in 'Read-Only' mode.")
-                console.print("Please provide recce_state json file exported by Recce OSS.")
-                exit(1)
-        is_review = kwargs["review"] = True
-        flag = {
-            "read_only": True,
-        }
+        flag["read_only"] = True
 
     # Onboarding State logic update here
     update_onboarding_state(api_token, flag.get("single_env_onboarding"))
@@ -1291,6 +1262,75 @@ def share(state_file, **kwargs):
         console.print(f"[[red]Error[/red]] {e}")
         console.print(f"Reason: {e.reason}")
         exit(1)
+
+
+@cli.command(cls=TrackCommand, hidden=True)
+@click.option(
+    "--snapshot-id",
+    help="The snapshot ID to upload artifacts to cloud.",
+    type=click.STRING,
+    envvar="RECCE_SNAPSHOT_ID",
+    required=True,
+)
+@click.option(
+    "--target-path",
+    help="dbt artifacts directory for your artifacts.",
+    type=click.STRING,
+    default="target",
+    show_default=True,
+)
+@click.option(
+    "--api-token", help="The personal token generated by Recce Cloud.", type=click.STRING, envvar="RECCE_API_TOKEN"
+)
+@add_options(recce_options)
+def snapshot(**kwargs):
+    """
+    Upload target/manifest.json and target/catalog.json to the specific snapshot ID
+
+    Upload the dbt artifacts (manifest.json, catalog.json) to Recce Cloud for the given snapshot ID.
+    This allows you to associate artifacts with a specific snapshot for later use.
+
+    Examples:\n
+
+    \b
+    # Upload artifacts to a snapshot ID
+    recce snapshot --snapshot-id <snapshot-id>
+
+    \b
+    # Upload artifacts from custom target path to a snapshot ID
+    recce snapshot --snapshot-id <snapshot-id> --target-path my-target
+    """
+    from rich.console import Console
+
+    console = Console()
+    handle_debug_flag(**kwargs)
+
+    # Initialize Recce Config
+    RecceConfig(config_file=kwargs.get("config"))
+
+    try:
+        api_token = prepare_api_token(**kwargs)
+    except RecceConfigException:
+        show_invalid_api_token_message()
+        exit(1)
+
+    snapshot_id = kwargs.get("snapshot_id")
+    target_path = kwargs.get("target_path")
+
+    try:
+        rc = upload_artifacts_to_snapshot(
+            target_path, snapshot_id=snapshot_id, token=api_token, debug=kwargs.get("debug", False)
+        )
+        console.rule("Uploaded Successfully")
+        console.print(
+            f'Uploaded dbt artifacts to Recce Cloud for snapshot ID "{snapshot_id}" from "{os.path.abspath(target_path)}"'
+        )
+    except Exception as e:
+        console.rule("Failed to Snapshot", style="red")
+        console.print(f"[[red]Error[/red]] Failed to upload the dbt artifacts to the snapshot {snapshot_id}.")
+        console.print(f"Reason: {e}")
+        rc = 1
+    return rc
 
 
 @cli.command(hidden=True, cls=TrackCommand)
