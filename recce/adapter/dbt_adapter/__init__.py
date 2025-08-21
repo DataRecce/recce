@@ -627,10 +627,9 @@ class DbtAdapter(BaseAdapter):
         except AttributeError:
             parent_map_source = manifest.to_dict()["parent_map"]
 
-        node_ids = set(nodes)
         parent_map = {}
         for k, parents in parent_map_source.items():
-            if k not in node_ids:
+            if k not in nodes:
                 continue
             parent_map[k] = [parent for parent in parents if parent in node_ids]
 
