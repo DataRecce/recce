@@ -175,7 +175,7 @@ export function PrivateSchemaDiffView({ check }: SchemaDiffViewProps, ref: any) 
     );
   } else if (error) {
     return (
-      <Center bg="rgb(249,249,249)" height="100%">
+      <Center bg="rgb(249,249,249)" height="100%" className="no-track-pii-safe">
         Error: {error.message}
       </Center>
     );

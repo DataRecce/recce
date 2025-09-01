@@ -45,7 +45,9 @@ export const RunView = forwardRef(
       return (
         <Alert.Root status="error" title={`Error: ${errorMessage}`}>
           <Alert.Indicator />
-          <Alert.Title>Error: {errorMessage}</Alert.Title>
+          <Alert.Title>
+            Error: <span className="no-track-pii-safe">{errorMessage}</span>
+          </Alert.Title>
         </Alert.Root>
       );
     }

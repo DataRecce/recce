@@ -188,7 +188,7 @@ const PackageSelectMenu = ({ isDisabled }: { isDisabled: boolean }) => {
                       }}>
                       <Checkbox.HiddenInput />
                       <Checkbox.Control />
-                      <Checkbox.Label>{pkg}</Checkbox.Label>
+                      <Checkbox.Label className="no-track-pii-safe">{pkg}</Checkbox.Label>
                     </Checkbox.Root>
                   </Menu.Item>
                 );
