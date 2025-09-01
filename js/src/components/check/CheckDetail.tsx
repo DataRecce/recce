@@ -200,7 +200,11 @@ export const CheckDetail = ({ checkId, refreshCheckList }: CheckDetailProps) => 
   }
 
   if (error) {
-    return <Center h="100%">Error: {error.message}</Center>;
+    return (
+      <Center h="100%">
+        Error: <span className="no-track-pii-safe">{error.message}</span>
+      </Center>
+    );
   }
 
   const relativeTime = run?.run_at

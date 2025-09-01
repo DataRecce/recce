@@ -86,7 +86,11 @@ export const CheckPage = () => {
   }
 
   if (error) {
-    return <>Error: {error.message}</>;
+    return (
+      <>
+        Error: <span className="no-track-pii-safe">{error.message}</span>
+      </>
+    );
   }
 
   if (!checks?.length) {

@@ -65,10 +65,12 @@ function SqlEditor({
           margin={"0"}
           padding={"0px 16px"}
           flex="0 0 40px">
-          <Text as="strong">{label ? label.toUpperCase() : ""}</Text>
+          <Text as="strong" className="no-track-pii-safe">
+            {label ? label.toUpperCase() : ""}
+          </Text>
           {manifestData && (
             <span className="ml-1">
-              ({schemas && <span>{schemas}, </span>}
+              ({schemas && <span className="no-track-pii-safe">{schemas}, </span>}
               <span>{timestamp}</span>)
             </span>
           )}
