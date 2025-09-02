@@ -74,7 +74,12 @@ const ChecklistItem = ({
         alignItems="center"
         gap="5px">
         <Icon as={icon} />
-        <Box flex="1" textOverflow="ellipsis" whiteSpace="nowrap" overflow="hidden">
+        <Box
+          flex="1"
+          textOverflow="ellipsis"
+          whiteSpace="nowrap"
+          overflow="hidden"
+          className="no-track-pii-safe">
           {check.name}
         </Box>
 
