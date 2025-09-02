@@ -20,6 +20,7 @@ import { IconSync } from "../icons";
 import { Tooltip } from "@/components/ui/tooltip";
 import { toaster } from "@/components/ui/toaster";
 import { PiInfo } from "react-icons/pi";
+import { useRecceInstanceInfo } from "@/lib/hooks/useRecceInstanceInfo";
 
 function isCheckDetailPage(href: string): boolean {
   const pattern =
@@ -30,9 +31,9 @@ function isCheckDetailPage(href: string): boolean {
 export function StateSpinner() {
   return (
     <Tooltip content="Syncing">
-      <Button pt="6px" variant="plain" boxSize={"1em"}>
-        <Spinner />
-      </Button>
+      <Box mx="10px">
+        <Spinner size="sm" />
+      </Box>
     </Tooltip>
   );
 }
@@ -43,6 +44,7 @@ export function StateSynchronizer() {
   const [location, setLocation] = useLocation();
   const { open, onOpen, onClose } = useDisclosure();
   const [syncOption, setSyncOption] = useState("");
+  const { data: instanceInfo } = useRecceInstanceInfo();
 
   const handleSync = useCallback(
     async (input: SyncStateInput) => {
@@ -89,7 +91,7 @@ export function StateSynchronizer() {
           size="sm"
           variant="plain"
           aria-label="Sync state"
-          onClick={() => handleSync({})}>
+          onClick={() => handleSync(instanceInfo?.snapshot_id ? { method: "merge" } : {})}>
           <Icon as={IconSync} verticalAlign="middle" boxSize={"16px"} />
         </IconButton>
       </Tooltip>
