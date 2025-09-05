@@ -263,7 +263,10 @@ class RowCountDiffResultDiffer(TaskResultDiffer):
 
     def _get_changed_nodes(self) -> Union[List[str], None]:
         if self.changes:
-            return self.changes.affected_root_keys.items
+            # Both affected_root_keys of deepdiff v7 (OrderedSet) and v8 (SetOrdered) are iterable
+            # Convert to list directly
+            return list(self.changes.affected_root_keys)
+        return None
 
 
 class RowCountDiffCheckValidator(CheckValidator):
