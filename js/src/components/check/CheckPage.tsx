@@ -102,7 +102,7 @@ export const CheckPage = () => {
       <HSplit style={{ height: "100%" }} minSize={50} sizes={[20, 80]}>
         <Box borderRight="lightgray solid 1px" height="100%" style={{ contain: "size" }}>
           <VStack gap={0} h="100%" style={{ contain: "strict" }} alignItems="stretch">
-            <Flex justifyContent="right" padding="0px 10px">
+            <Flex justifyContent="flex-end" padding="0px 10px">
               <StateImporter checksOnly />
             </Flex>
             <Separator />
