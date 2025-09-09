@@ -10,6 +10,7 @@ import { CheckList } from "./CheckList";
 import { HSplit } from "../split/Split";
 import { StateImporter } from "../app/StateImporter";
 import { useRecceCheckContext } from "@/lib/hooks/RecceCheckContext";
+import { CheckEmptyState } from "./CheckEmptyState";
 
 export const CheckPage = () => {
   const [, setLocation] = useLocation();
@@ -17,9 +18,12 @@ export const CheckPage = () => {
   const { latestSelectedCheckId, setLatestSelectedCheckId } = useRecceCheckContext();
   const queryClient = useQueryClient();
   const selectedItem = params?.checkId;
-  if (selectedItem) {
-    setLatestSelectedCheckId(selectedItem);
-  }
+
+  useEffect(() => {
+    if (selectedItem) {
+      setLatestSelectedCheckId(selectedItem);
+    }
+  }, [selectedItem, setLatestSelectedCheckId]);
 
   const {
     isLoading,
@@ -95,9 +99,26 @@ export const CheckPage = () => {
 
   if (!checks?.length) {
     return (
-      <Center h="100%">
-        <Box>No checks</Box>
-      </Center>
+      <HSplit style={{ height: "100%" }} minSize={50} sizes={[20, 80]}>
+        <Box borderRight="lightgray solid 1px" height="100%" style={{ contain: "size" }}>
+          <VStack gap={0} h="100%" style={{ contain: "strict" }} alignItems="stretch">
+            <Flex justifyContent="right" padding="0px 10px">
+              <StateImporter checksOnly />
+            </Flex>
+            <Separator />
+            <Center h="100%">
+              <Box textAlign="center" color="gray.500">
+                No checks
+              </Box>
+            </Center>
+          </VStack>
+        </Box>
+        <Box>
+          <Center h="100%">
+            <CheckEmptyState />
+          </Center>
+        </Box>
+      </HSplit>
     );
   }
 
