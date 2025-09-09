@@ -35,7 +35,7 @@ export function TopKDiffForm({ params, onParamsChanged, setIsReadyToExecute }: T
               onParamsChanged({ ...params, column_name: column });
             }}>
             {columnNames.map((c) => (
-              <option key={c} value={c}>
+              <option key={c} value={c} className="no-track-pii-safe">
                 {c}
               </option>
             ))}

@@ -112,7 +112,7 @@ export function HistogramDiffForm({
             }}
             placeholder={columns.length !== 0 ? "Select column" : "No numeric column is available"}>
             {columns.map((c) => (
-              <option key={c.name} value={c.name}>
+              <option key={c.name} value={c.name} className="no-track-pii-safe">
                 {c.name} : {c.type}
               </option>
             ))}

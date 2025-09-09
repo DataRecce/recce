@@ -64,6 +64,7 @@ export function ProfileDiffForm({
         {!allColumns && (
           <Select
             isMulti
+            className="no-track-pii-safe"
             closeMenuOnSelect={false}
             options={columnNames.map((c) => ({ label: c, value: c }))}
             value={(params.columns ?? []).map((c) => ({

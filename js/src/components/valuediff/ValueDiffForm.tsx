@@ -63,6 +63,7 @@ export function ValueDiffForm({ params, onParamsChanged, setIsReadyToExecute }: 
         <Field.Label>Primary key</Field.Label>
         <Select
           placeholder="Select primary key"
+          className="no-track-pii-safe"
           isMulti
           closeMenuOnSelect={false}
           options={columnNames.map((c) => ({ label: c, value: c }))}
@@ -97,6 +98,7 @@ export function ValueDiffForm({ params, onParamsChanged, setIsReadyToExecute }: 
         {!allColumns && (
           <Select
             isMulti
+            className="no-track-pii-safe"
             closeMenuOnSelect={false}
             options={columnNames.map((c) => ({ label: c, value: c }))}
             value={(params.columns ?? []).map((c) => ({

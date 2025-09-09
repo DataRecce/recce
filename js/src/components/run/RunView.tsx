@@ -61,20 +61,24 @@ export const RunView = forwardRef(
       }
 
       return (
-        <Center p="16px" height="100%" bg="rgb(249,249,249)">
+        <Center p="1rem" height="100%" bg="rgb(249,249,249)">
           <VStack>
             <Flex alignItems="center">
               {progress?.percentage == null ? (
-                <ProgressCircle.Root value={null} size="md" mr="8px">
+                <ProgressCircle.Root value={null} size="md" mr="0.5rem">
                   <ProgressCircle.Circle />
                 </ProgressCircle.Root>
               ) : (
-                <ProgressCircle.Root value={progress.percentage * 100} size="md" mr="8px">
+                <ProgressCircle.Root value={progress.percentage * 100} size="md" mr="0.5rem">
                   <ProgressCircle.Circle />
                 </ProgressCircle.Root>
               )}
 
-              {isAborting ? <>Aborting...</> : <>{loadingMessage}</>}
+              {isAborting ? (
+                <span>Aborting...</span>
+              ) : (
+                <span className="no-track-pii-safe">{loadingMessage}</span>
+              )}
             </Flex>
             {!isAborting && (
               <Button onClick={onCancel} colorPalette="blue" size="sm">
