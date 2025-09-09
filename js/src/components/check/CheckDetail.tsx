@@ -53,6 +53,7 @@ import { trackCopyToClipboard } from "@/lib/api/track";
 import { Tooltip } from "@/components/ui/tooltip";
 import { PiCheckCircle, PiCopy, PiRepeat, PiTrashFill } from "react-icons/pi";
 import SetupConnectionPopover from "@/components/app/SetupConnectionPopover";
+import { useRecceCheckContext } from "@/lib/hooks/RecceCheckContext";
 
 export const isDisabledByNoResult = (type: string, run: Run | undefined): boolean => {
   if (type === "schema_diff" || type === "lineage_diff") {
@@ -70,6 +71,7 @@ type TabValueList = "result" | "query";
 
 export const CheckDetail = ({ checkId, refreshCheckList }: CheckDetailProps) => {
   const { featureToggles } = useRecceInstanceContext();
+  const { setLatestSelectedCheckId } = useRecceCheckContext();
   const queryClient = useQueryClient();
   const [, setLocation] = useLocation();
   const { successToast, failToast } = useClipBoardToast();
@@ -116,6 +118,7 @@ export const CheckDetail = ({ checkId, refreshCheckList }: CheckDetailProps) => 
   const { mutate: handleDelete } = useMutation({
     mutationFn: () => deleteCheck(checkId),
     onSuccess: async () => {
+      setLatestSelectedCheckId("");
       await queryClient.invalidateQueries({ queryKey: cacheKeys.checks() });
       setLocation("/checks");
     },
