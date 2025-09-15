@@ -244,48 +244,46 @@ class RecceCloud:
             logger.warning(f"Failed to set Onboarding State in Recce Cloud. Reason: {str(e)}")
         return
 
-    def get_snapshot(self, snapshot_id: str):
-        api_url = f"{self.base_url_v2}/snapshots/{snapshot_id}"
+    def get_session(self, session_id: str):
+        api_url = f"{self.base_url_v2}/snapshots/{session_id}"
         response = self._request("GET", api_url)
         if response.status_code == 403:
             return {"status": "error", "message": response.json().get("detail")}
         if response.status_code != 200:
             raise RecceCloudException(
-                message="Failed to get snapshot from Recce Cloud.",
+                message="Failed to get session from Recce Cloud.",
                 reason=response.text,
                 status_code=response.status_code,
             )
         data = response.json()
         if data["success"] is not True:
             raise RecceCloudException(
-                message="Failed to get snapshot from Recce Cloud.",
+                message="Failed to get session from Recce Cloud.",
                 reason=data.get("message", "Unknown error"),
                 status_code=response.status_code,
             )
         return data["snapshot"]
 
-    def update_snapshot(self, org_id: str, project_id: str, snapshot_id: str, adapter_type: str):
-        api_url = f"{self.base_url_v2}/organizations/{org_id}/projects/{project_id}/snapshots/{snapshot_id}"
+    def update_session(self, org_id: str, project_id: str, session_id: str, adapter_type: str):
+        api_url = f"{self.base_url_v2}/organizations/{org_id}/projects/{project_id}/snapshots/{session_id}"
         data = {"adapter_type": adapter_type}
         response = self._request("PATCH", api_url, json=data)
         if response.status_code == 403:
             return {"status": "error", "message": response.json().get("detail")}
         if response.status_code != 200:
             raise RecceCloudException(
-                message="Failed to update snapshot in Recce Cloud.",
+                message="Failed to update session in Recce Cloud.",
                 reason=response.text,
                 status_code=response.status_code,
             )
         return response.json()
 
-    def get_download_urls_by_snapshot_id(self, org_id: str, project_id: str, snapshot_id: str) -> dict[str, str]:
-        api_url = (
-            f"{self.base_url_v2}/organizations/{org_id}/projects/{project_id}/snapshots/{snapshot_id}/download-url"
-        )
+    def get_download_urls_by_session_id(self, org_id: str, project_id: str, session_id: str) -> dict[str, str]:
+        api_url = f"{self.base_url_v2}/organizations/{org_id}/projects/{project_id}/snapshots/{session_id}/download-url"
         response = self._request("GET", api_url)
         if response.status_code != 200:
             raise RecceCloudException(
-                message="Failed to download snapshot from Recce Cloud.",
+                message="Failed to download session from Recce Cloud.",
                 reason=response.text,
                 status_code=response.status_code,
             )
@@ -302,13 +300,13 @@ class RecceCloud:
             presigned_urls[key] = self._replace_localhost_with_docker_internal(url)
         return presigned_urls
 
-    def get_base_snapshot_download_urls(self, org_id: str, project_id: str) -> dict[str, str]:
-        """Get download URLs for the base snapshot of a project."""
+    def get_base_session_download_urls(self, org_id: str, project_id: str) -> dict[str, str]:
+        """Get download URLs for the base session of a project."""
         api_url = f"{self.base_url_v2}/organizations/{org_id}/projects/{project_id}/base-snapshot/download-url"
         response = self._request("GET", api_url)
         if response.status_code != 200:
             raise RecceCloudException(
-                message="Failed to download base snapshot from Recce Cloud.",
+                message="Failed to download base session from Recce Cloud.",
                 reason=response.text,
                 status_code=response.status_code,
             )
@@ -325,12 +323,12 @@ class RecceCloud:
             presigned_urls[key] = self._replace_localhost_with_docker_internal(url)
         return presigned_urls
 
-    def get_upload_urls_by_snapshot_id(self, org_id: str, project_id: str, snapshot_id: str) -> dict[str, str]:
-        api_url = f"{self.base_url_v2}/organizations/{org_id}/projects/{project_id}/snapshots/{snapshot_id}/upload-url"
+    def get_upload_urls_by_session_id(self, org_id: str, project_id: str, session_id: str) -> dict[str, str]:
+        api_url = f"{self.base_url_v2}/organizations/{org_id}/projects/{project_id}/snapshots/{session_id}/upload-url"
         response = self._request("GET", api_url)
         if response.status_code != 200:
             raise RecceCloudException(
-                message="Failed to get upload URLs for snapshot from Recce Cloud.",
+                message="Failed to get upload URLs for session from Recce Cloud.",
                 reason=response.text,
                 status_code=response.status_code,
             )

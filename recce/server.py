@@ -283,7 +283,7 @@ class RecceInstanceInfoOut(BaseModel):
     authed: bool
     lifetime_expired_at: Optional[datetime] = None
     share_url: Optional[str] = None
-    snapshot_id: Optional[str] = None
+    session_id: Optional[str] = None
 
 
 @app.get("/api/instance-info", response_model=RecceInstanceInfoOut, response_model_exclude_none=True)
@@ -303,7 +303,7 @@ async def recce_instance_info():
         "authed": True if api_token else False,
         "lifetime_expired_at": app_state.lifetime_expired_at,  # UTC timezone
         "share_url": app_state.share_url,
-        "snapshot_id": app_state.state_loader.snapshot_id if app_state.state_loader else None,
+        "snapshot_id": app_state.state_loader.session_id if app_state.state_loader else None,
         # TODO: Add more instance info which won't change during the instance lifecycle
         # review_mode
         # cloud_mode

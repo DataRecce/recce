@@ -401,11 +401,11 @@ class TestCloudStateLoader(unittest.TestCase):
         # Mock loader's RecceCloud instance
         loader.recce_cloud = Mock()
 
-        # Mock get_snapshot response
+        # Mock get_session response
         mock_snapshot = {"org_id": "org1", "project_id": "proj1"}
         loader.recce_cloud.get_snapshot.return_value = mock_snapshot
 
-        # Mock get_download_urls_by_snapshot_id response
+        # Mock get_download_urls_by_session_id response
         mock_download_urls = {
             "manifest_url": "http://manifest.url",
             "catalog_url": "http://catalog.url",
@@ -413,7 +413,7 @@ class TestCloudStateLoader(unittest.TestCase):
         }
         loader.recce_cloud.get_download_urls_by_snapshot_id.return_value = mock_download_urls
 
-        # Mock get_base_snapshot_download_urls response
+        # Mock get_base_session_download_urls response
         mock_base_urls = {"manifest_url": "http://base_manifest.url", "catalog_url": "http://base_catalog.url"}
         loader.recce_cloud.get_base_snapshot_download_urls.return_value = mock_base_urls
 
@@ -448,7 +448,7 @@ class TestCloudStateLoader(unittest.TestCase):
             mock_state.checks = [{"id": "test"}]
             mock_recce_state.from_file.return_value = mock_state
 
-            result_state = loader._load_state_from_snapshot()
+            result_state = loader._load_state_from_session()
 
             # Verify the state was loaded from recce_state_url
             self.assertEqual(result_state, mock_state)
@@ -471,15 +471,15 @@ class TestCloudStateLoader(unittest.TestCase):
         # Mock loader's RecceCloud instance
         loader.recce_cloud = Mock()
 
-        # Mock get_snapshot response
+        # Mock get_session response
         mock_snapshot = {"org_id": "org1", "project_id": "proj1"}
         loader.recce_cloud.get_snapshot.return_value = mock_snapshot
 
-        # Mock get_download_urls_by_snapshot_id response (no recce_state_url)
+        # Mock get_download_urls_by_session_id response (no recce_state_url)
         mock_download_urls = {"manifest_url": "http://manifest.url", "catalog_url": "http://catalog.url"}
         loader.recce_cloud.get_download_urls_by_snapshot_id.return_value = mock_download_urls
 
-        # Mock get_base_snapshot_download_urls response
+        # Mock get_base_session_download_urls response
         mock_base_urls = {"manifest_url": "http://base_manifest.url", "catalog_url": "http://base_catalog.url"}
         loader.recce_cloud.get_base_snapshot_download_urls.return_value = mock_base_urls
 
@@ -501,7 +501,7 @@ class TestCloudStateLoader(unittest.TestCase):
             mock_empty_state.checks = []
             mock_recce_state_class.return_value = mock_empty_state
 
-            result_state = loader._load_state_from_snapshot()
+            result_state = loader._load_state_from_session()
 
             # Verify empty state was created
             self.assertEqual(result_state, mock_empty_state)
@@ -522,7 +522,7 @@ class TestCloudStateLoader(unittest.TestCase):
         loader.snapshot_id = None
 
         with self.assertRaises(RecceException) as cm:
-            loader._load_state_from_snapshot()
+            loader._load_state_from_session()
 
         self.assertEqual(
             str(cm.exception), "Cannot load the snapshot state from Recce Cloud. No snapshot ID is provided."
@@ -536,12 +536,12 @@ class TestCloudStateLoader(unittest.TestCase):
         # Mock loader's RecceCloud instance
         loader.recce_cloud = Mock()
 
-        # Mock get_snapshot response with missing org_id
+        # Mock get_session response with missing org_id
         mock_snapshot = {"project_id": "proj1"}  # Missing org_id
         loader.recce_cloud.get_snapshot.return_value = mock_snapshot
 
         with self.assertRaises(RecceException) as cm:
-            loader._load_state_from_snapshot()
+            loader._load_state_from_session()
 
         self.assertEqual(
             str(cm.exception), "Snapshot test_snapshot does not belong to a valid organization or project."
@@ -568,11 +568,11 @@ class TestCloudStateLoader(unittest.TestCase):
         # Mock loader's RecceCloud instance
         loader.recce_cloud = Mock()
 
-        # Mock get_snapshot response
+        # Mock get_session response
         mock_snapshot = {"org_id": "org1", "project_id": "proj1"}
         loader.recce_cloud.get_snapshot.return_value = mock_snapshot
 
-        # Mock get_upload_urls_by_snapshot_id response
+        # Mock get_upload_urls_by_session_id response
         mock_upload_urls = {"recce_state_url": "http://upload_recce_state.url"}
         loader.recce_cloud.get_upload_urls_by_snapshot_id.return_value = mock_upload_urls
 
@@ -587,7 +587,7 @@ class TestCloudStateLoader(unittest.TestCase):
             mock_upload_state.to_json.return_value = '{"runs": [], "checks": []}'
             mock_recce_state_class.return_value = mock_upload_state
 
-            result_message, result_etag = loader._export_state_to_snapshot()
+            result_message, result_etag = loader._export_state_to_session()
 
             # Verify success
             self.assertIsNone(result_message)
@@ -606,7 +606,7 @@ class TestCloudStateLoader(unittest.TestCase):
         loader.snapshot_id = None
 
         with self.assertRaises(RecceException) as cm:
-            loader._export_state_to_snapshot()
+            loader._export_state_to_session()
 
         self.assertEqual(str(cm.exception), "Cannot export state to snapshot. No snapshot ID is provided.")
 
@@ -619,16 +619,16 @@ class TestCloudStateLoader(unittest.TestCase):
         # Mock loader's RecceCloud instance
         loader.recce_cloud = Mock()
 
-        # Mock get_snapshot response
+        # Mock get_session response
         mock_snapshot = {"org_id": "org1", "project_id": "proj1"}
         loader.recce_cloud.get_snapshot.return_value = mock_snapshot
 
-        # Mock get_upload_urls_by_snapshot_id response without recce_state_url
+        # Mock get_upload_urls_by_session_id response without recce_state_url
         mock_upload_urls = {}
         loader.recce_cloud.get_upload_urls_by_snapshot_id.return_value = mock_upload_urls
 
         with self.assertRaises(RecceException) as cm:
-            loader._export_state_to_snapshot()
+            loader._export_state_to_session()
 
         self.assertEqual(str(cm.exception), "No recce_state_url found for snapshot test_snapshot")
 
@@ -652,11 +652,11 @@ class TestCloudStateLoader(unittest.TestCase):
         # Mock loader's RecceCloud instance
         loader.recce_cloud = Mock()
 
-        # Mock get_snapshot response
+        # Mock get_session response
         mock_snapshot = {"org_id": "org1", "project_id": "proj1"}
         loader.recce_cloud.get_snapshot.return_value = mock_snapshot
 
-        # Mock get_upload_urls_by_snapshot_id response
+        # Mock get_upload_urls_by_session_id response
         mock_upload_urls = {"recce_state_url": "http://upload_recce_state.url"}
         loader.recce_cloud.get_upload_urls_by_snapshot_id.return_value = mock_upload_urls
 
@@ -672,7 +672,7 @@ class TestCloudStateLoader(unittest.TestCase):
             mock_upload_state.to_json.return_value = '{"runs": [], "checks": []}'
             mock_recce_state_class.return_value = mock_upload_state
 
-            result_message, result_etag = loader._export_state_to_snapshot()
+            result_message, result_etag = loader._export_state_to_session()
 
             # Verify failure
             self.assertIn("Failed to upload", result_message)
