@@ -37,7 +37,7 @@ class RecceStateLoader(ABC):
         self.pr_info = None
         self.catalog: Literal["github", "preview", "snapshot"] = "github"
         self.share_id = None
-        self.snapshot_id = None
+        self.session_id = None
 
         if self.cloud_mode:
             if self.cloud_options.get("github_token"):
@@ -48,9 +48,9 @@ class RecceStateLoader(ABC):
                 if self.pr_info.id is None:
                     raise RecceException("Cannot get the pull request information from GitHub.")
             elif self.cloud_options.get("api_token"):
-                if self.cloud_options.get("snapshot_id"):
-                    self.catalog = "snapshot"
-                    self.snapshot_id = self.cloud_options.get("snapshot_id")
+                if self.cloud_options.get("session_id"):
+                    self.catalog = "session"
+                    self.session_id = self.cloud_options.get("session_id")
                 else:
                     self.catalog = "preview"
                     self.share_id = self.cloud_options.get("share_id")
