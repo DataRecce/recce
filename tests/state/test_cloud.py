@@ -360,50 +360,50 @@ class TestCloudStateLoader(unittest.TestCase):
         # Should return github_token first
         self.assertEqual(loader.token, "github_token")
 
-    def test_init_with_snapshot_id(self):
-        cloud_options = {"api_token": "test_api_token", "snapshot_id": "test_snapshot"}
+    def test_init_with_session_id(self):
+        cloud_options = {"api_token": "test_api_token", "session_id": "test_session"}
         loader = CloudStateLoader(cloud_options=cloud_options)
 
         self.assertTrue(loader.cloud_mode)
-        self.assertEqual(loader.catalog, "snapshot")
-        self.assertEqual(loader.snapshot_id, "test_snapshot")
+        self.assertEqual(loader.catalog, "session")
+        self.assertEqual(loader.session_id, "test_session")
 
-    def test_verify_snapshot_mode_success(self):
-        cloud_options = {"api_token": "test_token", "snapshot_id": "test_snapshot"}
+    def test_verify_session_mode_success(self):
+        cloud_options = {"api_token": "test_token", "session_id": "test_session"}
         loader = CloudStateLoader(cloud_options=cloud_options)
-        loader.catalog = "snapshot"
+        loader.catalog = "session"
 
         self.assertTrue(loader.verify())
 
-    def test_verify_snapshot_mode_missing_token(self):
+    def test_verify_session_mode_missing_token(self):
         # Test that creating CloudStateLoader without api_token raises exception
         with self.assertRaises(RecceException) as cm:
-            CloudStateLoader(cloud_options={"snapshot_id": "test_snapshot"})
+            CloudStateLoader(cloud_options={"session_id": "test_session"})
 
         self.assertEqual(str(cm.exception), RECCE_CLOUD_TOKEN_MISSING.error_message)
 
-    def test_verify_snapshot_mode_missing_snapshot_id(self):
+    def test_verify_session_mode_missing_session_id(self):
         cloud_options = {"api_token": "test_token"}
         loader = CloudStateLoader(cloud_options=cloud_options)
-        loader.catalog = "snapshot"
+        loader.catalog = "session"
         loader.cloud_options = cloud_options
 
         self.assertFalse(loader.verify())
-        self.assertEqual(loader.error_message, "No snapshot ID is provided for the snapshot catalog.")
+        self.assertEqual(loader.error_message, "No session ID is provided for the session catalog.")
 
     @patch("requests.get")
-    def test_load_state_from_snapshot_success_with_existing_state(self, mock_get):
+    def test_load_state_from_session_success_with_existing_state(self, mock_get):
         # Setup
-        loader = CloudStateLoader(cloud_options={"api_token": "token", "snapshot_id": "test_snapshot"})
-        loader.catalog = "snapshot"
-        loader.snapshot_id = "test_snapshot"
+        loader = CloudStateLoader(cloud_options={"api_token": "token", "session_id": "test_session"})
+        loader.catalog = "session"
+        loader.session_id = "test_session"
 
         # Mock loader's RecceCloud instance
         loader.recce_cloud = Mock()
 
         # Mock get_session response
-        mock_snapshot = {"org_id": "org1", "project_id": "proj1"}
-        loader.recce_cloud.get_snapshot.return_value = mock_snapshot
+        mock_session = {"org_id": "org1", "project_id": "proj1"}
+        loader.recce_cloud.get_session.return_value = mock_session
 
         # Mock get_download_urls_by_session_id response
         mock_download_urls = {
@@ -411,11 +411,11 @@ class TestCloudStateLoader(unittest.TestCase):
             "catalog_url": "http://catalog.url",
             "recce_state_url": "http://recce_state.url",
         }
-        loader.recce_cloud.get_download_urls_by_snapshot_id.return_value = mock_download_urls
+        loader.recce_cloud.get_download_urls_by_session_id.return_value = mock_download_urls
 
         # Mock get_base_session_download_urls response
         mock_base_urls = {"manifest_url": "http://base_manifest.url", "catalog_url": "http://base_catalog.url"}
-        loader.recce_cloud.get_base_snapshot_download_urls.return_value = mock_base_urls
+        loader.recce_cloud.get_base_session_download_urls.return_value = mock_base_urls
 
         # Mock HTTP responses for artifacts
         mock_response_200 = Mock()
@@ -462,26 +462,26 @@ class TestCloudStateLoader(unittest.TestCase):
             )
 
     @patch("requests.get")
-    def test_load_state_from_snapshot_no_existing_state(self, mock_get):
+    def test_load_state_from_session_no_existing_state(self, mock_get):
         # Setup
-        loader = CloudStateLoader(cloud_options={"api_token": "token", "snapshot_id": "test_snapshot"})
-        loader.catalog = "snapshot"
-        loader.snapshot_id = "test_snapshot"
+        loader = CloudStateLoader(cloud_options={"api_token": "token", "session_id": "test_session"})
+        loader.catalog = "session"
+        loader.session_id = "test_session"
 
         # Mock loader's RecceCloud instance
         loader.recce_cloud = Mock()
 
         # Mock get_session response
-        mock_snapshot = {"org_id": "org1", "project_id": "proj1"}
-        loader.recce_cloud.get_snapshot.return_value = mock_snapshot
+        mock_session = {"org_id": "org1", "project_id": "proj1"}
+        loader.recce_cloud.get_session.return_value = mock_session
 
         # Mock get_download_urls_by_session_id response (no recce_state_url)
         mock_download_urls = {"manifest_url": "http://manifest.url", "catalog_url": "http://catalog.url"}
-        loader.recce_cloud.get_download_urls_by_snapshot_id.return_value = mock_download_urls
+        loader.recce_cloud.get_download_urls_by_session_id.return_value = mock_download_urls
 
         # Mock get_base_session_download_urls response
         mock_base_urls = {"manifest_url": "http://base_manifest.url", "catalog_url": "http://base_catalog.url"}
-        loader.recce_cloud.get_base_snapshot_download_urls.return_value = mock_base_urls
+        loader.recce_cloud.get_base_session_download_urls.return_value = mock_base_urls
 
         # Mock HTTP responses for artifacts
         mock_response_200 = Mock()
@@ -516,43 +516,41 @@ class TestCloudStateLoader(unittest.TestCase):
                 result_state.artifacts.base, {"manifest": "base_manifest_data", "catalog": "base_catalog_data"}
             )
 
-    def test_load_state_from_snapshot_missing_snapshot_id(self):
+    def test_load_state_from_session_missing_session_id(self):
         loader = CloudStateLoader(cloud_options={"api_token": "token"})
-        loader.catalog = "snapshot"
-        loader.snapshot_id = None
+        loader.catalog = "session"
+        loader.session_id = None
 
         with self.assertRaises(RecceException) as cm:
             loader._load_state_from_session()
 
         self.assertEqual(
-            str(cm.exception), "Cannot load the snapshot state from Recce Cloud. No snapshot ID is provided."
+            str(cm.exception), "Cannot load the session state from Recce Cloud. No session ID is provided."
         )
 
-    def test_load_state_from_snapshot_invalid_org_project(self):
-        loader = CloudStateLoader(cloud_options={"api_token": "token", "snapshot_id": "test_snapshot"})
-        loader.catalog = "snapshot"
-        loader.snapshot_id = "test_snapshot"
+    def test_load_state_from_session_invalid_org_project(self):
+        loader = CloudStateLoader(cloud_options={"api_token": "token", "session_id": "test_session"})
+        loader.catalog = "session"
+        loader.session_id = "test_session"
 
         # Mock loader's RecceCloud instance
         loader.recce_cloud = Mock()
 
         # Mock get_session response with missing org_id
-        mock_snapshot = {"project_id": "proj1"}  # Missing org_id
-        loader.recce_cloud.get_snapshot.return_value = mock_snapshot
+        mock_session = {"project_id": "proj1"}  # Missing org_id
+        loader.recce_cloud.get_session.return_value = mock_session
 
         with self.assertRaises(RecceException) as cm:
             loader._load_state_from_session()
 
-        self.assertEqual(
-            str(cm.exception), "Snapshot test_snapshot does not belong to a valid organization or project."
-        )
+        self.assertEqual(str(cm.exception), "Session test_session does not belong to a valid organization or project.")
 
     @patch("requests.put")
-    def test_export_state_to_snapshot_success(self, mock_put):
+    def test_export_state_to_session_success(self, mock_put):
         # Setup
-        loader = CloudStateLoader(cloud_options={"api_token": "token", "snapshot_id": "test_snapshot"})
-        loader.catalog = "snapshot"
-        loader.snapshot_id = "test_snapshot"
+        loader = CloudStateLoader(cloud_options={"api_token": "token", "session_id": "test_session"})
+        loader.catalog = "session"
+        loader.session_id = "test_session"
 
         # Create a mock state with runs and checks
         mock_runs = Mock()
@@ -569,12 +567,12 @@ class TestCloudStateLoader(unittest.TestCase):
         loader.recce_cloud = Mock()
 
         # Mock get_session response
-        mock_snapshot = {"org_id": "org1", "project_id": "proj1"}
-        loader.recce_cloud.get_snapshot.return_value = mock_snapshot
+        mock_session = {"org_id": "org1", "project_id": "proj1"}
+        loader.recce_cloud.get_session.return_value = mock_session
 
         # Mock get_upload_urls_by_session_id response
         mock_upload_urls = {"recce_state_url": "http://upload_recce_state.url"}
-        loader.recce_cloud.get_upload_urls_by_snapshot_id.return_value = mock_upload_urls
+        loader.recce_cloud.get_upload_urls_by_session_id.return_value = mock_upload_urls
 
         # Mock HTTP response
         mock_response = Mock()
@@ -600,44 +598,44 @@ class TestCloudStateLoader(unittest.TestCase):
             self.assertEqual(mock_upload_state.runs, [{"id": "run1"}, {"id": "run2"}])
             self.assertEqual(mock_upload_state.checks, [{"id": "check1"}])
 
-    def test_export_state_to_snapshot_missing_snapshot_id(self):
+    def test_export_state_to_session_missing_session_id(self):
         loader = CloudStateLoader(cloud_options={"api_token": "token"})
-        loader.catalog = "snapshot"
-        loader.snapshot_id = None
+        loader.catalog = "session"
+        loader.session_id = None
 
         with self.assertRaises(RecceException) as cm:
             loader._export_state_to_session()
 
-        self.assertEqual(str(cm.exception), "Cannot export state to snapshot. No snapshot ID is provided.")
+        self.assertEqual(str(cm.exception), "Cannot export state to session. No session ID is provided.")
 
-    def test_export_state_to_snapshot_no_recce_state_url(self):
-        loader = CloudStateLoader(cloud_options={"api_token": "token", "snapshot_id": "test_snapshot"})
-        loader.catalog = "snapshot"
-        loader.snapshot_id = "test_snapshot"
+    def test_export_state_to_session_no_recce_state_url(self):
+        loader = CloudStateLoader(cloud_options={"api_token": "token", "session_id": "test_session"})
+        loader.catalog = "session"
+        loader.session_id = "test_session"
         loader.state = Mock()
 
         # Mock loader's RecceCloud instance
         loader.recce_cloud = Mock()
 
         # Mock get_session response
-        mock_snapshot = {"org_id": "org1", "project_id": "proj1"}
-        loader.recce_cloud.get_snapshot.return_value = mock_snapshot
+        mock_session = {"org_id": "org1", "project_id": "proj1"}
+        loader.recce_cloud.get_session.return_value = mock_session
 
         # Mock get_upload_urls_by_session_id response without recce_state_url
         mock_upload_urls = {}
-        loader.recce_cloud.get_upload_urls_by_snapshot_id.return_value = mock_upload_urls
+        loader.recce_cloud.get_upload_urls_by_session_id.return_value = mock_upload_urls
 
         with self.assertRaises(RecceException) as cm:
             loader._export_state_to_session()
 
-        self.assertEqual(str(cm.exception), "No recce_state_url found for snapshot test_snapshot")
+        self.assertEqual(str(cm.exception), "No recce_state_url found for session test_session")
 
     @patch("requests.put")
-    def test_export_state_to_snapshot_upload_failure(self, mock_put):
+    def test_export_state_to_session_upload_failure(self, mock_put):
         # Setup
-        loader = CloudStateLoader(cloud_options={"api_token": "token", "snapshot_id": "test_snapshot"})
-        loader.catalog = "snapshot"
-        loader.snapshot_id = "test_snapshot"
+        loader = CloudStateLoader(cloud_options={"api_token": "token", "session_id": "test_session"})
+        loader.catalog = "session"
+        loader.session_id = "test_session"
 
         mock_runs = Mock()
         mock_runs.copy.return_value = []
@@ -653,12 +651,12 @@ class TestCloudStateLoader(unittest.TestCase):
         loader.recce_cloud = Mock()
 
         # Mock get_session response
-        mock_snapshot = {"org_id": "org1", "project_id": "proj1"}
-        loader.recce_cloud.get_snapshot.return_value = mock_snapshot
+        mock_session = {"org_id": "org1", "project_id": "proj1"}
+        loader.recce_cloud.get_session.return_value = mock_session
 
         # Mock get_upload_urls_by_session_id response
         mock_upload_urls = {"recce_state_url": "http://upload_recce_state.url"}
-        loader.recce_cloud.get_upload_urls_by_snapshot_id.return_value = mock_upload_urls
+        loader.recce_cloud.get_upload_urls_by_session_id.return_value = mock_upload_urls
 
         # Mock HTTP error response
         mock_response = Mock()
