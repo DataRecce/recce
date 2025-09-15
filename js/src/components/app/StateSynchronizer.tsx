@@ -91,7 +91,7 @@ export function StateSynchronizer() {
           size="sm"
           variant="plain"
           aria-label="Sync state"
-          onClick={() => handleSync(instanceInfo?.snapshot_id ? { method: "merge" } : {})}>
+          onClick={() => handleSync(instanceInfo?.session_id ? { method: "merge" } : {})}>
           <Icon as={IconSync} verticalAlign="middle" boxSize={"16px"} />
         </IconButton>
       </Tooltip>

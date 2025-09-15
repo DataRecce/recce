@@ -303,7 +303,7 @@ async def recce_instance_info():
         "authed": True if api_token else False,
         "lifetime_expired_at": app_state.lifetime_expired_at,  # UTC timezone
         "share_url": app_state.share_url,
-        "snapshot_id": app_state.state_loader.session_id if app_state.state_loader else None,
+        "session_id": app_state.state_loader.session_id if app_state.state_loader else None,
         # TODO: Add more instance info which won't change during the instance lifecycle
         # review_mode
         # cloud_mode
