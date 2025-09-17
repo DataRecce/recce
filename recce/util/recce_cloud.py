@@ -245,7 +245,7 @@ class RecceCloud:
         return
 
     def get_session(self, session_id: str):
-        api_url = f"{self.base_url_v2}/snapshots/{session_id}"
+        api_url = f"{self.base_url_v2}/sessions/{session_id}"
         response = self._request("GET", api_url)
         if response.status_code == 403:
             return {"status": "error", "message": response.json().get("detail")}
@@ -262,10 +262,10 @@ class RecceCloud:
                 reason=data.get("message", "Unknown error"),
                 status_code=response.status_code,
             )
-        return data["snapshot"]
+        return data["session"]
 
     def update_session(self, org_id: str, project_id: str, session_id: str, adapter_type: str):
-        api_url = f"{self.base_url_v2}/organizations/{org_id}/projects/{project_id}/snapshots/{session_id}"
+        api_url = f"{self.base_url_v2}/organizations/{org_id}/projects/{project_id}/sessions/{session_id}"
         data = {"adapter_type": adapter_type}
         response = self._request("PATCH", api_url, json=data)
         if response.status_code == 403:
@@ -279,7 +279,7 @@ class RecceCloud:
         return response.json()
 
     def get_download_urls_by_session_id(self, org_id: str, project_id: str, session_id: str) -> dict[str, str]:
-        api_url = f"{self.base_url_v2}/organizations/{org_id}/projects/{project_id}/snapshots/{session_id}/download-url"
+        api_url = f"{self.base_url_v2}/organizations/{org_id}/projects/{project_id}/sessions/{session_id}/download-url"
         response = self._request("GET", api_url)
         if response.status_code != 200:
             raise RecceCloudException(
@@ -302,7 +302,7 @@ class RecceCloud:
 
     def get_base_session_download_urls(self, org_id: str, project_id: str) -> dict[str, str]:
         """Get download URLs for the base session of a project."""
-        api_url = f"{self.base_url_v2}/organizations/{org_id}/projects/{project_id}/base-snapshot/download-url"
+        api_url = f"{self.base_url_v2}/organizations/{org_id}/projects/{project_id}/base-session/download-url"
         response = self._request("GET", api_url)
         if response.status_code != 200:
             raise RecceCloudException(
@@ -324,7 +324,7 @@ class RecceCloud:
         return presigned_urls
 
     def get_upload_urls_by_session_id(self, org_id: str, project_id: str, session_id: str) -> dict[str, str]:
-        api_url = f"{self.base_url_v2}/organizations/{org_id}/projects/{project_id}/snapshots/{session_id}/upload-url"
+        api_url = f"{self.base_url_v2}/organizations/{org_id}/projects/{project_id}/sessions/{session_id}/upload-url"
         response = self._request("GET", api_url)
         if response.status_code != 200:
             raise RecceCloudException(

@@ -1270,6 +1270,14 @@ def share(state_file, **kwargs):
         exit(1)
 
 
+snapshot_id_option = click.option(
+    "--snapshot-id",
+    help="The snapshot ID to upload artifacts to cloud.",
+    type=click.STRING,
+    envvar=["RECCE_SNAPSHOT_ID", "RECCE_SESSION_ID"],
+    required=True,
+)
+
 session_id_option = click.option(
     "--session-id",
     help="The session ID to upload artifacts to cloud.",
@@ -1342,11 +1350,17 @@ def upload_session(**kwargs):
 
 
 # Backward compatibility for `recce snapshot` command
-@cli.command(cls=TrackCommand, hidden=True)
-@add_options([session_id_option, target_path_option])
+@cli.command(
+    cls=TrackCommand,
+    hidden=True,
+    deprecated=True,
+    help="Upload target/manifest.json and target/catalog.json to the specific snapshot ID",
+)
+@add_options([snapshot_id_option, target_path_option])
 @add_options(recce_cloud_auth_options)
 @add_options(recce_options)
 def snapshot(**kwargs):
+    kwargs["session_id"] = kwargs.get("snapshot_id")
     return upload_session(**kwargs)
 
 
