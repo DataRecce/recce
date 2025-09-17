@@ -5,6 +5,8 @@ from click.testing import CliRunner
 
 from recce.cli import run as cli_command_run
 from recce.cli import server as cli_command_server
+from recce.cli import snapshot as cli_command_snapshot
+from recce.cli import upload_session as cli_command_upload_session
 from recce.core import RecceContext
 from recce.state import CloudStateLoader
 
@@ -131,3 +133,28 @@ class TestCommandRun(TestCase):
 
         self.runner.invoke(cli_command_run, [])
         mock_cli_run.assert_called_once()
+
+
+class TestCommandUploadSession(TestCase):
+    def setUp(self):
+        self.runner = CliRunner()
+        pass
+
+    @patch("recce.cli.prepare_api_token", return_value="unittest_token")
+    @patch("recce.cli.upload_artifacts_to_session", return_value=0)
+    def test_cmd_upload_session(self, mock_upload_artifacts_to_session, mock_prepare_api_token):
+        self.runner.invoke(
+            cli_command_upload_session,
+            ["--session-id", "unittest_session", "--api-token", mock_prepare_api_token.return_value],
+        )
+        mock_upload_artifacts_to_session.assert_called_once_with(
+            "target", session_id="unittest_session", token="unittest_token", debug=False
+        )
+
+        self.runner.invoke(
+            cli_command_snapshot,
+            ["--snapshot-id", "unittest_session", "--api-token", mock_prepare_api_token.return_value],
+        )
+        mock_upload_artifacts_to_session.assert_called_once_with(
+            "target", session_id="unittest_session", token="unittest_token", debug=False
+        )
