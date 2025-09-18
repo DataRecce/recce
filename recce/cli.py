@@ -480,7 +480,7 @@ def server(host, port, lifetime, state_file=None, **kwargs):
             cloud_options = {
                 "host": kwargs.get("state_file_host"),
                 "api_token": api_token,
-                "share_id": session_id,
+                "share_id": share_id,
             }
         elif session_id:
             is_review = kwargs["review"] = True
