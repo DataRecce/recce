@@ -198,7 +198,7 @@ def get_github_codespace_available_at(codespace):
         return None
 
     def search_in_file(file_path, search_string):
-        with open(file_path, "r") as f:
+        with open(file_path, "r", encoding="utf-8") as f:
             for _, line in enumerate(f, 1):
                 if search_string in line:
                     return line

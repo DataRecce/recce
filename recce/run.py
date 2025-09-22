@@ -301,7 +301,7 @@ def process_failed_checks(failed_checks: List[dict], error_log=None):
     content += markdown_table(failed_check_table).set_params(quote=False, row_sep="markdown").get_markdown()
 
     if error_log:
-        with open(error_log, "w") as f:
+        with open(error_log, "w", encoding="utf-8") as f:
             f.write(content)
         print(f"The failed checks are stored at '{error_log}'")
     else:
@@ -370,7 +370,7 @@ async def cli_run(output_state_file: str, **kwargs):
         dirs = os.path.dirname(summary_path)
         if dirs:
             os.makedirs(dirs, exist_ok=True)
-        with open(summary_path, "w") as f:
+        with open(summary_path, "w", encoding="utf-8") as f:
             f.write(generate_markdown_summary(ctx))
         console.print(f"The summary is stored at '{summary_path}'")
 

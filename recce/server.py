@@ -186,7 +186,7 @@ app = FastAPI(lifespan=lifespan)
 
 def verify_json_file(file_path: str) -> bool:
     try:
-        with open(file_path, "r") as f:
+        with open(file_path, "r", encoding="utf-8") as f:
             json.load(f)
     except Exception:
         return False

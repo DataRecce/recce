@@ -58,7 +58,7 @@ def make_callback_handler(private_key: RSAPrivateKey):
     class OneTimeHTTPRequestHandler(BaseHTTPRequestHandler):
         def do_GET(self):
             try:
-                with open(os.path.join(static_folder_path, "auth_callback.html"), "r") as f:
+                with open(os.path.join(static_folder_path, "auth_callback.html"), "r", encoding="utf-8") as f:
                     callback_html_content = f.read()
 
                 # Parse query parameters
