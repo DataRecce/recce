@@ -1183,6 +1183,162 @@ def download_base_artifacts(**kwargs):
     return _download_artifacts(branch, cloud_token, console, kwargs, password, target_path)
 
 
+@cloud.command(cls=TrackCommand, name="list-organizations")
+@click.option("--api-token", help="The Recce Cloud API token.", type=click.STRING, envvar="RECCE_CLOUD_API_TOKEN")
+@add_options(recce_options)
+def list_organizations(**kwargs):
+    """
+    List organizations from Recce Cloud
+
+    Lists all organizations that the authenticated user has access to.
+    """
+    from rich.console import Console
+    from rich.table import Table
+
+    console = Console()
+    handle_debug_flag(**kwargs)
+
+    try:
+        api_token = prepare_api_token(**kwargs)
+    except RecceConfigException:
+        show_invalid_api_token_message()
+        exit(1)
+
+    try:
+        from recce.util.recce_cloud import RecceCloud
+
+        cloud = RecceCloud(api_token)
+        organizations = cloud.list_organizations()
+
+        if not organizations:
+            console.print("No organizations found.")
+            return
+
+        table = Table(title="Organizations")
+        table.add_column("ID", style="cyan")
+        table.add_column("Name", style="green")
+        table.add_column("Display Name", style="yellow")
+
+        for org in organizations:
+            table.add_row(str(org.get("id", "")), org.get("name", ""), org.get("display_name", ""))
+
+        console.print(table)
+
+    except RecceCloudException as e:
+        console.print(f"[[red]Error[/red]] {e}")
+        exit(1)
+    except Exception as e:
+        console.print(f"[[red]Error[/red]] {e}")
+        exit(1)
+
+
+@cloud.command(cls=TrackCommand, name="list-projects")
+@click.option("--organization", "-o", required=True, help="Organization ID", type=click.STRING)
+@click.option("--api-token", help="The Recce Cloud API token.", type=click.STRING, envvar="RECCE_CLOUD_API_TOKEN")
+@add_options(recce_options)
+def list_projects(**kwargs):
+    """
+    List projects from Recce Cloud
+
+    Lists all projects in the specified organization that the authenticated user has access to.
+    """
+    from rich.console import Console
+    from rich.table import Table
+
+    console = Console()
+    handle_debug_flag(**kwargs)
+
+    try:
+        api_token = prepare_api_token(**kwargs)
+    except RecceConfigException:
+        show_invalid_api_token_message()
+        exit(1)
+
+    organization = kwargs.get("organization")
+
+    try:
+        from recce.util.recce_cloud import RecceCloud
+
+        cloud = RecceCloud(api_token)
+        projects = cloud.list_projects(organization)
+
+        if not projects:
+            console.print(f"No projects found in organization {organization}.")
+            return
+
+        table = Table(title=f"Projects in Organization {organization}")
+        table.add_column("ID", style="cyan")
+        table.add_column("Name", style="green")
+        table.add_column("Display Name", style="yellow")
+
+        for project in projects:
+            table.add_row(str(project.get("id", "")), project.get("name", ""), project.get("display_name", ""))
+
+        console.print(table)
+
+    except RecceCloudException as e:
+        console.print(f"[[red]Error[/red]] {e}")
+        exit(1)
+    except Exception as e:
+        console.print(f"[[red]Error[/red]] {e}")
+        exit(1)
+
+
+@cloud.command(cls=TrackCommand, name="list-sessions")
+@click.option("--organization", "-o", required=True, help="Organization ID", type=click.STRING)
+@click.option("--project", "-p", required=True, help="Project ID", type=click.STRING)
+@click.option("--api-token", help="The Recce Cloud API token.", type=click.STRING, envvar="RECCE_CLOUD_API_TOKEN")
+@add_options(recce_options)
+def list_sessions(**kwargs):
+    """
+    List sessions from Recce Cloud
+
+    Lists all sessions in the specified project that the authenticated user has access to.
+    """
+    from rich.console import Console
+    from rich.table import Table
+
+    console = Console()
+    handle_debug_flag(**kwargs)
+
+    try:
+        api_token = prepare_api_token(**kwargs)
+    except RecceConfigException:
+        show_invalid_api_token_message()
+        exit(1)
+
+    organization = kwargs.get("organization")
+    project = kwargs.get("project")
+
+    try:
+        from recce.util.recce_cloud import RecceCloud
+
+        cloud = RecceCloud(api_token)
+        sessions = cloud.list_sessions(organization, project)
+
+        if not sessions:
+            console.print(f"No sessions found in project {project}.")
+            return
+
+        table = Table(title=f"Sessions in Project {project}")
+        table.add_column("ID", style="cyan")
+        table.add_column("Name", style="green")
+        table.add_column("Is Base", style="yellow")
+
+        for session in sessions:
+            is_base = "✓" if session.get("is_base", False) else ""
+            table.add_row(session.get("id", ""), session.get("name", ""), is_base)
+
+        console.print(table)
+
+    except RecceCloudException as e:
+        console.print(f"[[red]Error[/red]] {e}")
+        exit(1)
+    except Exception as e:
+        console.print(f"[[red]Error[/red]] {e}")
+        exit(1)
+
+
 @cli.group("github", short_help="GitHub related commands", hidden=True)
 def github(**kwargs):
     pass

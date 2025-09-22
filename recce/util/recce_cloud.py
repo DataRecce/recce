@@ -345,6 +345,45 @@ class RecceCloud:
             presigned_urls[key] = self._replace_localhost_with_docker_internal(url)
         return presigned_urls
 
+    def list_organizations(self) -> list:
+        """List all organizations the user has access to."""
+        api_url = f"{self.base_url_v2}/organizations"
+        response = self._request("GET", api_url)
+        if response.status_code != 200:
+            raise RecceCloudException(
+                message="Failed to list organizations from Recce Cloud.",
+                reason=response.text,
+                status_code=response.status_code,
+            )
+        data = response.json()
+        return data.get("organizations", [])
+
+    def list_projects(self, org_id: str) -> list:
+        """List all projects in an organization."""
+        api_url = f"{self.base_url_v2}/organizations/{org_id}/projects"
+        response = self._request("GET", api_url)
+        if response.status_code != 200:
+            raise RecceCloudException(
+                message="Failed to list projects from Recce Cloud.",
+                reason=response.text,
+                status_code=response.status_code,
+            )
+        data = response.json()
+        return data.get("projects", [])
+
+    def list_sessions(self, org_id: str, project_id: str) -> list:
+        """List all sessions in a project."""
+        api_url = f"{self.base_url_v2}/organizations/{org_id}/projects/{project_id}/sessions"
+        response = self._request("GET", api_url)
+        if response.status_code != 200:
+            raise RecceCloudException(
+                message="Failed to list sessions from Recce Cloud.",
+                reason=response.text,
+                status_code=response.status_code,
+            )
+        data = response.json()
+        return data.get("sessions", [])
+
 
 def get_recce_cloud_onboarding_state(token: str) -> str:
     try:
