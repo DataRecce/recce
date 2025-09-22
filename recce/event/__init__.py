@@ -78,7 +78,7 @@ def is_anonymous_tracking():
 
 def _get_sentry_dns():
     dns_file = os.path.normpath(os.path.join(os.path.dirname(__file__), "SENTRY_DNS"))
-    with open(dns_file) as f:
+    with open(dns_file, encoding="utf-8") as f:
         dns = f.read().strip()
         return dns
 
@@ -104,7 +104,7 @@ def _get_api_key():
 
     config_file = os.path.abspath(os.path.join(os.path.dirname(__file__), "CONFIG"))
     try:
-        with open(config_file) as fh:
+        with open(config_file, encoding="utf-8") as fh:
             config = pyml.load(fh)
             return config.get("event_api_key")
     except Exception:
@@ -123,7 +123,7 @@ def _generate_user_profile():
         user_id = hashlib.sha256(salted_name.encode()).hexdigest()
     else:
         user_id = uuid.uuid4().hex
-    with open(RECCE_USER_PROFILE, "w+") as f:
+    with open(RECCE_USER_PROFILE, "w+", encoding="utf-8") as f:
         pyml.dump({"user_id": user_id, "anonymous_tracking": True}, f)
     return dict(user_id=user_id, anonymous_tracking=True)
 
@@ -133,7 +133,7 @@ def load_user_profile():
         if not os.path.exists(RECCE_USER_PROFILE):
             user_profile = _generate_user_profile()
         else:
-            with open(RECCE_USER_PROFILE, "r") as f:
+            with open(RECCE_USER_PROFILE, "r", encoding="utf-8") as f:
                 user_profile = pyml.load(f)
                 if user_profile.get("user_id") is None:
                     user_profile = _generate_user_profile()
@@ -144,7 +144,7 @@ def load_user_profile():
 def update_user_profile(update_values):
     original = load_user_profile()
     original.update(update_values)
-    with open(RECCE_USER_PROFILE, "w+") as f:
+    with open(RECCE_USER_PROFILE, "w+", encoding="utf-8") as f:
         pyml.dump(original, f)
     return original
 
@@ -154,7 +154,7 @@ def flush_events(command=None):
 
 
 def should_log_event():
-    with open(RECCE_USER_PROFILE, "r") as f:
+    with open(RECCE_USER_PROFILE, "r", encoding="utf-8") as f:
         user_profile = pyml.load(f)
     # TODO: default anonymous_tracking to false if field is not present
     tracking = user_profile.get("anonymous_tracking", False)

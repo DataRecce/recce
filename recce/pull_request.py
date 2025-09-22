@@ -83,7 +83,7 @@ def fetch_pr_metadata_from_event_path() -> Optional[dict]:
     github_repository = os.getenv("GITHUB_REPOSITORY")
     if event_path:
         try:
-            with open(event_path, "r") as event_file:
+            with open(event_path, "r", encoding="utf-8") as event_file:
                 event_data = json.load(event_file)
 
             pr_id = event_data["number"]
