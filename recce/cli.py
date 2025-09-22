@@ -1233,7 +1233,13 @@ def list_organizations(**kwargs):
 
 
 @cloud.command(cls=TrackCommand, name="list-projects")
-@click.option("--organization", "-o", required=True, help="Organization ID", type=click.STRING)
+@click.option(
+    "--organization",
+    "-o",
+    help="Organization ID (can also be set via RECCE_ORGANIZATION_ID environment variable)",
+    type=click.STRING,
+    envvar="RECCE_ORGANIZATION_ID",
+)
 @click.option("--api-token", help="The Recce Cloud API token.", type=click.STRING, envvar="RECCE_CLOUD_API_TOKEN")
 @add_options(recce_options)
 def list_projects(**kwargs):
@@ -1241,6 +1247,19 @@ def list_projects(**kwargs):
     List projects from Recce Cloud
 
     Lists all projects in the specified organization that the authenticated user has access to.
+
+    Examples:
+
+        # Using environment variable
+        export RECCE_ORGANIZATION_ID=8
+        recce cloud list-projects
+
+        # Using command line argument
+        recce cloud list-projects --organization 8
+
+        # Override environment variable
+        export RECCE_ORGANIZATION_ID=8
+        recce cloud list-projects --organization 10
     """
     from rich.console import Console
     from rich.table import Table
@@ -1255,6 +1274,10 @@ def list_projects(**kwargs):
         exit(1)
 
     organization = kwargs.get("organization")
+    if not organization:
+        console.print("[[red]Error[/red]] Organization ID is required. Please provide it via:")
+        console.print("  --organization <id> or set RECCE_ORGANIZATION_ID environment variable")
+        exit(1)
 
     try:
         from recce.util.recce_cloud import RecceCloud
@@ -1285,8 +1308,20 @@ def list_projects(**kwargs):
 
 
 @cloud.command(cls=TrackCommand, name="list-sessions")
-@click.option("--organization", "-o", required=True, help="Organization ID", type=click.STRING)
-@click.option("--project", "-p", required=True, help="Project ID", type=click.STRING)
+@click.option(
+    "--organization",
+    "-o",
+    help="Organization ID (can also be set via RECCE_ORGANIZATION_ID environment variable)",
+    type=click.STRING,
+    envvar="RECCE_ORGANIZATION_ID",
+)
+@click.option(
+    "--project",
+    "-p",
+    help="Project ID (can also be set via RECCE_PROJECT_ID environment variable)",
+    type=click.STRING,
+    envvar="RECCE_PROJECT_ID",
+)
 @click.option("--api-token", help="The Recce Cloud API token.", type=click.STRING, envvar="RECCE_CLOUD_API_TOKEN")
 @add_options(recce_options)
 def list_sessions(**kwargs):
@@ -1294,6 +1329,25 @@ def list_sessions(**kwargs):
     List sessions from Recce Cloud
 
     Lists all sessions in the specified project that the authenticated user has access to.
+
+    Examples:
+
+        # Using environment variables
+        export RECCE_ORGANIZATION_ID=8
+        export RECCE_PROJECT_ID=7
+        recce cloud list-sessions
+
+        # Using command line arguments
+        recce cloud list-sessions --organization 8 --project 7
+
+        # Mixed usage (env + CLI override)
+        export RECCE_ORGANIZATION_ID=8
+        recce cloud list-sessions --project 7
+
+        # Override environment variables
+        export RECCE_ORGANIZATION_ID=8
+        export RECCE_PROJECT_ID=7
+        recce cloud list-sessions --organization 10 --project 9
     """
     from rich.console import Console
     from rich.table import Table
@@ -1309,6 +1363,17 @@ def list_sessions(**kwargs):
 
     organization = kwargs.get("organization")
     project = kwargs.get("project")
+
+    # Validate required parameters
+    if not organization:
+        console.print("[[red]Error[/red]] Organization ID is required. Please provide it via:")
+        console.print("  --organization <id> or set RECCE_ORGANIZATION_ID environment variable")
+        exit(1)
+
+    if not project:
+        console.print("[[red]Error[/red]] Project ID is required. Please provide it via:")
+        console.print("  --project <id> or set RECCE_PROJECT_ID environment variable")
+        exit(1)
 
     try:
         from recce.util.recce_cloud import RecceCloud
