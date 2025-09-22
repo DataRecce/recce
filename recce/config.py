@@ -21,7 +21,7 @@ class RecceConfig(metaclass=SingletonMeta):
 
     def load(self):
         try:
-            with open(self.config_file, "r") as f:
+            with open(self.config_file, "r", encoding="utf-8") as f:
                 config = yaml.safe_load(f)
                 self.config = config if config else {}
             self._verify_preset_checks()
@@ -117,7 +117,7 @@ class RecceConfig(metaclass=SingletonMeta):
         self.config[key] = value
 
     def save(self):
-        with open(RECCE_CONFIG_FILE, "w") as f:
+        with open(RECCE_CONFIG_FILE, "w", encoding="utf-8") as f:
             yaml.dump(self.config, f)
 
     def __str__(self):

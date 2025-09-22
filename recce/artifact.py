@@ -40,7 +40,7 @@ def verify_artifacts_path(target_path: str) -> bool:
 
 
 def parse_dbt_version(file_path: str) -> str:
-    with open(file_path, "r") as f:
+    with open(file_path, "r", encoding="utf-8") as f:
         data = json.load(f)
 
     dbt_version = data.get("metadata", {}).get("dbt_version", None)
@@ -92,7 +92,7 @@ def upload_artifacts_to_session(target_path: str, session_id: str, token: str, d
     catalog_path = os.path.join(target_path, "catalog.json")
 
     # get the adapter type from the manifest file
-    with open(manifest_path, "r") as f:
+    with open(manifest_path, "r", encoding="utf-8") as f:
         manifest_data = json.load(f)
         adapter_type = manifest_data.get("metadata", {}).get("adapter_type")
         if adapter_type is None:

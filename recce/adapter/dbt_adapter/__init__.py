@@ -1591,7 +1591,7 @@ class DbtAdapter(BaseAdapter):
             if not os.path.isfile(path):
                 return None
 
-            with open(path, "r") as f:
+            with open(path, "r", encoding="utf-8") as f:
                 json_content = f.read()
                 return json.loads(json_content)
 

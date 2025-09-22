@@ -34,7 +34,7 @@ def dump(data, stream: Any = None, *, transform: Any = None) -> Any:
 
 def safe_load_yaml(file_path):
     try:
-        with open(file_path, "r") as f:
+        with open(file_path, "r", encoding="utf-8") as f:
             payload = safe_load(f)
     except yaml.YAMLError as e:
         print(e)
@@ -45,7 +45,7 @@ def safe_load_yaml(file_path):
 
 
 def round_trip_load_yaml(file_path):
-    with open(file_path, "r") as f:
+    with open(file_path, "r", encoding="utf-8") as f:
         try:
             payload = load(f)
         except yaml.YAMLError as e:
