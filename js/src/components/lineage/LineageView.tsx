@@ -70,7 +70,6 @@ import { useLocation } from "wouter";
 import { Check } from "@/lib/api/checks";
 import useValueDiffAlertDialog from "./useValueDiffAlertDialog";
 import { trackMultiNodesAction, trackCopyToClipboard } from "@/lib/api/track";
-import { PresetCheckRecommendation } from "./PresetCheckRecommendation";
 import { useRun } from "@/lib/hooks/useRun";
 import { GraphColumnNode } from "./GraphColumnNode";
 import { ColumnLevelLineageControl } from "./ColumnLevelLineageControl";
@@ -1024,11 +1023,7 @@ export function PrivateLineageView(
           {interactive && (
             <>
               <LineageViewTopBar />
-              {featureToggles.mode === "metadata only" ? (
-                <SetupConnectionBanner />
-              ) : (
-                <PresetCheckRecommendation />
-              )}
+              {featureToggles.mode === "metadata only" && <SetupConnectionBanner />}
             </>
           )}
           <ReactFlow
