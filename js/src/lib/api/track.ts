@@ -71,16 +71,6 @@ export function trackSingleEnvironment(props: SingleEnvironmentProps) {
   track("[Experiment] single_environment", props);
 }
 
-interface RecommendPresetCheckProps {
-  action: "recommend" | "ignore" | "perform" | "execute" | "close";
-  from?: "initial" | "rerun";
-  nodes?: number;
-}
-
-export function trackRecommendCheck(props: RecommendPresetCheckProps) {
-  track("[Experiment] recommend_preset_check", props);
-}
-
 interface BreakingChangeAnalysisProps {
   enabled: boolean;
 }
