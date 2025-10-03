@@ -60,8 +60,7 @@ Recce gives you a clear, fast way to understand what your data changes are doing
 - (`Recce Cloud`) Automatically sync Check status between Recce Instances
 - (`Recce Cloud`) Block PR merging until all Recce Checks have been approved
 
-Read more about using [Recce for Impact Assessment](https://reccehq.com/blog) on
-the Recce blog.
+Read more about using Recce on our [blog](https://reccehq.com/blog).
 
 ### What’s Included
 
