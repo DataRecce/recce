@@ -600,7 +600,15 @@ class DbtAdapter(BaseAdapter):
             return node.compiled_code
         else:
             from dbt.clients import jinja
-            from dbt.context.providers import generate_runtime_model_context
+            from dbt.context.providers import (
+                generate_runtime_macro_context,
+                generate_runtime_model_context,
+            )
+
+            # Set up macro resolver for dbt >= 1.8
+            macro_manifest = MacroManifest(manifest.macros)
+            self.adapter.set_macro_resolver(macro_manifest)
+            self.adapter.set_macro_context_generator(generate_runtime_macro_context)
 
             jinja_ctx = generate_runtime_model_context(node, self.runtime_config, manifest)
             jinja_ctx.update(context)
