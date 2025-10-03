@@ -47,9 +47,9 @@ Recce gives you a clear, fast way to understand what your data changes are doing
 
 <a href="https://pr46.demo.datarecce.io/"><img width="1347" alt="readme" src="https://github.com/user-attachments/assets/773e4c3a-0a15-49e0-8d1b-38a55af17cb0" /></a>
 
-<a href="https://datarecce.io"><img src="https://docs.datarecce.io/assets/images/home/diff-readme2.png" style="width: 100%; max-width: 600px; display: block; margin: 0 auto 20px;" alt="Model and column level diff"/></a>
+<a href="https://datarecce.io"><img src="https://docs.reccehq.com/assets/images/1-whats-recce/diff-readme2.png" style="width: 100%; max-width: 600px; display: block; margin: 0 auto 20px;" alt="Model and column level diff"/></a>
 
-<a href="https://datarecce.io"><img src="https://docs.datarecce.io/assets/images/home/checklist-readme3.png" style="width: 100%; max-width: 600px; display: block; margin: 0 auto 20px;" alt="Checklist for collaboration"/></a>
+<a href="https://datarecce.io"><img src="https://docs.reccehq.com/assets/images/1-whats-recce/checklist-readme3.png" style="width: 100%; max-width: 600px; display: block; margin: 0 auto 20px;" alt="Checklist for collaboration"/></a>
 
 ### Using Recce for Impact Assessment in dbt PR Review
 
@@ -60,7 +60,7 @@ Recce gives you a clear, fast way to understand what your data changes are doing
 - (`Recce Cloud`) Automatically sync Check status between Recce Instances
 - (`Recce Cloud`) Block PR merging until all Recce Checks have been approved
 
-Read more about using [Recce for Impact Assessment](https://datarecce.io/blog/hands-on-data-impact-analysis-recce/) on
+Read more about using [Recce for Impact Assessment](https://reccehq.com/blog) on
 the Recce blog.
 
 ### What’s Included
@@ -71,7 +71,7 @@ the Recce blog.
 - [Checklist for reviews and approvals](https://docs.datarecce.io/features/checklist/): Turn your validation steps into a checklist. Add notes, rerun checks, and share the results with reviewers or stakeholders. In Recce Cloud, checklists can sync automatically and even block PRs until checks are approved.
 - Secure by design: Recce is [SOC 2 compliant](https://trust.cloud.datarecce.io/) to meet enterprise security standards. It runs locally or in your private environment, and your data stays in your warehouse.
 
-👉 Want to dive deeper? Check out the [full documentation](https://docs.datarecce.io/) like [running Recce in CI/CD](https://docs.datarecce.io/guides/scenario-ci/)
+👉 Want to dive deeper? Check out the [full documentation](https://docs.datarecce.io/) like [running Recce in CI/CD](https://docs.reccehq.com/7-cicd/scenario-ci/)
 
 ## Recce Cloud
 
