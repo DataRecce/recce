@@ -70,7 +70,7 @@ Read more about using Recce on our [blog](https://blog.reccehq.com).
 - [Checklist for reviews and approvals](https://docs.reccehq.com/features/checklist/): Turn your validation steps into a checklist. Add notes, rerun checks, and share the results with reviewers or stakeholders. In Recce Cloud, checklists can sync automatically and even block PRs until checks are approved.
 - Secure by design: Recce is [SOC 2 compliant](https://trust.reccehq.com/) to meet enterprise security standards. It runs locally or in your private environment, and your data stays in your warehouse.
 
-👉 Want to dive deeper? Check out the [full documentation](https://docs.reccehq.com/) like [running Recce in CI/CD](https://docs.reccehq.com/7-cicd/scenario-ci/)
+👉 Want to dive deeper? Check out the [full documentation](https://docs.reccehq.com/).
 
 ## Recce Cloud
 
@@ -95,13 +95,21 @@ Here's where you can get in touch with the Recce team and find support:
 If you believe you have found a bug, or there is some missing functionality in Recce, please open
 a [GitHub Issue](https://github.com/DataRecce/recce/issues).
 
+Here's where you can get in touch with the Recce team and find support, add a subscribe to our newsletter option as well:
+
+[chat on our website](https://reccehq.coom/). We welcome you to start a chat or drop us a note. Our team monitors the chat box and will follow up soon.
+Our discord
+dbt Slack in the #tools-recce channel
+Email us help@reccehq.com
+If you believe you have found a bug on our open source, or there is some missing functionality in Recce, please open a GitHub Issue.
+
 ## Recce on the web
 
 You can follow along with news about Recce and blogs from our team in the following places:
 
 - [RecceHQ.com](https://reccehq.com/)
 - [LinkedIn](https://www.linkedin.com/company/datarecce)
-- [Medium blog](https://medium.com/inthepipeline)
+- [Blog](https://blog.reccehq.com/)
 - [@datarecce](https://x.com/DataRecce) on Twitter/X
 - [@DataRecce@mastodon.social](https://mastodon.social/@DataRecce) on Mastodon
 - [@datarecce.bsky.social](https://bsky.app/profile/datarecce.bsky.social) on BlueSky
