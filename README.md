@@ -1,9 +1,9 @@
 <p align="center">
-    <a href="https://datarecce.io">
+    <a href="https://reccehq.com">
         <picture>
-            <source media="(prefers-color-scheme: dark)" srcset="https://datarecce.io/assets/images/recce-logo-stacked.avif">
-            <source media="(prefers-color-scheme: light)" srcset="https://datarecce.io/assets/images/recce-logo-stacked.avif">
-            <img alt="Recce: DataRecce.io" src="https://datarecce.io/assets/images/recce-logo-stacked.avif" width="200" style="display: block; margin: 0 auto 20px;">
+            <source media="(prefers-color-scheme: dark)" srcset="https://reccehq.com/assets/images/recce-logo-stacked.avif">
+            <source media="(prefers-color-scheme: light)" srcset="https://reccehq.com/assets/images/recce-logo-stacked.avif">
+            <img alt="Recce: DataRecce.io" src="https://reccehq.com/assets/images/recce-logo-stacked.avif" width="200" style="display: block; margin: 0 auto 20px;">
         </picture>
     </a>
 </p>
@@ -39,17 +39,17 @@ You can launch Recce in any dbt project in just two commands:
 pip install -U recce
 recce server
 ```
-This starts Recce locally, where you can explore lineage and run queries. To unlock the full set of diffing tools, such as data comparisons and impact checks, you’ll need to prepare two environments to compare against. You can follow our [Getting Started](https://docs.datarecce.io/get-started/) and [5-minute Jaffle Shop tutorial](https://docs.datarecce.io/get-started-jaffle-shop/) to try it out step-by-step.
+This starts Recce locally, where you can explore lineage and run queries. To unlock the full set of diffing tools, such as data comparisons and impact checks, you’ll need to prepare two environments to compare against. You can follow our [Getting Started](https://docs.reccehq.com/get-started/) and [5-minute Jaffle Shop tutorial](https://docs.reccehq.com/get-started-jaffle-shop/) to try it out step-by-step.
 
 ## What You Get
 
 Recce gives you a clear, fast way to understand what your data changes are doing and why they matter. It helps you catch problems early, verify metrics, and share your findings with others, all as part of your normal workflow.
 
-<a href="https://pr46.demo.datarecce.io/"><img width="1347" alt="readme" src="https://github.com/user-attachments/assets/773e4c3a-0a15-49e0-8d1b-38a55af17cb0" /></a>
+<a href="https://pr46.demo.reccehq.com/"><img width="1347" alt="readme" src="https://github.com/user-attachments/assets/773e4c3a-0a15-49e0-8d1b-38a55af17cb0" /></a>
 
-<a href="https://datarecce.io"><img src="https://docs.reccehq.com/assets/images/1-whats-recce/diff-readme2.png" style="width: 100%; max-width: 600px; display: block; margin: 0 auto 20px;" alt="Model and column level diff"/></a>
+<a href="https://reccehq.com"><img src="https://docs.reccehq.com/assets/images/1-whats-recce/diff-readme2.png" style="width: 100%; max-width: 600px; display: block; margin: 0 auto 20px;" alt="Model and column level diff"/></a>
 
-<a href="https://datarecce.io"><img src="https://docs.reccehq.com/assets/images/1-whats-recce/checklist-readme3.png" style="width: 100%; max-width: 600px; display: block; margin: 0 auto 20px;" alt="Checklist for collaboration"/></a>
+<a href="https://reccehq.com"><img src="https://docs.reccehq.com/assets/images/1-whats-recce/checklist-readme3.png" style="width: 100%; max-width: 600px; display: block; margin: 0 auto 20px;" alt="Checklist for collaboration"/></a>
 
 ### Using Recce for Impact Assessment in dbt PR Review
 
@@ -60,17 +60,17 @@ Recce gives you a clear, fast way to understand what your data changes are doing
 - (`Recce Cloud`) Automatically sync Check status between Recce Instances
 - (`Recce Cloud`) Block PR merging until all Recce Checks have been approved
 
-Read more about using Recce on our [blog](https://reccehq.com/blog).
+Read more about using Recce on our [blog](https://blog.reccehq.com).
 
 ### What’s Included
 
-- [Lineage and impact mapping](https://docs.datarecce.io/features/lineage/): Quickly see which models and columns are affected by a change. Navigate lineage down to the column level, and spot breaking changes with clear visual cues.
-- Metric and data comparisons: Use [Profile, Value, Top-K, and Histogram Diffs](https://docs.datarecce.io/features/lineage/#node-details) to compare results before and after changes. Validate things like row counts, category distributions, and numeric ranges without writing extra SQL.
-- [Query diff](https://docs.datarecce.io/features/query/): Write and compare any two queries side by side. This is helpful when validating fixes or reviewing changes with teammates.
-- [Checklist for reviews and approvals](https://docs.datarecce.io/features/checklist/): Turn your validation steps into a checklist. Add notes, rerun checks, and share the results with reviewers or stakeholders. In Recce Cloud, checklists can sync automatically and even block PRs until checks are approved.
-- Secure by design: Recce is [SOC 2 compliant](https://trust.cloud.datarecce.io/) to meet enterprise security standards. It runs locally or in your private environment, and your data stays in your warehouse.
+- [Lineage and impact mapping](https://docs.reccehq.com/features/lineage/): Quickly see which models and columns are affected by a change. Navigate lineage down to the column level, and spot breaking changes with clear visual cues.
+- Metric and data comparisons: Use [Profile, Value, Top-K, and Histogram Diffs](https://docs.reccehq.com/features/lineage/#node-details) to compare results before and after changes. Validate things like row counts, category distributions, and numeric ranges without writing extra SQL.
+- [Query diff](https://docs.reccehq.com/features/query/): Write and compare any two queries side by side. This is helpful when validating fixes or reviewing changes with teammates.
+- [Checklist for reviews and approvals](https://docs.reccehq.com/features/checklist/): Turn your validation steps into a checklist. Add notes, rerun checks, and share the results with reviewers or stakeholders. In Recce Cloud, checklists can sync automatically and even block PRs until checks are approved.
+- Secure by design: Recce is [SOC 2 compliant](https://trust.reccehq.com/) to meet enterprise security standards. It runs locally or in your private environment, and your data stays in your warehouse.
 
-👉 Want to dive deeper? Check out the [full documentation](https://docs.datarecce.io/) like [running Recce in CI/CD](https://docs.reccehq.com/7-cicd/scenario-ci/)
+👉 Want to dive deeper? Check out the [full documentation](https://docs.reccehq.com/) like [running Recce in CI/CD](https://docs.reccehq.com/7-cicd/scenario-ci/)
 
 ## Recce Cloud
 
@@ -82,7 +82,7 @@ Ready to collaborate and move faster as a team? Recce Cloud adds real-time colla
 - Launch demo links from your CI with full context
 
 Recce Cloud is a hosted version of Recce that standardizes your workflow, keeps teams aligned, and reduces errors—so you can ship data changes with confidence.
-👉 [View Pricing and Plans](https://datarecce.io/pricing)
+👉 [View Pricing and Plans](https://reccehq.com/pricing)
 
 ## Community & Support
 
