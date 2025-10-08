@@ -8,6 +8,7 @@ from typing import Dict, List, Optional
 from pydantic import BaseModel, Field
 
 from recce import get_version
+from recce.config import console
 from recce.exceptions import RecceException
 from recce.git import current_branch
 from recce.models.types import Check, Run
@@ -34,6 +35,7 @@ class GitRepoInfo(BaseModel):
 
 
 class RecceStateMetadata(BaseModel):
+    dbt_version: str = "0"
     schema_version: str = "v0"
     recce_version: str = Field(default_factory=lambda: get_version())
     generated_at: str = Field(default_factory=lambda: datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%SZ"))
@@ -64,6 +66,10 @@ class RecceState(BaseModel):
         dict_data = json.loads(json_content)
         state = RecceState(**dict_data)
         metadata = state.metadata
+
+        from recce.adapter.dbt_adapter import DbtVersion
+
+        dbt_version = DbtVersion()
         if metadata:
             if metadata.schema_version is None:
                 pass
@@ -71,6 +77,11 @@ class RecceState(BaseModel):
                 pass
             else:
                 raise RecceException(f"Unsupported state file version: {metadata.schema_version}")
+            if metadata.dbt_version != dbt_version:
+                console.print(
+                    f"[[yellow]WARN[/yellow]] dbt version mismatch. Local dbt adapter: {dbt_version} vs. Generated Manifest dbt adapter: {metadata.dbt_version}"
+                )
+                console.print("[[yellow]WARN[/yellow]] Version mismatch can lead to issues when generating queries")
         return state
 
     @staticmethod
