@@ -35,6 +35,11 @@ def is_ci_env():
     return False
 
 
+def is_recce_cloud_instance():
+    """Check if running in Recce Cloud instance."""
+    return os.environ.get("is_recce_cloud_instance", "false").lower() == "true"
+
+
 def get_runner():
     # GitHub Action
     if os.environ.get("GITHUB_ACTIONS", "false") == "true":
