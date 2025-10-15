@@ -345,6 +345,16 @@ class RecceCloud:
             presigned_urls[key] = self._replace_localhost_with_docker_internal(url)
         return presigned_urls
 
+    def post_recce_state_uploaded_by_session_id(self, org_id: str, project_id: str, session_id: str):
+        api_url = f"{self.base_url_v2}/organizations/{org_id}/projects/{project_id}/sessions/{session_id}/recce-state-uploaded"
+        response = self._request("POST", api_url)
+        if response.status_code != 204:
+            raise RecceCloudException(
+                message="Failed to notify state uploaded for session in Recce Cloud.",
+                reason=response.text,
+                status_code=response.status_code,
+            )
+
     def list_organizations(self) -> list:
         """List all organizations the user has access to."""
         api_url = f"{self.base_url_v2}/organizations"
