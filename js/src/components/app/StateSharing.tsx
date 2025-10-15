@@ -4,10 +4,16 @@ import { useRecceShareStateContext } from "@/lib/hooks/RecceShareStateContext";
 import { useClipBoardToast } from "@/lib/hooks/useClipBoardToast";
 import { TbCloudUpload } from "react-icons/tb";
 import { trackShareState } from "@/lib/api/track";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import AuthModal from "@/components/AuthModal/AuthModal";
-import { useCopyToClipboard } from "usehooks-ts";
+import { useCopyToClipboard, useInterval } from "usehooks-ts";
 import { PiCheckCircle, PiCopy } from "react-icons/pi";
+
+const LOADING_MESSAGES = [
+  "Processing...", // 0-30s
+  "Still processing, please wait...", // 30-60s
+  "Almost there, thanks for your patience...", // 60s+
+];
 
 export function TopLevelShare() {
   const { successToast, failToast } = useClipBoardToast();
@@ -15,6 +21,22 @@ export function TopLevelShare() {
   const { authed } = useRecceInstanceContext();
   const { shareUrl, isLoading, error, handleShareClick } = useRecceShareStateContext();
   const [showModal, setShowModal] = useState(false);
+  const [messageIndex, setMessageIndex] = useState(0);
+
+  // Increment message index every 30 seconds while loading
+  useInterval(
+    () => {
+      setMessageIndex((prev) => Math.min(prev + 1, LOADING_MESSAGES.length - 1));
+    },
+    isLoading ? 30000 : null,
+  );
+
+  // Reset message index when loading state changes
+  useEffect(() => {
+    if (!isLoading) {
+      setMessageIndex(0);
+    }
+  }, [isLoading]);
 
   const handleCopy = async () => {
     try {
@@ -62,6 +84,11 @@ export function TopLevelShare() {
         loading={isLoading}>
         <TbCloudUpload /> Share {shareUrl ? <PiCheckCircle color="green" /> : undefined}
       </Button>
+      {isLoading && (
+        <Text fontSize="14" color="gray.500">
+          {LOADING_MESSAGES[messageIndex]}
+        </Text>
+      )}
       <Flex gap="5px" alignItems="center">
         {shareUrl && (
           <>
