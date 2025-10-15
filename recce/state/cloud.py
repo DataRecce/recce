@@ -411,6 +411,9 @@ class CloudStateLoader(RecceStateLoader):
 
         if message:
             logger.warning(message)
+        else:
+            # Notify Recce Cloud that the state has been uploaded if upload is successful
+            self.recce_cloud.post_recce_state_uploaded_by_session_id(org_id, project_id, self.session_id)
         return message, None
 
     def _upload_state_to_url(
