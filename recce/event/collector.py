@@ -10,7 +10,7 @@ from json import JSONDecodeError
 import portalocker
 import requests
 
-from recce import __version__, is_ci_env
+from recce import __version__, is_ci_env, is_recce_cloud_instance
 from recce.github import is_github_codespace
 
 
@@ -25,6 +25,7 @@ class Collector:
         self._upload_threshold = 10
         self._is_ci: bool = is_ci_env()
         self._is_github_codespace: bool = is_github_codespace()
+        self._is_recce_cloud_instance: bool = is_recce_cloud_instance()
         self._flush_timer = None
 
     def schedule_flush(self):
@@ -109,6 +110,7 @@ class Collector:
             python_version=python_version,
             is_ci=self._is_ci,
             is_github_codespace=self._is_github_codespace,
+            is_recce_cloud_instance=self._is_recce_cloud_instance,
         )
 
         if user_properties is not None:

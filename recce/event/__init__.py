@@ -10,7 +10,7 @@ from typing import Dict
 
 import sentry_sdk
 
-from recce import get_runner, get_version, is_ci_env
+from recce import get_runner, get_version, is_ci_env, is_recce_cloud_instance
 from recce import yaml as pyml
 from recce.event.collector import Collector
 from recce.git import current_branch, hosting_repo
@@ -57,6 +57,7 @@ def init():
     sentry_sdk.set_tag("platform", sys.platform)
     sentry_sdk.set_tag("is_ci_env", is_ci_env())
     sentry_sdk.set_tag("is_github_codespace", is_github_codespace())
+    sentry_sdk.set_tag("is_recce_cloud_instance", is_recce_cloud_instance())
     sentry_sdk.set_tag("system_timezone", get_system_timezone())
 
 
