@@ -1598,5 +1598,62 @@ def read_only(ctx, state_file=None, **kwargs):
     ctx.invoke(server, state_file=state_file, **kwargs)
 
 
+@cli.command(cls=TrackCommand)
+@add_options(dbt_related_options)
+@add_options(sqlmesh_related_options)
+@add_options(recce_options)
+@add_options(recce_dbt_artifact_dir_options)
+def mcp_server(**kwargs):
+    """
+    Start the Recce MCP (Model Context Protocol) server
+
+    The MCP server provides a stdio-based interface for AI assistants and tools
+    to interact with Recce's data validation capabilities.
+
+    Available tools:
+    - get_lineage_diff: Get lineage differences between environments
+    - row_count_diff: Compare row counts between environments
+    - query: Execute SQL queries with dbt templating
+    - query_diff: Compare query results between environments
+    - profile_diff: Generate statistical profiles and compare
+
+    Examples:\n
+
+    \b
+    # Start the MCP server
+    recce mcp-server
+
+    \b
+    # Start with custom dbt configuration
+    recce mcp-server --target prod --project-dir ./my_project
+    """
+    from rich.console import Console
+
+    console = Console()
+    handle_debug_flag(**kwargs)
+
+    try:
+        # Import here to avoid import errors if mcp is not installed
+        from recce.mcp_server import run_mcp_server
+
+        console.print("Starting Recce MCP Server...")
+        console.print("Available tools: get_lineage_diff, row_count_diff, query, query_diff, profile_diff")
+
+        # Run the async server
+        asyncio.run(run_mcp_server(**kwargs))
+
+    except ImportError as e:
+        console.print(f"[[red]Error[/red]] Failed to import MCP server: {e}")
+        console.print("Please install the MCP package: pip install mcp")
+        exit(1)
+    except Exception as e:
+        console.print(f"[[red]Error[/red]] Failed to start MCP server: {e}")
+        if kwargs.get("debug"):
+            import traceback
+
+            traceback.print_exc()
+        exit(1)
+
+
 if __name__ == "__main__":
     cli()
