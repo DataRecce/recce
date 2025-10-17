@@ -6,7 +6,7 @@ from typing import Dict, Optional, Tuple, Union
 from urllib.parse import urlencode
 
 from recce.exceptions import RecceException
-from recce.pull_request import fetch_pr_metadata
+from recce.pull_request import PullRequestInfo, fetch_pr_metadata
 from recce.util.io import SupportedFileTypes, file_io_factory
 from recce.util.recce_cloud import PresignedUrlMethod, RecceCloud, RecceCloudException
 
@@ -210,6 +210,7 @@ class CloudStateLoader(RecceStateLoader):
         logger.debug(f"Getting session {self.session_id}")
         session = self.recce_cloud.get_session(self.session_id)
 
+        pr_url = session.get("pr_link")
         org_id = session.get("org_id")
         project_id = session.get("project_id")
 
@@ -230,6 +231,13 @@ class CloudStateLoader(RecceStateLoader):
         except Exception as e:
             logger.debug(f"No existing recce_state found, creating new state: {e}")
             state = RecceState()
+
+        if pr_url:
+            pr_id = pr_url.rstrip("/").split("/")[-1]
+            pull_request = PullRequestInfo(id=pr_id, url=pr_url)
+            self.pr_info = pull_request
+            if state.pull_request is None:
+                state.pull_request = pull_request
 
         # Set artifacts regardless of whether we loaded existing state
         state.artifacts.base = base_artifacts
