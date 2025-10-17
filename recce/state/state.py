@@ -23,7 +23,7 @@ class GitRepoInfo(BaseModel):
     branch: Optional[str] = None
 
     @staticmethod
-    def from_current_repository():
+    def from_current_repository() -> Optional["GitRepoInfo"]:
         branch = current_branch()
         if branch is None:
             return None
