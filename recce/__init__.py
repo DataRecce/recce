@@ -1,5 +1,6 @@
-import importlib
 import os
+
+import requests
 from packaging.version import Version
 
 def is_ci_env():
@@ -55,24 +56,10 @@ def get_version():
         version = fh.read().strip()
         return version
 
-
-def _load_requests():
-    """Return the ``requests`` module if it can be imported."""
-
-    try:
-        return importlib.import_module("requests")
-    except ModuleNotFoundError:
-        return None
-
-
 def fetch_latest_version():
     current_version = get_version()
     if "dev" in current_version:
         # Skip fetching latest version if it's a dev version
-        return current_version
-
-    requests = _load_requests()
-    if requests is None:
         return current_version
 
     try:
