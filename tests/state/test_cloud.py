@@ -677,6 +677,43 @@ class TestCloudStateLoader(unittest.TestCase):
             self.assertIn("Internal Server Error", result_message)
             self.assertIsNone(result_etag)
 
+    @patch.object(CloudStateLoader, "_download_session_recce_state")
+    @patch.object(CloudStateLoader, "_download_base_session_artifacts")
+    @patch.object(CloudStateLoader, "_download_session_artifacts")
+    def test_load_state_from_session_sets_pull_request_from_pr_link(
+        self,
+        mock_download_session_artifacts,
+        mock_download_base_session_artifacts,
+        mock_download_session_state,
+    ):
+        loader = CloudStateLoader(cloud_options={"api_token": "token", "session_id": "test_session"})
+        loader.catalog = "session"
+        loader.session_id = "test_session"
+
+        loader.recce_cloud = Mock()
+        loader.recce_cloud.get_session.return_value = {
+            "org_id": "org1",
+            "project_id": "proj1",
+            "pr_link": "https://github.com/org/repo/pull/99",
+        }
+
+        mock_download_session_artifacts.return_value = {"manifest": "current_manifest", "catalog": "current_catalog"}
+        mock_download_base_session_artifacts.return_value = {"manifest": "base_manifest", "catalog": "base_catalog"}
+
+        state = RecceState()
+        mock_download_session_state.return_value = state
+
+        result_state = loader._load_state_from_session()
+
+        mock_download_session_artifacts.assert_called_once()
+        mock_download_base_session_artifacts.assert_called_once()
+        mock_download_session_state.assert_called_once()
+        self.assertIs(result_state, state)
+        self.assertIsNotNone(loader.pr_info)
+        self.assertEqual(str(loader.pr_info.id), "99")
+        self.assertEqual(loader.pr_info.url, "https://github.com/org/repo/pull/99")
+        self.assertIs(result_state.pull_request, loader.pr_info)
+
 
 if __name__ == "__main__":
     unittest.main()
