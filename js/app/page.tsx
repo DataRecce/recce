@@ -37,7 +37,7 @@ import { useRecceActionContext } from "@/lib/hooks/RecceActionContext";
 import { HSplit, VSplit } from "@/components/split/Split";
 import { RunResultPane } from "@/components/run/RunResultPane";
 import { VscGitPullRequest } from "react-icons/vsc";
-import { trackInit } from "@/lib/api/track";
+import { trackInit, trackTabChanged } from "@/lib/api/track";
 import { Filename } from "@/components/app/Filename";
 import { StateSynchronizer } from "@/components/app/StateSynchronizer";
 import { useRecceServerFlag } from "@/lib/hooks/useRecceServerFlag";
@@ -317,6 +317,11 @@ function NavBar() {
   const [valueLocation, setValueLocation] = useState("/lineage");
   const { data: flag, isLoading: isFlagLoading } = useRecceServerFlag();
 
+  // Track tab timing for analytics
+  const [tabStartTime, setTabStartTime] = useState<number>(Date.now());
+  const [previousTab, setPreviousTab] = useState<string | null>(null);
+  const isUserTabClickRef = React.useRef(false);
+
   const checklistBadge = (
     <TabBadge<Check[], number>
       queryKey={cacheKeys.checks()}
@@ -339,8 +344,14 @@ function NavBar() {
   ];
 
   useEffect(() => {
-    setValueLocation(`/${location.split("/")[1]}`);
-    // Only run on page load
+    const newTab = `/${location.split("/")[1]}`;
+    // Only update if it's not a user click on a tab (avoid interrupting Chakra's state)
+    if (!isUserTabClickRef.current) {
+      setValueLocation(newTab);
+    } else {
+      // Reset the flag after handling
+      isUserTabClickRef.current = false;
+    }
   }, [location]);
 
   return (
@@ -349,7 +360,24 @@ function NavBar() {
       defaultValue="/lineage"
       value={valueLocation}
       onValueChange={(e) => {
-        setValueLocation(e.value);
+        const newTab = e.value;
+        const now = Date.now();
+        const timeOnTab = previousTab ? (now - tabStartTime) / 1000 : null;
+
+        // Track tab change
+        trackTabChanged({
+          from_tab: previousTab,
+          to_tab: newTab,
+          time_on_previous_tab_seconds: timeOnTab,
+        });
+
+        // Update state
+        setValueLocation(newTab);
+        setPreviousTab(newTab);
+        setTabStartTime(now);
+
+        // Mark that a user tab click just happened so useEffect doesn't overwrite state
+        isUserTabClickRef.current = true;
       }}>
       <Tabs.List>
         <Box flex="1" display="flex">

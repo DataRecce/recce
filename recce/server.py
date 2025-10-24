@@ -116,9 +116,10 @@ def setup_server(app_state: AppState) -> RecceContext:
             console.rule("Loading Preset Checks")
             load_preset_checks(preset_checks)
 
-    from recce.event import log_load_state
+    from recce.event import log_environment_snapshot, log_load_state
 
     log_load_state(command="server", single_env=single_env)
+    log_environment_snapshot()
 
     return ctx
 

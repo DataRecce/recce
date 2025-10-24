@@ -31,7 +31,7 @@ async def create_run_handler(input: CreateRunIn):
         ),
     )
     try:
-        run, future = submit_run(input.type, input.params)
+        run, future = submit_run(input.type, input.params, input.check_id)
     except RecceException as e:
         raise HTTPException(status_code=400, detail=str(e))
 

@@ -11,7 +11,7 @@ from recce.apis.check_func import (
     export_persistent_state,
 )
 from recce.apis.run_func import submit_run
-from recce.event import log_api_event
+from recce.event import _get_check_position, _hash_id, log_api_event
 from recce.exceptions import RecceException
 from recce.models import Check, CheckDAO, Run, RunDAO, RunType
 
@@ -74,12 +74,40 @@ async def create_check(check_in: CreateCheckIn, background_tasks: BackgroundTask
                 params=check_in.params,
                 check_view_options=check_in.view_options,
             )
+        # Enrich check creation tracking
+        from recce.event import log_created_check
+
+        all_checks = CheckDAO().list()
+        is_first = len(all_checks) == 1  # We just created one
+
+        # Determine source
+        if check_in.run_id is not None:
+            source = "run"
+        elif check.is_preset:
+            source = "preset"
+        elif check_in.track_props and check_in.track_props.get("from") == "history":
+            source = "history"
+        else:
+            source = "manual"
+
         log_api_event(
             "create_check",
             dict(
-                type=str(check.type),
+                check_id=_hash_id(check.check_id),
+                check_type=str(check.type),
+                source=source,
+                has_run=check_in.run_id is not None,
+                num_existing_checks=len(all_checks),
+                is_first_check=is_first,
                 track_props=check_in.track_props,
             ),
+        )
+
+        # Log created_check milestone with lifecycle tracking
+        log_created_check(
+            check_id=str(check.check_id),
+            check_type=str(check.type),
+            check_position=_get_check_position(check.check_id)
         )
     except NameError as e:
         raise HTTPException(status_code=404, detail=str(e))
@@ -166,7 +194,46 @@ async def update_check_handler(check_id: UUID, patch: PatchCheckIn, background_t
     if patch.view_options is not None:
         check.view_options = patch.view_options
     if patch.is_checked is not None:
+        old_is_checked = check.is_checked
         check.is_checked = patch.is_checked
+
+        # Track check approval/unapproval
+        if old_is_checked != patch.is_checked:
+            from recce.event import log_approved_check
+
+            # Check if this check has a passing run
+            runs = RunDAO().list_by_check_id(check_id)
+            last_run = runs[-1] if len(runs) > 0 else None
+            has_passing_run = None
+            if last_run:
+                # Consider a run passing if it has no error and status is FINISHED
+                has_passing_run = last_run.error is None and last_run.status.value == "finished"
+
+            # Count approved checks
+            all_checks = CheckDAO().list()
+            num_approved = sum(1 for c in all_checks if c.is_checked)
+            num_total = len(all_checks)
+
+            log_api_event(
+                "check_approved",
+                dict(
+                    check_id=_hash_id(check.check_id),
+                    check_type=str(check.type),
+                    approved=patch.is_checked,
+                    has_passing_run=has_passing_run,
+                    num_approved=num_approved,
+                    num_total_checks=num_total,
+                ),
+            )
+
+            # Log approved_check milestone if this is an approval
+            if patch.is_checked:
+                log_approved_check(
+                    check_id=str(check.check_id),
+                    check_type=str(check.type),
+                    check_position=_get_check_position(check.check_id)
+                )
+
     check.updated_at = datetime.now(timezone.utc).replace(microsecond=0)
 
     background_tasks.add_task(export_persistent_state)

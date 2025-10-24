@@ -119,3 +119,17 @@ interface CopyToClipboardProps {
 export function trackCopyToClipboard(props: CopyToClipboardProps) {
   track("[Click] copy_to_clipboard", props);
 }
+
+interface TabChangedProps {
+  from_tab: string | null;
+  to_tab: string;
+  time_on_previous_tab_seconds: number | null;
+}
+
+export function trackTabChanged(props: TabChangedProps) {
+  // Debug logging for development
+  if (process.env.NODE_ENV === "development") {
+    console.log("[Frontend] Tracking tab_changed:", props);
+  }
+  track("tab_changed", props);
+}

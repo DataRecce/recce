@@ -1,3 +1,4 @@
+from collections import Counter
 import json
 import logging
 import os
@@ -22,7 +23,7 @@ from typing import (
     Union,
 )
 
-from recce.event import log_performance
+from recce.event import log_performance, log_model_lineage_changes
 from recce.exceptions import RecceException
 from recce.util.cll import CLLPerformanceTracking, cll
 from recce.util.lineage import (
@@ -788,7 +789,66 @@ class DbtAdapter(BaseAdapter):
         if base is False:
             perf_tracker.end_lineage()
             perf_tracker.set_total_nodes(len(nodes))
+
+            # Count models and sources
+            model_count = sum(1 for node in nodes.values() if node["resource_type"] == "model")
+            source_count = sum(1 for node in nodes.values() if node["resource_type"] == "source")
+            perf_tracker.set_model_nodes(model_count)
+            perf_tracker.set_source_nodes(source_count)
+
+            # Count nodes by change status (new/modified/unmodified)
+            # Use the base/current lineage comparison to accurately determine node status,
+            # similar to how _get_lineage_diff_cached works
+            base_lineage = self.get_lineage(base=True)
+            base_nodes = {k: v for k, v in base_lineage.get('nodes', {}).items()}
+            current_nodes = {k: v for k, v in nodes.items()}
+
+            # Build change status by resource type
+            change_status = {"models": {}, "sources": {}}
+            for resource_type in ("model", "source"):
+                type_key = "models" if resource_type == "model" else "sources"
+                base_filtered = {k: v for k, v in base_nodes.items() if v.get('resource_type') == resource_type}
+                current_filtered = {k: v for k, v in current_nodes.items() if v.get('resource_type') == resource_type}
+
+                new_nodes_list = [nid for nid in current_filtered if nid not in base_filtered]
+                # Only count as modified if the checksum (SQL code) actually changed, not just schema
+                modified_nodes_list = [nid for nid in current_filtered if nid in base_filtered and
+                             base_filtered[nid].get('checksum') != current_filtered[nid].get('checksum')]
+                unchanged_nodes_list = [nid for nid in current_filtered if nid in base_filtered and
+                              base_filtered[nid].get('checksum') == current_filtered[nid].get('checksum')]
+
+                new = len(new_nodes_list)
+                modified = len(modified_nodes_list)
+                unchanged = len(unchanged_nodes_list)
+
+                change_status[type_key] = {
+                    "new": new,
+                    "modified": modified,
+                    "unchanged": unchanged
+                }
+
+            perf_tracker.set_change_status(change_status)
+
+            # TODO
+            # how many new columns of each type (new, updated, etc)? how many total colunss?
+            #
+
             log_performance("model lineage", perf_tracker.to_dict())
+
+            # Log user-facing model lineage changes event
+            model_count = change_status.get("models", {})
+            source_count = change_status.get("sources", {})
+            total_new = model_count.get("new", 0) + source_count.get("new", 0)
+            total_modified = model_count.get("modified", 0) + source_count.get("modified", 0)
+            total_unchanged = model_count.get("unchanged", 0) + source_count.get("unchanged", 0)
+
+            log_model_lineage_changes(
+                total_nodes=total_new + total_modified + total_unchanged,
+                model_nodes=len([nid for nid in current_nodes if current_nodes[nid].get('resource_type') == 'model']),
+                source_nodes=len([nid for nid in current_nodes if current_nodes[nid].get('resource_type') == 'source']),
+                change_status=change_status
+            )
+
             perf_tracker.reset()
 
         return dict(

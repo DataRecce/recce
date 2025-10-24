@@ -1,13 +1,16 @@
 import asyncio
 import logging
+import time
 from typing import List, Optional
 
 from recce.core import default_context
+from recce.event import _get_check_position
 from recce.exceptions import RecceException
 from recce.models import Run, RunDAO, RunType
 from recce.models.types import RunStatus
 
 running_tasks = {}
+running_start_times = {}  # Track when runs start for duration calculation
 logger = logging.getLogger("uvicorn")
 
 
@@ -114,6 +117,9 @@ def submit_run(type, params, check_id=None):
     run.name = generate_run_name(run)
     RunDAO().create(run)
 
+    # Track start time for duration calculation
+    running_start_times[run.run_id] = time.time()
+
     loop = asyncio.get_running_loop()
     running_tasks[run.run_id] = task
 
@@ -125,15 +131,42 @@ def submit_run(type, params, check_id=None):
     async def update_run_result(run_id, result, error):
         if run is None:
             return
+
+        # Calculate duration
+        start_time = running_start_times.get(run_id, time.time())
+        duration = time.time() - start_time
+
+        # Update run status
         if result is not None:
             run.result = result
             run.status = RunStatus.FINISHED
+            status = "success"
         if error is not None:
             failed_reason = str(error) if str(error) != "None" else repr(error)
             run.error = failed_reason
             if run.status != RunStatus.CANCELLED:
                 run.status = RunStatus.FAILED
+                status = "error"
+            else:
+                status = "cancelled"
         run.progress = None
+
+        # Log run completion
+        from recce.event import log_run_completed
+
+        log_run_completed(
+            run_id=run_id,
+            run_type=str(run_type.value),
+            status=status,
+            duration_seconds=duration,
+            error=error if error else None,
+            result=result,
+            check_id=str(run.check_id) if run.check_id else None,
+            check_position=_get_check_position(run.check_id) if run.check_id else None,
+        )
+
+        # Clean up tracking
+        running_start_times.pop(run_id, None)
 
     def fn():
         try:

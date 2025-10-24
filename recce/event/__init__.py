@@ -1,4 +1,5 @@
 import hashlib
+import logging
 import os
 import re
 import sys
@@ -6,9 +7,11 @@ import threading
 import uuid
 from datetime import datetime, timezone
 from hashlib import sha256
-from typing import Dict
+from typing import Dict, Optional
 
 import sentry_sdk
+
+logger = logging.getLogger(__name__)
 
 from recce import get_runner, get_version, is_ci_env, is_recce_cloud_instance
 from recce import yaml as pyml
@@ -173,6 +176,10 @@ def log_event(prop, event_type, **kwargs):
     if should_log_event() is False:
         return
 
+    # Debug logging for development/testing
+    if os.getenv("RECCE_DEBUG_EVENTS"):
+        print(f"[RECCE_DEBUG] Logging event: {event_type} {prop}")
+
     repo = hosting_repo()
     if repo is not None:
         prop["repository"] = sha256(repo.encode()).hexdigest()
@@ -224,7 +231,7 @@ def log_load_state(command="server", single_env=False):
     if command == "server":
         prop["single_env"] = single_env
 
-    log_event(prop, "load_state")
+    log_event(prop, "[User] load_state")
     if command == "server":
         _collector.schedule_flush()
 
@@ -302,3 +309,193 @@ def set_exception_tag(key, value):
 
 def get_system_timezone():
     return datetime.now(timezone.utc).astimezone().tzinfo
+
+
+def _hash_id(value):
+    """Hash an ID for privacy. Handles strings, UUIDs, and other types."""
+    return sha256(str(value).encode()).hexdigest()
+
+
+def _get_check_position(check_id) -> Optional[int]:
+    """Get 1-based position of check in the check list, or None if not found"""
+    from recce.models import CheckDAO
+    all_checks = CheckDAO().list()
+    position = next(
+        (i + 1 for i, c in enumerate(all_checks) if str(c.check_id) == str(check_id)),
+        None
+    )
+    return position
+
+
+def _calculate_pr_age(pr):
+    """Calculate PR age in hours, or None if unavailable"""
+    if not hasattr(pr, "created_at") or not pr.created_at:
+        return None
+
+    try:
+        from dateutil import parser
+        pr_created = parser.parse(pr.created_at)
+        now = datetime.now(timezone.utc)
+        return (now - pr_created).total_seconds() / 3600
+    except (ValueError, TypeError) as e:
+        logger.debug(f"Could not parse PR created_at date: {e}")
+        return None
+
+
+def _add_pr_info(prop, context):
+    """Add PR information to properties (flattened structure)"""
+    state = context.export_state()
+    if not state or not state.pull_request:
+        return  # No PR data to add
+
+    pr = state.pull_request
+
+    if pr.id:
+        prop["pr_number_hash"] = _hash_id(pr.id)
+    prop["pr_state"] = getattr(pr, "state", None)
+    prop["pr_age_hours"] = _calculate_pr_age(pr)
+
+
+def _get_catalog_age(catalog):
+    """Get catalog age in hours, or None if unavailable"""
+    if not catalog or not catalog.metadata or not catalog.metadata.generated_at:
+        return None
+
+    gen_at = catalog.metadata.generated_at
+    now = datetime.now(timezone.utc)
+    return (now - gen_at).total_seconds() / 3600
+
+
+def _set_non_dbt_defaults(prop):
+    """Set default values for non-dbt adapters"""
+    prop["warehouse_type"] = None
+    prop["has_base_env"] = False
+    prop["has_current_env"] = False
+    prop["catalog_age_hours_base"] = None
+    prop["catalog_age_hours_current"] = None
+
+
+def _add_dbt_info(prop, context):
+    """Add dbt-specific information to properties"""
+    try:
+        from recce.adapter.dbt_adapter import DbtAdapter
+        dbt_adapter: DbtAdapter = context.adapter
+
+        # Warehouse type
+        prop["warehouse_type"] = dbt_adapter.adapter.type()
+
+        # Base and current environment info
+        prop["has_base_env"] = bool(dbt_adapter.base_manifest)
+        prop["catalog_age_hours_base"] = _get_catalog_age(dbt_adapter.base_catalog)
+
+        prop["has_current_env"] = bool(dbt_adapter.curr_manifest)
+        prop["catalog_age_hours_current"] = _get_catalog_age(dbt_adapter.curr_catalog)
+
+    except AttributeError as e:
+        logger.debug(f"Could not get dbt adapter info: {e}")
+        _set_non_dbt_defaults(prop)
+
+
+def log_environment_snapshot():
+    """Log environment configuration at server startup"""
+    from recce.core import default_context
+
+    try:
+        context = default_context()
+    except Exception as e:
+        logger.debug(f"Context not ready for environment snapshot: {e}")
+        return
+
+    prop = {}
+
+    # Cloud mode
+    prop["cloud_mode"] = "cloud" if (context.state_loader and context.state_loader.cloud_mode) else "local"
+
+    # PR information
+    _add_pr_info(prop, context)
+
+    # Adapter information
+    prop["adapter_type"] = context.adapter_type
+
+    # dbt-specific information
+    if context.adapter_type == "dbt":
+        _add_dbt_info(prop, context)
+    else:
+        _set_non_dbt_defaults(prop)
+
+    log_event(prop, "[User] environment_snapshot")
+    _collector.schedule_flush()
+
+
+def log_ran_check(check_id: str = None, check_type: str = None, check_position: int = None):
+    """Log when user executes a check"""
+    prop = {
+        "check_id": check_id,
+        "check_type": check_type,
+        "check_position": check_position,
+    }
+    log_event(prop, "[User] ran_check")
+
+
+def log_approved_check(check_id: str = None, check_type: str = None, check_position: int = None):
+    """Log when user approves a check result"""
+    prop = {
+        "check_id": check_id,
+        "check_type": check_type,
+        "check_position": check_position,
+    }
+    log_event(prop, "[User] approved_check")
+
+
+def log_created_check(check_id: str = None, check_type: str = None, check_position: int = None):
+    """Log when user creates a check"""
+    prop = {
+        "check_id": check_id,
+        "check_type": check_type,
+        "check_position": check_position,
+    }
+    log_event(prop, "[User] created_check")
+
+
+def log_run_completed(run_id: str, run_type: str, status: str, duration_seconds: float, error: str = None, result=None, check_id: str = None, check_position: int = None):
+    """Log run completion with outcome"""
+    prop = {
+        "run_id": _hash_id(run_id),
+        "run_type": run_type,
+        "status": status,  # 'success', 'error', 'cancelled'
+        "duration_seconds": duration_seconds,
+        "check_id": check_id,
+        "check_position": check_position,
+    }
+
+    # Capture error message if there is one
+    prop["error"] = str(error)[:200] if error else None
+
+    # Extract result metrics
+    result_size = None
+    has_differences = None
+    if result and isinstance(result, dict):
+        if "data" in result and isinstance(result["data"], list):
+            result_size = len(result["data"])
+        if "diff" in result:
+            has_differences = bool(result["diff"])
+        elif "data" in result and isinstance(result["data"], dict):
+            has_differences = len(result["data"]) > 0
+
+    prop["result_size"] = result_size
+    prop["has_differences"] = has_differences
+
+    log_event(prop, "[User] run_completed")
+    _collector.schedule_flush()
+
+
+def log_model_lineage_changes(total_nodes: int, model_nodes: int, source_nodes: int, change_status: Dict):
+    """Log model lineage changes detected"""
+    prop = {
+        "total_nodes": total_nodes,
+        "model_nodes": model_nodes,
+        "source_nodes": source_nodes,
+        "change_status": change_status,
+    }
+    log_event(prop, "[User] model_lineage")
+    _collector.schedule_flush()
