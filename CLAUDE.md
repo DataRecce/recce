@@ -6,6 +6,71 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 Recce is a data validation and review tool for dbt projects. It helps data teams preview, validate, and ship data changes with confidence by providing lineage visualization, data diffing, and collaborative review features.
 
+## Critical Constraints & Guidelines
+
+### Do NOT:
+- ❌ **Commit state files**: Never commit `recce_state.json` or any `state.json` files (contains user-specific runtime state)
+- ❌ **Edit generated files**: Never edit files in `recce/data/` directly (auto-generated from `js/out/` during frontend build)
+- ❌ **Break adapter interface**: All adapters must implement ALL `BaseAdapter` abstract methods (partial implementations will fail at runtime)
+- ❌ **Skip Python version compatibility**: Any new dependencies must support Python 3.9+ (we test 3.9-3.13)
+- ❌ **Bypass frontend build**: If you modify frontend code, you MUST run `cd js && pnpm run build` to update `recce/data/` before testing with `recce server`
+- ❌ **Use interactive git commands**: Never use `git rebase -i`, `git add -i`, or similar (interactive prompts don't work in CLI context)
+- ❌ **Mix concerns across layers**: Keep strict separation between models, tasks, APIs, and adapters (see Code Organization Philosophy below)
+
+### Always:
+- ✅ **Build frontend before testing**: When frontend changes are made, run `cd js && pnpm run build` then restart `recce server`
+- ✅ **Test across dbt versions**: For adapter changes, run `make test-tox` to verify against dbt 1.5-1.8
+- ✅ **Use pre-commit hooks**: Automatically installed with `make install-dev` (handles Black, isort, flake8)
+- ✅ **Maintain state loader abstraction**: All state persistence must work with both `FileStateLoader` (local) and `CloudStateLoader` (Recce Cloud)
+- ✅ **Update both base and current**: When modifying check logic, ensure changes work for both environments being compared
+- ✅ **Follow monorepo structure**: Backend (Python) and frontend (TypeScript) are tightly coupled but maintain clear boundaries
+
+## Code Organization Philosophy
+
+### Separation of Concerns
+
+```
+recce/
+├── models/          # Pure data structures (Pydantic), NO business logic
+├── apis/            # FastAPI routes, minimal logic (delegate to *_func.py)
+│   ├── *_api.py     # Route definitions only
+│   └── *_func.py    # Business logic for routes
+├── tasks/           # Pure execution logic, NO API awareness
+├── adapter/         # Platform abstraction, implements BaseAdapter
+├── state/           # Persistence layer, abstracts local vs cloud
+└── core.py          # RecceContext - central state coordinator
+```
+
+### Dependency Rules
+
+**What can import what:**
+- ✅ `apis/` can import from `models/`, `tasks/`, `adapter/`, `state/`
+- ✅ `tasks/` can import from `models/`, `adapter/` (but NOT from `apis/`)
+- ✅ `adapter/` can import from `models/` (but NOT from `tasks/` or `apis/`)
+- ✅ `state/` can import from `models/` only
+- ❌ Backend (`recce/`) NEVER imports from frontend (`js/`)
+- ❌ Frontend uses API clients (`lib/api/`) NEVER direct backend imports
+
+### Why This Matters
+
+- **Keeps task execution testable** without spinning up FastAPI server
+- **Allows adapter swapping** without breaking existing tasks
+- **Enables frontend builds** without Python environment
+- **Makes state persistence flexible** (local file vs cloud S3)
+- **Prevents circular dependencies** that cause import errors
+
+### Where to Add New Code
+
+| What You're Adding | Where It Goes | What to Import |
+|-------------------|---------------|----------------|
+| New check type | `tasks/` (new Task class) | Can use adapter, models |
+| New API endpoint | `apis/*_api.py` (route) + `apis/*_func.py` (logic) | Can use tasks, models, adapter |
+| New data model | `models/` (Pydantic class) | Only standard library |
+| Platform support | `adapter/` (extend BaseAdapter) | Can use models only |
+| State storage | `state/` (extend RecceStateLoader) | Can use models only |
+| UI component | `js/src/components/` | Use API clients from `lib/api/` |
+| API client | `js/src/lib/api/` | Axios, React Query |
+
 ## Architecture
 
 ### Monolithic Client-Server Application
@@ -272,5 +337,49 @@ When you modify frontend code and want to test it with the Python backend:
 - **Embedded Frontend**: Static files bundled in Python package at install time
 - **Self-Contained**: Single pip install provides full stack (no separate Node deployment)
 
-# Individual Preferences
-- @~/.claude/recce.md
+---
+
+## Individual Preferences
+
+Claude Code can load personal/team-specific preferences from `~/.claude/recce.md` to supplement this file.
+
+### What to Include
+
+**Personal config is for:**
+
+- Team conventions (branch naming, commit formats, PR requirements)
+- Code style preferences when multiple valid approaches exist
+- Domain-specific terminology and internal tool names
+- Workflow specifics (CI/CD, deployment processes)
+
+**Keep in main CLAUDE.md:**
+
+- Architecture patterns and critical constraints (applies to all contributors)
+
+### Example Personal Config
+
+Create `~/.claude/recce.md`:
+
+```markdown
+# Personal Preferences for Recce
+
+## Branch Naming
+- Feature: `feature/DRC-XXXX-description`
+- Bugfix: `fix/DRC-XXXX-description`
+
+## Commit Format
+- Use Conventional Commits: `feat(scope): description`
+- Types: feat, fix, refactor, test, docs, chore
+
+## Code Style
+- Python: Prefer f-strings, explicit type hints, pathlib over os.path
+- TypeScript: Functional components, async/await over .then()
+
+## Before Committing
+- Run `make check` and `pytest tests/`
+- Build frontend if JS changed: `cd js && pnpm run build`
+```
+
+**To enable:** Create the file above. Claude Code will automatically load it when working in this repository.
+
+**Reference syntax:** `@~/.claude/recce.md` tells Claude to load preferences from your home directory.
