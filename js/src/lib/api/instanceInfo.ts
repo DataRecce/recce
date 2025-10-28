@@ -5,6 +5,7 @@ export interface RecceInstanceInfo {
   server_mode: "server" | "preview" | "read-only";
   single_env: boolean;
   authed: boolean;
+  cloud_instance: boolean;
   lifetime_expired_at?: Date;
   share_url?: string;
   session_id?: string;
