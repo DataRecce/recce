@@ -90,6 +90,9 @@ export function RecceInstanceInfoProvider({ children }: { children: React.ReactN
         toggles.disableUpdateChecklist = true;
         toggles.disableShare = true;
       }
+      if (instanceInfo.cloud_instance) {
+        toggles.disableShare = true;
+      }
       setFeatureToggles(toggles);
     }
   }, [instanceInfo, isLoading]);

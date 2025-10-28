@@ -30,7 +30,7 @@ from starlette.middleware.gzip import GZipMiddleware
 from starlette.middleware.sessions import SessionMiddleware
 from starlette.websockets import WebSocketDisconnect
 
-from . import __latest_version__, __version__, event
+from . import __latest_version__, __version__, event, is_recce_cloud_instance
 from .apis.check_api import check_router
 from .apis.run_api import run_router
 from .config import RecceConfig
@@ -281,6 +281,7 @@ class RecceInstanceInfoOut(BaseModel):
     preview: bool
     single_env: bool
     authed: bool
+    cloud_instance: bool
     lifetime_expired_at: Optional[datetime] = None
     share_url: Optional[str] = None
     session_id: Optional[str] = None
@@ -301,6 +302,7 @@ async def recce_instance_info():
         "preview": flag.get("preview", False),
         "single_env": single_env,
         "authed": True if api_token else False,
+        "cloud_instance": is_recce_cloud_instance(),
         "lifetime_expired_at": app_state.lifetime_expired_at,  # UTC timezone
         "share_url": app_state.share_url,
         "session_id": app_state.state_loader.session_id if app_state.state_loader else None,
