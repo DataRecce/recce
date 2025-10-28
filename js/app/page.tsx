@@ -351,8 +351,9 @@ function NavBar() {
       onValueChange={(e) => {
         setValueLocation(e.value);
       }}>
-      <Tabs.List>
-        <Box flex="1" display="flex">
+      <Tabs.List display="grid" gridTemplateColumns="1fr auto 1fr" alignItems="center">
+        {/* Left section: Tabs */}
+        <Box display="flex">
           {tabs.map(({ name, href, badge, disable }) => {
             return (
               <Tabs.Trigger
@@ -369,17 +370,19 @@ function NavBar() {
             );
           })}
         </Box>
-        <Flex flex="3" justifyContent="right" alignItems="center">
+
+        {/* Center section: Filename and TopLevelShare */}
+        <Flex alignItems="center" gap="12px" justifyContent="center">
           {!isLoading && !isDemoSite && <Filename />}
-        </Flex>
-        <Flex flex="3" justifyContent="left" alignItems="center">
           {!isLoading &&
             !isDemoSite &&
             !flag?.single_env_onboarding &&
             !featureToggles.disableShare && <TopLevelShare />}
         </Flex>
+
+        {/* Right section: EnvInfo, StateSynchronizer, StateExporter */}
         {!isLoading && (
-          <Flex flex="3" justifyContent="right" alignItems="center" mr="8px">
+          <Flex justifyContent="right" alignItems="center" mr="8px">
             <EnvInfo />
             {cloudMode && <StateSynchronizer />}
             <StateExporter />
