@@ -53,6 +53,7 @@ setup(
     extras_require={
         "dev": [
             "pytest>=4.6",
+            "pytest-asyncio",
             "pytest-flake8",
             "black>=25.1.0",
             "isort>=6.0.1",

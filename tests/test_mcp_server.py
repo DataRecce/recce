@@ -1,4 +1,3 @@
-from unittest import TestCase
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -11,24 +10,27 @@ from recce.tasks.query import QueryDiffTask, QueryTask
 from recce.tasks.rowcount import RowCountDiffTask
 
 
-class TestRecceMCPServer(TestCase):
+@pytest.fixture
+def mcp_server():
+    """Fixture to create a RecceMCPServer instance for testing"""
+    mock_context = MagicMock(spec=RecceContext)
+    return RecceMCPServer(mock_context), mock_context
+
+
+class TestRecceMCPServer:
     """Test cases for the RecceMCPServer class"""
 
-    def setUp(self):
-        """Set up test fixtures"""
-        # Create a mock RecceContext
-        self.mock_context = MagicMock(spec=RecceContext)
-        self.mcp_server = RecceMCPServer(self.mock_context)
-
-    def test_server_initialization(self):
+    def test_server_initialization(self, mcp_server):
         """Test that the MCP server initializes correctly"""
-        assert self.mcp_server.context == self.mock_context
-        assert self.mcp_server.server is not None
-        assert self.mcp_server.server.name == "recce"
+        server, mock_context = mcp_server
+        assert server.context == mock_context
+        assert server.server is not None
+        assert server.server.name == "recce"
 
     @pytest.mark.asyncio
-    async def test_get_lineage_diff(self):
+    async def test_get_lineage_diff(self, mcp_server):
         """Test the get_lineage_diff tool"""
+        server, mock_context = mcp_server
         # Mock the lineage diff response
         mock_lineage_diff = MagicMock(spec=LineageDiff)
         mock_lineage_diff.model_dump.return_value = {
@@ -36,34 +38,36 @@ class TestRecceMCPServer(TestCase):
             "removed": ["model.project.old_model"],
             "modified": ["model.project.changed_model"],
         }
-        self.mock_context.get_lineage_diff.return_value = mock_lineage_diff
+        mock_context.get_lineage_diff.return_value = mock_lineage_diff
 
         # Execute the method
-        result = await self.mcp_server._get_lineage_diff({})
+        result = await server._get_lineage_diff({})
 
         # Verify the result
         assert "added" in result
         assert "removed" in result
         assert "modified" in result
-        self.mock_context.get_lineage_diff.assert_called_once()
+        mock_context.get_lineage_diff.assert_called_once()
         mock_lineage_diff.model_dump.assert_called_once_with(mode="json")
 
     @pytest.mark.asyncio
-    async def test_row_count_diff(self):
+    async def test_row_count_diff(self, mcp_server):
         """Test the row_count_diff tool"""
+        server, _ = mcp_server
         # Mock the task execution
         mock_result = {"results": [{"node_id": "model.project.my_model", "base": 100, "current": 105, "diff": 5}]}
 
         with patch.object(RowCountDiffTask, "execute", return_value=mock_result):
-            result = await self.mcp_server._row_count_diff({"node_names": ["my_model"]})
+            result = await server._row_count_diff({"node_names": ["my_model"]})
 
         # Verify the result
         assert result == mock_result
         assert "results" in result
 
     @pytest.mark.asyncio
-    async def test_query(self):
+    async def test_query(self, mcp_server):
         """Test the query tool"""
+        server, _ = mcp_server
         # Mock the task execution
         mock_result = MagicMock()
         mock_result.model_dump.return_value = {
@@ -72,9 +76,7 @@ class TestRecceMCPServer(TestCase):
         }
 
         with patch.object(QueryTask, "execute", return_value=mock_result):
-            result = await self.mcp_server._query(
-                {"sql_template": "SELECT * FROM {{ ref('my_model') }}", "base": False}
-            )
+            result = await server._query({"sql_template": "SELECT * FROM {{ ref('my_model') }}", "base": False})
 
         # Verify the result
         assert "columns" in result
@@ -82,8 +84,9 @@ class TestRecceMCPServer(TestCase):
         mock_result.model_dump.assert_called_once_with(mode="json")
 
     @pytest.mark.asyncio
-    async def test_query_with_base_flag(self):
+    async def test_query_with_base_flag(self, mcp_server):
         """Test the query tool with base environment flag"""
+        server, _ = mcp_server
         mock_result = {"columns": ["id"], "data": [[1]]}
 
         with patch.object(QueryTask, "execute", return_value=mock_result) as mock_execute:
@@ -92,14 +95,15 @@ class TestRecceMCPServer(TestCase):
                 task.is_base = True
                 task.execute = mock_execute
 
-                result = await self.mcp_server._query({"sql_template": "SELECT 1", "base": True})
+                result = await server._query({"sql_template": "SELECT 1", "base": True})
 
                 # Verify base flag was set (would need to inspect task creation)
                 assert result == mock_result
 
     @pytest.mark.asyncio
-    async def test_query_diff(self):
+    async def test_query_diff(self, mcp_server):
         """Test the query_diff tool"""
+        server, _ = mcp_server
         # Mock the task execution
         mock_result = MagicMock()
         mock_result.model_dump.return_value = {
@@ -111,7 +115,7 @@ class TestRecceMCPServer(TestCase):
         }
 
         with patch.object(QueryDiffTask, "execute", return_value=mock_result):
-            result = await self.mcp_server._query_diff(
+            result = await server._query_diff(
                 {
                     "sql_template": "SELECT * FROM {{ ref('my_model') }}",
                     "primary_keys": ["id"],
@@ -123,8 +127,9 @@ class TestRecceMCPServer(TestCase):
         mock_result.model_dump.assert_called_once_with(mode="json")
 
     @pytest.mark.asyncio
-    async def test_profile_diff(self):
+    async def test_profile_diff(self, mcp_server):
         """Test the profile_diff tool"""
+        server, _ = mcp_server
         # Mock the task execution
         mock_result = MagicMock()
         mock_result.model_dump.return_value = {
@@ -137,24 +142,25 @@ class TestRecceMCPServer(TestCase):
         }
 
         with patch.object(ProfileDiffTask, "execute", return_value=mock_result):
-            result = await self.mcp_server._profile_diff({"model": "my_model", "columns": ["id"]})
+            result = await server._profile_diff({"model": "my_model", "columns": ["id"]})
 
         # Verify the result
         assert "columns" in result
         mock_result.model_dump.assert_called_once_with(mode="json")
 
     @pytest.mark.asyncio
-    async def test_error_handling(self):
+    async def test_error_handling(self, mcp_server):
         """Test error handling in tool execution"""
+        server, mock_context = mcp_server
         # Make get_lineage_diff raise an exception
-        self.mock_context.get_lineage_diff.side_effect = Exception("Test error")
+        mock_context.get_lineage_diff.side_effect = Exception("Test error")
 
         # The method should raise the exception
         with pytest.raises(Exception, match="Test error"):
-            await self.mcp_server._get_lineage_diff({})
+            await server._get_lineage_diff({})
 
 
-class TestRunMCPServer(TestCase):
+class TestRunMCPServer:
     """Test cases for the run_mcp_server function"""
 
     @pytest.mark.asyncio

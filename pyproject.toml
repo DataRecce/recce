@@ -3,3 +3,9 @@ line-length = 120
 
 [tool.isort]
 profile = "black"
+
+[tool.pytest.ini_options]
+markers = [
+    "asyncio: mark test as an async test (used by pytest-asyncio)",
+]
+asyncio_default_fixture_loop_scope = "function"
