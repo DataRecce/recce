@@ -21,6 +21,6 @@ RECCE_CLOUD_PASSWORD_MISSING = ErrorMessage(
 )
 
 RECCE_API_TOKEN_MISSING = ErrorMessage(
-    error_message="No Recc API token is provided",
+    error_message="No Recce API token is provided",
     hint_message="Please login to Recce Cloud and copy the API token from the settings page",
 )
