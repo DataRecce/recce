@@ -66,6 +66,68 @@ def create_state_loader(review_mode, cloud_mode, state_file, cloud_options):
         exit(1)
 
 
+def create_state_loader_by_args(state_file=None, **kwargs):
+    """
+    Create a state loader based on CLI arguments.
+
+    This function handles the cloud options logic that is shared between
+    server and mcp-server commands.
+
+    Args:
+        state_file: Optional path to state file
+        **kwargs: CLI arguments including api_token, cloud, review, session_id, share_url, etc.
+
+    Returns:
+        state_loader: The created state loader instance
+    """
+    from rich.console import Console
+
+    console = Console()
+
+    api_token = kwargs.get("api_token")
+    is_review = kwargs.get("review", False)
+    is_cloud = kwargs.get("cloud", False)
+    cloud_options = None
+
+    # Handle share_url and session_id
+    share_url = kwargs.get("share_url")
+    session_id = kwargs.get("session_id")
+
+    if share_url:
+        share_id = share_url.split("/")[-1]
+        if not share_id:
+            console.print("[[red]Error[/red]] Invalid share URL format.")
+            exit(1)
+
+    if is_cloud:
+        # Cloud mode
+        if share_url:
+            is_review = kwargs["review"] = True
+            cloud_options = {
+                "host": kwargs.get("state_file_host"),
+                "api_token": api_token,
+                "share_id": share_id,
+            }
+        elif session_id:
+            is_review = kwargs["review"] = True
+            cloud_options = {
+                "host": kwargs.get("state_file_host"),
+                "api_token": api_token,
+                "session_id": session_id,
+            }
+        else:
+            cloud_options = {
+                "host": kwargs.get("state_file_host"),
+                "github_token": kwargs.get("cloud_token"),
+                "password": kwargs.get("password"),
+            }
+
+    # Create state loader
+    state_loader = create_state_loader(is_review, is_cloud, state_file, cloud_options)
+
+    return state_loader
+
+
 def handle_debug_flag(**kwargs):
     if kwargs.get("debug"):
         import logging
@@ -454,10 +516,11 @@ def server(host, port, lifetime, state_file=None, **kwargs):
         "read_only": False,
     }
     console = Console()
-    cloud_options = None
 
+    # Prepare API token
     try:
         api_token = prepare_api_token(**kwargs)
+        kwargs["api_token"] = api_token
     except RecceConfigException:
         show_invalid_api_token_message()
         exit(1)
@@ -465,41 +528,11 @@ def server(host, port, lifetime, state_file=None, **kwargs):
         "api_token": api_token,
     }
 
-    share_url = kwargs.get("share_url")
-    session_id = kwargs.get("session_id")
-    if share_url:
-        share_id = share_url.split("/")[-1]
-        if not share_id:
-            console.print("[[red]Error[/red]] Invalid share URL format.")
-            exit(1)
-
-    if is_cloud:
-        # Cloud mode
-        if share_url:
-            is_review = kwargs["review"] = True
-            cloud_options = {
-                "host": kwargs.get("state_file_host"),
-                "api_token": api_token,
-                "share_id": share_id,
-            }
-        elif session_id:
-            is_review = kwargs["review"] = True
-            cloud_options = {
-                "host": kwargs.get("state_file_host"),
-                "api_token": api_token,
-                "session_id": session_id,
-            }
-        else:
-            cloud_options = {
-                "host": kwargs.get("state_file_host"),
-                "github_token": kwargs.get("cloud_token"),
-                "password": kwargs.get("password"),
-            }
-    else:
-        # Check Single Environment Onboarding Mode if the review mode is False
+    # Check Single Environment Onboarding Mode if not in cloud mode and not in review mode
+    if not is_cloud and not is_review:
         project_dir_path = Path(kwargs.get("project_dir") or "./")
         target_base_path = project_dir_path.joinpath(Path(kwargs.get("target_base_path", "target-base")))
-        if not target_base_path.is_dir() and not is_review:
+        if not target_base_path.is_dir():
             # Mark as single env onboarding mode if user provides the target-path only
             flag["single_env_onboarding"] = True
             flag["show_relaunch_hint"] = True
@@ -520,7 +553,8 @@ def server(host, port, lifetime, state_file=None, **kwargs):
     # Onboarding State logic update here
     update_onboarding_state(api_token, flag.get("single_env_onboarding"))
 
-    state_loader = create_state_loader(is_review, is_cloud, state_file, cloud_options)
+    # Create state loader using shared function
+    state_loader = create_state_loader_by_args(state_file, **kwargs)
 
     if not state_loader.verify():
         error, hint = state_loader.error_and_hint
@@ -1603,6 +1637,9 @@ def read_only(ctx, state_file=None, **kwargs):
 @add_options(sqlmesh_related_options)
 @add_options(recce_options)
 @add_options(recce_dbt_artifact_dir_options)
+@add_options(recce_cloud_options)
+@add_options(recce_cloud_auth_options)
+@add_options(recce_hidden_options)
 def mcp_server(**kwargs):
     """
     Start the Recce MCP (Model Context Protocol) server
@@ -1630,7 +1667,25 @@ def mcp_server(**kwargs):
     from rich.console import Console
 
     console = Console()
+
+    # Initialize Recce Config
+    RecceConfig(config_file=kwargs.get("config"))
+
     handle_debug_flag(**kwargs)
+
+    # Prepare API token
+    try:
+        api_token = prepare_api_token(**kwargs)
+        kwargs["api_token"] = api_token
+    except RecceConfigException:
+        show_invalid_api_token_message()
+        exit(1)
+
+    # Create state loader using shared function (if cloud mode is enabled)
+    is_cloud = kwargs.get("cloud", False)
+    if is_cloud:
+        state_loader = create_state_loader_by_args(None, **kwargs)
+        kwargs["state_loader"] = state_loader
 
     try:
         # Import here to avoid import errors if mcp is not installed
