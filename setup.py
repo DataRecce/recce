@@ -47,6 +47,7 @@ setup(
         "GitPython",
         "PyGithub",
         "sqlglot",
+        "mcp>=1.0.0",
     ],
     tests_require=["pytest"],
     extras_require={
