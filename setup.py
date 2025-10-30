@@ -50,8 +50,12 @@ setup(
     ],
     tests_require=["pytest"],
     extras_require={
+        "mcp": [
+            "mcp>=1.0.0",
+        ],
         "dev": [
             "pytest>=4.6",
+            "pytest-asyncio",
             "pytest-flake8",
             "black>=25.1.0",
             "isort>=6.0.1",
