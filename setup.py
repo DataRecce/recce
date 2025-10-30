@@ -47,10 +47,12 @@ setup(
         "GitPython",
         "PyGithub",
         "sqlglot",
-        "mcp>=1.0.0",
     ],
     tests_require=["pytest"],
     extras_require={
+        "mcp": [
+            "mcp>=1.0.0",
+        ],
         "dev": [
             "pytest>=4.6",
             "pytest-asyncio",

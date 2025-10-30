@@ -2,12 +2,15 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from recce.core import RecceContext
-from recce.mcp_server import RecceMCPServer, run_mcp_server
-from recce.models.types import LineageDiff
-from recce.tasks.profile import ProfileDiffTask
-from recce.tasks.query import QueryDiffTask, QueryTask
-from recce.tasks.rowcount import RowCountDiffTask
+# Skip all tests in this module if mcp is not available
+pytest.importorskip("mcp")
+
+from recce.core import RecceContext  # noqa: E402
+from recce.mcp_server import RecceMCPServer, run_mcp_server  # noqa: E402
+from recce.models.types import LineageDiff  # noqa: E402
+from recce.tasks.profile import ProfileDiffTask  # noqa: E402
+from recce.tasks.query import QueryDiffTask, QueryTask  # noqa: E402
+from recce.tasks.rowcount import RowCountDiffTask  # noqa: E402
 
 
 @pytest.fixture
