@@ -1642,7 +1642,7 @@ def read_only(ctx, state_file=None, **kwargs):
 @add_options(recce_hidden_options)
 def mcp_server(**kwargs):
     """
-    Start the Recce MCP (Model Context Protocol) server
+    [Experiment] Start the Recce MCP (Model Context Protocol) server
 
     The MCP server provides a stdio-based interface for AI assistants and tools
     to interact with Recce's data validation capabilities.
@@ -1667,6 +1667,13 @@ def mcp_server(**kwargs):
     from rich.console import Console
 
     console = Console()
+    try:
+        # Import here to avoid import errors if mcp is not installed
+        from recce.mcp_server import run_mcp_server
+    except ImportError as e:
+        console.print(f"[[red]Error[/red]] Failed to import MCP server: {e}")
+        console.print(r"Please install the MCP package: pip install 'recce\[mcp]'")
+        exit(1)
 
     # Initialize Recce Config
     RecceConfig(config_file=kwargs.get("config"))
@@ -1688,19 +1695,11 @@ def mcp_server(**kwargs):
         kwargs["state_loader"] = state_loader
 
     try:
-        # Import here to avoid import errors if mcp is not installed
-        from recce.mcp_server import run_mcp_server
-
         console.print("Starting Recce MCP Server...")
         console.print("Available tools: get_lineage_diff, row_count_diff, query, query_diff, profile_diff")
 
         # Run the async server
         asyncio.run(run_mcp_server(**kwargs))
-
-    except ImportError as e:
-        console.print(f"[[red]Error[/red]] Failed to import MCP server: {e}")
-        console.print("Please install the MCP package: pip install mcp")
-        exit(1)
     except Exception as e:
         console.print(f"[[red]Error[/red]] Failed to start MCP server: {e}")
         if kwargs.get("debug"):
