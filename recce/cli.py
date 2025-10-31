@@ -66,6 +66,15 @@ def create_state_loader(review_mode, cloud_mode, state_file, cloud_options):
         exit(1)
 
 
+def patch_derived_args(args):
+    """
+    Patch derived args based on other args.
+    """
+    if args.get("session_id") or args.get("share_url"):
+        args["cloud"] = True
+        args["review"] = True
+
+
 def create_state_loader_by_args(state_file=None, **kwargs):
     """
     Create a state loader based on CLI arguments.
@@ -102,14 +111,12 @@ def create_state_loader_by_args(state_file=None, **kwargs):
     if is_cloud:
         # Cloud mode
         if share_url:
-            is_review = kwargs["review"] = True
             cloud_options = {
                 "host": kwargs.get("state_file_host"),
                 "api_token": api_token,
                 "share_id": share_id,
             }
         elif session_id:
-            is_review = kwargs["review"] = True
             cloud_options = {
                 "host": kwargs.get("state_file_host"),
                 "api_token": api_token,
@@ -506,6 +513,8 @@ def server(host, port, lifetime, state_file=None, **kwargs):
     RecceConfig(config_file=kwargs.get("config"))
 
     handle_debug_flag(**kwargs)
+    patch_derived_args(kwargs)
+
     server_mode = kwargs.get("mode") if kwargs.get("mode") else RecceServerMode.server
     is_review = kwargs.get("review", False)
     is_cloud = kwargs.get("cloud", False)
@@ -1679,6 +1688,7 @@ def mcp_server(**kwargs):
     RecceConfig(config_file=kwargs.get("config"))
 
     handle_debug_flag(**kwargs)
+    patch_derived_args(kwargs)
 
     # Prepare API token
     try:
