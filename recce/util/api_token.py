@@ -37,7 +37,7 @@ def prepare_api_token(
         # Task Token
         valid = RecceCloud(new_api_token).verify_token()
         if not valid:
-            raise RecceConfigException("Invalid Recce Cloud API token")
+            raise RecceConfigException("Invalid Recce Cloud Task token")
         api_token = new_api_token
     elif api_token != new_api_token and new_api_token is not None:
         # Handle the API token provided by option `--api-token`
