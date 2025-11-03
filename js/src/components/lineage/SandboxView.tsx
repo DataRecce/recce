@@ -123,8 +123,8 @@ function SandboxEditorLabels({
   let schema = "N/A";
   if (lineageGraph?.nodes[currentModelID]) {
     const value = lineageGraph.nodes[currentModelID];
-    if (value.data.current?.schema) {
-      schema = value.data.current.schema;
+    if (value.data.data.current?.schema) {
+      schema = value.data.data.current.schema;
     }
   }
 

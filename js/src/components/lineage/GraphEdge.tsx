@@ -1,9 +1,9 @@
-import { BaseEdge, EdgeProps, getBezierPath } from "reactflow";
+import { BaseEdge, EdgeProps, getBezierPath } from "@xyflow/react";
 import { LineageGraphEdge } from "./lineage";
 import { getIconForChangeStatus } from "./styles";
 
 import "./styles.css";
-import { useLineageViewContext, useLineageViewContextSafe } from "./LineageViewContext";
+import { useLineageViewContextSafe } from "./LineageViewContext";
 
 type GraphEdgeProps = EdgeProps<LineageGraphEdge>;
 

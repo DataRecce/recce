@@ -18,13 +18,13 @@ function SchemaDiffCard({ node, ...props }: SchemaDiffCardProps) {
         <Card.Description>
           <HStack gap={"8px"} p={"16px"}>
             <ResourceTypeTag node={node} />
-            {node.resourceType === "model" && <RowCountDiffTag node={node} />}
+            {node.data.resourceType === "model" && <RowCountDiffTag node={node} />}
           </HStack>
         </Card.Description>
       </Card.Header>
       <Card.Body>
         <Flex>
-          <SchemaView base={node.data.base} current={node.data.current} />
+          <SchemaView base={node.data.data.base} current={node.data.data.current} />
         </Flex>
       </Card.Body>
     </Card.Root>
@@ -37,13 +37,13 @@ function listChangedNodes(lineageGraph: LineageGraph) {
   lineageGraph.modifiedSet.forEach((nodeId) => {
     const node = allNodes[nodeId];
     const columnDiffStatus = mergeKeysWithStatus(
-      Object.keys(node.data.base?.columns ?? {}),
-      Object.keys(node.data.current?.columns ?? {}),
+      Object.keys(node.data.data.base?.columns ?? {}),
+      Object.keys(node.data.data.current?.columns ?? {}),
     );
     const isSchemaChanged = !Object.values(columnDiffStatus).every((el) => el === undefined);
     // We only want to show nodes that have real schema changes.
     // It doesn't include added or deleted model.
-    if (isSchemaChanged && node.data.base && node.data.current) changedNodes.push(node);
+    if (isSchemaChanged && node.data.data.base && node.data.data.current) changedNodes.push(node);
   });
   return changedNodes;
 }
@@ -80,7 +80,7 @@ export function SchemaSummary({ lineageGraph }: Props) {
               width={"100%"}
               backgroundColor={"lightgray"}>
               {changedNodes.map((node) => {
-                return <SchemaDiffCard key={node.id} title={node.name} node={node} />;
+                return <SchemaDiffCard key={node.id} title={node.data.name} node={node} />;
               })}
             </SimpleGrid>
           </>

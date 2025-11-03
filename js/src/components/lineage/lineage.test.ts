@@ -73,10 +73,10 @@ test("lineage diff", () => {
 
   expect(Object.keys(nodes).length).toBe(4);
   expect(Object.keys(edges).length).toBe(4);
-  expect(nodes.d.from).toBe("both");
-  expect(nodes.c.children.d.from).toBe("current");
-  expect(nodes.d.parents.c.from).toBe("current");
-  expect(edges.c_d.from).toBe("current");
+  expect(nodes.d.data.from).toBe("both");
+  expect(nodes.c.data.children.d.data?.from).toBe("current");
+  expect(nodes.d.data.parents.c.data?.from).toBe("current");
+  expect(edges.c_d.data?.from).toBe("current");
 });
 
 test("lineage diff 2", () => {
@@ -158,13 +158,13 @@ test("lineage diff 2", () => {
 
   expect(Object.keys(nodes).length).toBe(5);
   expect(Object.keys(edges).length).toBe(4);
-  expect(nodes.a.changeStatus).toBe("removed");
-  expect(nodes.a2.changeStatus).toBe("added");
-  expect(nodes.b.changeStatus).toBeUndefined();
-  expect(nodes.c.changeStatus).toBe("modified");
-  expect(nodes.d.changeStatus).toBeUndefined();
+  expect(nodes.a.data.changeStatus).toBe("removed");
+  expect(nodes.a2.data.changeStatus).toBe("added");
+  expect(nodes.b.data.changeStatus).toBeUndefined();
+  expect(nodes.c.data.changeStatus).toBe("modified");
+  expect(nodes.d.data.changeStatus).toBeUndefined();
 
-  expect(nodes.b.parents.a.changeStatus).toBe("removed");
-  expect(nodes.b.parents.a2.changeStatus).toBe("added");
-  expect(nodes.b.children.c.changeStatus).toBeUndefined();
+  expect(nodes.b.data.parents.a.data?.changeStatus).toBe("removed");
+  expect(nodes.b.data.parents.a2.data?.changeStatus).toBe("added");
+  expect(nodes.b.data.children.c.data?.changeStatus).toBeUndefined();
 });

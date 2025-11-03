@@ -137,12 +137,12 @@ function calculateChangeSummary(lineageGraph: LineageGraph) {
   let col_changed = 0;
 
   modifiedSet.forEach((nodeId) => {
-    if (lineageGraph.nodes[nodeId].changeStatus === "added") adds++;
-    else if (lineageGraph.nodes[nodeId].changeStatus === "removed") removes++;
-    else if (lineageGraph.nodes[nodeId].changeStatus === "modified") modifies++;
+    if (lineageGraph.nodes[nodeId].data.changeStatus === "added") adds++;
+    else if (lineageGraph.nodes[nodeId].data.changeStatus === "removed") removes++;
+    else if (lineageGraph.nodes[nodeId].data.changeStatus === "modified") modifies++;
 
-    const base = lineageGraph.nodes[nodeId].data.base;
-    const current = lineageGraph.nodes[nodeId].data.current;
+    const base = lineageGraph.nodes[nodeId].data.data.base;
+    const current = lineageGraph.nodes[nodeId].data.data.current;
     const columnChange = calculateColumnChange(base, current);
     col_added += columnChange.adds;
     col_removed += columnChange.removes;

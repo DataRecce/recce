@@ -5,6 +5,10 @@ import {
   selectDownstream,
   selectUpstream,
   toReactFlow,
+  LineageGraphColumnNode,
+  LineageGraphNodes,
+  LineageGraphEdge,
+  isLineageGraphNode,
 } from "./lineage";
 import {
   Box,
@@ -29,7 +33,8 @@ import React, {
   useState,
   forwardRef,
 } from "react";
-import ReactFlow, {
+import {
+  ReactFlow,
   Node,
   useEdgesState,
   useNodesState,
@@ -41,8 +46,8 @@ import ReactFlow, {
   useReactFlow,
   getNodesBounds,
   NodeProps,
-} from "reactflow";
-import "reactflow/dist/style.css";
+} from "@xyflow/react";
+import "@xyflow/react/dist/style.css";
 import { GraphNode } from "./GraphNode";
 import GraphEdge from "./GraphEdge";
 import { getIconForChangeStatus } from "./styles";
@@ -99,14 +104,14 @@ export interface LineageViewRef {
 }
 
 const nodeTypes = {
-  customNode: GraphNode,
-  customColumnNode: GraphColumnNode,
+  lineageGraphNode: GraphNode,
+  lineageGraphColumnNode: GraphColumnNode,
 };
-const initialNodes: Node<LineageGraphNode>[] = [];
+const initialNodes: LineageGraphNode[] = [];
 const edgeTypes = {
-  customEdge: GraphEdge,
+  lineageGraphEdge: GraphEdge,
 };
-const nodeColor = (node: Node<LineageGraphNode>) => {
+const nodeColor = (node: LineageGraphNode) => {
   return node.data.changeStatus
     ? getIconForChangeStatus(node.data.changeStatus).hexColor
     : ("lightgray" as string);
@@ -201,8 +206,8 @@ export function PrivateLineageView(
       failToast("Failed to copy image to clipboard", error);
     },
   });
-  const [nodes, setNodes, onNodesChange] = useNodesState(initialNodes);
-  const [edges, setEdges, onEdgesChange] = useEdgesState([]);
+  const [nodes, setNodes, onNodesChange] = useNodesState<LineageGraphNodes>(initialNodes);
+  const [edges, setEdges, onEdgesChange] = useEdgesState<LineageGraphEdge>([]);
 
   const { lineageGraph, retchLineageGraph, isLoading, error, refetchRunsAggregated } =
     useLineageGraphContext();
@@ -224,7 +229,7 @@ export function PrivateLineageView(
   const [nodeColumnSetMap, setNodeColumSetMap] = useState<NodeColumnSetMap>({});
 
   const findNodeByName = (name: string) => {
-    return nodes.find((n) => n.data.name === name);
+    return nodes.filter(isLineageGraphNode).find((n) => n.data.name === name);
   };
 
   // Expose the function to the parent via the ref
@@ -243,7 +248,7 @@ export function PrivateLineageView(
    */
   const viewMode = viewOptions.view_mode ?? "changed_models";
   const filteredNodeIds: string[] = useMemo(() => {
-    return nodes.filter((node) => node.type === "customNode").map((node) => node.id);
+    return nodes.filter((node) => node.type === "lineageGraphNode").map((node) => node.id);
   }, [nodes]);
   const filteredNodes = useMemo(() => {
     if (!lineageGraph) {
@@ -431,7 +436,7 @@ export function PrivateLineageView(
     setFocusedNodeId(undefined);
   };
 
-  const centerNode = (nodeId: string) => {
+  const centerNode = async (nodeId: string) => {
     let node = nodes.find((n) => n.id === nodeId);
     if (!node) {
       return;
@@ -442,23 +447,26 @@ export function PrivateLineageView(
       node = nodes.find((n) => n.id === parentId) ?? node;
     }
 
-    if (node.width && node.height) {
-      const x = node.position.x + node.width / 2;
-      const y = node.position.y + node.height / 2;
-      const zoom = reactFlow.getZoom();
+    if (node.measured != null) {
+      const { width, height } = node.measured;
+      if (width && height) {
+        const x = node.position.x + width / 2;
+        const y = node.position.y + height / 2;
+        const zoom = reactFlow.getZoom();
 
-      reactFlow.setCenter(x, y, { zoom, duration: 200 });
+        await reactFlow.setCenter(x, y, { zoom, duration: 200 });
+      }
     }
   };
 
   const navToCheck = useNavToCheck();
 
-  useResizeObserver(refResize, () => {
+  useResizeObserver(refResize, async () => {
     if (selectMode !== "selecting") {
       if (!focusedNodeId) {
-        reactFlow.fitView({ nodes, duration: 200 });
+        await reactFlow.fitView({ nodes, duration: 200 });
       } else {
-        centerNode(focusedNodeId);
+        await centerNode(focusedNodeId);
       }
     }
   });
@@ -500,7 +508,7 @@ export function PrivateLineageView(
     }
   };
 
-  const onColumnNodeClick = (event: React.MouseEvent, node: Node) => {
+  const onColumnNodeClick = (event: React.MouseEvent, node: LineageGraphColumnNode) => {
     if (selectMode) {
       return;
     }
@@ -518,7 +526,7 @@ export function PrivateLineageView(
     }
 
     if (node.type === "customColumnNode") {
-      onColumnNodeClick(event, node);
+      onColumnNodeClick(event, node as LineageGraphColumnNode);
       return;
     }
 
@@ -626,7 +634,7 @@ export function PrivateLineageView(
     if (fitView) {
       await new Promise((resolve) => setTimeout(resolve, 1));
       (() => {
-        reactFlow.fitView({ nodes: newNodes, duration: 200 });
+        void reactFlow.fitView({ nodes: newNodes, duration: 200 });
       })();
     }
   };
@@ -680,7 +688,7 @@ export function PrivateLineageView(
             ...viewOptions,
             view_mode: "all",
           });
-        } else if (focusedNode !== node.data) {
+        } else if (isLineageGraphNode(node) && focusedNode !== node.data.data) {
           // Only select the node if it is not already selected
           onNodeClick(mockEvent, node);
         }
@@ -733,7 +741,7 @@ export function PrivateLineageView(
     lineageViewContextMenu.closeContextMenu();
   };
 
-  const onNodeContextMenu = (event: React.MouseEvent, node: Node | NodeProps) => {
+  const onNodeContextMenu = (event: React.MouseEvent, node: LineageGraphNodes) => {
     if (!interactive) {
       return;
     }
@@ -784,7 +792,7 @@ export function PrivateLineageView(
 
   const contextValue: LineageViewContextType = {
     interactive,
-    nodes,
+    nodes: nodes.filter(isLineageGraphNode),
     focusedNode,
     selectedNodes,
     viewOptions,
@@ -818,9 +826,9 @@ export function PrivateLineageView(
         const cll = viewOptions.column_level_lineage;
 
         if (cll.node_id && !cll.column) {
-          return cll.node_id === nodeId && !!node?.changeStatus;
+          return cll.node_id === nodeId && !!node?.data.changeStatus;
         } else {
-          return !!node?.changeStatus;
+          return !!node?.data.changeStatus;
         }
       }
 
@@ -843,7 +851,7 @@ export function PrivateLineageView(
       } else if (focusedNode) {
         runAction(
           "row_count",
-          { node_names: [focusedNode.name] },
+          { node_names: [focusedNode.data.name] },
           { showForm: false, showLast: false },
         );
         trackMultiNodesAction({ type: "row_count", selected: "single" });
@@ -864,7 +872,7 @@ export function PrivateLineageView(
       } else if (focusedNode) {
         runAction(
           "row_count_diff",
-          { node_names: [focusedNode.name] },
+          { node_names: [focusedNode.data.name] },
           { showForm: false, showLast: false },
         );
         trackMultiNodesAction({ type: "row_count_diff", selected: "single" });
@@ -883,7 +891,7 @@ export function PrivateLineageView(
         runAction(
           "value_diff",
           {
-            model: focusedNode.name,
+            model: focusedNode.data.name,
           },
           { showForm: true, showLast: false },
         );
@@ -1039,14 +1047,18 @@ export function PrivateLineageView(
             onNodeClick={onNodeClick}
             onNodeContextMenu={onNodeContextMenu}
             onClick={closeContextMenu}
-            onInit={() => {
+            onInit={async () => {
               if (isModelsChanged) {
-                reactFlow.fitView();
+                await reactFlow.fitView();
               } else {
-                const bounds = getNodesBounds(nodes);
-                reactFlow.setCenter(bounds.x + bounds.width / 2, bounds.y + bounds.height / 2, {
-                  zoom: 1,
-                });
+                const bounds = getNodesBounds(nodes, {});
+                await reactFlow.setCenter(
+                  bounds.x + bounds.width / 2,
+                  bounds.y + bounds.height / 2,
+                  {
+                    zoom: 1,
+                  },
+                );
               }
             }}
             maxZoom={1}

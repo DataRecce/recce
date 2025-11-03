@@ -1,5 +1,47 @@
 import { NodeData } from "@/lib/api/info";
-import { mergeColumns } from "./schema";
+// import { mergeColumns } from "./schema";
+import { mergeKeysWithStatus } from "@/lib/mergeKeys";
+//
+
+// TODO mergeColumns import is throwing an error, fake fow now
+interface SchemaDiffRow {
+  name: string;
+  reordered?: boolean;
+  currentIndex?: number;
+  baseIndex?: number;
+  currentType?: string;
+  baseType?: string;
+}
+
+type SchemaDiff = Record<string, SchemaDiffRow>;
+
+// Fake mergeColumns for now
+export function mergeColumns(
+  baseColumns: NodeData["columns"] = {},
+  currentColumns: NodeData["columns"] = {},
+): SchemaDiff {
+  const result: SchemaDiff = {};
+  const mergedStatus = mergeKeysWithStatus(Object.keys(baseColumns), Object.keys(currentColumns));
+
+  Object.entries(mergedStatus).forEach(([name, status]) => {
+    result[name] = {
+      name,
+      reordered: status === "reordered",
+    };
+  });
+
+  Object.entries(baseColumns).map(([name, column], index) => {
+    result[name].baseIndex = index + 1;
+    result[name].baseType = column.type;
+  });
+
+  Object.entries(currentColumns).map(([name, column], index) => {
+    result[name].currentIndex = index + 1;
+    result[name].currentType = column.type;
+  });
+
+  return result;
+}
 
 function _schema(columns: Record<string, string>): NodeData["columns"] {
   const result: ReturnType<typeof _schema> = {};

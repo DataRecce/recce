@@ -1,8 +1,8 @@
 /* eslint-disable @typescript-eslint/no-unnecessary-condition */
 // TODO LineageData typing needs to be fully thought out to handle the edge-cases - JMS
-import { Node, Edge, Position } from "reactflow";
-import { getNeighborSet, union } from "./graph";
-import dagre from "dagre";
+import { Node, Edge, Position } from "@xyflow/react";
+import { getNeighborSet } from "./graph";
+import dagre from "@dagrejs/dagre";
 import {
   CatalogMetadata,
   LineageData,
@@ -10,47 +10,57 @@ import {
   ManifestMetadata,
   NodeData,
 } from "@/lib/api/info";
-import { CllInput, CllNodeData, ColumnLineageData } from "@/lib/api/cll";
+import { ColumnLineageData } from "@/lib/api/cll";
 
 export const COLUMN_HEIGHT = 20;
 /**
  * The types for internal data structures.
  */
 
-export interface LineageGraphNode {
-  id: string;
-  name: string;
-  from: "both" | "base" | "current";
-  data: {
-    base?: NodeData;
-    current?: NodeData;
-  };
-  changeStatus?: "added" | "removed" | "modified";
-  change?: {
-    category: "breaking" | "non_breaking" | "partial_breaking" | "unknown";
-    columns: Record<string, "added" | "removed" | "modified"> | null;
-  };
-  resourceType?: string;
-  packageName?: string;
-  parents: Record<string, LineageGraphEdge>;
-  children: Record<string, LineageGraphEdge>;
-}
+type LineageFrom = "both" | "base" | "current";
 
-export interface LinageGraphColumnNode {
-  node: LineageGraphNode;
-  column: string;
-  type: string;
-  transformationType?: string;
-  changeStatus?: "added" | "removed" | "modified";
-}
+export type LineageGraphNode = Node<
+  {
+    id: string;
+    name: string;
+    from: LineageFrom;
+    data: {
+      base?: NodeData;
+      current?: NodeData;
+    };
+    changeStatus?: "added" | "removed" | "modified";
+    change?: {
+      category: "breaking" | "non_breaking" | "partial_breaking" | "unknown";
+      columns: Record<string, "added" | "removed" | "modified"> | null;
+    };
+    resourceType?: string;
+    packageName?: string;
+    parents: Record<string, LineageGraphEdge>;
+    children: Record<string, LineageGraphEdge>;
+  },
+  "lineageGraphNode"
+>;
 
-export interface LineageGraphEdge {
-  id: string;
-  from: "both" | "base" | "current";
-  changeStatus?: "added" | "removed";
-  parent: LineageGraphNode;
-  child: LineageGraphNode;
-}
+export type LineageGraphColumnNode = Node<
+  {
+    node: LineageGraphNode["data"];
+    column: string;
+    type: string;
+    transformationType?: string;
+    changeStatus?: "added" | "removed" | "modified";
+  },
+  "lineageGraphColumnNode"
+>;
+
+export type LineageGraphEdge = Edge<
+  {
+    from: LineageFrom;
+    changeStatus?: "added" | "removed";
+  },
+  "lineageGraphEdge"
+>;
+
+export type LineageGraphNodes = LineageGraphNode | LineageGraphColumnNode;
 
 export interface LineageGraph {
   nodes: Record<string, LineageGraphNode>;
@@ -68,6 +78,14 @@ export interface LineageGraph {
   };
 }
 
+export function isLineageGraphNode(node: LineageGraphNodes): node is LineageGraphNode {
+  return node.type === "lineageGraphNode";
+}
+
+export function isLineageGraphColumnNode(node: LineageGraphNodes): node is LineageGraphColumnNode {
+  return node.type === "lineageGraphColumnNode";
+}
+
 export type NodeColumnSetMap = Record<string, Set<string>>;
 
 export function buildLineageGraph(
@@ -80,27 +98,35 @@ export function buildLineageGraph(
   const buildNode = (key: string, from: "base" | "current"): LineageGraphNode => {
     return {
       id: key,
-      name: key,
-      data: {},
-      from,
-      parents: {},
-      children: {},
-    };
+      data: {
+        id: key,
+        name: key,
+        from,
+        data: {
+          base: undefined,
+          current: undefined,
+        },
+        parents: {},
+        children: {},
+      },
+      type: "lineageGraphNode",
+      // Return as LineageGraphNode for now
+    } as LineageGraphNode;
   };
 
   for (const [key, nodeData] of Object.entries(base.nodes)) {
     nodes[key] = buildNode(key, "base");
     if (nodeData) {
-      nodes[key].data.base = nodeData;
-      nodes[key].name = nodeData.name;
-      nodes[key].resourceType = nodeData.resource_type;
-      nodes[key].packageName = nodeData.package_name;
+      nodes[key].data.data.base = nodeData;
+      nodes[key].data.name = nodeData.name;
+      nodes[key].data.resourceType = nodeData.resource_type;
+      nodes[key].data.packageName = nodeData.package_name;
     }
   }
 
   for (const [key, nodeData] of Object.entries(current.nodes)) {
     if (nodes[key]) {
-      nodes[key].from = "both";
+      nodes[key].data.from = "both";
     } else {
       nodes[key] = buildNode(key, "current");
     }
@@ -109,10 +135,10 @@ export function buildLineageGraph(
       //  this means either that a) the typing needs to be adjusted
       //  on `current.nodes` or b) the input to `current.nodes`
       //  should default to a value
-      nodes[key].data.current = current.nodes[key];
-      nodes[key].name = nodeData.name;
-      nodes[key].resourceType = nodeData.resource_type;
-      nodes[key].packageName = nodeData.package_name;
+      nodes[key].data.data.current = current.nodes[key];
+      nodes[key].data.name = nodeData.name;
+      nodes[key].data.resourceType = nodeData.resource_type;
+      nodes[key].data.packageName = nodeData.package_name;
     }
   }
 
@@ -128,14 +154,16 @@ export function buildLineageGraph(
       }
       edges[id] = {
         id,
-        from: "base",
-        parent: parentNode,
-        child: childNode,
+        source: parentNode.id,
+        target: childNode.id,
+        data: {
+          from: "base",
+        },
       };
       const edge = edges[id];
 
-      childNode.parents[parent] = edge;
-      parentNode.children[child] = edge;
+      childNode.data.parents[parent] = edge;
+      parentNode.data.children[child] = edge;
     }
   }
 
@@ -149,20 +177,22 @@ export function buildLineageGraph(
         // Skip the edge if the node is not found
         continue;
       }
-      if (edges[id]) {
-        edges[id].from = "both";
+      if (edges[id] && edges[id].data) {
+        edges[id].data.from = "both";
       } else {
         edges[id] = {
           id,
-          from: "current",
-          parent: parentNode,
-          child: childNode,
+          source: parentNode.id,
+          target: childNode.id,
+          data: {
+            from: "current",
+          },
         };
       }
       const edge = edges[id];
 
-      childNode.parents[parent] = edge;
-      parentNode.children[child] = edge;
+      childNode.data.parents[parent] = edge;
+      parentNode.data.children[child] = edge;
     }
   }
 
@@ -171,36 +201,38 @@ export function buildLineageGraph(
   for (const [key, node] of Object.entries(nodes)) {
     const diffNode = diff?.[key];
     if (diffNode) {
-      node.changeStatus = diffNode.change_status;
+      node.data.changeStatus = diffNode.change_status;
       if (diffNode.change) {
-        node.change = {
+        node.data.change = {
           category: diffNode.change.category,
           columns: diffNode.change.columns,
         };
       }
       modifiedSet.push(key);
-    } else if (node.from === "base") {
-      node.changeStatus = "removed";
+    } else if (node.data.from === "base") {
+      node.data.changeStatus = "removed";
       modifiedSet.push(node.id);
-    } else if (node.from === "current") {
-      node.changeStatus = "added";
+    } else if (node.data.from === "current") {
+      node.data.changeStatus = "added";
       modifiedSet.push(node.id);
     } else {
-      const checksum1 = node.data.base?.checksum?.checksum;
-      const checksum2 = node.data.current?.checksum?.checksum;
+      const checksum1 = node.data.data.base?.checksum?.checksum;
+      const checksum2 = node.data.data.current?.checksum?.checksum;
 
       if (checksum1 && checksum2 && checksum1 !== checksum2) {
-        node.changeStatus = "modified";
+        node.data.changeStatus = "modified";
         modifiedSet.push(node.id);
       }
     }
   }
 
   for (const [key, edge] of Object.entries(edges)) {
-    if (edge.from === "base") {
-      edge.changeStatus = "removed";
-    } else if (edge.from === "current") {
-      edge.changeStatus = "added";
+    if (edge.data) {
+      if (edge.data.from === "base") {
+        edge.data.changeStatus = "removed";
+      } else if (edge.data.from === "current") {
+        edge.data.changeStatus = "added";
+      }
     }
   }
 
@@ -226,7 +258,7 @@ export function selectUpstream(lineageGraph: LineageGraph, nodeIds: string[], de
       if (lineageGraph.nodes[key] === undefined) {
         return [];
       }
-      return Object.keys(lineageGraph.nodes[key].parents);
+      return Object.keys(lineageGraph.nodes[key].data.parents);
     },
     degree,
   );
@@ -239,7 +271,7 @@ export function selectDownstream(lineageGraph: LineageGraph, nodeIds: string[], 
       if (lineageGraph.nodes[key] === undefined) {
         return [];
       }
-      return Object.keys(lineageGraph.nodes[key].children);
+      return Object.keys(lineageGraph.nodes[key].data.children);
     },
     degree,
   );
@@ -251,14 +283,14 @@ export function toReactFlow(
     selectedNodes?: string[];
     cll?: ColumnLineageData;
   },
-): [Node[], Edge[], NodeColumnSetMap] {
-  const nodes: Node[] = [];
-  const edges: Edge[] = [];
+): [LineageGraphNodes[], LineageGraphEdge[], NodeColumnSetMap] {
+  const nodes: LineageGraphNodes[] = [];
+  const edges: LineageGraphEdge[] = [];
   const { selectedNodes, cll } = options ?? {};
 
   const nodeColumnSetMap: NodeColumnSetMap = {};
 
-  function getWeight(from: string) {
+  function getWeight(from?: string) {
     if (from === "base") {
       return 0;
     } else if (from === "current") {
@@ -272,8 +304,8 @@ export function toReactFlow(
     a: LineageGraphNode | LineageGraphEdge,
     b: LineageGraphNode | LineageGraphEdge,
   ) {
-    const weightA = getWeight(a.from);
-    const weightB = getWeight(b.from);
+    const weightA = getWeight(a.data?.from);
+    const weightB = getWeight(b.data?.from);
 
     if (weightA < weightB) {
       return -1;
@@ -310,7 +342,7 @@ export function toReactFlow(
         });
       }
 
-      for (const columnName of Object.keys(node.data.current?.columns ?? {})) {
+      for (const columnName of Object.keys(node.data.data.current?.columns ?? {})) {
         const columnKey = `${node.id}_${columnName}`;
         const column = cll?.current?.columns[columnKey];
         const parentMap = cll?.current?.parent_map[columnKey] ?? new Set<string>();
@@ -327,7 +359,7 @@ export function toReactFlow(
           draggable: false,
           className: "no-track-pii-safe",
           data: {
-            node,
+            node: node.data,
             column: column.name,
             type: column.type,
             transformationType: column.transformation_type,
@@ -336,10 +368,10 @@ export function toReactFlow(
           style: {
             zIndex: 9999,
           },
-          type: "customColumnNode",
+          type: "lineageGraphColumnNode",
           targetPosition: Position.Left,
           sourcePosition: Position.Right,
-        });
+        } as LineageGraphColumnNode);
 
         for (const parentColumn of parentMap) {
           const source = parentColumn;
@@ -374,27 +406,33 @@ export function toReactFlow(
       height: height,
       className: "no-track-pii-safe",
       data: {
-        ...node,
+        ...node.data,
       },
-      type: "customNode",
+      type: "lineageGraphNode",
       targetPosition: Position.Left,
       sourcePosition: Position.Right,
-    });
+      style: {
+        width: 300,
+        height: height,
+      },
+    } as LineageGraphNode);
   }
 
   const sortedEdges = Object.values(lineageGraph.edges).sort(compareFn);
   for (const edge of sortedEdges) {
-    if (filterSet && (!filterSet.has(edge.parent.id) || !filterSet.has(edge.child.id))) {
+    if (filterSet && (!filterSet.has(edge.source) || !filterSet.has(edge.target))) {
       continue;
     }
 
     edges.push({
       id: edge.id,
-      type: "customEdge",
-      source: edge.parent.id,
-      target: edge.child.id,
-      data: edge,
-    });
+      type: "lineageGraphEdge",
+      source: edge.source,
+      target: edge.target,
+      data: {
+        ...edge.data,
+      },
+    } as LineageGraphEdge);
   }
 
   layout(nodes, edges);
@@ -402,17 +440,23 @@ export function toReactFlow(
   return [nodes, edges, nodeColumnSetMap];
 }
 
-export const layout = (nodes: Node[], edges: Edge[], direction = "LR") => {
+export const layout = (nodes: LineageGraphNodes[], edges: LineageGraphEdge[], direction = "LR") => {
   const dagreGraph = new dagre.graphlib.Graph();
   dagreGraph.setDefaultEdgeLabel(() => ({}));
 
   dagreGraph.setGraph({ rankdir: direction, ranksep: 50, nodesep: 30 });
 
   nodes.forEach((node) => {
-    if (node.type !== "customNode") {
+    if (!isLineageGraphNode(node)) {
       return;
     }
-    dagreGraph.setNode(node.id, { width: node.width, height: node.height });
+    let width = 300;
+    let height = 60;
+    if (node.style && node.style.height && node.style.width) {
+      width = parseInt(String(node.style.width), 10);
+      height = parseInt(String(node.style.height), 10);
+    }
+    dagreGraph.setNode(node.id, { width, height });
   });
 
   edges.forEach((edge) => {
@@ -422,20 +466,20 @@ export const layout = (nodes: Node[], edges: Edge[], direction = "LR") => {
   dagre.layout(dagreGraph);
 
   nodes.forEach((node) => {
-    if (node.type !== "customNode") {
+    if (!isLineageGraphNode(node)) {
       return;
     }
 
-    const nodeWidth = node.width ?? 300;
-    const nodeHeight = node.height ?? 60;
+    const nodeWidth = node.style?.width ?? 300;
+    const nodeHeight = node.style?.height ?? 60;
 
     const nodeWithPosition = dagreGraph.node(node.id);
 
     // We are shifting the dagre node position (anchor=center center) to the top left
     // so it matches the React Flow node anchor point (top left).
     node.position = {
-      x: nodeWithPosition.x - nodeWidth / 2,
-      y: nodeWithPosition.y - nodeHeight / 2,
+      x: nodeWithPosition.x - Number(nodeWidth) / 2,
+      y: nodeWithPosition.y - Number(nodeHeight) / 2,
     };
 
     return node;

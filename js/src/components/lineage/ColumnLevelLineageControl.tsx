@@ -131,7 +131,7 @@ const ModeMessage = () => {
 
   const nodeName =
     cllInput.node_id in lineageGraph.nodes
-      ? lineageGraph.nodes[cllInput.node_id].name
+      ? lineageGraph.nodes[cllInput.node_id].data.name
       : cllInput.node_id;
 
   if (!cllInput.column) {
