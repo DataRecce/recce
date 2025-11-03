@@ -191,7 +191,7 @@ export const useMultiNodesAction = (
   const runRowCount = async () => {
     const nodeNames = [];
     for (const node of nodes) {
-      if (node.resourceType !== "model") {
+      if (node.data.resourceType !== "model") {
         actionState.actions[node.id] = {
           mode: "multi_nodes",
           status: "skipped",
@@ -199,18 +199,18 @@ export const useMultiNodesAction = (
         };
         onActionNodeUpdated(node);
       } else {
-        nodeNames.push(node.name);
+        nodeNames.push(node.data.name);
       }
     }
 
     const skip = (node: LineageGraphNode) => {
-      if (node.resourceType !== "model") {
+      if (node.data.resourceType !== "model") {
         return "Not a model";
       }
     };
     const getParams = (nodes: LineageGraphNode[]) => {
       const params: RowCountParams = {
-        node_names: nodes.map((node) => node.name),
+        node_names: nodes.map((node) => node.data.name),
       };
 
       return params;
@@ -222,7 +222,7 @@ export const useMultiNodesAction = (
   const runRowCountDiff = async () => {
     const nodeNames = [];
     for (const node of nodes) {
-      if (node.resourceType !== "model") {
+      if (node.data.resourceType !== "model") {
         actionState.actions[node.id] = {
           mode: "multi_nodes",
           status: "skipped",
@@ -230,18 +230,18 @@ export const useMultiNodesAction = (
         };
         onActionNodeUpdated(node);
       } else {
-        nodeNames.push(node.name);
+        nodeNames.push(node.data.name);
       }
     }
 
     const skip = (node: LineageGraphNode) => {
-      if (node.resourceType !== "model") {
+      if (node.data.resourceType !== "model") {
         return "Not a model";
       }
     };
     const getParams = (nodes: LineageGraphNode[]) => {
       const params: RowCountDiffParams = {
-        node_names: nodes.map((node) => node.name),
+        node_names: nodes.map((node) => node.data.name),
       };
 
       return params;
@@ -252,7 +252,7 @@ export const useMultiNodesAction = (
 
   const runValueDiff = async () => {
     await submitRunsPerNodes("value_diff", (node) => {
-      const primaryKey = node.data.current?.primary_key;
+      const primaryKey = node.data.data.current?.primary_key;
       if (!primaryKey) {
         return {
           skipReason: "No primary key found. The first unique column is used as primary key.",
@@ -260,7 +260,7 @@ export const useMultiNodesAction = (
       }
 
       const params: Partial<ValueDiffParams> = {
-        model: node.name,
+        model: node.data.name,
         primary_key: primaryKey,
       };
 

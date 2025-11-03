@@ -45,10 +45,10 @@ export function NodeView({ node, onCloseNode }: NodeViewProps) {
   const [, setLocation] = useLocation();
   const { setSqlQuery, setPrimaryKeys } = useRecceQueryContext();
   const withColumns =
-    node.resourceType === "model" ||
-    node.resourceType === "seed" ||
-    node.resourceType === "source" ||
-    node.resourceType === "snapshot";
+    node.data.resourceType === "model" ||
+    node.data.resourceType === "seed" ||
+    node.data.resourceType === "source" ||
+    node.data.resourceType === "snapshot";
 
   const { open: isSandboxOpen, onOpen: onSandboxOpen, onClose: onSandboxClose } = useDisclosure();
   const { open: isNotificationOpen, onClose: onNotificationClose } = useDisclosure({
@@ -56,12 +56,16 @@ export function NodeView({ node, onCloseNode }: NodeViewProps) {
   });
   const { runAction } = useRecceActionContext();
   const { envInfo, isActionAvailable } = useLineageGraphContext();
-  const { primaryKey } = useModelColumns(node.name);
+  const { primaryKey } = useModelColumns(node.data.name);
   const refetchRowCount = () => {
-    runAction("row_count", { node_names: [node.name] }, { showForm: false, showLast: false });
+    runAction("row_count", { node_names: [node.data.name] }, { showForm: false, showLast: false });
   };
   const refetchRowCountDiff = () => {
-    runAction("row_count_diff", { node_names: [node.name] }, { showForm: false, showLast: false });
+    runAction(
+      "row_count_diff",
+      { node_names: [node.data.name] },
+      { showForm: false, showLast: false },
+    );
   };
   const { featureToggles, singleEnv: isSingleEnvOnboarding } = useRecceInstanceContext();
   const metadataOnly = featureToggles.mode === "metadata only";
@@ -82,16 +86,17 @@ export function NodeView({ node, onCloseNode }: NodeViewProps) {
     return "";
   };
 
-  const isAddedOrRemoved = node.changeStatus === "added" || node.changeStatus === "removed";
+  const isAddedOrRemoved =
+    node.data.changeStatus === "added" || node.data.changeStatus === "removed";
 
-  const baseColumns = Object.keys(node.data.base?.columns ?? {});
-  const currentColumns = Object.keys(node.data.current?.columns ?? {});
+  const baseColumns = Object.keys(node.data.data.base?.columns ?? {});
+  const currentColumns = Object.keys(node.data.data.current?.columns ?? {});
 
   function ExploreChangeMenuButton() {
     const formattedColumns = formatSelectColumns(baseColumns, currentColumns);
-    let query = `select * from {{ ref("${node.name}") }}`;
+    let query = `select * from {{ ref("${node.data.name}") }}`;
     if (formattedColumns.length) {
-      query = `select \n  ${formattedColumns.join("\n  ")}\nfrom {{ ref("${node.name}") }}`;
+      query = `select \n  ${formattedColumns.join("\n  ")}\nfrom {{ ref("${node.data.name}") }}`;
     }
 
     const wrapMenuItem = (
@@ -117,9 +122,9 @@ export function NodeView({ node, onCloseNode }: NodeViewProps) {
     };
 
     if (
-      node.resourceType === "model" ||
-      node.resourceType === "seed" ||
-      node.resourceType === "snapshot"
+      node.data.resourceType === "model" ||
+      node.data.resourceType === "seed" ||
+      node.data.resourceType === "snapshot"
     ) {
       return (
         <Menu.Root>
@@ -143,7 +148,7 @@ export function NodeView({ node, onCloseNode }: NodeViewProps) {
                       if (envInfo?.adapterType === "dbt") {
                         setSqlQuery(query);
                       } else if (envInfo?.adapterType === "sqlmesh") {
-                        setSqlQuery(`select * from ${node.name}`);
+                        setSqlQuery(`select * from ${node.data.name}`);
                       }
                       if (isActionAvailable("query_diff_with_primary_key")) {
                         // Only set primary key if the action is available
@@ -165,7 +170,7 @@ export function NodeView({ node, onCloseNode }: NodeViewProps) {
                         setPrimaryKeys(primaryKey !== undefined ? [primaryKey] : undefined);
                       }
                       onSandboxOpen();
-                      trackPreviewChange({ action: "explore", node: node.name });
+                      trackPreviewChange({ action: "explore", node: node.data.name });
                     }}>
                     <Icon as={findByRunType("sandbox")?.icon} /> Sandbox (Experiment)
                   </Menu.Item>
@@ -193,7 +198,7 @@ export function NodeView({ node, onCloseNode }: NodeViewProps) {
                         runAction(
                           "profile_diff",
                           {
-                            model: node.name,
+                            model: node.data.name,
                           },
                           { showForm: true, showLast: false },
                         );
@@ -211,7 +216,7 @@ export function NodeView({ node, onCloseNode }: NodeViewProps) {
                         runAction(
                           "value_diff",
                           {
-                            model: node.name,
+                            model: node.data.name,
                           },
                           { showForm: true, showLast: false },
                         );
@@ -228,7 +233,7 @@ export function NodeView({ node, onCloseNode }: NodeViewProps) {
                       onClick={() => {
                         runAction(
                           "top_k_diff",
-                          { model: node.name, column_name: "", k: 50 },
+                          { model: node.data.name, column_name: "", k: 50 },
                           { showForm: true },
                         );
                       }}>
@@ -245,7 +250,7 @@ export function NodeView({ node, onCloseNode }: NodeViewProps) {
                         runAction(
                           "histogram_diff",
                           {
-                            model: node.name,
+                            model: node.data.name,
                             column_name: "",
                             column_type: "",
                           },
@@ -281,14 +286,14 @@ export function NodeView({ node, onCloseNode }: NodeViewProps) {
 
   function SingleEnvironmentMenuButton() {
     const formattedColumns = formatSelectColumns(baseColumns, currentColumns);
-    let query = `select * from {{ ref("${node.name}") }}`;
+    let query = `select * from {{ ref("${node.data.name}") }}`;
     if (formattedColumns.length) {
-      query = `select \n  ${formattedColumns.join("\n  ")}\nfrom {{ ref("${node.name}") }}`;
+      query = `select \n  ${formattedColumns.join("\n  ")}\nfrom {{ ref("${node.data.name}") }}`;
     }
     if (
-      node.resourceType === "model" ||
-      node.resourceType === "seed" ||
-      node.resourceType === "snapshot"
+      node.data.resourceType === "model" ||
+      node.data.resourceType === "seed" ||
+      node.data.resourceType === "snapshot"
     ) {
       return (
         <Menu.Root>
@@ -307,7 +312,7 @@ export function NodeView({ node, onCloseNode }: NodeViewProps) {
                     if (envInfo?.adapterType === "dbt") {
                       setSqlQuery(query);
                     } else if (envInfo?.adapterType === "sqlmesh") {
-                      setSqlQuery(`select * from ${node.name}`);
+                      setSqlQuery(`select * from ${node.data.name}`);
                     }
                     setLocation("/query");
                   }}>
@@ -332,7 +337,7 @@ export function NodeView({ node, onCloseNode }: NodeViewProps) {
                       runAction(
                         "profile",
                         {
-                          model: node.name,
+                          model: node.data.name,
                         },
                         { showForm: true, showLast: false },
                       );
@@ -355,7 +360,7 @@ export function NodeView({ node, onCloseNode }: NodeViewProps) {
       <HStack>
         <Box flex="0 1 20%" p="16px">
           <Heading size="sm" className="no-track-pii-safe">
-            {node.name}
+            {node.data.name}
           </Heading>
         </Box>
         <Spacer />
@@ -368,9 +373,9 @@ export function NodeView({ node, onCloseNode }: NodeViewProps) {
       <Box color="gray" paddingLeft={"16px"}>
         <HStack gap={"8px"}>
           <ResourceTypeTag node={node} />
-          {(node.resourceType === "model" ||
-            node.resourceType === "snapshot" ||
-            node.resourceType === "seed") &&
+          {(node.data.resourceType === "model" ||
+            node.data.resourceType === "snapshot" ||
+            node.data.resourceType === "seed") &&
             (isSingleEnvOnboarding ? (
               <RowCountTag node={node} onRefresh={refetchRowCount} />
             ) : (
@@ -399,9 +404,9 @@ export function NodeView({ node, onCloseNode }: NodeViewProps) {
           <Tabs.ContentGroup overflow="auto" height="calc(100% - 42px)">
             <Tabs.Content value="columns" p={0} overflowY="auto" height="100%">
               {isSingleEnvOnboarding ? (
-                <SingleEnvSchemaView current={node.data.current} />
+                <SingleEnvSchemaView current={node.data.data.current} />
               ) : (
-                <SchemaView base={node.data.base} current={node.data.current} />
+                <SchemaView base={node.data.data.base} current={node.data.data.current} />
               )}
             </Tabs.Content>
             <Tabs.Content value="code" height="100%" p={0}>
@@ -410,7 +415,11 @@ export function NodeView({ node, onCloseNode }: NodeViewProps) {
           </Tabs.ContentGroup>
         </Tabs.Root>
       )}
-      <SandboxView isOpen={isSandboxOpen} onClose={onSandboxClose} current={node.data.current} />
+      <SandboxView
+        isOpen={isSandboxOpen}
+        onClose={onSandboxClose}
+        current={node.data.data.current}
+      />
     </Grid>
   );
 }

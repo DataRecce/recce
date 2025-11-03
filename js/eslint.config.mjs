@@ -50,6 +50,7 @@ export default tseslint.config(
       "**/node_modules",
       "**/out",
       "eslint.config.*",
+      "next-env.d.ts",
     ],
   },
   {

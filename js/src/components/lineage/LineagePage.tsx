@@ -1,5 +1,5 @@
 import { LineageView } from "./LineageView";
-import { ReactFlowProvider } from "reactflow";
+import { ReactFlowProvider } from "@xyflow/react";
 
 export function LineagePage() {
   return (

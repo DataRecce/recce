@@ -1,10 +1,15 @@
 import { Menu, useDisclosure, Icon, Portal } from "@chakra-ui/react";
 import { ReactNode, useState } from "react";
 import { BiArrowFromBottom, BiArrowToBottom } from "react-icons/bi";
-import { Node, NodeProps } from "reactflow";
 import { findByRunType } from "../run/registry";
 import { useLineageViewContextSafe } from "./LineageViewContext";
-import { LinageGraphColumnNode, LineageGraphNode } from "./lineage";
+import {
+  isLineageGraphColumnNode,
+  isLineageGraphNode,
+  LineageGraphColumnNode,
+  LineageGraphNode,
+  LineageGraphNodes,
+} from "./lineage";
 import { useRecceActionContext } from "@/lib/hooks/RecceActionContext";
 import { useLineageGraphContext } from "@/lib/hooks/LineageGraphContext";
 import { supportsHistogramDiff } from "../histogram/HistogramDiffForm";
@@ -18,10 +23,10 @@ import { formatSelectColumns } from "@/lib/formatSelect";
 import { FaRegDotCircle } from "react-icons/fa";
 import SetupConnectionPopover from "@/components/app/SetupConnectionPopover";
 
-interface LineageViewContextMenuProps {
+interface LineageViewContextMenuProps<T> {
   x: number;
   y: number;
-  node?: Node | NodeProps;
+  node?: T;
   isOpen: boolean;
   onClose: () => void;
 }
@@ -107,7 +112,7 @@ export const ModelNodeContextMenu = ({
   x,
   y,
   node,
-}: LineageViewContextMenuProps) => {
+}: LineageViewContextMenuProps<LineageGraphNode>) => {
   const menuItems: ContextMenuItem[] = [];
 
   const {
@@ -128,7 +133,7 @@ export const ModelNodeContextMenu = ({
   const isQueryDisabled = featureToggles.disableDatabaseQuery;
 
   // query
-  const { primaryKey } = useModelColumns((node?.data as LineageGraphNode | undefined)?.name);
+  const { primaryKey } = useModelColumns((node?.data as LineageGraphNode | undefined)?.data.name);
   const { setSqlQuery, setPrimaryKeys } = useRecceQueryContext();
   const [, setLocation] = useLocation();
 
@@ -136,7 +141,7 @@ export const ModelNodeContextMenu = ({
     return <></>;
   }
 
-  const modelNode = node.data as LineageGraphNode;
+  const modelNode = node.data;
   const resourceType = modelNode.resourceType;
   const columns = Array.from(getNodeColumnSet(node.id));
   const trackProps: SubmitRunTrackProps = {
@@ -343,7 +348,7 @@ export const ColumnNodeContextMenu = ({
   x,
   y,
   node,
-}: LineageViewContextMenuProps) => {
+}: LineageViewContextMenuProps<LineageGraphColumnNode>) => {
   const menuItems: ContextMenuItem[] = [];
 
   const { runAction } = useRecceActionContext();
@@ -357,7 +362,7 @@ export const ColumnNodeContextMenu = ({
     return <></>;
   }
 
-  const columnNode = node.data as LinageGraphColumnNode;
+  const columnNode = node.data;
   const modelNode = columnNode.node;
   const column = columnNode.column;
   const columnType = columnNode.type;
@@ -429,13 +434,13 @@ export const LineageViewContextMenu = ({
   x,
   y,
   node,
-}: LineageViewContextMenuProps) => {
+}: LineageViewContextMenuProps<LineageGraphNodes>) => {
   const { featureToggles } = useRecceInstanceContext();
   if (featureToggles.disableViewActionDropdown) {
     return <ContextMenu menuItems={[]} open={isOpen} onClose={onClose} x={x} y={y} />;
-  } else if (node?.type === "customNode") {
+  } else if (node && isLineageGraphNode(node)) {
     return <ModelNodeContextMenu x={x} y={y} isOpen={isOpen} onClose={onClose} node={node} />;
-  } else if (node?.type === "customColumnNode") {
+  } else if (node && isLineageGraphColumnNode(node)) {
     return <ColumnNodeContextMenu x={x} y={y} isOpen={isOpen} onClose={onClose} node={node} />;
   }
 };
@@ -446,9 +451,9 @@ export const useLineageViewContextMenu = () => {
     x: 0,
     y: 0,
   });
-  const [node, setNode] = useState<Node | NodeProps>();
+  const [node, setNode] = useState<LineageGraphNodes>();
 
-  const showContextMenu = (x: number, y: number, node: Node | NodeProps) => {
+  const showContextMenu = (x: number, y: number, node: LineageGraphNodes) => {
     setPosition({ x, y });
     setNode(node);
     onOpen();
@@ -460,7 +465,7 @@ export const useLineageViewContextMenu = () => {
     onClose();
   };
 
-  const props: LineageViewContextMenuProps = {
+  const props: LineageViewContextMenuProps<LineageGraphNodes> = {
     x: position.x,
     y: position.y,
     node,

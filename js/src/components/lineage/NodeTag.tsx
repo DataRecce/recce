@@ -15,7 +15,7 @@ import { useEffect, useState } from "react";
 import SetupConnectionPopover from "@/components/app/SetupConnectionPopover";
 
 export function ResourceTypeTag({ node }: { node: LineageGraphNode }) {
-  const { icon: ResourceTypeIcon } = getIconForResourceType(node.resourceType);
+  const { icon: ResourceTypeIcon } = getIconForResourceType(node.data.resourceType);
   return (
     <Tooltip showArrow content="Type of resource">
       <Tag.Root>
@@ -24,7 +24,7 @@ export function ResourceTypeTag({ node }: { node: LineageGraphNode }) {
             <ResourceTypeIcon />
           </Tag.StartElement>
         )}
-        <Tag.Label>{node.resourceType}</Tag.Label>
+        <Tag.Label>{node.data.resourceType}</Tag.Label>
       </Tag.Root>
     </Tooltip>
   );
@@ -135,30 +135,28 @@ export function RowCountDiffTag({
     <Tooltip content={label}>
       <SetupConnectionPopover display={featureToggles.mode === "metadata only"}>
         <Tag.Root asChild>
-          <Text fontSize="xs">
-            <Flex direction="row" alignItems="center" gap="1">
-              {RunTypeIcon && <RunTypeIcon />}
-              {rowsToShow != null || isFetching ? (
-                <SkeletonText loading={false} noOfLines={1} minWidth={"30px"}>
-                  {rowsToShow != null ? <_RowCountByRate rowCount={rowsToShow} /> : "row count"}
-                </SkeletonText>
-              ) : (
-                <span>row count</span>
-              )}
-              {onRefresh && (
-                <IconButton
-                  loading={isFetching}
-                  aria-label="Query Row Count"
-                  size="2xs"
-                  p="0"
-                  variant="ghost"
-                  onClick={onRefresh}
-                  disabled={featureToggles.disableDatabaseQuery}>
-                  <PiRepeat />
-                </IconButton>
-              )}
-            </Flex>
-          </Text>
+          <Flex direction="row" alignItems="center" gap="1">
+            {RunTypeIcon && <RunTypeIcon />}
+            {rowsToShow != null || isFetching ? (
+              <SkeletonText loading={false} noOfLines={1} minWidth={"30px"} fontSize="xs">
+                {rowsToShow != null ? <_RowCountByRate rowCount={rowsToShow} /> : "row count"}
+              </SkeletonText>
+            ) : (
+              <Text fontSize="xs">row count</Text>
+            )}
+            {onRefresh && (
+              <IconButton
+                loading={isFetching}
+                aria-label="Query Row Count"
+                size="2xs"
+                p="0"
+                variant="ghost"
+                onClick={onRefresh}
+                disabled={featureToggles.disableDatabaseQuery}>
+                <PiRepeat />
+              </IconButton>
+            )}
+          </Flex>
         </Tag.Root>
       </SetupConnectionPopover>
     </Tooltip>
@@ -215,7 +213,7 @@ export function RowCountTag({
           p="0"
           variant="ghost"
           onClick={onRefresh}
-          disabled={node.from === "base"}>
+          disabled={node.data.from === "base"}>
           <PiRepeat />
         </IconButton>
       )}
