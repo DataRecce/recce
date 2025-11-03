@@ -476,6 +476,7 @@ def diff(sql, primary_keys: List[str] = None, keep_shape: bool = False, keep_equ
 @add_options(recce_options)
 @add_options(recce_dbt_artifact_dir_options)
 @add_options(recce_cloud_options)
+@add_options(recce_cloud_auth_options)
 @add_options(recce_hidden_options)
 def server(host, port, lifetime, state_file=None, **kwargs):
     """
