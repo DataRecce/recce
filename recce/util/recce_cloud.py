@@ -179,12 +179,22 @@ class RecceCloud:
             )
         return response.json()
 
-    def purge_artifacts(self, pr_info: PullRequestInfo):
-        api_url = f"{self.base_url}/{pr_info.repository}/pulls/{pr_info.id}/artifacts"
+    def purge_artifacts(self, repository: str, pr_id: int = None, branch: str = None):
+        if pr_id is not None:
+            api_url = f"{self.base_url}/{repository}/pulls/{pr_id}/artifacts"
+            error_message = "Failed to purge artifacts from Recce Cloud."
+        elif branch is not None:
+            api_url = f"{self.base_url}/{repository}/commits/{branch}/artifacts"
+            error_message = "Failed to delete artifact from Recce Cloud."
+        else:
+            raise ValueError(
+                "Please either run this command from within a pull request context "
+                "or specify a branch using the --branch option."
+            )
         response = self._request("DELETE", api_url)
         if response.status_code != 204:
             raise RecceCloudException(
-                message="Failed to purge artifacts from Recce Cloud.",
+                message=error_message,
                 reason=response.text,
                 status_code=response.status_code,
             )

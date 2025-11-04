@@ -592,7 +592,7 @@ class RecceCloudStateManager:
 
     def _purge_state_from_recce_cloud(self) -> (bool, str):
         try:
-            RecceCloud(token=self.github_token).purge_artifacts(self.pr_info)
+            RecceCloud(token=self.github_token).purge_artifacts(self.pr_info.repository, pr_id=self.pr_info.id)
         except RecceCloudException as e:
             return False, e.reason
         return True, None
