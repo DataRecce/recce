@@ -9,7 +9,6 @@ from recce_cloud import __version__
 
 
 @click.group()
-@click.version_option(version=__version__)
 def cloud_cli():
     """
     Recce Cloud CLI - Manage Recce Cloud sessions and state files.
@@ -18,6 +17,12 @@ def cloud_cli():
     without the heavy dependencies of the full recce package.
     """
     pass
+
+
+@cloud_cli.command()
+def version():
+    """Show the version of recce-cloud."""
+    click.echo(__version__)
 
 
 if __name__ == "__main__":
