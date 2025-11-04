@@ -185,7 +185,7 @@ class RecceCloud:
             error_message = "Failed to purge artifacts from Recce Cloud."
         elif branch is not None:
             api_url = f"{self.base_url}/{repository}/commits/{branch}/artifacts"
-            error_message = "Failed to delete artifact from Recce Cloud."
+            error_message = "Failed to delete artifacts from Recce Cloud."
         else:
             raise ValueError(
                 "Please either run this command from within a pull request context "

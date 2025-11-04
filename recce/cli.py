@@ -1262,6 +1262,7 @@ def delete_artifacts(**kwargs):
     try:
         delete_dbt_artifacts(branch=branch, token=cloud_token, debug=kwargs.get("debug", False))
         console.print(f"[[green]Success[/green]] Artifacts deleted from branch: {branch}")
+        return 0
     except click.exceptions.Abort:
         pass
     except RecceCloudException as e:
