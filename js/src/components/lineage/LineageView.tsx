@@ -792,7 +792,7 @@ export function PrivateLineageView(
 
   const contextValue: LineageViewContextType = {
     interactive,
-    nodes: nodes.filter(isLineageGraphNode),
+    nodes,
     focusedNode,
     selectedNodes,
     viewOptions,

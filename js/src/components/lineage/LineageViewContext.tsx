@@ -25,7 +25,7 @@ export interface ActionState {
 
 export interface LineageViewContextType {
   interactive: boolean;
-  nodes: LineageGraphNode[];
+  nodes: LineageGraphNodes[];
   focusedNode?: LineageGraphNode;
   selectedNodes: LineageGraphNode[];
   cll: ColumnLineageData | undefined;
