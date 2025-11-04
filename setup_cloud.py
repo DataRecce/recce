@@ -12,7 +12,8 @@ from setuptools import find_packages
 
 
 def _get_version():
-    version_file = os.path.normpath(os.path.join(os.path.dirname(__file__), "recce_cloud", "VERSION"))
+    """Get version from main recce VERSION file."""
+    version_file = os.path.normpath(os.path.join(os.path.dirname(__file__), "recce", "VERSION"))
     with open(version_file) as fh:
         version = fh.read().strip()
         return version
@@ -53,5 +54,5 @@ setup(
         "Operating System :: OS Independent",
         "Development Status :: 4 - Beta",
     ],
-    package_data={"recce_cloud": ["VERSION"]},
+    # No package_data needed - references main recce VERSION file at runtime
 )
