@@ -351,7 +351,7 @@ export function GraphNode(nodeProps: GraphNodeProps) {
                   onClick={(e) => {
                     e.preventDefault();
                     e.stopPropagation();
-                    showContextMenu(e, data as unknown as LineageGraphNode);
+                    showContextMenu(e, nodeProps as unknown as LineageGraphNode);
                   }}
                 />
               </>
