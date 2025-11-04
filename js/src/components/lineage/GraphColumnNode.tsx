@@ -137,7 +137,7 @@ export function GraphColumnNode(nodeProps: GrapeColumnNodeProps) {
             onClick={(e) => {
               e.preventDefault();
               e.stopPropagation();
-              showContextMenu(e, data as unknown as LineageGraphColumnNode);
+              showContextMenu(e, nodeProps as unknown as LineageGraphColumnNode);
             }}
           />
         ) : (
