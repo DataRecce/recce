@@ -399,7 +399,7 @@ export function toReactFlow(
       height += 20 + columnIndex * COLUMN_HEIGHT;
     }
 
-    nodes.push({
+    nodes.unshift({
       id: node.id,
       position: { x: 0, y: 0 },
       width: 300,
