@@ -73,6 +73,7 @@ export function useCountdownToast(lifetimeExpiredAt: Date | undefined) {
 
     const remainingSeconds = calculateRemainingSeconds();
     if (remainingSeconds - COUNTDOWN_CONFIG.WARNING_THRESHOLD < 0) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       showToast();
     } else {
       const timeoutId = setTimeout(

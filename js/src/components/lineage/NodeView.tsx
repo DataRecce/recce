@@ -42,8 +42,6 @@ interface NodeViewProps {
 }
 
 export function NodeView({ node, onCloseNode }: NodeViewProps) {
-  const [, setLocation] = useLocation();
-  const { setSqlQuery, setPrimaryKeys } = useRecceQueryContext();
   const withColumns =
     node.data.resourceType === "model" ||
     node.data.resourceType === "seed" ||
@@ -55,8 +53,8 @@ export function NodeView({ node, onCloseNode }: NodeViewProps) {
     defaultOpen: true,
   });
   const { runAction } = useRecceActionContext();
-  const { envInfo, isActionAvailable } = useLineageGraphContext();
-  const { primaryKey } = useModelColumns(node.data.name);
+  const { isActionAvailable } = useLineageGraphContext();
+
   const refetchRowCount = () => {
     runAction("row_count", { node_names: [node.data.name] }, { showForm: false, showLast: false });
   };
@@ -67,14 +65,7 @@ export function NodeView({ node, onCloseNode }: NodeViewProps) {
       { showForm: false, showLast: false },
     );
   };
-  const { featureToggles, singleEnv: isSingleEnvOnboarding } = useRecceInstanceContext();
-  const metadataOnly = featureToggles.mode === "metadata only";
-
-  const addSchemaCheck = useCallback(async () => {
-    const nodeId = node.id;
-    const check = await createSchemaDiffCheck({ node_id: nodeId });
-    setLocation(`/checks/${check.check_id}`);
-  }, [node, setLocation]);
+  const { singleEnv: isSingleEnvOnboarding } = useRecceInstanceContext();
 
   const disableReason = (isAddedOrRemoved: boolean, runType: string) => {
     if (isAddedOrRemoved) {
@@ -86,274 +77,8 @@ export function NodeView({ node, onCloseNode }: NodeViewProps) {
     return "";
   };
 
-  const isAddedOrRemoved =
-    node.data.changeStatus === "added" || node.data.changeStatus === "removed";
-
   const baseColumns = Object.keys(node.data.data.base?.columns ?? {});
   const currentColumns = Object.keys(node.data.data.current?.columns ?? {});
-
-  function ExploreChangeMenuButton() {
-    const formattedColumns = formatSelectColumns(baseColumns, currentColumns);
-    let query = `select * from {{ ref("${node.data.name}") }}`;
-    if (formattedColumns.length) {
-      query = `select \n  ${formattedColumns.join("\n  ")}\nfrom {{ ref("${node.data.name}") }}`;
-    }
-
-    const wrapMenuItem = (
-      children: React.ReactElement<{
-        ref?: React.Ref<HTMLElement>;
-        [key: string]: unknown;
-      }>,
-      runType: string,
-    ) => {
-      if (metadataOnly) {
-        return <SetupConnectionPopover display={true}>{children}</SetupConnectionPopover>;
-      }
-
-      const tooltipContent = disableReason(isAddedOrRemoved, runType);
-      return (
-        <Tooltip
-          disabled={tooltipContent === ""}
-          content={tooltipContent}
-          positioning={{ placement: "left" }}>
-          {children}
-        </Tooltip>
-      );
-    };
-
-    if (
-      node.data.resourceType === "model" ||
-      node.data.resourceType === "seed" ||
-      node.data.resourceType === "snapshot"
-    ) {
-      return (
-        <Menu.Root>
-          <Menu.Trigger asChild>
-            <Button
-              size="2xs"
-              variant="outline"
-              disabled={featureToggles.disableNodeActionDropdown}>
-              Explore <PiCaretDown />
-            </Button>
-          </Menu.Trigger>
-          <Portal>
-            <Menu.Positioner>
-              <Menu.Content>
-                <SetupConnectionPopover display={metadataOnly}>
-                  <Menu.Item
-                    value="query"
-                    fontSize="14px"
-                    disabled={featureToggles.disableDatabaseQuery}
-                    onClick={() => {
-                      if (envInfo?.adapterType === "dbt") {
-                        setSqlQuery(query);
-                      } else if (envInfo?.adapterType === "sqlmesh") {
-                        setSqlQuery(`select * from ${node.data.name}`);
-                      }
-                      if (isActionAvailable("query_diff_with_primary_key")) {
-                        // Only set primary key if the action is available
-                        setPrimaryKeys(primaryKey !== undefined ? [primaryKey] : undefined);
-                      }
-                      setLocation("/query");
-                    }}>
-                    <Icon as={findByRunType("query_diff")?.icon} /> Query
-                  </Menu.Item>
-                </SetupConnectionPopover>
-                <SetupConnectionPopover display={metadataOnly}>
-                  <Menu.Item
-                    value="sandbox"
-                    fontSize="14px"
-                    disabled={featureToggles.disableDatabaseQuery}
-                    onClick={() => {
-                      if (isActionAvailable("query_diff_with_primary_key")) {
-                        // Only set primary key if the action is available
-                        setPrimaryKeys(primaryKey !== undefined ? [primaryKey] : undefined);
-                      }
-                      onSandboxOpen();
-                      trackPreviewChange({ action: "explore", node: node.data.name });
-                    }}>
-                    <Icon as={findByRunType("sandbox")?.icon} /> Sandbox (Experiment)
-                  </Menu.Item>
-                </SetupConnectionPopover>
-                <Menu.Separator />
-                <Menu.ItemGroup m="0" p="0">
-                  <Menu.ItemGroupLabel>Diff</Menu.ItemGroupLabel>
-                  <SetupConnectionPopover display={metadataOnly}>
-                    <Menu.Item
-                      value="row-count-diff"
-                      fontSize="14px"
-                      disabled={featureToggles.disableDatabaseQuery}
-                      onClick={() => {
-                        refetchRowCountDiff();
-                      }}>
-                      <Icon as={findByRunType("row_count_diff")?.icon} /> Row Count Diff
-                    </Menu.Item>
-                  </SetupConnectionPopover>
-                  {wrapMenuItem(
-                    <Menu.Item
-                      value="profile-diff"
-                      fontSize="14px"
-                      disabled={isAddedOrRemoved || featureToggles.disableDatabaseQuery}
-                      onClick={() => {
-                        runAction(
-                          "profile_diff",
-                          {
-                            model: node.data.name,
-                          },
-                          { showForm: true, showLast: false },
-                        );
-                      }}>
-                      <Icon as={findByRunType("profile_diff")?.icon} /> Profile Diff
-                    </Menu.Item>,
-                    "profile_diff",
-                  )}
-                  {wrapMenuItem(
-                    <Menu.Item
-                      value="value-diff"
-                      fontSize="14px"
-                      disabled={isAddedOrRemoved || featureToggles.disableDatabaseQuery}
-                      onClick={() => {
-                        runAction(
-                          "value_diff",
-                          {
-                            model: node.data.name,
-                          },
-                          { showForm: true, showLast: false },
-                        );
-                      }}>
-                      <Icon as={findByRunType("value_diff")?.icon} /> Value Diff
-                    </Menu.Item>,
-                    "value_diff",
-                  )}
-                  {wrapMenuItem(
-                    <Menu.Item
-                      value="top-k-diff"
-                      fontSize="14px"
-                      disabled={isAddedOrRemoved || featureToggles.disableDatabaseQuery}
-                      onClick={() => {
-                        runAction(
-                          "top_k_diff",
-                          { model: node.data.name, column_name: "", k: 50 },
-                          { showForm: true },
-                        );
-                      }}>
-                      <Icon as={findByRunType("top_k_diff")?.icon} /> Top-K Diff
-                    </Menu.Item>,
-                    "top_k_diff",
-                  )}
-                  {wrapMenuItem(
-                    <Menu.Item
-                      value="histogram-diff"
-                      fontSize="14px"
-                      disabled={isAddedOrRemoved || featureToggles.disableDatabaseQuery}
-                      onClick={() => {
-                        runAction(
-                          "histogram_diff",
-                          {
-                            model: node.data.name,
-                            column_name: "",
-                            column_type: "",
-                          },
-                          { showForm: true },
-                        );
-                      }}>
-                      <Icon as={findByRunType("histogram_diff")?.icon} /> Histogram Diff
-                    </Menu.Item>,
-                    "histogram_diff",
-                  )}
-                </Menu.ItemGroup>
-                <Menu.Separator />
-                <Menu.ItemGroup m="0" p="4px 12px">
-                  <Menu.ItemGroupLabel>Add to Checklist</Menu.ItemGroupLabel>
-                  <Menu.Item
-                    value="schema-diff"
-                    fontSize="14px"
-                    onClick={() => {
-                      void addSchemaCheck();
-                    }}>
-                    <Icon as={findByRunType("schema_diff")?.icon} /> Schema Diff
-                  </Menu.Item>
-                </Menu.ItemGroup>
-              </Menu.Content>
-            </Menu.Positioner>
-          </Portal>
-        </Menu.Root>
-      );
-    } else {
-      return <></>;
-    }
-  }
-
-  function SingleEnvironmentMenuButton() {
-    const formattedColumns = formatSelectColumns(baseColumns, currentColumns);
-    let query = `select * from {{ ref("${node.data.name}") }}`;
-    if (formattedColumns.length) {
-      query = `select \n  ${formattedColumns.join("\n  ")}\nfrom {{ ref("${node.data.name}") }}`;
-    }
-    if (
-      node.data.resourceType === "model" ||
-      node.data.resourceType === "seed" ||
-      node.data.resourceType === "snapshot"
-    ) {
-      return (
-        <Menu.Root>
-          <Menu.Trigger asChild>
-            <Button size="xs" variant="outline">
-              Explore <PiCaretDown />
-            </Button>
-          </Menu.Trigger>
-          <Portal>
-            <Menu.Positioner>
-              <Menu.Content>
-                <Menu.Item
-                  value="label"
-                  fontSize="14px"
-                  onClick={() => {
-                    if (envInfo?.adapterType === "dbt") {
-                      setSqlQuery(query);
-                    } else if (envInfo?.adapterType === "sqlmesh") {
-                      setSqlQuery(`select * from ${node.data.name}`);
-                    }
-                    setLocation("/query");
-                  }}>
-                  <Icon as={findByRunType("query")?.icon} /> Query
-                </Menu.Item>
-                <Menu.Item
-                  value="row-count"
-                  fontSize="14px"
-                  onClick={() => {
-                    refetchRowCount();
-                  }}>
-                  <Icon as={findByRunType("row_count")?.icon} /> Row Count
-                </Menu.Item>
-                <Tooltip
-                  content={disableReason(isAddedOrRemoved, "profile")}
-                  positioning={{ placement: "left" }}>
-                  <Menu.Item
-                    value="profile"
-                    fontSize="14px"
-                    disabled={isAddedOrRemoved}
-                    onClick={() => {
-                      runAction(
-                        "profile",
-                        {
-                          model: node.data.name,
-                        },
-                        { showForm: true, showLast: false },
-                      );
-                    }}>
-                    <Icon as={findByRunType("profile")?.icon} /> Profile
-                  </Menu.Item>
-                </Tooltip>
-              </Menu.Content>
-            </Menu.Positioner>
-          </Portal>
-        </Menu.Root>
-      );
-    } else {
-      return <></>;
-    }
-  }
 
   return (
     <Grid height="100%" templateRows="auto auto 1fr">
@@ -364,7 +89,24 @@ export function NodeView({ node, onCloseNode }: NodeViewProps) {
           </Heading>
         </Box>
         <Spacer />
-        {isSingleEnvOnboarding ? <SingleEnvironmentMenuButton /> : <ExploreChangeMenuButton />}
+        {isSingleEnvOnboarding ? (
+          <SingleEnvironmentMenuButton
+            node={node}
+            baseColumns={baseColumns}
+            currentColumns={currentColumns}
+            refetchRowCount={refetchRowCount}
+            disableReason={disableReason}
+          />
+        ) : (
+          <ExploreChangeMenuButton
+            node={node}
+            baseColumns={baseColumns}
+            currentColumns={currentColumns}
+            disableReason={disableReason}
+            refetchRowCountDiff={refetchRowCountDiff}
+            onSandboxOpen={onSandboxOpen}
+          />
+        )}
 
         <Box flex="0 1 1%">
           <CloseButton size="2xs" onClick={onCloseNode} />
@@ -422,4 +164,318 @@ export function NodeView({ node, onCloseNode }: NodeViewProps) {
       />
     </Grid>
   );
+}
+
+interface SingleEnvironmentMenuButtonProps {
+  node: LineageGraphNode;
+  baseColumns: string[];
+  currentColumns: string[];
+  refetchRowCount: () => void;
+  disableReason: (isAddedOrRemoved: boolean, runType: string) => string;
+}
+
+function SingleEnvironmentMenuButton({
+  node,
+  baseColumns,
+  currentColumns,
+  refetchRowCount,
+  disableReason,
+}: SingleEnvironmentMenuButtonProps) {
+  const [, setLocation] = useLocation();
+  const { setSqlQuery } = useRecceQueryContext();
+  const { runAction } = useRecceActionContext();
+  const { envInfo } = useLineageGraphContext();
+  const isAddedOrRemoved =
+    node.data.changeStatus === "added" || node.data.changeStatus === "removed";
+
+  const formattedColumns = formatSelectColumns(baseColumns, currentColumns);
+  let query = `select * from {{ ref("${node.data.name}") }}`;
+  if (formattedColumns.length) {
+    query = `select \n  ${formattedColumns.join("\n  ")}\nfrom {{ ref("${node.data.name}") }}`;
+  }
+  if (
+    node.data.resourceType === "model" ||
+    node.data.resourceType === "seed" ||
+    node.data.resourceType === "snapshot"
+  ) {
+    return (
+      <Menu.Root>
+        <Menu.Trigger asChild>
+          <Button size="xs" variant="outline">
+            Explore <PiCaretDown />
+          </Button>
+        </Menu.Trigger>
+        <Portal>
+          <Menu.Positioner>
+            <Menu.Content>
+              <Menu.Item
+                value="label"
+                fontSize="14px"
+                onClick={() => {
+                  if (envInfo?.adapterType === "dbt") {
+                    setSqlQuery(query);
+                  } else if (envInfo?.adapterType === "sqlmesh") {
+                    setSqlQuery(`select * from ${node.data.name}`);
+                  }
+                  setLocation("/query");
+                }}>
+                <Icon as={findByRunType("query")?.icon} /> Query
+              </Menu.Item>
+              <Menu.Item
+                value="row-count"
+                fontSize="14px"
+                onClick={() => {
+                  refetchRowCount();
+                }}>
+                <Icon as={findByRunType("row_count")?.icon} /> Row Count
+              </Menu.Item>
+              <Tooltip
+                content={disableReason(isAddedOrRemoved, "profile")}
+                positioning={{ placement: "left" }}>
+                <Menu.Item
+                  value="profile"
+                  fontSize="14px"
+                  disabled={isAddedOrRemoved}
+                  onClick={() => {
+                    runAction(
+                      "profile",
+                      {
+                        model: node.data.name,
+                      },
+                      { showForm: true, showLast: false },
+                    );
+                  }}>
+                  <Icon as={findByRunType("profile")?.icon} /> Profile
+                </Menu.Item>
+              </Tooltip>
+            </Menu.Content>
+          </Menu.Positioner>
+        </Portal>
+      </Menu.Root>
+    );
+  } else {
+    return <></>;
+  }
+}
+
+interface ExploreChangeMenuButtonProps {
+  node: LineageGraphNode;
+  baseColumns: string[];
+  currentColumns: string[];
+  disableReason: (isAddedOrRemoved: boolean, runType: string) => string;
+  onSandboxOpen: () => void;
+  refetchRowCountDiff: () => void;
+}
+
+function ExploreChangeMenuButton({
+  node,
+  baseColumns,
+  currentColumns,
+  disableReason,
+  onSandboxOpen,
+  refetchRowCountDiff,
+}: ExploreChangeMenuButtonProps) {
+  const [, setLocation] = useLocation();
+  const { runAction } = useRecceActionContext();
+  const { setSqlQuery, setPrimaryKeys } = useRecceQueryContext();
+  const { envInfo, isActionAvailable } = useLineageGraphContext();
+  const { featureToggles } = useRecceInstanceContext();
+  const { primaryKey } = useModelColumns(node.data.name);
+
+  const metadataOnly = featureToggles.mode === "metadata only";
+  const isAddedOrRemoved =
+    node.data.changeStatus === "added" || node.data.changeStatus === "removed";
+
+  const addSchemaCheck = useCallback(async () => {
+    const nodeId = node.id;
+    const check = await createSchemaDiffCheck({ node_id: nodeId });
+    setLocation(`/checks/${check.check_id}`);
+  }, [node, setLocation]);
+
+  const formattedColumns = formatSelectColumns(baseColumns, currentColumns);
+  let query = `select * from {{ ref("${node.data.name}") }}`;
+  if (formattedColumns.length) {
+    query = `select \n  ${formattedColumns.join("\n  ")}\nfrom {{ ref("${node.data.name}") }}`;
+  }
+
+  const wrapMenuItem = (
+    children: React.ReactElement<{
+      ref?: React.Ref<HTMLElement>;
+      [key: string]: unknown;
+    }>,
+    runType: string,
+  ) => {
+    if (metadataOnly) {
+      return <SetupConnectionPopover display={true}>{children}</SetupConnectionPopover>;
+    }
+
+    const tooltipContent = disableReason(isAddedOrRemoved, runType);
+    return (
+      <Tooltip
+        disabled={tooltipContent === ""}
+        content={tooltipContent}
+        positioning={{ placement: "left" }}>
+        {children}
+      </Tooltip>
+    );
+  };
+
+  if (
+    node.data.resourceType === "model" ||
+    node.data.resourceType === "seed" ||
+    node.data.resourceType === "snapshot"
+  ) {
+    return (
+      <Menu.Root>
+        <Menu.Trigger asChild>
+          <Button size="2xs" variant="outline" disabled={featureToggles.disableNodeActionDropdown}>
+            Explore <PiCaretDown />
+          </Button>
+        </Menu.Trigger>
+        <Portal>
+          <Menu.Positioner>
+            <Menu.Content>
+              <SetupConnectionPopover display={metadataOnly}>
+                <Menu.Item
+                  value="query"
+                  fontSize="14px"
+                  disabled={featureToggles.disableDatabaseQuery}
+                  onClick={() => {
+                    if (envInfo?.adapterType === "dbt") {
+                      setSqlQuery(query);
+                    } else if (envInfo?.adapterType === "sqlmesh") {
+                      setSqlQuery(`select * from ${node.data.name}`);
+                    }
+                    if (isActionAvailable("query_diff_with_primary_key")) {
+                      // Only set primary key if the action is available
+                      setPrimaryKeys(primaryKey !== undefined ? [primaryKey] : undefined);
+                    }
+                    setLocation("/query");
+                  }}>
+                  <Icon as={findByRunType("query_diff")?.icon} /> Query
+                </Menu.Item>
+              </SetupConnectionPopover>
+              <SetupConnectionPopover display={metadataOnly}>
+                <Menu.Item
+                  value="sandbox"
+                  fontSize="14px"
+                  disabled={featureToggles.disableDatabaseQuery}
+                  onClick={() => {
+                    if (isActionAvailable("query_diff_with_primary_key")) {
+                      // Only set primary key if the action is available
+                      setPrimaryKeys(primaryKey !== undefined ? [primaryKey] : undefined);
+                    }
+                    onSandboxOpen();
+                    trackPreviewChange({ action: "explore", node: node.data.name });
+                  }}>
+                  <Icon as={findByRunType("sandbox")?.icon} /> Sandbox (Experiment)
+                </Menu.Item>
+              </SetupConnectionPopover>
+              <Menu.Separator />
+              <Menu.ItemGroup m="0" p="0">
+                <Menu.ItemGroupLabel>Diff</Menu.ItemGroupLabel>
+                <SetupConnectionPopover display={metadataOnly}>
+                  <Menu.Item
+                    value="row-count-diff"
+                    fontSize="14px"
+                    disabled={featureToggles.disableDatabaseQuery}
+                    onClick={() => {
+                      refetchRowCountDiff();
+                    }}>
+                    <Icon as={findByRunType("row_count_diff")?.icon} /> Row Count Diff
+                  </Menu.Item>
+                </SetupConnectionPopover>
+                {wrapMenuItem(
+                  <Menu.Item
+                    value="profile-diff"
+                    fontSize="14px"
+                    disabled={isAddedOrRemoved || featureToggles.disableDatabaseQuery}
+                    onClick={() => {
+                      runAction(
+                        "profile_diff",
+                        {
+                          model: node.data.name,
+                        },
+                        { showForm: true, showLast: false },
+                      );
+                    }}>
+                    <Icon as={findByRunType("profile_diff")?.icon} /> Profile Diff
+                  </Menu.Item>,
+                  "profile_diff",
+                )}
+                {wrapMenuItem(
+                  <Menu.Item
+                    value="value-diff"
+                    fontSize="14px"
+                    disabled={isAddedOrRemoved || featureToggles.disableDatabaseQuery}
+                    onClick={() => {
+                      runAction(
+                        "value_diff",
+                        {
+                          model: node.data.name,
+                        },
+                        { showForm: true, showLast: false },
+                      );
+                    }}>
+                    <Icon as={findByRunType("value_diff")?.icon} /> Value Diff
+                  </Menu.Item>,
+                  "value_diff",
+                )}
+                {wrapMenuItem(
+                  <Menu.Item
+                    value="top-k-diff"
+                    fontSize="14px"
+                    disabled={isAddedOrRemoved || featureToggles.disableDatabaseQuery}
+                    onClick={() => {
+                      runAction(
+                        "top_k_diff",
+                        { model: node.data.name, column_name: "", k: 50 },
+                        { showForm: true },
+                      );
+                    }}>
+                    <Icon as={findByRunType("top_k_diff")?.icon} /> Top-K Diff
+                  </Menu.Item>,
+                  "top_k_diff",
+                )}
+                {wrapMenuItem(
+                  <Menu.Item
+                    value="histogram-diff"
+                    fontSize="14px"
+                    disabled={isAddedOrRemoved || featureToggles.disableDatabaseQuery}
+                    onClick={() => {
+                      runAction(
+                        "histogram_diff",
+                        {
+                          model: node.data.name,
+                          column_name: "",
+                          column_type: "",
+                        },
+                        { showForm: true },
+                      );
+                    }}>
+                    <Icon as={findByRunType("histogram_diff")?.icon} /> Histogram Diff
+                  </Menu.Item>,
+                  "histogram_diff",
+                )}
+              </Menu.ItemGroup>
+              <Menu.Separator />
+              <Menu.ItemGroup m="0" p="4px 12px">
+                <Menu.ItemGroupLabel>Add to Checklist</Menu.ItemGroupLabel>
+                <Menu.Item
+                  value="schema-diff"
+                  fontSize="14px"
+                  onClick={() => {
+                    void addSchemaCheck();
+                  }}>
+                  <Icon as={findByRunType("schema_diff")?.icon} /> Schema Diff
+                </Menu.Item>
+              </Menu.ItemGroup>
+            </Menu.Content>
+          </Menu.Positioner>
+        </Portal>
+      </Menu.Root>
+    );
+  } else {
+    return <></>;
+  }
 }

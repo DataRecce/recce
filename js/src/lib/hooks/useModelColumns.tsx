@@ -51,10 +51,11 @@ const useModelColumns = (model: string | undefined) => {
   const nodePrimaryKey = node ? node.data.data.current?.primary_key : undefined;
 
   const fetchData = useCallback(async () => {
+    if (!node) {
+      return;
+    }
     try {
-      // TODO instead of using non-null assertions, fix the underlying typing to account for it
-      // eslint-disable-next-line @typescript-eslint/no-non-null-asserted-optional-chain,@typescript-eslint/no-non-null-assertion
-      const data = await getModelInfo(node?.id!);
+      const data = await getModelInfo(node.id);
       const modelInfo = data.model;
       if (!modelInfo.base.columns || !modelInfo.current.columns) {
         setColumns([]);
@@ -67,10 +68,11 @@ const useModelColumns = (model: string | undefined) => {
     } catch (error) {
       setError(error as Error);
     }
-  }, [node?.id]);
+  }, [node]);
 
   useEffect(() => {
     if (nodeColumns.length > 0) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setColumns(nodeColumns);
       setPrimaryKey(nodePrimaryKey);
       setIsLoading(false);

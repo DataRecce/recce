@@ -303,6 +303,7 @@ export function SandboxView({ isOpen, onClose, current }: SandboxViewProps) {
 
   useEffect(() => {
     if (isOpen) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setModifiedCode(current?.raw_code ?? "");
     }
   }, [isOpen, current]);

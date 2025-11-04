@@ -33,6 +33,7 @@ export const useRun = (runId?: string): UseRunResult => {
   useEffect(() => {
     if (error || run?.result || run?.error) {
       if (isRunning) {
+        // eslint-disable-next-line react-hooks/set-state-in-effect
         setIsRunning(false);
       }
       if (run?.type === "row_count_diff" || run?.type === "row_count") {

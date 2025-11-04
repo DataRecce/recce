@@ -321,9 +321,11 @@ export const QueryDiffResultView = forwardRef((props: QueryDiffResultViewProps, 
   }
   if (props.run.result?.diff != null) {
     const ResultView = forwardRef(PrivateQueryDiffJoinResultView);
+    // eslint-disable-next-line react-hooks/static-components
     return <ResultView {...props} ref={ref} baseTitle={baseTitle} currentTitle={currentTitle} />;
   } else {
     const ResultView = forwardRef(PrivateQueryDiffResultView);
+    // eslint-disable-next-line react-hooks/static-components
     return <ResultView {...props} ref={ref} baseTitle={baseTitle} currentTitle={currentTitle} />;
   }
 });

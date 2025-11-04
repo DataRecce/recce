@@ -69,7 +69,7 @@ export async function syncState(input: SyncStateInput): Promise<SyncStateRespons
     }
   } catch (error) {
     if (isAxiosError(error)) {
-      if (error.response && error.response.status === 409) {
+      if (error.response?.status === 409) {
         // 409 conflict case
         return { status: "conflict" };
       }
