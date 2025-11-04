@@ -125,6 +125,7 @@ export function RowCountDiffTag({
     if (rowCount) {
       const base = rowCount.base ?? "N/A";
       const current = rowCount.curr ?? "N/A";
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setLabel(`${base} -> ${current} rows`);
       setRowsToShow(rowCount);
     }

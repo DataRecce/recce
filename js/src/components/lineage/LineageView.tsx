@@ -119,6 +119,7 @@ const nodeColor = (node: LineageGraphNode) => {
 };
 
 const useResizeObserver = (ref: RefObject<HTMLElement | null>, handler: () => void) => {
+  // eslint-disable-next-line react-hooks/refs
   const target = ref.current;
   const size = useRef({
     width: 0,
@@ -157,6 +158,7 @@ const useResizeObserver = (ref: RefObject<HTMLElement | null>, handler: () => vo
         resizeObserver.unobserve(target);
       }
     };
+    // eslint-disable-next-line react-hooks/refs
   }, [target, size, handler]);
 };
 

@@ -105,9 +105,14 @@ export const QueryPage = () => {
   });
 
   const currentSchema = useMemo(() => {
+    const initialValue = "N/A";
     // find the most common schema from the current lineage graph
     const countMap: Record<string, number> = {};
-    for (const key in lineageGraph?.nodes) {
+    if (!lineageGraph) {
+      return initialValue;
+    }
+
+    for (const key in lineageGraph.nodes) {
       const schema = lineageGraph.nodes[key].data.data.current?.schema;
       if (schema) {
         countMap[schema] = (countMap[schema] || 0) + 1;
@@ -119,8 +124,8 @@ export const QueryPage = () => {
         return current;
       }
       return mostCommon;
-    }, "N/A");
-  }, [lineageGraph?.nodes]);
+    }, initialValue);
+  }, [lineageGraph]);
 
   if (singleEnv || featureToggles.mode === "metadata only") {
     return (
