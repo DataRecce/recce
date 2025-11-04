@@ -136,7 +136,7 @@ def load_user_profile():
         else:
             with open(RECCE_USER_PROFILE, "r", encoding="utf-8") as f:
                 user_profile = pyml.load(f)
-                if user_profile.get("user_id") is None:
+                if user_profile is None or user_profile.get("user_id") is None:
                     user_profile = _generate_user_profile()
 
         return user_profile

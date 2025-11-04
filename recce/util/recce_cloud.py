@@ -85,9 +85,14 @@ class RecceCloud:
     def _replace_localhost_with_docker_internal(self, url: str) -> str:
         if url is None:
             return None
-        if os.environ.get("RECCE_SHARE_INSTANCE_ENV") == "docker" and url.startswith(LOCALHOST_URL_PREFIX):
+        if (
+            os.environ.get("RECCE_SHARE_INSTANCE_ENV") == "docker"
+            or os.environ.get("RECCE_TASK_INSTANCE_ENV") == "docker"
+            or os.environ.get("RECCE_INSTANCE_ENV") == "docker"
+        ):
             # For local development, convert the presigned URL from localhost to host.docker.internal
-            return url.replace(LOCALHOST_URL_PREFIX, DOCKER_INTERNAL_URL_PREFIX)
+            if url.startswith(LOCALHOST_URL_PREFIX):
+                return url.replace(LOCALHOST_URL_PREFIX, DOCKER_INTERNAL_URL_PREFIX)
         return url
 
     def get_presigned_url_by_share_id(
@@ -396,6 +401,9 @@ class RecceCloud:
 
 
 def get_recce_cloud_onboarding_state(token: str) -> str:
+    if token and token.startswith("rct-"):
+        return "undefined"
+
     try:
         recce_cloud = RecceCloud(token)
         user_info = recce_cloud.get_user_info()
