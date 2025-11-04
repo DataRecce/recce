@@ -9,6 +9,7 @@ import {
   LineageGraphNodes,
   LineageGraphEdge,
   isLineageGraphNode,
+  isLineageGraphColumnNode,
 } from "./lineage";
 import {
   Box,
@@ -525,7 +526,7 @@ export function PrivateLineageView(
       return;
     }
 
-    if (node.type === "lineageGraphColumnNode") {
+    if (isLineageGraphColumnNode(node as LineageGraphNodes)) {
       onColumnNodeClick(event, node as LineageGraphColumnNode);
       return;
     }
