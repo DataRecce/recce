@@ -136,6 +136,14 @@ def handle_debug_flag(**kwargs):
         ch.setFormatter(CustomFormatter())
         logging.basicConfig(handlers=[ch], level=logging.DEBUG)
 
+        # Explicitly set uvicorn logger to DEBUG level
+        uvicorn_logger = logging.getLogger("uvicorn")
+        uvicorn_logger.setLevel(logging.DEBUG)
+
+        # Set all child loggers to DEBUG as well
+        for handler in uvicorn_logger.handlers:
+            handler.setLevel(logging.DEBUG)
+
 
 def add_options(options):
     def _add_options(func):

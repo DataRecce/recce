@@ -215,6 +215,12 @@ async def lifespan(fastapi: FastAPI):
     ctx = None
     app_state: AppState = app.state
 
+    # Ensure logger is at DEBUG level if debug mode is enabled
+    # This is needed because uvicorn might reset logger configuration
+    if hasattr(app_state, "kwargs") and app_state.kwargs.get("debug"):
+        logger.setLevel(logging.DEBUG)
+        logger.debug("Debug mode enabled - logger set to DEBUG level")
+
     if app_state.command == "server":
         ctx = setup_server(app_state)
     elif app_state.command == "read-only":
