@@ -63,6 +63,8 @@ export const NodeSqlView = ({ node }: NodeSqlViewProps) => {
           theme="light"
           original={original}
           modified={modified}
+          keepCurrentOriginalModel={true}
+          keepCurrentModifiedModel={true}
           options={{
             ...diffOptions,
             renderSideBySide: false,
