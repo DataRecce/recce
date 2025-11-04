@@ -40,11 +40,11 @@ export function extractSchemas(lineageGraph: LineageGraph | undefined): [Set<str
 
   if (lineageGraph?.nodes) {
     for (const value of Object.values(lineageGraph.nodes)) {
-      if (value.data.base?.schema) {
-        baseSchemas.add(value.data.base.schema);
+      if (value.data.data.base?.schema) {
+        baseSchemas.add(value.data.data.base.schema);
       }
-      if (value.data.current?.schema) {
-        currentSchemas.add(value.data.current.schema);
+      if (value.data.data.current?.schema) {
+        currentSchemas.add(value.data.data.current.schema);
       }
     }
   }

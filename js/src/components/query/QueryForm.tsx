@@ -23,8 +23,8 @@ export const QueryForm = ({ defaultPrimaryKeys, onPrimaryKeysChange, ...prob }: 
     const columnSet = new Set<string>();
     for (const modelName in lineageGraph.nodes) {
       const model = lineageGraph.nodes[modelName];
-      const baseColumns = model.data.base?.columns;
-      const currentColumns = model.data.current?.columns;
+      const baseColumns = model.data.data.base?.columns;
+      const currentColumns = model.data.data.current?.columns;
 
       for (const columnName in baseColumns) {
         columnSet.add(columnName);

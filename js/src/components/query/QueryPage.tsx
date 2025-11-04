@@ -108,7 +108,7 @@ export const QueryPage = () => {
     // find the most common schema from the current lineage graph
     const countMap: Record<string, number> = {};
     for (const key in lineageGraph?.nodes) {
-      const schema = lineageGraph.nodes[key].data.current?.schema;
+      const schema = lineageGraph.nodes[key].data.data.current?.schema;
       if (schema) {
         countMap[schema] = (countMap[schema] || 0) + 1;
       }

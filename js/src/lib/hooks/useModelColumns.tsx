@@ -9,8 +9,8 @@ export function extractColumns(node: LineageGraphNode) {
     return nodeData?.columns ? Object.values(nodeData.columns) : [];
   }
 
-  const baseColumns = getColumns(node.data.base);
-  const currentColumns = getColumns(node.data.current);
+  const baseColumns = getColumns(node.data.data.base);
+  const currentColumns = getColumns(node.data.data.current);
 
   return unionColumns(baseColumns, currentColumns);
 }
@@ -39,14 +39,16 @@ const useModelColumns = (model: string | undefined) => {
   const [error, setError] = useState<Error | null>(null);
 
   const node = _.find(lineageGraph?.nodes, {
-    name: model,
+    data: {
+      name: model,
+    },
   });
 
   const nodeColumns = useMemo(() => {
     return node ? extractColumns(node) : [];
   }, [node]);
 
-  const nodePrimaryKey = node ? node.data.current?.primary_key : undefined;
+  const nodePrimaryKey = node ? node.data.data.current?.primary_key : undefined;
 
   const fetchData = useCallback(async () => {
     try {

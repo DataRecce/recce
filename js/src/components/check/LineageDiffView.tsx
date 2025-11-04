@@ -1,7 +1,7 @@
 import { Check } from "@/lib/api/checks";
 import { LineageView, LineageViewRef } from "../lineage/LineageView";
 import { Flex } from "@chakra-ui/react";
-import { ReactFlowProvider } from "reactflow";
+import { ReactFlowProvider } from "@xyflow/react";
 import { forwardRef, Ref } from "react";
 
 export interface LineageDiffViewProps {

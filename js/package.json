@@ -5,7 +5,7 @@
   "engines": {
     "node": ">=20"
   },
-  "packageManager": "pnpm@10.18.1+sha512.77a884a165cbba2d8d1c19e3b4880eee6d2fcabd0d879121e282196b80042351d5eb3ca0935fa599da1dc51265cc68816ad2bddd2a2de5ea9fdf92adbec7cd34",
+  "packageManager": "pnpm@10.20.0+sha512.cf9998222162dd85864d0a8102e7892e7ba4ceadebbf5a31f9c2fce48dfce317a9c53b9f6464d1ef9042cba2e02ae02a9f7c143a2b438cd93c91840f0192b9dd",
   "scripts": {
     "dev": "next dev --turbopack",
     "build": "npm run clean && next build && mv out ../recce/data",
@@ -25,6 +25,7 @@
     "@chakra-ui/anatomy": "^2.3.4",
     "@chakra-ui/react": "^3.27.1",
     "@chakra-ui/styled-system": "^2.12.0",
+    "@dagrejs/dagre": "^1.1.5",
     "@emotion/react": "^11.14.0",
     "@fontsource/montserrat": "^5.2.8",
     "@hello-pangea/dnd": "^18.0.1",
@@ -35,11 +36,11 @@
     "@tailwindcss/postcss": "^4.1.14",
     "@tanstack/react-query": "^5.90.2",
     "@types/js-cookie": "^3.0.6",
+    "@xyflow/react": "^12.9.2",
     "axios": "^1.12.2",
     "chakra-react-select": "^6.1.0",
     "chart.js": "^4.5.0",
     "common-tags": "^1.8.2",
-    "dagre": "^0.8.5",
     "date-fns": "^4.1.0",
     "file-saver": "^2.0.5",
     "html-to-image": "^1.11.13",
@@ -55,7 +56,6 @@
     "react-dom": "19.2.0",
     "react-icons": "^5.5.0",
     "react-split": "^2.0.14",
-    "reactflow": "^11.11.4",
     "simplebar": "^6.3.2",
     "simplebar-react": "3.3.2",
     "usehooks-ts": "^3.1.1",
