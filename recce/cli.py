@@ -459,6 +459,13 @@ def diff(sql, primary_keys: List[str] = None, keep_shape: bool = False, keep_equ
 @click.option("--host", default="localhost", show_default=True, help="The host to bind to.")
 @click.option("--port", default=8000, show_default=True, help="The port to bind to.", type=int)
 @click.option("--lifetime", default=0, show_default=True, help="The lifetime of the server in seconds.", type=int)
+@click.option(
+    "--idle-timeout",
+    default=0,
+    show_default=True,
+    help="The idle timeout in seconds. If 0, idle timeout is disabled. Maximum value is capped by lifetime.",
+    type=int,
+)
 @click.option("--review", is_flag=True, help="Open the state file in the review mode.")
 @click.option("--single-env", is_flag=True, help="Launch in single environment mode directly.")
 @click.option(
@@ -470,7 +477,7 @@ def diff(sql, primary_keys: List[str] = None, keep_shape: bool = False, keep_equ
 @add_options(recce_dbt_artifact_dir_options)
 @add_options(recce_cloud_options)
 @add_options(recce_hidden_options)
-def server(host, port, lifetime, state_file=None, **kwargs):
+def server(host, port, lifetime, idle_timeout=0, state_file=None, **kwargs):
     """
     Launch the recce server
 
@@ -596,6 +603,22 @@ def server(host, port, lifetime, state_file=None, **kwargs):
     else:
         console.rule("Recce Server")
 
+    # Validate idle_timeout: cap at lifetime if it exceeds lifetime
+    if idle_timeout > 0:
+        # If lifetime is set (> 0) and idle_timeout exceeds it, cap to lifetime
+        if lifetime > 0 and idle_timeout > lifetime:
+            effective_idle_timeout = lifetime
+            console.print(
+                f"[[yellow]Warning[/yellow]] idle_timeout ({idle_timeout}s) exceeds lifetime ({lifetime}s). "
+                f"Capping idle_timeout to {effective_idle_timeout}s."
+            )
+        else:
+            # Use idle_timeout as-is (either lifetime is 0, or idle_timeout <= lifetime)
+            effective_idle_timeout = idle_timeout
+    else:
+        # idle_timeout is 0 or negative, disable idle timeout
+        effective_idle_timeout = 0
+
     state = AppState(
         command=server_mode,
         state_loader=state_loader,
@@ -603,6 +626,7 @@ def server(host, port, lifetime, state_file=None, **kwargs):
         flag=flag,
         auth_options=auth_options,
         lifetime=lifetime,
+        idle_timeout=effective_idle_timeout,
         share_url=kwargs.get("share_url"),
     )
     app.state = state

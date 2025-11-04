@@ -74,6 +74,7 @@ class AppState:
     auth_options: Optional[dict] = None
     lifetime: Optional[int] = None
     lifetime_expired_at: Optional[datetime] = None
+    idle_timeout: Optional[int] = None
     share_url: Optional[str] = None
     host: Optional[str] = None
     port: Optional[int] = None
@@ -82,13 +83,66 @@ class AppState:
 def schedule_lifetime_termination(app_state):
     def terminating_server():
         pid = os.getpid()
-        logger.info(f"Terminating server process [{pid}] manually")
+        logger.info(f"Terminating server process [{pid}] manually due to lifetime expiration")
         os.kill(pid, signal.SIGINT)
 
     # Terminate the server process after the specified lifetime
     logger.info(f"[Configuration] The lifetime of the server is {app_state.lifetime} seconds")
     app.state.lifetime_expired_at = datetime.now(utc) + timedelta(seconds=app_state.lifetime)
     asyncio.get_running_loop().call_later(app_state.lifetime, terminating_server)
+
+
+def schedule_idle_timeout_check(app_state):
+    """
+    Schedule periodic checks for idle timeout.
+    If the server has been idle for longer than idle_timeout, terminate it.
+    """
+    # Track last activity time
+    last_activity = {"time": datetime.now(utc)}
+
+    def terminating_server_idle():
+        pid = os.getpid()
+        logger.info(f"Terminating server process [{pid}] manually due to idle timeout")
+        os.kill(pid, signal.SIGINT)
+
+    async def check_idle_timeout():
+        """Periodically check if the server has been idle for too long"""
+        # Use smaller check interval if idle_timeout is very short
+        # Check at least every 30 seconds, but also check when idle_timeout is approaching
+        check_interval = min(30, max(1, app_state.idle_timeout // 3))
+
+        logger.debug(f"[Idle Timeout] Starting idle timeout checker with {check_interval}s check interval")
+
+        while True:
+            await asyncio.sleep(check_interval)
+
+            idle_seconds = (datetime.now(utc) - last_activity["time"]).total_seconds()
+            remaining_seconds = app_state.idle_timeout - idle_seconds
+
+            # Always log the countdown for debugging
+            if remaining_seconds > 0:
+                logger.debug(
+                    f"[Idle Timeout] Server idle for {idle_seconds:.1f}s / {app_state.idle_timeout}s "
+                    f"(remaining: {remaining_seconds:.1f}s)"
+                )
+
+            if idle_seconds >= app_state.idle_timeout:
+                logger.info(
+                    f"[Idle Timeout] Threshold reached! Server has been idle for {idle_seconds:.0f} seconds "
+                    f"(threshold: {app_state.idle_timeout} seconds)"
+                )
+                terminating_server_idle()
+                break
+
+    # Start the idle timeout check task
+    logger.info(f"[Configuration] The idle timeout of the server is {app_state.idle_timeout} seconds")
+
+    # Create task using asyncio.create_task which works in async context
+    task = asyncio.create_task(check_idle_timeout())
+    logger.debug(f"[Idle Timeout] Background task created: {task}")
+
+    # Return the middleware to track activity
+    return last_activity
 
 
 def setup_server(app_state: AppState) -> RecceContext:
@@ -171,6 +225,13 @@ async def lifespan(fastapi: FastAPI):
     if app_state.lifetime is not None and app_state.lifetime > 0:
         schedule_lifetime_termination(app_state)
 
+    # Schedule idle timeout check if idle_timeout is set
+    if app_state.idle_timeout is not None and app_state.idle_timeout > 0:
+        logger.debug(f"[Idle Timeout] Scheduling idle timeout check with {app_state.idle_timeout} seconds")
+        last_activity = schedule_idle_timeout_check(app_state)
+        # Store last_activity in app state so middleware can update it
+        app.state.last_activity = last_activity
+
     yield
 
     if app_state.command == "server":
@@ -241,6 +302,19 @@ app.add_middleware(
     SessionMiddleware,
     secret_key=uuid.uuid4(),
 )
+
+
+@app.middleware("http")
+async def track_activity_for_idle_timeout(request: Request, call_next):
+    """Track activity time for idle timeout check"""
+    response = await call_next(request)
+
+    # Update last activity time if idle timeout is enabled
+    if hasattr(app.state, "last_activity") and app.state.last_activity is not None:
+        app.state.last_activity["time"] = datetime.now(utc)
+        logger.debug(f"[Idle Timeout] ✓ Activity detected: {request.method} {request.url.path} - Timer reset")
+
+    return response
 
 
 @app.middleware("http")
