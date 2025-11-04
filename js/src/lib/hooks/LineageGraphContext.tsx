@@ -184,7 +184,7 @@ function useLineageWatcher() {
       }
     };
     ws.onerror = (err) => {
-      console.error(err);
+      console.error("An error occurred during Handling WebSockets", err);
     };
     ws.onclose = () => {
       setStatus((status) => {

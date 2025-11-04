@@ -414,9 +414,11 @@ export const CheckDetail = ({ checkId, refreshCheckList }: CheckDetailProps) => 
                     </VStack>
                   </Center>
                 ))}
-              {check && check.type === "schema_diff" && <SchemaDiffView check={check} ref={ref} />}
+              {check && check.type === "schema_diff" && (
+                <SchemaDiffView key={check.check_id} check={check} ref={ref} />
+              )}
               {check && check.type === "lineage_diff" && (
-                <LineageDiffView check={check} ref={lineageViewRef} />
+                <LineageDiffView key={check.check_id} check={check} ref={lineageViewRef} />
               )}
             </Tabs.Content>
             {(check?.type === "query" ||
