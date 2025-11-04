@@ -396,7 +396,7 @@ class RecceCloud:
 
 
 def get_recce_cloud_onboarding_state(token: str) -> str:
-    if token and token.startswith("RCT-"):
+    if token and token.startswith("rct-"):
         return "undefined"
 
     try:
