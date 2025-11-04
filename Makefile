@@ -1,4 +1,4 @@
-.PHONY: help format lint check test clean install dev-install
+.PHONY: help format lint check test clean install dev-install install-cloud install-cloud-dev
 
 # Default target executed when no arguments are given to make.
 default: help
@@ -10,16 +10,27 @@ install-dev:
 install:
 	pip install .
 
+install-cloud:
+	python setup_cloud.py install
+
+install-cloud-dev:
+	python setup_cloud.py develop
+
 help:
 	@echo "Available commands:"
-	@echo "  make help         - Show this help message"
-	@echo "  make format       - Format code with Black and isort"
-	@echo "  make flake8       - Run flake8 linting"
-	@echo "  make mypy         - Run type checking with mypy"
-	@echo "  make check        - Run all code quality checks without modifying files"
-	@echo "  make install      - Install requirements"
-	@echo "  make install-dev  - Install dev requirements"
-	@echo "  make dev          - Run the frontend in dev mode"
+	@echo "  make help              - Show this help message"
+	@echo "  make format            - Format code with Black and isort"
+	@echo "  make format-cloud      - Format recce-cloud code"
+	@echo "  make flake8            - Run flake8 linting"
+	@echo "  make flake8-cloud      - Run flake8 on recce-cloud"
+	@echo "  make mypy              - Run type checking with mypy"
+	@echo "  make check             - Run all code quality checks without modifying files"
+	@echo "  make check-cloud       - Run code quality checks on recce-cloud"
+	@echo "  make install           - Install recce package"
+	@echo "  make install-dev       - Install recce with dev requirements"
+	@echo "  make install-cloud     - Install recce-cloud package"
+	@echo "  make install-cloud-dev - Install recce-cloud in dev mode"
+	@echo "  make dev               - Run the frontend in dev mode"
 
 format:
 	@echo "Formatting with Black..."
@@ -27,9 +38,19 @@ format:
 	@echo "Sorting imports with isort..."
 	isort ./recce ./tests
 
+format-cloud:
+	@echo "Formatting recce-cloud with Black..."
+	black ./recce_cloud
+	@echo "Sorting imports with isort..."
+	isort ./recce_cloud
+
 flake8:
 	@echo "Linting with flake8..."
 	flake8 ./recce ./tests
+
+flake8-cloud:
+	@echo "Linting recce-cloud with flake8..."
+	flake8 ./recce_cloud
 
 # Run all code quality checks without modifying files
 check:
@@ -39,6 +60,14 @@ check:
 	isort --check ./recce ./tests
 	@echo "Checking code style with flake8..."
 	flake8 ./recce ./tests
+
+check-cloud:
+	@echo "Checking recce-cloud code formatting with Black..."
+	black --check ./recce_cloud
+	@echo "Checking recce-cloud import order with isort..."
+	isort --check ./recce_cloud
+	@echo "Checking recce-cloud code style with flake8..."
+	flake8 ./recce_cloud
 
 test: install-dev
 	@echo "Running tests..."
