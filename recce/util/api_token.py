@@ -33,7 +33,7 @@ def prepare_api_token(
     # Verify the API token for Recce Cloud Share Link
     api_token = get_recce_api_token()
     new_api_token = kwargs.get("api_token")
-    if new_api_token is not None and new_api_token.startswith("RCT-"):
+    if new_api_token is not None and new_api_token.startswith("rct-"):
         # Task Token
         valid = RecceCloud(new_api_token).verify_token()
         if not valid:
