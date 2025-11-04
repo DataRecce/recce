@@ -525,7 +525,7 @@ export function PrivateLineageView(
       return;
     }
 
-    if (node.type === "customColumnNode") {
+    if (node.type === "lineageGraphColumnNode") {
       onColumnNodeClick(event, node as LineageGraphColumnNode);
       return;
     }
