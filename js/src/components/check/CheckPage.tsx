@@ -82,6 +82,7 @@ export const CheckPage = () => {
       }
     }
 
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setOrderedChecks(checks);
   }, [status, selectedItem, checks, setOrderedChecks, setLocation, latestSelectedCheckId]);
 

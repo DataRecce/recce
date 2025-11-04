@@ -1,5 +1,5 @@
 import { Box, Flex, IconButton } from "@chakra-ui/react";
-import { useState } from "react";
+import { ReactNode, useState } from "react";
 import { useCopyToClipboard } from "usehooks-ts";
 import { PiCopy } from "react-icons/pi";
 
@@ -12,38 +12,7 @@ interface DiffTextProps {
 }
 
 export const DiffText = ({ value, colorPalette, grayOut, noCopy, fontSize }: DiffTextProps) => {
-  const [copiedText, copyToClipboard] = useCopyToClipboard();
-  const hasCopiedText = Boolean(copiedText);
   const [isHovered, setIsHovered] = useState(false);
-
-  const CopyControl = () => {
-    if (noCopy || grayOut) {
-      return <></>;
-    }
-
-    if (hasCopiedText) {
-      return <>Copied</>;
-    }
-
-    if (!isHovered) {
-      return <></>;
-    }
-
-    return (
-      <IconButton
-        aria-label="Copy"
-        size="xs"
-        minW="10px"
-        h="10px"
-        variant="plain"
-        onClick={() => copyToClipboard(value)}
-        display="flex"
-        alignItems="center"
-        justifyContent="center">
-        <PiCopy size="10px" />
-      </IconButton>
-    );
-  };
 
   return (
     <Flex
@@ -69,7 +38,46 @@ export const DiffText = ({ value, colorPalette, grayOut, noCopy, fontSize }: Dif
         {value}
       </Box>
 
-      <CopyControl />
+      <CopyControl value={value} noCopy={noCopy} grayOut={grayOut} isHovered={isHovered} />
     </Flex>
   );
 };
+
+interface CopyControlProps {
+  value: string;
+  grayOut?: boolean;
+  noCopy?: boolean;
+  isHovered: boolean;
+}
+
+function CopyControl({ value, noCopy, grayOut, isHovered }: CopyControlProps): ReactNode {
+  const [copiedText, copyToClipboard] = useCopyToClipboard();
+  const hasCopiedText = Boolean(copiedText);
+
+  if (noCopy || grayOut) {
+    return <></>;
+  }
+
+  if (hasCopiedText) {
+    return <>Copied</>;
+  }
+
+  if (!isHovered) {
+    return <></>;
+  }
+
+  return (
+    <IconButton
+      aria-label="Copy"
+      size="xs"
+      minW="10px"
+      h="10px"
+      variant="plain"
+      onClick={() => copyToClipboard(value)}
+      display="flex"
+      alignItems="center"
+      justifyContent="center">
+      <PiCopy size="10px" />
+    </IconButton>
+  );
+}

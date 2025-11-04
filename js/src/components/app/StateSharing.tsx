@@ -34,6 +34,7 @@ export function TopLevelShare() {
   // Reset message index when loading state changes
   useEffect(() => {
     if (!isLoading) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setMessageIndex(0);
     }
   }, [isLoading]);
