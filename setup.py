@@ -47,6 +47,8 @@ setup(
         "GitPython",
         "PyGithub",
         "sqlglot",
+        "pytz",
+        "packaging",
     ],
     tests_require=["pytest"],
     extras_require={

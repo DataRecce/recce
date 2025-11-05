@@ -68,6 +68,82 @@ class TestCommandServer(TestCase):
         mock_run.assert_called_once()
 
     @patch.object(RecceContext, "verify_required_artifacts")
+    @patch("recce.util.recce_cloud.get_recce_cloud_onboarding_state")
+    @patch("recce.cli.uvicorn.run")
+    @patch("recce.cli.CloudStateLoader")
+    @patch("recce.cli.prepare_api_token", return_value="test_api_token")
+    def test_cmd_server_with_session_id(
+        self,
+        mock_prepare_api_token,
+        mock_state_loader_class,
+        mock_run,
+        mock_get_recce_cloud_onboarding_state,
+        mock_verify_required_artifacts,
+    ):
+        """Test that --session-id automatically enables cloud and review mode"""
+        mock_state_loader = MagicMock(spec=CloudStateLoader)
+        mock_state_loader.verify.return_value = True
+        mock_state_loader.review_mode = True
+        mock_get_recce_cloud_onboarding_state.return_value = "completed"
+        mock_verify_required_artifacts.return_value = True, None
+
+        mock_state_loader_class.return_value = mock_state_loader
+
+        # Test with --session-id (should automatically enable cloud and review)
+        result = self.runner.invoke(cli_command_server, ["--session-id", "test-session-123", "--single-env"])
+
+        # Should succeed
+        assert result.exit_code == 0
+
+        # Should create CloudStateLoader with session_id in cloud_options
+        mock_state_loader_class.assert_called_once()
+        call_args = mock_state_loader_class.call_args
+        assert call_args.kwargs["review_mode"] is True
+        assert "session_id" in call_args.kwargs["cloud_options"]
+        assert call_args.kwargs["cloud_options"]["session_id"] == "test-session-123"
+
+        mock_run.assert_called_once()
+
+    @patch.object(RecceContext, "verify_required_artifacts")
+    @patch("recce.util.recce_cloud.get_recce_cloud_onboarding_state")
+    @patch("recce.cli.uvicorn.run")
+    @patch("recce.cli.CloudStateLoader")
+    @patch("recce.cli.prepare_api_token", return_value="test_api_token")
+    def test_cmd_server_with_share_url(
+        self,
+        mock_prepare_api_token,
+        mock_state_loader_class,
+        mock_run,
+        mock_get_recce_cloud_onboarding_state,
+        mock_verify_required_artifacts,
+    ):
+        """Test that --share-url automatically enables cloud and review mode"""
+        mock_state_loader = MagicMock(spec=CloudStateLoader)
+        mock_state_loader.verify.return_value = True
+        mock_state_loader.review_mode = True
+        mock_get_recce_cloud_onboarding_state.return_value = "completed"
+        mock_verify_required_artifacts.return_value = True, None
+
+        mock_state_loader_class.return_value = mock_state_loader
+
+        # Test with --share-url (should automatically enable cloud and review)
+        result = self.runner.invoke(
+            cli_command_server, ["--share-url", "https://cloud.recce.io/share/abc123", "--single-env"]
+        )
+
+        # Should succeed
+        assert result.exit_code == 0
+
+        # Should create CloudStateLoader with share_id in cloud_options
+        mock_state_loader_class.assert_called_once()
+        call_args = mock_state_loader_class.call_args
+        assert call_args.kwargs["review_mode"] is True
+        assert "share_id" in call_args.kwargs["cloud_options"]
+        assert call_args.kwargs["cloud_options"]["share_id"] == "abc123"
+
+        mock_run.assert_called_once()
+
+    @patch.object(RecceContext, "verify_required_artifacts")
     @patch("os.path.isdir", side_effect=lambda path: True if path == "existed_folder" else False)
     @patch("recce.cli.uvicorn.run")
     @patch("recce.server.AppState")
