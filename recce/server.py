@@ -65,6 +65,10 @@ class RecceServerMode(str, Enum):
         return ["server", "preview", "read-only"]
 
 
+MAX_CHECK_INTERVAL = 30
+MIN_CHECK_INTERVAL = 1
+
+
 @dataclass
 class AppState:
     command: Optional[str] = None
@@ -108,8 +112,8 @@ def schedule_idle_timeout_check(app_state):
     async def check_idle_timeout():
         """Periodically check if the server has been idle for too long"""
         # Use smaller check interval if idle_timeout is very short
-        # Check at least every 30 seconds, but also check when idle_timeout is approaching
-        check_interval = min(30, max(1, app_state.idle_timeout // 3))
+        # Check at least every MAX_CHECK_INTERVAL seconds, but also check when idle_timeout is approaching
+        check_interval = min(MAX_CHECK_INTERVAL, max(MIN_CHECK_INTERVAL, app_state.idle_timeout // 3))
 
         logger.debug(f"[Idle Timeout] Starting idle timeout checker with {check_interval}s check interval")
 
@@ -313,11 +317,18 @@ app.add_middleware(
 @app.middleware("http")
 async def track_activity_for_idle_timeout(request: Request, call_next):
     """Track activity time for idle timeout check"""
+    # Exclude paths that should not reset idle timer
+    # Health checks and monitoring endpoints don't count as user activity
+    excluded_paths = ["/api/health", "/api/ws"]
+
     # Update last activity time BEFORE processing request to keep server alive
     # during long-running requests
     if hasattr(app.state, "last_activity") and app.state.last_activity is not None:
-        app.state.last_activity["time"] = datetime.now(utc)
-        logger.debug(f"[Idle Timeout] ✓ Activity detected: {request.method} {request.url.path} - Timer reset")
+        if request.url.path not in excluded_paths:
+            app.state.last_activity["time"] = datetime.now(utc)
+            logger.debug(f"[Idle Timeout] ✓ Activity detected: {request.method} {request.url.path} - Timer reset")
+        else:
+            logger.debug(f"[Idle Timeout] Excluded path (no timer reset): {request.method} {request.url.path}")
 
     try:
         response = await call_next(request)
@@ -325,7 +336,8 @@ async def track_activity_for_idle_timeout(request: Request, call_next):
     finally:
         # Update timestamp again after request completes to reset the idle timer
         if hasattr(app.state, "last_activity") and app.state.last_activity is not None:
-            app.state.last_activity["time"] = datetime.now(utc)
+            if request.url.path not in excluded_paths:
+                app.state.last_activity["time"] = datetime.now(utc)
 
 
 @app.middleware("http")
