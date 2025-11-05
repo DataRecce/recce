@@ -313,14 +313,19 @@ app.add_middleware(
 @app.middleware("http")
 async def track_activity_for_idle_timeout(request: Request, call_next):
     """Track activity time for idle timeout check"""
-    response = await call_next(request)
-
-    # Update last activity time if idle timeout is enabled
+    # Update last activity time BEFORE processing request to keep server alive
+    # during long-running requests
     if hasattr(app.state, "last_activity") and app.state.last_activity is not None:
         app.state.last_activity["time"] = datetime.now(utc)
         logger.debug(f"[Idle Timeout] ✓ Activity detected: {request.method} {request.url.path} - Timer reset")
 
-    return response
+    try:
+        response = await call_next(request)
+        return response
+    finally:
+        # Update timestamp again after request completes to reset the idle timer
+        if hasattr(app.state, "last_activity") and app.state.last_activity is not None:
+            app.state.last_activity["time"] = datetime.now(utc)
 
 
 @app.middleware("http")
