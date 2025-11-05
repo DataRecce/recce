@@ -4,7 +4,7 @@ import { useState } from "react";
 
 /* For testing purposes only */
 export const ErrorButton = () => {
-  const [a, setA] = useState<any>({ foo: "bar" });
+  const [a, setA] = useState<{ foo: string } | undefined>({ foo: "bar" });
 
   return (
     <Button
@@ -13,7 +13,7 @@ export const ErrorButton = () => {
         setA(undefined);
       }}
       zIndex={1}>
-      {a.foo}
+      {a?.foo}
     </Button>
   );
 };
