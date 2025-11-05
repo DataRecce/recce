@@ -204,7 +204,7 @@ export function toDataGrid(result: DataFrame, options: QueryDataGridOptions) {
   });
 
   result.data.forEach((row, index) => {
-    const row_data = row as any;
+    const row_data = row as unknown as RowObjectType;
     row_data._index = index + 1;
   });
 
