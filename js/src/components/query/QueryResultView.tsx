@@ -1,6 +1,6 @@
 import "react-data-grid/lib/styles.css";
 import { ColumnOrColumnGroup } from "react-data-grid";
-import { QueryParams, QueryResult, QueryViewOptions } from "@/lib/api/adhocQuery";
+import { QueryViewOptions } from "@/lib/api/adhocQuery";
 import {
   Box,
   Button,
@@ -13,7 +13,14 @@ import {
   Spacer,
 } from "@chakra-ui/react";
 import React, { forwardRef, Ref, useMemo } from "react";
-import { ColumnRenderMode, ColumnType, DataFrame, RowObjectType, Run } from "@/lib/api/types";
+import {
+  ColumnRenderMode,
+  ColumnType,
+  DataFrame,
+  isQueryRun,
+  RowObjectType,
+  Run,
+} from "@/lib/api/types";
 import { EmptyRowsRenderer, ScreenshotDataGrid } from "../data-grid/ScreenshotDataGrid";
 import { DataFrameColumnGroupHeader, defaultRenderCell } from "./querydiff";
 import { VscPin, VscPinned } from "react-icons/vsc";
@@ -22,9 +29,8 @@ import _ from "lodash";
 import { columnPrecisionSelectOptions } from "@/components/valuediff/shared";
 import { PiDotsThreeVertical, PiWarning } from "react-icons/pi";
 
-interface QueryResultViewProp
-  extends RunResultViewProps<QueryParams, QueryResult, QueryViewOptions> {
-  onAddToChecklist?: (run: Run<QueryParams, QueryResult>) => void;
+interface QueryResultViewProp extends RunResultViewProps<QueryViewOptions> {
+  onAddToChecklist?: (run: Run) => void;
 }
 
 interface QueryDataGridOptions {
@@ -210,6 +216,9 @@ const PrivateQueryResultView = (
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   ref: Ref<any>,
 ) => {
+  if (!isQueryRun(run)) {
+    throw new Error("run type must be query");
+  }
   const pinnedColumns = useMemo(() => viewOptions?.pinned_columns ?? [], [viewOptions]);
   const columnsRenderMode = useMemo(() => viewOptions?.columnsRenderMode ?? {}, [viewOptions]);
 

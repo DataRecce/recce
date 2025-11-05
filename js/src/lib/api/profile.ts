@@ -18,7 +18,7 @@ export interface ProfileDiffViewOptions {
 }
 
 export async function submitProfileDiff(params: ProfileDiffParams, options?: SubmitOptions) {
-  return await submitRun<ProfileDiffParams, ProfileDiffResult>("profile_diff", params, options);
+  return await submitRun("profile_diff", params, options);
 }
 
 export interface TopKDiffParams {

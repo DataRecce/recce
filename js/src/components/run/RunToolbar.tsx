@@ -7,15 +7,12 @@ interface DiffViewOptions {
   changed_only?: boolean;
 }
 
-interface RunToolbarProps<PT, RT, VO> extends RunResultViewProps<PT, RT, VO> {
+interface RunToolbarProps<VO> extends RunResultViewProps<VO> {
   warnings?: string[];
   children?: ReactNode;
 }
 
-export const RunToolbar = <PT, RT>({
-  warnings,
-  children,
-}: RunToolbarProps<PT, RT, DiffViewOptions>) => {
+export const RunToolbar = ({ warnings, children }: RunToolbarProps<DiffViewOptions>) => {
   return (
     <Flex
       borderBottom="1px solid lightgray"

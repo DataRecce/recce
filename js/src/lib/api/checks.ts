@@ -14,7 +14,7 @@ export interface Check<PT = any, RT = any, VO = any> {
   view_options?: VO;
   is_checked?: boolean;
   is_preset?: boolean;
-  last_run?: Run<PT, RT>;
+  last_run?: Run;
 }
 
 export interface CreateCheckBody {

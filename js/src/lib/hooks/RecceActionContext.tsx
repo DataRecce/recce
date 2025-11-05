@@ -7,7 +7,7 @@ import React, {
   useEffect,
   useState,
 } from "react";
-import { Run, RunType } from "../api/types";
+import { Run, RunParamTypes, RunType } from "../api/types";
 import { RunModal } from "@/components/run/RunModal";
 import { useDisclosure } from "@chakra-ui/react";
 
@@ -19,6 +19,8 @@ import { RunFormProps } from "@/components/run/types";
 import { useQueryClient } from "@tanstack/react-query";
 import { cacheKeys } from "../api/cacheKeys";
 import { toaster } from "@/components/ui/toaster";
+import { type HistogramDiffParams, ProfileDiffParams, TopKDiffParams } from "@/lib/api/profile";
+import type { RowCountDiffParams, RowCountParams } from "@/lib/api/rowcount";
 
 export interface RecceActionOptions {
   showForm: boolean;
@@ -27,7 +29,7 @@ export interface RecceActionOptions {
 }
 
 export interface RecceActionContextType {
-  runAction: (type: string, params?: any, actionOptions?: RecceActionOptions) => void;
+  runAction: (type: RunType, params?: RunParamTypes, actionOptions?: RecceActionOptions) => void;
   runId?: string;
   showRunId: (runId: string, refreshHistory?: boolean) => void;
   isRunResultOpen: boolean;
@@ -109,7 +111,7 @@ export function RecceActionContextProvider({ children }: RecceActionContextProvi
   }, [closeRunResult, setRunId]);
 
   const runAction = useCallback(
-    async (type: string, params?: any, options?: RecceActionOptions) => {
+    async (type: RunType, params?: any, options?: RecceActionOptions) => {
       try {
         const session = new Date().getTime().toString();
         let lastRun = undefined;
@@ -166,7 +168,7 @@ export function RecceActionContextProvider({ children }: RecceActionContextProvi
   );
   useCloseModalEffect(onModalClose);
 
-  const handleExecute = async (type: string, params: any) => {
+  const handleExecute = async (type: RunType, params: any) => {
     try {
       onModalClose();
       const { run_id } = await submitRun(type, params, {

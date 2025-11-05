@@ -4,9 +4,9 @@ import { RunResultViewProps } from "./types";
 import { ErrorBoundary } from "@sentry/react";
 import React, { forwardRef, ForwardRefExoticComponent, RefAttributes } from "react";
 
-interface RunViewProps<PT, RT, VO = any> {
+interface RunViewProps<VO = any> {
   isRunning?: boolean;
-  run?: Run<PT, RT>;
+  run?: Run;
   error?: Error | null;
   progress?: Run["progress"];
   isAborting?: boolean;
@@ -15,15 +15,13 @@ interface RunViewProps<PT, RT, VO = any> {
   onExecuteRun?: () => void;
   viewOptions?: VO;
   onViewOptionsChanged?: (viewOptions: VO) => void;
-  RunResultView?: ForwardRefExoticComponent<
-    RunResultViewProps<PT, RT, VO> & RefAttributes<HTMLDivElement>
-  >;
+  RunResultView?: ForwardRefExoticComponent<RunResultViewProps<VO> & RefAttributes<HTMLDivElement>>;
   // eslint-disable-next-line @typescript-eslint/no-unnecessary-type-parameters
-  children?: <T extends RunResultViewProps<PT, RT, VO>>(params: T) => React.ReactNode;
+  children?: <T extends RunResultViewProps<VO>>(params: T) => React.ReactNode;
 }
 
 export const RunView = forwardRef(
-  <PT, RT>(
+  (
     {
       isRunning,
       isAborting,
@@ -36,7 +34,7 @@ export const RunView = forwardRef(
       RunResultView,
       children,
       onExecuteRun,
-    }: RunViewProps<PT, RT>,
+    }: RunViewProps,
     ref: any,
   ) => {
     const errorMessage = (error as any)?.response?.data?.detail ?? run?.error;

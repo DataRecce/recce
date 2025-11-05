@@ -1,6 +1,10 @@
 /* eslint-disable @typescript-eslint/no-redundant-type-constituents */
 // TODO the RunType and Run["status"] types must be a finite list of enumerated values *without* a union with string.
 
+// ============================================================================
+// Base Types
+// ============================================================================
+
 export type RowDataTypes = number | string | boolean | null | undefined;
 export type RowData = RowDataTypes[];
 
@@ -30,33 +34,224 @@ export interface DataFrame {
   more?: boolean;
 }
 
+// ============================================================================
+// Run Types - Strict enum without string union
+// ============================================================================
+
 export type RunType =
   | "simple"
   | "query"
+  | "query_base"
   | "query_diff"
   | "value_diff"
   | "value_diff_detail"
   | "schema_diff"
+  | "profile"
   | "profile_diff"
   | "row_count"
   | "row_count_diff"
   | "lineage_diff"
   | "top_k_diff"
-  | "histogram_diff"
-  | string;
+  | "histogram_diff";
 
-export interface Run<PT = any, RT = any> {
+// ============================================================================
+// Inline Param Definitions (defined here to avoid circular dependencies)
+// ============================================================================
+
+// Import types that are defined in other files
+import type { QueryRunParams, QueryDiffParams, QueryResult, QueryDiffResult } from "./adhocQuery";
+import type {
+  ValueDiffParams,
+  ValueDiffResult,
+  ValueDiffDetailParams,
+  ValueDiffDetailResult,
+} from "./valuediff";
+import type {
+  ProfileDiffParams,
+  ProfileDiffResult,
+  TopKDiffParams,
+  TopKDiffResult,
+  HistogramDiffParams,
+  HistogramDiffResult,
+} from "./profile";
+import type {
+  RowCountParams,
+  RowCountResult,
+  RowCountDiffParams,
+  RowCountDiffResult,
+} from "./rowcount";
+import type { LineageDiffResult } from "./info";
+
+// Define params that don't have their own files yet
+export interface SchemaDiffParams {
+  node_id?: string | string[];
+  select?: string;
+  exclude?: string;
+  packages?: string[];
+  view_mode?: "all" | "changed_models";
+}
+
+export interface LineageDiffParams {
+  select?: string;
+  exclude?: string;
+  packages?: string[];
+  view_mode?: "all" | "changed_models";
+}
+
+// ============================================================================
+// Run - Discriminated Union Type
+// ============================================================================
+
+export type RunParamTypes =
+  | QueryRunParams
+  | QueryDiffParams
+  | ValueDiffParams
+  | SchemaDiffParams
+  | ProfileDiffParams
+  | RowCountParams
+  | RowCountDiffParams
+  | LineageDiffParams
+  | TopKDiffParams
+  | HistogramDiffParams
+  | undefined;
+
+interface BaseRun {
   run_id: string;
   run_at: string;
   name?: string;
   check_id?: string;
-  type: RunType;
   progress?: {
     message?: string;
     percentage?: number;
   };
-  params?: PT;
-  result?: RT;
   error?: string;
   status?: "finished" | "failed" | "cancelled" | "running" | string;
+}
+
+export type Run =
+  | (BaseRun & {
+      type: "simple";
+      params?: undefined;
+      result?: undefined;
+    })
+  | (BaseRun & {
+      type: "query";
+      params?: QueryRunParams;
+      result?: QueryResult;
+    })
+  | (BaseRun & {
+      type: "query_base";
+      params?: QueryRunParams;
+      result?: QueryResult;
+    })
+  | (BaseRun & {
+      type: "query_diff";
+      params?: QueryDiffParams;
+      result?: QueryDiffResult;
+    })
+  | (BaseRun & {
+      type: "value_diff";
+      params?: ValueDiffParams;
+      result?: ValueDiffResult;
+    })
+  | (BaseRun & {
+      type: "value_diff_detail";
+      params?: ValueDiffDetailParams;
+      result?: ValueDiffDetailResult;
+    })
+  | (BaseRun & {
+      type: "schema_diff";
+      params?: SchemaDiffParams;
+      result?: undefined;
+    })
+  | (BaseRun & {
+      type: "profile";
+      params?: ProfileDiffParams;
+      result?: ProfileDiffResult;
+    })
+  | (BaseRun & {
+      type: "profile_diff";
+      params?: ProfileDiffParams;
+      result?: ProfileDiffResult;
+    })
+  | (BaseRun & {
+      type: "row_count";
+      params?: RowCountParams;
+      result?: RowCountResult;
+    })
+  | (BaseRun & {
+      type: "row_count_diff";
+      params?: RowCountDiffParams;
+      result?: RowCountDiffResult;
+    })
+  | (BaseRun & {
+      type: "lineage_diff";
+      params?: LineageDiffParams;
+      result?: LineageDiffResult;
+    })
+  | (BaseRun & {
+      type: "top_k_diff";
+      params?: TopKDiffParams;
+      result?: TopKDiffResult;
+    })
+  | (BaseRun & {
+      type: "histogram_diff";
+      params?: HistogramDiffParams;
+      result?: HistogramDiffResult;
+    });
+
+// ============================================================================
+// Type Guards
+// ============================================================================
+
+export function isSimpleRun(run: Run): run is Extract<Run, { type: "simple" }> {
+  return run.type === "simple";
+}
+
+export function isQueryRun(run: Run): run is Extract<Run, { type: "query" }> {
+  return run.type === "query";
+}
+
+export function isQueryBaseRun(run: Run): run is Extract<Run, { type: "query_base" }> {
+  return run.type === "query_base";
+}
+
+export function isQueryDiffRun(run: Run): run is Extract<Run, { type: "query_diff" }> {
+  return run.type === "query_diff";
+}
+
+export function isValueDiffRun(run: Run): run is Extract<Run, { type: "value_diff" }> {
+  return run.type === "value_diff";
+}
+
+export function isValueDiffDetailRun(run: Run): run is Extract<Run, { type: "value_diff_detail" }> {
+  return run.type === "value_diff_detail";
+}
+
+export function isSchemaDiffRun(run: Run): run is Extract<Run, { type: "schema_diff" }> {
+  return run.type === "schema_diff";
+}
+
+export function isProfileDiffRun(run: Run): run is Extract<Run, { type: "profile_diff" }> {
+  return run.type === "profile_diff";
+}
+
+export function isRowCountRun(run: Run): run is Extract<Run, { type: "row_count" }> {
+  return run.type === "row_count";
+}
+
+export function isRowCountDiffRun(run: Run): run is Extract<Run, { type: "row_count_diff" }> {
+  return run.type === "row_count_diff";
+}
+
+export function isLineageDiffRun(run: Run): run is Extract<Run, { type: "lineage_diff" }> {
+  return run.type === "lineage_diff";
+}
+
+export function isTopKDiffRun(run: Run): run is Extract<Run, { type: "top_k_diff" }> {
+  return run.type === "top_k_diff";
+}
+
+export function isHistogramDiffRun(run: Run): run is Extract<Run, { type: "histogram_diff" }> {
+  return run.type === "histogram_diff";
 }

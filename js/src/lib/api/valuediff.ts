@@ -17,7 +17,7 @@ export interface ValueDiffParams {
 }
 
 export async function submitValueDiff(params: ValueDiffParams, options?: SubmitOptions) {
-  return await submitRun<ValueDiffParams, ValueDiffResult>("value_diff", params, options);
+  return await submitRun("value_diff", params, options);
 }
 
 export type ValueDiffDetailResult = DataFrame;
@@ -32,5 +32,5 @@ export interface ValueDiffDetailViewOptions {
 }
 
 export async function submitValueDiffDetail(params: ValueDiffParams, options?: SubmitOptions) {
-  return await submitRun<ValueDiffParams, ValueDiffResult>("value_diff_detail", params, options);
+  return await submitRun("value_diff_detail", params, options);
 }
