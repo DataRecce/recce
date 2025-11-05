@@ -6,7 +6,7 @@ export interface RunFormProps<PT> {
   setIsReadyToExecute: (isReadyToExecute: boolean) => void;
 }
 
-export interface RunResultViewProps<VO = any> {
+export interface RunResultViewProps<VO = unknown> {
   run: Run;
   viewOptions?: VO;
   onViewOptionsChanged?: (viewOptions: VO) => void;
