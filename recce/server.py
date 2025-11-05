@@ -313,13 +313,12 @@ app.add_middleware(
 @app.middleware("http")
 async def track_activity_for_idle_timeout(request: Request, call_next):
     """Track activity time for idle timeout check"""
-    response = await call_next(request)
-
     # Exclude paths that should not reset idle timer
     # Health checks and monitoring endpoints don't count as user activity
     excluded_paths = ["/api/health", "/api/ws"]
 
-    # Update last activity time if idle timeout is enabled
+    # Update last activity time BEFORE processing request if idle timeout is enabled
+    # This ensures long-running requests don't get terminated mid-execution
     app_state: AppState = app.state
     if app_state.last_activity is not None:
         if request.url.path not in excluded_paths:
@@ -328,6 +327,7 @@ async def track_activity_for_idle_timeout(request: Request, call_next):
         else:
             logger.debug(f"[Idle Timeout] Excluded path (no timer reset): {request.method} {request.url.path}")
 
+    response = await call_next(request)
     return response
 
 
