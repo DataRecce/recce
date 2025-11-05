@@ -24,14 +24,15 @@ import { MdFormatListNumberedRtl, MdSchema } from "react-icons/md";
 import { ProfileDiffForm } from "../profile/ProfileDiffForm";
 import { ComponentType, ForwardRefExoticComponent, RefAttributes } from "react";
 
-interface RegistryEntry<PT, VO = any> {
+interface RegistryEntry<PT = unknown, VO = unknown> {
   title: string;
   icon: IconType;
   RunResultView?: ForwardRefExoticComponent<RunResultViewProps<VO> & RefAttributes<HTMLDivElement>>;
   RunForm?: ComponentType<RunFormProps<PT>>;
 }
 
-const registry: Record<string, RegistryEntry<any>> = {
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const registry: Record<string, RegistryEntry<any, any>> = {
   lineage_diff: {
     title: "Lineage Diff",
     icon: TbBrandStackshare,
@@ -108,6 +109,7 @@ const registry: Record<string, RegistryEntry<any>> = {
   },
 };
 
-export const findByRunType = (runType: string): RegistryEntry<any> | undefined => {
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export const findByRunType = (runType: string): RegistryEntry<any, any> | undefined => {
   return registry[runType];
 };
