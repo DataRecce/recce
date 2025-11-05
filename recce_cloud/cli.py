@@ -91,7 +91,6 @@ def upload(target_path, session_id):
     Environment Variables:
     - RECCE_SESSION_ID: Target session ID for upload (required)
     - RECCE_API_TOKEN: Recce Cloud API token (required)
-    - RECCE_CLOUD_API_HOST: Custom API host (default: https://cloud.datarecce.io)
 
     \b
     Examples:
