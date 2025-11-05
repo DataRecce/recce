@@ -14,7 +14,6 @@ import {
   HStack,
   useDisclosure,
   Menu,
-  IconButton,
   Portal,
 } from "@chakra-ui/react";
 import { ReactNode, useCallback, useState } from "react";
@@ -32,7 +31,7 @@ import { useRecceShareStateContext } from "@/lib/hooks/RecceShareStateContext";
 import { trackShareState, trackCopyToClipboard } from "@/lib/api/track";
 import AuthModal from "@/components/AuthModal/AuthModal";
 import { PiCaretDown, PiCheck, PiCopy, PiRepeat } from "react-icons/pi";
-import { isQueryBaseRun, isQueryDiffRun, isQueryRun } from "@/lib/api/types";
+import { isQueryBaseRun, isQueryDiffRun, isQueryRun, RunParamTypes } from "@/lib/api/types";
 
 interface RunPageProps {
   onClose?: () => void;
@@ -40,7 +39,7 @@ interface RunPageProps {
   isSingleEnvironment?: boolean;
 }
 
-const _ParamView = (data: { type: string; params: any }) => {
+const _ParamView = (data: { type: string; params: RunParamTypes }) => {
   const yaml = YAML.stringify(data, null, 2);
 
   return (
