@@ -1,5 +1,6 @@
 import { Editor } from "@monaco-editor/react";
 import YAML from "yaml";
+
 export function generateCheckTemplate({
   name,
   description,
@@ -7,22 +8,21 @@ export function generateCheckTemplate({
   params,
   viewOptions,
 }: PresetCheckTemplateViewProps) {
-  const check: any = { name, description, type, params };
+  const check: Record<string, unknown> = { name, description, type, params };
   if (viewOptions) {
     check.view_options = viewOptions;
   }
-  const yamlTemplate = YAML.stringify({
+  return YAML.stringify({
     checks: [check],
   });
-  return yamlTemplate;
 }
 
 interface PresetCheckTemplateViewProps {
   name: string;
   description: string;
   type: string;
-  params: any;
-  viewOptions: any;
+  params: Record<string, unknown>;
+  viewOptions?: Record<string, unknown>;
 }
 
 export function PresetCheckTemplateView({ yamlTemplate }: { yamlTemplate: string }) {
