@@ -51,6 +51,10 @@ from .state import RecceShareStateManager, RecceStateLoader
 
 logger = logging.getLogger("uvicorn")
 
+# Idle timeout check interval bounds (in seconds)
+MAX_CHECK_INTERVAL = 30
+MIN_CHECK_INTERVAL = 1
+
 
 class RecceServerMode(str, Enum):
     server = "server"
@@ -108,8 +112,8 @@ def schedule_idle_timeout_check(app_state):
     async def check_idle_timeout():
         """Periodically check if the server has been idle for too long"""
         # Use smaller check interval if idle_timeout is very short
-        # Check at least every 30 seconds, but also check when idle_timeout is approaching
-        check_interval = min(30, max(1, app_state.idle_timeout // 3))
+        # Check at least every MAX_CHECK_INTERVAL seconds, but also check when idle_timeout is approaching
+        check_interval = min(MAX_CHECK_INTERVAL, max(MIN_CHECK_INTERVAL, app_state.idle_timeout // 3))
 
         logger.debug(f"[Idle Timeout] Starting idle timeout checker with {check_interval}s check interval")
 
