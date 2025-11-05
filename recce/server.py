@@ -315,10 +315,17 @@ async def track_activity_for_idle_timeout(request: Request, call_next):
     """Track activity time for idle timeout check"""
     response = await call_next(request)
 
+    # Exclude paths that should not reset idle timer
+    # Health checks and monitoring endpoints don't count as user activity
+    excluded_paths = ["/api/health", "/api/ws"]
+
     # Update last activity time if idle timeout is enabled
     if hasattr(app.state, "last_activity") and app.state.last_activity is not None:
-        app.state.last_activity["time"] = datetime.now(utc)
-        logger.debug(f"[Idle Timeout] ✓ Activity detected: {request.method} {request.url.path} - Timer reset")
+        if request.url.path not in excluded_paths:
+            app.state.last_activity["time"] = datetime.now(utc)
+            logger.debug(f"[Idle Timeout] ✓ Activity detected: {request.method} {request.url.path} - Timer reset")
+        else:
+            logger.debug(f"[Idle Timeout] Excluded path (no timer reset): {request.method} {request.url.path}")
 
     return response
 
