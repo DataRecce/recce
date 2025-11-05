@@ -1,11 +1,10 @@
-import { ValueDiffResult } from "@/lib/api/valuediff";
 import { Box, Flex, ProgressCircle, Tag } from "@chakra-ui/react";
-import { RowCountDiffResult, RowCountResult } from "@/lib/api/rowcount";
 import { RowCountDiffTag, RowCountTag } from "./NodeTag";
 import { ActionState } from "./LineageViewContext";
 import { Tooltip } from "@/components/ui/tooltip";
 import { PiInfo, PiWarning } from "react-icons/pi";
 import { LineageGraphNode } from "@/components/lineage/lineage";
+import { isRowCountDiffRun, isRowCountRun, isValueDiffRun } from "@/lib/api/types";
 
 interface ActionTagProps {
   node: LineageGraphNode;
@@ -54,7 +53,8 @@ export const ActionTag = ({ node, action }: ActionTagProps) => {
     );
   }
 
-  const { error, result, run_id, progress } = run;
+  const { error, run_id, progress } = run;
+
   if (status === "running") {
     if (progress?.percentage === undefined) {
       return (
@@ -90,8 +90,8 @@ export const ActionTag = ({ node, action }: ActionTagProps) => {
     );
   }
 
-  if (run.type === "value_diff") {
-    const r = result as ValueDiffResult;
+  if (isValueDiffRun(run) && run.result) {
+    const r = run.result;
     let total = 0;
     let mismatched = 0;
 
@@ -117,13 +117,13 @@ export const ActionTag = ({ node, action }: ActionTagProps) => {
     );
   }
 
-  if (run.type === "row_count_diff") {
-    const result = run.result as RowCountDiffResult;
+  if (isRowCountDiffRun(run) && run.result) {
+    const result = run.result;
     return <RowCountDiffTag rowCount={result[node.data.name]} node={node} />;
   }
 
-  if (run.type === "row_count") {
-    const result = run.result as RowCountResult;
+  if (isRowCountRun(run) && run.result) {
+    const result = run.result;
     return <RowCountTag rowCount={result[node.data.name]} node={node} />;
   }
 

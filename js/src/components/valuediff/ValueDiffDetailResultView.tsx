@@ -4,26 +4,18 @@ import { Center, Flex } from "@chakra-ui/react";
 import { forwardRef, Ref, useMemo } from "react";
 
 import "../query/styles.css";
-import { ColumnRenderMode, Run } from "@/lib/api/types";
+import { ColumnRenderMode, isValueDiffDetailRun, Run } from "@/lib/api/types";
 import { EmptyRowsRenderer, ScreenshotDataGrid } from "../data-grid/ScreenshotDataGrid";
 import { RunResultViewProps } from "../run/types";
 import { toValueDiffGrid } from "./valuediff";
-import {
-  ValueDiffDetailParams,
-  ValueDiffDetailResult,
-  ValueDiffDetailViewOptions,
-} from "@/lib/api/valuediff";
+import { ValueDiffDetailViewOptions } from "@/lib/api/valuediff";
 import { RunToolbar } from "../run/RunToolbar";
 import { DiffDisplayModeSwitch } from "../query/ToggleSwitch";
 import { ChangedOnlyCheckbox } from "../query/ChangedOnlyCheckbox";
 
 export interface ValueDiffDetailResultViewProps
-  extends RunResultViewProps<
-    ValueDiffDetailParams,
-    ValueDiffDetailResult,
-    ValueDiffDetailViewOptions
-  > {
-  onAddToChecklist?: (run: Run<ValueDiffDetailParams, ValueDiffDetailResult>) => void;
+  extends RunResultViewProps<ValueDiffDetailViewOptions> {
+  onAddToChecklist?: (run: Run) => void;
 }
 
 const PrivateValueDiffDetailResultView = (
@@ -31,6 +23,9 @@ const PrivateValueDiffDetailResultView = (
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   ref: Ref<any>,
 ) => {
+  if (!isValueDiffDetailRun(run)) {
+    throw new Error("run type must be value_diff_detail");
+  }
   const changedOnly = useMemo(() => viewOptions?.changed_only ?? false, [viewOptions]);
   const pinnedColumns = useMemo(() => viewOptions?.pinned_columns ?? [], [viewOptions]);
   const displayMode = useMemo(() => viewOptions?.display_mode ?? "inline", [viewOptions]);

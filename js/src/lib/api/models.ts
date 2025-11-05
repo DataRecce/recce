@@ -38,6 +38,6 @@ export async function queryRowCount(modelNames: string[]): Promise<QueryRowCount
 
   return {
     runId: run_id,
-    result: run.result,
+    result: run.result as RowCountDiffResult,
   };
 }

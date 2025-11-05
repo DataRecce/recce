@@ -11,8 +11,9 @@ import {
 import { deltaPercentageString } from "./delta";
 import { isNumber } from "lodash";
 import { forwardRef, Ref } from "react";
+import { isRowCountDiffRun, isRowCountRun } from "@/lib/api/types";
 
-type RowCountDiffResultViewProp = RunResultViewProps<RowCountDiffParams, RowCountDiffResult>;
+type RowCountDiffResultViewProp = RunResultViewProps;
 
 interface RowCountDiffRow {
   name: string;
@@ -22,6 +23,9 @@ interface RowCountDiffRow {
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 function _RowCountDiffResultView({ run }: RowCountDiffResultViewProp, ref: Ref<any>) {
+  if (!isRowCountDiffRun(run)) {
+    throw new Error("Run type must be row_count_diff");
+  }
   function columnCellClass(row: RowCountDiffRow) {
     if (row.base === row.current) {
       return "column-body-normal";
@@ -101,7 +105,7 @@ function _RowCountDiffResultView({ run }: RowCountDiffResultViewProp, ref: Ref<a
   );
 }
 
-type RowCountResultViewProp = RunResultViewProps<RowCountParams, RowCountResult>;
+type RowCountResultViewProp = RunResultViewProps;
 
 interface RowCountRow {
   name: string;
@@ -110,6 +114,9 @@ interface RowCountRow {
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 function _RowCountResultView({ run }: RowCountResultViewProp, ref: Ref<any>) {
+  if (!isRowCountRun(run)) {
+    throw new Error("Run type must be row_count");
+  }
   const runResult = run.result ?? {};
 
   const columns = [

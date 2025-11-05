@@ -7,11 +7,11 @@ import { RunResultViewProps } from "../run/types";
 import { VscKey } from "react-icons/vsc";
 import { RecceActionOptions, useRecceActionContext } from "@/lib/hooks/RecceActionContext";
 import { useRecceInstanceContext } from "@/lib/hooks/RecceInstanceContext";
-import { RowObjectType } from "@/lib/api/types";
+import { isValueDiffRun, RowObjectType } from "@/lib/api/types";
 import React, { forwardRef, Ref } from "react";
 import { PiDotsThreeVertical } from "react-icons/pi";
 
-type ValueDiffResultViewProp = RunResultViewProps<ValueDiffParams, ValueDiffResult>;
+type ValueDiffResultViewProp = RunResultViewProps;
 
 function ColumnNameCell({ params, column }: { params: ValueDiffParams; column: string }) {
   const { runAction } = useRecceActionContext();
@@ -77,6 +77,10 @@ function ColumnNameCell({ params, column }: { params: ValueDiffParams; column: s
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 function _ValueDiffResultView({ run }: ValueDiffResultViewProp, ref: Ref<any>) {
+  if (!isValueDiffRun(run)) {
+    throw new Error("Run type must be value_diff");
+  }
+
   const result = run.result as ValueDiffResult;
   const params = run.params as ValueDiffParams;
   const cellClass = (row: RowObjectType) => {
