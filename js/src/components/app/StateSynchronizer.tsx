@@ -43,7 +43,7 @@ export function StateSynchronizer() {
   const queryClient = useQueryClient();
   const [location, setLocation] = useLocation();
   const { open, onOpen, onClose } = useDisclosure();
-  const [syncOption, setSyncOption] = useState("");
+  const [syncOption, setSyncOption] = useState<"overwrite" | "revert" | "merge" | "">("");
   const { data: instanceInfo } = useRecceInstanceInfo();
 
   const handleSync = useCallback(
@@ -111,7 +111,7 @@ export function StateSynchronizer() {
                 <Box mt="5px">
                   <RadioGroup.Root
                     onValueChange={(e) => {
-                      setSyncOption(String(e.value));
+                      setSyncOption(e.value as "merge" | "overwrite" | "revert");
                     }}
                     value={syncOption}>
                     <Stack direction="column">
@@ -166,7 +166,7 @@ export function StateSynchronizer() {
                 </Button>
                 <Button
                   colorPalette="blue"
-                  onClick={() => handleSync({ method: syncOption as any })}
+                  onClick={() => handleSync({ method: syncOption || undefined })}
                   disabled={!syncOption} // Disable button until an option is selected
                 >
                   Sync
