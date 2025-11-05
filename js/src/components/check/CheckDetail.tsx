@@ -54,6 +54,7 @@ import { Tooltip } from "@/components/ui/tooltip";
 import { PiCheckCircle, PiCopy, PiRepeat, PiTrashFill } from "react-icons/pi";
 import SetupConnectionPopover from "@/components/app/SetupConnectionPopover";
 import { useRecceCheckContext } from "@/lib/hooks/RecceCheckContext";
+import { QueryDiffParams, QueryParams } from "@/lib/api/adhocQuery";
 
 export const isDisabledByNoResult = (type: string, run: Run | undefined): boolean => {
   if (type === "schema_diff" || type === "lineage_diff") {
@@ -175,7 +176,7 @@ export const CheckDetail = ({ checkId, refreshCheckList }: CheckDetailProps) => 
     }
   }, [check?.is_checked, mutate, markedAsApprovedToast]);
 
-  const handelUpdateViewOptions = (viewOptions: any) => {
+  const handelUpdateViewOptions = (viewOptions: Record<string, unknown>) => {
     mutate({ view_options: viewOptions });
   };
 
@@ -191,8 +192,8 @@ export const CheckDetail = ({ checkId, refreshCheckList }: CheckDetailProps) => 
       name: check?.name ?? "",
       description: check?.description ?? "",
       type: check?.type ?? "",
-      params: check?.params,
-      viewOptions: check?.view_options,
+      params: check?.params as Record<string, unknown>,
+      viewOptions: check?.view_options as Record<string, unknown>,
     });
     // eslint-disable-next-line react-hooks/set-state-in-effect
     setPresetCheckTemplate(template);
@@ -390,7 +391,7 @@ export const CheckDetail = ({ checkId, refreshCheckList }: CheckDetailProps) => 
                     error={rerunError}
                     progress={progress}
                     RunResultView={runTypeEntry.RunResultView}
-                    viewOptions={check?.view_options}
+                    viewOptions={check?.view_options as Record<string, unknown>}
                     onViewOptionsChanged={handelUpdateViewOptions}
                     onCancel={handleCancel}
                     onExecuteRun={handleRerun}
@@ -421,24 +422,27 @@ export const CheckDetail = ({ checkId, refreshCheckList }: CheckDetailProps) => 
                 <LineageDiffView key={check.check_id} check={check} ref={lineageViewRef} />
               )}
             </Tabs.Content>
-            {(check?.type === "query" ||
-              check?.type === "query_diff" ||
-              check?.type === "query_base") && (
-              <Tabs.Content value="query" p={0} height="100%" width="100%">
-                {check.params?.base_sql_template ? (
-                  <DualSqlEditor
-                    value={check.params?.sql_template ?? ""}
-                    baseValue={check.params?.base_sql_template ?? ""}
-                    options={{ readOnly: true }}
-                  />
-                ) : (
-                  <SqlEditor
-                    value={check.params?.sql_template ?? ""}
-                    options={{ readOnly: true }}
-                  />
-                )}
-              </Tabs.Content>
-            )}
+            {check &&
+              (check.type === "query" ||
+                check.type === "query_diff" ||
+                check.type === "query_base") && (
+                <Tabs.Content value="query" p={0} height="100%" width="100%">
+                  {(check.params as QueryDiffParams | QueryParams).base_sql_template ? (
+                    <DualSqlEditor
+                      /* eslint-disable-next-line @typescript-eslint/no-unnecessary-condition */
+                      value={(check.params as QueryDiffParams).sql_template ?? ""}
+                      baseValue={(check.params as QueryDiffParams).base_sql_template ?? ""}
+                      options={{ readOnly: true }}
+                    />
+                  ) : (
+                    <SqlEditor
+                      /* eslint-disable-next-line @typescript-eslint/no-unnecessary-condition */
+                      value={(check.params as QueryParams).sql_template ?? ""}
+                      options={{ readOnly: true }}
+                    />
+                  )}
+                </Tabs.Content>
+              )}
           </Tabs.ContentGroup>
         </Tabs.Root>
       </Box>
