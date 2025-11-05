@@ -39,7 +39,7 @@ export const useMultiNodesAction = (
   const submitRunForNodes = async (
     type: RunType,
     skip: (node: LineageGraphNode) => string | undefined,
-    getParams: (nodes: LineageGraphNode[]) => any,
+    getParams: (nodes: LineageGraphNode[]) => RowCountParams | RowCountDiffParams,
   ) => {
     actionState.mode = "multi_nodes";
     actionState.actions = {};
@@ -114,7 +114,7 @@ export const useMultiNodesAction = (
     type: RunType,
     getParams: (node: LineageGraphNode) => {
       /* params is the input parameters for the run of a node */
-      params?: any;
+      params?: ValueDiffParams;
       /* skipReason is a string that explains why the node is skipped */
       skipReason?: string;
     },
@@ -208,12 +208,10 @@ export const useMultiNodesAction = (
         return "Not a model";
       }
     };
-    const getParams = (nodes: LineageGraphNode[]) => {
-      const params: RowCountParams = {
+    const getParams = (nodes: LineageGraphNode[]): RowCountParams => {
+      return {
         node_names: nodes.map((node) => node.data.name),
       };
-
-      return params;
     };
 
     await submitRunForNodes("row_count", skip, getParams);
@@ -239,12 +237,10 @@ export const useMultiNodesAction = (
         return "Not a model";
       }
     };
-    const getParams = (nodes: LineageGraphNode[]) => {
-      const params: RowCountDiffParams = {
+    const getParams = (nodes: LineageGraphNode[]): RowCountDiffParams => {
+      return {
         node_names: nodes.map((node) => node.data.name),
       };
-
-      return params;
     };
 
     await submitRunForNodes("row_count_diff", skip, getParams);
@@ -259,7 +255,7 @@ export const useMultiNodesAction = (
         };
       }
 
-      const params: Partial<ValueDiffParams> = {
+      const params: ValueDiffParams = {
         model: node.data.name,
         primary_key: primaryKey,
       };
