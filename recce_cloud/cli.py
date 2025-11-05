@@ -3,11 +3,16 @@
 Recce Cloud CLI - Lightweight command for managing Recce Cloud operations.
 """
 
+import os
 import sys
 
 import click
+import requests
+from rich.console import Console
 
 from recce_cloud import __version__
+from recce_cloud.api.client import RecceCloudClient, RecceCloudException
+from recce_cloud.artifact import get_adapter_type, verify_artifacts_path
 
 
 @click.group()
@@ -112,16 +117,126 @@ def upload(target_path, session_id):
     3 - File validation error (missing or invalid manifest/catalog)
     4 - Upload error
     """
-    # Basic flow structure - implementation will be added in subsequent tasks
-    click.echo("Upload dbt artifacts to Recce Cloud Session:")
-    click.echo(f"  Session ID: {session_id or 'not provided'}")
-    click.echo(f"  Target path: {target_path}")
-    click.echo("  1. Validate manifest.json and catalog.json")
-    click.echo("  2. Extract Git/PR/CI information")
-    click.echo("  3. Authenticate with Recce Cloud API")
-    click.echo("  4. Upload artifacts to S3")
-    click.echo("  5. Update session metadata")
-    click.echo("\nImplementation coming soon...")
+    console = Console()
+
+    # Validate session ID
+    if not session_id:
+        console.print("[red]Error:[/red] Session ID is required")
+        console.print("Provide --session-id or set RECCE_SESSION_ID environment variable")
+        sys.exit(2)
+
+    # 1. Validate artifacts exist
+    if not verify_artifacts_path(target_path):
+        console.print(f"[red]Error:[/red] Invalid target path: {target_path}")
+        console.print("Please provide a valid target path containing manifest.json and catalog.json.")
+        sys.exit(3)
+
+    manifest_path = os.path.join(target_path, "manifest.json")
+    catalog_path = os.path.join(target_path, "catalog.json")
+
+    # 2. Extract adapter type from manifest
+    try:
+        adapter_type = get_adapter_type(manifest_path)
+    except Exception as e:
+        console.print("[red]Error:[/red] Failed to parse adapter type from manifest.json")
+        console.print(f"Reason: {e}")
+        sys.exit(3)
+
+    # 3. Get authentication token
+    token = os.getenv("RECCE_API_TOKEN") or os.getenv("GITHUB_TOKEN")
+    if not token:
+        console.print("[red]Error:[/red] No authentication token provided")
+        console.print("Set RECCE_API_TOKEN or GITHUB_TOKEN environment variable")
+        sys.exit(2)
+
+    # 4. Initialize API client
+    try:
+        client = RecceCloudClient(token)
+    except Exception as e:
+        console.print("[red]Error:[/red] Failed to initialize API client")
+        console.print(f"Reason: {e}")
+        sys.exit(2)
+
+    # 5. Get session info (org_id, project_id)
+    console.print(f'Uploading artifacts for session ID "{session_id}"')
+    try:
+        session = client.get_session(session_id)
+        if session.get("status") == "error":
+            console.print(f"[red]Error:[/red] {session.get('message')}")
+            sys.exit(2)
+
+        org_id = session.get("org_id")
+        if org_id is None:
+            console.print(f"[red]Error:[/red] Session ID {session_id} does not belong to any organization.")
+            sys.exit(2)
+
+        project_id = session.get("project_id")
+        if project_id is None:
+            console.print(f"[red]Error:[/red] Session ID {session_id} does not belong to any project.")
+            sys.exit(2)
+
+    except RecceCloudException as e:
+        console.print("[red]Error:[/red] Failed to get session info")
+        console.print(f"Reason: {e.reason}")
+        sys.exit(2)
+    except Exception as e:
+        console.print("[red]Error:[/red] Failed to get session info")
+        console.print(f"Reason: {e}")
+        sys.exit(2)
+
+    # 6. Get presigned URLs
+    try:
+        presigned_urls = client.get_upload_urls_by_session_id(org_id, project_id, session_id)
+    except RecceCloudException as e:
+        console.print("[red]Error:[/red] Failed to get upload URLs")
+        console.print(f"Reason: {e.reason}")
+        sys.exit(4)
+    except Exception as e:
+        console.print("[red]Error:[/red] Failed to get upload URLs")
+        console.print(f"Reason: {e}")
+        sys.exit(4)
+
+    # 7. Upload manifest.json
+    console.print(f'Uploading manifest from path "{manifest_path}"')
+    try:
+        with open(manifest_path, "rb") as f:
+            response = requests.put(presigned_urls["manifest_url"], data=f.read())
+        if response.status_code not in [200, 204]:
+            raise Exception(f"Upload failed with status {response.status_code}: {response.text}")
+    except Exception as e:
+        console.print("[red]Error:[/red] Failed to upload manifest.json")
+        console.print(f"Reason: {e}")
+        sys.exit(4)
+
+    # 8. Upload catalog.json
+    console.print(f'Uploading catalog from path "{catalog_path}"')
+    try:
+        with open(catalog_path, "rb") as f:
+            response = requests.put(presigned_urls["catalog_url"], data=f.read())
+        if response.status_code not in [200, 204]:
+            raise Exception(f"Upload failed with status {response.status_code}: {response.text}")
+    except Exception as e:
+        console.print("[red]Error:[/red] Failed to upload catalog.json")
+        console.print(f"Reason: {e}")
+        sys.exit(4)
+
+    # 9. Update session metadata
+    try:
+        client.update_session(org_id, project_id, session_id, adapter_type)
+    except RecceCloudException as e:
+        console.print("[red]Error:[/red] Failed to update session metadata")
+        console.print(f"Reason: {e.reason}")
+        sys.exit(4)
+    except Exception as e:
+        console.print("[red]Error:[/red] Failed to update session metadata")
+        console.print(f"Reason: {e}")
+        sys.exit(4)
+
+    # Success!
+    console.rule("Uploaded Successfully", style="green")
+    console.print(
+        f'Uploaded dbt artifacts to Recce Cloud for session ID "{session_id}" from "{os.path.abspath(target_path)}"'
+    )
     sys.exit(0)
 
 
