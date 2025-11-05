@@ -34,6 +34,7 @@ export default function SetupConnectionPopover({ children, display }: SetupConne
     return children;
   }
 
+  // eslint-disable-next-line react-hooks/refs
   const childWithHandlers = cloneElement(children, {
     ref,
   });

@@ -17,7 +17,7 @@ import {
   IconButton,
   Portal,
 } from "@chakra-ui/react";
-import { useCallback, useState } from "react";
+import { ReactNode, useCallback, useState } from "react";
 import { createCheckByRun } from "@/lib/api/checks";
 import { useLocation } from "wouter";
 import { Editor } from "@monaco-editor/react";
@@ -180,8 +180,6 @@ export const PrivateLoadableRunView = ({
   const { runAction } = useRecceActionContext();
   const { error, run, onCancel, isRunning } = useRun(runId);
   const [viewOptions, setViewOptions] = useState();
-  const queryClient = useQueryClient();
-  const [, setLocation] = useLocation();
   const [tabValue, setTabValue] = useState<TabValueItems>("result");
   const disableAddToChecklist = isSingleEnvironment;
   const showSingleEnvironmentSetupNotification = isSingleEnvironment;
@@ -192,55 +190,9 @@ export const PrivateLoadableRunView = ({
     runAction(run?.type ?? "", run?.params);
   }, [run, runAction]);
 
-  const checkId = run?.check_id;
-
-  const handleGoToCheck = useCallback(() => {
-    if (!checkId) {
-      return;
-    }
-
-    setLocation(`/checks/${checkId}`);
-  }, [checkId, setLocation]);
-
-  const handleAddToChecklist = useCallback(async () => {
-    if (!runId) {
-      return;
-    }
-    const check = await createCheckByRun(runId, viewOptions);
-
-    await queryClient.invalidateQueries({ queryKey: cacheKeys.checks() });
-    setLocation(`/checks/${check.check_id}`);
-  }, [runId, setLocation, queryClient, viewOptions]);
-
   const isQuery = run?.type === "query" || run?.type === "query_diff" || run?.type === "query_base";
   const { ref, onCopyToClipboard, onMouseEnter, onMouseLeave } = useCopyToClipboardButton();
   const disableCopyToClipboard = !runId || !run?.result || !!error || tabValue !== "result";
-
-  const AddToCheckButton = function () {
-    if (featureToggles.disableUpdateChecklist) {
-      return <></>;
-    }
-    if (run?.check_id) {
-      return (
-        <Button
-          disabled={!runId || !run.result || !!error}
-          size="sm"
-          colorPalette="iochmara"
-          onClick={handleGoToCheck}>
-          <PiCheck /> Go to Check
-        </Button>
-      );
-    }
-    return (
-      <Button
-        disabled={!runId || !run?.result || !!error}
-        size="xs"
-        colorPalette="iochmara"
-        onClick={handleAddToChecklist}>
-        <PiCheck /> Add to Checklist
-      </Button>
-    );
-  };
 
   return (
     <Flex direction="column">
@@ -293,7 +245,7 @@ export const PrivateLoadableRunView = ({
               />
             )}
 
-            <AddToCheckButton />
+            <AddToCheckButton runId={runId} viewOptions={viewOptions} />
 
             <CloseButton
               size="sm"
@@ -346,3 +298,59 @@ export const RunResultPane = ({ onClose, isSingleEnvironment }: RunPageProps) =>
     />
   );
 };
+
+interface AddToCheckButtonProps {
+  runId?: string;
+  viewOptions: unknown;
+}
+
+function AddToCheckButton({ runId, viewOptions }: AddToCheckButtonProps): ReactNode {
+  const { featureToggles } = useRecceInstanceContext();
+  const { error, run } = useRun(runId);
+  const queryClient = useQueryClient();
+  const [, setLocation] = useLocation();
+
+  const checkId = run?.check_id;
+
+  const handleGoToCheck = useCallback(() => {
+    if (!checkId) {
+      return;
+    }
+
+    setLocation(`/checks/${checkId}`);
+  }, [checkId, setLocation]);
+
+  const handleAddToChecklist = useCallback(async () => {
+    if (!runId) {
+      return;
+    }
+    const check = await createCheckByRun(runId, viewOptions);
+
+    await queryClient.invalidateQueries({ queryKey: cacheKeys.checks() });
+    setLocation(`/checks/${check.check_id}`);
+  }, [runId, setLocation, queryClient, viewOptions]);
+
+  if (featureToggles.disableUpdateChecklist) {
+    return <></>;
+  }
+  if (run?.check_id) {
+    return (
+      <Button
+        disabled={!runId || !run.result || !!error}
+        size="sm"
+        colorPalette="iochmara"
+        onClick={handleGoToCheck}>
+        <PiCheck /> Go to Check
+      </Button>
+    );
+  }
+  return (
+    <Button
+      disabled={!runId || !run?.result || !!error}
+      size="xs"
+      colorPalette="iochmara"
+      onClick={handleAddToChecklist}>
+      <PiCheck /> Add to Checklist
+    </Button>
+  );
+}

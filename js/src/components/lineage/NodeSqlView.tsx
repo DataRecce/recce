@@ -20,7 +20,7 @@ export const NodeSqlView = ({ node }: NodeSqlViewProps) => {
     return <></>;
   }
 
-  if (node.resourceType !== "model" && node.resourceType !== "snapshot") {
+  if (node.data.resourceType !== "model" && node.data.resourceType !== "snapshot") {
     return "Not available";
   }
 
@@ -40,9 +40,9 @@ export const NodeSqlView = ({ node }: NodeSqlViewProps) => {
     minimap: { enabled: false },
   };
 
-  const original = node.data.base?.raw_code;
-  const modified = node.data.current?.raw_code;
-  const modelName = node.data.base?.name ?? node.data.current?.name ?? "";
+  const original = node.data.data.base?.raw_code;
+  const modified = node.data.data.current?.raw_code;
+  const modelName = node.data.data.base?.name ?? node.data.data.current?.name ?? "";
 
   return (
     <Box
@@ -63,6 +63,8 @@ export const NodeSqlView = ({ node }: NodeSqlViewProps) => {
           theme="light"
           original={original}
           modified={modified}
+          keepCurrentOriginalModel={true}
+          keepCurrentModifiedModel={true}
           options={{
             ...diffOptions,
             renderSideBySide: false,

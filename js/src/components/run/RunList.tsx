@@ -1,5 +1,5 @@
 import "react-data-grid/lib/styles.css";
-import React, { useCallback } from "react";
+import React, { useCallback, useState } from "react";
 import { createCheckByRun } from "@/lib/api/checks";
 import {
   Box,
@@ -156,6 +156,7 @@ export const RunList = () => {
   };
   const [, setLocation] = useLocation();
   const queryClient = useQueryClient();
+  const [previousDate, setPreviousDate] = useState<string | null>(null);
   const handleAddToChecklist = useCallback(async () => {
     if (!runId) {
       return;
@@ -173,8 +174,6 @@ export const RunList = () => {
     },
     [setLocation],
   );
-
-  let previousDate: string | null = null;
 
   return (
     <Flex direction="column" height="100%">
@@ -207,7 +206,7 @@ export const RunList = () => {
             {(runs ?? []).map((run, index) => {
               const currentDate = new Date(run.run_at).toDateString();
               const shouldRenderDateSegment = previousDate != null && previousDate !== currentDate;
-              previousDate = currentDate;
+              setPreviousDate(currentDate);
 
               return (
                 <>

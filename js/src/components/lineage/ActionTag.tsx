@@ -1,11 +1,11 @@
 import { ValueDiffResult } from "@/lib/api/valuediff";
 import { Box, Flex, ProgressCircle, Tag } from "@chakra-ui/react";
-import { LineageGraphNode } from "./lineage";
 import { RowCountDiffResult, RowCountResult } from "@/lib/api/rowcount";
 import { RowCountDiffTag, RowCountTag } from "./NodeTag";
 import { ActionState } from "./LineageViewContext";
 import { Tooltip } from "@/components/ui/tooltip";
 import { PiInfo, PiWarning } from "react-icons/pi";
+import { LineageGraphNode } from "@/components/lineage/lineage";
 
 interface ActionTagProps {
   node: LineageGraphNode;
@@ -119,12 +119,12 @@ export const ActionTag = ({ node, action }: ActionTagProps) => {
 
   if (run.type === "row_count_diff") {
     const result = run.result as RowCountDiffResult;
-    return <RowCountDiffTag rowCount={result[node.name]} node={node} />;
+    return <RowCountDiffTag rowCount={result[node.data.name]} node={node} />;
   }
 
   if (run.type === "row_count") {
     const result = run.result as RowCountResult;
-    return <RowCountTag rowCount={result[node.name]} node={node} />;
+    return <RowCountTag rowCount={result[node.data.name]} node={node} />;
   }
 
   return <>{run_id}</>;

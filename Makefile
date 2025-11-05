@@ -11,9 +11,12 @@ install:
 	pip install .
 
 install-cloud:
+	# Using setup_cloud.py directly for now until we restructure the monorepo
+	# Users will install from PyPI with: pip install recce-cloud
 	python setup_cloud.py install
 
 install-cloud-dev:
+	# Using setup_cloud.py directly for now until we restructure the monorepo
 	python setup_cloud.py develop
 
 help:

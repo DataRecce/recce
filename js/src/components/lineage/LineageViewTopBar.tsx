@@ -103,8 +103,8 @@ const PackageSelectMenu = ({ isDisabled }: { isDisabled: boolean }) => {
   const available = new Set<string>();
   const nodes = Object.values(lineageGraph?.nodes ?? {});
   for (const node of nodes) {
-    if (node.packageName) {
-      available.add(node.packageName);
+    if (node.data.packageName) {
+      available.add(node.data.packageName);
     }
   }
 

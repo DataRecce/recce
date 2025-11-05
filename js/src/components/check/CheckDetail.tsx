@@ -35,7 +35,7 @@ import { stripIndents } from "common-tags";
 import { useClipBoardToast } from "@/lib/hooks/useClipBoardToast";
 import { buildTitle, buildDescription, buildQuery } from "./check";
 import SqlEditor, { DualSqlEditor } from "../query/SqlEditor";
-import React, { useCallback, useEffect, useRef, useState } from "react";
+import React, { ReactNode, useCallback, useEffect, useRef, useState } from "react";
 import { cancelRun, submitRunFromCheck } from "@/lib/api/runs";
 import { Run } from "@/lib/api/types";
 import { RunView } from "../run/RunView";
@@ -85,7 +85,6 @@ export const CheckDetail = ({ checkId, refreshCheckList }: CheckDetailProps) => 
     onOpen: onPresetCheckTemplateOpen,
     onClose: onPresetCheckTemplateClose,
   } = useDisclosure();
-  const Overlay = () => <Dialog.Backdrop bg="blackAlpha.300" backdropFilter="blur(10px) " />;
   const [overlay, setOverlay] = useState(<Overlay />);
 
   const {
@@ -195,6 +194,7 @@ export const CheckDetail = ({ checkId, refreshCheckList }: CheckDetailProps) => 
       params: check?.params,
       viewOptions: check?.view_options,
     });
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setPresetCheckTemplate(template);
   }, [check]);
 
@@ -414,9 +414,11 @@ export const CheckDetail = ({ checkId, refreshCheckList }: CheckDetailProps) => 
                     </VStack>
                   </Center>
                 ))}
-              {check && check.type === "schema_diff" && <SchemaDiffView check={check} ref={ref} />}
-              {check && check.type === "lineage_diff" && (
-                <LineageDiffView check={check} ref={lineageViewRef} />
+              {check?.type === "schema_diff" && (
+                <SchemaDiffView key={check.check_id} check={check} ref={ref} />
+              )}
+              {check?.type === "lineage_diff" && (
+                <LineageDiffView key={check.check_id} check={check} ref={lineageViewRef} />
               )}
             </Tabs.Content>
             {(check?.type === "query" ||
@@ -485,6 +487,10 @@ export const CheckDetail = ({ checkId, refreshCheckList }: CheckDetailProps) => 
     </VSplit>
   );
 };
+
+function Overlay(): ReactNode {
+  return <Dialog.Backdrop bg="blackAlpha.300" backdropFilter="blur(10px) " />;
+}
 
 function buildMarkdown(check: Check) {
   return stripIndents`

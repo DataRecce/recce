@@ -36,8 +36,8 @@ const NodelistItem = ({
   onSelect: (nodeId: string) => void;
   schemaChanged: boolean;
 }) => {
-  const { icon } = getIconForResourceType(node.resourceType);
-  const { base, current } = node.data;
+  const { icon } = getIconForResourceType(node.data.resourceType);
+  const { base, current } = node.data.data;
 
   let statusIcon: IconType | undefined;
   let statusColor: string | undefined;
@@ -69,7 +69,7 @@ const NodelistItem = ({
         gap="5px">
         <Icon as={icon} />
         <Box flex="1" textOverflow="ellipsis" whiteSpace="nowrap" overflow="hidden">
-          {node.name}
+          {node.data.name}
         </Box>
 
         {statusIcon && statusColor && <Icon as={statusIcon} color={statusColor} />}
@@ -123,18 +123,18 @@ export function PrivateSchemaDiffView({ check }: SchemaDiffViewProps, ref: any) 
     // filter that the resourec_type is mode,seed, source, or snapshot
     const filteredNodes = selectedNodes.filter(
       (node) =>
-        node.resourceType === "model" ||
-        node.resourceType === "seed" ||
-        node.resourceType === "source" ||
-        node.resourceType === "snapshot",
+        node.data.resourceType === "model" ||
+        node.data.resourceType === "seed" ||
+        node.data.resourceType === "source" ||
+        node.data.resourceType === "snapshot",
     );
 
     for (const node of filteredNodes) {
-      if (isSchemaChanged(node.data.base?.columns, node.data.current?.columns)) {
+      if (isSchemaChanged(node.data.data.base?.columns, node.data.data.current?.columns)) {
         changedNodes.push(node.id);
-      } else if (!node.data.base && node.data.current) {
+      } else if (!node.data.data.base && node.data.data.current) {
         addedNodes.push(node.id);
-      } else if (node.data.base && !node.data.current) {
+      } else if (node.data.data.base && !node.data.data.current) {
         removedNodes.push(node.id);
       }
     }
@@ -158,7 +158,7 @@ export function PrivateSchemaDiffView({ check }: SchemaDiffViewProps, ref: any) 
       if (scoreA !== scoreB) {
         return scoreB - scoreA;
       } else {
-        return a.name.localeCompare(b.name);
+        return a.data.name.localeCompare(b.data.name);
       }
     });
 
@@ -190,8 +190,8 @@ export function PrivateSchemaDiffView({ check }: SchemaDiffViewProps, ref: any) 
     return (
       <HSplit sizes={[80, 20]} minSize={30} style={{ height: "100%" }}>
         <SchemaView
-          base={node.data.base}
-          current={node.data.current}
+          base={node.data.data.base}
+          current={node.data.data.current}
           enableScreenshot={true}
           ref={ref}
         />

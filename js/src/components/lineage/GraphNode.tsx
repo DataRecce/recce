@@ -1,7 +1,7 @@
 import { Box, Center, Flex, HStack, Icon, Spacer, Tag } from "@chakra-ui/react";
 import React, { useState } from "react";
 
-import { Handle, NodeProps, Position, useStore } from "reactflow";
+import { Handle, NodeProps, Position, useStore } from "@xyflow/react";
 import { COLUMN_HEIGHT, LineageGraphNode } from "./lineage";
 import { getIconForChangeStatus, getIconForResourceType } from "./styles";
 
@@ -19,7 +19,7 @@ import { deltaPercentageString } from "../rowcount/delta";
 import { VscKebabVertical } from "react-icons/vsc";
 import { Tooltip } from "@/components/ui/tooltip";
 
-type GraphNodeProps = NodeProps<LineageGraphNode>;
+export type GraphNodeProps = NodeProps<LineageGraphNode>;
 
 function _RowCountDiffTag({ rowCount }: { rowCount: RowCountDiff }) {
   const base = rowCount.base;
@@ -69,9 +69,9 @@ const NodeRunsAggregated = ({ id, inverted }: { id: string; inverted: boolean })
   }
 
   let schemaChanged;
-  if (node?.data.base && node.data.current) {
-    const baseColumns = node.data.base.columns;
-    const currColumns = node.data.current.columns;
+  if (node?.data.data.base && node.data.data.current) {
+    const baseColumns = node.data.data.base.columns;
+    const currColumns = node.data.data.current.columns;
     schemaChanged = isSchemaChanged(baseColumns, currColumns);
   }
 
@@ -351,7 +351,7 @@ export function GraphNode(nodeProps: GraphNodeProps) {
                   onClick={(e) => {
                     e.preventDefault();
                     e.stopPropagation();
-                    showContextMenu(e, nodeProps);
+                    showContextMenu(e, nodeProps as unknown as LineageGraphNode);
                   }}
                 />
               </>
@@ -373,7 +373,7 @@ export function GraphNode(nodeProps: GraphNodeProps) {
               {action ? (
                 <>
                   <Spacer />
-                  <ActionTag node={data} action={action} />
+                  <ActionTag node={data as unknown as LineageGraphNode} action={action} />
                 </>
               ) : isShowingChangeAnalysis ? (
                 <Box height="20px" color="gray" fontSize="9pt" margin={0} fontWeight={600}>

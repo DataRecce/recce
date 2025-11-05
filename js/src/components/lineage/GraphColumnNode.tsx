@@ -1,8 +1,8 @@
 import { Box, Flex, Icon, Spacer, Tag } from "@chakra-ui/react";
 import React from "react";
 
-import { Handle, NodeProps, Position, useStore } from "reactflow";
-import { COLUMN_HEIGHT, LinageGraphColumnNode } from "./lineage";
+import { Handle, NodeProps, Position, useStore } from "@xyflow/react";
+import { COLUMN_HEIGHT, LineageGraphColumnNode } from "./lineage";
 
 import "./styles.css";
 
@@ -10,7 +10,7 @@ import { useLineageViewContextSafe } from "./LineageViewContext";
 import { getIconForChangeStatus } from "./styles";
 import { VscKebabVertical } from "react-icons/vsc";
 
-type GrapeColumnNodeProps = NodeProps<LinageGraphColumnNode>;
+type GrapeColumnNodeProps = NodeProps<LineageGraphColumnNode>;
 
 export const ChangeStatus = ({
   changeStatus,
@@ -137,7 +137,7 @@ export function GraphColumnNode(nodeProps: GrapeColumnNodeProps) {
             onClick={(e) => {
               e.preventDefault();
               e.stopPropagation();
-              showContextMenu(e, nodeProps);
+              showContextMenu(e, nodeProps as unknown as LineageGraphColumnNode);
             }}
           />
         ) : (

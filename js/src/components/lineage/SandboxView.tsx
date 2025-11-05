@@ -123,8 +123,8 @@ function SandboxEditorLabels({
   let schema = "N/A";
   if (lineageGraph?.nodes[currentModelID]) {
     const value = lineageGraph.nodes[currentModelID];
-    if (value.data.current?.schema) {
-      schema = value.data.current.schema;
+    if (value.data.data.current?.schema) {
+      schema = value.data.data.current.schema;
     }
   }
 
@@ -303,6 +303,7 @@ export function SandboxView({ isOpen, onClose, current }: SandboxViewProps) {
 
   useEffect(() => {
     if (isOpen) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setModifiedCode(current?.raw_code ?? "");
     }
   }, [isOpen, current]);
