@@ -21,12 +21,12 @@ export interface SqlEditorProps {
   manifestData?: ManifestMetadata;
   schemas?: string;
   label?: string;
-  CustomEditor?: React.ReactElement<any, any>;
+  CustomEditor?: React.ReactNode;
 }
 
 export interface DualSqlEditorProps extends SqlEditorProps {
   labels?: [string, string]; // [baseLabel, currentLabel]
-  SetupGuide?: React.ReactElement<any, any>;
+  SetupGuide?: React.ReactNode;
 }
 
 function SqlEditor({
