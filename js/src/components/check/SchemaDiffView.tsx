@@ -7,7 +7,7 @@ import { select } from "@/lib/api/select";
 import { HSplit } from "../split/Split";
 import { Box, Center, Flex, Icon, List } from "@chakra-ui/react";
 import { LineageGraphNode } from "../lineage/lineage";
-import { forwardRef, useMemo, useState } from "react";
+import React, { forwardRef, useMemo, useState } from "react";
 import { getIconForChangeStatus, getIconForResourceType } from "../lineage/styles";
 import { IconType } from "react-icons";
 import { isSchemaChanged } from "../schema/schemaDiff";
@@ -78,13 +78,16 @@ const NodelistItem = ({
   );
 };
 
-export function PrivateSchemaDiffView({ check }: SchemaDiffViewProps, ref: any) {
+export function PrivateSchemaDiffView(
+  { check }: SchemaDiffViewProps,
+  ref: React.Ref<HTMLDivElement>,
+) {
   const { lineageGraph } = useLineageGraphContext();
   const params = check.params as SchemaDiffParams;
 
   const queryKey = [...cacheKeys.check(check.check_id), "select"];
 
-  const { isLoading, error, refetch, data } = useQuery({
+  const { isLoading, error, data } = useQuery({
     queryKey,
     queryFn: async () =>
       select({
@@ -198,13 +201,12 @@ export function PrivateSchemaDiffView({ check }: SchemaDiffViewProps, ref: any) 
         <List.Root overflow="auto" backgroundColor="white" as="ul" listStyle="none">
           {nodes.map((node, i) => (
             <NodelistItem
-              key={i}
+              key={node.id}
               node={node}
               schemaChanged={changedNodes.includes(node.id)}
               selected={i === selected}
               onSelect={() => {
-                const index = i;
-                setSelected(index);
+                setSelected(i);
               }}
             />
           ))}
