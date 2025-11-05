@@ -324,6 +324,9 @@ async def track_activity_for_idle_timeout(request: Request, call_next):
     # Exclude paths that should not reset idle timer
     # Health checks and monitoring endpoints don't count as user activity
     excluded_paths = ["/api/health", "/api/ws"]
+
+    # Update last activity time BEFORE processing request to keep server alive
+    # during long-running requests
     if hasattr(app.state, "last_activity") and app.state.last_activity is not None:
         if request.url.path not in excluded_paths:
             app.state.last_activity["time"] = datetime.now(utc)
