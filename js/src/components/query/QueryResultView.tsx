@@ -12,7 +12,7 @@ import {
   Portal,
   Spacer,
 } from "@chakra-ui/react";
-import React, { forwardRef, useMemo } from "react";
+import React, { forwardRef, Ref, useMemo } from "react";
 import { ColumnRenderMode, ColumnType, DataFrame, RowObjectType, Run } from "@/lib/api/types";
 import { EmptyRowsRenderer, ScreenshotDataGrid } from "../data-grid/ScreenshotDataGrid";
 import { DataFrameColumnGroupHeader, defaultRenderCell } from "./querydiff";
@@ -207,7 +207,8 @@ export function toDataGrid(result: DataFrame, options: QueryDataGridOptions) {
 
 const PrivateQueryResultView = (
   { run, viewOptions, onViewOptionsChanged, onAddToChecklist }: QueryResultViewProp,
-  ref: any,
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  ref: Ref<any>,
 ) => {
   const pinnedColumns = useMemo(() => viewOptions?.pinned_columns ?? [], [viewOptions]);
   const columnsRenderMode = useMemo(() => viewOptions?.columnsRenderMode ?? {}, [viewOptions]);
