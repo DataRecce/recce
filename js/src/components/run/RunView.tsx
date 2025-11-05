@@ -4,7 +4,16 @@ import { RunResultViewProps } from "./types";
 import { ErrorBoundary } from "@sentry/react";
 import React, { forwardRef, ForwardRefExoticComponent, RefAttributes } from "react";
 
-interface RunViewProps<VO = any> {
+// Define an error type
+interface ApiError {
+  response?: {
+    data?: {
+      detail?: string;
+    };
+  };
+}
+
+interface RunViewProps<VO = Record<string, unknown>> {
   isRunning?: boolean;
   run?: Run;
   error?: Error | null;
@@ -35,9 +44,9 @@ export const RunView = forwardRef(
       children,
       onExecuteRun,
     }: RunViewProps,
-    ref: any,
+    ref: React.Ref<HTMLDivElement>,
   ) => {
-    const errorMessage = (error as any)?.response?.data?.detail ?? run?.error;
+    const errorMessage = (error as ApiError | undefined)?.response?.data?.detail ?? run?.error;
 
     if (errorMessage) {
       return (
