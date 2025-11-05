@@ -9,6 +9,7 @@ from click import Abort
 
 from recce import event
 from recce.artifact import (
+    delete_dbt_artifacts,
     download_dbt_artifacts,
     upload_artifacts_to_session,
     upload_dbt_artifacts,
@@ -1254,6 +1255,56 @@ def download_base_artifacts(**kwargs):
         exit(1)
 
     return _download_artifacts(branch, cloud_token, console, kwargs, password, target_path)
+
+
+@cloud.command(cls=TrackCommand)
+@click.option("--cloud-token", help="The GitHub token used by Recce Cloud.", type=click.STRING, envvar="GITHUB_TOKEN")
+@click.option(
+    "--branch",
+    "-b",
+    help="The branch to delete artifacts from.",
+    type=click.STRING,
+    envvar="GITHUB_HEAD_REF",
+    default=current_branch(),
+    show_default=True,
+)
+@click.option("--force", "-f", help="Bypasses the confirmation prompt. Delete the artifacts directly.", is_flag=True)
+@add_options(recce_options)
+def delete_artifacts(**kwargs):
+    """
+    Delete the dbt artifacts from cloud
+
+    Delete the dbt artifacts (metadata.json, catalog.json) from Recce Cloud for the given branch.
+    This will permanently remove the artifacts from the cloud storage.
+
+    By default, the artifacts are deleted from the current branch. You can specify the branch using the --branch option.
+    """
+    from rich.console import Console
+
+    console = Console()
+    cloud_token = kwargs.get("cloud_token")
+    branch = kwargs.get("branch")
+    force = kwargs.get("force", False)
+
+    if not force:
+        if not click.confirm(f'Do you want to delete artifacts from branch "{branch}"?'):
+            console.print("Deletion cancelled.")
+            return 0
+
+    try:
+        delete_dbt_artifacts(branch=branch, token=cloud_token, debug=kwargs.get("debug", False))
+        console.print(f"[[green]Success[/green]] Artifacts deleted from branch: {branch}")
+        return 0
+    except click.exceptions.Abort:
+        pass
+    except RecceCloudException as e:
+        console.print("[[red]Error[/red]] Failed to delete the dbt artifacts from cloud.")
+        console.print(f"Reason: {e.reason}")
+        exit(1)
+    except Exception as e:
+        console.print("[[red]Error[/red]] Failed to delete the dbt artifacts from cloud.")
+        console.print(f"Reason: {e}")
+        exit(1)
 
 
 @cloud.command(cls=TrackCommand, name="list-organizations")

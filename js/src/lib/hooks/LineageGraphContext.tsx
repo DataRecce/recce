@@ -184,7 +184,7 @@ function useLineageWatcher() {
       }
     };
     ws.onerror = (err) => {
-      console.error(err);
+      console.error("An error occurred during Handling WebSockets", err);
     };
     ws.onclose = () => {
       setStatus((status) => {
@@ -298,6 +298,7 @@ export function LineageGraphContextProvider({ children }: LineageGraphProps) {
 
     if (envStatus === "relaunch" && flags?.single_env_onboarding && flags.show_relaunch_hint) {
       // User has added a target-base folder
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setRelaunchHintOpen(true);
       trackSingleEnvironment({ action: "target_base_added" });
     } else {

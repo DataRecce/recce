@@ -55,6 +55,7 @@ export function RecceInstanceInfoProvider({ children }: { children: React.ReactN
 
   useEffect(() => {
     if (!isLoading && instanceInfo) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setSingleEnv(instanceInfo.single_env);
       setAuthed(instanceInfo.authed);
       setShareUrl(instanceInfo.share_url);

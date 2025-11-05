@@ -14,6 +14,7 @@ export function LineageViewNotification({ notification, type }: NotificationProp
   useEffect(() => {
     const dismissed = sessionStorage.getItem(notificationKey);
     if (dismissed === "true") {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setVisible(false);
     }
   }, [notificationKey]);
