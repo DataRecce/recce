@@ -10,6 +10,7 @@ export type RowData = RowDataTypes[];
 
 export type RowObjectType = Record<string, RowDataTypes> & {
   __status: "added" | "removed" | "modified" | undefined;
+  _index?: number;
 };
 
 export type ColumnType =
