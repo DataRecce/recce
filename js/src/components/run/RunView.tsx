@@ -16,7 +16,7 @@ interface RunViewProps<PT, RT, VO = any> {
   viewOptions?: VO;
   onViewOptionsChanged?: (viewOptions: VO) => void;
   RunResultView?: ForwardRefExoticComponent<
-    RunResultViewProps<PT, RT, VO> & RefAttributes<unknown>
+    RunResultViewProps<PT, RT, VO> & RefAttributes<HTMLDivElement>
   >;
   // eslint-disable-next-line @typescript-eslint/no-unnecessary-type-parameters
   children?: <T extends RunResultViewProps<PT, RT, VO>>(params: T) => React.ReactNode;

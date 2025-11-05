@@ -7,7 +7,7 @@ import {
   QueryPreviewChangeParams,
 } from "@/lib/api/adhocQuery";
 import { Center, Flex } from "@chakra-ui/react";
-import { forwardRef, useMemo } from "react";
+import { forwardRef, Ref, useMemo } from "react";
 import { toDataDiffGrid } from "./querydiff";
 import { toValueDiffGrid as toQueryDiffJoinGrid } from "../valuediff/valuediff";
 
@@ -35,7 +35,8 @@ const PrivateQueryDiffResultView = (
     baseTitle,
     currentTitle,
   }: QueryDiffResultViewProps,
-  ref: any,
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  ref: Ref<any>,
 ) => {
   const primaryKeys = useMemo(() => viewOptions?.primary_keys ?? [], [viewOptions]);
   const changedOnly = useMemo(() => viewOptions?.changed_only ?? false, [viewOptions]);
@@ -178,7 +179,8 @@ const PrivateQueryDiffResultView = (
 
 const PrivateQueryDiffJoinResultView = (
   { run, viewOptions, onViewOptionsChanged, baseTitle, currentTitle }: QueryDiffResultViewProps,
-  ref: any,
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  ref: Ref<any>,
 ) => {
   const changedOnly = useMemo(() => viewOptions?.changed_only ?? false, [viewOptions]);
   const pinnedColumns = useMemo(() => viewOptions?.pinned_columns ?? [], [viewOptions]);

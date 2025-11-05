@@ -28,7 +28,7 @@ interface RegistryEntry<PT, RT, VO = any> {
   title: string;
   icon: IconType;
   RunResultView?: ForwardRefExoticComponent<
-    RunResultViewProps<PT, RT, VO> & RefAttributes<unknown>
+    RunResultViewProps<PT, RT, VO> & RefAttributes<HTMLDivElement>
   >;
   RunForm?: ComponentType<RunFormProps<PT>>;
 }

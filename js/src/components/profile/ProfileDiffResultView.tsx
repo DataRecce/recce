@@ -4,7 +4,7 @@ import { ScreenshotDataGrid } from "../data-grid/ScreenshotDataGrid";
 import { RunResultViewProps } from "../run/types";
 
 import { ProfileDiffParams, ProfileDiffResult, ProfileDiffViewOptions } from "@/lib/api/profile";
-import { forwardRef, useMemo } from "react";
+import { forwardRef, Ref, useMemo } from "react";
 import { toDataDiffGrid } from "../query/querydiff";
 import { RunToolbar } from "../run/RunToolbar";
 import { DiffDisplayModeSwitch } from "../query/ToggleSwitch";
@@ -19,7 +19,8 @@ type ProfileDiffResultViewProp = RunResultViewProps<
 
 const PrivateProfileDiffResultView = (
   { run, viewOptions, onViewOptionsChanged }: ProfileDiffResultViewProp,
-  ref: any,
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  ref: Ref<any>,
 ) => {
   const result = run.result;
   const pinnedColumns = useMemo(() => viewOptions?.pinned_columns ?? [], [viewOptions]);
@@ -105,7 +106,8 @@ const PrivateProfileDiffResultView = (
 
 const PrivateProfileResultView = (
   { run, viewOptions, onViewOptionsChanged }: ProfileDiffResultViewProp,
-  ref: any,
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  ref: Ref<any>,
 ) => {
   const result = run.result;
   const dataFrame = result?.current;

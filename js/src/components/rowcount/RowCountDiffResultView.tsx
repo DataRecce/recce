@@ -10,7 +10,7 @@ import {
 } from "@/lib/api/rowcount";
 import { deltaPercentageString } from "./delta";
 import { isNumber } from "lodash";
-import { forwardRef } from "react";
+import { forwardRef, Ref } from "react";
 
 type RowCountDiffResultViewProp = RunResultViewProps<RowCountDiffParams, RowCountDiffResult>;
 
@@ -20,7 +20,8 @@ interface RowCountDiffRow {
   current: number | string;
 }
 
-function _RowCountDiffResultView({ run }: RowCountDiffResultViewProp, ref: any) {
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function _RowCountDiffResultView({ run }: RowCountDiffResultViewProp, ref: Ref<any>) {
   function columnCellClass(row: RowCountDiffRow) {
     if (row.base === row.current) {
       return "column-body-normal";
@@ -107,7 +108,8 @@ interface RowCountRow {
   current: number | string;
 }
 
-function _RowCountResultView({ run }: RowCountResultViewProp, ref: any) {
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function _RowCountResultView({ run }: RowCountResultViewProp, ref: Ref<any>) {
   const runResult = run.result ?? {};
 
   const columns = [
@@ -136,23 +138,21 @@ function _RowCountResultView({ run }: RowCountResultViewProp, ref: any) {
   return (
     <Flex direction="column">
       {Object.keys(runResult).length > 0 && (
-        <>
-          <ScreenshotDataGrid
-            ref={ref}
-            style={{
-              blockSize: "auto",
-              maxHeight: "100%",
-              overflow: "auto",
+        <ScreenshotDataGrid
+          ref={ref}
+          style={{
+            blockSize: "auto",
+            maxHeight: "100%",
+            overflow: "auto",
 
-              fontSize: "10pt",
-              borderWidth: 1,
-            }}
-            columns={columns}
-            rows={rows}
-            renderers={{ noRowsFallback: <EmptyRowsRenderer /> }}
-            className="rdg-light"
-          />
-        </>
+            fontSize: "10pt",
+            borderWidth: 1,
+          }}
+          columns={columns}
+          rows={rows}
+          renderers={{ noRowsFallback: <EmptyRowsRenderer /> }}
+          className="rdg-light"
+        />
       )}
     </Flex>
   );
