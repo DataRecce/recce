@@ -249,3 +249,18 @@ def download_dbt_artifacts(
     except FileNotFoundError:
         pass
     return 0
+
+
+def delete_dbt_artifacts(branch: str, token: str, debug: bool = False):
+    """Delete dbt artifacts from a specific branch in Recce Cloud."""
+    console = Console()
+    repo = hosting_repo()
+
+    if debug:
+        console.rule("Debug information", style="blue")
+        console.print(f"Git Branch: {branch}")
+        console.print(f"GitHub repository: {repo}")
+
+    console.print(f'Deleting dbt artifacts from branch: "{branch}"')
+
+    RecceCloud(token).purge_artifacts(repo, branch=branch)
