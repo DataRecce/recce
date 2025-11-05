@@ -1,7 +1,7 @@
 import "react-data-grid/lib/styles.css";
 
 import { Center, Flex } from "@chakra-ui/react";
-import { forwardRef, useMemo } from "react";
+import { forwardRef, Ref, useMemo } from "react";
 
 import "../query/styles.css";
 import { ColumnRenderMode, Run } from "@/lib/api/types";
@@ -28,7 +28,8 @@ export interface ValueDiffDetailResultViewProps
 
 const PrivateValueDiffDetailResultView = (
   { run, onAddToChecklist, viewOptions, onViewOptionsChanged }: ValueDiffDetailResultViewProps,
-  ref: any,
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  ref: Ref<any>,
 ) => {
   const changedOnly = useMemo(() => viewOptions?.changed_only ?? false, [viewOptions]);
   const pinnedColumns = useMemo(() => viewOptions?.pinned_columns ?? [], [viewOptions]);
