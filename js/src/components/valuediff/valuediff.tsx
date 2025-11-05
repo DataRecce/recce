@@ -3,7 +3,14 @@ import _ from "lodash";
 import "../query/styles.css";
 import { Box, Flex, Icon, IconButton, Menu, Portal } from "@chakra-ui/react";
 import { VscKebabVertical, VscKey, VscPin, VscPinned } from "react-icons/vsc";
-import { ColumnType, ColumnRenderMode, DataFrame, RowData, RowObjectType } from "@/lib/api/types";
+import {
+  ColumnType,
+  ColumnRenderMode,
+  DataFrame,
+  RowData,
+  RowObjectType,
+  RowDataTypes,
+} from "@/lib/api/types";
 import { mergeKeysWithStatus } from "@/lib/mergeKeys";
 import { defaultRenderCell, inlineRenderCell, QueryDataDiffGridOptions } from "../query/querydiff";
 import React from "react";
@@ -47,10 +54,10 @@ function _getPrimaryKeyValue(
   primaryIndexes: number[],
   row: DataFrame["data"][number],
 ): string {
-  const result: Record<string, any> = {};
+  const result: Record<string, RowDataTypes> = {};
 
   if (primaryIndexes.length === 0) {
-    const row_data = row as any;
+    const row_data = row as unknown as RowObjectType;
 
     return JSON.stringify({ _index: row_data._index });
   } else {
@@ -179,7 +186,7 @@ export function toValueDiffGrid(
   // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
   const inCurrentIndex = (columnMap.in_b || columnMap.IN_B).index;
 
-  df.data.forEach((row, index) => {
+  df.data.forEach((row) => {
     const key = _getPrimaryKeyValue(df.columns, primaryIndexes, row);
     if (row[inBaseIndex]) {
       baseMap[key] = row;
@@ -197,7 +204,7 @@ export function toValueDiffGrid(
     removed: 0,
     modified: 0,
   };
-  let rows = Object.entries(mergedMap).map(([key, status]) => {
+  let rows = Object.entries(mergedMap).map(([key]) => {
     const baseRow = baseMap[key];
     const currentRow = currentMap[key];
     const row = JSON.parse(key) as RowObjectType;
