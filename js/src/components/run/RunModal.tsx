@@ -19,7 +19,7 @@ import { IconInfo } from "@/components/icons";
 interface RunModalProps<PT> {
   isOpen: boolean;
   onClose: () => void;
-  onExecute: (type: string, params: PT) => void;
+  onExecute: (type: RunType, params: PT) => void;
   title: string;
   type: RunType;
   params: PT;

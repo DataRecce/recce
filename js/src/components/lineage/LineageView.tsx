@@ -88,6 +88,13 @@ import { toaster } from "@/components/ui/toaster";
 import { useMutation } from "@tanstack/react-query";
 import SetupConnectionBanner from "./SetupConnectionBanner";
 import { useRecceInstanceContext } from "@/lib/hooks/RecceInstanceContext";
+import {
+  isHistogramDiffRun,
+  isProfileDiffRun,
+  isTopKDiffRun,
+  isValueDiffDetailRun,
+  isValueDiffRun,
+} from "@/lib/api/types";
 
 export interface LineageViewProps {
   viewOptions?: LineageDiffViewOptions;
@@ -630,8 +637,17 @@ export function PrivateLineageView(
     setCll(cll);
 
     // Close the run result view if the run result node is not in the new nodes
-    if (run?.params?.model && !findNodeByName(run.params.model)) {
-      closeRunResult();
+    if (
+      run &&
+      (isTopKDiffRun(run) ||
+        isProfileDiffRun(run) ||
+        isHistogramDiffRun(run) ||
+        isValueDiffRun(run) ||
+        isValueDiffDetailRun(run))
+    ) {
+      if (run.params?.model && !findNodeByName(run.params.model)) {
+        closeRunResult();
+      }
     }
 
     if (fitView) {
@@ -674,7 +690,17 @@ export function PrivateLineageView(
 
     if (!selectMode) {
       // Skip the following logic if the select mode is not single
-      const selectedRunModel = run.params?.model;
+      let selectedRunModel = undefined;
+      if (
+        isTopKDiffRun(run) ||
+        isProfileDiffRun(run) ||
+        isHistogramDiffRun(run) ||
+        isValueDiffRun(run) ||
+        isValueDiffDetailRun(run)
+      ) {
+        selectedRunModel = run.params?.model;
+      }
+
       // Create a mock MouseEvent
       const mockEvent = new MouseEvent("click", {
         bubbles: true,
