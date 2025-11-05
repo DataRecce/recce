@@ -79,6 +79,7 @@ class AppState:
     lifetime: Optional[int] = None
     lifetime_expired_at: Optional[datetime] = None
     idle_timeout: Optional[int] = None
+    last_activity: Optional[dict] = None
     share_url: Optional[str] = None
     host: Optional[str] = None
     port: Optional[int] = None
@@ -101,8 +102,8 @@ def schedule_idle_timeout_check(app_state):
     Schedule periodic checks for idle timeout.
     If the server has been idle for longer than idle_timeout, terminate it.
     """
-    # Track last activity time
-    last_activity = {"time": datetime.now(utc)}
+    # Initialize last activity time in app_state
+    app_state.last_activity = {"time": datetime.now(utc)}
 
     def terminating_server_idle():
         pid = os.getpid()
@@ -120,7 +121,7 @@ def schedule_idle_timeout_check(app_state):
         while True:
             await asyncio.sleep(check_interval)
 
-            idle_seconds = (datetime.now(utc) - last_activity["time"]).total_seconds()
+            idle_seconds = (datetime.now(utc) - app_state.last_activity["time"]).total_seconds()
             remaining_seconds = app_state.idle_timeout - idle_seconds
 
             # Always log the countdown for debugging
@@ -144,9 +145,6 @@ def schedule_idle_timeout_check(app_state):
     # Create task using asyncio.create_task which works in async context
     task = asyncio.create_task(check_idle_timeout())
     logger.debug(f"[Idle Timeout] Background task created: {task}")
-
-    # Return the middleware to track activity
-    return last_activity
 
 
 def setup_server(app_state: AppState) -> RecceContext:
@@ -238,9 +236,7 @@ async def lifespan(fastapi: FastAPI):
     # Schedule idle timeout check if idle_timeout is set
     if app_state.idle_timeout is not None and app_state.idle_timeout > 0:
         logger.debug(f"[Idle Timeout] Scheduling idle timeout check with {app_state.idle_timeout} seconds")
-        last_activity = schedule_idle_timeout_check(app_state)
-        # Store last_activity in app state so middleware can update it
-        app.state.last_activity = last_activity
+        schedule_idle_timeout_check(app_state)
 
     yield
 
