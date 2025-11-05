@@ -34,16 +34,13 @@ class RecceCloudClient:
     """
     Lightweight Recce Cloud API client.
 
-    Supports authentication with either:
-    - Recce Cloud API token (starts with "rct-")
-    - GitHub token (starts with "ghp_", "gho_", "ghu_", "ghs_", "ghr_")
+    Supports authentication with Recce Cloud API token (starts with "rct-").
     """
 
     def __init__(self, token: str):
         if token is None:
             raise ValueError("Token cannot be None.")
         self.token = token
-        self.token_type = "github_token" if token.startswith(("ghp_", "gho_", "ghu_", "ghs_", "ghr_")) else "api_token"
         self.base_url_v2 = f"{RECCE_CLOUD_API_HOST}/api/v2"
 
     def _request(self, method: str, url: str, headers: dict = None, **kwargs):

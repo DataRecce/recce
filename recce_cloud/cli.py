@@ -77,8 +77,7 @@ def upload(target_path, session_id):
     \b
     Authentication:
     Uses environment variables for authentication:
-    - RECCE_API_TOKEN: Recce Cloud API token (primary)
-    - GITHUB_TOKEN: GitHub token (fallback, commonly available in GitHub Actions)
+    - RECCE_API_TOKEN: Recce Cloud API token (required)
 
     \b
     Auto-Detection:
@@ -91,8 +90,7 @@ def upload(target_path, session_id):
     \b
     Environment Variables:
     - RECCE_SESSION_ID: Target session ID for upload (required)
-    - RECCE_API_TOKEN: Recce Cloud API token
-    - GITHUB_TOKEN: GitHub token (fallback for authentication)
+    - RECCE_API_TOKEN: Recce Cloud API token (required)
     - RECCE_CLOUD_API_HOST: Custom API host (default: https://cloud.datarecce.io)
 
     \b
@@ -143,10 +141,10 @@ def upload(target_path, session_id):
         sys.exit(3)
 
     # 3. Get authentication token
-    token = os.getenv("RECCE_API_TOKEN") or os.getenv("GITHUB_TOKEN")
+    token = os.getenv("RECCE_API_TOKEN")
     if not token:
         console.print("[red]Error:[/red] No authentication token provided")
-        console.print("Set RECCE_API_TOKEN or GITHUB_TOKEN environment variable")
+        console.print("Set RECCE_API_TOKEN environment variable")
         sys.exit(2)
 
     # 4. Initialize API client

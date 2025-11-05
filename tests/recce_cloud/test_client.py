@@ -9,7 +9,6 @@ class RecceCloudClientTests(unittest.TestCase):
     def setUp(self):
         """Set up test fixtures."""
         self.api_token = "rct-test-token-123"
-        self.github_token = "ghp_test_token_456"
         self.session_id = "session-123"
         self.org_id = "org-456"
         self.project_id = "project-789"
@@ -18,14 +17,7 @@ class RecceCloudClientTests(unittest.TestCase):
         """Test client initialization with Recce API token."""
         client = RecceCloudClient(self.api_token)
         self.assertEqual(client.token, self.api_token)
-        self.assertEqual(client.token_type, "api_token")
         self.assertIn("/api/v2", client.base_url_v2)
-
-    def test_init_with_github_token(self):
-        """Test client initialization with GitHub token."""
-        client = RecceCloudClient(self.github_token)
-        self.assertEqual(client.token, self.github_token)
-        self.assertEqual(client.token_type, "github_token")
 
     def test_init_with_none_token_raises_error(self):
         """Test client initialization with None token raises ValueError."""
