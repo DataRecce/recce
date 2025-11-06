@@ -80,7 +80,6 @@ export const CheckDetail = ({ checkId, refreshCheckList }: CheckDetailProps) => 
   const [submittedRunId, setSubmittedRunId] = useState<string>();
   const [progress] = useState<Run["progress"]>();
   const [isAborting, setAborting] = useState(false);
-  const [presetCheckTemplate, setPresetCheckTemplate] = useState<string>("");
   const {
     open: isPresetCheckTemplateOpen,
     onOpen: onPresetCheckTemplateOpen,
@@ -187,17 +186,14 @@ export const CheckDetail = ({ checkId, refreshCheckList }: CheckDetailProps) => 
   const [tabValue, setTabValue] = useState<TabValueList>("result");
   const { ref, onCopyToClipboard, onMouseEnter, onMouseLeave } = useCopyToClipboardButton();
 
-  useEffect(() => {
-    const template = generateCheckTemplate({
-      name: check?.name ?? "",
-      description: check?.description ?? "",
-      type: check?.type ?? "",
-      params: check?.params as Record<string, unknown>,
-      viewOptions: check?.view_options as Record<string, unknown>,
-    });
-    // eslint-disable-next-line react-hooks/set-state-in-effect
-    setPresetCheckTemplate(template);
-  }, [check]);
+  // Calculate during render instead of effect
+  const presetCheckTemplate = generateCheckTemplate({
+    name: check?.name ?? "",
+    description: check?.description ?? "",
+    type: check?.type ?? "",
+    params: check?.params as Record<string, unknown>,
+    viewOptions: check?.view_options as Record<string, unknown>,
+  });
 
   if (isLoading) {
     return <Center h="100%">Loading</Center>;
@@ -208,6 +204,26 @@ export const CheckDetail = ({ checkId, refreshCheckList }: CheckDetailProps) => 
       <Center h="100%">
         Error: <span className="no-track-pii-safe">{error.message}</span>
       </Center>
+    );
+  }
+
+  if (!check) {
+    return (
+      <VSplit
+        minSize={100}
+        sizes={[30, 70]}
+        style={{ height: "100%", width: "100%", maxHeight: "100%" }}>
+        <Box style={{ contain: "strict" }} display="flex" flexDirection="column">
+          <Flex p="0px 16px" alignItems="center" h="40px">
+            <CheckBreadcrumb
+              name="Check not found"
+              setName={() => {
+                // do nothing
+              }}
+            />
+          </Flex>
+        </Box>
+      </VSplit>
     );
   }
 
@@ -223,7 +239,7 @@ export const CheckDetail = ({ checkId, refreshCheckList }: CheckDetailProps) => 
       <Box style={{ contain: "strict" }} display="flex" flexDirection="column">
         <Flex p="0px 16px" alignItems="center" h="40px">
           <CheckBreadcrumb
-            name={check?.name ?? ""}
+            name={check.name}
             setName={(name) => {
               mutate({ name });
             }}
@@ -289,9 +305,9 @@ export const CheckDetail = ({ checkId, refreshCheckList }: CheckDetailProps) => 
 
             <Tooltip
               content={
-                isDisabledByNoResult(check?.type ?? "", run)
+                isDisabledByNoResult(check.type, run)
                   ? "Run the check first"
-                  : check?.is_checked
+                  : check.is_checked
                     ? "Mark as Pending"
                     : "Mark as Approved"
               }
@@ -299,21 +315,20 @@ export const CheckDetail = ({ checkId, refreshCheckList }: CheckDetailProps) => 
               <Button
                 flex="0 0 auto"
                 size="sm"
-                colorPalette={check?.is_checked ? "green" : "gray"}
-                variant={check?.is_checked ? "solid" : "outline"}
+                colorPalette={check.is_checked ? "green" : "gray"}
+                variant={check.is_checked ? "solid" : "outline"}
                 onClick={() => {
                   handleApproveCheck();
                 }}
                 disabled={
-                  isDisabledByNoResult(check?.type ?? "", run) ||
-                  featureToggles.disableUpdateChecklist
+                  isDisabledByNoResult(check.type, run) || featureToggles.disableUpdateChecklist
                 }>
-                {check?.is_checked ? (
+                {check.is_checked ? (
                   <PiCheckCircle />
                 ) : (
                   <Icon as={VscCircleLarge} color="lightgray" />
                 )}{" "}
-                {check?.is_checked ? "Approved" : "Mark as Approved"}
+                {check.is_checked ? "Approved" : "Mark as Approved"}
               </Button>
             </Tooltip>
           </HStack>
@@ -321,8 +336,8 @@ export const CheckDetail = ({ checkId, refreshCheckList }: CheckDetailProps) => 
 
         <Box flex="1" p="8px 16px" minHeight="100px">
           <CheckDescription
-            key={check?.check_id}
-            value={check?.description}
+            key={check.check_id}
+            value={check.description}
             onChange={handleUpdateDescription}
           />
         </Box>
@@ -342,7 +357,7 @@ export const CheckDetail = ({ checkId, refreshCheckList }: CheckDetailProps) => 
             <Tabs.Trigger value="result" fontSize="0.75rem">
               Result
             </Tabs.Trigger>
-            {(check?.type === "query" || check?.type === "query_diff") && (
+            {(check.type === "query" || check.type === "query_diff") && (
               <Tabs.Trigger value="query" fontSize="0.75rem">
                 Query
               </Tabs.Trigger>
@@ -363,17 +378,17 @@ export const CheckDetail = ({ checkId, refreshCheckList }: CheckDetailProps) => 
               )}
               <Button
                 variant="outline"
-                disabled={isDisabledByNoResult(check?.type ?? "", run) || tabValue !== "result"}
+                disabled={isDisabledByNoResult(check.type, run) || tabValue !== "result"}
                 onMouseEnter={onMouseEnter}
                 onMouseLeave={onMouseLeave}
                 size="sm"
                 onClick={async () => {
-                  if (check?.type === "lineage_diff") {
+                  if (check.type === "lineage_diff") {
                     lineageViewRef.current?.copyToClipboard();
                   } else {
                     await onCopyToClipboard();
                   }
-                  trackCopyToClipboard({ type: check?.type ?? "unknown", from: "check" });
+                  trackCopyToClipboard({ type: check.type, from: "check" });
                 }}>
                 <PiCopy /> Copy to Clipboard
               </Button>
@@ -382,16 +397,16 @@ export const CheckDetail = ({ checkId, refreshCheckList }: CheckDetailProps) => 
           <Tabs.ContentGroup height="100%" flex="1" style={{ contain: "strict" }}>
             <Tabs.Content value="result" p={0} width="100%" height="100%">
               {runTypeEntry?.RunResultView &&
-                (check?.last_run || trackedRunId ? (
+                (check.last_run || trackedRunId ? (
                   <RunView
                     ref={ref as unknown as Ref<HTMLDivElement>}
                     isRunning={isRunning}
                     isAborting={isAborting}
-                    run={trackedRunId ? run : check?.last_run}
+                    run={trackedRunId ? run : check.last_run}
                     error={rerunError}
                     progress={progress}
                     RunResultView={runTypeEntry.RunResultView}
-                    viewOptions={check?.view_options as Record<string, unknown>}
+                    viewOptions={check.view_options as Record<string, unknown>}
                     onViewOptionsChanged={handelUpdateViewOptions}
                     onCancel={handleCancel}
                     onExecuteRun={handleRerun}
@@ -415,34 +430,33 @@ export const CheckDetail = ({ checkId, refreshCheckList }: CheckDetailProps) => 
                     </VStack>
                   </Center>
                 ))}
-              {check?.type === "schema_diff" && (
+              {check.type === "schema_diff" && (
                 <SchemaDiffView key={check.check_id} check={check} ref={ref} />
               )}
-              {check?.type === "lineage_diff" && (
+              {check.type === "lineage_diff" && (
                 <LineageDiffView key={check.check_id} check={check} ref={lineageViewRef} />
               )}
             </Tabs.Content>
-            {check &&
-              (check.type === "query" ||
-                check.type === "query_diff" ||
-                check.type === "query_base") && (
-                <Tabs.Content value="query" p={0} height="100%" width="100%">
-                  {(check.params as QueryDiffParams | QueryParams).base_sql_template ? (
-                    <DualSqlEditor
-                      /* eslint-disable-next-line @typescript-eslint/no-unnecessary-condition */
-                      value={(check.params as QueryDiffParams).sql_template ?? ""}
-                      baseValue={(check.params as QueryDiffParams).base_sql_template ?? ""}
-                      options={{ readOnly: true }}
-                    />
-                  ) : (
-                    <SqlEditor
-                      /* eslint-disable-next-line @typescript-eslint/no-unnecessary-condition */
-                      value={(check.params as QueryParams).sql_template ?? ""}
-                      options={{ readOnly: true }}
-                    />
-                  )}
-                </Tabs.Content>
-              )}
+            {(check.type === "query" ||
+              check.type === "query_diff" ||
+              check.type === "query_base") && (
+              <Tabs.Content value="query" p={0} height="100%" width="100%">
+                {(check.params as QueryDiffParams | QueryParams).base_sql_template ? (
+                  <DualSqlEditor
+                    /* eslint-disable-next-line @typescript-eslint/no-unnecessary-condition */
+                    value={(check.params as QueryDiffParams).sql_template ?? ""}
+                    baseValue={(check.params as QueryDiffParams).base_sql_template ?? ""}
+                    options={{ readOnly: true }}
+                  />
+                ) : (
+                  <SqlEditor
+                    /* eslint-disable-next-line @typescript-eslint/no-unnecessary-condition */
+                    value={(check.params as QueryParams).sql_template ?? ""}
+                    options={{ readOnly: true }}
+                  />
+                )}
+              </Tabs.Content>
+            )}
           </Tabs.ContentGroup>
         </Tabs.Root>
       </Box>
