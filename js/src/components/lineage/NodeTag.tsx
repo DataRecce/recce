@@ -114,7 +114,8 @@ export function RowCountDiffTag({
 }: RowCountDiffTagProps) {
   const { featureToggles } = useRecceInstanceContext();
   const { runsAggregated } = useLineageGraphContext();
-  const lastRowCount: RowCountDiff | undefined = runsAggregated?.[node.id]?.row_count_diff.result;
+  const lastRowCount: RowCountDiff | undefined = runsAggregated?.[node.id]?.row_count_diff
+    .result as RowCountDiff | undefined;
   const RunTypeIcon = findByRunType("row_count_diff")?.icon;
 
   const [rowsToShow, setRowsToShow] = useState<RowCountDiff>();
@@ -178,8 +179,10 @@ export function RowCountTag({
   onRefresh,
   isFetching,
 }: RowCountTagProps) {
-  const { runsAggregated, refetchRunsAggregated } = useLineageGraphContext();
-  const lastRowCount: RowCount | undefined = runsAggregated?.[node.id]?.row_count.result;
+  const { runsAggregated } = useLineageGraphContext();
+  const lastRowCount: RowCountDiff | undefined = runsAggregated?.[node.id]?.row_count.result as
+    | RowCountDiff
+    | undefined;
 
   const RunTypeIcon = findByRunType("row_count")?.icon;
 

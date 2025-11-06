@@ -1,17 +1,17 @@
 import { HistogramResult } from "@/lib/api/profile";
 import {
-  ChartOptions,
-  Chart as ChartJS,
-  BarElement,
-  Tooltip,
-  ChartData,
-  TimeSeriesScale,
-  CategoryScale,
-  LinearScale,
   AnimationOptions,
-  ScaleOptions,
-  Title,
+  BarElement,
+  CategoryScale,
+  Chart as ChartJS,
+  ChartData,
+  ChartOptions,
   Legend,
+  LinearScale,
+  ScaleOptions,
+  TimeSeriesScale,
+  Title,
+  Tooltip,
 } from "chart.js";
 import { Chart } from "react-chartjs-2";
 import { formatAsAbbreviatedNumber, formatIntervalMinMax } from "@/utils/formatters";
@@ -53,7 +53,7 @@ export function HistogramChart({ data, hideAxis = false, animation = false }: Hi
   const chartData = getHistogramChartData(data);
 
   //infer `any` to allow for union data configurations & options
-  return <Chart type="bar" options={chartOptions} data={chartData as any} plugins={[]} />;
+  return <Chart type="bar" options={chartOptions} data={chartData} plugins={[]} />;
 }
 
 function getHistogramChartDataset(
@@ -65,7 +65,9 @@ function getHistogramChartDataset(
 ) {
   const isDatetime = type === "datetime";
   const { counts = [] } = data;
-  const newData = isDatetime ? counts.map((v, i) => ({ x: binEdges[i], y: v })) : counts;
+  const newData: (number | [number, number])[] = isDatetime
+    ? counts.map((v, i) => [binEdges[i], v] as [number, number])
+    : counts;
   return {
     label,
     data: newData,
@@ -79,9 +81,7 @@ function getHistogramChartDataset(
   };
 }
 
-export function getHistogramChartData(
-  data: HistogramChartProps["data"],
-): ChartData<"bar" | "scatter"> {
+export function getHistogramChartData(data: HistogramChartProps["data"]): ChartData<"bar"> {
   const { datasets, type, binEdges } = data;
   const [base, current] = datasets;
   const currentDataset = getHistogramChartDataset(
@@ -212,7 +212,7 @@ function getScales(
     },
     ticks: {
       maxTicksLimit: 8,
-      callback: function (val, index) {
+      callback: function (val) {
         //slow, but necessary since chart-data is a number and can be hard to display
         return formatAsAbbreviatedNumber(val);
       },
@@ -231,6 +231,5 @@ function formatDisplayedBinItem(binEdges: number[], currentIndex: number) {
   const formattedStart = formatAsAbbreviatedNumber(startEdge);
   const formattedEnd = formatAsAbbreviatedNumber(endEdge);
 
-  const result = `${formattedStart} - ${formattedEnd}`;
-  return result;
+  return `${formattedStart} - ${formattedEnd}`;
 }

@@ -2,11 +2,12 @@ import { VscDiffAdded, VscDiffModified, VscDiffRemoved } from "react-icons/vsc";
 import { FaCamera, FaCube, FaDatabase, FaSeedling } from "react-icons/fa";
 import { FaChartSimple, FaCircleNodes, FaGauge } from "react-icons/fa6";
 import { system as themeSystem } from "@/components/ui/theme";
+import React from "react";
 
 export const IconAdded = VscDiffAdded;
 export const IconRemoved = VscDiffRemoved;
 export const IconModified = VscDiffModified;
-export const IconChanged = (props: any) => {
+export const IconChanged = (props: React.SVGProps<SVGSVGElement>) => {
   return (
     <svg
       stroke="currentColor"
@@ -24,7 +25,7 @@ export const IconChanged = (props: any) => {
   );
 };
 
-export const IconModifiedDownstream = (props: any) => {
+export const IconModifiedDownstream = (props: React.SVGProps<SVGSVGElement>) => {
   return (
     <svg
       stroke="currentColor"

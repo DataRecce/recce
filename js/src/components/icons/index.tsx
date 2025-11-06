@@ -1,4 +1,6 @@
-export const IconSync = (props: any) => {
+import React from "react";
+
+export const IconSync = (props: React.SVGProps<SVGSVGElement>) => {
   return (
     <svg
       width="16"
@@ -21,7 +23,7 @@ export const IconSync = (props: any) => {
     </svg>
   );
 };
-export const IconExport = (props: any) => {
+export const IconExport = (props: React.SVGProps<SVGSVGElement>) => {
   return (
     <svg
       width="16"
@@ -54,7 +56,7 @@ export const IconExport = (props: any) => {
   );
 };
 
-export const IconImport = (props: any) => {
+export const IconImport = (props: React.SVGProps<SVGSVGElement>) => {
   return (
     <svg
       width="16"
@@ -78,7 +80,7 @@ export const IconImport = (props: any) => {
   );
 };
 
-export const IconSave = (props: any) => {
+export const IconSave = (props: React.SVGProps<SVGSVGElement>) => {
   return (
     <svg
       width="16"
@@ -94,7 +96,7 @@ export const IconSave = (props: any) => {
     </svg>
   );
 };
-export const IconEdit = (props: any) => {
+export const IconEdit = (props: React.SVGProps<SVGSVGElement>) => {
   return (
     <svg
       width="17"
@@ -111,7 +113,7 @@ export const IconEdit = (props: any) => {
   );
 };
 
-export const IconInfo = (props: any) => {
+export const IconInfo = (props: React.SVGProps<SVGSVGElement>) => {
   return (
     <svg
       width="16"

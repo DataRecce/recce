@@ -9,7 +9,13 @@ import _ from "lodash";
 import "./styles.css";
 import { Box, Flex, Icon, IconButton, Menu, Portal, Text } from "@chakra-ui/react";
 import { VscClose, VscKebabVertical, VscKey, VscPin, VscPinned } from "react-icons/vsc";
-import { ColumnType, ColumnRenderMode, DataFrame, RowObjectType } from "@/lib/api/types";
+import {
+  ColumnType,
+  ColumnRenderMode,
+  DataFrame,
+  RowObjectType,
+  RowDataTypes,
+} from "@/lib/api/types";
 import { mergeKeysWithStatus } from "@/lib/mergeKeys";
 import { DiffText } from "./DiffText";
 import { formatNumber } from "@/utils/formatters";
@@ -61,10 +67,10 @@ function _getPrimaryKeyValue(
   primaryIndexes: number[],
   row: DataFrame["data"][number],
 ): string {
-  const result: Record<string, any> = {};
+  const result: Record<string, RowDataTypes> = {};
 
   if (primaryIndexes.length === 0) {
-    const row_data = row as any;
+    const row_data = row as unknown as RowObjectType;
 
     return JSON.stringify({ _index: row_data._index });
   } else {
@@ -331,27 +337,27 @@ export function toDataDiffGrid(
   const columnMap = _getColumnMap(base, current);
 
   // merge row
-  const baseMap: Record<string, any> = {};
-  const currentMap: Record<string, any> = {};
+  const baseMap: Record<string, unknown> = {};
+  const currentMap: Record<string, unknown> = {};
   let invalidPKeyBase = false;
   let invalidPKeyCurrent = false;
 
   if (primaryKeys.length === 0) {
     base.data.forEach((row, index) => {
-      const row_data = row as any;
+      const row_data = row as unknown as RowObjectType;
       row_data._index = index + 1;
       baseMap[JSON.stringify({ _index: index + 1 })] = row;
     });
 
     current.data.forEach((row, index) => {
-      const row_data = row as any;
+      const row_data = row as unknown as RowObjectType;
       row_data._index = index + 1;
       currentMap[JSON.stringify({ _index: index + 1 })] = row;
     });
   } else {
     let primaryIndexes = _getPrimaryKeyIndexes(base.columns, primaryKeys);
 
-    base.data.forEach((row, index) => {
+    base.data.forEach((row) => {
       const key = _getPrimaryKeyValue(base.columns, primaryIndexes, row);
       if (key in baseMap) {
         invalidPKeyBase = true;
@@ -360,7 +366,7 @@ export function toDataDiffGrid(
     });
 
     primaryIndexes = _getPrimaryKeyIndexes(current.columns, primaryKeys);
-    current.data.forEach((row, index) => {
+    current.data.forEach((row) => {
       const key = _getPrimaryKeyValue(current.columns, primaryIndexes, row);
       if (key in currentMap) {
         invalidPKeyCurrent = true;
@@ -377,7 +383,7 @@ export function toDataDiffGrid(
     modified: 0,
   };
 
-  let rows = Object.entries(mergedMap).map(([key, status]) => {
+  let rows = Object.entries(mergedMap).map(([key]) => {
     const baseRow = baseMap[key] as RowObjectType | undefined;
     const currentRow = currentMap[key] as RowObjectType | undefined;
     const row = JSON.parse(key) as RowObjectType;

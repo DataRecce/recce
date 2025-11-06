@@ -156,7 +156,7 @@ interface UseDiffEditorSync {
 }
 
 function useDiffEditorSync(value: string, onChange: (value: string) => void): UseDiffEditorSync {
-  const editorRef = useRef<any>(null);
+  const editorRef = useRef<editor.IStandaloneCodeEditor | null>(null);
 
   useEffect(() => {
     if (editorRef.current && value !== editorRef.current.getValue()) {
@@ -235,7 +235,7 @@ export function SandboxView({ isOpen, onClose, current }: SandboxViewProps) {
 
   const { mutate: runQuery, isPending } = useMutation({
     mutationFn: queryFn,
-    onSuccess(data, variables) {
+    onSuccess(data) {
       if (data.error) {
         trackPreviewChange({
           action: "run",

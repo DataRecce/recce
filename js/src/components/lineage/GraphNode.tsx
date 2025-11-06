@@ -78,7 +78,8 @@ const NodeRunsAggregated = ({ id, inverted }: { id: string; inverted: boolean })
   let rowCountChanged;
   if (runs?.row_count_diff) {
     const rowCountDiff = runs.row_count_diff;
-    rowCountChanged = rowCountDiff.result.curr !== rowCountDiff.result.base;
+    const result = rowCountDiff.result as RowCountDiff;
+    rowCountChanged = result.curr !== result.base;
   }
 
   const colorChanged = inverted ? "white" : getIconForChangeStatus("modified").color;
@@ -100,7 +101,7 @@ const NodeRunsAggregated = ({ id, inverted }: { id: string; inverted: boolean })
       {runs?.row_count_diff && rowCountChanged !== undefined && (
         <Tooltip content={`Row count (${rowCountChanged ? "changed" : "="})`} openDelay={500}>
           <Box>
-            <_RowCountDiffTag rowCount={runs.row_count_diff.result} />
+            <_RowCountDiffTag rowCount={runs.row_count_diff.result as RowCountDiff} />
           </Box>
         </Tooltip>
       )}
@@ -384,7 +385,7 @@ export function GraphNode(nodeProps: GraphNodeProps) {
                   id={data.id}
                   inverted={(function () {
                     if (selectMode === "selecting") {
-                      return isSelected ? true : false;
+                      return isSelected;
                     } else {
                       return false;
                     }

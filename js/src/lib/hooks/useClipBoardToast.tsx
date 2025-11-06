@@ -10,10 +10,10 @@ export function useClipBoardToast() {
     });
   }
 
-  function failToast(title: string, error: any) {
+  function failToast(title: string, error: unknown) {
     toaster.create({
       title: title,
-      description: `${error}`,
+      description: String(error),
       type: "error",
       duration: 5000,
       closable: true,

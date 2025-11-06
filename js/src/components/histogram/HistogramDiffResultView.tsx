@@ -3,17 +3,22 @@ import { RunResultViewProps } from "../run/types";
 import { HStack, Box, Flex, Spacer } from "@chakra-ui/react";
 import { HistogramChart } from "../charts/HistogramChart";
 import { ScreenshotBox } from "../screenshot/ScreenshotBox";
-import { forwardRef } from "react";
+import { forwardRef, Ref } from "react";
+import { isHistogramDiffRun } from "@/lib/api/types";
 
-type HistogramDiffResultViewProp = RunResultViewProps<HistogramDiffParams, HistogramDiffResult>;
+type HistogramDiffResultViewProp = RunResultViewProps;
 
-function _HistogramDiffResultView({ run }: HistogramDiffResultViewProp, ref: any) {
+function _HistogramDiffResultView({ run }: HistogramDiffResultViewProp, ref: Ref<HTMLDivElement>) {
+  if (!isHistogramDiffRun(run)) {
+    throw new Error("Run type must be histogram_diff");
+  }
+
   const params = run.params as HistogramDiffParams;
   const base = run.result?.base;
   const current = run.result?.current;
   const min = run.result?.min;
   const max = run.result?.max;
-  const binEdges = run.result?.bin_edges as [];
+  const binEdges = run.result?.bin_edges ?? [];
 
   if (!base || !current) {
     return <div>Loading...</div>;

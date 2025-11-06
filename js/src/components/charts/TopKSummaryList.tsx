@@ -122,7 +122,7 @@ export function TopKSummaryBarChart({ topKDiff, isDisplayTopTen }: BarChartProps
           return <></>;
         }
         return (
-          <Fragment key={index}>
+          <Fragment key={current.label}>
             <TopKChartTooltip base={base} current={current}>
               <Flex alignItems={"center"} width={"100%"} _hover={{ bg: "blackAlpha.300" }} px={4}>
                 <Text
@@ -205,7 +205,7 @@ export function TopKSummaryList({ topk, valids, isDisplayTopTen }: Props) {
         const displayTopkCount = formatAsAbbreviatedNumber(topkCount);
         const displayTopkRatio = formatIntervalMinMax(topkCount / valids);
         return (
-          <Fragment key={index}>
+          <Fragment key={topkLabel}>
             {/* eslint-disable-next-line @typescript-eslint/no-unnecessary-condition */}
             {!isLastItemOthers || (isLastItemOthers && topkCount > 0) ? (
               <>

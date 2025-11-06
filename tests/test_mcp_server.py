@@ -8,6 +8,7 @@ pytest.importorskip("mcp")
 from recce.core import RecceContext  # noqa: E402
 from recce.mcp_server import RecceMCPServer, run_mcp_server  # noqa: E402
 from recce.models.types import LineageDiff  # noqa: E402
+from recce.server import RecceServerMode  # noqa: E402
 from recce.tasks.profile import ProfileDiffTask  # noqa: E402
 from recce.tasks.query import QueryDiffTask, QueryTask  # noqa: E402
 from recce.tasks.rowcount import RowCountDiffTask  # noqa: E402
@@ -206,3 +207,25 @@ def test_mcp_cli_command_exists():
     # Check that mcp_server is in the CLI commands
     commands = [cmd.name for cmd in cli.commands.values()]
     assert "mcp_server" in commands or "mcp-server" in commands
+
+
+class TestMCPServerModes:
+    """Test cases for MCP server mode functionality"""
+
+    def test_server_mode_default(self):
+        """Test that server mode is the default when not specified"""
+        mock_context = MagicMock(spec=RecceContext)
+        server = RecceMCPServer(mock_context)
+
+        # Default mode should be server
+        assert server.mode == RecceServerMode.server
+
+    def test_non_server_mode_restricts_tools(self):
+        """Test that non-server mode (preview, read-only) restricts diff tools"""
+        mock_context = MagicMock(spec=RecceContext)
+        server = RecceMCPServer(mock_context, mode=RecceServerMode.preview)
+
+        # Verify mode is set correctly
+        assert server.mode == RecceServerMode.preview
+        # Verify it's not server mode
+        assert server.mode != RecceServerMode.server

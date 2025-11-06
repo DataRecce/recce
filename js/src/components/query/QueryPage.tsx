@@ -10,7 +10,6 @@ import { QueryForm } from "./QueryForm";
 import { useRecceActionContext } from "@/lib/hooks/RecceActionContext";
 import { SubmitOptions, waitRun } from "@/lib/api/runs";
 import { BaseEnvironmentSetupGuide } from "../lineage/SingleEnvironmentQueryView";
-import { useRecceServerFlag } from "@/lib/hooks/useRecceServerFlag";
 import { useRecceInstanceContext } from "@/lib/hooks/RecceInstanceContext";
 import { Tooltip } from "@/components/ui/tooltip";
 import { PiInfoFill } from "react-icons/pi";

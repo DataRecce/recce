@@ -41,13 +41,13 @@ export interface QueryDiffViewOptions {
 }
 
 export async function submitQuery(params: QueryRunParams, options?: SubmitOptions) {
-  return await submitRun<QueryRunParams, QueryResult>("query", params, options);
+  return await submitRun("query", params, options);
 }
 
 export async function submitQueryBase(params: QueryRunParams, options?: SubmitOptions) {
-  return await submitRun<QueryRunParams, QueryResult>("query_base", params, options);
+  return await submitRun("query_base", params, options);
 }
 
 export async function submitQueryDiff(params: QueryDiffParams, options?: SubmitOptions) {
-  return await submitRun<QueryDiffParams, QueryDiffResult>("query_diff", params, options);
+  return await submitRun("query_diff", params, options);
 }

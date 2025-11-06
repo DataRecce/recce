@@ -7,15 +7,12 @@ interface DiffViewOptions {
   changed_only?: boolean;
 }
 
-interface RunToolbarProps<PT, RT, VO> extends RunResultViewProps<PT, RT, VO> {
+interface RunToolbarProps<VO> extends RunResultViewProps<VO> {
   warnings?: string[];
   children?: ReactNode;
 }
 
-export const RunToolbar = <PT, RT>({
-  warnings,
-  children,
-}: RunToolbarProps<PT, RT, DiffViewOptions>) => {
+export const RunToolbar = ({ warnings, children }: RunToolbarProps<DiffViewOptions>) => {
   return (
     <Flex
       borderBottom="1px solid lightgray"
@@ -26,7 +23,8 @@ export const RunToolbar = <PT, RT>({
       bg={warnings && warnings.length > 0 ? "orange.100" : "inherit"}>
       <VStack alignItems="flex-start" gap={0}>
         {warnings?.map((warning, idx) => (
-          <Box key={idx}>
+          // eslint-disable-next-line react/no-array-index-key
+          <Box key={`warning-${idx}-${warning}`}>
             <PiWarning color="orange.600" /> {warning}
           </Box>
         ))}

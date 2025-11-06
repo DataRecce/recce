@@ -81,7 +81,7 @@ export function formatIntervalMinMax(num: number) {
 
 // SR side: No need for object record handling
 // CR side: needs record handling
-export function formatTestExpectedOrActual(value?: unknown): any {
+export function formatTestExpectedOrActual(value?: unknown): unknown {
   if (!value) {
     return NO_VALUE;
   }

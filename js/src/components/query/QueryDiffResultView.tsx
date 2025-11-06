@@ -7,7 +7,7 @@ import {
   QueryPreviewChangeParams,
 } from "@/lib/api/adhocQuery";
 import { Center, Flex } from "@chakra-ui/react";
-import { forwardRef, useMemo } from "react";
+import { forwardRef, Ref, useMemo } from "react";
 import { toDataDiffGrid } from "./querydiff";
 import { toValueDiffGrid as toQueryDiffJoinGrid } from "../valuediff/valuediff";
 
@@ -19,9 +19,8 @@ import { RunToolbar } from "../run/RunToolbar";
 import { DiffDisplayModeSwitch } from "./ToggleSwitch";
 import { ChangedOnlyCheckbox } from "./ChangedOnlyCheckbox";
 
-export interface QueryDiffResultViewProps
-  extends RunResultViewProps<QueryDiffParams, QueryDiffResult, QueryDiffViewOptions> {
-  onAddToChecklist?: (run: Run<QueryDiffParams, QueryDiffResult>) => void;
+export interface QueryDiffResultViewProps extends RunResultViewProps<QueryDiffViewOptions> {
+  onAddToChecklist?: (run: Run) => void;
   baseTitle?: string;
   currentTitle?: string;
 }
@@ -35,13 +34,17 @@ const PrivateQueryDiffResultView = (
     baseTitle,
     currentTitle,
   }: QueryDiffResultViewProps,
-  ref: any,
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  ref: Ref<any>,
 ) => {
   const primaryKeys = useMemo(() => viewOptions?.primary_keys ?? [], [viewOptions]);
   const changedOnly = useMemo(() => viewOptions?.changed_only ?? false, [viewOptions]);
   const pinnedColumns = useMemo(() => viewOptions?.pinned_columns ?? [], [viewOptions]);
   const displayMode = useMemo(() => viewOptions?.display_mode ?? "inline", [viewOptions]);
   const columnsRenderMode = useMemo(() => viewOptions?.columnsRenderMode ?? {}, [viewOptions]);
+  if (run.type !== "query_diff") {
+    throw new Error("QueryDiffResult view should be rendered as query_diff");
+  }
 
   const gridData = useMemo(() => {
     const onColumnsRenderModeChanged = (cols: Record<string, ColumnRenderMode>) => {
@@ -178,8 +181,12 @@ const PrivateQueryDiffResultView = (
 
 const PrivateQueryDiffJoinResultView = (
   { run, viewOptions, onViewOptionsChanged, baseTitle, currentTitle }: QueryDiffResultViewProps,
-  ref: any,
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  ref: Ref<any>,
 ) => {
+  if (run.type !== "query_diff") {
+    throw new Error("QueryDiffResult view should be rendered as query_diff");
+  }
   const changedOnly = useMemo(() => viewOptions?.changed_only ?? false, [viewOptions]);
   const pinnedColumns = useMemo(() => viewOptions?.pinned_columns ?? [], [viewOptions]);
   const displayMode = useMemo(() => viewOptions?.display_mode ?? "inline", [viewOptions]);
@@ -319,7 +326,7 @@ export const QueryDiffResultView = forwardRef((props: QueryDiffResultViewProps, 
     baseTitle = "Original";
     currentTitle = "Editor";
   }
-  if (props.run.result?.diff != null) {
+  if (props.run.type === "query_diff" && props.run.result?.diff != null) {
     const ResultView = forwardRef(PrivateQueryDiffJoinResultView);
     // eslint-disable-next-line react-hooks/static-components
     return <ResultView {...props} ref={ref} baseTitle={baseTitle} currentTitle={currentTitle} />;

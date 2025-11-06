@@ -1,4 +1,4 @@
-import { forwardRef, Key, useMemo, useState } from "react";
+import { forwardRef, Key, Ref, useMemo, useState } from "react";
 
 import { mergeColumns, SchemaDiffRow, toDataGrid, toSingleEnvDataGrid } from "./schema";
 import "react-data-grid/lib/styles.css";
@@ -8,7 +8,7 @@ import { useLineageGraphContext } from "@/lib/hooks/LineageGraphContext";
 import { NodeData } from "@/lib/api/info";
 import { trackColumnLevelLineage } from "@/lib/api/track";
 import { useLineageViewContext } from "../lineage/LineageViewContext";
-import { CellMouseArgs } from "react-data-grid";
+import { CellMouseArgs, DataGridHandle } from "react-data-grid";
 
 interface SchemaViewProps {
   base?: NodeData;
@@ -16,7 +16,7 @@ interface SchemaViewProps {
   enableScreenshot?: boolean;
 }
 
-function PrivateSingleEnvSchemaView({ current }: { current?: NodeData }, ref: any) {
+function PrivateSingleEnvSchemaView({ current }: { current?: NodeData }, ref: Ref<DataGridHandle>) {
   const lineageViewContext = useLineageViewContext();
   const [cllRunningMap, setCllRunningMap] = useState<Map<string, boolean>>(new Map());
   const { columns, rows } = useMemo(() => {
@@ -104,7 +104,7 @@ function PrivateSingleEnvSchemaView({ current }: { current?: NodeData }, ref: an
 
 export function PrivateSchemaView(
   { base, current, enableScreenshot = false }: SchemaViewProps,
-  ref: any,
+  ref: Ref<DataGridHandle>,
 ) {
   const lineageViewContext = useLineageViewContext();
   const [cllRunningMap, setCllRunningMap] = useState<Map<string, boolean>>(new Map());
