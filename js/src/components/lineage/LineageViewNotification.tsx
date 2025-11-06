@@ -1,6 +1,6 @@
 import { sessionStorageKeys } from "@/lib/api/sessionStorageKeys";
 import { CloseButton, Flex, Spacer } from "@chakra-ui/react";
-import React, { useEffect, useState } from "react";
+import React, { useState } from "react";
 
 interface NotificationProps {
   notification?: React.ReactNode;

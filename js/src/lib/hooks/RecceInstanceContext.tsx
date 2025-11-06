@@ -1,4 +1,4 @@
-import { createContext, useContext, useEffect, useState } from "react";
+import { createContext, useContext, useState } from "react";
 import { useRecceInstanceInfo } from "./useRecceInstanceInfo";
 
 export type RecceFeatureMode = "read only" | "metadata only" | null;

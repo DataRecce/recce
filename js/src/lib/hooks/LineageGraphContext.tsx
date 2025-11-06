@@ -167,7 +167,7 @@ function useLineageWatcher() {
           setEnvStatus("relaunch");
         } else {
           // Handle broadcast events
-          const { id, title, description, status, position, duration } = data.event;
+          const { id, title, description, status, duration } = data.event;
           setArtifactsUpdatedToastId(
             toaster.create({
               id: id || "broadcast",
