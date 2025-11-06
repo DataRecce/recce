@@ -118,19 +118,10 @@ export function RowCountDiffTag({
     .result as RowCountDiff | undefined;
   const RunTypeIcon = findByRunType("row_count_diff")?.icon;
 
-  const [rowsToShow, setRowsToShow] = useState<RowCountDiff>();
-  const [label, setLabel] = useState<string>("");
-
-  useEffect(() => {
-    const rowCount = fetchedRowCount ?? lastRowCount;
-    if (rowCount) {
-      const base = rowCount.base ?? "N/A";
-      const current = rowCount.curr ?? "N/A";
-      // eslint-disable-next-line react-hooks/set-state-in-effect
-      setLabel(`${base} -> ${current} rows`);
-      setRowsToShow(rowCount);
-    }
-  }, [fetchedRowCount, lastRowCount]);
+  // Calculate during render instead of effect
+  const rowCount = fetchedRowCount ?? lastRowCount;
+  const rowsToShow = rowCount;
+  const label = rowCount ? `${rowCount.base ?? "N/A"} -> ${rowCount.curr ?? "N/A"} rows` : "";
 
   // TODO isFetching is not hooked up, so disabling it on the skeleton for now
   return (
