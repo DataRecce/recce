@@ -15,6 +15,7 @@ import { useClipBoardToast } from "./useClipBoardToast";
 import { format } from "date-fns";
 import saveAs from "file-saver";
 import { PiCopy, PiInfo } from "react-icons/pi";
+import { DataGridHandle } from "react-data-grid";
 
 export const IGNORE_SCREENSHOT_CLASS = "ignore-screenshot";
 
@@ -57,7 +58,7 @@ export function useCopyToClipboard({
   ignoreElements,
 }: HookOptions) {
   const [status, setStatus] = useState<"idle" | "loading" | "success" | "error">("idle");
-  const ref = useRef<HTMLDivElement>(null);
+  const ref = useRef<DataGridHandle>(null);
 
   // ImageDownloadModal is used for browsers that don't support ClipboardItem
   const { onOpen, setImgBlob, ImageDownloadModal } = useImageDownloadModal();

@@ -35,7 +35,7 @@ import { stripIndents } from "common-tags";
 import { useClipBoardToast } from "@/lib/hooks/useClipBoardToast";
 import { buildTitle, buildDescription, buildQuery } from "./check";
 import SqlEditor, { DualSqlEditor } from "../query/SqlEditor";
-import React, { ReactNode, useCallback, useEffect, useRef, useState } from "react";
+import React, { ReactNode, Ref, useCallback, useEffect, useRef, useState } from "react";
 import { cancelRun, submitRunFromCheck } from "@/lib/api/runs";
 import { Run } from "@/lib/api/types";
 import { RunView } from "../run/RunView";
@@ -384,7 +384,7 @@ export const CheckDetail = ({ checkId, refreshCheckList }: CheckDetailProps) => 
               {runTypeEntry?.RunResultView &&
                 (check?.last_run || trackedRunId ? (
                   <RunView
-                    ref={ref}
+                    ref={ref as unknown as Ref<HTMLDivElement>}
                     isRunning={isRunning}
                     isAborting={isAborting}
                     run={trackedRunId ? run : check?.last_run}

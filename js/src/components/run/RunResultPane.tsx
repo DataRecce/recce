@@ -16,7 +16,7 @@ import {
   Menu,
   Portal,
 } from "@chakra-ui/react";
-import { ReactNode, useCallback, useState } from "react";
+import { ReactNode, Ref, useCallback, useState } from "react";
 import { createCheckByRun } from "@/lib/api/checks";
 import { useLocation } from "wouter";
 import { Editor } from "@monaco-editor/react";
@@ -262,7 +262,7 @@ export const PrivateLoadableRunView = ({
       </Tabs.Root>
       {tabValue === "result" && (
         <RunView
-          ref={ref}
+          ref={ref as unknown as Ref<HTMLDivElement>}
           error={error}
           run={run}
           onCancel={onCancel}

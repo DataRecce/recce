@@ -12,6 +12,7 @@ import { getIconForChangeStatus, getIconForResourceType } from "../lineage/style
 import { IconType } from "react-icons";
 import { isSchemaChanged } from "../schema/schemaDiff";
 import { findByRunType } from "../run/registry";
+import { DataGridHandle } from "react-data-grid";
 
 interface SchemaDiffViewProps {
   check: Check;
@@ -80,7 +81,7 @@ const NodelistItem = ({
 
 export function PrivateSchemaDiffView(
   { check }: SchemaDiffViewProps,
-  ref: React.Ref<HTMLDivElement>,
+  ref: React.Ref<DataGridHandle>,
 ) {
   const { lineageGraph } = useLineageGraphContext();
   const params = check.params as SchemaDiffParams;
