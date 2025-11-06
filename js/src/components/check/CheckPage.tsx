@@ -45,6 +45,14 @@ export const CheckPage = () => {
   );
 
   const [orderedChecks, setOrderedChecks] = useState(checks ?? []);
+  const [prevChecks, setPrevChecks] = useState(checks);
+
+  // Sync orderedChecks with checks when checks data changes (during render)
+  if (checks !== prevChecks) {
+    setPrevChecks(checks);
+    setOrderedChecks(checks ?? []);
+  }
+
   const { mutate: changeChecksOrder } = useMutation({
     mutationFn: (order: { source: number; destination: number }) => reorderChecks(order),
     onSuccess: async () => {
@@ -81,10 +89,7 @@ export const CheckPage = () => {
         setLocation(`/checks/${checks[0].check_id}`);
       }
     }
-
-    // eslint-disable-next-line react-hooks/set-state-in-effect
-    setOrderedChecks(checks);
-  }, [status, selectedItem, checks, setOrderedChecks, setLocation, latestSelectedCheckId]);
+  }, [status, selectedItem, checks, setLocation, latestSelectedCheckId]);
 
   if (isLoading) {
     return <></>;
