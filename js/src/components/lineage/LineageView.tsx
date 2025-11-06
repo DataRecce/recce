@@ -780,7 +780,7 @@ export function PrivateLineageView(
     // Only show context menu when selectMode is action
     // Prevent native context menu from showing
     event.preventDefault();
-    const reactFlowDiv = refReactFlow.current as HTMLDivElement;
+    const reactFlowDiv = refReactFlow.current as unknown as HTMLDivElement;
     const pane = reactFlowDiv.getBoundingClientRect();
     const x = event.clientX - pane.left;
     const y = event.clientY - pane.top + reactFlowDiv.offsetTop;
@@ -1093,7 +1093,7 @@ export function PrivateLineageView(
             maxZoom={1}
             minZoom={0.1}
             nodesDraggable={interactive}
-            ref={refReactFlow}>
+            ref={refReactFlow as unknown as Ref<HTMLDivElement>}>
             <Background color="#ccc" />
             <Controls
               showInteractive={false}

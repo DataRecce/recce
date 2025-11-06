@@ -5,6 +5,7 @@ import { IconAdded, IconChanged, IconModified, IconRemoved } from "../lineage/st
 import { LineageGraph } from "../lineage/lineage";
 import { NodeData } from "@/lib/api/info";
 import { Tooltip } from "@/components/ui/tooltip";
+import { IconType } from "react-icons";
 
 export type ChangeStatus =
   // node change
@@ -34,7 +35,7 @@ export const NODE_CHANGE_STATUS_MSGS = {
 
 export function getIconForChangeStatus(changeStatus?: ChangeStatus): {
   color: string;
-  icon: any; //IconType not provided
+  icon: IconType | undefined; //IconType not provided
 } {
   if (changeStatus === "added") {
     return { color: "#1dce00", icon: IconAdded };
@@ -86,7 +87,7 @@ function ChangeStatusCountLabel({
   return (
     <VStack alignItems="stretch">
       <Flex alignItems="center" fontSize="sm" color="gray">
-        <Icon mr="5px" as={icon} color={color} />
+        {icon && <Icon mr="5px" as={icon} color={color} />}
         {label}
       </Flex>
       <Text fontSize="sm">{value}</Text>
