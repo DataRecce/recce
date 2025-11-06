@@ -278,6 +278,7 @@ export function LineageGraphContextProvider({ children }: LineageGraphProps) {
   const { featureToggles, shareUrl } = useRecceInstanceContext();
   const { onClose } = useDisclosure();
   const [relaunchHintOpen, setRelaunchHintOpen] = useState<boolean>(false);
+  const [prevRelaunchCondition, setPrevRelaunchCondition] = useState<boolean>(false);
   const queryClient = useQueryClient();
 
   const isActionAvailable = useCallback(
@@ -291,20 +292,25 @@ export function LineageGraphContextProvider({ children }: LineageGraphProps) {
     [supportTasks],
   );
 
-  useEffect(() => {
-    if (isLoading) {
-      return;
-    }
+  // Calculate if modal should be open (during render)
+  const shouldShowRelaunch =
+    !isLoading &&
+    envStatus === "relaunch" &&
+    flags?.single_env_onboarding === true &&
+    flags.show_relaunch_hint;
 
-    if (envStatus === "relaunch" && flags?.single_env_onboarding && flags.show_relaunch_hint) {
-      // User has added a target-base folder
-      // eslint-disable-next-line react-hooks/set-state-in-effect
-      setRelaunchHintOpen(true);
+  // Adjust state during render when condition changes
+  if (shouldShowRelaunch !== prevRelaunchCondition) {
+    setPrevRelaunchCondition(shouldShowRelaunch);
+    setRelaunchHintOpen(shouldShowRelaunch);
+  }
+
+  // Track side effect only when modal opens (remains in effect)
+  useEffect(() => {
+    if (shouldShowRelaunch && relaunchHintOpen) {
       trackSingleEnvironment({ action: "target_base_added" });
-    } else {
-      setRelaunchHintOpen(false);
     }
-  }, [flags, envStatus, isLoading]);
+  }, [shouldShowRelaunch, relaunchHintOpen]);
 
   return (
     <>
