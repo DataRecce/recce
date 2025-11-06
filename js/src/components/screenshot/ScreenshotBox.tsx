@@ -1,5 +1,5 @@
 import { Box, BoxProps } from "@chakra-ui/react";
-import { forwardRef } from "react";
+import { forwardRef, Ref } from "react";
 
 interface ScreenshotBoxProps extends BoxProps {
   backgroundColor?: string;
@@ -10,7 +10,7 @@ interface ScreenshotBoxProps extends BoxProps {
 export const ScreenshotBox = forwardRef(
   (
     { backgroundColor = "white", blockSize, children, ...restProps }: ScreenshotBoxProps,
-    ref: any,
+    ref: Ref<HTMLDivElement>,
   ) => {
     return (
       <Box ref={ref} {...restProps} overflowY="auto" overflowX="hidden">
