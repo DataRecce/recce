@@ -1,5 +1,6 @@
 import { toaster } from "@/components/ui/toaster";
 import { useCallback, useEffect, useRef, useState } from "react";
+import { useTimeout } from "usehooks-ts";
 
 const COUNTDOWN_CONFIG = {
   TOAST_ID: "lifetime-countdown",
@@ -68,24 +69,17 @@ export function useCountdownToast(lifetimeExpiredAt: Date | undefined) {
     countdownIntervalRef.current = setInterval(updateToast, COUNTDOWN_CONFIG.UPDATE_INTERVAL);
   }, [lifetimeExpiredAt, countdownToast, calculateRemainingSeconds, updateToast, cleanupToast]);
 
+  // Calculate delay for showing toast
+  const remainingSeconds = calculateRemainingSeconds();
+  const delay = lifetimeExpiredAt
+    ? Math.max(0, remainingSeconds - COUNTDOWN_CONFIG.WARNING_THRESHOLD) * 1000
+    : null;
+
+  // Use useTimeout hook to schedule toast display
+  useTimeout(showToast, delay);
+
+  // Cleanup effect
   useEffect(() => {
-    if (!lifetimeExpiredAt) return;
-
-    const remainingSeconds = calculateRemainingSeconds();
-    if (remainingSeconds - COUNTDOWN_CONFIG.WARNING_THRESHOLD < 0) {
-      // eslint-disable-next-line react-hooks/set-state-in-effect
-      showToast();
-    } else {
-      const timeoutId = setTimeout(
-        showToast,
-        (remainingSeconds - COUNTDOWN_CONFIG.WARNING_THRESHOLD) * 1000,
-      );
-      return () => {
-        clearTimeout(timeoutId);
-        cleanupToast();
-      };
-    }
-
     return cleanupToast;
-  }, [lifetimeExpiredAt, calculateRemainingSeconds, showToast, cleanupToast]);
+  }, [cleanupToast]);
 }
