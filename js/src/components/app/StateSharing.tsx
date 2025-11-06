@@ -4,7 +4,7 @@ import { useRecceShareStateContext } from "@/lib/hooks/RecceShareStateContext";
 import { useClipBoardToast } from "@/lib/hooks/useClipBoardToast";
 import { TbCloudUpload } from "react-icons/tb";
 import { trackShareState } from "@/lib/api/track";
-import { useState, useEffect, useRef } from "react";
+import { useState } from "react";
 import AuthModal from "@/components/AuthModal/AuthModal";
 import { useCopyToClipboard, useInterval } from "usehooks-ts";
 import { PiCheckCircle, PiCopy } from "react-icons/pi";

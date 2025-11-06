@@ -1,4 +1,4 @@
-import { HStack, SkeletonText, Tag, Text, Icon, IconButton, Button, Flex } from "@chakra-ui/react";
+import { HStack, SkeletonText, Tag, Text, Icon, IconButton, Flex } from "@chakra-ui/react";
 import { getIconForResourceType } from "./styles";
 import { FiArrowRight, FiFrown } from "react-icons/fi";
 import { RowCount, RowCountDiff } from "@/lib/api/models";
@@ -11,7 +11,6 @@ import { findByRunType } from "../run/registry";
 import { useRecceInstanceContext } from "@/lib/hooks/RecceInstanceContext";
 import { Tooltip } from "@/components/ui/tooltip";
 import { PiRepeat } from "react-icons/pi";
-import { useEffect, useState } from "react";
 import SetupConnectionPopover from "@/components/app/SetupConnectionPopover";
 
 export function ResourceTypeTag({ node }: { node: LineageGraphNode }) {

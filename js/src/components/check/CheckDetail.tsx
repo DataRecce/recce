@@ -35,7 +35,7 @@ import { stripIndents } from "common-tags";
 import { useClipBoardToast } from "@/lib/hooks/useClipBoardToast";
 import { buildTitle, buildDescription, buildQuery } from "./check";
 import SqlEditor, { DualSqlEditor } from "../query/SqlEditor";
-import React, { ReactNode, Ref, useCallback, useEffect, useRef, useState } from "react";
+import React, { ReactNode, Ref, useCallback, useRef, useState } from "react";
 import { cancelRun, submitRunFromCheck } from "@/lib/api/runs";
 import { Run } from "@/lib/api/types";
 import { RunView } from "../run/RunView";
