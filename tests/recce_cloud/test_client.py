@@ -71,7 +71,7 @@ class RecceCloudClientTests(unittest.TestCase):
             client.get_session(self.session_id)
 
         self.assertEqual(context.exception.status_code, 404)
-        self.assertIn("Failed to get session", str(context.exception))
+        self.assertIn("Session not found", str(context.exception))
 
     @patch("recce_cloud.api.client.requests.request")
     def test_get_session_forbidden(self, mock_request):
@@ -230,16 +230,16 @@ class RecceCloudClientTests(unittest.TestCase):
     def test_recce_cloud_exception_with_json_detail(self):
         """Test RecceCloudException parses JSON detail."""
         json_reason = json.dumps({"detail": "Invalid session ID"})
-        exception = RecceCloudException(message="Test error", reason=json_reason, status_code=400)
+        exception = RecceCloudException(reason=json_reason, status_code=400)
 
         self.assertEqual(exception.status_code, 400)
         self.assertEqual(exception.reason, "Invalid session ID")
-        self.assertIn("Test error", str(exception))
+        self.assertIn("Invalid session ID", str(exception))
 
     def test_recce_cloud_exception_with_plain_text(self):
         """Test RecceCloudException with plain text reason."""
         plain_reason = "Connection timeout"
-        exception = RecceCloudException(message="Test error", reason=plain_reason, status_code=500)
+        exception = RecceCloudException(reason=plain_reason, status_code=500)
 
         self.assertEqual(exception.status_code, 500)
         self.assertEqual(exception.reason, plain_reason)
