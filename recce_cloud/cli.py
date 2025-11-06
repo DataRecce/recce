@@ -280,8 +280,7 @@ def upload(target_path, session_id, cr, session_type, base_branch):
     Upload dbt artifacts to Recce Cloud session.
 
     Lightweight replacement for 'recce upload-session' designed for CI/CD environments.
-    Uploads manifest.json and catalog.json from the dbt target directory to a specific
-    Recce Cloud session.
+    Supports two workflows: auto-session creation (GitHub/GitLab) or upload to existing session.
 
     \b
     What gets uploaded:
@@ -289,58 +288,78 @@ def upload(target_path, session_id, cr, session_type, base_branch):
     - catalog.json: database catalog information and statistics
 
     \b
+    Upload Workflows:
+
+    1. Platform-Specific (Recommended for GitHub Actions & GitLab CI):
+       - Automatically creates session using platform APIs
+       - No --session-id required
+       - Detects PR/MR context and links session automatically
+       - Example: recce-cloud upload
+
+    2. Generic (For existing sessions or other CI platforms):
+       - Upload to pre-existing session using session ID
+       - Requires --session-id parameter
+       - Example: recce-cloud upload --session-id abc123
+
+    \b
     The upload process:
-    1. Validate dbt artifact files exist and are valid JSON
-    2. Auto-detect Git repository and branch information
-    3. Auto-detect Pull/Merge Request information (if in PR context)
-    4. Auto-detect CI/CD platform information
-    5. Authenticate with Recce Cloud API
-    6. Upload artifacts to S3 for the session
-    7. Update session metadata (links session to PR/MR via pr_link)
+    1. Auto-detect CI/CD platform (GitHub Actions, GitLab CI, etc.)
+    2. Validate dbt artifact files exist and are valid JSON
+    3. Extract adapter type from manifest.json
+    4. Authenticate with Recce Cloud (RECCE_API_TOKEN or CI token)
+    5. Create/touch session (platform-specific) OR get session info (generic)
+    6. Upload artifacts to S3 using presigned URLs
+    7. Notify upload completion (platform-specific only)
 
     \b
     About Recce Cloud Sessions:
-    - Sessions compare base (production) and current (PR) environments
+    - Sessions compare base (production) and current (PR/MR) environments
     - Each session stores manifests/catalogs from both environments
     - Sessions are linked to PRs/MRs for team collaboration and review
-    - This enables automated PR gating and impact analysis in CI/CD
+    - Platform-specific workflow automatically handles session creation
 
     \b
-    Authentication:
-    Uses environment variables for authentication:
-    - RECCE_API_TOKEN: Recce Cloud API token (required)
+    Authentication Priority:
+    1. RECCE_API_TOKEN environment variable (explicit token)
+    2. GITHUB_TOKEN (GitHub Actions) or CI_JOB_TOKEN (GitLab CI)
+    3. Error if no token available
 
     \b
     Auto-Detection:
-    This command automatically detects your environment:
-    - SCM Provider: GitHub, GitLab, Bitbucket, or generic git
-    - CI/CD Platform: GitHub Actions, GitLab CI, Bitbucket Pipelines, CircleCI, etc.
-    - Git Information: repository, branch, commit hash
-    - PR/MR Information: ID, title, URL (used to link session to PR/MR)
+    This command automatically detects:
+    - CI/CD Platform: GitHub Actions, GitLab CI (others supported with --session-id)
+    - Repository: GitHub owner/repo or GitLab group/project
+    - Branch: Source branch and base branch
+    - Change Request: PR number (GitHub) or MR IID (GitLab)
+    - Commit: Current commit SHA
 
     \b
     Environment Variables:
-    - RECCE_SESSION_ID: Target session ID for upload (required)
-    - RECCE_API_TOKEN: Recce Cloud API token (required)
+    - RECCE_SESSION_ID: Target session ID (optional, for generic workflow)
+    - RECCE_API_TOKEN: Recce Cloud API token (recommended)
+    - GITHUB_TOKEN: GitHub authentication (auto-detected)
+    - CI_JOB_TOKEN: GitLab authentication (auto-detected)
 
     \b
     Examples:
-    # Upload from default target directory with session ID from env
+
+    # Platform-specific workflow (GitHub Actions)
+    recce-cloud upload
+
+    # Platform-specific workflow (GitLab CI)
+    recce-cloud upload
+
+    # Generic workflow with session ID
     export RECCE_SESSION_ID=abc123
     recce-cloud upload
 
-    \b
-    # Upload from custom target path
-    recce-cloud upload --target-path my-target --session-id abc123
-
-    \b
-    # Typical CI/CD usage (GitHub Actions)
-    recce-cloud upload --session-id ${{ steps.create-session.outputs.session-id }}
+    # Custom target path with manual overrides
+    recce-cloud upload --target-path my-target --cr 456 --type cr
 
     \b
     Exit Codes:
     0 - Success
-    1 - Environment detection error
+    1 - Platform not supported (for platform-specific workflow)
     2 - Authentication error
     3 - File validation error (missing or invalid manifest/catalog)
     4 - Upload error
