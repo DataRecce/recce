@@ -329,13 +329,6 @@ class TestCIDetector:
 
         assert ci_info.session_type == "prod"
 
-    def test_apply_overrides_base_branch(self):
-        """Test applying base branch override."""
-        ci_info = CIInfo(base_branch="main")
-        ci_info = CIDetector.apply_overrides(ci_info, base_branch="develop")
-
-        assert ci_info.base_branch == "develop"
-
     def test_apply_overrides_cr_redetermines_session_type(self):
         """Test that CR override re-determines session type."""
         ci_info = CIInfo(cr_number=None, session_type="dev", source_branch="feature")

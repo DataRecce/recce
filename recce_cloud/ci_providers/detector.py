@@ -58,7 +58,6 @@ class CIDetector:
         ci_info: CIInfo,
         cr: Optional[int] = None,
         session_type: Optional[str] = None,
-        base_branch: Optional[str] = None,
     ) -> CIInfo:
         """
         Apply manual overrides to detected CI information.
@@ -67,7 +66,6 @@ class CIDetector:
             ci_info: Detected CI information
             cr: Manual change request number override
             session_type: Manual session type override
-            base_branch: Manual base branch override
 
         Returns:
             CIInfo with overrides applied
@@ -87,10 +85,6 @@ class CIDetector:
         if session_type is not None and session_type != ci_info.session_type:
             logger.info(f"Using manual override: --type {session_type} (detected: {ci_info.session_type})")
             ci_info.session_type = session_type
-
-        if base_branch is not None and base_branch != ci_info.base_branch:
-            logger.info(f"Using manual override: --base-branch {base_branch} (detected: {ci_info.base_branch})")
-            ci_info.base_branch = base_branch
 
         # Re-determine session type if CR was overridden
         if cr is not None:

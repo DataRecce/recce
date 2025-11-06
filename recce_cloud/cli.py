@@ -270,12 +270,7 @@ def version():
     type=click.Choice(["cr", "prod", "dev"]),
     help="Session type (overrides auto-detection)",
 )
-@click.option(
-    "--base-branch",
-    type=str,
-    help="Base branch name (overrides auto-detection)",
-)
-def upload(target_path, session_id, cr, session_type, base_branch):
+def upload(target_path, session_id, cr, session_type):
     """
     Upload dbt artifacts to Recce Cloud session.
 
@@ -370,7 +365,7 @@ def upload(target_path, session_id, cr, session_type, base_branch):
     console.rule("Auto-detecting CI environment", style="blue")
     try:
         ci_info = CIDetector.detect()
-        ci_info = CIDetector.apply_overrides(ci_info, cr=cr, session_type=session_type, base_branch=base_branch)
+        ci_info = CIDetector.apply_overrides(ci_info, cr=cr, session_type=session_type)
     except Exception as e:
         console.print(f"[yellow]Warning:[/yellow] Failed to detect CI environment: {e}")
         console.print("Continuing without CI metadata...")
