@@ -74,14 +74,22 @@ export default tseslint.config(
       "react-hooks/exhaustive-deps": "error",
       "react/prop-types": "off",
       "react/react-in-jsx-scope": "off",
-      // 'react/no-array-index-key': 'error',
+      'react/no-array-index-key': 'error',
       "react/no-unknown-property": [
         "error",
         {
           ignore: ["jsx", "global"],
         },
       ],
-      // '@typescript-eslint/no-explicit-any': 'error',
+      // Rules specific to avoiding 'Any' Typing
+      // @see https://typescript-eslint.io/blog/avoiding-anys
+      '@typescript-eslint/no-explicit-any': 'error',
+      "@typescript-eslint/no-unsafe-argument": "error",
+      "@typescript-eslint/no-unsafe-assignment": "error",
+      "@typescript-eslint/no-unsafe-call": "error",
+      "@typescript-eslint/no-unsafe-member-access": "error",
+      "@typescript-eslint/no-unsafe-return": "error",
+      // END Rules specific to avoiding 'Any' Typing
       "@typescript-eslint/explicit-module-boundary-types": "off",
       "@typescript-eslint/no-empty-function": "off",
       "@typescript-eslint/non-nullable-type-assertion-style": "off",
@@ -110,20 +118,6 @@ export default tseslint.config(
           checksVoidReturn: false
         }
       ],
-      // TODO
-      //  ------------------------------------------------------------------------------------
-      //  Marking the below as warnings ""for now"" - They need to be addressed in the future
-      //  ------------------------------------------------------------------------------------
-      "react/no-array-index-key": "warn", // 6 errors
-      // Rules specific to avoiding 'Any' Typing
-      // @see https://typescript-eslint.io/blog/avoiding-anys
-      "@typescript-eslint/no-explicit-any": "warn", // 95 errors
-      "@typescript-eslint/no-unsafe-argument": "warn", // 6 errors
-      "@typescript-eslint/no-unsafe-assignment": "warn", // 92 errors
-      "@typescript-eslint/no-unsafe-call": "warn", // 8 errors
-      "@typescript-eslint/no-unsafe-member-access": "warn", // 53 errors
-      "@typescript-eslint/no-unsafe-return": "warn", // 24 errors
-      // END Rules specific to avoiding 'Any' Typing
     },
   },
 );
