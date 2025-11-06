@@ -51,6 +51,10 @@ from .state import RecceShareStateManager, RecceStateLoader
 
 logger = logging.getLogger("uvicorn")
 
+# Idle timeout check interval bounds (in seconds)
+MAX_CHECK_INTERVAL = 30
+MIN_CHECK_INTERVAL = 1
+
 
 class RecceServerMode(str, Enum):
     server = "server"
@@ -74,6 +78,8 @@ class AppState:
     auth_options: Optional[dict] = None
     lifetime: Optional[int] = None
     lifetime_expired_at: Optional[datetime] = None
+    idle_timeout: Optional[int] = None
+    last_activity: Optional[dict] = None
     share_url: Optional[str] = None
     host: Optional[str] = None
     port: Optional[int] = None
@@ -82,13 +88,63 @@ class AppState:
 def schedule_lifetime_termination(app_state):
     def terminating_server():
         pid = os.getpid()
-        logger.info(f"Terminating server process [{pid}] manually")
+        logger.info(f"Terminating server process [{pid}] manually due to lifetime expiration")
         os.kill(pid, signal.SIGINT)
 
     # Terminate the server process after the specified lifetime
     logger.info(f"[Configuration] The lifetime of the server is {app_state.lifetime} seconds")
     app.state.lifetime_expired_at = datetime.now(utc) + timedelta(seconds=app_state.lifetime)
     asyncio.get_running_loop().call_later(app_state.lifetime, terminating_server)
+
+
+def schedule_idle_timeout_check(app_state):
+    """
+    Schedule periodic checks for idle timeout.
+    If the server has been idle for longer than idle_timeout, terminate it.
+    """
+    # Track last activity time in app_state
+    app_state.last_activity = {"time": datetime.now(utc)}
+
+    def terminating_server_idle():
+        pid = os.getpid()
+        logger.info(f"Terminating server process [{pid}] manually due to idle timeout")
+        os.kill(pid, signal.SIGINT)
+
+    async def check_idle_timeout():
+        """Periodically check if the server has been idle for too long"""
+        # Use smaller check interval if idle_timeout is very short
+        # Check at least every MAX_CHECK_INTERVAL seconds, but also check when idle_timeout is approaching
+        check_interval = min(MAX_CHECK_INTERVAL, max(MIN_CHECK_INTERVAL, app_state.idle_timeout // 3))
+
+        logger.debug(f"[Idle Timeout] Starting idle timeout checker with {check_interval}s check interval")
+
+        while True:
+            await asyncio.sleep(check_interval)
+
+            idle_seconds = (datetime.now(utc) - app_state.last_activity["time"]).total_seconds()
+            remaining_seconds = app_state.idle_timeout - idle_seconds
+
+            # Always log the countdown for debugging
+            if remaining_seconds > 0:
+                logger.debug(
+                    f"[Idle Timeout] Server idle for {idle_seconds:.1f}s / {app_state.idle_timeout}s "
+                    f"(remaining: {remaining_seconds:.1f}s)"
+                )
+
+            if idle_seconds >= app_state.idle_timeout:
+                logger.info(
+                    f"[Idle Timeout] Threshold reached! Server has been idle for {idle_seconds:.0f} seconds "
+                    f"(threshold: {app_state.idle_timeout} seconds)"
+                )
+                terminating_server_idle()
+                break
+
+    # Start the idle timeout check task
+    logger.info(f"[Configuration] The idle timeout of the server is {app_state.idle_timeout} seconds")
+
+    # Create task using asyncio.create_task which works in async context
+    task = asyncio.create_task(check_idle_timeout())
+    logger.debug(f"[Idle Timeout] Background task created: {task}")
 
 
 def setup_server(app_state: AppState) -> RecceContext:
@@ -161,6 +217,12 @@ async def lifespan(fastapi: FastAPI):
     ctx = None
     app_state: AppState = app.state
 
+    # Ensure logger is at DEBUG level if debug mode is enabled
+    # This is needed because uvicorn might reset logger configuration
+    if hasattr(app_state, "kwargs") and app_state.kwargs.get("debug"):
+        logger.setLevel(logging.DEBUG)
+        logger.debug("Debug mode enabled - logger set to DEBUG level")
+
     if app_state.command == "server":
         ctx = setup_server(app_state)
     elif app_state.command == "read-only":
@@ -170,6 +232,11 @@ async def lifespan(fastapi: FastAPI):
 
     if app_state.lifetime is not None and app_state.lifetime > 0:
         schedule_lifetime_termination(app_state)
+
+    # Schedule idle timeout check if idle_timeout is set
+    if app_state.idle_timeout is not None and app_state.idle_timeout > 0:
+        logger.debug(f"[Idle Timeout] Scheduling idle timeout check with {app_state.idle_timeout} seconds")
+        schedule_idle_timeout_check(app_state)
 
     yield
 
@@ -241,6 +308,27 @@ app.add_middleware(
     SessionMiddleware,
     secret_key=uuid.uuid4(),
 )
+
+
+@app.middleware("http")
+async def track_activity_for_idle_timeout(request: Request, call_next):
+    """Track activity time for idle timeout check"""
+    # Exclude paths that should not reset idle timer
+    # Health checks and monitoring endpoints don't count as user activity
+    excluded_paths = ["/api/health", "/api/ws"]
+
+    # Update last activity time BEFORE processing request if idle timeout is enabled
+    # This ensures long-running requests don't get terminated mid-execution
+    app_state: AppState = app.state
+    if app_state.last_activity is not None:
+        if request.url.path not in excluded_paths:
+            app_state.last_activity["time"] = datetime.now(utc)
+            logger.debug(f"[Idle Timeout] ✓ Activity detected: {request.method} {request.url.path} - Timer reset")
+        else:
+            logger.debug(f"[Idle Timeout] Excluded path (no timer reset): {request.method} {request.url.path}")
+
+    response = await call_next(request)
+    return response
 
 
 @app.middleware("http")
