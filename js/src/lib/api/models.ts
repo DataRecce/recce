@@ -19,7 +19,7 @@ export interface QueryRowCountResult {
 }
 
 export async function fetchModelRowCount(modelName: string): Promise<RowCountDiff> {
-  const response = await axiosClient.get(`/api/models/${modelName}/row_count`);
+  const response = await axiosClient.get<RowCountDiff>(`/api/models/${modelName}/row_count`);
   return response.data;
 }
 
