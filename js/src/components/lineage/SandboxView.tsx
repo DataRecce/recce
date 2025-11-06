@@ -212,6 +212,7 @@ export function SandboxView({ isOpen, onClose, current }: SandboxViewProps) {
     onOpen: onRunResultOpen,
   } = useDisclosure();
   const [modifiedCode, setModifiedCode] = useState<string>(current?.raw_code ?? "");
+  const [prevIsOpen, setPrevIsOpen] = useState(isOpen);
   const { showRunId, clearRunResult } = useRecceActionContext();
   const { primaryKeys, setPrimaryKeys } = useRecceQueryContext();
   const { data: flags, isLoading } = useRecceServerFlag();
@@ -301,12 +302,14 @@ export function SandboxView({ isOpen, onClose, current }: SandboxViewProps) {
     },
   });
 
-  useEffect(() => {
+  // Reset modifiedCode when modal opens (during render)
+  if (isOpen !== prevIsOpen) {
+    setPrevIsOpen(isOpen);
     if (isOpen) {
-      // eslint-disable-next-line react-hooks/set-state-in-effect
+      // Modal just opened, reset to original code
       setModifiedCode(current?.raw_code ?? "");
     }
-  }, [isOpen, current]);
+  }
 
   return (
     <Dialog.Root
