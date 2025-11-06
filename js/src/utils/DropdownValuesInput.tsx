@@ -108,8 +108,8 @@ export const DropdownValuesInput = (props: DropdownValuesInputProps) => {
                   width={"calc(100% - 8px)"}
                   marginX={"4px"}
                   padding={"4px"}>
-                  {values.map((value, cid) => (
-                    <WrapItem key={`tag-${cid}`}>
+                  {values.map((value) => (
+                    <WrapItem key={value}>
                       <Tag.Root
                         key={value}
                         paddingX={"0.5rem"}
@@ -187,6 +187,7 @@ export const DropdownValuesInput = (props: DropdownValuesInputProps) => {
                 {filteredList
                   .map((value, cid) => (
                     <Menu.Item
+                      /* eslint-disable-next-line react/no-array-index-key */
                       key={`option-${cid}`}
                       value={`option-${cid}`}
                       onClick={() => {
