@@ -1,5 +1,5 @@
 import { axiosClient } from "./axiosClient";
-import { Run, RunParamTypes, RunType } from "./types";
+import { AxiosQueryParams, Run, RunParamTypes, RunType } from "./types";
 import { getExperimentTrackingBreakingChangeEnabled } from "./track";
 import { AxiosResponse } from "axios";
 
@@ -85,7 +85,7 @@ interface SearchRunsBody {
   limit?: number;
 }
 
-export async function searchRuns(type: string, params: any, limit?: number) {
+export async function searchRuns(type: string, params?: AxiosQueryParams, limit?: number) {
   const response = await axiosClient.post<SearchRunsBody, AxiosResponse<Run[]>>(
     `/api/runs/search`,
     {
@@ -109,7 +109,7 @@ export type RunsAggregated = Record<
     "row_count_diff" | "value_diff" | "row_count",
     {
       run_id: string;
-      result: any;
+      result: unknown;
     }
   >
 >;

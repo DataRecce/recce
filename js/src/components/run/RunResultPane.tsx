@@ -31,7 +31,7 @@ import { useRecceShareStateContext } from "@/lib/hooks/RecceShareStateContext";
 import { trackShareState, trackCopyToClipboard } from "@/lib/api/track";
 import AuthModal from "@/components/AuthModal/AuthModal";
 import { PiCaretDown, PiCheck, PiCopy, PiRepeat } from "react-icons/pi";
-import { isQueryBaseRun, isQueryDiffRun, isQueryRun, RunParamTypes } from "@/lib/api/types";
+import { AxiosQueryParams, isQueryBaseRun, isQueryDiffRun, isQueryRun, RunParamTypes } from "@/lib/api/types";
 
 interface RunPageProps {
   onClose?: () => void;
@@ -188,7 +188,7 @@ export const PrivateLoadableRunView = ({
 
   const handleRerun = useCallback(() => {
     if (run) {
-      runAction(run.type, run.params);
+      runAction(run.type, run.params as unknown as AxiosQueryParams);
     }
   }, [run, runAction]);
 
