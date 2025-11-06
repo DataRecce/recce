@@ -3,8 +3,9 @@ import { cacheKeys } from "@/lib/api/cacheKeys";
 import { cancelRun, waitRun } from "@/lib/api/runs";
 import { useQuery } from "@tanstack/react-query";
 import { Run } from "../api/types";
-import { useCallback, useEffect, useState } from "react";
+import React, { useCallback, useEffect, useState } from "react";
 import { useRunsAggregated } from "./LineageGraphContext";
+import { RunResultViewProps } from "@/components/run/types";
 
 interface UseRunResult {
   run?: Run;
@@ -12,7 +13,7 @@ interface UseRunResult {
   isRunning: boolean;
   error: Error | null;
   onCancel: () => Promise<void>;
-  RunResultView?: React.ComponentType<any>;
+  RunResultView?: React.ComponentType<RunResultViewProps>;
 }
 
 export const useRun = (runId?: string): UseRunResult => {
