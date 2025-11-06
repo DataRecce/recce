@@ -32,7 +32,7 @@ interface ArtifactMetadata {
   dbt_schema_version: string;
   generated_at: string;
   adapter_type: string;
-  env: Record<string, any>;
+  env: Record<string, string>;
   invocation_id: string;
 }
 export interface ManifestMetadata extends ArtifactMetadata {
@@ -74,7 +74,7 @@ interface LineageOutput {
 }
 
 export async function getLineage(base = false): Promise<LineageData> {
-  const response = await axiosClient.get(`/api/lineage?base=${base}`);
+  const response = await axiosClient.get<LineageData>(`/api/lineage?base=${base}`);
   return response.data;
 }
 
@@ -82,16 +82,19 @@ export async function getLineageWithError(base = false): Promise<LineageOutput> 
   try {
     const data = await getLineage(base);
     return { data };
-  } catch (err: any) {
+  } catch (err: unknown) {
     if (err instanceof AxiosError) {
-      const detail = err.response?.data?.detail;
+      const data = err.response?.data as Record<string, unknown> | undefined;
+      const detail = data?.detail as string | undefined;
       if (detail) {
         return { error: detail };
       } else {
         return { error: err.message };
       }
+    } else if (err instanceof Error) {
+      return { error: err.message };
     } else {
-      return { error: err?.message };
+      return { error: "An unknown error occurred" };
     }
   }
 }
