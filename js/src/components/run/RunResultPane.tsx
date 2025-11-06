@@ -247,7 +247,7 @@ export const PrivateLoadableRunView = ({
               />
             )}
 
-            <AddToCheckButton runId={runId} viewOptions={viewOptions} />
+            <AddToCheckButton runId={runId} viewOptions={viewOptions as Record<string, unknown>} />
 
             <CloseButton
               size="sm"
@@ -305,7 +305,7 @@ export const RunResultPane = ({ onClose, isSingleEnvironment }: RunPageProps) =>
 
 interface AddToCheckButtonProps {
   runId?: string;
-  viewOptions: unknown;
+  viewOptions: Record<string, unknown>;
 }
 
 function AddToCheckButton({ runId, viewOptions }: AddToCheckButtonProps): ReactNode {

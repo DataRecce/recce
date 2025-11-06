@@ -5,7 +5,7 @@ import { cacheKeys } from "./cacheKeys";
 import { getExperimentTrackingBreakingChangeEnabled } from "./track";
 import { AxiosResponse } from "axios";
 
-export interface Check<PT = any, RT = any, VO = any> {
+export interface Check<PT = unknown, VO = unknown> {
   check_id: string;
   name: string;
   description?: string;
@@ -34,7 +34,10 @@ export async function createSimpleCheck(): Promise<Check> {
   return response.data;
 }
 
-export async function createCheckByRun(runId: string, viewOptions?: any): Promise<Check> {
+export async function createCheckByRun(
+  runId: string,
+  viewOptions?: Record<string, unknown>,
+): Promise<Check> {
   const track_props = getExperimentTrackingBreakingChangeEnabled()
     ? { breaking_change_analysis: true }
     : {};
