@@ -8,13 +8,14 @@ interacting with Recce's data validation capabilities.
 import asyncio
 import json
 import logging
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Optional
 
 from mcp.server import Server
 from mcp.server.stdio import stdio_server
 from mcp.types import TextContent, Tool
 
 from recce.core import RecceContext, load_context
+from recce.server import RecceServerMode
 from recce.tasks.profile import ProfileDiffTask
 from recce.tasks.query import QueryDiffTask, QueryTask
 from recce.tasks.rowcount import RowCountDiffTask
@@ -25,8 +26,9 @@ logger = logging.getLogger(__name__)
 class RecceMCPServer:
     """MCP Server for Recce data validation tools"""
 
-    def __init__(self, context: RecceContext):
+    def __init__(self, context: RecceContext, mode: Optional[RecceServerMode] = None):
         self.context = context
+        self.mode = mode or RecceServerMode.server
         self.server = Server("recce")
         self._setup_handlers()
 
@@ -35,8 +37,11 @@ class RecceMCPServer:
 
         @self.server.list_tools()
         async def list_tools() -> List[Tool]:
-            """List all available tools"""
-            return [
+            """List all available tools based on server mode"""
+            tools = []
+
+            # Always available in all modes
+            tools.append(
                 Tool(
                     name="get_lineage_diff",
                     description="Get the lineage diff between base and current environments. "
@@ -59,104 +64,121 @@ class RecceMCPServer:
                             },
                         },
                     },
-                ),
-                Tool(
-                    name="row_count_diff",
-                    description="Compare row counts between base and current environments for specified models.",
-                    inputSchema={
-                        "type": "object",
-                        "properties": {
-                            "node_names": {
-                                "type": "array",
-                                "items": {"type": "string"},
-                                "description": "List of model names to check row counts (optional)",
+                )
+            )
+
+            # Diff tools only available in server mode, not in preview or read-only mode
+            if self.mode == RecceServerMode.server:
+                tools.extend(
+                    [
+                        Tool(
+                            name="row_count_diff",
+                            description="Compare row counts between base and current environments for specified models.",
+                            inputSchema={
+                                "type": "object",
+                                "properties": {
+                                    "node_names": {
+                                        "type": "array",
+                                        "items": {"type": "string"},
+                                        "description": "List of model names to check row counts (optional)",
+                                    },
+                                    "node_ids": {
+                                        "type": "array",
+                                        "items": {"type": "string"},
+                                        "description": "List of node IDs to check row counts (optional)",
+                                    },
+                                    "select": {
+                                        "type": "string",
+                                        "description": "dbt selector syntax to filter models (optional)",
+                                    },
+                                    "exclude": {
+                                        "type": "string",
+                                        "description": "dbt selector syntax to exclude models (optional)",
+                                    },
+                                },
                             },
-                            "node_ids": {
-                                "type": "array",
-                                "items": {"type": "string"},
-                                "description": "List of node IDs to check row counts (optional)",
+                        ),
+                        Tool(
+                            name="query",
+                            description="Execute a SQL query on the current environment. "
+                            "Supports Jinja templates with dbt macros like {{ ref('model_name') }}.",
+                            inputSchema={
+                                "type": "object",
+                                "properties": {
+                                    "sql_template": {
+                                        "type": "string",
+                                        "description": "SQL query template with optional Jinja syntax",
+                                    },
+                                    "base": {
+                                        "type": "boolean",
+                                        "description": "Whether to run on base environment (default: false)",
+                                        "default": False,
+                                    },
+                                },
+                                "required": ["sql_template"],
                             },
-                            "select": {
-                                "type": "string",
-                                "description": "dbt selector syntax to filter models (optional)",
+                        ),
+                        Tool(
+                            name="query_diff",
+                            description="Execute SQL queries on both base and current environments and compare results. "
+                            "Supports primary keys for row-level comparison.",
+                            inputSchema={
+                                "type": "object",
+                                "properties": {
+                                    "sql_template": {
+                                        "type": "string",
+                                        "description": "SQL query template for current environment",
+                                    },
+                                    "base_sql_template": {
+                                        "type": "string",
+                                        "description": "SQL query template for base environment (optional, defaults to sql_template)",
+                                    },
+                                    "primary_keys": {
+                                        "type": "array",
+                                        "items": {"type": "string"},
+                                        "description": "List of primary key columns for row comparison (optional)",
+                                    },
+                                },
+                                "required": ["sql_template"],
                             },
-                            "exclude": {
-                                "type": "string",
-                                "description": "dbt selector syntax to exclude models (optional)",
+                        ),
+                        Tool(
+                            name="profile_diff",
+                            description="Generate and compare statistical profiles (min, max, avg, distinct count, etc.) "
+                            "for columns in a model between base and current environments.",
+                            inputSchema={
+                                "type": "object",
+                                "properties": {
+                                    "model": {
+                                        "type": "string",
+                                        "description": "Model name to profile",
+                                    },
+                                    "columns": {
+                                        "type": "array",
+                                        "items": {"type": "string"},
+                                        "description": "List of column names to profile (optional, profiles all columns if not specified)",
+                                    },
+                                },
+                                "required": ["model"],
                             },
-                        },
-                    },
-                ),
-                Tool(
-                    name="query",
-                    description="Execute a SQL query on the current environment. "
-                    "Supports Jinja templates with dbt macros like {{ ref('model_name') }}.",
-                    inputSchema={
-                        "type": "object",
-                        "properties": {
-                            "sql_template": {
-                                "type": "string",
-                                "description": "SQL query template with optional Jinja syntax",
-                            },
-                            "base": {
-                                "type": "boolean",
-                                "description": "Whether to run on base environment (default: false)",
-                                "default": False,
-                            },
-                        },
-                        "required": ["sql_template"],
-                    },
-                ),
-                Tool(
-                    name="query_diff",
-                    description="Execute SQL queries on both base and current environments and compare results. "
-                    "Supports primary keys for row-level comparison.",
-                    inputSchema={
-                        "type": "object",
-                        "properties": {
-                            "sql_template": {
-                                "type": "string",
-                                "description": "SQL query template for current environment",
-                            },
-                            "base_sql_template": {
-                                "type": "string",
-                                "description": "SQL query template for base environment (optional, defaults to sql_template)",
-                            },
-                            "primary_keys": {
-                                "type": "array",
-                                "items": {"type": "string"},
-                                "description": "List of primary key columns for row comparison (optional)",
-                            },
-                        },
-                        "required": ["sql_template"],
-                    },
-                ),
-                Tool(
-                    name="profile_diff",
-                    description="Generate and compare statistical profiles (min, max, avg, distinct count, etc.) "
-                    "for columns in a model between base and current environments.",
-                    inputSchema={
-                        "type": "object",
-                        "properties": {
-                            "model": {
-                                "type": "string",
-                                "description": "Model name to profile",
-                            },
-                            "columns": {
-                                "type": "array",
-                                "items": {"type": "string"},
-                                "description": "List of column names to profile (optional, profiles all columns if not specified)",
-                            },
-                        },
-                        "required": ["model"],
-                    },
-                ),
-            ]
+                        ),
+                    ]
+                )
+
+            return tools
 
         @self.server.call_tool()
         async def call_tool(name: str, arguments: Dict[str, Any]) -> List[TextContent]:
             """Handle tool calls"""
             try:
+                # Check if tool is blocked in non-server mode
+                blocked_tools_in_non_server = {"row_count_diff", "query", "query_diff", "profile_diff"}
+                if self.mode != RecceServerMode.server and name in blocked_tools_in_non_server:
+                    raise ValueError(
+                        f"Tool '{name}' is not available in {self.mode.value} mode. "
+                        "Only 'get_lineage_diff' is available in this mode."
+                    )
+
                 if name == "get_lineage_diff":
                     result = await self._get_lineage_diff(arguments)
                 elif name == "row_count_diff":
@@ -264,6 +286,7 @@ async def run_mcp_server(**kwargs):
 
     Args:
         **kwargs: Arguments for loading RecceContext (dbt options, etc.)
+               Optionally includes 'mode' for server mode (server, preview, read-only)
     """
     # Setup logging
     logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s")
@@ -271,6 +294,16 @@ async def run_mcp_server(**kwargs):
     # Load Recce context
     context = load_context(**kwargs)
 
+    # Extract mode from kwargs (defaults to server mode)
+    mode_str = kwargs.get("mode")
+    mode = None
+    if mode_str:
+        # Convert string mode to RecceServerMode enum
+        try:
+            mode = RecceServerMode(mode_str)
+        except ValueError:
+            logger.warning(f"Invalid mode '{mode_str}', using default server mode")
+
     # Create and run server
-    server = RecceMCPServer(context)
+    server = RecceMCPServer(context, mode=mode)
     await server.run()
