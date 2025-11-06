@@ -10,9 +10,10 @@ import {
 } from "@/lib/api/rowcount";
 import { deltaPercentageString } from "./delta";
 import { isNumber } from "lodash";
-import { forwardRef } from "react";
+import { forwardRef, Ref } from "react";
+import { isRowCountDiffRun, isRowCountRun } from "@/lib/api/types";
 
-type RowCountDiffResultViewProp = RunResultViewProps<RowCountDiffParams, RowCountDiffResult>;
+type RowCountDiffResultViewProp = RunResultViewProps;
 
 interface RowCountDiffRow {
   name: string;
@@ -20,7 +21,11 @@ interface RowCountDiffRow {
   current: number | string;
 }
 
-function _RowCountDiffResultView({ run }: RowCountDiffResultViewProp, ref: any) {
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function _RowCountDiffResultView({ run }: RowCountDiffResultViewProp, ref: Ref<any>) {
+  if (!isRowCountDiffRun(run)) {
+    throw new Error("Run type must be row_count_diff");
+  }
   function columnCellClass(row: RowCountDiffRow) {
     if (row.base === row.current) {
       return "column-body-normal";
@@ -100,14 +105,18 @@ function _RowCountDiffResultView({ run }: RowCountDiffResultViewProp, ref: any) 
   );
 }
 
-type RowCountResultViewProp = RunResultViewProps<RowCountParams, RowCountResult>;
+type RowCountResultViewProp = RunResultViewProps;
 
 interface RowCountRow {
   name: string;
   current: number | string;
 }
 
-function _RowCountResultView({ run }: RowCountResultViewProp, ref: any) {
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function _RowCountResultView({ run }: RowCountResultViewProp, ref: Ref<any>) {
+  if (!isRowCountRun(run)) {
+    throw new Error("Run type must be row_count");
+  }
   const runResult = run.result ?? {};
 
   const columns = [
@@ -136,23 +145,21 @@ function _RowCountResultView({ run }: RowCountResultViewProp, ref: any) {
   return (
     <Flex direction="column">
       {Object.keys(runResult).length > 0 && (
-        <>
-          <ScreenshotDataGrid
-            ref={ref}
-            style={{
-              blockSize: "auto",
-              maxHeight: "100%",
-              overflow: "auto",
+        <ScreenshotDataGrid
+          ref={ref}
+          style={{
+            blockSize: "auto",
+            maxHeight: "100%",
+            overflow: "auto",
 
-              fontSize: "10pt",
-              borderWidth: 1,
-            }}
-            columns={columns}
-            rows={rows}
-            renderers={{ noRowsFallback: <EmptyRowsRenderer /> }}
-            className="rdg-light"
-          />
-        </>
+            fontSize: "10pt",
+            borderWidth: 1,
+          }}
+          columns={columns}
+          rows={rows}
+          renderers={{ noRowsFallback: <EmptyRowsRenderer /> }}
+          className="rdg-light"
+        />
       )}
     </Flex>
   );

@@ -1,4 +1,5 @@
 import { Check } from "@/lib/api/checks";
+import { QueryParams, QueryDiffParams } from "@/lib/api/adhocQuery";
 import { stripIndent } from "common-tags";
 
 export function buildTitle(check: Check) {
@@ -11,10 +12,14 @@ export function buildDescription(check: Check) {
 }
 
 export function buildQuery(check: Check) {
+  const params = check.params as QueryParams | QueryDiffParams;
   return stripIndent`
     **SQL**
     \`\`\`sql
-    ${check.params?.sql_template}
+    ${
+      // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
+      params?.sql_template ?? ""
+    }
     \`\`\`
     `;
 }

@@ -4,9 +4,18 @@ import { RunResultViewProps } from "./types";
 import { ErrorBoundary } from "@sentry/react";
 import React, { forwardRef, ForwardRefExoticComponent, RefAttributes } from "react";
 
-interface RunViewProps<PT, RT, VO = any> {
+// Define an error type
+interface ApiError {
+  response?: {
+    data?: {
+      detail?: string;
+    };
+  };
+}
+
+interface RunViewProps<VO = Record<string, unknown>> {
   isRunning?: boolean;
-  run?: Run<PT, RT>;
+  run?: Run;
   error?: Error | null;
   progress?: Run["progress"];
   isAborting?: boolean;
@@ -15,15 +24,13 @@ interface RunViewProps<PT, RT, VO = any> {
   onExecuteRun?: () => void;
   viewOptions?: VO;
   onViewOptionsChanged?: (viewOptions: VO) => void;
-  RunResultView?: ForwardRefExoticComponent<
-    RunResultViewProps<PT, RT, VO> & RefAttributes<unknown>
-  >;
+  RunResultView?: ForwardRefExoticComponent<RunResultViewProps<VO> & RefAttributes<HTMLDivElement>>;
   // eslint-disable-next-line @typescript-eslint/no-unnecessary-type-parameters
-  children?: <T extends RunResultViewProps<PT, RT, VO>>(params: T) => React.ReactNode;
+  children?: <T extends RunResultViewProps<VO>>(params: T) => React.ReactNode;
 }
 
 export const RunView = forwardRef(
-  <PT, RT>(
+  (
     {
       isRunning,
       isAborting,
@@ -36,10 +43,10 @@ export const RunView = forwardRef(
       RunResultView,
       children,
       onExecuteRun,
-    }: RunViewProps<PT, RT>,
-    ref: any,
+    }: RunViewProps,
+    ref: React.Ref<HTMLDivElement>,
   ) => {
-    const errorMessage = (error as any)?.response?.data?.detail ?? run?.error;
+    const errorMessage = (error as ApiError | undefined)?.response?.data?.detail ?? run?.error;
 
     if (errorMessage) {
       return (

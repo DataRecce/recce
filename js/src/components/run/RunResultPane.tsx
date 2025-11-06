@@ -14,10 +14,9 @@ import {
   HStack,
   useDisclosure,
   Menu,
-  IconButton,
   Portal,
 } from "@chakra-ui/react";
-import { ReactNode, useCallback, useState } from "react";
+import { ReactNode, Ref, useCallback, useState } from "react";
 import { createCheckByRun } from "@/lib/api/checks";
 import { useLocation } from "wouter";
 import { Editor } from "@monaco-editor/react";
@@ -32,6 +31,13 @@ import { useRecceShareStateContext } from "@/lib/hooks/RecceShareStateContext";
 import { trackShareState, trackCopyToClipboard } from "@/lib/api/track";
 import AuthModal from "@/components/AuthModal/AuthModal";
 import { PiCaretDown, PiCheck, PiCopy, PiRepeat } from "react-icons/pi";
+import {
+  AxiosQueryParams,
+  isQueryBaseRun,
+  isQueryDiffRun,
+  isQueryRun,
+  RunParamTypes,
+} from "@/lib/api/types";
 
 interface RunPageProps {
   onClose?: () => void;
@@ -39,7 +45,7 @@ interface RunPageProps {
   isSingleEnvironment?: boolean;
 }
 
-const _ParamView = (data: { type: string; params: any }) => {
+const _ParamView = (data: { type: string; params: RunParamTypes }) => {
   const yaml = YAML.stringify(data, null, 2);
 
   return (
@@ -179,7 +185,7 @@ export const PrivateLoadableRunView = ({
   const { featureToggles } = useRecceInstanceContext();
   const { runAction } = useRecceActionContext();
   const { error, run, onCancel, isRunning } = useRun(runId);
-  const [viewOptions, setViewOptions] = useState();
+  const [viewOptions, setViewOptions] = useState<Record<string, unknown>>();
   const [tabValue, setTabValue] = useState<TabValueItems>("result");
   const disableAddToChecklist = isSingleEnvironment;
   const showSingleEnvironmentSetupNotification = isSingleEnvironment;
@@ -187,7 +193,9 @@ export const PrivateLoadableRunView = ({
   const RunResultView = run?.type ? findByRunType(run.type)?.RunResultView : undefined;
 
   const handleRerun = useCallback(() => {
-    runAction(run?.type ?? "", run?.params);
+    if (run) {
+      runAction(run.type, run.params as unknown as AxiosQueryParams);
+    }
   }, [run, runAction]);
 
   const isQuery = run?.type === "query" || run?.type === "query_diff" || run?.type === "query_base";
@@ -245,7 +253,7 @@ export const PrivateLoadableRunView = ({
               />
             )}
 
-            <AddToCheckButton runId={runId} viewOptions={viewOptions} />
+            <AddToCheckButton runId={runId} viewOptions={viewOptions as Record<string, unknown>} />
 
             <CloseButton
               size="sm"
@@ -260,7 +268,7 @@ export const PrivateLoadableRunView = ({
       </Tabs.Root>
       {tabValue === "result" && (
         <RunView
-          ref={ref}
+          ref={ref as unknown as Ref<HTMLDivElement>}
           error={error}
           run={run}
           onCancel={onCancel}
@@ -274,14 +282,16 @@ export const PrivateLoadableRunView = ({
 
       {tabValue === "query" &&
         run &&
-        (run.params?.base_sql_template ? (
+        run.params &&
+        (isQueryRun(run) || isQueryBaseRun(run) || isQueryDiffRun(run)) &&
+        (isQueryDiffRun(run) ? (
           <DualSqlEditor
             value={run.params.sql_template}
             baseValue={run.params.base_sql_template}
             options={{ readOnly: true }}
           />
         ) : (
-          <SqlEditor value={run.params?.sql_template ?? ""} options={{ readOnly: true }} />
+          <SqlEditor value={run.params.sql_template} options={{ readOnly: true }} />
         ))}
     </Flex>
   );
@@ -301,7 +311,7 @@ export const RunResultPane = ({ onClose, isSingleEnvironment }: RunPageProps) =>
 
 interface AddToCheckButtonProps {
   runId?: string;
-  viewOptions: unknown;
+  viewOptions: Record<string, unknown>;
 }
 
 function AddToCheckButton({ runId, viewOptions }: AddToCheckButtonProps): ReactNode {

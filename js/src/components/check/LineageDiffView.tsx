@@ -1,5 +1,6 @@
 import { Check } from "@/lib/api/checks";
 import { LineageView, LineageViewRef } from "../lineage/LineageView";
+import { LineageDiffViewOptions } from "@/lib/api/lineagecheck";
 import { Flex } from "@chakra-ui/react";
 import { ReactFlowProvider } from "@xyflow/react";
 import { forwardRef, Ref } from "react";
@@ -9,7 +10,10 @@ export interface LineageDiffViewProps {
 }
 
 function _LineageDiffView({ check }: LineageDiffViewProps, ref: Ref<LineageViewRef>) {
-  const viewOptions = { ...check.params, ...check.view_options };
+  const viewOptions = {
+    ...(check.params as Record<string, unknown>),
+    ...(check.view_options as LineageDiffViewOptions),
+  };
 
   return (
     <Flex direction="column" height="100%">

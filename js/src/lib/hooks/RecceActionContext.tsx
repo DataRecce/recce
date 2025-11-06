@@ -7,7 +7,7 @@ import React, {
   useEffect,
   useState,
 } from "react";
-import { Run, RunType } from "../api/types";
+import { AxiosQueryParams, Run, RunParamTypes, RunType } from "../api/types";
 import { RunModal } from "@/components/run/RunModal";
 import { useDisclosure } from "@chakra-ui/react";
 
@@ -27,7 +27,7 @@ export interface RecceActionOptions {
 }
 
 export interface RecceActionContextType {
-  runAction: (type: string, params?: any, actionOptions?: RecceActionOptions) => void;
+  runAction: (type: RunType, params?: AxiosQueryParams, actionOptions?: RecceActionOptions) => void;
   runId?: string;
   showRunId: (runId: string, refreshHistory?: boolean) => void;
   isRunResultOpen: boolean;
@@ -67,10 +67,10 @@ interface RunActionInternal {
   session: string;
   title: string;
   type: RunType;
-  params?: any;
+  params?: AxiosQueryParams;
   lastRun?: Run;
   options?: RecceActionOptions;
-  RunForm?: React.ComponentType<RunFormProps<any>>;
+  RunForm?: React.ComponentType<RunFormProps<RunParamTypes>>;
 }
 
 export function RecceActionContextProvider({ children }: RecceActionContextProviderProps) {
@@ -109,7 +109,7 @@ export function RecceActionContextProvider({ children }: RecceActionContextProvi
   }, [closeRunResult, setRunId]);
 
   const runAction = useCallback(
-    async (type: string, params?: any, options?: RecceActionOptions) => {
+    async (type: RunType, params?: AxiosQueryParams, options?: RecceActionOptions) => {
       try {
         const session = new Date().getTime().toString();
         let lastRun = undefined;
@@ -166,7 +166,7 @@ export function RecceActionContextProvider({ children }: RecceActionContextProvi
   );
   useCloseModalEffect(onModalClose);
 
-  const handleExecute = async (type: string, params: any) => {
+  const handleExecute = async (type: RunType, params: RunParamTypes) => {
     try {
       onModalClose();
       const { run_id } = await submitRun(type, params, {

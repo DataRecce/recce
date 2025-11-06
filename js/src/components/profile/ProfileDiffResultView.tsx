@@ -4,23 +4,23 @@ import { ScreenshotDataGrid } from "../data-grid/ScreenshotDataGrid";
 import { RunResultViewProps } from "../run/types";
 
 import { ProfileDiffParams, ProfileDiffResult, ProfileDiffViewOptions } from "@/lib/api/profile";
-import { forwardRef, useMemo } from "react";
+import { forwardRef, Ref, useMemo } from "react";
 import { toDataDiffGrid } from "../query/querydiff";
 import { RunToolbar } from "../run/RunToolbar";
 import { DiffDisplayModeSwitch } from "../query/ToggleSwitch";
 import { toDataGrid } from "../query/QueryResultView";
-import { ColumnRenderMode } from "@/lib/api/types";
+import { ColumnRenderMode, isProfileDiffRun } from "@/lib/api/types";
 
-type ProfileDiffResultViewProp = RunResultViewProps<
-  ProfileDiffParams,
-  ProfileDiffResult,
-  ProfileDiffViewOptions
->;
+type ProfileDiffResultViewProp = RunResultViewProps<ProfileDiffViewOptions>;
 
 const PrivateProfileDiffResultView = (
   { run, viewOptions, onViewOptionsChanged }: ProfileDiffResultViewProp,
-  ref: any,
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  ref: Ref<any>,
 ) => {
+  if (!isProfileDiffRun(run)) {
+    throw new Error("Only run type profile_diff is supported");
+  }
   const result = run.result;
   const pinnedColumns = useMemo(() => viewOptions?.pinned_columns ?? [], [viewOptions]);
   const displayMode = useMemo(() => viewOptions?.display_mode ?? "inline", [viewOptions]);
@@ -105,8 +105,12 @@ const PrivateProfileDiffResultView = (
 
 const PrivateProfileResultView = (
   { run, viewOptions, onViewOptionsChanged }: ProfileDiffResultViewProp,
-  ref: any,
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  ref: Ref<any>,
 ) => {
+  if (!isProfileDiffRun(run)) {
+    throw new Error("Only run type profile_diff is supported");
+  }
   const result = run.result;
   const dataFrame = result?.current;
   const pinnedColumns = useMemo(() => viewOptions?.pinned_columns ?? [], [viewOptions]);

@@ -9,5 +9,5 @@ export interface RowCountDiffParams {
 }
 export type RowCountDiffResult = Record<string, RowCountDiff>;
 export async function submitRowCountDiff(params: RowCountDiffParams, options?: SubmitOptions) {
-  return await submitRun<RowCountDiffParams, RowCountDiffResult>("row_count_diff", params, options);
+  return await submitRun("row_count_diff", params, options);
 }

@@ -15,6 +15,20 @@ import { useClipBoardToast } from "./useClipBoardToast";
 import { format } from "date-fns";
 import saveAs from "file-saver";
 import { PiCopy, PiInfo } from "react-icons/pi";
+import { DataGridHandle } from "react-data-grid";
+
+// Type to represent DataGridHandle which may have an element property
+type DataGridRefType = DataGridHandle & { element?: HTMLElement };
+
+// Helper function to safely extract HTMLElement from DataGridHandle
+const getHTMLElementFromRef = (refCurrent: DataGridRefType): HTMLElement => {
+  // DataGridHandle might have an 'element' property containing the actual HTMLElement
+  if ("element" in refCurrent) {
+    return refCurrent.element;
+  }
+  // Otherwise, treat the ref itself as the HTMLElement
+  return refCurrent as unknown as HTMLElement;
+};
 
 export const IGNORE_SCREENSHOT_CLASS = "ignore-screenshot";
 
@@ -57,7 +71,7 @@ export function useCopyToClipboard({
   ignoreElements,
 }: HookOptions) {
   const [status, setStatus] = useState<"idle" | "loading" | "success" | "error">("idle");
-  const ref = useRef<HTMLDivElement>(null);
+  const ref = useRef<DataGridRefType>(null);
 
   // ImageDownloadModal is used for browsers that don't support ClipboardItem
   const { onOpen, setImgBlob, ImageDownloadModal } = useImageDownloadModal();
@@ -68,7 +82,7 @@ export function useCopyToClipboard({
       throw new Error("No node to use for screenshot");
     }
 
-    const nodeToUse = ((ref.current as any).element ?? ref.current) as HTMLElement;
+    const nodeToUse = getHTMLElementFromRef(ref.current);
     const overflow = nodeToUse.style.overflow;
     const border = nodeToUse.style.border;
     const radius = nodeToUse.style.borderRadius;
@@ -192,7 +206,7 @@ export function useCopyToClipboardButton(options?: HookOptions) {
 
   const onMouseEnter = useCallback(() => {
     if (ref.current) {
-      const nodeToUse = ((ref.current as any).element ?? ref.current) as HTMLElement;
+      const nodeToUse = getHTMLElementFromRef(ref.current);
       nodeToUse.style.boxShadow = highlightBoxShadow;
       nodeToUse.style.transition = "box-shadow 0.5s ease-in-out";
     }
@@ -200,7 +214,7 @@ export function useCopyToClipboardButton(options?: HookOptions) {
 
   const onMouseLeave = useCallback(() => {
     if (ref.current) {
-      const nodeToUse = ((ref.current as any).element ?? ref.current) as HTMLElement;
+      const nodeToUse = getHTMLElementFromRef(ref.current);
       nodeToUse.style.boxShadow = "";
     }
   }, [ref]);
@@ -208,7 +222,7 @@ export function useCopyToClipboardButton(options?: HookOptions) {
   const onCopyToClipboard = useCallback(async () => {
     if (ref.current) {
       await copyToClipboard();
-      const nodeToUse = ((ref.current as any).element ?? ref.current) as HTMLElement;
+      const nodeToUse = getHTMLElementFromRef(ref.current);
       nodeToUse.style.boxShadow = "";
     } else {
       failToast("Failed to copy image to clipboard", "No content to copy");

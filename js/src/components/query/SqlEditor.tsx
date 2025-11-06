@@ -2,7 +2,7 @@ import { useRecceInstanceContext } from "@/lib/hooks/RecceInstanceContext";
 import { Flex, Text, Stack, Spacer, Button, Icon } from "@chakra-ui/react";
 import { EditorProps, Editor } from "@monaco-editor/react";
 import { FaPlay } from "react-icons/fa6";
-import React from "react";
+import React, { useEffect } from "react";
 import { useLineageGraphContext } from "@/lib/hooks/LineageGraphContext";
 import { ManifestMetadata } from "@/lib/api/info";
 import { extractSchemas, formatTimeToNow } from "@/components/app/EnvInfo";
@@ -21,12 +21,12 @@ export interface SqlEditorProps {
   manifestData?: ManifestMetadata;
   schemas?: string;
   label?: string;
-  CustomEditor?: React.ReactElement<any, any>;
+  CustomEditor?: React.ReactNode;
 }
 
 export interface DualSqlEditorProps extends SqlEditorProps {
   labels?: [string, string]; // [baseLabel, currentLabel]
-  SetupGuide?: React.ReactElement<any, any>;
+  SetupGuide?: React.ReactNode;
 }
 
 function SqlEditor({
@@ -52,6 +52,21 @@ function SqlEditor({
   if (manifestData) {
     timestamp = manifestData.generated_at ? formatTimeToNow(manifestData.generated_at) : "";
   }
+
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      // Check if Monaco editor has focus
+      const monacoElement = document.querySelector(".monaco-editor");
+      if (monacoElement?.contains(document.activeElement) && e.key === " ") {
+        e.stopPropagation(); // Prevent react-split from capturing
+      }
+    };
+
+    document.addEventListener("keydown", handleKeyDown, true); // capture phase
+    return () => {
+      document.removeEventListener("keydown", handleKeyDown, true);
+    };
+  }, []);
 
   return (
     <>
@@ -113,7 +128,9 @@ function SqlEditor({
             }
           }}
           options={{
-            extraEditorClassName: "no-track-pii-safe",
+            domReadOnly: false,
+            readOnly: false,
+            extraEditorClassName: "no-track-pii-safe max-h-dvh",
             tabSize: 2,
             fontSize: 16,
             lineNumbers: "on",
