@@ -5,6 +5,8 @@
 // Base Types
 // ============================================================================
 
+export type AxiosQueryParams = Record<string, string | string[] | number | number[] | undefined>;
+
 export type RowDataTypes = number | string | boolean | null | undefined;
 export type RowData = RowDataTypes[];
 

@@ -7,7 +7,7 @@ import React, {
   useEffect,
   useState,
 } from "react";
-import { Run, RunParamTypes, RunType } from "../api/types";
+import { AxiosQueryParams, Run, RunParamTypes, RunType } from "../api/types";
 import { RunModal } from "@/components/run/RunModal";
 import { useDisclosure } from "@chakra-ui/react";
 
@@ -29,7 +29,7 @@ export interface RecceActionOptions {
 }
 
 export interface RecceActionContextType {
-  runAction: (type: RunType, params?: RunParamTypes, actionOptions?: RecceActionOptions) => void;
+  runAction: (type: RunType, params?: AxiosQueryParams, actionOptions?: RecceActionOptions) => void;
   runId?: string;
   showRunId: (runId: string, refreshHistory?: boolean) => void;
   isRunResultOpen: boolean;
@@ -69,7 +69,7 @@ interface RunActionInternal {
   session: string;
   title: string;
   type: RunType;
-  params?: any;
+  params?: AxiosQueryParams;
   lastRun?: Run;
   options?: RecceActionOptions;
   RunForm?: React.ComponentType<RunFormProps<any>>;
@@ -111,7 +111,7 @@ export function RecceActionContextProvider({ children }: RecceActionContextProvi
   }, [closeRunResult, setRunId]);
 
   const runAction = useCallback(
-    async (type: RunType, params?: any, options?: RecceActionOptions) => {
+    async (type: RunType, params?: AxiosQueryParams, options?: RecceActionOptions) => {
       try {
         const session = new Date().getTime().toString();
         let lastRun = undefined;
