@@ -52,51 +52,53 @@ export function RecceInstanceInfoProvider({ children }: { children: React.ReactN
   const [authed, setAuthed] = useState<boolean>(false);
   const [lifetimeExpiredAt, setLifetimeExpiredAt] = useState<Date>();
   const [shareUrl, setShareUrl] = useState<string>();
+  const [prevInstanceInfo, setPrevInstanceInfo] = useState(instanceInfo);
 
-  useEffect(() => {
-    if (!isLoading && instanceInfo) {
-      // eslint-disable-next-line react-hooks/set-state-in-effect
-      setSingleEnv(instanceInfo.single_env);
-      setAuthed(instanceInfo.authed);
-      setShareUrl(instanceInfo.share_url);
-      if (instanceInfo.lifetime_expired_at) {
-        setLifetimeExpiredAt(new Date(instanceInfo.lifetime_expired_at));
-        console.log("lifetime expired at", instanceInfo.lifetime_expired_at);
-      }
+  // Adjust state during render when instanceInfo changes
+  if (!isLoading && instanceInfo && instanceInfo !== prevInstanceInfo) {
+    setPrevInstanceInfo(instanceInfo);
 
-      // Set feature toggles based on instanceInfo
-      const toggles = defaultFeatureToggles;
-      if (instanceInfo.server_mode === "read-only") {
-        toggles.mode = "read only";
-        toggles.disableSaveToFile = true;
-        toggles.disableExportStateFile = true;
-        toggles.disableImportStateFile = true;
-        toggles.disableUpdateChecklist = true;
-        toggles.disableDatabaseQuery = true;
-        toggles.disableViewActionDropdown = true;
-        toggles.disableNodeActionDropdown = true;
-        toggles.disableShare = true;
-      } else if (instanceInfo.server_mode === "preview") {
-        toggles.mode = "metadata only";
-        toggles.disableSaveToFile = true;
-        toggles.disableExportStateFile = true;
-        toggles.disableImportStateFile = true;
-        toggles.disableUpdateChecklist = false;
-        toggles.disableDatabaseQuery = true;
-        toggles.disableViewActionDropdown = false;
-        toggles.disableNodeActionDropdown = false;
-        toggles.disableShare = true;
-      }
-      if (instanceInfo.single_env) {
-        toggles.disableUpdateChecklist = true;
-        toggles.disableShare = true;
-      }
-      if (instanceInfo.cloud_instance) {
-        toggles.disableShare = true;
-      }
-      setFeatureToggles(toggles);
+    setSingleEnv(instanceInfo.single_env);
+    setAuthed(instanceInfo.authed);
+    setShareUrl(instanceInfo.share_url);
+
+    if (instanceInfo.lifetime_expired_at) {
+      setLifetimeExpiredAt(new Date(instanceInfo.lifetime_expired_at));
+      console.log("lifetime expired at", instanceInfo.lifetime_expired_at);
     }
-  }, [instanceInfo, isLoading]);
+
+    // Set feature toggles based on instanceInfo
+    const toggles = { ...defaultFeatureToggles };
+    if (instanceInfo.server_mode === "read-only") {
+      toggles.mode = "read only";
+      toggles.disableSaveToFile = true;
+      toggles.disableExportStateFile = true;
+      toggles.disableImportStateFile = true;
+      toggles.disableUpdateChecklist = true;
+      toggles.disableDatabaseQuery = true;
+      toggles.disableViewActionDropdown = true;
+      toggles.disableNodeActionDropdown = true;
+      toggles.disableShare = true;
+    } else if (instanceInfo.server_mode === "preview") {
+      toggles.mode = "metadata only";
+      toggles.disableSaveToFile = true;
+      toggles.disableExportStateFile = true;
+      toggles.disableImportStateFile = true;
+      toggles.disableUpdateChecklist = false;
+      toggles.disableDatabaseQuery = true;
+      toggles.disableViewActionDropdown = false;
+      toggles.disableNodeActionDropdown = false;
+      toggles.disableShare = true;
+    }
+    if (instanceInfo.single_env) {
+      toggles.disableUpdateChecklist = true;
+      toggles.disableShare = true;
+    }
+    if (instanceInfo.cloud_instance) {
+      toggles.disableShare = true;
+    }
+    setFeatureToggles(toggles);
+  }
 
   return (
     <InstanceInfo.Provider
