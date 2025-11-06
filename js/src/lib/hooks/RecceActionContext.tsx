@@ -19,8 +19,6 @@ import { RunFormProps } from "@/components/run/types";
 import { useQueryClient } from "@tanstack/react-query";
 import { cacheKeys } from "../api/cacheKeys";
 import { toaster } from "@/components/ui/toaster";
-import { type HistogramDiffParams, ProfileDiffParams, TopKDiffParams } from "@/lib/api/profile";
-import type { RowCountDiffParams, RowCountParams } from "@/lib/api/rowcount";
 
 export interface RecceActionOptions {
   showForm: boolean;
@@ -72,7 +70,7 @@ interface RunActionInternal {
   params?: AxiosQueryParams;
   lastRun?: Run;
   options?: RecceActionOptions;
-  RunForm?: React.ComponentType<RunFormProps<any>>;
+  RunForm?: React.ComponentType<RunFormProps<RunParamTypes>>;
 }
 
 export function RecceActionContextProvider({ children }: RecceActionContextProviderProps) {
@@ -168,7 +166,7 @@ export function RecceActionContextProvider({ children }: RecceActionContextProvi
   );
   useCloseModalEffect(onModalClose);
 
-  const handleExecute = async (type: RunType, params: any) => {
+  const handleExecute = async (type: RunType, params: RunParamTypes) => {
     try {
       onModalClose();
       const { run_id } = await submitRun(type, params, {
