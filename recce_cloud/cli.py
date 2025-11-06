@@ -3,16 +3,27 @@
 Recce Cloud CLI - Lightweight command for managing Recce Cloud operations.
 """
 
+import logging
 import os
 import sys
 
 import click
 import requests
 from rich.console import Console
+from rich.logging import RichHandler
 
 from recce_cloud import __version__
 from recce_cloud.api.client import RecceCloudClient, RecceCloudException
 from recce_cloud.artifact import get_adapter_type, verify_artifacts_path
+from recce_cloud.ci_providers import CIDetector
+
+# Configure logging
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(message)s",
+    handlers=[RichHandler(console=Console(stderr=True), show_time=False, show_path=False)],
+)
+logger = logging.getLogger(__name__)
 
 
 @click.group()
@@ -44,7 +55,23 @@ def version():
     envvar="RECCE_SESSION_ID",
     help="Recce Cloud session ID to upload artifacts to (or use RECCE_SESSION_ID env var)",
 )
-def upload(target_path, session_id):
+@click.option(
+    "--cr",
+    type=int,
+    help="Change request number (PR/MR) (overrides auto-detection)",
+)
+@click.option(
+    "--type",
+    "session_type",
+    type=click.Choice(["cr", "prod", "dev"]),
+    help="Session type (overrides auto-detection)",
+)
+@click.option(
+    "--base-branch",
+    type=str,
+    help="Base branch name (overrides auto-detection)",
+)
+def upload(target_path, session_id, cr, session_type, base_branch):
     """
     Upload dbt artifacts to Recce Cloud session.
 
@@ -122,7 +149,17 @@ def upload(target_path, session_id):
         console.print("Provide --session-id or set RECCE_SESSION_ID environment variable")
         sys.exit(2)
 
-    # 1. Validate artifacts exist
+    # 1. Auto-detect CI environment information
+    console.rule("Auto-detecting CI environment", style="blue")
+    try:
+        ci_info = CIDetector.detect()
+        ci_info = CIDetector.apply_overrides(ci_info, cr=cr, session_type=session_type, base_branch=base_branch)
+    except Exception as e:
+        console.print(f"[yellow]Warning:[/yellow] Failed to detect CI environment: {e}")
+        console.print("Continuing without CI metadata...")
+        ci_info = None
+
+    # 2. Validate artifacts exist
     if not verify_artifacts_path(target_path):
         console.print(f"[red]Error:[/red] Invalid target path: {target_path}")
         console.print("Please provide a valid target path containing manifest.json and catalog.json.")
@@ -131,7 +168,46 @@ def upload(target_path, session_id):
     manifest_path = os.path.join(target_path, "manifest.json")
     catalog_path = os.path.join(target_path, "catalog.json")
 
-    # 2. Extract adapter type from manifest
+    # Display detected CI information
+    if ci_info:
+        console.rule("Detected CI Information", style="blue")
+        info_table = []
+        if ci_info.platform:
+            info_table.append(f"[cyan]Platform:[/cyan] {ci_info.platform}")
+
+        # Display CR number as PR or MR based on platform
+        if ci_info.cr_number is not None:
+            if ci_info.platform == "github-actions":
+                info_table.append(f"[cyan]PR Number:[/cyan] {ci_info.cr_number}")
+            elif ci_info.platform == "gitlab-ci":
+                info_table.append(f"[cyan]MR Number:[/cyan] {ci_info.cr_number}")
+            else:
+                info_table.append(f"[cyan]CR Number:[/cyan] {ci_info.cr_number}")
+
+        # Display CR URL as PR URL or MR URL based on platform
+        if ci_info.cr_url:
+            if ci_info.platform == "github-actions":
+                info_table.append(f"[cyan]PR URL:[/cyan] {ci_info.cr_url}")
+            elif ci_info.platform == "gitlab-ci":
+                info_table.append(f"[cyan]MR URL:[/cyan] {ci_info.cr_url}")
+            else:
+                info_table.append(f"[cyan]CR URL:[/cyan] {ci_info.cr_url}")
+
+        if ci_info.session_type:
+            info_table.append(f"[cyan]Session Type:[/cyan] {ci_info.session_type}")
+        if ci_info.commit_sha:
+            info_table.append(f"[cyan]Commit SHA:[/cyan] {ci_info.commit_sha[:8]}...")
+        if ci_info.base_branch:
+            info_table.append(f"[cyan]Base Branch:[/cyan] {ci_info.base_branch}")
+        if ci_info.source_branch:
+            info_table.append(f"[cyan]Source Branch:[/cyan] {ci_info.source_branch}")
+        if ci_info.repository:
+            info_table.append(f"[cyan]Repository:[/cyan] {ci_info.repository}")
+
+        for line in info_table:
+            console.print(line)
+
+    # 3. Extract adapter type from manifest
     try:
         adapter_type = get_adapter_type(manifest_path)
     except Exception as e:
@@ -139,14 +215,23 @@ def upload(target_path, session_id):
         console.print(f"Reason: {e}")
         sys.exit(3)
 
-    # 3. Get authentication token
+    # 4. Get authentication token
     token = os.getenv("RECCE_API_TOKEN")
+
+    # Fallback to CI-detected token if RECCE_API_TOKEN not set
+    if not token and ci_info and ci_info.access_token:
+        token = ci_info.access_token
+        if ci_info.platform == "github-actions":
+            console.print("[cyan]Info:[/cyan] Using GITHUB_TOKEN for authentication")
+        elif ci_info.platform == "gitlab-ci":
+            console.print("[cyan]Info:[/cyan] Using CI_JOB_TOKEN for authentication")
+
     if not token:
         console.print("[red]Error:[/red] No authentication token provided")
-        console.print("Set RECCE_API_TOKEN environment variable")
+        console.print("Set RECCE_API_TOKEN environment variable or ensure CI token is available")
         sys.exit(2)
 
-    # 4. Initialize API client
+    # 5. Initialize API client
     try:
         client = RecceCloudClient(token)
     except Exception as e:
@@ -154,7 +239,7 @@ def upload(target_path, session_id):
         console.print(f"Reason: {e}")
         sys.exit(2)
 
-    # 5. Get session info (org_id, project_id)
+    # 6. Get session info (org_id, project_id)
     console.print(f'Uploading artifacts for session ID "{session_id}"')
     try:
         session = client.get_session(session_id)
@@ -181,7 +266,7 @@ def upload(target_path, session_id):
         console.print(f"Reason: {e}")
         sys.exit(2)
 
-    # 6. Get presigned URLs
+    # 7. Get presigned URLs
     try:
         presigned_urls = client.get_upload_urls_by_session_id(org_id, project_id, session_id)
     except RecceCloudException as e:
@@ -193,7 +278,7 @@ def upload(target_path, session_id):
         console.print(f"Reason: {e}")
         sys.exit(4)
 
-    # 7. Upload manifest.json
+    # 8. Upload manifest.json
     console.print(f'Uploading manifest from path "{manifest_path}"')
     try:
         with open(manifest_path, "rb") as f:
@@ -205,7 +290,7 @@ def upload(target_path, session_id):
         console.print(f"Reason: {e}")
         sys.exit(4)
 
-    # 8. Upload catalog.json
+    # 9. Upload catalog.json
     console.print(f'Uploading catalog from path "{catalog_path}"')
     try:
         with open(catalog_path, "rb") as f:
@@ -217,7 +302,7 @@ def upload(target_path, session_id):
         console.print(f"Reason: {e}")
         sys.exit(4)
 
-    # 9. Update session metadata
+    # 10. Update session metadata
     try:
         client.update_session(org_id, project_id, session_id, adapter_type)
     except RecceCloudException as e:
