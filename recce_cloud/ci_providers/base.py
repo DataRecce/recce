@@ -47,7 +47,7 @@ class BaseCIProvider(ABC):
         pass
 
     @staticmethod
-    def _run_git_command(command: list[str]) -> Optional[str]:
+    def run_git_command(command: list[str]) -> Optional[str]:
         """
         Run a git command and return output.
 
@@ -64,7 +64,7 @@ class BaseCIProvider(ABC):
             return None
 
     @staticmethod
-    def _determine_session_type(cr_number: Optional[int], source_branch: Optional[str]) -> str:
+    def determine_session_type(cr_number: Optional[int], source_branch: Optional[str]) -> str:
         """
         Determine session type based on context.
 

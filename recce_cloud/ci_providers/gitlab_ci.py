@@ -50,7 +50,7 @@ class GitLabCIProvider(BaseCIProvider):
             server_url = os.getenv("CI_SERVER_URL", "https://gitlab.com")
             cr_url = f"{server_url}/{repository}/-/merge_requests/{cr_number}"
 
-        session_type = self._determine_session_type(cr_number, source_branch)
+        session_type = self.determine_session_type(cr_number, source_branch)
 
         return CIInfo(
             platform="gitlab-ci",
@@ -92,7 +92,7 @@ class GitLabCIProvider(BaseCIProvider):
             return commit_sha
 
         # Fallback to git command
-        return self._run_git_command(["git", "rev-parse", "HEAD"])
+        return self.run_git_command(["git", "rev-parse", "HEAD"])
 
     def _extract_base_branch(self) -> str:
         """
@@ -127,4 +127,4 @@ class GitLabCIProvider(BaseCIProvider):
             return source_branch
 
         # Fallback to git command
-        return self._run_git_command(["git", "branch", "--show-current"])
+        return self.run_git_command(["git", "branch", "--show-current"])

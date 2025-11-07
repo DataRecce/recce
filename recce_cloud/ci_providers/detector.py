@@ -89,7 +89,7 @@ class CIDetector:
         # Re-determine session type if CR was overridden
         if cr is not None:
             if session_type is None:  # Only if not manually overridden
-                ci_info.session_type = BaseCIProvider._determine_session_type(ci_info.cr_number, ci_info.source_branch)
+                ci_info.session_type = BaseCIProvider.determine_session_type(ci_info.cr_number, ci_info.source_branch)
 
         return ci_info
 
@@ -101,10 +101,10 @@ class CIDetector:
         Returns:
             CIInfo with basic git information
         """
-        commit_sha = BaseCIProvider._run_git_command(["git", "rev-parse", "HEAD"])
-        source_branch = BaseCIProvider._run_git_command(["git", "branch", "--show-current"])
+        commit_sha = BaseCIProvider.run_git_command(["git", "rev-parse", "HEAD"])
+        source_branch = BaseCIProvider.run_git_command(["git", "branch", "--show-current"])
 
-        session_type = BaseCIProvider._determine_session_type(None, source_branch)
+        session_type = BaseCIProvider.determine_session_type(None, source_branch)
 
         return CIInfo(
             platform=None,

@@ -54,7 +54,7 @@ class TestGitHubActionsProvider:
     def test_extract_commit_sha_fallback(self):
         """Test commit SHA extraction with git fallback."""
         with patch.dict(os.environ, {}, clear=True):
-            with patch.object(GitHubActionsProvider, "_run_git_command", return_value="git123456"):
+            with patch.object(GitHubActionsProvider, "run_git_command", return_value="git123456"):
                 provider = GitHubActionsProvider()
                 commit_sha = provider._extract_commit_sha()
                 assert commit_sha == "git123456"
@@ -340,7 +340,7 @@ class TestCIDetector:
     def test_fallback_detection_with_git(self):
         """Test fallback detection using git commands."""
         with patch.dict(os.environ, {}, clear=True):
-            with patch("recce_cloud.ci_providers.base.BaseCIProvider._run_git_command") as mock_git:
+            with patch("recce_cloud.ci_providers.base.BaseCIProvider.run_git_command") as mock_git:
                 mock_git.side_effect = ["commit123", "feature-branch"]
                 ci_info = CIDetector._fallback_detection()
 
