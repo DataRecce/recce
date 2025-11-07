@@ -6,7 +6,7 @@ import { LineageGraphNode } from "@/components/lineage/lineage";
 
 export function extractColumns(node: LineageGraphNode) {
   function getColumns(nodeData: NodeData | undefined) {
-    return nodeData?.columns ? Object.values(nodeData.columns) : [];
+    return nodeData?.columns ? Object.values(nodeData.columns).filter((c) => c != null) : [];
   }
 
   const baseColumns = getColumns(node.data.data.base);

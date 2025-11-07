@@ -3,7 +3,7 @@ import { mergeKeysWithStatus } from "@/lib/mergeKeys";
 import { ColumnOrColumnGroup } from "react-data-grid";
 
 import "./style.css";
-import { NodeData } from "@/lib/api/info";
+import { NodeColumnData, NodeData } from "@/lib/api/info";
 import { ColumnNameCell } from "./ColumnNameCell";
 
 export interface SchemaDiffRow {
@@ -37,14 +37,21 @@ export function mergeColumns(
     };
   });
 
-  Object.entries(baseColumns).map(([name, column], index) => {
-    result[name].baseIndex = index + 1;
-    result[name].baseType = column.type;
+  let filteredIndex = 0;
+  Object.entries(baseColumns).forEach(([name, column]) => {
+    if (column != null) {
+      result[name].baseIndex = filteredIndex += 1;
+      result[name].baseType = column.type;
+    }
   });
 
-  Object.entries(currentColumns).map(([name, column], index) => {
-    result[name].currentIndex = index + 1;
-    result[name].currentType = column.type;
+  // reset filteredIndex
+  filteredIndex = 0;
+  Object.entries(currentColumns).forEach(([name, column], index) => {
+    if (column != null) {
+      result[name].currentIndex = index += 1;
+      result[name].currentType = column.type;
+    }
   });
 
   return result;
@@ -136,7 +143,12 @@ export function toSingleEnvDataGrid(
   node?: NodeData,
   cllRunningMap?: Map<string, boolean>,
 ) {
-  const rows: SchemaRow[] = Object.entries(nodeColumns).map(([name, column], index) => ({
+  // Filter out any `nodeColumns` with an undefined column
+  const nodeColumnList = Object.entries(nodeColumns).filter(([name, column]) => column != null) as [
+    string,
+    NodeColumnData,
+  ][];
+  const rows: SchemaRow[] = nodeColumnList.map(([name, column], index) => ({
     name,
     index: index + 1,
     type: column.type,
