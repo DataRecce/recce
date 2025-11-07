@@ -108,9 +108,11 @@ function useLineageWatcher() {
   const ref = useRef<{
     ws: WebSocket | undefined;
     status: LineageWatcherStatus;
+    artifactsUpdatedToastId: string | undefined;
   }>({
     ws: undefined,
     status: "pending",
+    artifactsUpdatedToastId: undefined,
   });
 
   const [status, setStatus] = useState<LineageWatcherStatus>("pending");
@@ -120,6 +122,11 @@ function useLineageWatcher() {
   useEffect(() => {
     ref.current.status = status;
   }, [status]);
+
+  // Keep artifactsUpdatedToastId in sync with ref
+  useEffect(() => {
+    ref.current.artifactsUpdatedToastId = artifactsUpdatedToastId;
+  }, [artifactsUpdatedToastId]);
 
   const queryClient = useQueryClient();
 
@@ -156,7 +163,7 @@ function useLineageWatcher() {
           const [targetName, fileName] = srcPath.split("/").slice(-2);
           const name = path.parse(fileName).name;
           const eventId = `${targetName}-${name}-${eventType}`;
-          if (artifactsUpdatedToastId == null) {
+          if (ref.current.artifactsUpdatedToastId == null) {
             setArtifactsUpdatedToastId(
               toaster.create({
                 id: eventId,
@@ -201,7 +208,7 @@ function useLineageWatcher() {
 
       ref.current.ws = undefined;
     };
-  }, [artifactsUpdatedToastId, invalidateCaches]);
+  }, [invalidateCaches]);
 
   useEffect(() => {
     const refObj = ref.current;
