@@ -27,7 +27,15 @@ function _getColumnMap(df: DataFrame) {
   > = {};
 
   df.columns.map((col, index) => {
-    result[col.name] = {
+    // Normalize special column names to uppercase
+    const columnName =
+      col.name.toLowerCase() === "in_a"
+        ? "IN_A"
+        : col.name.toLowerCase() === "in_b"
+          ? "IN_B"
+          : col.name;
+
+    result[columnName] = {
       index,
       colType: col.type,
     };
@@ -181,10 +189,8 @@ export function toValueDiffGrid(
   }
 
   const primaryIndexes = _getPrimaryKeyIndexes(df.columns, primaryKeys);
-  // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
-  const inBaseIndex = (columnMap.in_a || columnMap.IN_A).index;
-  // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
-  const inCurrentIndex = (columnMap.in_b || columnMap.IN_B).index;
+  const inBaseIndex = columnMap.IN_A.index;
+  const inCurrentIndex = columnMap.IN_B.index;
 
   df.data.forEach((row) => {
     const key = _getPrimaryKeyValue(df.columns, primaryIndexes, row);
@@ -417,7 +423,7 @@ export function toValueDiffGrid(
   Object.entries(columnMap).forEach(([name, mergedColumn]) => {
     const columnStatus = mergedColumn.status ?? "";
 
-    if (["in_a", "in_b"].includes(name.toLowerCase())) {
+    if (name === "IN_A" || name === "IN_B") {
       return;
     }
 

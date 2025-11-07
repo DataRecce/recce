@@ -22,7 +22,7 @@ export interface NodeData {
   raw_code?: string;
   resource_type?: string;
   package_name?: string;
-  columns?: Record<string, NodeColumnData>;
+  columns?: Record<string, NodeColumnData | undefined>;
   primary_key?: string;
 }
 

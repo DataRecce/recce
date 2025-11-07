@@ -1,9 +1,6 @@
-import { NodeColumnData } from "@/lib/api/info";
+import { NodeData } from "@/lib/api/info";
 
-export function isSchemaChanged(
-  baseSchema: Record<string, NodeColumnData> | undefined,
-  currSchema: Record<string, NodeColumnData> | undefined,
-) {
+export function isSchemaChanged(baseSchema: NodeData["columns"], currSchema: NodeData["columns"]) {
   if (!baseSchema || !currSchema) {
     return undefined;
   }
@@ -24,8 +21,7 @@ export function isSchemaChanged(
 
   // modified
   for (const key of currKeys) {
-    // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
-    if (!baseSchema[key] || baseSchema[key].type !== currSchema[key].type) {
+    if (!baseSchema[key] || baseSchema[key].type !== currSchema[key]?.type) {
       return true;
     }
   }

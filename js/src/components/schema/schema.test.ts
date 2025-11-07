@@ -30,14 +30,20 @@ export function mergeColumns(
     };
   });
 
-  Object.entries(baseColumns).map(([name, column], index) => {
-    result[name].baseIndex = index + 1;
-    result[name].baseType = column.type;
+  let filteredIndex = 0;
+  Object.entries(baseColumns).forEach(([name, column], index) => {
+    if (column != null) {
+      result[name].baseIndex = filteredIndex += 1;
+      result[name].baseType = column.type;
+    }
   });
 
-  Object.entries(currentColumns).map(([name, column], index) => {
-    result[name].currentIndex = index + 1;
-    result[name].currentType = column.type;
+  filteredIndex = 0;
+  Object.entries(currentColumns).forEach(([name, column], index) => {
+    if (column != null) {
+      result[name].currentIndex = filteredIndex += 1;
+      result[name].currentType = column.type;
+    }
   });
 
   return result;
