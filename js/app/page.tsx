@@ -270,16 +270,13 @@ interface TabProps {
   disable?: boolean;
 }
 
-// eslint-disable-next-line @typescript-eslint/no-unnecessary-type-parameters
-function TabBadge<T, R extends number>({
-  queryKey,
-  fetchCallback,
-  selectCallback,
-}: {
+interface TabBadgeProps<T> {
   queryKey: string[];
   fetchCallback: () => Promise<T>;
-  selectCallback?: (data: T) => R;
-}): ReactNode {
+  selectCallback?: (data: T) => number;
+}
+
+function TabBadge<T>({ queryKey, fetchCallback, selectCallback }: TabBadgeProps<T>): ReactNode {
   const {
     data: count,
     isLoading,
@@ -318,7 +315,7 @@ function NavBar() {
   const { data: flag, isLoading: isFlagLoading } = useRecceServerFlag();
 
   const checklistBadge = (
-    <TabBadge<Check[], number>
+    <TabBadge<Check[]>
       queryKey={cacheKeys.checks()}
       fetchCallback={listChecks}
       selectCallback={(checks: Check[]) => {
