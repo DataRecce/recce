@@ -37,7 +37,7 @@ import { buildTitle, buildDescription, buildQuery } from "./check";
 import SqlEditor, { DualSqlEditor } from "../query/SqlEditor";
 import React, { ReactNode, Ref, useCallback, useRef, useState } from "react";
 import { cancelRun, submitRunFromCheck } from "@/lib/api/runs";
-import { Run } from "@/lib/api/types";
+import { Run, RunParamTypes } from "@/lib/api/types";
 import { RunView } from "../run/RunView";
 import { formatDistanceToNow } from "date-fns";
 import { LineageDiffView } from "./LineageDiffView";
@@ -54,7 +54,7 @@ import { Tooltip } from "@/components/ui/tooltip";
 import { PiCheckCircle, PiCopy, PiRepeat, PiTrashFill } from "react-icons/pi";
 import SetupConnectionPopover from "@/components/app/SetupConnectionPopover";
 import { useRecceCheckContext } from "@/lib/hooks/RecceCheckContext";
-import { QueryDiffParams, QueryParams } from "@/lib/api/adhocQuery";
+import { QueryDiffParams, QueryParams, QueryRunParams } from "@/lib/api/adhocQuery";
 
 export const isDisabledByNoResult = (type: string, run: Run | undefined): boolean => {
   if (type === "schema_diff" || type === "lineage_diff") {
@@ -441,7 +441,7 @@ export const CheckDetail = ({ checkId, refreshCheckList }: CheckDetailProps) => 
               check.type === "query_diff" ||
               check.type === "query_base") && (
               <Tabs.Content value="query" p={0} height="100%" width="100%">
-                {(check.params as QueryDiffParams | QueryParams).base_sql_template ? (
+                {(check.params as QueryParams).base_sql_template ? (
                   <DualSqlEditor
                     /* eslint-disable-next-line @typescript-eslint/no-unnecessary-condition */
                     value={(check.params as QueryDiffParams).sql_template ?? ""}
@@ -451,7 +451,7 @@ export const CheckDetail = ({ checkId, refreshCheckList }: CheckDetailProps) => 
                 ) : (
                   <SqlEditor
                     /* eslint-disable-next-line @typescript-eslint/no-unnecessary-condition */
-                    value={(check.params as QueryParams).sql_template ?? ""}
+                    value={(check.params as QueryRunParams).sql_template ?? ""}
                     options={{ readOnly: true }}
                   />
                 )}
@@ -510,7 +510,7 @@ function Overlay(): ReactNode {
   return <Dialog.Backdrop bg="blackAlpha.300" backdropFilter="blur(10px) " />;
 }
 
-function buildMarkdown(check: Check) {
+function buildMarkdown(check: Check<RunParamTypes>) {
   return stripIndents`
   <details><summary>${buildTitle(check)}</summary>
 
@@ -519,7 +519,7 @@ function buildMarkdown(check: Check) {
   </details>`;
 }
 
-function buildBody(check: Check) {
+function buildBody(check: Check<RunParamTypes>) {
   if (check.type === "query" || check.type === "query_diff") {
     return `${buildDescription(check)}\n\n${buildQuery(check)}`;
   }
