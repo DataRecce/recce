@@ -130,6 +130,7 @@ Upload dbt artifacts to Recce Cloud session.
 | `--session-id` | string | - | Session ID for generic workflow (optional) |
 | `--cr` | integer | - | Override PR/MR number |
 | `--type` | choice | - | Override session type: `cr`, `prod`, `dev` |
+| `--dry-run` | flag | false | Show what would be uploaded without uploading |
 
 **Environment Variables:**
 
@@ -213,6 +214,9 @@ recce-cloud upload --type prod
 
 # Multiple overrides
 recce-cloud upload --cr 789 --type cr
+
+# Dry run - preview what would be uploaded
+recce-cloud upload --dry-run
 ```
 
 ## CI/CD Integration Examples

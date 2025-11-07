@@ -270,7 +270,12 @@ def version():
     type=click.Choice(["cr", "prod", "dev"]),
     help="Session type (overrides auto-detection)",
 )
-def upload(target_path, session_id, cr, session_type):
+@click.option(
+    "--dry-run",
+    is_flag=True,
+    help="Show what would be uploaded without actually uploading",
+)
+def upload(target_path, session_id, cr, session_type, dry_run):
     """
     Upload dbt artifacts to Recce Cloud session.
 
@@ -427,7 +432,53 @@ def upload(target_path, session_id, cr, session_type):
         console.print(f"Reason: {e}")
         sys.exit(3)
 
-    # 4. Get authentication token
+    # 4. Handle dry-run mode (before authentication or API calls)
+    if dry_run:
+        console.rule("Dry Run Summary", style="yellow")
+        console.print("[yellow]Dry run mode enabled - no actual upload will be performed[/yellow]")
+        console.print()
+
+        # Display platform information if detected
+        if ci_info and ci_info.platform:
+            console.print("[cyan]Platform Information:[/cyan]")
+            console.print(f"  • Platform: {ci_info.platform}")
+            if ci_info.repository:
+                console.print(f"  • Repository: {ci_info.repository}")
+            if ci_info.cr_number is not None:
+                console.print(f"  • CR Number: {ci_info.cr_number}")
+            if ci_info.commit_sha:
+                console.print(f"  • Commit SHA: {ci_info.commit_sha[:8]}")
+            if ci_info.source_branch:
+                console.print(f"  • Source Branch: {ci_info.source_branch}")
+            if ci_info.base_branch:
+                console.print(f"  • Base Branch: {ci_info.base_branch}")
+            if ci_info.session_type:
+                console.print(f"  • Session Type: {ci_info.session_type}")
+            console.print()
+
+        # Display upload summary
+        console.print("[cyan]Upload Workflow:[/cyan]")
+        if session_id:
+            console.print("  • Upload to existing session")
+            console.print(f"  • Session ID: {session_id}")
+        else:
+            console.print("  • Auto-create session and upload")
+            if ci_info and ci_info.platform in ["github-actions", "gitlab-ci"]:
+                console.print("  • Platform-specific APIs will be used")
+            else:
+                console.print("  • [yellow]Warning: Platform not supported for auto-session creation[/yellow]")
+
+        console.print()
+        console.print("[cyan]Files to upload:[/cyan]")
+        console.print(f"  • manifest.json: {os.path.abspath(manifest_path)}")
+        console.print(f"  • catalog.json: {os.path.abspath(catalog_path)}")
+        console.print(f"  • Adapter type: {adapter_type}")
+
+        console.print()
+        console.print("[green]✓[/green] Dry run completed successfully")
+        sys.exit(0)
+
+    # 5. Get authentication token
     token = os.getenv("RECCE_API_TOKEN")
 
     # Fallback to CI-detected token if RECCE_API_TOKEN not set
@@ -443,7 +494,7 @@ def upload(target_path, session_id, cr, session_type):
         console.print("Set RECCE_API_TOKEN environment variable or ensure CI token is available")
         sys.exit(2)
 
-    # 5. Choose upload workflow based on whether session_id is provided
+    # 6. Choose upload workflow based on whether session_id is provided
     if session_id:
         # Legacy workflow: Upload to existing session using session ID
         _upload_to_existing_session(console, token, session_id, manifest_path, catalog_path, adapter_type, target_path)
