@@ -3,8 +3,9 @@ import { createMultiStyleConfigHelpers, defineStyle } from "@chakra-ui/styled-sy
 import { defineSlotRecipe } from "@chakra-ui/react";
 import { checkmarkRecipe } from "@chakra-ui/react/theme";
 
-// eslint-disable-next-line @typescript-eslint/unbound-method
-const { definePartsStyle, defineMultiStyleConfig } = createMultiStyleConfigHelpers(parts.keys);
+const helpers = createMultiStyleConfigHelpers(parts.keys);
+const definePartsStyle = helpers.definePartsStyle.bind(helpers);
+const defineMultiStyleConfig = helpers.defineMultiStyleConfig.bind(helpers);
 
 // Defining a custom variant
 const variantCircular = definePartsStyle({
