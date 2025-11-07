@@ -13,7 +13,7 @@ from recce.util.recce_cloud import PresignedUrlMethod, RecceCloud, RecceCloudExc
 from ..event import get_recce_api_token
 from ..models import CheckDAO
 from .const import (
-    RECCE_API_TOKEN_MISSING,
+    RECCE_CLOUD_API_TOKEN_MISSING,
     RECCE_CLOUD_PASSWORD_MISSING,
     RECCE_CLOUD_TOKEN_MISSING,
     RECCE_STATE_COMPRESSED_FILE,
@@ -66,8 +66,8 @@ class CloudStateLoader(RecceStateLoader):
                     return False
         elif self.catalog == "preview":
             if self.cloud_options.get("api_token") is None:
-                self.error_message = RECCE_API_TOKEN_MISSING.error_message
-                self.hint_message = RECCE_API_TOKEN_MISSING.hint_message
+                self.error_message = RECCE_CLOUD_API_TOKEN_MISSING.error_message
+                self.hint_message = RECCE_CLOUD_API_TOKEN_MISSING.hint_message
                 return False
             if self.cloud_options.get("share_id") is None:
                 self.error_message = "No share ID is provided for the preview catalog."
@@ -77,8 +77,8 @@ class CloudStateLoader(RecceStateLoader):
                 return False
         elif self.catalog == "session":
             if self.cloud_options.get("api_token") is None:
-                self.error_message = RECCE_API_TOKEN_MISSING.error_message
-                self.hint_message = RECCE_API_TOKEN_MISSING.hint_message
+                self.error_message = RECCE_CLOUD_API_TOKEN_MISSING.error_message
+                self.hint_message = RECCE_CLOUD_API_TOKEN_MISSING.hint_message
                 return False
             if self.cloud_options.get("session_id") is None:
                 self.error_message = "No session ID is provided for the session catalog."
@@ -614,8 +614,8 @@ class RecceShareStateManager:
 
     def verify(self) -> bool:
         if get_recce_api_token() is None:
-            self.error_message = RECCE_API_TOKEN_MISSING.error_message
-            self.hint_message = RECCE_API_TOKEN_MISSING.hint_message
+            self.error_message = RECCE_CLOUD_API_TOKEN_MISSING.error_message
+            self.hint_message = RECCE_CLOUD_API_TOKEN_MISSING.hint_message
             return False
         return True
 

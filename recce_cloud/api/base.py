@@ -19,7 +19,7 @@ class BaseRecceCloudClient(ABC):
         Initialize the API client.
 
         Args:
-            token: Authentication token (GITHUB_TOKEN, CI_JOB_TOKEN, or RECCE_API_TOKEN)
+            token: Authentication token (GITHUB_TOKEN, CI_JOB_TOKEN, or RECCE_CLOUD_API_TOKEN)
             api_host: Recce Cloud API host (defaults to RECCE_CLOUD_API_HOST or https://cloud.datarecce.io)
         """
         self.token = token

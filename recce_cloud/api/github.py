@@ -15,7 +15,7 @@ class GitHubRecceCloudClient(BaseRecceCloudClient):
         Initialize GitHub API client.
 
         Args:
-            token: GitHub token (GITHUB_TOKEN or RECCE_API_TOKEN)
+            token: GitHub token (GITHUB_TOKEN or RECCE_CLOUD_API_TOKEN)
             repository: Repository in format "owner/repo"
             api_host: Recce Cloud API host
         """
