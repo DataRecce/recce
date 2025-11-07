@@ -37,7 +37,7 @@ import { buildTitle, buildDescription, buildQuery } from "./check";
 import SqlEditor, { DualSqlEditor } from "../query/SqlEditor";
 import React, { ReactNode, Ref, useCallback, useRef, useState } from "react";
 import { cancelRun, submitRunFromCheck } from "@/lib/api/runs";
-import { Run, RunParamTypes } from "@/lib/api/types";
+import { Run, RunParamTypes, RunType } from "@/lib/api/types";
 import { RunView } from "../run/RunView";
 import { formatDistanceToNow } from "date-fns";
 import { LineageDiffView } from "./LineageDiffView";
@@ -56,7 +56,7 @@ import SetupConnectionPopover from "@/components/app/SetupConnectionPopover";
 import { useRecceCheckContext } from "@/lib/hooks/RecceCheckContext";
 import { QueryDiffParams, QueryParams, QueryRunParams } from "@/lib/api/adhocQuery";
 
-export const isDisabledByNoResult = (type: string, run: Run | undefined): boolean => {
+export const isDisabledByNoResult = (type: RunType, run: Run | undefined): boolean => {
   if (type === "schema_diff" || type === "lineage_diff") {
     return false;
   }
