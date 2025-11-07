@@ -1,6 +1,6 @@
 import { RECCE_SUPPORT_CALENDAR_URL } from "@/constants/urls";
 import { Box, Link, Popover, Portal } from "@chakra-ui/react";
-import { useState, cloneElement, ReactElement, useRef, useCallback } from "react";
+import { useState, ReactElement, useRef, useCallback } from "react";
 
 interface SetupConnectionPopoverProps {
   children: ReactElement<{
