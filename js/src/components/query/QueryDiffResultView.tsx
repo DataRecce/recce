@@ -318,6 +318,10 @@ const PrivateQueryDiffJoinResultView = (
   );
 };
 
+// Create the forwardRef components here, at module level
+const QueryDiffResultViewWithRef = forwardRef(PrivateQueryDiffResultView);
+const QueryDiffJoinResultViewWithRef = forwardRef(PrivateQueryDiffJoinResultView);
+
 export const QueryDiffResultView = forwardRef((props: QueryDiffResultViewProps, ref) => {
   let baseTitle;
   let currentTitle;
@@ -327,12 +331,22 @@ export const QueryDiffResultView = forwardRef((props: QueryDiffResultViewProps, 
     currentTitle = "Editor";
   }
   if (props.run.type === "query_diff" && props.run.result?.diff != null) {
-    const ResultView = forwardRef(PrivateQueryDiffJoinResultView);
-    // eslint-disable-next-line react-hooks/static-components
-    return <ResultView {...props} ref={ref} baseTitle={baseTitle} currentTitle={currentTitle} />;
+    return (
+      <QueryDiffResultViewWithRef
+        {...props}
+        ref={ref}
+        baseTitle={baseTitle}
+        currentTitle={currentTitle}
+      />
+    );
   } else {
-    const ResultView = forwardRef(PrivateQueryDiffResultView);
-    // eslint-disable-next-line react-hooks/static-components
-    return <ResultView {...props} ref={ref} baseTitle={baseTitle} currentTitle={currentTitle} />;
+    return (
+      <QueryDiffJoinResultViewWithRef
+        {...props}
+        ref={ref}
+        baseTitle={baseTitle}
+        currentTitle={currentTitle}
+      />
+    );
   }
 });
