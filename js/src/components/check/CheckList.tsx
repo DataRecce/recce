@@ -51,11 +51,9 @@ const ChecklistItem = ({
   const { run } = useRun(trackedRunId);
 
   const icon: IconType = findByRunType(check.type)?.icon ?? TbChecklist;
-  // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
-  const checkType = check.type ?? "";
   const isMarkAsApprovedDisabled =
-    isDisabledByNoResult(checkType, run) || featureToggles.disableUpdateChecklist;
-  const isNoResult = isDisabledByNoResult(checkType, run);
+    isDisabledByNoResult(check.type, run) || featureToggles.disableUpdateChecklist;
+  const isNoResult = isDisabledByNoResult(check.type, run);
 
   return (
     <>
@@ -153,26 +151,26 @@ export const CheckList = ({
 
   const { markedAsApprovedToast } = useCheckToast();
   const handleOnMarkAsApproved = () => {
-    const bypassMarkAsApprovedWarning = localStorage.getItem("bypassMarkAsApprovedWarning");
-    if (bypassMarkAsApprovedWarning === "true") {
-      // TODO instead of using non-null assertions, fix the underlying typing to account for it
-      // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-      markCheckedByID(selectedItem!);
-      markedAsApprovedToast();
-    } else {
-      onMarkAsApprovedOpen();
+    if (selectedItem) {
+      const bypassMarkAsApprovedWarning = localStorage.getItem("bypassMarkAsApprovedWarning");
+      if (bypassMarkAsApprovedWarning === "true") {
+        markCheckedByID(selectedItem);
+        markedAsApprovedToast();
+      } else {
+        onMarkAsApprovedOpen();
+      }
     }
   };
 
   const handleMarkAsApprovedConfirmed = () => {
-    // TODO instead of using non-null assertions, fix the underlying typing to account for it
-    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-    markCheckedByID(selectedItem!);
-    if (bypassModal) {
-      localStorage.setItem("bypassMarkAsApprovedWarning", "true");
+    if (selectedItem) {
+      markCheckedByID(selectedItem);
+      if (bypassModal) {
+        localStorage.setItem("bypassMarkAsApprovedWarning", "true");
+      }
+      markedAsApprovedToast();
+      onMarkAsApprovedClosed();
     }
-    markedAsApprovedToast();
-    onMarkAsApprovedClosed();
   };
 
   return (
