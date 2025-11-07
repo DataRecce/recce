@@ -18,8 +18,7 @@ export const ErrorButton = () => {
   );
 };
 
-// eslint-disable-next-line @typescript-eslint/unbound-method
-const Fallback: FallbackRender = ({ error, resetError }) => {
+const Fallback: FallbackRender = (errorData) => {
   return (
     <Center height="100%" backgroundColor="gray.50">
       <Flex
@@ -34,7 +33,7 @@ const Fallback: FallbackRender = ({ error, resetError }) => {
         </Heading>
 
         <Box flex="1" fontSize="10pt">
-          {String(error)}
+          {String(errorData.error)}
         </Box>
 
         <Button
@@ -44,7 +43,7 @@ const Fallback: FallbackRender = ({ error, resetError }) => {
           colorPalette="blue"
           size="sm"
           onClick={() => {
-            resetError();
+            errorData.resetError();
           }}>
           Reset
         </Button>
