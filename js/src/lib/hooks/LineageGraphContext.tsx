@@ -115,16 +115,21 @@ function useLineageWatcher() {
 
   const [status, setStatus] = useState<LineageWatcherStatus>("pending");
   const [envStatus, setEnvStatus] = useState<EnvWatcherStatus>(undefined);
-  ref.current.status = status;
+
+  // Update ref in useEffect to avoid updating during render
+  useEffect(() => {
+    ref.current.status = status;
+  }, [status]);
+
   const queryClient = useQueryClient();
 
-  const invalidateCaches = () => {
+  const invalidateCaches = useCallback(() => {
     void queryClient.invalidateQueries({ queryKey: cacheKeys.lineage() });
     void queryClient.invalidateQueries({ queryKey: cacheKeys.checks() });
     void queryClient.invalidateQueries({ queryKey: cacheKeys.runs() });
-  };
+  }, [queryClient]);
 
-  const connect = () => {
+  const connect = useCallback(() => {
     function httpUrlToWebSocketUrl(url: string): string {
       return url.replace(/(http)(s)?:\/\//, "ws$2://");
     }
@@ -196,7 +201,7 @@ function useLineageWatcher() {
 
       ref.current.ws = undefined;
     };
-  };
+  }, [artifactsUpdatedToastId, invalidateCaches]);
 
   useEffect(() => {
     const refObj = ref.current;
@@ -206,8 +211,7 @@ function useLineageWatcher() {
         refObj.ws.close();
       }
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [connect]);
 
   return {
     connectionStatus: status,
@@ -233,8 +237,7 @@ export function LineageGraphContextProvider({ children }: LineageGraphProps) {
 
   const lineageGraph = useMemo(() => {
     const lineage = queryServerInfo.data?.lineage;
-    // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
-    if (!lineage?.base || !lineage.current) {
+    if (!lineage?.base) {
       return undefined;
     }
 
