@@ -31,7 +31,7 @@ export function mergeColumns(
   });
 
   let filteredIndex = 0;
-  Object.entries(baseColumns).forEach(([name, column], index) => {
+  Object.entries(baseColumns).forEach(([name, column]) => {
     if (column != null) {
       result[name].baseIndex = filteredIndex += 1;
       result[name].baseType = column.type;
@@ -39,7 +39,7 @@ export function mergeColumns(
   });
 
   filteredIndex = 0;
-  Object.entries(currentColumns).forEach(([name, column], index) => {
+  Object.entries(currentColumns).forEach(([name, column]) => {
     if (column != null) {
       result[name].currentIndex = filteredIndex += 1;
       result[name].currentType = column.type;

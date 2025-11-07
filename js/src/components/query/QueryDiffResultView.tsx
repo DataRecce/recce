@@ -1,11 +1,6 @@
 import "react-data-grid/lib/styles.css";
 
-import {
-  QueryDiffParams,
-  QueryDiffResult,
-  QueryDiffViewOptions,
-  QueryPreviewChangeParams,
-} from "@/lib/api/adhocQuery";
+import { QueryDiffViewOptions, QueryPreviewChangeParams } from "@/lib/api/adhocQuery";
 import { Center, Flex } from "@chakra-ui/react";
 import { forwardRef, Ref, useMemo } from "react";
 import { toDataDiffGrid } from "./querydiff";

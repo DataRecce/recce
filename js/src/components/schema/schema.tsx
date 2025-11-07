@@ -47,9 +47,9 @@ export function mergeColumns(
 
   // reset filteredIndex
   filteredIndex = 0;
-  Object.entries(currentColumns).forEach(([name, column], index) => {
+  Object.entries(currentColumns).forEach(([name, column]) => {
     if (column != null) {
-      result[name].currentIndex = index += 1;
+      result[name].currentIndex = filteredIndex += 1;
       result[name].currentType = column.type;
     }
   });
@@ -144,7 +144,7 @@ export function toSingleEnvDataGrid(
   cllRunningMap?: Map<string, boolean>,
 ) {
   // Filter out any `nodeColumns` with an undefined column
-  const nodeColumnList = Object.entries(nodeColumns).filter(([name, column]) => column != null) as [
+  const nodeColumnList = Object.entries(nodeColumns).filter(([_, column]) => column != null) as [
     string,
     NodeColumnData,
   ][];
@@ -167,7 +167,7 @@ export function toSingleEnvDataGrid(
       key: "name",
       name: "Name",
       resizable: true,
-      renderCell: ({ row, column }) => {
+      renderCell: ({ row }) => {
         return node ? (
           <ColumnNameCell
             model={node}
