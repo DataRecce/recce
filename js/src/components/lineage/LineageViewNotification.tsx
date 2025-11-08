@@ -1,6 +1,6 @@
 import { sessionStorageKeys } from "@/lib/api/sessionStorageKeys";
 import { CloseButton, Flex, Spacer } from "@chakra-ui/react";
-import React, { useEffect, useState } from "react";
+import React, { useState } from "react";
 
 interface NotificationProps {
   notification?: React.ReactNode;
@@ -9,15 +9,12 @@ interface NotificationProps {
 
 export function LineageViewNotification({ notification, type }: NotificationProps) {
   const notificationKey = sessionStorageKeys.lineageNotificationDismissed;
-  const [visible, setVisible] = useState(true);
 
-  useEffect(() => {
+  // Initialize state from sessionStorage (lazy initialization)
+  const [visible, setVisible] = useState(() => {
     const dismissed = sessionStorage.getItem(notificationKey);
-    if (dismissed === "true") {
-      // eslint-disable-next-line react-hooks/set-state-in-effect
-      setVisible(false);
-    }
-  }, [notificationKey]);
+    return dismissed !== "true";
+  });
 
   if (notification === null || !visible) {
     return null;

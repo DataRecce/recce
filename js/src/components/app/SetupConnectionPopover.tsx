@@ -1,6 +1,6 @@
 import { RECCE_SUPPORT_CALENDAR_URL } from "@/constants/urls";
 import { Box, Link, Popover, Portal } from "@chakra-ui/react";
-import { useState, cloneElement, ReactElement, useRef, useCallback } from "react";
+import { useState, ReactElement, useRef, useCallback } from "react";
 
 interface SetupConnectionPopoverProps {
   children: ReactElement<{
@@ -34,11 +34,6 @@ export default function SetupConnectionPopover({ children, display }: SetupConne
     return children;
   }
 
-  // eslint-disable-next-line react-hooks/refs
-  const childWithHandlers = cloneElement(children, {
-    ref,
-  });
-
   return (
     <Popover.Root
       open={hovered}
@@ -51,8 +46,12 @@ export default function SetupConnectionPopover({ children, display }: SetupConne
       size="xs"
       autoFocus={false}>
       <Popover.Trigger asChild>
-        <Box onMouseEnter={handleMouseEnter} onMouseLeave={handleMouseLeave} display="contents">
-          {childWithHandlers}
+        <Box
+          ref={ref}
+          onMouseEnter={handleMouseEnter}
+          onMouseLeave={handleMouseLeave}
+          display="contents">
+          {children}
         </Box>
       </Popover.Trigger>
       <Portal>

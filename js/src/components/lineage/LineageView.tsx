@@ -1,28 +1,29 @@
 import {
-  LineageGraphNode,
-  NodeColumnSetMap,
+  isLineageGraphColumnNode,
+  isLineageGraphNode,
   layout,
+  LineageGraphColumnNode,
+  LineageGraphEdge,
+  LineageGraphNode,
+  LineageGraphNodes,
+  NodeColumnSetMap,
   selectDownstream,
   selectUpstream,
   toReactFlow,
-  LineageGraphColumnNode,
-  LineageGraphNodes,
-  LineageGraphEdge,
-  isLineageGraphNode,
-  isLineageGraphColumnNode,
 } from "./lineage";
 import {
   Box,
+  Button,
+  Center,
   Flex,
   Icon,
-  Text,
   Spinner,
-  Button,
-  VStack,
-  Center,
   StackSeparator,
+  Text,
+  VStack,
 } from "@chakra-ui/react";
 import React, {
+  forwardRef,
   Ref,
   RefObject,
   useCallback,
@@ -32,21 +33,19 @@ import React, {
   useMemo,
   useRef,
   useState,
-  forwardRef,
 } from "react";
 import {
-  ReactFlow,
-  Node,
-  useEdgesState,
-  useNodesState,
-  Controls,
-  MiniMap,
-  Panel,
   Background,
   ControlButton,
-  useReactFlow,
+  Controls,
   getNodesBounds,
-  NodeProps,
+  MiniMap,
+  Node,
+  Panel,
+  ReactFlow,
+  useEdgesState,
+  useNodesState,
+  useReactFlow,
 } from "@xyflow/react";
 import "@xyflow/react/dist/style.css";
 import { GraphNode } from "./GraphNode";
@@ -75,7 +74,7 @@ import { createSchemaDiffCheck } from "@/lib/api/schemacheck";
 import { useLocation } from "wouter";
 import { Check } from "@/lib/api/checks";
 import useValueDiffAlertDialog from "./useValueDiffAlertDialog";
-import { trackMultiNodesAction, trackCopyToClipboard } from "@/lib/api/track";
+import { trackCopyToClipboard, trackMultiNodesAction } from "@/lib/api/track";
 import { useRun } from "@/lib/hooks/useRun";
 import { GraphColumnNode } from "./GraphColumnNode";
 import { ColumnLevelLineageControl } from "./ColumnLevelLineageControl";
@@ -126,14 +125,13 @@ const nodeColor = (node: LineageGraphNode) => {
 };
 
 const useResizeObserver = (ref: RefObject<HTMLElement | null>, handler: () => void) => {
-  // eslint-disable-next-line react-hooks/refs
-  const target = ref.current;
   const size = useRef({
     width: 0,
     height: 0,
   });
 
   useEffect(() => {
+    const target = ref.current;
     const handleResize = (entries: ResizeObserverEntry[]) => {
       for (const entry of entries) {
         const newWidth = entry.contentRect.width;
@@ -165,13 +163,12 @@ const useResizeObserver = (ref: RefObject<HTMLElement | null>, handler: () => vo
         resizeObserver.unobserve(target);
       }
     };
-    // eslint-disable-next-line react-hooks/refs
-  }, [target, size, handler]);
+  }, [handler, ref]);
 };
 
 const useNavToCheck = () => {
   const [, setLocation] = useLocation();
-  const navToCheck = useCallback(
+  return useCallback(
     (check: Check) => {
       if (check.check_id) {
         setLocation(`/checks/${check.check_id}`);
@@ -179,7 +176,6 @@ const useNavToCheck = () => {
     },
     [setLocation],
   );
-  return navToCheck;
 };
 
 export function PrivateLineageView(
@@ -202,7 +198,7 @@ export function PrivateLineageView(
       try {
         return element.classList.contains(IGNORE_SCREENSHOT_CLASS);
       } catch {
-        if (element.className && typeof element.className === "string") {
+        if (element.className) {
           return element.className.includes(IGNORE_SCREENSHOT_CLASS);
         }
         return false;
@@ -238,9 +234,12 @@ export function PrivateLineageView(
   });
   const [nodeColumnSetMap, setNodeColumSetMap] = useState<NodeColumnSetMap>({});
 
-  const findNodeByName = (name: string) => {
-    return nodes.filter(isLineageGraphNode).find((n) => n.data.name === name);
-  };
+  const findNodeByName = useCallback(
+    (name: string) => {
+      return nodes.filter(isLineageGraphNode).find((n) => n.data.name === name);
+    },
+    [nodes],
+  );
 
   // Expose the function to the parent via the ref
   useImperativeHandle(ref, () => ({
@@ -248,7 +247,7 @@ export function PrivateLineageView(
   }));
 
   const isModelsChanged = useMemo(() => {
-    return lineageGraph && lineageGraph.modifiedSet.length > 0 ? true : false;
+    return !!(lineageGraph && lineageGraph.modifiedSet.length > 0);
   }, [lineageGraph]);
 
   /**
@@ -351,8 +350,7 @@ export function PrivateLineageView(
     }
 
     // Add columns in the highlighted models
-    const resultSet = new Set<string>(highlightedModels);
-    return resultSet;
+    return new Set<string>(highlightedModels);
   }, [
     lineageGraph,
     cll,
@@ -364,6 +362,10 @@ export function PrivateLineageView(
   ]);
 
   const lineageViewContextMenu = useLineageViewContextMenu();
+
+  const closeContextMenu = () => {
+    lineageViewContextMenu.closeContextMenu();
+  };
 
   useLayoutEffect(() => {
     const t = async () => {
@@ -438,7 +440,9 @@ export function PrivateLineageView(
     };
 
     void t();
-
+    // Intentionally only run when lineageGraph changes (initial load/refetch).
+    // viewOptions changes are handled separately by handleViewOptionsChanged.
+    // Other dependencies (setNodes, setEdges, actionGetCll) are stable.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [lineageGraph]);
 
@@ -567,7 +571,8 @@ export function PrivateLineageView(
     viewOptions?: LineageDiffViewOptions;
     fitView?: boolean;
   }) => {
-    const { viewOptions: newViewOptions = viewOptions, fitView } = options;
+    let { viewOptions: newViewOptions = viewOptions } = options;
+    const { fitView } = options;
 
     let selectedNodes: string[] | undefined = undefined;
 
@@ -590,7 +595,7 @@ export function PrivateLineageView(
           view_mode: newViewOptions.view_mode,
         });
         // focus to unfocus the model or column node
-        newViewOptions.column_level_lineage = undefined;
+        newViewOptions = { ...newViewOptions, column_level_lineage: undefined };
         selectedNodes = result.nodes;
       } catch (e) {
         if (e instanceof AxiosError) {
@@ -726,9 +731,11 @@ export function PrivateLineageView(
         onNodeViewClosed();
       }
     }
-
+    // handleViewOptionsChanged and onNodeClick are intentionally omitted to prevent
+    // unnecessary re-runs. These functions are called conditionally within the effect
+    // and don't need to trigger the effect when they change.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [run, viewOptions, isRunResultOpen, selectMode]);
+  }, [run, viewOptions, isRunResultOpen, selectMode, findNodeByName, focusedNode, interactive]);
 
   const selectParentNodes = (nodeId: string, degree = 1000) => {
     if (selectMode === "action_result" || lineageGraph === undefined) return;
@@ -764,10 +771,6 @@ export function PrivateLineageView(
 
     const downstream = selectDownstream(lineageGraph, [nodeId], degree);
     setSelectedNodeIds(union(selectedNodeIds, downstream));
-  };
-
-  const closeContextMenu = () => {
-    lineageViewContextMenu.closeContextMenu();
   };
 
   const onNodeContextMenu = (event: React.MouseEvent, node: LineageGraphNodes) => {

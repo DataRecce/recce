@@ -4,7 +4,7 @@ import { useRecceShareStateContext } from "@/lib/hooks/RecceShareStateContext";
 import { useClipBoardToast } from "@/lib/hooks/useClipBoardToast";
 import { TbCloudUpload } from "react-icons/tb";
 import { trackShareState } from "@/lib/api/track";
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import AuthModal from "@/components/AuthModal/AuthModal";
 import { useCopyToClipboard, useInterval } from "usehooks-ts";
 import { PiCheckCircle, PiCopy } from "react-icons/pi";
@@ -22,6 +22,16 @@ export function TopLevelShare() {
   const { shareUrl, isLoading, error, handleShareClick } = useRecceShareStateContext();
   const [showModal, setShowModal] = useState(false);
   const [messageIndex, setMessageIndex] = useState(0);
+  const [prevIsLoading, setPrevIsLoading] = useState(isLoading);
+
+  // Reset message index when loading starts (during render)
+  if (isLoading !== prevIsLoading) {
+    setPrevIsLoading(isLoading);
+    if (isLoading) {
+      // Loading just started, reset to 0
+      setMessageIndex(0);
+    }
+  }
 
   // Increment message index every 30 seconds while loading
   useInterval(
@@ -30,14 +40,6 @@ export function TopLevelShare() {
     },
     isLoading ? 30000 : null,
   );
-
-  // Reset message index when loading state changes
-  useEffect(() => {
-    if (!isLoading) {
-      // eslint-disable-next-line react-hooks/set-state-in-effect
-      setMessageIndex(0);
-    }
-  }, [isLoading]);
 
   const handleCopy = async () => {
     try {

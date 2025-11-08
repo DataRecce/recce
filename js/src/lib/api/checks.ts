@@ -1,5 +1,5 @@
 import { axiosClient } from "./axiosClient";
-import { Run, RunType } from "./types";
+import { Run, RunParamTypes, RunType } from "./types";
 import { useQuery } from "@tanstack/react-query";
 import { cacheKeys } from "./cacheKeys";
 import { getExperimentTrackingBreakingChangeEnabled } from "./track";
@@ -61,8 +61,10 @@ export function useChecks(enabled: boolean) {
   });
 }
 
-export async function getCheck(checkId: string): Promise<Check> {
-  const response = await axiosClient.get<never, AxiosResponse<Check>>(`/api/checks/${checkId}`);
+export async function getCheck(checkId: string): Promise<Check<RunParamTypes>> {
+  const response = await axiosClient.get<never, AxiosResponse<Check<RunParamTypes>>>(
+    `/api/checks/${checkId}`,
+  );
   return response.data;
 }
 

@@ -6,7 +6,7 @@ import { LineageGraphNode } from "@/components/lineage/lineage";
 
 export function extractColumns(node: LineageGraphNode) {
   function getColumns(nodeData: NodeData | undefined) {
-    return nodeData?.columns ? Object.values(nodeData.columns) : [];
+    return nodeData?.columns ? Object.values(nodeData.columns).filter((c) => c != null) : [];
   }
 
   const baseColumns = getColumns(node.data.data.base);
@@ -33,10 +33,6 @@ export function unionColumns(baseColumns: NodeColumnData[], currentColumns: Node
 
 const useModelColumns = (model: string | undefined) => {
   const { lineageGraph } = useLineageGraphContext();
-  const [columns, setColumns] = useState<NodeColumnData[]>([]);
-  const [primaryKey, setPrimaryKey] = useState<string>();
-  const [isLoading, setIsLoading] = useState<boolean>(true);
-  const [error, setError] = useState<Error | null>(null);
 
   const node = _.find(lineageGraph?.nodes, {
     data: {
@@ -47,6 +43,13 @@ const useModelColumns = (model: string | undefined) => {
   const nodeColumns = useMemo(() => {
     return node ? extractColumns(node) : [];
   }, [node]);
+
+  const [columns, setColumns] = useState<NodeColumnData[]>([]);
+  const [primaryKey, setPrimaryKey] = useState<string>();
+  const [isLoading, setIsLoading] = useState<boolean>(true);
+  const [error, setError] = useState<Error | null>(null);
+  const [prevNodeColumns, setPrevNodeColumns] = useState(nodeColumns);
+  const [prevNodeId, setPrevNodeId] = useState(node?.id);
 
   const nodePrimaryKey = node ? node.data.data.current?.primary_key : undefined;
 
@@ -70,22 +73,33 @@ const useModelColumns = (model: string | undefined) => {
     }
   }, [node]);
 
-  useEffect(() => {
+  // Adjust state during render when node changes
+  if (nodeColumns !== prevNodeColumns || node?.id !== prevNodeId) {
+    setPrevNodeColumns(nodeColumns);
+    setPrevNodeId(node?.id);
+
     if (nodeColumns.length > 0) {
-      // eslint-disable-next-line react-hooks/set-state-in-effect
       setColumns(nodeColumns);
       setPrimaryKey(nodePrimaryKey);
       setIsLoading(false);
     } else if (node?.id === undefined) {
       setColumns([]);
       setIsLoading(false);
-    } else {
+    }
+    // Note: fetchData case is handled separately in effect below
+  }
+
+  // Fetch data effect - only runs when we need to fetch
+  useEffect(() => {
+    if (nodeColumns.length === 0 && node?.id !== undefined) {
+      // fetchData() is a legitimate side effect, leaving
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       fetchData().catch((e: unknown) => {
         // error is already handled in fetchData()
       });
       setIsLoading(false);
     }
-  }, [fetchData, node?.id, nodeColumns, nodePrimaryKey]);
+  }, [fetchData, node?.id, nodeColumns]);
 
   return { columns, primaryKey, isLoading, error };
 };

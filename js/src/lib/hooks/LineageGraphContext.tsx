@@ -108,23 +108,35 @@ function useLineageWatcher() {
   const ref = useRef<{
     ws: WebSocket | undefined;
     status: LineageWatcherStatus;
+    artifactsUpdatedToastId: string | undefined;
   }>({
     ws: undefined,
     status: "pending",
+    artifactsUpdatedToastId: undefined,
   });
 
   const [status, setStatus] = useState<LineageWatcherStatus>("pending");
   const [envStatus, setEnvStatus] = useState<EnvWatcherStatus>(undefined);
-  ref.current.status = status;
+
+  // Update ref in useEffect to avoid updating during render
+  useEffect(() => {
+    ref.current.status = status;
+  }, [status]);
+
+  // Keep artifactsUpdatedToastId in sync with ref
+  useEffect(() => {
+    ref.current.artifactsUpdatedToastId = artifactsUpdatedToastId;
+  }, [artifactsUpdatedToastId]);
+
   const queryClient = useQueryClient();
 
-  const invalidateCaches = () => {
+  const invalidateCaches = useCallback(() => {
     void queryClient.invalidateQueries({ queryKey: cacheKeys.lineage() });
     void queryClient.invalidateQueries({ queryKey: cacheKeys.checks() });
     void queryClient.invalidateQueries({ queryKey: cacheKeys.runs() });
-  };
+  }, [queryClient]);
 
-  const connect = () => {
+  const connect = useCallback(() => {
     function httpUrlToWebSocketUrl(url: string): string {
       return url.replace(/(http)(s)?:\/\//, "ws$2://");
     }
@@ -151,7 +163,7 @@ function useLineageWatcher() {
           const [targetName, fileName] = srcPath.split("/").slice(-2);
           const name = path.parse(fileName).name;
           const eventId = `${targetName}-${name}-${eventType}`;
-          if (artifactsUpdatedToastId == null) {
+          if (ref.current.artifactsUpdatedToastId == null) {
             setArtifactsUpdatedToastId(
               toaster.create({
                 id: eventId,
@@ -167,7 +179,7 @@ function useLineageWatcher() {
           setEnvStatus("relaunch");
         } else {
           // Handle broadcast events
-          const { id, title, description, status, position, duration } = data.event;
+          const { id, title, description, status, duration } = data.event;
           setArtifactsUpdatedToastId(
             toaster.create({
               id: id || "broadcast",
@@ -196,7 +208,7 @@ function useLineageWatcher() {
 
       ref.current.ws = undefined;
     };
-  };
+  }, [invalidateCaches]);
 
   useEffect(() => {
     const refObj = ref.current;
@@ -206,8 +218,7 @@ function useLineageWatcher() {
         refObj.ws.close();
       }
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [connect]);
 
   return {
     connectionStatus: status,
@@ -233,8 +244,7 @@ export function LineageGraphContextProvider({ children }: LineageGraphProps) {
 
   const lineageGraph = useMemo(() => {
     const lineage = queryServerInfo.data?.lineage;
-    // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
-    if (!lineage?.base || !lineage.current) {
+    if (!lineage?.base) {
       return undefined;
     }
 
@@ -278,6 +288,7 @@ export function LineageGraphContextProvider({ children }: LineageGraphProps) {
   const { featureToggles, shareUrl } = useRecceInstanceContext();
   const { onClose } = useDisclosure();
   const [relaunchHintOpen, setRelaunchHintOpen] = useState<boolean>(false);
+  const [prevRelaunchCondition, setPrevRelaunchCondition] = useState<boolean>(false);
   const queryClient = useQueryClient();
 
   const isActionAvailable = useCallback(
@@ -291,20 +302,25 @@ export function LineageGraphContextProvider({ children }: LineageGraphProps) {
     [supportTasks],
   );
 
-  useEffect(() => {
-    if (isLoading) {
-      return;
-    }
+  // Calculate if modal should be open (during render)
+  const shouldShowRelaunch =
+    !isLoading &&
+    envStatus === "relaunch" &&
+    flags?.single_env_onboarding === true &&
+    flags.show_relaunch_hint;
 
-    if (envStatus === "relaunch" && flags?.single_env_onboarding && flags.show_relaunch_hint) {
-      // User has added a target-base folder
-      // eslint-disable-next-line react-hooks/set-state-in-effect
-      setRelaunchHintOpen(true);
+  // Adjust state during render when condition changes
+  if (shouldShowRelaunch !== prevRelaunchCondition) {
+    setPrevRelaunchCondition(shouldShowRelaunch);
+    setRelaunchHintOpen(shouldShowRelaunch);
+  }
+
+  // Track side effect only when modal opens (remains in effect)
+  useEffect(() => {
+    if (shouldShowRelaunch && relaunchHintOpen) {
       trackSingleEnvironment({ action: "target_base_added" });
-    } else {
-      setRelaunchHintOpen(false);
     }
-  }, [flags, envStatus, isLoading]);
+  }, [shouldShowRelaunch, relaunchHintOpen]);
 
   return (
     <>
