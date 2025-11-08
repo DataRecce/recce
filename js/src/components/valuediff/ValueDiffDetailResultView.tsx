@@ -12,6 +12,7 @@ import { ValueDiffDetailViewOptions } from "@/lib/api/valuediff";
 import { RunToolbar } from "../run/RunToolbar";
 import { DiffDisplayModeSwitch } from "../query/ToggleSwitch";
 import { ChangedOnlyCheckbox } from "../query/ChangedOnlyCheckbox";
+import { DataGridHandle } from "react-data-grid";
 
 export interface ValueDiffDetailResultViewProps
   extends RunResultViewProps<ValueDiffDetailViewOptions> {
@@ -20,8 +21,8 @@ export interface ValueDiffDetailResultViewProps
 
 const PrivateValueDiffDetailResultView = (
   { run, onAddToChecklist, viewOptions, onViewOptionsChanged }: ValueDiffDetailResultViewProps,
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  ref: Ref<any>,
+
+  ref: Ref<DataGridHandle>,
 ) => {
   if (!isValueDiffDetailRun(run)) {
     throw new Error("run type must be value_diff_detail");

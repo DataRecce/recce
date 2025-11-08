@@ -1,6 +1,12 @@
 import { forwardRef, Key, Ref, useMemo, useState } from "react";
 
-import { mergeColumns, SchemaDiffRow, toDataGrid, toSingleEnvDataGrid } from "./schema";
+import {
+  mergeColumns,
+  SchemaDiffRow,
+  SchemaRow,
+  toSchemaDataGrid,
+  toSingleEnvDataGrid,
+} from "./schema";
 import "react-data-grid/lib/styles.css";
 import { Flex, Alert } from "@chakra-ui/react";
 import { EmptyRowsRenderer, ScreenshotDataGrid } from "../data-grid/ScreenshotDataGrid";
@@ -87,7 +93,7 @@ function PrivateSingleEnvSchemaView({ current }: { current?: NodeData }, ref: Re
           rowKeyGetter={rowKeyGetter}
           selectedRows={selectedRows}
           onSelectedRowsChange={() => {}}
-          onCellClick={async (args: CellMouseArgs<SchemaDiffRow>) => {
+          onCellClick={async (args: CellMouseArgs<SchemaRow>) => {
             await handleViewCll(args.row.name);
           }}
           rowClass={() => {
@@ -112,9 +118,9 @@ export function PrivateSchemaView(
     const schemaDiff = mergeColumns(base?.columns, current?.columns);
     const resourceType = current?.resource_type ?? base?.resource_type;
     if (resourceType && ["model", "seed", "snapshot", "source"].includes(resourceType)) {
-      return toDataGrid(schemaDiff, current ?? base, cllRunningMap);
+      return toSchemaDataGrid(schemaDiff, current ?? base, cllRunningMap);
     } else {
-      return toDataGrid(schemaDiff);
+      return toSchemaDataGrid(schemaDiff);
     }
   }, [base, current, cllRunningMap]);
 

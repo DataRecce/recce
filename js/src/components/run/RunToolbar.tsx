@@ -3,7 +3,7 @@ import { RunResultViewProps } from "./types";
 import { ReactNode } from "react";
 import { PiWarning } from "react-icons/pi";
 
-interface DiffViewOptions {
+export interface DiffViewOptions {
   changed_only?: boolean;
 }
 

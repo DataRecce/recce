@@ -1,6 +1,6 @@
 import { Box, Center, Flex, Icon, IconButton, Menu, Portal, Spacer } from "@chakra-ui/react";
 
-import { ColumnOrColumnGroup } from "react-data-grid";
+import { ColumnOrColumnGroup, DataGridHandle } from "react-data-grid";
 import { ValueDiffParams, ValueDiffResult } from "@/lib/api/valuediff";
 import { EmptyRowsRenderer, ScreenshotDataGrid } from "../data-grid/ScreenshotDataGrid";
 import { RunResultViewProps } from "../run/types";
@@ -10,6 +10,7 @@ import { useRecceInstanceContext } from "@/lib/hooks/RecceInstanceContext";
 import { isValueDiffRun, RowObjectType } from "@/lib/api/types";
 import React, { forwardRef, Ref } from "react";
 import { PiDotsThreeVertical } from "react-icons/pi";
+import { dataFrameToRowObjects } from "@/utils/transforms";
 
 type ValueDiffResultViewProp = RunResultViewProps;
 
@@ -75,8 +76,7 @@ function ColumnNameCell({ params, column }: { params: ValueDiffParams; column: s
   );
 }
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-function _ValueDiffResultView({ run }: ValueDiffResultViewProp, ref: Ref<any>) {
+function _ValueDiffResultView({ run }: ValueDiffResultViewProp, ref: Ref<DataGridHandle>) {
   if (!isValueDiffRun(run)) {
     throw new Error("Run type must be value_diff");
   }
@@ -147,7 +147,7 @@ function _ValueDiffResultView({ run }: ValueDiffResultViewProp, ref: Ref<any>) {
           borderBlock: "1px solid lightgray",
         }}
         columns={columns}
-        rows={result.data.data}
+        rows={dataFrameToRowObjects(result.data)}
         renderers={{ noRowsFallback: <EmptyRowsRenderer /> }}
         defaultColumnOptions={{ resizable: true }}
         className="rdg-light"
