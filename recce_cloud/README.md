@@ -7,6 +7,7 @@ Lightweight command-line tool for uploading dbt artifacts to Recce Cloud in CI/C
 The Recce Cloud CLI (`recce-cloud`) is a standalone tool designed for CI/CD pipelines that need to upload dbt artifacts (manifest.json and catalog.json) to Recce Cloud without the full `recce` package dependencies.
 
 **Key Features:**
+
 - 🚀 Lightweight - minimal dependencies for fast CI/CD execution
 - 🤖 Auto-detection - automatically detects CI platform, repository, and PR/MR context
 - 🔄 Dual workflows - supports both auto-session creation and existing session uploads
@@ -65,6 +66,7 @@ The `recce-cloud upload` command supports two workflows:
 Automatically creates Recce Cloud sessions using platform-specific APIs. No session ID required.
 
 **Features:**
+
 - ✅ Auto-creates session with `touch-recce-session` API
 - ✅ Auto-detects PR/MR context and links session
 - ✅ Notifies upload completion
@@ -87,6 +89,7 @@ recce-cloud upload --cr 123 --type cr
 ```
 
 **Requirements:**
+
 - Running in GitHub Actions or GitLab CI environment
 - RECCE_CLOUD_API_TOKEN or CI-provided token (GITHUB_TOKEN/CI_JOB_TOKEN)
 - dbt artifacts in target directory
@@ -112,6 +115,7 @@ recce-cloud upload --session-id abc123 --target-path my-target
 ```
 
 **Requirements:**
+
 - Pre-created session ID (from Recce Cloud web app or API)
 - RECCE_CLOUD_API_TOKEN
 - dbt artifacts in target directory
@@ -124,32 +128,32 @@ Upload dbt artifacts to Recce Cloud session.
 
 **Options:**
 
-| Option | Type | Default | Description |
-|--------|------|---------|-------------|
-| `--target-path` | path | `target` | Path to dbt target directory |
-| `--session-id` | string | - | Session ID for generic workflow (optional) |
-| `--cr` | integer | - | Override PR/MR number |
-| `--type` | choice | - | Override session type: `cr`, `prod`, `dev` |
-| `--dry-run` | flag | false | Show what would be uploaded without uploading |
+| Option          | Type    | Default  | Description                                   |
+| --------------- | ------- | -------- | --------------------------------------------- |
+| `--target-path` | path    | `target` | Path to dbt target directory                  |
+| `--session-id`  | string  | -        | Session ID for generic workflow (optional)    |
+| `--cr`          | integer | -        | Override PR/MR number                         |
+| `--type`        | choice  | -        | Override session type: `cr`, `prod`, `dev`    |
+| `--dry-run`     | flag    | false    | Show what would be uploaded without uploading |
 
 **Environment Variables:**
 
-| Variable | Required | Description |
-|----------|----------|-------------|
-| `RECCE_CLOUD_API_TOKEN` | Recommended | Recce Cloud API token |
-| `RECCE_SESSION_ID` | Optional | Session ID for generic workflow |
-| `GITHUB_TOKEN` | Auto-detected | GitHub authentication (Actions) |
-| `CI_JOB_TOKEN` | Auto-detected | GitLab authentication (CI) |
+| Variable                | Required      | Description                     |
+| ----------------------- | ------------- | ------------------------------- |
+| `RECCE_CLOUD_API_TOKEN` | Recommended   | Recce Cloud API token           |
+| `RECCE_SESSION_ID`      | Optional      | Session ID for generic workflow |
+| `GITHUB_TOKEN`          | Auto-detected | GitHub authentication (Actions) |
+| `CI_JOB_TOKEN`          | Auto-detected | GitLab authentication (CI)      |
 
 **Exit Codes:**
 
-| Code | Description |
-|------|-------------|
-| 0 | Success |
-| 1 | Platform not supported (platform-specific workflow) |
-| 2 | Authentication error |
-| 3 | File validation error |
-| 4 | Upload error |
+| Code | Description                                         |
+| ---- | --------------------------------------------------- |
+| 0    | Success                                             |
+| 1    | Platform not supported (platform-specific workflow) |
+| 2    | Authentication error                                |
+| 3    | File validation error                               |
+| 4    | Upload error                                        |
 
 ### `recce-cloud version`
 
@@ -170,16 +174,19 @@ The CLI supports multiple authentication methods with the following priority:
 ### Getting API Tokens
 
 **Recce Cloud API Token:**
+
 1. Log in to [Recce Cloud](https://cloud.datarecce.io)
 2. Go to Settings → API Tokens
 3. Create a new token
 4. Add to CI/CD secrets as `RECCE_CLOUD_API_TOKEN`
 
 **GitHub Token:**
+
 - Automatically available as `${{ secrets.GITHUB_TOKEN }}` in Actions
 - No additional configuration needed
 
 **GitLab Token:**
+
 - Automatically available as `$CI_JOB_TOKEN` in GitLab CI
 - No additional configuration needed
 
@@ -189,17 +196,17 @@ The CLI automatically detects your CI environment:
 
 ### Detected Information
 
-| Information | GitHub Actions | GitLab CI |
-|-------------|----------------|-----------|
-| Platform | ✅ `github-actions` | ✅ `gitlab-ci` |
-| Repository | ✅ `owner/repo` | ✅ `group/project` |
-| PR/MR Number | ✅ From event payload | ✅ From `CI_MERGE_REQUEST_IID` |
-| PR/MR URL | ✅ Constructed | ✅ Constructed (self-hosted support) |
-| Commit SHA | ✅ `GITHUB_SHA` | ✅ `CI_COMMIT_SHA` |
-| Source Branch | ✅ `GITHUB_HEAD_REF` | ✅ `CI_MERGE_REQUEST_SOURCE_BRANCH_NAME` |
-| Base Branch | ✅ `GITHUB_BASE_REF` | ✅ `CI_MERGE_REQUEST_TARGET_BRANCH_NAME` |
-| Session Type | ✅ Auto-determined | ✅ Auto-determined |
-| Access Token | ✅ `GITHUB_TOKEN` | ✅ `CI_JOB_TOKEN` |
+| Information   | GitHub Actions        | GitLab CI                                |
+| ------------- | --------------------- | ---------------------------------------- |
+| Platform      | ✅ `github-actions`   | ✅ `gitlab-ci`                           |
+| Repository    | ✅ `owner/repo`       | ✅ `group/project`                       |
+| PR/MR Number  | ✅ From event payload | ✅ From `CI_MERGE_REQUEST_IID`           |
+| PR/MR URL     | ✅ Constructed        | ✅ Constructed (self-hosted support)     |
+| Commit SHA    | ✅ `GITHUB_SHA`       | ✅ `CI_COMMIT_SHA`                       |
+| Source Branch | ✅ `GITHUB_HEAD_REF`  | ✅ `CI_MERGE_REQUEST_SOURCE_BRANCH_NAME` |
+| Base Branch   | ✅ `GITHUB_BASE_REF`  | ✅ `CI_MERGE_REQUEST_TARGET_BRANCH_NAME` |
+| Session Type  | ✅ Auto-determined    | ✅ Auto-determined                       |
+| Access Token  | ✅ `GITHUB_TOKEN`     | ✅ `CI_JOB_TOKEN`                        |
 
 ### Manual Overrides
 
@@ -239,7 +246,7 @@ jobs:
       - name: Setup Python
         uses: actions/setup-python@v4
         with:
-          python-version: '3.11'
+          python-version: "3.11"
 
       - name: Install dependencies
         run: |
@@ -395,16 +402,19 @@ recce-cloud upload
 The CLI uses platform-specific API endpoints for auto-session creation:
 
 **GitHub Actions:**
+
 - `POST /api/v2/github/{repository}/touch-recce-session`
 - `POST /api/v2/github/{repository}/upload-completed`
 
 **GitLab CI:**
+
 - `POST /api/v2/gitlab/{project_path}/touch-recce-session`
 - `POST /api/v2/gitlab/{project_path}/upload-completed`
 
 ### Upload Process
 
 **Platform-Specific Workflow:**
+
 1. Detect CI platform and extract context
 2. Validate dbt artifacts
 3. Extract adapter type from manifest
@@ -415,6 +425,7 @@ The CLI uses platform-specific API endpoints for auto-session creation:
 8. Call `upload-completed` (notifies Recce Cloud)
 
 **Generic Workflow:**
+
 1. Detect CI platform (optional)
 2. Validate dbt artifacts
 3. Extract adapter type from manifest
@@ -458,10 +469,10 @@ make test
 
 ## Support
 
-- **Documentation:** [docs.datarecce.io](https://docs.datarecce.io)
+- **Documentation:** [docs.reccehq.com](https://docs.reccehq.com)
 - **Issues:** [GitHub Issues](https://github.com/DataRecce/recce/issues)
 - **Community:** [Recce Slack](https://getdbt.slack.com/archives/C05C28V7CPP)
-- **Email:** support@datarecce.io
+- **Email:** <support@reccehq.com>
 
 ## License
 
