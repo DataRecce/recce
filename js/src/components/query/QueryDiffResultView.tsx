@@ -177,7 +177,6 @@ const PrivateQueryDiffResultView = (
 
 const PrivateQueryDiffJoinResultView = (
   { run, viewOptions, onViewOptionsChanged, baseTitle, currentTitle }: QueryDiffResultViewProps,
-
   ref: Ref<DataGridHandle>,
 ) => {
   if (run.type !== "query_diff") {
@@ -327,9 +326,9 @@ export const QueryDiffResultView = forwardRef(
       baseTitle = "Original";
       currentTitle = "Editor";
     }
-    if (props.run.type === "query_diff" && props.run.result?.diff != null) {
+    if (props.run.result && "diff" in props.run.result && props.run.result.diff != null) {
       return (
-        <QueryDiffResultViewWithRef
+        <QueryDiffJoinResultViewWithRef
           {...props}
           ref={ref}
           baseTitle={baseTitle}
@@ -338,7 +337,7 @@ export const QueryDiffResultView = forwardRef(
       );
     } else {
       return (
-        <QueryDiffJoinResultViewWithRef
+        <QueryDiffResultViewWithRef
           {...props}
           ref={ref}
           baseTitle={baseTitle}

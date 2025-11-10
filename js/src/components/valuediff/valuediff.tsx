@@ -7,7 +7,6 @@ import {
   ColumnType,
   ColumnRenderMode,
   DataFrame,
-  RowData,
   RowObjectType,
   RowDataTypes,
 } from "@/lib/api/types";
@@ -15,11 +14,13 @@ import { mergeKeysWithStatus } from "@/lib/mergeKeys";
 import { defaultRenderCell, inlineRenderCell, QueryDataDiffGridOptions } from "../query/querydiff";
 import React from "react";
 import { columnPrecisionSelectOptions } from "./shared";
+import { dataFrameToRowObjects } from "@/utils/transforms";
 
 function _getColumnMap(df: DataFrame) {
   const result: Record<
     string,
     {
+      key: string;
       index: number;
       status?: string;
       colType: ColumnType;
@@ -36,6 +37,7 @@ function _getColumnMap(df: DataFrame) {
           : col.name;
 
     result[columnName] = {
+      key: col.key,
       index,
       colType: col.type,
     };
@@ -44,34 +46,35 @@ function _getColumnMap(df: DataFrame) {
   return result;
 }
 
-function _getPrimaryKeyIndexes(columns: DataFrame["columns"], primaryKeys: string[]) {
-  const indexes: number[] = [];
+function _getPrimaryKeyKeys(columns: DataFrame["columns"], primaryKeys: string[]) {
+  const keys: string[] = [];
   for (const key of primaryKeys) {
     const index = columns.findIndex((col) => col.name === key);
     if (index < 0) {
       throw new Error(`Column ${key} not found`);
     }
 
-    indexes.push(index);
+    keys.push(key);
   }
-  return indexes;
+  return keys;
 }
 
 function _getPrimaryKeyValue(
   columns: DataFrame["columns"],
-  primaryIndexes: number[],
-  row: DataFrame["data"][number],
+  primaryKeys: string[],
+  row: RowObjectType,
 ): string {
   const result: Record<string, RowDataTypes> = {};
 
-  if (primaryIndexes.length === 0) {
-    const row_data = row as unknown as RowObjectType;
-
-    return JSON.stringify({ _index: row_data._index });
+  if (primaryKeys.length === 0) {
+    return JSON.stringify({ _index: row._index });
   } else {
-    for (const index of primaryIndexes) {
-      const col = columns[index];
-      result[col.name] = row[index];
+    for (const key of primaryKeys) {
+      const colOrNone = columns.find((c) => c.key === key);
+      if (colOrNone == null) {
+        throw new Error(`Primary Column ${key} not found`);
+      }
+      result[colOrNone.key] = row[key];
     }
     return JSON.stringify(result);
   }
@@ -169,6 +172,7 @@ export function toValueDiffGrid(
   const changedOnly = options?.changedOnly ?? false;
   const displayMode = options?.displayMode ?? "inline";
   const columnsRenderMode = options?.columnsRenderMode ?? {};
+  const transformedData = dataFrameToRowObjects(df);
 
   const columns: (ColumnOrColumnGroup<RowObjectType> & {
     columnType?: ColumnType;
@@ -182,17 +186,17 @@ export function toValueDiffGrid(
   }
 
   // merge row
-  const baseMap: Record<string, RowData | undefined> = {};
-  const currentMap: Record<string, RowData | undefined> = {};
+  const baseMap: Record<string, RowObjectType | undefined> = {};
+  const currentMap: Record<string, RowObjectType | undefined> = {};
   if (primaryKeys.length === 0) {
     throw new Error("Primary keys are required");
   }
 
-  const primaryIndexes = _getPrimaryKeyIndexes(df.columns, primaryKeys);
-  const inBaseIndex = columnMap.IN_A.index;
-  const inCurrentIndex = columnMap.IN_B.index;
+  const primaryIndexes = _getPrimaryKeyKeys(df.columns, primaryKeys);
+  const inBaseIndex = columnMap.IN_A.key;
+  const inCurrentIndex = columnMap.IN_B.key;
 
-  df.data.forEach((row) => {
+  transformedData.forEach((row) => {
     const key = _getPrimaryKeyValue(df.columns, primaryIndexes, row);
     if (row[inBaseIndex]) {
       baseMap[key] = row;
@@ -217,19 +221,19 @@ export function toValueDiffGrid(
 
     if (baseRow) {
       df.columns.forEach((col, index) => {
-        if (primaryKeys.includes(col.name)) {
+        if (primaryKeys.includes(col.key)) {
           return;
         }
-        row[`base__${col.name}`] = baseRow[index];
+        row[`base__${col.key}`] = baseRow[index];
       });
     }
 
     if (currentRow) {
       df.columns.forEach((col, index) => {
-        if (primaryKeys.includes(col.name)) {
+        if (primaryKeys.includes(col.key)) {
           return;
         }
-        row[`current__${col.name}`] = currentRow[index];
+        row[`current__${col.key}`] = currentRow[index];
       });
     }
 

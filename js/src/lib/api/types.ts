@@ -26,6 +26,7 @@ export type ColumnRenderMode = "raw" | "percent" | 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7
 
 export interface DataFrame {
   columns: {
+    key: string;
     name: string;
     type: ColumnType;
   }[];

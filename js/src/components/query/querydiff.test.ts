@@ -6,14 +6,17 @@ test("query diff", () => {
     columns: [
       {
         name: "id",
+        key: "id",
         type: "integer",
       },
       {
         name: "name",
+        key: "name",
         type: "text",
       },
       {
         name: "value",
+        key: "value",
         type: "integer",
       },
     ],
@@ -28,14 +31,17 @@ test("query diff", () => {
     columns: [
       {
         name: "id",
+        key: "id",
         type: "integer",
       },
       {
         name: "name",
+        key: "name",
         type: "text",
       },
       {
         name: "value",
+        key: "value",
         type: "integer",
       },
     ],
@@ -115,14 +121,17 @@ test("query diff changed only", () => {
     columns: [
       {
         name: "status",
+        key: "status",
         type: "text",
       },
       {
         name: "c",
+        key: "c",
         type: "integer",
       },
       {
         name: "x",
+        key: "x",
         type: "integer",
       },
     ],
@@ -136,14 +145,17 @@ test("query diff changed only", () => {
     columns: [
       {
         name: "status",
+        key: "status",
         type: "text",
       },
       {
         name: "c",
+        key: "c",
         type: "integer",
       },
       {
         name: "x",
+        key: "x",
         type: "integer",
       },
     ],
@@ -175,10 +187,12 @@ test("query diff changed only: show all columns if there is only removed records
     columns: [
       {
         name: "status",
+        key: "status",
         type: "text",
       },
       {
         name: "c",
+        key: "c",
         type: "integer",
       },
     ],
@@ -193,10 +207,12 @@ test("query diff changed only: show all columns if there is only removed records
     columns: [
       {
         name: "status",
+        key: "status",
         type: "text",
       },
       {
         name: "c",
+        key: "c",
         type: "integer",
       },
     ],
