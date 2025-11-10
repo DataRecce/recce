@@ -1,7 +1,8 @@
 import { cacheKeys } from "@/lib/api/cacheKeys";
 import { useQueryClient } from "@tanstack/react-query";
 import { RunView } from "./RunView";
-import { findByRunType } from "./registry";
+
+import { findByRunType, RefTypes, RegistryEntry, runTypeHasRef, ViewOptionTypes } from "./registry";
 import { useRecceActionContext } from "@/lib/hooks/RecceActionContext";
 import { useRun } from "@/lib/hooks/useRun";
 import {
@@ -185,12 +186,15 @@ export const PrivateLoadableRunView = ({
   const { featureToggles } = useRecceInstanceContext();
   const { runAction } = useRecceActionContext();
   const { error, run, onCancel, isRunning } = useRun(runId);
-  const [viewOptions, setViewOptions] = useState<Record<string, unknown>>();
+  const [viewOptions, setViewOptions] = useState<ViewOptionTypes>();
   const [tabValue, setTabValue] = useState<TabValueItems>("result");
   const disableAddToChecklist = isSingleEnvironment;
   const showSingleEnvironmentSetupNotification = isSingleEnvironment;
 
-  const RunResultView = run?.type ? findByRunType(run.type).RunResultView : undefined;
+  let RunResultView: RegistryEntry["RunResultView"] | undefined;
+  if (run && runTypeHasRef(run.type)) {
+    RunResultView = findByRunType(run.type).RunResultView as RegistryEntry["RunResultView"];
+  }
 
   const handleRerun = useCallback(() => {
     if (run) {
@@ -268,7 +272,7 @@ export const PrivateLoadableRunView = ({
       </Tabs.Root>
       {tabValue === "result" && (
         <RunView
-          ref={ref as unknown as Ref<HTMLDivElement>}
+          ref={ref as unknown as Ref<RefTypes>}
           error={error}
           run={run}
           onCancel={onCancel}

@@ -15,14 +15,29 @@ import { RowCountDiffResultView, RowCountResultView } from "../rowcount/RowCount
 import { TopKDiffForm } from "../top-k/TopKDiffForm";
 import { TopKDiffResultView } from "../top-k/TopKDiffResultView";
 import { ValueDiffDetailResultView } from "../valuediff/ValueDiffDetailResultView";
-import { ValueDiffForm } from "../valuediff/ValueDiffForm";
+import { ValueDiffForm, ValueDiffFormParams } from "../valuediff/ValueDiffForm";
 import { ValueDiffResultView } from "../valuediff/ValueDiffResultView";
 import { RunFormProps, RunResultViewProps } from "./types";
 import { IconType } from "react-icons";
 import { LuChartBarBig } from "react-icons/lu";
 import { MdFormatListNumberedRtl, MdSchema } from "react-icons/md";
-import { ProfileDiffForm } from "../profile/ProfileDiffForm";
-import { ComponentType, ForwardRefExoticComponent, RefAttributes } from "react";
+import { ProfileDiffForm, ProfileDiffFormParams } from "../profile/ProfileDiffForm";
+import React, { ComponentType, ForwardRefExoticComponent, RefAttributes } from "react";
+import { DataGridHandle } from "react-data-grid";
+import { HistogramDiffParams, ProfileDiffViewOptions, TopKDiffParams } from "@/lib/api/profile";
+import { LineageDiffViewOptions } from "@/lib/api/lineagecheck";
+import { DiffViewOptions } from "@/components/run/RunToolbar";
+import { QueryDiffViewOptions, QueryViewOptions } from "@/lib/api/adhocQuery";
+import { ValueDiffDetailViewOptions } from "@/lib/api/valuediff";
+import { AxiosQueryParams } from "@/lib/api/types";
+
+export type ViewOptionTypes =
+  | LineageDiffViewOptions
+  | DiffViewOptions
+  | QueryViewOptions
+  | QueryDiffViewOptions
+  | ProfileDiffViewOptions
+  | ValueDiffDetailViewOptions;
 
 export type RunType =
   | "simple"
@@ -41,15 +56,55 @@ export type RunType =
   | "histogram_diff"
   | "sandbox";
 
-interface RegistryEntry<PT = unknown, VO = unknown> {
+export type RefTypes = React.Ref<DataGridHandle> | React.Ref<HTMLDivElement>;
+export type RunFormParamTypes =
+  | ProfileDiffFormParams
+  | ValueDiffFormParams
+  | TopKDiffParams
+  | HistogramDiffParams
+  | AxiosQueryParams;
+
+export interface RegistryEntry<PT = RefTypes, VO = ViewOptionTypes> {
   title: string;
   icon: IconType;
   RunResultView?: ForwardRefExoticComponent<RunResultViewProps<VO> & RefAttributes<PT>>;
-  RunForm?: ComponentType<RunFormProps<PT>>;
+  RunForm?: ComponentType<RunFormProps<RunFormParamTypes>>;
 }
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-type RunRegistry = Record<RunType, RegistryEntry<any, any>>;
+interface RunRegistry {
+  query: RegistryEntry<DataGridHandle, QueryViewOptions>;
+  query_base: RegistryEntry<DataGridHandle, QueryViewOptions>;
+  query_diff: RegistryEntry<DataGridHandle, QueryDiffViewOptions>;
+  row_count: RegistryEntry<DataGridHandle>;
+  row_count_diff: RegistryEntry<DataGridHandle>;
+  profile: RegistryEntry<DataGridHandle, ProfileDiffViewOptions>;
+  profile_diff: RegistryEntry<DataGridHandle, ProfileDiffViewOptions>;
+  value_diff: RegistryEntry<DataGridHandle>;
+  value_diff_detail: RegistryEntry<DataGridHandle, ValueDiffDetailViewOptions>;
+  top_k_diff: RegistryEntry<HTMLDivElement>;
+  histogram_diff: RegistryEntry<HTMLDivElement>;
+  lineage_diff: RegistryEntry<never>; // No RunResultView
+  schema_diff: RegistryEntry<never>; // No RunResultView
+  sandbox: RegistryEntry<never>; // No RunResultView
+  simple: RegistryEntry<never>; // No RunResultView
+}
+
+export function runTypeHasRef(runType: RunType) {
+  const typeHasRef = [
+    "query",
+    "query_base",
+    "query_diff",
+    "row_count",
+    "row_count_diff",
+    "profile",
+    "profile_diff",
+    "value_diff",
+    "value_diff_detail",
+    "top_k_diff",
+    "histogram_diff",
+  ];
+  return typeHasRef.includes(runType);
+}
 
 const registry: RunRegistry = {
   lineage_diff: {
@@ -133,7 +188,6 @@ const registry: RunRegistry = {
   },
 };
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-export const findByRunType = (runType: RunType): RegistryEntry<any, any> => {
+export const findByRunType = <T extends RunType>(runType: T): RunRegistry[T] => {
   return registry[runType];
 };

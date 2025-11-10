@@ -1,4 +1,5 @@
 import React, {
+  ComponentType,
   createContext,
   Dispatch,
   SetStateAction,
@@ -14,7 +15,12 @@ import { useDisclosure } from "@chakra-ui/react";
 import { useLocation } from "wouter";
 
 import { searchRuns, submitRun, SubmitRunTrackProps } from "../api/runs";
-import { findByRunType, RunType } from "@/components/run/registry";
+import {
+  findByRunType,
+  RegistryEntry,
+  RunFormParamTypes,
+  RunType,
+} from "@/components/run/registry";
 import { RunFormProps } from "@/components/run/types";
 import { useQueryClient } from "@tanstack/react-query";
 import { cacheKeys } from "../api/cacheKeys";
@@ -67,10 +73,10 @@ interface RunActionInternal {
   session: string;
   title: string;
   type: RunType;
-  params?: AxiosQueryParams;
+  params?: RunFormParamTypes;
   lastRun?: Run;
   options?: RecceActionOptions;
-  RunForm?: React.ComponentType<RunFormProps<RunParamTypes>>;
+  RunForm?: ComponentType<RunFormProps<RunFormParamTypes>>;
 }
 
 export function RecceActionContextProvider({ children }: RecceActionContextProviderProps) {
@@ -120,8 +126,9 @@ export function RecceActionContextProvider({ children }: RecceActionContextProvi
           }
         }
 
-        const entry = findByRunType(type);
-        const { title, RunResultView, RunForm } = entry;
+        const run = findByRunType(type);
+        const RunResultView = run.RunResultView as RegistryEntry["RunResultView"] | undefined;
+        const { title, RunForm } = run;
         if (RunResultView === undefined) {
           throw new Error(`Run type ${type} does not have a result view`);
         }

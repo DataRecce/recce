@@ -4,7 +4,7 @@ import useModelColumns from "@/lib/hooks/useModelColumns";
 import { Select } from "chakra-react-select";
 import { Box, Checkbox, Field, Input, VStack } from "@chakra-ui/react";
 
-interface ProfileDiffFormParams {
+export interface ProfileDiffFormParams {
   model: string;
   primary_key?: string | (string | undefined)[];
   columns?: string[];
@@ -26,7 +26,7 @@ export function ProfileDiffForm({
   const { columns, isLoading, error } = useModelColumns(params.model);
 
   useEffect(() => {
-    setIsReadyToExecute(model ? true : false);
+    setIsReadyToExecute(!!model);
   }, [model, setIsReadyToExecute]);
 
   const columnNames = columns.map((c) => c.name);
