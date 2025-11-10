@@ -8,6 +8,9 @@ interacting with Recce's data validation capabilities.
 import asyncio
 import json
 import logging
+import os
+import time
+from datetime import datetime
 from typing import Any, Dict, List, Optional
 
 from mcp.server import Server
@@ -23,13 +26,86 @@ from recce.tasks.rowcount import RowCountDiffTask
 logger = logging.getLogger(__name__)
 
 
+class MCPLogger:
+    """JSON logger for MCP server request/response logging"""
+
+    def __init__(self, debug: bool = False, log_file: str = "logs/recce-mcp.json"):
+        self.debug = debug
+        self.log_file = log_file
+
+        if self.debug:
+            # Create logs directory if it doesn't exist
+            log_dir = os.path.dirname(log_file)
+            if log_dir:
+                os.makedirs(log_dir, exist_ok=True)
+
+            # Overwrite log file on initialization
+            try:
+                with open(log_file, "w") as f:
+                    f.write("")  # Clear existing content
+            except Exception as e:
+                logger.warning(f"Failed to initialize log file {log_file}: {e}")
+
+    def _write_log(self, log_entry: Dict[str, Any]) -> None:
+        """Write a log entry to the JSON file"""
+        if not self.debug:
+            return
+
+        try:
+            with open(self.log_file, "a") as f:
+                f.write(json.dumps(log_entry) + "\n")
+        except Exception as e:
+            logger.warning(f"Failed to write to log file {self.log_file}: {e}")
+
+    def log_list_tools(self, tools: List[Tool]) -> None:
+        """Log a list_tools call"""
+        tool_names = [tool.name for tool in tools]
+        log_entry = {
+            "timestamp": datetime.utcnow().isoformat() + "Z",
+            "type": "list_tools",
+            "tools": tool_names,
+        }
+        self._write_log(log_entry)
+
+    def log_tool_call(
+        self,
+        tool_name: str,
+        arguments: Dict[str, Any],
+        response: Dict[str, Any],
+        duration_ms: float,
+        error: Optional[str] = None,
+    ) -> None:
+        """Log a tool call with request and response"""
+        log_entry = {
+            "timestamp": datetime.utcnow().isoformat() + "Z",
+            "type": "call_tool",
+            "tool": tool_name,
+            "request": arguments,
+            "duration_ms": round(duration_ms, 2),
+        }
+
+        if error:
+            log_entry["error"] = error
+        else:
+            log_entry["response"] = response
+
+        self._write_log(log_entry)
+
+
 class RecceMCPServer:
     """MCP Server for Recce data validation tools"""
 
-    def __init__(self, context: RecceContext, mode: Optional[RecceServerMode] = None):
+    def __init__(
+        self,
+        context: RecceContext,
+        mode: Optional[RecceServerMode] = None,
+        debug: bool = False,
+        log_file: str = "logs/recce-mcp.json",
+    ):
         self.context = context
         self.mode = mode or RecceServerMode.server
         self.server = Server("recce")
+        self.mcp_logger = MCPLogger(debug=debug, log_file=log_file)
         self._setup_handlers()
 
     def _setup_handlers(self):
@@ -165,11 +241,15 @@ class RecceMCPServer:
                     ]
                 )
 
+            self.mcp_logger.log_list_tools(tools)
+
             return tools
 
         @self.server.call_tool()
         async def call_tool(name: str, arguments: Dict[str, Any]) -> List[TextContent]:
             """Handle tool calls"""
+            start_time = time.perf_counter()
+
             try:
                 # Check if tool is blocked in non-server mode
                 blocked_tools_in_non_server = {"row_count_diff", "query", "query_diff", "profile_diff"}
@@ -192,8 +272,13 @@ class RecceMCPServer:
                 else:
                     raise ValueError(f"Unknown tool: {name}")
 
+                duration_ms = (time.perf_counter() - start_time) * 1000
+                self.mcp_logger.log_tool_call(name, arguments, result, duration_ms)
+
                 return [TextContent(type="text", text=json.dumps(result, indent=2))]
             except Exception as e:
+                duration_ms = (time.perf_counter() - start_time) * 1000
+                self.mcp_logger.log_tool_call(name, arguments, {}, duration_ms, error=str(e))
                 logger.exception(f"Error executing tool {name}")
                 return [TextContent(type="text", text=json.dumps({"error": str(e)}, indent=2))]
 
@@ -287,6 +372,7 @@ async def run_mcp_server(**kwargs):
     Args:
         **kwargs: Arguments for loading RecceContext (dbt options, etc.)
                Optionally includes 'mode' for server mode (server, preview, read-only)
+               Optionally includes 'debug' flag for enabling MCP logging
     """
     # Setup logging
     logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s")
@@ -304,6 +390,9 @@ async def run_mcp_server(**kwargs):
         except ValueError:
             logger.warning(f"Invalid mode '{mode_str}', using default server mode")
 
-    # Create and run server
-    server = RecceMCPServer(context, mode=mode)
+    # Extract debug flag from kwargs
+    debug = kwargs.get("debug", False)
+
+    # Create and run server with debug logging enabled if requested
+    server = RecceMCPServer(context, mode=mode, debug=debug)
     await server.run()
