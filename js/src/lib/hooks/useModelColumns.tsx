@@ -48,7 +48,7 @@ const useModelColumns = (model: string | undefined) => {
   const [primaryKey, setPrimaryKey] = useState<string>();
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [error, setError] = useState<Error | null>(null);
-  const [prevNodeColumns, setPrevNodeColumns] = useState(nodeColumns);
+  const [prevNodeColumns, setPrevNodeColumns] = useState<NodeColumnData[]>([]);
   const [prevNodeId, setPrevNodeId] = useState(node?.id);
 
   const nodePrimaryKey = node ? node.data.data.current?.primary_key : undefined;
@@ -96,6 +96,7 @@ const useModelColumns = (model: string | undefined) => {
       // eslint-disable-next-line react-hooks/set-state-in-effect
       fetchData().catch((e: unknown) => {
         // error is already handled in fetchData()
+        console.error(e);
       });
       setIsLoading(false);
     }

@@ -5,8 +5,9 @@ import { ColumnOrColumnGroup } from "react-data-grid";
 import "./style.css";
 import { NodeColumnData, NodeData } from "@/lib/api/info";
 import { ColumnNameCell } from "./ColumnNameCell";
+import { RowObjectType } from "@/lib/api/types";
 
-export interface SchemaDiffRow {
+export interface SchemaDiffRow extends RowObjectType {
   name: string;
   reordered?: boolean;
   currentIndex?: number;
@@ -17,7 +18,7 @@ export interface SchemaDiffRow {
 
 type SchemaDiff = Record<string, SchemaDiffRow>;
 
-interface SchemaRow {
+export interface SchemaRow extends RowObjectType {
   name: string;
   index: number;
   type?: string;
@@ -34,6 +35,7 @@ export function mergeColumns(
     result[name] = {
       name,
       reordered: status === "reordered",
+      __status: undefined,
     };
   });
 
@@ -57,7 +59,7 @@ export function mergeColumns(
   return result;
 }
 
-export function toDataGrid(
+export function toSchemaDataGrid(
   schemaDiff: SchemaDiff,
   node?: NodeData,
   cllRunningMap?: Map<string, boolean>,
@@ -152,6 +154,7 @@ export function toSingleEnvDataGrid(
     name,
     index: index + 1,
     type: column.type,
+    __status: undefined,
   }));
 
   const columns: ColumnOrColumnGroup<SchemaRow>[] = [

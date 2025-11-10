@@ -2,36 +2,31 @@ import { Center, Flex } from "@chakra-ui/react";
 import { EmptyRowsRenderer, ScreenshotDataGrid } from "../data-grid/ScreenshotDataGrid";
 
 import { RunResultViewProps } from "../run/types";
-import {
-  RowCountDiffParams,
-  RowCountDiffResult,
-  RowCountParams,
-  RowCountResult,
-} from "@/lib/api/rowcount";
 import { deltaPercentageString } from "./delta";
 import { isNumber } from "lodash";
 import { forwardRef, Ref } from "react";
-import { isRowCountDiffRun, isRowCountRun } from "@/lib/api/types";
+import { isRowCountDiffRun, isRowCountRun, RowObjectType } from "@/lib/api/types";
+import { DataGridHandle } from "react-data-grid";
 
 type RowCountDiffResultViewProp = RunResultViewProps;
 
-interface RowCountDiffRow {
+interface RowCountDiffRow extends RowObjectType {
   name: string;
   base: number | string;
   current: number | string;
 }
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-function _RowCountDiffResultView({ run }: RowCountDiffResultViewProp, ref: Ref<any>) {
+function _RowCountDiffResultView({ run }: RowCountDiffResultViewProp, ref: Ref<DataGridHandle>) {
   if (!isRowCountDiffRun(run)) {
     throw new Error("Run type must be row_count_diff");
   }
-  function columnCellClass(row: RowCountDiffRow) {
-    if (row.base === row.current) {
+  function columnCellClass(row: RowObjectType) {
+    const typedRow = row as unknown as RowCountDiffRow;
+    if (typedRow.base === typedRow.current) {
       return "column-body-normal";
-    } else if (row.base < row.current || row.base === "N/A") {
+    } else if (typedRow.base < typedRow.current || typedRow.base === "N/A") {
       return "column-body-added";
-    } else if (row.base > row.current || row.current === "N/A") {
+    } else if (typedRow.base > typedRow.current || typedRow.current === "N/A") {
       return "column-body-removed";
     }
     return "column-body-normal";
@@ -69,6 +64,7 @@ function _RowCountDiffResultView({ run }: RowCountDiffResultViewProp, ref: Ref<a
       base: base ?? "N/A",
       current: current ?? "N/A",
       delta: delta,
+      __status: undefined,
     };
   });
 
@@ -107,13 +103,12 @@ function _RowCountDiffResultView({ run }: RowCountDiffResultViewProp, ref: Ref<a
 
 type RowCountResultViewProp = RunResultViewProps;
 
-interface RowCountRow {
+interface RowCountRow extends RowObjectType {
   name: string;
   current: number | string;
 }
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-function _RowCountResultView({ run }: RowCountResultViewProp, ref: Ref<any>) {
+function _RowCountResultView({ run }: RowCountResultViewProp, ref: Ref<DataGridHandle>) {
   if (!isRowCountRun(run)) {
     throw new Error("Run type must be row_count");
   }
@@ -131,6 +126,7 @@ function _RowCountResultView({ run }: RowCountResultViewProp, ref: Ref<any>) {
     return {
       name: key,
       current: current ?? "N/A",
+      __status: undefined,
     };
   });
 

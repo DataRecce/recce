@@ -1,5 +1,5 @@
 import "react-data-grid/lib/styles.css";
-import { ColumnOrColumnGroup } from "react-data-grid";
+import { ColumnOrColumnGroup, DataGridHandle } from "react-data-grid";
 import { QueryViewOptions } from "@/lib/api/adhocQuery";
 import {
   Box,
@@ -28,6 +28,7 @@ import { RunResultViewProps } from "../run/types";
 import _ from "lodash";
 import { columnPrecisionSelectOptions } from "@/components/valuediff/shared";
 import { PiDotsThreeVertical, PiWarning } from "react-icons/pi";
+import { dataFrameToRowObjects } from "@/utils/transforms";
 
 interface QueryResultViewProp extends RunResultViewProps<QueryViewOptions> {
   onAddToChecklist?: (run: Run) => void;
@@ -203,18 +204,12 @@ export function toDataGrid(result: DataFrame, options: QueryDataGridOptions) {
     columns.push(toColumn(index, name, columnType, columnsRenderMode[name]));
   });
 
-  result.data.forEach((row, index) => {
-    const row_data = row as unknown as RowObjectType;
-    row_data._index = index + 1;
-  });
-
-  return { columns, rows: result.data };
+  return { columns, rows: dataFrameToRowObjects(result) };
 }
 
 const PrivateQueryResultView = (
   { run, viewOptions, onViewOptionsChanged, onAddToChecklist }: QueryResultViewProp,
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  ref: Ref<any>,
+  ref: Ref<DataGridHandle>,
 ) => {
   if (!isQueryRun(run)) {
     throw new Error("run type must be query");

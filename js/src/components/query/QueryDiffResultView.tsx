@@ -2,7 +2,7 @@ import "react-data-grid/lib/styles.css";
 
 import { QueryDiffViewOptions, QueryPreviewChangeParams } from "@/lib/api/adhocQuery";
 import { Center, Flex } from "@chakra-ui/react";
-import { forwardRef, Ref, useMemo } from "react";
+import { ForwardedRef, forwardRef, Ref, useMemo } from "react";
 import { toDataDiffGrid } from "./querydiff";
 import { toValueDiffGrid as toQueryDiffJoinGrid } from "../valuediff/valuediff";
 
@@ -13,6 +13,7 @@ import { RunResultViewProps } from "../run/types";
 import { RunToolbar } from "../run/RunToolbar";
 import { DiffDisplayModeSwitch } from "./ToggleSwitch";
 import { ChangedOnlyCheckbox } from "./ChangedOnlyCheckbox";
+import { DataGridHandle } from "react-data-grid";
 
 export interface QueryDiffResultViewProps extends RunResultViewProps<QueryDiffViewOptions> {
   onAddToChecklist?: (run: Run) => void;
@@ -29,8 +30,8 @@ const PrivateQueryDiffResultView = (
     baseTitle,
     currentTitle,
   }: QueryDiffResultViewProps,
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  ref: Ref<any>,
+
+  ref: Ref<DataGridHandle>,
 ) => {
   const primaryKeys = useMemo(() => viewOptions?.primary_keys ?? [], [viewOptions]);
   const changedOnly = useMemo(() => viewOptions?.changed_only ?? false, [viewOptions]);
@@ -176,8 +177,8 @@ const PrivateQueryDiffResultView = (
 
 const PrivateQueryDiffJoinResultView = (
   { run, viewOptions, onViewOptionsChanged, baseTitle, currentTitle }: QueryDiffResultViewProps,
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  ref: Ref<any>,
+
+  ref: Ref<DataGridHandle>,
 ) => {
   if (run.type !== "query_diff") {
     throw new Error("QueryDiffResult view should be rendered as query_diff");
@@ -317,31 +318,33 @@ const PrivateQueryDiffJoinResultView = (
 const QueryDiffResultViewWithRef = forwardRef(PrivateQueryDiffResultView);
 const QueryDiffJoinResultViewWithRef = forwardRef(PrivateQueryDiffJoinResultView);
 
-export const QueryDiffResultView = forwardRef((props: QueryDiffResultViewProps, ref) => {
-  let baseTitle;
-  let currentTitle;
-  if (props.run.params && (props.run.params as QueryPreviewChangeParams).current_model) {
-    // Configure the base and current titles under Sandbox Editor
-    baseTitle = "Original";
-    currentTitle = "Editor";
-  }
-  if (props.run.type === "query_diff" && props.run.result?.diff != null) {
-    return (
-      <QueryDiffResultViewWithRef
-        {...props}
-        ref={ref}
-        baseTitle={baseTitle}
-        currentTitle={currentTitle}
-      />
-    );
-  } else {
-    return (
-      <QueryDiffJoinResultViewWithRef
-        {...props}
-        ref={ref}
-        baseTitle={baseTitle}
-        currentTitle={currentTitle}
-      />
-    );
-  }
-});
+export const QueryDiffResultView = forwardRef(
+  (props: QueryDiffResultViewProps, ref: ForwardedRef<DataGridHandle>) => {
+    let baseTitle;
+    let currentTitle;
+    if (props.run.params && (props.run.params as QueryPreviewChangeParams).current_model) {
+      // Configure the base and current titles under Sandbox Editor
+      baseTitle = "Original";
+      currentTitle = "Editor";
+    }
+    if (props.run.type === "query_diff" && props.run.result?.diff != null) {
+      return (
+        <QueryDiffResultViewWithRef
+          {...props}
+          ref={ref}
+          baseTitle={baseTitle}
+          currentTitle={currentTitle}
+        />
+      );
+    } else {
+      return (
+        <QueryDiffJoinResultViewWithRef
+          {...props}
+          ref={ref}
+          baseTitle={baseTitle}
+          currentTitle={currentTitle}
+        />
+      );
+    }
+  },
+);

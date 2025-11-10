@@ -27,7 +27,7 @@ import { ComponentType, ForwardRefExoticComponent, RefAttributes } from "react";
 interface RegistryEntry<PT = unknown, VO = unknown> {
   title: string;
   icon: IconType;
-  RunResultView?: ForwardRefExoticComponent<RunResultViewProps<VO> & RefAttributes<HTMLDivElement>>;
+  RunResultView?: ForwardRefExoticComponent<RunResultViewProps<VO> & RefAttributes<PT>>;
   RunForm?: ComponentType<RunFormProps<PT>>;
 }
 

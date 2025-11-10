@@ -2,22 +2,22 @@ import "react-data-grid/lib/styles.css";
 import { DataGrid, DataGridHandle, DataGridProps } from "react-data-grid";
 import { Flex, Text } from "@chakra-ui/react";
 import React, { forwardRef } from "react";
-
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-type ScreenshotDataGridProps = DataGridProps<any>;
+import { RowObjectType } from "@/lib/api/types";
 
 export const ScreenshotDataGrid = forwardRef(
-  ({ ...props }: ScreenshotDataGridProps, ref: React.Ref<DataGridHandle>) => {
+  <R = RowObjectType,>({ ...props }: DataGridProps<R>, ref: React.Ref<DataGridHandle>) => {
     return (
       <DataGrid
         ref={ref}
-        className={props.className ? props.className + "no-track-pii-safe" : "no-track-pii-safe"}
+        className={props.className ? props.className + " no-track-pii-safe" : "no-track-pii-safe"}
         rowClass={() => "no-track-pii-safe"}
         {...props}
       />
     );
   },
-);
+) as <R = RowObjectType>(
+  props: DataGridProps<R> & { ref?: React.Ref<DataGridHandle> },
+) => React.ReactElement;
 
 interface EmptyRowsRendererProps {
   emptyMessage?: string;
