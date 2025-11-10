@@ -8,7 +8,7 @@ from recce.exceptions import RecceException
 from recce.pull_request import fetch_pr_metadata
 
 from ..util.io import SupportedFileTypes, file_io_factory
-from .const import RECCE_CLOUD_API_TOKEN_MISSING
+from .const import RECCE_API_TOKEN_MISSING
 from .state import RecceState
 
 logger = logging.getLogger("uvicorn")
@@ -53,7 +53,7 @@ class RecceStateLoader(ABC):
                     self.catalog = "preview"
                     self.share_id = self.cloud_options.get("share_id")
             else:
-                raise RecceException(RECCE_CLOUD_API_TOKEN_MISSING.error_message)
+                raise RecceException(RECCE_API_TOKEN_MISSING.error_message)
 
     @property
     def token(self):
