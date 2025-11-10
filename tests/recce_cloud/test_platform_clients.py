@@ -5,6 +5,7 @@ Tests for platform-specific Recce Cloud API clients.
 import os
 from unittest.mock import patch
 from urllib.parse import urlparse
+
 import pytest
 
 from recce_cloud.api.factory import create_platform_client
@@ -23,7 +24,9 @@ class TestGitHubRecceCloudClient:
         assert client.repository == "owner/repo"
         parsed = urlparse(client.api_host)
         # Accept main domain or subdomains:
-        assert parsed.hostname == "cloud.datarecce.io" or (parsed.hostname and parsed.hostname.endswith(".cloud.datarecce.io"))
+        assert parsed.hostname == "cloud.datarecce.io" or (
+            parsed.hostname and parsed.hostname.endswith(".cloud.datarecce.io")
+        )
 
     def test_touch_recce_session_pr(self):
         """Test touch_recce_session for PR context."""
