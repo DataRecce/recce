@@ -102,7 +102,7 @@ def upload(target_path, session_id, cr, session_type, dry_run):
     1. Auto-detect CI/CD platform (GitHub Actions, GitLab CI, etc.)
     2. Validate dbt artifact files exist and are valid JSON
     3. Extract adapter type from manifest.json
-    4. Authenticate with Recce Cloud (RECCE_CLOUD_API_TOKEN or CI token)
+    4. Authenticate with Recce Cloud (RECCE_API_TOKEN or CI token)
     5. Create/touch session (platform-specific) OR get session info (generic)
     6. Upload artifacts to S3 using presigned URLs
     7. Notify upload completion (platform-specific only)
@@ -116,7 +116,7 @@ def upload(target_path, session_id, cr, session_type, dry_run):
 
     \b
     Authentication Priority:
-    1. RECCE_CLOUD_API_TOKEN environment variable (explicit token)
+    1. RECCE_API_TOKEN environment variable (explicit token)
     2. GITHUB_TOKEN (GitHub Actions) or CI_JOB_TOKEN (GitLab CI)
     3. Error if no token available
 
@@ -132,7 +132,7 @@ def upload(target_path, session_id, cr, session_type, dry_run):
     \b
     Environment Variables:
     - RECCE_SESSION_ID: Target session ID (optional, for generic workflow)
-    - RECCE_CLOUD_API_TOKEN: Recce Cloud API token (recommended)
+    - RECCE_API_TOKEN: Recce Cloud API token (recommended)
     - GITHUB_TOKEN: GitHub authentication (auto-detected)
     - CI_JOB_TOKEN: GitLab authentication (auto-detected)
 
@@ -275,9 +275,9 @@ def upload(target_path, session_id, cr, session_type, dry_run):
         sys.exit(0)
 
     # 5. Get authentication token
-    token = os.getenv("RECCE_CLOUD_API_TOKEN")
+    token = os.getenv("RECCE_API_TOKEN")
 
-    # Fallback to CI-detected token if RECCE_CLOUD_API_TOKEN not set
+    # Fallback to CI-detected token if RECCE_API_TOKEN not set
     if not token and ci_info and ci_info.access_token:
         token = ci_info.access_token
         if ci_info.platform == "github-actions":
@@ -287,7 +287,7 @@ def upload(target_path, session_id, cr, session_type, dry_run):
 
     if not token:
         console.print("[red]Error:[/red] No authentication token provided")
-        console.print("Set RECCE_CLOUD_API_TOKEN environment variable or ensure CI token is available")
+        console.print("Set RECCE_API_TOKEN environment variable or ensure CI token is available")
         sys.exit(2)
 
     # 6. Choose upload workflow based on whether session_id is provided

@@ -20,7 +20,7 @@ def create_platform_client(
     Create a platform-specific Recce Cloud API client based on CI environment.
 
     Args:
-        token: Authentication token (GITHUB_TOKEN, CI_JOB_TOKEN, or RECCE_CLOUD_API_TOKEN)
+        token: Authentication token (GITHUB_TOKEN, CI_JOB_TOKEN, or RECCE_API_TOKEN)
         ci_info: CI information (auto-detected if not provided)
         api_host: Recce Cloud API host (optional)
 

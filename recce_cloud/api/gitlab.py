@@ -15,7 +15,7 @@ class GitLabRecceCloudClient(BaseRecceCloudClient):
         Initialize GitLab API client.
 
         Args:
-            token: GitLab token (CI_JOB_TOKEN or RECCE_CLOUD_API_TOKEN)
+            token: GitLab token (CI_JOB_TOKEN or RECCE_API_TOKEN)
             project_path: Project path in format "group/project"
             repository_url: Full repository URL (e.g., https://gitlab.com/group/project)
             api_host: Recce Cloud API host

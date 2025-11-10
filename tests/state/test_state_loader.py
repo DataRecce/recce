@@ -3,7 +3,7 @@ from unittest.mock import Mock, patch
 
 from recce.exceptions import RecceException
 from recce.state import RecceState, RecceStateLoader
-from recce.state.const import RECCE_CLOUD_API_TOKEN_MISSING
+from recce.state.const import RECCE_API_TOKEN_MISSING
 
 
 class ConcreteStateLoader(RecceStateLoader):
@@ -91,7 +91,7 @@ class TestRecceStateLoader(unittest.TestCase):
         with self.assertRaises(RecceException) as cm:
             ConcreteStateLoader(cloud_mode=True, cloud_options={})
 
-        self.assertEqual(str(cm.exception), RECCE_CLOUD_API_TOKEN_MISSING.error_message)
+        self.assertEqual(str(cm.exception), RECCE_API_TOKEN_MISSING.error_message)
 
     def test_error_and_hint_property(self):
         loader = ConcreteStateLoader()

@@ -42,7 +42,7 @@ install:
   run: recce-cloud upload
   env:
     GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-    RECCE_CLOUD_API_TOKEN: ${{ secrets.RECCE_CLOUD_API_TOKEN }}
+    RECCE_API_TOKEN: ${{ secrets.RECCE_API_TOKEN }}
 ```
 
 ### GitLab CI
@@ -52,7 +52,7 @@ recce-upload:
   script:
     - recce-cloud upload
   variables:
-    RECCE_CLOUD_API_TOKEN: $RECCE_CLOUD_API_TOKEN
+    RECCE_API_TOKEN: $RECCE_API_TOKEN
 ```
 
 ## Upload Workflows
@@ -91,7 +91,7 @@ recce-cloud upload --cr 123 --type cr
 **Requirements:**
 
 - Running in GitHub Actions or GitLab CI environment
-- RECCE_CLOUD_API_TOKEN or CI-provided token (GITHUB_TOKEN/CI_JOB_TOKEN)
+- RECCE_API_TOKEN or CI-provided token (GITHUB_TOKEN/CI_JOB_TOKEN)
 - dbt artifacts in target directory
 
 ### 2. Generic Workflow
@@ -117,7 +117,7 @@ recce-cloud upload --session-id abc123 --target-path my-target
 **Requirements:**
 
 - Pre-created session ID (from Recce Cloud web app or API)
-- RECCE_CLOUD_API_TOKEN
+- RECCE_API_TOKEN
 - dbt artifacts in target directory
 
 ## Command Reference
@@ -138,12 +138,12 @@ Upload dbt artifacts to Recce Cloud session.
 
 **Environment Variables:**
 
-| Variable                | Required      | Description                     |
-| ----------------------- | ------------- | ------------------------------- |
-| `RECCE_CLOUD_API_TOKEN` | Recommended   | Recce Cloud API token           |
-| `RECCE_SESSION_ID`      | Optional      | Session ID for generic workflow |
-| `GITHUB_TOKEN`          | Auto-detected | GitHub authentication (Actions) |
-| `CI_JOB_TOKEN`          | Auto-detected | GitLab authentication (CI)      |
+| Variable           | Required      | Description                     |
+| ------------------ | ------------- | ------------------------------- |
+| `RECCE_API_TOKEN`  | Recommended   | Recce Cloud API token           |
+| `RECCE_SESSION_ID` | Optional      | Session ID for generic workflow |
+| `GITHUB_TOKEN`     | Auto-detected | GitHub authentication (Actions) |
+| `CI_JOB_TOKEN`     | Auto-detected | GitLab authentication (CI)      |
 
 **Exit Codes:**
 
@@ -167,7 +167,7 @@ recce-cloud version
 
 The CLI supports multiple authentication methods with the following priority:
 
-1. **RECCE_CLOUD_API_TOKEN** (explicit token) - Recommended for production
+1. **RECCE_API_TOKEN** (explicit token) - Recommended for production
 2. **CI-provided tokens** - GITHUB_TOKEN (Actions) or CI_JOB_TOKEN (GitLab CI)
 3. Error if no token available
 
@@ -178,7 +178,7 @@ The CLI supports multiple authentication methods with the following priority:
 1. Log in to [Recce Cloud](https://cloud.datarecce.io)
 2. Go to Settings → API Tokens
 3. Create a new token
-4. Add to CI/CD secrets as `RECCE_CLOUD_API_TOKEN`
+4. Add to CI/CD secrets as `RECCE_API_TOKEN`
 
 **GitHub Token:**
 
@@ -262,7 +262,7 @@ jobs:
         run: recce-cloud upload
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          RECCE_CLOUD_API_TOKEN: ${{ secrets.RECCE_CLOUD_API_TOKEN }}
+          RECCE_API_TOKEN: ${{ secrets.RECCE_API_TOKEN }}
 ```
 
 ### GitLab CI - Complete Workflow
@@ -291,7 +291,7 @@ recce-upload:
     - pip install recce-cloud
     - recce-cloud upload
   variables:
-    RECCE_CLOUD_API_TOKEN: $RECCE_CLOUD_API_TOKEN
+    RECCE_API_TOKEN: $RECCE_API_TOKEN
   dependencies:
     - dbt-build
   only:
@@ -309,7 +309,7 @@ For other CI platforms, use the generic workflow with session ID:
     - pip install recce-cloud
     - recce-cloud upload --session-id ${SESSION_ID}
   environment:
-    RECCE_CLOUD_API_TOKEN: ${RECCE_CLOUD_API_TOKEN}
+    RECCE_API_TOKEN: ${RECCE_API_TOKEN}
     SESSION_ID: ${SESSION_ID}
 ```
 
@@ -336,19 +336,19 @@ recce-cloud upload
 
 ```
 Error: No authentication token provided
-Set RECCE_CLOUD_API_TOKEN environment variable or ensure CI token is available
+Set RECCE_API_TOKEN environment variable or ensure CI token is available
 ```
 
-**Solution:** Set `RECCE_CLOUD_API_TOKEN` in your CI/CD secrets or ensure CI token permissions.
+**Solution:** Set `RECCE_API_TOKEN` in your CI/CD secrets or ensure CI token permissions.
 
 ```yaml
 # GitHub Actions
 env:
-  RECCE_CLOUD_API_TOKEN: ${{ secrets.RECCE_CLOUD_API_TOKEN }}
+  RECCE_API_TOKEN: ${{ secrets.RECCE_API_TOKEN }}
 
 # GitLab CI
 variables:
-  RECCE_CLOUD_API_TOKEN: $RECCE_CLOUD_API_TOKEN
+  RECCE_API_TOKEN: $RECCE_API_TOKEN
 ```
 
 **3. Platform not supported**
@@ -382,7 +382,7 @@ recce-upload:
   script:
     - recce-cloud upload
   variables:
-    RECCE_CLOUD_API_TOKEN: $RECCE_CLOUD_API_TOKEN
+    RECCE_API_TOKEN: $RECCE_API_TOKEN
 ```
 
 ### Debug Mode

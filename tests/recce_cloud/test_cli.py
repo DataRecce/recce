@@ -58,7 +58,7 @@ class TestUploadDryRun(unittest.TestCase):
             "GITHUB_SHA": "abc123def456",
             "GITHUB_HEAD_REF": "feature/test-branch",
             "GITHUB_BASE_REF": "main",
-            "RECCE_CLOUD_API_TOKEN": "test_token_123",
+            "RECCE_API_TOKEN": "test_token_123",
         }
 
         # Create mock event file
@@ -106,7 +106,7 @@ class TestUploadDryRun(unittest.TestCase):
             "CI_MERGE_REQUEST_TARGET_BRANCH_NAME": "main",
             "CI_COMMIT_SHA": "def456abc789",
             "CI_SERVER_URL": "https://gitlab.com",
-            "RECCE_CLOUD_API_TOKEN": "test_token_abc",
+            "RECCE_API_TOKEN": "test_token_abc",
         }
 
         with patch.dict(os.environ, env, clear=True):
@@ -140,7 +140,7 @@ class TestUploadDryRun(unittest.TestCase):
             "CI_MERGE_REQUEST_TARGET_BRANCH_NAME": "production",
             "CI_COMMIT_SHA": "fedcba987654",
             "CI_SERVER_URL": "https://gitlab.mycompany.com",
-            "RECCE_CLOUD_API_TOKEN": "test_token_xyz",
+            "RECCE_API_TOKEN": "test_token_xyz",
         }
 
         with patch.dict(os.environ, env, clear=True):
@@ -162,7 +162,7 @@ class TestUploadDryRun(unittest.TestCase):
         env = {
             "GITHUB_ACTIONS": "true",
             "GITHUB_REPOSITORY": "DataRecce/recce",
-            "RECCE_CLOUD_API_TOKEN": "test_token_789",
+            "RECCE_API_TOKEN": "test_token_789",
         }
 
         with patch.dict(os.environ, env, clear=True):
@@ -194,7 +194,7 @@ class TestUploadDryRun(unittest.TestCase):
             "GITHUB_EVENT_NAME": "push",
             "GITHUB_REF": "refs/heads/main",
             "GITHUB_SHA": "xyz789abc123",
-            "RECCE_CLOUD_API_TOKEN": "test_token_456",
+            "RECCE_API_TOKEN": "test_token_456",
         }
 
         with patch.dict(os.environ, env, clear=True):
@@ -222,7 +222,7 @@ class TestUploadDryRun(unittest.TestCase):
             "CI_COMMIT_BRANCH": "main",
             "CI_COMMIT_SHA": "123abc456def",
             "CI_SERVER_URL": "https://gitlab.com",
-            "RECCE_CLOUD_API_TOKEN": "test_token_main",
+            "RECCE_API_TOKEN": "test_token_main",
         }
 
         with patch.dict(os.environ, env, clear=True):
@@ -247,7 +247,7 @@ class TestUploadDryRun(unittest.TestCase):
             "GITHUB_REPOSITORY": "DataRecce/recce",
             "GITHUB_EVENT_NAME": "pull_request",
             "GITHUB_SHA": "abc123",
-            "RECCE_CLOUD_API_TOKEN": "test_token",
+            "RECCE_API_TOKEN": "test_token",
         }
 
         # Create mock event file with PR number 42
@@ -283,7 +283,7 @@ class TestUploadDryRun(unittest.TestCase):
     def test_dry_run_no_ci_environment(self):
         """Test dry-run without CI environment (local development)."""
         env = {
-            "RECCE_CLOUD_API_TOKEN": "test_token_local",
+            "RECCE_API_TOKEN": "test_token_local",
         }
 
         with patch.dict(os.environ, env, clear=True):
@@ -310,7 +310,7 @@ class TestUploadDryRun(unittest.TestCase):
     def test_dry_run_unsupported_platform_without_session_id(self):
         """Test dry-run with unsupported platform and no session ID."""
         env = {
-            "RECCE_CLOUD_API_TOKEN": "test_token",
+            "RECCE_API_TOKEN": "test_token",
         }
 
         with patch.dict(os.environ, env, clear=True):
@@ -333,7 +333,7 @@ class TestUploadDryRun(unittest.TestCase):
 
         env = {
             "GITHUB_ACTIONS": "true",
-            "RECCE_CLOUD_API_TOKEN": "test_token",
+            "RECCE_API_TOKEN": "test_token",
         }
 
         with patch.dict(os.environ, env, clear=True):
@@ -352,7 +352,7 @@ class TestUploadDryRun(unittest.TestCase):
         env = {
             "GITHUB_ACTIONS": "true",
             "GITHUB_REPOSITORY": "DataRecce/recce",
-            "RECCE_CLOUD_API_TOKEN": "test_token",
+            "RECCE_API_TOKEN": "test_token",
         }
 
         with patch.dict(os.environ, env, clear=True):

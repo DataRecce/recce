@@ -4,7 +4,7 @@ from unittest.mock import Mock, patch
 from recce.exceptions import RecceException
 from recce.state import CloudStateLoader, RecceState
 from recce.state.const import (
-    RECCE_CLOUD_API_TOKEN_MISSING,
+    RECCE_API_TOKEN_MISSING,
     RECCE_CLOUD_PASSWORD_MISSING,
 )
 
@@ -53,7 +53,7 @@ class TestCloudStateLoader(unittest.TestCase):
         with self.assertRaises(RecceException) as cm:
             CloudStateLoader(cloud_options={})
 
-        self.assertEqual(str(cm.exception), RECCE_CLOUD_API_TOKEN_MISSING.error_message)
+        self.assertEqual(str(cm.exception), RECCE_API_TOKEN_MISSING.error_message)
 
     @patch("recce.state.state_loader.fetch_pr_metadata")
     def test_verify_github_mode_missing_password(self, mock_fetch_pr):
@@ -80,7 +80,7 @@ class TestCloudStateLoader(unittest.TestCase):
         with self.assertRaises(RecceException) as cm:
             CloudStateLoader(cloud_options={"share_id": "test_share"})
 
-        self.assertEqual(str(cm.exception), RECCE_CLOUD_API_TOKEN_MISSING.error_message)
+        self.assertEqual(str(cm.exception), RECCE_API_TOKEN_MISSING.error_message)
 
     def test_verify_preview_mode_missing_share_id(self):
         cloud_options = {"api_token": "test_token"}
@@ -380,7 +380,7 @@ class TestCloudStateLoader(unittest.TestCase):
         with self.assertRaises(RecceException) as cm:
             CloudStateLoader(cloud_options={"session_id": "test_session"})
 
-        self.assertEqual(str(cm.exception), RECCE_CLOUD_API_TOKEN_MISSING.error_message)
+        self.assertEqual(str(cm.exception), RECCE_API_TOKEN_MISSING.error_message)
 
     def test_verify_session_mode_missing_session_id(self):
         cloud_options = {"api_token": "test_token"}
