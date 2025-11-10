@@ -280,15 +280,15 @@ class RecceMCPServer:
                     )
 
                 if name == "get_lineage_diff":
-                    result = await self._get_lineage_diff(arguments)
+                    result = await self._tool_get_lineage_diff(arguments)
                 elif name == "row_count_diff":
-                    result = await self._row_count_diff(arguments)
+                    result = await self._tool_row_count_diff(arguments)
                 elif name == "query":
-                    result = await self._query(arguments)
+                    result = await self._tool_query(arguments)
                 elif name == "query_diff":
-                    result = await self._query_diff(arguments)
+                    result = await self._tool_query_diff(arguments)
                 elif name == "profile_diff":
-                    result = await self._profile_diff(arguments)
+                    result = await self._tool_profile_diff(arguments)
                 else:
                     raise ValueError(f"Unknown tool: {name}")
 
@@ -302,7 +302,7 @@ class RecceMCPServer:
                 logger.exception(f"Error executing tool {name}")
                 return [TextContent(type="text", text=json.dumps({"error": str(e)}, indent=2))]
 
-    async def _get_lineage_diff(self, arguments: Dict[str, Any]) -> Dict[str, Any]:
+    async def _tool_get_lineage_diff(self, arguments: Dict[str, Any]) -> Dict[str, Any]:
         """Get lineage diff between base and current"""
         try:
             # Get lineage diff from adapter (returns a Pydantic LineageDiff model)
@@ -420,7 +420,7 @@ class RecceMCPServer:
         # Remove None values and empty collections
         return _remove_none_and_empty(result)
 
-    async def _row_count_diff(self, arguments: Dict[str, Any]) -> Dict[str, Any]:
+    async def _tool_row_count_diff(self, arguments: Dict[str, Any]) -> Dict[str, Any]:
         """Execute row count diff task"""
         try:
             task = RowCountDiffTask(params=arguments)
@@ -433,7 +433,7 @@ class RecceMCPServer:
             logger.exception("Error executing row count diff")
             raise
 
-    async def _query(self, arguments: Dict[str, Any]) -> Dict[str, Any]:
+    async def _tool_query(self, arguments: Dict[str, Any]) -> Dict[str, Any]:
         """Execute a query"""
         try:
             sql_template = arguments.get("sql_template")
@@ -454,7 +454,7 @@ class RecceMCPServer:
             logger.exception("Error executing query")
             raise
 
-    async def _query_diff(self, arguments: Dict[str, Any]) -> Dict[str, Any]:
+    async def _tool_query_diff(self, arguments: Dict[str, Any]) -> Dict[str, Any]:
         """Execute query diff task"""
         try:
             task = QueryDiffTask(params=arguments)
@@ -470,7 +470,7 @@ class RecceMCPServer:
             logger.exception("Error executing query diff")
             raise
 
-    async def _profile_diff(self, arguments: Dict[str, Any]) -> Dict[str, Any]:
+    async def _tool_profile_diff(self, arguments: Dict[str, Any]) -> Dict[str, Any]:
         """Execute profile diff task"""
         try:
             task = ProfileDiffTask(params=arguments)
