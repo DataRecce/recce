@@ -24,6 +24,23 @@ import { MdFormatListNumberedRtl, MdSchema } from "react-icons/md";
 import { ProfileDiffForm } from "../profile/ProfileDiffForm";
 import { ComponentType, ForwardRefExoticComponent, RefAttributes } from "react";
 
+export type RunType =
+  | "simple"
+  | "query"
+  | "query_base"
+  | "query_diff"
+  | "value_diff"
+  | "value_diff_detail"
+  | "schema_diff"
+  | "profile"
+  | "profile_diff"
+  | "row_count"
+  | "row_count_diff"
+  | "lineage_diff"
+  | "top_k_diff"
+  | "histogram_diff"
+  | "sandbox";
+
 interface RegistryEntry<PT = unknown, VO = unknown> {
   title: string;
   icon: IconType;
@@ -32,7 +49,9 @@ interface RegistryEntry<PT = unknown, VO = unknown> {
 }
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-const registry: Record<string, RegistryEntry<any, any>> = {
+type RunRegistry = Record<RunType, RegistryEntry<any, any>>;
+
+const registry: RunRegistry = {
   lineage_diff: {
     title: "Lineage Diff",
     icon: TbBrandStackshare,
@@ -107,9 +126,14 @@ const registry: Record<string, RegistryEntry<any, any>> = {
     icon: TbEyeEdit,
     // No specific RunResultView for sandbox, use QueryDiffResultView
   },
+  simple: {
+    title: "Simple",
+    icon: TbEyeEdit,
+    // No specific RunResultView for simple, use undefined
+  },
 };
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-export const findByRunType = (runType: string): RegistryEntry<any, any> | undefined => {
+export const findByRunType = (runType: RunType): RegistryEntry<any, any> => {
   return registry[runType];
 };

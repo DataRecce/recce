@@ -46,7 +46,7 @@ function _RowCountDiffTag({ rowCount }: { rowCount: RowCountDiff }) {
   return (
     <Tag.Root colorPalette={colorPalette}>
       <Flex gap={1} alignItems="center">
-        <Icon as={findByRunType("row_count_diff")?.icon} />
+        <Icon as={findByRunType("row_count_diff").icon} />
         <Tag.Label>{tagLabel}</Tag.Label>
       </Flex>
     </Tag.Root>
@@ -91,7 +91,7 @@ const NodeRunsAggregated = ({ id, inverted }: { id: string; inverted: boolean })
         <Tooltip content={`Schema (${schemaChanged ? "changed" : "no change"})`} openDelay={500}>
           <Box height="16px">
             <Icon
-              as={findByRunType("schema_diff")?.icon}
+              as={findByRunType("schema_diff").icon}
               color={schemaChanged ? colorChanged : colorUnchanged}
             />
           </Box>

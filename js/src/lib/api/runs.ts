@@ -1,7 +1,8 @@
 import { axiosClient } from "./axiosClient";
-import { AxiosQueryParams, Run, RunParamTypes, RunType } from "./types";
+import { AxiosQueryParams, Run, RunParamTypes } from "./types";
 import { getExperimentTrackingBreakingChangeEnabled } from "./track";
 import { AxiosResponse } from "axios";
+import { RunType } from "@/components/run/registry";
 
 export interface SubmitRunTrackProps {
   breaking_change_analysis?: boolean;

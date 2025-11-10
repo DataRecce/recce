@@ -1,4 +1,4 @@
-import { Run, RunType } from "@/lib/api/types";
+import { Run } from "@/lib/api/types";
 
 import {
   Box,
@@ -15,6 +15,7 @@ import {
 import { RunFormProps } from "./types";
 import { useState } from "react";
 import { IconInfo } from "@/components/icons";
+import { RunType } from "@/components/run/registry";
 
 interface RunModalProps<PT> {
   isOpen: boolean;

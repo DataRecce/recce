@@ -1,9 +1,10 @@
 import { axiosClient } from "./axiosClient";
-import { Run, RunParamTypes, RunType } from "./types";
+import { Run, RunParamTypes } from "./types";
 import { useQuery } from "@tanstack/react-query";
 import { cacheKeys } from "./cacheKeys";
 import { getExperimentTrackingBreakingChangeEnabled } from "./track";
 import { AxiosResponse } from "axios";
+import { RunType } from "@/components/run/registry";
 
 export interface Check<PT = unknown, VO = unknown> {
   check_id: string;

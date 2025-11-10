@@ -3,12 +3,12 @@ import { LineageGraphNode } from "./lineage";
 import { ValueDiffParams } from "@/lib/api/valuediff";
 import { useRef } from "react";
 import { cancelRun, submitRun, waitRun } from "@/lib/api/runs";
-import { RunType } from "@/lib/api/types";
 import { RowCountDiffParams, RowCountParams } from "@/lib/api/rowcount";
 import { createLineageDiffCheck } from "@/lib/api/lineagecheck";
 import { createSchemaDiffCheck } from "@/lib/api/schemacheck";
 import { useRecceActionContext } from "@/lib/hooks/RecceActionContext";
 import { ActionState } from "./LineageViewContext";
+import { RunType } from "@/components/run/registry";
 
 const initValue: ActionState = {
   mode: "per_node",

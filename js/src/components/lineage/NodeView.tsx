@@ -219,7 +219,7 @@ function SingleEnvironmentMenuButton({
                   }
                   setLocation("/query");
                 }}>
-                <Icon as={findByRunType("query")?.icon} /> Query
+                <Icon as={findByRunType("query").icon} /> Query
               </Menu.Item>
               <Menu.Item
                 value="row-count"
@@ -227,7 +227,7 @@ function SingleEnvironmentMenuButton({
                 onClick={() => {
                   refetchRowCount();
                 }}>
-                <Icon as={findByRunType("row_count")?.icon} /> Row Count
+                <Icon as={findByRunType("row_count").icon} /> Row Count
               </Menu.Item>
               <Tooltip
                 content={disableReason(isAddedOrRemoved, "profile")}
@@ -245,7 +245,7 @@ function SingleEnvironmentMenuButton({
                       { showForm: true, showLast: false },
                     );
                   }}>
-                  <Icon as={findByRunType("profile")?.icon} /> Profile
+                  <Icon as={findByRunType("profile").icon} /> Profile
                 </Menu.Item>
               </Tooltip>
             </Menu.Content>
@@ -352,7 +352,7 @@ function ExploreChangeMenuButton({
                     }
                     setLocation("/query");
                   }}>
-                  <Icon as={findByRunType("query_diff")?.icon} /> Query
+                  <Icon as={findByRunType("query_diff").icon} /> Query
                 </Menu.Item>
               </SetupConnectionPopover>
               <SetupConnectionPopover display={metadataOnly}>
@@ -368,7 +368,7 @@ function ExploreChangeMenuButton({
                     onSandboxOpen();
                     trackPreviewChange({ action: "explore", node: node.data.name });
                   }}>
-                  <Icon as={findByRunType("sandbox")?.icon} /> Sandbox (Experiment)
+                  <Icon as={findByRunType("sandbox").icon} /> Sandbox (Experiment)
                 </Menu.Item>
               </SetupConnectionPopover>
               <Menu.Separator />
@@ -382,7 +382,7 @@ function ExploreChangeMenuButton({
                     onClick={() => {
                       refetchRowCountDiff();
                     }}>
-                    <Icon as={findByRunType("row_count_diff")?.icon} /> Row Count Diff
+                    <Icon as={findByRunType("row_count_diff").icon} /> Row Count Diff
                   </Menu.Item>
                 </SetupConnectionPopover>
                 {wrapMenuItem(
@@ -399,7 +399,7 @@ function ExploreChangeMenuButton({
                         { showForm: true, showLast: false },
                       );
                     }}>
-                    <Icon as={findByRunType("profile_diff")?.icon} /> Profile Diff
+                    <Icon as={findByRunType("profile_diff").icon} /> Profile Diff
                   </Menu.Item>,
                   "profile_diff",
                 )}
@@ -417,7 +417,7 @@ function ExploreChangeMenuButton({
                         { showForm: true, showLast: false },
                       );
                     }}>
-                    <Icon as={findByRunType("value_diff")?.icon} /> Value Diff
+                    <Icon as={findByRunType("value_diff").icon} /> Value Diff
                   </Menu.Item>,
                   "value_diff",
                 )}
@@ -433,7 +433,7 @@ function ExploreChangeMenuButton({
                         { showForm: true },
                       );
                     }}>
-                    <Icon as={findByRunType("top_k_diff")?.icon} /> Top-K Diff
+                    <Icon as={findByRunType("top_k_diff").icon} /> Top-K Diff
                   </Menu.Item>,
                   "top_k_diff",
                 )}
@@ -453,7 +453,7 @@ function ExploreChangeMenuButton({
                         { showForm: true },
                       );
                     }}>
-                    <Icon as={findByRunType("histogram_diff")?.icon} /> Histogram Diff
+                    <Icon as={findByRunType("histogram_diff").icon} /> Histogram Diff
                   </Menu.Item>,
                   "histogram_diff",
                 )}
@@ -467,7 +467,7 @@ function ExploreChangeMenuButton({
                   onClick={() => {
                     void addSchemaCheck();
                   }}>
-                  <Icon as={findByRunType("schema_diff")?.icon} /> Schema Diff
+                  <Icon as={findByRunType("schema_diff").icon} /> Schema Diff
                 </Menu.Item>
               </Menu.ItemGroup>
             </Menu.Content>

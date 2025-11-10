@@ -1,6 +1,3 @@
-/* eslint-disable @typescript-eslint/no-redundant-type-constituents */
-// TODO the RunType and Run["status"] types must be a finite list of enumerated values *without* a union with string.
-
 // ============================================================================
 // Base Types
 // ============================================================================
@@ -41,47 +38,32 @@ export interface DataFrame {
 // Run Types - Strict enum without string union
 // ============================================================================
 
-export type RunType =
-  | "simple"
-  | "query"
-  | "query_base"
-  | "query_diff"
-  | "value_diff"
-  | "value_diff_detail"
-  | "schema_diff"
-  | "profile"
-  | "profile_diff"
-  | "row_count"
-  | "row_count_diff"
-  | "lineage_diff"
-  | "top_k_diff"
-  | "histogram_diff";
-
 // ============================================================================
 // Inline Param Definitions (defined here to avoid circular dependencies)
 // ============================================================================
 
 // Import types that are defined in other files
-import type { QueryRunParams, QueryDiffParams, QueryResult, QueryDiffResult } from "./adhocQuery";
+import { RunType } from "@/components/run/registry";
+import type { QueryDiffParams, QueryDiffResult, QueryResult, QueryRunParams } from "./adhocQuery";
 import type {
-  ValueDiffParams,
-  ValueDiffResult,
   ValueDiffDetailParams,
   ValueDiffDetailResult,
+  ValueDiffParams,
+  ValueDiffResult,
 } from "./valuediff";
 import type {
+  HistogramDiffParams,
+  HistogramDiffResult,
   ProfileDiffParams,
   ProfileDiffResult,
   TopKDiffParams,
   TopKDiffResult,
-  HistogramDiffParams,
-  HistogramDiffResult,
 } from "./profile";
 import type {
-  RowCountParams,
-  RowCountResult,
   RowCountDiffParams,
   RowCountDiffResult,
+  RowCountParams,
+  RowCountResult,
 } from "./rowcount";
 import type { LineageDiffResult } from "./info";
 
@@ -119,6 +101,7 @@ export type RunParamTypes =
   | undefined;
 
 interface BaseRun {
+  type: RunType;
   run_id: string;
   run_at: string;
   name?: string;
@@ -128,12 +111,17 @@ interface BaseRun {
     percentage?: number;
   };
   error?: string;
-  status?: "finished" | "failed" | "cancelled" | "running" | string;
+  status?: "finished" | "failed" | "cancelled" | "running";
 }
 
 export type Run =
   | (BaseRun & {
       type: "simple";
+      params?: undefined;
+      result?: undefined;
+    })
+  | (BaseRun & {
+      type: "sandbox";
       params?: undefined;
       result?: undefined;
     })

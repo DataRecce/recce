@@ -2,6 +2,7 @@ import { Box, Flex, Spacer, VStack } from "@chakra-ui/react";
 import { RunResultViewProps } from "./types";
 import { ReactNode } from "react";
 import { PiWarning } from "react-icons/pi";
+import _ from "lodash";
 
 export interface DiffViewOptions {
   changed_only?: boolean;
@@ -22,9 +23,8 @@ export const RunToolbar = ({ warnings, children }: RunToolbarProps<DiffViewOptio
       px="10px"
       bg={warnings && warnings.length > 0 ? "orange.100" : "inherit"}>
       <VStack alignItems="flex-start" gap={0}>
-        {warnings?.map((warning, idx) => (
-          // eslint-disable-next-line react/no-array-index-key
-          <Box key={`warning-${idx}-${warning}`}>
+        {warnings?.map((warning) => (
+          <Box key={_.uniqueId(`-${warning}`)}>
             <PiWarning color="orange.600" /> {warning}
           </Box>
         ))}

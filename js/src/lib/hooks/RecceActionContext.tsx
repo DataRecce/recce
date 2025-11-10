@@ -7,14 +7,14 @@ import React, {
   useEffect,
   useState,
 } from "react";
-import { AxiosQueryParams, Run, RunParamTypes, RunType } from "../api/types";
+import { AxiosQueryParams, Run, RunParamTypes } from "../api/types";
 import { RunModal } from "@/components/run/RunModal";
 import { useDisclosure } from "@chakra-ui/react";
 
 import { useLocation } from "wouter";
 
 import { searchRuns, submitRun, SubmitRunTrackProps } from "../api/runs";
-import { findByRunType } from "@/components/run/registry";
+import { findByRunType, RunType } from "@/components/run/registry";
 import { RunFormProps } from "@/components/run/types";
 import { useQueryClient } from "@tanstack/react-query";
 import { cacheKeys } from "../api/cacheKeys";
@@ -121,10 +121,6 @@ export function RecceActionContextProvider({ children }: RecceActionContextProvi
         }
 
         const entry = findByRunType(type);
-        if (entry === undefined) {
-          throw new Error(`Unknown run type: ${type}`);
-        }
-
         const { title, RunResultView, RunForm } = entry;
         if (RunResultView === undefined) {
           throw new Error(`Run type ${type} does not have a result view`);

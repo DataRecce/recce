@@ -15,7 +15,6 @@ import {
 import { cacheKeys } from "@/lib/api/cacheKeys";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { FaCheckCircle, FaRegCheckCircle } from "react-icons/fa";
-import { TbChecklist } from "react-icons/tb";
 import { IconType } from "react-icons";
 import { findByRunType } from "../run/registry";
 import { Run } from "@/lib/api/types";
@@ -53,7 +52,7 @@ const RunListItem = ({
     retry: false,
   });
 
-  const icon: IconType = findByRunType(run.type)?.icon ?? TbChecklist;
+  const icon: IconType = findByRunType(run.type).icon;
   const checkId = run.check_id;
   const hideAddToChecklist = featureToggles.disableUpdateChecklist;
 
@@ -136,13 +135,7 @@ const DateSegmentItem = ({ runAt }: { runAt?: string }) => {
 
 export const RunList = () => {
   const { closeHistory } = useRecceActionContext();
-  const {
-    data: runs,
-    isLoading,
-    isFetching,
-    error,
-    refetch,
-  } = useQuery({
+  const { data: runs, isLoading } = useQuery({
     queryKey: cacheKeys.runs(),
     queryFn: async () => {
       return await listRuns();
@@ -203,7 +196,7 @@ export const RunList = () => {
           </Center>
         ) : (
           <SimpleBar style={{ minHeight: "100%", height: 0 }}>
-            {(runs ?? []).map((run, index) => {
+            {(runs ?? []).map((run) => {
               const currentDate = new Date(run.run_at).toDateString();
               const shouldRenderDateSegment = previousDate != null && previousDate !== currentDate;
               setPreviousDate(currentDate);
