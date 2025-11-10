@@ -231,6 +231,7 @@ export function toValueDiffGrid(
     if (baseRow) {
       df.columns.forEach((col) => {
         if (includesIgnoreCase(primaryKeys, col.key)) {
+          // add the primary key value (don't add it again in currentRow)
           row[col.key] = baseRow[col.key];
           return;
         }

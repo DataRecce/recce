@@ -393,6 +393,8 @@ export function toDataDiffGrid(
     if (baseRow) {
       base.columns.forEach((col) => {
         if (primaryKeys.includes(col.key)) {
+          // add the primary key value (don't add it again in currentRow)
+          row[col.key] = baseRow[col.key];
           return;
         }
         row[`base__${col.key}`] = baseRow[col.key];
