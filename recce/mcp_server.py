@@ -26,6 +26,15 @@ from recce.tasks.rowcount import RowCountDiffTask
 logger = logging.getLogger(__name__)
 
 
+def _remove_none_and_empty(obj: Any) -> Any:
+    """Recursively remove None values and empty collections from nested dicts"""
+    if isinstance(obj, dict):
+        return {k: _remove_none_and_empty(v) for k, v in obj.items() if v is not None and v != {} and v != []}
+    elif isinstance(obj, list):
+        return [_remove_none_and_empty(item) for item in obj if item is not None]
+    return obj
+
+
 class MCPLogger:
     """JSON logger for MCP server request/response logging"""
 
@@ -288,10 +297,46 @@ class RecceMCPServer:
             # Get lineage diff from adapter (returns a Pydantic LineageDiff model)
             lineage_diff = self.context.get_lineage_diff()
             # Convert Pydantic model to dict for JSON serialization
-            return lineage_diff.model_dump(mode="json")
+            full_diff = lineage_diff.model_dump(mode="json")
+            # Simplify response to reduce context
+            return self._simplify_lineage_diff(full_diff)
         except Exception:
             logger.exception("Error getting lineage diff")
             raise
+
+    def _simplify_lineage_diff(self, lineage_diff: Dict[str, Any]) -> Dict[str, Any]:
+        """Simplify lineage diff response by keeping only essential fields"""
+        simplified = {}
+
+        for env_key in ["base", "current"]:
+            if env_key not in lineage_diff:
+                continue
+
+            env_data = lineage_diff[env_key]
+            simplified[env_key] = {
+                "parent_map": env_data.get("parent_map", {}),
+                "nodes": {},
+            }
+
+            # Simplify node information - keep only essential fields
+            if "nodes" in env_data:
+                for node_id, node_info in env_data["nodes"].items():
+                    simplified[env_key]["nodes"][node_id] = {
+                        "name": node_info.get("name"),
+                        "resource_type": node_info.get("resource_type"),
+                        "schema": node_info.get("schema"),
+                        "materialized": node_info.get("config", {}).get("materialized"),
+                        "tags": node_info.get("config", {}).get("tags", []),
+                        "columns": node_info.get("columns", {}),
+                        "source_name": node_info.get("source_name"),
+                    }
+
+        # Include diff information if present
+        if "diff" in lineage_diff:
+            simplified["diff"] = lineage_diff["diff"]
+
+        # Remove None values and empty collections
+        return _remove_none_and_empty(simplified)
 
     async def _row_count_diff(self, arguments: Dict[str, Any]) -> Dict[str, Any]:
         """Execute row count diff task"""
