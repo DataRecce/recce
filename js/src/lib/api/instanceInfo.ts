@@ -9,6 +9,7 @@ export interface RecceInstanceInfo {
   lifetime_expired_at?: Date;
   share_url?: string;
   session_id?: string;
+  organization_name?: string;
 }
 
 export async function getRecceInstanceInfo(): Promise<RecceInstanceInfo> {
