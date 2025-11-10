@@ -35,6 +35,17 @@ def _remove_none_and_empty(obj: Any) -> Any:
     return obj
 
 
+def _truncate_strings(obj: Any, max_length: int = 200) -> Any:
+    """Recursively truncate strings longer than max_length in nested dicts and lists"""
+    if isinstance(obj, dict):
+        return {k: _truncate_strings(v, max_length) for k, v in obj.items()}
+    elif isinstance(obj, list):
+        return [_truncate_strings(item, max_length) for item in obj]
+    elif isinstance(obj, str) and len(obj) > max_length:
+        return obj[:max_length] + "..."
+    return obj
+
+
 class MCPLogger:
     """JSON logger for MCP server request/response logging"""
 
@@ -96,7 +107,7 @@ class MCPLogger:
         if error:
             log_entry["error"] = error
         else:
-            log_entry["response"] = response
+            log_entry["response"] = _truncate_strings(response)
 
         self._write_log(log_entry)
 
