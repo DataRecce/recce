@@ -5,29 +5,16 @@ Simplified version of recce.util.recce_cloud.RecceCloud with only
 the methods needed for upload-session functionality.
 """
 
-import json
 import os
 
 import requests
+
+from recce_cloud.api.exceptions import RecceCloudException
 
 RECCE_CLOUD_API_HOST = os.environ.get("RECCE_CLOUD_API_HOST", "https://cloud.datarecce.io")
 
 DOCKER_INTERNAL_URL_PREFIX = "http://host.docker.internal"
 LOCALHOST_URL_PREFIX = "http://localhost"
-
-
-class RecceCloudException(Exception):
-    """Exception raised when Recce Cloud API returns an error."""
-
-    def __init__(self, message: str, reason: str, status_code: int):
-        super().__init__(message)
-        self.status_code = status_code
-
-        try:
-            reason = json.loads(reason).get("detail", "")
-        except json.JSONDecodeError:
-            pass
-        self.reason = reason
 
 
 class RecceCloudClient:
@@ -87,14 +74,12 @@ class RecceCloudClient:
             return {"status": "error", "message": response.json().get("detail")}
         if response.status_code != 200:
             raise RecceCloudException(
-                message="Failed to get session from Recce Cloud.",
                 reason=response.text,
                 status_code=response.status_code,
             )
         data = response.json()
         if data["success"] is not True:
             raise RecceCloudException(
-                message="Failed to get session from Recce Cloud.",
                 reason=data.get("message", "Unknown error"),
                 status_code=response.status_code,
             )
@@ -121,15 +106,13 @@ class RecceCloudClient:
         response = self._request("GET", api_url)
         if response.status_code != 200:
             raise RecceCloudException(
-                message="Failed to get upload URLs for session from Recce Cloud.",
                 reason=response.text,
                 status_code=response.status_code,
             )
         data = response.json()
         if data["presigned_urls"] is None:
             raise RecceCloudException(
-                message="No presigned URLs returned from the server.",
-                reason="",
+                reason="No presigned URLs returned from the server.",
                 status_code=404,
             )
 
@@ -161,7 +144,6 @@ class RecceCloudClient:
             return {"status": "error", "message": response.json().get("detail")}
         if response.status_code != 200:
             raise RecceCloudException(
-                message="Failed to update session in Recce Cloud.",
                 reason=response.text,
                 status_code=response.status_code,
             )
