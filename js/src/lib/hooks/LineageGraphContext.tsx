@@ -51,7 +51,7 @@ export interface LineageGraphContextType {
   cloudMode?: boolean;
   fileMode?: boolean;
   fileName?: string;
-  isDemoSite?: boolean;
+  isDemoSite: boolean;
   isCodespace?: boolean;
   isLoading?: boolean;
   error?: string;
@@ -65,6 +65,7 @@ export interface LineageGraphContextType {
 
 const defaultLineageGraphsContext: LineageGraphContextType = {
   isActionAvailable: () => true,
+  isDemoSite: false,
 };
 
 const LineageGraphContext = createContext(defaultLineageGraphsContext);
@@ -266,7 +267,9 @@ export function LineageGraphContextProvider({ children }: LineageGraphProps) {
     git,
     pull_request: pullRequest,
     support_tasks: supportTasks,
-  } = queryServerInfo.data ?? {};
+  } = queryServerInfo.data ?? {
+    demo: false,
+  };
 
   const dbtBase = lineage?.base.manifest_metadata;
   const dbtCurrent = lineage?.current.manifest_metadata;

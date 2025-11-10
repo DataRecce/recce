@@ -16,7 +16,6 @@ import {
 } from "@chakra-ui/react";
 import { cacheKeys } from "@/lib/api/cacheKeys";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { TbChecklist } from "react-icons/tb";
 import { IconType } from "react-icons";
 import { DragDropContext, Draggable, DropResult, Droppable } from "@hello-pangea/dnd";
 import { findByRunType } from "../run/registry";
@@ -50,7 +49,7 @@ const ChecklistItem = ({
   const trackedRunId = check.last_run?.run_id;
   const { run } = useRun(trackedRunId);
 
-  const icon: IconType = findByRunType(check.type)?.icon ?? TbChecklist;
+  const icon: IconType = findByRunType(check.type).icon;
   const isMarkAsApprovedDisabled =
     isDisabledByNoResult(check.type, run) || featureToggles.disableUpdateChecklist;
   const isNoResult = isDisabledByNoResult(check.type, run);

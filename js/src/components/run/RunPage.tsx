@@ -9,16 +9,12 @@ interface RunPageProps {
 }
 
 export const RunPage = ({ runId }: RunPageProps) => {
-  const {
-    isPending,
-    error,
-    data: run,
-  } = useQuery({
+  const { error, data: run } = useQuery({
     queryKey: cacheKeys.run(runId),
     queryFn: async () => waitRun(runId),
   });
 
-  const RunResultView = run?.type ? findByRunType(run.type)?.RunResultView : undefined;
+  const RunResultView = run?.type ? findByRunType(run.type).RunResultView : undefined;
 
   return <RunView error={error} run={run} RunResultView={RunResultView} />;
 };

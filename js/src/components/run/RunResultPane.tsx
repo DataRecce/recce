@@ -190,7 +190,7 @@ export const PrivateLoadableRunView = ({
   const disableAddToChecklist = isSingleEnvironment;
   const showSingleEnvironmentSetupNotification = isSingleEnvironment;
 
-  const RunResultView = run?.type ? findByRunType(run.type)?.RunResultView : undefined;
+  const RunResultView = run?.type ? findByRunType(run.type).RunResultView : undefined;
 
   const handleRerun = useCallback(() => {
     if (run) {

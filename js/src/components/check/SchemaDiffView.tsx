@@ -44,7 +44,7 @@ const NodelistItem = ({
   let statusColor: string | undefined;
 
   if (schemaChanged) {
-    statusIcon = findByRunType("schema_diff")?.icon;
+    statusIcon = findByRunType("schema_diff").icon;
     statusColor = getIconForChangeStatus("modified").color;
   } else if (!base && current) {
     statusIcon = getIconForChangeStatus("added").icon;

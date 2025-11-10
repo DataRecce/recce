@@ -115,7 +115,7 @@ export function RowCountDiffTag({
   const { runsAggregated } = useLineageGraphContext();
   const lastRowCount: RowCountDiff | undefined = runsAggregated?.[node.id]?.row_count_diff
     .result as RowCountDiff | undefined;
-  const RunTypeIcon = findByRunType("row_count_diff")?.icon;
+  const RunTypeIcon = findByRunType("row_count_diff").icon;
 
   // Calculate during render instead of effect
   const rowCount = fetchedRowCount ?? lastRowCount;
@@ -128,7 +128,7 @@ export function RowCountDiffTag({
       <SetupConnectionPopover display={featureToggles.mode === "metadata only"}>
         <Tag.Root asChild>
           <Flex direction="row" alignItems="center" gap="1">
-            {RunTypeIcon && <RunTypeIcon />}
+            <RunTypeIcon />
             {rowsToShow != null || isFetching ? (
               <SkeletonText loading={false} noOfLines={1} minWidth={"30px"} fontSize="xs">
                 {rowsToShow != null ? <_RowCountByRate rowCount={rowsToShow} /> : "row count"}
@@ -174,7 +174,7 @@ export function RowCountTag({
     | RowCountDiff
     | undefined;
 
-  const RunTypeIcon = findByRunType("row_count")?.icon;
+  const RunTypeIcon = findByRunType("row_count").icon;
 
   let label;
   const rowCount = fetchedRowCount ?? lastRowCount;
@@ -185,11 +185,9 @@ export function RowCountTag({
 
   return (
     <Tag.Root>
-      {RunTypeIcon && (
-        <Tag.StartElement>
-          <RunTypeIcon />
-        </Tag.StartElement>
-      )}
+      <Tag.StartElement>
+        <RunTypeIcon />
+      </Tag.StartElement>
       <Tag.Label>
         {rowCount || isFetching ? (
           <SkeletonText loading={isFetching} lineClamp={1} height={2} minWidth={"30px"}>

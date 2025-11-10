@@ -380,7 +380,7 @@ export const LineageViewTopBar = () => {
                               await lineageViewContext.runRowCount();
                             }}>
                             <Text textStyle="sm">
-                              <Icon as={findByRunType("row_count_diff")?.icon} /> Row Count
+                              <Icon as={findByRunType("row_count_diff").icon} /> Row Count
                             </Text>
                           </Menu.Item>
                         </Menu.Content>
@@ -414,7 +414,7 @@ export const LineageViewTopBar = () => {
                               await lineageViewContext.runRowCountDiff();
                             }}>
                             <Text textStyle="sm">
-                              <Icon as={findByRunType("row_count_diff")?.icon} /> Row Count Diff
+                              <Icon as={findByRunType("row_count_diff").icon} /> Row Count Diff
                             </Text>
                           </Menu.Item>
                         </SetupConnectionPopover>
@@ -426,7 +426,7 @@ export const LineageViewTopBar = () => {
                               await lineageViewContext.runValueDiff();
                             }}>
                             <Text textStyle="sm">
-                              <Icon as={findByRunType("value_diff")?.icon} /> Value Diff
+                              <Icon as={findByRunType("value_diff").icon} /> Value Diff
                             </Text>
                           </Menu.Item>
                         </SetupConnectionPopover>
@@ -445,7 +445,7 @@ export const LineageViewTopBar = () => {
                             );
                           }}>
                           <Text textStyle="sm">
-                            <Icon as={findByRunType("lineage_diff")?.icon} /> Lineage Diff
+                            <Icon as={findByRunType("lineage_diff").icon} /> Lineage Diff
                           </Text>
                         </Menu.Item>
                         <Menu.Item
@@ -455,7 +455,7 @@ export const LineageViewTopBar = () => {
                             lineageViewContext.addSchemaDiffCheck();
                           }}>
                           <Text textStyle="sm">
-                            <Icon as={findByRunType("schema_diff")?.icon} /> Schema Diff
+                            <Icon as={findByRunType("schema_diff").icon} /> Schema Diff
                           </Text>
                         </Menu.Item>
                       </Menu.ItemGroup>

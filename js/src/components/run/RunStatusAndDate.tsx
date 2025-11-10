@@ -39,7 +39,7 @@ export function formatRunDateTime(date: Date | null) {
 export const RunStatusAndDate = ({ run }: { run: Run }) => {
   const isRunning = run.status === "running";
 
-  let status: string | undefined = run.status;
+  let status = run.status;
   if (!status) {
     if (run.result) {
       status = "finished";
@@ -48,9 +48,9 @@ export const RunStatusAndDate = ({ run }: { run: Run }) => {
     }
   }
 
-  let color = "";
-  let message = "";
-  if (status === "successful" || status === "finished") {
+  let color: string;
+  let message: string;
+  if (status === "finished") {
     color = "green";
     message = "Finished";
   } else if (status === "failed") {

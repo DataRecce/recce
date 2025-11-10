@@ -213,16 +213,13 @@ function TopBar() {
       )}
       <Spacer />
 
-      {
-        // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
-        (isDemoSite || featureToggles.mode === "read only") && (
-          <>
-            <LinkIcon icon={FaGithub} href="https://github.com/DataRecce/recce" />
-            <LinkIcon icon={FaSlack} href="https://getdbt.slack.com/archives/C05C28V7CPP" />
-            <LinkIcon mr={2} icon={FaQuestionCircle} href="https://docs.datarecce.io" />
-          </>
-        )
-      }
+      {(isDemoSite || featureToggles.mode === "read only") && (
+        <>
+          <LinkIcon icon={FaGithub} href="https://github.com/DataRecce/recce" />
+          <LinkIcon icon={FaSlack} href="https://getdbt.slack.com/archives/C05C28V7CPP" />
+          <LinkIcon mr={2} icon={FaQuestionCircle} href="https://docs.datarecce.io" />
+        </>
+      )}
       {!isDemoSite && featureToggles.mode !== "read only" && (
         <>
           {authed || cloudMode ? (
