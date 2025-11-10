@@ -1,8 +1,23 @@
 import { RECCE_SUPPORT_CALENDAR_URL } from "@/constants/urls";
 import { Button, Heading, Icon, Text } from "@chakra-ui/react";
 import { RiTerminalBoxLine } from "react-icons/ri";
+import { useQuery } from "@tanstack/react-query";
+import { getRecceInstanceInfo } from "@/lib/api/instanceInfo";
 
 export default function SetupConnectionGuide() {
+  const { data: instanceInfo } = useQuery({
+    queryKey: ["instanceInfo"],
+    queryFn: getRecceInstanceInfo,
+  });
+
+  const getSettingsUrl = () => {
+    const orgName = instanceInfo?.organization_name;
+    if (orgName) {
+      return `/organization/${orgName}/settings`;
+    }
+    return RECCE_SUPPORT_CALENDAR_URL; // fallback
+  };
+
   return (
     <div className="flex flex-1 h-full min-h-0 m-2 p-4 bg-blue-50 rounded-lg shadow-md justify-center">
       <div className="w-4/5 flex flex-col overflow-y-auto gap-6 px-8 pb-8">
@@ -25,7 +40,7 @@ export default function SetupConnectionGuide() {
             colorPalette="blue"
             size="lg"
             onClick={() => {
-              window.open(RECCE_SUPPORT_CALENDAR_URL, "_blank");
+              window.open(getSettingsUrl(), "_blank");
             }}>
             Connect to Data Warehouse
           </Button>
