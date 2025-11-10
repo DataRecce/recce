@@ -3,6 +3,7 @@ import { Alert, Box, Button, Center, Flex, ProgressCircle, VStack } from "@chakr
 import { RunResultViewProps } from "./types";
 import { ErrorBoundary } from "@sentry/react";
 import React, { forwardRef, ForwardRefExoticComponent, RefAttributes } from "react";
+import { RefTypes, RegistryEntry, ViewOptionTypes } from "@/components/run/registry";
 
 // Define an error type
 interface ApiError {
@@ -13,7 +14,7 @@ interface ApiError {
   };
 }
 
-interface RunViewProps<VO = Record<string, unknown>> {
+interface RunViewProps<VO = ViewOptionTypes> {
   isRunning?: boolean;
   run?: Run;
   error?: Error | null;
@@ -24,8 +25,8 @@ interface RunViewProps<VO = Record<string, unknown>> {
   onExecuteRun?: () => void;
   viewOptions?: VO;
   onViewOptionsChanged?: (viewOptions: VO) => void;
-  RunResultView?: ForwardRefExoticComponent<RunResultViewProps<VO> & RefAttributes<HTMLDivElement>>;
-  children?: (params: RunResultViewProps<VO>) => React.ReactNode;
+  RunResultView?: RegistryEntry["RunResultView"] | undefined;
+  children?: (params: RunResultViewProps) => React.ReactNode;
 }
 
 export const RunView = forwardRef(
@@ -43,7 +44,7 @@ export const RunView = forwardRef(
       children,
       onExecuteRun,
     }: RunViewProps,
-    ref: React.Ref<HTMLDivElement>,
+    ref: React.Ref<RefTypes>,
   ) => {
     const errorMessage = (error as ApiError | undefined)?.response?.data?.detail ?? run?.error;
 

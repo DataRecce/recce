@@ -2,7 +2,7 @@ import { cacheKeys } from "@/lib/api/cacheKeys";
 import { waitRun } from "@/lib/api/runs";
 import { useQuery } from "@tanstack/react-query";
 import { RunView } from "./RunView";
-import { findByRunType } from "./registry";
+import { findByRunType, RegistryEntry, runTypeHasRef } from "./registry";
 
 interface RunPageProps {
   runId: string;
@@ -14,7 +14,10 @@ export const RunPage = ({ runId }: RunPageProps) => {
     queryFn: async () => waitRun(runId),
   });
 
-  const RunResultView = run?.type ? findByRunType(run.type).RunResultView : undefined;
+  let RunResultView: RegistryEntry["RunResultView"] | undefined;
+  if (run && runTypeHasRef(run.type)) {
+    RunResultView = findByRunType(run.type).RunResultView as RegistryEntry["RunResultView"];
+  }
 
   return <RunView error={error} run={run} RunResultView={RunResultView} />;
 };

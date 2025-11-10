@@ -41,7 +41,7 @@ import { Run, RunParamTypes } from "@/lib/api/types";
 import { RunView } from "../run/RunView";
 import { formatDistanceToNow } from "date-fns";
 import { LineageDiffView } from "./LineageDiffView";
-import { findByRunType, RunType } from "../run/registry";
+import { findByRunType, RefTypes, RegistryEntry, RunType, ViewOptionTypes } from "../run/registry";
 import { generateCheckTemplate, PresetCheckTemplateView } from "./PresetCheckTemplateView";
 import { VSplit } from "../split/Split";
 import { useCopyToClipboardButton } from "@/lib/hooks/ScreenShot";
@@ -102,6 +102,12 @@ export const CheckDetail = ({ checkId, refreshCheckList }: CheckDetailProps) => 
   const isRunning = submittedRunId ? !run || run.status === "running" : run?.status === "running";
 
   const runTypeEntry = check?.type ? findByRunType(check.type) : undefined;
+
+  let RunResultView: RegistryEntry["RunResultView"] | undefined;
+  if (runTypeEntry) {
+    RunResultView = runTypeEntry.RunResultView as RegistryEntry["RunResultView"];
+  }
+
   const isPresetCheck = check?.is_preset ?? false;
 
   const lineageViewRef = useRef<LineageViewRef>(null);
@@ -175,7 +181,7 @@ export const CheckDetail = ({ checkId, refreshCheckList }: CheckDetailProps) => 
     }
   }, [check?.is_checked, mutate, markedAsApprovedToast]);
 
-  const handelUpdateViewOptions = (viewOptions: Record<string, unknown>) => {
+  const handelUpdateViewOptions = (viewOptions: ViewOptionTypes) => {
     mutate({ view_options: viewOptions });
   };
 
@@ -364,7 +370,7 @@ export const CheckDetail = ({ checkId, refreshCheckList }: CheckDetailProps) => 
             )}
             <Spacer />
             <HStack mr="10px">
-              {runTypeEntry?.RunResultView && (
+              {RunResultView && (
                 <Tooltip content="Rerun">
                   <Button
                     variant="outline"
@@ -396,17 +402,17 @@ export const CheckDetail = ({ checkId, refreshCheckList }: CheckDetailProps) => 
           </Tabs.List>
           <Tabs.ContentGroup height="100%" flex="1" style={{ contain: "strict" }}>
             <Tabs.Content value="result" p={0} width="100%" height="100%">
-              {runTypeEntry?.RunResultView &&
+              {RunResultView &&
                 (check.last_run || trackedRunId ? (
                   <RunView
-                    ref={ref as unknown as Ref<HTMLDivElement>}
+                    ref={ref as unknown as Ref<RefTypes>}
                     isRunning={isRunning}
                     isAborting={isAborting}
                     run={trackedRunId ? run : check.last_run}
                     error={rerunError}
                     progress={progress}
-                    RunResultView={runTypeEntry.RunResultView}
-                    viewOptions={check.view_options as Record<string, unknown>}
+                    RunResultView={RunResultView}
+                    viewOptions={check.view_options as ViewOptionTypes}
                     onViewOptionsChanged={handelUpdateViewOptions}
                     onCancel={handleCancel}
                     onExecuteRun={handleRerun}

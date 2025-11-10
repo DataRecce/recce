@@ -1,11 +1,10 @@
-import { findByRunType } from "@/components/run/registry";
+import { findByRunType, RegistryEntry, runTypeHasRef } from "@/components/run/registry";
 import { cacheKeys } from "@/lib/api/cacheKeys";
 import { cancelRun, waitRun } from "@/lib/api/runs";
 import { useQuery } from "@tanstack/react-query";
 import { Run } from "../api/types";
-import React, { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useRunsAggregated } from "./LineageGraphContext";
-import { RunResultViewProps } from "@/components/run/types";
 
 interface UseRunResult {
   run?: Run;
@@ -13,7 +12,7 @@ interface UseRunResult {
   isRunning: boolean;
   error: Error | null;
   onCancel: () => Promise<void>;
-  RunResultView?: React.ComponentType<RunResultViewProps>;
+  RunResultView?: RegistryEntry["RunResultView"] | undefined;
 }
 
 export const useRun = (runId?: string): UseRunResult => {
@@ -67,7 +66,10 @@ export const useRun = (runId?: string): UseRunResult => {
     return;
   }, [runId, setAborting]);
 
-  const RunResultView = run?.type ? findByRunType(run.type).RunResultView : undefined;
+  let RunResultView: RegistryEntry["RunResultView"] | undefined;
+  if (run && runTypeHasRef(run.type)) {
+    RunResultView = findByRunType(run.type).RunResultView as RegistryEntry["RunResultView"];
+  }
 
   return {
     run,

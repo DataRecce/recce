@@ -13,19 +13,19 @@ import {
   Portal,
 } from "@chakra-ui/react";
 import { RunFormProps } from "./types";
-import { useState } from "react";
+import { ComponentType, useState } from "react";
 import { IconInfo } from "@/components/icons";
-import { RunType } from "@/components/run/registry";
+import { RunFormParamTypes, RunType } from "@/components/run/registry";
 
-interface RunModalProps<PT> {
+interface RunModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onExecute: (type: RunType, params: PT) => void;
+  onExecute: (type: RunType, params: RunFormParamTypes) => void;
   title: string;
   type: RunType;
-  params: PT;
+  params?: RunFormParamTypes;
   initialRun?: Run;
-  RunForm?: React.ComponentType<RunFormProps<PT>>;
+  RunForm?: ComponentType<RunFormProps<RunFormParamTypes>>;
 }
 
 const getDocumentationUrl = (type: RunType): string | null => {
@@ -38,7 +38,7 @@ const getDocumentationUrl = (type: RunType): string | null => {
   return urlMap[type] || null;
 };
 
-export const RunModal = <PT,>({
+export const RunModal = ({
   isOpen,
   onClose,
   onExecute,
@@ -46,8 +46,8 @@ export const RunModal = <PT,>({
   title,
   params: defaultParams,
   RunForm,
-}: RunModalProps<PT>) => {
-  const [params, setParams] = useState<Partial<PT>>(defaultParams);
+}: RunModalProps) => {
+  const [params, setParams] = useState<Partial<RunFormParamTypes>>(defaultParams ?? {});
   const [hovered, setHovered] = useState(false);
   const [isReadyToExecute, setIsReadyToExecute] = useState(false);
   const documentationUrl = getDocumentationUrl(type);
@@ -124,7 +124,7 @@ export const RunModal = <PT,>({
                   disabled={!isReadyToExecute}
                   colorPalette="blue"
                   onClick={() => {
-                    onExecute(type, params as PT);
+                    onExecute(type, params as RunFormParamTypes);
                   }}>
                   Execute
                 </Button>

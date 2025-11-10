@@ -2,8 +2,6 @@ import React, { useState, useRef } from "react";
 import {
   Box,
   Button,
-  Group,
-  Icon,
   Input,
   InputGroup,
   InputProps,
@@ -13,9 +11,9 @@ import {
   Wrap,
   WrapItem,
 } from "@chakra-ui/react";
-import { FaChevronDown } from "react-icons/fa6";
 
 import { Tooltip } from "@/components/ui/tooltip";
+import _ from "lodash";
 
 export interface DropdownValuesInputProps extends InputProps {
   unitName: string;
@@ -187,8 +185,7 @@ export const DropdownValuesInput = (props: DropdownValuesInputProps) => {
                 {filteredList
                   .map((value, cid) => (
                     <Menu.Item
-                      /* eslint-disable-next-line react/no-array-index-key */
-                      key={`option-${cid}`}
+                      key={_.uniqueId(`option-${cid}`)}
                       value={`option-${cid}`}
                       onClick={() => {
                         handleSelect(value);

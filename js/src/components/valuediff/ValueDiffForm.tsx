@@ -5,7 +5,7 @@ import { Select } from "chakra-react-select";
 import { useEffect, useState } from "react";
 import useModelColumns from "@/lib/hooks/useModelColumns";
 
-interface ValueDiffFormParams {
+export interface ValueDiffFormParams {
   model: string;
   primary_key?: string | (string | undefined)[];
   columns?: string[];
@@ -33,7 +33,7 @@ export function ValueDiffForm({ params, onParamsChanged, setIsReadyToExecute }: 
   }, [primaryKey, nodePrimaryKey, params, onParamsChanged]);
 
   useEffect(() => {
-    setIsReadyToExecute(primaryKey && model ? true : false);
+    setIsReadyToExecute(!!(primaryKey && model));
   }, [primaryKey, model, setIsReadyToExecute]);
 
   const columnNames = columns.map((c) => c.name);

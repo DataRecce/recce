@@ -173,7 +173,7 @@ export const ModelNodeContextMenu = ({
     }
 
     // query
-    let entry = findByRunType(singleEnv ? "query" : "query_diff");
+    const run = findByRunType(singleEnv ? "query" : "query_diff");
     const baseColumns = Object.keys(modelNode.data.base?.columns ?? {});
     const currentColumns = Object.keys(modelNode.data.current?.columns ?? {});
     const formattedColumns = formatSelectColumns(baseColumns, currentColumns);
@@ -184,7 +184,7 @@ export const ModelNodeContextMenu = ({
 
     menuItems.push({
       label: "Query",
-      itemIcon: <Icon as={entry.icon} />,
+      itemIcon: <Icon as={run.icon} />,
       isDisabled: isQueryDisabled,
       action: () => {
         setSqlQuery(query);
@@ -208,7 +208,7 @@ export const ModelNodeContextMenu = ({
 
         menuItems.push({
           label: "Query Related Columns",
-          itemIcon: <Icon as={entry.icon} />,
+          itemIcon: <Icon as={run.icon} />,
           isDisabled: isQueryDisabled,
           action: () => {
             const query = `select \n  ${Array.from(allColumns).join(",\n  ")}\nfrom {{ ref("${modelNode.name}") }}`;
@@ -236,7 +236,7 @@ export const ModelNodeContextMenu = ({
 
           menuItems.push({
             label: "Query Modified Columns",
-            itemIcon: <Icon as={entry.icon} />,
+            itemIcon: <Icon as={run.icon} />,
             isDisabled: isQueryDisabled,
             action: () => {
               const query = `select \n  ${Array.from(allColumns).join(",\n  ")}\nfrom {{ ref("${modelNode.name}") }}`;
@@ -253,10 +253,10 @@ export const ModelNodeContextMenu = ({
     }
 
     // row count & row count diff
-    entry = findByRunType(singleEnv ? "row_count" : "row_count_diff");
+    const rowCountAndRowCountRun = findByRunType(singleEnv ? "row_count" : "row_count_diff");
     menuItems.push({
-      label: entry.title,
-      itemIcon: <Icon as={entry.icon} />,
+      label: rowCountAndRowCountRun.title,
+      itemIcon: <Icon as={rowCountAndRowCountRun.icon} />,
       isDisabled: isQueryDisabled,
       action: () => {
         runAction(
@@ -268,10 +268,10 @@ export const ModelNodeContextMenu = ({
     });
 
     // profile & profile diff
-    entry = findByRunType(singleEnv ? "profile" : "profile_diff");
+    const profileAndProfileDiffRun = findByRunType(singleEnv ? "profile" : "profile_diff");
     menuItems.push({
-      label: entry.title,
-      itemIcon: <Icon as={entry.icon} />,
+      label: profileAndProfileDiffRun.title,
+      itemIcon: <Icon as={profileAndProfileDiffRun.icon} />,
       isDisabled: isQueryDisabled,
       action: () => {
         const columns = Array.from(getNodeColumnSet(node.id));
@@ -285,10 +285,10 @@ export const ModelNodeContextMenu = ({
 
     // value diff
     if (!singleEnv) {
-      entry = findByRunType("value_diff");
+      const valueDiffRun = findByRunType("value_diff");
       menuItems.push({
-        label: entry.title,
-        itemIcon: <Icon as={entry.icon} />,
+        label: valueDiffRun.title,
+        itemIcon: <Icon as={valueDiffRun.icon} />,
         isDisabled: isQueryDisabled,
         action: () => {
           const columns = Array.from(getNodeColumnSet(node.id));
@@ -397,29 +397,29 @@ export const ColumnNodeContextMenu = ({
     modelNode.data.base?.columns?.[column] === undefined ||
     modelNode.data.current?.columns?.[column] === undefined;
 
-  let entry = findByRunType(singleEnv ? "profile" : "profile_diff");
+  const run = findByRunType(singleEnv ? "profile" : "profile_diff");
   menuItems.push({
-    label: entry.title,
-    itemIcon: <Icon as={entry.icon} />,
+    label: run.title,
+    itemIcon: <Icon as={run.icon} />,
     action: handleProfileDiff,
     isDisabled: addedOrRemoved || !isActionAvailable("profile_diff") || isQueryDisabled,
   });
 
   if (!singleEnv) {
-    entry = findByRunType("histogram_diff");
+    const isHistogramDiffRun = findByRunType("histogram_diff");
     menuItems.push({
-      label: entry.title,
-      itemIcon: <Icon as={entry.icon} />,
+      label: isHistogramDiffRun.title,
+      itemIcon: <Icon as={isHistogramDiffRun.icon} />,
       action: handleHistogramDiff,
       isDisabled:
         addedOrRemoved ||
         (columnType ? !supportsHistogramDiff(columnType) : true) ||
         isQueryDisabled,
     });
-    entry = findByRunType("top_k_diff");
+    const isTopKDiffRun = findByRunType("top_k_diff");
     menuItems.push({
-      label: entry.title,
-      itemIcon: <Icon as={entry.icon} />,
+      label: isTopKDiffRun.title,
+      itemIcon: <Icon as={isTopKDiffRun.icon} />,
       action: handleTopkDiff,
       isDisabled: addedOrRemoved || isQueryDisabled,
     });
