@@ -57,7 +57,9 @@ def assert_model(
         entry.change_category == change_category
     ), f"Node {node_id} change category mismatch: expected {change_category}, got {entry.change_category}"
 
-    assert (entry.impacted == impacted), f"Node {node_id} impacted status mismatch: expected {impacted}, got {entry.impacted}"
+    assert (
+        entry.impacted == impacted
+    ), f"Node {node_id} impacted status mismatch: expected {impacted}, got {entry.impacted}"
 
 
 def assert_cll_contain_nodes(cll_data: CllData, nodes):
@@ -652,7 +654,7 @@ def test_impact_radius_by_node_with_cll(dbt_test_helper):
 
     result = adapter.get_cll(node_id="model.model2", change_analysis=True, no_upstream=True)
     assert_model(result, "model.model2", parents=[], change_category="partial_breaking", impacted=False)
-    assert_model(result, "model.model3", parents=[('model.model2', 'y')], impacted=True)
+    assert_model(result, "model.model3", parents=[("model.model2", "y")], impacted=True)
     assert_column(result, "model.model2", "y", transformation_type="source", parents=[], change_status="modified")
     assert_cll_contain_nodes(result, ["model.model2", "model.model3"])
     assert_cll_contain_columns(result, [("model.model2", "y"), ("model.model4", "y")])
