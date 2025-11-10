@@ -346,27 +346,27 @@ export function toDataDiffGrid(
   let invalidPKeyCurrent = false;
 
   if (primaryKeys.length === 0) {
-    baseData.forEach((row, index) => {
+    baseData.forEach((row) => {
       baseMap[String(row._index)] = row;
     });
 
-    currentData.forEach((row, index) => {
+    currentData.forEach((row) => {
       currentMap[String(row._index)] = row;
     });
   } else {
-    let primaryIndexes = _getPrimaryKeyKeys(base.columns, primaryKeys);
+    let primaryKeyKeys = _getPrimaryKeyKeys(base.columns, primaryKeys);
 
     baseData.forEach((row) => {
-      const key = _getPrimaryKeyValue(base.columns, primaryIndexes, row);
+      const key = _getPrimaryKeyValue(base.columns, primaryKeyKeys, row);
       if (key in baseMap) {
         invalidPKeyBase = true;
       }
       baseMap[key] = row;
     });
 
-    primaryIndexes = _getPrimaryKeyKeys(current.columns, primaryKeys);
+    primaryKeyKeys = _getPrimaryKeyKeys(current.columns, primaryKeys);
     currentData.forEach((row) => {
-      const key = _getPrimaryKeyValue(current.columns, primaryIndexes, row);
+      const key = _getPrimaryKeyValue(current.columns, primaryKeyKeys, row);
       if (key in currentMap) {
         invalidPKeyCurrent = true;
       }

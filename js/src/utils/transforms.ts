@@ -40,3 +40,27 @@ export function hashStringToNumber(str: string): number {
   // Return absolute value to ensure positive numbers
   return Math.abs(hash);
 }
+
+export function includesIgnoreCase(list: string[], searchString: string): boolean {
+  const lowerSearch = searchString.toLowerCase();
+  return list.some((item) => item.toLowerCase() === lowerSearch);
+}
+
+export function getCaseInsensitive<T extends RowObjectType>(
+  obj: T,
+  key: string,
+): T[keyof T] | undefined {
+  const lowerKey = key.toLowerCase();
+
+  // First try lowercase
+  if (lowerKey in obj) {
+    return obj[lowerKey as keyof T];
+  }
+
+  // Fall back to case-insensitive search
+  const foundKey = Object.keys(obj).find((k) => k.toLowerCase() === lowerKey) as
+    | keyof T
+    | undefined;
+
+  return foundKey ? obj[foundKey] : undefined;
+}
