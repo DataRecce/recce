@@ -1,5 +1,5 @@
 import "react-data-grid/lib/styles.css";
-import React, { useCallback, useState } from "react";
+import React, { ReactNode, useCallback, useState } from "react";
 import { createCheckByRun } from "@/lib/api/checks";
 import {
   Box,
@@ -142,31 +142,6 @@ export const RunList = () => {
     },
     retry: false,
   });
-  const { showRunId, runId } = useRecceActionContext();
-  const handleSelectRun = (runId: string) => {
-    trackHistoryAction({ name: "click_run" });
-    showRunId(runId, false);
-  };
-  const [, setLocation] = useLocation();
-  const queryClient = useQueryClient();
-  const [previousDate, setPreviousDate] = useState<string | null>(null);
-  const handleAddToChecklist = useCallback(async () => {
-    if (!runId) {
-      return;
-    }
-    const check = await createCheckByRun(runId);
-
-    await queryClient.invalidateQueries({ queryKey: cacheKeys.checks() });
-    setLocation(`/checks/${check.check_id}`);
-  }, [runId, setLocation, queryClient]);
-
-  const handleGoToCheck = useCallback(
-    (checkId: string) => {
-      trackHistoryAction({ name: "go_to_check" });
-      setLocation(`/checks/${checkId}`);
-    },
-    [setLocation],
-  );
 
   return (
     <Flex direction="column" height="100%">
@@ -196,26 +171,18 @@ export const RunList = () => {
           </Center>
         ) : (
           <SimpleBar style={{ minHeight: "100%", height: 0 }}>
-            {(runs ?? []).map((run) => {
-              const currentDate = new Date(run.run_at).toDateString();
-              const shouldRenderDateSegment = previousDate != null && previousDate !== currentDate;
-              setPreviousDate(currentDate);
-
-              return (
-                <>
-                  {shouldRenderDateSegment && (
-                    <DateSegmentItem key={currentDate} runAt={run.run_at} />
-                  )}
-                  <RunListItem
+            {(runs ?? []).map((run, idx) => {
+              if (runs != null) {
+                const previousDate =
+                  idx === 0 ? null : new Date(runs[idx - 1].run_at).toDateString();
+                return (
+                  <DateDividedRunHistoryItem
                     key={run.run_id}
                     run={run}
-                    isSelected={run.run_id === runId}
-                    onSelectRun={handleSelectRun}
-                    onGoToCheck={handleGoToCheck}
-                    onAddToChecklist={handleAddToChecklist}
+                    previousDate={previousDate}
                   />
-                </>
-              );
+                );
+              }
             })}
           </SimpleBar>
         )}
@@ -223,3 +190,56 @@ export const RunList = () => {
     </Flex>
   );
 };
+
+interface DateDividedRunHistoryItemProps {
+  run: Run;
+  previousDate: string | null;
+}
+
+function DateDividedRunHistoryItem({
+  run,
+  previousDate,
+}: DateDividedRunHistoryItemProps): ReactNode {
+  const [, setLocation] = useLocation();
+  const queryClient = useQueryClient();
+  const { showRunId, runId } = useRecceActionContext();
+
+  const currentDate = new Date(run.run_at).toDateString();
+  const shouldRenderDateSegment = previousDate != null && previousDate !== currentDate;
+
+  const handleSelectRun = (runId: string) => {
+    trackHistoryAction({ name: "click_run" });
+    showRunId(runId, false);
+  };
+
+  const handleAddToChecklist = useCallback(async () => {
+    if (!runId) {
+      return;
+    }
+    const check = await createCheckByRun(runId);
+
+    await queryClient.invalidateQueries({ queryKey: cacheKeys.checks() });
+    setLocation(`/checks/${check.check_id}`);
+  }, [runId, setLocation, queryClient]);
+
+  const handleGoToCheck = useCallback(
+    (checkId: string) => {
+      trackHistoryAction({ name: "go_to_check" });
+      setLocation(`/checks/${checkId}`);
+    },
+    [setLocation],
+  );
+  return (
+    <React.Fragment>
+      {shouldRenderDateSegment && <DateSegmentItem key={currentDate} runAt={run.run_at} />}
+      <RunListItem
+        key={run.run_id}
+        run={run}
+        isSelected={run.run_id === runId}
+        onSelectRun={handleSelectRun}
+        onGoToCheck={handleGoToCheck}
+        onAddToChecklist={handleAddToChecklist}
+      />
+    </React.Fragment>
+  );
+}
