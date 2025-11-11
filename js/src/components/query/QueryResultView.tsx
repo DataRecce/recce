@@ -17,6 +17,7 @@ import {
   ColumnRenderMode,
   ColumnType,
   DataFrame,
+  isQueryBaseRun,
   isQueryRun,
   RowObjectType,
   Run,
@@ -125,7 +126,7 @@ export function toDataGrid(result: DataFrame, options: QueryDataGridOptions) {
   });
 
   const toColumn = (
-    key: number,
+    key: string,
     name: string,
     columnType: ColumnType,
     columnRenderMode: ColumnRenderMode = "raw",
@@ -133,15 +134,16 @@ export function toDataGrid(result: DataFrame, options: QueryDataGridOptions) {
     columnType?: ColumnType;
     columnRenderMode?: ColumnRenderMode;
   } => ({
-    key: String(key),
+    key: key,
     name: <DataFrameColumnHeader name={name} {...options} columnType={columnType} />,
     width: "auto",
     renderCell: defaultRenderCell,
     columnType,
     columnRenderMode,
   });
+
   const toColumnGroup = (
-    key: number,
+    key: string,
     name: string,
     columnType: ColumnType,
     columnRenderMode: ColumnRenderMode = "raw",
@@ -149,7 +151,7 @@ export function toDataGrid(result: DataFrame, options: QueryDataGridOptions) {
     columnType?: ColumnType;
     columnRenderMode?: ColumnRenderMode;
   } => ({
-    key: String(key),
+    key: key,
     name: (
       <DataFrameColumnGroupHeader
         name={name}
@@ -167,10 +169,9 @@ export function toDataGrid(result: DataFrame, options: QueryDataGridOptions) {
 
   if (primaryKeys.length > 0) {
     primaryKeys.forEach((name) => {
-      const i = _.findIndex(result.columns, (col) => col.name === name);
       const columnType = columnMap[name].colType;
 
-      columns.push(toColumnGroup(i, name, columnType, columnsRenderMode[name]));
+      columns.push(toColumnGroup(name, name, columnType, columnsRenderMode[name]));
     });
   } else {
     columns.push({
@@ -181,17 +182,17 @@ export function toDataGrid(result: DataFrame, options: QueryDataGridOptions) {
     });
   }
 
-  pinnedColumns.forEach((name) => {
-    const columnType = columnMap[name].colType;
-    const i = _.findIndex(result.columns, (col) => col.name === name);
+  pinnedColumns.forEach((key) => {
+    const columnType = columnMap[key].colType;
+    const i = _.findIndex(result.columns, (col) => col.name === key);
     if (i < 0) {
       return;
     }
 
-    columns.push(toColumn(i, name, columnType, columnsRenderMode[name]));
+    columns.push(toColumn(key, result.columns[i].name, columnType, columnsRenderMode[key]));
   });
 
-  result.columns.forEach(({ name }, index) => {
+  result.columns.forEach(({ name, key }) => {
     if (primaryKeys.includes(name)) {
       return;
     }
@@ -201,7 +202,7 @@ export function toDataGrid(result: DataFrame, options: QueryDataGridOptions) {
     }
     const columnType = columnMap[name].colType;
 
-    columns.push(toColumn(index, name, columnType, columnsRenderMode[name]));
+    columns.push(toColumn(key, name, columnType, columnsRenderMode[name]));
   });
 
   return { columns, rows: dataFrameToRowObjects(result) };
@@ -211,7 +212,7 @@ const PrivateQueryResultView = (
   { run, viewOptions, onViewOptionsChanged, onAddToChecklist }: QueryResultViewProp,
   ref: Ref<DataGridHandle>,
 ) => {
-  if (!isQueryRun(run)) {
+  if (!(isQueryRun(run) || isQueryBaseRun(run))) {
     throw new Error("run type must be query");
   }
   const pinnedColumns = useMemo(() => viewOptions?.pinned_columns ?? [], [viewOptions]);

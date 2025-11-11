@@ -3,23 +3,23 @@ import _ from "lodash";
 import "../query/styles.css";
 import { Box, Flex, Icon, IconButton, Menu, Portal } from "@chakra-ui/react";
 import { VscKebabVertical, VscKey, VscPin, VscPinned } from "react-icons/vsc";
-import {
-  ColumnType,
-  ColumnRenderMode,
-  DataFrame,
-  RowData,
-  RowObjectType,
-  RowDataTypes,
-} from "@/lib/api/types";
+import { ColumnType, ColumnRenderMode, DataFrame, RowObjectType } from "@/lib/api/types";
 import { mergeKeysWithStatus } from "@/lib/mergeKeys";
 import { defaultRenderCell, inlineRenderCell, QueryDataDiffGridOptions } from "../query/querydiff";
 import React from "react";
 import { columnPrecisionSelectOptions } from "./shared";
+import {
+  dataFrameToRowObjects,
+  getCaseInsensitive,
+  includesIgnoreCase,
+  keyToNumber,
+} from "@/utils/transforms";
 
 function _getColumnMap(df: DataFrame) {
   const result: Record<
     string,
     {
+      key: string;
       index: number;
       status?: string;
       colType: ColumnType;
@@ -28,14 +28,21 @@ function _getColumnMap(df: DataFrame) {
 
   df.columns.map((col, index) => {
     // Normalize special column names to uppercase
-    const columnName =
+    const normalizedColName =
       col.name.toLowerCase() === "in_a"
         ? "IN_A"
         : col.name.toLowerCase() === "in_b"
           ? "IN_B"
           : col.name;
+    const normalizedColKey =
+      col.key.toLowerCase() === "in_a"
+        ? "IN_A"
+        : col.key.toLowerCase() === "in_b"
+          ? "IN_B"
+          : col.key;
 
-    result[columnName] = {
+    result[normalizedColName] = {
+      key: normalizedColKey,
       index,
       colType: col.type,
     };
@@ -44,36 +51,38 @@ function _getColumnMap(df: DataFrame) {
   return result;
 }
 
-function _getPrimaryKeyIndexes(columns: DataFrame["columns"], primaryKeys: string[]) {
-  const indexes: number[] = [];
+function _getPrimaryKeyKeys(columns: DataFrame["columns"], primaryKeys: string[]) {
+  const keys: string[] = [];
   for (const key of primaryKeys) {
-    const index = columns.findIndex((col) => col.name === key);
+    const index = columns.findIndex((col) => includesIgnoreCase([col.key], key));
     if (index < 0) {
       throw new Error(`Column ${key} not found`);
     }
 
-    indexes.push(index);
+    keys.push(key);
   }
-  return indexes;
+  return keys;
 }
 
 function _getPrimaryKeyValue(
   columns: DataFrame["columns"],
-  primaryIndexes: number[],
-  row: DataFrame["data"][number],
+  primaryKeys: string[],
+  row: RowObjectType,
 ): string {
-  const result: Record<string, RowDataTypes> = {};
+  // just make a concatenated string rather than a JSON string
+  const result: string[] = [];
 
-  if (primaryIndexes.length === 0) {
-    const row_data = row as unknown as RowObjectType;
-
-    return JSON.stringify({ _index: row_data._index });
+  if (primaryKeys.length === 0) {
+    return String(row._index);
   } else {
-    for (const index of primaryIndexes) {
-      const col = columns[index];
-      result[col.name] = row[index];
+    for (const key of primaryKeys) {
+      const colOrNone = columns.find((c) => includesIgnoreCase([c.key], key));
+      if (colOrNone == null) {
+        throw new Error(`Primary Column ${key} not found`);
+      }
+      result.push(`${colOrNone.name}=${getCaseInsensitive(row, key) ?? ""}`);
     }
-    return JSON.stringify(result);
+    return result.join("|");
   }
 }
 
@@ -93,8 +102,8 @@ function DataFrameColumnGroupHeader({
 } & QueryDataDiffGridOptions) {
   const primaryKeys = options.primaryKeys ?? [];
   const pinnedColumns = options.pinnedColumns ?? [];
-  const isPK = primaryKeys.includes(name);
-  const isPinned = pinnedColumns.includes(name);
+  const isPK = includesIgnoreCase(primaryKeys, name);
+  const isPinned = includesIgnoreCase(pinnedColumns, name);
 
   let selectOptions: { value: string; onClick: () => void }[] = [];
   if (onColumnsRenderModeChanged) {
@@ -169,6 +178,7 @@ export function toValueDiffGrid(
   const changedOnly = options?.changedOnly ?? false;
   const displayMode = options?.displayMode ?? "inline";
   const columnsRenderMode = options?.columnsRenderMode ?? {};
+  const transformedData = dataFrameToRowObjects(df);
 
   const columns: (ColumnOrColumnGroup<RowObjectType> & {
     columnType?: ColumnType;
@@ -182,24 +192,24 @@ export function toValueDiffGrid(
   }
 
   // merge row
-  const baseMap: Record<string, RowData | undefined> = {};
-  const currentMap: Record<string, RowData | undefined> = {};
+  const baseMap: Record<string, RowObjectType | undefined> = {};
+  const currentMap: Record<string, RowObjectType | undefined> = {};
   if (primaryKeys.length === 0) {
     throw new Error("Primary keys are required");
   }
 
-  const primaryIndexes = _getPrimaryKeyIndexes(df.columns, primaryKeys);
-  const inBaseIndex = columnMap.IN_A.index;
-  const inCurrentIndex = columnMap.IN_B.index;
+  const primaryKeyKeys = _getPrimaryKeyKeys(df.columns, primaryKeys);
+  const inBaseIndex = columnMap.IN_A.key;
+  const inCurrentIndex = columnMap.IN_B.key;
 
-  df.data.forEach((row) => {
-    const key = _getPrimaryKeyValue(df.columns, primaryIndexes, row);
-    if (row[inBaseIndex]) {
-      baseMap[key] = row;
+  transformedData.forEach((row) => {
+    const key = _getPrimaryKeyValue(df.columns, primaryKeyKeys, row);
+    if (getCaseInsensitive(row, inBaseIndex)) {
+      baseMap[key.toLowerCase()] = row;
     }
 
-    if (row[inCurrentIndex]) {
-      currentMap[key] = row;
+    if (getCaseInsensitive(row, inCurrentIndex)) {
+      currentMap[key.toLowerCase()] = row;
     }
   });
 
@@ -213,23 +223,28 @@ export function toValueDiffGrid(
   let rows = Object.entries(mergedMap).map(([key]) => {
     const baseRow = baseMap[key];
     const currentRow = currentMap[key];
-    const row = JSON.parse(key) as RowObjectType;
+    const row: RowObjectType = {
+      _index: keyToNumber(key),
+      __status: undefined,
+    };
 
     if (baseRow) {
-      df.columns.forEach((col, index) => {
-        if (primaryKeys.includes(col.name)) {
+      df.columns.forEach((col) => {
+        if (includesIgnoreCase(primaryKeys, col.key)) {
+          // add the primary key value (don't add it again in currentRow)
+          row[col.key] = baseRow[col.key];
           return;
         }
-        row[`base__${col.name}`] = baseRow[index];
+        row[`base__${col.key}`] = baseRow[col.key];
       });
     }
 
     if (currentRow) {
-      df.columns.forEach((col, index) => {
-        if (primaryKeys.includes(col.name)) {
+      df.columns.forEach((col) => {
+        if (includesIgnoreCase(primaryKeys, col.key)) {
           return;
         }
-        row[`current__${col.name}`] = currentRow[index];
+        row[`current__${col.key}`] = currentRow[col.key];
       });
     }
 
@@ -246,11 +261,11 @@ export function toValueDiffGrid(
           continue;
         }
 
-        if (primaryKeys.includes(name)) {
+        if (includesIgnoreCase(primaryKeys, name)) {
           continue;
         }
 
-        if (!_.isEqual(baseRow[column.index], currentRow[column.index])) {
+        if (!_.isEqual(baseRow[column.key], currentRow[column.key])) {
           row.__status = "modified";
           column.status = "modified";
         }
@@ -380,16 +395,17 @@ export function toValueDiffGrid(
 
   // merges columns: primary keys
   primaryKeys.forEach((name) => {
-    const columnStatus = columnMap[name].status ?? "";
-    const columnType = columnMap[name].colType;
+    const lowercaseName = name.toLowerCase();
+    const columnStatus = columnMap[lowercaseName].status ?? "";
+    const columnType = columnMap[lowercaseName].colType;
 
     columns.push({
-      key: name,
+      key: lowercaseName,
       name: (
         <DataFrameColumnGroupHeader
-          name={name}
+          name={lowercaseName}
           columnStatus={columnStatus}
-          primaryKeys={primaryKeys}
+          primaryKeys={primaryKeys.map((k) => k.toLowerCase())}
           columnType={"unknown"}
           {...options}
         />
@@ -403,20 +419,23 @@ export function toValueDiffGrid(
       },
       renderCell: defaultRenderCell,
       columnType,
-      columnRenderMode: columnsRenderMode[name],
+      columnRenderMode: columnsRenderMode[lowercaseName],
     });
   });
 
   // merges columns: pinned columns
   pinnedColumns.forEach((name) => {
-    const columnStatus = columnMap[name].status ?? "";
-    const columnType = columnMap[name].colType;
+    const lowercaseName = name.toLowerCase();
+    const columnStatus = columnMap[lowercaseName].status ?? "";
+    const columnType = columnMap[lowercaseName].colType;
 
-    if (primaryKeys.includes(name)) {
+    if (includesIgnoreCase(primaryKeys, lowercaseName)) {
       return;
     }
 
-    columns.push(toColumn(name, columnStatus, columnType, columnsRenderMode[name]));
+    columns.push(
+      toColumn(lowercaseName, columnStatus, columnType, columnsRenderMode[lowercaseName]),
+    );
   });
 
   // merges columns: other columns
@@ -427,11 +446,11 @@ export function toValueDiffGrid(
       return;
     }
 
-    if (primaryKeys.includes(name)) {
+    if (includesIgnoreCase(primaryKeys, name)) {
       return;
     }
 
-    if (pinnedColumns.includes(name)) {
+    if (includesIgnoreCase(pinnedColumns, name)) {
       return;
     }
 
@@ -440,7 +459,14 @@ export function toValueDiffGrid(
         return;
       }
     }
-    columns.push(toColumn(name, columnStatus, mergedColumn.colType, columnsRenderMode[name]));
+    columns.push(
+      toColumn(
+        name.toLowerCase(),
+        columnStatus,
+        mergedColumn.colType,
+        columnsRenderMode[name.toLowerCase()],
+      ),
+    );
   });
 
   return {

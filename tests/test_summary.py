@@ -1,5 +1,6 @@
 import os
-import unittest
+
+import pytest
 
 from recce.adapter.dbt_adapter import DbtAdapter, DbtVersion, load_manifest
 from recce.core import RecceContext, set_default_context
@@ -13,11 +14,12 @@ current_dir = os.path.dirname(os.path.abspath(__file__))
 base_manifest_dir = os.path.join(current_dir, "data", "manifest", "base")
 pr2_manifest_dir = os.path.join(current_dir, "data", "manifest", "pr2")  # Pull Request 2l
 
-dbt_version = DbtVersion()
 
-
-@unittest.skipIf(dbt_version < "1.8.1", "Dbt version is less than 1.8.1")
 def test_generate_summary_metadata():
+    dbt_version = DbtVersion()
+    if dbt_version < "1.8.1":
+        pytest.skip("Dbt version is less than 1.8.1")
+
     manifest = load_manifest(path=os.path.join(current_dir, "manifest.json"))
     assert manifest is not None
     dbt_adapter = DbtAdapter(curr_manifest=manifest)
@@ -35,8 +37,11 @@ def test_generate_summary_metadata():
     generate_summary_metadata(curr_lineage, base_lineage)
 
 
-@unittest.skipIf(dbt_version < "v1.8.1", "Dbt version is less than 1.8.1")
 def test_build_lineage_graph():
+    dbt_version = DbtVersion()
+    if dbt_version < "1.8.1":
+        pytest.skip("Dbt version is less than 1.8.1")
+
     base_manifest = load_manifest(path=os.path.join(base_manifest_dir, "manifest.json"))
     curr_manifest = load_manifest(path=os.path.join(pr2_manifest_dir, "manifest.json"))
     dbt_adapter = DbtAdapter(curr_manifest=curr_manifest, base_manifest=base_manifest)
@@ -51,8 +56,11 @@ def test_build_lineage_graph():
     assert len(lineage_graph.modified_set) == 3
 
 
-@unittest.skipIf(dbt_version < "v1.8.1", "Dbt version is less than 1.8.1")
 def test_generate_mermaid_lineage_graph():
+    dbt_version = DbtVersion()
+    if dbt_version < "1.8.1":
+        pytest.skip("Dbt version is less than 1.8.1")
+
     set_default_context(RecceContext())
     base_manifest = load_manifest(path=os.path.join(base_manifest_dir, "manifest.json"))
     curr_manifest = load_manifest(path=os.path.join(pr2_manifest_dir, "manifest.json"))

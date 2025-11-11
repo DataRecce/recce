@@ -21,6 +21,7 @@ class DataFrameColumnType(Enum):
 
 
 class DataFrameColumn(BaseModel):
+    key: str
     name: str
     type: DataFrameColumnType
 
@@ -64,7 +65,7 @@ class DataFrame(BaseModel):
                 col_type = DataFrameColumnType.INTEGER
             else:
                 col_type = DataFrameColumnType.UNKNOWN
-            columns.append(DataFrameColumn(name=col_name, type=col_type))
+            columns.append(DataFrameColumn(key=col_name, name=col_name, type=col_type))
 
         def _row_values(row):
             # If the value is Decimal, check if it's finite. If not, convert it to float(xxx) (GitHub issue #476)

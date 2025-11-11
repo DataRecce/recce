@@ -7,7 +7,7 @@ import { RunResultViewProps } from "../run/types";
 import { VscKey } from "react-icons/vsc";
 import { RecceActionOptions, useRecceActionContext } from "@/lib/hooks/RecceActionContext";
 import { useRecceInstanceContext } from "@/lib/hooks/RecceInstanceContext";
-import { isValueDiffRun, RowObjectType } from "@/lib/api/types";
+import { DataFrame, isValueDiffRun, RowObjectType } from "@/lib/api/types";
 import React, { forwardRef, Ref } from "react";
 import { PiDotsThreeVertical } from "react-icons/pi";
 import { dataFrameToRowObjects } from "@/utils/transforms";
@@ -89,6 +89,25 @@ function _ValueDiffResultView({ run }: ValueDiffResultViewProp, ref: Ref<DataGri
   };
   const primaryKeys = Array.isArray(params.primary_key) ? params.primary_key : [params.primary_key];
 
+  // used as a type fix below
+  const basicColumns: DataFrame["columns"] = [
+    {
+      key: "0",
+      name: "Column",
+      type: "text",
+    },
+    {
+      key: "1",
+      name: "Matched",
+      type: "number",
+    },
+    {
+      key: "2",
+      name: "Matched %",
+      type: "number",
+    },
+  ];
+
   const columns: ColumnOrColumnGroup<RowObjectType>[] = [
     {
       key: "__is_pk__",
@@ -129,6 +148,8 @@ function _ValueDiffResultView({ run }: ValueDiffResultViewProp, ref: Ref<DataGri
       cellClass,
     },
   ];
+
+  result.data.columns = basicColumns;
 
   return (
     <Flex direction="column" gap="5px" pt="5px" height="100%">

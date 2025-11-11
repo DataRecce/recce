@@ -1,3 +1,11 @@
+// Mock react-data-grid since tests don't need actual rendering
+jest.mock("react-data-grid", () => ({
+  textEditor: jest.fn(),
+  CalculatedColumn: {},
+  ColumnOrColumnGroup: {},
+  RenderCellProps: {},
+}));
+
 import { DataFrame } from "@/lib/api/types";
 import { toDataDiffGrid } from "./querydiff";
 
@@ -6,14 +14,17 @@ test("query diff", () => {
     columns: [
       {
         name: "id",
+        key: "id",
         type: "integer",
       },
       {
         name: "name",
+        key: "name",
         type: "text",
       },
       {
         name: "value",
+        key: "value",
         type: "integer",
       },
     ],
@@ -28,14 +39,17 @@ test("query diff", () => {
     columns: [
       {
         name: "id",
+        key: "id",
         type: "integer",
       },
       {
         name: "name",
+        key: "name",
         type: "text",
       },
       {
         name: "value",
+        key: "value",
         type: "integer",
       },
     ],
@@ -61,6 +75,7 @@ test("query diff", () => {
     },
     {
       _index: 2,
+      __status: undefined,
       base__id: 2,
       base__name: "Bob",
       base__value: 200,
@@ -84,6 +99,7 @@ test("query diff", () => {
   result = toDataDiffGrid(base, current, { primaryKeys: ["id"] });
   expect(result.rows).toStrictEqual([
     {
+      _index: 3226095,
       id: 1,
       __status: "modified",
       base__name: "Alice",
@@ -92,7 +108,9 @@ test("query diff", () => {
       current__value: 150,
     },
     {
+      _index: 3226096,
       id: 2,
+      __status: undefined,
       base__name: "Bob",
       base__value: 200,
       current__name: "Bob",
@@ -101,6 +119,7 @@ test("query diff", () => {
     {
       __status: "modified",
       id: 3,
+      _index: 3226097,
       base__name: "Charlie",
       base__value: 300,
       current__name: "Charlie",
@@ -115,14 +134,17 @@ test("query diff changed only", () => {
     columns: [
       {
         name: "status",
+        key: "status",
         type: "text",
       },
       {
         name: "c",
+        key: "c",
         type: "integer",
       },
       {
         name: "x",
+        key: "x",
         type: "integer",
       },
     ],
@@ -136,14 +158,17 @@ test("query diff changed only", () => {
     columns: [
       {
         name: "status",
+        key: "status",
         type: "text",
       },
       {
         name: "c",
+        key: "c",
         type: "integer",
       },
       {
         name: "x",
+        key: "x",
         type: "integer",
       },
     ],
@@ -159,6 +184,7 @@ test("query diff changed only", () => {
   });
   expect(result.rows).toStrictEqual([
     {
+      _index: 1317089290,
       status: "inactive",
       base__c: 7,
       base__x: 5,
@@ -175,10 +201,12 @@ test("query diff changed only: show all columns if there is only removed records
     columns: [
       {
         name: "status",
+        key: "status",
         type: "text",
       },
       {
         name: "c",
+        key: "c",
         type: "integer",
       },
     ],
@@ -193,10 +221,12 @@ test("query diff changed only: show all columns if there is only removed records
     columns: [
       {
         name: "status",
+        key: "status",
         type: "text",
       },
       {
         name: "c",
+        key: "c",
         type: "integer",
       },
     ],
@@ -215,6 +245,7 @@ test("query diff changed only: show all columns if there is only removed records
       status: null,
       base__c: 54,
       __status: "removed",
+      _index: 922765678,
     },
   ]);
   expect(result.columns.length).toBe(2);

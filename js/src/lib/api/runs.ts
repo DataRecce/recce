@@ -1,5 +1,5 @@
 import { axiosClient } from "./axiosClient";
-import { AxiosQueryParams, Run, RunParamTypes } from "./types";
+import { AxiosQueryParams, isQueryRun, Run, RunParamTypes } from "./types";
 import { getExperimentTrackingBreakingChangeEnabled } from "./track";
 import { AxiosResponse } from "axios";
 import { RunType } from "@/components/run/registry";
@@ -20,6 +20,23 @@ interface SubmitRunBody {
   params?: Record<string, unknown>;
   nowait?: boolean;
   track_props: SubmitRunTrackProps;
+}
+
+function mutateAddKey(run: Run): Run {
+  if (run.result == null) {
+    // no result, don't do anything
+    return run;
+  }
+  if (isQueryRun(run)) {
+    run.result.columns = run.result.columns.map((c) => {
+      if (c.key) {
+        return c;
+      }
+      c.key = c.name;
+      return c;
+    });
+  }
+  return run;
 }
 
 export async function submitRun(type: RunType, params?: RunParamTypes, options?: SubmitOptions) {
@@ -62,7 +79,7 @@ export async function waitRun(runId: string, timeout?: number) {
     },
   );
 
-  return response.data;
+  return mutateAddKey(response.data);
 }
 
 export async function cancelRun(runId: string) {

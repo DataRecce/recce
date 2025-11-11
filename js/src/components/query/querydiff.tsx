@@ -9,76 +9,76 @@ import _ from "lodash";
 import "./styles.css";
 import { Box, Flex, Icon, IconButton, Menu, Portal, Text } from "@chakra-ui/react";
 import { VscClose, VscKebabVertical, VscKey, VscPin, VscPinned } from "react-icons/vsc";
-import {
-  ColumnType,
-  ColumnRenderMode,
-  DataFrame,
-  RowObjectType,
-  RowDataTypes,
-} from "@/lib/api/types";
+import { ColumnType, ColumnRenderMode, DataFrame, RowObjectType } from "@/lib/api/types";
 import { mergeKeysWithStatus } from "@/lib/mergeKeys";
 import { DiffText } from "./DiffText";
 import { formatNumber } from "@/utils/formatters";
 import { columnPrecisionSelectOptions } from "@/components/valuediff/shared";
+import { dataFrameToRowObjects, keyToNumber } from "@/utils/transforms";
 
-function _getColumnMap(base: DataFrame, current: DataFrame) {
-  const result: Record<
-    string,
-    {
-      baseColumnIndex: number;
-      currentColumnIndex: number;
-      status?: string;
-      colType: ColumnType;
-    }
-  > = {};
+interface MergeColumnMap {
+  baseColumnKey: string;
+  currentColumnKey: string;
+  status?: string;
+  colType: ColumnType;
+  key: string;
+}
+
+function _getColumnMap(base: DataFrame, current: DataFrame): Record<string, MergeColumnMap> {
+  const result: Record<string, MergeColumnMap> = {};
 
   const mapStatus = mergeKeysWithStatus(
-    base.columns.map((col) => col.name),
-    current.columns.map((col) => col.name),
+    base.columns.map((col) => col.key),
+    current.columns.map((col) => col.key),
   ) as Record<string, string>;
 
   Object.entries(mapStatus).map(([key, status]) => {
+    const baseColumn = base.columns.find((c) => c.key === key);
+    const currentColumn = current.columns.find((c) => c.key === key);
     result[key] = {
       status,
-      baseColumnIndex: base.columns.findIndex((col) => col.name === key),
-      currentColumnIndex: current.columns.findIndex((col) => col.name === key),
-      colType: base.columns.find((c) => c.name === key)?.type ?? "unknown",
+      baseColumnKey: baseColumn?.key ?? "unknown",
+      currentColumnKey: currentColumn?.key ?? "unknown",
+      colType: base.columns.find((c) => c.key === key)?.type ?? "unknown",
+      key: baseColumn?.key ?? "unknown",
     };
   });
 
   return result;
 }
 
-function _getPrimaryKeyIndexes(columns: DataFrame["columns"], primaryKeys: string[]) {
-  const indexes: number[] = [];
+function _getPrimaryKeyKeys(columns: DataFrame["columns"], primaryKeys: string[]): string[] {
+  const keys: string[] = [];
   for (const key of primaryKeys) {
-    const index = columns.findIndex((col) => col.name === key);
+    const index = columns.findIndex((col) => col.key === key);
     if (index < 0) {
       throw new Error(`Column ${key} not found`);
     }
 
-    indexes.push(index);
+    keys.push(key);
   }
-  return indexes;
+  return keys;
 }
 
 function _getPrimaryKeyValue(
   columns: DataFrame["columns"],
-  primaryIndexes: number[],
-  row: DataFrame["data"][number],
+  primaryKeys: string[],
+  row: RowObjectType,
 ): string {
-  const result: Record<string, RowDataTypes> = {};
+  // just make a concatenated string rather than a JSON string
+  const result: string[] = [];
 
-  if (primaryIndexes.length === 0) {
-    const row_data = row as unknown as RowObjectType;
-
-    return JSON.stringify({ _index: row_data._index });
+  if (primaryKeys.length === 0) {
+    return String(row._index);
   } else {
-    for (const index of primaryIndexes) {
-      const col = columns[index];
-      result[col.name] = row[index];
+    for (const key of primaryKeys) {
+      const colOrNone = columns.find((c) => c.key === key);
+      if (colOrNone == null) {
+        throw new Error(`Primary Column ${key} not found`);
+      }
+      result.push(`${colOrNone.name}=${row[key]}`);
     }
-    return JSON.stringify(result);
+    return result.join("|");
   }
 }
 
@@ -330,6 +330,9 @@ export function toDataDiffGrid(
   const displayMode = options?.displayMode ?? "side_by_side";
   const columnsRenderMode = options?.columnsRenderMode ?? {};
 
+  const baseData = dataFrameToRowObjects(base);
+  const currentData = dataFrameToRowObjects(current);
+
   const columns: (ColumnOrColumnGroup<RowObjectType> & {
     columnType?: ColumnType;
     columnRenderMode?: ColumnRenderMode;
@@ -337,37 +340,33 @@ export function toDataDiffGrid(
   const columnMap = _getColumnMap(base, current);
 
   // merge row
-  const baseMap: Record<string, unknown> = {};
-  const currentMap: Record<string, unknown> = {};
+  const baseMap: Record<string, RowObjectType> = {};
+  const currentMap: Record<string, RowObjectType> = {};
   let invalidPKeyBase = false;
   let invalidPKeyCurrent = false;
 
   if (primaryKeys.length === 0) {
-    base.data.forEach((row, index) => {
-      const row_data = row as unknown as RowObjectType;
-      row_data._index = index + 1;
-      baseMap[JSON.stringify({ _index: index + 1 })] = row;
+    baseData.forEach((row) => {
+      baseMap[String(row._index)] = row;
     });
 
-    current.data.forEach((row, index) => {
-      const row_data = row as unknown as RowObjectType;
-      row_data._index = index + 1;
-      currentMap[JSON.stringify({ _index: index + 1 })] = row;
+    currentData.forEach((row) => {
+      currentMap[String(row._index)] = row;
     });
   } else {
-    let primaryIndexes = _getPrimaryKeyIndexes(base.columns, primaryKeys);
+    let primaryKeyKeys = _getPrimaryKeyKeys(base.columns, primaryKeys);
 
-    base.data.forEach((row) => {
-      const key = _getPrimaryKeyValue(base.columns, primaryIndexes, row);
+    baseData.forEach((row) => {
+      const key = _getPrimaryKeyValue(base.columns, primaryKeyKeys, row);
       if (key in baseMap) {
         invalidPKeyBase = true;
       }
       baseMap[key] = row;
     });
 
-    primaryIndexes = _getPrimaryKeyIndexes(current.columns, primaryKeys);
-    current.data.forEach((row) => {
-      const key = _getPrimaryKeyValue(current.columns, primaryIndexes, row);
+    primaryKeyKeys = _getPrimaryKeyKeys(current.columns, primaryKeys);
+    currentData.forEach((row) => {
+      const key = _getPrimaryKeyValue(current.columns, primaryKeyKeys, row);
       if (key in currentMap) {
         invalidPKeyCurrent = true;
       }
@@ -386,23 +385,28 @@ export function toDataDiffGrid(
   let rows = Object.entries(mergedMap).map(([key]) => {
     const baseRow = baseMap[key] as RowObjectType | undefined;
     const currentRow = currentMap[key] as RowObjectType | undefined;
-    const row = JSON.parse(key) as RowObjectType;
+    const row: RowObjectType = {
+      _index: keyToNumber(key),
+      __status: undefined,
+    };
 
     if (baseRow) {
-      base.columns.forEach((col, index) => {
-        if (primaryKeys.includes(col.name)) {
+      base.columns.forEach((col) => {
+        if (primaryKeys.includes(col.key)) {
+          // add the primary key value (don't add it again in currentRow)
+          row[col.key] = baseRow[col.key];
           return;
         }
-        row[`base__${col.name}`] = baseRow[index];
+        row[`base__${col.key}`] = baseRow[col.key];
       });
     }
 
     if (currentRow) {
-      current.columns.forEach((col, index) => {
-        if (primaryKeys.includes(col.name)) {
+      current.columns.forEach((col) => {
+        if (primaryKeys.includes(col.key)) {
           return;
         }
-        row[`current__${col.name}`] = currentRow[index];
+        row[`current__${col.key}`] = currentRow[col.key];
       });
     }
 
@@ -423,15 +427,15 @@ export function toDataDiffGrid(
           continue;
         }
 
-        if (mergedColumn.baseColumnIndex < 0 || mergedColumn.currentColumnIndex < 0) {
+        if (
+          mergedColumn.baseColumnKey === "unknown" ||
+          mergedColumn.currentColumnKey === "unknown"
+        ) {
           continue;
         }
 
         if (
-          !_.isEqual(
-            baseRow[mergedColumn.baseColumnIndex],
-            currentRow[mergedColumn.currentColumnIndex],
-          )
+          !_.isEqual(baseRow[mergedColumn.baseColumnKey], currentRow[mergedColumn.currentColumnKey])
         ) {
           row.__status = "modified";
           mergedColumn.status = "modified";

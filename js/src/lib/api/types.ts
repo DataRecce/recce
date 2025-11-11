@@ -26,6 +26,7 @@ export type ColumnRenderMode = "raw" | "percent" | 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7
 
 export interface DataFrame {
   columns: {
+    key: string;
     name: string;
     type: ColumnType;
   }[];
@@ -221,6 +222,10 @@ export function isValueDiffDetailRun(run: Run): run is Extract<Run, { type: "val
 
 export function isSchemaDiffRun(run: Run): run is Extract<Run, { type: "schema_diff" }> {
   return run.type === "schema_diff";
+}
+
+export function isProfileRun(run: Run): run is Extract<Run, { type: "profile" }> {
+  return run.type === "profile";
 }
 
 export function isProfileDiffRun(run: Run): run is Extract<Run, { type: "profile_diff" }> {
