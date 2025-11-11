@@ -139,7 +139,7 @@ class RecceMCPServer:
             # Always available in all modes
             tools.append(
                 Tool(
-                    name="get_lineage_diff",
+                    name="lineage_diff",
                     description="Get the lineage diff between base and current environments for changed models. "
                     "Returns nodes, parent_map (node dependencies), and diff information in compact dataframe format. "
                     "In parent_map: key is a node index, value is list of parent node indices that it depends on (e.g., {4: [1, 2]} means node 4 depends on nodes 1 and 2).",
@@ -308,10 +308,10 @@ class RecceMCPServer:
                 if self.mode != RecceServerMode.server and name in blocked_tools_in_non_server:
                     raise ValueError(
                         f"Tool '{name}' is not available in {self.mode.value} mode. "
-                        "Only 'get_lineage_diff' is available in this mode."
+                        "Only 'lineage_diff' and 'schema_diff' are available in this mode."
                     )
 
-                if name == "get_lineage_diff":
+                if name == "lineage_diff":
                     result = await self._tool_get_lineage_diff(arguments)
                 elif name == "schema_diff":
                     result = await self._tool_schema_diff(arguments)
