@@ -16,7 +16,7 @@ import React, { forwardRef, Ref, useMemo } from "react";
 import {
   ColumnRenderMode,
   ColumnType,
-  DataFrame,
+  DataFrame, isQueryBaseRun,
   isQueryRun,
   RowObjectType,
   Run,
@@ -211,7 +211,7 @@ const PrivateQueryResultView = (
   { run, viewOptions, onViewOptionsChanged, onAddToChecklist }: QueryResultViewProp,
   ref: Ref<DataGridHandle>,
 ) => {
-  if (!isQueryRun(run)) {
+  if (!(isQueryRun(run) || isQueryBaseRun(run))) {
     throw new Error("run type must be query");
   }
   const pinnedColumns = useMemo(() => viewOptions?.pinned_columns ?? [], [viewOptions]);
