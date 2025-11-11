@@ -140,8 +140,8 @@ class RecceMCPServer:
             tools.append(
                 Tool(
                     name="get_lineage_diff",
-                    description="Get the lineage diff between base and current environments. "
-                    "Shows added, removed, and modified models.",
+                    description="Get the lineage diff between base and current environments for changed models. "
+                    "Returns nodes, parent_map, and diff information in compact dataframe format.",
                     inputSchema={
                         "type": "object",
                         "properties": {
@@ -157,6 +157,12 @@ class RecceMCPServer:
                                 "type": "array",
                                 "items": {"type": "string"},
                                 "description": "List of packages to filter (optional)",
+                            },
+                            "view_mode": {
+                                "type": "string",
+                                "enum": ["changed_models", "all"],
+                                "default": "changed_models",
+                                "description": "View mode: 'changed_models' for only changed models (default), 'all' for all models",
                             },
                         },
                     },
@@ -305,8 +311,22 @@ class RecceMCPServer:
     async def _tool_get_lineage_diff(self, arguments: Dict[str, Any]) -> Dict[str, Any]:
         """Get lineage diff between base and current"""
         try:
+            # Extract filter arguments
+            select = arguments.get("select")
+            exclude = arguments.get("exclude")
+            packages = arguments.get("packages")
+            view_mode = arguments.get("view_mode", "changed_models")
+
             # Get lineage diff from adapter (returns a Pydantic LineageDiff model)
             lineage_diff = self.context.get_lineage_diff().model_dump(mode="json")
+
+            # Apply node selection filtering if arguments provided
+            selected_node_ids = self.context.adapter.select_nodes(
+                select=select,
+                exclude=exclude,
+                packages=packages,
+                view_mode=view_mode,
+            )
 
             # Extract parent_map and simplified nodes from both base and current
             parent_map = {}
@@ -319,21 +339,24 @@ class RecceMCPServer:
 
                 env_data = lineage_diff[env_key]
 
-                # Merge parent_map
+                # Merge parent_map (filtering by selected nodes)
                 if "parent_map" in env_data:
-                    parent_map.update(env_data["parent_map"])
+                    for node_id, parents in env_data["parent_map"].items():
+                        if node_id in selected_node_ids:
+                            parent_map[node_id] = parents
 
-                # Merge nodes
+                # Merge nodes (filtering by selected nodes)
                 if "nodes" in env_data:
                     for node_id, node_info in env_data["nodes"].items():
-                        nodes[node_id] = {
-                            "name": node_info.get("name"),
-                            "resource_type": node_info.get("resource_type"),
-                        }
+                        if node_id in selected_node_ids:
+                            nodes[node_id] = {
+                                "name": node_info.get("name"),
+                                "resource_type": node_info.get("resource_type"),
+                            }
 
-                        materialized = node_info.get("config", {}).get("materialized")
-                        if materialized is not None:
-                            nodes[node_id]["materialized"] = materialized
+                            materialized = node_info.get("config", {}).get("materialized")
+                            if materialized is not None:
+                                nodes[node_id]["materialized"] = materialized
 
             # Create id to idx mapping
             id_to_idx = {node_id: idx for idx, node_id in enumerate(nodes.keys())}
