@@ -335,8 +335,22 @@ class RecceMCPServer:
                         if materialized is not None:
                             nodes[node_id]["materialized"] = materialized
 
+            # Convert nodes to dataframe format for compact representation
+            nodes_df = {
+                "columns": ["id", "name", "resource_type", "materialized"],
+                "data": [
+                    [
+                        node_id,
+                        node_info.get("name"),
+                        node_info.get("resource_type"),
+                        node_info.get("materialized"),
+                    ]
+                    for node_id, node_info in nodes.items()
+                ],
+            }
+
             # Build simplified result
-            result = {"nodes": nodes, "parent_map": parent_map, "diff": lineage_diff["diff"]}
+            result = {"nodes": nodes_df, "parent_map": parent_map, "diff": lineage_diff["diff"]}
 
             return result
 
