@@ -335,11 +335,15 @@ class RecceMCPServer:
                         if materialized is not None:
                             nodes[node_id]["materialized"] = materialized
 
+            # Create id to idx mapping
+            id_to_idx = {node_id: idx for idx, node_id in enumerate(nodes.keys())}
+
             # Convert nodes to dataframe format for compact representation
             nodes_df = {
-                "columns": ["id", "name", "resource_type", "materialized"],
+                "columns": ["idx", "id", "name", "resource_type", "materialized"],
                 "data": [
                     [
+                        id_to_idx[node_id],
                         node_id,
                         node_info.get("name"),
                         node_info.get("resource_type"),
@@ -349,8 +353,29 @@ class RecceMCPServer:
                 ],
             }
 
+            # Map parent_map IDs to indices
+            parent_map_indexed = {}
+            for node_id, parents in parent_map.items():
+                if node_id in id_to_idx:
+                    node_idx = id_to_idx[node_id]
+                    parent_indices = [id_to_idx[p] for p in parents if p in id_to_idx]
+                    parent_map_indexed[node_idx] = parent_indices
+
+            # Map diff to dataframe format
+            diff_df = {
+                "columns": ["idx", "change_status"],
+                "data": [
+                    [
+                        id_to_idx[node_id],
+                        diff_info.get("change_status"),
+                    ]
+                    for node_id, diff_info in lineage_diff["diff"].items()
+                    if node_id in id_to_idx
+                ],
+            }
+
             # Build simplified result
-            result = {"nodes": nodes_df, "parent_map": parent_map, "diff": lineage_diff["diff"]}
+            result = {"nodes": nodes_df, "parent_map": parent_map_indexed, "diff": diff_df}
 
             return result
 
