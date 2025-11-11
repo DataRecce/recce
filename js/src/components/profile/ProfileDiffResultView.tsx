@@ -1,15 +1,13 @@
 import { Center, Flex } from "@chakra-ui/react";
-
 import { ScreenshotDataGrid } from "../data-grid/ScreenshotDataGrid";
 import { RunResultViewProps } from "../run/types";
-
 import { ProfileDiffViewOptions } from "@/lib/api/profile";
 import { forwardRef, Ref, useMemo } from "react";
 import { toDataDiffGrid } from "../query/querydiff";
 import { RunToolbar } from "../run/RunToolbar";
 import { DiffDisplayModeSwitch } from "../query/ToggleSwitch";
 import { toDataGrid } from "../query/QueryResultView";
-import { ColumnRenderMode, isProfileDiffRun } from "@/lib/api/types";
+import { ColumnRenderMode, isProfileDiffRun, isProfileRun } from "@/lib/api/types";
 import { DataGridHandle } from "react-data-grid";
 
 type ProfileDiffResultViewProp = RunResultViewProps<ProfileDiffViewOptions>;
@@ -109,7 +107,7 @@ const PrivateProfileResultView = (
 
   ref: Ref<DataGridHandle>,
 ) => {
-  if (!isProfileDiffRun(run)) {
+  if (!isProfileRun(run)) {
     throw new Error("Only run type profile_diff is supported");
   }
   const result = run.result;

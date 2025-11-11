@@ -224,6 +224,10 @@ export function isSchemaDiffRun(run: Run): run is Extract<Run, { type: "schema_d
   return run.type === "schema_diff";
 }
 
+export function isProfileRun(run: Run): run is Extract<Run, { type: "profile" }> {
+  return run.type === "profile";
+}
+
 export function isProfileDiffRun(run: Run): run is Extract<Run, { type: "profile_diff" }> {
   return run.type === "profile_diff";
 }
