@@ -141,7 +141,8 @@ class RecceMCPServer:
                 Tool(
                     name="get_lineage_diff",
                     description="Get the lineage diff between base and current environments for changed models. "
-                    "Returns nodes, parent_map, and diff information in compact dataframe format.",
+                    "Returns nodes, parent_map (node dependencies), and diff information in compact dataframe format. "
+                    "In parent_map: key is a node index, value is list of parent node indices that it depends on (e.g., {4: [1, 2]} means node 4 depends on nodes 1 and 2).",
                     inputSchema={
                         "type": "object",
                         "properties": {
@@ -163,6 +164,31 @@ class RecceMCPServer:
                                 "enum": ["changed_models", "all"],
                                 "default": "changed_models",
                                 "description": "View mode: 'changed_models' for only changed models (default), 'all' for all models",
+                            },
+                        },
+                    },
+                )
+            )
+            tools.append(
+                Tool(
+                    name="schema_diff",
+                    description="Get the schema diff (column changes) between base and current environments. "
+                    "Shows added, removed, and type-changed columns in compact dataframe format.",
+                    inputSchema={
+                        "type": "object",
+                        "properties": {
+                            "select": {
+                                "type": "string",
+                                "description": "dbt selector syntax to filter models (optional)",
+                            },
+                            "exclude": {
+                                "type": "string",
+                                "description": "dbt selector syntax to exclude models (optional)",
+                            },
+                            "packages": {
+                                "type": "array",
+                                "items": {"type": "string"},
+                                "description": "List of packages to filter (optional)",
                             },
                         },
                     },
@@ -287,6 +313,8 @@ class RecceMCPServer:
 
                 if name == "get_lineage_diff":
                     result = await self._tool_get_lineage_diff(arguments)
+                elif name == "schema_diff":
+                    result = await self._tool_schema_diff(arguments)
                 elif name == "row_count_diff":
                     result = await self._tool_row_count_diff(arguments)
                 elif name == "query":
@@ -404,6 +432,80 @@ class RecceMCPServer:
 
         except Exception:
             logger.exception("Error getting lineage diff")
+            raise
+
+    async def _tool_schema_diff(self, arguments: Dict[str, Any]) -> Dict[str, Any]:
+        """Get schema diff (column changes) between base and current"""
+        try:
+            # Extract filter arguments
+            select = arguments.get("select")
+            exclude = arguments.get("exclude")
+            packages = arguments.get("packages")
+
+            # Get lineage diff from adapter
+            lineage_diff = self.context.get_lineage_diff().model_dump(mode="json")
+
+            # Get all nodes from current environment
+            current_nodes = {}
+            if "current" in lineage_diff and "nodes" in lineage_diff["current"]:
+                current_nodes = lineage_diff["current"]["nodes"]
+
+            # Filter to only nodes that exist in both base and current (exclude added nodes)
+            base_nodes = lineage_diff.get("base", {}).get("nodes", {})
+            nodes_to_compare = set(current_nodes.keys()) & set(base_nodes.keys())
+
+            # Apply filtering if arguments provided
+            if select or exclude or packages:
+                selected_node_ids = self.context.adapter.select_nodes(
+                    select=select,
+                    exclude=exclude,
+                    packages=packages,
+                    view_mode="changed_models",
+                )
+                nodes_to_compare = nodes_to_compare & selected_node_ids
+
+            # Build schema changes
+            schema_changes = []
+
+            for node_id in nodes_to_compare:
+                base_node = base_nodes.get(node_id, {})
+                current_node = current_nodes.get(node_id, {})
+
+                base_columns = base_node.get("columns", {})
+                current_columns = current_node.get("columns", {})
+
+                # Get column names in base and current
+                base_col_names = set(base_columns.keys())
+                current_col_names = set(current_columns.keys())
+
+                # Find added columns (in current but not in base)
+                for col_name in current_col_names - base_col_names:
+                    schema_changes.append([node_id, col_name, "added"])
+
+                # Find removed columns (in base but not in current)
+                for col_name in base_col_names - current_col_names:
+                    schema_changes.append([node_id, col_name, "removed"])
+
+                # Find modified columns (in both but with different types)
+                for col_name in base_col_names & current_col_names:
+                    base_col_type = base_columns[col_name].get("type")
+                    current_col_type = current_columns[col_name].get("type")
+                    if base_col_type != current_col_type:
+                        schema_changes.append([node_id, col_name, "modified"])
+
+            # Convert schema changes to dataframe format
+            diff_df = {
+                "columns": ["node_id", "column", "change_status"],
+                "data": schema_changes,
+            }
+
+            # Build result
+            result = {"diff": diff_df}
+
+            return result
+
+        except Exception:
+            logger.exception("Error getting schema diff")
             raise
 
     async def _tool_row_count_diff(self, arguments: Dict[str, Any]) -> Dict[str, Any]:
