@@ -9,6 +9,7 @@ import asyncio
 import json
 import logging
 import os
+import textwrap
 import time
 from datetime import datetime
 from typing import Any, Dict, List, Optional
@@ -140,9 +141,23 @@ class RecceMCPServer:
             tools.append(
                 Tool(
                     name="lineage_diff",
-                    description="Get the lineage diff between base and current environments for changed models. "
-                    "Returns nodes, parent_map (node dependencies), and diff information in compact dataframe format. "
-                    "In parent_map: key is a node index, value is list of parent node indices that it depends on (e.g., {4: [1, 2]} means node 4 depends on nodes 1 and 2).",
+                    description=textwrap.dedent(
+                        """
+                        Get the lineage diff between production(base) and session(current) for changed models.
+                        Returns nodes, parent_map (node dependencies), and change_status/impacted information in compact dataframe format.
+
+                        In parent_map: key is a node index, value is list of parent node indices
+                        Nodes dataframe includes: idx, id, name, resource_type, materialized, change_status, impacted.
+
+                        Rendering guidance for Mermaid diagram:
+                        Use graph LR and apply these styles based on change_status and impacted:
+                        - change_status="added": fill:#d4edda, stroke:#28a745, color:#000000
+                        - change_status="removed": fill:#f8d7da, stroke:#dc3545, color:#000000
+                        - change_status="modified" AND impacted=true: fill:#fff3cd, stroke:#ffc107, color:#000000
+                        - change_status=null AND impacted=true: fill:#ffffff, stroke:#ffc107, color:#000000
+                        - change_status=null AND impacted=false: fill:#ffffff, stroke:#d3d3d3, color:#999999
+                    """
+                    ).strip(),
                     inputSchema={
                         "type": "object",
                         "properties": {
@@ -312,7 +327,7 @@ class RecceMCPServer:
                     )
 
                 if name == "lineage_diff":
-                    result = await self._tool_get_lineage_diff(arguments)
+                    result = await self._tool_lineage_diff(arguments)
                 elif name == "schema_diff":
                     result = await self._tool_schema_diff(arguments)
                 elif name == "row_count_diff":
@@ -336,7 +351,7 @@ class RecceMCPServer:
                 logger.exception(f"Error executing tool {name}")
                 return [TextContent(type="text", text=json.dumps({"error": str(e)}, indent=2))]
 
-    async def _tool_get_lineage_diff(self, arguments: Dict[str, Any]) -> Dict[str, Any]:
+    async def _tool_lineage_diff(self, arguments: Dict[str, Any]) -> Dict[str, Any]:
         """Get lineage diff between base and current"""
         try:
             # Extract filter arguments
@@ -355,6 +370,12 @@ class RecceMCPServer:
                 packages=packages,
                 view_mode=view_mode,
             )
+            impacted_node_ids = self.context.adapter.select_nodes(
+                select="state:modified+",
+            )
+
+            # Get diff information for change_status
+            diff_info = lineage_diff.get("diff", {})
 
             # Extract parent_map and simplified nodes from both base and current
             parent_map = {}
@@ -391,7 +412,7 @@ class RecceMCPServer:
 
             # Convert nodes to dataframe format for compact representation
             nodes_df = {
-                "columns": ["idx", "id", "name", "resource_type", "materialized"],
+                "columns": ["idx", "id", "name", "resource_type", "materialized", "change_status", "impacted"],
                 "data": [
                     [
                         id_to_idx[node_id],
@@ -399,6 +420,8 @@ class RecceMCPServer:
                         node_info.get("name"),
                         node_info.get("resource_type"),
                         node_info.get("materialized"),
+                        diff_info.get(node_id, {}).get("change_status"),
+                        node_id in impacted_node_ids,
                     ]
                     for node_id, node_info in nodes.items()
                 ],
@@ -412,21 +435,8 @@ class RecceMCPServer:
                     parent_indices = [id_to_idx[p] for p in parents if p in id_to_idx]
                     parent_map_indexed[node_idx] = parent_indices
 
-            # Map diff to dataframe format
-            diff_df = {
-                "columns": ["idx", "change_status"],
-                "data": [
-                    [
-                        id_to_idx[node_id],
-                        diff_info.get("change_status"),
-                    ]
-                    for node_id, diff_info in lineage_diff["diff"].items()
-                    if node_id in id_to_idx
-                ],
-            }
-
             # Build simplified result
-            result = {"nodes": nodes_df, "parent_map": parent_map_indexed, "diff": diff_df}
+            result = {"nodes": nodes_df, "parent_map": parent_map_indexed}
 
             return result
 
