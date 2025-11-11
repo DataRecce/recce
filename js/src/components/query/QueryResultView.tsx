@@ -16,7 +16,8 @@ import React, { forwardRef, Ref, useMemo } from "react";
 import {
   ColumnRenderMode,
   ColumnType,
-  DataFrame, isQueryBaseRun,
+  DataFrame,
+  isQueryBaseRun,
   isQueryRun,
   RowObjectType,
   Run,
