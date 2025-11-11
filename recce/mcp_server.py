@@ -306,119 +306,43 @@ class RecceMCPServer:
         """Get lineage diff between base and current"""
         try:
             # Get lineage diff from adapter (returns a Pydantic LineageDiff model)
-            lineage_diff = self.context.get_lineage_diff()
-            # Convert Pydantic model to dict for JSON serialization
-            full_diff = lineage_diff.model_dump(mode="json")
-            # Simplify response to reduce context
-            simplified = self._simplify_lineage_diff(full_diff)
-            # Transform to indexed format
-            return self._transform_lineage_to_indexed(simplified)
+            lineage_diff = self.context.get_lineage_diff().model_dump(mode="json")
+
+            # Extract parent_map and simplified nodes from both base and current
+            parent_map = {}
+            nodes = {}
+
+            # Merge parent_map and nodes: base first, then current overrides
+            for env_key in ["base", "current"]:
+                if env_key not in lineage_diff:
+                    continue
+
+                env_data = lineage_diff[env_key]
+
+                # Merge parent_map
+                if "parent_map" in env_data:
+                    parent_map.update(env_data["parent_map"])
+
+                # Merge nodes
+                if "nodes" in env_data:
+                    for node_id, node_info in env_data["nodes"].items():
+                        nodes[node_id] = {
+                            "name": node_info.get("name"),
+                            "resource_type": node_info.get("resource_type"),
+                        }
+
+                        materialized = node_info.get("config", {}).get("materialized")
+                        if materialized is not None:
+                            nodes[node_id]["materialized"] = materialized
+
+            # Build simplified result
+            result = {"nodes": nodes, "parent_map": parent_map, "diff": lineage_diff["diff"]}
+
+            return result
+
         except Exception:
             logger.exception("Error getting lineage diff")
             raise
-
-    def _simplify_lineage_diff(self, lineage_diff: Dict[str, Any]) -> Dict[str, Any]:
-        """Simplify lineage diff response by keeping only essential fields"""
-        simplified = {}
-
-        for env_key in ["base", "current"]:
-            if env_key not in lineage_diff:
-                continue
-
-            env_data = lineage_diff[env_key]
-            simplified[env_key] = {
-                "parent_map": env_data.get("parent_map", {}),
-                "nodes": {},
-            }
-
-            # Simplify node information - keep only essential fields
-            if "nodes" in env_data:
-                for node_id, node_info in env_data["nodes"].items():
-                    simplified[env_key]["nodes"][node_id] = {
-                        "name": node_info.get("name"),
-                        "resource_type": node_info.get("resource_type"),
-                        "schema": node_info.get("schema"),
-                        "materialized": node_info.get("config", {}).get("materialized"),
-                        "tags": node_info.get("config", {}).get("tags", []),
-                        "columns": node_info.get("columns", {}),
-                        "source_name": node_info.get("source_name"),
-                    }
-
-        # Include diff information if present
-        if "diff" in lineage_diff:
-            simplified["diff"] = lineage_diff["diff"]
-
-        # Remove None values and empty collections
-        return _remove_none_and_empty(simplified)
-
-    def _transform_lineage_to_indexed(self, lineage_diff: Dict[str, Any]) -> Dict[str, Any]:
-        """Transform lineage diff to indexed format with merged nodes and base parent_map"""
-        # Build a mapping of node_id to index
-        all_node_ids = set()
-
-        # Collect all node IDs from both base and current
-        if "base" in lineage_diff and "nodes" in lineage_diff["base"]:
-            all_node_ids.update(lineage_diff["base"]["nodes"].keys())
-        if "current" in lineage_diff and "nodes" in lineage_diff["current"]:
-            all_node_ids.update(lineage_diff["current"]["nodes"].keys())
-
-        # Sort for consistent indexing
-        sorted_node_ids = sorted(all_node_ids)
-        node_id_to_index = {node_id: idx for idx, node_id in enumerate(sorted_node_ids, 1)}
-
-        # Build result with indexed nodes
-        result = {
-            "parent_map": {},
-            "nodes": {},
-            "diff": {},
-        }
-
-        # Use parent_map from base
-        if "base" in lineage_diff and "parent_map" in lineage_diff["base"]:
-            base_parent_map = lineage_diff["base"]["parent_map"]
-            # Transform parent_map keys and values to indices
-            for node_id, parents in base_parent_map.items():
-                if node_id in node_id_to_index:
-                    node_idx = node_id_to_index[node_id]
-                    parent_indices = [node_id_to_index[p] for p in parents if p in node_id_to_index]
-                    result["parent_map"][str(node_idx)] = parent_indices
-
-        # Merge nodes: prefer current if exists, otherwise use base
-        base_nodes = {}
-        if "base" in lineage_diff and "nodes" in lineage_diff["base"]:
-            base_nodes = lineage_diff["base"]["nodes"]
-
-        current_nodes = {}
-        if "current" in lineage_diff and "nodes" in lineage_diff["current"]:
-            current_nodes = lineage_diff["current"]["nodes"]
-
-        # Merge: current overrides base
-        merged_nodes = {**base_nodes, **current_nodes}
-
-        # Build indexed nodes
-        for node_id, node_info in merged_nodes.items():
-            if node_id in node_id_to_index:
-                node_idx = str(node_id_to_index[node_id])
-                result["nodes"][node_idx] = {
-                    "id": node_id,
-                    "name": node_info.get("name"),
-                    "resource_type": node_info.get("resource_type"),
-                    "schema": node_info.get("schema"),
-                    "materialized": node_info.get("materialized"),
-                    "tags": node_info.get("tags", []),
-                    "columns": node_info.get("columns", {}),
-                    "source_name": node_info.get("source_name"),
-                }
-
-        # Include diff information if present
-        if "diff" in lineage_diff:
-            for node_id, diff_info in lineage_diff["diff"].items():
-                if node_id in node_id_to_index:
-                    node_idx = str(node_id_to_index[node_id])
-                    result["diff"][node_idx] = diff_info
-
-        # Remove None values and empty collections
-        return _remove_none_and_empty(result)
 
     async def _tool_row_count_diff(self, arguments: Dict[str, Any]) -> Dict[str, Any]:
         """Execute row count diff task"""
