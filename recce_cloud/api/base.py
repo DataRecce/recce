@@ -71,6 +71,7 @@ class BaseRecceCloudClient(ABC):
         adapter_type: str,
         cr_number: Optional[int] = None,
         commit_sha: Optional[str] = None,
+        session_type: Optional[str] = None,
     ) -> Dict:
         """
         Create or touch a Recce session.
@@ -80,6 +81,7 @@ class BaseRecceCloudClient(ABC):
             adapter_type: DBT adapter type (e.g., 'postgres', 'snowflake', 'bigquery')
             cr_number: Change request number (PR/MR number) for CR sessions
             commit_sha: Commit SHA (GitLab requires this)
+            session_type: Session type ("cr", "prod", "dev") - determines if cr_number is used
 
         Returns:
             Dictionary containing:

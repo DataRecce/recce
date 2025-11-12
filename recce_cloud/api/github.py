@@ -27,6 +27,7 @@ class GitHubRecceCloudClient(BaseRecceCloudClient):
         branch: str,
         adapter_type: str,
         cr_number: Optional[int] = None,
+        session_type: Optional[str] = None,
     ) -> Dict:
         """
         Create or touch a Recce session for GitHub Actions.
@@ -34,8 +35,9 @@ class GitHubRecceCloudClient(BaseRecceCloudClient):
         Args:
             branch: Branch name
             adapter_type: DBT adapter type
-            cr_number: PR number for pull request sessions
+            cr_number: PR number for pull request sessions (None for prod sessions)
             commit_sha: Not used for GitHub (optional for compatibility)
+            session_type: Session type ("cr", "prod", "dev") - determines if pr_number is passed
 
         Returns:
             Dictionary containing session_id, manifest_upload_url, catalog_upload_url
@@ -47,7 +49,9 @@ class GitHubRecceCloudClient(BaseRecceCloudClient):
             "adapter_type": adapter_type,
         }
 
-        if cr_number is not None:
+        # Only include pr_number for "cr" type sessions
+        # For "prod" type, omit pr_number even if cr_number is detected
+        if session_type == "cr" and cr_number is not None:
             payload["pr_number"] = cr_number
 
         return self._make_request("POST", url, json=payload)
