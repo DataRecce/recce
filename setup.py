@@ -54,6 +54,7 @@ setup(
     extras_require={
         "mcp": [
             "mcp>=1.0.0",
+            "starlette>=0.27.0",
         ],
         "dev": [
             "pytest>=4.6",
