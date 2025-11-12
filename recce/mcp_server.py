@@ -630,3 +630,67 @@ async def run_mcp_server(**kwargs):
     # Create and run server with debug logging enabled if requested
     server = RecceMCPServer(context, mode=mode, debug=debug)
     await server.run()
+
+
+async def run_mcp_server_http(host: str = "0.0.0.0", port: int = 8080, **kwargs):
+    """
+    Entry point for running the MCP server in HTTP mode using Server-Sent Events (SSE)
+
+    Args:
+        host: Host to bind to (default: 0.0.0.0)
+        port: Port to bind to (default: 8080)
+        **kwargs: Arguments for loading RecceContext (dbt options, etc.)
+               Optionally includes 'mode' for server mode (server, preview, read-only)
+               Optionally includes 'debug' flag for enabling MCP logging
+    """
+    import uvicorn
+    from mcp.server.sse import SseServerTransport
+    from starlette.applications import Starlette
+    from starlette.requests import Request
+    from starlette.responses import Response
+    from starlette.routing import Mount, Route
+
+    # Setup logging
+    logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s")
+
+    # Load Recce context
+    context = load_context(**kwargs)
+
+    # Extract mode from kwargs
+    mode_str = kwargs.get("mode")
+    mode = RecceServerMode(mode_str) if mode_str else None
+    if mode_str and not mode:
+        logger.warning(f"Invalid mode '{mode_str}', using default server mode")
+
+    # Create MCP server
+    debug = kwargs.get("debug", False)
+    mcp_server = RecceMCPServer(context, mode=mode, debug=debug)
+
+    # Create SSE transport - endpoint where clients POST messages
+    sse = SseServerTransport("/")
+
+    async def handle_sse_request(request: Request):
+        """Handle SSE connection (GET /sse) following official MCP example"""
+        async with sse.connect_sse(request.scope, request.receive, request._send) as streams:
+            await mcp_server.server.run(streams[0], streams[1], mcp_server.server.create_initialization_options())
+        return Response()  # Required to avoid NoneType error
+
+    async def handle_post_message(scope, receive, send):
+        """Handle POST messages (POST /) for MCP protocol"""
+        await sse.handle_post_message(scope, receive, send)
+
+    # Create Starlette app
+    app = Starlette(
+        debug=debug,
+        routes=[
+            Route("/sse", endpoint=handle_sse_request, methods=["GET"]),
+            Mount("/", app=handle_post_message),
+        ],
+    )
+
+    # Run with uvicorn
+    logger.info(f"Starting Recce MCP Server in HTTP mode on {host}:{port}")
+    logger.info(f"Connection URL: http://{host}:{port}/sse")
+    config = uvicorn.Config(app, host=host, port=port, log_level="info")
+    server = uvicorn.Server(config)
+    await server.serve()
