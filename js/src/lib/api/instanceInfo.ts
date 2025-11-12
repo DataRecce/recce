@@ -10,6 +10,7 @@ export interface RecceInstanceInfo {
   share_url?: string;
   session_id?: string;
   organization_name?: string;
+  web_url?: string;
 }
 
 export async function getRecceInstanceInfo(): Promise<RecceInstanceInfo> {
