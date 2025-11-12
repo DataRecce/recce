@@ -648,6 +648,7 @@ def server(host, port, lifetime, idle_timeout=0, state_file=None, **kwargs):
         idle_timeout=effective_idle_timeout,
         share_url=kwargs.get("share_url"),
         organization_name=os.environ.get("RECCE_SESSION_ORGANIZATION_NAME"),
+        web_url=os.environ.get("RECCE_CLOUD_WEB_URL"),
     )
     app.state = state
 

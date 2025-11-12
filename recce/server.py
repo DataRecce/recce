@@ -82,6 +82,7 @@ class AppState:
     last_activity: Optional[dict] = None
     share_url: Optional[str] = None
     organization_name: Optional[str] = None
+    web_url: Optional[str] = None
     host: Optional[str] = None
     port: Optional[int] = None
 
@@ -375,6 +376,7 @@ class RecceInstanceInfoOut(BaseModel):
     share_url: Optional[str] = None
     session_id: Optional[str] = None
     organization_name: Optional[str] = None
+    web_url: Optional[str] = None
 
 
 @app.get("/api/instance-info", response_model=RecceInstanceInfoOut, response_model_exclude_none=True)
@@ -397,6 +399,7 @@ async def recce_instance_info():
         "share_url": app_state.share_url,
         "session_id": app_state.state_loader.session_id if app_state.state_loader else None,
         "organization_name": app_state.organization_name,
+        "web_url": app_state.web_url,
         # TODO: Add more instance info which won't change during the instance lifecycle
         # review_mode
         # cloud_mode
