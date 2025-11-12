@@ -745,6 +745,7 @@ class DbtAdapter(BaseAdapter):
             nodes[unique_id] = {
                 "id": source["unique_id"],
                 "name": source["name"],
+                "source_name": source["source_name"],
                 "resource_type": source["resource_type"],
                 "package_name": source["package_name"],
                 "config": source["config"],
