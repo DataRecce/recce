@@ -28,15 +28,6 @@ from recce.tasks.rowcount import RowCountDiffTask
 logger = logging.getLogger(__name__)
 
 
-def _remove_none_and_empty(obj: Any) -> Any:
-    """Recursively remove None values from nested dicts and lists, but keep empty objects and lists"""
-    if isinstance(obj, dict):
-        return {k: _remove_none_and_empty(v) for k, v in obj.items() if v is not None}
-    elif isinstance(obj, list):
-        return [_remove_none_and_empty(item) for item in obj if item is not None]
-    return obj
-
-
 def _truncate_strings(obj: Any, max_length: int = 200) -> Any:
     """Recursively truncate strings longer than max_length in nested dicts and lists"""
     if isinstance(obj, dict):
@@ -489,7 +480,6 @@ class RecceMCPServer:
                     select=select,
                     exclude=exclude,
                     packages=packages,
-                    view_mode="changed_models",
                 )
                 nodes_to_compare = nodes_to_compare & selected_node_ids
 
