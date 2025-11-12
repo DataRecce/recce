@@ -7,7 +7,7 @@ import { RECCE_SUPPORT_CALENDAR_URL } from "@/constants/urls";
  * @returns Absolute URL to settings page or fallback to calendar booking
  */
 export function getSettingsUrl(instanceInfo?: RecceInstanceInfo): string {
-  if (instanceInfo?.web_url && instanceInfo?.organization_name) {
+  if (instanceInfo?.web_url && instanceInfo.organization_name) {
     // Use absolute URL from Recce Cloud
     return `${instanceInfo.web_url}/organization/${instanceInfo.organization_name}/settings`;
   }
