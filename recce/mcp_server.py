@@ -11,7 +11,7 @@ import logging
 import os
 import textwrap
 import time
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional
 
 from mcp.server import Server
@@ -83,7 +83,7 @@ class MCPLogger:
         """Log a list_tools call"""
         tool_names = [tool.name for tool in tools]
         log_entry = {
-            "timestamp": datetime.utcnow().isoformat() + "Z",
+            "timestamp": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
             "type": "list_tools",
             "tools": tool_names,
         }
@@ -99,7 +99,7 @@ class MCPLogger:
     ) -> None:
         """Log a tool call with request and response"""
         log_entry = {
-            "timestamp": datetime.utcnow().isoformat() + "Z",
+            "timestamp": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
             "type": "call_tool",
             "tool": tool_name,
             "request": arguments,
