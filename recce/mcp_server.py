@@ -416,11 +416,6 @@ class RecceMCPServer:
                 for node_id, node_info in nodes.items()
             ]
 
-            # Check if there are more than 100 rows
-            limit = 100
-            has_more = len(nodes_data) > limit
-            limited_nodes_data = nodes_data[:limit]
-
             # Create nodes DataFrame using from_data with simple dict format
             nodes_df = DataFrame.from_data(
                 columns={
@@ -432,9 +427,7 @@ class RecceMCPServer:
                     "change_status": "text",
                     "impacted": "boolean",
                 },
-                data=limited_nodes_data,
-                limit=limit,
-                more=has_more,
+                data=nodes_data,
             )
 
             # Map parent_map IDs to indices

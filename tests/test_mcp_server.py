@@ -93,13 +93,10 @@ class TestRecceMCPServer:
         nodes = result["nodes"]
         assert "columns" in nodes
         assert "data" in nodes
-        assert "limit" in nodes
-        assert "more" in nodes
 
-        # Verify columns structure
-        assert nodes["limit"] == 100
-        assert isinstance(nodes["more"], bool)
+        # Verify data is a list with 2 rows
         assert isinstance(nodes["data"], list)
+        assert len(nodes["data"]) == 2
 
         mock_context.get_lineage_diff.assert_called_once()
         mock_context.adapter.select_nodes.assert_called()
@@ -255,39 +252,6 @@ class TestRecceMCPServer:
         # Verify the result
         assert "columns" in result
         mock_result.model_dump.assert_called_once_with(mode="json")
-
-    @pytest.mark.asyncio
-    async def test_tool_lineage_diff_with_limit(self, mcp_server):
-        """Test the lineage_diff tool respects the 100 row limit"""
-        server, mock_context = mcp_server
-        # Create a large mock response with more than 100 nodes
-        nodes = {
-            f"model.project.model_{i}": {
-                "name": f"model_{i}",
-                "resource_type": "model",
-            }
-            for i in range(150)
-        }
-
-        parent_map = {node_id: [] for node_id in nodes.keys()}
-
-        mock_lineage_diff = MagicMock(spec=LineageDiff)
-        mock_lineage_diff.model_dump.return_value = {
-            "base": {"nodes": nodes, "parent_map": parent_map},
-            "current": {"nodes": nodes, "parent_map": parent_map},
-            "diff": {},
-        }
-        mock_context.get_lineage_diff.return_value = mock_lineage_diff
-        mock_context.adapter.select_nodes.return_value = set(nodes.keys())
-
-        # Execute the method
-        result = await server._tool_lineage_diff({})
-
-        # Verify the result
-        nodes_df = result["nodes"]
-        assert nodes_df["limit"] == 100
-        assert nodes_df["more"] is True
-        assert len(nodes_df["data"]) == 100
 
     @pytest.mark.asyncio
     async def test_error_handling(self, mcp_server):
