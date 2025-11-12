@@ -20,6 +20,7 @@ from mcp.types import TextContent, Tool
 
 from recce.core import RecceContext, load_context
 from recce.server import RecceServerMode
+from recce.tasks.dataframe import DataFrame
 from recce.tasks.profile import ProfileDiffTask
 from recce.tasks.query import QueryDiffTask, QueryTask
 from recce.tasks.rowcount import RowCountDiffTask
@@ -410,22 +411,40 @@ class RecceMCPServer:
             # Create id to idx mapping
             id_to_idx = {node_id: idx for idx, node_id in enumerate(nodes.keys())}
 
-            # Convert nodes to dataframe format for compact representation
-            nodes_df = {
-                "columns": ["idx", "id", "name", "resource_type", "materialized", "change_status", "impacted"],
-                "data": [
-                    [
-                        id_to_idx[node_id],
-                        node_id,
-                        node_info.get("name"),
-                        node_info.get("resource_type"),
-                        node_info.get("materialized"),
-                        diff_info.get(node_id, {}).get("change_status"),
-                        node_id in impacted_node_ids,
-                    ]
-                    for node_id, node_info in nodes.items()
-                ],
-            }
+            # Prepare node data for DataFrame
+            nodes_data = [
+                [
+                    id_to_idx[node_id],
+                    node_id,
+                    node_info.get("name"),
+                    node_info.get("resource_type"),
+                    node_info.get("materialized"),
+                    diff_info.get(node_id, {}).get("change_status"),
+                    node_id in impacted_node_ids,
+                ]
+                for node_id, node_info in nodes.items()
+            ]
+
+            # Check if there are more than 100 rows
+            limit = 100
+            has_more = len(nodes_data) > limit
+            limited_nodes_data = nodes_data[:limit]
+
+            # Create nodes DataFrame using from_data with simple dict format
+            nodes_df = DataFrame.from_data(
+                columns={
+                    "idx": "integer",
+                    "id": "text",
+                    "name": "text",
+                    "resource_type": "text",
+                    "materialized": "text",
+                    "change_status": "text",
+                    "impacted": "boolean",
+                },
+                data=limited_nodes_data,
+                limit=limit,
+                more=has_more,
+            )
 
             # Map parent_map IDs to indices
             parent_map_indexed = {}
@@ -436,7 +455,7 @@ class RecceMCPServer:
                     parent_map_indexed[node_idx] = parent_indices
 
             # Build simplified result
-            result = {"nodes": nodes_df, "parent_map": parent_map_indexed}
+            result = {"nodes": nodes_df.model_dump(mode="json"), "parent_map": parent_map_indexed}
 
             return result
 
@@ -503,16 +522,23 @@ class RecceMCPServer:
                     if base_col_type != current_col_type:
                         schema_changes.append([node_id, col_name, "modified"])
 
-            # Convert schema changes to dataframe format
-            diff_df = {
-                "columns": ["node_id", "column", "change_status"],
-                "data": schema_changes,
-            }
+            # Check if there are more than 100 rows
+            limit = 100
+            has_more = len(schema_changes) > limit
+            limited_schema_changes = schema_changes[:limit]
 
-            # Build result
-            result = {"diff": diff_df}
-
-            return result
+            # Convert schema changes to dataframe format using DataFrame.from_data()
+            diff_df = DataFrame.from_data(
+                columns={
+                    "node_id": "text",
+                    "column": "text",
+                    "change_status": "text",
+                },
+                data=limited_schema_changes,
+                limit=limit,
+                more=has_more,
+            )
+            return diff_df.model_dump(mode="json")
 
         except Exception:
             logger.exception("Error getting schema diff")
