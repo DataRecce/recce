@@ -274,28 +274,31 @@ def upload(target_path, session_id, cr, session_type, dry_run):
         console.print("[green]✓[/green] Dry run completed successfully")
         sys.exit(0)
 
-    # 5. Get authentication token
-    token = os.getenv("RECCE_API_TOKEN")
-
-    # Fallback to CI-detected token if RECCE_API_TOKEN not set
-    if not token and ci_info and ci_info.access_token:
-        token = ci_info.access_token
-        if ci_info.platform == "github-actions":
-            console.print("[cyan]Info:[/cyan] Using GITHUB_TOKEN for authentication")
-        elif ci_info.platform == "gitlab-ci":
-            console.print("[cyan]Info:[/cyan] Using CI_JOB_TOKEN for authentication")
-
-    if not token:
-        console.print("[red]Error:[/red] No authentication token provided")
-        console.print("Set RECCE_API_TOKEN environment variable or ensure CI token is available")
-        sys.exit(2)
-
-    # 6. Choose upload workflow based on whether session_id is provided
+    # 5. Choose upload workflow based on whether session_id is provided
     if session_id:
         # Generic workflow: Upload to existing session using session ID
+        # This workflow requires RECCE_API_TOKEN
+        token = os.getenv("RECCE_API_TOKEN")
+        if not token:
+            console.print("[red]Error:[/red] No RECCE_API_TOKEN provided")
+            console.print("Set RECCE_API_TOKEN environment variable for session-based upload")
+            sys.exit(2)
+
         upload_to_existing_session(console, token, session_id, manifest_path, catalog_path, adapter_type, target_path)
     else:
         # Platform-specific workflow: Use platform APIs to create session and upload
+        # This workflow MUST use CI job tokens (CI_JOB_TOKEN or GITHUB_TOKEN)
+        if not ci_info or not ci_info.access_token:
+            console.print("[red]Error:[/red] Platform-specific upload requires CI environment")
+            console.print("Either run in GitHub Actions/GitLab CI or provide --session-id for generic upload")
+            sys.exit(2)
+
+        token = ci_info.access_token
+        if ci_info.platform == "github-actions":
+            console.print("[cyan]Info:[/cyan] Using GITHUB_TOKEN for platform-specific authentication")
+        elif ci_info.platform == "gitlab-ci":
+            console.print("[cyan]Info:[/cyan] Using CI_JOB_TOKEN for platform-specific authentication")
+
         upload_with_platform_apis(console, token, ci_info, manifest_path, catalog_path, adapter_type, target_path)
 
 
