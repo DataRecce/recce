@@ -1731,7 +1731,7 @@ def read_only(ctx, state_file=None, **kwargs):
 @cli.command(cls=TrackCommand)
 @click.option("--sse", is_flag=True, default=False, help="Start in HTTP/SSE mode instead of stdio mode")
 @click.option("--host", default="0.0.0.0", help="Host to bind to in SSE mode (default: 0.0.0.0)")
-@click.option("--port", default=8080, type=int, help="Port to bind to in SSE mode (default: 8080)")
+@click.option("--port", default=8000, type=int, help="Port to bind to in SSE mode (default: 8000)")
 @add_options(dbt_related_options)
 @add_options(sqlmesh_related_options)
 @add_options(recce_options)
@@ -1761,7 +1761,7 @@ def mcp_server(sse, host, port, **kwargs):
     recce mcp-server
 
     \b
-    # Start in HTTP/SSE mode on default port 8080
+    # Start in HTTP/SSE mode on default port 8000
     recce mcp-server --sse
 
     \b
@@ -1779,7 +1779,7 @@ def mcp_server(sse, host, port, **kwargs):
     console = Console()
     try:
         # Import here to avoid import errors if mcp is not installed
-        from recce.mcp_server import run_mcp_server, run_mcp_server_http
+        from recce.mcp_server import run_mcp_server
     except ImportError as e:
         console.print(f"[[red]Error[/red]] Failed to import MCP server: {e}")
         console.print(r"Please install the MCP package: pip install 'recce\[mcp]'")
@@ -1810,13 +1810,12 @@ def mcp_server(sse, host, port, **kwargs):
             console.print(f"Starting Recce MCP Server in HTTP/SSE mode on {host}:{port}...")
             console.print(f"SSE endpoint: http://{host}:{port}/sse")
             console.print("Available tools: get_lineage_diff, row_count_diff, query, query_diff, profile_diff")
-            # Run the HTTP/SSE server
-            asyncio.run(run_mcp_server_http(host=host, port=port, **kwargs))
         else:
             console.print("Starting Recce MCP Server in stdio mode...")
             console.print("Available tools: get_lineage_diff, row_count_diff, query, query_diff, profile_diff")
-            # Run the stdio server
-            asyncio.run(run_mcp_server(**kwargs))
+
+        # Run the server (stdio or SSE based on --sse flag)
+        asyncio.run(run_mcp_server(sse=sse, host=host, port=port, **kwargs))
     except Exception as e:
         console.print(f"[[red]Error[/red]] Failed to start MCP server: {e}")
         if kwargs.get("debug"):
