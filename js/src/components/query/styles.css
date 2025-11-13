@@ -4,7 +4,8 @@
 }
 
 .diff-header-added {
-  background-color: #3aa53a;
+  /* green-700 theme.ts */
+  background-color: #15803D;
   color: white;
 }
 
@@ -14,7 +15,8 @@
 }
 
 .diff-header-removed {
-  background-color: #ff6666;
+  /* rose-500 theme.ts */
+  background-color: #F43F5E;
   color: white;
 }
 
@@ -41,9 +43,14 @@
 }
 
 .rdg-cell {
-  border-width: 0px 1px 1px 0px;
+  border-width: 0 1px 1px 0;
   border-style: solid;
   border-color: var(--rdg-border-color);
+}
+
+.rdg-cell[role="columnheader"] {
+  /* neutral-100 themes.ts */
+  background-color: #F5F5F5;
 }
 
 .rdg-row:hover .row-context-menu {
