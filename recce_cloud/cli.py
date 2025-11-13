@@ -24,6 +24,9 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
+# Suppress CI detector logs since we display formatted output in the CLI
+logging.getLogger("recce_cloud.ci_providers.detector").setLevel(logging.WARNING)
+
 
 @click.group()
 def cloud_cli():
