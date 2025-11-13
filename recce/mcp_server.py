@@ -618,11 +618,11 @@ class RecceMCPServer:
         async with stdio_server() as (read_stream, write_stream):
             await self.server.run(read_stream, write_stream, self.server.create_initialization_options())
 
-    async def run_sse(self, host: str = "0.0.0.0", port: int = 8000):
+    async def run_sse(self, host: str = "localhost", port: int = 8000):
         """Run the MCP server in HTTP mode using Server-Sent Events (SSE)
 
         Args:
-            host: Host to bind to (default: 0.0.0.0)
+            host: Host to bind to (default: localhost)
             port: Port to bind to (default: 8000)
         """
         import uvicorn
@@ -670,13 +670,13 @@ class RecceMCPServer:
         await server.serve()
 
 
-async def run_mcp_server(sse: bool = False, host: str = "0.0.0.0", port: int = 8000, **kwargs):
+async def run_mcp_server(sse: bool = False, host: str = "localhost", port: int = 8000, **kwargs):
     """
     Entry point for running the MCP server
 
     Args:
         sse: Whether to run in HTTP/SSE mode (default: False for stdio mode)
-        host: Host to bind to in SSE mode (default: 0.0.0.0)
+        host: Host to bind to in SSE mode (default: localhost)
         port: Port to bind to in SSE mode (default: 8000)
         **kwargs: Arguments for loading RecceContext (dbt options, etc.)
                Optionally includes 'mode' for server mode (server, preview, read-only)

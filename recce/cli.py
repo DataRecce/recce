@@ -1730,7 +1730,7 @@ def read_only(ctx, state_file=None, **kwargs):
 
 @cli.command(cls=TrackCommand)
 @click.option("--sse", is_flag=True, default=False, help="Start in HTTP/SSE mode instead of stdio mode")
-@click.option("--host", default="0.0.0.0", help="Host to bind to in SSE mode (default: 0.0.0.0)")
+@click.option("--host", default="localhost", help="Host to bind to in SSE mode (default: localhost)")
 @click.option("--port", default=8000, type=int, help="Port to bind to in SSE mode (default: 8000)")
 @add_options(dbt_related_options)
 @add_options(sqlmesh_related_options)
