@@ -127,6 +127,7 @@ class RecceMCPServer:
         @self.server.list_tools()
         async def list_tools() -> List[Tool]:
             """List all available tools based on server mode"""
+            logger.info(f"[MCP] list_tools called (mode: {self.mode.value if self.mode else 'server'})")
             tools = []
 
             # Always available in all modes
@@ -302,12 +303,20 @@ class RecceMCPServer:
 
             self.mcp_logger.log_list_tools(tools)
 
+            # Log available tools to console
+            tool_names = [tool.name for tool in tools]
+            logger.info(f"[MCP] Returning {len(tools)} tools: {', '.join(tool_names)}")
+
             return tools
 
         @self.server.call_tool()
         async def call_tool(name: str, arguments: Dict[str, Any]) -> List[TextContent]:
             """Handle tool calls"""
             start_time = time.perf_counter()
+
+            # Log incoming request
+            logger.info(f"[MCP] Tool call received: {name}")
+            logger.info(f"[MCP] Arguments: {json.dumps(arguments, indent=2)}")
 
             try:
                 # Check if tool is blocked in non-server mode
@@ -336,12 +345,23 @@ class RecceMCPServer:
                 duration_ms = (time.perf_counter() - start_time) * 1000
                 self.mcp_logger.log_tool_call(name, arguments, result, duration_ms)
 
-                return [TextContent(type="text", text=json.dumps(result, indent=2))]
+                # Log outgoing response
+                response_json = json.dumps(result, indent=2)
+                logger.info(f"[MCP] Tool response for {name} ({duration_ms:.2f}ms):")
+                # Truncate large responses for console readability
+                if len(response_json) > 1000:
+                    logger.info(f"[MCP] {response_json[:1000]}... (truncated, {len(response_json)} chars total)")
+                else:
+                    logger.info(f"[MCP] {response_json}")
+
+                return [TextContent(type="text", text=response_json)]
             except Exception as e:
                 duration_ms = (time.perf_counter() - start_time) * 1000
                 self.mcp_logger.log_tool_call(name, arguments, {}, duration_ms, error=str(e))
-                logger.exception(f"Error executing tool {name}")
-                return [TextContent(type="text", text=json.dumps({"error": str(e)}, indent=2))]
+                logger.error(f"[MCP] Error executing tool {name} ({duration_ms:.2f}ms): {str(e)}")
+                logger.exception("[MCP] Full traceback:")
+                error_response = json.dumps({"error": str(e)}, indent=2)
+                return [TextContent(type="text", text=error_response)]
 
     async def _tool_lineage_diff(self, arguments: Dict[str, Any]) -> Dict[str, Any]:
         """Get lineage diff between base and current"""
@@ -671,12 +691,20 @@ async def run_mcp_server_http(host: str = "0.0.0.0", port: int = 8080, **kwargs)
 
     async def handle_sse_request(request: Request):
         """Handle SSE connection (GET /sse) following official MCP example"""
-        async with sse.connect_sse(request.scope, request.receive, request._send) as streams:
-            await mcp_server.server.run(streams[0], streams[1], mcp_server.server.create_initialization_options())
+        client_info = f"{request.client.host}:{request.client.port}" if request.client else "unknown"
+        logger.info(f"[MCP HTTP] SSE connection established from {client_info}")
+        try:
+            async with sse.connect_sse(request.scope, request.receive, request._send) as streams:
+                await mcp_server.server.run(streams[0], streams[1], mcp_server.server.create_initialization_options())
+        finally:
+            logger.info(f"[MCP HTTP] SSE connection closed from {client_info}")
         return Response()  # Required to avoid NoneType error
 
     async def handle_post_message(scope, receive, send):
         """Handle POST messages (POST /) for MCP protocol"""
+        # Log POST message (session_id will be in query params)
+        query_string = scope.get("query_string", b"").decode("utf-8")
+        logger.debug(f"[MCP HTTP] POST message received with query: {query_string}")
         await sse.handle_post_message(scope, receive, send)
 
     # Create Starlette app
