@@ -1,3 +1,4 @@
+import uuid
 from datetime import datetime, timezone
 from typing import Optional
 from uuid import UUID
@@ -11,9 +12,12 @@ from recce.apis.check_func import (
     export_persistent_state,
 )
 from recce.apis.run_func import submit_run
-from recce.event import log_api_event
+from recce.core import default_context
+from recce.event import get_recce_api_token, log_api_event
 from recce.exceptions import RecceException
 from recce.models import Check, CheckDAO, Run, RunDAO, RunType
+from recce.models.types import CommentEvent
+from recce.util.recce_cloud import get_current_user_email
 
 check_router = APIRouter(tags=["check"])
 
@@ -182,6 +186,221 @@ async def delete_handler(check_id: UUID, background_tasks: BackgroundTasks):
     CheckDAO().delete(check_id)
     background_tasks.add_task(export_persistent_state)
     return DeleteCheckOut(check_id=check_id)
+
+
+# Input model for creating a comment
+class CreateCommentIn(BaseModel):
+    content: str
+
+
+# Output model for the created comment event
+class CommentEventOut(BaseModel):
+    id: str
+    type: str
+    created_by: str
+    created_at: str
+    content: str
+    updated_at: Optional[str] = None
+
+    @classmethod
+    def from_comment_event(cls, event: CommentEvent):
+        return CommentEventOut(
+            id=str(event.id),
+            type=event.type,
+            created_by=event.created_by,
+            created_at=event.created_at.strftime("%Y-%m-%dT%H:%M:%SZ"),
+            content=event.content,
+            updated_at=event.updated_at,
+        )
+
+
+@check_router.post("/checks/{check_id}/comments", status_code=201, response_model=CommentEventOut)
+async def create_comment_handler(check_id: UUID, comment_in: CreateCommentIn, background_tasks: BackgroundTasks):
+    """Add a comment to a check's timeline"""
+
+    # Find the check
+    check = CheckDAO().find_check_by_id(check_id)
+    if check is None:
+        raise HTTPException(status_code=404, detail="Check not found")
+
+    # Get user email from Recce Cloud
+    try:
+        context = default_context()
+        user_token = get_recce_api_token() or context.state_loader.token
+        if not user_token:
+            raise HTTPException(
+                status_code=401, detail="Authentication required. Please connect to Recce Cloud to add comments."
+            )
+
+        user_email = get_current_user_email(user_token)
+
+        if not user_email:
+            raise HTTPException(status_code=401, detail="Could not retrieve user email from Recce Cloud")
+    except Exception as e:
+        raise HTTPException(status_code=401, detail=f"Authentication failed: {str(e)}")
+
+    # Create the comment event
+    comment_event = CommentEvent(
+        id=uuid.uuid4(),
+        type="COMMENT",
+        created_by=user_email,
+        created_at=datetime.now(timezone.utc).replace(microsecond=0),
+        content=comment_in.content,
+    )
+
+    # Add to check timeline
+    check.timeline.events.append(comment_event)
+
+    # Log the event
+    log_api_event(
+        "create_comment",
+        dict(
+            check_id=str(check_id),
+            comment_length=len(comment_in.content),
+        ),
+    )
+
+    # Schedule state export
+    background_tasks.add_task(export_persistent_state)
+
+    return CommentEventOut.from_comment_event(comment_event)
+
+
+# In recce/apis/check_api.py
+
+
+# Input model for updating a comment
+class UpdateCommentIn(BaseModel):
+    content: str
+
+
+@check_router.patch("/checks/{check_id}/comments/{event_id}", status_code=200, response_model=CommentEventOut)
+async def update_comment_handler(
+    check_id: UUID, event_id: UUID, comment_in: UpdateCommentIn, background_tasks: BackgroundTasks
+):
+    """Update a comment in a check's timeline"""
+
+    # Find the check
+    check = CheckDAO().find_check_by_id(check_id)
+    if check is None:
+        raise HTTPException(status_code=404, detail="Check not found")
+
+    # Get user email from Recce Cloud
+    try:
+        context = default_context()
+        user_token = get_recce_api_token() or context.state_loader.token
+        if not user_token:
+            raise HTTPException(
+                status_code=401, detail="Authentication required. Please connect to Recce Cloud to update comments."
+            )
+
+        user_email = get_current_user_email(user_token)
+
+        if not user_email:
+            raise HTTPException(status_code=401, detail="Could not retrieve user email from Recce Cloud")
+    except Exception as e:
+        raise HTTPException(status_code=401, detail=f"Authentication failed: {str(e)}")
+
+    # Find the comment event in the timeline
+    comment_event: CommentEvent | None = None
+    for event in check.timeline.events:
+        if event.id == event_id and event.type == "COMMENT":
+            comment_event = event
+            break
+
+    if comment_event is None:
+        raise HTTPException(status_code=404, detail="Comment not found")
+
+    # Verify the user owns this comment
+    if comment_event.created_by != user_email:
+        raise HTTPException(status_code=403, detail="You can only edit your own comments")
+
+    # Update the comment
+    comment_event.content = comment_in.content
+    comment_event.updated_at = datetime.now(timezone.utc).replace(microsecond=0)
+
+    # Log the event
+    log_api_event(
+        "update_comment",
+        dict(
+            check_id=str(check_id),
+            event_id=event_id,
+            comment_length=len(comment_in.content),
+        ),
+    )
+
+    # Schedule state export
+    background_tasks.add_task(export_persistent_state)
+
+    return CommentEventOut.from_comment_event(comment_event)
+
+
+# In recce/apis/check_api.py
+
+
+# Output model for deleted comment
+class DeleteCommentOut(BaseModel):
+    check_id: UUID
+    event_id: UUID
+
+
+@check_router.delete("/checks/{check_id}/comments/{event_id}", status_code=200, response_model=DeleteCommentOut)
+async def delete_comment_handler(check_id: UUID, event_id: UUID, background_tasks: BackgroundTasks):
+    """Delete a comment from a check's timeline"""
+
+    # Find the check
+    check = CheckDAO().find_check_by_id(check_id)
+    if check is None:
+        raise HTTPException(status_code=404, detail="Check not found")
+
+    # Get user email from Recce Cloud
+    try:
+        context = default_context()
+        user_token = get_recce_api_token() or context.state_loader.token
+        if not user_token:
+            raise HTTPException(
+                status_code=401, detail="Authentication required. Please connect to Recce Cloud to delete comments."
+            )
+
+        user_email = get_current_user_email(user_token)
+
+        if not user_email:
+            raise HTTPException(status_code=401, detail="Could not retrieve user email from Recce Cloud")
+    except Exception as e:
+        raise HTTPException(status_code=401, detail=f"Authentication failed: {str(e)}")
+
+    # Find the comment event in the timeline
+    comment_event = None
+    event_index = None
+    for idx, event in enumerate(check.timeline.events):
+        if event.id == event_id and event.type == "COMMENT":
+            comment_event = event
+            event_index = idx
+            break
+
+    if comment_event is None:
+        raise HTTPException(status_code=404, detail="Comment not found")
+
+    # Verify the user owns this comment
+    if comment_event.created_by != user_email:
+        raise HTTPException(status_code=403, detail="You can only delete your own comments")
+
+    # Remove the comment from the timeline
+    check.timeline.events.pop(event_index)
+
+    # Log the event
+    log_api_event(
+        "delete_comment",
+        dict(
+            check_id=str(check_id),
+            event_id=event_id,
+        ),
+    )
+
+    # Schedule state export
+    background_tasks.add_task(export_persistent_state)
+
+    return DeleteCommentOut(check_id=check_id, event_id=event_id)
 
 
 class ReorderChecksIn(BaseModel):

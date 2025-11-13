@@ -7,6 +7,7 @@ import requests
 
 from recce import get_version
 from recce.event import get_user_id, is_anonymous_tracking
+from recce.models.user import UserProfile
 from recce.pull_request import PullRequestInfo
 
 RECCE_CLOUD_API_HOST = os.environ.get("RECCE_CLOUD_API_HOST", "https://cloud.datarecce.io")
@@ -238,7 +239,7 @@ class RecceCloud:
             # We don't care the response of this request, so we don't need to raise any exception.
             logger.debug(f"Failed to update the GitHub PR check. Reason: {str(e)}")
 
-    def get_user_info(self) -> Dict:
+    def get_user_info(self) -> UserProfile:
         api_url = f"{self.base_url}/users"
         response = self._request("GET", api_url)
         if response.status_code != 200:
@@ -427,3 +428,15 @@ def get_recce_cloud_onboarding_state(token: str) -> str:
 def set_recce_cloud_onboarding_state(token: str, new_state: str):
     recce_cloud = RecceCloud(token)
     recce_cloud.set_onboarding_state(new_state)
+
+
+def get_current_user_email(token: str) -> str:
+    """Get current user email from RecceCloud"""
+    try:
+        recce_cloud = RecceCloud(token)
+        user_info = recce_cloud.get_user_info()
+        return user_info.email
+    except Exception as e:
+        logger.debug(str(e))
+        # Fallback for local development
+        return "local@user.dev"  # or raise an error?

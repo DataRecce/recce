@@ -1,7 +1,7 @@
 import uuid
 from datetime import datetime, timezone
 from enum import Enum
-from typing import Dict, List, Literal, Optional, Set
+from typing import Dict, List, Literal, Optional, Set, Union
 
 from pydantic import UUID4, BaseModel, Field
 
@@ -51,6 +51,44 @@ class Run(BaseModel):
     run_at: str = Field(default_factory=lambda: datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%SZ"))
 
 
+class BaseEvent(BaseModel):
+    """Base class for all timeline events"""
+
+    id: UUID4 = Field(default_factory=uuid.uuid4)
+    type: Literal["COMMENT", "STATE_CHANGE"]
+    created_by: str  # email from UserProfile
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc).replace(microsecond=0))
+
+
+class CommentEvent(BaseEvent):
+    """User comment on a check"""
+
+    type: Literal["COMMENT"] = "COMMENT"
+    content: str
+    updated_at: Optional[datetime] = (
+        None  # when set, set value as datetime.now(timezone.utc).replace(microsecond=0). For tracking edits
+    )
+
+
+class StateChangeEvent(BaseEvent):
+    """Tracks changes to check fields"""
+
+    type: Literal["STATE_CHANGE"] = "STATE_CHANGE"
+    field_name: Literal["name", "description", "is_checked"]
+    old_value: Optional[Union[str, bool]] = None  # None for check creation
+    new_value: Union[str, bool]
+
+
+# Discriminated union for type safety
+Event = Union[CommentEvent, StateChangeEvent]
+
+
+class Timeline(BaseModel):
+    """Timeline of events for a check"""
+
+    events: List[Event] = Field(default_factory=list)
+
+
 class Check(BaseModel):
     name: str
     description: Optional[str] = None
@@ -60,6 +98,7 @@ class Check(BaseModel):
     check_id: UUID4 = Field(default_factory=uuid.uuid4)
     is_checked: bool = False
     is_preset: bool = False
+    timeline: Timeline = Field(default_factory=Timeline)
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc).replace(microsecond=0))
     updated_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc).replace(microsecond=0))
 
