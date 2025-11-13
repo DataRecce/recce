@@ -108,18 +108,25 @@ clean-build:
 	@find . -type d -name __pycache__ -exec rm -rf {} + 2>/dev/null || true
 	@find . -type f -name '*.pyc' -delete
 
-build: clean-build
+build-frontend:
+	@echo "Building frontend static files..."
+	@cd js && pnpm install --frozen-lockfile && pnpm build
+
+build: clean-build build-frontend
 	@echo "Building recce package..."
+	@pip install -q wheel
 	@python setup.py sdist bdist_wheel
 
 build-cloud: clean-build
 	@echo "Syncing VERSION file to recce_cloud..."
 	@cp recce/VERSION recce_cloud/VERSION
 	@echo "Building recce-cloud package..."
+	@pip install -q wheel
 	@python setup_cloud.py sdist bdist_wheel
 
-build-all: clean-build
+build-all: clean-build build-frontend
 	@echo "Building both packages..."
+	@pip install -q wheel
 	@cp recce/VERSION recce_cloud/VERSION
 	@python setup.py sdist bdist_wheel
 	@python setup_cloud.py sdist bdist_wheel

@@ -125,15 +125,37 @@ make flake8-cloud
 ```bash
 make build
 ```
+This will:
+1. Clean build artifacts
+2. Build frontend (pnpm install + pnpm build)
+3. Build Python package (python setup.py sdist bdist_wheel)
 
 **Build recce-cloud only:**
 ```bash
 make build-cloud
 ```
+This will:
+1. Clean build artifacts
+2. Sync VERSION file to recce_cloud/
+3. Build Python package (python setup_cloud.py sdist bdist_wheel)
 
 **Build both packages:**
 ```bash
 make build-all
+```
+This will:
+1. Clean build artifacts
+2. Build frontend
+3. Build both recce and recce-cloud packages
+
+**Build frontend only:**
+```bash
+make build-frontend
+```
+
+**Clean build artifacts:**
+```bash
+make clean-build
 ```
 
 This creates packages in `dist/`:
@@ -141,12 +163,6 @@ This creates packages in `dist/`:
 - `recce-1.24.0-py3-none-any.whl` (wheel)
 - `recce-cloud-1.24.0.tar.gz` (source distribution)
 - `recce_cloud-1.24.0-py3-none-any.whl` (wheel)
-
-### Clean Build Artifacts
-
-```bash
-make clean-build
-```
 
 ## Publishing to PyPI
 
