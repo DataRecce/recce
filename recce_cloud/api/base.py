@@ -51,6 +51,11 @@ class BaseRecceCloudClient(ABC):
         try:
             response = requests.request(method, url, headers=headers, **kwargs)
             response.raise_for_status()
+
+            # Handle empty responses (e.g., 204 No Content)
+            if response.status_code == 204 or not response.content:
+                return {}
+
             return response.json()
         except requests.exceptions.HTTPError as e:
             reason = str(e)
