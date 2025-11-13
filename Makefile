@@ -4,7 +4,7 @@
 default: help
 
 install-dev:
-	pip install -e .[dev]
+	pip install -e .[dev,mcp]
 	pre-commit install
 
 install:

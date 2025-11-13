@@ -2,6 +2,7 @@ import json
 import typing as t
 from decimal import Decimal
 from enum import Enum
+from typing import Sequence
 
 if t.TYPE_CHECKING:
     import agate
@@ -19,6 +20,22 @@ class DataFrameColumnType(Enum):
     TIMEDELTA = "timedelta"
     UNKNOWN = "unknown"
 
+    @classmethod
+    def from_string(cls, type_str: str) -> "DataFrameColumnType":
+        """Convert string to DataFrameColumnType enum.
+
+        Args:
+            type_str: String representation of the type (e.g., "integer", "text")
+
+        Returns:
+            DataFrameColumnType enum value
+        """
+        type_str = type_str.lower().strip()
+        try:
+            return cls(type_str)
+        except ValueError:
+            return cls.UNKNOWN
+
 
 class DataFrameColumn(BaseModel):
     key: str
@@ -28,7 +45,7 @@ class DataFrameColumn(BaseModel):
 
 class DataFrame(BaseModel):
     columns: t.List[DataFrameColumn]
-    data: t.List[tuple]
+    data: t.List[Sequence]
     limit: t.Optional[int] = Field(None, description="Limit the number of rows returned")
     more: t.Optional[bool] = Field(None, description="Whether there are more rows to fetch")
 
@@ -102,6 +119,45 @@ class DataFrame(BaseModel):
 
         df = DataFrame(
             columns=columns,
+            data=data,
+            limit=limit,
+            more=more,
+        )
+        return df
+
+    @staticmethod
+    def from_data(
+        columns: t.Dict[str, str],
+        data: t.List[Sequence],
+        limit: t.Optional[int] = None,
+        more: t.Optional[bool] = None,
+    ):
+        """Create a DataFrame from columns and data directly.
+
+        Args:
+            columns: Dict defining the schema where keys are column names and values are type strings.
+                     Type strings can be: "number", "integer", "text", "boolean", "date", "datetime", "timedelta"
+            data: List of rows (each row is a list/tuple/sequence of values)
+            limit: Optional limit on the number of rows returned
+            more: Optional flag indicating whether there are more rows to fetch
+
+        Returns:
+            DataFrame instance
+
+        Examples:
+            # Using simple dict format
+            columns = {"idx": "integer", "name": "text", "impacted": "boolean"}
+            data = [[0, "model_a", True], [1, "model_b", False]]
+            df = DataFrame.from_data(columns, data)
+        """
+        # Convert dict columns to DataFrameColumn objects
+        processed_columns = []
+        for key, type_str in columns.items():
+            col_type = DataFrameColumnType.from_string(type_str)
+            processed_columns.append(DataFrameColumn(key=key, name=key, type=col_type))
+
+        df = DataFrame(
+            columns=processed_columns,
             data=data,
             limit=limit,
             more=more,

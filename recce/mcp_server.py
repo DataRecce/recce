@@ -8,6 +8,10 @@ interacting with Recce's data validation capabilities.
 import asyncio
 import json
 import logging
+import os
+import textwrap
+import time
+from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional
 
 from mcp.server import Server
@@ -16,6 +20,7 @@ from mcp.types import TextContent, Tool
 
 from recce.core import RecceContext, load_context
 from recce.server import RecceServerMode
+from recce.tasks.dataframe import DataFrame
 from recce.tasks.profile import ProfileDiffTask
 from recce.tasks.query import QueryDiffTask, QueryTask
 from recce.tasks.rowcount import RowCountDiffTask
@@ -23,13 +28,97 @@ from recce.tasks.rowcount import RowCountDiffTask
 logger = logging.getLogger(__name__)
 
 
+def _truncate_strings(obj: Any, max_length: int = 200) -> Any:
+    """Recursively truncate strings longer than max_length in nested dicts and lists"""
+    if isinstance(obj, dict):
+        return {k: _truncate_strings(v, max_length) for k, v in obj.items()}
+    elif isinstance(obj, list):
+        return [_truncate_strings(item, max_length) for item in obj]
+    elif isinstance(obj, str) and len(obj) > max_length:
+        return obj[:max_length] + "..."
+    return obj
+
+
+class MCPLogger:
+    """JSON logger for MCP server request/response logging"""
+
+    def __init__(self, debug: bool = False, log_file: str = "logs/recce-mcp.json"):
+        self.debug = debug
+        self.log_file = log_file
+
+        if self.debug:
+            # Create logs directory if it doesn't exist
+            log_dir = os.path.dirname(log_file)
+            if log_dir:
+                os.makedirs(log_dir, exist_ok=True)
+
+            # Overwrite log file on initialization
+            try:
+                with open(log_file, "w") as f:
+                    f.write("")  # Clear existing content
+            except Exception as e:
+                logger.warning(f"Failed to initialize log file {log_file}: {e}")
+
+    def _write_log(self, log_entry: Dict[str, Any]) -> None:
+        """Write a log entry to the JSON file"""
+        if not self.debug:
+            return
+
+        try:
+            with open(self.log_file, "a") as f:
+                f.write(json.dumps(log_entry) + "\n")
+        except Exception as e:
+            logger.warning(f"Failed to write to log file {self.log_file}: {e}")
+
+    def log_list_tools(self, tools: List[Tool]) -> None:
+        """Log a list_tools call"""
+        tool_names = [tool.name for tool in tools]
+        log_entry = {
+            "timestamp": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
+            "type": "list_tools",
+            "tools": tool_names,
+        }
+        self._write_log(log_entry)
+
+    def log_tool_call(
+        self,
+        tool_name: str,
+        arguments: Dict[str, Any],
+        response: Dict[str, Any],
+        duration_ms: float,
+        error: Optional[str] = None,
+    ) -> None:
+        """Log a tool call with request and response"""
+        log_entry = {
+            "timestamp": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
+            "type": "call_tool",
+            "tool": tool_name,
+            "request": arguments,
+            "duration_ms": round(duration_ms, 2),
+        }
+
+        if error:
+            log_entry["error"] = error
+        else:
+            log_entry["response"] = _truncate_strings(response)
+
+        self._write_log(log_entry)
+
+
 class RecceMCPServer:
     """MCP Server for Recce data validation tools"""
 
-    def __init__(self, context: RecceContext, mode: Optional[RecceServerMode] = None):
+    def __init__(
+        self,
+        context: RecceContext,
+        mode: Optional[RecceServerMode] = None,
+        debug: bool = False,
+        log_file: str = "logs/recce-mcp.json",
+    ):
         self.context = context
         self.mode = mode or RecceServerMode.server
         self.server = Server("recce")
+        self.mcp_logger = MCPLogger(debug=debug, log_file=log_file)
         self._setup_handlers()
 
     def _setup_handlers(self):
@@ -43,9 +132,55 @@ class RecceMCPServer:
             # Always available in all modes
             tools.append(
                 Tool(
-                    name="get_lineage_diff",
-                    description="Get the lineage diff between base and current environments. "
-                    "Shows added, removed, and modified models.",
+                    name="lineage_diff",
+                    description=textwrap.dedent(
+                        """
+                        Get the lineage diff between production(base) and session(current) for changed models.
+                        Returns nodes, parent_map (node dependencies), and change_status/impacted information in compact dataframe format.
+
+                        In parent_map: key is a node index, value is list of parent node indices
+                        Nodes dataframe includes: idx, id, name, resource_type, materialized, change_status, impacted.
+
+                        Rendering guidance for Mermaid diagram:
+                        Use graph LR and apply these styles based on change_status and impacted:
+                        - change_status="added": fill:#d4edda, stroke:#28a745, color:#000000
+                        - change_status="removed": fill:#f8d7da, stroke:#dc3545, color:#000000
+                        - change_status="modified" AND impacted=true: fill:#fff3cd, stroke:#ffc107, color:#000000
+                        - change_status=null AND impacted=true: fill:#ffffff, stroke:#ffc107, color:#000000
+                        - change_status=null AND impacted=false: fill:#ffffff, stroke:#d3d3d3, color:#999999
+                    """
+                    ).strip(),
+                    inputSchema={
+                        "type": "object",
+                        "properties": {
+                            "select": {
+                                "type": "string",
+                                "description": "dbt selector syntax to filter models (optional)",
+                            },
+                            "exclude": {
+                                "type": "string",
+                                "description": "dbt selector syntax to exclude models (optional)",
+                            },
+                            "packages": {
+                                "type": "array",
+                                "items": {"type": "string"},
+                                "description": "List of packages to filter (optional)",
+                            },
+                            "view_mode": {
+                                "type": "string",
+                                "enum": ["changed_models", "all"],
+                                "default": "changed_models",
+                                "description": "View mode: 'changed_models' for only changed models (default), 'all' for all models",
+                            },
+                        },
+                    },
+                )
+            )
+            tools.append(
+                Tool(
+                    name="schema_diff",
+                    description="Get the schema diff (column changes) between base and current environments. "
+                    "Shows added, removed, and type-changed columns in compact dataframe format.",
                     inputSchema={
                         "type": "object",
                         "properties": {
@@ -165,50 +300,234 @@ class RecceMCPServer:
                     ]
                 )
 
+            self.mcp_logger.log_list_tools(tools)
+
             return tools
 
         @self.server.call_tool()
         async def call_tool(name: str, arguments: Dict[str, Any]) -> List[TextContent]:
             """Handle tool calls"""
+            start_time = time.perf_counter()
+
             try:
                 # Check if tool is blocked in non-server mode
                 blocked_tools_in_non_server = {"row_count_diff", "query", "query_diff", "profile_diff"}
                 if self.mode != RecceServerMode.server and name in blocked_tools_in_non_server:
                     raise ValueError(
                         f"Tool '{name}' is not available in {self.mode.value} mode. "
-                        "Only 'get_lineage_diff' is available in this mode."
+                        "Only 'lineage_diff' and 'schema_diff' are available in this mode."
                     )
 
-                if name == "get_lineage_diff":
-                    result = await self._get_lineage_diff(arguments)
+                if name == "lineage_diff":
+                    result = await self._tool_lineage_diff(arguments)
+                elif name == "schema_diff":
+                    result = await self._tool_schema_diff(arguments)
                 elif name == "row_count_diff":
-                    result = await self._row_count_diff(arguments)
+                    result = await self._tool_row_count_diff(arguments)
                 elif name == "query":
-                    result = await self._query(arguments)
+                    result = await self._tool_query(arguments)
                 elif name == "query_diff":
-                    result = await self._query_diff(arguments)
+                    result = await self._tool_query_diff(arguments)
                 elif name == "profile_diff":
-                    result = await self._profile_diff(arguments)
+                    result = await self._tool_profile_diff(arguments)
                 else:
                     raise ValueError(f"Unknown tool: {name}")
 
+                duration_ms = (time.perf_counter() - start_time) * 1000
+                self.mcp_logger.log_tool_call(name, arguments, result, duration_ms)
+
                 return [TextContent(type="text", text=json.dumps(result, indent=2))]
             except Exception as e:
+                duration_ms = (time.perf_counter() - start_time) * 1000
+                self.mcp_logger.log_tool_call(name, arguments, {}, duration_ms, error=str(e))
                 logger.exception(f"Error executing tool {name}")
                 return [TextContent(type="text", text=json.dumps({"error": str(e)}, indent=2))]
 
-    async def _get_lineage_diff(self, arguments: Dict[str, Any]) -> Dict[str, Any]:
+    async def _tool_lineage_diff(self, arguments: Dict[str, Any]) -> Dict[str, Any]:
         """Get lineage diff between base and current"""
         try:
+            # Extract filter arguments
+            select = arguments.get("select")
+            exclude = arguments.get("exclude")
+            packages = arguments.get("packages")
+            view_mode = arguments.get("view_mode", "changed_models")
+
             # Get lineage diff from adapter (returns a Pydantic LineageDiff model)
-            lineage_diff = self.context.get_lineage_diff()
-            # Convert Pydantic model to dict for JSON serialization
-            return lineage_diff.model_dump(mode="json")
+            lineage_diff = self.context.get_lineage_diff().model_dump(mode="json")
+
+            # Apply node selection filtering if arguments provided
+            selected_node_ids = self.context.adapter.select_nodes(
+                select=select,
+                exclude=exclude,
+                packages=packages,
+                view_mode=view_mode,
+            )
+            impacted_node_ids = self.context.adapter.select_nodes(
+                select="state:modified+",
+            )
+
+            # Get diff information for change_status
+            diff_info = lineage_diff.get("diff", {})
+
+            # Extract parent_map and simplified nodes from both base and current
+            parent_map = {}
+            nodes = {}
+
+            # Merge parent_map and nodes: base first, then current overrides
+            for env_key in ["base", "current"]:
+                if env_key not in lineage_diff:
+                    continue
+
+                env_data = lineage_diff[env_key]
+
+                # Merge parent_map (filtering by selected nodes)
+                if "parent_map" in env_data:
+                    for node_id, parents in env_data["parent_map"].items():
+                        if node_id in selected_node_ids:
+                            parent_map[node_id] = parents
+
+                # Merge nodes (filtering by selected nodes)
+                if "nodes" in env_data:
+                    for node_id, node_info in env_data["nodes"].items():
+                        if node_id in selected_node_ids:
+                            nodes[node_id] = {
+                                "name": node_info.get("name"),
+                                "resource_type": node_info.get("resource_type"),
+                            }
+
+                            materialized = node_info.get("config", {}).get("materialized")
+                            if materialized is not None:
+                                nodes[node_id]["materialized"] = materialized
+
+            # Create id to idx mapping
+            id_to_idx = {node_id: idx for idx, node_id in enumerate(nodes.keys())}
+
+            # Prepare node data for DataFrame
+            nodes_data = [
+                [
+                    id_to_idx[node_id],
+                    node_id,
+                    node_info.get("name"),
+                    node_info.get("resource_type"),
+                    node_info.get("materialized"),
+                    diff_info.get(node_id, {}).get("change_status"),
+                    node_id in impacted_node_ids,
+                ]
+                for node_id, node_info in nodes.items()
+            ]
+
+            # Create nodes DataFrame using from_data with simple dict format
+            nodes_df = DataFrame.from_data(
+                columns={
+                    "idx": "integer",
+                    "id": "text",
+                    "name": "text",
+                    "resource_type": "text",
+                    "materialized": "text",
+                    "change_status": "text",
+                    "impacted": "boolean",
+                },
+                data=nodes_data,
+            )
+
+            # Map parent_map IDs to indices
+            parent_map_indexed = {}
+            for node_id, parents in parent_map.items():
+                if node_id in id_to_idx:
+                    node_idx = id_to_idx[node_id]
+                    parent_indices = [id_to_idx[p] for p in parents if p in id_to_idx]
+                    parent_map_indexed[node_idx] = parent_indices
+
+            # Build simplified result
+            result = {"nodes": nodes_df.model_dump(mode="json"), "parent_map": parent_map_indexed}
+
+            return result
+
         except Exception:
             logger.exception("Error getting lineage diff")
             raise
 
-    async def _row_count_diff(self, arguments: Dict[str, Any]) -> Dict[str, Any]:
+    async def _tool_schema_diff(self, arguments: Dict[str, Any]) -> Dict[str, Any]:
+        """Get schema diff (column changes) between base and current"""
+        try:
+            # Extract filter arguments
+            select = arguments.get("select")
+            exclude = arguments.get("exclude")
+            packages = arguments.get("packages")
+
+            # Get lineage diff from adapter
+            lineage_diff = self.context.get_lineage_diff().model_dump(mode="json")
+
+            # Get all nodes from current environment
+            current_nodes = {}
+            if "current" in lineage_diff and "nodes" in lineage_diff["current"]:
+                current_nodes = lineage_diff["current"]["nodes"]
+
+            # Filter to only nodes that exist in both base and current (exclude added nodes)
+            base_nodes = lineage_diff.get("base", {}).get("nodes", {})
+            nodes_to_compare = set(current_nodes.keys()) & set(base_nodes.keys())
+
+            # Apply filtering if arguments provided
+            if select or exclude or packages:
+                selected_node_ids = self.context.adapter.select_nodes(
+                    select=select,
+                    exclude=exclude,
+                    packages=packages,
+                )
+                nodes_to_compare = nodes_to_compare & selected_node_ids
+
+            # Build schema changes
+            schema_changes = []
+
+            for node_id in nodes_to_compare:
+                base_node = base_nodes.get(node_id, {})
+                current_node = current_nodes.get(node_id, {})
+
+                base_columns = base_node.get("columns", {})
+                current_columns = current_node.get("columns", {})
+
+                # Get column names in base and current
+                base_col_names = set(base_columns.keys())
+                current_col_names = set(current_columns.keys())
+
+                # Find added columns (in current but not in base)
+                for col_name in current_col_names - base_col_names:
+                    schema_changes.append([node_id, col_name, "added"])
+
+                # Find removed columns (in base but not in current)
+                for col_name in base_col_names - current_col_names:
+                    schema_changes.append([node_id, col_name, "removed"])
+
+                # Find modified columns (in both but with different types)
+                for col_name in base_col_names & current_col_names:
+                    base_col_type = base_columns[col_name].get("type")
+                    current_col_type = current_columns[col_name].get("type")
+                    if base_col_type != current_col_type:
+                        schema_changes.append([node_id, col_name, "modified"])
+
+            # Check if there are more than 100 rows
+            limit = 100
+            has_more = len(schema_changes) > limit
+            limited_schema_changes = schema_changes[:limit]
+
+            # Convert schema changes to dataframe format using DataFrame.from_data()
+            diff_df = DataFrame.from_data(
+                columns={
+                    "node_id": "text",
+                    "column": "text",
+                    "change_status": "text",
+                },
+                data=limited_schema_changes,
+                limit=limit,
+                more=has_more,
+            )
+            return diff_df.model_dump(mode="json")
+
+        except Exception:
+            logger.exception("Error getting schema diff")
+            raise
+
+    async def _tool_row_count_diff(self, arguments: Dict[str, Any]) -> Dict[str, Any]:
         """Execute row count diff task"""
         try:
             task = RowCountDiffTask(params=arguments)
@@ -221,7 +540,7 @@ class RecceMCPServer:
             logger.exception("Error executing row count diff")
             raise
 
-    async def _query(self, arguments: Dict[str, Any]) -> Dict[str, Any]:
+    async def _tool_query(self, arguments: Dict[str, Any]) -> Dict[str, Any]:
         """Execute a query"""
         try:
             sql_template = arguments.get("sql_template")
@@ -242,7 +561,7 @@ class RecceMCPServer:
             logger.exception("Error executing query")
             raise
 
-    async def _query_diff(self, arguments: Dict[str, Any]) -> Dict[str, Any]:
+    async def _tool_query_diff(self, arguments: Dict[str, Any]) -> Dict[str, Any]:
         """Execute query diff task"""
         try:
             task = QueryDiffTask(params=arguments)
@@ -258,7 +577,7 @@ class RecceMCPServer:
             logger.exception("Error executing query diff")
             raise
 
-    async def _profile_diff(self, arguments: Dict[str, Any]) -> Dict[str, Any]:
+    async def _tool_profile_diff(self, arguments: Dict[str, Any]) -> Dict[str, Any]:
         """Execute profile diff task"""
         try:
             task = ProfileDiffTask(params=arguments)
@@ -287,6 +606,7 @@ async def run_mcp_server(**kwargs):
     Args:
         **kwargs: Arguments for loading RecceContext (dbt options, etc.)
                Optionally includes 'mode' for server mode (server, preview, read-only)
+               Optionally includes 'debug' flag for enabling MCP logging
     """
     # Setup logging
     logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s")
@@ -304,6 +624,9 @@ async def run_mcp_server(**kwargs):
         except ValueError:
             logger.warning(f"Invalid mode '{mode_str}', using default server mode")
 
-    # Create and run server
-    server = RecceMCPServer(context, mode=mode)
+    # Extract debug flag from kwargs
+    debug = kwargs.get("debug", False)
+
+    # Create and run server with debug logging enabled if requested
+    server = RecceMCPServer(context, mode=mode, debug=debug)
     await server.run()
