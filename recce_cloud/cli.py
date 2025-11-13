@@ -163,10 +163,50 @@ def upload(target_path, session_id, cr, session_type, dry_run):
     console = Console()
 
     # 1. Auto-detect CI environment information
-    console.rule("Auto-detecting CI environment", style="blue")
+    console.rule("CI Environment Detection", style="blue")
     try:
         ci_info = CIDetector.detect()
         ci_info = CIDetector.apply_overrides(ci_info, cr=cr, session_type=session_type)
+
+        # Display detected CI information immediately
+        if ci_info:
+            info_table = []
+            if ci_info.platform:
+                info_table.append(f"[cyan]Platform:[/cyan] {ci_info.platform}")
+
+            # Display CR number as PR or MR based on platform
+            if ci_info.cr_number is not None:
+                if ci_info.platform == "github-actions":
+                    info_table.append(f"[cyan]PR Number:[/cyan] {ci_info.cr_number}")
+                elif ci_info.platform == "gitlab-ci":
+                    info_table.append(f"[cyan]MR Number:[/cyan] {ci_info.cr_number}")
+                else:
+                    info_table.append(f"[cyan]CR Number:[/cyan] {ci_info.cr_number}")
+
+            # Display CR URL as PR URL or MR URL based on platform
+            if ci_info.cr_url:
+                if ci_info.platform == "github-actions":
+                    info_table.append(f"[cyan]PR URL:[/cyan] {ci_info.cr_url}")
+                elif ci_info.platform == "gitlab-ci":
+                    info_table.append(f"[cyan]MR URL:[/cyan] {ci_info.cr_url}")
+                else:
+                    info_table.append(f"[cyan]CR URL:[/cyan] {ci_info.cr_url}")
+
+            if ci_info.session_type:
+                info_table.append(f"[cyan]Session Type:[/cyan] {ci_info.session_type}")
+            if ci_info.commit_sha:
+                info_table.append(f"[cyan]Commit SHA:[/cyan] {ci_info.commit_sha[:8]}...")
+            if ci_info.base_branch:
+                info_table.append(f"[cyan]Base Branch:[/cyan] {ci_info.base_branch}")
+            if ci_info.source_branch:
+                info_table.append(f"[cyan]Source Branch:[/cyan] {ci_info.source_branch}")
+            if ci_info.repository:
+                info_table.append(f"[cyan]Repository:[/cyan] {ci_info.repository}")
+
+            for line in info_table:
+                console.print(line)
+        else:
+            console.print("[yellow]No CI environment detected[/yellow]")
     except Exception as e:
         console.print(f"[yellow]Warning:[/yellow] Failed to detect CI environment: {e}")
         console.print("Continuing without CI metadata...")
@@ -180,45 +220,6 @@ def upload(target_path, session_id, cr, session_type, dry_run):
 
     manifest_path = os.path.join(target_path, "manifest.json")
     catalog_path = os.path.join(target_path, "catalog.json")
-
-    # Display detected CI information
-    if ci_info:
-        console.rule("Detected CI Information", style="blue")
-        info_table = []
-        if ci_info.platform:
-            info_table.append(f"[cyan]Platform:[/cyan] {ci_info.platform}")
-
-        # Display CR number as PR or MR based on platform
-        if ci_info.cr_number is not None:
-            if ci_info.platform == "github-actions":
-                info_table.append(f"[cyan]PR Number:[/cyan] {ci_info.cr_number}")
-            elif ci_info.platform == "gitlab-ci":
-                info_table.append(f"[cyan]MR Number:[/cyan] {ci_info.cr_number}")
-            else:
-                info_table.append(f"[cyan]CR Number:[/cyan] {ci_info.cr_number}")
-
-        # Display CR URL as PR URL or MR URL based on platform
-        if ci_info.cr_url:
-            if ci_info.platform == "github-actions":
-                info_table.append(f"[cyan]PR URL:[/cyan] {ci_info.cr_url}")
-            elif ci_info.platform == "gitlab-ci":
-                info_table.append(f"[cyan]MR URL:[/cyan] {ci_info.cr_url}")
-            else:
-                info_table.append(f"[cyan]CR URL:[/cyan] {ci_info.cr_url}")
-
-        if ci_info.session_type:
-            info_table.append(f"[cyan]Session Type:[/cyan] {ci_info.session_type}")
-        if ci_info.commit_sha:
-            info_table.append(f"[cyan]Commit SHA:[/cyan] {ci_info.commit_sha[:8]}...")
-        if ci_info.base_branch:
-            info_table.append(f"[cyan]Base Branch:[/cyan] {ci_info.base_branch}")
-        if ci_info.source_branch:
-            info_table.append(f"[cyan]Source Branch:[/cyan] {ci_info.source_branch}")
-        if ci_info.repository:
-            info_table.append(f"[cyan]Repository:[/cyan] {ci_info.repository}")
-
-        for line in info_table:
-            console.print(line)
 
     # 3. Extract adapter type from manifest
     try:
