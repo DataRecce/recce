@@ -19,11 +19,14 @@ def _get_version():
         return version
 
 
+# Get the directory containing this setup file
+here = os.path.abspath(os.path.dirname(__file__))
+
 setup(
     name="recce-cloud",
     version=_get_version(),
     description="Lightweight CLI for Recce Cloud operations",
-    long_description=open("README.md").read(),
+    long_description=open(os.path.join(here, "README.md")).read(),
     long_description_content_type="text/markdown",
     author="InfuseAI Dev Team",
     author_email="dev@infuseai.io",
@@ -54,5 +57,7 @@ setup(
         "Operating System :: OS Independent",
         "Development Status :: 4 - Beta",
     ],
-    # No package_data needed - references main recce VERSION file at runtime
+    package_data={
+        "recce_cloud": ["VERSION"],  # Include VERSION file in package
+    },
 )

@@ -1,0 +1,5 @@
+# Manifest for recce-cloud package
+include README.md
+include recce/VERSION
+include recce_cloud/VERSION
+recursive-include recce_cloud *.py

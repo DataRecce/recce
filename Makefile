@@ -1,4 +1,4 @@
-.PHONY: help format lint check test clean install dev-install install-cloud install-cloud-dev
+.PHONY: help format lint check test clean install dev-install install-cloud install-cloud-dev build build-cloud build-all clean-build
 
 # Default target executed when no arguments are given to make.
 default: help
@@ -34,6 +34,10 @@ help:
 	@echo "  make install-cloud     - Install recce-cloud package"
 	@echo "  make install-cloud-dev - Install recce-cloud in dev mode"
 	@echo "  make dev               - Run the frontend in dev mode"
+	@echo "  make build             - Build recce package"
+	@echo "  make build-cloud       - Build recce-cloud package"
+	@echo "  make build-all         - Build both packages"
+	@echo "  make clean-build       - Clean build artifacts"
 
 format:
 	@echo "Formatting with Black..."
@@ -96,3 +100,29 @@ install-frontend-requires:
 
 dev: install-frontend-requires
 	@cd js && pnpm dev
+
+# Build targets
+clean-build:
+	@echo "Cleaning build artifacts..."
+	@rm -rf build/ dist/ *.egg-info recce_cloud.egg-info
+	@find . -type d -name __pycache__ -exec rm -rf {} + 2>/dev/null || true
+	@find . -type f -name '*.pyc' -delete
+
+build: clean-build
+	@echo "Building recce package..."
+	@python setup.py sdist bdist_wheel
+
+build-cloud: clean-build
+	@echo "Syncing VERSION file to recce_cloud..."
+	@cp recce/VERSION recce_cloud/VERSION
+	@echo "Building recce-cloud package..."
+	@python setup_cloud.py sdist bdist_wheel
+
+build-all: clean-build
+	@echo "Building both packages..."
+	@cp recce/VERSION recce_cloud/VERSION
+	@python setup.py sdist bdist_wheel
+	@python setup_cloud.py sdist bdist_wheel
+	@echo "Build complete!"
+	@echo "Packages in dist/:"
+	@ls -lh dist/
