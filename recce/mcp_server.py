@@ -350,9 +350,9 @@ class RecceMCPServer:
                 logger.info(f"[MCP] Tool response for {name} ({duration_ms:.2f}ms):")
                 # Truncate large responses for console readability
                 if len(response_json) > 1000:
-                    logger.info(f"[MCP] {response_json[:1000]}... (truncated, {len(response_json)} chars total)")
+                    logger.debug(f"[MCP] {response_json[:1000]}... (truncated, {len(response_json)} chars total)")
                 else:
-                    logger.info(f"[MCP] {response_json}")
+                    logger.debug(f"[MCP] {response_json}")
 
                 return [TextContent(type="text", text=response_json)]
             except Exception as e:

@@ -1816,6 +1816,10 @@ def mcp_server(sse, host, port, **kwargs):
 
         # Run the server (stdio or SSE based on --sse flag)
         asyncio.run(run_mcp_server(sse=sse, host=host, port=port, **kwargs))
+    except (asyncio.CancelledError, KeyboardInterrupt):
+        # Graceful shutdown (e.g., Ctrl+C)
+        console.print("[yellow]MCP Server interrupted[/yellow]")
+        exit(0)
     except Exception as e:
         console.print(f"[[red]Error[/red]] Failed to start MCP server: {e}")
         if kwargs.get("debug"):
