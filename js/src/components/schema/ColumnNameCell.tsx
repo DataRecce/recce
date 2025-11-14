@@ -40,6 +40,11 @@ export function ColumnNameCell({
   const handleTopkDiff = () => {
     runAction("top_k_diff", { model: model.name, column_name: name, k: 50 }, { showForm: false });
   };
+
+  const handleValueDiff = () => {
+    runAction("value_diff", { model: model.name, columns: [name] }, { showForm: true });
+  };
+
   const addedOrRemoved = !baseType || !currentType;
   const isCllDisabled =
     lineageViewContext === undefined || (baseIndex !== undefined && currentIndex === undefined);
@@ -104,6 +109,13 @@ export function ColumnNameCell({
                       onClick={handleTopkDiff}
                       disabled={addedOrRemoved}>
                       Top-k Diff
+                    </Menu.Item>
+                    <Menu.Item
+                      value="value-diff"
+                      fontSize="10pt"
+                      onClick={handleValueDiff}
+                      disabled={addedOrRemoved}>
+                      Value Diff
                     </Menu.Item>
                   </Menu.ItemGroup>
                 </Menu.Content>
