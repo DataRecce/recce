@@ -30,7 +30,7 @@ export const QueryForm = ({ defaultPrimaryKeys, onPrimaryKeysChange, ...prob }: 
       };
 
       Object.entries(combinedColumns).forEach(([columnName, col]) => {
-        if (col != null && (col.unique || col.not_null)) {
+        if (col?.unique) {
           columnSet.add(columnName);
         }
       });
