@@ -7,7 +7,7 @@ from typing import Sequence
 if t.TYPE_CHECKING:
     import agate
     import pandas
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, model_validator
 
 
 class DataFrameColumnType(Enum):
@@ -38,9 +38,16 @@ class DataFrameColumnType(Enum):
 
 
 class DataFrameColumn(BaseModel):
-    key: str
+    key: t.Optional[str] = None
     name: str
     type: DataFrameColumnType
+
+    @model_validator(mode="after")
+    def set_key_from_name(self) -> "DataFrameColumn":
+        """If key is not provided, use name as the key."""
+        if self.key is None:
+            self.key = self.name
+        return self
 
 
 class DataFrame(BaseModel):
