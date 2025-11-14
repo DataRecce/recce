@@ -9,6 +9,8 @@ export interface NodeColumnData {
   type: string;
   transformation_type?: string;
   change_status?: "added" | "removed" | "modified";
+  not_null?: boolean;
+  unique?: boolean;
 }
 export interface NodeData {
   id: string;
