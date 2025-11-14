@@ -39,7 +39,9 @@ class TestGitHubRecceCloudClient:
                 "catalog_upload_url": "https://s3.aws.com/catalog",
             }
 
-            response = client.touch_recce_session(branch="feature-branch", adapter_type="postgres", cr_number=123)
+            response = client.touch_recce_session(
+                branch="feature-branch", adapter_type="postgres", cr_number=123, session_type="cr"
+            )
 
             assert response["session_id"] == "test_session_id"
             assert response["manifest_upload_url"] == "https://s3.aws.com/manifest"
@@ -70,6 +72,26 @@ class TestGitHubRecceCloudClient:
             # Verify pr_number is not in the payload when cr_number is None
             call_args = mock_request.call_args
             assert "pr_number" not in call_args[1]["json"]
+
+    def test_touch_recce_session_prod_type(self):
+        """Test touch_recce_session with --type prod (should not include pr_number)."""
+        client = GitHubRecceCloudClient(token="test_token", repository="owner/repo")
+
+        with patch.object(client, "_make_request") as mock_request:
+            mock_request.return_value = {
+                "session_id": "prod_session_id",
+                "manifest_upload_url": "https://s3.aws.com/manifest",
+                "catalog_upload_url": "https://s3.aws.com/catalog",
+            }
+
+            # Even with cr_number detected, session_type="prod" should omit pr_number
+            client.touch_recce_session(branch="main", adapter_type="postgres", cr_number=123, session_type="prod")
+
+            # Verify pr_number is NOT in the payload when session_type is "prod"
+            call_args = mock_request.call_args
+            assert "pr_number" not in call_args[1]["json"]
+            assert call_args[1]["json"]["branch"] == "main"
+            assert call_args[1]["json"]["adapter_type"] == "postgres"
 
     def test_upload_completed(self):
         """Test upload_completed notification."""
@@ -121,6 +143,7 @@ class TestGitLabRecceCloudClient:
                 adapter_type="postgres",
                 cr_number=456,
                 commit_sha="abc123def456",
+                session_type="cr",
             )
 
             assert response["session_id"] == "test_session_id"
@@ -156,6 +179,37 @@ class TestGitLabRecceCloudClient:
             # Verify mr_iid is not in the payload when cr_number is None
             call_args = mock_request.call_args
             assert "mr_iid" not in call_args[1]["json"]
+
+    def test_touch_recce_session_prod_type(self):
+        """Test touch_recce_session with --type prod (should not include mr_iid)."""
+        client = GitLabRecceCloudClient(
+            token="test_token",
+            project_path="group/project",
+            repository_url="https://gitlab.com/group/project",
+        )
+
+        with patch.object(client, "_make_request") as mock_request:
+            mock_request.return_value = {
+                "session_id": "prod_session_id",
+                "manifest_upload_url": "https://s3.aws.com/manifest",
+                "catalog_upload_url": "https://s3.aws.com/catalog",
+            }
+
+            # Even with cr_number detected, session_type="prod" should omit mr_iid
+            client.touch_recce_session(
+                branch="main",
+                adapter_type="postgres",
+                cr_number=456,
+                commit_sha="abc123def456",
+                session_type="prod",
+            )
+
+            # Verify mr_iid is NOT in the payload when session_type is "prod"
+            call_args = mock_request.call_args
+            assert "mr_iid" not in call_args[1]["json"]
+            assert call_args[1]["json"]["branch"] == "main"
+            assert call_args[1]["json"]["adapter_type"] == "postgres"
+            assert call_args[1]["json"]["commit_sha"] == "abc123def456"
 
     def test_upload_completed(self):
         """Test upload_completed notification."""

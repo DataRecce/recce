@@ -24,6 +24,9 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
+# Suppress CI detector logs since we display formatted output in the CLI
+logging.getLogger("recce_cloud.ci_providers.detector").setLevel(logging.WARNING)
+
 
 @click.group()
 def cloud_cli():
@@ -163,10 +166,50 @@ def upload(target_path, session_id, cr, session_type, dry_run):
     console = Console()
 
     # 1. Auto-detect CI environment information
-    console.rule("Auto-detecting CI environment", style="blue")
+    console.rule("CI Environment Detection", style="blue")
     try:
         ci_info = CIDetector.detect()
         ci_info = CIDetector.apply_overrides(ci_info, cr=cr, session_type=session_type)
+
+        # Display detected CI information immediately
+        if ci_info:
+            info_table = []
+            if ci_info.platform:
+                info_table.append(f"[cyan]Platform:[/cyan] {ci_info.platform}")
+
+            # Display CR number as PR or MR based on platform
+            if ci_info.cr_number is not None:
+                if ci_info.platform == "github-actions":
+                    info_table.append(f"[cyan]PR Number:[/cyan] {ci_info.cr_number}")
+                elif ci_info.platform == "gitlab-ci":
+                    info_table.append(f"[cyan]MR Number:[/cyan] {ci_info.cr_number}")
+                else:
+                    info_table.append(f"[cyan]CR Number:[/cyan] {ci_info.cr_number}")
+
+            # Display CR URL as PR URL or MR URL based on platform
+            if ci_info.cr_url:
+                if ci_info.platform == "github-actions":
+                    info_table.append(f"[cyan]PR URL:[/cyan] {ci_info.cr_url}")
+                elif ci_info.platform == "gitlab-ci":
+                    info_table.append(f"[cyan]MR URL:[/cyan] {ci_info.cr_url}")
+                else:
+                    info_table.append(f"[cyan]CR URL:[/cyan] {ci_info.cr_url}")
+
+            if ci_info.session_type:
+                info_table.append(f"[cyan]Session Type:[/cyan] {ci_info.session_type}")
+            if ci_info.commit_sha:
+                info_table.append(f"[cyan]Commit SHA:[/cyan] {ci_info.commit_sha[:8]}...")
+            if ci_info.base_branch:
+                info_table.append(f"[cyan]Base Branch:[/cyan] {ci_info.base_branch}")
+            if ci_info.source_branch:
+                info_table.append(f"[cyan]Source Branch:[/cyan] {ci_info.source_branch}")
+            if ci_info.repository:
+                info_table.append(f"[cyan]Repository:[/cyan] {ci_info.repository}")
+
+            for line in info_table:
+                console.print(line)
+        else:
+            console.print("[yellow]No CI environment detected[/yellow]")
     except Exception as e:
         console.print(f"[yellow]Warning:[/yellow] Failed to detect CI environment: {e}")
         console.print("Continuing without CI metadata...")
@@ -180,45 +223,6 @@ def upload(target_path, session_id, cr, session_type, dry_run):
 
     manifest_path = os.path.join(target_path, "manifest.json")
     catalog_path = os.path.join(target_path, "catalog.json")
-
-    # Display detected CI information
-    if ci_info:
-        console.rule("Detected CI Information", style="blue")
-        info_table = []
-        if ci_info.platform:
-            info_table.append(f"[cyan]Platform:[/cyan] {ci_info.platform}")
-
-        # Display CR number as PR or MR based on platform
-        if ci_info.cr_number is not None:
-            if ci_info.platform == "github-actions":
-                info_table.append(f"[cyan]PR Number:[/cyan] {ci_info.cr_number}")
-            elif ci_info.platform == "gitlab-ci":
-                info_table.append(f"[cyan]MR Number:[/cyan] {ci_info.cr_number}")
-            else:
-                info_table.append(f"[cyan]CR Number:[/cyan] {ci_info.cr_number}")
-
-        # Display CR URL as PR URL or MR URL based on platform
-        if ci_info.cr_url:
-            if ci_info.platform == "github-actions":
-                info_table.append(f"[cyan]PR URL:[/cyan] {ci_info.cr_url}")
-            elif ci_info.platform == "gitlab-ci":
-                info_table.append(f"[cyan]MR URL:[/cyan] {ci_info.cr_url}")
-            else:
-                info_table.append(f"[cyan]CR URL:[/cyan] {ci_info.cr_url}")
-
-        if ci_info.session_type:
-            info_table.append(f"[cyan]Session Type:[/cyan] {ci_info.session_type}")
-        if ci_info.commit_sha:
-            info_table.append(f"[cyan]Commit SHA:[/cyan] {ci_info.commit_sha[:8]}...")
-        if ci_info.base_branch:
-            info_table.append(f"[cyan]Base Branch:[/cyan] {ci_info.base_branch}")
-        if ci_info.source_branch:
-            info_table.append(f"[cyan]Source Branch:[/cyan] {ci_info.source_branch}")
-        if ci_info.repository:
-            info_table.append(f"[cyan]Repository:[/cyan] {ci_info.repository}")
-
-        for line in info_table:
-            console.print(line)
 
     # 3. Extract adapter type from manifest
     try:
@@ -274,28 +278,31 @@ def upload(target_path, session_id, cr, session_type, dry_run):
         console.print("[green]✓[/green] Dry run completed successfully")
         sys.exit(0)
 
-    # 5. Get authentication token
-    token = os.getenv("RECCE_API_TOKEN")
-
-    # Fallback to CI-detected token if RECCE_API_TOKEN not set
-    if not token and ci_info and ci_info.access_token:
-        token = ci_info.access_token
-        if ci_info.platform == "github-actions":
-            console.print("[cyan]Info:[/cyan] Using GITHUB_TOKEN for authentication")
-        elif ci_info.platform == "gitlab-ci":
-            console.print("[cyan]Info:[/cyan] Using CI_JOB_TOKEN for authentication")
-
-    if not token:
-        console.print("[red]Error:[/red] No authentication token provided")
-        console.print("Set RECCE_API_TOKEN environment variable or ensure CI token is available")
-        sys.exit(2)
-
-    # 6. Choose upload workflow based on whether session_id is provided
+    # 5. Choose upload workflow based on whether session_id is provided
     if session_id:
         # Generic workflow: Upload to existing session using session ID
+        # This workflow requires RECCE_API_TOKEN
+        token = os.getenv("RECCE_API_TOKEN")
+        if not token:
+            console.print("[red]Error:[/red] No RECCE_API_TOKEN provided")
+            console.print("Set RECCE_API_TOKEN environment variable for session-based upload")
+            sys.exit(2)
+
         upload_to_existing_session(console, token, session_id, manifest_path, catalog_path, adapter_type, target_path)
     else:
         # Platform-specific workflow: Use platform APIs to create session and upload
+        # This workflow MUST use CI job tokens (CI_JOB_TOKEN or GITHUB_TOKEN)
+        if not ci_info or not ci_info.access_token:
+            console.print("[red]Error:[/red] Platform-specific upload requires CI environment")
+            console.print("Either run in GitHub Actions/GitLab CI or provide --session-id for generic upload")
+            sys.exit(2)
+
+        token = ci_info.access_token
+        if ci_info.platform == "github-actions":
+            console.print("[cyan]Info:[/cyan] Using GITHUB_TOKEN for platform-specific authentication")
+        elif ci_info.platform == "gitlab-ci":
+            console.print("[cyan]Info:[/cyan] Using CI_JOB_TOKEN for platform-specific authentication")
+
         upload_with_platform_apis(console, token, ci_info, manifest_path, catalog_path, adapter_type, target_path)
 
 
