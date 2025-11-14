@@ -393,6 +393,15 @@ export const ColumnNodeContextMenu = ({
       { showForm: false, trackProps },
     );
   };
+
+  const handleValueDiff = () => {
+    runAction(
+      "value_diff",
+      { model: modelNode.name, columns: [column] },
+      { showForm: true, trackProps },
+    );
+  };
+
   const addedOrRemoved =
     modelNode.data.base?.columns?.[column] === undefined ||
     modelNode.data.current?.columns?.[column] === undefined;
@@ -421,6 +430,14 @@ export const ColumnNodeContextMenu = ({
       label: isTopKDiffRun.title,
       itemIcon: <Icon as={isTopKDiffRun.icon} />,
       action: handleTopkDiff,
+      isDisabled: addedOrRemoved || isQueryDisabled,
+    });
+
+    const isValueDiffRun = findByRunType("value_diff");
+    menuItems.push({
+      label: isValueDiffRun.title,
+      itemIcon: <Icon as={isValueDiffRun.icon} />,
+      action: handleValueDiff,
       isDisabled: addedOrRemoved || isQueryDisabled,
     });
   }
