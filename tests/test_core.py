@@ -4,7 +4,8 @@ import unittest
 from datetime import datetime
 
 from recce.core import RecceContext
-from recce.models import Check, Run, RunType
+from recce.models import Check, RunType
+from recce.models.types import create_run_instance
 from recce.state import ArtifactsRoot, FileStateLoader, RecceState
 from tests.adapter.dbt_adapter.conftest import dbt_test_helper  # noqa: F401
 
@@ -13,7 +14,7 @@ current_dir = os.path.dirname(os.path.abspath(__file__))
 
 class TestRecceState(unittest.TestCase):
     def test_load(self):
-        run = Run(type=RunType.QUERY, params=dict(sql_template="select * from users"))
+        run = create_run_instance(type=RunType.QUERY, params=dict(sql_template="select * from users"))
         check = Check(name="check 1", description="desc 1", type=run.type, params=run.params)
 
         state = RecceState(runs=[run], checks=[check])
@@ -89,9 +90,9 @@ class TestRecceState(unittest.TestCase):
         self.assertEqual(check2_2.name, context.checks[0].name)
 
     def test_merge_runs(self):
-        run1 = Run(type="query")
-        run2 = Run(type="query")
-        run3 = Run(type="query")
+        run1 = create_run_instance(type="query")
+        run2 = create_run_instance(type="query")
+        run3 = create_run_instance(type="query")
 
         context = RecceContext(runs=[])
         state = RecceState(runs=[run1])

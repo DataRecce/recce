@@ -3,11 +3,13 @@ from typing import List, Optional, Tuple
 
 from pydantic import BaseModel
 
+from recce.models.dataframe import DataFrame
+from recce.models.task_result_types import QueryDiffResult
+
 from ..core import default_context
 from ..exceptions import RecceException
 from ..models import Check
 from .core import CheckValidator, Task, TaskResultDiffer
-from .dataframe import DataFrame
 from .valuediff import ValueDiffMixin
 
 QUERY_LIMIT = 2000
@@ -63,10 +65,6 @@ class QueryMixin:
 
 class QueryParams(BaseModel):
     sql_template: str
-
-
-class QueryResult(DataFrame):
-    pass
 
 
 class QueryDiffParams(BaseModel):
@@ -125,12 +123,6 @@ class QueryTask(Task, QueryMixin):
 
 class QueryBaseTask(QueryTask):
     is_base = True
-
-
-class QueryDiffResult(BaseModel):
-    base: Optional[DataFrame] = None
-    current: Optional[DataFrame] = None
-    diff: Optional[DataFrame] = None
 
 
 class QueryDiffTask(Task, QueryMixin, ValueDiffMixin):

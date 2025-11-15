@@ -19,8 +19,8 @@ from mcp.server.stdio import stdio_server
 from mcp.types import TextContent, Tool
 
 from recce.core import RecceContext, load_context
+from recce.models.dataframe import DataFrame
 from recce.server import RecceServerMode
-from recce.tasks.dataframe import DataFrame
 from recce.tasks.profile import ProfileDiffTask
 from recce.tasks.query import QueryDiffTask, QueryTask
 from recce.tasks.rowcount import RowCountDiffTask

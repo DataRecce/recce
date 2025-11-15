@@ -2,27 +2,19 @@ from typing import List, Optional, TypedDict, Union
 
 from pydantic import BaseModel
 
+from recce.models.dataframe import DataFrame
+from recce.models.task_result_types import ValueDiffResult
+
 from ..core import default_context
 from ..exceptions import RecceException
 from ..models import Check
 from .core import CheckValidator, Task, TaskResultDiffer
-from .dataframe import DataFrame
 
 
 class ValueDiffParams(BaseModel):
     model: str
     primary_key: Union[str, List[str]]
     columns: Optional[List[str]] = None
-
-
-class ValueDiffResult(BaseModel):
-    class Summary(BaseModel):
-        total: int
-        added: int
-        removed: int
-
-    summary: Summary
-    data: DataFrame
 
 
 class ValueDiffMixin:
@@ -317,10 +309,6 @@ class ValueDiffDetailParams(TypedDict):
     primary_key: str
     model: str
     columns: List[str]
-
-
-class ValueDiffDetailResult(DataFrame):
-    pass
 
 
 class ValueDiffDetailTask(Task, ValueDiffMixin):

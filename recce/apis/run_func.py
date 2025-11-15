@@ -5,7 +5,7 @@ from typing import List, Optional
 from recce.core import default_context
 from recce.exceptions import RecceException
 from recce.models import Run, RunDAO, RunType
-from recce.models.types import RunStatus
+from recce.models.types import RunStatus, create_run_instance
 
 running_tasks = {}
 logger = logging.getLogger("uvicorn")
@@ -110,7 +110,7 @@ def submit_run(type, params, check_id=None):
         if dbt_adaptor.adapter is None:
             raise RecceException("Recce Server is not launched under DBT project folder.")
 
-    run = Run(type=run_type, params=params, check_id=check_id, status=RunStatus.RUNNING)
+    run = create_run_instance(type=run_type, params=params, check_id=check_id, status=RunStatus.RUNNING)
     run.name = generate_run_name(run)
     RunDAO().create(run)
 

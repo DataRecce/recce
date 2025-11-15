@@ -2,11 +2,13 @@ from typing import List
 
 from pydantic import BaseModel
 
+from recce.models.dataframe import DataFrame
+from recce.models.task_result_types import ProfileDiffResult, ProfileResult
+
 from ..core import default_context
 from ..exceptions import RecceException
 from ..models import Check
 from .core import CheckValidator, Task, TaskResultDiffer
-from .dataframe import DataFrame
 
 PROFILE_COLUMN_JINJA_TEMPLATE = r"""
 {# Conditions -------------------------------------------- #}
@@ -141,15 +143,6 @@ from {{ relation }}
 class ProfileParams(BaseModel):
     model: str
     columns: List[str] = None
-
-
-class ProfileDiffResult(BaseModel):
-    base: DataFrame
-    current: DataFrame
-
-
-class ProfileResult(BaseModel):
-    current: DataFrame
 
 
 class ProfileDiffTask(Task):
