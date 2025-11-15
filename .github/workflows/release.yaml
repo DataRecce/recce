@@ -92,6 +92,8 @@ jobs:
   build-recce-cloud:
     name: Build Recce Cloud Official Release
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
 
     steps:
       - name: Checkout

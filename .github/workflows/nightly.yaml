@@ -134,6 +134,8 @@ jobs:
   build-recce-cloud-nightly:
     name: Build Recce Cloud Nightly Release
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
     steps:
       - name: Checkout
         uses: actions/checkout@v4
