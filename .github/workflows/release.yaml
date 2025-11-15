@@ -88,3 +88,56 @@ jobs:
           ignore_empty: true
           ignore_missing: true
           version: ${{ steps.patch_version.outputs.release_version }}
+
+  build-recce-cloud:
+    name: Build Recce Cloud Official Release
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Python 3.10
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.10'
+
+      - name: Patch Recce Cloud Version
+        id: patch_version
+        run: |
+          # Patch version from tag
+          echo "${GITHUB_REF:11}" > ./recce/VERSION
+
+          # Copy to recce_cloud (CRITICAL STEP)
+          cp recce/VERSION recce_cloud/VERSION
+
+          echo "Release Version: $(cat recce_cloud/VERSION)"
+          echo "release_version=$(cat recce_cloud/VERSION)" >> $GITHUB_OUTPUT
+
+      - name: Release to Pypi
+        run: |
+          # generate pypirc
+          echo "$PYPIRC" > $HOME/.pypirc
+
+          # build and upload recce-cloud to pypi
+          pip install build twine
+          python setup_cloud.py sdist bdist_wheel
+          python -m twine upload dist/*
+        env:
+          PYPIRC: ${{ secrets.PYPI }}
+
+      - name: Mark Sentry Release
+        uses: getsentry/action-release@v1
+        env:
+          SENTRY_AUTH_TOKEN: ${{ secrets.SENTRY_AUTH_TOKEN }}
+          SENTRY_ORG: infuseai
+          SENTRY_PROJECT: recce-cloud
+        with:
+          environment: production
+          ignore_empty: true
+          ignore_missing: true
+          version: ${{ steps.patch_version.outputs.release_version }}

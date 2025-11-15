@@ -12,8 +12,8 @@ from setuptools import find_packages
 
 
 def _get_version():
-    """Get version from main recce VERSION file."""
-    version_file = os.path.normpath(os.path.join(os.path.dirname(__file__), "recce", "VERSION"))
+    """Get version from recce_cloud VERSION file."""
+    version_file = os.path.normpath(os.path.join(os.path.dirname(__file__), "recce_cloud", "VERSION"))
     with open(version_file) as fh:
         version = fh.read().strip()
         return version
