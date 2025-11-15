@@ -3,7 +3,8 @@ import tempfile
 import unittest
 from unittest.mock import patch
 
-from recce.models import Check, Run, RunType
+from recce.models import Check, RunType
+from recce.models.types import create_run_instance
 from recce.state import FileStateLoader, RecceState, RecceStateLoader
 
 
@@ -51,7 +52,7 @@ class TestFileStateLoader(unittest.TestCase):
     def test_load_state_with_existing_file(self):
         with tempfile.NamedTemporaryFile(mode="w", suffix=".json", delete=False) as f:
             self.temp_file = f.name
-            run = Run(type=RunType.QUERY, params=dict(sql_template="select 1"))
+            run = create_run_instance(type=RunType.QUERY, params=dict(sql_template="select 1"))
             check = Check(name="test check", description="test", type=run.type, params=run.params)
             state = RecceState(runs=[run], checks=[check])
             f.write(state.to_json())
@@ -84,7 +85,7 @@ class TestFileStateLoader(unittest.TestCase):
         with tempfile.NamedTemporaryFile(suffix=".json", delete=False) as f:
             self.temp_file = f.name
 
-        run = Run(type=RunType.QUERY, params=dict(sql_template="select 1"))
+        run = create_run_instance(type=RunType.QUERY, params=dict(sql_template="select 1"))
         initial_state = RecceState(runs=[run])
 
         loader = FileStateLoader(state_file=self.temp_file, initial_state=initial_state)

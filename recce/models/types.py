@@ -1,12 +1,20 @@
 import uuid
 from datetime import datetime, timezone
 from enum import Enum
-from typing import Dict, List, Literal, Optional, Set
+from typing import Annotated, Dict, List, Literal, Optional, Set, Union
 
 from pydantic import UUID4, BaseModel, Field
 
+from recce.models.task_result_types import (
+    ProfileResult,
+    QueryDiffResult,
+    QueryResult,
+    ValueDiffDetailResult,
+    ValueDiffResult,
+)
 
-class RunType(Enum):
+
+class RunType(str, Enum):
     SIMPLE = "simple"
     QUERY = "query"
     QUERY_BASE = "query_base"
@@ -38,17 +46,93 @@ class RunStatus(Enum):
     RUNNING = "running"
 
 
-class Run(BaseModel):
-    type: RunType
+class BaseRun(BaseModel):
     name: Optional[str] = None
     params: Optional[dict] = None
     check_id: Optional[UUID4] = None
-    result: Optional[dict] = None
     error: Optional[str] = None
     status: Optional[RunStatus] = None
     progress: Optional[RunProgress] = None
     run_id: UUID4 = Field(default_factory=uuid.uuid4)
     run_at: str = Field(default_factory=lambda: datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%SZ"))
+
+
+class QueryRun(BaseRun):
+    type: Literal[RunType.QUERY, RunType.QUERY_BASE]
+    result: Optional[QueryResult] = None
+
+
+class QueryDiffRun(BaseRun):
+    type: Literal[RunType.QUERY_DIFF]
+    result: Optional[QueryDiffResult] = None
+
+
+class ProfileRun(BaseRun):
+    type: Literal[RunType.PROFILE]
+    result: Optional[ProfileResult] = None
+
+
+class ProfileDiffRun(BaseRun):
+    type: Literal[RunType.PROFILE_DIFF]
+    result: Optional[QueryDiffResult] = None
+
+
+class ValueDiffRun(BaseRun):
+    type: Literal[RunType.VALUE_DIFF]
+    result: Optional[ValueDiffResult] = None
+
+
+class ValueDiffDetailRun(BaseRun):
+    type: Literal[RunType.VALUE_DIFF_DETAIL]
+    result: Optional[ValueDiffDetailResult] = None
+
+
+class GenericRun(BaseRun):
+    """Fallback for undefined or unknown run types"""
+
+    type: Literal[RunType.ROW_COUNT, RunType.ROW_COUNT_DIFF, RunType.HISTOGRAM_DIFF, RunType.TOP_K_DIFF]
+    result: Optional[dict] = None
+
+
+# Discriminated union
+Run = Annotated[
+    Union[QueryRun, QueryDiffRun, ValueDiffRun, ValueDiffDetailRun, ProfileRun, ProfileDiffRun, GenericRun],
+    Field(discriminator="type"),
+]
+
+
+def create_run_instance(
+    type: RunType,
+    params: Optional[dict] = None,
+    check_id: Optional[UUID4] = None,
+    status: Optional[RunStatus] = None,
+) -> Run:
+    """Factory function to create the appropriate Run instance"""
+
+    run_class_map = {
+        RunType.QUERY: QueryRun,
+        RunType.QUERY_BASE: QueryRun,
+        RunType.QUERY_DIFF: QueryDiffRun,
+        RunType.VALUE_DIFF: ValueDiffRun,
+        RunType.VALUE_DIFF_DETAIL: ValueDiffDetailRun,
+        RunType.PROFILE: ProfileRun,
+        RunType.PROFILE_DIFF: ProfileDiffRun,
+        RunType.HISTOGRAM_DIFF: GenericRun,
+        RunType.TOP_K_DIFF: GenericRun,
+        RunType.ROW_COUNT: GenericRun,
+        RunType.ROW_COUNT_DIFF: GenericRun,
+    }
+
+    run_class = run_class_map.get(type)
+    if not run_class:
+        raise ValueError(f"Unknown run type: {type}")
+
+    return run_class(
+        type=type,
+        params=params,
+        check_id=check_id,
+        status=status,
+    )
 
 
 class Check(BaseModel):
