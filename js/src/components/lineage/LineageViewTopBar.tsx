@@ -304,8 +304,7 @@ const ControlItem = (props: {
 }) => {
   return (
     <Box style={props.style} maxWidth="300px">
-      {/* eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing */}
-      <Box fontSize="8pt">{props.label || <>&nbsp;</>}</Box>
+      <Box fontSize="8pt">{(props.label ?? "").trim() || <>&nbsp;</>}</Box>
       {props.children}
     </Box>
   );

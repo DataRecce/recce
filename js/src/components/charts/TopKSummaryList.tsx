@@ -206,8 +206,7 @@ export function TopKSummaryList({ topk, valids, isDisplayTopTen }: Props) {
         const displayTopkRatio = formatIntervalMinMax(topkCount / valids);
         return (
           <Fragment key={topkLabel}>
-            {/* eslint-disable-next-line @typescript-eslint/no-unnecessary-condition */}
-            {!isLastItemOthers || (isLastItemOthers && topkCount > 0) ? (
+            {!isLastItemOthers || topkCount > 0 ? (
               <>
                 <Flex alignItems={"center"} width={"100%"} _hover={{ bg: "blackAlpha.300" }} px={3}>
                   <Tooltip content={topkLabel} positioning={{ placement: "top-start" }}>

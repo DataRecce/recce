@@ -408,12 +408,10 @@ export function GraphNode(nodeProps: GraphNodeProps) {
           <Box height={`${columnSet.size * COLUMN_HEIGHT}px`} overflow="auto"></Box>
         </Box>
       )}
-      {/* eslint-disable-next-line @typescript-eslint/no-unnecessary-condition */}
-      {Object.keys(data.parents ?? {}).length > 0 && (
+      {Object.keys(data.parents).length > 0 && (
         <Handle type="target" position={Position.Left} isConnectable={false} />
       )}
-      {/* eslint-disable-next-line @typescript-eslint/no-unnecessary-condition */}
-      {Object.keys(data.children ?? {}).length > 0 && (
+      {Object.keys(data.children).length > 0 && (
         <Handle type="source" position={Position.Right} isConnectable={false} />
       )}
     </Flex>
