@@ -10,9 +10,9 @@
     "dev": "next dev --turbopack",
     "build": "npm run clean && next build && mv out ../recce/data",
     "start": "next start",
-    "lint": "eslint",
-    "lint:staged": "git diff --name-only --diff-filter=ACM | grep -E \"js/.*\\.(ts|tsx|js|jsx|mjs)$\" | sed 's/^js\\//\\.\\//' | xargs eslint",
-    "lint:fix": "eslint --fix",
+    "lint": "biome check --diagnostic-level=error",
+    "lint:fix": "biome check --write --diagnostic-level=error",
+    "lint:staged": "biome check --staged --diagnostic-level=error",
     "test": "jest --watch",
     "type:check": "tsc --noEmit",
     "clean": "rimraf ../recce/data",
@@ -64,8 +64,7 @@
   },
   "devDependencies": {
     "@amplitude/analytics-core": "^2.23.0",
-    "@eslint/js": "^9.39.1",
-    "@next/eslint-plugin-next": "16.0.1",
+    "@biomejs/biome": "2.3.5",
     "@testing-library/dom": "^10.4.1",
     "@testing-library/jest-dom": "6.9.1",
     "@testing-library/react": "16.3.0",
@@ -78,14 +77,6 @@
     "@types/node": "^24.10.0",
     "@types/react": "19.2.2",
     "@types/react-dom": "19.2.2",
-    "eslint": "^9.39.1",
-    "eslint-config-next": "16.0.1",
-    "eslint-config-prettier": "^10.1.8",
-    "eslint-plugin-import-x": "^4.16.1",
-    "eslint-plugin-jsx-a11y": "^6.10.2",
-    "eslint-plugin-prettier": "^5.5.4",
-    "eslint-plugin-react": "^7.37.5",
-    "eslint-plugin-react-hooks": "^7.0.1",
     "globals": "^16.5.0",
     "husky": "^9.1.7",
     "jest": "^30.2.0",
@@ -93,8 +84,7 @@
     "postcss": "^8.5.6",
     "rimraf": "^6.1.0",
     "tailwindcss": "^4.1.16",
-    "typescript": "^5.9.3",
-    "typescript-eslint": "^8.46.3"
+    "typescript": "^5.9.3"
   },
   "pnpm": {
     "overrides": {
