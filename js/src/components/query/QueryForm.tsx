@@ -4,6 +4,7 @@ import { Field, Flex, FlexProps } from "@chakra-ui/react";
 import { useMemo } from "react";
 import { Tooltip } from "@/components/ui/tooltip";
 import { PiInfo } from "react-icons/pi";
+import { NodeColumnData } from "@/lib/api/info";
 
 interface QueryFormProps extends FlexProps {
   defaultPrimaryKeys: string[] | undefined;
@@ -23,16 +24,16 @@ export const QueryForm = ({ defaultPrimaryKeys, onPrimaryKeysChange, ...prob }: 
     const columnSet = new Set<string>();
     for (const modelName in lineageGraph.nodes) {
       const model = lineageGraph.nodes[modelName];
-      const baseColumns = model.data.data.base?.columns;
-      const currentColumns = model.data.data.current?.columns;
+      const combinedColumns: Record<string, NodeColumnData | undefined> = {
+        ...(model.data.data.base?.columns ?? {}),
+        ...(model.data.data.current?.columns ?? {}),
+      };
 
-      for (const columnName in baseColumns) {
-        columnSet.add(columnName);
-      }
-
-      for (const columnName in currentColumns) {
-        columnSet.add(columnName);
-      }
+      Object.entries(combinedColumns).forEach(([columnName, col]) => {
+        if (col?.unique) {
+          columnSet.add(columnName);
+        }
+      });
     }
     return Array.from(columnSet).sort();
   }, [lineageGraph]);

@@ -30,6 +30,7 @@ class GitLabRecceCloudClient(BaseRecceCloudClient):
         adapter_type: str,
         cr_number: Optional[int] = None,
         commit_sha: Optional[str] = None,
+        session_type: Optional[str] = None,
     ) -> Dict:
         """
         Create or touch a Recce session for GitLab CI.
@@ -37,8 +38,9 @@ class GitLabRecceCloudClient(BaseRecceCloudClient):
         Args:
             branch: Branch name
             adapter_type: DBT adapter type
-            cr_number: MR IID for merge request sessions
+            cr_number: MR IID for merge request sessions (None for prod sessions)
             commit_sha: Commit SHA (required for GitLab)
+            session_type: Session type ("cr", "prod", "dev") - determines if mr_iid is passed
 
         Returns:
             Dictionary containing session_id, manifest_upload_url, catalog_upload_url
@@ -52,7 +54,9 @@ class GitLabRecceCloudClient(BaseRecceCloudClient):
             "repository_url": self.repository_url,
         }
 
-        if cr_number is not None:
+        # Only include mr_iid for "cr" type sessions
+        # For "prod" type, omit mr_iid even if cr_number is detected
+        if session_type == "cr" and cr_number is not None:
             payload["mr_iid"] = cr_number
 
         return self._make_request("POST", url, json=payload)

@@ -143,6 +143,7 @@ def upload_with_platform_apis(
             adapter_type=adapter_type,
             cr_number=ci_info.cr_number,
             commit_sha=ci_info.commit_sha,
+            session_type=ci_info.session_type,
         )
 
         session_id = session_response.get("session_id")
