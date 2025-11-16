@@ -1,14 +1,13 @@
-import { LineageGraphNode } from "./lineage";
-
-import { ValueDiffParams } from "@/lib/api/valuediff";
 import { useRef } from "react";
-import { cancelRun, submitRun, waitRun } from "@/lib/api/runs";
-import { RowCountDiffParams, RowCountParams } from "@/lib/api/rowcount";
+import { RunType } from "@/components/run/registry";
 import { createLineageDiffCheck } from "@/lib/api/lineagecheck";
+import { RowCountDiffParams, RowCountParams } from "@/lib/api/rowcount";
+import { cancelRun, submitRun, waitRun } from "@/lib/api/runs";
 import { createSchemaDiffCheck } from "@/lib/api/schemacheck";
+import { ValueDiffParams } from "@/lib/api/valuediff";
 import { useRecceActionContext } from "@/lib/hooks/RecceActionContext";
 import { ActionState } from "./LineageViewContext";
-import { RunType } from "@/components/run/registry";
+import { LineageGraphNode } from "./lineage";
 
 const initValue: ActionState = {
   mode: "per_node",
@@ -39,7 +38,9 @@ export const useMultiNodesAction = (
   const submitRunForNodes = async (
     type: RunType,
     skip: (node: LineageGraphNode) => string | undefined,
-    getParams: (nodes: LineageGraphNode[]) => RowCountParams | RowCountDiffParams,
+    getParams: (
+      nodes: LineageGraphNode[],
+    ) => RowCountParams | RowCountDiffParams,
   ) => {
     actionState.mode = "multi_nodes";
     actionState.actions = {};
@@ -79,7 +80,11 @@ export const useMultiNodesAction = (
         const run = await waitRun(run_id, 2);
         actionState.currentRun = run;
 
-        const status = run.error ? "failure" : run.result ? "success" : "running";
+        const status = run.error
+          ? "failure"
+          : run.result
+            ? "success"
+            : "running";
 
         for (const node of candidates) {
           actions[node.id] = {
@@ -94,7 +99,7 @@ export const useMultiNodesAction = (
           break;
         }
       }
-    } catch (e) {
+    } catch (_e) {
       // don't need to do anything here, the error will be shown in the summary
     }
 
@@ -156,7 +161,11 @@ export const useMultiNodesAction = (
           for (;;) {
             const run = await waitRun(run_id, 2);
             actionState.currentRun = run;
-            const status = run.error ? "failure" : run.result ? "success" : "running";
+            const status = run.error
+              ? "failure"
+              : run.result
+                ? "success"
+                : "running";
             actions[node.id] = {
               mode,
               status,
@@ -168,7 +177,7 @@ export const useMultiNodesAction = (
               break;
             }
           }
-        } catch (e) {
+        } catch (_e) {
           // don't need to do anything here, the error will be shown in the summary
         } finally {
           actionState.currentRun = undefined;
@@ -249,7 +258,8 @@ export const useMultiNodesAction = (
       const primaryKey = node.data.data.current?.primary_key;
       if (!primaryKey) {
         return {
-          skipReason: "No primary key found. The first unique column is used as primary key.",
+          skipReason:
+            "No primary key found. The first unique column is used as primary key.",
         };
       }
 

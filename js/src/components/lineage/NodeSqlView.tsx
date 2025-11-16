@@ -1,10 +1,22 @@
-import { useDisclosure, Box, IconButton, CloseButton, Portal, Dialog } from "@chakra-ui/react";
+import {
+  Box,
+  CloseButton,
+  Dialog,
+  IconButton,
+  Portal,
+  useDisclosure,
+} from "@chakra-ui/react";
+import {
+  DiffEditor,
+  DiffEditorProps,
+  Editor,
+  EditorProps,
+} from "@monaco-editor/react";
 import React, { useState } from "react";
 import { FaExpandArrowsAlt } from "react-icons/fa";
-import { LineageGraphNode } from "./lineage";
-import { DiffEditor, DiffEditorProps, Editor, EditorProps } from "@monaco-editor/react";
 import { useRecceServerFlag } from "@/lib/hooks/useRecceServerFlag";
 import SqlEditor from "../query/SqlEditor";
+import { LineageGraphNode } from "./lineage";
 
 interface NodeSqlViewProps {
   node: LineageGraphNode;
@@ -20,7 +32,10 @@ export const NodeSqlView = ({ node }: NodeSqlViewProps) => {
     return <></>;
   }
 
-  if (node.data.resourceType !== "model" && node.data.resourceType !== "snapshot") {
+  if (
+    node.data.resourceType !== "model" &&
+    node.data.resourceType !== "snapshot"
+  ) {
     return "Not available";
   }
 
@@ -42,7 +57,8 @@ export const NodeSqlView = ({ node }: NodeSqlViewProps) => {
 
   const original = node.data.data.base?.raw_code;
   const modified = node.data.data.current?.raw_code;
-  const modelName = node.data.data.base?.name ?? node.data.data.current?.name ?? "";
+  const modelName =
+    node.data.data.base?.name ?? node.data.data.current?.name ?? "";
 
   return (
     <Box
@@ -54,9 +70,15 @@ export const NodeSqlView = ({ node }: NodeSqlViewProps) => {
       }}
       onMouseLeave={() => {
         setIsHovered(false);
-      }}>
+      }}
+    >
       {isSingleEnvOnboarding ? (
-        <SqlEditor language="sql" theme="light" value={original ?? ""} options={sqlOptions} />
+        <SqlEditor
+          language="sql"
+          theme="light"
+          value={original ?? ""}
+          options={sqlOptions}
+        />
       ) : (
         <DiffEditor
           language="sql"
@@ -82,7 +104,8 @@ export const NodeSqlView = ({ node }: NodeSqlViewProps) => {
           right: "20px",
           opacity: isHovered ? 0.5 : 0.1,
           transition: "opacity 0.3s ease-in-out",
-        }}>
+        }}
+      >
         <FaExpandArrowsAlt />
       </IconButton>
       <Dialog.Root open={isOpen} onOpenChange={onClose} size="xl">

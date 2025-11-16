@@ -1,13 +1,13 @@
-import { Flex, Text, IconButton, Button } from "@chakra-ui/react";
+import { Button, Flex, IconButton, Text } from "@chakra-ui/react";
+import { useState } from "react";
+import { PiCheckCircle, PiCopy } from "react-icons/pi";
+import { TbCloudUpload } from "react-icons/tb";
+import { useCopyToClipboard, useInterval } from "usehooks-ts";
+import AuthModal from "@/components/AuthModal/AuthModal";
+import { trackShareState } from "@/lib/api/track";
 import { useRecceInstanceContext } from "@/lib/hooks/RecceInstanceContext";
 import { useRecceShareStateContext } from "@/lib/hooks/RecceShareStateContext";
 import { useClipBoardToast } from "@/lib/hooks/useClipBoardToast";
-import { TbCloudUpload } from "react-icons/tb";
-import { trackShareState } from "@/lib/api/track";
-import { useState } from "react";
-import AuthModal from "@/components/AuthModal/AuthModal";
-import { useCopyToClipboard, useInterval } from "usehooks-ts";
-import { PiCheckCircle, PiCopy } from "react-icons/pi";
 
 const LOADING_MESSAGES = [
   "Processing...", // 0-30s
@@ -19,7 +19,8 @@ export function TopLevelShare() {
   const { successToast, failToast } = useClipBoardToast();
   const [, copyToClipboard] = useCopyToClipboard();
   const { authed } = useRecceInstanceContext();
-  const { shareUrl, isLoading, error, handleShareClick } = useRecceShareStateContext();
+  const { shareUrl, isLoading, error, handleShareClick } =
+    useRecceShareStateContext();
   const [showModal, setShowModal] = useState(false);
   const [messageIndex, setMessageIndex] = useState(0);
   const [prevIsLoading, setPrevIsLoading] = useState(isLoading);
@@ -36,7 +37,9 @@ export function TopLevelShare() {
   // Increment message index every 30 seconds while loading
   useInterval(
     () => {
-      setMessageIndex((prev) => Math.min(prev + 1, LOADING_MESSAGES.length - 1));
+      setMessageIndex((prev) =>
+        Math.min(prev + 1, LOADING_MESSAGES.length - 1),
+      );
     },
     isLoading ? 30000 : null,
   );
@@ -59,7 +62,8 @@ export function TopLevelShare() {
           variant="outline"
           onClick={() => {
             setShowModal(true);
-          }}>
+          }}
+        >
           <TbCloudUpload /> Share
         </Button>
         {showModal && (
@@ -84,8 +88,10 @@ export function TopLevelShare() {
           await handleShareClick();
           trackShareState({ name: "create" });
         }}
-        loading={isLoading}>
-        <TbCloudUpload /> Share {shareUrl ? <PiCheckCircle color="green" /> : undefined}
+        loading={isLoading}
+      >
+        <TbCloudUpload /> Share{" "}
+        {shareUrl ? <PiCheckCircle color="green" /> : undefined}
       </Button>
       {isLoading && (
         <Text fontSize="14" color="gray.500">
@@ -104,7 +110,8 @@ export function TopLevelShare() {
               onClick={async () => {
                 await handleCopy();
                 trackShareState({ name: "copy" });
-              }}>
+              }}
+            >
               <PiCopy />
             </IconButton>
           </>

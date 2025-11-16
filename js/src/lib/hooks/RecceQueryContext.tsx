@@ -15,13 +15,21 @@ export const defaultSqlQuery = 'select * from {{ ref("mymodel") }}';
 
 const defaultQueryContext: QueryContext = {
   sqlQuery: defaultSqlQuery,
-  setSqlQuery: () => {},
+  setSqlQuery: () => {
+    return void 0;
+  },
   primaryKeys: undefined,
-  setPrimaryKeys: () => {},
+  setPrimaryKeys: () => {
+    return void 0;
+  },
   isCustomQueries: false,
-  setCustomQueries: () => {},
+  setCustomQueries: () => {
+    return void 0;
+  },
   baseSqlQuery: defaultSqlQuery,
-  setBaseSqlQuery: () => {},
+  setBaseSqlQuery: () => {
+    return void 0;
+  },
 };
 
 const RecceQueryContext = createContext(defaultQueryContext);
@@ -32,7 +40,8 @@ interface QueryContextProps {
 
 export function RecceQueryContextProvider({ children }: QueryContextProps) {
   const [sqlQuery, setSqlQuery] = React.useState<string>(defaultSqlQuery);
-  const [baseSqlQuery, setBaseSqlQuery] = React.useState<string>(defaultSqlQuery);
+  const [baseSqlQuery, setBaseSqlQuery] =
+    React.useState<string>(defaultSqlQuery);
   const [isCustomQueries, setCustomQueries] = React.useState<boolean>(false);
   const [primaryKeys, setPrimaryKeys] = React.useState<string[] | undefined>();
   return (
@@ -46,7 +55,8 @@ export function RecceQueryContextProvider({ children }: QueryContextProps) {
         setCustomQueries,
         baseSqlQuery,
         setBaseSqlQuery,
-      }}>
+      }}
+    >
       {children}
     </RecceQueryContext.Provider>
   );
@@ -61,7 +71,9 @@ export interface RowCountStateContext {
 
 const defaultRowCountStateContext: RowCountStateContext = {
   isNodesFetching: [],
-  setIsNodesFetching: () => {},
+  setIsNodesFetching: () => {
+    return void 0;
+  },
 };
 
 const RowCountStateContext = createContext(defaultRowCountStateContext);
@@ -70,10 +82,14 @@ interface RowCountStateContextProps {
   children: React.ReactNode;
 }
 
-export function RowCountStateContextProvider({ children }: RowCountStateContextProps) {
+export function RowCountStateContextProvider({
+  children,
+}: RowCountStateContextProps) {
   const [isNodesFetching, setIsNodesFetching] = React.useState<string[]>([]);
   return (
-    <RowCountStateContext.Provider value={{ isNodesFetching, setIsNodesFetching }}>
+    <RowCountStateContext.Provider
+      value={{ isNodesFetching, setIsNodesFetching }}
+    >
       {children}
     </RowCountStateContext.Provider>
   );

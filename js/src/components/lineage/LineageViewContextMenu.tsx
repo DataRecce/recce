@@ -1,6 +1,18 @@
-import { Menu, useDisclosure, Icon, Portal } from "@chakra-ui/react";
+import { Icon, Menu, Portal, useDisclosure } from "@chakra-ui/react";
 import { ReactNode, useState } from "react";
 import { BiArrowFromBottom, BiArrowToBottom } from "react-icons/bi";
+import { FaRegDotCircle } from "react-icons/fa";
+import { useLocation } from "wouter";
+import SetupConnectionPopover from "@/components/app/SetupConnectionPopover";
+import { SubmitRunTrackProps } from "@/lib/api/runs";
+import { formatSelectColumns } from "@/lib/formatSelect";
+import { useLineageGraphContext } from "@/lib/hooks/LineageGraphContext";
+import { useRecceActionContext } from "@/lib/hooks/RecceActionContext";
+import { useRecceInstanceContext } from "@/lib/hooks/RecceInstanceContext";
+import { useRecceQueryContext } from "@/lib/hooks/RecceQueryContext";
+import useModelColumns from "@/lib/hooks/useModelColumns";
+import { useRecceServerFlag } from "@/lib/hooks/useRecceServerFlag";
+import { supportsHistogramDiff } from "../histogram/HistogramDiffForm";
 import { findByRunType } from "../run/registry";
 import { useLineageViewContextSafe } from "./LineageViewContext";
 import {
@@ -10,18 +22,6 @@ import {
   LineageGraphNode,
   LineageGraphNodes,
 } from "./lineage";
-import { useRecceActionContext } from "@/lib/hooks/RecceActionContext";
-import { useLineageGraphContext } from "@/lib/hooks/LineageGraphContext";
-import { supportsHistogramDiff } from "../histogram/HistogramDiffForm";
-import { useRecceInstanceContext } from "@/lib/hooks/RecceInstanceContext";
-import { useRecceServerFlag } from "@/lib/hooks/useRecceServerFlag";
-import useModelColumns from "@/lib/hooks/useModelColumns";
-import { useRecceQueryContext } from "@/lib/hooks/RecceQueryContext";
-import { useLocation } from "wouter";
-import { SubmitRunTrackProps } from "@/lib/api/runs";
-import { formatSelectColumns } from "@/lib/formatSelect";
-import { FaRegDotCircle } from "react-icons/fa";
-import SetupConnectionPopover from "@/components/app/SetupConnectionPopover";
 
 interface LineageViewContextMenuProps<T> {
   x: number;
@@ -61,43 +61,49 @@ const ContextMenu = ({ menuItems, open, onClose, x, y }: ContextMenuProps) => {
             style={{
               left: `${x}px`,
               top: `${y}px`,
-            }}>
+            }}
+          >
             {menuItems.length === 0 ? (
               <Menu.Item value="no-action" disabled key="no action">
                 No action available
               </Menu.Item>
             ) : (
-              menuItems.map(({ isSeparator, label, isDisabled, action, itemIcon }) => {
-                if (isSeparator) {
-                  return <Menu.Separator key={label} />;
-                } else {
-                  const menuItem = (
-                    <Menu.Item
-                      value={String(label)}
-                      key={label}
-                      disabled={isDisabled}
-                      onClick={() => {
-                        if (action) {
-                          action();
-                        }
-                        onClose();
-                      }}>
-                      {itemIcon} {label}
-                    </Menu.Item>
-                  );
-
-                  // Wrap disabled items with SetupConnectionPopover
-                  if (isDisabled) {
-                    return (
-                      <SetupConnectionPopover display={featureToggles.mode === "metadata only"}>
-                        {menuItem}
-                      </SetupConnectionPopover>
+              menuItems.map(
+                ({ isSeparator, label, isDisabled, action, itemIcon }) => {
+                  if (isSeparator) {
+                    return <Menu.Separator key={label} />;
+                  } else {
+                    const menuItem = (
+                      <Menu.Item
+                        value={String(label)}
+                        key={label}
+                        disabled={isDisabled}
+                        onClick={() => {
+                          if (action) {
+                            action();
+                          }
+                          onClose();
+                        }}
+                      >
+                        {itemIcon} {label}
+                      </Menu.Item>
                     );
-                  }
 
-                  return menuItem;
-                }
-              })
+                    // Wrap disabled items with SetupConnectionPopover
+                    if (isDisabled) {
+                      return (
+                        <SetupConnectionPopover
+                          display={featureToggles.mode === "metadata only"}
+                        >
+                          {menuItem}
+                        </SetupConnectionPopover>
+                      );
+                    }
+
+                    return menuItem;
+                  }
+                },
+              )
             )}
           </Menu.Content>
         </Menu.Positioner>
@@ -133,7 +139,9 @@ export const ModelNodeContextMenu = ({
   const isQueryDisabled = featureToggles.disableDatabaseQuery;
 
   // query
-  const { primaryKey } = useModelColumns((node?.data as LineageGraphNode | undefined)?.data.name);
+  const { primaryKey } = useModelColumns(
+    (node?.data as LineageGraphNode | undefined)?.data.name,
+  );
   const { setSqlQuery, setPrimaryKeys } = useRecceQueryContext();
   const [, setLocation] = useLocation();
 
@@ -164,7 +172,11 @@ export const ModelNodeContextMenu = ({
     });
   }
 
-  if (!selectMode && resourceType && ["model", "seed", "snapshot"].includes(resourceType)) {
+  if (
+    !selectMode &&
+    resourceType &&
+    ["model", "seed", "snapshot"].includes(resourceType)
+  ) {
     if (menuItems.length > 0) {
       menuItems.push({
         label: "select group one",
@@ -215,7 +227,9 @@ export const ModelNodeContextMenu = ({
             setSqlQuery(query);
             if (isActionAvailable("query_diff_with_primary_key")) {
               // Only set primary key if the action is available
-              setPrimaryKeys(primaryKey !== undefined ? [primaryKey] : undefined);
+              setPrimaryKeys(
+                primaryKey !== undefined ? [primaryKey] : undefined,
+              );
             }
             setLocation("/query");
           },
@@ -243,7 +257,9 @@ export const ModelNodeContextMenu = ({
               setSqlQuery(query);
               if (isActionAvailable("query_diff_with_primary_key")) {
                 // Only set primary key if the action is available
-                setPrimaryKeys(primaryKey !== undefined ? [primaryKey] : undefined);
+                setPrimaryKeys(
+                  primaryKey !== undefined ? [primaryKey] : undefined,
+                );
               }
               setLocation("/query");
             },
@@ -253,7 +269,9 @@ export const ModelNodeContextMenu = ({
     }
 
     // row count & row count diff
-    const rowCountAndRowCountRun = findByRunType(singleEnv ? "row_count" : "row_count_diff");
+    const rowCountAndRowCountRun = findByRunType(
+      singleEnv ? "row_count" : "row_count_diff",
+    );
     menuItems.push({
       label: rowCountAndRowCountRun.title,
       itemIcon: <Icon as={rowCountAndRowCountRun.icon} />,
@@ -268,7 +286,9 @@ export const ModelNodeContextMenu = ({
     });
 
     // profile & profile diff
-    const profileAndProfileDiffRun = findByRunType(singleEnv ? "profile" : "profile_diff");
+    const profileAndProfileDiffRun = findByRunType(
+      singleEnv ? "profile" : "profile_diff",
+    );
     menuItems.push({
       label: profileAndProfileDiffRun.title,
       itemIcon: <Icon as={profileAndProfileDiffRun.icon} />,
@@ -339,7 +359,15 @@ export const ModelNodeContextMenu = ({
     });
   }
 
-  return <ContextMenu x={x} y={y} menuItems={menuItems} open={isOpen} onClose={onClose} />;
+  return (
+    <ContextMenu
+      x={x}
+      y={y}
+      menuItems={menuItems}
+      open={isOpen}
+      onClose={onClose}
+    />
+  );
 };
 
 export const ColumnNodeContextMenu = ({
@@ -402,7 +430,8 @@ export const ColumnNodeContextMenu = ({
     label: run.title,
     itemIcon: <Icon as={run.icon} />,
     action: handleProfileDiff,
-    isDisabled: addedOrRemoved || !isActionAvailable("profile_diff") || isQueryDisabled,
+    isDisabled:
+      addedOrRemoved || !isActionAvailable("profile_diff") || isQueryDisabled,
   });
 
   if (!singleEnv) {
@@ -425,7 +454,15 @@ export const ColumnNodeContextMenu = ({
     });
   }
 
-  return <ContextMenu x={x} y={y} menuItems={menuItems} open={isOpen} onClose={onClose} />;
+  return (
+    <ContextMenu
+      x={x}
+      y={y}
+      menuItems={menuItems}
+      open={isOpen}
+      onClose={onClose}
+    />
+  );
 };
 
 export const LineageViewContextMenu = ({
@@ -437,11 +474,29 @@ export const LineageViewContextMenu = ({
 }: LineageViewContextMenuProps<LineageGraphNodes>) => {
   const { featureToggles } = useRecceInstanceContext();
   if (featureToggles.disableViewActionDropdown) {
-    return <ContextMenu menuItems={[]} open={isOpen} onClose={onClose} x={x} y={y} />;
+    return (
+      <ContextMenu menuItems={[]} open={isOpen} onClose={onClose} x={x} y={y} />
+    );
   } else if (node && isLineageGraphNode(node)) {
-    return <ModelNodeContextMenu x={x} y={y} isOpen={isOpen} onClose={onClose} node={node} />;
+    return (
+      <ModelNodeContextMenu
+        x={x}
+        y={y}
+        isOpen={isOpen}
+        onClose={onClose}
+        node={node}
+      />
+    );
   } else if (node && isLineageGraphColumnNode(node)) {
-    return <ColumnNodeContextMenu x={x} y={y} isOpen={isOpen} onClose={onClose} node={node} />;
+    return (
+      <ColumnNodeContextMenu
+        x={x}
+        y={y}
+        isOpen={isOpen}
+        onClose={onClose}
+        node={node}
+      />
+    );
   }
 };
 

@@ -1,20 +1,40 @@
-import { Box, Center, Flex, Icon, IconButton, Menu, Portal, Spacer } from "@chakra-ui/react";
-
-import { ColumnOrColumnGroup, DataGridHandle } from "react-data-grid";
-import { ValueDiffParams, ValueDiffResult } from "@/lib/api/valuediff";
-import { EmptyRowsRenderer, ScreenshotDataGrid } from "../data-grid/ScreenshotDataGrid";
-import { RunResultViewProps } from "../run/types";
-import { VscKey } from "react-icons/vsc";
-import { RecceActionOptions, useRecceActionContext } from "@/lib/hooks/RecceActionContext";
-import { useRecceInstanceContext } from "@/lib/hooks/RecceInstanceContext";
-import { DataFrame, isValueDiffRun, RowObjectType } from "@/lib/api/types";
+import {
+  Box,
+  Center,
+  Flex,
+  Icon,
+  IconButton,
+  Menu,
+  Portal,
+  Spacer,
+} from "@chakra-ui/react";
 import React, { forwardRef, Ref } from "react";
+import { ColumnOrColumnGroup, DataGridHandle } from "react-data-grid";
 import { PiDotsThreeVertical } from "react-icons/pi";
+import { VscKey } from "react-icons/vsc";
+import { DataFrame, isValueDiffRun, RowObjectType } from "@/lib/api/types";
+import { ValueDiffParams, ValueDiffResult } from "@/lib/api/valuediff";
+import {
+  RecceActionOptions,
+  useRecceActionContext,
+} from "@/lib/hooks/RecceActionContext";
+import { useRecceInstanceContext } from "@/lib/hooks/RecceInstanceContext";
 import { dataFrameToRowObjects } from "@/utils/transforms";
+import {
+  EmptyRowsRenderer,
+  ScreenshotDataGrid,
+} from "../data-grid/ScreenshotDataGrid";
+import { RunResultViewProps } from "../run/types";
 
 type ValueDiffResultViewProp = RunResultViewProps;
 
-function ColumnNameCell({ params, column }: { params: ValueDiffParams; column: string }) {
+function ColumnNameCell({
+  params,
+  column,
+}: {
+  params: ValueDiffParams;
+  column: string;
+}) {
   const { runAction } = useRecceActionContext();
   const { featureToggles } = useRecceInstanceContext();
   const handleValueDiffDetail = (
@@ -42,7 +62,8 @@ function ColumnNameCell({ params, column }: { params: ValueDiffParams; column: s
             className="row-context-menu"
             variant="plain"
             size={"sm"}
-            disabled={featureToggles.disableDatabaseQuery}>
+            disabled={featureToggles.disableDatabaseQuery}
+          >
             <PiDotsThreeVertical />
           </IconButton>
         </Menu.Trigger>
@@ -56,15 +77,20 @@ function ColumnNameCell({ params, column }: { params: ValueDiffParams; column: s
                   fontSize="10pt"
                   onClick={() => {
                     handleValueDiffDetail({}, { showForm: true });
-                  }}>
+                  }}
+                >
                   Show mismatched values...
                 </Menu.Item>
                 <Menu.Item
                   value="show-mismatched-columns"
                   fontSize="10pt"
                   onClick={() => {
-                    handleValueDiffDetail({ columns: [column] }, { showForm: false });
-                  }}>
+                    handleValueDiffDetail(
+                      { columns: [column] },
+                      { showForm: false },
+                    );
+                  }}
+                >
                   Show mismatched values for &apos;{column}&apos;
                 </Menu.Item>
               </Menu.ItemGroup>
@@ -76,7 +102,10 @@ function ColumnNameCell({ params, column }: { params: ValueDiffParams; column: s
   );
 }
 
-function _ValueDiffResultView({ run }: ValueDiffResultViewProp, ref: Ref<DataGridHandle>) {
+function _ValueDiffResultView(
+  { run }: ValueDiffResultViewProp,
+  ref: Ref<DataGridHandle>,
+) {
   if (!isValueDiffRun(run)) {
     throw new Error("Run type must be value_diff");
   }
@@ -87,7 +116,9 @@ function _ValueDiffResultView({ run }: ValueDiffResultViewProp, ref: Ref<DataGri
     const value = row[2] as unknown as number | undefined;
     return value != null && value < 1 ? "diff-cell-modified" : "";
   };
-  const primaryKeys = Array.isArray(params.primary_key) ? params.primary_key : [params.primary_key];
+  const primaryKeys = Array.isArray(params.primary_key)
+    ? params.primary_key
+    : [params.primary_key];
 
   // used as a type fix below
   const basicColumns: DataFrame["columns"] = [
@@ -127,7 +158,9 @@ function _ValueDiffResultView({ run }: ValueDiffResultViewProp, ref: Ref<DataGri
       name: "Column",
       resizable: true,
       renderCell: ({ row, column }) => {
-        return <ColumnNameCell column={String(row[column.key])} params={params} />;
+        return (
+          <ColumnNameCell column={String(row[column.key])} params={params} />
+        );
       },
       cellClass: "cell-show-context-menu",
     },
@@ -143,7 +176,11 @@ function _ValueDiffResultView({ run }: ValueDiffResultViewProp, ref: Ref<DataGri
       resizable: true,
       renderCell: ({ column, row }) => {
         const value = row[column.key] as unknown as number | undefined;
-        return <Box textAlign="end">{value != null ? `${(value * 100).toFixed(2)} %` : "N/A"}</Box>;
+        return (
+          <Box textAlign="end">
+            {value != null ? `${(value * 100).toFixed(2)} %` : "N/A"}
+          </Box>
+        );
       },
       cellClass,
     },
@@ -155,8 +192,8 @@ function _ValueDiffResultView({ run }: ValueDiffResultViewProp, ref: Ref<DataGri
     <Flex direction="column" gap="5px" pt="5px" height="100%">
       <Box px="16px">
         Model: {params.model}, {result.summary.total} total (
-        {result.summary.total - result.summary.added - result.summary.removed} common,{" "}
-        {result.summary.added} added, {result.summary.removed} removed)
+        {result.summary.total - result.summary.added - result.summary.removed}{" "}
+        common, {result.summary.added} added, {result.summary.removed} removed)
       </Box>
 
       <ScreenshotDataGrid

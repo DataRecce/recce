@@ -1,6 +1,9 @@
 import { NodeData } from "@/lib/api/info";
 
-export function isSchemaChanged(baseSchema: NodeData["columns"], currSchema: NodeData["columns"]) {
+export function isSchemaChanged(
+  baseSchema: NodeData["columns"],
+  currSchema: NodeData["columns"],
+) {
   if (!baseSchema || !currSchema) {
     return undefined;
   }

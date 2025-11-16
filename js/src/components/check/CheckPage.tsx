@@ -1,21 +1,22 @@
 import "react-data-grid/lib/styles.css";
-import React, { useCallback, useEffect, useState } from "react";
-import { listChecks, reorderChecks } from "@/lib/api/checks";
 import { Box, Center, Flex, Separator, VStack } from "@chakra-ui/react";
-import { CheckDetail } from "./CheckDetail";
-import { cacheKeys } from "@/lib/api/cacheKeys";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import React, { useCallback, useEffect, useState } from "react";
 import { Route, Switch, useLocation, useRoute } from "wouter";
-import { CheckList } from "./CheckList";
-import { HSplit } from "../split/Split";
-import { StateImporter } from "../app/StateImporter";
+import { cacheKeys } from "@/lib/api/cacheKeys";
+import { listChecks, reorderChecks } from "@/lib/api/checks";
 import { useRecceCheckContext } from "@/lib/hooks/RecceCheckContext";
+import { StateImporter } from "../app/StateImporter";
+import { HSplit } from "../split/Split";
+import { CheckDetail } from "./CheckDetail";
 import { CheckEmptyState } from "./CheckEmptyState";
+import { CheckList } from "./CheckList";
 
 export const CheckPage = () => {
   const [, setLocation] = useLocation();
   const [, params] = useRoute("/checks/:checkId");
-  const { latestSelectedCheckId, setLatestSelectedCheckId } = useRecceCheckContext();
+  const { latestSelectedCheckId, setLatestSelectedCheckId } =
+    useRecceCheckContext();
   const queryClient = useQueryClient();
   const selectedItem = params?.checkId;
 
@@ -54,7 +55,8 @@ export const CheckPage = () => {
   }
 
   const { mutate: changeChecksOrder } = useMutation({
-    mutationFn: (order: { source: number; destination: number }) => reorderChecks(order),
+    mutationFn: (order: { source: number; destination: number }) =>
+      reorderChecks(order),
     onSuccess: async () => {
       await queryClient.invalidateQueries({ queryKey: cacheKeys.checks() });
     },
@@ -73,7 +75,7 @@ export const CheckPage = () => {
 
       setOrderedChecks(updatedItems);
     },
-    [orderedChecks, setOrderedChecks, changeChecksOrder],
+    [orderedChecks, changeChecksOrder],
   );
 
   useEffect(() => {
@@ -106,8 +108,17 @@ export const CheckPage = () => {
   if (!checks?.length) {
     return (
       <HSplit style={{ height: "100%" }} minSize={50} sizes={[20, 80]}>
-        <Box borderRight="lightgray solid 1px" height="100%" style={{ contain: "size" }}>
-          <VStack gap={0} h="100%" style={{ contain: "strict" }} alignItems="stretch">
+        <Box
+          borderRight="lightgray solid 1px"
+          height="100%"
+          style={{ contain: "size" }}
+        >
+          <VStack
+            gap={0}
+            h="100%"
+            style={{ contain: "strict" }}
+            alignItems="stretch"
+          >
             <Flex justifyContent="flex-end" padding="0px 10px">
               <StateImporter checksOnly />
             </Flex>
@@ -130,8 +141,17 @@ export const CheckPage = () => {
 
   return (
     <HSplit style={{ height: "100%" }} minSize={50} sizes={[20, 80]}>
-      <Box borderRight="lightgray solid 1px" height="100%" style={{ contain: "size" }}>
-        <VStack gap={0} h="100%" style={{ contain: "strict" }} alignItems="stretch">
+      <Box
+        borderRight="lightgray solid 1px"
+        height="100%"
+        style={{ contain: "size" }}
+      >
+        <VStack
+          gap={0}
+          h="100%"
+          style={{ contain: "strict" }}
+          alignItems="stretch"
+        >
           <Flex justifyContent="right" padding="0px 10px">
             <StateImporter checksOnly />
           </Flex>

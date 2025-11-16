@@ -1,4 +1,3 @@
-import { useRecceInstanceContext } from "@/lib/hooks/RecceInstanceContext";
 import { Button, Flex, Link, Text, Textarea } from "@chakra-ui/react";
 import {
   ChangeEvent,
@@ -8,6 +7,7 @@ import {
   useRef,
   useState,
 } from "react";
+import { useRecceInstanceContext } from "@/lib/hooks/RecceInstanceContext";
 
 interface CheckDescriptionProps {
   value?: string;
@@ -51,7 +51,9 @@ export function CheckDescription({ value, onChange }: CheckDescriptionProps) {
     }
   };
 
-  const handleChange: ChangeEventHandler = (event: ChangeEvent<HTMLTextAreaElement>) => {
+  const handleChange: ChangeEventHandler = (
+    event: ChangeEvent<HTMLTextAreaElement>,
+  ) => {
     setTempValue(event.target.value);
   };
 
@@ -65,13 +67,19 @@ export function CheckDescription({ value, onChange }: CheckDescriptionProps) {
 
   if (editing) {
     return (
-      <Flex direction="column" align="flex-end" height="100%" className="no-track-pii-safe">
+      <Flex
+        direction="column"
+        align="flex-end"
+        height="100%"
+        className="no-track-pii-safe"
+      >
         <Textarea
           value={tempValue}
           onChange={handleChange}
           onKeyDown={handleKeyDown}
           ref={textareaRef}
-          flex={1}></Textarea>
+          flex={1}
+        ></Textarea>
         <Flex gap="12px" alignItems="flex-end">
           <Link onClick={handleCancel} colorPalette="blue">
             cancel
@@ -93,7 +101,8 @@ export function CheckDescription({ value, onChange }: CheckDescriptionProps) {
       onClick={!featureToggles.disableUpdateChecklist ? handleEdit : undefined}
       whiteSpace="pre-wrap"
       wordBreak="break-word"
-      color={!value ? "lightgray" : "inherit"}>
+      color={!value ? "lightgray" : "inherit"}
+    >
       {(value ?? "").trim() || "Add description here"}
     </Text>
   );

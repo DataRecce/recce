@@ -1,8 +1,7 @@
-import { HStack, Button, Text } from "@chakra-ui/react";
-
-import { useRecceInstanceContext } from "@/lib/hooks/RecceInstanceContext";
+import { Button, HStack, Text } from "@chakra-ui/react";
 import { PiInfo } from "react-icons/pi";
 import { RECCE_SUPPORT_CALENDAR_URL } from "@/constants/urls";
+import { useRecceInstanceContext } from "@/lib/hooks/RecceInstanceContext";
 
 export default function SetupConnectionBanner() {
   const { featureToggles } = useRecceInstanceContext();
@@ -15,13 +14,16 @@ export default function SetupConnectionBanner() {
     <div className="flex items-center w-full px-2 py-0.5 bg-cyan-50">
       <HStack flex="1" fontSize="sm" color="cyan.600">
         <PiInfo />
-        <Text>Query functions disabled without a data warehouse connection.</Text>
+        <Text>
+          Query functions disabled without a data warehouse connection.
+        </Text>
         <Button
           bgColor="iochmara.400"
           size="2xs"
           onClick={() => {
             window.open(RECCE_SUPPORT_CALENDAR_URL, "_blank");
-          }}>
+          }}
+        >
           Connect to Data Warehouse
         </Button>
       </HStack>

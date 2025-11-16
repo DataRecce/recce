@@ -1,29 +1,34 @@
 import "react-data-grid/lib/styles.css";
-import React, { useState } from "react";
-import { Check, updateCheck } from "@/lib/api/checks";
 import {
   Box,
   Button,
   Checkbox,
+  CloseButton,
+  Dialog,
   Flex,
   Icon,
-  VStack,
-  useDisclosure,
-  CloseButton,
   Portal,
   Separator,
-  Dialog,
+  useDisclosure,
+  VStack,
 } from "@chakra-ui/react";
-import { cacheKeys } from "@/lib/api/cacheKeys";
+import {
+  DragDropContext,
+  Draggable,
+  Droppable,
+  DropResult,
+} from "@hello-pangea/dnd";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
+import React, { useState } from "react";
 import { IconType } from "react-icons";
-import { DragDropContext, Draggable, DropResult, Droppable } from "@hello-pangea/dnd";
-import { findByRunType } from "../run/registry";
+import { Tooltip } from "@/components/ui/tooltip";
+import { cacheKeys } from "@/lib/api/cacheKeys";
+import { Check, updateCheck } from "@/lib/api/checks";
+import { useRecceInstanceContext } from "@/lib/hooks/RecceInstanceContext";
 import { useCheckToast } from "@/lib/hooks/useCheckToast";
 import { useRun } from "@/lib/hooks/useRun";
+import { findByRunType } from "../run/registry";
 import { isDisabledByNoResult } from "./CheckDetail";
-import { useRecceInstanceContext } from "@/lib/hooks/RecceInstanceContext";
-import { Tooltip } from "@/components/ui/tooltip";
 
 const ChecklistItem = ({
   check,
@@ -42,7 +47,9 @@ const ChecklistItem = ({
   const { mutate } = useMutation({
     mutationFn: (check: Partial<Check>) => updateCheck(checkId, check),
     onSuccess: async () => {
-      await queryClient.invalidateQueries({ queryKey: cacheKeys.check(checkId) });
+      await queryClient.invalidateQueries({
+        queryKey: cacheKeys.check(checkId),
+      });
       await queryClient.invalidateQueries({ queryKey: cacheKeys.checks() });
     },
   });
@@ -51,7 +58,8 @@ const ChecklistItem = ({
 
   const icon: IconType = findByRunType(check.type).icon;
   const isMarkAsApprovedDisabled =
-    isDisabledByNoResult(check.type, run) || featureToggles.disableUpdateChecklist;
+    isDisabledByNoResult(check.type, run) ||
+    featureToggles.disableUpdateChecklist;
   const isNoResult = isDisabledByNoResult(check.type, run);
 
   return (
@@ -69,22 +77,27 @@ const ChecklistItem = ({
           onSelect(check.check_id);
         }}
         alignItems="center"
-        gap="5px">
+        gap="5px"
+      >
         <Icon as={icon} />
         <Box
           flex="1"
           textOverflow="ellipsis"
           whiteSpace="nowrap"
           overflow="hidden"
-          className="no-track-pii-safe">
+          className="no-track-pii-safe"
+        >
           {check.name}
         </Box>
 
         {/* {check.is_checked && <Icon color="green" as={FaCheckCircle} />} */}
         <Tooltip
-          content={isNoResult ? "Run the check first" : "Click to mark as approved"}
+          content={
+            isNoResult ? "Run the check first" : "Click to mark as approved"
+          }
           positioning={{ placement: "top" }}
-          showArrow>
+          showArrow
+        >
           <Flex>
             <Checkbox.Root
               checked={check.is_checked}
@@ -100,11 +113,14 @@ const ChecklistItem = ({
                   onMarkAsApproved();
                 }
               }}
-              disabled={isMarkAsApprovedDisabled}>
+              disabled={isMarkAsApprovedDisabled}
+            >
               <Checkbox.HiddenInput />
               <Checkbox.Control
                 borderColor="border.inverted"
-                backgroundColor={isMarkAsApprovedDisabled ? "bg.emphasized" : undefined}
+                backgroundColor={
+                  isMarkAsApprovedDisabled ? "bg.emphasized" : undefined
+                }
               />
             </Checkbox.Root>
           </Flex>
@@ -130,7 +146,9 @@ export const CheckList = ({
   const { mutate: markCheckedByID } = useMutation({
     mutationFn: (checkId: string) => updateCheck(checkId, { is_checked: true }),
     onSuccess: async (_, checkId: string) => {
-      await queryClient.invalidateQueries({ queryKey: cacheKeys.check(checkId) });
+      await queryClient.invalidateQueries({
+        queryKey: cacheKeys.check(checkId),
+      });
       await queryClient.invalidateQueries({ queryKey: cacheKeys.checks() });
     },
   });
@@ -151,7 +169,9 @@ export const CheckList = ({
   const { markedAsApprovedToast } = useCheckToast();
   const handleOnMarkAsApproved = () => {
     if (selectedItem) {
-      const bypassMarkAsApprovedWarning = localStorage.getItem("bypassMarkAsApprovedWarning");
+      const bypassMarkAsApprovedWarning = localStorage.getItem(
+        "bypassMarkAsApprovedWarning",
+      );
       if (bypassMarkAsApprovedWarning === "true") {
         markCheckedByID(selectedItem);
         markedAsApprovedToast();
@@ -184,9 +204,14 @@ export const CheckList = ({
               w="full"
               gap="0"
               flex="1"
-              overflow={"auto"}>
+              overflow={"auto"}
+            >
               {checks.map((check, index) => (
-                <Draggable key={check.check_id} draggableId={check.check_id} index={index}>
+                <Draggable
+                  key={check.check_id}
+                  draggableId={check.check_id}
+                  index={index}
+                >
                   {(provided, snapshot) => {
                     // see https://github.com/atlassian/react-beautiful-dnd/issues/1881#issuecomment-691237307
                     if (snapshot.isDragging) {
@@ -205,7 +230,8 @@ export const CheckList = ({
                         ref={provided.innerRef}
                         {...provided.draggableProps}
                         {...provided.dragHandleProps}
-                        w="full">
+                        w="full"
+                      >
                         <ChecklistItem
                           key={check.check_id}
                           check={check}
@@ -226,7 +252,8 @@ export const CheckList = ({
       <Dialog.Root
         open={isMarkAsApprovedOpen}
         onOpenChange={onMarkAsApprovedClosed}
-        placement="center">
+        placement="center"
+      >
         <Portal>
           <Dialog.Backdrop />
           <Dialog.Positioner>
@@ -237,8 +264,8 @@ export const CheckList = ({
               <Separator />
               <Box p={"16px"} fontSize="sm" gap="16px">
                 <p>
-                  Please ensure you have reviewed the contents of this check before marking it as
-                  approved.
+                  Please ensure you have reviewed the contents of this check
+                  before marking it as approved.
                 </p>
                 <Checkbox.Root
                   checked={bypassModal}
@@ -247,7 +274,8 @@ export const CheckList = ({
                   }}
                   fontWeight="bold"
                   size="sm"
-                  pt="8px">
+                  pt="8px"
+                >
                   <Checkbox.HiddenInput />
                   <Checkbox.Control />
                   <Checkbox.Label>Don&apos;t show this again</Checkbox.Label>
@@ -255,10 +283,19 @@ export const CheckList = ({
               </Box>
               <Separator />
               <Dialog.Footer gap={0}>
-                <Button variant="outline" size="xs" mr={2} onClick={onMarkAsApprovedClosed}>
+                <Button
+                  variant="outline"
+                  size="xs"
+                  mr={2}
+                  onClick={onMarkAsApprovedClosed}
+                >
                   Cancel
                 </Button>
-                <Button colorPalette="iochmara" size="xs" onClick={handleMarkAsApprovedConfirmed}>
+                <Button
+                  colorPalette="iochmara"
+                  size="xs"
+                  onClick={handleMarkAsApprovedConfirmed}
+                >
                   Mark as approved
                 </Button>
               </Dialog.Footer>

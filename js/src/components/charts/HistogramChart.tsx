@@ -1,10 +1,9 @@
-import { HistogramResult } from "@/lib/api/profile";
 import {
   AnimationOptions,
   BarElement,
   CategoryScale,
-  Chart as ChartJS,
   ChartData,
+  Chart as ChartJS,
   ChartOptions,
   Legend,
   LinearScale,
@@ -14,8 +13,15 @@ import {
   Tooltip,
 } from "chart.js";
 import { Chart } from "react-chartjs-2";
-import { formatAsAbbreviatedNumber, formatIntervalMinMax } from "@/utils/formatters";
-import { BASE_BAR_COLOR_WITH_ALPHA, CURRENT_BAR_COLOR_WITH_ALPHA } from "./SquareIcon";
+import { HistogramResult } from "@/lib/api/profile";
+import {
+  formatAsAbbreviatedNumber,
+  formatIntervalMinMax,
+} from "@/utils/formatters";
+import {
+  BASE_BAR_COLOR_WITH_ALPHA,
+  CURRENT_BAR_COLOR_WITH_ALPHA,
+} from "./SquareIcon";
 
 export const INFO_VAL_COLOR = "#63B3ED";
 export const DATE_RANGE = "Date Range";
@@ -43,8 +49,20 @@ interface HistogramChartProps {
   hideAxis?: boolean;
 }
 
-export function HistogramChart({ data, hideAxis = false, animation = false }: HistogramChartProps) {
-  ChartJS.register(BarElement, TimeSeriesScale, LinearScale, CategoryScale, Title, Legend, Tooltip);
+export function HistogramChart({
+  data,
+  hideAxis = false,
+  animation = false,
+}: HistogramChartProps) {
+  ChartJS.register(
+    BarElement,
+    TimeSeriesScale,
+    LinearScale,
+    CategoryScale,
+    Title,
+    Legend,
+    Tooltip,
+  );
 
   const chartOptions = getHistogramChartOptions(data, hideAxis, { animation });
 
@@ -53,7 +71,9 @@ export function HistogramChart({ data, hideAxis = false, animation = false }: Hi
   const chartData = getHistogramChartData(data);
 
   //infer `any` to allow for union data configurations & options
-  return <Chart type="bar" options={chartOptions} data={chartData} plugins={[]} />;
+  return (
+    <Chart type="bar" options={chartOptions} data={chartData} plugins={[]} />
+  );
 }
 
 function getHistogramChartDataset(
@@ -81,7 +101,9 @@ function getHistogramChartDataset(
   };
 }
 
-export function getHistogramChartData(data: HistogramChartProps["data"]): ChartData<"bar"> {
+export function getHistogramChartData(
+  data: HistogramChartProps["data"],
+): ChartData<"bar"> {
   const { datasets, type, binEdges } = data;
   const [base, current] = datasets;
   const currentDataset = getHistogramChartDataset(
@@ -99,7 +121,9 @@ export function getHistogramChartData(data: HistogramChartProps["data"]): ChartD
     base,
   );
 
-  const newLabels = binEdges.map((v, i) => formatDisplayedBinItem(binEdges, i)).slice(0, -1); // exclude last
+  const newLabels = binEdges
+    .map((v, i) => formatDisplayedBinItem(binEdges, i))
+    .slice(0, -1); // exclude last
 
   return {
     labels: newLabels,
@@ -137,13 +161,19 @@ export function getHistogramChartOptions(
           title([{ dataIndex, datasetIndex }]) {
             const result = formatDisplayedBinItem(binEdges, dataIndex);
 
-            const prefix = isDatetime ? DATE_RANGE : type === "string" ? TEXTLENGTH : VALUE_RANGE;
+            const prefix = isDatetime
+              ? DATE_RANGE
+              : type === "string"
+                ? TEXTLENGTH
+                : VALUE_RANGE;
 
             return `${prefix}\n${result}`;
           },
           label({ datasetIndex, dataIndex, dataset: { label } }) {
             const counts = datasetIndex === 0 ? current.counts : base.counts;
-            const percentOfTotal = formatIntervalMinMax(counts[dataIndex] / samples);
+            const percentOfTotal = formatIntervalMinMax(
+              counts[dataIndex] / samples,
+            );
             const count = counts[dataIndex];
             return `${label}: ${count} (${percentOfTotal})`;
           },
@@ -165,7 +195,9 @@ function getScales(
   const [base, current] = datasets;
   const maxCount = Math.max(...current.counts, ...base.counts);
 
-  const newLabels = binEdges.map((v, i) => formatDisplayedBinItem(binEdges, i)).slice(0, -1); // exclude last
+  const newLabels = binEdges
+    .map((v, i) => formatDisplayedBinItem(binEdges, i))
+    .slice(0, -1); // exclude last
 
   //swap x-scale when histogram is datetime
   const xScaleDate: ScaleOptions = {

@@ -1,11 +1,11 @@
-import { useRecceInstanceContext } from "@/lib/hooks/RecceInstanceContext";
-import { Flex, Text, Stack, Spacer, Button, Icon } from "@chakra-ui/react";
-import { EditorProps, Editor } from "@monaco-editor/react";
-import { FaPlay } from "react-icons/fa6";
+import { Button, Flex, Icon, Spacer, Stack, Text } from "@chakra-ui/react";
+import { Editor, EditorProps } from "@monaco-editor/react";
 import React, { useEffect } from "react";
-import { useLineageGraphContext } from "@/lib/hooks/LineageGraphContext";
-import { ManifestMetadata } from "@/lib/api/info";
+import { FaPlay } from "react-icons/fa6";
 import { extractSchemas, formatTimeToNow } from "@/components/app/EnvInfo";
+import { ManifestMetadata } from "@/lib/api/info";
+import { useLineageGraphContext } from "@/lib/hooks/LineageGraphContext";
+import { useRecceInstanceContext } from "@/lib/hooks/RecceInstanceContext";
 
 export interface SqlEditorProps {
   language?: string;
@@ -50,7 +50,9 @@ function SqlEditor({
   };
   let timestamp = "";
   if (manifestData) {
-    timestamp = manifestData.generated_at ? formatTimeToNow(manifestData.generated_at) : "";
+    timestamp = manifestData.generated_at
+      ? formatTimeToNow(manifestData.generated_at)
+      : "";
   }
 
   useEffect(() => {
@@ -79,13 +81,17 @@ function SqlEditor({
           align="center"
           margin={"0"}
           padding={"0px 16px"}
-          flex="0 0 40px">
+          flex="0 0 40px"
+        >
           <Text as="strong" className="no-track-pii-safe">
             {label ? label.toUpperCase() : ""}
           </Text>
           {manifestData && (
             <span className="ml-1">
-              ({schemas && <span className="no-track-pii-safe">{schemas}, </span>}
+              (
+              {schemas && (
+                <span className="no-track-pii-safe">{schemas}, </span>
+              )}
               <span>{timestamp}</span>)
             </span>
           )}
@@ -98,7 +104,8 @@ function SqlEditor({
               onClick={onRun ?? onRunBase}
               backgroundColor={"white"}
               padding={"6px 12px"}
-              disabled={featureToggles.disableDatabaseQuery}>
+              disabled={featureToggles.disableDatabaseQuery}
+            >
               <FaPlay /> Run Query
             </Button>
           )}
@@ -113,16 +120,24 @@ function SqlEditor({
           onChange={handleEditorChange}
           onMount={(editor, monaco) => {
             if (onRun) {
-              editor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyCode.Enter, onRun);
+              editor.addCommand(
+                monaco.KeyMod.CtrlCmd | monaco.KeyCode.Enter,
+                onRun,
+              );
             }
 
             if (onRunBase) {
-              editor.addCommand(monaco.KeyMod.Alt | monaco.KeyCode.Enter, onRunBase);
+              editor.addCommand(
+                monaco.KeyMod.Alt | monaco.KeyCode.Enter,
+                onRunBase,
+              );
             }
 
             if (onRunDiff) {
               editor.addCommand(
-                monaco.KeyMod.CtrlCmd | monaco.KeyMod.Shift | monaco.KeyCode.Enter,
+                monaco.KeyMod.CtrlCmd |
+                  monaco.KeyMod.Shift |
+                  monaco.KeyCode.Enter,
                 onRunDiff,
               );
             }
@@ -176,7 +191,13 @@ export function DualSqlEditor({
   return (
     <>
       <Flex height={"100%"} gap={0}>
-        <Stack height={"100%"} width={"50%"} gap={0} borderRight={"1px"} borderColor={"#D4DBE4"}>
+        <Stack
+          height={"100%"}
+          width={"50%"}
+          gap={0}
+          borderRight={"1px"}
+          borderColor={"#D4DBE4"}
+        >
           <SqlEditor
             label={baseLabel}
             value={baseValue ?? ""}

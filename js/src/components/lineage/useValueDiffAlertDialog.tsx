@@ -1,10 +1,19 @@
-import { useDisclosure, Button, Box, Flex, Dialog, Portal, CloseButton } from "@chakra-ui/react";
-import React, { useRef, useState, useCallback } from "react";
+import {
+  Box,
+  Button,
+  CloseButton,
+  Dialog,
+  Flex,
+  Portal,
+  useDisclosure,
+} from "@chakra-ui/react";
+import React, { useCallback, useRef, useState } from "react";
 
 function useValueDiffAlertDialog() {
   const { open, onOpen, onClose } = useDisclosure();
   const [nodeCount, setNodeCount] = useState(0);
-  const [resolvePromise, setResolvePromise] = useState<(value: boolean) => void>();
+  const [resolvePromise, setResolvePromise] =
+    useState<(value: boolean) => void>();
   const cancelRef = useRef<HTMLButtonElement>(null);
 
   const confirm = useCallback(
@@ -36,7 +45,8 @@ function useValueDiffAlertDialog() {
       initialFocusEl={() => {
         return cancelRef.current;
       }}
-      onOpenChange={handleCancel}>
+      onOpenChange={handleCancel}
+    >
       <Portal>
         <Dialog.Backdrop />
         <Dialog.Positioner>
@@ -47,13 +57,18 @@ function useValueDiffAlertDialog() {
 
             <Dialog.Body gap="20px" as={Flex} direction="column">
               <Box>
-                Value diff will be executed on {nodeCount} nodes in the Lineage, which can add extra
-                costs to your bill.
+                Value diff will be executed on {nodeCount} nodes in the Lineage,
+                which can add extra costs to your bill.
               </Box>
             </Dialog.Body>
 
             <Dialog.Footer gap={1}>
-              <Button ref={cancelRef} onClick={handleCancel} variant="outline" colorPalette="gray">
+              <Button
+                ref={cancelRef}
+                onClick={handleCancel}
+                variant="outline"
+                colorPalette="gray"
+              >
                 Cancel
               </Button>
               <Button colorPalette="iochmara" onClick={handleConfirm} ml={3}>

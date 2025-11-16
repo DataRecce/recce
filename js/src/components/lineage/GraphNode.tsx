@@ -1,23 +1,21 @@
 import { Box, Center, Flex, HStack, Icon, Spacer, Tag } from "@chakra-ui/react";
-import React, { useState } from "react";
-
 import { Handle, NodeProps, Position, useStore } from "@xyflow/react";
+import React, { useState } from "react";
 import { COLUMN_HEIGHT, LineageGraphNode } from "./lineage";
 import { getIconForChangeStatus, getIconForResourceType } from "./styles";
 
 import "./styles.css";
 
-import { ActionTag } from "./ActionTag";
-import { useLineageGraphContext } from "@/lib/hooks/LineageGraphContext";
-
-import { findByRunType } from "../run/registry";
-import { isSchemaChanged } from "../schema/schemaDiff";
-import { useLineageViewContextSafe } from "./LineageViewContext";
 import { FaCheckSquare, FaRegDotCircle, FaRegSquare } from "react-icons/fa";
-import { RowCountDiff } from "@/lib/api/models";
-import { deltaPercentageString } from "../rowcount/delta";
 import { VscKebabVertical } from "react-icons/vsc";
 import { Tooltip } from "@/components/ui/tooltip";
+import { RowCountDiff } from "@/lib/api/models";
+import { useLineageGraphContext } from "@/lib/hooks/LineageGraphContext";
+import { deltaPercentageString } from "../rowcount/delta";
+import { findByRunType } from "../run/registry";
+import { isSchemaChanged } from "../schema/schemaDiff";
+import { ActionTag } from "./ActionTag";
+import { useLineageViewContextSafe } from "./LineageViewContext";
 
 export type GraphNodeProps = NodeProps<LineageGraphNode>;
 
@@ -60,7 +58,13 @@ const CHANGE_CATEGORY_MSGS = {
   unknown: "Unknown",
 };
 
-const NodeRunsAggregated = ({ id, inverted }: { id: string; inverted: boolean }) => {
+const NodeRunsAggregated = ({
+  id,
+  inverted,
+}: {
+  id: string;
+  inverted: boolean;
+}) => {
   const { lineageGraph, runsAggregated } = useLineageGraphContext();
   const runs = runsAggregated?.[id];
   const node = lineageGraph?.nodes[id];
@@ -82,13 +86,18 @@ const NodeRunsAggregated = ({ id, inverted }: { id: string; inverted: boolean })
     rowCountChanged = result.curr !== result.base;
   }
 
-  const colorChanged = inverted ? "white" : getIconForChangeStatus("modified").color;
+  const colorChanged = inverted
+    ? "white"
+    : getIconForChangeStatus("modified").color;
   const colorUnchanged = inverted ? "gray" : "gray.100";
 
   return (
     <Flex flex="1">
       {schemaChanged !== undefined && (
-        <Tooltip content={`Schema (${schemaChanged ? "changed" : "no change"})`} openDelay={500}>
+        <Tooltip
+          content={`Schema (${schemaChanged ? "changed" : "no change"})`}
+          openDelay={500}
+        >
           <Box height="16px">
             <Icon
               as={findByRunType("schema_diff").icon}
@@ -99,9 +108,14 @@ const NodeRunsAggregated = ({ id, inverted }: { id: string; inverted: boolean })
       )}
       <Spacer />
       {runs?.row_count_diff && rowCountChanged !== undefined && (
-        <Tooltip content={`Row count (${rowCountChanged ? "changed" : "="})`} openDelay={500}>
+        <Tooltip
+          content={`Row count (${rowCountChanged ? "changed" : "="})`}
+          openDelay={500}
+        >
           <Box>
-            <_RowCountDiffTag rowCount={runs.row_count_diff.result as RowCountDiff} />
+            <_RowCountDiffTag
+              rowCount={runs.row_count_diff.result as RowCountDiff}
+            />
           </Box>
         </Tooltip>
       )}
@@ -117,7 +131,12 @@ const GraphNodeCheckbox = ({
   onClick?: React.MouseEventHandler;
 }) => {
   return (
-    <Flex onClick={onClick} alignSelf="center" alignItems="center" cursor={"pointer"}>
+    <Flex
+      onClick={onClick}
+      alignSelf="center"
+      alignItems="center"
+      cursor={"pointer"}
+    >
       {checked ? (
         <Icon boxSize="20px" as={FaCheckSquare} />
       ) : (
@@ -137,10 +156,17 @@ const GraphNodeTitle = ({
   resourceType?: string;
 }) => {
   return (
-    <Box flex="1" color={color} overflow="hidden" textOverflow="ellipsis" whiteSpace="nowrap">
+    <Box
+      flex="1"
+      color={color}
+      overflow="hidden"
+      textOverflow="ellipsis"
+      whiteSpace="nowrap"
+    >
       <Tooltip
         content={resourceType === "model" ? name : `${name} (${resourceType})`}
-        positioning={{ placement: "top" }}>
+        positioning={{ placement: "top" }}
+      >
         <span>{name}</span>
       </Tooltip>
     </Box>
@@ -172,7 +198,7 @@ export function GraphNode(nodeProps: GraphNodeProps) {
   } = useLineageViewContextSafe();
   const changeCategory = cll?.current.nodes[id]?.change_category;
 
-  const isNonBreakingChange = changeCategory === "non_breaking";
+  const _isNonBreakingChange = changeCategory === "non_breaking";
   const isHighlighted = isNodeHighlighted(id);
   const isSelected = isNodeSelected(id);
   const isFocusedByImpactRadius =
@@ -202,7 +228,8 @@ export function GraphNode(nodeProps: GraphNodeProps) {
   const name = data.name;
   const columnSet = getNodeColumnSet(data.id);
   const showColumns = columnSet.size > 0;
-  const action = selectMode === "action_result" ? getNodeAction(data.id) : undefined;
+  const action =
+    selectMode === "action_result" ? getNodeAction(data.id) : undefined;
 
   const nodeBackgroundColor = (function () {
     if (showContent) {
@@ -217,10 +244,14 @@ export function GraphNode(nodeProps: GraphNodeProps) {
             : colorChangeStatus;
         }
       } else {
-        return isFocused || isSelected || isHovered ? backgroundColorChangeStatus : "white";
+        return isFocused || isSelected || isHovered
+          ? backgroundColorChangeStatus
+          : "white";
       }
     } else {
-      return isFocused || isSelected || isHovered ? colorChangeStatus : backgroundColorChangeStatus;
+      return isFocused || isSelected || isHovered
+        ? colorChangeStatus
+        : backgroundColorChangeStatus;
     }
   })();
   const titleColor = (function () {
@@ -272,21 +303,24 @@ export function GraphNode(nodeProps: GraphNodeProps) {
       }}
       onMouseLeave={() => {
         setIsHovered(false);
-      }}>
+      }}
+    >
       <Flex
         borderColor={borderColor}
         borderWidth={borderWidth}
         borderTopRadius={8}
         borderBottomRadius={showColumns ? 0 : 8}
         backgroundColor={nodeBackgroundColor}
-        height="60px">
+        height="60px"
+      >
         <Flex
           bg={colorChangeStatus}
           padding={interactive ? "8px" : "2px"}
           borderRightWidth={borderWidth}
           borderColor={selectMode === "selecting" ? "#00000020" : borderColor}
           alignItems="top"
-          visibility={showContent ? "inherit" : "hidden"}>
+          visibility={showContent ? "inherit" : "hidden"}
+        >
           {interactive && (
             <GraphNodeCheckbox
               checked={
@@ -313,8 +347,13 @@ export function GraphNode(nodeProps: GraphNodeProps) {
             p={1}
             gap="5px"
             alignItems="center"
-            visibility={showContent ? "inherit" : "hidden"}>
-            <GraphNodeTitle name={name} color={titleColor} resourceType={resourceType} />
+            visibility={showContent ? "inherit" : "hidden"}
+          >
+            <GraphNodeTitle
+              name={name}
+              color={titleColor}
+              resourceType={resourceType}
+            />
 
             {isHovered ? (
               <>
@@ -322,7 +361,8 @@ export function GraphNode(nodeProps: GraphNodeProps) {
                   <Tooltip
                     content="Show Impact Radius"
                     positioning={{ placement: "top" }}
-                    openDelay={500}>
+                    openDelay={500}
+                  >
                     <Center>
                       <Icon
                         boxSize="14px"
@@ -352,14 +392,23 @@ export function GraphNode(nodeProps: GraphNodeProps) {
                   onClick={(e) => {
                     e.preventDefault();
                     e.stopPropagation();
-                    showContextMenu(e, nodeProps as unknown as LineageGraphNode);
+                    showContextMenu(
+                      e,
+                      nodeProps as unknown as LineageGraphNode,
+                    );
                   }}
                 />
               </>
             ) : (
               <>
-                <Icon boxSize="16px" color={iconResourceColor} as={resourceIcon} />
-                {changeStatus && <Icon color={iconChangeStatusColor} as={iconChangeStatus} />}
+                <Icon
+                  boxSize="16px"
+                  color={iconResourceColor}
+                  as={resourceIcon}
+                />
+                {changeStatus && (
+                  <Icon color={iconChangeStatusColor} as={iconChangeStatus} />
+                )}
               </>
             )}
           </Flex>
@@ -369,18 +418,29 @@ export function GraphNode(nodeProps: GraphNodeProps) {
             mx="1"
             direction="column"
             paddingBottom="1"
-            visibility={showContent ? "inherit" : "hidden"}>
+            visibility={showContent ? "inherit" : "hidden"}
+          >
             <HStack gap={"8px"}>
               {action ? (
                 <>
                   <Spacer />
-                  <ActionTag node={data as unknown as LineageGraphNode} action={action} />
+                  <ActionTag
+                    node={data as unknown as LineageGraphNode}
+                    action={action}
+                  />
                 </>
               ) : isShowingChangeAnalysis ? (
-                <Box height="20px" color="gray" fontSize="9pt" margin={0} fontWeight={600}>
+                <Box
+                  height="20px"
+                  color="gray"
+                  fontSize="9pt"
+                  margin={0}
+                  fontWeight={600}
+                >
                   {changeCategory ? CHANGE_CATEGORY_MSGS[changeCategory] : ""}
                 </Box>
-              ) : selectMode !== "action_result" && data.resourceType === "model" ? (
+              ) : selectMode !== "action_result" &&
+                data.resourceType === "model" ? (
                 <NodeRunsAggregated
                   id={data.id}
                   inverted={(function () {
@@ -404,8 +464,12 @@ export function GraphNode(nodeProps: GraphNodeProps) {
           borderColor={borderColor}
           borderWidth={borderWidth}
           borderTopWidth={0}
-          borderBottomRadius={8}>
-          <Box height={`${columnSet.size * COLUMN_HEIGHT}px`} overflow="auto"></Box>
+          borderBottomRadius={8}
+        >
+          <Box
+            height={`${columnSet.size * COLUMN_HEIGHT}px`}
+            overflow="auto"
+          ></Box>
         </Box>
       )}
       {Object.keys(data.parents).length > 0 && (

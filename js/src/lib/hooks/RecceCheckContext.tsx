@@ -11,7 +11,9 @@ interface CheckContextProps {
 
 const RecceCheckContext = createContext<CheckContext>({
   latestSelectedCheckId: "",
-  setLatestSelectedCheckId: () => {},
+  setLatestSelectedCheckId: () => {
+    return void 0;
+  },
 });
 
 export function RecceCheckContextProvider({ children }: CheckContextProps) {
@@ -21,7 +23,8 @@ export function RecceCheckContextProvider({ children }: CheckContextProps) {
       value={{
         setLatestSelectedCheckId: setSelectCheckId,
         latestSelectedCheckId: selectCheckId,
-      }}>
+      }}
+    >
       {children}
     </RecceCheckContext.Provider>
   );

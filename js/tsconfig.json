@@ -1,11 +1,7 @@
 {
   "compilerOptions": {
     "target": "ESNext",
-    "lib": [
-      "DOM",
-      "DOM.iterable",
-      "ESNext"
-    ],
+    "lib": ["DOM", "DOM.iterable", "ESNext"],
     "allowJs": true,
     "skipLibCheck": true,
     "strict": true,
@@ -24,12 +20,8 @@
     ],
     "baseUrl": ".",
     "paths": {
-      "@/*": [
-        "./src/*"
-      ],
-      "@theme/*": [
-        "./theme/*"
-      ]
+      "@/*": ["./src/*"],
+      "@theme/*": ["./theme/*"]
     },
     "downlevelIteration": true
   },
@@ -41,7 +33,5 @@
     "eslint.config.mjs",
     ".next/dev/types/**/*.ts"
   ],
-  "exclude": [
-    "node_modules"
-  ]
+  "exclude": ["node_modules"]
 }

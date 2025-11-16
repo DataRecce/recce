@@ -1,4 +1,4 @@
-import { ButtonGroup, Button } from "@chakra-ui/react";
+import { Button, ButtonGroup } from "@chakra-ui/react";
 import { DiffText } from "./DiffText";
 
 interface ToggleSwitchProps {
@@ -7,7 +7,12 @@ interface ToggleSwitchProps {
   textOn?: string;
   textOff?: string;
 }
-export const ToggleSwitch = ({ value, onChange, textOn, textOff }: ToggleSwitchProps) => {
+export const ToggleSwitch = ({
+  value,
+  onChange,
+  textOn,
+  textOff,
+}: ToggleSwitchProps) => {
   return (
     <ButtonGroup attached variant="outline" borderRadius="full" size="xs">
       <Button
@@ -15,7 +20,8 @@ export const ToggleSwitch = ({ value, onChange, textOn, textOff }: ToggleSwitchP
           onChange(false);
         }}
         color={!value ? "black" : "gray.400"}
-        bg={!value ? "white" : "gray.50"}>
+        bg={!value ? "white" : "gray.50"}
+      >
         {textOff ?? "Off"}
       </Button>
       <Button
@@ -23,7 +29,8 @@ export const ToggleSwitch = ({ value, onChange, textOn, textOff }: ToggleSwitchP
           onChange(true);
         }}
         color={value ? "black" : "gray.400"}
-        bg={value ? "white" : "gray.50"}>
+        bg={value ? "white" : "gray.50"}
+      >
         {textOn ?? "On"}
       </Button>
     </ButtonGroup>
@@ -43,8 +50,20 @@ export const DiffDisplayModeSwitch = ({
     <>
       {displayMode === "inline" && (
         <>
-          <DiffText value="Base" colorPalette="red" grayOut={false} fontSize="10pt" noCopy />
-          <DiffText value="Current" colorPalette="green" grayOut={false} fontSize="10pt" noCopy />
+          <DiffText
+            value="Base"
+            colorPalette="red"
+            grayOut={false}
+            fontSize="10pt"
+            noCopy
+          />
+          <DiffText
+            value="Current"
+            colorPalette="green"
+            grayOut={false}
+            fontSize="10pt"
+            noCopy
+          />
         </>
       )}
       <ToggleSwitch

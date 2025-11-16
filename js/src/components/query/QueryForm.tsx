@@ -1,17 +1,21 @@
-import { useLineageGraphContext } from "@/lib/hooks/LineageGraphContext";
-import { DropdownValuesInput } from "@/utils/DropdownValuesInput";
 import { Field, Flex, FlexProps } from "@chakra-ui/react";
 import { useMemo } from "react";
-import { Tooltip } from "@/components/ui/tooltip";
 import { PiInfo } from "react-icons/pi";
+import { Tooltip } from "@/components/ui/tooltip";
 import { NodeColumnData } from "@/lib/api/info";
+import { useLineageGraphContext } from "@/lib/hooks/LineageGraphContext";
+import { DropdownValuesInput } from "@/utils/DropdownValuesInput";
 
 interface QueryFormProps extends FlexProps {
   defaultPrimaryKeys: string[] | undefined;
   onPrimaryKeysChange: (primaryKeys: string[]) => void;
 }
 
-export const QueryForm = ({ defaultPrimaryKeys, onPrimaryKeysChange, ...prob }: QueryFormProps) => {
+export const QueryForm = ({
+  defaultPrimaryKeys,
+  onPrimaryKeysChange,
+  ...prob
+}: QueryFormProps) => {
   const { lineageGraph, isActionAvailable } = useLineageGraphContext();
 
   const labelInfo =
@@ -43,7 +47,10 @@ export const QueryForm = ({ defaultPrimaryKeys, onPrimaryKeysChange, ...prob }: 
       <Field.Root m="0 0.5rem" gap={0}>
         <Field.Label fontSize="0.625rem" margin={0}>
           Diff with Primary Key(s) (suggested){" "}
-          <Tooltip content={labelInfo} positioning={{ placement: "bottom-end" }}>
+          <Tooltip
+            content={labelInfo}
+            positioning={{ placement: "bottom-end" }}
+          >
             <PiInfo color="gray.600" />
           </Tooltip>
         </Field.Label>

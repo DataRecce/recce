@@ -1,6 +1,6 @@
-import { RECCE_SUPPORT_CALENDAR_URL } from "@/constants/urls";
 import { Box, Link, Popover, Portal } from "@chakra-ui/react";
-import { useState, ReactElement, useRef, useCallback } from "react";
+import { ReactElement, useCallback, useRef, useState } from "react";
+import { RECCE_SUPPORT_CALENDAR_URL } from "@/constants/urls";
 
 interface SetupConnectionPopoverProps {
   children: ReactElement<{
@@ -10,7 +10,10 @@ interface SetupConnectionPopoverProps {
   display: boolean;
 }
 
-export default function SetupConnectionPopover({ children, display }: SetupConnectionPopoverProps) {
+export default function SetupConnectionPopover({
+  children,
+  display,
+}: SetupConnectionPopoverProps) {
   const [hovered, setHovered] = useState(false);
   const timeoutRef = useRef<NodeJS.Timeout | null>(null);
   const ref = useRef<HTMLElement | null>(null);
@@ -44,13 +47,15 @@ export default function SetupConnectionPopover({ children, display }: SetupConne
       lazyMount
       unmountOnExit
       size="xs"
-      autoFocus={false}>
+      autoFocus={false}
+    >
       <Popover.Trigger asChild>
         <Box
           ref={ref}
           onMouseEnter={handleMouseEnter}
           onMouseLeave={handleMouseLeave}
-          display="contents">
+          display="contents"
+        >
           {children}
         </Box>
       </Popover.Trigger>
@@ -62,14 +67,16 @@ export default function SetupConnectionPopover({ children, display }: SetupConne
             zIndex="popover"
             width="auto"
             onMouseEnter={handleMouseEnter}
-            onMouseLeave={handleMouseLeave}>
+            onMouseLeave={handleMouseLeave}
+          >
             <Popover.Body>
               Connect to a data warehouse to unlock Diff.{" "}
               <Link
                 href={RECCE_SUPPORT_CALENDAR_URL}
                 color="white"
                 target="_blank"
-                textDecoration="underline">
+                textDecoration="underline"
+              >
                 Learn more
               </Link>
               .

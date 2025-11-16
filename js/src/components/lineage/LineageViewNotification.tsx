@@ -1,13 +1,16 @@
-import { sessionStorageKeys } from "@/lib/api/sessionStorageKeys";
 import { CloseButton, Flex, Spacer } from "@chakra-ui/react";
 import React, { useState } from "react";
+import { sessionStorageKeys } from "@/lib/api/sessionStorageKeys";
 
 interface NotificationProps {
   notification?: React.ReactNode;
   type: "info" | "success" | "warning" | "error";
 }
 
-export function LineageViewNotification({ notification, type }: NotificationProps) {
+export function LineageViewNotification({
+  notification,
+  type,
+}: NotificationProps) {
   const notificationKey = sessionStorageKeys.lineageNotificationDismissed;
 
   // Initialize state from sessionStorage (lazy initialization)
@@ -38,7 +41,8 @@ export function LineageViewNotification({ notification, type }: NotificationProp
       boxShadow="md"
       border="1px solid"
       borderColor="gray.200"
-      bg={bgColor}>
+      bg={bgColor}
+    >
       {notification}
       <Spacer />
       <CloseButton

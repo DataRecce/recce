@@ -2,7 +2,10 @@
 // Base Types
 // ============================================================================
 
-export type AxiosQueryParams = Record<string, string | string[] | number | number[] | undefined>;
+export type AxiosQueryParams = Record<
+  string,
+  string | string[] | number | number[] | undefined
+>;
 
 export type RowDataTypes = number | string | boolean | null | undefined;
 export type RowData = RowDataTypes[];
@@ -22,7 +25,19 @@ export type ColumnType =
   | "timedelta"
   | "unknown";
 
-export type ColumnRenderMode = "raw" | "percent" | 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9;
+export type ColumnRenderMode =
+  | "raw"
+  | "percent"
+  | 0
+  | 1
+  | 2
+  | 3
+  | 4
+  | 5
+  | 6
+  | 7
+  | 8
+  | 9;
 
 export interface DataFrame {
   columns: {
@@ -45,13 +60,13 @@ export interface DataFrame {
 
 // Import types that are defined in other files
 import { RunType } from "@/components/run/registry";
-import type { QueryDiffParams, QueryDiffResult, QueryResult, QueryRunParams } from "./adhocQuery";
 import type {
-  ValueDiffDetailParams,
-  ValueDiffDetailResult,
-  ValueDiffParams,
-  ValueDiffResult,
-} from "./valuediff";
+  QueryDiffParams,
+  QueryDiffResult,
+  QueryResult,
+  QueryRunParams,
+} from "./adhocQuery";
+import type { LineageDiffResult } from "./info";
 import type {
   HistogramDiffParams,
   HistogramDiffResult,
@@ -66,7 +81,12 @@ import type {
   RowCountParams,
   RowCountResult,
 } from "./rowcount";
-import type { LineageDiffResult } from "./info";
+import type {
+  ValueDiffDetailParams,
+  ValueDiffDetailResult,
+  ValueDiffParams,
+  ValueDiffResult,
+} from "./valuediff";
 
 // Define params that don't have their own files yet
 export interface SchemaDiffParams {
@@ -204,50 +224,74 @@ export function isQueryRun(run: Run): run is Extract<Run, { type: "query" }> {
   return run.type === "query";
 }
 
-export function isQueryBaseRun(run: Run): run is Extract<Run, { type: "query_base" }> {
+export function isQueryBaseRun(
+  run: Run,
+): run is Extract<Run, { type: "query_base" }> {
   return run.type === "query_base";
 }
 
-export function isQueryDiffRun(run: Run): run is Extract<Run, { type: "query_diff" }> {
+export function isQueryDiffRun(
+  run: Run,
+): run is Extract<Run, { type: "query_diff" }> {
   return run.type === "query_diff";
 }
 
-export function isValueDiffRun(run: Run): run is Extract<Run, { type: "value_diff" }> {
+export function isValueDiffRun(
+  run: Run,
+): run is Extract<Run, { type: "value_diff" }> {
   return run.type === "value_diff";
 }
 
-export function isValueDiffDetailRun(run: Run): run is Extract<Run, { type: "value_diff_detail" }> {
+export function isValueDiffDetailRun(
+  run: Run,
+): run is Extract<Run, { type: "value_diff_detail" }> {
   return run.type === "value_diff_detail";
 }
 
-export function isSchemaDiffRun(run: Run): run is Extract<Run, { type: "schema_diff" }> {
+export function isSchemaDiffRun(
+  run: Run,
+): run is Extract<Run, { type: "schema_diff" }> {
   return run.type === "schema_diff";
 }
 
-export function isProfileRun(run: Run): run is Extract<Run, { type: "profile" }> {
+export function isProfileRun(
+  run: Run,
+): run is Extract<Run, { type: "profile" }> {
   return run.type === "profile";
 }
 
-export function isProfileDiffRun(run: Run): run is Extract<Run, { type: "profile_diff" }> {
+export function isProfileDiffRun(
+  run: Run,
+): run is Extract<Run, { type: "profile_diff" }> {
   return run.type === "profile_diff";
 }
 
-export function isRowCountRun(run: Run): run is Extract<Run, { type: "row_count" }> {
+export function isRowCountRun(
+  run: Run,
+): run is Extract<Run, { type: "row_count" }> {
   return run.type === "row_count";
 }
 
-export function isRowCountDiffRun(run: Run): run is Extract<Run, { type: "row_count_diff" }> {
+export function isRowCountDiffRun(
+  run: Run,
+): run is Extract<Run, { type: "row_count_diff" }> {
   return run.type === "row_count_diff";
 }
 
-export function isLineageDiffRun(run: Run): run is Extract<Run, { type: "lineage_diff" }> {
+export function isLineageDiffRun(
+  run: Run,
+): run is Extract<Run, { type: "lineage_diff" }> {
   return run.type === "lineage_diff";
 }
 
-export function isTopKDiffRun(run: Run): run is Extract<Run, { type: "top_k_diff" }> {
+export function isTopKDiffRun(
+  run: Run,
+): run is Extract<Run, { type: "top_k_diff" }> {
   return run.type === "top_k_diff";
 }
 
-export function isHistogramDiffRun(run: Run): run is Extract<Run, { type: "histogram_diff" }> {
+export function isHistogramDiffRun(
+  run: Run,
+): run is Extract<Run, { type: "histogram_diff" }> {
   return run.type === "histogram_diff";
 }

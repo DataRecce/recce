@@ -10,7 +10,11 @@ interface ShareStateProps {
 
 const ShareState = createContext<ShareStateProps | undefined>(undefined);
 
-export function RecceShareStateContextProvider({ children }: { children: React.ReactNode }) {
+export function RecceShareStateContextProvider({
+  children,
+}: {
+  children: React.ReactNode;
+}) {
   const [shareUrl, setShareUrl] = useState<string>();
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string>();
@@ -34,7 +38,9 @@ export function RecceShareStateContextProvider({ children }: { children: React.R
   };
 
   return (
-    <ShareState.Provider value={{ shareUrl, isLoading, error, handleShareClick }}>
+    <ShareState.Provider
+      value={{ shareUrl, isLoading, error, handleShareClick }}
+    >
       {children}
     </ShareState.Provider>
   );

@@ -1,6 +1,6 @@
-import { RECCE_SUPPORT_CALENDAR_URL } from "@/constants/urls";
 import { Button, Heading, Icon, Text } from "@chakra-ui/react";
 import { RiTerminalBoxLine } from "react-icons/ri";
+import { RECCE_SUPPORT_CALENDAR_URL } from "@/constants/urls";
 
 export default function SetupConnectionGuide() {
   return (
@@ -26,7 +26,8 @@ export default function SetupConnectionGuide() {
             size="lg"
             onClick={() => {
               window.open(RECCE_SUPPORT_CALENDAR_URL, "_blank");
-            }}>
+            }}
+          >
             Connect to Data Warehouse
           </Button>
         </div>

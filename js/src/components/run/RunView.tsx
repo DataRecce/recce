@@ -1,9 +1,25 @@
-import { Run } from "@/lib/api/types";
-import { Alert, Box, Button, Center, Flex, ProgressCircle, VStack } from "@chakra-ui/react";
-import { RunResultViewProps } from "./types";
+import {
+  Alert,
+  Box,
+  Button,
+  Center,
+  Flex,
+  ProgressCircle,
+  VStack,
+} from "@chakra-ui/react";
 import { ErrorBoundary } from "@sentry/react";
-import React, { forwardRef, ForwardRefExoticComponent, RefAttributes } from "react";
-import { RefTypes, RegistryEntry, ViewOptionTypes } from "@/components/run/registry";
+import React, {
+  ForwardRefExoticComponent,
+  forwardRef,
+  RefAttributes,
+} from "react";
+import {
+  RefTypes,
+  RegistryEntry,
+  ViewOptionTypes,
+} from "@/components/run/registry";
+import { Run } from "@/lib/api/types";
+import { RunResultViewProps } from "./types";
 
 // Define an error type
 interface ApiError {
@@ -46,7 +62,8 @@ export const RunView = forwardRef(
     }: RunViewProps,
     ref: React.Ref<RefTypes>,
   ) => {
-    const errorMessage = (error as ApiError | undefined)?.response?.data?.detail ?? run?.error;
+    const errorMessage =
+      (error as ApiError | undefined)?.response?.data?.detail ?? run?.error;
 
     if (errorMessage) {
       return (
@@ -76,7 +93,11 @@ export const RunView = forwardRef(
                   <ProgressCircle.Circle />
                 </ProgressCircle.Root>
               ) : (
-                <ProgressCircle.Root value={progress.percentage * 100} size="md" mr="0.5rem">
+                <ProgressCircle.Root
+                  value={progress.percentage * 100}
+                  size="md"
+                  mr="0.5rem"
+                >
                   <ProgressCircle.Circle />
                 </ProgressCircle.Root>
               )}
@@ -106,10 +127,14 @@ export const RunView = forwardRef(
     }
 
     if (children && RunResultView) {
-      throw new Error("RunView requires either a children or a RunResultView prop, but not both.");
+      throw new Error(
+        "RunView requires either a children or a RunResultView prop, but not both.",
+      );
     }
     if (!children && !RunResultView) {
-      throw new Error("RunView requires at least one of children or RunResultView prop.");
+      throw new Error(
+        "RunView requires at least one of children or RunResultView prop.",
+      );
     }
 
     return (
@@ -117,7 +142,8 @@ export const RunView = forwardRef(
         h="100%"
         style={{ contain: "size layout" }}
         overflow="auto"
-        className="no-track-pii-safe">
+        className="no-track-pii-safe"
+      >
         {RunResultView && (run.error ?? run.result) && (
           <ErrorBoundary>
             <RunResultView

@@ -1,18 +1,21 @@
-import { Check } from "@/lib/api/checks";
-import { useLineageGraphContext } from "@/lib/hooks/LineageGraphContext";
-import { SchemaView } from "../schema/SchemaView";
-import { useQuery } from "@tanstack/react-query";
-import { cacheKeys } from "@/lib/api/cacheKeys";
-import { select } from "@/lib/api/select";
-import { HSplit } from "../split/Split";
 import { Box, Center, Flex, Icon, List } from "@chakra-ui/react";
-import { LineageGraphNode } from "../lineage/lineage";
+import { useQuery } from "@tanstack/react-query";
 import React, { forwardRef, useMemo, useState } from "react";
-import { getIconForChangeStatus, getIconForResourceType } from "../lineage/styles";
-import { IconType } from "react-icons";
-import { isSchemaChanged } from "../schema/schemaDiff";
-import { findByRunType } from "../run/registry";
 import { DataGridHandle } from "react-data-grid";
+import { IconType } from "react-icons";
+import { cacheKeys } from "@/lib/api/cacheKeys";
+import { Check } from "@/lib/api/checks";
+import { select } from "@/lib/api/select";
+import { useLineageGraphContext } from "@/lib/hooks/LineageGraphContext";
+import { LineageGraphNode } from "../lineage/lineage";
+import {
+  getIconForChangeStatus,
+  getIconForResourceType,
+} from "../lineage/styles";
+import { findByRunType } from "../run/registry";
+import { SchemaView } from "../schema/SchemaView";
+import { isSchemaChanged } from "../schema/schemaDiff";
+import { HSplit } from "../split/Split";
 
 interface SchemaDiffViewProps {
   check: Check;
@@ -67,13 +70,21 @@ const NodelistItem = ({
           onSelect(node.id);
         }}
         alignItems="center"
-        gap="5px">
+        gap="5px"
+      >
         <Icon as={icon} />
-        <Box flex="1" textOverflow="ellipsis" whiteSpace="nowrap" overflow="hidden">
+        <Box
+          flex="1"
+          textOverflow="ellipsis"
+          whiteSpace="nowrap"
+          overflow="hidden"
+        >
           {node.data.name}
         </Box>
 
-        {statusIcon && statusColor && <Icon as={statusIcon} color={statusColor} />}
+        {statusIcon && statusColor && (
+          <Icon as={statusIcon} color={statusColor} />
+        )}
       </Flex>
     </List.Item>
   );
@@ -108,7 +119,8 @@ export function PrivateSchemaDiffView(
     const removedNodes: string[] = [];
 
     if (params.node_id) {
-      const nodeIds = params.node_id instanceof Array ? params.node_id : [params.node_id];
+      const nodeIds =
+        params.node_id instanceof Array ? params.node_id : [params.node_id];
       for (const nodeId of nodeIds) {
         const node = lineageGraph?.nodes[nodeId];
         if (node) {
@@ -134,7 +146,12 @@ export function PrivateSchemaDiffView(
     );
 
     for (const node of filteredNodes) {
-      if (isSchemaChanged(node.data.data.base?.columns, node.data.data.current?.columns)) {
+      if (
+        isSchemaChanged(
+          node.data.data.base?.columns,
+          node.data.data.current?.columns,
+        )
+      ) {
         changedNodes.push(node.id);
       } else if (!node.data.data.base && node.data.data.current) {
         addedNodes.push(node.id);
@@ -199,7 +216,12 @@ export function PrivateSchemaDiffView(
           enableScreenshot={true}
           ref={ref}
         />
-        <List.Root overflow="auto" backgroundColor="white" as="ul" listStyle="none">
+        <List.Root
+          overflow="auto"
+          backgroundColor="white"
+          as="ul"
+          listStyle="none"
+        >
           {nodes.map((node, i) => (
             <NodelistItem
               key={node.id}

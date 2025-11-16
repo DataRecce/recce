@@ -1,6 +1,6 @@
+import { useQuery } from "@tanstack/react-query";
 import { cacheKeys } from "@/lib/api/cacheKeys";
 import { waitRun } from "@/lib/api/runs";
-import { useQuery } from "@tanstack/react-query";
 import { RunView } from "./RunView";
 import { findByRunType, RegistryEntry, runTypeHasRef } from "./registry";
 
@@ -16,7 +16,8 @@ export const RunPage = ({ runId }: RunPageProps) => {
 
   let RunResultView: RegistryEntry["RunResultView"] | undefined;
   if (run && runTypeHasRef(run.type)) {
-    RunResultView = findByRunType(run.type).RunResultView as RegistryEntry["RunResultView"];
+    RunResultView = findByRunType(run.type)
+      .RunResultView as RegistryEntry["RunResultView"];
   }
 
   return <RunView error={error} run={run} RunResultView={RunResultView} />;

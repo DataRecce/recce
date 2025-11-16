@@ -25,7 +25,11 @@ interface PresetCheckTemplateViewProps {
   viewOptions?: Record<string, unknown>;
 }
 
-export function PresetCheckTemplateView({ yamlTemplate }: { yamlTemplate: string }) {
+export function PresetCheckTemplateView({
+  yamlTemplate,
+}: {
+  yamlTemplate: string;
+}) {
   return (
     <Editor
       height="300px"

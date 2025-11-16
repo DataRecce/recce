@@ -1,5 +1,5 @@
-import { axiosClient } from "./axiosClient";
 import { AxiosResponse } from "axios";
+import { axiosClient } from "./axiosClient";
 
 export interface SelectInput {
   select?: string;
@@ -13,6 +13,10 @@ export interface SelectOutput {
 }
 
 export async function select(input: SelectInput): Promise<SelectOutput> {
-  return (await axiosClient.post<SelectInput, AxiosResponse<SelectOutput>>(`/api/select`, input))
-    .data;
+  return (
+    await axiosClient.post<SelectInput, AxiosResponse<SelectOutput>>(
+      `/api/select`,
+      input,
+    )
+  ).data;
 }

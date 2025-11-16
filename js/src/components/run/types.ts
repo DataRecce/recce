@@ -1,5 +1,5 @@
-import { Run } from "@/lib/api/types";
 import { ViewOptionTypes } from "@/components/run/registry";
+import { Run } from "@/lib/api/types";
 
 export interface RunFormProps<PT> {
   params: Partial<PT>;

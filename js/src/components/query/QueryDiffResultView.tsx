@@ -1,21 +1,28 @@
 import "react-data-grid/lib/styles.css";
 
-import { QueryDiffViewOptions, QueryPreviewChangeParams } from "@/lib/api/adhocQuery";
 import { Center, Flex } from "@chakra-ui/react";
 import { ForwardedRef, forwardRef, Ref, useMemo } from "react";
-import { toDataDiffGrid } from "./querydiff";
+import {
+  QueryDiffViewOptions,
+  QueryPreviewChangeParams,
+} from "@/lib/api/adhocQuery";
 import { toValueDiffGrid as toQueryDiffJoinGrid } from "../valuediff/valuediff";
+import { toDataDiffGrid } from "./querydiff";
 
 import "./styles.css";
-import { ColumnRenderMode, Run } from "@/lib/api/types";
-import { EmptyRowsRenderer, ScreenshotDataGrid } from "../data-grid/ScreenshotDataGrid";
-import { RunResultViewProps } from "../run/types";
-import { RunToolbar } from "../run/RunToolbar";
-import { DiffDisplayModeSwitch } from "./ToggleSwitch";
-import { ChangedOnlyCheckbox } from "./ChangedOnlyCheckbox";
 import { DataGridHandle } from "react-data-grid";
+import { ColumnRenderMode, Run } from "@/lib/api/types";
+import {
+  EmptyRowsRenderer,
+  ScreenshotDataGrid,
+} from "../data-grid/ScreenshotDataGrid";
+import { RunToolbar } from "../run/RunToolbar";
+import { RunResultViewProps } from "../run/types";
+import { ChangedOnlyCheckbox } from "./ChangedOnlyCheckbox";
+import { DiffDisplayModeSwitch } from "./ToggleSwitch";
 
-export interface QueryDiffResultViewProps extends RunResultViewProps<QueryDiffViewOptions> {
+export interface QueryDiffResultViewProps
+  extends RunResultViewProps<QueryDiffViewOptions> {
   onAddToChecklist?: (run: Run) => void;
   baseTitle?: string;
   currentTitle?: string;
@@ -33,17 +40,34 @@ const PrivateQueryDiffResultView = (
 
   ref: Ref<DataGridHandle>,
 ) => {
-  const primaryKeys = useMemo(() => viewOptions?.primary_keys ?? [], [viewOptions]);
-  const changedOnly = useMemo(() => viewOptions?.changed_only ?? false, [viewOptions]);
-  const pinnedColumns = useMemo(() => viewOptions?.pinned_columns ?? [], [viewOptions]);
-  const displayMode = useMemo(() => viewOptions?.display_mode ?? "inline", [viewOptions]);
-  const columnsRenderMode = useMemo(() => viewOptions?.columnsRenderMode ?? {}, [viewOptions]);
+  const primaryKeys = useMemo(
+    () => viewOptions?.primary_keys ?? [],
+    [viewOptions],
+  );
+  const changedOnly = useMemo(
+    () => viewOptions?.changed_only ?? false,
+    [viewOptions],
+  );
+  const pinnedColumns = useMemo(
+    () => viewOptions?.pinned_columns ?? [],
+    [viewOptions],
+  );
+  const displayMode = useMemo(
+    () => viewOptions?.display_mode ?? "inline",
+    [viewOptions],
+  );
+  const columnsRenderMode = useMemo(
+    () => viewOptions?.columnsRenderMode ?? {},
+    [viewOptions],
+  );
   if (run.type !== "query_diff") {
     throw new Error("QueryDiffResult view should be rendered as query_diff");
   }
 
   const gridData = useMemo(() => {
-    const onColumnsRenderModeChanged = (cols: Record<string, ColumnRenderMode>) => {
+    const onColumnsRenderModeChanged = (
+      cols: Record<string, ColumnRenderMode>,
+    ) => {
       const newRenderModes = {
         ...(viewOptions?.columnsRenderMode ?? {}),
         ...cols,
@@ -130,12 +154,17 @@ const PrivateQueryDiffResultView = (
   }
 
   return (
-    <Flex direction="column" backgroundColor="rgb(249, 249, 249)" height={"100%"}>
+    <Flex
+      direction="column"
+      backgroundColor="rgb(249, 249, 249)"
+      height={"100%"}
+    >
       <RunToolbar
         run={run}
         viewOptions={viewOptions}
         onViewOptionsChanged={onViewOptionsChanged}
-        warnings={warnings}>
+        warnings={warnings}
+      >
         <DiffDisplayModeSwitch
           displayMode={displayMode}
           onDisplayModeChanged={(displayMode) => {
@@ -153,7 +182,10 @@ const PrivateQueryDiffResultView = (
           onChange={() => {
             const changedOnly = !viewOptions?.changed_only;
             if (onViewOptionsChanged) {
-              onViewOptionsChanged({ ...viewOptions, changed_only: changedOnly });
+              onViewOptionsChanged({
+                ...viewOptions,
+                changed_only: changedOnly,
+              });
             }
           }}
         />
@@ -163,7 +195,11 @@ const PrivateQueryDiffResultView = (
         style={{ blockSize: "auto", maxHeight: "100%", overflow: "auto" }}
         columns={gridData.columns}
         rows={gridData.rows}
-        renderers={{ noRowsFallback: <EmptyRowsRenderer emptyMessage="No mismatched rows" /> }}
+        renderers={{
+          noRowsFallback: (
+            <EmptyRowsRenderer emptyMessage="No mismatched rows" />
+          ),
+        }}
         defaultColumnOptions={{
           resizable: true,
           maxWidth: 800,
@@ -176,19 +212,39 @@ const PrivateQueryDiffResultView = (
 };
 
 const PrivateQueryDiffJoinResultView = (
-  { run, viewOptions, onViewOptionsChanged, baseTitle, currentTitle }: QueryDiffResultViewProps,
+  {
+    run,
+    viewOptions,
+    onViewOptionsChanged,
+    baseTitle,
+    currentTitle,
+  }: QueryDiffResultViewProps,
   ref: Ref<DataGridHandle>,
 ) => {
   if (run.type !== "query_diff") {
     throw new Error("QueryDiffResult view should be rendered as query_diff");
   }
-  const changedOnly = useMemo(() => viewOptions?.changed_only ?? false, [viewOptions]);
-  const pinnedColumns = useMemo(() => viewOptions?.pinned_columns ?? [], [viewOptions]);
-  const displayMode = useMemo(() => viewOptions?.display_mode ?? "inline", [viewOptions]);
-  const columnsRenderMode = useMemo(() => viewOptions?.columnsRenderMode ?? {}, [viewOptions]);
+  const changedOnly = useMemo(
+    () => viewOptions?.changed_only ?? false,
+    [viewOptions],
+  );
+  const pinnedColumns = useMemo(
+    () => viewOptions?.pinned_columns ?? [],
+    [viewOptions],
+  );
+  const displayMode = useMemo(
+    () => viewOptions?.display_mode ?? "inline",
+    [viewOptions],
+  );
+  const columnsRenderMode = useMemo(
+    () => viewOptions?.columnsRenderMode ?? {},
+    [viewOptions],
+  );
 
   const gridData = useMemo(() => {
-    const onColumnsRenderModeChanged = (cols: Record<string, ColumnRenderMode>) => {
+    const onColumnsRenderModeChanged = (
+      cols: Record<string, ColumnRenderMode>,
+    ) => {
       const newRenderModes = {
         ...(viewOptions?.columnsRenderMode ?? {}),
         ...cols,
@@ -255,7 +311,11 @@ const PrivateQueryDiffJoinResultView = (
 
   if (changedOnly && gridData.rows.length === 0) {
     return (
-      <Flex direction="column" backgroundColor="rgb(249, 249, 249)" height={"100%"}>
+      <Flex
+        direction="column"
+        backgroundColor="rgb(249, 249, 249)"
+        height={"100%"}
+      >
         <RunToolbar
           run={run}
           viewOptions={viewOptions}
@@ -268,12 +328,17 @@ const PrivateQueryDiffJoinResultView = (
   }
 
   return (
-    <Flex direction="column" backgroundColor="rgb(249, 249, 249)" height={"100%"}>
+    <Flex
+      direction="column"
+      backgroundColor="rgb(249, 249, 249)"
+      height={"100%"}
+    >
       <RunToolbar
         run={run}
         viewOptions={viewOptions}
         onViewOptionsChanged={onViewOptionsChanged}
-        warnings={warnings}>
+        warnings={warnings}
+      >
         <DiffDisplayModeSwitch
           displayMode={displayMode}
           onDisplayModeChanged={(displayMode) => {
@@ -291,7 +356,10 @@ const PrivateQueryDiffJoinResultView = (
           onChange={() => {
             const changedOnly = !viewOptions?.changed_only;
             if (onViewOptionsChanged) {
-              onViewOptionsChanged({ ...viewOptions, changed_only: changedOnly });
+              onViewOptionsChanged({
+                ...viewOptions,
+                changed_only: changedOnly,
+              });
             }
           }}
         />
@@ -301,7 +369,11 @@ const PrivateQueryDiffJoinResultView = (
         style={{ blockSize: "auto", maxHeight: "100%", overflow: "auto" }}
         columns={gridData.columns}
         rows={gridData.rows}
-        renderers={{ noRowsFallback: <EmptyRowsRenderer emptyMessage="No mismatched rows" /> }}
+        renderers={{
+          noRowsFallback: (
+            <EmptyRowsRenderer emptyMessage="No mismatched rows" />
+          ),
+        }}
         defaultColumnOptions={{
           resizable: true,
           maxWidth: 800,
@@ -315,18 +387,27 @@ const PrivateQueryDiffJoinResultView = (
 
 // Create the forwardRef components here, at module level
 const QueryDiffResultViewWithRef = forwardRef(PrivateQueryDiffResultView);
-const QueryDiffJoinResultViewWithRef = forwardRef(PrivateQueryDiffJoinResultView);
+const QueryDiffJoinResultViewWithRef = forwardRef(
+  PrivateQueryDiffJoinResultView,
+);
 
 export const QueryDiffResultView = forwardRef(
   (props: QueryDiffResultViewProps, ref: ForwardedRef<DataGridHandle>) => {
     let baseTitle;
     let currentTitle;
-    if (props.run.params && (props.run.params as QueryPreviewChangeParams).current_model) {
+    if (
+      props.run.params &&
+      (props.run.params as QueryPreviewChangeParams).current_model
+    ) {
       // Configure the base and current titles under Sandbox Editor
       baseTitle = "Original";
       currentTitle = "Editor";
     }
-    if (props.run.result && "diff" in props.run.result && props.run.result.diff != null) {
+    if (
+      props.run.result &&
+      "diff" in props.run.result &&
+      props.run.result.diff != null
+    ) {
       return (
         <QueryDiffJoinResultViewWithRef
           {...props}

@@ -1,14 +1,17 @@
-import { HistogramDiffParams, HistogramDiffResult } from "@/lib/api/profile";
-import { RunResultViewProps } from "../run/types";
-import { HStack, Box, Flex, Spacer } from "@chakra-ui/react";
-import { HistogramChart } from "../charts/HistogramChart";
-import { ScreenshotBox } from "../screenshot/ScreenshotBox";
+import { Box, Flex, HStack, Spacer } from "@chakra-ui/react";
 import { forwardRef, Ref } from "react";
+import { HistogramDiffParams, HistogramDiffResult } from "@/lib/api/profile";
 import { isHistogramDiffRun } from "@/lib/api/types";
+import { HistogramChart } from "../charts/HistogramChart";
+import { RunResultViewProps } from "../run/types";
+import { ScreenshotBox } from "../screenshot/ScreenshotBox";
 
 type HistogramDiffResultViewProp = RunResultViewProps;
 
-function _HistogramDiffResultView({ run }: HistogramDiffResultViewProp, ref: Ref<HTMLDivElement>) {
+function _HistogramDiffResultView(
+  { run }: HistogramDiffResultViewProp,
+  ref: Ref<HTMLDivElement>,
+) {
   if (!isHistogramDiffRun(run)) {
     throw new Error("Run type must be histogram_diff");
   }

@@ -17,7 +17,10 @@ export interface ProfileDiffViewOptions {
   columnsRenderMode?: Record<string, ColumnRenderMode>;
 }
 
-export async function submitProfileDiff(params: ProfileDiffParams, options?: SubmitOptions) {
+export async function submitProfileDiff(
+  params: ProfileDiffParams,
+  options?: SubmitOptions,
+) {
   return await submitRun("profile_diff", params, options);
 }
 

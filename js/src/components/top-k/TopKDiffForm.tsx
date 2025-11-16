@@ -1,12 +1,16 @@
-import { TopKDiffParams } from "@/lib/api/profile";
-import { RunFormProps } from "../run/types";
 import { Box, Field, NativeSelect } from "@chakra-ui/react";
 import { useEffect } from "react";
+import { TopKDiffParams } from "@/lib/api/profile";
 import useModelColumns from "@/lib/hooks/useModelColumns";
+import { RunFormProps } from "../run/types";
 
 type TopKDiffFormProps = RunFormProps<TopKDiffParams>;
 
-export function TopKDiffForm({ params, onParamsChanged, setIsReadyToExecute }: TopKDiffFormProps) {
+export function TopKDiffForm({
+  params,
+  onParamsChanged,
+  setIsReadyToExecute,
+}: TopKDiffFormProps) {
   const { columns, isLoading, error } = useModelColumns(params.model);
   const columnNames = columns.map((c) => c.name);
 
@@ -19,7 +23,12 @@ export function TopKDiffForm({ params, onParamsChanged, setIsReadyToExecute }: T
   }
 
   if (columnNames.length === 0 || error) {
-    return <Box>Error: Please provide the &apos;catalog.json&apos; to list column candidates</Box>;
+    return (
+      <Box>
+        Error: Please provide the &apos;catalog.json&apos; to list column
+        candidates
+      </Box>
+    );
   }
 
   return (
@@ -33,7 +42,8 @@ export function TopKDiffForm({ params, onParamsChanged, setIsReadyToExecute }: T
             onChange={(e) => {
               const column = e.target.value;
               onParamsChanged({ ...params, column_name: column });
-            }}>
+            }}
+          >
             {columnNames.map((c) => (
               <option key={c} value={c} className="no-track-pii-safe">
                 {c}

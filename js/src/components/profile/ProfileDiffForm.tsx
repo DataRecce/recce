@@ -1,8 +1,8 @@
-import { RunFormProps } from "../run/types";
+import { Box, Checkbox, Field, Input, VStack } from "@chakra-ui/react";
+import { Select } from "chakra-react-select";
 import { useEffect, useState } from "react";
 import useModelColumns from "@/lib/hooks/useModelColumns";
-import { Select } from "chakra-react-select";
-import { Box, Checkbox, Field, Input, VStack } from "@chakra-ui/react";
+import { RunFormProps } from "../run/types";
 
 export interface ProfileDiffFormParams {
   model: string;
@@ -36,7 +36,12 @@ export function ProfileDiffForm({
   }
 
   if (columnNames.length === 0 || error) {
-    return <Box>Error: Please provide the &apos;catalog.json&apos; to list column candidates</Box>;
+    return (
+      <Box>
+        Error: Please provide the &apos;catalog.json&apos; to list column
+        candidates
+      </Box>
+    );
   }
 
   return (
@@ -56,7 +61,8 @@ export function ProfileDiffForm({
               ...params,
               columns: undefined,
             });
-          }}>
+          }}
+        >
           <Checkbox.HiddenInput />
           <Checkbox.Control />
           <Checkbox.Label>All columns</Checkbox.Label>
@@ -83,7 +89,8 @@ export function ProfileDiffForm({
                 ...params,
                 columns: cols,
               });
-            }}></Select>
+            }}
+          ></Select>
         )}
       </Field.Root>
     </VStack>

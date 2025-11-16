@@ -110,7 +110,10 @@ export function formatTestExpectedOrActual(value?: unknown): unknown {
      (1) a:100 => a
      (1) a:100, b:99, c:99 => a
  */
-export function formatTopKMetrics(topK?: TopKResult): { topValues?: string; topCounts?: string } {
+export function formatTopKMetrics(topK?: TopKResult): {
+  topValues?: string;
+  topCounts?: string;
+} {
   if (!topK) return {};
   const { counts, values } = topK;
   const topValues = `${values[0]}`;
@@ -215,7 +218,10 @@ export function formatAsAbbreviatedNumber(input: number | string) {
     else
       return new Intl.NumberFormat("en-US", {
         maximumFractionDigits: isLargeFractionals ? 3 : 2,
-        notation: isLargeFractionals || inputAsPositive === 0 ? "standard" : "scientific",
+        notation:
+          isLargeFractionals || inputAsPositive === 0
+            ? "standard"
+            : "scientific",
       }).format(input);
   }
 }

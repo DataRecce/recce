@@ -1,11 +1,10 @@
-import { mergeKeysWithStatus } from "@/lib/mergeKeys";
-
 import { ColumnOrColumnGroup } from "react-data-grid";
+import { mergeKeysWithStatus } from "@/lib/mergeKeys";
 
 import "./style.css";
 import { NodeColumnData, NodeData } from "@/lib/api/info";
-import { ColumnNameCell } from "./ColumnNameCell";
 import { RowObjectType } from "@/lib/api/types";
+import { ColumnNameCell } from "./ColumnNameCell";
 
 export interface SchemaDiffRow extends RowObjectType {
   name: string;
@@ -29,7 +28,10 @@ export function mergeColumns(
   currentColumns: NodeData["columns"] = {},
 ): SchemaDiff {
   const result: SchemaDiff = {};
-  const mergedStatus = mergeKeysWithStatus(Object.keys(baseColumns), Object.keys(currentColumns));
+  const mergedStatus = mergeKeysWithStatus(
+    Object.keys(baseColumns),
+    Object.keys(currentColumns),
+  );
 
   Object.entries(mergedStatus).forEach(([name, status]) => {
     result[name] = {
@@ -65,7 +67,11 @@ export function toSchemaDataGrid(
   cllRunningMap?: Map<string, boolean>,
 ) {
   function columnIndexCellClass(row: SchemaDiffRow) {
-    if (row.baseIndex !== undefined && row.currentIndex !== undefined && row.reordered === true) {
+    if (
+      row.baseIndex !== undefined &&
+      row.currentIndex !== undefined &&
+      row.reordered === true
+    ) {
       return "column-index-reordered schema-column schema-column-index";
     }
     return "schema-column schema-column-index";
@@ -146,10 +152,9 @@ export function toSingleEnvDataGrid(
   cllRunningMap?: Map<string, boolean>,
 ) {
   // Filter out any `nodeColumns` with an undefined column
-  const nodeColumnList = Object.entries(nodeColumns).filter(([_, column]) => column != null) as [
-    string,
-    NodeColumnData,
-  ][];
+  const nodeColumnList = Object.entries(nodeColumns).filter(
+    ([_, column]) => column != null,
+  ) as [string, NodeColumnData][];
   const rows: SchemaRow[] = nodeColumnList.map(([name, column], index) => ({
     name,
     index: index + 1,

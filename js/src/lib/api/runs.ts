@@ -1,8 +1,8 @@
-import { axiosClient } from "./axiosClient";
-import { AxiosQueryParams, isQueryRun, Run, RunParamTypes } from "./types";
-import { getExperimentTrackingBreakingChangeEnabled } from "./track";
 import { AxiosResponse } from "axios";
 import { RunType } from "@/components/run/registry";
+import { axiosClient } from "./axiosClient";
+import { getExperimentTrackingBreakingChangeEnabled } from "./track";
+import { AxiosQueryParams, isQueryRun, Run, RunParamTypes } from "./types";
 
 export interface SubmitRunTrackProps {
   breaking_change_analysis?: boolean;
@@ -39,27 +39,33 @@ function mutateAddKey(run: Run): Run {
   return run;
 }
 
-export async function submitRun(type: RunType, params?: RunParamTypes, options?: SubmitOptions) {
+export async function submitRun(
+  type: RunType,
+  params?: RunParamTypes,
+  options?: SubmitOptions,
+) {
   const track_props = options?.trackProps ? { ...options.trackProps } : {};
   if (getExperimentTrackingBreakingChangeEnabled()) {
     track_props.breaking_change_analysis = true;
   }
 
-  const response = await axiosClient.post<SubmitRunBody, AxiosResponse<Run | Pick<Run, "run_id">>>(
-    "/api/runs",
-    {
-      type,
-      params,
-      nowait: options?.nowait,
-      track_props,
-    },
-  );
+  const response = await axiosClient.post<
+    SubmitRunBody,
+    AxiosResponse<Run | Pick<Run, "run_id">>
+  >("/api/runs", {
+    type,
+    params,
+    nowait: options?.nowait,
+    track_props,
+  });
 
   return response.data;
 }
 
 export async function getRun(runId: string) {
-  const response = await axiosClient.get<never, AxiosResponse<Run>>(`/api/runs/${runId}`);
+  const response = await axiosClient.get<never, AxiosResponse<Run>>(
+    `/api/runs/${runId}`,
+  );
   return response.data;
 }
 
@@ -83,10 +89,15 @@ export async function waitRun(runId: string, timeout?: number) {
 }
 
 export async function cancelRun(runId: string) {
-  return await axiosClient.post<never, AxiosResponse<never>>(`/api/runs/${runId}/cancel`);
+  return await axiosClient.post<never, AxiosResponse<never>>(
+    `/api/runs/${runId}/cancel`,
+  );
 }
 
-export async function submitRunFromCheck(checkId: string, options?: SubmitOptions) {
+export async function submitRunFromCheck(
+  checkId: string,
+  options?: SubmitOptions,
+) {
   const response = await axiosClient.post<
     { nowait?: boolean },
     AxiosResponse<Run | Pick<Run, "run_id">>
@@ -103,7 +114,11 @@ interface SearchRunsBody {
   limit?: number;
 }
 
-export async function searchRuns(type: string, params?: AxiosQueryParams, limit?: number) {
+export async function searchRuns(
+  type: string,
+  params?: AxiosQueryParams,
+  limit?: number,
+) {
   const response = await axiosClient.post<SearchRunsBody, AxiosResponse<Run[]>>(
     `/api/runs/search`,
     {
@@ -117,7 +132,9 @@ export async function searchRuns(type: string, params?: AxiosQueryParams, limit?
 }
 
 export async function listRuns(): Promise<Run[]> {
-  const response = await axiosClient.get<never, AxiosResponse<Run[]>>("/api/runs");
+  const response = await axiosClient.get<never, AxiosResponse<Run[]>>(
+    "/api/runs",
+  );
   return response.data;
 }
 
@@ -133,10 +150,10 @@ export type RunsAggregated = Record<
 >;
 export async function aggregateRuns(): Promise<RunsAggregated> {
   // input should be AggregateRunsIn
-  const response = await axiosClient.post<unknown, AxiosResponse<RunsAggregated>>(
-    `/api/runs/aggregate`,
-    {},
-  );
+  const response = await axiosClient.post<
+    unknown,
+    AxiosResponse<RunsAggregated>
+  >(`/api/runs/aggregate`, {});
 
   return response.data;
 }

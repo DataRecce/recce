@@ -1,14 +1,12 @@
-import React from "react";
-import { useLineageGraphContext } from "@/lib/hooks/LineageGraphContext";
 import {
   Button,
   CloseButton,
+  Dialog,
   Flex,
   Heading,
   Icon,
   IconButton,
   Link,
-  Dialog,
   List,
   Portal,
   Separator,
@@ -16,11 +14,13 @@ import {
   useDisclosure,
 } from "@chakra-ui/react";
 import { format, formatDistance, parseISO } from "date-fns";
-import { IconInfo } from "../icons";
 import { isEmpty } from "lodash";
+import React from "react";
+import { LuExternalLink } from "react-icons/lu";
 import { LineageGraph } from "@/components/lineage/lineage";
 import { Tooltip } from "@/components/ui/tooltip";
-import { LuExternalLink } from "react-icons/lu";
+import { useLineageGraphContext } from "@/lib/hooks/LineageGraphContext";
+import { IconInfo } from "../icons";
 
 export function formatTimestamp(timestamp: string): string {
   const date = parseISO(timestamp);
@@ -34,7 +34,9 @@ export function formatTimeToNow(timestamp: string): string {
   });
 }
 
-export function extractSchemas(lineageGraph: LineageGraph | undefined): [Set<string>, Set<string>] {
+export function extractSchemas(
+  lineageGraph: LineageGraph | undefined,
+): [Set<string>, Set<string>] {
   const baseSchemas = new Set<string>();
   const currentSchemas = new Set<string>();
 
@@ -61,7 +63,9 @@ function renderInfoEntries(info: object): React.JSX.Element[] {
   }
 
   return Object.entries(info)
-    .filter(([key, value]) => key !== "url" && value !== null && value !== undefined)
+    .filter(
+      ([key, value]) => key !== "url" && value !== null && value !== undefined,
+    )
     .map(([key, value]) => (
       <List.Item key={key} ml="10px">
         {key}: {value}
@@ -79,22 +83,36 @@ export function EnvInfo() {
   const dbtBase = envInfo?.dbt?.base;
   const dbtCurrent = envInfo?.dbt?.current;
 
-  const baseTime = dbtBase?.generated_at ? formatTimestamp(dbtBase.generated_at) : "";
-  const currentTime = dbtCurrent?.generated_at ? formatTimestamp(dbtCurrent.generated_at) : "";
+  const baseTime = dbtBase?.generated_at
+    ? formatTimestamp(dbtBase.generated_at)
+    : "";
+  const currentTime = dbtCurrent?.generated_at
+    ? formatTimestamp(dbtCurrent.generated_at)
+    : "";
   let baseRelativeTime = "";
   let currentRelativeTime = "";
   if (dbtBase) {
-    baseRelativeTime = dbtBase.generated_at ? formatTimeToNow(dbtBase.generated_at) : "";
+    baseRelativeTime = dbtBase.generated_at
+      ? formatTimeToNow(dbtBase.generated_at)
+      : "";
   }
   if (dbtCurrent) {
-    currentRelativeTime = dbtCurrent.generated_at ? formatTimeToNow(dbtCurrent.generated_at) : "";
+    currentRelativeTime = dbtCurrent.generated_at
+      ? formatTimeToNow(dbtCurrent.generated_at)
+      : "";
   }
   const [baseSchemas, currentSchemas] = extractSchemas(lineageGraph);
 
   return (
     <>
-      <Tooltip content="Environment Info" positioning={{ placement: "bottom-end" }}>
-        <div className="flex items-center hover:cursor-pointer hover:text-black" onClick={onOpen}>
+      <Tooltip
+        content="Environment Info"
+        positioning={{ placement: "bottom-end" }}
+      >
+        <div
+          className="flex items-center hover:cursor-pointer hover:text-black"
+          onClick={onOpen}
+        >
           <div className="hidden text-sm lg:flex lg:flex-col">
             <div className="flex gap-1">
               <span className="no-track-pii-safe max-w-32 truncate">
@@ -132,12 +150,17 @@ export function EnvInfo() {
                           {reviewInfo.url && (
                             <List.Item ml="10px">
                               url:{" "}
-                              <Link href={reviewInfo.url} color="blue.500" target="_blank">
+                              <Link
+                                href={reviewInfo.url}
+                                color="blue.500"
+                                target="_blank"
+                              >
                                 {reviewInfo.url} <LuExternalLink />
                               </Link>
                             </List.Item>
                           )}
-                          {!isEmpty(reviewInfo) && renderInfoEntries(reviewInfo)}
+                          {!isEmpty(reviewInfo) &&
+                            renderInfoEntries(reviewInfo)}
                         </List.Root>
                       </Flex>
                     </>
@@ -170,8 +193,11 @@ export function EnvInfo() {
                                   <Tooltip
                                     key={item}
                                     content={item}
-                                    positioning={{ placement: "bottom" }}>
-                                    <div className="max-w-72 truncate">{item}</div>
+                                    positioning={{ placement: "bottom" }}
+                                  >
+                                    <div className="max-w-72 truncate">
+                                      {item}
+                                    </div>
                                   </Tooltip>
                                 ))}
                               </Table.Cell>
@@ -180,8 +206,11 @@ export function EnvInfo() {
                                   <Tooltip
                                     key={item}
                                     content={item}
-                                    positioning={{ placement: "bottom" }}>
-                                    <div className="max-w-72 truncate">{item}</div>
+                                    positioning={{ placement: "bottom" }}
+                                  >
+                                    <div className="max-w-72 truncate">
+                                      {item}
+                                    </div>
                                   </Tooltip>
                                 ))}
                               </Table.Cell>

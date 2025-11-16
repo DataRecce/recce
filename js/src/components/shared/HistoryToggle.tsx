@@ -1,13 +1,13 @@
 "use client";
 
-import React, { ReactNode } from "react";
-import { useRecceActionContext } from "@/lib/hooks/RecceActionContext";
 import { Box, Button } from "@chakra-ui/react";
-import { trackHistoryAction } from "@/lib/api/track";
+import React, { ReactNode } from "react";
 import { VscHistory } from "react-icons/vsc";
+import { trackHistoryAction } from "@/lib/api/track";
+import { useRecceActionContext } from "@/lib/hooks/RecceActionContext";
 
 export default function HistoryToggle(): ReactNode {
-  const { isHistoryOpen, setHistoryOpen, showHistory, closeHistory } = useRecceActionContext();
+  const { isHistoryOpen, showHistory } = useRecceActionContext();
 
   if (isHistoryOpen) {
     return;
@@ -23,7 +23,8 @@ export default function HistoryToggle(): ReactNode {
         onClick={() => {
           trackHistoryAction({ name: "show" });
           showHistory();
-        }}>
+        }}
+      >
         <VscHistory /> Show
       </Button>
     </Box>

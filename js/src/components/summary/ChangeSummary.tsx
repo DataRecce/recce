@@ -1,11 +1,16 @@
-import { Box, Grid, Icon, VStack, Text, Flex } from "@chakra-ui/react";
+import { Box, Flex, Grid, Icon, Text, VStack } from "@chakra-ui/react";
 import { ReactNode } from "react";
-import { FiInfo } from "react-icons/fi";
-import { IconAdded, IconChanged, IconModified, IconRemoved } from "../lineage/styles";
-import { LineageGraph } from "../lineage/lineage";
-import { NodeData } from "@/lib/api/info";
-import { Tooltip } from "@/components/ui/tooltip";
 import { IconType } from "react-icons";
+import { FiInfo } from "react-icons/fi";
+import { Tooltip } from "@/components/ui/tooltip";
+import { NodeData } from "@/lib/api/info";
+import { LineageGraph } from "../lineage/lineage";
+import {
+  IconAdded,
+  IconChanged,
+  IconModified,
+  IconRemoved,
+} from "../lineage/styles";
 
 export type ChangeStatus =
   // node change
@@ -56,7 +61,15 @@ export function getIconForChangeStatus(changeStatus?: ChangeStatus): {
   return { color: "inherit", icon: undefined };
 }
 
-function SummaryText({ name, value, tip }: { name: ReactNode; value: ReactNode; tip?: ReactNode }) {
+function SummaryText({
+  name,
+  value,
+  tip,
+}: {
+  name: ReactNode;
+  value: ReactNode;
+  tip?: ReactNode;
+}) {
   return (
     <VStack alignItems="stretch">
       <Text fontSize="sm" color="gray">
@@ -95,7 +108,10 @@ function ChangeStatusCountLabel({
   );
 }
 
-function calculateColumnChange(base: NodeData | undefined, current: NodeData | undefined) {
+function calculateColumnChange(
+  base: NodeData | undefined,
+  current: NodeData | undefined,
+) {
   let adds = 0;
   let removes = 0;
   let modifies = 0;
@@ -138,8 +154,10 @@ function calculateChangeSummary(lineageGraph: LineageGraph) {
 
   modifiedSet.forEach((nodeId) => {
     if (lineageGraph.nodes[nodeId].data.changeStatus === "added") adds++;
-    else if (lineageGraph.nodes[nodeId].data.changeStatus === "removed") removes++;
-    else if (lineageGraph.nodes[nodeId].data.changeStatus === "modified") modifies++;
+    else if (lineageGraph.nodes[nodeId].data.changeStatus === "removed")
+      removes++;
+    else if (lineageGraph.nodes[nodeId].data.changeStatus === "modified")
+      modifies++;
 
     const base = lineageGraph.nodes[nodeId].data.data.base;
     const current = lineageGraph.nodes[nodeId].data.data.current;
@@ -161,7 +179,12 @@ export function ChangeSummary({ lineageGraph }: Props) {
     calculateChangeSummary(lineageGraph);
 
   return (
-    <Grid templateColumns="1fr 1fr" mb="10px" borderTop="1px solid lightgray" padding={"2.5vw"}>
+    <Grid
+      templateColumns="1fr 1fr"
+      mb="10px"
+      borderTop="1px solid lightgray"
+      padding={"2.5vw"}
+    >
       <Box borderColor="lightgray">
         <SummaryText
           name="Code Changes"
@@ -169,8 +192,14 @@ export function ChangeSummary({ lineageGraph }: Props) {
             <>
               <Grid templateColumns="1fr 1fr 1fr" width="100%">
                 <ChangeStatusCountLabel changeStatus="added" value={adds} />
-                <ChangeStatusCountLabel changeStatus="removed" value={removes} />
-                <ChangeStatusCountLabel changeStatus="modified" value={modifies} />
+                <ChangeStatusCountLabel
+                  changeStatus="removed"
+                  value={removes}
+                />
+                <ChangeStatusCountLabel
+                  changeStatus="modified"
+                  value={modifies}
+                />
               </Grid>
             </>
           }
@@ -182,9 +211,18 @@ export function ChangeSummary({ lineageGraph }: Props) {
           value={
             <>
               <Grid templateColumns="1fr 1fr 1fr" width="100%">
-                <ChangeStatusCountLabel changeStatus="col_added" value={col_added} />
-                <ChangeStatusCountLabel changeStatus="col_removed" value={col_removed} />
-                <ChangeStatusCountLabel changeStatus="col_changed" value={col_changed} />
+                <ChangeStatusCountLabel
+                  changeStatus="col_added"
+                  value={col_added}
+                />
+                <ChangeStatusCountLabel
+                  changeStatus="col_removed"
+                  value={col_removed}
+                />
+                <ChangeStatusCountLabel
+                  changeStatus="col_changed"
+                  value={col_changed}
+                />
               </Grid>
             </>
           }

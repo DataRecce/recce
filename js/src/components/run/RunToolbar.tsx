@@ -1,8 +1,8 @@
 import { Box, Flex, Spacer, VStack } from "@chakra-ui/react";
-import { RunResultViewProps } from "./types";
+import _ from "lodash";
 import { ReactNode } from "react";
 import { PiWarning } from "react-icons/pi";
-import _ from "lodash";
+import { RunResultViewProps } from "./types";
 
 export interface DiffViewOptions {
   changed_only?: boolean;
@@ -13,7 +13,10 @@ interface RunToolbarProps<VO> extends RunResultViewProps<VO> {
   children?: ReactNode;
 }
 
-export const RunToolbar = ({ warnings, children }: RunToolbarProps<DiffViewOptions>) => {
+export const RunToolbar = ({
+  warnings,
+  children,
+}: RunToolbarProps<DiffViewOptions>) => {
   return (
     <Flex
       borderBottom="1px solid lightgray"
@@ -21,7 +24,8 @@ export const RunToolbar = ({ warnings, children }: RunToolbarProps<DiffViewOptio
       gap="5px"
       alignItems="center"
       px="10px"
-      bg={warnings && warnings.length > 0 ? "orange.100" : "inherit"}>
+      bg={warnings && warnings.length > 0 ? "orange.100" : "inherit"}
+    >
       <VStack alignItems="flex-start" gap={0}>
         {warnings?.map((warning) => (
           <Box key={_.uniqueId(`-${warning}`)}>

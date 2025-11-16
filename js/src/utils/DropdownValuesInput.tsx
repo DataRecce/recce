@@ -1,4 +1,3 @@
-import React, { useState, useRef } from "react";
 import {
   Box,
   Button,
@@ -11,9 +10,9 @@ import {
   Wrap,
   WrapItem,
 } from "@chakra-ui/react";
-
-import { Tooltip } from "@/components/ui/tooltip";
 import _ from "lodash";
+import React, { useRef, useState } from "react";
+import { Tooltip } from "@/components/ui/tooltip";
 
 export interface DropdownValuesInputProps extends InputProps {
   unitName: string;
@@ -56,7 +55,11 @@ export const DropdownValuesInput = (props: DropdownValuesInputProps) => {
   const lowerCaseFilter = filter.toLowerCase();
   const filteredList =
     suggestionList
-      ?.filter((value) => lowerCaseFilter === "" || value.toLowerCase().includes(lowerCaseFilter))
+      ?.filter(
+        (value) =>
+          lowerCaseFilter === "" ||
+          value.toLowerCase().includes(lowerCaseFilter),
+      )
       .filter((value) => !values.includes(value)) ?? [];
   const limit = 10;
 
@@ -69,25 +72,32 @@ export const DropdownValuesInput = (props: DropdownValuesInputProps) => {
         fontSize={props.size}
         paddingTop="0"
         me={-2}
-        onClick={handleClear}>
+        onClick={handleClear}
+      >
         Clear
       </Button>
     ) : undefined;
 
   return (
-    <InputGroup width={props.width} className={className} endElement={endElement}>
+    <InputGroup
+      width={props.width}
+      className={className}
+      endElement={endElement}
+    >
       <Menu.Root
         size="sm"
         lazyMount
         closeOnSelect={false}
-        onOpenChange={() => inputRef.current?.focus()}>
+        onOpenChange={() => inputRef.current?.focus()}
+      >
         <Menu.Trigger asChild>
           <Button
             width={"100%"}
             size="2xs"
             colorPalette="gray"
             variant="outline"
-            justifyContent="flex-start">
+            justifyContent="flex-start"
+          >
             {showNumberOfValuesSelected(values)}
           </Button>
         </Menu.Trigger>
@@ -97,7 +107,8 @@ export const DropdownValuesInput = (props: DropdownValuesInputProps) => {
               zIndex={"popover"}
               fontSize={props.size}
               width={props.width}
-              className="no-track-pii-safe">
+              className="no-track-pii-safe"
+            >
               {/* Input Filter & Show Tags */}
               <Menu.ItemGroup>
                 <Wrap
@@ -105,7 +116,8 @@ export const DropdownValuesInput = (props: DropdownValuesInputProps) => {
                   borderRadius={"4px"}
                   width={"calc(100% - 8px)"}
                   marginX={"4px"}
-                  padding={"4px"}>
+                  padding={"4px"}
+                >
                   {values.map((value) => (
                     <WrapItem key={value}>
                       <Tag.Root
@@ -119,7 +131,8 @@ export const DropdownValuesInput = (props: DropdownValuesInputProps) => {
                               : props.size === "lg"
                                 ? props.size
                                 : "md"
-                        }>
+                        }
+                      >
                         <Tag.Label>{value}</Tag.Label>
                         <Tag.EndElement>
                           <Tag.CloseTrigger
@@ -144,7 +157,9 @@ export const DropdownValuesInput = (props: DropdownValuesInputProps) => {
                         setIsTyping(true);
                       }}
                       onKeyDown={(e) => {
-                        const newText = e.currentTarget.value.trim().replace(",", "");
+                        const newText = e.currentTarget.value
+                          .trim()
+                          .replace(",", "");
                         switch (e.key) {
                           case ",":
                           case "Enter":
@@ -152,7 +167,10 @@ export const DropdownValuesInput = (props: DropdownValuesInputProps) => {
                             setFilter("");
                             break;
                           case "Backspace":
-                            if (e.currentTarget.value === "" && values.length > 0) {
+                            if (
+                              e.currentTarget.value === "" &&
+                              values.length > 0
+                            ) {
                               setValues(values.slice(0, -1));
                               onValuesChange(values.slice(0, -1));
                             }
@@ -162,7 +180,8 @@ export const DropdownValuesInput = (props: DropdownValuesInputProps) => {
                         }
                       }}
                       onBlur={() => {
-                        if (inputRef.current && isTyping) inputRef.current.focus();
+                        if (inputRef.current && isTyping)
+                          inputRef.current.focus();
                       }}
                     />
                   </WrapItem>
@@ -178,7 +197,8 @@ export const DropdownValuesInput = (props: DropdownValuesInputProps) => {
                     onClick={() => {
                       handleSelect(filter);
                       setIsTyping(false);
-                    }}>
+                    }}
+                  >
                     Add &apos;{filter}&apos; to the list
                   </Menu.Item>
                 )}
@@ -189,7 +209,8 @@ export const DropdownValuesInput = (props: DropdownValuesInputProps) => {
                       value={`option-${cid}`}
                       onClick={() => {
                         handleSelect(value);
-                      }}>
+                      }}
+                    >
                       {value}
                     </Menu.Item>
                   ))
@@ -197,7 +218,8 @@ export const DropdownValuesInput = (props: DropdownValuesInputProps) => {
                 {filteredList.length > limit && (
                   <Tooltip
                     content="Please use filter to find more items"
-                    positioning={{ placement: "top" }}>
+                    positioning={{ placement: "top" }}
+                  >
                     <Box px="12px" color="gray" fontSize="8pt">
                       and {filteredList.length - limit} more items...
                     </Box>
