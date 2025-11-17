@@ -55,7 +55,7 @@ const ContextMenu = ({ menuItems, open, onClose, x, y }: ContextMenuProps) => {
       <Portal>
         <Menu.Positioner>
           <Menu.Content
-            fontSize="10pt"
+            fontSize="0.85rem"
             position="absolute"
             width="250px"
             style={{
@@ -89,7 +89,9 @@ const ContextMenu = ({ menuItems, open, onClose, x, y }: ContextMenuProps) => {
                   // Wrap disabled items with SetupConnectionPopover
                   if (isDisabled) {
                     return (
-                      <SetupConnectionPopover display={featureToggles.mode === "metadata only"}>
+                      <SetupConnectionPopover
+                        display={featureToggles.mode === "metadata only"}
+                        key={label}>
                         {menuItem}
                       </SetupConnectionPopover>
                     );
@@ -393,6 +395,15 @@ export const ColumnNodeContextMenu = ({
       { showForm: false, trackProps },
     );
   };
+
+  const handleValueDiff = () => {
+    runAction(
+      "value_diff",
+      { model: modelNode.name, columns: [column] },
+      { showForm: true, trackProps },
+    );
+  };
+
   const addedOrRemoved =
     modelNode.data.base?.columns?.[column] === undefined ||
     modelNode.data.current?.columns?.[column] === undefined;
@@ -421,6 +432,14 @@ export const ColumnNodeContextMenu = ({
       label: isTopKDiffRun.title,
       itemIcon: <Icon as={isTopKDiffRun.icon} />,
       action: handleTopkDiff,
+      isDisabled: addedOrRemoved || isQueryDisabled,
+    });
+
+    const isValueDiffRun = findByRunType("value_diff");
+    menuItems.push({
+      label: isValueDiffRun.title,
+      itemIcon: <Icon as={isValueDiffRun.icon} />,
+      action: handleValueDiff,
       isDisabled: addedOrRemoved || isQueryDisabled,
     });
   }

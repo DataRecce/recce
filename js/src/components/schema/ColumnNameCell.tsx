@@ -40,6 +40,11 @@ export function ColumnNameCell({
   const handleTopkDiff = () => {
     runAction("top_k_diff", { model: model.name, column_name: name, k: 50 }, { showForm: false });
   };
+
+  const handleValueDiff = () => {
+    runAction("value_diff", { model: model.name, columns: [name] }, { showForm: true });
+  };
+
   const addedOrRemoved = !baseType || !currentType;
   const isCllDisabled =
     lineageViewContext === undefined || (baseIndex !== undefined && currentIndex === undefined);
@@ -84,14 +89,14 @@ export function ColumnNameCell({
                   <Menu.ItemGroup title="Diff" m="0" p="4px 12px">
                     <Menu.Item
                       value="profile-diff"
-                      fontSize="10pt"
+                      fontSize="0.85rem"
                       onClick={handleProfileDiff}
                       disabled={addedOrRemoved}>
                       Profile Diff
                     </Menu.Item>
                     <Menu.Item
                       value="histogram-diff"
-                      fontSize="10pt"
+                      fontSize="0.85rem"
                       onClick={handleHistogramDiff}
                       disabled={
                         addedOrRemoved || (columnType ? !supportsHistogramDiff(columnType) : true)
@@ -100,10 +105,17 @@ export function ColumnNameCell({
                     </Menu.Item>
                     <Menu.Item
                       value="top-k-diff"
-                      fontSize="10pt"
+                      fontSize="0.85rem"
                       onClick={handleTopkDiff}
                       disabled={addedOrRemoved}>
                       Top-k Diff
+                    </Menu.Item>
+                    <Menu.Item
+                      value="value-diff"
+                      fontSize="0.85rem"
+                      onClick={handleValueDiff}
+                      disabled={addedOrRemoved}>
+                      Value Diff
                     </Menu.Item>
                   </Menu.ItemGroup>
                 </Menu.Content>
