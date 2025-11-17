@@ -89,14 +89,14 @@ export function ColumnNameCell({
                   <Menu.ItemGroup title="Diff" m="0" p="4px 12px">
                     <Menu.Item
                       value="profile-diff"
-                      fontSize="10pt"
+                      fontSize="0.85rem"
                       onClick={handleProfileDiff}
                       disabled={addedOrRemoved}>
                       Profile Diff
                     </Menu.Item>
                     <Menu.Item
                       value="histogram-diff"
-                      fontSize="10pt"
+                      fontSize="0.85rem"
                       onClick={handleHistogramDiff}
                       disabled={
                         addedOrRemoved || (columnType ? !supportsHistogramDiff(columnType) : true)
@@ -105,14 +105,14 @@ export function ColumnNameCell({
                     </Menu.Item>
                     <Menu.Item
                       value="top-k-diff"
-                      fontSize="10pt"
+                      fontSize="0.85rem"
                       onClick={handleTopkDiff}
                       disabled={addedOrRemoved}>
                       Top-k Diff
                     </Menu.Item>
                     <Menu.Item
                       value="value-diff"
-                      fontSize="10pt"
+                      fontSize="0.85rem"
                       onClick={handleValueDiff}
                       disabled={addedOrRemoved}>
                       Value Diff

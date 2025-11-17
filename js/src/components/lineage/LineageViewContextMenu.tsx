@@ -55,7 +55,7 @@ const ContextMenu = ({ menuItems, open, onClose, x, y }: ContextMenuProps) => {
       <Portal>
         <Menu.Positioner>
           <Menu.Content
-            fontSize="10pt"
+            fontSize="0.85rem"
             position="absolute"
             width="250px"
             style={{
@@ -89,7 +89,9 @@ const ContextMenu = ({ menuItems, open, onClose, x, y }: ContextMenuProps) => {
                   // Wrap disabled items with SetupConnectionPopover
                   if (isDisabled) {
                     return (
-                      <SetupConnectionPopover display={featureToggles.mode === "metadata only"}>
+                      <SetupConnectionPopover
+                        display={featureToggles.mode === "metadata only"}
+                        key={label}>
                         {menuItem}
                       </SetupConnectionPopover>
                     );
