@@ -32,14 +32,36 @@ Cut dbt review time by 90% and ship accurate data fast
 Recce gives data teams a faster, more reliable way to understand, review, and ship changes without all the guesswork or manual overhead.
 
 ## Quick Start
+
+### Installation
+
+Recce offers two packages to fit different use cases:
+
+**For full local development and Recce Cloud features:**
+```bash
+pip install -U recce
+recce server
+```
+
+**For CI/CD artifact uploads only (lightweight):**
+```bash
+pip install -U recce-cloud
+recce-cloud upload
+```
+
+The `recce-cloud` package is a lightweight CLI tool designed specifically for CI/CD environments where you only need to upload dbt artifacts to Recce Cloud. It has minimal dependencies and installs faster than the full `recce` package.
+
+### Getting Started
+
 You can launch Recce in any dbt project in just two commands:
 
-```Bash
+```bash
 # cd into your dbt project
 pip install -U recce
 recce server
 ```
-This starts Recce locally, where you can explore lineage and run queries. To unlock the full set of diffing tools, such as data comparisons and impact checks, you’ll need to prepare two environments to compare against. You can follow our [Getting Started](https://docs.reccehq.com/get-started/) and [5-minute Jaffle Shop tutorial](https://docs.reccehq.com/get-started-jaffle-shop/) to try it out step-by-step.
+
+This starts Recce locally, where you can explore lineage and run queries. To unlock the full set of diffing tools, such as data comparisons and impact checks, you'll need to prepare two environments to compare against. You can follow our [Getting Started](https://docs.reccehq.com/get-started/) and [5-minute Jaffle Shop tutorial](https://docs.reccehq.com/get-started-jaffle-shop/) to try it out step-by-step.
 
 ## What You Get
 
