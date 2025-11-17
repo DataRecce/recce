@@ -1,12 +1,14 @@
-import { useState, useEffect, useMemo, useCallback } from "react";
-import { NodeColumnData, NodeData, getModelInfo } from "../api/info";
-import { useLineageGraphContext } from "./LineageGraphContext";
 import _ from "lodash";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { LineageGraphNode } from "@/components/lineage/lineage";
+import { getModelInfo, NodeColumnData, NodeData } from "../api/info";
+import { useLineageGraphContext } from "./LineageGraphContext";
 
 export function extractColumns(node: LineageGraphNode) {
   function getColumns(nodeData: NodeData | undefined) {
-    return nodeData?.columns ? Object.values(nodeData.columns).filter((c) => c != null) : [];
+    return nodeData?.columns
+      ? Object.values(nodeData.columns).filter((c) => c != null)
+      : [];
   }
 
   const baseColumns = getColumns(node.data.data.base);
@@ -15,7 +17,10 @@ export function extractColumns(node: LineageGraphNode) {
   return unionColumns(baseColumns, currentColumns);
 }
 
-export function unionColumns(baseColumns: NodeColumnData[], currentColumns: NodeColumnData[]) {
+export function unionColumns(
+  baseColumns: NodeColumnData[],
+  currentColumns: NodeColumnData[],
+) {
   const union: NodeColumnData[] = [];
   baseColumns.forEach((column) => {
     if (!union.some((c) => c.name === column.name)) {

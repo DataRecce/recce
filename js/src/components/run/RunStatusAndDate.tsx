@@ -1,6 +1,6 @@
-import { Run } from "@/lib/api/types";
 import { Flex, Spinner, Text } from "@chakra-ui/react";
 import { format } from "date-fns";
+import { Run } from "@/lib/api/types";
 
 export function formatRunDate(date: Date | null) {
   const today = new Date();
@@ -75,7 +75,8 @@ export const RunStatusAndDate = ({ run }: { run: Run }) => {
       color="gray.500"
       gap="3px"
       alignItems={"center"}
-      overflow={"hidden"}>
+      overflow={"hidden"}
+    >
       {isRunning && <Spinner size="xs" color={`${color}.400`} />}
       <Text fontWeight={500} color={`${color}.400`}>
         {message}

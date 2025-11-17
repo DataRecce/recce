@@ -1,6 +1,4 @@
 import "react-data-grid/lib/styles.css";
-import { ColumnOrColumnGroup, DataGridHandle } from "react-data-grid";
-import { QueryViewOptions } from "@/lib/api/adhocQuery";
 import {
   Box,
   Button,
@@ -12,7 +10,13 @@ import {
   Portal,
   Spacer,
 } from "@chakra-ui/react";
+import _ from "lodash";
 import React, { forwardRef, Ref, useMemo } from "react";
+import { ColumnOrColumnGroup, DataGridHandle } from "react-data-grid";
+import { PiDotsThreeVertical, PiWarning } from "react-icons/pi";
+import { VscPin, VscPinned } from "react-icons/vsc";
+import { columnPrecisionSelectOptions } from "@/components/valuediff/shared";
+import { QueryViewOptions } from "@/lib/api/adhocQuery";
 import {
   ColumnRenderMode,
   ColumnType,
@@ -22,14 +26,13 @@ import {
   RowObjectType,
   Run,
 } from "@/lib/api/types";
-import { EmptyRowsRenderer, ScreenshotDataGrid } from "../data-grid/ScreenshotDataGrid";
-import { DataFrameColumnGroupHeader, defaultRenderCell } from "./querydiff";
-import { VscPin, VscPinned } from "react-icons/vsc";
-import { RunResultViewProps } from "../run/types";
-import _ from "lodash";
-import { columnPrecisionSelectOptions } from "@/components/valuediff/shared";
-import { PiDotsThreeVertical, PiWarning } from "react-icons/pi";
 import { dataFrameToRowObjects } from "@/utils/transforms";
+import {
+  EmptyRowsRenderer,
+  ScreenshotDataGrid,
+} from "../data-grid/ScreenshotDataGrid";
+import { RunResultViewProps } from "../run/types";
+import { DataFrameColumnGroupHeader, defaultRenderCell } from "./querydiff";
 
 interface QueryResultViewProp extends RunResultViewProps<QueryViewOptions> {
   onAddToChecklist?: (run: Run) => void;
@@ -47,17 +50,25 @@ interface QueryDataGridOptions {
 function DataFrameColumnHeader({
   name,
   pinnedColumns = [],
-  onPinnedColumnsChange = () => {},
+  onPinnedColumnsChange = () => {
+    return void 0;
+  },
   columnType,
   onColumnsRenderModeChanged,
 }: {
   name: string;
   columnType: ColumnType;
-  onColumnRenderModeChanged?: (colNam: string, renderAs: ColumnRenderMode) => void;
+  onColumnRenderModeChanged?: (
+    colNam: string,
+    renderAs: ColumnRenderMode,
+  ) => void;
 } & QueryDataGridOptions) {
   let selectOptions: { value: string; onClick: () => void }[] = [];
   if (onColumnsRenderModeChanged) {
-    selectOptions = columnPrecisionSelectOptions(name, onColumnsRenderModeChanged);
+    selectOptions = columnPrecisionSelectOptions(
+      name,
+      onColumnsRenderModeChanged,
+    );
   }
 
   const isPinned = pinnedColumns.includes(name);
@@ -88,7 +99,11 @@ function DataFrameColumnHeader({
       {columnType === "number" && (
         <Menu.Root>
           <Menu.Trigger asChild>
-            <IconButton aria-label="Options" variant="plain" className="!size-4 !min-w-4">
+            <IconButton
+              aria-label="Options"
+              variant="plain"
+              className="!size-4 !min-w-4"
+            >
               <PiDotsThreeVertical />
             </IconButton>
           </Menu.Trigger>
@@ -135,7 +150,9 @@ export function toDataGrid(result: DataFrame, options: QueryDataGridOptions) {
     columnRenderMode?: ColumnRenderMode;
   } => ({
     key: key,
-    name: <DataFrameColumnHeader name={name} {...options} columnType={columnType} />,
+    name: (
+      <DataFrameColumnHeader name={name} {...options} columnType={columnType} />
+    ),
     width: "auto",
     renderCell: defaultRenderCell,
     columnType,
@@ -171,7 +188,9 @@ export function toDataGrid(result: DataFrame, options: QueryDataGridOptions) {
     primaryKeys.forEach((name) => {
       const columnType = columnMap[name].colType;
 
-      columns.push(toColumnGroup(name, name, columnType, columnsRenderMode[name]));
+      columns.push(
+        toColumnGroup(name, name, columnType, columnsRenderMode[name]),
+      );
     });
   } else {
     columns.push({
@@ -189,7 +208,9 @@ export function toDataGrid(result: DataFrame, options: QueryDataGridOptions) {
       return;
     }
 
-    columns.push(toColumn(key, result.columns[i].name, columnType, columnsRenderMode[key]));
+    columns.push(
+      toColumn(key, result.columns[i].name, columnType, columnsRenderMode[key]),
+    );
   });
 
   result.columns.forEach(({ name, key }) => {
@@ -209,18 +230,31 @@ export function toDataGrid(result: DataFrame, options: QueryDataGridOptions) {
 }
 
 const PrivateQueryResultView = (
-  { run, viewOptions, onViewOptionsChanged, onAddToChecklist }: QueryResultViewProp,
+  {
+    run,
+    viewOptions,
+    onViewOptionsChanged,
+    onAddToChecklist,
+  }: QueryResultViewProp,
   ref: Ref<DataGridHandle>,
 ) => {
   if (!(isQueryRun(run) || isQueryBaseRun(run))) {
     throw new Error("run type must be query");
   }
-  const pinnedColumns = useMemo(() => viewOptions?.pinned_columns ?? [], [viewOptions]);
-  const columnsRenderMode = useMemo(() => viewOptions?.columnsRenderMode ?? {}, [viewOptions]);
+  const pinnedColumns = useMemo(
+    () => viewOptions?.pinned_columns ?? [],
+    [viewOptions],
+  );
+  const columnsRenderMode = useMemo(
+    () => viewOptions?.columnsRenderMode ?? {},
+    [viewOptions],
+  );
 
   const dataframe = run.result;
   const gridData = useMemo(() => {
-    const onColumnsRenderModeChanged = (cols: Record<string, ColumnRenderMode>) => {
+    const onColumnsRenderModeChanged = (
+      cols: Record<string, ColumnRenderMode>,
+    ) => {
       const newRenderModes = {
         ...(viewOptions?.columnsRenderMode ?? {}),
         ...cols,
@@ -252,7 +286,13 @@ const PrivateQueryResultView = (
       columnsRenderMode,
       onColumnsRenderModeChanged,
     });
-  }, [dataframe, pinnedColumns, viewOptions, onViewOptionsChanged, columnsRenderMode]);
+  }, [
+    dataframe,
+    pinnedColumns,
+    viewOptions,
+    onViewOptionsChanged,
+    columnsRenderMode,
+  ]);
 
   if (gridData.columns.length === 0) {
     return <Center height="100%">No data</Center>;
@@ -273,10 +313,12 @@ const PrivateQueryResultView = (
           alignItems="center"
           gap="5px"
           px="10px"
-          bg={warning ? "orange.100" : "inherit"}>
+          bg={warning ? "orange.100" : "inherit"}
+        >
           {warning && (
             <>
-              <PiWarning color="orange.600" className="self-center" /> <Box>{warning}</Box>
+              <PiWarning color="orange.600" className="self-center" />{" "}
+              <Box>{warning}</Box>
             </>
           )}
 
@@ -288,7 +330,8 @@ const PrivateQueryResultView = (
               colorPalette="iochmara"
               onClick={() => {
                 onAddToChecklist(run);
-              }}>
+              }}
+            >
               Add to Checklist
             </Button>
           )}

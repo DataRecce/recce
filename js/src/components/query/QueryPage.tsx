@@ -1,25 +1,33 @@
-import React, { useMemo } from "react";
 import { Box, Button, Flex, Spacer, Switch } from "@chakra-ui/react";
-import SqlEditor, { DualSqlEditor } from "./SqlEditor";
-import { defaultSqlQuery, useRecceQueryContext } from "@/lib/hooks/RecceQueryContext";
-
 import { useMutation } from "@tanstack/react-query";
-import { QueryParams, submitQuery, submitQueryBase, submitQueryDiff } from "@/lib/api/adhocQuery";
-import { useLineageGraphContext } from "@/lib/hooks/LineageGraphContext";
-import { QueryForm } from "./QueryForm";
-import { useRecceActionContext } from "@/lib/hooks/RecceActionContext";
-import { SubmitOptions, waitRun } from "@/lib/api/runs";
-import { BaseEnvironmentSetupGuide } from "../lineage/SingleEnvironmentQueryView";
-import { useRecceInstanceContext } from "@/lib/hooks/RecceInstanceContext";
-import { Tooltip } from "@/components/ui/tooltip";
+import React, { useMemo } from "react";
 import { PiInfoFill } from "react-icons/pi";
-import HistoryToggle from "@/components/shared/HistoryToggle";
-import SetupConnectionGuide from "./SetupConnectionGuide";
-import { RECCE_SUPPORT_CALENDAR_URL } from "@/constants/urls";
 import SetupConnectionPopover from "@/components/app/SetupConnectionPopover";
+import HistoryToggle from "@/components/shared/HistoryToggle";
+import { Tooltip } from "@/components/ui/tooltip";
+import { RECCE_SUPPORT_CALENDAR_URL } from "@/constants/urls";
+import {
+  QueryParams,
+  submitQuery,
+  submitQueryBase,
+  submitQueryDiff,
+} from "@/lib/api/adhocQuery";
+import { SubmitOptions, waitRun } from "@/lib/api/runs";
+import { useLineageGraphContext } from "@/lib/hooks/LineageGraphContext";
+import { useRecceActionContext } from "@/lib/hooks/RecceActionContext";
+import { useRecceInstanceContext } from "@/lib/hooks/RecceInstanceContext";
+import {
+  defaultSqlQuery,
+  useRecceQueryContext,
+} from "@/lib/hooks/RecceQueryContext";
+import { BaseEnvironmentSetupGuide } from "../lineage/SingleEnvironmentQueryView";
+import { QueryForm } from "./QueryForm";
+import SetupConnectionGuide from "./SetupConnectionGuide";
+import SqlEditor, { DualSqlEditor } from "./SqlEditor";
 
 const QueryModeToggle = () => {
-  const { isCustomQueries, setCustomQueries, sqlQuery, setBaseSqlQuery } = useRecceQueryContext();
+  const { isCustomQueries, setCustomQueries, sqlQuery, setBaseSqlQuery } =
+    useRecceQueryContext();
   const handleToggle = () => {
     if (!isCustomQueries && setBaseSqlQuery) setBaseSqlQuery(sqlQuery);
     setCustomQueries(!isCustomQueries);
@@ -38,7 +46,8 @@ const QueryModeToggle = () => {
         size="sm"
         colorPalette="iochmara"
         checked={isCustomQueries}
-        onCheckedChange={handleToggle}>
+        onCheckedChange={handleToggle}
+      >
         <Switch.HiddenInput />
         <Switch.Control />
         <Switch.Label />
@@ -135,20 +144,36 @@ export const QueryPage = () => {
           padding="4pt 8pt"
           gap="5px"
           height="54px"
-          borderBottom="1px solid lightgray">
+          borderBottom="1px solid lightgray"
+        >
           <HistoryToggle />
           <Spacer />
           {singleEnv ? (
             <Tooltip
               content="Please configure the base environment before running the diff"
-              positioning={{ placement: "left" }}>
-              <Button colorPalette="iochmara" disabled size="xs" fontSize="14px" marginTop={"16px"}>
+              positioning={{ placement: "left" }}
+            >
+              <Button
+                colorPalette="iochmara"
+                disabled
+                size="xs"
+                fontSize="14px"
+                marginTop={"16px"}
+              >
                 Run Diff
               </Button>
             </Tooltip>
           ) : (
-            <SetupConnectionPopover display={featureToggles.mode === "metadata only"}>
-              <Button colorPalette="iochmara" disabled size="xs" fontSize="14px" marginTop={"16px"}>
+            <SetupConnectionPopover
+              display={featureToggles.mode === "metadata only"}
+            >
+              <Button
+                colorPalette="iochmara"
+                disabled
+                size="xs"
+                fontSize="14px"
+                marginTop={"16px"}
+              >
                 Run Diff
               </Button>
             </SetupConnectionPopover>
@@ -182,18 +207,23 @@ export const QueryPage = () => {
         gap="5px"
         height="54px"
         borderBottom="1px solid lightgray"
-        flex="0 0 54px">
+        flex="0 0 54px"
+      >
         <HistoryToggle />
         <QueryModeToggle />
         <Spacer />
-        <QueryForm defaultPrimaryKeys={primaryKeys} onPrimaryKeysChange={setPrimaryKeys} />
+        <QueryForm
+          defaultPrimaryKeys={primaryKeys}
+          onPrimaryKeysChange={setPrimaryKeys}
+        />
         <Button
           colorPalette="iochmara"
           onClick={() => {
             runQuery("query_diff");
           }}
           disabled={isPending || featureToggles.disableDatabaseQuery}
-          size="2xs">
+          size="2xs"
+        >
           Run Diff
         </Button>
       </Flex>

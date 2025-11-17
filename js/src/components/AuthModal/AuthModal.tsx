@@ -1,21 +1,30 @@
 "use client";
 
-import { Button, Dialog, Image, Link, Portal, VStack, Text } from "@chakra-ui/react";
-import { Dispatch, ReactNode, SetStateAction, useCallback, useEffect, useState } from "react";
+import {
+  Button,
+  Dialog,
+  Image,
+  Link,
+  Portal,
+  Text,
+  VStack,
+} from "@chakra-ui/react";
 import Cookies from "js-cookie";
-import { LuExternalLink } from "react-icons/lu";
-import ReloadImage from "public/imgs/reload-image.svg";
 import { StaticImageData } from "next/image";
-import { useRecceInstanceContext } from "@/lib/hooks/RecceInstanceContext";
+import ReloadImage from "public/imgs/reload-image.svg";
+import {
+  Dispatch,
+  ReactNode,
+  SetStateAction,
+  useCallback,
+  useEffect,
+  useState,
+} from "react";
+import { LuExternalLink } from "react-icons/lu";
 import { connectToCloud } from "@/lib/api/connectToCloud";
+import { useRecceInstanceContext } from "@/lib/hooks/RecceInstanceContext";
 
 type AuthState = "authenticating" | "pending" | "canceled" | "ignored";
-
-interface AuthModalProps {
-  handleParentClose?: Dispatch<SetStateAction<boolean>>;
-  parentOpen?: boolean;
-  ignoreCookie?: boolean;
-}
 
 interface AuthModalProps {
   handleParentClose?: Dispatch<SetStateAction<boolean>>;
@@ -34,7 +43,8 @@ export default function AuthModal({
   const [open, setOpen] = useState(parentOpen || !authed);
 
   // Cookie handling only for auth variant
-  const authStateCookieValue = (Cookies.get("authState") ?? "pending") as AuthState;
+  const authStateCookieValue = (Cookies.get("authState") ??
+    "pending") as AuthState;
   const [authState, setAuthState] = useState<AuthState>(
     ignoreCookie ? "pending" : authStateCookieValue,
   );
@@ -76,7 +86,8 @@ export default function AuthModal({
         if (handleParentClose) {
           handleParentClose(e.open);
         }
-      }}>
+      }}
+    >
       <Portal>
         <Dialog.Backdrop />
         <Dialog.Positioner>
@@ -90,13 +101,18 @@ export default function AuthModal({
               <>
                 <Dialog.Body className="space-y-2 font-light">
                   <Text>
-                    To enable sharing, get your token from Recce Cloud and launch your local
-                    instance with it.
+                    To enable sharing, get your token from Recce Cloud and
+                    launch your local instance with it.
                   </Text>
                   <ul className="list-inside list-disc">
                     <li>Share your instance with teammates via Recce Cloud.</li>
-                    <li>Your instance will be securely and freely hosted for sharing.</li>
-                    {variant === "auth" && <li>This step is recommended but optional.</li>}
+                    <li>
+                      Your instance will be securely and freely hosted for
+                      sharing.
+                    </li>
+                    {variant === "auth" && (
+                      <li>This step is recommended but optional.</li>
+                    )}
                   </ul>
                   <Text display="flex" gap={1}>
                     More directions
@@ -107,7 +123,8 @@ export default function AuthModal({
                         outline: "none",
                       }}
                       href="https://cloud.datarecce.io/connect-to-cloud"
-                      target="_blank">
+                      target="_blank"
+                    >
                       here <LuExternalLink />
                     </Link>
                   </Text>
@@ -122,7 +139,8 @@ export default function AuthModal({
                         const { connection_url } = await connectToCloud();
                         // Open the connection URL in a new tab
                         window.open(connection_url, "_blank");
-                      }}>
+                      }}
+                    >
                       {content.action} <LuExternalLink />
                     </Button>
                     <Dialog.ActionTrigger asChild>
@@ -130,7 +148,8 @@ export default function AuthModal({
                         className="!rounded-lg !font-medium"
                         variant="subtle"
                         colorPalette="gray"
-                        size="sm">
+                        size="sm"
+                      >
                         {variant === "auth" ? "Skip" : "Cancel"}
                       </Button>
                     </Dialog.ActionTrigger>
@@ -142,9 +161,12 @@ export default function AuthModal({
                           variant="ghost"
                           size="sm"
                           onClick={() => {
-                            Cookies.set("authState", "ignored", { expires: 30 });
+                            Cookies.set("authState", "ignored", {
+                              expires: 30,
+                            });
                             setAuthState("ignored");
-                          }}>
+                          }}
+                        >
                           Snooze for 30 days
                         </Button>
                       </Dialog.ActionTrigger>
@@ -174,7 +196,8 @@ export default function AuthModal({
                     colorPalette="brand"
                     onClick={() => {
                       window.location.reload();
-                    }}>
+                    }}
+                  >
                     Reload
                   </Button>
                 </Dialog.Footer>

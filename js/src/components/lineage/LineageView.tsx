@@ -1,17 +1,4 @@
 import {
-  isLineageGraphColumnNode,
-  isLineageGraphNode,
-  layout,
-  LineageGraphColumnNode,
-  LineageGraphEdge,
-  LineageGraphNode,
-  LineageGraphNodes,
-  NodeColumnSetMap,
-  selectDownstream,
-  selectUpstream,
-  toReactFlow,
-} from "./lineage";
-import {
   Box,
   Button,
   Center,
@@ -22,18 +9,6 @@ import {
   Text,
   VStack,
 } from "@chakra-ui/react";
-import React, {
-  forwardRef,
-  Ref,
-  RefObject,
-  useCallback,
-  useEffect,
-  useImperativeHandle,
-  useLayoutEffect,
-  useMemo,
-  useRef,
-  useState,
-} from "react";
 import {
   Background,
   ControlButton,
@@ -47,46 +22,46 @@ import {
   useNodesState,
   useReactFlow,
 } from "@xyflow/react";
+import React, {
+  forwardRef,
+  Ref,
+  RefObject,
+  useCallback,
+  useEffect,
+  useImperativeHandle,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
+import {
+  isLineageGraphColumnNode,
+  isLineageGraphNode,
+  LineageGraphColumnNode,
+  LineageGraphEdge,
+  LineageGraphNode,
+  LineageGraphNodes,
+  layout,
+  NodeColumnSetMap,
+  selectDownstream,
+  selectUpstream,
+  toReactFlow,
+} from "./lineage";
 import "@xyflow/react/dist/style.css";
-import { GraphNode } from "./GraphNode";
-import GraphEdge from "./GraphEdge";
-import { getIconForChangeStatus } from "./styles";
-import { FiCopy } from "react-icons/fi";
-import { NodeView } from "./NodeView";
-
-import { useLineageGraphContext } from "@/lib/hooks/LineageGraphContext";
-
-import { ActionControl } from "./ActionControl";
-import { LineageViewTopBar } from "./LineageViewTopBar";
-import { IGNORE_SCREENSHOT_CLASS, useCopyToClipboard } from "@/lib/hooks/ScreenShot";
-import { useClipBoardToast } from "@/lib/hooks/useClipBoardToast";
-
-import { union } from "./graph";
-import { createLineageDiffCheck, LineageDiffViewOptions } from "@/lib/api/lineagecheck";
-import { ChangeStatusLegend } from "./ChangeStatusLegend";
-import { HSplit } from "../split/Split";
-import { select } from "@/lib/api/select";
-import { AxiosError } from "axios";
-import { useRecceActionContext } from "@/lib/hooks/RecceActionContext";
-import { LineageViewContext, LineageViewContextType } from "./LineageViewContext";
-import { useMultiNodesAction } from "./useMultiNodesAction";
-import { createSchemaDiffCheck } from "@/lib/api/schemacheck";
-import { useLocation } from "wouter";
-import { Check } from "@/lib/api/checks";
-import useValueDiffAlertDialog from "./useValueDiffAlertDialog";
-import { trackCopyToClipboard, trackMultiNodesAction } from "@/lib/api/track";
-import { useRun } from "@/lib/hooks/useRun";
-import { GraphColumnNode } from "./GraphColumnNode";
-import { ColumnLevelLineageControl } from "./ColumnLevelLineageControl";
-import { ColumnLevelLineageLegend } from "./ColumnLevelLineageLegend";
-import { LineageViewNotification } from "./LineageViewNotification";
-import { BaseEnvironmentSetupNotification } from "./SingleEnvironmentQueryView";
-import { CllInput, ColumnLineageData, getCll } from "@/lib/api/cll";
-import { LineageViewContextMenu, useLineageViewContextMenu } from "./LineageViewContextMenu";
-import { toaster } from "@/components/ui/toaster";
 import { useMutation } from "@tanstack/react-query";
-import SetupConnectionBanner from "./SetupConnectionBanner";
-import { useRecceInstanceContext } from "@/lib/hooks/RecceInstanceContext";
+import { AxiosError } from "axios";
+import { FiCopy } from "react-icons/fi";
+import { useLocation } from "wouter";
+import { toaster } from "@/components/ui/toaster";
+import { Check } from "@/lib/api/checks";
+import { CllInput, ColumnLineageData, getCll } from "@/lib/api/cll";
+import {
+  createLineageDiffCheck,
+  LineageDiffViewOptions,
+} from "@/lib/api/lineagecheck";
+import { createSchemaDiffCheck } from "@/lib/api/schemacheck";
+import { select } from "@/lib/api/select";
+import { trackCopyToClipboard, trackMultiNodesAction } from "@/lib/api/track";
 import {
   isHistogramDiffRun,
   isProfileDiffRun,
@@ -94,6 +69,40 @@ import {
   isValueDiffDetailRun,
   isValueDiffRun,
 } from "@/lib/api/types";
+import { useLineageGraphContext } from "@/lib/hooks/LineageGraphContext";
+import { useRecceActionContext } from "@/lib/hooks/RecceActionContext";
+import { useRecceInstanceContext } from "@/lib/hooks/RecceInstanceContext";
+import {
+  IGNORE_SCREENSHOT_CLASS,
+  useCopyToClipboard,
+} from "@/lib/hooks/ScreenShot";
+import { useClipBoardToast } from "@/lib/hooks/useClipBoardToast";
+import { useRun } from "@/lib/hooks/useRun";
+import { HSplit } from "../split/Split";
+import { ActionControl } from "./ActionControl";
+import { ChangeStatusLegend } from "./ChangeStatusLegend";
+import { ColumnLevelLineageControl } from "./ColumnLevelLineageControl";
+import { ColumnLevelLineageLegend } from "./ColumnLevelLineageLegend";
+import { GraphColumnNode } from "./GraphColumnNode";
+import GraphEdge from "./GraphEdge";
+import { GraphNode } from "./GraphNode";
+import { union } from "./graph";
+import {
+  LineageViewContext,
+  LineageViewContextType,
+} from "./LineageViewContext";
+import {
+  LineageViewContextMenu,
+  useLineageViewContextMenu,
+} from "./LineageViewContextMenu";
+import { LineageViewNotification } from "./LineageViewNotification";
+import { LineageViewTopBar } from "./LineageViewTopBar";
+import { NodeView } from "./NodeView";
+import SetupConnectionBanner from "./SetupConnectionBanner";
+import { BaseEnvironmentSetupNotification } from "./SingleEnvironmentQueryView";
+import { getIconForChangeStatus } from "./styles";
+import { useMultiNodesAction } from "./useMultiNodesAction";
+import useValueDiffAlertDialog from "./useValueDiffAlertDialog";
 
 export interface LineageViewProps {
   viewOptions?: LineageDiffViewOptions;
@@ -124,7 +133,10 @@ const nodeColor = (node: LineageGraphNode) => {
     : ("lightgray" as string);
 };
 
-const useResizeObserver = (ref: RefObject<HTMLElement | null>, handler: () => void) => {
+const useResizeObserver = (
+  ref: RefObject<HTMLElement | null>,
+  handler: () => void,
+) => {
   const size = useRef({
     width: 0,
     height: 0,
@@ -141,7 +153,12 @@ const useResizeObserver = (ref: RefObject<HTMLElement | null>, handler: () => vo
           Math.abs(newHeight - size.current.height) > 10 ||
           Math.abs(newWidth - size.current.width) > 10
         ) {
-          if (size.current.height > 0 && newHeight > 0 && size.current.width > 0 && newWidth > 0) {
+          if (
+            size.current.height > 0 &&
+            newHeight > 0 &&
+            size.current.width > 0 &&
+            newWidth > 0
+          ) {
             handler();
           }
         }
@@ -212,14 +229,21 @@ export function PrivateLineageView(
       failToast("Failed to copy image to clipboard", error);
     },
   });
-  const [nodes, setNodes, onNodesChange] = useNodesState<LineageGraphNodes>(initialNodes);
+  const [nodes, setNodes, onNodesChange] =
+    useNodesState<LineageGraphNodes>(initialNodes);
   const [edges, setEdges, onEdgesChange] = useEdgesState<LineageGraphEdge>([]);
 
-  const { lineageGraph, retchLineageGraph, isLoading, error, refetchRunsAggregated } =
-    useLineageGraphContext();
+  const {
+    lineageGraph,
+    retchLineageGraph,
+    isLoading,
+    error,
+    refetchRunsAggregated,
+  } = useLineageGraphContext();
 
   const { featureToggles, singleEnv } = useRecceInstanceContext();
-  const { runId, showRunId, closeRunResult, runAction, isRunResultOpen } = useRecceActionContext();
+  const { runId, showRunId, closeRunResult, runAction, isRunResultOpen } =
+    useRecceActionContext();
   const { run } = useRun(runId);
 
   const [viewOptions, setViewOptions] = useState<LineageDiffViewOptions>({
@@ -257,7 +281,9 @@ export function PrivateLineageView(
    */
   const viewMode = viewOptions.view_mode ?? "changed_models";
   const filteredNodeIds: string[] = useMemo(() => {
-    return nodes.filter((node) => node.type === "lineageGraphNode").map((node) => node.id);
+    return nodes
+      .filter((node) => node.type === "lineageGraphNode")
+      .map((node) => node.id);
   }, [nodes]);
   const filteredNodes = useMemo(() => {
     if (!lineageGraph) {
@@ -271,7 +297,9 @@ export function PrivateLineageView(
    * Focused node: the node that is currently focused. Show the NodeView when a node is focused
    */
   const [focusedNodeId, setFocusedNodeId] = useState<string>();
-  const focusedNode = focusedNodeId ? lineageGraph?.nodes[focusedNodeId] : undefined;
+  const focusedNode = focusedNodeId
+    ? lineageGraph?.nodes[focusedNodeId]
+    : undefined;
 
   /**
    * Select mode: the behavior of clicking on nodes
@@ -280,7 +308,9 @@ export function PrivateLineageView(
    * - action_result: take action on selected nodes
    */
   const [selectMode, setSelectMode] = useState<"selecting" | "action_result">();
-  const [selectedNodeIds, setSelectedNodeIds] = useState<Set<string>>(new Set());
+  const [selectedNodeIds, setSelectedNodeIds] = useState<Set<string>>(
+    new Set(),
+  );
   const selectedNodes = useMemo(() => {
     if (!lineageGraph) {
       return [];
@@ -308,7 +338,9 @@ export function PrivateLineageView(
           }),
         );
       },
-      onActionCompleted: () => {},
+      onActionCompleted: () => {
+        return void 0;
+      },
     },
   );
 
@@ -344,7 +376,10 @@ export function PrivateLineageView(
         selectDownstream(lineageGraph, [focusedNode.id]),
       );
     } else if (isModelsChanged) {
-      highlightedModels = selectDownstream(lineageGraph, lineageGraph.modifiedSet);
+      highlightedModels = selectDownstream(
+        lineageGraph,
+        lineageGraph.modifiedSet,
+      );
     } else {
       highlightedModels = new Set(filteredNodeIds);
     }
@@ -367,6 +402,7 @@ export function PrivateLineageView(
     lineageViewContextMenu.closeContextMenu();
   };
 
+  // biome-ignore lint/correctness/useExhaustiveDependencies: Intentionally only run when lineageGraph changes (initial load/refetch).
   useLayoutEffect(() => {
     const t = async () => {
       let filteredNodeIds: string[] | undefined = undefined;
@@ -379,7 +415,8 @@ export function PrivateLineageView(
         filteredNodeIds = viewOptions.node_ids;
       } else {
         const packageName = lineageGraph.manifestMetadata.current?.project_name;
-        const viewMode = viewOptions.view_mode ?? (isModelsChanged ? "changed_models" : "all");
+        const viewMode =
+          viewOptions.view_mode ?? (isModelsChanged ? "changed_models" : "all");
 
         const newViewOptions: LineageDiffViewOptions = {
           view_mode: viewMode,
@@ -413,7 +450,9 @@ export function PrivateLineageView(
       let cll: ColumnLineageData | undefined;
       if (viewOptions.column_level_lineage) {
         try {
-          cll = await actionGetCll.mutateAsync(viewOptions.column_level_lineage);
+          cll = await actionGetCll.mutateAsync(
+            viewOptions.column_level_lineage,
+          );
         } catch (e) {
           if (e instanceof AxiosError) {
             const e2 = e as AxiosError<{ detail?: string }>;
@@ -485,7 +524,10 @@ export function PrivateLineageView(
     }
   });
 
-  const showColumnLevelLineage = async (columnLevelLineage?: CllInput, previous = false) => {
+  const showColumnLevelLineage = async (
+    columnLevelLineage?: CllInput,
+    previous = false,
+  ) => {
     const previousColumnLevelLineage = viewOptions.column_level_lineage;
 
     await handleViewOptionsChanged(
@@ -522,7 +564,10 @@ export function PrivateLineageView(
     }
   };
 
-  const onColumnNodeClick = (event: React.MouseEvent, node: LineageGraphColumnNode) => {
+  const onColumnNodeClick = (
+    event: React.MouseEvent,
+    node: LineageGraphColumnNode,
+  ) => {
     if (selectMode) {
       return;
     }
@@ -617,7 +662,9 @@ export function PrivateLineageView(
     let cll: ColumnLineageData | undefined;
     if (newViewOptions.column_level_lineage) {
       try {
-        cll = await actionGetCll.mutateAsync(newViewOptions.column_level_lineage);
+        cll = await actionGetCll.mutateAsync(
+          newViewOptions.column_level_lineage,
+        );
       } catch (e) {
         if (e instanceof AxiosError) {
           const e2 = e as AxiosError<{ detail?: string }>;
@@ -632,10 +679,13 @@ export function PrivateLineageView(
       }
     }
 
-    const [newNodes, newEdges, newNodeColumnSetMap] = toReactFlow(lineageGraph, {
-      selectedNodes,
-      cll,
-    });
+    const [newNodes, newEdges, newNodeColumnSetMap] = toReactFlow(
+      lineageGraph,
+      {
+        selectedNodes,
+        cll,
+      },
+    );
     setNodes(newNodes);
     setEdges(newEdges);
     setNodeColumSetMap(newNodeColumnSetMap);
@@ -674,10 +724,9 @@ export function PrivateLineageView(
     });
   };
 
-  const handleBreakingChangeEnabledChanged = async (enabled: boolean) => {};
-
   const valueDiffAlertDialog = useValueDiffAlertDialog();
 
+  // biome-ignore lint/correctness/useExhaustiveDependencies: handleViewOptionsChanged and onNodeClick are intentionally omitted
   useEffect(() => {
     const runResultType = run?.type;
     if (!interactive) {
@@ -688,7 +737,10 @@ export function PrivateLineageView(
       // Skip the following logic if the run result is not open
       return;
     }
-    if (!runResultType || ["query_diff", "query", "row_count"].includes(runResultType)) {
+    if (
+      !runResultType ||
+      ["query_diff", "query", "row_count"].includes(runResultType)
+    ) {
       // Skip the following logic if the run result type is not related to a node
       return;
     }
@@ -735,7 +787,15 @@ export function PrivateLineageView(
     // unnecessary re-runs. These functions are called conditionally within the effect
     // and don't need to trigger the effect when they change.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [run, viewOptions, isRunResultOpen, selectMode, findNodeByName, focusedNode, interactive]);
+  }, [
+    run,
+    viewOptions,
+    isRunResultOpen,
+    selectMode,
+    findNodeByName,
+    focusedNode,
+    interactive,
+  ]);
 
   const selectParentNodes = (nodeId: string, degree = 1000) => {
     if (selectMode === "action_result" || lineageGraph === undefined) return;
@@ -773,7 +833,10 @@ export function PrivateLineageView(
     setSelectedNodeIds(union(selectedNodeIds, downstream));
   };
 
-  const onNodeContextMenu = (event: React.MouseEvent, node: LineageGraphNodes) => {
+  const onNodeContextMenu = (
+    event: React.MouseEvent,
+    node: LineageGraphNodes,
+  ) => {
     if (!interactive) {
       return;
     }
@@ -852,7 +915,8 @@ export function PrivateLineageView(
         return false;
       }
 
-      const node = nodeId in lineageGraph.nodes ? lineageGraph.nodes[nodeId] : undefined;
+      const node =
+        nodeId in lineageGraph.nodes ? lineageGraph.nodes[nodeId] : undefined;
 
       if (viewOptions.column_level_lineage?.change_analysis) {
         const cll = viewOptions.column_level_lineage;
@@ -930,7 +994,9 @@ export function PrivateLineageView(
         trackMultiNodesAction({ type: "value_diff", selected: "single" });
       } else {
         const nodeCount =
-          selectMode === "selecting" ? selectedNodes.length : filteredNodeIds.length;
+          selectMode === "selecting"
+            ? selectedNodes.length
+            : filteredNodeIds.length;
         if (await valueDiffAlertDialog.confirm(nodeCount)) {
           await multiNodeAction.runValueDiff();
           trackMultiNodesAction({
@@ -995,7 +1061,12 @@ export function PrivateLineageView(
 
   if (isLoading) {
     return (
-      <Flex width="100%" height="100%" alignItems="center" justifyContent="center">
+      <Flex
+        width="100%"
+        height="100%"
+        alignItems="center"
+        justifyContent="center"
+      >
         <Spinner size="xl" />
       </Flex>
     );
@@ -1006,8 +1077,8 @@ export function PrivateLineageView(
       <Center h="100%">
         <VStack>
           <Box>
-            Failed to load lineage data. This could be because the server has been terminated or
-            there is a network error.
+            Failed to load lineage data. This could be because the server has
+            been terminated or there is a network error.
           </Box>
           <Box>[Reason: {error}]</Box>
           <Button
@@ -1016,7 +1087,8 @@ export function PrivateLineageView(
               if (retchLineageGraph) {
                 retchLineageGraph();
               }
-            }}>
+            }}
+          >
             Retry
           </Button>
         </VStack>
@@ -1040,7 +1112,8 @@ export function PrivateLineageView(
                 ...viewOptions,
                 view_mode: "all",
               });
-            }}>
+            }}
+          >
             Show all nodes
           </Button>
         </VStack>
@@ -1053,17 +1126,21 @@ export function PrivateLineageView(
         sizes={focusedNode ? [70, 30] : [100, 0]}
         minSize={focusedNode ? 400 : 0}
         gutterSize={focusedNode ? 5 : 0}
-        style={{ height: "100%", width: "100%" }}>
+        style={{ height: "100%", width: "100%" }}
+      >
         <VStack
           ref={refResize}
           separator={<StackSeparator borderColor="gray.200" />}
           gap={0}
           style={{ contain: "strict" }}
-          position="relative">
+          position="relative"
+        >
           {interactive && (
             <>
               <LineageViewTopBar />
-              {featureToggles.mode === "metadata only" && <SetupConnectionBanner />}
+              {featureToggles.mode === "metadata only" && (
+                <SetupConnectionBanner />
+              )}
             </>
           )}
           <ReactFlow
@@ -1096,18 +1173,24 @@ export function PrivateLineageView(
             maxZoom={1}
             minZoom={0.1}
             nodesDraggable={interactive}
-            ref={refReactFlow as unknown as Ref<HTMLDivElement>}>
+            ref={refReactFlow as unknown as Ref<HTMLDivElement>}
+          >
             <Background color="#ccc" />
             <Controls
               showInteractive={false}
               position="top-right"
-              className={IGNORE_SCREENSHOT_CLASS}>
+              className={IGNORE_SCREENSHOT_CLASS}
+            >
               <ControlButton
                 title="copy image"
                 onClick={async () => {
                   await copyToClipboard();
-                  trackCopyToClipboard({ type: viewMode, from: "lineage_view" });
-                }}>
+                  trackCopyToClipboard({
+                    type: viewMode,
+                    from: "lineage_view",
+                  });
+                }}
+              >
                 <Icon as={FiCopy} />
               </ControlButton>
             </Controls>
@@ -1115,12 +1198,16 @@ export function PrivateLineageView(
             <Panel position="bottom-left">
               <Flex direction="column" gap="5px">
                 {isModelsChanged && <ChangeStatusLegend />}
-                {viewOptions.column_level_lineage && <ColumnLevelLineageLegend />}
+                {viewOptions.column_level_lineage && (
+                  <ColumnLevelLineageLegend />
+                )}
               </Flex>
             </Panel>
             <Panel position="top-center">
               <LineageViewNotification
-                notification={singleEnv ? <BaseEnvironmentSetupNotification /> : null}
+                notification={
+                  singleEnv ? <BaseEnvironmentSetupNotification /> : null
+                }
                 type={"info"}
               />
             </Panel>
@@ -1134,9 +1221,17 @@ export function PrivateLineageView(
                 )}
               </Flex>
             </Panel>
-            <MiniMap nodeColor={nodeColor} nodeStrokeWidth={3} zoomable pannable />
+            <MiniMap
+              nodeColor={nodeColor}
+              nodeStrokeWidth={3}
+              zoomable
+              pannable
+            />
             {selectMode === "action_result" && (
-              <Panel position="bottom-center" className={IGNORE_SCREENSHOT_CLASS}>
+              <Panel
+                position="bottom-center"
+                className={IGNORE_SCREENSHOT_CLASS}
+              >
                 <ActionControl
                   onClose={() => {
                     deselect();
@@ -1160,4 +1255,6 @@ export function PrivateLineageView(
   );
 }
 
-export const LineageView = forwardRef<LineageViewRef, LineageViewProps>(PrivateLineageView);
+export const LineageView = forwardRef<LineageViewRef, LineageViewProps>(
+  PrivateLineageView,
+);

@@ -1,48 +1,47 @@
 import {
-  Flex,
-  Box,
-  Text,
-  Stack,
-  Button,
-  Dialog,
-  Spacer,
-  useDisclosure,
-  Image,
-  Heading,
   Badge,
+  Box,
+  Button,
+  CloseButton,
+  Dialog,
+  Flex,
+  Heading,
   Icon,
   IconButton,
+  Image,
   Portal,
-  CloseButton,
+  Spacer,
+  Stack,
+  Text,
+  useDisclosure,
 } from "@chakra-ui/react";
-
-import { NodeData } from "@/lib/api/info";
-import { RunResultPane } from "../run/RunResultPane";
-import { VSplit } from "../split/Split";
-import { QueryParams, submitQueryDiff } from "@/lib/api/adhocQuery";
-import { SubmitOptions, waitRun } from "@/lib/api/runs";
-import { useRecceActionContext } from "@/lib/hooks/RecceActionContext";
+import { DiffEditor } from "@monaco-editor/react";
 import { useMutation } from "@tanstack/react-query";
+import { formatDistanceToNow } from "date-fns";
+import { editor } from "monaco-editor";
 import React, { useEffect, useRef, useState } from "react";
-import { QueryForm } from "../query/QueryForm";
 import { AiOutlineExperiment } from "react-icons/ai";
-import { useFeedbackCollectionToast } from "@/lib/hooks/useFeedbackCollectionToast";
 import { VscFeedback } from "react-icons/vsc";
+import { Tooltip } from "@/components/ui/tooltip";
+import { QueryParams, submitQueryDiff } from "@/lib/api/adhocQuery";
+import { NodeData } from "@/lib/api/info";
 import { localStorageKeys } from "@/lib/api/localStorageKeys";
-import { useRecceQueryContext } from "@/lib/hooks/RecceQueryContext";
+import { SubmitOptions, waitRun } from "@/lib/api/runs";
 import {
   trackPreviewChange,
   trackPreviewChangeFeedback,
   trackSingleEnvironment,
 } from "@/lib/api/track";
+import { useLineageGraphContext } from "@/lib/hooks/LineageGraphContext";
+import { useRecceActionContext } from "@/lib/hooks/RecceActionContext";
+import { useRecceQueryContext } from "@/lib/hooks/RecceQueryContext";
+import { useFeedbackCollectionToast } from "@/lib/hooks/useFeedbackCollectionToast";
 import { useGuideToast } from "@/lib/hooks/useGuideToast";
 import { useRecceServerFlag } from "@/lib/hooks/useRecceServerFlag";
-import { useLineageGraphContext } from "@/lib/hooks/LineageGraphContext";
 import { formatTimestamp } from "../app/EnvInfo";
-import { formatDistanceToNow } from "date-fns";
-import { editor } from "monaco-editor";
-import { DiffEditor } from "@monaco-editor/react";
-import { Tooltip } from "@/components/ui/tooltip";
+import { QueryForm } from "../query/QueryForm";
+import { RunResultPane } from "../run/RunResultPane";
+import { VSplit } from "../split/Split";
 
 interface SandboxViewProps {
   isOpen: boolean;
@@ -74,18 +73,23 @@ function SandboxTopBar({
       gap="5px"
       height="54px"
       borderBottom="1px solid lightgray"
-      flex="0 0 54px">
+      flex="0 0 54px"
+    >
       <Box>
         <Heading as="h2" size="md" display="flex" alignItems="center" gap="5px">
           <Icon as={AiOutlineExperiment} boxSize="1.2em" />
           Sandbox
         </Heading>
         <Text fontSize="xs" color="gray.500">
-          Compare the run results based on the modified SQL code of model <b>{current?.name}</b>
+          Compare the run results based on the modified SQL code of model{" "}
+          <b>{current?.name}</b>
         </Text>
       </Box>
       <Spacer />
-      <QueryForm defaultPrimaryKeys={primaryKeys} onPrimaryKeysChange={setPrimaryKeys} />
+      <QueryForm
+        defaultPrimaryKeys={primaryKeys}
+        onPrimaryKeysChange={setPrimaryKeys}
+      />
       <Tooltip content="Run diff to see the changes">
         <Button
           size="xs"
@@ -96,7 +100,8 @@ function SandboxTopBar({
             runQuery();
           }}
           colorPalette="blue"
-          loading={isPending}>
+          loading={isPending}
+        >
           Run Diff
         </Button>
       </Tooltip>
@@ -116,7 +121,9 @@ function SandboxEditorLabels({
   const widthOfBar = "50%";
   const margin = "0 16px";
 
-  const currentTime = formatTimestamp(envInfo?.dbt?.current?.generated_at ?? "");
+  const currentTime = formatTimestamp(
+    envInfo?.dbt?.current?.generated_at ?? "",
+  );
   const latestUpdateDistanceToNow = formatDistanceToNow(currentTime, {
     addSuffix: true,
   });
@@ -136,7 +143,8 @@ function SandboxEditorLabels({
       fontSize={"14px"}
       align="center"
       margin={"0"}
-      backgroundColor="#EDF2F880">
+      backgroundColor="#EDF2F880"
+    >
       <Stack width={widthOfBar}>
         <Text as="b" margin={margin}>
           ORIGINAL (Schema: {schema}, Last Updated: {latestUpdateDistanceToNow})
@@ -155,7 +163,10 @@ interface UseDiffEditorSync {
   onMount: (editor: editor.IStandaloneDiffEditor) => void;
 }
 
-function useDiffEditorSync(value: string, onChange: (value: string) => void): UseDiffEditorSync {
+function useDiffEditorSync(
+  value: string,
+  onChange: (value: string) => void,
+): UseDiffEditorSync {
   const editorRef = useRef<editor.IStandaloneCodeEditor | null>(null);
 
   useEffect(() => {
@@ -211,7 +222,9 @@ export function SandboxView({ isOpen, onClose, current }: SandboxViewProps) {
     onClose: onRunResultClose,
     onOpen: onRunResultOpen,
   } = useDisclosure();
-  const [modifiedCode, setModifiedCode] = useState<string>(current?.raw_code ?? "");
+  const [modifiedCode, setModifiedCode] = useState<string>(
+    current?.raw_code ?? "",
+  );
   const [prevIsOpen, setPrevIsOpen] = useState(isOpen);
   const { showRunId, clearRunResult } = useRecceActionContext();
   const { primaryKeys, setPrimaryKeys } = useRecceQueryContext();
@@ -291,7 +304,8 @@ export function SandboxView({ isOpen, onClose, current }: SandboxViewProps) {
   const { guideToast: prepareEnvToast, closeGuideToast } = useGuideToast({
     guideId: localStorageKeys.prepareEnvGuideID,
     description: "Want to compare data changes with production data?",
-    externalLink: "https://docs.datarecce.io/get-started/#prepare-dbt-artifacts",
+    externalLink:
+      "https://docs.datarecce.io/get-started/#prepare-dbt-artifacts",
     externalLinkText: "Learn how.",
     onExternalLinkClick: () => {
       trackSingleEnvironment({
@@ -322,7 +336,8 @@ export function SandboxView({ isOpen, onClose, current }: SandboxViewProps) {
         closeToast();
         closeGuideToast();
         trackPreviewChange({ action: "close", node: current?.name });
-      }}>
+      }}
+    >
       <Portal>
         <Dialog.Backdrop />
         <Dialog.Positioner>
@@ -339,7 +354,8 @@ export function SandboxView({ isOpen, onClose, current }: SandboxViewProps) {
                   as="h1"
                   fontFamily={`"Montserrat", sans-serif`}
                   fontSize="lg"
-                  color="white">
+                  color="white"
+                >
                   RECCE
                 </Dialog.Title>
                 <Badge fontSize="sm" color="white/80" variant="outline">
@@ -359,7 +375,8 @@ export function SandboxView({ isOpen, onClose, current }: SandboxViewProps) {
                   flex: "1",
                   contain: "size",
                   height: "100%",
-                }}>
+                }}
+              >
                 <Flex direction="column" height="100%" m={0} p={0}>
                   <SandboxTopBar
                     current={current}
@@ -377,7 +394,10 @@ export function SandboxView({ isOpen, onClose, current }: SandboxViewProps) {
                   <SqlPreview current={current} onChange={setModifiedCode} />
                 </Flex>
                 {isRunResultOpen ? (
-                  <RunResultPane onClose={onRunResultClose} disableAddToChecklist />
+                  <RunResultPane
+                    onClose={onRunResultClose}
+                    disableAddToChecklist
+                  />
                 ) : (
                   <Box></Box>
                 )}
@@ -392,7 +412,8 @@ export function SandboxView({ isOpen, onClose, current }: SandboxViewProps) {
                   size="md"
                   onClick={() => {
                     feedbackToast(true);
-                  }}>
+                  }}
+                >
                   <VscFeedback />
                 </IconButton>
               </Tooltip>

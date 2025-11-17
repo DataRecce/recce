@@ -1,3 +1,4 @@
+import _ from "lodash";
 import React from "react";
 import {
   CalculatedColumn,
@@ -5,16 +6,34 @@ import {
   RenderCellProps,
   textEditor,
 } from "react-data-grid";
-import _ from "lodash";
 import "./styles.css";
-import { Box, Flex, Icon, IconButton, Menu, Portal, Text } from "@chakra-ui/react";
-import { VscClose, VscKebabVertical, VscKey, VscPin, VscPinned } from "react-icons/vsc";
-import { ColumnType, ColumnRenderMode, DataFrame, RowObjectType } from "@/lib/api/types";
-import { mergeKeysWithStatus } from "@/lib/mergeKeys";
-import { DiffText } from "./DiffText";
-import { formatNumber } from "@/utils/formatters";
+import {
+  Box,
+  Flex,
+  Icon,
+  IconButton,
+  Menu,
+  Portal,
+  Text,
+} from "@chakra-ui/react";
+import {
+  VscClose,
+  VscKebabVertical,
+  VscKey,
+  VscPin,
+  VscPinned,
+} from "react-icons/vsc";
 import { columnPrecisionSelectOptions } from "@/components/valuediff/shared";
+import {
+  ColumnRenderMode,
+  ColumnType,
+  DataFrame,
+  RowObjectType,
+} from "@/lib/api/types";
+import { mergeKeysWithStatus } from "@/lib/mergeKeys";
+import { formatNumber } from "@/utils/formatters";
 import { dataFrameToRowObjects, keyToNumber } from "@/utils/transforms";
+import { DiffText } from "./DiffText";
 
 interface MergeColumnMap {
   baseColumnKey: string;
@@ -24,7 +43,10 @@ interface MergeColumnMap {
   key: string;
 }
 
-function _getColumnMap(base: DataFrame, current: DataFrame): Record<string, MergeColumnMap> {
+function _getColumnMap(
+  base: DataFrame,
+  current: DataFrame,
+): Record<string, MergeColumnMap> {
   const result: Record<string, MergeColumnMap> = {};
 
   const mapStatus = mergeKeysWithStatus(
@@ -47,7 +69,10 @@ function _getColumnMap(base: DataFrame, current: DataFrame): Record<string, Merg
   return result;
 }
 
-function _getPrimaryKeyKeys(columns: DataFrame["columns"], primaryKeys: string[]): string[] {
+function _getPrimaryKeyKeys(
+  columns: DataFrame["columns"],
+  primaryKeys: string[],
+): string[] {
   const keys: string[] = [];
   for (const key of primaryKeys) {
     const index = columns.findIndex((col) => col.key === key);
@@ -107,7 +132,10 @@ export function DataFrameColumnGroupHeader({
   name: string;
   columnStatus: string;
   columnType: ColumnType;
-  onColumnRenderModeChanged?: (colNam: string, renderAs: ColumnRenderMode) => void;
+  onColumnRenderModeChanged?: (
+    colNam: string,
+    renderAs: ColumnRenderMode,
+  ) => void;
 } & QueryDataDiffGridOptions) {
   const primaryKeys = options.primaryKeys ?? [];
   const pinnedColumns = options.pinnedColumns ?? [];
@@ -117,7 +145,10 @@ export function DataFrameColumnGroupHeader({
 
   let selectOptions: { value: string; onClick: () => void }[] = [];
   if (onColumnsRenderModeChanged) {
-    selectOptions = columnPrecisionSelectOptions(name, onColumnsRenderModeChanged);
+    selectOptions = columnPrecisionSelectOptions(
+      name,
+      onColumnsRenderModeChanged,
+    );
   }
 
   if (name === "index") {
@@ -133,7 +164,10 @@ export function DataFrameColumnGroupHeader({
   };
 
   const handleAddPk = () => {
-    const newPrimaryKeys = [...primaryKeys.filter((item) => item !== "index"), name];
+    const newPrimaryKeys = [
+      ...primaryKeys.filter((item) => item !== "index"),
+      name,
+    ];
 
     if (onPrimaryKeyChange) {
       onPrimaryKeyChange(newPrimaryKeys);
@@ -159,7 +193,12 @@ export function DataFrameColumnGroupHeader({
   return (
     <Flex alignItems="center" gap="10px" className="grid-header">
       {isPK && <Icon as={VscKey} />}
-      <Box flex={1} overflow="hidden" textOverflow="ellipsis" whiteSpace="nowrap">
+      <Box
+        flex={1}
+        overflow="hidden"
+        textOverflow="ellipsis"
+        whiteSpace="nowrap"
+      >
         {name}
       </Box>
       {canBePk && onPrimaryKeyChange && (
@@ -183,7 +222,11 @@ export function DataFrameColumnGroupHeader({
       {!isPK && columnType === "number" && (
         <Menu.Root>
           <Menu.Trigger asChild>
-            <IconButton aria-label="Options" variant="plain" className="!size-4 !min-w-4">
+            <IconButton
+              aria-label="Options"
+              variant="plain"
+              className="!size-4 !min-w-4"
+            >
               <VscKebabVertical />
             </IconButton>
           </Menu.Trigger>
@@ -216,7 +259,10 @@ function columnRenderedValue(
       minimumFractionDigits: renderAs,
     });
   } else if (renderAs === "percent") {
-    renderedValue = formatNumber(value, locale, { style: "percent", maximumFractionDigits: 2 });
+    renderedValue = formatNumber(value, locale, {
+      style: "percent",
+      maximumFractionDigits: 2,
+    });
   } else {
     renderedValue = String(value);
   }
@@ -262,23 +308,38 @@ const toRenderedValue = (
   return [renderedValue, grayOut];
 };
 
-export const defaultRenderCell = ({ row, column }: RenderCellProps<RowObjectType>) => {
+export const defaultRenderCell = ({
+  row,
+  column,
+}: RenderCellProps<RowObjectType>) => {
   // Add the potential addition of columnType
-  const { columnType, columnRenderMode } = column as unknown as CalculatedColumn<RowObjectType> & {
-    columnType?: ColumnType;
-    columnRenderMode?: ColumnRenderMode;
-  };
+  const { columnType, columnRenderMode } =
+    column as unknown as CalculatedColumn<RowObjectType> & {
+      columnType?: ColumnType;
+      columnRenderMode?: ColumnRenderMode;
+    };
 
-  const [renderedValue, grayOut] = toRenderedValue(row, column.key, columnType, columnRenderMode);
-  return <Text style={{ color: grayOut ? "gray" : "inherit" }}>{renderedValue}</Text>;
+  const [renderedValue, grayOut] = toRenderedValue(
+    row,
+    column.key,
+    columnType,
+    columnRenderMode,
+  );
+  return (
+    <Text style={{ color: grayOut ? "gray" : "inherit" }}>{renderedValue}</Text>
+  );
 };
 
-export const inlineRenderCell = ({ row, column }: RenderCellProps<RowObjectType>) => {
+export const inlineRenderCell = ({
+  row,
+  column,
+}: RenderCellProps<RowObjectType>) => {
   // Add the potential addition of columnType
-  const { columnType, columnRenderMode } = column as unknown as CalculatedColumn<RowObjectType> & {
-    columnType?: ColumnType;
-    columnRenderMode?: ColumnRenderMode;
-  };
+  const { columnType, columnRenderMode } =
+    column as unknown as CalculatedColumn<RowObjectType> & {
+      columnType?: ColumnType;
+      columnRenderMode?: ColumnRenderMode;
+    };
   const baseKey = `base__${column.key}`;
   const currentKey = `current__${column.key}`;
 
@@ -304,14 +365,24 @@ export const inlineRenderCell = ({ row, column }: RenderCellProps<RowObjectType>
 
   if (row[baseKey] === row[currentKey]) {
     // no change
-    return <Text style={{ color: currentGrayOut ? "gray" : "inherit" }}>{currentValue}</Text>;
+    return (
+      <Text style={{ color: currentGrayOut ? "gray" : "inherit" }}>
+        {currentValue}
+      </Text>
+    );
   }
 
   return (
     <Flex gap="5px" alignItems="center" lineHeight="normal" height="100%">
-      {hasBase && <DiffText value={baseValue} colorPalette="red" grayOut={baseGrayOut} />}
+      {hasBase && (
+        <DiffText value={baseValue} colorPalette="red" grayOut={baseGrayOut} />
+      )}
       {hasCurrent && (
-        <DiffText value={currentValue} colorPalette="green" grayOut={currentGrayOut} />
+        <DiffText
+          value={currentValue}
+          colorPalette="green"
+          grayOut={currentGrayOut}
+        />
       )}
     </Flex>
   );
@@ -374,7 +445,10 @@ export function toDataDiffGrid(
     });
   }
 
-  const mergedMap = mergeKeysWithStatus(Object.keys(baseMap), Object.keys(currentMap));
+  const mergedMap = mergeKeysWithStatus(
+    Object.keys(baseMap),
+    Object.keys(currentMap),
+  );
 
   const rowStats = {
     added: 0,
@@ -437,7 +511,10 @@ export function toDataDiffGrid(
         }
 
         if (
-          !_.isEqual(baseRow[mergedColumn.baseColumnKey], currentRow[mergedColumn.currentColumnKey])
+          !_.isEqual(
+            baseRow[mergedColumn.baseColumnKey],
+            currentRow[mergedColumn.currentColumnKey],
+          )
         ) {
           row.__status = "modified";
           mergedColumn.status = "modified";
@@ -454,7 +531,9 @@ export function toDataDiffGrid(
   if (changedOnly) {
     rows = rows.filter(
       (row) =>
-        row.__status === "added" || row.__status === "removed" || row.__status === "modified",
+        row.__status === "added" ||
+        row.__status === "removed" ||
+        row.__status === "modified",
     );
   }
 
@@ -615,7 +694,9 @@ export function toDataDiffGrid(
       return;
     }
 
-    columns.push(toColumn(name, columnStatus, columnType, columnsRenderMode[name]));
+    columns.push(
+      toColumn(name, columnStatus, columnType, columnsRenderMode[name]),
+    );
   });
 
   // merges columns: other columns
@@ -636,11 +717,17 @@ export function toDataDiffGrid(
     }
 
     if (changedOnly && rowStats.modified > 0) {
-      if (columnStatus !== "added" && columnStatus !== "removed" && columnStatus !== "modified") {
+      if (
+        columnStatus !== "added" &&
+        columnStatus !== "removed" &&
+        columnStatus !== "modified"
+      ) {
         return;
       }
     }
-    columns.push(toColumn(name, columnStatus, columnType, columnsRenderMode[name]));
+    columns.push(
+      toColumn(name, columnStatus, columnType, columnsRenderMode[name]),
+    );
   });
 
   return {

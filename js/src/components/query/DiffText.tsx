@@ -1,7 +1,7 @@
 import { Box, Flex, IconButton } from "@chakra-ui/react";
 import { ReactNode, useState } from "react";
-import { useCopyToClipboard } from "usehooks-ts";
 import { PiCopy } from "react-icons/pi";
+import { useCopyToClipboard } from "usehooks-ts";
 
 interface DiffTextProps {
   value: string;
@@ -11,7 +11,13 @@ interface DiffTextProps {
   fontSize?: string;
 }
 
-export const DiffText = ({ value, colorPalette, grayOut, noCopy, fontSize }: DiffTextProps) => {
+export const DiffText = ({
+  value,
+  colorPalette,
+  grayOut,
+  noCopy,
+  fontSize,
+}: DiffTextProps) => {
   const [isHovered, setIsHovered] = useState(false);
 
   return (
@@ -33,12 +39,22 @@ export const DiffText = ({ value, colorPalette, grayOut, noCopy, fontSize }: Dif
       }}
       onMouseLeave={() => {
         setIsHovered(false);
-      }}>
-      <Box overflow="hidden" textOverflow="ellipsis" color={grayOut ? "gray" : "inherit"}>
+      }}
+    >
+      <Box
+        overflow="hidden"
+        textOverflow="ellipsis"
+        color={grayOut ? "gray" : "inherit"}
+      >
         {value}
       </Box>
 
-      <CopyControl value={value} noCopy={noCopy} grayOut={grayOut} isHovered={isHovered} />
+      <CopyControl
+        value={value}
+        noCopy={noCopy}
+        grayOut={grayOut}
+        isHovered={isHovered}
+      />
     </Flex>
   );
 };
@@ -50,7 +66,12 @@ interface CopyControlProps {
   isHovered: boolean;
 }
 
-function CopyControl({ value, noCopy, grayOut, isHovered }: CopyControlProps): ReactNode {
+function CopyControl({
+  value,
+  noCopy,
+  grayOut,
+  isHovered,
+}: CopyControlProps): ReactNode {
   const [copiedText, copyToClipboard] = useCopyToClipboard();
   const hasCopiedText = Boolean(copiedText);
 
@@ -76,7 +97,8 @@ function CopyControl({ value, noCopy, grayOut, isHovered }: CopyControlProps): R
       onClick={() => copyToClipboard(value)}
       display="flex"
       alignItems="center"
-      justifyContent="center">
+      justifyContent="center"
+    >
       <PiCopy size="10px" />
     </IconButton>
   );

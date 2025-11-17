@@ -1,10 +1,10 @@
-import { axiosClient } from "./axiosClient";
-import { Run, RunParamTypes } from "./types";
 import { useQuery } from "@tanstack/react-query";
-import { cacheKeys } from "./cacheKeys";
-import { getExperimentTrackingBreakingChangeEnabled } from "./track";
 import { AxiosResponse } from "axios";
 import { RunType } from "@/components/run/registry";
+import { axiosClient } from "./axiosClient";
+import { cacheKeys } from "./cacheKeys";
+import { getExperimentTrackingBreakingChangeEnabled } from "./track";
+import { Run, RunParamTypes } from "./types";
 
 export interface Check<PT = unknown, VO = unknown> {
   check_id: string;
@@ -29,7 +29,10 @@ export interface CreateCheckBody {
 }
 
 export async function createSimpleCheck(): Promise<Check> {
-  const response = await axiosClient.post<CreateCheckBody, AxiosResponse<Check>>("/api/checks", {
+  const response = await axiosClient.post<
+    CreateCheckBody,
+    AxiosResponse<Check>
+  >("/api/checks", {
     type: "simple",
   });
   return response.data;
@@ -42,7 +45,10 @@ export async function createCheckByRun(
   const track_props = getExperimentTrackingBreakingChangeEnabled()
     ? { breaking_change_analysis: true }
     : {};
-  const response = await axiosClient.post<CreateCheckBody, AxiosResponse<Check>>("/api/checks", {
+  const response = await axiosClient.post<
+    CreateCheckBody,
+    AxiosResponse<Check>
+  >("/api/checks", {
     run_id: runId,
     view_options: viewOptions,
     track_props,
@@ -51,7 +57,8 @@ export async function createCheckByRun(
 }
 
 export async function listChecks(): Promise<Check[]> {
-  return (await axiosClient.get<never, AxiosResponse<Check[]>>("/api/checks")).data;
+  return (await axiosClient.get<never, AxiosResponse<Check[]>>("/api/checks"))
+    .data;
 }
 
 export function useChecks(enabled: boolean) {
@@ -63,30 +70,38 @@ export function useChecks(enabled: boolean) {
 }
 
 export async function getCheck(checkId: string): Promise<Check<RunParamTypes>> {
-  const response = await axiosClient.get<never, AxiosResponse<Check<RunParamTypes>>>(
-    `/api/checks/${checkId}`,
-  );
+  const response = await axiosClient.get<
+    never,
+    AxiosResponse<Check<RunParamTypes>>
+  >(`/api/checks/${checkId}`);
   return response.data;
 }
 
-export async function updateCheck(checkId: string, payload: Partial<Check>): Promise<Check> {
-  const response = await axiosClient.patch<Partial<Check>, AxiosResponse<Check>>(
-    `/api/checks/${checkId}`,
-    payload,
-  );
+export async function updateCheck(
+  checkId: string,
+  payload: Partial<Check>,
+): Promise<Check> {
+  const response = await axiosClient.patch<
+    Partial<Check>,
+    AxiosResponse<Check>
+  >(`/api/checks/${checkId}`, payload);
   return response.data;
 }
 
 export async function deleteCheck(checkId: string) {
-  const response = await axiosClient.delete<never, AxiosResponse<Pick<Check, "check_id">>>(
-    `/api/checks/${checkId}`,
-  );
+  const response = await axiosClient.delete<
+    never,
+    AxiosResponse<Pick<Check, "check_id">>
+  >(`/api/checks/${checkId}`);
   return response.data;
 }
 
-export async function reorderChecks(order: { source: number; destination: number }) {
-  return await axiosClient.post<{ source: number; destination: number }, AxiosResponse<unknown>>(
-    "/api/checks/reorder",
-    order,
-  );
+export async function reorderChecks(order: {
+  source: number;
+  destination: number;
+}) {
+  return await axiosClient.post<
+    { source: number; destination: number },
+    AxiosResponse<unknown>
+  >("/api/checks/reorder", order);
 }

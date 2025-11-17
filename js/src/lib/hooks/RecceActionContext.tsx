@@ -1,3 +1,5 @@
+import { useDisclosure } from "@chakra-ui/react";
+import { useQueryClient } from "@tanstack/react-query";
 import React, {
   ComponentType,
   createContext,
@@ -8,13 +10,8 @@ import React, {
   useEffect,
   useState,
 } from "react";
-import { AxiosQueryParams, Run, RunParamTypes } from "../api/types";
-import { RunModal } from "@/components/run/RunModal";
-import { useDisclosure } from "@chakra-ui/react";
-
 import { useLocation } from "wouter";
-
-import { searchRuns, submitRun, SubmitRunTrackProps } from "../api/runs";
+import { RunModal } from "@/components/run/RunModal";
 import {
   findByRunType,
   RegistryEntry,
@@ -22,9 +19,10 @@ import {
   RunType,
 } from "@/components/run/registry";
 import { RunFormProps } from "@/components/run/types";
-import { useQueryClient } from "@tanstack/react-query";
-import { cacheKeys } from "../api/cacheKeys";
 import { toaster } from "@/components/ui/toaster";
+import { cacheKeys } from "../api/cacheKeys";
+import { SubmitRunTrackProps, searchRuns, submitRun } from "../api/runs";
+import { AxiosQueryParams, Run, RunParamTypes } from "../api/types";
 
 export interface RecceActionOptions {
   showForm: boolean;
@@ -33,7 +31,11 @@ export interface RecceActionOptions {
 }
 
 export interface RecceActionContextType {
-  runAction: (type: RunType, params?: AxiosQueryParams, actionOptions?: RecceActionOptions) => void;
+  runAction: (
+    type: RunType,
+    params?: AxiosQueryParams,
+    actionOptions?: RecceActionOptions,
+  ) => void;
   runId?: string;
   showRunId: (runId: string, refreshHistory?: boolean) => void;
   isRunResultOpen: boolean;
@@ -46,15 +48,29 @@ export interface RecceActionContextType {
 }
 
 export const RecceActionContext = createContext<RecceActionContextType>({
-  runAction: () => {},
-  showRunId: (runId: string) => {},
+  runAction: () => {
+    return void 0;
+  },
+  showRunId: (runId: string) => {
+    return void 0;
+  },
   isRunResultOpen: false,
-  closeRunResult: () => {},
+  closeRunResult: () => {
+    return void 0;
+  },
   isHistoryOpen: false,
-  closeHistory: () => {},
-  showHistory: () => {},
-  setHistoryOpen: (v) => {},
-  clearRunResult: () => {},
+  closeHistory: () => {
+    return void 0;
+  },
+  showHistory: () => {
+    return void 0;
+  },
+  setHistoryOpen: (v) => {
+    return void 0;
+  },
+  clearRunResult: () => {
+    return void 0;
+  },
 });
 
 interface RecceActionContextProviderProps {
@@ -64,6 +80,7 @@ interface RecceActionContextProviderProps {
 const useCloseModalEffect = (onClose: () => void) => {
   const [location] = useLocation();
 
+  // biome-ignore lint/correctness/useExhaustiveDependencies: Specifically run in location changes
   useEffect(() => {
     onClose();
   }, [onClose, location]);
@@ -79,9 +96,15 @@ interface RunActionInternal {
   RunForm?: ComponentType<RunFormProps<RunFormParamTypes>>;
 }
 
-export function RecceActionContextProvider({ children }: RecceActionContextProviderProps) {
+export function RecceActionContextProvider({
+  children,
+}: RecceActionContextProviderProps) {
   const [action, setAction] = useState<RunActionInternal>();
-  const { open: isModalOpen, onOpen: onModalOpen, onClose: onModalClose } = useDisclosure();
+  const {
+    open: isModalOpen,
+    onOpen: onModalOpen,
+    onClose: onModalClose,
+  } = useDisclosure();
   const {
     open: isRunResultOpen,
     onOpen: onResultPaneOpen,
@@ -106,16 +129,20 @@ export function RecceActionContextProvider({ children }: RecceActionContextProvi
         await queryClient.invalidateQueries({ queryKey: cacheKeys.runs() });
       }
     },
-    [setRunId, onResultPaneOpen, queryClient],
+    [onResultPaneOpen, queryClient],
   );
 
   const clearRunResult = useCallback(() => {
     setRunId(undefined);
     closeRunResult();
-  }, [closeRunResult, setRunId]);
+  }, [closeRunResult]);
 
   const runAction = useCallback(
-    async (type: RunType, params?: AxiosQueryParams, options?: RecceActionOptions) => {
+    async (
+      type: RunType,
+      params?: AxiosQueryParams,
+      options?: RecceActionOptions,
+    ) => {
       try {
         const session = new Date().getTime().toString();
         let lastRun = undefined;
@@ -127,7 +154,9 @@ export function RecceActionContextProvider({ children }: RecceActionContextProvi
         }
 
         const run = findByRunType(type);
-        const RunResultView = run.RunResultView as RegistryEntry["RunResultView"] | undefined;
+        const RunResultView = run.RunResultView as
+          | RegistryEntry["RunResultView"]
+          | undefined;
         const { title, RunForm } = run;
         if (RunResultView === undefined) {
           throw new Error(`Run type ${type} does not have a result view`);
@@ -165,7 +194,7 @@ export function RecceActionContextProvider({ children }: RecceActionContextProvi
         });
       }
     },
-    [setAction, onModalOpen, showRunId, location, setLocation, queryClient],
+    [onModalOpen, showRunId, location, setLocation, queryClient],
   );
   useCloseModalEffect(onModalClose);
 
@@ -201,7 +230,8 @@ export function RecceActionContextProvider({ children }: RecceActionContextProvi
         showHistory,
         setHistoryOpen,
         clearRunResult,
-      }}>
+      }}
+    >
       {action && (
         <RunModal
           key={action.session}
@@ -212,7 +242,11 @@ export function RecceActionContextProvider({ children }: RecceActionContextProvi
           type={action.type}
           params={action.params}
           initialRun={action.lastRun}
-          RunForm={action.options?.showForm && action.RunForm ? action.RunForm : undefined}
+          RunForm={
+            action.options?.showForm && action.RunForm
+              ? action.RunForm
+              : undefined
+          }
         />
       )}
       {children}

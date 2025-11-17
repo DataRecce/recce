@@ -2,10 +2,13 @@ import { DataFrame, RowDataTypes, RowObjectType } from "@/lib/api/types";
 
 export function dataFrameToRowObjects(dataFrame: DataFrame): RowObjectType[] {
   return dataFrame.data.map((row, index) => ({
-    ...dataFrame.columns.reduce<Record<string, RowDataTypes>>((obj, column, colIndex) => {
-      obj[column.key] = row[colIndex];
-      return obj;
-    }, {}),
+    ...dataFrame.columns.reduce<Record<string, RowDataTypes>>(
+      (obj, column, colIndex) => {
+        obj[column.key] = row[colIndex];
+        return obj;
+      },
+      {},
+    ),
     __status: undefined,
     _index: index + 1,
   }));
@@ -41,7 +44,10 @@ export function hashStringToNumber(str: string): number {
   return Math.abs(hash);
 }
 
-export function includesIgnoreCase(list: string[], searchString: string): boolean {
+export function includesIgnoreCase(
+  list: string[],
+  searchString: string,
+): boolean {
   const lowerSearch = searchString.toLowerCase();
   return list.some((item) => item.toLowerCase() === lowerSearch);
 }

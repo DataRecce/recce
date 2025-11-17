@@ -16,7 +16,10 @@ export interface ValueDiffParams {
   columns?: string[];
 }
 
-export async function submitValueDiff(params: ValueDiffParams, options?: SubmitOptions) {
+export async function submitValueDiff(
+  params: ValueDiffParams,
+  options?: SubmitOptions,
+) {
   return await submitRun("value_diff", params, options);
 }
 
@@ -31,6 +34,9 @@ export interface ValueDiffDetailViewOptions {
   columnsRenderMode?: Record<string, ColumnRenderMode>;
 }
 
-export async function submitValueDiffDetail(params: ValueDiffParams, options?: SubmitOptions) {
+export async function submitValueDiffDetail(
+  params: ValueDiffParams,
+  options?: SubmitOptions,
+) {
   return await submitRun("value_diff_detail", params, options);
 }

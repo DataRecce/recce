@@ -1,40 +1,42 @@
 import {
   Box,
+  Button,
   CloseButton,
   Grid,
   Heading,
+  HStack,
+  Icon,
+  Menu,
+  Portal,
+  Spacer,
   Tabs,
   Text,
-  HStack,
-  Button,
-  Spacer,
   useDisclosure,
-  Menu,
-  Icon,
-  Portal,
 } from "@chakra-ui/react";
-
-import { LineageGraphNode } from "./lineage";
-import { SchemaView, SingleEnvSchemaView } from "../schema/SchemaView";
-import { useRecceQueryContext } from "@/lib/hooks/RecceQueryContext";
-import { useLocation } from "wouter";
-import { ResourceTypeTag, RowCountDiffTag, RowCountTag } from "./NodeTag";
 import { useCallback } from "react";
-import { useRecceActionContext } from "@/lib/hooks/RecceActionContext";
-import { useLineageGraphContext } from "@/lib/hooks/LineageGraphContext";
-import useModelColumns from "@/lib/hooks/useModelColumns";
-import { createSchemaDiffCheck } from "@/lib/api/schemacheck";
-import { findByRunType } from "../run/registry";
-import { DisableTooltipMessages } from "@/constants/tooltipMessage";
-import { trackPreviewChange } from "@/lib/api/track";
-import { SandboxView } from "./SandboxView";
-import { NodeSqlView } from "./NodeSqlView";
-import { LearnHowLink, RecceNotification } from "../onboarding-guide/Notification";
-import { useRecceInstanceContext } from "@/lib/hooks/RecceInstanceContext";
-import { formatSelectColumns } from "@/lib/formatSelect";
-import { Tooltip } from "@/components/ui/tooltip";
 import { PiCaretDown } from "react-icons/pi";
+import { useLocation } from "wouter";
 import SetupConnectionPopover from "@/components/app/SetupConnectionPopover";
+import { Tooltip } from "@/components/ui/tooltip";
+import { DisableTooltipMessages } from "@/constants/tooltipMessage";
+import { createSchemaDiffCheck } from "@/lib/api/schemacheck";
+import { trackPreviewChange } from "@/lib/api/track";
+import { formatSelectColumns } from "@/lib/formatSelect";
+import { useLineageGraphContext } from "@/lib/hooks/LineageGraphContext";
+import { useRecceActionContext } from "@/lib/hooks/RecceActionContext";
+import { useRecceInstanceContext } from "@/lib/hooks/RecceInstanceContext";
+import { useRecceQueryContext } from "@/lib/hooks/RecceQueryContext";
+import useModelColumns from "@/lib/hooks/useModelColumns";
+import {
+  LearnHowLink,
+  RecceNotification,
+} from "../onboarding-guide/Notification";
+import { findByRunType } from "../run/registry";
+import { SchemaView, SingleEnvSchemaView } from "../schema/SchemaView";
+import { LineageGraphNode } from "./lineage";
+import { NodeSqlView } from "./NodeSqlView";
+import { ResourceTypeTag, RowCountDiffTag, RowCountTag } from "./NodeTag";
+import { SandboxView } from "./SandboxView";
 
 interface NodeViewProps {
   node: LineageGraphNode;
@@ -48,15 +50,24 @@ export function NodeView({ node, onCloseNode }: NodeViewProps) {
     node.data.resourceType === "source" ||
     node.data.resourceType === "snapshot";
 
-  const { open: isSandboxOpen, onOpen: onSandboxOpen, onClose: onSandboxClose } = useDisclosure();
-  const { open: isNotificationOpen, onClose: onNotificationClose } = useDisclosure({
-    defaultOpen: true,
-  });
+  const {
+    open: isSandboxOpen,
+    onOpen: onSandboxOpen,
+    onClose: onSandboxClose,
+  } = useDisclosure();
+  const { open: isNotificationOpen, onClose: onNotificationClose } =
+    useDisclosure({
+      defaultOpen: true,
+    });
   const { runAction } = useRecceActionContext();
   const { isActionAvailable } = useLineageGraphContext();
 
   const refetchRowCount = () => {
-    runAction("row_count", { node_names: [node.data.name] }, { showForm: false, showLast: false });
+    runAction(
+      "row_count",
+      { node_names: [node.data.name] },
+      { showForm: false, showLast: false },
+    );
   };
   const refetchRowCountDiff = () => {
     runAction(
@@ -129,10 +140,13 @@ export function NodeView({ node, onCloseNode }: NodeViewProps) {
         <Tabs.Root defaultValue="columns" overflow="auto">
           {isSingleEnvOnboarding && isNotificationOpen && (
             <Box p="12px">
-              <RecceNotification onClose={onNotificationClose} align={"flex-start"}>
+              <RecceNotification
+                onClose={onNotificationClose}
+                align={"flex-start"}
+              >
                 <Text>
-                  Enable the Recce Checklist and start adding checks for better data validation and
-                  review.
+                  Enable the Recce Checklist and start adding checks for better
+                  data validation and review.
                   <br />
                   <LearnHowLink />
                 </Text>
@@ -148,7 +162,10 @@ export function NodeView({ node, onCloseNode }: NodeViewProps) {
               {isSingleEnvOnboarding ? (
                 <SingleEnvSchemaView current={node.data.data.current} />
               ) : (
-                <SchemaView base={node.data.data.base} current={node.data.data.current} />
+                <SchemaView
+                  base={node.data.data.base}
+                  current={node.data.data.current}
+                />
               )}
             </Tabs.Content>
             <Tabs.Content value="code" height="100%" p={0}>
@@ -218,7 +235,8 @@ function SingleEnvironmentMenuButton({
                     setSqlQuery(`select * from ${node.data.name}`);
                   }
                   setLocation("/query");
-                }}>
+                }}
+              >
                 <Icon as={findByRunType("query").icon} /> Query
               </Menu.Item>
               <Menu.Item
@@ -226,12 +244,14 @@ function SingleEnvironmentMenuButton({
                 fontSize="14px"
                 onClick={() => {
                   refetchRowCount();
-                }}>
+                }}
+              >
                 <Icon as={findByRunType("row_count").icon} /> Row Count
               </Menu.Item>
               <Tooltip
                 content={disableReason(isAddedOrRemoved, "profile")}
-                positioning={{ placement: "left" }}>
+                positioning={{ placement: "left" }}
+              >
                 <Menu.Item
                   value="profile"
                   fontSize="14px"
@@ -244,7 +264,8 @@ function SingleEnvironmentMenuButton({
                       },
                       { showForm: true, showLast: false },
                     );
-                  }}>
+                  }}
+                >
                   <Icon as={findByRunType("profile").icon} /> Profile
                 </Menu.Item>
               </Tooltip>
@@ -306,7 +327,11 @@ function ExploreChangeMenuButton({
     runType: string,
   ) => {
     if (metadataOnly) {
-      return <SetupConnectionPopover display={true}>{children}</SetupConnectionPopover>;
+      return (
+        <SetupConnectionPopover display={true}>
+          {children}
+        </SetupConnectionPopover>
+      );
     }
 
     const tooltipContent = disableReason(isAddedOrRemoved, runType);
@@ -314,7 +339,8 @@ function ExploreChangeMenuButton({
       <Tooltip
         disabled={tooltipContent === ""}
         content={tooltipContent}
-        positioning={{ placement: "left" }}>
+        positioning={{ placement: "left" }}
+      >
         {children}
       </Tooltip>
     );
@@ -328,7 +354,11 @@ function ExploreChangeMenuButton({
     return (
       <Menu.Root>
         <Menu.Trigger asChild>
-          <Button size="2xs" variant="outline" disabled={featureToggles.disableNodeActionDropdown}>
+          <Button
+            size="2xs"
+            variant="outline"
+            disabled={featureToggles.disableNodeActionDropdown}
+          >
             Explore <PiCaretDown />
           </Button>
         </Menu.Trigger>
@@ -348,10 +378,13 @@ function ExploreChangeMenuButton({
                     }
                     if (isActionAvailable("query_diff_with_primary_key")) {
                       // Only set primary key if the action is available
-                      setPrimaryKeys(primaryKey !== undefined ? [primaryKey] : undefined);
+                      setPrimaryKeys(
+                        primaryKey !== undefined ? [primaryKey] : undefined,
+                      );
                     }
                     setLocation("/query");
-                  }}>
+                  }}
+                >
                   <Icon as={findByRunType("query_diff").icon} /> Query
                 </Menu.Item>
               </SetupConnectionPopover>
@@ -363,12 +396,19 @@ function ExploreChangeMenuButton({
                   onClick={() => {
                     if (isActionAvailable("query_diff_with_primary_key")) {
                       // Only set primary key if the action is available
-                      setPrimaryKeys(primaryKey !== undefined ? [primaryKey] : undefined);
+                      setPrimaryKeys(
+                        primaryKey !== undefined ? [primaryKey] : undefined,
+                      );
                     }
                     onSandboxOpen();
-                    trackPreviewChange({ action: "explore", node: node.data.name });
-                  }}>
-                  <Icon as={findByRunType("sandbox").icon} /> Sandbox (Experiment)
+                    trackPreviewChange({
+                      action: "explore",
+                      node: node.data.name,
+                    });
+                  }}
+                >
+                  <Icon as={findByRunType("sandbox").icon} /> Sandbox
+                  (Experiment)
                 </Menu.Item>
               </SetupConnectionPopover>
               <Menu.Separator />
@@ -381,15 +421,19 @@ function ExploreChangeMenuButton({
                     disabled={featureToggles.disableDatabaseQuery}
                     onClick={() => {
                       refetchRowCountDiff();
-                    }}>
-                    <Icon as={findByRunType("row_count_diff").icon} /> Row Count Diff
+                    }}
+                  >
+                    <Icon as={findByRunType("row_count_diff").icon} /> Row Count
+                    Diff
                   </Menu.Item>
                 </SetupConnectionPopover>
                 {wrapMenuItem(
                   <Menu.Item
                     value="profile-diff"
                     fontSize="14px"
-                    disabled={isAddedOrRemoved || featureToggles.disableDatabaseQuery}
+                    disabled={
+                      isAddedOrRemoved || featureToggles.disableDatabaseQuery
+                    }
                     onClick={() => {
                       runAction(
                         "profile_diff",
@@ -398,8 +442,10 @@ function ExploreChangeMenuButton({
                         },
                         { showForm: true, showLast: false },
                       );
-                    }}>
-                    <Icon as={findByRunType("profile_diff").icon} /> Profile Diff
+                    }}
+                  >
+                    <Icon as={findByRunType("profile_diff").icon} /> Profile
+                    Diff
                   </Menu.Item>,
                   "profile_diff",
                 )}
@@ -407,7 +453,9 @@ function ExploreChangeMenuButton({
                   <Menu.Item
                     value="value-diff"
                     fontSize="14px"
-                    disabled={isAddedOrRemoved || featureToggles.disableDatabaseQuery}
+                    disabled={
+                      isAddedOrRemoved || featureToggles.disableDatabaseQuery
+                    }
                     onClick={() => {
                       runAction(
                         "value_diff",
@@ -416,7 +464,8 @@ function ExploreChangeMenuButton({
                         },
                         { showForm: true, showLast: false },
                       );
-                    }}>
+                    }}
+                  >
                     <Icon as={findByRunType("value_diff").icon} /> Value Diff
                   </Menu.Item>,
                   "value_diff",
@@ -425,14 +474,17 @@ function ExploreChangeMenuButton({
                   <Menu.Item
                     value="top-k-diff"
                     fontSize="14px"
-                    disabled={isAddedOrRemoved || featureToggles.disableDatabaseQuery}
+                    disabled={
+                      isAddedOrRemoved || featureToggles.disableDatabaseQuery
+                    }
                     onClick={() => {
                       runAction(
                         "top_k_diff",
                         { model: node.data.name, column_name: "", k: 50 },
                         { showForm: true },
                       );
-                    }}>
+                    }}
+                  >
                     <Icon as={findByRunType("top_k_diff").icon} /> Top-K Diff
                   </Menu.Item>,
                   "top_k_diff",
@@ -441,7 +493,9 @@ function ExploreChangeMenuButton({
                   <Menu.Item
                     value="histogram-diff"
                     fontSize="14px"
-                    disabled={isAddedOrRemoved || featureToggles.disableDatabaseQuery}
+                    disabled={
+                      isAddedOrRemoved || featureToggles.disableDatabaseQuery
+                    }
                     onClick={() => {
                       runAction(
                         "histogram_diff",
@@ -452,8 +506,10 @@ function ExploreChangeMenuButton({
                         },
                         { showForm: true },
                       );
-                    }}>
-                    <Icon as={findByRunType("histogram_diff").icon} /> Histogram Diff
+                    }}
+                  >
+                    <Icon as={findByRunType("histogram_diff").icon} /> Histogram
+                    Diff
                   </Menu.Item>,
                   "histogram_diff",
                 )}
@@ -466,7 +522,8 @@ function ExploreChangeMenuButton({
                   fontSize="14px"
                   onClick={() => {
                     void addSchemaCheck();
-                  }}>
+                  }}
+                >
                   <Icon as={findByRunType("schema_diff").icon} /> Schema Diff
                 </Menu.Item>
               </Menu.ItemGroup>

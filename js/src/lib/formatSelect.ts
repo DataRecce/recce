@@ -1,6 +1,9 @@
 import { mergeKeys } from "./mergeKeys";
 
-export function formatSelectColumns(baseColumns: string[], currentColumns: string[]): string[] {
+export function formatSelectColumns(
+  baseColumns: string[],
+  currentColumns: string[],
+): string[] {
   const mergedColumns = mergeKeys(baseColumns, currentColumns);
 
   // both side have no schema

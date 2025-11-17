@@ -1,14 +1,18 @@
 import { Center, Flex } from "@chakra-ui/react";
-import { ScreenshotDataGrid } from "../data-grid/ScreenshotDataGrid";
-import { RunResultViewProps } from "../run/types";
-import { ProfileDiffViewOptions } from "@/lib/api/profile";
 import { forwardRef, Ref, useMemo } from "react";
-import { toDataDiffGrid } from "../query/querydiff";
-import { RunToolbar } from "../run/RunToolbar";
-import { DiffDisplayModeSwitch } from "../query/ToggleSwitch";
-import { toDataGrid } from "../query/QueryResultView";
-import { ColumnRenderMode, isProfileDiffRun, isProfileRun } from "@/lib/api/types";
 import { DataGridHandle } from "react-data-grid";
+import { ProfileDiffViewOptions } from "@/lib/api/profile";
+import {
+  ColumnRenderMode,
+  isProfileDiffRun,
+  isProfileRun,
+} from "@/lib/api/types";
+import { ScreenshotDataGrid } from "../data-grid/ScreenshotDataGrid";
+import { toDataGrid } from "../query/QueryResultView";
+import { toDataDiffGrid } from "../query/querydiff";
+import { DiffDisplayModeSwitch } from "../query/ToggleSwitch";
+import { RunToolbar } from "../run/RunToolbar";
+import { RunResultViewProps } from "../run/types";
 
 type ProfileDiffResultViewProp = RunResultViewProps<ProfileDiffViewOptions>;
 
@@ -21,9 +25,18 @@ const PrivateProfileDiffResultView = (
     throw new Error("Only run type profile_diff is supported");
   }
   const result = run.result;
-  const pinnedColumns = useMemo(() => viewOptions?.pinned_columns ?? [], [viewOptions]);
-  const displayMode = useMemo(() => viewOptions?.display_mode ?? "inline", [viewOptions]);
-  const columnsRenderMode = useMemo(() => viewOptions?.columnsRenderMode ?? {}, [viewOptions]);
+  const pinnedColumns = useMemo(
+    () => viewOptions?.pinned_columns ?? [],
+    [viewOptions],
+  );
+  const displayMode = useMemo(
+    () => viewOptions?.display_mode ?? "inline",
+    [viewOptions],
+  );
+  const columnsRenderMode = useMemo(
+    () => viewOptions?.columnsRenderMode ?? {},
+    [viewOptions],
+  );
 
   const field = (result?.current?.columns ?? []).find(
     (f) => f.name.toLowerCase() === "column_name",
@@ -31,7 +44,9 @@ const PrivateProfileDiffResultView = (
   const primaryKey = field?.name ?? "column_name";
 
   const gridData = useMemo(() => {
-    const onColumnsRenderModeChanged = (cols: Record<string, ColumnRenderMode>) => {
+    const onColumnsRenderModeChanged = (
+      cols: Record<string, ColumnRenderMode>,
+    ) => {
       const newRenderModes = {
         ...(viewOptions?.columnsRenderMode ?? {}),
         ...cols,
@@ -76,7 +91,11 @@ const PrivateProfileDiffResultView = (
   }
 
   return (
-    <Flex direction="column" backgroundColor="rgb(249, 249, 249)" height={"100%"}>
+    <Flex
+      direction="column"
+      backgroundColor="rgb(249, 249, 249)"
+      height={"100%"}
+    >
       <RunToolbar run={run}>
         <DiffDisplayModeSwitch
           displayMode={displayMode}
@@ -112,8 +131,14 @@ const PrivateProfileResultView = (
   }
   const result = run.result;
   const dataFrame = result?.current;
-  const pinnedColumns = useMemo(() => viewOptions?.pinned_columns ?? [], [viewOptions]);
-  const columnsRenderMode = useMemo(() => viewOptions?.columnsRenderMode ?? {}, [viewOptions]);
+  const pinnedColumns = useMemo(
+    () => viewOptions?.pinned_columns ?? [],
+    [viewOptions],
+  );
+  const columnsRenderMode = useMemo(
+    () => viewOptions?.columnsRenderMode ?? {},
+    [viewOptions],
+  );
 
   const field = (result?.current?.columns ?? []).find(
     (f) => f.name.toLowerCase() === "column_name",
@@ -121,7 +146,9 @@ const PrivateProfileResultView = (
   const primaryKey = field?.name ?? "column_name";
 
   const gridData = useMemo(() => {
-    const onColumnsRenderModeChanged = (cols: Record<string, ColumnRenderMode>) => {
+    const onColumnsRenderModeChanged = (
+      cols: Record<string, ColumnRenderMode>,
+    ) => {
       const newRenderModes = {
         ...(viewOptions?.columnsRenderMode ?? {}),
         ...cols,
@@ -154,14 +181,25 @@ const PrivateProfileResultView = (
       columnsRenderMode,
       onColumnsRenderModeChanged,
     });
-  }, [dataFrame, pinnedColumns, primaryKey, viewOptions, onViewOptionsChanged, columnsRenderMode]);
+  }, [
+    dataFrame,
+    pinnedColumns,
+    primaryKey,
+    viewOptions,
+    onViewOptionsChanged,
+    columnsRenderMode,
+  ]);
 
   if (gridData.columns.length === 0) {
     return <Center height="100%">No data</Center>;
   }
 
   return (
-    <Flex direction="column" backgroundColor="rgb(249, 249, 249)" height={"100%"}>
+    <Flex
+      direction="column"
+      backgroundColor="rgb(249, 249, 249)"
+      height={"100%"}
+    >
       <ScreenshotDataGrid
         ref={ref}
         style={{ blockSize: "auto", maxHeight: "100%", overflow: "auto" }}

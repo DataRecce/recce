@@ -1,10 +1,14 @@
-import { RECCE_SUPPORT_CALENDAR_URL } from "@/constants/urls";
-import { RecceFeatureMode } from "@/lib/hooks/RecceInstanceContext";
 import { Button, CloseButton, Dialog, Text } from "@chakra-ui/react";
 import NextLink from "next/link";
 import React from "react";
+import { RECCE_SUPPORT_CALENDAR_URL } from "@/constants/urls";
+import { RecceFeatureMode } from "@/lib/hooks/RecceInstanceContext";
 
-export function ServerDisconnectedModalContent({ connect }: { connect: () => void }) {
+export function ServerDisconnectedModalContent({
+  connect,
+}: {
+  connect: () => void;
+}) {
   return (
     <Dialog.Content>
       <Dialog.Header>
@@ -12,7 +16,8 @@ export function ServerDisconnectedModalContent({ connect }: { connect: () => voi
       </Dialog.Header>
       <Dialog.Body>
         <Text>
-          The server connection has been lost. Please restart the Recce server and try again.
+          The server connection has been lost. Please restart the Recce server
+          and try again.
         </Text>
       </Dialog.Body>
       <Dialog.Footer>
@@ -20,7 +25,8 @@ export function ServerDisconnectedModalContent({ connect }: { connect: () => voi
           colorPalette="iochmara"
           onClick={() => {
             connect();
-          }}>
+          }}
+        >
           Retry
         </Button>
       </Dialog.Footer>
@@ -69,7 +75,10 @@ export function RecceInstanceDisconnectedModalContent({
             <Button colorPalette="blue">{content.action}</Button>
           </NextLink>
         ) : (
-          <Button colorPalette="blue" onClick={() => window.open(content.link, "_blank")}>
+          <Button
+            colorPalette="blue"
+            onClick={() => window.open(content.link, "_blank")}
+          >
             {content.action}
           </Button>
         )}

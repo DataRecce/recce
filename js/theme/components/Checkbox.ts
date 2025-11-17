@@ -1,7 +1,10 @@
 import { checkboxAnatomy, checkboxAnatomy as parts } from "@chakra-ui/anatomy";
-import { createMultiStyleConfigHelpers, defineStyle } from "@chakra-ui/styled-system";
 import { defineSlotRecipe } from "@chakra-ui/react";
 import { checkmarkRecipe } from "@chakra-ui/react/theme";
+import {
+  createMultiStyleConfigHelpers,
+  defineStyle,
+} from "@chakra-ui/styled-system";
 
 const helpers = createMultiStyleConfigHelpers(parts.keys);
 const definePartsStyle = helpers.definePartsStyle.bind(helpers);

@@ -1,6 +1,6 @@
-import { useState, useEffect } from "react";
-import { axiosClient } from "./axiosClient";
 import { AxiosResponse } from "axios";
+import { useEffect, useState } from "react";
+import { axiosClient } from "./axiosClient";
 
 interface VersionResponse {
   version: string;
@@ -15,7 +15,9 @@ export function useVersionNumber() {
     async function fetchVersion() {
       try {
         const { version, latestVersion } = (
-          await axiosClient.get<never, AxiosResponse<VersionResponse>>("/api/version")
+          await axiosClient.get<never, AxiosResponse<VersionResponse>>(
+            "/api/version",
+          )
         ).data;
 
         setVersion(version);

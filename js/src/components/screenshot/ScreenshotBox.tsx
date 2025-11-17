@@ -9,12 +9,21 @@ interface ScreenshotBoxProps extends BoxProps {
 
 export const ScreenshotBox = forwardRef(
   (
-    { backgroundColor = "white", blockSize, children, ...restProps }: ScreenshotBoxProps,
+    {
+      backgroundColor = "white",
+      blockSize,
+      children,
+      ...restProps
+    }: ScreenshotBoxProps,
     ref: Ref<HTMLDivElement>,
   ) => {
     return (
       <Box ref={ref} {...restProps} overflowY="auto" overflowX="hidden">
-        <Box backgroundColor={backgroundColor} height="100%" blockSize={blockSize}>
+        <Box
+          backgroundColor={backgroundColor}
+          height="100%"
+          blockSize={blockSize}
+        >
           {children}
         </Box>
       </Box>

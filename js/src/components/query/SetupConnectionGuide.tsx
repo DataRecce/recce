@@ -1,8 +1,8 @@
 import { Button, Heading, Icon, Text } from "@chakra-ui/react";
-import { RiTerminalBoxLine } from "react-icons/ri";
 import { useQuery } from "@tanstack/react-query";
-import { getRecceInstanceInfo } from "@/lib/api/instanceInfo";
+import { RiTerminalBoxLine } from "react-icons/ri";
 import { cacheKeys } from "@/lib/api/cacheKeys";
+import { getRecceInstanceInfo } from "@/lib/api/instanceInfo";
 import { getSettingsUrl } from "@/lib/utils/urls";
 
 export default function SetupConnectionGuide() {
@@ -34,7 +34,8 @@ export default function SetupConnectionGuide() {
             size="lg"
             onClick={() => {
               window.open(getSettingsUrl(instanceInfo), "_blank");
-            }}>
+            }}
+          >
             Connect to Data Warehouse
           </Button>
         </div>

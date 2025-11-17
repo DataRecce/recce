@@ -1,7 +1,7 @@
-import { Link, Image, Flex, IconButton, HStack } from "@chakra-ui/react";
-import { toaster } from "@/components/ui/toaster";
+import { Flex, HStack, IconButton, Image, Link } from "@chakra-ui/react";
 import React, { useState } from "react";
 import { LuExternalLink } from "react-icons/lu";
+import { toaster } from "@/components/ui/toaster";
 
 function ReactionFeedback({
   description,
@@ -19,14 +19,20 @@ function ReactionFeedback({
   externalLinkText?: string;
 }) {
   return (
-    <Flex gap={4} justifyContent="center" alignContent={"center"} alignItems={"center"}>
+    <Flex
+      gap={4}
+      justifyContent="center"
+      alignContent={"center"}
+      alignItems={"center"}
+    >
       {description}
       <IconButton
         aria-label="thumbs up"
         variant={"ghost"}
         width={"32px"}
         height={"32px"}
-        onClick={onLike}>
+        onClick={onLike}
+      >
         <Image src="/imgs/feedback/thumbs-up.png" alt="like" />
       </IconButton>
       <IconButton
@@ -34,11 +40,17 @@ function ReactionFeedback({
         variant={"ghost"}
         width={"32px"}
         height={"32px"}
-        onClick={onDislike}>
+        onClick={onDislike}
+      >
         <Image src="/imgs/feedback/thumbs-down.png" alt="dislike" />
       </IconButton>
       {externalLink && externalLinkText && (
-        <Link href={externalLink} target="_blank" textDecoration="underline" onClick={onClickLink}>
+        <Link
+          href={externalLink}
+          target="_blank"
+          textDecoration="underline"
+          onClick={onClickLink}
+        >
           {externalLinkText} <LuExternalLink />
         </Link>
       )}
@@ -53,7 +65,13 @@ export function useFeedbackCollectionToast(options: {
   externalLink?: string;
   externalLinkText?: string;
 }) {
-  const { feedbackId, description, onFeedbackSubmit, externalLink, externalLinkText } = options;
+  const {
+    feedbackId,
+    description,
+    onFeedbackSubmit,
+    externalLink,
+    externalLinkText,
+  } = options;
   const [toastId, setToastId] = useState<string | undefined>(undefined);
 
   function feedBackCollectionToast(skipBypassFeedback = false) {

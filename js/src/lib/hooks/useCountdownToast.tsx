@@ -1,12 +1,13 @@
-import { toaster } from "@/components/ui/toaster";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useTimeout } from "usehooks-ts";
+import { toaster } from "@/components/ui/toaster";
 
 const COUNTDOWN_CONFIG = {
   TOAST_ID: "lifetime-countdown",
   WARNING_THRESHOLD: 60, // seconds before expiry to show warning
   UPDATE_INTERVAL: 1000, // milliseconds
-  MESSAGE: (seconds: number) => `The server will be closed in ${seconds} seconds.`,
+  MESSAGE: (seconds: number) =>
+    `The server will be closed in ${seconds} seconds.`,
   STYLE: {
     fontFamily: "monospace",
   },
@@ -25,7 +26,9 @@ export function useCountdownToast(lifetimeExpiredAt: Date | undefined) {
     if (!lifetimeExpiredAt) return 0;
 
     const now = new Date();
-    const remaining = Math.floor((lifetimeExpiredAt.getTime() - now.getTime()) / 1000);
+    const remaining = Math.floor(
+      (lifetimeExpiredAt.getTime() - now.getTime()) / 1000,
+    );
     return Math.max(0, remaining); // Ensure we don't return negative values
   }, [lifetimeExpiredAt]);
 
@@ -48,7 +51,12 @@ export function useCountdownToast(lifetimeExpiredAt: Date | undefined) {
     countdownToast.update(countdownToastId, {
       description: COUNTDOWN_CONFIG.MESSAGE(remainingSeconds),
     });
-  }, [countdownToastId, calculateRemainingSeconds, countdownToast, cleanupToast]);
+  }, [
+    countdownToastId,
+    calculateRemainingSeconds,
+    countdownToast,
+    cleanupToast,
+  ]);
 
   const showToast = useCallback(() => {
     if (!lifetimeExpiredAt) return;
@@ -66,8 +74,17 @@ export function useCountdownToast(lifetimeExpiredAt: Date | undefined) {
       }),
     );
 
-    countdownIntervalRef.current = setInterval(updateToast, COUNTDOWN_CONFIG.UPDATE_INTERVAL);
-  }, [lifetimeExpiredAt, countdownToast, calculateRemainingSeconds, updateToast, cleanupToast]);
+    countdownIntervalRef.current = setInterval(
+      updateToast,
+      COUNTDOWN_CONFIG.UPDATE_INTERVAL,
+    );
+  }, [
+    lifetimeExpiredAt,
+    countdownToast,
+    calculateRemainingSeconds,
+    updateToast,
+    cleanupToast,
+  ]);
 
   // Calculate delay for showing toast
   const remainingSeconds = calculateRemainingSeconds();

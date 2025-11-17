@@ -1,9 +1,16 @@
-import { Card, Flex, Heading, SimpleGrid, Text, HStack } from "@chakra-ui/react";
-import { LineageGraph, LineageGraphNode } from "../lineage/lineage";
-import { SchemaView } from "../schema/SchemaView";
-import { mergeKeysWithStatus } from "@/lib/mergeKeys";
+import {
+  Card,
+  Flex,
+  Heading,
+  HStack,
+  SimpleGrid,
+  Text,
+} from "@chakra-ui/react";
 import { useEffect, useState } from "react";
+import { mergeKeysWithStatus } from "@/lib/mergeKeys";
+import { LineageGraph, LineageGraphNode } from "../lineage/lineage";
 import { ResourceTypeTag, RowCountDiffTag } from "../lineage/NodeTag";
+import { SchemaView } from "../schema/SchemaView";
 
 interface SchemaDiffCardProps {
   title: string;
@@ -18,13 +25,18 @@ function SchemaDiffCard({ node, ...props }: SchemaDiffCardProps) {
         <Card.Description>
           <HStack gap={"8px"} p={"16px"}>
             <ResourceTypeTag node={node} />
-            {node.data.resourceType === "model" && <RowCountDiffTag node={node} />}
+            {node.data.resourceType === "model" && (
+              <RowCountDiffTag node={node} />
+            )}
           </HStack>
         </Card.Description>
       </Card.Header>
       <Card.Body>
         <Flex>
-          <SchemaView base={node.data.data.base} current={node.data.data.current} />
+          <SchemaView
+            base={node.data.data.base}
+            current={node.data.data.current}
+          />
         </Flex>
       </Card.Body>
     </Card.Root>
@@ -40,10 +52,13 @@ function listChangedNodes(lineageGraph: LineageGraph) {
       Object.keys(node.data.data.base?.columns ?? {}),
       Object.keys(node.data.data.current?.columns ?? {}),
     );
-    const isSchemaChanged = !Object.values(columnDiffStatus).every((el) => el === undefined);
+    const isSchemaChanged = !Object.values(columnDiffStatus).every(
+      (el) => el === undefined,
+    );
     // We only want to show nodes that have real schema changes.
     // It doesn't include added or deleted model.
-    if (isSchemaChanged && node.data.data.base && node.data.data.current) changedNodes.push(node);
+    if (isSchemaChanged && node.data.data.base && node.data.data.current)
+      changedNodes.push(node);
   });
   return changedNodes;
 }
@@ -61,7 +76,12 @@ export function SchemaSummary({ lineageGraph }: Props) {
 
   return (
     <>
-      <Flex w={"100%"} paddingBottom="10px" marginBottom="20px" marginTop="20px">
+      <Flex
+        w={"100%"}
+        paddingBottom="10px"
+        marginBottom="20px"
+        marginTop="20px"
+      >
         <Heading fontSize={24}>Schema Summary</Heading>
       </Flex>
       <Flex w={"100%"} paddingBottom="10px" marginBottom="20px">
@@ -78,9 +98,16 @@ export function SchemaSummary({ lineageGraph }: Props) {
               gap={"2vw"}
               padding={"2.5vw"}
               width={"100%"}
-              backgroundColor={"lightgray"}>
+              backgroundColor={"lightgray"}
+            >
               {changedNodes.map((node) => {
-                return <SchemaDiffCard key={node.id} title={node.data.name} node={node} />;
+                return (
+                  <SchemaDiffCard
+                    key={node.id}
+                    title={node.data.name}
+                    node={node}
+                  />
+                );
               })}
             </SimpleGrid>
           </>

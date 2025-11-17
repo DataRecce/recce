@@ -1,11 +1,13 @@
 import { Box, Flex } from "@chakra-ui/react";
-
-import { TransformationType } from "./GraphColumnNode";
 import { Tooltip } from "@/components/ui/tooltip";
+import { TransformationType } from "./GraphColumnNode";
 
 export function ColumnLevelLineageLegend() {
   const TRANSFORMATION_MSGS: Record<string, [string, string]> = {
-    passthrough: ["Pass Through", "The column is directly selected from the upstream table."],
+    passthrough: [
+      "Pass Through",
+      "The column is directly selected from the upstream table.",
+    ],
     renamed: [
       "Renamed",
       "The column is selected from the upstream table but with a different name.",
@@ -25,7 +27,13 @@ export function ColumnLevelLineageLegend() {
   };
 
   return (
-    <Box bg="white" padding="12px" borderWidth="1px" borderColor="gray.200" fontSize="sm">
+    <Box
+      bg="white"
+      padding="12px"
+      borderWidth="1px"
+      borderColor="gray.200"
+      fontSize="sm"
+    >
       {Object.entries(TRANSFORMATION_MSGS).map(([key, [label, tip]]) => {
         return (
           <Tooltip content={tip} key={key} positioning={{ placement: "right" }}>

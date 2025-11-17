@@ -1,9 +1,8 @@
-import { RunFormProps } from "../run/types";
 import { Box, Checkbox, Field, Input, VStack } from "@chakra-ui/react";
-
 import { Select } from "chakra-react-select";
 import { useEffect, useState } from "react";
 import useModelColumns from "@/lib/hooks/useModelColumns";
+import { RunFormProps } from "../run/types";
 
 export interface ValueDiffFormParams {
   model: string;
@@ -13,7 +12,11 @@ export interface ValueDiffFormParams {
 
 type ValueDiffFormProp = RunFormProps<ValueDiffFormParams>;
 
-export function ValueDiffForm({ params, onParamsChanged, setIsReadyToExecute }: ValueDiffFormProp) {
+export function ValueDiffForm({
+  params,
+  onParamsChanged,
+  setIsReadyToExecute,
+}: ValueDiffFormProp) {
   const [allColumns, setAllColumns] = useState<boolean>(
     !params.columns || params.columns.length === 0,
   );
@@ -21,7 +24,12 @@ export function ValueDiffForm({ params, onParamsChanged, setIsReadyToExecute }: 
   const model = params.model;
   const primaryKey = params.primary_key;
 
-  const { columns, primaryKey: nodePrimaryKey, isLoading, error } = useModelColumns(params.model);
+  const {
+    columns,
+    primaryKey: nodePrimaryKey,
+    isLoading,
+    error,
+  } = useModelColumns(params.model);
 
   useEffect(() => {
     if (!primaryKey && nodePrimaryKey) {
@@ -50,7 +58,12 @@ export function ValueDiffForm({ params, onParamsChanged, setIsReadyToExecute }: 
   }
 
   if (columnNames.length === 0 || error) {
-    return <Box>Error: Please provide the &apos;catalog.json&apos; to list column candidates</Box>;
+    return (
+      <Box>
+        Error: Please provide the &apos;catalog.json&apos; to list column
+        candidates
+      </Box>
+    );
   }
 
   return (
@@ -74,9 +87,13 @@ export function ValueDiffForm({ params, onParamsChanged, setIsReadyToExecute }: 
           onChange={(options) => {
             onParamsChanged({
               ...params,
-              primary_key: options.length == 1 ? options[0].value : options.map((v) => v.value),
+              primary_key:
+                options.length == 1
+                  ? options[0].value
+                  : options.map((v) => v.value),
             });
-          }}></Select>
+          }}
+        ></Select>
       </Field.Root>
       <Field.Root>
         <Field.Label>Columns</Field.Label>
@@ -90,7 +107,8 @@ export function ValueDiffForm({ params, onParamsChanged, setIsReadyToExecute }: 
               ...params,
               columns: undefined,
             });
-          }}>
+          }}
+        >
           <Checkbox.HiddenInput />
           <Checkbox.Control />
           <Checkbox.Label>All columns</Checkbox.Label>
@@ -117,7 +135,8 @@ export function ValueDiffForm({ params, onParamsChanged, setIsReadyToExecute }: 
                 ...params,
                 columns: cols,
               });
-            }}></Select>
+            }}
+          ></Select>
         )}
       </Field.Root>
     </VStack>

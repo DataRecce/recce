@@ -8,13 +8,16 @@ import {
   toSingleEnvDataGrid,
 } from "./schema";
 import "react-data-grid/lib/styles.css";
-import { Flex, Alert } from "@chakra-ui/react";
-import { EmptyRowsRenderer, ScreenshotDataGrid } from "../data-grid/ScreenshotDataGrid";
-import { useLineageGraphContext } from "@/lib/hooks/LineageGraphContext";
+import { Alert, Flex } from "@chakra-ui/react";
+import { CellMouseArgs, DataGridHandle } from "react-data-grid";
 import { NodeData } from "@/lib/api/info";
 import { trackColumnLevelLineage } from "@/lib/api/track";
+import { useLineageGraphContext } from "@/lib/hooks/LineageGraphContext";
+import {
+  EmptyRowsRenderer,
+  ScreenshotDataGrid,
+} from "../data-grid/ScreenshotDataGrid";
 import { useLineageViewContext } from "../lineage/LineageViewContext";
-import { CellMouseArgs, DataGridHandle } from "react-data-grid";
 
 interface SchemaViewProps {
   base?: NodeData;
@@ -22,9 +25,14 @@ interface SchemaViewProps {
   enableScreenshot?: boolean;
 }
 
-function PrivateSingleEnvSchemaView({ current }: { current?: NodeData }, ref: Ref<DataGridHandle>) {
+function PrivateSingleEnvSchemaView(
+  { current }: { current?: NodeData },
+  ref: Ref<DataGridHandle>,
+) {
   const lineageViewContext = useLineageViewContext();
-  const [cllRunningMap, setCllRunningMap] = useState<Map<string, boolean>>(new Map());
+  const [cllRunningMap, setCllRunningMap] = useState<Map<string, boolean>>(
+    new Map(),
+  );
   const { columns, rows } = useMemo(() => {
     return toSingleEnvDataGrid(current?.columns, current, cllRunningMap);
   }, [current, cllRunningMap]);
@@ -33,7 +41,8 @@ function PrivateSingleEnvSchemaView({ current }: { current?: NodeData }, ref: Re
   const noCatalogCurrent = !lineageGraph?.catalogMetadata.current;
   let catalogMissingMessage = undefined;
   if (noCatalogCurrent) {
-    catalogMissingMessage = "catalog.json not found. Run `recce debug` to troubleshoot.";
+    catalogMissingMessage =
+      "catalog.json not found. Run `recce debug` to troubleshoot.";
   }
 
   const noSchemaCurrent = current && current.columns === undefined;
@@ -48,7 +57,10 @@ function PrivateSingleEnvSchemaView({ current }: { current?: NodeData }, ref: Re
     setCllRunningMap((prev) => new Map(prev).set(columnName, true));
     const modelId = current?.id;
     if (modelId) {
-      await lineageViewContext?.showColumnLevelLineage({ node_id: modelId, column: columnName });
+      await lineageViewContext?.showColumnLevelLineage({
+        node_id: modelId,
+        column: columnName,
+      });
     }
     setCllRunningMap((prev) => new Map(prev).set(columnName, false));
   };
@@ -58,7 +70,9 @@ function PrivateSingleEnvSchemaView({ current }: { current?: NodeData }, ref: Re
     return `${modelId}-${row.name}`;
   };
   const cll = lineageViewContext?.viewOptions.column_level_lineage;
-  const selectedRows: Set<Key> = cll ? new Set([`${cll.node_id}-${cll.column}`]) : new Set();
+  const selectedRows: Set<Key> = cll
+    ? new Set([`${cll.node_id}-${cll.column}`])
+    : new Set();
 
   return (
     <Flex direction="column">
@@ -92,7 +106,9 @@ function PrivateSingleEnvSchemaView({ current }: { current?: NodeData }, ref: Re
           ref={ref}
           rowKeyGetter={rowKeyGetter}
           selectedRows={selectedRows}
-          onSelectedRowsChange={() => {}}
+          onSelectedRowsChange={() => {
+            return void 0;
+          }}
           onCellClick={async (args: CellMouseArgs<SchemaRow>) => {
             await handleViewCll(args.row.name);
           }}
@@ -113,11 +129,16 @@ export function PrivateSchemaView(
   ref: Ref<DataGridHandle>,
 ) {
   const lineageViewContext = useLineageViewContext();
-  const [cllRunningMap, setCllRunningMap] = useState<Map<string, boolean>>(new Map());
+  const [cllRunningMap, setCllRunningMap] = useState<Map<string, boolean>>(
+    new Map(),
+  );
   const { columns, rows } = useMemo(() => {
     const schemaDiff = mergeColumns(base?.columns, current?.columns);
     const resourceType = current?.resource_type ?? base?.resource_type;
-    if (resourceType && ["model", "seed", "snapshot", "source"].includes(resourceType)) {
+    if (
+      resourceType &&
+      ["model", "seed", "snapshot", "source"].includes(resourceType)
+    ) {
       return toSchemaDataGrid(schemaDiff, current ?? base, cllRunningMap);
     } else {
       return toSchemaDataGrid(schemaDiff);
@@ -158,7 +179,10 @@ export function PrivateSchemaView(
     setCllRunningMap((prev) => new Map(prev).set(columnName, true));
     const modelId = current?.id ?? base?.id;
     if (modelId) {
-      await lineageViewContext?.showColumnLevelLineage({ node_id: modelId, column: columnName });
+      await lineageViewContext?.showColumnLevelLineage({
+        node_id: modelId,
+        column: columnName,
+      });
     }
     setCllRunningMap((prev) => new Map(prev).set(columnName, false));
   };
@@ -168,7 +192,9 @@ export function PrivateSchemaView(
     return `${modelId}-${row.name}`;
   };
   const cll = lineageViewContext?.viewOptions.column_level_lineage;
-  const selectedRows: Set<Key> = cll ? new Set([`${cll.node_id}-${cll.column}`]) : new Set();
+  const selectedRows: Set<Key> = cll
+    ? new Set([`${cll.node_id}-${cll.column}`])
+    : new Set();
 
   return (
     <Flex direction="column">
@@ -203,9 +229,14 @@ export function PrivateSchemaView(
           ref={ref}
           rowKeyGetter={rowKeyGetter}
           selectedRows={selectedRows}
-          onSelectedRowsChange={() => {}}
+          onSelectedRowsChange={() => {
+            return void 0;
+          }}
           onCellClick={async (args: CellMouseArgs<SchemaDiffRow>) => {
-            if (args.row.baseIndex !== undefined && args.row.currentIndex === undefined) {
+            if (
+              args.row.baseIndex !== undefined &&
+              args.row.currentIndex === undefined
+            ) {
               return;
             }
             await handleViewCll(args.row.name);

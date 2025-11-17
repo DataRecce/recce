@@ -1,20 +1,29 @@
-import { HStack, SkeletonText, Tag, Text, Icon, IconButton, Flex } from "@chakra-ui/react";
-import { getIconForResourceType } from "./styles";
+import {
+  Flex,
+  HStack,
+  Icon,
+  IconButton,
+  SkeletonText,
+  Tag,
+  Text,
+} from "@chakra-ui/react";
 import { FiArrowRight, FiFrown } from "react-icons/fi";
-import { RowCount, RowCountDiff } from "@/lib/api/models";
-import { LineageGraphNode } from "./lineage";
-import { RiArrowDownSFill, RiArrowUpSFill, RiSwapLine } from "react-icons/ri";
-import { useLineageGraphContext } from "@/lib/hooks/LineageGraphContext";
-import { deltaPercentageString } from "../rowcount/delta";
-
-import { findByRunType } from "../run/registry";
-import { useRecceInstanceContext } from "@/lib/hooks/RecceInstanceContext";
-import { Tooltip } from "@/components/ui/tooltip";
 import { PiRepeat } from "react-icons/pi";
+import { RiArrowDownSFill, RiArrowUpSFill, RiSwapLine } from "react-icons/ri";
 import SetupConnectionPopover from "@/components/app/SetupConnectionPopover";
+import { Tooltip } from "@/components/ui/tooltip";
+import { RowCount, RowCountDiff } from "@/lib/api/models";
+import { useLineageGraphContext } from "@/lib/hooks/LineageGraphContext";
+import { useRecceInstanceContext } from "@/lib/hooks/RecceInstanceContext";
+import { deltaPercentageString } from "../rowcount/delta";
+import { findByRunType } from "../run/registry";
+import { LineageGraphNode } from "./lineage";
+import { getIconForResourceType } from "./styles";
 
 export function ResourceTypeTag({ node }: { node: LineageGraphNode }) {
-  const { icon: ResourceTypeIcon } = getIconForResourceType(node.data.resourceType);
+  const { icon: ResourceTypeIcon } = getIconForResourceType(
+    node.data.resourceType,
+  );
   return (
     <Tooltip showArrow content="Type of resource">
       <Tag.Root>
@@ -113,14 +122,16 @@ export function RowCountDiffTag({
 }: RowCountDiffTagProps) {
   const { featureToggles } = useRecceInstanceContext();
   const { runsAggregated } = useLineageGraphContext();
-  const lastRowCount: RowCountDiff | undefined = runsAggregated?.[node.id]?.row_count_diff
-    .result as RowCountDiff | undefined;
+  const lastRowCount: RowCountDiff | undefined = runsAggregated?.[node.id]
+    ?.row_count_diff.result as RowCountDiff | undefined;
   const RunTypeIcon = findByRunType("row_count_diff").icon;
 
   // Calculate during render instead of effect
   const rowCount = fetchedRowCount ?? lastRowCount;
   const rowsToShow = rowCount;
-  const label = rowCount ? `${rowCount.base ?? "N/A"} -> ${rowCount.curr ?? "N/A"} rows` : "";
+  const label = rowCount
+    ? `${rowCount.base ?? "N/A"} -> ${rowCount.curr ?? "N/A"} rows`
+    : "";
 
   // TODO isFetching is not hooked up, so disabling it on the skeleton for now
   return (
@@ -130,8 +141,17 @@ export function RowCountDiffTag({
           <Flex direction="row" alignItems="center" gap="1">
             <RunTypeIcon />
             {rowsToShow != null || isFetching ? (
-              <SkeletonText loading={false} noOfLines={1} minWidth={"30px"} fontSize="xs">
-                {rowsToShow != null ? <_RowCountByRate rowCount={rowsToShow} /> : "row count"}
+              <SkeletonText
+                loading={false}
+                noOfLines={1}
+                minWidth={"30px"}
+                fontSize="xs"
+              >
+                {rowsToShow != null ? (
+                  <_RowCountByRate rowCount={rowsToShow} />
+                ) : (
+                  "row count"
+                )}
               </SkeletonText>
             ) : (
               <Text fontSize="xs">row count</Text>
@@ -144,7 +164,8 @@ export function RowCountDiffTag({
                 p="0"
                 variant="ghost"
                 onClick={onRefresh}
-                disabled={featureToggles.disableDatabaseQuery}>
+                disabled={featureToggles.disableDatabaseQuery}
+              >
                 <PiRepeat />
               </IconButton>
             )}
@@ -170,9 +191,8 @@ export function RowCountTag({
   isFetching,
 }: RowCountTagProps) {
   const { runsAggregated } = useLineageGraphContext();
-  const lastRowCount: RowCountDiff | undefined = runsAggregated?.[node.id]?.row_count.result as
-    | RowCountDiff
-    | undefined;
+  const lastRowCount: RowCountDiff | undefined = runsAggregated?.[node.id]
+    ?.row_count.result as RowCountDiff | undefined;
 
   const RunTypeIcon = findByRunType("row_count").icon;
 
@@ -190,7 +210,12 @@ export function RowCountTag({
       </Tag.StartElement>
       <Tag.Label>
         {rowCount || isFetching ? (
-          <SkeletonText loading={isFetching} lineClamp={1} height={2} minWidth={"30px"}>
+          <SkeletonText
+            loading={isFetching}
+            lineClamp={1}
+            height={2}
+            minWidth={"30px"}
+          >
             {rowCount ? `${label}` : "row count"}
           </SkeletonText>
         ) : (
@@ -205,7 +230,8 @@ export function RowCountTag({
           p="0"
           variant="ghost"
           onClick={onRefresh}
-          disabled={node.data.from === "base"}>
+          disabled={node.data.from === "base"}
+        >
           <PiRepeat />
         </IconButton>
       )}

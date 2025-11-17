@@ -1,6 +1,3 @@
-import React, { ChangeEvent, useCallback, useRef, useState } from "react";
-import { useQueryClient } from "@tanstack/react-query";
-import { cacheKeys } from "@/lib/api/cacheKeys";
 import {
   Button,
   CloseButton,
@@ -12,15 +9,21 @@ import {
   Text,
   useDisclosure,
 } from "@chakra-ui/react";
-import { importState } from "@/lib/api/state";
+import { useQueryClient } from "@tanstack/react-query";
+import React, { ChangeEvent, useCallback, useRef, useState } from "react";
+import { PiInfo } from "react-icons/pi";
 import { useLocation } from "wouter";
-import { useLineageGraphContext, useRunsAggregated } from "@/lib/hooks/LineageGraphContext";
-import { IconImport } from "../icons";
-import { useRecceInstanceContext } from "@/lib/hooks/RecceInstanceContext";
-import { trackStateAction } from "@/lib/api/track";
 import { toaster } from "@/components/ui/toaster";
 import { Tooltip } from "@/components/ui/tooltip";
-import { PiInfo } from "react-icons/pi";
+import { cacheKeys } from "@/lib/api/cacheKeys";
+import { importState } from "@/lib/api/state";
+import { trackStateAction } from "@/lib/api/track";
+import {
+  useLineageGraphContext,
+  useRunsAggregated,
+} from "@/lib/hooks/LineageGraphContext";
+import { useRecceInstanceContext } from "@/lib/hooks/RecceInstanceContext";
+import { IconImport } from "../icons";
 
 export function StateImporter({ checksOnly = true }: { checksOnly?: boolean }) {
   const { featureToggles } = useRecceInstanceContext();
@@ -99,8 +102,10 @@ export function StateImporter({ checksOnly = true }: { checksOnly?: boolean }) {
     <>
       <Tooltip
         content={
-          "Import Checklist from State File" + (isDemoSite ? " (Disabled in the demo site)" : "")
-        }>
+          "Import Checklist from State File" +
+          (isDemoSite ? " (Disabled in the demo site)" : "")
+        }
+      >
         <IconButton
           pt="6px"
           variant="plain"
@@ -109,7 +114,8 @@ export function StateImporter({ checksOnly = true }: { checksOnly?: boolean }) {
             handleClick();
             trackStateAction({ name: "import" });
           }}
-          disabled={featureToggles.disableImportStateFile || isDemoSite}>
+          disabled={featureToggles.disableImportStateFile || isDemoSite}
+        >
           <Icon as={IconImport} />
         </IconButton>
       </Tooltip>
@@ -126,7 +132,8 @@ export function StateImporter({ checksOnly = true }: { checksOnly?: boolean }) {
           return cancelRef.current;
         }}
         onOpenChange={onClose}
-        size="xl">
+        size="xl"
+      >
         <Portal>
           <Dialog.Backdrop />
           <Dialog.Positioner>

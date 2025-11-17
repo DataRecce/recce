@@ -8,14 +8,20 @@ import {
   Text,
   useDisclosure,
 } from "@chakra-ui/react";
-import html2canvas from "html2canvas-pro";
-import { toCanvas } from "html-to-image";
-import React, { RefObject, useCallback, useEffect, useRef, useState } from "react";
-import { useClipBoardToast } from "./useClipBoardToast";
 import { format } from "date-fns";
 import saveAs from "file-saver";
-import { PiCopy, PiInfo } from "react-icons/pi";
+import { toCanvas } from "html-to-image";
+import html2canvas from "html2canvas-pro";
+import React, {
+  RefObject,
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+} from "react";
 import { DataGridHandle } from "react-data-grid";
+import { PiCopy, PiInfo } from "react-icons/pi";
+import { useClipBoardToast } from "./useClipBoardToast";
 
 // Type to represent DataGridHandle which may have an element property
 type DataGridRefType = DataGridHandle & { element?: HTMLElement };
@@ -70,7 +76,9 @@ export function useCopyToClipboard({
   onError,
   ignoreElements,
 }: HookOptions) {
-  const [status, setStatus] = useState<"idle" | "loading" | "success" | "error">("idle");
+  const [status, setStatus] = useState<
+    "idle" | "loading" | "success" | "error"
+  >("idle");
   const ref = useRef<DataGridRefType>(null);
 
   // ImageDownloadModal is used for browsers that don't support ClipboardItem
@@ -109,8 +117,12 @@ export function useCopyToClipboard({
       // ref: https://github.com/niklasvh/html2canvas/issues/2107#issuecomment-1316354455
       const style = document.createElement("style");
       document.head.appendChild(style);
-      style.sheet?.insertRule("body > div:last-child img { display: inline-block; }");
-      const filter = ignoreElements ? (n: HTMLElement) => !ignoreElements(n) : undefined;
+      style.sheet?.insertRule(
+        "body > div:last-child img { display: inline-block; }",
+      );
+      const filter = ignoreElements
+        ? (n: HTMLElement) => !ignoreElements(n)
+        : undefined;
 
       setStatus("loading");
       const canvas =
@@ -125,7 +137,9 @@ export function useCopyToClipboard({
             }); // Use html-to-image for copy reactflow graph
 
       style.remove();
-      const outputCanvas = shadowEffect ? document.createElement("canvas") : canvas;
+      const outputCanvas = shadowEffect
+        ? document.createElement("canvas")
+        : canvas;
 
       if (shadowEffect) {
         // Add shadow effect
@@ -156,7 +170,9 @@ export function useCopyToClipboard({
 
   const copyToClipboard = async () => {
     try {
-      await navigator.clipboard.write([new ClipboardItem({ [`image/${imageType}`]: toImage() })]);
+      await navigator.clipboard.write([
+        new ClipboardItem({ [`image/${imageType}`]: toImage() }),
+      ]);
       setStatus("success");
       if (onSuccess) {
         onSuccess();
@@ -191,18 +207,19 @@ export function useCopyToClipboard({
 export function useCopyToClipboardButton(options?: HookOptions) {
   const { successToast, failToast } = useClipBoardToast();
 
-  const { isLoading, copyToClipboard, ImageDownloadModal, ref } = useCopyToClipboard({
-    imageType: "png",
-    shadowEffect: true,
-    backgroundColor: options?.backgroundColor ?? null,
-    onSuccess: () => {
-      successToast("Copied the query result as an image to clipboard");
-    },
-    onError: (error) => {
-      console.error("Error taking screenshot", error);
-      failToast("Failed to copy image to clipboard", error);
-    },
-  });
+  const { isLoading, copyToClipboard, ImageDownloadModal, ref } =
+    useCopyToClipboard({
+      imageType: "png",
+      shadowEffect: true,
+      backgroundColor: options?.backgroundColor ?? null,
+      onSuccess: () => {
+        successToast("Copied the query result as an image to clipboard");
+      },
+      onError: (error) => {
+        console.error("Error taking screenshot", error);
+        failToast("Failed to copy image to clipboard", error);
+      },
+    });
 
   const onMouseEnter = useCallback(() => {
     if (ref.current) {
@@ -229,7 +246,12 @@ export function useCopyToClipboardButton(options?: HookOptions) {
     }
   }, [ref, copyToClipboard, failToast]);
 
-  function CopyToClipboardButton({ imageType = "png", ...props }: { imageType?: "png" | "jpeg" }) {
+  function CopyToClipboardButton({
+    imageType = "png",
+    ...props
+  }: {
+    imageType?: "png" | "jpeg";
+  }) {
     return (
       <>
         <Button
@@ -238,7 +260,8 @@ export function useCopyToClipboardButton(options?: HookOptions) {
           loading={isLoading}
           onMouseEnter={onMouseEnter}
           onMouseLeave={onMouseLeave}
-          onClick={onCopyToClipboard}>
+          onClick={onCopyToClipboard}
+        >
           <PiCopy /> Copy to Clipboard
         </Button>
         <ImageDownloadModal />
@@ -273,7 +296,7 @@ export function useImageDownloadModal() {
           setBase64Img(e.target.result as string);
         }
       };
-    }, [setBase64Img]);
+    }, []);
 
     const onDownload = () => {
       if (!imgBlob) {

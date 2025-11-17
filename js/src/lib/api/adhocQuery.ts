@@ -1,7 +1,10 @@
 import { SubmitOptions, submitRun } from "./runs";
 import { ColumnRenderMode, DataFrame } from "./types";
 
-export interface QueryParams extends QueryRunParams, QueryDiffParams, QueryPreviewChangeParams {}
+export interface QueryParams
+  extends QueryRunParams,
+    QueryDiffParams,
+    QueryPreviewChangeParams {}
 
 export interface QueryPreviewChangeParams {
   current_model?: string;
@@ -40,14 +43,23 @@ export interface QueryDiffViewOptions {
   columnsRenderMode?: Record<string, ColumnRenderMode>;
 }
 
-export async function submitQuery(params: QueryRunParams, options?: SubmitOptions) {
+export async function submitQuery(
+  params: QueryRunParams,
+  options?: SubmitOptions,
+) {
   return await submitRun("query", params, options);
 }
 
-export async function submitQueryBase(params: QueryRunParams, options?: SubmitOptions) {
+export async function submitQueryBase(
+  params: QueryRunParams,
+  options?: SubmitOptions,
+) {
   return await submitRun("query_base", params, options);
 }
 
-export async function submitQueryDiff(params: QueryDiffParams, options?: SubmitOptions) {
+export async function submitQueryDiff(
+  params: QueryDiffParams,
+  options?: SubmitOptions,
+) {
   return await submitRun("query_diff", params, options);
 }

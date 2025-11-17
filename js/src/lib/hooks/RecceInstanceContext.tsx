@@ -45,9 +45,15 @@ const defaultValue: InstanceInfoType = {
 
 const InstanceInfo = createContext<InstanceInfoType>(defaultValue);
 
-export function RecceInstanceInfoProvider({ children }: { children: React.ReactNode }) {
+export function RecceInstanceInfoProvider({
+  children,
+}: {
+  children: React.ReactNode;
+}) {
   const { data: instanceInfo, isLoading } = useRecceInstanceInfo();
-  const [featureToggles, setFeatureToggles] = useState<RecceFeatureToggles>(defaultFeatureToggles);
+  const [featureToggles, setFeatureToggles] = useState<RecceFeatureToggles>(
+    defaultFeatureToggles,
+  );
   const [singleEnv, setSingleEnv] = useState<boolean>(false);
   const [authed, setAuthed] = useState<boolean>(false);
   const [lifetimeExpiredAt, setLifetimeExpiredAt] = useState<Date>();
@@ -108,7 +114,8 @@ export function RecceInstanceInfoProvider({ children }: { children: React.ReactN
         authed,
         lifetimeExpiredAt,
         shareUrl,
-      }}>
+      }}
+    >
       {children}
     </InstanceInfo.Provider>
   );

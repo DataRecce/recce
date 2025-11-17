@@ -1,6 +1,7 @@
 import { NodeData } from "@/lib/api/info";
 // import { mergeColumns } from "./schema";
 import { mergeKeysWithStatus } from "@/lib/mergeKeys";
+
 //
 
 // TODO mergeColumns import is throwing an error, fake fow now
@@ -21,7 +22,10 @@ export function mergeColumns(
   currentColumns: NodeData["columns"] = {},
 ): SchemaDiff {
   const result: SchemaDiff = {};
-  const mergedStatus = mergeKeysWithStatus(Object.keys(baseColumns), Object.keys(currentColumns));
+  const mergedStatus = mergeKeysWithStatus(
+    Object.keys(baseColumns),
+    Object.keys(currentColumns),
+  );
 
   Object.entries(mergedStatus).forEach(([name, status]) => {
     result[name] = {

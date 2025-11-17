@@ -5,7 +5,7 @@
 
 .diff-header-added {
   /* green-700 theme.ts */
-  background-color: #15803D;
+  background-color: #15803d;
   color: white;
 }
 
@@ -16,7 +16,7 @@
 
 .diff-header-removed {
   /* rose-500 theme.ts */
-  background-color: #F43F5E;
+  background-color: #f43f5e;
   color: white;
 }
 
@@ -50,7 +50,7 @@
 
 .rdg-cell[role="columnheader"] {
   /* neutral-100 themes.ts */
-  background-color: #F5F5F5;
+  background-color: #f5f5f5;
 }
 
 .rdg-row:hover .row-context-menu {

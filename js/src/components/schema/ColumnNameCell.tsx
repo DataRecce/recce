@@ -1,12 +1,21 @@
-import { useRecceActionContext } from "@/lib/hooks/RecceActionContext";
-import { Box, Flex, Icon, IconButton, Menu, Portal, Spacer, Spinner } from "@chakra-ui/react";
+import {
+  Box,
+  Flex,
+  Icon,
+  IconButton,
+  Menu,
+  Portal,
+  Spacer,
+  Spinner,
+} from "@chakra-ui/react";
 import { VscKebabVertical } from "react-icons/vsc";
-import { supportsHistogramDiff } from "../histogram/HistogramDiffForm";
+import { Tooltip } from "@/components/ui/tooltip";
 import { NodeData } from "@/lib/api/info";
+import { useRecceActionContext } from "@/lib/hooks/RecceActionContext";
 import { useRecceInstanceContext } from "@/lib/hooks/RecceInstanceContext";
+import { supportsHistogramDiff } from "../histogram/HistogramDiffForm";
 import { useLineageViewContext } from "../lineage/LineageViewContext";
 import { SchemaDiffRow } from "./schema";
-import { Tooltip } from "@/components/ui/tooltip";
 
 export function ColumnNameCell({
   model,
@@ -26,7 +35,11 @@ export function ColumnNameCell({
   const columnType = currentType ?? baseType;
 
   const handleProfileDiff = () => {
-    runAction("profile_diff", { model: model.name, columns: [name] }, { showForm: false });
+    runAction(
+      "profile_diff",
+      { model: model.name, columns: [name] },
+      { showForm: false },
+    );
   };
 
   const handleHistogramDiff = () => {
@@ -38,23 +51,33 @@ export function ColumnNameCell({
   };
 
   const handleTopkDiff = () => {
-    runAction("top_k_diff", { model: model.name, column_name: name, k: 50 }, { showForm: false });
+    runAction(
+      "top_k_diff",
+      { model: model.name, column_name: name, k: 50 },
+      { showForm: false },
+    );
   };
 
   const handleValueDiff = () => {
-    runAction("value_diff", { model: model.name, columns: [name] }, { showForm: true });
+    runAction(
+      "value_diff",
+      { model: model.name, columns: [name] },
+      { showForm: true },
+    );
   };
 
   const addedOrRemoved = !baseType || !currentType;
   const isCllDisabled =
-    lineageViewContext === undefined || (baseIndex !== undefined && currentIndex === undefined);
+    lineageViewContext === undefined ||
+    (baseIndex !== undefined && currentIndex === undefined);
 
   return (
     <Tooltip
       content="View column lineage"
       positioning={{ placement: "top" }}
       showArrow
-      disabled={isCllDisabled}>
+      disabled={isCllDisabled}
+    >
       <Flex alignItems={"center"} gap="3px">
         <Box overflow="hidden" textOverflow="ellipsis" whiteSpace="nowrap">
           {name}
@@ -75,7 +98,8 @@ export function ColumnNameCell({
                 onClick={(e) => {
                   // prevent the click event from propagating to the Cell clicking
                   e.stopPropagation();
-                }}>
+                }}
+              >
                 <Icon as={VscKebabVertical} />
               </IconButton>
             </Menu.Trigger>
@@ -91,7 +115,8 @@ export function ColumnNameCell({
                       value="profile-diff"
                       fontSize="0.85rem"
                       onClick={handleProfileDiff}
-                      disabled={addedOrRemoved}>
+                      disabled={addedOrRemoved}
+                    >
                       Profile Diff
                     </Menu.Item>
                     <Menu.Item
@@ -99,22 +124,26 @@ export function ColumnNameCell({
                       fontSize="0.85rem"
                       onClick={handleHistogramDiff}
                       disabled={
-                        addedOrRemoved || (columnType ? !supportsHistogramDiff(columnType) : true)
-                      }>
+                        addedOrRemoved ||
+                        (columnType ? !supportsHistogramDiff(columnType) : true)
+                      }
+                    >
                       Histogram Diff
                     </Menu.Item>
                     <Menu.Item
                       value="top-k-diff"
                       fontSize="0.85rem"
                       onClick={handleTopkDiff}
-                      disabled={addedOrRemoved}>
+                      disabled={addedOrRemoved}
+                    >
                       Top-k Diff
                     </Menu.Item>
                     <Menu.Item
                       value="value-diff"
                       fontSize="0.85rem"
                       onClick={handleValueDiff}
-                      disabled={addedOrRemoved}>
+                      disabled={addedOrRemoved}
+                    >
                       Value Diff
                     </Menu.Item>
                   </Menu.ItemGroup>

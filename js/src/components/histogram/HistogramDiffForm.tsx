@@ -1,7 +1,7 @@
-import { HistogramDiffParams } from "@/lib/api/profile";
-import { RunFormProps } from "../run/types";
 import { Box, Field, NativeSelect } from "@chakra-ui/react";
+import { HistogramDiffParams } from "@/lib/api/profile";
 import useModelColumns from "@/lib/hooks/useModelColumns";
+import { RunFormProps } from "../run/types";
 
 function isStringDataType(columnType: string) {
   const stringDataTypes = [
@@ -71,7 +71,9 @@ type HistogramDiffEditProps = RunFormProps<HistogramDiffParams>;
 
 export function supportsHistogramDiff(columnType: string) {
   return (
-    !isStringDataType(columnType) && !isBooleanDataType(columnType) && !isDateTimeType(columnType)
+    !isStringDataType(columnType) &&
+    !isBooleanDataType(columnType) &&
+    !isDateTimeType(columnType)
   );
 }
 
@@ -80,9 +82,16 @@ export function HistogramDiffForm({
   onParamsChanged,
   setIsReadyToExecute,
 }: HistogramDiffEditProps) {
-  const { columns: allColumns, isLoading, error } = useModelColumns(params.model);
+  const {
+    columns: allColumns,
+    isLoading,
+    error,
+  } = useModelColumns(params.model);
   const columns = allColumns.filter(
-    (c) => !isStringDataType(c.type) && !isBooleanDataType(c.type) && !isDateTimeType(c.type),
+    (c) =>
+      !isStringDataType(c.type) &&
+      !isBooleanDataType(c.type) &&
+      !isDateTimeType(c.type),
   );
 
   if (isLoading) {
@@ -90,7 +99,12 @@ export function HistogramDiffForm({
   }
 
   if (allColumns.length === 0 || error) {
-    return <Box>Error: Please provide the &apos;catalog.json&apos; to list column candidates</Box>;
+    return (
+      <Box>
+        Error: Please provide the &apos;catalog.json&apos; to list column
+        candidates
+      </Box>
+    );
   }
 
   return (
@@ -103,14 +117,20 @@ export function HistogramDiffForm({
             onChange={(e) => {
               const columnName = e.target.value;
               setIsReadyToExecute(!!columnName);
-              const columnType = columns.find((c) => c.name === columnName)?.type ?? "";
+              const columnType =
+                columns.find((c) => c.name === columnName)?.type ?? "";
               onParamsChanged({
                 ...params,
                 column_name: columnName,
                 column_type: columnType,
               });
             }}
-            placeholder={columns.length !== 0 ? "Select column" : "No numeric column is available"}>
+            placeholder={
+              columns.length !== 0
+                ? "Select column"
+                : "No numeric column is available"
+            }
+          >
             {columns.map((c) => (
               <option key={c.name} value={c.name} className="no-track-pii-safe">
                 {c.name} : {c.type}

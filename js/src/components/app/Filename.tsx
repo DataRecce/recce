@@ -1,30 +1,30 @@
-import { cacheKeys } from "@/lib/api/cacheKeys";
-import { rename, saveAs } from "@/lib/api/state";
-import { useLineageGraphContext } from "@/lib/hooks/LineageGraphContext";
 import {
-  Flex,
   Box,
-  Icon,
-  useDisclosure,
-  Input,
   Button,
-  IconButton,
   Checkbox,
-  Dialog,
-  Portal,
   CloseButton,
+  Dialog,
   Field,
+  Flex,
+  Icon,
+  IconButton,
+  Input,
+  Portal,
+  useDisclosure,
 } from "@chakra-ui/react";
 import { useQueryClient } from "@tanstack/react-query";
-import React, { useEffect, useRef, useState } from "react";
-import { IconEdit, IconSave } from "../icons";
 import { AxiosError } from "axios";
-import { localStorageKeys } from "@/lib/api/localStorageKeys";
-import { useChecks } from "@/lib/api/checks";
-import { useRecceInstanceContext } from "@/lib/hooks/RecceInstanceContext";
-import { formatRunDateTime } from "../run/RunStatusAndDate";
+import React, { useEffect, useRef, useState } from "react";
 import { toaster } from "@/components/ui/toaster";
 import { Tooltip } from "@/components/ui/tooltip";
+import { cacheKeys } from "@/lib/api/cacheKeys";
+import { useChecks } from "@/lib/api/checks";
+import { localStorageKeys } from "@/lib/api/localStorageKeys";
+import { rename, saveAs } from "@/lib/api/state";
+import { useLineageGraphContext } from "@/lib/hooks/LineageGraphContext";
+import { useRecceInstanceContext } from "@/lib/hooks/RecceInstanceContext";
+import { IconEdit, IconSave } from "../icons";
+import { formatRunDateTime } from "../run/RunStatusAndDate";
 
 const useRecceToast = () => {
   const toastSuccess = (message: string) => {
@@ -91,13 +91,16 @@ export const Filename = () => {
   const isStateless = !fileName && !cloudMode && !isDemoSite;
   const { data: checks } = useChecks(isStateless);
   const hasNonPresetChecks =
-    checks != undefined && checks.filter((check) => !check.is_preset).length > 0;
+    checks != undefined &&
+    checks.filter((check) => !check.is_preset).length > 0;
   useClosePrompt(isStateless && hasNonPresetChecks);
 
-  const [{ newFileName, errorMessage, modified, overwriteWithMethod, bypass }, setState] =
-    useState<FilenameState>({
-      newFileName: fileName ?? "recce_state.json",
-    });
+  const [
+    { newFileName, errorMessage, modified, overwriteWithMethod, bypass },
+    setState,
+  ] = useState<FilenameState>({
+    newFileName: fileName ?? "recce_state.json",
+  });
 
   const inputRef = useRef<HTMLInputElement>(null);
   const { toastSuccess, toastError } = useRecceToast();
@@ -112,12 +115,16 @@ export const Filename = () => {
     modalDisclosure.onOpen();
   };
 
-  const handleAction = async (method: "save" | "rename", overwrite?: boolean) => {
+  const handleAction = async (
+    method: "save" | "rename",
+    overwrite?: boolean,
+  ) => {
     if (!newFileName) {
       return;
     }
 
-    const bypassOverwrite = localStorage.getItem(localStorageKeys.bypassSaveOverwrite) === "true";
+    const bypassOverwrite =
+      localStorage.getItem(localStorageKeys.bypassSaveOverwrite) === "true";
 
     try {
       if (method === "save") {
@@ -131,7 +138,11 @@ export const Filename = () => {
           overwrite: overwrite ?? bypassOverwrite,
         });
       }
-      toastSuccess(method === "save" ? "Save file successfully" : "Rename file successfully");
+      toastSuccess(
+        method === "save"
+          ? "Save file successfully"
+          : "Rename file successfully",
+      );
       await queryClient.invalidateQueries({ queryKey: cacheKeys.lineage() });
       if (bypass) {
         localStorage.setItem(localStorageKeys.bypassSaveOverwrite, "true");
@@ -148,7 +159,10 @@ export const Filename = () => {
           return;
         }
       }
-      toastError(method === "save" ? "Save file failed" : "Rename file failed", error as Error);
+      toastError(
+        method === "save" ? "Save file failed" : "Rename file failed",
+        error as Error,
+      );
     } finally {
       modalDisclosure.onClose();
     }
@@ -169,27 +183,42 @@ export const Filename = () => {
     return <></>;
   }
 
-  const titleNewInstance = "New Instance" + (hasNonPresetChecks ? " (unsaved)" : "");
+  const titleNewInstance =
+    "New Instance" + (hasNonPresetChecks ? " (unsaved)" : "");
   let titleReadOnlyState;
   if (featureToggles.disableSaveToFile && fileName) {
     const generatedAt = envInfo?.stateMetadata?.generated_at;
-    const formattedDate = generatedAt ? formatRunDateTime(new Date(generatedAt)) : null;
-    titleReadOnlyState = formattedDate ? `${fileName} (${formattedDate})` : null;
+    const formattedDate = generatedAt
+      ? formatRunDateTime(new Date(generatedAt))
+      : null;
+    titleReadOnlyState = formattedDate
+      ? `${fileName} (${formattedDate})`
+      : null;
   }
 
   return (
     <>
       <Flex justifyContent="center" alignItems="center">
-        <Box fontWeight="600">{titleReadOnlyState ?? fileName ?? titleNewInstance}</Box>
+        <Box fontWeight="600">
+          {titleReadOnlyState ?? fileName ?? titleNewInstance}
+        </Box>
         {!featureToggles.disableSaveToFile && (
-          <Tooltip content={fileName ? "Change Filename" : "Save"} openDelay={1000}>
+          <Tooltip
+            content={fileName ? "Change Filename" : "Save"}
+            openDelay={1000}
+          >
             <IconButton
               onClick={handleOpen}
               aria-label={fileName ? "Change Filename" : "Save"}
               variant="ghost"
               size="sm"
-              colorPalette="gray">
-              <Icon as={fileName ? IconEdit : IconSave} boxSize={"16px"} verticalAlign="middle" />
+              colorPalette="gray"
+            >
+              <Icon
+                as={fileName ? IconEdit : IconSave}
+                boxSize={"16px"}
+                verticalAlign="middle"
+              />
             </IconButton>
           </Tooltip>
         )}
@@ -197,18 +226,22 @@ export const Filename = () => {
       <Dialog.Root
         open={modalDisclosure.open}
         onOpenChange={modalDisclosure.onClose}
-        placement="center">
+        placement="center"
+      >
         <Portal>
           <Dialog.Backdrop />
           <Dialog.Positioner>
             <Dialog.Content>
               <Dialog.Header>
-                <Dialog.Title>{fileName ? "Change Filename" : "Save File"}</Dialog.Title>
+                <Dialog.Title>
+                  {fileName ? "Change Filename" : "Save File"}
+                </Dialog.Title>
               </Dialog.Header>
               <Dialog.Body
                 onKeyDown={(e) => {
                   e.stopPropagation();
-                }}>
+                }}
+              >
                 <Field.Root invalid={!!errorMessage}>
                   <Field.Label>File name:</Field.Label>
                   <Input
@@ -227,7 +260,8 @@ export const Filename = () => {
                         newErrorMessage =
                           "Invalid filename. Only alphanumeric, space, _ and - are allowed.";
                       } else if (fileName && value === fileName) {
-                        newErrorMessage = "Filename is the same as the current one.";
+                        newErrorMessage =
+                          "Filename is the same as the current one.";
                       }
 
                       setState((s) => {
@@ -265,7 +299,8 @@ export const Filename = () => {
                   onClick={async () => {
                     await handleAction("save");
                   }}
-                  disabled={!newFileName || !!errorMessage || !modified}>
+                  disabled={!newFileName || !!errorMessage || !modified}
+                >
                   {fileName ? "Save as New File" : "Confirm"}
                 </Button>
                 {fileName && (
@@ -275,7 +310,8 @@ export const Filename = () => {
                     onClick={async () => {
                       await handleAction("rename");
                     }}
-                    disabled={!newFileName || !!errorMessage || !modified}>
+                    disabled={!newFileName || !!errorMessage || !modified}
+                  >
                     Rename
                   </Button>
                 )}
@@ -293,7 +329,8 @@ export const Filename = () => {
         initialFocusEl={() => {
           return inputRef.current;
         }}
-        placement="center">
+        placement="center"
+      >
         <Portal>
           <Dialog.Backdrop />
           <Dialog.Positioner>
@@ -306,7 +343,8 @@ export const Filename = () => {
                 borderBottom="solid 1px lightgray"
                 onKeyDown={(e) => {
                   e.stopPropagation();
-                }}>
+                }}
+              >
                 <Box fontSize="12pt">
                   {overwriteWithMethod === "save"
                     ? "Saving a file with this name will overwrite the existing file. Are you sure you wish to continue?"
@@ -318,7 +356,8 @@ export const Filename = () => {
                   checked={bypass}
                   onCheckedChange={(e) => {
                     setState((s) => ({ ...s, bypass: Boolean(e.checked) }));
-                  }}>
+                  }}
+                >
                   <Checkbox.HiddenInput />
                   <Checkbox.Control />
                   <Checkbox.Label fontWeight="bold" pt="8px">
@@ -327,7 +366,11 @@ export const Filename = () => {
                 </Checkbox.Root>
               </Dialog.Body>
               <Dialog.Footer gap="5px">
-                <Button variant="outline" onClick={handleOvewriteBack} size="sm">
+                <Button
+                  variant="outline"
+                  onClick={handleOvewriteBack}
+                  size="sm"
+                >
                   Back
                 </Button>
                 <Button
@@ -340,7 +383,8 @@ export const Filename = () => {
 
                     void handleAction(overwriteWithMethod, true);
                     overwriteDisclosure.onClose();
-                  }}>
+                  }}
+                >
                   Overwrite
                 </Button>
               </Dialog.Footer>

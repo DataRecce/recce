@@ -1,10 +1,14 @@
 import { Box, Flex, ProgressCircle, Tag } from "@chakra-ui/react";
-import { RowCountDiffTag, RowCountTag } from "./NodeTag";
-import { ActionState } from "./LineageViewContext";
-import { Tooltip } from "@/components/ui/tooltip";
 import { PiInfo, PiWarning } from "react-icons/pi";
 import { LineageGraphNode } from "@/components/lineage/lineage";
-import { isRowCountDiffRun, isRowCountRun, isValueDiffRun } from "@/lib/api/types";
+import { Tooltip } from "@/components/ui/tooltip";
+import {
+  isRowCountDiffRun,
+  isRowCountRun,
+  isValueDiffRun,
+} from "@/lib/api/types";
+import { ActionState } from "./LineageViewContext";
+import { RowCountDiffTag, RowCountTag } from "./NodeTag";
 
 interface ActionTagProps {
   node: LineageGraphNode;
@@ -92,14 +96,12 @@ export const ActionTag = ({ node, action }: ActionTagProps) => {
 
   if (isValueDiffRun(run) && run.result) {
     const r = run.result;
-    let total = 0;
     let mismatched = 0;
 
     for (const c of r.data.data) {
       if ((c[2] as number) < 1) {
         mismatched++;
       }
-      total++;
     }
 
     return (
@@ -109,8 +111,11 @@ export const ActionTag = ({ node, action }: ActionTagProps) => {
             fontSize="10pt"
             color={mismatched > 0 ? "red" : "green"}
             alignItems="center"
-            gap="3px">
-            {mismatched > 0 ? `${mismatched} columns mismatched` : "All columns match"}
+            gap="3px"
+          >
+            {mismatched > 0
+              ? `${mismatched} columns mismatched`
+              : "All columns match"}
           </Flex>
         </Tag.Label>
       </Tag.Root>

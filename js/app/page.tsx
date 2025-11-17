@@ -1,55 +1,61 @@
 "use client";
 
 import {
-  Image,
-  Tabs,
-  Code,
-  Box,
-  Flex,
-  Link,
-  Spacer,
-  Icon,
-  LinkProps,
-  Heading,
   Badge,
-  Progress,
+  Box,
+  Code,
+  Flex,
+  Heading,
   HStack,
+  Icon,
+  Image,
+  Link,
+  LinkProps,
+  Progress,
+  Spacer,
+  Tabs,
   Text,
 } from "@chakra-ui/react";
-import React, { ReactNode, useEffect, useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { useVersionNumber } from "@/lib/api/version";
-import { CheckPage } from "@/components/check/CheckPage";
-import { QueryPage } from "@/components/query/QueryPage";
-import { Redirect, Route, Switch, useLocation, useRoute } from "wouter";
-import { useLineageGraphContext } from "@/lib/hooks/LineageGraphContext";
-import { RunPage } from "@/components/run/RunPage";
-import { ErrorBoundary } from "@/components/errorboundary/ErrorBoundary";
-import { StateExporter } from "@/components/app/StateExporter";
-import { FaGithub, FaQuestionCircle, FaSlack } from "react-icons/fa";
+import React, { ReactNode, useEffect, useMemo, useState } from "react";
 import { IconType } from "react-icons";
+import { FaGithub, FaQuestionCircle, FaSlack } from "react-icons/fa";
+import { Redirect, Route, Switch, useLocation, useRoute } from "wouter";
+import { StateExporter } from "@/components/app/StateExporter";
+import { CheckPage } from "@/components/check/CheckPage";
+import { ErrorBoundary } from "@/components/errorboundary/ErrorBoundary";
+import { QueryPage } from "@/components/query/QueryPage";
+import { RunPage } from "@/components/run/RunPage";
+import { useVersionNumber } from "@/lib/api/version";
+import { useLineageGraphContext } from "@/lib/hooks/LineageGraphContext";
 import "@fontsource/montserrat/800.css";
-import { EnvInfo } from "@/components/app/EnvInfo";
-import { Check, listChecks } from "@/lib/api/checks";
-import { cacheKeys } from "@/lib/api/cacheKeys";
-import { LineagePage } from "@/components/lineage/LineagePage";
-import { useRecceActionContext } from "@/lib/hooks/RecceActionContext";
-import { HSplit, VSplit } from "@/components/split/Split";
-import { RunResultPane } from "@/components/run/RunResultPane";
 import { VscGitPullRequest } from "react-icons/vsc";
-import { trackInit } from "@/lib/api/track";
-import { Filename } from "@/components/app/Filename";
-import { StateSynchronizer } from "@/components/app/StateSynchronizer";
-import { useRecceServerFlag } from "@/lib/hooks/useRecceServerFlag";
-import { useRecceInstanceContext } from "@/lib/hooks/RecceInstanceContext";
-import { TopLevelShare } from "@/components/app/StateSharing";
-import { useCountdownToast } from "@/lib/hooks/useCountdownToast";
 import AuthModal from "@/components/AuthModal/AuthModal";
-import { toaster } from "@/components/ui/toaster";
-import { RunList } from "@/components/run/RunList";
 import AvatarDropdown from "@/components/app/AvatarDropdown";
+import { EnvInfo } from "@/components/app/EnvInfo";
+import { Filename } from "@/components/app/Filename";
+import { TopLevelShare } from "@/components/app/StateSharing";
+import { StateSynchronizer } from "@/components/app/StateSynchronizer";
+import { LineagePage } from "@/components/lineage/LineagePage";
+import { RunList } from "@/components/run/RunList";
+import { RunResultPane } from "@/components/run/RunResultPane";
+import { HSplit, VSplit } from "@/components/split/Split";
+import { toaster } from "@/components/ui/toaster";
+import { cacheKeys } from "@/lib/api/cacheKeys";
+import { Check, listChecks } from "@/lib/api/checks";
+import { trackInit } from "@/lib/api/track";
+import { useRecceActionContext } from "@/lib/hooks/RecceActionContext";
+import { useRecceInstanceContext } from "@/lib/hooks/RecceInstanceContext";
+import { useCountdownToast } from "@/lib/hooks/useCountdownToast";
+import { useRecceServerFlag } from "@/lib/hooks/useRecceServerFlag";
 
-const RouteAlwaysMount = ({ children, path }: { children: ReactNode; path: string }) => {
+const RouteAlwaysMount = ({
+  children,
+  path,
+}: {
+  children: ReactNode;
+  path: string;
+}) => {
   const [match] = useRoute(path);
   return (
     <Box display={match ? "block" : "none"} height="100%">
@@ -73,7 +79,10 @@ function LinkIcon({ icon, href, ...prob }: LinkIconProps) {
 
 function RecceVersionBadge() {
   const { version, latestVersion } = useVersionNumber();
-  const versionFormatRegex = useMemo(() => new RegExp("^\\d+\\.\\d+\\.\\d+$"), []);
+  const versionFormatRegex = useMemo(
+    () => new RegExp("^\\d+\\.\\d+\\.\\d+$"),
+    [],
+  );
 
   useEffect(() => {
     if (versionFormatRegex.test(version) && version !== latestVersion) {
@@ -93,14 +102,16 @@ function RecceVersionBadge() {
             <span>
               A new version of Recce (v{latestVersion}) is available.
               <br />
-              Please run <Code>pip install --upgrade recce</Code> to update Recce.
+              Please run <Code>pip install --upgrade recce</Code> to update
+              Recce.
               <br />
               <Link
                 color="brand.700"
                 fontWeight={"bold"}
                 href={`https://github.com/DataRecce/recce/releases/tag/v${latestVersion}`}
                 _hover={{ textDecoration: "underline" }}
-                target="_blank">
+                target="_blank"
+              >
                 Click here to view the detail of latest release
               </Link>
             </span>
@@ -123,7 +134,12 @@ function RecceVersionBadge() {
   if (!versionFormatRegex.test(version)) {
     // If the version is not in the format of x.y.z, don't apply
     return (
-      <Badge fontSize="sm" color="white/80" variant="outline" textTransform="uppercase">
+      <Badge
+        fontSize="sm"
+        color="white/80"
+        variant="outline"
+        textTransform="uppercase"
+      >
         {version}
       </Badge>
     );
@@ -131,10 +147,16 @@ function RecceVersionBadge() {
 
   // Link to the release page on GitHub if the version is in the format of x.y.z
   return (
-    <Badge fontSize="sm" color="white/80" variant="outline" textTransform="uppercase">
+    <Badge
+      fontSize="sm"
+      color="white/80"
+      variant="outline"
+      textTransform="uppercase"
+    >
       <Link
         href={`https://github.com/DataRecce/recce/releases/tag/v${version}`}
-        _hover={{ textDecoration: "none" }}>
+        _hover={{ textDecoration: "none" }}
+      >
         <Text color="white/80">{version}</Text>
       </Link>
     </Badge>
@@ -142,41 +164,79 @@ function RecceVersionBadge() {
 }
 
 function TopBar() {
-  const { reviewMode, isDemoSite, envInfo, cloudMode } = useLineageGraphContext();
-  const { featureToggles, lifetimeExpiredAt, authed } = useRecceInstanceContext();
+  const { reviewMode, isDemoSite, envInfo, cloudMode } =
+    useLineageGraphContext();
+  const { featureToggles, lifetimeExpiredAt, authed } =
+    useRecceInstanceContext();
   const { url: prURL, id: prID } = envInfo?.pullRequest ?? {};
   const demoPrId = prURL ? prURL.split("/").pop() : null;
-  const brandLink = cloudMode || authed ? "https://cloud.datarecce.io/" : "https://reccehq.com/";
+  const brandLink =
+    cloudMode || authed
+      ? "https://cloud.datarecce.io/"
+      : "https://reccehq.com/";
   const [showModal, setShowModal] = useState(false);
 
   useCountdownToast(lifetimeExpiredAt);
 
   return (
-    <Flex gap="10px" minHeight="40px" alignItems="center" bg="rgb(255, 110, 66)">
-      <Link href={brandLink} target="_blank" _hover={{ textDecoration: "none" }}>
+    <Flex
+      gap="10px"
+      minHeight="40px"
+      alignItems="center"
+      bg="rgb(255, 110, 66)"
+    >
+      <Link
+        href={brandLink}
+        target="_blank"
+        _hover={{ textDecoration: "none" }}
+      >
         <Flex gap="10px" alignItems="center">
           <Image
             boxSize="20px"
             ml="18px"
             src="/logo/recce-logo-white.png"
-            alt="recce-logo-white"></Image>
-          <Heading as="h1" fontFamily={`"Montserrat", sans-serif`} fontSize="lg" color="white">
+            alt="recce-logo-white"
+          ></Image>
+          <Heading
+            as="h1"
+            fontFamily={`"Montserrat", sans-serif`}
+            fontSize="lg"
+            color="white"
+          >
             RECCE
           </Heading>
         </Flex>
       </Link>
       <RecceVersionBadge />
       {(featureToggles.mode ?? reviewMode) && (
-        <Badge fontSize="sm" color="white/80" variant="outline" textTransform="uppercase">
+        <Badge
+          fontSize="sm"
+          color="white/80"
+          variant="outline"
+          textTransform="uppercase"
+        >
           {featureToggles.mode ?? "review mode"}
         </Badge>
       )}
       {cloudMode && prID && (
-        <Badge fontSize="sm" color="white/80" variant="outline" textTransform="uppercase">
+        <Badge
+          fontSize="sm"
+          color="white/80"
+          variant="outline"
+          textTransform="uppercase"
+        >
           <HStack>
             <Box>cloud mode</Box>
-            <Box borderLeftWidth="1px" borderLeftColor="white/80" paddingLeft="8px">
-              <Link href={prURL} _hover={{ textDecoration: "none" }} target="_blank">
+            <Box
+              borderLeftWidth="1px"
+              borderLeftColor="white/80"
+              paddingLeft="8px"
+            >
+              <Link
+                href={prURL}
+                _hover={{ textDecoration: "none" }}
+                target="_blank"
+              >
                 <Icon
                   color="white/80"
                   as={VscGitPullRequest}
@@ -192,11 +252,24 @@ function TopBar() {
         </Badge>
       )}
       {isDemoSite && prURL && demoPrId && (
-        <Badge fontSize="sm" color="white/80" variant="outline" textTransform="uppercase">
+        <Badge
+          fontSize="sm"
+          color="white/80"
+          variant="outline"
+          textTransform="uppercase"
+        >
           <HStack>
             <Box>demo mode</Box>
-            <Box borderLeftWidth="1px" borderLeftColor="white/80" paddingLeft="8px">
-              <Link href={prURL} _hover={{ textDecoration: "none" }} target="_blank">
+            <Box
+              borderLeftWidth="1px"
+              borderLeftColor="white/80"
+              paddingLeft="8px"
+            >
+              <Link
+                href={prURL}
+                _hover={{ textDecoration: "none" }}
+                target="_blank"
+              >
                 <Icon
                   color="white/80"
                   as={VscGitPullRequest}
@@ -216,8 +289,15 @@ function TopBar() {
       {(isDemoSite || featureToggles.mode === "read only") && (
         <>
           <LinkIcon icon={FaGithub} href="https://github.com/DataRecce/recce" />
-          <LinkIcon icon={FaSlack} href="https://getdbt.slack.com/archives/C05C28V7CPP" />
-          <LinkIcon mr={2} icon={FaQuestionCircle} href="https://docs.datarecce.io" />
+          <LinkIcon
+            icon={FaSlack}
+            href="https://getdbt.slack.com/archives/C05C28V7CPP"
+          />
+          <LinkIcon
+            mr={2}
+            icon={FaQuestionCircle}
+            href="https://docs.datarecce.io"
+          />
         </>
       )}
       {!isDemoSite && featureToggles.mode !== "read only" && (
@@ -241,7 +321,8 @@ function TopBar() {
                 cursor="pointer"
                 onClick={() => {
                   setShowModal(true);
-                }}>
+                }}
+              >
                 Connect to Cloud
               </Box>
               {showModal && (
@@ -273,7 +354,11 @@ interface TabBadgeProps<T> {
   selectCallback?: (data: T) => number;
 }
 
-function TabBadge<T>({ queryKey, fetchCallback, selectCallback }: TabBadgeProps<T>): ReactNode {
+function TabBadge<T>({
+  queryKey,
+  fetchCallback,
+  selectCallback,
+}: TabBadgeProps<T>): ReactNode {
   const {
     data: count,
     isLoading,
@@ -298,7 +383,8 @@ function TabBadge<T>({ queryKey, fetchCallback, selectCallback }: TabBadgeProps<
       bg="tomato"
       alignContent={"center"}
       color="white"
-      fontSize="xs">
+      fontSize="xs"
+    >
       {count}
     </Box>
   );
@@ -344,8 +430,13 @@ function NavBar() {
       value={valueLocation}
       onValueChange={(e) => {
         setValueLocation(e.value);
-      }}>
-      <Tabs.List display="grid" gridTemplateColumns="1fr auto 1fr" alignItems="center">
+      }}
+    >
+      <Tabs.List
+        display="grid"
+        gridTemplateColumns="1fr auto 1fr"
+        alignItems="center"
+      >
         {/* Left section: Tabs */}
         <Box display="flex">
           {tabs.map(({ name, href, badge, disable }) => {
@@ -357,7 +448,8 @@ function NavBar() {
                   setLocation(href);
                 }}
                 disabled={!!isLoading || isFlagLoading || disable}
-                hidden={disable}>
+                hidden={disable}
+              >
                 {name}
                 {badge}
               </Tabs.Trigger>
@@ -388,7 +480,8 @@ function NavBar() {
 }
 
 function Main() {
-  const { isRunResultOpen, isHistoryOpen, closeRunResult } = useRecceActionContext();
+  const { isRunResultOpen, isHistoryOpen, closeRunResult } =
+    useRecceActionContext();
   const { data: flag } = useRecceServerFlag();
   const [location] = useLocation();
   const _isRunResultOpen = isRunResultOpen && !location.startsWith("/checks");
@@ -399,7 +492,8 @@ function Main() {
       sizes={[0, 100]}
       minSize={_isHistoryOpen ? 300 : 0}
       gutterSize={_isHistoryOpen ? 5 : 0}
-      style={{ height: "100%" }}>
+      style={{ height: "100%" }}
+    >
       <Box style={{ contain: "size" }}>{_isHistoryOpen && <RunList />}</Box>
       <VSplit
         sizes={_isRunResultOpen ? [50, 50] : [100, 0]}
@@ -408,7 +502,8 @@ function Main() {
         style={{
           flex: "1",
           contain: "size",
-        }}>
+        }}
+      >
         <Box p={0} style={{ contain: "content" }}>
           <ErrorBoundary>
             {/* Prevent the lineage page unmount and lose states */}
@@ -474,7 +569,10 @@ export default function Home() {
       <TopBar />
       <NavBar />
       <Main />
-      {!isLoading && !isDemoSite && !isCodespace && featureToggles.mode === null && <AuthModal />}
+      {!isLoading &&
+        !isDemoSite &&
+        !isCodespace &&
+        featureToggles.mode === null && <AuthModal />}
     </MainContainer>
   );
 }

@@ -1,12 +1,18 @@
 import { Center, Flex } from "@chakra-ui/react";
-import { EmptyRowsRenderer, ScreenshotDataGrid } from "../data-grid/ScreenshotDataGrid";
-
-import { RunResultViewProps } from "../run/types";
-import { deltaPercentageString } from "./delta";
 import { isNumber } from "lodash";
 import { forwardRef, Ref } from "react";
-import { isRowCountDiffRun, isRowCountRun, RowObjectType } from "@/lib/api/types";
 import { DataGridHandle } from "react-data-grid";
+import {
+  isRowCountDiffRun,
+  isRowCountRun,
+  RowObjectType,
+} from "@/lib/api/types";
+import {
+  EmptyRowsRenderer,
+  ScreenshotDataGrid,
+} from "../data-grid/ScreenshotDataGrid";
+import { RunResultViewProps } from "../run/types";
+import { deltaPercentageString } from "./delta";
 
 type RowCountDiffResultViewProp = RunResultViewProps;
 
@@ -16,7 +22,10 @@ interface RowCountDiffRow extends RowObjectType {
   current: number | string;
 }
 
-function _RowCountDiffResultView({ run }: RowCountDiffResultViewProp, ref: Ref<DataGridHandle>) {
+function _RowCountDiffResultView(
+  { run }: RowCountDiffResultViewProp,
+  ref: Ref<DataGridHandle>,
+) {
   if (!isRowCountDiffRun(run)) {
     throw new Error("Run type must be row_count_diff");
   }
@@ -108,7 +117,10 @@ interface RowCountRow extends RowObjectType {
   current: number | string;
 }
 
-function _RowCountResultView({ run }: RowCountResultViewProp, ref: Ref<DataGridHandle>) {
+function _RowCountResultView(
+  { run }: RowCountResultViewProp,
+  ref: Ref<DataGridHandle>,
+) {
   if (!isRowCountRun(run)) {
     throw new Error("Run type must be row_count");
   }

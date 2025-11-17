@@ -1,9 +1,13 @@
-import { findByRunType, RegistryEntry, runTypeHasRef } from "@/components/run/registry";
+import { useQuery } from "@tanstack/react-query";
+import { useCallback, useEffect, useState } from "react";
+import {
+  findByRunType,
+  RegistryEntry,
+  runTypeHasRef,
+} from "@/components/run/registry";
 import { cacheKeys } from "@/lib/api/cacheKeys";
 import { cancelRun, waitRun } from "@/lib/api/runs";
-import { useQuery } from "@tanstack/react-query";
 import { Run } from "../api/types";
-import { useCallback, useEffect, useState } from "react";
 import { useRunsAggregated } from "./LineageGraphContext";
 
 interface UseRunResult {
@@ -23,7 +27,7 @@ export const useRun = (runId?: string): UseRunResult => {
   const { error, data: run } = useQuery({
     queryKey: cacheKeys.run(runId ?? ""),
     queryFn: async () => {
-      return waitRun(runId ?? "", isRunning ? 2 : 0);
+      return await waitRun(runId ?? "", isRunning ? 2 : 0);
     },
     enabled: !!runId,
     refetchInterval: isRunning ? 50 : false,
@@ -64,11 +68,12 @@ export const useRun = (runId?: string): UseRunResult => {
 
     await cancelRun(runId);
     return;
-  }, [runId, setAborting]);
+  }, [runId]);
 
   let RunResultView: RegistryEntry["RunResultView"] | undefined;
   if (run && runTypeHasRef(run.type)) {
-    RunResultView = findByRunType(run.type).RunResultView as RegistryEntry["RunResultView"];
+    RunResultView = findByRunType(run.type)
+      .RunResultView as RegistryEntry["RunResultView"];
   }
 
   return {

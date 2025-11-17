@@ -1,33 +1,31 @@
-import { LineageDiffViewOptions } from "@/lib/api/lineagecheck";
-import { useLineageGraphContext } from "@/lib/hooks/LineageGraphContext";
-
 import {
-  HStack,
-  Button,
-  Icon,
   Box,
-  Checkbox,
-  Menu,
-  Input,
+  Button,
   ButtonGroup,
+  Checkbox,
+  Code,
+  HStack,
+  Icon,
+  Input,
+  Menu,
+  Portal,
   Spacer,
   Text,
   VStack,
-  Code,
-  Portal,
 } from "@chakra-ui/react";
-
-import { FiPackage } from "react-icons/fi";
-import { getIconForResourceType } from "./styles";
 import { CSSProperties, useEffect, useRef, useState } from "react";
-import { useLineageViewContextSafe } from "./LineageViewContext";
-import { findByRunType } from "../run/registry";
-import { useRecceServerFlag } from "@/lib/hooks/useRecceServerFlag";
-import { useRecceInstanceContext } from "@/lib/hooks/RecceInstanceContext";
-import { Tooltip } from "@/components/ui/tooltip";
-import SetupConnectionPopover from "@/components/app/SetupConnectionPopover";
+import { FiPackage } from "react-icons/fi";
 import { PiCaretDown } from "react-icons/pi";
+import SetupConnectionPopover from "@/components/app/SetupConnectionPopover";
 import HistoryToggle from "@/components/shared/HistoryToggle";
+import { Tooltip } from "@/components/ui/tooltip";
+import { LineageDiffViewOptions } from "@/lib/api/lineagecheck";
+import { useLineageGraphContext } from "@/lib/hooks/LineageGraphContext";
+import { useRecceInstanceContext } from "@/lib/hooks/RecceInstanceContext";
+import { useRecceServerFlag } from "@/lib/hooks/useRecceServerFlag";
+import { findByRunType } from "../run/registry";
+import { useLineageViewContextSafe } from "./LineageViewContext";
+import { getIconForResourceType } from "./styles";
 
 const SelectFilterTooltip = () => {
   return (
@@ -66,8 +64,14 @@ const ViewModeSelectMenu = ({ isDisabled }: { isDisabled: boolean }) => {
   return (
     <Menu.Root>
       <Menu.Trigger asChild>
-        <Button minWidth="100px" size="2xs" variant="outline" disabled={isDisabled}>
-          <Icon as={getIconForResourceType("model").icon} /> {label} <PiCaretDown />
+        <Button
+          minWidth="100px"
+          size="2xs"
+          variant="outline"
+          disabled={isDisabled}
+        >
+          <Icon as={getIconForResourceType("model").icon} /> {label}{" "}
+          <PiCaretDown />
         </Button>
       </Menu.Trigger>
       <Portal>
@@ -77,7 +81,8 @@ const ViewModeSelectMenu = ({ isDisabled }: { isDisabled: boolean }) => {
               value={viewMode}
               onValueChange={(e) => {
                 handleSelect(e.value as typeof viewMode);
-              }}>
+              }}
+            >
               <Menu.ItemGroupLabel>mode</Menu.ItemGroupLabel>
               <Menu.RadioItem value="changed_models">
                 Changed Models
@@ -156,7 +161,12 @@ const PackageSelectMenu = ({ isDisabled }: { isDisabled: boolean }) => {
   return (
     <Menu.Root closeOnSelect={false}>
       <Menu.Trigger asChild>
-        <Button minWidth="100px" size="2xs" variant="outline" disabled={isDisabled}>
+        <Button
+          minWidth="100px"
+          size="2xs"
+          variant="outline"
+          disabled={isDisabled}
+        >
           <Icon as={FiPackage} /> {label} <PiCaretDown />
         </Button>
       </Menu.Trigger>
@@ -167,8 +177,13 @@ const PackageSelectMenu = ({ isDisabled }: { isDisabled: boolean }) => {
               <Menu.ItemGroupLabel>Select Packages</Menu.ItemGroupLabel>
               <Menu.Item value="" asChild>
                 <Checkbox.Root
-                  checked={!isSelectAll && !isSelectNone ? "indeterminate" : isSelectAll}
-                  onCheckedChange={handleSelectAll}>
+                  checked={
+                    !isSelectAll && !isSelectNone
+                      ? "indeterminate"
+                      : isSelectAll
+                  }
+                  onCheckedChange={handleSelectAll}
+                >
                   <Checkbox.HiddenInput />
                   <Checkbox.Control />
                   <Checkbox.Label>Select All</Checkbox.Label>
@@ -185,10 +200,13 @@ const PackageSelectMenu = ({ isDisabled }: { isDisabled: boolean }) => {
                       checked={selected.has(pkg)}
                       onCheckedChange={() => {
                         handleSelect(thePkg);
-                      }}>
+                      }}
+                    >
                       <Checkbox.HiddenInput />
                       <Checkbox.Control />
-                      <Checkbox.Label className="no-track-pii-safe">{pkg}</Checkbox.Label>
+                      <Checkbox.Label className="no-track-pii-safe">
+                        {pkg}
+                      </Checkbox.Label>
                     </Checkbox.Root>
                   </Menu.Item>
                 );
@@ -232,7 +250,8 @@ const NodeSelectionInput = (props: {
       content={props.tooltipComponent}
       positioning={{ placement: "bottom-start" }}
       closeOnClick={false}
-      disabled={!flags?.single_env_onboarding}>
+      disabled={!flags?.single_env_onboarding}
+    >
       <Input
         ref={inputRef}
         height="24px"
@@ -356,7 +375,8 @@ export const LineageViewTopBar = () => {
                 fontSize="9pt"
                 onClick={() => {
                   deselect();
-                }}>
+                }}
+              >
                 Deselect
               </Button>
             </ControlItem>
@@ -377,9 +397,11 @@ export const LineageViewTopBar = () => {
                             disabled={featureToggles.disableDatabaseQuery}
                             onClick={async () => {
                               await lineageViewContext.runRowCount();
-                            }}>
+                            }}
+                          >
                             <Text textStyle="sm">
-                              <Icon as={findByRunType("row_count_diff").icon} /> Row Count
+                              <Icon as={findByRunType("row_count_diff").icon} />{" "}
+                              Row Count
                             </Text>
                           </Menu.Item>
                         </Menu.Content>
@@ -396,7 +418,10 @@ export const LineageViewTopBar = () => {
             <ButtonGroup attached variant="outline">
               <Menu.Root positioning={{ placement: "bottom-end" }}>
                 <Menu.Trigger asChild>
-                  <Button size="2xs" disabled={featureToggles.disableViewActionDropdown}>
+                  <Button
+                    size="2xs"
+                    disabled={featureToggles.disableViewActionDropdown}
+                  >
                     Actions <PiCaretDown />
                   </Button>
                 </Menu.Trigger>
@@ -405,27 +430,35 @@ export const LineageViewTopBar = () => {
                     <Menu.Content>
                       <Menu.ItemGroup m="0" p="4px 12px">
                         <Menu.ItemGroupLabel>Diff</Menu.ItemGroupLabel>
-                        <SetupConnectionPopover display={featureToggles.mode === "metadata only"}>
+                        <SetupConnectionPopover
+                          display={featureToggles.mode === "metadata only"}
+                        >
                           <Menu.Item
                             value="row-count-diff"
                             disabled={featureToggles.disableDatabaseQuery}
                             onClick={async () => {
                               await lineageViewContext.runRowCountDiff();
-                            }}>
+                            }}
+                          >
                             <Text textStyle="sm">
-                              <Icon as={findByRunType("row_count_diff").icon} /> Row Count Diff
+                              <Icon as={findByRunType("row_count_diff").icon} />{" "}
+                              Row Count Diff
                             </Text>
                           </Menu.Item>
                         </SetupConnectionPopover>
-                        <SetupConnectionPopover display={featureToggles.mode === "metadata only"}>
+                        <SetupConnectionPopover
+                          display={featureToggles.mode === "metadata only"}
+                        >
                           <Menu.Item
                             value="value-diff"
                             disabled={featureToggles.disableDatabaseQuery}
                             onClick={async () => {
                               await lineageViewContext.runValueDiff();
-                            }}>
+                            }}
+                          >
                             <Text textStyle="sm">
-                              <Icon as={findByRunType("value_diff").icon} /> Value Diff
+                              <Icon as={findByRunType("value_diff").icon} />{" "}
+                              Value Diff
                             </Text>
                           </Menu.Item>
                         </SetupConnectionPopover>
@@ -434,17 +467,26 @@ export const LineageViewTopBar = () => {
                       <Menu.Separator />
 
                       <Menu.ItemGroup m="0" px="12px">
-                        <Menu.ItemGroupLabel>Add to Checklist</Menu.ItemGroupLabel>
+                        <Menu.ItemGroupLabel>
+                          Add to Checklist
+                        </Menu.ItemGroupLabel>
                         <Menu.Item
                           value="lineage-diff"
-                          disabled={!(isNoSelect || (isMultiSelect && selectedNodes.length > 1))}
+                          disabled={
+                            !(
+                              isNoSelect ||
+                              (isMultiSelect && selectedNodes.length > 1)
+                            )
+                          }
                           onClick={() => {
                             lineageViewContext.addLineageDiffCheck(
                               lineageViewContext.viewOptions.view_mode,
                             );
-                          }}>
+                          }}
+                        >
                           <Text textStyle="sm">
-                            <Icon as={findByRunType("lineage_diff").icon} /> Lineage Diff
+                            <Icon as={findByRunType("lineage_diff").icon} />{" "}
+                            Lineage Diff
                           </Text>
                         </Menu.Item>
                         <Menu.Item
@@ -452,9 +494,11 @@ export const LineageViewTopBar = () => {
                           disabled={false}
                           onClick={() => {
                             lineageViewContext.addSchemaDiffCheck();
-                          }}>
+                          }}
+                        >
                           <Text textStyle="sm">
-                            <Icon as={findByRunType("schema_diff").icon} /> Schema Diff
+                            <Icon as={findByRunType("schema_diff").icon} />{" "}
+                            Schema Diff
                           </Text>
                         </Menu.Item>
                       </Menu.ItemGroup>

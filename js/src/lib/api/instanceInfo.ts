@@ -1,5 +1,5 @@
-import { axiosClient } from "./axiosClient";
 import { AxiosResponse } from "axios";
+import { axiosClient } from "./axiosClient";
 
 export interface RecceInstanceInfo {
   server_mode: "server" | "preview" | "read-only";
@@ -14,6 +14,9 @@ export interface RecceInstanceInfo {
 }
 
 export async function getRecceInstanceInfo(): Promise<RecceInstanceInfo> {
-  return (await axiosClient.get<never, AxiosResponse<RecceInstanceInfo>>("/api/instance-info"))
-    .data;
+  return (
+    await axiosClient.get<never, AxiosResponse<RecceInstanceInfo>>(
+      "/api/instance-info",
+    )
+  ).data;
 }

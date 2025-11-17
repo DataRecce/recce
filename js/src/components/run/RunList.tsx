@@ -1,33 +1,33 @@
 import "react-data-grid/lib/styles.css";
-import React, { ReactNode, useCallback } from "react";
-import { createCheckByRun } from "@/lib/api/checks";
 import {
   Box,
-  Flex,
-  Icon,
-  Text,
-  IconButton,
   Center,
-  HStack,
+  Flex,
   Heading,
+  HStack,
+  Icon,
+  IconButton,
   Spacer,
+  Text,
 } from "@chakra-ui/react";
-import { cacheKeys } from "@/lib/api/cacheKeys";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { FaCheckCircle, FaRegCheckCircle } from "react-icons/fa";
+import React, { ReactNode, useCallback } from "react";
 import { IconType } from "react-icons";
-import { findByRunType } from "../run/registry";
-import { Run } from "@/lib/api/types";
-import { listRuns, waitRun } from "@/lib/api/runs";
-import { useRecceActionContext } from "@/lib/hooks/RecceActionContext";
-import { useLocation } from "wouter";
+import { FaCheckCircle, FaRegCheckCircle } from "react-icons/fa";
 import SimpleBar from "simplebar-react";
+import { useLocation } from "wouter";
+import { cacheKeys } from "@/lib/api/cacheKeys";
+import { createCheckByRun } from "@/lib/api/checks";
+import { listRuns, waitRun } from "@/lib/api/runs";
+import { Run } from "@/lib/api/types";
+import { useRecceActionContext } from "@/lib/hooks/RecceActionContext";
+import { findByRunType } from "../run/registry";
 import "simplebar/dist/simplebar.min.css";
-import { formatRunDate, RunStatusAndDate } from "./RunStatusAndDate";
+import { PiX } from "react-icons/pi";
+import { Tooltip } from "@/components/ui/tooltip";
 import { trackHistoryAction } from "@/lib/api/track";
 import { useRecceInstanceContext } from "@/lib/hooks/RecceInstanceContext";
-import { Tooltip } from "@/components/ui/tooltip";
-import { PiX } from "react-icons/pi";
+import { formatRunDate, RunStatusAndDate } from "./RunStatusAndDate";
 
 const RunListItem = ({
   run,
@@ -70,8 +70,15 @@ const RunListItem = ({
       onClick={() => {
         onSelectRun(run.run_id);
       }}
-      _hover={{ bg: isSelected ? "orange.50" : "gray.200" }}>
-      <Flex onClick={() => {}} alignItems="center" gap="12px">
+      _hover={{ bg: isSelected ? "orange.50" : "gray.200" }}
+    >
+      <Flex
+        onClick={() => {
+          return void 0;
+        }}
+        alignItems="center"
+        gap="12px"
+      >
         <Icon as={icon} />
         <Box
           className="no-track-pii-safe"
@@ -81,7 +88,8 @@ const RunListItem = ({
           overflow="hidden"
           color={run.name ? "inherit" : "gray.500"}
           fontSize="11pt"
-          fontWeight="500">
+          fontWeight="500"
+        >
           {(run.name ?? "").trim() || "<no name>"}
         </Box>
         {checkId ? (
@@ -91,7 +99,8 @@ const RunListItem = ({
                 e.preventDefault();
                 e.stopPropagation();
                 onGoToCheck(checkId);
-              }}>
+              }}
+            >
               <Icon color="green" as={FaCheckCircle} />
             </Text>
           </Tooltip>
@@ -103,13 +112,20 @@ const RunListItem = ({
                 e.stopPropagation();
                 trackHistoryAction({ name: "add_to_checklist" });
                 onAddToChecklist(run.run_id);
-              }}>
+              }}
+            >
               <Icon as={FaRegCheckCircle} />
             </Text>
           </Tooltip>
         ) : null}
       </Flex>
-      <Flex justifyContent="start" fontSize="11pt" color="gray.500" gap="3px" alignItems={"center"}>
+      <Flex
+        justifyContent="start"
+        fontSize="11pt"
+        color="gray.500"
+        gap="3px"
+        alignItems={"center"}
+      >
         <RunStatusAndDate run={fetchedRun ?? run} />
       </Flex>
     </Flex>
@@ -126,7 +142,8 @@ const DateSegmentItem = ({ runAt }: { runAt?: string }) => {
       p="5px 20px"
       borderBottom={"solid 1px lightgray"}
       color="gray.500"
-      fontSize={"11pt"}>
+      fontSize={"11pt"}
+    >
       {dateTime}
     </Flex>
   );
@@ -148,7 +165,8 @@ export const RunList = () => {
         width="100%"
         flex="0 0 54px"
         paddingInline="24px 8px"
-        borderBottom="solid 1px lightgray">
+        borderBottom="solid 1px lightgray"
+      >
         <Heading size="md">History</Heading>
         <Spacer />
         <IconButton
@@ -157,7 +175,8 @@ export const RunList = () => {
           onClick={() => {
             trackHistoryAction({ name: "hide" });
             closeHistory();
-          }}>
+          }}
+        >
           <PiX />
         </IconButton>
       </HStack>
@@ -173,7 +192,9 @@ export const RunList = () => {
             {(runs ?? []).map((run, idx) => {
               if (runs != null) {
                 const previousDate =
-                  idx === 0 ? null : new Date(runs[idx - 1].run_at).toDateString();
+                  idx === 0
+                    ? null
+                    : new Date(runs[idx - 1].run_at).toDateString();
                 return (
                   <DateDividedRunHistoryItem
                     key={run.run_id}
@@ -204,7 +225,8 @@ function DateDividedRunHistoryItem({
   const { showRunId, runId } = useRecceActionContext();
 
   const currentDate = new Date(run.run_at).toDateString();
-  const shouldRenderDateSegment = previousDate != null && previousDate !== currentDate;
+  const shouldRenderDateSegment =
+    previousDate != null && previousDate !== currentDate;
 
   const handleSelectRun = (runId: string) => {
     trackHistoryAction({ name: "click_run" });
@@ -230,7 +252,9 @@ function DateDividedRunHistoryItem({
   );
   return (
     <React.Fragment>
-      {shouldRenderDateSegment && <DateSegmentItem key={currentDate} runAt={run.run_at} />}
+      {shouldRenderDateSegment && (
+        <DateSegmentItem key={currentDate} runAt={run.run_at} />
+      )}
       <RunListItem
         key={run.run_id}
         run={run}

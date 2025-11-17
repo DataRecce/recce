@@ -1,11 +1,19 @@
-import React from "react";
-import { Button, Center, Heading, VStack, Text, Icon, HStack } from "@chakra-ui/react";
-import { TbChecklist, TbPlus } from "react-icons/tb";
+import {
+  Button,
+  Center,
+  Heading,
+  HStack,
+  Icon,
+  Text,
+  VStack,
+} from "@chakra-ui/react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { createSchemaDiffCheck } from "@/lib/api/schemacheck";
+import React from "react";
+import { TbChecklist, TbPlus } from "react-icons/tb";
+import { useLocation } from "wouter";
 import { cacheKeys } from "@/lib/api/cacheKeys";
 import { Check } from "@/lib/api/checks";
-import { useLocation } from "wouter";
+import { createSchemaDiffCheck } from "@/lib/api/schemacheck";
 
 export const CheckEmptyState = () => {
   const queryClient = useQueryClient();
@@ -47,7 +55,8 @@ export const CheckEmptyState = () => {
             onClick={handleCreateSchemaCheck}
             loading={isPending}
             size="lg"
-            w="100%">
+            w="100%"
+          >
             <HStack>
               <Icon as={TbPlus} />
               <Text>Create Schema Diff Check</Text>
@@ -55,8 +64,8 @@ export const CheckEmptyState = () => {
           </Button>
 
           <Text fontSize="xs" color="gray.400" mt={2}>
-            The schema checks compare modified models between environments to detect changes,
-            additions, or removals.
+            The schema checks compare modified models between environments to
+            detect changes, additions, or removals.
           </Text>
         </VStack>
       </VStack>

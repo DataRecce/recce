@@ -1,5 +1,3 @@
-import { Run } from "@/lib/api/types";
-
 import {
   Box,
   Button,
@@ -12,10 +10,11 @@ import {
   Popover,
   Portal,
 } from "@chakra-ui/react";
-import { RunFormProps } from "./types";
 import { ComponentType, useState } from "react";
 import { IconInfo } from "@/components/icons";
 import { RunFormParamTypes, RunType } from "@/components/run/registry";
+import { Run } from "@/lib/api/types";
+import { RunFormProps } from "./types";
 
 interface RunModalProps {
   isOpen: boolean;
@@ -32,7 +31,8 @@ const getDocumentationUrl = (type: RunType): string | null => {
   const urlMap: Record<string, string> = {
     value_diff: "https://docs.datarecce.io/features/lineage/#value-diff",
     profile_diff: "https://docs.datarecce.io/features/lineage/#profile-diff",
-    histogram_diff: "https://docs.datarecce.io/features/lineage/#histogram-diff",
+    histogram_diff:
+      "https://docs.datarecce.io/features/lineage/#histogram-diff",
     top_k_diff: "https://docs.datarecce.io/features/lineage/#top-k-diff",
   };
   return urlMap[type] || null;
@@ -47,13 +47,20 @@ export const RunModal = ({
   params: defaultParams,
   RunForm,
 }: RunModalProps) => {
-  const [params, setParams] = useState<Partial<RunFormParamTypes>>(defaultParams ?? {});
+  const [params, setParams] = useState<Partial<RunFormParamTypes>>(
+    defaultParams ?? {},
+  );
   const [hovered, setHovered] = useState(false);
   const [isReadyToExecute, setIsReadyToExecute] = useState(false);
   const documentationUrl = getDocumentationUrl(type);
 
   return (
-    <Dialog.Root open={isOpen} onOpenChange={onClose} size="xl" scrollBehavior="inside">
+    <Dialog.Root
+      open={isOpen}
+      onOpenChange={onClose}
+      size="xl"
+      scrollBehavior="inside"
+    >
       <Portal>
         <Dialog.Backdrop />
         <Dialog.Positioner>
@@ -67,7 +74,8 @@ export const RunModal = ({
                     open={hovered}
                     onFocusOutside={() => {
                       setHovered(false);
-                    }}>
+                    }}
+                  >
                     <Popover.Trigger asChild>
                       <IconButton
                         display="flex"
@@ -80,8 +88,13 @@ export const RunModal = ({
                         onClick={() => window.open(documentationUrl, "_blank")}
                         onFocus={(e) => {
                           e.preventDefault();
-                        }}>
-                        <Icon verticalAlign="middle" as={IconInfo} boxSize={"16px"} />
+                        }}
+                      >
+                        <Icon
+                          verticalAlign="middle"
+                          as={IconInfo}
+                          boxSize={"16px"}
+                        />
                       </IconButton>
                     </Popover.Trigger>
                     <Popover.Positioner>
@@ -93,7 +106,8 @@ export const RunModal = ({
                             target="_blank"
                             textDecoration="underline"
                             color="white"
-                            _hover={{ color: "blue.300" }}>
+                            _hover={{ color: "blue.300" }}
+                          >
                             here
                           </Link>{" "}
                           to learn more about the SQL behind
@@ -107,7 +121,12 @@ export const RunModal = ({
                 <CloseButton size="sm" />
               </Dialog.CloseTrigger>
             </Dialog.Header>
-            <Dialog.Body p="0px" h="100%" overflow="auto" borderY="1px solid lightgray">
+            <Dialog.Body
+              p="0px"
+              h="100%"
+              overflow="auto"
+              borderY="1px solid lightgray"
+            >
               <Box style={{ contain: "layout" }}>
                 {RunForm && (
                   <RunForm
@@ -125,7 +144,8 @@ export const RunModal = ({
                   colorPalette="blue"
                   onClick={() => {
                     onExecute(type, params as RunFormParamTypes);
-                  }}>
+                  }}
+                >
                   Execute
                 </Button>
               </Flex>

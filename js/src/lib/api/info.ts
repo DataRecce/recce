@@ -1,5 +1,5 @@
-import { axiosClient } from "./axiosClient";
 import { AxiosError, AxiosResponse } from "axios";
+import { axiosClient } from "./axiosClient";
 
 /**
  * The data from the API
@@ -81,11 +81,15 @@ interface LineageOutput {
 }
 
 export async function getLineage(base = false): Promise<LineageData> {
-  const response = await axiosClient.get<LineageData>(`/api/lineage?base=${base}`);
+  const response = await axiosClient.get<LineageData>(
+    `/api/lineage?base=${base}`,
+  );
   return response.data;
 }
 
-export async function getLineageWithError(base = false): Promise<LineageOutput> {
+export async function getLineageWithError(
+  base = false,
+): Promise<LineageOutput> {
   try {
     const data = await getLineage(base);
     return { data };
@@ -166,7 +170,9 @@ export interface ServerInfoResult {
 }
 
 export async function getServerInfo(): Promise<ServerInfoResult> {
-  return (await axiosClient.get<never, AxiosResponse<ServerInfoResult>>(`/api/info`)).data;
+  return (
+    await axiosClient.get<never, AxiosResponse<ServerInfoResult>>(`/api/info`)
+  ).data;
 }
 
 export interface ModelInfoResult {
@@ -183,5 +189,9 @@ export interface ModelInfoResult {
 }
 
 export async function getModelInfo(model: string): Promise<ModelInfoResult> {
-  return (await axiosClient.get<never, AxiosResponse<ModelInfoResult>>(`/api/model/${model}`)).data;
+  return (
+    await axiosClient.get<never, AxiosResponse<ModelInfoResult>>(
+      `/api/model/${model}`,
+    )
+  ).data;
 }

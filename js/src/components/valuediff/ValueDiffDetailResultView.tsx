@@ -4,15 +4,18 @@ import { Center, Flex } from "@chakra-ui/react";
 import { forwardRef, Ref, useMemo } from "react";
 
 import "../query/styles.css";
+import { DataGridHandle } from "react-data-grid";
 import { ColumnRenderMode, isValueDiffDetailRun, Run } from "@/lib/api/types";
-import { EmptyRowsRenderer, ScreenshotDataGrid } from "../data-grid/ScreenshotDataGrid";
+import { ValueDiffDetailViewOptions } from "@/lib/api/valuediff";
+import {
+  EmptyRowsRenderer,
+  ScreenshotDataGrid,
+} from "../data-grid/ScreenshotDataGrid";
+import { ChangedOnlyCheckbox } from "../query/ChangedOnlyCheckbox";
+import { DiffDisplayModeSwitch } from "../query/ToggleSwitch";
+import { RunToolbar } from "../run/RunToolbar";
 import { RunResultViewProps } from "../run/types";
 import { toValueDiffGrid } from "./valuediff";
-import { ValueDiffDetailViewOptions } from "@/lib/api/valuediff";
-import { RunToolbar } from "../run/RunToolbar";
-import { DiffDisplayModeSwitch } from "../query/ToggleSwitch";
-import { ChangedOnlyCheckbox } from "../query/ChangedOnlyCheckbox";
-import { DataGridHandle } from "react-data-grid";
 
 export interface ValueDiffDetailResultViewProps
   extends RunResultViewProps<ValueDiffDetailViewOptions> {
@@ -20,20 +23,39 @@ export interface ValueDiffDetailResultViewProps
 }
 
 const PrivateValueDiffDetailResultView = (
-  { run, onAddToChecklist, viewOptions, onViewOptionsChanged }: ValueDiffDetailResultViewProps,
+  {
+    run,
+    onAddToChecklist,
+    viewOptions,
+    onViewOptionsChanged,
+  }: ValueDiffDetailResultViewProps,
 
   ref: Ref<DataGridHandle>,
 ) => {
   if (!isValueDiffDetailRun(run)) {
     throw new Error("run type must be value_diff_detail");
   }
-  const changedOnly = useMemo(() => viewOptions?.changed_only ?? false, [viewOptions]);
-  const pinnedColumns = useMemo(() => viewOptions?.pinned_columns ?? [], [viewOptions]);
-  const displayMode = useMemo(() => viewOptions?.display_mode ?? "inline", [viewOptions]);
-  const columnsRenderMode = useMemo(() => viewOptions?.columnsRenderMode ?? {}, [viewOptions]);
+  const changedOnly = useMemo(
+    () => viewOptions?.changed_only ?? false,
+    [viewOptions],
+  );
+  const pinnedColumns = useMemo(
+    () => viewOptions?.pinned_columns ?? [],
+    [viewOptions],
+  );
+  const displayMode = useMemo(
+    () => viewOptions?.display_mode ?? "inline",
+    [viewOptions],
+  );
+  const columnsRenderMode = useMemo(
+    () => viewOptions?.columnsRenderMode ?? {},
+    [viewOptions],
+  );
 
   const gridData = useMemo(() => {
-    const onColumnsRenderModeChanged = (cols: Record<string, ColumnRenderMode>) => {
+    const onColumnsRenderModeChanged = (
+      cols: Record<string, ColumnRenderMode>,
+    ) => {
       const newRenderModes = {
         ...(viewOptions?.columnsRenderMode ?? {}),
         ...cols,
@@ -98,7 +120,11 @@ const PrivateValueDiffDetailResultView = (
 
   if (changedOnly && gridData.rows.length === 0) {
     return (
-      <Flex direction="column" backgroundColor="rgb(249, 249, 249)" height={"100%"}>
+      <Flex
+        direction="column"
+        backgroundColor="rgb(249, 249, 249)"
+        height={"100%"}
+      >
         <RunToolbar
           run={run}
           viewOptions={viewOptions}
@@ -111,12 +137,17 @@ const PrivateValueDiffDetailResultView = (
   }
 
   return (
-    <Flex direction="column" backgroundColor="rgb(249, 249, 249)" height={"100%"}>
+    <Flex
+      direction="column"
+      backgroundColor="rgb(249, 249, 249)"
+      height={"100%"}
+    >
       <RunToolbar
         run={run}
         viewOptions={viewOptions}
         onViewOptionsChanged={onViewOptionsChanged}
-        warnings={warnings}>
+        warnings={warnings}
+      >
         <DiffDisplayModeSwitch
           displayMode={displayMode}
           onDisplayModeChanged={(displayMode) => {
@@ -134,7 +165,10 @@ const PrivateValueDiffDetailResultView = (
           onChange={() => {
             const changedOnly = !viewOptions?.changed_only;
             if (onViewOptionsChanged) {
-              onViewOptionsChanged({ ...viewOptions, changed_only: changedOnly });
+              onViewOptionsChanged({
+                ...viewOptions,
+                changed_only: changedOnly,
+              });
             }
           }}
         />
@@ -144,7 +178,11 @@ const PrivateValueDiffDetailResultView = (
         style={{ blockSize: "auto", maxHeight: "100%", overflow: "auto" }}
         columns={gridData.columns}
         rows={gridData.rows}
-        renderers={{ noRowsFallback: <EmptyRowsRenderer emptyMessage="No mismatched rows" /> }}
+        renderers={{
+          noRowsFallback: (
+            <EmptyRowsRenderer emptyMessage="No mismatched rows" />
+          ),
+        }}
         defaultColumnOptions={{ resizable: true, maxWidth: 800, minWidth: 35 }}
         className="rdg-light"
       />
@@ -152,4 +190,6 @@ const PrivateValueDiffDetailResultView = (
   );
 };
 
-export const ValueDiffDetailResultView = forwardRef(PrivateValueDiffDetailResultView);
+export const ValueDiffDetailResultView = forwardRef(
+  PrivateValueDiffDetailResultView,
+);

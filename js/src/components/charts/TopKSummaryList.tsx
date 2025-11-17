@@ -1,19 +1,22 @@
-import { TopKDiffResult, TopKResult } from "@/lib/api/profile";
-import { formatAsAbbreviatedNumber, formatIntervalMinMax } from "@/utils/formatters";
 import { Box, Flex, Separator, Spacer, Text } from "@chakra-ui/react";
-import { Fragment } from "react";
 import {
-  ChartOptions,
-  Chart as ChartJS,
-  CategoryScale,
-  LinearScale,
-  BarElement,
-  ChartData,
   AnimationOptions,
+  BarElement,
+  CategoryScale,
+  ChartData,
+  Chart as ChartJS,
+  ChartOptions,
+  LinearScale,
 } from "chart.js";
+import { Fragment } from "react";
 import { Bar } from "react-chartjs-2";
-import { BASE_BAR_COLOR, CURRENT_BAR_COLOR, SquareIcon } from "./SquareIcon";
 import { Tooltip } from "@/components/ui/tooltip";
+import { TopKDiffResult, TopKResult } from "@/lib/api/profile";
+import {
+  formatAsAbbreviatedNumber,
+  formatIntervalMinMax,
+} from "@/utils/formatters";
+import { BASE_BAR_COLOR, CURRENT_BAR_COLOR, SquareIcon } from "./SquareIcon";
 
 export const INFO_VAL_COLOR = "#63B3ED";
 
@@ -32,10 +35,14 @@ interface Summary {
   isSpecialLabel: boolean;
 }
 
-function prepareSummaryList(topK: TopKResult, isDisplayTopTen: boolean): Summary[] {
+function prepareSummaryList(
+  topK: TopKResult,
+  isDisplayTopTen: boolean,
+): Summary[] {
   const endAtIndex = isDisplayTopTen ? 10 : topK.counts.length;
   const counts = topK.counts.slice(0, endAtIndex);
-  const remainingSumCount = topK.valids - counts.reduce((accum, curr) => accum + curr, 0);
+  const remainingSumCount =
+    topK.valids - counts.reduce((accum, curr) => accum + curr, 0);
   const values = topK.values.slice(0, endAtIndex);
 
   return values.concat([remainingSumCount]).map((v, index) => {
@@ -92,13 +99,17 @@ function TopKChartTooltip({
           </Text>
         </Box>
       }
-      showArrow>
+      showArrow
+    >
       {children}
     </Tooltip>
   );
 }
 
-export function TopKSummaryBarChart({ topKDiff, isDisplayTopTen }: BarChartProps) {
+export function TopKSummaryBarChart({
+  topKDiff,
+  isDisplayTopTen,
+}: BarChartProps) {
   // const [isDisplayTopTen, setIsDisplayTopTen] = useState<boolean>(true);
   const currents = prepareSummaryList(topKDiff.current, isDisplayTopTen);
   const bases = prepareSummaryList(topKDiff.base, isDisplayTopTen);
@@ -117,19 +128,29 @@ export function TopKSummaryBarChart({ topKDiff, isDisplayTopTen }: BarChartProps
       </Flex>
       {currents.map((current, index) => {
         const base = bases[index];
-        if (current.isLastItemOthers && current.count === 0 && base.count === 0) {
+        if (
+          current.isLastItemOthers &&
+          current.count === 0 &&
+          base.count === 0
+        ) {
           // skip rendering the others if both are empty
           return <></>;
         }
         return (
           <Fragment key={current.label}>
             <TopKChartTooltip base={base} current={current}>
-              <Flex alignItems={"center"} width={"100%"} _hover={{ bg: "blackAlpha.300" }} px={4}>
+              <Flex
+                alignItems={"center"}
+                width={"100%"}
+                _hover={{ bg: "blackAlpha.300" }}
+                px={4}
+              >
                 <Text
                   lineClamp={1}
                   width={"10em"}
                   fontSize={"sm"}
-                  color={current.isSpecialLabel ? "gray.400" : "inherit"}>
+                  color={current.isSpecialLabel ? "gray.400" : "inherit"}
+                >
                   {current.label}
                 </Text>
                 <Flex width={"70%"} direction={"column"}>
@@ -193,7 +214,8 @@ interface Props {
 export function TopKSummaryList({ topk, valids, isDisplayTopTen }: Props) {
   const endAtIndex = isDisplayTopTen ? 10 : topk.counts.length;
   const displayList = topk.counts.slice(0, endAtIndex);
-  const remainingSumCount = valids - displayList.reduce((accum, curr) => accum + curr, 0);
+  const remainingSumCount =
+    valids - displayList.reduce((accum, curr) => accum + curr, 0);
 
   return (
     <Box w={"100%"}>
@@ -208,13 +230,26 @@ export function TopKSummaryList({ topk, valids, isDisplayTopTen }: Props) {
           <Fragment key={topkLabel}>
             {!isLastItemOthers || topkCount > 0 ? (
               <>
-                <Flex alignItems={"center"} width={"100%"} _hover={{ bg: "blackAlpha.300" }} px={3}>
-                  <Tooltip content={topkLabel} positioning={{ placement: "top-start" }}>
+                <Flex
+                  alignItems={"center"}
+                  width={"100%"}
+                  _hover={{ bg: "blackAlpha.300" }}
+                  px={3}
+                >
+                  <Tooltip
+                    content={topkLabel}
+                    positioning={{ placement: "top-start" }}
+                  >
                     <Text
                       lineClamp={1}
                       width={"14em"}
                       fontSize={"sm"}
-                      color={isLastItemOthers || catName.length === 0 ? "gray.400" : "inherit"}>
+                      color={
+                        isLastItemOthers || catName.length === 0
+                          ? "gray.400"
+                          : "inherit"
+                      }
+                    >
                       {topkLabel}
                     </Text>
                   </Tooltip>
@@ -225,12 +260,24 @@ export function TopKSummaryList({ topk, valids, isDisplayTopTen }: Props) {
                       valids={valids}
                     />
                   </Flex>
-                  <Tooltip content={displayTopkCount} positioning={{ placement: "top-start" }}>
-                    <Text ml={5} mr={2} fontSize={"sm"} width={"4em"} lineClamp={1}>
+                  <Tooltip
+                    content={displayTopkCount}
+                    positioning={{ placement: "top-start" }}
+                  >
+                    <Text
+                      ml={5}
+                      mr={2}
+                      fontSize={"sm"}
+                      width={"4em"}
+                      lineClamp={1}
+                    >
                       {displayTopkCount}
                     </Text>
                   </Tooltip>
-                  <Tooltip content={displayTopkRatio} positioning={{ placement: "top-start" }}>
+                  <Tooltip
+                    content={displayTopkRatio}
+                    positioning={{ placement: "top-start" }}
+                  >
                     <Text color={"gray.400"} fontSize={"sm"} width={"4em"}>
                       {displayTopkRatio}
                     </Text>

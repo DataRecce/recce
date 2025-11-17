@@ -26,18 +26,26 @@ export function ActionControl({ onClose }: ActionControlProps) {
 
   return (
     <Box bg="white" rounded="md" shadow="dark-lg">
-      <HStack p="5px 15px" mt="4" separator={<StackSeparator borderColor="gray.200" />} gap={4}>
+      <HStack
+        p="5px 15px"
+        mt="4"
+        separator={<StackSeparator borderColor="gray.200" />}
+        gap={4}
+      >
         <Box fontSize="10pt">
-          Progress: {getProgressMessage()} {actionState.status === "canceled" ? " (canceled)" : ""}
+          Progress: {getProgressMessage()}{" "}
+          {actionState.status === "canceled" ? " (canceled)" : ""}
         </Box>
 
-        {actionState.status === "running" || actionState.status === "canceling" ? (
+        {actionState.status === "running" ||
+        actionState.status === "canceling" ? (
           <Button
             size="xs"
             variant="outline"
             onClick={cancel}
             loading={actionState.status === "canceling"}
-            loadingText="Canceling">
+            loadingText="Canceling"
+          >
             Cancel
           </Button>
         ) : (

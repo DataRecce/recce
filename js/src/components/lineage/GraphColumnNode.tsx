@@ -1,14 +1,13 @@
 import { Box, Flex, Icon, Spacer, Tag } from "@chakra-ui/react";
-import React from "react";
-
 import { Handle, NodeProps, Position, useStore } from "@xyflow/react";
+import React from "react";
 import { COLUMN_HEIGHT, LineageGraphColumnNode } from "./lineage";
 
 import "./styles.css";
 
+import { VscKebabVertical } from "react-icons/vsc";
 import { useLineageViewContextSafe } from "./LineageViewContext";
 import { getIconForChangeStatus } from "./styles";
-import { VscKebabVertical } from "react-icons/vsc";
 
 type GrapeColumnNodeProps = NodeProps<LineageGraphColumnNode>;
 
@@ -21,10 +20,16 @@ export const ChangeStatus = ({
     return <></>;
   }
 
-  const { color: colorChangeStatus, icon: iconChangeStatus } = getIconForChangeStatus(changeStatus);
+  const { color: colorChangeStatus, icon: iconChangeStatus } =
+    getIconForChangeStatus(changeStatus);
 
   return (
-    <Icon boxSize="14px" display="inline-flex" color={colorChangeStatus} as={iconChangeStatus} />
+    <Icon
+      boxSize="14px"
+      display="inline-flex"
+      color={colorChangeStatus}
+      as={iconChangeStatus}
+    />
   );
 };
 
@@ -63,11 +68,23 @@ export const TransformationType = ({
   return (
     <>
       {legend ? (
-        <Tag.Root fontSize="8pt" size="sm" colorPalette={color} borderRadius="full" paddingX="4px">
+        <Tag.Root
+          fontSize="8pt"
+          size="sm"
+          colorPalette={color}
+          borderRadius="full"
+          paddingX="4px"
+        >
           <Tag.Label>{letter}</Tag.Label>
         </Tag.Root>
       ) : (
-        <Tag.Root fontSize="8pt" size="sm" colorPalette={color} borderRadius="full" paddingX="4px">
+        <Tag.Root
+          fontSize="8pt"
+          size="sm"
+          colorPalette={color}
+          borderRadius="full"
+          paddingX="4px"
+        >
           <Tag.Label>{letter}</Tag.Label>
         </Tag.Root>
       )}
@@ -81,8 +98,12 @@ export function GraphColumnNode(nodeProps: GrapeColumnNodeProps) {
   const { column, type, transformationType, changeStatus } = data;
   const showContent = useStore((s) => s.transform[2] > 0.3);
 
-  const { viewOptions, showContextMenu, isNodeHighlighted, isNodeShowingChangeAnalysis } =
-    useLineageViewContextSafe();
+  const {
+    viewOptions,
+    showContextMenu,
+    isNodeHighlighted,
+    isNodeShowingChangeAnalysis,
+  } = useLineageViewContextSafe();
 
   const selectedNode = viewOptions.column_level_lineage?.node_id;
   const selectedColumn = viewOptions.column_level_lineage?.column;
@@ -111,14 +132,16 @@ export function GraphColumnNode(nodeProps: GrapeColumnNodeProps) {
         setIsHovered(false);
       }}
       filter={isHighlighted ? "none" : "opacity(0.2) grayscale(50%)"}
-      cursor="pointer">
+      cursor="pointer"
+    >
       <Flex
         fontSize="11px"
         color="black"
         width="100%"
         gap="3px"
         alignItems="center"
-        height={`${COLUMN_HEIGHT - 1}px`}>
+        height={`${COLUMN_HEIGHT - 1}px`}
+      >
         {isShowingChangeAnalysis && changeStatus ? (
           <ChangeStatus changeStatus={changeStatus} />
         ) : (
@@ -137,7 +160,10 @@ export function GraphColumnNode(nodeProps: GrapeColumnNodeProps) {
             onClick={(e) => {
               e.preventDefault();
               e.stopPropagation();
-              showContextMenu(e, nodeProps as unknown as LineageGraphColumnNode);
+              showContextMenu(
+                e,
+                nodeProps as unknown as LineageGraphColumnNode,
+              );
             }}
           />
         ) : (

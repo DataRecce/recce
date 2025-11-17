@@ -1,8 +1,8 @@
-import { VscDiffAdded, VscDiffModified, VscDiffRemoved } from "react-icons/vsc";
+import React from "react";
 import { FaCamera, FaCube, FaDatabase, FaSeedling } from "react-icons/fa";
 import { FaChartSimple, FaCircleNodes, FaGauge } from "react-icons/fa6";
+import { VscDiffAdded, VscDiffModified, VscDiffRemoved } from "react-icons/vsc";
 import { system as themeSystem } from "@/components/ui/theme";
-import React from "react";
 
 export const IconAdded = VscDiffAdded;
 export const IconRemoved = VscDiffRemoved;
@@ -17,15 +17,22 @@ export const IconChanged = (props: React.SVGProps<SVGSVGElement>) => {
       height="1em"
       width="1em"
       xmlns="http://www.w3.org/2000/svg"
-      {...props}>
-      <path fillRule="evenodd" clipRule="evenodd" d="M8 11 a3 3 0 1 0 0-6 3 3 0 0 0 0 6z" />
+      {...props}
+    >
+      <path
+        fillRule="evenodd"
+        clipRule="evenodd"
+        d="M8 11 a3 3 0 1 0 0-6 3 3 0 0 0 0 6z"
+      />
 
       <path fillRule="evenodd" clipRule="evenodd" d="" />
     </svg>
   );
 };
 
-export const IconModifiedDownstream = (props: React.SVGProps<SVGSVGElement>) => {
+export const IconModifiedDownstream = (
+  props: React.SVGProps<SVGSVGElement>,
+) => {
   return (
     <svg
       stroke="currentColor"
@@ -35,20 +42,27 @@ export const IconModifiedDownstream = (props: React.SVGProps<SVGSVGElement>) => 
       height="1em"
       width="1em"
       xmlns="http://www.w3.org/2000/svg"
-      {...props}>
+      {...props}
+    >
       <path
         fillRule="evenodd"
         clipRule="evenodd"
         d="M1.5 1 h13 l.5.5 v13 l-.5.5 h-13 l-.5-.5 v-13l.5-.5zM2 2v4h-1v4h1v4h4v1h4v-1h4v-4h1v-4h-1v-4h-4v-1h-4v1h-4z"
       />
-      <path fillRule="evenodd" clipRule="evenodd" d="M8 11 a3 3 0 1 0 0-6 3 3 0 0 0 0 6z" />
+      <path
+        fillRule="evenodd"
+        clipRule="evenodd"
+        d="M8 11 a3 3 0 1 0 0-6 3 3 0 0 0 0 6z"
+      />
 
       <path fillRule="evenodd" clipRule="evenodd" d="" />
     </svg>
   );
 };
 
-export function getIconForChangeStatus(changeStatus?: "added" | "removed" | "modified"): {
+export function getIconForChangeStatus(
+  changeStatus?: "added" | "removed" | "modified",
+): {
   color: string;
   hexColor: string;
   backgroundColor: string;
@@ -95,19 +109,40 @@ export function getIconForResourceType(resourceType?: string): {
   icon: typeof FaCube | undefined;
 } {
   if (resourceType === "model") {
-    return { color: String(themeSystem.token("colors.cyan.subtle")), icon: FaCube };
+    return {
+      color: String(themeSystem.token("colors.cyan.subtle")),
+      icon: FaCube,
+    };
   } else if (resourceType === "metric") {
-    return { color: String(themeSystem.token("colors.rose.subtle")), icon: FaChartSimple };
+    return {
+      color: String(themeSystem.token("colors.rose.subtle")),
+      icon: FaChartSimple,
+    };
   } else if (resourceType === "source") {
-    return { color: String(themeSystem.token("colors.green.muted")), icon: FaDatabase };
+    return {
+      color: String(themeSystem.token("colors.green.muted")),
+      icon: FaDatabase,
+    };
   } else if (resourceType === "exposure") {
-    return { color: String(themeSystem.token("colors.rose.subtle")), icon: FaGauge };
+    return {
+      color: String(themeSystem.token("colors.rose.subtle")),
+      icon: FaGauge,
+    };
   } else if (resourceType === "semantic_model") {
-    return { color: String(themeSystem.token("colors.rose.focusRing")), icon: FaCircleNodes };
+    return {
+      color: String(themeSystem.token("colors.rose.focusRing")),
+      icon: FaCircleNodes,
+    };
   } else if (resourceType === "seed") {
-    return { color: String(themeSystem.token("colors.green.emphasized")), icon: FaSeedling };
+    return {
+      color: String(themeSystem.token("colors.green.emphasized")),
+      icon: FaSeedling,
+    };
   } else if (resourceType === "snapshot") {
-    return { color: String(themeSystem.token("colors.green.emphasized")), icon: FaCamera };
+    return {
+      color: String(themeSystem.token("colors.green.emphasized")),
+      icon: FaCamera,
+    };
   } else {
     return { color: "inherit", icon: undefined };
   }

@@ -1,5 +1,11 @@
-import React, { ChangeEvent, useCallback, useEffect, useRef, useState } from "react";
 import { Box, Breadcrumb, Input } from "@chakra-ui/react";
+import React, {
+  ChangeEvent,
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+} from "react";
 
 interface CheckBreadcrumbProps {
   name: string;
@@ -19,7 +25,7 @@ export function CheckBreadcrumb({ name, setName }: CheckBreadcrumbProps) {
   const handleCommit = useCallback(() => {
     setName(editValue);
     setIsEditing(false);
-  }, [setName, setIsEditing, editValue]);
+  }, [setName, editValue]);
 
   const handleKeyDown: React.KeyboardEventHandler = (event) => {
     if (event.key === "Enter") {
@@ -31,13 +37,18 @@ export function CheckBreadcrumb({ name, setName }: CheckBreadcrumbProps) {
     }
   };
 
-  const handleChange: React.ChangeEventHandler = (event: ChangeEvent<HTMLInputElement>) => {
+  const handleChange: React.ChangeEventHandler = (
+    event: ChangeEvent<HTMLInputElement>,
+  ) => {
     setEditValue(event.target.value);
   };
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
-      if (editInputRef.current && !editInputRef.current.contains(event.target as Node | null)) {
+      if (
+        editInputRef.current &&
+        !editInputRef.current.contains(event.target as Node | null)
+      ) {
         handleCommit();
       }
     };
@@ -49,7 +60,7 @@ export function CheckBreadcrumb({ name, setName }: CheckBreadcrumbProps) {
     return () => {
       document.removeEventListener("mousedown", handleClickOutside);
     };
-  }, [isEditing, editInputRef, handleCommit]);
+  }, [isEditing, handleCommit]);
 
   return (
     <Breadcrumb.Root
@@ -57,7 +68,8 @@ export function CheckBreadcrumb({ name, setName }: CheckBreadcrumbProps) {
       fontSize="12pt"
       fontWeight="500"
       className="no-track-pii-safe"
-      overflow={"hidden"}>
+      overflow={"hidden"}
+    >
       <Breadcrumb.Item cursor="pointer" flex="0 1 auto" overflow="hidden">
         {isEditing ? (
           <Input
@@ -74,7 +86,8 @@ export function CheckBreadcrumb({ name, setName }: CheckBreadcrumbProps) {
             onClick={handleClick}
             textOverflow="ellipsis"
             whiteSpace="nowrap"
-            overflow="hidden">
+            overflow="hidden"
+          >
             {name}
           </Box>
         )}

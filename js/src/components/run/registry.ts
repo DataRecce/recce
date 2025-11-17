@@ -1,3 +1,12 @@
+import React, {
+  ComponentType,
+  ForwardRefExoticComponent,
+  RefAttributes,
+} from "react";
+import { DataGridHandle } from "react-data-grid";
+import { IconType } from "react-icons";
+import { LuChartBarBig } from "react-icons/lu";
+import { MdFormatListNumberedRtl, MdSchema } from "react-icons/md";
 import {
   TbAlignBoxLeftStretch,
   TbBrandStackshare,
@@ -6,30 +15,38 @@ import {
   TbEyeSearch,
   TbSql,
 } from "react-icons/tb";
+import { DiffViewOptions } from "@/components/run/RunToolbar";
+import { QueryDiffViewOptions, QueryViewOptions } from "@/lib/api/adhocQuery";
+import { LineageDiffViewOptions } from "@/lib/api/lineagecheck";
+import {
+  HistogramDiffParams,
+  ProfileDiffViewOptions,
+  TopKDiffParams,
+} from "@/lib/api/profile";
+import { AxiosQueryParams } from "@/lib/api/types";
+import { ValueDiffDetailViewOptions } from "@/lib/api/valuediff";
 import { HistogramDiffForm } from "../histogram/HistogramDiffForm";
 import { HistogramDiffResultView } from "../histogram/HistogramDiffResultView";
-import { ProfileDiffResultView, ProfileResultView } from "../profile/ProfileDiffResultView";
+import {
+  ProfileDiffForm,
+  ProfileDiffFormParams,
+} from "../profile/ProfileDiffForm";
+import {
+  ProfileDiffResultView,
+  ProfileResultView,
+} from "../profile/ProfileDiffResultView";
 import { QueryDiffResultView } from "../query/QueryDiffResultView";
 import { QueryResultView } from "../query/QueryResultView";
-import { RowCountDiffResultView, RowCountResultView } from "../rowcount/RowCountDiffResultView";
+import {
+  RowCountDiffResultView,
+  RowCountResultView,
+} from "../rowcount/RowCountDiffResultView";
 import { TopKDiffForm } from "../top-k/TopKDiffForm";
 import { TopKDiffResultView } from "../top-k/TopKDiffResultView";
 import { ValueDiffDetailResultView } from "../valuediff/ValueDiffDetailResultView";
 import { ValueDiffForm, ValueDiffFormParams } from "../valuediff/ValueDiffForm";
 import { ValueDiffResultView } from "../valuediff/ValueDiffResultView";
 import { RunFormProps, RunResultViewProps } from "./types";
-import { IconType } from "react-icons";
-import { LuChartBarBig } from "react-icons/lu";
-import { MdFormatListNumberedRtl, MdSchema } from "react-icons/md";
-import { ProfileDiffForm, ProfileDiffFormParams } from "../profile/ProfileDiffForm";
-import React, { ComponentType, ForwardRefExoticComponent, RefAttributes } from "react";
-import { DataGridHandle } from "react-data-grid";
-import { HistogramDiffParams, ProfileDiffViewOptions, TopKDiffParams } from "@/lib/api/profile";
-import { LineageDiffViewOptions } from "@/lib/api/lineagecheck";
-import { DiffViewOptions } from "@/components/run/RunToolbar";
-import { QueryDiffViewOptions, QueryViewOptions } from "@/lib/api/adhocQuery";
-import { ValueDiffDetailViewOptions } from "@/lib/api/valuediff";
-import { AxiosQueryParams } from "@/lib/api/types";
 
 export type ViewOptionTypes =
   | LineageDiffViewOptions
@@ -67,7 +84,9 @@ export type RunFormParamTypes =
 export interface RegistryEntry<PT = RefTypes, VO = ViewOptionTypes> {
   title: string;
   icon: IconType;
-  RunResultView?: ForwardRefExoticComponent<RunResultViewProps<VO> & RefAttributes<PT>>;
+  RunResultView?: ForwardRefExoticComponent<
+    RunResultViewProps<VO> & RefAttributes<PT>
+  >;
   RunForm?: ComponentType<RunFormProps<RunFormParamTypes>>;
 }
 
@@ -188,6 +207,8 @@ const registry: RunRegistry = {
   },
 };
 
-export const findByRunType = <T extends RunType>(runType: T): RunRegistry[T] => {
+export const findByRunType = <T extends RunType>(
+  runType: T,
+): RunRegistry[T] => {
   return registry[runType];
 };

@@ -1,5 +1,13 @@
-import { LineageGraph, buildLineageGraph } from "@/components/lineage/lineage";
+import {
+  Button,
+  CloseButton,
+  Dialog,
+  Portal,
+  Text,
+  useDisclosure,
+} from "@chakra-ui/react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
+import path from "path";
 import React, {
   createContext,
   useCallback,
@@ -9,28 +17,27 @@ import React, {
   useRef,
   useState,
 } from "react";
-import { cacheKeys } from "../api/cacheKeys";
-import {
-  ManifestMetadata,
-  SQLMeshInfo,
-  getServerInfo,
-  gitInfo,
-  pullRequestInfo,
-  stateMetadata,
-} from "../api/info";
-import { Button, CloseButton, Dialog, Portal, Text, useDisclosure } from "@chakra-ui/react";
-import { PUBLIC_API_URL } from "../const";
-import path from "path";
-import { aggregateRuns, RunsAggregated } from "../api/runs";
-import { markRelaunchHintCompleted } from "../api/flag";
-import { useRecceServerFlag } from "./useRecceServerFlag";
-import { useRecceInstanceContext } from "@/lib/hooks/RecceInstanceContext";
-import { trackSingleEnvironment } from "../api/track";
+import { buildLineageGraph, LineageGraph } from "@/components/lineage/lineage";
 import {
   RecceInstanceDisconnectedModalContent,
   ServerDisconnectedModalContent,
 } from "@/components/lineage/SeverDisconnectedModalContent";
 import { toaster } from "@/components/ui/toaster";
+import { useRecceInstanceContext } from "@/lib/hooks/RecceInstanceContext";
+import { cacheKeys } from "../api/cacheKeys";
+import { markRelaunchHintCompleted } from "../api/flag";
+import {
+  getServerInfo,
+  gitInfo,
+  ManifestMetadata,
+  pullRequestInfo,
+  SQLMeshInfo,
+  stateMetadata,
+} from "../api/info";
+import { aggregateRuns, RunsAggregated } from "../api/runs";
+import { trackSingleEnvironment } from "../api/track";
+import { PUBLIC_API_URL } from "../const";
+import { useRecceServerFlag } from "./useRecceServerFlag";
 
 interface EnvInfo {
   stateMetadata?: stateMetadata;
@@ -83,7 +90,13 @@ interface WebSocketBroadcastEvent {
   title?: string;
   description: string;
   status?: "info" | "warning" | "success" | "error";
-  position?: "top" | "top-right" | "top-left" | "bottom" | "bottom-right" | "bottom-left";
+  position?:
+    | "top"
+    | "top-right"
+    | "top-left"
+    | "bottom"
+    | "bottom-right"
+    | "bottom-left";
   duration?: number;
 }
 
@@ -101,9 +114,9 @@ type WebSocketPayload =
     };
 
 function useLineageWatcher() {
-  const [artifactsUpdatedToastId, setArtifactsUpdatedToastId] = useState<string | undefined>(
-    undefined,
-  );
+  const [artifactsUpdatedToastId, setArtifactsUpdatedToastId] = useState<
+    string | undefined
+  >(undefined);
 
   // use ref so that the callbacks can access the latest values
   const ref = useRef<{
@@ -141,6 +154,7 @@ function useLineageWatcher() {
     function httpUrlToWebSocketUrl(url: string): string {
       return url.replace(/(http)(s)?:\/\//, "ws$2://");
     }
+
     const ws = new WebSocket(`${httpUrlToWebSocketUrl(PUBLIC_API_URL)}/api/ws`);
     ref.current.ws = ws;
 
@@ -291,7 +305,8 @@ export function LineageGraphContextProvider({ children }: LineageGraphProps) {
   const { featureToggles, shareUrl } = useRecceInstanceContext();
   const { onClose } = useDisclosure();
   const [relaunchHintOpen, setRelaunchHintOpen] = useState<boolean>(false);
-  const [prevRelaunchCondition, setPrevRelaunchCondition] = useState<boolean>(false);
+  const [prevRelaunchCondition, setPrevRelaunchCondition] =
+    useState<boolean>(false);
   const queryClient = useQueryClient();
 
   const isActionAvailable = useCallback(
@@ -348,14 +363,18 @@ export function LineageGraphContextProvider({ children }: LineageGraphProps) {
           refetchRunsAggregated: () => {
             void queryRunAggregated.refetch();
           },
-        }}>
+        }}
+      >
         {children}
       </LineageGraphContext.Provider>
 
       <Dialog.Root
         open={connectionStatus === "disconnected"}
-        onOpenChange={() => {}}
-        placement="center">
+        onOpenChange={() => {
+          return void 0;
+        }}
+        placement="center"
+      >
         <Portal>
           <Dialog.Backdrop />
           <Dialog.Positioner>
@@ -379,7 +398,8 @@ export function LineageGraphContextProvider({ children }: LineageGraphProps) {
             void markRelaunchHintCompleted();
             void queryClient.invalidateQueries({ queryKey: cacheKeys.flag() });
           }}
-          placement="center">
+          placement="center"
+        >
           <Portal>
             <Dialog.Backdrop />
             <Dialog.Positioner>
@@ -396,8 +416,11 @@ export function LineageGraphContextProvider({ children }: LineageGraphProps) {
                     onClick={() => {
                       onClose();
                       void markRelaunchHintCompleted();
-                      void queryClient.invalidateQueries({ queryKey: cacheKeys.flag() });
-                    }}>
+                      void queryClient.invalidateQueries({
+                        queryKey: cacheKeys.flag(),
+                      });
+                    }}
+                  >
                     Got it!
                   </Button>
                 </Dialog.Footer>
@@ -417,5 +440,8 @@ export const useLineageGraphContext = () => useContext(LineageGraphContext);
 
 export const useRunsAggregated = () => {
   const { runsAggregated, refetchRunsAggregated } = useLineageGraphContext();
-  return [runsAggregated, refetchRunsAggregated] as [RunsAggregated | undefined, () => void];
+  return [runsAggregated, refetchRunsAggregated] as [
+    RunsAggregated | undefined,
+    () => void,
+  ];
 };

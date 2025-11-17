@@ -11,16 +11,16 @@ import {
   Stack,
   useDisclosure,
 } from "@chakra-ui/react";
-import React, { useCallback, useState } from "react";
-import { syncState, isStateSyncing, SyncStateInput } from "@/lib/api/state";
 import { useQueryClient } from "@tanstack/react-query";
-import { cacheKeys } from "@/lib/api/cacheKeys";
-import { useLocation } from "wouter";
-import { IconSync } from "../icons";
-import { Tooltip } from "@/components/ui/tooltip";
-import { toaster } from "@/components/ui/toaster";
+import React, { useCallback, useState } from "react";
 import { PiInfo } from "react-icons/pi";
+import { useLocation } from "wouter";
+import { toaster } from "@/components/ui/toaster";
+import { Tooltip } from "@/components/ui/tooltip";
+import { cacheKeys } from "@/lib/api/cacheKeys";
+import { isStateSyncing, SyncStateInput, syncState } from "@/lib/api/state";
 import { useRecceInstanceInfo } from "@/lib/hooks/useRecceInstanceInfo";
+import { IconSync } from "../icons";
 
 function isCheckDetailPage(href: string): boolean {
   const pattern =
@@ -43,7 +43,9 @@ export function StateSynchronizer() {
   const queryClient = useQueryClient();
   const [location, setLocation] = useLocation();
   const { open, onOpen, onClose } = useDisclosure();
-  const [syncOption, setSyncOption] = useState<"overwrite" | "revert" | "merge" | "">("");
+  const [syncOption, setSyncOption] = useState<
+    "overwrite" | "revert" | "merge" | ""
+  >("");
   const { data: instanceInfo } = useRecceInstanceInfo();
 
   const handleSync = useCallback(
@@ -91,7 +93,10 @@ export function StateSynchronizer() {
           size="sm"
           variant="plain"
           aria-label="Sync state"
-          onClick={() => handleSync(instanceInfo?.session_id ? { method: "merge" } : {})}>
+          onClick={() =>
+            handleSync(instanceInfo?.session_id ? { method: "merge" } : {})
+          }
+        >
           <Icon as={IconSync} verticalAlign="middle" boxSize={"16px"} />
         </IconButton>
       </Tooltip>
@@ -105,15 +110,18 @@ export function StateSynchronizer() {
               </Dialog.Header>
               <Dialog.Body>
                 <Box>
-                  New changes have been detected in the cloud. Please choose a method to sync your
-                  state
+                  New changes have been detected in the cloud. Please choose a
+                  method to sync your state
                 </Box>
                 <Box mt="5px">
                   <RadioGroup.Root
                     onValueChange={(e) => {
-                      setSyncOption(e.value as "merge" | "overwrite" | "revert");
+                      setSyncOption(
+                        e.value as "merge" | "overwrite" | "revert",
+                      );
                     }}
-                    value={syncOption}>
+                    value={syncOption}
+                  >
                     <Stack direction="column">
                       {/* Merge */}
                       <RadioGroup.Item value="merge">
@@ -166,7 +174,9 @@ export function StateSynchronizer() {
                 </Button>
                 <Button
                   colorPalette="blue"
-                  onClick={() => handleSync({ method: syncOption || undefined })}
+                  onClick={() =>
+                    handleSync({ method: syncOption || undefined })
+                  }
                   disabled={!syncOption} // Disable button until an option is selected
                 >
                   Sync

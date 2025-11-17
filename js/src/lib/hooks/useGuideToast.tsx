@@ -9,7 +9,8 @@ export function useGuideToast(options: {
   onExternalLinkClick?: () => void;
 }) {
   const [toastId, setToastId] = useState<string | undefined>(undefined);
-  const { guideId, description, externalLink, externalLinkText, onExternalLinkClick } = options;
+  const { guideId, description, externalLinkText, onExternalLinkClick } =
+    options;
 
   function guideToast() {
     if (toastId != null) {

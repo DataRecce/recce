@@ -49,7 +49,11 @@ export default function GraphEdge(props: GraphEdgeProps) {
   });
   return (
     <>
-      <BaseEdge path={edgePath} markerEnd={markerEnd} style={{ ...style, ...styleOverride }} />
+      <BaseEdge
+        path={edgePath}
+        markerEnd={markerEnd}
+        style={{ ...style, ...styleOverride }}
+      />
     </>
   );
 }

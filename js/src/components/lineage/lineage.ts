@@ -1,6 +1,6 @@
-import { Node, Edge, Position } from "@xyflow/react";
-import { getNeighborSet } from "./graph";
 import dagre from "@dagrejs/dagre";
+import { Edge, Node, Position } from "@xyflow/react";
+import { ColumnLineageData } from "@/lib/api/cll";
 import {
   CatalogMetadata,
   LineageData,
@@ -9,7 +9,7 @@ import {
   ManifestMetadata,
   NodeData,
 } from "@/lib/api/info";
-import { ColumnLineageData } from "@/lib/api/cll";
+import { getNeighborSet } from "./graph";
 
 export const COLUMN_HEIGHT = 20;
 /**
@@ -77,11 +77,15 @@ export interface LineageGraph {
   };
 }
 
-export function isLineageGraphNode(node: LineageGraphNodes): node is LineageGraphNode {
+export function isLineageGraphNode(
+  node: LineageGraphNodes,
+): node is LineageGraphNode {
   return node.type === "lineageGraphNode";
 }
 
-export function isLineageGraphColumnNode(node: LineageGraphNodes): node is LineageGraphColumnNode {
+export function isLineageGraphColumnNode(
+  node: LineageGraphNodes,
+): node is LineageGraphColumnNode {
   return node.type === "lineageGraphColumnNode";
 }
 
@@ -94,7 +98,10 @@ export function buildLineageGraph(
 ): LineageGraph {
   const nodes: Record<string, LineageGraphNode> = {};
   const edges: Record<string, LineageGraphEdge> = {};
-  const buildNode = (key: string, from: "base" | "current"): LineageGraphNode => {
+  const buildNode = (
+    key: string,
+    from: "base" | "current",
+  ): LineageGraphNode => {
     return {
       id: key,
       data: {
@@ -247,7 +254,11 @@ export function buildLineageGraph(
   };
 }
 
-export function selectUpstream(lineageGraph: LineageGraph, nodeIds: string[], degree = 1000) {
+export function selectUpstream(
+  lineageGraph: LineageGraph,
+  nodeIds: string[],
+  degree = 1000,
+) {
   return getNeighborSet(
     nodeIds,
     (key) => {
@@ -264,11 +275,17 @@ export function selectUpstream(lineageGraph: LineageGraph, nodeIds: string[], de
   );
 }
 
-export function selectDownstream(lineageGraph: LineageGraph, nodeIds: string[], degree = 1000) {
+export function selectDownstream(
+  lineageGraph: LineageGraph,
+  nodeIds: string[],
+  degree = 1000,
+) {
   return getNeighborSet(
     nodeIds,
     (key) => {
-      if ((lineageGraph.nodes[key] as LineageGraphNode | undefined) === undefined) {
+      if (
+        (lineageGraph.nodes[key] as LineageGraphNode | undefined) === undefined
+      ) {
         return [];
       }
       return Object.keys(lineageGraph.nodes[key].data.children);
@@ -315,7 +332,8 @@ export function toReactFlow(
     return 0;
   }
 
-  const filterSet = selectedNodes !== undefined ? new Set(selectedNodes) : undefined;
+  const filterSet =
+    selectedNodes !== undefined ? new Set(selectedNodes) : undefined;
   const sortedNodes = Object.values(lineageGraph.nodes).sort(compareFn);
   for (const node of sortedNodes) {
     if (filterSet && !filterSet.has(node.id)) {
@@ -326,7 +344,9 @@ export function toReactFlow(
     const nodeColumnSet = new Set<string>();
     let columnIndex = 0;
     if (cll) {
-      const maybeCurrent = cll.current as unknown as ColumnLineageData["current"] | undefined;
+      const maybeCurrent = cll.current as unknown as
+        | ColumnLineageData["current"]
+        | undefined;
       const parentMap = maybeCurrent?.parent_map[node.id] ?? new Set<string>();
 
       for (const parentKey of parentMap) {
@@ -343,11 +363,16 @@ export function toReactFlow(
         });
       }
 
-      for (const columnName of Object.keys(node.data.data.current?.columns ?? {})) {
+      for (const columnName of Object.keys(
+        node.data.data.current?.columns ?? {},
+      )) {
         const columnKey = `${node.id}_${columnName}`;
-        const maybeCurrent = cll.current as unknown as ColumnLineageData["current"] | undefined;
+        const maybeCurrent = cll.current as unknown as
+          | ColumnLineageData["current"]
+          | undefined;
         const column = maybeCurrent?.columns[columnKey];
-        const parentMap = maybeCurrent?.parent_map[columnKey] ?? new Set<string>();
+        const parentMap =
+          maybeCurrent?.parent_map[columnKey] ?? new Set<string>();
 
         if (column == null) {
           continue;
@@ -422,7 +447,10 @@ export function toReactFlow(
 
   const sortedEdges = Object.values(lineageGraph.edges).sort(compareFn);
   for (const edge of sortedEdges) {
-    if (filterSet && (!filterSet.has(edge.source) || !filterSet.has(edge.target))) {
+    if (
+      filterSet &&
+      (!filterSet.has(edge.source) || !filterSet.has(edge.target))
+    ) {
       continue;
     }
 
@@ -442,7 +470,11 @@ export function toReactFlow(
   return [nodes, edges, nodeColumnSetMap];
 }
 
-export const layout = (nodes: LineageGraphNodes[], edges: LineageGraphEdge[], direction = "LR") => {
+export const layout = (
+  nodes: LineageGraphNodes[],
+  edges: LineageGraphEdge[],
+  direction = "LR",
+) => {
   const dagreGraph = new dagre.graphlib.Graph();
   dagreGraph.setDefaultEdgeLabel(() => ({}));
 

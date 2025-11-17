@@ -12,15 +12,26 @@ export interface ImportedState {
 }
 
 export async function saveAs(input: SaveAsInput): Promise<void> {
-  return (await axiosClient.post<SaveAsInput, AxiosResponse<void>>("/api/save-as", input)).data;
+  return (
+    await axiosClient.post<SaveAsInput, AxiosResponse<void>>(
+      "/api/save-as",
+      input,
+    )
+  ).data;
 }
 
 export async function rename(input: SaveAsInput): Promise<void> {
-  return (await axiosClient.post<SaveAsInput, AxiosResponse<void>>("/api/rename", input)).data;
+  return (
+    await axiosClient.post<SaveAsInput, AxiosResponse<void>>(
+      "/api/rename",
+      input,
+    )
+  ).data;
 }
 
 export async function exportState(): Promise<string> {
-  return (await axiosClient.post<never, AxiosResponse<string>>("/api/export")).data;
+  return (await axiosClient.post<never, AxiosResponse<string>>("/api/export"))
+    .data;
 }
 
 interface ImportStateBody {
@@ -28,18 +39,26 @@ interface ImportStateBody {
   checks_only: "true" | "false";
 }
 
-export async function importState(file: File, checksOnly?: boolean): Promise<ImportedState> {
+export async function importState(
+  file: File,
+  checksOnly?: boolean,
+): Promise<ImportedState> {
   const formData = new FormData();
   formData.append("file", file);
   formData.append("checks_only", (!!checksOnly).toString());
 
   return (
-    await axiosClient.post<ImportStateBody, AxiosResponse<ImportedState>>("/api/import", formData)
+    await axiosClient.post<ImportStateBody, AxiosResponse<ImportedState>>(
+      "/api/import",
+      formData,
+    )
   ).data;
 }
 
 export async function isStateSyncing(): Promise<boolean> {
-  const response = await axiosClient.get<never, AxiosResponse<boolean>>("/api/sync");
+  const response = await axiosClient.get<never, AxiosResponse<boolean>>(
+    "/api/sync",
+  );
   return response.status === 208;
 }
 
@@ -50,12 +69,14 @@ export interface SyncStateResponse {
   status: "accepted" | "conflict" | "syncing";
 }
 
-export async function syncState(input: SyncStateInput): Promise<SyncStateResponse> {
+export async function syncState(
+  input: SyncStateInput,
+): Promise<SyncStateResponse> {
   try {
-    const response = await axiosClient.post<SyncStateInput, AxiosResponse<SyncStateResponse>>(
-      "/api/sync",
-      input,
-    );
+    const response = await axiosClient.post<
+      SyncStateInput,
+      AxiosResponse<SyncStateResponse>
+    >("/api/sync", input);
 
     if (response.status === 202) {
       return {
@@ -85,5 +106,9 @@ export interface ShareStateResponse {
 }
 
 export async function shareState(): Promise<ShareStateResponse> {
-  return (await axiosClient.post<never, AxiosResponse<ShareStateResponse>>("/api/share")).data;
+  return (
+    await axiosClient.post<never, AxiosResponse<ShareStateResponse>>(
+      "/api/share",
+    )
+  ).data;
 }

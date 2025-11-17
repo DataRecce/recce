@@ -1,19 +1,28 @@
-import { ColumnOrColumnGroup, textEditor } from "react-data-grid";
 import _ from "lodash";
+import { ColumnOrColumnGroup, textEditor } from "react-data-grid";
 import "../query/styles.css";
 import { Box, Flex, Icon, IconButton, Menu, Portal } from "@chakra-ui/react";
-import { VscKebabVertical, VscKey, VscPin, VscPinned } from "react-icons/vsc";
-import { ColumnType, ColumnRenderMode, DataFrame, RowObjectType } from "@/lib/api/types";
-import { mergeKeysWithStatus } from "@/lib/mergeKeys";
-import { defaultRenderCell, inlineRenderCell, QueryDataDiffGridOptions } from "../query/querydiff";
 import React from "react";
-import { columnPrecisionSelectOptions } from "./shared";
+import { VscKebabVertical, VscKey, VscPin, VscPinned } from "react-icons/vsc";
+import {
+  ColumnRenderMode,
+  ColumnType,
+  DataFrame,
+  RowObjectType,
+} from "@/lib/api/types";
+import { mergeKeysWithStatus } from "@/lib/mergeKeys";
 import {
   dataFrameToRowObjects,
   getCaseInsensitive,
   includesIgnoreCase,
   keyToNumber,
 } from "@/utils/transforms";
+import {
+  defaultRenderCell,
+  inlineRenderCell,
+  QueryDataDiffGridOptions,
+} from "../query/querydiff";
+import { columnPrecisionSelectOptions } from "./shared";
 
 function _getColumnMap(df: DataFrame) {
   const result: Record<
@@ -51,10 +60,15 @@ function _getColumnMap(df: DataFrame) {
   return result;
 }
 
-function _getPrimaryKeyKeys(columns: DataFrame["columns"], primaryKeys: string[]) {
+function _getPrimaryKeyKeys(
+  columns: DataFrame["columns"],
+  primaryKeys: string[],
+) {
   const keys: string[] = [];
   for (const key of primaryKeys) {
-    const index = columns.findIndex((col) => includesIgnoreCase([col.key], key));
+    const index = columns.findIndex((col) =>
+      includesIgnoreCase([col.key], key),
+    );
     if (index < 0) {
       throw new Error(`Column ${key} not found`);
     }
@@ -98,7 +112,10 @@ function DataFrameColumnGroupHeader({
   name: string;
   columnStatus: string;
   columnType: ColumnType;
-  onColumnRenderModeChanged?: (colNam: string, renderAs: ColumnRenderMode) => void;
+  onColumnRenderModeChanged?: (
+    colNam: string,
+    renderAs: ColumnRenderMode,
+  ) => void;
 } & QueryDataDiffGridOptions) {
   const primaryKeys = options.primaryKeys ?? [];
   const pinnedColumns = options.pinnedColumns ?? [];
@@ -107,7 +124,10 @@ function DataFrameColumnGroupHeader({
 
   let selectOptions: { value: string; onClick: () => void }[] = [];
   if (onColumnsRenderModeChanged) {
-    selectOptions = columnPrecisionSelectOptions(name, onColumnsRenderModeChanged);
+    selectOptions = columnPrecisionSelectOptions(
+      name,
+      onColumnsRenderModeChanged,
+    );
   }
 
   if (name === "index") {
@@ -133,7 +153,12 @@ function DataFrameColumnGroupHeader({
   return (
     <Flex alignItems="center" gap="10px" className="grid-header">
       {isPK && <Icon as={VscKey} />}
-      <Box flex={1} overflow="hidden" textOverflow="ellipsis" whiteSpace="nowrap">
+      <Box
+        flex={1}
+        overflow="hidden"
+        textOverflow="ellipsis"
+        whiteSpace="nowrap"
+      >
         {name}
       </Box>
       {!isPK && onPinnedColumnsChange && (
@@ -148,7 +173,11 @@ function DataFrameColumnGroupHeader({
       {!isPK && columnType === "number" && (
         <Menu.Root>
           <Menu.Trigger asChild>
-            <IconButton aria-label="Options" variant="plain" className="!size-4 !min-w-4">
+            <IconButton
+              aria-label="Options"
+              variant="plain"
+              className="!size-4 !min-w-4"
+            >
               <VscKebabVertical />
             </IconButton>
           </Menu.Trigger>
@@ -213,7 +242,10 @@ export function toValueDiffGrid(
     }
   });
 
-  const mergedMap = mergeKeysWithStatus(Object.keys(baseMap), Object.keys(currentMap));
+  const mergedMap = mergeKeysWithStatus(
+    Object.keys(baseMap),
+    Object.keys(currentMap),
+  );
 
   const rowStats = {
     added: 0,
@@ -283,7 +315,9 @@ export function toValueDiffGrid(
   if (changedOnly) {
     rows = rows.filter(
       (row) =>
-        row.__status === "added" || row.__status === "removed" || row.__status === "modified",
+        row.__status === "added" ||
+        row.__status === "removed" ||
+        row.__status === "modified",
     );
   }
 
@@ -436,7 +470,12 @@ export function toValueDiffGrid(
     }
 
     columns.push(
-      toColumn(lowercaseName, columnStatus, columnType, columnsRenderMode[lowercaseName]),
+      toColumn(
+        lowercaseName,
+        columnStatus,
+        columnType,
+        columnsRenderMode[lowercaseName],
+      ),
     );
   });
 
@@ -457,7 +496,11 @@ export function toValueDiffGrid(
     }
 
     if (changedOnly && rowStats.modified > 0) {
-      if (columnStatus !== "added" && columnStatus !== "removed" && columnStatus !== "modified") {
+      if (
+        columnStatus !== "added" &&
+        columnStatus !== "removed" &&
+        columnStatus !== "modified"
+      ) {
         return;
       }
     }

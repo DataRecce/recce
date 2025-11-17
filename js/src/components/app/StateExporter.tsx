@@ -1,12 +1,12 @@
-import { exportState } from "@/lib/api/state";
-import { toaster } from "@/components/ui/toaster";
 import { Icon, IconButton } from "@chakra-ui/react";
 import { format } from "date-fns";
 import saveAs from "file-saver";
-import { IconExport } from "../icons";
-import { useRecceInstanceContext } from "@/lib/hooks/RecceInstanceContext";
-import { trackStateAction } from "@/lib/api/track";
+import { toaster } from "@/components/ui/toaster";
 import { Tooltip } from "@/components/ui/tooltip";
+import { exportState } from "@/lib/api/state";
+import { trackStateAction } from "@/lib/api/track";
+import { useRecceInstanceContext } from "@/lib/hooks/RecceInstanceContext";
+import { IconExport } from "../icons";
 
 export function StateExporter() {
   const { featureToggles } = useRecceInstanceContext();
@@ -43,7 +43,8 @@ export function StateExporter() {
           await handleExport();
           trackStateAction({ name: "export" });
         }}
-        disabled={featureToggles.disableExportStateFile}>
+        disabled={featureToggles.disableExportStateFile}
+      >
         <Icon as={IconExport} verticalAlign="middle" boxSize={"16px"} />
       </IconButton>
     </Tooltip>

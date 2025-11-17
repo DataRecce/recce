@@ -1,8 +1,8 @@
+import React, { createContext, useContext } from "react";
+import { CllInput, ColumnLineageData } from "@/lib/api/cll";
 import { LineageDiffViewOptions } from "@/lib/api/lineagecheck";
 import { Run } from "@/lib/api/types";
-import React, { createContext, useContext } from "react";
 import { LineageGraphNode, LineageGraphNodes } from "./lineage";
-import { CllInput, ColumnLineageData } from "@/lib/api/cll";
 
 type NewType = LineageDiffViewOptions;
 type ActionMode = "per_node" | "multi_nodes";
@@ -67,12 +67,16 @@ export interface LineageViewContextType {
   resetColumnLevelLineage: (previous?: boolean) => Promise<void>;
 }
 
-export const LineageViewContext = createContext<LineageViewContextType | undefined>(undefined);
+export const LineageViewContext = createContext<
+  LineageViewContextType | undefined
+>(undefined);
 
 export const useLineageViewContextSafe = (): LineageViewContextType => {
   const context = useContext(LineageViewContext);
   if (!context) {
-    throw new Error("useLineageViewContext must be used within a LineageViewProvider");
+    throw new Error(
+      "useLineageViewContext must be used within a LineageViewProvider",
+    );
   }
   return context;
 };

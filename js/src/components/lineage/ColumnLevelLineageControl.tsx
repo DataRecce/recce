@@ -1,27 +1,27 @@
-import { useLineageGraphContext } from "@/lib/hooks/LineageGraphContext";
 import {
-  Flex,
-  Text,
-  IconButton,
+  Box,
+  Button,
   Code,
+  Flex,
   Icon,
+  IconButton,
   Link,
   Popover,
-  Button,
   Portal,
-  Box,
   Spinner,
+  Text,
 } from "@chakra-ui/react";
-import { useLineageViewContextSafe } from "./LineageViewContext";
-import { useRecceServerFlag } from "@/lib/hooks/useRecceServerFlag";
-import { FaRegDotCircle } from "react-icons/fa";
-import { useState } from "react";
-import { PiInfo, PiX } from "react-icons/pi";
 import { UseMutationResult } from "@tanstack/react-query";
+import { useState } from "react";
+import { FaRegDotCircle } from "react-icons/fa";
+import { PiInfo, PiX } from "react-icons/pi";
 import { CllInput, ColumnLineageData } from "@/lib/api/cll";
+import { useLineageGraphContext } from "@/lib/hooks/LineageGraphContext";
+import { useRecceServerFlag } from "@/lib/hooks/useRecceServerFlag";
 import { Tooltip } from "../ui/tooltip";
+import { useLineageViewContextSafe } from "./LineageViewContext";
 
-const AnalyzeChangeHint = ({ ml }: { ml?: number }) => {
+const _AnalyzeChangeHint = ({ ml }: { ml?: number }) => {
   const [hovered, setHovered] = useState(false);
 
   return (
@@ -32,7 +32,8 @@ const AnalyzeChangeHint = ({ ml }: { ml?: number }) => {
       }}
       positioning={{ placement: "bottom-start" }}
       lazyMount
-      unmountOnExit>
+      unmountOnExit
+    >
       <Popover.Trigger asChild>
         <Icon
           boxSize="10px"
@@ -49,12 +50,13 @@ const AnalyzeChangeHint = ({ ml }: { ml?: number }) => {
           <Popover.Content bg="black" color="white">
             <Popover.Arrow />
             <Popover.Body fontSize="sm">
-              Breaking changes are determined by analyzing SQL for changes that may impact
-              downstream models.{" "}
+              Breaking changes are determined by analyzing SQL for changes that
+              may impact downstream models.{" "}
               <Link
                 href="https://docs.datarecce.io/features/breaking-change-analysis/"
                 target="_blank"
-                textDecoration="underline">
+                textDecoration="underline"
+              >
                 Learn more
               </Link>
               .
@@ -66,7 +68,7 @@ const AnalyzeChangeHint = ({ ml }: { ml?: number }) => {
   );
 };
 
-const CllHint = () => {
+const _CllHint = () => {
   const [hovered, setHovered] = useState(false);
 
   return (
@@ -77,7 +79,8 @@ const CllHint = () => {
       }}
       positioning={{ placement: "bottom-start" }}
       lazyMount
-      unmountOnExit>
+      unmountOnExit
+    >
       <Popover.Trigger asChild>
         <Icon
           boxSize="10px"
@@ -95,12 +98,13 @@ const CllHint = () => {
           <Popover.Content bg="black" color="white">
             <Popover.Arrow />
             <Popover.Body fontSize="sm">
-              Column-Level Lineage provides visibility into the upstream and downstream
-              relationships of a column.{" "}
+              Column-Level Lineage provides visibility into the upstream and
+              downstream relationships of a column.{" "}
               <Link
                 href="https://docs.datarecce.io/features/column-level-lineage/"
                 target="_blank"
-                textDecoration="underline">
+                textDecoration="underline"
+              >
                 Learn more
               </Link>
               .
@@ -114,7 +118,7 @@ const CllHint = () => {
 
 const ModeMessage = () => {
   const { lineageGraph } = useLineageGraphContext();
-  const { centerNode, viewOptions, cll } = useLineageViewContextSafe();
+  const { centerNode, viewOptions } = useLineageViewContextSafe();
   const cllInput = viewOptions.column_level_lineage;
 
   if (!lineageGraph) {
@@ -146,7 +150,8 @@ const ModeMessage = () => {
           onClick={() => {
             centerNode(nodeId);
           }}
-          cursor="pointer">
+          cursor="pointer"
+        >
           {nodeName}
         </Code>
       </>
@@ -162,7 +167,8 @@ const ModeMessage = () => {
           onClick={() => {
             centerNode(nodeId);
           }}
-          cursor="pointer">
+          cursor="pointer"
+        >
           {nodeName}.{cllInput.column}
         </Code>
       </>
@@ -175,8 +181,12 @@ export const ColumnLevelLineageControl = ({
 }: {
   action: UseMutationResult<ColumnLineageData, Error, CllInput>;
 }) => {
-  const { showColumnLevelLineage, resetColumnLevelLineage, interactive, viewOptions } =
-    useLineageViewContextSafe();
+  const {
+    showColumnLevelLineage,
+    resetColumnLevelLineage,
+    interactive,
+    viewOptions,
+  } = useLineageViewContextSafe();
   const { data: flagData } = useRecceServerFlag();
   const singleEnv = flagData?.single_env_onboarding ?? false;
   const { lineageGraph } = useLineageGraphContext();
@@ -185,12 +195,19 @@ export const ColumnLevelLineageControl = ({
   return (
     <Flex direction="row" gap="5px">
       {!singleEnv && (
-        <Box borderRadius="md" boxShadow="md" border="1px solid" borderColor="gray.200" bg="white">
+        <Box
+          borderRadius="md"
+          boxShadow="md"
+          border="1px solid"
+          borderColor="gray.200"
+          bg="white"
+        >
           <Tooltip
             openDelay={50}
             content="Please provide catalog.json to enable Impact Radius"
             disabled={!noCatalogCurrent}
-            positioning={{ placement: "top" }}>
+            positioning={{ placement: "top" }}
+          >
             <Button
               size="sm"
               variant="ghost"
@@ -198,8 +215,12 @@ export const ColumnLevelLineageControl = ({
               display="inline-flex"
               disabled={!interactive || noCatalogCurrent}
               onClick={() => {
-                void showColumnLevelLineage({ no_upstream: true, change_analysis: true });
-              }}>
+                void showColumnLevelLineage({
+                  no_upstream: true,
+                  change_analysis: true,
+                });
+              }}
+            >
               <FaRegDotCircle /> Impact Radius
             </Button>
           </Tooltip>
@@ -214,13 +235,21 @@ export const ColumnLevelLineageControl = ({
           bg="white"
           fontSize="0.8rem"
           p="0 0.625rem"
-          alignItems="center">
+          alignItems="center"
+        >
           <ModeMessage />
           {action.isError && (
             <Tooltip
               content={`Error: ${action.error.message}`}
-              positioning={{ placement: "bottom" }}>
-              <Text as="span" color="red.500" ml="2px" display="inline-flex" alignItems="center">
+              positioning={{ placement: "bottom" }}
+            >
+              <Text
+                as="span"
+                color="red.500"
+                ml="2px"
+                display="inline-flex"
+                alignItems="center"
+              >
                 <Icon as={PiInfo} color="red.500" boxSize="14px" />
               </Text>
             </Tooltip>
@@ -236,7 +265,8 @@ export const ColumnLevelLineageControl = ({
               aria-label="Reset Column Level Lineage"
               onClick={() => {
                 void resetColumnLevelLineage();
-              }}>
+              }}
+            >
               <PiX size="10px" />
             </IconButton>
           )}

@@ -1,37 +1,26 @@
-import { cacheKeys } from "@/lib/api/cacheKeys";
-import { useQueryClient } from "@tanstack/react-query";
-import { RunView } from "./RunView";
-
-import { findByRunType, RefTypes, RegistryEntry, runTypeHasRef, ViewOptionTypes } from "./registry";
-import { useRecceActionContext } from "@/lib/hooks/RecceActionContext";
-import { useRun } from "@/lib/hooks/useRun";
 import {
-  Tabs,
-  Text,
-  Flex,
   Button,
-  Spacer,
   CloseButton,
+  Flex,
   HStack,
-  useDisclosure,
   Menu,
   Portal,
+  Spacer,
+  Tabs,
+  Text,
+  useDisclosure,
 } from "@chakra-ui/react";
-import { ReactNode, Ref, useCallback, useState } from "react";
-import { createCheckByRun } from "@/lib/api/checks";
-import { useLocation } from "wouter";
 import { Editor } from "@monaco-editor/react";
-import YAML from "yaml";
-import SqlEditor, { DualSqlEditor } from "../query/SqlEditor";
-import { useCopyToClipboardButton } from "@/lib/hooks/ScreenShot";
-import { RunStatusAndDate } from "./RunStatusAndDate";
-import { LearnHowLink, RecceNotification } from "../onboarding-guide/Notification";
-import { useRecceInstanceContext } from "@/lib/hooks/RecceInstanceContext";
-import { TbCloudUpload } from "react-icons/tb";
-import { useRecceShareStateContext } from "@/lib/hooks/RecceShareStateContext";
-import { trackShareState, trackCopyToClipboard } from "@/lib/api/track";
-import AuthModal from "@/components/AuthModal/AuthModal";
+import { useQueryClient } from "@tanstack/react-query";
+import { ReactNode, Ref, useCallback, useState } from "react";
 import { PiCaretDown, PiCheck, PiCopy, PiRepeat } from "react-icons/pi";
+import { TbCloudUpload } from "react-icons/tb";
+import { useLocation } from "wouter";
+import YAML from "yaml";
+import AuthModal from "@/components/AuthModal/AuthModal";
+import { cacheKeys } from "@/lib/api/cacheKeys";
+import { createCheckByRun } from "@/lib/api/checks";
+import { trackCopyToClipboard, trackShareState } from "@/lib/api/track";
 import {
   AxiosQueryParams,
   isQueryBaseRun,
@@ -39,6 +28,25 @@ import {
   isQueryRun,
   RunParamTypes,
 } from "@/lib/api/types";
+import { useRecceActionContext } from "@/lib/hooks/RecceActionContext";
+import { useRecceInstanceContext } from "@/lib/hooks/RecceInstanceContext";
+import { useRecceShareStateContext } from "@/lib/hooks/RecceShareStateContext";
+import { useCopyToClipboardButton } from "@/lib/hooks/ScreenShot";
+import { useRun } from "@/lib/hooks/useRun";
+import {
+  LearnHowLink,
+  RecceNotification,
+} from "../onboarding-guide/Notification";
+import SqlEditor, { DualSqlEditor } from "../query/SqlEditor";
+import { RunStatusAndDate } from "./RunStatusAndDate";
+import { RunView } from "./RunView";
+import {
+  findByRunType,
+  RefTypes,
+  RegistryEntry,
+  runTypeHasRef,
+  ViewOptionTypes,
+} from "./registry";
 
 interface RunPageProps {
   onClose?: () => void;
@@ -71,7 +79,11 @@ const _ParamView = (data: { type: string; params: RunParamTypes }) => {
   );
 };
 
-const SingleEnvironmentSetupNotification = ({ runType }: { runType?: string }) => {
+const SingleEnvironmentSetupNotification = ({
+  runType,
+}: {
+  runType?: string;
+}) => {
   const { open, onClose } = useDisclosure({ defaultOpen: true });
 
   if (!open) {
@@ -82,8 +94,8 @@ const SingleEnvironmentSetupNotification = ({ runType }: { runType?: string }) =
       return (
         <RecceNotification onClose={onClose}>
           <Text>
-            Enable row count diffing, and other Recce features, by configuring a base dbt
-            environment to compare against. <LearnHowLink />
+            Enable row count diffing, and other Recce features, by configuring a
+            base dbt environment to compare against. <LearnHowLink />
           </Text>
         </RecceNotification>
       );
@@ -91,8 +103,9 @@ const SingleEnvironmentSetupNotification = ({ runType }: { runType?: string }) =
       return (
         <RecceNotification onClose={onClose}>
           <Text>
-            Enable data-profile diffing, and other Recce features, by configuring a base dbt
-            environment to compare against. <LearnHowLink />
+            Enable data-profile diffing, and other Recce features, by
+            configuring a base dbt environment to compare against.{" "}
+            <LearnHowLink />
           </Text>
         </RecceNotification>
       );
@@ -132,7 +145,8 @@ const RunResultShareMenu = ({
                 onClick={onCopyToClipboard}
                 onMouseEnter={onMouseEnter}
                 onMouseLeave={onMouseLeave}
-                disabled={disableCopyToClipboard}>
+                disabled={disableCopyToClipboard}
+              >
                 <PiCopy /> Copy to Clipboard
               </Menu.Item>
               <Menu.Separator />
@@ -142,7 +156,8 @@ const RunResultShareMenu = ({
                   onClick={async () => {
                     await handleShareClick();
                     trackShareState({ name: "create" });
-                  }}>
+                  }}
+                >
                   <TbCloudUpload /> Share to Cloud
                 </Menu.Item>
               ) : (
@@ -151,7 +166,8 @@ const RunResultShareMenu = ({
                     value="share"
                     onClick={() => {
                       setShowModal(true);
-                    }}>
+                    }}
+                  >
                     <TbCloudUpload /> Share
                   </Menu.Item>
                 </>
@@ -188,12 +204,13 @@ export const PrivateLoadableRunView = ({
   const { error, run, onCancel, isRunning } = useRun(runId);
   const [viewOptions, setViewOptions] = useState<ViewOptionTypes>();
   const [tabValue, setTabValue] = useState<TabValueItems>("result");
-  const disableAddToChecklist = isSingleEnvironment;
+  const _disableAddToChecklist = isSingleEnvironment;
   const showSingleEnvironmentSetupNotification = isSingleEnvironment;
 
   let RunResultView: RegistryEntry["RunResultView"] | undefined;
   if (run && runTypeHasRef(run.type)) {
-    RunResultView = findByRunType(run.type).RunResultView as RegistryEntry["RunResultView"];
+    RunResultView = findByRunType(run.type)
+      .RunResultView as RegistryEntry["RunResultView"];
   }
 
   const handleRerun = useCallback(() => {
@@ -202,9 +219,14 @@ export const PrivateLoadableRunView = ({
     }
   }, [run, runAction]);
 
-  const isQuery = run?.type === "query" || run?.type === "query_diff" || run?.type === "query_base";
-  const { ref, onCopyToClipboard, onMouseEnter, onMouseLeave } = useCopyToClipboardButton();
-  const disableCopyToClipboard = !runId || !run?.result || !!error || tabValue !== "result";
+  const isQuery =
+    run?.type === "query" ||
+    run?.type === "query_diff" ||
+    run?.type === "query_base";
+  const { ref, onCopyToClipboard, onMouseEnter, onMouseLeave } =
+    useCopyToClipboardButton();
+  const disableCopyToClipboard =
+    !runId || !run?.result || !!error || tabValue !== "result";
 
   return (
     <Flex direction="column">
@@ -219,7 +241,8 @@ export const PrivateLoadableRunView = ({
           setTabValue(e.value as TabValueItems);
         }}
         flexDirection="column"
-        mb="1px">
+        mb="1px"
+      >
         <Tabs.List>
           <Tabs.Trigger value="result">Result</Tabs.Trigger>
           <Tabs.Trigger value="params">Params</Tabs.Trigger>
@@ -230,19 +253,25 @@ export const PrivateLoadableRunView = ({
             <Button
               variant="outline"
               colorPalette="gray"
-              disabled={!runId || isRunning || featureToggles.disableDatabaseQuery}
+              disabled={
+                !runId || isRunning || featureToggles.disableDatabaseQuery
+              }
               size="xs"
-              onClick={handleRerun}>
+              onClick={handleRerun}
+            >
               <PiRepeat /> Rerun
             </Button>
             {featureToggles.disableShare ? (
               <Button
                 variant="outline"
-                disabled={!runId || !run?.result || !!error || tabValue !== "result"}
+                disabled={
+                  !runId || !run?.result || !!error || tabValue !== "result"
+                }
                 onMouseEnter={onMouseEnter}
                 onMouseLeave={onMouseLeave}
                 size="sm"
-                onClick={onCopyToClipboard}>
+                onClick={onCopyToClipboard}
+              >
                 <PiCopy /> Copy to Clipboard
               </Button>
             ) : (
@@ -250,14 +279,20 @@ export const PrivateLoadableRunView = ({
                 disableCopyToClipboard={disableCopyToClipboard}
                 onCopyToClipboard={async () => {
                   await onCopyToClipboard();
-                  trackCopyToClipboard({ type: run?.type ?? "unknown", from: "run" });
+                  trackCopyToClipboard({
+                    type: run?.type ?? "unknown",
+                    from: "run",
+                  });
                 }}
                 onMouseEnter={onMouseEnter}
                 onMouseLeave={onMouseLeave}
               />
             )}
 
-            <AddToCheckButton runId={runId} viewOptions={viewOptions as Record<string, unknown>} />
+            <AddToCheckButton
+              runId={runId}
+              viewOptions={viewOptions as Record<string, unknown>}
+            />
 
             <CloseButton
               size="sm"
@@ -282,7 +317,9 @@ export const PrivateLoadableRunView = ({
         />
       )}
 
-      {tabValue === "params" && run && <_ParamView type={run.type} params={run.params} />}
+      {tabValue === "params" && run && (
+        <_ParamView type={run.type} params={run.params} />
+      )}
 
       {tabValue === "query" &&
         run &&
@@ -295,13 +332,19 @@ export const PrivateLoadableRunView = ({
             options={{ readOnly: true }}
           />
         ) : (
-          <SqlEditor value={run.params.sql_template} options={{ readOnly: true }} />
+          <SqlEditor
+            value={run.params.sql_template}
+            options={{ readOnly: true }}
+          />
         ))}
     </Flex>
   );
 };
 
-export const RunResultPane = ({ onClose, isSingleEnvironment }: RunPageProps) => {
+export const RunResultPane = ({
+  onClose,
+  isSingleEnvironment,
+}: RunPageProps) => {
   const { runId } = useRecceActionContext();
 
   return (
@@ -318,7 +361,10 @@ interface AddToCheckButtonProps {
   viewOptions: Record<string, unknown>;
 }
 
-function AddToCheckButton({ runId, viewOptions }: AddToCheckButtonProps): ReactNode {
+function AddToCheckButton({
+  runId,
+  viewOptions,
+}: AddToCheckButtonProps): ReactNode {
   const { featureToggles } = useRecceInstanceContext();
   const { error, run } = useRun(runId);
   const queryClient = useQueryClient();
@@ -353,7 +399,8 @@ function AddToCheckButton({ runId, viewOptions }: AddToCheckButtonProps): ReactN
         disabled={!runId || !run.result || !!error}
         size="sm"
         colorPalette="iochmara"
-        onClick={handleGoToCheck}>
+        onClick={handleGoToCheck}
+      >
         <PiCheck /> Go to Check
       </Button>
     );
@@ -363,7 +410,8 @@ function AddToCheckButton({ runId, viewOptions }: AddToCheckButtonProps): ReactN
       disabled={!runId || !run?.result || !!error}
       size="xs"
       colorPalette="iochmara"
-      onClick={handleAddToChecklist}>
+      onClick={handleAddToChecklist}
+    >
       <PiCheck /> Add to Checklist
     </Button>
   );
