@@ -2,9 +2,11 @@
 
 ## Project Overview
 
-Recce is a data validation and review tool for dbt and SQLMesh projects. It's a Python/TypeScript monorepo providing CLI tools and a web UI for comparing data environments, performing diffs, and collaborative review.
+Recce is a data validation and review tool for dbt and SQLMesh projects. It's a Python/TypeScript monorepo providing CLI
+tools and a web UI for comparing data environments, performing diffs, and collaborative review.
 
 **Key Info:**
+
 - **Type:** Python package (main) + TypeScript/React frontend + lightweight recce-cloud CLI
 - **Languages:** Python 3.9-3.13, TypeScript/React 19, Next.js 16
 - **Size:** ~50K lines (Python: 30K, TypeScript: 20K)
@@ -16,6 +18,7 @@ Recce is a data validation and review tool for dbt and SQLMesh projects. It's a 
 ### Python Backend - ALWAYS use these commands in order
 
 **Installation (Development):**
+
 ```bash
 # Always run these together - pre-commit hooks are required
 make install-dev
@@ -25,6 +28,7 @@ pre-commit install
 ```
 
 **Code Quality - Run before committing:**
+
 ```bash
 # Format code (Black + isort) - always run first
 make format
@@ -37,6 +41,7 @@ make flake8
 ```
 
 **Testing:**
+
 ```bash
 # Basic tests - fast, run for every change
 make test
@@ -52,19 +57,29 @@ make test-tox-python-versions    # ~10-15 minutes
 ```
 
 **Common Errors & Fixes:**
+
 - `ImportError` after adding dependencies: Run `pip install -e .[dev]` again
 - `flake8` failures: Run `make format` first, then check `.flake8` config
 - Test failures: Check if dbt artifacts exist in `integration_tests/dbt/target` and `integration_tests/dbt/target-base`
 
+# Updated Section for .github/copilot-instructions.md
+
+Replace the **TypeScript Frontend** section and the **CI/CD Validation Pipelines** sections with the updated content
+below:
+
+---
+
 ### TypeScript Frontend - CRITICAL build workflow
 
 **Installation:**
+
 ```bash
 cd js
 pnpm install  # Uses pnpm 10, NOT npm or yarn
 ```
 
 **Development Server:**
+
 ```bash
 cd js
 pnpm dev      # Runs Next.js with Turbopack on port 3000
@@ -73,6 +88,7 @@ make dev
 ```
 
 **Build Process - MUST follow this sequence:**
+
 ```bash
 cd js
 pnpm run build
@@ -84,55 +100,53 @@ pnpm run build
 ```
 
 **Linting & Type Checking:**
+
 ```bash
 cd js
-pnpm lint          # ESLint
-pnpm lint:fix      # Auto-fix
+pnpm lint          # Biome lint & format check
+pnpm lint:fix      # Auto-fix with Biome
 pnpm type:check    # TypeScript compiler
 ```
 
 **Common Errors & Fixes:**
+
 - Changes not appearing in `recce server`: Run `cd js && pnpm run build` then restart server
 - `pnpm: command not found`: Install with `npm install -g corepack@latest && corepack enable`
 - Build fails: Check Node version is >=20 (`node --version`)
 - Type errors: Run `pnpm type:check` to see full error messages
+- Biome lint failures: Run `pnpm lint:fix` for auto-fixable issues
 
-### recce-cloud CLI (Separate package)
-
-**Installation:**
-```bash
-# Development
-python setup_cloud.py develop
-
-# Format/lint
-make format-cloud
-make check-cloud
-```
+---
 
 ## CI/CD Validation Pipelines
 
 **GitHub Actions workflows that MUST pass:**
 
 1. **tests-python.yaml** - Runs on `recce/**` or `tests/**` changes
-   - Flake8 linting (Python 3.10)
-   - Tests across dbt 1.6-1.9 (Python 3.10)
-   - Tests across Python 3.11-3.13 (latest dbt)
-   - Codecov upload
+
+- Flake8 linting (Python 3.10)
+- Tests across dbt 1.6-1.9 (Python 3.10)
+- Tests across Python 3.11-3.13 (latest dbt)
+- Codecov upload
 
 2. **tests-js.yaml** - Runs on `js/**` changes
-   - ESLint with frozen lockfile
-   - Frontend build verification
+
+- Biome linting with frozen lockfile
+- Frontend build verification
 
 3. **integration-tests.yaml** - Full dbt smoke tests
-   - Matrix: Python 3.9-3.13 × dbt 1.6-latest
-   - Runs `integration_tests/dbt/smoke_test.sh`
-   - Tests: `recce run`, `recce summary`, `recce server`
+
+- Matrix: Python 3.9-3.13 × dbt 1.6-latest
+- Runs `integration_tests/dbt/smoke_test.sh`
+- Tests: `recce run`, `recce summary`, `recce server`
 
 4. **integration-tests-sqlmesh.yaml** - SQLMesh compatibility
-   - Python 3.11 + SQLMesh latest
-   - Runs `integration_tests/sqlmesh/test_server.sh`
+
+- Python 3.11 + SQLMesh latest
+- Runs `integration_tests/sqlmesh/test_server.sh`
 
 **To replicate CI locally:**
+
 ```bash
 # Python style check
 pip install flake8 && make flake8
@@ -156,6 +170,7 @@ cd integration_tests/sqlmesh && ./prep_env.sh && ./test_server.sh
 ## Project Layout
 
 ### Root Files
+
 - `setup.py` - Main package (recce), installs `recce` command
 - `setup_cloud.py` - Cloud CLI (recce-cloud), installs `recce-cloud` command
 - `Makefile` - All build/test commands
@@ -165,6 +180,7 @@ cd integration_tests/sqlmesh && ./prep_env.sh && ./test_server.sh
 - `.pre-commit-config.yaml` - Git hooks (Black, isort, flake8, trailing whitespace)
 
 ### Python Backend (`recce/`)
+
 ```
 recce/
 ├── cli.py              # Main CLI entry point (click commands)
@@ -186,6 +202,7 @@ recce/
 ```
 
 ### TypeScript Frontend (`js/`)
+
 ```
 js/
 ├── package.json        # pnpm 10, Node >=20, React 19, Next.js 16
@@ -204,6 +221,7 @@ js/
 ```
 
 ### Cloud CLI (`recce_cloud/`)
+
 ```
 recce_cloud/
 ├── cli.py              # recce-cloud CLI (click)
@@ -213,11 +231,13 @@ recce_cloud/
 ```
 
 ### Tests (`tests/`)
+
 - Unit tests with pytest
 - Integration tests in `integration_tests/dbt/` and `integration_tests/sqlmesh/`
 - Test coverage report: `htmlcov/index.html`
 
 ### Configuration Files
+
 - **Python linting:** `.flake8` (line-length 120, ignores E203/W503/E501)
 - **Python formatting:** `pyproject.toml` (Black line-length 120, isort profile black)
 - **Frontend:** `js/eslint.config.mjs`, `js/tsconfig.json`
@@ -226,27 +246,32 @@ recce_cloud/
 ## Architecture Notes
 
 **Dual Package Structure:**
+
 - Main package (`recce`) has 20+ dependencies (FastAPI, dbt parsing, etc.)
 - Cloud CLI (`recce-cloud`) has only 3 dependencies (click, requests, rich) for fast CI installs
 - Both share `recce/VERSION` file
 
 **State Management:**
+
 - `RecceContext` singleton holds all runtime state
 - Supports local (`FileStateLoader`) and cloud (`CloudStateLoader`) persistence
 - State auto-saves to `recce_state.json` on server shutdown
 - NEVER commit state files (user-specific runtime data)
 
 **Frontend Build:**
+
 - Next.js builds static export to `js/out/`
 - Build script moves to `recce/data/` which Python serves
 - Changes require rebuild: `cd js && pnpm run build`
 
 **Adapter Pattern:**
+
 - All adapters extend `BaseAdapter` abstract class
 - Must implement: `get_lineage()`, `get_model()`, `execute_sql()`, etc.
 - Loaded dynamically via CLI flags (`--sqlmesh`)
 
 **Critical Paths:**
+
 1. User creates check → POST `/api/checks` → `check_func.py`
 2. User runs check → POST `/api/runs` → `run_func.py` → async task
 3. Frontend polls `/api/runs/{id}/wait` → returns results
@@ -294,9 +319,11 @@ recce-cloud upload         # Upload artifacts to Recce Cloud
 2. Frontend changes: `cd js && pnpm run build` → restart `recce server`
 3. Before committing: `make check` and `cd js && pnpm lint && pnpm type:check`
 
-**When instructions are incomplete or incorrect:** Only then use search/exploration tools. Report findings so instructions can be updated.
+**When instructions are incomplete or incorrect:** Only then use search/exploration tools. Report findings so
+instructions can be updated.
 
 **Common pitfalls to avoid:**
+
 - Don't edit `recce/data/` directly (regenerate with `cd js && pnpm run build`)
 - Don't skip `make format` (Black/isort are enforced by CI)
 - Don't use `npm` or `yarn` (must use `pnpm`)
