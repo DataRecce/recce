@@ -166,7 +166,6 @@ export function buildLineageGraph(
 
   for (const [child, parents] of Object.entries(current.parent_map)) {
     for (const parent of parents) {
-      const maybeEdges = edges as unknown as Record<string, LineageGraphEdge | undefined>;
       const childNode = nodes[child] as LineageGraphNode | undefined;
       const parentNode = nodes[parent] as LineageGraphNode | undefined;
       const id = `${parent}_${child}`;
@@ -175,7 +174,8 @@ export function buildLineageGraph(
         // Skip the edge if the node is not found
         continue;
       }
-      if (maybeEdges[id] && edges[id].data) {
+      const existingEdge = edges[id] as LineageGraphEdge | undefined;
+      if (existingEdge?.data && edges[id].data) {
         edges[id].data.from = "both";
       } else {
         edges[id] = {
@@ -460,7 +460,7 @@ export const layout = (nodes: LineageGraphNodes[], edges: LineageGraphEdge[], di
     }
     let width = 300;
     let height = 60;
-    if (node.style && node.style.height && node.style.width) {
+    if (node.style?.height && node.style.width) {
       width = parseInt(String(node.style.width), 10);
       height = parseInt(String(node.style.height), 10);
     }
