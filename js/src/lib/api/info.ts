@@ -59,6 +59,11 @@ export interface LineageData {
   manifest_metadata?: ManifestMetadata | null;
   catalog_metadata?: CatalogMetadata | null;
 }
+
+export interface LineageDataFromMetadata extends Omit<LineageData, "nodes"> {
+  nodes: Record<string, NodeData | undefined>;
+}
+
 export type LineageDiffData = Record<
   string,
   {
