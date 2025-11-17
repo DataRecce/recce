@@ -653,10 +653,15 @@ class RecceMCPServer:
             logger.debug(f"[MCP HTTP] POST message received with query: {query_string}")
             await sse.handle_post_message(scope, receive, send)
 
+        async def handle_health_check(request: Request):
+            """Handle health check endpoint (GET /health)"""
+            return Response(content='{"status":"ok"}', media_type="application/json")
+
         # Create Starlette app
         app = Starlette(
             debug=self.mcp_logger.debug,
             routes=[
+                Route("/health", endpoint=handle_health_check, methods=["GET"]),
                 Route("/sse", endpoint=handle_sse_request, methods=["GET"]),
                 Mount("/", app=handle_post_message),
             ],
