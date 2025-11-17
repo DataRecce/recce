@@ -449,15 +449,13 @@ export const CheckDetail = ({ checkId, refreshCheckList }: CheckDetailProps) => 
               <Tabs.Content value="query" p={0} height="100%" width="100%">
                 {(check.params as QueryParams).base_sql_template ? (
                   <DualSqlEditor
-                    /* eslint-disable-next-line @typescript-eslint/no-unnecessary-condition */
-                    value={(check.params as QueryDiffParams).sql_template ?? ""}
+                    value={(check.params as QueryDiffParams).sql_template || ""}
                     baseValue={(check.params as QueryDiffParams).base_sql_template ?? ""}
                     options={{ readOnly: true }}
                   />
                 ) : (
                   <SqlEditor
-                    /* eslint-disable-next-line @typescript-eslint/no-unnecessary-condition */
-                    value={(check.params as QueryRunParams).sql_template ?? ""}
+                    value={(check.params as QueryRunParams).sql_template || ""}
                     options={{ readOnly: true }}
                   />
                 )}

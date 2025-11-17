@@ -1,5 +1,3 @@
-/* eslint-disable @typescript-eslint/no-unnecessary-condition */
-// TODO LineageData typing needs to be fully thought out to handle the edge-cases - JMS
 import { Node, Edge, Position } from "@xyflow/react";
 import { getNeighborSet } from "./graph";
 import dagre from "@dagrejs/dagre";
@@ -115,37 +113,36 @@ export function buildLineageGraph(
   };
 
   for (const [key, nodeData] of Object.entries(base.nodes)) {
+    const maybeNodeData = nodeData as NodeData | undefined;
     nodes[key] = buildNode(key, "base");
-    if (nodeData) {
-      nodes[key].data.data.base = nodeData;
-      nodes[key].data.name = nodeData.name;
-      nodes[key].data.resourceType = nodeData.resource_type;
-      nodes[key].data.packageName = nodeData.package_name;
+    if (maybeNodeData) {
+      nodes[key].data.data.base = maybeNodeData;
+      nodes[key].data.name = maybeNodeData.name;
+      nodes[key].data.resourceType = maybeNodeData.resource_type;
+      nodes[key].data.packageName = maybeNodeData.package_name;
     }
   }
 
   for (const [key, nodeData] of Object.entries(current.nodes)) {
-    if (nodes[key]) {
+    const maybeNodeValue = nodes as unknown as Record<string, LineageGraphEdge | undefined>;
+    if (maybeNodeValue[key]) {
       nodes[key].data.from = "both";
     } else {
       nodes[key] = buildNode(key, "current");
     }
-    if (nodeData) {
-      // TODO `current.nodes` is treated as potentially falsy here
-      //  this means either that a) the typing needs to be adjusted
-      //  on `current.nodes` or b) the input to `current.nodes`
-      //  should default to a value
+    const maybeNodeData = nodeData as NodeData | undefined;
+    if (maybeNodeData) {
       nodes[key].data.data.current = current.nodes[key];
-      nodes[key].data.name = nodeData.name;
-      nodes[key].data.resourceType = nodeData.resource_type;
-      nodes[key].data.packageName = nodeData.package_name;
+      nodes[key].data.name = maybeNodeData.name;
+      nodes[key].data.resourceType = maybeNodeData.resource_type;
+      nodes[key].data.packageName = maybeNodeData.package_name;
     }
   }
 
   for (const [child, parents] of Object.entries(base.parent_map)) {
     for (const parent of parents) {
-      const childNode = nodes[child];
-      const parentNode = nodes[parent];
+      const childNode = nodes[child] as LineageGraphNode | undefined;
+      const parentNode = nodes[parent] as LineageGraphNode | undefined;
       const id = `${parent}_${child}`;
 
       if (!childNode || !parentNode) {
@@ -169,15 +166,16 @@ export function buildLineageGraph(
 
   for (const [child, parents] of Object.entries(current.parent_map)) {
     for (const parent of parents) {
-      const childNode = nodes[child];
-      const parentNode = nodes[parent];
+      const maybeEdges = edges as unknown as Record<string, LineageGraphEdge | undefined>;
+      const childNode = nodes[child] as LineageGraphNode | undefined;
+      const parentNode = nodes[parent] as LineageGraphNode | undefined;
       const id = `${parent}_${child}`;
 
       if (!childNode || !parentNode) {
         // Skip the edge if the node is not found
         continue;
       }
-      if (edges[id] && edges[id].data) {
+      if (maybeEdges[id] && edges[id].data) {
         edges[id].data.from = "both";
       } else {
         edges[id] = {
@@ -226,7 +224,7 @@ export function buildLineageGraph(
     }
   }
 
-  for (const [key, edge] of Object.entries(edges)) {
+  for (const [, edge] of Object.entries(edges)) {
     if (edge.data) {
       if (edge.data.from === "base") {
         edge.data.changeStatus = "removed";
@@ -255,7 +253,11 @@ export function selectUpstream(lineageGraph: LineageGraph, nodeIds: string[], de
   return getNeighborSet(
     nodeIds,
     (key) => {
-      if (lineageGraph.nodes[key] === undefined) {
+      const maybeNodes = lineageGraph.nodes as unknown as Record<
+        string,
+        LineageGraphNode | undefined
+      >;
+      if (maybeNodes[key] === undefined) {
         return [];
       }
       return Object.keys(lineageGraph.nodes[key].data.parents);
@@ -268,7 +270,11 @@ export function selectDownstream(lineageGraph: LineageGraph, nodeIds: string[], 
   return getNeighborSet(
     nodeIds,
     (key) => {
-      if (lineageGraph.nodes[key] === undefined) {
+      const maybeNodes = lineageGraph.nodes as unknown as Record<
+        string,
+        LineageGraphNode | undefined
+      >;
+      if (maybeNodes[key] === undefined) {
         return [];
       }
       return Object.keys(lineageGraph.nodes[key].data.children);
@@ -326,7 +332,8 @@ export function toReactFlow(
     const nodeColumnSet = new Set<string>();
     let columnIndex = 0;
     if (cll) {
-      const parentMap = cll?.current?.parent_map[node.id] ?? new Set<string>();
+      const maybeCurrent = cll.current as unknown as ColumnLineageData["current"] | undefined;
+      const parentMap = maybeCurrent?.parent_map[node.id] ?? new Set<string>();
 
       for (const parentKey of parentMap) {
         const source = parentKey;
@@ -344,8 +351,9 @@ export function toReactFlow(
 
       for (const columnName of Object.keys(node.data.data.current?.columns ?? {})) {
         const columnKey = `${node.id}_${columnName}`;
-        const column = cll?.current?.columns[columnKey];
-        const parentMap = cll?.current?.parent_map[columnKey] ?? new Set<string>();
+        const maybeCurrent = cll.current as unknown as ColumnLineageData["current"] | undefined;
+        const column = maybeCurrent?.columns[columnKey];
+        const parentMap = maybeCurrent?.parent_map[columnKey] ?? new Set<string>();
 
         if (column == null) {
           continue;
