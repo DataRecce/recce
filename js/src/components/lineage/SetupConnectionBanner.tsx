@@ -2,10 +2,17 @@ import { HStack, Button, Text } from "@chakra-ui/react";
 
 import { useRecceInstanceContext } from "@/lib/hooks/RecceInstanceContext";
 import { PiInfo } from "react-icons/pi";
-import { RECCE_SUPPORT_CALENDAR_URL } from "@/constants/urls";
+import { useQuery } from "@tanstack/react-query";
+import { getRecceInstanceInfo } from "@/lib/api/instanceInfo";
+import { cacheKeys } from "@/lib/api/cacheKeys";
+import { getSettingsUrl } from "@/lib/utils/urls";
 
 export default function SetupConnectionBanner() {
   const { featureToggles } = useRecceInstanceContext();
+  const { data: instanceInfo } = useQuery({
+    queryKey: cacheKeys.instanceInfo(),
+    queryFn: getRecceInstanceInfo,
+  });
 
   if (featureToggles.mode !== "metadata only") {
     return null;
@@ -20,7 +27,7 @@ export default function SetupConnectionBanner() {
           bgColor="iochmara.400"
           size="2xs"
           onClick={() => {
-            window.open(RECCE_SUPPORT_CALENDAR_URL, "_blank");
+            window.open(getSettingsUrl(instanceInfo), "_blank");
           }}>
           Connect to Data Warehouse
         </Button>

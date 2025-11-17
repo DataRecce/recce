@@ -94,8 +94,7 @@ export function CheckDescription({ value, onChange }: CheckDescriptionProps) {
       whiteSpace="pre-wrap"
       wordBreak="break-word"
       color={!value ? "lightgray" : "inherit"}>
-      {/* eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing */}
-      {!value ? "Add description here" : value}
+      {(value ?? "").trim() || "Add description here"}
     </Text>
   );
 }

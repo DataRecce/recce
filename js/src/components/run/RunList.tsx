@@ -1,5 +1,5 @@
 import "react-data-grid/lib/styles.css";
-import React, { ReactNode, useCallback, useState } from "react";
+import React, { ReactNode, useCallback } from "react";
 import { createCheckByRun } from "@/lib/api/checks";
 import {
   Box,
@@ -82,8 +82,7 @@ const RunListItem = ({
           color={run.name ? "inherit" : "gray.500"}
           fontSize="11pt"
           fontWeight="500">
-          {/* eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing */}
-          {run.name || "<no name>"}
+          {(run.name ?? "").trim() || "<no name>"}
         </Box>
         {checkId ? (
           <Tooltip content="Go to Check" aria-label="Go to Check">

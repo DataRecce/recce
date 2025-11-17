@@ -127,6 +127,7 @@ class RecceMCPServer:
         @self.server.list_tools()
         async def list_tools() -> List[Tool]:
             """List all available tools based on server mode"""
+            logger.info(f"[MCP] list_tools called (mode: {self.mode.value if self.mode else 'server'})")
             tools = []
 
             # Always available in all modes
@@ -302,12 +303,20 @@ class RecceMCPServer:
 
             self.mcp_logger.log_list_tools(tools)
 
+            # Log available tools to console
+            tool_names = [tool.name for tool in tools]
+            logger.info(f"[MCP] Returning {len(tools)} tools: {', '.join(tool_names)}")
+
             return tools
 
         @self.server.call_tool()
         async def call_tool(name: str, arguments: Dict[str, Any]) -> List[TextContent]:
             """Handle tool calls"""
             start_time = time.perf_counter()
+
+            # Log incoming request
+            logger.info(f"[MCP] Tool call received: {name}")
+            logger.info(f"[MCP] Arguments: {json.dumps(arguments, indent=2)}")
 
             try:
                 # Check if tool is blocked in non-server mode
@@ -336,12 +345,23 @@ class RecceMCPServer:
                 duration_ms = (time.perf_counter() - start_time) * 1000
                 self.mcp_logger.log_tool_call(name, arguments, result, duration_ms)
 
-                return [TextContent(type="text", text=json.dumps(result, indent=2))]
+                # Log outgoing response
+                response_json = json.dumps(result, indent=2)
+                logger.info(f"[MCP] Tool response for {name} ({duration_ms:.2f}ms):")
+                # Truncate large responses for console readability
+                if len(response_json) > 1000:
+                    logger.debug(f"[MCP] {response_json[:1000]}... (truncated, {len(response_json)} chars total)")
+                else:
+                    logger.debug(f"[MCP] {response_json}")
+
+                return [TextContent(type="text", text=response_json)]
             except Exception as e:
                 duration_ms = (time.perf_counter() - start_time) * 1000
                 self.mcp_logger.log_tool_call(name, arguments, {}, duration_ms, error=str(e))
-                logger.exception(f"Error executing tool {name}")
-                return [TextContent(type="text", text=json.dumps({"error": str(e)}, indent=2))]
+                logger.error(f"[MCP] Error executing tool {name} ({duration_ms:.2f}ms): {str(e)}")
+                logger.exception("[MCP] Full traceback:")
+                error_response = json.dumps({"error": str(e)}, indent=2)
+                return [TextContent(type="text", text=error_response)]
 
     async def _tool_lineage_diff(self, arguments: Dict[str, Any]) -> Dict[str, Any]:
         """Get lineage diff between base and current"""
@@ -594,16 +614,70 @@ class RecceMCPServer:
             raise
 
     async def run(self):
-        """Run the MCP server"""
+        """Run the MCP server in stdio mode"""
         async with stdio_server() as (read_stream, write_stream):
             await self.server.run(read_stream, write_stream, self.server.create_initialization_options())
 
+    async def run_sse(self, host: str = "localhost", port: int = 8000):
+        """Run the MCP server in HTTP mode using Server-Sent Events (SSE)
 
-async def run_mcp_server(**kwargs):
+        Args:
+            host: Host to bind to (default: localhost)
+            port: Port to bind to (default: 8000)
+        """
+        import uvicorn
+        from mcp.server.sse import SseServerTransport
+        from starlette.applications import Starlette
+        from starlette.requests import Request
+        from starlette.responses import Response
+        from starlette.routing import Mount, Route
+
+        # Create SSE transport - endpoint where clients POST messages
+        sse = SseServerTransport("/")
+
+        async def handle_sse_request(request: Request):
+            """Handle SSE connection (GET /sse) following official MCP example"""
+            client_info = f"{request.client.host}:{request.client.port}" if request.client else "unknown"
+            logger.info(f"[MCP HTTP] SSE connection established from {client_info}")
+            try:
+                async with sse.connect_sse(request.scope, request.receive, request._send) as streams:
+                    await self.server.run(streams[0], streams[1], self.server.create_initialization_options())
+            finally:
+                logger.info(f"[MCP HTTP] SSE connection closed from {client_info}")
+            return Response()  # Required to avoid NoneType error
+
+        async def handle_post_message(scope, receive, send):
+            """Handle POST messages (POST /) for MCP protocol"""
+            # Log POST message (session_id will be in query params)
+            query_string = scope.get("query_string", b"").decode("utf-8")
+            logger.debug(f"[MCP HTTP] POST message received with query: {query_string}")
+            await sse.handle_post_message(scope, receive, send)
+
+        # Create Starlette app
+        app = Starlette(
+            debug=self.mcp_logger.debug,
+            routes=[
+                Route("/sse", endpoint=handle_sse_request, methods=["GET"]),
+                Mount("/", app=handle_post_message),
+            ],
+        )
+
+        # Run with uvicorn
+        logger.info(f"Starting Recce MCP Server in HTTP mode on {host}:{port}")
+        logger.info(f"Connection URL: http://{host}:{port}/sse")
+        config = uvicorn.Config(app, host=host, port=port, log_level="info")
+        server = uvicorn.Server(config)
+        await server.serve()
+
+
+async def run_mcp_server(sse: bool = False, host: str = "localhost", port: int = 8000, **kwargs):
     """
     Entry point for running the MCP server
 
     Args:
+        sse: Whether to run in HTTP/SSE mode (default: False for stdio mode)
+        host: Host to bind to in SSE mode (default: localhost)
+        port: Port to bind to in SSE mode (default: 8000)
         **kwargs: Arguments for loading RecceContext (dbt options, etc.)
                Optionally includes 'mode' for server mode (server, preview, read-only)
                Optionally includes 'debug' flag for enabling MCP logging
@@ -627,6 +701,11 @@ async def run_mcp_server(**kwargs):
     # Extract debug flag from kwargs
     debug = kwargs.get("debug", False)
 
-    # Create and run server with debug logging enabled if requested
+    # Create MCP server
     server = RecceMCPServer(context, mode=mode, debug=debug)
-    await server.run()
+
+    # Run in either stdio or SSE mode
+    if sse:
+        await server.run_sse(host=host, port=port)
+    else:
+        await server.run()
