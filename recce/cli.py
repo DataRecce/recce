@@ -647,6 +647,8 @@ def server(host, port, lifetime, idle_timeout=0, state_file=None, **kwargs):
         lifetime=lifetime,
         idle_timeout=effective_idle_timeout,
         share_url=kwargs.get("share_url"),
+        organization_name=os.environ.get("RECCE_SESSION_ORGANIZATION_NAME"),
+        web_url=os.environ.get("RECCE_CLOUD_WEB_URL"),
     )
     app.state = state
 
@@ -1729,6 +1731,9 @@ def read_only(ctx, state_file=None, **kwargs):
 
 
 @cli.command(cls=TrackCommand)
+@click.option("--sse", is_flag=True, default=False, help="Start in HTTP/SSE mode instead of stdio mode")
+@click.option("--host", default="localhost", help="Host to bind to in SSE mode (default: localhost)")
+@click.option("--port", default=8000, type=int, help="Port to bind to in SSE mode (default: 8000)")
 @add_options(dbt_related_options)
 @add_options(sqlmesh_related_options)
 @add_options(recce_options)
@@ -1736,12 +1741,13 @@ def read_only(ctx, state_file=None, **kwargs):
 @add_options(recce_cloud_options)
 @add_options(recce_cloud_auth_options)
 @add_options(recce_hidden_options)
-def mcp_server(**kwargs):
+def mcp_server(sse, host, port, **kwargs):
     """
     [Experiment] Start the Recce MCP (Model Context Protocol) server
 
-    The MCP server provides a stdio-based interface for AI assistants and tools
-    to interact with Recce's data validation capabilities.
+    The MCP server provides an interface for AI assistants and tools to interact
+    with Recce's data validation capabilities. By default, it uses stdio for
+    communication. Use --sse to enable HTTP/Server-Sent Events mode instead.
 
     Available tools:
     - get_lineage_diff: Get lineage differences between environments
@@ -1753,12 +1759,22 @@ def mcp_server(**kwargs):
     Examples:\n
 
     \b
-    # Start the MCP server
+    # Start the MCP server in stdio mode (default)
     recce mcp-server
+
+    \b
+    # Start in HTTP/SSE mode on default port 8000
+    recce mcp-server --sse
+
+    \b
+    # Start in HTTP/SSE mode with custom host and port
+    recce mcp-server --sse --host 0.0.0.0 --port 9000
 
     \b
     # Start with custom dbt configuration
     recce mcp-server --target prod --project-dir ./my_project
+
+    SSE Connection URL (when using --sse): http://<host>:<port>/sse
     """
     from rich.console import Console
 
@@ -1792,11 +1808,20 @@ def mcp_server(**kwargs):
         kwargs["state_loader"] = state_loader
 
     try:
-        console.print("Starting Recce MCP Server...")
-        console.print("Available tools: get_lineage_diff, row_count_diff, query, query_diff, profile_diff")
+        if sse:
+            console.print(f"Starting Recce MCP Server in HTTP/SSE mode on {host}:{port}...")
+            console.print(f"SSE endpoint: http://{host}:{port}/sse")
+            console.print("Available tools: get_lineage_diff, row_count_diff, query, query_diff, profile_diff")
+        else:
+            console.print("Starting Recce MCP Server in stdio mode...")
+            console.print("Available tools: get_lineage_diff, row_count_diff, query, query_diff, profile_diff")
 
-        # Run the async server
-        asyncio.run(run_mcp_server(**kwargs))
+        # Run the server (stdio or SSE based on --sse flag)
+        asyncio.run(run_mcp_server(sse=sse, host=host, port=port, **kwargs))
+    except (asyncio.CancelledError, KeyboardInterrupt):
+        # Graceful shutdown (e.g., Ctrl+C)
+        console.print("[yellow]MCP Server interrupted[/yellow]")
+        exit(0)
     except Exception as e:
         console.print(f"[[red]Error[/red]] Failed to start MCP server: {e}")
         if kwargs.get("debug"):
