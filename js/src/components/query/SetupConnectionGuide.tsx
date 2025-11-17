@@ -1,8 +1,16 @@
 import { Button, Heading, Icon, Text } from "@chakra-ui/react";
+import { useQuery } from "@tanstack/react-query";
 import { RiTerminalBoxLine } from "react-icons/ri";
-import { RECCE_SUPPORT_CALENDAR_URL } from "@/constants/urls";
+import { cacheKeys } from "@/lib/api/cacheKeys";
+import { getRecceInstanceInfo } from "@/lib/api/instanceInfo";
+import { getSettingsUrl } from "@/lib/utils/urls";
 
 export default function SetupConnectionGuide() {
+  const { data: instanceInfo } = useQuery({
+    queryKey: cacheKeys.instanceInfo(),
+    queryFn: getRecceInstanceInfo,
+  });
+
   return (
     <div className="flex flex-1 h-full min-h-0 m-2 p-4 bg-blue-50 rounded-lg shadow-md justify-center">
       <div className="w-4/5 flex flex-col overflow-y-auto gap-6 px-8 pb-8">
@@ -25,7 +33,7 @@ export default function SetupConnectionGuide() {
             colorPalette="blue"
             size="lg"
             onClick={() => {
-              window.open(RECCE_SUPPORT_CALENDAR_URL, "_blank");
+              window.open(getSettingsUrl(instanceInfo), "_blank");
             }}
           >
             Connect to Data Warehouse

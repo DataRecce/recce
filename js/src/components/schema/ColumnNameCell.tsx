@@ -57,6 +57,15 @@ export function ColumnNameCell({
       { showForm: false },
     );
   };
+
+  const handleValueDiff = () => {
+    runAction(
+      "value_diff",
+      { model: model.name, columns: [name] },
+      { showForm: true },
+    );
+  };
+
   const addedOrRemoved = !baseType || !currentType;
   const isCllDisabled =
     lineageViewContext === undefined ||
@@ -104,7 +113,7 @@ export function ColumnNameCell({
                   <Menu.ItemGroup title="Diff" m="0" p="4px 12px">
                     <Menu.Item
                       value="profile-diff"
-                      fontSize="10pt"
+                      fontSize="0.85rem"
                       onClick={handleProfileDiff}
                       disabled={addedOrRemoved}
                     >
@@ -112,7 +121,7 @@ export function ColumnNameCell({
                     </Menu.Item>
                     <Menu.Item
                       value="histogram-diff"
-                      fontSize="10pt"
+                      fontSize="0.85rem"
                       onClick={handleHistogramDiff}
                       disabled={
                         addedOrRemoved ||
@@ -123,11 +132,19 @@ export function ColumnNameCell({
                     </Menu.Item>
                     <Menu.Item
                       value="top-k-diff"
-                      fontSize="10pt"
+                      fontSize="0.85rem"
                       onClick={handleTopkDiff}
                       disabled={addedOrRemoved}
                     >
                       Top-k Diff
+                    </Menu.Item>
+                    <Menu.Item
+                      value="value-diff"
+                      fontSize="0.85rem"
+                      onClick={handleValueDiff}
+                      disabled={addedOrRemoved}
+                    >
+                      Value Diff
                     </Menu.Item>
                   </Menu.ItemGroup>
                 </Menu.Content>
