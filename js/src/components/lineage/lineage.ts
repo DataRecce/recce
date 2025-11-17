@@ -4,6 +4,7 @@ import dagre from "@dagrejs/dagre";
 import {
   CatalogMetadata,
   LineageData,
+  LineageDataFromMetadata,
   LineageDiffData,
   ManifestMetadata,
   NodeData,
@@ -87,8 +88,8 @@ export function isLineageGraphColumnNode(node: LineageGraphNodes): node is Linea
 export type NodeColumnSetMap = Record<string, Set<string>>;
 
 export function buildLineageGraph(
-  base: LineageData,
-  current: LineageData,
+  base: LineageDataFromMetadata,
+  current: LineageDataFromMetadata,
   diff?: LineageDiffData,
 ): LineageGraph {
   const nodes: Record<string, LineageGraphNode> = {};
@@ -113,29 +114,26 @@ export function buildLineageGraph(
   };
 
   for (const [key, nodeData] of Object.entries(base.nodes)) {
-    const maybeNodeData = nodeData as NodeData | undefined;
     nodes[key] = buildNode(key, "base");
-    if (maybeNodeData) {
-      nodes[key].data.data.base = maybeNodeData;
-      nodes[key].data.name = maybeNodeData.name;
-      nodes[key].data.resourceType = maybeNodeData.resource_type;
-      nodes[key].data.packageName = maybeNodeData.package_name;
+    if (nodeData) {
+      nodes[key].data.data.base = nodeData;
+      nodes[key].data.name = nodeData.name;
+      nodes[key].data.resourceType = nodeData.resource_type;
+      nodes[key].data.packageName = nodeData.package_name;
     }
   }
 
   for (const [key, nodeData] of Object.entries(current.nodes)) {
-    const maybeNodeValue = nodes as unknown as Record<string, LineageGraphEdge | undefined>;
-    if (maybeNodeValue[key]) {
+    if (nodes[key] as LineageGraphNode | undefined) {
       nodes[key].data.from = "both";
     } else {
       nodes[key] = buildNode(key, "current");
     }
-    const maybeNodeData = nodeData as NodeData | undefined;
-    if (maybeNodeData) {
+    if (nodeData) {
       nodes[key].data.data.current = current.nodes[key];
-      nodes[key].data.name = maybeNodeData.name;
-      nodes[key].data.resourceType = maybeNodeData.resource_type;
-      nodes[key].data.packageName = maybeNodeData.package_name;
+      nodes[key].data.name = nodeData.name;
+      nodes[key].data.resourceType = nodeData.resource_type;
+      nodes[key].data.packageName = nodeData.package_name;
     }
   }
 
@@ -270,11 +268,7 @@ export function selectDownstream(lineageGraph: LineageGraph, nodeIds: string[], 
   return getNeighborSet(
     nodeIds,
     (key) => {
-      const maybeNodes = lineageGraph.nodes as unknown as Record<
-        string,
-        LineageGraphNode | undefined
-      >;
-      if (maybeNodes[key] === undefined) {
+      if ((lineageGraph.nodes[key] as LineageGraphNode | undefined) === undefined) {
         return [];
       }
       return Object.keys(lineageGraph.nodes[key].data.children);
