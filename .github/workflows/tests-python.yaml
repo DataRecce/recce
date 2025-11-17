@@ -101,3 +101,44 @@ jobs:
         run: |
           make install-dev
           tox -e ${{ matrix.python-version }}
+
+  test-ruff:
+    name: Check Code Quality with Ruff
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+          cache: "pip"
+          cache-dependency-path: setup.py
+
+      - name: Install dependencies
+        run: pip install ruff
+
+      - name: Run Ruff linter
+        run: ruff check ./recce ./tests
+
+      - name: Run Ruff formatter check
+        run: ruff format --check ./recce ./tests
+
+  test-mypy:
+    name: Type Check with MyPy
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+          cache: "pip"
+          cache-dependency-path: setup.py
+
+      - name: Install dependencies
+        run: pip install -e .[dev]
+
+      - name: Run mypy
+        run: make mypy

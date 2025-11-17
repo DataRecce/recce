@@ -1,4 +1,4 @@
-.PHONY: help format lint check test clean install dev-install install-cloud install-cloud-dev build build-cloud build-all clean-build
+.PHONY: help format lint check ruff mypy mypy-report test clean install dev-install install-cloud install-cloud-dev build build-cloud build-all clean-build
 
 # Default target executed when no arguments are given to make.
 default: help
@@ -21,22 +21,33 @@ install-cloud-dev:
 
 help:
 	@echo "Available commands:"
-	@echo "  make help              - Show this help message"
-	@echo "  make format            - Format code with Black and isort"
+	@echo ""
+	@echo "Code Quality:"
+	@echo "  make format            - Format code with Black and Ruff"
 	@echo "  make format-cloud      - Format recce-cloud code"
-	@echo "  make flake8            - Run flake8 linting"
-	@echo "  make flake8-cloud      - Run flake8 on recce-cloud"
-	@echo "  make mypy              - Run type checking with mypy"
-	@echo "  make check             - Run all code quality checks without modifying files"
+	@echo "  make check             - Run all code quality checks"
 	@echo "  make check-cloud       - Run code quality checks on recce-cloud"
+	@echo "  make ruff              - Run Ruff linter"
+	@echo "  make ruff-fix          - Run Ruff with auto-fix"
+	@echo "  make ruff-cloud        - Run Ruff on recce-cloud"
+	@echo "  make mypy              - Run type checking with mypy"
+	@echo "  make mypy-cloud        - Run type checking on recce-cloud"
+	@echo "  make mypy-report       - Generate HTML type coverage report"
+	@echo ""
+	@echo "Installation:"
 	@echo "  make install           - Install recce package"
-	@echo "  make install-dev       - Install recce with dev requirements"
+	@echo "  make install-dev       - Install recce with dev dependencies"
 	@echo "  make install-cloud     - Install recce-cloud package"
 	@echo "  make install-cloud-dev - Install recce-cloud in dev mode"
-	@echo "  make dev               - Run the frontend in dev mode"
+	@echo ""
+	@echo "Testing:"
+	@echo "  make test              - Run tests"
+	@echo "  make test-coverage     - Run tests with coverage report"
+	@echo "  make test-tox          - Run multi-version tests"
+	@echo ""
+	@echo "Build:"
 	@echo "  make build             - Build recce package"
 	@echo "  make build-cloud       - Build recce-cloud package"
-	@echo "  make build-all         - Build both packages"
 	@echo "  make clean-build       - Clean build artifacts"
 
 format:
@@ -51,31 +62,77 @@ format-cloud:
 	@echo "Sorting imports with isort..."
 	isort ./recce_cloud
 
-flake8:
-	@echo "Linting with flake8..."
-	flake8 ./recce ./tests
+ruff:
+	@echo "Linting with Ruff..."
+	ruff check ./recce ./tests
 
-flake8-cloud:
-	@echo "Linting recce-cloud with flake8..."
-	flake8 ./recce_cloud
+ruff-fix:
+	@echo "Linting and fixing with Ruff..."
+	ruff check --fix ./recce ./tests
+
+ruff-cloud:
+	@echo "Linting recce-cloud with Ruff..."
+	ruff check ./recce_cloud
+
+ruff-fix-cloud:
+	@echo "Linting and fixing recce-cloud with Ruff..."
+	ruff check --fix ./recce_cloud
+
+mypy:
+	@echo "Type checking with mypy..."
+	mypy recce
+
+mypy-cloud:
+	@echo "Type checking recce-cloud with mypy..."
+	mypy recce_cloud
+
+mypy-report:
+	@echo "Generating mypy HTML report..."
+	mypy recce --html-report ./mypy-report
+	@echo "Report generated at: ./mypy-report/index.html"
 
 # Run all code quality checks without modifying files
 check:
-	@echo "Checking code formatting with Black..."
-	black --check ./recce ./tests
-	@echo "Checking import order with isort..."
-	isort --check ./recce ./tests
-	@echo "Checking code style with flake8..."
-	flake8 ./recce ./tests
+	@echo "Running all code quality checks..."
+	@echo ""
+	@echo "1. Checking code formatting with Black..."
+	@black --check ./recce ./tests
+	@echo "✓ Black check passed"
+	@echo ""
+	@echo "2. Checking import order with isort..."
+	@isort --check ./recce ./tests
+	@echo "✓ isort check passed"
+	@echo ""
+	@echo "3. Checking code style with flake8..."
+	@flake8 ./recce ./tests
+	@echo "✓ flake8 check passed"
+	@echo ""
+	@echo "4. Type checking with mypy..."
+	@mypy recce
+	@echo "✓ mypy check passed"
+	@echo ""
+	@echo "✓ All checks passed!"
 
 check-cloud:
-	@echo "Checking recce-cloud code formatting with Black..."
-	black --check ./recce_cloud
-	@echo "Checking recce-cloud import order with isort..."
-	isort --check ./recce_cloud
-	@echo "Checking recce-cloud code style with flake8..."
-	flake8 ./recce_cloud
-
+	@echo "Running recce-cloud code quality checks..."
+	@echo ""
+	@echo "1. Checking code formatting with Black..."
+	@black --check ./recce_cloud
+	@echo "✓ Black check passed"
+	@echo ""
+	@echo "2. Checking import order with isort..."
+	@isort --check ./recce_cloud
+	@echo "✓ isort check passed"
+	@echo ""
+	@echo "3. Checking code style with flake8..."
+	@flake8 ./recce_cloud
+	@echo "✓ flake8 check passed"
+	@echo ""
+	@echo "4. Type checking with mypy..."
+	@mypy recce_cloud
+	@echo "✓ mypy check passed"
+	@echo ""
+	@echo "✓ All checks passed!"
 test: install-dev
 	@echo "Running tests..."
 	@python3 -m pytest tests

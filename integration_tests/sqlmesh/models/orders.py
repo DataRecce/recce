@@ -4,13 +4,13 @@ from datetime import datetime, timedelta
 
 import pandas as pd
 from helper import iter_dates  # type: ignore
-
 from sqlmesh import ExecutionContext, model
 from sqlmesh.core.model import IncrementalByTimeRangeKind
 from sqlmesh.utils.date import to_date
 
-CUSTOMERS = list(range(0, 100))
-WAITERS = list(range(0, 10))
+
+CUSTOMERS = list(range(100))
+WAITERS = list(range(10))
 
 
 @model(
@@ -46,10 +46,7 @@ def execute(
     for dt in iter_dates(start, end):
         num_orders = random.randint(10, 30)
 
-        start_ts = [
-            int((dt + timedelta(seconds=random.randint(0, 80000))).timestamp())
-            for _ in range(num_orders)
-        ]
+        start_ts = [int((dt + timedelta(seconds=random.randint(0, 80000))).timestamp()) for _ in range(num_orders)]
 
         end_ts = [int(s + random.randint(0, 60 * 60)) for s in start_ts]
 

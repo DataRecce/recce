@@ -56,19 +56,26 @@ setup(
             "mcp>=1.0.0",
         ],
         "dev": [
+            # Testing
             "pytest>=4.6",
             "pytest-asyncio",
-            "pytest-flake8",
-            "black>=25.1.0",
-            "isort>=6.0.1",
-            "flake8>=7.2.0",
-            "pre-commit>=4.2.0",
-            "pytest-mypy",
             "pytest-cov",
-            "twine",
+            "pytest-mypy",
             "tox",
             "pandas",
             "httpx",
+            # Code Quality
+            "ruff>=0.8.0",
+            "black>=25.1.0",
+            "mypy>=1.13.0",
+            "pre-commit>=4.2.0",
+            # Type stubs
+            "types-requests",
+            "types-PyYAML",
+            "types-python-dateutil",
+            "types-pytz",
+            # Build/Distribution
+            "twine",
         ],
     },
     project_urls={

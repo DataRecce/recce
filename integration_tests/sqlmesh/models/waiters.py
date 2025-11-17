@@ -1,6 +1,5 @@
 from macros.macros import incremental_by_ds  # type: ignore
 from sqlglot import exp
-
 from sqlmesh import model
 from sqlmesh.core.macros import MacroEvaluator
 from sqlmesh.core.model import EmbeddedKind
@@ -44,9 +43,7 @@ def entrypoint(evaluator: MacroEvaluator) -> exp.Select:
             # make sure we don't double quote the default catalog
             default_catalog = default_catalog.strip('"')
             name = ".".join([f'"{default_catalog}"', name])
-        assert (
-            parent_snapshots[0].name == name
-        ), f"Snapshot Name: {parent_snapshots[0].name}, Name: {name}"
+        assert parent_snapshots[0].name == name, f"Snapshot Name: {parent_snapshots[0].name}, Name: {name}"
 
     excluded = {"id", "customer_id", "start_ts", "end_ts"}
     projections = []

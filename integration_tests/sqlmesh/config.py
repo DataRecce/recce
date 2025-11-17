@@ -21,6 +21,7 @@ from sqlmesh.core.notification_target import (
 )
 from sqlmesh.core.user import User, UserRole
 
+
 CURRENT_FILE_PATH = os.path.abspath(__file__)
 DATA_DIR = os.path.join(os.path.dirname(__file__), "data")
 
@@ -61,9 +62,7 @@ airflow_config = Config(
     gateways=GatewayConfig(
         connection=SparkConnectionConfig(
             config_dir=os.path.join(CURRENT_FILE_PATH, "..", "airflow", "spark_conf"),
-            config={
-                "spark.hadoop.javax.jdo.option.ConnectionURL": "jdbc:postgresql://localhost:5432/metastore_db"
-            },
+            config={"spark.hadoop.javax.jdo.option.ConnectionURL": "jdbc:postgresql://localhost:5432/metastore_db"},
         )
     ),
     model_defaults=ModelDefaultsConfig(dialect="duckdb", storage_format="iceberg"),
