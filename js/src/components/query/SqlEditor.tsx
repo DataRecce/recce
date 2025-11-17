@@ -6,6 +6,8 @@ import React, { useEffect } from "react";
 import { useLineageGraphContext } from "@/lib/hooks/LineageGraphContext";
 import { ManifestMetadata } from "@/lib/api/info";
 import { extractSchemas, formatTimeToNow } from "@/components/app/EnvInfo";
+import { editor } from "monaco-editor";
+import IStandaloneCodeEditor = editor.IStandaloneCodeEditor;
 
 export interface SqlEditorProps {
   language?: string;
@@ -58,7 +60,7 @@ function SqlEditor({
       // Check if Monaco editor has focus
       const monacoElement = document.querySelector(".monaco-editor");
       if (monacoElement?.contains(document.activeElement) && e.key === " ") {
-        e.stopPropagation(); // Prevent react-split from capturing
+        e.stopPropagation(); // Prevent other from capturing
       }
     };
 
@@ -67,6 +69,36 @@ function SqlEditor({
       document.removeEventListener("keydown", handleKeyDown, true);
     };
   }, []);
+
+  const handleMonacoSpaceBar = (
+    editor: IStandaloneCodeEditor,
+    monaco: typeof import("monaco-editor"),
+  ) => {
+    // Register space bar handling through Monaco's internal API
+    editor.addCommand(
+      monaco.KeyCode.Space,
+      () => {
+        // Explicitly trigger space insertion
+        const position = editor.getPosition();
+        if (position) {
+          console.log("Inserting space at", position);
+          editor.executeEdits("", [
+            {
+              range: new monaco.Range(
+                position.lineNumber,
+                position.column,
+                position.lineNumber,
+                position.column,
+              ),
+              text: " ",
+              forceMoveMarkers: true,
+            },
+          ]);
+        }
+      },
+      "!suggestWidgetVisible && !findWidgetVisible", // Context key expression
+    );
+  };
 
   return (
     <>
@@ -112,6 +144,8 @@ function SqlEditor({
           value={value}
           onChange={handleEditorChange}
           onMount={(editor, monaco) => {
+            handleMonacoSpaceBar(editor, monaco);
+
             if (onRun) {
               editor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyCode.Enter, onRun);
             }
