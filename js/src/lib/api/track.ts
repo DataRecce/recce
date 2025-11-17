@@ -18,7 +18,7 @@ export function trackInit() {
           userId,
           autocapture: true,
         },
-        sr: {
+        sessionReplay: {
           sampleRate: 1,
         },
       });
