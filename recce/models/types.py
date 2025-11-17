@@ -58,10 +58,30 @@ class Run(BaseModel):
         if "result" in data and data["result"] is not None:
             result = data.get("result")
 
-            if type in [str(RunType.QUERY_DIFF)]:
+            if type in [RunType.QUERY.value, RunType.QUERY_BASE.value]:
+                from recce.tasks.query import QueryResult
+
+                data["result"] = pydantic_model_dump(QueryResult(**result))
+            elif type in [RunType.QUERY_DIFF.value]:
                 from recce.tasks.query import QueryDiffResult
 
                 data["result"] = pydantic_model_dump(QueryDiffResult(**result))
+            elif type in [RunType.PROFILE.value]:
+                from recce.tasks.profile import ProfileResult
+
+                data["result"] = pydantic_model_dump(ProfileResult(**result))
+            elif type in [RunType.PROFILE_DIFF.value]:
+                from recce.tasks.profile import ProfileDiffResult
+
+                data["result"] = pydantic_model_dump(ProfileDiffResult(**result))
+            elif type in [RunType.VALUE_DIFF.value]:
+                from recce.tasks.valuediff import ValueDiffResult
+
+                data["result"] = pydantic_model_dump(ValueDiffResult(**result))
+            elif type in [RunType.VALUE_DIFF_DETAIL.value]:
+                from recce.tasks.valuediff import ValueDiffDetailResult
+
+                data["result"] = pydantic_model_dump(ValueDiffDetailResult(**result))
 
         super().__init__(**data)
 
