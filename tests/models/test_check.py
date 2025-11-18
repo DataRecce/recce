@@ -293,7 +293,7 @@ class TestCheckDAOCloudMode(unittest.TestCase):
         self.assertEqual(session_id, "test-session-123")
 
     @patch("recce.util.recce_cloud.RecceCloud")
-    @patch("recce.util.api_token.get_recce_api_token", return_value="test-token")
+    @patch("recce.event.get_recce_api_token", return_value="test-token")
     @patch("recce.core.default_context")
     def test_get_session_info_from_api(self, mock_default_context, mock_get_token, mock_recce_cloud_class):
         """Test getting session info from API when not in loader."""
@@ -325,7 +325,7 @@ class TestCheckDAOCloudMode(unittest.TestCase):
         self.assertEqual(mock_loader.project_id, "proj-888")
 
     @patch("recce.util.recce_cloud.RecceCloud")
-    @patch("recce.util.api_token.get_recce_api_token", return_value="test-token")
+    @patch("recce.event.get_recce_api_token", return_value="test-token")
     @patch("recce.core.default_context")
     def test_create_cloud(self, mock_default_context, mock_get_token, mock_recce_cloud_class):
         """Test creating a check in cloud mode."""
@@ -368,7 +368,7 @@ class TestCheckDAOCloudMode(unittest.TestCase):
         self.assertEqual(check_data["type"], "schema_diff")
 
     @patch("recce.util.recce_cloud.RecceCloud")
-    @patch("recce.util.api_token.get_recce_api_token", return_value="test-token")
+    @patch("recce.event.get_recce_api_token", return_value="test-token")
     @patch("recce.core.default_context")
     def test_find_check_by_id_cloud(self, mock_default_context, mock_get_token, mock_recce_cloud_class):
         """Test finding a check by ID in cloud mode."""
@@ -414,7 +414,7 @@ class TestCheckDAOCloudMode(unittest.TestCase):
         self.assertTrue(check.is_checked)
 
     @patch("recce.util.recce_cloud.RecceCloud")
-    @patch("recce.util.api_token.get_recce_api_token", return_value="test-token")
+    @patch("recce.event.get_recce_api_token", return_value="test-token")
     @patch("recce.core.default_context")
     def test_delete_cloud(self, mock_default_context, mock_get_token, mock_recce_cloud_class):
         """Test deleting a check in cloud mode."""
@@ -444,7 +444,7 @@ class TestCheckDAOCloudMode(unittest.TestCase):
         mock_cloud_client.delete_check.assert_called_once_with("org-456", "proj-789", "test-session-123", str(check_id))
 
     @patch("recce.util.recce_cloud.RecceCloud")
-    @patch("recce.util.api_token.get_recce_api_token", return_value="test-token")
+    @patch("recce.event.get_recce_api_token", return_value="test-token")
     @patch("recce.core.default_context")
     def test_list_cloud(self, mock_default_context, mock_get_token, mock_recce_cloud_class):
         """Test listing checks in cloud mode."""
@@ -552,7 +552,7 @@ class TestCheckDAOCloudMode(unittest.TestCase):
         # Verify - no exception raised
 
     @patch("recce.util.recce_cloud.RecceCloud")
-    @patch("recce.util.api_token.get_recce_api_token", return_value="test-token")
+    @patch("recce.event.get_recce_api_token", return_value="test-token")
     @patch("recce.core.default_context")
     def test_status_cloud(self, mock_default_context, mock_get_token, mock_recce_cloud_class):
         """Test getting status in cloud mode."""
