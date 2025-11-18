@@ -292,27 +292,23 @@ class TestCheckDAOCloudMode(unittest.TestCase):
         self.assertEqual(project_id, "proj-789")
         self.assertEqual(session_id, "test-session-123")
 
-    @patch("recce.models.check.RecceCloud")
-    @patch("recce.models.check.get_recce_api_token")
+    @patch("recce.util.recce_cloud.RecceCloud")
+    @patch("recce.util.api_token.get_recce_api_token", return_value="test-token")
     @patch("recce.core.default_context")
     def test_get_session_info_from_api(self, mock_default_context, mock_get_token, mock_recce_cloud_class):
         """Test getting session info from API when not in loader."""
         # Setup
         mock_loader = Mock()
         mock_loader.session_id = "test-session-123"
+        mock_loader.org_id = "org-999"
+        mock_loader.project_id = "proj-888"
         # Don't set org_id and project_id attributes
 
         mock_context = Mock()
         mock_context.state_loader = mock_loader
         mock_default_context.return_value = mock_context
 
-        mock_get_token.return_value = "test-token"
-
         mock_recce_cloud = Mock()
-        mock_recce_cloud.get_session.return_value = {
-            "org_id": "org-999",
-            "project_id": "proj-888",
-        }
         mock_recce_cloud_class.return_value = mock_recce_cloud
 
         # Execute
@@ -328,8 +324,8 @@ class TestCheckDAOCloudMode(unittest.TestCase):
         self.assertEqual(mock_loader.org_id, "org-999")
         self.assertEqual(mock_loader.project_id, "proj-888")
 
-    @patch("recce.models.check.RecceCloud")
-    @patch("recce.models.check.get_recce_api_token")
+    @patch("recce.util.recce_cloud.RecceCloud")
+    @patch("recce.util.api_token.get_recce_api_token", return_value="test-token")
     @patch("recce.core.default_context")
     def test_create_cloud(self, mock_default_context, mock_get_token, mock_recce_cloud_class):
         """Test creating a check in cloud mode."""
@@ -342,8 +338,6 @@ class TestCheckDAOCloudMode(unittest.TestCase):
         mock_context = Mock()
         mock_context.state_loader = mock_loader
         mock_default_context.return_value = mock_context
-
-        mock_get_token.return_value = "test-token"
 
         mock_cloud_client = Mock()
         mock_recce_cloud = Mock()
@@ -373,14 +367,14 @@ class TestCheckDAOCloudMode(unittest.TestCase):
         self.assertEqual(check_data["name"], "Test Check")
         self.assertEqual(check_data["type"], "schema_diff")
 
-    @patch("recce.models.check.RecceCloud")
-    @patch("recce.models.check.get_recce_api_token")
+    @patch("recce.util.recce_cloud.RecceCloud")
+    @patch("recce.util.api_token.get_recce_api_token", return_value="test-token")
     @patch("recce.core.default_context")
     def test_find_check_by_id_cloud(self, mock_default_context, mock_get_token, mock_recce_cloud_class):
         """Test finding a check by ID in cloud mode."""
         # Setup
         mock_loader = Mock()
-        mock_loader.session_id = "test-session-123"
+        mock_loader.session_id = uuid4()
         mock_loader.org_id = "org-456"
         mock_loader.project_id = "proj-789"
 
@@ -388,11 +382,10 @@ class TestCheckDAOCloudMode(unittest.TestCase):
         mock_context.state_loader = mock_loader
         mock_default_context.return_value = mock_context
 
-        mock_get_token.return_value = "test-token"
-
         check_id = uuid4()
         cloud_check_data = {
             "id": str(check_id),
+            "session_id": str(mock_loader.session_id),
             "name": "Cloud Check",
             "description": "From cloud",
             "type": "schema_diff",
@@ -420,8 +413,8 @@ class TestCheckDAOCloudMode(unittest.TestCase):
         self.assertEqual(check.type, RunType.SCHEMA_DIFF)
         self.assertTrue(check.is_checked)
 
-    @patch("recce.models.check.RecceCloud")
-    @patch("recce.models.check.get_recce_api_token")
+    @patch("recce.util.recce_cloud.RecceCloud")
+    @patch("recce.util.api_token.get_recce_api_token", return_value="test-token")
     @patch("recce.core.default_context")
     def test_delete_cloud(self, mock_default_context, mock_get_token, mock_recce_cloud_class):
         """Test deleting a check in cloud mode."""
@@ -434,8 +427,6 @@ class TestCheckDAOCloudMode(unittest.TestCase):
         mock_context = Mock()
         mock_context.state_loader = mock_loader
         mock_default_context.return_value = mock_context
-
-        mock_get_token.return_value = "test-token"
 
         mock_cloud_client = Mock()
         mock_recce_cloud = Mock()
@@ -452,22 +443,20 @@ class TestCheckDAOCloudMode(unittest.TestCase):
         self.assertTrue(result)
         mock_cloud_client.delete_check.assert_called_once_with("org-456", "proj-789", "test-session-123", str(check_id))
 
-    @patch("recce.models.check.RecceCloud")
-    @patch("recce.models.check.get_recce_api_token")
+    @patch("recce.util.recce_cloud.RecceCloud")
+    @patch("recce.util.api_token.get_recce_api_token", return_value="test-token")
     @patch("recce.core.default_context")
     def test_list_cloud(self, mock_default_context, mock_get_token, mock_recce_cloud_class):
         """Test listing checks in cloud mode."""
         # Setup
         mock_loader = Mock()
-        mock_loader.session_id = "test-session-123"
+        mock_loader.session_id = str(uuid4())
         mock_loader.org_id = "org-456"
         mock_loader.project_id = "proj-789"
 
         mock_context = Mock()
         mock_context.state_loader = mock_loader
         mock_default_context.return_value = mock_context
-
-        mock_get_token.return_value = "test-token"
 
         cloud_checks = [
             {
@@ -480,6 +469,8 @@ class TestCheckDAOCloudMode(unittest.TestCase):
                 "view_options": {},
                 "is_checked": False,
                 "is_preset": False,
+                "created_by": "test-user",
+                "updated_by": "test-user",
                 "created_at": datetime.now(timezone.utc).isoformat(),
                 "updated_at": datetime.now(timezone.utc).isoformat(),
             },
@@ -493,6 +484,8 @@ class TestCheckDAOCloudMode(unittest.TestCase):
                 "view_options": {},
                 "is_checked": True,
                 "is_preset": False,
+                "created_by": "test-user",
+                "updated_by": "test-user",
                 "created_at": datetime.now(timezone.utc).isoformat(),
                 "updated_at": datetime.now(timezone.utc).isoformat(),
             },
@@ -551,22 +544,20 @@ class TestCheckDAOCloudMode(unittest.TestCase):
 
         # Verify - no exception raised
 
-    @patch("recce.models.check.RecceCloud")
-    @patch("recce.models.check.get_recce_api_token")
+    @patch("recce.util.recce_cloud.RecceCloud")
+    @patch("recce.util.api_token.get_recce_api_token", return_value="test-token")
     @patch("recce.core.default_context")
     def test_status_cloud(self, mock_default_context, mock_get_token, mock_recce_cloud_class):
         """Test getting status in cloud mode."""
         # Setup
         mock_loader = Mock()
-        mock_loader.session_id = "test-session-123"
+        mock_loader.session_id = str(uuid4())
         mock_loader.org_id = "org-456"
         mock_loader.project_id = "proj-789"
 
         mock_context = Mock()
         mock_context.state_loader = mock_loader
         mock_default_context.return_value = mock_context
-
-        mock_get_token.return_value = "test-token"
 
         cloud_checks = [
             {
@@ -579,8 +570,10 @@ class TestCheckDAOCloudMode(unittest.TestCase):
                 "view_options": {},
                 "description": "",
                 "is_preset": False,
-                "created_at": None,
-                "updated_at": None,
+                "created_by": "test-user",
+                "updated_by": "test-user",
+                "created_at": datetime.now(timezone.utc).isoformat(),
+                "updated_at": datetime.now(timezone.utc).isoformat(),
             },
             {
                 "id": str(uuid4()),
@@ -592,8 +585,10 @@ class TestCheckDAOCloudMode(unittest.TestCase):
                 "view_options": {},
                 "description": "",
                 "is_preset": False,
-                "created_at": None,
-                "updated_at": None,
+                "created_by": "test-user",
+                "updated_by": "test-user",
+                "created_at": datetime.now(timezone.utc).isoformat(),
+                "updated_at": datetime.now(timezone.utc).isoformat(),
             },
             {
                 "id": str(uuid4()),
@@ -605,8 +600,10 @@ class TestCheckDAOCloudMode(unittest.TestCase):
                 "view_options": {},
                 "description": "",
                 "is_preset": False,
-                "created_at": None,
-                "updated_at": None,
+                "created_by": "test-user",
+                "updated_by": "test-user",
+                "created_at": datetime.now(timezone.utc).isoformat(),
+                "updated_at": datetime.now(timezone.utc).isoformat(),
             },
         ]
 
@@ -645,7 +642,7 @@ class TestCheckDAODataTransformation(unittest.TestCase):
         cloud_data = dao._check_to_cloud_format(sample_check)
 
         # Verify
-        self.assertEqual(cloud_data["session_id"], str(sample_check.check_id))
+        self.assertEqual(str(cloud_data["session_id"]), str(sample_check.session_id))
         self.assertEqual(cloud_data["name"], "Test Check")
         self.assertEqual(cloud_data["description"], "Test Description")
         self.assertEqual(cloud_data["type"], "schema_diff")
@@ -669,8 +666,10 @@ class TestCheckDAODataTransformation(unittest.TestCase):
             "view_options": {"show_diff": True},
             "is_checked": True,
             "is_preset": False,
-            "created_at": "2025-01-01T10:00:00+00:00",
-            "updated_at": "2025-01-02T11:00:00+00:00",
+            "created_by": "test-user",
+            "updated_by": "test-user",
+            "created_at": datetime.now(timezone.utc).isoformat(),
+            "updated_at": datetime.now(timezone.utc).isoformat(),
         }
 
         # Execute

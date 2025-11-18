@@ -177,7 +177,7 @@ class CheckDAO:
 
         return Check(
             check_id=UUID(cloud_data.get("id")),
-            session_id=cloud_data.get("session_id"),
+            session_id=UUID(cloud_data.get("session_id")),
             name=cloud_data.get("name"),
             description=cloud_data.get("description", ""),
             type=check_type,
