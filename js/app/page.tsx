@@ -43,7 +43,7 @@ import { HSplit, VSplit } from "@/components/split/Split";
 import { toaster } from "@/components/ui/toaster";
 import { cacheKeys } from "@/lib/api/cacheKeys";
 import { Check, listChecks } from "@/lib/api/checks";
-import { trackInit } from "@/lib/api/track";
+import { trackInit, trackNavigation } from "@/lib/api/track";
 import { useRecceActionContext } from "@/lib/hooks/RecceActionContext";
 import { useRecceInstanceContext } from "@/lib/hooks/RecceInstanceContext";
 import { useCountdownToast } from "@/lib/hooks/useCountdownToast";
@@ -445,6 +445,7 @@ function NavBar() {
                 value={href}
                 key={href}
                 onClick={() => {
+                  trackNavigation({ from: location, to: href });
                   setLocation(href);
                 }}
                 disabled={!!isLoading || isFlagLoading || disable}
