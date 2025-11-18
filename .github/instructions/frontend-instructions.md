@@ -60,67 +60,41 @@ pnpm dev
 # Python backend should run separately on http://localhost:8000
 ```
 
-**3. Linting (run before committing):**
+**3. Linting and formatting (run before committing):**
 ```bash
 cd js
-pnpm lint           # Check for issues
-pnpm lint:fix       # Auto-fix issues
+pnpm lint           # Check for issues (Biome)
+pnpm lint:fix       # Auto-fix issues (Biome)
 pnpm type:check     # TypeScript compiler check
 ```
 
-**4. Building (REQUIRED before testing with recce server):**
+**4. Build for production:**
 ```bash
 cd js
 pnpm run build
-# After this completes, restart recce server from root:
-cd ..
-recce server
+# MUST do this after frontend changes
+# Then restart: cd .. && recce server
 ```
 
-## Common Errors & Solutions
+**5. Clean build artifacts:**
+```bash
+cd js
+pnpm run clean
+# Removes ../recce/data/ directory
+```
 
-**Error: "Changes not showing up in recce server"**
-- **Cause:** Forgot to rebuild frontend
-- **Fix:** `cd js && pnpm run build` then restart `recce server`
+## Tech Stack
 
-**Error: "pnpm: command not found"**
-- **Fix:** `npm install -g corepack@latest && corepack enable`
-
-**Error: "Module not found" after adding dependency**
-- **Fix:** `cd js && pnpm install`
-
-**Error: Build fails with type errors**
-- **Check:** `cd js && pnpm type:check` for full error details
-- **Common cause:** Missing type definitions or incorrect imports
-
-**Error: "Lockfile is out of date"**
-- **Fix:** `cd js && pnpm install` (regenerates lock file)
-
-**Error: Next.js cache issues**
-- **Fix:** `cd js && rm -rf .next && pnpm run build`
-
-## Frontend Stack & Key Dependencies
-
-**Core:**
-- **Next.js 16** - React framework with App Router, static export mode
-- **React 19.2** - UI library
+- **Node.js >=20** - JavaScript runtime (required)
+- **pnpm 10** - Package manager (NOT npm or yarn)
+- **Next.js 16** - React framework with App Router
+- **React 19.2** - UI library with new JSX transform
+- **React DOM 19.2** - React renderer
 - **TypeScript 5.9** - Type safety
-- **pnpm 10** - Package manager (REQUIRED)
-
-**UI Framework:**
 - **Chakra UI 3** - Component library
-- **@xyflow/react** - Lineage/DAG visualization
-- **Monaco Editor** - Code editor for SQL
-
-**State & Data:**
-- **@tanstack/react-query** - Server state management
-- **axios** - HTTP client for `/api` calls
-
-**Build Tools:**
+- **Biome 2.3** - Fast linter and formatter (replaces ESLint + Prettier)
 - **Turbopack** - Fast dev server bundler
 - **Tailwind CSS 4** - Utility-first CSS
-- **ESLint** - Linting with Next.js config
-- **TypeScript ESLint** - Type-aware linting
 
 ## File Structure (js/ directory)
 
@@ -129,7 +103,7 @@ js/
 ├── package.json         # Dependencies (Node >=20 required)
 ├── tsconfig.json        # TypeScript config
 ├── next.config.mjs      # Next.js config (output: 'export')
-├── eslint.config.mjs    # ESLint config
+├── biome.json           # Biome linter & formatter config
 ├── src/
 │   ├── app/             # Next.js App Router pages
 │   │   ├── layout.tsx   # Root layout
@@ -152,8 +126,15 @@ js/
 
 **package.json:**
 - Requires Node.js >=20
-- Uses pnpm@10 as package manager
-- Scripts: `dev`, `build`, `lint`, `type:check`, `clean`
+- Uses pnpm@10.22.0 as package manager
+- Key scripts:
+  - `dev`: Start development server with Turbopack
+  - `build`: Clean, build Next.js, move to ../recce/data
+  - `lint`: Run Biome checks (error level only)
+  - `lint:fix`: Run Biome with auto-fix
+  - `lint:staged`: Run Biome on staged files only
+  - `type:check`: TypeScript compilation check
+  - `clean`: Remove ../recce/data/
 
 **tsconfig.json:**
 - Target: ESNext
@@ -166,29 +147,42 @@ js/
 - Exports to `./out` directory
 - Build script moves to `../recce/data/`
 
-**eslint.config.mjs:**
-- Extends Next.js and Prettier configs
-- TypeScript ESLint for type-aware rules
-- Import rules, React hooks rules, JSX a11y
+**biome.json:**
+- Schema: https://biomejs.dev/schemas/2.3.5/schema.json
+- VCS integration: Git with useIgnoreFile enabled
+- Formatter: Space indentation, double quotes for JavaScript
+- Linter: Custom rule configuration (not using recommended preset)
+- Key rules enforced:
+  - `noExplicitAny`: Disallow explicit `any` types
+  - `useExhaustiveDependencies`: Enforce React Hook dependencies
+  - `useHookAtTopLevel`: React Hooks must be at top level
+  - `noUnusedVariables`: No unused variables
+  - Many more correctness, style, and suspicious pattern checks
+- Includes: All files except `.next/`, `.swc/`, `node_modules/`, `out/`, etc.
+- CSS parser: Tailwind directives enabled
 
 ## Code Style
 
-**Enforced by ESLint + Prettier:**
-- No semicolons (Prettier default)
-- 2-space indentation
-- Single quotes for strings
-- Trailing commas in multi-line
+**Enforced by Biome:**
+- Double quotes for strings (JavaScript/TypeScript)
+- Space indentation (configured in biome.json)
 - React 19 JSX transform (no React import needed)
+- Comprehensive linting for:
+  - Complexity issues (useless code, optional chains)
+  - Correctness errors (undefined variables, unreachable code)
+  - Style consistency (array types, type definitions)
+  - Suspicious patterns (explicit any, duplicate keys, debugger statements)
 
 **Git Hooks (.husky/):**
 - Pre-commit: Runs `pnpm lint:staged` and `pnpm type:check` on staged files
 - Only triggers for TypeScript/JavaScript files in js/ directory
+- Uses Biome's `--staged` flag for efficient checking
 
 ## Testing
 
 **Test Framework:**
 - Jest 30 with jsdom environment
-- React Testing Library
+- React Testing Library 16.3
 - Setup file: `jest.setup.js` (imports @testing-library/jest-dom)
 
 **Run tests:**
@@ -229,7 +223,7 @@ pnpm test  # Watch mode
 1. Node.js 24 setup
 2. pnpm 10 installation
 3. Dependency install with frozen lockfile
-4. ESLint linting (`pnpm lint`)
+4. Biome linting (`pnpm lint`)
 5. Production build (`pnpm run build`)
 
 **To replicate CI locally:**
@@ -240,14 +234,61 @@ pnpm lint
 pnpm run build
 ```
 
+## Common Errors & Fixes
+
+**Error: Changes not appearing in browser**
+- **Cause:** Forgot to rebuild after frontend changes
+- **Fix:** `cd js && pnpm run build` then restart `recce server`
+
+**Error: `pnpm: command not found`**
+- **Cause:** pnpm not installed
+- **Fix:** `npm install -g corepack@latest && corepack enable`
+
+**Error: Build fails with Node version error**
+- **Cause:** Node.js version too old
+- **Fix:** Upgrade to Node.js 20 or later (`node --version` to check)
+
+**Error: Biome lint failures**
+- **Cause:** Code doesn't meet Biome rules
+- **Fix:** Run `pnpm lint:fix` to auto-fix, then manually fix remaining issues
+
+**Error: Type errors during build**
+- **Cause:** TypeScript compilation errors
+- **Fix:** Run `pnpm type:check` to see detailed error messages, fix type issues
+
+**Error: Dependencies out of sync**
+- **Cause:** package.json changed but not reinstalled
+- **Fix:** `cd js && pnpm install`
+
+**Error: Import resolution issues**
+- **Cause:** TypeScript path aliases not configured
+- **Fix:** Check `tsconfig.json` paths configuration
+
+## Migration Notes: ESLint → Biome
+
+**What changed:**
+- Replaced ESLint + Prettier with Biome for faster, unified tooling
+- Configuration moved from `eslint.config.mjs` to `biome.json`
+- Commands remain the same (`pnpm lint`, `pnpm lint:fix`) but now run Biome
+- Biome provides both linting AND formatting in one tool
+- Significantly faster than ESLint (written in Rust vs JavaScript)
+
+**Key differences:**
+- Biome uses `biome.json` instead of `.eslintrc` or `eslint.config.mjs`
+- Biome rules are organized into categories: complexity, correctness, style, suspicious
+- Biome has opinionated defaults but allows customization
+- No separate Prettier config needed - formatting is built-in
+- Git hooks updated to use `biome check --staged`
+
 ## Critical Reminders
 
 1. **Always run `pnpm run build` after frontend changes** - Most common mistake
 2. **Never edit `../recce/data/` directly** - It's auto-generated
 3. **Use pnpm, not npm/yarn** - Different package managers have incompatibilities
 4. **Restart `recce server` after builds** - Server doesn't hot-reload static files
-5. **Run `pnpm lint` before committing** - CI will fail if linting fails
+5. **Run `pnpm lint` before committing** - CI will fail if Biome checks fail
 6. **Check `pnpm type:check` for type errors** - Catches issues early
+7. **Use `pnpm lint:fix` for auto-fixable issues** - Saves time on formatting
 
 ## Quick Reference Commands
 
@@ -258,8 +299,10 @@ cd js && pnpm install
 # Development
 cd js && pnpm dev
 
-# Lint & type check
-cd js && pnpm lint && pnpm type:check
+# Lint, fix, & type check
+cd js && pnpm lint          # Check with Biome
+cd js && pnpm lint:fix      # Auto-fix with Biome
+cd js && pnpm type:check    # TypeScript check
 
 # Build for production
 cd js && pnpm run build
