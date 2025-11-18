@@ -1,4 +1,3 @@
-from datetime import datetime, timezone
 from typing import Optional
 from uuid import UUID
 
@@ -153,21 +152,9 @@ class PatchCheckIn(BaseModel):
 
 @check_router.patch("/checks/{check_id}", status_code=200, response_model=CheckOut, response_model_exclude_none=True)
 async def update_check_handler(check_id: UUID, patch: PatchCheckIn, background_tasks: BackgroundTasks):
-    check = CheckDAO().find_check_by_id(check_id)
+    check = CheckDAO().update_check_by_id(check_id, patch)
     if check is None:
         raise HTTPException(status_code=404, detail="Not Found")
-
-    if patch.name is not None:
-        check.name = patch.name
-    if patch.description is not None:
-        check.description = patch.description
-    if patch.params is not None:
-        check.params = patch.params
-    if patch.view_options is not None:
-        check.view_options = patch.view_options
-    if patch.is_checked is not None:
-        check.is_checked = patch.is_checked
-    check.updated_at = datetime.now(timezone.utc).replace(microsecond=0)
 
     background_tasks.add_task(export_persistent_state)
     return CheckOut.from_check(check)

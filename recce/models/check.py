@@ -6,11 +6,16 @@ local (in-memory) and cloud (Recce Cloud API) storage modes.
 """
 
 import logging
+import typing
+from datetime import datetime, timezone
 from typing import List, Optional
 
 from recce.exceptions import RecceException
 
 from .types import Check, RunType
+
+if typing.TYPE_CHECKING:
+    from ..apis.check_api import PatchCheckIn
 
 logger = logging.getLogger("uvicorn")
 
@@ -254,6 +259,66 @@ class CheckDAO:
                 if str(check_id) == str(check.check_id):
                     return check
             return None
+
+    def update_check_by_id(self, check_id, patch: "PatchCheckIn") -> Optional[Check]:
+        """
+        Update a check by its ID.
+
+        In local mode: Updates in-memory list
+        In cloud mode: Updates via Recce Cloud API
+
+        Args:
+            check_id: Check ID (UUID or string)
+            patch: Partial Check object with updated data
+
+        Returns:
+            bool: True if updated, False if not found
+        """
+        if self.is_cloud_user:
+            check = CheckDAO().find_check_by_id(check_id)
+            try:
+                org_id, project_id, session_id = self._get_session_info()
+                cloud_client = self._get_cloud_client()
+
+                if patch.name is not None:
+                    check.name = patch.name
+                if patch.description is not None:
+                    check.description = patch.description
+                if patch.params is not None:
+                    check.params = patch.params
+                if patch.view_options is not None:
+                    check.view_options = patch.view_options
+                if patch.is_checked is not None:
+                    check.is_checked = patch.is_checked
+
+                cloud_data = cloud_client.update_check(
+                    org_id, project_id, session_id, str(check_id), self._check_to_cloud_format(check)
+                )
+
+                logger.debug(f"Updated check {check_id} in cloud")
+                return self._cloud_to_check(cloud_data)
+            except Exception as e:
+                logger.error(f"Failed to update check {check_id} in cloud: {e}")
+                return None
+        else:
+            # Local mode
+            check = CheckDAO().find_check_by_id(check_id)
+            if check is None:
+                return None
+
+            if patch.name is not None:
+                check.name = patch.name
+            if patch.description is not None:
+                check.description = patch.description
+            if patch.params is not None:
+                check.params = patch.params
+            if patch.view_options is not None:
+                check.view_options = patch.view_options
+            if patch.is_checked is not None:
+                check.is_checked = patch.is_checked
+            check.updated_at = datetime.now(timezone.utc).replace(microsecond=0)
+
+            return check
 
     def delete(self, check_id) -> bool:
         """
