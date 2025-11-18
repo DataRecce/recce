@@ -38,9 +38,15 @@ class DataFrameColumnType(Enum):
 
 
 class DataFrameColumn(BaseModel):
-    key: str
+    key: t.Optional[str] = None
     name: str
     type: DataFrameColumnType
+
+    def __init__(self, **data):
+        """Initialize DataFrameColumn, auto-setting key=name if key is missing."""
+        if "key" not in data or data["key"] is None:
+            data["key"] = data.get("name")
+        super().__init__(**data)
 
 
 class DataFrame(BaseModel):

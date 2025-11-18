@@ -5,6 +5,8 @@ from typing import Dict, List, Literal, Optional, Set
 
 from pydantic import UUID4, BaseModel, Field
 
+from recce.util.pydantic_model import pydantic_model_dump
+
 
 class RunType(Enum):
     SIMPLE = "simple"
@@ -49,6 +51,39 @@ class Run(BaseModel):
     progress: Optional[RunProgress] = None
     run_id: UUID4 = Field(default_factory=uuid.uuid4)
     run_at: str = Field(default_factory=lambda: datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%SZ"))
+
+    def __init__(self, **data):
+        type = data.get("type")
+
+        if "result" in data and data["result"] is not None:
+            result = data.get("result")
+
+            if type in [RunType.QUERY.value, RunType.QUERY_BASE.value]:
+                from recce.tasks.query import QueryResult
+
+                data["result"] = pydantic_model_dump(QueryResult(**result))
+            elif type == RunType.QUERY_DIFF.value:
+                from recce.tasks.query import QueryDiffResult
+
+                data["result"] = pydantic_model_dump(QueryDiffResult(**result))
+            elif type == RunType.PROFILE.value:
+                from recce.tasks.profile import ProfileResult
+
+                data["result"] = pydantic_model_dump(ProfileResult(**result))
+            elif type == RunType.PROFILE_DIFF.value:
+                from recce.tasks.profile import ProfileDiffResult
+
+                data["result"] = pydantic_model_dump(ProfileDiffResult(**result))
+            elif type == RunType.VALUE_DIFF.value:
+                from recce.tasks.valuediff import ValueDiffResult
+
+                data["result"] = pydantic_model_dump(ValueDiffResult(**result))
+            elif type == RunType.VALUE_DIFF_DETAIL.value:
+                from recce.tasks.valuediff import ValueDiffDetailResult
+
+                data["result"] = pydantic_model_dump(ValueDiffDetailResult(**result))
+
+        super().__init__(**data)
 
 
 class Check(BaseModel):
