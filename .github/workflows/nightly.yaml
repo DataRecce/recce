@@ -27,10 +27,10 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Setup Python 3.10
-        uses: actions/setup-python@v4
+      - name: Install uv
+        uses: astral-sh/setup-uv@v4
         with:
-          python-version: '3.10'
+          version: "latest"
 
       - name: Setup Node 24
         uses: actions/setup-node@v4
@@ -44,8 +44,7 @@ jobs:
       - name: Install dependencies
         run: |
           # Install Python dependencies
-          python -m pip install --upgrade pip
-          pip install -e .
+          uv sync --all-extras --python 3.10
 
           # Install Node dependencies
           pushd js
@@ -109,13 +108,12 @@ jobs:
           # generate pypirc
           echo "$PYPIRC" > $HOME/.pypirc
 
-          # change package name to recce-nightly
-          sed -i.bak 's/name="recce"/name="recce-nightly"/' setup.py
+          # change package name to recce-nightly in pyproject.toml
+          sed -i.bak 's/name = "recce"/name = "recce-nightly"/' pyproject.toml
 
           # build and upload to pypi
-          pip install build twine
-          python -m build
-          python -m twine upload dist/*
+          uv build
+          uv run twine upload dist/*
         env:
           PYPIRC: ${{ secrets.PYPI }}
 
@@ -142,10 +140,10 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Setup Python 3.10
-        uses: actions/setup-python@v4
+      - name: Install uv
+        uses: astral-sh/setup-uv@v4
         with:
-          python-version: '3.10'
+          version: "latest"
 
       - name: Patch Recce Cloud Version
         id: patch_version
@@ -191,13 +189,12 @@ jobs:
           # generate pypirc
           echo "$PYPIRC" > $HOME/.pypirc
 
-          # change package name to recce-cloud-nightly
-          sed -i.bak 's/name="recce-cloud"/name="recce-cloud-nightly"/' setup_cloud.py
+          # change package name to recce-cloud-nightly in pyproject.toml
+          sed -i.bak 's/name = "recce-cloud"/name = "recce-cloud-nightly"/' recce_cloud/pyproject.toml
 
           # build and upload to pypi
-          pip install build twine
-          python setup_cloud.py sdist bdist_wheel
-          python -m twine upload dist/*
+          uv build --package recce-cloud
+          uv run twine upload dist/*
         env:
           PYPIRC: ${{ secrets.PYPI }}
 

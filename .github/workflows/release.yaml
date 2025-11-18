@@ -14,10 +14,10 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Setup Python 3.10
-        uses: actions/setup-python@v4
+      - name: Install uv
+        uses: astral-sh/setup-uv@v4
         with:
-          python-version: '3.10'
+          version: "latest"
 
       - name: Setup Node 24
         uses: actions/setup-node@v4
@@ -31,8 +31,7 @@ jobs:
       - name: Install dependencies
         run: |
           # Install Python dependencies
-          python -m pip install --upgrade pip
-          pip install -e .
+          uv sync --all-extras --python 3.10
 
           # Install Node dependencies
           pushd js
@@ -71,9 +70,8 @@ jobs:
           echo "$PYPIRC" > $HOME/.pypirc
 
           # build and upload to pypi
-          pip install build twine
-          python -m build
-          python -m twine upload dist/*
+          uv build
+          uv run twine upload dist/*
         env:
           PYPIRC: ${{ secrets.PYPI }}
 
@@ -101,10 +99,10 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Setup Python 3.10
-        uses: actions/setup-python@v4
+      - name: Install uv
+        uses: astral-sh/setup-uv@v4
         with:
-          python-version: '3.10'
+          version: "latest"
 
       - name: Patch Recce Cloud Version
         id: patch_version
@@ -124,9 +122,8 @@ jobs:
           echo "$PYPIRC" > $HOME/.pypirc
 
           # build and upload recce-cloud to pypi
-          pip install build twine
-          python setup_cloud.py sdist bdist_wheel
-          python -m twine upload dist/*
+          uv build --package recce-cloud
+          uv run twine upload dist/*
         env:
           PYPIRC: ${{ secrets.PYPI }}
 

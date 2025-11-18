@@ -4,20 +4,17 @@
 default: help
 
 install-dev:
-	pip install -e .[dev,mcp]
+	uv sync --all-extras
 	pre-commit install
 
 install:
-	pip install .
+	uv sync --no-dev
 
 install-cloud:
-	# Using setup_cloud.py directly for now until we restructure the monorepo
-	# Users will install from PyPI with: pip install recce-cloud
-	python setup_cloud.py install
+	uv sync --package recce-cloud --no-dev
 
 install-cloud-dev:
-	# Using setup_cloud.py directly for now until we restructure the monorepo
-	python setup_cloud.py develop
+	uv sync --package recce-cloud
 
 help:
 	@echo "Available commands:"
@@ -41,57 +38,57 @@ help:
 
 format:
 	@echo "Formatting with Black..."
-	black ./recce ./tests
+	uv run black ./recce ./tests
 	@echo "Sorting imports with isort..."
-	isort ./recce ./tests
+	uv run isort ./recce ./tests
 
 format-cloud:
 	@echo "Formatting recce-cloud with Black..."
-	black ./recce_cloud
+	uv run black ./recce_cloud
 	@echo "Sorting imports with isort..."
-	isort ./recce_cloud
+	uv run isort ./recce_cloud
 
 flake8:
 	@echo "Linting with flake8..."
-	flake8 ./recce ./tests
+	uv run flake8 ./recce ./tests
 
 flake8-cloud:
 	@echo "Linting recce-cloud with flake8..."
-	flake8 ./recce_cloud
+	uv run flake8 ./recce_cloud
 
 # Run all code quality checks without modifying files
 check:
 	@echo "Checking code formatting with Black..."
-	black --check ./recce ./tests
+	uv run black --check ./recce ./tests
 	@echo "Checking import order with isort..."
-	isort --check ./recce ./tests
+	uv run isort --check ./recce ./tests
 	@echo "Checking code style with flake8..."
-	flake8 ./recce ./tests
+	uv run flake8 ./recce ./tests
 
 check-cloud:
 	@echo "Checking recce-cloud code formatting with Black..."
-	black --check ./recce_cloud
+	uv run black --check ./recce_cloud
 	@echo "Checking recce-cloud import order with isort..."
-	isort --check ./recce_cloud
+	uv run isort --check ./recce_cloud
 	@echo "Checking recce-cloud code style with flake8..."
-	flake8 ./recce_cloud
+	uv run flake8 ./recce_cloud
 
-test: install-dev
+test:
 	@echo "Running tests..."
-	@python3 -m pytest tests
+	uv run pytest tests
 
-test-coverage: install-dev
+test-coverage:
 	@echo "Running tests with coverage..."
-	@python3 -m pytest --cov=recce --cov-report=html --cov-report=term tests
+	uv run pytest --cov=recce --cov-report=html --cov-report=term tests
 	@echo "Coverage report generated in htmlcov/index.html"
 
-test-tox: install-dev
+test-tox:
 	@echo "Running tests with Tox based on DBT versions..."
-	@tox run-parallel
+	uv run tox run-parallel
 
 test-tox-python-versions:
 	@echo "Running tests with Tox for specific Python versions..."
-	@tox run-parallel -e 3.9,3.10,3.11,3.12,3.13
+	uv run tox run-parallel -e 3.9,3.10,3.11,3.12,3.13
 
 install-frontend-requires:
 # Install pnpm if not installed
@@ -114,22 +111,16 @@ build-frontend:
 
 build: clean-build build-frontend
 	@echo "Building recce package..."
-	@pip install -q wheel
-	@python setup.py sdist bdist_wheel
+	uv build
 
 build-cloud: clean-build
-	@echo "Syncing VERSION file to recce_cloud..."
-	@cp recce/VERSION recce_cloud/VERSION
 	@echo "Building recce-cloud package..."
-	@pip install -q wheel
-	@python setup_cloud.py sdist bdist_wheel
+	uv build --package recce-cloud
 
 build-all: clean-build build-frontend
 	@echo "Building both packages..."
-	@pip install -q wheel
-	@cp recce/VERSION recce_cloud/VERSION
-	@python setup.py sdist bdist_wheel
-	@python setup_cloud.py sdist bdist_wheel
+	uv build
+	uv build --package recce-cloud
 	@echo "Build complete!"
 	@echo "Packages in dist/:"
 	@ls -lh dist/
