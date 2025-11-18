@@ -91,7 +91,7 @@ def _diff_select_scope(old_scope: Scope, new_scope: Scope, scope_changes_map: di
     old_select = old_scope.expression  # type: exp.Select
     new_select = new_scope.expression  # type: exp.Select
     for arg_key in old_select.args.keys() | new_select.args.keys():
-        if arg_key in ["expressions", "with", "from"]:
+        if arg_key in ["expressions", "with", "from", "with_"]:
             continue
 
         if old_select.args.get(arg_key) != new_select.args.get(arg_key):

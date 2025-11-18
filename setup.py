@@ -46,7 +46,7 @@ setup(
         "python-multipart",
         "GitPython",
         "PyGithub",
-        "sqlglot<28",
+        "sqlglot",
         "pytz",
         "packaging",
     ],
