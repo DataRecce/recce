@@ -172,10 +172,13 @@ class CheckDAO:
         from datetime import datetime
         from uuid import UUID
 
+        logger.info(cloud_data)
+        logger.info(f"preparing to parse check type: {cloud_data.get('type')}")
         # Parse the type
         check_type = RunType(cloud_data.get("type"))
+        logger.info(f"Parsed check type: {check_type}")
 
-        return Check(
+        c = Check(
             check_id=UUID(cloud_data.get("id")),
             session_id=UUID(cloud_data.get("session_id")),
             name=cloud_data.get("name"),
@@ -185,11 +188,13 @@ class CheckDAO:
             view_options=cloud_data.get("view_options", {}),
             is_checked=cloud_data.get("is_checked", False),
             is_preset=cloud_data.get("is_preset", False),
-            created_by=cloud_data.get("created_by"),
-            updated_by=cloud_data.get("updated_by"),
+            created_by=cloud_data.get("created_by", {}).get("email", ""),
+            updated_by=cloud_data.get("updated_by", {}).get("email", ""),
             created_at=datetime.fromisoformat(cloud_data["created_at"]) if cloud_data.get("created_at") else None,
             updated_at=datetime.fromisoformat(cloud_data["updated_at"]) if cloud_data.get("updated_at") else None,
         )
+        logger.info(c)
+        return c
 
     def create(self, check: Check) -> None:
         """
@@ -295,9 +300,12 @@ class CheckDAO:
         if self.is_cloud_user:
             try:
                 org_id, project_id, session_id = self._get_session_info()
+                logger.info(f"Listing checks from cloud: {org_id}:{project_id}:{session_id}")
                 cloud_client = self._get_cloud_client()
+                logger.info("Cloud client obtained")
 
                 cloud_checks = cloud_client.list_checks(org_id, project_id, session_id)
+                logger.info(f"Retrieved {len(cloud_checks)} checks from cloud")
                 return [self._cloud_to_check(check_data) for check_data in cloud_checks]
             except Exception as e:
                 logger.error(f"Failed to list checks from cloud: {e}")

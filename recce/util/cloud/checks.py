@@ -133,7 +133,8 @@ class ChecksCloud(CloudBase):
             f"Failed to get check {check_id} from Recce Cloud.",
         )
 
-        return response.json()
+        data = response.json()
+        return data.get("check", {})
 
     def update_check(
         self,
@@ -178,7 +179,8 @@ class ChecksCloud(CloudBase):
             f"Failed to update check {check_id} in Recce Cloud.",
         )
 
-        return response.json()
+        data = response.json()
+        return data.get("check", {})
 
     def delete_check(
         self,
