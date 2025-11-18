@@ -1,43 +1,330 @@
+"""
+CheckDAO with cloud integration.
+
+This module provides data access for Check objects with support for both
+local (in-memory) and cloud (Recce Cloud API) storage modes.
+"""
+
+import logging
 from typing import List, Optional
 
 from recce.exceptions import RecceException
 
-from .types import Check
+from .types import Check, RunType
+
+logger = logging.getLogger("uvicorn")
 
 
 class CheckDAO:
     """
-    Data Access Object for Check. Currently, we store runs in memory, in the future, we can store them in a database.
+    Data Access Object for Check.
+
+    Supports two modes:
+    - Local mode: Stores checks in memory
+    - Cloud mode: Stores checks in Recce Cloud via API
+
+    The mode is determined by checking if a session_id exists in the state_loader.
     """
+
+    def __init__(self):
+        """Initialize CheckDAO."""
+        self._session_info_cache = None
 
     @property
     def _checks(self):
+        """Get checks from local context."""
         from recce.core import default_context
 
         return default_context().checks
 
-    def create(self, check) -> None:
-        self._checks.append(check)
+    @property
+    def is_cloud_user(self) -> bool:
+        """
+        Determine if the user is in cloud mode.
+
+        Returns True if state_loader has a session_id, indicating cloud mode.
+        Returns False otherwise, indicating local mode.
+
+        Returns:
+            bool: True if cloud mode, False if local mode
+        """
+        from recce.core import default_context
+
+        ctx = default_context()
+        if ctx is None or ctx.state_loader is None:
+            return False
+
+        return hasattr(ctx.state_loader, "session_id") and ctx.state_loader.session_id is not None
+
+    def _get_session_info(self) -> tuple[str, str, str]:
+        """
+        Get organization ID, project ID, and session ID from state loader.
+
+        Caches the session info to avoid repeated API calls.
+
+        Returns:
+            tuple: (org_id, project_id, session_id)
+
+        Raises:
+            RecceException: If session info cannot be retrieved
+        """
+        from recce.core import default_context
+
+        if self._session_info_cache is not None:
+            return self._session_info_cache
+
+        ctx = default_context()
+        state_loader = ctx.state_loader
+
+        if not hasattr(state_loader, "session_id") or state_loader.session_id is None:
+            raise RecceException("Cannot get session info: no session_id in state_loader")
+
+        session_id = state_loader.session_id
+
+        # Get org_id and project_id from the session
+        # First check if they're already cached on the state_loader
+        if hasattr(state_loader, "org_id") and hasattr(state_loader, "project_id"):
+            org_id = state_loader.org_id
+            project_id = state_loader.project_id
+        else:
+            # Fetch from cloud API
+            from recce.event import get_recce_api_token
+            from recce.util.recce_cloud import RecceCloud
+
+            api_token = get_recce_api_token()
+            if not api_token:
+                raise RecceException("Cannot access Recce Cloud: no API token available")
+
+            recce_cloud = RecceCloud(api_token)
+            session = recce_cloud.get_session(session_id)
+
+            org_id = session.get("org_id")
+            project_id = session.get("project_id")
+
+            if not org_id or not project_id:
+                raise RecceException(f"Session {session_id} does not belong to a valid organization or project")
+
+            # Cache on state_loader for future use
+            state_loader.org_id = org_id
+            state_loader.project_id = project_id
+
+        self._session_info_cache = (org_id, project_id, session_id)
+        return self._session_info_cache
+
+    @staticmethod
+    def _get_cloud_client():
+        """
+        Get the cloud checks client.
+
+        Returns:
+            ChecksCloud: Cloud client for check operations
+
+        Raises:
+            RecceException: If cloud client cannot be initialized
+        """
+        from recce.event import get_recce_api_token
+        from recce.util.recce_cloud import RecceCloud
+
+        api_token = get_recce_api_token()
+        if not api_token:
+            raise RecceException("Cannot access Recce Cloud: no API token available")
+
+        recce_cloud = RecceCloud(api_token)
+        return recce_cloud.checks
+
+    @staticmethod
+    def _check_to_cloud_format(check: Check) -> dict:
+        """
+        Convert a Check object to cloud API format.
+
+        Args:
+            check: Check object to convert
+
+        Returns:
+            dict: Check data in cloud API format
+        """
+        return {
+            "session_id": str(check.session_id) if check.session_id else None,
+            "name": check.name,
+            "type": check.type.value,
+            "params": check.params or {},
+            "created_by": check.created_by,
+            "description": check.description,
+            "view_options": check.view_options or {},
+            "is_checked": check.is_checked,
+            "is_preset": check.is_preset,
+            "updated_by": check.updated_by,
+            "created_at": check.created_at.isoformat() if check.created_at else None,
+            "updated_at": check.updated_at.isoformat() if check.updated_at else None,
+        }
+
+    @staticmethod
+    def _cloud_to_check(cloud_data: dict) -> Check:
+        """
+        Convert cloud API data to a Check object.
+
+        Args:
+            cloud_data: Check data from cloud API
+
+        Returns:
+            Check: Check object
+        """
+        from datetime import datetime
+        from uuid import UUID
+
+        # Parse the type
+        check_type = RunType(cloud_data.get("type"))
+
+        return Check(
+            check_id=UUID(cloud_data.get("id")),
+            session_id=cloud_data.get("session_id"),
+            name=cloud_data.get("name"),
+            description=cloud_data.get("description", ""),
+            type=check_type,
+            params=cloud_data.get("params", {}),
+            view_options=cloud_data.get("view_options", {}),
+            is_checked=cloud_data.get("is_checked", False),
+            is_preset=cloud_data.get("is_preset", False),
+            created_by=cloud_data.get("created_by"),
+            updated_by=cloud_data.get("updated_by"),
+            created_at=datetime.fromisoformat(cloud_data["created_at"]) if cloud_data.get("created_at") else None,
+            updated_at=datetime.fromisoformat(cloud_data["updated_at"]) if cloud_data.get("updated_at") else None,
+        )
+
+    def create(self, check: Check) -> None:
+        """
+        Create a new check.
+
+        In local mode: Appends check to in-memory list
+        In cloud mode: Creates check via Recce Cloud API
+
+        Args:
+            check: Check object to create
+
+        Raises:
+            RecceException: If creation fails in cloud mode
+        """
+        if self.is_cloud_user:
+            try:
+                org_id, project_id, session_id = self._get_session_info()
+                cloud_client = self._get_cloud_client()
+
+                check_data = self._check_to_cloud_format(check)
+                cloud_client.create_check(org_id, project_id, session_id, check_data)
+
+                logger.debug(f"Created check {check.check_id} in cloud")
+            except Exception as e:
+                logger.error(f"Failed to create check in cloud: {e}")
+                raise RecceException(f"Failed to create check in Recce Cloud: {e}")
+        else:
+            # Local mode
+            self._checks.append(check)
 
     def find_check_by_id(self, check_id) -> Optional[Check]:
-        for check in self._checks:
-            if str(check_id) == str(check.check_id):
-                return check
+        """
+        Find a check by its ID.
 
-        return None
+        In local mode: Searches in-memory list
+        In cloud mode: Retrieves check from Recce Cloud API
+
+        Args:
+            check_id: Check ID (UUID or string)
+
+        Returns:
+            Check object if found, None otherwise
+        """
+        if self.is_cloud_user:
+            try:
+                org_id, project_id, session_id = self._get_session_info()
+                cloud_client = self._get_cloud_client()
+
+                cloud_data = cloud_client.get_check(org_id, project_id, session_id, str(check_id))
+                return self._cloud_to_check(cloud_data)
+            except Exception as e:
+                logger.error(f"Failed to get check {check_id} from cloud: {e}")
+                return None
+        else:
+            # Local mode
+            for check in self._checks:
+                if str(check_id) == str(check.check_id):
+                    return check
+            return None
 
     def delete(self, check_id) -> bool:
-        for check in self._checks:
-            if str(check_id) == str(check.check_id):
-                self._checks.remove(check)
-                return True
+        """
+        Delete a check by its ID.
 
-        return False
+        In local mode: Removes from in-memory list
+        In cloud mode: Deletes via Recce Cloud API
+
+        Args:
+            check_id: Check ID (UUID or string)
+
+        Returns:
+            bool: True if deleted, False if not found
+        """
+        if self.is_cloud_user:
+            try:
+                org_id, project_id, session_id = self._get_session_info()
+                cloud_client = self._get_cloud_client()
+
+                cloud_client.delete_check(org_id, project_id, session_id, str(check_id))
+                logger.debug(f"Deleted check {check_id} from cloud")
+                return True
+            except Exception as e:
+                logger.error(f"Failed to delete check {check_id} from cloud: {e}")
+                return False
+        else:
+            # Local mode
+            for check in self._checks:
+                if str(check_id) == str(check.check_id):
+                    self._checks.remove(check)
+                    return True
+            return False
 
     def list(self) -> List[Check]:
-        return list(self._checks)
+        """
+        List all checks.
+
+        In local mode: Returns copy of in-memory list
+        In cloud mode: Retrieves all checks from Recce Cloud API
+
+        Returns:
+            List of Check objects
+        """
+        if self.is_cloud_user:
+            try:
+                org_id, project_id, session_id = self._get_session_info()
+                cloud_client = self._get_cloud_client()
+
+                cloud_checks = cloud_client.list_checks(org_id, project_id, session_id)
+                return [self._cloud_to_check(check_data) for check_data in cloud_checks]
+            except Exception as e:
+                logger.error(f"Failed to list checks from cloud: {e}")
+                # Return empty list on error to avoid breaking the UI
+                return []
+        else:
+            # Local mode
+            return list(self._checks)
 
     def reorder(self, source: int, destination: int):
+        """
+        Reorder checks.
+
+        Note: This operation is only supported in local mode.
+        In cloud mode, raises an exception as reordering must be handled server-side.
+
+        Args:
+            source: Source index
+            destination: Destination index
+
+        Raises:
+            RecceException: If indices are out of range or if in cloud mode
+        """
+        if self.is_cloud_user:
+            raise RecceException(
+                "Reordering checks is not supported in cloud mode. " "Check order is managed server-side."
+            )
 
         if source < 0 or source >= len(self._checks):
             raise RecceException("Failed to reorder checks. Source index out of range")
@@ -49,7 +336,24 @@ class CheckDAO:
         self._checks.insert(destination, check_to_move)
 
     def clear(self):
+        """
+        Clear all checks.
+
+        Note: This operation is only supported in local mode.
+        In cloud mode, this is a no-op with a warning.
+        """
+        if self.is_cloud_user:
+            logger.warning("Clear operation is not supported in cloud mode")
+            return
+
         self._checks.clear()
 
     def status(self):
-        return {"total": len(self._checks), "approved": len([c for c in self._checks if c.is_checked])}
+        """
+        Get check statistics.
+
+        Returns:
+            dict: Dictionary with 'total' and 'approved' counts
+        """
+        checks = self.list()
+        return {"total": len(checks), "approved": len([c for c in checks if c.is_checked])}

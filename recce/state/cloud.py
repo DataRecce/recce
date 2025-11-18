@@ -52,6 +52,10 @@ class CloudStateLoader(RecceStateLoader):
             initial_state=initial_state,
         )
         self.recce_cloud = RecceCloud(token=self.token)
+        # Initialize org_id and project_id attributes
+        # These will be set when loading from session
+        self.org_id = None
+        self.project_id = None
 
     def verify(self) -> bool:
         if self.catalog == "github":
@@ -216,6 +220,11 @@ class CloudStateLoader(RecceStateLoader):
 
         if not org_id or not project_id:
             raise RecceException(f"Session {self.session_id} does not belong to a valid organization or project.")
+
+        # IMPORTANT: Store org_id and project_id as attributes for later use
+        # This allows CheckDAO and other components to access them without repeated API calls
+        self.org_id = org_id
+        self.project_id = project_id
 
         # 2. Download manifests and catalogs for both session
         logger.debug(f"Downloading current session artifacts for {self.session_id}")
