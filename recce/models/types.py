@@ -62,23 +62,23 @@ class Run(BaseModel):
                 from recce.tasks.query import QueryResult
 
                 data["result"] = pydantic_model_dump(QueryResult(**result))
-            elif type in [RunType.QUERY_DIFF.value]:
+            elif type == RunType.QUERY_DIFF.value:
                 from recce.tasks.query import QueryDiffResult
 
                 data["result"] = pydantic_model_dump(QueryDiffResult(**result))
-            elif type in [RunType.PROFILE.value]:
+            elif type == RunType.PROFILE.value:
                 from recce.tasks.profile import ProfileResult
 
                 data["result"] = pydantic_model_dump(ProfileResult(**result))
-            elif type in [RunType.PROFILE_DIFF.value]:
+            elif type == RunType.PROFILE_DIFF.value:
                 from recce.tasks.profile import ProfileDiffResult
 
                 data["result"] = pydantic_model_dump(ProfileDiffResult(**result))
-            elif type in [RunType.VALUE_DIFF.value]:
+            elif type == RunType.VALUE_DIFF.value:
                 from recce.tasks.valuediff import ValueDiffResult
 
                 data["result"] = pydantic_model_dump(ValueDiffResult(**result))
-            elif type in [RunType.VALUE_DIFF_DETAIL.value]:
+            elif type == RunType.VALUE_DIFF_DETAIL.value:
                 from recce.tasks.valuediff import ValueDiffDetailResult
 
                 data["result"] = pydantic_model_dump(ValueDiffDetailResult(**result))
