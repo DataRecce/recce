@@ -458,6 +458,13 @@ class TestCheckDAOCloudMode(unittest.TestCase):
         mock_context.state_loader = mock_loader
         mock_default_context.return_value = mock_context
 
+        mock_user = {
+            "id": "user-123",
+            "login": "test-user",
+            "email": "test@user.com",
+            "fullname": "Test User",
+        }
+
         cloud_checks = [
             {
                 "id": str(uuid4()),
@@ -469,8 +476,8 @@ class TestCheckDAOCloudMode(unittest.TestCase):
                 "view_options": {},
                 "is_checked": False,
                 "is_preset": False,
-                "created_by": "test-user",
-                "updated_by": "test-user",
+                "created_by": mock_user,
+                "updated_by": mock_user,
                 "created_at": datetime.now(timezone.utc).isoformat(),
                 "updated_at": datetime.now(timezone.utc).isoformat(),
             },
@@ -484,8 +491,8 @@ class TestCheckDAOCloudMode(unittest.TestCase):
                 "view_options": {},
                 "is_checked": True,
                 "is_preset": False,
-                "created_by": "test-user",
-                "updated_by": "test-user",
+                "created_by": mock_user,
+                "updated_by": mock_user,
                 "created_at": datetime.now(timezone.utc).isoformat(),
                 "updated_at": datetime.now(timezone.utc).isoformat(),
             },
@@ -559,6 +566,13 @@ class TestCheckDAOCloudMode(unittest.TestCase):
         mock_context.state_loader = mock_loader
         mock_default_context.return_value = mock_context
 
+        mock_user = {
+            "id": "user-123",
+            "login": "test-user",
+            "email": "test@user.com",
+            "fullname": "Test User",
+        }
+
         cloud_checks = [
             {
                 "id": str(uuid4()),
@@ -570,8 +584,8 @@ class TestCheckDAOCloudMode(unittest.TestCase):
                 "view_options": {},
                 "description": "",
                 "is_preset": False,
-                "created_by": "test-user",
-                "updated_by": "test-user",
+                "created_by": mock_user,
+                "updated_by": mock_user,
                 "created_at": datetime.now(timezone.utc).isoformat(),
                 "updated_at": datetime.now(timezone.utc).isoformat(),
             },
@@ -585,8 +599,8 @@ class TestCheckDAOCloudMode(unittest.TestCase):
                 "view_options": {},
                 "description": "",
                 "is_preset": False,
-                "created_by": "test-user",
-                "updated_by": "test-user",
+                "created_by": mock_user,
+                "updated_by": mock_user,
                 "created_at": datetime.now(timezone.utc).isoformat(),
                 "updated_at": datetime.now(timezone.utc).isoformat(),
             },
@@ -600,8 +614,8 @@ class TestCheckDAOCloudMode(unittest.TestCase):
                 "view_options": {},
                 "description": "",
                 "is_preset": False,
-                "created_by": "test-user",
-                "updated_by": "test-user",
+                "created_by": mock_user,
+                "updated_by": mock_user,
                 "created_at": datetime.now(timezone.utc).isoformat(),
                 "updated_at": datetime.now(timezone.utc).isoformat(),
             },
@@ -656,6 +670,12 @@ class TestCheckDAODataTransformation(unittest.TestCase):
         # Setup
         check_id = uuid4()
         session_id = uuid4()
+        mock_user = {
+            "id": "user-123",
+            "login": "test-user",
+            "email": "test@user.com",
+            "fullname": "Test User",
+        }
         cloud_data = {
             "id": str(check_id),
             "session_id": str(session_id),
@@ -666,8 +686,8 @@ class TestCheckDAODataTransformation(unittest.TestCase):
             "view_options": {"show_diff": True},
             "is_checked": True,
             "is_preset": False,
-            "created_by": "test-user",
-            "updated_by": "test-user",
+            "created_by": mock_user,
+            "updated_by": mock_user,
             "created_at": datetime.now(timezone.utc).isoformat(),
             "updated_at": datetime.now(timezone.utc).isoformat(),
         }

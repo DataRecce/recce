@@ -88,7 +88,7 @@ class TestChecksCloud(unittest.TestCase):
     def test_get_check_success(self, mock_request):
         """Test successful retrieval of a specific check."""
         # Arrange
-        expected_check = {"id": "check123", "name": "Schema Check", "status": "approved"}
+        expected_check = {"check": {"id": "check123", "name": "Schema Check", "status": "approved"}}
         mock_response = Mock()
         mock_response.ok = True
         mock_response.status_code = 200
@@ -99,7 +99,7 @@ class TestChecksCloud(unittest.TestCase):
         result = self.client.get_check("org1", "proj1", "sess1", "check123")
 
         # Assert
-        assert result == expected_check
+        assert result == expected_check["check"]
 
     @patch("recce.util.cloud.ChecksCloud._request")
     def test_get_check_not_found(self, mock_request):
@@ -124,7 +124,7 @@ class TestChecksCloud(unittest.TestCase):
         """Test successful check update."""
         # Arrange
         update_data = {"status": "approved", "notes": "Looks good"}
-        updated_check = {"id": "check123", "name": "Schema Check", **update_data}
+        updated_check = {"check": {"id": "check123", "name": "Schema Check", **update_data}}
         mock_response = Mock()
         mock_response.ok = True
         mock_response.status_code = 200
@@ -135,7 +135,7 @@ class TestChecksCloud(unittest.TestCase):
         result = self.client.update_check("org1", "proj1", "sess1", "check123", update_data)
 
         # Assert
-        assert result == updated_check
+        assert result == updated_check["check"]
 
     @patch("recce.util.cloud.ChecksCloud._request")
     def test_delete_check_success_204(self, mock_request):
