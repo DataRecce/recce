@@ -331,9 +331,10 @@ class TestCheckDAOCloudMode(unittest.TestCase):
         """Test creating a check in cloud mode."""
         # Setup
         mock_loader = Mock()
-        mock_loader.session_id = "test-session-123"
+        mock_loader.session_id = uuid4()
         mock_loader.org_id = "org-456"
         mock_loader.project_id = "proj-789"
+        check_id = uuid4()
 
         mock_context = Mock()
         mock_context.state_loader = mock_loader
@@ -345,12 +346,28 @@ class TestCheckDAOCloudMode(unittest.TestCase):
         mock_recce_cloud_class.return_value = mock_recce_cloud
 
         sample_check = Check(
-            session_id=uuid4(),
+            session_id=mock_loader.session_id,
             name="Test Check",
             description="Test Description",
             type=RunType.SCHEMA_DIFF,
             params={"model": "customers"},
         )
+        cloud_check_data = {
+            "id": str(check_id),
+            "session_id": str(mock_loader.session_id),
+            "name": "Test Check",
+            "description": "Test Description",
+            "type": "schema_diff",
+            "params": {"model": "users"},
+            "view_options": {},
+            "is_checked": True,
+            "is_preset": False,
+            "created_at": datetime.now(timezone.utc).isoformat(),
+            "updated_at": datetime.now(timezone.utc).isoformat(),
+        }
+
+        mock_cloud_client.create_check.return_value = cloud_check_data
+        mock_recce_cloud_class.return_value = mock_recce_cloud
 
         # Execute
         dao = CheckDAO()
@@ -361,7 +378,7 @@ class TestCheckDAOCloudMode(unittest.TestCase):
         call_args = mock_cloud_client.create_check.call_args
         self.assertEqual(call_args[0][0], "org-456")
         self.assertEqual(call_args[0][1], "proj-789")
-        self.assertEqual(call_args[0][2], "test-session-123")
+        self.assertEqual(call_args[0][2], mock_loader.session_id)
 
         check_data = call_args[0][3]
         self.assertEqual(check_data["name"], "Test Check")

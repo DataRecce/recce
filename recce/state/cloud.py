@@ -251,6 +251,7 @@ class CloudStateLoader(RecceStateLoader):
         # Set artifacts regardless of whether we loaded existing state
         state.artifacts.base = base_artifacts
         state.artifacts.current = current_artifacts
+        state.checks = []
 
         return state
 
@@ -414,7 +415,7 @@ class CloudStateLoader(RecceStateLoader):
         # Create a copy of the state with empty artifacts for upload
         upload_state = RecceState()
         upload_state.runs = self.state.runs.copy() if self.state.runs else []
-        upload_state.checks = self.state.checks.copy() if self.state.checks else []
+        upload_state.checks = []
         # Keep artifacts empty (don't copy self.state.artifacts)
 
         # Upload the state with empty artifacts

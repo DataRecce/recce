@@ -33,7 +33,7 @@ class RecceStateLoader(ABC):
         self.state_lock = threading.Lock()
         self.state_etag = None
         self.pr_info = None
-        self.catalog: Literal["github", "preview", "snapshot"] = "github"
+        self.catalog: Literal["github", "preview", "session"] = "github"
         self.share_id = None
         self.session_id = None
 

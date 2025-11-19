@@ -71,7 +71,7 @@ class TestChecksCloud(unittest.TestCase):
         """Test successful check creation."""
         # Arrange
         check_data = {"name": "New Check", "type": "schema_diff", "params": {"model": "customers"}}
-        created_check = {**check_data, "id": "check123"}
+        created_check = {"check": {**check_data, "id": "check123"}}
         mock_response = Mock()
         mock_response.ok = True
         mock_response.status_code = 201
@@ -82,7 +82,7 @@ class TestChecksCloud(unittest.TestCase):
         result = self.client.create_check("org1", "proj1", "sess1", check_data)
 
         # Assert
-        assert result == created_check
+        assert result == created_check["check"]
 
     @patch("recce.util.cloud.ChecksCloud._request")
     def test_get_check_success(self, mock_request):

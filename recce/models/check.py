@@ -201,7 +201,7 @@ class CheckDAO:
         logger.info(c)
         return c
 
-    def create(self, check: Check) -> None:
+    def create(self, check: Check) -> Check:
         """
         Create a new check.
 
@@ -220,15 +220,18 @@ class CheckDAO:
                 cloud_client = self._get_cloud_client()
 
                 check_data = self._check_to_cloud_format(check)
-                cloud_client.create_check(org_id, project_id, session_id, check_data)
+                cloud_check = cloud_client.create_check(org_id, project_id, session_id, check_data)
+                new_check = self._cloud_to_check(cloud_check)
 
-                logger.debug(f"Created check {check.check_id} in cloud")
+                logger.debug(f"Created check {new_check.check_id} in cloud")
+                return new_check
             except Exception as e:
                 logger.error(f"Failed to create check in cloud: {e}")
                 raise RecceException(f"Failed to create check in Recce Cloud: {e}")
         else:
             # Local mode
             self._checks.append(check)
+            return check
 
     def find_check_by_id(self, check_id) -> Optional[Check]:
         """

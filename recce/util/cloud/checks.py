@@ -92,8 +92,8 @@ class ChecksCloud(CloudBase):
             response,
             "Failed to create check in Recce Cloud.",
         )
-
-        return response.json()
+        data = response.json()
+        return data.get("check")
 
     def get_check(
         self,
