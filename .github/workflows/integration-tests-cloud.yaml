@@ -7,19 +7,48 @@ on:
     paths-ignore:
       - "js/**"
       - "recce/data/**"
-  workflow_run:
-    workflows: ["Cloud Smoke Test Trigger"]
-    types:
-      - completed
+  pull_request_target:
+    branches:
+      - main
+    paths-ignore:
+      - "js/**"
+      - "recce/data/**"
 
+# Explicitly limit permissions for pull_request_target
 permissions:
   contents: read
-  actions: read
+  pull-requests: read
 
 jobs:
-  # Job for push events (direct to main)
-  smoke-test-cloud-push:
-    if: github.event_name == 'push'
+  # First job: Check if the PR author has write permission
+  # This job runs in the privileged context but doesn't checkout untrusted code
+  authorize:
+    runs-on: ubuntu-latest
+    outputs:
+      authorized: ${{ steps.check.outputs.authorized }}
+    steps:
+      - name: Check if PR author has write permission
+        id: check
+        run: |
+          if [[ "${{ github.event_name }}" == "push" ]]; then
+            echo "authorized=true" >> $GITHUB_OUTPUT
+            exit 0
+          fi
+
+          PERMISSION=$(gh api repos/${{ github.repository }}/collaborators/${{ github.triggering_actor }}/permission --jq '.permission' 2>/dev/null || echo "none")
+          if [[ "$PERMISSION" == "write" || "$PERMISSION" == "admin" ]]; then
+            echo "authorized=true" >> $GITHUB_OUTPUT
+          else
+            echo "authorized=false" >> $GITHUB_OUTPUT
+            echo "::warning::PR author ${{ github.triggering_actor }} does not have write permission. A maintainer must re-run this workflow after reviewing the code."
+          fi
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  # Second job: Run the actual tests only if authorized
+  smoke-test-cloud:
+    needs: authorize
+    if: needs.authorize.outputs.authorized == 'true'
     concurrency:
       group: smoke-test-cloud
       cancel-in-progress: false
@@ -33,7 +62,13 @@ jobs:
           - python-version: "3.13"
             dbt-version: "latest"
     steps:
+      # Safe checkout: only proceeds after authorization check passes
+      # codeql[js/actions/pull-request-target] - Authorization verified in previous job
       - uses: actions/checkout@v4
+        with:
+          repository: ${{ github.event.pull_request.head.repo.full_name || github.repository }}
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          persist-credentials: false
 
       - name: Set up Python
         uses: actions/setup-python@v5
@@ -59,78 +94,6 @@ jobs:
 
       - name: Run smoke test - dbt
         run: |
-          ./integration_tests/dbt/smoke_test_cloud.sh
-        env:
-          GITHUB_TOKEN: ${{ secrets.RECCE_CLOUD_TOKEN }}
-          RECCE_STATE_PASSWORD: ${{ vars.RECCE_STATE_PASSWORD }}
-
-  # Job for workflow_run events (PRs via trigger workflow)
-  smoke-test-cloud-pr:
-    if: >
-      github.event_name == 'workflow_run' &&
-      github.event.workflow_run.conclusion == 'success'
-    concurrency:
-      group: smoke-test-cloud
-      cancel-in-progress: false
-    runs-on: ubuntu-latest
-    strategy:
-      max-parallel: 1
-      matrix:
-        include:
-          - python-version: "3.11"
-            dbt-version: "1.8"
-          - python-version: "3.13"
-            dbt-version: "latest"
-    steps:
-      - name: Get PR number
-        id: pr
-        run: |
-          PR_NUMBER=$(echo '${{ github.event.workflow_run.head_branch }}' | grep -oE '[0-9]+' || echo '')
-          if [ -z "$PR_NUMBER" ]; then
-            # Try to get from pull_requests array
-            PR_NUMBER='${{ github.event.workflow_run.pull_requests[0].number }}'
-          fi
-          echo "number=$PR_NUMBER" >> $GITHUB_OUTPUT
-
-      - name: Download wheel artifact
-        uses: actions/download-artifact@v4
-        with:
-          name: recce-wheel-${{ steps.pr.outputs.number }}
-          path: dist
-          github-token: ${{ secrets.GITHUB_TOKEN }}
-          run-id: ${{ github.event.workflow_run.id }}
-
-      - name: Download integration tests
-        uses: actions/download-artifact@v4
-        with:
-          name: integration-tests-${{ steps.pr.outputs.number }}
-          path: integration_tests
-          github-token: ${{ secrets.GITHUB_TOKEN }}
-          run-id: ${{ github.event.workflow_run.id }}
-
-      - name: Set up Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: ${{ matrix.python-version }}
-
-      - name: Install dependencies
-        run: |
-          python -m pip install --upgrade pip
-          if [ "${{ matrix.dbt-version }}" == "latest" ]; then
-            pip install dbt-core
-            pip install dbt-duckdb
-          else
-            pip install dbt-core~=${{ matrix.dbt-version }}.0
-            pip install dbt-duckdb~=${{ matrix.dbt-version }}.0
-          fi
-
-      - name: Install Recce from wheel
-        run: |
-          pip install dist/*.whl
-
-      - name: Run smoke test - dbt
-        run: |
-          chmod +x integration_tests/dbt/smoke_test_cloud.sh
           ./integration_tests/dbt/smoke_test_cloud.sh
         env:
           GITHUB_TOKEN: ${{ secrets.RECCE_CLOUD_TOKEN }}
