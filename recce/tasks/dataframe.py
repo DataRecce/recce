@@ -2,7 +2,6 @@ import json
 import typing as t
 from decimal import Decimal
 from enum import Enum
-from typing import Sequence
 
 if t.TYPE_CHECKING:
     import agate
@@ -51,7 +50,7 @@ class DataFrameColumn(BaseModel):
 
 class DataFrame(BaseModel):
     columns: t.List[DataFrameColumn]
-    data: t.List[Sequence]
+    data: t.List[tuple]
     limit: t.Optional[int] = Field(None, description="Limit the number of rows returned")
     more: t.Optional[bool] = Field(None, description="Whether there are more rows to fetch")
 
@@ -134,7 +133,7 @@ class DataFrame(BaseModel):
     @staticmethod
     def from_data(
         columns: t.Dict[str, str],
-        data: t.List[Sequence],
+        data: t.List[tuple],
         limit: t.Optional[int] = None,
         more: t.Optional[bool] = None,
     ):
