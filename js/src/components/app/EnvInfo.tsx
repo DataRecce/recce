@@ -11,6 +11,7 @@ import {
   Portal,
   Separator,
   Table,
+  Text,
   useDisclosure,
 } from "@chakra-ui/react";
 import { format, formatDistance, parseISO } from "date-fns";
@@ -115,15 +116,23 @@ export function EnvInfo() {
         >
           <div className="hidden text-sm lg:flex lg:flex-col">
             <div className="flex gap-1">
-              <span className="no-track-pii-safe max-w-32 truncate">
+              <Text
+                as="span"
+                color="envBase"
+                className="no-track-pii-safe max-w-32 truncate"
+              >
                 {Array.from(baseSchemas).join(", ")}
-              </span>{" "}
+              </Text>{" "}
               ({baseRelativeTime})
             </div>
             <div className="flex gap-1">
-              <span className="no-track-pii-safe max-w-32 truncate">
+              <Text
+                as="span"
+                color="envCurrent"
+                className="no-track-pii-safe max-w-32 truncate"
+              >
                 {Array.from(currentSchemas).join(", ")}
-              </span>{" "}
+              </Text>{" "}
               ({currentRelativeTime})
             </div>
           </div>
