@@ -217,3 +217,29 @@ class ChecksCloud(CloudBase):
                 response,
                 f"Failed to delete check {check_id} from Recce Cloud.",
             )
+
+    def create_preset_check(self, org_id: str, project_id: str, check_data: Dict):
+        """
+        Create a preset check from an existing check.
+
+        Args:
+            org_id: Organization ID
+            project_id: Project ID
+            check_data: Check data including name, description, type, params, view_options, and order_index
+
+        Returns:
+            Created preset check dictionary
+
+        Raises:
+            RecceCloudException: If the request fails
+        """
+        api_url = f"{self.base_url_v2}/organizations/{org_id}/projects/{project_id}/preset-checks"
+        response = self._request("POST", api_url, json=check_data)
+
+        self._raise_for_status(
+            response,
+            "Failed to create preset check in Recce Cloud.",
+        )
+
+        data = response.json()
+        return data.get("presetCheck", {})
