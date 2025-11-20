@@ -5,9 +5,6 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 cd "$SCRIPT_DIR"
 pwd
 
-# Activate virtual environment
-source "$GITHUB_WORKSPACE/.venv/bin/activate"
-
 # Prepare env
 git restore models/customers.sql
 dbt --version

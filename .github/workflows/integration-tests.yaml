@@ -48,4 +48,5 @@ jobs:
 
       - name: Run smoke test - dbt
         run: |
+          source .venv/bin/activate
           ./integration_tests/dbt/smoke_test.sh

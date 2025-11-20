@@ -5,9 +5,6 @@ NEW_WORKSPACE=$(dirname "$GITHUB_WORKSPACE")
 cd "$NEW_WORKSPACE" || exit
 pwd
 
-# Activate virtual environment
-source "$GITHUB_WORKSPACE/.venv/bin/activate"
-
 # Clone jaffle_shop_duckdb
 GIT_REPO="https://github.com/DataRecce/jaffle_shop_duckdb.git"
 GIT_BRANCH="chore/smoke-test-cloud"
