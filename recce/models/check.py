@@ -435,7 +435,7 @@ class CheckDAO:
             order_idx: Order index for the preset check (default: 0)
 
         Returns:
-            None, or Exception if operation fails
+            None
 
         Raises:
             RecceException: If operation is attempted in local mode or if check not found
