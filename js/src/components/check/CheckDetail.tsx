@@ -168,8 +168,12 @@ export const CheckDetail = ({
 
         return await markAsPresetCheck(checkId);
       },
-      onSuccess: () => {
+      onSuccess: async () => {
         successToast("Check marked as preset successfully");
+        // Invalidate queries to refresh the check data
+        await queryClient.invalidateQueries({
+          queryKey: cacheKeys.check(checkId),
+        });
       },
       onError: (error) => {
         failToast("Failed to mark check as preset", error);

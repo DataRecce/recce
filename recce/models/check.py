@@ -462,6 +462,7 @@ class CheckDAO:
                 "params": check.params if check.params else {},
                 "view_options": check.view_options if check.view_options else None,
                 "order_index": order_idx,  # Default order index for preset checks
+                "check_id": str(check_id),
             }
 
             # Create preset check via cloud API
