@@ -5,6 +5,9 @@ NEW_WORKSPACE=$(dirname "$GITHUB_WORKSPACE")
 cd "$NEW_WORKSPACE" || exit
 pwd
 
+# Activate virtual environment
+source "$GITHUB_WORKSPACE/.venv/bin/activate"
+
 # Clone jaffle_shop_duckdb
 GIT_REPO="https://github.com/DataRecce/jaffle_shop_duckdb.git"
 GIT_BRANCH="chore/smoke-test-cloud"
@@ -13,11 +16,11 @@ git clone --depth 1 --branch $GIT_BRANCH $GIT_REPO
 cd jaffle_shop_duckdb || exit
 
 # Prepare dbt artifacts
-uv run dbt --version
-uv run dbt deps
-uv run dbt seed
-uv run dbt run
-uv run dbt docs generate
+dbt --version
+dbt deps
+dbt seed
+dbt run
+dbt docs generate
 
 mkdir -p ~/.recce
 echo "user_id: 00000000000000000000000000000000" > ~/.recce/profile.yml
@@ -28,22 +31,22 @@ HOLD_GITHUB_EVENT_PATH="$GITHUB_EVENT_PATH"
 unset GITHUB_EVENT_PATH
 
 # Recce artifacts
-uv run recce cloud upload-artifacts --branch $GIT_BRANCH
+recce cloud upload-artifacts --branch $GIT_BRANCH
 rm -rf target
 
-uv run recce cloud download-base-artifacts --branch $GIT_BRANCH
-uv run recce cloud download-artifacts --branch $GIT_BRANCH
+recce cloud download-base-artifacts --branch $GIT_BRANCH
+recce cloud download-artifacts --branch $GIT_BRANCH
 
 # Recce Run
-uv run recce run --cloud
+recce run --cloud
 
 # Recce state
-uv run recce cloud download
-uv run recce cloud purge --force
-uv run recce cloud upload recce_state.json
+recce cloud download
+recce cloud purge --force
+recce cloud upload recce_state.json
 
 # Recce Summary
-uv run recce summary --cloud
+recce summary --cloud
 
 function check_server_status() {
     echo "Waiting for the server to respond..."
@@ -64,8 +67,8 @@ function check_server_status() {
 
 # Recce Server
 echo "Starting the server (cloud and review mode)..."
-uv run recce server --cloud --review &
+recce server --cloud --review &
 check_server_status
-uv run recce cloud purge --force
+recce cloud purge --force
 
 export GITHUB_EVENT_PATH="$HOLD_GITHUB_EVENT_PATH"

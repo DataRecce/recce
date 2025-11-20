@@ -5,17 +5,20 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 cd "$SCRIPT_DIR"
 pwd
 
+# Activate virtual environment
+source "$GITHUB_WORKSPACE/.venv/bin/activate"
+
 # Prepare env
 git restore models/customers.sql
-uv run dbt --version
-uv run dbt deps
-uv run dbt seed --target-path target-base
-uv run dbt run --target-path target-base
-uv run dbt docs generate --target-path target-base
+dbt --version
+dbt deps
+dbt seed --target-path target-base
+dbt run --target-path target-base
+dbt docs generate --target-path target-base
 
 echo "where customer_id > 0" >> models/customers.sql
-uv run dbt run
-uv run dbt docs generate
+dbt run
+dbt docs generate
 git restore models/customers.sql
 
 # Recce Run
@@ -30,7 +33,7 @@ assert_string_value() {
     fi
 }
 
-uv run recce run
+recce run
 if ! [ -e recce_state.json ]; then
     echo "recce_state.json not found"
     exit 1
@@ -42,7 +45,7 @@ assert_string_value $model "customers"
 assert_string_value $run_type "row_count_diff"
 
 # Recce Summary
-uv run recce summary ./recce_state.json | tee recce_summary.md
+recce summary ./recce_state.json | tee recce_summary.md
 cat ./recce_summary.md | grep -q customers
 
 # Recce Server
@@ -64,9 +67,9 @@ function check_server_status() {
 }
 
 echo "Starting the server..."
-uv run recce server &
+recce server &
 check_server_status
 
 echo "Starting the server (review mode)..."
-uv run recce server --review recce_state.json &
+recce server --review recce_state.json &
 check_server_status
