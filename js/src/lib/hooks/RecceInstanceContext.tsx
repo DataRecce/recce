@@ -33,7 +33,6 @@ interface InstanceInfoType {
   featureToggles: RecceFeatureToggles;
   lifetimeExpiredAt?: Date;
   shareUrl?: string;
-  sessionId?: string;
 }
 
 const defaultValue: InstanceInfoType = {
@@ -42,7 +41,6 @@ const defaultValue: InstanceInfoType = {
   lifetimeExpiredAt: undefined,
   featureToggles: defaultFeatureToggles,
   shareUrl: undefined,
-  sessionId: undefined,
 };
 
 const InstanceInfo = createContext<InstanceInfoType>(defaultValue);
@@ -60,7 +58,6 @@ export function RecceInstanceInfoProvider({
   const [authed, setAuthed] = useState<boolean>(false);
   const [lifetimeExpiredAt, setLifetimeExpiredAt] = useState<Date>();
   const [shareUrl, setShareUrl] = useState<string>();
-  const [sessionId, setSessionId] = useState<string>();
   const [prevInstanceInfo, setPrevInstanceInfo] = useState(instanceInfo);
 
   // Adjust state during render when instanceInfo changes
@@ -70,7 +67,6 @@ export function RecceInstanceInfoProvider({
     setSingleEnv(instanceInfo.single_env);
     setAuthed(instanceInfo.authed);
     setShareUrl(instanceInfo.share_url);
-    setSessionId(instanceInfo.session_id);
 
     if (instanceInfo.lifetime_expired_at) {
       setLifetimeExpiredAt(new Date(instanceInfo.lifetime_expired_at));
@@ -118,7 +114,6 @@ export function RecceInstanceInfoProvider({
         authed,
         lifetimeExpiredAt,
         shareUrl,
-        sessionId,
       }}
     >
       {children}

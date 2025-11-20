@@ -9,7 +9,6 @@ import logging
 import typing
 from datetime import datetime, timezone
 from typing import List, Optional
-from uuid import UUID
 
 from recce.exceptions import RecceException
 
@@ -422,55 +421,6 @@ class CheckDAO:
             return
 
         self._checks.clear()
-
-    def mark_as_preset_check(self, check_id: UUID, order_idx: int = 0) -> Optional[Check]:
-        """
-        Mark a check as a preset check.
-
-        This operation is only supported for cloud users. It creates a preset check
-        from an existing check, which can then be used across projects.
-
-        Args:
-            check_id: Check ID (UUID)
-            order_idx: Order index for the preset check (default: 0)
-
-        Returns:
-            Check object representing the newly created preset check, or None if operation fails
-
-        Raises:
-            RecceException: If operation is attempted in local mode or if check not found
-        """
-        if not self.is_cloud_user:
-            raise RecceException(
-                "Marking checks as preset is only supported in cloud mode. This feature requires Recce Cloud."
-            )
-
-        # Get the original check
-        check = self.find_check_by_id(check_id)
-        if check is None:
-            raise RecceException(f"Check {check_id} not found")
-
-        try:
-            org_id, project_id, session_id = self._get_session_info()
-            cloud_client = self._get_cloud_client()
-
-            # Prepare preset check data
-            preset_data = {
-                "name": check.name,
-                "description": check.description if check.description else None,
-                "type": check.type.value,
-                "params": check.params if check.params else {},
-                "view_options": check.view_options if check.view_options else None,
-                "order_index": order_idx,  # Default order index for preset checks
-            }
-
-            # Create preset check via cloud API
-            cloud_client.create_preset_check(org_id, project_id, preset_data)
-
-            logger.debug(f"Created preset check from check {check_id}")
-        except Exception as e:
-            logger.error(f"Failed to mark check {check_id} as preset: {e}")
-            raise RecceException(f"Failed to create preset check: {e}")
 
     def status(self):
         """

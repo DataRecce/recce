@@ -105,7 +105,3 @@ export async function reorderChecks(order: {
     AxiosResponse<unknown>
   >("/api/checks/reorder", order);
 }
-
-export async function markAsPresetCheck(checkId: string): Promise<void> {
-  await axiosClient.post(`/api/checks/${checkId}/mark-as-preset`);
-}
