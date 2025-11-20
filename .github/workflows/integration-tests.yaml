@@ -38,6 +38,7 @@ jobs:
 
       - name: Install Recce and dbt
         run: |
+          uv venv
           uv sync --no-dev --python ${{ matrix.python-version }}
           if [ "${{ matrix.dbt-version }}" == "latest" ]; then
             uv pip install dbt-core dbt-duckdb
