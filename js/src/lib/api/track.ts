@@ -18,7 +18,7 @@ export function trackInit() {
           userId,
           autocapture: true,
         },
-        sr: {
+        sessionReplay: {
           sampleRate: 1,
         },
       });
@@ -83,19 +83,8 @@ export function trackSingleEnvironment(props: SingleEnvironmentProps) {
   track("[Experiment] single_environment", props);
 }
 
-interface BreakingChangeAnalysisProps {
-  enabled: boolean;
-}
-
-let _breakingChangeEnabled = false;
-
-export function trackBreakingChange(props: BreakingChangeAnalysisProps) {
-  track("[Experiment] breaking_change_analysis", props);
-  _breakingChangeEnabled = props.enabled;
-}
-
 export function getExperimentTrackingBreakingChangeEnabled() {
-  return _breakingChangeEnabled;
+  return false;
 }
 
 interface ColumnLevelLineageProps {
@@ -104,7 +93,7 @@ interface ColumnLevelLineageProps {
 }
 
 export function trackColumnLevelLineage(props: ColumnLevelLineageProps) {
-  track("Column level lineage", props);
+  track("[Web] column_level_lineage", props);
 }
 
 interface ShareStateProps {
@@ -112,7 +101,7 @@ interface ShareStateProps {
 }
 
 export function trackShareState(props: ShareStateProps) {
-  track("share_state", props);
+  track("[Web] share_state", props);
 }
 
 interface StateActionProps {
@@ -120,7 +109,7 @@ interface StateActionProps {
 }
 
 export function trackStateAction(props: StateActionProps) {
-  track("state_action", props);
+  track("[Web] state_action", props);
 }
 
 interface CopyToClipboardProps {
@@ -130,4 +119,13 @@ interface CopyToClipboardProps {
 
 export function trackCopyToClipboard(props: CopyToClipboardProps) {
   track("[Click] copy_to_clipboard", props);
+}
+
+interface TrackNavProps {
+  from: string;
+  to: string;
+}
+
+export function trackNavigation(props: TrackNavProps) {
+  track("[Web] navigation_change", props);
 }

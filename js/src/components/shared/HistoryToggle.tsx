@@ -21,7 +21,7 @@ export default function HistoryToggle(): ReactNode {
         size="2xs"
         variant="outline"
         onClick={() => {
-          trackHistoryAction({ name: "show" });
+          trackHistoryAction({ name: isHistoryOpen ? "hide" : "show" });
           showHistory();
         }}
       >
