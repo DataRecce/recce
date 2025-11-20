@@ -182,3 +182,21 @@ async def reorder_handler(order: ReorderChecksIn):
         CheckDAO().reorder(order.source, order.destination)
     except RecceException as e:
         raise HTTPException(status_code=400, detail=e.message)
+
+
+@check_router.post("/checks/{check_id}/mark-as-preset", status_code=204)
+async def mark_as_preset_check_handler(check_id: UUID):
+    """
+    Mark an existing check as a preset check (cloud users only).
+
+    This creates a preset check from the specified check.
+    Only available for users with cloud mode enabled.
+
+    Returns:
+        204 No Content: Successfully marked check as preset
+        400 Bad Request: Error with detail message (e.g., not in cloud mode, check not found)
+    """
+    try:
+        CheckDAO().mark_as_preset_check(check_id)
+    except RecceException as e:
+        raise HTTPException(status_code=400, detail=str(e))
