@@ -424,7 +424,7 @@ class RecceMCPServer:
 
             # Prepare node data for DataFrame
             nodes_data = [
-                [
+                (
                     id_to_idx[node_id],
                     node_id,
                     node_info.get("name"),
@@ -432,7 +432,7 @@ class RecceMCPServer:
                     node_info.get("materialized"),
                     diff_info.get(node_id, {}).get("change_status"),
                     node_id in impacted_node_ids,
-                ]
+                )
                 for node_id, node_info in nodes.items()
             ]
 
@@ -512,18 +512,18 @@ class RecceMCPServer:
 
                 # Find added columns (in current but not in base)
                 for col_name in current_col_names - base_col_names:
-                    schema_changes.append([node_id, col_name, "added"])
+                    schema_changes.append((node_id, col_name, "added"))
 
                 # Find removed columns (in base but not in current)
                 for col_name in base_col_names - current_col_names:
-                    schema_changes.append([node_id, col_name, "removed"])
+                    schema_changes.append((node_id, col_name, "removed"))
 
                 # Find modified columns (in both but with different types)
                 for col_name in base_col_names & current_col_names:
                     base_col_type = base_columns[col_name].get("type")
                     current_col_type = current_columns[col_name].get("type")
                     if base_col_type != current_col_type:
-                        schema_changes.append([node_id, col_name, "modified"])
+                        schema_changes.append((node_id, col_name, "modified"))
 
             # Check if there are more than 100 rows
             limit = 100
