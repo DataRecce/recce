@@ -17,6 +17,7 @@ from recce.apis.check_func import (
 from recce.apis.run_func import submit_run
 from recce.config import RecceConfig
 from recce.core import default_context
+from recce.models import CheckDAO
 from recce.models.types import RunType
 from recce.summary import generate_markdown_summary
 
@@ -319,6 +320,15 @@ async def cli_run(output_state_file: str, **kwargs):
     from recce.core import load_context
 
     ctx = load_context(**kwargs)
+
+    # Set up the checks if this is a session-based run
+    if kwargs.get("session_id") and kwargs.get("state_loader"):
+        state_loader = kwargs.get("state_loader")
+        try:
+            # Try to populate the checks from the database
+            state_loader.state.checks = CheckDAO().list()
+        except Exception as e:
+            console.print(f"[[red]Error[/red]] {e}")
 
     is_skip_query = kwargs.get("skip_query", False)
     is_skip_check = kwargs.get("skip_check", False)
