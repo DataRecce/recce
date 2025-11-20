@@ -423,7 +423,7 @@ class CheckDAO:
 
         self._checks.clear()
 
-    def mark_as_preset_check(self, check_id: UUID, order_idx: int = 0) -> Optional[Check]:
+    def mark_as_preset_check(self, check_id: UUID, order_idx: int = 0) -> None:
         """
         Mark a check as a preset check.
 
@@ -435,7 +435,7 @@ class CheckDAO:
             order_idx: Order index for the preset check (default: 0)
 
         Returns:
-            Check object representing the newly created preset check, or None if operation fails
+            None, or Exception if operation fails
 
         Raises:
             RecceException: If operation is attempted in local mode or if check not found
@@ -461,7 +461,7 @@ class CheckDAO:
                 "type": check.type.value,
                 "params": check.params if check.params else {},
                 "view_options": check.view_options if check.view_options else None,
-                "order_index": order_idx,  # Default order index for preset checks
+                "order_index": order_idx,  # Order index for the preset check
                 "check_id": str(check_id),
             }
 

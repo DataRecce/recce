@@ -241,4 +241,5 @@ class ChecksCloud(CloudBase):
             "Failed to create preset check in Recce Cloud.",
         )
 
-        return
+        data = response.json()
+        return data.get("presetCheck", {})
