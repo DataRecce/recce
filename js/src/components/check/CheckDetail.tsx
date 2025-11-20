@@ -26,6 +26,7 @@ import { formatDistanceToNow } from "date-fns";
 import React, { ReactNode, Ref, useCallback, useRef, useState } from "react";
 import { CiBookmark } from "react-icons/ci";
 import { IoMdCodeWorking } from "react-icons/io";
+import { IoBookmarksOutline } from "react-icons/io5";
 import { PiCheckCircle, PiCopy, PiRepeat, PiTrashFill } from "react-icons/pi";
 import { VscCircleLarge, VscKebabVertical } from "react-icons/vsc";
 import { useLocation } from "wouter";
@@ -37,7 +38,13 @@ import {
   QueryRunParams,
 } from "@/lib/api/adhocQuery";
 import { cacheKeys } from "@/lib/api/cacheKeys";
-import { Check, deleteCheck, getCheck, updateCheck } from "@/lib/api/checks";
+import {
+  Check,
+  deleteCheck,
+  getCheck,
+  markAsPresetCheck,
+  updateCheck,
+} from "@/lib/api/checks";
 import { cancelRun, submitRunFromCheck } from "@/lib/api/runs";
 import { trackCopyToClipboard } from "@/lib/api/track";
 import { Run, RunParamTypes } from "@/lib/api/types";
@@ -89,7 +96,7 @@ export const CheckDetail = ({
   checkId,
   refreshCheckList,
 }: CheckDetailProps) => {
-  const { featureToggles } = useRecceInstanceContext();
+  const { featureToggles, sessionId } = useRecceInstanceContext();
   const { setLatestSelectedCheckId } = useRecceCheckContext();
   const queryClient = useQueryClient();
   const [, setLocation] = useLocation();
@@ -151,6 +158,23 @@ export const CheckDetail = ({
       setLocation("/checks");
     },
   });
+
+  const { mutate: handleMarkAsPresetCheck, isPending: isMarkingAsPreset } =
+    useMutation({
+      mutationFn: async () => {
+        if (!check) {
+          throw new Error("Check not found");
+        }
+
+        return await markAsPresetCheck(checkId);
+      },
+      onSuccess: () => {
+        successToast("Check marked as preset successfully");
+      },
+      onError: (error) => {
+        failToast("Failed to mark check as preset", error);
+      },
+    });
 
   const handleRerun = useCallback(async () => {
     const type = check?.type;
@@ -314,6 +338,17 @@ export const CheckDetail = ({
               <Portal>
                 <Menu.Positioner>
                   <Menu.Content>
+                    {sessionId && (
+                      <Menu.Item
+                        value="mark-as-preset-check"
+                        onClick={() => handleMarkAsPresetCheck()}
+                        disabled={isMarkingAsPreset || isPresetCheck}
+                      >
+                        <Flex alignItems="center" gap={1} textStyle="sm">
+                          <IoBookmarksOutline /> Mark as Preset Check
+                        </Flex>
+                      </Menu.Item>
+                    )}
                     <Menu.Item
                       value="preset-check-template"
                       onClick={() => {
