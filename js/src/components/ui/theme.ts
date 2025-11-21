@@ -216,6 +216,8 @@ export const system = createSystem(defaultConfig, {
         success: { value: "{colors.green}" },
         warning: { value: "{colors.amber}" },
         danger: { value: "{colors.red}" },
+        envBase: { value: "{colors.amber.500}" },
+        envCurrent: { value: "{colors.iochmara.500}" },
       },
     },
   },
