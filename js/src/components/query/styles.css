@@ -3,21 +3,26 @@
   text-align: right;
 }
 
-.diff-header-added {
+.rdg-cell.rdg-cell-frozen[role="gridcell"] {
+  /* neutral-100 themes.ts */
+  background-color: #f5f5f5;
+}
+
+.diff-header-added, .diff-header-added.rdg-cell.rdg-cell-frozen[role="gridcell"] {
   /* green-700 theme.ts */
   background-color: #15803d;
+  color: white;
+}
+
+.diff-header-removed, .diff-header-removed.rdg-cell.rdg-cell-frozen[role="gridcell"] {
+  /* rose-500 theme.ts */
+  background-color: #f43f5e;
   color: white;
 }
 
 .diff-cell-added {
   background-color: #cefece;
   color: black;
-}
-
-.diff-header-removed {
-  /* rose-500 theme.ts */
-  background-color: #f43f5e;
-  color: white;
 }
 
 .diff-cell-removed {
