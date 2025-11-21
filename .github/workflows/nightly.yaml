@@ -17,6 +17,9 @@ on:
         type: number
         default: 0
 
+permissions:
+  contents: read
+
 jobs:
   build-nightly-release:
     name: Build Recce Nightly Release
@@ -134,8 +137,6 @@ jobs:
   build-recce-cloud-nightly:
     name: Build Recce Cloud Nightly Release
     runs-on: ubuntu-latest
-    permissions:
-      contents: read
     steps:
       - name: Checkout
         uses: actions/checkout@v4

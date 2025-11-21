@@ -7,15 +7,48 @@ on:
     paths-ignore:
       - "js/**"
       - "recce/data/**"
-  pull_request_target:
+  pull_request:
     branches:
       - main
     paths-ignore:
       - "js/**"
       - "recce/data/**"
 
+# Explicitly limit permissions for pull_request_target
+permissions:
+  contents: read
+  pull-requests: read
+
 jobs:
+  # First job: Check if the PR author has write permission
+  # This job runs in the privileged context but doesn't checkout untrusted code
+  authorize:
+    runs-on: ubuntu-latest
+    outputs:
+      authorized: ${{ steps.check.outputs.authorized }}
+    steps:
+      - name: Check if PR author has write permission
+        id: check
+        run: |
+          if [[ "${{ github.event_name }}" == "push" ]]; then
+            echo "authorized=true" >> $GITHUB_OUTPUT
+            exit 0
+          fi
+
+          PERMISSION=$(gh api repos/${{ github.repository }}/collaborators/${{ github.triggering_actor }}/permission --jq '.permission' 2>/dev/null || echo "none")
+          if [[ "$PERMISSION" == "write" || "$PERMISSION" == "admin" ]]; then
+            echo "authorized=true" >> $GITHUB_OUTPUT
+          else
+            echo "authorized=false" >> $GITHUB_OUTPUT
+            echo "::warning::Cloud smoke test skipped for forked repository. This test will be migrated to a separate workflow for external contributors."
+          fi
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  # Second job: Run the actual tests only if authorized
   smoke-test-cloud:
+    needs: authorize
+    if: needs.authorize.outputs.authorized == 'true'
     concurrency:
       group: smoke-test-cloud
       cancel-in-progress: false
@@ -29,29 +62,21 @@ jobs:
           - python-version: "3.13"
             dbt-version: "latest"
     steps:
-      - name: Check external code before checkout
-        run: |
-          PERMISSION=$(gh api repos/${{ github.repository }}/collaborators/${{ github.triggering_actor }}/permission --jq '.permission')
-          if [[ "$PERMISSION" != "write" && "$PERMISSION" != "admin" ]]; then
-            echo "Please review the code from ${{ github.actor }}, then re-run the workflow."
-            exit 1
-          fi
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
-      - uses: actions/checkout@v3
+      # Safe checkout: only proceeds after authorization check passes
+      # codeql[js/actions/pull-request-target] - Authorization verified in previous job
+      - uses: actions/checkout@v4
         with:
-          repository: ${{ github.event.pull_request.head.repo.full_name }}
-          ref: ${{ github.event.pull_request.head.sha }}
-          token: ${{ secrets.RECCE_CLOUD_TOKEN }}
+          persist-credentials: false
 
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
           python-version: ${{ matrix.python-version }}
-          cache: "pip" # caching pip dependencies
+          cache: "pip"
           cache-dependency-path: setup.py
-      - run: |
+
+      - name: Install dependencies
+        run: |
           python -m pip install --upgrade pip
           if [ "${{ matrix.dbt-version }}" == "latest" ]; then
             pip install dbt-core
@@ -70,4 +95,4 @@ jobs:
           ./integration_tests/dbt/smoke_test_cloud.sh
         env:
           GITHUB_TOKEN: ${{ secrets.RECCE_CLOUD_TOKEN }}
-          RECCE_STATE_PASSWORD: ${{ vars.RECCE_STATE_PASSWORD}}
+          RECCE_STATE_PASSWORD: ${{ vars.RECCE_STATE_PASSWORD }}

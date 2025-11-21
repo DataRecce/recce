@@ -3,6 +3,9 @@ on:
   push:
     tags: 'v*'
 
+permissions:
+  contents: read
+
 jobs:
   build:
     name: Build Recce Official Release
@@ -92,8 +95,6 @@ jobs:
   build-recce-cloud:
     name: Build Recce Cloud Official Release
     runs-on: ubuntu-latest
-    permissions:
-      contents: read
 
     steps:
       - name: Checkout
