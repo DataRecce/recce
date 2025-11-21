@@ -691,6 +691,7 @@ DEFAULT_RECCE_STATE_FILE = "recce_state.json"
 @add_options(recce_options)
 @add_options(recce_dbt_artifact_dir_options)
 @add_options(recce_cloud_options)
+@add_options(recce_hidden_options)
 def run(output, **kwargs):
     """
     Run recce and output the state file
@@ -721,21 +722,22 @@ def run(output, **kwargs):
     # Initialize Recce Config
     RecceConfig(config_file=kwargs.get("config"))
 
-    cloud_mode = kwargs.get("cloud", False)
-    state_file = kwargs.get("state_file")
-    cloud_options = (
-        {
-            "host": kwargs.get("state_file_host"),
-            "github_token": kwargs.get("cloud_token"),
-            "password": kwargs.get("password"),
-        }
-        if cloud_mode
-        else None
-    )
+    patch_derived_args(kwargs)
+    # Remove share_url from kwargs to avoid affecting state loader creation
+    kwargs.pop("share_url", None)
 
-    state_loader = create_state_loader(
-        review_mode=False, cloud_mode=cloud_mode, state_file=state_file, cloud_options=cloud_options
-    )
+    state_file = kwargs.pop("state_file", None)
+
+    # Prepare API token
+    try:
+        api_token = prepare_api_token(**kwargs)
+        kwargs["api_token"] = api_token
+    except RecceConfigException:
+        show_invalid_api_token_message()
+        exit(1)
+
+    # Create state loader using shared function
+    state_loader = create_state_loader_by_args(state_file, **kwargs)
 
     if not state_loader.verify():
         error, hint = state_loader.error_and_hint

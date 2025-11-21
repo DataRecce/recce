@@ -93,8 +93,11 @@ class Check(BaseModel):
     params: Optional[dict] = {}
     view_options: Optional[dict] = {}
     check_id: UUID4 = Field(default_factory=uuid.uuid4)
+    session_id: Optional[UUID4] = Field(default=None)
     is_checked: bool = False
     is_preset: bool = False
+    created_by: Optional[str] = None
+    updated_by: Optional[str] = None
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc).replace(microsecond=0))
     updated_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc).replace(microsecond=0))
 

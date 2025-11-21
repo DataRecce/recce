@@ -86,10 +86,10 @@ def create_check_from_run(
         is_preset=is_preset,
         is_checked=is_checked,
     )
-    CheckDAO().create(check)
-    run.check_id = check.check_id
+    new_check = CheckDAO().create(check)
+    run.check_id = new_check.check_id
 
-    return check
+    return new_check
 
 
 def create_check_without_run(
@@ -105,8 +105,8 @@ def create_check_without_run(
         is_preset=is_preset,
         is_checked=is_checked,
     )
-    CheckDAO().create(check)
-    return check
+    new_check = CheckDAO().create(check)
+    return new_check
 
 
 def purge_preset_checks():
