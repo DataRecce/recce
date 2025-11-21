@@ -53,6 +53,11 @@
   background-color: #f5f5f5;
 }
 
+.rdg-cell[role="gridcell"] {
+  /* neutral-50 themes.ts */
+  background-color: #fafafa;
+}
+
 .rdg-row:hover .row-context-menu {
   visibility: visible;
   width: auto;
