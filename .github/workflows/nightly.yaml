@@ -225,6 +225,7 @@ jobs:
         with:
           app-id: 2343362 # App ID of Recce Action Bot
           private-key: ${{ secrets.RECCE_ACTION_BOT_PRIVATE_KEY }}
+          owner: ${{ github.repository_owner }}
       - name: Trigger Recce Instance Launcher Image Build
         id: dispatch
         continue-on-error: true
