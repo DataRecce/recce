@@ -216,6 +216,8 @@ jobs:
   trigger-build-recce-instance-launcher-image:
     name: Trigger Build Recce Instance Launcher Image
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
     needs: build-nightly-release
     steps:
       - uses: actions/create-github-app-token@v2
