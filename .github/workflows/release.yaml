@@ -154,6 +154,7 @@ jobs:
         with:
           app-id: 2343362 # App ID of Recce Action Bot
           private-key: ${{ secrets.RECCE_ACTION_BOT_PRIVATE_KEY }}
+          owner: ${{ github.repository_owner }}
       - name: Fetch latest release from Recce Cloud Infra repo
         id: latest-recce-cloud-release
         env:
