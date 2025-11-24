@@ -147,7 +147,7 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: read
-    needs: build-recce-cloud
+    needs: build
     steps:
       - uses: actions/create-github-app-token@v2
         id: app-token
@@ -158,8 +158,8 @@ jobs:
         id: latest-recce-cloud-release
         env:
           TOKEN: ${{ steps.app-token.outputs.token }}
-          ORG: your-org
-          REPO: your-private-repo
+          ORG: DataRecce
+          REPO: recce-cloud-infra
         run: |
           tag=$(curl -sS \
             -H "Accept: application/vnd.github+json" \
@@ -172,8 +172,6 @@ jobs:
         with:
           workflow: 'build-recce-instance-launcher.yml'
           repo: 'DataRecce/recce-cloud-infra'
-          ref: ${{ env.RECENT_RECCE_CLOUD_RELEASE_TAG }}
+          ref: ${{ steps.latest-recce-cloud-release.outputs.tag_name }}
           inputs: '{ "environment": "production" }'
           token: '${{ steps.app-token.outputs.token }}'
-        env:
-          RECENT_RECCE_CLOUD_RELEASE_TAG: ${{ steps.latest-recce-cloud-release.outputs.tag_name }}
