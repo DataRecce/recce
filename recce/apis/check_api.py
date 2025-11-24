@@ -199,4 +199,4 @@ async def mark_as_preset_check_handler(check_id: UUID):
     try:
         CheckDAO().mark_as_preset_check(check_id)
     except RecceException as e:
-        raise HTTPException(status_code=400, detail=str(e))
+        raise HTTPException(status_code=400, detail=e.message)

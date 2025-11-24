@@ -328,7 +328,7 @@ async def cli_run(output_state_file: str, **kwargs):
             # Try to populate the checks from the database
             state_loader.state.checks = CheckDAO().list()
         except Exception as e:
-            console.print(f"[[red]Error[/red]] {e}")
+            console.print(f"[[red]Error[/red]] Failed to load checks from database: {e}")
 
     is_skip_query = kwargs.get("skip_query", False)
     is_skip_check = kwargs.get("skip_check", False)

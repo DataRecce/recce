@@ -175,8 +175,6 @@ class CheckDAO:
         Returns:
             Check: Check object
         """
-        from datetime import datetime
-        from uuid import UUID
 
         logger.debug(f"Converting cloud data to Check object for check: {cloud_data.get('id')}")
         # Parse the type
@@ -192,8 +190,8 @@ class CheckDAO:
             view_options=cloud_data.get("view_options", {}),
             is_checked=cloud_data.get("is_checked", False),
             is_preset=cloud_data.get("is_preset", False),
-            created_by=cloud_data.get("created_by", {}).get("email", ""),
-            updated_by=cloud_data.get("updated_by", {}).get("email", ""),
+            created_by=(cloud_data.get("created_by") or {}).get("email", ""),
+            updated_by=(cloud_data.get("updated_by") or {}).get("email", ""),
             created_at=datetime.fromisoformat(cloud_data["created_at"]) if cloud_data.get("created_at") else None,
             updated_at=datetime.fromisoformat(cloud_data["updated_at"]) if cloud_data.get("updated_at") else None,
         )
