@@ -226,6 +226,8 @@ jobs:
           app-id: 2343362 # App ID of Recce Action Bot
           private-key: ${{ secrets.RECCE_ACTION_BOT_PRIVATE_KEY }}
       - name: Trigger Recce Instance Launcher Image Build
+        id: dispatch
+        continue-on-error: true
         uses: benc-uk/workflow-dispatch@v1
         with:
           workflow: 'build-recce-instance-launcher.yml'
@@ -233,3 +235,9 @@ jobs:
           ref: 'main'
           inputs: '{ "environment": "staging" }'
           token: '${{ steps.app-token.outputs.token }}'
+      - name: Handle dispatch failure
+        if: steps.dispatch.outcome == 'failure'
+        run: |
+          echo "::warning::Failed to trigger recce-cloud-infra build workflow"
+          echo "::warning::Please manually trigger the build at: https://github.com/DataRecce/recce-cloud-infra/actions/workflows/build-recce-instance-launcher.yml"
+          echo "::warning::Use ref: main and environment: staging"
