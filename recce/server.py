@@ -365,6 +365,16 @@ async def health_check(request: Request):
     return {"status": "ok"}
 
 
+@app.post("/api/keep-alive")
+async def keep_alive():
+    """Endpoint to keep the session alive and reset idle timeout"""
+    app_state: AppState = app.state
+    if app_state.last_activity is not None:
+        app_state.last_activity["time"] = datetime.now(utc)
+        logger.debug("[Idle Timeout] Keep-alive request received - Timer reset")
+    return {"status": "ok"}
+
+
 class RecceInstanceInfoOut(BaseModel):
     server_mode: RecceServerMode
     read_only: bool
@@ -373,6 +383,7 @@ class RecceInstanceInfoOut(BaseModel):
     authed: bool
     cloud_instance: bool
     lifetime_expired_at: Optional[datetime] = None
+    idle_timeout: Optional[int] = None
     share_url: Optional[str] = None
     session_id: Optional[str] = None
     organization_name: Optional[str] = None
@@ -396,6 +407,7 @@ async def recce_instance_info():
         "authed": True if api_token else False,
         "cloud_instance": is_recce_cloud_instance(),
         "lifetime_expired_at": app_state.lifetime_expired_at,  # UTC timezone
+        "idle_timeout": app_state.idle_timeout,
         "share_url": app_state.share_url,
         "session_id": app_state.state_loader.session_id if app_state.state_loader else None,
         "organization_name": app_state.organization_name,
