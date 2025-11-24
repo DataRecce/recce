@@ -212,3 +212,16 @@ jobs:
           ignore_empty: true
           ignore_missing: true
           version: ${{ steps.patch_version.outputs.nightly_version }}
+
+  trigger-build-recce-instance-launcher-image:
+    name: Trigger Build Recce Instance Launcher Image
+    runs-on: ubuntu-latest
+    needs: build-nightly-release
+    steps:
+      - name: Trigger Recce Instance Launcher Image Build
+        uses: benc-uk/workflow-dispatch@v1
+        with:
+          workflow: 'build-recce-instance-launcher.yml'
+          repo: 'DataRecce/recce-cloud-infra'
+          ref: 'main'
+          inputs: '{ "environment": "staging" }'
