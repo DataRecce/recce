@@ -114,12 +114,16 @@ build: clean-build build-frontend
 	uv build
 
 build-cloud: clean-build
+	@echo "Syncing VERSION file to recce_cloud..."
+	@cp recce/VERSION recce_cloud/VERSION
 	@echo "Building recce-cloud package..."
 	uv build --package recce-cloud
 
 build-all: clean-build build-frontend
 	@echo "Building both packages..."
 	uv build
+	@echo "Syncing VERSION file to recce_cloud..."
+	@cp recce/VERSION recce_cloud/VERSION
 	uv build --package recce-cloud
 	@echo "Build complete!"
 	@echo "Packages in dist/:"
