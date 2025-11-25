@@ -3,6 +3,9 @@ on:
   push:
     tags: 'v*'
 
+permissions:
+  contents: read
+
 jobs:
   build:
     name: Build Recce Official Release
@@ -90,8 +93,6 @@ jobs:
   build-recce-cloud:
     name: Build Recce Cloud Official Release
     runs-on: ubuntu-latest
-    permissions:
-      contents: read
 
     steps:
       - name: Checkout
@@ -138,3 +139,53 @@ jobs:
           ignore_empty: true
           ignore_missing: true
           version: ${{ steps.patch_version.outputs.release_version }}
+
+  trigger-build-recce-instance-launcher-image:
+    name: Trigger Recce Instance Launcher Image Build
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    needs: build
+    steps:
+      - uses: actions/create-github-app-token@v2
+        id: app-token
+        with:
+          app-id: 2343362 # App ID of Recce Action Bot
+          private-key: ${{ secrets.RECCE_ACTION_BOT_PRIVATE_KEY }}
+          owner: ${{ github.repository_owner }}
+      - name: Fetch latest release from Recce Cloud Infra repo
+        id: latest-recce-cloud-release
+        env:
+          TOKEN: ${{ steps.app-token.outputs.token }}
+          ORG: DataRecce
+          REPO: recce-cloud-infra
+        run: |
+          tag=$(curl -sS --fail-with-body \
+            -H "Accept: application/vnd.github+json" \
+            -H "Authorization: Bearer ${TOKEN}" \
+            https://api.github.com/repos/${ORG}/${REPO}/releases/latest \
+            | jq -r .tag_name)
+
+          if [ -z "$tag" ] || [ "$tag" = "null" ]; then
+            echo "Error: Failed to fetch latest release tag from ${ORG}/${REPO}"
+            exit 1
+          fi
+
+          echo "tag_name=$tag" >> "$GITHUB_OUTPUT"
+          echo "Fetched latest release: $tag"
+      - name: Trigger Recce Instance Launcher Image Build Workflow
+        id: dispatch
+        continue-on-error: true
+        uses: benc-uk/workflow-dispatch@v1
+        with:
+          workflow: 'build-recce-instance-launcher.yml'
+          repo: 'DataRecce/recce-cloud-infra'
+          ref: ${{ steps.latest-recce-cloud-release.outputs.tag_name }}
+          inputs: '{ "environment": "production" }'
+          token: '${{ steps.app-token.outputs.token }}'
+      - name: Handle dispatch failure
+        if: steps.dispatch.outcome == 'failure'
+        run: |
+          echo "::warning::Failed to trigger recce-cloud-infra build workflow"
+          echo "::warning::Please manually trigger the build at: https://github.com/DataRecce/recce-cloud-infra/actions/workflows/build-recce-instance-launcher.yml"
+          echo "::warning::Use ref: ${{ steps.latest-recce-cloud-release.outputs.tag_name }} and environment: production"

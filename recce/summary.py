@@ -271,11 +271,24 @@ class LineageGraph:
 def _build_lineage_graph(base, current) -> LineageGraph:
     graph = LineageGraph()
 
+    # Get the current package name to filter nodes (from the current manifest metadata)
+    package_name = None
+    manifest_metadata = current.get("manifest_metadata")
+    if manifest_metadata and hasattr(manifest_metadata, "project_name"):
+        # The default package name is the project name
+        package_name = manifest_metadata.project_name
+
     # Init Graph nodes with base & current nodes
     for node_id, node_data in base.get("nodes", {}).items():
+        # Skip nodes that are not from the current package
+        if package_name and node_data.get("package_name") != package_name:
+            continue
         graph.create_node(node_id, node_data, "base")
 
     for node_id, node_data in current.get("nodes", {}).items():
+        # Skip nodes that are not from the current package
+        if package_name and node_data.get("package_name") != package_name:
+            continue
         if node_id not in graph.nodes:
             node = Node(node_id, node_data, "current")
             graph.nodes[node_id] = node
@@ -286,9 +299,15 @@ def _build_lineage_graph(base, current) -> LineageGraph:
     # Build edges
     for child_id, parents in base.get("parent_map", {}).items():
         for parent_id in parents:
+            if child_id not in graph.nodes or parent_id not in graph.nodes:
+                continue
+
             graph.create_edge(parent_id, child_id, "base")
     for child_id, parents in current.get("parent_map", {}).items():
         for parent_id in parents:
+            if child_id not in graph.nodes or parent_id not in graph.nodes:
+                continue
+
             graph.create_edge(parent_id, child_id, "current")
 
     return graph
