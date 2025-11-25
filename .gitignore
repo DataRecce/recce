@@ -16,6 +16,3 @@ build
 .DS_Store
 
 recce.yml
-
-# Generated VERSION file for recce-cloud package
-recce_cloud/VERSION

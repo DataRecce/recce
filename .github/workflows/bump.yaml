@@ -29,6 +29,7 @@ jobs:
           if [ $diff -eq 0 ]; then
             new_version=$(( dev + 1 ))
             echo "1.${new_version}.0.dev0" > ./recce/VERSION
+            echo "1.${new_version}.0.dev0" > ./recce_cloud/VERSION
             echo "bump_version=1.${new_version}.0" >> $GITHUB_OUTPUT
           fi
 
