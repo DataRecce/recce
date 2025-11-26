@@ -109,7 +109,7 @@ export function useCopyToClipboard({
       nodeToUse.style.overflow = "hidden";
       nodeToUse.style.border = boardEffect ? borderStyle : "";
       nodeToUse.style.borderRadius = boardEffect ? borderRadius : "";
-      nodeToUse.style.backgroundColor = backgroundColor ?? "";
+      nodeToUse.style.backgroundColor = backgroundColor ?? "#f5f5f5";
       // after firefox v125, html2canvas can't get the correct style height of the element to clone
       nodeToUse.style.height = `${String(nodeToUse.offsetHeight)}px`;
 
@@ -129,7 +129,7 @@ export function useCopyToClipboard({
         renderLibrary === "html2canvas"
           ? await html2canvas(nodeToUse, {
               logging: false,
-              backgroundColor: null,
+              backgroundColor: "#f5f5f5",
               ignoreElements: ignoreElements,
             })
           : await toCanvas(nodeToUse, {
@@ -211,7 +211,7 @@ export function useCopyToClipboardButton(options?: HookOptions) {
     useCopyToClipboard({
       imageType: "png",
       shadowEffect: true,
-      backgroundColor: options?.backgroundColor ?? null,
+      backgroundColor: options?.backgroundColor ?? "#f5f5f5",
       onSuccess: () => {
         successToast("Copied the query result as an image to clipboard");
       },
