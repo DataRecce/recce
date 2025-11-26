@@ -43,7 +43,7 @@ class ChecksCloud(CloudBase):
             >>> checks = client.list_checks("org123", "proj456", "sess789")
             >>> print(f"Found {len(checks)} checks")
         """
-        api_url = f"{self.base_url_v2}/organizations/{org_id}/projects/{project_id}/" f"sessions/{session_id}/checks"
+        api_url = f"{self.base_url_v2}/organizations/{org_id}/projects/{project_id}/sessions/{session_id}/checks"
         response = self._request("GET", api_url)
 
         self._raise_for_status(
@@ -85,7 +85,7 @@ class ChecksCloud(CloudBase):
             >>> check = client.create_check("org123", "proj456", "sess789", check_data)
             >>> print(f"Created check with ID: {check['id']}")
         """
-        api_url = f"{self.base_url_v2}/organizations/{org_id}/projects/{project_id}/" f"sessions/{session_id}/checks"
+        api_url = f"{self.base_url_v2}/organizations/{org_id}/projects/{project_id}/sessions/{session_id}/checks"
         response = self._request("POST", api_url, json=check_data)
 
         self._raise_for_status(
@@ -123,8 +123,7 @@ class ChecksCloud(CloudBase):
             >>> print(f"Check status: {check['status']}")
         """
         api_url = (
-            f"{self.base_url_v2}/organizations/{org_id}/projects/{project_id}/"
-            f"sessions/{session_id}/checks/{check_id}"
+            f"{self.base_url_v2}/organizations/{org_id}/projects/{project_id}/sessions/{session_id}/checks/{check_id}"
         )
         response = self._request("GET", api_url)
 
@@ -169,8 +168,7 @@ class ChecksCloud(CloudBase):
             >>> print(f"Updated check status: {check['status']}")
         """
         api_url = (
-            f"{self.base_url_v2}/organizations/{org_id}/projects/{project_id}/"
-            f"sessions/{session_id}/checks/{check_id}"
+            f"{self.base_url_v2}/organizations/{org_id}/projects/{project_id}/sessions/{session_id}/checks/{check_id}"
         )
         response = self._request("PATCH", api_url, json=check_data)
 
@@ -206,8 +204,7 @@ class ChecksCloud(CloudBase):
             >>> print("Check deleted successfully")
         """
         api_url = (
-            f"{self.base_url_v2}/organizations/{org_id}/projects/{project_id}/"
-            f"sessions/{session_id}/checks/{check_id}"
+            f"{self.base_url_v2}/organizations/{org_id}/projects/{project_id}/sessions/{session_id}/checks/{check_id}"
         )
         response = self._request("DELETE", api_url)
 

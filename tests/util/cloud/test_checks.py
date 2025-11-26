@@ -27,7 +27,7 @@ class TestChecksCloud(unittest.TestCase):
         with pytest.raises(ValueError, match="Token cannot be None"):
             ChecksCloud(token=None)
 
-    @patch("recce.util.cloud.ChecksCloud._request")
+    @patch("recce.util.cloud.checks.ChecksCloud._request")
     def test_list_checks_success(self, mock_request):
         """Test successful listing of checks."""
         # Arrange

@@ -185,7 +185,7 @@ async def reorder_handler(order: ReorderChecksIn):
 
 
 @check_router.post("/checks/{check_id}/mark-as-preset", status_code=204)
-async def mark_as_preset_check_handler(check_id: UUID):
+async def mark_as_preset_check_handler(check_id: UUID, background_tasks: BackgroundTasks):
     """
     Mark an existing check as a preset check (cloud users only).
 
@@ -198,5 +198,6 @@ async def mark_as_preset_check_handler(check_id: UUID):
     """
     try:
         CheckDAO().mark_as_preset_check(check_id)
+        background_tasks.add_task(export_persistent_state)
     except RecceException as e:
         raise HTTPException(status_code=400, detail=e.message)

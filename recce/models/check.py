@@ -273,24 +273,13 @@ class CheckDAO:
             bool: True if updated, False if not found
         """
         if self.is_cloud_user:
-            check = CheckDAO().find_check_by_id(check_id)
             try:
                 org_id, project_id, session_id = self._get_session_info()
                 cloud_client = self._get_cloud_client()
 
-                if patch.name is not None:
-                    check.name = patch.name
-                if patch.description is not None:
-                    check.description = patch.description
-                if patch.params is not None:
-                    check.params = patch.params
-                if patch.view_options is not None:
-                    check.view_options = patch.view_options
-                if patch.is_checked is not None:
-                    check.is_checked = patch.is_checked
-
+                # Directly send the patch object to the cloud API
                 cloud_data = cloud_client.update_check(
-                    org_id, project_id, session_id, str(check_id), self._check_to_cloud_format(check)
+                    org_id, project_id, session_id, str(check_id), patch.model_dump(exclude_unset=True)
                 )
 
                 logger.debug(f"Updated check {check_id} in cloud")
@@ -370,7 +359,6 @@ class CheckDAO:
                 return [self._cloud_to_check(check_data) for check_data in cloud_checks]
             except AttributeError as e:
                 logger.error(f"Attribute error while listing checks from cloud: {e}")
-                logger.error(e)
                 return []
             except Exception as e:
                 logger.error(f"Failed to list checks from cloud: {e}")
