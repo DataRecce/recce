@@ -1745,18 +1745,11 @@ def read_only(ctx, state_file=None, **kwargs):
 @add_options(recce_hidden_options)
 def mcp_server(sse, host, port, **kwargs):
     """
-    [Experiment] Start the Recce MCP (Model Context Protocol) server
+    Start the Recce MCP (Model Context Protocol) server
 
     The MCP server provides an interface for AI assistants and tools to interact
     with Recce's data validation capabilities. By default, it uses stdio for
     communication. Use --sse to enable HTTP/Server-Sent Events mode instead.
-
-    Available tools:
-    - get_lineage_diff: Get lineage differences between environments
-    - row_count_diff: Compare row counts between environments
-    - query: Execute SQL queries with dbt templating
-    - query_diff: Compare query results between environments
-    - profile_diff: Generate statistical profiles and compare
 
     Examples:\n
 
@@ -1771,10 +1764,6 @@ def mcp_server(sse, host, port, **kwargs):
     \b
     # Start in HTTP/SSE mode with custom host and port
     recce mcp-server --sse --host 0.0.0.0 --port 9000
-
-    \b
-    # Start with custom dbt configuration
-    recce mcp-server --target prod --project-dir ./my_project
 
     SSE Connection URL (when using --sse): http://<host>:<port>/sse
     """
@@ -1813,10 +1802,8 @@ def mcp_server(sse, host, port, **kwargs):
         if sse:
             console.print(f"Starting Recce MCP Server in HTTP/SSE mode on {host}:{port}...")
             console.print(f"SSE endpoint: http://{host}:{port}/sse")
-            console.print("Available tools: get_lineage_diff, row_count_diff, query, query_diff, profile_diff")
         else:
             console.print("Starting Recce MCP Server in stdio mode...")
-            console.print("Available tools: get_lineage_diff, row_count_diff, query, query_diff, profile_diff")
 
         # Run the server (stdio or SSE based on --sse flag)
         asyncio.run(run_mcp_server(sse=sse, host=host, port=port, **kwargs))
