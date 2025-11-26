@@ -691,6 +691,7 @@ DEFAULT_RECCE_STATE_FILE = "recce_state.json"
 @add_options(recce_options)
 @add_options(recce_dbt_artifact_dir_options)
 @add_options(recce_cloud_options)
+@add_options(recce_cloud_auth_options)
 @add_options(recce_hidden_options)
 def run(output, **kwargs):
     """
