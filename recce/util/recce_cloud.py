@@ -1,6 +1,7 @@
 import json
 import logging
 import os
+import typing
 from typing import IO, Dict
 
 import requests
@@ -8,6 +9,9 @@ import requests
 from recce import get_version
 from recce.event import get_user_id, is_anonymous_tracking
 from recce.pull_request import PullRequestInfo
+
+if typing.TYPE_CHECKING:
+    from recce.util.cloud import ChecksCloud
 
 RECCE_CLOUD_API_HOST = os.environ.get("RECCE_CLOUD_API_HOST", "https://cloud.datarecce.io")
 RECCE_CLOUD_BASE_URL = os.environ.get("RECCE_CLOUD_BASE_URL", RECCE_CLOUD_API_HOST)
@@ -43,6 +47,27 @@ class RecceCloud:
         self.token_type = "github_token" if token.startswith(("ghp_", "gho_", "ghu_", "ghs_", "ghr_")) else "api_token"
         self.base_url = f"{RECCE_CLOUD_API_HOST}/api/v1"
         self.base_url_v2 = f"{RECCE_CLOUD_API_HOST}/api/v2"
+
+        # Initialize modular clients
+        self._checks_client = None
+
+    @property
+    def checks(self) -> "ChecksCloud":
+        """
+        Get the checks client for check operations.
+
+        Returns:
+            ChecksCloud instance for check operations
+
+        Example:
+            >>> cloud = RecceCloud(token="your-token")
+            >>> checks = cloud.checks.list_checks("org", "proj", "sess")
+        """
+        if self._checks_client is None:
+            from recce.util.cloud import ChecksCloud
+
+            self._checks_client = ChecksCloud(self.token)
+        return self._checks_client
 
     def _request(self, method, url, headers: Dict = None, **kwargs):
         headers = {

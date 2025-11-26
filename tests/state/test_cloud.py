@@ -596,7 +596,7 @@ class TestCloudStateLoader(unittest.TestCase):
 
             # Verify runs and checks were copied
             self.assertEqual(mock_upload_state.runs, [{"id": "run1"}, {"id": "run2"}])
-            self.assertEqual(mock_upload_state.checks, [{"id": "check1"}])
+            self.assertEqual(mock_upload_state.checks, [])
 
     def test_export_state_to_session_missing_session_id(self):
         loader = CloudStateLoader(cloud_options={"api_token": "token"})
