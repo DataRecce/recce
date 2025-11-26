@@ -373,7 +373,10 @@ async def cli_run(output_state_file: str, **kwargs):
     console.rule("Export state")
     ctx.state_loader.state_file = output_state_file
     msg = ctx.state_loader.export(ctx.export_state())
-    console.print(msg)
+    if msg is not None:
+        console.print(msg)
+    else:
+        console.print("Export successful")
 
     summary_path = kwargs.get("summary")
     if summary_path:
