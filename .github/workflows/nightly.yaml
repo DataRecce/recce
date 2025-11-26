@@ -75,7 +75,7 @@ jobs:
               final_version="$new_version"
             else
               # Same date, check if latest already has postN
-              if [[ "$latest_version" =~ -post([0-9]+)$ ]]; then
+              if [[ "$latest_version" =~ \.post([0-9]+)$ ]]; then
                 post_num=$(( ${BASH_REMATCH[1]} + 1 ))
               else
                 post_num=1
@@ -167,8 +167,7 @@ jobs:
               # New date is newer, no post needed
               final_version="$new_version"
             else
-              # Same date, check if latest already has postN
-              if [[ "$latest_version" =~ -post([0-9]+)$ ]]; then
+              if [[ "$latest_version" =~ \.post([0-9]+)$ ]]; then
                 post_num=$(( ${BASH_REMATCH[1]} + 1 ))
               else
                 post_num=1
