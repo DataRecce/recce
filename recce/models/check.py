@@ -365,7 +365,6 @@ class CheckDAO:
                 return []
             except Exception as e:
                 logger.exception(e)
-                # logger.error(f"Failed to list checks from cloud: {e}")
                 # Return empty list on error to avoid breaking the UI
                 return []
         else:
