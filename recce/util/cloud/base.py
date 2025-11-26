@@ -66,9 +66,11 @@ class CloudBase:
             **(headers or {}),
             "Authorization": f"Bearer {self.token}",
         }
+        url = self._replace_localhost_with_docker_internal(url)
         return requests.request(method, url, headers=headers, **kwargs)
 
-    def _replace_localhost_with_docker_internal(self, url: str) -> Optional[str]:
+    @staticmethod
+    def _replace_localhost_with_docker_internal(url: str) -> Optional[str]:
         """
         Convert localhost URLs to docker internal URLs if running in Docker.
 

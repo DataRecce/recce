@@ -97,7 +97,7 @@ class CheckDAO:
             from recce.event import get_recce_api_token
             from recce.util.recce_cloud import RecceCloud
 
-            api_token = get_recce_api_token()
+            api_token = get_recce_api_token() or ctx.state_loader.token
             if not api_token:
                 raise RecceException("Cannot access Recce Cloud: no API token available")
 
@@ -128,10 +128,13 @@ class CheckDAO:
         Raises:
             RecceException: If cloud client cannot be initialized
         """
+        from recce.core import default_context
         from recce.event import get_recce_api_token
         from recce.util.recce_cloud import RecceCloud
 
-        api_token = get_recce_api_token()
+        ctx = default_context()
+
+        api_token = get_recce_api_token() or ctx.state_loader.token
         if not api_token:
             raise RecceException("Cannot access Recce Cloud: no API token available")
 
@@ -361,7 +364,7 @@ class CheckDAO:
                 logger.error(f"Attribute error while listing checks from cloud: {e}")
                 return []
             except Exception as e:
-                logger.error(f"Failed to list checks from cloud: {e}")
+                logger.exception(e)
                 # Return empty list on error to avoid breaking the UI
                 return []
         else:
