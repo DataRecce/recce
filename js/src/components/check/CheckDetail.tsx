@@ -5,6 +5,8 @@ import {
   CloseButton,
   Dialog,
   Flex,
+  Grid,
+  GridItem,
   Heading,
   Highlight,
   HStack,
@@ -31,6 +33,7 @@ import { PiCheckCircle, PiCopy, PiRepeat, PiTrashFill } from "react-icons/pi";
 import { VscCircleLarge, VscKebabVertical } from "react-icons/vsc";
 import { useLocation } from "wouter";
 import SetupConnectionPopover from "@/components/app/SetupConnectionPopover";
+import { CheckTimeline } from "@/components/check/timeline";
 import { Tooltip } from "@/components/ui/tooltip";
 import {
   QueryDiffParams,
@@ -48,6 +51,7 @@ import {
 import { cancelRun, submitRunFromCheck } from "@/lib/api/runs";
 import { trackCopyToClipboard } from "@/lib/api/track";
 import { Run, RunParamTypes } from "@/lib/api/types";
+import { useLineageGraphContext } from "@/lib/hooks/LineageGraphContext";
 import { useRecceCheckContext } from "@/lib/hooks/RecceCheckContext";
 import { useRecceInstanceContext } from "@/lib/hooks/RecceInstanceContext";
 import { useCopyToClipboardButton } from "@/lib/hooks/ScreenShot";
@@ -98,6 +102,7 @@ export const CheckDetail = ({
 }: CheckDetailProps) => {
   const { featureToggles, sessionId } = useRecceInstanceContext();
   const { setLatestSelectedCheckId } = useRecceCheckContext();
+  const { cloudMode } = useLineageGraphContext();
   const queryClient = useQueryClient();
   const [, setLocation] = useLocation();
   const { successToast, failToast } = useClipBoardToast();
@@ -302,137 +307,148 @@ export const CheckDetail = ({
       sizes={[30, 70]}
       style={{ height: "100%", width: "100%", maxHeight: "100%" }}
     >
-      <Box style={{ contain: "strict" }} display="flex" flexDirection="column">
-        <Flex p="0px 16px" alignItems="center" h="40px">
-          <CheckBreadcrumb
-            name={check.name}
-            setName={(name) => {
-              mutate({ name });
-            }}
-          />
-          {isPresetCheck && (
-            <Tooltip content="Preset Check defined in recce config">
-              <Tag.Root size="sm" flex="0 0 auto" ml="2">
-                <Tag.StartElement>
-                  <CiBookmark size="14px" />
-                </Tag.StartElement>
-                <Tag.Label>Preset</Tag.Label>
-              </Tag.Root>
-            </Tooltip>
-          )}
-          <Spacer />
-          <HStack mr="10px">
-            {relativeTime && (
-              <Box
-                textOverflow="ellipsis"
-                whiteSpace="nowrap"
-                overflow="hidden"
-                fontSize="10pt"
-              >
-                {relativeTime}
-              </Box>
+      <Grid
+        templateColumns={cloudMode ? "2fr 1fr" : "1fr"}
+        h="100%"
+        style={{ contain: "strict" }}
+      >
+        <GridItem display="flex" flexDirection="column" overflow="hidden">
+          <Flex p="0px 16px" alignItems="center" h="40px">
+            <CheckBreadcrumb
+              name={check.name}
+              setName={(name) => {
+                mutate({ name });
+              }}
+            />
+            {isPresetCheck && (
+              <Tooltip content="Preset Check defined in recce config">
+                <Tag.Root size="sm" flex="0 0 auto" ml="2">
+                  <Tag.StartElement>
+                    <CiBookmark size="14px" />
+                  </Tag.StartElement>
+                  <Tag.Label>Preset</Tag.Label>
+                </Tag.Root>
+              </Tooltip>
             )}
+            <Spacer />
+            <HStack mr="10px">
+              {relativeTime && (
+                <Box
+                  textOverflow="ellipsis"
+                  whiteSpace="nowrap"
+                  overflow="hidden"
+                  fontSize="10pt"
+                >
+                  {relativeTime}
+                </Box>
+              )}
 
-            <Menu.Root>
-              <Menu.Trigger asChild>
-                <IconButton rounded="full" variant="ghost" size="sm">
-                  <Icon as={VscKebabVertical} />
-                </IconButton>
-              </Menu.Trigger>
-              <Portal>
-                <Menu.Positioner>
-                  <Menu.Content>
-                    {sessionId && (
+              <Menu.Root>
+                <Menu.Trigger asChild>
+                  <IconButton rounded="full" variant="ghost" size="sm">
+                    <Icon as={VscKebabVertical} />
+                  </IconButton>
+                </Menu.Trigger>
+                <Portal>
+                  <Menu.Positioner>
+                    <Menu.Content>
+                      {sessionId && (
+                        <Menu.Item
+                          value="mark-as-preset-check"
+                          onClick={() => handleMarkAsPresetCheck()}
+                          disabled={isMarkingAsPreset || isPresetCheck}
+                        >
+                          <Flex alignItems="center" gap={1} textStyle="sm">
+                            <IoBookmarksOutline /> Mark as Preset Check
+                          </Flex>
+                        </Menu.Item>
+                      )}
                       <Menu.Item
-                        value="mark-as-preset-check"
-                        onClick={() => handleMarkAsPresetCheck()}
-                        disabled={isMarkingAsPreset || isPresetCheck}
+                        value="preset-check-template"
+                        onClick={() => {
+                          setOverlay(<Overlay />);
+                          onPresetCheckTemplateOpen();
+                        }}
                       >
                         <Flex alignItems="center" gap={1} textStyle="sm">
-                          <IoBookmarksOutline /> Mark as Preset Check
+                          <IoMdCodeWorking /> Get Preset Check Template
                         </Flex>
                       </Menu.Item>
-                    )}
-                    <Menu.Item
-                      value="preset-check-template"
-                      onClick={() => {
-                        setOverlay(<Overlay />);
-                        onPresetCheckTemplateOpen();
-                      }}
-                    >
-                      <Flex alignItems="center" gap={1} textStyle="sm">
-                        <IoMdCodeWorking /> Get Preset Check Template
-                      </Flex>
-                    </Menu.Item>
-                    <Menu.Item
-                      value="copy-markdown"
-                      onClick={() => handleCopy()}
-                    >
-                      <Flex alignItems="center" gap={1} textStyle="sm">
-                        <PiCopy /> Copy Markdown
-                      </Flex>
-                    </Menu.Item>
-                    <MenuSeparator />
-                    <Menu.Item
-                      value="delete"
-                      color="red.solid"
-                      onClick={() => {
-                        handleDelete();
-                      }}
-                      disabled={featureToggles.disableUpdateChecklist}
-                    >
-                      <Flex alignItems="center" gap={1} textStyle="sm">
-                        <PiTrashFill /> Delete
-                      </Flex>
-                    </Menu.Item>
-                  </Menu.Content>
-                </Menu.Positioner>
-              </Portal>
-            </Menu.Root>
+                      <Menu.Item
+                        value="copy-markdown"
+                        onClick={() => handleCopy()}
+                      >
+                        <Flex alignItems="center" gap={1} textStyle="sm">
+                          <PiCopy /> Copy Markdown
+                        </Flex>
+                      </Menu.Item>
+                      <MenuSeparator />
+                      <Menu.Item
+                        value="delete"
+                        color="red.solid"
+                        onClick={() => {
+                          handleDelete();
+                        }}
+                        disabled={featureToggles.disableUpdateChecklist}
+                      >
+                        <Flex alignItems="center" gap={1} textStyle="sm">
+                          <PiTrashFill /> Delete
+                        </Flex>
+                      </Menu.Item>
+                    </Menu.Content>
+                  </Menu.Positioner>
+                </Portal>
+              </Menu.Root>
 
-            <Tooltip
-              content={
-                isDisabledByNoResult(check.type, run)
-                  ? "Run the check first"
-                  : check.is_checked
-                    ? "Mark as Pending"
-                    : "Mark as Approved"
-              }
-              positioning={{ placement: "bottom-end" }}
-            >
-              <Button
-                flex="0 0 auto"
-                size="sm"
-                colorPalette={check.is_checked ? "green" : "gray"}
-                variant={check.is_checked ? "solid" : "outline"}
-                onClick={() => {
-                  handleApproveCheck();
-                }}
-                disabled={
-                  isDisabledByNoResult(check.type, run) ||
-                  featureToggles.disableUpdateChecklist
+              <Tooltip
+                content={
+                  isDisabledByNoResult(check.type, run)
+                    ? "Run the check first"
+                    : check.is_checked
+                      ? "Mark as Pending"
+                      : "Mark as Approved"
                 }
+                positioning={{ placement: "bottom-end" }}
               >
-                {check.is_checked ? (
-                  <PiCheckCircle />
-                ) : (
-                  <Icon as={VscCircleLarge} color="lightgray" />
-                )}{" "}
-                {check.is_checked ? "Approved" : "Mark as Approved"}
-              </Button>
-            </Tooltip>
-          </HStack>
-        </Flex>
+                <Button
+                  flex="0 0 auto"
+                  size="sm"
+                  colorPalette={check.is_checked ? "green" : "gray"}
+                  variant={check.is_checked ? "solid" : "outline"}
+                  onClick={() => {
+                    handleApproveCheck();
+                  }}
+                  disabled={
+                    isDisabledByNoResult(check.type, run) ||
+                    featureToggles.disableUpdateChecklist
+                  }
+                >
+                  {check.is_checked ? (
+                    <PiCheckCircle />
+                  ) : (
+                    <Icon as={VscCircleLarge} color="lightgray" />
+                  )}{" "}
+                  {check.is_checked ? "Approved" : "Mark as Approved"}
+                </Button>
+              </Tooltip>
+            </HStack>
+          </Flex>
 
-        <Box flex="1" p="8px 16px" minHeight="100px">
-          <CheckDescription
-            key={check.check_id}
-            value={check.description}
-            onChange={handleUpdateDescription}
-          />
-        </Box>
-        {/* </Flex> */}
-      </Box>
+          <Box flex="1" p="8px 16px" minHeight="100px">
+            <CheckDescription
+              key={check.check_id}
+              value={check.description}
+              onChange={handleUpdateDescription}
+            />
+          </Box>
+        </GridItem>
+        {/* Timeline panel - only shown when connected to cloud */}
+        {cloudMode && (
+          <GridItem overflow="hidden">
+            <CheckTimeline checkId={checkId} />
+          </GridItem>
+        )}
+      </Grid>
 
       <Box style={{ contain: "strict" }}>
         <Tabs.Root
