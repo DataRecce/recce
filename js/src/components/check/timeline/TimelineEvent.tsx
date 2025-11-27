@@ -13,6 +13,7 @@
 import { Avatar, Box, Flex, HStack, Icon, Text } from "@chakra-ui/react";
 import { useQuery } from "@tanstack/react-query";
 import { formatDistanceToNow } from "date-fns";
+import { Activity } from "react";
 import {
   PiBookmarkSimple,
   PiChatText,
@@ -149,7 +150,8 @@ function CommentEvent({
   const relativeTime = formatDistanceToNow(new Date(event.created_at), {
     addSuffix: true,
   });
-  const isAuthor = currentUserId && actor.user_id?.toString() === currentUserId;
+  const isAuthor =
+    currentUserId && String(actor.user_id) === String(currentUserId);
 
   if (event.is_deleted) {
     return (
@@ -169,12 +171,17 @@ function CommentEvent({
   return (
     <Flex gap={2} alignItems="flex-start" py={2}>
       <Box pt="2px">
-        <UserAvatar event={event} />
+        <EventIcon event={event} />
       </Box>
       <Box flex={1}>
-        <HStack gap={1} mb={1}>
+        <HStack gap={1} mb={1} flexWrap="wrap">
+          <UserAvatar event={event} />
           <Text fontSize="sm" fontWeight="medium">
-            {actorName} {isAuthor && "(Author)"}
+            {actorName}
+            <Activity mode={isAuthor ? "visible" : "hidden"}>
+              {" "}
+              (Author)
+            </Activity>
           </Text>
           <Text fontSize="xs" color="gray.400">
             {relativeTime}
