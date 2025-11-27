@@ -18,6 +18,8 @@ import {
   HStack,
   Icon,
   IconButton,
+  Popover,
+  Portal,
   Text,
   Textarea,
 } from "@chakra-ui/react";
@@ -32,6 +34,7 @@ import {
   PiNotePencil,
   PiPencilSimple,
   PiPlusCircle,
+  PiTrashSimple,
 } from "react-icons/pi";
 import { Tooltip } from "@/components/ui/tooltip";
 import { CheckEvent, getEventIconType } from "@/lib/api/checkEvents";
@@ -41,7 +44,7 @@ interface TimelineEventProps {
   event: CheckEvent;
   currentUserId?: string;
   onEdit?: (eventId: string, content: string) => Promise<void>;
-  onDelete?: (eventId: string) => void;
+  onDelete?: (eventId: string) => Promise<void>;
 }
 
 function EventIcon({ event }: { event: CheckEvent }) {
@@ -152,15 +155,18 @@ function CommentEvent({
   event,
   currentUserId,
   onEdit,
+  onDelete,
 }: {
   event: CheckEvent;
   currentUserId?: string;
   onEdit?: (eventId: string, content: string) => Promise<void>;
-  onDelete?: (eventId: string) => void;
+  onDelete?: (eventId: string) => Promise<void>;
 }) {
   const [isEditing, setIsEditing] = useState(false);
   const [editContent, setEditContent] = useState(event.content || "");
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [isDeletePopoverOpen, setIsDeletePopoverOpen] = useState(false);
 
   const { actor } = event;
   const actorName = actor.fullname || actor.login || "Someone";
@@ -207,13 +213,25 @@ function CommentEvent({
     }
   };
 
+  const handleDelete = async () => {
+    if (onDelete) {
+      setIsDeleting(true);
+      try {
+        await onDelete(event.id);
+        setIsDeletePopoverOpen(false);
+      } finally {
+        setIsDeleting(false);
+      }
+    }
+  };
+
   if (event.is_deleted) {
     return (
-      <Flex gap={2} alignItems="flex-start" py={2}>
-        <Box pt="2px">
+      <Flex gap={2} alignItems="center" py={2}>
+        <Box pt="2px" display="flex" alignItems="center">
           <EventIcon event={event} />
         </Box>
-        <Box flex={1}>
+        <Box display="flex" flex={1} alignItems="center">
           <Text fontSize="sm" color="gray.400" fontStyle="italic">
             Comment deleted
           </Text>
@@ -289,40 +307,97 @@ function CommentEvent({
         ) : (
           // View mode
           <Box
+            className="group"
             bg="gray.50"
             borderRadius="md"
             p={2}
             borderWidth="1px"
             borderColor="gray.200"
             position="relative"
-            className="group"
-            role="group"
           >
             <Text fontSize="sm" whiteSpace="pre-wrap">
               {event.content}
             </Text>
 
-            {/* Edit button - only visible to author on hover */}
-            <Activity mode={isAuthor && onEdit ? "visible" : "hidden"}>
-              <Box
+            {/* Edit/Delete buttons - only visible to author on hover */}
+            <Activity
+              mode={isAuthor && (onEdit || onDelete) ? "visible" : "hidden"}
+            >
+              <HStack
                 position="absolute"
                 top={1}
                 right={1}
+                gap={0}
                 opacity={0}
                 _groupHover={{ opacity: 1 }}
                 transition="opacity 0.2s"
               >
-                <Tooltip content="Edit comment">
-                  <IconButton
-                    aria-label="Edit comment"
-                    size="xs"
-                    variant="ghost"
-                    onClick={handleStartEdit}
+                {onEdit && (
+                  <Tooltip content="Edit comment">
+                    <IconButton
+                      aria-label="Edit comment"
+                      size="xs"
+                      variant="ghost"
+                      onClick={handleStartEdit}
+                    >
+                      <PiPencilSimple />
+                    </IconButton>
+                  </Tooltip>
+                )}
+                {onDelete && (
+                  <Popover.Root
+                    open={isDeletePopoverOpen}
+                    onOpenChange={(e) => setIsDeletePopoverOpen(e.open)}
                   >
-                    <PiPencilSimple />
-                  </IconButton>
-                </Tooltip>
-              </Box>
+                    <Popover.Trigger asChild>
+                      <span>
+                        <Tooltip content="Delete comment">
+                          <IconButton
+                            aria-label="Delete comment"
+                            size="xs"
+                            variant="ghost"
+                            colorPalette="red"
+                          >
+                            <PiTrashSimple />
+                          </IconButton>
+                        </Tooltip>
+                      </span>
+                    </Popover.Trigger>
+                    <Portal>
+                      <Popover.Positioner>
+                        <Popover.Content width="auto">
+                          <Popover.Arrow>
+                            <Popover.ArrowTip />
+                          </Popover.Arrow>
+                          <Popover.Body p={3}>
+                            <Text fontSize="sm" mb={3}>
+                              Delete this comment?
+                            </Text>
+                            <HStack gap={2} justify="flex-end">
+                              <Button
+                                size="xs"
+                                variant="ghost"
+                                onClick={() => setIsDeletePopoverOpen(false)}
+                                disabled={isDeleting}
+                              >
+                                Cancel
+                              </Button>
+                              <Button
+                                size="xs"
+                                colorPalette="red"
+                                onClick={handleDelete}
+                                loading={isDeleting}
+                              >
+                                Delete
+                              </Button>
+                            </HStack>
+                          </Popover.Body>
+                        </Popover.Content>
+                      </Popover.Positioner>
+                    </Portal>
+                  </Popover.Root>
+                )}
+              </HStack>
             </Activity>
           </Box>
         )}

@@ -29,10 +29,7 @@ class CheckEventsCloud(CloudBase):
 
     def _build_events_url(self, org_id: str, project_id: str, session_id: str, check_id: str) -> str:
         """Build the base URL for check events endpoints."""
-        return (
-            f"{self.base_url_v2}/organizations/{org_id}/projects/{project_id}"
-            f"/sessions/{session_id}/checks/{check_id}/events"
-        )
+        return f"{self.base_url_v2}/organizations/{org_id}/projects/{project_id}/sessions/{session_id}/checks/{check_id}/events"
 
     def list_events(self, org_id: str, project_id: str, session_id: str, check_id: str) -> List[Dict]:
         """
@@ -56,7 +53,8 @@ class CheckEventsCloud(CloudBase):
             ...     print(f"{event['event_type']}: {event['content']}")
         """
         api_url = self._build_events_url(org_id, project_id, session_id, check_id)
-        response = self._request("GET", api_url)
+        query_params = {"include_deleted": True}
+        response = self._request("GET", api_url, params=query_params)
 
         self._raise_for_status(
             response,

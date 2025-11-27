@@ -35,6 +35,7 @@ export function CheckTimeline({ checkId }: CheckTimelineProps) {
     createComment,
     isCreatingComment,
     updateComment,
+    deleteComment,
   } = useCheckEvents(checkId);
 
   // Get current user for determining edit/delete permissions
@@ -50,6 +51,10 @@ export function CheckTimeline({ checkId }: CheckTimelineProps) {
 
   const handleEditComment = async (eventId: string, content: string) => {
     await updateComment({ eventId, content });
+  };
+
+  const handleDeleteComment = async (eventId: string) => {
+    await deleteComment(eventId);
   };
 
   if (isLoading) {
@@ -99,6 +104,7 @@ export function CheckTimeline({ checkId }: CheckTimelineProps) {
                   event={event}
                   currentUserId={currentUser?.id}
                   onEdit={handleEditComment}
+                  onDelete={handleDeleteComment}
                 />
                 {index < events.length - 1 && (
                   <Separator borderColor="gray.100" />
