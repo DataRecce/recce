@@ -4,15 +4,20 @@ import { useIdleTimeout } from "./IdleTimeoutContext";
 import { useRecceInstanceInfo } from "./useRecceInstanceInfo";
 
 /**
- * Check if running in development mode
+ * Check if debug logging is enabled via window.RECCE_DEBUG_IDLE
+ * Enable in browser console: window.RECCE_DEBUG_IDLE = true
+ * Disable: delete window.RECCE_DEBUG_IDLE
  */
-const isDev = !process.env.NODE_ENV.startsWith("prod");
+function isDebugEnabled(): boolean {
+  // biome-ignore lint/suspicious/noExplicitAny: window flag for debug logging
+  return typeof window !== "undefined" && !!(window as any).RECCE_DEBUG_IDLE;
+}
 
 /**
- * Log function that only outputs in development mode
+ * Log function that only outputs when debug is enabled
  */
-function devLog(message: string, data?: Record<string, unknown>) {
-  if (isDev) {
+function debugLog(message: string, data?: Record<string, unknown>) {
+  if (isDebugEnabled()) {
     if (data) {
       console.log(message, data);
     } else {
@@ -55,7 +60,7 @@ export function useIdleDetection() {
     idleTimeout !== undefined && idleTimeout > 0 && !isDisconnected;
 
   // Debug: Log instance info state
-  devLog("[Idle Detection] Hook called", {
+  debugLog("[Idle Detection] Hook called", {
     instanceInfo,
     isLoading,
     isError,
@@ -74,7 +79,7 @@ export function useIdleDetection() {
     const sent = await sendKeepAlive();
 
     if (sent) {
-      devLog("[Idle Detection] Keep-alive sent successfully", {
+      debugLog("[Idle Detection] Keep-alive sent successfully", {
         timestamp: new Date().toISOString(),
       });
     }
@@ -92,7 +97,7 @@ export function useIdleDetection() {
         // Throttle activity logs to avoid console spam
         const timeSinceLastLog = now - lastActivityLogRef.current;
         if (timeSinceLastLog >= IDLE_DETECTION_CONFIG.ACTIVITY_LOG_THROTTLE) {
-          devLog("[Idle Detection] Activity detected", {
+          debugLog("[Idle Detection] Activity detected", {
             event: event.type,
             tabActive: !document.hidden,
           });
@@ -115,7 +120,7 @@ export function useIdleDetection() {
     if (!isEnabled) return;
 
     if (!document.hidden) {
-      devLog("[Idle Detection] Tab became active", {
+      debugLog("[Idle Detection] Tab became active", {
         timestamp: new Date().toISOString(),
       });
 
@@ -126,7 +131,7 @@ export function useIdleDetection() {
 
   useEffect(() => {
     if (!isEnabled) {
-      devLog("[Idle Detection] Disabled", {
+      debugLog("[Idle Detection] Disabled", {
         idleTimeout: idleTimeout,
         reason:
           idleTimeout === undefined
@@ -136,7 +141,7 @@ export function useIdleDetection() {
       return;
     }
 
-    devLog("[Idle Detection] Initialized", {
+    debugLog("[Idle Detection] Initialized", {
       enabled: true,
       idleTimeout: `${idleTimeout}s`,
       throttleInterval: "3s (axios layer)",
@@ -153,7 +158,7 @@ export function useIdleDetection() {
 
     // Cleanup function
     return () => {
-      devLog("[Idle Detection] Cleanup - removing event listeners");
+      debugLog("[Idle Detection] Cleanup - removing event listeners");
       IDLE_DETECTION_CONFIG.ACTIVITY_EVENTS.forEach((eventType) => {
         window.removeEventListener(eventType, handleActivity);
       });
