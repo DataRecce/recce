@@ -411,9 +411,10 @@ export function LineageGraphContextProvider({ children }: LineageGraphProps) {
                   // Only show idle time if disconnected due to idle timeout
                   // (idle timeout enabled AND remaining time was near zero)
                   isEnabled &&
+                  idleTimeout !== null &&
                   remainingSeconds !== null &&
                   remainingSeconds <= 5
-                    ? idleTimeout
+                    ? idleTimeout - Math.max(0, remainingSeconds)
                     : undefined
                 }
               />
