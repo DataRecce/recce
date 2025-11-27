@@ -40,13 +40,13 @@ import { LineagePage } from "@/components/lineage/LineagePage";
 import { RunList } from "@/components/run/RunList";
 import { RunResultPane } from "@/components/run/RunResultPane";
 import { HSplit, VSplit } from "@/components/split/Split";
+import { IdleTimeoutBadge } from "@/components/timeout/IdleTimeoutBadge";
 import { toaster } from "@/components/ui/toaster";
 import { cacheKeys } from "@/lib/api/cacheKeys";
 import { Check, listChecks } from "@/lib/api/checks";
 import { trackInit, trackNavigation } from "@/lib/api/track";
 import { useRecceActionContext } from "@/lib/hooks/RecceActionContext";
 import { useRecceInstanceContext } from "@/lib/hooks/RecceInstanceContext";
-import { useCountdownToast } from "@/lib/hooks/useCountdownToast";
 import { useRecceServerFlag } from "@/lib/hooks/useRecceServerFlag";
 
 const RouteAlwaysMount = ({
@@ -166,8 +166,7 @@ function RecceVersionBadge() {
 function TopBar() {
   const { reviewMode, isDemoSite, envInfo, cloudMode } =
     useLineageGraphContext();
-  const { featureToggles, lifetimeExpiredAt, authed } =
-    useRecceInstanceContext();
+  const { featureToggles, authed } = useRecceInstanceContext();
   const { url: prURL, id: prID } = envInfo?.pullRequest ?? {};
   const demoPrId = prURL ? prURL.split("/").pop() : null;
   const brandLink =
@@ -175,8 +174,6 @@ function TopBar() {
       ? "https://cloud.datarecce.io/"
       : "https://reccehq.com/";
   const [showModal, setShowModal] = useState(false);
-
-  useCountdownToast(lifetimeExpiredAt);
 
   return (
     <Flex
@@ -302,6 +299,7 @@ function TopBar() {
       )}
       {!isDemoSite && featureToggles.mode !== "read only" && (
         <>
+          <IdleTimeoutBadge />
           {authed || cloudMode ? (
             <Box mr={2}>
               <AvatarDropdown />

@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef } from "react";
 import { sendKeepAlive } from "@/lib/api/keepAlive";
+import { useIdleTimeout } from "./IdleTimeoutContext";
 import { useRecceInstanceInfo } from "./useRecceInstanceInfo";
 
 /**
@@ -28,48 +29,30 @@ const IDLE_DETECTION_CONFIG = {
   ACTIVITY_EVENTS: ["focus", "mousemove", "keydown", "scroll"] as const,
   /** Throttle activity logs to avoid console spam (1 second) */
   ACTIVITY_LOG_THROTTLE: 1000,
-  /** Minimum debounce interval in milliseconds (30 seconds) */
-  MIN_DEBOUNCE_INTERVAL: 30 * 1000,
-  /** Maximum debounce interval in milliseconds (5 minutes) */
-  MAX_DEBOUNCE_INTERVAL: 5 * 60 * 1000,
 } as const;
-
-/**
- * Calculate dynamic debounce interval based on idle timeout
- * Formula: idle_timeout / 3, clamped between 30s and 5min
- */
-function calculateDebounceInterval(idleTimeoutSeconds: number): number {
-  const calculatedMs = (idleTimeoutSeconds * 1000) / 3;
-  return Math.max(
-    IDLE_DETECTION_CONFIG.MIN_DEBOUNCE_INTERVAL,
-    Math.min(IDLE_DETECTION_CONFIG.MAX_DEBOUNCE_INTERVAL, calculatedMs),
-  );
-}
 
 /**
  * Hook to detect user activity and send keep-alive signals to prevent server idle timeout.
  *
  * This hook:
  * - Listens for user activities (focus, mouse, keyboard, scroll)
- * - Sends keep-alive requests at most once every 5 minutes
+ * - Sends keep-alive requests (throttled at axios layer to minimum 3 seconds)
  * - Pauses when the tab is inactive (using Page Visibility API)
- * - Immediately sends a keep-alive when tab becomes active if > 5 minutes elapsed
+ * - Immediately sends a keep-alive when tab becomes active
  * - Only activates when idle_timeout is configured on the server
+ *
+ * Note: The countdown in IdleTimeoutContext is based on successful keep-alive
+ * API calls, not on user activity. This ensures accurate server state tracking.
  */
 export function useIdleDetection() {
   const { data: instanceInfo, isLoading, isError } = useRecceInstanceInfo();
-  const lastActivityRef = useRef<number>(Date.now());
+  const { isDisconnected } = useIdleTimeout();
   const lastActivityLogRef = useRef<number>(0);
-  const isSendingRef = useRef<boolean>(false); // Lock to prevent concurrent sends
 
-  // Only enable idle detection if idle_timeout is configured
+  // Only enable idle detection if idle_timeout is configured and not disconnected
   const idleTimeout = instanceInfo?.idle_timeout;
-  const isEnabled = idleTimeout !== undefined && idleTimeout > 0;
-
-  // Calculate dynamic debounce interval based on idle_timeout
-  const debounceInterval = isEnabled
-    ? calculateDebounceInterval(idleTimeout)
-    : IDLE_DETECTION_CONFIG.MAX_DEBOUNCE_INTERVAL;
+  const isEnabled =
+    idleTimeout !== undefined && idleTimeout > 0 && !isDisconnected;
 
   // Debug: Log instance info state
   devLog("[Idle Detection] Hook called", {
@@ -78,120 +61,68 @@ export function useIdleDetection() {
     isError,
     hasIdleTimeout: instanceInfo?.idle_timeout !== undefined,
     idleTimeout: idleTimeout ? `${idleTimeout}s` : undefined,
-    debounceInterval: `${debounceInterval / 1000}s`,
   });
 
   /**
    * Send keep-alive signal to server
-   * This is called directly when we determine a ping should be sent
-   * Uses a lock to prevent concurrent API calls
+   * Throttling is handled at the axios layer (minimum 3 seconds between API calls)
+   * The successful send will notify IdleTimeoutContext to reset countdown
    */
   const sendKeepAliveNow = useCallback(async () => {
     if (document.hidden) return;
 
-    // Check if already sending
-    if (isSendingRef.current) {
-      devLog("[Idle Detection] Skipping - already sending keep-alive");
-      return;
-    }
+    const sent = await sendKeepAlive();
 
-    // Acquire lock
-    isSendingRef.current = true;
-    const now = Date.now();
-    const timeSinceLast = (now - lastActivityRef.current) / 1000;
-
-    // Update lastActivityRef BEFORE sending to prevent race conditions
-    lastActivityRef.current = now;
-
-    devLog("[Idle Detection] Sending keep-alive", {
-      timestamp: new Date().toISOString(),
-      timeSinceLastPing: `${timeSinceLast.toFixed(1)}s`,
-      nextPingIn: `${debounceInterval / 1000}s`,
-      tabActive: !document.hidden,
-    });
-
-    try {
-      await sendKeepAlive();
-
+    if (sent) {
       devLog("[Idle Detection] Keep-alive sent successfully", {
         timestamp: new Date().toISOString(),
-        nextPingAt: new Date(now + debounceInterval).toISOString(),
       });
-    } catch (error) {
-      // Keep console.error in production for debugging critical issues
-      console.error("[Idle Detection] Failed to send keep-alive:", error);
-    } finally {
-      // Release lock
-      isSendingRef.current = false;
     }
-  }, [debounceInterval]);
+  }, []);
 
   /**
    * Handle any user activity event
+   * Attempts to send keep-alive (axios layer handles throttling)
    */
   const handleActivity = useCallback(
     (event: Event) => {
       if (isEnabled && !document.hidden) {
         const now = Date.now();
-        const elapsed = now - lastActivityRef.current;
-        const willSend = elapsed >= debounceInterval;
 
         // Throttle activity logs to avoid console spam
         const timeSinceLastLog = now - lastActivityLogRef.current;
         if (timeSinceLastLog >= IDLE_DETECTION_CONFIG.ACTIVITY_LOG_THROTTLE) {
-          const remaining = Math.max(0, debounceInterval - elapsed);
-
           devLog("[Idle Detection] Activity detected", {
             event: event.type,
             tabActive: !document.hidden,
-            timeSinceLastPing: `${(elapsed / 1000).toFixed(1)}s`,
-            willSendAPI: willSend,
-            remainingDebounce: willSend
-              ? "0s (sending now)"
-              : `${(remaining / 1000).toFixed(1)}s`,
-            nextPingIn: willSend
-              ? `${debounceInterval / 1000}s`
-              : `${(remaining / 1000).toFixed(1)}s`,
           });
 
           lastActivityLogRef.current = now;
         }
 
-        // Actually send keep-alive if debounce interval has passed
-        if (willSend) {
-          sendKeepAliveNow();
-        }
+        // Send keep-alive API call (axios layer handles throttling)
+        void sendKeepAliveNow();
       }
     },
-    [isEnabled, debounceInterval, sendKeepAliveNow],
+    [isEnabled, sendKeepAliveNow],
   );
 
   /**
    * Handle tab visibility changes
-   * When tab becomes active, immediately send keep-alive if debounce interval elapsed
+   * When tab becomes active, attempt to send keep-alive
    */
   const handleVisibilityChange = useCallback(() => {
     if (!isEnabled) return;
 
-    const elapsed = Date.now() - lastActivityRef.current;
-    const willTrigger = !document.hidden && elapsed > debounceInterval;
+    if (!document.hidden) {
+      devLog("[Idle Detection] Tab became active", {
+        timestamp: new Date().toISOString(),
+      });
 
-    devLog("[Idle Detection] Tab visibility changed", {
-      tabActive: !document.hidden,
-      timeSinceLastPing: `${(elapsed / 1000).toFixed(1)}s`,
-      willTriggerImmediate: willTrigger,
-      reason: willTrigger
-        ? "Elapsed > debounce interval"
-        : document.hidden
-          ? "Tab inactive"
-          : "Within debounce window",
-    });
-
-    if (willTrigger) {
-      // Send keep-alive immediately when tab becomes active after debounce interval
-      sendKeepAliveNow();
+      // Send keep-alive (axios layer handles throttling)
+      void sendKeepAliveNow();
     }
-  }, [isEnabled, debounceInterval, sendKeepAliveNow]);
+  }, [isEnabled, sendKeepAliveNow]);
 
   useEffect(() => {
     if (!isEnabled) {
@@ -208,8 +139,7 @@ export function useIdleDetection() {
     devLog("[Idle Detection] Initialized", {
       enabled: true,
       idleTimeout: `${idleTimeout}s`,
-      debounceInterval: `${debounceInterval / 1000}s (${(debounceInterval / 1000 / 60).toFixed(1)} minutes)`,
-      calculationFormula: `idle_timeout / 3 = ${idleTimeout} / 3 = ${(idleTimeout / 3).toFixed(1)}s`,
+      throttleInterval: "3s (axios layer)",
       monitoredEvents: IDLE_DETECTION_CONFIG.ACTIVITY_EVENTS.join(", "),
     });
 
@@ -229,11 +159,5 @@ export function useIdleDetection() {
       });
       document.removeEventListener("visibilitychange", handleVisibilityChange);
     };
-  }, [
-    isEnabled,
-    handleActivity,
-    handleVisibilityChange,
-    idleTimeout,
-    debounceInterval,
-  ]);
+  }, [isEnabled, handleActivity, handleVisibilityChange, idleTimeout]);
 }

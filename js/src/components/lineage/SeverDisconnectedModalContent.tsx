@@ -4,21 +4,63 @@ import React from "react";
 import { RECCE_SUPPORT_CALENDAR_URL } from "@/constants/urls";
 import { RecceFeatureMode } from "@/lib/hooks/RecceInstanceContext";
 
+interface ServerDisconnectedModalContentProps {
+  connect: () => void;
+  /** If provided, indicates the server was idle for this many seconds before timeout */
+  idleSeconds?: number | null;
+}
+
+/**
+ * Format seconds into human-readable format
+ * - Less than 1 minute: "30 seconds"
+ * - 1+ minutes: "5 minutes", "1 hour 30 minutes"
+ */
+function formatIdleTime(seconds: number): string {
+  const totalMinutes = Math.floor(seconds / 60);
+  const hours = Math.floor(totalMinutes / 60);
+  const remainingMinutes = totalMinutes % 60;
+
+  // Less than 1 minute - show seconds
+  if (totalMinutes < 1) {
+    const secs = Math.floor(seconds);
+    return `${secs} second${secs !== 1 ? "s" : ""}`;
+  }
+
+  // 1+ hours
+  if (hours > 0) {
+    if (remainingMinutes > 0) {
+      return `${hours} hour${hours > 1 ? "s" : ""} ${remainingMinutes} minute${remainingMinutes > 1 ? "s" : ""}`;
+    }
+    return `${hours} hour${hours > 1 ? "s" : ""}`;
+  }
+
+  // Minutes only
+  return `${totalMinutes} minute${totalMinutes !== 1 ? "s" : ""}`;
+}
+
 export function ServerDisconnectedModalContent({
   connect,
-}: {
-  connect: () => void;
-}) {
+  idleSeconds,
+}: ServerDisconnectedModalContentProps) {
+  const isIdleTimeout = idleSeconds !== undefined && idleSeconds !== null;
+
   return (
     <Dialog.Content>
       <Dialog.Header>
         <Dialog.Title>Server Disconnected</Dialog.Title>
       </Dialog.Header>
       <Dialog.Body>
-        <Text>
-          The server connection has been lost. Please restart the Recce server
-          and try again.
-        </Text>
+        {isIdleTimeout ? (
+          <Text>
+            The server has been idle for {formatIdleTime(idleSeconds)} and was
+            automatically stopped. Please restart the Recce server to continue.
+          </Text>
+        ) : (
+          <Text>
+            The server connection has been lost. Please restart the Recce server
+            and try again.
+          </Text>
+        )}
       </Dialog.Body>
       <Dialog.Footer>
         <Button
