@@ -9,19 +9,12 @@ import { reactQueryClient } from "@/lib/api/axiosClient";
 import { IdleTimeoutProvider } from "@/lib/hooks/IdleTimeoutContext";
 import RecceContextProvider from "@/lib/hooks/RecceContextProvider";
 import { useHashLocation } from "@/lib/hooks/useHashLocation";
-import { useIdleDetection } from "@/lib/hooks/useIdleDetection";
-
-function IdleDetector() {
-  useIdleDetection();
-  return null;
-}
 
 export default function Providers({ children }: { children: ReactNode }) {
   return (
     <Provider forcedTheme="light">
       <QueryClientProvider client={reactQueryClient}>
         <IdleTimeoutProvider>
-          <IdleDetector />
           <Router hook={useHashLocation}>
             <RecceContextProvider>
               {children}

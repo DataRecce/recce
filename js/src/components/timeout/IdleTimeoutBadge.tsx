@@ -3,25 +3,12 @@
 import { Badge, Icon } from "@chakra-ui/react";
 import { IoWarning } from "react-icons/io5";
 import { useIdleTimeout } from "@/lib/hooks/IdleTimeoutContext";
+import { formatDuration } from "@/lib/utils/formatTime";
 
 /**
  * Warning threshold in seconds - badge appears when remaining time is below this
  */
 const WARNING_THRESHOLD_SECONDS = 60;
-
-/**
- * Format seconds into MM:SS or HH:MM:SS format
- */
-function formatTime(seconds: number): string {
-  const hours = Math.floor(seconds / 3600);
-  const minutes = Math.floor((seconds % 3600) / 60);
-  const secs = Math.floor(seconds % 60);
-
-  if (hours > 0) {
-    return `${hours}:${minutes.toString().padStart(2, "0")}:${secs.toString().padStart(2, "0")}`;
-  }
-  return `${minutes}:${secs.toString().padStart(2, "0")}`;
-}
 
 /**
  * Badge component that displays idle timeout warning countdown
@@ -52,7 +39,7 @@ export function IdleTimeoutBadge() {
       mr={2}
     >
       <Icon as={IoWarning} />
-      Idle timeout: {formatTime(remainingSeconds)}
+      Idle timeout: {formatDuration(remainingSeconds, "compact")}
     </Badge>
   );
 }

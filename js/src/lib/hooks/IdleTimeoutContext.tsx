@@ -13,6 +13,7 @@ import {
   getLastKeepAliveTime,
   setKeepAliveCallback,
 } from "@/lib/api/keepAlive";
+import { useIdleDetection } from "./useIdleDetection";
 import { useRecceInstanceInfo } from "./useRecceInstanceInfo";
 
 /**
@@ -58,6 +59,12 @@ export function IdleTimeoutProvider({ children }: { children: ReactNode }) {
   const isEnabled = idleTimeout !== null && idleTimeout > 0;
 
   // Register callback to receive keep-alive success notifications
+  // Use ref to track enabled state to avoid race condition in callback
+  const isEnabledRef = useRef(isEnabled);
+  useEffect(() => {
+    isEnabledRef.current = isEnabled;
+  }, [isEnabled]);
+
   useEffect(() => {
     if (!isEnabled) {
       setKeepAliveCallback(null);
@@ -65,7 +72,10 @@ export function IdleTimeoutProvider({ children }: { children: ReactNode }) {
     }
 
     setKeepAliveCallback((timestamp: number) => {
-      lastServerSyncRef.current = timestamp;
+      // Check current enabled state to avoid updating after disabled
+      if (isEnabledRef.current) {
+        lastServerSyncRef.current = timestamp;
+      }
     });
 
     // Initialize with current keep-alive time if available
@@ -131,9 +141,19 @@ export function IdleTimeoutProvider({ children }: { children: ReactNode }) {
         isDisconnected,
       }}
     >
+      <IdleDetector />
       {children}
     </IdleTimeoutContext.Provider>
   );
+}
+
+/**
+ * Internal component that activates idle detection
+ * Placed inside provider so it has access to context
+ */
+function IdleDetector() {
+  useIdleDetection();
+  return null;
 }
 
 /**
@@ -146,4 +166,12 @@ export function useIdleTimeout() {
     throw new Error("useIdleTimeout must be used within IdleTimeoutProvider");
   }
   return context;
+}
+
+/**
+ * Hook to access idle timeout context, returns null if outside provider
+ * Used internally by useIdleDetection to avoid circular dependency
+ */
+export function useIdleTimeoutSafe(): IdleTimeoutContextType | null {
+  return useContext(IdleTimeoutContext) ?? null;
 }

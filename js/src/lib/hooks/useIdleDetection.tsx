@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef } from "react";
 import { sendKeepAlive } from "@/lib/api/keepAlive";
-import { useIdleTimeout } from "./IdleTimeoutContext";
+import { useIdleTimeoutSafe } from "./IdleTimeoutContext";
 import { useRecceInstanceInfo } from "./useRecceInstanceInfo";
 
 /**
@@ -50,23 +50,15 @@ const IDLE_DETECTION_CONFIG = {
  * API calls, not on user activity. This ensures accurate server state tracking.
  */
 export function useIdleDetection() {
-  const { data: instanceInfo, isLoading, isError } = useRecceInstanceInfo();
-  const { isDisconnected } = useIdleTimeout();
+  const { data: instanceInfo } = useRecceInstanceInfo();
+  const idleTimeoutContext = useIdleTimeoutSafe();
+  const isDisconnected = idleTimeoutContext?.isDisconnected ?? false;
   const lastActivityLogRef = useRef<number>(0);
 
   // Only enable idle detection if idle_timeout is configured and not disconnected
   const idleTimeout = instanceInfo?.idle_timeout;
   const isEnabled =
     idleTimeout !== undefined && idleTimeout > 0 && !isDisconnected;
-
-  // Debug: Log instance info state
-  debugLog("[Idle Detection] Hook called", {
-    instanceInfo,
-    isLoading,
-    isError,
-    hasIdleTimeout: instanceInfo?.idle_timeout !== undefined,
-    idleTimeout: idleTimeout ? `${idleTimeout}s` : undefined,
-  });
 
   /**
    * Send keep-alive signal to server

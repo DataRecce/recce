@@ -1,6 +1,14 @@
 import { axiosClient } from "./axiosClient";
 
 /**
+ * Check if debug logging is enabled via window.RECCE_DEBUG_IDLE
+ */
+function isDebugEnabled(): boolean {
+  // biome-ignore lint/suspicious/noExplicitAny: window flag for debug logging
+  return typeof window !== "undefined" && !!(window as any).RECCE_DEBUG_IDLE;
+}
+
+/**
  * Minimum interval between keep-alive API calls (3 seconds)
  * This prevents excessive API calls while still maintaining responsive idle detection
  */
@@ -63,12 +71,15 @@ export async function sendKeepAlive(): Promise<boolean> {
     return true;
   } catch (error) {
     // Silent fail - don't disrupt user experience if keep-alive fails
-    const errorMessage = error instanceof Error ? error.message : String(error);
-    console.debug("[Idle Detection] Failed to send keep-alive", {
-      error: errorMessage,
-      timestamp: new Date().toISOString(),
-      willRetryOnNextActivity: true,
-    });
+    if (isDebugEnabled()) {
+      const errorMessage =
+        error instanceof Error ? error.message : String(error);
+      console.log("[Keep-Alive] Failed to send", {
+        error: errorMessage,
+        timestamp: new Date().toISOString(),
+        willRetryOnNextActivity: true,
+      });
+    }
     return false;
   } finally {
     isSending = false;
@@ -84,9 +95,10 @@ export function getLastKeepAliveTime(): number {
 }
 
 /**
- * Reset throttle state (for testing purposes)
+ * Reset all module state (for testing purposes)
  */
-export function resetKeepAliveThrottle(): void {
+export function resetKeepAliveState(): void {
   lastKeepAliveTime = 0;
   isSending = false;
+  onKeepAliveSuccess = null;
 }

@@ -3,36 +3,12 @@ import NextLink from "next/link";
 import React from "react";
 import { RECCE_SUPPORT_CALENDAR_URL } from "@/constants/urls";
 import { RecceFeatureMode } from "@/lib/hooks/RecceInstanceContext";
+import { formatDuration } from "@/lib/utils/formatTime";
 
 interface ServerDisconnectedModalContentProps {
   connect: () => void;
   /** If provided, indicates the server was idle for this many seconds before timeout */
   idleSeconds?: number | null;
-}
-
-/**
- * Format seconds into human-readable format
- * - Less than 1 minute: "30 seconds"
- * - Exact minutes (no remaining seconds): "5 mins"
- * - Minutes with seconds: "2 mins 30 seconds"
- */
-function formatIdleTime(seconds: number): string {
-  const totalSeconds = Math.floor(seconds);
-  const mins = Math.floor(totalSeconds / 60);
-  const remainingSecs = totalSeconds % 60;
-
-  // Less than 1 minute - show seconds only
-  if (mins < 1) {
-    return `${totalSeconds} second${totalSeconds !== 1 ? "s" : ""}`;
-  }
-
-  // Exact minutes (no remaining seconds)
-  if (remainingSecs === 0) {
-    return `${mins} min${mins !== 1 ? "s" : ""}`;
-  }
-
-  // Minutes with seconds
-  return `${mins} min${mins !== 1 ? "s" : ""} ${remainingSecs} second${remainingSecs !== 1 ? "s" : ""}`;
 }
 
 export function ServerDisconnectedModalContent({
@@ -49,7 +25,7 @@ export function ServerDisconnectedModalContent({
       <Dialog.Body>
         {isIdleTimeout ? (
           <Text>
-            The server has been idle for {formatIdleTime(idleSeconds)} and was
+            The server has been idle for {formatDuration(idleSeconds)} and was
             automatically stopped. Please restart the Recce server to continue.
           </Text>
         ) : (
