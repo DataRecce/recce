@@ -36,6 +36,7 @@ import {
   PiPlusCircle,
   PiTrashSimple,
 } from "react-icons/pi";
+import { MarkdownContent } from "@/components/ui/markdown/MarkdownContent";
 import { Tooltip } from "@/components/ui/tooltip";
 import { CheckEvent, getEventIconType } from "@/lib/api/checkEvents";
 import { fetchGitHubAvatar } from "@/lib/api/user";
@@ -315,9 +316,7 @@ function CommentEvent({
             borderColor="gray.200"
             position="relative"
           >
-            <Text fontSize="sm" whiteSpace="pre-wrap">
-              {event.content}
-            </Text>
+            <MarkdownContent content={event.content || ""} fontSize="sm" />
 
             {/* Edit/Delete buttons - only visible to author on hover */}
             <Activity

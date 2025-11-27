@@ -99,7 +99,7 @@ function MarkdownLink({
         color="blue.500"
         textDecoration="underline"
         _hover={{ color: "blue.600" }}
-        target={isExternal ? "_blank" : undefined}
+        target="_blank"
         rel={isExternal ? "noopener noreferrer" : undefined}
       >
         {children}
