@@ -510,10 +510,11 @@ No changed module was detected.
         if check_content:
             content += check_content
 
-        if ctx.state_loader.cloud_mode:
+        if ctx.state_loader.cloud_mode and ctx.state_loader.pr_info is not None:
             pr_info = ctx.state_loader.pr_info
-            # the classic route will be deprecated soon
-            content += f"\nSee PR page: {RECCE_CLOUD_HOST}/classic/{pr_info.repository}/pulls/{pr_info.id}\n"
+            if pr_info.repository is not None and pr_info.id is not None:
+                # the classic route will be deprecated soon
+                content += f"\nSee PR page: {RECCE_CLOUD_HOST}/classic/{pr_info.repository}/pulls/{pr_info.id}\n"
 
         return content
 
