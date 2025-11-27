@@ -13,29 +13,26 @@ interface ServerDisconnectedModalContentProps {
 /**
  * Format seconds into human-readable format
  * - Less than 1 minute: "30 seconds"
- * - 1+ minutes: "5 minutes", "1 hour 30 minutes"
+ * - Exact minutes (no remaining seconds): "5 mins"
+ * - Minutes with seconds: "2 mins 30 seconds"
  */
 function formatIdleTime(seconds: number): string {
-  const totalMinutes = Math.floor(seconds / 60);
-  const hours = Math.floor(totalMinutes / 60);
-  const remainingMinutes = totalMinutes % 60;
+  const totalSeconds = Math.floor(seconds);
+  const mins = Math.floor(totalSeconds / 60);
+  const remainingSecs = totalSeconds % 60;
 
-  // Less than 1 minute - show seconds
-  if (totalMinutes < 1) {
-    const secs = Math.floor(seconds);
-    return `${secs} second${secs !== 1 ? "s" : ""}`;
+  // Less than 1 minute - show seconds only
+  if (mins < 1) {
+    return `${totalSeconds} second${totalSeconds !== 1 ? "s" : ""}`;
   }
 
-  // 1+ hours
-  if (hours > 0) {
-    if (remainingMinutes > 0) {
-      return `${hours} hour${hours > 1 ? "s" : ""} ${remainingMinutes} minute${remainingMinutes > 1 ? "s" : ""}`;
-    }
-    return `${hours} hour${hours > 1 ? "s" : ""}`;
+  // Exact minutes (no remaining seconds)
+  if (remainingSecs === 0) {
+    return `${mins} min${mins !== 1 ? "s" : ""}`;
   }
 
-  // Minutes only
-  return `${totalMinutes} minute${totalMinutes !== 1 ? "s" : ""}`;
+  // Minutes with seconds
+  return `${mins} min${mins !== 1 ? "s" : ""} ${remainingSecs} second${remainingSecs !== 1 ? "s" : ""}`;
 }
 
 export function ServerDisconnectedModalContent({
