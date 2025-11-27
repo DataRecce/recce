@@ -8,7 +8,6 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { cacheKeys } from "@/lib/api/cacheKeys";
 import {
-  CheckEvent,
   createComment,
   deleteComment,
   listCheckEvents,
@@ -84,7 +83,8 @@ export function useCheckEvents(
     isCreatingComment: createCommentMutation.isPending,
     createCommentError: createCommentMutation.error,
 
-    updateComment: updateCommentMutation.mutate,
+    // Use mutateAsync for updateComment to allow awaiting in UI
+    updateComment: updateCommentMutation.mutateAsync,
     isUpdatingComment: updateCommentMutation.isPending,
     updateCommentError: updateCommentMutation.error,
 

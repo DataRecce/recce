@@ -10,25 +10,37 @@
  * - preset_applied: Shows preset application
  */
 
-import { Avatar, Box, Flex, HStack, Icon, Text } from "@chakra-ui/react";
+import {
+  Avatar,
+  Box,
+  Button,
+  Flex,
+  HStack,
+  Icon,
+  IconButton,
+  Text,
+  Textarea,
+} from "@chakra-ui/react";
 import { useQuery } from "@tanstack/react-query";
 import { formatDistanceToNow } from "date-fns";
-import { Activity } from "react";
+import { Activity, useState } from "react";
 import {
   PiBookmarkSimple,
   PiChatText,
   PiCheckCircle,
   PiCircle,
   PiNotePencil,
+  PiPencilSimple,
   PiPlusCircle,
 } from "react-icons/pi";
+import { Tooltip } from "@/components/ui/tooltip";
 import { CheckEvent, getEventIconType } from "@/lib/api/checkEvents";
 import { fetchGitHubAvatar } from "@/lib/api/user";
 
 interface TimelineEventProps {
   event: CheckEvent;
   currentUserId?: string;
-  onEdit?: (eventId: string, content: string) => void;
+  onEdit?: (eventId: string, content: string) => Promise<void>;
   onDelete?: (eventId: string) => void;
 }
 
@@ -139,12 +151,17 @@ function StateChangeEvent({ event }: { event: CheckEvent }) {
 function CommentEvent({
   event,
   currentUserId,
+  onEdit,
 }: {
   event: CheckEvent;
   currentUserId?: string;
-  onEdit?: (eventId: string, content: string) => void;
+  onEdit?: (eventId: string, content: string) => Promise<void>;
   onDelete?: (eventId: string) => void;
 }) {
+  const [isEditing, setIsEditing] = useState(false);
+  const [editContent, setEditContent] = useState(event.content || "");
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
   const { actor } = event;
   const actorName = actor.fullname || actor.login || "Someone";
   const relativeTime = formatDistanceToNow(new Date(event.created_at), {
@@ -152,6 +169,43 @@ function CommentEvent({
   });
   const isAuthor =
     currentUserId && String(actor.user_id) === String(currentUserId);
+
+  const handleStartEdit = () => {
+    setEditContent(event.content || "");
+    setIsEditing(true);
+  };
+
+  const handleCancelEdit = () => {
+    setEditContent(event.content || "");
+    setIsEditing(false);
+  };
+
+  const handleSaveEdit = async () => {
+    const trimmed = editContent.trim();
+    if (!trimmed || trimmed === event.content) {
+      handleCancelEdit();
+      return;
+    }
+
+    if (onEdit) {
+      setIsSubmitting(true);
+      try {
+        await onEdit(event.id, trimmed);
+        setIsEditing(false);
+      } finally {
+        setIsSubmitting(false);
+      }
+    }
+  };
+
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+    if (e.key === "Escape") {
+      handleCancelEdit();
+    } else if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) {
+      e.preventDefault();
+      handleSaveEdit();
+    }
+  };
 
   if (event.is_deleted) {
     return (
@@ -192,18 +246,86 @@ function CommentEvent({
             </Text>
           )}
         </HStack>
-        <Box
-          bg="gray.50"
-          borderRadius="md"
-          p={2}
-          borderWidth="1px"
-          borderColor="gray.200"
-        >
-          <Text fontSize="sm" whiteSpace="pre-wrap">
-            {event.content}
-          </Text>
-        </Box>
-        {/* Edit/Delete actions will be added in DRC-2212 and DRC-2213 */}
+
+        {isEditing ? (
+          // Edit mode
+          <Box>
+            <Textarea
+              value={editContent}
+              onChange={(e) => setEditContent(e.target.value)}
+              onKeyDown={handleKeyDown}
+              size="sm"
+              resize="vertical"
+              minH="80px"
+              bg="white"
+              borderColor="gray.300"
+              _focus={{
+                borderColor: "blue.400",
+                boxShadow: "0 0 0 1px #4299E1",
+              }}
+              disabled={isSubmitting}
+              autoFocus
+            />
+            <HStack gap={2} mt={2} justify="flex-end">
+              <Button
+                size="xs"
+                variant="ghost"
+                onClick={handleCancelEdit}
+                disabled={isSubmitting}
+              >
+                Cancel
+              </Button>
+              <Button
+                size="xs"
+                colorPalette="blue"
+                onClick={handleSaveEdit}
+                disabled={!editContent.trim() || isSubmitting}
+                loading={isSubmitting}
+              >
+                Save
+              </Button>
+            </HStack>
+          </Box>
+        ) : (
+          // View mode
+          <Box
+            bg="gray.50"
+            borderRadius="md"
+            p={2}
+            borderWidth="1px"
+            borderColor="gray.200"
+            position="relative"
+            className="group"
+            role="group"
+          >
+            <Text fontSize="sm" whiteSpace="pre-wrap">
+              {event.content}
+            </Text>
+
+            {/* Edit button - only visible to author on hover */}
+            <Activity mode={isAuthor && onEdit ? "visible" : "hidden"}>
+              <Box
+                position="absolute"
+                top={1}
+                right={1}
+                opacity={0}
+                _groupHover={{ opacity: 1 }}
+                transition="opacity 0.2s"
+              >
+                <Tooltip content="Edit comment">
+                  <IconButton
+                    aria-label="Edit comment"
+                    size="xs"
+                    variant="ghost"
+                    onClick={handleStartEdit}
+                  >
+                    <PiPencilSimple />
+                  </IconButton>
+                </Tooltip>
+              </Box>
+            </Activity>
+          </Box>
+        )}
       </Box>
     </Flex>
   );

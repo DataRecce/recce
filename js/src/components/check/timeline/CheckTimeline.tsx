@@ -28,8 +28,14 @@ interface CheckTimelineProps {
 }
 
 export function CheckTimeline({ checkId }: CheckTimelineProps) {
-  const { events, isLoading, error, createComment, isCreatingComment } =
-    useCheckEvents(checkId);
+  const {
+    events,
+    isLoading,
+    error,
+    createComment,
+    isCreatingComment,
+    updateComment,
+  } = useCheckEvents(checkId);
 
   // Get current user for determining edit/delete permissions
   const { data: currentUser } = useQuery({
@@ -40,6 +46,10 @@ export function CheckTimeline({ checkId }: CheckTimelineProps) {
 
   const handleCreateComment = (content: string) => {
     createComment(content);
+  };
+
+  const handleEditComment = async (eventId: string, content: string) => {
+    await updateComment({ eventId, content });
   };
 
   if (isLoading) {
@@ -85,7 +95,11 @@ export function CheckTimeline({ checkId }: CheckTimelineProps) {
           <VStack align="stretch" gap={0}>
             {events.map((event, index) => (
               <Box key={event.id}>
-                <TimelineEvent event={event} currentUserId={currentUser?.id} />
+                <TimelineEvent
+                  event={event}
+                  currentUserId={currentUser?.id}
+                  onEdit={handleEditComment}
+                />
                 {index < events.length - 1 && (
                   <Separator borderColor="gray.100" />
                 )}
