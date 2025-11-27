@@ -1,4 +1,5 @@
-import { useCallback, useEffect, useRef } from "react";
+import throttle from "lodash/throttle";
+import { useCallback, useEffect, useMemo } from "react";
 import { sendKeepAlive } from "@/lib/api/keepAlive";
 import { useIdleTimeoutSafe } from "./IdleTimeoutContext";
 import { useRecceInstanceInfo } from "./useRecceInstanceInfo";
@@ -32,8 +33,8 @@ function debugLog(message: string, data?: Record<string, unknown>) {
 const IDLE_DETECTION_CONFIG = {
   /** Events to listen for user activity */
   ACTIVITY_EVENTS: ["focus", "mousemove", "keydown", "scroll"] as const,
-  /** Throttle activity logs to avoid console spam (1 second) */
-  ACTIVITY_LOG_THROTTLE: 1000,
+  /** Throttle event handler execution to reduce JS overhead (150ms) */
+  EVENT_THROTTLE_MS: 150,
 } as const;
 
 /**
@@ -50,15 +51,25 @@ const IDLE_DETECTION_CONFIG = {
  * API calls, not on user activity. This ensures accurate server state tracking.
  */
 export function useIdleDetection() {
-  const { data: instanceInfo } = useRecceInstanceInfo();
+  const { data: instanceInfo, isLoading, isError } = useRecceInstanceInfo();
   const idleTimeoutContext = useIdleTimeoutSafe();
   const isDisconnected = idleTimeoutContext?.isDisconnected ?? false;
-  const lastActivityLogRef = useRef<number>(0);
 
   // Only enable idle detection if idle_timeout is configured and not disconnected
   const idleTimeout = instanceInfo?.idle_timeout;
   const isEnabled =
     idleTimeout !== undefined && idleTimeout > 0 && !isDisconnected;
+
+  // Debug: Log instance info state when debug is enabled
+  debugLog("[Idle Detection] Instance info", {
+    isLoading,
+    isError,
+    hasIdleTimeout: idleTimeout !== undefined,
+    idleTimeout:
+      idleTimeout !== undefined ? `${idleTimeout}s` : "not configured",
+    isDisconnected,
+    isEnabled,
+  });
 
   /**
    * Send keep-alive signal to server
@@ -84,18 +95,10 @@ export function useIdleDetection() {
   const handleActivity = useCallback(
     (event: Event) => {
       if (isEnabled && !document.hidden) {
-        const now = Date.now();
-
-        // Throttle activity logs to avoid console spam
-        const timeSinceLastLog = now - lastActivityLogRef.current;
-        if (timeSinceLastLog >= IDLE_DETECTION_CONFIG.ACTIVITY_LOG_THROTTLE) {
-          debugLog("[Idle Detection] Activity detected", {
-            event: event.type,
-            tabActive: !document.hidden,
-          });
-
-          lastActivityLogRef.current = now;
-        }
+        debugLog("[Idle Detection] Activity detected", {
+          event: event.type,
+          tabActive: !document.hidden,
+        });
 
         // Send keep-alive API call (axios layer handles throttling)
         void sendKeepAliveNow();
@@ -121,6 +124,17 @@ export function useIdleDetection() {
     }
   }, [isEnabled, sendKeepAliveNow]);
 
+  // Create throttled handler using lodash to reduce JS overhead from high-frequency events
+  // useMemo ensures stable reference and proper cleanup
+  const throttledHandler = useMemo(
+    () =>
+      throttle(handleActivity, IDLE_DETECTION_CONFIG.EVENT_THROTTLE_MS, {
+        leading: true,
+        trailing: true,
+      }),
+    [handleActivity],
+  );
+
   useEffect(() => {
     if (!isEnabled) {
       debugLog("[Idle Detection] Disabled", {
@@ -128,7 +142,9 @@ export function useIdleDetection() {
         reason:
           idleTimeout === undefined
             ? "idle_timeout not configured on server"
-            : "idle_timeout is 0",
+            : idleTimeout === 0
+              ? "idle_timeout is 0"
+              : "disconnected",
       });
       return;
     }
@@ -136,25 +152,27 @@ export function useIdleDetection() {
     debugLog("[Idle Detection] Initialized", {
       enabled: true,
       idleTimeout: `${idleTimeout}s`,
-      throttleInterval: "3s (axios layer)",
+      eventThrottle: `${IDLE_DETECTION_CONFIG.EVENT_THROTTLE_MS}ms`,
+      apiThrottle: "3s (axios layer)",
       monitoredEvents: IDLE_DETECTION_CONFIG.ACTIVITY_EVENTS.join(", "),
     });
 
-    // Register activity event listeners
+    // Register activity event listeners with throttled handler
     IDLE_DETECTION_CONFIG.ACTIVITY_EVENTS.forEach((eventType) => {
-      window.addEventListener(eventType, handleActivity, { passive: true });
+      window.addEventListener(eventType, throttledHandler, { passive: true });
     });
 
-    // Register visibility change listener
+    // Register visibility change listener (not throttled - immediate response needed)
     document.addEventListener("visibilitychange", handleVisibilityChange);
 
     // Cleanup function
     return () => {
       debugLog("[Idle Detection] Cleanup - removing event listeners");
       IDLE_DETECTION_CONFIG.ACTIVITY_EVENTS.forEach((eventType) => {
-        window.removeEventListener(eventType, handleActivity);
+        window.removeEventListener(eventType, throttledHandler);
       });
       document.removeEventListener("visibilitychange", handleVisibilityChange);
+      throttledHandler.cancel(); // Cancel any pending throttled calls
     };
-  }, [isEnabled, handleActivity, handleVisibilityChange, idleTimeout]);
+  }, [isEnabled, throttledHandler, handleVisibilityChange, idleTimeout]);
 }
