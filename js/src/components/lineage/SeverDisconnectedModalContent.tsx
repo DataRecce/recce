@@ -3,22 +3,38 @@ import NextLink from "next/link";
 import React from "react";
 import { RECCE_SUPPORT_CALENDAR_URL } from "@/constants/urls";
 import { RecceFeatureMode } from "@/lib/hooks/RecceInstanceContext";
+import { formatDuration } from "@/lib/utils/formatTime";
+
+interface ServerDisconnectedModalContentProps {
+  connect: () => void;
+  /** If provided, indicates the server was idle for this many seconds before timeout */
+  idleSeconds?: number | null;
+}
 
 export function ServerDisconnectedModalContent({
   connect,
-}: {
-  connect: () => void;
-}) {
+  idleSeconds,
+}: ServerDisconnectedModalContentProps) {
+  const isIdleTimeout =
+    idleSeconds !== undefined && idleSeconds !== null && idleSeconds > 0;
+
   return (
     <Dialog.Content>
       <Dialog.Header>
         <Dialog.Title>Server Disconnected</Dialog.Title>
       </Dialog.Header>
       <Dialog.Body>
-        <Text>
-          The server connection has been lost. Please restart the Recce server
-          and try again.
-        </Text>
+        {isIdleTimeout ? (
+          <Text>
+            The server has been idle for {formatDuration(idleSeconds)} and was
+            automatically stopped. Please restart the Recce server to continue.
+          </Text>
+        ) : (
+          <Text>
+            The server connection has been lost. Please restart the Recce server
+            and try again.
+          </Text>
+        )}
       </Dialog.Body>
       <Dialog.Footer>
         <Button
