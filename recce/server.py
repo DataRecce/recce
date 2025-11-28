@@ -372,7 +372,8 @@ async def keep_alive():
     if app_state.last_activity is not None:
         app_state.last_activity["time"] = datetime.now(utc)
         logger.debug("[Idle Timeout] Keep-alive request received - Timer reset")
-    return {"status": "ok"}
+        return {"status": "ok", "idle_timeout_enabled": True}
+    return {"status": "ok", "idle_timeout_enabled": False}
 
 
 class RecceInstanceInfoOut(BaseModel):

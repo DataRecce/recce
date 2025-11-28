@@ -58,9 +58,9 @@ export async function sendKeepAlive(): Promise<boolean> {
     return false;
   }
 
-  isSending = true;
-
   try {
+    // Acquire lock inside try to ensure finally always releases it
+    isSending = true;
     await axiosClient.post("/api/keep-alive");
     // Update timestamp only on SUCCESS
     lastKeepAliveTime = Date.now();
