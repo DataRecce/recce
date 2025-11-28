@@ -1,4 +1,5 @@
 import os
+from datetime import datetime, timezone
 
 import pytest
 from fastapi.testclient import TestClient
@@ -102,3 +103,39 @@ def test_saveas_and_rename(dbt_test_helper, temp_folder):
     response = client.post("/api/save-as", json={"filename": "recce_state.json", "overwrite": True})
     assert response.status_code == 200
     assert context.state_loader.state_file == os.path.join(temp_folder, "recce_state.json")
+
+
+def test_keep_alive_without_idle_timeout():
+    """Test keep-alive endpoint when idle timeout is not configured"""
+    client = TestClient(app)
+
+    # Ensure last_activity is None (idle timeout not configured)
+    app.state.last_activity = None
+
+    response = client.post("/api/keep-alive")
+    assert response.status_code == 200
+    data = response.json()
+    assert data["status"] == "ok"
+    assert data["idle_timeout_enabled"] is False
+
+
+def test_keep_alive_with_idle_timeout():
+    """Test keep-alive endpoint resets idle timer when idle timeout is configured"""
+    client = TestClient(app)
+
+    # Set up idle timeout state
+    initial_time = datetime.now(timezone.utc)
+    app.state.last_activity = {"time": initial_time}
+
+    # Call keep-alive
+    response = client.post("/api/keep-alive")
+    assert response.status_code == 200
+    data = response.json()
+    assert data["status"] == "ok"
+    assert data["idle_timeout_enabled"] is True
+
+    # Verify timer was reset (should be newer than initial time)
+    assert app.state.last_activity["time"] >= initial_time
+
+    # Cleanup
+    app.state.last_activity = None
