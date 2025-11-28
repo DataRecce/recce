@@ -264,10 +264,10 @@ export function toValueDiffGrid(
       df.columns.forEach((col) => {
         if (includesIgnoreCase(primaryKeys, col.key)) {
           // add the primary key value directly (not prefixed with base__ or current__)
-          row[col.key] = baseRow[col.key];
+          row[String(col.key).toLowerCase()] = baseRow[col.key];
           return;
         }
-        row[`base__${col.key}`] = baseRow[col.key];
+        row[`base__${col.key}`.toLowerCase()] = baseRow[col.key];
       });
     }
 
@@ -275,10 +275,10 @@ export function toValueDiffGrid(
       df.columns.forEach((col) => {
         if (includesIgnoreCase(primaryKeys, col.key)) {
           // add the primary key value directly (not prefixed with base__ or current__)
-          row[col.key] = currentRow[col.key];
+          row[String(col.key).toLowerCase()] = currentRow[col.key];
           return;
         }
-        row[`current__${col.key}`] = currentRow[col.key];
+        row[`current__${col.key}`.toLowerCase()] = currentRow[col.key];
       });
     }
 
