@@ -41,20 +41,28 @@ function formatCompact({ hours, minutes, seconds }: TimeComponents): string {
  * - Less than 1 minute: "30 seconds"
  * - Exact minutes: "5 mins"
  * - Minutes with seconds: "2 mins 30 seconds"
+ * - With hours: "1 hour 30 mins"
  */
-function formatVerbose({ minutes, seconds }: TimeComponents): string {
-  // Less than 1 minute - show seconds only
-  if (minutes < 1) {
-    return `${seconds} second${seconds !== 1 ? "s" : ""}`;
+function formatVerbose({ hours, minutes, seconds }: TimeComponents): string {
+  const parts: string[] = [];
+
+  // Add hours if present
+  if (hours > 0) {
+    parts.push(`${hours} hour${hours !== 1 ? "s" : ""}`);
   }
 
-  // Exact minutes (no remaining seconds)
-  if (seconds === 0) {
-    return `${minutes} min${minutes !== 1 ? "s" : ""}`;
+  // Add minutes if present (or if hours present and minutes > 0)
+  if (minutes > 0) {
+    parts.push(`${minutes} min${minutes !== 1 ? "s" : ""}`);
   }
 
-  // Minutes with seconds
-  return `${minutes} min${minutes !== 1 ? "s" : ""} ${seconds} second${seconds !== 1 ? "s" : ""}`;
+  // Add seconds only if no hours (keep message concise for long durations)
+  // or if it's the only component
+  if (hours === 0 && (parts.length === 0 || seconds > 0)) {
+    parts.push(`${seconds} second${seconds !== 1 ? "s" : ""}`);
+  }
+
+  return parts.join(" ");
 }
 
 /**

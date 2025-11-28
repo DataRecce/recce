@@ -15,7 +15,8 @@ export function ServerDisconnectedModalContent({
   connect,
   idleSeconds,
 }: ServerDisconnectedModalContentProps) {
-  const isIdleTimeout = idleSeconds !== undefined && idleSeconds !== null;
+  const isIdleTimeout =
+    idleSeconds !== undefined && idleSeconds !== null && idleSeconds > 0;
 
   return (
     <Dialog.Content>
