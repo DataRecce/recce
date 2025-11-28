@@ -431,15 +431,14 @@ export function toValueDiffGrid(
 
   // merges columns: primary keys
   primaryKeys.forEach((name) => {
-    const lowercaseName = name.toLowerCase();
-    const columnStatus = columnMap[lowercaseName].status ?? "";
-    const columnType = columnMap[lowercaseName].colType;
+    const columnStatus = columnMap[name].status ?? "";
+    const columnType = columnMap[name].colType;
 
     columns.push({
-      key: lowercaseName,
+      key: name,
       name: (
         <DataFrameColumnGroupHeader
-          name={lowercaseName}
+          name={name}
           columnStatus={columnStatus}
           primaryKeys={primaryKeys.map((k) => k.toLowerCase())}
           columnType={"unknown"}
@@ -455,27 +454,21 @@ export function toValueDiffGrid(
       },
       renderCell: defaultRenderCell,
       columnType,
-      columnRenderMode: columnsRenderMode[lowercaseName],
+      columnRenderMode: columnsRenderMode[name],
     });
   });
 
   // merges columns: pinned columns
   pinnedColumns.forEach((name) => {
-    const lowercaseName = name.toLowerCase();
-    const columnStatus = columnMap[lowercaseName].status ?? "";
-    const columnType = columnMap[lowercaseName].colType;
+    const columnStatus = columnMap[name].status ?? "";
+    const columnType = columnMap[name].colType;
 
-    if (includesIgnoreCase(primaryKeys, lowercaseName)) {
+    if (includesIgnoreCase(primaryKeys, name)) {
       return;
     }
 
     columns.push(
-      toColumn(
-        lowercaseName,
-        columnStatus,
-        columnType,
-        columnsRenderMode[lowercaseName],
-      ),
+      toColumn(name, columnStatus, columnType, columnsRenderMode[name]),
     );
   });
 
@@ -506,10 +499,10 @@ export function toValueDiffGrid(
     }
     columns.push(
       toColumn(
-        name.toLowerCase(),
+        name,
         columnStatus,
         mergedColumn.colType,
-        columnsRenderMode[name.toLowerCase()],
+        columnsRenderMode[name],
       ),
     );
   });
