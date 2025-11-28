@@ -14,6 +14,7 @@ import { mergeKeysWithStatus } from "@/lib/mergeKeys";
 import {
   dataFrameToRowObjects,
   getCaseInsensitive,
+  getValueAtPath,
   includesIgnoreCase,
   keyToNumber,
 } from "@/utils/transforms";
@@ -36,25 +37,27 @@ function _getColumnMap(df: DataFrame) {
   > = {};
 
   df.columns.map((col, index) => {
-    // Normalize special column names to uppercase
-    const normalizedColName =
-      col.name.toLowerCase() === "in_a"
-        ? "IN_A"
-        : col.name.toLowerCase() === "in_b"
-          ? "IN_B"
-          : col.name;
-    const normalizedColKey =
-      col.key.toLowerCase() === "in_a"
-        ? "IN_A"
-        : col.key.toLowerCase() === "in_b"
-          ? "IN_B"
-          : col.key;
-
-    result[normalizedColName] = {
-      key: normalizedColKey,
-      index,
-      colType: col.type,
-    };
+    if (
+      col.name.toLowerCase() === "in_a" ||
+      col.name.toLowerCase() === "in_b"
+    ) {
+      result[col.name.toUpperCase()] = {
+        key: col.key,
+        index,
+        colType: col.type,
+      };
+      result[col.name.toLowerCase()] = {
+        key: col.key,
+        index,
+        colType: col.type,
+      };
+    } else {
+      result[col.name] = {
+        key: col.key,
+        index,
+        colType: col.type,
+      };
+    }
   });
 
   return result;
@@ -426,8 +429,12 @@ export function toValueDiffGrid(
 
   // merges columns: primary keys
   primaryKeys.forEach((name) => {
-    const columnStatus = columnMap[name].status ?? "";
-    const columnType = columnMap[name].colType;
+    const col = getValueAtPath(columnMap, name);
+    if (!col) {
+      throw new Error(`Primary column ${name} not found in DataFrame`);
+    }
+    const columnStatus = col.status ?? "";
+    const columnType = col.colType;
 
     columns.push({
       key: name,
@@ -455,8 +462,12 @@ export function toValueDiffGrid(
 
   // merges columns: pinned columns
   pinnedColumns.forEach((name) => {
-    const columnStatus = columnMap[name].status ?? "";
-    const columnType = columnMap[name].colType;
+    const col = getValueAtPath(columnMap, name);
+    if (!col) {
+      throw new Error(`Pinned column ${name} not found in DataFrame`);
+    }
+    const columnStatus = col.status ?? "";
+    const columnType = col.colType;
 
     if (includesIgnoreCase(primaryKeys, name)) {
       return;
@@ -471,7 +482,7 @@ export function toValueDiffGrid(
   Object.entries(columnMap).forEach(([name, mergedColumn]) => {
     const columnStatus = mergedColumn.status ?? "";
 
-    if (name === "IN_A" || name === "IN_B") {
+    if (includesIgnoreCase(["in_a", "IN_A", "in_b", "IN_B"], name)) {
       return;
     }
 
