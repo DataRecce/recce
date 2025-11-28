@@ -33,7 +33,12 @@ function debugLog(message: string, data?: Record<string, unknown>) {
 const IDLE_DETECTION_CONFIG = {
   /** Events to listen for user activity */
   ACTIVITY_EVENTS: ["focus", "mousemove", "keydown", "scroll"] as const,
-  /** Throttle event handler execution to reduce JS overhead (150ms) */
+  /**
+   * Throttle event handler execution to reduce JS overhead (150ms).
+   * Uses lodash.throttle with { leading: true, trailing: true } to ensure
+   * immediate response on first activity (leading) and also capture the final
+   * event in a burst (trailing), which is important for user experience.
+   */
   EVENT_THROTTLE_MS: 150,
 } as const;
 
