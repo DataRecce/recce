@@ -3,6 +3,7 @@ export const cacheKeys = {
   lineage: () => ["lineage"],
   checks: () => ["checks", "list"],
   check: (checkId: string) => ["checks", checkId],
+  checkEvents: (checkId: string) => ["checks", checkId, "events"],
   runs: () => ["runs"],
   run: (runId: string) => ["runs", runId],
   runsAggregated: () => ["runs_aggregated"],
