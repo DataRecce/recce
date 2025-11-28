@@ -70,3 +70,16 @@ export function getCaseInsensitive<T extends RowObjectType>(
 
   return foundKey ? obj[foundKey] : undefined;
 }
+
+// Get the value of an object at a given path, case-insensitively
+export function getValueAtPath<T = RowDataTypes>(
+  obj: Record<string, T | undefined>,
+  path: string,
+): T | undefined {
+  let col = obj[path.toLowerCase()];
+  if (!col) {
+    // try upper-case match
+    col = obj[path.toUpperCase()];
+  }
+  return col;
+}
