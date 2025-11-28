@@ -32,6 +32,7 @@ from starlette.websockets import WebSocketDisconnect
 
 from . import __latest_version__, __version__, event, is_recce_cloud_instance
 from .apis.check_api import check_router
+from .apis.check_events_api import check_events_router
 from .apis.run_api import run_router
 from .config import RecceConfig
 from .connect_to_cloud import (
@@ -844,6 +845,7 @@ async def get_user_info():
 
 api_prefix = "/api"
 app.include_router(check_router, prefix=api_prefix)
+app.include_router(check_events_router, prefix=api_prefix)
 app.include_router(run_router, prefix=api_prefix)
 
 static_folder_path = Path(__file__).parent / "data"
