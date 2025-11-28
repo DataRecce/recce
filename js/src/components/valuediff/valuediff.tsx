@@ -215,11 +215,6 @@ export function toValueDiffGrid(
   })[] = [];
   const columnMap = _getColumnMap(df);
 
-  // "in_a" and "in_b" are special columns used in the query template, columns are in uppercase in snowflake
-  if ("IN_A" in columnMap) {
-    primaryKeys = primaryKeys.map((key) => key.toUpperCase());
-  }
-
   // merge row
   const baseMap: Record<string, RowObjectType | undefined> = {};
   const currentMap: Record<string, RowObjectType | undefined> = {};
