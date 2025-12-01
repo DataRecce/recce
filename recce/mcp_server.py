@@ -137,10 +137,10 @@ class RecceMCPServer:
                     description=textwrap.dedent(
                         """
                         Get the lineage diff between production(base) and session(current) for changed models.
-                        Returns nodes, parent_map (node dependencies), and change_status/impacted information in compact dataframe format.
+                        Returns nodes and edges (node dependencies) in compact dataframe format.
 
-                        In parent_map: key is a node index, value is list of parent node indices
                         Nodes dataframe includes: idx, id, name, resource_type, materialized, change_status, impacted.
+                        Edges dataframe includes: from (parent node idx), to (child node idx).
 
                         Rendering guidance for Mermaid diagram:
                         Use graph LR and apply these styles based on change_status and impacted:
