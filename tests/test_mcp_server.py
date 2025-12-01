@@ -87,7 +87,7 @@ class TestRecceMCPServer:
 
         # Verify the result structure
         assert "nodes" in result
-        assert "parent_map" in result
+        assert "edges" in result
 
         # Verify nodes is a DataFrame dict with columns and data
         nodes = result["nodes"]
@@ -97,6 +97,14 @@ class TestRecceMCPServer:
         # Verify data is a list with 2 rows
         assert isinstance(nodes["data"], list)
         assert len(nodes["data"]) == 2
+
+        # Verify edges is a DataFrame dict with columns and data
+        edges = result["edges"]
+        assert "columns" in edges
+        assert "data" in edges
+        assert isinstance(edges["data"], list)
+        # Verify edges contains the parent-child relationship (model_a -> model_b)
+        assert len(edges["data"]) == 1
 
         mock_context.get_lineage_diff.assert_called_once()
         mock_context.adapter.select_nodes.assert_called()
