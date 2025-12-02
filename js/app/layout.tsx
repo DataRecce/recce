@@ -10,14 +10,23 @@ export const metadata: Metadata = {
   description: "Recce: Data validation toolkit for comprehensive PR review",
 };
 
-export default function RootLayout({ children }: { children: ReactNode }) {
+interface RootLayoutProps {
+  children: ReactNode;
+  /** Parallel route slot from @lineage folder */
+  lineage: ReactNode;
+}
+
+export default function RootLayout({
+  children,
+  lineage,
+}: RootLayoutProps): ReactNode {
   return (
     <html lang="en" suppressHydrationWarning={true}>
       {GTM_ID != null && GTM_ID.trim().length > 0 && (
         <GoogleTagManager gtmId={GTM_ID} />
       )}
       <body>
-        <Providers>{children}</Providers>
+        <Providers lineage={lineage}>{children}</Providers>
       </body>
     </html>
   );

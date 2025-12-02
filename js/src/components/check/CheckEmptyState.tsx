@@ -10,14 +10,14 @@ import {
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import React from "react";
 import { TbChecklist, TbPlus } from "react-icons/tb";
-import { useLocation } from "wouter";
 import { cacheKeys } from "@/lib/api/cacheKeys";
 import { Check } from "@/lib/api/checks";
 import { createSchemaDiffCheck } from "@/lib/api/schemacheck";
+import { useAppLocation } from "@/lib/hooks/useAppRouter";
 
 export const CheckEmptyState = () => {
   const queryClient = useQueryClient();
-  const [, setLocation] = useLocation();
+  const [, setLocation] = useAppLocation();
 
   const { mutate: createSchemaCheck, isPending } = useMutation({
     mutationFn: () => createSchemaDiffCheck({ select: "state:modified" }),

@@ -51,7 +51,6 @@ import "@xyflow/react/dist/style.css";
 import { useMutation } from "@tanstack/react-query";
 import { AxiosError } from "axios";
 import { FiCopy } from "react-icons/fi";
-import { useLocation } from "wouter";
 import { toaster } from "@/components/ui/toaster";
 import { Check } from "@/lib/api/checks";
 import { CllInput, ColumnLineageData, getCll } from "@/lib/api/cll";
@@ -76,6 +75,7 @@ import {
   IGNORE_SCREENSHOT_CLASS,
   useCopyToClipboard,
 } from "@/lib/hooks/ScreenShot";
+import { useAppLocation } from "@/lib/hooks/useAppRouter";
 import { useClipBoardToast } from "@/lib/hooks/useClipBoardToast";
 import { useRun } from "@/lib/hooks/useRun";
 import { HSplit } from "../split/Split";
@@ -184,7 +184,7 @@ const useResizeObserver = (
 };
 
 const useNavToCheck = () => {
-  const [, setLocation] = useLocation();
+  const [, setLocation] = useAppLocation();
   return useCallback(
     (check: Check) => {
       if (check.check_id) {

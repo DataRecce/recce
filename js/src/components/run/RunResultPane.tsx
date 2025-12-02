@@ -15,7 +15,6 @@ import { useQueryClient } from "@tanstack/react-query";
 import { ReactNode, Ref, useCallback, useState } from "react";
 import { PiCaretDown, PiCheck, PiCopy, PiRepeat } from "react-icons/pi";
 import { TbCloudUpload } from "react-icons/tb";
-import { useLocation } from "wouter";
 import YAML from "yaml";
 import AuthModal from "@/components/AuthModal/AuthModal";
 import { cacheKeys } from "@/lib/api/cacheKeys";
@@ -32,6 +31,7 @@ import { useRecceActionContext } from "@/lib/hooks/RecceActionContext";
 import { useRecceInstanceContext } from "@/lib/hooks/RecceInstanceContext";
 import { useRecceShareStateContext } from "@/lib/hooks/RecceShareStateContext";
 import { useCopyToClipboardButton } from "@/lib/hooks/ScreenShot";
+import { useAppLocation } from "@/lib/hooks/useAppRouter";
 import { useRun } from "@/lib/hooks/useRun";
 import {
   LearnHowLink,
@@ -368,7 +368,7 @@ function AddToCheckButton({
   const { featureToggles } = useRecceInstanceContext();
   const { error, run } = useRun(runId);
   const queryClient = useQueryClient();
-  const [, setLocation] = useLocation();
+  const [, setLocation] = useAppLocation();
 
   const checkId = run?.check_id;
 

@@ -14,11 +14,11 @@ import {
 import { useQueryClient } from "@tanstack/react-query";
 import React, { useCallback, useState } from "react";
 import { PiInfo } from "react-icons/pi";
-import { useLocation } from "wouter";
 import { toaster } from "@/components/ui/toaster";
 import { Tooltip } from "@/components/ui/tooltip";
 import { cacheKeys } from "@/lib/api/cacheKeys";
 import { isStateSyncing, SyncStateInput, syncState } from "@/lib/api/state";
+import { useAppLocation } from "@/lib/hooks/useAppRouter";
 import { useRecceInstanceInfo } from "@/lib/hooks/useRecceInstanceInfo";
 import { IconSync } from "../icons";
 
@@ -41,7 +41,7 @@ export function StateSpinner() {
 export function StateSynchronizer() {
   const [isSyncing, setSyncing] = useState(false);
   const queryClient = useQueryClient();
-  const [location, setLocation] = useLocation();
+  const [location, setLocation] = useAppLocation();
   const { open, onOpen, onClose } = useDisclosure();
   const [syncOption, setSyncOption] = useState<
     "overwrite" | "revert" | "merge" | ""

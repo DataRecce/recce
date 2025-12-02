@@ -15,7 +15,6 @@ import React, { ReactNode, useCallback } from "react";
 import { IconType } from "react-icons";
 import { FaCheckCircle, FaRegCheckCircle } from "react-icons/fa";
 import SimpleBar from "simplebar-react";
-import { useLocation } from "wouter";
 import { cacheKeys } from "@/lib/api/cacheKeys";
 import { createCheckByRun } from "@/lib/api/checks";
 import { listRuns, waitRun } from "@/lib/api/runs";
@@ -27,6 +26,7 @@ import { PiX } from "react-icons/pi";
 import { Tooltip } from "@/components/ui/tooltip";
 import { trackHistoryAction } from "@/lib/api/track";
 import { useRecceInstanceContext } from "@/lib/hooks/RecceInstanceContext";
+import { useAppLocation } from "@/lib/hooks/useAppRouter";
 import { formatRunDate, RunStatusAndDate } from "./RunStatusAndDate";
 
 const RunListItem = ({
@@ -220,7 +220,7 @@ function DateDividedRunHistoryItem({
   run,
   previousDate,
 }: DateDividedRunHistoryItemProps): ReactNode {
-  const [, setLocation] = useLocation();
+  const [, setLocation] = useAppLocation();
   const queryClient = useQueryClient();
   const { showRunId, runId } = useRecceActionContext();
 

@@ -1,5 +1,6 @@
 import { useDisclosure } from "@chakra-ui/react";
 import { useQueryClient } from "@tanstack/react-query";
+import { usePathname } from "next/navigation";
 import React, {
   ComponentType,
   createContext,
@@ -10,7 +11,6 @@ import React, {
   useEffect,
   useState,
 } from "react";
-import { useLocation } from "wouter";
 import { RunModal } from "@/components/run/RunModal";
 import {
   findByRunType,
@@ -20,6 +20,7 @@ import {
 } from "@/components/run/registry";
 import { RunFormProps } from "@/components/run/types";
 import { toaster } from "@/components/ui/toaster";
+import { useAppLocation } from "@/lib/hooks/useAppRouter";
 import { cacheKeys } from "../api/cacheKeys";
 import { SubmitRunTrackProps, searchRuns, submitRun } from "../api/runs";
 import { AxiosQueryParams, Run, RunParamTypes } from "../api/types";
@@ -78,12 +79,12 @@ interface RecceActionContextProviderProps {
 }
 
 const useCloseModalEffect = (onClose: () => void) => {
-  const [location] = useLocation();
+  const pathname = usePathname();
 
   // biome-ignore lint/correctness/useExhaustiveDependencies: Specifically run in location changes
   useEffect(() => {
     onClose();
-  }, [onClose, location]);
+  }, [onClose, pathname]);
 };
 
 interface RunActionInternal {
@@ -117,7 +118,7 @@ export function RecceActionContextProvider({
     setOpen: setHistoryOpen,
   } = useDisclosure();
   const [runId, setRunId] = useState<string>();
-  const [location, setLocation] = useLocation();
+  const [location, setLocation] = useAppLocation();
   const queryClient = useQueryClient();
 
   const showRunId = useCallback(

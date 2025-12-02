@@ -15,7 +15,6 @@ import {
 } from "@chakra-ui/react";
 import { useCallback } from "react";
 import { PiCaretDown } from "react-icons/pi";
-import { useLocation } from "wouter";
 import SetupConnectionPopover from "@/components/app/SetupConnectionPopover";
 import { Tooltip } from "@/components/ui/tooltip";
 import { DisableTooltipMessages } from "@/constants/tooltipMessage";
@@ -26,6 +25,7 @@ import { useLineageGraphContext } from "@/lib/hooks/LineageGraphContext";
 import { useRecceActionContext } from "@/lib/hooks/RecceActionContext";
 import { useRecceInstanceContext } from "@/lib/hooks/RecceInstanceContext";
 import { useRecceQueryContext } from "@/lib/hooks/RecceQueryContext";
+import { useAppLocation } from "@/lib/hooks/useAppRouter";
 import useModelColumns from "@/lib/hooks/useModelColumns";
 import {
   LearnHowLink,
@@ -198,7 +198,7 @@ function SingleEnvironmentMenuButton({
   refetchRowCount,
   disableReason,
 }: SingleEnvironmentMenuButtonProps) {
-  const [, setLocation] = useLocation();
+  const [, setLocation] = useAppLocation();
   const { setSqlQuery } = useRecceQueryContext();
   const { runAction } = useRecceActionContext();
   const { envInfo } = useLineageGraphContext();
@@ -296,7 +296,7 @@ function ExploreChangeMenuButton({
   onSandboxOpen,
   refetchRowCountDiff,
 }: ExploreChangeMenuButtonProps) {
-  const [, setLocation] = useLocation();
+  const [, setLocation] = useAppLocation();
   const { runAction } = useRecceActionContext();
   const { setSqlQuery, setPrimaryKeys } = useRecceQueryContext();
   const { envInfo, isActionAvailable } = useLineageGraphContext();

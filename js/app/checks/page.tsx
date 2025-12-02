@@ -1,20 +1,22 @@
-import "react-data-grid/lib/styles.css";
+"use client";
+
 import { Box, Center, Flex, Separator, VStack } from "@chakra-ui/react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import React, { useCallback, useEffect, useState } from "react";
-import { Route, Switch, useLocation, useRoute } from "wouter";
+import { useParams } from "next/navigation";
+import React, { ReactNode, useCallback, useEffect, useState } from "react";
+import { StateImporter } from "@/components/app/StateImporter";
+import { CheckDetail } from "@/components/check/CheckDetail";
+import { CheckEmptyState } from "@/components/check/CheckEmptyState";
+import { CheckList } from "@/components/check/CheckList";
+import { HSplit } from "@/components/split/Split";
 import { cacheKeys } from "@/lib/api/cacheKeys";
 import { listChecks, reorderChecks } from "@/lib/api/checks";
 import { useRecceCheckContext } from "@/lib/hooks/RecceCheckContext";
-import { StateImporter } from "../app/StateImporter";
-import { HSplit } from "../split/Split";
-import { CheckDetail } from "./CheckDetail";
-import { CheckEmptyState } from "./CheckEmptyState";
-import { CheckList } from "./CheckList";
+import { useAppLocation } from "@/lib/hooks/useAppRouter";
 
-export const CheckPage = () => {
-  const [, setLocation] = useLocation();
-  const [, params] = useRoute("/checks/:checkId");
+export default function CheckPage(): ReactNode {
+  const [, setLocation] = useAppLocation();
+  const params = useParams<{ checkId?: string }>();
   const { latestSelectedCheckId, setLatestSelectedCheckId } =
     useRecceCheckContext();
   const queryClient = useQueryClient();
@@ -165,20 +167,14 @@ export const CheckPage = () => {
         </VStack>
       </Box>
       <Box height="100%">
-        <Switch>
-          <Route path="/checks/:checkId">
-            {(params) => {
-              return (
-                <CheckDetail
-                  key={params.checkId}
-                  checkId={params.checkId}
-                  refreshCheckList={refetchCheckList}
-                />
-              );
-            }}
-          </Route>
-        </Switch>
+        {selectedItem && (
+          <CheckDetail
+            key={selectedItem}
+            checkId={selectedItem}
+            refreshCheckList={refetchCheckList}
+          />
+        )}
       </Box>
     </HSplit>
   );
-};
+}
