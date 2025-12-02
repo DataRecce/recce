@@ -7,9 +7,9 @@
 
 "use client";
 
-import { Box, Flex } from "@chakra-ui/react";
+import { Box, Center, Flex, Spinner } from "@chakra-ui/react";
 import { usePathname } from "next/navigation";
-import React, { ReactNode, useEffect } from "react";
+import React, { ReactNode, Suspense, useEffect } from "react";
 import AuthModal from "@/components/AuthModal/AuthModal";
 import { RunList } from "@/components/run/RunList";
 import { RunResultPane } from "@/components/run/RunResultPane";
@@ -29,6 +29,21 @@ interface MainLayoutProps {
   lineage: ReactNode;
 }
 
+function MainContentLoading(): ReactNode {
+  return (
+    <Flex
+      height="100%"
+      align="center"
+      justify="center"
+      style={{ contain: "size" }}
+    >
+      <Center h="100%">
+        <Spinner size="xl" />
+      </Center>
+    </Flex>
+  );
+}
+
 export function MainLayout({ children, lineage }: MainLayoutProps) {
   const pathname = usePathname();
   const { isDemoSite, isLoading, isCodespace } = useLineageGraphContext();
@@ -46,7 +61,7 @@ export function MainLayout({ children, lineage }: MainLayoutProps) {
       <TopBar />
       <NavBar />
       <Main isLineageRoute={isLineageRoute} lineage={lineage}>
-        {children}
+        <Suspense fallback={<MainContentLoading />}>{children}</Suspense>
       </Main>
       {!isLoading &&
         !isDemoSite &&

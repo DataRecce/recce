@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import "./global.css";
 import { GoogleTagManager } from "@next/third-parties/google";
 import Providers from "app/Providers";
+import Script from "next/script";
 import { ReactNode } from "react";
 
 const GTM_ID = process.env.GTM_ID;
@@ -25,6 +26,19 @@ export default function RootLayout({
       {GTM_ID != null && GTM_ID.trim().length > 0 && (
         <GoogleTagManager gtmId={GTM_ID} />
       )}
+      {/* Handle legacy hashbang URL redirects */}
+      <Script
+        dangerouslySetInnerHTML={{
+          __html: `
+    (function() {
+      var hash = window.location.hash;
+      if (hash.startsWith('#!')) {
+        window.location.replace(hash.substring(2));
+      }
+    })();
+  `,
+        }}
+      />
       <body>
         <Providers lineage={lineage}>{children}</Providers>
       </body>

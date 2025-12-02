@@ -13,59 +13,65 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useEffect, useState } from "react";
-
-interface HashbangRedirectProps {
-  /** Content to show while checking for redirect */
-  fallback?: React.ReactNode;
-  /** Children to render after redirect check completes */
-  children: React.ReactNode;
-}
+import { ReactNode, useEffect, useState } from "react";
 
 /**
- * Parses a hashbang URL and extracts the path
- * @param hash - The window.location.hash value
- * @returns The path without the hashbang prefix, or null if not a hashbang URL
+ * Module-level state to track hashbang check across component mounts.
+ * This ensures we only check once per page load, even if the component
+ * re-mounts due to Next.js navigation.
  */
-function parseHashbangPath(hash: string): string | null {
-  // Match #!/ followed by the path
+let globalHashbangCheckComplete = false;
+let globalHashbangPath: string | null = null;
+
+// Perform the check immediately on module load (client-side only)
+if (typeof window !== "undefined") {
+  const hash = window.location.hash;
   const hashbangMatch = hash.match(/^#!(.*)$/);
   if (hashbangMatch) {
     const path = hashbangMatch[1];
-    // Ensure path starts with /
-    return path.startsWith("/") ? path : `/${path}`;
+    globalHashbangPath = path.startsWith("/") ? path : `/${path}`;
   }
-  return null;
+  // Mark check as complete after first evaluation
+  // (will be set to true after redirect or if no hashbang)
+}
+
+interface HashbangRedirectProps {
+  /** Content to show while checking for redirect */
+  fallback?: ReactNode;
+  /** Children to render after redirect check completes */
+  children: ReactNode;
 }
 
 export function HashbangRedirect({
   fallback,
   children,
-}: HashbangRedirectProps): React.ReactNode {
+}: HashbangRedirectProps): ReactNode {
   const router = useRouter();
-  const [isChecking, setIsChecking] = useState(true);
+  const [isReady, setIsReady] = useState(globalHashbangCheckComplete);
 
   useEffect(() => {
-    // Only run on client side
-    if (typeof window === "undefined") {
-      setIsChecking(false);
+    // If check was already completed (e.g., component re-mounted), skip
+    if (globalHashbangCheckComplete) {
+      setIsReady(true);
       return;
     }
 
-    const hash = window.location.hash;
-    const hashbangPath = parseHashbangPath(hash);
-
-    if (hashbangPath) {
-      // Redirect to the new path without hashbang
-      // Use replace to avoid adding to browser history
-      router.replace(hashbangPath);
-    } else {
-      setIsChecking(false);
+    // If there's a hashbang path, redirect
+    if (globalHashbangPath) {
+      router.replace(globalHashbangPath);
+      // Don't set ready - let the redirect happen
+      // The new page will mount fresh with globalHashbangCheckComplete = true
+      globalHashbangCheckComplete = true;
+      return;
     }
+
+    // No hashbang - mark as complete and show children
+    globalHashbangCheckComplete = true;
+    setIsReady(true);
   }, [router]);
 
-  // Show fallback while checking/redirecting
-  if (isChecking) {
+  // Only show fallback on initial load when we haven't completed the check
+  if (!isReady) {
     return fallback ?? null;
   }
 
@@ -80,23 +86,18 @@ export function useHashbangDetection(): {
   isHashbang: boolean;
   hashbangPath: string | null;
 } {
-  const [state, setState] = useState<{
-    isHashbang: boolean;
-    hashbangPath: string | null;
-  }>({
-    isHashbang: false,
-    hashbangPath: null,
-  });
+  // Return the cached result from module initialization
+  return {
+    isHashbang: globalHashbangPath !== null,
+    hashbangPath: globalHashbangPath,
+  };
+}
 
-  useEffect(() => {
-    if (typeof window !== "undefined") {
-      const path = parseHashbangPath(window.location.hash);
-      setState({
-        isHashbang: path !== null,
-        hashbangPath: path,
-      });
-    }
-  }, []);
-
-  return state;
+/**
+ * Reset the hashbang check state.
+ * Only use this for testing purposes.
+ */
+export function resetHashbangCheck(): void {
+  globalHashbangCheckComplete = false;
+  globalHashbangPath = null;
 }

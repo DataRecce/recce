@@ -28,26 +28,10 @@ export default function Providers({ children, lineage }: ProvidersProps) {
     <Provider forcedTheme="light">
       <QueryClientProvider client={reactQueryClient}>
         <IdleTimeoutProvider>
-          {/* Handle legacy hashbang URL redirects */}
-          <HashbangRedirect
-            fallback={
-              <div
-                style={{
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  height: "100vh",
-                }}
-              >
-                Loading...
-              </div>
-            }
-          >
-            <RecceContextProvider>
-              <MainLayout lineage={lineage}>{children}</MainLayout>
-              <Toaster />
-            </RecceContextProvider>
-          </HashbangRedirect>
+          <RecceContextProvider>
+            <MainLayout lineage={lineage}>{children}</MainLayout>
+            <Toaster />
+          </RecceContextProvider>
         </IdleTimeoutProvider>
       </QueryClientProvider>
     </Provider>

@@ -1,9 +1,22 @@
 "use client";
 
-import { Box, Center, Flex, Separator, VStack } from "@chakra-ui/react";
+import {
+  Box,
+  Center,
+  Flex,
+  Separator,
+  Spinner,
+  VStack,
+} from "@chakra-ui/react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useParams, useSearchParams } from "next/navigation";
-import React, { ReactNode, useCallback, useEffect, useState } from "react";
+import { useSearchParams } from "next/navigation";
+import React, {
+  ReactNode,
+  Suspense,
+  useCallback,
+  useEffect,
+  useState,
+} from "react";
 import { StateImporter } from "@/components/app/StateImporter";
 import { CheckDetail } from "@/components/check/CheckDetail";
 import { CheckEmptyState } from "@/components/check/CheckEmptyState";
@@ -14,7 +27,42 @@ import { listChecks, reorderChecks } from "@/lib/api/checks";
 import { useRecceCheckContext } from "@/lib/hooks/RecceCheckContext";
 import { useAppLocation } from "@/lib/hooks/useAppRouter";
 
-export default function CheckPage(): ReactNode {
+/**
+ * Wrapper component that handles the Suspense boundary for useSearchParams
+ */
+export default function CheckPageWrapper(): ReactNode {
+  return (
+    <Suspense fallback={<CheckPageLoading />}>
+      <CheckPageContent />
+    </Suspense>
+  );
+}
+
+/**
+ * Loading fallback - shows minimal UI while search params are being read
+ */
+function CheckPageLoading(): ReactNode {
+  return (
+    <HSplit style={{ height: "100%" }} minSize={50} sizes={[20, 80]}>
+      <Box
+        borderRight="lightgray solid 1px"
+        height="100%"
+        style={{ contain: "size" }}
+      >
+        <Center h="100%">
+          <Spinner size="sm" />
+        </Center>
+      </Box>
+      <Box>
+        <Center h="100%">
+          <Spinner size="sm" />
+        </Center>
+      </Box>
+    </HSplit>
+  );
+}
+
+function CheckPageContent(): ReactNode {
   const [, setLocation] = useAppLocation();
   const searchParams = useSearchParams();
   const checkId = searchParams.get("id");

@@ -4,6 +4,11 @@
  * Provides a similar API to Wouter's useLocation for easier migration.
  * This hook combines Next.js's useRouter, usePathname, useParams,
  * and useSearchParams into a unified interface.
+ *
+ * IMPORTANT: useSearchParams() triggers Suspense boundaries in Next.js.
+ * To avoid full-page loading states, useAppLocation() only returns the
+ * pathname by default. Use useAppLocationWithSearch() if you need
+ * search params included in the location string.
  */
 
 "use client";
@@ -24,18 +29,48 @@ interface NavigateOptions {
 /**
  * Hook that provides Wouter-compatible location API using Next.js App Router
  *
- * @returns [location, setLocation] tuple similar to Wouter's useLocation
+ * NOTE: This returns only the pathname (not search params) to avoid
+ * triggering Suspense boundaries on every navigation.
+ *
+ * @returns [pathname, setLocation] tuple similar to Wouter's useLocation
  *
  * @example
- * // Migration from Wouter
- * // Before: const [location, setLocation] = useLocation();
- * // After:  const [location, setLocation] = useAppLocation();
- *
  * const [location, setLocation] = useAppLocation();
- * setLocation("/checks/123"); // Navigate to new path
+ * setLocation("/checks?id=123"); // Navigate to new path with query
  * setLocation("/checks", { replace: true }); // Replace current history entry
  */
 export function useAppLocation(): [
+  string,
+  (to: string, options?: NavigateOptions) => void,
+] {
+  const router = useRouter();
+  const pathname = usePathname();
+
+  // Navigation function compatible with Wouter's setLocation
+  const setLocation = useCallback(
+    (to: string, options?: NavigateOptions) => {
+      if (options?.replace) {
+        router.replace(to, { scroll: options?.scroll ?? true });
+      } else {
+        router.push(to, { scroll: options?.scroll ?? true });
+      }
+    },
+    [router],
+  );
+
+  return [pathname, setLocation];
+}
+
+/**
+ * Hook that includes search params in the location string.
+ *
+ * WARNING: This hook uses useSearchParams() which triggers Suspense.
+ * Only use this in components that are wrapped in a <Suspense> boundary,
+ * or in leaf components where suspension is acceptable.
+ *
+ * @returns [fullLocation, setLocation] tuple with search params included
+ */
+export function useAppLocationWithSearch(): [
   string,
   (to: string, options?: NavigateOptions) => void,
 ] {
@@ -115,7 +150,7 @@ export function useAppRoute(
  * @example
  * // In an event handler or utility function
  * import { navigateTo } from "@/lib/hooks/useAppRouter";
- * navigateTo("/checks/123");
+ * navigateTo("/checks?id=123");
  */
 export function navigateTo(path: string, replace = false): void {
   if (typeof window !== "undefined") {
@@ -132,20 +167,20 @@ export function navigateTo(path: string, replace = false): void {
 /**
  * Hook for programmatic navigation with more options
  * Provides direct access to Next.js router methods
+ *
+ * NOTE: Does not include searchParams to avoid Suspense.
+ * Use useSearchParams() directly in components that need it.
  */
 export function useAppNavigation() {
   const router = useRouter();
   const pathname = usePathname();
   const params = useParams();
-  const searchParams = useSearchParams();
 
   return {
     /** Current pathname */
     pathname,
     /** Current route params */
     params: params as Record<string, string>,
-    /** Current search params */
-    searchParams,
     /** Navigate to a new path */
     push: router.push,
     /** Replace current history entry */
