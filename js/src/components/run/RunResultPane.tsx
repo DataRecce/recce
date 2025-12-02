@@ -377,7 +377,7 @@ function AddToCheckButton({
       return;
     }
 
-    setLocation(`/checks/${checkId}`);
+    setLocation(`/checks/?id=${checkId}`);
   }, [checkId, setLocation]);
 
   const handleAddToChecklist = useCallback(async () => {
@@ -387,7 +387,7 @@ function AddToCheckButton({
     const check = await createCheckByRun(runId, viewOptions);
 
     await queryClient.invalidateQueries({ queryKey: cacheKeys.checks() });
-    setLocation(`/checks/${check.check_id}`);
+    setLocation(`/checks/?id=${check.check_id}`);
   }, [runId, setLocation, queryClient, viewOptions]);
 
   if (featureToggles.disableUpdateChecklist) {

@@ -310,7 +310,7 @@ function ExploreChangeMenuButton({
   const addSchemaCheck = useCallback(async () => {
     const nodeId = node.id;
     const check = await createSchemaDiffCheck({ node_id: nodeId });
-    setLocation(`/checks/${check.check_id}`);
+    setLocation(`/checks/?id=${check.check_id}`);
   }, [node, setLocation]);
 
   const formattedColumns = formatSelectColumns(baseColumns, currentColumns);

@@ -23,7 +23,7 @@ export const CheckEmptyState = () => {
     mutationFn: () => createSchemaDiffCheck({ select: "state:modified" }),
     onSuccess: async (check: Check) => {
       await queryClient.invalidateQueries({ queryKey: cacheKeys.checks() });
-      setLocation(`/checks/${check.check_id}`);
+      setLocation(`/checks/?id=${check.check_id}`);
     },
   });
 

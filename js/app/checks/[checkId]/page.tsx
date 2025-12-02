@@ -2,7 +2,7 @@
 
 import { Box, Center, Flex, Separator, VStack } from "@chakra-ui/react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useParams, useSearchParams } from "next/navigation";
+import { useParams } from "next/navigation";
 import React, { ReactNode, useCallback, useEffect, useState } from "react";
 import { StateImporter } from "@/components/app/StateImporter";
 import { CheckDetail } from "@/components/check/CheckDetail";
@@ -16,12 +16,11 @@ import { useAppLocation } from "@/lib/hooks/useAppRouter";
 
 export default function CheckPage(): ReactNode {
   const [, setLocation] = useAppLocation();
-  const searchParams = useSearchParams();
-  const checkId = searchParams.get("id");
+  const params = useParams<{ checkId: string }>();
   const { latestSelectedCheckId, setLatestSelectedCheckId } =
     useRecceCheckContext();
   const queryClient = useQueryClient();
-  const selectedItem = checkId;
+  const selectedItem = params.checkId;
 
   useEffect(() => {
     if (selectedItem) {

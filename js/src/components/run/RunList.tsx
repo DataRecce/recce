@@ -240,13 +240,13 @@ function DateDividedRunHistoryItem({
     const check = await createCheckByRun(runId);
 
     await queryClient.invalidateQueries({ queryKey: cacheKeys.checks() });
-    setLocation(`/checks/${check.check_id}`);
+    setLocation(`/checks/?id=${check.check_id}`);
   }, [runId, setLocation, queryClient]);
 
   const handleGoToCheck = useCallback(
     (checkId: string) => {
       trackHistoryAction({ name: "go_to_check" });
-      setLocation(`/checks/${checkId}`);
+      setLocation(`/checks/?id=${checkId}`);
     },
     [setLocation],
   );

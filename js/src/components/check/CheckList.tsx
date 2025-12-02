@@ -137,7 +137,7 @@ export const CheckList = ({
   onChecksReordered,
 }: {
   checks: Check[];
-  selectedItem?: string;
+  selectedItem: string | null;
   onCheckSelected: (checkId: string) => void;
   onChecksReordered: (source: number, destination: number) => void;
 }) => {

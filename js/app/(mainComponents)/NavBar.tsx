@@ -1,3 +1,5 @@
+"use client";
+
 import { Box, Flex, Link, Tabs } from "@chakra-ui/react";
 import { useQuery } from "@tanstack/react-query";
 import { usePathname } from "next/navigation";
@@ -95,6 +97,7 @@ export default function NavBar() {
 
   return (
     <Tabs.Root
+      colorPalette="iochmara"
       value={currentTab}
       size="sm"
       variant="line"
@@ -116,7 +119,6 @@ export default function NavBar() {
               <Tabs.Trigger
                 key={path}
                 value={path}
-                asChild
                 disabled={isLoading || isFlagLoading || disable}
                 hidden={disable}
               >

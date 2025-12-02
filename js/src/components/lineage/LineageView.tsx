@@ -188,7 +188,7 @@ const useNavToCheck = () => {
   return useCallback(
     (check: Check) => {
       if (check.check_id) {
-        setLocation(`/checks/${check.check_id}`);
+        setLocation(`/checks/?id=${check.check_id}`);
       }
     },
     [setLocation],
