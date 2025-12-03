@@ -13,7 +13,9 @@
     "lint": "biome check --diagnostic-level=error",
     "lint:fix": "biome check --write --diagnostic-level=error",
     "lint:staged": "biome check --staged --diagnostic-level=error",
-    "test": "jest --watch",
+    "test": "jest",
+    "test:watch": "jest --watch",
+    "test:cov": "jest --coverage --watchAll=false",
     "type:check": "tsc --noEmit",
     "clean": "rimraf ../recce/data",
     "prepare": "cd .. && husky js/.husky"
@@ -99,8 +101,8 @@
       "brace-expansion@>=2.0.0 <=2.0.1": ">=2.0.2"
     },
     "onlyBuiltDependencies": [
-      "@sentry/cli",
       "@tailwindcss/oxide",
+      "sharp",
       "unrs-resolver"
     ]
   },

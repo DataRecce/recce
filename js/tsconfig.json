@@ -25,13 +25,23 @@
     },
     "downlevelIteration": true
   },
+  "types": [
+    "node",
+    "jest",
+    "react/next",
+    "react-dom/next",
+    "jest",
+    "@testing-library/jest-dom"
+  ],
   "include": [
     "next-env.d.ts",
+    "jest.globals.d.ts",
     "**/*.ts",
     "**/*.tsx",
     ".next/types/**/*.ts",
     "eslint.config.mjs",
-    ".next/dev/types/**/*.ts"
+    ".next/dev/types/**/*.ts",
+    "./jest.setup.ts"
   ],
   "exclude": ["node_modules"]
 }
