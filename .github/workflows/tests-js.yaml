@@ -49,6 +49,10 @@ jobs:
         working-directory: ./js
         run: pnpm lint
 
+      - name: Run Jest Tests
+        working-directory: ./js
+        run: pnpm test
+
       - name: Build the static files
         working-directory: ./js
         run: pnpm build
