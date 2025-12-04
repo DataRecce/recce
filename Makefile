@@ -4,17 +4,17 @@
 default: help
 
 install-dev:
-	uv sync --all-extras
+	pip install -e .[dev]
 	pre-commit install
 
 install:
-	uv sync --no-dev
+	pip install -e .
 
 install-cloud:
-	uv sync --package recce-cloud --no-dev
+	pip install -e ./recce_cloud
 
 install-cloud-dev:
-	uv sync --package recce-cloud
+	pip install -e ./recce_cloud[dev]
 
 help:
 	@echo "Available commands:"
@@ -38,57 +38,57 @@ help:
 
 format:
 	@echo "Formatting with Black..."
-	uv run black ./recce ./tests
+	black ./recce ./tests
 	@echo "Sorting imports with isort..."
-	uv run isort ./recce ./tests
+	isort ./recce ./tests
 
 format-cloud:
 	@echo "Formatting recce-cloud with Black..."
-	uv run black ./recce_cloud
+	black ./recce_cloud
 	@echo "Sorting imports with isort..."
-	uv run isort ./recce_cloud
+	isort ./recce_cloud
 
 flake8:
 	@echo "Linting with flake8..."
-	uv run flake8 ./recce ./tests
+	flake8 ./recce ./tests
 
 flake8-cloud:
 	@echo "Linting recce-cloud with flake8..."
-	uv run flake8 ./recce_cloud
+	flake8 ./recce_cloud
 
 # Run all code quality checks without modifying files
 check:
 	@echo "Checking code formatting with Black..."
-	uv run black --check ./recce ./tests
+	black --check ./recce ./tests
 	@echo "Checking import order with isort..."
-	uv run isort --check ./recce ./tests
+	isort --check ./recce ./tests
 	@echo "Checking code style with flake8..."
-	uv run flake8 ./recce ./tests
+	flake8 ./recce ./tests
 
 check-cloud:
 	@echo "Checking recce-cloud code formatting with Black..."
-	uv run black --check ./recce_cloud
+	black --check ./recce_cloud
 	@echo "Checking recce-cloud import order with isort..."
-	uv run isort --check ./recce_cloud
+	isort --check ./recce_cloud
 	@echo "Checking recce-cloud code style with flake8..."
-	uv run flake8 ./recce_cloud
+	flake8 ./recce_cloud
 
 test:
 	@echo "Running tests..."
-	uv run pytest tests
+	pytest tests
 
 test-coverage:
 	@echo "Running tests with coverage..."
-	uv run pytest --cov=recce --cov-report=html --cov-report=term tests
+	pytest --cov=recce --cov-report=html --cov-report=term tests
 	@echo "Coverage report generated in htmlcov/index.html"
 
 test-tox:
 	@echo "Running tests with Tox based on DBT versions..."
-	uv run tox run-parallel
+	tox run-parallel
 
 test-tox-python-versions:
 	@echo "Running tests with Tox for specific Python versions..."
-	uv run tox run-parallel -e 3.9,3.10,3.11,3.12,3.13
+	tox run-parallel -e 3.9,3.10,3.11,3.12,3.13
 
 install-frontend-requires:
 # Install pnpm if not installed
