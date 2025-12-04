@@ -137,10 +137,10 @@ class RecceMCPServer:
                     description=textwrap.dedent(
                         """
                         Get the lineage diff between production(base) and session(current) for changed models.
-                        Returns nodes, parent_map (node dependencies), and change_status/impacted information in compact dataframe format.
+                        Returns nodes and edges (node dependencies) in compact dataframe format.
 
-                        In parent_map: key is a node index, value is list of parent node indices
                         Nodes dataframe includes: idx, id, name, resource_type, materialized, change_status, impacted.
+                        Edges dataframe includes: from (parent node idx), to (child node idx).
 
                         Rendering guidance for Mermaid diagram:
                         Use graph LR and apply these styles based on change_status and impacted:
@@ -450,16 +450,25 @@ class RecceMCPServer:
                 data=nodes_data,
             )
 
-            # Map parent_map IDs to indices
-            parent_map_indexed = {}
+            # Build edges from parent_map
+            edges_data = []
             for node_id, parents in parent_map.items():
                 if node_id in id_to_idx:
-                    node_idx = id_to_idx[node_id]
-                    parent_indices = [id_to_idx[p] for p in parents if p in id_to_idx]
-                    parent_map_indexed[node_idx] = parent_indices
+                    for parent_id in parents:
+                        if parent_id in id_to_idx:
+                            edges_data.append((id_to_idx[parent_id], id_to_idx[node_id]))
+
+            # Create edges DataFrame
+            edges_df = DataFrame.from_data(
+                columns={
+                    "from": "integer",
+                    "to": "integer",
+                },
+                data=edges_data,
+            )
 
             # Build simplified result
-            result = {"nodes": nodes_df.model_dump(mode="json"), "parent_map": parent_map_indexed}
+            result = {"nodes": nodes_df.model_dump(mode="json"), "edges": edges_df.model_dump(mode="json")}
 
             return result
 

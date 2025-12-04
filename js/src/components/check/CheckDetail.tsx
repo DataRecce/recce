@@ -1,3 +1,5 @@
+"use client";
+
 import {
   Box,
   Button,
@@ -5,6 +7,8 @@ import {
   CloseButton,
   Dialog,
   Flex,
+  Grid,
+  GridItem,
   Heading,
   Highlight,
   HStack,
@@ -26,10 +30,12 @@ import { formatDistanceToNow } from "date-fns";
 import React, { ReactNode, Ref, useCallback, useRef, useState } from "react";
 import { CiBookmark } from "react-icons/ci";
 import { IoMdCodeWorking } from "react-icons/io";
+import { IoBookmarksOutline } from "react-icons/io5";
 import { PiCheckCircle, PiCopy, PiRepeat, PiTrashFill } from "react-icons/pi";
 import { VscCircleLarge, VscKebabVertical } from "react-icons/vsc";
-import { useLocation } from "wouter";
 import SetupConnectionPopover from "@/components/app/SetupConnectionPopover";
+import { CheckTimeline } from "@/components/check/timeline";
+import { isDisabledByNoResult } from "@/components/check/utils";
 import { Tooltip } from "@/components/ui/tooltip";
 import {
   QueryDiffParams,
@@ -37,13 +43,21 @@ import {
   QueryRunParams,
 } from "@/lib/api/adhocQuery";
 import { cacheKeys } from "@/lib/api/cacheKeys";
-import { Check, deleteCheck, getCheck, updateCheck } from "@/lib/api/checks";
+import {
+  Check,
+  deleteCheck,
+  getCheck,
+  markAsPresetCheck,
+  updateCheck,
+} from "@/lib/api/checks";
 import { cancelRun, submitRunFromCheck } from "@/lib/api/runs";
 import { trackCopyToClipboard } from "@/lib/api/track";
 import { Run, RunParamTypes } from "@/lib/api/types";
+import { useLineageGraphContext } from "@/lib/hooks/LineageGraphContext";
 import { useRecceCheckContext } from "@/lib/hooks/RecceCheckContext";
 import { useRecceInstanceContext } from "@/lib/hooks/RecceInstanceContext";
 import { useCopyToClipboardButton } from "@/lib/hooks/ScreenShot";
+import { useAppLocation } from "@/lib/hooks/useAppRouter";
 import { useCheckToast } from "@/lib/hooks/useCheckToast";
 import { useClipBoardToast } from "@/lib/hooks/useClipBoardToast";
 import { useRun } from "@/lib/hooks/useRun";
@@ -54,7 +68,6 @@ import {
   findByRunType,
   RefTypes,
   RegistryEntry,
-  RunType,
   ViewOptionTypes,
 } from "../run/registry";
 import { VSplit } from "../split/Split";
@@ -68,16 +81,6 @@ import {
 } from "./PresetCheckTemplateView";
 import { SchemaDiffView } from "./SchemaDiffView";
 
-export const isDisabledByNoResult = (
-  type: RunType,
-  run: Run | undefined,
-): boolean => {
-  if (type === "schema_diff" || type === "lineage_diff") {
-    return false;
-  }
-  return !run?.result || !!run.error;
-};
-
 interface CheckDetailProps {
   checkId: string;
   refreshCheckList?: () => void;
@@ -85,14 +88,15 @@ interface CheckDetailProps {
 
 type TabValueList = "result" | "query";
 
-export const CheckDetail = ({
+export function CheckDetail({
   checkId,
   refreshCheckList,
-}: CheckDetailProps) => {
-  const { featureToggles } = useRecceInstanceContext();
+}: CheckDetailProps): ReactNode {
+  const { featureToggles, sessionId } = useRecceInstanceContext();
   const { setLatestSelectedCheckId } = useRecceCheckContext();
+  const { cloudMode } = useLineageGraphContext();
   const queryClient = useQueryClient();
-  const [, setLocation] = useLocation();
+  const [, setLocation] = useAppLocation();
   const { successToast, failToast } = useClipBoardToast();
   const { markedAsApprovedToast } = useCheckToast();
   const [submittedRunId, setSubmittedRunId] = useState<string>();
@@ -151,6 +155,27 @@ export const CheckDetail = ({
       setLocation("/checks");
     },
   });
+
+  const { mutate: handleMarkAsPresetCheck, isPending: isMarkingAsPreset } =
+    useMutation({
+      mutationFn: async () => {
+        if (!check) {
+          throw new Error("Check not found");
+        }
+
+        return await markAsPresetCheck(checkId);
+      },
+      onSuccess: async () => {
+        successToast("Check marked as preset successfully");
+        // Invalidate queries to refresh the check data
+        await queryClient.invalidateQueries({
+          queryKey: cacheKeys.check(checkId),
+        });
+      },
+      onError: (error) => {
+        failToast("Failed to mark check as preset", error);
+      },
+    });
 
   const handleRerun = useCallback(async () => {
     const type = check?.type;
@@ -274,126 +299,148 @@ export const CheckDetail = ({
       sizes={[30, 70]}
       style={{ height: "100%", width: "100%", maxHeight: "100%" }}
     >
-      <Box style={{ contain: "strict" }} display="flex" flexDirection="column">
-        <Flex p="0px 16px" alignItems="center" h="40px">
-          <CheckBreadcrumb
-            name={check.name}
-            setName={(name) => {
-              mutate({ name });
-            }}
-          />
-          {isPresetCheck && (
-            <Tooltip content="Preset Check defined in recce config">
-              <Tag.Root size="sm" flex="0 0 auto" ml="2">
-                <Tag.StartElement>
-                  <CiBookmark size="14px" />
-                </Tag.StartElement>
-                <Tag.Label>Preset</Tag.Label>
-              </Tag.Root>
-            </Tooltip>
-          )}
-          <Spacer />
-          <HStack mr="10px">
-            {relativeTime && (
-              <Box
-                textOverflow="ellipsis"
-                whiteSpace="nowrap"
-                overflow="hidden"
-                fontSize="10pt"
-              >
-                {relativeTime}
-              </Box>
+      <Grid
+        templateColumns={cloudMode ? "2fr 1fr" : "1fr"}
+        h="100%"
+        style={{ contain: "strict" }}
+      >
+        <GridItem display="flex" flexDirection="column" overflow="hidden">
+          <Flex p="0px 16px" alignItems="center" h="40px">
+            <CheckBreadcrumb
+              name={check.name}
+              setName={(name) => {
+                mutate({ name });
+              }}
+            />
+            {isPresetCheck && (
+              <Tooltip content="Preset Check defined in recce config">
+                <Tag.Root size="sm" flex="0 0 auto" ml="2">
+                  <Tag.StartElement>
+                    <CiBookmark size="14px" />
+                  </Tag.StartElement>
+                  <Tag.Label>Preset</Tag.Label>
+                </Tag.Root>
+              </Tooltip>
             )}
+            <Spacer />
+            <HStack mr="10px">
+              {relativeTime && (
+                <Box
+                  textOverflow="ellipsis"
+                  whiteSpace="nowrap"
+                  overflow="hidden"
+                  fontSize="10pt"
+                >
+                  {relativeTime}
+                </Box>
+              )}
 
-            <Menu.Root>
-              <Menu.Trigger asChild>
-                <IconButton rounded="full" variant="ghost" size="sm">
-                  <Icon as={VscKebabVertical} />
-                </IconButton>
-              </Menu.Trigger>
-              <Portal>
-                <Menu.Positioner>
-                  <Menu.Content>
-                    <Menu.Item
-                      value="preset-check-template"
-                      onClick={() => {
-                        setOverlay(<Overlay />);
-                        onPresetCheckTemplateOpen();
-                      }}
-                    >
-                      <Flex alignItems="center" gap={1} textStyle="sm">
-                        <IoMdCodeWorking /> Get Preset Check Template
-                      </Flex>
-                    </Menu.Item>
-                    <Menu.Item
-                      value="copy-markdown"
-                      onClick={() => handleCopy()}
-                    >
-                      <Flex alignItems="center" gap={1} textStyle="sm">
-                        <PiCopy /> Copy Markdown
-                      </Flex>
-                    </Menu.Item>
-                    <MenuSeparator />
-                    <Menu.Item
-                      value="delete"
-                      color="red.solid"
-                      onClick={() => {
-                        handleDelete();
-                      }}
-                      disabled={featureToggles.disableUpdateChecklist}
-                    >
-                      <Flex alignItems="center" gap={1} textStyle="sm">
-                        <PiTrashFill /> Delete
-                      </Flex>
-                    </Menu.Item>
-                  </Menu.Content>
-                </Menu.Positioner>
-              </Portal>
-            </Menu.Root>
+              <Menu.Root>
+                <Menu.Trigger asChild>
+                  <IconButton rounded="full" variant="ghost" size="sm">
+                    <Icon as={VscKebabVertical} />
+                  </IconButton>
+                </Menu.Trigger>
+                <Portal>
+                  <Menu.Positioner>
+                    <Menu.Content>
+                      {sessionId && (
+                        <Menu.Item
+                          value="mark-as-preset-check"
+                          onClick={() => handleMarkAsPresetCheck()}
+                          disabled={isMarkingAsPreset || isPresetCheck}
+                        >
+                          <Flex alignItems="center" gap={1} textStyle="sm">
+                            <IoBookmarksOutline /> Mark as Preset Check
+                          </Flex>
+                        </Menu.Item>
+                      )}
+                      <Menu.Item
+                        value="preset-check-template"
+                        onClick={() => {
+                          setOverlay(<Overlay />);
+                          onPresetCheckTemplateOpen();
+                        }}
+                      >
+                        <Flex alignItems="center" gap={1} textStyle="sm">
+                          <IoMdCodeWorking /> Get Preset Check Template
+                        </Flex>
+                      </Menu.Item>
+                      <Menu.Item
+                        value="copy-markdown"
+                        onClick={() => handleCopy()}
+                      >
+                        <Flex alignItems="center" gap={1} textStyle="sm">
+                          <PiCopy /> Copy Markdown
+                        </Flex>
+                      </Menu.Item>
+                      <MenuSeparator />
+                      <Menu.Item
+                        value="delete"
+                        color="red.solid"
+                        onClick={() => {
+                          handleDelete();
+                        }}
+                        disabled={featureToggles.disableUpdateChecklist}
+                      >
+                        <Flex alignItems="center" gap={1} textStyle="sm">
+                          <PiTrashFill /> Delete
+                        </Flex>
+                      </Menu.Item>
+                    </Menu.Content>
+                  </Menu.Positioner>
+                </Portal>
+              </Menu.Root>
 
-            <Tooltip
-              content={
-                isDisabledByNoResult(check.type, run)
-                  ? "Run the check first"
-                  : check.is_checked
-                    ? "Mark as Pending"
-                    : "Mark as Approved"
-              }
-              positioning={{ placement: "bottom-end" }}
-            >
-              <Button
-                flex="0 0 auto"
-                size="sm"
-                colorPalette={check.is_checked ? "green" : "gray"}
-                variant={check.is_checked ? "solid" : "outline"}
-                onClick={() => {
-                  handleApproveCheck();
-                }}
-                disabled={
-                  isDisabledByNoResult(check.type, run) ||
-                  featureToggles.disableUpdateChecklist
+              <Tooltip
+                content={
+                  isDisabledByNoResult(check.type, run)
+                    ? "Run the check first"
+                    : check.is_checked
+                      ? "Mark as Pending"
+                      : "Mark as Approved"
                 }
+                positioning={{ placement: "bottom-end" }}
               >
-                {check.is_checked ? (
-                  <PiCheckCircle />
-                ) : (
-                  <Icon as={VscCircleLarge} color="lightgray" />
-                )}{" "}
-                {check.is_checked ? "Approved" : "Mark as Approved"}
-              </Button>
-            </Tooltip>
-          </HStack>
-        </Flex>
+                <Button
+                  flex="0 0 auto"
+                  size="sm"
+                  colorPalette={check.is_checked ? "green" : "gray"}
+                  variant={check.is_checked ? "solid" : "outline"}
+                  onClick={() => {
+                    handleApproveCheck();
+                  }}
+                  disabled={
+                    isDisabledByNoResult(check.type, run) ||
+                    featureToggles.disableUpdateChecklist
+                  }
+                >
+                  {check.is_checked ? (
+                    <PiCheckCircle />
+                  ) : (
+                    <Icon as={VscCircleLarge} color="lightgray" />
+                  )}{" "}
+                  {check.is_checked ? "Approved" : "Mark as Approved"}
+                </Button>
+              </Tooltip>
+            </HStack>
+          </Flex>
 
-        <Box flex="1" p="8px 16px" minHeight="100px">
-          <CheckDescription
-            key={check.check_id}
-            value={check.description}
-            onChange={handleUpdateDescription}
-          />
-        </Box>
-        {/* </Flex> */}
-      </Box>
+          <Box flex="1" p="8px 16px" minHeight="100px">
+            <CheckDescription
+              key={check.check_id}
+              value={check.description}
+              onChange={handleUpdateDescription}
+            />
+          </Box>
+        </GridItem>
+        {/* Timeline panel - only shown when connected to cloud */}
+        {cloudMode && (
+          <GridItem overflow="hidden">
+            <CheckTimeline checkId={checkId} />
+          </GridItem>
+        )}
+      </Grid>
 
       <Box style={{ contain: "strict" }}>
         <Tabs.Root
@@ -577,7 +624,7 @@ export const CheckDetail = ({
       </Dialog.Root>
     </VSplit>
   );
-};
+}
 
 function Overlay(): ReactNode {
   return <Dialog.Backdrop bg="blackAlpha.300" backdropFilter="blur(10px) " />;

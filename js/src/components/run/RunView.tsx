@@ -7,18 +7,15 @@ import {
   ProgressCircle,
   VStack,
 } from "@chakra-ui/react";
-import { ErrorBoundary } from "@sentry/react";
-import React, {
-  ForwardRefExoticComponent,
-  forwardRef,
-  RefAttributes,
-} from "react";
+import React, { forwardRef } from "react";
+import { ErrorBoundary } from "@/components/errorboundary/ErrorBoundary";
 import {
   RefTypes,
   RegistryEntry,
   ViewOptionTypes,
 } from "@/components/run/registry";
 import { Run } from "@/lib/api/types";
+import ResultErrorFallback from "@/lib/result/ResultErrorFallback";
 import { RunResultViewProps } from "./types";
 
 // Define an error type
@@ -145,7 +142,7 @@ export const RunView = forwardRef(
         className="no-track-pii-safe"
       >
         {RunResultView && (run.error ?? run.result) && (
-          <ErrorBoundary>
+          <ErrorBoundary fallback={ResultErrorFallback}>
             <RunResultView
               ref={ref}
               run={run}

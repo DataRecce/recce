@@ -691,6 +691,8 @@ DEFAULT_RECCE_STATE_FILE = "recce_state.json"
 @add_options(recce_options)
 @add_options(recce_dbt_artifact_dir_options)
 @add_options(recce_cloud_options)
+@add_options(recce_cloud_auth_options)
+@add_options(recce_hidden_options)
 def run(output, **kwargs):
     """
     Run recce and output the state file
@@ -721,21 +723,22 @@ def run(output, **kwargs):
     # Initialize Recce Config
     RecceConfig(config_file=kwargs.get("config"))
 
-    cloud_mode = kwargs.get("cloud", False)
-    state_file = kwargs.get("state_file")
-    cloud_options = (
-        {
-            "host": kwargs.get("state_file_host"),
-            "github_token": kwargs.get("cloud_token"),
-            "password": kwargs.get("password"),
-        }
-        if cloud_mode
-        else None
-    )
+    patch_derived_args(kwargs)
+    # Remove share_url from kwargs to avoid affecting state loader creation
+    kwargs.pop("share_url", None)
 
-    state_loader = create_state_loader(
-        review_mode=False, cloud_mode=cloud_mode, state_file=state_file, cloud_options=cloud_options
-    )
+    state_file = kwargs.pop("state_file", None)
+
+    # Prepare API token
+    try:
+        api_token = prepare_api_token(**kwargs)
+        kwargs["api_token"] = api_token
+    except RecceConfigException:
+        show_invalid_api_token_message()
+        exit(1)
+
+    # Create state loader using shared function
+    state_loader = create_state_loader_by_args(state_file, **kwargs)
 
     if not state_loader.verify():
         error, hint = state_loader.error_and_hint
@@ -1743,18 +1746,11 @@ def read_only(ctx, state_file=None, **kwargs):
 @add_options(recce_hidden_options)
 def mcp_server(sse, host, port, **kwargs):
     """
-    [Experiment] Start the Recce MCP (Model Context Protocol) server
+    Start the Recce MCP (Model Context Protocol) server
 
     The MCP server provides an interface for AI assistants and tools to interact
     with Recce's data validation capabilities. By default, it uses stdio for
     communication. Use --sse to enable HTTP/Server-Sent Events mode instead.
-
-    Available tools:
-    - get_lineage_diff: Get lineage differences between environments
-    - row_count_diff: Compare row counts between environments
-    - query: Execute SQL queries with dbt templating
-    - query_diff: Compare query results between environments
-    - profile_diff: Generate statistical profiles and compare
 
     Examples:\n
 
@@ -1769,10 +1765,6 @@ def mcp_server(sse, host, port, **kwargs):
     \b
     # Start in HTTP/SSE mode with custom host and port
     recce mcp-server --sse --host 0.0.0.0 --port 9000
-
-    \b
-    # Start with custom dbt configuration
-    recce mcp-server --target prod --project-dir ./my_project
 
     SSE Connection URL (when using --sse): http://<host>:<port>/sse
     """
@@ -1811,10 +1803,8 @@ def mcp_server(sse, host, port, **kwargs):
         if sse:
             console.print(f"Starting Recce MCP Server in HTTP/SSE mode on {host}:{port}...")
             console.print(f"SSE endpoint: http://{host}:{port}/sse")
-            console.print("Available tools: get_lineage_diff, row_count_diff, query, query_diff, profile_diff")
         else:
             console.print("Starting Recce MCP Server in stdio mode...")
-            console.print("Available tools: get_lineage_diff, row_count_diff, query, query_diff, profile_diff")
 
         # Run the server (stdio or SSE based on --sse flag)
         asyncio.run(run_mcp_server(sse=sse, host=host, port=port, **kwargs))

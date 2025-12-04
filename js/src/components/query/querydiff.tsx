@@ -340,8 +340,8 @@ export const inlineRenderCell = ({
       columnType?: ColumnType;
       columnRenderMode?: ColumnRenderMode;
     };
-  const baseKey = `base__${column.key}`;
-  const currentKey = `current__${column.key}`;
+  const baseKey = `base__${column.key}`.toLowerCase();
+  const currentKey = `current__${column.key}`.toLowerCase();
 
   if (!Object.hasOwn(row, baseKey) && !Object.hasOwn(row, currentKey)) {
     // should not happen
@@ -352,13 +352,13 @@ export const inlineRenderCell = ({
   const hasCurrent = Object.hasOwn(row, currentKey);
   const [baseValue, baseGrayOut] = toRenderedValue(
     row,
-    `base__${column.key}`,
+    `base__${column.key}`.toLowerCase(),
     columnType,
     columnRenderMode,
   );
   const [currentValue, currentGrayOut] = toRenderedValue(
     row,
-    `current__${column.key}`,
+    `current__${column.key}`.toLowerCase(),
     columnType,
     columnRenderMode,
   );
@@ -468,10 +468,10 @@ export function toDataDiffGrid(
       base.columns.forEach((col) => {
         if (primaryKeys.includes(col.key)) {
           // add the primary key value directly (not prefixed with base__ or current__)
-          row[col.key] = baseRow[col.key];
+          row[String(col.key).toLowerCase()] = baseRow[col.key];
           return;
         }
-        row[`base__${col.key}`] = baseRow[col.key];
+        row[`base__${col.key}`.toLowerCase()] = baseRow[col.key];
       });
     }
 
@@ -479,10 +479,10 @@ export function toDataDiffGrid(
       current.columns.forEach((col) => {
         if (primaryKeys.includes(col.key)) {
           // add the primary key value directly (not prefixed with base__ or current__)
-          row[col.key] = currentRow[col.key];
+          row[String(col.key).toLowerCase()] = currentRow[col.key];
           return;
         }
-        row[`current__${col.key}`] = currentRow[col.key];
+        row[`current__${col.key}`.toLowerCase()] = currentRow[col.key];
       });
     }
 

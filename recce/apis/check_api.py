@@ -1,4 +1,3 @@
-from datetime import datetime, timezone
 from typing import Optional
 from uuid import UUID
 
@@ -153,21 +152,9 @@ class PatchCheckIn(BaseModel):
 
 @check_router.patch("/checks/{check_id}", status_code=200, response_model=CheckOut, response_model_exclude_none=True)
 async def update_check_handler(check_id: UUID, patch: PatchCheckIn, background_tasks: BackgroundTasks):
-    check = CheckDAO().find_check_by_id(check_id)
+    check = CheckDAO().update_check_by_id(check_id, patch)
     if check is None:
         raise HTTPException(status_code=404, detail="Not Found")
-
-    if patch.name is not None:
-        check.name = patch.name
-    if patch.description is not None:
-        check.description = patch.description
-    if patch.params is not None:
-        check.params = patch.params
-    if patch.view_options is not None:
-        check.view_options = patch.view_options
-    if patch.is_checked is not None:
-        check.is_checked = patch.is_checked
-    check.updated_at = datetime.now(timezone.utc).replace(microsecond=0)
 
     background_tasks.add_task(export_persistent_state)
     return CheckOut.from_check(check)
@@ -193,5 +180,24 @@ class ReorderChecksIn(BaseModel):
 async def reorder_handler(order: ReorderChecksIn):
     try:
         CheckDAO().reorder(order.source, order.destination)
+    except RecceException as e:
+        raise HTTPException(status_code=400, detail=e.message)
+
+
+@check_router.post("/checks/{check_id}/mark-as-preset", status_code=204)
+async def mark_as_preset_check_handler(check_id: UUID, background_tasks: BackgroundTasks):
+    """
+    Mark an existing check as a preset check (cloud users only).
+
+    This creates a preset check from the specified check.
+    Only available for users with cloud mode enabled.
+
+    Returns:
+        204 No Content: Successfully marked check as preset
+        400 Bad Request: Error with detail message (e.g., not in cloud mode, check not found)
+    """
+    try:
+        CheckDAO().mark_as_preset_check(check_id)
+        background_tasks.add_task(export_persistent_state)
     except RecceException as e:
         raise HTTPException(status_code=400, detail=e.message)

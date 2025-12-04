@@ -14,6 +14,7 @@ import { mergeKeysWithStatus } from "@/lib/mergeKeys";
 import {
   dataFrameToRowObjects,
   getCaseInsensitive,
+  getValueAtPath,
   includesIgnoreCase,
   keyToNumber,
 } from "@/utils/transforms";
@@ -36,25 +37,27 @@ function _getColumnMap(df: DataFrame) {
   > = {};
 
   df.columns.map((col, index) => {
-    // Normalize special column names to uppercase
-    const normalizedColName =
-      col.name.toLowerCase() === "in_a"
-        ? "IN_A"
-        : col.name.toLowerCase() === "in_b"
-          ? "IN_B"
-          : col.name;
-    const normalizedColKey =
-      col.key.toLowerCase() === "in_a"
-        ? "IN_A"
-        : col.key.toLowerCase() === "in_b"
-          ? "IN_B"
-          : col.key;
-
-    result[normalizedColName] = {
-      key: normalizedColKey,
-      index,
-      colType: col.type,
-    };
+    if (
+      col.name.toLowerCase() === "in_a" ||
+      col.name.toLowerCase() === "in_b"
+    ) {
+      result[col.name.toUpperCase()] = {
+        key: col.key,
+        index,
+        colType: col.type,
+      };
+      result[col.name.toLowerCase()] = {
+        key: col.key,
+        index,
+        colType: col.type,
+      };
+    } else {
+      result[col.name] = {
+        key: col.key,
+        index,
+        colType: col.type,
+      };
+    }
   });
 
   return result;
@@ -215,11 +218,6 @@ export function toValueDiffGrid(
   })[] = [];
   const columnMap = _getColumnMap(df);
 
-  // "in_a" and "in_b" are special columns used in the query template, columns are in uppercase in snowflake
-  if ("IN_A" in columnMap) {
-    primaryKeys = primaryKeys.map((key) => key.toUpperCase());
-  }
-
   // merge row
   const baseMap: Record<string, RowObjectType | undefined> = {};
   const currentMap: Record<string, RowObjectType | undefined> = {};
@@ -264,10 +262,10 @@ export function toValueDiffGrid(
       df.columns.forEach((col) => {
         if (includesIgnoreCase(primaryKeys, col.key)) {
           // add the primary key value directly (not prefixed with base__ or current__)
-          row[col.key] = baseRow[col.key];
+          row[String(col.key).toLowerCase()] = baseRow[col.key];
           return;
         }
-        row[`base__${col.key}`] = baseRow[col.key];
+        row[`base__${col.key}`.toLowerCase()] = baseRow[col.key];
       });
     }
 
@@ -275,10 +273,10 @@ export function toValueDiffGrid(
       df.columns.forEach((col) => {
         if (includesIgnoreCase(primaryKeys, col.key)) {
           // add the primary key value directly (not prefixed with base__ or current__)
-          row[col.key] = currentRow[col.key];
+          row[String(col.key).toLowerCase()] = currentRow[col.key];
           return;
         }
-        row[`current__${col.key}`] = currentRow[col.key];
+        row[`current__${col.key}`.toLowerCase()] = currentRow[col.key];
       });
     }
 
@@ -431,15 +429,18 @@ export function toValueDiffGrid(
 
   // merges columns: primary keys
   primaryKeys.forEach((name) => {
-    const lowercaseName = name.toLowerCase();
-    const columnStatus = columnMap[lowercaseName].status ?? "";
-    const columnType = columnMap[lowercaseName].colType;
+    const col = getValueAtPath(columnMap, name);
+    if (!col) {
+      throw new Error(`Primary column ${name} not found in DataFrame`);
+    }
+    const columnStatus = col.status ?? "";
+    const columnType = col.colType;
 
     columns.push({
-      key: lowercaseName,
+      key: name,
       name: (
         <DataFrameColumnGroupHeader
-          name={lowercaseName}
+          name={name}
           columnStatus={columnStatus}
           primaryKeys={primaryKeys.map((k) => k.toLowerCase())}
           columnType={"unknown"}
@@ -455,27 +456,25 @@ export function toValueDiffGrid(
       },
       renderCell: defaultRenderCell,
       columnType,
-      columnRenderMode: columnsRenderMode[lowercaseName],
+      columnRenderMode: columnsRenderMode[name],
     });
   });
 
   // merges columns: pinned columns
   pinnedColumns.forEach((name) => {
-    const lowercaseName = name.toLowerCase();
-    const columnStatus = columnMap[lowercaseName].status ?? "";
-    const columnType = columnMap[lowercaseName].colType;
+    const col = getValueAtPath(columnMap, name);
+    if (!col) {
+      throw new Error(`Pinned column ${name} not found in DataFrame`);
+    }
+    const columnStatus = col.status ?? "";
+    const columnType = col.colType;
 
-    if (includesIgnoreCase(primaryKeys, lowercaseName)) {
+    if (includesIgnoreCase(primaryKeys, name)) {
       return;
     }
 
     columns.push(
-      toColumn(
-        lowercaseName,
-        columnStatus,
-        columnType,
-        columnsRenderMode[lowercaseName],
-      ),
+      toColumn(name, columnStatus, columnType, columnsRenderMode[name]),
     );
   });
 
@@ -483,7 +482,7 @@ export function toValueDiffGrid(
   Object.entries(columnMap).forEach(([name, mergedColumn]) => {
     const columnStatus = mergedColumn.status ?? "";
 
-    if (name === "IN_A" || name === "IN_B") {
+    if (includesIgnoreCase(["in_a", "IN_A", "in_b", "IN_B"], name)) {
       return;
     }
 
@@ -506,10 +505,10 @@ export function toValueDiffGrid(
     }
     columns.push(
       toColumn(
-        name.toLowerCase(),
+        name,
         columnStatus,
         mergedColumn.colType,
-        columnsRenderMode[name.toLowerCase()],
+        columnsRenderMode[name],
       ),
     );
   });

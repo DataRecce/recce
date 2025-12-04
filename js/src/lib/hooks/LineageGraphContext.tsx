@@ -37,6 +37,7 @@ import {
 import { aggregateRuns, RunsAggregated } from "../api/runs";
 import { trackSingleEnvironment } from "../api/track";
 import { PUBLIC_API_URL } from "../const";
+import { useIdleTimeout } from "./IdleTimeoutContext";
 import { useRecceServerFlag } from "./useRecceServerFlag";
 
 interface EnvInfo {
@@ -247,6 +248,14 @@ interface LineageGraphProps {
 }
 
 export function LineageGraphContextProvider({ children }: LineageGraphProps) {
+  const {
+    idleTimeout,
+    remainingSeconds,
+    isEnabled,
+    setDisconnected,
+    resetConnection,
+  } = useIdleTimeout();
+
   const queryServerInfo = useQuery({
     queryKey: cacheKeys.lineage(),
     queryFn: getServerInfo,
@@ -301,6 +310,18 @@ export function LineageGraphContextProvider({ children }: LineageGraphProps) {
   };
 
   const { connectionStatus, connect, envStatus } = useLineageWatcher();
+
+  // Handle connection status changes for idle timeout
+  useEffect(() => {
+    if (connectionStatus === "disconnected") {
+      // Stop countdown and keep-alive when disconnected
+      setDisconnected();
+    } else if (connectionStatus === "connected") {
+      // Reset countdown when reconnected (e.g., after Retry)
+      resetConnection();
+    }
+  }, [connectionStatus, setDisconnected, resetConnection]);
+
   const { data: flags, isLoading } = useRecceServerFlag();
   const { featureToggles, shareUrl } = useRecceInstanceContext();
   const { onClose } = useDisclosure();
@@ -384,7 +405,19 @@ export function LineageGraphContextProvider({ children }: LineageGraphProps) {
                 mode={featureToggles.mode}
               />
             ) : (
-              <ServerDisconnectedModalContent connect={connect} />
+              <ServerDisconnectedModalContent
+                connect={connect}
+                idleSeconds={
+                  // Only show idle time if disconnected due to idle timeout
+                  // (idle timeout enabled AND remaining time was near zero)
+                  isEnabled &&
+                  idleTimeout !== null &&
+                  remainingSeconds !== null &&
+                  remainingSeconds <= 5
+                    ? idleTimeout - Math.max(0, remainingSeconds)
+                    : undefined
+                }
+              />
             )}
           </Dialog.Positioner>
         </Portal>

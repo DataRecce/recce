@@ -7,6 +7,7 @@ export interface RecceInstanceInfo {
   authed: boolean;
   cloud_instance: boolean;
   lifetime_expired_at?: Date;
+  idle_timeout?: number;
   share_url?: string;
   session_id?: string;
   organization_name?: string;
