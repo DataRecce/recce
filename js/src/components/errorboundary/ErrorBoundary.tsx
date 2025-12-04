@@ -3,24 +3,8 @@ import {
   FallbackRender,
   ErrorBoundary as SentryErrorBoundary,
 } from "@sentry/react";
-import { useState } from "react";
-
-/* For testing purposes only */
-export const ErrorButton = () => {
-  const [a, setA] = useState<{ foo: string } | undefined>({ foo: "bar" });
-
-  return (
-    <Button
-      pos="absolute"
-      onClick={() => {
-        setA(undefined);
-      }}
-      zIndex={1}
-    >
-      {a?.foo}
-    </Button>
-  );
-};
+import * as React from "react";
+import { ReactNode, useState } from "react";
 
 const Fallback: FallbackRender = (errorData) => {
   return (
@@ -58,8 +42,32 @@ const Fallback: FallbackRender = (errorData) => {
   );
 };
 
-export const ErrorBoundary = ({ children }: { children: React.ReactNode }) => {
+/* For testing purposes only */
+// noinspection JSUnusedGlobalSymbols
+export const ErrorButton = () => {
+  const [a, setA] = useState<{ foo: string } | undefined>({ foo: "bar" });
+
   return (
-    <SentryErrorBoundary fallback={Fallback}>{children}</SentryErrorBoundary>
+    <Button
+      pos="absolute"
+      onClick={() => {
+        setA(undefined);
+      }}
+      zIndex={1}
+    >
+      {a?.foo}
+    </Button>
+  );
+};
+
+export const ErrorBoundary = ({
+  children,
+  fallback = Fallback,
+}: {
+  children: ReactNode;
+  fallback?: React.ReactElement | FallbackRender | undefined;
+}) => {
+  return (
+    <SentryErrorBoundary fallback={fallback}>{children}</SentryErrorBoundary>
   );
 };
