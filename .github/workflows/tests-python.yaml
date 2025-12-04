@@ -31,10 +31,10 @@ jobs:
           version: "latest"
 
       - name: Install dependencies
-        run: uv sync --all-extras --python 3.10
+        run: pip install -e .[dev,mcp]
 
       - name: Run flake8
-        run: uv run make flake8
+        run: make flake8
 
   test-dbt-versions:
     name: Test DBT Versions
@@ -60,10 +60,10 @@ jobs:
             ${{ runner.os }}-tox-uv-
 
       - name: Install dependencies
-        run: uv sync --all-extras --python 3.10
+        run: pip install -e .[dev,mcp]
 
       - name: Run tests
-        run: uv run make test-tox
+        run: make test-tox
 
       - name: Upload coverage reports to Codecov
         uses: codecov/codecov-action@v5
@@ -94,7 +94,7 @@ jobs:
             ${{ runner.os }}-tox-uv-
 
       - name: Install dependencies
-        run: uv sync --all-extras --python ${{ matrix.python-version }}
+        run: pip install -e .[dev,mcp]
 
       - name: Run test with specified Python version
-        run: uv run tox -e ${{ matrix.python-version }}
+        run: tox -e ${{ matrix.python-version }}

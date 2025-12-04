@@ -4,11 +4,11 @@
 default: help
 
 install-dev:
-	pip install -e .[dev]
+	pip install -e .[dev,mcp]
 	pre-commit install
 
 install:
-	pip install -e .
+	pip install .
 
 install-cloud:
 	pip install -e ./recce_cloud
@@ -73,22 +73,22 @@ check-cloud:
 	@echo "Checking recce-cloud code style with flake8..."
 	flake8 ./recce_cloud
 
-test:
+test: install-dev
 	@echo "Running tests..."
-	pytest tests
+	@python3 -m pytest tests
 
-test-coverage:
+test-coverage: install-dev
 	@echo "Running tests with coverage..."
-	pytest --cov=recce --cov-report=html --cov-report=term tests
+	@python3 -m pytest --cov=recce --cov-report=html --cov-report=term tests
 	@echo "Coverage report generated in htmlcov/index.html"
 
-test-tox:
+test-tox: install-dev
 	@echo "Running tests with Tox based on DBT versions..."
-	tox run-parallel
+	@tox run-parallel
 
 test-tox-python-versions:
 	@echo "Running tests with Tox for specific Python versions..."
-	tox run-parallel -e 3.9,3.10,3.11,3.12,3.13
+	@tox run-parallel -e 3.9,3.10,3.11,3.12,3.13
 
 install-frontend-requires:
 # Install pnpm if not installed
@@ -98,7 +98,7 @@ install-frontend-requires:
 dev: install-frontend-requires
 	@cd js && pnpm dev
 
-# Build targets
+# Build targets (packaging - using uv)
 clean-build:
 	@echo "Cleaning build artifacts..."
 	@rm -rf build/ dist/ *.egg-info recce_cloud.egg-info
