@@ -2,6 +2,7 @@
 
 import { Box, Flex, Link, Tabs } from "@chakra-ui/react";
 import { useQuery } from "@tanstack/react-query";
+import NextLink from "next/link";
 import { usePathname } from "next/navigation";
 import React, { Activity, ReactNode, useEffect, useMemo } from "react";
 import { EnvInfo } from "@/components/app/EnvInfo";
@@ -122,7 +123,9 @@ export default function NavBar() {
                 disabled={isLoading || isFlagLoading || disable}
                 hidden={disable}
               >
-                <Link href={path}>{name}</Link>
+                <Link asChild>
+                  <NextLink href={path}>{name}</NextLink>
+                </Link>
                 <Activity mode={name === "Checklist" ? "visible" : "hidden"}>
                   {ChecklistBadge}
                 </Activity>

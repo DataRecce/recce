@@ -61,7 +61,7 @@ export function MainLayout({ children, lineage }: MainLayoutProps) {
       <TopBar />
       <NavBar />
       <Main isLineageRoute={isLineageRoute} lineage={lineage}>
-        <Suspense fallback={<MainContentLoading />}>{children}</Suspense>
+        {children}
       </Main>
       {!isLoading &&
         !isDemoSite &&
@@ -85,6 +85,7 @@ function Main({ children, lineage, isLineageRoute }: MainProps) {
   const pathname = usePathname();
 
   const _isRunResultOpen = isRunResultOpen && !pathname.startsWith("/checks");
+  console.log("MainLayout Render - isRunResultOpen:", _isRunResultOpen);
   const _isHistoryOpen = isHistoryOpen && !pathname.startsWith("/checks");
 
   return (
@@ -101,23 +102,25 @@ function Main({ children, lineage, isLineageRoute }: MainProps) {
         gutterSize={_isRunResultOpen ? 5 : 0}
         style={{ flex: "1", contain: "size" }}
       >
-        <Box p={0} style={{ contain: "content" }}>
-          {/*
-           * Lineage parallel route - always mounted but visibility controlled
-           * This replaces the old RouteAlwaysMount pattern
-           */}
-          <Box
-            display={isLineageRoute ? "block" : "none"}
-            height="100%"
-            position={isLineageRoute ? "relative" : "absolute"}
-            inset={0}
-          >
-            {lineage}
-          </Box>
+        <Suspense fallback={<MainContentLoading />}>
+          <Box p={0} style={{ contain: "content" }}>
+            {/*
+             * Lineage parallel route - always mounted but visibility controlled
+             * This replaces the old RouteAlwaysMount pattern
+             */}
+            <Box
+              display={isLineageRoute ? "block" : "none"}
+              height="100%"
+              position={isLineageRoute ? "relative" : "absolute"}
+              inset={0}
+            >
+              {lineage}
+            </Box>
 
-          {/* Other route content */}
-          {!isLineageRoute && children}
-        </Box>
+            {/* Other route content */}
+            {!isLineageRoute && children}
+          </Box>
+        </Suspense>
         {_isRunResultOpen ? (
           <RunResultPane
             onClose={closeRunResult}
