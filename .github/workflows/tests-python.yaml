@@ -34,7 +34,7 @@ jobs:
         run: uv sync --all-extras --python 3.10
 
       - name: Run flake8
-        run: make flake8
+        run: uv run make flake8
 
   test-dbt-versions:
     name: Test DBT Versions
@@ -63,7 +63,7 @@ jobs:
         run: uv sync --all-extras --python 3.10
 
       - name: Run tests
-        run: make test-tox
+        run: uv run make test-tox
 
       - name: Upload coverage reports to Codecov
         uses: codecov/codecov-action@v5
