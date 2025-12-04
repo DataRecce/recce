@@ -85,7 +85,6 @@ function Main({ children, lineage, isLineageRoute }: MainProps) {
   const pathname = usePathname();
 
   const _isRunResultOpen = isRunResultOpen && !pathname.startsWith("/checks");
-  console.log("MainLayout Render - isRunResultOpen:", _isRunResultOpen);
   const _isHistoryOpen = isHistoryOpen && !pathname.startsWith("/checks");
 
   return (
