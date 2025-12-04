@@ -17,7 +17,6 @@ import { PiCaretDown, PiCheck, PiCopy, PiRepeat } from "react-icons/pi";
 import { TbCloudUpload } from "react-icons/tb";
 import YAML from "yaml";
 import AuthModal from "@/components/AuthModal/AuthModal";
-import { ErrorBoundary } from "@/components/errorboundary/ErrorBoundary";
 import { cacheKeys } from "@/lib/api/cacheKeys";
 import { createCheckByRun } from "@/lib/api/checks";
 import { trackCopyToClipboard, trackShareState } from "@/lib/api/track";
@@ -34,7 +33,6 @@ import { useRecceShareStateContext } from "@/lib/hooks/RecceShareStateContext";
 import { useCopyToClipboardButton } from "@/lib/hooks/ScreenShot";
 import { useAppLocation } from "@/lib/hooks/useAppRouter";
 import { useRun } from "@/lib/hooks/useRun";
-import ResultErrorFallback from "@/lib/result/ResultErrorFallback";
 import {
   LearnHowLink,
   RecceNotification,

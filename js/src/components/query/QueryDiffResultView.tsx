@@ -11,9 +11,7 @@ import { toDataDiffGrid } from "./querydiff";
 
 import "./styles.css";
 import { DataGridHandle } from "react-data-grid";
-import { ErrorBoundary } from "@/components/errorboundary/ErrorBoundary";
 import { ColumnRenderMode, Run } from "@/lib/api/types";
-import ResultErrorFallback from "@/lib/result/ResultErrorFallback";
 import {
   EmptyRowsRenderer,
   ScreenshotDataGrid,
