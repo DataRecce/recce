@@ -12,7 +12,6 @@ import {
 import { useQueryClient } from "@tanstack/react-query";
 import React, { ChangeEvent, useCallback, useRef, useState } from "react";
 import { PiInfo } from "react-icons/pi";
-import { useLocation } from "wouter";
 import { toaster } from "@/components/ui/toaster";
 import { Tooltip } from "@/components/ui/tooltip";
 import { cacheKeys } from "@/lib/api/cacheKeys";
@@ -23,6 +22,7 @@ import {
   useRunsAggregated,
 } from "@/lib/hooks/LineageGraphContext";
 import { useRecceInstanceContext } from "@/lib/hooks/RecceInstanceContext";
+import { useAppLocation } from "@/lib/hooks/useAppRouter";
 import { IconImport } from "../icons";
 
 export function StateImporter({ checksOnly = true }: { checksOnly?: boolean }) {
@@ -32,7 +32,7 @@ export function StateImporter({ checksOnly = true }: { checksOnly?: boolean }) {
   const cancelRef = useRef<HTMLButtonElement>(null);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const { open, onOpen, onClose } = useDisclosure();
-  const [location, setLocation] = useLocation();
+  const [location, setLocation] = useAppLocation();
   const [, refetchRunsAggregated] = useRunsAggregated();
 
   const handleImport = useCallback(async () => {

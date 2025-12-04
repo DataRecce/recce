@@ -2,7 +2,6 @@ import { Icon, Menu, Portal, useDisclosure } from "@chakra-ui/react";
 import { ReactNode, useState } from "react";
 import { BiArrowFromBottom, BiArrowToBottom } from "react-icons/bi";
 import { FaRegDotCircle } from "react-icons/fa";
-import { useLocation } from "wouter";
 import SetupConnectionPopover from "@/components/app/SetupConnectionPopover";
 import { SubmitRunTrackProps } from "@/lib/api/runs";
 import { formatSelectColumns } from "@/lib/formatSelect";
@@ -10,6 +9,7 @@ import { useLineageGraphContext } from "@/lib/hooks/LineageGraphContext";
 import { useRecceActionContext } from "@/lib/hooks/RecceActionContext";
 import { useRecceInstanceContext } from "@/lib/hooks/RecceInstanceContext";
 import { useRecceQueryContext } from "@/lib/hooks/RecceQueryContext";
+import { useAppLocation } from "@/lib/hooks/useAppRouter";
 import useModelColumns from "@/lib/hooks/useModelColumns";
 import { useRecceServerFlag } from "@/lib/hooks/useRecceServerFlag";
 import { supportsHistogramDiff } from "../histogram/HistogramDiffForm";
@@ -144,7 +144,7 @@ export const ModelNodeContextMenu = ({
     (node?.data as LineageGraphNode | undefined)?.data.name,
   );
   const { setSqlQuery, setPrimaryKeys } = useRecceQueryContext();
-  const [, setLocation] = useLocation();
+  const [, setLocation] = useAppLocation();
 
   if (!node?.data) {
     return <></>;

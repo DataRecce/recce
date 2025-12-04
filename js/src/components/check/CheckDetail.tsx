@@ -1,3 +1,5 @@
+"use client";
+
 import {
   Box,
   Button,
@@ -31,9 +33,9 @@ import { IoMdCodeWorking } from "react-icons/io";
 import { IoBookmarksOutline } from "react-icons/io5";
 import { PiCheckCircle, PiCopy, PiRepeat, PiTrashFill } from "react-icons/pi";
 import { VscCircleLarge, VscKebabVertical } from "react-icons/vsc";
-import { useLocation } from "wouter";
 import SetupConnectionPopover from "@/components/app/SetupConnectionPopover";
 import { CheckTimeline } from "@/components/check/timeline";
+import { isDisabledByNoResult } from "@/components/check/utils";
 import { Tooltip } from "@/components/ui/tooltip";
 import {
   QueryDiffParams,
@@ -55,6 +57,7 @@ import { useLineageGraphContext } from "@/lib/hooks/LineageGraphContext";
 import { useRecceCheckContext } from "@/lib/hooks/RecceCheckContext";
 import { useRecceInstanceContext } from "@/lib/hooks/RecceInstanceContext";
 import { useCopyToClipboardButton } from "@/lib/hooks/ScreenShot";
+import { useAppLocation } from "@/lib/hooks/useAppRouter";
 import { useCheckToast } from "@/lib/hooks/useCheckToast";
 import { useClipBoardToast } from "@/lib/hooks/useClipBoardToast";
 import { useRun } from "@/lib/hooks/useRun";
@@ -65,7 +68,6 @@ import {
   findByRunType,
   RefTypes,
   RegistryEntry,
-  RunType,
   ViewOptionTypes,
 } from "../run/registry";
 import { VSplit } from "../split/Split";
@@ -79,16 +81,6 @@ import {
 } from "./PresetCheckTemplateView";
 import { SchemaDiffView } from "./SchemaDiffView";
 
-export const isDisabledByNoResult = (
-  type: RunType,
-  run: Run | undefined,
-): boolean => {
-  if (type === "schema_diff" || type === "lineage_diff") {
-    return false;
-  }
-  return !run?.result || !!run.error;
-};
-
 interface CheckDetailProps {
   checkId: string;
   refreshCheckList?: () => void;
@@ -96,15 +88,15 @@ interface CheckDetailProps {
 
 type TabValueList = "result" | "query";
 
-export const CheckDetail = ({
+export function CheckDetail({
   checkId,
   refreshCheckList,
-}: CheckDetailProps) => {
+}: CheckDetailProps): ReactNode {
   const { featureToggles, sessionId } = useRecceInstanceContext();
   const { setLatestSelectedCheckId } = useRecceCheckContext();
   const { cloudMode } = useLineageGraphContext();
   const queryClient = useQueryClient();
-  const [, setLocation] = useLocation();
+  const [, setLocation] = useAppLocation();
   const { successToast, failToast } = useClipBoardToast();
   const { markedAsApprovedToast } = useCheckToast();
   const [submittedRunId, setSubmittedRunId] = useState<string>();
@@ -632,7 +624,7 @@ export const CheckDetail = ({
       </Dialog.Root>
     </VSplit>
   );
-};
+}
 
 function Overlay(): ReactNode {
   return <Dialog.Backdrop bg="blackAlpha.300" backdropFilter="blur(10px) " />;

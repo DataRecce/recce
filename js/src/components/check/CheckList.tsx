@@ -21,6 +21,7 @@ import {
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import React, { useState } from "react";
 import { IconType } from "react-icons";
+import { isDisabledByNoResult } from "@/components/check/utils";
 import { Tooltip } from "@/components/ui/tooltip";
 import { cacheKeys } from "@/lib/api/cacheKeys";
 import { Check, updateCheck } from "@/lib/api/checks";
@@ -28,7 +29,6 @@ import { useRecceInstanceContext } from "@/lib/hooks/RecceInstanceContext";
 import { useCheckToast } from "@/lib/hooks/useCheckToast";
 import { useRun } from "@/lib/hooks/useRun";
 import { findByRunType } from "../run/registry";
-import { isDisabledByNoResult } from "./CheckDetail";
 
 const ChecklistItem = ({
   check,
@@ -137,7 +137,7 @@ export const CheckList = ({
   onChecksReordered,
 }: {
   checks: Check[];
-  selectedItem?: string;
+  selectedItem: string | null;
   onCheckSelected: (checkId: string) => void;
   onChecksReordered: (source: number, destination: number) => void;
 }) => {

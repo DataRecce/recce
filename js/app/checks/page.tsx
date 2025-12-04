@@ -1,24 +1,75 @@
-import "react-data-grid/lib/styles.css";
-import { Box, Center, Flex, Separator, VStack } from "@chakra-ui/react";
+"use client";
+
+import {
+  Box,
+  Center,
+  Flex,
+  Separator,
+  Spinner,
+  VStack,
+} from "@chakra-ui/react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import React, { useCallback, useEffect, useState } from "react";
-import { Route, Switch, useLocation, useRoute } from "wouter";
+import { useSearchParams } from "next/navigation";
+import React, {
+  ReactNode,
+  Suspense,
+  useCallback,
+  useEffect,
+  useState,
+} from "react";
+import { StateImporter } from "@/components/app/StateImporter";
+import { CheckDetail } from "@/components/check/CheckDetail";
+import { CheckEmptyState } from "@/components/check/CheckEmptyState";
+import { CheckList } from "@/components/check/CheckList";
+import { HSplit } from "@/components/split/Split";
 import { cacheKeys } from "@/lib/api/cacheKeys";
 import { listChecks, reorderChecks } from "@/lib/api/checks";
 import { useRecceCheckContext } from "@/lib/hooks/RecceCheckContext";
-import { StateImporter } from "../app/StateImporter";
-import { HSplit } from "../split/Split";
-import { CheckDetail } from "./CheckDetail";
-import { CheckEmptyState } from "./CheckEmptyState";
-import { CheckList } from "./CheckList";
+import { useAppLocation } from "@/lib/hooks/useAppRouter";
 
-export const CheckPage = () => {
-  const [, setLocation] = useLocation();
-  const [, params] = useRoute("/checks/:checkId");
+/**
+ * Wrapper component that handles the Suspense boundary for useSearchParams
+ */
+export default function CheckPageWrapper(): ReactNode {
+  return (
+    <Suspense fallback={<CheckPageLoading />}>
+      <CheckPageContent />
+    </Suspense>
+  );
+}
+
+/**
+ * Loading fallback - shows minimal UI while search params are being read
+ */
+function CheckPageLoading(): ReactNode {
+  return (
+    <HSplit style={{ height: "100%" }} minSize={50} sizes={[20, 80]}>
+      <Box
+        borderRight="lightgray solid 1px"
+        height="100%"
+        style={{ contain: "size" }}
+      >
+        <Center h="100%">
+          <Spinner size="sm" />
+        </Center>
+      </Box>
+      <Box>
+        <Center h="100%">
+          <Spinner size="sm" />
+        </Center>
+      </Box>
+    </HSplit>
+  );
+}
+
+function CheckPageContent(): ReactNode {
+  const [, setLocation] = useAppLocation();
+  const searchParams = useSearchParams();
+  const checkId = searchParams.get("id");
   const { latestSelectedCheckId, setLatestSelectedCheckId } =
     useRecceCheckContext();
   const queryClient = useQueryClient();
-  const selectedItem = params?.checkId;
+  const selectedItem = checkId;
 
   useEffect(() => {
     if (selectedItem) {
@@ -40,7 +91,7 @@ export const CheckPage = () => {
 
   const handleSelectItem = useCallback(
     (checkId: string) => {
-      setLocation(`/checks/${checkId}`);
+      setLocation(`/checks/?id=${checkId}`);
     },
     [setLocation],
   );
@@ -85,10 +136,10 @@ export const CheckPage = () => {
 
     if (!selectedItem && checks.length > 0) {
       if (latestSelectedCheckId) {
-        setLocation(`/checks/${latestSelectedCheckId}`);
+        setLocation(`/checks/?id=${latestSelectedCheckId}`);
       } else {
         // If no check is selected, select the first one by default
-        setLocation(`/checks/${checks[0].check_id}`);
+        setLocation(`/checks/?id=${checks[0].check_id}`);
       }
     }
   }, [status, selectedItem, checks, setLocation, latestSelectedCheckId]);
@@ -165,20 +216,14 @@ export const CheckPage = () => {
         </VStack>
       </Box>
       <Box height="100%">
-        <Switch>
-          <Route path="/checks/:checkId">
-            {(params) => {
-              return (
-                <CheckDetail
-                  key={params.checkId}
-                  checkId={params.checkId}
-                  refreshCheckList={refetchCheckList}
-                />
-              );
-            }}
-          </Route>
-        </Switch>
+        {selectedItem && (
+          <CheckDetail
+            key={selectedItem}
+            checkId={selectedItem}
+            refreshCheckList={refetchCheckList}
+          />
+        )}
       </Box>
     </HSplit>
   );
-};
+}
