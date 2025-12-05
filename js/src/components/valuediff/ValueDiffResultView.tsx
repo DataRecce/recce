@@ -182,7 +182,7 @@ function _ValueDiffResultView(
           if (value > 0.9999 && value < 1) {
             displayValue = "~99.99 %";
           } else if (value < 0.0001 && value > 0) {
-            displayValue = "~00.01 %";
+            displayValue = "~0.01 %";
           } else {
             displayValue = `${(value * 100).toFixed(2)} %`;
           }
