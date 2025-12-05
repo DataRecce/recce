@@ -1,3 +1,10 @@
+/**
+ * @file querydiff.tsx
+ * @description Query diff grid generation and rendering components
+ *
+ * REFACTORED: Now uses shared utilities from @/lib/dataGrid/shared
+ */
+
 import _ from "lodash";
 import React from "react";
 import {
@@ -30,86 +37,23 @@ import {
   DataFrame,
   RowObjectType,
 } from "@/lib/api/types";
-import { mergeKeysWithStatus } from "@/lib/mergeKeys";
-import { formatNumber } from "@/utils/formatters";
+// ============================================================================
+// Import shared utilities
+// ============================================================================
 import {
-  dataFrameToRowObjects,
-  getCaseInsensitive,
-  keyToNumber,
-} from "@/utils/transforms";
+  buildMergedColumnMap,
+  getHeaderCellClass,
+  getPrimaryKeyValue,
+  toRenderedValue,
+  validatePrimaryKeys,
+} from "@/lib/dataGrid/shared";
+import { mergeKeysWithStatus } from "@/lib/mergeKeys";
+import { dataFrameToRowObjects, keyToNumber } from "@/utils/transforms";
 import { DiffText } from "./DiffText";
 
-interface MergeColumnMap {
-  baseColumnKey: string;
-  currentColumnKey: string;
-  status?: string;
-  colType: ColumnType;
-  key: string;
-}
-
-function _getColumnMap(
-  base: DataFrame,
-  current: DataFrame,
-): Record<string, MergeColumnMap> {
-  const result: Record<string, MergeColumnMap> = {};
-
-  const mapStatus = mergeKeysWithStatus(
-    base.columns.map((col) => col.key),
-    current.columns.map((col) => col.key),
-  ) as Record<string, string>;
-
-  Object.entries(mapStatus).map(([key, status]) => {
-    const baseColumn = base.columns.find((c) => c.key === key);
-    const currentColumn = current.columns.find((c) => c.key === key);
-    result[key] = {
-      status,
-      baseColumnKey: baseColumn?.key ?? "unknown",
-      currentColumnKey: currentColumn?.key ?? "unknown",
-      colType: base.columns.find((c) => c.key === key)?.type ?? "unknown",
-      key: baseColumn?.key ?? "unknown",
-    };
-  });
-
-  return result;
-}
-
-function _getPrimaryKeyKeys(
-  columns: DataFrame["columns"],
-  primaryKeys: string[],
-): string[] {
-  const keys: string[] = [];
-  for (const key of primaryKeys) {
-    const index = columns.findIndex((col) => col.key === key);
-    if (index < 0) {
-      throw new Error(`Column ${key} not found`);
-    }
-
-    keys.push(key);
-  }
-  return keys;
-}
-
-function _getPrimaryKeyValue(
-  columns: DataFrame["columns"],
-  primaryKeys: string[],
-  row: RowObjectType,
-): string {
-  // just make a concatenated string rather than a JSON string
-  const result: string[] = [];
-
-  if (primaryKeys.length === 0) {
-    return String(row._index);
-  } else {
-    for (const key of primaryKeys) {
-      const colOrNone = columns.find((c) => c.key === key);
-      if (colOrNone == null) {
-        throw new Error(`Primary Column ${key} not found`);
-      }
-      result.push(`${colOrNone.name}=${row[key]}`);
-    }
-    return result.join("|");
-  }
-}
+// ============================================================================
+// Types
+// ============================================================================
 
 export interface QueryDataDiffGridOptions {
   primaryKeys?: string[];
@@ -123,6 +67,10 @@ export interface QueryDataDiffGridOptions {
   currentTitle?: string;
   displayMode?: "side_by_side" | "inline";
 }
+
+// ============================================================================
+// React Components (must stay in this file)
+// ============================================================================
 
 export function DataFrameColumnGroupHeader({
   name,
@@ -161,7 +109,6 @@ export function DataFrameColumnGroupHeader({
 
   const handleRemovePk = () => {
     const newPrimaryKeys = primaryKeys.filter((item) => item !== name);
-
     if (onPrimaryKeyChange) {
       onPrimaryKeyChange(newPrimaryKeys);
     }
@@ -172,7 +119,6 @@ export function DataFrameColumnGroupHeader({
       ...primaryKeys.filter((item) => item !== "index"),
       name,
     ];
-
     if (onPrimaryKeyChange) {
       onPrimaryKeyChange(newPrimaryKeys);
     }
@@ -180,7 +126,6 @@ export function DataFrameColumnGroupHeader({
 
   const handleUnpin = () => {
     const newPinnedColumns = pinnedColumns.filter((item) => item !== name);
-
     if (onPinnedColumnsChange) {
       onPinnedColumnsChange(newPinnedColumns);
     }
@@ -188,7 +133,6 @@ export function DataFrameColumnGroupHeader({
 
   const handlePin = () => {
     const newPinnedColumns = [...pinnedColumns, name];
-
     if (onPinnedColumnsChange) {
       onPinnedColumnsChange(newPinnedColumns);
     }
@@ -251,66 +195,9 @@ export function DataFrameColumnGroupHeader({
   );
 }
 
-function columnRenderedValue(
-  value: number,
-  renderAs: "raw" | "percent" | 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9,
-): string {
-  const locale = "en-US";
-  let renderedValue: string | undefined;
-  if (typeof renderAs === "number") {
-    renderedValue = formatNumber(value, locale, {
-      maximumFractionDigits: renderAs,
-      minimumFractionDigits: renderAs,
-    });
-  } else if (renderAs === "percent") {
-    renderedValue = formatNumber(value, locale, {
-      style: "percent",
-      maximumFractionDigits: 2,
-    });
-  } else {
-    renderedValue = String(value);
-  }
-
-  return renderedValue ?? "";
-}
-
-const toRenderedValue = (
-  row: RowObjectType,
-  key: string,
-  columnType?: ColumnType,
-  columnRenderMode: ColumnRenderMode = "raw",
-): [string, boolean] => {
-  if (getCaseInsensitive(row, key) == null) {
-    return ["-", true];
-  }
-  const value = getCaseInsensitive(row, key);
-
-  let renderedValue: string;
-  let grayOut = false;
-
-  if (typeof value === "boolean") {
-    // workaround for https://github.com/adazzle/react-data-grid/issues/882
-    renderedValue = value.toString();
-  } else if (value === "") {
-    renderedValue = "(empty)";
-    grayOut = true;
-  } else if (value === undefined || value === null) {
-    renderedValue = "(null)";
-    grayOut = true;
-  } else if (typeof value === "number") {
-    renderedValue = String(value);
-  } else {
-    if (columnType && columnType === "number") {
-      // Add formatting for numerical values if required
-      renderedValue = columnRenderedValue(parseFloat(value), columnRenderMode);
-    } else {
-      // convert to string
-      renderedValue = value;
-    }
-  }
-
-  return [renderedValue, grayOut];
-};
+// ============================================================================
+// Cell Renderers (exported for use by valuediff.tsx)
+// ============================================================================
 
 export const defaultRenderCell = ({
   row,
@@ -392,6 +279,10 @@ export const inlineRenderCell = ({
   );
 };
 
+// ============================================================================
+// Main Grid Generation Function
+// ============================================================================
+
 export function toDataDiffGrid(
   _base?: DataFrame,
   _current?: DataFrame,
@@ -412,9 +303,11 @@ export function toDataDiffGrid(
     columnType?: ColumnType;
     columnRenderMode?: ColumnRenderMode;
   })[] = [];
-  const columnMap = _getColumnMap(base, current);
 
-  // merge row
+  // REFACTORED: Use shared utility
+  const columnMap = buildMergedColumnMap(base, current);
+
+  // Build row maps indexed by primary key
   const baseMap: Record<string, RowObjectType> = {};
   const currentMap: Record<string, RowObjectType> = {};
   let invalidPKeyBase = false;
@@ -424,24 +317,32 @@ export function toDataDiffGrid(
     baseData.forEach((row) => {
       baseMap[String(row._index)] = row;
     });
-
     currentData.forEach((row) => {
       currentMap[String(row._index)] = row;
     });
   } else {
-    let primaryKeyKeys = _getPrimaryKeyKeys(base.columns, primaryKeys);
-
+    // REFACTORED: Use shared utility
+    const basePKKeys = validatePrimaryKeys(base.columns, primaryKeys, false);
     baseData.forEach((row) => {
-      const key = _getPrimaryKeyValue(base.columns, primaryKeyKeys, row);
+      const key = getPrimaryKeyValue(base.columns, basePKKeys, row, false);
       if (key in baseMap) {
         invalidPKeyBase = true;
       }
       baseMap[key] = row;
     });
 
-    primaryKeyKeys = _getPrimaryKeyKeys(current.columns, primaryKeys);
+    const currentPKKeys = validatePrimaryKeys(
+      current.columns,
+      primaryKeys,
+      false,
+    );
     currentData.forEach((row) => {
-      const key = _getPrimaryKeyValue(current.columns, primaryKeyKeys, row);
+      const key = getPrimaryKeyValue(
+        current.columns,
+        currentPKKeys,
+        row,
+        false,
+      );
       if (key in currentMap) {
         invalidPKeyCurrent = true;
       }
@@ -471,7 +372,6 @@ export function toDataDiffGrid(
     if (baseRow) {
       base.columns.forEach((col) => {
         if (primaryKeys.includes(col.key)) {
-          // add the primary key value directly (not prefixed with base__ or current__)
           row[String(col.key).toLowerCase()] = baseRow[col.key];
           return;
         }
@@ -482,7 +382,6 @@ export function toDataDiffGrid(
     if (currentRow) {
       current.columns.forEach((col) => {
         if (primaryKeys.includes(col.key)) {
-          // add the primary key value directly (not prefixed with base__ or current__)
           row[String(col.key).toLowerCase()] = currentRow[col.key];
           return;
         }
@@ -541,7 +440,7 @@ export function toDataDiffGrid(
     );
   }
 
-  // merge columns
+  // Column builder helper
   const toColumn = (
     name: string,
     columnStatus: string,
@@ -551,44 +450,30 @@ export function toDataDiffGrid(
     columnType?: ColumnType;
     columnRenderMode?: ColumnRenderMode;
   } => {
-    const headerCellClass =
-      columnStatus === "added"
-        ? "diff-header-added"
-        : columnStatus === "removed"
-          ? "diff-header-removed"
-          : undefined;
+    // REFACTORED: Use shared utility
+    const headerCellClass = getHeaderCellClass(columnStatus);
 
     const cellClassBase = (row: RowObjectType) => {
       const rowStatus = row.__status;
-      if (rowStatus === "removed") {
-        return "diff-cell-removed";
-      } else if (rowStatus === "added") {
-        return "diff-cell-added";
-      } else if (columnStatus === "added") {
-        return undefined;
-      } else if (columnStatus === "removed") {
-        return undefined;
-      } else if (!_.isEqual(row[`base__${name}`], row[`current__${name}`])) {
+      if (rowStatus === "removed") return "diff-cell-removed";
+      else if (rowStatus === "added") return "diff-cell-added";
+      else if (columnStatus === "added") return undefined;
+      else if (columnStatus === "removed") return undefined;
+      else if (!_.isEqual(row[`base__${name}`], row[`current__${name}`])) {
         return "diff-cell-removed";
       }
-
       return undefined;
     };
 
     const cellClassCurrent = (row: RowObjectType) => {
       const rowStatus = row.__status;
-      if (rowStatus === "removed") {
-        return "diff-cell-removed";
-      } else if (rowStatus === "added") {
-        return "diff-cell-added";
-      } else if (columnStatus === "added") {
-        return undefined;
-      } else if (columnStatus === "removed") {
-        return undefined;
-      } else if (!_.isEqual(row[`base__${name}`], row[`current__${name}`])) {
+      if (rowStatus === "removed") return "diff-cell-removed";
+      else if (rowStatus === "added") return "diff-cell-added";
+      else if (columnStatus === "added") return undefined;
+      else if (columnStatus === "removed") return undefined;
+      else if (!_.isEqual(row[`base__${name}`], row[`current__${name}`])) {
         return "diff-cell-added";
       }
-
       return undefined;
     };
 
@@ -627,7 +512,7 @@ export function toDataDiffGrid(
             headerCellClass,
             cellClass: cellClassBase,
             renderCell: defaultRenderCell,
-            // @ts-expect-error Unable to patch children type, just pass it through
+            // @ts-expect-error Unable to patch children type
             columnType,
             columnRenderMode,
           },
@@ -638,7 +523,7 @@ export function toDataDiffGrid(
             headerCellClass,
             cellClass: cellClassCurrent,
             renderCell: defaultRenderCell,
-            // @ts-expect-error Unable to patch children type, just pass it through
+            // @ts-expect-error Unable to patch children type
             columnType,
             columnRenderMode,
           },
@@ -647,7 +532,7 @@ export function toDataDiffGrid(
     }
   };
 
-  // merges columns: primary keys
+  // Build columns: primary keys or index
   if (primaryKeys.length === 0) {
     columns.push({
       key: "_index",
@@ -658,8 +543,8 @@ export function toDataDiffGrid(
     });
   } else {
     primaryKeys.forEach((name) => {
-      const columnStatus = columnMap[name].status ?? "";
-      const columnType = columnMap[name].colType;
+      const columnStatus = columnMap[name]?.status ?? "";
+      const columnType = columnMap[name]?.colType ?? "unknown";
 
       columns.push({
         key: name,
@@ -685,10 +570,10 @@ export function toDataDiffGrid(
     });
   }
 
-  // merges columns: pinned columns
+  // Build columns: pinned columns
   pinnedColumns.forEach((name) => {
-    const columnStatus = columnMap[name].status ?? "";
-    const columnType = columnMap[name].colType;
+    const columnStatus = columnMap[name]?.status ?? "";
+    const columnType = columnMap[name]?.colType ?? "unknown";
 
     if (name === "index") {
       return;
@@ -703,22 +588,14 @@ export function toDataDiffGrid(
     );
   });
 
-  // merges columns: other columns
+  // Build columns: other columns
   Object.entries(columnMap).forEach(([name, mergedColumn]) => {
     const columnStatus = mergedColumn.status ?? "";
-    const columnType = columnMap[name].colType;
+    const columnType = columnMap[name]?.colType ?? "unknown";
 
-    if (name === "index") {
-      return;
-    }
-
-    if (primaryKeys.includes(name)) {
-      return;
-    }
-
-    if (pinnedColumns.includes(name)) {
-      return;
-    }
+    if (name === "index") return;
+    if (primaryKeys.includes(name)) return;
+    if (pinnedColumns.includes(name)) return;
 
     if (changedOnly && rowStats.modified > 0) {
       if (
