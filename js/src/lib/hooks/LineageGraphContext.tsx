@@ -21,7 +21,7 @@ import { buildLineageGraph, LineageGraph } from "@/components/lineage/lineage";
 import {
   RecceInstanceDisconnectedModalContent,
   ServerDisconnectedModalContent,
-} from "@/components/lineage/SeverDisconnectedModalContent";
+} from "@/components/lineage/ServerDisconnectedModalContent";
 import { toaster } from "@/components/ui/toaster";
 import { useRecceInstanceContext } from "@/lib/hooks/RecceInstanceContext";
 import { cacheKeys } from "../api/cacheKeys";
