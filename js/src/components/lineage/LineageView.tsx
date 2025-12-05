@@ -60,7 +60,12 @@ import {
 } from "@/lib/api/lineagecheck";
 import { createSchemaDiffCheck } from "@/lib/api/schemacheck";
 import { select } from "@/lib/api/select";
-import { trackCopyToClipboard, trackMultiNodesAction } from "@/lib/api/track";
+import {
+  type LineageViewRenderProps,
+  trackCopyToClipboard,
+  trackLineageViewRender,
+  trackMultiNodesAction,
+} from "@/lib/api/track";
 import {
   isHistogramDiffRun,
   isProfileDiffRun,
@@ -249,6 +254,43 @@ export function PrivateLineageView(
   const [viewOptions, setViewOptions] = useState<LineageDiffViewOptions>({
     ...props.viewOptions,
   });
+
+  // Helper to track lineage view render with node counts
+  const trackLineageRender = useCallback(
+    (
+      nodes: LineageGraphNodes[],
+      currentViewMode: string,
+      impactRadiusEnabled: boolean,
+      cllColumnActive: boolean,
+      rightSidebarOpen: boolean,
+    ) => {
+      const lineageGraphNodesOnly = nodes.filter(isLineageGraphNode);
+      const grouped = Object.groupBy(
+        lineageGraphNodesOnly,
+        (node) => node.data.changeStatus ?? "unchanged",
+      );
+      // Prefix status counts with "nodes_"
+      const statusCounts = Object.fromEntries(
+        Object.entries(grouped).map(([status, nodes]) => [
+          `nodes_${status}`,
+          nodes?.length ?? 0,
+        ]),
+      );
+      const trackingData = {
+        node_count: lineageGraphNodesOnly.length,
+        view_mode: currentViewMode,
+        impact_radius_enabled: impactRadiusEnabled,
+        right_sidebar_open: rightSidebarOpen,
+        ...statusCounts,
+      } as LineageViewRenderProps;
+      // Only include cll_column_active when a column is being viewed
+      if (cllColumnActive) {
+        trackingData.cll_column_active = true;
+      }
+      trackLineageViewRender(trackingData);
+    },
+    [],
+  );
 
   const cllHistory = useRef<(CllInput | undefined)[]>([]).current;
 
@@ -476,6 +518,17 @@ export function PrivateLineageView(
       setEdges(edges);
       setNodeColumSetMap(nodeColumnSetMap);
       setCll(cll);
+
+      // TODO : code smell: vioates DRY. This really shouldn't hit both here and below
+
+      // Track lineage view render
+      trackLineageRender(
+        nodes,
+        viewOptions.view_mode ?? "changed_models",
+        viewOptions.column_level_lineage?.change_analysis ?? false,
+        !!viewOptions.column_level_lineage?.column,
+        !!focusedNodeId || !!run,
+      );
     };
 
     void t();
@@ -690,6 +743,15 @@ export function PrivateLineageView(
     setEdges(newEdges);
     setNodeColumSetMap(newNodeColumnSetMap);
     setCll(cll);
+
+    // Track lineage view render
+    trackLineageRender(
+      newNodes,
+      newViewOptions.view_mode ?? "changed_models",
+      newViewOptions.column_level_lineage?.change_analysis ?? false,
+      !!newViewOptions.column_level_lineage?.column,
+      !!focusedNodeId || !!run,
+    );
 
     // Close the run result view if the run result node is not in the new nodes
     if (

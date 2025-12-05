@@ -1,4 +1,23 @@
-import { initAll, track } from "@amplitude/unified";
+import {
+  AmplitudeReturn,
+  BaseEvent,
+  EventOptions,
+  Result,
+} from "@amplitude/analytics-core";
+import { initAll, track as trk } from "@amplitude/unified";
+
+function track(
+  eventInput: string | BaseEvent,
+  // biome-ignore lint/suspicious/noExplicitAny: Amplitude library uses any for event properties
+  eventProperties?: Record<string, any> | undefined,
+  eventOptions?: EventOptions | undefined,
+): AmplitudeReturn<Result> {
+  if (process.env.NODE_ENV === "development") {
+    // echo tracking events to console in dev mode
+    console.log("Tracking event:", eventInput, eventProperties, eventOptions);
+  }
+  return trk(eventInput, eventProperties, eventOptions);
+}
 
 export function trackInit() {
   function getCookie(key: string) {
@@ -128,4 +147,17 @@ interface TrackNavProps {
 
 export function trackNavigation(props: TrackNavProps) {
   track("[Web] navigation_change", props);
+}
+
+export interface LineageViewRenderProps {
+  node_count: number;
+  view_mode: string;
+  impact_radius_enabled: boolean;
+  cll_column_active?: boolean;
+  right_sidebar_open: boolean;
+  [status: string]: number | string | boolean | undefined;
+}
+
+export function trackLineageViewRender(props: LineageViewRenderProps) {
+  track("[Web] lineage_view_render", props);
 }
