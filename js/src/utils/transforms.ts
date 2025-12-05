@@ -64,9 +64,9 @@ export function getCaseInsensitive<T extends RowObjectType>(
   }
 
   // Fall back to case-insensitive search
-  const foundKey = Object.keys(obj).find(
-    (k) => k.toLowerCase() === lowerKey,
-  ) as keyof T | undefined;
+  const foundKey = Object.keys(obj).find((k) => k.toLowerCase() === lowerKey) as
+    | keyof T
+    | undefined;
 
   return foundKey ? obj[foundKey] : undefined;
 }
