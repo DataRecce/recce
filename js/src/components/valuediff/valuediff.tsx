@@ -1,3 +1,10 @@
+/**
+ * @file valuediff.tsx
+ * @description Value diff grid generation for joined data (with IN_A/IN_B columns)
+ *
+ * REFACTORED: Now uses shared utilities from @/lib/dataGrid/shared
+ */
+
 import _ from "lodash";
 import { ColumnOrColumnGroup, textEditor } from "react-data-grid";
 import "../query/styles.css";
@@ -10,6 +17,15 @@ import {
   DataFrame,
   RowObjectType,
 } from "@/lib/api/types";
+// ============================================================================
+// Import shared utilities
+// ============================================================================
+import {
+  buildJoinedColumnMap,
+  getHeaderCellClass,
+  getPrimaryKeyValue,
+  validatePrimaryKeys,
+} from "@/lib/dataGrid/shared";
 import { mergeKeysWithStatus } from "@/lib/mergeKeys";
 import {
   dataFrameToRowObjects,
@@ -25,83 +41,9 @@ import {
 } from "../query/querydiff";
 import { columnPrecisionSelectOptions } from "./shared";
 
-function _getColumnMap(df: DataFrame) {
-  const result: Record<
-    string,
-    {
-      key: string;
-      index: number;
-      status?: string;
-      colType: ColumnType;
-    }
-  > = {};
-
-  df.columns.map((col, index) => {
-    if (
-      col.name.toLowerCase() === "in_a" ||
-      col.name.toLowerCase() === "in_b"
-    ) {
-      result[col.name.toUpperCase()] = {
-        key: col.key,
-        index,
-        colType: col.type,
-      };
-      result[col.name.toLowerCase()] = {
-        key: col.key,
-        index,
-        colType: col.type,
-      };
-    } else {
-      result[col.name] = {
-        key: col.key,
-        index,
-        colType: col.type,
-      };
-    }
-  });
-
-  return result;
-}
-
-function _getPrimaryKeyKeys(
-  columns: DataFrame["columns"],
-  primaryKeys: string[],
-) {
-  const keys: string[] = [];
-  for (const key of primaryKeys) {
-    const index = columns.findIndex((col) =>
-      includesIgnoreCase([col.key], key),
-    );
-    if (index < 0) {
-      throw new Error(`Column ${key} not found`);
-    }
-
-    keys.push(key);
-  }
-  return keys;
-}
-
-function _getPrimaryKeyValue(
-  columns: DataFrame["columns"],
-  primaryKeys: string[],
-  row: RowObjectType,
-): string {
-  // just make a concatenated string rather than a JSON string
-  const result: string[] = [];
-
-  if (primaryKeys.length === 0) {
-    return String(row._index);
-  } else {
-    for (const key of primaryKeys) {
-      const colOrNone = columns.find((c) => includesIgnoreCase([c.key], key));
-      if (colOrNone == null) {
-        throw new Error(`Primary Column ${key} not found`);
-      }
-      result.push(`${colOrNone.name}=${getCaseInsensitive(row, key) ?? ""}`);
-    }
-    return result.join("|");
-  }
-}
+// ============================================================================
+// React Components (must stay in this file)
+// ============================================================================
 
 function DataFrameColumnGroupHeader({
   name,
@@ -122,8 +64,6 @@ function DataFrameColumnGroupHeader({
 } & QueryDataDiffGridOptions) {
   const primaryKeys = options.primaryKeys ?? [];
   const pinnedColumns = options.pinnedColumns ?? [];
-  const isPK = includesIgnoreCase(primaryKeys, name);
-  const isPinned = includesIgnoreCase(pinnedColumns, name);
 
   let selectOptions: { value: string; onClick: () => void }[] = [];
   if (onColumnsRenderModeChanged) {
@@ -133,47 +73,38 @@ function DataFrameColumnGroupHeader({
     );
   }
 
-  if (name === "index") {
-    return <></>;
-  }
+  const isPrimaryKey = includesIgnoreCase(primaryKeys, name);
+  const isPinned = includesIgnoreCase(pinnedColumns, name);
 
   const handleUnpin = () => {
-    const newPinnedColumns = pinnedColumns.filter((item) => item !== name);
-
-    if (onPinnedColumnsChange) {
-      onPinnedColumnsChange(newPinnedColumns);
-    }
+    const newPinnedColumns = pinnedColumns.filter(
+      (item) => item.toLowerCase() !== name.toLowerCase(),
+    );
+    onPinnedColumnsChange?.(newPinnedColumns);
   };
 
   const handlePin = () => {
     const newPinnedColumns = [...pinnedColumns, name];
-
-    if (onPinnedColumnsChange) {
-      onPinnedColumnsChange(newPinnedColumns);
-    }
+    onPinnedColumnsChange?.(newPinnedColumns);
   };
 
   return (
-    <Flex alignItems="center" gap="10px" className="grid-header">
-      {isPK && <Icon as={VscKey} />}
-      <Box
-        flex={1}
-        overflow="hidden"
-        textOverflow="ellipsis"
-        whiteSpace="nowrap"
-      >
+    <Flex className="grid-header" alignItems="center">
+      <Box flex={1}>
+        {isPrimaryKey && (
+          <Icon as={VscKey} style={{ marginRight: "5px" }}></Icon>
+        )}
         {name}
       </Box>
-      {!isPK && onPinnedColumnsChange && (
-        <Icon
-          className={isPinned ? "unpin-icon" : "pin-icon"}
-          display={isPinned ? "block" : "none"}
-          cursor="pointer"
-          as={isPinned ? VscPinned : VscPin}
-          onClick={isPinned ? handleUnpin : handlePin}
-        />
-      )}
-      {!isPK && columnType === "number" && (
+
+      <Icon
+        className={isPinned ? "unpin-icon" : "pin-icon"}
+        display={isPinned ? "block" : "none"}
+        cursor="pointer"
+        as={isPinned ? VscPinned : VscPin}
+        onClick={isPinned ? handleUnpin : handlePin}
+      />
+      {columnType === "number" && (
         <Menu.Root>
           <Menu.Trigger asChild>
             <IconButton
@@ -188,7 +119,7 @@ function DataFrameColumnGroupHeader({
             <Menu.Positioner>
               <Menu.Content>
                 {selectOptions.map((o) => (
-                  <Menu.Item value={o.value} key={o.value} onClick={o.onClick}>
+                  <Menu.Item key={o.value} value={o.value} onClick={o.onClick}>
                     {o.value}
                   </Menu.Item>
                 ))}
@@ -200,6 +131,10 @@ function DataFrameColumnGroupHeader({
     </Flex>
   );
 }
+
+// ============================================================================
+// Main Grid Generation Function
+// ============================================================================
 
 export function toValueDiffGrid(
   df: DataFrame,
@@ -216,21 +151,27 @@ export function toValueDiffGrid(
     columnType?: ColumnType;
     columnRenderMode?: ColumnRenderMode;
   })[] = [];
-  const columnMap = _getColumnMap(df);
 
-  // merge row
+  // REFACTORED: Use shared utility for column map
+  const columnMap = buildJoinedColumnMap(df);
+
+  // Build row maps based on IN_A/IN_B columns
   const baseMap: Record<string, RowObjectType | undefined> = {};
   const currentMap: Record<string, RowObjectType | undefined> = {};
+
   if (primaryKeys.length === 0) {
     throw new Error("Primary keys are required");
   }
 
-  const primaryKeyKeys = _getPrimaryKeyKeys(df.columns, primaryKeys);
+  // REFACTORED: Use shared utility for PK validation
+  const primaryKeyKeys = validatePrimaryKeys(df.columns, primaryKeys, true);
   const inBaseIndex = columnMap.IN_A.key;
   const inCurrentIndex = columnMap.IN_B.key;
 
   transformedData.forEach((row) => {
-    const key = _getPrimaryKeyValue(df.columns, primaryKeyKeys, row);
+    // REFACTORED: Use shared utility for PK value generation
+    const key = getPrimaryKeyValue(df.columns, primaryKeyKeys, row, true);
+
     if (getCaseInsensitive(row, inBaseIndex)) {
       baseMap[key.toLowerCase()] = row;
     }
@@ -250,6 +191,7 @@ export function toValueDiffGrid(
     removed: 0,
     modified: 0,
   };
+
   let rows = Object.entries(mergedMap).map(([key]) => {
     const baseRow = baseMap[key];
     const currentRow = currentMap[key];
@@ -261,7 +203,7 @@ export function toValueDiffGrid(
     if (baseRow) {
       df.columns.forEach((col) => {
         if (includesIgnoreCase(primaryKeys, col.key)) {
-          // add the primary key value directly (not prefixed with base__ or current__)
+          // Add the primary key value directly (not prefixed with base__/current__)
           row[String(col.key).toLowerCase()] = baseRow[col.key];
           return;
         }
@@ -272,7 +214,7 @@ export function toValueDiffGrid(
     if (currentRow) {
       df.columns.forEach((col) => {
         if (includesIgnoreCase(primaryKeys, col.key)) {
-          // add the primary key value directly (not prefixed with base__ or current__)
+          // Add the primary key value directly (not prefixed with base__/current__)
           row[String(col.key).toLowerCase()] = currentRow[col.key];
           return;
         }
@@ -303,6 +245,7 @@ export function toValueDiffGrid(
         }
       }
     }
+
     if (row.__status === "modified") {
       rowStats.modified++;
     }
@@ -319,7 +262,7 @@ export function toValueDiffGrid(
     );
   }
 
-  // merge columns
+  // Column builder helper
   const toColumn = (
     name: string,
     columnStatus: string,
@@ -329,12 +272,8 @@ export function toValueDiffGrid(
     columnType?: ColumnType;
     columnRenderMode?: ColumnRenderMode;
   } => {
-    const headerCellClass =
-      columnStatus === "added"
-        ? "diff-header-added"
-        : columnStatus === "removed"
-          ? "diff-header-removed"
-          : undefined;
+    // REFACTORED: Use shared utility for header cell class
+    const headerCellClass = getHeaderCellClass(columnStatus);
 
     const cellClassBase = (row: RowObjectType) => {
       const rowStatus = row.__status;
@@ -427,7 +366,7 @@ export function toValueDiffGrid(
     }
   };
 
-  // merges columns: primary keys
+  // Build columns: primary keys
   primaryKeys.forEach((name) => {
     const col = getValueAtPath(columnMap, name);
     if (!col) {
@@ -460,7 +399,7 @@ export function toValueDiffGrid(
     });
   });
 
-  // merges columns: pinned columns
+  // Build columns: pinned columns
   pinnedColumns.forEach((name) => {
     const col = getValueAtPath(columnMap, name);
     if (!col) {
@@ -478,10 +417,11 @@ export function toValueDiffGrid(
     );
   });
 
-  // merges columns: other columns
+  // Build columns: other columns (excluding IN_A/IN_B and already added)
   Object.entries(columnMap).forEach(([name, mergedColumn]) => {
     const columnStatus = mergedColumn.status ?? "";
 
+    // Skip IN_A/IN_B columns
     if (includesIgnoreCase(["in_a", "IN_A", "in_b", "IN_B"], name)) {
       return;
     }
@@ -503,6 +443,7 @@ export function toValueDiffGrid(
         return;
       }
     }
+
     columns.push(
       toColumn(
         name,
