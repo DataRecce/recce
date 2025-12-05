@@ -7,9 +7,8 @@ import {
   isProfileDiffRun,
   isProfileRun,
 } from "@/lib/api/types";
+import { createDataGrid } from "@/lib/dataGrid/dataGridFactory";
 import { ScreenshotDataGrid } from "../data-grid/ScreenshotDataGrid";
-import { toDataGrid } from "../query/QueryResultView";
-import { toDataDiffGrid } from "../query/querydiff";
 import { DiffDisplayModeSwitch } from "../query/ToggleSwitch";
 import { RunToolbar } from "../run/RunToolbar";
 import { RunResultViewProps } from "../run/types";
@@ -24,7 +23,6 @@ const PrivateProfileDiffResultView = (
   if (!isProfileDiffRun(run)) {
     throw new Error("Only run type profile_diff is supported");
   }
-  const result = run.result;
   const pinnedColumns = useMemo(
     () => viewOptions?.pinned_columns ?? [],
     [viewOptions],
@@ -37,11 +35,6 @@ const PrivateProfileDiffResultView = (
     () => viewOptions?.columnsRenderMode ?? {},
     [viewOptions],
   );
-
-  const field = (result?.current?.columns ?? []).find(
-    (f) => f.name.toLowerCase() === "column_name",
-  );
-  const primaryKey = field?.name ?? "column_name";
 
   const gridData = useMemo(() => {
     const onColumnsRenderModeChanged = (
@@ -68,17 +61,17 @@ const PrivateProfileDiffResultView = (
       }
     };
 
-    return toDataDiffGrid(result?.base, result?.current, {
-      primaryKeys: [primaryKey],
-      pinnedColumns,
-      onPinnedColumnsChange: handlePinnedColumnsChanged,
-      displayMode,
-      columnsRenderMode,
-      onColumnsRenderModeChanged,
-    });
+    return (
+      createDataGrid(run, {
+        pinnedColumns,
+        onPinnedColumnsChange: handlePinnedColumnsChanged,
+        displayMode,
+        columnsRenderMode,
+        onColumnsRenderModeChanged,
+      }) ?? { columns: [], rows: [] }
+    );
   }, [
-    result,
-    primaryKey,
+    run,
     pinnedColumns,
     displayMode,
     viewOptions,
@@ -129,8 +122,6 @@ const PrivateProfileResultView = (
   if (!isProfileRun(run)) {
     throw new Error("Only run type profile_diff is supported");
   }
-  const result = run.result;
-  const dataFrame = result?.current;
   const pinnedColumns = useMemo(
     () => viewOptions?.pinned_columns ?? [],
     [viewOptions],
@@ -139,11 +130,6 @@ const PrivateProfileResultView = (
     () => viewOptions?.columnsRenderMode ?? {},
     [viewOptions],
   );
-
-  const field = (result?.current?.columns ?? []).find(
-    (f) => f.name.toLowerCase() === "column_name",
-  );
-  const primaryKey = field?.name ?? "column_name";
 
   const gridData = useMemo(() => {
     const onColumnsRenderModeChanged = (
@@ -170,21 +156,17 @@ const PrivateProfileResultView = (
       }
     };
 
-    if (!dataFrame) {
-      return { columns: [], rows: [] };
-    }
-
-    return toDataGrid(dataFrame, {
-      primaryKeys: [primaryKey],
-      pinnedColumns,
-      onPinnedColumnsChange: handlePinnedColumnsChanged,
-      columnsRenderMode,
-      onColumnsRenderModeChanged,
-    });
+    return (
+      createDataGrid(run, {
+        pinnedColumns,
+        onPinnedColumnsChange: handlePinnedColumnsChanged,
+        columnsRenderMode,
+        onColumnsRenderModeChanged,
+      }) ?? { columns: [], rows: [] }
+    );
   }, [
-    dataFrame,
+    run,
     pinnedColumns,
-    primaryKey,
     viewOptions,
     onViewOptionsChanged,
     columnsRenderMode,

@@ -15,6 +15,10 @@ import React, { forwardRef, Ref, useMemo } from "react";
 import { ColumnOrColumnGroup, DataGridHandle } from "react-data-grid";
 import { PiDotsThreeVertical, PiWarning } from "react-icons/pi";
 import { VscPin, VscPinned } from "react-icons/vsc";
+import {
+  DataFrameColumnGroupHeader,
+  defaultRenderCell,
+} from "@/components/ui/dataGrid";
 import { columnPrecisionSelectOptions } from "@/components/valuediff/shared";
 import { QueryViewOptions } from "@/lib/api/adhocQuery";
 import {
@@ -26,13 +30,13 @@ import {
   RowObjectType,
   Run,
 } from "@/lib/api/types";
+import { createDataGrid } from "@/lib/dataGrid/dataGridFactory";
 import { dataFrameToRowObjects } from "@/utils/transforms";
 import {
   EmptyRowsRenderer,
   ScreenshotDataGrid,
 } from "../data-grid/ScreenshotDataGrid";
 import { RunResultViewProps } from "../run/types";
-import { DataFrameColumnGroupHeader, defaultRenderCell } from "./querydiff";
 
 interface QueryResultViewProp extends RunResultViewProps<QueryViewOptions> {
   onAddToChecklist?: (run: Run) => void;
@@ -267,10 +271,6 @@ const PrivateQueryResultView = (
       }
     };
 
-    if (!dataframe) {
-      return { rows: [], columns: [] };
-    }
-
     const handlePinnedColumnsChanged = (pinnedColumns: string[]) => {
       if (onViewOptionsChanged) {
         onViewOptionsChanged({
@@ -279,15 +279,16 @@ const PrivateQueryResultView = (
         });
       }
     };
-
-    return toDataGrid(dataframe, {
-      pinnedColumns,
-      onPinnedColumnsChange: handlePinnedColumnsChanged,
-      columnsRenderMode,
-      onColumnsRenderModeChanged,
-    });
+    return (
+      createDataGrid(run, {
+        pinnedColumns,
+        onPinnedColumnsChange: handlePinnedColumnsChanged,
+        columnsRenderMode,
+        onColumnsRenderModeChanged,
+      }) ?? { columns: [], rows: [] }
+    );
   }, [
-    dataframe,
+    run,
     pinnedColumns,
     viewOptions,
     onViewOptionsChanged,
