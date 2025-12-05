@@ -64,9 +64,9 @@ export function getCaseInsensitive<T extends RowObjectType>(
   }
 
   // Fall back to case-insensitive search
-  const foundKey = Object.keys(obj).find((k) => k.toLowerCase() === lowerKey) as
-    | keyof T
-    | undefined;
+  const foundKey = Object.keys(obj).find(
+    (k) => k.toLowerCase() === lowerKey,
+  ) as keyof T | undefined;
 
   return foundKey ? obj[foundKey] : undefined;
 }
@@ -80,6 +80,10 @@ export function getValueAtPath<T = RowDataTypes>(
   if (!col) {
     // try upper-case match
     col = obj[path.toUpperCase()];
+  }
+  if (!col) {
+    // try fallback with strict casing match
+    col = obj[path];
   }
   return col;
 }
