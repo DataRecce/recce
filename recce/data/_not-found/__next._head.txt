@@ -3,6 +3,6 @@
 4:I[220723,["/_next/static/chunks/a52a26d8f55cf7b6.js","/_next/static/chunks/deeef6d77883a7dc.js"],"MetadataBoundary"]
 5:"$Sreact.suspense"
 7:I[702616,["/_next/static/chunks/a52a26d8f55cf7b6.js","/_next/static/chunks/deeef6d77883a7dc.js"],"IconMark"]
-0:{"buildId":"y_NNdu1mGR0jolvRgcZYw","rsc":["$","$1","h",{"children":[["$","meta",null,{"name":"robots","content":"noindex"}],["$","$L2",null,{"children":"$@3"}],["$","div",null,{"hidden":true,"children":["$","$L4",null,{"children":["$","$5",null,{"name":"Next.Metadata","children":"$@6"}]}]}],null]}],"loading":null,"isPartial":false}
+0:{"buildId":"UqomfnM3X7CBhtRBcQWIk","rsc":["$","$1","h",{"children":[["$","meta",null,{"name":"robots","content":"noindex"}],["$","$L2",null,{"children":"$@3"}],["$","div",null,{"hidden":true,"children":["$","$L4",null,{"children":["$","$5",null,{"name":"Next.Metadata","children":"$@6"}]}]}],null]}],"loading":null,"isPartial":false}
 3:[["$","meta","0",{"charSet":"utf-8"}],["$","meta","1",{"name":"viewport","content":"width=device-width, initial-scale=1"}]]
 6:[["$","title","0",{"children":"recce"}],["$","meta","1",{"name":"description","content":"Recce: Data validation toolkit for comprehensive PR review"}],["$","link","2",{"rel":"icon","href":"/favicon.ico?favicon.a8d38d84.ico","sizes":"32x32","type":"image/x-icon"}],["$","$L7","3",{}]]
