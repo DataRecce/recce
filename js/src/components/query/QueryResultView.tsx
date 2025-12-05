@@ -26,6 +26,7 @@ import {
   RowObjectType,
   Run,
 } from "@/lib/api/types";
+import { createDataGrid } from "@/lib/dataGrid/dataGridFactory";
 import { dataFrameToRowObjects } from "@/utils/transforms";
 import {
   EmptyRowsRenderer,
@@ -267,10 +268,6 @@ const PrivateQueryResultView = (
       }
     };
 
-    if (!dataframe) {
-      return { rows: [], columns: [] };
-    }
-
     const handlePinnedColumnsChanged = (pinnedColumns: string[]) => {
       if (onViewOptionsChanged) {
         onViewOptionsChanged({
@@ -279,15 +276,16 @@ const PrivateQueryResultView = (
         });
       }
     };
-
-    return toDataGrid(dataframe, {
-      pinnedColumns,
-      onPinnedColumnsChange: handlePinnedColumnsChanged,
-      columnsRenderMode,
-      onColumnsRenderModeChanged,
-    });
+    return (
+      createDataGrid(run, {
+        pinnedColumns,
+        onPinnedColumnsChange: handlePinnedColumnsChanged,
+        columnsRenderMode,
+        onColumnsRenderModeChanged,
+      }) ?? { columns: [], rows: [] }
+    );
   }, [
-    dataframe,
+    run,
     pinnedColumns,
     viewOptions,
     onViewOptionsChanged,

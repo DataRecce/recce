@@ -7,11 +7,14 @@ import {
   QueryPreviewChangeParams,
 } from "@/lib/api/adhocQuery";
 import { toValueDiffGrid as toQueryDiffJoinGrid } from "../valuediff/valuediff";
-import { toDataDiffGrid } from "./querydiff";
 
 import "./styles.css";
 import { DataGridHandle } from "react-data-grid";
 import { ColumnRenderMode, Run } from "@/lib/api/types";
+import {
+  createDataGrid,
+  DiffGridOptions,
+} from "@/lib/dataGrid/dataGridFactory";
 import {
   EmptyRowsRenderer,
   ScreenshotDataGrid,
@@ -97,10 +100,8 @@ const PrivateQueryDiffResultView = (
         });
       }
     };
-
-    return toDataDiffGrid(run.result?.base, run.result?.current, {
+    const options: DiffGridOptions = {
       changedOnly,
-      primaryKeys,
       onPrimaryKeyChange: handlePrimaryKeyChanged,
       pinnedColumns,
       onPinnedColumnsChange: handlePinnedColumnsChanged,
@@ -109,12 +110,13 @@ const PrivateQueryDiffResultView = (
       baseTitle,
       currentTitle,
       displayMode,
-    });
+    };
+
+    return createDataGrid(run, options) ?? { columns: [], rows: [] };
   }, [
     run,
     viewOptions,
     changedOnly,
-    primaryKeys,
     pinnedColumns,
     displayMode,
     onViewOptionsChanged,
@@ -266,22 +268,18 @@ const PrivateQueryDiffJoinResultView = (
       }
     };
 
-    if (!run.result?.diff || !run.params?.primary_keys) {
-      return { columns: [], rows: [] };
-    }
-
-    const primaryKeys = run.params.primary_keys;
-
-    return toQueryDiffJoinGrid(run.result.diff, primaryKeys, {
-      changedOnly,
-      pinnedColumns,
-      onPinnedColumnsChange: handlePinnedColumnsChanged,
-      baseTitle,
-      currentTitle,
-      displayMode,
-      columnsRenderMode,
-      onColumnsRenderModeChanged,
-    });
+    return (
+      createDataGrid(run, {
+        changedOnly,
+        pinnedColumns,
+        onPinnedColumnsChange: handlePinnedColumnsChanged,
+        baseTitle,
+        currentTitle,
+        displayMode,
+        columnsRenderMode,
+        onColumnsRenderModeChanged,
+      }) ?? { columns: [], rows: [] }
+    );
   }, [
     run,
     viewOptions,
