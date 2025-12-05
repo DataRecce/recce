@@ -12,10 +12,8 @@ function track(
   eventProperties?: Record<string, any> | undefined,
   eventOptions?: EventOptions | undefined,
 ): AmplitudeReturn<Result> {
-  if (process.env.NODE_ENV === "development") {
-    // echo tracking events to console in dev mode
-    console.log("Tracking event:", eventInput, eventProperties, eventOptions);
-  }
+  // Always log tracking events to console for debugging
+  console.log("Tracking event:", eventInput, eventProperties, eventOptions);
   return trk(eventInput, eventProperties, eventOptions);
 }
 
@@ -160,4 +158,29 @@ export interface LineageViewRenderProps {
 
 export function trackLineageViewRender(props: LineageViewRenderProps) {
   track("[Web] lineage_view_render", props);
+}
+
+export interface EnvironmentConfigProps {
+  review_mode: boolean;
+  adapter_type: string | null;
+  has_git_info: boolean;
+  has_pr_info: boolean;
+  // Adapter-specific (shape varies by adapter_type)
+  base?: {
+    schema_count?: number;
+    dbt_version?: string | null;
+    timestamp?: string | null;
+    has_env?: boolean;
+  };
+  current?: {
+    schema_count?: number;
+    dbt_version?: string | null;
+    timestamp?: string | null;
+    has_env?: boolean;
+  };
+  schemas_match?: boolean;
+}
+
+export function trackEnvironmentConfig(props: EnvironmentConfigProps) {
+  track("[Web] environment_config", props);
 }

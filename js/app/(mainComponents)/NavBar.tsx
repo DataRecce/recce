@@ -4,7 +4,7 @@ import { Box, Flex, Link, Tabs } from "@chakra-ui/react";
 import { useQuery } from "@tanstack/react-query";
 import NextLink from "next/link";
 import { usePathname } from "next/navigation";
-import React, { Activity, ReactNode, useEffect, useMemo } from "react";
+import React, { Activity, ReactNode, useEffect, useMemo, useRef } from "react";
 import { EnvInfo } from "@/components/app/EnvInfo";
 import { Filename } from "@/components/app/Filename";
 import { StateExporter } from "@/components/app/StateExporter";
@@ -83,9 +83,14 @@ export default function NavBar() {
       }}
     />
   );
-  // Track navigation changes
+
+  // Track navigation changes with previous pathname
+  const prevPathnameRef = useRef<string | null>(null);
   useEffect(() => {
-    trackNavigation({ from: location.pathname, to: pathname });
+    if (prevPathnameRef.current && prevPathnameRef.current !== pathname) {
+      trackNavigation({ from: prevPathnameRef.current, to: pathname });
+    }
+    prevPathnameRef.current = pathname;
   }, [pathname]);
 
   // Get current tab value from pathname
