@@ -176,11 +176,19 @@ function _ValueDiffResultView(
       resizable: true,
       renderCell: ({ column, row }) => {
         const value = row[column.key] as unknown as number | undefined;
-        return (
-          <Box textAlign="end">
-            {value != null ? `${(value * 100).toFixed(2)} %` : "N/A"}
-          </Box>
-        );
+        let displayValue = "N/A";
+
+        if (value != null) {
+          if (value > 0.9999 && value < 1) {
+            displayValue = "~99.99 %";
+          } else if (value < 0.0001 && value > 0) {
+            displayValue = "~0.01 %";
+          } else {
+            displayValue = `${(value * 100).toFixed(2)} %`;
+          }
+        }
+
+        return <Box textAlign="end">{displayValue}</Box>;
       },
       cellClass,
     },
