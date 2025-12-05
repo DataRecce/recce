@@ -16,10 +16,15 @@ import {
 } from "@chakra-ui/react";
 import { format, formatDistance, parseISO } from "date-fns";
 import { isEmpty } from "lodash";
-import React from "react";
+import React, { useEffect, useRef } from "react";
 import { LuExternalLink } from "react-icons/lu";
 import { LineageGraph } from "@/components/lineage/lineage";
 import { Tooltip } from "@/components/ui/tooltip";
+import {
+  type EnvironmentConfigProps,
+  trackEnvironmentConfig,
+} from "@/lib/api/track";
+import type { EnvInfo as EnvInfoType } from "@/lib/hooks/LineageGraphContext";
 import { useLineageGraphContext } from "@/lib/hooks/LineageGraphContext";
 import { IconInfo } from "../icons";
 
@@ -52,6 +57,54 @@ export function extractSchemas(
     }
   }
   return [baseSchemas, currentSchemas];
+}
+
+function buildEnvironmentTrackingData(
+  envInfo: EnvInfoType | undefined,
+  reviewMode: boolean | undefined,
+  baseSchemas: Set<string>,
+  currentSchemas: Set<string>,
+): EnvironmentConfigProps {
+  const git = envInfo?.git;
+  const pr = envInfo?.pullRequest;
+  const dbtBase = envInfo?.dbt?.base;
+  const dbtCurrent = envInfo?.dbt?.current;
+
+  const trackingData: EnvironmentConfigProps = {
+    review_mode: reviewMode || false,
+    adapter_type: envInfo?.adapterType || null,
+    has_git_info: !isEmpty(git),
+    has_pr_info: !isEmpty(pr),
+  };
+
+  // DBT-specific tracking
+  if (envInfo?.adapterType === "dbt") {
+    trackingData.base = {
+      schema_count: baseSchemas.size,
+      dbt_version: dbtBase?.dbt_version || null,
+      timestamp: dbtBase?.generated_at || null,
+    };
+    trackingData.current = {
+      schema_count: currentSchemas.size,
+      dbt_version: dbtCurrent?.dbt_version || null,
+      timestamp: dbtCurrent?.generated_at || null,
+    };
+    trackingData.schemas_match =
+      baseSchemas.size === currentSchemas.size &&
+      Array.from(baseSchemas).every((s) => currentSchemas.has(s));
+  }
+
+  // SQLMesh-specific tracking
+  if (envInfo?.adapterType === "sqlmesh") {
+    trackingData.base = {
+      has_env: !!envInfo.sqlmesh?.base_env,
+    };
+    trackingData.current = {
+      has_env: !!envInfo.sqlmesh?.current_env,
+    };
+  }
+
+  return trackingData;
 }
 
 function renderInfoEntries(info: object): React.JSX.Element[] {
@@ -103,6 +156,21 @@ export function EnvInfo() {
       : "";
   }
   const [baseSchemas, currentSchemas] = extractSchemas(lineageGraph);
+
+  // Track environment configuration once at startup
+  const hasTrackedRef = useRef(false);
+  useEffect(() => {
+    if (!hasTrackedRef.current && envInfo) {
+      hasTrackedRef.current = true;
+      const trackingData = buildEnvironmentTrackingData(
+        envInfo,
+        reviewMode,
+        baseSchemas,
+        currentSchemas,
+      );
+      trackEnvironmentConfig(trackingData);
+    }
+  }, [envInfo, reviewMode, baseSchemas, currentSchemas]);
 
   return (
     <>

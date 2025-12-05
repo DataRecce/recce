@@ -1,4 +1,25 @@
-import { initAll, track } from "@amplitude/unified";
+import {
+  AmplitudeReturn,
+  BaseEvent,
+  EventOptions,
+  Result,
+} from "@amplitude/analytics-core";
+import { initAll, track as trk } from "@amplitude/unified";
+
+function track(
+  eventInput: string | BaseEvent,
+  // biome-ignore lint/suspicious/noExplicitAny: Amplitude library uses any for event properties
+  eventProperties?: Record<string, any> | undefined,
+  eventOptions?: EventOptions | undefined,
+): AmplitudeReturn<Result> {
+  // If Amplitude isn't initialized, log to console instead
+  if (!amplitudeInitialized) {
+    console.log("[Tracking]", eventInput, eventProperties, eventOptions);
+  }
+  return trk(eventInput, eventProperties, eventOptions);
+}
+
+let amplitudeInitialized = false;
 
 export function trackInit() {
   function getCookie(key: string) {
@@ -22,9 +43,17 @@ export function trackInit() {
           sampleRate: 1,
         },
       });
+      amplitudeInitialized = true;
     } catch (e) {
       console.error(e);
     }
+  }
+
+  // Log when Amplitude is not initialized (for development/debugging)
+  if (!amplitudeInitialized) {
+    console.log(
+      "[Tracking] Amplitude not initialized (missing API key or user ID). Events will be logged to console instead.",
+    );
   }
 }
 
@@ -128,4 +157,42 @@ interface TrackNavProps {
 
 export function trackNavigation(props: TrackNavProps) {
   track("[Web] navigation_change", props);
+}
+
+export interface LineageViewRenderProps {
+  node_count: number;
+  view_mode: string;
+  impact_radius_enabled: boolean;
+  cll_column_active?: boolean;
+  right_sidebar_open: boolean;
+  [status: string]: number | string | boolean | undefined;
+}
+
+export function trackLineageViewRender(props: LineageViewRenderProps) {
+  track("[Web] lineage_view_render", props);
+}
+
+export interface EnvironmentConfigProps {
+  review_mode: boolean;
+  adapter_type: string | null;
+  has_git_info: boolean;
+  has_pr_info: boolean;
+  // Adapter-specific (shape varies by adapter_type)
+  base?: {
+    schema_count?: number;
+    dbt_version?: string | null;
+    timestamp?: string | null;
+    has_env?: boolean;
+  };
+  current?: {
+    schema_count?: number;
+    dbt_version?: string | null;
+    timestamp?: string | null;
+    has_env?: boolean;
+  };
+  schemas_match?: boolean;
+}
+
+export function trackEnvironmentConfig(props: EnvironmentConfigProps) {
+  track("[Web] environment_config", props);
 }
