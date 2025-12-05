@@ -81,5 +81,9 @@ export function getValueAtPath<T = RowDataTypes>(
     // try upper-case match
     col = obj[path.toUpperCase()];
   }
+  if (!col) {
+    // try fallback with strict casing match
+    col = obj[path];
+  }
   return col;
 }
