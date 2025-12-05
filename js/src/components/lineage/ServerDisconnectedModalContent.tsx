@@ -1,4 +1,4 @@
-import { Button, CloseButton, Dialog, Text } from "@chakra-ui/react";
+import { Button, Dialog, Text } from "@chakra-ui/react";
 import NextLink from "next/link";
 import React from "react";
 import { RECCE_SUPPORT_CALENDAR_URL } from "@/constants/urls";
@@ -46,9 +46,6 @@ export function ServerDisconnectedModalContent({
           Retry
         </Button>
       </Dialog.Footer>
-      <Dialog.CloseTrigger asChild>
-        <CloseButton size="sm" />
-      </Dialog.CloseTrigger>
     </Dialog.Content>
   );
 }
