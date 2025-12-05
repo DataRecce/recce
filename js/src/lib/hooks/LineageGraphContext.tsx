@@ -40,7 +40,7 @@ import { PUBLIC_API_URL } from "../const";
 import { useIdleTimeout } from "./IdleTimeoutContext";
 import { useRecceServerFlag } from "./useRecceServerFlag";
 
-interface EnvInfo {
+export interface EnvInfo {
   stateMetadata?: stateMetadata;
   adapterType?: string;
   git?: gitInfo;
