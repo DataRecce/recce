@@ -7,49 +7,27 @@
 
 import _ from "lodash";
 import React from "react";
-import {
-  CalculatedColumn,
-  ColumnOrColumnGroup,
-  RenderCellProps,
-  textEditor,
-} from "react-data-grid";
+import { ColumnOrColumnGroup, textEditor } from "react-data-grid";
 import "./styles.css";
 import {
-  Box,
-  Flex,
-  Icon,
-  IconButton,
-  Menu,
-  Portal,
-  Text,
-} from "@chakra-ui/react";
-import {
-  VscClose,
-  VscKebabVertical,
-  VscKey,
-  VscPin,
-  VscPinned,
-} from "react-icons/vsc";
-import { columnPrecisionSelectOptions } from "@/components/valuediff/shared";
+  DataFrameColumnGroupHeader,
+  defaultRenderCell,
+  inlineRenderCell,
+} from "@/components/ui/dataGrid";
 import {
   ColumnRenderMode,
   ColumnType,
   DataFrame,
   RowObjectType,
 } from "@/lib/api/types";
-// ============================================================================
-// Import shared utilities
-// ============================================================================
 import {
   buildMergedColumnMap,
   getHeaderCellClass,
   getPrimaryKeyValue,
-  toRenderedValue,
   validatePrimaryKeys,
 } from "@/lib/dataGrid/shared";
 import { mergeKeysWithStatus } from "@/lib/mergeKeys";
 import { dataFrameToRowObjects, keyToNumber } from "@/utils/transforms";
-import { DiffText } from "./DiffText";
 
 // ============================================================================
 // Types
@@ -67,217 +45,6 @@ export interface QueryDataDiffGridOptions {
   currentTitle?: string;
   displayMode?: "side_by_side" | "inline";
 }
-
-// ============================================================================
-// React Components (must stay in this file)
-// ============================================================================
-
-export function DataFrameColumnGroupHeader({
-  name,
-  columnStatus,
-  onPrimaryKeyChange,
-  onPinnedColumnsChange,
-  columnType,
-  onColumnsRenderModeChanged,
-  ...options
-}: {
-  name: string;
-  columnStatus: string;
-  columnType: ColumnType;
-  onColumnRenderModeChanged?: (
-    colNam: string,
-    renderAs: ColumnRenderMode,
-  ) => void;
-} & QueryDataDiffGridOptions) {
-  const primaryKeys = options.primaryKeys ?? [];
-  const pinnedColumns = options.pinnedColumns ?? [];
-  const isPK = primaryKeys.includes(name);
-  const isPinned = pinnedColumns.includes(name);
-  const canBePk = columnStatus !== "added" && columnStatus !== "removed";
-
-  let selectOptions: { value: string; onClick: () => void }[] = [];
-  if (onColumnsRenderModeChanged) {
-    selectOptions = columnPrecisionSelectOptions(
-      name,
-      onColumnsRenderModeChanged,
-    );
-  }
-
-  if (name === "index") {
-    return <></>;
-  }
-
-  const handleRemovePk = () => {
-    const newPrimaryKeys = primaryKeys.filter((item) => item !== name);
-    if (onPrimaryKeyChange) {
-      onPrimaryKeyChange(newPrimaryKeys);
-    }
-  };
-
-  const handleAddPk = () => {
-    const newPrimaryKeys = [
-      ...primaryKeys.filter((item) => item !== "index"),
-      name,
-    ];
-    if (onPrimaryKeyChange) {
-      onPrimaryKeyChange(newPrimaryKeys);
-    }
-  };
-
-  const handleUnpin = () => {
-    const newPinnedColumns = pinnedColumns.filter((item) => item !== name);
-    if (onPinnedColumnsChange) {
-      onPinnedColumnsChange(newPinnedColumns);
-    }
-  };
-
-  const handlePin = () => {
-    const newPinnedColumns = [...pinnedColumns, name];
-    if (onPinnedColumnsChange) {
-      onPinnedColumnsChange(newPinnedColumns);
-    }
-  };
-
-  return (
-    <Flex alignItems="center" gap="10px" className="grid-header">
-      {isPK && <Icon as={VscKey} />}
-      <Box
-        flex={1}
-        overflow="hidden"
-        textOverflow="ellipsis"
-        whiteSpace="nowrap"
-      >
-        {name}
-      </Box>
-      {canBePk && onPrimaryKeyChange && (
-        <Icon
-          className={isPK ? "close-icon" : "key-icon"}
-          display={isPK ? "block" : "none"}
-          cursor="pointer"
-          as={isPK ? VscClose : VscKey}
-          onClick={isPK ? handleRemovePk : handleAddPk}
-        />
-      )}
-      {!isPK && onPinnedColumnsChange && (
-        <Icon
-          className={isPinned ? "unpin-icon" : "pin-icon"}
-          display={isPinned ? "block" : "none"}
-          cursor="pointer"
-          as={isPinned ? VscPinned : VscPin}
-          onClick={isPinned ? handleUnpin : handlePin}
-        />
-      )}
-      {!isPK && columnType === "number" && (
-        <Menu.Root>
-          <Menu.Trigger asChild>
-            <IconButton
-              aria-label="Options"
-              variant="plain"
-              className="!size-4 !min-w-4"
-            >
-              <VscKebabVertical />
-            </IconButton>
-          </Menu.Trigger>
-          <Portal>
-            <Menu.Positioner>
-              <Menu.Content>
-                {selectOptions.map((o) => (
-                  <Menu.Item key={o.value} value={o.value} onClick={o.onClick}>
-                    {o.value}
-                  </Menu.Item>
-                ))}
-              </Menu.Content>
-            </Menu.Positioner>
-          </Portal>
-        </Menu.Root>
-      )}
-    </Flex>
-  );
-}
-
-// ============================================================================
-// Cell Renderers (exported for use by valuediff.tsx)
-// ============================================================================
-
-export const defaultRenderCell = ({
-  row,
-  column,
-}: RenderCellProps<RowObjectType>) => {
-  // Add the potential addition of columnType
-  const { columnType, columnRenderMode } =
-    column as unknown as CalculatedColumn<RowObjectType> & {
-      columnType?: ColumnType;
-      columnRenderMode?: ColumnRenderMode;
-    };
-
-  const [renderedValue, grayOut] = toRenderedValue(
-    row,
-    column.key,
-    columnType,
-    columnRenderMode,
-  );
-  return (
-    <Text style={{ color: grayOut ? "gray" : "inherit" }}>{renderedValue}</Text>
-  );
-};
-
-export const inlineRenderCell = ({
-  row,
-  column,
-}: RenderCellProps<RowObjectType>) => {
-  // Add the potential addition of columnType
-  const { columnType, columnRenderMode } =
-    column as unknown as CalculatedColumn<RowObjectType> & {
-      columnType?: ColumnType;
-      columnRenderMode?: ColumnRenderMode;
-    };
-  const baseKey = `base__${column.key}`.toLowerCase();
-  const currentKey = `current__${column.key}`.toLowerCase();
-
-  if (!Object.hasOwn(row, baseKey) && !Object.hasOwn(row, currentKey)) {
-    // should not happen
-    return "-";
-  }
-
-  const hasBase = Object.hasOwn(row, baseKey);
-  const hasCurrent = Object.hasOwn(row, currentKey);
-  const [baseValue, baseGrayOut] = toRenderedValue(
-    row,
-    `base__${column.key}`.toLowerCase(),
-    columnType,
-    columnRenderMode,
-  );
-  const [currentValue, currentGrayOut] = toRenderedValue(
-    row,
-    `current__${column.key}`.toLowerCase(),
-    columnType,
-    columnRenderMode,
-  );
-
-  if (row[baseKey] === row[currentKey]) {
-    // no change
-    return (
-      <Text style={{ color: currentGrayOut ? "gray" : "inherit" }}>
-        {currentValue}
-      </Text>
-    );
-  }
-
-  return (
-    <Flex gap="5px" alignItems="center" lineHeight="normal" height="100%">
-      {hasBase && (
-        <DiffText value={baseValue} colorPalette="red" grayOut={baseGrayOut} />
-      )}
-      {hasCurrent && (
-        <DiffText
-          value={currentValue}
-          colorPalette="green"
-          grayOut={currentGrayOut}
-        />
-      )}
-    </Flex>
-  );
-};
 
 // ============================================================================
 // Main Grid Generation Function

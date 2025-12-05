@@ -8,18 +8,18 @@
 import _ from "lodash";
 import { ColumnOrColumnGroup, textEditor } from "react-data-grid";
 import "../query/styles.css";
-import { Box, Flex, Icon, IconButton, Menu, Portal } from "@chakra-ui/react";
 import React from "react";
-import { VscKebabVertical, VscKey, VscPin, VscPinned } from "react-icons/vsc";
+import {
+  DataFrameColumnGroupHeader,
+  defaultRenderCell,
+  inlineRenderCell,
+} from "@/components/ui/dataGrid";
 import {
   ColumnRenderMode,
   ColumnType,
   DataFrame,
   RowObjectType,
 } from "@/lib/api/types";
-// ============================================================================
-// Import shared utilities
-// ============================================================================
 import {
   buildJoinedColumnMap,
   getHeaderCellClass,
@@ -34,103 +34,7 @@ import {
   includesIgnoreCase,
   keyToNumber,
 } from "@/utils/transforms";
-import {
-  defaultRenderCell,
-  inlineRenderCell,
-  QueryDataDiffGridOptions,
-} from "../query/querydiff";
-import { columnPrecisionSelectOptions } from "./shared";
-
-// ============================================================================
-// React Components (must stay in this file)
-// ============================================================================
-
-function DataFrameColumnGroupHeader({
-  name,
-  columnStatus,
-  onPrimaryKeyChange,
-  onPinnedColumnsChange,
-  columnType,
-  onColumnsRenderModeChanged,
-  ...options
-}: {
-  name: string;
-  columnStatus: string;
-  columnType: ColumnType;
-  onColumnRenderModeChanged?: (
-    colNam: string,
-    renderAs: ColumnRenderMode,
-  ) => void;
-} & QueryDataDiffGridOptions) {
-  const primaryKeys = options.primaryKeys ?? [];
-  const pinnedColumns = options.pinnedColumns ?? [];
-
-  let selectOptions: { value: string; onClick: () => void }[] = [];
-  if (onColumnsRenderModeChanged) {
-    selectOptions = columnPrecisionSelectOptions(
-      name,
-      onColumnsRenderModeChanged,
-    );
-  }
-
-  const isPrimaryKey = includesIgnoreCase(primaryKeys, name);
-  const isPinned = includesIgnoreCase(pinnedColumns, name);
-
-  const handleUnpin = () => {
-    const newPinnedColumns = pinnedColumns.filter(
-      (item) => item.toLowerCase() !== name.toLowerCase(),
-    );
-    onPinnedColumnsChange?.(newPinnedColumns);
-  };
-
-  const handlePin = () => {
-    const newPinnedColumns = [...pinnedColumns, name];
-    onPinnedColumnsChange?.(newPinnedColumns);
-  };
-
-  return (
-    <Flex className="grid-header" alignItems="center">
-      <Box flex={1}>
-        {isPrimaryKey && (
-          <Icon as={VscKey} style={{ marginRight: "5px" }}></Icon>
-        )}
-        {name}
-      </Box>
-
-      <Icon
-        className={isPinned ? "unpin-icon" : "pin-icon"}
-        display={isPinned ? "block" : "none"}
-        cursor="pointer"
-        as={isPinned ? VscPinned : VscPin}
-        onClick={isPinned ? handleUnpin : handlePin}
-      />
-      {columnType === "number" && (
-        <Menu.Root>
-          <Menu.Trigger asChild>
-            <IconButton
-              aria-label="Options"
-              variant="plain"
-              className="!size-4 !min-w-4"
-            >
-              <VscKebabVertical />
-            </IconButton>
-          </Menu.Trigger>
-          <Portal>
-            <Menu.Positioner>
-              <Menu.Content>
-                {selectOptions.map((o) => (
-                  <Menu.Item key={o.value} value={o.value} onClick={o.onClick}>
-                    {o.value}
-                  </Menu.Item>
-                ))}
-              </Menu.Content>
-            </Menu.Positioner>
-          </Portal>
-        </Menu.Root>
-      )}
-    </Flex>
-  );
-}
+import { QueryDataDiffGridOptions } from "../query/querydiff";
 
 // ============================================================================
 // Main Grid Generation Function

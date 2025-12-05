@@ -15,6 +15,10 @@ import React, { forwardRef, Ref, useMemo } from "react";
 import { ColumnOrColumnGroup, DataGridHandle } from "react-data-grid";
 import { PiDotsThreeVertical, PiWarning } from "react-icons/pi";
 import { VscPin, VscPinned } from "react-icons/vsc";
+import {
+  DataFrameColumnGroupHeader,
+  defaultRenderCell,
+} from "@/components/ui/dataGrid";
 import { columnPrecisionSelectOptions } from "@/components/valuediff/shared";
 import { QueryViewOptions } from "@/lib/api/adhocQuery";
 import {
@@ -33,7 +37,6 @@ import {
   ScreenshotDataGrid,
 } from "../data-grid/ScreenshotDataGrid";
 import { RunResultViewProps } from "../run/types";
-import { DataFrameColumnGroupHeader, defaultRenderCell } from "./querydiff";
 
 interface QueryResultViewProp extends RunResultViewProps<QueryViewOptions> {
   onAddToChecklist?: (run: Run) => void;

@@ -6,7 +6,6 @@ import {
   QueryDiffViewOptions,
   QueryPreviewChangeParams,
 } from "@/lib/api/adhocQuery";
-import { toValueDiffGrid as toQueryDiffJoinGrid } from "../valuediff/valuediff";
 
 import "./styles.css";
 import { DataGridHandle } from "react-data-grid";
