@@ -4,13 +4,17 @@
  *
  * Renders base and current values side-by-side when they differ,
  * or a single value when unchanged. Used for inline diff display mode.
+ *
+ * NOTE: Imports directly from gridUtils.ts to avoid circular dependency
+ * with toDiffColumn.tsx which imports this component.
  */
 
 import { Flex, Text } from "@chakra-ui/react";
 import { CalculatedColumn, RenderCellProps } from "react-data-grid";
 import { DiffText } from "@/components/query/DiffText";
 import { ColumnRenderMode, ColumnType, RowObjectType } from "@/lib/api/types";
-import { toRenderedValue } from "@/lib/dataGrid/shared";
+// Import directly from gridUtils to avoid circular dependency
+import { toRenderedValue } from "@/lib/dataGrid/shared/gridUtils";
 
 /**
  * Extended column type with optional type metadata
@@ -32,16 +36,6 @@ type ColumnWithMetadata = CalculatedColumn<RowObjectType> & {
  *
  * @param props - React Data Grid render cell props containing row and column data
  * @returns Rendered cell content showing diff or single value
- *
- * @example
- * // Used in column definition for inline diff mode
- * const column = {
- *   key: 'price',
- *   name: 'Price',
- *   renderCell: inlineRenderCell,
- *   columnType: 'number',
- *   columnRenderMode: 'raw'
- * };
  */
 export const inlineRenderCell = ({
   row,

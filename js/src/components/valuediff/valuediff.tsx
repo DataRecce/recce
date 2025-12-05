@@ -6,13 +6,12 @@
  */
 
 import _ from "lodash";
-import { ColumnOrColumnGroup, textEditor } from "react-data-grid";
+import { ColumnOrColumnGroup } from "react-data-grid";
 import "../query/styles.css";
 import React from "react";
 import {
   DataFrameColumnGroupHeader,
   defaultRenderCell,
-  inlineRenderCell,
 } from "@/components/ui/dataGrid";
 import {
   ColumnRenderMode,
@@ -22,8 +21,8 @@ import {
 } from "@/lib/api/types";
 import {
   buildJoinedColumnMap,
-  getHeaderCellClass,
   getPrimaryKeyValue,
+  toDiffColumn,
   validatePrimaryKeys,
 } from "@/lib/dataGrid/shared";
 import { mergeKeysWithStatus } from "@/lib/mergeKeys";
@@ -172,103 +171,24 @@ export function toValueDiffGrid(
     columnStatus: string,
     columnType: ColumnType,
     columnRenderMode: ColumnRenderMode = "raw",
-  ): ColumnOrColumnGroup<RowObjectType> & {
-    columnType?: ColumnType;
-    columnRenderMode?: ColumnRenderMode;
-  } => {
-    // REFACTORED: Use shared utility for header cell class
-    const headerCellClass = getHeaderCellClass(columnStatus);
-
-    const cellClassBase = (row: RowObjectType) => {
-      const rowStatus = row.__status;
-      if (rowStatus === "removed") {
-        return "diff-cell-removed";
-      } else if (rowStatus === "added") {
-        return "diff-cell-added";
-      } else if (columnStatus === "added") {
-        return undefined;
-      } else if (columnStatus === "removed") {
-        return undefined;
-      } else if (!_.isEqual(row[`base__${name}`], row[`current__${name}`])) {
-        return "diff-cell-removed";
-      }
-
-      return undefined;
-    };
-
-    const cellClassCurrent = (row: RowObjectType) => {
-      const rowStatus = row.__status;
-      if (rowStatus === "removed") {
-        return "diff-cell-removed";
-      } else if (rowStatus === "added") {
-        return "diff-cell-added";
-      } else if (columnStatus === "added") {
-        return undefined;
-      } else if (columnStatus === "removed") {
-        return undefined;
-      } else if (!_.isEqual(row[`base__${name}`], row[`current__${name}`])) {
-        return "diff-cell-added";
-      }
-
-      return undefined;
-    };
-
-    if (displayMode === "inline") {
-      return {
-        headerCellClass,
-        name: (
-          <DataFrameColumnGroupHeader
-            name={name}
-            columnStatus={columnStatus}
-            primaryKeys={primaryKeys}
-            columnType={columnType}
-            {...options}
-          />
-        ),
-        key: name,
-        renderCell: inlineRenderCell,
-        columnType,
-        columnRenderMode,
-      };
-    } else {
-      return {
-        headerCellClass,
-        name: (
-          <DataFrameColumnGroupHeader
-            name={name}
-            columnStatus={columnStatus}
-            primaryKeys={primaryKeys}
-            columnType={columnType}
-            {...options}
-          />
-        ),
-        children: [
-          {
-            key: `base__${name}`,
-            name: options?.baseTitle ?? "Base",
-            renderEditCell: textEditor,
-            headerCellClass,
-            cellClass: cellClassBase,
-            renderCell: defaultRenderCell,
-            // @ts-expect-error Unable to patch children type, just pass it through
-            columnType,
-            columnRenderMode,
-          },
-          {
-            key: `current__${name}`,
-            name: options?.currentTitle ?? "Current",
-            renderEditCell: textEditor,
-            headerCellClass,
-            cellClass: cellClassCurrent,
-            renderCell: defaultRenderCell,
-            // @ts-expect-error Unable to patch children type, just pass it through
-            columnType,
-            columnRenderMode,
-          },
-        ],
-      };
-    }
-  };
+  ) =>
+    toDiffColumn({
+      name,
+      columnStatus,
+      columnType,
+      columnRenderMode,
+      displayMode,
+      baseTitle: options?.baseTitle,
+      currentTitle: options?.currentTitle,
+      headerProps: {
+        primaryKeys,
+        pinnedColumns: options?.pinnedColumns,
+        onPinnedColumnsChange: options?.onPinnedColumnsChange,
+        onColumnsRenderModeChanged: options?.onColumnsRenderModeChanged,
+        // valuediff uses case-insensitive matching
+        caseInsensitive: true,
+      },
+    });
 
   // Build columns: primary keys
   primaryKeys.forEach((name) => {
@@ -287,7 +207,10 @@ export function toValueDiffGrid(
           columnStatus={columnStatus}
           primaryKeys={primaryKeys.map((k) => k.toLowerCase())}
           columnType={"unknown"}
-          {...options}
+          caseInsensitive
+          pinnedColumns={options?.pinnedColumns}
+          onPinnedColumnsChange={options?.onPinnedColumnsChange}
+          onColumnsRenderModeChanged={options?.onColumnsRenderModeChanged}
         />
       ),
       frozen: true,

@@ -4,12 +4,16 @@
  *
  * Renders a cell value with optional column type formatting and gray-out styling.
  * Used for standard (non-diff) cell rendering in data grids.
+ *
+ * NOTE: Imports directly from gridUtils.ts to avoid circular dependency
+ * with toDiffColumn.tsx which imports this component.
  */
 
 import { Text } from "@chakra-ui/react";
 import { CalculatedColumn, RenderCellProps } from "react-data-grid";
 import { ColumnRenderMode, ColumnType, RowObjectType } from "@/lib/api/types";
-import { toRenderedValue } from "@/lib/dataGrid/shared";
+// Import directly from gridUtils to avoid circular dependency
+import { toRenderedValue } from "@/lib/dataGrid/shared/gridUtils";
 
 /**
  * Extended column type with optional type metadata
@@ -28,16 +32,6 @@ type ColumnWithMetadata = CalculatedColumn<RowObjectType> & {
  *
  * @param props - React Data Grid render cell props containing row and column data
  * @returns Rendered cell content as a Text component
- *
- * @example
- * // Used in column definition
- * const column = {
- *   key: 'amount',
- *   name: 'Amount',
- *   renderCell: defaultRenderCell,
- *   columnType: 'number',
- *   columnRenderMode: 'integer'
- * };
  */
 export const defaultRenderCell = ({
   row,

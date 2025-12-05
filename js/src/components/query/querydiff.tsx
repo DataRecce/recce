@@ -7,12 +7,11 @@
 
 import _ from "lodash";
 import React from "react";
-import { ColumnOrColumnGroup, textEditor } from "react-data-grid";
+import { ColumnOrColumnGroup } from "react-data-grid";
 import "./styles.css";
 import {
   DataFrameColumnGroupHeader,
   defaultRenderCell,
-  inlineRenderCell,
 } from "@/components/ui/dataGrid";
 import {
   ColumnRenderMode,
@@ -22,8 +21,8 @@ import {
 } from "@/lib/api/types";
 import {
   buildMergedColumnMap,
-  getHeaderCellClass,
   getPrimaryKeyValue,
+  toDiffColumn,
   validatePrimaryKeys,
 } from "@/lib/dataGrid/shared";
 import { mergeKeysWithStatus } from "@/lib/mergeKeys";
@@ -213,91 +212,25 @@ export function toDataDiffGrid(
     columnStatus: string,
     columnType: ColumnType,
     columnRenderMode: ColumnRenderMode = "raw",
-  ): ColumnOrColumnGroup<RowObjectType> & {
-    columnType?: ColumnType;
-    columnRenderMode?: ColumnRenderMode;
-  } => {
-    // REFACTORED: Use shared utility
-    const headerCellClass = getHeaderCellClass(columnStatus);
-
-    const cellClassBase = (row: RowObjectType) => {
-      const rowStatus = row.__status;
-      if (rowStatus === "removed") return "diff-cell-removed";
-      else if (rowStatus === "added") return "diff-cell-added";
-      else if (columnStatus === "added") return undefined;
-      else if (columnStatus === "removed") return undefined;
-      else if (!_.isEqual(row[`base__${name}`], row[`current__${name}`])) {
-        return "diff-cell-removed";
-      }
-      return undefined;
-    };
-
-    const cellClassCurrent = (row: RowObjectType) => {
-      const rowStatus = row.__status;
-      if (rowStatus === "removed") return "diff-cell-removed";
-      else if (rowStatus === "added") return "diff-cell-added";
-      else if (columnStatus === "added") return undefined;
-      else if (columnStatus === "removed") return undefined;
-      else if (!_.isEqual(row[`base__${name}`], row[`current__${name}`])) {
-        return "diff-cell-added";
-      }
-      return undefined;
-    };
-
-    if (displayMode === "inline") {
-      return {
-        headerCellClass,
-        name: (
-          <DataFrameColumnGroupHeader
-            name={name}
-            columnStatus={columnStatus}
-            columnType={columnType}
-            {...options}
-          />
-        ),
-        key: name,
-        renderCell: inlineRenderCell,
-        columnType,
-        columnRenderMode,
-      };
-    } else {
-      return {
-        headerCellClass,
-        name: (
-          <DataFrameColumnGroupHeader
-            name={name}
-            columnStatus={columnStatus}
-            columnType={columnType}
-            {...options}
-          />
-        ),
-        children: [
-          {
-            key: `base__${name}`,
-            name: options?.baseTitle ?? "Base",
-            renderEditCell: textEditor,
-            headerCellClass,
-            cellClass: cellClassBase,
-            renderCell: defaultRenderCell,
-            // @ts-expect-error Unable to patch children type
-            columnType,
-            columnRenderMode,
-          },
-          {
-            key: `current__${name}`,
-            name: options?.currentTitle ?? "Current",
-            renderEditCell: textEditor,
-            headerCellClass,
-            cellClass: cellClassCurrent,
-            renderCell: defaultRenderCell,
-            // @ts-expect-error Unable to patch children type
-            columnType,
-            columnRenderMode,
-          },
-        ],
-      };
-    }
-  };
+  ) =>
+    toDiffColumn({
+      name,
+      columnStatus,
+      columnType,
+      columnRenderMode,
+      displayMode,
+      baseTitle: options?.baseTitle,
+      currentTitle: options?.currentTitle,
+      headerProps: {
+        primaryKeys: options?.primaryKeys,
+        pinnedColumns: options?.pinnedColumns,
+        onPrimaryKeyChange: options?.onPrimaryKeyChange,
+        onPinnedColumnsChange: options?.onPinnedColumnsChange,
+        onColumnsRenderModeChanged: options?.onColumnsRenderModeChanged,
+        // querydiff uses exact matching (not case-insensitive)
+        caseInsensitive: false,
+      },
+    });
 
   // Build columns: primary keys or index
   if (primaryKeys.length === 0) {
@@ -320,7 +253,11 @@ export function toDataDiffGrid(
             name={name}
             columnStatus={columnStatus}
             columnType={columnType}
-            {...options}
+            primaryKeys={options?.primaryKeys}
+            pinnedColumns={options?.pinnedColumns}
+            onPrimaryKeyChange={options?.onPrimaryKeyChange}
+            onPinnedColumnsChange={options?.onPinnedColumnsChange}
+            onColumnsRenderModeChanged={options?.onColumnsRenderModeChanged}
           />
         ),
         frozen: true,

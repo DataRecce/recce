@@ -41,3 +41,10 @@ export {
   // Primary key utilities
   validatePrimaryKeys,
 } from "./gridUtils";
+export {
+  createCellClassBase,
+  createCellClassCurrent,
+  type DiffColumnConfig,
+  type DiffColumnResult,
+  toDiffColumn,
+} from "./toDiffColumn";
