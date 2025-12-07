@@ -11,13 +11,10 @@ install:
 	pip install .
 
 install-cloud:
-	# Using setup_cloud.py directly for now until we restructure the monorepo
-	# Users will install from PyPI with: pip install recce-cloud
-	python setup_cloud.py install
+	pip install -e ./recce_cloud
 
 install-cloud-dev:
-	# Using setup_cloud.py directly for now until we restructure the monorepo
-	python setup_cloud.py develop
+	pip install -e ./recce_cloud[dev]
 
 help:
 	@echo "Available commands:"
@@ -101,7 +98,7 @@ install-frontend-requires:
 dev: install-frontend-requires
 	@cd js && pnpm dev
 
-# Build targets
+# Build targets (packaging - using uv)
 clean-build:
 	@echo "Cleaning build artifacts..."
 	@rm -rf build/ dist/ *.egg-info recce_cloud.egg-info
@@ -114,22 +111,16 @@ build-frontend:
 
 build: clean-build build-frontend
 	@echo "Building recce package..."
-	@pip install -q wheel
-	@python setup.py sdist bdist_wheel
+	uv build
 
 build-cloud: clean-build
-	@echo "Syncing VERSION file to recce_cloud..."
-	@cp recce/VERSION recce_cloud/VERSION
 	@echo "Building recce-cloud package..."
-	@pip install -q wheel
-	@python setup_cloud.py sdist bdist_wheel
+	uv build --package recce-cloud
 
 build-all: clean-build build-frontend
 	@echo "Building both packages..."
-	@pip install -q wheel
-	@cp recce/VERSION recce_cloud/VERSION
-	@python setup.py sdist bdist_wheel
-	@python setup_cloud.py sdist bdist_wheel
+	uv build
+	uv build --package recce-cloud
 	@echo "Build complete!"
 	@echo "Packages in dist/:"
 	@ls -lh dist/
