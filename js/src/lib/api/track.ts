@@ -1,4 +1,25 @@
-import { initAll, track } from "@amplitude/unified";
+import {
+  AmplitudeReturn,
+  BaseEvent,
+  EventOptions,
+  Result,
+} from "@amplitude/analytics-core";
+import { initAll, track as trk } from "@amplitude/unified";
+
+function track(
+  eventInput: string | BaseEvent,
+  // biome-ignore lint/suspicious/noExplicitAny: Amplitude library uses any for event properties
+  eventProperties?: Record<string, any> | undefined,
+  eventOptions?: EventOptions | undefined,
+): AmplitudeReturn<Result> {
+  // If Amplitude isn't initialized, log to console instead
+  if (!amplitudeInitialized) {
+    console.log("[Tracking]", eventInput, eventProperties, eventOptions);
+  }
+  return trk(eventInput, eventProperties, eventOptions);
+}
+
+let amplitudeInitialized = false;
 
 export function trackInit() {
   function getCookie(key: string) {
@@ -22,9 +43,17 @@ export function trackInit() {
           sampleRate: 1,
         },
       });
+      amplitudeInitialized = true;
     } catch (e) {
       console.error(e);
     }
+  }
+
+  // Log when Amplitude is not initialized (for development/debugging)
+  if (!amplitudeInitialized) {
+    console.log(
+      "[Tracking] Amplitude not initialized (missing API key or user ID). Events will be logged to console instead.",
+    );
   }
 }
 

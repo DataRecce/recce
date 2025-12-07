@@ -32,7 +32,11 @@ import {
 } from "@/lib/api/types";
 import { mergeKeysWithStatus } from "@/lib/mergeKeys";
 import { formatNumber } from "@/utils/formatters";
-import { dataFrameToRowObjects, keyToNumber } from "@/utils/transforms";
+import {
+  dataFrameToRowObjects,
+  getCaseInsensitive,
+  keyToNumber,
+} from "@/utils/transforms";
 import { DiffText } from "./DiffText";
 
 interface MergeColumnMap {
@@ -276,10 +280,10 @@ const toRenderedValue = (
   columnType?: ColumnType,
   columnRenderMode: ColumnRenderMode = "raw",
 ): [string, boolean] => {
-  if (!Object.hasOwn(row, key)) {
+  if (getCaseInsensitive(row, key) == null) {
     return ["-", true];
   }
-  const value = row[key];
+  const value = getCaseInsensitive(row, key);
 
   let renderedValue: string;
   let grayOut = false;

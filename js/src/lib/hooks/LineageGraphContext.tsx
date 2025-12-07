@@ -21,7 +21,7 @@ import { buildLineageGraph, LineageGraph } from "@/components/lineage/lineage";
 import {
   RecceInstanceDisconnectedModalContent,
   ServerDisconnectedModalContent,
-} from "@/components/lineage/SeverDisconnectedModalContent";
+} from "@/components/lineage/ServerDisconnectedModalContent";
 import { toaster } from "@/components/ui/toaster";
 import { useRecceInstanceContext } from "@/lib/hooks/RecceInstanceContext";
 import { cacheKeys } from "../api/cacheKeys";
@@ -40,7 +40,7 @@ import { PUBLIC_API_URL } from "../const";
 import { useIdleTimeout } from "./IdleTimeoutContext";
 import { useRecceServerFlag } from "./useRecceServerFlag";
 
-interface EnvInfo {
+export interface EnvInfo {
   stateMetadata?: stateMetadata;
   adapterType?: string;
   git?: gitInfo;

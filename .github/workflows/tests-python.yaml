@@ -16,24 +16,22 @@ on:
     paths:
       - "recce/**" # Recce OSS codebase
       - "tests/**" # Recce OSS python unit tests
-      - "setup.py"
+      - "pyproject.toml"
 
 jobs:
   test-flake8:
     name: Check Code Style with Flake8
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
 
-      - name: Set up Python
-        uses: actions/setup-python@v5
+      - name: Install uv
+        uses: astral-sh/setup-uv@v4
         with:
-          python-version: '3.10'
-          cache: "pip" # caching pip dependencies
-          cache-dependency-path: setup.py
+          version: "latest"
 
-      - name: Install flake8
-        run: pip install flake8
+      - name: Install dependencies
+        run: pip install -e .[dev,mcp]
 
       - name: Run flake8
         run: make flake8
@@ -45,27 +43,27 @@ jobs:
       contents: read
       id-token: write
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
 
-      - name: Set up Python
-        uses: actions/setup-python@v5
+      - name: Install uv
+        uses: astral-sh/setup-uv@v4
         with:
-          python-version: '3.10'
-          cache: "pip" # caching pip dependencies
-          cache-dependency-path: setup.py
+          version: "latest"
 
       - name: Cache tox environments
         uses: actions/cache@v4
         with:
           path: .tox
-          key: ${{ runner.os }}-tox-${{ hashFiles('tox.ini') }}-3.10
+          key: ${{ runner.os }}-tox-uv-${{ hashFiles('tox.ini', 'pyproject.toml') }}-3.10
           restore-keys: |
-            ${{ runner.os }}-tox-${{ hashFiles('tox.ini') }}-
-            ${{ runner.os }}-tox-
+            ${{ runner.os }}-tox-uv-${{ hashFiles('tox.ini', 'pyproject.toml') }}-
+            ${{ runner.os }}-tox-uv-
+
+      - name: Install dependencies
+        run: pip install -e .[dev,mcp]
 
       - name: Run tests
-        run: |
-          make test-tox
+        run: make test-tox
 
       - name: Upload coverage reports to Codecov
         uses: codecov/codecov-action@v5
@@ -79,25 +77,24 @@ jobs:
       matrix:
         python-version: [ "3.11", "3.12", "3.13" ]
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
 
-      - name: Set up Python
-        uses: actions/setup-python@v5
+      - name: Install uv
+        uses: astral-sh/setup-uv@v4
         with:
-          python-version: ${{ matrix.python-version }}
-          cache: "pip" # caching pip dependencies
-          cache-dependency-path: setup.py
+          version: "latest"
 
       - name: Cache tox environments
         uses: actions/cache@v4
         with:
           path: .tox
-          key: ${{ runner.os }}-tox-${{ hashFiles('tox.ini') }}-${{ matrix.python-version }}
+          key: ${{ runner.os }}-tox-uv-${{ hashFiles('tox.ini', 'pyproject.toml') }}-${{ matrix.python-version }}
           restore-keys: |
-            ${{ runner.os }}-tox-${{ hashFiles('tox.ini') }}-
-            ${{ runner.os }}-tox-
+            ${{ runner.os }}-tox-uv-${{ hashFiles('tox.ini', 'pyproject.toml') }}-
+            ${{ runner.os }}-tox-uv-
+
+      - name: Install dependencies
+        run: pip install -e .[dev,mcp]
 
       - name: Run test with specified Python version
-        run: |
-          make install-dev
-          tox -e ${{ matrix.python-version }}
+        run: tox -e ${{ matrix.python-version }}
