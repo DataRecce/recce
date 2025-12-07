@@ -7,8 +7,8 @@
  *
  * It wraps the existing implementations:
  * - toDataGrid from QueryResultView.tsx
- * - toDataDiffGrid from querydiff.tsx
- * - toValueDiffGrid from valuediff.tsx
+ * - toDataDiffGrid from querydiff.ts
+ * - toValueDiffGrid from valuediff.ts
  */
 
 import { ColumnOrColumnGroup } from "react-data-grid";

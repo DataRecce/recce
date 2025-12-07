@@ -16,7 +16,6 @@ import { ChangedOnlyCheckbox } from "../query/ChangedOnlyCheckbox";
 import { DiffDisplayModeSwitch } from "../query/ToggleSwitch";
 import { RunToolbar } from "../run/RunToolbar";
 import { RunResultViewProps } from "../run/types";
-import { toValueDiffGrid } from "./valuediff";
 
 export interface ValueDiffDetailResultViewProps
   extends RunResultViewProps<ValueDiffDetailViewOptions> {

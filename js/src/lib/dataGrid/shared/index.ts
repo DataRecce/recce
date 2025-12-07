@@ -18,6 +18,13 @@ export {
   isPrimaryKeyColumn,
   shouldIncludeColumn,
 } from "./columnBuilders";
+// Diff column definitions (high-level, with JSX)
+export {
+  type BuildDiffColumnDefinitionsConfig,
+  type BuildDiffColumnDefinitionsResult,
+  buildDiffColumnDefinitions,
+  type DiffColumnDefinition,
+} from "./diffColumnBuilder";
 // Grid utilities
 export {
   // Column map builders
@@ -47,6 +54,7 @@ export {
   buildDiffRows,
   type DiffColumnMapEntry,
 } from "./rowBuilders";
+// Diff column builder (low-level)
 export {
   createCellClassBase,
   createCellClassCurrent,

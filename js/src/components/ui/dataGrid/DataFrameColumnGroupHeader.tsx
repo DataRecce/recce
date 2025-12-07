@@ -55,8 +55,8 @@ export interface DataFrameColumnGroupHeaderProps {
  * - Precision options menu for number columns
  *
  * The component supports two modes based on props:
- * 1. Query diff mode (querydiff.tsx): Allows PK toggling, uses exact string matching
- * 2. Value diff mode (valuediff.tsx): Display-only PK icon, uses case-insensitive matching
+ * 1. Query diff mode (querydiff.ts): Allows PK toggling, uses exact string matching
+ * 2. Value diff mode (valuediff.ts): Display-only PK icon, uses case-insensitive matching
  *
  * @example
  * // Query diff mode with PK toggle

@@ -38,8 +38,8 @@ jest.mock("@chakra-ui/react", () => ({
 
 import React from "react";
 import { Column } from "react-data-grid";
+import { toDataDiffGrid } from "src/components/query/querydiff";
 import { DataFrame } from "@/lib/api/types";
-import { toDataDiffGrid } from "./querydiff";
 
 // ============================================================================
 // Test Fixtures

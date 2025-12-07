@@ -3,8 +3,8 @@
  * @description Column configuration utilities for data grids
  *
  * Provides helper functions for building column configurations.
- * Note: React components for headers are kept in the original files
- * (querydiff.tsx, valuediff.tsx) to avoid circular dependencies.
+ * Note: React components for headers are kept in diffColumnBuilder.tsx
+ * to maintain separation between pure logic and React components.
  */
 
 import { ColumnRenderMode, ColumnType } from "@/lib/api/types";
@@ -44,6 +44,14 @@ export interface GridColumnsConfig {
   rowStats?: { added: number; removed: number; modified: number };
   excludeColumns?: string[];
   caseInsensitive?: boolean;
+  /**
+   * When true, throws an error if a primary key or pinned column is not found
+   * in the columnMap. When false (default), silently skips missing columns.
+   *
+   * - querydiff: uses false (lenient, handles schema differences)
+   * - valuediff: uses true (strict, PKs must exist)
+   */
+  strictMode?: boolean;
 }
 
 // ============================================================================
@@ -167,11 +175,61 @@ export function isExcludedColumn(
 }
 
 // ============================================================================
+// Internal Helpers
+// ============================================================================
+
+/**
+ * Finds a column in the columnMap, with optional case-insensitive matching
+ */
+function findColumn(
+  columnMap: GridColumnsConfig["columnMap"],
+  name: string,
+  caseInsensitive: boolean,
+): { key: string; colType: ColumnType; status?: string } | undefined {
+  if (caseInsensitive) {
+    const entry = Object.entries(columnMap).find(
+      ([k]) => k.toLowerCase() === name.toLowerCase(),
+    );
+    return entry?.[1];
+  }
+  return columnMap[name];
+}
+
+// ============================================================================
 // Column Configuration Helpers
 // ============================================================================
 
 /**
  * Gets the list of columns to display for a diff grid
+ *
+ * @description Builds an ordered list of column configurations:
+ * 1. Primary key columns (frozen)
+ * 2. Pinned columns
+ * 3. Remaining columns (filtered by changedOnly if applicable)
+ *
+ * @throws {Error} When strictMode is true and a primary key or pinned column
+ *                 is not found in the columnMap
+ *
+ * @example
+ * ```typescript
+ * // Lenient mode (querydiff) - skips missing columns
+ * const columns = getDisplayColumns({
+ *   columnMap,
+ *   primaryKeys: ["id"],
+ *   pinnedColumns: ["name"],
+ *   columnsRenderMode: {},
+ *   strictMode: false, // default
+ * });
+ *
+ * // Strict mode (valuediff) - throws on missing columns
+ * const columns = getDisplayColumns({
+ *   columnMap,
+ *   primaryKeys: ["id"],
+ *   pinnedColumns: ["name"],
+ *   columnsRenderMode: {},
+ *   strictMode: true,
+ * });
+ * ```
  */
 export function getDisplayColumns(config: GridColumnsConfig): ColumnConfig[] {
   const {
@@ -183,6 +241,7 @@ export function getDisplayColumns(config: GridColumnsConfig): ColumnConfig[] {
     rowStats,
     excludeColumns = [],
     caseInsensitive = false,
+    strictMode = false,
   } = config;
 
   const hasModifiedRows = (rowStats?.modified ?? 0) > 0;
@@ -190,13 +249,14 @@ export function getDisplayColumns(config: GridColumnsConfig): ColumnConfig[] {
 
   // Add primary key columns first
   primaryKeys.forEach((name) => {
-    const col = caseInsensitive
-      ? Object.entries(columnMap).find(
-          ([k]) => k.toLowerCase() === name.toLowerCase(),
-        )?.[1]
-      : columnMap[name];
+    const col = findColumn(columnMap, name, caseInsensitive);
 
-    if (!col) return;
+    if (!col) {
+      if (strictMode) {
+        throw new Error(`Primary key column "${name}" not found in columnMap`);
+      }
+      return;
+    }
 
     columns.push({
       key: name,
@@ -214,13 +274,14 @@ export function getDisplayColumns(config: GridColumnsConfig): ColumnConfig[] {
     if (isPrimaryKeyColumn(name, primaryKeys, caseInsensitive)) return;
     if (isExcludedColumn(name, excludeColumns, caseInsensitive)) return;
 
-    const col = caseInsensitive
-      ? Object.entries(columnMap).find(
-          ([k]) => k.toLowerCase() === name.toLowerCase(),
-        )?.[1]
-      : columnMap[name];
+    const col = findColumn(columnMap, name, caseInsensitive);
 
-    if (!col) return;
+    if (!col) {
+      if (strictMode) {
+        throw new Error(`Pinned column "${name}" not found in columnMap`);
+      }
+      return;
+    }
 
     columns.push({
       key: name,
@@ -265,6 +326,7 @@ export function getSimpleDisplayColumns(
     pinnedColumns,
     columnsRenderMode,
     excludeColumns = [],
+    strictMode = false,
   } = config;
 
   const columns: ColumnConfig[] = [];
@@ -272,7 +334,13 @@ export function getSimpleDisplayColumns(
   // Add primary key columns first
   primaryKeys.forEach((name) => {
     const col = columnMap[name];
-    if (!col) return;
+
+    if (!col) {
+      if (strictMode) {
+        throw new Error(`Primary key column "${name}" not found in columnMap`);
+      }
+      return;
+    }
 
     columns.push({
       key: name,
@@ -290,7 +358,13 @@ export function getSimpleDisplayColumns(
     if (excludeColumns.includes(name)) return;
 
     const col = columnMap[name];
-    if (!col) return;
+
+    if (!col) {
+      if (strictMode) {
+        throw new Error(`Pinned column "${name}" not found in columnMap`);
+      }
+      return;
+    }
 
     columns.push({
       key: col.key,
