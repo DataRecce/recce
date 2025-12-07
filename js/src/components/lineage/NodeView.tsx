@@ -19,7 +19,12 @@ import SetupConnectionPopover from "@/components/app/SetupConnectionPopover";
 import { Tooltip } from "@/components/ui/tooltip";
 import { DisableTooltipMessages } from "@/constants/tooltipMessage";
 import { createSchemaDiffCheck } from "@/lib/api/schemacheck";
-import { trackPreviewChange } from "@/lib/api/track";
+import {
+  EXPLORE_ACTION,
+  EXPLORE_SOURCE,
+  trackExploreAction,
+  trackPreviewChange,
+} from "@/lib/api/track";
 import { formatSelectColumns } from "@/lib/formatSelect";
 import { useLineageGraphContext } from "@/lib/hooks/LineageGraphContext";
 import { useRecceActionContext } from "@/lib/hooks/RecceActionContext";
@@ -63,6 +68,11 @@ export function NodeView({ node, onCloseNode }: NodeViewProps) {
   const { isActionAvailable } = useLineageGraphContext();
 
   const refetchRowCount = () => {
+    trackExploreAction({
+      action: EXPLORE_ACTION.ROW_COUNT,
+      source: EXPLORE_SOURCE.SCHEMA_ROW_COUNT_BUTTON,
+      node_count: 1,
+    });
     runAction(
       "row_count",
       { node_names: [node.data.name] },
@@ -70,6 +80,11 @@ export function NodeView({ node, onCloseNode }: NodeViewProps) {
     );
   };
   const refetchRowCountDiff = () => {
+    trackExploreAction({
+      action: EXPLORE_ACTION.ROW_COUNT_DIFF,
+      source: EXPLORE_SOURCE.SCHEMA_ROW_COUNT_BUTTON,
+      node_count: 1,
+    });
     runAction(
       "row_count_diff",
       { node_names: [node.data.name] },
@@ -257,6 +272,11 @@ function SingleEnvironmentMenuButton({
                   fontSize="14px"
                   disabled={isAddedOrRemoved}
                   onClick={() => {
+                    trackExploreAction({
+                      action: EXPLORE_ACTION.PROFILE,
+                      source: EXPLORE_SOURCE.NODE_SIDEBAR_SINGLE_ENV,
+                      node_count: 1,
+                    });
                     runAction(
                       "profile",
                       {
@@ -435,6 +455,11 @@ function ExploreChangeMenuButton({
                       isAddedOrRemoved || featureToggles.disableDatabaseQuery
                     }
                     onClick={() => {
+                      trackExploreAction({
+                        action: EXPLORE_ACTION.PROFILE_DIFF,
+                        source: EXPLORE_SOURCE.NODE_SIDEBAR_MULTI_ENV,
+                        node_count: 1,
+                      });
                       runAction(
                         "profile_diff",
                         {
@@ -457,6 +482,11 @@ function ExploreChangeMenuButton({
                       isAddedOrRemoved || featureToggles.disableDatabaseQuery
                     }
                     onClick={() => {
+                      trackExploreAction({
+                        action: EXPLORE_ACTION.VALUE_DIFF,
+                        source: EXPLORE_SOURCE.NODE_SIDEBAR_MULTI_ENV,
+                        node_count: 1,
+                      });
                       runAction(
                         "value_diff",
                         {
@@ -478,6 +508,11 @@ function ExploreChangeMenuButton({
                       isAddedOrRemoved || featureToggles.disableDatabaseQuery
                     }
                     onClick={() => {
+                      trackExploreAction({
+                        action: EXPLORE_ACTION.TOP_K_DIFF,
+                        source: EXPLORE_SOURCE.NODE_SIDEBAR_MULTI_ENV,
+                        node_count: 1,
+                      });
                       runAction(
                         "top_k_diff",
                         { model: node.data.name, column_name: "", k: 50 },
@@ -497,6 +532,11 @@ function ExploreChangeMenuButton({
                       isAddedOrRemoved || featureToggles.disableDatabaseQuery
                     }
                     onClick={() => {
+                      trackExploreAction({
+                        action: EXPLORE_ACTION.HISTOGRAM_DIFF,
+                        source: EXPLORE_SOURCE.NODE_SIDEBAR_MULTI_ENV,
+                        node_count: 1,
+                      });
                       runAction(
                         "histogram_diff",
                         {
