@@ -46,28 +46,32 @@ jest.mock("./gridUtils", () => ({
 }));
 
 // ============================================================================
-// Types for testing (mirrors react-data-grid types)
+// Types for testing (avoids ESM import issues with react-data-grid)
 // ============================================================================
 
 /**
- * Column type (simplified from react-data-grid)
+ * Test-friendly Column type (mirrors react-data-grid Column)
  */
-interface Column<R> {
+interface TestColumn {
   key: string;
   name?: React.ReactNode;
-  cellClass?: string | ((row: R) => string | undefined);
+  cellClass?: string | ((row: RowObjectType) => string | undefined);
   headerCellClass?: string;
   renderCell?: unknown;
   renderEditCell?: unknown;
+  columnType?: ColumnType;
+  columnRenderMode?: ColumnRenderMode;
 }
 
 /**
- * ColumnGroup type (simplified from react-data-grid)
+ * Test-friendly ColumnGroup type (mirrors react-data-grid ColumnGroup)
  */
-interface ColumnGroup<R> {
+interface TestColumnGroup {
   name?: React.ReactNode;
   headerCellClass?: string;
-  children: readonly Column<R>[];
+  children: readonly TestColumn[];
+  columnType?: ColumnType;
+  columnRenderMode?: ColumnRenderMode;
 }
 
 // ============================================================================
@@ -99,48 +103,43 @@ const createConfig = (
 });
 
 /**
- * Type guard to check if result is a Column (inline mode) - has 'key' property
+ * Check if result is a Column (inline mode) - has 'key' property
+ * Returns boolean instead of type predicate to avoid ESM type compatibility issues
  */
-// @ts-ignore
-function isColumn(result: DiffColumnResult): result is Column<RowObjectType> & {
-  columnType?: ColumnType;
-  columnRenderMode?: ColumnRenderMode;
-} {
+function isColumn(result: DiffColumnResult): boolean {
   return "key" in result;
 }
 
 /**
- * Type guard to check if result is a ColumnGroup (side_by_side mode) - has 'children' property
+ * Check if result is a ColumnGroup (side_by_side mode) - has 'children' property
+ * Returns boolean instead of type predicate to avoid ESM type compatibility issues
  */
-function isColumnGroup(
-  result: DiffColumnResult,
-  // @ts-ignore
-): result is ColumnGroup<RowObjectType> & {
-  columnType?: ColumnType;
-  columnRenderMode?: ColumnRenderMode;
-  children: readonly Column<RowObjectType>[];
-} {
-  return "children" in result && Array.isArray(result.children);
+function isColumnGroup(result: DiffColumnResult): boolean {
+  return (
+    "children" in result &&
+    Array.isArray((result as unknown as TestColumnGroup).children)
+  );
 }
 
 /**
- * Extended Column type with custom properties for children access
+ * Cast result to TestColumn for accessing column properties
  */
-type ColumnWithMetadata = Column<RowObjectType> & {
-  columnType?: ColumnType;
-  columnRenderMode?: ColumnRenderMode;
-};
+function asColumn(result: DiffColumnResult): TestColumn {
+  return result as unknown as TestColumn;
+}
 
 /**
- * Helper to get children as Column array with metadata (for side_by_side mode)
- * The implementation always creates Column children with columnType/columnRenderMode
+ * Cast result to TestColumnGroup for accessing column group properties
  */
-function getChildren(
-  result: ColumnGroup<RowObjectType> & {
-    children: readonly Column<RowObjectType>[];
-  },
-): ColumnWithMetadata[] {
-  return result.children as ColumnWithMetadata[];
+function asColumnGroup(result: DiffColumnResult): TestColumnGroup {
+  return result as unknown as TestColumnGroup;
+}
+
+/**
+ * Helper to get children from a column group as TestColumn array
+ */
+function getChildren(result: DiffColumnResult): TestColumn[] {
+  return asColumnGroup(result).children as TestColumn[];
 }
 
 // ============================================================================
@@ -356,9 +355,8 @@ describe("toDiffColumn - inline mode", () => {
     const result = toDiffColumn(createConfig({ name: "price" }));
 
     expect(isColumn(result)).toBe(true);
-    if (isColumn(result)) {
-      expect(result.key).toBe("price");
-    }
+    const col = asColumn(result);
+    expect(col.key).toBe("price");
   });
 
   test("does not have children property", () => {
@@ -371,9 +369,8 @@ describe("toDiffColumn - inline mode", () => {
     const result = toDiffColumn(createConfig({ displayMode: "inline" }));
 
     expect(isColumn(result)).toBe(true);
-    if (isColumn(result)) {
-      expect(result.renderCell).toBeDefined();
-    }
+    const col = asColumn(result);
+    expect(col.renderCell).toBeDefined();
   });
 
   test("preserves columnType", () => {
@@ -443,10 +440,8 @@ describe("toDiffColumn - side_by_side mode", () => {
   test("has exactly 2 children (base and current)", () => {
     const result = toDiffColumn(createConfig({ displayMode: "side_by_side" }));
 
-    if (isColumnGroup(result)) {
-      const children = getChildren(result);
-      expect(children).toHaveLength(2);
-    }
+    const children = getChildren(result);
+    expect(children).toHaveLength(2);
   });
 
   test("children have correct keys (base__name and current__name)", () => {
@@ -454,23 +449,19 @@ describe("toDiffColumn - side_by_side mode", () => {
       createConfig({ name: "value", displayMode: "side_by_side" }),
     );
 
-    if (isColumnGroup(result)) {
-      const children = getChildren(result);
-      const keys = children.map((child) => child.key);
-      expect(keys).toContain("base__value");
-      expect(keys).toContain("current__value");
-    }
+    const children = getChildren(result);
+    const keys = children.map((child) => child.key);
+    expect(keys).toContain("base__value");
+    expect(keys).toContain("current__value");
   });
 
   test("uses default titles 'Base' and 'Current'", () => {
     const result = toDiffColumn(createConfig({ displayMode: "side_by_side" }));
 
-    if (isColumnGroup(result)) {
-      const children = getChildren(result);
-      const names = children.map((child) => child.name);
-      expect(names).toContain("Base");
-      expect(names).toContain("Current");
-    }
+    const children = getChildren(result);
+    const names = children.map((child) => child.name);
+    expect(names).toContain("Base");
+    expect(names).toContain("Current");
   });
 
   test("uses custom baseTitle and currentTitle", () => {
@@ -482,45 +473,37 @@ describe("toDiffColumn - side_by_side mode", () => {
       }),
     );
 
-    if (isColumnGroup(result)) {
-      const children = getChildren(result);
-      const names = children.map((child) => child.name);
-      expect(names).toContain("Before");
-      expect(names).toContain("After");
-    }
+    const children = getChildren(result);
+    const names = children.map((child) => child.name);
+    expect(names).toContain("Before");
+    expect(names).toContain("After");
   });
 
   test("children have cellClass functions", () => {
     const result = toDiffColumn(createConfig({ displayMode: "side_by_side" }));
 
-    if (isColumnGroup(result)) {
-      const children = getChildren(result);
-      children.forEach((child) => {
-        expect(typeof child.cellClass).toBe("function");
-      });
-    }
+    const children = getChildren(result);
+    children.forEach((child) => {
+      expect(typeof child.cellClass).toBe("function");
+    });
   });
 
   test("children have renderCell function (defaultRenderCell)", () => {
     const result = toDiffColumn(createConfig({ displayMode: "side_by_side" }));
 
-    if (isColumnGroup(result)) {
-      const children = getChildren(result);
-      children.forEach((child) => {
-        expect(child.renderCell).toBeDefined();
-      });
-    }
+    const children = getChildren(result);
+    children.forEach((child) => {
+      expect(child.renderCell).toBeDefined();
+    });
   });
 
   test("children have renderEditCell (textEditor)", () => {
     const result = toDiffColumn(createConfig({ displayMode: "side_by_side" }));
 
-    if (isColumnGroup(result)) {
-      const children = getChildren(result);
-      children.forEach((child) => {
-        expect(child.renderEditCell).toBeDefined();
-      });
-    }
+    const children = getChildren(result);
+    children.forEach((child) => {
+      expect(child.renderEditCell).toBeDefined();
+    });
   });
 
   test("children inherit headerCellClass", () => {
@@ -528,12 +511,10 @@ describe("toDiffColumn - side_by_side mode", () => {
       createConfig({ columnStatus: "added", displayMode: "side_by_side" }),
     );
 
-    if (isColumnGroup(result)) {
-      const children = getChildren(result);
-      children.forEach((child) => {
-        expect(child.headerCellClass).toBe("diff-header-added");
-      });
-    }
+    const children = getChildren(result);
+    children.forEach((child) => {
+      expect(child.headerCellClass).toBe("diff-header-added");
+    });
   });
 
   test("children have columnType and columnRenderMode", () => {
@@ -545,13 +526,11 @@ describe("toDiffColumn - side_by_side mode", () => {
       }),
     );
 
-    if (isColumnGroup(result)) {
-      const children = getChildren(result);
-      children.forEach((child) => {
-        expect(child.columnType).toBe("number");
-        expect(child.columnRenderMode).toBe(2);
-      });
-    }
+    const children = getChildren(result);
+    children.forEach((child) => {
+      expect(child.columnType).toBe("number");
+      expect(child.columnRenderMode).toBe(2);
+    });
   });
 
   test("has React element as name (header)", () => {
@@ -611,25 +590,22 @@ describe("toDiffColumn - edge cases", () => {
   test("handles empty column name", () => {
     const result = toDiffColumn(createConfig({ name: "" }));
 
-    if (isColumn(result)) {
-      expect(result.key).toBe("");
-    }
+    const col = asColumn(result);
+    expect(col.key).toBe("");
   });
 
   test("handles column name with special characters", () => {
     const result = toDiffColumn(createConfig({ name: "col-with-dashes" }));
 
-    if (isColumn(result)) {
-      expect(result.key).toBe("col-with-dashes");
-    }
+    const col = asColumn(result);
+    expect(col.key).toBe("col-with-dashes");
   });
 
   test("handles column name with spaces", () => {
     const result = toDiffColumn(createConfig({ name: "Column Name" }));
 
-    if (isColumn(result)) {
-      expect(result.key).toBe("Column Name");
-    }
+    const col = asColumn(result);
+    expect(col.key).toBe("Column Name");
   });
 
   test("handles various columnType values", () => {
@@ -676,13 +652,11 @@ describe("toDiffColumn - side_by_side cell class integration", () => {
       createConfig({ name: "value", displayMode: "side_by_side" }),
     );
 
-    if (isColumnGroup(result)) {
-      const children = getChildren(result);
-      const baseChild = children[0];
-      if (typeof baseChild.cellClass === "function") {
-        const row = createRow({ base__value: 100, current__value: 200 });
-        expect(baseChild.cellClass(row)).toBe("diff-cell-removed");
-      }
+    const children = getChildren(result);
+    const baseChild = children[0];
+    if (typeof baseChild.cellClass === "function") {
+      const row = createRow({ base__value: 100, current__value: 200 });
+      expect(baseChild.cellClass(row)).toBe("diff-cell-removed");
     }
   });
 
@@ -691,13 +665,11 @@ describe("toDiffColumn - side_by_side cell class integration", () => {
       createConfig({ name: "value", displayMode: "side_by_side" }),
     );
 
-    if (isColumnGroup(result)) {
-      const children = getChildren(result);
-      const currentChild = children[1];
-      if (typeof currentChild.cellClass === "function") {
-        const row = createRow({ base__value: 100, current__value: 200 });
-        expect(currentChild.cellClass(row)).toBe("diff-cell-added");
-      }
+    const children = getChildren(result);
+    const currentChild = children[1];
+    if (typeof currentChild.cellClass === "function") {
+      const row = createRow({ base__value: 100, current__value: 200 });
+      expect(currentChild.cellClass(row)).toBe("diff-cell-added");
     }
   });
 
@@ -706,15 +678,13 @@ describe("toDiffColumn - side_by_side cell class integration", () => {
       createConfig({ name: "value", displayMode: "side_by_side" }),
     );
 
-    if (isColumnGroup(result)) {
-      const children = getChildren(result);
-      const row = createRow({ base__value: 100, current__value: 100 });
+    const children = getChildren(result);
+    const row = createRow({ base__value: 100, current__value: 100 });
 
-      children.forEach((child) => {
-        if (typeof child.cellClass === "function") {
-          expect(child.cellClass(row)).toBeUndefined();
-        }
-      });
-    }
+    children.forEach((child) => {
+      if (typeof child.cellClass === "function") {
+        expect(child.cellClass(row)).toBeUndefined();
+      }
+    });
   });
 });
