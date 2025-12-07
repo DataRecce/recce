@@ -5,8 +5,6 @@
  * REFACTORED: Now uses shared utilities from @/lib/dataGrid/shared
  */
 
-import _ from "lodash";
-import React from "react";
 import { ColumnOrColumnGroup } from "react-data-grid";
 import "./styles.css";
 import {
@@ -20,13 +18,13 @@ import {
   RowObjectType,
 } from "@/lib/api/types";
 import {
+  buildDiffRows,
   buildMergedColumnMap,
   getPrimaryKeyValue,
   toDiffColumn,
   validatePrimaryKeys,
 } from "@/lib/dataGrid/shared";
-import { mergeKeysWithStatus } from "@/lib/mergeKeys";
-import { dataFrameToRowObjects, keyToNumber } from "@/utils/transforms";
+import { dataFrameToRowObjects } from "@/utils/transforms";
 
 // ============================================================================
 // Types
@@ -116,95 +114,16 @@ export function toDataDiffGrid(
     });
   }
 
-  const mergedMap = mergeKeysWithStatus(
-    Object.keys(baseMap),
-    Object.keys(currentMap),
-  );
-
-  const rowStats = {
-    added: 0,
-    removed: 0,
-    modified: 0,
-  };
-
-  let rows = Object.entries(mergedMap).map(([key]) => {
-    const baseRow = baseMap[key] as RowObjectType | undefined;
-    const currentRow = currentMap[key] as RowObjectType | undefined;
-    const row: RowObjectType = {
-      _index: keyToNumber(key),
-      __status: undefined,
-    };
-
-    if (baseRow) {
-      base.columns.forEach((col) => {
-        if (primaryKeys.includes(col.key)) {
-          row[String(col.key).toLowerCase()] = baseRow[col.key];
-          return;
-        }
-        row[`base__${col.key}`.toLowerCase()] = baseRow[col.key];
-      });
-    }
-
-    if (currentRow) {
-      current.columns.forEach((col) => {
-        if (primaryKeys.includes(col.key)) {
-          row[String(col.key).toLowerCase()] = currentRow[col.key];
-          return;
-        }
-        row[`current__${col.key}`.toLowerCase()] = currentRow[col.key];
-      });
-    }
-
-    // Check if row is added, removed, or modified
-    if (!baseRow) {
-      row.__status = "added";
-      rowStats.added++;
-    } else if (!currentRow) {
-      row.__status = "removed";
-      rowStats.removed++;
-    } else {
-      for (const [name, mergedColumn] of Object.entries(columnMap)) {
-        if (name === "index") {
-          continue;
-        }
-
-        if (primaryKeys.includes(name)) {
-          continue;
-        }
-
-        if (
-          mergedColumn.baseColumnKey === "unknown" ||
-          mergedColumn.currentColumnKey === "unknown"
-        ) {
-          continue;
-        }
-
-        if (
-          !_.isEqual(
-            baseRow[mergedColumn.baseColumnKey],
-            currentRow[mergedColumn.currentColumnKey],
-          )
-        ) {
-          row.__status = "modified";
-          mergedColumn.status = "modified";
-        }
-      }
-      if (row.__status === "modified") {
-        rowStats.modified++;
-      }
-    }
-
-    return row;
+  const { rows, rowStats } = buildDiffRows({
+    baseMap,
+    currentMap,
+    baseColumns: base.columns,
+    currentColumns: current.columns,
+    columnMap,
+    primaryKeys,
+    caseInsensitive: false, // querydiff uses exact matching
+    changedOnly,
   });
-
-  if (changedOnly) {
-    rows = rows.filter(
-      (row) =>
-        row.__status === "added" ||
-        row.__status === "removed" ||
-        row.__status === "modified",
-    );
-  }
 
   // Column builder helper
   const toColumn = (

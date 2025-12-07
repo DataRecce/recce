@@ -42,6 +42,12 @@ export {
   validatePrimaryKeys,
 } from "./gridUtils";
 export {
+  type BuildDiffRowsConfig,
+  type BuildDiffRowsResult,
+  buildDiffRows,
+  type DiffColumnMapEntry,
+} from "./rowBuilders";
+export {
   createCellClassBase,
   createCellClassCurrent,
   type DiffColumnConfig,
