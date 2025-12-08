@@ -193,7 +193,7 @@ jobs:
           sed -i.bak 's/name = "recce-cloud"/name = "recce-cloud-nightly"/' recce_cloud/pyproject.toml
 
           # build and upload to pypi
-          uv build --package recce-cloud
+          uv build --package recce-cloud-nightly
           uv run twine upload dist/*
         env:
           PYPIRC: ${{ secrets.PYPI }}
