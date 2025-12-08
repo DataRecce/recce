@@ -130,29 +130,45 @@ function CheckPageContent(): ReactNode {
   );
 
   useEffect(() => {
-    if (status !== "success") {
+    if (status !== "success" || checks.length === 0) {
       return;
     }
 
-    if (!selectedItem && checks.length > 0) {
-      if (latestSelectedCheckId) {
-        setLocation(`/checks/?id=${latestSelectedCheckId}`);
+    // Check if selectedItem (from URL) exists in the checks list
+    const isSelectedItemValid =
+      selectedItem && checks.some((check) => check.check_id === selectedItem);
+
+    if (!selectedItem || !isSelectedItemValid) {
+      // No selection or invalid selection - redirect to a valid check
+      // First try latestSelectedCheckId if it's valid
+      const isValidLatestSelectedCheckId =
+        latestSelectedCheckId &&
+        checks.some((check) => check.check_id === latestSelectedCheckId);
+
+      if (isValidLatestSelectedCheckId) {
+        setLocation(`/checks/?id=${latestSelectedCheckId}`, { replace: true });
       } else {
-        // If no check is selected, select the first one by default
-        setLocation(`/checks/?id=${checks[0].check_id}`);
+        // Fall back to the first check
+        setLocation(`/checks/?id=${checks[0].check_id}`, { replace: true });
       }
     }
   }, [status, selectedItem, checks, setLocation, latestSelectedCheckId]);
 
+  // Determine if the current selectedItem is valid for rendering
+  const isValidSelection =
+    selectedItem &&
+    checks &&
+    checks.some((check) => check.check_id === selectedItem);
+
   if (isLoading) {
-    return <></>;
+    return null;
   }
 
   if (error) {
     return (
-      <>
+      <Box>
         Error: <span className="no-track-pii-safe">{error.message}</span>
-      </>
+      </Box>
     );
   }
 
@@ -216,7 +232,7 @@ function CheckPageContent(): ReactNode {
         </VStack>
       </Box>
       <Box height="100%">
-        {selectedItem && (
+        {isValidSelection && (
           <CheckDetail
             key={selectedItem}
             checkId={selectedItem}
