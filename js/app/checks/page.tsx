@@ -15,6 +15,7 @@ import React, {
   Suspense,
   useCallback,
   useEffect,
+  useMemo,
   useState,
 } from "react";
 import { StateImporter } from "@/components/app/StateImporter";
@@ -129,16 +130,19 @@ function CheckPageContent(): ReactNode {
     [orderedChecks, changeChecksOrder],
   );
 
+  // Memoized validation to avoid duplicate checks.some() calls
+  const isValidSelection = useMemo(
+    () =>
+      selectedItem && checks?.some((check) => check.check_id === selectedItem),
+    [selectedItem, checks],
+  );
+
   useEffect(() => {
     if (status !== "success" || checks.length === 0) {
       return;
     }
 
-    // Check if selectedItem (from URL) exists in the checks list
-    const isSelectedItemValid =
-      selectedItem && checks.some((check) => check.check_id === selectedItem);
-
-    if (!selectedItem || !isSelectedItemValid) {
+    if (!isValidSelection) {
       // No selection or invalid selection - redirect to a valid check
       // First try latestSelectedCheckId if it's valid
       const isValidLatestSelectedCheckId =
@@ -152,13 +156,7 @@ function CheckPageContent(): ReactNode {
         setLocation(`/checks/?id=${checks[0].check_id}`, { replace: true });
       }
     }
-  }, [status, selectedItem, checks, setLocation, latestSelectedCheckId]);
-
-  // Determine if the current selectedItem is valid for rendering
-  const isValidSelection =
-    selectedItem &&
-    checks &&
-    checks.some((check) => check.check_id === selectedItem);
+  }, [status, isValidSelection, checks, setLocation, latestSelectedCheckId]);
 
   if (isLoading) {
     return null;
@@ -232,7 +230,7 @@ function CheckPageContent(): ReactNode {
         </VStack>
       </Box>
       <Box height="100%">
-        {isValidSelection && (
+        {isValidSelection && selectedItem && (
           <CheckDetail
             key={selectedItem}
             checkId={selectedItem}
