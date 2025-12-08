@@ -22,7 +22,7 @@ from fastapi import (
     WebSocket,
 )
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import PlainTextResponse
+from fastapi.responses import FileResponse, PlainTextResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, ValidationError
 from pytz import utc
@@ -849,4 +849,26 @@ app.include_router(check_events_router, prefix=api_prefix)
 app.include_router(run_router, prefix=api_prefix)
 
 static_folder_path = Path(__file__).parent / "data"
+
+
+# SPA fallback routes for Next.js static export
+# Next.js generates both `page.html` files and `page/` directories (for RSC data).
+# Starlette's StaticFiles with html=True prioritizes directories over .html files,
+# so `/checks` matches `checks/` directory (looking for index.html) instead of `checks.html`.
+# These explicit routes ensure SPA pages are served correctly.
+@app.get("/checks")
+@app.get("/lineage")
+@app.get("/query")
+@app.get("/auth_callback")
+async def spa_fallback(request: Request):
+    """Serve the corresponding HTML file for SPA routes."""
+    # Extract the path and map to .html file
+    path = request.url.path.strip("/")
+    html_file = static_folder_path / f"{path}.html"
+    if html_file.exists():
+        return FileResponse(html_file, media_type="text/html")
+    # Fallback to 404
+    return FileResponse(static_folder_path / "404.html", status_code=404, media_type="text/html")
+
+
 app.mount("/", StaticFiles(directory=static_folder_path, html=True), name="static")
