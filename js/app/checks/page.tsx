@@ -230,6 +230,7 @@ function CheckPageContent(): ReactNode {
         </VStack>
       </Box>
       <Box height="100%">
+        {/* isValidSelection already checks selectedItem, but TS needs explicit check for type narrowing */}
         {isValidSelection && selectedItem && (
           <CheckDetail
             key={selectedItem}
