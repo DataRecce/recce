@@ -24,6 +24,7 @@ def temp_folder():
 
 
 def test_health():
+    app.state.last_activity = None  # Initialize state for middleware
     client = TestClient(app)
     response = client.get("/api/health")
     assert response.status_code == 200
@@ -31,6 +32,7 @@ def test_health():
 
 
 def test_stateless(dbt_test_helper):
+    app.state.last_activity = None  # Initialize state for middleware
     context = default_context()
     from recce.state import FileStateLoader
 
@@ -44,6 +46,7 @@ def test_stateless(dbt_test_helper):
 
 
 def test_file_mode(dbt_test_helper):
+    app.state.last_activity = None  # Initialize state for middleware
     context = default_context()
     from recce.state import FileStateLoader
 
@@ -58,6 +61,7 @@ def test_file_mode(dbt_test_helper):
 
 
 def test_saveas_and_rename(dbt_test_helper, temp_folder):
+    app.state.last_activity = None  # Initialize state for middleware
     context = default_context()
     state_file = os.path.join(temp_folder, "recce_state.json")
     state_file2 = os.path.join(temp_folder, "recce_state2.json")
