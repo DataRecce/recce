@@ -4,6 +4,7 @@ const { join } = require("node:path");
 const nextConfig = {
   outputFileTracingRoot: join(__dirname),
   output: "export",
+  trailingSlash: true,
   env: {
     AMPLITUDE_API_KEY: process.env.AMPLITUDE_API_KEY,
     GTM_ID: process.env.GTM_ID,
