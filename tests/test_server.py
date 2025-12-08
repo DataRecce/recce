@@ -23,8 +23,16 @@ def temp_folder():
     shutil.rmtree(temp_dir)
 
 
+@pytest.fixture(autouse=True)
+def init_app_state():
+    """Initialize app.state.last_activity for all tests to prevent middleware errors."""
+    app.state.last_activity = None
+    yield
+    # Cleanup after test
+    app.state.last_activity = None
+
+
 def test_health():
-    app.state.last_activity = None  # Initialize state for middleware
     client = TestClient(app)
     response = client.get("/api/health")
     assert response.status_code == 200
@@ -32,7 +40,6 @@ def test_health():
 
 
 def test_stateless(dbt_test_helper):
-    app.state.last_activity = None  # Initialize state for middleware
     context = default_context()
     from recce.state import FileStateLoader
 
@@ -46,7 +53,6 @@ def test_stateless(dbt_test_helper):
 
 
 def test_file_mode(dbt_test_helper):
-    app.state.last_activity = None  # Initialize state for middleware
     context = default_context()
     from recce.state import FileStateLoader
 
@@ -61,7 +67,6 @@ def test_file_mode(dbt_test_helper):
 
 
 def test_saveas_and_rename(dbt_test_helper, temp_folder):
-    app.state.last_activity = None  # Initialize state for middleware
     context = default_context()
     state_file = os.path.join(temp_folder, "recce_state.json")
     state_file2 = os.path.join(temp_folder, "recce_state2.json")
@@ -147,7 +152,6 @@ def test_keep_alive_with_idle_timeout():
 
 def test_spa_fallback_checks_route():
     """Test that /checks route serves checks.html correctly"""
-    app.state.last_activity = None  # Initialize state for middleware
     client = TestClient(app)
     response = client.get("/checks")
     assert response.status_code == 200
@@ -158,7 +162,6 @@ def test_spa_fallback_checks_route():
 
 def test_spa_fallback_lineage_route():
     """Test that /lineage route serves lineage.html correctly"""
-    app.state.last_activity = None  # Initialize state for middleware
     client = TestClient(app)
     response = client.get("/lineage")
     assert response.status_code == 200
@@ -168,7 +171,6 @@ def test_spa_fallback_lineage_route():
 
 def test_spa_fallback_query_route():
     """Test that /query route serves query.html correctly"""
-    app.state.last_activity = None  # Initialize state for middleware
     client = TestClient(app)
     response = client.get("/query")
     assert response.status_code == 200
@@ -178,7 +180,6 @@ def test_spa_fallback_query_route():
 
 def test_spa_fallback_auth_callback_route():
     """Test that /auth_callback route serves auth_callback.html correctly"""
-    app.state.last_activity = None  # Initialize state for middleware
     client = TestClient(app)
     response = client.get("/auth_callback")
     assert response.status_code == 200
@@ -188,7 +189,6 @@ def test_spa_fallback_auth_callback_route():
 
 def test_spa_fallback_preserves_query_parameters():
     """Test that query parameters are preserved when serving HTML files"""
-    app.state.last_activity = None  # Initialize state for middleware
     client = TestClient(app)
     # The SPA routes should serve the HTML file regardless of query params
     # The actual routing happens client-side in the SPA
@@ -205,7 +205,6 @@ def test_spa_fallback_preserves_query_parameters():
 
 def test_spa_fallback_nonexistent_route():
     """Test that non-existent routes return 404.html with 404 status code"""
-    app.state.last_activity = None  # Initialize state for middleware
     client = TestClient(app)
     response = client.get("/nonexistent-page")
     assert response.status_code == 404
