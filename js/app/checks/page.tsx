@@ -133,7 +133,10 @@ function CheckPageContent(): ReactNode {
   // Memoized validation to avoid duplicate checks.some() calls
   const isValidSelection = useMemo(
     () =>
-      selectedItem && checks?.some((check) => check.check_id === selectedItem),
+      Boolean(
+        selectedItem &&
+          checks?.some((check) => check.check_id === selectedItem),
+      ),
     [selectedItem, checks],
   );
 
