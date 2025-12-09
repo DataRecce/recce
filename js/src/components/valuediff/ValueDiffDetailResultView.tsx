@@ -7,6 +7,7 @@ import "../query/styles.css";
 import { DataGridHandle } from "react-data-grid";
 import { ColumnRenderMode, isValueDiffDetailRun, Run } from "@/lib/api/types";
 import { ValueDiffDetailViewOptions } from "@/lib/api/valuediff";
+import { createDataGrid } from "@/lib/dataGrid/dataGridFactory";
 import {
   EmptyRowsRenderer,
   ScreenshotDataGrid,
@@ -15,7 +16,6 @@ import { ChangedOnlyCheckbox } from "../query/ChangedOnlyCheckbox";
 import { DiffDisplayModeSwitch } from "../query/ToggleSwitch";
 import { RunToolbar } from "../run/RunToolbar";
 import { RunResultViewProps } from "../run/types";
-import { toValueDiffGrid } from "./valuediff";
 
 export interface ValueDiffDetailResultViewProps
   extends RunResultViewProps<ValueDiffDetailViewOptions> {
@@ -77,22 +77,16 @@ const PrivateValueDiffDetailResultView = (
       }
     };
 
-    if (!run.result || !run.params?.primary_key) {
-      return { columns: [], rows: [] };
-    }
-
-    // primaryKey can be an array or string, map to array
-    const primaryKey = run.params.primary_key;
-    const primaryKeys = Array.isArray(primaryKey) ? primaryKey : [primaryKey];
-
-    return toValueDiffGrid(run.result, primaryKeys, {
-      changedOnly,
-      pinnedColumns,
-      onPinnedColumnsChange: handlePinnedColumnsChanged,
-      columnsRenderMode,
-      onColumnsRenderModeChanged,
-      displayMode,
-    });
+    return (
+      createDataGrid(run, {
+        changedOnly,
+        pinnedColumns,
+        onPinnedColumnsChange: handlePinnedColumnsChanged,
+        columnsRenderMode,
+        onColumnsRenderModeChanged,
+        displayMode,
+      }) ?? { columns: [], rows: [] }
+    );
   }, [
     run,
     viewOptions,

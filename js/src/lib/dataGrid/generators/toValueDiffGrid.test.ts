@@ -1,0 +1,968 @@
+/**
+ * @file toValueDiffGrid.test.ts
+ * @description Comprehensive tests for value diff grid generation
+ *
+ * Tests cover:
+ * - Row transformation and status detection (added/removed/modified)
+ * - Primary key handling (required, single, multiple, case-insensitive)
+ * - IN_A/IN_B column handling for base/current row identification
+ * - Column filtering (changedOnly, pinned columns)
+ * - Display modes (inline, side_by_side)
+ * - Edge cases (null values, case sensitivity)
+ *
+ * Type Reference (from @/lib/api/types.ts):
+ * - ColumnType: "number" | "integer" | "text" | "boolean" | "date" | "datetime" | "timedelta" | "unknown"
+ * - ColumnRenderMode: "raw" | "percent" | 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9
+ * - RowObjectType.__status: "added" | "removed" | "modified" | undefined
+ * - displayMode: "side_by_side" | "inline" (default is "inline" for valuediff)
+ */
+
+// Mock react-data-grid since tests don't need actual rendering
+jest.mock("react-data-grid", () => ({
+  textEditor: jest.fn(),
+  CalculatedColumn: {},
+  ColumnOrColumnGroup: {},
+  RenderCellProps: {},
+}));
+
+// Mock Chakra UI components
+jest.mock("@chakra-ui/react", () => ({
+  Box: ({ children }: { children: React.ReactNode }) => children,
+  Flex: ({ children }: { children: React.ReactNode }) => children,
+  Icon: () => null,
+  IconButton: () => null,
+  Menu: {
+    Root: ({ children }: { children: React.ReactNode }) => children,
+    Trigger: ({ children }: { children: React.ReactNode }) => children,
+    Content: ({ children }: { children: React.ReactNode }) => children,
+    Item: ({ children }: { children: React.ReactNode }) => children,
+    ItemGroup: ({ children }: { children: React.ReactNode }) => children,
+    Positioner: ({ children }: { children: React.ReactNode }) => children,
+  },
+  Portal: ({ children }: { children: React.ReactNode }) => children,
+  Text: ({ children }: { children: React.ReactNode }) => children,
+}));
+
+import { ColumnType, DataFrame, RowData } from "@/lib/api/types";
+import { toValueDiffGrid } from "@/lib/dataGrid/generators/toValueDiffGrid";
+
+// ============================================================================
+// Test Fixtures
+// ============================================================================
+
+/**
+ * Creates a DataFrame with IN_A/IN_B columns for value diff testing.
+ * IN_A indicates the row exists in base, IN_B indicates it exists in current.
+ */
+const createJoinedDataFrame = (
+  columns: Array<{ name: string; key: string; type: ColumnType }>,
+  data: RowData[],
+): DataFrame => ({
+  columns: [
+    ...columns,
+    { name: "IN_A", key: "IN_A", type: "boolean" as ColumnType },
+    { name: "IN_B", key: "IN_B", type: "boolean" as ColumnType },
+  ],
+  data,
+});
+
+// Standard fixture: 3 rows with different statuses
+const standardFixture: DataFrame = createJoinedDataFrame(
+  [
+    { name: "id", key: "id", type: "integer" },
+    { name: "name", key: "name", type: "text" },
+    { name: "value", key: "value", type: "integer" },
+  ],
+  [
+    // Row in both base and current (unchanged)
+    [1, "Alice", 100, true, true],
+    // Row in both but with different values (will show as same row, modified detection happens elsewhere)
+    [2, "Bob", 200, true, true],
+    // Row only in base (removed)
+    [3, "Charlie", 300, true, false],
+    // Row only in current (added)
+    [4, "Diana", 400, false, true],
+  ],
+);
+
+// ============================================================================
+// Basic Functionality Tests
+// ============================================================================
+
+describe("toValueDiffGrid - Basic Functionality", () => {
+  test("generates grid with single primary key", () => {
+    const result = toValueDiffGrid(standardFixture, ["id"]);
+
+    expect(result.rows).toHaveLength(4);
+    expect(result.columns.length).toBeGreaterThan(0);
+  });
+
+  test("generates grid with multiple primary keys", () => {
+    const df = createJoinedDataFrame(
+      [
+        { name: "region", key: "region", type: "text" },
+        { name: "product", key: "product", type: "text" },
+        { name: "sales", key: "sales", type: "integer" },
+      ],
+      [
+        ["US", "Widget", 100, true, true],
+        ["US", "Gadget", 200, true, true],
+        ["EU", "Widget", 150, true, false],
+      ],
+    );
+
+    const result = toValueDiffGrid(df, ["region", "product"]);
+
+    expect(result.rows).toHaveLength(3);
+    // Primary keys should be columns
+    expect(result.columns.length).toBeGreaterThanOrEqual(2);
+  });
+
+  test("throws error when primary keys are empty", () => {
+    expect(() => toValueDiffGrid(standardFixture, [])).toThrow(
+      "Primary keys are required",
+    );
+  });
+
+  test("throws error when primary key column not found", () => {
+    expect(() => toValueDiffGrid(standardFixture, ["nonexistent"])).toThrow(
+      "Primary key column 'nonexistent' not found",
+    );
+  });
+});
+
+// ============================================================================
+// Row Status Detection Tests
+// ============================================================================
+
+describe("toValueDiffGrid - Row Status Detection", () => {
+  test("detects added rows (IN_A=false, IN_B=true)", () => {
+    const df = createJoinedDataFrame(
+      [
+        { name: "id", key: "id", type: "integer" },
+        { name: "value", key: "value", type: "integer" },
+      ],
+      [
+        [1, 100, false, true], // added
+      ],
+    );
+
+    const result = toValueDiffGrid(df, ["id"]);
+
+    expect(result.rows).toHaveLength(1);
+    expect(result.rows[0].__status).toBe("added");
+  });
+
+  test("detects removed rows (IN_A=true, IN_B=false)", () => {
+    const df = createJoinedDataFrame(
+      [
+        { name: "id", key: "id", type: "integer" },
+        { name: "value", key: "value", type: "integer" },
+      ],
+      [
+        [1, 100, true, false], // removed
+      ],
+    );
+
+    const result = toValueDiffGrid(df, ["id"]);
+
+    expect(result.rows).toHaveLength(1);
+    expect(result.rows[0].__status).toBe("removed");
+  });
+
+  test("detects unchanged rows (IN_A=true, IN_B=true, same values)", () => {
+    const df = createJoinedDataFrame(
+      [
+        { name: "id", key: "id", type: "integer" },
+        { name: "value", key: "value", type: "integer" },
+      ],
+      [
+        [1, 100, true, true], // same row appears twice with same values
+        [1, 100, true, true],
+      ],
+    );
+
+    const result = toValueDiffGrid(df, ["id"]);
+
+    // Both rows have same PK, so they merge to one
+    expect(result.rows.length).toBeGreaterThanOrEqual(1);
+    // When values match, status is undefined (unchanged)
+    const row = result.rows.find((r) => r.id === 1);
+    expect(row?.__status).toBeUndefined();
+  });
+
+  test("detects modified rows when values differ", () => {
+    const df = createJoinedDataFrame(
+      [
+        { name: "id", key: "id", type: "integer" },
+        { name: "value", key: "value", type: "integer" },
+      ],
+      [
+        [1, 100, true, false], // base version
+        [1, 150, false, true], // current version (different value)
+      ],
+    );
+
+    const result = toValueDiffGrid(df, ["id"]);
+
+    const row = result.rows.find((r) => r.id === 1);
+    expect(row?.__status).toBe("modified");
+    expect(row?.base__value).toBe(100);
+    expect(row?.current__value).toBe(150);
+  });
+
+  test("handles mixed status rows correctly", () => {
+    const df = createJoinedDataFrame(
+      [
+        { name: "id", key: "id", type: "integer" },
+        { name: "val", key: "val", type: "integer" },
+      ],
+      [
+        [1, 100, true, true], // unchanged (same key, both present)
+        [2, 200, true, false], // removed
+        [3, 300, false, true], // added
+        [4, 400, true, false], // modified (base)
+        [4, 450, false, true], // modified (current)
+      ],
+    );
+
+    const result = toValueDiffGrid(df, ["id"]);
+
+    const statusMap = new Map(result.rows.map((r) => [r.id, r.__status]));
+
+    expect(statusMap.get(1)).toBeUndefined(); // unchanged
+    expect(statusMap.get(2)).toBe("removed");
+    expect(statusMap.get(3)).toBe("added");
+    expect(statusMap.get(4)).toBe("modified");
+  });
+});
+
+// ============================================================================
+// IN_A/IN_B Column Handling Tests
+// ============================================================================
+
+describe("toValueDiffGrid - IN_A/IN_B Column Handling", () => {
+  test("handles lowercase in_a/in_b columns", () => {
+    const df: DataFrame = {
+      columns: [
+        { name: "id", key: "id", type: "integer" },
+        { name: "value", key: "value", type: "integer" },
+        { name: "in_a", key: "in_a", type: "boolean" },
+        { name: "in_b", key: "in_b", type: "boolean" },
+      ],
+      data: [
+        [1, 100, true, true],
+        [2, 200, true, false],
+      ],
+    };
+
+    const result = toValueDiffGrid(df, ["id"]);
+
+    expect(result.rows).toHaveLength(2);
+    // IN_A/IN_B columns should be excluded from output columns
+    const columnKeys = result.columns
+      .map((c) => ("key" in c ? c.key : undefined))
+      .filter(Boolean);
+    expect(columnKeys).not.toContain("in_a");
+    expect(columnKeys).not.toContain("in_b");
+    expect(columnKeys).not.toContain("IN_A");
+    expect(columnKeys).not.toContain("IN_B");
+  });
+
+  test("handles uppercase IN_A/IN_B columns", () => {
+    const df: DataFrame = {
+      columns: [
+        { name: "id", key: "id", type: "integer" },
+        { name: "value", key: "value", type: "integer" },
+        { name: "IN_A", key: "IN_A", type: "boolean" },
+        { name: "IN_B", key: "IN_B", type: "boolean" },
+      ],
+      data: [
+        [1, 100, true, true],
+        [2, 200, false, true],
+      ],
+    };
+
+    const result = toValueDiffGrid(df, ["id"]);
+
+    expect(result.rows).toHaveLength(2);
+    expect(result.rows.find((r) => r.id === 1)?.__status).toBeUndefined();
+    expect(result.rows.find((r) => r.id === 2)?.__status).toBe("added");
+  });
+
+  test("excludes IN_A/IN_B from output columns", () => {
+    const result = toValueDiffGrid(standardFixture, ["id"]);
+
+    // Check that neither IN_A nor IN_B appear in any column configuration
+    const allColumnKeys: string[] = [];
+    result.columns.forEach((col) => {
+      if ("key" in col && typeof col.key === "string") {
+        allColumnKeys.push(col.key);
+      }
+      if ("children" in col && Array.isArray(col.children)) {
+        col.children.forEach((child) => {
+          if ("key" in child && typeof child.key === "string") {
+            allColumnKeys.push(child.key);
+          }
+        });
+      }
+    });
+
+    expect(allColumnKeys).not.toContain("IN_A");
+    expect(allColumnKeys).not.toContain("IN_B");
+    expect(allColumnKeys).not.toContain("in_a");
+    expect(allColumnKeys).not.toContain("in_b");
+  });
+});
+
+// ============================================================================
+// Case Insensitivity Tests
+// ============================================================================
+
+describe("toValueDiffGrid - Case Insensitivity", () => {
+  test("handles case-insensitive primary key matching", () => {
+    const df = createJoinedDataFrame(
+      [
+        { name: "ID", key: "ID", type: "integer" },
+        { name: "Value", key: "Value", type: "integer" },
+      ],
+      [[1, 100, true, true]],
+    );
+
+    // Primary key specified in lowercase, column is uppercase
+    const result = toValueDiffGrid(df, ["id"]);
+
+    expect(result.rows).toHaveLength(1);
+    // The row key should be lowercase
+    expect(result.rows[0].id).toBe(1);
+  });
+
+  test("handles case-insensitive pinned column matching", () => {
+    const df = createJoinedDataFrame(
+      [
+        { name: "id", key: "id", type: "integer" },
+        { name: "VALUE", key: "VALUE", type: "integer" },
+      ],
+      [[1, 100, true, true]],
+    );
+
+    // Pinned column in lowercase, actual column in uppercase
+    const result = toValueDiffGrid(df, ["id"], {
+      pinnedColumns: ["value"],
+    });
+
+    expect(result.rows).toHaveLength(1);
+  });
+
+  test("row keys are stored in lowercase", () => {
+    const df = createJoinedDataFrame(
+      [
+        { name: "ID", key: "ID", type: "integer" },
+        { name: "NAME", key: "NAME", type: "text" },
+      ],
+      [[1, "Alice", true, true]],
+    );
+
+    const result = toValueDiffGrid(df, ["ID"]);
+
+    // Primary key value should be accessible via lowercase key
+    expect(result.rows[0].id).toBe(1);
+    // Non-PK values should be prefixed and lowercase
+    expect(result.rows[0].base__name).toBe("Alice");
+    expect(result.rows[0].current__name).toBe("Alice");
+  });
+});
+
+// ============================================================================
+// Changed Only Filter Tests
+// ============================================================================
+
+describe("toValueDiffGrid - Changed Only Filter", () => {
+  test("filters to show only changed rows when changedOnly is true", () => {
+    const df = createJoinedDataFrame(
+      [
+        { name: "id", key: "id", type: "integer" },
+        { name: "value", key: "value", type: "integer" },
+      ],
+      [
+        [1, 100, true, true], // unchanged
+        [2, 200, true, false], // removed
+        [3, 300, false, true], // added
+      ],
+    );
+
+    const result = toValueDiffGrid(df, ["id"], { changedOnly: true });
+
+    // Should only include removed and added rows
+    expect(result.rows).toHaveLength(2);
+    expect(result.rows.every((r) => r.__status !== undefined)).toBe(true);
+  });
+
+  test("includes all rows when changedOnly is false", () => {
+    const df = createJoinedDataFrame(
+      [
+        { name: "id", key: "id", type: "integer" },
+        { name: "value", key: "value", type: "integer" },
+      ],
+      [
+        [1, 100, true, true], // unchanged
+        [2, 200, true, false], // removed
+        [3, 300, false, true], // added
+      ],
+    );
+
+    const result = toValueDiffGrid(df, ["id"], { changedOnly: false });
+
+    expect(result.rows).toHaveLength(3);
+  });
+
+  test("shows modified rows when changedOnly is true", () => {
+    const df = createJoinedDataFrame(
+      [
+        { name: "id", key: "id", type: "integer" },
+        { name: "value", key: "value", type: "integer" },
+      ],
+      [
+        [1, 100, true, false], // base version
+        [1, 150, false, true], // current version (modified)
+        [2, 200, true, true], // unchanged
+      ],
+    );
+
+    const result = toValueDiffGrid(df, ["id"], { changedOnly: true });
+
+    expect(result.rows).toHaveLength(1);
+    expect(result.rows[0].__status).toBe("modified");
+    expect(result.rows[0].id).toBe(1);
+  });
+});
+
+// ============================================================================
+// Display Mode Tests
+// ============================================================================
+
+describe("toValueDiffGrid - Display Modes", () => {
+  test("defaults to inline display mode", () => {
+    const df = createJoinedDataFrame(
+      [
+        { name: "id", key: "id", type: "integer" },
+        { name: "value", key: "value", type: "integer" },
+      ],
+      [[1, 100, true, true]],
+    );
+
+    const result = toValueDiffGrid(df, ["id"]);
+
+    // In inline mode, non-PK columns have key directly (no children)
+    const valueColumn = result.columns.find((col) => {
+      if ("key" in col && col.key === "value") return true;
+      return false;
+    });
+
+    // Should be a direct column, not a group with children
+    if (valueColumn) {
+      expect("children" in valueColumn).toBe(false);
+    }
+  });
+
+  test("side_by_side mode creates column groups with children", () => {
+    const df = createJoinedDataFrame(
+      [
+        { name: "id", key: "id", type: "integer" },
+        { name: "value", key: "value", type: "integer" },
+      ],
+      [[1, 100, true, true]],
+    );
+
+    const result = toValueDiffGrid(df, ["id"], {
+      displayMode: "side_by_side",
+    });
+
+    // In side_by_side mode, non-PK columns should have children
+    const columnWithChildren = result.columns.find(
+      (col) => "children" in col && Array.isArray(col.children),
+    );
+
+    expect(columnWithChildren).toBeDefined();
+    if (columnWithChildren && "children" in columnWithChildren) {
+      expect(columnWithChildren.children).toHaveLength(2);
+      const baseChild = columnWithChildren.children?.[0];
+      const currentChild = columnWithChildren.children?.[1];
+      // Children of a column group are Column types which have 'key'
+      if (baseChild && "key" in baseChild) {
+        expect(baseChild.key).toContain("base__");
+      }
+      if (currentChild && "key" in currentChild) {
+        expect(currentChild.key).toContain("current__");
+      }
+    }
+  });
+
+  test("inline mode creates flat columns", () => {
+    const df = createJoinedDataFrame(
+      [
+        { name: "id", key: "id", type: "integer" },
+        { name: "value", key: "value", type: "integer" },
+      ],
+      [[1, 100, true, true]],
+    );
+
+    const result = toValueDiffGrid(df, ["id"], {
+      displayMode: "inline",
+    });
+
+    // Non-PK columns should be flat (no children) in inline mode
+    const nonPKColumns = result.columns.filter((col) => {
+      if ("key" in col && col.key === "id") return false;
+      return true;
+    });
+
+    nonPKColumns.forEach((col) => {
+      const hasChildren = "children" in col && Array.isArray(col.children);
+      expect(hasChildren).toBe(false);
+    });
+  });
+});
+
+// ============================================================================
+// Pinned Columns Tests
+// ============================================================================
+
+describe("toValueDiffGrid - Pinned Columns", () => {
+  /**
+   * Helper to extract column key from a column or column group
+   */
+  const extractColumnKey = (
+    col: ReturnType<typeof toValueDiffGrid>["columns"][number],
+  ): string | undefined => {
+    if ("key" in col && typeof col.key === "string") {
+      return col.key;
+    }
+    if (
+      "children" in col &&
+      Array.isArray(col.children) &&
+      col.children.length > 0
+    ) {
+      const firstChild = col.children[0];
+      // Type guard: children of ColumnGroup are Column types which have 'key'
+      if (
+        firstChild &&
+        "key" in firstChild &&
+        typeof firstChild.key === "string"
+      ) {
+        const childKey = firstChild.key;
+        if (childKey.startsWith("base__")) {
+          return childKey.slice(6);
+        }
+        return childKey;
+      }
+    }
+    return undefined;
+  };
+
+  test("pinned columns appear after primary keys", () => {
+    const df = createJoinedDataFrame(
+      [
+        { name: "id", key: "id", type: "integer" },
+        { name: "name", key: "name", type: "text" },
+        { name: "value", key: "value", type: "integer" },
+      ],
+      [[1, "Alice", 100, true, true]],
+    );
+
+    const result = toValueDiffGrid(df, ["id"], {
+      pinnedColumns: ["value"],
+    });
+
+    const columnKeys = result.columns
+      .map(extractColumnKey)
+      .filter((k): k is string => k !== undefined);
+
+    const idIndex = columnKeys.indexOf("id");
+    const valueIndex = columnKeys.indexOf("value");
+    const nameIndex = columnKeys.indexOf("name");
+
+    expect(idIndex).toBe(0); // PK first
+    expect(valueIndex).toBeGreaterThan(idIndex); // Pinned after PK
+    expect(nameIndex).toBeGreaterThan(valueIndex); // Regular after pinned
+  });
+
+  test("pinned columns that are also PKs are not duplicated", () => {
+    const df = createJoinedDataFrame(
+      [
+        { name: "id", key: "id", type: "integer" },
+        { name: "value", key: "value", type: "integer" },
+      ],
+      [[1, 100, true, true]],
+    );
+
+    const result = toValueDiffGrid(df, ["id"], {
+      pinnedColumns: ["id"], // id is both PK and pinned
+    });
+
+    const idColumns = result.columns.filter((col) => {
+      const key = extractColumnKey(col);
+      return key === "id";
+    });
+
+    expect(idColumns).toHaveLength(1);
+  });
+});
+
+// ============================================================================
+// Column Render Mode Tests
+// ============================================================================
+
+describe("toValueDiffGrid - Column Render Modes", () => {
+  test("passes columnsRenderMode to column configuration", () => {
+    const df = createJoinedDataFrame(
+      [
+        { name: "id", key: "id", type: "integer" },
+        { name: "percentage", key: "percentage", type: "number" },
+      ],
+      [[1, 0.75, true, true]],
+    );
+
+    const result = toValueDiffGrid(df, ["id"], {
+      columnsRenderMode: {
+        percentage: "percent", // Valid ColumnRenderMode
+      },
+    });
+
+    // Find the percentage column
+    const percentageColumn = result.columns.find((col) => {
+      if ("key" in col && col.key === "percentage") return true;
+      if ("children" in col && Array.isArray(col.children)) {
+        return col.children.some(
+          (child) => "key" in child && child.key === "base__percentage",
+        );
+      }
+      return false;
+    });
+
+    expect(percentageColumn).toBeDefined();
+    if (percentageColumn && "columnRenderMode" in percentageColumn) {
+      expect(percentageColumn.columnRenderMode).toBe("percent");
+    }
+  });
+
+  test("supports numeric render modes for decimal precision", () => {
+    const df = createJoinedDataFrame(
+      [
+        { name: "id", key: "id", type: "integer" },
+        { name: "price", key: "price", type: "number" },
+      ],
+      [[1, 19.99, true, true]],
+    );
+
+    const result = toValueDiffGrid(df, ["id"], {
+      columnsRenderMode: {
+        price: 2, // 2 decimal places - valid ColumnRenderMode
+      },
+    });
+
+    const priceColumn = result.columns.find((col) => {
+      if ("key" in col && col.key === "price") return true;
+      if ("children" in col && Array.isArray(col.children)) {
+        return col.children.some(
+          (child) => "key" in child && child.key === "base__price",
+        );
+      }
+      return false;
+    });
+
+    expect(priceColumn).toBeDefined();
+    if (priceColumn && "columnRenderMode" in priceColumn) {
+      expect(priceColumn.columnRenderMode).toBe(2);
+    }
+  });
+});
+
+// ============================================================================
+// Custom Titles Tests
+// ============================================================================
+
+describe("toValueDiffGrid - Custom Titles", () => {
+  test("uses custom baseTitle and currentTitle in side_by_side mode", () => {
+    const df = createJoinedDataFrame(
+      [
+        { name: "id", key: "id", type: "integer" },
+        { name: "value", key: "value", type: "integer" },
+      ],
+      [[1, 100, true, true]],
+    );
+
+    const result = toValueDiffGrid(df, ["id"], {
+      displayMode: "side_by_side",
+      baseTitle: "Production",
+      currentTitle: "Staging",
+    });
+
+    const columnWithChildren = result.columns.find(
+      (col) =>
+        "children" in col &&
+        Array.isArray(col.children) &&
+        col.children.length === 2,
+    );
+
+    expect(columnWithChildren).toBeDefined();
+    if (
+      columnWithChildren &&
+      "children" in columnWithChildren &&
+      columnWithChildren.children
+    ) {
+      const baseChild = columnWithChildren.children[0];
+      const currentChild = columnWithChildren.children[1];
+      // Children of a column group are Column types which have 'name'
+      if (baseChild && "name" in baseChild) {
+        expect(baseChild.name).toBe("Production");
+      }
+      if (currentChild && "name" in currentChild) {
+        expect(currentChild.name).toBe("Staging");
+      }
+    }
+  });
+
+  test("defaults to Base and Current when no custom titles provided", () => {
+    const df = createJoinedDataFrame(
+      [
+        { name: "id", key: "id", type: "integer" },
+        { name: "value", key: "value", type: "integer" },
+      ],
+      [[1, 100, true, true]],
+    );
+
+    const result = toValueDiffGrid(df, ["id"], {
+      displayMode: "side_by_side",
+    });
+
+    const columnWithChildren = result.columns.find(
+      (col) =>
+        "children" in col &&
+        Array.isArray(col.children) &&
+        col.children.length === 2,
+    );
+
+    expect(columnWithChildren).toBeDefined();
+    if (
+      columnWithChildren &&
+      "children" in columnWithChildren &&
+      columnWithChildren.children
+    ) {
+      const baseChild = columnWithChildren.children[0];
+      const currentChild = columnWithChildren.children[1];
+      // Children of a column group are Column types which have 'name'
+      if (baseChild && "name" in baseChild) {
+        expect(baseChild.name).toBe("Base");
+      }
+      if (currentChild && "name" in currentChild) {
+        expect(currentChild.name).toBe("Current");
+      }
+    }
+  });
+});
+
+// ============================================================================
+// Null and Edge Case Tests
+// ============================================================================
+
+describe("toValueDiffGrid - Null and Edge Cases", () => {
+  test("handles null values in data columns", () => {
+    const df = createJoinedDataFrame(
+      [
+        { name: "id", key: "id", type: "integer" },
+        { name: "name", key: "name", type: "text" },
+      ],
+      [[1, null, true, true]],
+    );
+
+    const result = toValueDiffGrid(df, ["id"]);
+
+    expect(result.rows).toHaveLength(1);
+    expect(result.rows[0].base__name).toBeNull();
+    expect(result.rows[0].current__name).toBeNull();
+  });
+
+  test("handles null primary key values", () => {
+    const df = createJoinedDataFrame(
+      [
+        { name: "id", key: "id", type: "integer" },
+        { name: "value", key: "value", type: "integer" },
+      ],
+      [[null, 100, true, true]],
+    );
+
+    const result = toValueDiffGrid(df, ["id"]);
+
+    expect(result.rows).toHaveLength(1);
+    expect(result.rows[0].id).toBeNull();
+  });
+
+  test("handles single row DataFrame", () => {
+    const df = createJoinedDataFrame(
+      [{ name: "id", key: "id", type: "integer" }],
+      [[1, true, true]],
+    );
+
+    const result = toValueDiffGrid(df, ["id"]);
+
+    expect(result.rows).toHaveLength(1);
+  });
+
+  test("handles DataFrame with only IN_A/IN_B and primary key columns", () => {
+    const df: DataFrame = {
+      columns: [
+        { name: "id", key: "id", type: "integer" },
+        { name: "IN_A", key: "IN_A", type: "boolean" },
+        { name: "IN_B", key: "IN_B", type: "boolean" },
+      ],
+      data: [
+        [1, true, true],
+        [2, true, false],
+      ],
+    };
+
+    const result = toValueDiffGrid(df, ["id"]);
+
+    expect(result.rows).toHaveLength(2);
+    // Should only have the id column (IN_A/IN_B excluded)
+    expect(result.columns.length).toBe(1);
+  });
+
+  test("handles boolean values correctly", () => {
+    const df = createJoinedDataFrame(
+      [
+        { name: "id", key: "id", type: "integer" },
+        { name: "active", key: "active", type: "boolean" },
+      ],
+      [
+        [1, true, true, false], // base has active=true
+        [1, false, false, true], // current has active=false
+      ],
+    );
+
+    const result = toValueDiffGrid(df, ["id"]);
+
+    expect(result.rows[0].__status).toBe("modified");
+    expect(result.rows[0].base__active).toBe(true);
+    expect(result.rows[0].current__active).toBe(false);
+  });
+
+  test("handles float values", () => {
+    const df = createJoinedDataFrame(
+      [
+        { name: "id", key: "id", type: "integer" },
+        { name: "price", key: "price", type: "number" },
+      ],
+      [[1, 19.99, true, true]],
+    );
+
+    const result = toValueDiffGrid(df, ["id"]);
+
+    expect(result.rows[0].base__price).toBe(19.99);
+    expect(result.rows[0].current__price).toBe(19.99);
+  });
+});
+
+// ============================================================================
+// Primary Key Column Output Tests
+// ============================================================================
+
+describe("toValueDiffGrid - Primary Key Column Output", () => {
+  test("primary key values are not prefixed with base__/current__", () => {
+    const df = createJoinedDataFrame(
+      [
+        { name: "id", key: "id", type: "integer" },
+        { name: "value", key: "value", type: "integer" },
+      ],
+      [[1, 100, true, true]],
+    );
+
+    const result = toValueDiffGrid(df, ["id"]);
+
+    // PK should be at row.id, not row.base__id or row.current__id
+    expect(result.rows[0].id).toBe(1);
+    expect(result.rows[0].base__id).toBeUndefined();
+    expect(result.rows[0].current__id).toBeUndefined();
+
+    // Non-PK columns should be prefixed
+    expect(result.rows[0].base__value).toBe(100);
+    expect(result.rows[0].current__value).toBe(100);
+  });
+
+  test("multiple primary key columns are not prefixed", () => {
+    const df = createJoinedDataFrame(
+      [
+        { name: "region", key: "region", type: "text" },
+        { name: "product", key: "product", type: "text" },
+        { name: "sales", key: "sales", type: "integer" },
+      ],
+      [["US", "Widget", 100, true, true]],
+    );
+
+    const result = toValueDiffGrid(df, ["region", "product"]);
+
+    // PKs should be unprefixed (lowercase)
+    expect(result.rows[0].region).toBe("US");
+    expect(result.rows[0].product).toBe("Widget");
+
+    // Non-PK should be prefixed
+    expect(result.rows[0].base__sales).toBe(100);
+    expect(result.rows[0].current__sales).toBe(100);
+  });
+
+  test("primary key columns are frozen in output", () => {
+    const df = createJoinedDataFrame(
+      [
+        { name: "id", key: "id", type: "integer" },
+        { name: "value", key: "value", type: "integer" },
+      ],
+      [[1, 100, true, true]],
+    );
+
+    const result = toValueDiffGrid(df, ["id"]);
+
+    // Find the id column and check if it's frozen
+    const idColumn = result.columns.find(
+      (col) => "key" in col && col.key === "id",
+    );
+
+    expect(idColumn).toBeDefined();
+    if (idColumn && "frozen" in idColumn) {
+      expect(idColumn.frozen).toBe(true);
+    }
+  });
+});
+
+// ============================================================================
+// Performance Tests
+// ============================================================================
+
+describe("toValueDiffGrid - Performance", () => {
+  test("handles 500 rows efficiently", () => {
+    const generateData = (count: number) =>
+      Array.from({ length: count }, (_, i) => [
+        i,
+        `Name ${i}`,
+        i * 10,
+        i % 3 === 0, // some in base
+        i % 2 === 0, // some in current
+      ]);
+
+    const df = createJoinedDataFrame(
+      [
+        { name: "id", key: "id", type: "integer" },
+        { name: "name", key: "name", type: "text" },
+        { name: "value", key: "value", type: "integer" },
+      ],
+      generateData(500),
+    );
+
+    const startTime = performance.now();
+    const result = toValueDiffGrid(df, ["id"]);
+    const endTime = performance.now();
+
+    expect(result.rows.length).toBeGreaterThan(0);
+    expect(endTime - startTime).toBeLessThan(1000); // Should complete in under 1 second
+  });
+});

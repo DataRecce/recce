@@ -137,7 +137,7 @@ export const RunView = forwardRef(
     return (
       <Box
         h="100%"
-        style={{ contain: "size layout" }}
+        style={{ contain: "layout" }}
         overflow="auto"
         className="no-track-pii-safe"
       >

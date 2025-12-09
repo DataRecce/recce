@@ -202,6 +202,9 @@ importers:
       baseline-browser-mapping:
         specifier: ^2.9.0
         version: 2.9.0
+      fast-check:
+        specifier: ^4.4.0
+        version: 4.4.0
       globals:
         specifier: ^16.5.0
         version: 16.5.0
@@ -2709,6 +2712,10 @@ packages:
 
   extend@3.0.2:
     resolution: {integrity: sha512-fjquC59cD7CyW6urNXK0FBufkZcoiGG80wTuPujX590cB5Ttln20E2UB4S/WARVqhXffZl2LNgS+gQdPIIim/g==}
+
+  fast-check@4.4.0:
+    resolution: {integrity: sha512-s87BFAp8YaWYOBXjbTxeotaOhmA4hPYAyk9gBTFxdab25P6eAlqrryUvVMA2qd9bT/0Xq+YNJGtoVhJd/BxI4g==}
+    engines: {node: '>=12.17.0'}
 
   fast-deep-equal@3.1.3:
     resolution: {integrity: sha512-f3qQ9oQy9j2AhBe/H9VC91wLmKBCCU/gDOnKNAYG5hswO7BLKj09Hc5HYNz9cGI++xlpDCIgDaitVs03ATR84Q==}
@@ -7542,6 +7549,10 @@ snapshots:
       jest-util: 30.2.0
 
   extend@3.0.2: {}
+
+  fast-check@4.4.0:
+    dependencies:
+      pure-rand: 7.0.1
 
   fast-deep-equal@3.1.3: {}
 
