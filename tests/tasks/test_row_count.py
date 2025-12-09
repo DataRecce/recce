@@ -49,9 +49,7 @@ def test_row_count_with_selector(dbt_test_helper):
         """
 
     dbt_test_helper.create_model("model_1", csv_data_1, csv_data_2, depends_on=[])
-    dbt_test_helper.create_model(
-        "model_2", csv_data_1, csv_data_1, depends_on=["model_1"], package_name="other_package"
-    )
+    dbt_test_helper.create_model("model_2", csv_data_1, csv_data_1, depends_on=["model_1"])
     task = RowCountDiffTask(dict(select="model_1"))
     run_result = task.execute()
     assert len(run_result) == 1
