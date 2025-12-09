@@ -110,6 +110,7 @@ from dbt.config.runtime import RuntimeConfig  # noqa: E402
 from dbt.contracts.graph.manifest import (  # noqa: E402
     MacroManifest,
     Manifest,
+    ManifestMetadata,
     WritableManifest,
 )
 from dbt.contracts.graph.nodes import ManifestNode  # noqa: E402
@@ -209,7 +210,9 @@ def as_manifest(m: WritableManifest) -> Manifest:
         new_data = {k: v for k, v in data.items() if k in all_fields}
         return Manifest(**new_data)
     else:
-        return Manifest.from_writable_manifest(m)
+        result = Manifest.from_writable_manifest(m)
+        result.metadata = ManifestMetadata(**m.metadata.__dict__)
+        return result
 
 
 def load_manifest(path: str = None, data: dict = None):
@@ -1523,6 +1526,15 @@ class DbtAdapter(BaseAdapter):
                 return parse_difference(include, exclude)
 
         specs = [_parse_difference(select_list, exclude_list)]
+
+        # If packages is not provided, use the project name from manifest metadata as default
+        if packages is None:
+            if (
+                self.manifest.metadata
+                and hasattr(self.manifest.metadata, "project_name")
+                and self.manifest.metadata.project_name
+            ):
+                packages = [self.manifest.metadata.project_name]
 
         if packages is not None:
             package_spec = SelectionUnion([_parse_difference([f"package:{p}"], None) for p in packages])
