@@ -4,6 +4,11 @@ import { createLineageDiffCheck } from "@/lib/api/lineagecheck";
 import { RowCountDiffParams, RowCountParams } from "@/lib/api/rowcount";
 import { cancelRun, submitRun, waitRun } from "@/lib/api/runs";
 import { createSchemaDiffCheck } from "@/lib/api/schemacheck";
+import {
+  EXPLORE_ACTION,
+  EXPLORE_SOURCE,
+  trackExploreAction,
+} from "@/lib/api/track";
 import { ValueDiffParams } from "@/lib/api/valuediff";
 import { useRecceActionContext } from "@/lib/hooks/RecceActionContext";
 import { ActionState } from "./LineageViewContext";
@@ -196,6 +201,12 @@ export const useMultiNodesAction = (
   };
 
   const runRowCount = async () => {
+    trackExploreAction({
+      action: EXPLORE_ACTION.ROW_COUNT,
+      source: EXPLORE_SOURCE.LINEAGE_VIEW_TOP_BAR,
+      node_count: nodes.length,
+    });
+
     const nodeNames = [];
     for (const node of nodes) {
       if (node.data.resourceType !== "model") {
@@ -225,6 +236,12 @@ export const useMultiNodesAction = (
   };
 
   const runRowCountDiff = async () => {
+    trackExploreAction({
+      action: EXPLORE_ACTION.ROW_COUNT_DIFF,
+      source: EXPLORE_SOURCE.LINEAGE_VIEW_TOP_BAR,
+      node_count: nodes.length,
+    });
+
     const nodeNames = [];
     for (const node of nodes) {
       if (node.data.resourceType !== "model") {
@@ -254,6 +271,12 @@ export const useMultiNodesAction = (
   };
 
   const runValueDiff = async () => {
+    trackExploreAction({
+      action: EXPLORE_ACTION.VALUE_DIFF,
+      source: EXPLORE_SOURCE.LINEAGE_VIEW_TOP_BAR,
+      node_count: nodes.length,
+    });
+
     await submitRunsPerNodes("value_diff", (node) => {
       const primaryKey = node.data.data.current?.primary_key;
       if (!primaryKey) {

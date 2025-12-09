@@ -4,6 +4,13 @@ import { BiArrowFromBottom, BiArrowToBottom } from "react-icons/bi";
 import { FaRegDotCircle } from "react-icons/fa";
 import SetupConnectionPopover from "@/components/app/SetupConnectionPopover";
 import { SubmitRunTrackProps } from "@/lib/api/runs";
+import {
+  EXPLORE_ACTION,
+  EXPLORE_SOURCE,
+  LINEAGE_SELECTION_ACTION,
+  trackExploreAction,
+  trackLineageSelection,
+} from "@/lib/api/track";
 import { formatSelectColumns } from "@/lib/formatSelect";
 import { useLineageGraphContext } from "@/lib/hooks/LineageGraphContext";
 import { useRecceActionContext } from "@/lib/hooks/RecceActionContext";
@@ -278,6 +285,13 @@ export const ModelNodeContextMenu = ({
       itemIcon: <Icon as={rowCountAndRowCountRun.icon} />,
       isDisabled: isQueryDisabled,
       action: () => {
+        trackExploreAction({
+          action: singleEnv
+            ? EXPLORE_ACTION.ROW_COUNT
+            : EXPLORE_ACTION.ROW_COUNT_DIFF,
+          source: EXPLORE_SOURCE.LINEAGE_VIEW_CONTEXT_MENU,
+          node_count: 1,
+        });
         runAction(
           singleEnv ? "row_count" : "row_count_diff",
           { node_names: [modelNode.name] },
@@ -296,6 +310,13 @@ export const ModelNodeContextMenu = ({
       isDisabled: isQueryDisabled,
       action: () => {
         const columns = Array.from(getNodeColumnSet(node.id));
+        trackExploreAction({
+          action: singleEnv
+            ? EXPLORE_ACTION.PROFILE
+            : EXPLORE_ACTION.PROFILE_DIFF,
+          source: EXPLORE_SOURCE.LINEAGE_VIEW_CONTEXT_MENU,
+          node_count: 1,
+        });
         runAction(
           singleEnv ? "profile" : "profile_diff",
           { model: modelNode.name, columns },
@@ -313,6 +334,11 @@ export const ModelNodeContextMenu = ({
         isDisabled: isQueryDisabled,
         action: () => {
           const columns = Array.from(getNodeColumnSet(node.id));
+          trackExploreAction({
+            action: EXPLORE_ACTION.VALUE_DIFF,
+            source: EXPLORE_SOURCE.LINEAGE_VIEW_CONTEXT_MENU,
+            node_count: 1,
+          });
           runAction(
             "value_diff",
             { model: modelNode.name, columns },
@@ -334,6 +360,9 @@ export const ModelNodeContextMenu = ({
       label: "Select Parent Nodes",
       itemIcon: <BiArrowFromBottom />,
       action: () => {
+        trackLineageSelection({
+          action: LINEAGE_SELECTION_ACTION.SELECT_PARENT_NODES,
+        });
         selectParentNodes(node.id, 1);
       },
     });
@@ -341,6 +370,9 @@ export const ModelNodeContextMenu = ({
       label: "Select Child Nodes",
       itemIcon: <BiArrowToBottom />,
       action: () => {
+        trackLineageSelection({
+          action: LINEAGE_SELECTION_ACTION.SELECT_CHILD_NODES,
+        });
         selectChildNodes(node.id, 1);
       },
     });
@@ -348,6 +380,9 @@ export const ModelNodeContextMenu = ({
       label: "Select All Upstream Nodes",
       itemIcon: <BiArrowFromBottom />,
       action: () => {
+        trackLineageSelection({
+          action: LINEAGE_SELECTION_ACTION.SELECT_ALL_UPSTREAM,
+        });
         selectParentNodes(node.id);
       },
     });
@@ -355,6 +390,9 @@ export const ModelNodeContextMenu = ({
       label: "Select All Downstream Nodes",
       itemIcon: <BiArrowToBottom />,
       action: () => {
+        trackLineageSelection({
+          action: LINEAGE_SELECTION_ACTION.SELECT_ALL_DOWNSTREAM,
+        });
         selectChildNodes(node.id);
       },
     });
@@ -400,6 +438,11 @@ export const ColumnNodeContextMenu = ({
   };
 
   const handleProfileDiff = () => {
+    trackExploreAction({
+      action: EXPLORE_ACTION.PROFILE_DIFF,
+      source: EXPLORE_SOURCE.LINEAGE_VIEW_CONTEXT_MENU,
+      node_count: 1,
+    });
     runAction(
       "profile_diff",
       { model: modelNode.name, columns: [column] },
@@ -408,6 +451,11 @@ export const ColumnNodeContextMenu = ({
   };
 
   const handleHistogramDiff = () => {
+    trackExploreAction({
+      action: EXPLORE_ACTION.HISTOGRAM_DIFF,
+      source: EXPLORE_SOURCE.LINEAGE_VIEW_CONTEXT_MENU,
+      node_count: 1,
+    });
     runAction(
       "histogram_diff",
       { model: modelNode.name, column_name: column, column_type: columnType },
@@ -416,6 +464,11 @@ export const ColumnNodeContextMenu = ({
   };
 
   const handleTopkDiff = () => {
+    trackExploreAction({
+      action: EXPLORE_ACTION.TOP_K_DIFF,
+      source: EXPLORE_SOURCE.LINEAGE_VIEW_CONTEXT_MENU,
+      node_count: 1,
+    });
     runAction(
       "top_k_diff",
       { model: modelNode.name, column_name: column, k: 50 },
@@ -424,6 +477,11 @@ export const ColumnNodeContextMenu = ({
   };
 
   const handleValueDiff = () => {
+    trackExploreAction({
+      action: EXPLORE_ACTION.VALUE_DIFF,
+      source: EXPLORE_SOURCE.LINEAGE_VIEW_CONTEXT_MENU,
+      node_count: 1,
+    });
     runAction(
       "value_diff",
       { model: modelNode.name, columns: [column] },
