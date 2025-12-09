@@ -383,9 +383,7 @@ describe("Pinned column handling consistency", () => {
     expect(countId(joinedResult.columns)).toBe(1);
   });
 
-  // Note: toDataGrid currently duplicates columns that are both PK and pinned.
-  // This is a known inconsistency - see separate test below.
-  test("toDataGrid duplicates columns that are both PK and pinned (known inconsistency)", () => {
+  test("toDataGrid does not duplicate columns that are both PK and pinned", () => {
     const df = createDataFrame(standardColumns, standardData);
     const options = { primaryKeys: ["id"], pinnedColumns: ["id"] };
     const singleResult = toDataGrid(df, options);
@@ -393,9 +391,7 @@ describe("Pinned column handling consistency", () => {
     const countId = (cols: ColumnOrColumnGroup<RowObjectType>[]) =>
       cols.filter((c) => getColumnKey(c) === "id").length;
 
-    // This documents current behavior - toDataGrid duplicates the column
-    // TODO: Consider fixing toDataGrid to match toDataDiffGrid/toValueDiffGrid behavior
-    expect(countId(singleResult.columns)).toBe(2);
+    expect(countId(singleResult.columns)).toBe(1);
   });
 });
 
