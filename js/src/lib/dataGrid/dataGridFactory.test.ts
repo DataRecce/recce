@@ -41,6 +41,20 @@ jest.mock("@chakra-ui/react", () => ({
   Text: ({ children }: { children: React.ReactNode }) => children,
 }));
 
+jest.mock("@/lib/hooks/RecceActionContext", () => ({
+  useRecceActionContext: () => ({
+    runAction: jest.fn(),
+  }),
+}));
+
+jest.mock("@/lib/hooks/RecceInstanceContext", () => ({
+  useRecceInstanceContext: () => ({
+    featureToggles: {
+      disableDatabaseQuery: false,
+    },
+  }),
+}));
+
 // Mock dataGrid UI components
 jest.mock("@/components/ui/dataGrid", () => ({
   DataFrameColumnGroupHeader: () => null,
@@ -146,6 +160,22 @@ const createValueDiffDataFrame = (): DataFrame => ({
   ],
 });
 
+/**
+ * Creates a value_diff summary DataFrame (column match statistics)
+ */
+const createValueDiffSummaryDataFrame = (): DataFrame => ({
+  columns: [
+    { key: "0", name: "Column", type: "text" },
+    { key: "1", name: "Matched", type: "number" },
+    { key: "2", name: "Matched %", type: "number" },
+  ],
+  data: [
+    ["id", 100, 1.0],
+    ["name", 95, 0.95],
+    ["email", 80, 0.8],
+  ],
+});
+
 // ============================================================================
 // Test Fixtures - Run Objects
 // ============================================================================
@@ -177,6 +207,18 @@ const createQueryDiffRun = (
   createBaseRun("query_diff", {
     result,
     params: { sql_template: "SELECT * FROM table", ...params },
+  }) as Run;
+
+const createValueDiffRun = (
+  result?: {
+    summary: { total: number; added: number; removed: number };
+    data: DataFrame;
+  },
+  params?: { model: string; primary_key: string | string[] },
+): Run =>
+  createBaseRun("value_diff", {
+    result,
+    params: params ?? { model: "test_model", primary_key: "id" },
   }) as Run;
 
 const createValueDiffDetailRun = (
@@ -653,17 +695,41 @@ describe("createDataGrid - profile_diff run", () => {
 });
 
 // ============================================================================
-// createDataGrid - Unsupported Run Types
+// createDataGrid - Value Diff Run Tests
 // ============================================================================
 
-describe("createDataGrid - unsupported run types", () => {
-  test("returns null for value_diff run type", () => {
+describe("createDataGrid - value_diff run", () => {
+  test("returns grid data for value_diff run with result", () => {
+    const data = createValueDiffSummaryDataFrame();
+    const run = createValueDiffRun(
+      { summary: { total: 100, added: 5, removed: 3 }, data },
+      { model: "test_model", primary_key: "id" },
+    );
+
+    const result = createDataGrid(run);
+
+    expect(result).not.toBeNull();
+    expect(result?.columns).toBeDefined();
+    expect(result?.rows).toBeDefined();
+    // Should have 4 columns: pk indicator, column name, matched count, matched %
+    expect(result?.columns).toHaveLength(4);
+    // Should have 3 rows (one per column in the summary)
+    expect(result?.rows).toHaveLength(3);
+  });
+
+  test("returns null for value_diff run without result", () => {
+    const run = createValueDiffRun(undefined);
+
+    const result = createDataGrid(run);
+
+    expect(result).toBeNull();
+  });
+
+  test("returns null for value_diff run without params", () => {
+    const data = createValueDiffSummaryDataFrame();
     const run = createBaseRun("value_diff", {
-      result: {
-        summary: { total: 100, added: 10, removed: 5 },
-        data: createSimpleDataFrame(),
-      },
-      params: { model: "test", primary_key: "id" },
+      result: { summary: { total: 100, added: 5, removed: 3 }, data },
+      params: undefined,
     }) as Run;
 
     const result = createDataGrid(run);
@@ -671,6 +737,64 @@ describe("createDataGrid - unsupported run types", () => {
     expect(result).toBeNull();
   });
 
+  test("preserves row data correctly", () => {
+    const data = createValueDiffSummaryDataFrame();
+    const run = createValueDiffRun(
+      { summary: { total: 100, added: 5, removed: 3 }, data },
+      { model: "test_model", primary_key: "id" },
+    );
+
+    const result = createDataGrid(run);
+
+    expect(result).not.toBeNull();
+    if (result) {
+      // First row should be "id" column stats
+      expect(result.rows[0]["0"]).toBe("id");
+      expect(result.rows[0]["1"]).toBe(100);
+      expect(result.rows[0]["2"]).toBe(1.0);
+    }
+  });
+
+  test("handles array of primary keys", () => {
+    const data = createValueDiffSummaryDataFrame();
+    const run = createValueDiffRun(
+      { summary: { total: 100, added: 5, removed: 3 }, data },
+      { model: "test_model", primary_key: ["region", "id"] },
+    );
+
+    const result = createDataGrid(run);
+
+    expect(result).not.toBeNull();
+    expect(result?.columns).toHaveLength(4);
+  });
+
+  test("handles empty data", () => {
+    const data: DataFrame = {
+      columns: [
+        { key: "0", name: "Column", type: "text" },
+        { key: "1", name: "Matched", type: "number" },
+        { key: "2", name: "Matched %", type: "number" },
+      ],
+      data: [],
+    };
+    const run = createValueDiffRun(
+      { summary: { total: 0, added: 0, removed: 0 }, data },
+      { model: "test_model", primary_key: "id" },
+    );
+
+    const result = createDataGrid(run);
+
+    expect(result).not.toBeNull();
+    expect(result?.columns).toHaveLength(4);
+    expect(result?.rows).toHaveLength(0);
+  });
+});
+
+// ============================================================================
+// createDataGrid - Unsupported Run Types
+// ============================================================================
+
+describe("createDataGrid - unsupported run types", () => {
   test("returns null for schema_diff run type", () => {
     const run = createBaseRun("schema_diff", {
       result: {},

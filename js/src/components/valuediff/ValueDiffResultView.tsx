@@ -11,7 +11,7 @@ import React, { forwardRef, Ref } from "react";
 import { DataGridHandle } from "react-data-grid";
 import { isValueDiffRun } from "@/lib/api/types";
 import { ValueDiffParams, ValueDiffResult } from "@/lib/api/valuediff";
-import { toValueDataGrid } from "@/lib/dataGrid/generators/toValueDataGrid";
+import { createDataGrid } from "@/lib/dataGrid";
 import {
   EmptyRowsRenderer,
   ScreenshotDataGrid,
@@ -31,7 +31,13 @@ function _ValueDiffResultView(
   const result = run.result as ValueDiffResult;
   const params = run.params as ValueDiffParams;
 
-  const { columns, rows } = toValueDataGrid(result, { params });
+  const gridData = createDataGrid(run);
+
+  if (!gridData) {
+    return null;
+  }
+
+  const { columns, rows } = gridData;
 
   return (
     <Flex direction="column" gap="5px" pt="5px" height="100%">
