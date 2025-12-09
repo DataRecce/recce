@@ -14,9 +14,9 @@
  * anomalies gracefully without crashing or producing misleading output.
  */
 
-import { toDataGrid } from "@/components/query/QueryResultView";
 import { ColumnType, DataFrame, RowObjectType } from "@/lib/api/types";
 import { toDataDiffGrid } from "@/lib/dataGrid/generators/toDataDiffGrid";
+import { toDataGrid } from "@/lib/dataGrid/generators/toDataGrid";
 import { toValueDiffGrid } from "@/lib/dataGrid/generators/toValueDiffGrid";
 import {
   ColumnMapEntry,
