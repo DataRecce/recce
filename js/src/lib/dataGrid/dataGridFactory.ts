@@ -14,8 +14,6 @@
 import { ColumnOrColumnGroup } from "react-data-grid";
 // Import existing implementations
 import { toDataGrid } from "@/components/query/QueryResultView";
-import { toDataDiffGrid } from "@/components/query/querydiff";
-import { toValueDiffGrid } from "@/components/valuediff/valuediff";
 import { QueryDiffResult } from "@/lib/api/adhocQuery";
 import { ProfileDiffResult } from "@/lib/api/profile";
 import {
@@ -31,6 +29,8 @@ import {
   RowObjectType,
   Run,
 } from "@/lib/api/types";
+import { toDataDiffGrid } from "@/lib/dataGrid/generators/toDataDiffGrid";
+import { toValueDiffGrid } from "@/lib/dataGrid/generators/toValueDiffGrid";
 
 // ============================================================================
 // Types & Interfaces

@@ -1,13 +1,13 @@
 /**
- * @file valuediff.ts
+ * @file toValueDiffGrid.ts
  * @description Value diff grid generation for joined data (with IN_A/IN_B columns)
  *
  * REFACTORED: Now uses shared utilities from @/lib/dataGrid/shared
  */
 
-import "../query/styles.css";
-import { QueryDataDiffGridOptions } from "src/components/query/querydiff";
+import "src/components/query/styles.css";
 import { DataFrame, RowObjectType } from "@/lib/api/types";
+import { QueryDataDiffGridOptions } from "@/lib/dataGrid/generators/toDataDiffGrid";
 import {
   buildDiffColumnDefinitions,
   buildDiffRows,

@@ -16,14 +16,14 @@
 import fc from "fast-check";
 import { ColumnOrColumnGroup } from "react-data-grid";
 import { toDataGrid } from "@/components/query/QueryResultView";
-import { toDataDiffGrid } from "@/components/query/querydiff";
-import { toValueDiffGrid } from "@/components/valuediff/valuediff";
 import {
   ColumnRenderMode,
   ColumnType,
   DataFrame,
   RowObjectType,
 } from "@/lib/api/types";
+import { toDataDiffGrid } from "@/lib/dataGrid/generators/toDataDiffGrid";
+import { toValueDiffGrid } from "@/lib/dataGrid/generators/toValueDiffGrid";
 
 // ============================================================================
 // Types

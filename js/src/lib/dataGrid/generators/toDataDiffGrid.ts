@@ -1,11 +1,11 @@
 /**
- * @file querydiff.ts
+ * @file toDataDiffGrid.ts
  * @description Query diff grid generation and rendering components
  *
  * REFACTORED: Now uses shared utilities from @/lib/dataGrid/shared
  */
 
-import "./styles.css";
+import "src/components/query/styles.css";
 import { ColumnRenderMode, DataFrame, RowObjectType } from "@/lib/api/types";
 import {
   buildDiffColumnDefinitions,

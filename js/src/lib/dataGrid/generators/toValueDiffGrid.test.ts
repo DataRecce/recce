@@ -1,5 +1,5 @@
 /**
- * @file valuediff.test.ts
+ * @file toValueDiffGrid.test.ts
  * @description Comprehensive tests for value diff grid generation
  *
  * Tests cover:
@@ -43,8 +43,8 @@ jest.mock("@chakra-ui/react", () => ({
   Text: ({ children }: { children: React.ReactNode }) => children,
 }));
 
-import { toValueDiffGrid } from "src/components/valuediff/valuediff";
 import { ColumnType, DataFrame, RowData } from "@/lib/api/types";
+import { toValueDiffGrid } from "@/lib/dataGrid/generators/toValueDiffGrid";
 
 // ============================================================================
 // Test Fixtures
