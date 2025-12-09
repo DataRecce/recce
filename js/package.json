@@ -86,6 +86,7 @@
     "@types/react-dom": "19.2.3",
     "@types/react-syntax-highlighter": "^15.5.13",
     "baseline-browser-mapping": "^2.9.0",
+    "fast-check": "^4.4.0",
     "globals": "^16.5.0",
     "husky": "^9.1.7",
     "jest": "^30.2.0",
