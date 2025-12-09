@@ -31,6 +31,7 @@ import {
   Run,
 } from "@/lib/api/types";
 import { createDataGrid } from "@/lib/dataGrid/dataGridFactory";
+import { validateToDataGridInputs } from "@/lib/dataGrid/shared";
 import { dataFrameToRowObjects } from "@/utils/transforms";
 import {
   EmptyRowsRenderer,
@@ -129,6 +130,7 @@ function DataFrameColumnHeader({
 }
 
 export function toDataGrid(result: DataFrame, options: QueryDataGridOptions) {
+  validateToDataGridInputs(result, options);
   const columns: (ColumnOrColumnGroup<RowObjectType> & {
     columnType?: ColumnType;
     columnRenderMode?: ColumnRenderMode;

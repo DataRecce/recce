@@ -14,6 +14,7 @@ import {
   getDisplayColumns,
   getPrimaryKeyValue,
   validatePrimaryKeys,
+  validateToDataDiffGridInputs,
 } from "@/lib/dataGrid/shared";
 import { dataFrameToRowObjects } from "@/utils/transforms";
 
@@ -43,6 +44,7 @@ export function toDataDiffGrid(
   _current?: DataFrame,
   options?: QueryDataDiffGridOptions,
 ) {
+  validateToDataDiffGridInputs(_base, _current, options);
   const base = _base ?? { columns: [], data: [] };
   const current = _current ?? { columns: [], data: [] };
   const primaryKeys = options?.primaryKeys ?? [];

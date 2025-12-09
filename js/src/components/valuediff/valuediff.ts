@@ -15,6 +15,7 @@ import {
   getDisplayColumns,
   getPrimaryKeyValue,
   validatePrimaryKeys,
+  validateToValueDiffGridInputs,
 } from "@/lib/dataGrid/shared";
 import { dataFrameToRowObjects, getCaseInsensitive } from "@/utils/transforms";
 
@@ -27,6 +28,8 @@ export function toValueDiffGrid(
   primaryKeys: string[],
   options?: QueryDataDiffGridOptions,
 ) {
+  // Add validation at entry point
+  validateToValueDiffGridInputs(df, primaryKeys);
   const pinnedColumns = options?.pinnedColumns ?? [];
   const changedOnly = options?.changedOnly ?? false;
   const displayMode = options?.displayMode ?? "inline";
@@ -39,10 +42,6 @@ export function toValueDiffGrid(
   // Build row maps based on IN_A/IN_B columns
   const baseMap: Record<string, RowObjectType | undefined> = {};
   const currentMap: Record<string, RowObjectType | undefined> = {};
-
-  if (primaryKeys.length === 0) {
-    throw new Error("Primary keys are required");
-  }
 
   // REFACTORED: Use shared utility for PK validation
   const primaryKeyKeys = validatePrimaryKeys(df.columns, primaryKeys, true);

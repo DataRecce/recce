@@ -62,3 +62,13 @@ export {
   type DiffColumnResult,
   toDiffColumn,
 } from "./toDiffColumn";
+export {
+  DataGridValidationError,
+  validateColumnDataAlignment,
+  validateColumns,
+  validateDataFrame,
+  validatePrimaryKeyConfig,
+  validateToDataDiffGridInputs,
+  validateToDataGridInputs,
+  validateToValueDiffGridInputs,
+} from "./validation";

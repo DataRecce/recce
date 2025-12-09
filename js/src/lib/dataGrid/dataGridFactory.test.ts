@@ -1147,7 +1147,7 @@ describe("createDataGrid - invalid primary key detection", () => {
       createDataGrid(run, {
         primaryKeys: ["nonexistent_column"],
       }),
-    ).toThrow("Column nonexistent_column not found");
+    ).toThrow("Primary key column 'nonexistent_column' not found");
   });
 
   test("handles duplicate primary key values in current DataFrame", () => {
@@ -1499,11 +1499,11 @@ describe("createDataGrid - column key vs name differences", () => {
     expect(result).not.toBeNull();
   });
 
-  test("primaryKeys should match column names", () => {
+  test("primaryKeys should match column keys", () => {
     const df: DataFrame = {
       columns: [
-        { key: "pk_col", name: "Primary Key Display", type: "integer" },
-        { key: "data_col", name: "Data Column", type: "text" },
+        { key: "pk_col", name: "pk_col", type: "integer" },
+        { key: "data_col", name: "data_col", type: "text" },
       ],
       data: [
         [1, "a"],
@@ -1512,18 +1512,15 @@ describe("createDataGrid - column key vs name differences", () => {
     };
     const run = createQueryRun(df);
 
-    // primaryKeys matches the column name, not the key
     const result = createDataGrid(run, {
-      primaryKeys: ["Primary Key Display"],
+      primaryKeys: ["pk_col"],
     });
 
     expect(result).not.toBeNull();
-    // First non-index column should be the primary key
     if (result) {
-      // Find the primary key column (not the _index column)
       const pkCol = result.columns.find((col) => {
         const key = getColumnKey(col);
-        return key === "Primary Key Display";
+        return key === "pk_col";
       });
       expect(pkCol).toBeDefined();
     }

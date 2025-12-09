@@ -126,7 +126,7 @@ describe("toValueDiffGrid - Basic Functionality", () => {
 
   test("throws error when primary key column not found", () => {
     expect(() => toValueDiffGrid(standardFixture, ["nonexistent"])).toThrow(
-      "Column nonexistent not found",
+      "Primary key column 'nonexistent' not found",
     );
   });
 });
