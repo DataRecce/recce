@@ -182,6 +182,10 @@ export function getPrimaryKeyValue(
 
 /**
  * Determines the status of a row (added/removed/modified/unchanged)
+ *
+ * Supports two modes:
+ * 1. Separate rows: baseRow and currentRow are different objects
+ * 2. Merged rows: baseRow === currentRow, with values stored as base__key and current__key
  */
 export function determineRowStatus(
   baseRow: RowObjectType | undefined,
@@ -193,6 +197,9 @@ export function determineRowStatus(
   if (!baseRow) return "added";
   if (!currentRow) return "removed";
 
+  // Check if this is a merged row (same object passed for both)
+  const isMergedRow = baseRow === currentRow;
+
   // Check for modifications in non-PK columns
   for (const [name, column] of Object.entries(columnMap)) {
     if (name === "index") continue;
@@ -203,12 +210,29 @@ export function determineRowStatus(
 
     if (isPK) continue;
 
-    const baseVal = caseInsensitive
-      ? getCaseInsensitive(baseRow, column.key)
-      : baseRow[column.key];
-    const currentVal = caseInsensitive
-      ? getCaseInsensitive(currentRow, column.key)
-      : currentRow[column.key];
+    let baseVal: unknown;
+    let currentVal: unknown;
+
+    if (isMergedRow) {
+      // Merged row: compare base__key vs current__key
+      const baseKey = `base__${column.key}`;
+      const currentKey = `current__${column.key}`;
+
+      baseVal = caseInsensitive
+        ? getCaseInsensitive(baseRow, baseKey)
+        : baseRow[baseKey];
+      currentVal = caseInsensitive
+        ? getCaseInsensitive(currentRow, currentKey)
+        : currentRow[currentKey];
+    } else {
+      // Separate rows: compare same key in different row objects
+      baseVal = caseInsensitive
+        ? getCaseInsensitive(baseRow, column.key)
+        : baseRow[column.key];
+      currentVal = caseInsensitive
+        ? getCaseInsensitive(currentRow, column.key)
+        : currentRow[column.key];
+    }
 
     if (!_.isEqual(baseVal, currentVal)) {
       return "modified";
@@ -224,11 +248,24 @@ export function determineRowStatus(
 
 /**
  * Formats a numeric value based on render mode
+ *
+ * Handles special values:
+ * - NaN: Returns "NaN" (no formatting applied)
+ * - Infinity: Returns "∞" or "-∞" (no formatting applied)
  */
 export function columnRenderedValue(
   value: number,
   renderMode: ColumnRenderMode,
 ): string {
+  // Handle special numeric values first
+  if (Number.isNaN(value)) {
+    return "NaN";
+  }
+
+  if (!Number.isFinite(value)) {
+    return value > 0 ? "∞" : "-∞";
+  }
+
   const locale = "en-US";
 
   if (typeof renderMode === "number") {
