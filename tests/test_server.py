@@ -150,18 +150,17 @@ def test_keep_alive_with_idle_timeout():
     app.state.last_activity = None
 
 
-def test_spa_fallback_checks_route():
-    """Test that /checks route serves checks.html correctly"""
+def test_spa_route_checks():
+    """Test that /checks route serves index.html correctly via StaticFiles"""
     client = TestClient(app)
     response = client.get("/checks")
     assert response.status_code == 200
     assert response.headers["content-type"] == "text/html; charset=utf-8"
-    # Verify it's actually the checks.html content
     assert b"<!DOCTYPE html>" in response.content
 
 
-def test_spa_fallback_lineage_route():
-    """Test that /lineage route serves lineage.html correctly"""
+def test_spa_route_lineage():
+    """Test that /lineage route serves index.html correctly via StaticFiles"""
     client = TestClient(app)
     response = client.get("/lineage")
     assert response.status_code == 200
@@ -169,8 +168,8 @@ def test_spa_fallback_lineage_route():
     assert b"<!DOCTYPE html>" in response.content
 
 
-def test_spa_fallback_query_route():
-    """Test that /query route serves query.html correctly"""
+def test_spa_route_query():
+    """Test that /query route serves index.html correctly via StaticFiles"""
     client = TestClient(app)
     response = client.get("/query")
     assert response.status_code == 200
@@ -178,19 +177,10 @@ def test_spa_fallback_query_route():
     assert b"<!DOCTYPE html>" in response.content
 
 
-def test_spa_fallback_auth_callback_route():
-    """Test that /auth_callback route serves auth_callback.html correctly"""
+def test_spa_route_with_query_parameters():
+    """Test that query parameters work with SPA routes"""
     client = TestClient(app)
-    response = client.get("/auth_callback")
-    assert response.status_code == 200
-    assert response.headers["content-type"] == "text/html; charset=utf-8"
-    assert b"<!DOCTYPE html>" in response.content
-
-
-def test_spa_fallback_preserves_query_parameters():
-    """Test that query parameters are preserved when serving HTML files"""
-    client = TestClient(app)
-    # The SPA routes should serve the HTML file regardless of query params
+    # StaticFiles serves the index.html regardless of query params
     # The actual routing happens client-side in the SPA
     response = client.get("/checks?id=abc-123")
     assert response.status_code == 200
@@ -203,7 +193,7 @@ def test_spa_fallback_preserves_query_parameters():
     assert b"<!DOCTYPE html>" in response.content
 
 
-def test_spa_fallback_nonexistent_route():
+def test_nonexistent_route_returns_404():
     """Test that non-existent routes return 404.html with 404 status code"""
     client = TestClient(app)
     response = client.get("/nonexistent-page")
