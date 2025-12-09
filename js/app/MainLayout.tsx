@@ -94,7 +94,10 @@ function Main({ children, lineage, isLineageRoute }: MainProps) {
       gutterSize={_isHistoryOpen ? 5 : 0}
       style={{ height: "100%" }}
     >
-      <Box style={{ contain: "size" }}>{_isHistoryOpen && <RunList />}</Box>
+      {/* suppressHydrationWarning: react-split adds inline styles after mount */}
+      <Box style={{ contain: "size" }} suppressHydrationWarning>
+        {_isHistoryOpen && <RunList />}
+      </Box>
       <VSplit
         sizes={_isRunResultOpen ? [50, 50] : [100, 0]}
         minSize={_isRunResultOpen ? 100 : 0}
@@ -102,7 +105,9 @@ function Main({ children, lineage, isLineageRoute }: MainProps) {
         style={{ flex: "1", contain: "size" }}
       >
         <Suspense fallback={<MainContentLoading />}>
-          <Box p={0} style={{ contain: "content" }}>
+          {/* suppressHydrationWarning: react-split adds inline styles (height, width)
+              to children after mount, causing expected server/client mismatches */}
+          <Box p={0} style={{ contain: "content" }} suppressHydrationWarning>
             {/*
              * Lineage parallel route - always mounted but visibility controlled
              * This replaces the old RouteAlwaysMount pattern
@@ -120,14 +125,15 @@ function Main({ children, lineage, isLineageRoute }: MainProps) {
             {!isLineageRoute && children}
           </Box>
         </Suspense>
-        {_isRunResultOpen ? (
-          <RunResultPane
-            onClose={closeRunResult}
-            isSingleEnvironment={!!flag?.single_env_onboarding}
-          />
-        ) : (
-          <Box />
-        )}
+        {/* suppressHydrationWarning: react-split adds inline styles after mount */}
+        <Box height="100%" suppressHydrationWarning>
+          {_isRunResultOpen ? (
+            <RunResultPane
+              onClose={closeRunResult}
+              isSingleEnvironment={!!flag?.single_env_onboarding}
+            />
+          ) : null}
+        </Box>
       </VSplit>
     </HSplit>
   );
