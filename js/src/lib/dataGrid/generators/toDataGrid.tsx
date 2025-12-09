@@ -6,16 +6,13 @@
  * where we just display a single DataFrame without base/current comparison.
  */
 
-import { Box, Flex, Icon, IconButton, Menu, Portal } from "@chakra-ui/react";
 import _ from "lodash";
 import { ColumnOrColumnGroup } from "react-data-grid";
-import { PiDotsThreeVertical } from "react-icons/pi";
-import { VscPin, VscPinned } from "react-icons/vsc";
 import {
   DataFrameColumnGroupHeader,
+  DataFrameColumnHeader,
   defaultRenderCell,
 } from "@/components/ui/dataGrid";
-import { columnPrecisionSelectOptions } from "@/components/valuediff/shared";
 import {
   ColumnRenderMode,
   ColumnType,
@@ -36,85 +33,6 @@ export interface QueryDataGridOptions {
   onPinnedColumnsChange?: (pinnedColumns: string[]) => void;
   columnsRenderMode?: Record<string, ColumnRenderMode>;
   onColumnsRenderModeChanged?: (col: Record<string, ColumnRenderMode>) => void;
-}
-
-// ============================================================================
-// Column Header Component
-// ============================================================================
-
-function DataFrameColumnHeader({
-  name,
-  pinnedColumns = [],
-  onPinnedColumnsChange = () => {
-    return void 0;
-  },
-  columnType,
-  onColumnsRenderModeChanged,
-}: {
-  name: string;
-  columnType: ColumnType;
-  onColumnRenderModeChanged?: (
-    colNam: string,
-    renderAs: ColumnRenderMode,
-  ) => void;
-} & QueryDataGridOptions) {
-  let selectOptions: { value: string; onClick: () => void }[] = [];
-  if (onColumnsRenderModeChanged) {
-    selectOptions = columnPrecisionSelectOptions(
-      name,
-      onColumnsRenderModeChanged,
-    );
-  }
-
-  const isPinned = pinnedColumns.includes(name);
-
-  const handleUnpin = () => {
-    const newPinnedColumns = pinnedColumns.filter((item) => item !== name);
-    onPinnedColumnsChange(newPinnedColumns);
-  };
-
-  const handlePin = () => {
-    const newPinnedColumns = [...pinnedColumns, name];
-    onPinnedColumnsChange(newPinnedColumns);
-  };
-
-  return (
-    <Flex className="grid-header" alignItems="center">
-      <Box flex={1}>{name}</Box>
-
-      <Icon
-        className={isPinned ? "unpin-icon" : "pin-icon"}
-        display={isPinned ? "block" : "none"}
-        cursor="pointer"
-        as={isPinned ? VscPinned : VscPin}
-        onClick={isPinned ? handleUnpin : handlePin}
-      />
-      {columnType === "number" && (
-        <Menu.Root>
-          <Menu.Trigger asChild>
-            <IconButton
-              aria-label="Options"
-              variant="plain"
-              className="!size-4 !min-w-4"
-            >
-              <PiDotsThreeVertical />
-            </IconButton>
-          </Menu.Trigger>
-          <Portal>
-            <Menu.Positioner>
-              <Menu.Content>
-                {selectOptions.map((o) => (
-                  <Menu.Item key={o.value} value={o.value} onClick={o.onClick}>
-                    {o.value}
-                  </Menu.Item>
-                ))}
-              </Menu.Content>
-            </Menu.Positioner>
-          </Portal>
-        </Menu.Root>
-      )}
-    </Flex>
-  );
 }
 
 // ============================================================================
