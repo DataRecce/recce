@@ -849,4 +849,5 @@ app.include_router(check_events_router, prefix=api_prefix)
 app.include_router(run_router, prefix=api_prefix)
 
 static_folder_path = Path(__file__).parent / "data"
+
 app.mount("/", StaticFiles(directory=static_folder_path, html=True), name="static")

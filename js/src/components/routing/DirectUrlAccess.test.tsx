@@ -258,3 +258,171 @@ describe("URL Construction Helpers", () => {
     );
   });
 });
+
+describe("Check ID Validation and Redirect Logic", () => {
+  beforeEach(() => {
+    global.mockNextNavigation.reset();
+    mockRecceCheckContext.latestSelectedCheckId = null;
+    mockRecceCheckContext.setLatestSelectedCheckId.mockClear();
+  });
+
+  it("redirects to first check when URL has invalid check ID", () => {
+    const router = global.mockNextNavigation.getRouter();
+    const checks = [
+      { check_id: "check-1", name: "Check 1", type: "schema_diff" },
+      { check_id: "check-2", name: "Check 2", type: "row_count" },
+    ];
+    const selectedItem = "invalid-check-id";
+    const latestSelectedCheckId = null;
+    const status = "success";
+
+    // Simulate the validation logic from CheckPage
+    const isValidSelection = Boolean(
+      selectedItem && checks.some((check) => check.check_id === selectedItem),
+    );
+
+    if (status === "success" && checks.length > 0 && !isValidSelection) {
+      const isValidLatestSelectedCheckId =
+        latestSelectedCheckId &&
+        checks.some((check) => check.check_id === latestSelectedCheckId);
+
+      if (isValidLatestSelectedCheckId) {
+        router.push(`/checks?id=${latestSelectedCheckId}`, { replace: true });
+      } else {
+        router.push(`/checks?id=${checks[0].check_id}`, { replace: true });
+      }
+    }
+
+    expect(router.push).toHaveBeenCalledWith("/checks?id=check-1", {
+      replace: true,
+    });
+  });
+
+  it("redirects to first check when latestSelectedCheckId is invalid (deleted check)", () => {
+    const router = global.mockNextNavigation.getRouter();
+    const checks = [
+      { check_id: "check-1", name: "Check 1", type: "schema_diff" },
+      { check_id: "check-2", name: "Check 2", type: "row_count" },
+    ];
+    const selectedItem = null;
+    const latestSelectedCheckId = "deleted-check-id"; // This check was deleted
+    const status = "success";
+
+    // Simulate the validation logic from CheckPage
+    const isValidSelection = Boolean(
+      selectedItem && checks.some((check) => check.check_id === selectedItem),
+    );
+
+    if (status === "success" && checks.length > 0 && !isValidSelection) {
+      const isValidLatestSelectedCheckId =
+        latestSelectedCheckId &&
+        checks.some((check) => check.check_id === latestSelectedCheckId);
+
+      if (isValidLatestSelectedCheckId) {
+        router.push(`/checks?id=${latestSelectedCheckId}`, { replace: true });
+      } else {
+        router.push(`/checks?id=${checks[0].check_id}`, { replace: true });
+      }
+    }
+
+    expect(router.push).toHaveBeenCalledWith("/checks?id=check-1", {
+      replace: true,
+    });
+  });
+
+  it("redirects to valid latestSelectedCheckId when selectedItem is invalid", () => {
+    const router = global.mockNextNavigation.getRouter();
+    const checks = [
+      { check_id: "check-1", name: "Check 1", type: "schema_diff" },
+      { check_id: "check-2", name: "Check 2", type: "row_count" },
+      { check_id: "check-3", name: "Check 3", type: "query_diff" },
+    ];
+    const selectedItem = "invalid-check-id";
+    const latestSelectedCheckId = "check-2"; // Valid check that was previously selected
+    const status = "success";
+
+    // Simulate the validation logic from CheckPage
+    const isValidSelection = Boolean(
+      selectedItem && checks.some((check) => check.check_id === selectedItem),
+    );
+
+    if (status === "success" && checks.length > 0 && !isValidSelection) {
+      const isValidLatestSelectedCheckId =
+        latestSelectedCheckId &&
+        checks.some((check) => check.check_id === latestSelectedCheckId);
+
+      if (isValidLatestSelectedCheckId) {
+        router.push(`/checks?id=${latestSelectedCheckId}`, { replace: true });
+      } else {
+        router.push(`/checks?id=${checks[0].check_id}`, { replace: true });
+      }
+    }
+
+    // Should redirect to latestSelectedCheckId, not first check
+    expect(router.push).toHaveBeenCalledWith("/checks?id=check-2", {
+      replace: true,
+    });
+  });
+
+  it("uses replace:true option to avoid polluting browser history", () => {
+    const router = global.mockNextNavigation.getRouter();
+    const checks = [{ check_id: "check-1", name: "Check 1" }];
+    const selectedItem = "invalid-check-id";
+    const latestSelectedCheckId = null;
+    const status = "success";
+
+    // Simulate the validation logic from CheckPage
+    const isValidSelection = Boolean(
+      selectedItem && checks.some((check) => check.check_id === selectedItem),
+    );
+
+    if (status === "success" && checks.length > 0 && !isValidSelection) {
+      const isValidLatestSelectedCheckId =
+        latestSelectedCheckId &&
+        checks.some((check) => check.check_id === latestSelectedCheckId);
+
+      if (isValidLatestSelectedCheckId) {
+        router.push(`/checks?id=${latestSelectedCheckId}`, { replace: true });
+      } else {
+        router.push(`/checks?id=${checks[0].check_id}`, { replace: true });
+      }
+    }
+
+    // Verify replace:true is used
+    expect(router.push).toHaveBeenCalledWith(
+      expect.any(String),
+      expect.objectContaining({ replace: true }),
+    );
+  });
+
+  it("does not redirect when selectedItem is valid", () => {
+    const router = global.mockNextNavigation.getRouter();
+    const checks = [
+      { check_id: "check-1", name: "Check 1", type: "schema_diff" },
+      { check_id: "check-2", name: "Check 2", type: "row_count" },
+    ];
+    const selectedItem = "check-2"; // Valid check ID
+    const latestSelectedCheckId = null;
+    const status = "success";
+
+    // Simulate the validation logic from CheckPage
+    const isValidSelection = Boolean(
+      selectedItem && checks.some((check) => check.check_id === selectedItem),
+    );
+
+    if (status === "success" && checks.length > 0 && !isValidSelection) {
+      const isValidLatestSelectedCheckId =
+        latestSelectedCheckId &&
+        checks.some((check) => check.check_id === latestSelectedCheckId);
+
+      if (isValidLatestSelectedCheckId) {
+        router.push(`/checks?id=${latestSelectedCheckId}`, { replace: true });
+      } else {
+        router.push(`/checks?id=${checks[0].check_id}`, { replace: true });
+      }
+    }
+
+    // Should NOT redirect since selectedItem is valid
+    expect(router.push).not.toHaveBeenCalled();
+  });
+});

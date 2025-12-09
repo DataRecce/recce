@@ -23,6 +23,15 @@ def temp_folder():
     shutil.rmtree(temp_dir)
 
 
+@pytest.fixture(autouse=True)
+def init_app_state():
+    """Initialize app.state.last_activity for all tests to prevent middleware errors."""
+    app.state.last_activity = None
+    yield
+    # Cleanup after test
+    app.state.last_activity = None
+
+
 def test_health():
     client = TestClient(app)
     response = client.get("/api/health")
@@ -139,3 +148,55 @@ def test_keep_alive_with_idle_timeout():
 
     # Cleanup
     app.state.last_activity = None
+
+
+def test_spa_route_checks():
+    """Test that /checks route serves index.html correctly via StaticFiles"""
+    client = TestClient(app)
+    response = client.get("/checks")
+    assert response.status_code == 200
+    assert response.headers["content-type"] == "text/html; charset=utf-8"
+    assert b"<!DOCTYPE html>" in response.content
+
+
+def test_spa_route_lineage():
+    """Test that /lineage route serves index.html correctly via StaticFiles"""
+    client = TestClient(app)
+    response = client.get("/lineage")
+    assert response.status_code == 200
+    assert response.headers["content-type"] == "text/html; charset=utf-8"
+    assert b"<!DOCTYPE html>" in response.content
+
+
+def test_spa_route_query():
+    """Test that /query route serves index.html correctly via StaticFiles"""
+    client = TestClient(app)
+    response = client.get("/query")
+    assert response.status_code == 200
+    assert response.headers["content-type"] == "text/html; charset=utf-8"
+    assert b"<!DOCTYPE html>" in response.content
+
+
+def test_spa_route_with_query_parameters():
+    """Test that query parameters work with SPA routes"""
+    client = TestClient(app)
+    # StaticFiles serves the index.html regardless of query params
+    # The actual routing happens client-side in the SPA
+    response = client.get("/checks?id=abc-123")
+    assert response.status_code == 200
+    assert response.headers["content-type"] == "text/html; charset=utf-8"
+    assert b"<!DOCTYPE html>" in response.content
+
+    response = client.get("/lineage?node=model.my_model")
+    assert response.status_code == 200
+    assert response.headers["content-type"] == "text/html; charset=utf-8"
+    assert b"<!DOCTYPE html>" in response.content
+
+
+def test_nonexistent_route_returns_404():
+    """Test that non-existent routes return 404.html with 404 status code"""
+    client = TestClient(app)
+    response = client.get("/nonexistent-page")
+    assert response.status_code == 404
+    assert response.headers["content-type"] == "text/html; charset=utf-8"
+    assert b"<!DOCTYPE html>" in response.content

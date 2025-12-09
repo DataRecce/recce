@@ -15,6 +15,7 @@ import React, {
   Suspense,
   useCallback,
   useEffect,
+  useMemo,
   useState,
 } from "react";
 import { StateImporter } from "@/components/app/StateImporter";
@@ -129,30 +130,46 @@ function CheckPageContent(): ReactNode {
     [orderedChecks, changeChecksOrder],
   );
 
+  // Memoized validation to avoid duplicate checks.some() calls
+  const isValidSelection = useMemo(
+    () =>
+      Boolean(
+        selectedItem &&
+          checks?.some((check) => check.check_id === selectedItem),
+      ),
+    [selectedItem, checks],
+  );
+
   useEffect(() => {
-    if (status !== "success") {
+    if (status !== "success" || checks.length === 0) {
       return;
     }
 
-    if (!selectedItem && checks.length > 0) {
-      if (latestSelectedCheckId) {
-        setLocation(`/checks/?id=${latestSelectedCheckId}`);
+    if (!isValidSelection) {
+      // No selection or invalid selection - redirect to a valid check
+      // First try latestSelectedCheckId if it's valid
+      const isValidLatestSelectedCheckId =
+        latestSelectedCheckId &&
+        checks.some((check) => check.check_id === latestSelectedCheckId);
+
+      if (isValidLatestSelectedCheckId) {
+        setLocation(`/checks/?id=${latestSelectedCheckId}`, { replace: true });
       } else {
-        // If no check is selected, select the first one by default
-        setLocation(`/checks/?id=${checks[0].check_id}`);
+        // Fall back to the first check
+        setLocation(`/checks/?id=${checks[0].check_id}`, { replace: true });
       }
     }
-  }, [status, selectedItem, checks, setLocation, latestSelectedCheckId]);
+  }, [status, isValidSelection, checks, setLocation, latestSelectedCheckId]);
 
   if (isLoading) {
-    return <></>;
+    return null;
   }
 
   if (error) {
     return (
-      <>
+      <Box>
         Error: <span className="no-track-pii-safe">{error.message}</span>
-      </>
+      </Box>
     );
   }
 
@@ -216,7 +233,8 @@ function CheckPageContent(): ReactNode {
         </VStack>
       </Box>
       <Box height="100%">
-        {selectedItem && (
+        {/* isValidSelection already checks selectedItem, but TS needs explicit check for type narrowing */}
+        {isValidSelection && selectedItem && (
           <CheckDetail
             key={selectedItem}
             checkId={selectedItem}
