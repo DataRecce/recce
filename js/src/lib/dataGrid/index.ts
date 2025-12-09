@@ -12,3 +12,10 @@ export {
   toDataGrid,
   toValueDiffGrid,
 } from "./dataGridFactory";
+
+// Value diff summary grid (column-level match statistics)
+export {
+  toValueDataGrid,
+  type ValueDataGridOptions,
+  type ValueDataGridResult,
+} from "./generators/toValueDataGrid";

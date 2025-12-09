@@ -1,25 +1,17 @@
-import {
-  Box,
-  Center,
-  Flex,
-  Icon,
-  IconButton,
-  Menu,
-  Portal,
-  Spacer,
-} from "@chakra-ui/react";
+/**
+ * @file ValueDiffResultView.tsx
+ * @description View component for displaying value diff summary results
+ *
+ * Shows a summary table of column-level match statistics from a value_diff run.
+ * Each row represents a column with its match count and percentage.
+ */
+
+import { Box, Flex } from "@chakra-ui/react";
 import React, { forwardRef, Ref } from "react";
-import { ColumnOrColumnGroup, DataGridHandle } from "react-data-grid";
-import { PiDotsThreeVertical } from "react-icons/pi";
-import { VscKey } from "react-icons/vsc";
-import { DataFrame, isValueDiffRun, RowObjectType } from "@/lib/api/types";
+import { DataGridHandle } from "react-data-grid";
+import { isValueDiffRun } from "@/lib/api/types";
 import { ValueDiffParams, ValueDiffResult } from "@/lib/api/valuediff";
-import {
-  RecceActionOptions,
-  useRecceActionContext,
-} from "@/lib/hooks/RecceActionContext";
-import { useRecceInstanceContext } from "@/lib/hooks/RecceInstanceContext";
-import { dataFrameToRowObjects } from "@/utils/transforms";
+import { toValueDataGrid } from "@/lib/dataGrid/generators/toValueDataGrid";
 import {
   EmptyRowsRenderer,
   ScreenshotDataGrid,
@@ -27,80 +19,6 @@ import {
 import { RunResultViewProps } from "../run/types";
 
 type ValueDiffResultViewProp = RunResultViewProps;
-
-function ColumnNameCell({
-  params,
-  column,
-}: {
-  params: ValueDiffParams;
-  column: string;
-}) {
-  const { runAction } = useRecceActionContext();
-  const { featureToggles } = useRecceInstanceContext();
-  const handleValueDiffDetail = (
-    paramsOverride?: Partial<ValueDiffParams>,
-    options?: RecceActionOptions,
-  ) => {
-    const newParams = {
-      ...params,
-      ...paramsOverride,
-    };
-
-    runAction("value_diff_detail", newParams, options);
-  };
-
-  return (
-    <Flex>
-      <Box overflow="hidden" textOverflow="ellipsis" whiteSpace="nowrap">
-        {column}
-      </Box>
-      <Spacer />
-
-      <Menu.Root lazyMount>
-        <Menu.Trigger asChild>
-          <IconButton
-            className="row-context-menu"
-            variant="plain"
-            size={"sm"}
-            disabled={featureToggles.disableDatabaseQuery}
-          >
-            <PiDotsThreeVertical />
-          </IconButton>
-        </Menu.Trigger>
-
-        <Portal>
-          <Menu.Positioner>
-            <Menu.Content lineHeight="20px">
-              <Menu.ItemGroup title="Action" as={Box} fontSize="8pt">
-                <Menu.Item
-                  value="show-mismatched-values"
-                  fontSize="10pt"
-                  onClick={() => {
-                    handleValueDiffDetail({}, { showForm: true });
-                  }}
-                >
-                  Show mismatched values...
-                </Menu.Item>
-                <Menu.Item
-                  value="show-mismatched-columns"
-                  fontSize="10pt"
-                  onClick={() => {
-                    handleValueDiffDetail(
-                      { columns: [column] },
-                      { showForm: false },
-                    );
-                  }}
-                >
-                  Show mismatched values for &apos;{column}&apos;
-                </Menu.Item>
-              </Menu.ItemGroup>
-            </Menu.Content>
-          </Menu.Positioner>
-        </Portal>
-      </Menu.Root>
-    </Flex>
-  );
-}
 
 function _ValueDiffResultView(
   { run }: ValueDiffResultViewProp,
@@ -112,89 +30,8 @@ function _ValueDiffResultView(
 
   const result = run.result as ValueDiffResult;
   const params = run.params as ValueDiffParams;
-  const cellClass = (row: RowObjectType) => {
-    const value = row[2] as unknown as number | undefined;
-    return value != null && value < 1 ? "diff-cell-modified" : "";
-  };
-  const primaryKeys = Array.isArray(params.primary_key)
-    ? params.primary_key
-    : [params.primary_key];
 
-  // used as a type fix below
-  const basicColumns: DataFrame["columns"] = [
-    {
-      key: "0",
-      name: "Column",
-      type: "text",
-    },
-    {
-      key: "1",
-      name: "Matched",
-      type: "number",
-    },
-    {
-      key: "2",
-      name: "Matched %",
-      type: "number",
-    },
-  ];
-
-  const columns: ColumnOrColumnGroup<RowObjectType>[] = [
-    {
-      key: "__is_pk__",
-      name: "",
-      width: 30,
-      maxWidth: 30,
-      renderCell: ({ row }) => {
-        return (
-          <Center height="100%">
-            {primaryKeys.includes(String(row[0])) && <Icon as={VscKey}></Icon>}
-          </Center>
-        );
-      },
-    },
-    {
-      key: "0",
-      name: "Column",
-      resizable: true,
-      renderCell: ({ row, column }) => {
-        return (
-          <ColumnNameCell column={String(row[column.key])} params={params} />
-        );
-      },
-      cellClass: "cell-show-context-menu",
-    },
-    {
-      key: "1",
-      name: "Matched",
-      resizable: true,
-      cellClass,
-    },
-    {
-      key: "2",
-      name: "Matched %",
-      resizable: true,
-      renderCell: ({ column, row }) => {
-        const value = row[column.key] as unknown as number | undefined;
-        let displayValue = "N/A";
-
-        if (value != null) {
-          if (value > 0.9999 && value < 1) {
-            displayValue = "~99.99 %";
-          } else if (value < 0.0001 && value > 0) {
-            displayValue = "~0.01 %";
-          } else {
-            displayValue = `${(value * 100).toFixed(2)} %`;
-          }
-        }
-
-        return <Box textAlign="end">{displayValue}</Box>;
-      },
-      cellClass,
-    },
-  ];
-
-  result.data.columns = basicColumns;
+  const { columns, rows } = toValueDataGrid(result, { params });
 
   return (
     <Flex direction="column" gap="5px" pt="5px" height="100%">
@@ -213,7 +50,7 @@ function _ValueDiffResultView(
           borderBlock: "1px solid lightgray",
         }}
         columns={columns}
-        rows={dataFrameToRowObjects(result.data)}
+        rows={rows}
         renderers={{ noRowsFallback: <EmptyRowsRenderer /> }}
         defaultColumnOptions={{ resizable: true }}
         className="rdg-light"
