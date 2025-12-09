@@ -4,12 +4,11 @@
  *
  * Tests cover:
  * - Basic column and row generation
- * - Primary key indicator column
- * - Matched percentage formatting
- * - Column name cell rendering
+ * - Primary key handling (single and array)
+ * - Cell class functions
+ * - Column structure
  */
 
-import React from "react";
 import { ColumnRenderMode, ColumnType, RowObjectType } from "@/lib/api/types";
 import { ValueDiffParams, ValueDiffResult } from "@/lib/api/valuediff";
 import { toValueDataGrid } from "@/lib/dataGrid";
@@ -150,7 +149,6 @@ describe("toValueDataGrid - Basic Functionality", () => {
     expect(rows[0]["0"]).toBe("user_id");
     expect(rows[0]["1"]).toBe(1000);
     expect(rows[0]["2"]).toBe(1.0);
-
     expect(rows[1]["0"]).toBe("email");
     expect(rows[1]["1"]).toBe(950);
     expect(rows[1]["2"]).toBe(0.95);
@@ -168,11 +166,11 @@ describe("toValueDataGrid - Basic Functionality", () => {
 });
 
 // ============================================================================
-// Column Configuration Tests
+// Column Structure Tests
 // ============================================================================
 
-describe("toValueDataGrid - Column Configuration", () => {
-  test("creates primary key indicator column first", () => {
+describe("toValueDataGrid - Column Structure", () => {
+  test("creates primary key indicator column", () => {
     const result = createValueDiffResult([["id", 100, 1.0]]);
     const params = createValueDiffParams();
 
@@ -180,23 +178,27 @@ describe("toValueDataGrid - Column Configuration", () => {
     const pkColumn = getColumn(columns, 0);
 
     expect(pkColumn.key).toBe("__is_pk__");
+    expect(pkColumn.name).toBe("");
     expect(pkColumn.width).toBe(30);
     expect(pkColumn.maxWidth).toBe(30);
+    expect(pkColumn.renderCell).toBeDefined();
   });
 
-  test("creates column name column second", () => {
+  test("creates column name column", () => {
     const result = createValueDiffResult([["id", 100, 1.0]]);
     const params = createValueDiffParams();
 
     const { columns } = toValueDataGrid(result, { params });
-    const columnNameCol = getColumn(columns, 1);
+    const nameColumn = getColumn(columns, 1);
 
-    expect(columnNameCol.key).toBe("0");
-    expect(columnNameCol.name).toBe("Column");
-    expect(columnNameCol.resizable).toBe(true);
+    expect(nameColumn.key).toBe("0");
+    expect(nameColumn.name).toBe("Column");
+    expect(nameColumn.resizable).toBe(true);
+    expect(nameColumn.renderCell).toBeDefined();
+    expect(nameColumn.cellClass).toBe("cell-show-context-menu");
   });
 
-  test("creates matched count column third", () => {
+  test("creates matched count column", () => {
     const result = createValueDiffResult([["id", 100, 1.0]]);
     const params = createValueDiffParams();
 
@@ -205,9 +207,10 @@ describe("toValueDataGrid - Column Configuration", () => {
 
     expect(matchedColumn.key).toBe("1");
     expect(matchedColumn.name).toBe("Matched");
+    expect(matchedColumn.resizable).toBe(true);
   });
 
-  test("creates matched percent column fourth", () => {
+  test("creates matched percent column", () => {
     const result = createValueDiffResult([["id", 100, 1.0]]);
     const params = createValueDiffParams();
 
@@ -216,6 +219,8 @@ describe("toValueDataGrid - Column Configuration", () => {
 
     expect(percentColumn.key).toBe("2");
     expect(percentColumn.name).toBe("Matched %");
+    expect(percentColumn.resizable).toBe(true);
+    expect(percentColumn.renderCell).toBeDefined();
   });
 });
 
@@ -231,7 +236,6 @@ describe("toValueDataGrid - Primary Key Handling", () => {
     const { columns } = toValueDataGrid(result, { params });
     const pkColumn = getColumn(columns, 0);
 
-    // Primary key column should exist and have renderCell
     expect(pkColumn.key).toBe("__is_pk__");
     expect(pkColumn.renderCell).toBeDefined();
   });
@@ -250,6 +254,7 @@ describe("toValueDataGrid - Primary Key Handling", () => {
     const pkColumn = getColumn(columns, 0);
 
     expect(pkColumn.key).toBe("__is_pk__");
+    expect(pkColumn.renderCell).toBeDefined();
   });
 });
 
@@ -278,57 +283,85 @@ describe("toValueDataGrid - Cell Classes", () => {
     expect(typeof percentColumn.cellClass).toBe("function");
   });
 
-  test("cellClass returns 'diff-cell-modified' for values < 100%", () => {
-    const result = createValueDiffResult([["id", 80, 0.8]]);
+  test("cellClass returns diff-cell-modified when value < 1", () => {
+    const result = createValueDiffResult([["email", 80, 0.8]]);
     const params = createValueDiffParams();
 
     const { columns, rows } = toValueDataGrid(result, { params });
-    const percentColumn = getColumn(columns, 3);
+    const matchedColumn = getColumn(columns, 2);
 
-    const cellClassFn = percentColumn.cellClass as (
+    const cellClass = matchedColumn.cellClass as (
       row: RowObjectType,
     ) => string | undefined;
-    const cellClass = cellClassFn(rows[0]);
-    expect(cellClass).toBe("diff-cell-modified");
+    expect(cellClass(rows[0])).toBe("diff-cell-modified");
   });
 
-  test("cellClass returns undefined for 100% match", () => {
+  test("cellClass returns undefined when value is 1 (100%)", () => {
     const result = createValueDiffResult([["id", 100, 1.0]]);
     const params = createValueDiffParams();
 
     const { columns, rows } = toValueDataGrid(result, { params });
-    const percentColumn = getColumn(columns, 3);
+    const matchedColumn = getColumn(columns, 2);
 
-    const cellClassFn = percentColumn.cellClass as (
+    const cellClass = matchedColumn.cellClass as (
       row: RowObjectType,
     ) => string | undefined;
-    const cellClass = cellClassFn(rows[0]);
-    expect(cellClass).toBeUndefined();
+    expect(cellClass(rows[0])).toBeUndefined();
   });
 });
 
 // ============================================================================
-// Column Name Cell Tests
+// Edge Cases
 // ============================================================================
 
-describe("toValueDataGrid - Column Name Cell", () => {
-  test("column name column has renderCell function", () => {
-    const result = createValueDiffResult([["id", 100, 1.0]]);
+describe("toValueDataGrid - Edge Cases", () => {
+  test("handles null/undefined values in data", () => {
+    const result: ValueDiffResult = {
+      data: {
+        columns: [
+          { key: "0", name: "Column", type: "text" },
+          { key: "1", name: "Matched", type: "number" },
+          { key: "2", name: "Matched %", type: "number" },
+        ],
+        data: [
+          ["id", null, null],
+          ["name", 100, 1.0],
+        ],
+      },
+      summary: { total: 100, added: 0, removed: 0 },
+    };
     const params = createValueDiffParams();
 
-    const { columns } = toValueDataGrid(result, { params });
-    const columnNameCol = getColumn(columns, 1);
+    const { rows } = toValueDataGrid(result, { params });
 
-    expect(columnNameCol.renderCell).toBeDefined();
+    expect(rows[0]["1"]).toBeNull();
+    expect(rows[0]["2"]).toBeNull();
   });
 
-  test("column name column has context menu cell class", () => {
-    const result = createValueDiffResult([["id", 100, 1.0]]);
+  test("handles special characters in column names", () => {
+    const result = createValueDiffResult([
+      ["user.email", 100, 1.0],
+      ["order-id", 95, 0.95],
+      ["first name", 80, 0.8],
+    ]);
     const params = createValueDiffParams();
 
-    const { columns } = toValueDataGrid(result, { params });
-    const columnNameCol = getColumn(columns, 1);
+    const { rows } = toValueDataGrid(result, { params });
 
-    expect(columnNameCol.cellClass).toBe("cell-show-context-menu");
+    expect(rows[0]["0"]).toBe("user.email");
+    expect(rows[1]["0"]).toBe("order-id");
+    expect(rows[2]["0"]).toBe("first name");
+  });
+
+  test("handles large numbers", () => {
+    const result = createValueDiffResult([
+      ["big_column", 1000000000, 0.999999999],
+    ]);
+    const params = createValueDiffParams();
+
+    const { rows } = toValueDataGrid(result, { params });
+
+    expect(rows[0]["1"]).toBe(1000000000);
+    expect(rows[0]["2"]).toBe(0.999999999);
   });
 });

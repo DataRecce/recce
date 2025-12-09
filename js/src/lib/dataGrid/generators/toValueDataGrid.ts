@@ -8,16 +8,16 @@
  *
  * NOTE: This is different from toValueDiffGrid which handles row-level diffs.
  * This generator is for the summary view showing column match statistics.
+ *
+ * This file is intentionally .ts (not .tsx) - all JSX rendering is delegated
+ * to valueDiffCells.tsx via render functions.
  */
 
 import { ColumnOrColumnGroup } from "react-data-grid";
-// Import directly from file, not barrel, to avoid pulling in heavy hook dependencies
-// that would break tests (toaster.tsx chain through RecceActionContext)
 import {
-  MatchedPercentCell,
-  PrimaryKeyIndicatorCell,
-  ValueDiffColumnNameCell,
-  type ValueDiffColumnNameCellProps,
+  createColumnNameRenderer,
+  createPrimaryKeyIndicatorRenderer,
+  renderMatchedPercentCell,
 } from "@/components/ui/dataGrid/valueDiffCells";
 import { DataFrame, RowObjectType } from "@/lib/api/types";
 import { ValueDiffParams, ValueDiffResult } from "@/lib/api/valuediff";
@@ -33,8 +33,6 @@ import { dataFrameToRowObjects } from "@/utils/transforms";
 export interface ValueDataGridOptions {
   /** Parameters from the value_diff run */
   params: ValueDiffParams;
-  /** Callback props for the column name cell context menu */
-  columnNameCellProps?: Omit<ValueDiffColumnNameCellProps, "column" | "params">;
 }
 
 /**
@@ -66,12 +64,72 @@ const VALUE_DIFF_SUMMARY_SCHEMA: DataFrame["columns"] = [
 // ============================================================================
 
 /**
- * Creates cell class function for matched percentage column
- * Applies "diff-cell-modified" class when value is less than 100%
+ * Cell class function for matched columns
+ * Applies "diff-cell-modified" class when match percentage is less than 100%
  */
-function createMatchedPercentCellClass(row: RowObjectType): string | undefined {
+function getMatchedCellClass(row: RowObjectType): string | undefined {
   const value = row["2"] as unknown as number | undefined;
   return value != null && value < 1 ? "diff-cell-modified" : undefined;
+}
+
+// ============================================================================
+// Column Definitions
+// ============================================================================
+
+/**
+ * Column keys used in the value diff summary grid
+ */
+const COLUMN_KEYS = {
+  PRIMARY_KEY_INDICATOR: "__is_pk__",
+  COLUMN_NAME: "0",
+  MATCHED_COUNT: "1",
+  MATCHED_PERCENT: "2",
+} as const;
+
+/**
+ * Creates column definitions for the value diff summary grid
+ *
+ * @param primaryKeys - Array of primary key column names
+ * @param params - ValueDiffParams from the run
+ * @returns Array of column definitions
+ */
+function createColumnDefinitions(
+  primaryKeys: string[],
+  params: ValueDiffParams,
+): ColumnOrColumnGroup<RowObjectType>[] {
+  return [
+    // Primary key indicator column
+    {
+      key: COLUMN_KEYS.PRIMARY_KEY_INDICATOR,
+      name: "",
+      width: 30,
+      maxWidth: 30,
+      renderCell: createPrimaryKeyIndicatorRenderer(primaryKeys),
+    },
+    // Column name column with context menu
+    {
+      key: COLUMN_KEYS.COLUMN_NAME,
+      name: "Column",
+      resizable: true,
+      renderCell: createColumnNameRenderer(params),
+      cellClass: "cell-show-context-menu",
+    },
+    // Matched count column
+    {
+      key: COLUMN_KEYS.MATCHED_COUNT,
+      name: "Matched",
+      resizable: true,
+      cellClass: getMatchedCellClass,
+    },
+    // Matched percentage column
+    {
+      key: COLUMN_KEYS.MATCHED_PERCENT,
+      name: "Matched %",
+      resizable: true,
+      renderCell: renderMatchedPercentCell,
+      cellClass: getMatchedCellClass,
+    },
+  ];
 }
 
 // ============================================================================
@@ -86,15 +144,12 @@ function createMatchedPercentCellClass(row: RowObjectType): string | undefined {
  * its match count and percentage.
  *
  * @param result - The value diff result containing summary data
- * @param options - Configuration options including params and callbacks
+ * @param options - Configuration options including params
  * @returns Grid columns and rows ready for ScreenshotDataGrid
  *
  * @example
  * const { columns, rows } = toValueDataGrid(result, {
  *   params: run.params,
- *   columnNameCellProps: {
- *     onValueDiffDetail: handleValueDiffDetail,
- *   },
  * });
  */
 export function toValueDataGrid(
@@ -115,87 +170,11 @@ export function toValueDataGrid(
     columns: VALUE_DIFF_SUMMARY_SCHEMA,
   };
 
-  // Build columns
-  const columns: ColumnOrColumnGroup<RowObjectType>[] = [
-    createPrimaryKeyIndicatorColumn(primaryKeys),
-    createColumnNameColumn(params),
-    createMatchedCountColumn(),
-    createMatchedPercentColumn(),
-  ];
+  // Build columns using render functions from valueDiffCells
+  const columns = createColumnDefinitions(primaryKeys, params);
 
   // Convert DataFrame to row objects
   const rows = dataFrameToRowObjects(dataFrameWithSchema);
 
   return { columns, rows };
-}
-
-// ============================================================================
-// Column Factory Functions
-// ============================================================================
-
-/**
- * Creates the primary key indicator column
- */
-function createPrimaryKeyIndicatorColumn(
-  primaryKeys: string[],
-): ColumnOrColumnGroup<RowObjectType> {
-  return {
-    key: "__is_pk__",
-    name: "",
-    width: 30,
-    maxWidth: 30,
-    renderCell: ({ row }) => (
-      <PrimaryKeyIndicatorCell
-        columnName={String(row["0"])}
-        primaryKeys={primaryKeys}
-      />
-    ),
-  };
-}
-
-/**
- * Creates the column name column with context menu
- */
-function createColumnNameColumn(
-  params: ValueDiffParams,
-): ColumnOrColumnGroup<RowObjectType> {
-  return {
-    key: "0",
-    name: "Column",
-    resizable: true,
-    renderCell: ({ row, column }) => (
-      <ValueDiffColumnNameCell
-        column={String(row[column.key])}
-        params={params}
-      />
-    ),
-    cellClass: "cell-show-context-menu",
-  };
-}
-
-/**
- * Creates the matched count column
- */
-function createMatchedCountColumn(): ColumnOrColumnGroup<RowObjectType> {
-  return {
-    key: "1",
-    name: "Matched",
-    resizable: true,
-    cellClass: createMatchedPercentCellClass,
-  };
-}
-
-/**
- * Creates the matched percentage column
- */
-function createMatchedPercentColumn(): ColumnOrColumnGroup<RowObjectType> {
-  return {
-    key: "2",
-    name: "Matched %",
-    resizable: true,
-    renderCell: ({ column, row }) => (
-      <MatchedPercentCell value={row[column.key] as unknown as number} />
-    ),
-    cellClass: createMatchedPercentCellClass,
-  };
 }

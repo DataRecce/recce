@@ -1,11 +1,13 @@
 /**
  * @file valueDiffCells.tsx
- * @description Cell components for Value Diff summary grid
+ * @description Cell components and render functions for Value Diff summary grid
  *
  * Provides specialized cell renderers for the value diff summary view:
  * - PrimaryKeyIndicatorCell: Shows key icon for primary key columns
  * - ValueDiffColumnNameCell: Column name with context menu for drill-down
  * - MatchedPercentCell: Formatted percentage display
+ *
+ * Also exports render functions for use in toValueDataGrid.ts generator.
  */
 
 import {
@@ -18,8 +20,11 @@ import {
   Portal,
   Spacer,
 } from "@chakra-ui/react";
+import React from "react";
+import { RenderCellProps } from "react-data-grid";
 import { PiDotsThreeVertical } from "react-icons/pi";
 import { VscKey } from "react-icons/vsc";
+import { RowObjectType } from "@/lib/api/types";
 import { ValueDiffParams } from "@/lib/api/valuediff";
 import {
   RecceActionOptions,
@@ -189,4 +194,52 @@ export function MatchedPercentCell({ value }: MatchedPercentCellProps) {
   }
 
   return <Box textAlign="end">{displayValue}</Box>;
+}
+
+// ============================================================================
+// Render Functions for toValueDataGrid.ts
+// ============================================================================
+
+/**
+ * Creates a renderCell function for the primary key indicator column
+ *
+ * @param primaryKeys - List of primary key column names
+ * @returns A renderCell function compatible with react-data-grid
+ */
+export function createPrimaryKeyIndicatorRenderer(
+  primaryKeys: string[],
+): (props: RenderCellProps<RowObjectType>) => React.ReactNode {
+  return ({ row }) => (
+    <PrimaryKeyIndicatorCell
+      columnName={String(row["0"])}
+      primaryKeys={primaryKeys}
+    />
+  );
+}
+
+/**
+ * Creates a renderCell function for the column name column
+ *
+ * @param params - ValueDiffParams from the run
+ * @returns A renderCell function compatible with react-data-grid
+ */
+export function createColumnNameRenderer(
+  params: ValueDiffParams,
+): (props: RenderCellProps<RowObjectType>) => React.ReactNode {
+  return ({ row, column }) => (
+    <ValueDiffColumnNameCell column={String(row[column.key])} params={params} />
+  );
+}
+
+/**
+ * renderCell function for the matched percentage column
+ *
+ * @param props - RenderCellProps from react-data-grid
+ * @returns React node displaying formatted percentage
+ */
+export function renderMatchedPercentCell({
+  row,
+  column,
+}: RenderCellProps<RowObjectType>): React.ReactNode {
+  return <MatchedPercentCell value={row[column.key] as number} />;
 }
