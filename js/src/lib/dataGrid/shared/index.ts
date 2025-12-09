@@ -54,6 +54,12 @@ export {
   buildDiffRows,
   type DiffColumnMapEntry,
 } from "./rowBuilders";
+export {
+  type BuildSimpleColumnDefinitionsConfig,
+  type BuildSimpleColumnDefinitionsResult,
+  buildSimpleColumnDefinitions,
+  type SimpleColumnDefinition,
+} from "./simpleColumnBuilder";
 // Diff column builder (low-level)
 export {
   createCellClassBase,

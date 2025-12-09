@@ -3,7 +3,6 @@ import { PiDotsThreeVertical } from "react-icons/pi";
 import { VscPin, VscPinned } from "react-icons/vsc";
 import { columnPrecisionSelectOptions } from "@/components/valuediff/shared";
 import { ColumnRenderMode, ColumnType } from "@/lib/api/types";
-import { QueryDataGridOptions } from "@/lib/dataGrid/generators/toDataGrid";
 
 /**
  * Props for the DataFrameColumnHeader component
