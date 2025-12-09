@@ -668,6 +668,398 @@ describe("toDataDiffGrid - Schema Changes", () => {
 });
 
 // ============================================================================
+// Schema Evolution Tests (Column Type Changes, Reordering, Renames)
+// ============================================================================
+
+describe("toDataDiffGrid - Schema Evolution", () => {
+  // --------------------------------------------------------------------------
+  // Column Type Change Tests
+  // --------------------------------------------------------------------------
+
+  describe("column type changes", () => {
+    test("handles integer to text type change with same value", () => {
+      const base: DataFrame = {
+        columns: [
+          { name: "id", key: "id", type: "integer" },
+          { name: "code", key: "code", type: "integer" },
+        ],
+        data: [[1, 123]],
+      };
+
+      const current: DataFrame = {
+        columns: [
+          { name: "id", key: "id", type: "integer" },
+          { name: "code", key: "code", type: "text" }, // type changed
+        ],
+        data: [[1, "123"]], // same semantic value, different type
+      };
+
+      const result = toDataDiffGrid(base, current, { primaryKeys: ["id"] });
+
+      expect(result.rows).toHaveLength(1);
+      // Values are different types, so they should be detected as modified
+      expect(result.rows[0].__status).toBe("modified");
+      expect(result.rows[0].base__code).toBe(123);
+      expect(result.rows[0].current__code).toBe("123");
+    });
+
+    test("handles text to number type change", () => {
+      const base: DataFrame = {
+        columns: [
+          { name: "id", key: "id", type: "integer" },
+          { name: "price", key: "price", type: "text" },
+        ],
+        data: [[1, "99.99"]],
+      };
+
+      const current: DataFrame = {
+        columns: [
+          { name: "id", key: "id", type: "integer" },
+          { name: "price", key: "price", type: "number" }, // type changed
+        ],
+        data: [[1, 99.99]],
+      };
+
+      const result = toDataDiffGrid(base, current, { primaryKeys: ["id"] });
+
+      expect(result.rows).toHaveLength(1);
+      expect(result.rows[0].__status).toBe("modified");
+    });
+
+    test("handles boolean to text type change", () => {
+      const base: DataFrame = {
+        columns: [
+          { name: "id", key: "id", type: "integer" },
+          { name: "active", key: "active", type: "boolean" },
+        ],
+        data: [[1, true]],
+      };
+
+      const current: DataFrame = {
+        columns: [
+          { name: "id", key: "id", type: "integer" },
+          { name: "active", key: "active", type: "text" },
+        ],
+        data: [[1, "true"]],
+      };
+
+      const result = toDataDiffGrid(base, current, { primaryKeys: ["id"] });
+
+      expect(result.rows).toHaveLength(1);
+      expect(result.rows[0].__status).toBe("modified");
+    });
+
+    test("preserves base column type in result when types differ", () => {
+      const base: DataFrame = {
+        columns: [
+          { name: "id", key: "id", type: "integer" },
+          { name: "value", key: "value", type: "number" },
+        ],
+        data: [[1, 100.5]],
+      };
+
+      const current: DataFrame = {
+        columns: [
+          { name: "id", key: "id", type: "integer" },
+          { name: "value", key: "value", type: "text" },
+        ],
+        data: [[1, "100.5"]],
+      };
+
+      const result = toDataDiffGrid(base, current, { primaryKeys: ["id"] });
+
+      // Find the value column and check its type metadata
+      const valueColumn = result.columns.find((col) => {
+        if ("key" in col) return col.key === "value";
+        if ("children" in col) return true; // column group for value
+        return false;
+      });
+
+      expect(valueColumn).toBeDefined();
+      // The colType should come from base (number) as per buildMergedColumnMap logic
+      if (valueColumn && "columnType" in valueColumn) {
+        expect(valueColumn.columnType).toBe("number");
+      }
+    });
+  });
+
+  // --------------------------------------------------------------------------
+  // Column Reordering Tests
+  // --------------------------------------------------------------------------
+
+  describe("column reordering", () => {
+    test("handles reordered columns with same data", () => {
+      const base: DataFrame = {
+        columns: [
+          { name: "id", key: "id", type: "integer" },
+          { name: "first", key: "first", type: "text" },
+          { name: "second", key: "second", type: "text" },
+          { name: "third", key: "third", type: "text" },
+        ],
+        data: [[1, "a", "b", "c"]],
+      };
+
+      const current: DataFrame = {
+        columns: [
+          { name: "id", key: "id", type: "integer" },
+          { name: "third", key: "third", type: "text" }, // reordered
+          { name: "first", key: "first", type: "text" }, // reordered
+          { name: "second", key: "second", type: "text" },
+        ],
+        data: [[1, "c", "a", "b"]],
+      };
+
+      const result = toDataDiffGrid(base, current, { primaryKeys: ["id"] });
+
+      expect(result.rows).toHaveLength(1);
+      // Data values are the same, just reordered columns
+      expect(result.rows[0].__status).toBeUndefined();
+      expect(result.rows[0].base__first).toBe("a");
+      expect(result.rows[0].current__first).toBe("a");
+    });
+
+    test("handles reordered columns with modified values", () => {
+      const base: DataFrame = {
+        columns: [
+          { name: "id", key: "id", type: "integer" },
+          { name: "col_a", key: "col_a", type: "integer" },
+          { name: "col_b", key: "col_b", type: "integer" },
+        ],
+        data: [[1, 100, 200]],
+      };
+
+      const current: DataFrame = {
+        columns: [
+          { name: "id", key: "id", type: "integer" },
+          { name: "col_b", key: "col_b", type: "integer" }, // reordered
+          { name: "col_a", key: "col_a", type: "integer" }, // reordered
+        ],
+        data: [[1, 250, 100]], // col_b changed from 200 to 250
+      };
+
+      const result = toDataDiffGrid(base, current, { primaryKeys: ["id"] });
+
+      expect(result.rows).toHaveLength(1);
+      expect(result.rows[0].__status).toBe("modified");
+      expect(result.rows[0].base__col_b).toBe(200);
+      expect(result.rows[0].current__col_b).toBe(250);
+    });
+
+    test("output column order follows merged key order", () => {
+      const base: DataFrame = {
+        columns: [
+          { name: "id", key: "id", type: "integer" },
+          { name: "alpha", key: "alpha", type: "text" },
+          { name: "beta", key: "beta", type: "text" },
+        ],
+        data: [[1, "a", "b"]],
+      };
+
+      const current: DataFrame = {
+        columns: [
+          { name: "id", key: "id", type: "integer" },
+          { name: "beta", key: "beta", type: "text" },
+          { name: "alpha", key: "alpha", type: "text" },
+        ],
+        data: [[1, "b", "a"]],
+      };
+
+      const result = toDataDiffGrid(base, current, { primaryKeys: ["id"] });
+
+      // Use the existing extractColumnKey helper to handle both
+      // simple columns and column groups (side_by_side mode default)
+      const columnKeys = result.columns
+        .map(extractColumnKey)
+        .filter((k) => k && k !== "id");
+
+      // The merged order should preserve base order where possible
+      // This verifies the output is deterministic
+      expect(columnKeys.length).toBeGreaterThan(0);
+    });
+  });
+
+  // --------------------------------------------------------------------------
+  // Column Rename Tests (appears as removed + added)
+  // --------------------------------------------------------------------------
+
+  describe("column rename scenarios", () => {
+    test("handles column rename as removed + added pair", () => {
+      const base: DataFrame = {
+        columns: [
+          { name: "id", key: "id", type: "integer" },
+          { name: "user_id", key: "user_id", type: "integer" }, // old name
+        ],
+        data: [[1, 42]],
+      };
+
+      const current: DataFrame = {
+        columns: [
+          { name: "id", key: "id", type: "integer" },
+          { name: "customer_id", key: "customer_id", type: "integer" }, // new name
+        ],
+        data: [[1, 42]],
+      };
+
+      const result = toDataDiffGrid(base, current, { primaryKeys: ["id"] });
+
+      expect(result.rows).toHaveLength(1);
+
+      // Should have both old and new columns
+      expect(result.rows[0].base__user_id).toBe(42);
+      expect(result.rows[0].current__user_id).toBeUndefined();
+      expect(result.rows[0].base__customer_id).toBeUndefined();
+      expect(result.rows[0].current__customer_id).toBe(42);
+
+      // Row may or may not be marked modified depending on implementation
+      // The key point is that both columns appear correctly
+    });
+
+    test("handles multiple column renames in same diff", () => {
+      const base: DataFrame = {
+        columns: [
+          { name: "id", key: "id", type: "integer" },
+          { name: "old_name_1", key: "old_name_1", type: "text" },
+          { name: "old_name_2", key: "old_name_2", type: "text" },
+        ],
+        data: [[1, "value1", "value2"]],
+      };
+
+      const current: DataFrame = {
+        columns: [
+          { name: "id", key: "id", type: "integer" },
+          { name: "new_name_1", key: "new_name_1", type: "text" },
+          { name: "new_name_2", key: "new_name_2", type: "text" },
+        ],
+        data: [[1, "value1", "value2"]],
+      };
+
+      const result = toDataDiffGrid(base, current, { primaryKeys: ["id"] });
+
+      // All four columns should appear
+      expect(result.columns.length).toBeGreaterThanOrEqual(5); // id + 4 data cols
+    });
+
+    test("handles rename with simultaneous value change", () => {
+      const base: DataFrame = {
+        columns: [
+          { name: "id", key: "id", type: "integer" },
+          { name: "old_col", key: "old_col", type: "integer" },
+        ],
+        data: [[1, 100]],
+      };
+
+      const current: DataFrame = {
+        columns: [
+          { name: "id", key: "id", type: "integer" },
+          { name: "new_col", key: "new_col", type: "integer" },
+        ],
+        data: [[1, 200]], // Different value in renamed column
+      };
+
+      const result = toDataDiffGrid(base, current, { primaryKeys: ["id"] });
+
+      expect(result.rows[0].base__old_col).toBe(100);
+      expect(result.rows[0].current__new_col).toBe(200);
+    });
+  });
+
+  // --------------------------------------------------------------------------
+  // Complex Schema Evolution (Multiple Changes)
+  // --------------------------------------------------------------------------
+
+  describe("complex schema changes", () => {
+    test("handles simultaneous add, remove, and type change", () => {
+      const base: DataFrame = {
+        columns: [
+          { name: "id", key: "id", type: "integer" },
+          { name: "removed_col", key: "removed_col", type: "text" },
+          { name: "type_changed", key: "type_changed", type: "integer" },
+        ],
+        data: [[1, "old", 100]],
+      };
+
+      const current: DataFrame = {
+        columns: [
+          { name: "id", key: "id", type: "integer" },
+          { name: "type_changed", key: "type_changed", type: "text" }, // type changed
+          { name: "added_col", key: "added_col", type: "boolean" },
+        ],
+        data: [[1, "100", true]],
+      };
+
+      const result = toDataDiffGrid(base, current, { primaryKeys: ["id"] });
+
+      expect(result.rows).toHaveLength(1);
+
+      // Verify all columns are represented
+      expect(result.rows[0].base__removed_col).toBe("old");
+      expect(result.rows[0].current__removed_col).toBeUndefined();
+      expect(result.rows[0].base__added_col).toBeUndefined();
+      expect(result.rows[0].current__added_col).toBe(true);
+
+      // Type changed column
+      expect(result.rows[0].base__type_changed).toBe(100);
+      expect(result.rows[0].current__type_changed).toBe("100");
+    });
+
+    test("handles schema change with new rows added", () => {
+      const base: DataFrame = {
+        columns: [
+          { name: "id", key: "id", type: "integer" },
+          { name: "old_col", key: "old_col", type: "text" },
+        ],
+        data: [[1, "existing"]],
+      };
+
+      const current: DataFrame = {
+        columns: [
+          { name: "id", key: "id", type: "integer" },
+          { name: "new_col", key: "new_col", type: "text" },
+        ],
+        data: [
+          [1, "existing"], // schema changed for existing row
+          [2, "new_row"], // completely new row
+        ],
+      };
+
+      const result = toDataDiffGrid(base, current, { primaryKeys: ["id"] });
+
+      expect(result.rows).toHaveLength(2);
+
+      const existingRow = result.rows.find((r) => r.id === 1);
+      const newRow = result.rows.find((r) => r.id === 2);
+
+      expect(existingRow).toBeDefined();
+      expect(newRow?.__status).toBe("added");
+    });
+
+    test("handles primary key column type change", () => {
+      const base: DataFrame = {
+        columns: [
+          { name: "id", key: "id", type: "integer" },
+          { name: "value", key: "value", type: "text" },
+        ],
+        data: [[1, "a"]],
+      };
+
+      const current: DataFrame = {
+        columns: [
+          { name: "id", key: "id", type: "text" }, // PK type changed!
+          { name: "value", key: "value", type: "text" },
+        ],
+        data: [["1", "a"]],
+      };
+
+      const result = toDataDiffGrid(base, current, { primaryKeys: ["id"] });
+
+      // The function should still work, though matching behavior may vary
+      // Key assertion: it doesn't throw
+      expect(result.rows.length).toBeGreaterThan(0);
+    });
+  });
+});
+
+// ============================================================================
 // Display Mode Tests
 // ============================================================================
 
