@@ -196,3 +196,86 @@ export interface EnvironmentConfigProps {
 export function trackEnvironmentConfig(props: EnvironmentConfigProps) {
   track("[Web] environment_config", props);
 }
+
+// Explore action types
+export const EXPLORE_ACTION = {
+  ROW_COUNT: "row_count",
+  ROW_COUNT_DIFF: "row_count_diff",
+  PROFILE: "profile",
+  PROFILE_DIFF: "profile_diff",
+  VALUE_DIFF: "value_diff",
+  SCHEMA_DIFF: "schema_diff",
+  LINEAGE_DIFF: "lineage_diff",
+  QUERY: "query",
+  HISTOGRAM_DIFF: "histogram_diff",
+  TOP_K_DIFF: "top_k_diff",
+} as const;
+
+// Explore action sources
+export const EXPLORE_SOURCE = {
+  LINEAGE_VIEW_TOP_BAR: "lineage_view_top_bar",
+  LINEAGE_VIEW_CONTEXT_MENU: "lineage_view_context_menu",
+  NODE_KEBAB_MENU: "node_kebab_menu",
+  NODE_SIDEBAR_SINGLE_ENV: "node_sidebar_single_env",
+  NODE_SIDEBAR_MULTI_ENV: "node_sidebar_multi_env",
+  SCHEMA_ROW_COUNT_BUTTON: "schema_row_count_button",
+  SCHEMA_COLUMN_MENU: "schema_column_menu",
+} as const;
+
+export type ExploreActionType =
+  (typeof EXPLORE_ACTION)[keyof typeof EXPLORE_ACTION];
+export type ExploreSourceType =
+  (typeof EXPLORE_SOURCE)[keyof typeof EXPLORE_SOURCE];
+
+interface ExploreActionProps {
+  action: ExploreActionType;
+  source: ExploreSourceType;
+  node_count?: number;
+}
+
+export function trackExploreAction(props: ExploreActionProps) {
+  track("[Web] explore_action", props);
+}
+
+// Explore action form events
+export const EXPLORE_FORM_EVENT = {
+  EXECUTE: "execute",
+  CANCEL: "cancel",
+} as const;
+
+export type ExploreFormEventType =
+  (typeof EXPLORE_FORM_EVENT)[keyof typeof EXPLORE_FORM_EVENT];
+
+interface ExploreActionFormProps {
+  action: ExploreActionType;
+  event: ExploreFormEventType;
+}
+
+export function trackExploreActionForm(props: ExploreActionFormProps) {
+  track("[Web] explore_action_form", props);
+}
+
+// Helper to check if a run type is an explore action
+export function isExploreAction(type: string): type is ExploreActionType {
+  return Object.values(EXPLORE_ACTION).includes(type as ExploreActionType);
+}
+
+// Lineage selection action types
+export const LINEAGE_SELECTION_ACTION = {
+  SELECT_PARENT_NODES: "select_parent_nodes",
+  SELECT_CHILD_NODES: "select_child_nodes",
+  SELECT_ALL_UPSTREAM: "select_all_upstream",
+  SELECT_ALL_DOWNSTREAM: "select_all_downstream",
+} as const;
+
+export type LineageSelectionActionType =
+  (typeof LINEAGE_SELECTION_ACTION)[keyof typeof LINEAGE_SELECTION_ACTION];
+
+interface LineageSelectionProps {
+  action: LineageSelectionActionType;
+  node_count?: number;
+}
+
+export function trackLineageSelection(props: LineageSelectionProps) {
+  track("[Web] lineage_selection", props);
+}

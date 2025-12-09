@@ -11,6 +11,11 @@ import {
 import { VscKebabVertical } from "react-icons/vsc";
 import { Tooltip } from "@/components/ui/tooltip";
 import { NodeData } from "@/lib/api/info";
+import {
+  EXPLORE_ACTION,
+  EXPLORE_SOURCE,
+  trackExploreAction,
+} from "@/lib/api/track";
 import { useRecceActionContext } from "@/lib/hooks/RecceActionContext";
 import { useRecceInstanceContext } from "@/lib/hooks/RecceInstanceContext";
 import { supportsHistogramDiff } from "../histogram/HistogramDiffForm";
@@ -35,6 +40,11 @@ export function ColumnNameCell({
   const columnType = currentType ?? baseType;
 
   const handleProfileDiff = () => {
+    trackExploreAction({
+      action: EXPLORE_ACTION.PROFILE_DIFF,
+      source: EXPLORE_SOURCE.SCHEMA_COLUMN_MENU,
+      node_count: 1,
+    });
     runAction(
       "profile_diff",
       { model: model.name, columns: [name] },
@@ -43,6 +53,11 @@ export function ColumnNameCell({
   };
 
   const handleHistogramDiff = () => {
+    trackExploreAction({
+      action: EXPLORE_ACTION.HISTOGRAM_DIFF,
+      source: EXPLORE_SOURCE.SCHEMA_COLUMN_MENU,
+      node_count: 1,
+    });
     runAction(
       "histogram_diff",
       { model: model.name, column_name: name, column_type: columnType },
@@ -51,6 +66,11 @@ export function ColumnNameCell({
   };
 
   const handleTopkDiff = () => {
+    trackExploreAction({
+      action: EXPLORE_ACTION.TOP_K_DIFF,
+      source: EXPLORE_SOURCE.SCHEMA_COLUMN_MENU,
+      node_count: 1,
+    });
     runAction(
       "top_k_diff",
       { model: model.name, column_name: name, k: 50 },
@@ -59,6 +79,11 @@ export function ColumnNameCell({
   };
 
   const handleValueDiff = () => {
+    trackExploreAction({
+      action: EXPLORE_ACTION.VALUE_DIFF,
+      source: EXPLORE_SOURCE.SCHEMA_COLUMN_MENU,
+      node_count: 1,
+    });
     runAction(
       "value_diff",
       { model: model.name, columns: [name] },

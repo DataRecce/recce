@@ -10,9 +10,14 @@ import {
   Popover,
   Portal,
 } from "@chakra-ui/react";
-import { ComponentType, useState } from "react";
+import { ComponentType, useRef, useState } from "react";
 import { IconInfo } from "@/components/icons";
 import { RunFormParamTypes, RunType } from "@/components/run/registry";
+import {
+  EXPLORE_FORM_EVENT,
+  isExploreAction,
+  trackExploreActionForm,
+} from "@/lib/api/track";
 import { Run } from "@/lib/api/types";
 import { RunFormProps } from "./types";
 
@@ -53,11 +58,23 @@ export const RunModal = ({
   const [hovered, setHovered] = useState(false);
   const [isReadyToExecute, setIsReadyToExecute] = useState(false);
   const documentationUrl = getDocumentationUrl(type);
+  const executeClicked = useRef(false);
+
+  const handleClose = () => {
+    if (!executeClicked.current && isExploreAction(type)) {
+      trackExploreActionForm({
+        action: type,
+        event: EXPLORE_FORM_EVENT.CANCEL,
+      });
+    }
+    executeClicked.current = false; // Reset for next open
+    onClose();
+  };
 
   return (
     <Dialog.Root
       open={isOpen}
-      onOpenChange={onClose}
+      onOpenChange={handleClose}
       size="xl"
       scrollBehavior="inside"
     >
@@ -143,6 +160,13 @@ export const RunModal = ({
                   disabled={!isReadyToExecute}
                   colorPalette="blue"
                   onClick={() => {
+                    executeClicked.current = true;
+                    if (isExploreAction(type)) {
+                      trackExploreActionForm({
+                        action: type,
+                        event: EXPLORE_FORM_EVENT.EXECUTE,
+                      });
+                    }
                     onExecute(type, params as RunFormParamTypes);
                   }}
                 >

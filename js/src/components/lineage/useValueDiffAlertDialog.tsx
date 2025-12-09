@@ -8,6 +8,11 @@ import {
   useDisclosure,
 } from "@chakra-ui/react";
 import React, { useCallback, useRef, useState } from "react";
+import {
+  EXPLORE_ACTION,
+  EXPLORE_FORM_EVENT,
+  trackExploreActionForm,
+} from "@/lib/api/track";
 
 function useValueDiffAlertDialog() {
   const { open, onOpen, onClose } = useDisclosure();
@@ -28,11 +33,19 @@ function useValueDiffAlertDialog() {
   );
 
   const handleConfirm = () => {
+    trackExploreActionForm({
+      action: EXPLORE_ACTION.VALUE_DIFF,
+      event: EXPLORE_FORM_EVENT.EXECUTE,
+    });
     resolvePromise?.(true);
     onClose();
   };
 
   const handleCancel = () => {
+    trackExploreActionForm({
+      action: EXPLORE_ACTION.VALUE_DIFF,
+      event: EXPLORE_FORM_EVENT.CANCEL,
+    });
     resolvePromise?.(false);
     onClose();
   };
