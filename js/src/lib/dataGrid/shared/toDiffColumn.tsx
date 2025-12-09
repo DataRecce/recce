@@ -8,7 +8,7 @@
 
 import _ from "lodash";
 import React from "react";
-import { ColumnOrColumnGroup, textEditor } from "react-data-grid";
+import { ColumnOrColumnGroup, renderTextEditor } from "react-data-grid";
 import {
   DataFrameColumnGroupHeader,
   DataFrameColumnGroupHeaderProps,
@@ -205,7 +205,7 @@ export function toDiffColumn(config: DiffColumnConfig): DiffColumnResult {
       {
         key: `base__${name}`,
         name: baseTitle,
-        renderEditCell: textEditor,
+        renderEditCell: renderTextEditor,
         headerCellClass,
         cellClass: cellClassBase,
         renderCell: defaultRenderCell,
@@ -216,7 +216,7 @@ export function toDiffColumn(config: DiffColumnConfig): DiffColumnResult {
       {
         key: `current__${name}`,
         name: currentTitle,
-        renderEditCell: textEditor,
+        renderEditCell: renderTextEditor,
         headerCellClass,
         cellClass: cellClassCurrent,
         renderCell: defaultRenderCell,

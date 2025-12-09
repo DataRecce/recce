@@ -19,7 +19,7 @@
 
 // Mock react-data-grid since tests don't need actual rendering
 jest.mock("react-data-grid", () => ({
-  textEditor: jest.fn(),
+  renderTextEditor: jest.fn(),
   CalculatedColumn: {},
   ColumnOrColumnGroup: {},
   RenderCellProps: {},

@@ -20,7 +20,7 @@
 
 // Mock react-data-grid to avoid ES module parsing issues
 jest.mock("react-data-grid", () => ({
-  textEditor: jest.fn(),
+  renderTextEditor: jest.fn(),
 }));
 
 // Mock Chakra UI components

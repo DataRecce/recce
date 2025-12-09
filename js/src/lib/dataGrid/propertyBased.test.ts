@@ -42,7 +42,7 @@ type ExtendedColumn = ColumnOrColumnGroup<RowObjectType> & {
 // ============================================================================
 
 jest.mock("react-data-grid", () => ({
-  textEditor: jest.fn(),
+  renderTextEditor: jest.fn(),
 }));
 
 jest.mock("@chakra-ui/react", () => ({
