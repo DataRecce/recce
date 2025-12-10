@@ -9,7 +9,7 @@
 import _ from "lodash";
 import { DataFrame, RowObjectType } from "@/lib/api/types";
 import { mergeKeysWithStatus } from "@/lib/mergeKeys";
-import { includesIgnoreCase, keyToNumber } from "@/utils/transforms";
+import { keyToNumber } from "@/utils/transforms";
 import { ColumnMapEntry, MergeColumnMapEntry, RowStats } from "./gridUtils";
 
 // ============================================================================
@@ -72,13 +72,6 @@ export interface BuildDiffRowsConfig {
   primaryKeys: string[];
 
   /**
-   * Whether to use case-insensitive matching for column names and primary keys
-   * - false (default): querydiff behavior (exact matching)
-   * - true: valuediff behavior (case-insensitive)
-   */
-  caseInsensitive?: boolean;
-
-  /**
    * Whether to filter out unchanged rows
    * When true, only rows with status "added", "removed", or "modified" are returned
    */
@@ -101,16 +94,10 @@ export interface BuildDiffRowsResult {
 // ============================================================================
 
 /**
- * Checks if a column name is a primary key
+ * Checks if a column name is a primary key (exact matching)
  */
-function isPrimaryKey(
-  columnName: string,
-  primaryKeys: string[],
-  caseInsensitive: boolean,
-): boolean {
-  return caseInsensitive
-    ? includesIgnoreCase(primaryKeys, columnName)
-    : primaryKeys.includes(columnName);
+function isPrimaryKey(columnName: string, primaryKeys: string[]): boolean {
+  return primaryKeys.includes(columnName);
 }
 
 /**
@@ -142,7 +129,6 @@ function getComparisonKeys(entry: DiffColumnMapEntry): {
  * @param columns - Column definitions to iterate
  * @param prefix - Prefix to add to column keys (e.g., "base__" or "current__")
  * @param primaryKeys - Primary key column names (stored without prefix)
- * @param caseInsensitive - Whether to use case-insensitive matching
  */
 function populateRowValues(
   targetRow: RowObjectType,
@@ -150,11 +136,10 @@ function populateRowValues(
   columns: DataFrame["columns"],
   prefix: string,
   primaryKeys: string[],
-  caseInsensitive: boolean,
 ): void {
   columns.forEach((col) => {
     const colKey = col.key;
-    const isPK = isPrimaryKey(colKey, primaryKeys, caseInsensitive);
+    const isPK = isPrimaryKey(colKey, primaryKeys);
 
     if (isPK) {
       // Primary keys stored directly (not prefixed)
@@ -177,7 +162,6 @@ function detectModifications(
   currentRow: RowObjectType,
   columnMap: Record<string, DiffColumnMapEntry>,
   primaryKeys: string[],
-  caseInsensitive: boolean,
 ): boolean {
   let isModified = false;
 
@@ -186,7 +170,7 @@ function detectModifications(
     if (name === "index") continue;
 
     // Skip primary key columns
-    if (isPrimaryKey(name, primaryKeys, caseInsensitive)) continue;
+    if (isPrimaryKey(name, primaryKeys)) continue;
 
     const { baseKey, currentKey } = getComparisonKeys(column);
 
@@ -235,7 +219,6 @@ function detectModifications(
  *   currentColumns: current.columns,
  *   columnMap: mergedColumnMap,
  *   primaryKeys: ["id"],
- *   caseInsensitive: false,
  *   changedOnly: false,
  * });
  *
@@ -247,7 +230,6 @@ function detectModifications(
  *   currentColumns: df.columns, // Same columns for both
  *   columnMap: joinedColumnMap,
  *   primaryKeys: ["id"],
- *   caseInsensitive: true,
  *   changedOnly: true,
  * });
  * ```
@@ -262,7 +244,6 @@ export function buildDiffRows(
     currentColumns,
     columnMap,
     primaryKeys,
-    caseInsensitive = false,
     changedOnly = false,
   } = config;
 
@@ -291,14 +272,7 @@ export function buildDiffRows(
 
     // Populate base values
     if (baseRow) {
-      populateRowValues(
-        row,
-        baseRow,
-        baseColumns,
-        "base__",
-        primaryKeys,
-        caseInsensitive,
-      );
+      populateRowValues(row, baseRow, baseColumns, "base__", primaryKeys);
     }
 
     // Populate current values
@@ -309,7 +283,6 @@ export function buildDiffRows(
         currentColumns,
         "current__",
         primaryKeys,
-        caseInsensitive,
       );
     }
 
@@ -327,7 +300,6 @@ export function buildDiffRows(
         currentRow,
         columnMap,
         primaryKeys,
-        caseInsensitive,
       );
 
       if (isModified) {

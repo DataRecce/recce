@@ -100,7 +100,6 @@ export function toDataDiffGrid(
     currentColumns: current.columns,
     columnMap,
     primaryKeys,
-    caseInsensitive: false, // querydiff uses exact matching
     changedOnly,
   });
 

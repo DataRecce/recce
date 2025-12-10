@@ -489,42 +489,8 @@ describe("buildDiffRows", () => {
   // Case-Insensitive Matching Tests
   // ============================================================================
 
-  describe("case-insensitive matching", () => {
-    test("matches primary keys case-insensitively when enabled", () => {
-      const columnsWithCase: DataFrame["columns"] = [
-        { name: "ID", key: "ID", type: "integer" },
-        { name: "Name", key: "Name", type: "text" },
-      ];
-
-      const baseMap: Record<string, RowObjectType | undefined> = {
-        "1": createRow({ ID: 1, Name: "Alice" }, undefined, 1),
-      };
-      const currentMap: Record<string, RowObjectType | undefined> = {
-        "1": createRow({ ID: 1, Name: "Bob" }, undefined, 1),
-      };
-
-      const columnMap: Record<string, DiffColumnMapEntry> = {
-        ID: createColumnMapEntry("ID", "integer"),
-        Name: createColumnMapEntry("Name", "text"),
-      };
-
-      const result = buildDiffRows({
-        baseMap,
-        currentMap,
-        baseColumns: columnsWithCase,
-        currentColumns: columnsWithCase,
-        columnMap,
-        primaryKeys: ["id"], // lowercase
-        caseInsensitive: true,
-      });
-
-      expect(result.rows).toHaveLength(1);
-      // PK should be stored with lowercase key
-      expect(result.rows[0].id).toBe(1);
-      expect(result.rows[0].__status).toBe("modified");
-    });
-
-    test("uses exact matching when caseInsensitive is false", () => {
+  describe("case matching", () => {
+    test("uses exact matching", () => {
       const baseMap: Record<string, RowObjectType | undefined> = {
         "1": createRow({ id: 1, name: "Alice" }, undefined, 1),
       };
@@ -544,7 +510,6 @@ describe("buildDiffRows", () => {
         currentColumns: standardColumns.slice(0, 2),
         columnMap,
         primaryKeys: ["id"],
-        caseInsensitive: false,
       });
 
       expect(result.rows[0].id).toBe(1);
