@@ -11,7 +11,7 @@
 
 import { ColumnRenderMode, ColumnType, RowObjectType } from "@/lib/api/types";
 import { ValueDiffParams, ValueDiffResult } from "@/lib/api/valuediff";
-import { toValueDataGrid } from "@/lib/dataGrid";
+import { toValueDataGrid } from "./toValueDataGrid";
 
 // ============================================================================
 // Mocks

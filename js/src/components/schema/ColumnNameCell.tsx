@@ -9,6 +9,7 @@ import {
   Spinner,
 } from "@chakra-ui/react";
 import { VscKebabVertical } from "react-icons/vsc";
+import { SchemaDiffRow } from "src/components/schema/schema";
 import { Tooltip } from "@/components/ui/tooltip";
 import { NodeData } from "@/lib/api/info";
 import {
@@ -20,7 +21,6 @@ import { useRecceActionContext } from "@/lib/hooks/RecceActionContext";
 import { useRecceInstanceContext } from "@/lib/hooks/RecceInstanceContext";
 import { supportsHistogramDiff } from "../histogram/HistogramDiffForm";
 import { useLineageViewContext } from "../lineage/LineageViewContext";
-import { SchemaDiffRow } from "./schema";
 
 export function ColumnNameCell({
   model,
