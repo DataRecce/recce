@@ -10,6 +10,8 @@ import { ColumnOrColumnGroup } from "react-data-grid";
 import {
   createColumnNameRenderer,
   createSingleEnvColumnNameRenderer,
+  renderIndexCell,
+  renderTypeCell,
 } from "@/components/ui/dataGrid/schemaCells";
 import { NodeColumnData, NodeData } from "@/lib/api/info";
 import { RowObjectType } from "@/lib/api/types";
@@ -118,23 +120,13 @@ function getColumnNameCellClass(): string {
   return "schema-column";
 }
 
-function getColumnTypeCellClass(row: SchemaDiffRow): string {
-  if (
-    row.baseIndex !== undefined &&
-    row.currentIndex !== undefined &&
-    row.baseType !== row.currentType
-  ) {
-    return "column-body-type-changed schema-column";
-  }
-  return "schema-column";
-}
-
 // ============================================================================
 // Main Generator Functions
 // ============================================================================
 
 /**
  * Generates grid configuration for schema diff view
+ * Uses merged columns: Index (merged base/current), Name, Type (merged with badges)
  */
 export function toSchemaDataGrid(
   schemaDiff: SchemaDiff,
@@ -144,19 +136,12 @@ export function toSchemaDataGrid(
 
   const columns: ColumnOrColumnGroup<SchemaDiffRow>[] = [
     {
-      key: "baseIndex",
+      key: "index",
       name: "",
       resizable: true,
       minWidth: 35,
       width: 35,
-      cellClass: getColumnIndexCellClass,
-    },
-    {
-      key: "currentIndex",
-      name: "",
-      resizable: true,
-      minWidth: 35,
-      width: 35,
+      renderCell: renderIndexCell,
       cellClass: getColumnIndexCellClass,
     },
     {
@@ -169,16 +154,11 @@ export function toSchemaDataGrid(
       cellClass: getColumnNameCellClass,
     },
     {
-      key: "baseType",
-      name: "Base Type",
+      key: "type",
+      name: "Type",
       resizable: true,
-      cellClass: getColumnTypeCellClass,
-    },
-    {
-      key: "currentType",
-      name: "Current Type",
-      resizable: true,
-      cellClass: getColumnTypeCellClass,
+      renderCell: renderTypeCell,
+      cellClass: getColumnNameCellClass,
     },
   ];
 

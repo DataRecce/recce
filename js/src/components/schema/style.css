@@ -55,17 +55,22 @@
 
 /* for reorder-index and type-change column */
 
-.column-body-type-changed {
+/* Type change badges for merged type column */
+.type-badge {
+  display: inline-block;
+  padding: 2px 6px;
+  border-radius: 4px;
+  font-size: 0.75rem;
+  line-height: 1.2;
+}
+
+.type-badge-removed {
   background-color: rgb(255, 215, 213);
+  margin-right: 4px;
 }
 
-.row-normal:hover .column-body-type-changed,
-.row-normal[aria-selected="true"] .column-body-type-changed {
-  background-color: rgb(246 195 193);
-}
-
-.row-normal[aria-selected="true"]:hover .column-body-type-changed {
-  background-color: rgb(242 170 166);
+.type-badge-added {
+  background-color: rgb(204, 255, 216);
 }
 
 .column-index-reordered {
