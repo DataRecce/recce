@@ -859,30 +859,6 @@ describe("createDataGrid - unsupported run types", () => {
     expect(result).toBeNull();
   });
 
-  test("returns null for row_count run type", () => {
-    const run = createBaseRun("row_count", {
-      // @ts-expect-error Testing invalid data
-      result: { base: 100, current: 100 },
-      params: { model: "test" },
-    }) as Run;
-
-    const result = createDataGrid(run);
-
-    expect(result).toBeNull();
-  });
-
-  test("returns null for row_count_diff run type", () => {
-    const run = createBaseRun("row_count_diff", {
-      // @ts-expect-error Testing invalid data
-      result: { base: 100, current: 110 },
-      params: { model: "test" },
-    }) as Run;
-
-    const result = createDataGrid(run);
-
-    expect(result).toBeNull();
-  });
-
   test("returns null for lineage_diff run type", () => {
     const run = createBaseRun("lineage_diff", {
       result: {},
@@ -2064,6 +2040,100 @@ describe("createDataGrid - regression tests", () => {
 
       expect(result).toBeDefined();
       expect(result.rows.length).toBe(2);
+    });
+  });
+
+  // ============================================================================
+  // createDataGrid - Row Count Run Tests
+  // ============================================================================
+
+  describe("createDataGrid - row_count run", () => {
+    test("returns grid data for row_count run with result", () => {
+      const run = createBaseRun("row_count", {
+        result: {
+          orders: { curr: 100 },
+          customers: { curr: 50 },
+        },
+        params: { node_names: ["orders", "customers"] },
+      }) as Run;
+
+      const result = createDataGrid(run);
+
+      expect(result).not.toBeNull();
+      expect(result?.columns).toHaveLength(2);
+      expect(result?.rows).toHaveLength(2);
+    });
+
+    test("returns null for row_count run without result", () => {
+      const run = createBaseRun("row_count", {
+        result: undefined,
+        params: { node_names: ["orders"] },
+      }) as Run;
+
+      const result = createDataGrid(run);
+
+      expect(result).toBeNull();
+    });
+  });
+
+  // ============================================================================
+  // createDataGrid - Row Count Diff Run Tests
+  // ============================================================================
+
+  describe("createDataGrid - row_count_diff run", () => {
+    test("returns grid data for row_count_diff run with result", () => {
+      const run = createBaseRun("row_count_diff", {
+        result: {
+          orders: { base: 100, curr: 150 },
+          customers: { base: 50, curr: 50 },
+        },
+        params: { node_names: ["orders", "customers"] },
+      }) as Run;
+
+      const result = createDataGrid(run);
+
+      expect(result).not.toBeNull();
+      expect(result?.columns).toHaveLength(4);
+      expect(result?.rows).toHaveLength(2);
+    });
+
+    test("returns null for row_count_diff run without result", () => {
+      const run = createBaseRun("row_count_diff", {
+        result: undefined,
+        params: { node_names: ["orders"] },
+      }) as Run;
+
+      const result = createDataGrid(run);
+
+      expect(result).toBeNull();
+    });
+
+    test("handles added models (null base)", () => {
+      const run = createBaseRun("row_count_diff", {
+        result: {
+          new_model: { base: null, curr: 100 },
+        },
+        params: { node_names: ["new_model"] },
+      }) as Run;
+
+      const result = createDataGrid(run);
+
+      expect(result).not.toBeNull();
+      expect(result?.rows[0].__status).toBe("added");
+    });
+
+    test("handles removed models (null current)", () => {
+      const run = createBaseRun("row_count_diff", {
+        result: {
+          old_model: { base: 100, curr: null },
+        },
+        params: { node_names: ["old_model"] },
+      }) as Run;
+
+      const result = createDataGrid(run);
+
+      expect(result).not.toBeNull();
+      expect(result?.rows[0].__status).toBe("removed");
     });
   });
 });
