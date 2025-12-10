@@ -3,6 +3,7 @@ from typing import List, Optional, Tuple
 
 from pydantic import BaseModel
 
+from .utils import normalize_keys_to_columns
 from ..core import default_context
 from ..exceptions import RecceException
 from ..models import Check
@@ -159,9 +160,20 @@ class QueryDiffTask(Task, QueryMixin, ValueDiffMixin):
         current, current_more = self.execute_sql_with_limit(sql_template, base=False, limit=limit)
         self.check_cancel()
 
+        base_df = DataFrame.from_agate(base, limit=limit, more=base_more)
+        current_df = DataFrame.from_agate(current, limit=limit, more=current_more)
+
+        # Normalize primary_keys if present (for non-join diff, use current columns as reference)
+        if self.params.primary_keys:
+            column_keys = [col.key for col in current_df.columns]
+            self.params.primary_keys = normalize_keys_to_columns(
+                self.params.primary_keys,
+                column_keys
+            )
+
         return QueryDiffResult(
-            base=DataFrame.from_agate(base, limit=limit, more=base_more),
-            current=DataFrame.from_agate(current, limit=limit, more=current_more),
+            base=base_df,
+            current=current_df,
         )
 
     def _query_diff_join(
@@ -251,7 +263,13 @@ class QueryDiffTask(Task, QueryMixin, ValueDiffMixin):
         _, table = dbt_adapter.execute(sql, fetch=True)
         self.check_cancel()
 
-        return QueryDiffResult(diff=DataFrame.from_agate(table))
+        diff_df = DataFrame.from_agate(table)
+
+        # Normalize primary_keys to match actual column keys from warehouse
+        column_keys = [col.key for col in diff_df.columns]
+        self.params.primary_keys = normalize_keys_to_columns(primary_keys, column_keys)
+
+        return QueryDiffResult(diff=diff_df)
 
     @staticmethod
     def _select_single_model(model_name):
