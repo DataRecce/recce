@@ -41,6 +41,8 @@ export interface SchemaDataGridOptions {
   node?: NodeData;
   /** Map of column names to CLL loading state */
   cllRunningMap?: Map<string, boolean>;
+  /** Whether to show the column action menu (default: true) */
+  showMenu?: boolean;
 }
 
 export interface SchemaDataGridResult {
@@ -138,7 +140,7 @@ export function toSchemaDataGrid(
   schemaDiff: SchemaDiff,
   options: SchemaDataGridOptions = {},
 ): SchemaDataGridResult {
-  const { node, cllRunningMap } = options;
+  const { node, cllRunningMap, showMenu } = options;
 
   const columns: ColumnOrColumnGroup<SchemaDiffRow>[] = [
     {
@@ -162,7 +164,7 @@ export function toSchemaDataGrid(
       name: "Name",
       resizable: true,
       renderCell: node
-        ? createColumnNameRenderer(node, cllRunningMap)
+        ? createColumnNameRenderer(node, cllRunningMap, showMenu)
         : undefined,
       cellClass: getColumnNameCellClass,
     },
@@ -192,7 +194,7 @@ export function toSingleEnvDataGrid(
   nodeColumns: NodeData["columns"] = {},
   options: SchemaDataGridOptions = {},
 ): SingleEnvSchemaDataGridResult {
-  const { node, cllRunningMap } = options;
+  const { node, cllRunningMap, showMenu } = options;
 
   const nodeColumnList = Object.entries(nodeColumns).filter(
     ([_, column]) => column != null,
@@ -219,7 +221,7 @@ export function toSingleEnvDataGrid(
       name: "Name",
       resizable: true,
       renderCell: node
-        ? createSingleEnvColumnNameRenderer(node, cllRunningMap)
+        ? createSingleEnvColumnNameRenderer(node, cllRunningMap, showMenu)
         : undefined,
       cellClass: "schema-column",
     },

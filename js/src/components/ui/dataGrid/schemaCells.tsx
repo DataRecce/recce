@@ -22,12 +22,14 @@ import type {
 export function createColumnNameRenderer(
   node: NodeData,
   cllRunningMap?: Map<string, boolean>,
+  showMenu?: boolean,
 ): (props: RenderCellProps<SchemaDiffRow>) => React.ReactNode {
   return ({ row }) => (
     <ColumnNameCell
       model={node}
       row={row}
       cllRunning={cllRunningMap?.get(row.name) ?? false}
+      showMenu={showMenu}
     />
   );
 }
@@ -38,6 +40,7 @@ export function createColumnNameRenderer(
 export function createSingleEnvColumnNameRenderer(
   node: NodeData,
   cllRunningMap?: Map<string, boolean>,
+  showMenu?: boolean,
 ): (props: RenderCellProps<SchemaRow>) => React.ReactNode {
   return ({ row }) => (
     <ColumnNameCell
@@ -45,6 +48,7 @@ export function createSingleEnvColumnNameRenderer(
       row={row}
       cllRunning={cllRunningMap?.get(row.name) ?? false}
       singleEnv
+      showMenu={showMenu}
     />
   );
 }

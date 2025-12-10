@@ -27,11 +27,13 @@ export function ColumnNameCell({
   row,
   singleEnv,
   cllRunning,
+  showMenu = true,
 }: {
   model: NodeData;
   row: SchemaDiffRow;
   singleEnv?: boolean;
   cllRunning?: boolean;
+  showMenu?: boolean;
 }) {
   const lineageViewContext = useLineageViewContext();
   const { runAction } = useRecceActionContext();
@@ -109,7 +111,7 @@ export function ColumnNameCell({
         </Box>
         <Spacer />
         {cllRunning && <Spinner size="xs" color="gray.400" />}
-        {!singleEnv && model.resource_type !== "source" && (
+        {showMenu && !singleEnv && model.resource_type !== "source" && (
           <Menu.Root>
             <Menu.Trigger asChild>
               <IconButton
