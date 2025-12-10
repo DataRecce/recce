@@ -18,7 +18,7 @@ class RunDAO:
     def find_run_by_id(self, run_id):
         for run in self._runs:
             if str(run_id) == str(run.run_id):
-                if run.params and "primary_keys" in run.params:
+                if run.params and run.params.get("primary_keys"):
                     run.params["primary_keys"] = [key.replace('"', "") for key in run.params["primary_keys"]]
 
                 return run
