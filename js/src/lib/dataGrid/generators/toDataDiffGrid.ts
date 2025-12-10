@@ -74,27 +74,18 @@ export function toDataDiffGrid(
     });
   } else {
     // REFACTORED: Use shared utility
-    const basePKKeys = validatePrimaryKeys(base.columns, primaryKeys, false);
+    const basePKKeys = validatePrimaryKeys(base.columns, primaryKeys);
     baseData.forEach((row) => {
-      const key = getPrimaryKeyValue(base.columns, basePKKeys, row, false);
+      const key = getPrimaryKeyValue(base.columns, basePKKeys, row);
       if (key in baseMap) {
         invalidPKeyBase = true;
       }
       baseMap[key] = row;
     });
 
-    const currentPKKeys = validatePrimaryKeys(
-      current.columns,
-      primaryKeys,
-      false,
-    );
+    const currentPKKeys = validatePrimaryKeys(current.columns, primaryKeys);
     currentData.forEach((row) => {
-      const key = getPrimaryKeyValue(
-        current.columns,
-        currentPKKeys,
-        row,
-        false,
-      );
+      const key = getPrimaryKeyValue(current.columns, currentPKKeys, row);
       if (key in currentMap) {
         invalidPKeyCurrent = true;
       }
