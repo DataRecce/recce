@@ -2,8 +2,6 @@ import { NodeData } from "@/lib/api/info";
 // import { mergeColumns } from "./schema";
 import { mergeKeysWithStatus } from "@/lib/mergeKeys";
 
-//
-
 // TODO mergeColumns import is throwing an error, fake fow now
 interface SchemaDiffRow {
   name: string;

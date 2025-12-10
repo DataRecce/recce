@@ -1,12 +1,10 @@
 import { forwardRef, Key, Ref, useMemo, useState } from "react";
-
+import { SchemaDiffRow, SchemaRow } from "src/components/schema/schema";
 import {
   mergeColumns,
-  SchemaDiffRow,
-  SchemaRow,
   toSchemaDataGrid,
   toSingleEnvDataGrid,
-} from "./schema";
+} from "@/lib/dataGrid/generators/toSchemaDataGrid";
 import "react-data-grid/lib/styles.css";
 import { Alert, Flex } from "@chakra-ui/react";
 import { CellMouseArgs, DataGridHandle } from "react-data-grid";
@@ -34,7 +32,10 @@ function PrivateSingleEnvSchemaView(
     new Map(),
   );
   const { columns, rows } = useMemo(() => {
-    return toSingleEnvDataGrid(current?.columns, current, cllRunningMap);
+    return toSingleEnvDataGrid(current?.columns, {
+      node: current,
+      cllRunningMap,
+    });
   }, [current, cllRunningMap]);
 
   const { lineageGraph } = useLineageGraphContext();
@@ -139,7 +140,10 @@ export function PrivateSchemaView(
       resourceType &&
       ["model", "seed", "snapshot", "source"].includes(resourceType)
     ) {
-      return toSchemaDataGrid(schemaDiff, current ?? base, cllRunningMap);
+      return toSchemaDataGrid(schemaDiff, {
+        node: current ?? base,
+        cllRunningMap,
+      });
     } else {
       return toSchemaDataGrid(schemaDiff);
     }
