@@ -1,7 +1,7 @@
 import { Center, Flex } from "@chakra-ui/react";
 import { forwardRef, Ref, useMemo } from "react";
 import { DataGridHandle } from "react-data-grid";
-import { isRowCountDiffRun, isRowCountRun } from "@/lib/api/types";
+import { isRowCountDiffRun, isRowCountRun, Run } from "@/lib/api/types";
 import { createDataGrid } from "@/lib/dataGrid/dataGridFactory";
 import {
   EmptyRowsRenderer,
@@ -10,17 +10,21 @@ import {
 import { RunResultViewProps } from "../run/types";
 
 // ============================================================================
-// RowCountDiffResultView
+// Shared Component
 // ============================================================================
 
-type RowCountDiffResultViewProp = RunResultViewProps;
+interface RowCountGridViewProps {
+  run: Run;
+  typeGuard: (run: Run) => boolean;
+  expectedType: string;
+}
 
-function _RowCountDiffResultView(
-  { run }: RowCountDiffResultViewProp,
+function _RowCountGridView(
+  { run, typeGuard, expectedType }: RowCountGridViewProps,
   ref: Ref<DataGridHandle>,
 ) {
-  if (!isRowCountDiffRun(run)) {
-    throw new Error("Run type must be row_count_diff");
+  if (!typeGuard(run)) {
+    throw new Error(`Run type must be ${expectedType}`);
   }
 
   const gridData = useMemo(() => {
@@ -43,7 +47,7 @@ function _RowCountDiffResultView(
           blockSize: "auto",
           maxHeight: "100%",
           overflow: "auto",
-          fontSize: "10pt",
+          fontSize: "0.875rem",
           borderWidth: 1,
         }}
         columns={gridData.columns}
@@ -55,49 +59,37 @@ function _RowCountDiffResultView(
   );
 }
 
+const RowCountGridView = forwardRef(_RowCountGridView);
+
 // ============================================================================
-// RowCountResultView
+// Exported Components
 // ============================================================================
 
-type RowCountResultViewProp = RunResultViewProps;
-
-function _RowCountResultView(
-  { run }: RowCountResultViewProp,
+function _RowCountDiffResultView(
+  { run }: RunResultViewProps,
   ref: Ref<DataGridHandle>,
 ) {
-  if (!isRowCountRun(run)) {
-    throw new Error("Run type must be row_count");
-  }
-
-  const gridData = useMemo(() => {
-    return createDataGrid(run) ?? { columns: [], rows: [] };
-  }, [run]);
-
-  if (gridData.rows.length === 0) {
-    return (
-      <Center bg="rgb(249,249,249)" height="100%">
-        No nodes matched
-      </Center>
-    );
-  }
-
   return (
-    <Flex direction="column">
-      <ScreenshotDataGrid
-        ref={ref}
-        style={{
-          blockSize: "auto",
-          maxHeight: "100%",
-          overflow: "auto",
-          fontSize: "10pt",
-          borderWidth: 1,
-        }}
-        columns={gridData.columns}
-        rows={gridData.rows}
-        renderers={{ noRowsFallback: <EmptyRowsRenderer /> }}
-        className="rdg-light"
-      />
-    </Flex>
+    <RowCountGridView
+      ref={ref}
+      run={run}
+      typeGuard={isRowCountDiffRun}
+      expectedType="row_count_diff"
+    />
+  );
+}
+
+function _RowCountResultView(
+  { run }: RunResultViewProps,
+  ref: Ref<DataGridHandle>,
+) {
+  return (
+    <RowCountGridView
+      ref={ref}
+      run={run}
+      typeGuard={isRowCountRun}
+      expectedType="row_count"
+    />
   );
 }
 
