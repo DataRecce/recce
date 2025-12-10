@@ -243,7 +243,7 @@ function dataFrameArb(config: DataFrameConfig = {}): fc.Arbitrary<DataFrame> {
 }
 
 /**
- * Arbitrary for IN_A/IN_B flag pairs
+ * Arbitrary for in_a/in_b flag pairs
  * At least one must be true (rows with both false are invalid - not in either dataset)
  */
 const validInFlagsArb: fc.Arbitrary<[boolean, boolean]> = fc.constantFrom(
@@ -256,12 +256,12 @@ const validInFlagsArb: fc.Arbitrary<[boolean, boolean]> = fc.constantFrom(
  * Arbitrary for joined DataFrame (used by toValueDiffGrid)
  *
  * The input format for toValueDiffGrid is:
- * - Columns: [pk, ...valueColumns, IN_A, IN_B]
+ * - Columns: [pk, ...valueColumns, in_a, in_b]
  * - Data: [pkValue, ...values, inA, inB]
  *
  * For modified rows, there are TWO input rows with the same PK:
- * - One with IN_A=true, IN_B=false (base version)
- * - One with IN_A=false, IN_B=true (current version)
+ * - One with in_a=true, in_b=false (base version)
+ * - One with in_a=false, in_b=true (current version)
  *
  * The function then merges these into base__/current__ prefixed output columns.
  */
@@ -286,7 +286,7 @@ function joinedDataFrameArb(config: DataFrameConfig = {}): fc.Arbitrary<{
       const trimmedTypes = types.slice(0, columnCount);
       const pkCount = minRows + extraRows;
 
-      // Build column definitions: [id, ...valueColumns, IN_A, IN_B]
+      // Build column definitions: [id, ...valueColumns, in_a, in_b]
       const columns: DataFrame["columns"] = [
         { key: "id", name: "id", type: "integer" },
         ...trimmedNames.map((name, i) => ({
@@ -294,8 +294,8 @@ function joinedDataFrameArb(config: DataFrameConfig = {}): fc.Arbitrary<{
           name: name,
           type: trimmedTypes[i],
         })),
-        { key: "IN_A", name: "IN_A", type: "boolean" },
-        { key: "IN_B", name: "IN_B", type: "boolean" },
+        { key: "in_a", name: "in_a", type: "boolean" },
+        { key: "in_b", name: "in_b", type: "boolean" },
       ];
 
       // Generate unique PK values
@@ -320,13 +320,13 @@ function joinedDataFrameArb(config: DataFrameConfig = {}): fc.Arbitrary<{
                 const [[inA, inB], values] = rowSpecs[i];
 
                 if (inA && inB) {
-                  // Row in both - single row with IN_A=true, IN_B=true
+                  // Row in both - single row with in_a=true, in_b=true
                   data.push([pk, ...values, true, true]);
                 } else if (inA && !inB) {
-                  // Removed - single row with IN_A=true, IN_B=false
+                  // Removed - single row with in_a=true, in_b=false
                   data.push([pk, ...values, true, false]);
                 } else if (!inA && inB) {
-                  // Added - single row with IN_A=false, IN_B=true
+                  // Added - single row with in_a=false, in_b=true
                   data.push([pk, ...values, false, true]);
                 }
               });

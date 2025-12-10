@@ -3,7 +3,7 @@
  * @description Shared row building utilities for diff grids
  *
  * Provides unified row generation logic for both querydiff (dual DataFrames)
- * and valuediff (joined DataFrame with IN_A/IN_B) scenarios.
+ * and valuediff (joined DataFrame with in_a/in_b) scenarios.
  */
 
 import _ from "lodash";

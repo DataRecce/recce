@@ -137,8 +137,8 @@ function createSnowflakeValueDiffDataFrame(): DataFrame {
     columns: [
       { key: "ID", name: "ID", type: "integer" },
       { key: "USER_NAME", name: "USER_NAME", type: "text" },
-      { key: "IN_A", name: "IN_A", type: "boolean" },
-      { key: "IN_B", name: "IN_B", type: "boolean" },
+      { key: "in_a", name: "in_a", type: "boolean" },
+      { key: "in_b", name: "in_b", type: "boolean" },
       { key: "base__VALUE", name: "base__VALUE", type: "number" },
       { key: "current__VALUE", name: "current__VALUE", type: "number" },
     ],
@@ -174,15 +174,15 @@ function createPostgresValueDiffDataFrame(): DataFrame {
 }
 
 /**
- * Creates a joined DataFrame with mixed IN_A/IN_B casing
+ * Creates a joined DataFrame with mixed in_a/in_b casing
  * Tests case-insensitive handling of these special columns
  */
 function createMixedCaseInColumnsDataFrame(): DataFrame {
   return {
     columns: [
       { key: "id", name: "id", type: "integer" },
-      { key: "In_A", name: "In_A", type: "boolean" }, // Mixed case
-      { key: "In_B", name: "In_B", type: "boolean" }, // Mixed case
+      { key: "in_a", name: "in_a", type: "boolean" }, // Mixed case
+      { key: "in_b", name: "in_b", type: "boolean" }, // Mixed case
       { key: "base__value", name: "base__value", type: "number" },
       { key: "current__value", name: "current__value", type: "number" },
     ],
@@ -264,7 +264,7 @@ describe("Snowflake naming conventions (UPPERCASE)", () => {
   });
 
   describe("toValueDiffGrid", () => {
-    test("handles UPPERCASE IN_A/IN_B columns", () => {
+    test("handles in_a/in_b columns", () => {
       const df = createSnowflakeValueDiffDataFrame();
 
       const result = toValueDiffGrid(df, ["ID"], {});
@@ -425,7 +425,7 @@ describe("Mixed case / quoted identifier conventions", () => {
   });
 
   describe("toValueDiffGrid with mixed case IN columns", () => {
-    test("handles mixed case In_A/In_B columns", () => {
+    test("handles mixed case in_a/in_b columns", () => {
       const df = createMixedCaseInColumnsDataFrame();
 
       const result = toValueDiffGrid(df, ["id"], {});
@@ -450,12 +450,12 @@ describe("Mixed case / quoted identifier conventions", () => {
       expect(result.rows).toHaveLength(1);
     });
 
-    test("handles all UPPERCASE IN_A/IN_B columns", () => {
+    test("handles all in_a/in_b columns", () => {
       const df: DataFrame = {
         columns: [
           { key: "ID", name: "ID", type: "integer" },
-          { key: "IN_A", name: "IN_A", type: "boolean" },
-          { key: "IN_B", name: "IN_B", type: "boolean" },
+          { key: "in_a", name: "in_a", type: "boolean" },
+          { key: "in_b", name: "in_b", type: "boolean" },
           { key: "BASE__VALUE", name: "BASE__VALUE", type: "number" },
           { key: "CURRENT__VALUE", name: "CURRENT__VALUE", type: "number" },
         ],
@@ -779,44 +779,6 @@ describe("Primary key case sensitivity", () => {
           primaryKeys: ["REGION", "PRODUCT_ID"],
         });
       }).toThrow("Column REGION not found");
-    });
-  });
-
-  describe("toValueDiffGrid primary key matching", () => {
-    test("handles lowercase primary key reference with UPPERCASE columns", () => {
-      const df: DataFrame = {
-        columns: [
-          { key: "ID", name: "ID", type: "integer" },
-          { key: "IN_A", name: "IN_A", type: "boolean" },
-          { key: "IN_B", name: "IN_B", type: "boolean" },
-          { key: "base__VALUE", name: "base__VALUE", type: "number" },
-          { key: "current__VALUE", name: "current__VALUE", type: "number" },
-        ],
-        data: [[1, true, true, 100, 150]],
-      };
-
-      // Using lowercase "id" to reference UPPERCASE "ID" column
-      const result = toValueDiffGrid(df, ["id"], {});
-
-      expect(result.rows).toHaveLength(1);
-    });
-
-    test("handles UPPERCASE primary key reference with lowercase columns", () => {
-      const df: DataFrame = {
-        columns: [
-          { key: "id", name: "id", type: "integer" },
-          { key: "in_a", name: "in_a", type: "boolean" },
-          { key: "in_b", name: "in_b", type: "boolean" },
-          { key: "base__value", name: "base__value", type: "number" },
-          { key: "current__value", name: "current__value", type: "number" },
-        ],
-        data: [[1, true, true, 100, 150]],
-      };
-
-      // Using UPPERCASE "ID" to reference lowercase "id" column
-      const result = toValueDiffGrid(df, ["ID"], {});
-
-      expect(result.rows).toHaveLength(1);
     });
   });
 });

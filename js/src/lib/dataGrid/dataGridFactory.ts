@@ -8,7 +8,7 @@
  * It wraps the existing implementations:
  * - toDataGrid for single DataFrame display
  * - toDataDiffGrid for comparing two DataFrames
- * - toValueDiffGrid for joined diff data (with IN_A/IN_B columns)
+ * - toValueDiffGrid for joined diff data (with in_a/in_b columns)
  * - toValueDataGrid for value_diff summary (column match statistics)
  */
 

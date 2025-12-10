@@ -58,33 +58,34 @@ export function buildColumnMap(df: DataFrame): Record<string, ColumnMapEntry> {
 }
 
 /**
- * Builds a column map for joined data (with IN_A/IN_B columns)
- * Handles case-insensitivity for special columns
+ * Builds a column map for joined data (with in_a/in_b columns)
+ *
+ * NOTE: Backend now guarantees in_a/in_b are always lowercase,
+ * so we only need to register them as-is.
+ *
+ * @throws {Error} If required in_a or in_b columns are missing
  */
 export function buildJoinedColumnMap(
   df: DataFrame,
 ): Record<string, ColumnMapEntry> {
   const result: Record<string, ColumnMapEntry> = {};
+
   df.columns.forEach((col, index) => {
-    // Handle IN_A/IN_B specially for case-insensitive matching
-    if (
-      col.name.toLowerCase() === "in_a" ||
-      col.name.toLowerCase() === "in_b"
-    ) {
-      result[col.name.toUpperCase()] = {
-        key: col.key,
-        index,
-        colType: col.type,
-      };
-      result[col.name.toLowerCase()] = {
-        key: col.key,
-        index,
-        colType: col.type,
-      };
-    } else {
-      result[col.name] = { key: col.key, index, colType: col.type };
-    }
+    result[col.key] = {
+      key: col.key,
+      index,
+      colType: col.type,
+    };
   });
+
+  // Verify required columns exist (backend guarantees lowercase)
+  if (!result.in_a) {
+    throw new Error("Joined DataFrame missing required 'in_a' column");
+  }
+  if (!result.in_b) {
+    throw new Error("Joined DataFrame missing required 'in_b' column");
+  }
+
   return result;
 }
 

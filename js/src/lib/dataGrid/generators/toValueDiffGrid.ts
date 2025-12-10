@@ -1,8 +1,13 @@
 /**
  * @file toValueDiffGrid.ts
- * @description Value diff grid generation for joined data (with IN_A/IN_B columns)
+ * @description Value diff grid generation for joined data (with in_a/in_b columns)
  *
- * REFACTORED: Now uses shared utilities from @/lib/dataGrid/shared
+ * REFACTORED: Uses shared utilities from @/lib/dataGrid/shared
+ *
+ * NOTE: Backend guarantees:
+ * - in_a/in_b columns are always lowercase
+ * - primary_keys match actual column casing
+ * Therefore, exact string matching is used everywhere.
  */
 
 import "src/components/query/styles.css";
@@ -17,7 +22,7 @@ import {
   validatePrimaryKeys,
   validateToValueDiffGridInputs,
 } from "@/lib/dataGrid/shared";
-import { dataFrameToRowObjects, getCaseInsensitive } from "@/utils/transforms";
+import { dataFrameToRowObjects } from "@/utils/transforms";
 
 // ============================================================================
 // Main Grid Generation Function
@@ -28,7 +33,6 @@ export function toValueDiffGrid(
   primaryKeys: string[],
   options?: QueryDataDiffGridOptions,
 ) {
-  // Add validation at entry point
   validateToValueDiffGridInputs(df, primaryKeys);
   const pinnedColumns = options?.pinnedColumns ?? [];
   const changedOnly = options?.changedOnly ?? false;
@@ -36,27 +40,31 @@ export function toValueDiffGrid(
   const columnsRenderMode = options?.columnsRenderMode ?? {};
   const transformedData = dataFrameToRowObjects(df);
 
-  // REFACTORED: Use shared utility for column map
+  // Build column map (expects lowercase in_a/in_b from backend)
   const columnMap = buildJoinedColumnMap(df);
 
-  // Build row maps based on IN_A/IN_B columns
+  // Build row maps based on in_a/in_b columns
   const baseMap: Record<string, RowObjectType | undefined> = {};
   const currentMap: Record<string, RowObjectType | undefined> = {};
 
-  // REFACTORED: Use shared utility for PK validation
-  const primaryKeyKeys = validatePrimaryKeys(df.columns, primaryKeys, true);
-  const inBaseIndex = columnMap.IN_A.key;
-  const inCurrentIndex = columnMap.IN_B.key;
+  // Validate primary keys exist (exact matching - backend provides correct casing)
+  const primaryKeyKeys = validatePrimaryKeys(df.columns, primaryKeys);
+
+  // in_a/in_b are guaranteed lowercase from backend
+  const inBaseKey = columnMap.in_a.key;
+  const inCurrentKey = columnMap.in_b.key;
 
   transformedData.forEach((row) => {
-    // REFACTORED: Use shared utility for PK value generation
-    const key = getPrimaryKeyValue(df.columns, primaryKeyKeys, row, true);
+    // Generate primary key value (exact matching)
+    const key = getPrimaryKeyValue(df.columns, primaryKeyKeys, row);
 
-    if (getCaseInsensitive(row, inBaseIndex)) {
+    // Access in_a/in_b directly (guaranteed lowercase from backend)
+    if (row[inBaseKey]) {
+      // Store with lowercase key for internal indexing
       baseMap[key.toLowerCase()] = row;
     }
 
-    if (getCaseInsensitive(row, inCurrentIndex)) {
+    if (row[inCurrentKey]) {
       currentMap[key.toLowerCase()] = row;
     }
   });
@@ -65,14 +73,13 @@ export function toValueDiffGrid(
     baseMap,
     currentMap,
     baseColumns: df.columns,
-    currentColumns: df.columns, // Same columns for joined data
+    currentColumns: df.columns,
     columnMap,
     primaryKeys,
-    caseInsensitive: true, // valuediff uses case-insensitive
     changedOnly,
   });
 
-  // REFACTORED: Use getDisplayColumns for column selection
+  // Get column configurations for display
   const columnConfigs = getDisplayColumns({
     columnMap,
     primaryKeys,
@@ -80,24 +87,22 @@ export function toValueDiffGrid(
     columnsRenderMode,
     changedOnly,
     rowStats,
-    excludeColumns: ["IN_A", "IN_B", "in_a", "in_b"],
-    caseInsensitive: true,
-    strictMode: true, // valuediff requires columns to exist
+    excludeColumns: ["in_a", "in_b"], // Only lowercase needed
+    strictMode: true,
   });
 
-  // REFACTORED: Use buildDiffColumnDefinitions for JSX generation
+  // Build column definitions with JSX
   const { columns } = buildDiffColumnDefinitions({
     columns: columnConfigs,
     displayMode,
-    allowIndexFallback: false, // valuediff requires PKs
+    allowIndexFallback: false,
     baseTitle: options?.baseTitle,
     currentTitle: options?.currentTitle,
     headerProps: {
-      primaryKeys: primaryKeys.map((k) => k.toLowerCase()),
+      primaryKeys,
       pinnedColumns,
       onPinnedColumnsChange: options?.onPinnedColumnsChange,
       onColumnsRenderModeChanged: options?.onColumnsRenderModeChanged,
-      caseInsensitive: true,
     },
   });
 
