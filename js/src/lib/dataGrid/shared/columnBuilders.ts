@@ -8,7 +8,6 @@
  */
 
 import { ColumnRenderMode, ColumnType } from "@/lib/api/types";
-import { includesIgnoreCase } from "@/utils/transforms";
 
 // ============================================================================
 // Types
@@ -29,7 +28,6 @@ export interface ColumnOrderConfig {
   pinnedColumns: string[];
   allColumns: string[];
   excludeColumns?: string[];
-  caseInsensitive?: boolean;
 }
 
 export interface GridColumnsConfig {
@@ -43,7 +41,6 @@ export interface GridColumnsConfig {
   changedOnly?: boolean;
   rowStats?: { added: number; removed: number; modified: number };
   excludeColumns?: string[];
-  caseInsensitive?: boolean;
   /**
    * When true, throws an error if a primary key or pinned column is not found
    * in the columnMap. When false (default), silently skips missing columns.
@@ -70,42 +67,34 @@ export function buildColumnOrder(config: ColumnOrderConfig): string[] {
     pinnedColumns,
     allColumns,
     excludeColumns = [],
-    caseInsensitive = false,
   } = config;
 
   const order: string[] = [];
   const added = new Set<string>();
 
-  const normalize = (s: string) => (caseInsensitive ? s.toLowerCase() : s);
-  const isExcluded = (key: string) =>
-    caseInsensitive
-      ? includesIgnoreCase(excludeColumns, key)
-      : excludeColumns.includes(key);
+  const isExcluded = (key: string) => excludeColumns.includes(key);
 
   // Add primary keys first
   primaryKeys.forEach((key) => {
-    const normalizedKey = normalize(key);
-    if (!added.has(normalizedKey) && !isExcluded(key)) {
+    if (!added.has(key) && !isExcluded(key)) {
       order.push(key);
-      added.add(normalizedKey);
+      added.add(key);
     }
   });
 
   // Add pinned columns
   pinnedColumns.forEach((key) => {
-    const normalizedKey = normalize(key);
-    if (!added.has(normalizedKey) && !isExcluded(key)) {
+    if (!added.has(key) && !isExcluded(key)) {
       order.push(key);
-      added.add(normalizedKey);
+      added.add(key);
     }
   });
 
   // Add remaining columns
   allColumns.forEach((key) => {
-    const normalizedKey = normalize(key);
-    if (!added.has(normalizedKey) && !isExcluded(key)) {
+    if (!added.has(key) && !isExcluded(key)) {
       order.push(key);
-      added.add(normalizedKey);
+      added.add(key);
     }
   });
 
@@ -136,42 +125,33 @@ export function shouldIncludeColumn(
 }
 
 /**
- * Checks if a column is a primary key
+ * Checks if a column is a primary key (exact matching)
  */
 export function isPrimaryKeyColumn(
   columnName: string,
   primaryKeys: string[],
-  caseInsensitive = false,
 ): boolean {
-  return caseInsensitive
-    ? includesIgnoreCase(primaryKeys, columnName)
-    : primaryKeys.includes(columnName);
+  return primaryKeys.includes(columnName);
 }
 
 /**
- * Checks if a column is pinned
+ * Checks if a column is pinned (exact matching)
  */
 export function isPinnedColumn(
   columnName: string,
   pinnedColumns: string[],
-  caseInsensitive = false,
 ): boolean {
-  return caseInsensitive
-    ? includesIgnoreCase(pinnedColumns, columnName)
-    : pinnedColumns.includes(columnName);
+  return pinnedColumns.includes(columnName);
 }
 
 /**
- * Checks if a column should be excluded from display
+ * Checks if a column should be excluded from display (exact matching)
  */
 export function isExcludedColumn(
   columnName: string,
   excludeColumns: string[],
-  caseInsensitive = false,
 ): boolean {
-  return caseInsensitive
-    ? includesIgnoreCase(excludeColumns, columnName)
-    : excludeColumns.includes(columnName);
+  return excludeColumns.includes(columnName);
 }
 
 // ============================================================================
@@ -179,19 +159,12 @@ export function isExcludedColumn(
 // ============================================================================
 
 /**
- * Finds a column in the columnMap, with optional case-insensitive matching
+ * Finds a column in the columnMap (exact matching)
  */
 function findColumn(
   columnMap: GridColumnsConfig["columnMap"],
   name: string,
-  caseInsensitive: boolean,
 ): { key: string; colType: ColumnType; status?: string } | undefined {
-  if (caseInsensitive) {
-    const entry = Object.entries(columnMap).find(
-      ([k]) => k.toLowerCase() === name.toLowerCase(),
-    );
-    return entry?.[1];
-  }
   return columnMap[name];
 }
 
@@ -209,27 +182,6 @@ function findColumn(
  *
  * @throws {Error} When strictMode is true and a primary key or pinned column
  *                 is not found in the columnMap
- *
- * @example
- * ```typescript
- * // Lenient mode (querydiff) - skips missing columns
- * const columns = getDisplayColumns({
- *   columnMap,
- *   primaryKeys: ["id"],
- *   pinnedColumns: ["name"],
- *   columnsRenderMode: {},
- *   strictMode: false, // default
- * });
- *
- * // Strict mode (valuediff) - throws on missing columns
- * const columns = getDisplayColumns({
- *   columnMap,
- *   primaryKeys: ["id"],
- *   pinnedColumns: ["name"],
- *   columnsRenderMode: {},
- *   strictMode: true,
- * });
- * ```
  */
 export function getDisplayColumns(config: GridColumnsConfig): ColumnConfig[] {
   const {
@@ -240,7 +192,6 @@ export function getDisplayColumns(config: GridColumnsConfig): ColumnConfig[] {
     changedOnly = false,
     rowStats,
     excludeColumns = [],
-    caseInsensitive = false,
     strictMode = false,
   } = config;
 
@@ -249,7 +200,7 @@ export function getDisplayColumns(config: GridColumnsConfig): ColumnConfig[] {
 
   // Add primary key columns first
   primaryKeys.forEach((name) => {
-    const col = findColumn(columnMap, name, caseInsensitive);
+    const col = findColumn(columnMap, name);
 
     if (!col) {
       if (strictMode) {
@@ -271,10 +222,10 @@ export function getDisplayColumns(config: GridColumnsConfig): ColumnConfig[] {
 
   // Add pinned columns
   pinnedColumns.forEach((name) => {
-    if (isPrimaryKeyColumn(name, primaryKeys, caseInsensitive)) return;
-    if (isExcludedColumn(name, excludeColumns, caseInsensitive)) return;
+    if (isPrimaryKeyColumn(name, primaryKeys)) return;
+    if (isExcludedColumn(name, excludeColumns)) return;
 
-    const col = findColumn(columnMap, name, caseInsensitive);
+    const col = findColumn(columnMap, name);
 
     if (!col) {
       if (strictMode) {
@@ -294,9 +245,9 @@ export function getDisplayColumns(config: GridColumnsConfig): ColumnConfig[] {
 
   // Add remaining columns
   Object.entries(columnMap).forEach(([name, col]) => {
-    if (isPrimaryKeyColumn(name, primaryKeys, caseInsensitive)) return;
-    if (isPinnedColumn(name, pinnedColumns, caseInsensitive)) return;
-    if (isExcludedColumn(name, excludeColumns, caseInsensitive)) return;
+    if (isPrimaryKeyColumn(name, primaryKeys)) return;
+    if (isPinnedColumn(name, pinnedColumns)) return;
+    if (isExcludedColumn(name, excludeColumns)) return;
 
     if (!shouldIncludeColumn(col.status, changedOnly, hasModifiedRows)) {
       return;
