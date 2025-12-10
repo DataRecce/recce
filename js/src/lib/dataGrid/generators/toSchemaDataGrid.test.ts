@@ -639,4 +639,311 @@ describe("toSingleEnvDataGrid - Cell Classes", () => {
     const typeCol = getColumn(gridColumns, 2);
     expect(typeCol.cellClass).toBe("schema-column");
   });
+
+  // ============================================================================
+  // mergeColumns - Edge Cases
+  // ============================================================================
+
+  describe("mergeColumns - Edge Cases", () => {
+    test("handles columns with special characters in names", () => {
+      const base = createColumns({ "user-id": "INT", "first.name": "VARCHAR" });
+      const current = createColumns({
+        "user-id": "INT",
+        "first.name": "VARCHAR",
+      });
+
+      const result = mergeColumns(base, current);
+
+      expect(Object.keys(result)).toContain("user-id");
+      expect(Object.keys(result)).toContain("first.name");
+      expect(result["user-id"].baseIndex).toBe(1);
+      expect(result["first.name"].currentIndex).toBe(2);
+    });
+
+    test("handles columns with spaces in names", () => {
+      const base = createColumns({ "User ID": "INT", "Full Name": "VARCHAR" });
+      const current = createColumns({
+        "User ID": "INT",
+        "Full Name": "VARCHAR",
+      });
+
+      const result = mergeColumns(base, current);
+
+      expect(result["User ID"]).toBeDefined();
+      expect(result["Full Name"]).toBeDefined();
+    });
+
+    test("handles columns with unicode characters", () => {
+      const base = createColumns({ 用户名: "VARCHAR", prénom: "VARCHAR" });
+      const current = createColumns({ 用户名: "VARCHAR", prénom: "VARCHAR" });
+
+      const result = mergeColumns(base, current);
+
+      // biome-ignore lint/complexity/useLiteralKeys: Testing unicode keys
+      expect(result["用户名"]).toBeDefined();
+      // biome-ignore lint/complexity/useLiteralKeys: Testing unicode keys
+      expect(result["prénom"]).toBeDefined();
+    });
+
+    test("treats column names as case-sensitive", () => {
+      const base = createColumns({ ID: "INT", id: "INT" });
+      const current = createColumns({ ID: "INT", id: "INT" });
+
+      const result = mergeColumns(base, current);
+
+      expect(Object.keys(result)).toContain("ID");
+      expect(Object.keys(result)).toContain("id");
+      expect(
+        Object.keys(result).filter((k) => k.toLowerCase() === "id"),
+      ).toHaveLength(2);
+    });
+
+    test("handles empty string column name", () => {
+      const base: NodeData["columns"] = {
+        "": { name: "", type: "INT" },
+        id: { name: "id", type: "INT" },
+      };
+      const current: NodeData["columns"] = {
+        "": { name: "", type: "INT" },
+        id: { name: "id", type: "INT" },
+      };
+
+      const result = mergeColumns(base, current);
+
+      expect(result[""]).toBeDefined();
+      expect(result[""].baseIndex).toBeDefined();
+    });
+
+    test("handles columns with very long type strings", () => {
+      const longType = "DECIMAL(38,18)";
+      const base = createColumns({ amount: longType });
+      const current = createColumns({ amount: longType });
+
+      const result = mergeColumns(base, current);
+
+      expect(result.amount.baseType).toBe(longType);
+      expect(result.amount.currentType).toBe(longType);
+    });
+
+    test("handles complex type changes", () => {
+      const base = createColumns({
+        data: "VARCHAR(255)",
+        amount: "DECIMAL(10,2)",
+      });
+      const current = createColumns({
+        data: "TEXT",
+        amount: "DECIMAL(18,4)",
+      });
+
+      const result = mergeColumns(base, current);
+
+      expect(result.data.baseType).toBe("VARCHAR(255)");
+      expect(result.data.currentType).toBe("TEXT");
+      expect(result.amount.baseType).toBe("DECIMAL(10,2)");
+      expect(result.amount.currentType).toBe("DECIMAL(18,4)");
+    });
+
+    test("handles large number of columns", () => {
+      const columns: Record<string, string> = {};
+      for (let i = 0; i < 100; i++) {
+        columns[`col_${i}`] = "VARCHAR";
+      }
+      const base = createColumns(columns);
+      const current = createColumns(columns);
+
+      const result = mergeColumns(base, current);
+
+      expect(Object.keys(result)).toHaveLength(100);
+      expect(result.col_0.baseIndex).toBe(1);
+      expect(result.col_99.currentIndex).toBe(100);
+    });
+
+    test("handles all columns removed", () => {
+      const base = createColumns({ id: "INT", name: "VARCHAR", age: "INT" });
+      const current: NodeData["columns"] = {};
+
+      const result = mergeColumns(base, current);
+
+      expect(Object.keys(result)).toHaveLength(3);
+      Object.values(result).forEach((row) => {
+        expect(row.baseIndex).toBeDefined();
+        expect(row.currentIndex).toBeUndefined();
+      });
+    });
+
+    test("handles all columns added", () => {
+      const base: NodeData["columns"] = {};
+      const current = createColumns({ id: "INT", name: "VARCHAR", age: "INT" });
+
+      const result = mergeColumns(base, current);
+
+      expect(Object.keys(result)).toHaveLength(3);
+      Object.values(result).forEach((row) => {
+        expect(row.baseIndex).toBeUndefined();
+        expect(row.currentIndex).toBeDefined();
+      });
+    });
+
+    test("handles complete schema replacement", () => {
+      const base = createColumns({ old_id: "INT", old_name: "VARCHAR" });
+      const current = createColumns({ new_id: "INT", new_name: "VARCHAR" });
+
+      const result = mergeColumns(base, current);
+
+      expect(Object.keys(result)).toHaveLength(4);
+      expect(result.old_id.currentIndex).toBeUndefined();
+      expect(result.new_id.baseIndex).toBeUndefined();
+    });
+
+    test("handles mixed null and valid columns", () => {
+      const base: NodeData["columns"] = {
+        id: { name: "id", type: "INT" },
+        null1: null as unknown as { name: string; type: string },
+        name: { name: "name", type: "VARCHAR" },
+        null2: null as unknown as { name: string; type: string },
+      };
+      const current: NodeData["columns"] = {
+        id: { name: "id", type: "INT" },
+        name: { name: "name", type: "VARCHAR" },
+      };
+
+      const result = mergeColumns(base, current);
+
+      // Null columns appear in keys but don't get indices
+      expect(result.id.baseIndex).toBe(1);
+      expect(result.name.baseIndex).toBe(2);
+      expect(result.null1?.baseIndex).toBeUndefined();
+    });
+  });
+
+  // ============================================================================
+  // toSchemaDataGrid - Edge Cases
+  // ============================================================================
+
+  describe("toSchemaDataGrid - Edge Cases", () => {
+    test("handles empty schema diff", () => {
+      const schemaDiff = mergeColumns({}, {});
+
+      const { columns, rows } = toSchemaDataGrid(schemaDiff);
+
+      expect(columns).toHaveLength(5);
+      expect(rows).toHaveLength(0);
+    });
+
+    test("cell class handles row with only baseIndex (removed column)", () => {
+      const schemaDiff = mergeColumns(createColumns({ legacy: "INT" }), {});
+
+      const { columns, rows } = toSchemaDataGrid(schemaDiff);
+      const indexCol = getColumn(columns, 0);
+      const cellClassFn = indexCol.cellClass as (row: RowObjectType) => string;
+
+      // Row has baseIndex but no currentIndex
+      const result = cellClassFn(rows[0]);
+      expect(result).toBe("schema-column schema-column-index");
+    });
+
+    test("cell class handles row with only currentIndex (added column)", () => {
+      const schemaDiff = mergeColumns({}, createColumns({ new_col: "INT" }));
+
+      const { columns, rows } = toSchemaDataGrid(schemaDiff);
+      const indexCol = getColumn(columns, 0);
+      const cellClassFn = indexCol.cellClass as (row: RowObjectType) => string;
+
+      // Row has currentIndex but no baseIndex
+      const result = cellClassFn(rows[0]);
+      expect(result).toBe("schema-column schema-column-index");
+    });
+
+    test("type cellClass handles missing type on one side", () => {
+      const schemaDiff = mergeColumns(createColumns({ id: "INT" }), {});
+
+      const { columns, rows } = toSchemaDataGrid(schemaDiff);
+      const typeCol = getColumn(columns, 3);
+      const cellClassFn = typeCol.cellClass as (row: RowObjectType) => string;
+
+      // Row has baseType but no currentType
+      const result = cellClassFn(rows[0]);
+      expect(result).toBe("schema-column");
+    });
+
+    test("handles schema with single column", () => {
+      const schemaDiff = mergeColumns(
+        createColumns({ id: "INT" }),
+        createColumns({ id: "INT" }),
+      );
+
+      const { rows } = toSchemaDataGrid(schemaDiff);
+
+      expect(rows).toHaveLength(1);
+      expect(rows[0].name).toBe("id");
+    });
+  });
+
+  // ============================================================================
+  // toSingleEnvDataGrid - Edge Cases
+  // ============================================================================
+
+  describe("toSingleEnvDataGrid - Edge Cases", () => {
+    test("handles columns with special characters", () => {
+      const columns = createColumns({
+        "user-id": "INT",
+        "first.name": "VARCHAR",
+      });
+
+      const { rows } = toSingleEnvDataGrid(columns);
+
+      expect(rows).toHaveLength(2);
+      expect(rows.map((r) => r.name)).toContain("user-id");
+      expect(rows.map((r) => r.name)).toContain("first.name");
+    });
+
+    test("handles single column", () => {
+      const columns = createColumns({ id: "INT" });
+
+      const { rows } = toSingleEnvDataGrid(columns);
+
+      expect(rows).toHaveLength(1);
+      expect(rows[0].index).toBe(1);
+    });
+
+    test("handles large number of columns", () => {
+      const cols: Record<string, string> = {};
+      for (let i = 0; i < 100; i++) {
+        cols[`col_${i}`] = "VARCHAR";
+      }
+      const columns = createColumns(cols);
+
+      const { rows } = toSingleEnvDataGrid(columns);
+
+      expect(rows).toHaveLength(100);
+      expect(rows[0].index).toBe(1);
+      expect(rows[99].index).toBe(100);
+    });
+
+    test("handles columns with undefined type", () => {
+      const columns: NodeData["columns"] = {
+        id: { name: "id", type: undefined as unknown as string },
+      };
+
+      const { rows } = toSingleEnvDataGrid(columns);
+
+      expect(rows).toHaveLength(1);
+      expect(rows[0].type).toBeUndefined();
+    });
+
+    test("preserves column order from input", () => {
+      const columns: NodeData["columns"] = {};
+      // Add in specific order
+      columns.zebra = { name: "zebra", type: "VARCHAR" };
+      columns.alpha = { name: "alpha", type: "VARCHAR" };
+      columns.beta = { name: "beta", type: "VARCHAR" };
+
+      const { rows } = toSingleEnvDataGrid(columns);
+
+      // Object.entries preserves insertion order
+      expect(rows[0].name).toBe("zebra");
+      expect(rows[1].name).toBe("alpha");
+      expect(rows[2].name).toBe("beta");
+    });
+  });
 });
