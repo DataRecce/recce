@@ -3,12 +3,12 @@ from typing import List, Optional, Tuple
 
 from pydantic import BaseModel
 
-from .utils import normalize_keys_to_columns
 from ..core import default_context
 from ..exceptions import RecceException
 from ..models import Check
 from .core import CheckValidator, Task, TaskResultDiffer
 from .dataframe import DataFrame
+from .utils import normalize_boolean_flag_columns, normalize_keys_to_columns
 from .valuediff import ValueDiffMixin
 
 QUERY_LIMIT = 2000
@@ -166,10 +166,7 @@ class QueryDiffTask(Task, QueryMixin, ValueDiffMixin):
         # Normalize primary_keys if present (for non-join diff, use current columns as reference)
         if self.params.primary_keys:
             column_keys = [col.key for col in current_df.columns]
-            self.params.primary_keys = normalize_keys_to_columns(
-                self.params.primary_keys,
-                column_keys
-            )
+            self.params.primary_keys = normalize_keys_to_columns(self.params.primary_keys, column_keys)
 
         return QueryDiffResult(
             base=base_df,
@@ -264,6 +261,8 @@ class QueryDiffTask(Task, QueryMixin, ValueDiffMixin):
         self.check_cancel()
 
         diff_df = DataFrame.from_agate(table)
+        # Normalize in_a/in_b columns to lowercase for cross-warehouse consistency
+        diff_df = normalize_boolean_flag_columns(diff_df)
 
         # Normalize primary_keys to match actual column keys from warehouse
         column_keys = [col.key for col in diff_df.columns]

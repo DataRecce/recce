@@ -2,12 +2,12 @@ from typing import List, Optional, TypedDict, Union
 
 from pydantic import BaseModel
 
-from .utils import normalize_keys_to_columns
 from ..core import default_context
 from ..exceptions import RecceException
 from ..models import Check
 from .core import CheckValidator, Task, TaskResultDiffer
 from .dataframe import DataFrame
+from .utils import normalize_boolean_flag_columns, normalize_keys_to_columns
 
 
 class ValueDiffParams(BaseModel):
@@ -255,10 +255,7 @@ class ValueDiffTask(Task, ValueDiffMixin):
         # For ValueDiff, we use the columns from the model
         composite = isinstance(primary_key, list)
         if composite:
-            self.params.primary_key = normalize_keys_to_columns(
-                primary_key,
-                columns  # columns list from the model
-            )
+            self.params.primary_key = normalize_keys_to_columns(primary_key, columns)  # columns list from the model
         else:
             normalized = normalize_keys_to_columns([primary_key], columns)
             if normalized:
@@ -438,15 +435,14 @@ class ValueDiffDetailTask(Task, ValueDiffMixin):
         self.check_cancel()
 
         result_df = DataFrame.from_agate(table)
+        # Normalize in_a/in_b columns to lowercase for cross-warehouse consistency
+        result_df = normalize_boolean_flag_columns(result_df)
 
         # Normalize primary_key to match actual column keys from result
         column_keys = [col.key for col in result_df.columns]
         composite = isinstance(primary_key, list)
         if composite:
-            self.params.primary_key = normalize_keys_to_columns(
-                primary_key,
-                column_keys
-            )
+            self.params.primary_key = normalize_keys_to_columns(primary_key, column_keys)
         else:
             normalized = normalize_keys_to_columns([primary_key], column_keys)
             if normalized:

@@ -1,10 +1,11 @@
 """Tests for task utility functions."""
 
-import pytest
+import unittest
+
 from recce.tasks.utils import normalize_keys_to_columns
 
 
-class TestNormalizeKeysToColumns:
+class TestNormalizeKeysToColumns(unittest.TestCase):
     """Tests for normalize_keys_to_columns function."""
 
     # ========================================================================
@@ -160,3 +161,180 @@ class TestNormalizeKeysToColumns:
         # Falls back to case-insensitive, last one in the map wins
         # (This is acceptable - having same-name columns with different case is an edge case)
         assert result[0] in ["ID", "id"]
+
+    # Add to tests/tasks/test_utils.py
+
+
+class TestNormalizeBooleanFlagColumns(unittest.TestCase):
+    """Tests for normalize_boolean_flag_columns function."""
+
+    def test_normalizes_uppercase_in_a_in_b(self):
+        """Snowflake returns UPPERCASE - should normalize to lowercase."""
+        from recce.tasks.dataframe import (
+            DataFrame,
+            DataFrameColumn,
+            DataFrameColumnType,
+        )
+        from recce.tasks.utils import normalize_boolean_flag_columns
+
+        df = DataFrame(
+            columns=[
+                DataFrameColumn(key="ID", name="ID", type=DataFrameColumnType.INTEGER),
+                DataFrameColumn(key="IN_A", name="IN_A", type=DataFrameColumnType.BOOLEAN),
+                DataFrameColumn(key="IN_B", name="IN_B", type=DataFrameColumnType.BOOLEAN),
+                DataFrameColumn(key="VALUE", name="VALUE", type=DataFrameColumnType.NUMBER),
+            ],
+            data=[(1, True, True, 100), (2, True, False, 200)],
+        )
+
+        result = normalize_boolean_flag_columns(df)
+
+        column_keys = [col.key for col in result.columns]
+        self.assertEqual(column_keys, ["ID", "in_a", "in_b", "VALUE"])
+
+        column_names = [col.name for col in result.columns]
+        self.assertEqual(column_names, ["ID", "in_a", "in_b", "VALUE"])
+
+    def test_preserves_lowercase_in_a_in_b(self):
+        """PostgreSQL returns lowercase - should remain unchanged."""
+        from recce.tasks.dataframe import (
+            DataFrame,
+            DataFrameColumn,
+            DataFrameColumnType,
+        )
+        from recce.tasks.utils import normalize_boolean_flag_columns
+
+        df = DataFrame(
+            columns=[
+                DataFrameColumn(key="id", name="id", type=DataFrameColumnType.INTEGER),
+                DataFrameColumn(key="in_a", name="in_a", type=DataFrameColumnType.BOOLEAN),
+                DataFrameColumn(key="in_b", name="in_b", type=DataFrameColumnType.BOOLEAN),
+                DataFrameColumn(key="value", name="value", type=DataFrameColumnType.NUMBER),
+            ],
+            data=[(1, True, True, 100)],
+        )
+
+        result = normalize_boolean_flag_columns(df)
+
+        column_keys = [col.key for col in result.columns]
+        self.assertEqual(column_keys, ["id", "in_a", "in_b", "value"])
+
+    def test_handles_mixed_case_in_a_in_b(self):
+        """Mixed case like In_A should normalize to lowercase."""
+        from recce.tasks.dataframe import (
+            DataFrame,
+            DataFrameColumn,
+            DataFrameColumnType,
+        )
+        from recce.tasks.utils import normalize_boolean_flag_columns
+
+        df = DataFrame(
+            columns=[
+                DataFrameColumn(key="id", name="id", type=DataFrameColumnType.INTEGER),
+                DataFrameColumn(key="In_A", name="In_A", type=DataFrameColumnType.BOOLEAN),
+                DataFrameColumn(key="In_B", name="In_B", type=DataFrameColumnType.BOOLEAN),
+            ],
+            data=[(1, True, False)],
+        )
+
+        result = normalize_boolean_flag_columns(df)
+
+        column_keys = [col.key for col in result.columns]
+        self.assertEqual(column_keys, ["id", "in_a", "in_b"])
+
+    def test_preserves_other_columns(self):
+        """Non in_a/in_b columns should remain unchanged."""
+        from recce.tasks.dataframe import (
+            DataFrame,
+            DataFrameColumn,
+            DataFrameColumnType,
+        )
+        from recce.tasks.utils import normalize_boolean_flag_columns
+
+        df = DataFrame(
+            columns=[
+                DataFrameColumn(key="USER_ID", name="USER_ID", type=DataFrameColumnType.INTEGER),
+                DataFrameColumn(key="IN_A", name="IN_A", type=DataFrameColumnType.BOOLEAN),
+                DataFrameColumn(key="IN_B", name="IN_B", type=DataFrameColumnType.BOOLEAN),
+                DataFrameColumn(key="base__VALUE", name="base__VALUE", type=DataFrameColumnType.NUMBER),
+                DataFrameColumn(key="current__VALUE", name="current__VALUE", type=DataFrameColumnType.NUMBER),
+            ],
+            data=[(1, True, True, 100, 150)],
+        )
+
+        result = normalize_boolean_flag_columns(df)
+
+        column_keys = [col.key for col in result.columns]
+        # Only in_a/in_b should be lowercased
+        self.assertEqual(column_keys, ["USER_ID", "in_a", "in_b", "base__VALUE", "current__VALUE"])
+
+    def test_preserves_data(self):
+        """Data should remain unchanged."""
+        from recce.tasks.dataframe import (
+            DataFrame,
+            DataFrameColumn,
+            DataFrameColumnType,
+        )
+        from recce.tasks.utils import normalize_boolean_flag_columns
+
+        original_data = [(1, True, False, 100), (2, False, True, 200)]
+        df = DataFrame(
+            columns=[
+                DataFrameColumn(key="ID", name="ID", type=DataFrameColumnType.INTEGER),
+                DataFrameColumn(key="IN_A", name="IN_A", type=DataFrameColumnType.BOOLEAN),
+                DataFrameColumn(key="IN_B", name="IN_B", type=DataFrameColumnType.BOOLEAN),
+                DataFrameColumn(key="VALUE", name="VALUE", type=DataFrameColumnType.NUMBER),
+            ],
+            data=original_data,
+        )
+
+        result = normalize_boolean_flag_columns(df)
+
+        self.assertEqual(result.data, original_data)
+
+    def test_preserves_limit_and_more(self):
+        """limit and more fields should be preserved."""
+        from recce.tasks.dataframe import (
+            DataFrame,
+            DataFrameColumn,
+            DataFrameColumnType,
+        )
+        from recce.tasks.utils import normalize_boolean_flag_columns
+
+        df = DataFrame(
+            columns=[
+                DataFrameColumn(key="id", name="id", type=DataFrameColumnType.INTEGER),
+                DataFrameColumn(key="IN_A", name="IN_A", type=DataFrameColumnType.BOOLEAN),
+                DataFrameColumn(key="IN_B", name="IN_B", type=DataFrameColumnType.BOOLEAN),
+            ],
+            data=[(1, True, True)],
+            limit=100,
+            more=True,
+        )
+
+        result = normalize_boolean_flag_columns(df)
+
+        self.assertEqual(result.limit, 100)
+        self.assertEqual(result.more, True)
+
+    def test_handles_dataframe_without_in_columns(self):
+        """DataFrames without in_a/in_b should pass through unchanged."""
+        from recce.tasks.dataframe import (
+            DataFrame,
+            DataFrameColumn,
+            DataFrameColumnType,
+        )
+        from recce.tasks.utils import normalize_boolean_flag_columns
+
+        df = DataFrame(
+            columns=[
+                DataFrameColumn(key="id", name="id", type=DataFrameColumnType.INTEGER),
+                DataFrameColumn(key="name", name="name", type=DataFrameColumnType.TEXT),
+            ],
+            data=[(1, "Alice"), (2, "Bob")],
+        )
+
+        result = normalize_boolean_flag_columns(df)
+
+        column_keys = [col.key for col in result.columns]
+        self.assertEqual(column_keys, ["id", "name"])

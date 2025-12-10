@@ -145,25 +145,19 @@ def submit_run(type, params, check_id=None):
 
             # Extract updated params from task after execution
             updated_params = None
-            if hasattr(task, 'params') and task.params is not None:
+            if hasattr(task, "params") and task.params is not None:
                 # Convert Pydantic model to dict if needed
-                if hasattr(task.params, 'model_dump'):
+                if hasattr(task.params, "model_dump"):
                     updated_params = task.params.model_dump()
-                elif hasattr(task.params, 'dict'):
+                elif hasattr(task.params, "dict"):
                     updated_params = task.params.dict()
                 elif isinstance(task.params, dict):
                     updated_params = task.params
 
-            asyncio.run_coroutine_threadsafe(
-                update_run_result(run, result, None, updated_params),
-                loop
-            )
+            asyncio.run_coroutine_threadsafe(update_run_result(run, result, None, updated_params), loop)
             return result
         except BaseException as e:
-            asyncio.run_coroutine_threadsafe(
-                update_run_result(run, None, e, None),
-                loop
-            )
+            asyncio.run_coroutine_threadsafe(update_run_result(run, None, e, None), loop)
             if isinstance(e, RecceException) and e.is_raise is False:
                 return None
             import sentry_sdk
