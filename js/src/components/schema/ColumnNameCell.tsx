@@ -9,7 +9,6 @@ import {
   Spinner,
 } from "@chakra-ui/react";
 import { VscKebabVertical } from "react-icons/vsc";
-import { SchemaDiffRow } from "src/components/schema/schema";
 import { Tooltip } from "@/components/ui/tooltip";
 import { NodeData } from "@/lib/api/info";
 import {
@@ -17,6 +16,7 @@ import {
   EXPLORE_SOURCE,
   trackExploreAction,
 } from "@/lib/api/track";
+import { SchemaDiffRow } from "@/lib/dataGrid/generators/toSchemaDataGrid";
 import { useRecceActionContext } from "@/lib/hooks/RecceActionContext";
 import { useRecceInstanceContext } from "@/lib/hooks/RecceInstanceContext";
 import { supportsHistogramDiff } from "../histogram/HistogramDiffForm";

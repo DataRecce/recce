@@ -1,15 +1,14 @@
 import { forwardRef, Key, Ref, useMemo, useState } from "react";
-import { SchemaDiffRow, SchemaRow } from "src/components/schema/schema";
-import {
-  mergeColumns,
-  toSchemaDataGrid,
-  toSingleEnvDataGrid,
-} from "@/lib/dataGrid/generators/toSchemaDataGrid";
 import "react-data-grid/lib/styles.css";
 import { Alert, Flex } from "@chakra-ui/react";
 import { CellMouseArgs, DataGridHandle } from "react-data-grid";
 import { NodeData } from "@/lib/api/info";
 import { trackColumnLevelLineage } from "@/lib/api/track";
+import {
+  createDataGridFromData,
+  SchemaDiffRow,
+  SchemaRow,
+} from "@/lib/dataGrid";
 import { useLineageGraphContext } from "@/lib/hooks/LineageGraphContext";
 import {
   EmptyRowsRenderer,
@@ -32,10 +31,10 @@ function PrivateSingleEnvSchemaView(
     new Map(),
   );
   const { columns, rows } = useMemo(() => {
-    return toSingleEnvDataGrid(current?.columns, {
-      node: current,
-      cllRunningMap,
-    });
+    return createDataGridFromData(
+      { type: "schema_single", columns: current?.columns },
+      { node: current, cllRunningMap },
+    );
   }, [current, cllRunningMap]);
 
   const { lineageGraph } = useLineageGraphContext();
@@ -134,19 +133,17 @@ export function PrivateSchemaView(
     new Map(),
   );
   const { columns, rows } = useMemo(() => {
-    const schemaDiff = mergeColumns(base?.columns, current?.columns);
     const resourceType = current?.resource_type ?? base?.resource_type;
-    if (
+    const node =
       resourceType &&
       ["model", "seed", "snapshot", "source"].includes(resourceType)
-    ) {
-      return toSchemaDataGrid(schemaDiff, {
-        node: current ?? base,
-        cllRunningMap,
-      });
-    } else {
-      return toSchemaDataGrid(schemaDiff);
-    }
+        ? (current ?? base)
+        : undefined;
+
+    return createDataGridFromData(
+      { type: "schema_diff", base: base?.columns, current: current?.columns },
+      { node, cllRunningMap },
+    );
   }, [base, current, cllRunningMap]);
 
   const { lineageGraph } = useLineageGraphContext();

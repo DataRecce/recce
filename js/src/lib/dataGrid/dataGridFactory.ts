@@ -14,6 +14,7 @@
 
 import { ColumnOrColumnGroup } from "react-data-grid";
 import { QueryDiffResult } from "@/lib/api/adhocQuery";
+import { NodeData } from "@/lib/api/info";
 import { ProfileDiffResult } from "@/lib/api/profile";
 import {
   ColumnRenderMode,
@@ -33,6 +34,14 @@ import { ValueDiffParams, ValueDiffResult } from "@/lib/api/valuediff";
 // Import existing implementations
 import { toDataDiffGrid } from "@/lib/dataGrid/generators/toDataDiffGrid";
 import { toDataGrid } from "@/lib/dataGrid/generators/toDataGrid";
+import {
+  mergeColumns,
+  type SchemaDataGridOptions,
+  type SchemaDataGridResult,
+  type SingleEnvSchemaDataGridResult,
+  toSchemaDataGrid,
+  toSingleEnvDataGrid,
+} from "@/lib/dataGrid/generators/toSchemaDataGrid";
 import { toValueDataGrid } from "@/lib/dataGrid/generators/toValueDataGrid";
 import { toValueDiffGrid } from "@/lib/dataGrid/generators/toValueDiffGrid";
 
@@ -279,27 +288,86 @@ export function createDataGrid(
 export type DataGridInput =
   | { type: "single"; dataframe: DataFrame }
   | { type: "dual"; base?: DataFrame; current?: DataFrame }
-  | { type: "joined"; dataframe: DataFrame; primaryKeys: string[] };
+  | { type: "joined"; dataframe: DataFrame; primaryKeys: string[] }
+  | {
+      type: "schema_diff";
+      base?: NodeData["columns"];
+      current?: NodeData["columns"];
+    }
+  | { type: "schema_single"; columns?: NodeData["columns"] };
+
+/**
+ * Union of all possible grid results from createDataGridFromData
+ */
+export type DataGridFromDataResult =
+  | DataGridResult
+  | SchemaDataGridResult
+  | SingleEnvSchemaDataGridResult;
 
 /**
  * Alternative factory that accepts raw data instead of Run objects
  * Useful for testing or when you have data outside the Run structure
+ *
+ * @overload For DataFrame inputs, returns DataGridResult
+ * @overload For schema inputs, returns schema-specific result types
  */
 export function createDataGridFromData(
+  input:
+    | { type: "joined"; dataframe: DataFrame; primaryKeys: string[] }
+    | { type: "dual"; base?: DataFrame; current?: DataFrame }
+    | { type: "single"; dataframe: DataFrame },
+  options?: DiffGridOptions,
+): DataGridResult;
+export function createDataGridFromData(
+  input: {
+    type: "schema_diff";
+    base?: NodeData["columns"];
+    current?: NodeData["columns"];
+  },
+  options?: SchemaDataGridOptions,
+): SchemaDataGridResult;
+export function createDataGridFromData(
+  input: { type: "schema_single"; columns?: NodeData["columns"] },
+  options?: SchemaDataGridOptions,
+): SingleEnvSchemaDataGridResult;
+export function createDataGridFromData(
   input: DataGridInput,
-  options: DiffGridOptions = {},
-): DataGridResult {
+  options?: DiffGridOptions | SchemaDataGridOptions,
+): DataGridFromDataResult {
   switch (input.type) {
     case "single":
-      return toDataGrid(input.dataframe, options);
+      return toDataGrid(input.dataframe, (options ?? {}) as DiffGridOptions);
 
     case "dual":
-      return toDataDiffGrid(input.base, input.current, options);
+      return toDataDiffGrid(
+        input.base,
+        input.current,
+        (options ?? {}) as DiffGridOptions,
+      );
 
     case "joined":
-      return toValueDiffGrid(input.dataframe, input.primaryKeys, options);
+      return toValueDiffGrid(
+        input.dataframe,
+        input.primaryKeys,
+        (options ?? {}) as DiffGridOptions,
+      );
+
+    case "schema_diff": {
+      const schemaDiff = mergeColumns(input.base, input.current);
+      return toSchemaDataGrid(
+        schemaDiff,
+        (options ?? {}) as SchemaDataGridOptions,
+      );
+    }
+
+    case "schema_single":
+      return toSingleEnvDataGrid(
+        input.columns,
+        (options ?? {}) as SchemaDataGridOptions,
+      );
   }
 }
 
 // Re-export the underlying functions for backward compatibility
 export { toDataGrid, toDataDiffGrid, toValueDiffGrid };
+export { mergeColumns, toSchemaDataGrid, toSingleEnvDataGrid };
