@@ -103,12 +103,12 @@ describe("buildColumnOrder", () => {
     const result = buildColumnOrder({
       primaryKeys: ["id"],
       pinnedColumns: [],
-      allColumns: ["id", "name", "IN_A", "IN_B", "value"],
-      excludeColumns: ["IN_A", "IN_B"],
+      allColumns: ["id", "name", "in_a", "in_b", "value"],
+      excludeColumns: ["in_a", "in_b"],
     });
 
-    expect(result).not.toContain("IN_A");
-    expect(result).not.toContain("IN_B");
+    expect(result).not.toContain("in_a");
+    expect(result).not.toContain("in_b");
     expect(result).toHaveLength(3);
   });
 
@@ -116,13 +116,13 @@ describe("buildColumnOrder", () => {
     const result = buildColumnOrder({
       primaryKeys: ["id"],
       pinnedColumns: [],
-      allColumns: ["id", "name", "in_a", "IN_B"],
-      excludeColumns: ["IN_A", "in_b"],
+      allColumns: ["id", "name", "in_a", "in_b"],
+      excludeColumns: ["in_a", "in_b"],
       caseInsensitive: true,
     });
 
     expect(result).not.toContain("in_a");
-    expect(result).not.toContain("IN_B");
+    expect(result).not.toContain("in_b");
   });
 
   test("does not duplicate columns that appear in multiple categories", () => {
@@ -238,18 +238,18 @@ describe("isPinnedColumn", () => {
 
 describe("isExcludedColumn", () => {
   test("identifies excluded columns", () => {
-    expect(isExcludedColumn("IN_A", ["IN_A", "IN_B"])).toBe(true);
-    expect(isExcludedColumn("IN_B", ["IN_A", "IN_B"])).toBe(true);
-    expect(isExcludedColumn("id", ["IN_A", "IN_B"])).toBe(false);
+    expect(isExcludedColumn("in_a", ["in_a", "in_b"])).toBe(true);
+    expect(isExcludedColumn("in_b", ["in_a", "in_b"])).toBe(true);
+    expect(isExcludedColumn("id", ["in_a", "in_b"])).toBe(false);
   });
 
   test("handles case-sensitive matching by default", () => {
-    expect(isExcludedColumn("in_a", ["IN_A"])).toBe(false);
+    expect(isExcludedColumn("FOO", ["foo"])).toBe(false);
   });
 
   test("handles case-insensitive matching", () => {
-    expect(isExcludedColumn("in_a", ["IN_A"], true)).toBe(true);
-    expect(isExcludedColumn("IN_A", ["in_a"], true)).toBe(true);
+    expect(isExcludedColumn("in_a", ["in_a"], true)).toBe(true);
+    expect(isExcludedColumn("in_a", ["in_a"], true)).toBe(true);
   });
 });
 
@@ -294,17 +294,17 @@ describe("getDisplayColumns", () => {
       columnMap: createColumnMap([
         { name: "id" },
         { name: "value" },
-        { name: "IN_A" },
-        { name: "IN_B" },
+        { name: "in_a" },
+        { name: "in_b" },
       ]),
       primaryKeys: ["id"],
       pinnedColumns: [],
       columnsRenderMode: {},
-      excludeColumns: ["IN_A", "IN_B"],
+      excludeColumns: ["in_a", "in_b"],
     });
 
-    expect(result.map((c) => c.name)).not.toContain("IN_A");
-    expect(result.map((c) => c.name)).not.toContain("IN_B");
+    expect(result.map((c) => c.name)).not.toContain("in_a");
+    expect(result.map((c) => c.name)).not.toContain("in_b");
   });
 
   test("applies changedOnly filter when has modified rows", () => {

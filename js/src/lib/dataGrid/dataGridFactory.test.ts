@@ -200,8 +200,8 @@ const createProfileDataFrame = (
 const createValueDiffDataFrame = (): DataFrame => ({
   columns: [
     { key: "id", name: "id", type: "integer" },
-    { key: "IN_A", name: "IN_A", type: "boolean" },
-    { key: "IN_B", name: "IN_B", type: "boolean" },
+    { key: "in_a", name: "in_a", type: "boolean" },
+    { key: "in_b", name: "in_b", type: "boolean" },
     { key: "base__value", name: "base__value", type: "number" },
     { key: "current__value", name: "current__value", type: "number" },
   ],
@@ -538,8 +538,8 @@ describe("createDataGrid - value_diff_detail run", () => {
       columns: [
         { key: "region", name: "region", type: "text" },
         { key: "product_id", name: "product_id", type: "integer" },
-        { key: "IN_A", name: "IN_A", type: "boolean" },
-        { key: "IN_B", name: "IN_B", type: "boolean" },
+        { key: "in_a", name: "in_a", type: "boolean" },
+        { key: "in_b", name: "in_b", type: "boolean" },
         { key: "base__sales", name: "base__sales", type: "number" },
         { key: "current__sales", name: "current__sales", type: "number" },
       ],
@@ -1068,8 +1068,8 @@ describe("createDataGridFromData - joined input", () => {
       columns: [
         { key: "region", name: "region", type: "text" },
         { key: "product", name: "product", type: "text" },
-        { key: "IN_A", name: "IN_A", type: "boolean" },
-        { key: "IN_B", name: "IN_B", type: "boolean" },
+        { key: "in_a", name: "in_a", type: "boolean" },
+        { key: "in_b", name: "in_b", type: "boolean" },
         { key: "base__value", name: "base__value", type: "number" },
         { key: "current__value", name: "current__value", type: "number" },
       ],
@@ -1571,8 +1571,8 @@ describe("createDataGrid - primary key edge cases", () => {
     const df: DataFrame = {
       columns: [
         { key: "ID", name: "ID", type: "integer" },
-        { key: "IN_A", name: "IN_A", type: "boolean" },
-        { key: "IN_B", name: "IN_B", type: "boolean" },
+        { key: "in_a", name: "in_a", type: "boolean" },
+        { key: "in_b", name: "in_b", type: "boolean" },
         { key: "base__value", name: "base__value", type: "number" },
         { key: "current__value", name: "current__value", type: "number" },
       ],
@@ -1590,8 +1590,8 @@ describe("createDataGrid - primary key edge cases", () => {
       columns: [
         { key: "first name", name: "first name", type: "text" },
         { key: "last name", name: "last name", type: "text" },
-        { key: "IN_A", name: "IN_A", type: "boolean" },
-        { key: "IN_B", name: "IN_B", type: "boolean" },
+        { key: "in_a", name: "in_a", type: "boolean" },
+        { key: "in_b", name: "in_b", type: "boolean" },
         { key: "base__age", name: "base__age", type: "integer" },
         { key: "current__age", name: "current__age", type: "integer" },
       ],
@@ -1608,8 +1608,8 @@ describe("createDataGrid - primary key edge cases", () => {
     const df: DataFrame = {
       columns: [
         { key: "id", name: "id", type: "text" },
-        { key: "IN_A", name: "IN_A", type: "boolean" },
-        { key: "IN_B", name: "IN_B", type: "boolean" },
+        { key: "in_a", name: "in_a", type: "boolean" },
+        { key: "in_b", name: "in_b", type: "boolean" },
         { key: "base__value", name: "base__value", type: "number" },
         { key: "current__value", name: "current__value", type: "number" },
       ],

@@ -76,8 +76,8 @@ const createJoinedDataFrame = (
 ): DataFrame => ({
   columns: [
     ...columns,
-    { name: "IN_A", key: "IN_A", type: "boolean" },
-    { name: "IN_B", key: "IN_B", type: "boolean" },
+    { name: "in_a", key: "in_a", type: "boolean" },
+    { name: "in_b", key: "in_b", type: "boolean" },
   ],
   data: data as DataFrame["data"],
 });
@@ -642,7 +642,7 @@ describe("Primary key with special values", () => {
     expect(result).toBe("id=");
   });
 
-  test("toValueDiffGrid with empty string primary key value", () => {
+  test("toValueDiffGrid throws with empty string primary key value", () => {
     const df = createJoinedDataFrame(
       [
         { name: "id", key: "id", type: "text" },

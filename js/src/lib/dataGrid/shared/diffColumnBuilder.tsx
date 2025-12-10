@@ -187,7 +187,7 @@ function createDiffColumn(
  *   columnsRenderMode,
  *   changedOnly,
  *   rowStats,
- *   excludeColumns: ["IN_A", "IN_B"],
+ *   excludeColumns: ["in_a", "in_b"],
  *   caseInsensitive: true,
  * });
  *
