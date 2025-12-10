@@ -105,6 +105,11 @@ jobs:
         with:
           version: "latest"
 
+      - name: Install dependencies
+        run: |
+          # Install Python dependencies
+          uv sync --all-extras --python 3.10
+
       - name: Patch Recce Cloud Version
         id: patch_version
         run: |
