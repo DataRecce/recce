@@ -16,6 +16,7 @@ import { ColumnOrColumnGroup } from "react-data-grid";
 import { QueryDiffResult } from "@/lib/api/adhocQuery";
 import { NodeData } from "@/lib/api/info";
 import { ProfileDiffResult } from "@/lib/api/profile";
+import { RowCountDiffResult, RowCountResult } from "@/lib/api/rowcount";
 import {
   ColumnRenderMode,
   ColumnType,
@@ -25,6 +26,8 @@ import {
   isQueryBaseRun,
   isQueryDiffRun,
   isQueryRun,
+  isRowCountDiffRun,
+  isRowCountRun,
   isValueDiffDetailRun,
   isValueDiffRun,
   RowObjectType,
@@ -34,6 +37,8 @@ import { ValueDiffParams, ValueDiffResult } from "@/lib/api/valuediff";
 // Import existing implementations
 import { toDataDiffGrid } from "@/lib/dataGrid/generators/toDataDiffGrid";
 import { toDataGrid } from "@/lib/dataGrid/generators/toDataGrid";
+import { toRowCountDataGrid } from "@/lib/dataGrid/generators/toRowCountDataGrid";
+import { toRowCountDiffDataGrid } from "@/lib/dataGrid/generators/toRowCountDiffDataGrid";
 import {
   mergeColumns,
   type SchemaDataGridOptions,
@@ -98,7 +103,10 @@ type RunResultData =
   | { kind: "value_diff"; result: ValueDiffResult; params: ValueDiffParams }
   | { kind: "value_diff_detail"; result: DataFrame; primaryKeys: string[] }
   | { kind: "profile"; result: ProfileDiffResult }
-  | { kind: "profile_diff"; result: ProfileDiffResult };
+  | { kind: "profile_diff"; result: ProfileDiffResult }
+  // NEW: Add row count types
+  | { kind: "row_count"; result: RowCountResult }
+  | { kind: "row_count_diff"; result: RowCountDiffResult };
 
 // ============================================================================
 // Helper Functions
@@ -155,6 +163,16 @@ function determineDataKind(run: Run): RunResultData | null {
   if (isProfileDiffRun(run)) {
     if (!run.result) return null;
     return { kind: "profile_diff", result: run.result };
+  }
+
+  if (isRowCountRun(run)) {
+    if (!run.result) return null;
+    return { kind: "row_count", result: run.result };
+  }
+
+  if (isRowCountDiffRun(run)) {
+    if (!run.result) return null;
+    return { kind: "row_count_diff", result: run.result };
   }
 
   return null;
@@ -276,6 +294,12 @@ export function createDataGrid(
         onColumnsRenderModeChanged: options.onColumnsRenderModeChanged,
       });
     }
+
+    case "row_count":
+      return toRowCountDataGrid(dataKind.result);
+
+    case "row_count_diff":
+      return toRowCountDiffDataGrid(dataKind.result);
 
     default:
       return null;
