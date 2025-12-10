@@ -2,6 +2,8 @@
 
 from typing import List, Optional
 
+from recce.tasks.dataframe import DataFrame
+
 
 def normalize_keys_to_columns(
     keys: Optional[List[str]],
@@ -59,3 +61,34 @@ def normalize_keys_to_columns(
             normalized.append(actual_key if actual_key is not None else key)
 
     return normalized
+
+
+def normalize_boolean_flag_columns(df: "DataFrame") -> "DataFrame":
+    """
+    Normalize boolean flag columns (in_a, in_b) to lowercase for cross-warehouse consistency.
+
+    Different warehouses return column names in different cases:
+    - Snowflake: IN_A, IN_B (UPPERCASE)
+    - PostgreSQL/Redshift: in_a, in_b (lowercase)
+    - BigQuery: preserves original case
+
+    This function ensures these columns are always lowercase in the DataFrame
+    sent to the frontend, enabling exact string matching.
+
+    Args:
+        df: DataFrame that may contain IN_A/IN_B columns
+
+    Returns:
+        DataFrame with in_a/in_b columns normalized to lowercase
+    """
+    from .dataframe import DataFrame, DataFrameColumn
+
+    normalized_columns = []
+    for col in df.columns:
+        key_upper = col.key.upper() if col.key else ""
+        if key_upper in ("IN_A", "IN_B"):
+            normalized_columns.append(DataFrameColumn(key=col.key.lower(), name=col.name.lower(), type=col.type))
+        else:
+            normalized_columns.append(col)
+
+    return DataFrame(columns=normalized_columns, data=df.data, limit=df.limit, more=df.more)
