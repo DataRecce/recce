@@ -480,6 +480,10 @@ class DbtAdapter(BaseAdapter):
         """
         Load the artifacts from the 'target' and 'target-base' directory
         """
+        import time
+
+        from recce.util.startup_perf import get_startup_tracker
+
         if self.runtime_config is None:
             raise Exception("Cannot find the dbt project configuration")
 
@@ -489,18 +493,58 @@ class DbtAdapter(BaseAdapter):
         self.target_path = os.path.join(project_root, target_path)
         self.base_path = os.path.join(project_root, target_base_path)
 
-        # load the artifacts
+        tracker = get_startup_tracker()
+        if tracker:
+            tracker.start_artifact_load()
+            tracker.set_adapter_type("dbt")
+
+        # load curr_manifest
         path = os.path.join(project_root, target_path, "manifest.json")
+        _start = time.perf_counter_ns()
         curr_manifest = load_manifest(path=path)
+        if tracker:
+            tracker.record_artifact_timing("curr_manifest", (time.perf_counter_ns() - _start) / 1_000_000)
+            if os.path.exists(path):
+                tracker.set_artifact_size("curr_manifest", os.path.getsize(path))
         if curr_manifest is None:
             raise FileNotFoundError(ENOENT, os.strerror(ENOENT), path)
+
+        # load base_manifest
         path = os.path.join(project_root, target_base_path, "manifest.json")
+        _start = time.perf_counter_ns()
         base_manifest = load_manifest(path=path)
+        if tracker:
+            tracker.record_artifact_timing("base_manifest", (time.perf_counter_ns() - _start) / 1_000_000)
+            if os.path.exists(path):
+                tracker.set_artifact_size("base_manifest", os.path.getsize(path))
         if base_manifest is None:
             raise FileNotFoundError(ENOENT, os.strerror(ENOENT), path)
 
-        curr_catalog = load_catalog(path=os.path.join(project_root, target_path, "catalog.json"))
-        base_catalog = load_catalog(path=os.path.join(project_root, target_base_path, "catalog.json"))
+        # load curr_catalog
+        curr_catalog_path = os.path.join(project_root, target_path, "catalog.json")
+        _start = time.perf_counter_ns()
+        curr_catalog = load_catalog(path=curr_catalog_path)
+        if tracker:
+            tracker.record_artifact_timing("curr_catalog", (time.perf_counter_ns() - _start) / 1_000_000)
+            if os.path.exists(curr_catalog_path):
+                tracker.set_artifact_size("curr_catalog", os.path.getsize(curr_catalog_path))
+
+        # load base_catalog
+        base_catalog_path = os.path.join(project_root, target_base_path, "catalog.json")
+        _start = time.perf_counter_ns()
+        base_catalog = load_catalog(path=base_catalog_path)
+        if tracker:
+            tracker.record_artifact_timing("base_catalog", (time.perf_counter_ns() - _start) / 1_000_000)
+            if os.path.exists(base_catalog_path):
+                tracker.set_artifact_size("base_catalog", os.path.getsize(base_catalog_path))
+
+        # Record node counts and end artifact loading
+        if tracker:
+            tracker.end_artifact_load()
+            tracker.set_node_counts(
+                base_node_count=len(base_manifest.nodes) if base_manifest else None,
+                curr_node_count=len(curr_manifest.nodes) if curr_manifest else None,
+            )
 
         # set the value if all the artifacts are loaded successfully
         self.curr_manifest = curr_manifest

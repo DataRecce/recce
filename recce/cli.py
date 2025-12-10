@@ -529,12 +529,20 @@ def server(host, port, lifetime, idle_timeout=0, state_file=None, **kwargs):
 
     RecceConfig(config_file=kwargs.get("config"))
 
+    # Initialize startup performance tracking
+    from recce.util.startup_perf import StartupPerfTracker, set_startup_tracker
+
+    startup_tracker = StartupPerfTracker()
+    startup_tracker.start_total()
+    set_startup_tracker(startup_tracker)
+
     handle_debug_flag(**kwargs)
     patch_derived_args(kwargs)
 
     server_mode = kwargs.get("mode") if kwargs.get("mode") else RecceServerMode.server
     is_review = kwargs.get("review", False)
     is_cloud = kwargs.get("cloud", False)
+    startup_tracker.set_cloud_mode(is_cloud)
     flag = {
         "single_env_onboarding": False,
         "show_relaunch_hint": False,
@@ -580,7 +588,17 @@ def server(host, port, lifetime, idle_timeout=0, state_file=None, **kwargs):
     update_onboarding_state(api_token, flag.get("single_env_onboarding"))
 
     # Create state loader using shared function
+    from recce.util.startup_perf import get_startup_tracker
+
+    if tracker := get_startup_tracker():
+        tracker.start_state_loader_init()
+
     state_loader = create_state_loader_by_args(state_file, **kwargs)
+
+    if tracker := get_startup_tracker():
+        tracker.end_state_loader_init()
+        if hasattr(state_loader, "catalog"):
+            tracker.set_catalog_type(state_loader.catalog)
 
     if not state_loader.verify():
         error, hint = state_loader.error_and_hint
