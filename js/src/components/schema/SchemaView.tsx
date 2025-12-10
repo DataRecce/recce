@@ -20,10 +20,11 @@ interface SchemaViewProps {
   base?: NodeData;
   current?: NodeData;
   enableScreenshot?: boolean;
+  showMenu?: boolean;
 }
 
 function PrivateSingleEnvSchemaView(
-  { current }: { current?: NodeData },
+  { current, showMenu = true }: { current?: NodeData; showMenu?: boolean },
   ref: Ref<DataGridHandle>,
 ) {
   const lineageViewContext = useLineageViewContext();
@@ -33,9 +34,9 @@ function PrivateSingleEnvSchemaView(
   const { columns, rows } = useMemo(() => {
     return createDataGridFromData(
       { type: "schema_single", columns: current?.columns },
-      { node: current, cllRunningMap },
+      { node: current, cllRunningMap, showMenu },
     );
-  }, [current, cllRunningMap]);
+  }, [current, cllRunningMap, showMenu]);
 
   const { lineageGraph } = useLineageGraphContext();
   const noCatalogCurrent = !lineageGraph?.catalogMetadata.current;
@@ -125,7 +126,7 @@ function PrivateSingleEnvSchemaView(
 }
 
 export function PrivateSchemaView(
-  { base, current, enableScreenshot = false }: SchemaViewProps,
+  { base, current, enableScreenshot = false, showMenu = true }: SchemaViewProps,
   ref: Ref<DataGridHandle>,
 ) {
   const lineageViewContext = useLineageViewContext();
@@ -142,9 +143,9 @@ export function PrivateSchemaView(
 
     return createDataGridFromData(
       { type: "schema_diff", base: base?.columns, current: current?.columns },
-      { node, cllRunningMap },
+      { node, cllRunningMap, showMenu },
     );
-  }, [base, current, cllRunningMap]);
+  }, [base, current, cllRunningMap, showMenu]);
 
   const { lineageGraph } = useLineageGraphContext();
   const noCatalogBase = !lineageGraph?.catalogMetadata.base;

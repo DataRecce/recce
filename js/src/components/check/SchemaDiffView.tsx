@@ -214,6 +214,7 @@ export function PrivateSchemaDiffView(
           base={node.data.data.base}
           current={node.data.data.current}
           enableScreenshot={true}
+          showMenu={false}
           ref={ref}
         />
         <List.Root
