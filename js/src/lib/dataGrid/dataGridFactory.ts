@@ -3,12 +3,13 @@
  * @description Abstract factory for creating data grid configurations
  *
  * This file provides a unified interface for generating grid data
- * for different run types (query, query_diff, value_diff_detail, profile, profile_diff)
+ * for different run types (query, query_diff, value_diff, value_diff_detail, profile, profile_diff)
  *
  * It wraps the existing implementations:
- * - toDataGrid from QueryResultView.tsx
- * - toDataDiffGrid from querydiff.ts
- * - toValueDiffGrid from valuediff.ts
+ * - toDataGrid for single DataFrame display
+ * - toDataDiffGrid for comparing two DataFrames
+ * - toValueDiffGrid for joined diff data (with IN_A/IN_B columns)
+ * - toValueDataGrid for value_diff summary (column match statistics)
  */
 
 import { ColumnOrColumnGroup } from "react-data-grid";
@@ -24,12 +25,15 @@ import {
   isQueryDiffRun,
   isQueryRun,
   isValueDiffDetailRun,
+  isValueDiffRun,
   RowObjectType,
   Run,
 } from "@/lib/api/types";
+import { ValueDiffParams, ValueDiffResult } from "@/lib/api/valuediff";
 // Import existing implementations
 import { toDataDiffGrid } from "@/lib/dataGrid/generators/toDataDiffGrid";
 import { toDataGrid } from "@/lib/dataGrid/generators/toDataGrid";
+import { toValueDataGrid } from "@/lib/dataGrid/generators/toValueDataGrid";
 import { toValueDiffGrid } from "@/lib/dataGrid/generators/toValueDiffGrid";
 
 // ============================================================================
@@ -82,6 +86,7 @@ type RunResultData =
       result: QueryDiffResult;
       primaryKeys: string[];
     }
+  | { kind: "value_diff"; result: ValueDiffResult; params: ValueDiffParams }
   | { kind: "value_diff_detail"; result: DataFrame; primaryKeys: string[] }
   | { kind: "profile"; result: ProfileDiffResult }
   | { kind: "profile_diff"; result: ProfileDiffResult };
@@ -111,6 +116,15 @@ function determineDataKind(run: Run): RunResultData | null {
     }
     // Otherwise, it's separate base/current DataFrames
     return { kind: "query_diff_separate", result: run.result };
+  }
+
+  if (isValueDiffRun(run)) {
+    if (!run.result || !run.params) return null;
+    return {
+      kind: "value_diff",
+      result: run.result,
+      params: run.params,
+    };
   }
 
   if (isValueDiffDetailRun(run)) {
@@ -214,6 +228,9 @@ export function createDataGrid(
         columnsRenderMode: options.columnsRenderMode,
         onColumnsRenderModeChanged: options.onColumnsRenderModeChanged,
       });
+
+    case "value_diff":
+      return toValueDataGrid(dataKind.result, { params: dataKind.params });
 
     case "value_diff_detail":
       return toValueDiffGrid(dataKind.result, dataKind.primaryKeys, {
