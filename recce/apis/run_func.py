@@ -122,12 +122,16 @@ def submit_run(type, params, check_id=None):
 
     task.progress_listener = progress_listener
 
-    async def update_run_result(run_id, result, error):
+    async def update_run_result(run, result, error, updated_params=None):
+        """Update run with result, error, and optionally updated params."""
         if run is None:
             return
         if result is not None:
             run.result = result
             run.status = RunStatus.FINISHED
+        if updated_params is not None:
+            # Merge updated params (preserves any fields not in updated_params)
+            run.params.update(updated_params)
         if error is not None:
             failed_reason = str(error) if str(error) != "None" else repr(error)
             run.error = failed_reason
@@ -138,10 +142,28 @@ def submit_run(type, params, check_id=None):
     def fn():
         try:
             result = task.execute()
-            asyncio.run_coroutine_threadsafe(update_run_result(run.run_id, result, None), loop)
+
+            # Extract updated params from task after execution
+            updated_params = None
+            if hasattr(task, 'params') and task.params is not None:
+                # Convert Pydantic model to dict if needed
+                if hasattr(task.params, 'model_dump'):
+                    updated_params = task.params.model_dump()
+                elif hasattr(task.params, 'dict'):
+                    updated_params = task.params.dict()
+                elif isinstance(task.params, dict):
+                    updated_params = task.params
+
+            asyncio.run_coroutine_threadsafe(
+                update_run_result(run, result, None, updated_params),
+                loop
+            )
             return result
         except BaseException as e:
-            asyncio.run_coroutine_threadsafe(update_run_result(run.run_id, None, e), loop)
+            asyncio.run_coroutine_threadsafe(
+                update_run_result(run, None, e, None),
+                loop
+            )
             if isinstance(e, RecceException) and e.is_raise is False:
                 return None
             import sentry_sdk

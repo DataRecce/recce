@@ -2,6 +2,7 @@ from typing import List, Optional, TypedDict, Union
 
 from pydantic import BaseModel
 
+from .utils import normalize_keys_to_columns
 from ..core import default_context
 from ..exceptions import RecceException
 from ..models import Check
@@ -250,6 +251,19 @@ class ValueDiffTask(Task, ValueDiffMixin):
         column_types = [agate.Text(), agate.Number(), agate.Number()]
         table = agate.Table(row, column_names=column_names, column_types=column_types)
 
+        # Normalize primary_key to match actual column keys
+        # For ValueDiff, we use the columns from the model
+        composite = isinstance(primary_key, list)
+        if composite:
+            self.params.primary_key = normalize_keys_to_columns(
+                primary_key,
+                columns  # columns list from the model
+            )
+        else:
+            normalized = normalize_keys_to_columns([primary_key], columns)
+            if normalized:
+                self.params.primary_key = normalized[0]
+
         return ValueDiffResult(
             summary=ValueDiffResult.Summary(total=total, added=added, removed=removed),
             data=DataFrame.from_agate(table),
@@ -423,7 +437,22 @@ class ValueDiffDetailTask(Task, ValueDiffMixin):
         _, table = dbt_adapter.execute(sql, fetch=True)
         self.check_cancel()
 
-        return DataFrame.from_agate(table)
+        result_df = DataFrame.from_agate(table)
+
+        # Normalize primary_key to match actual column keys from result
+        column_keys = [col.key for col in result_df.columns]
+        composite = isinstance(primary_key, list)
+        if composite:
+            self.params.primary_key = normalize_keys_to_columns(
+                primary_key,
+                column_keys
+            )
+        else:
+            normalized = normalize_keys_to_columns([primary_key], column_keys)
+            if normalized:
+                self.params.primary_key = normalized[0]
+
+        return result_df
 
     def execute(self):
         from recce.adapter.dbt_adapter import DbtAdapter
