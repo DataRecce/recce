@@ -112,7 +112,6 @@ export function toDataDiffGrid(
     changedOnly,
     rowStats,
     excludeColumns: ["index"],
-    caseInsensitive: false,
     strictMode: false, // querydiff is lenient with missing columns
   });
 
