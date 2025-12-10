@@ -143,7 +143,18 @@ class CloudStateLoader(RecceStateLoader):
             raise RecceException(RECCE_CLOUD_PASSWORD_MISSING.error_message)
 
         headers = s3_sse_c_headers(password)
+
+        # Track state download timing
+        from recce.util.startup_perf import get_startup_tracker
+
+        if tracker := get_startup_tracker():
+            tracker.record_checkpoint("presigned_url_fetched")
+            tracker.start_state_download()
+
         loaded_state = self._download_state_from_url(presigned_url, SupportedFileTypes.GZIP, headers)
+
+        if tracker := get_startup_tracker():
+            tracker.end_state_download()
 
         # Handle the case where download returns None (404 error)
         if loaded_state is None:

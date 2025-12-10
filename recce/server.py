@@ -217,6 +217,9 @@ def teardown_preview(app_state: AppState, ctx: RecceContext):
 
 @asynccontextmanager
 async def lifespan(fastapi: FastAPI):
+    from recce.event import log_performance
+    from recce.util.startup_perf import clear_startup_tracker, get_startup_tracker
+
     ctx = None
     app_state: AppState = app.state
 
@@ -225,6 +228,11 @@ async def lifespan(fastapi: FastAPI):
     if hasattr(app_state, "kwargs") and app_state.kwargs.get("debug"):
         logger.setLevel(logging.DEBUG)
         logger.debug("Debug mode enabled - logger set to DEBUG level")
+
+    # Track server setup timing
+    if tracker := get_startup_tracker():
+        tracker.start_server_setup()
+        tracker.record_checkpoint("lifespan_start")
 
     if app_state.command == "server":
         ctx = setup_server(app_state)
@@ -240,6 +248,13 @@ async def lifespan(fastapi: FastAPI):
     if app_state.idle_timeout is not None and app_state.idle_timeout > 0:
         logger.debug(f"[Idle Timeout] Scheduling idle timeout check with {app_state.idle_timeout} seconds")
         schedule_idle_timeout_check(app_state)
+
+    # Log startup performance metrics
+    if tracker := get_startup_tracker():
+        tracker.end_server_setup()
+        tracker.end_total()
+        log_performance("server_startup", tracker.to_dict())
+        clear_startup_tracker()
 
     yield
 
