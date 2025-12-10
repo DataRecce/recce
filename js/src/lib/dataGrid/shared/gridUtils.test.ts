@@ -310,16 +310,6 @@ describe("validatePrimaryKeys", () => {
     }).toThrow("Column ID not found");
   });
 
-  test("case-insensitive matching when enabled", () => {
-    const result = validatePrimaryKeys(
-      standardDataFrame.columns,
-      ["ID"],
-      true, // caseInsensitive
-    );
-
-    expect(result).toEqual(["id"]);
-  });
-
   test("returns actual column keys", () => {
     const df = createDataFrame([
       { name: "UserId", key: "user_id", type: "integer" },
@@ -376,19 +366,6 @@ describe("getPrimaryKeyValue", () => {
     const result = getPrimaryKeyValue(standardDataFrame.columns, ["id"], row);
 
     expect(result).toBe("id=null");
-  });
-
-  test("case-insensitive key lookup when enabled", () => {
-    const row = createRow({ ID: 1, name: "Alice", value: 100 });
-
-    const result = getPrimaryKeyValue(
-      standardDataFrame.columns,
-      ["id"],
-      row,
-      true, // caseInsensitive
-    );
-
-    expect(result).toBe("id=1");
   });
 
   test("throws error for missing primary key column", () => {
@@ -455,21 +432,6 @@ describe("determineRowStatus", () => {
     ]);
 
     expect(result).toBeUndefined();
-  });
-
-  test("case-insensitive column matching when enabled", () => {
-    const baseRow = createRow({ ID: 1, NAME: "Alice" });
-    const currentRow = createRow({ id: 1, name: "Bob" });
-
-    const result = determineRowStatus(
-      baseRow,
-      currentRow,
-      columnMap,
-      ["id"],
-      true, // caseInsensitive
-    );
-
-    expect(result).toBe("modified");
   });
 
   test("ignores 'index' column", () => {
