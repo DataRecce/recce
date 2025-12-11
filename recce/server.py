@@ -232,7 +232,6 @@ async def lifespan(fastapi: FastAPI):
     # Track server setup timing
     if tracker := get_startup_tracker():
         tracker.start_server_setup()
-        tracker.record_checkpoint("lifespan_start")
 
     if app_state.command == "server":
         ctx = setup_server(app_state)
