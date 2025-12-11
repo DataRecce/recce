@@ -18,21 +18,18 @@ class StartupPerfTracker:
     _total_start: Optional[int] = None
     total_elapsed_ms: Optional[float] = None
 
-    # CLI phase: state loader initialization
-    _state_loader_init_start: Optional[int] = None
-    state_loader_init_elapsed_ms: Optional[float] = None
-
-    # State download (S3 presigned URL)
-    _state_download_start: Optional[int] = None
-    state_download_elapsed_ms: Optional[float] = None
-
-    # Server lifespan setup
+    # Server lifespan setup (manual timing - wraps multiple calls)
     _server_setup_start: Optional[int] = None
     server_setup_elapsed_ms: Optional[float] = None
 
-    # Artifact loading (broken down by file)
+    # Artifact loading total (wraps multiple decorated load calls)
     _artifact_load_start: Optional[int] = None
     artifact_load_elapsed_ms: Optional[float] = None
+
+    # Generic phase timings (populated by @track_timing decorator)
+    phase_timings: Dict[str, float] = field(default_factory=dict)
+
+    # Individual artifact timings (populated by @track_artifact_load decorator)
     artifact_timings: Dict[str, float] = field(default_factory=dict)
 
     # Metadata
@@ -61,23 +58,7 @@ class StartupPerfTracker:
         if self._total_start is not None:
             self.total_elapsed_ms = (time.perf_counter_ns() - self._total_start) / 1_000_000
 
-    # --- State loader init ---
-    def start_state_loader_init(self):
-        self._state_loader_init_start = time.perf_counter_ns()
-
-    def end_state_loader_init(self):
-        if self._state_loader_init_start is not None:
-            self.state_loader_init_elapsed_ms = (time.perf_counter_ns() - self._state_loader_init_start) / 1_000_000
-
-    # --- State download ---
-    def start_state_download(self):
-        self._state_download_start = time.perf_counter_ns()
-
-    def end_state_download(self):
-        if self._state_download_start is not None:
-            self.state_download_elapsed_ms = (time.perf_counter_ns() - self._state_download_start) / 1_000_000
-
-    # --- Server setup ---
+    # --- Server setup (manual - wraps multiple calls in async context) ---
     def start_server_setup(self):
         self._server_setup_start = time.perf_counter_ns()
 
@@ -85,13 +66,18 @@ class StartupPerfTracker:
         if self._server_setup_start is not None:
             self.server_setup_elapsed_ms = (time.perf_counter_ns() - self._server_setup_start) / 1_000_000
 
-    # --- Artifact loading ---
+    # --- Artifact loading (manual - wraps multiple decorated calls) ---
     def start_artifact_load(self):
         self._artifact_load_start = time.perf_counter_ns()
 
     def end_artifact_load(self):
         if self._artifact_load_start is not None:
             self.artifact_load_elapsed_ms = (time.perf_counter_ns() - self._artifact_load_start) / 1_000_000
+
+    # --- Generic timing recording ---
+    def record_timing(self, name: str, elapsed_ms: float):
+        """Record timing for a named phase (used by @track_timing decorator)"""
+        self.phase_timings[name] = elapsed_ms
 
     def record_artifact_timing(self, artifact_name: str, elapsed_ms: float):
         """Record timing for individual artifact (e.g., 'base_manifest', 'curr_catalog')"""
@@ -138,10 +124,9 @@ class StartupPerfTracker:
         return {
             # Timing metrics (all in milliseconds)
             "total_elapsed_ms": self.total_elapsed_ms,
-            "state_loader_init_elapsed_ms": self.state_loader_init_elapsed_ms,
-            "state_download_elapsed_ms": self.state_download_elapsed_ms,
             "server_setup_elapsed_ms": self.server_setup_elapsed_ms,
             "artifact_load_elapsed_ms": self.artifact_load_elapsed_ms,
+            "phase_timings": self.phase_timings if self.phase_timings else None,
             "artifact_timings": self.artifact_timings if self.artifact_timings else None,
             "checkpoints": self.checkpoints if self.checkpoints else None,
             # Metadata
@@ -180,13 +165,48 @@ def clear_startup_tracker():
     _startup_tracker = None
 
 
+def track_timing(timing_name: str, checkpoint: str = None):
+    """
+    Decorator factory to track timing for any named operation.
+
+    Usage:
+        @track_timing("state_loader_init")
+        def create_state_loader_by_args(...):
+            ...
+
+        @track_timing("state_download", checkpoint="presigned_url_fetched")
+        def _download_state_from_url(self, ...):
+            ...
+    """
+
+    def decorator(func):
+        @functools.wraps(func)
+        def wrapper(*args, **kwargs):
+            tracker = get_startup_tracker()
+            if tracker and checkpoint:
+                tracker.record_checkpoint(checkpoint)
+
+            start = time.perf_counter_ns()
+            result = func(*args, **kwargs)
+            elapsed_ms = (time.perf_counter_ns() - start) / 1_000_000
+
+            if tracker:
+                tracker.record_timing(timing_name, elapsed_ms)
+
+            return result
+
+        return wrapper
+
+    return decorator
+
+
 def track_artifact_load(func):
     """
     Decorator to track artifact loading time and size.
 
     Usage:
         @track_artifact_load
-        def load_manifest(path: str = None, data: dict = None, artifact_name: str = None):
+        def load_manifest(path: str = None, data: dict = None):
             ...
 
         # Call with artifact_name to enable tracking

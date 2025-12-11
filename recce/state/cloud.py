@@ -9,6 +9,7 @@ from recce.exceptions import RecceException
 from recce.pull_request import PullRequestInfo, fetch_pr_metadata
 from recce.util.io import SupportedFileTypes, file_io_factory
 from recce.util.recce_cloud import PresignedUrlMethod, RecceCloud, RecceCloudException
+from recce.util.startup_perf import track_timing
 
 from ..event import get_recce_api_token
 from ..models import CheckDAO
@@ -143,18 +144,7 @@ class CloudStateLoader(RecceStateLoader):
             raise RecceException(RECCE_CLOUD_PASSWORD_MISSING.error_message)
 
         headers = s3_sse_c_headers(password)
-
-        # Track state download timing
-        from recce.util.startup_perf import get_startup_tracker
-
-        if tracker := get_startup_tracker():
-            tracker.record_checkpoint("presigned_url_fetched")
-            tracker.start_state_download()
-
         loaded_state = self._download_state_from_url(presigned_url, SupportedFileTypes.GZIP, headers)
-
-        if tracker := get_startup_tracker():
-            tracker.end_state_download()
 
         # Handle the case where download returns None (404 error)
         if loaded_state is None:
@@ -185,6 +175,7 @@ class CloudStateLoader(RecceStateLoader):
     def _get_metadata_from_recce_cloud(self) -> Union[dict, None]:
         return self.recce_cloud.get_artifact_metadata(pr_info=self.pr_info) if self.pr_info else None
 
+    @track_timing("state_download", checkpoint="presigned_url_fetched")
     def _download_state_from_url(
         self, presigned_url: str, file_type: SupportedFileTypes, headers: dict = None
     ) -> RecceState:

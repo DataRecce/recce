@@ -76,6 +76,10 @@ def patch_derived_args(args):
         args["review"] = True
 
 
+from recce.util.startup_perf import track_timing
+
+
+@track_timing("state_loader_init")
 def create_state_loader_by_args(state_file=None, **kwargs):
     """
     Create a state loader based on CLI arguments.
@@ -590,15 +594,10 @@ def server(host, port, lifetime, idle_timeout=0, state_file=None, **kwargs):
     # Create state loader using shared function
     from recce.util.startup_perf import get_startup_tracker
 
-    if tracker := get_startup_tracker():
-        tracker.start_state_loader_init()
-
     state_loader = create_state_loader_by_args(state_file, **kwargs)
 
-    if tracker := get_startup_tracker():
-        tracker.end_state_loader_init()
-        if hasattr(state_loader, "catalog"):
-            tracker.set_catalog_type(state_loader.catalog)
+    if (tracker := get_startup_tracker()) and hasattr(state_loader, "catalog"):
+        tracker.set_catalog_type(state_loader.catalog)
 
     if not state_loader.verify():
         error, hint = state_loader.error_and_hint
