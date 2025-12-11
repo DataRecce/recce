@@ -420,7 +420,7 @@ class ValueDiffDetailTask(Task, ValueDiffMixin):
                        from all_records
                        where not (in_a and in_b)
                        order by {{ primary_keys | join (',\n') }}, in_a desc, in_b desc
-                           limit {{ limit }} \
+                           limit {{ limit }}
                        """
 
         sql = dbt_adapter.generate_sql(
