@@ -9,53 +9,26 @@ from typing import Dict, Optional
 class StartupPerfTracker:
     """
     Tracks startup performance metrics for Recce server.
-
-    Timing metrics are recorded in nanoseconds internally but converted
-    to milliseconds in to_dict() for consistency with other trackers.
+    All timing values are in milliseconds.
     """
 
-    # Total startup timing
-    _total_start: Optional[int] = None
-    total_elapsed_ms: Optional[float] = None
-
-    # Server lifespan setup (manual timing - wraps multiple calls)
-    _server_setup_start: Optional[int] = None
-    server_setup_elapsed_ms: Optional[float] = None
-
-    # All phase/artifact timings (populated by @track_timing decorator)
+    # All timings in ms (populated by @track_timing decorator)
     timings: Dict[str, float] = field(default_factory=dict)
+
+    # Artifact sizes in bytes
+    artifact_sizes: Dict[str, int] = field(default_factory=dict)
 
     # Metadata
     cloud_mode: bool = False
     catalog_type: Optional[str] = None  # github, preview, session
     adapter_type: Optional[str] = None
     node_count: Optional[int] = None
+    command: Optional[str] = None  # server, read-only, preview
 
-    # Artifact sizes (in bytes)
-    artifact_sizes: Dict[str, int] = field(default_factory=dict)
-
-    # --- Total timing ---
-    def start_total(self):
-        self._total_start = time.perf_counter_ns()
-
-    def end_total(self):
-        if self._total_start is not None:
-            self.total_elapsed_ms = (time.perf_counter_ns() - self._total_start) / 1_000_000
-
-    # --- Server setup (manual - wraps multiple calls in async context) ---
-    def start_server_setup(self):
-        self._server_setup_start = time.perf_counter_ns()
-
-    def end_server_setup(self):
-        if self._server_setup_start is not None:
-            self.server_setup_elapsed_ms = (time.perf_counter_ns() - self._server_setup_start) / 1_000_000
-
-    # --- Generic timing recording ---
     def record_timing(self, name: str, elapsed_ms: float):
         """Record timing for a named phase or artifact"""
         self.timings[name] = elapsed_ms
 
-    # --- Metadata setters ---
     def set_cloud_mode(self, cloud_mode: bool):
         self.cloud_mode = cloud_mode
 
@@ -68,14 +41,13 @@ class StartupPerfTracker:
 
     def to_dict(self) -> Dict:
         return {
-            "total_elapsed_ms": self.total_elapsed_ms,
-            "server_setup_elapsed_ms": self.server_setup_elapsed_ms,
             "timings": self.timings if self.timings else None,
             "artifact_sizes": self.artifact_sizes if self.artifact_sizes else None,
             "cloud_mode": self.cloud_mode,
             "catalog_type": self.catalog_type,
             "adapter_type": self.adapter_type,
             "node_count": self.node_count,
+            "command": self.command,
         }
 
 
