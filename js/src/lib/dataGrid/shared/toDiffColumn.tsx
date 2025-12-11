@@ -145,7 +145,7 @@ export function createCellClassCurrent(
  * });
  *
  * @example
- * // Side-by-side mode for valuediff with case-insensitive matching
+ * // Side-by-side mode for valuediff
  * const column = toDiffColumn({
  *   name: 'Amount',
  *   columnStatus: '',
@@ -155,7 +155,6 @@ export function createCellClassCurrent(
  *   currentTitle: 'After',
  *   headerProps: {
  *     primaryKeys: ['id'],
- *     caseInsensitive: true,
  *   }
  * });
  */
