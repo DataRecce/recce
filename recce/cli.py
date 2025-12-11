@@ -537,7 +537,6 @@ def server(host, port, lifetime, idle_timeout=0, state_file=None, **kwargs):
     from recce.util.startup_perf import StartupPerfTracker, set_startup_tracker
 
     startup_tracker = StartupPerfTracker()
-    startup_tracker.start_total()
     set_startup_tracker(startup_tracker)
 
     handle_debug_flag(**kwargs)
