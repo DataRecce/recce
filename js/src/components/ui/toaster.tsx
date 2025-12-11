@@ -1,5 +1,6 @@
 "use client";
 
+import type { CreateToasterReturn } from "@chakra-ui/react";
 import {
   Toaster as ChakraToaster,
   createToaster,
@@ -9,7 +10,7 @@ import {
   Toast,
 } from "@chakra-ui/react";
 
-export const toaster = createToaster({
+export const toaster: CreateToasterReturn = createToaster({
   placement: "bottom-end",
   pauseOnPageIdle: true,
 });

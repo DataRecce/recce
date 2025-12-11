@@ -509,7 +509,7 @@ export function CheckDetail({
                     error={rerunError}
                     progress={progress}
                     RunResultView={
-                      RunResultView as RegistryEntry["RunResultView"]
+                      RunResultView as unknown as RegistryEntry["RunResultView"]
                     }
                     viewOptions={check.view_options as ViewOptionTypes}
                     onViewOptionsChanged={handelUpdateViewOptions}
