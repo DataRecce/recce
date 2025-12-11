@@ -87,8 +87,18 @@ export function renderTypeCell({
   if (isTypeChanged) {
     return (
       <span>
-        <span className="type-badge type-badge-removed">{baseType}</span>
-        <span className="type-badge type-badge-added">{currentType}</span>
+        <span
+          className="type-badge type-badge-removed"
+          aria-label={`Base type: ${baseType}`}
+        >
+          {baseType}
+        </span>
+        <span
+          className="type-badge type-badge-added"
+          aria-label={`Current type: ${currentType}`}
+        >
+          {currentType}
+        </span>
       </span>
     );
   }
