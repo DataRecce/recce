@@ -27,18 +27,10 @@ class StartupPerfTracker:
 
     # Metadata
     cloud_mode: bool = False
-    adapter_type: Optional[str] = None
     catalog_type: Optional[str] = None  # github, preview, session
 
     # Artifact sizes (in bytes)
-    base_manifest_size: Optional[int] = None
-    base_catalog_size: Optional[int] = None
-    curr_manifest_size: Optional[int] = None
-    curr_catalog_size: Optional[int] = None
-
-    # Node counts
-    base_node_count: Optional[int] = None
-    curr_node_count: Optional[int] = None
+    artifact_sizes: Dict[str, int] = field(default_factory=dict)
 
     # --- Total timing ---
     def start_total(self):
@@ -65,51 +57,21 @@ class StartupPerfTracker:
     def set_cloud_mode(self, cloud_mode: bool):
         self.cloud_mode = cloud_mode
 
-    def set_adapter_type(self, adapter_type: str):
-        self.adapter_type = adapter_type
-
     def set_catalog_type(self, catalog_type: str):
         self.catalog_type = catalog_type
 
-    def set_artifact_size(self, artifact_name: str, size_bytes: int):
+    def set_artifact_size(self, name: str, size_bytes: int):
         """Set artifact size by name"""
-        if artifact_name == "base_manifest":
-            self.base_manifest_size = size_bytes
-        elif artifact_name == "base_catalog":
-            self.base_catalog_size = size_bytes
-        elif artifact_name == "curr_manifest":
-            self.curr_manifest_size = size_bytes
-        elif artifact_name == "curr_catalog":
-            self.curr_catalog_size = size_bytes
-
-    def set_node_counts(
-        self,
-        base_node_count: Optional[int] = None,
-        curr_node_count: Optional[int] = None,
-    ):
-        if base_node_count is not None:
-            self.base_node_count = base_node_count
-        if curr_node_count is not None:
-            self.curr_node_count = curr_node_count
+        self.artifact_sizes[name] = size_bytes
 
     def to_dict(self) -> Dict:
         return {
-            # Timing metrics (all in milliseconds)
             "total_elapsed_ms": self.total_elapsed_ms,
             "server_setup_elapsed_ms": self.server_setup_elapsed_ms,
             "timings": self.timings if self.timings else None,
-            # Metadata
+            "artifact_sizes": self.artifact_sizes if self.artifact_sizes else None,
             "cloud_mode": self.cloud_mode,
-            "adapter_type": self.adapter_type,
             "catalog_type": self.catalog_type,
-            # Sizes (in bytes)
-            "base_manifest_size_bytes": self.base_manifest_size,
-            "base_catalog_size_bytes": self.base_catalog_size,
-            "curr_manifest_size_bytes": self.curr_manifest_size,
-            "curr_catalog_size_bytes": self.curr_catalog_size,
-            # Node counts
-            "base_node_count": self.base_node_count,
-            "curr_node_count": self.curr_node_count,
         }
 
 
