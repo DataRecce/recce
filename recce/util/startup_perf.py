@@ -1,3 +1,5 @@
+import functools
+import os
 import time
 from dataclasses import dataclass, field
 from typing import Dict, Optional
@@ -176,3 +178,36 @@ def clear_startup_tracker():
     """Clear the global startup tracker instance"""
     global _startup_tracker
     _startup_tracker = None
+
+
+def track_artifact_load(func):
+    """
+    Decorator to track artifact loading time and size.
+
+    Usage:
+        @track_artifact_load
+        def load_manifest(path: str = None, data: dict = None, artifact_name: str = None):
+            ...
+
+        # Call with artifact_name to enable tracking
+        load_manifest(path=path, artifact_name="curr_manifest")
+    """
+
+    @functools.wraps(func)
+    def wrapper(*args, **kwargs):
+        artifact_name = kwargs.pop("artifact_name", None)
+        path = kwargs.get("path") or (args[0] if args else None)
+
+        tracker = get_startup_tracker()
+        if tracker and artifact_name:
+            start = time.perf_counter_ns()
+            result = func(*args, **kwargs)
+            elapsed_ms = (time.perf_counter_ns() - start) / 1_000_000
+            tracker.record_artifact_timing(artifact_name, elapsed_ms)
+            if path and os.path.exists(path):
+                tracker.set_artifact_size(artifact_name, os.path.getsize(path))
+            return result
+        else:
+            return func(*args, **kwargs)
+
+    return wrapper
