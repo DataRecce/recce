@@ -156,29 +156,6 @@ class StartupPerfTracker:
             "curr_node_count": self.curr_node_count,
         }
 
-    def reset(self):
-        self._total_start = None
-        self.total_elapsed_ms = None
-        self._state_loader_init_start = None
-        self.state_loader_init_elapsed_ms = None
-        self._state_download_start = None
-        self.state_download_elapsed_ms = None
-        self._server_setup_start = None
-        self.server_setup_elapsed_ms = None
-        self._artifact_load_start = None
-        self.artifact_load_elapsed_ms = None
-        self.artifact_timings = {}
-        self.checkpoints = {}
-        self.cloud_mode = False
-        self.adapter_type = None
-        self.catalog_type = None
-        self.base_manifest_size = None
-        self.base_catalog_size = None
-        self.curr_manifest_size = None
-        self.curr_catalog_size = None
-        self.base_node_count = None
-        self.curr_node_count = None
-
 
 # Module-level singleton for tracking startup across the call stack
 _startup_tracker: Optional[StartupPerfTracker] = None
