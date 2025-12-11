@@ -85,7 +85,7 @@ const columnTypeArb: fc.Arbitrary<ColumnType> = fc.constantFrom(
  */
 const columnNameArb: fc.Arbitrary<string> = fc
   .stringMatching(/^[a-z][a-z0-9_]{0,19}$/)
-  .filter((s) => s.length > 0);
+  .filter((s) => s.length > 0 && s !== "id");
 
 /**
  * Arbitrary for cell values based on column type
@@ -202,26 +202,35 @@ function dataFrameArb(config: DataFrameConfig = {}): fc.Arbitrary<DataFrame> {
       const rowCount = minRows + extraRows;
 
       // Build column definitions
+      // Filter out "id" from generated names when includePrimaryKey is true
+      // to avoid duplicate column keys
+      const filteredNames = includePrimaryKey
+        ? trimmedNames.filter((name) => name !== "id")
+        : trimmedNames;
+      const filteredTypes = includePrimaryKey
+        ? trimmedTypes.filter((_, i) => trimmedNames[i] !== "id")
+        : trimmedTypes;
+
       const columns: DataFrame["columns"] = includePrimaryKey
         ? [
             { key: "id", name: "id", type: "integer" },
-            ...trimmedNames.map((name, i) => ({
+            ...filteredNames.map((name, i) => ({
               key: name,
               name: name,
-              type: trimmedTypes[i],
+              type: filteredTypes[i],
             })),
           ]
-        : trimmedNames.map((name, i) => ({
+        : filteredNames.map((name, i) => ({
             key: name,
             name: name,
-            type: trimmedTypes[i],
+            type: filteredTypes[i],
           }));
 
       // Generate row data matching column types
       // Primary key uses dedicated arbitrary (non-null, unique), other columns use type-based
       const rowArb = includePrimaryKey
-        ? fc.tuple(primaryKeyValueArb, ...trimmedTypes.map(cellValueArb))
-        : fc.tuple(...trimmedTypes.map(cellValueArb));
+        ? fc.tuple(primaryKeyValueArb, ...filteredTypes.map(cellValueArb))
+        : fc.tuple(...filteredTypes.map(cellValueArb));
 
       return fc
         .uniqueArray(rowArb, {

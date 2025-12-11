@@ -556,7 +556,6 @@ describe("toDiffColumn - headerProps", () => {
     const headerProps = {
       primaryKeys: ["id"],
       pinnedColumns: ["name"],
-      caseInsensitive: true,
     };
 
     const result = toDiffColumn(
