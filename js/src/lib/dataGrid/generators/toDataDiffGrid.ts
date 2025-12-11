@@ -128,7 +128,6 @@ export function toDataDiffGrid(
       onPrimaryKeyChange: options?.onPrimaryKeyChange,
       onPinnedColumnsChange: options?.onPinnedColumnsChange,
       onColumnsRenderModeChanged: options?.onColumnsRenderModeChanged,
-      caseInsensitive: false,
     },
   });
 
