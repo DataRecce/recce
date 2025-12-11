@@ -146,13 +146,21 @@ def submit_run(type, params, check_id=None):
             # Extract updated params from task after execution
             updated_params = None
             if hasattr(task, "params") and task.params is not None:
-                # Convert Pydantic model to dict if needed
+                # Serialization logic:
+                # - Most tasks use Pydantic models (v2: model_dump, v1: dict)
+                # - Some tasks may use plain dicts
+                # - If params is an unexpected type, log a warning for debugging
                 if hasattr(task.params, "model_dump"):
                     updated_params = task.params.model_dump()
                 elif hasattr(task.params, "dict"):
                     updated_params = task.params.dict()
                 elif isinstance(task.params, dict):
                     updated_params = task.params
+                else:
+                    logger.warning(
+                        f"Could not serialize task.params for run_id={run.run_id}: "
+                        f"unexpected type {type(task.params)} with value {repr(task.params)}"
+                    )
 
             asyncio.run_coroutine_threadsafe(update_run_result(run, result, None, updated_params), loop)
             return result

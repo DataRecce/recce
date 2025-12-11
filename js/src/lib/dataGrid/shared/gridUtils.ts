@@ -78,7 +78,7 @@ export function buildJoinedColumnMap(
     };
   });
 
-  // Verify required columns exist (backend guarantees lowercase)
+  // Verify required columns exist (while backend guarantees "in_a" and "in_b" as lowercase, we need to verify their presence)
   if (!result.in_a) {
     throw new Error("Joined DataFrame missing required 'in_a' column");
   }

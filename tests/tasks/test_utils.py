@@ -71,7 +71,12 @@ class TestNormalizeKeysToColumns(unittest.TestCase):
         assert result == ["preCommitID", "order_id"]
 
     def test_quoted_column_case_insensitive_fallback(self):
-        """If quoted column doesn't match exactly, falls back to case-insensitive."""
+        """
+        If quoted column doesn't match exactly, falls back to case-insensitive.
+        Note: This is a last-ditch fallback to capture potential mistakes the user
+        made when typing their primary key. It is a fallback measure, not meant to
+        be a fully robust solution.
+        """
         keys = ["precommitid"]  # User provides lowercase
         columns = ["preCommitID", "order_id"]  # But warehouse has mixed case
 

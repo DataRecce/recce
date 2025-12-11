@@ -92,6 +92,17 @@ class ValueDiffTask(Task, ValueDiffMixin):
         model: str,
         columns: List[str] = None,
     ):
+        """
+        Query value diff between base and current relations.
+        Compares column values between base and current relations using the primary key.
+        Mutates `self.params.primary_key` to normalize primary key names to match actual column names.
+
+        :param dbt_adapter: The dbt adapter instance.
+        :param primary_key: Single column name or list of column names for composite key.
+        :param model: The model name to compare.
+        :param columns: Optional list of columns to compare. If None, uses common columns.
+        :return: ValueDiffResult with summary and per-column match data, or None if invalid.
+        """
         import agate
 
         column_groups = {}
@@ -252,7 +263,7 @@ class ValueDiffTask(Task, ValueDiffMixin):
         table = agate.Table(row, column_names=column_names, column_types=column_types)
 
         # Normalize primary_key to match actual column keys
-        # For ValueDiff, we use the columns from the model
+        # For ValueDiff, 'columns' refers to the model's column list (from metadata), not a DataFrame result.
         composite = isinstance(primary_key, list)
         if composite:
             self.params.primary_key = normalize_keys_to_columns(primary_key, columns)  # columns list from the model
@@ -364,61 +375,53 @@ class ValueDiffDetailTask(Task, ValueDiffMixin):
                 columns.insert(0, primary_key)
 
         sql_template = r"""
-        with a_query as (
-            select {{ columns | join(',\n') }} from {{ base_relation }}
-        ),
+                       with a_query as (select {{ columns | join (',\n') }}
+                       from {{ base_relation }}
+                           ), b_query as (
+                       select {{ columns | join (',\n') }}
+                       from {{ curr_relation }}
+                           ), a_intersect_b as (
+                       select *
+                       from a_query
+                           {{ dbt.intersect() }}
+                       select *
+                       from b_query
+                           ), a_except_b as (
+                       select *
+                       from a_query
+                           {{ dbt.except() }}
+                       select *
+                       from b_query
+                           ), b_except_a as (
+                       select *
+                       from b_query
+                           {{ dbt.except() }}
+                       select *
+                       from a_query
+                           ), all_records as (
+                       select
+                           *, true as in_a, true as in_b
+                       from a_intersect_b
 
-        b_query as (
-            select {{ columns | join(',\n') }} from {{ curr_relation }}
-        ),
+                       union all
 
-        a_intersect_b as (
-            select * from a_query
-            {{ dbt.intersect() }}
-            select * from b_query
-        ),
+                       select
+                           *, true as in_a, false as in_b
+                       from a_except_b
 
-        a_except_b as (
-            select * from a_query
-            {{ dbt.except() }}
-            select * from b_query
-        ),
+                       union all
 
-        b_except_a as (
-            select * from b_query
-            {{ dbt.except() }}
-            select * from a_query
-        ),
+                       select
+                           *, false as in_a, true as in_b
+                       from b_except_a
+                           )
 
-        all_records as (
-            select
-                *,
-                true as in_a,
-                true as in_b
-            from a_intersect_b
-
-            union all
-
-            select
-                *,
-                true as in_a,
-                false as in_b
-            from a_except_b
-
-            union all
-
-            select
-                *,
-                false as in_a,
-                true as in_b
-            from b_except_a
-        )
-
-        select * from all_records
-        where not (in_a and in_b)
-        order by {{ primary_keys | join(',\n') }}, in_a desc, in_b desc
-        limit {{ limit }}
-        """
+                       select *
+                       from all_records
+                       where not (in_a and in_b)
+                       order by {{ primary_keys | join (',\n') }}, in_a desc, in_b desc
+                           limit {{ limit }} \
+                       """
 
         sql = dbt_adapter.generate_sql(
             sql_template,
