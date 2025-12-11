@@ -19,7 +19,6 @@ import {
 } from "react-icons/vsc";
 import { columnPrecisionSelectOptions } from "@/components/valuediff/shared";
 import { ColumnRenderMode, ColumnType } from "@/lib/api/types";
-import { includesIgnoreCase } from "@/utils/transforms";
 
 /**
  * Props for the DataFrameColumnGroupHeader component
@@ -41,8 +40,6 @@ export interface DataFrameColumnGroupHeaderProps {
   onPinnedColumnsChange?: (pinnedColumns: string[]) => void;
   /** Callback when column render mode changes */
   onColumnsRenderModeChanged?: (col: Record<string, ColumnRenderMode>) => void;
-  /** Use case-insensitive matching for primary keys and pinned columns */
-  caseInsensitive?: boolean;
 }
 
 /**
@@ -54,9 +51,8 @@ export interface DataFrameColumnGroupHeaderProps {
  * - Pin/unpin toggle (when onPinnedColumnsChange is provided and column is not a PK)
  * - Precision options menu for number columns
  *
- * The component supports two modes based on props:
- * 1. Query diff mode (querydiff.ts): Allows PK toggling, uses exact string matching
- * 2. Value diff mode (valuediff.ts): Display-only PK icon, uses case-insensitive matching
+ * Uses exact string matching for primary keys and pinned columns.
+ * Backend normalization ensures column names match user-specified keys.
  *
  * @example
  * // Query diff mode with PK toggle
@@ -64,22 +60,21 @@ export interface DataFrameColumnGroupHeaderProps {
  *   name="user_id"
  *   columnStatus=""
  *   columnType="number"
- *   primaryKeys={['id']}
+ *   primaryKeys={['user_id']}
  *   onPrimaryKeyChange={setPrimaryKeys}
  *   pinnedColumns={[]}
  *   onPinnedColumnsChange={setPinnedColumns}
  * />
  *
  * @example
- * // Value diff mode with case-insensitive matching
+ * // Value diff mode (display-only PK indicator)
  * <DataFrameColumnGroupHeader
- *   name="User_ID"
+ *   name="user_id"
  *   columnStatus="modified"
  *   columnType="number"
  *   primaryKeys={['user_id']}
  *   pinnedColumns={[]}
  *   onPinnedColumnsChange={setPinnedColumns}
- *   caseInsensitive
  * />
  */
 export function DataFrameColumnGroupHeader({
@@ -91,21 +86,15 @@ export function DataFrameColumnGroupHeader({
   pinnedColumns = [],
   onPinnedColumnsChange,
   onColumnsRenderModeChanged,
-  caseInsensitive = false,
 }: DataFrameColumnGroupHeaderProps) {
   // Skip rendering for index column
   if (name === "index") {
     return <></>;
   }
 
-  // Determine if column is a primary key or pinned
-  const isPK = caseInsensitive
-    ? includesIgnoreCase(primaryKeys, name)
-    : primaryKeys.includes(name);
-
-  const isPinned = caseInsensitive
-    ? includesIgnoreCase(pinnedColumns, name)
-    : pinnedColumns.includes(name);
+  // Determine if column is a primary key or pinned (exact matching)
+  const isPK = primaryKeys.includes(name);
+  const isPinned = pinnedColumns.includes(name);
 
   // Column can be a PK only if it's not added/removed (for diff scenarios)
   const canBePk = columnStatus !== "added" && columnStatus !== "removed";
@@ -122,9 +111,7 @@ export function DataFrameColumnGroupHeader({
   // Primary key handlers
   const handleRemovePk = () => {
     if (!onPrimaryKeyChange) return;
-    const newPrimaryKeys = caseInsensitive
-      ? primaryKeys.filter((item) => item.toLowerCase() !== name.toLowerCase())
-      : primaryKeys.filter((item) => item !== name);
+    const newPrimaryKeys = primaryKeys.filter((item) => item !== name);
     onPrimaryKeyChange(newPrimaryKeys);
   };
 
@@ -140,11 +127,7 @@ export function DataFrameColumnGroupHeader({
   // Pin/unpin handlers
   const handleUnpin = () => {
     if (!onPinnedColumnsChange) return;
-    const newPinnedColumns = caseInsensitive
-      ? pinnedColumns.filter(
-          (item) => item.toLowerCase() !== name.toLowerCase(),
-        )
-      : pinnedColumns.filter((item) => item !== name);
+    const newPinnedColumns = pinnedColumns.filter((item) => item !== name);
     onPinnedColumnsChange(newPinnedColumns);
   };
 
