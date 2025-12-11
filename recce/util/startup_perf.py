@@ -22,15 +22,8 @@ class StartupPerfTracker:
     _server_setup_start: Optional[int] = None
     server_setup_elapsed_ms: Optional[float] = None
 
-    # Artifact loading total (wraps multiple decorated load calls)
-    _artifact_load_start: Optional[int] = None
-    artifact_load_elapsed_ms: Optional[float] = None
-
-    # Generic phase timings (populated by @track_timing decorator)
-    phase_timings: Dict[str, float] = field(default_factory=dict)
-
-    # Individual artifact timings (populated by @track_artifact_load decorator)
-    artifact_timings: Dict[str, float] = field(default_factory=dict)
+    # All phase/artifact timings (populated by @track_timing decorator)
+    timings: Dict[str, float] = field(default_factory=dict)
 
     # Metadata
     cloud_mode: bool = False
@@ -66,22 +59,10 @@ class StartupPerfTracker:
         if self._server_setup_start is not None:
             self.server_setup_elapsed_ms = (time.perf_counter_ns() - self._server_setup_start) / 1_000_000
 
-    # --- Artifact loading (manual - wraps multiple decorated calls) ---
-    def start_artifact_load(self):
-        self._artifact_load_start = time.perf_counter_ns()
-
-    def end_artifact_load(self):
-        if self._artifact_load_start is not None:
-            self.artifact_load_elapsed_ms = (time.perf_counter_ns() - self._artifact_load_start) / 1_000_000
-
     # --- Generic timing recording ---
     def record_timing(self, name: str, elapsed_ms: float):
-        """Record timing for a named phase (used by @track_timing decorator)"""
-        self.phase_timings[name] = elapsed_ms
-
-    def record_artifact_timing(self, artifact_name: str, elapsed_ms: float):
-        """Record timing for individual artifact (e.g., 'base_manifest', 'curr_catalog')"""
-        self.artifact_timings[artifact_name] = elapsed_ms
+        """Record timing for a named phase or artifact"""
+        self.timings[name] = elapsed_ms
 
     # --- Checkpoints ---
     def record_checkpoint(self, label: str):
@@ -125,9 +106,7 @@ class StartupPerfTracker:
             # Timing metrics (all in milliseconds)
             "total_elapsed_ms": self.total_elapsed_ms,
             "server_setup_elapsed_ms": self.server_setup_elapsed_ms,
-            "artifact_load_elapsed_ms": self.artifact_load_elapsed_ms,
-            "phase_timings": self.phase_timings if self.phase_timings else None,
-            "artifact_timings": self.artifact_timings if self.artifact_timings else None,
+            "timings": self.timings if self.timings else None,
             "checkpoints": self.checkpoints if self.checkpoints else None,
             # Metadata
             "cloud_mode": self.cloud_mode,
@@ -165,23 +144,39 @@ def clear_startup_tracker():
     _startup_tracker = None
 
 
-def track_timing(timing_name: str, checkpoint: str = None):
+def track_timing(timing_name: str = None, *, checkpoint: str = None, record_size: bool = False):
     """
-    Decorator factory to track timing for any named operation.
+    Decorator factory to track timing for any operation.
+
+    Args:
+        timing_name: Name for the timing. If None, expects 'timing_name' kwarg at call time.
+        checkpoint: Optional checkpoint to record before timing starts.
+        record_size: If True, record file size from 'path' kwarg.
 
     Usage:
+        # Name at decoration time
         @track_timing("state_loader_init")
         def create_state_loader_by_args(...):
             ...
 
-        @track_timing("state_download", checkpoint="presigned_url_fetched")
-        def _download_state_from_url(self, ...):
+        # Name at call time (for reusable functions)
+        @track_timing(record_size=True)
+        def load_manifest(path=None, data=None):
             ...
+
+        load_manifest(path=p, timing_name="curr_manifest")
     """
 
     def decorator(func):
         @functools.wraps(func)
         def wrapper(*args, **kwargs):
+            # Get timing name from decorator arg or from kwargs
+            name = timing_name
+            if name is None:
+                name = kwargs.pop("timing_name", None)
+
+            path = kwargs.get("path") or (args[0] if args else None)
+
             tracker = get_startup_tracker()
             if tracker and checkpoint:
                 tracker.record_checkpoint(checkpoint)
@@ -190,44 +185,13 @@ def track_timing(timing_name: str, checkpoint: str = None):
             result = func(*args, **kwargs)
             elapsed_ms = (time.perf_counter_ns() - start) / 1_000_000
 
-            if tracker:
-                tracker.record_timing(timing_name, elapsed_ms)
+            if tracker and name:
+                tracker.record_timing(name, elapsed_ms)
+                if record_size and path and os.path.exists(path):
+                    tracker.set_artifact_size(name, os.path.getsize(path))
 
             return result
 
         return wrapper
 
     return decorator
-
-
-def track_artifact_load(func):
-    """
-    Decorator to track artifact loading time and size.
-
-    Usage:
-        @track_artifact_load
-        def load_manifest(path: str = None, data: dict = None):
-            ...
-
-        # Call with artifact_name to enable tracking
-        load_manifest(path=path, artifact_name="curr_manifest")
-    """
-
-    @functools.wraps(func)
-    def wrapper(*args, **kwargs):
-        artifact_name = kwargs.pop("artifact_name", None)
-        path = kwargs.get("path") or (args[0] if args else None)
-
-        tracker = get_startup_tracker()
-        if tracker and artifact_name:
-            start = time.perf_counter_ns()
-            result = func(*args, **kwargs)
-            elapsed_ms = (time.perf_counter_ns() - start) / 1_000_000
-            tracker.record_artifact_timing(artifact_name, elapsed_ms)
-            if path and os.path.exists(path):
-                tracker.set_artifact_size(artifact_name, os.path.getsize(path))
-            return result
-        else:
-            return func(*args, **kwargs)
-
-    return wrapper
