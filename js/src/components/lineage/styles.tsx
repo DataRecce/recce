@@ -1,4 +1,4 @@
-import React from "react";
+import type { SVGProps } from "react";
 import { FaCamera, FaCube, FaDatabase, FaSeedling } from "react-icons/fa";
 import { FaChartSimple, FaCircleNodes, FaGauge } from "react-icons/fa6";
 import { VscDiffAdded, VscDiffModified, VscDiffRemoved } from "react-icons/vsc";
@@ -7,7 +7,7 @@ import { system as themeSystem } from "@/components/ui/theme";
 export const IconAdded = VscDiffAdded;
 export const IconRemoved = VscDiffRemoved;
 export const IconModified = VscDiffModified;
-export const IconChanged = (props: React.SVGProps<SVGSVGElement>) => {
+export const IconChanged = (props: SVGProps<SVGSVGElement>) => {
   return (
     <svg
       stroke="currentColor"
@@ -17,7 +17,7 @@ export const IconChanged = (props: React.SVGProps<SVGSVGElement>) => {
       height="1em"
       width="1em"
       xmlns="http://www.w3.org/2000/svg"
-      {...props}
+      {...(props as SVGProps<SVGSVGElement>)}
     >
       <path
         fillRule="evenodd"
@@ -30,9 +30,7 @@ export const IconChanged = (props: React.SVGProps<SVGSVGElement>) => {
   );
 };
 
-export const IconModifiedDownstream = (
-  props: React.SVGProps<SVGSVGElement>,
-) => {
+export const IconModifiedDownstream = (props: SVGProps<SVGSVGElement>) => {
   return (
     <svg
       stroke="currentColor"
@@ -42,7 +40,7 @@ export const IconModifiedDownstream = (
       height="1em"
       width="1em"
       xmlns="http://www.w3.org/2000/svg"
-      {...props}
+      {...(props as SVGProps<SVGSVGElement>)}
     >
       <path
         fillRule="evenodd"

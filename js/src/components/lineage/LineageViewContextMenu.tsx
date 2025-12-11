@@ -147,9 +147,7 @@ export const ModelNodeContextMenu = ({
   const isQueryDisabled = featureToggles.disableDatabaseQuery;
 
   // query
-  const { primaryKey } = useModelColumns(
-    (node?.data as LineageGraphNode | undefined)?.data.name,
-  );
+  const { primaryKey } = useModelColumns(node?.data?.name);
   const { setSqlQuery, setPrimaryKeys } = useRecceQueryContext();
   const [, setLocation] = useAppLocation();
 

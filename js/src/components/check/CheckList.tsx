@@ -107,7 +107,7 @@ const ChecklistItem = ({
               onCheckedChange={(details) => {
                 if (!details.checked) {
                   // If unchecking, just update the check
-                  mutate({ is_checked: details.checked });
+                  mutate({ is_checked: details.checked as boolean });
                 } else {
                   // Show Mark as Approved warning modal
                   onMarkAsApproved();

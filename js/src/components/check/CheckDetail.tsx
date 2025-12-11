@@ -127,11 +127,7 @@ export function CheckDetail({
 
   const runTypeEntry = check?.type ? findByRunType(check.type) : undefined;
 
-  let RunResultView: RegistryEntry["RunResultView"] | undefined;
-  if (runTypeEntry) {
-    RunResultView =
-      runTypeEntry.RunResultView as RegistryEntry["RunResultView"];
-  }
+  const RunResultView = runTypeEntry?.RunResultView;
 
   const isPresetCheck = check?.is_preset ?? false;
 
@@ -512,7 +508,9 @@ export function CheckDetail({
                     run={trackedRunId ? run : check.last_run}
                     error={rerunError}
                     progress={progress}
-                    RunResultView={RunResultView}
+                    RunResultView={
+                      RunResultView as RegistryEntry["RunResultView"]
+                    }
                     viewOptions={check.view_options as ViewOptionTypes}
                     onViewOptionsChanged={handelUpdateViewOptions}
                     onCancel={handleCancel}

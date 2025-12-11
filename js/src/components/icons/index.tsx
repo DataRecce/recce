@@ -1,6 +1,6 @@
-import React from "react";
+import type { SVGProps } from "react";
 
-export const IconSync = (props: React.SVGProps<SVGSVGElement>) => {
+export const IconSync = (props: SVGProps<SVGSVGElement>) => {
   return (
     <svg
       width="16"
@@ -8,7 +8,7 @@ export const IconSync = (props: React.SVGProps<SVGSVGElement>) => {
       viewBox="0 0 16 16"
       fill="none"
       xmlns="http://www.w3.org/2000/svg"
-      {...props}
+      {...(props as SVGProps<SVGSVGElement>)}
     >
       <g clipPath="url(#clip0_1479_25070)">
         <path
@@ -24,7 +24,7 @@ export const IconSync = (props: React.SVGProps<SVGSVGElement>) => {
     </svg>
   );
 };
-export const IconExport = (props: React.SVGProps<SVGSVGElement>) => {
+export const IconExport = (props: SVGProps<SVGSVGElement>) => {
   return (
     <svg
       width="16"
@@ -32,7 +32,7 @@ export const IconExport = (props: React.SVGProps<SVGSVGElement>) => {
       viewBox="0 0 16 16"
       fill="none"
       xmlns="http://www.w3.org/2000/svg"
-      {...props}
+      {...(props as SVGProps<SVGSVGElement>)}
     >
       <g clipPath="url(#clip0_1479_25102)">
         <path
@@ -63,7 +63,7 @@ export const IconExport = (props: React.SVGProps<SVGSVGElement>) => {
   );
 };
 
-export const IconImport = (props: React.SVGProps<SVGSVGElement>) => {
+export const IconImport = (props: SVGProps<SVGSVGElement>) => {
   return (
     <svg
       width="16"
@@ -71,7 +71,7 @@ export const IconImport = (props: React.SVGProps<SVGSVGElement>) => {
       viewBox="0 0 16 16"
       fill="none"
       xmlns="http://www.w3.org/2000/svg"
-      {...props}
+      {...(props as SVGProps<SVGSVGElement>)}
     >
       <g clipPath="url(#clip0_1426_8619)">
         <path
@@ -88,7 +88,7 @@ export const IconImport = (props: React.SVGProps<SVGSVGElement>) => {
   );
 };
 
-export const IconSave = (props: React.SVGProps<SVGSVGElement>) => {
+export const IconSave = (props: SVGProps<SVGSVGElement>) => {
   return (
     <svg
       width="16"
@@ -96,7 +96,7 @@ export const IconSave = (props: React.SVGProps<SVGSVGElement>) => {
       viewBox="0 0 16 16"
       fill="none"
       xmlns="http://www.w3.org/2000/svg"
-      {...props}
+      {...(props as SVGProps<SVGSVGElement>)}
     >
       <path
         d="M14.5607 4.06066L11.9393 1.43934C11.658 1.15804 11.2765 1 10.8787 1H2.5C1.67156 1 1 1.67156 1 2.5V13.5C1 14.3284 1.67156 15 2.5 15H13.5C14.3284 15 15 14.3284 15 13.5V5.12131C15 4.72349 14.842 4.34196 14.5607 4.06066ZM9.5 2.5V5H5.5V2.5H9.5ZM13.3125 13.5H2.6875C2.63777 13.5 2.59008 13.4802 2.55492 13.4451C2.51975 13.4099 2.5 13.3622 2.5 13.3125V2.6875C2.5 2.63777 2.51975 2.59008 2.55492 2.55492C2.59008 2.51975 2.63777 2.5 2.6875 2.5H4V5.75C4 6.16422 4.33578 6.5 4.75 6.5H10.25C10.6642 6.5 11 6.16422 11 5.75V2.62131L13.4451 5.06641C13.4625 5.08382 13.4763 5.10449 13.4857 5.12724C13.4952 5.14999 13.5 5.17438 13.5 5.199V13.3125C13.5 13.3622 13.4802 13.4099 13.4451 13.4451C13.4099 13.4802 13.3622 13.5 13.3125 13.5ZM8 7.25C6.48366 7.25 5.25 8.48366 5.25 10C5.25 11.5163 6.48366 12.75 8 12.75C9.51634 12.75 10.75 11.5163 10.75 10C10.75 8.48366 9.51634 7.25 8 7.25ZM8 11.25C7.31075 11.25 6.75 10.6892 6.75 10C6.75 9.31075 7.31075 8.75 8 8.75C8.68925 8.75 9.25 9.31075 9.25 10C9.25 10.6892 8.68925 11.25 8 11.25Z"
@@ -105,7 +105,7 @@ export const IconSave = (props: React.SVGProps<SVGSVGElement>) => {
     </svg>
   );
 };
-export const IconEdit = (props: React.SVGProps<SVGSVGElement>) => {
+export const IconEdit = (props: SVGProps<SVGSVGElement>) => {
   return (
     <svg
       width="17"
@@ -113,7 +113,7 @@ export const IconEdit = (props: React.SVGProps<SVGSVGElement>) => {
       viewBox="0 0 17 16"
       fill="none"
       xmlns="http://www.w3.org/2000/svg"
-      {...props}
+      {...(props as SVGProps<SVGSVGElement>)}
     >
       <path
         d="M15.9143 1.75812L14.7422 0.585938C14.3515 0.195312 13.8397 0 13.3278 0C12.8159 0 12.304 0.195312 11.9137 0.585625L9.58593 2.91344L8.5 3.99938L0.901592 11.5975L0.504719 15.1669C0.454719 15.6163 0.80878 16 1.24847 16C1.27628 16 1.3044 15.9984 1.33253 15.9953L4.89939 15.6012L12.5006 8L13.5862 6.91437L15.914 4.58656C16.6953 3.80531 16.6953 2.53906 15.9143 1.75812ZM4.21095 14.1684L2.09909 14.4016L2.3344 12.2863L9.56062 5.06L10.53 4.09062L12.4094 5.97L11.44 6.93937L4.21095 14.1684ZM14.8534 3.52562L13.4697 4.90938L11.5906 3.03L12.9744 1.64625C13.1019 1.51875 13.2506 1.49969 13.3278 1.49969C13.405 1.49969 13.554 1.51875 13.6812 1.64625L14.8534 2.81844C15.0484 3.01375 15.0484 3.33094 14.8534 3.52562Z"
@@ -123,7 +123,7 @@ export const IconEdit = (props: React.SVGProps<SVGSVGElement>) => {
   );
 };
 
-export const IconInfo = (props: React.SVGProps<SVGSVGElement>) => {
+export const IconInfo = (props: SVGProps<SVGSVGElement>) => {
   return (
     <svg
       width="16"
@@ -131,7 +131,7 @@ export const IconInfo = (props: React.SVGProps<SVGSVGElement>) => {
       viewBox="0 0 16 16"
       fill="none"
       xmlns="http://www.w3.org/2000/svg"
-      {...props}
+      {...(props as SVGProps<SVGSVGElement>)}
     >
       <path
         d="M7.26326 6.5462H8.71794V12.3642H7.26326V6.5462ZM7.9906 3.1102C7.43278 3.1102 6.97888 3.5641 6.97888 4.12192C6.97888 4.67974 7.43278 5.13364 7.9906 5.13364C8.54842 5.13364 9.00232 4.67974 9.00232 4.12192C9.00232 3.5641 8.54842 3.1102 7.9906 3.1102ZM16 8C16 12.411 12.411 16 8 16C3.589 16 0 12.411 0 8C0 3.589 3.589 0 8 0C12.411 0 16 3.589 16 8ZM14.5453 8C14.5453 4.3906 11.6093 1.4546 7.99992 1.4546C4.39052 1.4546 1.45452 4.3914 1.45452 8.0006C1.45452 11.6098 4.39052 14.546 7.99992 14.546C11.6093 14.546 14.5453 11.6092 14.5453 8.0006V8Z"

@@ -11,7 +11,10 @@ export const ScreenshotDataGrid = forwardRef(
   ) => {
     return (
       <DataGrid
-        ref={ref}
+        ref={
+          ref as React.Ref<DataGridHandle> &
+            ((instance: DataGridHandle | null) => void)
+        }
         className={
           props.className
             ? props.className + " no-track-pii-safe"
