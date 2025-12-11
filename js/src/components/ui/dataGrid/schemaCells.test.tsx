@@ -13,7 +13,7 @@ import React from "react";
 
 // Performance testing utilities
 const performance = {
-	now: () => Date.now(),
+  now: () => Date.now(),
 };
 
 // ============================================================================
@@ -21,20 +21,20 @@ const performance = {
 // ============================================================================
 
 jest.mock("react-data-grid", () => ({
-	__esModule: true,
+  __esModule: true,
 }));
 
 jest.mock("@/components/schema/ColumnNameCell", () => ({
-	ColumnNameCell: () => null,
+  ColumnNameCell: () => null,
 }));
 
 jest.mock("@/lib/api/info", () => ({}));
 
 // Import after mocks
 import {
-	renderIndexCell,
-	renderTypeCell,
-	MemoizedRenderTypeCell,
+  MemoizedRenderTypeCell,
+  renderIndexCell,
+  renderTypeCell,
 } from "./schemaCells";
 
 // ============================================================================
@@ -49,46 +49,46 @@ type TypeCellProps = Parameters<typeof renderTypeCell>[0];
  * Creates a mock RenderCellProps object for testing renderIndexCell
  */
 function createIndexCellProps(row: {
-	name?: string;
-	currentIndex?: number;
-	baseIndex?: number;
+  name?: string;
+  currentIndex?: number;
+  baseIndex?: number;
 }): IndexCellProps {
-	return {
-		row: {
-			name: "test_column",
-			__status: undefined,
-			...row,
-		},
-		rowIdx: 0,
-		column: {} as IndexCellProps["column"],
-		isCellEditable: false,
-		tabIndex: 0,
-		onRowChange: jest.fn(),
-	};
+  return {
+    row: {
+      name: "test_column",
+      __status: undefined,
+      ...row,
+    },
+    rowIdx: 0,
+    column: {} as IndexCellProps["column"],
+    isCellEditable: false,
+    tabIndex: 0,
+    onRowChange: jest.fn(),
+  };
 }
 
 /**
  * Creates a mock RenderCellProps object for testing renderTypeCell
  */
 function createTypeCellProps(row: {
-	name?: string;
-	currentIndex?: number;
-	baseIndex?: number;
-	currentType?: string;
-	baseType?: string;
+  name?: string;
+  currentIndex?: number;
+  baseIndex?: number;
+  currentType?: string;
+  baseType?: string;
 }): TypeCellProps {
-	return {
-		row: {
-			name: "test_column",
-			__status: undefined,
-			...row,
-		},
-		rowIdx: 0,
-		column: {} as TypeCellProps["column"],
-		isCellEditable: false,
-		tabIndex: 0,
-		onRowChange: jest.fn(),
-	};
+  return {
+    row: {
+      name: "test_column",
+      __status: undefined,
+      ...row,
+    },
+    rowIdx: 0,
+    column: {} as TypeCellProps["column"],
+    isCellEditable: false,
+    tabIndex: 0,
+    onRowChange: jest.fn(),
+  };
 }
 
 // ============================================================================
@@ -96,45 +96,45 @@ function createTypeCellProps(row: {
 // ============================================================================
 
 describe("renderIndexCell", () => {
-	test("renders currentIndex for normal rows (both base and current exist)", () => {
-		const props = createIndexCellProps({
-			baseIndex: 1,
-			currentIndex: 2,
-		});
+  test("renders currentIndex for normal rows (both base and current exist)", () => {
+    const props = createIndexCellProps({
+      baseIndex: 1,
+      currentIndex: 2,
+    });
 
-		render(<>{renderIndexCell(props)}</>);
-		expect(screen.getByText("2")).toBeInTheDocument();
-	});
+    render(<>{renderIndexCell(props)}</>);
+    expect(screen.getByText("2")).toBeInTheDocument();
+  });
 
-	test("renders currentIndex for added rows (only current exists)", () => {
-		const props = createIndexCellProps({
-			baseIndex: undefined,
-			currentIndex: 5,
-		});
+  test("renders currentIndex for added rows (only current exists)", () => {
+    const props = createIndexCellProps({
+      baseIndex: undefined,
+      currentIndex: 5,
+    });
 
-		render(<>{renderIndexCell(props)}</>);
-		expect(screen.getByText("5")).toBeInTheDocument();
-	});
+    render(<>{renderIndexCell(props)}</>);
+    expect(screen.getByText("5")).toBeInTheDocument();
+  });
 
-	test("renders baseIndex for removed rows (only base exists)", () => {
-		const props = createIndexCellProps({
-			baseIndex: 3,
-			currentIndex: undefined,
-		});
+  test("renders baseIndex for removed rows (only base exists)", () => {
+    const props = createIndexCellProps({
+      baseIndex: 3,
+      currentIndex: undefined,
+    });
 
-		render(<>{renderIndexCell(props)}</>);
-		expect(screen.getByText("3")).toBeInTheDocument();
-	});
+    render(<>{renderIndexCell(props)}</>);
+    expect(screen.getByText("3")).toBeInTheDocument();
+  });
 
-	test("renders currentIndex when both indices are the same", () => {
-		const props = createIndexCellProps({
-			baseIndex: 4,
-			currentIndex: 4,
-		});
+  test("renders currentIndex when both indices are the same", () => {
+    const props = createIndexCellProps({
+      baseIndex: 4,
+      currentIndex: 4,
+    });
 
-		render(<>{renderIndexCell(props)}</>);
-		expect(screen.getByText("4")).toBeInTheDocument();
-	});
+    render(<>{renderIndexCell(props)}</>);
+    expect(screen.getByText("4")).toBeInTheDocument();
+  });
 });
 
 // ============================================================================
@@ -142,268 +142,268 @@ describe("renderIndexCell", () => {
 // ============================================================================
 
 describe("renderTypeCell", () => {
-	describe("type changed scenarios", () => {
-		test("renders both badges when type changed", () => {
-			const props = createTypeCellProps({
-				baseIndex: 1,
-				currentIndex: 1,
-				baseType: "INTEGER",
-				currentType: "BIGINT",
-			});
+  describe("type changed scenarios", () => {
+    test("renders both badges when type changed", () => {
+      const props = createTypeCellProps({
+        baseIndex: 1,
+        currentIndex: 1,
+        baseType: "INTEGER",
+        currentType: "BIGINT",
+      });
 
-			render(<>{renderTypeCell(props)}</>);
+      render(<>{renderTypeCell(props)}</>);
 
-			expect(screen.getByText("INTEGER")).toBeInTheDocument();
-			expect(screen.getByText("BIGINT")).toBeInTheDocument();
-		});
+      expect(screen.getByText("INTEGER")).toBeInTheDocument();
+      expect(screen.getByText("BIGINT")).toBeInTheDocument();
+    });
 
-		test("renders removed badge with correct class", () => {
-			const props = createTypeCellProps({
-				baseIndex: 1,
-				currentIndex: 1,
-				baseType: "VARCHAR",
-				currentType: "TEXT",
-			});
+    test("renders removed badge with correct class", () => {
+      const props = createTypeCellProps({
+        baseIndex: 1,
+        currentIndex: 1,
+        baseType: "VARCHAR",
+        currentType: "TEXT",
+      });
 
-			const { container } = render(<>{renderTypeCell(props)}</>);
+      const { container } = render(<>{renderTypeCell(props)}</>);
 
-			const removedBadge = container.querySelector(".type-badge-removed");
-			expect(removedBadge).toBeInTheDocument();
-			expect(removedBadge).toHaveTextContent("VARCHAR");
-		});
+      const removedBadge = container.querySelector(".type-badge-removed");
+      expect(removedBadge).toBeInTheDocument();
+      expect(removedBadge).toHaveTextContent("VARCHAR");
+    });
 
-		test("renders added badge with correct class", () => {
-			const props = createTypeCellProps({
-				baseIndex: 1,
-				currentIndex: 1,
-				baseType: "VARCHAR",
-				currentType: "TEXT",
-			});
+    test("renders added badge with correct class", () => {
+      const props = createTypeCellProps({
+        baseIndex: 1,
+        currentIndex: 1,
+        baseType: "VARCHAR",
+        currentType: "TEXT",
+      });
 
-			const { container } = render(<>{renderTypeCell(props)}</>);
+      const { container } = render(<>{renderTypeCell(props)}</>);
 
-			const addedBadge = container.querySelector(".type-badge-added");
-			expect(addedBadge).toBeInTheDocument();
-			expect(addedBadge).toHaveTextContent("TEXT");
-		});
+      const addedBadge = container.querySelector(".type-badge-added");
+      expect(addedBadge).toBeInTheDocument();
+      expect(addedBadge).toHaveTextContent("TEXT");
+    });
 
-		test("renders badges with title for accessibility", () => {
-			const props = createTypeCellProps({
-				baseIndex: 1,
-				currentIndex: 1,
-				baseType: "INTEGER",
-				currentType: "BIGINT",
-			});
+    test("renders badges with title for accessibility", () => {
+      const props = createTypeCellProps({
+        baseIndex: 1,
+        currentIndex: 1,
+        baseType: "INTEGER",
+        currentType: "BIGINT",
+      });
 
-			render(<>{renderTypeCell(props)}</>);
+      render(<>{renderTypeCell(props)}</>);
 
-			const integerBadge = screen.getByTitle("Base type: INTEGER");
-			const bigintBadge = screen.getByTitle("Current type: BIGINT");
+      const integerBadge = screen.getByTitle("Base type: INTEGER");
+      const bigintBadge = screen.getByTitle("Current type: BIGINT");
 
-			expect(integerBadge).toBeInTheDocument();
-			expect(bigintBadge).toBeInTheDocument();
-		});
-	});
+      expect(integerBadge).toBeInTheDocument();
+      expect(bigintBadge).toBeInTheDocument();
+    });
+  });
 
-	describe("added row scenarios", () => {
-		test("renders currentType for added rows", () => {
-			const props = createTypeCellProps({
-				baseIndex: undefined,
-				currentIndex: 3,
-				baseType: undefined,
-				currentType: "VARCHAR",
-			});
+  describe("added row scenarios", () => {
+    test("renders currentType for added rows", () => {
+      const props = createTypeCellProps({
+        baseIndex: undefined,
+        currentIndex: 3,
+        baseType: undefined,
+        currentType: "VARCHAR",
+      });
 
-			render(<>{renderTypeCell(props)}</>);
+      render(<>{renderTypeCell(props)}</>);
 
-			expect(screen.getByText("VARCHAR")).toBeInTheDocument();
-		});
+      expect(screen.getByText("VARCHAR")).toBeInTheDocument();
+    });
 
-		test("does not render badges for added rows", () => {
-			const props = createTypeCellProps({
-				baseIndex: undefined,
-				currentIndex: 3,
-				baseType: undefined,
-				currentType: "VARCHAR",
-			});
+    test("does not render badges for added rows", () => {
+      const props = createTypeCellProps({
+        baseIndex: undefined,
+        currentIndex: 3,
+        baseType: undefined,
+        currentType: "VARCHAR",
+      });
 
-			const { container } = render(<>{renderTypeCell(props)}</>);
+      const { container } = render(<>{renderTypeCell(props)}</>);
 
-			expect(container.querySelector(".type-badge")).not.toBeInTheDocument();
-		});
-	});
+      expect(container.querySelector(".type-badge")).not.toBeInTheDocument();
+    });
+  });
 
-	describe("removed row scenarios", () => {
-		test("renders baseType for removed rows", () => {
-			const props = createTypeCellProps({
-				baseIndex: 2,
-				currentIndex: undefined,
-				baseType: "DATE",
-				currentType: undefined,
-			});
+  describe("removed row scenarios", () => {
+    test("renders baseType for removed rows", () => {
+      const props = createTypeCellProps({
+        baseIndex: 2,
+        currentIndex: undefined,
+        baseType: "DATE",
+        currentType: undefined,
+      });
 
-			render(<>{renderTypeCell(props)}</>);
+      render(<>{renderTypeCell(props)}</>);
 
-			expect(screen.getByText("DATE")).toBeInTheDocument();
-		});
+      expect(screen.getByText("DATE")).toBeInTheDocument();
+    });
 
-		test("does not render badges for removed rows", () => {
-			const props = createTypeCellProps({
-				baseIndex: 2,
-				currentIndex: undefined,
-				baseType: "DATE",
-				currentType: undefined,
-			});
+    test("does not render badges for removed rows", () => {
+      const props = createTypeCellProps({
+        baseIndex: 2,
+        currentIndex: undefined,
+        baseType: "DATE",
+        currentType: undefined,
+      });
 
-			const { container } = render(<>{renderTypeCell(props)}</>);
+      const { container } = render(<>{renderTypeCell(props)}</>);
 
-			expect(container.querySelector(".type-badge")).not.toBeInTheDocument();
-		});
-	});
+      expect(container.querySelector(".type-badge")).not.toBeInTheDocument();
+    });
+  });
 
-	describe("no change scenarios", () => {
-		test("renders currentType when types are the same", () => {
-			const props = createTypeCellProps({
-				baseIndex: 1,
-				currentIndex: 1,
-				baseType: "BIGINT",
-				currentType: "BIGINT",
-			});
+  describe("no change scenarios", () => {
+    test("renders currentType when types are the same", () => {
+      const props = createTypeCellProps({
+        baseIndex: 1,
+        currentIndex: 1,
+        baseType: "BIGINT",
+        currentType: "BIGINT",
+      });
 
-			render(<>{renderTypeCell(props)}</>);
+      render(<>{renderTypeCell(props)}</>);
 
-			expect(screen.getByText("BIGINT")).toBeInTheDocument();
-		});
+      expect(screen.getByText("BIGINT")).toBeInTheDocument();
+    });
 
-		test("does not render badges when types are the same", () => {
-			const props = createTypeCellProps({
-				baseIndex: 1,
-				currentIndex: 1,
-				baseType: "BIGINT",
-				currentType: "BIGINT",
-			});
+    test("does not render badges when types are the same", () => {
+      const props = createTypeCellProps({
+        baseIndex: 1,
+        currentIndex: 1,
+        baseType: "BIGINT",
+        currentType: "BIGINT",
+      });
 
-			const { container } = render(<>{renderTypeCell(props)}</>);
+      const { container } = render(<>{renderTypeCell(props)}</>);
 
-			expect(container.querySelector(".type-badge")).not.toBeInTheDocument();
-		});
-	});
+      expect(container.querySelector(".type-badge")).not.toBeInTheDocument();
+    });
+  });
 
-	describe("edge cases", () => {
-		test("handles undefined baseType and currentType", () => {
-			const props = createTypeCellProps({
-				baseIndex: 1,
-				currentIndex: 1,
-				baseType: undefined,
-				currentType: undefined,
-			});
+  describe("edge cases", () => {
+    test("handles undefined baseType and currentType", () => {
+      const props = createTypeCellProps({
+        baseIndex: 1,
+        currentIndex: 1,
+        baseType: undefined,
+        currentType: undefined,
+      });
 
-			const { container } = render(<>{renderTypeCell(props)}</>);
+      const { container } = render(<>{renderTypeCell(props)}</>);
 
-			// Should render without crashing
-			expect(container.querySelector("span")).toBeInTheDocument();
-		});
+      // Should render without crashing
+      expect(container.querySelector("span")).toBeInTheDocument();
+    });
 
-		test("handles empty string types", () => {
-			const props = createTypeCellProps({
-				baseIndex: 1,
-				currentIndex: 1,
-				baseType: "",
-				currentType: "VARCHAR",
-			});
+    test("handles empty string types", () => {
+      const props = createTypeCellProps({
+        baseIndex: 1,
+        currentIndex: 1,
+        baseType: "",
+        currentType: "VARCHAR",
+      });
 
-			render(<>{renderTypeCell(props)}</>);
+      render(<>{renderTypeCell(props)}</>);
 
-			// Empty string vs non-empty should show type change
-			expect(screen.getByText("VARCHAR")).toBeInTheDocument();
-		});
-	});
+      // Empty string vs non-empty should show type change
+      expect(screen.getByText("VARCHAR")).toBeInTheDocument();
+    });
+  });
 
-	// ============================================================================
-	// Performance Tests
-	// ============================================================================
+  // ============================================================================
+  // Performance Tests
+  // ============================================================================
 
-	describe("performance benchmarks", () => {
-		const ITERATIONS = 1000;
+  describe("performance benchmarks", () => {
+    const ITERATIONS = 1000;
 
-		test("renderIndexCell performance with large dataset", () => {
-			const testData = Array.from({ length: ITERATIONS }, (_, i) => ({
-				baseIndex: i,
-				currentIndex: i + 1,
-			}));
+    test("renderIndexCell performance with large dataset", () => {
+      const testData = Array.from({ length: ITERATIONS }, (_, i) => ({
+        baseIndex: i,
+        currentIndex: i + 1,
+      }));
 
-			const startTime = performance.now();
+      const startTime = performance.now();
 
-			testData.forEach((data) => {
-				const props = createIndexCellProps(data);
-				render(<>{renderIndexCell(props)}</>);
-			});
+      testData.forEach((data) => {
+        const props = createIndexCellProps(data);
+        render(<>{renderIndexCell(props)}</>);
+      });
 
-			const endTime = performance.now();
-			const totalTime = endTime - startTime;
-			const avgTime = totalTime / ITERATIONS;
+      const endTime = performance.now();
+      const totalTime = endTime - startTime;
+      const avgTime = totalTime / ITERATIONS;
 
-			console.log(
-				`renderIndexCell: ${totalTime.toFixed(2)}ms total, ${avgTime.toFixed(4)}ms avg per render`,
-			);
+      console.log(
+        `renderIndexCell: ${totalTime.toFixed(2)}ms total, ${avgTime.toFixed(4)}ms avg per render`,
+      );
 
-			// Performance assertion: should be well under 1ms per render
-			expect(avgTime).toBeLessThan(1);
-		});
+      // Performance assertion: should be well under 1ms per render
+      expect(avgTime).toBeLessThan(1);
+    });
 
-		test("renderTypeCell performance with large dataset", () => {
-			const testData = Array.from({ length: ITERATIONS }, (_, i) => ({
-				baseIndex: i,
-				currentIndex: i,
-				baseType: i % 2 === 0 ? "INTEGER" : "VARCHAR",
-				currentType:
-					i % 3 === 0 ? "BIGINT" : i % 2 === 0 ? "INTEGER" : "VARCHAR",
-			}));
+    test("renderTypeCell performance with large dataset", () => {
+      const testData = Array.from({ length: ITERATIONS }, (_, i) => ({
+        baseIndex: i,
+        currentIndex: i,
+        baseType: i % 2 === 0 ? "INTEGER" : "VARCHAR",
+        currentType:
+          i % 3 === 0 ? "BIGINT" : i % 2 === 0 ? "INTEGER" : "VARCHAR",
+      }));
 
-			const startTime = performance.now();
+      const startTime = performance.now();
 
-			testData.forEach((data) => {
-				const props = createTypeCellProps(data);
-				render(<>{renderTypeCell(props)}</>);
-			});
+      testData.forEach((data) => {
+        const props = createTypeCellProps(data);
+        render(<>{renderTypeCell(props)}</>);
+      });
 
-			const endTime = performance.now();
-			const totalTime = endTime - startTime;
-			const avgTime = totalTime / ITERATIONS;
+      const endTime = performance.now();
+      const totalTime = endTime - startTime;
+      const avgTime = totalTime / ITERATIONS;
 
-			console.log(
-				`renderTypeCell: ${totalTime.toFixed(2)}ms total, ${avgTime.toFixed(4)}ms avg per render`,
-			);
+      console.log(
+        `renderTypeCell: ${totalTime.toFixed(2)}ms total, ${avgTime.toFixed(4)}ms avg per render`,
+      );
 
-			// Performance assertion: should be well under 1ms per render
-			expect(avgTime).toBeLessThan(1);
-		});
+      // Performance assertion: should be well under 1ms per render
+      expect(avgTime).toBeLessThan(1);
+    });
 
-		test("React.memo prevents unnecessary re-renders", () => {
-			const props = createTypeCellProps({
-				baseIndex: 1,
-				currentIndex: 1,
-				baseType: "INTEGER",
-				currentType: "BIGINT",
-			});
+    test("React.memo prevents unnecessary re-renders", () => {
+      const props = createTypeCellProps({
+        baseIndex: 1,
+        currentIndex: 1,
+        baseType: "INTEGER",
+        currentType: "BIGINT",
+      });
 
-			// First render
-			const { rerender } = render(
-				React.createElement(MemoizedRenderTypeCell, props),
-			);
-			expect(screen.getByText("INTEGER")).toBeInTheDocument();
-			expect(screen.getByText("BIGINT")).toBeInTheDocument();
+      // First render
+      const { rerender } = render(
+        React.createElement(MemoizedRenderTypeCell, props),
+      );
+      expect(screen.getByText("INTEGER")).toBeInTheDocument();
+      expect(screen.getByText("BIGINT")).toBeInTheDocument();
 
-			// Re-render with same props (should not cause actual re-render due to memo)
-			rerender(React.createElement(MemoizedRenderTypeCell, props));
-			expect(screen.getByText("INTEGER")).toBeInTheDocument();
-			expect(screen.getByText("BIGINT")).toBeInTheDocument();
+      // Re-render with same props (should not cause actual re-render due to memo)
+      rerender(React.createElement(MemoizedRenderTypeCell, props));
+      expect(screen.getByText("INTEGER")).toBeInTheDocument();
+      expect(screen.getByText("BIGINT")).toBeInTheDocument();
 
-			// Verify the component is memoized
-			expect(MemoizedRenderTypeCell).toHaveProperty(
-				"$$typeof",
-				Symbol.for("react.memo"),
-			);
-		});
-	});
+      // Verify the component is memoized
+      expect(MemoizedRenderTypeCell).toHaveProperty(
+        "$$typeof",
+        Symbol.for("react.memo"),
+      );
+    });
+  });
 });

@@ -8,8 +8,8 @@ import { RenderCellProps } from "react-data-grid";
 import { ColumnNameCell } from "@/components/schema/ColumnNameCell";
 import { NodeData } from "@/lib/api/info";
 import type {
-	SchemaDiffRow,
-	SchemaRow,
+  SchemaDiffRow,
+  SchemaRow,
 } from "@/lib/dataGrid/generators/toSchemaDataGrid";
 
 // ============================================================================
@@ -20,37 +20,37 @@ import type {
  * Creates a renderCell function for schema diff column names
  */
 export function createColumnNameRenderer(
-	node: NodeData,
-	cllRunningMap?: Map<string, boolean>,
-	showMenu?: boolean,
+  node: NodeData,
+  cllRunningMap?: Map<string, boolean>,
+  showMenu?: boolean,
 ): (props: RenderCellProps<SchemaDiffRow>) => React.ReactNode {
-	return ({ row }) => (
-		<ColumnNameCell
-			model={node}
-			row={row}
-			cllRunning={cllRunningMap?.get(row.name) ?? false}
-			showMenu={showMenu}
-		/>
-	);
+  return ({ row }) => (
+    <ColumnNameCell
+      model={node}
+      row={row}
+      cllRunning={cllRunningMap?.get(row.name) ?? false}
+      showMenu={showMenu}
+    />
+  );
 }
 
 /**
  * Creates a renderCell function for single-env schema column names
  */
 export function createSingleEnvColumnNameRenderer(
-	node: NodeData,
-	cllRunningMap?: Map<string, boolean>,
-	showMenu?: boolean,
+  node: NodeData,
+  cllRunningMap?: Map<string, boolean>,
+  showMenu?: boolean,
 ): (props: RenderCellProps<SchemaRow>) => React.ReactNode {
-	return ({ row }) => (
-		<ColumnNameCell
-			model={node}
-			row={row}
-			cllRunning={cllRunningMap?.get(row.name) ?? false}
-			singleEnv
-			showMenu={showMenu}
-		/>
-	);
+  return ({ row }) => (
+    <ColumnNameCell
+      model={node}
+      row={row}
+      cllRunning={cllRunningMap?.get(row.name) ?? false}
+      singleEnv
+      showMenu={showMenu}
+    />
+  );
 }
 
 // ============================================================================
@@ -62,11 +62,11 @@ export function createSingleEnvColumnNameRenderer(
  * Shows currentIndex for normal/added rows, baseIndex for removed rows.
  */
 export function renderIndexCell({
-	row,
+  row,
 }: RenderCellProps<SchemaDiffRow>): React.ReactNode {
-	const { baseIndex, currentIndex } = row;
-	const isRemoved = currentIndex === undefined;
-	return <span>{isRemoved ? baseIndex : currentIndex}</span>;
+  const { baseIndex, currentIndex } = row;
+  const isRemoved = currentIndex === undefined;
+  return <span>{isRemoved ? baseIndex : currentIndex}</span>;
 }
 
 // Memoized version for performance optimization
@@ -81,34 +81,34 @@ MemoizedRenderIndexCell.displayName = "MemoizedRenderIndexCell";
  * - No change: shows currentType (same as baseType)
  */
 export function renderTypeCell({
-	row,
+  row,
 }: RenderCellProps<SchemaDiffRow>): React.ReactNode {
-	const { baseType, currentType, baseIndex, currentIndex } = row;
-	const isAdded = baseIndex === undefined;
-	const isRemoved = currentIndex === undefined;
-	const isTypeChanged = !isAdded && !isRemoved && baseType !== currentType;
+  const { baseType, currentType, baseIndex, currentIndex } = row;
+  const isAdded = baseIndex === undefined;
+  const isRemoved = currentIndex === undefined;
+  const isTypeChanged = !isAdded && !isRemoved && baseType !== currentType;
 
-	if (isTypeChanged) {
-		return (
-			<span>
-				<span
-					className="type-badge type-badge-removed"
-					title={`Base type: ${baseType}`}
-				>
-					{baseType}
-				</span>
-				<span
-					className="type-badge type-badge-added"
-					title={`Current type: ${currentType}`}
-				>
-					{currentType}
-				</span>
-			</span>
-		);
-	}
+  if (isTypeChanged) {
+    return (
+      <span>
+        <span
+          className="type-badge type-badge-removed"
+          title={`Base type: ${baseType}`}
+        >
+          {baseType}
+        </span>
+        <span
+          className="type-badge type-badge-added"
+          title={`Current type: ${currentType}`}
+        >
+          {currentType}
+        </span>
+      </span>
+    );
+  }
 
-	// For added rows, show currentType; for removed rows, show baseType
-	return <span>{isRemoved ? baseType : currentType}</span>;
+  // For added rows, show currentType; for removed rows, show baseType
+  return <span>{isRemoved ? baseType : currentType}</span>;
 }
 
 // Memoized version for performance optimization
