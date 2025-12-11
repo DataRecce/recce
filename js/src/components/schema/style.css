@@ -1,26 +1,27 @@
-.row-added {
+/* Row backgrounds must be applied to cells because rows use display:contents */
+.row-added .rdg-cell {
   background-color: rgb(204, 255, 216);
 }
 
-.row-added:hover,
-.row-added[aria-selected="true"] {
+.row-added:hover .rdg-cell,
+.row-added[aria-selected="true"] .rdg-cell {
   background-color: rgb(193 246 205);
 }
 
-.row-added[aria-selected="true"]:hover {
+.row-added[aria-selected="true"]:hover .rdg-cell {
   background-color: rgb(166 242 184);
 }
 
-.row-removed {
+.row-removed .rdg-cell {
   background-color: rgb(255, 215, 213);
 }
 
-.row-removed:hover,
-.row-removed[aria-selected="true"] {
+.row-removed:hover .rdg-cell,
+.row-removed[aria-selected="true"] .rdg-cell {
   background-color: rgb(246 195 193);
 }
 
-.row-removed[aria-selected="true"]:hover {
+.row-removed[aria-selected="true"]:hover .rdg-cell {
   background-color: rgb(242 170 166);
 }
 
