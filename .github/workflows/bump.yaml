@@ -12,11 +12,17 @@ jobs:
       contents: write
 
     steps:
+      - uses: actions/create-github-app-token@v2
+        id: app-token
+        with:
+          app-id: 2343362 # App ID of Recce Action Bot
+          private-key: ${{ secrets.RECCE_ACTION_BOT_PRIVATE_KEY }}
+          owner: ${{ github.repository_owner }}
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           ref: main
-          token: ${{ secrets.AUTOCOMMIT_PERSONAL_TOKEN }}
+          token: ${{ steps.app-token.outputs.token }}
 
       - name: Bump version
         id: bump_version
@@ -39,3 +45,4 @@ jobs:
         with:
           commit_message: "AUTO-COMMIT - Bump version to ${{ steps.bump_version.outputs.bump_version }}.dev0"
           branch: main
+          token: ${{ steps.app-token.outputs.token }}
