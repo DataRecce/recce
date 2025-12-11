@@ -32,6 +32,7 @@ from recce.util.lineage import (
     find_upstream,
 )
 from recce.util.perf_tracking import LineagePerfTracker
+from recce.util.startup_perf import track_timing
 
 from ...tasks.profile import ProfileTask
 from ...util.breaking import BreakingPerformanceTracking, parse_change_category
@@ -213,9 +214,6 @@ def as_manifest(m: WritableManifest) -> Manifest:
         result = Manifest.from_writable_manifest(m)
         result.metadata = ManifestMetadata(**m.metadata.__dict__)
         return result
-
-
-from recce.util.startup_perf import track_timing
 
 
 @track_timing(record_size=True)
