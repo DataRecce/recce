@@ -517,7 +517,7 @@ describe("validateToValueDiffGridInputs", () => {
     };
 
     expect(() => validateToValueDiffGridInputs(df, ["id"])).toThrow(
-      "Value diff DataFrame must include 'in_a' column",
+      "Value diff DataFrame must include lowercase 'in_a' column",
     );
   });
 
@@ -531,7 +531,7 @@ describe("validateToValueDiffGridInputs", () => {
     };
 
     expect(() => validateToValueDiffGridInputs(df, ["id"])).toThrow(
-      "Value diff DataFrame must include 'in_b' column",
+      "Value diff DataFrame must include lowercase 'in_b' column",
     );
   });
 
@@ -551,7 +551,7 @@ describe("validateToValueDiffGridInputs", () => {
   test("throws when case mismatches for primary key", () => {
     const df = createJoinedDataFrame();
 
-    // Should accept "ID" even though column is "id"
+    // Should NOT accept "ID" when the column is "id"
     expect(() => validateToValueDiffGridInputs(df, ["ID"])).toThrow(
       "[toValueDiffGrid] Primary key column 'ID' not found in columns",
     );

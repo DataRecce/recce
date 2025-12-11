@@ -356,12 +356,12 @@ export function validateToValueDiffGridInputs(
   const columnKeys = df.columns.map((c) => c.key);
   if (!columnKeys.includes("in_a")) {
     throw new DataGridValidationError(
-      "Value diff DataFrame must include 'in_a' column",
+      "Value diff DataFrame must include lowercase 'in_a' column",
     );
   }
   if (!columnKeys.includes("in_b")) {
     throw new DataGridValidationError(
-      "Value diff DataFrame must include 'in_b' column",
+      "Value diff DataFrame must include lowercase 'in_b' column",
     );
   }
 }

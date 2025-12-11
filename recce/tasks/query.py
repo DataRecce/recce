@@ -148,6 +148,10 @@ class QueryDiffTask(Task, QueryMixin, ValueDiffMixin):
         base_sql_template: Optional[str] = None,
         preview_change: bool = False,
     ):
+        """
+        Execute diff queries on base and current environments without join.
+        Note: Mutates self.params.primary_keys to normalize values with actual column keys.
+        """
         limit = QUERY_LIMIT
 
         self.connection = dbt_adapter.get_thread_connection()
@@ -181,6 +185,22 @@ class QueryDiffTask(Task, QueryMixin, ValueDiffMixin):
         base_sql_template: Optional[str] = None,
         preview_change: bool = False,
     ):
+        """
+        Execute diff queries on base and current environments using SQL join operations.
+        This method performs a set-based diff using INTERSECT and EXCEPT operations
+        to identify rows that differ between base and current query results.
+
+        Note: Mutates self.params.primary_keys to normalize values with actual column keys.
+
+        :param dbt_adapter: The dbt adapter instance for executing SQL
+        :param sql_template: SQL template to execute on the current environment
+        :param primary_keys: List of column names to use as primary keys for ordering
+        :param base_sql_template: Optional SQL template for the base environment.
+            If None, sql_template is used for both environments.
+        :param preview_change: If True, run base_sql_template against current environment
+            instead of base environment
+        :return: QueryDiffResult containing the diff DataFrame with in_a/in_b flags
+        """
 
         query_template = r"""
         with a_query as (
