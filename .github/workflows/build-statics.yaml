@@ -30,9 +30,15 @@ jobs:
         working-directory: ./js
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/create-github-app-token@v2
+        id: app-token
         with:
-          token: ${{ secrets.AUTOCOMMIT_PERSONAL_TOKEN }}
+          app-id: 2343362 # App ID of Recce Action Bot
+          private-key: ${{ secrets.RECCE_ACTION_BOT_PRIVATE_KEY }}
+          owner: ${{ github.repository_owner }}
+      - uses: actions/checkout@v6
+        with:
+          token: ${{ steps.app-token.outputs.token }}
 
       - name: Use Node.js ${{ matrix.node-version }}
         uses: actions/setup-node@v3
@@ -60,6 +66,6 @@ jobs:
         with:
           commit_message: AUTO-COMMIT - build js statics to recce data/
           branch: ${{ github.base_ref || github.ref_name }}
-          token: ${{ secrets.AUTOCOMMIT_PERSONAL_TOKEN }}
+          token: ${{ steps.app-token.outputs.token }}
           #          push_options: --force
           # Auto-commits to target merge branch
