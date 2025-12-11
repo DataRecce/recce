@@ -28,6 +28,8 @@ class StartupPerfTracker:
     # Metadata
     cloud_mode: bool = False
     catalog_type: Optional[str] = None  # github, preview, session
+    adapter_type: Optional[str] = None
+    node_count: Optional[int] = None
 
     # Artifact sizes (in bytes)
     artifact_sizes: Dict[str, int] = field(default_factory=dict)
@@ -72,6 +74,8 @@ class StartupPerfTracker:
             "artifact_sizes": self.artifact_sizes if self.artifact_sizes else None,
             "cloud_mode": self.cloud_mode,
             "catalog_type": self.catalog_type,
+            "adapter_type": self.adapter_type,
+            "node_count": self.node_count,
         }
 
 
