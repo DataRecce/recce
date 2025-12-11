@@ -49,6 +49,7 @@ from .github import is_github_codespace
 from .models.types import CllData
 from .run import load_preset_checks
 from .state import RecceShareStateManager, RecceStateLoader
+from .util.startup_perf import track_timing
 
 logger = logging.getLogger("uvicorn")
 
@@ -213,9 +214,6 @@ def teardown_preview(app_state: AppState, ctx: RecceContext):
     state_loader = app_state.state_loader
     state_loader.export(ctx.export_state())
     pass
-
-
-from recce.util.startup_perf import track_timing
 
 
 @track_timing("server_setup")

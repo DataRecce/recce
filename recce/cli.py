@@ -37,6 +37,7 @@ from recce.util.onboarding_state import update_onboarding_state
 from recce.util.recce_cloud import (
     RecceCloudException,
 )
+from recce.util.startup_perf import track_timing
 
 from .core import RecceContext, set_default_context
 from .event.track import TrackCommand
@@ -74,9 +75,6 @@ def patch_derived_args(args):
     if args.get("session_id") or args.get("share_url"):
         args["cloud"] = True
         args["review"] = True
-
-
-from recce.util.startup_perf import track_timing
 
 
 @track_timing("state_loader_init")

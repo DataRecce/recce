@@ -351,3 +351,4 @@ When you modify frontend code and want to test it with the Python backend:
 ## Individual Preferences
 
 - @~/.claude/recce.md
+- signoff commmits with `git commit -h`
