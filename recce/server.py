@@ -252,6 +252,14 @@ async def lifespan(fastapi: FastAPI):
     if tracker := get_startup_tracker():
         tracker.end_server_setup()
         tracker.end_total()
+        # Add metadata from context
+        from recce.core import default_context
+
+        ctx = default_context()
+        if ctx and ctx.adapter:
+            tracker.adapter_type = type(ctx.adapter).__name__
+            if hasattr(ctx.adapter, "curr_manifest") and ctx.adapter.curr_manifest:
+                tracker.node_count = len(ctx.adapter.curr_manifest.nodes)
         log_performance("server_startup", tracker.to_dict())
         clear_startup_tracker()
 
