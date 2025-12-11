@@ -1,28 +1,38 @@
+/* Schema diff color palette */
+:root {
+  --schema-color-added: rgb(204, 255, 216);
+  --schema-color-added-hover: rgb(193, 246, 205);
+  --schema-color-added-active: rgb(166, 242, 184);
+  --schema-color-removed: rgb(255, 215, 213);
+  --schema-color-removed-hover: rgb(246, 195, 193);
+  --schema-color-removed-active: rgb(242, 170, 166);
+}
+
 /* Row backgrounds must be applied to cells because rows use display:contents */
 .row-added .rdg-cell {
-  background-color: rgb(204, 255, 216);
+  background-color: var(--schema-color-added);
 }
 
 .row-added:hover .rdg-cell,
 .row-added[aria-selected="true"] .rdg-cell {
-  background-color: rgb(193 246 205);
+  background-color: var(--schema-color-added-hover);
 }
 
 .row-added[aria-selected="true"]:hover .rdg-cell {
-  background-color: rgb(166 242 184);
+  background-color: var(--schema-color-added-active);
 }
 
 .row-removed .rdg-cell {
-  background-color: rgb(255, 215, 213);
+  background-color: var(--schema-color-removed);
 }
 
 .row-removed:hover .rdg-cell,
 .row-removed[aria-selected="true"] .rdg-cell {
-  background-color: rgb(246 195 193);
+  background-color: var(--schema-color-removed-hover);
 }
 
 .row-removed[aria-selected="true"]:hover .rdg-cell {
-  background-color: rgb(242 170 166);
+  background-color: var(--schema-color-removed-active);
 }
 
 .row-normal {
@@ -66,12 +76,12 @@
 }
 
 .type-badge-removed {
-  background-color: rgb(255, 215, 213);
+  background-color: var(--schema-color-removed);
   margin-right: 4px;
 }
 
 .type-badge-added {
-  background-color: rgb(204, 255, 216);
+  background-color: var(--schema-color-added);
 }
 
 .column-index-reordered {
