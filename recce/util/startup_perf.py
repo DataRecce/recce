@@ -40,9 +40,6 @@ class StartupPerfTracker:
     base_node_count: Optional[int] = None
     curr_node_count: Optional[int] = None
 
-    # Checkpoints for granular tracking
-    checkpoints: Dict[str, float] = field(default_factory=dict)
-
     # --- Total timing ---
     def start_total(self):
         self._total_start = time.perf_counter_ns()
@@ -63,12 +60,6 @@ class StartupPerfTracker:
     def record_timing(self, name: str, elapsed_ms: float):
         """Record timing for a named phase or artifact"""
         self.timings[name] = elapsed_ms
-
-    # --- Checkpoints ---
-    def record_checkpoint(self, label: str):
-        """Record a checkpoint relative to total start"""
-        if self._total_start is not None:
-            self.checkpoints[label] = (time.perf_counter_ns() - self._total_start) / 1_000_000
 
     # --- Metadata setters ---
     def set_cloud_mode(self, cloud_mode: bool):
@@ -107,7 +98,6 @@ class StartupPerfTracker:
             "total_elapsed_ms": self.total_elapsed_ms,
             "server_setup_elapsed_ms": self.server_setup_elapsed_ms,
             "timings": self.timings if self.timings else None,
-            "checkpoints": self.checkpoints if self.checkpoints else None,
             # Metadata
             "cloud_mode": self.cloud_mode,
             "adapter_type": self.adapter_type,
@@ -144,13 +134,12 @@ def clear_startup_tracker():
     _startup_tracker = None
 
 
-def track_timing(timing_name: str = None, *, checkpoint: str = None, record_size: bool = False):
+def track_timing(timing_name: str = None, *, record_size: bool = False):
     """
     Decorator factory to track timing for any operation.
 
     Args:
         timing_name: Name for the timing. If None, expects 'timing_name' kwarg at call time.
-        checkpoint: Optional checkpoint to record before timing starts.
         record_size: If True, record file size from 'path' kwarg.
 
     Usage:
@@ -177,17 +166,14 @@ def track_timing(timing_name: str = None, *, checkpoint: str = None, record_size
 
             path = kwargs.get("path") or (args[0] if args else None)
 
-            tracker = get_startup_tracker()
-            if tracker and checkpoint:
-                tracker.record_checkpoint(checkpoint)
-
             start = time.perf_counter_ns()
             result = func(*args, **kwargs)
             elapsed_ms = (time.perf_counter_ns() - start) / 1_000_000
 
-            if tracker and name:
-                tracker.record_timing(name, elapsed_ms)
-                if record_size and path and os.path.exists(path):
+            if tracker := get_startup_tracker():
+                if name:
+                    tracker.record_timing(name, elapsed_ms)
+                if record_size and name and path and os.path.exists(path):
                     tracker.set_artifact_size(name, os.path.getsize(path))
 
             return result

@@ -175,7 +175,7 @@ class CloudStateLoader(RecceStateLoader):
     def _get_metadata_from_recce_cloud(self) -> Union[dict, None]:
         return self.recce_cloud.get_artifact_metadata(pr_info=self.pr_info) if self.pr_info else None
 
-    @track_timing("state_download", checkpoint="presigned_url_fetched")
+    @track_timing("state_download")
     def _download_state_from_url(
         self, presigned_url: str, file_type: SupportedFileTypes, headers: dict = None
     ) -> RecceState:
