@@ -27,6 +27,7 @@
 </p>
 
 ## Trust, Verify, Ship
+
 Cut dbt review time by 90% and ship accurate data fast
 
 Recce gives data teams a faster, more reliable way to understand, review, and ship changes without all the guesswork or manual overhead.
@@ -38,12 +39,14 @@ Recce gives data teams a faster, more reliable way to understand, review, and sh
 Recce offers two packages to fit different use cases:
 
 **For full local development and Recce Cloud features:**
+
 ```bash
 pip install -U recce
 recce server
 ```
 
 **For CI/CD artifact uploads only (lightweight):**
+
 ```bash
 pip install -U recce-cloud
 recce-cloud upload
@@ -60,6 +63,8 @@ You can launch Recce in any dbt project in just two commands:
 pip install -U recce
 recce server
 ```
+
+(Note: while recce is not version spsecific, `dbt-core` is currently [not compatible with Python 3.13](https://docs.getdbt.com/faqs/Core/install-python-compatibility). Please make sure to use Python 3.10 - 3.12.)
 
 This starts Recce locally, where you can explore lineage and run queries. To unlock the full set of diffing tools, such as data comparisons and impact checks, you'll need to prepare two environments to compare against. You can follow our [Getting Started](https://docs.reccehq.com/get-started/) and [5-minute Jaffle Shop tutorial](https://docs.reccehq.com/get-started-jaffle-shop/) to try it out step-by-step.
 
