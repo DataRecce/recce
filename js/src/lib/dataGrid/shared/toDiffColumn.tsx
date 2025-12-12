@@ -164,7 +164,7 @@ export function toDiffColumn(config: DiffColumnConfig): DiffColumnResult {
     name,
     columnStatus,
     columnType,
-    columnRenderMode = "raw",
+    columnRenderMode,
     displayMode,
     baseTitle = "Base",
     currentTitle = "Current",

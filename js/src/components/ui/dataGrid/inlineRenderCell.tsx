@@ -20,7 +20,10 @@ import {
   RowObjectType,
 } from "@/lib/api/types";
 // Import directly from gridUtils to avoid circular dependency
-import { toRenderedValue } from "@/lib/dataGrid/shared/gridUtils";
+import {
+  formatSmartDecimal,
+  toRenderedValue,
+} from "@/lib/dataGrid/shared/gridUtils";
 
 /**
  * Extended column type with optional type metadata
@@ -103,7 +106,10 @@ export const inlineRenderCell = ({
       const netChange = currentNum - baseNum;
       const changePercent = baseNum !== 0 ? (netChange / baseNum) * 100 : 0;
 
-      const deltaText = `(${netChange >= 0 ? "+" : ""}${netChange.toFixed(1)})`;
+      // Format current value and delta with smart decimals (up to 2, no trailing zeros)
+      const formattedCurrent = formatSmartDecimal(currentNum);
+      const formattedDelta = formatSmartDecimal(netChange);
+      const deltaText = `(${netChange >= 0 ? "+" : ""}${formattedDelta})`;
 
       // Build tooltip text showing full precision
       const tooltipText = `Base: ${baseNum}\nCurrent: ${currentNum}\nChange: ${
@@ -121,7 +127,7 @@ export const inlineRenderCell = ({
         >
           <Flex gap="5px" alignItems="center" lineHeight="normal" height="100%">
             <DiffText
-              value={currentValue}
+              value={formattedCurrent}
               colorPalette="green"
               grayOut={currentGrayOut}
             />
