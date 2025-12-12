@@ -248,7 +248,7 @@ async def lifespan(fastapi: FastAPI):
     app_state: AppState = app.state
 
     # Ensure logger is at DEBUG level if debug mode is enabled
-    if hasattr(app_state, "kwargs") and app_state.kwargs.get("debug"):
+    if app_state.kwargs and app_state.kwargs.get("debug"):
         logger.setLevel(logging.DEBUG)
         logger.debug("Debug mode enabled - logger set to DEBUG level")
 
@@ -269,7 +269,7 @@ async def lifespan(fastapi: FastAPI):
 
     if app_state.command == "server":
         teardown_server(app_state, ctx)
-    elif app_state.command == "read_only":
+    elif app_state.command == "read-only":
         teardown_ready_only(app_state)
     elif app_state.command == "preview":
         teardown_preview(app_state, ctx)
