@@ -229,7 +229,7 @@ export const PrivateLoadableRunView = ({
     !runId || !run?.result || !!error || tabValue !== "result";
 
   return (
-    <Flex direction="column">
+    <Flex direction="column" height="100%">
       {showSingleEnvironmentSetupNotification && (
         <SingleEnvironmentSetupNotification runType={run?.type} />
       )}
