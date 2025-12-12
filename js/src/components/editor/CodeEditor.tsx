@@ -4,10 +4,12 @@ import { PostgreSQL, sql } from "@codemirror/lang-sql";
 import { yaml } from "@codemirror/lang-yaml";
 import { Prec } from "@codemirror/state";
 import { EditorView, keymap } from "@codemirror/view";
+import { githubDark, githubLight } from "@uiw/codemirror-theme-github";
 import CodeMirror from "@uiw/react-codemirror";
 import { useMemo } from "react";
 
 export type CodeEditorLanguage = "sql" | "yaml";
+export type CodeEditorTheme = "light" | "dark";
 
 export interface CodeEditorProps {
   value: string;
@@ -19,6 +21,8 @@ export interface CodeEditorProps {
   fontSize?: number;
   height?: string;
   className?: string;
+  /** Theme: "light" for githubLight, "dark" for githubDark */
+  theme?: CodeEditorTheme;
   /** Custom keyboard shortcuts: { key: handler } */
   keyBindings?: Array<{ key: string; run: () => boolean }>;
 }
@@ -44,6 +48,7 @@ export function CodeEditor({
   fontSize = 14,
   height = "100%",
   className = "",
+  theme = "light",
   keyBindings = [],
 }: CodeEditorProps) {
   const extensions = useMemo(() => {
@@ -69,6 +74,10 @@ export function CodeEditor({
     return exts;
   }, [language, fontSize, wordWrap, keyBindings]);
 
+  const themeExtension = useMemo(() => {
+    return theme === "dark" ? githubDark : githubLight;
+  }, [theme]);
+
   const handleChange = (val: string) => {
     if (onChange) {
       onChange(val);
@@ -90,7 +99,7 @@ export function CodeEditor({
       }}
       height={height}
       className={`${className} no-track-pii-safe`}
-      theme="light"
+      theme={themeExtension}
     />
   );
 }
