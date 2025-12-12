@@ -2,7 +2,7 @@ import { ColumnRenderMode } from "../../lib/api/types";
 
 export function columnPrecisionSelectOptions(
   colName: string,
-  onColumnsRenderModeChanged: (col: Record<string, ColumnRenderMode>) => void
+  onColumnsRenderModeChanged: (col: Record<string, ColumnRenderMode>) => void,
 ): { value: string; onClick: () => void }[] {
   return [
     {
