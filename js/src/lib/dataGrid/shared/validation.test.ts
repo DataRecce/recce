@@ -45,14 +45,14 @@ const createValidDataFrame = (
 });
 
 /**
- * Creates a joined DataFrame with IN_A/IN_B columns
+ * Creates a joined DataFrame with in_a/in_b columns
  */
 const createJoinedDataFrame = (): DataFrame => ({
   columns: [
     { name: "id", key: "id", type: "integer" },
     { name: "value", key: "value", type: "text" },
-    { name: "IN_A", key: "IN_A", type: "boolean" },
-    { name: "IN_B", key: "IN_B", type: "boolean" },
+    { name: "in_a", key: "in_a", type: "boolean" },
+    { name: "in_b", key: "in_b", type: "boolean" },
   ],
   data: [[1, "test", true, true]],
 });
@@ -507,31 +507,31 @@ describe("validateToValueDiffGridInputs", () => {
     );
   });
 
-  test("rejects DataFrame without IN_A column", () => {
+  test("rejects DataFrame without in_a column", () => {
     const df: DataFrame = {
       columns: [
         { name: "id", key: "id", type: "integer" },
-        { name: "IN_B", key: "IN_B", type: "boolean" },
+        { name: "in_b", key: "in_b", type: "boolean" },
       ],
       data: [[1, true]],
     };
 
     expect(() => validateToValueDiffGridInputs(df, ["id"])).toThrow(
-      "must have IN_A and IN_B",
+      "Value diff DataFrame must include lowercase 'in_a' column",
     );
   });
 
-  test("rejects DataFrame without IN_B column", () => {
+  test("rejects DataFrame without in_b column", () => {
     const df: DataFrame = {
       columns: [
         { name: "id", key: "id", type: "integer" },
-        { name: "IN_A", key: "IN_A", type: "boolean" },
+        { name: "in_a", key: "in_a", type: "boolean" },
       ],
       data: [[1, true]],
     };
 
     expect(() => validateToValueDiffGridInputs(df, ["id"])).toThrow(
-      "must have IN_A and IN_B",
+      "Value diff DataFrame must include lowercase 'in_b' column",
     );
   });
 
@@ -548,10 +548,12 @@ describe("validateToValueDiffGridInputs", () => {
     expect(() => validateToValueDiffGridInputs(df, ["id"])).not.toThrow();
   });
 
-  test("uses case-insensitive primary key matching", () => {
+  test("throws when case mismatches for primary key", () => {
     const df = createJoinedDataFrame();
 
-    // Should accept "ID" even though column is "id"
-    expect(() => validateToValueDiffGridInputs(df, ["ID"])).not.toThrow();
+    // Should NOT accept "ID" when the column is "id"
+    expect(() => validateToValueDiffGridInputs(df, ["ID"])).toThrow(
+      "[toValueDiffGrid] Primary key column 'ID' not found in columns",
+    );
   });
 });

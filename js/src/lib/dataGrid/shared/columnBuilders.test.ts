@@ -103,26 +103,13 @@ describe("buildColumnOrder", () => {
     const result = buildColumnOrder({
       primaryKeys: ["id"],
       pinnedColumns: [],
-      allColumns: ["id", "name", "IN_A", "IN_B", "value"],
-      excludeColumns: ["IN_A", "IN_B"],
-    });
-
-    expect(result).not.toContain("IN_A");
-    expect(result).not.toContain("IN_B");
-    expect(result).toHaveLength(3);
-  });
-
-  test("handles case-insensitive exclusion", () => {
-    const result = buildColumnOrder({
-      primaryKeys: ["id"],
-      pinnedColumns: [],
-      allColumns: ["id", "name", "in_a", "IN_B"],
-      excludeColumns: ["IN_A", "in_b"],
-      caseInsensitive: true,
+      allColumns: ["id", "name", "in_a", "in_b", "value"],
+      excludeColumns: ["in_a", "in_b"],
     });
 
     expect(result).not.toContain("in_a");
-    expect(result).not.toContain("IN_B");
+    expect(result).not.toContain("in_b");
+    expect(result).toHaveLength(3);
   });
 
   test("does not duplicate columns that appear in multiple categories", () => {
@@ -144,18 +131,6 @@ describe("buildColumnOrder", () => {
     });
 
     expect(result).toHaveLength(0);
-  });
-
-  test("handles case-insensitive deduplication", () => {
-    const result = buildColumnOrder({
-      primaryKeys: ["ID"],
-      pinnedColumns: [],
-      allColumns: ["id", "name"], // lowercase 'id' should be skipped
-      caseInsensitive: true,
-    });
-
-    expect(result).toHaveLength(2);
-    expect(result[0]).toBe("ID");
   });
 });
 
@@ -200,12 +175,6 @@ describe("isPrimaryKeyColumn", () => {
     expect(isPrimaryKeyColumn("id", ["ID"])).toBe(false);
   });
 
-  test("handles case-insensitive matching", () => {
-    expect(isPrimaryKeyColumn("ID", ["id"], true)).toBe(true);
-    expect(isPrimaryKeyColumn("id", ["ID"], true)).toBe(true);
-    expect(isPrimaryKeyColumn("Id", ["id"], true)).toBe(true);
-  });
-
   test("handles empty primary keys array", () => {
     expect(isPrimaryKeyColumn("id", [])).toBe(false);
   });
@@ -225,11 +194,6 @@ describe("isPinnedColumn", () => {
   test("handles case-sensitive matching by default", () => {
     expect(isPinnedColumn("NAME", ["name"])).toBe(false);
   });
-
-  test("handles case-insensitive matching", () => {
-    expect(isPinnedColumn("NAME", ["name"], true)).toBe(true);
-    expect(isPinnedColumn("Name", ["name"], true)).toBe(true);
-  });
 });
 
 // ============================================================================
@@ -238,18 +202,13 @@ describe("isPinnedColumn", () => {
 
 describe("isExcludedColumn", () => {
   test("identifies excluded columns", () => {
-    expect(isExcludedColumn("IN_A", ["IN_A", "IN_B"])).toBe(true);
-    expect(isExcludedColumn("IN_B", ["IN_A", "IN_B"])).toBe(true);
-    expect(isExcludedColumn("id", ["IN_A", "IN_B"])).toBe(false);
+    expect(isExcludedColumn("in_a", ["in_a", "in_b"])).toBe(true);
+    expect(isExcludedColumn("in_b", ["in_a", "in_b"])).toBe(true);
+    expect(isExcludedColumn("id", ["in_a", "in_b"])).toBe(false);
   });
 
   test("handles case-sensitive matching by default", () => {
-    expect(isExcludedColumn("in_a", ["IN_A"])).toBe(false);
-  });
-
-  test("handles case-insensitive matching", () => {
-    expect(isExcludedColumn("in_a", ["IN_A"], true)).toBe(true);
-    expect(isExcludedColumn("IN_A", ["in_a"], true)).toBe(true);
+    expect(isExcludedColumn("FOO", ["foo"])).toBe(false);
   });
 });
 
@@ -294,17 +253,17 @@ describe("getDisplayColumns", () => {
       columnMap: createColumnMap([
         { name: "id" },
         { name: "value" },
-        { name: "IN_A" },
-        { name: "IN_B" },
+        { name: "in_a" },
+        { name: "in_b" },
       ]),
       primaryKeys: ["id"],
       pinnedColumns: [],
       columnsRenderMode: {},
-      excludeColumns: ["IN_A", "IN_B"],
+      excludeColumns: ["in_a", "in_b"],
     });
 
-    expect(result.map((c) => c.name)).not.toContain("IN_A");
-    expect(result.map((c) => c.name)).not.toContain("IN_B");
+    expect(result.map((c) => c.name)).not.toContain("in_a");
+    expect(result.map((c) => c.name)).not.toContain("in_b");
   });
 
   test("applies changedOnly filter when has modified rows", () => {
@@ -363,25 +322,6 @@ describe("getDisplayColumns", () => {
 
     expect(valueCol?.columnRenderMode).toBe("percent");
     expect(nameCol?.columnRenderMode).toBe(2);
-  });
-
-  test("handles case-insensitive column lookup", () => {
-    const columnMap = createColumnMap([
-      { name: "ID", type: "integer" },
-      { name: "Name", type: "text" },
-    ]);
-
-    const result = getDisplayColumns({
-      columnMap,
-      primaryKeys: ["id"], // lowercase
-      pinnedColumns: ["name"], // lowercase
-      columnsRenderMode: {},
-      caseInsensitive: true,
-    });
-
-    expect(result).toHaveLength(2);
-    expect(result[0].name).toBe("id");
-    expect(result[1].name).toBe("name");
   });
 
   test("does not duplicate columns that are both PK and pinned", () => {

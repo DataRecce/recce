@@ -5,7 +5,7 @@
  * Tests cover:
  * - Row transformation and status detection (added/removed/modified)
  * - Primary key handling (required, single, multiple, case-insensitive)
- * - IN_A/IN_B column handling for base/current row identification
+ * - in_a/in_b column handling for base/current row identification
  * - Column filtering (changedOnly, pinned columns)
  * - Display modes (inline, side_by_side)
  * - Edge cases (null values, case sensitivity)
@@ -19,7 +19,7 @@
 
 // Mock react-data-grid since tests don't need actual rendering
 jest.mock("react-data-grid", () => ({
-  renderTextEditor: jest.fn(),
+  textEditor: jest.fn(),
   CalculatedColumn: {},
   ColumnOrColumnGroup: {},
   RenderCellProps: {},
@@ -51,8 +51,8 @@ import { toValueDiffGrid } from "@/lib/dataGrid/generators/toValueDiffGrid";
 // ============================================================================
 
 /**
- * Creates a DataFrame with IN_A/IN_B columns for value diff testing.
- * IN_A indicates the row exists in base, IN_B indicates it exists in current.
+ * Creates a DataFrame with in_a/in_b columns for value diff testing.
+ * in_a indicates the row exists in base, in_b indicates it exists in current.
  */
 const createJoinedDataFrame = (
   columns: Array<{ name: string; key: string; type: ColumnType }>,
@@ -60,8 +60,8 @@ const createJoinedDataFrame = (
 ): DataFrame => ({
   columns: [
     ...columns,
-    { name: "IN_A", key: "IN_A", type: "boolean" as ColumnType },
-    { name: "IN_B", key: "IN_B", type: "boolean" as ColumnType },
+    { name: "in_a", key: "in_a", type: "boolean" },
+    { name: "in_b", key: "in_b", type: "boolean" },
   ],
   data,
 });
@@ -136,7 +136,7 @@ describe("toValueDiffGrid - Basic Functionality", () => {
 // ============================================================================
 
 describe("toValueDiffGrid - Row Status Detection", () => {
-  test("detects added rows (IN_A=false, IN_B=true)", () => {
+  test("detects added rows (in_a=false, in_b=true)", () => {
     const df = createJoinedDataFrame(
       [
         { name: "id", key: "id", type: "integer" },
@@ -153,7 +153,7 @@ describe("toValueDiffGrid - Row Status Detection", () => {
     expect(result.rows[0].__status).toBe("added");
   });
 
-  test("detects removed rows (IN_A=true, IN_B=false)", () => {
+  test("detects removed rows (in_a=true, in_b=false)", () => {
     const df = createJoinedDataFrame(
       [
         { name: "id", key: "id", type: "integer" },
@@ -170,7 +170,7 @@ describe("toValueDiffGrid - Row Status Detection", () => {
     expect(result.rows[0].__status).toBe("removed");
   });
 
-  test("detects unchanged rows (IN_A=true, IN_B=true, same values)", () => {
+  test("detects unchanged rows (in_a=true, in_b=true, same values)", () => {
     const df = createJoinedDataFrame(
       [
         { name: "id", key: "id", type: "integer" },
@@ -238,10 +238,10 @@ describe("toValueDiffGrid - Row Status Detection", () => {
 });
 
 // ============================================================================
-// IN_A/IN_B Column Handling Tests
+// in_a/in_b Column Handling Tests
 // ============================================================================
 
-describe("toValueDiffGrid - IN_A/IN_B Column Handling", () => {
+describe("toValueDiffGrid - in_a/in_b Column Handling", () => {
   test("handles lowercase in_a/in_b columns", () => {
     const df: DataFrame = {
       columns: [
@@ -259,41 +259,18 @@ describe("toValueDiffGrid - IN_A/IN_B Column Handling", () => {
     const result = toValueDiffGrid(df, ["id"]);
 
     expect(result.rows).toHaveLength(2);
-    // IN_A/IN_B columns should be excluded from output columns
+    // in_a/in_b columns should be excluded from output columns
     const columnKeys = result.columns
       .map((c) => ("key" in c ? c.key : undefined))
       .filter(Boolean);
     expect(columnKeys).not.toContain("in_a");
     expect(columnKeys).not.toContain("in_b");
-    expect(columnKeys).not.toContain("IN_A");
-    expect(columnKeys).not.toContain("IN_B");
   });
 
-  test("handles uppercase IN_A/IN_B columns", () => {
-    const df: DataFrame = {
-      columns: [
-        { name: "id", key: "id", type: "integer" },
-        { name: "value", key: "value", type: "integer" },
-        { name: "IN_A", key: "IN_A", type: "boolean" },
-        { name: "IN_B", key: "IN_B", type: "boolean" },
-      ],
-      data: [
-        [1, 100, true, true],
-        [2, 200, false, true],
-      ],
-    };
-
-    const result = toValueDiffGrid(df, ["id"]);
-
-    expect(result.rows).toHaveLength(2);
-    expect(result.rows.find((r) => r.id === 1)?.__status).toBeUndefined();
-    expect(result.rows.find((r) => r.id === 2)?.__status).toBe("added");
-  });
-
-  test("excludes IN_A/IN_B from output columns", () => {
+  test("excludes in_a/in_b from output columns", () => {
     const result = toValueDiffGrid(standardFixture, ["id"]);
 
-    // Check that neither IN_A nor IN_B appear in any column configuration
+    // Check that neither in_a nor in_b appear in any column configuration
     const allColumnKeys: string[] = [];
     result.columns.forEach((col) => {
       if ("key" in col && typeof col.key === "string") {
@@ -308,68 +285,8 @@ describe("toValueDiffGrid - IN_A/IN_B Column Handling", () => {
       }
     });
 
-    expect(allColumnKeys).not.toContain("IN_A");
-    expect(allColumnKeys).not.toContain("IN_B");
     expect(allColumnKeys).not.toContain("in_a");
     expect(allColumnKeys).not.toContain("in_b");
-  });
-});
-
-// ============================================================================
-// Case Insensitivity Tests
-// ============================================================================
-
-describe("toValueDiffGrid - Case Insensitivity", () => {
-  test("handles case-insensitive primary key matching", () => {
-    const df = createJoinedDataFrame(
-      [
-        { name: "ID", key: "ID", type: "integer" },
-        { name: "Value", key: "Value", type: "integer" },
-      ],
-      [[1, 100, true, true]],
-    );
-
-    // Primary key specified in lowercase, column is uppercase
-    const result = toValueDiffGrid(df, ["id"]);
-
-    expect(result.rows).toHaveLength(1);
-    // The row key should be lowercase
-    expect(result.rows[0].id).toBe(1);
-  });
-
-  test("handles case-insensitive pinned column matching", () => {
-    const df = createJoinedDataFrame(
-      [
-        { name: "id", key: "id", type: "integer" },
-        { name: "VALUE", key: "VALUE", type: "integer" },
-      ],
-      [[1, 100, true, true]],
-    );
-
-    // Pinned column in lowercase, actual column in uppercase
-    const result = toValueDiffGrid(df, ["id"], {
-      pinnedColumns: ["value"],
-    });
-
-    expect(result.rows).toHaveLength(1);
-  });
-
-  test("row keys are stored in lowercase", () => {
-    const df = createJoinedDataFrame(
-      [
-        { name: "ID", key: "ID", type: "integer" },
-        { name: "NAME", key: "NAME", type: "text" },
-      ],
-      [[1, "Alice", true, true]],
-    );
-
-    const result = toValueDiffGrid(df, ["ID"]);
-
-    // Primary key value should be accessible via lowercase key
-    expect(result.rows[0].id).toBe(1);
-    // Non-PK values should be prefixed and lowercase
-    expect(result.rows[0].base__name).toBe("Alice");
-    expect(result.rows[0].current__name).toBe("Alice");
   });
 });
 
@@ -809,12 +726,12 @@ describe("toValueDiffGrid - Null and Edge Cases", () => {
     expect(result.rows).toHaveLength(1);
   });
 
-  test("handles DataFrame with only IN_A/IN_B and primary key columns", () => {
+  test("handles DataFrame with only in_a/in_b and primary key columns", () => {
     const df: DataFrame = {
       columns: [
         { name: "id", key: "id", type: "integer" },
-        { name: "IN_A", key: "IN_A", type: "boolean" },
-        { name: "IN_B", key: "IN_B", type: "boolean" },
+        { name: "in_a", key: "in_a", type: "boolean" },
+        { name: "in_b", key: "in_b", type: "boolean" },
       ],
       data: [
         [1, true, true],
@@ -825,7 +742,7 @@ describe("toValueDiffGrid - Null and Edge Cases", () => {
     const result = toValueDiffGrid(df, ["id"]);
 
     expect(result.rows).toHaveLength(2);
-    // Should only have the id column (IN_A/IN_B excluded)
+    // Should only have the id column (in_a/in_b excluded)
     expect(result.columns.length).toBe(1);
   });
 

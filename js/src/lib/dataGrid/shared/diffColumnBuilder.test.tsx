@@ -12,7 +12,7 @@
 
 // Mock react-data-grid
 jest.mock("react-data-grid", () => ({
-  renderTextEditor: jest.fn(),
+  textEditor: jest.fn(),
 }));
 
 // Mock Chakra UI components
@@ -650,7 +650,6 @@ describe("buildDiffColumnDefinitions - Header Props", () => {
           pinnedColumns: ["name"],
           onPrimaryKeyChange,
           onPinnedColumnsChange,
-          caseInsensitive: true,
         },
       }),
     );
@@ -668,19 +667,6 @@ describe("buildDiffColumnDefinitions - Header Props", () => {
     const result = buildDiffColumnDefinitions(
       createConfig({
         headerProps: {},
-      }),
-    );
-
-    expect(result.columns.length).toBeGreaterThan(0);
-  });
-
-  test("handles caseInsensitive prop", () => {
-    const result = buildDiffColumnDefinitions(
-      createConfig({
-        headerProps: {
-          primaryKeys: ["ID"], // uppercase
-          caseInsensitive: true,
-        },
       }),
     );
 

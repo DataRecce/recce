@@ -14,7 +14,7 @@ import {
 } from "@/lib/api/types";
 import { mergeKeysWithStatus } from "@/lib/mergeKeys";
 import { formatNumber } from "@/utils/formatters";
-import { getCaseInsensitive, includesIgnoreCase } from "@/utils/transforms";
+import { getCaseInsensitive } from "@/utils/transforms";
 
 // ============================================================================
 // Types
@@ -58,33 +58,34 @@ export function buildColumnMap(df: DataFrame): Record<string, ColumnMapEntry> {
 }
 
 /**
- * Builds a column map for joined data (with IN_A/IN_B columns)
- * Handles case-insensitivity for special columns
+ * Builds a column map for joined data (with in_a/in_b columns)
+ *
+ * NOTE: Backend now guarantees in_a/in_b are always lowercase,
+ * so we only need to register them as-is.
+ *
+ * @throws {Error} If required in_a or in_b columns are missing
  */
 export function buildJoinedColumnMap(
   df: DataFrame,
 ): Record<string, ColumnMapEntry> {
   const result: Record<string, ColumnMapEntry> = {};
+
   df.columns.forEach((col, index) => {
-    // Handle IN_A/IN_B specially for case-insensitive matching
-    if (
-      col.name.toLowerCase() === "in_a" ||
-      col.name.toLowerCase() === "in_b"
-    ) {
-      result[col.name.toUpperCase()] = {
-        key: col.key,
-        index,
-        colType: col.type,
-      };
-      result[col.name.toLowerCase()] = {
-        key: col.key,
-        index,
-        colType: col.type,
-      };
-    } else {
-      result[col.name] = { key: col.key, index, colType: col.type };
-    }
+    result[col.key] = {
+      key: col.key,
+      index,
+      colType: col.type,
+    };
   });
+
+  // Verify required columns exist (while backend guarantees "in_a" and "in_b" as lowercase, we need to verify their presence)
+  if (!result.in_a) {
+    throw new Error("Joined DataFrame missing required 'in_a' column");
+  }
+  if (!result.in_b) {
+    throw new Error("Joined DataFrame missing required 'in_b' column");
+  }
+
   return result;
 }
 
@@ -123,18 +124,15 @@ export function buildMergedColumnMap(
 // ============================================================================
 
 /**
- * Validates that all primary keys exist in the columns
+ * Validates that all primary keys exist in the columns (exact matching)
  */
 export function validatePrimaryKeys(
   columns: DataFrame["columns"],
   primaryKeys: string[],
-  caseInsensitive = false,
 ): string[] {
   const keys: string[] = [];
   for (const key of primaryKeys) {
-    const found = caseInsensitive
-      ? columns.find((col) => includesIgnoreCase([col.key], key))
-      : columns.find((col) => col.key === key);
+    const found = columns.find((col) => col.key === key);
 
     if (!found) {
       throw new Error(`Column ${key} not found`);
@@ -145,13 +143,12 @@ export function validatePrimaryKeys(
 }
 
 /**
- * Generates a unique key string from primary key values in a row
+ * Generates a unique key string from primary key values in a row (exact matching)
  */
 export function getPrimaryKeyValue(
   columns: DataFrame["columns"],
   primaryKeys: string[],
   row: RowObjectType,
-  caseInsensitive = false,
 ): string {
   if (primaryKeys.length === 0) {
     return String(row._index);
@@ -159,18 +156,13 @@ export function getPrimaryKeyValue(
 
   const result: string[] = [];
   for (const key of primaryKeys) {
-    const col = caseInsensitive
-      ? columns.find((c) => includesIgnoreCase([c.key], key))
-      : columns.find((c) => c.key === key);
+    const col = columns.find((c) => c.key === key);
 
     if (!col) {
       throw new Error(`Primary Column ${key} not found`);
     }
 
-    const value = caseInsensitive
-      ? (getCaseInsensitive(row, key) ?? "")
-      : row[key];
-
+    const value = row[key];
     result.push(`${col.name}=${value}`);
   }
   return result.join("|");
@@ -192,7 +184,6 @@ export function determineRowStatus(
   currentRow: RowObjectType | undefined,
   columnMap: Record<string, ColumnMapEntry>,
   primaryKeys: string[],
-  caseInsensitive = false,
 ): "added" | "removed" | "modified" | undefined {
   if (!baseRow) return "added";
   if (!currentRow) return "removed";
@@ -204,11 +195,7 @@ export function determineRowStatus(
   for (const [name, column] of Object.entries(columnMap)) {
     if (name === "index") continue;
 
-    const isPK = caseInsensitive
-      ? includesIgnoreCase(primaryKeys, name)
-      : primaryKeys.includes(name);
-
-    if (isPK) continue;
+    if (primaryKeys.includes(name)) continue;
 
     let baseVal: unknown;
     let currentVal: unknown;
@@ -217,21 +204,12 @@ export function determineRowStatus(
       // Merged row: compare base__key vs current__key
       const baseKey = `base__${column.key}`;
       const currentKey = `current__${column.key}`;
-
-      baseVal = caseInsensitive
-        ? getCaseInsensitive(baseRow, baseKey)
-        : baseRow[baseKey];
-      currentVal = caseInsensitive
-        ? getCaseInsensitive(currentRow, currentKey)
-        : currentRow[currentKey];
+      baseVal = baseRow[baseKey];
+      currentVal = currentRow[currentKey];
     } else {
       // Separate rows: compare same key in different row objects
-      baseVal = caseInsensitive
-        ? getCaseInsensitive(baseRow, column.key)
-        : baseRow[column.key];
-      currentVal = caseInsensitive
-        ? getCaseInsensitive(currentRow, column.key)
-        : currentRow[column.key];
+      baseVal = baseRow[column.key];
+      currentVal = currentRow[column.key];
     }
 
     if (!_.isEqual(baseVal, currentVal)) {

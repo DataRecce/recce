@@ -61,13 +61,13 @@ const standardDataFrame = createDataFrame([
 ]);
 
 /**
- * DataFrame with IN_A/IN_B columns for joined data
+ * DataFrame with in_a/in_b columns for joined data
  */
 const joinedDataFrame = createDataFrame([
   { name: "id", key: "id", type: "integer" },
   { name: "value", key: "value", type: "number" },
-  { name: "IN_A", key: "IN_A", type: "boolean" },
-  { name: "IN_B", key: "IN_B", type: "boolean" },
+  { name: "in_a", key: "in_a", type: "boolean" },
+  { name: "in_b", key: "in_b", type: "boolean" },
 ]);
 
 /**
@@ -131,13 +131,13 @@ describe("buildColumnMap", () => {
 // ============================================================================
 
 describe("buildJoinedColumnMap", () => {
-  test("handles uppercase IN_A/IN_B columns", () => {
+  test("handles uppercase in_a/in_b columns", () => {
     const result = buildJoinedColumnMap(joinedDataFrame);
 
-    expect(result.IN_A).toBeDefined();
-    expect(result.IN_B).toBeDefined();
-    expect(result.IN_A.key).toBe("IN_A");
-    expect(result.IN_B.key).toBe("IN_B");
+    expect(result.in_a).toBeDefined();
+    expect(result.in_b).toBeDefined();
+    expect(result.in_a.key).toBe("in_a");
+    expect(result.in_b.key).toBe("in_b");
   });
 
   test("handles lowercase in_a/in_b columns", () => {
@@ -147,12 +147,12 @@ describe("buildJoinedColumnMap", () => {
     expect(result.in_b).toBeDefined();
   });
 
-  test("IN_A and IN_B entries reference same key", () => {
+  test("in_a and in_b entries reference same key", () => {
     const result = buildJoinedColumnMap(joinedDataFrame);
 
     // Both should have same internal structure
-    expect(result.IN_A.colType).toBe("boolean");
-    expect(result.IN_B.colType).toBe("boolean");
+    expect(result.in_a.colType).toBe("boolean");
+    expect(result.in_b.colType).toBe("boolean");
   });
 
   test("regular columns added normally", () => {
@@ -164,12 +164,12 @@ describe("buildJoinedColumnMap", () => {
     expect(result.value.colType).toBe("number");
   });
 
-  test("handles empty DataFrame", () => {
+  test("throws on empty DataFrame", () => {
     const emptyDf = createDataFrame([]);
 
-    const result = buildJoinedColumnMap(emptyDf);
-
-    expect(result).toEqual({});
+    expect(() => {
+      buildJoinedColumnMap(emptyDf);
+    }).toThrow("Joined DataFrame missing required 'in_a' column");
   });
 });
 
@@ -310,16 +310,6 @@ describe("validatePrimaryKeys", () => {
     }).toThrow("Column ID not found");
   });
 
-  test("case-insensitive matching when enabled", () => {
-    const result = validatePrimaryKeys(
-      standardDataFrame.columns,
-      ["ID"],
-      true, // caseInsensitive
-    );
-
-    expect(result).toEqual(["id"]);
-  });
-
   test("returns actual column keys", () => {
     const df = createDataFrame([
       { name: "UserId", key: "user_id", type: "integer" },
@@ -376,19 +366,6 @@ describe("getPrimaryKeyValue", () => {
     const result = getPrimaryKeyValue(standardDataFrame.columns, ["id"], row);
 
     expect(result).toBe("id=null");
-  });
-
-  test("case-insensitive key lookup when enabled", () => {
-    const row = createRow({ ID: 1, name: "Alice", value: 100 });
-
-    const result = getPrimaryKeyValue(
-      standardDataFrame.columns,
-      ["id"],
-      row,
-      true, // caseInsensitive
-    );
-
-    expect(result).toBe("id=1");
   });
 
   test("throws error for missing primary key column", () => {
@@ -455,21 +432,6 @@ describe("determineRowStatus", () => {
     ]);
 
     expect(result).toBeUndefined();
-  });
-
-  test("case-insensitive column matching when enabled", () => {
-    const baseRow = createRow({ ID: 1, NAME: "Alice" });
-    const currentRow = createRow({ id: 1, name: "Bob" });
-
-    const result = determineRowStatus(
-      baseRow,
-      currentRow,
-      columnMap,
-      ["id"],
-      true, // caseInsensitive
-    );
-
-    expect(result).toBe("modified");
   });
 
   test("ignores 'index' column", () => {

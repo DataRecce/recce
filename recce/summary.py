@@ -320,7 +320,8 @@ def _build_node_schema(lineage, node_id):
 def _get_node_row_count_diff(node_id, node_name):
     row_count_runs = RunDAO().list(type_filter=RunType.ROW_COUNT_DIFF)
     for run in row_count_runs:
-        if node_id in run.params.get("node_ids", []):
+        node_ids = (run.params or {}).get("node_ids") or []
+        if node_id in node_ids:
             result = run.result.get(node_name, {})
             diff = TaskResultDiffer.diff(result.get("base"), result.get("curr"))
             return diff, result
