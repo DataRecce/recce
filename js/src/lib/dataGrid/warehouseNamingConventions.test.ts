@@ -32,7 +32,7 @@ import { toValueDiffGrid } from "@/lib/dataGrid/generators/toValueDiffGrid";
 // ============================================================================
 
 jest.mock("react-data-grid", () => ({
-  renderTextEditor: jest.fn(),
+  textEditor: jest.fn(),
 }));
 
 jest.mock("@chakra-ui/react", () => ({
