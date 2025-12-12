@@ -1,13 +1,9 @@
 import { Button, Flex, Spacer, Stack, Text } from "@chakra-ui/react";
-import { Editor, EditorProps } from "@monaco-editor/react";
-import { editor } from "monaco-editor";
-import React, { useEffect } from "react";
+import React, { useMemo } from "react";
 import { FaPlay } from "react-icons/fa6";
 import { extractSchemas, formatTimeToNow } from "@/components/app/EnvInfo";
+import { CodeEditor } from "@/components/editor";
 import { ManifestMetadata } from "@/lib/api/info";
-
-import IStandaloneCodeEditor = editor.IStandaloneCodeEditor;
-
 import { useLineageGraphContext } from "@/lib/hooks/LineageGraphContext";
 import { useRecceInstanceContext } from "@/lib/hooks/RecceInstanceContext";
 
@@ -21,7 +17,12 @@ export interface SqlEditorProps {
   onRun?: () => void;
   onRunBase?: () => void;
   onRunDiff?: () => void;
-  options?: EditorProps["options"];
+  options?: {
+    readOnly?: boolean;
+    fontSize?: number;
+    lineNumbers?: "on" | "off";
+    wordWrap?: "on" | "off";
+  };
   manifestData?: ManifestMetadata;
   schemas?: string;
   label?: string;
@@ -47,8 +48,9 @@ function SqlEditor({
   ...props
 }: SqlEditorProps) {
   const { featureToggles } = useRecceInstanceContext();
-  const handleEditorChange = (value: string | undefined) => {
-    if (value !== undefined && onChange) {
+
+  const handleEditorChange = (value: string) => {
+    if (onChange) {
       onChange(value);
     }
   };
@@ -59,50 +61,44 @@ function SqlEditor({
       : "";
   }
 
-  useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      // Check if Monaco editor has focus
-      const monacoElement = document.querySelector(".monaco-editor");
-      if (monacoElement?.contains(document.activeElement) && e.key === " ") {
-        e.stopPropagation(); // Prevent other from capturing
-      }
-    };
+  // Convert keyboard shortcuts to CodeMirror format
+  const keyBindings = useMemo(() => {
+    const bindings = [];
 
-    document.addEventListener("keydown", handleKeyDown, true); // capture phase
-    return () => {
-      document.removeEventListener("keydown", handleKeyDown, true);
-    };
-  }, []);
+    if (onRun) {
+      bindings.push({
+        key: "Mod-Enter", // Ctrl/Cmd + Enter
+        run: () => {
+          onRun();
+          return true;
+        },
+      });
+    }
 
-  const handleMonacoSpaceBar = (
-    editor: IStandaloneCodeEditor,
-    monaco: typeof import("monaco-editor"),
-  ) => {
-    // Register space bar handling through Monaco's internal API
-    editor.addCommand(
-      monaco.KeyCode.Space,
-      () => {
-        // Explicitly trigger space insertion
-        const position = editor.getPosition();
-        if (position) {
-          console.log("Inserting space at", position);
-          editor.executeEdits("", [
-            {
-              range: new monaco.Range(
-                position.lineNumber,
-                position.column,
-                position.lineNumber,
-                position.column,
-              ),
-              text: " ",
-              forceMoveMarkers: true,
-            },
-          ]);
-        }
-      },
-      "!suggestWidgetVisible && !findWidgetVisible", // Context key expression
-    );
-  };
+    if (onRunBase) {
+      bindings.push({
+        key: "Alt-Enter",
+        run: () => {
+          onRunBase();
+          return true;
+        },
+      });
+    }
+
+    if (onRunDiff) {
+      bindings.push({
+        key: "Mod-Shift-Enter", // Ctrl/Cmd + Shift + Enter
+        run: () => {
+          onRunDiff();
+          return true;
+        },
+      });
+    }
+
+    return bindings;
+  }, [onRun, onRunBase, onRunDiff]);
+
+  // ... header rendering stays the same ...
 
   return (
     <>
@@ -146,52 +142,16 @@ function SqlEditor({
         </Flex>
       )}
       {CustomEditor ?? (
-        <Editor
-          className="no-track-pii-safe"
-          language="sql"
-          theme="vs"
+        <CodeEditor
           value={value}
           onChange={handleEditorChange}
-          onMount={(editor, monaco) => {
-            handleMonacoSpaceBar(editor, monaco);
-
-            if (onRun) {
-              editor.addCommand(
-                monaco.KeyMod.CtrlCmd | monaco.KeyCode.Enter,
-                onRun,
-              );
-            }
-
-            if (onRunBase) {
-              editor.addCommand(
-                monaco.KeyMod.Alt | monaco.KeyCode.Enter,
-                onRunBase,
-              );
-            }
-
-            if (onRunDiff) {
-              editor.addCommand(
-                monaco.KeyMod.CtrlCmd |
-                  monaco.KeyMod.Shift |
-                  monaco.KeyCode.Enter,
-                onRunDiff,
-              );
-            }
-          }}
-          options={{
-            domReadOnly: false,
-            readOnly: false,
-            extraEditorClassName: "no-track-pii-safe max-h-dvh",
-            tabSize: 2,
-            fontSize: 16,
-            lineNumbers: "on",
-            automaticLayout: true,
-            minimap: { enabled: false },
-            wordWrap: "on",
-            wrappingIndent: "indent",
-            // Additional options as needed
-            ...options,
-          }}
+          language="sql"
+          readOnly={options.readOnly ?? false}
+          lineNumbers={options.lineNumbers !== "off"}
+          wordWrap={options.wordWrap !== "off"}
+          fontSize={options.fontSize ?? 16}
+          keyBindings={keyBindings}
+          className="no-track-pii-safe max-h-dvh h-full"
         />
       )}
     </>
