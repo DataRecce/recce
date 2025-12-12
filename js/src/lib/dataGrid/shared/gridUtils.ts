@@ -259,10 +259,7 @@ export function determineRowStatus(
  *       formatSmartDecimal(123.4, 2) => "123.4"
  *       formatSmartDecimal(123.456, 2) => "123.46"
  */
-export function formatSmartDecimal(
-  value: number,
-  maxDecimals: number = 2,
-): string {
+export function formatSmartDecimal(value: number, maxDecimals = 2): string {
   return (
     formatNumber(value, "en-US", {
       maximumFractionDigits: maxDecimals,
