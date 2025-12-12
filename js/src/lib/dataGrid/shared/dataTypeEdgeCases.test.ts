@@ -28,7 +28,7 @@ import {
 
 // Mock react-data-grid
 jest.mock("react-data-grid", () => ({
-  renderTextEditor: jest.fn(),
+  textEditor: jest.fn(),
 }));
 
 // Mock Chakra UI
