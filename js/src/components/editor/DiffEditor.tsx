@@ -4,7 +4,10 @@ import { PostgreSQL, sql } from "@codemirror/lang-sql";
 import { yaml } from "@codemirror/lang-yaml";
 import { MergeView, unifiedMergeView } from "@codemirror/merge";
 import { EditorState, Extension, Text } from "@codemirror/state";
-import { EditorView } from "@codemirror/view";
+import {
+  EditorView,
+  lineNumbers as lineNumbersExtension,
+} from "@codemirror/view";
 import { githubDark, githubLight } from "@uiw/codemirror-theme-github";
 import { useEffect, useMemo, useRef } from "react";
 
@@ -57,8 +60,14 @@ export function DiffEditor({
   const viewRef = useRef<MergeView | EditorView | null>(null);
 
   const extensions = useMemo(() => {
-    return [getLanguageExtension(language), getThemeExtension(theme)];
-  }, [language, theme]);
+    const exts = [getLanguageExtension(language), getThemeExtension(theme)];
+
+    if (lineNumbers) {
+      exts.push(lineNumbersExtension());
+    }
+
+    return exts;
+  }, [language, theme, lineNumbers]);
 
   useEffect(() => {
     if (!containerRef.current) return;
@@ -107,6 +116,7 @@ export function DiffEditor({
           ...extensions,
           unifiedMergeView({
             original: Text.of(original.split("\n")),
+            allowInlineDiffs: true,
             highlightChanges: true,
             gutter: lineNumbers,
             mergeControls: false,
