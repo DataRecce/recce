@@ -1,5 +1,5 @@
-import { Editor } from "@monaco-editor/react";
 import YAML from "yaml";
+import { CodeEditor } from "@/components/editor";
 
 export function generateCheckTemplate({
   name,
@@ -31,21 +31,14 @@ export function PresetCheckTemplateView({
   yamlTemplate: string;
 }) {
   return (
-    <Editor
-      height="300px"
-      language="yaml"
-      theme="vs"
+    <CodeEditor
       value={yamlTemplate}
-      options={{
-        readOnly: true,
-        fontSize: 14,
-        lineNumbers: "off",
-        automaticLayout: true,
-        minimap: { enabled: false },
-        wordWrap: "on",
-        wrappingIndent: "same",
-        scrollBeyondLastLine: false,
-      }}
+      language="yaml"
+      readOnly={true}
+      lineNumbers={false}
+      wordWrap={true}
+      fontSize={14}
+      height="300px"
     />
   );
 }
