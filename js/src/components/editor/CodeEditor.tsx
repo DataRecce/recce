@@ -2,8 +2,9 @@
 
 import { PostgreSQL, sql } from "@codemirror/lang-sql";
 import { yaml } from "@codemirror/lang-yaml";
+import { Prec } from "@codemirror/state";
 import { EditorView, keymap } from "@codemirror/view";
-import CodeMirror, { ReactCodeMirrorProps } from "@uiw/react-codemirror";
+import CodeMirror from "@uiw/react-codemirror";
 import { useMemo } from "react";
 
 export type CodeEditorLanguage = "sql" | "yaml";
@@ -59,8 +60,10 @@ export function CodeEditor({
       exts.push(EditorView.lineWrapping);
     }
 
+    // Use Prec.highest to ensure custom keybindings take precedence
+    // over defaultKeymap bindings (e.g., Mod-Enter -> insertBlankLine)
     if (keyBindings.length > 0) {
-      exts.push(keymap.of(keyBindings));
+      exts.push(Prec.highest(keymap.of(keyBindings)));
     }
 
     return exts;
