@@ -244,6 +244,154 @@ class RecceCloudClientTests(unittest.TestCase):
         self.assertEqual(exception.status_code, 500)
         self.assertEqual(exception.reason, plain_reason)
 
+    @patch("recce_cloud.api.client.requests.request")
+    def test_list_organizations_success(self, mock_request):
+        """Test successful list_organizations call."""
+        client = RecceCloudClient(self.api_token)
+
+        # Mock successful response
+        mock_response = MagicMock()
+        mock_response.status_code = 200
+        mock_response.json.return_value = {
+            "organizations": [
+                {"id": 1, "name": "org1", "display_name": "Organization 1"},
+                {"id": 2, "name": "org2", "display_name": "Organization 2"},
+            ]
+        }
+        mock_request.return_value = mock_response
+
+        result = client.list_organizations()
+
+        self.assertEqual(len(result), 2)
+        self.assertEqual(result[0]["id"], 1)
+        self.assertEqual(result[0]["name"], "org1")
+        self.assertEqual(result[1]["id"], 2)
+        self.assertEqual(result[1]["name"], "org2")
+
+        # Verify request was made correctly
+        mock_request.assert_called_once()
+        call_args = mock_request.call_args
+        self.assertEqual(call_args[0][0], "GET")
+        self.assertIn("/organizations", call_args[0][1])
+        self.assertEqual(call_args[1]["headers"]["Authorization"], f"Bearer {self.api_token}")
+
+    @patch("recce_cloud.api.client.requests.request")
+    def test_list_organizations_empty(self, mock_request):
+        """Test list_organizations with empty result."""
+        client = RecceCloudClient(self.api_token)
+
+        # Mock response with no organizations
+        mock_response = MagicMock()
+        mock_response.status_code = 200
+        mock_response.json.return_value = {"organizations": []}
+        mock_request.return_value = mock_response
+
+        result = client.list_organizations()
+
+        self.assertEqual(len(result), 0)
+        self.assertEqual(result, [])
+
+    @patch("recce_cloud.api.client.requests.request")
+    def test_list_organizations_failure(self, mock_request):
+        """Test list_organizations with API failure."""
+        client = RecceCloudClient(self.api_token)
+
+        # Mock error response
+        mock_response = MagicMock()
+        mock_response.status_code = 401
+        mock_response.text = "Unauthorized"
+        mock_request.return_value = mock_response
+
+        with self.assertRaises(RecceCloudException) as context:
+            client.list_organizations()
+
+        self.assertEqual(context.exception.status_code, 401)
+        self.assertIn("Unauthorized", str(context.exception))
+
+    @patch("recce_cloud.api.client.requests.request")
+    def test_list_projects_success(self, mock_request):
+        """Test successful list_projects call."""
+        client = RecceCloudClient(self.api_token)
+        org_id = "myorg"
+
+        # Mock successful response
+        mock_response = MagicMock()
+        mock_response.status_code = 200
+        mock_response.json.return_value = {
+            "projects": [
+                {"id": 10, "name": "project1", "display_name": "Project 1"},
+                {"id": 20, "name": "project2", "display_name": "Project 2"},
+            ]
+        }
+        mock_request.return_value = mock_response
+
+        result = client.list_projects(org_id)
+
+        self.assertEqual(len(result), 2)
+        self.assertEqual(result[0]["id"], 10)
+        self.assertEqual(result[0]["name"], "project1")
+        self.assertEqual(result[1]["id"], 20)
+        self.assertEqual(result[1]["name"], "project2")
+
+        # Verify request was made correctly
+        mock_request.assert_called_once()
+        call_args = mock_request.call_args
+        self.assertEqual(call_args[0][0], "GET")
+        self.assertIn(f"/organizations/{org_id}/projects", call_args[0][1])
+        self.assertEqual(call_args[1]["headers"]["Authorization"], f"Bearer {self.api_token}")
+
+    @patch("recce_cloud.api.client.requests.request")
+    def test_list_projects_empty(self, mock_request):
+        """Test list_projects with empty result."""
+        client = RecceCloudClient(self.api_token)
+        org_id = "emptyorg"
+
+        # Mock response with no projects
+        mock_response = MagicMock()
+        mock_response.status_code = 200
+        mock_response.json.return_value = {"projects": []}
+        mock_request.return_value = mock_response
+
+        result = client.list_projects(org_id)
+
+        self.assertEqual(len(result), 0)
+        self.assertEqual(result, [])
+
+    @patch("recce_cloud.api.client.requests.request")
+    def test_list_projects_org_not_found(self, mock_request):
+        """Test list_projects with non-existent org."""
+        client = RecceCloudClient(self.api_token)
+        org_id = "nonexistent"
+
+        # Mock 404 response
+        mock_response = MagicMock()
+        mock_response.status_code = 404
+        mock_response.text = "Organization not found"
+        mock_request.return_value = mock_response
+
+        with self.assertRaises(RecceCloudException) as context:
+            client.list_projects(org_id)
+
+        self.assertEqual(context.exception.status_code, 404)
+        self.assertIn("Organization not found", str(context.exception))
+
+    @patch("recce_cloud.api.client.requests.request")
+    def test_list_projects_failure(self, mock_request):
+        """Test list_projects with API failure."""
+        client = RecceCloudClient(self.api_token)
+        org_id = "testorg"
+
+        # Mock error response
+        mock_response = MagicMock()
+        mock_response.status_code = 403
+        mock_response.text = "Access denied"
+        mock_request.return_value = mock_response
+
+        with self.assertRaises(RecceCloudException) as context:
+            client.list_projects(org_id)
+
+        self.assertEqual(context.exception.status_code, 403)
+
     @patch.dict("os.environ", {"RECCE_INSTANCE_ENV": "docker"})
     @patch("recce_cloud.api.client.requests.request")
     def test_docker_internal_url_replacement(self, mock_request):
