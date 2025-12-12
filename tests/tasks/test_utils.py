@@ -2,7 +2,44 @@
 
 import unittest
 
-from recce.tasks.utils import normalize_keys_to_columns
+from recce.tasks.utils import normalize_keys_to_columns, strip_identifier_quotes
+
+
+class TestStripIdentifierQuotes(unittest.TestCase):
+    """Tests for strip_identifier_quotes function."""
+
+    def test_double_quotes(self):
+        """Double quotes (PostgreSQL, Snowflake) are stripped."""
+        assert strip_identifier_quotes('"myColumn"') == "myColumn"
+        assert strip_identifier_quotes('"customerID"') == "customerID"
+
+    def test_backticks(self):
+        """Backticks (MySQL, BigQuery) are stripped."""
+        assert strip_identifier_quotes("`my_column`") == "my_column"
+        assert strip_identifier_quotes("`Column Name`") == "Column Name"
+
+    def test_square_brackets(self):
+        """Square brackets (SQL Server) are stripped."""
+        assert strip_identifier_quotes("[Column Name]") == "Column Name"
+        assert strip_identifier_quotes("[my_column]") == "my_column"
+
+    def test_unquoted_passthrough(self):
+        """Unquoted identifiers pass through unchanged."""
+        assert strip_identifier_quotes("regular_column") == "regular_column"
+        assert strip_identifier_quotes("myColumn") == "myColumn"
+        assert strip_identifier_quotes("PAYMENT_ID") == "PAYMENT_ID"
+
+    def test_empty_and_short_strings(self):
+        """Empty and short strings pass through unchanged."""
+        assert strip_identifier_quotes("") == ""
+        assert strip_identifier_quotes("a") == "a"
+        assert strip_identifier_quotes('"') == '"'  # Single quote char, not a pair
+
+    def test_mismatched_quotes(self):
+        """Mismatched quotes are not stripped."""
+        assert strip_identifier_quotes('"column`') == '"column`'
+        assert strip_identifier_quotes('`column"') == '`column"'
+        assert strip_identifier_quotes('"column]') == '"column]'
 
 
 class TestNormalizeKeysToColumns(unittest.TestCase):
@@ -92,6 +129,63 @@ class TestNormalizeKeysToColumns(unittest.TestCase):
         result = normalize_keys_to_columns(keys, columns)
 
         assert result == ["preCommitID", "postCommitID", "userName"]
+
+    # ========================================================================
+    # SQL identifier quote stripping tests
+    # ========================================================================
+
+    def test_double_quoted_key_stripped_and_matched(self):
+        """Double-quoted keys are stripped before matching (PostgreSQL, Snowflake)."""
+        keys = ['"customerID"']
+        columns = ["customerID", "amount", "created_at"]
+
+        result = normalize_keys_to_columns(keys, columns)
+
+        assert result == ["customerID"]
+
+    def test_backtick_quoted_key_stripped_and_matched(self):
+        """Backtick-quoted keys are stripped before matching (MySQL, BigQuery)."""
+        keys = ["`my_column`"]
+        columns = ["MY_COLUMN", "other_col"]
+
+        result = normalize_keys_to_columns(keys, columns)
+
+        assert result == ["MY_COLUMN"]  # Case-insensitive match after stripping
+
+    def test_square_bracket_quoted_key_stripped_and_matched(self):
+        """Square bracket-quoted keys are stripped before matching (SQL Server)."""
+        keys = ["[Column Name]"]
+        columns = ["Column Name", "other_col"]
+
+        result = normalize_keys_to_columns(keys, columns)
+
+        assert result == ["Column Name"]
+
+    def test_quoted_key_empty_columns_returns_unquoted(self):
+        """Quoted keys with empty columns list returns unquoted keys."""
+        keys = ['"customerID"', "`another_col`"]
+
+        result = normalize_keys_to_columns(keys, [])
+
+        assert result == ["customerID", "another_col"]
+
+    def test_mixed_quoted_and_unquoted_keys(self):
+        """Mix of quoted and unquoted keys are handled correctly."""
+        keys = ['"customerID"', "order_id", "`created_at`"]
+        columns = ["customerID", "ORDER_ID", "CREATED_AT"]
+
+        result = normalize_keys_to_columns(keys, columns)
+
+        assert result == ["customerID", "ORDER_ID", "CREATED_AT"]
+
+    def test_quoted_key_case_insensitive_match(self):
+        """Quoted key after stripping matches case-insensitively."""
+        keys = ['"my_column"']  # Lowercase inside quotes
+        columns = ["MY_COLUMN", "other"]  # Uppercase in warehouse (Snowflake)
+
+        result = normalize_keys_to_columns(keys, columns)
+
+        assert result == ["MY_COLUMN"]
 
     # ========================================================================
     # Edge cases and null handling
