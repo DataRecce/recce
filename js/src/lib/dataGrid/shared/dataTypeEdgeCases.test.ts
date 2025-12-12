@@ -568,8 +568,8 @@ describe("Zero edge cases", () => {
     const row = createRow({ value: -0 });
     const [rendered] = toRenderedValue(row, "value", "number");
 
-    // Intl.NumberFormat renders -0 as "-0"
-    expect(rendered).toBe("-0");
+    // -0 is normalized to 0 for display (Intl.NumberFormat would render "-0" per ECMA-402)
+    expect(rendered).toBe("0");
   });
 
   test("zero vs negative zero treated as equal in diff", () => {

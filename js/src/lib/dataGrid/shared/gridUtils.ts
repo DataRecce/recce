@@ -238,8 +238,10 @@ export function determineRowStatus(
  *       formatSmartDecimal(123.456, 2) => "123.46"
  */
 export function formatSmartDecimal(value: number, maxDecimals = 2): string {
+  // Normalize -0 to 0 (Intl.NumberFormat renders -0 as "-0" per ECMA-402)
+  const normalizedValue = Object.is(value, -0) ? 0 : value;
   return (
-    formatNumber(value, "en-US", {
+    formatNumber(normalizedValue, "en-US", {
       maximumFractionDigits: maxDecimals,
     }) ?? String(value)
   );
