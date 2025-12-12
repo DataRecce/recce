@@ -30,8 +30,8 @@ jest.mock("react-data-grid", () => ({
 jest.mock("@/components/ui/dataGrid/schemaCells", () => ({
   createColumnNameRenderer: jest.fn(() => jest.fn()),
   createSingleEnvColumnNameRenderer: jest.fn(() => jest.fn()),
-  renderIndexCell: jest.fn(),
-  renderTypeCell: jest.fn(),
+  MemoizedRenderIndexCell: jest.fn(),
+  MemoizedRenderTypeCell: jest.fn(),
 }));
 
 // ============================================================================
@@ -283,7 +283,7 @@ describe("toSchemaDataGrid - Column Structure", () => {
     const indexCol = getColumn(columns, 0);
     const typeCol = getColumn(columns, 2);
 
-    // These should be the mocked renderIndexCell and renderTypeCell
+    // These should be the mocked MemoizedRenderIndexCell and MemoizedRenderTypeCell
     expect(indexCol.renderCell).toBeDefined();
     expect(typeCol.renderCell).toBeDefined();
   });

@@ -10,8 +10,8 @@ import { ColumnOrColumnGroup } from "react-data-grid";
 import {
   createColumnNameRenderer,
   createSingleEnvColumnNameRenderer,
-  renderIndexCell,
-  renderTypeCell,
+  MemoizedRenderIndexCell,
+  MemoizedRenderTypeCell,
 } from "@/components/ui/dataGrid/schemaCells";
 import { NodeColumnData, NodeData } from "@/lib/api/info";
 import { RowObjectType } from "@/lib/api/types";
@@ -141,7 +141,7 @@ export function toSchemaDataGrid(
       resizable: true,
       minWidth: 35,
       width: 35,
-      renderCell: renderIndexCell,
+      renderCell: MemoizedRenderIndexCell,
       cellClass: getColumnIndexCellClass,
     },
     {
@@ -157,7 +157,7 @@ export function toSchemaDataGrid(
       key: "type",
       name: "Type",
       resizable: true,
-      renderCell: renderTypeCell,
+      renderCell: MemoizedRenderTypeCell,
       cellClass: getColumnNameCellClass,
     },
   ];

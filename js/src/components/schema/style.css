@@ -1,11 +1,11 @@
 /* Schema diff color palette */
 :root {
-  --schema-color-added: rgb(204, 255, 216);
-  --schema-color-added-hover: rgb(193, 246, 205);
-  --schema-color-added-active: rgb(166, 242, 184);
-  --schema-color-removed: rgb(255, 215, 213);
-  --schema-color-removed-hover: rgb(246, 195, 193);
-  --schema-color-removed-active: rgb(242, 170, 166);
+  --schema-color-added: rgb(204 255 216);
+  --schema-color-added-hover: rgb(193 246 205);
+  --schema-color-added-active: rgb(166 242 184);
+  --schema-color-removed: rgb(255 215 213);
+  --schema-color-removed-hover: rgb(246 195 193);
+  --schema-color-removed-active: rgb(242 170 166);
 }
 
 /* Row backgrounds must be applied to cells because rows use display:contents */
@@ -41,7 +41,7 @@
 
 .row-normal:hover,
 .row-normal[aria-selected="true"] {
-  background-color: rgb(241, 241, 241);
+  background-color: rgb(241 241 241);
 }
 
 .row-normal[aria-selected="true"]:hover {
@@ -85,7 +85,7 @@
 }
 
 .column-index-reordered {
-  background-color: rgb(255, 173, 21);
+  background-color: rgb(255 173 21);
 }
 
 .row-normal:hover .column-index-reordered,
