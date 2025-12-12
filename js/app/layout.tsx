@@ -31,9 +31,10 @@ export default function RootLayout({
         dangerouslySetInnerHTML={{
           __html: `
     (function() {
-      var hash = window.location.hash;
+      const hash = window.location.hash;
       if (hash.startsWith('#!')) {
-        window.location.replace(hash.substring(2));
+        const newLocation = window.location.origin + window.location.pathname;
+        window.location.assign(newLocation);
       }
     })();
   `,
