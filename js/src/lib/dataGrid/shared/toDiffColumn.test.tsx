@@ -27,7 +27,7 @@ import {
 
 // Mock react-data-grid to avoid ES module parsing issues
 jest.mock("react-data-grid", () => ({
-  textEditor: jest.fn(),
+  renderTextEditor: jest.fn(),
 }));
 
 // Mock the UI components to avoid React rendering complexity

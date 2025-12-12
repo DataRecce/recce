@@ -30,8 +30,8 @@ jest.mock("react-data-grid", () => ({
 jest.mock("@/components/ui/dataGrid/schemaCells", () => ({
   createColumnNameRenderer: jest.fn(() => jest.fn()),
   createSingleEnvColumnNameRenderer: jest.fn(() => jest.fn()),
-  MemoizedRenderIndexCell: jest.fn(),
-  MemoizedRenderTypeCell: jest.fn(),
+  renderIndexCell: jest.fn(),
+  renderTypeCell: jest.fn(),
 }));
 
 // ============================================================================
