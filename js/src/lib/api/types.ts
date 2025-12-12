@@ -25,20 +25,7 @@ export type ColumnType =
   | "timedelta"
   | "unknown";
 
-export type ColumnRenderMode =
-  | "raw"
-  | "percent"
-  | 0
-  | 1
-  | 2
-  | 3
-  | 4
-  | 5
-  | 6
-  | 7
-  | 8
-  | 9;
-
+export type ColumnRenderMode = "raw" | "percent" | "delta" | 2;
 export interface DataFrame {
   columns: {
     key: string;
@@ -225,73 +212,73 @@ export function isQueryRun(run: Run): run is Extract<Run, { type: "query" }> {
 }
 
 export function isQueryBaseRun(
-  run: Run,
+  run: Run
 ): run is Extract<Run, { type: "query_base" }> {
   return run.type === "query_base";
 }
 
 export function isQueryDiffRun(
-  run: Run,
+  run: Run
 ): run is Extract<Run, { type: "query_diff" }> {
   return run.type === "query_diff";
 }
 
 export function isValueDiffRun(
-  run: Run,
+  run: Run
 ): run is Extract<Run, { type: "value_diff" }> {
   return run.type === "value_diff";
 }
 
 export function isValueDiffDetailRun(
-  run: Run,
+  run: Run
 ): run is Extract<Run, { type: "value_diff_detail" }> {
   return run.type === "value_diff_detail";
 }
 
 export function isSchemaDiffRun(
-  run: Run,
+  run: Run
 ): run is Extract<Run, { type: "schema_diff" }> {
   return run.type === "schema_diff";
 }
 
 export function isProfileRun(
-  run: Run,
+  run: Run
 ): run is Extract<Run, { type: "profile" }> {
   return run.type === "profile";
 }
 
 export function isProfileDiffRun(
-  run: Run,
+  run: Run
 ): run is Extract<Run, { type: "profile_diff" }> {
   return run.type === "profile_diff";
 }
 
 export function isRowCountRun(
-  run: Run,
+  run: Run
 ): run is Extract<Run, { type: "row_count" }> {
   return run.type === "row_count";
 }
 
 export function isRowCountDiffRun(
-  run: Run,
+  run: Run
 ): run is Extract<Run, { type: "row_count_diff" }> {
   return run.type === "row_count_diff";
 }
 
 export function isLineageDiffRun(
-  run: Run,
+  run: Run
 ): run is Extract<Run, { type: "lineage_diff" }> {
   return run.type === "lineage_diff";
 }
 
 export function isTopKDiffRun(
-  run: Run,
+  run: Run
 ): run is Extract<Run, { type: "top_k_diff" }> {
   return run.type === "top_k_diff";
 }
 
 export function isHistogramDiffRun(
-  run: Run,
+  run: Run
 ): run is Extract<Run, { type: "histogram_diff" }> {
   return run.type === "histogram_diff";
 }

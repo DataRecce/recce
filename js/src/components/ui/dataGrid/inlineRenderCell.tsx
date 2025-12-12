@@ -12,7 +12,13 @@
 import { Flex, Text } from "@chakra-ui/react";
 import { CalculatedColumn, RenderCellProps } from "react-data-grid";
 import { DiffText } from "@/components/query/DiffText";
-import { ColumnRenderMode, ColumnType, RowObjectType } from "@/lib/api/types";
+import { Tooltip } from "@/components/ui/tooltip";
+import {
+  ColumnRenderMode,
+  ColumnType,
+  RowDataTypes,
+  RowObjectType,
+} from "@/lib/api/types";
 // Import directly from gridUtils to avoid circular dependency
 import { toRenderedValue } from "@/lib/dataGrid/shared/gridUtils";
 
@@ -78,6 +84,59 @@ export const inlineRenderCell = ({
     );
   }
 
+  // Check if we're using delta display mode
+  const isDeltaMode = columnRenderMode === "delta";
+
+  // For delta modes, calculate the change for numeric columns
+  if (
+    isDeltaMode &&
+    (columnType === "number" || columnType === "integer") &&
+    hasBase &&
+    hasCurrent
+  ) {
+    // Parse values to numbers (they may be strings from the API)
+    const baseNum = asNumber(row[baseKey]);
+    const currentNum = asNumber(row[currentKey]);
+
+    // Only show delta if both values are valid numbers
+    if (Number.isFinite(baseNum) && Number.isFinite(currentNum)) {
+      const netChange = currentNum - baseNum;
+      const changePercent = baseNum !== 0 ? (netChange / baseNum) * 100 : 0;
+
+      const deltaText = `(${netChange >= 0 ? "+" : ""}${netChange.toFixed(1)})`;
+
+      // Build tooltip text showing full precision
+      const tooltipText = `Base: ${baseNum}\nCurrent: ${currentNum}\nChange: ${
+        netChange >= 0 ? "+" : ""
+      }${netChange} (${changePercent >= 0 ? "+" : ""}${changePercent.toFixed(
+        2,
+      )}%)`;
+
+      return (
+        <Tooltip
+          content={tooltipText}
+          contentProps={{ css: { whiteSpace: "pre-line" } }}
+          openDelay={300}
+          positioning={{ placement: "top" }}
+        >
+          <Flex gap="5px" alignItems="center" lineHeight="normal" height="100%">
+            <DiffText
+              value={currentValue}
+              colorPalette="green"
+              grayOut={currentGrayOut}
+            />
+            <Text
+              fontSize="sm"
+              color={netChange >= 0 ? "green.600" : "red.600"}
+            >
+              {deltaText}
+            </Text>
+          </Flex>
+        </Tooltip>
+      );
+    }
+  }
+
   // Values differ - render inline diff with base (red) and current (green)
   return (
     <Flex gap="5px" alignItems="center" lineHeight="normal" height="100%">
@@ -94,3 +153,6 @@ export const inlineRenderCell = ({
     </Flex>
   );
 };
+function asNumber(data: RowDataTypes) {
+  return typeof data === "number" ? data : parseFloat(data?.toString() ?? "0");
+}

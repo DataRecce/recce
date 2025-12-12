@@ -2,7 +2,7 @@ import { ColumnRenderMode } from "../../lib/api/types";
 
 export function columnPrecisionSelectOptions(
   colName: string,
-  onColumnsRenderModeChanged: (col: Record<string, ColumnRenderMode>) => void,
+  onColumnsRenderModeChanged: (col: Record<string, ColumnRenderMode>) => void
 ): { value: string; onClick: () => void }[] {
   return [
     {
@@ -18,21 +18,16 @@ export function columnPrecisionSelectOptions(
       },
     },
     {
-      value: "Show 4 decimal points",
-      onClick: () => {
-        onColumnsRenderModeChanged({ [colName]: 4 });
-      },
-    },
-    {
-      value: "Show 6 decimal points",
-      onClick: () => {
-        onColumnsRenderModeChanged({ [colName]: 6 });
-      },
-    },
-    {
       value: "Show as percentage",
       onClick: () => {
         onColumnsRenderModeChanged({ [colName]: "percent" });
+      },
+    },
+    {
+      value: "Show with net change",
+      onClick: () => {
+        console.log(`Setting delta mode for column: ${colName}`);
+        onColumnsRenderModeChanged({ [colName]: "delta" });
       },
     },
   ];
