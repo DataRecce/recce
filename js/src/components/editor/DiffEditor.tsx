@@ -3,11 +3,13 @@
 import { PostgreSQL, sql } from "@codemirror/lang-sql";
 import { yaml } from "@codemirror/lang-yaml";
 import { MergeView, unifiedMergeView } from "@codemirror/merge";
-import { EditorState, Text } from "@codemirror/state";
+import { EditorState, Extension, Text } from "@codemirror/state";
 import { EditorView } from "@codemirror/view";
+import { githubDark, githubLight } from "@uiw/codemirror-theme-github";
 import { useEffect, useMemo, useRef } from "react";
 
 export type DiffEditorLanguage = "sql" | "yaml";
+export type DiffEditorTheme = "light" | "dark";
 
 export interface DiffEditorProps {
   original: string;
@@ -18,6 +20,8 @@ export interface DiffEditorProps {
   sideBySide?: boolean;
   height?: string;
   className?: string;
+  /** Theme: "light" for githubLight, "dark" for githubDark */
+  theme?: DiffEditorTheme;
   /** Called when modified content changes (only if not readOnly) */
   onModifiedChange?: (value: string) => void;
 }
@@ -33,6 +37,10 @@ const getLanguageExtension = (language: DiffEditorLanguage) => {
   }
 };
 
+const getThemeExtension = (theme: DiffEditorTheme): Extension => {
+  return theme === "dark" ? githubDark : githubLight;
+};
+
 export function DiffEditor({
   original,
   modified,
@@ -42,14 +50,15 @@ export function DiffEditor({
   sideBySide = true,
   height = "100%",
   className = "",
+  theme = "light",
   onModifiedChange,
 }: DiffEditorProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const viewRef = useRef<MergeView | EditorView | null>(null);
 
   const extensions = useMemo(() => {
-    return [getLanguageExtension(language)];
-  }, [language]);
+    return [getLanguageExtension(language), getThemeExtension(theme)];
+  }, [language, theme]);
 
   useEffect(() => {
     if (!containerRef.current) return;
@@ -100,6 +109,7 @@ export function DiffEditor({
             original: Text.of(original.split("\n")),
             highlightChanges: true,
             gutter: lineNumbers,
+            mergeControls: false,
           }),
           EditorView.editable.of(!readOnly),
           EditorState.readOnly.of(readOnly),
