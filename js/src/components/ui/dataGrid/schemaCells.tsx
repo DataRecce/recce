@@ -66,7 +66,14 @@ export function renderIndexCell({
 }: RenderCellProps<SchemaDiffRow>): React.ReactNode {
   const { baseIndex, currentIndex } = row;
   const isRemoved = currentIndex === undefined;
-  return <span>{isRemoved ? baseIndex : currentIndex}</span>;
+  const value = isRemoved
+    ? baseIndex !== undefined
+      ? baseIndex
+      : "-"
+    : currentIndex !== undefined
+      ? currentIndex
+      : "-";
+  return <span>{value}</span>;
 }
 
 // Memoized version for performance optimization

@@ -135,6 +135,16 @@ describe("renderIndexCell", () => {
     render(<>{renderIndexCell(props)}</>);
     expect(screen.getByText("4")).toBeInTheDocument();
   });
+
+  test("renders fallback when both indices are undefined", () => {
+    const props = createIndexCellProps({
+      baseIndex: undefined,
+      currentIndex: undefined,
+    });
+
+    render(<>{renderIndexCell(props)}</>);
+    expect(screen.getByText("-")).toBeInTheDocument();
+  });
 });
 
 // ============================================================================
@@ -312,10 +322,11 @@ describe("renderTypeCell", () => {
         currentType: "VARCHAR",
       });
 
-      render(<>{renderTypeCell(props)}</>);
+      const { container } = render(<>{renderTypeCell(props)}</>);
 
-      // Empty string vs non-empty should show type change
+      // Empty string vs non-empty should show type change with badges
       expect(screen.getByText("VARCHAR")).toBeInTheDocument();
+      expect(container.querySelector(".type-badge")).toBeInTheDocument();
     });
   });
 
