@@ -44,14 +44,6 @@ export function hashStringToNumber(str: string): number {
   return Math.abs(hash);
 }
 
-export function includesIgnoreCase(
-  list: string[],
-  searchString: string,
-): boolean {
-  const lowerSearch = searchString.toLowerCase();
-  return list.some((item) => item.toLowerCase() === lowerSearch);
-}
-
 export function getCaseInsensitive<T extends RowObjectType>(
   obj: T,
   key: string,

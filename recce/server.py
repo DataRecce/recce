@@ -49,6 +49,7 @@ from .github import is_github_codespace
 from .models.types import CllData
 from .run import load_preset_checks
 from .state import RecceShareStateManager, RecceStateLoader
+from .util.startup_perf import track_timing
 
 logger = logging.getLogger("uvicorn")
 
@@ -215,31 +216,54 @@ def teardown_preview(app_state: AppState, ctx: RecceContext):
     pass
 
 
-@asynccontextmanager
-async def lifespan(fastapi: FastAPI):
-    ctx = None
-    app_state: AppState = app.state
-
-    # Ensure logger is at DEBUG level if debug mode is enabled
-    # This is needed because uvicorn might reset logger configuration
-    if hasattr(app_state, "kwargs") and app_state.kwargs.get("debug"):
-        logger.setLevel(logging.DEBUG)
-        logger.debug("Debug mode enabled - logger set to DEBUG level")
-
+@track_timing("server_setup")
+def _do_lifespan_setup(app_state: AppState):
+    """Run server setup and return context for teardown."""
     if app_state.command == "server":
         ctx = setup_server(app_state)
     elif app_state.command == "read-only":
         setup_ready_only(app_state)
+        ctx = None
     elif app_state.command == "preview":
         ctx = setup_preview(app_state)
+    else:
+        ctx = None
 
     if app_state.lifetime is not None and app_state.lifetime > 0:
         schedule_lifetime_termination(app_state)
 
-    # Schedule idle timeout check if idle_timeout is set
     if app_state.idle_timeout is not None and app_state.idle_timeout > 0:
         logger.debug(f"[Idle Timeout] Scheduling idle timeout check with {app_state.idle_timeout} seconds")
         schedule_idle_timeout_check(app_state)
+
+    return ctx
+
+
+@asynccontextmanager
+async def lifespan(fastapi: FastAPI):
+    from recce.core import default_context
+    from recce.event import log_performance
+    from recce.util.startup_perf import clear_startup_tracker, get_startup_tracker
+
+    app_state: AppState = app.state
+
+    # Ensure logger is at DEBUG level if debug mode is enabled
+    if hasattr(app_state, "kwargs") and app_state.kwargs.get("debug"):
+        logger.setLevel(logging.DEBUG)
+        logger.debug("Debug mode enabled - logger set to DEBUG level")
+
+    ctx = _do_lifespan_setup(app_state)
+
+    # Log startup performance metrics
+    if tracker := get_startup_tracker():
+        tracker.command = app_state.command
+        recce_ctx = default_context()
+        if recce_ctx and recce_ctx.adapter:
+            tracker.adapter_type = type(recce_ctx.adapter).__name__
+            if hasattr(recce_ctx.adapter, "curr_manifest") and recce_ctx.adapter.curr_manifest:
+                tracker.node_count = len(recce_ctx.adapter.curr_manifest.nodes)
+        log_performance("server_startup", tracker.to_dict())
+        clear_startup_tracker()
 
     yield
 

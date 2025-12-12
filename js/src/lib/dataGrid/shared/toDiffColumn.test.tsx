@@ -27,7 +27,7 @@ import {
 
 // Mock react-data-grid to avoid ES module parsing issues
 jest.mock("react-data-grid", () => ({
-  renderTextEditor: jest.fn(),
+  textEditor: jest.fn(),
 }));
 
 // Mock the UI components to avoid React rendering complexity
@@ -556,7 +556,6 @@ describe("toDiffColumn - headerProps", () => {
     const headerProps = {
       primaryKeys: ["id"],
       pinnedColumns: ["name"],
-      caseInsensitive: true,
     };
 
     const result = toDiffColumn(

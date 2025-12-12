@@ -32,6 +32,7 @@ from recce.util.lineage import (
     find_upstream,
 )
 from recce.util.perf_tracking import LineagePerfTracker
+from recce.util.startup_perf import track_timing
 
 from ...tasks.profile import ProfileTask
 from ...util.breaking import BreakingPerformanceTracking, parse_change_category
@@ -215,6 +216,7 @@ def as_manifest(m: WritableManifest) -> Manifest:
         return result
 
 
+@track_timing(record_size=True)
 def load_manifest(path: str = None, data: dict = None):
     if path is not None:
         if not os.path.isfile(path):
@@ -224,6 +226,7 @@ def load_manifest(path: str = None, data: dict = None):
         return WritableManifest.upgrade_schema_version(data)
 
 
+@track_timing(record_size=True)
 def load_catalog(path: str = None, data: dict = None):
     if path is not None:
         if not os.path.isfile(path):
@@ -476,6 +479,7 @@ class DbtAdapter(BaseAdapter):
 
         return result
 
+    @track_timing("artifact_load")
     def load_artifacts(self):
         """
         Load the artifacts from the 'target' and 'target-base' directory
@@ -491,16 +495,20 @@ class DbtAdapter(BaseAdapter):
 
         # load the artifacts
         path = os.path.join(project_root, target_path, "manifest.json")
-        curr_manifest = load_manifest(path=path)
+        curr_manifest = load_manifest(path=path, timing_name="curr_manifest")
         if curr_manifest is None:
             raise FileNotFoundError(ENOENT, os.strerror(ENOENT), path)
         path = os.path.join(project_root, target_base_path, "manifest.json")
-        base_manifest = load_manifest(path=path)
+        base_manifest = load_manifest(path=path, timing_name="base_manifest")
         if base_manifest is None:
             raise FileNotFoundError(ENOENT, os.strerror(ENOENT), path)
 
-        curr_catalog = load_catalog(path=os.path.join(project_root, target_path, "catalog.json"))
-        base_catalog = load_catalog(path=os.path.join(project_root, target_base_path, "catalog.json"))
+        curr_catalog = load_catalog(
+            path=os.path.join(project_root, target_path, "catalog.json"), timing_name="curr_catalog"
+        )
+        base_catalog = load_catalog(
+            path=os.path.join(project_root, target_base_path, "catalog.json"), timing_name="base_catalog"
+        )
 
         # set the value if all the artifacts are loaded successfully
         self.curr_manifest = curr_manifest

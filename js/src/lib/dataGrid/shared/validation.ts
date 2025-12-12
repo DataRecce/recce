@@ -323,35 +323,45 @@ export function validateToDataDiffGridInputs(
 }
 
 /**
- * Validates inputs for toValueDiffGrid (joined DataFrame with IN_A/IN_B).
+ * Validates inputs for toValueDiffGrid
+ *
+ * @throws {DataGridValidationError} If validation fails
  */
 export function validateToValueDiffGridInputs(
-  df: DataFrame,
+  df: DataFrame | undefined,
   primaryKeys: string[],
 ): void {
-  validateDataFrame(df, "dataframe");
+  // Validate DataFrame exists
+  if (!df) {
+    throw new DataGridValidationError("DataFrame is required for value diff");
+  }
 
-  // Primary keys are required for value diff
+  // Validate DataFrame structure
+  validateDataFrame(df);
+
+  // Validate primary keys are provided (valuediff requires PKs)
+  if (!primaryKeys || primaryKeys.length === 0) {
+    throw new DataGridValidationError(
+      "Primary keys are required for value diff",
+    );
+  }
+
+  // Validate primary keys exist in columns (exact matching)
   validatePrimaryKeyConfig(primaryKeys, df.columns, {
     required: true,
-    caseInsensitive: true, // valuediff uses case-insensitive matching
     context: "toValueDiffGrid",
   });
 
-  // Check for IN_A/IN_B columns (required for joined data)
-  const columnKeysLower = df.columns.map((c) => c.key.toLowerCase());
-  const hasInA = columnKeysLower.includes("in_a");
-  const hasInB = columnKeysLower.includes("in_b");
-
-  if (!hasInA || !hasInB) {
+  // Validate in_a/in_b columns exist (lowercase, guaranteed by backend)
+  const columnKeys = df.columns.map((c) => c.key);
+  if (!columnKeys.includes("in_a")) {
     throw new DataGridValidationError(
-      "Joined DataFrame must have IN_A and IN_B columns",
-      "toValueDiffGrid",
-      {
-        hasInA,
-        hasInB,
-        availableColumns: df.columns.map((c) => c.key),
-      },
+      "Value diff DataFrame must include lowercase 'in_a' column",
+    );
+  }
+  if (!columnKeys.includes("in_b")) {
+    throw new DataGridValidationError(
+      "Value diff DataFrame must include lowercase 'in_b' column",
     );
   }
 }
