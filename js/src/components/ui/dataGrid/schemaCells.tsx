@@ -52,3 +52,72 @@ export function createSingleEnvColumnNameRenderer(
     />
   );
 }
+
+// ============================================================================
+// Merged Column Render Functions for Compressed Schema View
+// ============================================================================
+
+/**
+ * Renders the merged index column.
+ * Shows currentIndex for normal/added rows, baseIndex for removed rows.
+ */
+export function renderIndexCell({
+  row,
+}: RenderCellProps<SchemaDiffRow>): React.ReactNode {
+  const { baseIndex, currentIndex } = row;
+  const isRemoved = currentIndex === undefined;
+  const value = isRemoved
+    ? baseIndex !== undefined
+      ? baseIndex
+      : "-"
+    : currentIndex !== undefined
+      ? currentIndex
+      : "-";
+  return <span>{value}</span>;
+}
+
+// Memoized version for performance optimization
+export const MemoizedRenderIndexCell = React.memo(renderIndexCell);
+MemoizedRenderIndexCell.displayName = "MemoizedRenderIndexCell";
+
+/**
+ * Renders the merged type column with badges for type changes.
+ * - Type changed: shows red badge (base) + green badge (current) inline
+ * - Added row: shows currentType
+ * - Removed row: shows baseType
+ * - No change: shows currentType (same as baseType)
+ */
+export function renderTypeCell({
+  row,
+}: RenderCellProps<SchemaDiffRow>): React.ReactNode {
+  const { baseType, currentType, baseIndex, currentIndex } = row;
+  const isAdded = baseIndex === undefined;
+  const isRemoved = currentIndex === undefined;
+  const isTypeChanged = !isAdded && !isRemoved && baseType !== currentType;
+
+  if (isTypeChanged) {
+    return (
+      <span>
+        <span
+          className="type-badge type-badge-removed"
+          title={`Base type: ${baseType}`}
+        >
+          {baseType}
+        </span>
+        <span
+          className="type-badge type-badge-added"
+          title={`Current type: ${currentType}`}
+        >
+          {currentType}
+        </span>
+      </span>
+    );
+  }
+
+  // For added rows, show currentType; for removed rows, show baseType
+  return <span>{isRemoved ? baseType : currentType}</span>;
+}
+
+// Memoized version for performance optimization
+export const MemoizedRenderTypeCell = React.memo(renderTypeCell);
+MemoizedRenderTypeCell.displayName = "MemoizedRenderTypeCell";
