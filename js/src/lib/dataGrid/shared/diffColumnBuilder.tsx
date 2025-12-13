@@ -187,8 +187,7 @@ function createDiffColumn(
  *   columnsRenderMode,
  *   changedOnly,
  *   rowStats,
- *   excludeColumns: ["IN_A", "IN_B"],
- *   caseInsensitive: true,
+ *   excludeColumns: ["in_a", "in_b"],
  * });
  *
  * // Build actual column definitions
@@ -199,7 +198,6 @@ function createDiffColumn(
  *     primaryKeys,
  *     pinnedColumns,
  *     onPinnedColumnsChange,
- *     caseInsensitive: true,
  *   },
  * });
  * ```

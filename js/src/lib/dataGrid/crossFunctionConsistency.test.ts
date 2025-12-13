@@ -22,7 +22,7 @@ import { toValueDiffGrid } from "@/lib/dataGrid/generators/toValueDiffGrid";
 
 // Mock react-data-grid
 jest.mock("react-data-grid", () => ({
-  renderTextEditor: jest.fn(),
+  textEditor: jest.fn(),
 }));
 
 // Mock Chakra UI
@@ -60,7 +60,7 @@ const createDataFrame = (
 });
 
 /**
- * Creates a joined DataFrame with IN_A/IN_B columns for toValueDiffGrid
+ * Creates a joined DataFrame with in_a/in_b columns for toValueDiffGrid
  */
 const createJoinedDataFrame = (
   columns: Array<{ name: string; key: string; type: ColumnType }>,
@@ -68,8 +68,8 @@ const createJoinedDataFrame = (
 ): DataFrame => ({
   columns: [
     ...columns,
-    { name: "IN_A", key: "IN_A", type: "boolean" },
-    { name: "IN_B", key: "IN_B", type: "boolean" },
+    { name: "in_a", key: "in_a", type: "boolean" },
+    { name: "in_b", key: "in_b", type: "boolean" },
   ],
   data: data as DataFrame["data"],
 });
@@ -104,7 +104,7 @@ const getNonInternalColumnKeys = (
   return columns
     .map(getColumnKey)
     .filter((k): k is string => k !== undefined)
-    .filter((k) => !k.startsWith("_") && k !== "IN_A" && k !== "IN_B");
+    .filter((k) => !k.startsWith("_") && k !== "in_a" && k !== "in_b");
 };
 
 // ============================================================================
@@ -200,7 +200,7 @@ describe("__status value consistency", () => {
     const baseDf = createDataFrame(standardColumns, []);
     const currentDf = createDataFrame(standardColumns, [[1, "Alice", 100]]);
     const joinedDf = createJoinedDataFrame(standardColumns, [
-      [1, "Alice", 100, false, true], // Only in current (IN_B)
+      [1, "Alice", 100, false, true], // Only in current (in_b)
     ]);
 
     const diffResult = toDataDiffGrid(baseDf, currentDf, {
@@ -216,7 +216,7 @@ describe("__status value consistency", () => {
     const baseDf = createDataFrame(standardColumns, [[1, "Alice", 100]]);
     const currentDf = createDataFrame(standardColumns, []);
     const joinedDf = createJoinedDataFrame(standardColumns, [
-      [1, "Alice", 100, true, false], // Only in base (IN_A)
+      [1, "Alice", 100, true, false], // Only in base (in_a)
     ]);
 
     const diffResult = toDataDiffGrid(baseDf, currentDf, {
@@ -242,7 +242,7 @@ describe("__status value consistency", () => {
   // Note: toValueDiffGrid modification detection is tested separately in valuediff.test.ts
   // The joined data from the backend has a different structure that can't be easily
   // replicated in cross-function tests. The backend compares base vs current before
-  // joining, so rows with different values in both IN_A and IN_B are pre-marked.
+  // joining, so rows with different values in both in_a and in_b are pre-marked.
 
   test("toDataGrid always sets __status to undefined", () => {
     const df = createDataFrame(standardColumns, standardData);

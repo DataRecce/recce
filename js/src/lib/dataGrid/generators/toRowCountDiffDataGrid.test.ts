@@ -13,7 +13,7 @@ import { toRowCountDiffDataGrid } from "./toRowCountDiffDataGrid";
 
 // Mock react-data-grid to avoid ES module parsing issues
 jest.mock("react-data-grid", () => ({
-  renderTextEditor: jest.fn(),
+  textEditor: jest.fn(),
 }));
 
 // ============================================================================

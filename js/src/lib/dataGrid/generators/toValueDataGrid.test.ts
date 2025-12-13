@@ -18,7 +18,7 @@ import { toValueDataGrid } from "./toValueDataGrid";
 // ============================================================================
 
 jest.mock("react-data-grid", () => ({
-  renderTextEditor: jest.fn(),
+  textEditor: jest.fn(),
 }));
 
 jest.mock("@chakra-ui/react", () => ({

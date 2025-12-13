@@ -9,6 +9,7 @@ Recce is a data validation and review tool for dbt projects. It helps data teams
 ## Critical Constraints & Guidelines
 
 ### Do NOT:
+
 - ❌ **Commit state files**: Never commit `recce_state.json` or any `state.json` files (contains user-specific runtime state)
 - ❌ **Edit generated files**: Never edit files in `recce/data/` directly (auto-generated from `js/out/` during frontend build)
 - ❌ **Break adapter interface**: All adapters must implement ALL `BaseAdapter` abstract methods (partial implementations will fail at runtime)
@@ -18,6 +19,7 @@ Recce is a data validation and review tool for dbt projects. It helps data teams
 - ❌ **Mix concerns across layers**: Keep strict separation between models, tasks, APIs, and adapters (see Code Organization Philosophy below)
 
 ### Always:
+
 - ✅ **Build frontend before testing**: When frontend changes are made, run `cd js && pnpm run build` then restart `recce server`
 - ✅ **Test across dbt versions**: For adapter changes, run `make test-tox` to verify against dbt 1.5-1.8
 - ✅ **Use pre-commit hooks**: Automatically installed with `make install-dev` (handles Black, isort, flake8)
@@ -44,6 +46,7 @@ recce/
 ### Dependency Rules
 
 **What can import what:**
+
 - ✅ `apis/` can import from `models/`, `tasks/`, `adapter/`, `state/`
 - ✅ `tasks/` can import from `models/`, `adapter/` (but NOT from `apis/`)
 - ✅ `adapter/` can import from `models/` (but NOT from `tasks/` or `apis/`)
@@ -61,21 +64,22 @@ recce/
 
 ### Where to Add New Code
 
-| What You're Adding | Where It Goes | What to Import |
-|-------------------|---------------|----------------|
-| New check type | `tasks/` (new Task class) | Can use adapter, models |
-| New API endpoint | `apis/*_api.py` (route) + `apis/*_func.py` (logic) | Can use tasks, models, adapter |
-| New data model | `models/` (Pydantic class) | Only standard library |
-| Platform support | `adapter/` (extend BaseAdapter) | Can use models only |
-| State storage | `state/` (extend RecceStateLoader) | Can use models only |
-| UI component | `js/src/components/` | Use API clients from `lib/api/` |
-| API client | `js/src/lib/api/` | Axios, React Query |
+| What You're Adding | Where It Goes                                      | What to Import                  |
+| ------------------ | -------------------------------------------------- | ------------------------------- |
+| New check type     | `tasks/` (new Task class)                          | Can use adapter, models         |
+| New API endpoint   | `apis/*_api.py` (route) + `apis/*_func.py` (logic) | Can use tasks, models, adapter  |
+| New data model     | `models/` (Pydantic class)                         | Only standard library           |
+| Platform support   | `adapter/` (extend BaseAdapter)                    | Can use models only             |
+| State storage      | `state/` (extend RecceStateLoader)                 | Can use models only             |
+| UI component       | `js/src/components/`                               | Use API clients from `lib/api/` |
+| API client         | `js/src/lib/api/`                                  | Axios, React Query              |
 
 ## Architecture
 
 ### Monolithic Client-Server Application
 
 **Backend (Python/FastAPI):**
+
 - FastAPI REST server that serves static frontend and provides APIs for runs/checks
 - CLI built with Click (`recce server`, `recce run`)
 - Adapter pattern abstracts different data platforms (dbt-core, SQLMesh)
@@ -83,6 +87,7 @@ recce/
 - State management supports local file storage or Recce Cloud
 
 **Frontend (TypeScript/React):**
+
 - Next.js 15 app built with React 19, compiled to static files
 - UI built with Chakra UI + Tailwind CSS
 - React Query handles API communication and state management
@@ -90,6 +95,7 @@ recce/
 - Built frontend is embedded in Python package at `recce/data/`
 
 **Key Design Patterns:**
+
 - **Pluggable Adapter Pattern**: `BaseAdapter` interface allows support for different data platforms (dbt, SQLMesh). Each adapter implements platform-specific lineage parsing, model retrieval, and SQL generation.
 - **In-Memory State with Persistence**: `RecceContext` holds runtime state (runs, checks, adapter). `CheckDAO` and `RunDAO` provide in-memory storage. `RecceStateLoader` abstraction supports `FileStateLoader` (local JSON) or `CloudStateLoader` (S3 sync).
 - **Task-Based Check Execution**: Each check type (profile_diff, value_diff, row_count_diff, etc.) maps to a `Task` class. Tasks are submitted asynchronously via FastAPI, and frontend polls for completion.
@@ -150,6 +156,8 @@ js/                        # Frontend (Next.js)
 ## Development Commands
 
 ### Backend (Python)
+
+Note that `dbt-core` is currently [not compatible with Python 3.13](https://docs.getdbt.com/faqs/Core/install-python-compatibility). Please make sure to use Python 3.12.
 
 ```bash
 # Install in development mode with dev dependencies
@@ -233,6 +241,7 @@ When you modify frontend code and want to test it with the Python backend:
 ### State Management
 
 - **RecceContext** is the central singleton that holds:
+
   - Current dbt project artifacts (manifest, catalog)
   - Adapter instance (DbtAdapter or SQLMeshAdapter)
   - CheckDAO and RunDAO for in-memory storage
@@ -340,4 +349,6 @@ When you modify frontend code and want to test it with the Python backend:
 ---
 
 ## Individual Preferences
+
 - @~/.claude/recce.md
+- signoff commmits with `git commit -h`

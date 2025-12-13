@@ -6,16 +6,10 @@ import {
   Portal,
   useDisclosure,
 } from "@chakra-ui/react";
-import {
-  DiffEditor,
-  DiffEditorProps,
-  Editor,
-  EditorProps,
-} from "@monaco-editor/react";
 import React, { useState } from "react";
 import { FaExpandArrowsAlt } from "react-icons/fa";
+import { CodeEditor, DiffEditor } from "@/components/editor";
 import { useRecceServerFlag } from "@/lib/hooks/useRecceServerFlag";
-import SqlEditor from "../query/SqlEditor";
 import { LineageGraphNode } from "./lineage";
 
 interface NodeSqlViewProps {
@@ -39,22 +33,6 @@ export const NodeSqlView = ({ node }: NodeSqlViewProps) => {
     return "Not available";
   }
 
-  const diffOptions: DiffEditorProps["options"] = {
-    readOnly: true,
-    lineNumbers: "on",
-    automaticLayout: true,
-    renderOverviewRuler: false,
-    wordWrap: "off",
-    minimap: { enabled: false },
-  };
-  const sqlOptions: EditorProps["options"] = {
-    readOnly: true,
-    lineNumbers: "on",
-    automaticLayout: true,
-    wordWrap: "off",
-    minimap: { enabled: false },
-  };
-
   const original = node.data.data.base?.raw_code;
   const modified = node.data.data.current?.raw_code;
   const modelName =
@@ -73,24 +51,22 @@ export const NodeSqlView = ({ node }: NodeSqlViewProps) => {
       }}
     >
       {isSingleEnvOnboarding ? (
-        <SqlEditor
+        <CodeEditor
           language="sql"
-          theme="light"
           value={original ?? ""}
-          options={sqlOptions}
+          readOnly={true}
+          lineNumbers={true}
+          wordWrap={false}
         />
       ) : (
         <DiffEditor
+          original={original ?? ""}
+          modified={modified ?? ""}
           language="sql"
-          theme="light"
-          original={original}
-          modified={modified}
-          keepCurrentOriginalModel={true}
-          keepCurrentModifiedModel={true}
-          options={{
-            ...diffOptions,
-            renderSideBySide: false,
-          }}
+          readOnly={true}
+          lineNumbers={true}
+          sideBySide={false} // Inline diff mode
+          height="100%"
         />
       )}
       <IconButton
@@ -129,19 +105,20 @@ export const NodeSqlView = ({ node }: NodeSqlViewProps) => {
               </Dialog.Header>
               <Dialog.Body>
                 {isSingleEnvOnboarding ? (
-                  <Editor
+                  <CodeEditor
                     language="sql"
-                    theme="light"
                     value={original ?? ""}
-                    options={{ ...sqlOptions, fontSize: 16 }}
+                    fontSize={16}
+                    readOnly={true}
+                    lineNumbers={true}
+                    wordWrap={false}
                   />
                 ) : (
                   <DiffEditor
+                    original={original ?? ""}
+                    modified={modified ?? ""}
                     language="sql"
-                    theme="light"
-                    original={original}
-                    modified={modified}
-                    options={{ ...diffOptions, fontSize: 16 }}
+                    className="text-base"
                   />
                 )}
               </Dialog.Body>

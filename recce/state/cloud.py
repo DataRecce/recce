@@ -9,6 +9,7 @@ from recce.exceptions import RecceException
 from recce.pull_request import PullRequestInfo, fetch_pr_metadata
 from recce.util.io import SupportedFileTypes, file_io_factory
 from recce.util.recce_cloud import PresignedUrlMethod, RecceCloud, RecceCloudException
+from recce.util.startup_perf import track_timing
 
 from ..event import get_recce_api_token
 from ..models import CheckDAO
@@ -174,6 +175,7 @@ class CloudStateLoader(RecceStateLoader):
     def _get_metadata_from_recce_cloud(self) -> Union[dict, None]:
         return self.recce_cloud.get_artifact_metadata(pr_info=self.pr_info) if self.pr_info else None
 
+    @track_timing("state_download")
     def _download_state_from_url(
         self, presigned_url: str, file_type: SupportedFileTypes, headers: dict = None
     ) -> RecceState:

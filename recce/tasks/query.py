@@ -8,6 +8,7 @@ from ..exceptions import RecceException
 from ..models import Check
 from .core import CheckValidator, Task, TaskResultDiffer
 from .dataframe import DataFrame
+from .utils import normalize_boolean_flag_columns, normalize_keys_to_columns
 from .valuediff import ValueDiffMixin
 
 QUERY_LIMIT = 2000
@@ -147,6 +148,10 @@ class QueryDiffTask(Task, QueryMixin, ValueDiffMixin):
         base_sql_template: Optional[str] = None,
         preview_change: bool = False,
     ):
+        """
+        Execute diff queries on base and current environments without join.
+        Note: Mutates self.params.primary_keys to normalize values with actual column keys.
+        """
         limit = QUERY_LIMIT
 
         self.connection = dbt_adapter.get_thread_connection()
@@ -159,9 +164,17 @@ class QueryDiffTask(Task, QueryMixin, ValueDiffMixin):
         current, current_more = self.execute_sql_with_limit(sql_template, base=False, limit=limit)
         self.check_cancel()
 
+        base_df = DataFrame.from_agate(base, limit=limit, more=base_more)
+        current_df = DataFrame.from_agate(current, limit=limit, more=current_more)
+
+        # Normalize primary_keys if present (for non-join diff, use current columns as reference)
+        if self.params.primary_keys:
+            column_keys = [col.key for col in current_df.columns]
+            self.params.primary_keys = normalize_keys_to_columns(self.params.primary_keys, column_keys)
+
         return QueryDiffResult(
-            base=DataFrame.from_agate(base, limit=limit, more=base_more),
-            current=DataFrame.from_agate(current, limit=limit, more=current_more),
+            base=base_df,
+            current=current_df,
         )
 
     def _query_diff_join(
@@ -172,6 +185,22 @@ class QueryDiffTask(Task, QueryMixin, ValueDiffMixin):
         base_sql_template: Optional[str] = None,
         preview_change: bool = False,
     ):
+        """
+        Execute diff queries on base and current environments using SQL join operations.
+        This method performs a set-based diff using INTERSECT and EXCEPT operations
+        to identify rows that differ between base and current query results.
+
+        Note: Mutates self.params.primary_keys to normalize values with actual column keys.
+
+        :param dbt_adapter: The dbt adapter instance for executing SQL
+        :param sql_template: SQL template to execute on the current environment
+        :param primary_keys: List of column names to use as primary keys for ordering
+        :param base_sql_template: Optional SQL template for the base environment.
+            If None, sql_template is used for both environments.
+        :param preview_change: If True, run base_sql_template against current environment
+            instead of base environment
+        :return: QueryDiffResult containing the diff DataFrame with in_a/in_b flags
+        """
 
         query_template = r"""
         with a_query as (
@@ -251,7 +280,15 @@ class QueryDiffTask(Task, QueryMixin, ValueDiffMixin):
         _, table = dbt_adapter.execute(sql, fetch=True)
         self.check_cancel()
 
-        return QueryDiffResult(diff=DataFrame.from_agate(table))
+        diff_df = DataFrame.from_agate(table)
+        # Normalize in_a/in_b columns to lowercase for cross-warehouse consistency
+        diff_df = normalize_boolean_flag_columns(diff_df)
+
+        # Normalize primary_keys to match actual column keys from warehouse
+        column_keys = [col.key for col in diff_df.columns]
+        self.params.primary_keys = normalize_keys_to_columns(primary_keys, column_keys)
+
+        return QueryDiffResult(diff=diff_df)
 
     @staticmethod
     def _select_single_model(model_name):

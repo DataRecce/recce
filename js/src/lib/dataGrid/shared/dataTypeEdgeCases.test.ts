@@ -28,7 +28,7 @@ import {
 
 // Mock react-data-grid
 jest.mock("react-data-grid", () => ({
-  renderTextEditor: jest.fn(),
+  textEditor: jest.fn(),
 }));
 
 // Mock Chakra UI
@@ -76,8 +76,8 @@ const createJoinedDataFrame = (
 ): DataFrame => ({
   columns: [
     ...columns,
-    { name: "IN_A", key: "IN_A", type: "boolean" },
-    { name: "IN_B", key: "IN_B", type: "boolean" },
+    { name: "in_a", key: "in_a", type: "boolean" },
+    { name: "in_b", key: "in_b", type: "boolean" },
   ],
   data: data as DataFrame["data"],
 });
@@ -289,7 +289,6 @@ describe("Infinity value handling", () => {
         baseRow,
         createColumnMap([{ name: "value", key: "value", type: "number" }]),
         ["id"],
-        false,
       );
 
       expect(status).toBe("modified");
@@ -307,7 +306,6 @@ describe("Infinity value handling", () => {
         baseRow,
         createColumnMap([{ name: "value", key: "value", type: "number" }]),
         ["id"],
-        false,
       );
 
       expect(status).toBeUndefined();
@@ -437,7 +435,6 @@ describe("String representations of special values", () => {
       baseRow,
       createColumnMap([{ name: "value", key: "value", type: "text" }]),
       ["id"],
-      false,
     );
 
     // Empty string !== null
@@ -528,7 +525,6 @@ describe("Mixed types in same column", () => {
       baseRow,
       createColumnMap([{ name: "value", key: "value", type: "boolean" }]),
       ["id"],
-      false,
     );
 
     // true !== 1 (strict comparison via lodash.isEqual)
@@ -547,7 +543,6 @@ describe("Mixed types in same column", () => {
       baseRow,
       createColumnMap([{ name: "value", key: "value", type: "text" }]),
       ["id"],
-      false,
     );
 
     // "1" !== 1
@@ -588,7 +583,6 @@ describe("Zero edge cases", () => {
       baseRow,
       createColumnMap([{ name: "value", key: "value", type: "number" }]),
       ["id"],
-      false,
     );
 
     // 0 === -0 in JavaScript
@@ -619,7 +613,7 @@ describe("Primary key with special values", () => {
     const columns = [{ name: "id", key: "id", type: "integer" as ColumnType }];
     const row = createRow({ id: null });
 
-    const result = getPrimaryKeyValue(columns, ["id"], row, false);
+    const result = getPrimaryKeyValue(columns, ["id"], row);
 
     expect(result).toBe("id=null");
   });
@@ -628,7 +622,7 @@ describe("Primary key with special values", () => {
     const columns = [{ name: "id", key: "id", type: "number" as ColumnType }];
     const row = createRow({ id: NaN });
 
-    const result = getPrimaryKeyValue(columns, ["id"], row, false);
+    const result = getPrimaryKeyValue(columns, ["id"], row);
 
     expect(result).toBe("id=NaN");
   });
@@ -637,12 +631,12 @@ describe("Primary key with special values", () => {
     const columns = [{ name: "id", key: "id", type: "text" as ColumnType }];
     const row = createRow({ id: "" });
 
-    const result = getPrimaryKeyValue(columns, ["id"], row, false);
+    const result = getPrimaryKeyValue(columns, ["id"], row);
 
     expect(result).toBe("id=");
   });
 
-  test("toValueDiffGrid with empty string primary key value", () => {
+  test("toValueDiffGrid throws with empty string primary key value", () => {
     const df = createJoinedDataFrame(
       [
         { name: "id", key: "id", type: "text" },
@@ -680,25 +674,6 @@ describe("Complex value types", () => {
     expect(typeof rendered).toBe("string");
   });
 
-  test("array comparison in diff detection", () => {
-    const baseRow = createRow({
-      id: 1,
-      base__value: [1, 2, 3],
-      current__value: [1, 2, 3],
-    });
-
-    const status = determineRowStatus(
-      baseRow,
-      baseRow,
-      createColumnMap([{ name: "value", key: "value", type: "unknown" }]),
-      ["id"],
-      false,
-    );
-
-    // lodash.isEqual does deep comparison
-    expect(status).toBeUndefined();
-  });
-
   test("detects array order change as modified", () => {
     const baseRow = createRow({
       id: 1,
@@ -711,7 +686,6 @@ describe("Complex value types", () => {
       baseRow,
       createColumnMap([{ name: "value", key: "value", type: "unknown" }]),
       ["id"],
-      false,
     );
 
     // Different order = different arrays

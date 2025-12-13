@@ -37,6 +37,7 @@ from recce.util.onboarding_state import update_onboarding_state
 from recce.util.recce_cloud import (
     RecceCloudException,
 )
+from recce.util.startup_perf import track_timing
 
 from .core import RecceContext, set_default_context
 from .event.track import TrackCommand
@@ -76,6 +77,7 @@ def patch_derived_args(args):
         args["review"] = True
 
 
+@track_timing("state_loader_init")
 def create_state_loader_by_args(state_file=None, **kwargs):
     """
     Create a state loader based on CLI arguments.
@@ -529,12 +531,19 @@ def server(host, port, lifetime, idle_timeout=0, state_file=None, **kwargs):
 
     RecceConfig(config_file=kwargs.get("config"))
 
+    # Initialize startup performance tracking
+    from recce.util.startup_perf import StartupPerfTracker, set_startup_tracker
+
+    startup_tracker = StartupPerfTracker()
+    set_startup_tracker(startup_tracker)
+
     handle_debug_flag(**kwargs)
     patch_derived_args(kwargs)
 
     server_mode = kwargs.get("mode") if kwargs.get("mode") else RecceServerMode.server
     is_review = kwargs.get("review", False)
     is_cloud = kwargs.get("cloud", False)
+    startup_tracker.set_cloud_mode(is_cloud)
     flag = {
         "single_env_onboarding": False,
         "show_relaunch_hint": False,
@@ -580,7 +589,12 @@ def server(host, port, lifetime, idle_timeout=0, state_file=None, **kwargs):
     update_onboarding_state(api_token, flag.get("single_env_onboarding"))
 
     # Create state loader using shared function
+    from recce.util.startup_perf import get_startup_tracker
+
     state_loader = create_state_loader_by_args(state_file, **kwargs)
+
+    if (tracker := get_startup_tracker()) and hasattr(state_loader, "catalog"):
+        tracker.set_catalog_type(state_loader.catalog)
 
     if not state_loader.verify():
         error, hint = state_loader.error_and_hint
