@@ -9,9 +9,9 @@
 
 "use client";
 
-import { Box, Button, Center, Flex, Heading } from "@chakra-ui/react";
 import * as Sentry from "@sentry/nextjs";
 import { useEffect } from "react";
+import { Box, Button, Center, Flex, Heading } from "@/components/ui/mui";
 
 interface ErrorProps {
   error: Error & { digest?: string };
@@ -37,35 +37,35 @@ export default function Error({ error, reset }: ErrorProps) {
   }, [error]);
 
   return (
-    <Center height="100%" backgroundColor="gray.50">
+    <Center sx={{ height: "100%", bgcolor: "grey.50" }}>
       <Flex
-        p={4}
-        direction="column"
-        justifyContent="flex-start"
-        backgroundColor="white"
-        border="solid lightgray 1px"
-        borderRadius="md"
-        minHeight="200px"
-        boxShadow="md"
+        sx={{
+          p: 2,
+          flexDirection: "column",
+          justifyContent: "flex-start",
+          bgcolor: "white",
+          border: "solid lightgray 1px",
+          borderRadius: "8px",
+          minHeight: "200px",
+          boxShadow: 3,
+        }}
       >
-        <Heading width="800px" size="md" mb={4}>
+        <Heading sx={{ width: "800px", mb: 2 }} size="md">
           You have encountered an error
         </Heading>
 
-        <Box flex="1" fontSize="10pt" color="gray.600" mb={4}>
+        <Box sx={{ flex: 1, fontSize: "10pt", color: "grey.600", mb: 2 }}>
           {error.message || String(error)}
         </Box>
 
         {error.digest && (
-          <Box fontSize="9pt" color="gray.400" mb={4}>
+          <Box sx={{ fontSize: "9pt", color: "grey.400", mb: 2 }}>
             Error ID: {error.digest}
           </Box>
         )}
 
         <Button
-          justifySelf="center"
-          alignSelf="center"
-          mt="20px"
+          sx={{ justifySelf: "center", alignSelf: "center", mt: "20px" }}
           colorPalette="blue"
           size="sm"
           onClick={() => {

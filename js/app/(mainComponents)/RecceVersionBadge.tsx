@@ -1,5 +1,5 @@
-import { Badge, Code, Link, Text } from "@chakra-ui/react";
 import React, { useEffect, useMemo } from "react";
+import { Badge, Code, Link, Text } from "@/components/ui/mui";
 import { toaster } from "@/components/ui/toaster";
 import { useVersionNumber } from "@/lib/api/version";
 
@@ -32,10 +32,12 @@ export default function RecceVersionBadge() {
               Recce.
               <br />
               <Link
-                color="brand.700"
-                fontWeight={"bold"}
+                sx={{
+                  color: "primary.main",
+                  fontWeight: "bold",
+                  "&:hover": { textDecoration: "underline" },
+                }}
                 href={`https://github.com/DataRecce/recce/releases/tag/v${latestVersion}`}
-                _hover={{ textDecoration: "underline" }}
                 target="_blank"
               >
                 Click here to view the detail of latest release
@@ -61,10 +63,12 @@ export default function RecceVersionBadge() {
     // If the version is not in the format of x.y.z, don't apply
     return (
       <Badge
-        fontSize="sm"
-        color="white/80"
+        sx={{
+          fontSize: "sm",
+          color: "rgba(255,255,255,0.8)",
+          textTransform: "uppercase",
+        }}
         variant="outline"
-        textTransform="uppercase"
       >
         {version}
       </Badge>
@@ -74,16 +78,18 @@ export default function RecceVersionBadge() {
   // Link to the release page on GitHub if the version is in the format of x.y.z
   return (
     <Badge
-      fontSize="sm"
-      color="white/80"
+      sx={{
+        fontSize: "sm",
+        color: "rgba(255,255,255,0.8)",
+        textTransform: "uppercase",
+      }}
       variant="outline"
-      textTransform="uppercase"
     >
       <Link
         href={`https://github.com/DataRecce/recce/releases/tag/v${version}`}
-        _hover={{ textDecoration: "none" }}
+        sx={{ "&:hover": { textDecoration: "none" } }}
       >
-        <Text color="white/80">{version}</Text>
+        <Text sx={{ color: "rgba(255,255,255,0.8)" }}>{version}</Text>
       </Link>
     </Badge>
   );

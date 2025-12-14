@@ -1,4 +1,3 @@
-import { Box, Flex, Separator, Spacer, Text } from "@chakra-ui/react";
 import {
   AnimationOptions,
   BarElement,
@@ -10,6 +9,7 @@ import {
 } from "chart.js";
 import { Fragment } from "react";
 import { Bar } from "react-chartjs-2";
+import { Box, Flex, Separator, Spacer, Text } from "@/components/ui/mui";
 import { Tooltip } from "@/components/ui/tooltip";
 import { TopKDiffResult, TopKResult } from "@/lib/api/profile";
 import {
@@ -115,13 +115,13 @@ export function TopKSummaryBarChart({
   const bases = prepareSummaryList(topKDiff.base, isDisplayTopTen);
 
   return (
-    <Box w={"100%"} px={20} py={4}>
-      <Flex alignItems={"center"} direction={"row"}>
+    <Box sx={{ width: "100%", px: 20, py: 2 }}>
+      <Flex sx={{ alignItems: "center", flexDirection: "row" }}>
         <Spacer />
-        <Text as="h3" fontSize="sm" p="2" color="gray">
+        <Text component="h3" sx={{ fontSize: "sm", p: 1, color: "gray" }}>
           <SquareIcon color={BASE_BAR_COLOR} /> Base
         </Text>
-        <Text as="h3" fontSize="sm" p="2" color="gray">
+        <Text component="h3" sx={{ fontSize: "sm", p: 1, color: "gray" }}>
           <SquareIcon color={CURRENT_BAR_COLOR} /> Current
         </Text>
         <Spacer />
@@ -140,53 +140,57 @@ export function TopKSummaryBarChart({
           <Fragment key={current.label}>
             <TopKChartTooltip base={base} current={current}>
               <Flex
-                alignItems={"center"}
-                width={"100%"}
-                _hover={{ bg: "blackAlpha.300" }}
-                px={4}
+                sx={{
+                  alignItems: "center",
+                  width: "100%",
+                  "&:hover": { bgcolor: "action.hover" },
+                  px: 2,
+                }}
               >
                 <Text
-                  lineClamp={1}
-                  width={"10em"}
-                  fontSize={"sm"}
-                  color={current.isSpecialLabel ? "gray.400" : "inherit"}
+                  sx={{
+                    width: "10em",
+                    fontSize: "sm",
+                    color: current.isSpecialLabel ? "grey.400" : "inherit",
+                    overflow: "hidden",
+                    textOverflow: "ellipsis",
+                    whiteSpace: "nowrap",
+                  }}
                 >
                   {current.label}
                 </Text>
-                <Flex width={"70%"} direction={"column"}>
+                <Flex sx={{ width: "70%", flexDirection: "column" }}>
                   {/* Current Top-K */}
-                  <Flex height={"1em"}>
+                  <Flex sx={{ height: "1em" }}>
                     <CategoricalBarChart
                       topkCount={current.count}
                       topkLabel={current.label}
                       valids={topKDiff.current.valids}
                       color={CURRENT_BAR_COLOR}
                     />
-                    <Text
-                      ml={5}
-                      mr={2}
-                      fontSize={"sm"}
-                      width={"6em"}
-                      // noOfLines={1}
-                    >
+                    <Text sx={{ ml: 2.5, mr: 1, fontSize: "sm", width: "6em" }}>
                       {current.displayCount}
                     </Text>
-                    <Text color={"gray.400"} fontSize={"sm"} width={"4em"}>
+                    <Text
+                      sx={{ color: "grey.400", fontSize: "sm", width: "4em" }}
+                    >
                       {current.displayRatio}
                     </Text>
                   </Flex>
                   {/* Base Top-K */}
-                  <Flex height={"1em"}>
+                  <Flex sx={{ height: "1em" }}>
                     <CategoricalBarChart
                       topkCount={base.count}
                       topkLabel={base.label}
                       valids={topKDiff.base.valids}
                       color={BASE_BAR_COLOR}
                     />
-                    <Text ml={5} mr={2} fontSize={"sm"} width={"6em"}>
+                    <Text sx={{ ml: 2.5, mr: 1, fontSize: "sm", width: "6em" }}>
                       {base.displayCount}
                     </Text>
-                    <Text color={"gray.400"} fontSize={"sm"} width={"4em"}>
+                    <Text
+                      sx={{ color: "grey.400", fontSize: "sm", width: "4em" }}
+                    >
                       {base.displayRatio}
                     </Text>
                   </Flex>
@@ -218,7 +222,7 @@ export function TopKSummaryList({ topk, valids, isDisplayTopTen }: Props) {
     valids - displayList.reduce((accum, curr) => accum + curr, 0);
 
   return (
-    <Box w={"100%"}>
+    <Box sx={{ width: "100%" }}>
       {displayList.concat([remainingSumCount]).map((v, index) => {
         const isLastItemOthers = index === displayList.length;
         const topkCount = isLastItemOthers ? remainingSumCount : v;
@@ -231,29 +235,34 @@ export function TopKSummaryList({ topk, valids, isDisplayTopTen }: Props) {
             {!isLastItemOthers || topkCount > 0 ? (
               <>
                 <Flex
-                  alignItems={"center"}
-                  width={"100%"}
-                  _hover={{ bg: "blackAlpha.300" }}
-                  px={3}
+                  sx={{
+                    alignItems: "center",
+                    width: "100%",
+                    "&:hover": { bgcolor: "action.hover" },
+                    px: 1.5,
+                  }}
                 >
                   <Tooltip
                     content={topkLabel}
                     positioning={{ placement: "top-start" }}
                   >
                     <Text
-                      lineClamp={1}
-                      width={"14em"}
-                      fontSize={"sm"}
-                      color={
-                        isLastItemOthers || catName.length === 0
-                          ? "gray.400"
-                          : "inherit"
-                      }
+                      sx={{
+                        width: "14em",
+                        fontSize: "sm",
+                        color:
+                          isLastItemOthers || catName.length === 0
+                            ? "grey.400"
+                            : "inherit",
+                        overflow: "hidden",
+                        textOverflow: "ellipsis",
+                        whiteSpace: "nowrap",
+                      }}
                     >
                       {topkLabel}
                     </Text>
                   </Tooltip>
-                  <Flex height={"2em"} width={"10em"}>
+                  <Flex sx={{ height: "2em", width: "10em" }}>
                     <CategoricalBarChart
                       topkCount={topkCount}
                       topkLabel={topkLabel}
@@ -265,11 +274,15 @@ export function TopKSummaryList({ topk, valids, isDisplayTopTen }: Props) {
                     positioning={{ placement: "top-start" }}
                   >
                     <Text
-                      ml={5}
-                      mr={2}
-                      fontSize={"sm"}
-                      width={"4em"}
-                      lineClamp={1}
+                      sx={{
+                        ml: 2.5,
+                        mr: 1,
+                        fontSize: "sm",
+                        width: "4em",
+                        overflow: "hidden",
+                        textOverflow: "ellipsis",
+                        whiteSpace: "nowrap",
+                      }}
                     >
                       {displayTopkCount}
                     </Text>
@@ -278,7 +291,9 @@ export function TopKSummaryList({ topk, valids, isDisplayTopTen }: Props) {
                     content={displayTopkRatio}
                     positioning={{ placement: "top-start" }}
                   >
-                    <Text color={"gray.400"} fontSize={"sm"} width={"4em"}>
+                    <Text
+                      sx={{ color: "grey.400", fontSize: "sm", width: "4em" }}
+                    >
                       {displayTopkRatio}
                     </Text>
                   </Tooltip>

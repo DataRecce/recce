@@ -70,6 +70,7 @@ export { Flex, type FlexProps } from "./Flex";
 export { Grid, GridItem, type GridItemProps, type GridProps } from "./Grid";
 // Typography Components
 export { Heading, type HeadingProps } from "./Heading";
+export { Icon, type IconProps } from "./Icon";
 export { IconButton, type IconButtonProps } from "./IconButton";
 export { Image, type ImageProps } from "./Image";
 export { Input, type InputProps } from "./Input";
@@ -109,6 +110,23 @@ export { Spacer } from "./Spacer";
 export { Spinner, type SpinnerProps } from "./Spinner";
 export { HStack, Stack, type StackProps, VStack } from "./Stack";
 export { Switch, type SwitchProps } from "./Switch";
+export {
+  Table,
+  TableBody,
+  type TableBodyProps,
+  TableCell,
+  type TableCellProps,
+  TableColumnHeader,
+  type TableColumnHeaderProps,
+  TableHeader,
+  type TableHeaderProps,
+  TableRoot,
+  type TableRootProps,
+  TableRow,
+  type TableRowProps,
+  TableScrollArea,
+  type TableScrollAreaProps,
+} from "./Table";
 export {
   TabContent,
   type TabContentProps,

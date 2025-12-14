@@ -1,5 +1,7 @@
 "use client";
 
+import type { BoxProps } from "@mui/material/Box";
+import Box from "@mui/material/Box";
 import type { BreadcrumbsProps as MuiBreadcrumbsProps } from "@mui/material/Breadcrumbs";
 import MuiBreadcrumbs from "@mui/material/Breadcrumbs";
 import MuiLink from "@mui/material/Link";
@@ -19,7 +21,7 @@ export interface BreadcrumbRootProps extends Omit<MuiBreadcrumbsProps, "ref"> {
   children?: ReactNode;
 }
 
-export interface BreadcrumbItemProps {
+export interface BreadcrumbItemProps extends Omit<BoxProps, "ref"> {
   /** Whether this is the current/active item */
   isCurrentPage?: boolean;
   /** Children */
@@ -47,10 +49,16 @@ const BreadcrumbRoot = forwardRef<HTMLElement, BreadcrumbRootProps>(
   },
 );
 
-function BreadcrumbItem({ isCurrentPage, children }: BreadcrumbItemProps) {
-  // Simply pass through children - the compound pattern handles context
-  return <>{children}</>;
-}
+const BreadcrumbItem = forwardRef<HTMLDivElement, BreadcrumbItemProps>(
+  function BreadcrumbItem({ isCurrentPage, children, sx, ...props }, ref) {
+    // Wrap children in a Box to support sx prop and other styling
+    return (
+      <Box ref={ref} component="span" sx={sx} {...props}>
+        {children}
+      </Box>
+    );
+  },
+);
 
 const BreadcrumbLink = forwardRef<HTMLAnchorElement, BreadcrumbLinkProps>(
   function BreadcrumbLink(

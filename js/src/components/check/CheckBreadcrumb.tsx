@@ -1,4 +1,3 @@
-import { Box, Breadcrumb, Input } from "@chakra-ui/react";
 import React, {
   ChangeEvent,
   useCallback,
@@ -6,6 +5,7 @@ import React, {
   useRef,
   useState,
 } from "react";
+import { Box, Breadcrumb, Input } from "@/components/ui/mui";
 
 interface CheckBreadcrumbProps {
   name: string;
@@ -64,13 +64,17 @@ export function CheckBreadcrumb({ name, setName }: CheckBreadcrumbProps) {
 
   return (
     <Breadcrumb.Root
-      flex="0 1 auto"
-      fontSize="12pt"
-      fontWeight="500"
+      sx={{
+        flex: "0 1 auto",
+        fontSize: "12pt",
+        fontWeight: 500,
+        overflow: "hidden",
+      }}
       className="no-track-pii-safe"
-      overflow={"hidden"}
     >
-      <Breadcrumb.Item cursor="pointer" flex="0 1 auto" overflow="hidden">
+      <Breadcrumb.Item
+        sx={{ cursor: "pointer", flex: "0 1 auto", overflow: "hidden" }}
+      >
         {isEditing ? (
           <Input
             ref={editInputRef}
@@ -78,15 +82,17 @@ export function CheckBreadcrumb({ name, setName }: CheckBreadcrumbProps) {
             onChange={handleChange}
             onKeyDown={handleKeyDown}
             size="sm"
-            w="100%"
+            sx={{ width: "100%" }}
           />
         ) : (
           <Box
-            flex="0 1 auto"
+            sx={{
+              flex: "0 1 auto",
+              textOverflow: "ellipsis",
+              whiteSpace: "nowrap",
+              overflow: "hidden",
+            }}
             onClick={handleClick}
-            textOverflow="ellipsis"
-            whiteSpace="nowrap"
-            overflow="hidden"
           >
             {name}
           </Box>

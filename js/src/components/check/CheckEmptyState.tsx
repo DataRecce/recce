@@ -1,3 +1,6 @@
+import { useMutation, useQueryClient } from "@tanstack/react-query";
+import React from "react";
+import { TbChecklist, TbPlus } from "react-icons/tb";
 import {
   Button,
   Center,
@@ -6,10 +9,7 @@ import {
   Icon,
   Text,
   VStack,
-} from "@chakra-ui/react";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
-import React from "react";
-import { TbChecklist, TbPlus } from "react-icons/tb";
+} from "@/components/ui/mui";
 import { cacheKeys } from "@/lib/api/cacheKeys";
 import { Check } from "@/lib/api/checks";
 import { createSchemaDiffCheck } from "@/lib/api/schemacheck";
@@ -32,21 +32,23 @@ export const CheckEmptyState = () => {
   };
 
   return (
-    <Center h="100%" w="100%">
-      <VStack gap={6} textAlign="center" maxW="400px">
-        <Icon as={TbChecklist} boxSize={16} color="gray.400" />
+    <Center sx={{ height: "100%", width: "100%" }}>
+      <VStack sx={{ textAlign: "center", maxWidth: "400px" }} spacing={6}>
+        <Icon as={TbChecklist} boxSize="64px" color="grey.400" />
 
-        <VStack gap={2}>
-          <Heading size="lg" color="gray.600">
+        <VStack spacing={2}>
+          <Heading size="lg" sx={{ color: "grey.600" }}>
             No checks yet
           </Heading>
-          <Text color="gray.500" fontSize="md">
+          <Text sx={{ color: "grey.500", fontSize: "md" }}>
             Checks help you validate data quality and catch issues.
           </Text>
         </VStack>
 
-        <VStack gap={3} w="100%">
-          <Text fontSize="sm" color="gray.600" fontWeight="medium">
+        <VStack sx={{ width: "100%" }} spacing={3}>
+          <Text
+            sx={{ fontSize: "sm", color: "grey.600", fontWeight: "medium" }}
+          >
             Get started with your first check:
           </Text>
 
@@ -55,7 +57,7 @@ export const CheckEmptyState = () => {
             onClick={handleCreateSchemaCheck}
             loading={isPending}
             size="lg"
-            w="100%"
+            sx={{ width: "100%" }}
           >
             <HStack>
               <Icon as={TbPlus} />
@@ -63,7 +65,7 @@ export const CheckEmptyState = () => {
             </HStack>
           </Button>
 
-          <Text fontSize="xs" color="gray.400" mt={2}>
+          <Text sx={{ fontSize: "xs", color: "grey.400", mt: 1 }}>
             The schema checks compare modified models between environments to
             detect changes, additions, or removals.
           </Text>
