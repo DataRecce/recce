@@ -145,6 +145,204 @@ const semanticColors = {
   envCurrent: colors.iochmara[500],
 };
 
+// Custom color names type
+type CustomColorName =
+  | "brand"
+  | "iochmara"
+  | "cyan"
+  | "amber"
+  | "green"
+  | "red"
+  | "rose"
+  | "fuchsia"
+  | "neutral";
+
+/**
+ * Helper to generate button color variants for a given color
+ * Creates contained, outlined, and text variant styles
+ */
+function createButtonColorVariants<T extends CustomColorName>(
+  colorName: T,
+  colorScale: (typeof colors)[keyof typeof colors],
+) {
+  return [
+    // Contained variant (solid)
+    {
+      props: { color: colorName, variant: "contained" as const },
+      style: {
+        backgroundColor: colorScale[500],
+        color: "#FFFFFF",
+        "&:hover": {
+          backgroundColor: colorScale[600],
+        },
+      },
+    },
+    // Outlined variant
+    {
+      props: { color: colorName, variant: "outlined" as const },
+      style: {
+        borderColor: colorScale[500],
+        color: colorScale[600],
+        "&:hover": {
+          borderColor: colorScale[600],
+          backgroundColor: `${colorScale[50]}80`,
+        },
+      },
+    },
+    // Text variant (ghost)
+    {
+      props: { color: colorName, variant: "text" as const },
+      style: {
+        color: colorScale[600],
+        "&:hover": {
+          backgroundColor: `${colorScale[50]}80`,
+        },
+      },
+    },
+  ];
+}
+
+/**
+ * Helper to generate CircularProgress color variants
+ */
+function createProgressColorVariant<T extends CustomColorName>(
+  colorName: T,
+  colorScale: (typeof colors)[keyof typeof colors],
+) {
+  return {
+    props: { color: colorName },
+    style: {
+      color: colorScale[500],
+    },
+  };
+}
+
+/**
+ * Helper to generate Badge color variants
+ */
+function createBadgeColorVariant<T extends CustomColorName>(
+  colorName: T,
+  colorScale: (typeof colors)[keyof typeof colors],
+) {
+  return {
+    props: { color: colorName },
+    style: {
+      "& .MuiBadge-badge": {
+        backgroundColor: colorScale[500],
+        color: "#FFFFFF",
+      },
+    },
+  };
+}
+
+/**
+ * Helper to generate Chip color variants
+ */
+function createChipColorVariants<T extends CustomColorName>(
+  colorName: T,
+  colorScale: (typeof colors)[keyof typeof colors],
+) {
+  return [
+    // Filled variant
+    {
+      props: { color: colorName, variant: "filled" as const },
+      style: {
+        backgroundColor: colorScale[500],
+        color: "#FFFFFF",
+        "&:hover": {
+          backgroundColor: colorScale[600],
+        },
+      },
+    },
+    // Outlined variant
+    {
+      props: { color: colorName, variant: "outlined" as const },
+      style: {
+        borderColor: colorScale[500],
+        color: colorScale[600],
+      },
+    },
+  ];
+}
+
+// Generate all button color variants
+const buttonColorVariants = [
+  ...createButtonColorVariants("iochmara", colors.iochmara),
+  ...createButtonColorVariants("cyan", colors.cyan),
+  ...createButtonColorVariants("amber", colors.amber),
+  ...createButtonColorVariants("green", colors.green),
+  ...createButtonColorVariants("red", colors.red),
+  ...createButtonColorVariants("rose", colors.rose),
+  ...createButtonColorVariants("fuchsia", colors.fuchsia),
+  ...createButtonColorVariants("brand", colors.brand),
+  // Neutral uses darker shades for better visibility
+  {
+    props: { color: "neutral" as const, variant: "contained" as const },
+    style: {
+      backgroundColor: colors.neutral[700],
+      color: "#FFFFFF",
+      "&:hover": { backgroundColor: colors.neutral[800] },
+    },
+  },
+  {
+    props: { color: "neutral" as const, variant: "outlined" as const },
+    style: {
+      borderColor: colors.neutral[400],
+      color: colors.neutral[700],
+      "&:hover": {
+        borderColor: colors.neutral[500],
+        backgroundColor: colors.neutral[100],
+      },
+    },
+  },
+  {
+    props: { color: "neutral" as const, variant: "text" as const },
+    style: {
+      color: colors.neutral[700],
+      "&:hover": { backgroundColor: colors.neutral[100] },
+    },
+  },
+];
+
+// Generate all CircularProgress color variants
+const progressColorVariants = [
+  createProgressColorVariant("iochmara", colors.iochmara),
+  createProgressColorVariant("cyan", colors.cyan),
+  createProgressColorVariant("amber", colors.amber),
+  createProgressColorVariant("green", colors.green),
+  createProgressColorVariant("red", colors.red),
+  createProgressColorVariant("rose", colors.rose),
+  createProgressColorVariant("fuchsia", colors.fuchsia),
+  createProgressColorVariant("brand", colors.brand),
+  createProgressColorVariant("neutral", colors.neutral),
+];
+
+// Generate all Badge color variants
+const badgeColorVariants = [
+  createBadgeColorVariant("iochmara", colors.iochmara),
+  createBadgeColorVariant("cyan", colors.cyan),
+  createBadgeColorVariant("amber", colors.amber),
+  createBadgeColorVariant("green", colors.green),
+  createBadgeColorVariant("red", colors.red),
+  createBadgeColorVariant("rose", colors.rose),
+  createBadgeColorVariant("fuchsia", colors.fuchsia),
+  createBadgeColorVariant("brand", colors.brand),
+  createBadgeColorVariant("neutral", colors.neutral),
+];
+
+// Generate all Chip color variants
+const chipColorVariants = [
+  ...createChipColorVariants("iochmara", colors.iochmara),
+  ...createChipColorVariants("cyan", colors.cyan),
+  ...createChipColorVariants("amber", colors.amber),
+  ...createChipColorVariants("green", colors.green),
+  ...createChipColorVariants("red", colors.red),
+  ...createChipColorVariants("rose", colors.rose),
+  ...createChipColorVariants("fuchsia", colors.fuchsia),
+  ...createChipColorVariants("brand", colors.brand),
+  ...createChipColorVariants("neutral", colors.neutral),
+];
+
 // Component overrides to match Chakra UI defaults
 const componentOverrides: ThemeOptions["components"] = {
   // Button overrides
@@ -152,8 +350,9 @@ const componentOverrides: ThemeOptions["components"] = {
     defaultProps: {
       disableElevation: true, // Match Chakra's flat button style
     },
-    // Size variants to match Chakra's sizes
+    // Size and color variants
     variants: [
+      // Size variant: xsmall
       {
         props: { size: "xsmall" },
         style: {
@@ -161,10 +360,12 @@ const componentOverrides: ThemeOptions["components"] = {
           fontSize: "0.75rem",
           fontWeight: 500,
           borderRadius: "0.25rem",
-          minHeight: "unset", // Remove default minHeight constraint
-          lineHeight: 1.5, // Ensure proper text alignment
+          minHeight: "unset",
+          lineHeight: 1.5,
         },
       },
+      // Color variants for all custom colors
+      ...buttonColorVariants,
     ],
     styleOverrides: {
       root: {
@@ -316,6 +517,18 @@ const componentOverrides: ThemeOptions["components"] = {
   },
   // Chip overrides (Tag in Chakra)
   MuiChip: {
+    variants: [
+      // Size variant: xsmall
+      {
+        props: { size: "xsmall" },
+        style: {
+          height: 20,
+          fontSize: "0.625rem",
+        },
+      },
+      // Color variants for all custom colors
+      ...chipColorVariants,
+    ],
     styleOverrides: {
       root: {
         borderRadius: 6,
@@ -396,6 +609,7 @@ const componentOverrides: ThemeOptions["components"] = {
   },
   // Badge overrides
   MuiBadge: {
+    variants: badgeColorVariants,
     styleOverrides: {
       badge: {
         fontWeight: 500,
@@ -408,6 +622,7 @@ const componentOverrides: ThemeOptions["components"] = {
     defaultProps: {
       color: "primary",
     },
+    variants: progressColorVariants,
   },
   // Link overrides
   MuiLink: {
@@ -614,23 +829,57 @@ export { colors, semanticColors };
 declare module "@mui/material/styles" {
   interface Palette {
     brand: Palette["primary"];
+    iochmara: Palette["primary"];
+    cyan: Palette["primary"];
+    amber: Palette["primary"];
+    green: Palette["primary"];
+    red: Palette["primary"];
+    rose: Palette["primary"];
+    fuchsia: Palette["primary"];
+    neutral: Palette["primary"];
     envBase: string;
     envCurrent: string;
   }
 
   interface PaletteOptions {
     brand?: PaletteOptions["primary"];
+    iochmara?: PaletteOptions["primary"];
+    cyan?: PaletteOptions["primary"];
+    amber?: PaletteOptions["primary"];
+    green?: PaletteOptions["primary"];
+    red?: PaletteOptions["primary"];
+    rose?: PaletteOptions["primary"];
+    fuchsia?: PaletteOptions["primary"];
+    neutral?: PaletteOptions["primary"];
     envBase?: string;
     envCurrent?: string;
   }
 }
 
-// Add custom colors to the theme
+// Helper to create palette color from color scale
+function createPaletteColor(colorScale: (typeof colors)[keyof typeof colors]) {
+  return {
+    main: colorScale[500],
+    light: colorScale[400],
+    dark: colorScale[600],
+    contrastText: "#FFFFFF",
+  };
+}
+
+// Add custom colors to the theme palettes
 const customPaletteAdditions = {
-  brand: {
-    main: colors.brand[500],
-    light: colors.brand[400],
-    dark: colors.brand[600],
+  brand: createPaletteColor(colors.brand),
+  iochmara: createPaletteColor(colors.iochmara),
+  cyan: createPaletteColor(colors.cyan),
+  amber: createPaletteColor(colors.amber),
+  green: createPaletteColor(colors.green),
+  red: createPaletteColor(colors.red),
+  rose: createPaletteColor(colors.rose),
+  fuchsia: createPaletteColor(colors.fuchsia),
+  neutral: {
+    main: colors.neutral[500],
+    light: colors.neutral[400],
+    dark: colors.neutral[600],
     contrastText: "#FFFFFF",
   },
   envBase: semanticColors.envBase,
@@ -638,13 +887,8 @@ const customPaletteAdditions = {
 };
 
 // Apply custom palette to both themes
-lightTheme.palette.brand = customPaletteAdditions.brand;
-lightTheme.palette.envBase = customPaletteAdditions.envBase;
-lightTheme.palette.envCurrent = customPaletteAdditions.envCurrent;
-
-darkTheme.palette.brand = customPaletteAdditions.brand;
-darkTheme.palette.envBase = customPaletteAdditions.envBase;
-darkTheme.palette.envCurrent = customPaletteAdditions.envCurrent;
+Object.assign(lightTheme.palette, customPaletteAdditions);
+Object.assign(darkTheme.palette, customPaletteAdditions);
 
 /**
  * Token lookup function to mimic Chakra UI's token API
