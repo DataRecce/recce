@@ -1,9 +1,9 @@
-import { Button, Flex, IconButton, Text } from "@chakra-ui/react";
 import { useState } from "react";
 import { PiCheckCircle, PiCopy } from "react-icons/pi";
 import { TbCloudUpload } from "react-icons/tb";
 import { useCopyToClipboard, useInterval } from "usehooks-ts";
 import AuthModal from "@/components/AuthModal/AuthModal";
+import { Button, Flex, IconButton, Text } from "@/components/ui/mui";
 import { trackShareState } from "@/lib/api/track";
 import { useRecceInstanceContext } from "@/lib/hooks/RecceInstanceContext";
 import { useRecceShareStateContext } from "@/lib/hooks/RecceShareStateContext";

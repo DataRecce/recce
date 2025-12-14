@@ -16,14 +16,31 @@ export interface BoxProps extends Omit<MuiBoxProps, "ref"> {
   children?: ReactNode;
   /** Chakra compatibility: className for group hover patterns */
   className?: string;
+  /** Background color shorthand */
+  bg?: string;
+  /** Border radius shorthand */
+  rounded?: string;
+  /** Cursor style */
+  cursor?: string;
 }
 
 export const Box = forwardRef<HTMLDivElement, BoxProps>(function Box(
-  { children, sx, ...props },
+  { children, bg, rounded, cursor, sx, ...props },
   ref,
 ) {
   return (
-    <MuiBox ref={ref} sx={sx} {...props}>
+    <MuiBox
+      ref={ref}
+      sx={{
+        ...(bg && { backgroundColor: bg }),
+        ...(rounded && {
+          borderRadius: rounded === "full" ? "9999px" : rounded,
+        }),
+        ...(cursor && { cursor }),
+        ...sx,
+      }}
+      {...props}
+    >
       {children}
     </MuiBox>
   );

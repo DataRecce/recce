@@ -30,6 +30,8 @@ export interface MenuRootProps {
       | "top-end"
       | "bottom"
       | "top";
+    /** Custom anchor rect getter (Chakra compatibility) */
+    getAnchorRect?: () => DOMRect | null;
   };
 }
 
@@ -113,11 +115,29 @@ export const MenuTrigger = forwardRef<HTMLDivElement, MenuTriggerProps>(
   },
 );
 
+// Menu Positioner - Wrapper for positioning (API compatibility)
+interface MenuPositionerProps {
+  children?: ReactNode;
+}
+
+function MenuPositioner({ children }: MenuPositionerProps) {
+  // MUI handles positioning internally, this is for API compatibility
+  return <>{children}</>;
+}
+
 // Menu Content - The dropdown menu itself
 export interface MenuContentProps extends Omit<MuiMenuProps, "ref" | "open"> {
   children?: ReactNode;
   open?: boolean;
   positioning?: MenuRootProps["positioning"];
+  /** Background color */
+  bg?: string;
+  /** Border color */
+  borderColor?: string;
+  /** Box shadow */
+  boxShadow?: string;
+  /** Minimum width */
+  minW?: string;
 }
 
 const placementToAnchorOrigin: Record<string, MuiMenuProps["anchorOrigin"]> = {
@@ -131,7 +151,19 @@ const placementToAnchorOrigin: Record<string, MuiMenuProps["anchorOrigin"]> = {
 
 export const MenuContent = forwardRef<HTMLDivElement, MenuContentProps>(
   function MenuContent(
-    { children, open = false, positioning, anchorEl, onClose, ...props },
+    {
+      children,
+      open = false,
+      positioning,
+      anchorEl,
+      onClose,
+      bg,
+      borderColor,
+      boxShadow,
+      minW,
+      sx,
+      ...props
+    },
     ref,
   ) {
     const anchorOrigin =
@@ -144,6 +176,15 @@ export const MenuContent = forwardRef<HTMLDivElement, MenuContentProps>(
         open={open}
         onClose={onClose}
         anchorOrigin={anchorOrigin}
+        sx={{
+          "& .MuiPaper-root": {
+            ...(bg && { backgroundColor: bg }),
+            ...(borderColor && { borderColor }),
+            ...(boxShadow && { boxShadow }),
+            ...(minW && { minWidth: minW }),
+          },
+          ...sx,
+        }}
         {...props}
       >
         {children}
@@ -182,6 +223,7 @@ export const MenuSeparator = forwardRef<HTMLHRElement, MenuSeparatorProps>(
 export const Menu = {
   Root: MenuRoot,
   Trigger: MenuTrigger,
+  Positioner: MenuPositioner,
   Content: MenuContent,
   Item: MenuItem,
   Separator: MenuSeparator,

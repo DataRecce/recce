@@ -1,3 +1,6 @@
+import { useQuery } from "@tanstack/react-query";
+import { useRef } from "react";
+import { FaCloud, FaUser } from "react-icons/fa";
 import {
   Avatar,
   Box,
@@ -6,10 +9,7 @@ import {
   Portal,
   Spinner,
   Text,
-} from "@chakra-ui/react";
-import { useQuery } from "@tanstack/react-query";
-import { useRef } from "react";
-import { FaCloud, FaUser } from "react-icons/fa";
+} from "@/components/ui/mui";
 import { RECCE_SUPPORT_CALENDAR_URL } from "@/constants/urls";
 import { cacheKeys } from "@/lib/api/cacheKeys";
 import { fetchGitHubAvatar, fetchUser } from "@/lib/api/user";

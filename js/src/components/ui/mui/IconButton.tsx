@@ -15,7 +15,7 @@ export interface IconButtonProps
   extends Omit<MuiIconButtonProps, "ref" | "size"> {
   children?: ReactNode;
   /** Size of the button - Chakra sizes map to MUI */
-  size?: "xs" | "sm" | "md" | "lg" | "small" | "medium" | "large";
+  size?: "2xs" | "xs" | "sm" | "md" | "lg" | "small" | "medium" | "large";
   /** Chakra colorPalette - maps to MUI color */
   colorPalette?:
     | "iochmara"
@@ -35,6 +35,8 @@ export interface IconButtonProps
   "aria-label": string;
   /** Visual variant */
   variant?: "ghost" | "outline" | "solid" | "plain";
+  /** Padding top */
+  pt?: string | number;
 }
 
 const colorPaletteToMui: Record<string, MuiIconButtonProps["color"]> = {
@@ -50,6 +52,7 @@ const colorPaletteToMui: Record<string, MuiIconButtonProps["color"]> = {
 };
 
 const sizeToMui: Record<string, MuiIconButtonProps["size"]> = {
+  "2xs": "small",
   xs: "small",
   sm: "small",
   md: "medium",
@@ -68,6 +71,7 @@ export const IconButton = forwardRef<HTMLButtonElement, IconButtonProps>(
       loading = false,
       icon,
       disabled,
+      pt,
       sx,
       ...props
     },
@@ -82,7 +86,10 @@ export const IconButton = forwardRef<HTMLButtonElement, IconButtonProps>(
         color={muiColor}
         size={muiSize}
         disabled={disabled || loading}
-        sx={sx}
+        sx={{
+          ...(pt !== undefined && { pt }),
+          ...sx,
+        }}
         {...props}
       >
         {loading ? (

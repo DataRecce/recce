@@ -23,6 +23,12 @@ export interface IconProps {
   className?: string;
   /** Children (for direct icon children instead of `as` prop) */
   children?: React.ReactNode;
+  /** Margin right */
+  mr?: number | string;
+  /** Margin left */
+  ml?: number | string;
+  /** Cursor style */
+  cursor?: string;
 }
 
 export const Icon = forwardRef<HTMLSpanElement, IconProps>(function Icon(
@@ -33,30 +39,33 @@ export const Icon = forwardRef<HTMLSpanElement, IconProps>(function Icon(
     verticalAlign,
     className,
     children,
+    mr,
+    ml,
+    cursor,
   },
   ref,
 ) {
+  const commonSx = {
+    display: "inline-flex",
+    alignItems: "center",
+    justifyContent: "center",
+    width: boxSize,
+    height: boxSize,
+    color,
+    verticalAlign,
+    ...(mr !== undefined && { mr }),
+    ...(ml !== undefined && { ml }),
+    ...(cursor && { cursor }),
+    "& svg": {
+      width: "100%",
+      height: "100%",
+    },
+  };
+
   // If children are provided directly (e.g., <Icon><SomeIcon /></Icon>)
   if (children && !IconComponent) {
     return (
-      <Box
-        component="span"
-        ref={ref}
-        className={className}
-        sx={{
-          display: "inline-flex",
-          alignItems: "center",
-          justifyContent: "center",
-          width: boxSize,
-          height: boxSize,
-          color,
-          verticalAlign,
-          "& svg": {
-            width: "100%",
-            height: "100%",
-          },
-        }}
-      >
+      <Box component="span" ref={ref} className={className} sx={commonSx}>
         {children}
       </Box>
     );
@@ -65,24 +74,7 @@ export const Icon = forwardRef<HTMLSpanElement, IconProps>(function Icon(
   // If an icon component is passed via the `as` prop
   if (IconComponent) {
     return (
-      <Box
-        component="span"
-        ref={ref}
-        className={className}
-        sx={{
-          display: "inline-flex",
-          alignItems: "center",
-          justifyContent: "center",
-          width: boxSize,
-          height: boxSize,
-          color,
-          verticalAlign,
-          "& svg": {
-            width: "100%",
-            height: "100%",
-          },
-        }}
-      >
+      <Box component="span" ref={ref} className={className} sx={commonSx}>
         <IconComponent />
       </Box>
     );

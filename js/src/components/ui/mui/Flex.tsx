@@ -3,7 +3,7 @@
 import type { BoxProps as MuiBoxProps } from "@mui/material/Box";
 import MuiBox from "@mui/material/Box";
 import type { SxProps, Theme } from "@mui/material/styles";
-import { forwardRef, type ReactNode } from "react";
+import { forwardRef, type ReactNode, useMemo } from "react";
 
 /**
  * Flex Component - MUI equivalent of Chakra's Flex
@@ -24,26 +24,49 @@ export interface FlexProps extends Omit<MuiBoxProps, "ref"> {
   direction?: MuiBoxProps["flexDirection"];
   /** Gap between flex items */
   gap?: number | string;
+  /** Overflow X */
+  overflowX?: string;
+  /** Border radius */
+  rounded?: string;
 }
 
 export const Flex = forwardRef<HTMLDivElement, FlexProps>(function Flex(
-  { children, align, justify, wrap, direction, gap, sx, ...props },
+  {
+    children,
+    align,
+    justify,
+    wrap,
+    direction,
+    gap,
+    overflowX,
+    rounded,
+    sx,
+    ...props
+  },
   ref,
 ) {
+  const combinedSx = useMemo((): SxProps<Theme> => {
+    const styles: Record<string, unknown> = {
+      display: "flex",
+    };
+
+    if (align !== undefined) styles.alignItems = align;
+    if (justify !== undefined) styles.justifyContent = justify;
+    if (wrap !== undefined) styles.flexWrap = wrap;
+    if (direction !== undefined) styles.flexDirection = direction;
+    if (gap !== undefined) styles.gap = gap;
+    if (overflowX) styles.overflowX = overflowX;
+    if (rounded) styles.borderRadius = rounded === "full" ? "9999px" : rounded;
+
+    if (sx && typeof sx === "object" && !Array.isArray(sx)) {
+      return { ...styles, ...sx } as SxProps<Theme>;
+    }
+
+    return styles as SxProps<Theme>;
+  }, [align, justify, wrap, direction, gap, overflowX, rounded, sx]);
+
   return (
-    <MuiBox
-      ref={ref}
-      sx={{
-        display: "flex",
-        alignItems: align,
-        justifyContent: justify,
-        flexWrap: wrap,
-        flexDirection: direction,
-        gap,
-        ...sx,
-      }}
-      {...props}
-    >
+    <MuiBox ref={ref} sx={combinedSx} {...props}>
       {children}
     </MuiBox>
   );
