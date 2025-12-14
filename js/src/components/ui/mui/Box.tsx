@@ -4,6 +4,20 @@ import type { BoxProps as MuiBoxProps } from "@mui/material/Box";
 import MuiBox from "@mui/material/Box";
 import type { SxProps, Theme } from "@mui/material/styles";
 import { forwardRef, type ReactNode, useMemo } from "react";
+import { token } from "../theme";
+
+/**
+ * Resolves Chakra-style color tokens to actual color values.
+ * e.g., "green.solid" -> "#16A34A", "gray.500" -> "#737373"
+ */
+function resolveColor(colorValue: string | undefined): string | undefined {
+  if (!colorValue) return undefined;
+  // Try to resolve as a theme token first
+  const resolved = token(`colors.${colorValue}`);
+  if (resolved) return resolved;
+  // Return as-is if not a token (could be a hex color, CSS color name, etc.)
+  return colorValue;
+}
 
 /**
  * Box Component - MUI equivalent of Chakra's Box
@@ -121,8 +135,8 @@ export const Box = forwardRef<HTMLDivElement, BoxProps>(function Box(
 ) {
   const combinedSx = useMemo((): SxProps<Theme> => {
     const styles: Record<string, unknown> = {};
-    if (bg) styles.backgroundColor = bg;
-    if (backgroundColor) styles.backgroundColor = backgroundColor;
+    if (bg) styles.backgroundColor = resolveColor(bg);
+    if (backgroundColor) styles.backgroundColor = resolveColor(backgroundColor);
     if (rounded) styles.borderRadius = rounded === "full" ? "9999px" : rounded;
     if (cursor) styles.cursor = cursor;
     if (shadow) styles.boxShadow = shadow;
@@ -137,7 +151,7 @@ export const Box = forwardRef<HTMLDivElement, BoxProps>(function Box(
       styles.borderBottomRightRadius = borderBottomRadius;
     }
     if (borderLeftWidth) styles.borderLeftWidth = borderLeftWidth;
-    if (borderLeftColor) styles.borderLeftColor = borderLeftColor;
+    if (borderLeftColor) styles.borderLeftColor = resolveColor(borderLeftColor);
     if (p !== undefined) styles.p = p;
     if (pl !== undefined) styles.pl = pl;
     if (px !== undefined) styles.px = px;
@@ -145,7 +159,7 @@ export const Box = forwardRef<HTMLDivElement, BoxProps>(function Box(
     if (my !== undefined) styles.my = my;
     if (mb !== undefined) styles.mb = mb;
     if (opacity !== undefined) styles.opacity = opacity;
-    if (borderColor) styles.borderColor = borderColor;
+    if (borderColor) styles.borderColor = resolveColor(borderColor);
     if (w !== undefined) styles.width = w;
     if (h !== undefined) styles.height = h;
     if (fontStyle) styles.fontStyle = fontStyle;
@@ -156,7 +170,7 @@ export const Box = forwardRef<HTMLDivElement, BoxProps>(function Box(
       styles.width = boxSize;
       styles.height = boxSize;
     }
-    if (color) styles.color = color;
+    if (color) styles.color = resolveColor(color);
     if (sx && typeof sx === "object" && !Array.isArray(sx)) {
       return { ...styles, ...sx } as SxProps<Theme>;
     }

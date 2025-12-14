@@ -2,6 +2,17 @@
 
 import Box from "@mui/material/Box";
 import { type ComponentType, forwardRef, type SVGProps } from "react";
+import { token } from "../theme";
+
+/**
+ * Resolves Chakra-style color tokens to actual color values.
+ */
+function resolveColor(colorValue: string | undefined): string | undefined {
+  if (!colorValue) return undefined;
+  const resolved = token(`colors.${colorValue}`);
+  if (resolved) return resolved;
+  return colorValue;
+}
 
 /**
  * Icon Component - MUI equivalent of Chakra's Icon
@@ -75,7 +86,7 @@ export const Icon = forwardRef<HTMLSpanElement, IconProps>(function Icon(
     justifyContent: "center",
     width: width ?? boxSize,
     height: height ?? boxSize,
-    color,
+    color: resolveColor(color),
     verticalAlign,
     ...(mr !== undefined && { mr }),
     ...(ml !== undefined && { ml }),

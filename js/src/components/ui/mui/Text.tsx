@@ -47,6 +47,8 @@ export interface TextProps extends Omit<MuiTypographyProps, "ref"> {
   _last?: Record<string, unknown>;
   /** Margin bottom */
   mb?: number | string;
+  /** Padding bottom */
+  pb?: number | string;
 }
 
 const sizeMap: Record<string, MuiTypographyProps["variant"]> = {
@@ -79,6 +81,7 @@ export const Text = forwardRef<HTMLSpanElement, TextProps>(function Text(
     textDecoration,
     _last,
     mb,
+    pb,
     sx,
     ...props
   },
@@ -164,6 +167,10 @@ export const Text = forwardRef<HTMLSpanElement, TextProps>(function Text(
       styles.mb = mb;
     }
 
+    if (pb !== undefined) {
+      styles.pb = pb;
+    }
+
     if (sx && typeof sx === "object" && !Array.isArray(sx)) {
       return { ...styles, ...sx } as SxProps<Theme>;
     }
@@ -185,6 +192,7 @@ export const Text = forwardRef<HTMLSpanElement, TextProps>(function Text(
     textDecoration,
     _last,
     mb,
+    pb,
     sx,
   ]);
 

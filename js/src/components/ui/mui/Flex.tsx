@@ -4,6 +4,17 @@ import type { BoxProps as MuiBoxProps } from "@mui/material/Box";
 import MuiBox from "@mui/material/Box";
 import type { SxProps, Theme } from "@mui/material/styles";
 import { forwardRef, type ReactNode, useMemo } from "react";
+import { token } from "../theme";
+
+/**
+ * Resolves Chakra-style color tokens to actual color values.
+ */
+function resolveColor(colorValue: string | undefined): string | undefined {
+  if (!colorValue) return undefined;
+  const resolved = token(`colors.${colorValue}`);
+  if (resolved) return resolved;
+  return colorValue;
+}
 
 /**
  * Flex Component - MUI equivalent of Chakra's Flex
@@ -156,9 +167,9 @@ export const Flex = forwardRef<HTMLDivElement, FlexProps>(function Flex(
     if (minH !== undefined) styles.minHeight = minH;
     if (border) styles.border = border;
     if (borderRadius) styles.borderRadius = borderRadius;
-    if (borderColor) styles.borderColor = borderColor;
-    if (bg) styles.backgroundColor = bg;
-    if (backgroundColor) styles.backgroundColor = backgroundColor;
+    if (borderColor) styles.borderColor = resolveColor(borderColor);
+    if (bg) styles.backgroundColor = resolveColor(bg);
+    if (backgroundColor) styles.backgroundColor = resolveColor(backgroundColor);
     if (w !== undefined) styles.width = w;
     if (h !== undefined) styles.height = h;
     if (p !== undefined) styles.padding = p;
@@ -166,7 +177,7 @@ export const Flex = forwardRef<HTMLDivElement, FlexProps>(function Flex(
     if (_hover) styles["&:hover"] = _hover;
     if (borderBlockEndWidth) styles.borderBlockEndWidth = borderBlockEndWidth;
     if (borderLeftWidth) styles.borderLeftWidth = borderLeftWidth;
-    if (borderLeftColor) styles.borderLeftColor = borderLeftColor;
+    if (borderLeftColor) styles.borderLeftColor = resolveColor(borderLeftColor);
     if (filter) styles.filter = filter;
     if (transition) styles.transition = transition;
     if (borderWidth) styles.borderWidth = borderWidth;
