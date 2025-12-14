@@ -16,14 +16,14 @@ export const RecceNotification = (
       m="4px"
       px="16px"
       py="12px"
-      bg="blue.50"
+      bg="iochmara.50"
       border="1px"
       borderRadius="4px"
-      borderColor="blue.400"
+      borderColor="iochmara.400"
       align={props.align ?? "center"}
       gap="12px"
     >
-      <Icon as={FiInfo} width={"20px"} height={"20px"} color={"blue.900"} />
+      <Icon as={FiInfo} width={"20px"} height={"20px"} color={"iochmara.900"} />
       {props.children}
       <Spacer />
       <CloseButton onClick={props.onClose} />

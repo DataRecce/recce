@@ -15,7 +15,7 @@ export interface LinkProps extends Omit<MuiLinkProps, "ref" | "variant"> {
   /** External link indicator */
   isExternal?: boolean;
   /** Chakra colorPalette */
-  colorPalette?: "blue" | "gray" | "green" | "red";
+  colorPalette?: "iochmara" | "blue" | "gray" | "green" | "red";
   /** Text decoration style */
   textDecoration?: string;
   /** Chakra variant */
@@ -26,7 +26,11 @@ export interface LinkProps extends Omit<MuiLinkProps, "ref" | "variant"> {
   _hover?: Record<string, unknown>;
 }
 
-const colorPaletteToColor: Record<string, string> = {
+const colorPaletteToColor: Record<
+  Exclude<LinkProps["colorPalette"], undefined>,
+  string
+> = {
+  iochmara: "primary.main",
   blue: "primary.main",
   gray: "text.secondary",
   green: "success.main",

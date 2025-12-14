@@ -536,7 +536,7 @@ export function CheckDetail({
                       >
                         <Button
                           onClick={handleRerun}
-                          colorPalette="blue"
+                          colorPalette="iochmara"
                           size="sm"
                           disabled={featureToggles.disableDatabaseQuery}
                         >
@@ -600,7 +600,7 @@ export function CheckDetail({
                     as="span"
                     cursor="pointer"
                     _hover={{ textDecoration: "underline" }}
-                    color={"blue.500"}
+                    color="primary"
                     onClick={async () => {
                       await navigator.clipboard.writeText(presetCheckTemplate);
                       successToast("Copied the template to the clipboard");

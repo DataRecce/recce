@@ -164,7 +164,7 @@ export function StateImporter({ checksOnly = true }: { checksOnly?: boolean }) {
                 <Button ref={cancelRef} onClick={onClose}>
                   Cancel
                 </Button>
-                <Button colorPalette="blue" onClick={handleImport} ml="5px">
+                <Button colorPalette="iochmara" onClick={handleImport} ml="5px">
                   Import
                 </Button>
               </Dialog.Footer>

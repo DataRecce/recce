@@ -66,7 +66,7 @@ export default function Error({ error, reset }: ErrorProps) {
 
         <Button
           sx={{ justifySelf: "center", alignSelf: "center", mt: "20px" }}
-          colorPalette="blue"
+          colorPalette="iochmara"
           size="sm"
           onClick={() => {
             // Attempt to recover by re-rendering the route segment

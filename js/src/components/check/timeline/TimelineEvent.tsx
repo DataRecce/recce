@@ -61,12 +61,12 @@ function EventIcon({ event }: { event: CheckEvent }) {
   };
 
   const colorMap = {
-    create: "blue.500",
-    comment: "gray.500",
+    create: "iochmara.500",
+    comment: "neutral.500",
     approve: "green.500",
-    unapprove: "gray.400",
-    edit: "orange.500",
-    preset: "purple.500",
+    unapprove: "neutral.400",
+    edit: "amber.500",
+    preset: "fuchsia.500",
   };
 
   const IconComponent = iconMap[iconType];
@@ -279,7 +279,7 @@ function CommentEvent({
               bg="white"
               borderColor="gray.300"
               _focus={{
-                borderColor: "blue.400",
+                borderColor: "iochmara.400",
                 boxShadow: "0 0 0 1px #4299E1",
               }}
               disabled={isSubmitting}
@@ -296,7 +296,7 @@ function CommentEvent({
               </Button>
               <Button
                 size="xs"
-                colorPalette="blue"
+                colorPalette="iochmara"
                 onClick={handleSaveEdit}
                 disabled={!editContent.trim() || isSubmitting}
                 loading={isSubmitting}

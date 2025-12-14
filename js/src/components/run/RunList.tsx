@@ -65,8 +65,8 @@ const RunListItem = ({
       cursor="pointer"
       borderBottom={"solid 1px lightgray"}
       borderLeft={"4px"}
-      borderLeftColor={isSelected ? "orange.400" : "transparent"}
-      backgroundColor={isSelected ? "orange.50" : "transparent"}
+      borderLeftColor={isSelected ? "amber.400" : "transparent"}
+      backgroundColor={isSelected ? "amber.50" : "transparent"}
       onClick={() => {
         onSelectRun(run.run_id);
       }}

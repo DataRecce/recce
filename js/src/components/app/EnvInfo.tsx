@@ -229,7 +229,7 @@ export function EnvInfo() {
                               url:{" "}
                               <Link
                                 href={reviewInfo.url}
-                                color="blue.500"
+                                color="primary"
                                 target="_blank"
                               >
                                 {reviewInfo.url} <LuExternalLink />
@@ -337,7 +337,7 @@ export function EnvInfo() {
                 </Flex>
               </Dialog.Body>
               <Dialog.Footer>
-                <Button colorPalette="blue" mr={3} onClick={onClose}>
+                <Button colorPalette="iochmara" mr={3} onClick={onClose}>
                   Close
                 </Button>
               </Dialog.Footer>

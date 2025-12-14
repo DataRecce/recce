@@ -102,11 +102,11 @@ const PrivateQueryResultView = (
           alignItems="center"
           gap="5px"
           px="10px"
-          bg={warning ? "orange.100" : "inherit"}
+          bg={warning ? "amber.100" : "inherit"}
         >
           {warning && (
             <>
-              <PiWarning color="orange.600" className="self-center" />{" "}
+              <PiWarning color="amber.600" className="self-center" />{" "}
               <Box>{warning}</Box>
             </>
           )}

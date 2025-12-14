@@ -31,7 +31,7 @@ const Fallback: FallbackRender = (errorData) => {
             alignSelf: "center",
             mt: "20px",
           }}
-          colorPalette="blue"
+          colorPalette="iochmara"
           size="sm"
           onClick={() => {
             errorData.resetError();

@@ -173,7 +173,7 @@ export function StateSynchronizer() {
                   Cancel
                 </Button>
                 <Button
-                  colorPalette="blue"
+                  colorPalette="iochmara"
                   onClick={() =>
                     handleSync({ method: syncOption || undefined })
                   }

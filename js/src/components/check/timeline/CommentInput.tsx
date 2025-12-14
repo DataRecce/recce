@@ -46,13 +46,13 @@ export function CommentInput({
         minH="80px"
         bg="white"
         borderColor="gray.200"
-        _focus={{ borderColor: "blue.400", boxShadow: "0 0 0 1px #4299E1" }}
+        _focus={{ borderColor: "iochmara.400", boxShadow: "0 0 0 1px #4299E1" }}
         disabled={isSubmitting}
       />
       <Flex justify="flex-end" mt={2}>
         <Button
           size="sm"
-          colorPalette="blue"
+          colorPalette="iochmara"
           onClick={handleSubmit}
           disabled={!content.trim() || isSubmitting}
           loading={isSubmitting}

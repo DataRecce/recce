@@ -94,7 +94,7 @@ export const DropdownValuesInput = (props: DropdownValuesInputProps) => {
           <Button
             width={"100%"}
             size="2xs"
-            colorPalette="gray"
+            colorPalette="neutral"
             variant="outline"
             justifyContent="flex-start"
           >

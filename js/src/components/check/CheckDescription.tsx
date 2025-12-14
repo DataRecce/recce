@@ -81,10 +81,15 @@ export function CheckDescription({ value, onChange }: CheckDescriptionProps) {
           flex={1}
         ></Textarea>
         <Flex gap="12px" alignItems="flex-end">
-          <Link onClick={handleCancel} colorPalette="blue">
+          <Link onClick={handleCancel} colorPalette="iochmara">
             cancel
           </Link>
-          <Button mt="8px" size="sm" colorPalette="blue" onClick={handleUpdate}>
+          <Button
+            mt="8px"
+            size="sm"
+            colorPalette="iochmara"
+            onClick={handleUpdate}
+          >
             Update
           </Button>
         </Flex>

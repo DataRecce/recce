@@ -118,7 +118,7 @@ export default function AuthModal({
                     More directions
                     <Link
                       variant="underline"
-                      color="blue.500"
+                      color="primary"
                       _focus={{
                         outline: "none",
                       }}
@@ -147,7 +147,7 @@ export default function AuthModal({
                       <Button
                         className="!rounded-lg !font-medium"
                         variant="subtle"
-                        colorPalette="gray"
+                        colorPalette="neutral"
                         size="sm"
                       >
                         {variant === "auth" ? "Skip" : "Cancel"}

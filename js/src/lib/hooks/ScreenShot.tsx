@@ -335,7 +335,7 @@ export function useImageDownloadModal() {
                 <Button mr={3} onClick={onClose}>
                   Close
                 </Button>
-                <Button colorPalette="blue" onClick={onDownload}>
+                <Button colorPalette="iochmara" onClick={onDownload}>
                   Download
                 </Button>
               </Dialog.Footer>

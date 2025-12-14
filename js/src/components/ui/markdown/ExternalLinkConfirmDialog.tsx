@@ -80,7 +80,7 @@ export function ExternalLinkConfirmDialog({
           <Dialog.Content>
             <Dialog.Header>
               <Dialog.Title display="flex" alignItems="center" gap={2}>
-                <Box as={PiWarning} color="orange.500" boxSize="20px" />
+                <Box as={PiWarning} color="amber.500" boxSize="20px" />
                 External Link
               </Dialog.Title>
             </Dialog.Header>
@@ -112,7 +112,7 @@ export function ExternalLinkConfirmDialog({
               <Button ref={cancelRef} variant="outline" onClick={onCancel}>
                 Cancel
               </Button>
-              <Button colorPalette="blue" onClick={onConfirm}>
+              <Button colorPalette="iochmara" onClick={onConfirm}>
                 Open Link
               </Button>
             </Dialog.Footer>

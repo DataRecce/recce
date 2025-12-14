@@ -96,9 +96,9 @@ function MarkdownLink({
       <Link
         href={href}
         onClick={handleClick}
-        color="blue.500"
+        color="primary"
         textDecoration="underline"
-        _hover={{ color: "blue.600" }}
+        _hover={{ color: "iochmara.600" }}
         target="_blank"
         rel={isExternal ? "noopener noreferrer" : undefined}
       >

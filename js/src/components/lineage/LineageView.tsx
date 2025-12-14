@@ -1144,7 +1144,7 @@ export function PrivateLineageView(
           </Box>
           <Box>[Reason: {error}]</Box>
           <Button
-            colorPalette="blue"
+            colorPalette="iochmara"
             onClick={() => {
               if (retchLineageGraph) {
                 retchLineageGraph();
@@ -1168,7 +1168,7 @@ export function PrivateLineageView(
         <VStack>
           <>No change detected</>
           <Button
-            colorPalette="blue"
+            colorPalette="iochmara"
             onClick={async () => {
               await handleViewOptionsChanged({
                 ...viewOptions,

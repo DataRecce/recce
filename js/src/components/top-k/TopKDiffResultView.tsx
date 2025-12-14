@@ -48,7 +48,7 @@ const PrivateTopKDiffResultView = (
             onClick={() => {
               setIsDisplayTopTen((prevState) => !prevState);
             }}
-            colorPalette="blue"
+            colorPalette="iochmara"
           >
             {isDisplayTopTen ? "View More Items" : "View Only Top-10"}
           </Link>

@@ -212,7 +212,7 @@ export const Filename = () => {
               aria-label={fileName ? "Change Filename" : "Save"}
               variant="ghost"
               size="sm"
-              colorPalette="gray"
+              colorPalette="neutral"
             >
               <Icon
                 as={fileName ? IconEdit : IconSave}
@@ -306,7 +306,7 @@ export const Filename = () => {
                 {fileName && (
                   <Button
                     size="sm"
-                    colorPalette="blue"
+                    colorPalette="iochmara"
                     onClick={async () => {
                       await handleAction("rename");
                     }}
@@ -375,7 +375,7 @@ export const Filename = () => {
                 </Button>
                 <Button
                   size="sm"
-                  colorPalette="blue"
+                  colorPalette="iochmara"
                   onClick={() => {
                     if (!overwriteWithMethod) {
                       return;

@@ -53,7 +53,7 @@ export const CheckEmptyState = () => {
           </Text>
 
           <Button
-            colorPalette="blue"
+            colorPalette="iochmara"
             onClick={handleCreateSchemaCheck}
             loading={isPending}
             size="lg"

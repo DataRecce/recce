@@ -98,7 +98,7 @@ function SandboxTopBar({
             onRunResultOpen();
             runQuery();
           }}
-          colorPalette="blue"
+          colorPalette="iochmara"
           loading={isPending}
         >
           Run Diff

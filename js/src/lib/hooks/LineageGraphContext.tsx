@@ -439,7 +439,7 @@ export function LineageGraphContextProvider({ children }: LineageGraphProps) {
                 </Dialog.Body>
                 <Dialog.Footer>
                   <Button
-                    colorPalette="blue"
+                    colorPalette="iochmara"
                     onClick={() => {
                       onClose();
                       void markRelaunchHintCompleted();

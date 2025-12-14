@@ -124,7 +124,7 @@ const RunResultShareMenu = ({
     <>
       <Menu.Root>
         <Menu.Trigger asChild>
-          <Button size="xs" variant="outline" colorPalette="gray">
+          <Button size="xs" variant="outline" colorPalette="neutral">
             Share <PiCaretDown />
           </Button>
         </Menu.Trigger>
@@ -243,7 +243,7 @@ export const PrivateLoadableRunView = ({
             {run && <RunStatusAndDate run={run} />}
             <Button
               variant="outline"
-              colorPalette="gray"
+              colorPalette="neutral"
               disabled={
                 !runId || isRunning || featureToggles.disableDatabaseQuery
               }

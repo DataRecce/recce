@@ -18,7 +18,7 @@ export function BaseEnvironmentSetupGuide() {
       minH={0}
       m="2"
       p="4"
-      bg="blue.50"
+      bg="iochmara.50"
       borderRadius="lg"
       boxShadow="md"
       justifyContent={"center"}
@@ -33,7 +33,7 @@ export function BaseEnvironmentSetupGuide() {
             justifyContent="center"
             boxShadow="md"
           >
-            <Icon as={RiTerminalBoxLine} boxSize={7} color="blue.500" />
+            <Icon as={RiTerminalBoxLine} boxSize={7} color="iochmara.500" />
           </Flex>
           <Heading mt="4" size="lg">
             Wait, there's more!
@@ -75,7 +75,7 @@ export function BaseEnvironmentSetupGuide() {
         </Flex>
         <Flex w="100%" direction="column" mt={6}>
           <Button
-            colorPalette="blue"
+            colorPalette="iochmara"
             size="lg"
             onClick={() => {
               window.open(
@@ -95,7 +95,7 @@ export function BaseEnvironmentSetupGuide() {
 export function BaseEnvironmentSetupNotification() {
   return (
     <Flex direction="row" gap="10px" alignItems={"flex-start"}>
-      <Icon as={RiMindMap} color="blue.500" boxSize="5" />
+      <Icon as={RiMindMap} color="iochmara.500" boxSize="5" />
       <Flex direction="column" gap="5px">
         <Text fontWeight="bold">
           Single Environment Mode{" "}
@@ -117,7 +117,7 @@ export function BaseEnvironmentSetupNotification() {
             <Text fontSize="sm">
               Visit{" "}
               <Link
-                color="blue.500"
+                color="primary"
                 fontSize="sm"
                 fontWeight="medium"
                 target="_blank"

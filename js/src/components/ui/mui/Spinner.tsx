@@ -22,7 +22,8 @@ export interface SpinnerProps
     | "green"
     | "amber"
     | "red"
-    | "gray";
+    | "gray"
+    | "neutral";
   /** Margin left */
   ml?: string | number;
 }
@@ -35,7 +36,10 @@ const sizeMap: Record<string, number> = {
   xl: 48,
 };
 
-const colorPaletteToMui: Record<string, MuiCircularProgressProps["color"]> = {
+const colorPaletteToMui: Record<
+  Exclude<SpinnerProps["colorPalette"], undefined>,
+  MuiCircularProgressProps["color"]
+> = {
   iochmara: "primary",
   blue: "primary",
   cyan: "secondary",
@@ -43,6 +47,7 @@ const colorPaletteToMui: Record<string, MuiCircularProgressProps["color"]> = {
   amber: "warning",
   red: "error",
   gray: "inherit",
+  neutral: "inherit",
 };
 
 export const Spinner = forwardRef<HTMLSpanElement, SpinnerProps>(

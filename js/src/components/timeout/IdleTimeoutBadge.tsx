@@ -34,7 +34,7 @@ export function IdleTimeoutBadge() {
       alignItems="center"
       gap={1}
       fontSize="sm"
-      colorPalette="orange"
+      colorPalette="amber"
       variant="solid"
       mr={2}
     >

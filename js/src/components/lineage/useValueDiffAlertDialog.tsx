@@ -80,7 +80,7 @@ function useValueDiffAlertDialog() {
                 ref={cancelRef}
                 onClick={handleCancel}
                 variant="outline"
-                colorPalette="gray"
+                colorPalette="neutral"
               >
                 Cancel
               </Button>

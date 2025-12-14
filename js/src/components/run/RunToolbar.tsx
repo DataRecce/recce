@@ -24,12 +24,12 @@ export const RunToolbar = ({
       gap="5px"
       alignItems="center"
       px="10px"
-      bg={warnings && warnings.length > 0 ? "orange.100" : "inherit"}
+      bg={warnings && warnings.length > 0 ? "amber.100" : "inherit"}
     >
       <VStack alignItems="flex-start" gap={0}>
         {warnings?.map((warning) => (
           <Box key={_.uniqueId(`-${warning}`)}>
-            <PiWarning color="orange.600" /> {warning}
+            <PiWarning color="amber.600" /> {warning}
           </Box>
         ))}
       </VStack>

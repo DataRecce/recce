@@ -123,7 +123,7 @@ export const RunModal = ({
                             target="_blank"
                             textDecoration="underline"
                             color="white"
-                            _hover={{ color: "blue.300" }}
+                            _hover={{ color: "iochmara.300" }}
                           >
                             here
                           </Link>{" "}
@@ -158,7 +158,7 @@ export const RunModal = ({
               <Flex gap="10px">
                 <Button
                   disabled={!isReadyToExecute}
-                  colorPalette="blue"
+                  colorPalette="iochmara"
                   onClick={() => {
                     executeClicked.current = true;
                     if (isExploreAction(type)) {

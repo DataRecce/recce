@@ -85,11 +85,11 @@ export function RecceInstanceDisconnectedModalContent({
       <Dialog.Footer>
         {mode === "read only" ? (
           <NextLink href={content.link} passHref>
-            <Button colorPalette="blue">{content.action}</Button>
+            <Button colorPalette="iochmara">{content.action}</Button>
           </NextLink>
         ) : (
           <Button
-            colorPalette="blue"
+            colorPalette="iochmara"
             onClick={() => window.open(content.link, "_blank")}
           >
             {content.action}
