@@ -111,16 +111,17 @@ export default function NavBar() {
       variant="line"
       sx={{ borderBottom: "1px solid lightgray", px: "12px" }}
     >
-      <Tabs.List
+      {/* Grid layout outside Tabs.List so MUI Tabs can find tab children */}
+      <Box
         sx={{
           display: "grid",
           gridTemplateColumns: "1fr auto 1fr",
           width: "100%",
-          borderBottom: "none",
+          alignItems: "center",
         }}
       >
         {/* Left section: Tabs */}
-        <Box sx={{ display: "flex", alignItems: "center", gap: "4px" }}>
+        <Tabs.List sx={{ borderBottom: "none", minHeight: "auto" }}>
           {ROUTE_CONFIG.map(({ path, name }) => {
             const disable = name === "Query" && flag?.single_env_onboarding;
 
@@ -141,7 +142,7 @@ export default function NavBar() {
               </Tabs.Trigger>
             );
           })}
-        </Box>
+        </Tabs.List>
 
         {/* Center section: Filename and TopLevelShare */}
         <Flex
@@ -164,7 +165,7 @@ export default function NavBar() {
             <StateExporter />
           </Flex>
         )}
-      </Tabs.List>
+      </Box>
     </Tabs.Root>
   );
 }
