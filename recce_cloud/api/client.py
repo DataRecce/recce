@@ -148,3 +148,54 @@ class RecceCloudClient:
                 status_code=response.status_code,
             )
         return response.json()
+
+    def list_organizations(self) -> list:
+        """
+        List all organizations the authenticated user has access to.
+
+        Returns:
+            list of dicts containing organization information with keys:
+                - id: Organization ID
+                - name: Organization name
+                - display_name: Organization display name
+                - ... other organization fields
+
+        Raises:
+            RecceCloudException: If the request fails
+        """
+        api_url = f"{self.base_url_v2}/organizations"
+        response = self._request("GET", api_url)
+        if response.status_code != 200:
+            raise RecceCloudException(
+                reason=response.text,
+                status_code=response.status_code,
+            )
+        data = response.json()
+        return data.get("organizations", [])
+
+    def list_projects(self, org_id: str) -> list:
+        """
+        List all projects in an organization.
+
+        Args:
+            org_id: Organization ID or name
+
+        Returns:
+            list of dicts containing project information with keys:
+                - id: Project ID
+                - name: Project name
+                - display_name: Project display name
+                - ... other project fields
+
+        Raises:
+            RecceCloudException: If the request fails
+        """
+        api_url = f"{self.base_url_v2}/organizations/{org_id}/projects"
+        response = self._request("GET", api_url)
+        if response.status_code != 200:
+            raise RecceCloudException(
+                reason=response.text,
+                status_code=response.status_code,
+            )
+        data = response.json()
+        return data.get("projects", [])

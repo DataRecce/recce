@@ -45,6 +45,164 @@ def version():
     click.echo(__version__)
 
 
+@cloud_cli.command(name="list-orgs")
+@click.option(
+    "--json",
+    "output_json",
+    is_flag=True,
+    help="Output in JSON format for machine-readable output",
+)
+def list_orgs(output_json):
+    """
+    List all organizations you have access to.
+
+    Displays all organizations that the authenticated user can access.
+    Requires RECCE_API_TOKEN environment variable to be set.
+
+    \b
+    Examples:
+        # List organizations in table format
+        recce-cloud list-orgs
+
+        # List organizations in JSON format
+        recce-cloud list-orgs --json
+    """
+    import json
+
+    from recce_cloud.api.client import RecceCloudClient
+    from recce_cloud.api.exceptions import RecceCloudException
+
+    console = Console()
+
+    # Check for API token
+    token = os.getenv("RECCE_API_TOKEN")
+    if not token:
+        console.print("[red]Error:[/red] Authentication required. Set RECCE_API_TOKEN environment variable.")
+        console.print("See: https://docs.reccehq.com/docs/recce-cloud/authentication")
+        sys.exit(1)
+
+    # Get organizations
+    try:
+        client = RecceCloudClient(token)
+        organizations = client.list_organizations()
+
+        if output_json:
+            # JSON output
+            click.echo(json.dumps(organizations, indent=2))
+        else:
+            # Table output
+            if not organizations:
+                console.print("No organizations found.")
+                return
+
+            from rich.table import Table
+
+            table = Table(title="Organizations")
+            table.add_column("ID", style="cyan")
+            table.add_column("Name", style="green")
+            table.add_column("Display Name", style="yellow")
+
+            for org in organizations:
+                table.add_row(
+                    str(org.get("id", "")),
+                    org.get("name", ""),
+                    org.get("display_name", ""),
+                )
+
+            console.print(table)
+
+    except RecceCloudException as e:
+        console.print("[red]Error:[/red] Failed to list organizations")
+        console.print(f"Reason: {e.reason}")
+        sys.exit(1)
+    except Exception as e:
+        console.print(f"[red]Error:[/red] {e}")
+        sys.exit(1)
+
+
+@cloud_cli.command(name="list-projects")
+@click.option(
+    "--org",
+    required=True,
+    help="Organization name or ID",
+)
+@click.option(
+    "--json",
+    "output_json",
+    is_flag=True,
+    help="Output in JSON format for machine-readable output",
+)
+def list_projects(org, output_json):
+    """
+    List all projects in an organization.
+
+    Displays all projects in the specified organization that the authenticated user can access.
+    Requires RECCE_API_TOKEN environment variable to be set.
+
+    \b
+    Examples:
+        # List projects in table format
+        recce-cloud list-projects --org myorg
+
+        # List projects in JSON format
+        recce-cloud list-projects --org myorg --json
+    """
+    import json
+
+    from recce_cloud.api.client import RecceCloudClient
+    from recce_cloud.api.exceptions import RecceCloudException
+
+    console = Console()
+
+    # Check for API token
+    token = os.getenv("RECCE_API_TOKEN")
+    if not token:
+        console.print("[red]Error:[/red] Authentication required. Set RECCE_API_TOKEN environment variable.")
+        console.print("See: https://docs.reccehq.com/docs/recce-cloud/authentication")
+        sys.exit(1)
+
+    # Get projects
+    try:
+        client = RecceCloudClient(token)
+        projects = client.list_projects(org)
+
+        if output_json:
+            # JSON output
+            click.echo(json.dumps(projects, indent=2))
+        else:
+            # Table output
+            if not projects:
+                console.print(f"No projects found in organization '{org}'.")
+                return
+
+            from rich.table import Table
+
+            table = Table(title=f"Projects in '{org}'")
+            table.add_column("ID", style="cyan")
+            table.add_column("Name", style="green")
+            table.add_column("Display Name", style="yellow")
+
+            for project in projects:
+                table.add_row(
+                    str(project.get("id", "")),
+                    project.get("name", ""),
+                    project.get("display_name", ""),
+                )
+
+            console.print(table)
+
+    except RecceCloudException as e:
+        if e.status_code == 404:
+            console.print(f"[red]Error:[/red] Organization '{org}' not found or you don't have access.")
+        else:
+            console.print("[red]Error:[/red] Failed to list projects")
+            console.print(f"Reason: {e.reason}")
+        sys.exit(1)
+    except Exception as e:
+        console.print(f"[red]Error:[/red] {e}")
+        sys.exit(1)
+
+
 @cloud_cli.command()
 @click.option(
     "--target-path",

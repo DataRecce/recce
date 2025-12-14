@@ -368,5 +368,274 @@ class TestUploadDryRun(unittest.TestCase):
         self.assertIn("catalog.json:", result.output)
 
 
+class TestListOrgsCommand(unittest.TestCase):
+    """Test cases for the list-orgs command."""
+
+    def setUp(self):
+        """Set up test fixtures."""
+        self.runner = CliRunner()
+
+    @patch("recce_cloud.api.client.requests.request")
+    def test_list_orgs_success(self, mock_request):
+        """Test successful list-orgs command."""
+        from unittest.mock import Mock
+
+        # Mock successful response
+        mock_response = Mock()
+        mock_response.status_code = 200
+        mock_response.json.return_value = {
+            "organizations": [
+                {"id": 1, "name": "myorg", "display_name": "My Organization"},
+                {"id": 2, "name": "other-org", "display_name": "Other Org"},
+            ]
+        }
+        mock_request.return_value = mock_response
+
+        env = {"RECCE_API_TOKEN": "rct-test-token"}
+
+        with patch.dict(os.environ, env, clear=True):
+            result = self.runner.invoke(cloud_cli, ["list-orgs"])
+
+        # Assertions
+        self.assertEqual(result.exit_code, 0, f"Command failed: {result.output}")
+        self.assertIn("Organizations", result.output)
+        self.assertIn("myorg", result.output)
+        self.assertIn("My Organization", result.output)
+        self.assertIn("other-org", result.output)
+        self.assertIn("Other Org", result.output)
+
+    @patch("recce_cloud.api.client.requests.request")
+    def test_list_orgs_json_output(self, mock_request):
+        """Test list-orgs command with JSON output."""
+        from unittest.mock import Mock
+
+        # Mock successful response
+        mock_response = Mock()
+        mock_response.status_code = 200
+        mock_response.json.return_value = {
+            "organizations": [
+                {"id": 1, "name": "myorg", "display_name": "My Organization"},
+                {"id": 2, "name": "other-org", "display_name": "Other Org"},
+            ]
+        }
+        mock_request.return_value = mock_response
+
+        env = {"RECCE_API_TOKEN": "rct-test-token"}
+
+        with patch.dict(os.environ, env, clear=True):
+            result = self.runner.invoke(cloud_cli, ["list-orgs", "--json"])
+
+        # Assertions
+        self.assertEqual(result.exit_code, 0, f"Command failed: {result.output}")
+
+        # Verify JSON output
+        import json
+
+        output = json.loads(result.output)
+        self.assertEqual(len(output), 2)
+        self.assertEqual(output[0]["name"], "myorg")
+        self.assertEqual(output[1]["name"], "other-org")
+
+    @patch("recce_cloud.api.client.requests.request")
+    def test_list_orgs_empty(self, mock_request):
+        """Test list-orgs command with no organizations."""
+        from unittest.mock import Mock
+
+        # Mock empty response
+        mock_response = Mock()
+        mock_response.status_code = 200
+        mock_response.json.return_value = {"organizations": []}
+        mock_request.return_value = mock_response
+
+        env = {"RECCE_API_TOKEN": "rct-test-token"}
+
+        with patch.dict(os.environ, env, clear=True):
+            result = self.runner.invoke(cloud_cli, ["list-orgs"])
+
+        # Assertions
+        self.assertEqual(result.exit_code, 0, f"Command failed: {result.output}")
+        self.assertIn("No organizations found", result.output)
+
+    def test_list_orgs_missing_token(self):
+        """Test list-orgs command without API token."""
+        with patch.dict(os.environ, {}, clear=True):
+            result = self.runner.invoke(cloud_cli, ["list-orgs"])
+
+        # Assertions
+        self.assertEqual(result.exit_code, 1)
+        self.assertIn("Authentication required", result.output)
+        self.assertIn("RECCE_API_TOKEN", result.output)
+
+    @patch("recce_cloud.api.client.requests.request")
+    def test_list_orgs_api_error(self, mock_request):
+        """Test list-orgs command with API error."""
+        from unittest.mock import Mock
+
+        # Mock error response
+        mock_response = Mock()
+        mock_response.status_code = 401
+        mock_response.text = "Unauthorized"
+        mock_request.return_value = mock_response
+
+        env = {"RECCE_API_TOKEN": "invalid-token"}
+
+        with patch.dict(os.environ, env, clear=True):
+            result = self.runner.invoke(cloud_cli, ["list-orgs"])
+
+        # Assertions
+        self.assertEqual(result.exit_code, 1)
+        self.assertIn("Error", result.output)
+
+
+class TestListProjectsCommand(unittest.TestCase):
+    """Test cases for the list-projects command."""
+
+    def setUp(self):
+        """Set up test fixtures."""
+        self.runner = CliRunner()
+
+    @patch("recce_cloud.api.client.requests.request")
+    def test_list_projects_success(self, mock_request):
+        """Test successful list-projects command."""
+        from unittest.mock import Mock
+
+        # Mock successful response
+        mock_response = Mock()
+        mock_response.status_code = 200
+        mock_response.json.return_value = {
+            "projects": [
+                {"id": 10, "name": "project1", "display_name": "Project 1"},
+                {"id": 20, "name": "project2", "display_name": "Project 2"},
+            ]
+        }
+        mock_request.return_value = mock_response
+
+        env = {"RECCE_API_TOKEN": "rct-test-token"}
+
+        with patch.dict(os.environ, env, clear=True):
+            result = self.runner.invoke(cloud_cli, ["list-projects", "--org", "myorg"])
+
+        # Assertions
+        self.assertEqual(result.exit_code, 0, f"Command failed: {result.output}")
+        self.assertIn("Projects in 'myorg'", result.output)
+        self.assertIn("project1", result.output)
+        self.assertIn("Project 1", result.output)
+        self.assertIn("project2", result.output)
+        self.assertIn("Project 2", result.output)
+
+    @patch("recce_cloud.api.client.requests.request")
+    def test_list_projects_json_output(self, mock_request):
+        """Test list-projects command with JSON output."""
+        from unittest.mock import Mock
+
+        # Mock successful response
+        mock_response = Mock()
+        mock_response.status_code = 200
+        mock_response.json.return_value = {
+            "projects": [
+                {"id": 10, "name": "project1", "display_name": "Project 1"},
+                {"id": 20, "name": "project2", "display_name": "Project 2"},
+            ]
+        }
+        mock_request.return_value = mock_response
+
+        env = {"RECCE_API_TOKEN": "rct-test-token"}
+
+        with patch.dict(os.environ, env, clear=True):
+            result = self.runner.invoke(cloud_cli, ["list-projects", "--org", "myorg", "--json"])
+
+        # Assertions
+        self.assertEqual(result.exit_code, 0, f"Command failed: {result.output}")
+
+        # Verify JSON output
+        import json
+
+        output = json.loads(result.output)
+        self.assertEqual(len(output), 2)
+        self.assertEqual(output[0]["name"], "project1")
+        self.assertEqual(output[1]["name"], "project2")
+
+    @patch("recce_cloud.api.client.requests.request")
+    def test_list_projects_empty(self, mock_request):
+        """Test list-projects command with no projects."""
+        from unittest.mock import Mock
+
+        # Mock empty response
+        mock_response = Mock()
+        mock_response.status_code = 200
+        mock_response.json.return_value = {"projects": []}
+        mock_request.return_value = mock_response
+
+        env = {"RECCE_API_TOKEN": "rct-test-token"}
+
+        with patch.dict(os.environ, env, clear=True):
+            result = self.runner.invoke(cloud_cli, ["list-projects", "--org", "emptyorg"])
+
+        # Assertions
+        self.assertEqual(result.exit_code, 0, f"Command failed: {result.output}")
+        self.assertIn("No projects found in organization 'emptyorg'", result.output)
+
+    def test_list_projects_missing_token(self):
+        """Test list-projects command without API token."""
+        with patch.dict(os.environ, {}, clear=True):
+            result = self.runner.invoke(cloud_cli, ["list-projects", "--org", "myorg"])
+
+        # Assertions
+        self.assertEqual(result.exit_code, 1)
+        self.assertIn("Authentication required", result.output)
+        self.assertIn("RECCE_API_TOKEN", result.output)
+
+    def test_list_projects_missing_org(self):
+        """Test list-projects command without --org parameter."""
+        env = {"RECCE_API_TOKEN": "rct-test-token"}
+
+        with patch.dict(os.environ, env, clear=True):
+            result = self.runner.invoke(cloud_cli, ["list-projects"])
+
+        # Assertions
+        self.assertNotEqual(result.exit_code, 0)
+        # Click will show missing option error
+
+    @patch("recce_cloud.api.client.requests.request")
+    def test_list_projects_org_not_found(self, mock_request):
+        """Test list-projects command with non-existent org."""
+        from unittest.mock import Mock
+
+        # Mock 404 response
+        mock_response = Mock()
+        mock_response.status_code = 404
+        mock_response.text = "Organization not found"
+        mock_request.return_value = mock_response
+
+        env = {"RECCE_API_TOKEN": "rct-test-token"}
+
+        with patch.dict(os.environ, env, clear=True):
+            result = self.runner.invoke(cloud_cli, ["list-projects", "--org", "nonexistent"])
+
+        # Assertions
+        self.assertEqual(result.exit_code, 1)
+        self.assertIn("Organization 'nonexistent' not found", result.output)
+
+    @patch("recce_cloud.api.client.requests.request")
+    def test_list_projects_api_error(self, mock_request):
+        """Test list-projects command with API error."""
+        from unittest.mock import Mock
+
+        # Mock error response
+        mock_response = Mock()
+        mock_response.status_code = 403
+        mock_response.text = "Access denied"
+        mock_request.return_value = mock_response
+
+        env = {"RECCE_API_TOKEN": "rct-test-token"}
+
+        with patch.dict(os.environ, env, clear=True):
+            result = self.runner.invoke(cloud_cli, ["list-projects", "--org", "myorg"])
+
+        # Assertions
+        self.assertEqual(result.exit_code, 1)
+        self.assertIn("Error", result.output)
+
+
 if __name__ == "__main__":
     unittest.main()
