@@ -7,16 +7,40 @@ import MuiMenu from "@mui/material/Menu";
 import type { MenuItemProps as MuiMenuItemProps } from "@mui/material/MenuItem";
 import MuiMenuItem from "@mui/material/MenuItem";
 import {
+  createContext,
   forwardRef,
   type MouseEvent,
-  type ReactElement,
   type ReactNode,
+  useContext,
   useState,
 } from "react";
 
 /**
  * Menu Components - MUI equivalent of Chakra's Menu compound components
+ *
+ * Uses React Context to pass state between compound components,
+ * allowing Portal to be used between Menu.Root and Menu.Content.
  */
+
+// Menu Context for sharing state between compound components
+interface MenuContextValue {
+  anchorEl: HTMLElement | null;
+  open: boolean;
+  handleOpen: (event: MouseEvent<HTMLElement>) => void;
+  handleClose: () => void;
+  positioning?: MenuRootProps["positioning"];
+  closeOnSelect: boolean;
+}
+
+const MenuContext = createContext<MenuContextValue | null>(null);
+
+function useMenuContext() {
+  const context = useContext(MenuContext);
+  if (!context) {
+    throw new Error("Menu components must be used within Menu.Root");
+  }
+  return context;
+}
 
 // Menu Root - Container that manages menu state
 export interface MenuRootProps {
@@ -81,45 +105,20 @@ export const MenuRoot = forwardRef<HTMLDivElement, MenuRootProps>(
       onOpenChange?.({ open: false });
     };
 
-    // Clone children and inject menu context
-    const childrenArray = Array.isArray(children) ? children : [children];
-    const enhancedChildren = childrenArray.map((child, index) => {
-      if (!child) return null;
-      const childElement = child as ReactElement<{
-        anchorEl?: HTMLElement | null;
-        open?: boolean;
-        onOpen?: (event: MouseEvent<HTMLElement>) => void;
-        onClose?: () => void;
-        positioning?: MenuRootProps["positioning"];
-        children?: ReactNode;
-      }>;
+    const contextValue: MenuContextValue = {
+      anchorEl,
+      open,
+      handleOpen,
+      handleClose,
+      positioning,
+      closeOnSelect,
+    };
 
-      if (childElement.type === MenuTrigger) {
-        return (
-          // biome-ignore lint/suspicious/noArrayIndexKey: compound component children have stable order
-          <MenuTrigger key={index} onOpen={handleOpen}>
-            {childElement.props.children}
-          </MenuTrigger>
-        );
-      }
-      if (childElement.type === MenuContent) {
-        return (
-          <MenuContent
-            // biome-ignore lint/suspicious/noArrayIndexKey: compound component children have stable order
-            key={index}
-            anchorEl={anchorEl}
-            open={open}
-            onClose={handleClose}
-            positioning={positioning}
-          >
-            {childElement.props.children}
-          </MenuContent>
-        );
-      }
-      return child;
-    });
-
-    return <div ref={ref}>{enhancedChildren}</div>;
+    return (
+      <MenuContext.Provider value={contextValue}>
+        <div ref={ref}>{children}</div>
+      </MenuContext.Provider>
+    );
   },
 );
 
@@ -131,9 +130,11 @@ export interface MenuTriggerProps {
 }
 
 export const MenuTrigger = forwardRef<HTMLDivElement, MenuTriggerProps>(
-  function MenuTrigger({ children, onOpen }, ref) {
+  function MenuTrigger({ children, asChild }, ref) {
+    const { handleOpen } = useMenuContext();
+
     const handleClick = (event: MouseEvent<HTMLElement>) => {
-      onOpen?.(event);
+      handleOpen(event);
     };
 
     return (
@@ -173,7 +174,7 @@ export interface MenuContentProps extends Omit<MuiMenuProps, "ref" | "open"> {
   minW?: string;
   /** Font size */
   fontSize?: string;
-  /** Position */
+  /** Position - when "absolute", uses style.left/top for positioning */
   position?: string;
   /** Width */
   width?: string | number;
@@ -183,6 +184,8 @@ export interface MenuContentProps extends Omit<MuiMenuProps, "ref" | "open"> {
   className?: string;
   /** Line height */
   lineHeight?: string;
+  /** Inline styles - used for absolute positioning with left/top */
+  style?: React.CSSProperties;
 }
 
 const placementToAnchorOrigin: Record<string, MuiMenuProps["anchorOrigin"]> = {
@@ -198,10 +201,6 @@ export const MenuContent = forwardRef<HTMLDivElement, MenuContentProps>(
   function MenuContent(
     {
       children,
-      open = false,
-      positioning,
-      anchorEl,
-      onClose,
       bg,
       borderColor,
       boxShadow,
@@ -212,21 +211,44 @@ export const MenuContent = forwardRef<HTMLDivElement, MenuContentProps>(
       zIndex,
       className,
       lineHeight,
+      style,
       sx,
       ...props
     },
     ref,
   ) {
+    const { anchorEl, open, handleClose, positioning } = useMenuContext();
     const anchorOrigin =
       placementToAnchorOrigin[positioning?.placement || "bottom-start"];
+
+    // Support absolute positioning via style.left/top (for context menus)
+    const useAbsolutePositioning =
+      position === "absolute" &&
+      style?.left !== undefined &&
+      style?.top !== undefined;
 
     return (
       <MuiMenu
         ref={ref}
-        anchorEl={anchorEl}
+        anchorEl={useAbsolutePositioning ? null : anchorEl}
+        anchorReference={useAbsolutePositioning ? "anchorPosition" : "anchorEl"}
+        anchorPosition={
+          useAbsolutePositioning
+            ? {
+                top:
+                  typeof style.top === "string"
+                    ? Number.parseInt(style.top)
+                    : (style.top as number),
+                left:
+                  typeof style.left === "string"
+                    ? Number.parseInt(style.left)
+                    : (style.left as number),
+              }
+            : undefined
+        }
         open={open}
-        onClose={onClose}
-        anchorOrigin={anchorOrigin}
+        onClose={handleClose}
+        anchorOrigin={useAbsolutePositioning ? undefined : anchorOrigin}
         className={className}
         sx={{
           ...(zIndex !== undefined && { zIndex }),
@@ -236,7 +258,6 @@ export const MenuContent = forwardRef<HTMLDivElement, MenuContentProps>(
             ...(boxShadow && { boxShadow }),
             ...(minW && { minWidth: minW }),
             ...(fontSize && { fontSize }),
-            ...(position && { position }),
             ...(width && { width }),
             ...(lineHeight && { lineHeight }),
           },
@@ -262,10 +283,23 @@ export interface MenuItemProps extends Omit<MuiMenuItemProps, "ref"> {
 }
 
 export const MenuItem = forwardRef<HTMLLIElement, MenuItemProps>(
-  function MenuItem({ children, fontSize, asChild, sx, ...props }, ref) {
+  function MenuItem(
+    { children, fontSize, asChild, onClick, sx, ...props },
+    ref,
+  ) {
+    const { handleClose, closeOnSelect } = useMenuContext();
+
+    const handleClick = (event: React.MouseEvent<HTMLLIElement>) => {
+      onClick?.(event);
+      if (closeOnSelect) {
+        handleClose();
+      }
+    };
+
     return (
       <MuiMenuItem
         ref={ref}
+        onClick={handleClick}
         sx={{
           ...(fontSize && { fontSize }),
           ...sx,
@@ -336,13 +370,21 @@ interface MenuRadioItemGroupProps {
   onValueChange?: (details: { value: string }) => void;
 }
 
+const RadioItemGroupContext = createContext<{
+  value?: string;
+  onValueChange?: (details: { value: string }) => void;
+} | null>(null);
+
 function MenuRadioItemGroup({
   children,
   value,
   onValueChange,
 }: MenuRadioItemGroupProps) {
-  // For now, just render children - radio functionality can be enhanced later
-  return <>{children}</>;
+  return (
+    <RadioItemGroupContext.Provider value={{ value, onValueChange }}>
+      {children}
+    </RadioItemGroupContext.Provider>
+  );
 }
 
 // Menu Radio Item
@@ -352,7 +394,30 @@ interface MenuRadioItemProps {
 }
 
 function MenuRadioItem({ children, value }: MenuRadioItemProps) {
-  return <MuiMenuItem value={value}>{children}</MuiMenuItem>;
+  const radioContext = useContext(RadioItemGroupContext);
+  const menuContext = useMenuContext();
+  const isSelected = radioContext?.value === value;
+
+  const handleClick = () => {
+    radioContext?.onValueChange?.({ value });
+    if (menuContext.closeOnSelect) {
+      menuContext.handleClose();
+    }
+  };
+
+  return (
+    <MuiMenuItem
+      onClick={handleClick}
+      selected={isSelected}
+      sx={{
+        "&.Mui-selected": {
+          backgroundColor: "action.selected",
+        },
+      }}
+    >
+      {children}
+    </MuiMenuItem>
+  );
 }
 
 // Menu Item Indicator - Visual indicator for selected items
