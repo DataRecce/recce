@@ -27,6 +27,7 @@ class GitHubRecceCloudClient(BaseRecceCloudClient):
         branch: str,
         adapter_type: str,
         cr_number: Optional[int] = None,
+        commit_sha: Optional[str] = None,
         session_type: Optional[str] = None,
     ) -> Dict:
         """
@@ -52,7 +53,7 @@ class GitHubRecceCloudClient(BaseRecceCloudClient):
         # Only include pr_number for "cr" type sessions
         # For "prod" type, omit pr_number even if cr_number is detected
         if session_type == "cr" and cr_number is not None:
-            payload["pr_number"] = cr_number
+            payload["pr_number"] = str(cr_number)
 
         return self._make_request("POST", url, json=payload)
 
