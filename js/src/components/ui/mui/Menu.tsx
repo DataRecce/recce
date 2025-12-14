@@ -6,7 +6,7 @@ import type { MenuProps as MuiMenuProps } from "@mui/material/Menu";
 import MuiMenu from "@mui/material/Menu";
 import type { MenuItemProps as MuiMenuItemProps } from "@mui/material/MenuItem";
 import MuiMenuItem from "@mui/material/MenuItem";
-import {
+import React, {
   createContext,
   forwardRef,
   type MouseEvent,
@@ -136,6 +136,29 @@ export const MenuTrigger = forwardRef<HTMLDivElement, MenuTriggerProps>(
     const handleClick = (event: MouseEvent<HTMLElement>) => {
       handleOpen(event);
     };
+
+    // When asChild is true, clone the child and pass the onClick handler
+    if (asChild && React.isValidElement(children)) {
+      return React.cloneElement(
+        children as React.ReactElement<{
+          onClick?: (e: MouseEvent<HTMLElement>) => void;
+        }>,
+        {
+          onClick: (e: MouseEvent<HTMLElement>) => {
+            // Call original onClick if it exists
+            const originalOnClick = (
+              children as React.ReactElement<{
+                onClick?: (e: MouseEvent<HTMLElement>) => void;
+              }>
+            ).props?.onClick;
+            if (originalOnClick) {
+              originalOnClick(e);
+            }
+            handleClick(e);
+          },
+        },
+      );
+    }
 
     return (
       <div
