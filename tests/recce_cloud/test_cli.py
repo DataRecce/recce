@@ -2,11 +2,12 @@
 Integration tests for recce-cloud CLI commands.
 """
 
+import json
 import os
 import tempfile
 import unittest
 from pathlib import Path
-from unittest.mock import patch
+from unittest.mock import Mock, patch
 
 from click.testing import CliRunner
 
@@ -34,7 +35,6 @@ class TestUploadDryRun(unittest.TestCase):
             "nodes": {},
         }
 
-        import json
 
         with open(manifest_path, "w") as f:
             json.dump(manifest_content, f)
@@ -63,7 +63,6 @@ class TestUploadDryRun(unittest.TestCase):
 
         # Create mock event file
         event_file = Path(self.temp_dir) / "github_event.json"
-        import json
 
         with open(event_file, "w") as f:
             json.dump({"pull_request": {"number": 42}}, f)
@@ -252,7 +251,6 @@ class TestUploadDryRun(unittest.TestCase):
 
         # Create mock event file with PR number 42
         event_file = Path(self.temp_dir) / "github_event.json"
-        import json
 
         with open(event_file, "w") as f:
             json.dump({"pull_request": {"number": 42}}, f)
@@ -378,7 +376,6 @@ class TestListOrgsCommand(unittest.TestCase):
     @patch("recce_cloud.api.client.requests.request")
     def test_list_orgs_success(self, mock_request):
         """Test successful list-orgs command."""
-        from unittest.mock import Mock
 
         # Mock successful response
         mock_response = Mock()
@@ -407,7 +404,6 @@ class TestListOrgsCommand(unittest.TestCase):
     @patch("recce_cloud.api.client.requests.request")
     def test_list_orgs_json_output(self, mock_request):
         """Test list-orgs command with JSON output."""
-        from unittest.mock import Mock
 
         # Mock successful response
         mock_response = Mock()
@@ -429,7 +425,6 @@ class TestListOrgsCommand(unittest.TestCase):
         self.assertEqual(result.exit_code, 0, f"Command failed: {result.output}")
 
         # Verify JSON output
-        import json
 
         output = json.loads(result.output)
         self.assertEqual(len(output), 2)
@@ -439,7 +434,6 @@ class TestListOrgsCommand(unittest.TestCase):
     @patch("recce_cloud.api.client.requests.request")
     def test_list_orgs_empty(self, mock_request):
         """Test list-orgs command with no organizations."""
-        from unittest.mock import Mock
 
         # Mock empty response
         mock_response = Mock()
@@ -469,7 +463,6 @@ class TestListOrgsCommand(unittest.TestCase):
     @patch("recce_cloud.api.client.requests.request")
     def test_list_orgs_api_error(self, mock_request):
         """Test list-orgs command with API error."""
-        from unittest.mock import Mock
 
         # Mock error response
         mock_response = Mock()
@@ -497,7 +490,6 @@ class TestListProjectsCommand(unittest.TestCase):
     @patch("recce_cloud.api.client.requests.request")
     def test_list_projects_success(self, mock_request):
         """Test successful list-projects command."""
-        from unittest.mock import Mock
 
         # Mock successful response
         mock_response = Mock()
@@ -526,7 +518,6 @@ class TestListProjectsCommand(unittest.TestCase):
     @patch("recce_cloud.api.client.requests.request")
     def test_list_projects_json_output(self, mock_request):
         """Test list-projects command with JSON output."""
-        from unittest.mock import Mock
 
         # Mock successful response
         mock_response = Mock()
@@ -548,7 +539,6 @@ class TestListProjectsCommand(unittest.TestCase):
         self.assertEqual(result.exit_code, 0, f"Command failed: {result.output}")
 
         # Verify JSON output
-        import json
 
         output = json.loads(result.output)
         self.assertEqual(len(output), 2)
@@ -558,7 +548,6 @@ class TestListProjectsCommand(unittest.TestCase):
     @patch("recce_cloud.api.client.requests.request")
     def test_list_projects_empty(self, mock_request):
         """Test list-projects command with no projects."""
-        from unittest.mock import Mock
 
         # Mock empty response
         mock_response = Mock()
@@ -599,7 +588,6 @@ class TestListProjectsCommand(unittest.TestCase):
     @patch("recce_cloud.api.client.requests.request")
     def test_list_projects_org_not_found(self, mock_request):
         """Test list-projects command with non-existent org."""
-        from unittest.mock import Mock
 
         # Mock 404 response
         mock_response = Mock()
@@ -619,7 +607,6 @@ class TestListProjectsCommand(unittest.TestCase):
     @patch("recce_cloud.api.client.requests.request")
     def test_list_projects_api_error(self, mock_request):
         """Test list-projects command with API error."""
-        from unittest.mock import Mock
 
         # Mock error response
         mock_response = Mock()
