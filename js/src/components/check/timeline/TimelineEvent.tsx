@@ -205,7 +205,7 @@ function CommentEvent({
     }
   };
 
-  const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLDivElement>) => {
     if (e.key === "Escape") {
       handleCancelEdit();
     } else if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) {

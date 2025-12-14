@@ -181,6 +181,8 @@ export interface MenuContentProps extends Omit<MuiMenuProps, "ref" | "open"> {
   zIndex?: string | number;
   /** Class name */
   className?: string;
+  /** Line height */
+  lineHeight?: string;
 }
 
 const placementToAnchorOrigin: Record<string, MuiMenuProps["anchorOrigin"]> = {
@@ -209,6 +211,7 @@ export const MenuContent = forwardRef<HTMLDivElement, MenuContentProps>(
       width,
       zIndex,
       className,
+      lineHeight,
       sx,
       ...props
     },
@@ -235,6 +238,7 @@ export const MenuContent = forwardRef<HTMLDivElement, MenuContentProps>(
             ...(fontSize && { fontSize }),
             ...(position && { position }),
             ...(width && { width }),
+            ...(lineHeight && { lineHeight }),
           },
           ...sx,
         }}
@@ -292,10 +296,21 @@ export interface MenuItemGroupProps {
   p?: string | number;
   /** Padding X */
   px?: string | number;
+  /** Group title */
+  title?: string;
+  /** Render as element type */
+  as?: React.ElementType;
+  /** Font size */
+  fontSize?: string;
 }
 
-function MenuItemGroup({ children }: MenuItemGroupProps) {
-  return <>{children}</>;
+export function MenuItemGroup({ children, title }: MenuItemGroupProps) {
+  return (
+    <>
+      {title && <MenuItemGroupLabel>{title}</MenuItemGroupLabel>}
+      {children}
+    </>
+  );
 }
 
 // Menu Item Group Label

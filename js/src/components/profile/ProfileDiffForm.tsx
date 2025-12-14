@@ -48,7 +48,7 @@ export function ProfileDiffForm({
     <VStack gap={5} m="8px 24px" paddingBottom="200px">
       <Field.Root>
         <Field.Label>Model</Field.Label>
-        <Input readOnly value={params.model} />
+        <Input isReadOnly value={params.model} />
       </Field.Root>
       <Field.Root>
         <Field.Label>Columns</Field.Label>

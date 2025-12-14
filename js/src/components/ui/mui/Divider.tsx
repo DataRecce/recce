@@ -10,11 +10,23 @@ import { forwardRef } from "react";
  * A visual separator for content.
  */
 
-export interface DividerProps extends Omit<MuiDividerProps, "ref"> {}
+export interface DividerProps extends Omit<MuiDividerProps, "ref"> {
+  /** Border color */
+  borderColor?: string;
+}
 
 export const Divider = forwardRef<HTMLHRElement, DividerProps>(
-  function Divider(props, ref) {
-    return <MuiDivider ref={ref} {...props} />;
+  function Divider({ borderColor, sx, ...props }, ref) {
+    return (
+      <MuiDivider
+        ref={ref}
+        sx={{
+          ...(borderColor && { borderColor }),
+          ...sx,
+        }}
+        {...props}
+      />
+    );
   },
 );
 

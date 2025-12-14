@@ -109,12 +109,14 @@ export {
   type MenuContentProps,
   MenuItem,
   type MenuItemProps,
+  type MenuItemGroupProps,
   MenuRoot,
   type MenuRootProps,
   MenuSeparator,
   MenuTrigger,
   type MenuTriggerProps,
 } from "./Menu";
+export { NativeSelect } from "./NativeSelect";
 export {
   Popover,
   PopoverBody,

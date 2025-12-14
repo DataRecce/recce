@@ -26,7 +26,7 @@ export function CommentInput({
     }
   };
 
-  const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLDivElement>) => {
     // Submit on Cmd+Enter or Ctrl+Enter
     if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) {
       e.preventDefault();

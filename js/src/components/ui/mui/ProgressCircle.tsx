@@ -27,11 +27,13 @@ export interface ProgressCircleRootProps
   size?: "xs" | "sm" | "md" | "lg" | "xl" | number;
   /** Children for compound pattern */
   children?: ReactNode;
+  /** Margin right */
+  mr?: string | number;
 }
 
 const ProgressCircleRoot = forwardRef<HTMLDivElement, ProgressCircleRootProps>(
   function ProgressCircleRoot(
-    { value, size = "md", children, sx, ...props },
+    { value, size = "md", children, mr, sx, ...props },
     ref,
   ) {
     const pixelSize = typeof size === "number" ? size : sizeMap[size] || 40;
@@ -45,6 +47,7 @@ const ProgressCircleRoot = forwardRef<HTMLDivElement, ProgressCircleRootProps>(
           sx={{
             position: "relative",
             display: "inline-flex",
+            ...(mr !== undefined && { mr }),
             ...sx,
           }}
         >
@@ -66,7 +69,10 @@ const ProgressCircleRoot = forwardRef<HTMLDivElement, ProgressCircleRootProps>(
         variant={isIndeterminate ? "indeterminate" : "determinate"}
         value={isIndeterminate ? undefined : value}
         size={pixelSize}
-        sx={sx}
+        sx={{
+          ...(mr !== undefined && { mr }),
+          ...sx,
+        }}
         {...props}
       />
     );

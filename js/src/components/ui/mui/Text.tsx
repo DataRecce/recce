@@ -32,7 +32,7 @@ export interface TextProps extends Omit<MuiTypographyProps, "ref"> {
   /** Font size override */
   fontSize?: string | number;
   /** Text alignment */
-  textAlign?: "left" | "center" | "right" | "justify";
+  textAlign?: "left" | "center" | "right" | "justify" | "start" | "end";
   /** Cursor style */
   cursor?: string;
   /** Hover styles */
@@ -123,7 +123,9 @@ export const Text = forwardRef<HTMLSpanElement, TextProps>(function Text(
     }
 
     if (textAlign) {
-      styles.textAlign = textAlign;
+      // Map logical values to physical values for compatibility
+      const mappedAlign = textAlign === "end" ? "right" : textAlign === "start" ? "left" : textAlign;
+      styles.textAlign = mappedAlign;
     }
 
     if (cursor) {

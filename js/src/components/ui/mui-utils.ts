@@ -1,6 +1,7 @@
 "use client";
 
 import type { SxProps, Theme } from "@mui/material/styles";
+import type { Dispatch, SetStateAction } from "react";
 import { useCallback, useState } from "react";
 
 /**
@@ -29,7 +30,7 @@ export interface UseDisclosureReturn {
   onOpen: () => void;
   onClose: () => void;
   onToggle: () => void;
-  setOpen: (open: boolean) => void;
+  setOpen: Dispatch<SetStateAction<boolean>>;
 }
 
 export function useDisclosure(

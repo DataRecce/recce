@@ -32,6 +32,16 @@ export interface TextareaProps
   maxRows?: number;
   /** Flex value for layout */
   flex?: number | string;
+  /** Resize behavior (CSS resize property) */
+  resize?: "none" | "both" | "horizontal" | "vertical";
+  /** Minimum height */
+  minH?: string | number;
+  /** Background color */
+  bg?: string;
+  /** Border color */
+  borderColor?: string;
+  /** Focus styles (Chakra compatibility) */
+  _focus?: Record<string, unknown>;
 }
 
 const sizeToMui: Record<string, "small" | "medium"> = {
@@ -61,6 +71,11 @@ export const Textarea = forwardRef<HTMLTextAreaElement, TextareaProps>(
       minRows,
       maxRows,
       flex,
+      resize,
+      minH,
+      bg,
+      borderColor,
+      _focus,
       sx,
       ...props
     },
@@ -85,6 +100,11 @@ export const Textarea = forwardRef<HTMLTextAreaElement, TextareaProps>(
         required={isRequired}
         sx={{
           ...(flex !== undefined && { flex }),
+          ...(minH !== undefined && { "& .MuiInputBase-root": { minHeight: minH } }),
+          ...(bg && { "& .MuiInputBase-root": { backgroundColor: bg } }),
+          ...(borderColor && { "& .MuiOutlinedInput-notchedOutline": { borderColor } }),
+          ...(resize && { "& .MuiInputBase-input": { resize } }),
+          ...(_focus && { "&:focus-within": _focus }),
           ...sx,
         }}
         {...props}

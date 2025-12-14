@@ -43,6 +43,8 @@ export interface DialogRootProps
   initialFocusEl?: () => HTMLElement | null;
   /** Lazy mount - only render content when open */
   lazyMount?: boolean;
+  /** Scroll behavior - where scrollbar appears */
+  scrollBehavior?: "inside" | "outside";
 }
 
 const sizeToMaxWidth: Record<string, MuiDialogProps["maxWidth"]> = {
@@ -64,6 +66,7 @@ export const DialogRoot = forwardRef<HTMLDivElement, DialogRootProps>(
       placement,
       initialFocusEl,
       lazyMount: _lazyMount,
+      scrollBehavior: _scrollBehavior,
       ...props
     },
     ref,
@@ -114,10 +117,12 @@ export interface DialogContentProps {
   width?: string;
   /** Border radius */
   borderRadius?: string;
+  /** Minimum height */
+  minHeight?: string;
 }
 
 export const DialogContent = forwardRef<HTMLDivElement, DialogContentProps>(
-  function DialogContent({ children, overflowY, height, width, borderRadius }, ref) {
+  function DialogContent({ children, overflowY, height, width, borderRadius, minHeight }, ref) {
     return (
       <Box
         ref={ref}
@@ -128,6 +133,7 @@ export const DialogContent = forwardRef<HTMLDivElement, DialogContentProps>(
           ...(height && { height }),
           ...(width && { width }),
           ...(borderRadius && { borderRadius }),
+          ...(minHeight && { minHeight }),
         }}
       >
         {children}
@@ -185,10 +191,16 @@ export interface DialogTitleProps {
   fontSize?: string;
   /** Color */
   color?: string;
+  /** Display */
+  display?: string;
+  /** Align items */
+  alignItems?: string;
+  /** Gap */
+  gap?: string | number;
 }
 
 export const DialogTitle = forwardRef<HTMLSpanElement, DialogTitleProps>(
-  function DialogTitle({ children, as: _as, fontFamily, fontSize, color }, ref) {
+  function DialogTitle({ children, as: _as, fontFamily, fontSize, color, display, alignItems, gap }, ref) {
     return (
       <span
         ref={ref}
@@ -197,6 +209,9 @@ export const DialogTitle = forwardRef<HTMLSpanElement, DialogTitleProps>(
           ...(fontFamily && { fontFamily }),
           ...(fontSize && { fontSize }),
           ...(color && { color }),
+          ...(display && { display }),
+          ...(alignItems && { alignItems }),
+          ...(gap !== undefined && { gap }),
         }}
       >
         {children}
@@ -211,6 +226,8 @@ export interface DialogBodyProps extends Omit<MuiDialogContentProps, "ref"> {
   /** Border styling */
   borderTop?: string;
   borderBottom?: string;
+  /** Border Y shorthand */
+  borderY?: string;
   /** Padding */
   p?: number | string;
   /** Gap */
@@ -219,28 +236,38 @@ export interface DialogBodyProps extends Omit<MuiDialogContentProps, "ref"> {
   as?: React.ElementType;
   /** Flex direction */
   direction?: string;
+  /** Height shorthand */
+  h?: string | number;
+  /** Overflow */
+  overflow?: string;
 }
 
 export const DialogBody = forwardRef<HTMLDivElement, DialogBodyProps>(
   function DialogBody(
-    { children, borderTop, borderBottom, p, gap, as: _as, direction, sx, ...props },
+    { children, borderTop, borderBottom, borderY, p, gap, as: _as, direction, h, overflow, sx, ...props },
     ref,
   ) {
     const combinedSx = useMemo((): SxProps<Theme> => {
       const styles: Record<string, unknown> = {};
       if (borderTop) styles.borderTop = borderTop;
       if (borderBottom) styles.borderBottom = borderBottom;
+      if (borderY) {
+        styles.borderTop = borderY;
+        styles.borderBottom = borderY;
+      }
       if (p !== undefined) styles.p = p;
       if (gap !== undefined) {
         styles.gap = gap;
         styles.display = "flex";
         styles.flexDirection = direction || "column";
       }
+      if (h !== undefined) styles.height = h;
+      if (overflow) styles.overflow = overflow;
       if (sx && typeof sx === "object" && !Array.isArray(sx)) {
         return { ...styles, ...sx } as SxProps<Theme>;
       }
       return styles as SxProps<Theme>;
-    }, [borderTop, borderBottom, p, gap, direction, sx]);
+    }, [borderTop, borderBottom, borderY, p, gap, direction, h, overflow, sx]);
 
     return (
       <MuiDialogContent

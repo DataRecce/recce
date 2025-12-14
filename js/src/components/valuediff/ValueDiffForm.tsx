@@ -70,7 +70,7 @@ export function ValueDiffForm({
     <VStack gap={5} m="8px 24px" paddingBottom="200px">
       <Field.Root>
         <Field.Label>Model</Field.Label>
-        <Input readOnly={true} value={params.model} />
+        <Input isReadOnly value={params.model} />
       </Field.Root>
       <Field.Root>
         <Field.Label>Primary key</Field.Label>

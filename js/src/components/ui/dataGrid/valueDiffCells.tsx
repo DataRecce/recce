@@ -114,6 +114,7 @@ export function ValueDiffColumnNameCell({
       <Menu.Root lazyMount>
         <Menu.Trigger asChild>
           <IconButton
+            aria-label="Column options"
             className="row-context-menu"
             variant="plain"
             size="sm"
@@ -193,7 +194,7 @@ export function MatchedPercentCell({ value }: MatchedPercentCellProps) {
     }
   }
 
-  return <Box textAlign="end">{displayValue}</Box>;
+  return <Box textAlign="right">{displayValue}</Box>;
 }
 
 // ============================================================================

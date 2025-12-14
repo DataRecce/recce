@@ -21,6 +21,14 @@ export interface ListProps extends Omit<MuiListProps, "ref"> {
   ordered?: boolean;
   /** Padding start (logical padding-left in LTR) */
   ps?: string | number;
+  /** Overflow */
+  overflow?: string;
+  /** Background color */
+  backgroundColor?: string;
+  /** Render as element type */
+  as?: React.ElementType;
+  /** List style */
+  listStyle?: string;
 }
 
 export interface ListItemProps extends Omit<MuiListItemProps, "ref"> {
@@ -33,13 +41,16 @@ export interface ListItemProps extends Omit<MuiListItemProps, "ref"> {
 }
 
 const ListBase = forwardRef<HTMLUListElement, ListProps>(function List(
-  { spacing, ordered, ps, sx, ...props },
+  { spacing, ordered, ps, overflow, backgroundColor, as, listStyle, sx, ...props },
   ref,
 ) {
+  // Determine component type: explicit 'as' > ordered > default ul
+  const component = as || (ordered ? "ol" : "ul");
+
   return (
     <MuiList
       ref={ref}
-      component={ordered ? "ol" : "ul"}
+      component={component}
       sx={{
         ...(spacing && {
           "& > li": {
@@ -47,6 +58,9 @@ const ListBase = forwardRef<HTMLUListElement, ListProps>(function List(
           },
         }),
         ...(ps !== undefined && { paddingInlineStart: ps }),
+        ...(overflow && { overflow }),
+        ...(backgroundColor && { backgroundColor }),
+        ...(listStyle && { listStyle }),
         ...sx,
       }}
       {...props}

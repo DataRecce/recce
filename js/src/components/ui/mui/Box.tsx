@@ -74,6 +74,10 @@ export interface BoxProps extends Omit<MuiBoxProps, "ref"> {
   listStyleType?: string;
   /** Text align */
   textAlign?: "left" | "center" | "right" | "justify";
+  /** Box size (sets both width and height) */
+  boxSize?: string | number;
+  /** Color */
+  color?: string;
 }
 
 export const Box = forwardRef<HTMLDivElement, BoxProps>(function Box(
@@ -108,6 +112,8 @@ export const Box = forwardRef<HTMLDivElement, BoxProps>(function Box(
     fontWeight,
     listStyleType,
     textAlign,
+    boxSize,
+    color,
     sx,
     ...props
   },
@@ -146,11 +152,16 @@ export const Box = forwardRef<HTMLDivElement, BoxProps>(function Box(
     if (fontWeight !== undefined) styles.fontWeight = fontWeight;
     if (listStyleType) styles.listStyleType = listStyleType;
     if (textAlign) styles.textAlign = textAlign;
+    if (boxSize !== undefined) {
+      styles.width = boxSize;
+      styles.height = boxSize;
+    }
+    if (color) styles.color = color;
     if (sx && typeof sx === "object" && !Array.isArray(sx)) {
       return { ...styles, ...sx } as SxProps<Theme>;
     }
     return styles as SxProps<Theme>;
-  }, [bg, backgroundColor, rounded, cursor, shadow, overflowX, overflowY, blockSize, borderWidth, borderTopWidth, borderBottomWidth, borderBottomRadius, borderLeftWidth, borderLeftColor, p, pl, px, py, my, mb, opacity, borderColor, w, h, fontStyle, fontWeight, listStyleType, textAlign, sx]);
+  }, [bg, backgroundColor, rounded, cursor, shadow, overflowX, overflowY, blockSize, borderWidth, borderTopWidth, borderBottomWidth, borderBottomRadius, borderLeftWidth, borderLeftColor, p, pl, px, py, my, mb, opacity, borderColor, w, h, fontStyle, fontWeight, listStyleType, textAlign, boxSize, color, sx]);
 
   return (
     <MuiBox ref={ref} component={as} sx={combinedSx} {...props}>

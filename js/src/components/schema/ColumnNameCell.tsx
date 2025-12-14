@@ -110,17 +110,17 @@ export function ColumnNameCell({
           {name}
         </Box>
         <Spacer />
-        {cllRunning && <Spinner size="xs" color="gray.400" />}
+        {cllRunning && <Spinner size="xs" colorPalette="gray" />}
         {showMenu && !singleEnv && model.resource_type !== "source" && (
           <Menu.Root>
             <Menu.Trigger asChild>
               <IconButton
+                aria-label="Column options"
                 display="flex"
                 className="row-context-menu"
                 variant="plain"
                 size={"sm"}
-                color="gray"
-                _hover={{ color: "black" }}
+                colorPalette="gray"
                 disabled={featureToggles.disableDatabaseQuery}
                 onClick={(e) => {
                   // prevent the click event from propagating to the Cell clicking

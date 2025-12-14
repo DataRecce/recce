@@ -23,7 +23,7 @@ export interface PopoverRootProps {
   /** Controlled open state */
   open?: boolean;
   /** Callback when open state changes */
-  onOpenChange?: (open: boolean) => void;
+  onOpenChange?: (details: { open: boolean }) => void;
   /** Callback when focus leaves the popover */
   onFocusOutside?: () => void;
   /** Positioning configuration */
@@ -78,7 +78,7 @@ export const PopoverRoot = forwardRef<HTMLDivElement, PopoverRootProps>(
       if (!isControlled) {
         setInternalOpen(true);
       }
-      onOpenChange?.(true);
+      onOpenChange?.({ open: true });
     };
 
     const handleClose = () => {
@@ -86,7 +86,7 @@ export const PopoverRoot = forwardRef<HTMLDivElement, PopoverRootProps>(
       if (!isControlled) {
         setInternalOpen(false);
       }
-      onOpenChange?.(false);
+      onOpenChange?.({ open: false });
     };
 
     // Clone children and inject context
@@ -312,16 +312,39 @@ export interface PopoverBodyProps {
   children?: ReactNode;
   /** Font size */
   fontSize?: string;
+  /** Padding */
+  p?: string | number;
 }
 
 export const PopoverBody = forwardRef<HTMLDivElement, PopoverBodyProps>(
-  function PopoverBody({ children, fontSize }, ref) {
-    return <MuiBox ref={ref} sx={{ ...(fontSize && { fontSize }) }}>{children}</MuiBox>;
+  function PopoverBody({ children, fontSize, p }, ref) {
+    return (
+      <MuiBox
+        ref={ref}
+        sx={{
+          ...(fontSize && { fontSize }),
+          ...(p !== undefined && { p }),
+        }}
+      >
+        {children}
+      </MuiBox>
+    );
   },
 );
 
 // Popover Arrow - Visual arrow pointing to trigger (for API compatibility)
-function PopoverArrow() {
+interface PopoverArrowProps {
+  children?: ReactNode;
+}
+
+function PopoverArrow({ children }: PopoverArrowProps) {
+  // MUI doesn't have built-in arrow support for Popover
+  // This is a placeholder for API compatibility - just render children if any
+  return <>{children}</>;
+}
+
+// Popover ArrowTip - Visual arrow tip (for API compatibility)
+function PopoverArrowTip() {
   // MUI doesn't have built-in arrow support for Popover
   // This is a placeholder for API compatibility
   return null;
@@ -335,6 +358,7 @@ export const Popover = {
   Content: PopoverContent,
   Body: PopoverBody,
   Arrow: PopoverArrow,
+  ArrowTip: PopoverArrowTip,
 };
 
 export default Popover;
